@@ -58,7 +58,7 @@ export class PlayoffAdvancer {
     // Check if all play-in games (that have valid teams) are done → mark complete
     if (!b.playInComplete) {
       const activePIGames = b.playInGames.filter(
-        p => p.team1Tid > 0 && p.team2Tid > 0
+        p => p.team1Tid !== -1 && p.team2Tid !== -1
       );
       const allDone = activePIGames.length > 0 && activePIGames.every(p => p.played);
       if (allDone) {
@@ -73,7 +73,7 @@ export class PlayoffAdvancer {
       if (east8.length === 8 && west8.length === 8) {
         const r1Series = PlayoffGenerator.buildRound1(east8, west8, numGamesPerRound[0] ?? 7);
         b.series = [...b.series, ...r1Series];
-        const startDate = new Date('2026-04-18T00:00:00Z');
+        const startDate = new Date('2026-04-22T00:00:00Z');
         const curMaxGid = Math.max(maxGid, ...newGames.map(g => g.gid), 0);
         const injected = PlayoffGenerator.injectSeriesGames(r1Series, startDate, curMaxGid);
         newGames.push(...injected);
@@ -151,7 +151,7 @@ export class PlayoffAdvancer {
     const seed7 = game7v8?.winnerId;
     const seed8 = loserGame?.winnerId;
 
-    if (!seed7 || !seed8 || top6.length < 6) return [];
+    if (seed7 == null || seed8 == null || top6.length < 6) return [];
     return [...top6, seed7, seed8];
   }
 

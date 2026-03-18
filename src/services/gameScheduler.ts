@@ -6,8 +6,17 @@ export const generateSchedule = (teams: NBATeam[], christmasGames?: { homeTid: n
   let gameId = 0; // gid 90000-90001 reserved for All-Star games
   
   const startDate = new Date('2025-10-24');
-  const endDate = new Date('2026-04-15'); // Regular season end
+  const endDate = new Date('2026-04-13'); // Regular season ends Apr 12; +1 so last slot is Apr 12
   const seasonLengthDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+
+  // Pre-sort teams by conference for deterministic 82-game schedule:
+  // Same-conference: 14 × 3 = 42 games
+  // Cross-conference: 10 opponents × 3 + 5 opponents × 2 = 40 games  → total 82
+  const eastTeams = [...teams.filter(t => t.conference === 'East')].sort((a, b) => a.id - b.id);
+  const westTeams = [...teams.filter(t => t.conference === 'West')].sort((a, b) => a.id - b.id);
+  const confIdx = new Map<number, number>();
+  eastTeams.forEach((t, i) => confIdx.set(t.id, i));
+  westTeams.forEach((t, i) => confIdx.set(t.id, i));
 
   const seasonYear = new Date(endDate).getFullYear();
   const asDate = getAllStarWeekendDates(seasonYear);
@@ -111,9 +120,15 @@ export const generateSchedule = (teams: NBATeam[], christmasGames?: { homeTid: n
           const t1 = teams[i];
           const t2 = teams[j];
           
-          let numGames = 2; // Default for opposing conference
+          let numGames: number;
           if (t1.conference === t2.conference) {
-              numGames = 3; // Same conference
+              numGames = 3; // Same conference: 14 × 3 = 42 games/team
+          } else {
+              // Cross-conference: use sorted-index parity so each team gets
+              // 10 opponents at 3 games + 5 opponents at 2 games = 40 games/team
+              const ci1 = confIdx.get(t1.id) ?? 0;
+              const ci2 = confIdx.get(t2.id) ?? 0;
+              numGames = (ci1 + ci2) % 3 !== 0 ? 3 : 2;
           }
 
           // Generate games distributed throughout the season
@@ -125,7 +140,7 @@ export const generateSchedule = (teams: NBATeam[], christmasGames?: { homeTid: n
               let scheduled = false;
               let attempts = 0;
               
-              while (!scheduled && attempts < 50) {
+              while (!scheduled && attempts < 100) {
                   const randomOffset = Math.floor(Math.random() * segmentSize);
                   const dayOffset = Math.floor(segmentStart + randomOffset);
                   
@@ -170,7 +185,7 @@ export const generateSchedule = (teams: NBATeam[], christmasGames?: { homeTid: n
               // Fallback: If we couldn't find a slot in the segment, try ANY random day
               if (!scheduled) {
                   let fallbackAttempts = 0;
-                  while (!scheduled && fallbackAttempts < 100) {
+                  while (!scheduled && fallbackAttempts < 200) {
                       const randomDay = Math.floor(Math.random() * seasonLengthDays);
                       const gameDate = new Date(startDate);
                       gameDate.setDate(startDate.getDate() + randomDay);

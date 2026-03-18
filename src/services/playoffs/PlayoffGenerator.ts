@@ -225,7 +225,7 @@ export class PlayoffGenerator {
 
     for (const [id, dayOffset] of schedule) {
       const pig = playInGames.find(p => p.id === id);
-      if (!pig || pig.team1Tid < 0 || pig.team2Tid < 0) continue;
+      if (!pig || pig.team1Tid === -1 || pig.team2Tid === -1) continue;
 
       const gameDate = new Date(playInStart);
       gameDate.setDate(gameDate.getDate() + dayOffset);

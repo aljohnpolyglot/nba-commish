@@ -468,7 +468,7 @@ export const processTurn = async (state: GameState, action: UserAction) => {
     const currentDateNorm2 = normalizeDate(dateString);
 
     // 1. Generate bracket when regular season ends (around Apr 14)
-    if (!playoffsPatch && currentDateNorm2 >= '2026-04-14') {
+    if (!playoffsPatch && currentDateNorm2 >= '2026-04-13') {
         const numGamesPerRound = state.leagueStats.numGamesPlayoffSeries ?? [7, 7, 7, 7];
         playoffsPatch = PlayoffGenerator.generateBracket(
             stateWithSim.teams,
@@ -479,7 +479,7 @@ export const processTurn = async (state: GameState, action: UserAction) => {
 
     // 2. Inject play-in games into the schedule once bracket is created
     if (playoffsPatch && !playoffsPatch.gamesInjected) {
-        const playInStart = new Date('2026-04-14T00:00:00Z');
+        const playInStart = new Date('2026-04-15T00:00:00Z');
         const maxGid = Math.max(0, ...finalSchedule.map(g => g.gid));
         const playInGamesToInject = PlayoffGenerator.injectPlayInGames(
             playoffsPatch.playInGames,
@@ -517,7 +517,7 @@ export const processTurn = async (state: GameState, action: UserAction) => {
         for (const pig of playoffsPatch.playInGames) {
             if (pig.gameType === 'loserGame' && pig.team1Tid > 0 && pig.team2Tid > 0 && !pig.gameId) {
                 const maxGid = Math.max(0, ...finalSchedule.map(g => g.gid));
-                const playInStart = new Date('2026-04-14T00:00:00Z');
+                const playInStart = new Date('2026-04-15T00:00:00Z');
                 const dayOffset = pig.conference === 'East' ? 3 : 4;
                 const gameDate = new Date(playInStart);
                 gameDate.setDate(gameDate.getDate() + dayOffset);

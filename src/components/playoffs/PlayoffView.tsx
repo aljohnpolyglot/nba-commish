@@ -374,15 +374,15 @@ export const PlayoffView: React.FC = () => {
                 const seed8Winner = loserGame?.played && loserGame.winnerId
                   ? state.teams.find(t => t.id === loserGame.winnerId) : null;
 
-                const confLogo = conf === 'East'
-                  ? 'https://upload.wikimedia.org/wikipedia/en/thumb/1/16/Eastern_Conference_%28NBA%29_logo.svg/200px-Eastern_Conference_%28NBA%29_logo.svg.png'
-                  : 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/Western_Conference_%28NBA%29_logo.svg/200px-Western_Conference_%28NBA%29_logo.svg.png';
+                const confColor = conf === 'East' ? 'bg-red-600' : 'bg-blue-600';
 
                 return (
                   <div key={conf} className="space-y-3">
                     {/* Conference header */}
                     <div className="flex items-center gap-2">
-                      <img src={confLogo} className="w-5 h-5 object-contain" alt={conf} referrerPolicy="no-referrer" />
+                      <span className={`w-5 h-5 rounded-full ${confColor} flex items-center justify-center text-white text-[9px] font-black shrink-0`}>
+                        {conf[0]}
+                      </span>
                       <h4 className="font-black text-white text-sm">{conf}ern Conference</h4>
                     </div>
 
@@ -467,7 +467,7 @@ export const PlayoffView: React.FC = () => {
         )}
 
         {/* ── Full bracket ─────────────────────────────────────────────────── */}
-        {playoffs?.round1Injected && (
+        {playoffs?.playInComplete && (
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-black uppercase tracking-widest text-white">Bracket</h3>
