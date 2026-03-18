@@ -840,6 +840,15 @@ export interface AllStarState {
   gamesInjected?: boolean;
 }
 
+export interface LazySimProgress {
+  currentDate: string;
+  targetDate: string;
+  daysComplete: number;
+  daysTotal: number;
+  currentPhase: string;
+  percentComplete: number;
+}
+
 export interface GameState {
   day: number;
   date: string;
@@ -881,6 +890,7 @@ export interface GameState {
   playoffs?: PlayoffBracket;
   pendingClubDebuff?: { playerId: string; playerName: string; severity: 'heavy' | 'moderate' | 'mild'; clubName: string }[];
   headToHead?: HeadToHead;
+  lazySimProgress?: LazySimProgress;
 }
 
 export type ActionType = 'REPLY_EMAIL' | 'BRIBE' | 'HYPNOTIZE' | 'PUBLIC_STATEMENT' | 'ADVANCE_DAY' | 'DIRECT_MESSAGE' | 'SEND_MESSAGE' | 'SEND_CHAT_MESSAGE' | 'UPDATE_RULES' | 'SUSPEND_PLAYER' | 'CLEAR_OUTCOME' | 'SAVE_SOCIAL_THREAD' | 'FINE_PERSON' | 'BRIBE_PERSON' | 'GLOBAL_GAMES' | 'LEAK_SCANDAL' | 'HYPNOTIC_BROADCAST' | 'RIG_LOTTERY' | 'CELEBRITY_ROSTER' | 'OWNER_DINNER' | 'PUBLIC_ANNOUNCEMENT' | 'SUSPEND_PERSON' | 'DRUG_TEST_PERSON' | 'INVITE_DINNER' | 'EXPANSION_DRAFT' | 'ANNOUNCE_CHANGE' | 'START_GAME' | 'LOAD_GAME' | 'UPDATE_SAVE_ID' | 'SIGN_FREE_AGENT' | 'EXECUTIVE_TRADE' | 'TRAVEL' | 'GIVE_MONEY' | 'VISIT_NON_NBA_TEAM' | 'INVITE_PERFORMANCE' | 'FORCE_TRADE' | 'ADJUST_FINANCIALS' | 'FOLLOW_USER' | 'UNFOLLOW_USER' | 'ADD_PENDING_HYPNOSIS' | 'MARK_PAYSLIPS_READ' | 'TRANSFER_FUNDS' | 'SET_CHRISTMAS_GAMES' | 'SABOTAGE_PLAYER' | 'GO_TO_CLUB' | 'ENDORSE_HOF' | 'SIMULATE_TO_DATE' | 'ADD_PRESEASON_INTERNATIONAL' | 'ALL_STAR_ADVANCE_VOTES' | 'ALL_STAR_ANNOUNCE_STARTERS' | 'ALL_STAR_ANNOUNCE_RESERVES' | 'ALL_STAR_SIMULATE_WEEKEND' | 'GENERATE_PLAYOFF_BRACKET' | 'SIM_PLAYOFF_ROUND' | 'SAVE_CONTEST_RESULT' | 'RECORD_WATCHED_GAME';
