@@ -20,8 +20,7 @@ export { ThinkingLevel };
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const GEMINI_WORKER_URL = "https://geminisatellite.mogatas-princealjohn-05082003.workers.dev/";
-const GROQ_WORKER_URL   = "https://groqsatellite.mogatas-princealjohn-05082003.workers.dev/";
-
+const GROQ_WORKER_URL = "https://square-bush-5dbc.mogatas-princealjohn-05082003.workers.dev/";
 // Model used for all chat/interaction calls (routed to Groq)
 const GROQ_CHAT_MODEL = "llama-3.3-70b-versatile";
 
