@@ -5,9 +5,10 @@ const ALLOWED_ORIGINS = [
   "http://localhost:5500",
   "http://localhost:5173",   // Vite default
   "http://localhost:3000",
-  "https://aljohnpolyglot.github.io",
+  "https://nba-commish.pages.dev",
+  "https://basketcommissionersim.com",  // ← add this
+  "https://www.basketcommissionersim.com",  // ← and this
 ];
-
 // Pull all configured keys from env into an array (skips undefined ones)
 function getKeys(env) {
   return [

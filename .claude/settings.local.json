@@ -10,7 +10,8 @@
       "Read(//c/Users/user-MSI/Downloads/nba-commish/$BASE/threepoint/**)",
       "Bash(npx tsc:*)",
       "WebFetch(domain:imgur.com)",
-      "WebFetch(domain:i.imgur.com)"
+      "WebFetch(domain:i.imgur.com)",
+      "Bash(xargs grep:*)"
     ]
   }
 }
