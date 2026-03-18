@@ -1,219 +1,49 @@
 import React, { useState } from 'react';
-import { Trophy, Play, FastForward } from 'lucide-react';
+import { Trophy, FastForward } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { useGame } from '../../store/GameContext';
-import { Game, PlayoffSeries, PlayInGame, NBATeam } from '../../types';
+import { Game } from '../../types';
 import { GameSimulatorScreen } from '../shared/GameSimulatorScreen';
 import { WatchGamePreviewModal } from '../modals/WatchGamePreviewModal';
 import { normalizeDate, getTeamForGame, getPlayersForExhibitionTeam } from '../../utils/helpers';
-
-// ─── Series status helper ────────────────────────────────────────────────────
-
-function getSeriesStatusText(series: PlayoffSeries, teams: NBATeam[]): string {
-  const higher = teams.find(t => t.id === series.higherSeedTid);
-  const lower = teams.find(t => t.id === series.lowerSeedTid);
-
-  if (series.status === 'complete' && series.winnerId) {
-    const isHigher = series.winnerId === series.higherSeedTid;
-    const winner = isHigher ? higher : lower;
-    const winW = isHigher ? series.higherSeedWins : series.lowerSeedWins;
-    const loseW = isHigher ? series.lowerSeedWins : series.higherSeedWins;
-    return `${winner?.abbrev ?? '?'} wins ${winW}-${loseW}`;
-  }
-  if (series.higherSeedWins === 0 && series.lowerSeedWins === 0) return 'Not started';
-  if (series.higherSeedWins > series.lowerSeedWins)
-    return `${higher?.abbrev ?? '?'} leads ${series.higherSeedWins}-${series.lowerSeedWins}`;
-  if (series.lowerSeedWins > series.higherSeedWins)
-    return `${lower?.abbrev ?? '?'} leads ${series.lowerSeedWins}-${series.higherSeedWins}`;
-  return `Tied ${series.higherSeedWins}-${series.lowerSeedWins}`;
-}
-
-// ─── SeriesCard ──────────────────────────────────────────────────────────────
-
-interface SeriesCardProps {
-  series: PlayoffSeries | null;
-  teams: NBATeam[];
-  schedule: Game[];
-  stateDate: string;
-  onWatch: (game: Game) => void;
-  label?: string;
-}
-
-const SeriesCard: React.FC<SeriesCardProps> = ({ series, teams, schedule, stateDate, onWatch, label }) => {
-  if (!series) {
-    return (
-      <div className="bg-white/[0.02] border border-dashed border-white/10 rounded-xl p-3 flex items-center justify-center min-h-[88px]">
-        <span className="text-slate-700 text-[10px] font-bold">{label || 'TBD'}</span>
-      </div>
-    );
-  }
-
-  const higher = teams.find(t => t.id === series.higherSeedTid);
-  const lower = teams.find(t => t.id === series.lowerSeedTid);
-  const isComplete = series.status === 'complete';
-  const higherWon = isComplete && series.winnerId === series.higherSeedTid;
-  const lowerWon = isComplete && series.winnerId === series.lowerSeedTid;
-  const nextGame = schedule.find(g => g.playoffSeriesId === series.id && !g.played);
-  const isToday = nextGame ? normalizeDate(nextGame.date) === normalizeDate(stateDate) : false;
-  const statusText = getSeriesStatusText(series, teams);
-
-  return (
-    <div className={`bg-[#111] border ${isComplete ? 'border-white/5' : 'border-white/10'} rounded-xl p-2.5 flex flex-col gap-1`}>
-      {/* Higher seed */}
-      <div className={`flex items-center gap-1.5 ${lowerWon ? 'opacity-30' : ''}`}>
-        <span className="text-[9px] text-slate-600 w-3.5 font-mono shrink-0">{series.higherSeed}</span>
-        {higher
-          ? <img src={higher.logoUrl} className="w-5 h-5 object-contain shrink-0" alt="" referrerPolicy="no-referrer" />
-          : <div className="w-5 h-5 bg-slate-800 rounded-full shrink-0" />}
-        <span className="text-xs font-bold text-white truncate flex-1">{higher?.abbrev ?? 'TBD'}</span>
-        <span className={`text-xs font-black shrink-0 ${higherWon ? 'text-emerald-400' : 'text-white'}`}>
-          {series.higherSeedWins}{higherWon ? ' 🏆' : ''}
-        </span>
-      </div>
-
-      {/* Lower seed */}
-      <div className={`flex items-center gap-1.5 ${higherWon ? 'opacity-30' : ''}`}>
-        <span className="text-[9px] text-slate-600 w-3.5 font-mono shrink-0">{series.lowerSeed}</span>
-        {lower
-          ? <img src={lower.logoUrl} className="w-5 h-5 object-contain shrink-0" alt="" referrerPolicy="no-referrer" />
-          : <div className="w-5 h-5 bg-slate-800 rounded-full shrink-0" />}
-        <span className="text-xs font-bold text-white truncate flex-1">{lower?.abbrev ?? 'TBD'}</span>
-        <span className={`text-xs font-black shrink-0 ${lowerWon ? 'text-emerald-400' : 'text-white'}`}>
-          {series.lowerSeedWins}{lowerWon ? ' 🏆' : ''}
-        </span>
-      </div>
-
-      {/* Status + watch button */}
-      <div className="border-t border-white/5 pt-1.5 mt-0.5">
-        <div className={`text-[9px] font-bold truncate ${isComplete ? 'text-emerald-400' : 'text-slate-500'}`}>
-          {statusText}
-        </div>
-        {!isComplete && isToday && nextGame && (
-          <button
-            onClick={() => onWatch(nextGame)}
-            className="mt-1 w-full flex items-center justify-center gap-1 px-2 py-1 bg-white text-black text-[9px] font-black rounded-md hover:bg-emerald-400 transition-all"
-          >
-            <Play size={8} fill="currentColor" />
-            Watch G{nextGame.playoffGameNumber}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// ─── PlayInBracketCard ───────────────────────────────────────────────────────
-
-interface PlayInBracketCardProps {
-  pig: PlayInGame | undefined;
-  teams: NBATeam[];
-  schedule: Game[];
-  stateDate: string;
-  onWatch: (game: Game) => void;
-  label: string;
-}
-
-const PlayInBracketCard: React.FC<PlayInBracketCardProps> = ({ pig, teams, schedule, stateDate, onWatch, label }) => {
-  if (!pig) {
-    return (
-      <div className="bg-white/[0.02] border border-dashed border-white/10 rounded-xl p-2.5 flex items-center justify-center h-[68px]">
-        <span className="text-slate-700 text-[10px] font-bold">TBD</span>
-      </div>
-    );
-  }
-
-  const t1 = pig.team1Tid > 0 ? teams.find(t => t.id === pig.team1Tid) : null;
-  const t2 = pig.team2Tid > 0 ? teams.find(t => t.id === pig.team2Tid) : null;
-  const game = pig.gameId ? schedule.find(g => g.gid === pig.gameId) : null;
-  const isToday = game ? normalizeDate(game.date) === normalizeDate(stateDate) : false;
-  const winner = pig.played && pig.winnerId ? teams.find(t => t.id === pig.winnerId) : null;
-  const teamsReady = pig.team1Tid > 0 && pig.team2Tid > 0;
-
-  return (
-    <div className={`bg-[#111] border ${pig.played ? 'border-white/5' : 'border-indigo-500/20'} rounded-xl overflow-hidden`}>
-      <div className="px-2.5 pt-1.5 pb-0">
-        <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">{label}</span>
-      </div>
-      <div className="px-2.5 pb-2 pt-1">
-        {/* Team 1 */}
-        <div className={`flex items-center gap-1.5 mb-1 ${winner && winner.id !== pig.team1Tid ? 'opacity-30' : ''}`}>
-          {t1
-            ? <img src={t1.logoUrl} className="w-5 h-5 object-contain shrink-0" alt="" referrerPolicy="no-referrer" />
-            : <div className="w-5 h-5 bg-slate-800 rounded-full shrink-0" />}
-          <span className="text-xs font-bold text-white flex-1 truncate">{t1?.abbrev ?? 'TBD'}</span>
-          {pig.played && game && (
-            <span className={`text-xs font-black shrink-0 ${winner?.id === pig.team1Tid ? 'text-emerald-400' : 'text-slate-600'}`}>
-              {game.homeScore}
-            </span>
-          )}
-        </div>
-        {/* Team 2 */}
-        <div className={`flex items-center gap-1.5 ${winner && winner.id !== pig.team2Tid ? 'opacity-30' : ''}`}>
-          {t2
-            ? <img src={t2.logoUrl} className="w-5 h-5 object-contain shrink-0" alt="" referrerPolicy="no-referrer" />
-            : <div className="w-5 h-5 bg-slate-800 rounded-full shrink-0" />}
-          <span className="text-xs font-bold text-white flex-1 truncate">{t2?.abbrev ?? 'TBD'}</span>
-          {pig.played && game && (
-            <span className={`text-xs font-black shrink-0 ${winner?.id === pig.team2Tid ? 'text-emerald-400' : 'text-slate-600'}`}>
-              {game.awayScore}
-            </span>
-          )}
-        </div>
-
-        {!pig.played && teamsReady && isToday && game ? (
-          <button
-            onClick={() => onWatch(game)}
-            className="mt-1.5 w-full flex items-center justify-center gap-1 px-2 py-1 bg-white text-black text-[9px] font-black rounded-md hover:bg-emerald-400 transition-all"
-          >
-            <Play size={8} fill="currentColor" />
-            Watch
-          </button>
-        ) : !pig.played && teamsReady && game ? (
-          <div className="mt-1 text-[9px] text-slate-600 text-center">
-            {new Date(game.date).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })}
-          </div>
-        ) : pig.played && winner ? (
-          <div className="mt-1 text-[9px] text-emerald-400 font-bold text-center">{winner.abbrev} wins</div>
-        ) : null}
-      </div>
-    </div>
-  );
-};
-
-// ─── BracketColumn ────────────────────────────────────────────────────────────
-
-interface BracketColumnProps {
-  label: string;
-  labelColor?: string;
-  justify?: string;
-  children: React.ReactNode;
-}
-
-const BracketColumn: React.FC<BracketColumnProps> = ({ label, labelColor = 'text-slate-600', justify = 'flex-start', children }) => (
-  <div className={`flex flex-col w-40 shrink-0`} style={{ justifyContent: justify }}>
-    <div className={`text-[9px] font-black uppercase tracking-widest mb-2 ${labelColor}`}>{label}</div>
-    <div className="flex flex-col gap-2 flex-1" style={{ justifyContent: justify }}>
-      {children}
-    </div>
-  </div>
-);
-
-// ─── Main PlayoffView ────────────────────────────────────────────────────────
+import { BracketLayout } from './bracket/BracketLayout';
+import { SeriesDetailPanel } from './detail/SeriesDetailPanel';
 
 export const PlayoffView: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const playoffs = state.playoffs;
   const year = state.leagueStats.year;
 
+  // ─── State ────────────────────────────────────────────────────────────────
+  const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
+  const [selectedGameIdx, setSelectedGameIdx] = useState<number>(0);
   const [watchingGame, setWatchingGame] = useState<Game | null>(null);
   const [pendingWatchGame, setPendingWatchGame] = useState<Game | null>(null);
   const [riggedForTid, setRiggedForTid] = useState<number | undefined>(undefined);
   const [precomputedResult, setPrecomputedResult] = useState<any | null>(null);
-  const [viewMode, setViewMode] = useState<'bracket' | 'watching'>('bracket');
   const [confFilter, setConfFilter] = useState<'East' | 'West'>('East');
+
+  // ─── Derived ──────────────────────────────────────────────────────────────
+  const roundLabel = ['', 'First Round', 'Second Round', 'Conf. Finals', 'NBA Finals'];
+  const eastStandings = [...state.teams].filter(t => t.conference === 'East').sort((a, b) => b.wins - a.wins || a.losses - b.losses);
+  const westStandings = [...state.teams].filter(t => t.conference === 'West').sort((a, b) => b.wins - a.wins || a.losses - b.losses);
+
+  // ─── Handlers ─────────────────────────────────────────────────────────────
+
+  const handleSeriesClick = (id: string) => {
+    setSelectedSeriesId(id);
+    const series = playoffs?.series.find(s => s.id === id);
+    if (series) {
+      const playedGames = state.schedule.filter(g => g.playoffSeriesId === id && g.played);
+      setSelectedGameIdx(Math.max(0, playedGames.length - 1));
+    } else {
+      setSelectedGameIdx(0);
+    }
+  };
 
   const handleWatchGame = (game: Game) => {
     if (normalizeDate(game.date) === normalizeDate(state.date)) {
+      setSelectedSeriesId(null);
       setPendingWatchGame(game);
     }
   };
@@ -223,7 +53,6 @@ export const PlayoffView: React.FC = () => {
     const gameId = watchingGame.gid;
     const currentRig = riggedForTid;
     setWatchingGame(null);
-    setViewMode('bracket');
     setRiggedForTid(undefined);
     setPrecomputedResult(null);
 
@@ -232,8 +61,8 @@ export const PlayoffView: React.FC = () => {
       type: 'ADVANCE_DAY',
       payload: {
         ...(currentRig !== undefined ? { riggedForTid: currentRig } : {}),
-        watchedGameResult: result
-      }
+        watchedGameResult: result,
+      },
     } as any);
   };
 
@@ -241,15 +70,21 @@ export const PlayoffView: React.FC = () => {
     if (!playoffs) return;
 
     if (!playoffs.playInComplete) {
-      const pending = playoffs.playInGames.filter(p => !p.played && p.team1Tid > 0 && p.team2Tid > 0 && p.gameId);
-      const games = state.schedule.filter(g => pending.some(p => p.gameId === g.gid) && !g.played);
+      const pending = playoffs.playInGames.filter(
+        p => !p.played && p.team1Tid > 0 && p.team2Tid > 0 && p.gameId
+      );
+      const games = state.schedule.filter(
+        g => pending.some(p => p.gameId === g.gid) && !g.played
+      );
       if (games.length === 0) return;
       const lastDate = games.reduce((d, g) => g.date > d ? g.date : d, games[0].date);
       dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: lastDate } } as any);
       return;
     }
 
-    const activeSeries = playoffs.series.filter(s => s.round === playoffs.currentRound && s.status !== 'complete');
+    const activeSeries = playoffs.series.filter(
+      s => s.round === playoffs.currentRound && s.status !== 'complete'
+    );
     if (activeSeries.length === 0) return;
     const gameIds = new Set(activeSeries.flatMap(s => s.gameIds));
     const games = state.schedule.filter(g => gameIds.has(g.gid) && !g.played);
@@ -258,15 +93,32 @@ export const PlayoffView: React.FC = () => {
     dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: lastDate } } as any);
   };
 
-  const getSeries = (id: string) => playoffs?.series.find(s => s.id === id) ?? null;
+  const handleSimGame = () => {
+    if (!selectedSeriesId || !playoffs) return;
 
-  const roundLabel = ['', 'First Round', 'Second Round', 'Conf. Finals', 'NBA Finals'];
+    // Find next unplayed game for this series/play-in
+    const series = playoffs.series.find(s => s.id === selectedSeriesId);
+    const playIn = !series ? playoffs.playInGames.find(p => p.id === selectedSeriesId) : null;
 
-  const eastStandings = [...state.teams].filter(t => t.conference === 'East').sort((a, b) => b.wins - a.wins || a.losses - b.losses);
-  const westStandings = [...state.teams].filter(t => t.conference === 'West').sort((a, b) => b.wins - a.wins || a.losses - b.losses);
+    if (series) {
+      const nextGame = state.schedule.find(
+        g => g.playoffSeriesId === selectedSeriesId && !g.played
+      );
+      if (!nextGame) return;
+      dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: nextGame.date } } as any);
+    } else if (playIn?.gameId) {
+      const game = state.schedule.find(g => g.gid === playIn.gameId && !g.played);
+      if (!game) return;
+      dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: game.date } } as any);
+    }
+  };
 
-  // Full-screen game watch
-  if (viewMode === 'watching' && watchingGame) {
+  const handleSimPlayoffs = () => {
+    dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: '2026-06-30' } } as any);
+  };
+
+  // ─── Full-screen game simulator ──────────────────────────────────────────
+  if (watchingGame) {
     return (
       <div className="fixed inset-0 z-[100] bg-black">
         <GameSimulatorScreen
@@ -275,7 +127,7 @@ export const PlayoffView: React.FC = () => {
           players={state.players}
           allStar={state.allStar}
           isProcessing={state.isProcessing}
-          onClose={() => { setWatchingGame(null); setViewMode('bracket'); setRiggedForTid(undefined); setPrecomputedResult(null); }}
+          onClose={() => { setWatchingGame(null); setRiggedForTid(undefined); setPrecomputedResult(null); }}
           onComplete={executeWatchGame}
           otherGamesToday={state.schedule.filter(g =>
             normalizeDate(g.date) === normalizeDate(state.date) &&
@@ -288,6 +140,7 @@ export const PlayoffView: React.FC = () => {
     );
   }
 
+  // ─── Main view ────────────────────────────────────────────────────────────
   return (
     <div className="h-full flex flex-col bg-[#0a0a0a] text-white overflow-hidden">
 
@@ -303,7 +156,7 @@ export const PlayoffView: React.FC = () => {
                 : playoffs.bracketComplete
                 ? 'Complete'
                 : playoffs.playInComplete
-                ? `${roundLabel[playoffs.currentRound] ?? `Round ${playoffs.currentRound}`}`
+                ? (roundLabel[playoffs.currentRound] ?? `Round ${playoffs.currentRound}`)
                 : 'Play-In Tournament'}
             </p>
           </div>
@@ -324,7 +177,7 @@ export const PlayoffView: React.FC = () => {
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
 
-        {/* ── Pre-playoff: standings + message ─────────────────────────────── */}
+        {/* ── Pre-playoff standings ────────────────────────────────────────── */}
         {!playoffs && (
           <div className="max-w-2xl mx-auto">
             <div className="mb-6 p-5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-center">
@@ -372,186 +225,53 @@ export const PlayoffView: React.FC = () => {
           </div>
         )}
 
-        {/* ── Play-In section ───────────────────────────────────────────────── */}
-        {playoffs && !playoffs.playInComplete && (
-          <div className="mb-8">
-            <h3 className="text-sm font-black uppercase tracking-widest text-indigo-400 mb-6">Play-In Tournament</h3>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-              {(['East', 'West'] as const).map(conf => {
-                const prefix = conf[0];
-                const game7v8 = playoffs.playInGames.find(p => p.id === `${prefix}7v8`);
-                const game9v10 = playoffs.playInGames.find(p => p.id === `${prefix}9v10`);
-                const loserGame = playoffs.playInGames.find(p => p.id === `${prefix}loser`);
-
-                const seed7Winner = game7v8?.played && game7v8.winnerId
-                  ? state.teams.find(t => t.id === game7v8.winnerId) : null;
-                const seed8Winner = loserGame?.played && loserGame.winnerId
-                  ? state.teams.find(t => t.id === loserGame.winnerId) : null;
-
-                const confColor = conf === 'East' ? 'bg-red-600' : 'bg-blue-600';
-
-                return (
-                  <div key={conf} className="space-y-3">
-                    {/* Conference header */}
-                    <div className="flex items-center gap-2">
-                      <span className={`w-5 h-5 rounded-full ${confColor} flex items-center justify-center text-white text-[9px] font-black shrink-0`}>
-                        {conf[0]}
-                      </span>
-                      <h4 className="font-black text-white text-sm">{conf}ern Conference</h4>
-                    </div>
-
-                    {/* Bracket tree */}
-                    <div className="flex gap-0 items-stretch">
-
-                      {/* Col 1: First-round games */}
-                      <div className="flex flex-col shrink-0 w-44 gap-0">
-                        <div className="flex-1 flex flex-col justify-end pb-1">
-                          <PlayInBracketCard
-                            pig={game7v8}
-                            teams={state.teams}
-                            schedule={state.schedule}
-                            stateDate={state.date}
-                            onWatch={handleWatchGame}
-                            label="7 vs 8 Seed"
-                          />
-                        </div>
-                        <div className="flex-1 flex flex-col justify-start pt-1">
-                          <PlayInBracketCard
-                            pig={game9v10}
-                            teams={state.teams}
-                            schedule={state.schedule}
-                            stateDate={state.date}
-                            onWatch={handleWatchGame}
-                            label="9 vs 10 Seed"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Col 2: H-bracket connector */}
-                      <div className="w-7 flex flex-col shrink-0">
-                        <div className="flex-1 border-r-2 border-b-2 border-indigo-900/60 rounded-br-xl" />
-                        <div className="flex-1 border-r-2 border-t-2 border-indigo-900/60 rounded-tr-xl" />
-                      </div>
-
-                      {/* Col 3: Outcomes + Loser Game */}
-                      <div className="flex-1 flex flex-col justify-center gap-2">
-                        {/* 7th Seed outcome */}
-                        <div className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border ${seed7Winner ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-white/[0.02] border-dashed border-white/10'}`}>
-                          {seed7Winner ? (
-                            <>
-                              <img src={seed7Winner.logoUrl} className="w-5 h-5 object-contain shrink-0" alt="" referrerPolicy="no-referrer" />
-                              <span className="text-xs font-bold text-emerald-400 truncate">{seed7Winner.abbrev}</span>
-                            </>
-                          ) : (
-                            <span className="text-[9px] text-slate-600 font-bold">Win Game 1</span>
-                          )}
-                          <span className="ml-auto text-[9px] font-black text-slate-500 uppercase tracking-wider whitespace-nowrap">7th Seed</span>
-                        </div>
-
-                        {/* Loser Game */}
-                        <PlayInBracketCard
-                          pig={loserGame}
-                          teams={state.teams}
-                          schedule={state.schedule}
-                          stateDate={state.date}
-                          onWatch={handleWatchGame}
-                          label="Loser Game"
-                        />
-
-                        {/* 8th Seed outcome */}
-                        <div className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border ${seed8Winner ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-white/[0.02] border-dashed border-white/10'}`}>
-                          {seed8Winner ? (
-                            <>
-                              <img src={seed8Winner.logoUrl} className="w-5 h-5 object-contain shrink-0" alt="" referrerPolicy="no-referrer" />
-                              <span className="text-xs font-bold text-emerald-400 truncate">{seed8Winner.abbrev}</span>
-                            </>
-                          ) : (
-                            <span className="text-[9px] text-slate-600 font-bold">Win Loser Game</span>
-                          )}
-                          <span className="ml-auto text-[9px] font-black text-slate-500 uppercase tracking-wider whitespace-nowrap">8th Seed</span>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ── Full bracket ─────────────────────────────────────────────────── */}
-        {playoffs?.playInComplete && (
+        {/* ── Bracket + Play-In layout ─────────────────────────────────────── */}
+        {playoffs && (
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-black uppercase tracking-widest text-white">Bracket</h3>
-              {playoffs.champion && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-400/10 border border-yellow-400/20 rounded-xl">
-                  <span className="text-yellow-400">🏆</span>
-                  <span className="font-black text-yellow-300 text-sm">
-                    {state.teams.find(t => t.id === playoffs.champion)?.name ?? 'Champions'}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="overflow-x-auto pb-4">
-              <div className="flex items-stretch gap-3 min-w-max">
-
-                {/* West R1 */}
-                <BracketColumn label="West · Round 1">
-                  <SeriesCard series={getSeries('WR1S1')} teams={state.teams} schedule={state.schedule} stateDate={state.date} onWatch={handleWatchGame} />
-                  <SeriesCard series={getSeries('WR1S2')} teams={state.teams} schedule={state.schedule} stateDate={state.date} onWatch={handleWatchGame} />
-                  <SeriesCard series={getSeries('WR1S3')} teams={state.teams} schedule={state.schedule} stateDate={state.date} onWatch={handleWatchGame} />
-                  <SeriesCard series={getSeries('WR1S4')} teams={state.teams} schedule={state.schedule} stateDate={state.date} onWatch={handleWatchGame} />
-                </BracketColumn>
-
-                {/* West R2 */}
-                <BracketColumn label="West · Round 2" justify="space-around">
-                  <SeriesCard series={getSeries('WR2S1')} teams={state.teams} schedule={state.schedule} stateDate={state.date} onWatch={handleWatchGame} label="Round 2 TBD" />
-                  <SeriesCard series={getSeries('WR2S2')} teams={state.teams} schedule={state.schedule} stateDate={state.date} onWatch={handleWatchGame} label="Round 2 TBD" />
-                </BracketColumn>
-
-                {/* West CF */}
-                <BracketColumn label="West Finals" justify="center">
-                  <SeriesCard series={getSeries('WR3S1')} teams={state.teams} schedule={state.schedule} stateDate={state.date} onWatch={handleWatchGame} label="WCF TBD" />
-                </BracketColumn>
-
-                {/* Divider + Finals */}
-                <div className="flex flex-col w-44 shrink-0">
-                  <div className="text-[9px] font-black uppercase tracking-widest mb-2 text-yellow-500">🏆 NBA Finals</div>
-                  <div className="flex-1 flex flex-col justify-center">
-                    <SeriesCard series={getSeries('Finals')} teams={state.teams} schedule={state.schedule} stateDate={state.date} onWatch={handleWatchGame} label="Finals TBD" />
-                  </div>
-                </div>
-
-                {/* East CF */}
-                <BracketColumn label="East Finals" justify="center">
-                  <SeriesCard series={getSeries('ER3S1')} teams={state.teams} schedule={state.schedule} stateDate={state.date} onWatch={handleWatchGame} label="ECF TBD" />
-                </BracketColumn>
-
-                {/* East R2 */}
-                <BracketColumn label="East · Round 2" justify="space-around">
-                  <SeriesCard series={getSeries('ER2S1')} teams={state.teams} schedule={state.schedule} stateDate={state.date} onWatch={handleWatchGame} label="Round 2 TBD" />
-                  <SeriesCard series={getSeries('ER2S2')} teams={state.teams} schedule={state.schedule} stateDate={state.date} onWatch={handleWatchGame} label="Round 2 TBD" />
-                </BracketColumn>
-
-                {/* East R1 */}
-                <BracketColumn label="East · Round 1">
-                  <SeriesCard series={getSeries('ER1S1')} teams={state.teams} schedule={state.schedule} stateDate={state.date} onWatch={handleWatchGame} />
-                  <SeriesCard series={getSeries('ER1S2')} teams={state.teams} schedule={state.schedule} stateDate={state.date} onWatch={handleWatchGame} />
-                  <SeriesCard series={getSeries('ER1S3')} teams={state.teams} schedule={state.schedule} stateDate={state.date} onWatch={handleWatchGame} />
-                  <SeriesCard series={getSeries('ER1S4')} teams={state.teams} schedule={state.schedule} stateDate={state.date} onWatch={handleWatchGame} />
-                </BracketColumn>
-
+            {playoffs.champion && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-400/10 border border-yellow-400/20 rounded-xl mb-4 w-fit">
+                <span className="text-yellow-400">🏆</span>
+                <span className="font-black text-yellow-300 text-sm">
+                  {state.teams.find(t => t.id === playoffs.champion)?.name ?? 'Champions'}
+                </span>
               </div>
-            </div>
+            )}
+
+            <BracketLayout
+              playoffs={playoffs}
+              teams={state.teams}
+              schedule={state.schedule}
+              stateDate={state.date}
+              onSeriesClick={handleSeriesClick}
+              selectedSeriesId={selectedSeriesId}
+            />
           </div>
         )}
 
       </div>
 
-      {/* Watch game preview modal */}
+      {/* ── Series detail panel ───────────────────────────────────────────── */}
+      {selectedSeriesId && playoffs && (
+        <SeriesDetailPanel
+          seriesId={selectedSeriesId}
+          playoffs={playoffs}
+          teams={state.teams}
+          schedule={state.schedule}
+          players={state.players}
+          boxScores={state.boxScores ?? []}
+          stateDate={state.date}
+          selectedGameIdx={selectedGameIdx}
+          onGameIdxChange={setSelectedGameIdx}
+          onWatch={handleWatchGame}
+          onSimGame={handleSimGame}
+          onSimRound={handleSimulateRound}
+          onSimPlayoffs={handleSimPlayoffs}
+          onClose={() => setSelectedSeriesId(null)}
+          isProcessing={state.isProcessing}
+        />
+      )}
+
+      {/* ── Watch game preview modal ──────────────────────────────────────── */}
       <AnimatePresence>
         {pendingWatchGame && (
           <WatchGamePreviewModal
@@ -567,7 +287,7 @@ export const PlayoffView: React.FC = () => {
                 setPendingWatchGame(null);
                 await dispatchAction({
                   type: 'ADVANCE_DAY' as any,
-                  payload: { ...(rig !== undefined ? { riggedForTid: rig } : {}) }
+                  payload: { ...(rig !== undefined ? { riggedForTid: rig } : {}) },
                 });
               } else {
                 setRiggedForTid(rig);
@@ -586,7 +306,6 @@ export const PlayoffView: React.FC = () => {
                   setPrecomputedResult(null);
                 }
                 setWatchingGame(pendingWatchGame);
-                setViewMode('watching');
                 setPendingWatchGame(null);
               }
             }}
