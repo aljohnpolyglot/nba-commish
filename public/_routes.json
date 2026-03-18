@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "include": ["/*"],
+  "exclude": ["/assets/*", "/_next/*"],
+  "rules": [
+    {
+      "type": "route",
+      "pattern": "/assets/*",
+      "methods": ["GET"],
+      "status": 200,
+      "headers": {
+        "Cache-Control": "public, max-age=31536000"
+      }
+    },
+    {
+      "type": "route",
+      "pattern": "/*",
+      "methods": ["GET"],
+      "status": 200,
+      "origin": {
+        "path": "/index.html"
+      }
+    }
+  ]
+}
