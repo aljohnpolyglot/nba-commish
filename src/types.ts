@@ -309,7 +309,13 @@ export interface LeagueStats {
   gamesPerSeason?: number;
   divisionGames?: number;
   conferenceGames?: number;
+  numGamesDiv?: number | null;  // games vs division opponents (null = no division-specific count)
+  numGamesConf?: number | null; // games vs conference opponents
   customScheduleEnabled?: boolean;
+  confs?: NBAConf[];
+  divs?: NBADiv[];
+  tiebreakers?: string[];
+  otl?: boolean; // whether OTL is tracked separately in standings
 
   // All-Star Game
   allStarGameEnabled?: boolean;
@@ -424,15 +430,42 @@ export interface NewsItem {
   isNew?: boolean;
 }
 
+export interface NBAConf {
+  cid: number;
+  name: string;
+}
+
+export interface NBADiv {
+  cid: number;
+  did: number;
+  name: string;
+}
+
+export interface HeadToHeadRecord {
+  won: number;
+  lost: number;
+  tied: number;
+}
+
+export interface HeadToHead {
+  season: number;
+  regularSeason: Record<number, Record<number, HeadToHeadRecord>>;
+}
+
 export interface NBATeam {
   id: number;
   name: string;
   abbrev: string;
   region?: string;
   conference: string;
+  cid?: number;              // numeric conference ID (0=East, 1=West)
+  did?: number;              // numeric division ID (0-5, matching divs array)
   wins: number;
   losses: number;
+  otl?: number;              // overtime losses (tracked separately)
+  tied?: number;             // tied games (rare)
   strength: number;
+  clinchedPlayoffs?: 'w' | 'x' | 'y' | 'z' | 'o'; // w=play-in, x=playoffs, y=bye, z=#1, o=eliminated
   pop?: number;
   logoUrl?: string;
   colors?: string[];
@@ -847,6 +880,7 @@ export interface GameState {
   allStar?: AllStarState;
   playoffs?: PlayoffBracket;
   pendingClubDebuff?: { playerId: string; playerName: string; severity: 'heavy' | 'moderate' | 'mild'; clubName: string }[];
+  headToHead?: HeadToHead;
 }
 
 export type ActionType = 'REPLY_EMAIL' | 'BRIBE' | 'HYPNOTIZE' | 'PUBLIC_STATEMENT' | 'ADVANCE_DAY' | 'DIRECT_MESSAGE' | 'SEND_MESSAGE' | 'SEND_CHAT_MESSAGE' | 'UPDATE_RULES' | 'SUSPEND_PLAYER' | 'CLEAR_OUTCOME' | 'SAVE_SOCIAL_THREAD' | 'FINE_PERSON' | 'BRIBE_PERSON' | 'GLOBAL_GAMES' | 'LEAK_SCANDAL' | 'HYPNOTIC_BROADCAST' | 'RIG_LOTTERY' | 'CELEBRITY_ROSTER' | 'OWNER_DINNER' | 'PUBLIC_ANNOUNCEMENT' | 'SUSPEND_PERSON' | 'DRUG_TEST_PERSON' | 'INVITE_DINNER' | 'EXPANSION_DRAFT' | 'ANNOUNCE_CHANGE' | 'START_GAME' | 'LOAD_GAME' | 'UPDATE_SAVE_ID' | 'SIGN_FREE_AGENT' | 'EXECUTIVE_TRADE' | 'TRAVEL' | 'GIVE_MONEY' | 'VISIT_NON_NBA_TEAM' | 'INVITE_PERFORMANCE' | 'FORCE_TRADE' | 'ADJUST_FINANCIALS' | 'FOLLOW_USER' | 'UNFOLLOW_USER' | 'ADD_PENDING_HYPNOSIS' | 'MARK_PAYSLIPS_READ' | 'TRANSFER_FUNDS' | 'SET_CHRISTMAS_GAMES' | 'SABOTAGE_PLAYER' | 'GO_TO_CLUB' | 'ENDORSE_HOF' | 'SIMULATE_TO_DATE' | 'ADD_PRESEASON_INTERNATIONAL' | 'ALL_STAR_ADVANCE_VOTES' | 'ALL_STAR_ANNOUNCE_STARTERS' | 'ALL_STAR_ANNOUNCE_RESERVES' | 'ALL_STAR_SIMULATE_WEEKEND' | 'GENERATE_PLAYOFF_BRACKET' | 'SIM_PLAYOFF_ROUND' | 'SAVE_CONTEST_RESULT' | 'RECORD_WATCHED_GAME';

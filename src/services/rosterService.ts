@@ -219,6 +219,8 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                                 name: `${seasonData.region || t.region} ${seasonData.name || t.name}`,
                                 abbrev: seasonData.abbrev || t.abbrev,
                                 conference: t.cid === 0 ? 'East' : 'West',
+                                cid: typeof t.cid === 'number' ? t.cid : (t.cid === 0 ? 0 : 1),
+                                did: typeof t.did === 'number' ? t.did : 0,
                                 strength: 0,
                                 wins: 0,
                                 losses: 0,

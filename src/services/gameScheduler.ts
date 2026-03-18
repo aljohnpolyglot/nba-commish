@@ -1,12 +1,19 @@
 import { NBATeam, Game } from '../types';
 import { getAllStarWeekendDates } from './allStar/AllStarWeekendOrchestrator';
 
-export const generateSchedule = (teams: NBATeam[], christmasGames?: { homeTid: number; awayTid: number }[], globalGames?: { homeTid: number; awayTid: number; date: string; city: string; country: string }[]): Game[] => {
+export const generateSchedule = (
+  teams: NBATeam[],
+  christmasGames?: { homeTid: number; awayTid: number }[],
+  globalGames?: { homeTid: number; awayTid: number; date: string; city: string; country: string }[],
+  divisionGames?: number | null,
+  conferenceGames?: number | null
+): Game[] => {
   const games: Game[] = [];
   let gameId = 0; // gid 90000-90001 reserved for All-Star games
-  
-  const startDate = new Date('2025-10-24');
-  const endDate = new Date('2026-04-13'); // Regular season ends Apr 12; +1 so last slot is Apr 12
+
+  // BUG 7 FIX: use T00:00:00Z to ensure UTC parsing
+  const startDate = new Date('2025-10-24T00:00:00Z');
+  const endDate = new Date('2026-04-13T00:00:00Z'); // Regular season ends Apr 12; +1 so last slot is Apr 12
   const seasonLengthDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
 
   // Pre-sort teams by conference for deterministic 82-game schedule:
@@ -18,13 +25,13 @@ export const generateSchedule = (teams: NBATeam[], christmasGames?: { homeTid: n
   eastTeams.forEach((t, i) => confIdx.set(t.id, i));
   westTeams.forEach((t, i) => confIdx.set(t.id, i));
 
-  const seasonYear = new Date(endDate).getFullYear();
+  const seasonYear = new Date(endDate).getUTCFullYear();
   const asDate = getAllStarWeekendDates(seasonYear);
 
+  // BUG 7 FIX: use T00:00:00Z to avoid local-timezone shift in blackout check
   const isAllStarBlackout = (dateStr: string) => {
-    const d = new Date(dateStr);
-    d.setHours(0,0,0,0);
-    return d >= asDate.breakStart && 
+    const d = new Date(`${dateStr}T00:00:00Z`);
+    return d >= asDate.breakStart &&
            d <= asDate.breakEnd;
   };
 
@@ -35,7 +42,7 @@ export const generateSchedule = (teams: NBATeam[], christmasGames?: { homeTid: n
   const isTeamFree = (dateStr: string, t1: number, t2: number) => {
     if (isAllStarBlackout(dateStr)) return false;
     if (!scheduledDates[dateStr]) return true;
-    return !scheduledDates[dateStr].has(t1) && 
+    return !scheduledDates[dateStr].has(t1) &&
            !scheduledDates[dateStr].has(t2);
   };
 
@@ -45,41 +52,49 @@ export const generateSchedule = (teams: NBATeam[], christmasGames?: { homeTid: n
       scheduledDates[dateStr].add(t2);
   };
 
-  // Preseason Games (Oct 1 to Oct 15)
-  const preseasonStart = new Date('2025-10-01');
+  // BUG 4 FIX: Preseason Games (Oct 1 to Oct 15)
+  // Iterate pairs so each game counts for both teams simultaneously.
+  // Target: 4 preseason games per team → schedule (teams.length * 2) total games.
+  const preseasonStart = new Date('2025-10-01T00:00:00Z');
   const preseasonLength = 15;
-  for (const team of teams) {
-      let preseasonGames = 0;
-      while (preseasonGames < 4) {
-          const randomDay = Math.floor(Math.random() * preseasonLength);
-          const gameDate = new Date(preseasonStart);
-          gameDate.setDate(preseasonStart.getDate() + randomDay);
-          const dateStr = gameDate.toISOString().split('T')[0];
-          
-          // Find a random opponent
-          const opponent = teams[Math.floor(Math.random() * teams.length)];
-          if (opponent.id !== team.id && isTeamFree(dateStr, team.id, opponent.id)) {
-              markScheduled(dateStr, team.id, opponent.id);
-              games.push({
-                  gid: gameId++,
-                  homeTid: Math.random() > 0.5 ? team.id : opponent.id,
-                  awayTid: Math.random() > 0.5 ? opponent.id : team.id,
-                  homeScore: 0,
-                  awayScore: 0,
-                  played: false,
-                  date: gameDate.toISOString(),
-                  isPreseason: true
-              } as any);
-              preseasonGames++;
-          }
+  const preseasonTarget = (teams.length * 4) / 2; // each game covers 2 teams
+  let preseasonScheduled = 0;
+  let preseasonAttempts = 0;
+  const shuffled = [...teams].sort(() => Math.random() - 0.5);
+
+  while (preseasonScheduled < preseasonTarget && preseasonAttempts < preseasonTarget * 20) {
+      preseasonAttempts++;
+      const idx1 = Math.floor(Math.random() * shuffled.length);
+      let idx2 = Math.floor(Math.random() * shuffled.length);
+      if (idx2 === idx1) continue;
+      const t1 = shuffled[idx1];
+      const t2 = shuffled[idx2];
+      const randomDay = Math.floor(Math.random() * preseasonLength);
+      const gameDate = new Date(preseasonStart);
+      gameDate.setUTCDate(preseasonStart.getUTCDate() + randomDay);
+      const dateStr = gameDate.toISOString().split('T')[0];
+      if (isTeamFree(dateStr, t1.id, t2.id)) {
+          markScheduled(dateStr, t1.id, t2.id);
+          games.push({
+              gid: gameId++,
+              homeTid: Math.random() > 0.5 ? t1.id : t2.id,
+              awayTid: Math.random() > 0.5 ? t2.id : t1.id,
+              homeScore: 0,
+              awayScore: 0,
+              played: false,
+              date: gameDate.toISOString(),
+              isPreseason: true
+          } as any);
+          preseasonScheduled++;
       }
   }
 
   // Pre-fill Christmas Day games if provided
   if (christmasGames && christmasGames.length > 0) {
-      const christmasDate = new Date('2025-12-25');
+      // BUG 7 FIX: use T00:00:00Z
+      const christmasDate = new Date('2025-12-25T00:00:00Z');
       const dateStr = christmasDate.toISOString().split('T')[0];
-      
+
       for (const game of christmasGames) {
           markScheduled(dateStr, game.homeTid, game.awayTid);
           games.push({
@@ -108,9 +123,20 @@ export const generateSchedule = (teams: NBATeam[], christmasGames?: { homeTid: n
               awayScore: 0,
               played: false,
               date: gameDate.toISOString(),
-              city: game.city,
+              city: (game as any).city,
               country: game.country
           });
+      }
+  }
+
+  // BUG 5 FIX: Track pairs that already have a pre-scheduled game (Christmas/global)
+  // so the matchup loop reduces their quota by 1.
+  const preScheduledPairs = new Map<string, number>();
+  const pairKey = (a: number, b: number) => `${Math.min(a, b)}-${Math.max(a, b)}`;
+  for (const g of games) {
+      if (!g.isPreseason) {
+          const key = pairKey(g.homeTid, g.awayTid);
+          preScheduledPairs.set(key, (preScheduledPairs.get(key) ?? 0) + 1);
       }
   }
 
@@ -119,10 +145,16 @@ export const generateSchedule = (teams: NBATeam[], christmasGames?: { homeTid: n
       for (let j = i + 1; j < teams.length; j++) {
           const t1 = teams[i];
           const t2 = teams[j];
-          
+
+          const sameConf = t1.conference === t2.conference;
+          const sameDiv = t1.did !== undefined && t2.did !== undefined && t1.did === t2.did;
+
           let numGames: number;
-          if (t1.conference === t2.conference) {
-              numGames = 3; // Same conference: 14 × 3 = 42 games/team
+          if (sameDiv && (divisionGames ?? 0) > 0) {
+              // Division-aware scheduling when divisionGames is configured
+              numGames = divisionGames!;
+          } else if (sameConf) {
+              numGames = conferenceGames ?? 3; // Same conference: 14 × 3 = 42 games/team
           } else {
               // Cross-conference: use sorted-index parity so each team gets
               // 10 opponents at 3 games + 5 opponents at 2 games = 40 games/team
@@ -131,39 +163,44 @@ export const generateSchedule = (teams: NBATeam[], christmasGames?: { homeTid: n
               numGames = (ci1 + ci2) % 3 !== 0 ? 3 : 2;
           }
 
+          // BUG 5 FIX: Subtract any pre-scheduled games (Christmas, global) for this pair
+          const alreadyScheduled = preScheduledPairs.get(pairKey(t1.id, t2.id)) ?? 0;
+          const remainingGames = Math.max(0, numGames - alreadyScheduled);
+
           // Generate games distributed throughout the season
-          for (let k = 0; k < numGames; k++) {
+          for (let k = 0; k < remainingGames; k++) {
               // Divide season into segments to spread games out
-              const segmentSize = seasonLengthDays / numGames;
+              const segmentSize = seasonLengthDays / Math.max(1, remainingGames);
               const segmentStart = k * segmentSize;
-              
+
               let scheduled = false;
               let attempts = 0;
-              
+
               while (!scheduled && attempts < 100) {
                   const randomOffset = Math.floor(Math.random() * segmentSize);
                   const dayOffset = Math.floor(segmentStart + randomOffset);
-                  
+
                   // Ensure we don't go past end date
                   if (dayOffset >= seasonLengthDays) {
                       attempts++;
                       continue;
                   }
 
+                  // BUG 7 FIX: use setUTCDate to avoid timezone drift
                   const gameDate = new Date(startDate);
-                  gameDate.setDate(startDate.getDate() + dayOffset);
+                  gameDate.setUTCDate(startDate.getUTCDate() + dayOffset);
                   const dateStr = gameDate.toISOString().split('T')[0];
 
                   if (isTeamFree(dateStr, t1.id, t2.id)) {
                       markScheduled(dateStr, t1.id, t2.id);
-                      
+
                       // Swap home/away for balance
                       let homeTid = t1.id;
                       let awayTid = t2.id;
 
-                      if (numGames === 2) {
+                      if (remainingGames === 2) {
                           if (k === 1) { homeTid = t2.id; awayTid = t1.id; }
-                      } else if (numGames === 3) {
+                      } else if (remainingGames === 3) {
                           if (k === 1) { homeTid = t2.id; awayTid = t1.id; }
                           if (k === 2 && Math.random() > 0.5) { homeTid = t2.id; awayTid = t1.id; }
                       }
@@ -181,14 +218,15 @@ export const generateSchedule = (teams: NBATeam[], christmasGames?: { homeTid: n
                   }
                   attempts++;
               }
-              
+
               // Fallback: If we couldn't find a slot in the segment, try ANY random day
               if (!scheduled) {
                   let fallbackAttempts = 0;
                   while (!scheduled && fallbackAttempts < 200) {
                       const randomDay = Math.floor(Math.random() * seasonLengthDays);
+                      // BUG 7 FIX: use setUTCDate
                       const gameDate = new Date(startDate);
-                      gameDate.setDate(startDate.getDate() + randomDay);
+                      gameDate.setUTCDate(startDate.getUTCDate() + randomDay);
                       const dateStr = gameDate.toISOString().split('T')[0];
 
                       if (isTeamFree(dateStr, t1.id, t2.id)) {

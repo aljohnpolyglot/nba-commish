@@ -1,4 +1,4 @@
-import type { Tab, LeagueStats, GamePhase, CommissionerTab } from './types';
+import type { Tab, LeagueStats, GamePhase, CommissionerTab, NBAConf, NBADiv } from './types';
 
 export const TABS: Tab[] = ['Inbox', 'Schedule', 'Social Feed', 'NBA Central', 'League Settings', 'Commissioner'];
 
@@ -13,6 +13,27 @@ export const ROSTER_URL = 'https://raw.githubusercontent.com/alexnoob/BasketBall
 export const EXTRA_RETIRED_PLAYERS_URL = 'https://api.npoint.io/d94bdfeeecf4246b481d';
 
 export const START_DATE_STR = '2025-08-01';
+
+export const DEFAULT_CONFS: NBAConf[] = [
+  { cid: 0, name: 'Eastern Conference' },
+  { cid: 1, name: 'Western Conference' },
+];
+
+export const DEFAULT_DIVS: NBADiv[] = [
+  { cid: 0, did: 0, name: 'Atlantic' },
+  { cid: 0, did: 1, name: 'Central' },
+  { cid: 0, did: 2, name: 'Southeast' },
+  { cid: 1, did: 3, name: 'Northwest' },
+  { cid: 1, did: 4, name: 'Pacific' },
+  { cid: 1, did: 5, name: 'Southwest' },
+];
+
+export const DEFAULT_TIEBREAKERS = [
+  'head-to-head',
+  'division-record',
+  'conference-record',
+  'point-differential',
+];
 
 export const INITIAL_LEAGUE_STATS: LeagueStats = {
   revenue: 8000, // $8B
@@ -301,7 +322,13 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   gamesPerSeason: 82,
   divisionGames: 16,
   conferenceGames: 36,
+  numGamesDiv: null,
+  numGamesConf: null,
   customScheduleEnabled: false,
+  confs: DEFAULT_CONFS,
+  divs: DEFAULT_DIVS,
+  tiebreakers: DEFAULT_TIEBREAKERS,
+  otl: false,
   trophies: [
     { id: 'trophy-1', title: 'The Larry O\'Brien Trophy', description: 'Awarded to the NBA Finals champion.' },
   ],

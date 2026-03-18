@@ -1,9 +1,10 @@
-import { GameState, NBATeam, Game } from '../../types';
+import { GameState, NBATeam, Game, HeadToHead } from '../../types';
 import { normalizeDate } from '../../utils/helpers';
 import { simulateGames } from '../simulationService';
 import { getAllStarWeekendDates } from '../allStar/AllStarWeekendOrchestrator';
+import { computeClinchStatus } from '../../utils/standingsUtils';
 
-export const simulateDayGames = (state: GameState, watchedGameResult?: any, riggedForTid?: number): { teams: NBATeam[], schedule: Game[], results: any[] } => {
+export const simulateDayGames = (state: GameState, watchedGameResult?: any, riggedForTid?: number): { teams: NBATeam[], schedule: Game[], results: any[], headToHead?: HeadToHead } => {
     const dates = getAllStarWeekendDates(state.leagueStats.year);
 
     // Timezone-safe All-Star break check using normalized YYYY-MM-DD strings
@@ -30,9 +31,25 @@ export const simulateDayGames = (state: GameState, watchedGameResult?: any, rigg
     });
 
     // Pass player approval to simulation to affect performance
-    const simResult = simulateGames(state.teams, state.players, gamesToSimulate, state.date, state.stats.playerApproval, watchedGameResult, state.allStar, undefined, undefined, riggedForTid, clubDebuffs.size > 0 ? clubDebuffs : undefined);
+    const simResult = simulateGames(
+        state.teams,
+        state.players,
+        gamesToSimulate,
+        state.date,
+        state.stats.playerApproval,
+        watchedGameResult,
+        state.allStar,
+        undefined,
+        undefined,
+        riggedForTid,
+        clubDebuffs.size > 0 ? clubDebuffs : undefined,
+        state.headToHead,
+        state.leagueStats.otl,
+        state.leagueStats.year
+    );
 
-    const updatedTeams = simResult.updatedTeams;
+    // Compute clinch/elimination status after standings update
+    const teamsWithClinch = computeClinchStatus(simResult.updatedTeams, state.schedule);
 
     // Update schedule by gameId — critical for playoff series where two teams play
     // multiple games; matching by teamIds alone would mark all future series games played
@@ -49,5 +66,5 @@ export const simulateDayGames = (state: GameState, watchedGameResult?: any, rigg
         return game;
     });
 
-    return { teams: updatedTeams, schedule: updatedSchedule, results: simResult.results };
+    return { teams: teamsWithClinch, schedule: updatedSchedule, results: simResult.results, headToHead: simResult.headToHead };
 };

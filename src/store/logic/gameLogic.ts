@@ -41,7 +41,9 @@ export const processTurn = async (state: GameState, action: UserAction) => {
         // diffDays-1: each loop iteration advances one day and sims that day's games,
         // so we want diffDays-1 iterations to stop ON targetDate with its games unplayed.
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-        daysToSimulate = Math.max(1, diffDays - 1);
+        // BUG 3 FIX: use diffDays directly; each iteration sims AND advances date,
+        // so diffDays iterations lands exactly on targetDate with its games simulated.
+        daysToSimulate = Math.max(1, diffDays);
 
         const settings = SettingsManager.getSettings();
         const maxSimDays = (!settings.enableLLM && settings.gameSpeed >= 8) ? 180 : 30;
@@ -164,9 +166,9 @@ export const processTurn = async (state: GameState, action: UserAction) => {
     let finalSchedule = stateWithSim.schedule;
     const normalizedFinalDate = normalizeDate(dateString);
     if (finalSchedule.length === 0 && normalizedFinalDate === '2025-08-14') {
-        finalSchedule = generateSchedule(state.teams, result.christmasGames || state.christmasGames, result.globalGames || state.globalGames);
+        finalSchedule = generateSchedule(state.teams, result.christmasGames || state.christmasGames, result.globalGames || state.globalGames, state.leagueStats.divisionGames, state.leagueStats.conferenceGames);
     } else if (finalSchedule.length > 0 && !finalSchedule.some(g => g.played) && (action.type === 'SET_CHRISTMAS_GAMES' || action.type === 'GLOBAL_GAMES')) {
-        finalSchedule = generateSchedule(state.teams, result.christmasGames || state.christmasGames, result.globalGames || state.globalGames);
+        finalSchedule = generateSchedule(state.teams, result.christmasGames || state.christmasGames, result.globalGames || state.globalGames, state.leagueStats.divisionGames, state.leagueStats.conferenceGames);
     }
 
     if (action.type === 'ADD_PRESEASON_INTERNATIONAL') {
@@ -589,5 +591,6 @@ export const processTurn = async (state: GameState, action: UserAction) => {
         allStar: allStarPatch,
         playoffs: playoffsPatch,
         pendingClubDebuff: remainingDebuffs,
+        headToHead: stateWithSim.headToHead,
     };
 };

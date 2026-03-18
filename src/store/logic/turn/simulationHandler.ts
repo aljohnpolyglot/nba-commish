@@ -12,30 +12,33 @@ const updateTeamStrengths = (teams: NBATeam[], players: Player[]): NBATeam[] => 
 
 export const runSimulation = (state: GameState, daysToSimulate: number, action?: any) => {
     let stateWithSim = { ...state };
-    
+
     // Clear cache at start of simulation batch
     clearTeamStrengthCache();
-    
+
     // Pre-calculate strengths once for the batch
     stateWithSim.teams = updateTeamStrengths(stateWithSim.teams, stateWithSim.players);
-    
+
     let allSimResults: any[] = [];
     let lastDaySimResults: any[] = [];
 
     const effectiveRiggedForTid: number | undefined = action?.payload?.riggedForTid ?? undefined;
 
     for (let i = 0; i < daysToSimulate; i++) {
-        const simPatch = simulateDayGames(stateWithSim, action?.payload?.watchedGameResult, effectiveRiggedForTid);
-        
-        // Update state with results
-        stateWithSim = { 
-            ...stateWithSim, 
-            teams: simPatch.teams, 
-            schedule: simPatch.schedule 
+        // BUG 8 FIX: only pass watchedGameResult on first iteration
+        const watchedResult = i === 0 ? action?.payload?.watchedGameResult : undefined;
+        const simPatch = simulateDayGames(stateWithSim, watchedResult, effectiveRiggedForTid);
+
+        // Update state with results, including accumulated headToHead
+        stateWithSim = {
+            ...stateWithSim,
+            teams: simPatch.teams,
+            schedule: simPatch.schedule,
+            ...(simPatch.headToHead ? { headToHead: simPatch.headToHead } : {})
         };
-        
+
         allSimResults.push(...simPatch.results);
-        
+
         if (i === daysToSimulate - 1) {
             lastDaySimResults = simPatch.results;
         } else {

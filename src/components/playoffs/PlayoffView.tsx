@@ -207,6 +207,8 @@ export const PlayoffView: React.FC = () => {
 
   const [watchingGame, setWatchingGame] = useState<Game | null>(null);
   const [pendingWatchGame, setPendingWatchGame] = useState<Game | null>(null);
+  const [riggedForTid, setRiggedForTid] = useState<number | undefined>(undefined);
+  const [precomputedResult, setPrecomputedResult] = useState<any | null>(null);
   const [viewMode, setViewMode] = useState<'bracket' | 'watching'>('bracket');
   const [confFilter, setConfFilter] = useState<'East' | 'West'>('East');
 
@@ -219,10 +221,20 @@ export const PlayoffView: React.FC = () => {
   const executeWatchGame = async (result: any) => {
     if (!watchingGame) return;
     const gameId = watchingGame.gid;
+    const currentRig = riggedForTid;
     setWatchingGame(null);
     setViewMode('bracket');
+    setRiggedForTid(undefined);
+    setPrecomputedResult(null);
+
     await dispatchAction({ type: 'RECORD_WATCHED_GAME' as any, payload: { gameId, result } });
-    await dispatchAction({ type: 'ADVANCE_DAY' });
+    await dispatchAction({
+      type: 'ADVANCE_DAY',
+      payload: {
+        ...(currentRig !== undefined ? { riggedForTid: currentRig } : {}),
+        watchedGameResult: result
+      }
+    } as any);
   };
 
   const handleSimulateRound = () => {
@@ -263,12 +275,14 @@ export const PlayoffView: React.FC = () => {
           players={state.players}
           allStar={state.allStar}
           isProcessing={state.isProcessing}
-          onClose={() => { setWatchingGame(null); setViewMode('bracket'); }}
+          onClose={() => { setWatchingGame(null); setViewMode('bracket'); setRiggedForTid(undefined); setPrecomputedResult(null); }}
           onComplete={executeWatchGame}
           otherGamesToday={state.schedule.filter(g =>
             normalizeDate(g.date) === normalizeDate(state.date) &&
             !g.played && g.gid !== watchingGame.gid && (g.isPlayoff || g.isPlayIn)
           ).length}
+          riggedForTid={riggedForTid}
+          precomputedResult={precomputedResult ?? undefined}
         />
       </div>
     );
@@ -548,10 +562,33 @@ export const PlayoffView: React.FC = () => {
             homeStartersOverride={getPlayersForExhibitionTeam(pendingWatchGame, true, state.allStar, state.players)}
             awayStartersOverride={getPlayersForExhibitionTeam(pendingWatchGame, false, state.allStar, state.players)}
             onClose={() => setPendingWatchGame(null)}
-            onConfirm={() => {
-              setWatchingGame(pendingWatchGame);
-              setViewMode('watching');
-              setPendingWatchGame(null);
+            onConfirm={async (rig?: number, watchLive?: boolean) => {
+              if (watchLive === false) {
+                setPendingWatchGame(null);
+                await dispatchAction({
+                  type: 'ADVANCE_DAY' as any,
+                  payload: { ...(rig !== undefined ? { riggedForTid: rig } : {}) }
+                });
+              } else {
+                setRiggedForTid(rig);
+                if (rig !== undefined && pendingWatchGame) {
+                  const { GameSimulator } = await import('../../services/simulation/GameSimulator');
+                  const homeTeam = state.teams.find(t => t.id === pendingWatchGame.homeTid)!;
+                  const awayTeam = state.teams.find(t => t.id === pendingWatchGame.awayTid)!;
+                  const preResult = GameSimulator.simulateGame(
+                    homeTeam, awayTeam, state.players,
+                    pendingWatchGame.gid, pendingWatchGame.date,
+                    state.stats.playerApproval,
+                    undefined, undefined, undefined, undefined, rig
+                  );
+                  setPrecomputedResult(preResult);
+                } else {
+                  setPrecomputedResult(null);
+                }
+                setWatchingGame(pendingWatchGame);
+                setViewMode('watching');
+                setPendingWatchGame(null);
+              }
             }}
           />
         )}

@@ -103,7 +103,13 @@ export const NBACentral: React.FC = () => {
       });
 
       // Advance the day (LLM generates story; watched game is already marked played so won't re-simulate)
-      await dispatchAction({ type: 'ADVANCE_DAY', payload: currentRig !== undefined ? { riggedForTid: currentRig } : undefined } as any);
+      await dispatchAction({
+          type: 'ADVANCE_DAY',
+          payload: {
+              ...(currentRig !== undefined ? { riggedForTid: currentRig } : {}),
+              watchedGameResult: result
+          }
+      } as any);
   };
 
   const getContactFromPlayer = (player: NBAPlayer): Contact => {
