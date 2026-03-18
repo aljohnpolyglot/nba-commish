@@ -16,9 +16,12 @@ interface BoxScoreModalProps {
 
 type SortKey = keyof PlayerGameStats | 'fgp' | 'tpp' | 'ftp';
 
-export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({ 
-  game, result, homeTeam, awayTeam, players, onClose, onPlayerClick, onTeamClick 
+export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
+  game, result, homeTeam, awayTeam, players, onClose, onPlayerClick, onTeamClick
 }) => {
+  const isIntraSquad = game.homeTid === game.awayTid;
+  const awayDisplayName = isIntraSquad ? `${awayTeam.name} B` : awayTeam.name;
+  const homeDisplayName = isIntraSquad ? `${homeTeam.name} A` : homeTeam.name;
   const [activeTab, setActiveTab] = React.useState<'away' | 'home' | 'comparison'>('away');
   const [sortConfig, setSortConfig] = React.useState<{ key: SortKey; direction: 'asc' | 'desc' }>({
     key: 'pts',
@@ -88,12 +91,12 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
           </thead>
           <tbody className="divide-y divide-white/5">
             <tr>
-              <td className="py-2 text-left font-bold text-slate-300">{awayTeam.abbrev}</td>
+              <td className="py-2 text-left font-bold text-slate-300">{isIntraSquad ? `${awayTeam.abbrev} B` : awayTeam.abbrev}</td>
               {away.map((q, i) => <td key={`away-q-${i}`} className="py-2 font-mono text-slate-400">{q}</td>)}
               <td className="py-2 font-mono font-bold text-white">{game.awayScore}</td>
             </tr>
             <tr>
-              <td className="py-2 text-left font-bold text-slate-300">{homeTeam.abbrev}</td>
+              <td className="py-2 text-left font-bold text-slate-300">{isIntraSquad ? `${homeTeam.abbrev} A` : homeTeam.abbrev}</td>
               {home.map((q, i) => <td key={`home-q-${i}`} className="py-2 font-mono text-slate-400">{q}</td>)}
               <td className="py-2 font-mono font-bold text-white">{game.homeScore}</td>
             </tr>
@@ -131,11 +134,11 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
           <tbody className="divide-y divide-white/5">
             <tr>
               <td className="py-2 text-left">
-                <button 
+                <button
                   onClick={() => onTeamClick && onTeamClick(awayTeam.id)}
                   className="font-bold text-white hover:text-indigo-400 transition-colors"
                 >
-                  {awayTeam.abbrev}
+                  {isIntraSquad ? `${awayTeam.abbrev} B` : awayTeam.abbrev}
                 </button>
               </td>
               <td className="py-2 font-mono text-slate-300">{awayStats.eFG.toFixed(1)}</td>
@@ -145,11 +148,11 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
             </tr>
             <tr>
               <td className="py-2 text-left">
-                <button 
+                <button
                   onClick={() => onTeamClick && onTeamClick(homeTeam.id)}
                   className="font-bold text-white hover:text-indigo-400 transition-colors"
                 >
-                  {homeTeam.abbrev}
+                  {isIntraSquad ? `${homeTeam.abbrev} A` : homeTeam.abbrev}
                 </button>
               </td>
               <td className="py-2 font-mono text-slate-300">{homeStats.eFG.toFixed(1)}</td>
@@ -161,9 +164,9 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
         </table>
 
         <div className="flex justify-between text-xs font-bold tracking-widest text-slate-500 mb-2">
-          <span className="text-white">{awayTeam.abbrev}</span>
+          <span className="text-white">{isIntraSquad ? `${awayTeam.abbrev} B` : awayTeam.abbrev}</span>
           <span>TEAM STATS</span>
-          <span className="text-indigo-400">{homeTeam.abbrev}</span>
+          <span className="text-indigo-400">{isIntraSquad ? `${homeTeam.abbrev} A` : homeTeam.abbrev}</span>
         </div>
         
         <div className="flex flex-col">
@@ -298,7 +301,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10 bg-[#111]">
-          <h2 className="text-2xl font-black text-white uppercase tracking-tight">Box Score</h2>
+          <h2 className="text-2xl font-black text-white uppercase tracking-tight">{isIntraSquad ? 'Scrimmage' : 'Box Score'}</h2>
           <button 
             onClick={onClose}
             className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
@@ -317,25 +320,25 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
               >
                 <img src={awayTeam.logoUrl} alt={awayTeam.name} className="w-12 h-12 md:w-24 md:h-24 object-contain drop-shadow-2xl group-hover:scale-110 transition-transform" referrerPolicy="no-referrer" />
                 <div className="text-center">
-                  <div className="font-black text-xs md:text-2xl text-white tracking-tight group-hover:text-indigo-400 transition-colors">{awayTeam.name}</div>
+                  <div className="font-black text-xs md:text-2xl text-white tracking-tight group-hover:text-indigo-400 transition-colors">{awayDisplayName}</div>
                 </div>
               </button>
             </div>
-            
+
             <div className="flex items-center gap-2 md:gap-8">
               <span className={`text-3xl md:text-6xl font-black font-mono tracking-tighter ${(game.awayScore || 0) > (game.homeScore || 0) ? 'text-white' : 'text-slate-500'}`}>{game.awayScore || 0}</span>
               <span className="text-slate-800 font-black text-xl md:text-3xl">-</span>
               <span className={`text-3xl md:text-6xl font-black font-mono tracking-tighter ${(game.homeScore || 0) > (game.awayScore || 0) ? 'text-white' : 'text-slate-500'}`}>{game.homeScore || 0}</span>
             </div>
-            
+
             <div className="flex flex-col items-center gap-2 md:gap-4 w-1/3">
-              <button 
+              <button
                 onClick={() => onTeamClick && onTeamClick(homeTeam.id)}
                 className="group flex flex-col items-center gap-2 md:gap-4"
               >
-                <img src={homeTeam.logoUrl} alt={homeTeam.name} className="w-12 h-12 md:w-24 md:h-24 object-contain drop-shadow-2xl group-hover:scale-110 transition-transform" referrerPolicy="no-referrer" />
+                <img src={homeTeam.logoUrl} alt={homeDisplayName} className="w-12 h-12 md:w-24 md:h-24 object-contain drop-shadow-2xl group-hover:scale-110 transition-transform" referrerPolicy="no-referrer" />
                 <div className="text-center">
-                  <div className="font-black text-xs md:text-2xl text-white tracking-tight group-hover:text-indigo-400 transition-colors">{homeTeam.name}</div>
+                  <div className="font-black text-xs md:text-2xl text-white tracking-tight group-hover:text-indigo-400 transition-colors">{homeDisplayName}</div>
                 </div>
               </button>
             </div>
@@ -350,13 +353,13 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
             onClick={() => setActiveTab('away')}
             className={`flex-1 py-4 text-sm font-black uppercase tracking-widest transition-colors ${activeTab === 'away' ? 'text-indigo-400 border-b-2 border-indigo-500 bg-indigo-500/5' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
           >
-            {awayTeam.name}
+            {awayDisplayName}
           </button>
           <button
             onClick={() => setActiveTab('home')}
             className={`flex-1 py-4 text-sm font-black uppercase tracking-widest transition-colors ${activeTab === 'home' ? 'text-indigo-400 border-b-2 border-indigo-500 bg-indigo-500/5' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
           >
-            {homeTeam.name}
+            {homeDisplayName}
           </button>
           <button
             onClick={() => setActiveTab('comparison')}

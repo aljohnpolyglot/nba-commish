@@ -182,6 +182,12 @@ export const DayView: React.FC<DayViewProps> = ({
                 const awayTeam = getTeamForGame(game.awayTid, state.teams);
                 if (!homeTeam || !awayTeam) return null;
 
+                const isIntraSquad = game.homeTid === game.awayTid;
+                const awayLabel = isIntraSquad ? `${awayTeam.abbrev} B` : awayTeam.abbrev;
+                const awayName  = isIntraSquad ? `${awayTeam.name} B` : awayTeam.name;
+                const homeLabel = isIntraSquad ? `${homeTeam.abbrev} A` : homeTeam.abbrev;
+                const homeName  = isIntraSquad ? `${homeTeam.name} A` : homeTeam.name;
+
                 const series = (game.isPlayoff && game.playoffSeriesId)
                   ? state.playoffs?.series.find((s: any) => s.id === game.playoffSeriesId)
                   : null;
@@ -194,7 +200,7 @@ export const DayView: React.FC<DayViewProps> = ({
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
                         <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                          {game.played ? 'Final' : 'Scheduled'}
+                          {isIntraSquad ? 'Scrimmage' : game.played ? 'Final' : 'Scheduled'}
                         </div>
                         {(game.isPlayoff || game.isPlayIn) && (
                           <img
@@ -217,15 +223,15 @@ export const DayView: React.FC<DayViewProps> = ({
                     <div className="flex items-center justify-between gap-4">
                       {/* Away Team */}
                       <div className="flex-1 flex flex-col items-center gap-2">
-                        <img 
-                          src={awayTeam.logoUrl} 
-                          className="w-12 h-12 object-contain" 
-                          alt={awayTeam.name}
+                        <img
+                          src={awayTeam.logoUrl}
+                          className="w-12 h-12 object-contain"
+                          alt={awayName}
                           referrerPolicy="no-referrer"
                         />
                         <div className="text-center">
-                          <div className="text-sm font-black text-white">{awayTeam.abbrev}</div>
-                          <div className="text-[10px] text-slate-500 font-bold">{awayTeam.name}</div>
+                          <div className="text-sm font-black text-white">{awayLabel}</div>
+                          <div className="text-[10px] text-slate-500 font-bold">{awayName}</div>
                         </div>
                         {game.played && (
                           <div className={`text-2xl font-black ${game.awayScore > game.homeScore ? 'text-white' : 'text-slate-700'}`}>
@@ -248,15 +254,15 @@ export const DayView: React.FC<DayViewProps> = ({
 
                       {/* Home Team */}
                       <div className="flex-1 flex flex-col items-center gap-2">
-                        <img 
-                          src={homeTeam.logoUrl} 
-                          className="w-12 h-12 object-contain" 
-                          alt={homeTeam.name}
+                        <img
+                          src={homeTeam.logoUrl}
+                          className="w-12 h-12 object-contain"
+                          alt={homeName}
                           referrerPolicy="no-referrer"
                         />
                         <div className="text-center">
-                          <div className="text-sm font-black text-white">{homeTeam.abbrev}</div>
-                          <div className="text-[10px] text-slate-500 font-bold">{homeTeam.name}</div>
+                          <div className="text-sm font-black text-white">{homeLabel}</div>
+                          <div className="text-[10px] text-slate-500 font-bold">{homeName}</div>
                         </div>
                         {game.played && (
                           <div className={`text-2xl font-black ${game.homeScore > game.awayScore ? 'text-white' : 'text-slate-700'}`}>

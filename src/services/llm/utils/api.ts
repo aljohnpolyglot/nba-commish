@@ -20,6 +20,28 @@ export { ThinkingLevel };
 // ── Config ────────────────────────────────────────────────────────────────────
 const WORKER_URL = "https://geminisatellite.mogatas-princealjohn-05082003.workers.dev/";
 
+// Chat always uses this model regardless of tier
+const CHAT_MODEL = "gemini-2.5-flash-lite";
+
+// Cascading model lists per performance tier.
+// gemini-2.5-flash is the proven workhorse — high quota, succeeds on key 1.
+// Pro/preview models go last as opportunistic upgrades when quota allows.
+const MODEL_TIERS: Record<1 | 2 | 3, string[]> = {
+  1: [
+    "gemini-2.5-flash-lite",    // fast, high quota — primary
+    "gemini-2.5-flash",         // fallback if lite is down
+  ],
+  2: [
+    "gemini-2.5-flash",         // reliable workhorse — primary
+    "gemini-2.5-flash-lite",    // fallback
+  ],
+  3: [
+    "gemini-2.5-flash",         // reliable workhorse — primary (pro models quota-limited)
+    "gemini-2.5-pro",           // opportunistic upgrade when quota allows
+    "gemini-2.5-flash-lite",    // last resort
+  ],
+};
+
 // In production (npm run build), VITE_ vars are stripped from the bundle.
 // If no keys are found, we know we're in production and should use the Worker.
 function getAllKeys(): string[] {
@@ -57,13 +79,10 @@ function wrapText(text: string): GenerateContentResponse {
   return { text } as GenerateContentResponse;
 }
 
-// ── Route 1: Cloudflare Worker (production) ───────────────────────────────────
-// The Worker holds all 12 keys as secrets and does its own rotation.
-// We just send the same payload the SDK would send to Gemini.
+// ── Route 1: Cloudflare Worker ────────────────────────────────────────────────
 async function callViaWorker(params: GenerateContentParameters): Promise<GenerateContentResponse> {
   const model = params.model ?? "gemini-2.5-flash";
 
-  // Build the request body in the same shape the Gemini REST API expects
   const body = {
     contents: params.contents,
     ...(params.config ? {
@@ -90,49 +109,63 @@ async function callViaWorker(params: GenerateContentParameters): Promise<Generat
   }
 
   const data = await response.json();
-
-  // Extract text from Gemini REST response shape
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
   return wrapText(text);
 }
 
-// ── Route 2: Direct Gemini SDK (local dev, all .env keys available) ───────────
+// ── Route 2: Direct Gemini SDK (local dev) ────────────────────────────────────
 const _sdkCache = new Map<string, GoogleGenAI>();
 function getSDK(key: string): GoogleGenAI {
   if (!_sdkCache.has(key)) _sdkCache.set(key, new GoogleGenAI({ apiKey: key }));
   return _sdkCache.get(key)!;
 }
 
+// Returns null when all keys fail.
+// allRateLimited=true means every failure was 429 — caller should skip Worker too.
 async function callDirectWithRotation(
   params: GenerateContentParameters,
   maxRetries: number,
   initialDelayMs: number
-): Promise<GenerateContentResponse | null> {
+): Promise<{ response: GenerateContentResponse; allRateLimited: false } | { response: null; allRateLimited: boolean }> {
   const keys = getAllKeys();
-  if (keys.length === 0) return null;
+  if (keys.length === 0) return { response: null, allRateLimited: false };
 
   const shuffled = [...keys].sort(() => Math.random() - 0.5);
+  let rateLimitedCount = 0;
 
   for (let k = 0; k < shuffled.length; k++) {
     const sdk = getSDK(shuffled[k]);
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`[LLM] Direct key ${k + 1}/${shuffled.length}, attempt ${attempt + 1}`);
-        return await sdk.models.generateContent(params);
+        console.log(`[LLM] Direct key ${k + 1}/${shuffled.length}, attempt ${attempt + 1} (${params.model})`);
+        const response = await sdk.models.generateContent(params);
+        return { response, allRateLimited: false };
       } catch (err: any) {
         const status: number = err?.status ?? err?.response?.status ?? 0;
-        if (status === 429 || (status >= 500 && status < 600)) {
-          if (attempt === maxRetries) { console.warn(`[LLM] Key ${k + 1} exhausted — next`); break; }
+        if (status === 429) {
+          // Quota exhausted — skip this key immediately, no backoff (quota won't recover in seconds)
+          console.warn(`[LLM] Key ${k + 1} rate-limited (429) for ${params.model} — skipping key`);
+          rateLimitedCount++;
+          break;
+        } else if (status >= 500 && status < 600) {
+          // Transient server error — retry with backoff
+          if (attempt === maxRetries) { console.warn(`[LLM] Key ${k + 1} exhausted on 5xx — next key`); break; }
           const delay = Math.min(initialDelayMs * Math.pow(2, attempt), 8000) + Math.random() * 500;
           console.warn(`[LLM] Key ${k + 1} got ${status}, retry in ${delay.toFixed(0)}ms`);
           await new Promise(r => setTimeout(r, delay));
         } else {
-          console.warn(`[LLM] Key ${k + 1} non-retriable ${status}`); break;
+          console.warn(`[LLM] Key ${k + 1} non-retriable ${status} (${params.model})`);
+          break;
         }
       }
     }
   }
-  return null;
+
+  const allRateLimited = rateLimitedCount === shuffled.length;
+  if (allRateLimited) {
+    console.warn(`[LLM] 🔄 All ${shuffled.length} keys rate-limited for ${params.model} — cascading to next model`);
+  }
+  return { response: null, allRateLimited };
 }
 
 // ── Public entry point ────────────────────────────────────────────────────────
@@ -148,27 +181,53 @@ export async function generateContentWithRetry(
     return buildMockResponse(params);
   }
 
+  // Chat calls (interaction) always use flash-lite — no cascade.
+  // Detected when params.model is CHAT_MODEL but tier > 1 (meaning the caller
+  // explicitly chose flash-lite rather than it being the tier default).
+  const tier = settings.llmPerformance as 1 | 2 | 3;
+  const isChat = params.model === CHAT_MODEL && tier > 1;
+  const models = isChat ? [CHAT_MODEL] : (MODEL_TIERS[tier] ?? MODEL_TIERS[2]);
+
   const localKeys = getAllKeys();
   const isLocalDev = localKeys.length > 0;
 
-  if (isLocalDev) {
-    // ── Local dev: hit Gemini directly, rotate across all .env keys ──────────
-    console.log(`[LLM] Local dev mode — ${localKeys.length} keys available, calling Gemini directly.`);
-    const result = await callDirectWithRotation(params, maxRetries, initialDelayMs);
-    if (result) return result;
-    console.warn("[LLM] All local keys failed — falling back to Worker.");
+  // Try each model in the cascade
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    const nextModel = models[i + 1];
+    const paramsWithModel: GenerateContentParameters = { ...params, model };
+
+    let skipWorker = false;
+
+    if (isLocalDev) {
+      const { response, allRateLimited } = await callDirectWithRotation(paramsWithModel, maxRetries, initialDelayMs);
+      if (response) {
+        console.log(`%c[LLM] ✅ Direct succeeded (${model})`, "color:#22c55e;font-weight:bold");
+        return response;
+      }
+      if (allRateLimited) {
+        // All keys 429'd — Worker will also 429, skip straight to next model
+        skipWorker = true;
+        if (nextModel) console.log(`[LLM] ⬇️ Cascading to next model: ${nextModel}`);
+      } else {
+        console.log(`[LLM] 🌐 Falling back to Worker with model: ${model}`);
+      }
+    }
+
+    if (!skipWorker) {
+      try {
+        const result = await callViaWorker(paramsWithModel);
+        console.log(`%c[LLM] ✅ Worker succeeded (${model})`, "color:#22c55e;font-weight:bold");
+        return result;
+      } catch (workerErr: any) {
+        console.warn(`[LLM] Worker failed for ${model}: ${workerErr?.message}${nextModel ? ` — trying next model: ${nextModel}` : ''}`);
+      }
+    }
   }
 
-  // ── Production (or local keys exhausted): go through the Worker ──────────
+  // ── Last resort: workerProviders GeminiProxy chain ────────────────────────
   try {
-    console.log("[LLM] Calling via Cloudflare Worker...");
-    return await callViaWorker(params);
-  } catch (workerErr: any) {
-    console.error("[LLM] Worker failed:", workerErr?.message);
-  }
-
-  // ── Last resort: workerProviders chain (Groq → Together → etc.) ──────────
-  try {
+    console.warn("[LLM] All tier models exhausted — falling back to workerProviders.");
     const messages = geminiParamsToMessages(params);
     const isJson = params.config?.responseMimeType === "application/json";
     const opts: WorkerOptions = {

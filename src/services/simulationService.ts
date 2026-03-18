@@ -74,6 +74,7 @@ export const simulateGames = (
     allResults.forEach(res => {
         const game = gamesToSimulate.find(g => g.gid === res.gameId);
         if (game?.isExhibition) return;
+        if (game?.isPreseason) return;
         if (res.homeTeamId < 0 || res.awayTeamId < 0) return;
 
         const home = updatedTeams.find(t => t.id === res.homeTeamId);

@@ -31,9 +31,10 @@ export const processSimulationResults = (
         const schedGame = schedule?.find(g => g.gid === res.gameId);
         const isPlayoffGame = schedGame?.isPlayoff === true;
         const isPlayInGame = schedGame?.isPlayIn === true;
+        const isPreseasonGame = schedGame?.isPreseason === true;
 
-        // Route stats: regular → playerStatsMap, playoff → playoffStatsMap, play-in → skip
-        if (!isPlayoffGame && !isPlayInGame) {
+        // Route stats: regular → playerStatsMap, playoff → playoffStatsMap, play-in/preseason → skip
+        if (!isPlayoffGame && !isPlayInGame && !isPreseasonGame) {
             [...res.homeStats, ...res.awayStats].forEach(stat => {
                 if (!playerStatsMap.has(stat.playerId)) {
                     playerStatsMap.set(stat.playerId, []);

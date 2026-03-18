@@ -2,9 +2,20 @@ import { NBATeam, NBAPlayer, GameResult } from '../../../types';
 
 export const generateLeagueSummaryContext = (
     teams: NBATeam[],
-    players: NBAPlayer[],
+    rawPlayers: NBAPlayer[],
     recentGames: GameResult[]
 ): string => {
+    // Strip legends, retired, and non-NBA players before building any LLM context
+    const players = rawPlayers.filter(p =>
+        p &&
+        !p.diedYear &&
+        !p.hof &&
+        p.tid !== -2 &&
+        p.status !== 'Retired' &&
+        p.status !== 'Draft Prospect' &&
+        p.status !== 'Prospect'
+    );
+
     let context = "--- LEAGUE SUMMARY ---\n\n";
 
     // 1. All Standings

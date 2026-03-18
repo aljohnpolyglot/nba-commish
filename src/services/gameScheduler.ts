@@ -89,6 +89,31 @@ export const generateSchedule = (
       }
   }
 
+  // Intra-squad scrimmages: 1 per team in early preseason (Oct 1-7), marked exhibition so stats/standings never count
+  for (const team of teams) {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const randomDay = Math.floor(Math.random() * 7);
+      const gameDate = new Date(preseasonStart);
+      gameDate.setUTCDate(preseasonStart.getUTCDate() + randomDay);
+      const dateStr = gameDate.toISOString().split('T')[0];
+      if (isTeamFree(dateStr, team.id, team.id)) {
+        markScheduled(dateStr, team.id, team.id);
+        games.push({
+          gid: gameId++,
+          homeTid: team.id,
+          awayTid: team.id,
+          homeScore: 0,
+          awayScore: 0,
+          played: false,
+          date: gameDate.toISOString(),
+          isPreseason: true,
+          isExhibition: true,
+        } as any);
+        break;
+      }
+    }
+  }
+
   // Pre-fill Christmas Day games if provided
   if (christmasGames && christmasGames.length > 0) {
       // BUG 7 FIX: use T00:00:00Z

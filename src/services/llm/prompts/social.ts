@@ -11,8 +11,8 @@ export const generateSocialThreadPrompt = (originalPost: SocialPost, state: Game
             context += `\nContext: Game Result\nWinner: ${d.winner.name} (${d.result.winnerScore})\nLoser: ${d.loser.name} (${d.result.loserScore})\nTop Performer: ${d.topPerformer.name} (${d.topPerformer.pts} PTS, ${d.topPerformer.reb} REB, ${d.topPerformer.ast} AST)\n`;
             
             // Add injury context for the teams involved
-            const homeInjured = state.players.filter(p => p.tid === d.result.homeTeamId && p.injury && p.injury.gamesRemaining > 0);
-            const awayInjured = state.players.filter(p => p.tid === d.result.awayTeamId && p.injury && p.injury.gamesRemaining > 0);
+            const homeInjured = state.players.filter(p => p.tid === d.result.homeTeamId && p.injury && p.injury.gamesRemaining > 0 && !p.diedYear && !p.hof);
+            const awayInjured = state.players.filter(p => p.tid === d.result.awayTeamId && p.injury && p.injury.gamesRemaining > 0 && !p.diedYear && !p.hof);
             
             if (homeInjured.length > 0) {
                 context += `Injuries (${d.winner.id === d.result.homeTeamId ? d.winner.name : d.loser.name}): ${homeInjured.map(p => `${p.name} (${p.injury.type})`).join(', ')}\n`;

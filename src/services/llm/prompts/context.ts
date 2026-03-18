@@ -69,14 +69,19 @@ export const generateLeagueContext = (
     commissionerName: string = "The Commissioner"
 ): string => {
     const topPlayers = players
-        .filter(p => 
+        .filter(p =>
             p &&
-            p.status !== 'WNBA' && 
-            p.status !== 'Euroleague' && 
-            p.status !== 'PBA' && 
-            p.status !== 'Retired' && 
-            p.tid !== -3 && 
-            p.tid !== -100
+            p.status !== 'WNBA' &&
+            p.status !== 'Euroleague' &&
+            p.status !== 'PBA' &&
+            p.status !== 'Retired' &&
+            p.status !== 'Draft Prospect' &&
+            p.status !== 'Prospect' &&
+            p.tid !== -3 &&
+            p.tid !== -100 &&
+            p.tid !== -2 &&       // exclude historical draft pool
+            !p.diedYear &&        // exclude deceased legends
+            !p.hof                // exclude retired HOF legends
         )
         .sort((a, b) => (b?.overallRating || 0) - (a?.overallRating || 0))
         .slice(0, 150)

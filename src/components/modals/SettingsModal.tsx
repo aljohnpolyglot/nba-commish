@@ -2,6 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { X, Settings2, Zap, Brain, Cpu } from 'lucide-react';
 import { SettingsManager, GameSettings } from '../../services/SettingsManager';
 
+const AI_SPEED_OPTIONS = [
+  {
+    value: 1 as const,
+    label: '⚡ Fast',
+    model: 'Gemini 2.5 Flash-Lite',
+    description: 'Quickest responses, great for casual play. Best for low-end devices.',
+  },
+  {
+    value: 2 as const,
+    label: '⚖️ Balanced',
+    model: 'Gemini 2.5 Flash',
+    description: 'Best mix of speed and quality. Recommended for most players.',
+  },
+  {
+    value: 3 as const,
+    label: '🧠 Best',
+    model: 'Gemini 2.5 Pro',
+    description: 'Richest narratives and most detailed outcomes. Slower but premium.',
+  },
+];
+
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -37,32 +58,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         </div>
 
         <div className="p-6 overflow-y-auto custom-scrollbar flex flex-col gap-6">
-          {/* LLM Performance Slider */}
+          {/* AI Model Quality — 3-card picker */}
           <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <label className="text-sm font-bold text-white flex items-center gap-2">
-                <Brain size={16} className="text-indigo-400" />
-                AI Model Quality
-              </label>
-              <span className="text-xs font-mono text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded">
-                {settings.llmPerformance}/10
-              </span>
+            <label className="text-sm font-bold text-white flex items-center gap-2">
+              <Brain size={16} className="text-indigo-400" />
+              AI Model Quality
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {AI_SPEED_OPTIONS.map(opt => {
+                const isSelected = settings.llmPerformance === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => setSettings({ ...settings, llmPerformance: opt.value })}
+                    className={`flex flex-col gap-1.5 p-3 rounded-xl border text-left transition-all ${
+                      isSelected
+                        ? 'border-indigo-500 bg-indigo-500/10 text-white'
+                        : 'border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-300'
+                    }`}
+                  >
+                    <span className="text-sm font-black">{opt.label}</span>
+                    <span className={`text-[10px] font-bold ${isSelected ? 'text-indigo-300' : 'text-slate-500'}`}>
+                      {opt.model}
+                    </span>
+                    <span className="text-[10px] leading-tight text-slate-500">{opt.description}</span>
+                  </button>
+                );
+              })}
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Higher values use smarter, more expensive models (Gemini Pro) and generate longer responses. Lower values use faster, cheaper models (Flash Lite).
+            <p className="text-[11px] text-slate-500">
+              💬 Chat messages always use Fast mode regardless of this setting.
             </p>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value={settings.llmPerformance}
-              onChange={(e) => setSettings({ ...settings, llmPerformance: parseInt(e.target.value) })}
-              className="w-full accent-indigo-500"
-            />
-            <div className="flex justify-between text-[10px] text-slate-500 font-medium uppercase tracking-wider">
-              <span>Fast / Lite</span>
-              <span>Smart / Pro</span>
-            </div>
           </div>
 
           {/* Game Speed Slider */}

@@ -9,7 +9,7 @@ const getTeam = (player: NBAPlayer, state: GameState) => {
 
 const getTeammates = (player: NBAPlayer, state: GameState) => {
     return state.players
-        .filter(p => p.tid === player.tid && p.status === player.status && p.internalId !== player.internalId)
+        .filter(p => p.tid === player.tid && p.status === player.status && p.internalId !== player.internalId && !p.diedYear && !p.hof)
         .sort((a, b) => b.overallRating - a.overallRating)
         .slice(0, 5)
         .map(p => p.name);
