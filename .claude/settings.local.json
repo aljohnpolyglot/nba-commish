@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(BASE=\"C:/Users/user-MSI/Downloads/nba-commish/src/services/allStar\")",
+      "Bash(sed -i \"s|allstarevents/DunkContest''|allstarevents/dunk/DunkContest''|g\" \"$BASE/DunkContest.tsx\")",
+      "Bash(sed -i \"s|allstarevents/useDunkContest''|allstarevents/dunk/useDunkContest''|g\" \"$BASE/useDunkContest.ts\")",
+      "Read(//c/Users/user-MSI/Downloads/nba-commish/$BASE/**)",
+      "Bash(BASE=\"C:/Users/user-MSI/Downloads/nba-commish/src/components/allstar/allstarevents\")",
+      "Read(//c/Users/user-MSI/Downloads/nba-commish/$BASE/dunk/**)",
+      "Read(//c/Users/user-MSI/Downloads/nba-commish/$BASE/threepoint/**)",
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:imgur.com)",
+      "WebFetch(domain:i.imgur.com)"
+    ]
+  }
+}

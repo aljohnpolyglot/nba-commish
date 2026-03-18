@@ -1,0 +1,9 @@
+{
+  "name": "Remix: Remix: NBA Commissioner Simulator",
+  "description": "A satirical and deep simulation where you take the reins as the NBA Commissioner, managing league rules, media relations, and high-stakes decisions.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}

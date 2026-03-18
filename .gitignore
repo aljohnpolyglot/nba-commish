@@ -1,0 +1,18 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Sensitive files
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+.secrets
+credentials.json
+service-account*.json
