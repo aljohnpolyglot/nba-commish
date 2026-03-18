@@ -20,11 +20,6 @@ export async function sendChatMessage(
   history: ChatMessage[],
   isHypnotized: boolean = false
 ): Promise<string> {
-  const settings = SettingsManager.getSettings();
-  if (!settings.enableLLM) {
-    return "I'm sorry, I cannot respond right now as the league's AI systems are currently offline.";
-  }
-
   const prompt = generateChatPrompt(targetName, targetRole, targetOrg, history, state, isHypnotized);
 
   let contents: any = prompt;
@@ -60,7 +55,7 @@ export async function sendChatMessage(
         systemInstruction: "You are a realistic NBA personality chatting with the Commissioner. Be concise and conversational.",
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
       },
-    });
+    }, 2, 800, true); // bypass enableLLM — chat always works
 
     return response.text || "";
   } catch (error) {

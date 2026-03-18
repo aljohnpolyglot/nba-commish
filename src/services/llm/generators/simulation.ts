@@ -139,7 +139,17 @@ export async function generateLeaguePulse(
 
         const text = response.text;
         if (!text) throw new Error("No response from LLM");
-        const data = JSON.parse(text);
+
+        let data: any = {};
+        try {
+            const rawText = text.trim();
+            const lastBrace = rawText.lastIndexOf('}');
+            const safeTxt = lastBrace > 0 ? rawText.substring(0, lastBrace + 1) : rawText;
+            data = JSON.parse(safeTxt);
+        } catch (e) {
+            console.warn('[LLM] League pulse JSON truncated — using empty fallback');
+            data = { newEmails: [], newNews: [], newSocialPosts: [], replies: [] };
+        }
 
         // Post-process avatars
         const avatars = await fetchAvatarData();

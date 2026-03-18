@@ -31,7 +31,7 @@ export const MessagesView: React.FC = () => {
     if (selectedChatId && !selectedChatId.startsWith('new-')) {
       markChatRead(selectedChatId);
     }
-  }, [selectedChatId, markChatRead]);
+  }, [selectedChatId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectChat = (chatId: string) => {
     setSelectedChatId(chatId);

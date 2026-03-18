@@ -1,6 +1,7 @@
 // src/services/llm/utils/api.ts
-// — Local dev: calls Gemini SDK directly (uses .env keys, never leaves your machine)
-// — Production: routes through Cloudflare Worker (keys are server-side secrets, never in the bundle)
+// Routing strategy:
+//   Chat (interaction) → Groq Worker (fast, high quota, OpenAI-compatible)
+//   Everything else   → Gemini direct keys → Gemini Cloudflare Worker → workerProviders
 
 import {
   GoogleGenAI,
@@ -18,32 +19,20 @@ import {
 export { ThinkingLevel };
 
 // ── Config ────────────────────────────────────────────────────────────────────
-const WORKER_URL = "https://geminisatellite.mogatas-princealjohn-05082003.workers.dev/";
+const GEMINI_WORKER_URL = "https://geminisatellite.mogatas-princealjohn-05082003.workers.dev/";
+const GROQ_WORKER_URL   = "https://groqsatellite.mogatas-princealjohn-05082003.workers.dev/";
 
-// Chat always uses this model regardless of tier
-const CHAT_MODEL = "gemini-2.5-flash-lite";
+// Model used for all chat/interaction calls (routed to Groq)
+const GROQ_CHAT_MODEL = "llama-3.3-70b-versatile";
 
-// Cascading model lists per performance tier.
-// gemini-2.5-flash is the proven workhorse — high quota, succeeds on key 1.
-// Pro/preview models go last as opportunistic upgrades when quota allows.
+// Gemini cascade tiers for non-chat calls
 const MODEL_TIERS: Record<1 | 2 | 3, string[]> = {
-  1: [
-    "gemini-2.5-flash-lite",    // fast, high quota — primary
-    "gemini-2.5-flash",         // fallback if lite is down
-  ],
-  2: [
-    "gemini-2.5-flash",         // reliable workhorse — primary
-    "gemini-2.5-flash-lite",    // fallback
-  ],
-  3: [
-    "gemini-2.5-flash",         // reliable workhorse — primary (pro models quota-limited)
-    "gemini-2.5-pro",           // opportunistic upgrade when quota allows
-    "gemini-2.5-flash-lite",    // last resort
-  ],
+  1: ["gemini-2.5-flash-lite", "gemini-2.5-flash"],
+  2: ["gemini-2.5-flash",      "gemini-2.5-flash-lite"],
+  3: ["gemini-2.5-flash",      "gemini-2.5-pro", "gemini-2.5-flash-lite"],
 };
 
-// In production (npm run build), VITE_ vars are stripped from the bundle.
-// If no keys are found, we know we're in production and should use the Worker.
+// ── Local Gemini keys (dev only) ──────────────────────────────────────────────
 function getAllKeys(): string[] {
   const e = (typeof import.meta !== "undefined" && (import.meta as any).env)
     ? (import.meta as any).env : {};
@@ -65,39 +54,118 @@ function getAllKeys(): string[] {
   ].filter((k): k is string => typeof k === "string" && k.length > 10);
 }
 
-// ── Mock response ─────────────────────────────────────────────────────────────
-function buildMockResponse(params: GenerateContentParameters): GenerateContentResponse {
-  const isJson = params.config?.responseMimeType === "application/json";
-  return {
-    text: isJson
-      ? JSON.stringify({ newEmails: [], newNews: [], newSocialPosts: [], replies: [], title: "Fallback Title", description: "Fallback Description" })
-      : "AI features are disabled in settings.",
-  } as GenerateContentResponse;
-}
-
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function wrapText(text: string): GenerateContentResponse {
   return { text } as GenerateContentResponse;
 }
 
-// ── Route 1: Cloudflare Worker ────────────────────────────────────────────────
-async function callViaWorker(params: GenerateContentParameters): Promise<GenerateContentResponse> {
+function buildMockResponse(params: GenerateContentParameters): GenerateContentResponse {
+  const isJson = params.config?.responseMimeType === "application/json";
+  return wrapText(
+    isJson
+      ? JSON.stringify({ newEmails: [], newNews: [], newSocialPosts: [], replies: [], title: "Fallback Title", description: "Fallback Description" })
+      : "AI features are disabled in settings."
+  );
+}
+
+/** Convert Gemini GenerateContentParameters → OpenAI messages array */
+function geminiToOpenAIMessages(params: GenerateContentParameters): { role: string; content: string }[] {
+  const messages: { role: string; content: string }[] = [];
+
+  // System instruction
+  const sysInstr = params.config?.systemInstruction;
+  const sysText = typeof sysInstr === "string"
+    ? sysInstr
+    : (sysInstr as any)?.parts?.map((p: any) => p.text ?? "").join("") ?? "";
+  if (sysText) messages.push({ role: "system", content: sysText });
+
+  // Contents
+  const contents = params.contents;
+  if (typeof contents === "string") {
+    messages.push({ role: "user", content: contents });
+  } else if (Array.isArray(contents)) {
+    for (const c of contents as any[]) {
+      const role = c.role === "model" ? "assistant" : (c.role ?? "user");
+      const content = Array.isArray(c.parts)
+        ? c.parts.map((p: any) => p.text ?? "").join("")
+        : (c.text ?? "");
+      if (content) messages.push({ role, content });
+    }
+  } else if (contents && typeof (contents as any) === "object") {
+    const c = contents as any;
+    const role = c.role === "model" ? "assistant" : (c.role ?? "user");
+    const content = Array.isArray(c.parts)
+      ? c.parts.map((p: any) => p.text ?? "").join("")
+      : (c.text ?? "");
+    if (content) messages.push({ role, content });
+  }
+
+  return messages;
+}
+
+// ── Route A: Groq Worker (chat) ───────────────────────────────────────────────
+async function callViaGroqWorker(params: GenerateContentParameters): Promise<GenerateContentResponse> {
+  const messages = geminiToOpenAIMessages(params);
+
+  const response = await fetch(GROQ_WORKER_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Target-Endpoint": "chat/completions",
+    },
+    body: JSON.stringify({
+      model: GROQ_CHAT_MODEL,
+      messages,
+      max_tokens: params.config?.maxOutputTokens ?? 1024,
+      temperature: params.config?.temperature ?? 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(`Groq Worker ${response.status}: ${JSON.stringify(err)}`);
+  }
+
+  const data = await response.json();
+  const text = data?.choices?.[0]?.message?.content ?? "";
+  const nickname = response.headers.get("X-Groq-Key-Nickname") ?? "?";
+  console.log(`%c[LLM] ✅ Groq Worker (${nickname}) → chat`, "color:#a855f7;font-weight:bold");
+  return wrapText(text);
+}
+
+// ── Route B: Gemini Worker ────────────────────────────────────────────────────
+async function callViaGeminiWorker(params: GenerateContentParameters): Promise<GenerateContentResponse> {
   const model = params.model ?? "gemini-2.5-flash";
 
+  let normalizedContents: any[];
+  if (typeof params.contents === "string") {
+    normalizedContents = [{ role: "user", parts: [{ text: params.contents }] }];
+  } else if (Array.isArray(params.contents)) {
+    normalizedContents = params.contents as any[];
+  } else {
+    normalizedContents = [params.contents];
+  }
+
+  const sysInstr = params.config?.systemInstruction;
+  const sysInstrText = typeof sysInstr === "string"
+    ? sysInstr
+    : (sysInstr as any)?.parts?.map((p: any) => p.text ?? "").join("") ?? "";
+
   const body = {
-    contents: params.contents,
+    contents: normalizedContents,
     ...(params.config ? {
       generationConfig: {
-        ...(params.config.responseMimeType && { responseMimeType: params.config.responseMimeType }),
-        ...(params.config.maxOutputTokens && { maxOutputTokens: params.config.maxOutputTokens }),
+        ...(params.config.responseMimeType  && { responseMimeType:  params.config.responseMimeType }),
+        ...(params.config.maxOutputTokens   && { maxOutputTokens:   params.config.maxOutputTokens }),
         ...(params.config.temperature !== undefined && { temperature: params.config.temperature }),
-        ...(params.config.topP !== undefined && { topP: params.config.topP }),
-        ...(params.config.topK !== undefined && { topK: params.config.topK }),
+        ...(params.config.topP        !== undefined && { topP:        params.config.topP }),
+        ...(params.config.topK        !== undefined && { topK:        params.config.topK }),
       }
     } : {}),
-    ...(params.config?.systemInstruction ? { system_instruction: { parts: [{ text: params.config.systemInstruction }] } } : {}),
+    ...(sysInstrText ? { system_instruction: { parts: [{ text: sysInstrText }] } } : {}),
   };
 
-  const response = await fetch(`${WORKER_URL}?model=${encodeURIComponent(model)}`, {
+  const response = await fetch(`${GEMINI_WORKER_URL}?model=${encodeURIComponent(model)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -105,7 +173,7 @@ async function callViaWorker(params: GenerateContentParameters): Promise<Generat
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    throw new Error(`Worker error ${response.status}: ${JSON.stringify(err)}`);
+    throw new Error(`Gemini Worker ${response.status}: ${JSON.stringify(err)}`);
   }
 
   const data = await response.json();
@@ -113,15 +181,13 @@ async function callViaWorker(params: GenerateContentParameters): Promise<Generat
   return wrapText(text);
 }
 
-// ── Route 2: Direct Gemini SDK (local dev) ────────────────────────────────────
+// ── Route C: Direct Gemini SDK (local dev) ────────────────────────────────────
 const _sdkCache = new Map<string, GoogleGenAI>();
 function getSDK(key: string): GoogleGenAI {
   if (!_sdkCache.has(key)) _sdkCache.set(key, new GoogleGenAI({ apiKey: key }));
   return _sdkCache.get(key)!;
 }
 
-// Returns null when all keys fail.
-// allRateLimited=true means every failure was 429 — caller should skip Worker too.
 async function callDirectWithRotation(
   params: GenerateContentParameters,
   maxRetries: number,
@@ -143,13 +209,11 @@ async function callDirectWithRotation(
       } catch (err: any) {
         const status: number = err?.status ?? err?.response?.status ?? 0;
         if (status === 429) {
-          // Quota exhausted — skip this key immediately, no backoff (quota won't recover in seconds)
-          console.warn(`[LLM] Key ${k + 1} rate-limited (429) for ${params.model} — skipping key`);
+          console.warn(`[LLM] Key ${k + 1} rate-limited (429) for ${params.model} — skipping`);
           rateLimitedCount++;
           break;
         } else if (status >= 500 && status < 600) {
-          // Transient server error — retry with backoff
-          if (attempt === maxRetries) { console.warn(`[LLM] Key ${k + 1} exhausted on 5xx — next key`); break; }
+          if (attempt === maxRetries) { break; }
           const delay = Math.min(initialDelayMs * Math.pow(2, attempt), 8000) + Math.random() * 500;
           console.warn(`[LLM] Key ${k + 1} got ${status}, retry in ${delay.toFixed(0)}ms`);
           await new Promise(r => setTimeout(r, delay));
@@ -162,9 +226,6 @@ async function callDirectWithRotation(
   }
 
   const allRateLimited = rateLimitedCount === shuffled.length;
-  if (allRateLimited) {
-    console.warn(`[LLM] 🔄 All ${shuffled.length} keys rate-limited for ${params.model} — cascading to next model`);
-  }
   return { response: null, allRateLimited };
 }
 
@@ -172,31 +233,39 @@ async function callDirectWithRotation(
 export async function generateContentWithRetry(
   params: GenerateContentParameters,
   maxRetries: number = 2,
-  initialDelayMs: number = 800
+  initialDelayMs: number = 800,
+  bypassLLMCheck: boolean = false
 ): Promise<GenerateContentResponse> {
   const settings = SettingsManager.getSettings();
 
-  if (!settings.enableLLM) {
+  if (!settings.enableLLM && !bypassLLMCheck) {
     console.log("[LLM] Disabled — returning mock.");
     return buildMockResponse(params);
   }
 
-  // Chat calls (interaction) always use flash-lite — no cascade.
-  // Detected when params.model is CHAT_MODEL but tier > 1 (meaning the caller
-  // explicitly chose flash-lite rather than it being the tier default).
-  const tier = settings.llmPerformance as 1 | 2 | 3;
-  const isChat = params.model === CHAT_MODEL && tier > 1;
-  const models = isChat ? [CHAT_MODEL] : (MODEL_TIERS[tier] ?? MODEL_TIERS[2]);
+  // ── Chat calls → Groq Worker (fast lane, always bypasses Gemini) ──────────
+  const isChat = params.model === SettingsManager.getModelForTask?.("interaction")
+    || bypassLLMCheck; // sendChatMessage always sets bypassLLMCheck=true
 
+  if (isChat) {
+    try {
+      return await callViaGroqWorker(params);
+    } catch (groqErr: any) {
+      console.warn(`[LLM] Groq Worker failed: ${groqErr?.message} — falling back to Gemini`);
+      // Fall through to Gemini cascade below
+    }
+  }
+
+  // ── Non-chat calls → Gemini cascade ──────────────────────────────────────
+  const tier = settings.llmPerformance as 1 | 2 | 3;
+  const models = MODEL_TIERS[tier] ?? MODEL_TIERS[2];
   const localKeys = getAllKeys();
   const isLocalDev = localKeys.length > 0;
 
-  // Try each model in the cascade
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
     const nextModel = models[i + 1];
     const paramsWithModel: GenerateContentParameters = { ...params, model };
-
     let skipWorker = false;
 
     if (isLocalDev) {
@@ -206,28 +275,27 @@ export async function generateContentWithRetry(
         return response;
       }
       if (allRateLimited) {
-        // All keys 429'd — Worker will also 429, skip straight to next model
         skipWorker = true;
-        if (nextModel) console.log(`[LLM] ⬇️ Cascading to next model: ${nextModel}`);
+        if (nextModel) console.log(`[LLM] ⬇️ Cascading to: ${nextModel}`);
       } else {
-        console.log(`[LLM] 🌐 Falling back to Worker with model: ${model}`);
+        console.log(`[LLM] 🌐 Falling back to Gemini Worker (${model})`);
       }
     }
 
     if (!skipWorker) {
       try {
-        const result = await callViaWorker(paramsWithModel);
-        console.log(`%c[LLM] ✅ Worker succeeded (${model})`, "color:#22c55e;font-weight:bold");
+        const result = await callViaGeminiWorker(paramsWithModel);
+        console.log(`%c[LLM] ✅ Gemini Worker succeeded (${model})`, "color:#22c55e;font-weight:bold");
         return result;
       } catch (workerErr: any) {
-        console.warn(`[LLM] Worker failed for ${model}: ${workerErr?.message}${nextModel ? ` — trying next model: ${nextModel}` : ''}`);
+        console.warn(`[LLM] Gemini Worker failed (${model}): ${workerErr?.message}${nextModel ? ` — trying ${nextModel}` : ""}`);
       }
     }
   }
 
-  // ── Last resort: workerProviders GeminiProxy chain ────────────────────────
+  // ── Last resort: workerProviders chain ────────────────────────────────────
   try {
-    console.warn("[LLM] All tier models exhausted — falling back to workerProviders.");
+    console.warn("[LLM] All Gemini tiers exhausted — trying workerProviders.");
     const messages = geminiParamsToMessages(params);
     const isJson = params.config?.responseMimeType === "application/json";
     const opts: WorkerOptions = {

@@ -36,7 +36,7 @@ async function callGeminiProxy(messages: WorkerMessage[], opts: WorkerOptions): 
     },
   };
 
-  if (system) body.systemInstruction = { parts: [{ text: system }] };
+  if (system) body.system_instruction = { parts: [{ text: system }] };
 
   const res = await fetch(GEMINI_WORKER, {
     method: 'POST',
