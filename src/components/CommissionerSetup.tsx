@@ -195,7 +195,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, o
                           AI Commentary &amp; Narratives
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5">
-                          Requires Gemini API key (VITE_GEMINI_API_KEY). Off = fast offline play.
+                        Enable AI commentary and narratives. Off = fast offline play.
                         </p>
                       </div>
                       <button
