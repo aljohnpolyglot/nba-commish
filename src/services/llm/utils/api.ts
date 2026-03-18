@@ -75,7 +75,7 @@ async function callViaWorker(params: GenerateContentParameters): Promise<Generat
         ...(params.config.topK !== undefined && { topK: params.config.topK }),
       }
     } : {}),
-    ...(params.systemInstruction ? { systemInstruction: params.systemInstruction } : {}),
+    ...(params.config?.systemInstruction ? { system_instruction: { parts: [{ text: params.config.systemInstruction }] } } : {}),
   };
 
   const response = await fetch(`${WORKER_URL}?model=${encodeURIComponent(model)}`, {

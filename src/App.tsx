@@ -7,6 +7,7 @@ import { CommissionerSetup } from './components/CommissionerSetup';
 import { MainContent } from './components/layout/MainContent';
 import { MainMenu } from './components/MainMenu';
 import { ClubEffect } from './components/effects/ClubEffect';
+import { LazySimLoadingScreen } from './components/setup/LazySimLoadingScreen';
 import { Tab } from './types';
 import { Menu, ArrowRight } from 'lucide-react';
 import { SaveManager } from './services/SaveManager';
@@ -75,6 +76,11 @@ function GameLayout() {
   }, [state.isProcessing, state.isDataLoaded]);
 
   if (!state.isDataLoaded) {
+    // Rich lazy-sim progress screen
+    if (state.lazySimProgress) {
+      return <LazySimLoadingScreen progress={state.lazySimProgress} />;
+    }
+
     if (state.isProcessing) {
       return (
         <div className="h-screen w-full bg-slate-950 flex flex-col items-center justify-center text-slate-200 p-6">

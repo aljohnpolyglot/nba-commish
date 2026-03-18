@@ -114,7 +114,7 @@ export const SeriesBoxScore: React.FC<SeriesBoxScoreProps> = ({
                 return (
                   <tr key={ps.playerId} className={`border-b border-white/5 ${isDNP ? 'opacity-30' : isStarter ? 'text-white' : 'text-slate-400'}`}>
                     <td className="px-2 py-1.5 font-bold truncate max-w-[96px]">{ps.name.split(' ').pop()}</td>
-                    <td className="px-1 py-1.5 text-center">{ps.min}</td>
+                    <td className="px-1 py-1.5 text-center">{Math.floor(ps.min)}:{Math.floor((ps.min % 1) * 60).toString().padStart(2, '0')}</td>
                     <td className="px-1 py-1.5 text-center font-black text-white">{ps.pts}</td>
                     <td className="px-1 py-1.5 text-center">{ps.reb}</td>
                     <td className="px-1 py-1.5 text-center">{ps.ast}</td>

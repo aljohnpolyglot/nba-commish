@@ -70,15 +70,10 @@ export const PlayoffView: React.FC = () => {
     if (!playoffs) return;
 
     if (!playoffs.playInComplete) {
-      const pending = playoffs.playInGames.filter(
-        p => !p.played && p.team1Tid > 0 && p.team2Tid > 0 && p.gameId
-      );
-      const games = state.schedule.filter(
-        g => pending.some(p => p.gameId === g.gid) && !g.played
-      );
-      if (games.length === 0) return;
-      const lastDate = games.reduce((d, g) => g.date > d ? g.date : d, games[0].date);
-      dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: lastDate } } as any);
+      // Can't filter by known teams — loser game teams are TBD until 7v8/9v10 resolve.
+      // Sim to fixed end date so all three play-in games complete and Round 1 injects.
+      const PLAYIN_END = '2026-04-20';
+      dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: PLAYIN_END } } as any);
       return;
     }
 
@@ -127,7 +122,7 @@ export const PlayoffView: React.FC = () => {
           players={state.players}
           allStar={state.allStar}
           isProcessing={state.isProcessing}
-          onClose={() => { setWatchingGame(null); setRiggedForTid(undefined); setPrecomputedResult(null); }}
+          onClose={async () => { setWatchingGame(null); setRiggedForTid(undefined); setPrecomputedResult(null); await dispatchAction({ type: 'ADVANCE_DAY' } as any); }}
           onComplete={executeWatchGame}
           otherGamesToday={state.schedule.filter(g =>
             normalizeDate(g.date) === normalizeDate(state.date) &&

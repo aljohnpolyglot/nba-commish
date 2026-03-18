@@ -14,7 +14,7 @@ const WORKERS = {
   groq:     'https://square-bush-5dbc.mogatas-princealjohn-05082003.workers.dev/',
   together: 'https://cold-shadow-dce7.mogatas-princealjohn-05082003.workers.dev/',
   openai:   'https://cold-sunset-018a.mogatas-princealjohn-05082003.workers.dev/v1/chat/completions',
-  gemini:   'https://my-gemini-proxy.mogatas-princealjohn-05082003.workers.dev/',
+  gemini:   'https://geminisatellite.mogatas-princealjohn-05082003.workers.dev/',
 } as const;
 
 // ── Models per performance tier ───────────────────────────────────────────────
@@ -148,13 +148,9 @@ export async function generateWithFallback(
   const models = pickModels(perf);
 
   const chain: Array<{ name: string; call: () => Promise<string> }> = [
-    {
-      // Groq key-rotation: retry up to 4x so we hit a good key (~40% per attempt → ~87% over 4)
-      name: 'Groq',
-      call: () => callOpenAI(WORKERS.groq, models.groq, messages, opts, {
-        'X-Target-Endpoint': 'chat/completions',
-      }, 4),
-    },
+    // Groq: worker dead — disabled until new worker deployed
+    // { name: 'Groq', call: () => callOpenAI(WORKERS.groq, models.groq, messages, opts, { 'X-Target-Endpoint': 'chat/completions' }, 4) },
+
     // Together: billing issues on worker keys — disabled until resolved
     // { name: 'Together', call: () => callOpenAI(WORKERS.together, models.together, messages, opts) },
 

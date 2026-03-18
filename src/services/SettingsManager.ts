@@ -7,7 +7,7 @@ export interface GameSettings {
 const DEFAULT_SETTINGS: GameSettings = {
   llmPerformance: 5,
   gameSpeed: 5,
-  enableLLM: false,
+  enableLLM: true,
 };
 
 export class SettingsManager {
@@ -17,12 +17,23 @@ export class SettingsManager {
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       if (stored) {
-        return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
+        const parsed = JSON.parse(stored);
+        // Migration: old default had enableLLM: false — upgrade silently
+        if (parsed.enableLLM === false && !parsed.__llmMigrated) {
+          parsed.enableLLM = true;
+          parsed.__llmMigrated = true;
+          localStorage.setItem(this.STORAGE_KEY, JSON.stringify(parsed));
+        }
+        return { ...DEFAULT_SETTINGS, ...parsed };
       }
     } catch (e) {
       console.error('Failed to load settings', e);
     }
     return DEFAULT_SETTINGS;
+  }
+
+  static updateSettings(partial: Partial<GameSettings>): void {
+    this.saveSettings({ ...this.getSettings(), ...partial });
   }
 
   static saveSettings(settings: GameSettings): void {

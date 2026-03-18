@@ -228,6 +228,8 @@ export class AllStarWeekendOrchestrator {
     const result = AllStarDunkContestSim.simulate(contestants);
 
     newAllStarState.dunkContest = {
+      round1: result.round1,
+      round2: result.round2,
       contestants: contestants.map(p => {
         const r1 = result.round1.find(r => r.playerId === p.internalId);
         const r2 = result.round2.find(r => r.playerId === p.internalId);

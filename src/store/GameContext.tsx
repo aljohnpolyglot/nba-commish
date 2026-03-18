@@ -145,12 +145,19 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       if (action.type === 'START_GAME') {
         const genId = ++generationIdRef.current;
         setState(prev => ({ ...prev, isProcessing: true, pendingStartPayload: action.payload }));
-        
-        const newStatePatch = await handleStartGame(action.payload);
-        
+
+        const payloadWithProgress = {
+          ...action.payload,
+          onProgress: (progress: any) => {
+            setState(prev => ({ ...prev, lazySimProgress: progress }));
+          },
+        };
+
+        const newStatePatch = await handleStartGame(payloadWithProgress);
+
         setState(prev => {
           if (genId === generationIdRef.current) {
-            return { ...prev, ...newStatePatch, pendingStartPayload: undefined };
+            return { ...prev, ...newStatePatch, lazySimProgress: undefined, pendingStartPayload: undefined };
           }
           return prev;
         });

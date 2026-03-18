@@ -1,5 +1,6 @@
 import { GameState, LazySimProgress } from '../../types';
 import { runSimulation } from '../../store/logic/turn/simulationHandler';
+import { processSimulationResults } from '../../store/logic/turn/postProcessor';
 import { SettingsManager } from '../SettingsManager';
 import { normalizeDate } from '../../utils/helpers';
 import {
@@ -30,6 +31,17 @@ const AUTO_RESOLVE_EVENTS: AutoResolveEvent[] = [
   { date: '2026-02-08', key: 'threepoint_contestants', resolver: autoSelectThreePointContestants, phase: 'Selecting 3-Point Contest Field...' },
   { date: '2026-02-13', key: 'allstar_weekend',        resolver: autoSimAllStarWeekend,          phase: 'Simulating All-Star Weekend...' },
 ];
+
+const buildAutoNews = (eventKey: string, state: GameState) => {
+  const date = state.date;
+  const map: Record<string, any> = {
+    christmas_games:  { id: `auto-xmas-${Date.now()}`,      headline: 'Christmas Day Games Set',       content: 'The NBA has finalized its Christmas Day slate.',                                     date },
+    allstar_starters: { id: `auto-starters-${Date.now()}`,  headline: 'All-Star Starters Announced',   content: 'Fan voting has concluded. The All-Star starters have been revealed.',              date },
+    allstar_reserves: { id: `auto-reserves-${Date.now()}`,  headline: 'Full All-Star Rosters Set',     content: 'Coaches have made their picks. The complete All-Star rosters are finalized.',      date },
+    allstar_weekend:  { id: `auto-asw-${Date.now()}`,       headline: 'All-Star Weekend Complete',     content: 'The NBA All-Star Weekend has concluded. Check the All-Star tab for results.',      date },
+  };
+  return map[eventKey] ?? null;
+};
 
 const getPhaseLabel = (dateStr: string): string => {
   if (dateStr < '2025-10-24') return 'Preseason...';
@@ -118,6 +130,10 @@ export const runLazySim = async (
             console.warn(`Auto-resolver ${event.key} failed:`, err);
           }
           firedEvents.add(event.key);
+          const autoNews = buildAutoNews(event.key, state);
+          if (autoNews) {
+            state = { ...state, news: [autoNews, ...(state.news || [])] };
+          }
         }
       }
 
@@ -126,8 +142,21 @@ export const runLazySim = async (
       const batchDays = Math.min(BATCH_SIZE, remaining);
       if (batchDays <= 0) break;
 
-      const { stateWithSim } = runSimulation(state, batchDays, undefined);
-      state = stateWithSim;
+      const { stateWithSim, allSimResults } = runSimulation(state, batchDays, undefined);
+
+      // Accumulate player season stats — normally called in processTurn, bypassed here
+      const { updatedPlayers, updatedDraftPicks } = processSimulationResults(
+        allSimResults,
+        stateWithSim.players,
+        stateWithSim.draftPicks,
+        stateWithSim.schedule
+      );
+
+      state = {
+        ...stateWithSim,
+        players: updatedPlayers,
+        draftPicks: updatedDraftPicks,
+      };
       daysComplete += batchDays;
 
       // Advance past the last simulated day so the next batch starts fresh

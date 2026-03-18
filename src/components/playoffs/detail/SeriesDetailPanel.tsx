@@ -4,7 +4,7 @@ import { Game, GameResult, PlayoffBracket, NBATeam, NBAPlayer } from '../../../t
 import { normalizeDate } from '../../../utils/helpers';
 import { SeriesGameSlots } from './SeriesGameSlots';
 import { SeriesActionMenu } from './SeriesActionMenu';
-import { SeriesBoxScore } from './SeriesBoxScore';
+import { BoxScoreModal } from '../../modals/BoxScoreModal';
 
 interface SeriesDetailPanelProps {
   seriesId: string;
@@ -48,7 +48,7 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
   onClose,
   isProcessing,
 }) => {
-  const [showBoxScore, setShowBoxScore] = useState(false);
+  const [boxScoreTarget, setBoxScoreTarget] = useState<{ game: Game; result: GameResult } | null>(null);
 
   // Resolve series or play-in game
   const series = playoffs.series.find(s => s.id === seriesId) ?? null;
@@ -101,12 +101,6 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
   const nextGame = seriesGames.find(g => !g.played) ?? null;
   const isToday = nextGame ? normalizeDate(nextGame.date) === normalizeDate(stateDate) : false;
 
-  // Selected game for box score
-  const selectedGame = seriesGames[selectedGameIdx] ?? null;
-  const selectedResult = selectedGame ? boxScores.find(b => b.gameId === selectedGame.gid) : null;
-  const selectedHomeTeam = selectedGame ? teams.find(t => t.id === selectedGame.homeTid) : null;
-  const selectedAwayTeam = selectedGame ? teams.find(t => t.id === selectedGame.awayTid) : null;
-  const canShowBoxScore = selectedGame?.played && (!!selectedResult || (selectedGame.homeScore > 0 || selectedGame.awayScore > 0));
 
   return (
     <>
@@ -188,7 +182,11 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
               selectedIdx={selectedGameIdx}
               onSelect={(idx) => {
                 onGameIdxChange(idx);
-                setShowBoxScore(true);
+                const g = seriesGames[idx];
+                if (g) {
+                  const r = boxScores.find(b => b.gameId === g.gid);
+                  if (r) setBoxScoreTarget({ game: g, result: r });
+                }
               }}
               stateDate={stateDate}
             />
@@ -207,42 +205,34 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
             onSimRound={onSimRound}
             onSimPlayoffs={onSimPlayoffs}
             onViewStats={() => {
-              // Select last played game for box score
-              const lastPlayedIdx = seriesGames.reduce((best, g, i) => g.played ? i : best, 0);
-              onGameIdxChange(lastPlayedIdx);
-              setShowBoxScore(true);
+              const lastPlayed = [...seriesGames].reverse().find(g => g.played);
+              if (lastPlayed) {
+                const r = boxScores.find(b => b.gameId === lastPlayed.gid);
+                if (r) setBoxScoreTarget({ game: lastPlayed, result: r });
+              }
             }}
           />
 
-          {/* Box score for selected game */}
-          {showBoxScore && canShowBoxScore && selectedGame && selectedResult && selectedHomeTeam && selectedAwayTeam && (
-            <SeriesBoxScore
-              game={selectedGame}
-              result={selectedResult}
-              homeTeam={selectedHomeTeam}
-              awayTeam={selectedAwayTeam}
-              players={players}
-            />
-          )}
-
-          {showBoxScore && canShowBoxScore && selectedGame && !selectedResult && selectedHomeTeam && selectedAwayTeam && (
-            <div className="mt-3 p-4 bg-white/[0.03] rounded-xl text-center">
-              <div className="flex items-center justify-center gap-3 mb-2">
-                <span className={`text-2xl font-black ${selectedGame.homeScore >= selectedGame.awayScore ? 'text-white' : 'text-slate-500'}`}>
-                  {selectedGame.homeScore}
-                </span>
-                <span className="text-slate-600 font-bold text-sm">—</span>
-                <span className={`text-2xl font-black ${selectedGame.awayScore > selectedGame.homeScore ? 'text-white' : 'text-slate-500'}`}>
-                  {selectedGame.awayScore}
-                </span>
-              </div>
-              <div className="text-[10px] text-slate-500">{selectedHomeTeam.abbrev} vs {selectedAwayTeam.abbrev}</div>
-              <div className="text-[9px] text-slate-700 mt-1">Detailed stats not available</div>
-            </div>
-          )}
 
         </div>
       </div>
+
+      {/* Box Score Modal */}
+      {boxScoreTarget && (() => {
+        const bsHome = teams.find(t => t.id === boxScoreTarget.game.homeTid);
+        const bsAway = teams.find(t => t.id === boxScoreTarget.game.awayTid);
+        if (!bsHome || !bsAway) return null;
+        return (
+          <BoxScoreModal
+            game={boxScoreTarget.game}
+            result={boxScoreTarget.result}
+            homeTeam={bsHome}
+            awayTeam={bsAway}
+            players={players}
+            onClose={() => setBoxScoreTarget(null)}
+          />
+        );
+      })()}
     </>
   );
 };

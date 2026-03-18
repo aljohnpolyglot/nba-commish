@@ -23,8 +23,9 @@ export const BracketLayout: React.FC<BracketLayoutProps> = ({
   const playInComplete = playoffs.playInComplete;
 
   return (
-    <div className="overflow-x-auto pb-4 custom-scrollbar">
-      <div className="flex items-stretch gap-3 min-w-max">
+    <div>
+      <div className="overflow-x-auto pb-4 -mx-6 px-6 custom-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="flex items-stretch gap-3 min-w-max min-h-[calc(100vh-200px)]">
 
         {/* West Play-In */}
         <PlayInColumn
@@ -49,6 +50,7 @@ export const BracketLayout: React.FC<BracketLayoutProps> = ({
             stateDate={stateDate}
             onSeriesClick={onSeriesClick}
             selectedSeriesId={selectedSeriesId}
+            justify="space-between"
           />
         ) : (
           <div className="flex flex-col w-44 shrink-0">
@@ -192,6 +194,7 @@ export const BracketLayout: React.FC<BracketLayoutProps> = ({
             stateDate={stateDate}
             onSeriesClick={onSeriesClick}
             selectedSeriesId={selectedSeriesId}
+            justify="space-between"
           />
         ) : (
           <div className="flex flex-col w-44 shrink-0">
@@ -214,6 +217,7 @@ export const BracketLayout: React.FC<BracketLayoutProps> = ({
         />
 
       </div>
+    </div>
     </div>
   );
 };

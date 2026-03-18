@@ -23,7 +23,7 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
 }) => {
   if (!series) {
     return (
-      <div className="bg-white/[0.02] border border-dashed border-white/10 rounded-xl p-3 flex items-center justify-center min-h-[88px]">
+      <div className="bg-white/[0.02] border border-dashed border-white/10 rounded-xl p-3 flex items-center justify-center min-h-[120px]">
         <span className="text-slate-700 text-[10px] font-bold">{label || 'TBD'}</span>
       </div>
     );

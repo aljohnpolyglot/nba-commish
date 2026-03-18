@@ -382,7 +382,7 @@ export const NBACentral: React.FC = () => {
                 players={state.players}
                 allStar={state.allStar}
                 isProcessing={state.isProcessing}
-                onClose={() => { setGameToWatch(null); setRiggedForTid(undefined); setPrecomputedResult(null); }}
+                onClose={async () => { setGameToWatch(null); setRiggedForTid(undefined); setPrecomputedResult(null); await dispatchAction({ type: 'ADVANCE_DAY' } as any); }}
                 onComplete={executeWatchGame}
                 otherGamesToday={otherGamesToday}
                 riggedForTid={riggedForTid}

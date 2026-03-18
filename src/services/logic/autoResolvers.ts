@@ -43,7 +43,6 @@ export const autoSimVotes = async (state: GameState): Promise<Partial<GameState>
     return {
       allStar: {
         season: state.leagueStats.year,
-        votes,
         startersAnnounced: false,
         reservesAnnounced: false,
         roster: [],
@@ -110,6 +109,8 @@ export const autoAnnounceReserves = async (state: GameState): Promise<Partial<Ga
           position: p.pos ?? 'F',
           category: getCategory(p.pos ?? 'F'),
           isRookie: rookies.includes(p),
+          nbaId: (p as any).nbaId,
+          imgURL: (p as any).imgURL,
         };
       });
     } catch (e) {

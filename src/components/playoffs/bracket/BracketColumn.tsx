@@ -32,7 +32,7 @@ export const BracketColumn: React.FC<BracketColumnProps> = ({
   return (
     <div className="flex flex-col w-44 shrink-0">
       <div className={`text-[9px] font-black uppercase tracking-widest mb-2 ${labelColor}`}>{label}</div>
-      <div className="flex flex-col gap-2 flex-1" style={{ justifyContent: justify }}>
+      <div className="flex flex-col gap-4 flex-1" style={{ justifyContent: justify }}>
         {seriesIds.map(id => {
           const series = playoffs.series.find(s => s.id === id) ?? null;
           return (

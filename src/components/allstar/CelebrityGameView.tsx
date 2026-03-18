@@ -11,7 +11,7 @@ interface CelebrityGameViewProps {
 
 export const CelebrityGameView: React.FC<CelebrityGameViewProps> = ({ allStar, state, onWatchGame, onViewBoxScore }) => {
   const isAutoSelected = state.leagueStats.celebrityRosterAutoSelected;
-  const roster = state.leagueStats.celebrityRoster || [];
+  const roster = allStar?.celebrityRoster || state.leagueStats.celebrityRoster || [];
 
   const game = state.schedule?.find((g: any) => g.gid === 90002);
   const boxScore = state.boxScores?.find((b: any) =>
