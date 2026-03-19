@@ -1,49 +1,8 @@
 import type { StaffData, NBAPlayer as Player, NBATeam as Team } from '../types';
+import { getCoachPhoto, getOwnerPhoto, fetchCoachData, fetchOwnerPhotos } from '../data/photos';
 
 // The URL for your hosted staff data
 const STAFF_DATA_URL = 'https://api.npoint.io/5a5cf15aa97cfe207457';
-
-const COACH_IMAGES: Record<string, string> = {
-    "Joe Mazzulla": "https://nbacoaches.com/wp-content/uploads/2025/10/NBCA-headcoach-JoeMazzulla_2025.jpg",
-    "Jordi Fernandez": "https://nbacoaches.com/wp-content/uploads/2025/10/NBCA-headcoach-JordiFernandez_2025.jpg",
-    "Mike Brown": "https://nbacoaches.com/wp-content/uploads/2025/07/NBCA-headcoach-MikeBrown_2025.jpg",
-    "Nick Nurse": "https://nbacoaches.com/wp-content/uploads/2023/05/Untitled-design-52.png",
-    "Darko Rajaković": "https://nbacoaches.com/wp-content/uploads/2023/06/Untitled-design-67.png",
-    "Billy Donovan": "https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-BillyDonovan-2.jpg",
-    "Kenny Atkinson": "https://nbacoaches.com/wp-content/uploads/2025/12/AtkinsonHeadshot-300x300.png",
-    "J.B. Bickerstaff": "https://nbacoaches.com/wp-content/uploads/2024/07/Bickerstaff.png",
-    "Rick Carlisle": "https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-RickCarlisle.jpg",
-    "Doc Rivers": "https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-DocRivers.jpg",
-    "Quin Snyder": "https://nbacoaches.com/wp-content/uploads/2023/02/NBCA-HeadCoach-QuinSnyder.jpg",
-    "Charles Lee": "https://nbacoaches.com/wp-content/uploads/2024/05/CHARLES-LEE-2.png",
-    "Erik Spoelstra": "https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-ErikSpoelstra.jpg",
-    "Jamahl Mosley": "https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-JamahlMosley.jpg",
-    "Brian Keefe": "https://nbacoaches.com/wp-content/uploads/2024/01/Untitled-design-86.png",
-    "David Adelman": "https://nbacoaches.com/wp-content/uploads/2025/05/NBCA-HeadCoach-DavidAdelman.jpg",
-    "Chris Finch": "https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-ChrisFinch.jpg",
-    "Mark Daigneault": "https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-MarkDaigneault.jpg",
-    "Chauncey Billups": "https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-ChaunceyBilllups.jpg",
-    "Will Hardy": "https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-WillHardy.jpg",
-    "Steve Kerr": "https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-SteveKerr.jpg",
-    "Tyronn Lue": "https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-TyronnLue.jpg",
-    "JJ Redick": "https://nbacoaches.com/wp-content/uploads/2024/06/JJ-Redick-1.png",
-    "Jordan Ott": "https://nbacoaches.com/wp-content/uploads/2025/12/OttHeadshot.png",
-    "Doug Christie": "https://nbacoaches.com/wp-content/uploads/2025/05/NBCA-HeadCoach-dougchristie.jpg",
-    "Jason Kidd": "https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-JasonKidd.jpg",
-    "Ime Udoka": "https://nbacoaches.com/wp-content/uploads/2025/10/NBCA-headcoach-ImeUdoka_2025.jpg",
-    "Tuomas Iisalo": "https://nbacoaches.com/wp-content/uploads/2025/10/NBCA-headcoach-Iisalo_2025.jpg",
-    "Mitch Johnson": "https://nbacoaches.com/wp-content/uploads/2025/05/NBCA-HeadCoach-mitchjohnson.jpg",
-    "James Borrego": "https://static.wikia.nocookie.net/nba2k/images/8/87/James_Borrego.png/revision/latest?cb=20240504154838"
-};
-
-const OWNER_IMAGES: Record<string, string> = {
-    "Tony Ressler": "https://imageio.forbes.com/specials-images/imageserve/59d5204431358e542c035670/0x0.jpg?format=jpg&crop=1053,1053,x164,y65,safe&height=416&width=416&fit=bounds",
-    "Marc Lore": "https://imageio.forbes.com/specials-images/imageserve/61685375d087090f4887090f/0x0.jpg?format=jpg&crop=1000,1000,x0,y0,safe&height=416&width=416&fit=bounds",
-    "Steve Ballmer": "https://imageio.forbes.com/specials-images/imageserve/62d6f03769e31b54d502512c/0x0.jpg?format=jpg&crop=1000,1000,x0,y0,safe&height=416&width=416&fit=bounds",
-    "Jerry Reinsdorf": "https://imageio.forbes.com/specials-images/imageserve/59d51f7231358e542c03550e/0x0.jpg?format=jpg&crop=1000,1000,x0,y0,safe&height=416&width=416&fit=bounds",
-    "Jeanie Buss": "https://imageio.forbes.com/specials-images/imageserve/59d51f9e31358e542c03555f/0x0.jpg?format=jpg&crop=1000,1000,x0,y0,safe&height=416&width=416&fit=bounds",
-    "Joe Lacob": "https://imageio.forbes.com/specials-images/imageserve/59d51f8a31358e542c03553d/0x0.jpg?format=jpg&crop=1000,1000,x0,y0,safe&height=416&width=416&fit=bounds"
-};
 
 // The data as it comes from the API
 interface RawStaffMember {
@@ -68,14 +27,11 @@ const enrichStaffMember = (
   const enriched: EnrichedStaffMember = { ...staffMember };
   
   // 0. Check for explicit coach or owner image override
-  if (COACH_IMAGES[staffMember.name]) {
-      enriched.playerPortraitUrl = COACH_IMAGES[staffMember.name];
-      return enriched;
-  }
-  if (OWNER_IMAGES[staffMember.name]) {
-      enriched.playerPortraitUrl = OWNER_IMAGES[staffMember.name];
-      return enriched;
-  }
+  const coachPhoto = getCoachPhoto(staffMember.name);
+  if (coachPhoto) { enriched.playerPortraitUrl = coachPhoto; return enriched; }
+
+  const ownerPhoto = getOwnerPhoto(staffMember.name);
+  if (ownerPhoto) { enriched.playerPortraitUrl = ownerPhoto; return enriched; }
 
   // 1. RealGM Image Pattern (First line of defense)
   // Pattern: https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/LastName_FirstName.jpg
@@ -115,6 +71,7 @@ export const getStaffData = async (
   teamNameMap: Map<string, Team>
 ): Promise<StaffData> => {
     try {
+        await Promise.all([fetchCoachData(), fetchOwnerPhotos()]);
         const response = await fetch(STAFF_DATA_URL);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);

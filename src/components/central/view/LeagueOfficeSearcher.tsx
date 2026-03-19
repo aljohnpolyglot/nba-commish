@@ -7,6 +7,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useGame } from '../../../store/GameContext';
 import type { StaffMember } from '../../../types';
 import { ContactAvatar } from '../../common/ContactAvatar';
+import {
+  getAllCoaches, getAllReferees, fetchCoachData, fetchRefereeData,
+} from '../../../data/photos';
+
+// Re-export REFS so existing modal imports remain unbroken
+export { REFS } from '../../../data/photos';
 // ─────────────────────────────────────────────────────────────────
 // TYPES
 // ─────────────────────────────────────────────────────────────────
@@ -25,126 +31,6 @@ playerPortraitUrl?: string;
   teamLogoUrl?: string;
 }
 
-// ─────────────────────────────────────────────────────────────────
-// HARDCODED DATA  (workers require a slug — lists can't be fetched)
-// ─────────────────────────────────────────────────────────────────
-
-export const REFS: { id: string; name: string; slug: string }[] = [
-  { id: '54', name: 'Ray Acosta',             slug: 'ray-acosta' },
-  { id: '67', name: 'Brandon Adair',          slug: 'brandon-adair' },
-  { id: '36', name: 'Brent Barnaky',          slug: 'brent-barnaky' },
-  { id: '74', name: 'Curtis Blair',           slug: 'courtney-kirkland-2' },
-  { id: '25', name: 'Tony Brothers',          slug: 'tony-brothers' },
-  { id: '3',  name: 'Nick Buchert',           slug: 'nick-buchert' },
-  { id: '30', name: 'John Butler',            slug: 'john-butler' },
-  { id: '19', name: 'James Capers',           slug: 'james-capers' },
-  { id: '11', name: 'Derrick Collins',        slug: 'derrick-collins' },
-  { id: '79', name: 'John Conley',            slug: 'john-conley' },
-  { id: '33', name: 'Sean Corbin',            slug: 'sean-corbin' },
-  { id: '34', name: 'Kevin Cutler',           slug: 'kevin-cutler' },
-  { id: '28', name: 'Mousa Dagher',           slug: 'mousa-dagher' },
-  { id: '37', name: 'Eric Dalen',             slug: 'eric-dalen' },
-  { id: '8',  name: 'Marc Davis',             slug: 'marc-davis' },
-  { id: '22', name: 'JB DeRosa',              slug: 'jb-derosa' },
-  { id: '27', name: 'Mitchell Ervin',         slug: 'mitchell-ervin' },
-  { id: '91', name: "Che Flores",             slug: 'cheryl-flores' },
-  { id: '39', name: 'Tyler Ford',             slug: 'tyler-ford' },
-  { id: '45', name: 'Brian Forte',            slug: 'brian-forte' },
-  { id: '48', name: 'Scott Foster',           slug: 'scott-foster' },
-  { id: '26', name: 'Pat Fraher',             slug: 'pat-fraher' },
-  { id: '68', name: 'Jacyn Goble',            slug: 'jacyn-goble' },
-  { id: '10', name: 'John Goble',             slug: 'john-goble' },
-  { id: '35', name: 'Jason Goldenberg',       slug: 'jason-goldenberg' },
-  { id: '65', name: 'Nate Green',             slug: 'nate-green' },
-  { id: '16', name: 'David Guthrie',          slug: 'david-guthrie' },
-  { id: '7',  name: 'Lauren Holtkamp-Sterling', slug: 'lauren-holtkamp' },
-  { id: '85', name: 'Robert Hussey',          slug: 'robert-hussey' },
-  { id: '96', name: 'Intae Hwang',            slug: 'intae-hwang' },
-  { id: '81', name: 'Simone Jelks',           slug: 'simone-jelks' },
-  { id: '88', name: 'Matt Kallio',            slug: 'matt-kallio' },
-  { id: '55', name: 'Bill Kennedy',           slug: 'bill-kennedy' },
-  { id: '61', name: 'Courtney Kirkland',      slug: 'courtney-kirkland' },
-  { id: '32', name: 'Marat Kogut',            slug: 'marat-kogut' },
-  { id: '77', name: 'Karl Lane',              slug: 'karl-lane' },
-  { id: '29', name: 'Mark Lindsay',           slug: 'mark-lindsay' },
-  { id: '23', name: 'Tre Maddox',             slug: 'tre-maddox' },
-  { id: '14', name: 'Ed Malloy',              slug: 'ed-malloy' },
-  { id: '82', name: 'Suyash Mehta',           slug: 'suyash-mehta' },
-  { id: '98', name: "Sha'rae Mitchell",       slug: 'sharae-mitchell' },
-  { id: '89', name: 'Dannica Mosher',         slug: 'dannica-mosher' },
-  { id: '71', name: 'Rodney Mott',            slug: 'rodney-mott' },
-  { id: '13', name: 'Ashley Moyer-Gleich',    slug: 'ashley-moyer-gleich' },
-  { id: '43', name: 'Matt Myers',             slug: 'matt-myers' },
-  { id: '83', name: 'Andy Nagy',              slug: 'andy-nagy' },
-  { id: '44', name: 'Brett Nansel',           slug: 'brett-nansel' },
-  { id: '72', name: 'J.T. Orr',              slug: 'j-t-orr' },
-  { id: '50', name: 'Gediminas Petraitis',    slug: 'gediminas-petraitis' },
-  { id: '94', name: 'JD Ralls',              slug: 'jd-ralls' },
-  { id: '70', name: 'Phenizee Ransom',        slug: 'phenizee-ransom' },
-  { id: '63', name: 'Derek Richardson',       slug: 'derek-richardson' },
-  { id: '95', name: 'Tyler Ricks',            slug: 'tyler-ricks' },
-  { id: '84', name: 'Jenna Schroeder',        slug: 'jenna-schroeder' },
-  { id: '9',  name: 'Natalie Sago',           slug: 'natalie-sago' },
-  { id: '86', name: 'Brandon Schwab',         slug: 'brandon-schwab' },
-  { id: '87', name: 'Danielle Scott',         slug: 'danielle-scott' },
-  { id: '78', name: 'Evan Scott',             slug: 'evan-scott' },
-  { id: '24', name: 'Kevin Scott',            slug: 'kevin-scott' },
-  { id: '51', name: 'Aaron Smith',            slug: 'aaron-smith' },
-  { id: '38', name: 'Michael Smith',          slug: 'michael-smith' },
-  { id: '17', name: 'Jonathan Sterling',      slug: 'jonathan-sterling' },
-  { id: '46', name: 'Ben Taylor',             slug: 'ben-taylor' },
-  { id: '21', name: 'Dedric Taylor',          slug: 'dedric-taylor' },
-  { id: '58', name: 'Josh Tiven',             slug: 'joshua-tiven' },
-  { id: '52', name: 'Scott Twardoski',        slug: 'scott-twardoski' },
-  { id: '64', name: 'Justin Van Duyne',       slug: 'justin-van-duyne' },
-  { id: '31', name: 'Scott Wall',             slug: 'scott-wall' },
-  { id: '12', name: 'CJ Washington',          slug: 'cj-washington' },
-  { id: '60', name: 'James Williams',         slug: 'james-williams' },
-  { id: '49', name: 'Tom Washington',         slug: 'tom-washington' },
-  { id: '40', name: 'Leon Wood',              slug: 'leon-wood' },
-  { id: '4',  name: 'Sean Wright',            slug: 'sean-wright' },
-  { id: '15', name: 'Zach Zarba',             slug: 'zach-zarba' },
-];
-
-const COACHES: {
-  conf: string; div: string; name: string; team: string; slug: string; img: string;
-}[] = [
-  // EASTERN — ATLANTIC
-  { conf: 'EAST', div: 'ATLANTIC', name: 'Joe Mazzulla',      team: 'Boston Celtics',       slug: 'joe-mazzulla',                    img: 'https://nbacoaches.com/wp-content/uploads/2025/10/NBCA-headcoach-JoeMazzulla_2025.jpg' },
-  { conf: 'EAST', div: 'ATLANTIC', name: 'Jordi Fernandez',   team: 'Brooklyn Nets',         slug: 'jordi-fernandez-head-coach-bio',   img: 'https://nbacoaches.com/wp-content/uploads/2025/10/NBCA-headcoach-JordiFernandez_2025.jpg' },
-  { conf: 'EAST', div: 'ATLANTIC', name: 'Mike Brown',        team: 'New York Knicks',       slug: 'mike-brown',                      img: 'https://nbacoaches.com/wp-content/uploads/2025/07/NBCA-headcoach-MikeBrown_2025.jpg' },
-  { conf: 'EAST', div: 'ATLANTIC', name: 'Nick Nurse',        team: 'Philadelphia 76ers',    slug: 'nick-nurse',                      img: 'https://nbacoaches.com/wp-content/uploads/2023/05/Untitled-design-52.png' },
-  { conf: 'EAST', div: 'ATLANTIC', name: 'Darko Rajaković',   team: 'Toronto Raptors',       slug: 'darko-rajakovic-head-coach-bio',   img: 'https://nbacoaches.com/wp-content/uploads/2023/06/Untitled-design-67.png' },
-  // EASTERN — CENTRAL
-  { conf: 'EAST', div: 'CENTRAL',  name: 'Billy Donovan',     team: 'Chicago Bulls',         slug: 'billy-donovan',                   img: 'https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-BillyDonovan-2.jpg' },
-  { conf: 'EAST', div: 'CENTRAL',  name: 'Kenny Atkinson',    team: 'Cleveland Cavaliers',   slug: 'kenny-atkinson',                  img: 'https://nbacoaches.com/wp-content/uploads/2025/12/AtkinsonHeadshot-300x300.png' },
-  { conf: 'EAST', div: 'CENTRAL',  name: 'J.B. Bickerstaff',  team: 'Detroit Pistons',       slug: 'j-b-bickerstaff',                 img: 'https://nbacoaches.com/wp-content/uploads/2024/07/Bickerstaff.png' },
-  { conf: 'EAST', div: 'CENTRAL',  name: 'Rick Carlisle',     team: 'Indiana Pacers',        slug: 'rick-carlisle',                   img: 'https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-RickCarlisle.jpg' },
-  { conf: 'EAST', div: 'CENTRAL',  name: 'Doc Rivers',        team: 'Milwaukee Bucks',       slug: 'doc-rivers',                      img: 'https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-DocRivers.jpg' },
-  // EASTERN — SOUTHEAST
-  { conf: 'EAST', div: 'SOUTHEAST', name: 'Quin Snyder',      team: 'Atlanta Hawks',         slug: 'quin-snyder',                     img: 'https://nbacoaches.com/wp-content/uploads/2023/02/NBCA-HeadCoach-QuinSnyder.jpg' },
-  { conf: 'EAST', div: 'SOUTHEAST', name: 'Charles Lee',      team: 'Charlotte Hornets',     slug: 'charles-lee-head-coach-bio',      img: 'https://nbacoaches.com/wp-content/uploads/2024/05/CHARLES-LEE-2.png' },
-  { conf: 'EAST', div: 'SOUTHEAST', name: 'Erik Spoelstra',   team: 'Miami Heat',            slug: 'erik-spoelstra',                  img: 'https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-ErikSpoelstra.jpg' },
-  { conf: 'EAST', div: 'SOUTHEAST', name: 'Jamahl Mosley',    team: 'Orlando Magic',         slug: 'jamahl-mosley',                   img: 'https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-JamahlMosley.jpg' },
-  { conf: 'EAST', div: 'SOUTHEAST', name: 'Brian Keefe',      team: 'Washington Wizards',    slug: 'brian-keefe',                     img: 'https://nbacoaches.com/wp-content/uploads/2024/01/Untitled-design-86.png' },
-  // WESTERN — NORTHWEST
-  { conf: 'WEST', div: 'NORTHWEST', name: 'David Adelman',    team: 'Denver Nuggets',        slug: 'david-adelman',                   img: 'https://nbacoaches.com/wp-content/uploads/2025/05/NBCA-HeadCoach-DavidAdelman.jpg' },
-  { conf: 'WEST', div: 'NORTHWEST', name: 'Chris Finch',      team: 'Minnesota Timberwolves',slug: 'chris-finch',                     img: 'https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-ChrisFinch.jpg' },
-  { conf: 'WEST', div: 'NORTHWEST', name: 'Mark Daigneault',  team: 'OKC Thunder',           slug: 'mark-daigneault',                 img: 'https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-MarkDaigneault.jpg' },
-  { conf: 'WEST', div: 'NORTHWEST', name: 'Chauncey Billups', team: 'Portland Blazers',      slug: 'chauncey-billups',                img: 'https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-ChaunceyBilllups.jpg' },
-  { conf: 'WEST', div: 'NORTHWEST', name: 'Will Hardy',       team: 'Utah Jazz',             slug: 'will-hardy',                      img: 'https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-WillHardy.jpg' },
-  // WESTERN — PACIFIC
-  { conf: 'WEST', div: 'PACIFIC',   name: 'Steve Kerr',       team: 'Golden State Warriors', slug: 'steve-kerr',                      img: 'https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-SteveKerr.jpg' },
-  { conf: 'WEST', div: 'PACIFIC',   name: 'Tyronn Lue',       team: 'LA Clippers',           slug: 'tyronn-lue',                      img: 'https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-TyronnLue.jpg' },
-  { conf: 'WEST', div: 'PACIFIC',   name: 'JJ Redick',        team: 'LA Lakers',             slug: 'jj-redick',                       img: 'https://nbacoaches.com/wp-content/uploads/2024/06/JJ-Redick-1.png' },
-  { conf: 'WEST', div: 'PACIFIC',   name: 'Jordan Ott',       team: 'Phoenix Suns',          slug: 'jordan-ott',                      img: 'https://nbacoaches.com/wp-content/uploads/2025/12/OttHeadshot.png' },
-  { conf: 'WEST', div: 'PACIFIC',   name: 'Doug Christie',    team: 'Sacramento Kings',      slug: 'doug-christie',                   img: 'https://nbacoaches.com/wp-content/uploads/2025/05/NBCA-HeadCoach-dougchristie.jpg' },
-  // WESTERN — SOUTHWEST
-  { conf: 'WEST', div: 'SOUTHWEST', name: 'Jason Kidd',       team: 'Dallas Mavericks',      slug: 'jason-kidd',                      img: 'https://nbacoaches.com/wp-content/uploads/2022/11/NBCA-HeadCoach-JasonKidd.jpg' },
-  { conf: 'WEST', div: 'SOUTHWEST', name: 'Ime Udoka',        team: 'Houston Rockets',       slug: 'ime-udoka',                       img: 'https://nbacoaches.com/wp-content/uploads/2025/10/NBCA-headcoach-ImeUdoka_2025.jpg' },
-  { conf: 'WEST', div: 'SOUTHWEST', name: 'Tuomas Iisalo',    team: 'Memphis Grizzlies',     slug: 'tuomas-iisalo',                   img: 'https://nbacoaches.com/wp-content/uploads/2025/10/NBCA-headcoach-Iisalo_2025.jpg' },
-  { conf: 'WEST', div: 'SOUTHWEST', name: 'Mitch Johnson',    team: 'San Antonio Spurs',     slug: 'mitchell-johnson',                img: 'https://nbacoaches.com/wp-content/uploads/2025/05/NBCA-HeadCoach-mitchjohnson.jpg' },
-];
 
 // ─────────────────────────────────────────────────────────────────
 // FILTER TABS
@@ -246,39 +132,30 @@ interface LeagueOfficeSearcherProps {
 
 export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPersonnelClick }) => {
   const { state } = useGame();
-  const [search, setSearch]       = useState('');
-  const [refPhotos, setRefPhotos] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState('');
+  const [photosReady, setPhotosReady] = useState(false);
 
   useEffect(() => {
-    fetch('https://gist.githubusercontent.com/aljohnpolyglot/39217471bf53cc1f6f5673823e0e2da1/raw/22b6f73155a3e6a8f4b652d41ab0738f1891189c/referee_pics')
-      .then(r => r.json())
-      .then((data: { name: string; photo_url: string }[]) => {
-        const map: Record<string, string> = {};
-      data.forEach(entry => {
-          map[entry.name] = entry.photo_url;
-        });
-        setRefPhotos(map);
-      })
-      .catch(e => console.error('[RefPhotos] Failed to fetch:', e));
+    Promise.all([fetchCoachData(), fetchRefereeData()]).then(() => setPhotosReady(true));
   }, []);
   const [typeFilter, setTypeFilter] = useState<FilterType>('all');
   const [confFilter, setConfFilter] = useState<'ALL' | 'EAST' | 'WEST'>('ALL');
   const [sortBy, setSortBy] = useState<'last' | 'first'>('last');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-  // ── Build master list from hardcoded data + state.staff ──────
+  // ── Build master list from gist data + state.staff ──────────
   const allPersonnel = useMemo<Personnel[]>(() => {
-  const refs: Personnel[] = REFS.map(r => ({
-  id:                `ref-${r.id}`,
-  name:              r.name,
-  type:              'referee',
-  jobTitle:          'NBA Official',
-  number:            r.id,
-  slug:              r.slug,
-playerPortraitUrl: refPhotos[r.name] || undefined,
-}));
+    const refs: Personnel[] = getAllReferees().map(r => ({
+      id:               `ref-${r.id}`,
+      name:             r.name,
+      type:             'referee',
+      jobTitle:         'NBA Official',
+      number:           r.id,
+      slug:             r.slug,
+      playerPortraitUrl: r.photo_url,
+    }));
 
-    const coaches: Personnel[] = COACHES.map((c, i) => ({
+    const coaches: Personnel[] = getAllCoaches().map((c, i) => ({
       id:               `coach-${i}`,
       name:             c.name,
       type:             'coach',
@@ -287,7 +164,7 @@ playerPortraitUrl: refPhotos[r.name] || undefined,
       conf:             c.conf,
       div:              c.div,
       slug:             c.slug,
-   playerPortraitUrl: c.img,
+      playerPortraitUrl: c.img,
       teamLogoUrl:      state.teams.find(t => t.name === c.team)?.logoUrl,
     }));
 
@@ -320,7 +197,7 @@ playerPortraitUrl: refPhotos[r.name] || undefined,
     }));
 
     return [...refs, ...coaches, ...gms, ...owners, ...lo];
-}, [state.staff, state.teams, refPhotos]);
+  }, [state.staff, state.teams, photosReady]);
 
   // ── Filter & Sort ───────────────────────────────────────────
   const filtered = useMemo(() => {
