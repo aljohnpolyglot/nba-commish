@@ -200,20 +200,23 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
         });
     }
 
-    // Inject referees
-    getAllReferees().forEach(ref => {
-        const id = `ref-${ref.id}`;
-        const photo = getRefereePhoto(ref.name) || undefined;
-        contactsMap.set(id, {
-            id,
-            name: ref.name,
-            title: 'NBA Referee',
-            organization: 'NBA Officials',
-            type: 'coach' as const,
-            playerPortraitUrl: photo,
-            league: 'Referee',
+    // Inject referees (only for eligible action types)
+    const refEligibleActions = ['fine', 'bribe', 'dinner', 'suspension', 'drug_test', 'contact', 'give_money', 'general'];
+    if (refEligibleActions.includes(actionType)) {
+        getAllReferees().forEach(ref => {
+            const id = `ref-${ref.id}`;
+            const photo = getRefereePhoto(ref.name) || undefined;
+            contactsMap.set(id, {
+                id,
+                name: ref.name,
+                title: 'NBA Referee',
+                organization: 'NBA Officials',
+                type: 'coach' as const,
+                playerPortraitUrl: photo,
+                league: 'Referee',
+            });
         });
-    });
+    }
 
     const activePlayers = players.filter(p => {
         // Exclude deceased players

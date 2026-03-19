@@ -1,4 +1,5 @@
 import { GameState, Email, NBAPlayer as Player, UserAction } from '../../../types';
+import { getAllReferees } from '../../../data/photos';
 
 export const handleCommunication = (state: GameState, action: UserAction, result: any, dateString: string) => {
     let updatedInbox = [...state.inbox];
@@ -72,7 +73,13 @@ export const handleCommunication = (state: GameState, action: UserAction, result
             ...(state.staff?.gms || []),
             ...(state.staff?.coaches || []),
         ].find(s => s.name.toLowerCase() === msg.sender.toLowerCase());
-        const targetId = matchedPlayer?.internalId || matchedStaff?.name || msg.sender;
+        const matchedRef = getAllReferees().find(
+            r => r.name.toLowerCase() === msg.sender.toLowerCase()
+        );
+        const targetId = matchedPlayer?.internalId
+            || matchedStaff?.name
+            || (matchedRef ? `ref-${matchedRef.id}` : null)
+            || msg.sender;
         let chatIndex = updatedChats.findIndex(c =>
             c.participants.includes(targetId) ||
             c.participants.includes(msg.sender)
