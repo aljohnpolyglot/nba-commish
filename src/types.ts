@@ -598,7 +598,7 @@ export interface TwitterHandler {
   id: string;
   name: string;
   handle: string;
-  avatarUrl: string;
+  avatarUrl?: string;
   descriptions: string[]; // These are distractor/sample descriptions
   category: 'BreakingNews' | 'MainstreamMedia' | 'CultureAndLifestyle' | 'DebatePersonalities' | 'BroadcastingAndJournalism' | 'RegionalBeatReporting' | 'SocialAggregators' | 'ComedyAndSatire' | 'DataAndAnalytics' | 'VeteranPerspectives' | 'TacticalAnalysis' | 'SalaryCapAndBusiness' | 'HooperCulture';
   probability: number;
