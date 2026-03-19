@@ -1,5 +1,5 @@
 import { GameState, Email, NBAPlayer as Player, UserAction } from '../../../types';
-import { getAllReferees } from '../../../data/photos';
+import { getAllReferees, getPlayerPhoto } from '../../../data/photos';
 
 export const handleCommunication = (state: GameState, action: UserAction, result: any, dateString: string) => {
     let updatedInbox = [...state.inbox];
@@ -100,7 +100,7 @@ export const handleCommunication = (state: GameState, action: UserAction, result
             } else {
                 const player = state.players.find(p => p.name.toLowerCase() === msg.sender.toLowerCase());
                 if (player) {
-                    avatarUrl = player.imgURL;
+                    avatarUrl = getPlayerPhoto(player.imgURL);
                 }
             }
         }

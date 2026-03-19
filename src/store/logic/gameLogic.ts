@@ -585,7 +585,7 @@ export const processTurn = async (state: GameState, action: UserAction) => {
         inbox: [...uniqueNewEmails, ...updatedInbox],
         chats: updatedChats,
         news: [...uniqueNewNews, ...state.news],
-        socialFeed: [...uniqueNewPosts, ...state.socialFeed],
+        socialFeed: [...uniqueNewPosts, ...state.socialFeed].slice(0, 500),
         teams: stateWithSim.teams,
         schedule: finalSchedule,
         players: updatedPlayers,
