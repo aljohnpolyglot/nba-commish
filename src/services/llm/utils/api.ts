@@ -179,6 +179,7 @@ async function callViaGeminiWorker(params: GenerateContentParameters): Promise<G
   }
 
   const data = await response.json();
+  console.log(`[LLM] Worker response from: ${data.provider || 'unknown'}`);
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
   return wrapText(text);
 }
@@ -278,6 +279,7 @@ export async function generateContentWithRetry(
     && !window.location.hostname.includes("localhost")
     && !window.location.hostname.includes("127.0.0.1");
   const isLocalDev = localKeys.length > 0 && !isProd;
+  console.log(`[LLM] isProd: ${isProd}, using: ${isProd ? 'Worker (Together→Gemini)' : 'Direct keys'}`);
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i];

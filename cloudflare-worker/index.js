@@ -1,5 +1,5 @@
 // cloudflare-worker/index.js
-// Gemini key rotation (primary) → Together AI (fallback)
+// Together AI (primary) → Gemini key rotation (fallback)
 
 const ALLOWED_ORIGINS = [
   "http://127.0.0.1:5500",
@@ -66,9 +66,7 @@ async function callGeminiWithRotation(keys, model, body) {
   return null; // all Gemini keys exhausted
 }
 
-async function callTogetherFallback(togetherKeys, geminiBody, corsHeaders) {
-  console.warn("[Worker] All Gemini keys exhausted — falling back to Together AI");
-
+async function callTogetherPrimary(togetherKeys, geminiBody, corsHeaders) {
   const shuffled = [...togetherKeys].sort(() => Math.random() - 0.5);
 
   // Convert Gemini body format → OpenAI messages
@@ -105,16 +103,17 @@ async function callTogetherFallback(togetherKeys, geminiBody, corsHeaders) {
     });
 
     if (res.ok) {
-      console.log(`[Worker] ✅ Together key #${i + 1} succeeded (fallback)`);
+      console.log(`[Worker] ✅ Together key #${i + 1} succeeded (primary)`);
       const data = await res.json();
       const text = data?.choices?.[0]?.message?.content ?? "";
 
       // Wrap in Gemini-shaped response so client code needs no changes
       const wrapped = {
         candidates: [{ content: { parts: [{ text }] } }],
+        provider: 'together-ai',
       };
       return Response.json(wrapped, {
-        headers: { ...corsHeaders, "X-Provider-Used": "together-fallback" },
+        headers: { ...corsHeaders, "X-Provider-Used": "together" },
       });
     }
 
@@ -168,41 +167,40 @@ export default {
     const model = url.searchParams.get("model") || "gemini-2.5-flash";
     const body  = await request.text();
 
-    console.log(`[Worker] model: ${model}, Gemini keys: ${geminiKeys.length}, Together keys: ${togetherKeys.length}`);
+    console.log(`[Worker] model: ${model}, Together keys: ${togetherKeys.length}, Gemini keys: ${geminiKeys.length}`);
 
-    // ── Gemini primary ────────────────────────────────────────────────────────
+    // ── Together AI primary ───────────────────────────────────────────────────
     try {
+      if (togetherKeys.length > 0) {
+        let parsedBody;
+        try { parsedBody = JSON.parse(body); } catch { parsedBody = {}; }
+
+        const togetherResponse = await callTogetherPrimary(togetherKeys, parsedBody, corsHeaders);
+        if (togetherResponse) return togetherResponse;
+      }
+
+      // ── Gemini fallback ───────────────────────────────────────────────────
+      console.warn("[Worker] All Together keys exhausted — falling back to Gemini");
+
       if (geminiKeys.length > 0) {
         const geminiResponse = await callGeminiWithRotation(geminiKeys, model, body);
 
         if (geminiResponse && geminiResponse.ok) {
-          const responseHeaders = new Headers(geminiResponse.headers);
-          Object.entries(corsHeaders).forEach(([k, v]) => responseHeaders.set(k, v));
-          responseHeaders.set("X-Provider-Used", "gemini");
-          return new Response(geminiResponse.body, {
-            status: geminiResponse.status,
-            headers: responseHeaders,
+          const geminiData = await geminiResponse.json();
+          return Response.json({ ...geminiData, provider: 'gemini' }, {
+            headers: { ...corsHeaders, "X-Provider-Used": "gemini-fallback" },
           });
         }
 
         // Non-retriable Gemini error (400/403) — surface it directly
         if (geminiResponse && !geminiResponse.ok) {
           const errorBody = await geminiResponse.json().catch(() => ({}));
-          console.error(`[Worker] Gemini non-retriable error: ${geminiResponse.status}`);
+          console.error(`[Worker] Gemini fallback non-retriable error: ${geminiResponse.status}`);
           return Response.json(
             { error: "Gemini API request failed.", details: errorBody },
             { status: geminiResponse.status, headers: corsHeaders }
           );
         }
-      }
-
-      // ── Together AI fallback ────────────────────────────────────────────────
-      if (togetherKeys.length > 0) {
-        let parsedBody;
-        try { parsedBody = JSON.parse(body); } catch { parsedBody = {}; }
-
-        const fallbackResponse = await callTogetherFallback(togetherKeys, parsedBody, corsHeaders);
-        if (fallbackResponse) return fallbackResponse;
       }
 
       // All providers exhausted
