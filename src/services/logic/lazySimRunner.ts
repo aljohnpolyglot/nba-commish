@@ -90,6 +90,8 @@ export const runLazySim = async (
   // Force LLM off for the entire lazy sim
   const originalSettings = SettingsManager.getSettings();
   SettingsManager.saveSettings({ ...originalSettings, enableLLM: false, gameSpeed: 10 });
+  const restoreOnUnload = () => SettingsManager.saveSettings(originalSettings);
+  window.addEventListener('beforeunload', restoreOnUnload);
 
   let state = { ...initialState };
   const firedEvents = new Set<string>();
@@ -156,11 +158,19 @@ export const runLazySim = async (
         ...stateWithSim,
         players: updatedPlayers,
         draftPicks: updatedDraftPicks,
+        boxScores: [
+          ...(stateWithSim.boxScores || []),
+          ...allSimResults.map(r => ({ ...r, date: r.date || stateWithSim.date }))
+        ],
       };
       daysComplete += batchDays;
 
-      // Advance past the last simulated day so the next batch starts fresh
-      state = advanceDateByOne(state);
+      // Advance past the last simulated day so the next batch starts fresh,
+      // but only if we haven't reached the target yet
+      const currentNormAfterSim = normalizeDate(stateWithSim.date);
+      if (currentNormAfterSim < targetNorm) {
+        state = advanceDateByOne(state);
+      }
 
       currentPhase = getPhaseLabel(normalizeDate(state.date));
       report();
@@ -184,6 +194,7 @@ export const runLazySim = async (
       }
     }
   } finally {
+    window.removeEventListener('beforeunload', restoreOnUnload);
     SettingsManager.saveSettings(originalSettings);
   }
 

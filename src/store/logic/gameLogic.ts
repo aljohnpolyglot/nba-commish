@@ -108,12 +108,6 @@ export const processTurn = async (state: GameState, action: UserAction) => {
     updatedPlayers = afterExecutive.p;
     updatedDraftPicks = afterExecutive.d;
 
-    if (action.type === 'SIGN_FREE_AGENT') {
-        updatedPlayers = updatedPlayers.map(p => 
-            p.internalId === action.payload.playerId ? { ...p, tid: action.payload.teamId, status: 'Active' } : p
-        );
-    }
-
     // 7. Handle Social and News
     const { uniqueNewPosts, uniqueNewNews } = await handleSocialAndNews(state, result, allSimResults, updatedPlayers, stateWithSim.teams, daysToSimulate, stateWithSim.date);
 
@@ -565,7 +559,7 @@ export const processTurn = async (state: GameState, action: UserAction) => {
         date: dateString,
         stats: newStats,
         leagueStats: newLeagueStats,
-        historicalStats: [...state.historicalStats, historicalPoint],
+        historicalStats: [...state.historicalStats, historicalPoint].slice(-365),
         inbox: [...uniqueNewEmails, ...updatedInbox],
         chats: updatedChats,
         news: [...uniqueNewNews, ...state.news],
@@ -576,7 +570,11 @@ export const processTurn = async (state: GameState, action: UserAction) => {
         draftPicks: updatedDraftPicks,
         christmasGames: result.christmasGames || state.christmasGames,
         globalGames: result.globalGames || state.globalGames,
-        boxScores: [...(state.boxScores || []), ...boxScoresWithDate],
+        boxScores: (() => {
+            const existingIds = new Set((state.boxScores || []).map(b => b.gameId));
+            const deduped = boxScoresWithDate.filter(b => !existingIds.has(b.gameId));
+            return [...(state.boxScores || []), ...deduped];
+        })(),
         history: [...state.history, result.outcomeText],
         isProcessing: false,
         isWatchingGame: false,

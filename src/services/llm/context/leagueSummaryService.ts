@@ -1,4 +1,5 @@
 import { NBATeam, NBAPlayer, GameResult } from '../../../types';
+import { AwardService } from '../../logic/AwardService';
 
 export const generateLeagueSummaryContext = (
     teams: NBATeam[],
@@ -37,7 +38,7 @@ export const generateLeagueSummaryContext = (
         loseStreaks.slice(0, 5).forEach(t => context += `${t.name}: ${t.streak?.count}L\n`);
     }
 
-    // 3. League Leaders (Top 20 Points, Rebounds, Assists)
+    // 3. League Leaders (Top 10 Points, Rebounds, Assists)
     const currentSeason = 2026;
     const playerStats = players.map(p => {
         const stat = p.stats?.find(s => s.season === currentSeason && !s.playoffs);
@@ -53,19 +54,20 @@ export const generateLeagueSummaryContext = (
     }).filter(p => p !== null && p.gp >= 3) as any[];
 
     if (playerStats.length > 0) {
-        context += "\nLeague Leaders (Top 20):\n";
-        
-        const ptsLeaders = [...playerStats].sort((a, b) => b.ppg - a.ppg).slice(0, 20);
+        context += "\nLeague Leaders (Top 10):\n";
+
+        const ptsLeaders = [...playerStats].sort((a, b) => b.ppg - a.ppg).slice(0, 10);
         context += `PTS: ${ptsLeaders.map(p => `${p.name} (${p.ppg.toFixed(1)})`).join(', ')}\n`;
 
-        const rebLeaders = [...playerStats].sort((a, b) => b.rpg - a.rpg).slice(0, 20);
+        const rebLeaders = [...playerStats].sort((a, b) => b.rpg - a.rpg).slice(0, 10);
         context += `REB: ${rebLeaders.map(p => `${p.name} (${p.rpg.toFixed(1)})`).join(', ')}\n`;
 
-        const astLeaders = [...playerStats].sort((a, b) => b.apg - a.apg).slice(0, 20);
+        const astLeaders = [...playerStats].sort((a, b) => b.apg - a.apg).slice(0, 10);
         context += `AST: ${astLeaders.map(p => `${p.name} (${p.apg.toFixed(1)})`).join(', ')}\n`;
     }
 
     // 4. Recent Notable Performances & Bad Games (from recentGames)
+    const days = recentGames && recentGames.length > 0 ? new Set(recentGames.map(g => g.date)).size : 1;
     if (recentGames && recentGames.length > 0) {
         const notablePerformances: string[] = [];
         const badPerformances: string[] = [];
@@ -104,13 +106,12 @@ export const generateLeagueSummaryContext = (
 
         if (notablePerformances.length > 0) {
             context += "\nRecent Crazy Box Scores:\n";
-            // Take up to 15 most recent notable performances
-            notablePerformances.slice(-15).forEach(p => context += `- ${p}\n`);
+            notablePerformances.slice(-Math.min(8 * days, 40)).forEach(p => context += `- ${p}\n`);
         }
-        
+
         if (badPerformances.length > 0) {
             context += "\nRecent Bad Games from Stars:\n";
-            badPerformances.slice(-10).forEach(p => context += `- ${p}\n`);
+            badPerformances.slice(-Math.min(5 * days, 25)).forEach(p => context += `- ${p}\n`);
         }
     }
     
@@ -123,9 +124,9 @@ export const generateLeagueSummaryContext = (
         });
     }
 
-    // 6. Top 100 Players in the League
-    const top100 = [...players].sort((a, b) => b.overallRating - a.overallRating).slice(0, 100);
-    context += "\nTop 100 Players in the League:\n";
+    // 6. Top 30 Players in the League
+    const top100 = [...players].sort((a, b) => b.overallRating - a.overallRating).slice(0, 30);
+    context += "\nTop 30 Players in the League:\n";
     top100.forEach((p, i) => {
         const team = teams.find(t => t.id === p.tid)?.abbrev || 'FA';
         context += `${i + 1}. ${p.name} (${team}, OVR: ${p.overallRating})\n`;
@@ -142,6 +143,20 @@ export const generateLeagueSummaryContext = (
             const team = teams.find(t => t.id === p.tid)?.abbrev || 'FA';
             context += `- ${p.name} (${team}, OVR: ${p.overallRating}): ${p.injury.type} (${p.injury.gamesRemaining} games remaining)\n`;
         });
+    }
+
+    try {
+        const races = AwardService.calculateAwardRaces(players, teams, currentSeason);
+        if (races.mvp.length > 0) {
+            context += "\nAward Races:\n";
+            context += `MVP: ${races.mvp.slice(0, 3).map(c => `${c.player.name} (${c.odds})`).join(', ')}\n`;
+            context += `DPOY: ${races.dpoy.slice(0, 3).map(c => `${c.player.name} (${c.odds})`).join(', ')}\n`;
+            context += `ROTY: ${races.roty.slice(0, 3).map(c => `${c.player.name} (${c.odds})`).join(', ')}\n`;
+            context += `6MOY: ${races.smoy.slice(0, 3).map(c => `${c.player.name} (${c.odds})`).join(', ')}\n`;
+            context += `MIP: ${races.mip.slice(0, 3).map(c => `${c.player.name} (${c.odds})`).join(', ')}\n`;
+        }
+    } catch (e) {
+        // Award races are non-critical, don't crash the sim
     }
 
     context += "\n----------------------\n";

@@ -102,10 +102,28 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         let newTeams = prev.teams;
         if (result.homeTeamId > 0 && result.awayTeamId > 0) {
           newTeams = prev.teams.map((t: any) => {
-            if (t.id === result.homeTeamId)
-              return result.homeScore > result.awayScore ? { ...t, wins: t.wins + 1 } : { ...t, losses: t.losses + 1 };
-            if (t.id === result.awayTeamId)
-              return result.awayScore > result.homeScore ? { ...t, wins: t.wins + 1 } : { ...t, losses: t.losses + 1 };
+            if (t.id === result.homeTeamId) {
+              const won = result.homeScore > result.awayScore;
+              return {
+                ...t,
+                wins: won ? t.wins + 1 : t.wins,
+                losses: won ? t.losses : t.losses + 1,
+                streak: won
+                  ? (t.streak?.type === 'W' ? { type: 'W', count: t.streak.count + 1 } : { type: 'W', count: 1 })
+                  : (t.streak?.type === 'L' ? { type: 'L', count: t.streak.count + 1 } : { type: 'L', count: 1 })
+              };
+            }
+            if (t.id === result.awayTeamId) {
+              const won = result.awayScore > result.homeScore;
+              return {
+                ...t,
+                wins: won ? t.wins + 1 : t.wins,
+                losses: won ? t.losses : t.losses + 1,
+                streak: won
+                  ? (t.streak?.type === 'W' ? { type: 'W', count: t.streak.count + 1 } : { type: 'W', count: 1 })
+                  : (t.streak?.type === 'L' ? { type: 'L', count: t.streak.count + 1 } : { type: 'L', count: 1 })
+              };
+            }
             return t;
           });
         }

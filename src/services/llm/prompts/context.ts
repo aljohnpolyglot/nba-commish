@@ -84,7 +84,7 @@ export const generateLeagueContext = (
             !p.hof                // exclude retired HOF legends
         )
         .sort((a, b) => (b?.overallRating || 0) - (a?.overallRating || 0))
-        .slice(0, 150)
+        .slice(0, 50)
         .map(p => {
             const team = teams.find(t => t.id === p.tid);
             const age = p.born?.year ? new Date().getFullYear() - p.born.year : 25;
