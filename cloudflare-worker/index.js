@@ -12,6 +12,7 @@ const ALLOWED_ORIGINS = [
 ];
 
 const TOGETHER_MODEL = "meta-llama/Llama-3.3-70B-Instruct-Turbo";
+const ENABLE_GEMINI_FALLBACK = false; // set to true to re-enable Gemini fallback
 
 function getGeminiKeys(env) {
   return [
@@ -181,9 +182,8 @@ export default {
       }
 
       // ── Gemini fallback ───────────────────────────────────────────────────
-      console.warn("[Worker] All Together keys exhausted — falling back to Gemini");
-
-      if (geminiKeys.length > 0) {
+      if (ENABLE_GEMINI_FALLBACK && geminiKeys.length > 0) {
+        console.warn("[Worker] All Together keys exhausted — falling back to Gemini");
         const geminiResponse = await callGeminiWithRotation(geminiKeys, model, body);
 
         if (geminiResponse && geminiResponse.ok) {
@@ -193,7 +193,6 @@ export default {
           });
         }
 
-        // Non-retriable Gemini error (400/403) — surface it directly
         if (geminiResponse && !geminiResponse.ok) {
           const errorBody = await geminiResponse.json().catch(() => ({}));
           console.error(`[Worker] Gemini fallback non-retriable error: ${geminiResponse.status}`);
@@ -204,9 +203,10 @@ export default {
         }
       }
 
-      // All providers exhausted
+      // Together AI failed — no fallback active
+      console.warn("[Worker] Together AI exhausted, ENABLE_GEMINI_FALLBACK =", ENABLE_GEMINI_FALLBACK);
       return Response.json(
-        { error: "All API providers are exhausted. Try again later." },
+        { error: "Together AI failed, no fallback available" },
         { status: 503, headers: corsHeaders }
       );
 
