@@ -99,6 +99,7 @@ async function callTogetherPrimary(togetherKeys, geminiBody, corsHeaders) {
         messages,
         max_tokens: maxTokens,
         temperature: 0.7,
+        response_format: { type: "json_object" },
       }),
     });
 
