@@ -1,7 +1,9 @@
 // src/services/llm/utils/api.ts
 // Routing strategy:
-//   Chat (interaction) → Groq Worker (fast, high quota, OpenAI-compatible)
-//   Everything else   → Gemini direct keys → Gemini Cloudflare Worker → workerProviders
+//   Chat (interaction) → Groq Worker → Gemini Worker fallback
+//   Non-chat localhost → Direct Gemini keys → Gemini Worker (Together AI primary) → workerProviders
+//   Non-chat prod      → Gemini Worker (Together AI primary, Gemini fallback) → workerProviders
+//   (Direct Gemini skipped in prod — Cloudflare Pages IPs are geo-blocked by Gemini)
 
 import {
   GoogleGenAI,
@@ -270,7 +272,12 @@ export async function generateContentWithRetry(
   const tier = settings.llmPerformance as 1 | 2 | 3;
   const models = MODEL_TIERS[tier] ?? MODEL_TIERS[2];
   const localKeys = getAllKeys();
-  const isLocalDev = localKeys.length > 0;
+  // VITE_ keys are bundled into the prod build, so check hostname to avoid
+  // calling Gemini directly from Cloudflare Pages (geo-blocked datacenter IPs).
+  const isProd = typeof window !== "undefined"
+    && !window.location.hostname.includes("localhost")
+    && !window.location.hostname.includes("127.0.0.1");
+  const isLocalDev = localKeys.length > 0 && !isProd;
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
