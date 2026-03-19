@@ -93,7 +93,19 @@ export const fetchRefereeData = async (): Promise<void> => {
   if (_fetched) return;
   try {
     const res = await fetch(REFEREE_DATA_GIST);
-    if (res.ok) _refs = await res.json();
+    if (res.ok) {
+      const text = await res.text();
+      const start = text.indexOf('[');
+      const end = text.lastIndexOf(']');
+      if (start !== -1 && end !== -1) {
+        const json = text.slice(start, end + 1)
+          .replace(/\/\/[^\n]*/g, '')
+          .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3')
+          .replace(/'/g, '"')
+          .replace(/,(\s*[}\]])/g, '$1');
+        _refs = JSON.parse(json);
+      }
+    }
     _fetched = true;
   } catch (e) {
     console.error('[RefereeData] fetch failed', e);

@@ -22,7 +22,19 @@ export const fetchCoachData = async (): Promise<void> => {
       fetch(COACHES_SLUG_GIST),
     ]);
     if (photosRes.ok) _photos = await photosRes.json();
-    if (slugsRes.ok)  _slugs  = await slugsRes.json();
+    if (slugsRes.ok) {
+      const text = await slugsRes.text();
+      const start = text.indexOf('[');
+      const end = text.lastIndexOf(']');
+      if (start !== -1 && end !== -1) {
+        const json = text.slice(start, end + 1)
+          .replace(/\/\/[^\n]*/g, '')
+          .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3')
+          .replace(/'/g, '"')
+          .replace(/,(\s*[}\]])/g, '$1');
+        _slugs = JSON.parse(json);
+      }
+    }
     _fetched = true;
   } catch (e) {
     console.error('[CoachData] fetch failed', e);
