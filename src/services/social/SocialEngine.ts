@@ -233,7 +233,7 @@ export class SocialEngine {
               postDate.setHours(23 - Math.floor(Math.random() * 12), 59 - Math.floor(Math.random() * 60));
 
               posts.push({
-                  id:                   Math.random().toString(36).substr(2, 9),
+                  id:                   crypto.randomUUID(),
                   author:               handle.name,
                   handle:               `@${handle.handle}`,
                   avatarUrl,

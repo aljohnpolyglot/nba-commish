@@ -47,7 +47,7 @@ export const calculateNewStats = (state: GameState, action: UserAction, result: 
         publicApproval: Math.round(Math.max(0, Math.min(100, state.stats.publicApproval + capChange(combinedStatChanges.publicApproval || 0)))),
         ownerApproval: Math.round(Math.max(0, Math.min(100, state.stats.ownerApproval + capChange(combinedStatChanges.ownerApproval || 0)))),
         playerApproval: Math.round(Math.max(0, Math.min(100, state.stats.playerApproval + capChange(combinedStatChanges.playerApproval || 0)))),
-        leagueFunds: Number((Math.max(0, state.stats.leagueFunds + (combinedStatChanges.leagueFunds || 0))).toFixed(2)),
+        leagueFunds: Number((Math.max(0, state.stats.leagueFunds + (combinedStatChanges.leagueFunds || 0) + (action.type === 'FINE_PERSON' ? (action.payload?.amount || 0) / 1000000 : 0))).toFixed(2)),
         personalWealth: Number((Math.max(0, state.stats.personalWealth + (totalNetPay / 1000000) + (combinedStatChanges.personalWealth || 0))).toFixed(2)),
         legacy: Math.round(Math.max(0, Math.min(100, state.stats.legacy + capChange(combinedStatChanges.legacy || 0)))),
     };

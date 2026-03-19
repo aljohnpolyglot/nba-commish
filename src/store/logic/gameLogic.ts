@@ -108,6 +108,28 @@ export const processTurn = async (state: GameState, action: UserAction) => {
     updatedPlayers = afterExecutive.p;
     updatedDraftPicks = afterExecutive.d;
 
+    // Re-apply action-handler suspensions/injuries — processSimulationResults may have
+    // decremented them on the same turn they were applied; the action version must win.
+    if (result.players) {
+        const actionPlayerMap = new Map<string, any>(
+            result.players.map((p: any) => [p.internalId, p])
+        );
+        updatedPlayers = updatedPlayers.map(p => {
+            const actionVersion = actionPlayerMap.get(p.internalId);
+            if (!actionVersion) return p;
+            const patches: any = {};
+            if (actionVersion.suspension &&
+                (!p.suspension || actionVersion.suspension.gamesRemaining > p.suspension.gamesRemaining)) {
+                patches.suspension = actionVersion.suspension;
+            }
+            if (actionVersion.injury &&
+                (!p.injury || actionVersion.injury.gamesRemaining > p.injury.gamesRemaining)) {
+                patches.injury = actionVersion.injury;
+            }
+            return Object.keys(patches).length > 0 ? { ...p, ...patches } : p;
+        });
+    }
+
     // 7. Handle Social and News
     const { uniqueNewPosts, uniqueNewNews } = await handleSocialAndNews(state, result, allSimResults, updatedPlayers, stateWithSim.teams, daysToSimulate, stateWithSim.date);
 

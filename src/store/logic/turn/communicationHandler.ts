@@ -64,8 +64,19 @@ export const handleCommunication = (state: GameState, action: UserAction, result
 
     let updatedChats = [...state.chats];
     newChatMessages.forEach(msg => {
-        const targetId = msg.sender;
-        let chatIndex = updatedChats.findIndex(c => c.participants.includes(targetId));
+        const matchedPlayer = state.players.find(
+            p => p.name.toLowerCase() === msg.sender.toLowerCase()
+        );
+        const matchedStaff = [
+            ...(state.staff?.owners || []),
+            ...(state.staff?.gms || []),
+            ...(state.staff?.coaches || []),
+        ].find(s => s.name.toLowerCase() === msg.sender.toLowerCase());
+        const targetId = matchedPlayer?.internalId || matchedStaff?.name || msg.sender;
+        let chatIndex = updatedChats.findIndex(c =>
+            c.participants.includes(targetId) ||
+            c.participants.includes(msg.sender)
+        );
         let chat;
         let avatarUrl = msg.playerPortraitUrl;
 
