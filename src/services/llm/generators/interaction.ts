@@ -12,6 +12,17 @@ import { OUTCOME_SCHEMA, SOCIAL_THREAD_SCHEMA } from "../../schemas";
 import { fetchAvatarData, getAvatarByHandle, getAvatarByName } from "../../avatarService";
 import { SettingsManager } from "../../SettingsManager";
 
+function cleanLLMJson(raw: string): string {
+  return raw
+    .replace(/^```json\s*/im, '')
+    .replace(/^```\s*/im, '')
+    .replace(/```\s*$/im, '')
+    .replace(/^#+\s+.+$/gm, '')
+    .replace(/^\s*[-*]\s+/gm, '')
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')
+    .trim();
+}
+
 export async function sendChatMessage(
   state: GameState,
   targetName: string,
@@ -105,8 +116,9 @@ export async function sendDirectMessage(
 
     const text = response.text;
     if (!text) throw new Error("No response from LLM");
-    const data = JSON.parse(text);
-    
+    const cleaned = cleanLLMJson(text);
+    const data = JSON.parse(cleaned);
+
     // Post-process avatars
     const avatars = await fetchAvatarData();
     if (data.newSocialPosts) {
@@ -150,8 +162,9 @@ export async function generateSocialThread(originalPost: SocialPost, state: Game
 
     const text = response.text;
     if (!text) throw new Error("No response from LLM");
-    const data = JSON.parse(text);
-    
+    const cleaned = cleanLLMJson(text);
+    const data = JSON.parse(cleaned);
+
     const avatars = await fetchAvatarData();
     
     return data.replies.map((reply: any) => ({

@@ -14,6 +14,17 @@ import { fetchAvatarData, getAvatarByHandle, getAvatarByName } from "../../avata
 import { generateLeagueSummaryContext } from "../context/leagueSummaryService";
 import { SettingsManager } from "../../SettingsManager";
 
+function cleanLLMJson(raw: string): string {
+  return raw
+    .replace(/^```json\s*/im, '')
+    .replace(/^```\s*/im, '')
+    .replace(/```\s*$/im, '')
+    .replace(/^#+\s+.+$/gm, '')
+    .replace(/^\s*[-*]\s+/gm, '')
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')
+    .trim();
+}
+
 const getModelForAction = (actionType?: string): string => {
     return SettingsManager.getModelForTask('simulation');
 };
@@ -88,25 +99,9 @@ export async function advanceDay(currentState: GameState, action: UserAction | n
     const text = response.text;
     if (!text) throw new Error("No response from LLM");
 
-    const cleanJson = (raw: string): string => {
-      return raw
-        .replace(/^```json\s*/i, '')   // strip opening ```json
-        .replace(/^```\s*/i, '')       // strip opening ```
-        .replace(/```\s*$/i, '')       // strip closing ```
-        .replace(/^#+\s+.+$/gm, '')    // strip markdown headers ###
-        .replace(/^\s*[-*]\s+/gm, '')  // strip markdown bullets
-        .trim();
-    };
-
     let data: any;
     try {
-      const rawText = cleanJson(text);
-      // Clamp to outermost JSON object
-      const firstBrace = rawText.indexOf('{');
-      const lastBrace = rawText.lastIndexOf('}');
-      const cleaned = firstBrace !== -1 && lastBrace > firstBrace
-        ? rawText.substring(firstBrace, lastBrace + 1)
-        : rawText;
+      const cleaned = cleanLLMJson(text);
       data = JSON.parse(cleaned);
     } catch (parseErr) {
       console.warn('[LLM] advanceDay JSON parse failed — using empty fallback', parseErr);
@@ -170,10 +165,8 @@ export async function generateLeaguePulse(
 
         let data: any = {};
         try {
-            const rawText = text.trim();
-            const lastBrace = rawText.lastIndexOf('}');
-            const safeTxt = lastBrace > 0 ? rawText.substring(0, lastBrace + 1) : rawText;
-            data = JSON.parse(safeTxt);
+            const cleaned = cleanLLMJson(text);
+            data = JSON.parse(cleaned);
         } catch (e) {
             console.warn('[LLM] League pulse JSON truncated — using empty fallback');
             data = { newEmails: [], newNews: [], newSocialPosts: [], replies: [] };
