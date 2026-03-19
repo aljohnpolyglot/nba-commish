@@ -1,4 +1,5 @@
-const REFEREE_DATA_GIST = "https://gist.githubusercontent.com/aljohnpolyglot/4d8d8447ec12377ce79914c3a8b9eacb/raw/f3c625bd8186bdb7626d90488512b5231d420660/referee_data";
+const REFEREE_DATA_GIST = "https://gist.githubusercontent.com/aljohnpolyglot/4d8d8447ec12377ce79914c3a8b9eacb/raw/a1b303d26892cb21652ace96c7c3bedabecac579/referee_data";
+const REFEREE_PICS_GIST = "https://gist.githubusercontent.com/aljohnpolyglot/39217471bf53cc1f6f5673823e0e2da1/raw/22b6f73155a3e6a8f4b652d41ab0738f1891189c/referee_pics";
 
 export interface RefereeData {
   id: string;
@@ -92,19 +93,15 @@ let _fetched = false;
 export const fetchRefereeData = async (): Promise<void> => {
   if (_fetched) return;
   try {
-    const res = await fetch(REFEREE_DATA_GIST);
-    if (res.ok) {
-      const text = await res.text();
-      const start = text.indexOf('[');
-      const end = text.lastIndexOf(']');
-      if (start !== -1 && end !== -1) {
-        const json = text.slice(start, end + 1)
-          .replace(/\/\/[^\n]*/g, '')
-          .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3')
-          .replace(/'/g, '"')
-          .replace(/,(\s*[}\]])/g, '$1');
-        _refs = JSON.parse(json);
-      }
+    const [dataRes, picsRes] = await Promise.all([
+      fetch(REFEREE_DATA_GIST),
+      fetch(REFEREE_PICS_GIST),
+    ]);
+    if (dataRes.ok) _refs = await dataRes.json();
+    if (picsRes.ok) {
+      const pics: { name: string; photo_url: string }[] = await picsRes.json();
+      const photoMap = new Map(pics.map(p => [p.name, p.photo_url]));
+      _refs = _refs.map(r => ({ ...r, photo_url: photoMap.get(r.name) ?? r.photo_url }));
     }
     _fetched = true;
   } catch (e) {
