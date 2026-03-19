@@ -3,6 +3,7 @@ import { useGame } from '../../store/GameContext';
 import { SocialPost, SocialSource } from '../../types';
 import { UserPlus, UserMinus } from 'lucide-react';
 import { formatTwitterDate } from '../../utils/helpers';
+import { getUnavatarUrl, canUseUnavatar } from '../../data/photos/social';
 
 const SourceIcon: React.FC<{ source: SocialSource }> = ({ source }) => {
   if (source === 'TwitterX') {
@@ -46,6 +47,9 @@ const SocialPostCard: React.FC<{ post: SocialPost }> = ({ post }) => {
     }
   };
 
+  const [unavatarUrl, setUnavatarUrl] = React.useState<string>('');
+  const [unavatarFailed, setUnavatarFailed] = React.useState(false);
+
   const isDefaultAvatar = post.avatarUrl?.includes('default_profile') || post.avatarUrl?.includes('placeholder') || !post.avatarUrl;
   const finalAvatarUrl = isDefaultAvatar ? (post.playerPortraitUrl || post.teamLogoUrl || post.avatarUrl) : post.avatarUrl;
 
@@ -53,15 +57,31 @@ const SocialPostCard: React.FC<{ post: SocialPost }> = ({ post }) => {
     <div className="bg-zinc-800/50 p-4 rounded-xl border border-zinc-700/50 flex items-start space-x-4 hover:bg-zinc-800 transition-colors group/card">
       <div className="flex-shrink-0 w-12 h-12 relative">
         {finalAvatarUrl ? (
-          <img 
-            src={finalAvatarUrl} 
-            alt={post.author} 
-            className={`h-12 w-12 rounded-full object-cover bg-zinc-700 ${!isDefaultAvatar || post.playerPortraitUrl ? '' : 'p-2'}`} 
-            referrerPolicy="no-referrer" 
+          <img
+            src={finalAvatarUrl}
+            alt={post.author}
+            className={`h-12 w-12 rounded-full object-cover bg-zinc-700 ${!isDefaultAvatar || post.playerPortraitUrl ? '' : 'p-2'}`}
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              // On portrait fail, try unavatar if Twitter post and budget remaining
+              if (post.source === 'TwitterX' && !unavatarFailed && canUseUnavatar()) {
+                const url = getUnavatarUrl(post.handle);
+                if (url) { setUnavatarUrl(url); return; }
+              }
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : post.source === 'TwitterX' && !unavatarFailed && canUseUnavatar() ? (
+          <img
+            src={unavatarUrl || getUnavatarUrl(post.handle)}
+            alt={post.author}
+            className="h-12 w-12 rounded-full object-cover bg-zinc-700"
+            referrerPolicy="no-referrer"
+            onError={() => setUnavatarFailed(true)}
           />
         ) : (
           <div className="h-12 w-12 flex items-center justify-center bg-zinc-700 rounded-full">
-              <SourceIcon source={post.source} />
+            <SourceIcon source={post.source} />
           </div>
         )}
       </div>
