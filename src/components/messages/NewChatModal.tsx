@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { getAllReferees, getRefereePhoto, fetchRefereeData } from '../../data/photos';
 import { useGame } from '../../store/GameContext';
 import { Search, X, Filter } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -10,12 +11,16 @@ interface NewChatModalProps {
   onSelect: (contact: any) => void;
 }
 
-type FilterType = 'All' | 'NBA' | 'Euroleague' | 'PBA' | 'WNBA' | 'Draft Prospect' | 'Owner' | 'GM' | 'Coach' | 'Retired';
+type FilterType = 'All' | 'NBA' | 'Euroleague' | 'PBA' | 'WNBA' | 'Draft Prospect' | 'Owner' | 'GM' | 'Coach' | 'Retired' | 'Referee';
 
 export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect }) => {
   const { state } = useGame();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
+
+  React.useEffect(() => {
+    fetchRefereeData();
+  }, []);
 
   const contacts = useMemo(() => {
     const allContacts: any[] = [];
@@ -87,9 +92,23 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
         });
     }
 
+    // Referees
+    getAllReferees().forEach(ref => {
+      allContacts.push({
+        id: `ref-${ref.id}`,
+        name: ref.name,
+        role: `NBA Official • #${ref.id}`,
+        org: 'NBA Officials',
+        league: 'Referee',
+        avatarUrl: getRefereePhoto(ref.name),
+        ovr: 0,
+        teamLogoUrl: undefined
+      });
+    });
+
     return allContacts.sort((a, b) => {
-        const isStaffA = ['Owner', 'GM', 'Coach'].includes(a.league);
-        const isStaffB = ['Owner', 'GM', 'Coach'].includes(b.league);
+        const isStaffA = ['Owner', 'GM', 'Coach', 'Referee'].includes(a.league);
+        const isStaffB = ['Owner', 'GM', 'Coach', 'Referee'].includes(b.league);
         
         if (isStaffA && isStaffB) {
             // Both are staff, sort alphabetically by team (org)
@@ -144,7 +163,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-            {(['All', 'NBA', 'Euroleague', 'PBA', 'WNBA', 'Draft Prospect', 'Owner', 'GM', 'Coach', 'Retired'] as FilterType[]).map((filter) => (
+            {(['All', 'NBA', 'Euroleague', 'PBA', 'WNBA', 'Draft Prospect', 'Owner', 'GM', 'Coach', 'Retired', 'Referee'] as FilterType[]).map((filter) => (
                 <button
                     key={filter}
                     onClick={() => setActiveFilter(filter)}
