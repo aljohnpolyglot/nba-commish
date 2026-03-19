@@ -13,7 +13,8 @@
       "WebFetch(domain:i.imgur.com)",
       "Bash(xargs grep:*)",
       "Bash(wrangler deploy:*)",
-      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")"
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
+      "Bash(npx wrangler:*)"
     ]
   }
 }
