@@ -151,6 +151,8 @@ ${dm.messages.map((m: any) => `  [${m.senderName}]: ${m.text}`).join('\n')}`).jo
     }
 
     return `
+CRITICAL FORMATTING RULE: Respond with ONLY raw JSON. No markdown, no backticks, no headers, no bullet points. Start your response with { and end with }. Nothing else.
+
 ${leagueContext}
 ${leagueSummaryContext}
 

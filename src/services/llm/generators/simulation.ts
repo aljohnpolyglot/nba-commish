@@ -88,16 +88,25 @@ export async function advanceDay(currentState: GameState, action: UserAction | n
     const text = response.text;
     if (!text) throw new Error("No response from LLM");
 
+    const cleanJson = (raw: string): string => {
+      return raw
+        .replace(/^```json\s*/i, '')   // strip opening ```json
+        .replace(/^```\s*/i, '')       // strip opening ```
+        .replace(/```\s*$/i, '')       // strip closing ```
+        .replace(/^#+\s+.+$/gm, '')    // strip markdown headers ###
+        .replace(/^\s*[-*]\s+/gm, '')  // strip markdown bullets
+        .trim();
+    };
+
     let data: any;
     try {
-      // Strip markdown code fences if present (Groq often returns ```json ... ```)
-      let cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
+      const rawText = cleanJson(text);
       // Clamp to outermost JSON object
-      const firstBrace = cleaned.indexOf('{');
-      const lastBrace = cleaned.lastIndexOf('}');
-      if (firstBrace !== -1 && lastBrace > firstBrace) {
-        cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-      }
+      const firstBrace = rawText.indexOf('{');
+      const lastBrace = rawText.lastIndexOf('}');
+      const cleaned = firstBrace !== -1 && lastBrace > firstBrace
+        ? rawText.substring(firstBrace, lastBrace + 1)
+        : rawText;
       data = JSON.parse(cleaned);
     } catch (parseErr) {
       console.warn('[LLM] advanceDay JSON parse failed — using empty fallback', parseErr);
