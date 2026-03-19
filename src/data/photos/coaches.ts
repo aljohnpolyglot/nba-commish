@@ -1,5 +1,5 @@
-const COACH_PHOTOS_GIST = "https://gist.githubusercontent.com/aljohnpolyglot/60f5ef1e4d09066d1001a9acf3de127a/raw/dc4d96ce84d7ee647a315cd320cd1557a0253467/coach_photos.json";
-const COACHES_SLUG_GIST = "https://gist.githubusercontent.com/aljohnpolyglot/507a565da541f171a066ec546c3cdd57/raw/4ee6024d54aa947b57b7d1fc0df472fe77edc1d9/coahes_slug";
+const COACH_PHOTOS_GIST = "https://gist.githubusercontent.com/aljohnpolyglot/60f5ef1e4d09066d1001a9acf3de127a/raw/516852da634669f0f2cd68d6fb1ba5371cb5d15a/coach_photos.json";
+const COACHES_SLUG_GIST = "https://gist.githubusercontent.com/aljohnpolyglot/507a565da541f171a066ec546c3cdd57/raw/8126d3e15aeada369db649943a9486e08e7c3d7f/coahes_slug";
 
 export interface CoachData {
   name: string;
