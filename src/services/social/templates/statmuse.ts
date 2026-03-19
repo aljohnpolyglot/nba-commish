@@ -236,7 +236,7 @@ function getHistoricalHook(ctx: SocialContext): string | null {
         }, 0);
         if (tdCount <= 5) {
             const ordinals = ['1st', '2nd', '3rd', '4th', '5th'];
-            return `Just the ${ordinals[tdCount] ?? `${tdCount + 1}th`} triple-double of his career.`;
+            return `His ${ordinals[tdCount] ?? `${tdCount + 1}th`} triple-double of this season.`;
         }
     }
 
