@@ -247,6 +247,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
               <SortHeader label="STL" sortKey="stl" />
               <SortHeader label="BLK" sortKey="blk" />
               <SortHeader label="TOV" sortKey="tov" />
+              <SortHeader label="PF" sortKey="pf" />
               <SortHeader label="PTS" sortKey="pts" />
               <SortHeader label="+/-" sortKey="pm" />
               <SortHeader label="GmSc" sortKey="gameScore" />
@@ -278,6 +279,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                 <td className="px-2 py-3 text-right font-mono">{s.stl}</td>
                 <td className="px-2 py-3 text-right font-mono">{s.blk}</td>
                 <td className="px-2 py-3 text-right font-mono">{s.tov}</td>
+                <td className="px-2 py-3 text-right font-mono">{s.pf || 0}</td>
                 <td className="px-2 py-3 text-right font-mono font-bold text-white">{s.pts}</td>
                 <td className={`px-2 py-3 text-right font-mono ${(s.pm || 0) > 0 ? 'text-green-400' : (s.pm || 0) < 0 ? 'text-red-400' : 'text-slate-400'}`}>
                   {(s.pm || 0) > 0 ? '+' : ''}{s.pm || 0}

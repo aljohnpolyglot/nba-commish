@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { NBATeam, NBAPlayer, Game } from '../types';
 import { GameResult } from '../services/simulation/types';
 import { GameSimulator } from '../services/simulation/GameSimulator';
@@ -28,8 +28,10 @@ export function useLiveGame(
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(160);
+  const simulatedRef = useRef(false);
 
   useEffect(() => {
+    simulatedRef.current = false;
     setCurrentIndex(-1);
     setPlays([]);
     setIsPlaying(false);
@@ -37,6 +39,9 @@ export function useLiveGame(
     setBadgesLoaded(false);
 
     loadBadges().then(async () => {
+      if (simulatedRef.current) return;
+      simulatedRef.current = true;
+
       try {
         const result = precomputedResult ?? GameSimulator.simulateGame(homeTeam, awayTeam, players, game.gid, game.date, 50, homeOverridePlayers, awayOverridePlayers, undefined, undefined, riggedForTid);
         setFinalResult(result);
@@ -45,7 +50,7 @@ export function useLiveGame(
         console.log('Raw result:', window.__finalResult);
         const qs = result.quarterScores;
         const otCount = result.otCount ?? 0;
-        
+
         if (!result.homeStats || !result.awayStats || result.homeStats.length === 0 || result.awayStats.length === 0) {
           console.warn("Missing stats for game simulation, skipping genPlays");
           setPlays([]);
