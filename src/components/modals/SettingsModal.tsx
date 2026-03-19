@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { X, Settings2, Zap, Brain, Cpu } from 'lucide-react';
+import { X, Settings2, Zap, Cpu, Layers } from 'lucide-react';
 import { SettingsManager, GameSettings } from '../../services/SettingsManager';
 
-const AI_SPEED_OPTIONS = [
+const GAME_MODE_OPTIONS = [
   {
     value: 1 as const,
     label: '⚡ Fast',
-    description: 'Quickest responses, great for casual play. Best for low-end devices.',
+    description: 'Lean feeds, quick turns.',
   },
   {
     value: 2 as const,
     label: '⚖️ Balanced',
-    description: 'Best mix of speed and quality. Recommended for most players.',
+    description: 'Good mix of speed and detail.',
   },
   {
     value: 3 as const,
     label: '🧠 Best',
-    description: 'Richest narratives and most detailed outcomes. Slower but premium.',
+    description: 'Full narrative, max detail.',
   },
 ];
 
@@ -55,15 +55,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         </div>
 
         <div className="p-6 overflow-y-auto custom-scrollbar flex flex-col gap-6">
-          {/* AI Model Quality — 3-card picker (only visible when AI is ON) */}
+
+          {/* Game Mode — 3-card picker (only when AI is ON) */}
           {settings.enableLLM && (
             <div className="space-y-3">
               <label className="text-sm font-bold text-white flex items-center gap-2">
-                <Brain size={16} className="text-indigo-400" />
-                AI Model Quality
+                <Cpu size={16} className="text-indigo-400" />
+                Game Mode
               </label>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Sets the content volume and model tier. Fast generates the leanest output; Best goes all-out.
+              </p>
               <div className="grid grid-cols-3 gap-2">
-                {AI_SPEED_OPTIONS.map(opt => {
+                {GAME_MODE_OPTIONS.map(opt => {
                   const isSelected = settings.llmPerformance === opt.value;
                   return (
                     <button
@@ -84,6 +88,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </div>
           )}
 
+          {/* Simulation Depth slider (only when AI is ON) */}
+          {settings.enableLLM && (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-bold text-white flex items-center gap-2">
+                  <Layers size={16} className="text-violet-400" />
+                  Simulation Depth
+                </label>
+                <span className="text-xs font-mono text-violet-400 bg-violet-500/10 px-2 py-1 rounded">
+                  {settings.simulationDepth}/10
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Scales how much context is packed into each prompt and how much output is produced. Lower = faster and cheaper turns; higher = richer and more detailed.
+              </p>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                value={settings.simulationDepth}
+                onChange={(e) => setSettings({ ...settings, simulationDepth: parseInt(e.target.value) })}
+                className="w-full accent-violet-500"
+              />
+              <div className="flex justify-between text-[10px] text-slate-500 font-medium uppercase tracking-wider">
+                <span>Lean</span>
+                <span>Rich</span>
+              </div>
+            </div>
+          )}
+
           {/* Game Speed Slider */}
           <div className="space-y-3">
             <div className="flex justify-between items-center">
@@ -96,7 +130,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               </span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Controls the delay between simulated days and UI animations. Higher values make the game run faster.
+              Controls the delay between simulated days and UI animations.
             </p>
             <input
               type="range"
@@ -112,15 +146,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </div>
           </div>
 
-          {/* Enable LLM Toggle */}
+          {/* Enable AI Toggle */}
           <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
             <div className="space-y-1">
               <label className="text-sm font-bold text-white flex items-center gap-2">
-                <Cpu size={16} className={settings.enableLLM ? "text-emerald-400" : "text-rose-400"} />
-                Enable AI Features
+                <Cpu size={16} className={settings.enableLLM ? "text-emerald-400" : "text-slate-500"} />
+                Enable Generation
               </label>
               <p className="text-xs text-slate-400">
-                Turn off to bypass LLM generation entirely (uses fallback text).
+                Turn off to skip content generation entirely and use fallback text.
               </p>
             </div>
             <button

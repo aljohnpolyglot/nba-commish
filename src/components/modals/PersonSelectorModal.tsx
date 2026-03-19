@@ -12,9 +12,7 @@ import { ContactList } from './PersonSelector/ContactList';
 import { convertTo2KRating } from '../../utils/helpers';
 import { INJURIES } from '../../data/injuries';
 import { InjurySystem } from '../../services/simulation/InjurySystem';
-import { REFS } from '../central/view/LeagueOfficeSearcher';
-
-const REF_GIST_URL = 'https://gist.githubusercontent.com/aljohnpolyglot/39217471bf53cc1f6f5673823e0e2da1/raw/22b6f73155a3e6a8f4b652d41ab0738f1891189c/referee_pics';
+import { getAllReferees, fetchRefereeData, getRefereePhoto } from '../../data/photos';
 
 interface PersonSelectorModalProps {
   onSelect: (contacts: Contact[], reason?: string, amount?: number, location?: string, duration?: string) => void;
@@ -57,9 +55,7 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
   const [selectedClub, setSelectedClub] = useState<Club | null>(null);
 
   // Referee State
-  const [refPhotos, setRefPhotos] = useState<Record<string, string>>({});
-  const [refPhotosLoaded, setRefPhotosLoaded] = useState(false);
-  const [refPhotosFailed, setRefPhotosFailed] = useState(false);
+  const [refsLoaded, setRefsLoaded] = useState(false);
 
   const isMultiSelect = ['dinner', 'movie', 'bribe', 'drug_test', 'suspension', 'sabotage', 'club', 'endorse_hof'].includes(actionType);
   const maxSelections = isMultiSelect ? 100 : 1;
@@ -68,21 +64,8 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
   const isMovieAction = actionType === 'movie';
 
   useEffect(() => {
-    if (refPhotosLoaded || refPhotosFailed) return;
-    fetch(REF_GIST_URL)
-      .then(r => r.text())
-      .then(text => {
-        const map: Record<string, string> = {};
-        text.split('\n').forEach(line => {
-          const [slug, url] = line.split('|').map(s => s.trim());
-          if (slug && url) map[slug] = url;
-        });
-        setRefPhotos(map);
-        setRefPhotosLoaded(true);
-        setRefPhotosFailed(false);
-      })
-      .catch(() => setRefPhotosFailed(true));
-  }, [refPhotosLoaded, refPhotosFailed]);
+    fetchRefereeData().then(() => setRefsLoaded(true)).catch(() => setRefsLoaded(true));
+  }, []);
 
   useEffect(() => {
     if (isMovieAction && useMovieDatabase === null && step === 'people') {
@@ -218,9 +201,9 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
     }
 
     // Inject referees
-    REFS.forEach(ref => {
+    getAllReferees().forEach(ref => {
         const id = `ref-${ref.id}`;
-        const photo = refPhotos[ref.slug] || refPhotos[ref.name] || undefined;
+        const photo = getRefereePhoto(ref.name) || undefined;
         contactsMap.set(id, {
             id,
             name: ref.name,
@@ -330,6 +313,7 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
 
         const rating2k = convertTo2KRating(p.overallRating || 0, p.hgt || 77);
 
+        const teamLogoUrl = playerTeam?.logoUrl || nonNBATeam?.imgURL;
         contactsMap.set(p.internalId, {
             id: p.internalId,
             name: p.name,
@@ -337,6 +321,7 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
             organization: org,
             type: 'player' as const,
             playerPortraitUrl: p.imgURL,
+            teamLogoUrl,
             ovr: Math.round(rating2k),
             league: league
         });
@@ -357,7 +342,7 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
             return isStaffA ? 1 : -1;
         }
     });
-  }, [state, actionType, refPhotos, refPhotosLoaded]);
+  }, [state, actionType, refsLoaded]);
 
   const availableFilters = useMemo(() => {
     const filters = ['All', 'NBA', 'Euroleague', 'PBA', 'WNBA', 'Draft Prospect', 'Owner', 'GM', 'Coach', 'Referee', 'Free Agent', 'Retired'];
@@ -629,17 +614,7 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
                         </div>
 
                         {/* Contact List */}
-                        {activeFilter === 'Referee' && refPhotosFailed ? (
-                          <div className="flex flex-col items-center justify-center h-32 gap-3">
-                            <span className="text-slate-500 text-xs uppercase tracking-widest">Failed to load referee photos</span>
-                            <button
-                              onClick={() => setRefPhotosFailed(false)}
-                              className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-colors"
-                            >
-                              Retry
-                            </button>
-                          </div>
-                        ) : activeFilter === 'Referee' && !refPhotosLoaded ? (
+                        {activeFilter === 'Referee' && !refsLoaded ? (
                           <div className="flex items-center justify-center h-32 text-slate-500 text-xs uppercase tracking-widest gap-3">
                             <div className="w-4 h-4 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
                             Loading referee photos...

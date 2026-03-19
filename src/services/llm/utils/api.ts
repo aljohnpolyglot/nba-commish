@@ -20,7 +20,8 @@ export { ThinkingLevel };
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const GEMINI_WORKER_URL = "https://geminisatellite.mogatas-princealjohn-05082003.workers.dev/";
-const GROQ_WORKER_URL = "https://square-bush-5dbc.mogatas-princealjohn-05082003.workers.dev/";
+const GROQ_WORKER_URL = (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_CHAT_WORKER_URL)
+  ?? "https://nba-chat-worker.mogatas-princealjohn-05082003.workers.dev/";
 // Model used for all chat/interaction calls (routed to Groq)
 const GROQ_CHAT_MODEL = "llama-3.3-70b-versatile";
 
@@ -250,8 +251,15 @@ export async function generateContentWithRetry(
     try {
       return await callViaGroqWorker(params);
     } catch (groqErr: any) {
-      console.warn(`[LLM] Groq Worker failed: ${groqErr?.message} — falling back to Gemini`);
-      // Fall through to Gemini cascade below
+      console.warn(`[LLM] Groq Worker failed: ${groqErr?.message} — trying Gemini Worker`);
+      try {
+        // Strip thinkingConfig — Gemini worker doesn't support it for chat
+        const cleanParams = { ...params, model: 'gemini-2.5-flash', config: { ...params.config, thinkingConfig: undefined } };
+        return await callViaGeminiWorker(cleanParams);
+      } catch (geminiErr: any) {
+        console.warn(`[LLM] Gemini Worker failed: ${geminiErr?.message}`);
+        return wrapText("I'm having trouble connecting right now. Try again in a moment.");
+      }
     }
   }
 

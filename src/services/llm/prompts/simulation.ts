@@ -1,4 +1,5 @@
 import { GameState } from "../../../types";
+import { SettingsManager } from "../../SettingsManager";
 
 export const generateAdvanceDayPrompt = (
     currentState: GameState,
@@ -62,31 +63,47 @@ export const generateAdvanceDayPrompt = (
             const away = currentState.teams.find(t => t.id === r.awayTeamId);
             const winner = r.homeScore > r.awayScore ? home : away;
             const loser = r.homeScore > r.awayScore ? away : home;
-            const topPerformer = r.homeStats.concat(r.awayStats).sort((a: any, b: any) => b.pts - a.pts)[0];
-            return `- [${r.date}] ${winner?.abbrev} def. ${loser?.abbrev} (${r.homeScore}-${r.awayScore}). Top Performer: ${topPerformer?.name} (${topPerformer?.pts} PTS)`;
+            const topPerformer = r.homeStats.concat(r.awayStats).sort((a: any, b: any) => b.gameScore - a.gameScore)[0];
+            const statLine = [
+                `${topPerformer?.pts} PTS`,
+                topPerformer?.reb >= 8 ? `${topPerformer.reb} REB` : null,
+                topPerformer?.ast >= 8 ? `${topPerformer.ast} AST` : null,
+                topPerformer?.blk >= 3 ? `${topPerformer.blk} BLK` : null,
+                topPerformer?.stl >= 3 ? `${topPerformer.stl} STL` : null,
+            ].filter(Boolean).join(', ');
+            return `- [${r.date}] ${winner?.abbrev} def. ${loser?.abbrev} (${r.homeScore}-${r.awayScore}). Top Performer: ${topPerformer?.name} (${statLine})`;
         }).join('\n')}
         `;
     }
 
+    const _cm = SettingsManager.getContentMultiplier();
+    // Scaled volume targets (always at least 1 item)
+    const singleDayMin  = Math.max(1,  Math.round(10 * _cm));
+    const singleDayMax  = Math.max(2,  Math.round(20 * _cm));
+    const newsMax       = Math.max(1,  Math.round(5  * _cm));
+
     let multiDayInstruction = `
     CRITICAL - VOLUME:
-    Generate 10-20 narrative, story-driven tweets for this day. The feed is too full of stats, so focus heavily on narratives, drama, rumors, and fan reactions!
+    Generate ${singleDayMin}-${singleDayMax} narrative, story-driven tweets for this day. The feed is too full of stats, so focus heavily on narratives, drama, rumors, and fan reactions!
     `;
-    
+
     if (dailyResults && dailyResults.length > 0) {
         const uniqueDates = Array.from(new Set(dailyResults.map(r => r.date)));
         if (uniqueDates.length > 1) {
+            const multiMin = Math.max(2, Math.round(uniqueDates.length * 4 * _cm));
+            const multiMax = Math.max(4, Math.round(Math.min(60, uniqueDates.length * 12) * _cm));
+            const perDay   = Math.max(1, Math.round(10 * _cm));
             multiDayInstruction = `
             CRITICAL - MULTI-DAY SIMULATION MODE:
-            The user has simulated ${uniqueDates.length} days. 
+            The user has simulated ${uniqueDates.length} days.
             Your output MUST reflect the entire period, not just the last day.
-            
-            1. **CHRONOLOGICAL NEWS:** Generate headlines that cover different days within this period. 
+
+            1. **CHRONOLOGICAL NEWS:** Generate headlines that cover different days within this period.
                - For example, if Day 1 had a massive upset and Day 3 had a 50-point game, generate headlines for BOTH.
                - You MUST include a 'date' field in the news item JSON if it refers to a specific day in the past (e.g. "Oct 24, 2025").
             2. **SOCIAL MEDIA SPREAD:** Posts should react to events across the whole period.
                - You can include a 'date' field (ISO string or relative like "2 days ago") to place it correctly in time.
-            3. **VOLUME:** Increase the number of news items to 5-10 and social posts to AT LEAST ${Math.min(100, uniqueDates.length * 15)} to cover the span of time. Generate around 10-20 narrative, story-driven tweets per day simulated. The feed is too full of stats, so focus heavily on narratives, drama, rumors, and fan reactions!
+            3. **VOLUME:** Increase the number of news items to 3-${Math.max(3, newsMax)} and social posts to AT LEAST ${multiMin} (target ${multiMax}) to cover the span of time. Generate around ${perDay}-${perDay + 5} narrative, story-driven tweets per day simulated. The feed is too full of stats, so focus heavily on narratives, drama, rumors, and fan reactions!
             `;
         }
     }
@@ -171,8 +188,8 @@ Potential Storylines (Use these to generate 'newEmails'):
 ${storySeeds.length > 0 ? storySeeds.map((s, i) => `${i + 1}. ${s}`).join('\n') : "None provided. Focus on the daily game results and general basketball narratives (e.g., winning streaks, slumps, rivalries). DO NOT invent major scandals."}
 
 Generate the outcome for the next day.
-1. 1-5 News headlines summarizing the events.
-2. 30-50 Social media posts reacting to the events.
+1. 1-${newsMax} News headlines summarizing the events.
+2. ${singleDayMin}-${singleDayMax} Social media posts reacting to the events.
    - **DIVERSITY:** Include heated debates, long-form discussion threads, controversial takes, and analysts arguing about the league's direction.
    - **BEYOND THE NEWS:** While many posts should react to the daily results, also include general league chatter, fan culture, historical comparisons, and "around the league" talk that isn't directly tied to the day's main headlines.
    - **NARRATIVES:** Focus heavily on league-wide narratives, drama, rumors, and how the Commissioner's decisions are being received.
@@ -206,8 +223,8 @@ export const generateLeaguePulsePrompt = (
     Revenue: $${currentState.leagueStats.revenue}M, Viewership: ${currentState.leagueStats.viewership}M
     
     Generate a "League Pulse" update.
-    1. 1-2 News headlines summarizing the current state of the league (e.g., financial health, fan sentiment).
-    2. 30-50 Social media posts from analysts, reporters, and fans. 
+    1. 1-${Math.max(1, Math.round(2 * SettingsManager.getContentMultiplier()))} News headlines summarizing the current state of the league (e.g., financial health, fan sentiment).
+    2. ${Math.max(3, Math.round(15 * SettingsManager.getContentMultiplier()))}-${Math.max(5, Math.round(25 * SettingsManager.getContentMultiplier()))} Social media posts from analysts, reporters, and fans.
        - **DIVERSITY:** Include heated debates, long-form discussion threads, controversial takes, and analysts arguing about the league's direction.
        - **BEYOND THE NEWS:** Include general league chatter, fan culture, historical comparisons, and "water cooler" talk that isn't necessarily tied to the main news headlines.
        - **NARRATIVES:** Focus heavily on league-wide narratives, drama, rumors, and how the Commissioner's decisions are being received.

@@ -1,5 +1,6 @@
 import { NBATeam, NBAPlayer, GameResult } from '../../../types';
 import { AwardService } from '../../logic/AwardService';
+import { SettingsManager } from '../../SettingsManager';
 
 export const generateLeagueSummaryContext = (
     teams: NBATeam[],
@@ -16,6 +17,8 @@ export const generateLeagueSummaryContext = (
         p.status !== 'Draft Prospect' &&
         p.status !== 'Prospect'
     );
+
+    const ctxScale = SettingsManager.getContextScale(); // 0.3 – 1.0
 
     let context = "--- LEAGUE SUMMARY ---\n\n";
 
@@ -56,13 +59,14 @@ export const generateLeagueSummaryContext = (
     if (playerStats.length > 0) {
         context += "\nLeague Leaders (Top 10):\n";
 
-        const ptsLeaders = [...playerStats].sort((a, b) => b.ppg - a.ppg).slice(0, 10);
+        const leadersCount = Math.max(3, Math.round(10 * ctxScale));
+        const ptsLeaders = [...playerStats].sort((a, b) => b.ppg - a.ppg).slice(0, leadersCount);
         context += `PTS: ${ptsLeaders.map(p => `${p.name} (${p.ppg.toFixed(1)})`).join(', ')}\n`;
 
-        const rebLeaders = [...playerStats].sort((a, b) => b.rpg - a.rpg).slice(0, 10);
+        const rebLeaders = [...playerStats].sort((a, b) => b.rpg - a.rpg).slice(0, leadersCount);
         context += `REB: ${rebLeaders.map(p => `${p.name} (${p.rpg.toFixed(1)})`).join(', ')}\n`;
 
-        const astLeaders = [...playerStats].sort((a, b) => b.apg - a.apg).slice(0, 10);
+        const astLeaders = [...playerStats].sort((a, b) => b.apg - a.apg).slice(0, leadersCount);
         context += `AST: ${astLeaders.map(p => `${p.name} (${p.apg.toFixed(1)})`).join(', ')}\n`;
     }
 
@@ -106,12 +110,14 @@ export const generateLeagueSummaryContext = (
 
         if (notablePerformances.length > 0) {
             context += "\nRecent Crazy Box Scores:\n";
-            notablePerformances.slice(-Math.min(8 * days, 40)).forEach(p => context += `- ${p}\n`);
+            const notableCap = Math.max(2, Math.round(Math.min(8 * days, 40) * ctxScale));
+            notablePerformances.slice(-notableCap).forEach(p => context += `- ${p}\n`);
         }
 
         if (badPerformances.length > 0) {
             context += "\nRecent Bad Games from Stars:\n";
-            badPerformances.slice(-Math.min(5 * days, 25)).forEach(p => context += `- ${p}\n`);
+            const badCap = Math.max(1, Math.round(Math.min(5 * days, 25) * ctxScale));
+            badPerformances.slice(-badCap).forEach(p => context += `- ${p}\n`);
         }
     }
     
@@ -124,9 +130,10 @@ export const generateLeagueSummaryContext = (
         });
     }
 
-    // 6. Top 30 Players in the League
-    const top100 = [...players].sort((a, b) => b.overallRating - a.overallRating).slice(0, 30);
-    context += "\nTop 30 Players in the League:\n";
+    // 6. Top Players in the League (count scales with context depth)
+    const topCount = Math.max(5, Math.round(30 * ctxScale));
+    const top100 = [...players].sort((a, b) => b.overallRating - a.overallRating).slice(0, topCount);
+    context += `\nTop ${topCount} Players in the League:\n`;
     top100.forEach((p, i) => {
         const team = teams.find(t => t.id === p.tid)?.abbrev || 'FA';
         context += `${i + 1}. ${p.name} (${team}, OVR: ${p.overallRating})\n`;

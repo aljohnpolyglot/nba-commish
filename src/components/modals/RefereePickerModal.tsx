@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Search, Scale } from 'lucide-react';
-import { REFS } from '../central/view/LeagueOfficeSearcher';
-
-const GIST_URL = 'https://gist.githubusercontent.com/aljohnpolyglot/39217471bf53cc1f6f5673823e0e2da1/raw/22b6f73155a3e6a8f4b652d41ab0738f1891189c/referee_pics';
+import { getAllReferees, fetchRefereeData, getRefereePhoto } from '../../data/photos';
 
 interface Ref {
   id: string;
@@ -15,7 +13,6 @@ interface Ref {
 interface RefereePickerModalProps {
   isOpen?: boolean;
   favoredTeamName?: string;
-  preloadedPhotos?: Record<string, string>;
   onClose: () => void;
   onSelect: (ref: Ref) => void;
 }
@@ -23,35 +20,20 @@ interface RefereePickerModalProps {
 export const RefereePickerModal: React.FC<RefereePickerModalProps> = ({
   isOpen = true,
   favoredTeamName,
-  preloadedPhotos,
   onClose,
   onSelect,
 }) => {
-  const [photos, setPhotos]       = useState<Record<string, string>>({});
   const [search, setSearch]       = useState('');
   const [selected, setSelected]   = useState<Ref | null>(null);
+  const [, setLoaded]             = useState(false);
 
   useEffect(() => {
-    if (preloadedPhotos && Object.keys(preloadedPhotos).length > 0) {
-      setPhotos(preloadedPhotos);
-      return;
-    }
-    fetch(GIST_URL)
-      .then(r => r.text())
-      .then(text => {
-        const map: Record<string, string> = {};
-        text.split('\n').forEach(line => {
-          const [slug, url] = line.split('|').map(s => s.trim());
-          if (slug && url) map[slug] = url;
-        });
-        setPhotos(map);
-      })
-      .catch(() => {});
-  }, [preloadedPhotos]);
+    fetchRefereeData().then(() => setLoaded(true)).catch(() => setLoaded(true));
+  }, []);
 
-  const refs: Ref[] = REFS
+  const refs: Ref[] = getAllReferees()
     .filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
-    .map(r => ({ ...r, photo: photos[r.slug] || photos[r.name] }));
+    .map(r => ({ ...r, photo: getRefereePhoto(r.name) }));
 
   return (
     <AnimatePresence>

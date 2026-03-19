@@ -1,42 +1,44 @@
-// src/index.js  —  Cloudflare Worker with Gemini key rotation + fallback
+// cloudflare-worker/index.js
+// Gemini key rotation (primary) → Together AI (fallback)
 
 const ALLOWED_ORIGINS = [
   "http://127.0.0.1:5500",
   "http://localhost:5500",
-  "http://localhost:5173",   // Vite default
+  "http://localhost:5173",
   "http://localhost:3000",
   "https://nba-commish.pages.dev",
-  "https://basketcommissionersim.com",  // ← add this
-  "https://www.basketcommissionersim.com",  // ← and this
+  "https://basketcommissionersim.com",
+  "https://www.basketcommissionersim.com",
 ];
-// Pull all configured keys from env into an array (skips undefined ones)
-function getKeys(env) {
+
+const TOGETHER_MODEL = "meta-llama/Llama-3.3-70B-Instruct-Turbo";
+
+function getGeminiKeys(env) {
   return [
-    env.GEMINI_KEY_1,
-    env.GEMINI_KEY_2,
-    env.GEMINI_KEY_3,
-    env.GEMINI_KEY_4,
-    env.GEMINI_KEY_5,
-    env.GEMINI_KEY_6,
-    env.GEMINI_KEY_7,
-    env.GEMINI_KEY_8,
-    env.GEMINI_KEY_9,
-    env.GEMINI_KEY_10,
-    env.GEMINI_KEY_11,
-    env.GEMINI_KEY_12,
-  ].filter(Boolean); // remove undefined/null
+    env.GEMINI_KEY_1,  env.GEMINI_KEY_2,  env.GEMINI_KEY_3,
+    env.GEMINI_KEY_4,  env.GEMINI_KEY_5,  env.GEMINI_KEY_6,
+    env.GEMINI_KEY_7,  env.GEMINI_KEY_8,  env.GEMINI_KEY_9,
+    env.GEMINI_KEY_10, env.GEMINI_KEY_11, env.GEMINI_KEY_12,
+  ].filter(Boolean);
 }
 
-// Try each key in a shuffled order, fall back on 429 or 5xx
+function getTogetherKeys(env) {
+  return [
+    env.TOGETHER_KEY_1,  env.TOGETHER_KEY_2,  env.TOGETHER_KEY_3,
+    env.TOGETHER_KEY_4,  env.TOGETHER_KEY_5,  env.TOGETHER_KEY_6,
+    env.TOGETHER_KEY_7,  env.TOGETHER_KEY_8,  env.TOGETHER_KEY_9,
+    env.TOGETHER_KEY_10,
+  ].filter(Boolean);
+}
+
 async function callGeminiWithRotation(keys, model, body) {
-  // Shuffle so load is spread across keys randomly
   const shuffled = [...keys].sort(() => Math.random() - 0.5);
 
   for (let i = 0; i < shuffled.length; i++) {
     const key = shuffled[i];
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
 
-    console.log(`[Worker] Trying key #${i + 1} of ${shuffled.length}...`);
+    console.log(`[Worker] Trying Gemini key #${i + 1} of ${shuffled.length}...`);
 
     const response = await fetch(url, {
       method: "POST",
@@ -45,32 +47,91 @@ async function callGeminiWithRotation(keys, model, body) {
     });
 
     if (response.ok) {
-      console.log(`[Worker] Key #${i + 1} succeeded.`);
-      return response; // ✅ success
+      console.log(`[Worker] Gemini key #${i + 1} succeeded.`);
+      return response;
     }
 
     const status = response.status;
 
     if (status === 429 || (status >= 500 && status < 600)) {
-      console.warn(`[Worker] Key #${i + 1} returned ${status} — trying next key...`);
-      continue; // try next key
+      console.warn(`[Worker] Gemini key #${i + 1} returned ${status} — trying next...`);
+      continue;
     }
 
-    // Non-retriable error (400, 403, etc.) — return immediately
-    console.error(`[Worker] Key #${i + 1} returned non-retriable ${status}`);
+    // Non-retriable (400, 403) — return immediately
+    console.error(`[Worker] Gemini key #${i + 1} returned non-retriable ${status}`);
     return response;
   }
 
-  // All keys exhausted
-  return new Response(
-    JSON.stringify({ error: "All Gemini API keys are exhausted or rate-limited. Try again later." }),
-    { status: 429, headers: { "Content-Type": "application/json" } }
-  );
+  return null; // all Gemini keys exhausted
+}
+
+async function callTogetherFallback(togetherKeys, geminiBody, corsHeaders) {
+  console.warn("[Worker] All Gemini keys exhausted — falling back to Together AI");
+
+  const shuffled = [...togetherKeys].sort(() => Math.random() - 0.5);
+
+  // Convert Gemini body format → OpenAI messages
+  const contents = geminiBody.contents ?? [];
+  const messages = [];
+
+  const sysText = geminiBody.system_instruction?.parts?.[0]?.text;
+  if (sysText) messages.push({ role: "system", content: sysText });
+
+  const contentArray = Array.isArray(contents) ? contents : [contents];
+  for (const c of contentArray) {
+    const role = c.role === "model" ? "assistant" : "user";
+    const content = Array.isArray(c.parts)
+      ? c.parts.map(p => p.text ?? "").join("")
+      : (c.text ?? "");
+    if (content) messages.push({ role, content });
+  }
+
+  const maxTokens = geminiBody.generationConfig?.maxOutputTokens ?? 2048;
+
+  for (let i = 0; i < shuffled.length; i++) {
+    const res = await fetch("https://api.together.xyz/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${shuffled[i]}`,
+      },
+      body: JSON.stringify({
+        model: TOGETHER_MODEL,
+        messages,
+        max_tokens: maxTokens,
+        temperature: 0.7,
+      }),
+    });
+
+    if (res.ok) {
+      console.log(`[Worker] ✅ Together key #${i + 1} succeeded (fallback)`);
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content ?? "";
+
+      // Wrap in Gemini-shaped response so client code needs no changes
+      const wrapped = {
+        candidates: [{ content: { parts: [{ text }] } }],
+      };
+      return Response.json(wrapped, {
+        headers: { ...corsHeaders, "X-Provider-Used": "together-fallback" },
+      });
+    }
+
+    if (res.status === 429 || res.status >= 500) {
+      console.warn(`[Worker] Together key #${i + 1} returned ${res.status} — trying next`);
+      continue;
+    }
+
+    break; // non-retriable
+  }
+
+  return null;
 }
 
 export default {
   async fetch(request, env) {
-    // ── CORS setup ────────────────────────────────────────────────────────────
+    // ── CORS ──────────────────────────────────────────────────────────────────
     const origin = request.headers.get("Origin");
     const corsHeaders =
       origin && ALLOWED_ORIGINS.includes(origin)
@@ -92,45 +153,64 @@ export default {
       });
     }
 
-    // ── Validate keys ─────────────────────────────────────────────────────────
-    const keys = getKeys(env);
-    if (keys.length === 0) {
-      console.error("FATAL: No GEMINI_KEY_* secrets found in Worker env.");
+    // ── Keys ──────────────────────────────────────────────────────────────────
+    const geminiKeys   = getGeminiKeys(env);
+    const togetherKeys = getTogetherKeys(env);
+
+    if (geminiKeys.length === 0 && togetherKeys.length === 0) {
       return Response.json(
         { error: "No API keys configured on the server." },
         { status: 500, headers: corsHeaders }
       );
     }
 
-    // ── Parse request ─────────────────────────────────────────────────────────
-    // Optionally allow the client to specify a model via ?model=...
-    const url = new URL(request.url);
-    const model = url.searchParams.get("model") || "gemini-2.0-flash";
-    const body = await request.text(); // read once, reuse in rotation
+    const url   = new URL(request.url);
+    const model = url.searchParams.get("model") || "gemini-2.5-flash";
+    const body  = await request.text();
 
-    console.log(`[Worker] Request for model: ${model}, keys available: ${keys.length}`);
+    console.log(`[Worker] model: ${model}, Gemini keys: ${geminiKeys.length}, Together keys: ${togetherKeys.length}`);
 
-    // ── Call Gemini with rotation ─────────────────────────────────────────────
+    // ── Gemini primary ────────────────────────────────────────────────────────
     try {
-      const geminiResponse = await callGeminiWithRotation(keys, model, body);
+      if (geminiKeys.length > 0) {
+        const geminiResponse = await callGeminiWithRotation(geminiKeys, model, body);
 
-      if (!geminiResponse.ok) {
-        const errorBody = await geminiResponse.json().catch(() => ({}));
-        console.error(`[Worker] All keys failed. Last status: ${geminiResponse.status}`);
-        return Response.json(
-          { error: "Gemini API request failed.", details: errorBody },
-          { status: geminiResponse.status, headers: corsHeaders }
-        );
+        if (geminiResponse && geminiResponse.ok) {
+          const responseHeaders = new Headers(geminiResponse.headers);
+          Object.entries(corsHeaders).forEach(([k, v]) => responseHeaders.set(k, v));
+          responseHeaders.set("X-Provider-Used", "gemini");
+          return new Response(geminiResponse.body, {
+            status: geminiResponse.status,
+            headers: responseHeaders,
+          });
+        }
+
+        // Non-retriable Gemini error (400/403) — surface it directly
+        if (geminiResponse && !geminiResponse.ok) {
+          const errorBody = await geminiResponse.json().catch(() => ({}));
+          console.error(`[Worker] Gemini non-retriable error: ${geminiResponse.status}`);
+          return Response.json(
+            { error: "Gemini API request failed.", details: errorBody },
+            { status: geminiResponse.status, headers: corsHeaders }
+          );
+        }
       }
 
-      // ── Stream the successful response back with CORS headers ─────────────
-      const responseHeaders = new Headers(geminiResponse.headers);
-      Object.entries(corsHeaders).forEach(([k, v]) => responseHeaders.set(k, v));
+      // ── Together AI fallback ────────────────────────────────────────────────
+      if (togetherKeys.length > 0) {
+        let parsedBody;
+        try { parsedBody = JSON.parse(body); } catch { parsedBody = {}; }
 
-      return new Response(geminiResponse.body, {
-        status: geminiResponse.status,
-        headers: responseHeaders,
-      });
+        const fallbackResponse = await callTogetherFallback(togetherKeys, parsedBody, corsHeaders);
+        if (fallbackResponse) return fallbackResponse;
+      }
+
+      // All providers exhausted
+      return Response.json(
+        { error: "All API providers are exhausted. Try again later." },
+        { status: 503, headers: corsHeaders }
+      );
+
     } catch (err) {
       console.error("[Worker] Unexpected error:", err);
       return Response.json(

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface ContactAvatarProps {
   name: string;
@@ -8,8 +8,17 @@ interface ContactAvatarProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-const MAX_RETRIES = 2;
-const RETRY_DELAY_MS = 1500;
+// Module-level cache — string = verified URL, null = failed, undefined = not tried
+const imgCache = new Map<string, string | null>();
+
+const tryLoad = (url: string): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    img.referrerPolicy = 'no-referrer';
+    img.onload = () => resolve(url);
+    img.onerror = reject;
+    img.src = url;
+  });
 
 export const ContactAvatar: React.FC<ContactAvatarProps> = ({
   name,
@@ -18,18 +27,25 @@ export const ContactAvatar: React.FC<ContactAvatarProps> = ({
   className = "",
   size = 'md'
 }) => {
-  const [retryCount, setRetryCount] = useState(0);
-  const [imgFailed, setImgFailed] = useState(false);
-  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // resolvedSrc: undefined = still resolving, null = all failed, string = use this
+  const [resolvedSrc, setResolvedSrc] = useState<string | null | undefined>(() => {
+    if (!portraitUrl) return null;
+    const cached = imgCache.get(portraitUrl);
+    return cached !== undefined ? cached : undefined;
+  });
 
   useEffect(() => {
-    setRetryCount(0);
-    setImgFailed(false);
-  }, [portraitUrl, teamLogoUrl, name]);
+    if (!portraitUrl) { setResolvedSrc(null); return; }
 
-  useEffect(() => {
-    return () => { if (retryTimer.current) clearTimeout(retryTimer.current); };
-  }, []);
+    const cached = imgCache.get(portraitUrl);
+    if (cached !== undefined) { setResolvedSrc(cached); return; }
+
+    // Still resolving — start preload
+    setResolvedSrc(undefined);
+    tryLoad(portraitUrl)
+      .then(url => { imgCache.set(portraitUrl, url); setResolvedSrc(url); })
+      .catch(() => { imgCache.set(portraitUrl, null); setResolvedSrc(null); });
+  }, [portraitUrl]);
 
   const sizeClasses = {
     sm: 'w-8 h-8 text-[10px]',
@@ -39,41 +55,27 @@ export const ContactAvatar: React.FC<ContactAvatarProps> = ({
 
   const containerClasses = `rounded-full flex items-center justify-center font-bold shrink-0 overflow-hidden bg-slate-800 text-slate-400 ${sizeClasses[size]} ${className}`;
 
-  const hasValidPortrait = portraitUrl && portraitUrl.trim().length > 0 && !imgFailed;
-
-  const handleImgError = () => {
-    if (retryCount < MAX_RETRIES) {
-      retryTimer.current = setTimeout(() => {
-        setRetryCount(c => c + 1);
-      }, RETRY_DELAY_MS);
-    } else {
-      setImgFailed(true);
-    }
-  };
-
-  if (hasValidPortrait) {
+  if (resolvedSrc) {
     return (
       <div className={containerClasses}>
         <img
-          key={`${portraitUrl}-${retryCount}`}
-          src={portraitUrl}
+          src={resolvedSrc}
           alt={name}
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
-          onError={handleImgError}
         />
       </div>
     );
   }
 
-  // Fallback to team logo if available
+  // Fallback to team logo if portrait failed or still loading
   if (teamLogoUrl && teamLogoUrl.trim().length > 0) {
     return (
       <div className={containerClasses}>
-        <img 
-          src={teamLogoUrl} 
-          alt="Team Logo" 
-          className="w-full h-full object-contain p-1" 
+        <img
+          src={teamLogoUrl}
+          alt="Team Logo"
+          className="w-full h-full object-contain p-1"
           referrerPolicy="no-referrer"
         />
       </div>

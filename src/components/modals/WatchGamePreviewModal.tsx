@@ -10,8 +10,7 @@ import { getPlayerImage } from '../central/view/bioCache';
 import { REFS } from '../central/view/LeagueOfficeSearcher';
 import { RefereePickerModal } from './RefereePickerModal';
 import { RigConfirmModal } from './RigConfirmModal';
-
-const GIST_URL = 'https://gist.githubusercontent.com/aljohnpolyglot/39217471bf53cc1f6f5673823e0e2da1/raw/22b6f73155a3e6a8f4b652d41ab0738f1891189c/referee_pics';
+import { fetchRefereeData, getRefereePhoto } from '../../data/photos';
 
 interface SelectedRef {
   id: string;
@@ -64,30 +63,16 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
   const [showRefPicker, setShowRefPicker] = useState(false);
   const [showRigConfirm, setShowRigConfirm] = useState(false);
   const [selectedRef, setSelectedRef] = useState<SelectedRef | null>(null);
-  const [refPhotos, setRefPhotos] = useState<Record<string, string>>({});
-  const [refPhotosFetched, setRefPhotosFetched] = useState(false);
 
   // Preload ref photos when rig panel opens
   useEffect(() => {
-    if (!showRigPanel || refPhotosFetched) return;
-    fetch(GIST_URL)
-      .then(r => r.text())
-      .then(text => {
-        const map: Record<string, string> = {};
-        text.split('\n').forEach(line => {
-          const [slug, url] = line.split('|').map(s => s.trim());
-          if (slug && url) map[slug] = url;
-        });
-        setRefPhotos(map);
-        setRefPhotosFetched(true);
-      })
-      .catch(() => setRefPhotosFetched(true));
-  }, [showRigPanel, refPhotosFetched]);
+    if (showRigPanel) fetchRefereeData();
+  }, [showRigPanel]);
 
   const handleRefSelected = (ref: { id: string; name: string; slug: string }) => {
     setSelectedRef({
       ...ref,
-      photo: refPhotos[ref.slug] || undefined,
+      photo: getRefereePhoto(ref.name) || undefined,
       number: ref.id,
     });
     setShowRefPicker(false);
@@ -300,7 +285,6 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
 
       {showRefPicker && (
         <RefereePickerModal
-          preloadedPhotos={refPhotosFetched ? refPhotos : undefined}
           onSelect={handleRefSelected}
           onClose={() => setShowRefPicker(false)}
         />

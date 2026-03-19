@@ -23,42 +23,43 @@ export const ChatList: React.FC<ChatListProps> = ({ chats, selectedChatId, onSel
     chats.forEach(chat => {
       const participant = chat.participantDetails.find(p => p.id !== 'commissioner');
       if (participant) {
-        const generatedAvatar = getAvatarByName(participant.name, AVATAR_DATA);
-        let avatarUrl = generatedAvatar || participant.avatarUrl;
-        let teamLogoUrl = undefined;
-        
-        // Fallback lookup if avatar is missing
-        if (!avatarUrl) {
-          const player = state.players.find(p => p.internalId === participant.id || (p.name && participant.name && p.name.toLowerCase() === participant.name.toLowerCase()));
-          if (player) {
-            if (player.status === 'Retired' || player.tid === -3) {
-                participant.role = player.hof ? 'Retired • Hall of Famer' : 'Retired • Retired Player';
-            }
-            avatarUrl = player.imgURL;
-            if (player.tid !== undefined && player.tid >= 0) {
-              const team = state.teams.find(t => t.id === player.tid);
+        let avatarUrl: string | undefined = undefined;
+        let teamLogoUrl: string | undefined = undefined;
+
+        // Always look up player/staff to get portrait + team logo
+        const player = state.players.find(p => p.internalId === participant.id || (p.name && participant.name && p.name.toLowerCase() === participant.name.toLowerCase()));
+        if (player) {
+          if (player.status === 'Retired' || player.tid === -3) {
+            participant.role = player.hof ? 'Retired • Hall of Famer' : 'Retired • Retired Player';
+          }
+          avatarUrl = player.imgURL;
+          if (player.tid !== undefined && player.tid >= 0) {
+            const team = state.teams.find(t => t.id === player.tid);
+            if (team) teamLogoUrl = team.logoUrl;
+          } else if (player.status === 'PBA' || player.status === 'WNBA' || player.status === 'Euroleague') {
+            const team = state.nonNBATeams.find(t => t.league === player.status && t.tid === player.tid);
+            if (team) teamLogoUrl = team.imgURL;
+          }
+        } else {
+          const allStaff = [
+            ...(state.staff?.owners || []),
+            ...(state.staff?.gms || []),
+            ...(state.staff?.coaches || []),
+            ...(state.staff?.leagueOffice || [])
+          ];
+          const staff = allStaff.find(s => s.name && participant.name && s.name.toLowerCase() === participant.name.toLowerCase());
+          if (staff) {
+            avatarUrl = staff.playerPortraitUrl;
+            if (staff.team) {
+              const team = state.teams.find(t => t.name === staff.team);
               if (team) teamLogoUrl = team.logoUrl;
-            } else if (player.status === 'PBA' || player.status === 'WNBA' || player.status === 'Euroleague') {
-              const team = state.nonNBATeams.find(t => t.league === player.status && t.tid === player.tid);
-              if (team) teamLogoUrl = team.imgURL;
-            }
-          } else {
-            const allStaff = [
-              ...(state.staff?.owners || []),
-              ...(state.staff?.gms || []),
-              ...(state.staff?.coaches || []),
-              ...(state.staff?.leagueOffice || [])
-            ];
-            const staff = allStaff.find(s => s.name && participant.name && s.name.toLowerCase() === participant.name.toLowerCase());
-            if (staff) {
-              avatarUrl = staff.playerPortraitUrl;
-              if (staff.team) {
-                const team = state.teams.find(t => t.name === staff.team);
-                if (team) teamLogoUrl = team.logoUrl;
-              }
             }
           }
         }
+
+        // Override portrait with generated avatar if found (AVATAR_DATA lookup)
+        const generatedAvatar = getAvatarByName(participant.name, AVATAR_DATA);
+        if (generatedAvatar) avatarUrl = generatedAvatar;
 
         // Apply NBA logo fallback
         if (!avatarUrl && participant.name.toUpperCase().startsWith('NBA')) {

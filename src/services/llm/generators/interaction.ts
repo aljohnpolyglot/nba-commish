@@ -53,7 +53,6 @@ export async function sendChatMessage(
       contents: contents,
       config: {
         systemInstruction: "You are a realistic NBA personality chatting with the Commissioner. Be concise and conversational.",
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
       },
     }, 2, 800, true); // bypass enableLLM — chat always works
 

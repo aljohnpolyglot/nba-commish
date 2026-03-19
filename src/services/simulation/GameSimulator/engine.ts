@@ -338,6 +338,16 @@ export class GameSimulator {
       }
 
       if (home && away) {
+        // ── Intra-squad scrimmage: split roster in half ──────────────────────
+        if (game.homeTid === game.awayTid && !homeOverride && !awayOverride) {
+          const roster = players
+            .filter(p => p.tid === game.homeTid && (!p.injury || p.injury.gamesRemaining <= 0))
+            .sort(() => Math.random() - 0.5);
+          const mid = Math.floor(roster.length / 2);
+          homeOverride = roster.slice(0, mid);
+          awayOverride = roster.slice(mid);
+        }
+
         // Apply club debuffs around this game
         if (clubDebuffs && clubDebuffs.size > 0) setClubDebuffs(clubDebuffs);
         const gameRig = riggedForTid !== undefined &&
@@ -347,6 +357,10 @@ export class GameSimulator {
           this.simulateGame(home, away, players, game.gid, date, playerApproval, homeOverride, awayOverride, game.isAllStar, game.isRisingStars, gameRig)
         );
         if (clubDebuffs && clubDebuffs.size > 0) clearClubDebuffs();
+
+        // Reset per-game overrides so they don't carry into the next iteration
+        homeOverride = homeOverridePlayers;
+        awayOverride = awayOverridePlayers;
       }
     }
 
