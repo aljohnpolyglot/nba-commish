@@ -87,7 +87,26 @@ export async function advanceDay(currentState: GameState, action: UserAction | n
 
     const text = response.text;
     if (!text) throw new Error("No response from LLM");
-    const data = JSON.parse(text);
+
+    let data: any;
+    try {
+      // Strip markdown code fences if present (Groq often returns ```json ... ```)
+      let cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
+      // Clamp to outermost JSON object
+      const firstBrace = cleaned.indexOf('{');
+      const lastBrace = cleaned.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+      }
+      data = JSON.parse(cleaned);
+    } catch (parseErr) {
+      console.warn('[LLM] advanceDay JSON parse failed — using empty fallback', parseErr);
+      data = {
+        outcomeText: "The day passed without incident.",
+        statChanges: { publicApproval: 0, ownerApproval: 0, playerApproval: 0, leagueFunds: 0, personalWealth: 0, legacy: 0 },
+        newEmails: [], newNews: [], newSocialPosts: []
+      };
+    }
 
     // Post-process avatars
     const avatars = await fetchAvatarData();

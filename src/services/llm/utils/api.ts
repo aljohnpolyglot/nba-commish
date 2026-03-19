@@ -244,8 +244,11 @@ export async function generateContentWithRetry(
   }
 
   // ── Chat calls → Groq Worker (fast lane, always bypasses Gemini) ──────────
-  const isChat = params.model === SettingsManager.getModelForTask?.("interaction")
-    || bypassLLMCheck; // sendChatMessage always sets bypassLLMCheck=true
+  // Use bypassLLMCheck as the sole signal — sendChatMessage always sets it to true.
+  // Model-name comparison is unreliable: simulation can use the same model name as
+  // interaction (e.g. gemini-2.5-flash-lite at perf level 1), which would incorrectly
+  // route JSON-schema simulation calls to Groq, causing markdown parse failures.
+  const isChat = bypassLLMCheck;
 
   if (isChat) {
     try {
