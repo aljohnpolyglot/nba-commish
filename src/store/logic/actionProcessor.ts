@@ -188,6 +188,20 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
             }
         }
 
+        if (action.payload?.watchedGameResult) {
+            const r = action.payload.watchedGameResult;
+            const homeTeam = stateWithSim.teams.find(t => t.id === r.homeTeamId);
+            const awayTeam = stateWithSim.teams.find(t => t.id === r.awayTeamId);
+            const winner = r.winnerId === r.homeTeamId ? homeTeam?.name : awayTeam?.name;
+            storySeeds.push(
+                `IMPORTANT: The Commissioner attended tonight's game in person — ` +
+                `${awayTeam?.name} @ ${homeTeam?.name}, final score ${r.awayScore}-${r.homeScore}. ` +
+                `${winner} won. The Commissioner was visible courtside. ` +
+                `Players, coaches and media noticed and reacted to the Commissioner being there live. ` +
+                `Include this in the news and social posts — the Commissioner watched this game personally.`
+            );
+        }
+
         result = await advanceDay(stateWithSim, effectiveAction, storySeeds, simResults, stateWithSim.pendingHypnosis || [], recentDMs);
     }
     

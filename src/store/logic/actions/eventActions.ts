@@ -174,6 +174,18 @@ export const handleTravel = async (stateWithSim: GameState, action: UserAction, 
          }
     }
 
+    const storySeeds: string[] = [];
+    if (action.payload.reason === 'organizational review') {
+        const teamName = action.payload.city;
+        storySeeds.push(
+            `The Commissioner made an unannounced organizational visit to the ${teamName} franchise today. ` +
+            `They toured the facility, observed practice, held closed-door meetings with the coaching staff, ` +
+            `GM, and ownership, and spoke privately with key players. ` +
+            `League sources say the Commissioner was evaluating the franchise's direction. ` +
+            `React as players, media, coaches and fans would to a surprise commissioner visit.`
+        );
+    }
+
     const result = await advanceDay(stateWithSim, {
         type: 'TRAVEL',
         payload: {
@@ -184,7 +196,7 @@ export const handleTravel = async (stateWithSim: GameState, action: UserAction, 
             gameResult,
             isSpecificEvent: true
         }
-    } as any, [], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
+    } as any, storySeeds, simResults, stateWithSim.pendingHypnosis || [], recentDMs);
     
     result.statChanges = result.statChanges || {};
     result.statChanges.publicApproval = (result.statChanges.publicApproval || 0) + (outcome.publicApproval || 0);
