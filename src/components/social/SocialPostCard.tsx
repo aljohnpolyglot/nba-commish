@@ -5,6 +5,10 @@ import { UserPlus, UserMinus } from 'lucide-react';
 import { formatTwitterDate } from '../../utils/helpers';
 import { getUnavatarUrl, canUseUnavatar } from '../../data/photos/social';
 
+// Module-level cache — persists across tab switches and re-renders, cleared on page reload.
+// string = resolved URL that loaded successfully; null = all sources failed, show icon.
+const avatarCache = new Map<string, string | null>();
+
 const SourceIcon: React.FC<{ source: SocialSource }> = ({ source }) => {
   if (source === 'TwitterX') {
     return (
@@ -47,37 +51,57 @@ const SocialPostCard: React.FC<{ post: SocialPost }> = ({ post }) => {
     }
   };
 
-  const [unavatarUrl, setUnavatarUrl] = React.useState<string>('');
-  const [unavatarFailed, setUnavatarFailed] = React.useState(false);
-
   const isDefaultAvatar = post.avatarUrl?.includes('default_profile') || post.avatarUrl?.includes('placeholder') || !post.avatarUrl;
-  const finalAvatarUrl = isDefaultAvatar ? (post.playerPortraitUrl || post.teamLogoUrl || post.avatarUrl) : post.avatarUrl;
+  const primaryUrl = isDefaultAvatar ? (post.playerPortraitUrl || post.teamLogoUrl || null) : (post.avatarUrl || null);
+
+  // avatarSrc: undefined = still trying, null = give up (show icon), string = show this URL
+  const [avatarSrc, setAvatarSrc] = React.useState<string | null | undefined>(() => {
+    const cached = avatarCache.get(post.handle);
+    return cached !== undefined ? cached : undefined;
+  });
+
+  React.useEffect(() => {
+    // Already resolved (from cache or previous render)
+    if (avatarSrc !== undefined) return;
+
+    const tryLoad = (url: string): Promise<string> =>
+      new Promise((resolve, reject) => {
+        const img = new Image();
+        img.referrerPolicy = 'no-referrer';
+        img.onload = () => resolve(url);
+        img.onerror = reject;
+        img.src = url;
+      });
+
+    const resolve = async () => {
+      // 1. Try primary URL (portrait / team logo / avatarUrl)
+      if (primaryUrl) {
+        try { const url = await tryLoad(primaryUrl); avatarCache.set(post.handle, url); setAvatarSrc(url); return; } catch {}
+      }
+      // 2. Try unavatar for TwitterX posts within budget
+      if (post.source === 'TwitterX' && canUseUnavatar()) {
+        const url = getUnavatarUrl(post.handle);
+        if (url) {
+          try { await tryLoad(url); avatarCache.set(post.handle, url); setAvatarSrc(url); return; } catch {}
+        }
+      }
+      // 3. All sources failed — cache and show icon
+      avatarCache.set(post.handle, null);
+      setAvatarSrc(null);
+    };
+
+    resolve();
+  }, [post.handle]);
 
   return (
     <div className="bg-zinc-800/50 p-4 rounded-xl border border-zinc-700/50 flex items-start space-x-4 hover:bg-zinc-800 transition-colors group/card">
       <div className="flex-shrink-0 w-12 h-12 relative">
-        {finalAvatarUrl ? (
+        {avatarSrc ? (
           <img
-            src={finalAvatarUrl}
-            alt={post.author}
-            className={`h-12 w-12 rounded-full object-cover bg-zinc-700 ${!isDefaultAvatar || post.playerPortraitUrl ? '' : 'p-2'}`}
-            referrerPolicy="no-referrer"
-            onError={(e) => {
-              // On portrait fail, try unavatar if Twitter post and budget remaining
-              if (post.source === 'TwitterX' && !unavatarFailed && canUseUnavatar()) {
-                const url = getUnavatarUrl(post.handle);
-                if (url) { setUnavatarUrl(url); return; }
-              }
-              e.currentTarget.style.display = 'none';
-            }}
-          />
-        ) : post.source === 'TwitterX' && !unavatarFailed && canUseUnavatar() ? (
-          <img
-            src={unavatarUrl || getUnavatarUrl(post.handle)}
+            src={avatarSrc}
             alt={post.author}
             className="h-12 w-12 rounded-full object-cover bg-zinc-700"
             referrerPolicy="no-referrer"
-            onError={() => setUnavatarFailed(true)}
           />
         ) : (
           <div className="h-12 w-12 flex items-center justify-center bg-zinc-700 rounded-full">
