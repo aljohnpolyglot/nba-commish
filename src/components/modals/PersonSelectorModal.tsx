@@ -74,6 +74,12 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
   }, [isMovieAction, useMovieDatabase, step]);
 
   useEffect(() => {
+    if (skipPersonSelection && preSelectedContact && actionType === 'contact') {
+        onSelect([preSelectedContact]);
+    }
+  }, []);
+
+  useEffect(() => {
     if (requiresLocation && step === 'location' && restaurants.length === 0) {
       setLoadingRestaurants(true);
       fetch(RESTAURANT_DATA_URL)
