@@ -120,4 +120,33 @@ The 'consequence' object is CRITICAL. It must contain:
 - statChanges: An object with morale (fans, players, owners), revenue, viewership, and legacy changes.
 - forcedTrade: (Optional) If the user forced a trade via executive action. CRITICAL: If your narrative mentions a trade happening, you MUST include this object with { playerName: string, destinationTeam: string }. Otherwise the trade will not actually happen in the game.
 
+CRITICAL — EMAIL vs CHAT FORMAT AND ROUTING:
+Every item in 'newEmails' must have a 'senderRole' field.
+The senderRole field controls both the TONE and the ROUTING of the message.
+
+ALWAYS CHAT (senderRole must be one of these exact strings):
+'Player', 'WNBA Player', 'Coach', 'Agent', 'Free Agent', 'Retired'
+- Casual, short, conversational — like a real DM or iMessage
+- NO formal greeting, NO sign-off
+- Emojis and slang are encouraged
+- Examples: "Bro what was that about 😭", "We need to talk.", "You really fining me for that??"
+
+CONTEXT-DEPENDENT — Owner or GM:
+- If the message is informal, backroom, pressure, or a quick tip → use senderRole: 'Owner (Informal)' or 'GM (Informal)' → routes to CHAT
+- If the message is a formal complaint, official proposal, or trade offer → use senderRole: 'Owner' or 'GM' → routes to EMAIL
+- Example chat: "Yo commissioner we need to talk about last night"
+- Example email: "Dear Commissioner, I am writing to formally object to..."
+
+ALWAYS EMAIL (senderRole = 'Owner', 'GM', 'General Manager', 'Sponsor', 'Media', 'League Office', 'Referee', 'Executive', 'Press'):
+- Professional, formal tone
+- NEVER open with "Dear Commissioner" or "Hi Commissioner" — use their actual name: "Commissioner \${commissionerName}," or go straight to the subject
+- Clear subject line
+- Proper sign-off with sender name and organization
+- Examples: sponsorship proposals, official complaints, trade requests, disciplinary notices
+
+NEVER assign senderRole='Player' to an Owner, GM, Sponsor, or executive.
+NEVER make a Player or Coach send a formal email — they always DM.
+Referees ALWAYS email — they never DM the Commissioner.
+Sponsors ALWAYS email — never DM.
+
 Generate 1-3 new emails and 1-3 news items per day.`;

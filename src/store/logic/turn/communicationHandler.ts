@@ -98,7 +98,7 @@ export const handleCommunication = (state: GameState, action: UserAction, result
         date: dateString
     }));
 
-    const chatRoles = ['Player', 'WNBA'];
+    const chatRoles = ['Player', 'WNBA Player', 'Coach', 'Agent', 'Free Agent', 'Retired', 'Owner (Informal)', 'GM (Informal)'];
     const newInboxEmails: Email[] = [];
     const newChatMessages: Email[] = [];
 
