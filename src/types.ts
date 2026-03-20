@@ -867,6 +867,7 @@ export interface GameState {
   lastOutcome: string | null;
   lastConsequence: ConsequenceDto | null;
   lastSimResults?: any[];
+  tickerSimResults?: any[];
   lastActionType?: string;
   lastActionPayload?: any;
   teams: NBATeam[];

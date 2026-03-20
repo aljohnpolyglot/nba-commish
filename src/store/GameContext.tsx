@@ -152,6 +152,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       lastActionType: action.type,
       lastActionPayload: action.payload,
       lastSimResults: [],
+      tickerSimResults: [],
     }));
 
     if (isClubbing) {
@@ -358,7 +359,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         }
         return;
       } else {
-        newStatePatch = await processTurn(stateRef.current, action);
+        newStatePatch = await processTurn(stateRef.current, action, (simResults) => {
+          setState(prev => ({ ...prev, tickerSimResults: simResults }));
+        });
       }
 
       // Phase 1 (immediate — show modal)

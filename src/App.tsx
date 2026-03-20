@@ -148,7 +148,7 @@ function GameLayout() {
 
         {state.isProcessing && !state.isWatchingGame && (
           <LoadingOverlay
-            simResults={state.lastSimResults}
+            simResults={state.tickerSimResults || state.lastSimResults}
             teams={state.teams}
             players={state.players}
             actionType={state.lastActionType}

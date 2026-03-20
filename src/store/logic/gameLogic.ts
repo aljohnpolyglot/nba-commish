@@ -20,7 +20,11 @@ import { SettingsManager } from '../../services/SettingsManager';
 
 export { handleStartGame, handleAnnounceChange };
 
-export const processTurn = async (state: GameState, action: UserAction) => {
+export const processTurn = async (
+  state: GameState,
+  action: UserAction,
+  onSimComplete?: (simResults: any[]) => void
+) => {
     let executiveTradeTransactionRef = { current: null };
     
     // 1. Pre-process roster-altering actions
@@ -52,6 +56,11 @@ export const processTurn = async (state: GameState, action: UserAction) => {
 
     // 3. Run simulation
     const { stateWithSim, allSimResults } = runSimulation(stateForSim, daysToSimulate, action);
+
+    // Fire callback with sim results BEFORE LLM call starts
+    if (onSimComplete && allSimResults.length > 0) {
+        onSimComplete(allSimResults);
+    }
 
     // 4. Process action via LLM/Processor
     // Strip riggedForTid from payload — it's a sim-engine-only field and must not reach the LLM
