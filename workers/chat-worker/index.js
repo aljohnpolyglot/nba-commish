@@ -11,8 +11,8 @@ const ALLOWED_ORIGINS = [
   "https://www.basketcommissionersim.com",
 ];
 
-const GROQ_MODEL      = "llama-3.3-70b-versatile";
-const GROQ_MODEL_FAST = "moonshotai/kimi-k2-instruct"; // 60 RPM vs 30 RPM
+const GROQ_MODEL      = "moonshotai/kimi-k2-instruct-0905";
+const GROQ_MODEL_FAST = "openai/gpt-oss-120b";
 const TOGETHER_MODEL  = "meta-llama/Llama-3.3-70B-Instruct-Turbo";
 
 function getGroqKeys(env) {
