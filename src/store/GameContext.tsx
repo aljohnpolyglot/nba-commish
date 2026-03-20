@@ -358,7 +358,32 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         newStatePatch = await processTurn(stateRef.current, action);
       }
 
-      setState(prev => ({ ...prev, ...newStatePatch }));
+      // Phase 1 (immediate — show modal)
+      setState(prev => ({
+        ...prev,
+        ...newStatePatch,
+        stats: newStatePatch.stats || prev.stats,
+        leagueStats: newStatePatch.leagueStats || prev.leagueStats,
+        lastOutcome: newStatePatch.lastOutcome || prev.lastOutcome,
+        lastConsequence: newStatePatch.lastConsequence || prev.lastConsequence,
+        date: newStatePatch.date || prev.date,
+        day: newStatePatch.day || prev.day,
+        teams: newStatePatch.teams || prev.teams,
+        players: newStatePatch.players || prev.players,
+        schedule: newStatePatch.schedule || prev.schedule,
+        isProcessing: false,
+      }));
+
+      // Phase 2 (background — silent update after 100ms delay)
+      setTimeout(() => {
+        setState(prev => ({
+          ...prev,
+          inbox: newStatePatch.inbox || prev.inbox,
+          news: newStatePatch.news || prev.news,
+          socialFeed: newStatePatch.socialFeed || prev.socialFeed,
+          chats: newStatePatch.chats || prev.chats,
+        }));
+      }, 100);
     } catch (error) {
       console.error("Failed to process action:", error);
       setState(prev => ({ 
