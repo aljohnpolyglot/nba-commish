@@ -62,6 +62,9 @@ export const processTurn = async (state: GameState, action: UserAction) => {
         actionForLLM = { ...action, payload: Object.keys(restPayload).length > 0 ? restPayload : undefined } as any;
     }
     const result = await processAction(stateWithSim, actionForLLM, executiveTradeTransactionRef, allSimResults, daysToSimulate);
+    console.log('[GameLogic] result.newNews:', result?.newNews?.length);
+    console.log('[GameLogic] result.newSocialPosts:', result?.newSocialPosts?.length);
+    console.log('[GameLogic] result.newEmails:', result?.newEmails?.length);
     const executiveTradeTransactionFinal = executiveTradeTransactionRef.current;
     
     // 5. Post-process simulation results (injuries, stats)
@@ -132,6 +135,8 @@ export const processTurn = async (state: GameState, action: UserAction) => {
 
     // 7. Handle Social and News
     const { uniqueNewPosts, uniqueNewNews } = await handleSocialAndNews(state, result, allSimResults, updatedPlayers, stateWithSim.teams, daysToSimulate, stateWithSim.date);
+    console.log('[GameLogic] uniqueNewNews:', uniqueNewNews?.length);
+    console.log('[GameLogic] uniqueNewPosts:', uniqueNewPosts?.length);
 
     // 8. Handle Financials (Paychecks)
     const daysToAdvance = (result.day || (stateWithSim.day + 1)) - state.day;

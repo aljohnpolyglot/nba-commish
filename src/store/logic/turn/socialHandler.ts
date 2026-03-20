@@ -73,5 +73,7 @@ export const handleSocialAndNews = async (
     const existingNewsIds = new Set(state.news.map(n => n.id));
     const uniqueNewNews = newNews.filter(n => !existingNewsIds.has(n.id));
 
+    console.log('[SocialHandler] incoming newNews:', result?.newNews?.length);
+    console.log('[SocialHandler] incoming newSocialPosts:', result?.newSocialPosts?.length);
     return { uniqueNewPosts, uniqueNewNews };
 };
