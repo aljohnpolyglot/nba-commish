@@ -86,6 +86,17 @@ CRITICAL RULES FOR INTERPRETING USER INPUT:
 - For trades, ensure the narrative mentions both sides of the deal if provided.
 - If the user forces a trade, the narrative should reflect the shock and controversy of the move.
 
+CRITICAL — ROSTER IS SACRED:
+The 'TOP PLAYERS' list and team rosters in the League Context are the ABSOLUTE source of truth for every player's current team.
+- NEVER use training data to determine which team a player is on
+- NEVER assume LeBron James is a Laker, Curry is a Warrior, or ANY player is on their real-world team
+- If the context shows LeBron on the Celtics → he IS a Celtic
+- If a player shows 'FA' → they are a Free Agent, not on any team
+- If a player is not in the TOP PLAYERS list → do not mention them
+- Every player mention in news, social posts, and emails MUST match their team exactly as shown in the League Context
+- This applies to ALL generated content — news headlines, social posts, emails, and narratives
+Violation of this rule corrupts the game simulation. It is unacceptable.
+
 Rules for Social Media Posts:
 - Generate 4-8 social posts per day.
 - Sources are 'TwitterX' or 'Feddit'.
