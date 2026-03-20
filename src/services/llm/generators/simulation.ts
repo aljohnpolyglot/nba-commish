@@ -66,6 +66,31 @@ function normalizeResult(parsed: any): any {
   return parsed;
 }
 
+function repairTruncatedJson(str: string): string {
+  let openBraces = 0;
+  let openBrackets = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i];
+    if (escaped) { escaped = false; continue; }
+    if (c === '\\' && inString) { escaped = true; continue; }
+    if (c === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (c === '{') openBraces++;
+    if (c === '}') openBraces--;
+    if (c === '[') openBrackets++;
+    if (c === ']') openBrackets--;
+  }
+
+  if (inString) str += '"';
+  while (openBrackets > 0) { str += ']'; openBrackets--; }
+  while (openBraces > 0) { str += '}'; openBraces--; }
+
+  return str;
+}
+
 function cleanLLMJson(raw: string): string {
   if (!raw || typeof raw !== 'string') return '{}';
   return raw
@@ -147,7 +172,7 @@ export async function advanceDay(currentState: GameState, action: UserAction | n
         systemInstruction: SYSTEM_PROMPT,
         responseMimeType: "application/json",
         responseSchema: OUTCOME_SCHEMA as any,
-        maxOutputTokens: SettingsManager.getMaxTokens(8192),
+        maxOutputTokens: SettingsManager.getMaxTokens(16384),
       },
     });
 
@@ -166,7 +191,8 @@ export async function advanceDay(currentState: GameState, action: UserAction | n
     try {
       const cleaned = cleanLLMJson(text);
       console.log('[LLM] Raw response preview:', cleaned.substring(0, 200));
-      data = normalizeResult(JSON.parse(cleaned));
+      const repaired = repairTruncatedJson(cleaned);
+      data = normalizeResult(JSON.parse(repaired));
     } catch (parseErr) {
       console.warn('[LLM] advanceDay JSON parse failed — using empty fallback', parseErr);
       data = {
@@ -233,7 +259,8 @@ export async function generateLeaguePulse(
         let data: any = {};
         try {
             const cleaned = cleanLLMJson(text);
-            data = normalizeResult(JSON.parse(cleaned));
+            const repaired = repairTruncatedJson(cleaned);
+            data = normalizeResult(JSON.parse(repaired));
         } catch (e) {
             console.warn('[LLM] League pulse JSON truncated — using empty fallback');
             data = { newEmails: [], newNews: [], newSocialPosts: [], replies: [] };
