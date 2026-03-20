@@ -56,6 +56,8 @@ interface TopPerformer {
   teamAbbrev: string;
   statLine: string;
   gameScore: number;
+  imgURL?: string;
+  teamLogoUrl?: string;
 }
 
 function getTopPerformers(allSimResults: GameResult[], players: Player[], teams: Team[]): TopPerformer[] {
@@ -77,6 +79,8 @@ function getTopPerformers(allSimResults: GameResult[], players: Player[], teams:
         teamAbbrev: team?.abbrev || s.teamAbbrev || '',
         statLine: buildStatLine({ pts: s.pts, ast: s.ast, reb: s.reb, blk: s.blk, stl: s.stl }),
         gameScore: gs,
+        imgURL: player?.imgURL,
+        teamLogoUrl: team?.logoUrl,
       });
     }
   }
@@ -185,9 +189,16 @@ export const SimulationTicker: React.FC<Props> = ({ allSimResults, teams, player
                   className="flex items-center justify-between bg-slate-800/60 border border-slate-700/50 rounded-xl px-4 py-2.5 gap-3"
                 >
                   {/* Away */}
-                  <div className={`flex flex-col items-start min-w-0 flex-1 ${homeWon ? 'opacity-50' : ''}`}>
-                    <span className="text-white font-bold text-sm truncate">{away?.abbrev || 'AWY'}</span>
-                    <span className="text-slate-400 text-xs truncate hidden sm:block">{away?.name}</span>
+                  <div className={`flex items-center gap-2 min-w-0 flex-1 ${homeWon ? 'opacity-40' : ''}`}>
+                    {away?.logoUrl && (
+                      <img src={away.logoUrl} alt={away.abbrev}
+                           className="w-8 h-8 object-contain shrink-0"
+                           referrerPolicy="no-referrer" />
+                    )}
+                    <div className="min-w-0">
+                      <span className="text-white font-bold text-sm truncate block">{away?.abbrev || 'AWY'}</span>
+                      <span className="text-slate-400 text-xs truncate hidden sm:block">{away?.name}</span>
+                    </div>
                   </div>
                   {/* Scores */}
                   <div className="flex items-center gap-2 shrink-0">
@@ -200,9 +211,16 @@ export const SimulationTicker: React.FC<Props> = ({ allSimResults, teams, player
                     </span>
                   </div>
                   {/* Home */}
-                  <div className={`flex flex-col items-end min-w-0 flex-1 ${!homeWon ? 'opacity-50' : ''}`}>
-                    <span className="text-white font-bold text-sm truncate">{home?.abbrev || 'HME'}</span>
-                    <span className="text-slate-400 text-xs truncate hidden sm:block">{home?.name}</span>
+                  <div className={`flex items-center justify-end gap-2 min-w-0 flex-1 ${!homeWon ? 'opacity-40' : ''}`}>
+                    <div className="min-w-0 text-right">
+                      <span className="text-white font-bold text-sm truncate block">{home?.abbrev || 'HME'}</span>
+                      <span className="text-slate-400 text-xs truncate hidden sm:block">{home?.name}</span>
+                    </div>
+                    {home?.logoUrl && (
+                      <img src={home.logoUrl} alt={home.abbrev}
+                           className="w-8 h-8 object-contain shrink-0"
+                           referrerPolicy="no-referrer" />
+                    )}
                   </div>
                 </motion.div>
               );
@@ -226,8 +244,23 @@ export const SimulationTicker: React.FC<Props> = ({ allSimResults, teams, player
                 animate="visible"
                 className="flex items-center justify-between bg-slate-800/40 border border-slate-700/40 rounded-xl px-4 py-2 gap-2"
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-indigo-400 font-black text-sm shrink-0">{idx + 1}.</span>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="relative shrink-0">
+                    {p.imgURL ? (
+                      <img src={p.imgURL} alt={p.name}
+                           className="w-10 h-10 rounded-full object-cover border-2 border-slate-700"
+                           referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 font-bold text-sm">
+                        {p.name.charAt(0)}
+                      </div>
+                    )}
+                    {p.teamLogoUrl && (
+                      <img src={p.teamLogoUrl} alt=""
+                           className="absolute -bottom-1 -right-1 w-4 h-4 object-contain"
+                           referrerPolicy="no-referrer" />
+                    )}
+                  </div>
                   <div className="min-w-0">
                     <span className="text-white font-semibold text-sm truncate block">{p.name}</span>
                     <span className="text-slate-500 text-xs">{p.teamAbbrev}</span>

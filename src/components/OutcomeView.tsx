@@ -24,9 +24,9 @@ export const OutcomeView: React.FC = () => {
         <motion.div 
           initial={{ scale: 0.9, y: 20 }}
           animate={{ scale: 1, y: 0 }}
-          className="bg-slate-900 border border-slate-800 w-full max-w-3xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+          className="bg-slate-900 border border-indigo-500/20 w-full max-w-3xl rounded-[3rem] shadow-2xl shadow-indigo-500/10 overflow-hidden flex flex-col max-h-[90vh]"
         >
-          <div className="p-8 border-b border-slate-800 flex items-center justify-between bg-indigo-600">
+          <div className="p-8 border-b border-slate-800 flex items-center justify-between bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-800">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white/20 rounded-xl">
                 <Sparkles className="text-white" size={24} />
@@ -43,9 +43,12 @@ export const OutcomeView: React.FC = () => {
 
           <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
             <div className="prose prose-invert max-w-none">
-              <p className="text-xl text-slate-200 leading-relaxed font-medium italic mb-8">
-                "{lastOutcome}"
-              </p>
+              <div className="relative mb-8">
+                <div className="absolute -left-4 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 to-violet-500 rounded-full" />
+                <p className="text-xl text-slate-100 leading-relaxed font-medium italic pl-4">
+                  "{lastOutcome}"
+                </p>
+              </div>
               
               {lastConsequence && (
                 <div className="space-y-8 mt-10">
@@ -66,7 +69,7 @@ export const OutcomeView: React.FC = () => {
                     ].map((stat) => {
                       const prevValue = stat.value - stat.change;
                       return (
-                        <div key={stat.label} className="bg-slate-800/30 p-5 rounded-2xl border border-slate-800 flex flex-col gap-3">
+                        <div key={stat.label} className={`bg-slate-800/30 p-5 rounded-2xl border border-slate-800 flex flex-col gap-3 border-l-2 border-l-${stat.color.replace('bg-', '')}`}>
                           <div className="flex justify-between items-center">
                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{stat.label}</span>
                             <div className="flex items-center gap-2">
