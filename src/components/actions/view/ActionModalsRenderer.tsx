@@ -70,7 +70,8 @@ export const ActionModalsRenderer: React.FC<ActionModalsRendererProps> = ({
                  modals.modalType === 'give_money' ? 'Disburse Funds' :
                  modals.modalType === 'hypnotize' ? 'Hypnotize Target' :
                  modals.modalType === 'sabotage' ? 'Sabotage Player' :
-                 modals.modalType === 'contact' ? 'Contact Person' : 'Select Person'}
+                 modals.modalType === 'contact' ? 'Contact Person' :
+                 modals.modalType === 'endorse_hof' ? 'Endorse for Hall of Fame' : 'Select Person'}
         />
       )}
 
@@ -192,9 +193,9 @@ export const ActionModalsRenderer: React.FC<ActionModalsRendererProps> = ({
       {modals.selectedContactForModal && (
         <ContactModal
           contact={modals.selectedContactForModal}
-          onClose={() => {
-            modals.setSelectedContactForModal(null);
-          }}
+          onClose={() => modals.setSelectedContactForModal(null)}
+          onSend={handleSendMessage}
+          isLoading={state.isProcessing}
         />
       )}
 
