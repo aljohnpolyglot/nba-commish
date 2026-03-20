@@ -396,7 +396,7 @@ export const formatCurrency = (value: number, isBaseMillions: boolean = true): s
 
 export const getRelevantHistory = (history: string[], targetNames: string[], limit: number = 5): string[] => {
   return history
-    .filter(event => targetNames.some(name => event.toLowerCase().includes(name.toLowerCase())))
+    .filter(event => event && targetNames.some(name => event.toLowerCase().includes(name.toLowerCase())))
     .slice(-limit);
 };
 
