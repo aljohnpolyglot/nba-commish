@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { ContactAvatar } from '../common/ContactAvatar';
 import { AVATAR_DATA } from '../../data/avatars';
 import { getAvatarByName } from '../../services/avatarService';
+import { getAllReferees, getRefereePhoto } from '../../data/photos';
 
 interface ChatWindowProps {
   chat?: Chat;
@@ -193,6 +194,21 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
                     org = staff.team;
                 }
               }
+          }
+      }
+
+      if (!participant) {
+          // Try referees
+          const allRefs = getAllReferees();
+          const ref = allRefs.find(r => `ref-${r.id}` === draftContactId);
+          if (ref) {
+              participant = {
+                  id: `ref-${ref.id}`,
+                  name: ref.name,
+                  role: 'NBA Referee',
+                  avatarUrl: getRefereePhoto(ref.name) || undefined
+              };
+              org = 'NBA Officials';
           }
       }
 

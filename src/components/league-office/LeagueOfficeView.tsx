@@ -8,12 +8,14 @@ import { Building2 } from 'lucide-react';
 import { ActionModalsRenderer } from '../actions/view/ActionModalsRenderer';
 import { useGame } from '../../store/GameContext';
 import { PersonSelectorModal } from '../modals/PersonSelectorModal';
+import ContactModal from '../ContactModal';
 export const LeagueOfficeView: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const modals = useActionModals();
   // Personnel-specific state
   const [selectedPersonnel, setSelectedPersonnel] = useState<Personnel | null>(null);
   const [viewingBio,        setViewingBio]        = useState<Personnel | null>(null);
+  const [contactModalPerson, setContactModalPerson] = useState<any>(null);
   const [directAction, setDirectAction] = useState<{
     type: 'contact' | 'bribe' | 'fine' | 'dinner' | 'movie' | 'suspension';
     person: Personnel;
@@ -36,6 +38,19 @@ export const LeagueOfficeView: React.FC = () => {
 
     if (actionType === 'view_bio') {
       setViewingBio(selectedPersonnel);
+      setSelectedPersonnel(null);
+      return;
+    }
+
+    if (actionType === 'contact') {
+      setContactModalPerson({
+        id: `personnel-${selectedPersonnel.id}`,
+        name: selectedPersonnel.name,
+        title: selectedPersonnel.jobTitle || selectedPersonnel.type,
+        organization: selectedPersonnel.team || 'NBA League Office',
+        type: selectedPersonnel.type,
+        playerPortraitUrl: selectedPersonnel.playerPortraitUrl,
+      });
       setSelectedPersonnel(null);
       return;
     }
@@ -158,6 +173,33 @@ export const LeagueOfficeView: React.FC = () => {
               },
             });
           }}
+        />
+      )}
+
+      {contactModalPerson && (
+        <ContactModal
+          contact={contactModalPerson}
+          onClose={() => setContactModalPerson(null)}
+          onSend={async ({ message }: { message: string }) => {
+            const chat = state.chats.find(c =>
+              c.participants.includes(contactModalPerson.id) &&
+              c.participants.includes('commissioner')
+            );
+            await dispatchAction({
+              type: 'SEND_CHAT_MESSAGE',
+              payload: {
+                chatId: chat?.id,
+                text: message,
+                targetId: contactModalPerson.id,
+                targetName: contactModalPerson.name,
+                targetRole: contactModalPerson.title,
+                targetOrg: contactModalPerson.organization || 'NBA League Office',
+                avatarUrl: contactModalPerson.playerPortraitUrl,
+              }
+            });
+            setContactModalPerson(null);
+          }}
+          isLoading={state.isProcessing}
         />
       )}
 
