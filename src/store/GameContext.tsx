@@ -143,12 +143,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     const isClubbing = action.type === 'GO_TO_CLUB';
     const isWatchingGame = action.payload?.isWatchingGame === true;
-    setState(prev => ({ 
-      ...prev, 
+    setState(prev => ({
+      ...prev,
       isProcessing: true,
       isClubbing: isClubbing,
       isWatchingGame: isWatchingGame,
-      pendingStartPayload: action.type === 'START_GAME' ? action.payload : prev.pendingStartPayload
+      pendingStartPayload: action.type === 'START_GAME' ? action.payload : prev.pendingStartPayload,
+      lastActionType: action.type,
+      lastActionPayload: action.payload,
+      lastSimResults: [],
     }));
 
     if (isClubbing) {
@@ -371,6 +374,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         teams: newStatePatch.teams || prev.teams,
         players: newStatePatch.players || prev.players,
         schedule: newStatePatch.schedule || prev.schedule,
+        lastSimResults: newStatePatch.lastSimResults || [],
         isProcessing: false,
       }));
 

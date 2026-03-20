@@ -146,7 +146,15 @@ function GameLayout() {
 
         <MainContent currentView={currentView} />
 
-        {state.isProcessing && !state.isWatchingGame && <LoadingOverlay />}
+        {state.isProcessing && !state.isWatchingGame && (
+          <LoadingOverlay
+            simResults={state.lastSimResults}
+            teams={state.teams}
+            players={state.players}
+            actionType={state.lastActionType}
+            actionPayload={state.lastActionPayload}
+          />
+        )}
         {state.isClubbing && <ClubEffect />}
         {state.lastOutcome && <OutcomeView />}
       </main>

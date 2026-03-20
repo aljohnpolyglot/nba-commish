@@ -866,6 +866,9 @@ export interface GameState {
   pendingStartPayload?: any;
   lastOutcome: string | null;
   lastConsequence: ConsequenceDto | null;
+  lastSimResults?: any[];
+  lastActionType?: string;
+  lastActionPayload?: any;
   teams: NBATeam[];
   nonNBATeams: NonNBATeam[];
   schedule: Game[];

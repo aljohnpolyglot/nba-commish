@@ -617,5 +617,6 @@ export const processTurn = async (state: GameState, action: UserAction) => {
         playoffs: playoffsPatch,
         pendingClubDebuff: remainingDebuffs,
         headToHead: stateWithSim.headToHead,
+        lastSimResults: allSimResults || [],
     };
 };
