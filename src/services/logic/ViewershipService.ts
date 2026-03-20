@@ -37,7 +37,7 @@ export class ViewershipService {
 
         // Calculate Team Strength Bonus if players are provided
         if (players) {
-            const teamPlayers = players.filter(p => p.tid === team.id);
+            const teamPlayers = players.filter(p => p != null && p.tid === team.id);
             // Sort by overall rating descending
             teamPlayers.sort((a, b) => b.overallRating - a.overallRating);
             // Take top 3 players
