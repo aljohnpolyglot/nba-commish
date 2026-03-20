@@ -605,7 +605,7 @@ export const processTurn = async (state: GameState, action: UserAction) => {
         history: [...state.history, result.outcomeText],
         isProcessing: false,
         isWatchingGame: false,
-        lastOutcome: result.outcomeText,
+      lastOutcome: result.outcomeText || result.narrative,
         lastConsequence: finalConsequence,
         pendingHypnosis: [],
         payslips: [...(state.payslips || []), ...newPayslips],
