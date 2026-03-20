@@ -14,6 +14,58 @@ import { fetchAvatarData, getAvatarByHandle, getAvatarByName } from "../../avata
 import { generateLeagueSummaryContext } from "../context/leagueSummaryService";
 import { SettingsManager } from "../../SettingsManager";
 
+function normalizeResult(parsed: any): any {
+  // News normalization
+  const rawNews = parsed.newNews || parsed.news || parsed.newsItems || [];
+  parsed.newNews = rawNews.map((n: any) => ({
+    ...n,
+    headline: n.headline || n.title || n.header || 'League Update',
+    content: n.content || n.article || n.body || n.text || n.summary || '',
+    date: n.date || '',
+    type: n.type || 'league',
+    read: false,
+    isNew: true,
+  }));
+
+  // Social posts normalization
+  const rawPosts = parsed.newSocialPosts || parsed.socialPosts ||
+                   parsed.posts || parsed.tweets || parsed.social || [];
+  parsed.newSocialPosts = rawPosts.map((p: any) => ({
+    ...p,
+    author: p.author || p.name || p.handle || 'NBA',
+    handle: p.handle || p.username || p.author || '@NBA',
+    content: p.content || p.text || p.tweet || p.message || '',
+    likes: p.likes || Math.floor(Math.random() * 5000),
+    retweets: p.retweets || Math.floor(Math.random() * 1000),
+    source: p.source || 'TwitterX',
+    isNew: true,
+  }));
+
+  // Emails normalization
+  const rawEmails = parsed.newEmails || parsed.emails ||
+                    parsed.inbox || parsed.messages || [];
+  parsed.newEmails = rawEmails.map((e: any) => ({
+    ...e,
+    sender: e.sender || e.from || e.name || 'NBA Office',
+    senderRole: e.senderRole || e.role || e.title || 'Executive',
+    subject: e.subject || e.title || e.headline || 'League Update',
+    body: e.body || e.content || e.text || e.message || '',
+    read: false,
+    replied: false,
+  }));
+
+  // Outcome/narrative normalization
+  parsed.narrative = parsed.narrative || parsed.outcome ||
+                     parsed.story || parsed.summary ||
+                     parsed.result || '';
+
+  // Stat changes normalization
+  parsed.statChanges = parsed.statChanges || parsed.stats ||
+                       parsed.changes || {};
+
+  return parsed;
+}
+
 function cleanLLMJson(raw: string): string {
   if (!raw || typeof raw !== 'string') return '{}';
   return raw
@@ -105,7 +157,7 @@ export async function advanceDay(currentState: GameState, action: UserAction | n
     try {
       const cleaned = cleanLLMJson(text);
       console.log('[LLM] Raw response preview:', cleaned.substring(0, 200));
-      data = JSON.parse(cleaned);
+      data = normalizeResult(JSON.parse(cleaned));
     } catch (parseErr) {
       console.warn('[LLM] advanceDay JSON parse failed — using empty fallback', parseErr);
       data = {
@@ -169,7 +221,7 @@ export async function generateLeaguePulse(
         let data: any = {};
         try {
             const cleaned = cleanLLMJson(text);
-            data = JSON.parse(cleaned);
+            data = normalizeResult(JSON.parse(cleaned));
         } catch (e) {
             console.warn('[LLM] League pulse JSON truncated — using empty fallback');
             data = { newEmails: [], newNews: [], newSocialPosts: [], replies: [] };

@@ -206,6 +206,14 @@ Generate the outcome for the next day.
    ${sponsorInstruction}
 
 CRITICAL: NEVER mention numerical ratings (e.g., "80-rated", "71 OIQ") or "gamified" terminology in the output. Use descriptive language instead.
+
+CRITICAL: Use EXACTLY these field names in your JSON response:
+- newNews (array) with each item having: headline, content, date, type
+- newSocialPosts (array) with each item having: author, handle, content, likes, retweets, source
+- newEmails (array) with each item having: sender, senderRole, subject, body
+- narrative (string) - the main outcome text
+- statChanges (object) - approval/fund changes
+Do NOT use: title, article, posts, tweets, inbox, story, outcome
 `;
 };
 
@@ -256,5 +264,7 @@ export const generateLeaguePulsePrompt = (
         { "author": "Display Name", "handle": "@handle", "content": "Post text.", "source": "TwitterX" }
       ]
     }
+
+    CRITICAL: Use EXACTLY these field names — do NOT use: title, article, posts, tweets, inbox, story, outcome.
     `;
 };

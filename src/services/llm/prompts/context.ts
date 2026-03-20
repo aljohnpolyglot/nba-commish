@@ -28,9 +28,9 @@ export const generateTradeContext = (
     };
 
     const getTeamStaff = (teamName: string) => {
-        const owner = staff.owners.find(o => o.team?.toLowerCase() === teamName.toLowerCase());
-        const gm = staff.gms.find(g => g.team?.toLowerCase() === teamName.toLowerCase());
-        const coach = staff.coaches.find(c => c.team?.toLowerCase() === teamName.toLowerCase());
+        const owner = staff.owners.find(o => o.team?.toLowerCase() === teamName?.toLowerCase());
+        const gm = staff.gms.find(g => g.team?.toLowerCase() === teamName?.toLowerCase());
+        const coach = staff.coaches.find(c => c.team?.toLowerCase() === teamName?.toLowerCase());
         return `Owner: ${owner?.name || 'Unknown'}, GM: ${gm?.name || 'Unknown'}, Coach: ${coach?.name || 'Unknown'}`;
     };
 
@@ -96,9 +96,9 @@ export const generateLeagueContext = (
         .join('\n');
 
     const teamContext = teams.map(t => {
-        const owner = staff.owners.find(o => o.team?.toLowerCase() === t.name.toLowerCase());
-        const gm = staff.gms.find(g => g.team?.toLowerCase() === t.name.toLowerCase());
-        const coach = staff.coaches.find(c => c.team?.toLowerCase() === t.name.toLowerCase());
+        const owner = staff.owners.find(o => o.team?.toLowerCase() === t.name?.toLowerCase());
+        const gm = staff.gms.find(g => g.team?.toLowerCase() === t.name?.toLowerCase());
+        const coach = staff.coaches.find(c => c.team?.toLowerCase() === t.name?.toLowerCase());
         return `${t.name} (${t.abbrev}): Owner: ${owner?.name || 'Unknown'}, GM: ${gm?.name || 'Unknown'}, Coach: ${coach?.name || 'Unknown'}`;
     }).join('\n');
 
