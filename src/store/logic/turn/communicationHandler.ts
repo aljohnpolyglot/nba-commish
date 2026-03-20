@@ -66,15 +66,15 @@ export const handleCommunication = (state: GameState, action: UserAction, result
     let updatedChats = [...state.chats];
     newChatMessages.forEach(msg => {
         const matchedPlayer = state.players.find(
-            p => p.name.toLowerCase() === msg.sender.toLowerCase()
+            p => msg.sender && p.name.toLowerCase() === msg.sender.toLowerCase()
         );
         const matchedStaff = [
             ...(state.staff?.owners || []),
             ...(state.staff?.gms || []),
             ...(state.staff?.coaches || []),
-        ].find(s => s.name.toLowerCase() === msg.sender.toLowerCase());
+        ].find(s => s.name.toLowerCase() === (msg.sender || '').toLowerCase());
         const matchedRef = getAllReferees().find(
-            r => r.name.toLowerCase() === msg.sender.toLowerCase()
+            r => msg.sender && r.name.toLowerCase() === msg.sender.toLowerCase()
         );
         const targetId = matchedPlayer?.internalId
             || matchedStaff?.name
@@ -94,11 +94,11 @@ export const handleCommunication = (state: GameState, action: UserAction, result
                 ...(state.staff?.coaches || []),
                 ...(state.staff?.leagueOffice || [])
             ];
-            const staff = allStaff.find(s => s.name.toLowerCase() === msg.sender.toLowerCase());
+            const staff = msg.sender ? allStaff.find(s => s.name.toLowerCase() === msg.sender.toLowerCase()) : null;
             if (staff) {
                 avatarUrl = staff.playerPortraitUrl;
             } else {
-                const player = state.players.find(p => p.name.toLowerCase() === msg.sender.toLowerCase());
+                const player = msg.sender ? state.players.find(p => p.name.toLowerCase() === msg.sender.toLowerCase()) : null;
                 if (player) {
                     avatarUrl = getPlayerPhoto(player.imgURL);
                 }
