@@ -153,6 +153,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       lastActionPayload: action.payload,
       lastSimResults: [],
       tickerSimResults: [],
+      prevTeams: prev.teams,
     }));
 
     if (isClubbing) {

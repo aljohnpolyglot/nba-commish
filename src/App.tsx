@@ -150,6 +150,7 @@ function GameLayout() {
           <LoadingOverlay
             simResults={state.tickerSimResults || state.lastSimResults}
             teams={state.teams}
+            prevTeams={state.prevTeams}
             players={state.players}
             actionType={state.lastActionType}
             actionPayload={state.lastActionPayload}

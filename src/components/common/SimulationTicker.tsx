@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { normalizeDate } from '../../utils/helpers';
 
 interface GameResult {
   homeTeamId: number;
@@ -8,6 +9,7 @@ interface GameResult {
   awayScore: number;
   homeStats?: any[];
   awayStats?: any[];
+  date?: string;
   [key: string]: any;
 }
 
@@ -16,6 +18,8 @@ interface Team {
   name: string;
   abbrev: string;
   logoUrl?: string;
+  wins: number;
+  losses: number;
   [key: string]: any;
 }
 
@@ -23,280 +27,267 @@ interface Player {
   internalId: string;
   name: string;
   tid: number;
+  imgURL?: string;
   [key: string]: any;
 }
 
 interface Props {
   allSimResults: GameResult[];
   teams: Team[];
+  prevTeams?: Team[];
   players: Player[];
   actionType?: string;
   actionPayload?: any;
 }
 
-const GAME_DELAY = 600;
-const PERFORMER_DELAY = 400;
-
 function getTeam(teams: Team[], id: number) {
   return teams.find(t => t.id === id);
 }
 
-function buildStatLine(stats: any): string {
+function getBestPerformer(stats: any[], players: Player[], teams: Team[]) {
+  if (!stats || stats.length === 0) return null;
+  const sorted = [...stats].sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0));
+  const top = sorted[0];
+  if (!top) return null;
+  const player = players.find(p => p.internalId === top.playerId || p.name === top.name);
+  const team = player ? teams.find(t => t.id === player.tid) : undefined;
   const parts: string[] = [];
-  if (stats.pts != null) parts.push(`${stats.pts} PTS`);
-  if (stats.ast != null && stats.ast >= 5) parts.push(`${stats.ast} AST`);
-  if (stats.reb != null && stats.reb >= 5) parts.push(`${stats.reb} REB`);
-  if (stats.blk != null && stats.blk >= 2) parts.push(`${stats.blk} BLK`);
-  if (stats.stl != null && stats.stl >= 2) parts.push(`${stats.stl} STL`);
-  return parts.join(' • ');
+  if (top.pts != null) parts.push(`${top.pts} PTS`);
+  if (top.ast != null && top.ast >= 5) parts.push(`${top.ast} AST`);
+  if (top.reb != null && top.reb >= 5) parts.push(`${top.reb} REB`);
+  if (top.blk != null && top.blk >= 2) parts.push(`${top.blk} BLK`);
+  return {
+    name: top.name || top.playerName || 'Unknown',
+    statLine: parts.join(' · '),
+    imgURL: player?.imgURL,
+    teamLogo: team?.logoUrl,
+  };
 }
 
-interface TopPerformer {
-  name: string;
-  teamAbbrev: string;
-  statLine: string;
-  gameScore: number;
-  imgURL?: string;
-  teamLogoUrl?: string;
-}
-
-function getTopPerformers(allSimResults: GameResult[], players: Player[], teams: Team[]): TopPerformer[] {
-  const seen = new Set<string>();
-  const performers: TopPerformer[] = [];
-
-  for (const result of allSimResults) {
-    const allStats = [...(result.homeStats || []), ...(result.awayStats || [])];
-    for (const s of allStats) {
-      const gs = s.gameScore ?? (s.pts + (s.reb ?? 0) * 0.5 + (s.ast ?? 0) * 0.7);
-      if (gs < 20) continue;
-      const name = s.name || s.playerName;
-      if (!name || seen.has(name)) continue;
-      seen.add(name);
-      const player = players.find(p => p.name === name || p.internalId === s.playerId);
-      const team = player ? getTeam(teams, player.tid) : undefined;
-      performers.push({
-        name,
-        teamAbbrev: team?.abbrev || s.teamAbbrev || '',
-        statLine: buildStatLine({ pts: s.pts, ast: s.ast, reb: s.reb, blk: s.blk, stl: s.stl }),
-        gameScore: gs,
-        imgURL: player?.imgURL,
-        teamLogoUrl: team?.logoUrl,
-      });
-    }
+function groupByDate(results: GameResult[]) {
+  const groups: { date: string; results: GameResult[] }[] = [];
+  const seen = new Map<string, GameResult[]>();
+  for (const r of results) {
+    const d = r.date ? normalizeDate(r.date) : 'unknown';
+    if (!seen.has(d)) { seen.set(d, []); groups.push({ date: d, results: seen.get(d)! }); }
+    seen.get(d)!.push(r);
   }
-
-  return performers.sort((a, b) => b.gameScore - a.gameScore).slice(0, 6);
+  return groups;
 }
 
-export const SimulationTicker: React.FC<Props> = ({ allSimResults, teams, players, actionType, actionPayload }) => {
-  const hasGames = allSimResults && allSimResults.length > 0;
-  const topPerformers = hasGames ? getTopPerformers(allSimResults, players, teams) : [];
+function formatDate(dateStr: string) {
+  if (!dateStr || dateStr === 'unknown') return '';
+  try {
+    const d = new Date(`${dateStr}T00:00:00Z`);
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).toUpperCase();
+  } catch { return dateStr; }
+}
 
-  const [shownGames, setShownGames] = useState<number>(0);
-  const [shownPerformers, setShownPerformers] = useState<number>(0);
-  const [showingPerformers, setShowingPerformers] = useState(false);
-  const [showFinal, setShowFinal] = useState(false);
+const itemVariants = {
+  hidden: { opacity: 0, y: 24, scale: 0.97 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: 'easeOut' } },
+};
+
+export const SimulationTicker: React.FC<Props> = ({
+  allSimResults, teams, prevTeams, players, actionType, actionPayload
+}) => {
+  const hasGames = allSimResults && allSimResults.length > 0;
+  const groups = hasGames ? groupByDate(allSimResults) : [];
+
+  // Flatten all items: { type: 'dateHeader' | 'game' | 'standings' | 'final', ... }
+  type Item =
+    | { type: 'dateHeader'; label: string }
+    | { type: 'game'; result: GameResult }
+    | { type: 'standings' }
+    | { type: 'final' };
+
+  const items: Item[] = [];
+  for (const g of groups) {
+    items.push({ type: 'dateHeader', label: formatDate(g.date) });
+    for (const r of g.results) items.push({ type: 'game', result: r });
+  }
+  if (prevTeams && prevTeams.length > 0 && hasGames) items.push({ type: 'standings' });
+  items.push({ type: 'final' });
+
+  const [shownCount, setShownCount] = useState(0);
 
   useEffect(() => {
     if (!hasGames) {
-      const t = setTimeout(() => setShowFinal(true), 1200);
+      const t = setTimeout(() => setShownCount(items.length), 800);
       return () => clearTimeout(t);
     }
-
     let cancelled = false;
-    const totalGames = allSimResults.length;
-
-    const showNextGame = (idx: number) => {
+    let idx = 0;
+    const showNext = () => {
       if (cancelled) return;
-      if (idx > totalGames) {
-        // Start performers phase
-        setShowingPerformers(true);
-        showNextPerformer(0);
-        return;
+      idx++;
+      setShownCount(idx);
+      if (idx < items.length) {
+        const delay = items[idx]?.type === 'dateHeader' ? 200 :
+                      items[idx]?.type === 'standings' ? 400 :
+                      items[idx]?.type === 'final' ? 600 : 700;
+        setTimeout(showNext, delay);
       }
-      setShownGames(idx);
-      setTimeout(() => showNextGame(idx + 1), GAME_DELAY);
     };
-
-    const showNextPerformer = (idx: number) => {
-      if (cancelled) return;
-      if (idx > topPerformers.length) {
-        setShowFinal(true);
-        return;
-      }
-      setShownPerformers(idx);
-      setTimeout(() => showNextPerformer(idx + 1), PERFORMER_DELAY);
-    };
-
-    setTimeout(() => showNextGame(1), GAME_DELAY);
+    setTimeout(showNext, 300);
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
-  };
+  const visibleItems = items.slice(0, shownCount);
+
+  // Standings movement
+  const movedTeamIds = hasGames && prevTeams ? [...new Set(allSimResults.flatMap(r => [r.homeTeamId, r.awayTeamId]))] : [];
+  const standingsRows = movedTeamIds.map(tid => {
+    const prev = prevTeams?.find(t => t.id === tid);
+    const curr = teams.find(t => t.id === tid);
+    if (!prev || !curr) return null;
+    const wDiff = (curr.wins ?? 0) - (prev.wins ?? 0);
+    const lDiff = (curr.losses ?? 0) - (prev.losses ?? 0);
+    return { team: curr, wDiff, lDiff };
+  }).filter(Boolean) as { team: Team; wDiff: number; lDiff: number }[];
 
   return (
-    <div className="flex flex-col items-center gap-4 w-full max-w-md mx-auto px-2">
+    <div className="flex flex-col gap-3 w-full max-w-lg mx-auto px-2 pb-4">
 
-      {/* ── No games: action day ── */}
+      {/* Action day — no games */}
       {!hasGames && (
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center gap-3 text-center"
+          className="flex flex-col items-center gap-3 text-center py-8"
         >
           <div className="text-4xl">⚡</div>
           <p className="text-white font-bold text-lg tracking-tight">Processing Commissioner Action</p>
           {actionPayload?.targetName && (
-            <p className="text-indigo-400 text-sm font-medium">Target: {actionPayload.targetName}</p>
+            <p className="text-indigo-400 text-sm font-medium">{actionPayload.targetName}</p>
           )}
           {actionType && (
             <p className="text-slate-500 text-xs uppercase tracking-widest">{actionType.replace(/_/g, ' ')}</p>
           )}
-          <div className="flex gap-1.5 mt-1">
-            {[0, 1, 2].map(i => (
-              <motion.div
-                key={i}
-                className="w-2 h-2 bg-indigo-500 rounded-full"
+          <div className="flex gap-1.5 mt-2">
+            {[0,1,2].map(i => (
+              <motion.div key={i} className="w-2 h-2 bg-indigo-500 rounded-full"
                 animate={{ opacity: [0.3, 1, 0.3] }}
-                transition={{ duration: 1.2, delay: i * 0.2, repeat: Infinity }}
-              />
+                transition={{ duration: 1.2, delay: i * 0.2, repeat: Infinity }} />
             ))}
           </div>
         </motion.div>
       )}
 
-      {/* ── Games list ── */}
-      {hasGames && (
-        <div className="w-full flex flex-col gap-2">
-          <p className="text-slate-500 text-xs uppercase tracking-widest text-center mb-1">
-            Game Results
-          </p>
-          <AnimatePresence initial={false}>
-            {allSimResults.slice(0, shownGames).map((result, idx) => {
-              const home = getTeam(teams, result.homeTeamId);
-              const away = getTeam(teams, result.awayTeamId);
-              const homeWon = result.homeScore > result.awayScore;
-              return (
-                <motion.div
-                  key={idx}
-                  variants={itemVariants}
-                  initial="hidden"
-                  animate="visible"
-                  className="flex items-center justify-between bg-slate-800/60 border border-slate-700/50 rounded-xl px-4 py-2.5 gap-3"
-                >
+      {/* Game items */}
+      <AnimatePresence initial={false}>
+        {visibleItems.map((item, idx) => {
+          if (item.type === 'dateHeader') return (
+            <motion.div key={`dh-${idx}`} variants={itemVariants} initial="hidden" animate="visible"
+              className="flex items-center gap-3 mt-2">
+              <div className="h-px flex-1 bg-slate-700/50" />
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{item.label}</span>
+              <div className="h-px flex-1 bg-slate-700/50" />
+            </motion.div>
+          );
+
+          if (item.type === 'game') {
+            const r = item.result;
+            const home = getTeam(teams, r.homeTeamId);
+            const away = getTeam(teams, r.awayTeamId);
+            const homeWon = r.homeScore > r.awayScore;
+            const homeBest = getBestPerformer(r.homeStats || [], players, teams);
+            const awayBest = getBestPerformer(r.awayStats || [], players, teams);
+            const winnerBest = homeWon ? homeBest : awayBest;
+            const loserBest = homeWon ? awayBest : homeBest;
+
+            return (
+              <motion.div key={`g-${idx}`} variants={itemVariants} initial="hidden" animate="visible"
+                className="bg-slate-800/60 border border-slate-700/50 rounded-2xl overflow-hidden">
+                {/* Score row */}
+                <div className="flex items-center justify-between px-4 py-3 gap-2">
                   {/* Away */}
-                  <div className={`flex items-center gap-2 min-w-0 flex-1 ${homeWon ? 'opacity-40' : ''}`}>
-                    {away?.logoUrl && (
-                      <img src={away.logoUrl} alt={away.abbrev}
-                           className="w-8 h-8 object-contain shrink-0"
-                           referrerPolicy="no-referrer" />
-                    )}
+                  <div className={`flex items-center gap-2 flex-1 min-w-0 ${homeWon ? 'opacity-40' : ''}`}>
+                    {away?.logoUrl && <img src={away.logoUrl} alt={away.abbrev} className="w-9 h-9 object-contain shrink-0" referrerPolicy="no-referrer" />}
                     <div className="min-w-0">
-                      <span className="text-white font-bold text-sm truncate block">{away?.abbrev || 'AWY'}</span>
-                      <span className="text-slate-400 text-xs truncate hidden sm:block">{away?.name}</span>
+                      <div className="text-white font-black text-sm">{away?.abbrev}</div>
+                      <div className="text-slate-500 text-[10px] truncate hidden sm:block">{away?.name}</div>
                     </div>
                   </div>
                   {/* Scores */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-xl font-black tabular-nums ${!homeWon ? 'text-indigo-400 drop-shadow-[0_0_6px_rgba(99,102,241,0.7)]' : 'text-slate-300'}`}>
-                      {result.awayScore}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className={`text-2xl font-black tabular-nums ${!homeWon ? 'text-white drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]' : 'text-slate-500'}`}>
+                      {r.awayScore}
                     </span>
-                    <span className="text-slate-600 text-sm font-medium">–</span>
-                    <span className={`text-xl font-black tabular-nums ${homeWon ? 'text-indigo-400 drop-shadow-[0_0_6px_rgba(99,102,241,0.7)]' : 'text-slate-300'}`}>
-                      {result.homeScore}
+                    <span className="text-slate-600 text-sm">—</span>
+                    <span className={`text-2xl font-black tabular-nums ${homeWon ? 'text-white drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]' : 'text-slate-500'}`}>
+                      {r.homeScore}
                     </span>
                   </div>
                   {/* Home */}
-                  <div className={`flex items-center justify-end gap-2 min-w-0 flex-1 ${!homeWon ? 'opacity-40' : ''}`}>
+                  <div className={`flex items-center justify-end gap-2 flex-1 min-w-0 ${!homeWon ? 'opacity-40' : ''}`}>
                     <div className="min-w-0 text-right">
-                      <span className="text-white font-bold text-sm truncate block">{home?.abbrev || 'HME'}</span>
-                      <span className="text-slate-400 text-xs truncate hidden sm:block">{home?.name}</span>
+                      <div className="text-white font-black text-sm">{home?.abbrev}</div>
+                      <div className="text-slate-500 text-[10px] truncate hidden sm:block">{home?.name}</div>
                     </div>
-                    {home?.logoUrl && (
-                      <img src={home.logoUrl} alt={home.abbrev}
-                           className="w-8 h-8 object-contain shrink-0"
-                           referrerPolicy="no-referrer" />
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
-      )}
-
-      {/* ── Top performers ── */}
-      {showingPerformers && topPerformers.length > 0 && (
-        <div className="w-full flex flex-col gap-2 mt-1">
-          <p className="text-slate-500 text-xs uppercase tracking-widest text-center mb-1">
-            Top Performers
-          </p>
-          <AnimatePresence initial={false}>
-            {topPerformers.slice(0, shownPerformers).map((p, idx) => (
-              <motion.div
-                key={idx}
-                variants={itemVariants}
-                initial="hidden"
-                animate="visible"
-                className="flex items-center justify-between bg-slate-800/40 border border-slate-700/40 rounded-xl px-4 py-2 gap-2"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="relative shrink-0">
-                    {p.imgURL ? (
-                      <img src={p.imgURL} alt={p.name}
-                           className="w-10 h-10 rounded-full object-cover border-2 border-slate-700"
-                           referrerPolicy="no-referrer" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 font-bold text-sm">
-                        {p.name.charAt(0)}
-                      </div>
-                    )}
-                    {p.teamLogoUrl && (
-                      <img src={p.teamLogoUrl} alt=""
-                           className="absolute -bottom-1 -right-1 w-4 h-4 object-contain"
-                           referrerPolicy="no-referrer" />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-white font-semibold text-sm truncate block">{p.name}</span>
-                    <span className="text-slate-500 text-xs">{p.teamAbbrev}</span>
+                    {home?.logoUrl && <img src={home.logoUrl} alt={home.abbrev} className="w-9 h-9 object-contain shrink-0" referrerPolicy="no-referrer" />}
                   </div>
                 </div>
-                <span className="text-indigo-300 text-xs font-mono font-medium shrink-0">{p.statLine}</span>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      )}
 
-      {/* ── Final "generating" state ── */}
-      <AnimatePresence>
-        {showFinal && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center gap-2 mt-2"
-          >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-              className="text-2xl select-none"
-            >
-              🏀
+                {/* Best performers */}
+                {(winnerBest || loserBest) && (
+                  <div className="border-t border-slate-700/40 px-4 py-2 flex flex-col gap-1.5">
+                    {winnerBest && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-400 text-[10px] font-black uppercase tracking-wider w-3">W</span>
+                        {winnerBest.imgURL && <img src={winnerBest.imgURL} alt={winnerBest.name} className="w-5 h-5 rounded-full object-cover border border-slate-600" referrerPolicy="no-referrer" />}
+                        <span className="text-slate-200 text-xs font-semibold">{winnerBest.name}</span>
+                        <span className="text-slate-500 text-[10px] ml-auto">{winnerBest.statLine}</span>
+                      </div>
+                    )}
+                    {loserBest && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-rose-400 text-[10px] font-black uppercase tracking-wider w-3">L</span>
+                        {loserBest.imgURL && <img src={loserBest.imgURL} alt={loserBest.name} className="w-5 h-5 rounded-full object-cover border border-slate-600" referrerPolicy="no-referrer" />}
+                        <span className="text-slate-200 text-xs font-semibold">{loserBest.name}</span>
+                        <span className="text-slate-500 text-[10px] ml-auto">{loserBest.statLine}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            );
+          }
+
+          if (item.type === 'standings') return (
+            <motion.div key="standings" variants={itemVariants} initial="hidden" animate="visible"
+              className="bg-slate-800/40 border border-slate-700/30 rounded-2xl overflow-hidden mt-2">
+              <div className="px-4 py-2 border-b border-slate-700/30">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Standings Movement</span>
+              </div>
+              <div className="divide-y divide-slate-700/20">
+                {standingsRows.map(({ team, wDiff, lDiff }) => (
+                  <div key={team.id} className="flex items-center gap-3 px-4 py-2">
+                    {team.logoUrl && <img src={team.logoUrl} alt={team.abbrev} className="w-6 h-6 object-contain" referrerPolicy="no-referrer" />}
+                    <span className="text-white text-xs font-bold flex-1">{team.name}</span>
+                    <span className="text-slate-400 text-xs font-mono">{team.wins}-{team.losses}</span>
+                    <span className={`text-xs font-black ml-2 ${wDiff > 0 ? 'text-emerald-400' : lDiff > 0 ? 'text-rose-400' : 'text-slate-500'}`}>
+                      {wDiff > 0 ? `↑ +${wDiff}W` : lDiff > 0 ? `↓ +${lDiff}L` : '—'}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </motion.div>
-            <motion.p
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 1.8, repeat: Infinity }}
-              className="text-slate-400 text-sm font-medium"
-            >
-              Generating league reactions...
-            </motion.p>
-          </motion.div>
-        )}
+          );
+
+          if (item.type === 'final') return (
+            <motion.div key="final" variants={itemVariants} initial="hidden" animate="visible"
+              className="flex flex-col items-center gap-2 py-4">
+              <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }} className="text-2xl">🏀</motion.div>
+              <motion.p animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.8, repeat: Infinity }} className="text-slate-400 text-sm font-medium">
+                Generating league reactions...
+              </motion.p>
+            </motion.div>
+          );
+
+          return null;
+        })}
       </AnimatePresence>
     </div>
   );

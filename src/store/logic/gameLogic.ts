@@ -627,5 +627,6 @@ export const processTurn = async (
         pendingClubDebuff: remainingDebuffs,
         headToHead: stateWithSim.headToHead,
         lastSimResults: allSimResults || [],
+        prevTeams: state.teams,
     };
 };

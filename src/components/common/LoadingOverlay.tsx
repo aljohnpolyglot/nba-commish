@@ -5,12 +5,13 @@ import { SimulationTicker } from './SimulationTicker';
 interface Props {
   simResults?: any[];
   teams?: any[];
+  prevTeams?: any[];
   players?: any[];
   actionType?: string;
   actionPayload?: any;
 }
 
-export const LoadingOverlay: React.FC<Props> = ({ simResults, teams, players, actionType, actionPayload }) => {
+export const LoadingOverlay: React.FC<Props> = ({ simResults, teams, prevTeams, players, actionType, actionPayload }) => {
   const hasTicker = simResults && simResults.length > 0;
 
   return (
@@ -20,6 +21,7 @@ export const LoadingOverlay: React.FC<Props> = ({ simResults, teams, players, ac
           <SimulationTicker
             allSimResults={simResults!}
             teams={teams || []}
+            prevTeams={prevTeams}
             players={players || []}
             actionType={actionType}
             actionPayload={actionPayload}
