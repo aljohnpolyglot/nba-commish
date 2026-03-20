@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, Play, MonitorPlay, FastForward } from 'lucide-react';
-import { Game, NBATeam } from '../../../../types';
+import { Game, NBATeam, NBAPlayer } from '../../../../types';
 import { normalizeDate, getTeamForGame } from '../../../../utils/helpers';
 import { AllStarDayView } from './AllStarDayView';
 import { AllStarGameCard } from './AllStarGameCard';
@@ -24,6 +24,8 @@ interface DayViewProps {
   onViewBoxScore: (game: Game) => void;
   maxSimulatableDate: Date;
   openConfirmModal: (title: string, message: string, onConfirm: () => void) => void;
+  boxScores?: any[];
+  players?: NBAPlayer[];
 }
 
 export const DayView: React.FC<DayViewProps> = ({
@@ -44,7 +46,9 @@ export const DayView: React.FC<DayViewProps> = ({
   onViewContestDetails,
   onViewBoxScore,
   maxSimulatableDate,
-  openConfirmModal
+  openConfirmModal,
+  boxScores,
+  players,
 }) => {
   const stateDateNorm = normalizeDate(state.date);
   const selectedDateNorm = normalizeDate(selectedDate);
@@ -61,6 +65,31 @@ export const DayView: React.FC<DayViewProps> = ({
   const selectedDateUTC = new Date(`${selectedDateNorm}T00:00:00Z`);
   const stateDateUTC = new Date(`${stateDateNorm}T00:00:00Z`);
   const canSimulateToSelected = !isActuallyToday && selectedDateUTC > stateDateUTC && selectedDateUTC <= maxSimulatableDate;
+
+  const getWinnerBestPerformer = (game: Game) => {
+    if (!game.played || !boxScores || !players) return null;
+    const boxScore = boxScores.find(b => b.gameId === game.gid);
+    if (!boxScore) return null;
+    const winnerId = game.homeScore > game.awayScore ? game.homeTid : game.awayTid;
+    const winnerStats = winnerId === game.homeTid
+      ? boxScore.homeStats
+      : boxScore.awayStats;
+    if (!winnerStats || winnerStats.length === 0) return null;
+    const best = [...winnerStats].sort((a: any, b: any) =>
+      (b.gameScore ?? 0) - (a.gameScore ?? 0)
+    )[0];
+    if (!best) return null;
+    const player = players.find(p => p.internalId === best.playerId);
+    const parts: string[] = [];
+    if (best.pts != null) parts.push(`${best.pts} PTS`);
+    if (best.reb != null && best.reb >= 5) parts.push(`${best.reb} REB`);
+    if (best.ast != null && best.ast >= 5) parts.push(`${best.ast} AST`);
+    return {
+      name: best.name,
+      statLine: parts.join(' · '),
+      imgURL: player?.imgURL,
+    };
+  };
 
   return (
     <div className="flex-1 flex flex-col p-4 md:p-6 bg-[#0a0a0a]">
@@ -271,6 +300,29 @@ export const DayView: React.FC<DayViewProps> = ({
                         )}
                       </div>
                     </div>
+
+                    {game.played && (() => {
+                      const best = getWinnerBestPerformer(game);
+                      if (!best) return null;
+                      return (
+                        <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-2">
+                          {best.imgURL && (
+                            <img
+                              src={best.imgURL}
+                              alt={best.name}
+                              className="w-5 h-5 rounded-full object-cover border border-slate-700 shrink-0"
+                              referrerPolicy="no-referrer"
+                            />
+                          )}
+                          <span className="text-[10px] font-bold text-slate-400 truncate">
+                            ⭐ {best.name}
+                          </span>
+                          <span className="text-[10px] font-mono text-indigo-400 ml-auto shrink-0">
+                            {best.statLine}
+                          </span>
+                        </div>
+                      );
+                    })()}
 
                     {/* Series context for playoff/play-in games */}
                     {(series || pigame) && (

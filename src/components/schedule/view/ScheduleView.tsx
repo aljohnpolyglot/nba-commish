@@ -279,6 +279,8 @@ export const ScheduleView: React.FC = () => {
                 onViewBoxScore={setSelectedBoxScoreGame}
                 maxSimulatableDate={maxSimulatableDate}
                 openConfirmModal={openConfirmModal}
+                boxScores={state.boxScores}
+                players={state.players}
               />
             </motion.div>
           )}
