@@ -1,4 +1,4 @@
-import { NBATeam, NBAPlayer, GameResult } from '../../../types';
+import { NBATeam, NBAPlayer, GameResult, GameState } from '../../../types';
 import { AwardService } from '../../logic/AwardService';
 import { SettingsManager } from '../../SettingsManager';
 
@@ -169,4 +169,38 @@ export const generateLeagueSummaryContext = (
 
     context += "\n----------------------\n";
     return context;
+};
+
+export const generateStaffContext = (state: GameState): string => {
+    const { staff, teams } = state;
+    if (!staff) return '';
+
+    const lines: string[] = ['REAL PEOPLE TO USE IN EMAILS/CHATS/NEWS:'];
+
+    staff.owners.slice(0, 10).forEach(o => {
+        if (o.name && o.team) lines.push(`Owner: ${o.name} (${o.team})`);
+    });
+
+    staff.gms.slice(0, 10).forEach(g => {
+        if (g.name && g.team) lines.push(`GM: ${g.name} (${g.team})`);
+    });
+
+    staff.coaches.slice(0, 10).forEach(c => {
+        if (c.name && c.team) lines.push(`Coach: ${c.name} (${c.team})`);
+    });
+
+    const topPlayers = state.players
+        .filter(p => p.status === 'Active' && p.overallRating >= 85)
+        .sort((a, b) => b.overallRating - a.overallRating)
+        .slice(0, 10);
+
+    topPlayers.forEach(p => {
+        const team = teams.find(t => t.id === p.tid);
+        lines.push(`Player: ${p.name} (${team?.abbrev || 'FA'}) — Agent emails use: "${p.name}'s Agent"`);
+    });
+
+    lines.push('NEVER use: John Smith, Bob Johnson, Jane Doe, or any generic placeholder names.');
+    lines.push('ONLY use names from this list or from the TOP PLAYERS section above.');
+
+    return lines.join('\n');
 };

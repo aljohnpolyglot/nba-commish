@@ -11,7 +11,7 @@ import {
 } from "../prompts";
 import { OUTCOME_SCHEMA } from "../../schemas";
 import { fetchAvatarData, getAvatarByHandle, getAvatarByName } from "../../avatarService";
-import { generateLeagueSummaryContext } from "../context/leagueSummaryService";
+import { generateLeagueSummaryContext, generateStaffContext } from "../context/leagueSummaryService";
 import { SettingsManager } from "../../SettingsManager";
 
 function normalizeResult(parsed: any): any {
@@ -134,7 +134,8 @@ export async function advanceDay(currentState: GameState, action: UserAction | n
   // Sponsor message probability (approx 1-5% per month, so ~0.1% per day)
   const generateSponsorMessage = Math.random() < 0.005; 
 
-  const leagueSummaryContext = generateLeagueSummaryContext(currentState.teams, currentState.players, dailyResults);
+  const leagueSummaryContext = generateLeagueSummaryContext(currentState.teams, currentState.players, dailyResults)
+      + "\n\n" + generateStaffContext(currentState);
 
   const prompt = generateAdvanceDayPrompt(currentState, gamePhase, leagueContext, action, storySeeds, relevantHistory, dailyResults, generateSponsorMessage, pendingHypnosis, recentDMs, leagueSummaryContext);
 
