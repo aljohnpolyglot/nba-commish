@@ -126,7 +126,7 @@ export const handleCommunication = (state: GameState, action: UserAction, result
             sender: sponsor,
             senderRole: "Sponsor Representative",
             subject: "Partnership Update & Campaign Proposal",
-            body: `Dear Commissioner, we've been monitoring the league's recent trajectory. We'd like to discuss a new marketing initiative that could significantly boost viewership. Let's schedule a call to discuss the details.`,
+            body: `We've been monitoring the league's recent trajectory and see a strong opportunity here. A new marketing initiative could significantly boost viewership — worth a quick call to explore. Let's connect this week.`,
             date: dateString,
             read: false,
             replied: false
