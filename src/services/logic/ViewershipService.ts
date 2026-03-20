@@ -92,6 +92,7 @@ export class ViewershipService {
             switch (action.type) {
                 case 'SUSPEND_PLAYER': {
                     const { player } = action.payload;
+                    if (!player) break;
                     const rating2k = convertTo2KRating(player.overallRating);
                     // 75 is neutral. 99 is massive drop.
                     if (rating2k > 75) {
