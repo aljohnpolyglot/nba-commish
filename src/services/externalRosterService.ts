@@ -6,7 +6,7 @@ export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], t
     // ... existing Euroleague logic ...
     console.log("RosterService: Fetching Euroleague roster...");
     try {
-        const response = await fetch('https://api.npoint.io/3b2b7b634b26a02d1e72');
+        const response = await fetch('https://gist.githubusercontent.com/aljohnpolyglot/7ec945dd1258cfb914cd0f5f1e420100/raw/375f3a731a3eb2a0eda1b1ff9941f610d98df8ad/Euroleague_Roster_2025');
         if (!response.ok) {
             console.error('Failed to fetch Euroleague roster');
             return { players: [], teams: [] };
@@ -84,7 +84,7 @@ export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], t
 export const fetchPBARoster = async (): Promise<{ players: NBAPlayer[], teams: NonNBATeam[] }> => {
     console.log("RosterService: Fetching PBA roster...");
     try {
-        const response = await fetch('https://bbgm-pba-2026-preseason.tiiny.site/BBGM_PBA_2026_preseason.json');
+        const response = await fetch('https://gist.githubusercontent.com/aljohnpolyglot/f917f6a8d4524314c86f1f5c492b6ccd/raw/9793173031cd543ccc32adaf761ac10204336bb9/PBA_Roster_2025');
         if (!response.ok) {
             console.error('Failed to fetch PBA roster');
             return { players: [], teams: [] };
@@ -189,7 +189,7 @@ export const fetchWNBARoster = async (): Promise<{ players: NBAPlayer[], teams: 
         // The user provided link has `dl=0`. I should probably change it to `dl=1` or `raw=1` for direct JSON.
         // User link: https://dl.dropboxusercontent.com/scl/fi/0wrm1ivgz90bzt9j0mypq/2024-WNBA-Roster.json?rlkey=2slrtptypwssawgzktrxhbaoz&st=swzo3zs8&dl=0
         
-        const url = 'https://dl.dropboxusercontent.com/scl/fi/0wrm1ivgz90bzt9j0mypq/2024-WNBA-Roster.json?rlkey=2slrtptypwssawgzktrxhbaoz&st=swzo3zs8&dl=1';
+        const url = 'https://gist.githubusercontent.com/aljohnpolyglot/cbad21a4f937711896aed7c75d7a9616/raw/993c01df1529bbbf72b98632ab8d01c0fd022dd7/WNBA_Roster_2025';
         
         const response = await fetch(url);
         if (!response.ok) {
