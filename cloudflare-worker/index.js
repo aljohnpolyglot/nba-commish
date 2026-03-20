@@ -14,8 +14,14 @@ const ALLOWED_ORIGINS = [
 const MODEL_MAP = {
   1: "meta-llama/Llama-3.3-70B-Instruct-Turbo",  // Fast
   2: "moonshotai/Kimi-K2.5",                       // Balanced
-  3: "zai-org/GLM-5"                               // Best
+  3: "zai-org/GLM-5-Plus"                          // Best
 };
+const MODEL_FALLBACK_CAROUSEL = [
+  "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+  "moonshotai/Kimi-K2.5",
+  "zai-org/GLM-5-Plus",
+  "deepseek-ai/DeepSeek-V3",
+];
 const ENABLE_GEMINI_FALLBACK = false; // set to true to re-enable Gemini fallback
 
 function getGeminiKeys(env) {
@@ -90,7 +96,7 @@ async function callTogetherPrimary(togetherKeys, geminiBody, corsHeaders, modelT
     if (content) messages.push({ role, content });
   }
 
-  const maxTokens = geminiBody.generationConfig?.maxOutputTokens ?? 2048;
+  const maxTokens = geminiBody.generationConfig?.maxOutputTokens ?? 8192;
 
   for (let i = 0; i < shuffled.length; i++) {
     const res = await fetch("https://api.together.xyz/v1/chat/completions", {
@@ -112,6 +118,26 @@ async function callTogetherPrimary(togetherKeys, geminiBody, corsHeaders, modelT
       console.log(`[Worker] ✅ Together key #${i + 1} succeeded (primary)`);
       const data = await res.json();
       const text = data?.choices?.[0]?.message?.content ?? "";
+      if (!text) {
+        console.warn(`[Worker] Model ${MODEL_MAP[modelTier]} returned empty — trying carousel fallback`);
+        for (const fallbackModel of MODEL_FALLBACK_CAROUSEL) {
+          if (fallbackModel === (MODEL_MAP[modelTier] || MODEL_MAP[2])) continue;
+          const fallbackRes = await fetch("https://api.together.xyz/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${shuffled[i]}` },
+            body: JSON.stringify({ model: fallbackModel, messages, max_tokens: maxTokens, temperature: 0.7, response_format: { type: "json_object" } }),
+          });
+          if (fallbackRes.ok) {
+            const fallbackData = await fallbackRes.json();
+            const fallbackText = fallbackData?.choices?.[0]?.message?.content ?? "";
+            if (fallbackText) {
+              console.log(`[Worker] ✅ Carousel fallback succeeded with ${fallbackModel}`);
+              const wrapped = { candidates: [{ content: { parts: [{ text: fallbackText }] } }], provider: `together-carousel-${fallbackModel}` };
+              return Response.json(wrapped, { headers: { ...corsHeaders, "X-Provider-Used": fallbackModel } });
+            }
+          }
+        }
+      }
 
       // Wrap in Gemini-shaped response so client code needs no changes
       const wrapped = {
