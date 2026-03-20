@@ -152,7 +152,15 @@ export async function advanceDay(currentState: GameState, action: UserAction | n
     });
 
     const text = response.text;
-    if (!text) throw new Error("No response from LLM");
+    if (!text) {
+      console.warn('[LLM] Empty response — using fallback');
+      return {
+        outcomeText: "The action was carried out quietly behind closed doors.",
+        narrative: "The Commissioner's decision was made discreetly.",
+        statChanges: { publicApproval: 0, ownerApproval: 0, playerApproval: 0, legacy: 0 },
+        newEmails: [], newNews: [], newSocialPosts: []
+      };
+    }
 
     let data: any;
     try {
@@ -217,7 +225,10 @@ export async function generateLeaguePulse(
         });
 
         const text = response.text;
-        if (!text) throw new Error("No response from LLM");
+        if (!text) {
+            console.warn('[LLM] Empty response — using fallback');
+            return { newEmails: [], newNews: [], newSocialPosts: [], replies: [] };
+        }
 
         let data: any = {};
         try {
