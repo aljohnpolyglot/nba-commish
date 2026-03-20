@@ -319,7 +319,7 @@ export async function generateContentWithRetry(
     const messages = geminiParamsToMessages(params);
     const isJson = params.config?.responseMimeType === "application/json";
     const opts: WorkerOptions = {
-      maxTokens: SettingsManager.getMaxTokens(2048),
+      maxTokens: SettingsManager.getMaxTokens(8192),
       temperature: 0.7,
       json: isJson,
     };

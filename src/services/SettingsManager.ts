@@ -96,7 +96,7 @@ export class SettingsManager {
     const { llmPerformance, simulationDepth } = this.getSettings();
     const modeCap: Record<number, number> = { 1: 0.4, 2: 0.8, 3: 1.5 };
     const depthScale = 0.4 + (simulationDepth - 1) / 9 * 0.6; // 0.4 → 1.0
-    return Math.round(baseTokens * (modeCap[llmPerformance] ?? 0.8) * depthScale);
+    return Math.max(4096, Math.round(baseTokens * (modeCap[llmPerformance] ?? 0.8) * depthScale));
   }
 
   // ─── Game speed delay ─────────────────────────────────────────────────────
