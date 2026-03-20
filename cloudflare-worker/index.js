@@ -11,7 +11,11 @@ const ALLOWED_ORIGINS = [
   "https://www.basketcommissionersim.com",
 ];
 
-const TOGETHER_MODEL = "meta-llama/Llama-3.3-70B-Instruct-Turbo";
+const MODEL_MAP = {
+  1: "meta-llama/Llama-3.3-70B-Instruct-Turbo",  // Fast
+  2: "moonshotai/Kimi-K2.5",                       // Balanced
+  3: "zai-org/GLM-5"                               // Best
+};
 const ENABLE_GEMINI_FALLBACK = false; // set to true to re-enable Gemini fallback
 
 function getGeminiKeys(env) {
@@ -67,7 +71,7 @@ async function callGeminiWithRotation(keys, model, body) {
   return null; // all Gemini keys exhausted
 }
 
-async function callTogetherPrimary(togetherKeys, geminiBody, corsHeaders) {
+async function callTogetherPrimary(togetherKeys, geminiBody, corsHeaders, modelTier) {
   const shuffled = [...togetherKeys].sort(() => Math.random() - 0.5);
 
   // Convert Gemini body format → OpenAI messages
@@ -96,7 +100,7 @@ async function callTogetherPrimary(togetherKeys, geminiBody, corsHeaders) {
         "Authorization": `Bearer ${shuffled[i]}`,
       },
       body: JSON.stringify({
-        model: TOGETHER_MODEL,
+        model: MODEL_MAP[modelTier] || MODEL_MAP[2],
         messages,
         max_tokens: maxTokens,
         temperature: 0.7,
@@ -177,7 +181,8 @@ export default {
         let parsedBody;
         try { parsedBody = JSON.parse(body); } catch { parsedBody = {}; }
 
-        const togetherResponse = await callTogetherPrimary(togetherKeys, parsedBody, corsHeaders);
+        const modelTier = parsedBody.modelTier || 2;
+        const togetherResponse = await callTogetherPrimary(togetherKeys, parsedBody, corsHeaders, modelTier);
         if (togetherResponse) return togetherResponse;
       }
 

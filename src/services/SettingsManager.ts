@@ -63,10 +63,10 @@ export class SettingsManager {
     if (taskType === 'interaction') return 'gemini-2.5-flash-lite';
     if (!settings.enableLLM) return 'gemini-2.5-flash-lite';
     switch (settings.llmPerformance) {
-      case 1: return 'gemini-2.5-flash-lite';
-      case 2: return 'gemini-2.5-flash';
-      case 3: return 'gemini-2.5-flash';
-      default: return 'gemini-2.5-flash';
+      case 1: return 'fast';      // Worker: Llama 3.3 70B
+      case 2: return 'balanced';  // Worker: Kimi K2.5
+      case 3: return 'best';      // Worker: GLM-5
+      default: return 'balanced';
     }
   }
 

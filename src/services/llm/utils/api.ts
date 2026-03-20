@@ -155,6 +155,7 @@ async function callViaGeminiWorker(params: GenerateContentParameters): Promise<G
 
   const body = {
     contents: normalizedContents,
+    modelTier: SettingsManager.getSettings().llmPerformance,
     ...(params.config ? {
       generationConfig: {
         ...(params.config.responseMimeType  && { responseMimeType:  params.config.responseMimeType }),
