@@ -63,6 +63,16 @@ function normalizeResult(parsed: any): any {
   parsed.statChanges = parsed.statChanges || parsed.stats ||
                        parsed.changes || {};
 
+  const sc = parsed.statChanges;
+  parsed.statChanges = {
+    publicApproval: sc.publicApproval ?? sc.public ?? sc.fanApproval ?? sc.fans ?? 0,
+    ownerApproval:  sc.ownerApproval  ?? sc.owners ?? sc.owner ?? 0,
+    playerApproval: sc.playerApproval ?? sc.players ?? sc.player ?? 0,
+    leagueFunds:    sc.leagueFunds    ?? sc.funds ?? sc.revenue ?? sc.money ?? 0,
+    personalWealth: sc.personalWealth ?? sc.wealth ?? sc.personal ?? 0,
+    legacy:         sc.legacy         ?? sc.rep ?? sc.reputation ?? 0,
+  };
+
   return parsed;
 }
 
