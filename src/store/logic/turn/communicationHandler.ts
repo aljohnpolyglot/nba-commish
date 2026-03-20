@@ -30,8 +30,8 @@ export const handleCommunication = (state: GameState, action: UserAction, result
     const newChatMessages: Email[] = [];
 
     rawEmails.forEach(email => {
-        const role = (email.senderRole || '').toLowerCase();
-        const isChatRole = chatRoles.some(r => {
+        const role = ((email.senderRole || '') + '').toLowerCase().trim();
+        const isChatRole = role.length > 0 && chatRoles.some(r => {
             const rLower = r.toLowerCase();
             if (rLower === 'player' && role.includes('agent')) return false;
             return role.includes(rLower);

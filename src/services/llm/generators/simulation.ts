@@ -15,7 +15,9 @@ import { generateLeagueSummaryContext } from "../context/leagueSummaryService";
 import { SettingsManager } from "../../SettingsManager";
 
 function cleanLLMJson(raw: string): string {
+  if (!raw || typeof raw !== 'string') return '{}';
   return raw
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')  // strip thinking tags
     .replace(/^```json\s*/im, '')
     .replace(/^```\s*/im, '')
     .replace(/```\s*$/im, '')
@@ -102,6 +104,7 @@ export async function advanceDay(currentState: GameState, action: UserAction | n
     let data: any;
     try {
       const cleaned = cleanLLMJson(text);
+      console.log('[LLM] Raw response preview:', cleaned.substring(0, 200));
       data = JSON.parse(cleaned);
     } catch (parseErr) {
       console.warn('[LLM] advanceDay JSON parse failed — using empty fallback', parseErr);
