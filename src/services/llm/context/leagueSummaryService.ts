@@ -10,6 +10,7 @@ export const generateLeagueSummaryContext = (
     // Strip legends, retired, and non-NBA players before building any LLM context
     const players = rawPlayers.filter(p =>
         p &&
+        p.name &&
         !p.diedYear &&
         !p.hof &&
         p.tid !== -2 &&

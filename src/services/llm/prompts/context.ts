@@ -71,6 +71,7 @@ export const generateLeagueContext = (
     const topPlayers = players
         .filter(p =>
             p &&
+            p.name &&
             p.status !== 'WNBA' &&
             p.status !== 'Euroleague' &&
             p.status !== 'PBA' &&

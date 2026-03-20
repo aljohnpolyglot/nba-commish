@@ -365,7 +365,7 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
   const filteredContacts = useMemo(() => {
     return allContacts.filter(c => {
       const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            c.organization.toLowerCase().includes(searchTerm.toLowerCase());
+                            c.organization?.toLowerCase().includes(searchTerm.toLowerCase());
       if (!matchesSearch) return false;
       
       if (actionType === 'endorse_hof' && c.type !== 'player') return false;

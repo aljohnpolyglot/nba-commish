@@ -18,8 +18,9 @@ export const handleSocialAndNews = async (
         const timeDiff = endDate.getTime() - startDate.getTime();
         
         result.newSocialPosts = result.newSocialPosts.map((post: any, index: number) => {
-            const player = state.players.find(p => p.name === post.author || post.handle.toLowerCase().includes(p.name.toLowerCase().replace(' ', '')));
-            const team = state.teams.find(t => t.name === post.author || post.handle.toLowerCase().includes(t.abbrev.toLowerCase()));
+            const handle = (post.handle || '').toLowerCase();
+            const player = state.players.find(p => p.name === post.author || (handle && handle.includes(p.name.toLowerCase().replace(' ', ''))));
+            const team = state.teams.find(t => t.name === post.author || (handle && handle.includes(t.abbrev.toLowerCase())));
             
             const engagement = calculateSocialEngagement(post.handle, post.content, player?.overallRating);
             

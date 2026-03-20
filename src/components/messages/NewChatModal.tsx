@@ -181,7 +181,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
           {filteredContacts.map((contact, i) => {
-            const isRetired = contact.league === 'Retired' || contact.role.toLowerCase().includes('retired');
+            const isRetired = contact.league === 'Retired' || contact.role?.toLowerCase().includes('retired');
             const showOvr = contact.ovr > 0 && !isRetired;
             
             return (

@@ -15,7 +15,7 @@ export const ContactList: React.FC<ContactListProps> = ({ contacts, selectedCont
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {contacts.map(contact => {
         const isSelected = selectedContacts.some(c => c.id === contact.id);
-        const isRetired = contact.league === 'Retired' || contact.title.toLowerCase().includes('retired') || contact.title.toLowerCase().includes('hall of famer');
+        const isRetired = contact.league === 'Retired' || contact.title?.toLowerCase().includes('retired') || contact.title?.toLowerCase().includes('hall of famer');
         const showOvr = contact.ovr && contact.ovr > 0 && !isRetired;
 
         return (
