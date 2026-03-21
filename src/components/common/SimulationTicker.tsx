@@ -112,7 +112,7 @@ export const SimulationTicker: React.FC<Props> = ({
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [shownCount]);
 
   useEffect(() => {
@@ -171,8 +171,7 @@ export const SimulationTicker: React.FC<Props> = ({
   }, [showBothConferences]);
 
   return (
-    <div className="flex flex-col gap-3 w-full max-w-lg mx-auto px-2 pb-4
-                    max-h-[70vh] overflow-y-auto custom-scrollbar scroll-smooth">
+    <div className="flex flex-col gap-3 w-full pb-4">
 
       {/* Action day — no games */}
       {!hasGames && (
@@ -225,32 +224,32 @@ export const SimulationTicker: React.FC<Props> = ({
               <motion.div key={`g-${idx}`} variants={itemVariants} initial="hidden" animate="visible"
                 className="bg-slate-800/60 border border-slate-700/50 rounded-2xl overflow-hidden">
                 {/* Score row */}
-                <div className="flex items-center justify-between px-4 py-3 gap-2">
+                <div className="flex items-center justify-between px-3 py-3 gap-1">
                   {/* Away */}
                   <div className={`flex items-center gap-2 flex-1 min-w-0 ${homeWon ? 'opacity-40' : ''}`}>
-                    {away?.logoUrl && <img src={away.logoUrl} alt={away.abbrev} className="w-9 h-9 object-contain shrink-0" referrerPolicy="no-referrer" />}
+                    {away?.logoUrl && <img src={away.logoUrl} alt={away.abbrev} className="w-7 h-7 md:w-9 md:h-9 object-contain shrink-0" referrerPolicy="no-referrer" />}
                     <div className="min-w-0">
-                      <div className="text-white font-black text-sm">{away?.abbrev}</div>
+                      <div className="text-white font-black text-xs md:text-sm">{away?.abbrev}</div>
                       <div className="text-slate-500 text-[10px] truncate hidden sm:block">{away?.name}</div>
                     </div>
                   </div>
                   {/* Scores */}
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className={`text-2xl font-black tabular-nums ${!homeWon ? 'text-white drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]' : 'text-slate-500'}`}>
+                    <span className={`text-xl md:text-2xl font-black tabular-nums ${!homeWon ? 'text-white drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]' : 'text-slate-500'}`}>
                       {r.awayScore}
                     </span>
                     <span className="text-slate-600 text-sm">—</span>
-                    <span className={`text-2xl font-black tabular-nums ${homeWon ? 'text-white drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]' : 'text-slate-500'}`}>
+                    <span className={`text-xl md:text-2xl font-black tabular-nums ${homeWon ? 'text-white drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]' : 'text-slate-500'}`}>
                       {r.homeScore}
                     </span>
                   </div>
                   {/* Home */}
                   <div className={`flex items-center justify-end gap-2 flex-1 min-w-0 ${!homeWon ? 'opacity-40' : ''}`}>
                     <div className="min-w-0 text-right">
-                      <div className="text-white font-black text-sm">{home?.abbrev}</div>
+                      <div className="text-white font-black text-xs md:text-sm">{home?.abbrev}</div>
                       <div className="text-slate-500 text-[10px] truncate hidden sm:block">{home?.name}</div>
                     </div>
-                    {home?.logoUrl && <img src={home.logoUrl} alt={home.abbrev} className="w-9 h-9 object-contain shrink-0" referrerPolicy="no-referrer" />}
+                    {home?.logoUrl && <img src={home.logoUrl} alt={home.abbrev} className="w-7 h-7 md:w-9 md:h-9 object-contain shrink-0" referrerPolicy="no-referrer" />}
                   </div>
                 </div>
 
