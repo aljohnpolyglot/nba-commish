@@ -238,11 +238,12 @@ export async function fetchGamePhotos(opts: {
   awayTeam : { name: string; abbrev: string; [key: string]: any };
   count?   : number;
   postType?: GamePostType;
+  maxPages?: number;
 }): Promise<GamePhotoResult> {
   const empty: GamePhotoResult = { photos: [], captionStory: '', activePlayers: [], passivePlayers: [], gameNarrative: { story: '', topPerformers: [], inactivePlayers: [] } };
 
   try {
-    const { homeTeam, awayTeam, count = 8, postType } = opts;
+    const { homeTeam, awayTeam, count = 80, postType, maxPages = 4 } = opts;
     const homeTeamName = homeTeam.name;
     const awayTeamName = awayTeam.name;
     const suffix = postType ? POST_TYPE_SUFFIX[postType] : '';
@@ -268,10 +269,15 @@ export async function fetchGamePhotos(opts: {
     let allPhotos: ImagnPhoto[] = [];
     for (const params of queries) {
       try {
-        const result = await searchPhotos(params);
-        console.log('[Imagn] got', result.photos.length, 'raw assets',
+        const pageResults = await Promise.all(
+          Array.from({ length: maxPages }, (_, i) =>
+            searchPhotos({ ...params, page: i + 1 }).catch(() => ({ photos: [], totalCount: 0, pageCount: 1, navigation: {} } as SearchResult))
+          )
+        );
+        const combined = pageResults.flatMap(r => r.photos);
+        console.log('[Imagn] got', combined.length, 'raw assets across', maxPages, 'pages',
           params.keywordIds ? `(ids: ${params.keywordIds})` : `(text: "${params.query}")`);
-        const filtered = result.photos.filter(p => p.medUrl && p.width >= 1500 && !isBadCaption(p.captionClean));
+        const filtered = combined.filter(p => p.medUrl && p.width >= 1500 && !isBadCaption(p.captionClean));
         console.log('[Imagn] after filter:', filtered.length);
         if (filtered.length >= 3) { allPhotos = filtered; break; }
         if (filtered.length > allPhotos.length) allPhotos = filtered;

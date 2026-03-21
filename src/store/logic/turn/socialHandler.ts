@@ -136,13 +136,20 @@ export const handleSocialAndNews = async (
                 )
             );
             if (!tagged.length) return null;
-            const reacts = tagged.filter(p => (p.captionClean || '').toLowerCase().includes('reacts'));
+
+            // Prefer photos where this player is the first/only tagged (main subject)
+            const mainSubject = tagged.filter(p =>
+                p.players?.[0]?.name?.toLowerCase().includes(nameLower)
+            );
+            const pool = mainSubject.length ? mainSubject : tagged;
+
+            const reacts = pool.filter(p => (p.captionClean || '').toLowerCase().includes('react'));
             if (reacts.length) return reacts[0];
-            const star   = tagged.filter(p => p.actionType === 'star_moment');
+            const star   = pool.filter(p => p.actionType === 'star_moment');
             if (star.length)   return star[0];
-            const active = tagged.filter(p => p.actionType === 'active');
+            const active = pool.filter(p => p.actionType === 'active');
             if (active.length) return active[0];
-            return tagged[0];
+            return pool[0];
         };
 
         const findActionPhoto = (photos: any[]): any | null => {
@@ -220,16 +227,39 @@ export const handleSocialAndNews = async (
         // ── News ───────────────────────────────────────────────────────────
         const newsWithPhotos = uniqueNewNews.map((item: any) => {
             if (item.image) return item;
-            const gameId = findGameForText(item.headline || '');
-            if (!gameId) return item;
-            const photoResult = photoMap.get(gameId);
-            if (!photoResult?.photos?.length) return item;
-            const playerMatch = (item.headline || '').match(/([A-Z][a-z]+ [A-Z][a-zA-Z-]+)/);
-            if (playerMatch) {
-                const photo = findPhotoForPlayer(playerMatch[1], photoResult.photos);
+
+            const headline = item.headline || '';
+
+            // Try game match first
+            const gameId = findGameForText(headline);
+            const photoResult = gameId ? photoMap.get(gameId) : null;
+
+            if (photoResult?.photos?.length) {
+                const playerMatch = headline.match(/([A-Z][a-z]+ [A-Z][a-zA-Z-]+)/);
+                if (playerMatch) {
+                    const photo = findPhotoForPlayer(playerMatch[1], photoResult.photos);
+                    if (photo) return { ...item, image: photo.largeUrl };
+                }
+                const photo = findActionPhoto(photoResult.photos);
                 if (photo) return { ...item, image: photo.largeUrl };
             }
-            const photo = findActionPhoto(photoResult.photos);
+
+            // Fallback: search ALL fetched photos for any player mentioned in headline
+            const allPhotos = [...photoMap.values()].flatMap((r: any) => r.photos || []);
+            if (!allPhotos.length) return item;
+
+            const playerMatches = headline.match(/([A-Z][a-z]+ [A-Z][a-zA-Z-]+)/g);
+            if (playerMatches) {
+                for (const name of playerMatches) {
+                    const photo = findPhotoForPlayer(name, allPhotos);
+                    if (photo) return { ...item, image: photo.largeUrl };
+                }
+            }
+
+            // Last resort: best action photo from the game with the most photos
+            const bestGame = [...photoMap.values()]
+                .sort((a: any, b: any) => (b.photos?.length || 0) - (a.photos?.length || 0))[0];
+            const photo = findActionPhoto((bestGame as any)?.photos || []);
             return photo ? { ...item, image: photo.largeUrl } : item;
         });
 
