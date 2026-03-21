@@ -382,7 +382,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         isProcessing: false,
       }));
 
-      // Phase 2 (background — silent update after 100ms delay)
+      // Phase 2 (background — silent patch inbox/news/social)
       setTimeout(() => {
         setState(prev => ({
           ...prev,
@@ -392,6 +392,38 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           chats: newStatePatch.chats || prev.chats,
         }));
       }, 100);
+
+      // Phase 3 — fire generateLeaguePulse in background
+      // Only for ADVANCE_DAY and similar non-action turns
+      if (!action || action.type === 'ADVANCE_DAY' || action.type === 'SIMULATE_TO_DATE') {
+        const shouldRunPulse = Math.random() < ((newStatePatch as any).daysSimulated > 1 ? 0.90 : 0.60);
+        if (shouldRunPulse) {
+          import('../services/llm/llm').then(({ generateLeaguePulse }) => {
+            generateLeaguePulse(stateRef.current, (newStatePatch as any).lastSimResults || []).then(pulse => {
+              if (!pulse || (!pulse.newNews?.length && !pulse.newSocialPosts?.length && !pulse.newEmails?.length)) return;
+              setState(prev => {
+                const existingPostIds = new Set(prev.socialFeed.map((p: any) => p.id));
+                const existingNewsIds = new Set(prev.news.map((n: any) => n.id));
+                const existingEmailIds = new Set(prev.inbox.map((e: any) => e.id));
+                const newPosts = (pulse.newSocialPosts || [])
+                  .filter((p: any) => !existingPostIds.has(p.id))
+                  .map((p: any, i: number) => ({ ...p, id: p.id || `pulse-${Date.now()}-${i}`, isNew: true }));
+                const newNews = (pulse.newNews || [])
+                  .filter((n: any) => !existingNewsIds.has(n.id))
+                  .map((n: any, i: number) => ({ ...n, id: n.id || `pulse-news-${Date.now()}-${i}`, isNew: true }));
+                const newEmails = (pulse.newEmails || [])
+                  .filter((e: any) => !existingEmailIds.has(e.id));
+                return {
+                  ...prev,
+                  socialFeed: [...newPosts, ...prev.socialFeed].slice(0, 500),
+                  news: [...newNews, ...prev.news],
+                  inbox: [...newEmails, ...prev.inbox],
+                };
+              });
+            }).catch(err => console.warn('[Pulse] Background league pulse failed:', err));
+          });
+        }
+      }
     } catch (error) {
       console.error("Failed to process action:", error);
       setState(prev => ({ 

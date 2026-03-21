@@ -628,5 +628,6 @@ export const processTurn = async (
         headToHead: stateWithSim.headToHead,
         lastSimResults: allSimResults || [],
         prevTeams: state.teams,
+        daysSimulated: daysToSimulate,
     };
 };

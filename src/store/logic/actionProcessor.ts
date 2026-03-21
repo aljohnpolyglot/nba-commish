@@ -1,6 +1,6 @@
 import { GameState, UserAction } from '../../types';
 import { calculateOutcome } from '../../services/logic/outcomeDecider';
-import { advanceDay, sendDirectMessage, generateLeaguePulse } from '../../services/llm/llm';
+import { advanceDay, sendDirectMessage } from '../../services/llm/llm';
 import { generateFreeAgentSigningReactions } from '../../services/llm/services/freeAgentService';
 import { executeExecutiveTrade } from '../../services/tradeService';
 import { calculateSocialEngagement, getGamePhase, normalizeDate } from '../../utils/helpers';
@@ -205,12 +205,5 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
         result = await advanceDay(stateWithSim, effectiveAction, storySeeds, simResults, stateWithSim.pendingHypnosis || [], recentDMs);
     }
     
-    if ((!action || action.type === 'ADVANCE_DAY') && Math.random() < (daysToSimulate > 1 ? 0.90 : 0.60)) {
-        const pulse = await generateLeaguePulse(stateWithSim, simResults);
-        if (pulse.newNews) result.newNews = [...(result.newNews || []), ...pulse.newNews];
-        if (pulse.newSocialPosts) result.newSocialPosts = [...(result.newSocialPosts || []), ...pulse.newSocialPosts];
-        if (pulse.newEmails) result.newEmails = [...(result.newEmails || []), ...pulse.newEmails];
-    }
-
     return result;
 };
