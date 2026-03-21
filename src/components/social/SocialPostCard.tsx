@@ -139,28 +139,127 @@ const SocialPostCard: React.FC<{ post: SocialPost }> = ({ post }) => {
           </button>
         </div>
         <p className="mt-1 text-zinc-300 whitespace-pre-wrap">{post.content}</p>
-        
-        {post.mediaUrl && (
-          <div 
-            className="mt-3 rounded-2xl overflow-hidden border border-zinc-700/50 relative aspect-video flex items-center justify-center"
-            style={{ backgroundColor: post.mediaBackgroundColor || '#1d1160' }}
+
+        {/* StatMuse cartoon — team color bg + watermark */}
+        {post.mediaUrl && post.mediaBackgroundColor && !post.data?.type && (
+          <div
+            className="mt-3 rounded-2xl overflow-hidden border border-white/10 relative"
+            style={{ background: post.mediaBackgroundColor, aspectRatio: '680 / 383' }}
           >
-            <img 
-              src={post.mediaUrl} 
-              alt="Post media" 
-              className="h-full w-auto object-contain"
+            <img
+              src={post.mediaUrl}
+              alt="StatMuse stat card"
+              className="w-full h-full object-contain"
+              loading="lazy"
               referrerPolicy="no-referrer"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
-            {post.handle === '@statmuse' && (
-              <div className="absolute top-4 right-4 flex items-center gap-1 opacity-80">
-                <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M4 4h4v16H4V4zm6 0h4v16h-4V4zm6 0h4v16h-4V4z" />
-                </svg>
-                <span className="text-white font-black text-xs tracking-tighter">statmuse</span>
-              </div>
-            )}
+            <div className="absolute top-2 right-3 opacity-50 pointer-events-none">
+              <span className="text-[10px] font-black text-white uppercase tracking-widest">StatMuse</span>
+            </div>
           </div>
         )}
+
+        {/* Real game action photo from imagn.com */}
+        {post.mediaUrl && !post.mediaBackgroundColor && !post.data?.type && (
+          <div className="mt-3 rounded-2xl overflow-hidden border border-white/5">
+            <img
+              src={post.mediaUrl}
+              alt="Game photo"
+              className="w-full object-cover max-h-72"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          </div>
+        )}
+
+        {/* NBA Official stat card graphic */}
+        {post.data?.type === 'stat_card' && (() => {
+          const card = post.data;
+          const playerIsHome = card.playerTeamId === card.homeTeam?.id;
+          const teamColor = playerIsHome ? card.homeTeam?.color : card.awayTeam?.color;
+          return (
+            <div className="mt-3 rounded-2xl overflow-hidden border border-white/10"
+                 style={{ background: 'linear-gradient(135deg, #0d0d1a 0%, #111827 100%)' }}>
+
+              {/* Player + stats */}
+              <div className="relative flex items-end gap-3 px-4 pt-4 pb-0 min-h-[148px] overflow-hidden"
+                   style={{ background: `linear-gradient(135deg, ${teamColor}22 0%, transparent 60%)` }}>
+                <div className="flex-1 pb-3 relative z-10">
+                  <p className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-0.5">
+                    {playerIsHome ? card.homeTeam?.name : card.awayTeam?.name}
+                  </p>
+                  <p className="text-sm font-black text-white uppercase tracking-tight mb-2">
+                    {card.playerName}
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {(card.statPills ?? []).map((pill: string, i: number) => (
+                      <span key={i}
+                        className="text-[11px] font-black px-2 py-0.5 rounded-full"
+                        style={{
+                          background: i === 0 ? `${teamColor}bb` : 'rgba(255,255,255,0.1)',
+                          color: '#fff',
+                        }}>
+                        {pill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                {/* Team logo watermark */}
+                {(playerIsHome ? card.homeTeam?.logoUrl : card.awayTeam?.logoUrl) && (
+                  <img
+                    src={playerIsHome ? card.homeTeam.logoUrl : card.awayTeam.logoUrl}
+                    alt="" aria-hidden
+                    className="absolute right-3 top-3 w-14 h-14 object-contain opacity-[0.08] pointer-events-none"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
+                {/* Real game photo if attached */}
+                {post.mediaUrl && (
+                  <img
+                    src={post.mediaUrl}
+                    alt="Game photo"
+                    className="h-32 w-auto object-cover rounded-tl-xl flex-shrink-0 relative z-10"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                )}
+              </div>
+
+              {/* Score bar */}
+              <div className="flex items-center justify-between px-4 py-2.5 bg-black/40 border-t border-white/5">
+                <div className="flex items-center gap-2 flex-1">
+                  {card.awayTeam?.logoUrl && (
+                    <img src={card.awayTeam.logoUrl} alt={card.awayTeam.abbrev}
+                      className="w-6 h-6 object-contain" referrerPolicy="no-referrer" />
+                  )}
+                  <div>
+                    <p className="text-[9px] font-black text-white/50 uppercase">{card.awayTeam?.abbrev}</p>
+                    <p className={`text-lg font-black leading-none ${card.winnerId !== card.homeTeam?.id ? 'text-white' : 'text-white/30'}`}>
+                      {card.awayTeam?.score}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-[9px] font-black text-white/30 uppercase tracking-widest px-2">
+                  {card.isOT ? (card.otCount >= 2 ? `${card.otCount}OT` : 'OT') : 'FINAL'}
+                </p>
+                <div className="flex items-center gap-2 flex-1 justify-end">
+                  <div className="text-right">
+                    <p className="text-[9px] font-black text-white/50 uppercase">{card.homeTeam?.abbrev}</p>
+                    <p className={`text-lg font-black leading-none ${card.winnerId === card.homeTeam?.id ? 'text-white' : 'text-white/30'}`}>
+                      {card.homeTeam?.score}
+                    </p>
+                  </div>
+                  {card.homeTeam?.logoUrl && (
+                    <img src={card.homeTeam.logoUrl} alt={card.homeTeam.abbrev}
+                      className="w-6 h-6 object-contain" referrerPolicy="no-referrer" />
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="mt-3 flex items-center space-x-6 text-zinc-500 text-xs">
           <button 

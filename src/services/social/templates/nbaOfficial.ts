@@ -82,6 +82,56 @@ function getHashtags(ctx: SocialContext): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// STAT CARD DATA BUILDER
+// ─────────────────────────────────────────────────────────────────────────────
+
+function buildStatCardData(ctx: SocialContext): any | null {
+    const s = ctx.stats;
+    const p = ctx.player;
+    const g = ctx.game;
+    if (!s || !p || !g) return null;
+
+    const homeTeam = ctx.teams?.find((t: any) => t.id === g.homeTeamId);
+    const awayTeam = ctx.teams?.find((t: any) => t.id === g.awayTeamId);
+    if (!homeTeam || !awayTeam) return null;
+
+    const playerTeamId = (g.homeStats || []).find((st: any) => st.playerId === p.internalId)
+        ? g.homeTeamId : g.awayTeamId;
+
+    const statPills: string[] = [`${s.pts} PTS`];
+    if (s.reb  >= 5)  statPills.push(`${s.reb} REB`);
+    if (s.ast  >= 4)  statPills.push(`${s.ast} AST`);
+    if (s.stl  >= 2)  statPills.push(`${s.stl} STL`);
+    if (s.blk  >= 2)  statPills.push(`${s.blk} BLK`);
+    if (s.threePm >= 3) statPills.push(`${s.threePm} 3PM`);
+    if (s.fga  >= 8)  statPills.push(`${s.fgm}/${s.fga} FG`);
+
+    return {
+        type        : 'stat_card',
+        playerName  : p.name,
+        playerTeamId,
+        statPills,
+        homeTeam    : {
+            name    : homeTeam.name,
+            abbrev  : homeTeam.abbrev,
+            logoUrl : homeTeam.logoUrl ?? '',
+            score   : g.homeScore ?? 0,
+            color   : (homeTeam as any).colors?.[0] ?? '#1d428a',
+        },
+        awayTeam    : {
+            name    : awayTeam.name,
+            abbrev  : awayTeam.abbrev,
+            logoUrl : awayTeam.logoUrl ?? '',
+            score   : g.awayScore ?? 0,
+            color   : (awayTeam as any).colors?.[0] ?? '#c8102e',
+        },
+        winnerId    : g.winnerId,
+        isOT        : g.isOT   ?? false,
+        otCount     : g.otCount ?? 1,
+    };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TEMPLATES
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -112,6 +162,7 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
 
             return {
                 content: recapVariants[Math.floor(Math.random() * recapVariants.length)],
+                data: buildStatCardData(ctx),
             };
         },
     },
@@ -148,6 +199,7 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
 
             return {
                 content: variants[Math.floor(Math.random() * variants.length)],
+                data: buildStatCardData(ctx),
             };
         },
     },
@@ -177,6 +229,7 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
 
             return {
                 content: variants[Math.floor(Math.random() * variants.length)],
+                data: buildStatCardData(ctx),
             };
         },
     },
@@ -200,7 +253,7 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
                 `${s.pts}. ${name}. Tonight. 🚨\n\n${formatStatline(s)}\n\n${tags}`,
             ];
 
-            return { content: variants[Math.floor(Math.random() * variants.length)] };
+            return { content: variants[Math.floor(Math.random() * variants.length)], data: buildStatCardData(ctx) };
         },
     },
 
@@ -232,7 +285,7 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
                 `${name} does it all tonight.\n\n${ddCats}\n\n${tags}`,
             ];
 
-            return { content: variants[Math.floor(Math.random() * variants.length)] };
+            return { content: variants[Math.floor(Math.random() * variants.length)], data: buildStatCardData(ctx) };
         },
     },
 
@@ -250,6 +303,7 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
             const tags = getHashtags(ctx);
             return {
                 content: `HISTORIC PERFORMANCE from ${name.toUpperCase()} 🔥\n\n${s.pts} PTS | ${s.reb} REB | ${s.ast} AST | ${s.stl} STL | ${s.blk} BLK\n\nThe 5×5. One of the rarest stat lines in NBA history.\n\n${tags}`,
+                data: buildStatCardData(ctx),
             };
         },
     },
@@ -269,6 +323,7 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
             const tags = getHashtags(ctx);
             return {
                 content: `${name} goes ${s.fgm}-for-${s.fga} from the field tonight. 🎯\n\n${s.pts} PTS | ${s.fgm}/${s.fga} FG\n\nPERFECT.\n\n${tags}`,
+                data: buildStatCardData(ctx),
             };
         },
     },
@@ -292,6 +347,7 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
 
             return {
                 content: `${winName} in dominant fashion tonight — winning by ${margin}.\n\n${winner}-${loser} | FINAL\n\n${topPlayer?.name ?? ''}: ${statline}\n\n${tags}`,
+                data: buildStatCardData(ctx),
             };
         },
     },
@@ -317,6 +373,7 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
 
             return {
                 content: variants[Math.floor(Math.random() * variants.length)],
+                data: buildStatCardData(ctx),
             };
         },
     },

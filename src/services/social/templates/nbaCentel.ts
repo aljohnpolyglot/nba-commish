@@ -13,6 +13,7 @@ export const NBA_CENTEL_TEMPLATES: SocialTemplate[] = [
     },
     {
         id: 'centel_heated',
+        
         handle: 'nba_centel',
         template: (ctx) => {
             const coaches = ["Mike Brown", "Steve Kerr", "Gregg Popovich", "Erik Spoelstra", "Nick Nurse"];

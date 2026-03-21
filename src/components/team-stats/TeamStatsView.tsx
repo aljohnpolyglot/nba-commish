@@ -623,4 +623,4 @@ export const TeamStatsView: React.FC = () => {
       </div>
     </div>
   );
-};
+}; 

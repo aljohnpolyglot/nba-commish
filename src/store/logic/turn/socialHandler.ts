@@ -1,6 +1,7 @@
 import { GameState, NBAPlayer as Player, NBATeam } from '../../../types';
 import { calculateSocialEngagement } from '../../../utils/helpers';
 import { SocialEngine } from '../../../services/social/SocialEngine';
+import { fetchGamePhotos, fetchPlayerPhotos } from '../../../services/ImagnPhotoService';
 
 export const handleSocialAndNews = async (
     state: GameState, 
@@ -75,5 +76,168 @@ export const handleSocialAndNews = async (
 
     console.log('[SocialHandler] incoming newNews:', result?.newNews?.length);
     console.log('[SocialHandler] incoming newSocialPosts:', result?.newSocialPosts?.length);
-    return { uniqueNewPosts, uniqueNewNews };
+
+    // ── Attach real imagn photos ──────────────────────────────────────────────
+    try {
+        const gameInfoMap = new Map<number, any>();
+        for (const r of allSimResults) {
+            if (!r.gameId || r.homeTeamId <= 0 || r.awayTeamId <= 0) continue;
+            const home = updatedTeams.find(t => t.id === r.homeTeamId);
+            const away = updatedTeams.find(t => t.id === r.awayTeamId);
+            if (home && away) gameInfoMap.set(r.gameId, { home, away });
+        }
+
+        console.log('[Imagn] games to fetch photos for:', gameInfoMap.size);
+
+        const photoMap = new Map<number, any>();
+        await Promise.all([...gameInfoMap.entries()].map(async ([gameId, { home, away }]) => {
+            try {
+                const photoResult = await fetchGamePhotos({ homeTeam: home, awayTeam: away });
+                if (photoResult?.photos?.length > 0) photoMap.set(gameId, photoResult);
+            } catch (e) {
+                console.warn('[Imagn] skipped:', home.name, 'vs', away.name, e);
+            }
+        }));
+
+        console.log('[Imagn] photoMap results:', photoMap.size, 'games with photos');
+        if (photoMap.size === 0) return { uniqueNewPosts, uniqueNewNews };
+
+        // ── Helpers ────────────────────────────────────────────────────────
+
+        const findGameForText = (text: string) => {
+            const lower = text.toLowerCase();
+            for (const [gameId, { home, away }] of gameInfoMap.entries()) {
+                const homeWord = home.name.split(' ').pop()!.toLowerCase();
+                const awayWord = away.name.split(' ').pop()!.toLowerCase();
+                if (lower.includes(homeWord) || lower.includes(awayWord)) return gameId;
+            }
+            return null;
+        };
+
+        // TRUE passive = bench/sideline only. Reactions after a play = good, keep them.
+        const TRUE_PASSIVE = ['on the bench', 'during a timeout', 'during timeout', 'sideline', 'seated', 'sitting', 'walks off'];
+        const isPassivePhoto = (photo: any) =>
+            TRUE_PASSIVE.some(w => (photo.captionClean || '').toLowerCase().includes(w));
+
+        /**
+         * Priority for a named player:
+         * 1. player tagged + "reacts" (celebration/emotion after a play)
+         * 2. player tagged + star_moment
+         * 3. player tagged + active
+         * 4. player tagged + any non-passive
+         * 5. null — give up, don't return wrong player
+         */
+        const findPhotoForPlayer = (playerName: string, photos: any[]): any | null => {
+            const nameLower = playerName.toLowerCase();
+            const tagged = photos.filter(p =>
+                !isPassivePhoto(p) &&
+                (p.players || []).some((t: any) =>
+                    t.name?.toLowerCase().includes(nameLower) || nameLower.includes(t.name?.toLowerCase() ?? '')
+                )
+            );
+            if (!tagged.length) return null;
+            const reacts = tagged.filter(p => (p.captionClean || '').toLowerCase().includes('reacts'));
+            if (reacts.length) return reacts[0];
+            const star   = tagged.filter(p => p.actionType === 'star_moment');
+            if (star.length)   return star[0];
+            const active = tagged.filter(p => p.actionType === 'active');
+            if (active.length) return active[0];
+            return tagged[0];
+        };
+
+        const findActionPhoto = (photos: any[]): any | null => {
+            const pool = photos.filter(p => !isPassivePhoto(p) && (p.actionType === 'active' || p.actionType === 'star_moment'));
+            return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+        };
+
+        // ── Allowlists ─────────────────────────────────────────────────────
+        const STATMUSE_SHIELD    = ['statmuse'];
+        const NBA_OFFICIAL       = ['@nba'];
+        const STAT_CARD_SOURCES  = ['nba_official', 'nbamemes', 'nbameme', 'thenbacental', 'bleacherreport', 'espn'];
+
+        const isShielded = (post: any) =>
+            STATMUSE_SHIELD.some(s =>
+                (post.source || '').toLowerCase().includes(s) ||
+                (post.handle || '').toLowerCase().includes(s) ||
+                (post.author || '').toLowerCase().includes(s)
+            );
+        const isNBAOfficial    = (post: any) => NBA_OFFICIAL.some(h => (post.handle || '').toLowerCase() === h);
+        const isStatCardSource = (post: any) => STAT_CARD_SOURCES.some(s => (post.handle || '').toLowerCase().includes(s));
+
+        // ── Posts ──────────────────────────────────────────────────────────
+        const postsWithPhotos = await Promise.all(uniqueNewPosts.map(async (post: any) => {
+            if (post.mediaUrl) return post;   // never overwrite — StatMuse, etc.
+            if (isShielded(post)) return post;
+
+            const gameId      = findGameForText(post.content || '');
+            const photoResult = gameId ? photoMap.get(gameId) : null;
+            const isStatCard  = !!post.data?.type;
+
+            // ── Stat card ──────────────────────────────────────────────────
+            if (isStatCard && post.data?.playerName) {
+                const playerName = post.data.playerName;
+                const playerObj  = updatedPlayers.find((p: Player) => p.name === playerName);
+                if (playerObj) {
+                    try {
+                        const playerPhotos = await fetchPlayerPhotos({ player: playerObj });
+                        const photo = findPhotoForPlayer(playerName, playerPhotos);
+                        if (photo) return { ...post, mediaUrl: photo.medUrl };
+                    } catch { /* silent */ }
+                }
+                if (photoResult?.photos?.length) {
+                    const photo = findPhotoForPlayer(playerName, photoResult.photos);
+                    if (photo) return { ...post, mediaUrl: photo.medUrl };
+                }
+                return post;
+            }
+
+            // ── Player highlight (BR, NBACentral, etc.) ────────────────────
+            if (isStatCardSource(post) && photoResult?.photos?.length) {
+                const playerMatch = (post.content || '').match(/^([A-Z][a-z]+ [A-Z][a-zA-Z-]+)/m);
+                if (playerMatch) {
+                    const photo = findPhotoForPlayer(playerMatch[1], photoResult.photos);
+                    if (photo) return { ...post, mediaUrl: photo.medUrl };
+                }
+                const photo = findActionPhoto(photoResult.photos);
+                return photo ? { ...post, mediaUrl: photo.medUrl } : post;
+            }
+
+            // ── @NBA recap ─────────────────────────────────────────────────
+            if (isNBAOfficial(post) && photoResult?.photos?.length) {
+                if (Math.random() >= 0.75) return post;
+                const playerMatch = (post.content || '').match(/([A-Z][a-z]+ [A-Z][a-zA-Z-]+):/);
+                if (playerMatch) {
+                    const photo = findPhotoForPlayer(playerMatch[1], photoResult.photos);
+                    if (photo) return { ...post, mediaUrl: photo.medUrl };
+                }
+                const photo = findActionPhoto(photoResult.photos);
+                return photo ? { ...post, mediaUrl: photo.medUrl } : post;
+            }
+
+            return post; // everyone else gets nothing
+        }));
+
+        // ── News ───────────────────────────────────────────────────────────
+        const newsWithPhotos = uniqueNewNews.map((item: any) => {
+            if (item.image) return item;
+            const gameId = findGameForText(item.headline || '');
+            if (!gameId) return item;
+            const photoResult = photoMap.get(gameId);
+            if (!photoResult?.photos?.length) return item;
+            const playerMatch = (item.headline || '').match(/([A-Z][a-z]+ [A-Z][a-zA-Z-]+)/);
+            if (playerMatch) {
+                const photo = findPhotoForPlayer(playerMatch[1], photoResult.photos);
+                if (photo) return { ...item, image: photo.largeUrl };
+            }
+            const photo = findActionPhoto(photoResult.photos);
+            return photo ? { ...item, image: photo.largeUrl } : item;
+        });
+
+        console.log('[Imagn] posts with mediaUrl:', postsWithPhotos.filter((p: any) => p.mediaUrl).length, '/', postsWithPhotos.length);
+        console.log('[Imagn] news with image:', newsWithPhotos.filter((n: any) => n.image).length, '/', newsWithPhotos.length);
+
+        return { uniqueNewPosts: postsWithPhotos, uniqueNewNews: newsWithPhotos };
+    } catch (_) {
+        return { uniqueNewPosts, uniqueNewNews };
+    }
 };

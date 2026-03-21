@@ -9,7 +9,7 @@ import { simulateQuarters } from './quarters';
 import { pickGameWinner } from './clutch';
 import { generateSyntheticPM, applyPMToStats } from './syntheticPM';
 import { setClubDebuffs, clearClubDebuffs } from '../StatGenerator/helpers';
-
+import { fetchGamePhotos } from '../../ImagnPhotoService';
 export class GameSimulator {
 
   private static calcWinProb(strengthDiff: number): number {

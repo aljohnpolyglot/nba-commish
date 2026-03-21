@@ -20,6 +20,6 @@ export interface SocialTemplate {
     template: string | ((ctx: SocialContext) => string);
     priority: number | ((ctx: SocialContext) => number); // Higher = more likely to show if multiple trigger
     condition: (ctx: SocialContext) => boolean;
-    resolve?: (template: string, ctx: SocialContext) => string | { content: string; avatarUrl?: string; mediaUrl?: string; mediaBackgroundColor?: string }; // Optional custom resolver
+    resolve?: (template: string, ctx: SocialContext) => string | { content: string; avatarUrl?: string; mediaUrl?: string; mediaBackgroundColor?: string; data?: any }; // Optional custom resolver
     type?: 'statline' | 'highlight' | 'news' | 'meme' | 'general'; // Category of the tweet
 }

@@ -129,6 +129,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         }
         return { ...prev, schedule: newSchedule, boxScores: newBoxScores, teams: newTeams };
       });
+
+      // Fire photo fetch for watched game — non-blocking
+      const watchedHome = state.teams.find(t => t.id === result.homeTeamId);
+      const watchedAway = state.teams.find(t => t.id === result.awayTeamId);
+      if (watchedHome && watchedAway) {
+        import('../services/ImagnPhotoService').then(({ fetchGamePhotos }) => {
+          fetchGamePhotos({ homeTeam: watchedHome, awayTeam: watchedAway }).catch(() => {});
+        });
+      }
       return;
     }
 
