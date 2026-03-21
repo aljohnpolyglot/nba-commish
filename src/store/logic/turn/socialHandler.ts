@@ -1,7 +1,7 @@
 import { GameState, NBAPlayer as Player, NBATeam } from '../../../types';
 import { calculateSocialEngagement } from '../../../utils/helpers';
 import { SocialEngine } from '../../../services/social/SocialEngine';
-import { fetchGamePhotos, fetchPlayerPhotos } from '../../../services/ImagnPhotoService';
+import { fetchGamePlayerPhotos, ImagnPhoto } from '../../../services/ImagnPhotoService';
 
 export const handleSocialAndNews = async (
     state: GameState, 
@@ -79,7 +79,7 @@ export const handleSocialAndNews = async (
 
     // ── Attach real imagn photos ──────────────────────────────────────────────
     try {
-        const gameInfoMap = new Map<number, any>();
+        const gameInfoMap = new Map<number, { home: NBATeam; away: NBATeam }>();
         for (const r of allSimResults) {
             if (!r.gameId || r.homeTeamId <= 0 || r.awayTeamId <= 0) continue;
             const home = updatedTeams.find(t => t.id === r.homeTeamId);
@@ -89,22 +89,34 @@ export const handleSocialAndNews = async (
 
         console.log('[Imagn] games to fetch photos for:', gameInfoMap.size);
 
-        const photoMap = new Map<number, any>();
+        // ── Fetch per-player photos for each game ──────────────────────────
+        const gamePhotoMap = new Map<number, Map<string, ImagnPhoto[]>>();
+
         await Promise.all([...gameInfoMap.entries()].map(async ([gameId, { home, away }]) => {
+            const gameResult = allSimResults.find((r: any) => r.gameId === gameId);
+            if (!gameResult) return;
+
+            const topPlayers = [...(gameResult.homeStats || []), ...(gameResult.awayStats || [])]
+                .sort((a: any, b: any) => b.gameScore - a.gameScore)
+                .slice(0, 10)
+                .map((s: any) => ({ name: s.name, gameScore: s.gameScore }));
+
+            const gameKey = `${home.abbrev}-${away.abbrev}-${gameResult.date}`;
+
             try {
-                const photoResult = await fetchGamePhotos({ homeTeam: home, awayTeam: away });
-                if (photoResult?.photos?.length > 0) photoMap.set(gameId, photoResult);
+                const playerPhotos = await fetchGamePlayerPhotos({ homeTeam: home, awayTeam: away, topPlayers, gameKey });
+                if (playerPhotos.size > 0) gamePhotoMap.set(gameId, playerPhotos);
             } catch (e) {
                 console.warn('[Imagn] skipped:', home.name, 'vs', away.name, e);
             }
         }));
 
-        console.log('[Imagn] photoMap results:', photoMap.size, 'games with photos');
-        if (photoMap.size === 0) return { uniqueNewPosts, uniqueNewNews };
+        console.log('[Imagn] gamePhotoMap:', gamePhotoMap.size, 'games');
+        if (gamePhotoMap.size === 0) return { uniqueNewPosts, uniqueNewNews };
 
         // ── Helpers ────────────────────────────────────────────────────────
 
-        const findGameForText = (text: string) => {
+        const findGameForText = (text: string): number | null => {
             const lower = text.toLowerCase();
             for (const [gameId, { home, away }] of gameInfoMap.entries()) {
                 const homeWord = home.name.split(' ').pop()!.toLowerCase();
@@ -114,53 +126,42 @@ export const handleSocialAndNews = async (
             return null;
         };
 
-        // TRUE passive = bench/sideline only. Reactions after a play = good, keep them.
-        const TRUE_PASSIVE = ['on the bench', 'during a timeout', 'during timeout', 'sideline', 'seated', 'sitting', 'walks off'];
-        const isPassivePhoto = (photo: any) =>
-            TRUE_PASSIVE.some(w => (photo.captionClean || '').toLowerCase().includes(w));
+        const findPhotoForPlayer = (playerName: string, gameId: number | null): ImagnPhoto | null => {
+            if (!gameId) return null;
+            const playerMap = gamePhotoMap.get(gameId);
+            if (!playerMap) return null;
 
-        /**
-         * Priority for a named player:
-         * 1. player tagged + "reacts" (celebration/emotion after a play)
-         * 2. player tagged + star_moment
-         * 3. player tagged + active
-         * 4. player tagged + any non-passive
-         * 5. null — give up, don't return wrong player
-         */
-        const findPhotoForPlayer = (playerName: string, photos: any[]): any | null => {
-            const nameLower = playerName.toLowerCase();
-            const tagged = photos.filter(p =>
-                !isPassivePhoto(p) &&
-                (p.players || []).some((t: any) =>
-                    t.name?.toLowerCase().includes(nameLower) || nameLower.includes(t.name?.toLowerCase() ?? '')
-                )
+            const lastName = playerName.toLowerCase().split(' ').pop() || '';
+            const photos = playerMap.get(playerName) ||
+                [...playerMap.entries()]
+                    .find(([name]) =>
+                        name.toLowerCase().includes(lastName) ||
+                        playerName.toLowerCase().includes(name.toLowerCase().split(' ').pop() || '')
+                    )?.[1];
+
+            if (!photos?.length) return null;
+
+            return (
+                photos.find(p => (p.captionClean || '').toLowerCase().includes('react')) ||
+                photos.find(p => ['dunk', 'alley-oop', 'slams'].some(w => (p.captionClean || '').toLowerCase().includes(w))) ||
+                photos.find(p => (p.captionClean || '').toLowerCase().includes('three point basket')) ||
+                photos.find(p => ['shoots', 'jumper', 'layup', 'drives', 'strips', 'blocks'].some(w => (p.captionClean || '').toLowerCase().includes(w))) ||
+                photos[0]
             );
-            if (!tagged.length) return null;
-
-            // Prefer photos where this player is the first/only tagged (main subject)
-            const mainSubject = tagged.filter(p =>
-                p.players?.[0]?.name?.toLowerCase().includes(nameLower)
-            );
-            const pool = mainSubject.length ? mainSubject : tagged;
-
-            const reacts = pool.filter(p => (p.captionClean || '').toLowerCase().includes('react'));
-            if (reacts.length) return reacts[0];
-            const star   = pool.filter(p => p.actionType === 'star_moment');
-            if (star.length)   return star[0];
-            const active = pool.filter(p => p.actionType === 'active');
-            if (active.length) return active[0];
-            return pool[0];
         };
 
-        const findActionPhoto = (photos: any[]): any | null => {
-            const pool = photos.filter(p => !isPassivePhoto(p) && (p.actionType === 'active' || p.actionType === 'star_moment'));
-            return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+        // First entry = highest gameScore player (insertion order from sort)
+        const findBestGamePhoto = (gameId: number | null): ImagnPhoto | null => {
+            if (!gameId) return null;
+            const playerMap = gamePhotoMap.get(gameId);
+            if (!playerMap) return null;
+            return [...playerMap.values()][0]?.[0] || null;
         };
 
         // ── Allowlists ─────────────────────────────────────────────────────
         const STATMUSE_SHIELD    = ['statmuse'];
-        const NBA_OFFICIAL       = ['@nba'];
-        const STAT_CARD_SOURCES  = ['nba_official', 'nbamemes', 'nbameme', 'thenbacental', 'bleacherreport', 'espn'];
+        const EXACT_NBA_OFFICIAL = new Set(['@nba']);
+        const EXACT_STAT_CARD    = new Set(['@bleacherreport', '@wojespn', '@shamscharania', '@espn', '@thenbacental']);
 
         const isShielded = (post: any) =>
             STATMUSE_SHIELD.some(s =>
@@ -168,98 +169,59 @@ export const handleSocialAndNews = async (
                 (post.handle || '').toLowerCase().includes(s) ||
                 (post.author || '').toLowerCase().includes(s)
             );
-        const isNBAOfficial    = (post: any) => NBA_OFFICIAL.some(h => (post.handle || '').toLowerCase() === h);
-        const isStatCardSource = (post: any) => STAT_CARD_SOURCES.some(s => (post.handle || '').toLowerCase().includes(s));
+        const isNBAOfficial    = (post: any) => EXACT_NBA_OFFICIAL.has((post.handle || '').toLowerCase());
+        const isStatCardSource = (post: any) => EXACT_STAT_CARD.has((post.handle || '').toLowerCase());
 
         // ── Posts ──────────────────────────────────────────────────────────
-        const postsWithPhotos = await Promise.all(uniqueNewPosts.map(async (post: any) => {
-            if (post.mediaUrl) return post;   // never overwrite — StatMuse, etc.
+        const postsWithPhotos = uniqueNewPosts.map((post: any) => {
+            if (post.mediaUrl) return post;
             if (isShielded(post)) return post;
 
-            const gameId      = findGameForText(post.content || '');
-            const photoResult = gameId ? photoMap.get(gameId) : null;
-            const isStatCard  = !!post.data?.type;
+            const gameId     = findGameForText(post.content || '');
+            const isStatCard = !!post.data?.type;
 
             // ── Stat card ──────────────────────────────────────────────────
             if (isStatCard && post.data?.playerName) {
-                const playerName = post.data.playerName;
-                const playerObj  = updatedPlayers.find((p: Player) => p.name === playerName);
-                if (playerObj) {
-                    try {
-                        const playerPhotos = await fetchPlayerPhotos({ player: playerObj });
-                        const photo = findPhotoForPlayer(playerName, playerPhotos);
-                        if (photo) return { ...post, mediaUrl: photo.medUrl };
-                    } catch { /* silent */ }
-                }
-                if (photoResult?.photos?.length) {
-                    const photo = findPhotoForPlayer(playerName, photoResult.photos);
-                    if (photo) return { ...post, mediaUrl: photo.medUrl };
-                }
-                return post;
+                const photo = findPhotoForPlayer(post.data.playerName, gameId);
+                return photo ? { ...post, mediaUrl: photo.medUrl } : post;
             }
 
             // ── Player highlight (BR, NBACentral, etc.) ────────────────────
-            if (isStatCardSource(post) && photoResult?.photos?.length) {
+            if (isStatCardSource(post) && gameId) {
                 const playerMatch = (post.content || '').match(/^([A-Z][a-z]+ [A-Z][a-zA-Z-]+)/m);
                 if (playerMatch) {
-                    const photo = findPhotoForPlayer(playerMatch[1], photoResult.photos);
+                    const photo = findPhotoForPlayer(playerMatch[1], gameId);
                     if (photo) return { ...post, mediaUrl: photo.medUrl };
                 }
-                const photo = findActionPhoto(photoResult.photos);
+                const photo = findBestGamePhoto(gameId);
                 return photo ? { ...post, mediaUrl: photo.medUrl } : post;
             }
 
             // ── @NBA recap ─────────────────────────────────────────────────
-            if (isNBAOfficial(post) && photoResult?.photos?.length) {
-                if (Math.random() >= 0.75) return post;
-                const playerMatch = (post.content || '').match(/([A-Z][a-z]+ [A-Z][a-zA-Z-]+):/);
-                if (playerMatch) {
-                    const photo = findPhotoForPlayer(playerMatch[1], photoResult.photos);
-                    if (photo) return { ...post, mediaUrl: photo.medUrl };
-                }
-                const photo = findActionPhoto(photoResult.photos);
+            if (isNBAOfficial(post) && gameId) {
+                if (Math.random() >= 0.80) return post;
+                const statMatch = (post.content || '').match(/^([A-Z][a-z]+(?:\s[A-Z][a-zA-Z'-]+)+):\s*\d+\s*PTS/m);
+                const photo = statMatch
+                    ? findPhotoForPlayer(statMatch[1], gameId)
+                    : findBestGamePhoto(gameId);
                 return photo ? { ...post, mediaUrl: photo.medUrl } : post;
             }
 
-            return post; // everyone else gets nothing
-        }));
+            return post;
+        });
 
         // ── News ───────────────────────────────────────────────────────────
         const newsWithPhotos = uniqueNewNews.map((item: any) => {
             if (item.image) return item;
-
-            const headline = item.headline || '';
-
-            // Try game match first
-            const gameId = findGameForText(headline);
-            const photoResult = gameId ? photoMap.get(gameId) : null;
-
-            if (photoResult?.photos?.length) {
-                const playerMatch = headline.match(/([A-Z][a-z]+ [A-Z][a-zA-Z-]+)/);
-                if (playerMatch) {
-                    const photo = findPhotoForPlayer(playerMatch[1], photoResult.photos);
-                    if (photo) return { ...item, image: photo.largeUrl };
-                }
-                const photo = findActionPhoto(photoResult.photos);
-                if (photo) return { ...item, image: photo.largeUrl };
-            }
-
-            // Fallback: search ALL fetched photos for any player mentioned in headline
-            const allPhotos = [...photoMap.values()].flatMap((r: any) => r.photos || []);
-            if (!allPhotos.length) return item;
-
-            const playerMatches = headline.match(/([A-Z][a-z]+ [A-Z][a-zA-Z-]+)/g);
+            const gameId = findGameForText(item.headline || '');
+            const playerMatches = (item.headline || '').match(/([A-Z][a-z]+ [A-Z][a-zA-Z-]+)/g);
             if (playerMatches) {
                 for (const name of playerMatches) {
-                    const photo = findPhotoForPlayer(name, allPhotos);
+                    const photo = findPhotoForPlayer(name, gameId);
                     if (photo) return { ...item, image: photo.largeUrl };
                 }
             }
-
-            // Last resort: best action photo from the game with the most photos
-            const bestGame = [...photoMap.values()]
-                .sort((a: any, b: any) => (b.photos?.length || 0) - (a.photos?.length || 0))[0];
-            const photo = findActionPhoto((bestGame as any)?.photos || []);
+            const photo = findBestGamePhoto(gameId);
             return photo ? { ...item, image: photo.largeUrl } : item;
         });
 

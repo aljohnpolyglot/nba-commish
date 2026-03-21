@@ -1,4 +1,4 @@
-const OWNER_PHOTOS_GIST = "https://gist.github.com/aljohnpolyglot/e6dc34be82219e02ff153593eac1470c/raw/f72e3a1f40f2054f970b8e7b58a8824ad22e2902/owner_photos.json";
+const OWNER_PHOTOS_GIST = "https://gist.githubusercontent.com/aljohnpolyglot/e6dc34be82219e02ff153593eac1470c/raw/67720b21bbb3d71d9bb8693ef3d0707e95267318/owner_photos.json";
 
 let _photos: Record<string, string> = {};
 let _fetched = false;

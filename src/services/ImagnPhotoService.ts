@@ -58,6 +58,8 @@ function cacheNavigationKeywords(navigation: any): void {
 
 export interface ImagnPhoto {
   id          : number;
+  setId       : number;
+  headLine    : string;
   medUrl      : string;      // 450-425 CDN — use in social posts/UI
   largeUrl    : string;      // 1024-922    — use in news cover
   caption     : string;
@@ -117,6 +119,15 @@ function isBadCaption(caption: string): boolean {
   return BAD_CAPTIONS.some(b => caption.toLowerCase().includes(b));
 }
 
+export const TRUE_PASSIVE_CAPTIONS = [
+  'on the bench', 'during a timeout', 'during timeout',
+  'sideline', 'seated', 'sitting', 'walks off',
+  'hugs', 'following the game', 'after the game',
+  'towel', 'shakes hands', 'exchanges jerseys',
+  'leaves the court', 'celebrates with', 'detailed view',
+  'all star', 'all-star', 'rising stars',
+];
+
 // ── HTTP helper ───────────────────────────────────────────────────────────────
 
 async function proxyFetch(url: string, retries = 1): Promise<any> {
@@ -143,6 +154,8 @@ function parseAsset(raw: any): ImagnPhoto {
     .map(([name]: [string]) => name);
   return {
     id,
+    setId       : raw.setId          || 0,
+    headLine    : raw.headLine       || '',
     medUrl      : raw.hover_url      || `https://cdn.imagn.com/image/thumb/450-425/${id}.jpg`,
     largeUrl    : `https://imagn.com/image/thumb/1024-922/${id}.jpg`,
     caption     : raw.caption        || '',
@@ -157,6 +170,13 @@ function parseAsset(raw: any): ImagnPhoto {
     isTopPic    : (raw.tags || []).includes('TopPic'),
     isLandscape : w >= h,
   };
+}
+
+const BAD_HEADLINES = ['all star', 'all-star', 'rising stars', 'celebrity game', 'slam dunk'];
+
+function enrichPhoto(raw: any): ImagnPhoto | null {
+  if (BAD_HEADLINES.some(w => (raw.headLine || '').toLowerCase().includes(w))) return null;
+  return parseAsset(raw);
 }
 
 // ── Core search ───────────────────────────────────────────────────────────────
@@ -206,7 +226,7 @@ async function searchPhotos(params: SearchParams): Promise<SearchResult> {
     || [];
 
   return {
-    photos    : assets.map(parseAsset),
+    photos    : assets.map(enrichPhoto).filter((p): p is ImagnPhoto => p !== null),
     totalCount: data?.results?.resultCount || data?.resultCount || 0,
     pageCount : data?.results?.pageCount   || data?.pageCount   || 1,
     navigation: data?.results?.navigation  || {},
@@ -288,6 +308,23 @@ export async function fetchGamePhotos(opts: {
 
     if (!allPhotos.length) return empty;
 
+    // Dedupe by setId — keep only the set that mentions one of the teams and has the most photos
+    const setGroups = new Map<number, ImagnPhoto[]>();
+    allPhotos.forEach(p => {
+      if (!setGroups.has(p.setId)) setGroups.set(p.setId, []);
+      setGroups.get(p.setId)!.push(p);
+    });
+    const homeWord = homeTeamName.toLowerCase().split(' ').pop()!;
+    const awayWord = awayTeamName.toLowerCase().split(' ').pop()!;
+    let bestPhotos: ImagnPhoto[] = [];
+    for (const [, photos] of setGroups.entries()) {
+      const hl = (photos[0]?.headLine || '').toLowerCase();
+      const mentionsTeam = hl.includes(homeWord) || hl.includes(awayWord);
+      if (mentionsTeam && photos.length > bestPhotos.length) bestPhotos = photos;
+    }
+    // Fall back to all photos if no set matched a team (e.g. setId = 0 on all)
+    if (bestPhotos.length) allPhotos = bestPhotos;
+
     // Prefer landscape TopPic action shots
     const topPics = allPhotos.filter(p => p.isTopPic && p.isLandscape);
     const rest    = allPhotos.filter(p => !p.isTopPic || !p.isLandscape);
@@ -338,7 +375,7 @@ export async function fetchPlayerPhotos(opts: {
   player  : { name: string; [key: string]: any };
   statType?: PlayerStatType;
   count?   : number;
-}): Promise<ImagnPhoto[]> {
+}): Promise<{ photos: ImagnPhoto[] }> {
   try {
     const { player, statType = 'general', count = 4 } = opts;
     const playerName = player.name;
@@ -374,10 +411,10 @@ export async function fetchPlayerPhotos(opts: {
     // Portrait-first, then landscape
     const portrait  = best.filter(p => !p.isLandscape);
     const landscape = best.filter(p =>  p.isLandscape);
-    return [...portrait, ...landscape].slice(0, count);
+    return { photos: [...portrait, ...landscape].slice(0, count) };
 
   } catch {
-    return [];
+    return { photos: [] };
   }
 }
 
@@ -391,5 +428,47 @@ export async function fetchGamePhotoPreview(opts: {
   return result.photos;
 }
 
-export const ImagnPhotoService = { fetchGamePhotos, fetchGamePhotoPreview, fetchPlayerPhotos };
+// ── fetchGamePlayerPhotos ─────────────────────────────────────────────────────
+
+// Cache: gameKey → per-player photo arrays
+const gamePlayerPhotoCache = new Map<string, { playerName: string; photos: ImagnPhoto[] }[]>();
+
+export async function fetchGamePlayerPhotos(opts: {
+  homeTeam   : { name: string; abbrev: string; [key: string]: any };
+  awayTeam   : { name: string; abbrev: string; [key: string]: any };
+  topPlayers : { name: string; gameScore: number }[];
+  gameKey    : string;
+}): Promise<Map<string, ImagnPhoto[]>> {
+  const { homeTeam, awayTeam, topPlayers, gameKey } = opts;
+
+  if (gamePlayerPhotoCache.has(gameKey)) {
+    const cached = gamePlayerPhotoCache.get(gameKey)!;
+    return new Map(cached.map(e => [e.playerName, e.photos]));
+  }
+
+  const teamQuery = `${homeTeam.name}+${awayTeam.name}`.replace(/ /g, '+');
+  const result = new Map<string, ImagnPhoto[]>();
+
+  await Promise.all(topPlayers.slice(0, 5).map(async ({ name }) => {
+    const playerQuery = name.replace(/ /g, '+');
+    const url = `https://imagn.com/simpleSearchAjax/?searchCGOnly=${SEARCH_CG}&searchtxt=${teamQuery}+${playerQuery}`;
+    console.log(`[Imagn] player search → ${url}`);
+    try {
+      const data = await proxyFetch(url);
+      const assets: any[] = data?.content?.assetsForPage || data?.results?.content?.assetsForPage || [];
+      const photos = assets
+        .map(enrichPhoto)
+        .filter((p): p is ImagnPhoto =>
+          p !== null &&
+          !TRUE_PASSIVE_CAPTIONS.some(w => (p.captionClean || '').toLowerCase().includes(w))
+        );
+      if (photos.length > 0) result.set(name, photos);
+    } catch { /* silent */ }
+  }));
+
+  gamePlayerPhotoCache.set(gameKey, [...result.entries()].map(([playerName, photos]) => ({ playerName, photos })));
+  return result;
+}
+
+export const ImagnPhotoService = { fetchGamePhotos, fetchGamePhotoPreview, fetchPlayerPhotos, fetchGamePlayerPhotos };
 export default ImagnPhotoService;
