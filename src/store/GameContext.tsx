@@ -384,13 +384,22 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
       // Phase 2 (background — silent patch inbox/news/social)
       setTimeout(() => {
-        setState(prev => ({
-          ...prev,
-          inbox: newStatePatch.inbox || prev.inbox,
-          news: newStatePatch.news || prev.news,
-          socialFeed: newStatePatch.socialFeed || prev.socialFeed,
-          chats: newStatePatch.chats || prev.chats,
-        }));
+        setState(prev => {
+          // Merge new chats with existing — don't overwrite if patch is empty
+          const patchChats = newStatePatch.chats;
+          const mergedChats = patchChats && patchChats.length > 0
+            ? patchChats
+            : prev.chats;
+          return {
+            ...prev,
+            inbox: newStatePatch.inbox?.length > 0 ? newStatePatch.inbox : prev.inbox,
+            news: newStatePatch.news?.length > 0 ? newStatePatch.news : prev.news,
+            socialFeed: newStatePatch.socialFeed?.length > 0
+              ? newStatePatch.socialFeed
+              : prev.socialFeed,
+            chats: mergedChats,
+          };
+        });
       }, 100);
 
       // Phase 3 — fire generateLeaguePulse in background

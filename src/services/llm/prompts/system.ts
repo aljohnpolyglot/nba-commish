@@ -75,6 +75,15 @@ CRITICAL HYPE GROUNDING:
 - CRITICAL: Do NOT ignore standard NBA transactions in favor of "novelty" stories. A signing of an established NBA player (e.g., Cole Anthony) is a major transaction and must be reported by Woj or Shams with the same priority and professional urgency as any other significant move.
 - CRITICAL: Respect Jersey Numbers. If a player is signed to a team, check the "Current Roster" provided in the prompt. If their preferred/previous number is already taken by a teammate (especially a star), do NOT mention them taking that number. If you mention a jersey number in a news story, ensure it is available on that team. Use jersey numbers SPARINGLY and only when it adds narrative value (e.g., a major signing, a legend's number being passed down, or a specific "new era" announcement). Do NOT include jersey numbers in every post or news item.
 
+CRITICAL — LEAGUE NEWS FORMAT:
+- NEVER describe team performance as "won X out of their last Y games"
+  or "X-Y in their last Z games". This is repetitive and boring.
+- Instead use the actual season record (e.g. "23-8"),
+  conference standing (e.g. "2nd in the East"),
+  winning/losing streak (e.g. "on a 5-game winning streak"),
+  or descriptive language (e.g. "surging", "struggling", "dominant").
+- Vary the format every time. Never repeat the same phrasing twice.
+
 CRITICAL: Prevent "Blackout" effect. Every action taken by the user MUST result in at least one piece of feedback in the news or social feed. If the user changes league settings (like playoff format or draft type), generate a news item about the "New Era" or "Structural Realignment" and social posts from fans debating the change.
 
 Official League Rules should be written in a clear, formal, and professional tone, avoiding excessive sarcasm or complexity.

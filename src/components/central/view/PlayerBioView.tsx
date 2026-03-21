@@ -411,7 +411,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
         )}
         
         {activeTab === 'Historical Data' && (
-          <div className="p-6 bg-[#080808] h-full">
+          <div className="p-4 bg-[#080808]">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-white uppercase tracking-wider">
                 {showPlayoffs ? 'Playoff Stats' : 'Regular Season Stats'}
@@ -431,7 +431,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
                 </button>
               </div>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-auto max-h-[60vh] md:max-h-[70vh] custom-scrollbar">
               <table className="w-full text-sm text-left text-slate-300">
                 <thead className="text-xs text-slate-400 uppercase bg-slate-900/50 border-b border-slate-800">
                   <tr>
@@ -562,13 +562,13 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
         )}
 
         {activeTab === 'Game Log' && (
-          <div className="p-6 bg-[#080808] h-full flex flex-col">
+          <div className="p-4 bg-[#080808] flex flex-col" style={{ minHeight: 0 }}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-white uppercase tracking-wider">
                 {state.leagueStats.year}-{String(state.leagueStats.year + 1).slice(2)} Regular Season
               </h3>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-auto max-h-[60vh] md:max-h-[70vh] custom-scrollbar">
               <table className="w-full text-sm text-left text-slate-300">
                 <thead className="text-[10px] text-slate-400 uppercase bg-slate-900/50 border-b border-slate-800 whitespace-nowrap">
                   <tr>
