@@ -346,10 +346,10 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
         </div>
 
         {/* ── TABS ── */}
-        <div className="flex border-b border-white/10 px-6 mt-4">
+        <div className="flex border-b border-white/10 px-2 mt-4 overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab('Overview')}
-            className={`px-6 py-3 text-sm font-bold uppercase tracking-widest transition-colors border-b-2 ${
+            className={`px-3 md:px-6 py-3 text-xs md:text-sm font-bold uppercase tracking-widest whitespace-nowrap transition-colors border-b-2 ${
               activeTab === 'Overview' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'
             }`}
           >
@@ -357,7 +357,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
           </button>
           <button
             onClick={() => setActiveTab('Historical Data')}
-            className={`px-6 py-3 text-sm font-bold uppercase tracking-widest transition-colors border-b-2 ${
+            className={`px-3 md:px-6 py-3 text-xs md:text-sm font-bold uppercase tracking-widest whitespace-nowrap transition-colors border-b-2 ${
               activeTab === 'Historical Data' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'
             }`}
           >
@@ -365,7 +365,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
           </button>
           <button
             onClick={() => setActiveTab('Game Log')}
-            className={`px-6 py-3 text-sm font-bold uppercase tracking-widest transition-colors border-b-2 ${
+            className={`px-3 md:px-6 py-3 text-xs md:text-sm font-bold uppercase tracking-widest whitespace-nowrap transition-colors border-b-2 ${
               activeTab === 'Game Log' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'
             }`}
           >
@@ -373,7 +373,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
           </button>
           <button
             onClick={() => setActiveTab('Awards')}
-            className={`px-6 py-3 text-sm font-bold uppercase tracking-widest transition-colors border-b-2 ${
+            className={`px-3 md:px-6 py-3 text-xs md:text-sm font-bold uppercase tracking-widest whitespace-nowrap transition-colors border-b-2 ${
               activeTab === 'Awards' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'
             }`}
           >
