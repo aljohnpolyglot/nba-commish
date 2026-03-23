@@ -93,6 +93,30 @@ async function callTogether(keys, body) {
   return null;
 }
 
+async function callTogetherImage(keys, body) {
+  const shuffled = [...keys].sort(() => Math.random() - 0.5);
+  for (let i = 0; i < shuffled.length; i++) {
+    const res = await fetch("https://api.together.xyz/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${shuffled[i]}`
+      },
+      body: JSON.stringify(body)
+    });
+    if (res.ok) {
+      console.log(`[ChatWorker] ✅ Together image key #${i + 1} succeeded`);
+      return { res, provider: "together-image" };
+    }
+    if (res.status === 429 || res.status >= 500) {
+      console.warn(`[ChatWorker] Together image key #${i + 1} returned ${res.status} — trying next`);
+      continue;
+    }
+    return { res, provider: "together-image" };
+  }
+  return null;
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin");
@@ -115,6 +139,9 @@ export default {
       });
     }
 
+    const url = new URL(request.url);
+    const isImageRequest = url.pathname === '/image';
+
     const groqKeys     = getGroqKeys(env);
     const togetherKeys = getTogetherKeys(env);
 
@@ -130,6 +157,22 @@ export default {
       body = await request.json();
     } catch {
       return Response.json({ error: "Invalid JSON body." }, { status: 400, headers: corsHeaders });
+    }
+
+    // ── Image generation route ─────────────────────────────────────────────────
+    if (isImageRequest) {
+      if (togetherKeys.length === 0) {
+        return Response.json({ error: "No Together keys configured." }, { status: 500, headers: corsHeaders });
+      }
+      const result = await callTogetherImage(togetherKeys, body);
+      if (!result) {
+        return Response.json({ error: "Image generation failed." }, { status: 503, headers: corsHeaders });
+      }
+      const data = await result.res.json();
+      return Response.json(data, {
+        status: result.res.status,
+        headers: { ...corsHeaders, "X-Provider-Used": result.provider }
+      });
     }
 
     // ── Groq primary ──────────────────────────────────────────────────────────

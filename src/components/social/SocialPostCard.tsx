@@ -4,6 +4,8 @@ import { SocialPost, SocialSource } from '../../types';
 import { UserPlus, UserMinus } from 'lucide-react';
 import { formatTwitterDate } from '../../utils/helpers';
 import { getUnavatarUrl, canUseUnavatar } from '../../data/photos/social';
+import { ImagnPhotoEditor } from './ImagnPhotoEditor';
+import { needsCanvasEditor } from '../../services/social/photoEnricher';
 
 // Module-level cache — persists across tab switches and re-renders, cleared on page reload.
 // string = resolved URL that loaded successfully; null = all sources failed, show icon.
@@ -26,7 +28,12 @@ const SourceIcon: React.FC<{ source: SocialSource }> = ({ source }) => {
   );
 };
 
-const SocialPostCard: React.FC<{ post: SocialPost }> = ({ post }) => {
+interface SocialPostCardProps {
+  post: SocialPost;
+  onImageClick?: (url: string) => void;
+}
+
+const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onImageClick }) => {
   const { state, toggleLike, toggleRetweet, followUser, unfollowUser } = useGame();
 
   const cleanHandle = post.handle.replace('@', '');
@@ -161,18 +168,42 @@ const SocialPostCard: React.FC<{ post: SocialPost }> = ({ post }) => {
         )}
 
         {/* Real game action photo from imagn.com */}
-        {post.mediaUrl && !post.mediaBackgroundColor && !post.data?.type && (
-          <div className="mt-3 rounded-2xl overflow-hidden border border-white/5">
-            <img
-              src={post.mediaUrl}
-              alt="Game photo"
-              className="w-full object-cover max-h-72"
-              loading="lazy"
-              referrerPolicy="no-referrer"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
-          </div>
-        )}
+        {post.mediaUrl && !post.mediaBackgroundColor && !post.data?.type && (() => {
+            const d = post.data as any;
+            // @NBA posts → canvas ImagnPhotoEditor with score bar overlay
+            if (needsCanvasEditor(post) && d?.homeTeam && d?.awayTeam) {
+                return (
+                    <div className="mt-3" onClick={e => e.stopPropagation()}>
+                        <ImagnPhotoEditor
+                            photo={{ medUrl: post.mediaUrl! } as any}
+                            homeTeamColor={d.homeTeam?.color || '#1d428a'}
+                            awayTeamColor={d.awayTeam?.color || '#c8102e'}
+                            homeAbbrev={d.homeTeam?.abbrev || 'HOM'}
+                            awayAbbrev={d.awayTeam?.abbrev || 'AWY'}
+                            homeScore={d.homeTeam?.score ?? 0}
+                            awayScore={d.awayTeam?.score ?? 0}
+                        />
+                    </div>
+                );
+            }
+            // Hoop Central + all others → raw Imagn photo
+            return (
+                <img
+                    src={post.mediaUrl}
+                    alt=""
+                    className="w-full rounded-2xl mt-3 cursor-pointer hover:opacity-90 transition-opacity"
+                    style={{ maxHeight: '510px', objectFit: 'contain', background: 'transparent' }}
+                    referrerPolicy="no-referrer"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onImageClick?.(post.mediaUrl!);
+                    }}
+                    onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                />
+            );
+        })()}
 
         {/* NBA Official stat card graphic */}
         {post.data?.type === 'stat_card' && (() => {
@@ -259,6 +290,124 @@ const SocialPostCard: React.FC<{ post: SocialPost }> = ({ post }) => {
               </div>
             </div>
           );
+        })()}
+
+        {/* Real App embed — fires when post content contains "@realapp" */}
+        {post.content?.includes('@realapp') && (() => {
+            const d = post.data as any;
+            const s = d?.stats || {};
+            const teamColor = d?.teamColor || '#1d428a';
+            const playerName = d?.playerName || post.author;
+            const lastName = playerName.split(' ').pop() || playerName;
+            return (
+                <div className="mt-3 rounded-2xl overflow-hidden border border-white/10"
+                     style={{ background: '#0a0a0f', fontFamily: 'system-ui, sans-serif' }}>
+
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                        <div className="flex items-center gap-2">
+                            {(d?.teamLogoUrl || post.teamLogoUrl) && (
+                                <img src={d?.teamLogoUrl || post.teamLogoUrl} alt=""
+                                     className="w-7 h-7 object-contain" referrerPolicy="no-referrer" />
+                            )}
+                            <div>
+                                <p className="text-[11px] font-black text-white/40 uppercase tracking-widest leading-none">
+                                    {lastName}
+                                </p>
+                                <p className="text-[9px] text-white/25 uppercase tracking-widest">
+                                    {d?.fps ? `${d.fps} fps` : 'live'}
+                                </p>
+                            </div>
+                        </div>
+                        <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">
+                            realapp.com
+                        </p>
+                    </div>
+
+                    {/* Big stats row */}
+                    <div className="flex items-end gap-6 px-4 pb-2">
+                        {[
+                            { val: s.pts ?? d?.pts, label: 'pts' },
+                            { val: s.reb ?? d?.reb, label: 'reb' },
+                            { val: s.ast ?? d?.ast, label: 'ast' },
+                        ].map(({ val, label }) => val != null ? (
+                            <div key={label}>
+                                <span className="text-4xl font-black text-white leading-none">{val}</span>
+                                <span className="text-[11px] font-black text-white/40 ml-1">{label}</span>
+                            </div>
+                        ) : null)}
+                        {s.fgPct != null && (
+                            <div>
+                                <span className="text-4xl font-black text-white leading-none">{s.fgPct}</span>
+                                <span className="text-[11px] font-black text-white/40 ml-1">%fg</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Stat grid */}
+                    {(s.min != null || s.fgm != null) && (
+                        <div className="grid grid-cols-5 gap-0 border-t border-white/5 mx-3 py-2">
+                            {[
+                                { val: s.min, label: 'MIN' },
+                                { val: s.pts, label: 'PTS' },
+                                { val: s.reb, label: 'REB' },
+                                { val: s.ast, label: 'AST' },
+                                { val: s.stl, label: 'STL' },
+                                { val: s.blk, label: 'BLK' },
+                                { val: s.fgm != null && s.fga != null ? `${s.fgm}/${s.fga}` : null, label: 'FG' },
+                                { val: s.threePm != null && s.threePa != null ? `${s.threePm}/${s.threePa}` : null, label: '3FG' },
+                                { val: s.tov, label: 'TO' },
+                                { val: s.fgPct ? `${s.fgPct}%` : null, label: 'FG%' },
+                            ].filter(x => x.val != null).map(({ val, label }) => (
+                                <div key={label} className="flex flex-col items-center py-1">
+                                    <span className="text-[13px] font-black text-white">{val}</span>
+                                    <span className="text-[8px] text-white/30 uppercase tracking-wider">{label}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Score bar */}
+                    {d?.homeTeam && d?.awayTeam && (
+                        <div className="flex items-center justify-between px-4 py-2 bg-black/40 border-t border-white/5">
+                            <div className="flex items-center gap-1.5">
+                                {d.awayTeam.logoUrl && (
+                                    <img src={d.awayTeam.logoUrl} alt="" className="w-5 h-5 object-contain"
+                                         referrerPolicy="no-referrer" />
+                                )}
+                                <span className="text-xs font-black text-white/50">{d.awayTeam.abbrev}</span>
+                                <span className="text-base font-black text-white ml-1">{d.awayTeam.score}</span>
+                            </div>
+                            <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">
+                                {d.isOT ? 'OT' : 'FINAL'}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-base font-black text-white mr-1">{d.homeTeam.score}</span>
+                                <span className="text-xs font-black text-white/50">{d.homeTeam.abbrev}</span>
+                                {d.homeTeam.logoUrl && (
+                                    <img src={d.homeTeam.logoUrl} alt="" className="w-5 h-5 object-contain"
+                                         referrerPolicy="no-referrer" />
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Quarter tabs */}
+                    <div className="flex gap-1 px-3 pb-3 pt-1">
+                        {['All', 'Q1', 'Q2', 'Q3', 'Q4'].map((q, i) => (
+                            <span key={q}
+                                  className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                      i === 0
+                                          ? 'text-white'
+                                          : 'text-white/25'
+                                  }`}
+                                  style={i === 0 ? { background: teamColor } : { background: 'rgba(255,255,255,0.05)' }}>
+                                {q}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            );
         })()}
 
         <div className="mt-3 flex items-center space-x-6 text-zinc-500 text-xs">

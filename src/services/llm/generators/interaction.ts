@@ -142,6 +142,7 @@ export async function sendDirectMessage(
 }
 
 export async function generateSocialThread(originalPost: SocialPost, state: GameState): Promise<SocialPost[]> {
+  console.log('[generateSocialThread] called for post:', originalPost.id, originalPost.handle, originalPost.content?.slice(0, 60));
   const settings = SettingsManager.getSettings();
   if (!settings.enableLLM) {
     return [];
@@ -166,8 +167,8 @@ export async function generateSocialThread(originalPost: SocialPost, state: Game
     const data = JSON.parse(cleaned);
 
     const avatars = await fetchAvatarData();
-    
-    return data.replies.map((reply: any) => ({
+
+    const replies = data.replies.map((reply: any) => ({
         id: self.crypto.randomUUID(),
         author: reply.author,
         handle: reply.handle,
@@ -179,9 +180,11 @@ export async function generateSocialThread(originalPost: SocialPost, state: Game
         isReply: true,
         playerPortraitUrl: getAvatarByHandle(reply.handle, avatars) || getAvatarByName(reply.author, avatars)
     }));
+    console.log('[generateSocialThread] returning', replies.length, 'replies');
+    return replies;
 
   } catch (error) {
-    console.error("Error generating social thread:", error);
+    console.error('[generateSocialThread] FAILED:', error);
     return [];
   }
 }

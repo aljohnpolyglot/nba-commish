@@ -3,6 +3,7 @@ import { PlayerGameStats } from '../types';
 import { StarterService } from '../StarterService';
 import { getScaledRating, R } from './helpers';
 import { getVariance } from '../utils';
+import { getNightProfile } from './nightProfile';
 
 export function generateStatsForTeam(
   team: Team,
@@ -64,8 +65,8 @@ export function generateStatsForTeam(
       const bonusShare = (1 - share) / (rotation.length - 1);
       ptsTarget += teamBonusBucket * bonusShare;
     }
-    const variance = Math.random() < 0.04 ? getVariance(1.0, 0.45) : getVariance(1.0, 0.15);
-    ptsTarget = Math.max(0, Math.round(ptsTarget * variance));
+    const nightProfile = getNightProfile(p, season);
+    ptsTarget = Math.max(0, Math.round(ptsTarget * nightProfile.ptsTargetMult));
 
     const tp   = rHelper(p, 'tp'),   oiq  = rHelper(p, 'oiq'), ft   = rHelper(p, 'ft');
     const fg   = rHelper(p, 'fg'),   ins  = rHelper(p, 'ins'),  dnk  = rHelper(p, 'dnk');
@@ -77,8 +78,9 @@ export function generateStatsForTeam(
     const baseFtRate = 0.15 + (drawingFoulsComposite / 100) * 0.35;
     const estimatedFga = ptsTarget / 1.2;
     const fta  = Math.round(estimatedFga * baseFtRate * getVariance(1.0, 0.15));
-    const ftp  = Math.min(0.95, (ft / 100) * 0.60 + 0.45);
-    const ftm  = Math.max(0, Math.min(Math.round(fta * ftp * getVariance(1.0, 0.05)), fta));
+    const ftpBase = Math.min(0.95, (ft / 100) * 0.60 + 0.45);
+    const ftp = Math.max(0.30, Math.min(1.0, ftpBase * nightProfile.efficiencyMult));
+    const ftm  = Math.max(0, Math.min(Math.round(fta * ftp * getVariance(1.0, 0.03)), fta));
 
     // Three Pointers
     let fgPts = Math.max(0, ptsTarget - ftm);
@@ -87,13 +89,12 @@ export function generateStatsForTeam(
     let threePointRate  = Math.pow(Math.max(0, tpComposite / 100), 1.1) * 0.60 * pullUpTendency;
     if      (tpComposite < 25) threePointRate *= 0.2;
     else if (tpComposite < 45) threePointRate *= 0.55;
-    threePointRate = Math.min(0.75, threePointRate);
+    threePointRate = Math.min(0.75, Math.max(0, threePointRate + nightProfile.shotDietShift));
 
     const threePa  = Math.round(estimatedFga * threePointRate * getVariance(1.0, 0.1));
-    let   threePm  = Math.round(
-      threePa * ((weights.threePmBase || 0.30) + (tp / 100) * (weights.threePmScale || 0.15))
-      * getVariance(1.0, 0.07)
-    );
+    const threePctBase = (weights.threePmBase || 0.30) + (tp / 100) * (weights.threePmScale || 0.15);
+    const threePctEffective = Math.max(0.05, threePctBase * nightProfile.efficiencyMult);
+    let   threePm  = Math.round(threePa * threePctEffective * getVariance(1.0, 0.04));
     threePm = Math.max(0, Math.min(threePm, threePa, Math.floor(fgPts / 3)));
 
     // Two Pointers
@@ -103,8 +104,9 @@ export function generateStatsForTeam(
     const eff2   = isIn
       ? ins * 0.45 + dnk * 0.50 + fg * 0.05
       : ins * 0.10 + dnk * 0.05 + fg * 0.85;
-    const pct2   = 0.40 + (eff2 / 100) * 0.25;
-    const twoPa  = Math.max(twoPm, Math.round(twoPm / Math.max(0.38, pct2)));
+    const pct2Raw = 0.40 + (eff2 / 100) * 0.25;
+    const pct2 = Math.max(0.28, Math.min(0.72, pct2Raw * nightProfile.efficiencyMult));
+    const twoPa  = Math.max(twoPm, Math.round(twoPm / Math.max(0.28, pct2)));
 
     // Shot Locations
     const wAtRim   = Math.max(0.1, hgt * 2.0 + stre * 0.3  + dnk * 0.3  + oiq * 0.2);

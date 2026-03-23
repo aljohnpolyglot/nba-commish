@@ -245,7 +245,7 @@ export class SocialEngine {
                   date:                 postDate.toISOString(),
                   source:               'TwitterX',
                   category:             'GAME_EVENT',
-                  data:                 { gameId: ctx.game.gameId },
+                  data:                 { gameId: ctx.game.gameId, templateId: template.id },
                   mediaUrl:             mediaUrl || undefined,
                   mediaBackgroundColor: mediaBackgroundColor || undefined,
                   isNew:                true,
