@@ -50,7 +50,9 @@ export const processTurn = async (
         daysToSimulate = Math.max(1, diffDays);
 
         const settings = SettingsManager.getSettings();
-        const maxSimDays = (!settings.enableLLM && settings.gameSpeed >= 8) ? 180 : 30;
+        const maxSimDays = (!settings.enableLLM)
+            ? (settings.gameSpeed >= 8 ? 365 : 180)  // no LLM = generous cap
+            : (settings.gameSpeed >= 8 ? 90 : 30);   // LLM on = keep reasonable
         if (daysToSimulate > maxSimDays) daysToSimulate = maxSimDays;
     }
 

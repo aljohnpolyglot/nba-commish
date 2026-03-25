@@ -1,5 +1,6 @@
 import { GameState, UserAction, LeagueStats } from '../../../types';
 import { ViewershipService } from '../../../services/logic/ViewershipService';
+import { calculateDailyLeagueFunds } from '../../../services/logic/financialService';
 
 export const calculateNewStats = (state: GameState, action: UserAction, result: any, allSimResults: any[], totalNetPay: number, dateString: string) => {
     const combinedStatChanges = {
@@ -41,6 +42,10 @@ export const calculateNewStats = (state: GameState, action: UserAction, result: 
     const performanceImpact = ViewershipService.calculatePerformanceImpact(state, allSimResults);
     const finalViewership = parseFloat((dailyViewership + performanceImpact).toFixed(2));
 
+    // Daily League Funds Tick (mirrors viewership pattern)
+    const dailyProfit = calculateDailyLeagueFunds(state);
+    combinedStatChanges.leagueFunds = (combinedStatChanges.leagueFunds || 0) + dailyProfit;
+
     const capChange = (val: number) => Math.max(-4, Math.min(4, val)); // Reduced max daily change
 
     const newStats = {
@@ -51,6 +56,29 @@ export const calculateNewStats = (state: GameState, action: UserAction, result: 
         personalWealth: Number((Math.max(0, state.stats.personalWealth + (totalNetPay / 1000000) + (combinedStatChanges.personalWealth || 0))).toFixed(2)),
         legacy: Math.round(Math.max(0, Math.min(100, state.stats.legacy + capChange(combinedStatChanges.legacy || 0)))),
     };
+
+    // Auto-apply default media rights if opening night passes without a deal
+    const OPENING_NIGHT = '2025-10-24';
+    if (!state.leagueStats.mediaRights && dateString >= OPENING_NIGHT) {
+        const defaultMediaRev = 6.9;  // ESPN/ABC + NBC/Peacock + Amazon (B)
+        const defaultLpRev    = 0.40; // League Pass at $99/yr (~4M subs)
+        const defaultTotalRev = parseFloat((defaultMediaRev + defaultLpRev).toFixed(2));
+        state = {
+            ...state,
+            leagueStats: {
+                ...state.leagueStats,
+                mediaRights: {
+                    activeBroadcasters: ['espn', 'nbc', 'amazon'],
+                    lpPrice: 99,
+                    totalRev: defaultTotalRev,
+                    mediaRev: defaultMediaRev,
+                    lpRev: defaultLpRev,
+                    salaryCap: 154.6,
+                    isLocked: true,
+                },
+            },
+        };
+    }
 
     const newLeagueStats: LeagueStats = {
         ...state.leagueStats,

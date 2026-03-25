@@ -28,14 +28,15 @@ const pendingFetches = new Map<string, Promise<Map<string, ImagnPhoto[]>>>();
 /** postId → resolved mediaUrl  (prevents re-enriching same post) */
 const resolvedPosts = new Map<string, string | null>();
 
-// ─── Photo allowlist — only nba_ templates get Imagn action photos ───────────
+// ─── Photo allowlist — hc_ and nba_ templates get Imagn action photos ────────
 const isAllowed = (post: SocialPost): boolean => {
     const handle = (post.handle || '').toLowerCase().replace('@', '').trim();
     // StatMuse is shielded — they have their own photos
     if (handle.includes('statmuse')) return false;
     const templateId = (post.data?.templateId || '') as string;
-    // Both nba_ and hc_ templates get Imagn photos
-    return templateId.startsWith('nba_') || templateId.startsWith('hc_');
+    // hc_ (Hoop Central) gets raw Imagn photos
+    // nba_ (NBA Official) gets Imagn photos fed into ImagnPhotoEditor
+    return templateId.startsWith('hc_') || templateId.startsWith('nba_');
 };
 
 /**
@@ -212,8 +213,10 @@ function pickBestPhoto(photos: ImagnPhoto[], hint?: string): ImagnPhoto | null {
 function isSubjectOfCaption(playerName: string, caption: string): boolean {
     if (!caption || !playerName) return false;
 
-    // Find the very first "Firstname Lastname (number)" pattern in the caption
-    const firstNameMatch = caption.match(/([A-Z][a-z]+(?:[\s'-][A-Z][a-zA-Z'-]+)+)\s*\(\d+\)/);
+    // Find the very first "Firstname Lastname (number)" pattern in the caption.
+    // BUG FIX: was [a-z]+ which stopped at embedded uppercase — "DeMar" matched as "Mar",
+    // "LeBron" as "Bron". Changed first token to [a-zA-Z'-]+ to handle camelCase names.
+    const firstNameMatch = caption.match(/([A-Z][a-zA-Z'-]+(?:[\s'-][A-Z][a-zA-Z'-]+)+)\s*\(\d+\)/);
     if (!firstNameMatch) return false;
 
     const firstSubject = firstNameMatch[1].toLowerCase();
@@ -228,16 +231,28 @@ function isSubjectOfCaption(playerName: string, caption: string): boolean {
     }
 
     // Extra check: if player IS the subject but doing a defensive action,
-    // mark as NOT subject for offensive action photo purposes
+    // mark as NOT subject for offensive action photo purposes.
     const lower = caption.toLowerCase();
     const playerIndex = (firstNameMatch.index || 0) + firstNameMatch[0].length;
+    const afterPlayerText = lower.slice(playerIndex, playerIndex + 150);
+
+    // OFFENSE WINS: if the player is clearly on offense, keep the photo even if a
+    // defensive word appears later in the caption (e.g. "dribbles as X defends him").
+    const OFFENSIVE_VERBS = [
+        'dribbles', 'shoots', 'drives', 'dunks', 'scores',
+        'goes to the basket', 'goes to the hoop', 'layup',
+        'makes a', 'three point', 'jumper', 'pull-up',
+    ];
+    if (OFFENSIVE_VERBS.some(v => afterPlayerText.includes(v))) return true;
+
+    // BUG FIX: removed "defended by" — that phrase means the player IS the ball-handler
+    // (on offense). Only true defensive actions are excluded.
     const DEFENSIVE_VERBS = [
-        'contests', 'contesting', 'blocks', 'blocking',
-        'defends', 'defending', 'defended by',
-        'looks on', 'looks on during', 'watch',
+        'contests', 'contesting',
+        'defends', 'defending',
+        'looks on', 'watch',
         'stands', 'reacts to',
     ];
-    const afterPlayerText = lower.slice(playerIndex, playerIndex + 100);
     const isDefensive = DEFENSIVE_VERBS.some(v => afterPlayerText.includes(v));
     if (isDefensive) {
         console.log(`[PhotoEnricher] SKIP "${playerName}" — doing defensive action in: "${caption.slice(0, 80)}"`);
@@ -301,15 +316,13 @@ export async function enrichPostWithPhoto(
         return null;
     }
 
-    const playerPhotoMap = await Promise.race([
-        fetchForGame(gameInfo),
-        new Promise<Map<string, ImagnPhoto[]>>(resolve =>
-            setTimeout(() => {
-                console.log(`[PhotoEnricher] Timeout fetching photos for post ${post.id} — rendering without photo`);
-                resolve(new Map());
-            }, 4000)
-        )
-    ]);
+    // Await the shared fetch without a hard timeout.
+    // fetchForGame deduplicates via pendingFetches, so all posts for the same game
+    // share one HTTP request. A timeout here would race against sibling posts that
+    // piggyback on the same promise — whichever post started the fetch first could
+    // time out just before the fetch completes, permanently caching null for that post.
+    const playerPhotoMap = await fetchForGame(gameInfo);
+
     if (playerPhotoMap.size === 0) {
         // Still allow AI fallback for named players even when Imagn has nothing
         const playerName = extractPlayerName(post, gameInfo.topPlayers);
@@ -415,51 +428,82 @@ export async function enrichPostWithPhoto(
 // ─── News item enrichment ─────────────────────────────────────────────────────
 
 export async function enrichNewsWithPhoto(
-    item: { id: string; headline: string; content: string; image?: string },
+    item: { id: string; headline: string; content: string; image?: string; playerPortraitUrl?: string },
     gameLookup: Map<number, GamePhotoInfo>
 ): Promise<string | null> {
-    if (item.image) return item.image;
+    // Already resolved (including null = "tried and found nothing")
+    if (resolvedPosts.has(item.id)) return resolvedPosts.get(item.id)!;
+    // Static image (team logo etc.) with no Imagn override expected → use immediately
+    if (item.image && !item.playerPortraitUrl) return item.image;
 
     const text = `${item.headline} ${item.content}`;
-    console.log(`[PhotoEnricher] News: "${item.headline.slice(0, 80)}"`);
+    const textLower = text.toLowerCase();
 
-    // Find matching game by team name mention
-    for (const [gameId, { homeTeam, awayTeam }] of gameLookup.entries()) {
-        const homeWord = (homeTeam.name.split(' ').pop() || '').toLowerCase();
-        const awayWord = (awayTeam.name.split(' ').pop() || '').toLowerCase();
-        if (!text.toLowerCase().includes(homeWord) && !text.toLowerCase().includes(awayWord)) continue;
+    // Find best matching game by team name mention
+    let bestGameInfo: GamePhotoInfo | null = null;
+    let bestMatchScore = 0;
 
-        const playerPhotoMap = await Promise.race([
-            fetchForGame(gameLookup.get(gameId)!),
-            new Promise<Map<string, ImagnPhoto[]>>(resolve =>
-                setTimeout(() => resolve(new Map()), 4000)
-            )
-        ]);
-        if (playerPhotoMap.size === 0) continue;
+    for (const [, info] of gameLookup.entries()) {
+        const homeWord = (info.homeTeam.name.split(' ').pop() || '').toLowerCase();
+        const awayWord = (info.awayTeam.name.split(' ').pop() || '').toLowerCase();
+        const homeAbbrev = info.homeTeam.abbrev.toLowerCase();
+        const awayAbbrev = info.awayTeam.abbrev.toLowerCase();
 
-        // Try to find mentioned player
-        const nameMatch = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-zA-Z'-]+)+)/g);
-        if (nameMatch) {
-            for (const name of nameMatch) {
-                const lastName = name.toLowerCase().split(' ').pop() || '';
-                const photos = playerPhotoMap.get(name) ||
-                    [...playerPhotoMap.entries()]
-                        .find(([n]) => n.toLowerCase().endsWith(lastName))?.[1];
-                const photo = pickBestPhoto(photos || [], item.headline || '');
-                if (photo) {
-                    console.log(`[PhotoEnricher]  → News photo: "${(photo.captionClean || '').slice(0, 70)}"`);
-                    return photo.largeUrl;
-                }
+        let score = 0;
+        if (textLower.includes(homeWord)) score++;
+        if (textLower.includes(awayWord)) score++;
+        if (textLower.includes(homeAbbrev)) score++;
+        if (textLower.includes(awayAbbrev)) score++;
+
+        // Also check if any top player from this game is mentioned
+        for (const tp of info.topPlayers) {
+            const lastName = tp.name.split(/\s+/).pop()?.toLowerCase() || '';
+            if (lastName.length > 3 && textLower.includes(lastName)) {
+                score += 2; // Player mention is a strong signal
+                break;
             }
         }
 
-        // Fallback: top performer
-        const firstPhotos = [...playerPhotoMap.values()][0];
-        const photo = pickBestPhoto(firstPhotos || [], item.headline || '');
-        if (photo) return photo.largeUrl;
+        if (score > bestMatchScore) {
+            bestMatchScore = score;
+            bestGameInfo = info;
+        }
     }
 
-    return null;
+    if (!bestGameInfo || bestMatchScore === 0) return item.playerPortraitUrl || null;
+
+    const playerPhotoMap = await Promise.race([
+        fetchForGame(bestGameInfo),
+        new Promise<Map<string, ImagnPhoto[]>>(resolve =>
+            setTimeout(() => resolve(new Map()), 4000)
+        )
+    ]);
+    if (playerPhotoMap.size === 0) return item.playerPortraitUrl || null;
+
+    // Cross-reference against topPlayers who actually played (same as social feed)
+    const sortedPlayers = [...bestGameInfo.topPlayers].sort((a, b) => b.gameScore - a.gameScore);
+
+    for (const tp of sortedPlayers) {
+        const lastName = tp.name.split(/\s+/).pop()?.toLowerCase() || '';
+        if (!lastName || lastName.length <= 3) continue;
+        if (!textLower.includes(lastName) && !textLower.includes(tp.name.toLowerCase())) continue;
+
+        const photos = playerPhotoMap.get(tp.name) ||
+            [...playerPhotoMap.entries()]
+                .find(([n]) => n.toLowerCase().endsWith(lastName))?.[1];
+
+        const photo = pickBestPhoto(photos || [], item.headline || '');
+        if (photo) {
+            console.log(`[PhotoEnricher] News photo matched: "${tp.name}" → "${(photo.captionClean || '').slice(0, 70)}"`);
+            // Prefer medUrl (450px, faster) — only use largeUrl if med is missing
+            return photo.medUrl || photo.largeUrl;
+        }
+    }
+
+    // Fallback: top performer from the matched game, then portrait
+    const firstPhotos = [...playerPhotoMap.values()][0];
+    const photo = pickBestPhoto(firstPhotos || [], item.headline || '');
+    return photo?.medUrl || photo?.largeUrl || item.playerPortraitUrl || null;
 }
 
 /** Synchronously check if a post already has a resolved URL in cache */
@@ -469,7 +513,9 @@ export function getResolvedUrl(postId: string): string | null | undefined {
     return resolvedPosts.get(postId) ?? null;
 }
 
-/** Clear resolved-post cache (call when navigating away from feed) */
+/** Clear all photo caches — call between game simulations so each session starts fresh */
 export function clearPhotoEnricherCache(): void {
     resolvedPosts.clear();
+    photoCache.clear();
+    pendingFetches.clear();
 }

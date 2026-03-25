@@ -143,7 +143,7 @@ export const convertTo2KRating = (bbgmRating: number, hgtInches: number = 77): n
   if (heightAttribute > 60) {
       // Boost calculation based on how much they exceed the 60 attribute threshold
       // Max boost is +6 at 100 attribute
-      const boost = (heightAttribute - 60) * (6 / 40);
+      const boost = (heightAttribute - 60) * (6 / 60);
       rating += boost;
   }
   

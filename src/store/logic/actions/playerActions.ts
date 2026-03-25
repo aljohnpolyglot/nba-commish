@@ -52,6 +52,9 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
             };
         });
 
+        // Minimum contract in BBGM units (thousands) = $1,300,000
+        const MIN_CONTRACT_AMOUNT = 1300;
+
         const result = await advanceDay(stateWithSim, {
             type: 'SIGN_FREE_AGENT',
             payload: {
@@ -61,7 +64,42 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                 announcements: [...newEmails, ...newNews, ...newSocial]
             }
         } as any, [], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
-        
+
+        // Force correct contract amount — LLM generates wrong units
+        // Update the player directly in result.players if present
+        if (result.players) {
+            result.players = result.players.map((p: any) =>
+                p.internalId === playerId
+                    ? {
+                        ...p,
+                        tid: teamId,
+                        status: 'Active',
+                        contract: {
+                            amount: MIN_CONTRACT_AMOUNT,
+                            exp: stateWithSim.leagueStats.year + 1,
+                            rookie: false
+                        }
+                    }
+                    : p
+            );
+        } else {
+            // Patch directly onto stateWithSim players via result
+            result.players = stateWithSim.players.map((p: any) =>
+                p.internalId === playerId
+                    ? {
+                        ...p,
+                        tid: teamId,
+                        status: 'Active',
+                        contract: {
+                            amount: MIN_CONTRACT_AMOUNT,
+                            exp: stateWithSim.leagueStats.year + 1,
+                            rookie: false
+                        }
+                    }
+                    : p
+            );
+        }
+
         result.newEmails = [...newEmails, ...(result.newEmails || [])];
         result.newNews = [...newNews, ...(result.newNews || [])];
         result.newSocialPosts = [...newSocial, ...(result.newSocialPosts || [])];

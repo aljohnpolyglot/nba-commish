@@ -1,5 +1,5 @@
 import { SocialTemplate, SocialContext } from '../types';
-import { isRolePlayer, isTripleDouble, isDoubleDouble, getCurrentSeasonStats, calculateAge, isAllStar } from '../helpers';
+import { isRolePlayer, isTripleDouble, isDoubleDouble, getCurrentSeasonStats, calculateAge, isAllStar, get2KRating } from '../helpers';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NBA CENTRAL — debate-first, stats-second aggregator
@@ -217,17 +217,21 @@ export const NBA_CENTRAL_TEMPLATES: SocialTemplate[] = [
         condition: (ctx: SocialContext) =>
             !!(ctx.stats && (ctx.stats.pts >= 50 || ctx.stats.threePm >= 8)),
         resolve: (_: string, ctx: SocialContext) => {
-            const s      = ctx.player?.name?.toUpperCase() ?? 'UNKNOWN';
-            const pts    = ctx.stats.pts;
-            const tpm    = ctx.stats.threePm;
-            const fgPct  = ((ctx.stats.fgm / ctx.stats.fga) * 100).toFixed(0);
+            const pName  = ctx.player?.name?.toUpperCase() ?? 'UNKNOWN';
+            const st     = ctx.stats;
+            const pts    = st.pts;
+            const tpm    = st.threePm;
+            const fgPct  = ((st.fgm / st.fga) * 100).toFixed(0);
             const record = tpm >= 12;
+            const g      = ctx.game;
+            const homeTeamObj = ctx.teams?.find((t: any) => t.id === g?.homeTeamId);
+            const awayTeamObj = ctx.teams?.find((t: any) => t.id === g?.awayTeamId);
 
             return {
                 content: [
                     record ? 'RECORD ALERT 🚨' : null,
                     '',
-                    `${s} TONIGHT:`,
+                    `${pName} TONIGHT:`,
                     '',
                     `${pts} POINTS`,
                     tpm >= 5 ? `${tpm} 3PM${record ? ' (NBA RECORD 🔥)' : ''}` : null,
@@ -235,6 +239,21 @@ export const NBA_CENTRAL_TEMPLATES: SocialTemplate[] = [
                     '',
                     '(Via @realapp)',
                 ].filter(Boolean).join('\n'),
+                data: {
+                    playerName: ctx.player?.name,
+                    teamColor: (ctx.team as any)?.colors?.[0] ?? '#1d428a',
+                    teamLogoUrl: ctx.team?.logoUrl,
+                    stats: {
+                        pts: st.pts, reb: st.reb, ast: st.ast,
+                        fgm: st.fgm, fga: st.fga,
+                        fgPct: st.fga > 0 ? Number(fgPct) : null,
+                        threePm: st.threePm, threePa: st.threePa,
+                        stl: st.stl, blk: st.blk, tov: st.tov, min: st.min,
+                    },
+                    homeTeam: homeTeamObj ? { abbrev: homeTeamObj.abbrev, logoUrl: homeTeamObj.logoUrl, score: g?.homeScore } : undefined,
+                    awayTeam: awayTeamObj ? { abbrev: awayTeamObj.abbrev, logoUrl: awayTeamObj.logoUrl, score: g?.awayScore } : undefined,
+                    isOT: g?.isOT,
+                },
             };
         },
     },
@@ -266,7 +285,7 @@ export const NBA_CENTRAL_TEMPLATES: SocialTemplate[] = [
         type: 'news',
         condition: (ctx: SocialContext) =>
             !!(ctx.injury && ctx.player
-                && ctx.player.overallRating > 75
+                && get2KRating(ctx.player) > 83
                 && ctx.injury.injuryType !== 'Load Management'),
         resolve: (_: string, ctx: SocialContext) => {
             const games   = ctx.injury.gamesRemaining;

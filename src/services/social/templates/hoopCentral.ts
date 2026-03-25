@@ -1,5 +1,5 @@
 import { SocialTemplate, SocialContext } from '../types';
-import { isTripleDouble, isDoubleDouble, isAllStar, calculateAge, isRookie } from '../helpers';
+import { isTripleDouble, isDoubleDouble, isAllStar, calculateAge, isRookie, get2KRating } from '../helpers';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HOOP CENTRAL — clean, short takes, basketball-first voice
@@ -192,7 +192,7 @@ export const HOOP_CENTRAL_TEMPLATES: SocialTemplate[] = [
         type: 'news',
         condition: (ctx: SocialContext) =>
             !!(ctx.injury && ctx.player
-                && ctx.player.overallRating > 75
+                && get2KRating(ctx.player) > 83
                 && ctx.injury.injuryType !== 'Load Management'),
         resolve: (_: string, ctx: SocialContext) => {
             const games   = ctx.injury.gamesRemaining;

@@ -1,5 +1,5 @@
 import { SocialTemplate, SocialContext } from '../types';
-import { getRating, isRookie, isAllStar, getCareerHigh, isTripleDouble, calculateAge } from '../helpers';
+import { getRating, isRookie, isAllStar, getCareerHigh, isTripleDouble, calculateAge, get2KRating } from '../helpers';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BASKETBALL FOREVER — hype heavy, emoji-rich, wins-focused
@@ -241,7 +241,7 @@ export const BASKETBALL_FOREVER_TEMPLATES: SocialTemplate[] = [
         type: 'news',
         condition: (ctx: SocialContext) =>
             !!(ctx.injury && ctx.player
-                && ctx.player.overallRating > 80
+                && get2KRating(ctx.player) > 88
                 && ctx.injury.injuryType !== 'Load Management'),
         resolve: (_: string, ctx: SocialContext) => {
             const games   = ctx.injury.gamesRemaining;

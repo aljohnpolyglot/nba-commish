@@ -1,5 +1,5 @@
 import { SocialTemplate, SocialContext } from '../types';
-import { isTripleDouble, isDoubleDouble, is5x5, getCurrentSeasonStats } from '../helpers';
+import { isTripleDouble, isDoubleDouble, is5x5, getCurrentSeasonStats, get2KRating } from '../helpers';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITIES
@@ -82,6 +82,38 @@ function getHashtags(ctx: SocialContext): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// GAME DATA BUILDER — for game-level (no player) posts that use ImagnPhotoEditor
+// ─────────────────────────────────────────────────────────────────────────────
+
+function buildGameData(ctx: SocialContext): any | null {
+    const g = ctx.game;
+    if (!g) return null;
+    const homeTeam = ctx.teams?.find((t: any) => t.id === g.homeTeamId);
+    const awayTeam = ctx.teams?.find((t: any) => t.id === g.awayTeamId);
+    if (!homeTeam || !awayTeam) return null;
+    return {
+        homeTeam: {
+            abbrev : homeTeam.abbrev,
+            logoUrl: homeTeam.logoUrl ?? '',
+            score  : g.homeScore ?? 0,
+            color  : (homeTeam as any).colors?.[0] ?? '#1d428a',
+            wins   : (homeTeam as any).wins ?? 0,
+            losses : (homeTeam as any).losses ?? 0,
+        },
+        awayTeam: {
+            abbrev : awayTeam.abbrev,
+            logoUrl: awayTeam.logoUrl ?? '',
+            score  : g.awayScore ?? 0,
+            color  : (awayTeam as any).colors?.[0] ?? '#c8102e',
+            wins   : (awayTeam as any).wins ?? 0,
+            losses : (awayTeam as any).losses ?? 0,
+        },
+        winnerId: g.winnerId,
+        isOT    : g.isOT ?? false,
+    };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // STAT CARD DATA BUILDER
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -117,6 +149,8 @@ function buildStatCardData(ctx: SocialContext): any | null {
             logoUrl : homeTeam.logoUrl ?? '',
             score   : g.homeScore ?? 0,
             color   : (homeTeam as any).colors?.[0] ?? '#1d428a',
+            wins    : (homeTeam as any).wins ?? 0,
+            losses  : (homeTeam as any).losses ?? 0,
         },
         awayTeam    : {
             name    : awayTeam.name,
@@ -124,6 +158,8 @@ function buildStatCardData(ctx: SocialContext): any | null {
             logoUrl : awayTeam.logoUrl ?? '',
             score   : g.awayScore ?? 0,
             color   : (awayTeam as any).colors?.[0] ?? '#c8102e',
+            wins    : (awayTeam as any).wins ?? 0,
+            losses  : (awayTeam as any).losses ?? 0,
         },
         winnerId    : g.winnerId,
         isOT        : g.isOT   ?? false,
@@ -162,7 +198,7 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
 
             return {
                 content: recapVariants[Math.floor(Math.random() * recapVariants.length)],
-                data: buildStatCardData(ctx),
+                data: buildGameData(ctx),
             };
         },
     },
@@ -175,7 +211,8 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
         priority: 100,
         type: 'general',
         condition: (ctx: SocialContext) =>
-            !!(ctx.game?.gameWinner?.isWalkoff),
+            !!(ctx.game?.gameWinner?.isWalkoff &&
+               (!ctx.player || ctx.player.internalId === ctx.game.gameWinner.playerId)),
         resolve: (_: string, ctx: SocialContext) => {
             const gw       = ctx.game.gameWinner;
             const name     = gw?.playerName ?? 'UNKNOWN';
@@ -199,7 +236,7 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
 
             return {
                 content: variants[Math.floor(Math.random() * variants.length)],
-                data: buildStatCardData(ctx),
+                data: buildGameData(ctx),
             };
         },
     },
@@ -229,7 +266,7 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
 
             return {
                 content: variants[Math.floor(Math.random() * variants.length)],
-                data: buildStatCardData(ctx),
+                data: buildGameData(ctx),
             };
         },
     },
@@ -328,84 +365,6 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
         },
     },
 
-    // ── BLOWOUT WIN ───────────────────────────────────────────────────────────
-    {
-        id: 'nba_blowout',
-        handle: 'nba_official',
-        template: 'DYNAMIC',
-        priority: 88,
-        type: 'general',
-        condition: (ctx: SocialContext) =>
-            !!(ctx.game && ctx.game.lead >= 25 && !ctx.player),
-        resolve: (_: string, ctx: SocialContext) => {
-            const { winner, loser, winName } = scores(ctx);
-            const margin    = winner - loser;
-            const topStat   = getTopPerformer(ctx);
-            const topPlayer = topStat ? findPlayer(ctx, topStat.playerId) : null;
-            const statline  = topStat ? formatStatline(topStat, true) : '';
-            const tags      = getHashtags(ctx);
-
-            return {
-                content: `${winName} in dominant fashion tonight — winning by ${margin}.\n\n${winner}-${loser} | FINAL\n\n${topPlayer?.name ?? ''}: ${statline}\n\n${tags}`,
-                data: buildStatCardData(ctx),
-            };
-        },
-    },
-
-    // ── CLOSE GAME / 1-POSSESSION FINISH ─────────────────────────────────────
-    {
-        id: 'nba_close_game',
-        handle: 'nba_official',
-        template: 'DYNAMIC',
-        priority: 90,
-        type: 'general',
-        condition: (ctx: SocialContext) =>
-            !!(ctx.game && ctx.game.lead <= 3 && !ctx.game?.gameWinner?.isWalkoff && !ctx.game?.isOT && !ctx.player),
-        resolve: (_: string, ctx: SocialContext) => {
-            const { winner, loser, winName, loseName } = scores(ctx);
-            const tags = getHashtags(ctx);
-
-            const variants = [
-                `What a game! ${winName} hold off the ${loseName}, ${winner}-${loser}. 😤\n\n${tags}`,
-                `DOWN TO THE WIRE. ${winName} escape with the win, ${winner}-${loser}.\n\n${tags}`,
-                `${winner}-${loser} | FINAL\n\n${winName} survive in a close one. 🔥\n\n${tags}`,
-            ];
-
-            return {
-                content: variants[Math.floor(Math.random() * variants.length)],
-                data: buildStatCardData(ctx),
-            };
-        },
-    },
-
-    // ── QUARTER SCORE HIGHLIGHT (halftime / after big quarter) ───────────────
-    {
-        id: 'nba_quarter_explosion',
-        handle: 'nba_official',
-        template: 'DYNAMIC',
-        priority: 85,
-        type: 'statline',
-        condition: (ctx: SocialContext) => {
-            // Fire if player has an elite statline and the game had a wild quarter score
-            const qs = ctx.game?.quarterScores;
-            if (!qs) return false;
-            const maxHome = Math.max(...qs.home);
-            const maxAway = Math.max(...qs.away);
-            return (maxHome >= 40 || maxAway >= 40) && !!(ctx.stats && ctx.stats.pts >= 25);
-        },
-        resolve: (_: string, ctx: SocialContext) => {
-            const qs       = ctx.game.quarterScores;
-            const maxQ     = Math.max(...qs.home, ...qs.away);
-            const qNum     = [...qs.home, ...qs.away].indexOf(maxQ) % 4 + 1;
-            const qLabel   = ['1st', '2nd', '3rd', '4th'][qNum - 1] ?? `Q${qNum}`;
-            const name     = ctx.player?.name ?? '';
-            const tags     = getHashtags(ctx);
-
-            return {
-                content: `${maxQ} points in the ${qLabel} quarter. The NBA is something else. 🔥\n\n${name}: ${formatStatline(ctx.stats)}\n\n${tags}`,
-            };
-        },
-    },
 
     // ── INJURY UPDATE ─────────────────────────────────────────────────────────
     // Official team/NBA injury update — shorter and more formal than Shams
@@ -417,7 +376,7 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
         type: 'news',
         condition: (ctx: SocialContext) =>
             !!(ctx.injury && ctx.player
-                && ctx.player.overallRating >= 82
+                && get2KRating(ctx.player) >= 90
                 && ctx.injury.injuryType !== 'Load Management'),
         resolve: (_: string, ctx: SocialContext) => {
             const name    = ctx.player?.name ?? 'Unknown';

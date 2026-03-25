@@ -66,10 +66,12 @@ const LazyPhotoPost: React.FC<LazyPostProps> = ({ post, gameLookup, onClick, onI
         if (!inView) return;
         if (resolvedMediaUrl) return; // already have one
 
+        let cancelled = false;
         enrichPostWithPhoto(post, gameLookup).then(url => {
-            if (url) setResolvedMediaUrl(url);
+            if (!cancelled && url) setResolvedMediaUrl(url);
         });
-    }, [inView]); // intentionally only trigger on inView change
+        return () => { cancelled = true; };
+    }, [inView, gameLookup]); // re-run if gameLookup updates (new boxScore data)
 
     const enrichedPost: SocialPost = resolvedMediaUrl
         ? { ...post, mediaUrl: resolvedMediaUrl }

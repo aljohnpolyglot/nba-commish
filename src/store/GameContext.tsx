@@ -26,6 +26,8 @@ interface GameContextType {
   selectedTeamId: number | null;
   setSelectedTeamId: (id: number | null) => void;
   navigateToTeam: (teamId: number) => void;
+  pendingStatSort: { type: 'player' | 'team'; field: string; order: 'asc' | 'desc' } | null;
+  setPendingStatSort: (sort: { type: 'player' | 'team'; field: string; order: 'asc' | 'desc' } | null) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -34,6 +36,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<GameState>(initialState);
   const [currentView, setCurrentView] = useState<Tab>('Schedule');
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  const [pendingStatSort, setPendingStatSort] = useState<{ type: 'player' | 'team'; field: string; order: 'asc' | 'desc' } | null>(null);
   const generationIdRef = useRef(0);
 
   const stateRef = useRef(state);
@@ -465,12 +468,14 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     <GameContext.Provider value={{ 
       state, 
       dispatchAction, 
-      currentView, 
-      setCurrentView, 
-      selectedTeamId, 
-      setSelectedTeamId, 
+      currentView,
+      setCurrentView,
+      selectedTeamId,
+      setSelectedTeamId,
       navigateToTeam,
-      ...actions 
+      pendingStatSort,
+      setPendingStatSort,
+      ...actions
     }}>
       {children}
     </GameContext.Provider>

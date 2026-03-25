@@ -36,7 +36,8 @@ export function distributePie(
   statKey: keyof PlayerGameStats,
   exponent: number,
   rotation: Player[],
-  playerStats: PlayerGameStats[]
+  playerStats: PlayerGameStats[],
+  varianceSd: number = 0.12
 ): void {
   const factors = rotation.map(p => {
     const raw = factorFn(p);
@@ -47,7 +48,7 @@ export function distributePie(
 
   rotation.forEach((_, i) => {
     const share    = factors[i] / totalFactor;
-    const variance = getVariance(1.0, 0.12);
+    const variance = getVariance(1.0, varianceSd);
     (playerStats[i][statKey] as number) = Math.max(
       0,
       Math.round(total * share * variance)

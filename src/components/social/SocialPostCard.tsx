@@ -4,7 +4,7 @@ import { SocialPost, SocialSource } from '../../types';
 import { UserPlus, UserMinus } from 'lucide-react';
 import { formatTwitterDate } from '../../utils/helpers';
 import { getUnavatarUrl, canUseUnavatar } from '../../data/photos/social';
-import { ImagnPhotoEditor } from './ImagnPhotoEditor';
+import { AVATAR_DATA } from '../../data/avatars';
 import { needsCanvasEditor } from '../../services/social/photoEnricher';
 
 // Module-level cache — persists across tab switches and re-renders, cleared on page reload.
@@ -58,8 +58,8 @@ const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onImageClick }) =
     }
   };
 
-  const isDefaultAvatar = post.avatarUrl?.includes('default_profile') || post.avatarUrl?.includes('placeholder') || !post.avatarUrl;
-  const primaryUrl = isDefaultAvatar ? (post.playerPortraitUrl || post.teamLogoUrl || null) : (post.avatarUrl || null);
+  const isDefaultAvatar = !post.avatarUrl || post.avatarUrl.includes('default_profile') || post.avatarUrl.includes('placeholder');
+  const primaryUrl = isDefaultAvatar ? null : post.avatarUrl;
 
   // avatarSrc: undefined = still trying, null = give up (show icon), string = show this URL
   const [avatarSrc, setAvatarSrc] = React.useState<string | null | undefined>(() => {
@@ -81,18 +81,24 @@ const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onImageClick }) =
       });
 
     const resolve = async () => {
-      // 1. Try primary URL (portrait / team logo / avatarUrl)
+      // 1. Try primary URL (post.avatarUrl if it's not a default/placeholder)
       if (primaryUrl) {
         try { const url = await tryLoad(primaryUrl); avatarCache.set(post.handle, url); setAvatarSrc(url); return; } catch {}
       }
-      // 2. Try unavatar for TwitterX posts within budget
+      // 2. Check AVATAR_DATA (Gist) by handle — checked at render time so Gist may be loaded by now
+      const cleanH = post.handle.replace(/^@/, '').toLowerCase();
+      const gistEntry = AVATAR_DATA.find(a => a.handle.replace(/^@/, '').toLowerCase() === cleanH);
+      if (gistEntry?.avatarUrl) {
+        try { const url = await tryLoad(gistEntry.avatarUrl); avatarCache.set(post.handle, url); setAvatarSrc(url); return; } catch {}
+      }
+      // 3. Try unavatar for TwitterX posts within budget (last resort)
       if (post.source === 'TwitterX' && canUseUnavatar()) {
         const url = getUnavatarUrl(post.handle);
         if (url) {
           try { await tryLoad(url); avatarCache.set(post.handle, url); setAvatarSrc(url); return; } catch {}
         }
       }
-      // 3. All sources failed — cache and show icon
+      // 4. All sources failed — cache and show icon
       avatarCache.set(post.handle, null);
       setAvatarSrc(null);
     };
@@ -168,21 +174,37 @@ const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onImageClick }) =
         )}
 
         {/* Real game action photo from imagn.com */}
-        {post.mediaUrl && !post.mediaBackgroundColor && !post.data?.type && (() => {
+        {post.mediaUrl && !post.mediaBackgroundColor && post.data?.type !== 'stat_card' && (() => {
             const d = post.data as any;
-            // @NBA posts → canvas ImagnPhotoEditor with score bar overlay
+            // @NBA posts → photo + HTML score bar (no canvas, no proxy needed)
             if (needsCanvasEditor(post) && d?.homeTeam && d?.awayTeam) {
                 return (
-                    <div className="mt-3" onClick={e => e.stopPropagation()}>
-                        <ImagnPhotoEditor
-                            photo={{ medUrl: post.mediaUrl! } as any}
-                            homeTeamColor={d.homeTeam?.color || '#1d428a'}
-                            awayTeamColor={d.awayTeam?.color || '#c8102e'}
-                            homeAbbrev={d.homeTeam?.abbrev || 'HOM'}
-                            awayAbbrev={d.awayTeam?.abbrev || 'AWY'}
-                            homeScore={d.homeTeam?.score ?? 0}
-                            awayScore={d.awayTeam?.score ?? 0}
+                    <div className="mt-3 rounded-2xl overflow-hidden border border-white/10" onClick={e => e.stopPropagation()}>
+                        <img
+                            src={post.mediaUrl}
+                            alt=""
+                            className="w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                            style={{ maxHeight: '400px', objectFit: 'cover' }}
+                            referrerPolicy="no-referrer"
+                            onClick={() => onImageClick?.(post.mediaUrl!)}
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                         />
+                        <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/10"
+                             style={{ background: `linear-gradient(90deg, ${d.awayTeam.color || '#1d428a'}cc 0%, #000 50%, ${d.homeTeam.color || '#c8102e'}cc 100%)` }}>
+                            <div className="flex items-center gap-2">
+                                {d.awayTeam.logoUrl && <img src={d.awayTeam.logoUrl} alt={d.awayTeam.abbrev} className="w-6 h-6 object-contain" referrerPolicy="no-referrer" />}
+                                <span className="text-xs font-black text-white/70 uppercase">{d.awayTeam.abbrev}</span>
+                                <span className={`text-xl font-black leading-none ${d.winnerId !== d.homeTeam?.id ? 'text-white' : 'text-white/40'}`}>{d.awayTeam.score}</span>
+                            </div>
+                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                                {d.isOT ? (d.otCount >= 2 ? `${d.otCount}OT` : 'OT') : 'FINAL'}
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className={`text-xl font-black leading-none ${d.winnerId === d.homeTeam?.id ? 'text-white' : 'text-white/40'}`}>{d.homeTeam.score}</span>
+                                <span className="text-xs font-black text-white/70 uppercase">{d.homeTeam.abbrev}</span>
+                                {d.homeTeam.logoUrl && <img src={d.homeTeam.logoUrl} alt={d.homeTeam.abbrev} className="w-6 h-6 object-contain" referrerPolicy="no-referrer" />}
+                            </div>
+                        </div>
                     </div>
                 );
             }
@@ -301,15 +323,20 @@ const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onImageClick }) =
             const lastName = playerName.split(' ').pop() || playerName;
             return (
                 <div className="mt-3 rounded-2xl overflow-hidden border border-white/10"
-                     style={{ background: '#0a0a0f', fontFamily: 'system-ui, sans-serif' }}>
+                     style={{ background: '#0a0a0f', fontFamily: 'system-ui, sans-serif', minWidth: 0 }}>
 
                     {/* Header */}
-                    <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                    <div className="flex items-center justify-between px-4 pt-4 pb-2">
                         <div className="flex items-center gap-2">
-                            {(d?.teamLogoUrl || post.teamLogoUrl) && (
+                            {post.playerPortraitUrl ? (
+                                <img src={post.playerPortraitUrl} alt=""
+                                     className="w-8 h-8 rounded-full object-cover bg-zinc-700"
+                                     referrerPolicy="no-referrer"
+                                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                            ) : (d?.teamLogoUrl || post.teamLogoUrl) ? (
                                 <img src={d?.teamLogoUrl || post.teamLogoUrl} alt=""
                                      className="w-7 h-7 object-contain" referrerPolicy="no-referrer" />
-                            )}
+                            ) : null}
                             <div>
                                 <p className="text-[11px] font-black text-white/40 uppercase tracking-widest leading-none">
                                     {lastName}
@@ -325,7 +352,7 @@ const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onImageClick }) =
                     </div>
 
                     {/* Big stats row */}
-                    <div className="flex items-end gap-6 px-4 pb-2">
+                    <div className="flex items-end gap-6 px-4 pb-3">
                         {[
                             { val: s.pts ?? d?.pts, label: 'pts' },
                             { val: s.reb ?? d?.reb, label: 'reb' },
@@ -348,7 +375,7 @@ const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onImageClick }) =
                     {(s.min != null || s.fgm != null) && (
                         <div className="grid grid-cols-5 gap-0 border-t border-white/5 mx-3 py-2">
                             {[
-                                { val: s.min, label: 'MIN' },
+                                { val: s.min != null ? Math.round(s.min) : null, label: 'MIN' },
                                 { val: s.pts, label: 'PTS' },
                                 { val: s.reb, label: 'REB' },
                                 { val: s.ast, label: 'AST' },
@@ -369,23 +396,33 @@ const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onImageClick }) =
 
                     {/* Score bar */}
                     {d?.homeTeam && d?.awayTeam && (
-                        <div className="flex items-center justify-between px-4 py-2 bg-black/40 border-t border-white/5">
-                            <div className="flex items-center gap-1.5">
+                        <div className="flex items-center justify-between px-4 py-2.5 bg-black/40 border-t border-white/5">
+                            <div className="flex items-center gap-2">
                                 {d.awayTeam.logoUrl && (
-                                    <img src={d.awayTeam.logoUrl} alt="" className="w-5 h-5 object-contain"
+                                    <img src={d.awayTeam.logoUrl} alt="" className="w-6 h-6 object-contain"
                                          referrerPolicy="no-referrer" />
                                 )}
-                                <span className="text-xs font-black text-white/50">{d.awayTeam.abbrev}</span>
-                                <span className="text-base font-black text-white ml-1">{d.awayTeam.score}</span>
+                                <div>
+                                    <span className="text-xs font-black text-white/60">{d.awayTeam.abbrev}</span>
+                                    {(d.awayTeam.wins != null) && (
+                                        <p className="text-[8px] text-white/25 leading-none">{d.awayTeam.wins}-{d.awayTeam.losses}</p>
+                                    )}
+                                </div>
+                                <span className="text-xl font-black text-white ml-1">{d.awayTeam.score}</span>
                             </div>
                             <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">
                                 {d.isOT ? 'OT' : 'FINAL'}
                             </span>
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-base font-black text-white mr-1">{d.homeTeam.score}</span>
-                                <span className="text-xs font-black text-white/50">{d.homeTeam.abbrev}</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xl font-black text-white mr-1">{d.homeTeam.score}</span>
+                                <div className="text-right">
+                                    <span className="text-xs font-black text-white/60">{d.homeTeam.abbrev}</span>
+                                    {(d.homeTeam.wins != null) && (
+                                        <p className="text-[8px] text-white/25 leading-none">{d.homeTeam.wins}-{d.homeTeam.losses}</p>
+                                    )}
+                                </div>
                                 {d.homeTeam.logoUrl && (
-                                    <img src={d.homeTeam.logoUrl} alt="" className="w-5 h-5 object-contain"
+                                    <img src={d.homeTeam.logoUrl} alt="" className="w-6 h-6 object-contain"
                                          referrerPolicy="no-referrer" />
                                 )}
                             </div>

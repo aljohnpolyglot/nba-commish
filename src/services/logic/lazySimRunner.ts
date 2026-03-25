@@ -2,7 +2,10 @@ import { GameState, LazySimProgress } from '../../types';
 import { runSimulation } from '../../store/logic/turn/simulationHandler';
 import { processSimulationResults } from '../../store/logic/turn/postProcessor';
 import { SettingsManager } from '../SettingsManager';
-import { normalizeDate } from '../../utils/helpers';
+import { normalizeDate, calculateSocialEngagement } from '../../utils/helpers';
+import { buildShamsPost } from '../social/templates/charania';
+import { generateLazySimNews } from '../news/lazySimNewsGenerator';
+import { convertTo2KRating } from '../../utils/helpers';
 import {
   autoPickChristmasGames,
   autoPickGlobalGames,
@@ -95,6 +98,7 @@ export const runLazySim = async (
 
   let state = { ...initialState };
   const firedEvents = new Set<string>();
+  const reportedInjuries = new Set<string>();
   let daysComplete = 0;
   let currentPhase = 'Starting...';
 
@@ -154,6 +158,42 @@ export const runLazySim = async (
         stateWithSim.schedule
       );
 
+      // Shams injury posts — surface key injuries even during lazy sim
+      const shamsInjuryPosts: any[] = [];
+      for (const simResult of allSimResults) {
+        if (!simResult.injuries?.length) continue;
+        for (const injury of simResult.injuries) {
+          const player = updatedPlayers.find(p => p.internalId === injury.playerId);
+          if (!player || convertTo2KRating(player.overallRating ?? player.ratings?.[0]?.ovr ?? 0, player.hgt ?? 77) < 70) continue;
+          const team = stateWithSim.teams.find((t: any) => t.id === (injury.teamId ?? player.tid));
+          if (!team) continue;
+          const content = buildShamsPost({ player, team, injury: { injuryType: injury.injuryType, gamesRemaining: injury.gamesRemaining }, opponent: null } as any);
+          if (!content) continue;
+          const engagement = calculateSocialEngagement('@ShamsCharania', content, player.overallRating);
+          shamsInjuryPosts.push({
+            id: `shams-injury-${injury.playerId}-${Date.now()}-${Math.random()}`,
+            author: 'Shams Charania',
+            handle: '@ShamsCharania',
+            content,
+            date: new Date(stateWithSim.date).toISOString(),
+            likes: engagement.likes,
+            retweets: engagement.retweets,
+            source: 'TwitterX' as const,
+            isNew: true,
+            playerPortraitUrl: player.imgURL,
+          });
+        }
+      }
+
+      // Generate narrative news for this batch (streaks, big games, injuries, drama)
+      const batchNews = generateLazySimNews(
+        stateWithSim.teams,
+        updatedPlayers,
+        allSimResults,
+        stateWithSim.date,
+        reportedInjuries
+      );
+
       state = {
         ...stateWithSim,
         players: updatedPlayers,
@@ -162,6 +202,12 @@ export const runLazySim = async (
           ...(stateWithSim.boxScores || []),
           ...allSimResults.map(r => ({ ...r, date: r.date || stateWithSim.date }))
         ],
+        socialFeed: shamsInjuryPosts.length > 0
+          ? [...shamsInjuryPosts, ...(stateWithSim.socialFeed || [])].slice(0, 500)
+          : stateWithSim.socialFeed,
+        news: batchNews.length > 0
+          ? [...batchNews, ...(stateWithSim.news || [])].slice(0, 200)
+          : stateWithSim.news,
       };
       daysComplete += batchDays;
 

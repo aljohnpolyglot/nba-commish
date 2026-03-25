@@ -1,4 +1,5 @@
 import { SocialTemplate, SocialContext } from '../types';
+import { get2KRating } from '../helpers';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UNDERDOG NBA — pure utility, injury status & lineup alerts
@@ -98,7 +99,7 @@ export const UNDERDOG_NBA_TEMPLATES: SocialTemplate[] = [
         condition: (ctx: SocialContext) =>
             !!(ctx.injury && ctx.player
                 && ctx.injury.gamesRemaining === 0
-                && ctx.player.overallRating >= 72
+                && get2KRating(ctx.player) >= 94
                 && Math.random() < 0.55),
         resolve: (_: string, ctx: SocialContext) => {
             const name = ctx.player?.name ?? 'Unknown';
@@ -122,7 +123,7 @@ export const UNDERDOG_NBA_TEMPLATES: SocialTemplate[] = [
         condition: (ctx: SocialContext) =>
             !!(ctx.injury && ctx.player
                 && ctx.injury.gamesRemaining === 0
-                && ctx.player.overallRating >= 78
+                && get2KRating(ctx.player) >= 90
                 && Math.random() < 0.35),
         resolve: (_: string, ctx: SocialContext) => {
             const name = ctx.player?.name ?? 'Unknown';
@@ -176,7 +177,7 @@ export const UNDERDOG_NBA_TEMPLATES: SocialTemplate[] = [
         condition: (ctx: SocialContext) =>
             !!(ctx.injury && ctx.player
                 && ctx.injury.injuryType === 'Load Management'
-                && ctx.player.overallRating >= 76),
+                && get2KRating(ctx.player) >= 98),
         resolve: (_: string, ctx: SocialContext) => {
             const name = ctx.player?.name ?? 'Unknown';
             const day  = getDayLabel();
@@ -199,7 +200,7 @@ export const UNDERDOG_NBA_TEMPLATES: SocialTemplate[] = [
         type: 'news',
         condition: (ctx: SocialContext) =>
             !!(ctx.injury && ctx.player
-                && ctx.player.overallRating >= 68
+                && get2KRating(ctx.player) >= 90
                 && ctx.injury.gamesRemaining >= 2
                 && ctx.injury.injuryType !== 'Load Management'),
         resolve: (_: string, ctx: SocialContext) => {

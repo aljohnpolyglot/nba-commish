@@ -1,3 +1,11 @@
+import { convertTo2KRating } from '../../utils/helpers';
+
+/** Convert a player's BBGM overallRating to 2K scale (same formula the player searcher uses) */
+export const get2KRating = (player: any): number => {
+    if (!player) return 60;
+    return convertTo2KRating(player.overallRating ?? 50, player.hgt ?? 77);
+};
+
 export const calculateAge = (player: any) => {
     const birthYear = player.born?.year;
     if (!birthYear) return player.age || 25; // Fallback
@@ -27,8 +35,8 @@ export const isAllStar = (player: any) => {
 };
 
 export const isRolePlayer = (player: any) => {
-    const ovr = player.overallRating || 75;
-    return ovr >= 72 && ovr <= 80;
+    const ovr2k = get2KRating(player);
+    return ovr2k >= 75 && ovr2k <= 82;
 };
 
 export const getCareerHigh = (player: any, key: string) => {

@@ -185,6 +185,7 @@ interface SearchParams {
   query?      : string;
   keywordIds? : number[];
   page?       : number;
+  setId?      : number;
 }
 
 interface SearchResult {
@@ -446,7 +447,12 @@ export async function fetchGamePlayerPhotos(opts: {
     return new Map(cached.map(e => [e.playerName, e.photos]));
   }
 
-  const teamQuery = `${homeTeam.name}+${awayTeam.name}`.replace(/ /g, '+');
+  // BUG FIX: deduplicate team names — intra-squad scrimmages have homeTeam === awayTeam,
+  // which produced "Utah+Jazz+Utah+Jazz+Player" in the search URL.
+  const teamNames = homeTeam.name === awayTeam.name
+    ? homeTeam.name
+    : `${homeTeam.name} ${awayTeam.name}`;
+  const teamQuery = teamNames.replace(/ /g, '+');
   const result = new Map<string, ImagnPhoto[]>();
 
   await Promise.all(topPlayers.slice(0, 5).map(async ({ name }) => {

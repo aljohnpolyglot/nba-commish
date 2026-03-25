@@ -1,5 +1,5 @@
 import { SocialTemplate, SocialContext } from '../types';
-import { getRating, getRandomTime, isTripleDouble, isDoubleDouble, calculateAge, isRookie } from '../helpers';
+import { getRating, getRandomTime, isTripleDouble, isDoubleDouble, calculateAge, isRookie, get2KRating } from '../helpers';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LEGION HOOPS — hype-first, breaking news style, clutch moments
@@ -150,6 +150,9 @@ export const LEGION_HOOPS_TEMPLATES: SocialTemplate[] = [
         condition: (ctx: SocialContext) => !!(ctx.stats && ctx.stats.pts >= 32),
         resolve: (_: string, ctx: SocialContext) => {
             const s = ctx.stats;
+            const g = ctx.game;
+            const homeTeamObj = ctx.teams?.find((t: any) => t.id === g?.homeTeamId);
+            const awayTeamObj = ctx.teams?.find((t: any) => t.id === g?.awayTeamId);
             return {
                 content: [
                     `${ctx.player?.name} was in his bag tonight:`,
@@ -161,6 +164,21 @@ export const LEGION_HOOPS_TEMPLATES: SocialTemplate[] = [
                     '',
                     'Strictly bag work. (via @realapp)',
                 ].filter(Boolean).join('\n'),
+                data: {
+                    playerName: ctx.player?.name,
+                    teamColor: (ctx.team as any)?.colors?.[0] ?? '#1d428a',
+                    teamLogoUrl: ctx.team?.logoUrl,
+                    stats: {
+                        pts: s.pts, reb: s.reb, ast: s.ast,
+                        fgm: s.fgm, fga: s.fga,
+                        fgPct: s.fga > 0 ? Number(((s.fgm / s.fga) * 100).toFixed(0)) : null,
+                        threePm: s.threePm, threePa: s.threePa,
+                        stl: s.stl, blk: s.blk, tov: s.tov, min: s.min,
+                    },
+                    homeTeam: homeTeamObj ? { abbrev: homeTeamObj.abbrev, logoUrl: homeTeamObj.logoUrl, score: g?.homeScore } : undefined,
+                    awayTeam: awayTeamObj ? { abbrev: awayTeamObj.abbrev, logoUrl: awayTeamObj.logoUrl, score: g?.awayScore } : undefined,
+                    isOT: g?.isOT,
+                },
             };
         },
     },
@@ -225,7 +243,7 @@ export const LEGION_HOOPS_TEMPLATES: SocialTemplate[] = [
         type: 'news',
         condition: (ctx: SocialContext) =>
             !!(ctx.injury && ctx.player
-                && ctx.player.overallRating > 75
+                && get2KRating(ctx.player) > 83
                 && ctx.injury.injuryType !== 'Load Management'),
         resolve: (_: string, ctx: SocialContext) => {
             const games   = ctx.injury.gamesRemaining;

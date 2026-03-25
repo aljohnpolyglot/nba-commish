@@ -157,8 +157,22 @@ export interface Rule {
   description: string;
 }
 
+export interface MediaRights {
+  activeBroadcasters: string[];
+  lpPrice: number;
+  lpPriceMonthly?: number;
+  totalRev: number;    // Billions, e.g. 14.3
+  mediaRev: number;    // Billions
+  lpRev: number;       // Billions
+  salaryCap: number;   // Millions, e.g. 154.6
+  phaseAssignments?: Record<string, string[]>;
+  scheduleAssignments?: Record<string, string[]>;
+  isLocked: boolean;
+}
+
 export interface LeagueStats {
   revenue: number;
+  mediaRights?: MediaRights;
   viewership: number;
   viewershipHistory?: { date: string, viewers: number }[];
   baseViewershipModifier?: number;
@@ -427,6 +441,8 @@ export interface NewsItem {
   content: string;
   date: string;
   image?: string;
+  /** Portrait URL used as last-resort fallback after Imagn enrichment is attempted */
+  playerPortraitUrl?: string;
   isNew?: boolean;
 }
 
@@ -907,14 +923,7 @@ export interface UserAction {
 
 export type Conference = 'East' | 'West';
 export type GamePhase = 'Preseason' | 'Opening Week' | 'Regular Season (Early)' | 'Regular Season (Mid)' | 'All-Star Break' | 'Trade Deadline' | 'Regular Season (Late)' | 'Play-In Tournament' | 'Playoffs (Round 1)' | 'Playoffs (Round 2)' | 'Conference Finals' | 'NBA Finals' | 'Offseason' | 'Draft' | 'Draft Lottery' | 'Free Agency' | 'Schedule Planning' | 'Schedule Release' | 'Training Camp';
-export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Players' | 'Team Stats' | 'All-Star' | 'Playoffs' | 'League Office';
+export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Players' | 'Team Stats' | 'All-Star' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'Draft Scouting' | 'Draft Lottery';
 export type CommissionerTab = 'Approvals' | 'Viewership' | 'Finances';
 // ─── Imagn Photo Types ────────────────────────────────────────────────────────
-export type { 
-  ImagnPhoto, 
-  ImagnGallery, 
-  PlayerActivitySummary, 
-  GamePhotoNarrative,
-  CaptionActionType,
-  PlayerTag
-} from './services/ImagnPhotoService';
+export type { ImagnPhoto } from './services/ImagnPhotoService';

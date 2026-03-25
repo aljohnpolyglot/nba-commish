@@ -13,7 +13,8 @@ export function generateStatsForTeam(
   lead: number,
   weights: Record<string, number> = {},
   season: number = 2025,
-  overridePlayers?: Player[]
+  overridePlayers?: Player[],
+  otCount: number = 0
 ): PlayerGameStats[] {
   const rotation = StarterService.getRotation(team, players, lead, season, overridePlayers);
   if (rotation.length === 0) return [];
@@ -21,11 +22,23 @@ export function generateStatsForTeam(
   const starters = rotation.slice(0, 5);
 
   // ── Minutes ────────────────────────────────────────────────────────────
-  const minWeights   = rotation.map(p =>
-    starters.includes(p) ? 30 + Math.random() * 10 : 10 + Math.random() * 15
-  );
+  // Real NBA tiers: starters ~32-38, 6th man ~22-28, 7th ~17-23, 8th ~11-17, 9th+ ~4-8
+  const BENCH_MINUTE_TIERS = [
+    { base: 22, spread: 6 },  // 6th man: 22-28, avg 25
+    { base: 17, spread: 6 },  // 7th man: 17-23, avg 20
+    { base: 11, spread: 6 },  // 8th man: 11-17, avg 14
+    { base: 4,  spread: 4 },  // 9th man: 4-8,   avg 6
+    { base: 1,  spread: 3 },  // 10th+:   1-4,   avg 2.5
+  ];
+  const minWeights = rotation.map((p, i) => {
+    if (starters.includes(p)) return 32 + Math.random() * 6; // 32-38, avg 35
+    const bi = Math.min(i - 5, BENCH_MINUTE_TIERS.length - 1);
+    const { base, spread } = BENCH_MINUTE_TIERS[bi];
+    return base + Math.random() * spread;
+  });
   const totalWeight  = minWeights.reduce((a, b) => a + b, 0);
-  const playerMinutes = minWeights.map(w => (w / totalWeight) * 240);
+  const totalGameMinutes = (48 + otCount * 5) * 5; // 5 players on court
+  const playerMinutes = minWeights.map(w => (w / totalWeight) * totalGameMinutes);
 
   const rHelper = (p: Player, k: string) => R(p, k, season);
 
@@ -161,30 +174,20 @@ export function generateStatsForTeam(
   });
 
   // ── Turnovers ─────────────────────────────────────────────────────────
-  const LEAGUE_AVG_TOV = 13;
-
-  rotation.forEach((p, i) => {
-    const pss = rHelper(p, 'pss'), oiq = rHelper(p, 'oiq'), ins = rHelper(p, 'ins');
+  // Usage-power formula: eliminates flat constants that were washing out usage signal.
+  // Math.pow(usageProxy, 1.4) + 10 → star (30% usage) gets ~3.5-4 TOV, bench gets ~0.5-1.
+  // Previously: usageProxy * 4 + constants gave everyone base ~140, ratio only 1.6:1 → all capped at 2.
+  const LEAGUE_AVG_TOV = Math.round(13 * (48 + otCount * 5) / 48);
+  const tovFactors = rotation.map((_, i) => {
     const usageProxy = totalScoringPotential > 0
       ? (scoringPotentials[i] / totalScoringPotential) * 100
       : 5;
-    const factor = (usageProxy * 4.0) + (ins * 0.5) + (pss * 1.0) + ((100 - oiq) * 1.0);
-    // We can't use distributePie directly because it takes a factorFn, but we already have the factor
-    // Let's just do it manually or adjust distributePie
+    return Math.pow(Math.max(1, usageProxy), 1.4) + 10;
   });
-
-  // Actually, let's just use the original distributePie logic for TOV
-  const factors = rotation.map((p, i) => {
-    const pss = rHelper(p, 'pss'), oiq = rHelper(p, 'oiq'), ins = rHelper(p, 'ins');
-    const usageProxy = totalScoringPotential > 0
-      ? (scoringPotentials[i] / totalScoringPotential) * 100
-      : 5;
-    return (usageProxy * 4.0) + (ins * 0.5) + (pss * 1.0) + ((100 - oiq) * 1.0);
-  });
-  const totalFactor = factors.reduce((a, b) => a + b, 0) || 1;
+  const totalTovFactor = tovFactors.reduce((a, b) => a + b, 0) || 1;
   rotation.forEach((_, i) => {
-    const share = factors[i] / totalFactor;
-    playerStats[i].tov = Math.max(0, Math.round(LEAGUE_AVG_TOV * share * getVariance(1.0, 0.12)));
+    const share = tovFactors[i] / totalTovFactor;
+    playerStats[i].tov = Math.max(0, Math.round(LEAGUE_AVG_TOV * share * getVariance(1.0, 0.18)));
   });
 
   // ── Cleanup ───────────────────────────────────────────────────────────

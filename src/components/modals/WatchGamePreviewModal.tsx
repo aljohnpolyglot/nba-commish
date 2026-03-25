@@ -258,6 +258,15 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
             </button>
             <button
               onClick={() => {
+                onConfirm(riggedForTid, false);
+                onClose();
+              }}
+              className="w-full md:w-auto px-8 py-3 md:py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl md:rounded-2xl font-bold transition-all uppercase tracking-widest text-[10px] md:text-xs flex items-center justify-center gap-2"
+            >
+              Simulate Only
+            </button>
+            <button
+              onClick={() => {
                 if (riggedForTid !== undefined) {
                   setShowRefPicker(true);
                 } else {

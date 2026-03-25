@@ -25,11 +25,21 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
     const effectiveRiggedForTid: number | undefined = action?.payload?.riggedForTid ?? undefined;
 
     for (let i = 0; i < daysToSimulate; i++) {
-        // BUG 8 FIX: only pass watchedGameResult on first iteration
+        // Advance date FIRST (except on iteration 0 — start from current date)
+        if (i > 0) {
+            const currentNorm = normalizeDate(stateWithSim.date);
+            const nextDate = new Date(`${currentNorm}T00:00:00Z`);
+            nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+            stateWithSim.date = nextDate.toLocaleDateString('en-US', {
+                timeZone: 'UTC',
+                month: 'short', day: 'numeric', year: 'numeric'
+            });
+            stateWithSim.day += 1;
+        }
+
         const watchedResult = i === 0 ? action?.payload?.watchedGameResult : undefined;
         const simPatch = simulateDayGames(stateWithSim, watchedResult, effectiveRiggedForTid);
 
-        // Update state with results, including accumulated headToHead
         stateWithSim = {
             ...stateWithSim,
             teams: simPatch.teams,
@@ -41,16 +51,6 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
 
         if (i === daysToSimulate - 1) {
             lastDaySimResults = simPatch.results;
-        } else {
-            // Timezone-safe: normalise to YYYY-MM-DD, advance via UTC, format back with timeZone:'UTC'
-            const currentNorm = normalizeDate(stateWithSim.date);
-            const nextDate = new Date(`${currentNorm}T00:00:00Z`);
-            nextDate.setUTCDate(nextDate.getUTCDate() + 1);
-            stateWithSim.date = nextDate.toLocaleDateString('en-US', {
-                timeZone: 'UTC',
-                month: 'short', day: 'numeric', year: 'numeric'
-            });
-            stateWithSim.day += 1;
         }
     }
 

@@ -12,6 +12,8 @@ interface Props {
   homeScore     : number;
   awayScore     : number;
   onExport?     : (dataUrl: string) => void;
+  /** When true, renders auto-composed image with no UI controls (for social feed) */
+  readOnly?     : boolean;
 }
 
 type CropPreset = 'square' | 'portrait' | 'landscape';
@@ -25,6 +27,7 @@ const PRESETS: Record<CropPreset, { w: number; h: number; label: string }> = {
 export const ImagnPhotoEditor: React.FC<Props> = ({
   photo, homeTeamColor, awayTeamColor,
   homeAbbrev, awayAbbrev, homeScore, awayScore, onExport,
+  readOnly = false,
 }) => {
   const canvasRef               = useRef<HTMLCanvasElement>(null);
   const [preset, setPreset]     = useState<CropPreset>('square');
@@ -33,7 +36,10 @@ export const ImagnPhotoEditor: React.FC<Props> = ({
   const [zoom, setZoom]         = useState(1.0);
   const [offsetY, setOffsetY]   = useState(0);
 
-  const { w: outW, h: outH } = PRESETS[preset];
+  // In read-only mode, force square preset (social feed standard)
+  const activePreset = readOnly ? 'square' : preset;
+
+  const { w: outW, h: outH } = PRESETS[activePreset];
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -113,7 +119,7 @@ export const ImagnPhotoEditor: React.FC<Props> = ({
         ctx.fillText(`© ${photo.photographer} / Imagn Images`, outW - 12, creditY);
       }
     };
-  }, [photo, preset, overlay, gradient, zoom, offsetY, outW, outH,
+  }, [photo, activePreset, overlay, gradient, zoom, offsetY, outW, outH,
       awayTeamColor, homeTeamColor, awayAbbrev, homeAbbrev, awayScore, homeScore]);
 
   const handleExport = () => {
@@ -129,69 +135,73 @@ export const ImagnPhotoEditor: React.FC<Props> = ({
     <div className="flex flex-col items-center gap-4">
       <canvas
         ref={canvasRef}
-        className="max-w-full rounded-lg border border-zinc-700"
-        style={{ maxHeight: 420 }}
+        className={readOnly ? 'w-full rounded-xl' : 'max-w-full rounded-lg border border-zinc-700'}
+        style={readOnly ? undefined : { maxHeight: 420 }}
       />
 
-      {/* Preset buttons */}
-      <div className="flex flex-wrap gap-2 justify-center">
-        {(Object.keys(PRESETS) as CropPreset[]).map(p => (
+      {!readOnly && (
+        <>
+          {/* Preset buttons */}
+          <div className="flex flex-wrap gap-2 justify-center">
+            {(Object.keys(PRESETS) as CropPreset[]).map(p => (
+              <button
+                key={p}
+                onClick={() => setPreset(p)}
+                className={`px-3 py-1 rounded-md text-xs font-semibold text-white transition-colors ${
+                  preset === p ? 'bg-indigo-600' : 'bg-zinc-700 hover:bg-zinc-600'
+                }`}
+              >
+                {PRESETS[p].label}
+              </button>
+            ))}
+            <button
+              onClick={() => setOverlay(o => !o)}
+              className={`px-3 py-1 rounded-md text-xs font-semibold text-white transition-colors ${
+                overlay ? 'bg-indigo-600' : 'bg-zinc-700 hover:bg-zinc-600'
+              }`}
+            >
+              Score Bar {overlay ? 'ON' : 'OFF'}
+            </button>
+            <button
+              onClick={() => setGradient(g => !g)}
+              className={`px-3 py-1 rounded-md text-xs font-semibold text-white transition-colors ${
+                gradient ? 'bg-indigo-600' : 'bg-zinc-700 hover:bg-zinc-600'
+              }`}
+            >
+              Gradient {gradient ? 'ON' : 'OFF'}
+            </button>
+          </div>
+
+          {/* Zoom + crop nudge */}
+          <div className="flex gap-6 items-center text-xs text-zinc-400">
+            <label className="flex items-center gap-2">
+              Zoom
+              <input
+                type="range" min={1} max={2} step={0.05}
+                value={zoom} onChange={e => setZoom(+e.target.value)}
+                className="w-24"
+              />
+              <span className="w-8 text-right">{zoom.toFixed(2)}x</span>
+            </label>
+            <label className="flex items-center gap-2">
+              Crop Y
+              <input
+                type="range" min={-200} max={200} step={5}
+                value={offsetY} onChange={e => setOffsetY(+e.target.value)}
+                className="w-24"
+              />
+              <span className="w-8 text-right">{offsetY > 0 ? '+' : ''}{offsetY}</span>
+            </label>
+          </div>
+
           <button
-            key={p}
-            onClick={() => setPreset(p)}
-            className={`px-3 py-1 rounded-md text-xs font-semibold text-white transition-colors ${
-              preset === p ? 'bg-indigo-600' : 'bg-zinc-700 hover:bg-zinc-600'
-            }`}
+            onClick={handleExport}
+            className="px-6 py-2 rounded-lg bg-red-700 hover:bg-red-600 text-white font-bold text-sm transition-colors"
           >
-            {PRESETS[p].label}
+            Export JPG
           </button>
-        ))}
-        <button
-          onClick={() => setOverlay(o => !o)}
-          className={`px-3 py-1 rounded-md text-xs font-semibold text-white transition-colors ${
-            overlay ? 'bg-indigo-600' : 'bg-zinc-700 hover:bg-zinc-600'
-          }`}
-        >
-          Score Bar {overlay ? 'ON' : 'OFF'}
-        </button>
-        <button
-          onClick={() => setGradient(g => !g)}
-          className={`px-3 py-1 rounded-md text-xs font-semibold text-white transition-colors ${
-            gradient ? 'bg-indigo-600' : 'bg-zinc-700 hover:bg-zinc-600'
-          }`}
-        >
-          Gradient {gradient ? 'ON' : 'OFF'}
-        </button>
-      </div>
-
-      {/* Zoom + crop nudge */}
-      <div className="flex gap-6 items-center text-xs text-zinc-400">
-        <label className="flex items-center gap-2">
-          Zoom
-          <input
-            type="range" min={1} max={2} step={0.05}
-            value={zoom} onChange={e => setZoom(+e.target.value)}
-            className="w-24"
-          />
-          <span className="w-8 text-right">{zoom.toFixed(2)}x</span>
-        </label>
-        <label className="flex items-center gap-2">
-          Crop Y
-          <input
-            type="range" min={-200} max={200} step={5}
-            value={offsetY} onChange={e => setOffsetY(+e.target.value)}
-            className="w-24"
-          />
-          <span className="w-8 text-right">{offsetY > 0 ? '+' : ''}{offsetY}</span>
-        </label>
-      </div>
-
-      <button
-        onClick={handleExport}
-        className="px-6 py-2 rounded-lg bg-red-700 hover:bg-red-600 text-white font-bold text-sm transition-colors"
-      >
-        Export JPG
-      </button>
+        </>
+      )}
     </div>
   );
 };

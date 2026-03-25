@@ -95,8 +95,14 @@ export class GameSimulator {
     const homeRegScore = Math.max(85, Math.round(normalRandom(homeExpected, 8)));
     const awayRegScore = Math.max(80, Math.round(normalRandom(awayExpected, 8)));
 
-    const winnerScore = Math.max(homeRegScore, awayRegScore);
-    const loserScore  = Math.min(homeRegScore, awayRegScore);
+    let winnerScore = Math.max(homeRegScore, awayRegScore);
+    let loserScore  = Math.min(homeRegScore, awayRegScore);
+
+    // Prevent tied scores outside of OT path
+    if (winnerScore === loserScore) {
+      if (Math.random() < 0.5) winnerScore += 1;
+      else loserScore = Math.max(0, loserScore - 1);
+    }
 
     let isOT    = false;
     let otCount = 0;
@@ -133,6 +139,22 @@ export class GameSimulator {
       finalAwayScore = homeWins ? loserScore  : winnerScore;
     }
 
+    // ── Team night dice ──────────────────────────────────────────────────────
+    // pace roll: shared (both teams) — creates slow grinds vs fast shootouts
+    // eff roll:  independent per team — creates blowouts and cold-shooting nights
+    // Both are uniform with mean 1.0 → long-run player averages are preserved
+    const paceRoll    = 0.90 + Math.random() * 0.20;   // 0.90–1.10, mean 1.00
+    const homeEffRoll = 0.88 + Math.random() * 0.24;   // 0.88–1.12, mean 1.00
+    const awayEffRoll = 0.88 + Math.random() * 0.24;
+
+    finalHomeScore = Math.max(75, Math.round(finalHomeScore * paceRoll * homeEffRoll));
+    finalAwayScore = Math.max(70, Math.round(finalAwayScore * paceRoll * awayEffRoll));
+
+    if (finalHomeScore === finalAwayScore) {
+      if (Math.random() < 0.5) finalHomeScore += 1;
+      else finalAwayScore += 1;
+    }
+
     const homeWinsFinal = finalHomeScore > finalAwayScore;
 
     const availablePlayers = players.filter(
@@ -140,10 +162,10 @@ export class GameSimulator {
     );
 
     const homeInitial = StatGenerator.generateStatsForTeam(
-      homeTeam, players, finalHomeScore, homeWinsFinal, baseLead, {}, 2026, homeOverridePlayers
+      homeTeam, players, finalHomeScore, homeWinsFinal, baseLead, {}, 2026, homeOverridePlayers, otCount
     );
     const awayInitial = StatGenerator.generateStatsForTeam(
-      awayTeam, players, finalAwayScore, !homeWinsFinal, baseLead, {}, 2026, awayOverridePlayers
+      awayTeam, players, finalAwayScore, !homeWinsFinal, baseLead, {}, 2026, awayOverridePlayers, otCount
     );
 
     const homeMisses = homeInitial.reduce(
@@ -169,19 +191,23 @@ export class GameSimulator {
       homeInitial,
       homeTeam,
       availablePlayers,
-      awayMisses         * 1.10,
-      awayTov            * 0.45,
+      awayMisses         * 0.67,  // was 1.10 — real NBA DRB ~33/team, 1.10 gave ~51
+      awayTov            * 0.50,  // was 0.45 — slight STL bump (+0.1 for leaders)
       awayInteriorMisses * 0.21,
-      awayFTA
+      awayFTA,
+      2026,
+      otCount
     );
     const awayStats = StatGenerator.generateCoordinatedStats(
       awayInitial,
       awayTeam,
       availablePlayers,
-      homeMisses         * 1.10,
-      homeTov            * 0.45,
+      homeMisses         * 0.67,
+      homeTov            * 0.50,
       homeInteriorMisses * 0.21,
-      homeFTA
+      homeFTA,
+      2026,
+      otCount
     );
  // ✅ ADD HERE
     const { homePM, awayPM } = generateSyntheticPM(

@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import {
   Inbox, MessageSquare, Newspaper, Activity, Trophy, Sparkles,
   LayoutDashboard, User, Calendar, BarChart2, TrendingUp,
-  Search, Users, Star, Building2, Settings2, ChevronDown
+  Search, Users, Star, Building2, Settings2, ChevronDown,
+  ListOrdered, Stethoscope, Tv, ThumbsUp, Eye, DollarSign,
+  Target, Ticket
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { Tab } from '../../types';
@@ -43,12 +45,21 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
     return 0;
   })();
 
+  const broadcastingBadge = (() => {
+    if (state.leagueStats.mediaRights?.isLocked) return 0;
+    if (new Date(state.date) >= new Date('2025-10-24')) return 0;
+    return '!';
+  })();
+
   const groups: NavGroup[] = [
     {
       label: 'Command Center',
       items: [
         { id: 'Commissioner', label: 'Dashboard',        icon: LayoutDashboard },
-        { id: 'Actions',      label: 'Commissioner Actions', icon: Sparkles },
+        { id: 'Actions',      label: 'Actions',          icon: Sparkles },
+        { id: 'Approvals',    label: 'Approvals',        icon: ThumbsUp },
+        { id: 'Viewership',   label: 'Viewership',       icon: Eye },
+        { id: 'Finances',     label: 'Finances',         icon: DollarSign },
       ],
     },
     {
@@ -73,9 +84,18 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
     {
       label: 'Analytics',
       items: [
-        { id: 'Player Stats', label: 'Player Stats',  icon: BarChart2 },
-        { id: 'Team Stats',   label: 'Team Stats',    icon: Users },
-        { id: 'Award Races',  label: 'Award Races',   icon: TrendingUp },
+        { id: 'Player Stats',   label: 'Player Stats',   icon: BarChart2 },
+        { id: 'Team Stats',     label: 'Team Stats',     icon: Users },
+        { id: 'Award Races',    label: 'Award Races',    icon: TrendingUp },
+        { id: 'League Leaders', label: 'League Leaders', icon: ListOrdered },
+        { id: 'Injuries',       label: 'Injuries',       icon: Stethoscope },
+      ],
+    },
+    {
+      label: 'Draft',
+      items: [
+        { id: 'Draft Scouting', label: 'Scouting',      icon: Target },
+        { id: 'Draft Lottery',  label: 'Draft Lottery', icon: Ticket },
       ],
     },
     {
@@ -83,6 +103,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
       items: [
         { id: 'League Office',   label: 'League Office',   icon: Building2 },
         { id: 'League Settings', label: 'League Settings', icon: Settings2 },
+        { id: 'Broadcasting',    label: 'Broadcasting',    icon: Tv, badge: broadcastingBadge },
       ],
     },
     {
@@ -159,7 +180,9 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
                       </div>
                       {hasBadge && (
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                          isActive ? 'bg-white text-indigo-600' : 'bg-indigo-500 text-white'
+                          item.badge === '!'
+                            ? isActive ? 'bg-white text-amber-600' : 'bg-amber-500 text-white animate-pulse'
+                            : isActive ? 'bg-white text-indigo-600' : 'bg-indigo-500 text-white'
                         }`}>
                           {item.badge}
                         </span>

@@ -1,5 +1,5 @@
 import { SocialTemplate } from '../types';
-import { getRating } from '../helpers';
+import { getRating, get2KRating } from '../helpers';
 
 export const NBA_CENTEL_TEMPLATES: SocialTemplate[] = [
     {
@@ -55,6 +55,6 @@ export const NBA_CENTEL_TEMPLATES: SocialTemplate[] = [
         handle: 'nba_centel',
         template: "BREAKING: {{player}} has suffered a broken heart and will miss the remainder of the season. 💔",
         priority: 60,
-        condition: (ctx) => !!ctx.injury && !!ctx.player && ctx.player.overallRating > 80 && Math.random() < 0.2
+        condition: (ctx) => !!ctx.injury && !!ctx.player && get2KRating(ctx.player) > 88 && Math.random() < 0.2
     }
 ];

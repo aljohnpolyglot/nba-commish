@@ -100,44 +100,52 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
   const [showPlayoffs, setShowPlayoffs] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  const OPENING_NIGHT_MS = new Date('2025-10-24T00:00:00Z').getTime();
+
   const gameLog = useMemo(() => {
     const logs: any[] = [];
     state.boxScores.forEach(game => {
       const isHome = game.homeStats.some(p => p.playerId === player.internalId);
       const isAway = game.awayStats.some(p => p.playerId === player.internalId);
-      
+
       if (isHome || isAway) {
-        const stats = isHome 
+        const stats = isHome
           ? game.homeStats.find(p => p.playerId === player.internalId)
           : game.awayStats.find(p => p.playerId === player.internalId);
-          
+
         if (stats) {
           const teamId = isHome ? game.homeTeamId : game.awayTeamId;
           const oppId = isHome ? game.awayTeamId : game.homeTeamId;
           const team = state.teams.find(t => t.id === teamId);
           const opp = state.teams.find(t => t.id === oppId);
-          
+
+          // Determine preseason via schedule flag first, fall back to date comparison
+          const schedGame = state.schedule.find((g: any) => g.gid === game.gameId);
+          const isPreseason = schedGame?.isPreseason === true ||
+            (() => { try { return new Date(game.date).getTime() < OPENING_NIGHT_MS; } catch { return false; } })();
+
           const isWin = isHome ? game.homeScore > game.awayScore : game.awayScore > game.homeScore;
           const resultStr = `${isWin ? 'W' : 'L'}, ${isHome ? game.homeScore : game.awayScore}-${isHome ? game.awayScore : game.homeScore}`;
-          
+
           const fgm = stats.fgm || 0;
           const fga = stats.fga || 0;
           const tpm = stats.threePm || 0;
           const tpa = stats.threePa || 0;
           const ftm = stats.ftm || 0;
           const fta = stats.fta || 0;
-          
+
           const twom = fgm - tpm;
           const twoa = fga - tpa;
-          
+
           const fgp = fga > 0 ? (fgm / fga).toFixed(3).replace(/^0+/, '') : '.000';
           const tpp = tpa > 0 ? (tpm / tpa).toFixed(3).replace(/^0+/, '') : '.000';
           const twop = twoa > 0 ? (twom / twoa).toFixed(3).replace(/^0+/, '') : '.000';
           const efgp = fga > 0 ? ((fgm + 0.5 * tpm) / fga).toFixed(3).replace(/^0+/, '') : '.000';
           const ftp = fta > 0 ? (ftm / fta).toFixed(3).replace(/^0+/, '') : '.000';
-          
+
           logs.push({
             date: game.date,
+            isPreseason,
             teamAbbrev: team?.abbrev || 'UNK',
             isAway: !isHome,
             oppAbbrev: opp?.abbrev || 'UNK',
@@ -157,14 +165,23 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
             stl: stats.stl || 0,
             blk: stats.blk || 0,
             tov: stats.tov || 0,
+            pf: stats.pf || 0,
             pts: stats.pts || 0,
             gmsc: (stats.gameScore || 0).toFixed(1),
+            plusMinus: stats.pm != null ? stats.pm : null,
           });
         }
       }
     });
-    return logs.reverse(); // Most recent first
-  }, [state.boxScores, player.internalId, state.teams]);
+
+    const reversed = logs.reverse(); // Most recent first
+
+    // Assign game numbers: regular season games count from 1 (earliest) upward.
+    // Preseason games get rank=null (shown as "PRE").
+    const rsTotal = reversed.filter(l => !l.isPreseason).length;
+    let rsRank = rsTotal;
+    return reversed.map(l => ({ ...l, rank: l.isPreseason ? null : rsRank-- }));
+  }, [state.boxScores, state.schedule, player.internalId, state.teams]);
 
   const team = useMemo(() => {
     const isNBA = !["WNBA","Euroleague","PBA","Draft Prospect","Prospect"].includes(player.status || "");
@@ -565,7 +582,12 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
           <div className="p-4 bg-[#080808] flex flex-col" style={{ minHeight: 0 }}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-white uppercase tracking-wider">
-                {state.leagueStats.year}-{String(state.leagueStats.year + 1).slice(2)} Regular Season
+                {state.leagueStats.year}-{String(state.leagueStats.year + 1).slice(2)} Game Log
+                {gameLog.filter(g => !g.isPreseason).length > 0 && (
+                  <span className="ml-3 text-xs font-normal text-slate-400 normal-case tracking-normal">
+                    {gameLog.filter(g => !g.isPreseason).length} regular season games
+                  </span>
+                )}
               </h3>
             </div>
             <div className="overflow-x-auto overflow-y-auto max-h-[60vh] md:max-h-[70vh] custom-scrollbar">
@@ -607,9 +629,26 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
-                  {gameLog.map((log, i) => (
-                    <tr key={i} className="hover:bg-slate-800/50 transition-colors whitespace-nowrap text-xs">
-                      <td className="px-3 py-2">{gameLog.length - i}</td>
+                  {gameLog.map((log, i) => {
+                    // Insert a "Preseason" header row when we cross from RS → preseason
+                    const showPreseasonDivider = log.isPreseason && (i === 0 || !gameLog[i - 1].isPreseason);
+                    return (
+                    <React.Fragment key={i}>
+                      {showPreseasonDivider && (
+                        <tr>
+                          <td colSpan={31} className="px-3 py-2 bg-slate-900/80 border-y border-slate-700">
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500">
+                              Preseason
+                            </span>
+                          </td>
+                        </tr>
+                      )}
+                    <tr className={`hover:bg-slate-800/50 transition-colors whitespace-nowrap text-xs ${log.isPreseason ? 'opacity-70' : ''}`}>
+                      <td className="px-3 py-2">
+                        {log.rank !== null
+                          ? log.rank
+                          : <span className="text-[10px] font-bold text-amber-500/70">PRE</span>}
+                      </td>
                       <td className="px-3 py-2">{log.date}</td>
                       <td className="px-3 py-2">{log.teamAbbrev}</td>
                       <td className="px-3 py-2">{log.isAway ? '@' : ''}</td>
@@ -637,12 +676,16 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
                       <td className="px-3 py-2 text-right">{log.stl}</td>
                       <td className="px-3 py-2 text-right">{log.blk}</td>
                       <td className="px-3 py-2 text-right">{log.tov}</td>
-                      <td className="px-3 py-2 text-right">-</td>
+                      <td className="px-3 py-2 text-right">{log.pf}</td>
                       <td className="px-3 py-2 text-right font-bold text-white">{log.pts}</td>
                       <td className="px-3 py-2 text-right">{log.gmsc}</td>
-                      <td className="px-3 py-2 text-right">-</td>
+                      <td className={`px-3 py-2 text-right ${log.plusMinus != null && log.plusMinus > 0 ? 'text-emerald-400' : log.plusMinus != null && log.plusMinus < 0 ? 'text-red-400' : ''}`}>
+                        {log.plusMinus != null ? (log.plusMinus > 0 ? `+${log.plusMinus}` : log.plusMinus) : '—'}
+                      </td>
                     </tr>
-                  ))}
+                    </React.Fragment>
+                    );
+                  })}
                   {gameLog.length === 0 && (
                     <tr>
                       <td colSpan={32} className="px-3 py-8 text-center text-slate-500">

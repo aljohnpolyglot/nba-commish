@@ -170,8 +170,8 @@ export class StarterService {
     benchLineup.push(...notInBench());
 
     let rotationDepth = 9;
-    if      (lead > 25) rotationDepth = 15;
-    else if (lead > 15) rotationDepth = 12;
+    if      (lead > 25) rotationDepth = 12;
+    else if (lead > 15) rotationDepth = 11;
     else if (lead > 8)  rotationDepth = 10;
 
     return [

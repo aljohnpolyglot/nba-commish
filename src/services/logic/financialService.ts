@@ -1,4 +1,4 @@
-import { Payslip } from '../../types';
+import { Payslip, GameState } from '../../types';
 
 export function generatePaychecks(
     lastPayDateStr: string,
@@ -67,4 +67,22 @@ export function generatePaychecks(
         newLastPayDate: currentPayDate.toISOString(),
         totalNetPay
     };
+}
+
+/**
+ * Returns the net daily profit/loss for the user's team in MILLIONS.
+ * Mirrors the ViewershipService pattern — called once per daily tick.
+ *
+ * Revenue units: mediaRights.totalRev is in Billions → convert to Millions.
+ * leagueStats.revenue fallback is already stored in Millions (8000 = $8B).
+ * contract.amount is in raw dollars → divide by 1_000_000 to get Millions.
+ * leagueFunds in GameStats is stored in Millions.
+ */
+export function calculateDailyLeagueFunds(state: GameState): number {
+    // Use finalized media deal total if available, otherwise base revenue
+    const annualRevMillions = state.leagueStats.mediaRights?.totalRev
+        ? state.leagueStats.mediaRights.totalRev * 1000  // e.g. 15.7B → 15700M
+        : state.leagueStats.revenue || 6900;             // base (no media) fallback
+
+    return annualRevMillions / 365;
 }

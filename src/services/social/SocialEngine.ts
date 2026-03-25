@@ -212,6 +212,7 @@ export class SocialEngine {
               let avatarOverride = null;
               let mediaUrl = null;
               let mediaBackgroundColor = null;
+              let extraData: Record<string, any> = {};
               if (template.resolve) {
                   const resolved = template.resolve(content, ctx);
                   if (typeof resolved === 'object') {
@@ -219,6 +220,7 @@ export class SocialEngine {
                       avatarOverride = resolved.avatarUrl;
                       mediaUrl = resolved.mediaUrl;
                       mediaBackgroundColor = resolved.mediaBackgroundColor;
+                      if (resolved.data) extraData = resolved.data;
                   } else {
                       content = resolved;
                   }
@@ -245,7 +247,7 @@ export class SocialEngine {
                   date:                 postDate.toISOString(),
                   source:               'TwitterX',
                   category:             'GAME_EVENT',
-                  data:                 { gameId: ctx.game.gameId, templateId: template.id },
+                  data:                 { gameId: ctx.game.gameId, templateId: template.id, ...extraData },
                   mediaUrl:             mediaUrl || undefined,
                   mediaBackgroundColor: mediaBackgroundColor || undefined,
                   isNew:                true,

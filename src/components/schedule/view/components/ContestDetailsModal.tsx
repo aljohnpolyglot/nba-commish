@@ -272,7 +272,13 @@ export const ContestDetailsModal: React.FC<ContestDetailsModalProps> = ({ type, 
                   : 'Eight elite shooters competing for the title'}
               </p>
               <div className={`grid gap-4 ${isDunk ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-4'}`}>
-                {fullContestants.map((p: NBAPlayer) => {
+                {[...fullContestants].sort((a: NBAPlayer, b: NBAPlayer) => {
+                    const getScore = (pl: NBAPlayer) => {
+                        const latest = pl.ratings?.[pl.ratings.length - 1];
+                        return latest?.tp ?? 50;
+                    };
+                    return getScore(b) - getScore(a);
+                }).map((p: NBAPlayer) => {
                   const nbaId = (p as any).nbaId || extractNbaId(p.imgURL || "", p.name);
                   const team = state.teams.find((t: NBATeam) => t.id === p.tid);
                   const teamId = (p as any).teamNbaId || (team ? extractTeamId(team.logoUrl, team.abbrev) : null) || 1610612737;

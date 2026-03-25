@@ -1,6 +1,6 @@
 import type { Tab, LeagueStats, GamePhase, CommissionerTab, NBAConf, NBADiv } from './types';
 
-export const TABS: Tab[] = ['Inbox', 'Schedule', 'Social Feed', 'NBA Central', 'League Settings', 'Commissioner'];
+export const TABS: Tab[] = ['Inbox', 'Schedule', 'Social Feed', 'NBA Central', 'League Settings', 'Commissioner', 'Broadcasting'];
 
 export const AGE_BRACKETS = {
   YOUNG_PLAYER: 22, // Age 22 and under is considered a "young player"
@@ -36,7 +36,7 @@ export const DEFAULT_TIEBREAKERS = [
 ];
 
 export const INITIAL_LEAGUE_STATS: LeagueStats = {
-  revenue: 8000, // $8B
+  revenue: 6900, // $6.9B base (sponsorship/merch/tickets — media rights negotiated separately)
   viewership: 1.8, // 1.8M average
   salaryCap: 154647000, 
   luxuryPayroll: 171000000, // Luxury tax threshold, in thousands

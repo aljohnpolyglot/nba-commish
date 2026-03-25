@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useGame } from '../../store/GameContext';
 import { Trophy, Users, ArrowUpDown, Search, Filter, X } from 'lucide-react';
 import { NBATeam } from '../../types';
@@ -47,13 +47,21 @@ interface TeamStatRow {
 }
 
 export const TeamStatsView: React.FC = () => {
-  const { state, navigateToTeam } = useGame();
+  const { state, navigateToTeam, pendingStatSort, setPendingStatSort } = useGame();
   const [sortField, setSortField] = useState<keyof TeamStatRow>('pts');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (pendingStatSort && pendingStatSort.type === 'team') {
+      setSortField(pendingStatSort.field as keyof TeamStatRow);
+      setSortOrder(pendingStatSort.order);
+      setPendingStatSort(null);
+    }
+  }, [pendingStatSort, setPendingStatSort]);
 
   const teamStats = useMemo(() => {
     const statsMap = new Map<number, TeamStatRow>();

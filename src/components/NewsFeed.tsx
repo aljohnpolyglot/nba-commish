@@ -9,7 +9,7 @@ import type { GameResult } from '../types';
 // ─── Per-item lazy photo wrapper ──────────────────────────────────────────────
 
 interface LazyNewsCardProps {
-    item: { id: string; headline: string; content: string; date: string; image?: string; isNew?: boolean };
+    item: { id: string; headline: string; content: string; date: string; image?: string; playerPortraitUrl?: string; isNew?: boolean };
     gameLookup: Map<number, GamePhotoInfo>;
     index: number;
 }
@@ -19,15 +19,21 @@ const LazyNewsCard: React.FC<LazyNewsCardProps> = ({ item, gameLookup, index }) 
     const [resolvedImage, setResolvedImage] = useState<string | undefined>(() => {
         const cached = getResolvedUrl(item.id);
         if (cached) return cached;
-        return item.image;
+        // playerPortraitUrl = "player news — try Imagn first, don't pre-populate"
+        // image only = team logo or already-resolved photo — use immediately
+        return item.playerPortraitUrl ? undefined : item.image;
     });
+    const [enrichmentDone, setEnrichmentDone] = useState(false);
 
     React.useEffect(() => {
         if (!inView) return;
-        if (resolvedImage) return; // already have one
+        // Skip if already resolved AND not a player news item (portrait = always worth an Imagn attempt)
+        if (resolvedImage && !item.playerPortraitUrl) return;
 
         enrichNewsWithPhoto(item, gameLookup).then(url => {
+            setEnrichmentDone(true);
             if (url) setResolvedImage(url);
+            else if (!resolvedImage && item.playerPortraitUrl) setResolvedImage(item.playerPortraitUrl);
         });
     }, [inView]); // only fire once on scroll into view
 
@@ -47,13 +53,22 @@ const LazyNewsCard: React.FC<LazyNewsCardProps> = ({ item, gameLookup, index }) 
                         alt={item.headline}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                         referrerPolicy="no-referrer"
+                        onError={() => {
+                            // CDN timeout or 404 — fall back to portrait, or hide image slot
+                            if (item.playerPortraitUrl && resolvedImage !== item.playerPortraitUrl) {
+                                setResolvedImage(item.playerPortraitUrl);
+                            } else {
+                                setResolvedImage(undefined);
+                            }
+                            setEnrichmentDone(true);
+                        }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 </div>
             )}
 
-            {/* Placeholder shimmer while no image yet and item is in view */}
-            {!resolvedImage && inView && (
+            {/* Placeholder shimmer while enrichment is in-flight */}
+            {!resolvedImage && inView && !enrichmentDone && (
                 <div className="lg:w-80 h-64 lg:h-auto bg-slate-800/50 flex-shrink-0 animate-pulse" />
             )}
 

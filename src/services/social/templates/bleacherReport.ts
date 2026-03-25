@@ -1,5 +1,5 @@
 import { SocialTemplate, SocialContext } from '../types';
-import { getRating, isReigningChamp, calculateAge, getGameScore } from '../helpers';
+import { getRating, isReigningChamp, calculateAge, getGameScore, get2KRating } from '../helpers';
 import { convertTo2KRating } from '../../../utils/helpers';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -287,7 +287,7 @@ export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
             if (!ctx.players) return { content: '' };
 
             const candidates = ctx.players
-                .filter((p: any) => (p.overallRating ?? 0) > 80 && p.status !== 'Retired')
+                .filter((p: any) => get2KRating(p) >= 88 && p.status !== 'Retired')
                 .sort((a: any, b: any) => {
                     const aTeam = ctx.teams?.find((t: any) => t.id === a.tid);
                     const bTeam = ctx.teams?.find((t: any) => t.id === b.tid);
@@ -463,7 +463,7 @@ export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
         type: 'news',
         condition: (ctx: SocialContext) =>
             !!(ctx.injury && ctx.player
-                && ctx.player.overallRating > 75
+                && get2KRating(ctx.player) > 83
                 && ctx.injury.injuryType !== 'Load Management'),
         resolve: (_: string, ctx: SocialContext) => ({
             content: `Hate to see it. 💔\n\n${ctx.player?.name} is expected to miss ${gamesToTime(ctx.injury.gamesRemaining)} with a ${ctx.injury.injuryType}.`,

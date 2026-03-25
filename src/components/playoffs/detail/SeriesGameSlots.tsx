@@ -89,23 +89,27 @@ export const SeriesGameSlots: React.FC<SeriesGameSlotsProps> = ({
             <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">
               GAME {idx + 1}
             </span>
-            <span className="text-[8px] text-slate-600">
-              {game ? `${homeAbbrev} @ ${awayAbbrev}` : '—'}
-            </span>
             {isPlayed && homeScore !== null && awayScore !== null ? (
-              <div className="flex items-center gap-1 mt-0.5">
-                <span className={`text-[10px] font-black ${homeWon ? 'text-white' : 'text-slate-600'}`}>{homeScore}</span>
-                <span className="text-[8px] text-slate-700">—</span>
-                <span className={`text-[10px] font-black ${awayWon ? 'text-white' : 'text-slate-600'}`}>{awayScore}</span>
-              </div>
+              <>
+                <span className="text-[8px] text-slate-600">
+                  {game ? `${homeAbbrev} @ ${awayAbbrev}` : '—'}
+                </span>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span className={`text-[10px] font-black ${homeWon ? 'text-white' : 'text-slate-600'}`}>{homeScore}</span>
+                  <span className="text-[8px] text-slate-700">—</span>
+                  <span className={`text-[10px] font-black ${awayWon ? 'text-white' : 'text-slate-600'}`}>{awayScore}</span>
+                </div>
+              </>
             ) : isToday ? (
-              <span className="text-[8px] font-black text-indigo-400 mt-0.5 uppercase">TODAY</span>
-            ) : game ? (
-              <span className="text-[8px] text-slate-700 mt-0.5">
-                {new Date(game.date).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })}
-              </span>
+              <>
+                <span className="text-[8px] text-slate-600">
+                  {game ? `${homeAbbrev} @ ${awayAbbrev}` : '—'}
+                </span>
+                <span className="text-[8px] font-black text-indigo-400 mt-0.5 uppercase">TODAY</span>
+              </>
             ) : (
-              <span className="text-[8px] text-slate-800 mt-0.5">—</span>
+              // Future unplayed game — show TBA only
+              <span className="text-[8px] text-slate-700 mt-0.5 uppercase tracking-widest">TBA</span>
             )}
           </button>
         );

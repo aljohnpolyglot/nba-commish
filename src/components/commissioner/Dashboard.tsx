@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useGame } from '../../store/GameContext';
-import { TrendingUp, Users, DollarSign, BarChart3, Star, Target, ShieldCheck, PieChart, Activity } from 'lucide-react';
+import { DollarSign, Activity } from 'lucide-react'; // Kept only necessary icons
 import { ApprovalChart } from './dashboard/ApprovalChart';
 import { ViewershipChart } from './dashboard/ViewershipChart';
 import { RevenueChart } from './dashboard/RevenueChart';
@@ -13,22 +13,34 @@ const Dashboard: React.FC<DashboardProps> = ({ initialTab = 'approvals' }) => {
   const { state } = useGame();
   const { leagueStats, stats, historicalStats } = state;
 
-  const expenses = (leagueStats.salaryCap / 1000) * 30 * 0.9; 
-  const profit = leagueStats.revenue - expenses;
+  // Season revenue calculations
+  const openingNight = new Date('2025-10-24');
+  const currentDate  = new Date(state.date);
+  const daysSinceOpening = Math.max(0, (currentDate.getTime() - openingNight.getTime()) / (1000 * 60 * 60 * 24));
+  const annualRevB   = leagueStats.mediaRights?.totalRev ?? 0;
+  const seasonRevB   = parseFloat(((daysSinceOpening / 365) * annualRevB).toFixed(2));
 
-  const chartData = historicalStats.map(stat => ({
-      ...stat,
-      profit: stat.revenue - ((state.leagueStats.salaryCap / 1000) * 30 * 0.9) 
-  }));
+  const displayRevenue = leagueStats.mediaRights?.totalRev
+    ? leagueStats.mediaRights.totalRev * 1000 
+    : leagueStats.revenue;
 
-  const currentDataFallback = [{ 
-      date: state.date, 
-      publicApproval: stats.publicApproval, 
-      ownerApproval: stats.ownerApproval, 
+  // For each historical point compute how much of annual revenue had accrued by that date
+  const chartData = historicalStats.map(stat => {
+      const pointDate = new Date(stat.date);
+      const daysIn = Math.max(0, (pointDate.getTime() - openingNight.getTime()) / (1000 * 60 * 60 * 24));
+      const pointAnnualRevB = stat.revenue / 1000; // raw millions → billions
+      const seasonRevAtPoint = parseFloat(((daysIn / 365) * pointAnnualRevB).toFixed(2));
+      return { ...stat, seasonRevenue: seasonRevAtPoint * 1000 }; // keep same million scale as revenue for RevenueChart to divide
+  });
+
+  const currentDataFallback = [{
+      date: state.date,
+      publicApproval: stats.publicApproval,
+      ownerApproval: stats.ownerApproval,
       playerApproval: stats.playerApproval,
       viewership: leagueStats.viewership,
       revenue: leagueStats.revenue,
-      profit: profit
+      seasonRevenue: seasonRevB * 1000,
   }];
 
   const displayData = chartData.length > 0 ? chartData : currentDataFallback;
@@ -61,41 +73,37 @@ const Dashboard: React.FC<DashboardProps> = ({ initialTab = 'approvals' }) => {
                         <span className="text-3xl font-black text-white">{stats.playerApproval}%</span>
                     </div>
                 </div>
-
                 <ApprovalChart data={displayData} />
             </div>
         )}
 
         {initialTab === 'finances' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Changed to grid-cols-2 since we only have Revenue and Season Revenue left */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl backdrop-blur-sm">
                         <div className="flex items-center gap-3 mb-2">
                             <DollarSign size={18} className="text-emerald-400" />
                             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Revenue</span>
                         </div>
-                        <span className="text-2xl font-black text-white">${(leagueStats.revenue / 1000).toFixed(1)}B</span>
+                        <span className="text-2xl font-black text-white">${(displayRevenue / 1000).toFixed(1)}B</span>
                     </div>
+
                     <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl backdrop-blur-sm">
                         <div className="flex items-center gap-3 mb-2">
-                            <BarChart3 size={18} className="text-amber-400" />
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Salary Cap</span>
+                            <Activity size={18} className="text-violet-400" />
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Season Revenue</span>
                         </div>
-                        <span className="text-2xl font-black text-white">${(leagueStats.salaryCap / 1000).toFixed(1)}M</span>
-                    </div>
-                    <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl backdrop-blur-sm">
-                        <div className="flex items-center gap-3 mb-2">
-                            <Target size={18} className="text-rose-400" />
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Luxury Tax</span>
+                        <span className="text-2xl font-black text-white">
+                          {annualRevB === 0
+                            ? '—'
+                            : daysSinceOpening <= 0
+                              ? 'Pre-season'
+                              : `$${seasonRevB.toFixed(2)}B`}
+                        </span>
+                        <div className="text-[10px] text-slate-500 mt-0.5">
+                          {annualRevB > 0 && daysSinceOpening > 0 && `of $${annualRevB.toFixed(2)}B annual`}
                         </div>
-                        <span className="text-2xl font-black text-white">{(leagueStats.luxuryTax * 100).toFixed(0)}%</span>
-                    </div>
-                     <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl backdrop-blur-sm">
-                        <div className="flex items-center gap-3 mb-2">
-                            <PieChart size={18} className="text-blue-400" />
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Profit Margin</span>
-                        </div>
-                        <span className="text-2xl font-black text-white">{((profit / leagueStats.revenue) * 100).toFixed(1)}%</span>
                     </div>
                 </div>
 

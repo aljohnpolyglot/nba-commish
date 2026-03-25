@@ -26,6 +26,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({ onClose, o
   const [teamBPlayers, setTeamBPlayers] = useState<NBAPlayer[]>([]);
   const [teamAPicks, setTeamAPicks] = useState<DraftPick[]>([]);
   const [teamBPicks, setTeamBPicks] = useState<DraftPick[]>([]);
+  const [circumventCap, setCircumventCap] = useState(false);
 
   const formatContract = (amount: number) => {
     return `$${(amount / 1000).toFixed(1)}M`;
@@ -34,8 +35,14 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({ onClose, o
   const teamA = state.teams.find(t => t.id === teamAId);
   const teamB = state.teams.find(t => t.id === teamBId);
 
-  const teamARoster = useMemo(() => state.players.filter(p => p.tid === teamAId && !['WNBA', 'Euroleague', 'PBA'].includes(p.status || '')), [state.players, teamAId]);
-  const teamBRoster = useMemo(() => state.players.filter(p => p.tid === teamBId && !['WNBA', 'Euroleague', 'PBA'].includes(p.status || '')), [state.players, teamBId]);
+  const teamARoster = useMemo(() => state.players
+    .filter(p => p.tid === teamAId && !['WNBA', 'Euroleague', 'PBA'].includes(p.status || ''))
+    .sort((a, b) => (b.contract?.amount || 0) - (a.contract?.amount || 0)),
+  [state.players, teamAId]);
+  const teamBRoster = useMemo(() => state.players
+    .filter(p => p.tid === teamBId && !['WNBA', 'Euroleague', 'PBA'].includes(p.status || ''))
+    .sort((a, b) => (b.contract?.amount || 0) - (a.contract?.amount || 0)),
+  [state.players, teamBId]);
   
   const teamAPicksAvailable = useMemo(() => state.draftPicks.filter(p => p.tid === teamAId), [state.draftPicks, teamAId]);
   const teamBPicksAvailable = useMemo(() => state.draftPicks.filter(p => p.tid === teamBId), [state.draftPicks, teamBId]);
@@ -44,6 +51,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({ onClose, o
   const teamBSalary = useMemo(() => teamBPlayers.reduce((sum, p) => sum + (p.contract?.amount || 0), 0), [teamBPlayers]);
 
   const salaryMismatch = useMemo(() => {
+    if (circumventCap) return null;
     if (teamAPlayers.length === 0 && teamBPlayers.length === 0) return null;
     
     // Simple rule: Salaries must be within 25% of each other if either team is over the cap
@@ -253,7 +261,17 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({ onClose, o
                     </div>
                 </div>
                 <div className="p-4 lg:p-6 border-t border-slate-800">
-                    <button 
+                    <button
+                        onClick={() => setCircumventCap(!circumventCap)}
+                        className={`w-full py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all mb-2 border ${
+                            circumventCap
+                            ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+                            : 'bg-white/5 border-white/10 text-slate-600 hover:text-slate-400'
+                        }`}
+                    >
+                        {circumventCap ? '⚠️ Cap Bypassed' : 'Circumvent Cap'}
+                    </button>
+                    <button
                         onClick={handleConfirm}
                         disabled={!!salaryMismatch || !teamAId || !teamBId || (teamAPlayers.length === 0 && teamAPicks.length === 0 && teamBPlayers.length === 0 && teamBPicks.length === 0)}
                         className="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50"

@@ -166,8 +166,8 @@ export const ScheduleView: React.FC = () => {
         return {
           playerId: pid,
           playerName: player?.name || c.name || '',
-          round1Score: r1?.totalScore ?? 0,
-          finalScore: fin?.totalScore ?? null,
+          round1Score: r1?.score ?? r1?.totalScore ?? 0,
+          finalScore: fin?.score ?? fin?.totalScore ?? null,
           isWinner: simResult.winnerId === pid,
         };
       }),

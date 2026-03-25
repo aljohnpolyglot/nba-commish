@@ -1,4 +1,5 @@
 import { SocialTemplate } from '../types';
+import { get2KRating } from '../helpers';
 
 export const NBA_MEMES_TEMPLATES: SocialTemplate[] = [
     {
@@ -46,6 +47,6 @@ export const NBA_MEMES_TEMPLATES: SocialTemplate[] = [
         handle: 'nba_memes',
         template: "{{team}} fans seeing {{player}} go down with a {{injury_type}}: \n\n🤡🤡🤡",
         priority: 70,
-        condition: (ctx) => !!ctx.injury && !!ctx.player && ctx.player.overallRating > 80
+        condition: (ctx) => !!ctx.injury && !!ctx.player && get2KRating(ctx.player) > 88
     }
 ];

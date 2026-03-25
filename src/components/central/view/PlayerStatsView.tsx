@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { NBAPlayer, NBAGMStat } from '../../../types';
 import { PlayerBioView } from './PlayerBioView';
@@ -8,7 +8,7 @@ import { evaluateFilter } from '../../../utils/filterUtils';
 type StatCategory = 'PTS' | 'REB' | 'AST' | 'STL' | 'BLK' | 'TOV' | 'FG%' | '3P%' | 'FT%' | 'MIN' | 'ORB' | 'DRB' | 'FGM' | 'FGA' | '3PM' | '3PA' | 'FTM' | 'FTA' | 'PF' | 'GP' | 'GS' | 'PM' | 'TS%' | 'eFG%' | 'PER' | 'USG%' | 'ORtg' | 'DRtg' | 'BPM' | 'WS' | 'VORP';
 
 export const PlayerStatsView: React.FC = () => {
-  const { state, navigateToTeam } = useGame();
+  const { state, navigateToTeam, pendingStatSort, setPendingStatSort } = useGame();
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
   const [sortField, setSortField] = useState<StatCategory>('PTS');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -16,6 +16,14 @@ export const PlayerStatsView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (pendingStatSort && pendingStatSort.type === 'player') {
+      setSortField(pendingStatSort.field as StatCategory);
+      setSortOrder(pendingStatSort.order);
+      setPendingStatSort(null);
+    }
+  }, [pendingStatSort, setPendingStatSort]);
 
   const availableSeasons = useMemo(() => {
     const seasons = new Set<number>();

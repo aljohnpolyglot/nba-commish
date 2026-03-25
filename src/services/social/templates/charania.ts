@@ -1,5 +1,5 @@
 import { SocialTemplate, SocialContext } from '../types';
-import { getCurrentSeasonStats, calculateAge } from '../helpers';
+import { getCurrentSeasonStats, calculateAge, get2KRating } from '../helpers';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GAMES → HUMAN TIME CONVERTER
@@ -159,7 +159,7 @@ function buildShamsPost(ctx: SocialContext): string {
     const teamName   = team?.name ?? 'The team';
     const injType    = injury.injuryType;
     const games      = injury.gamesRemaining;
-    const ovr        = player.overallRating ?? 70;
+    const ovr        = player.overallRating ?? 50;
     const severity   = getSeverity(games);
     const timeStr    = gamesToTime(games);
     const src        = getSource();
@@ -268,7 +268,7 @@ export const CHARANIA_TEMPLATES: SocialTemplate[] = [
         type: 'news',
         condition: (ctx: SocialContext) =>
             !!(ctx.injury && ctx.player
-                && ctx.player.overallRating >= 82
+                && get2KRating(ctx.player) >= 90
                 && isSeasonEnding(ctx.injury.gamesRemaining)
                 && ctx.injury.injuryType !== 'Load Management'),
         resolve: (_: string, ctx: SocialContext) => ({
@@ -285,7 +285,7 @@ export const CHARANIA_TEMPLATES: SocialTemplate[] = [
         type: 'news',
         condition: (ctx: SocialContext) =>
             !!(ctx.injury && ctx.player
-                && ctx.player.overallRating >= 80
+                && get2KRating(ctx.player) >= 88
                 && isMajorInjury(ctx.injury.gamesRemaining)
                 && !isSeasonEnding(ctx.injury.gamesRemaining)
                 && ctx.injury.injuryType !== 'Load Management'),
@@ -304,7 +304,7 @@ export const CHARANIA_TEMPLATES: SocialTemplate[] = [
         condition: (ctx: SocialContext) => {
             if (!ctx.injury || !ctx.player) return false;
             const games = ctx.injury.gamesRemaining;
-            return ctx.player.overallRating >= 75
+            return get2KRating(ctx.player) >= 84
                 && games >= 8
                 && games <= 24
                 && ctx.injury.injuryType !== 'Load Management';
@@ -324,7 +324,7 @@ export const CHARANIA_TEMPLATES: SocialTemplate[] = [
         condition: (ctx: SocialContext) => {
             if (!ctx.injury || !ctx.player) return false;
             const games = ctx.injury.gamesRemaining;
-            return ctx.player.overallRating >= 75
+            return get2KRating(ctx.player) >= 84
                 && games >= 3
                 && games <= 7
                 && ctx.injury.injuryType !== 'Load Management';
@@ -343,7 +343,7 @@ export const CHARANIA_TEMPLATES: SocialTemplate[] = [
         type: 'news',
         condition: (ctx: SocialContext) =>
             !!(ctx.injury && ctx.player
-                && ctx.player.overallRating >= 80
+                && get2KRating(ctx.player) >= 88
                 && ctx.injury.gamesRemaining <= 2
                 && ctx.injury.injuryType !== 'Load Management'),
         resolve: (_: string, ctx: SocialContext) => ({
@@ -360,7 +360,7 @@ export const CHARANIA_TEMPLATES: SocialTemplate[] = [
         type: 'news',
         condition: (ctx: SocialContext) =>
             !!(ctx.injury && ctx.player
-                && ctx.player.overallRating >= 82
+                && get2KRating(ctx.player) >= 90
                 && ctx.injury.injuryType === 'Load Management'),
         resolve: (_: string, ctx: SocialContext) => ({
             content: buildShamsPost(ctx),
@@ -377,9 +377,9 @@ export const CHARANIA_TEMPLATES: SocialTemplate[] = [
         type: 'news',
         condition: (ctx: SocialContext) => {
             if (!ctx.injury || !ctx.player) return false;
-            const ovr   = ctx.player.overallRating ?? 70;
+            const ovr2k = get2KRating(ctx.player);
             const games = ctx.injury.gamesRemaining;
-            return ovr >= 70 && ovr < 80 && games >= 5 && games <= 20
+            return ovr2k >= 92 && ovr2k < 96 && games >= 5 && games <= 20
                 && ctx.injury.injuryType !== 'Load Management'
                 && Math.random() < 0.55; // only fires ~55% of the time for role players
         },
@@ -388,3 +388,5 @@ export const CHARANIA_TEMPLATES: SocialTemplate[] = [
         }),
     },
 ];
+
+export { buildShamsPost };

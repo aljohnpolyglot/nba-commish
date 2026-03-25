@@ -122,7 +122,11 @@ export const PlayoffView: React.FC = () => {
           players={state.players}
           allStar={state.allStar}
           isProcessing={state.isProcessing}
-          onClose={async () => { setWatchingGame(null); setRiggedForTid(undefined); setPrecomputedResult(null); await dispatchAction({ type: 'ADVANCE_DAY' } as any); }}
+          onClose={async () => {
+              const result = precomputedResult;
+              setWatchingGame(null); setRiggedForTid(undefined); setPrecomputedResult(null);
+              await dispatchAction({ type: 'ADVANCE_DAY', payload: result ? { watchedGameResult: result } : undefined } as any);
+          }}
           onComplete={executeWatchGame}
           otherGamesToday={state.schedule.filter(g =>
             normalizeDate(g.date) === normalizeDate(state.date) &&

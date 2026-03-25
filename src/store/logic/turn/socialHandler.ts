@@ -1,6 +1,7 @@
 import { GameState, NBAPlayer as Player, NBATeam } from '../../../types';
 import { calculateSocialEngagement } from '../../../utils/helpers';
 import { SocialEngine } from '../../../services/social/SocialEngine';
+import { generateLazySimNews } from '../../../services/news/lazySimNewsGenerator';
 
 export const handleSocialAndNews = async (
     state: GameState, 
@@ -66,6 +67,51 @@ export const handleSocialAndNews = async (
     const allNewPosts = [...newLLMPosts, ...newSocialPostsFromEngine];
     allNewPosts.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+    // ── Shams injury posts ────────────────────────────────────────────────────
+    const { buildShamsPost } = await import('../../../services/social/templates/charania');
+    const shamsInjuryPosts: any[] = [];
+
+    for (const result of allSimResults) {
+        if (!result.injuries?.length) continue;
+        for (const injury of result.injuries) {
+            const player = updatedPlayers.find(p => p.internalId === injury.playerId);
+            if (!player) continue;
+            const team = updatedTeams.find(t => t.id === (injury.teamId ?? player.tid));
+            if (!team) continue;
+            if ((player.overallRating ?? 0) < 70) continue; // skip low OVR
+
+            const ctx = {
+                player,
+                team,
+                injury: {
+                    injuryType: injury.injuryType,
+                    gamesRemaining: injury.gamesRemaining,
+                },
+                opponent: null,
+            };
+
+            const content = buildShamsPost(ctx as any);
+            if (!content) continue;
+
+            const engagement = calculateSocialEngagement('@ShamsCharania', content, player.overallRating);
+            shamsInjuryPosts.push({
+                id: `shams-injury-${injury.playerId}-${Date.now()}`,
+                author: 'Shams Charania',
+                handle: '@ShamsCharania',
+                content,
+                date: new Date(state.date).toISOString(),
+                likes: engagement.likes,
+                retweets: engagement.retweets,
+                source: 'TwitterX',
+                isNew: true,
+                playerPortraitUrl: player.imgURL,
+            });
+        }
+    }
+
+    allNewPosts.push(...shamsInjuryPosts);
+    allNewPosts.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
     const existingPostIds = new Set(state.socialFeed.map(p => p.id));
     const uniqueNewPosts = allNewPosts.filter(p => !existingPostIds.has(p.id));
 
@@ -82,6 +128,21 @@ export const handleSocialAndNews = async (
 
     console.log('[SocialHandler] incoming newNews:', result?.newNews?.length);
     console.log('[SocialHandler] incoming newSocialPosts:', result?.newSocialPosts?.length);
+
+    // ── Generate deterministic news from sim results (streaks, big games, drama) ──
+    // skipInjuries=true — Shams posts already surface injuries in the regular flow.
+    if (allSimResults.length > 0) {
+        const simNews = generateLazySimNews(
+            updatedTeams,
+            updatedPlayers,
+            allSimResults,
+            endDateString,
+            new Set<string>(),
+            true // skipInjuries
+        );
+        const simNewsUnique = simNews.filter(n => !existingNewsIds.has(n.id));
+        uniqueNewNews.push(...simNewsUnique);
+    }
 
     return { uniqueNewPosts, uniqueNewNews };
 };

@@ -2,7 +2,7 @@ import { SocialTemplate, SocialContext } from '../types';
 import {
     isRookie, isVeteran, isAllStar, isTripleDouble, isDoubleDouble,
     calculateAge, getCareerHigh, getCurrentSeasonStats, getRating,
-    is5x5, getStatlineString
+    is5x5, getStatlineString, get2KRating
 } from '../helpers';
 import { STATMUSE_PLAYER_IMAGES } from '../../../data/social/statmuseImages';
 
@@ -130,8 +130,8 @@ const OUTROS: OutroOption[] = [
 
     // Volume scoring tiers
     { text: 'Bucket.',              condition: (c) => (c.stats?.pts ?? 0) >= 28 && (c.stats?.pts ?? 0) < 40, weight: 4 },
-    { text: 'Elite.',               condition: (c) => (c.player?.overallRating ?? 0) >= 85 && (c.stats?.pts ?? 0) >= 25, weight: 3 },
-    { text: 'Him.',                 condition: (c) => (c.player?.overallRating ?? 0) >= 88 && (c.stats?.pts ?? 0) >= 30, weight: 3 },
+    { text: 'Elite.',               condition: (c) => c.player != null && get2KRating(c.player) >= 94 && (c.stats?.pts ?? 0) >= 25, weight: 3 },
+    { text: 'Him.',                 condition: (c) => c.player != null && get2KRating(c.player) >= 98 && (c.stats?.pts ?? 0) >= 30, weight: 3 },
     { text: 'Unstoppable.',         condition: (c) => (c.stats?.pts ?? 0) >= 40, weight: 5 },
     { text: 'Video game numbers.',  condition: (c) => (c.stats?.pts ?? 0) >= 45, weight: 5 },
     { text: 'Nuclear.',             condition: (c) => (c.stats?.pts ?? 0) >= 50, weight: 6 },
@@ -156,7 +156,7 @@ const OUTROS: OutroOption[] = [
     // Veteran / underrated
     { text: 'Still got it.',        condition: (c) => isVeteran(c.player) && calculateAge(c.player) >= 35 && (c.stats?.pts ?? 0) >= 20, weight: 6 },
     { text: 'Most underrated in the league.', condition: (c) => !isAllStar(c.player) && (c.stats?.pts ?? 0) >= 28, weight: 4 },
-    { text: 'Best contract in basketball.', condition: (c) => !isAllStar(c.player) && (c.stats?.pts ?? 0) >= 25 && (c.player?.overallRating ?? 0) >= 80, weight: 3 },
+    { text: 'Best contract in basketball.', condition: (c) => !isAllStar(c.player) && (c.stats?.pts ?? 0) >= 25 && c.player != null && get2KRating(c.player) >= 88, weight: 3 },
 
     // Milestone
     { text: 'Does everything.',     condition: (c) => isTripleDouble(c.stats) && (c.stats?.blk ?? 0) >= 2 && (c.stats?.stl ?? 0) >= 2, weight: 6 },
@@ -689,7 +689,7 @@ export const STATMUSE_TEMPLATES: SocialTemplate[] = [
         type: 'news',
         condition: (ctx) =>
             !!(ctx.injury && ctx.player
-                && ctx.player.overallRating >= 78
+                && get2KRating(ctx.player) >= 86
                 && ctx.injury.injuryType !== 'Load Management'),
         resolve: (_, ctx) => {
             const season = getCurrentSeasonStats(ctx.player);
