@@ -19,8 +19,11 @@ export const PlayerStatsView: React.FC = () => {
 
   useEffect(() => {
     if (pendingStatSort && pendingStatSort.type === 'player') {
-      setSortField(pendingStatSort.field as StatCategory);
+      const field = pendingStatSort.field as StatCategory;
+      setSortField(field);
       setSortOrder(pendingStatSort.order);
+      const advancedFields: StatCategory[] = ['PER', 'TS%', 'eFG%', 'USG%', 'ORtg', 'DRtg', 'BPM', 'WS', 'VORP'];
+      if (advancedFields.includes(field)) setShowAdvanced(true);
       setPendingStatSort(null);
     }
   }, [pendingStatSort, setPendingStatSort]);

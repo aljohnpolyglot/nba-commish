@@ -129,26 +129,17 @@ export const formatHeight = (hgt: number, isAttribute: boolean = false): string 
   return `${feet}'${inches}"`;
 };
 
-export const convertTo2KRating = (bbgmRating: number, hgtInches: number = 77): number => {
-  // Formula: 2K = 0.88 * BBGM + 31 (Reverted to original formula as the "inflation" was likely due to the bug below)
+export const convertTo2KRating = (
+  bbgmRating: number,
+  hgtAttribute: number = 50  // expects BBGM 0-100 attribute, NOT bio inches
+): number => {
   let rating = 0.88 * bbgmRating + 31;
 
-  // Convert height (inches) to BBGM attribute (0-100 scale)
-  // Formula derived from formatHeight: inches = 66 + (attr * 0.24)
-  // Therefore: attr = (inches - 66) / 0.24
-  const heightAttribute = (hgtInches - 66) / 0.24;
-
-  // Height Bias: Taller players get a boost to their 2K rating
-  // User Request: "only boost those with height rating on bbgm more than 60"
-  if (heightAttribute > 60) {
-      // Boost calculation based on how much they exceed the 60 attribute threshold
-      // Max boost is +6 at 100 attribute
-      const boost = (heightAttribute - 60) * (6 / 60);
-      rating += boost;
+  if (hgtAttribute > 68) {
+    rating += (hgtAttribute - 68) * (6 / 32); // max +6 at hgt=100
   }
-  
-  rating = Math.round(rating);
 
+  rating = Math.round(rating);
   if (rating < 40) rating = 40;
   return Math.min(99, rating);
 };

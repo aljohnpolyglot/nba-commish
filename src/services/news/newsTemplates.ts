@@ -176,11 +176,11 @@ export const NEWS_TEMPLATES: NewsTemplate[] = [
       'The League is on Notice — {playerName} is Cooking',
     ],
     contents: [
-      'Over the past week, no one has been more dominant than {playerName} of the {teamName}. Averaging {pts} PPG with {reb} boards and {ast} assists, the numbers speak for themselves.',
+      'No one has been more dominant tonight than {playerName} of the {teamName}. Scoring {pts} points with {reb} boards and {ast} assists, the numbers speak for themselves.',
       '{playerName} has been the most consistent performer in the league recently. The {teamName} star is averaging {pts} points per game and showing no signs of slowing down.',
-      "If you haven't been watching {teamName} games, you've been missing out. {playerName} is in the middle of a scorching stretch, averaging {pts} PPG over the last week.",
-      'Week in review: {playerName} ({teamName}) stands out as the league\'s top performer, putting up {pts} PPG alongside {reb} REB and {ast} AST.',
-      '{teamName}\'s {playerName} is in a groove right now. League-best {pts} points per game this week with complementary numbers across the board.',
+      "If you haven't been watching {teamName} games, you've been missing out. {playerName} was in the middle of a scorching night scoring {pts} points.",
+      'Day in Review: {playerName} ({teamName}) stands out as the league\'s top performer, putting up {pts} PTS alongside {reb} REB and {ast} AST.',
+      '{teamName}\'s {playerName} is in a groove right now. League-best {pts} points tonight with complementary numbers across the board.',
     ],
   },
 ];

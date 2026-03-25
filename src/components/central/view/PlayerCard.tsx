@@ -58,7 +58,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionCl
              </div>
           )}
           <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-slate-950 rounded-full flex items-center justify-center border-2 border-slate-800">
-            <span className="text-[10px] font-black text-white">{convertTo2KRating(player.overallRating, player.hgt || 50)}</span>
+            <span className="text-[10px] font-black text-white">{convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50)}</span>
           </div>
         </div>
         <div className="flex-1 min-w-0">

@@ -161,11 +161,12 @@ export class GameSimulator {
       p => !p.injury || p.injury.gamesRemaining <= 0
     );
 
+    const actualMargin = Math.abs(finalHomeScore - finalAwayScore);
     const homeInitial = StatGenerator.generateStatsForTeam(
-      homeTeam, players, finalHomeScore, homeWinsFinal, baseLead, {}, 2026, homeOverridePlayers, otCount
+      homeTeam, players, finalHomeScore, homeWinsFinal, actualMargin, {}, 2026, homeOverridePlayers, otCount
     );
     const awayInitial = StatGenerator.generateStatsForTeam(
-      awayTeam, players, finalAwayScore, !homeWinsFinal, baseLead, {}, 2026, awayOverridePlayers, otCount
+      awayTeam, players, finalAwayScore, !homeWinsFinal, actualMargin, {}, 2026, awayOverridePlayers, otCount
     );
 
     const homeMisses = homeInitial.reduce(
@@ -191,9 +192,9 @@ export class GameSimulator {
       homeInitial,
       homeTeam,
       availablePlayers,
-      awayMisses         * 0.67,  // was 1.10 — real NBA DRB ~33/team, 1.10 gave ~51
-      awayTov            * 0.50,  // was 0.45 — slight STL bump (+0.1 for leaders)
-      awayInteriorMisses * 0.21,
+      awayMisses         * 0.69,
+      awayTov            * 0.58,
+      awayInteriorMisses * 0.27,
       awayFTA,
       2026,
       otCount
@@ -202,9 +203,9 @@ export class GameSimulator {
       awayInitial,
       awayTeam,
       availablePlayers,
-      homeMisses         * 0.67,
-      homeTov            * 0.50,
-      homeInteriorMisses * 0.21,
+      homeMisses         * 0.69,
+      homeTov            * 0.58,
+      homeInteriorMisses * 0.27,
       homeFTA,
       2026,
       otCount

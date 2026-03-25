@@ -44,6 +44,12 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({ onClose, o
     .sort((a, b) => (b.contract?.amount || 0) - (a.contract?.amount || 0)),
   [state.players, teamBId]);
   
+  const sortedTeams = useMemo(() => {
+    return [...(state?.teams || [])].sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '')
+    );
+  }, [state.teams]);
+
   const teamAPicksAvailable = useMemo(() => state.draftPicks.filter(p => p.tid === teamAId), [state.draftPicks, teamAId]);
   const teamBPicksAvailable = useMemo(() => state.draftPicks.filter(p => p.tid === teamBId), [state.draftPicks, teamBId]);
 
@@ -133,8 +139,8 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({ onClose, o
                         }}
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 text-xs md:text-sm font-bold text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                     >
-                        <option value="">Select Team A</option>
-                        {state.teams.filter(t => t.id !== teamBId).map(t => (
+                        <option value="" disabled hidden>Select Team A</option>
+                        {sortedTeams.filter(t => t.id !== teamBId).map(t => (
                             <option key={t.id} value={t.id}>{t.name}</option>
                         ))}
                     </select>
@@ -294,8 +300,8 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({ onClose, o
                         }}
                         className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-sm font-bold text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                     >
-                        <option value="">Select Team B</option>
-                        {state.teams.filter(t => t.id !== teamAId).map(t => (
+                        <option value="" disabled hidden>Select Team B</option>
+                        {sortedTeams.filter(t => t.id !== teamAId).map(t => (
                             <option key={t.id} value={t.id}>{t.name}</option>
                         ))}
                     </select>

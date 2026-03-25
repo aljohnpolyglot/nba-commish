@@ -31,14 +31,14 @@ export const generateSocialThreadPrompt = (originalPost: SocialPost, state: Game
 
         } else if (d.type === 'PlayerFeat' && d.player) {
             const p = d.player;
-            const rating = convertTo2KRating(p.overallRating || 0, p.hgt || 50);
+            const rating = convertTo2KRating(p.overallRating || 0, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50);
             // User Request: "everyone spamming contracts... remove that!"
             // Removed contract string from context.
             // User Request: "feed formation of the whole stats and ovrl which are internal data it is up to them how they use that"
             context += `\nContext: Player Feat\nPlayer: ${p.name} (Pos: ${p.pos}, Age: ${p.age}, Skill Level/2K Rating: ${rating})\nStats: ${d.stats.pts} PTS, ${d.stats.reb} REB, ${d.stats.ast} AST\n`;
         } else if (d.type === 'Random' && d.player) {
              const p = d.player;
-             const rating = convertTo2KRating(p.overallRating || 0, p.hgt || 50);
+             const rating = convertTo2KRating(p.overallRating || 0, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50);
              context += `\nContext: General Discussion\nPlayer: ${p.name} (Pos: ${p.pos}, Age: ${p.age}, Skill Level/2K Rating: ${rating})\nTeam: ${d.team?.name}\n`;
         }
     }

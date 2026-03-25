@@ -77,7 +77,7 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
       const calculatedAge = p.born?.year ? (currentYear - p.born.year) : (p.age || 0);
       
       const rawOvr = p.overallRating || (p.ratings?.[0]?.ovr || 0);
-      const displayOvr = convertTo2KRating(rawOvr, p.hgt || 50);
+      const displayOvr = convertTo2KRating(rawOvr, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50);
 
       return {
         ...p,

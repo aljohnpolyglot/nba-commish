@@ -36,13 +36,13 @@ export const TeamDetailView: React.FC<TeamDetailViewProps> = ({
         p.status !== 'PBA'
       )
       .sort((a, b) => {
-        const ratingA = convertTo2KRating(a.overallRating, a.hgt || 77);
-        const ratingB = convertTo2KRating(b.overallRating, b.hgt || 77);
+        const ratingA = convertTo2KRating(a.overallRating, a.ratings?.[a.ratings.length - 1]?.hgt ?? 50);
+        const ratingB = convertTo2KRating(b.overallRating, b.ratings?.[b.ratings.length - 1]?.hgt ?? 50);
         return ratingB - ratingA;
       });
   }, [players, team.id]);
 
-  const currentSeason = useMemo(() => {
+const currentSeason = useMemo(() => {
     const date = new Date(currentDate);
     const year = date.getFullYear();
     const month = date.getMonth() + 1;

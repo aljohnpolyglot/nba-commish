@@ -70,11 +70,12 @@ export class AwardService {
         const apg = stat.ast / gp;
         const winPct = team.wins / (team.wins + team.losses || 1);
 
-        // MVP Formula: (PPG * 1.0 + RPG * 0.4 + APG * 0.5) * (WinPct * 2.0)
-        const bpm = stat.bpm || 0;
-        const ws = stat.ws || 0;
-        const winFloor = 0.7; // soften punishment for bad teams
-        let score = (ppg * 0.8 + rpg * 0.3 + apg * 0.4 + bpm * 1.5 + ws * 0.5) * (winFloor + winPct * 0.8);
+        // Minimum production floor — bench players can't win MVP
+        if (ppg < 14) return null;
+
+        const winFloor = 0.7;
+        // bpm/ws removed — not sim-computed, raw BBGM values wildly distort ranking
+        let score = (ppg * 1.2 + rpg * 0.5 + apg * 0.6) * (winFloor + winPct * 0.8);
 
         // Voter Fatigue: -2.5% per past MVP, max -7.5% (3 wins)
         const pastMVPs = p.awards?.filter(a => a.type === 'Most Valuable Player').length || 0;
@@ -89,11 +90,22 @@ export class AwardService {
   }
 
   private static calculateDPOY(players: NBAPlayer[], teams: NBATeam[], season: number): AwardCandidate[] {
+    const allSeasonStats = players.flatMap(p => p.stats?.filter(s => s.season === season && !s.playoffs) ?? []);
+    const maxGP = Math.max(...allSeasonStats.map(s => s.gp || 0), 1);
+    const seasonsStarted = maxGP > 10;
+    const minGP = Math.max(10, Math.floor(maxGP * 0.3));
+    const minMPG = 20;
+
     return players
       .map(p => {
         const stat = getBestStat(p.stats, season);
         const team = teams.find(t => t.id === p.tid);
         if (!stat || !team || !this.isEligible(stat, team)) return null;
+
+        if (seasonsStarted) {
+          if (stat.gp < minGP) return null;
+          if (stat.gp > 0 && stat.min / stat.gp < minMPG) return null;
+        }
 
         const gp = stat.gp;
         const rpg = getTrb(stat) / gp;
@@ -101,11 +113,10 @@ export class AwardService {
         const bpg = stat.blk / gp;
         const winPct = team.wins / (team.wins + team.losses || 1);
 
-        // DPOY Formula: (RPG * 0.3 + SPG * 2.5 + BPG * 2.5) * (WinPct * 1.2)
-        const dbpm = stat.dbpm || stat.bpm || 0;
-        const drtg = stat.drtg || 110; // lower is better, 110 is avg
-        const drtgBonus = (110 - drtg) * 0.02; // +0.02 per point below avg
-        let score = (rpg * 0.3 + spg * 2.5 + bpg * 2.5 + dbpm * 1.2) * (0.8 + winPct * 0.4) + drtgBonus;
+        // DPOY Formula — diq gates score so offensive stars (Luka/Jokić) can't sneak in
+        const diqRating = (p.ratings?.[p.ratings.length - 1] as any)?.diq ?? 50;
+        const defMultiplier = Math.max(0.4, diqRating / 70); // Wemby(85)→1.21, Jokić(50)→0.71, Luka(35)→0.5
+        let score = (spg * 3.5 + bpg * 3.0 + rpg * 0.15) * (0.6 + winPct * 0.8) * defMultiplier;
 
         // Voter Fatigue: -2.5% per past DPOY, max -7.5%
         const pastDPOYs = p.awards?.filter(a => a.type === 'Defensive Player of the Year').length || 0;

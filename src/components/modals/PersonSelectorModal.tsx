@@ -320,7 +320,7 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
         // Actually, let's just keep title simple as requested to avoid duplication
         // title = `${title} • ${org}`; // REMOVED to avoid duplication
 
-        const rating2k = convertTo2KRating(p.overallRating || 0, p.hgt || 77);
+        const rating2k = convertTo2KRating(p.overallRating || 0, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50);
 
         const teamLogoUrl = playerTeam?.logoUrl || nonNBATeam?.imgURL;
         contactsMap.set(p.internalId, {

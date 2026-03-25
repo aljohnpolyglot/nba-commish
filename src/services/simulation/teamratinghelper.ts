@@ -56,9 +56,11 @@ export function calcTeamRatings(teamId: number, players: Player[], season: numbe
 }
 
 // Expected points for Team A against Team B's defense
-// Formula mirrors real NBA: pts = (offRating + oppDefRating) / 2, pace-adjusted
+// Off/def ratings are already pace-adjusted — pace only applies a tiny nudge.
 export function expectedTeamScore(offRating: number, oppDefRating: number, pace: number): number {
-  // Differential: elite offense vs elite defense cancel out at ~110 base
-  const basePts = 110 + (offRating - 110) * 0.6 - (oppDefRating - 110) * 0.4;
-  return basePts * (pace / 100);
+  // Base 106 + matchup differential → lands ~113-115 avg after pace nudge,
+  // matching real NBA. pace/100 was a full 1.03-1.08x multiplier that
+  // double-counted pace and inflated every game by ~5 pts.
+  const basePts = 106 + (offRating - 110) * 0.6 - (oppDefRating - 110) * 0.4;
+  return basePts * (1 + (pace - 100) * 0.003);
 }

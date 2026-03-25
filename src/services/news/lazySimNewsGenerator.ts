@@ -3,7 +3,7 @@ import { NewsGenerator } from './NewsGenerator';
 import { convertTo2KRating } from '../../utils/helpers';
 
 const get2KOvr = (p: NBAPlayer) =>
-  convertTo2KRating(p.overallRating ?? p.ratings?.[0]?.ovr ?? 0, p.hgt ?? 77);
+  convertTo2KRating(p.overallRating ?? p.ratings?.[0]?.ovr ?? 0, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50);
 
 function gamesToTime(games: number, remainingInSeason?: number): string {
   if (games <= 0)  return 'day-to-day';

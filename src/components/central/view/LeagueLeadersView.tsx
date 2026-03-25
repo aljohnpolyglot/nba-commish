@@ -10,7 +10,19 @@ export const LeagueLeadersView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'Player' | 'Team'>('Player');
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
 
-  const season = state.leagueStats.year;
+  // Derive the season from player stats rather than leagueStats.year.
+  // leagueStats.year rolls over at offseason before new stats are written,
+  // which would leave most players' stats under the previous year number.
+  const season = useMemo(() => {
+    let max = 0;
+    for (const p of state.players) {
+      if (!p.stats) continue;
+      for (const s of p.stats) {
+        if (!s.playoffs && s.gp > 0 && s.season > max) max = s.season;
+      }
+    }
+    return max || state.leagueStats.year;
+  }, [state.players, state.leagueStats.year]);
 
   const handleCompleteLeaders = (type: 'player' | 'team', field: string, order: 'asc' | 'desc' = 'desc') => {
     setPendingStatSort({ type, field, order });

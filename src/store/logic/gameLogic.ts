@@ -320,7 +320,7 @@ export const processTurn = async (
                     position: p.pos || 'F',
                     category: getCategory(p.pos || 'F'),
                     isRookie: true,
-                    ovr: convertTo2KRating(p.overallRating ?? 50, (p as any).hgt ?? 77)
+                    ovr: convertTo2KRating(p.overallRating ?? 50, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50)
                 };
             }),
             ...sophs.map(p => {
@@ -336,7 +336,7 @@ export const processTurn = async (
                     position: p.pos || 'F',
                     category: getCategory(p.pos || 'F'),
                     isRookie: false,
-                    ovr: convertTo2KRating(p.overallRating ?? 50, (p as any).hgt ?? 77)
+                    ovr: convertTo2KRating(p.overallRating ?? 50, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50)
                 };
             })
         ];

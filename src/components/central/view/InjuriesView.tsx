@@ -11,7 +11,7 @@ export const InjuriesView: React.FC = () => {
 
   const injuredPlayersByTeam = useMemo(() => {
     const grouped: Record<number, NBAPlayer[]> = {};
-    
+
     state.players.forEach(player => {
       if (player.injury && player.injury.gamesRemaining > 0 && player.tid >= 0) {
         if (!grouped[player.tid]) {
@@ -23,10 +23,6 @@ export const InjuriesView: React.FC = () => {
 
     return grouped;
   }, [state.players]);
-
-  if (viewingPlayer) {
-    return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
-  }
 
   const teamsWithInjuries = state.teams
     .filter(t => injuredPlayersByTeam[t.id] && injuredPlayersByTeam[t.id].length > 0)
@@ -108,6 +104,11 @@ export const InjuriesView: React.FC = () => {
   // Note: state.date and state.schedule intentionally excluded
   // Comments only regenerate when injury status changes (out → day-to-day)
   }, [injuredPlayersByTeam, state.teams]);
+
+  // Early return AFTER all hooks — React requires hooks to run unconditionally
+  if (viewingPlayer) {
+    return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
+  }
 
   return (
     <div className="h-full overflow-hidden p-4 md:p-8">

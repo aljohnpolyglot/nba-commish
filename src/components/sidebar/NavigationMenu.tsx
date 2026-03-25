@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import {
   Inbox, MessageSquare, Newspaper, Activity, Trophy, Sparkles,
-  LayoutDashboard, User, Calendar, BarChart2, TrendingUp,
+  User, Calendar, BarChart2, TrendingUp,
   Search, Users, Star, Building2, Settings2, ChevronDown,
   ListOrdered, Stethoscope, Tv, ThumbsUp, Eye, DollarSign,
-  Target, Ticket
+  Target, Ticket, Table2
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { Tab } from '../../types';
@@ -55,7 +55,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
     {
       label: 'Command Center',
       items: [
-        { id: 'Commissioner', label: 'Dashboard',        icon: LayoutDashboard },
+        { id: 'Schedule',     label: 'Schedule',         icon: Calendar },
         { id: 'Actions',      label: 'Actions',          icon: Sparkles },
         { id: 'Approvals',    label: 'Approvals',        icon: ThumbsUp },
         { id: 'Viewership',   label: 'Viewership',       icon: Eye },
@@ -75,7 +75,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
       label: 'League',
       items: [
         { id: 'NBA Central', label: 'NBA Central', icon: Trophy },
-        { id: 'Schedule',    label: 'Schedule',    icon: Calendar },
+        { id: 'Standings',   label: 'Standings',   icon: Table2 },
         { id: 'Players',     label: 'Players',     icon: Search },
         { id: 'All-Star',    label: 'All-Star',    icon: Star },
         { id: 'Playoffs',    label: 'Playoffs',    icon: Trophy, badge: playoffBadge },

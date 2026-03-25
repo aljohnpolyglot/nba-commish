@@ -35,7 +35,7 @@ export class StarterService {
     return 'Combo';
   }
 
-  static getProjectedStarters(team: Team, players: Player[], season: number = 2025, overridePlayers?: Player[]): Player[] {
+  static getProjectedStarters(team: Team, players: Player[], season: number = 2025, overridePlayers?: Player[], modern: boolean = true): Player[] {
     const teamPlayers = overridePlayers || players.filter(
       p => p.tid === team.id && p.status === 'Active' && (!p.injury || p.injury.gamesRemaining <= 0)
     );
@@ -44,25 +44,35 @@ export class StarterService {
 
     const Rb = (p: Player, k: string) => this.getScaledRating(p, k, season);
 
-    const SUPERSTAR_THRESHOLD = 85;
+    const SUPERSTAR_THRESHOLD = 87; // 2K 87+ = franchise cornerstone; hgt now passes BBGM attribute so no bio-inches inflation
     const [stars, rolePlayers] = teamPlayers.reduce<[Player[], Player[]]>(
       ([s, r], p) =>
-        convertTo2KRating(p.overallRating, p.hgt || 77) >= SUPERSTAR_THRESHOLD ? [[...s, p], r] : [s, [...r, p]],
+        convertTo2KRating(p.overallRating, this.getScaledRating(p, 'hgt', season)) >= SUPERSTAR_THRESHOLD ? [[...s, p], r] : [s, [...r, p]],
       [[], []]
     );
 
-    stars.sort((a, b) => convertTo2KRating(b.overallRating, b.hgt || 77) - convertTo2KRating(a.overallRating, a.hgt || 77));
-    rolePlayers.sort((a, b) => convertTo2KRating(b.overallRating, b.hgt || 77) - convertTo2KRating(a.overallRating, a.hgt || 77));
+    stars.sort((a, b) => convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season)) - convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season)));
+    rolePlayers.sort((a, b) => convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season)) - convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season)));
 
     const lineup: Player[] = [...stars.slice(0, 5)];
 
-    const SLOT_SPECS: SlotSpec[] = [
-      { roles: ['RimAnchor'], fallbackSort: p => Rb(p, 'hgt') + Rb(p, 'reb') + Rb(p, 'blk') },
-      { roles: ['StretchBig', 'RimAnchor'], fallbackSort: p => Rb(p, 'hgt') + Rb(p, 'ins') + Rb(p, 'tp') },
-      { roles: ['Playmaker'], fallbackSort: p => Rb(p, 'pss') + Rb(p, 'oiq') + Rb(p, 'drb') },
-      { roles: ['FloorSpacer', 'WingDefender'], fallbackSort: p => Rb(p, 'tp') + Rb(p, 'diq') + Rb(p, 'fg') },
-      { roles: ['WingDefender', 'Slasher', 'Combo'], fallbackSort: p => Rb(p, 'spd') + Rb(p, 'dnk') + Rb(p, 'diq') },
-    ];
+    const SLOT_SPECS: SlotSpec[] = modern
+      ? [
+          // Modern 5-out: PG + SG + 3 wings/bigs who can shoot
+          { roles: ['Playmaker'],                        fallbackSort: p => Rb(p, 'pss') + Rb(p, 'oiq') + Rb(p, 'drb') },
+          { roles: ['FloorSpacer', 'WingDefender'],      fallbackSort: p => Rb(p, 'tp')  + Rb(p, 'diq') + Rb(p, 'fg')  },
+          { roles: ['WingDefender', 'Slasher'],          fallbackSort: p => Rb(p, 'spd') + Rb(p, 'dnk') + Rb(p, 'diq') },
+          { roles: ['StretchBig', 'RimAnchor'],          fallbackSort: p => Rb(p, 'hgt') + Rb(p, 'ins') + Rb(p, 'tp')  },
+          { roles: ['Combo', 'FloorSpacer'],             fallbackSort: p => Rb(p, 'fg')  + Rb(p, 'tp')  + Rb(p, 'oiq') },
+        ]
+      : [
+          // Traditional: RimAnchor first, twin towers fine
+          { roles: ['RimAnchor'],                        fallbackSort: p => Rb(p, 'hgt') + Rb(p, 'reb') + Rb(p, 'blk') },
+          { roles: ['StretchBig', 'RimAnchor'],          fallbackSort: p => Rb(p, 'hgt') + Rb(p, 'ins') + Rb(p, 'tp')  },
+          { roles: ['Playmaker'],                        fallbackSort: p => Rb(p, 'pss') + Rb(p, 'oiq') + Rb(p, 'drb') },
+          { roles: ['FloorSpacer', 'WingDefender'],      fallbackSort: p => Rb(p, 'tp')  + Rb(p, 'diq') + Rb(p, 'fg')  },
+          { roles: ['WingDefender', 'Slasher', 'Combo'], fallbackSort: p => Rb(p, 'spd') + Rb(p, 'dnk') + Rb(p, 'diq') },
+        ];
 
     const notYetInLineup = () => rolePlayers.filter(p => !lineup.includes(p));
     const coveredRoles = new Set<Role>(lineup.map(p => this.classifyRole(p, season)));
@@ -104,12 +114,12 @@ export class StarterService {
     ): void => {
       const benchPool = teamPlayers
         .filter(p => !lineup.includes(p))
-        .sort((a, b) => convertTo2KRating(b.overallRating, b.hgt || 77) - convertTo2KRating(a.overallRating, a.hgt || 77));
+        .sort((a, b) => convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season)) - convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season)));
       const candidate = benchPool.find(swapInFn);
       if (!candidate) return;
       const victim = [...lineup]
-        .filter(p => convertTo2KRating(p.overallRating, p.hgt || 77) < SUPERSTAR_THRESHOLD && swapOutFn(p))
-        .sort((a, b) => convertTo2KRating(a.overallRating, a.hgt || 77) - convertTo2KRating(b.overallRating, b.hgt || 77))[0];
+        .filter(p => convertTo2KRating(p.overallRating, this.getScaledRating(p, 'hgt', season)) < SUPERSTAR_THRESHOLD && swapOutFn(p))
+        .sort((a, b) => convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season)) - convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season)))[0];
       if (!victim) return;
       lineup.splice(lineup.indexOf(victim), 1, candidate);
     };
@@ -127,27 +137,31 @@ export class StarterService {
       swapNonStar(p => Rb(p, 'tp') <= 35, p => Rb(p, 'tp') >= 50 && !lineup.includes(p));
     }
 
-    const bigCount = () => lineup.filter(p => Rb(p, 'hgt') >= 72).length;
-    while (bigCount() > 2) {
-      swapNonStar(p => Rb(p, 'hgt') >= 62, p => Rb(p, 'hgt') < 62 && !lineup.includes(p));
-      if (teamPlayers.filter(p => !lineup.includes(p) && Rb(p, 'hgt') < 70).length === 0) break;
+    const MAX_BIGS = modern ? 1 : 2;
+    const BIG_THRESHOLD = modern ? 60 : 72; // catches JV(hgt=69) in modern
+    const bigCount = () => lineup.filter(p => Rb(p, 'hgt') >= BIG_THRESHOLD).length;
+    while (bigCount() > MAX_BIGS) {
+      const before = bigCount();
+      swapNonStar(p => Rb(p, 'hgt') >= BIG_THRESHOLD, p => Rb(p, 'hgt') < BIG_THRESHOLD && !lineup.includes(p));
+      if (bigCount() >= before) break; // no progress — remaining bigs are all superstars, can't evict
+      if (teamPlayers.filter(p => !lineup.includes(p) && Rb(p, 'hgt') < BIG_THRESHOLD).length === 0) break;
     }
 
     return lineup.slice(0, 5);
   }
 
-  static getRotation(team: Team, players: Player[], lead: number = 0, season: number = 2025, overridePlayers?: Player[]): Player[] {
+  static getRotation(team: Team, players: Player[], lead: number = 0, season: number = 2025, overridePlayers?: Player[], modern: boolean = true): Player[] {
     const teamPlayers = overridePlayers || players.filter(
       p => p.tid === team.id && p.status === 'Active' && (!p.injury || p.injury.gamesRemaining <= 0)
     );
     if (teamPlayers.length === 0) return [];
 
-    const finalStarters = this.getProjectedStarters(team, players, season, teamPlayers);
+    const finalStarters = this.getProjectedStarters(team, players, season, teamPlayers, modern);
     const Rb = (p: Player, k: string) => this.getScaledRating(p, k, season);
 
     const benchPool = teamPlayers
       .filter(p => !finalStarters.includes(p))
-      .sort((a, b) => convertTo2KRating(b.overallRating, b.hgt || 77) - convertTo2KRating(a.overallRating, a.hgt || 77));
+      .sort((a, b) => convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season)) - convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season)));
 
     const benchLineup: Player[] = [];
     const notInBench = () => benchPool.filter(p => !benchLineup.includes(p));
@@ -169,10 +183,10 @@ export class StarterService {
 
     benchLineup.push(...notInBench());
 
-    let rotationDepth = 9;
-    if      (lead > 25) rotationDepth = 12;
-    else if (lead > 15) rotationDepth = 11;
-    else if (lead > 8)  rotationDepth = 10;
+    let rotationDepth = 10;
+    if      (lead > 25) rotationDepth = 13;
+    else if (lead > 15) rotationDepth = 12;
+    else if (lead > 8)  rotationDepth = 11;
 
     return [
       ...finalStarters,

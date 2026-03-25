@@ -923,7 +923,7 @@ export interface UserAction {
 
 export type Conference = 'East' | 'West';
 export type GamePhase = 'Preseason' | 'Opening Week' | 'Regular Season (Early)' | 'Regular Season (Mid)' | 'All-Star Break' | 'Trade Deadline' | 'Regular Season (Late)' | 'Play-In Tournament' | 'Playoffs (Round 1)' | 'Playoffs (Round 2)' | 'Conference Finals' | 'NBA Finals' | 'Offseason' | 'Draft' | 'Draft Lottery' | 'Free Agency' | 'Schedule Planning' | 'Schedule Release' | 'Training Camp';
-export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Players' | 'Team Stats' | 'All-Star' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'Draft Scouting' | 'Draft Lottery';
+export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Players' | 'Team Stats' | 'All-Star' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings';
 export type CommissionerTab = 'Approvals' | 'Viewership' | 'Finances';
 // ─── Imagn Photo Types ────────────────────────────────────────────────────────
 export type { ImagnPhoto } from './services/ImagnPhotoService';

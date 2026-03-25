@@ -21,6 +21,7 @@ export function generateCoordinatedStats(
   if (rotation.length === 0) return stats;
 
   const rHelper = (p: Player, k: string) => R(p, k, season);
+  const getNight = (p: Player) => stats.find(s => s.playerId === p.internalId);
 
   const ownMisses = stats.reduce((s, p) => s + Math.max(0, p.fga - p.fgm), 0);
 
@@ -33,64 +34,89 @@ export function generateCoordinatedStats(
   // ── Defensive Rebounds (variance 0.22 for realistic game-to-game swings)
   distributePie(
     Math.round(availableRebounds),
-    (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 1.0) * minFrac(p),
-    'drb', 2.8, rotation, stats, 0.22
+    (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 2.0 + rHelper(p, 'oiq') * 0.5 + rHelper(p, 'diq') * 0.5) * minFrac(p) * (getNight(p)?._nightRebMult ?? 1),
+    'drb', 2.2, rotation, stats, 0.22
   );
 
   // ── Offensive Rebounds
   distributePie(
     Math.round(ownMisses * 0.25),
-    (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 1.0 + rHelper(p, 'jmp') * 0.5) * minFrac(p),
-    'orb', 2.4, rotation, stats, 0.22
+    (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 1.0 + rHelper(p, 'jmp') * 0.5) * minFrac(p) * (getNight(p)?._nightRebMult ?? 1),
+    'orb', 2.0, rotation, stats, 0.22
   );
 
   // ── Steals
   distributePie(
     Math.round(availableSteals),
-    (p) => rHelper(p, 'diq') * 2.0 + rHelper(p, 'spd') * 1.0,
-    'stl', 4.5, rotation, stats
+    (p) => (rHelper(p, 'diq') * 2.0 + rHelper(p, 'spd') * 1.0) * (getNight(p)?._nightDefEnergy ?? 1),
+    'stl', 3.4, rotation, stats
   );
 
   // ── Blocks
   distributePie(
     Math.round(availableBlocks),
-    (p) => rHelper(p, 'hgt') * 3.0 + rHelper(p, 'jmp') * 1.5 + rHelper(p, 'diq') * 0.5,
-    'blk', 5.0, rotation, stats
+    (p) => (rHelper(p, 'hgt') * 2.5 + rHelper(p, 'jmp') * 1.5 + rHelper(p, 'diq') * 0.5) * (getNight(p)?._nightDefEnergy ?? 1),
+    'blk', 4.2, rotation, stats
   );
 
-  // ── Assists — minFrac scales by minutes so bench players don't steal assists from stars
+  // ── Assists
   const totalFgm = stats.reduce((s, p) => s + p.fgm, 0);
   distributePie(
-    Math.round(totalFgm * 0.56),  // 0.75 was too high — NBA avg is ~24 AST/game
-    (p) => (rHelper(p, 'drb') * 0.4 + rHelper(p, 'pss') * 1.0 + rHelper(p, 'oiq') * 0.5) * minFrac(p),
-    'ast', 6.5, rotation, stats
+    Math.round(totalFgm * 0.77),
+    (p) => {
+      const drb = rHelper(p, 'drb');
+      const pss = rHelper(p, 'pss');
+      const oiq = rHelper(p, 'oiq');
+      return Math.pow(
+        Math.max(0.1, drb * 0.4 + pss * 1.0 + oiq * 0.5),
+        3.8
+      ) * minFrac(p) * (getNight(p)?._nightAssistMult ?? 1);
+    },
+    'ast', 1.0,
+    rotation, stats
   );
-  // Soft-cap assists above 14 — only clips truly absurd nights, Jokic 15-16 ast games untouched
+
+  // Soft-cap assists above 14
   stats.forEach(s => {
     if (s.ast > 14) {
       s.ast = Math.round(14 + (s.ast - 14) * 0.55);
     }
   });
 
+  // Zero out bench floor — low-minute non-playmakers realistically get 0 assists
+  stats.forEach(s => {
+    const player = rotation.find(p => p.internalId === s.playerId);
+    if (!player) return;
+    const pss = rHelper(player, 'pss');
+    const oiq = rHelper(player, 'oiq');
+    const isElitePlaymaker = pss >= 75 && oiq >= 65;
+    if (s.min < 8) {
+      s.ast = 0;
+    } else if (s.min < 15 && !isElitePlaymaker && s.ast === 1 && Math.random() > 0.5) {
+      s.ast = 0;
+    }
+  });
+
+
   // ── PF — Coordinated with Opponent FTA
-  // Real NBA avg: ~20 team PF/game. oppFTA * 0.85 keeps us in that range.
-  const pfPool = Math.round(oppFTA * 0.85);  // was 1.40 — way too many fouls
+  // Macro: Changed multiplier from 0.85 to 1.05. This adds the missing ~3 team fouls.
+  const pfPool = Math.round(oppFTA * 0.96);
   const pfFactors = rotation.map(p =>
     Math.pow(
       Math.max(0.1,
-        rHelper(p, 'hgt')         * 1.2 +
-        (100 - rHelper(p, 'spd')) * 0.9 +
-        (100 - rHelper(p, 'diq')) * 0.9 +
+        rHelper(p, 'hgt')         * 1.2 + // Bigs foul more in the paint
+        (100 - rHelper(p, 'spd')) * 0.8 + // Slow defenders get beat and hack
+        (100 - rHelper(p, 'diq')) * 1.2 + // Low Def IQ defenders don't know where to stand
         rHelper(p, 'stre')        * 0.4
       ),
-      1.5   // was 2.4 — lower exponent prevents hyper-concentration on bigs
+      2.2 // Concentrates fouls on weak defenders/bigs to hit ~3.7 leader mark
     )
   );
   const pfSum = pfFactors.reduce((a, b) => a + b, 0) || 1;
   stats.forEach((s, i) => {
     const share = pfFactors[i] / pfSum;
     s.pf = Math.min(6, Math.max(0, Math.round(
-      pfPool * share * getVariance(1.0, 0.10)  // tightened variance slightly
+      pfPool * share * getVariance(1.0, 0.12)
     )));
   });
 

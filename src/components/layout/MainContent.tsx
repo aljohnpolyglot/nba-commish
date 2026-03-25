@@ -17,6 +17,7 @@ import { AllStarView } from '../allstar/AllStarView';
 import { PlayoffView } from '../playoffs/PlayoffView';
 import { LeagueOfficeView } from '../league-office/LeagueOfficeView';
 import { LeagueLeadersView } from '../central/view/LeagueLeadersView';
+import { StandingsView } from '../central/view/StandingsView';
 import { InjuriesView } from '../central/view/InjuriesView';
 import { BroadcastingView } from '../operations/BroadcastingView';
 import { DraftScoutingView } from '../central/view/DraftScoutingView';
@@ -91,6 +92,8 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView }) => {
       return <LeagueLeadersView />;
     case 'Injuries':
       return <InjuriesView />;
+    case 'Standings':
+      return <StandingsView />;
     case 'Broadcasting':
       return (
         <div className="h-full overflow-hidden p-4 md:p-8">

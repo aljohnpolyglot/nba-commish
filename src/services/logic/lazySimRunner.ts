@@ -164,7 +164,7 @@ export const runLazySim = async (
         if (!simResult.injuries?.length) continue;
         for (const injury of simResult.injuries) {
           const player = updatedPlayers.find(p => p.internalId === injury.playerId);
-          if (!player || convertTo2KRating(player.overallRating ?? player.ratings?.[0]?.ovr ?? 0, player.hgt ?? 77) < 70) continue;
+          if (!player || convertTo2KRating(player.overallRating ?? player.ratings?.[0]?.ovr ?? 0, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50) < 70) continue;
           const team = stateWithSim.teams.find((t: any) => t.id === (injury.teamId ?? player.tid));
           if (!team) continue;
           const content = buildShamsPost({ player, team, injury: { injuryType: injury.injuryType, gamesRemaining: injury.gamesRemaining }, opponent: null } as any);

@@ -61,7 +61,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
             league = 'NBA';
         }
 
-        const rating2k = convertTo2KRating(p.overallRating || 0, p.hgt || 77);
+        const rating2k = convertTo2KRating(p.overallRating || 0, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50);
 
         allContacts.push({
             id: p.internalId,

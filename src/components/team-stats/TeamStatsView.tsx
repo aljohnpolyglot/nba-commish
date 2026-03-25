@@ -30,7 +30,8 @@ interface TeamStatRow {
   blk: number;
   tov: number;
   pf: number;
-  pts: number;
+  pts: number;       // sum of player stat pts (used for shooting/advanced calcs)
+  ptsActual: number; // sum of real game scores (used for PPG and diff)
   min: number;
   oppg: number;
   diff: number;
@@ -57,8 +58,11 @@ export const TeamStatsView: React.FC = () => {
 
   useEffect(() => {
     if (pendingStatSort && pendingStatSort.type === 'team') {
-      setSortField(pendingStatSort.field as keyof TeamStatRow);
+      const field = pendingStatSort.field as keyof TeamStatRow;
+      setSortField(field);
       setSortOrder(pendingStatSort.order);
+      const advancedFields: (keyof TeamStatRow)[] = ['ortg', 'drtg', 'nrtg', 'pace', 'tsPct', 'efgPct'];
+      if (advancedFields.includes(field)) setShowAdvanced(true);
       setPendingStatSort(null);
     }
   }, [pendingStatSort, setPendingStatSort]);
@@ -70,8 +74,8 @@ export const TeamStatsView: React.FC = () => {
       statsMap.set(team.id, {
         team,
         g: 0,
-        wins: team.wins,
-        losses: team.losses,
+        wins: 0,
+        losses: 0,
         winPct: 0,
         fgm: 0,
         fga: 0,
@@ -94,6 +98,7 @@ export const TeamStatsView: React.FC = () => {
         tov: 0,
         pf: 0,
         pts: 0,
+        ptsActual: 0,
         min: 0,
         oppg: 0,
         diff: 0,
@@ -109,12 +114,28 @@ export const TeamStatsView: React.FC = () => {
       });
     });
 
-    state.boxScores.forEach(game => {
+    // Exclude preseason, playoff, and play-in games.
+    // GameResult has no isPreseason flag — cross-reference state.schedule by gid.
+    const nonRegularGids = new Set(
+      state.schedule
+        .filter(g => g.isPreseason || g.isPlayoff || g.isPlayIn)
+        .map(g => g.gid)
+    );
+
+    state.boxScores
+      .filter(g =>
+        !g.isAllStar && !g.isRisingStars && !g.isCelebrityGame &&
+        !nonRegularGids.has(g.gameId)
+      )
+      .forEach(game => {
       const homeStats = statsMap.get(game.homeTeamId);
       const awayStats = statsMap.get(game.awayTeamId);
 
       if (homeStats) {
         homeStats.g += 1;
+        homeStats.wins += game.homeScore > game.awayScore ? 1 : 0;
+        homeStats.losses += game.homeScore < game.awayScore ? 1 : 0;
+        homeStats.ptsActual += game.homeScore;
         homeStats.oppg += game.awayScore;
         game.homeStats.forEach(p => {
           homeStats.min += p.min;
@@ -131,6 +152,7 @@ export const TeamStatsView: React.FC = () => {
           homeStats.stl += p.stl;
           homeStats.blk += p.blk;
           homeStats.tov += p.tov;
+          homeStats.pf  += p.pf || 0;
           homeStats.pts += p.pts;
         });
         // Weave advanced stats from game if available
@@ -142,6 +164,9 @@ export const TeamStatsView: React.FC = () => {
 
       if (awayStats) {
         awayStats.g += 1;
+        awayStats.wins += game.awayScore > game.homeScore ? 1 : 0;
+        awayStats.losses += game.awayScore < game.homeScore ? 1 : 0;
+        awayStats.ptsActual += game.awayScore;
         awayStats.oppg += game.homeScore;
         game.awayStats.forEach(p => {
           awayStats.min += p.min;
@@ -158,6 +183,7 @@ export const TeamStatsView: React.FC = () => {
           awayStats.stl += p.stl;
           awayStats.blk += p.blk;
           awayStats.tov += p.tov;
+          awayStats.pf  += p.pf || 0;
           awayStats.pts += p.pts;
         });
         // Weave advanced stats from game if available
@@ -215,9 +241,10 @@ export const TeamStatsView: React.FC = () => {
         blk: row.blk / g,
         tov: row.tov / g,
         pf: row.pf / g,
-        pts: row.pts / g,
+        pts: row.ptsActual / g,  // real game scores, not inflated player stat sum
+        ptsActual: row.ptsActual,
         oppg: row.oppg / g,
-        diff: (row.pts / g) - (row.oppg / g),
+        diff: (row.ptsActual / g) - (row.oppg / g),
         ortg: ortg,
         drtg: drtg,
         nrtg: ortg - drtg,
@@ -228,7 +255,7 @@ export const TeamStatsView: React.FC = () => {
     });
 
     return rows;
-  }, [state.teams, state.boxScores]);
+  }, [state.teams, state.boxScores, state.schedule]);
 
   const sortedStats = useMemo(() => {
     const filtered = teamStats.filter(row => {

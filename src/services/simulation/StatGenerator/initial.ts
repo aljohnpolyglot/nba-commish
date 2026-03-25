@@ -23,6 +23,8 @@ export function generateStatsForTeam(
 
   // ── Minutes ────────────────────────────────────────────────────────────
   // Real NBA tiers: starters ~32-38, 6th man ~22-28, 7th ~17-23, 8th ~11-17, 9th+ ~4-8
+  const rHelper = (p: Player, k: string) => R(p, k, season);
+
   const BENCH_MINUTE_TIERS = [
     { base: 22, spread: 6 },  // 6th man: 22-28, avg 25
     { base: 17, spread: 6 },  // 7th man: 17-23, avg 20
@@ -30,24 +32,60 @@ export function generateStatsForTeam(
     { base: 4,  spread: 4 },  // 9th man: 4-8,   avg 6
     { base: 1,  spread: 3 },  // 10th+:   1-4,   avg 2.5
   ];
-  const minWeights = rotation.map((p, i) => {
-    if (starters.includes(p)) return 32 + Math.random() * 6; // 32-38, avg 35
-    const bi = Math.min(i - 5, BENCH_MINUTE_TIERS.length - 1);
-    const { base, spread } = BENCH_MINUTE_TIERS[bi];
-    return base + Math.random() * spread;
-  });
-  const totalWeight  = minWeights.reduce((a, b) => a + b, 0);
-  const totalGameMinutes = (48 + otCount * 5) * 5; // 5 players on court
-  const playerMinutes = minWeights.map(w => (w / totalWeight) * totalGameMinutes);
 
-  const rHelper = (p: Player, k: string) => R(p, k, season);
+  const isBlowout    = Math.abs(lead) > 15;
+  const isBigBlowout = Math.abs(lead) > 25;
+
+  const minWeights = rotation.map((p, i) => {
+    const endu = rHelper(p, 'endu');
+
+    let baseMins: number;
+    if (starters.includes(p)) {
+      baseMins = isBigBlowout
+        ? 30 + Math.random() * 4   // 30-34
+        : isBlowout
+        ? 33 + Math.random() * 3   // 33-36
+        : 35 + Math.random() * 3;  // 35-38
+      // Soft fatigue penalty: endu=10 (Wemby) → -4.5 mins; endu=40+ → no penalty
+      const fatiguePenalty = endu < 40 ? (40 - endu) * 0.15 : 0;
+      baseMins -= fatiguePenalty;
+    } else {
+      const bi = Math.min(i - 5, BENCH_MINUTE_TIERS.length - 1);
+      const { base, spread } = BENCH_MINUTE_TIERS[bi];
+      const blowoutBonus = isBigBlowout ? 8 : isBlowout ? 4 : 0;
+      baseMins = base + Math.random() * spread + blowoutBonus;
+      const fatiguePenalty = endu < 40 ? (40 - endu) * 0.10 : 0;
+      baseMins -= fatiguePenalty;
+    }
+
+    return Math.max(1, baseMins);
+  });
+
+  // Hard clamp to game total — trim from starters first so JV's freed mins
+  // stay in the bench, not flow back up to stars
+  const TARGET = (48 + otCount * 5) * 5;
+  let total = minWeights.reduce((a, b) => a + b, 0);
+  const trimOrder = [11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]; // bench absorbs slack first, stars last
+  let trimIdx = 0;
+  while (total > TARGET && trimIdx < trimOrder.length) {
+    const idx = trimOrder[trimIdx];
+    if (idx < minWeights.length && minWeights[idx] > 4) {
+      minWeights[idx] -= 1;
+      total -= 1;
+    } else {
+      trimIdx++;
+    }
+  }
+
+  const playerMinutes = minWeights.map(w => w); // already in real minutes, no ratio needed
 
   // ── Scoring Potential ──────────────────────────────────────────────────
   const scoringPotentials = rotation.map((p, i) => {
     const oiq = rHelper(p, 'oiq'), drb = rHelper(p, 'drb'), ins = rHelper(p, 'ins');
     const fg  = rHelper(p, 'fg'),  tp  = rHelper(p, 'tp'),  dnk = rHelper(p, 'dnk');
+    const spd = rHelper(p, 'spd'), hgt = rHelper(p, 'hgt');
 
-    const usage = (oiq * 0.40 + drb * 0.30 + ins * 0.10 + fg * 0.10 + tp * 0.10) * playerMinutes[i];
+    const usage = (ins * 0.23 + dnk * 0.15 + fg * 0.15 + tp * 0.15 + spd * 0.08 + hgt * 0.08 + drb * 0.08 + oiq * 0.08) * playerMinutes[i];
     const inside  = ins * 0.6 + dnk * 0.4;
     const outside = fg  * 0.5 + tp  * 0.5;
     const skill   = (Math.max(inside, outside) * 1.5 + Math.min(inside, outside) * 0.5) / 2;
@@ -80,6 +118,10 @@ export function generateStatsForTeam(
     }
     const nightProfile = getNightProfile(p, season);
     ptsTarget = Math.max(0, Math.round(ptsTarget * nightProfile.ptsTargetMult));
+    const _nightRebMult   = nightProfile.reboundMult;
+    const _nightAssistMult = nightProfile.assistMult;
+    const _nightDefEnergy = nightProfile.defensiveEnergy;
+    const _nightBallCtrl  = nightProfile.ballControlMult;
 
     const tp   = rHelper(p, 'tp'),   oiq  = rHelper(p, 'oiq'), ft   = rHelper(p, 'ft');
     const fg   = rHelper(p, 'fg'),   ins  = rHelper(p, 'ins'),  dnk  = rHelper(p, 'dnk');
@@ -88,7 +130,8 @@ export function generateStatsForTeam(
 
     // Free Throws
     const drawingFoulsComposite = (hgt + spd + drb + dnk + oiq) / 5;
-    const baseFtRate = 0.15 + (drawingFoulsComposite / 100) * 0.35;
+    const foulMerchantFactor = Math.pow(drawingFoulsComposite / 100, 2.5);
+    const baseFtRate = 0.04 + (foulMerchantFactor * 0.75);
     const estimatedFga = ptsTarget / 1.2;
     const fta  = Math.round(estimatedFga * baseFtRate * getVariance(1.0, 0.15));
     const ftpBase = Math.min(0.95, (ft / 100) * 0.60 + 0.45);
@@ -98,11 +141,15 @@ export function generateStatsForTeam(
     // Three Pointers
     let fgPts = Math.max(0, ptsTarget - ftm);
     const tpComposite   = (tp * 1.0 + oiq * 0.1) / 1.1;
-    const pullUpTendency = 1.0 + ((oiq - 50) / 100) * 0.3;
-    let threePointRate  = Math.pow(Math.max(0, tpComposite / 100), 1.1) * 0.60 * pullUpTendency;
-    if      (tpComposite < 25) threePointRate *= 0.2;
-    else if (tpComposite < 45) threePointRate *= 0.55;
-    threePointRate = Math.min(0.75, Math.max(0, threePointRate + nightProfile.shotDietShift));
+    const pullUpTendency = 1.0 + ((oiq - 50) / 100) * 0.1;
+    let threePointRate  = Math.pow(Math.max(0, tpComposite / 100), 0.65) * 0.61 * pullUpTendency;
+    if      (tpComposite < 10) threePointRate *= 0.02;
+    else if (tpComposite < 25) threePointRate *= 0.50;
+    else if (tpComposite < 36) threePointRate *= 0.05; // Non-shooters (Ayton tp=29 → tpComp≈34) get near-zero 3PA
+    else if (tpComposite < 45) threePointRate *= 0.70;
+    // Personal ceiling: true elite (>85) capped at 0.42; specialists (>75) at 0.50; everyone else 0.65
+    const personalCap = tpComposite > 85 ? 0.42 : tpComposite > 75 ? 0.50 : 0.65;
+    threePointRate = Math.min(personalCap, Math.max(0, threePointRate + nightProfile.shotDietShift));
 
     const threePa  = Math.round(estimatedFga * threePointRate * getVariance(1.0, 0.1));
     const threePctBase = (weights.threePmBase || 0.30) + (tp / 100) * (weights.threePmScale || 0.15);
@@ -117,8 +164,8 @@ export function generateStatsForTeam(
     const eff2   = isIn
       ? ins * 0.45 + dnk * 0.50 + fg * 0.05
       : ins * 0.10 + dnk * 0.05 + fg * 0.85;
-    const pct2Raw = 0.40 + (eff2 / 100) * 0.25;
-    const pct2 = Math.max(0.28, Math.min(0.72, pct2Raw * nightProfile.efficiencyMult));
+    const pct2Raw = 0.34 + (eff2 / 100) * 0.28;
+    const pct2 = Math.max(0.28, Math.min(0.72, pct2Raw * nightProfile.efficiencyMult * getVariance(1.0, 0.08)));
     const twoPa  = Math.max(twoPm, Math.round(twoPm / Math.max(0.28, pct2)));
 
     // Shot Locations
@@ -166,6 +213,10 @@ export function generateStatsForTeam(
    gs:       starters.includes(p) ? 1 : 0,
       gp:       1,
       gameScore: 0,
+      _nightRebMult,
+      _nightAssistMult,
+      _nightDefEnergy,
+      _nightBallCtrl,
       fgAtRim,   fgaAtRim,
       fgLowPost, fgaLowPost,
       fgMidRange, fgaMidRange,
@@ -177,17 +228,19 @@ export function generateStatsForTeam(
   // Usage-power formula: eliminates flat constants that were washing out usage signal.
   // Math.pow(usageProxy, 1.4) + 10 → star (30% usage) gets ~3.5-4 TOV, bench gets ~0.5-1.
   // Previously: usageProxy * 4 + constants gave everyone base ~140, ratio only 1.6:1 → all capped at 2.
-  const LEAGUE_AVG_TOV = Math.round(13 * (48 + otCount * 5) / 48);
+ const LEAGUE_AVG_TOV = Math.round(16 * (48 + otCount * 5) / 48);
+// was 13 — bumps team avg from 12 to 14-15
   const tovFactors = rotation.map((_, i) => {
     const usageProxy = totalScoringPotential > 0
       ? (scoringPotentials[i] / totalScoringPotential) * 100
       : 5;
-    return Math.pow(Math.max(1, usageProxy), 1.4) + 10;
+    return Math.pow(Math.max(1, usageProxy), 1.2) + 10;
   });
   const totalTovFactor = tovFactors.reduce((a, b) => a + b, 0) || 1;
   rotation.forEach((_, i) => {
     const share = tovFactors[i] / totalTovFactor;
-    playerStats[i].tov = Math.max(0, Math.round(LEAGUE_AVG_TOV * share * getVariance(1.0, 0.18)));
+    const ballCtrl = playerStats[i]._nightBallCtrl ?? 1.0;
+    playerStats[i].tov = Math.max(0, Math.round(LEAGUE_AVG_TOV * share * getVariance(1.0, 0.18) / ballCtrl));
   });
 
   // ── Cleanup ───────────────────────────────────────────────────────────

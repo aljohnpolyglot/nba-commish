@@ -240,7 +240,7 @@ export const AllStarRosterModal: React.FC<AllStarRosterModalProps> = ({ tab, all
                             </div>
                             {(() => {
                               const fullPlayer = state.players.find((np: NBAPlayer) => np.internalId === p.playerId);
-                              const rating = fullPlayer ? convertTo2KRating(fullPlayer.overallRating, fullPlayer.hgt || 77) : null;
+                              const rating = fullPlayer ? convertTo2KRating(fullPlayer.overallRating, fullPlayer.ratings?.[fullPlayer.ratings.length - 1]?.hgt ?? 50) : null;
                               return rating ? (
                                 <div className="text-sm font-black font-mono shrink-0 ml-auto text-amber-400">
                                   {rating}
@@ -275,7 +275,7 @@ export const AllStarRosterModal: React.FC<AllStarRosterModalProps> = ({ tab, all
                             </div>
                             {(() => {
                               const fullPlayer = state.players.find((np: NBAPlayer) => np.internalId === p.playerId);
-                              const rating = fullPlayer ? convertTo2KRating(fullPlayer.overallRating, fullPlayer.hgt || 77) : null;
+                              const rating = fullPlayer ? convertTo2KRating(fullPlayer.overallRating, fullPlayer.ratings?.[fullPlayer.ratings.length - 1]?.hgt ?? 50) : null;
                               return rating ? (
                                 <div className="text-sm font-black font-mono shrink-0 ml-auto text-slate-400">
                                   {rating}

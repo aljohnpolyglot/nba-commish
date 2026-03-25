@@ -41,7 +41,7 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, onWat
     const teamId = p.teamNbaId || (team ? extractTeamId(team.logoUrl, p.teamAbbrev) : null) || 1610612737;
     const teamColor = team?.colors?.[0] || '#64748b';
     const fullPlayer = state.players?.find((pl: any) => pl.internalId === p.playerId);
-    const rating = convertTo2KRating(fullPlayer?.overallRating || p.ovr || 60, fullPlayer?.hgt || 77);
+    const rating = convertTo2KRating(fullPlayer?.overallRating || p.ovr || 60, fullPlayer?.ratings?.[fullPlayer.ratings.length - 1]?.hgt ?? 50);
 
     const nbaId = p.nbaId || extractNbaId(p.imgURL || "", p.playerName);
 
