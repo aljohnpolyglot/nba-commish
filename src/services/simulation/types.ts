@@ -32,9 +32,11 @@ export interface PlayerGameStats {
   fgaMidRange?: number;
   ba?: number; // blocked attempts (times this player got blocked)
   // Transient night profile fields — set in initial.ts, consumed in coordinated.ts, not persisted to season stats
-  _nightRebMult?: number;
+  _nightOrbMult?: number;
+  _nightDrbMult?: number;
   _nightAssistMult?: number;
-  _nightDefEnergy?: number;
+  _nightStlMult?: number;
+  _nightBlkMult?: number;
   _nightBallCtrl?: number;
 }
 

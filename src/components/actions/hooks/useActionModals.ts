@@ -5,7 +5,7 @@ export const useActionModals = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [fundSourceModalOpen, setFundSourceModalOpen] = useState(false);
   const [selectedFundSource, setSelectedFundSource] = useState<'personal' | 'league' | null>(null);
-  const [modalType, setModalType] = useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'contact' | 'hypnotize' | 'sabotage' | 'club' | 'endorse_hof'>('general');
+  const [modalType, setModalType] = useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'contact' | 'hypnotize' | 'sabotage' | 'club' | 'endorse_hof' | 'waive' | 'fire'>('general');
   const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
   const [announcementText, setAnnouncementText] = useState('');
   
@@ -32,7 +32,7 @@ export const useActionModals = () => {
   const [confirmActionType, setConfirmActionType] = useState<string | null>(null);
   const [confirmActionDetails, setConfirmActionDetails] = useState<{title: string, desc: string} | null>(null);
 
-  const openPersonSelector = (type: 'suspension' | 'drug_test' | 'dinner' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'contact' | 'hypnotize' | 'sabotage' | 'club' | 'endorse_hof') => {
+  const openPersonSelector = (type: 'suspension' | 'drug_test' | 'dinner' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'contact' | 'hypnotize' | 'sabotage' | 'club' | 'endorse_hof' | 'waive' | 'fire') => {
       if (['bribe', 'give_money'].includes(type)) {
           setFundSourceModalOpen(true);
           setModalType(type);

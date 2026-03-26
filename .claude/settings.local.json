@@ -20,7 +20,8 @@
       "Bash(git push:*)",
       "Bash(find C:Usersuser-MSIDownloadsnba-commish -name *generateStats* -o -name *StatGenerator*)",
       "Bash(cd:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(curl -s \"https://gist.githubusercontent.com/aljohnpolyglot/10016f0800ee9b57420c4c74ad9060e3/raw/f6f4fbb0024f37e08f823379577ca2d0ae77abe4/NBA2k26_Ratings\" | node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); const j=JSON.parse\\(d\\); j.slice\\(0,3\\).forEach\\(t => { console.log\\(t.team || t.name\\); t.roster.slice\\(0,4\\).forEach\\(p => console.log\\('  -', p.name\\)\\); }\\);\")"
     ]
   }
 }

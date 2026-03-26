@@ -16,6 +16,8 @@ export const PlayerStatsView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 50;
 
   useEffect(() => {
     if (pendingStatSort && pendingStatSort.type === 'player') {
@@ -126,11 +128,10 @@ export const PlayerStatsView: React.FC = () => {
     return filtered.sort((a, b) => {
       const valA = getVal(a.stat!, sortField);
       const valB = getVal(b.stat!, sortField);
-      
       if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
       if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
       return 0;
-    }).slice(0, 50);
+    });
   }, [state.players, season, sortField, sortOrder, searchTerm, columnFilters, state.teams]);
 
   const handleSort = (field: StatCategory) => {
@@ -140,6 +141,7 @@ export const PlayerStatsView: React.FC = () => {
       setSortField(field);
       setSortOrder('desc');
     }
+    setCurrentPage(1);
   };
 
   const renderSortIcon = (field: StatCategory) => {
@@ -154,7 +156,11 @@ export const PlayerStatsView: React.FC = () => {
   const clearFilters = () => {
     setColumnFilters({});
     setSearchTerm('');
+    setCurrentPage(1);
   };
+
+  const totalPages = Math.ceil(leaders.length / ITEMS_PER_PAGE);
+  const paginatedLeaders = leaders.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const activeFilterCount = Object.values(columnFilters).filter(v => v).length + (searchTerm ? 1 : 0);
 
@@ -273,9 +279,9 @@ export const PlayerStatsView: React.FC = () => {
         </div>
 
         {/* Table Container */}
-        <div className="flex-1 overflow-auto p-3 sm:p-4 md:p-6">
+        <div className="flex-1 overflow-auto custom-scrollbar p-3 sm:p-4 md:p-6">
           <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto custom-scrollbar">
               <table className="w-full text-sm text-left min-w-[1000px]">
                 <thead className="text-xs text-slate-400 uppercase bg-slate-900/50 border-b border-slate-800">
                   <tr>
@@ -431,14 +437,15 @@ export const PlayerStatsView: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
-                  {leaders.map((item, index) => {
+                  {paginatedLeaders.map((item, index) => {
                     const s = item.stat!;
                     const team = state.teams.find(t => t.id === s.tid);
                     const gp = s.gp || 1;
+                    const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
                     
                     return (
                       <tr key={item.player.internalId} className="hover:bg-slate-800/50 active:bg-slate-800/70 transition-colors">
-                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-slate-500 sticky left-0 bg-slate-900/95 backdrop-blur-sm z-10">{index + 1}</td>
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-slate-500 sticky left-0 bg-slate-900/95 backdrop-blur-sm z-10">{globalIndex + 1}</td>
                         <td 
                           className="px-3 sm:px-6 py-3 sm:py-4 font-medium text-indigo-400 cursor-pointer hover:text-indigo-300 active:text-indigo-200 hover:underline sticky left-[48px] sm:left-[60px] bg-slate-900/95 backdrop-blur-sm z-10 touch-manipulation"
                           onClick={() => setViewingPlayer(item.player)}
@@ -512,11 +519,43 @@ export const PlayerStatsView: React.FC = () => {
                       </td>
                     </tr>
                   )}
+                  {paginatedLeaders.length === 0 && leaders.length > 0 && (
+                    <tr>
+                      <td colSpan={21} className="px-6 py-8 text-center text-slate-500">
+                        No players match filters.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="shrink-0 border-t border-slate-800 px-4 sm:px-6 py-3 flex items-center justify-between gap-4 bg-slate-950">
+            <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">
+              {leaders.length} players • Page {currentPage} of {totalPages}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-1.5 text-xs font-bold uppercase tracking-widest bg-slate-900 border border-slate-800 text-white rounded-full hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                Prev
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-1.5 text-xs font-bold uppercase tracking-widest bg-slate-900 border border-slate-800 text-white rounded-full hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

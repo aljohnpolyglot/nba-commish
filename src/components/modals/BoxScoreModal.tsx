@@ -193,7 +193,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
     );
   };
 
-  const renderStatsTable = (stats: PlayerGameStats[]) => {
+  const renderStatsTable = (stats: PlayerGameStats[], teamId: number) => {
     const sortedStats = [...stats].sort((a, b) => {
       const { key, direction } = sortConfig;
       let valA: any = a[key as keyof PlayerGameStats];
@@ -289,8 +289,40 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
             ))}
           </tbody>
         </table>
-      </div>
-    );
+      {(() => {
+        const dnpPlayers = players.filter(p =>
+          p.tid === teamId &&
+          p.status === 'Active' &&
+          !stats.some(s => s.playerId === p.internalId)
+        );
+        if (dnpPlayers.length === 0) return null;
+        return (
+          <table className="w-full text-xs text-left min-w-[800px] border-t border-slate-800/50 mt-px">
+            <tbody>
+              {dnpPlayers.map(p => (
+                <tr key={p.internalId} className="opacity-50 hover:opacity-75 transition-opacity">
+                  <td className="px-4 py-2">
+                    <button
+                      onClick={() => onPlayerClick && onPlayerClick(p)}
+                      className="font-bold text-slate-400 hover:text-slate-300 transition-colors text-left"
+                    >
+                      {p.name}
+                    </button>
+                  </td>
+                  <td className="px-2 py-2 font-mono text-slate-500">{p.pos || 'N/A'}</td>
+                  <td colSpan={15} className="px-2 py-2 text-slate-500 italic font-mono text-[11px] uppercase tracking-widest">
+                    {(p.injury?.gamesRemaining ?? 0) > 0
+                      ? `DNP — Injury (${p.injury!.type})`
+                      : "DNP — Coach's Decision"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        );
+      })()}
+    </div>
+  );
   };
 
   return (
@@ -374,8 +406,8 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
         {/* Stats Table */}
         <div className="flex-1 overflow-y-auto bg-[#0a0a0a]">
           {result ? (
-            activeTab === 'away' ? renderStatsTable(result.awayStats) : 
-            activeTab === 'home' ? renderStatsTable(result.homeStats) :
+            activeTab === 'away' ? renderStatsTable(result.awayStats, awayTeam.id) :
+            activeTab === 'home' ? renderStatsTable(result.homeStats, homeTeam.id) :
             renderAdvancedStats()
           ) : (
             <div className="p-8 text-center text-slate-500 font-bold uppercase tracking-widest">

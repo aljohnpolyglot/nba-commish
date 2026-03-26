@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { NBAPlayer } from '../../../types';
+import { NBAPlayer, Game } from '../../../types';
 import { ArrowLeft, Loader2, Trophy } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
 import { AwardsView } from './AwardsView';
@@ -7,6 +7,8 @@ import { AwardsView } from './AwardsView';
 interface PlayerBioViewProps {
   player: NBAPlayer;
   onBack: () => void;
+  onGameClick?: (game: Game) => void;
+  onTeamClick?: (teamId: number) => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -90,7 +92,7 @@ function calcAge(birthStr: string, currentYear: number): { label: string; age: s
 // COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) => {
+export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, onGameClick, onTeamClick }) => {
   const { state } = useGame();
   const [bioData,     setBioData]    = useState<any>(null);
   const [isSyncing, setIsSyncing] = useState(() => !!extractNbaId(player.imgURL || ""));
@@ -99,6 +101,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
   const [activeTab, setActiveTab] = useState<'Overview' | 'Historical Data' | 'Game Log' | 'Awards'>('Overview');
   const [showPlayoffs, setShowPlayoffs] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [gameLogSort, setGameLogSort] = useState<{ field: string; dir: 'asc' | 'desc' }>({ field: 'date', dir: 'desc' });
 
   const OPENING_NIGHT_MS = new Date('2025-10-24T00:00:00Z').getTime();
 
@@ -119,7 +122,6 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
           const team = state.teams.find(t => t.id === teamId);
           const opp = state.teams.find(t => t.id === oppId);
 
-          // Determine preseason via schedule flag first, fall back to date comparison
           const schedGame = state.schedule.find((g: any) => g.gid === game.gameId);
           const isPreseason = schedGame?.isPreseason === true ||
             (() => { try { return new Date(game.date).getTime() < OPENING_NIGHT_MS; } catch { return false; } })();
@@ -146,6 +148,10 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
           logs.push({
             date: game.date,
             isPreseason,
+            isDNP: false,
+            gameId: game.gameId,
+            teamId,
+            oppTeamId: oppId,
             teamAbbrev: team?.abbrev || 'UNK',
             isAway: !isHome,
             oppAbbrev: opp?.abbrev || 'UNK',
@@ -171,17 +177,93 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
             plusMinus: stats.pm != null ? stats.pm : null,
           });
         }
+      } else if (game.homeTeamId === player.tid || game.awayTeamId === player.tid) {
+        const isHomeTeam = game.homeTeamId === player.tid;
+        const oppId = isHomeTeam ? game.awayTeamId : game.homeTeamId;
+        const team = state.teams.find(t => t.id === player.tid);
+        const opp = state.teams.find(t => t.id === oppId);
+        const schedGame = state.schedule.find((g: any) => g.gid === game.gameId);
+        const isPreseason = schedGame?.isPreseason === true ||
+          (() => { try { return new Date(game.date).getTime() < OPENING_NIGHT_MS; } catch { return false; } })();
+        const isWin = isHomeTeam ? game.homeScore > game.awayScore : game.awayScore > game.homeScore;
+        const score = isHomeTeam
+          ? `${game.homeScore}-${game.awayScore}`
+          : `${game.awayScore}-${game.homeScore}`;
+        logs.push({
+          date: game.date,
+          isPreseason,
+          isDNP: true,
+          gameId: game.gameId,
+          teamId: player.tid,
+          oppTeamId: oppId,
+          dnpReason: (player.injury?.gamesRemaining ?? 0) > 0
+            ? `DNP — Injury (${player.injury!.type})`
+            : "DNP — Coach's Decision",
+          teamAbbrev: team?.abbrev || 'UNK',
+          isAway: !isHomeTeam,
+          oppAbbrev: opp?.abbrev || 'UNK',
+          result: `${isWin ? 'W' : 'L'}, ${score}`,
+          isWin,
+          gs: false,
+          mp: '—', fgm: 0, fga: 0, fgp: '—', tpm: 0, tpa: 0, tpp: '—',
+          twom: 0, twoa: 0, twop: '—', efgp: '—', ftm: 0, fta: 0, ftp: '—',
+          orb: 0, drb: 0, trb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0,
+          gmsc: '—', plusMinus: null,
+        });
       }
     });
 
-    const reversed = logs.reverse(); // Most recent first
-
-    // Assign game numbers: regular season games count from 1 (earliest) upward.
-    // Preseason games get rank=null (shown as "PRE").
-    const rsTotal = reversed.filter(l => !l.isPreseason).length;
+    const reversed = logs.reverse();
+    const rsTotal = reversed.filter(l => !l.isPreseason && !l.isDNP).length;
     let rsRank = rsTotal;
-    return reversed.map(l => ({ ...l, rank: l.isPreseason ? null : rsRank-- }));
-  }, [state.boxScores, state.schedule, player.internalId, state.teams]);
+    return reversed.map(l => ({
+      ...l,
+      rank: l.isPreseason || l.isDNP ? null : rsRank--,
+    }));
+  }, [state.boxScores, state.schedule, player.internalId, player.tid, player.injury, state.teams]);
+
+  const sortedGameLog = useMemo(() => {
+    return [...gameLog].sort((a, b) => {
+      const dir = gameLogSort.dir === 'asc' ? 1 : -1;
+      if (gameLogSort.field === 'date') {
+        return (new Date(a.date).getTime() - new Date(b.date).getTime()) * dir;
+      }
+      const getVal = (l: any): number => {
+        switch (gameLogSort.field) {
+          case 'pts': return l.pts;
+          case 'trb': return l.trb;
+          case 'ast': return l.ast;
+          case 'stl': return l.stl;
+          case 'blk': return l.blk;
+          case 'tov': return l.tov;
+          case 'pf': return l.pf;
+          case 'orb': return l.orb;
+          case 'drb': return l.drb;
+          case 'fgm': return l.fgm;
+          case 'fga': return l.fga;
+          case 'fgp': return parseFloat('0' + l.fgp) || 0;
+          case 'tpm': return l.tpm;
+          case 'tpa': return l.tpa;
+          case 'tpp': return parseFloat('0' + l.tpp) || 0;
+          case 'twom': return l.twom;
+          case 'twoa': return l.twoa;
+          case 'twop': return parseFloat('0' + l.twop) || 0;
+          case 'efgp': return parseFloat('0' + l.efgp) || 0;
+          case 'ftm': return l.ftm;
+          case 'fta': return l.fta;
+          case 'ftp': return parseFloat('0' + l.ftp) || 0;
+          case 'gmsc': return parseFloat(l.gmsc) || 0;
+          case 'min': {
+            if (l.mp === '—') return -1;
+            const parts = l.mp.split(':');
+            return (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
+          }
+          default: return 0;
+        }
+      };
+      return (getVal(a) - getVal(b)) * dir;
+    });
+  }, [gameLog, gameLogSort]);
 
   const team = useMemo(() => {
     const isNBA = !["WNBA","Euroleague","PBA","Draft Prospect","Prospect"].includes(player.status || "");
@@ -583,9 +665,9 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-white uppercase tracking-wider">
                 {state.leagueStats.year}-{String(state.leagueStats.year + 1).slice(2)} Game Log
-                {gameLog.filter(g => !g.isPreseason).length > 0 && (
+                {gameLog.filter(g => !g.isPreseason && !g.isDNP).length > 0 && (
                   <span className="ml-3 text-xs font-normal text-slate-400 normal-case tracking-normal">
-                    {gameLog.filter(g => !g.isPreseason).length} regular season games
+                    {gameLog.filter(g => !g.isPreseason && !g.isDNP).length} regular season games
                   </span>
                 )}
               </h3>
@@ -595,98 +677,139 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack }) 
                 <thead className="text-[10px] text-slate-400 uppercase bg-slate-900/50 border-b border-slate-800 whitespace-nowrap">
                   <tr>
                     <th className="px-3 py-2 font-semibold">Rk</th>
-                    <th className="px-3 py-2 font-semibold">Date</th>
+                    {(['date'] as const).map(field => (
+                      <th key={field}
+                        className={`px-3 py-2 font-semibold cursor-pointer hover:text-white select-none${gameLogSort.field === field ? ' text-indigo-400' : ''}`}
+                        onClick={() => setGameLogSort(s => ({ field, dir: s.field === field && s.dir === 'desc' ? 'asc' : 'desc' }))}
+                      >Date{gameLogSort.field === field ? (gameLogSort.dir === 'desc' ? ' ↓' : ' ↑') : ''}</th>
+                    ))}
                     <th className="px-3 py-2 font-semibold">Team</th>
                     <th className="px-3 py-2 font-semibold"></th>
                     <th className="px-3 py-2 font-semibold">Opp</th>
                     <th className="px-3 py-2 font-semibold">Result</th>
                     <th className="px-3 py-2 font-semibold">GS</th>
-                    <th className="px-3 py-2 font-semibold text-right">MP</th>
-                    <th className="px-3 py-2 font-semibold text-right">FG</th>
-                    <th className="px-3 py-2 font-semibold text-right">FGA</th>
-                    <th className="px-3 py-2 font-semibold text-right">FG%</th>
-                    <th className="px-3 py-2 font-semibold text-right">3P</th>
-                    <th className="px-3 py-2 font-semibold text-right">3PA</th>
-                    <th className="px-3 py-2 font-semibold text-right">3P%</th>
-                    <th className="px-3 py-2 font-semibold text-right">2P</th>
-                    <th className="px-3 py-2 font-semibold text-right">2PA</th>
-                    <th className="px-3 py-2 font-semibold text-right">2P%</th>
-                    <th className="px-3 py-2 font-semibold text-right">eFG%</th>
-                    <th className="px-3 py-2 font-semibold text-right">FT</th>
-                    <th className="px-3 py-2 font-semibold text-right">FTA</th>
-                    <th className="px-3 py-2 font-semibold text-right">FT%</th>
-                    <th className="px-3 py-2 font-semibold text-right">ORB</th>
-                    <th className="px-3 py-2 font-semibold text-right">DRB</th>
-                    <th className="px-3 py-2 font-semibold text-right">TRB</th>
-                    <th className="px-3 py-2 font-semibold text-right">AST</th>
-                    <th className="px-3 py-2 font-semibold text-right">STL</th>
-                    <th className="px-3 py-2 font-semibold text-right">BLK</th>
-                    <th className="px-3 py-2 font-semibold text-right">TOV</th>
-                    <th className="px-3 py-2 font-semibold text-right">PF</th>
-                    <th className="px-3 py-2 font-semibold text-right text-white">PTS</th>
-                    <th className="px-3 py-2 font-semibold text-right">GmSc</th>
+                    {(['min'] as const).map(f => (
+                      <th key={f} className={`px-3 py-2 font-semibold text-right cursor-pointer hover:text-white select-none${gameLogSort.field === f ? ' text-indigo-400' : ''}`}
+                        onClick={() => setGameLogSort(s => ({ field: f, dir: s.field === f && s.dir === 'desc' ? 'asc' : 'desc' }))}>
+                        MP{gameLogSort.field === f ? (gameLogSort.dir === 'desc' ? ' ↓' : ' ↑') : ''}
+                      </th>
+                    ))}
+                    {(['fgm','fga','fgp','tpm','tpa','tpp','twom','twoa','twop','efgp','ftm','fta','ftp','orb','drb','trb','ast','stl','blk','tov','pf','pts','gmsc'] as const).map(f => {
+                      const label: Record<string,string> = { fgm:'FG',fga:'FGA',fgp:'FG%',tpm:'3P',tpa:'3PA',tpp:'3P%',twom:'2P',twoa:'2PA',twop:'2P%',efgp:'eFG%',ftm:'FT',fta:'FTA',ftp:'FT%',orb:'ORB',drb:'DRB',trb:'TRB',ast:'AST',stl:'STL',blk:'BLK',tov:'TOV',pf:'PF',pts:'PTS',gmsc:'GmSc' };
+                      return (
+                        <th key={f} className={`px-3 py-2 font-semibold text-right cursor-pointer hover:text-white select-none${gameLogSort.field === f ? ' text-indigo-400' : ''}`}
+                          onClick={() => setGameLogSort(s => ({ field: f, dir: s.field === f && s.dir === 'desc' ? 'asc' : 'desc' }))}>
+                          {label[f]}{gameLogSort.field === f ? (gameLogSort.dir === 'desc' ? ' ↓' : ' ↑') : ''}
+                        </th>
+                      );
+                    })}
                     <th className="px-3 py-2 font-semibold text-right">+/-</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
-                  {gameLog.map((log, i) => {
-                    // Insert a "Preseason" header row when we cross from RS → preseason
-                    const showPreseasonDivider = log.isPreseason && (i === 0 || !gameLog[i - 1].isPreseason);
+                  {sortedGameLog.map((log, i) => {
+                    const showPreseasonDivider = gameLogSort.field === 'date' && log.isPreseason && (i === 0 || !sortedGameLog[i - 1].isPreseason);
                     return (
                     <React.Fragment key={i}>
                       {showPreseasonDivider && (
                         <tr>
-                          <td colSpan={31} className="px-3 py-2 bg-slate-900/80 border-y border-slate-700">
+                          <td colSpan={32} className="px-3 py-2 bg-slate-900/80 border-y border-slate-700">
                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500">
                               Preseason
                             </span>
                           </td>
                         </tr>
                       )}
-                    <tr className={`hover:bg-slate-800/50 transition-colors whitespace-nowrap text-xs ${log.isPreseason ? 'opacity-70' : ''}`}>
-                      <td className="px-3 py-2">
-                        {log.rank !== null
-                          ? log.rank
-                          : <span className="text-[10px] font-bold text-amber-500/70">PRE</span>}
-                      </td>
-                      <td className="px-3 py-2">{log.date}</td>
-                      <td className="px-3 py-2">{log.teamAbbrev}</td>
-                      <td className="px-3 py-2">{log.isAway ? '@' : ''}</td>
-                      <td className="px-3 py-2">{log.oppAbbrev}</td>
-                      <td className={`px-3 py-2 ${log.isWin ? 'text-emerald-400' : 'text-red-400'}`}>{log.result}</td>
-                      <td className="px-3 py-2">{log.gs ? '*' : ''}</td>
-                      <td className="px-3 py-2 text-right">{log.mp}</td>
-                      <td className="px-3 py-2 text-right">{log.fgm}</td>
-                      <td className="px-3 py-2 text-right">{log.fga}</td>
-                      <td className="px-3 py-2 text-right">{log.fgp}</td>
-                      <td className="px-3 py-2 text-right">{log.tpm}</td>
-                      <td className="px-3 py-2 text-right">{log.tpa}</td>
-                      <td className="px-3 py-2 text-right">{log.tpp}</td>
-                      <td className="px-3 py-2 text-right">{log.twom}</td>
-                      <td className="px-3 py-2 text-right">{log.twoa}</td>
-                      <td className="px-3 py-2 text-right">{log.twop}</td>
-                      <td className="px-3 py-2 text-right">{log.efgp}</td>
-                      <td className="px-3 py-2 text-right">{log.ftm}</td>
-                      <td className="px-3 py-2 text-right">{log.fta}</td>
-                      <td className="px-3 py-2 text-right">{log.ftp}</td>
-                      <td className="px-3 py-2 text-right">{log.orb}</td>
-                      <td className="px-3 py-2 text-right">{log.drb}</td>
-                      <td className="px-3 py-2 text-right">{log.trb}</td>
-                      <td className="px-3 py-2 text-right">{log.ast}</td>
-                      <td className="px-3 py-2 text-right">{log.stl}</td>
-                      <td className="px-3 py-2 text-right">{log.blk}</td>
-                      <td className="px-3 py-2 text-right">{log.tov}</td>
-                      <td className="px-3 py-2 text-right">{log.pf}</td>
-                      <td className="px-3 py-2 text-right font-bold text-white">{log.pts}</td>
-                      <td className="px-3 py-2 text-right">{log.gmsc}</td>
-                      <td className={`px-3 py-2 text-right ${log.plusMinus != null && log.plusMinus > 0 ? 'text-emerald-400' : log.plusMinus != null && log.plusMinus < 0 ? 'text-red-400' : ''}`}>
-                        {log.plusMinus != null ? (log.plusMinus > 0 ? `+${log.plusMinus}` : log.plusMinus) : '—'}
-                      </td>
-                    </tr>
+                      {log.isDNP ? (
+                        <tr className="hover:bg-slate-800/50 transition-colors whitespace-nowrap text-xs opacity-50">
+                          <td className="px-3 py-2">
+                            <span className="text-[10px] font-bold text-slate-500">DNP</span>
+                          </td>
+                          <td className="px-3 py-2">{log.date}</td>
+                          <td className={`px-3 py-2${onTeamClick && log.teamId ? ' cursor-pointer hover:text-indigo-400' : ''}`}
+                            onClick={() => onTeamClick && log.teamId && onTeamClick(log.teamId)}
+                          >{log.teamAbbrev}</td>
+                          <td className="px-3 py-2">{log.isAway ? '@' : ''}</td>
+                          <td className={`px-3 py-2${onTeamClick && log.oppTeamId ? ' cursor-pointer hover:text-indigo-400' : ''}`}
+                            onClick={() => onTeamClick && log.oppTeamId && onTeamClick(log.oppTeamId)}
+                          >{log.oppAbbrev}</td>
+                          <td
+                            className={`px-3 py-2 ${log.isWin ? 'text-emerald-400' : 'text-red-400'}${onGameClick && log.gameId ? ' cursor-pointer hover:underline' : ''}`}
+                            onClick={() => {
+                              if (onGameClick && log.gameId) {
+                                const sg = state.schedule.find((g: any) => g.gid === log.gameId);
+                                if (sg) onGameClick(sg);
+                              }
+                            }}
+                          >{log.result}</td>
+                          <td colSpan={26} className="px-3 py-2 text-slate-500 italic">{log.dnpReason}</td>
+                        </tr>
+                      ) : (
+                        <tr className={`hover:bg-slate-800/50 transition-colors whitespace-nowrap text-xs ${log.isPreseason ? 'opacity-70' : ''}`}>
+                          <td className="px-3 py-2">
+                            {log.rank !== null
+                              ? log.rank
+                              : <span className="text-[10px] font-bold text-amber-500/70">PRE</span>}
+                          </td>
+                          <td className="px-3 py-2">{log.date}</td>
+                          <td className={`px-3 py-2${onTeamClick && log.teamId ? ' cursor-pointer hover:text-indigo-400' : ''}`}
+                            onClick={() => onTeamClick && log.teamId && onTeamClick(log.teamId)}
+                          >{log.teamAbbrev}</td>
+                          <td className="px-3 py-2">{log.isAway ? '@' : ''}</td>
+                          <td className={`px-3 py-2${onTeamClick && log.oppTeamId ? ' cursor-pointer hover:text-indigo-400' : ''}`}
+                            onClick={() => onTeamClick && log.oppTeamId && onTeamClick(log.oppTeamId)}
+                          >{log.oppAbbrev}</td>
+                          <td
+                            className={`px-3 py-2 ${log.isWin ? 'text-emerald-400' : 'text-red-400'}${onGameClick && log.gameId ? ' cursor-pointer hover:underline' : ''}`}
+                            onClick={() => {
+                              if (onGameClick && log.gameId) {
+                                const sg = state.schedule.find((g: any) => g.gid === log.gameId);
+                                if (sg) onGameClick(sg);
+                              }
+                            }}
+                          >{log.result}</td>
+                          <td className="px-3 py-2">{log.gs ? '*' : ''}</td>
+                          <td className="px-3 py-2 text-right">{log.mp}</td>
+                          <td className="px-3 py-2 text-right">{log.fgm}</td>
+                          <td className="px-3 py-2 text-right">{log.fga}</td>
+                          <td className="px-3 py-2 text-right">{log.fgp}</td>
+                          <td className="px-3 py-2 text-right">{log.tpm}</td>
+                          <td className="px-3 py-2 text-right">{log.tpa}</td>
+                          <td className="px-3 py-2 text-right">{log.tpp}</td>
+                          <td className="px-3 py-2 text-right">{log.twom}</td>
+                          <td className="px-3 py-2 text-right">{log.twoa}</td>
+                          <td className="px-3 py-2 text-right">{log.twop}</td>
+                          <td className="px-3 py-2 text-right">{log.efgp}</td>
+                          <td className="px-3 py-2 text-right">{log.ftm}</td>
+                          <td className="px-3 py-2 text-right">{log.fta}</td>
+                          <td className="px-3 py-2 text-right">{log.ftp}</td>
+                          <td className="px-3 py-2 text-right">{log.orb}</td>
+                          <td className="px-3 py-2 text-right">{log.drb}</td>
+                          <td className="px-3 py-2 text-right">{log.trb}</td>
+                          <td className="px-3 py-2 text-right">{log.ast}</td>
+                          <td className="px-3 py-2 text-right">{log.stl}</td>
+                          <td className="px-3 py-2 text-right">{log.blk}</td>
+                          <td className="px-3 py-2 text-right">{log.tov}</td>
+                          <td className="px-3 py-2 text-right">{log.pf}</td>
+                          <td className="px-3 py-2 text-right font-bold text-white">{log.pts}</td>
+                          <td
+                            className={`px-3 py-2 text-right${onGameClick && log.gameId ? ' cursor-pointer hover:underline' : ''}`}
+                            onClick={() => {
+                              if (onGameClick && log.gameId) {
+                                const sg = state.schedule.find((g: any) => g.gid === log.gameId);
+                                if (sg) onGameClick(sg);
+                              }
+                            }}
+                          >{log.gmsc}</td>
+                          <td className={`px-3 py-2 text-right ${log.plusMinus != null && log.plusMinus > 0 ? 'text-emerald-400' : log.plusMinus != null && log.plusMinus < 0 ? 'text-red-400' : ''}`}>
+                            {log.plusMinus != null ? (log.plusMinus > 0 ? `+${log.plusMinus}` : log.plusMinus) : '—'}
+                          </td>
+                        </tr>
+                      )}
                     </React.Fragment>
                     );
                   })}
-                  {gameLog.length === 0 && (
+                  {sortedGameLog.length === 0 && (
                     <tr>
                       <td colSpan={32} className="px-3 py-8 text-center text-slate-500">
                         No game log available for this season.

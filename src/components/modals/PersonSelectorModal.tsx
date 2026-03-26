@@ -18,7 +18,7 @@ interface PersonSelectorModalProps {
   onSelect: (contacts: Contact[], reason?: string, amount?: number, location?: string, duration?: string) => void;
   onClose: () => void;
   title: string;
-  actionType: 'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'contact' | 'hypnotize' | 'sabotage' | 'club' | 'endorse_hof';
+  actionType: 'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'contact' | 'hypnotize' | 'sabotage' | 'club' | 'endorse_hof' | 'waive' | 'fire';
   preSelectedContact?: Contact;
   skipPersonSelection?: boolean;
 }
@@ -207,7 +207,7 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
     }
 
     // Inject referees (only for eligible action types)
-    const refEligibleActions = ['fine', 'bribe', 'dinner', 'suspension', 'drug_test', 'contact', 'give_money', 'general'];
+    const refEligibleActions = ['fine', 'bribe', 'dinner', 'suspension', 'drug_test', 'contact', 'give_money', 'general', 'fire'];
     if (refEligibleActions.includes(actionType)) {
         getAllReferees().forEach(ref => {
             const id = `ref-${ref.id}`;
@@ -224,19 +224,29 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
         });
     }
 
+    // For 'fire', we only want staff/refs — skip all players entirely
+    if (actionType === 'fire') {
+        return Array.from(contactsMap.values()).sort((a, b) => (a.organization || '').localeCompare(b.organization || ''));
+    }
+
     const activePlayers = players.filter(p => {
         // Exclude deceased players
         if (p.diedYear) return false;
-        
+
+        // For waive: only active NBA players (on a real team)
+        if (actionType === 'waive') {
+            return p.status === 'Active' && p.tid >= 0;
+        }
+
         if (actionType === 'endorse_hof') {
             return (p.status === 'Retired' || p.tid === -3) && !p.hof;
         }
-        
+
         // Include retired players only for personal actions
         if (p.status === 'Retired' || p.tid === -3) {
             return ['dinner', 'movie', 'give_money', 'bribe', 'contact', 'hypnotize', 'club'].includes(actionType);
         }
-        
+
         // Include WNBA players only for personal actions
         if (p.status === 'WNBA' || p.tid === -100) {
             return ['dinner', 'movie', 'give_money', 'bribe', 'contact', 'hypnotize', 'club'].includes(actionType);

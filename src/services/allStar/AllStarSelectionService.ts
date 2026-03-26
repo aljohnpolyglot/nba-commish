@@ -214,14 +214,15 @@ export class AllStarSelectionService {
           const winPct = (team.wins + team.losses) > 0
             ? team.wins / (team.wins + team.losses)
             : 0.5;
-          const score = 
-            (stat.pts / gp) * 0.8 +
-            ((stat.trb || (stat.orb||0)+(stat.drb||0)) / gp) * 0.3 +
-            (stat.ast / gp) * 0.4 +
-            (stat.bpm ?? 0) * 1.2 +
-            winPct * 3;
-          return { player: p, score, team };
-        })
+         const score =
+        (stat.pts / gp) * 0.7 +
+        ((stat.trb || (stat.orb || 0) + (stat.drb || 0)) / gp) * 0.25 +
+        (stat.ast / gp) * 0.35 +
+        (p.overallRating ?? 50) * 0.25 +
+        Math.min(3, stat.bpm ?? 0) * 0.5 +
+        winPct * 1.5;
+      return { player: p, score, team };
+      })
         .filter(Boolean) as any[];
 
       const sorted = scored.sort(

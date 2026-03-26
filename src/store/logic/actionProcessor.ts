@@ -7,7 +7,7 @@ import { calculateSocialEngagement, getGamePhase, normalizeDate } from '../../ut
 import * as StoryGenerators from '../../services/storyGenerators';
 import { handleTransferFunds, handleGiveMoney, handleFinePerson, handleBribePerson, handleAdjustFinancials } from './actions/financeActions';
 import { handleExecutiveTrade, handleForceTrade } from './actions/tradeActions';
-import { handleSignFreeAgent, handleSuspendPlayer, handleSabotagePlayer, handleDrugTestPerson } from './actions/playerActions';
+import { handleSignFreeAgent, handleSuspendPlayer, handleSabotagePlayer, handleDrugTestPerson, handleWaivePlayer, handleFirePersonnel } from './actions/playerActions';
 import { handleInvitePerformance, handleGlobalGames, handleRigLottery, handleHypnotize, handleHypnoticBroadcast, handleVisitNonNbaTeam, handleTravel } from './actions/eventActions';
 import { handleGoToClub } from './actions/clubActions';
 import { handleEndorseHof } from './actions/hofActions';
@@ -100,6 +100,10 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
         result = await handleSuspendPlayer(stateWithSim, action, simResults, recentDMs);
     } else if (action.type === 'DRUG_TEST_PERSON') {
         result = await handleDrugTestPerson(stateWithSim, action, simResults, recentDMs);
+    } else if (action.type === 'WAIVE_PLAYER') {
+        result = await handleWaivePlayer(stateWithSim, action, simResults, recentDMs);
+    } else if (action.type === 'FIRE_PERSONNEL') {
+        result = await handleFirePersonnel(stateWithSim, action, simResults, recentDMs);
     } else if (action.type === 'SABOTAGE_PLAYER') {
         result = await handleSabotagePlayer(stateWithSim, action, simResults, recentDMs);
     } else if (action.type === 'FINE_PERSON') {

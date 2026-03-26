@@ -191,6 +191,68 @@ export const handleDrugTestPerson = async (stateWithSim: GameState, action: User
     return result;
 };
 
+export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
+    const { contacts } = action.payload;
+    if (!contacts || contacts.length === 0) return { isProcessing: false };
+
+    const player = contacts[0];
+    const team = stateWithSim.teams.find(t => t.name === player.organization);
+    const teamName = team?.name || player.organization || 'their team';
+
+    const outcomeText = `The NBA has officially waived ${player.name} from ${teamName}. They are now a free agent.`;
+    const storySeed = `${player.name} has just been waived by ${teamName}. Fans, GMs and media react to the sudden roster move.`;
+
+    const result = await advanceDay(stateWithSim, {
+        type: 'WAIVE_PLAYER',
+        payload: { outcomeText, contacts }
+    } as any, [storySeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
+
+    // Update player state: move to free agent
+    result.players = (result.players || stateWithSim.players).map((p: any) =>
+        p.internalId === (player.id || player.internalId)
+            ? { ...p, tid: -1, status: 'Free Agent' }
+            : p
+    );
+
+    result.statChanges = result.statChanges || {};
+    result.statChanges.playerApproval = (result.statChanges.playerApproval || 0) - 2;
+
+    return result;
+};
+
+export const handleFirePersonnel = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
+    const { contacts } = action.payload;
+    if (!contacts || contacts.length === 0) return { isProcessing: false };
+
+    const person = contacts[0];
+    const outcomeText = `${person.name} (${person.title}) has been fired by the NBA Commissioner.`;
+    const storySeed = `${person.name}, ${person.title} for ${person.organization}, has been abruptly fired by the Commissioner. The basketball world reacts.`;
+
+    const result = await advanceDay(stateWithSim, {
+        type: 'FIRE_PERSONNEL',
+        payload: { outcomeText, contacts }
+    } as any, [storySeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
+
+    // Update staff state: mark as unemployed
+    if (result.staff || stateWithSim.staff) {
+        const staff = result.staff || { ...stateWithSim.staff };
+        const markUnemployed = (list: any[]) =>
+            list.map((s: any) => s.name === person.name ? { ...s, team: 'Unemployed', teamId: -99 } : s);
+
+        result.staff = {
+            ...staff,
+            gms: markUnemployed(staff.gms || []),
+            coaches: markUnemployed(staff.coaches || []),
+            owners: markUnemployed(staff.owners || []),
+        };
+    }
+
+    result.statChanges = result.statChanges || {};
+    result.statChanges.ownerApproval = (result.statChanges.ownerApproval || 0) - 3;
+
+    return result;
+};
+
 export const handleSabotagePlayer = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const { contacts, reason, duration } = action.payload;
     if (!contacts || contacts.length === 0) return { isProcessing: false };

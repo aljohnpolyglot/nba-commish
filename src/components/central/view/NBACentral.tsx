@@ -226,9 +226,11 @@ export const NBACentral: React.FC = () => {
   return (
     <>
       {viewingBioPlayer ? (
-        <PlayerBioView 
-          player={viewingBioPlayer} 
-          onBack={() => setViewingBioPlayer(null)} 
+        <PlayerBioView
+          player={viewingBioPlayer}
+          onBack={() => setViewingBioPlayer(null)}
+          onGameClick={handleWatchGame}
+          onTeamClick={(teamId) => { setViewingBioPlayer(null); setSelectedTeamId(teamId); }}
         />
       ) : selectedTeam ? (
         <TeamDetailView 

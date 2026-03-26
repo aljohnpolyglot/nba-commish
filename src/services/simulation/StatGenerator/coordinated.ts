@@ -12,7 +12,9 @@ export function generateCoordinatedStats(
   availableBlocks: number,
   oppFTA: number = 18,
   season: number = 2025,
-  otCount: number = 0
+  otCount: number = 0,
+  team2KDef?: { steal: number; passPerception: number; block: number; interiorDef: number },
+  opp2KDef?: { passPerception: number }
 ): PlayerGameStats[] {
   const stats    = teamStats.map(s => ({ ...s }));
   const rotation = stats.map(s =>
@@ -22,6 +24,21 @@ export function generateCoordinatedStats(
 
   const rHelper = (p: Player, k: string) => R(p, k, season);
   const getNight = (p: Player) => stats.find(s => s.playerId === p.internalId);
+
+  // ── 2K Team Aura: scales pool sizes, not individual distribution weights ──
+  // Centered at 70: elite defense grows pools, bad defense shrinks them.
+  // BBGM ratings still decide who on the team gets each steal/block/assist.
+  const stlAura = team2KDef ? (team2KDef.steal + team2KDef.passPerception - 140) * 0.005 : 0;
+  const passAura = opp2KDef ? (opp2KDef.passPerception - 70) * 0.008 : 0;
+
+  // Block pool: talent-based boost centered at 70.
+  // Even when opponents avoid the paint (fewer interior misses), elite shot-blockers
+  // "find" extra blocks via recovery/transition — so we boost the pool by their talent.
+  const blkTalentFactor = team2KDef ? Math.max(0, (team2KDef.block - 70) / 10) : 0;
+
+  const finalSteals = Math.round(availableSteals * (1.0 + stlAura));
+  const finalBlocks = Math.round(availableBlocks * (1.0 + blkTalentFactor * 0.4));
+  const assistRatio = Math.max(0.55, 0.77 - passAura);
 
   const ownMisses = stats.reduce((s, p) => s + Math.max(0, p.fga - p.fgm), 0);
 
@@ -34,35 +51,35 @@ export function generateCoordinatedStats(
   // ── Defensive Rebounds (variance 0.22 for realistic game-to-game swings)
   distributePie(
     Math.round(availableRebounds),
-    (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 2.0 + rHelper(p, 'oiq') * 0.5 + rHelper(p, 'diq') * 0.5) * minFrac(p) * (getNight(p)?._nightRebMult ?? 1),
+    (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 2.0 + rHelper(p, 'oiq') * 0.5 + rHelper(p, 'diq') * 0.5) * minFrac(p) * (getNight(p)?._nightDrbMult ?? 1),
     'drb', 2.2, rotation, stats, 0.22
   );
 
   // ── Offensive Rebounds
   distributePie(
     Math.round(ownMisses * 0.25),
-    (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 1.0 + rHelper(p, 'jmp') * 0.5) * minFrac(p) * (getNight(p)?._nightRebMult ?? 1),
+    (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 1.0 + rHelper(p, 'jmp') * 0.5) * minFrac(p) * (getNight(p)?._nightOrbMult ?? 1),
     'orb', 2.0, rotation, stats, 0.22
   );
 
-  // ── Steals
+  // ── Steals (pool sized by 2K aura; BBGM ratings decide who gets them)
   distributePie(
-    Math.round(availableSteals),
-    (p) => (rHelper(p, 'diq') * 2.0 + rHelper(p, 'spd') * 1.0) * (getNight(p)?._nightDefEnergy ?? 1),
+    finalSteals,
+    (p) => (rHelper(p, 'diq') * 2.0 + rHelper(p, 'spd') * 1.0) * (getNight(p)?._nightStlMult ?? 1),
     'stl', 3.4, rotation, stats
   );
 
-  // ── Blocks
+  // ── Blocks (pool sized by 2K aura; BBGM ratings decide who gets them)
   distributePie(
-    Math.round(availableBlocks),
-    (p) => (rHelper(p, 'hgt') * 2.5 + rHelper(p, 'jmp') * 1.5 + rHelper(p, 'diq') * 0.5) * (getNight(p)?._nightDefEnergy ?? 1),
-    'blk', 4.2, rotation, stats
+    finalBlocks,
+    (p) => (rHelper(p, 'hgt') * 2.5 + rHelper(p, 'jmp') * 1.5 + rHelper(p, 'diq') * 0.5) * (getNight(p)?._nightBlkMult ?? 1),
+    'blk', 5, rotation, stats
   );
 
-  // ── Assists
+  // ── Assists (pool shrinks vs elite pass-disruptors, grows vs bad ones)
   const totalFgm = stats.reduce((s, p) => s + p.fgm, 0);
   distributePie(
-    Math.round(totalFgm * 0.77),
+    Math.round(totalFgm * assistRatio),
     (p) => {
       const drb = rHelper(p, 'drb');
       const pss = rHelper(p, 'pss');

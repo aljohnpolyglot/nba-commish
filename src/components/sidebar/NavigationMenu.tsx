@@ -4,7 +4,7 @@ import {
   User, Calendar, BarChart2, TrendingUp,
   Search, Users, Star, Building2, Settings2, ChevronDown,
   ListOrdered, Stethoscope, Tv, ThumbsUp, Eye, DollarSign,
-  Target, Ticket, Table2
+  Target, Ticket, Table2, Zap
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { Tab } from '../../types';
@@ -84,11 +84,12 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
     {
       label: 'Analytics',
       items: [
-        { id: 'Player Stats',   label: 'Player Stats',   icon: BarChart2 },
-        { id: 'Team Stats',     label: 'Team Stats',     icon: Users },
-        { id: 'Award Races',    label: 'Award Races',    icon: TrendingUp },
-        { id: 'League Leaders', label: 'League Leaders', icon: ListOrdered },
-        { id: 'Injuries',       label: 'Injuries',       icon: Stethoscope },
+        { id: 'Player Stats',       label: 'Player Stats',       icon: BarChart2 },
+        { id: 'Team Stats',         label: 'Team Stats',         icon: Users },
+        { id: 'Award Races',        label: 'Award Races',        icon: TrendingUp },
+        { id: 'Statistical Feats',  label: 'Statistical Feats',  icon: Zap },
+        { id: 'League Leaders',     label: 'League Leaders',     icon: ListOrdered },
+        { id: 'Injuries',           label: 'Injuries',           icon: Stethoscope },
       ],
     },
     {

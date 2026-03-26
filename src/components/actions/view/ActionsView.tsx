@@ -44,7 +44,7 @@ const ActionsView: React.FC = () => {
                 isSpecificEvent: true
             }
         });
-    } else if (['EXECUTIVE_TRADE', 'SIGN_FREE_AGENT', 'TRAVEL', 'EXPANSION_DRAFT', 'CELEBRITY_ROSTER', 'GLOBAL_GAMES', 'GIVE_MONEY', 'BRIBE_PERSON', 'FINE_PERSON', 'VISIT_NON_NBA_TEAM', 'TRANSFER_FUNDS', 'SET_CHRISTMAS_GAMES', 'SABOTAGE_PLAYER', 'SUSPEND_PLAYER', 'GO_TO_CLUB', 'ENDORSE_HOF', 'ADD_PRESEASON_INTERNATIONAL', 'INVITE_DINNER', 'DRUG_TEST_PERSON', 'LEAK_SCANDAL'].includes(actionType)) {
+    } else if (['EXECUTIVE_TRADE', 'SIGN_FREE_AGENT', 'TRAVEL', 'EXPANSION_DRAFT', 'CELEBRITY_ROSTER', 'GLOBAL_GAMES', 'GIVE_MONEY', 'BRIBE_PERSON', 'FINE_PERSON', 'VISIT_NON_NBA_TEAM', 'TRANSFER_FUNDS', 'SET_CHRISTMAS_GAMES', 'SABOTAGE_PLAYER', 'SUSPEND_PLAYER', 'GO_TO_CLUB', 'ENDORSE_HOF', 'ADD_PRESEASON_INTERNATIONAL', 'INVITE_DINNER', 'DRUG_TEST_PERSON', 'LEAK_SCANDAL', 'WAIVE_PLAYER', 'FIRE_PERSONNEL'].includes(actionType)) {
         await dispatchAction({
             type: actionType as any,
             payload
@@ -135,6 +135,8 @@ const ActionsView: React.FC = () => {
       if (modals.modalType === 'sabotage') actionType = 'SABOTAGE_PLAYER';
       if (modals.modalType === 'club') actionType = 'GO_TO_CLUB';
       if (modals.modalType === 'endorse_hof') actionType = 'ENDORSE_HOF';
+      if (modals.modalType === 'waive') actionType = 'WAIVE_PLAYER';
+      if (modals.modalType === 'fire') actionType = 'FIRE_PERSONNEL';
 
       const targetNames = contacts.map(c => c.name).join(', ');
       const targetRoles = contacts.map(c => c.title).join(', ');

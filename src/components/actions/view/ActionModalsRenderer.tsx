@@ -71,7 +71,9 @@ export const ActionModalsRenderer: React.FC<ActionModalsRendererProps> = ({
                  modals.modalType === 'hypnotize' ? 'Hypnotize Target' :
                  modals.modalType === 'sabotage' ? 'Sabotage Player' :
                  modals.modalType === 'contact' ? 'Contact Person' :
-                 modals.modalType === 'endorse_hof' ? 'Endorse for Hall of Fame' : 'Select Person'}
+                 modals.modalType === 'endorse_hof' ? 'Endorse for Hall of Fame' :
+                 modals.modalType === 'waive' ? 'Waive Player' :
+                 modals.modalType === 'fire' ? 'Fire Personnel' : 'Select Person'}
         />
       )}
 

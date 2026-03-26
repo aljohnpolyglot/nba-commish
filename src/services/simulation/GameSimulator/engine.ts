@@ -10,6 +10,7 @@ import { pickGameWinner } from './clutch';
 import { generateSyntheticPM, applyPMToStats } from './syntheticPM';
 import { setClubDebuffs, clearClubDebuffs } from '../StatGenerator/helpers';
 import { fetchGamePhotos } from '../../ImagnPhotoService';
+import { Defense2KService } from '../../Defense2KService';
 export class GameSimulator {
 
   private static calcWinProb(strengthDiff: number): number {
@@ -143,9 +144,18 @@ export class GameSimulator {
     // pace roll: shared (both teams) — creates slow grinds vs fast shootouts
     // eff roll:  independent per team — creates blowouts and cold-shooting nights
     // Both are uniform with mean 1.0 → long-run player averages are preserved
-    const paceRoll    = 0.90 + Math.random() * 0.20;   // 0.90–1.10, mean 1.00
-    const homeEffRoll = 0.88 + Math.random() * 0.24;   // 0.88–1.12, mean 1.00
-    const awayEffRoll = 0.88 + Math.random() * 0.24;
+    const homePlayers = homeOverridePlayers ?? players.filter(p => p.tid === homeTeam.id);
+    const awayPlayers = awayOverridePlayers ?? players.filter(p => p.tid === awayTeam.id);
+    const home2KDef = Defense2KService.getTeamDefense(homePlayers);
+    const away2KDef = Defense2KService.getTeamDefense(awayPlayers);
+
+    // Aura centered at 70: elite (82) → +0.06 debuff on opponent; bad (60) → -0.05 buff to opponent
+    const homeDefAura = (home2KDef.overallDef - 70) * 0.005;
+    const awayDefAura = (away2KDef.overallDef - 70) * 0.005;
+
+    const paceRoll    = 0.96 + Math.random() * 0.20;   // 0.90–1.10, mean 1.00
+    const homeEffRoll = (0.88 + Math.random() * 0.24) - awayDefAura;
+    const awayEffRoll = (0.88 + Math.random() * 0.24) - homeDefAura;
 
     finalHomeScore = Math.max(75, Math.round(finalHomeScore * paceRoll * homeEffRoll));
     finalAwayScore = Math.max(70, Math.round(finalAwayScore * paceRoll * awayEffRoll));
@@ -163,10 +173,10 @@ export class GameSimulator {
 
     const actualMargin = Math.abs(finalHomeScore - finalAwayScore);
     const homeInitial = StatGenerator.generateStatsForTeam(
-      homeTeam, players, finalHomeScore, homeWinsFinal, actualMargin, {}, 2026, homeOverridePlayers, otCount
+      homeTeam, players, finalHomeScore, homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, homeOverridePlayers, otCount, away2KDef
     );
     const awayInitial = StatGenerator.generateStatsForTeam(
-      awayTeam, players, finalAwayScore, !homeWinsFinal, actualMargin, {}, 2026, awayOverridePlayers, otCount
+      awayTeam, players, finalAwayScore, !homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, awayOverridePlayers, otCount, home2KDef
     );
 
     const homeMisses = homeInitial.reduce(
@@ -193,22 +203,26 @@ export class GameSimulator {
       homeTeam,
       availablePlayers,
       awayMisses         * 0.69,
-      awayTov            * 0.58,
-      awayInteriorMisses * 0.27,
+      awayTov            * 0.60,
+      awayInteriorMisses * 0.33,
       awayFTA,
       2026,
-      otCount
+      otCount,
+      home2KDef,  // home team's defensive ratings (sizes their steal/block pools)
+      away2KDef   // away team's pass perception (shrinks home's assist pool)
     );
     const awayStats = StatGenerator.generateCoordinatedStats(
       awayInitial,
       awayTeam,
       availablePlayers,
       homeMisses         * 0.69,
-      homeTov            * 0.58,
-      homeInteriorMisses * 0.27,
+      homeTov            * 0.60,
+      homeInteriorMisses * 0.33,
       homeFTA,
       2026,
-      otCount
+      otCount,
+      away2KDef,  // away team's defensive ratings
+      home2KDef   // home team's pass perception
     );
  // ✅ ADD HERE
     const { homePM, awayPM } = generateSyntheticPM(

@@ -1,4 +1,4 @@
-import { Mic, Users, Syringe, Dna, DollarSign, Eye, Utensils, Gavel, Globe, HandCoins, Ban, Star, Map, Zap, Plane, MessageSquare, Music, Trophy, Sparkles, AlertTriangle } from 'lucide-react';
+import { Mic, Users, Syringe, Dna, DollarSign, Eye, Utensils, Gavel, Globe, HandCoins, Ban, Star, Map, Zap, Plane, MessageSquare, Music, Trophy, AlertTriangle, UserX } from 'lucide-react';
 import { GameState } from '../../../types';
 
 export const getActionsConfig = (state: GameState, callbacks: {
@@ -99,6 +99,26 @@ export const getActionsConfig = (state: GameState, callbacks: {
         icon: Users,
         color: "indigo",
         onClick: () => callbacks.setSignFreeAgentModalOpen(true)
+      },
+      {
+        id: 'WAIVE_PLAYER',
+        title: "Waive Player",
+        description: "Force a team to immediately waive a specific player. The player becomes a free agent.",
+        cost: "-Player Approval",
+        benefit: "Roster Control",
+        icon: UserX,
+        color: "rose",
+        onClick: () => callbacks.openPersonSelector('waive')
+      },
+      {
+        id: 'FIRE_PERSONNEL',
+        title: "Fire Personnel",
+        description: "Terminate a GM, Coach, Owner, or Referee. They are immediately removed from their role.",
+        cost: "-Approval (Target Group)",
+        benefit: "+Authority",
+        icon: UserX,
+        color: "rose",
+        onClick: () => callbacks.openPersonSelector('fire')
       }
     ],
     season: [
