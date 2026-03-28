@@ -53,7 +53,8 @@ export const generateLazySimNews = (
   allSimResults: GameResult[],
   currentDate: string,
   reportedInjuries: Set<string>,
-  skipInjuries = false
+  skipInjuries = false,
+  prevTeams?: NBATeam[]
 ): NewsItem[] => {
   const news: NewsItem[] = [];
   const isPreseason = dateIsPreseason(currentDate);
@@ -85,13 +86,15 @@ export const generateLazySimNews = (
   }
 
   // ── 2. WIN / LOSE STREAKS — team logos stay as `image` (no Imagn needed) ──
+  const STREAK_THRESHOLDS = [5, 7, 10, 14];
   for (const team of teams) {
     if (!team.streak) continue;
     const { type, count } = team.streak;
-    if (count !== 5 && count !== 8 && count !== 12) continue;
+    if (!STREAK_THRESHOLDS.includes(count)) continue;
 
     if (type === 'W') {
-      const item = NewsGenerator.generate('win_streak', currentDate, {
+      const category = count >= 8 ? 'long_win_streak' : 'win_streak';
+      const item = NewsGenerator.generate(category, currentDate, {
         teamName: team.name,
         streakCount: count,
       }, team.logoUrl);
@@ -101,6 +104,20 @@ export const generateLazySimNews = (
         teamName: team.name,
         streakCount: count,
       }, team.logoUrl);
+      if (item) news.push(item);
+    }
+  }
+
+  // ── 2b. STREAK SNAPPED — detect win streaks (5+) that just ended ──
+  if (prevTeams) {
+    for (const prevTeam of prevTeams) {
+      if (!prevTeam.streak || prevTeam.streak.type !== 'W' || prevTeam.streak.count < 5) continue;
+      const currTeam = teams.find(t => t.id === prevTeam.id);
+      if (!currTeam?.streak || currTeam.streak.type !== 'L') continue;
+      const item = NewsGenerator.generate('streak_snapped', currentDate, {
+        teamName: currTeam.name,
+        streakCount: prevTeam.streak.count,
+      }, currTeam.logoUrl);
       if (item) news.push(item);
     }
   }
@@ -203,6 +220,24 @@ export const generateLazySimNews = (
           if (item) news.push(item);
         }
       }
+    }
+  }
+
+  // ── FALLBACK: If no news was generated (e.g. off-day batch), add a brief standings note ──
+  if (news.length === 0 && teams.length > 0) {
+    const east = teams.filter(t => (t as any).conference === 'East').sort((a: any, b: any) => (b.wins / (b.wins + b.losses || 1)) - (a.wins / (a.wins + a.losses || 1)));
+    const west = teams.filter(t => (t as any).conference === 'West').sort((a: any, b: any) => (b.wins / (b.wins + b.losses || 1)) - (a.wins / (a.wins + a.losses || 1)));
+    const eastLeader = east[0];
+    const westLeader = west[0];
+    if (eastLeader && westLeader) {
+      news.push({
+        id: `standings-recap-${Date.now()}`,
+        headline: `Standings Update: ${eastLeader.name} Lead East, ${westLeader.name} Lead West`,
+        content: `After the latest stretch of games, the ${eastLeader.name} (${eastLeader.wins}-${eastLeader.losses}) lead the Eastern Conference while the ${westLeader.name} (${westLeader.wins}-${westLeader.losses}) sit atop the West.`,
+        date: currentDate,
+        isNew: true,
+        newsType: 'weekly' as any,
+      });
     }
   }
 

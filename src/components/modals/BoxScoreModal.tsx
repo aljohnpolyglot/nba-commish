@@ -22,6 +22,20 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
   const isIntraSquad = game.homeTid === game.awayTid;
   const awayDisplayName = isIntraSquad ? `${awayTeam.name} B` : awayTeam.name;
   const homeDisplayName = isIntraSquad ? `${homeTeam.name} A` : homeTeam.name;
+
+  const renderTeamLogo = (team: NBATeam) => {
+    if (team.id < 0) {
+      const isEast = team.conference === 'East' || team.name.includes('Eastern');
+      return (
+        <div className={`w-16 h-16 md:w-24 md:h-24 rounded-full flex items-center justify-center text-3xl md:text-5xl font-black border-2 group-hover:scale-110 transition-transform ${
+          isEast ? 'bg-blue-900/50 border-blue-500/60 text-blue-300' : 'bg-amber-900/50 border-amber-500/60 text-amber-300'
+        }`}>
+          {isEast ? 'E' : 'W'}
+        </div>
+      );
+    }
+    return <img src={team.logoUrl} alt={team.name} className="w-12 h-12 md:w-24 md:h-24 object-contain drop-shadow-2xl group-hover:scale-110 transition-transform" referrerPolicy="no-referrer" />;
+  };
   const [activeTab, setActiveTab] = React.useState<'away' | 'home' | 'comparison'>('away');
   const [sortConfig, setSortConfig] = React.useState<{ key: SortKey; direction: 'asc' | 'desc' }>({
     key: 'pts',
@@ -352,7 +366,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                 onClick={() => onTeamClick && onTeamClick(awayTeam.id)}
                 className="group flex flex-col items-center gap-2 md:gap-4"
               >
-                <img src={awayTeam.logoUrl} alt={awayTeam.name} className="w-12 h-12 md:w-24 md:h-24 object-contain drop-shadow-2xl group-hover:scale-110 transition-transform" referrerPolicy="no-referrer" />
+                {renderTeamLogo(awayTeam)}
                 <div className="text-center">
                   <div className="font-black text-xs md:text-2xl text-white tracking-tight group-hover:text-indigo-400 transition-colors">{awayDisplayName}</div>
                 </div>
@@ -370,7 +384,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                 onClick={() => onTeamClick && onTeamClick(homeTeam.id)}
                 className="group flex flex-col items-center gap-2 md:gap-4"
               >
-                <img src={homeTeam.logoUrl} alt={homeDisplayName} className="w-12 h-12 md:w-24 md:h-24 object-contain drop-shadow-2xl group-hover:scale-110 transition-transform" referrerPolicy="no-referrer" />
+                {renderTeamLogo(homeTeam)}
                 <div className="text-center">
                   <div className="font-black text-xs md:text-2xl text-white tracking-tight group-hover:text-indigo-400 transition-colors">{homeDisplayName}</div>
                 </div>

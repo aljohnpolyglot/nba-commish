@@ -1,4 +1,4 @@
-import { NBAPlayer, NBATeam, NBAGMStat } from '../../types';
+import { NBAPlayer, NBATeam, NBAGMStat, StaffData } from '../../types';
 
 export interface AwardCandidate {
   player: NBAPlayer;
@@ -8,12 +8,41 @@ export interface AwardCandidate {
   stats: NBAGMStat;
 }
 
+/** Coach of the Year candidate */
+export interface CoachCandidate {
+  coachName: string;
+  team: NBATeam;
+  score: number;
+  odds: string;
+  wins: number;
+  losses: number;
+  improvement: number; // wins above previous season
+}
+
+/** One spot on an All-NBA / All-Defense / All-Rookie team */
+export interface AllNBASpot {
+  player: NBAPlayer;
+  team: NBATeam;
+  pos: string;   // G | F | C
+  score: number;
+  stats: NBAGMStat;
+}
+
+/** All team selections for one season */
+export interface AllNBATeams {
+  allNBA: [AllNBASpot[], AllNBASpot[], AllNBASpot[]];         // 1st, 2nd, 3rd
+  allDefense: [AllNBASpot[], AllNBASpot[]];                   // 1st, 2nd
+  allRookie: [AllNBASpot[], AllNBASpot[]];                    // 1st, 2nd
+}
+
 export interface AwardRaces {
   mvp: AwardCandidate[];
   dpoy: AwardCandidate[];
   roty: AwardCandidate[];
   smoy: AwardCandidate[];
   mip: AwardCandidate[];
+  coy: CoachCandidate[];
+  allNBATeams: AllNBATeams;
 }
 
 const getTrb = (stat: any) => stat.trb || stat.reb || (stat.orb || 0) + (stat.drb || 0);
@@ -26,7 +55,12 @@ const getBestStat = (stats: NBAGMStat[] | undefined, season: number) => {
 };
 
 export class AwardService {
-  static calculateAwardRaces(players: NBAPlayer[], teams: NBATeam[], currentSeason: number = 2026): AwardRaces {
+  static calculateAwardRaces(
+    players: NBAPlayer[],
+    teams: NBATeam[],
+    currentSeason: number = 2026,
+    staff?: StaffData | null
+  ): AwardRaces {
     // Determine the actual current season based on the data to avoid being "one year late"
     const maxSeason = players.reduce((max, p) => {
       const playerMax = p.stats?.reduce((m, s) => Math.max(m, s.season), 0) || 0;
@@ -38,6 +72,8 @@ export class AwardService {
     const rotyCandidates = this.calculateROTY(players, teams, maxSeason);
     const smoyCandidates = this.calculate6MOY(players, teams, maxSeason);
     const mipCandidates = this.calculateMIP(players, teams, maxSeason);
+    const coyCandidates = this.calculateCOY(teams, maxSeason, staff);
+    const allNBATeams = this.calculateAllNBATeams(players, teams, maxSeason);
 
     return {
       mvp: this.assignOdds(mvpCandidates),
@@ -45,6 +81,8 @@ export class AwardService {
       roty: this.assignOdds(rotyCandidates),
       smoy: this.assignOdds(smoyCandidates),
       mip: this.assignOdds(mipCandidates),
+      coy: this.assignCoachOdds(coyCandidates),
+      allNBATeams,
     };
   }
 
@@ -236,6 +274,159 @@ export class AwardService {
       .filter((c): c is AwardCandidate => c !== null)
       .sort((a, b) => b.score - a.score)
       .slice(0, 10);
+  }
+
+  // ─── Coach of the Year ───────────────────────────────────────────────────────
+
+  private static calculateCOY(teams: NBATeam[], season: number, staff?: StaffData | null): CoachCandidate[] {
+    return teams
+      .filter(t => t.id >= 0 && (t.wins + t.losses) >= 10)
+      .map(t => {
+        const wins = t.wins;
+        const losses = t.losses;
+        const winPct = wins / (wins + losses || 1);
+
+        // Improvement vs previous season
+        const prevSeason = t.seasons?.find(s => s.season === season - 1);
+        const prevWins = prevSeason ? prevSeason.won : wins; // default to current if no history
+        const improvement = wins - prevWins;
+
+        // Score: win% drives base, improvement is the multiplier
+        // A bad-record team with big improvement beats a coasting good-record team
+        const score = winPct * 60 + Math.max(0, improvement) * 1.5 + Math.min(0, improvement) * 0.5;
+
+        // Find coach name from staff data
+        const coachEntry = staff?.coaches?.find(c => c.team === t.name || c.team === t.abbrev);
+        const coachName = coachEntry?.name ?? `${t.name} Head Coach`;
+
+        return { coachName, team: t, score, odds: '', wins, losses, improvement };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+  }
+
+  // ─── All-NBA / All-Defense / All-Rookie Teams ────────────────────────────────
+
+  /** Assign players to All-NBA-style teams using positional slots (2G, 2F, 1C). */
+  private static calculateAllNBATeams(players: NBAPlayer[], teams: NBATeam[], season: number): AllNBATeams {
+    const posGroup = (pos?: string): 'G' | 'F' | 'C' => {
+      if (!pos) return 'F';
+      const p = pos.toUpperCase();
+      if (p.startsWith('C')) return 'C';
+      if (p.includes('G')) return 'G';
+      return 'F';
+    };
+
+    // Build scored pool (All-NBA: basically MVP-style scoring)
+    const scoredPool = players
+      .map(p => {
+        const stat = getBestStat(p.stats, season);
+        const team = teams.find(t => t.id === p.tid);
+        if (!stat || !team || stat.gp < 10) return null;
+        const gp = stat.gp;
+        const ppg = stat.pts / gp;
+        const rpg = getTrb(stat) / gp;
+        const apg = stat.ast / gp;
+        const winPct = team.wins / (team.wins + team.losses || 1);
+        const score = (ppg * 1.2 + rpg * 0.5 + apg * 0.6) * (0.7 + winPct * 0.6);
+        const pg = posGroup(p.pos);
+        return { player: p, team, score, stats: stat, pos: pg };
+      })
+      .filter((c): c is NonNullable<typeof c> => c !== null)
+      .sort((a, b) => b.score - a.score);
+
+    // Defense pool (DPOY-style scoring)
+    const defPool = players
+      .map(p => {
+        const stat = getBestStat(p.stats, season);
+        const team = teams.find(t => t.id === p.tid);
+        if (!stat || !team || stat.gp < 10) return null;
+        const gp = stat.gp;
+        const spg = stat.stl / gp;
+        const bpg = stat.blk / gp;
+        const rpg = getTrb(stat) / gp;
+        const diq = (p.ratings?.[p.ratings.length - 1] as any)?.diq ?? 50;
+        const defMult = Math.max(0.4, diq / 70);
+        const score = (spg * 3.5 + bpg * 3.0 + rpg * 0.15) * defMult;
+        const pg = posGroup(p.pos);
+        return { player: p, team, score, stats: stat, pos: pg };
+      })
+      .filter((c): c is NonNullable<typeof c> => c !== null)
+      .sort((a, b) => b.score - a.score);
+
+    // Rookie pool
+    const rookiePool = players
+      .map(p => {
+        const stat = getBestStat(p.stats, season);
+        const team = teams.find(t => t.id === p.tid);
+        if (!stat || !team || !p.draft || p.draft.year !== season - 1 || stat.gp < 5) return null;
+        const gp = stat.gp;
+        const score = stat.pts / gp * 1.0 + getTrb(stat) / gp * 0.5 + stat.ast / gp * 0.5;
+        const pg = posGroup(p.pos);
+        return { player: p, team, score, stats: stat, pos: pg };
+      })
+      .filter((c): c is NonNullable<typeof c> => c !== null)
+      .sort((a, b) => b.score - a.score);
+
+    const allNBAUsed = new Set<string>();
+    const defUsed = new Set<string>();
+    const rookieUsed = new Set<string>();
+
+    return {
+      allNBA: [
+        this.pickTeam(scoredPool, [2, 2, 1], allNBAUsed),
+        this.pickTeam(scoredPool, [2, 2, 1], allNBAUsed),
+        this.pickTeam(scoredPool, [2, 2, 1], allNBAUsed),
+      ],
+      allDefense: [
+        this.pickTeam(defPool, [2, 2, 1], defUsed),
+        this.pickTeam(defPool, [2, 2, 1], defUsed),
+      ],
+      allRookie: [
+        this.pickTeam(rookiePool, [2, 2, 1], rookieUsed),
+        this.pickTeam(rookiePool, [2, 2, 1], rookieUsed),
+      ],
+    };
+  }
+
+  /**
+   * Greedy pick from pool respecting positional slots [G, F, C counts].
+   * `globalUsed` is shared across multiple calls so the same player never
+   * appears on two different All-NBA teams.
+   */
+  private static pickTeam(pool: AllNBASpot[], slots: [number, number, number], globalUsed: Set<string>): AllNBASpot[] {
+    const [gSlots, fSlots, cSlots] = slots;
+    const needed: Record<string, number> = { G: gSlots, F: fSlots, C: cSlots };
+    const filled: Record<string, number> = { G: 0, F: 0, C: 0 };
+    const team: AllNBASpot[] = [];
+
+    for (const spot of pool) {
+      if (globalUsed.has(spot.player.internalId)) continue;
+      const pos = spot.pos;
+      if (filled[pos] < needed[pos]) {
+        team.push(spot);
+        filled[pos]++;
+        globalUsed.add(spot.player.internalId);
+        if (team.length === gSlots + fSlots + cSlots) break;
+      }
+    }
+    return team;
+  }
+
+  private static assignCoachOdds(candidates: CoachCandidate[]): CoachCandidate[] {
+    if (candidates.length === 0) return [];
+    const maxScore = candidates[0].score;
+    if (maxScore <= 0 || isNaN(maxScore)) return candidates;
+    return candidates.map((c, i) => {
+      let odds = '';
+      if (i === 0) {
+        odds = `-${Math.round(110 + (c.score / maxScore) * 40)}`;
+      } else {
+        const gap = maxScore / (c.score || 1);
+        odds = `+${Math.round(100 + (gap - 1) * 2000)}`;
+      }
+      return { ...c, odds };
+    });
   }
 
   private static assignOdds(candidates: AwardCandidate[]): AwardCandidate[] {

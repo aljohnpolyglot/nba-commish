@@ -1,21 +1,79 @@
 import React, { useState, useMemo } from 'react';
 import { useGame } from '../../store/GameContext';
-import { X, Search, User, CheckCircle2, ArrowLeftRight, Trash2, Plus, DollarSign, Calendar } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { NBAPlayer, NBATeam, DraftPick } from '../../types';
-import { convertTo2KRating } from '../../utils/helpers';
+import { X, ChevronUp, ChevronDown, MoreVertical } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { NBAPlayer, DraftPick } from '../../types';
+import { TradeSummaryModal } from './TradeSummaryModal';
+import { TeamDropdown } from '../shared/TeamDropdown';
+import { PlayerPortrait } from '../shared/PlayerPortrait';
 
 interface TradeMachineModalProps {
   onClose: () => void;
-  onConfirm: (payload: { 
-    teamAId: number, 
-    teamBId: number, 
-    teamAPlayers: string[], 
-    teamBPlayers: string[], 
-    teamAPicks: number[], 
-    teamBPicks: number[] 
-  }) => void;
+  onConfirm: (payload: { teamAId: number, teamBId: number, teamAPlayers: string[], teamBPlayers: string[], teamAPicks: number[], teamBPicks: number[] }) => void;
 }
+
+// HELPER: The "Eyebrow" Pill for outgoing players
+const OutgoingPill = ({ player, onRemove }: { player: NBAPlayer, onRemove: () => void }) => (
+  <div className="flex items-center gap-2 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-full pl-1 pr-2 py-1 transition-colors shadow-sm">
+    <img src={player.imgURL} alt={player.name} className="w-6 h-6 rounded-full object-cover bg-slate-800" referrerPolicy="no-referrer" />
+    <span className="text-xs font-bold text-white whitespace-nowrap">
+      {player.name.charAt(0)}. {player.name.split(' ').slice(1).join(' ')}
+    </span>
+    <button onClick={onRemove} className="w-4 h-4 rounded-full bg-slate-500 hover:bg-rose-500 flex items-center justify-center text-white transition-colors">
+      <X size={10} />
+    </button>
+  </div>
+);
+
+// HELPER: PlayerRow component
+const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabled }: {
+  player: NBAPlayer & { isIncoming?: boolean };
+  isSelected: boolean;
+  onToggle: () => void;
+  formatContract: (amount: number) => string;
+  teams: NBATeam[];
+  disabled: boolean;
+}) => {
+  const team = teams.find(t => t.id === player.tid);
+  
+  return (
+    <div
+      onClick={() => !disabled && onToggle()}
+      className={`group relative flex items-center p-3 border-b border-slate-700/30 transition-all duration-200
+                  ${disabled ? 'opacity-40 cursor-not-allowed grayscale-[0.5]' : 'cursor-pointer'}
+                  ${player.isIncoming ? 'bg-indigo-600/10 border-l-4 border-l-indigo-500' : 'hover:bg-slate-800/50'}
+                  ${isSelected && !player.isIncoming ? 'bg-blue-600/10 border-l-4 border-l-blue-500' : ''}`}
+    >
+      <PlayerPortrait
+        imgUrl={player.imgURL}
+        teamLogoUrl={team?.logoUrl}
+        overallRating={player.overallRating}
+        isIncoming={player.isIncoming}
+        size={48}
+      />
+
+      {/* Player Info */}
+      <div className="flex-1 ml-4 min-w-0">
+          <div className="text-sm font-black text-white truncate group-hover:text-blue-400 transition-colors">{player.name}</div>
+          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{player.pos} • {player.contract?.exp} YRS</div>
+          <div className="flex gap-3 mt-1 text-[9px] text-slate-500 font-mono">
+              <span><strong className="text-slate-300">22.4</strong> PER</span>
+              <span><strong className="text-slate-300">19.1</strong> PTS</span>
+          </div>
+      </div>
+
+      {/* Contract & Logo */}
+      <div className="flex items-center gap-4">
+          <div className="text-right">
+              <div className="text-sm font-black text-white">{formatContract(player.contract?.amount || 0)}</div>
+              <div className="text-[10px] font-bold text-slate-500">{player.contract?.exp} YRS LEFT</div>
+          </div>
+          <MoreVertical size={16} className="text-slate-600 group-hover:text-slate-400" />
+      </div>
+    </div>
+  );
+};
+
 
 export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({ onClose, onConfirm }) => {
   const { state } = useGame();
@@ -26,68 +84,88 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({ onClose, o
   const [teamBPlayers, setTeamBPlayers] = useState<NBAPlayer[]>([]);
   const [teamAPicks, setTeamAPicks] = useState<DraftPick[]>([]);
   const [teamBPicks, setTeamBPicks] = useState<DraftPick[]>([]);
-  const [circumventCap, setCircumventCap] = useState(false);
+  
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [activeTabA, setActiveTabA] = useState<'roster' | 'picks'>('roster');
+  const [activeTabB, setActiveTabB] = useState<'roster' | 'picks'>('roster');
+  const [openDropdown, setOpenDropdown] = useState<'A' | 'B' | null>(null);
 
-  const formatContract = (amount: number) => {
-    return `$${(amount / 1000).toFixed(1)}M`;
-  };
+  const formatContract = (amount: number) => `$${(amount / 1000).toFixed(1)}M`;
+
+  // Calculate team standings (wins/losses for sorting)
+  const teamsWithRecords = useMemo(() => {
+    const nonRegularGids = new Set(
+      state.schedule
+        .filter(g => g.isPreseason || g.isPlayoff || g.isPlayIn)
+        .map(g => g.gid)
+    );
+
+    const records: Record<number, { wins: number; losses: number }> = {};
+    state.teams.forEach(t => { records[t.id] = { wins: 0, losses: 0 }; });
+
+    state.boxScores
+      .filter(g => !g.isAllStar && !g.isRisingStars && !g.isCelebrityGame && !nonRegularGids.has(g.gameId))
+      .forEach(g => {
+        const homeWon = g.homeScore > g.awayScore;
+        if (records[g.homeTeamId]) homeWon ? records[g.homeTeamId].wins++ : records[g.homeTeamId].losses++;
+        if (records[g.awayTeamId]) !homeWon ? records[g.awayTeamId].wins++ : records[g.awayTeamId].losses++;
+      });
+
+    return state.teams
+      .map(t => ({ ...t, wins: records[t.id]?.wins || 0, losses: records[t.id]?.losses || 0 }))
+      .sort((a, b) => b.wins - a.wins);
+  }, [state.teams, state.boxScores, state.schedule]);
 
   const teamA = state.teams.find(t => t.id === teamAId);
   const teamB = state.teams.find(t => t.id === teamBId);
 
+  // Memos for rosters and picks
   const teamARoster = useMemo(() => state.players
-    .filter(p => p.tid === teamAId && !['WNBA', 'Euroleague', 'PBA'].includes(p.status || ''))
+    .filter(p => p.tid === teamAId && !['WNBA', 'Euroleague', 'PBA', 'B-League'].includes(p.status || ''))
     .sort((a, b) => (b.contract?.amount || 0) - (a.contract?.amount || 0)),
   [state.players, teamAId]);
+
   const teamBRoster = useMemo(() => state.players
-    .filter(p => p.tid === teamBId && !['WNBA', 'Euroleague', 'PBA'].includes(p.status || ''))
+    .filter(p => p.tid === teamBId && !['WNBA', 'Euroleague', 'PBA', 'B-League'].includes(p.status || ''))
     .sort((a, b) => (b.contract?.amount || 0) - (a.contract?.amount || 0)),
   [state.players, teamBId]);
-  
-  const sortedTeams = useMemo(() => {
-    return [...(state?.teams || [])].sort((a, b) =>
-      (a.name || '').localeCompare(b.name || '')
-    );
-  }, [state.teams]);
 
   const teamAPicksAvailable = useMemo(() => state.draftPicks.filter(p => p.tid === teamAId), [state.draftPicks, teamAId]);
   const teamBPicksAvailable = useMemo(() => state.draftPicks.filter(p => p.tid === teamBId), [state.draftPicks, teamBId]);
 
+  const displayTeamARoster = useMemo(() => {
+    const incoming = teamBPlayers.map(p => ({ ...p, isIncoming: true }));
+    const native = teamARoster.filter(p => !teamAPlayers.some(out => out.internalId === p.internalId));
+    return [...incoming, ...native];
+  }, [teamBPlayers, teamARoster, teamAPlayers]);
+
+  const displayTeamBRoster = useMemo(() => {
+    const incoming = teamAPlayers.map(p => ({ ...p, isIncoming: true }));
+    const native = teamBRoster.filter(p => !teamBPlayers.some(out => out.internalId === p.internalId));
+    return [...incoming, ...native];
+  }, [teamAPlayers, teamBRoster, teamBPlayers]);
+
   const teamASalary = useMemo(() => teamAPlayers.reduce((sum, p) => sum + (p.contract?.amount || 0), 0), [teamAPlayers]);
   const teamBSalary = useMemo(() => teamBPlayers.reduce((sum, p) => sum + (p.contract?.amount || 0), 0), [teamBPlayers]);
 
-  const salaryMismatch = useMemo(() => {
-    if (circumventCap) return null;
+  const salaryMismatchInfo = useMemo(() => {
     if (teamAPlayers.length === 0 && teamBPlayers.length === 0) return null;
-    
-    // Simple rule: Salaries must be within 25% of each other if either team is over the cap
-    // For this simulation, we'll just enforce a 25% variance rule for all executive trades to keep it "realistic"
-    const maxSalary = Math.max(teamASalary, teamBSalary);
-    const minSalary = Math.min(teamASalary, teamBSalary);
-    
-    if (maxSalary > 0 && minSalary / maxSalary < 0.75) {
-      const diff = Math.round(maxSalary * 0.75 - minSalary);
-      if (teamASalary < teamBSalary) {
-          return {
-              message: `The ${teamA?.name} must include approximately ${formatContract(diff)} more in salary to match.`,
-              team: 'A'
-          };
-      } else {
-          return {
-              message: `The ${teamB?.name} must include approximately ${formatContract(diff)} more in salary to match.`,
-              team: 'B'
-          };
-      }
-    }
+    const maxA = (teamAPlayers.length > 0 ? teamASalary : 0) * 1.25 + 100000;
+    const maxB = (teamBPlayers.length > 0 ? teamBSalary : 0) * 1.25 + 100000;
+    if (teamBSalary > maxA && teamAPlayers.length > 0) return { message: `${teamA?.abbrev || 'Team A'} receiving too much salary.`, team: 'A' as const };
+    if (teamASalary > maxB && teamBPlayers.length > 0) return { message: `${teamB?.abbrev || 'Team B'} receiving too much salary.`, team: 'B' as const };
     return null;
   }, [teamASalary, teamBSalary, teamA, teamB, teamAPlayers, teamBPlayers]);
 
   const handleConfirm = () => {
-    if (salaryMismatch) return;
+    if (teamAId !== null && teamBId !== null) setShowSummaryModal(true);
+  };
+
+  const handleExecuteTrade = (force: boolean) => {
     if (teamAId !== null && teamBId !== null) {
+      setShowSummaryModal(false);
       onConfirm({
-        teamAId,
-        teamBId,
+        teamAId, teamBId,
         teamAPlayers: teamAPlayers.map(p => p.internalId),
         teamBPlayers: teamBPlayers.map(p => p.internalId),
         teamAPicks: teamAPicks.map(p => p.dpid),
@@ -96,286 +174,200 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({ onClose, o
     }
   };
 
+  const canClickAssets = teamAId !== null && teamBId !== null;
+
   return (
     <AnimatePresence>
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
-      >
-        <motion.div 
-          initial={{ scale: 0.95, y: 20 }}
-          animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.95, y: 20 }}
-          className="bg-slate-900 border border-slate-800 w-[95vw] max-w-6xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col h-[90vh]"
-        >
-          <div className="p-4 md:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
-            <div className="flex items-center gap-3 md:gap-4">
-                <div className="p-2 md:p-3 bg-indigo-500/10 rounded-xl md:rounded-2xl text-indigo-400">
-                    <ArrowLeftRight size={20} className="md:w-6 md:h-6" />
-                </div>
-                <div>
-                    <h3 className="text-lg md:text-2xl font-black uppercase tracking-tighter text-white">Executive Trade Machine</h3>
-                    <p className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5 md:mt-1">Bypass restrictions and force the deal</p>
-                </div>
-            </div>
-            <button onClick={onClose} className="p-2 md:p-3 hover:bg-slate-800 rounded-xl md:rounded-2xl text-slate-400 hover:text-white transition-all">
-              <X size={20} className="md:w-6 md:h-6" />
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center p-4 font-sans backdrop-blur-md">
+        
+        {/* ACTION BAR */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-4 z-50 bg-[#161616] p-2 rounded-2xl border border-slate-700 shadow-2xl">
+            <button onClick={handleConfirm} disabled={!canClickAssets || (teamAPlayers.length === 0 && teamBPlayers.length === 0 && teamAPicks.length === 0 && teamBPicks.length === 0)} className="px-8 py-3 rounded-xl font-black text-xs uppercase bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-600/20">
+                Validate Deal
             </button>
-          </div>
+            <button onClick={onClose} className="px-6 py-3 rounded-xl font-black text-xs uppercase bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all">Close</button>
+        </div>
 
-          <div className="flex-1 overflow-hidden flex flex-col lg:flex-row custom-scrollbar overflow-y-auto lg:overflow-hidden">
-            {/* Team A Column */}
-            <div className="flex-1 border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col min-h-[300px] lg:min-h-0 lg:overflow-hidden">
-                <div className="p-4 md:p-6 border-b border-slate-800 bg-slate-900/30">
-                    <select 
-                        value={teamAId ?? ''} 
-                        onChange={(e) => {
-                            const id = parseInt(e.target.value);
-                            setTeamAId(id);
-                            setTeamAPlayers([]);
-                            setTeamAPicks([]);
-                        }}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 text-xs md:text-sm font-bold text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                    >
-                        <option value="" disabled hidden>Select Team A</option>
-                        {sortedTeams.filter(t => t.id !== teamBId).map(t => (
-                            <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                    </select>
-                </div>
-                <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
-                    {teamA ? (
-                        <>
-                            <div className="space-y-4">
-                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <User size={12} /> Roster
-                                </h4>
-                                <div className="space-y-2">
-                                    {teamARoster.map(player => {
-                                        const isSelected = teamAPlayers.some(p => p.internalId === player.internalId);
-                                        return (
-                                            <button 
-                                                key={player.internalId}
-                                                onClick={() => {
-                                                    if (isSelected) setTeamAPlayers(teamAPlayers.filter(p => p.internalId !== player.internalId));
-                                                    else setTeamAPlayers([...teamAPlayers, player]);
-                                                }}
-                                                className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${isSelected ? 'bg-indigo-600/20 border-indigo-500/50' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'}`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <img src={player.imgURL} alt={player.name} className="w-8 h-8 rounded-lg object-cover bg-slate-800" referrerPolicy="no-referrer" />
-                                                    <div className="text-left">
-                                                        <div className="text-xs font-bold text-white">{player.name}</div>
-                                                        <div className="text-[10px] text-slate-500">{player.pos} • {convertTo2KRating(player.overallRating)} OVR</div>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="text-[10px] font-mono font-bold text-slate-400">{formatContract(player.contract?.amount || 0)}</div>
-                                                    <div className="text-[10px] text-slate-600">Exp: {player.contract?.exp}</div>
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                            <div className="space-y-4">
-                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <Calendar size={12} /> Draft Picks
-                                </h4>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {teamAPicksAvailable.map(pick => {
-                                        const isSelected = teamAPicks.some(p => p.dpid === pick.dpid);
-                                        const originalTeam = state.teams.find(t => t.id === pick.originalTid);
-                                        return (
-                                            <button 
-                                                key={pick.dpid}
-                                                onClick={() => {
-                                                    if (isSelected) setTeamAPicks(teamAPicks.filter(p => p.dpid !== pick.dpid));
-                                                    else setTeamAPicks([...teamAPicks, pick]);
-                                                }}
-                                                className={`flex flex-col p-2 rounded-xl border text-left transition-all ${isSelected ? 'bg-indigo-600/20 border-indigo-500/50' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'}`}
-                                            >
-                                                <div className="text-[10px] font-bold text-white">{pick.season} {pick.round === 1 ? '1st' : '2nd'} Rd</div>
-                                                <div className="text-[8px] text-slate-500 uppercase tracking-tighter">via {originalTeam?.abbrev}</div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="h-full flex flex-col items-center justify-center text-slate-700 gap-4 opacity-50">
-                            <ArrowLeftRight size={48} />
-                            <p className="text-xs font-bold uppercase tracking-widest">Select a team to view assets</p>
-                        </div>
-                    )}
-                </div>
+        {/* MAIN 2-COLUMN WRAPPER */}
+        <div className="w-full max-w-6xl h-[85vh] flex flex-col lg:flex-row gap-6">
+          
+          {/* ======================= TEAM 1 COLUMN ======================= */}
+          <div className="flex-1 flex flex-col bg-[#1e1e1e] border border-slate-700/50 rounded-2xl overflow-hidden relative shadow-2xl">
+            
+            <div className="p-5 border-b border-slate-700/50 bg-[#161616]">
+                <TeamDropdown 
+                    label="Team 1" 
+                    selectedTeamId={teamAId} 
+                    onSelect={(id) => { setTeamAId(id); setTeamAPlayers([]); setTeamAPicks([]); }} 
+                    teams={teamsWithRecords} 
+                    otherTeamId={teamBId}
+                    isOpen={openDropdown === 'A'}
+                    onToggle={() => setOpenDropdown(openDropdown === 'A' ? null : 'A')}
+                />
             </div>
 
-            {/* Middle Summary */}
-            <div className="w-full lg:w-64 bg-slate-950/50 border-y lg:border-y-0 lg:border-x border-slate-800 flex flex-col">
-                <div className="p-4 lg:p-6 border-b border-slate-800 text-center">
-                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Trade Summary</h4>
+            <div className="border-b border-slate-700/30 bg-[#161616]/50">
+                <div className="flex items-center justify-between px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    <span>Outgoing <strong className="text-white ml-2">-{formatContract(teamASalary)}</strong></span>
+                    <ChevronUp size={14} className="opacity-30" />
                 </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
-                    <div className="space-y-4">
-                        <div className="text-center">
-                            <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">To {teamB?.abbrev || 'Team B'}</div>
-                            <div className="space-y-1">
-                                {teamAPlayers.map(p => (
-                                    <div key={p.internalId} className="text-[10px] font-bold text-white truncate">{p.name}</div>
-                                ))}
-                                {teamAPicks.map(p => (
-                                    <div key={p.dpid} className="text-[10px] font-bold text-slate-400">{p.season} {p.round === 1 ? '1st' : '2nd'} ({state.teams.find(t => t.id === p.originalTid)?.abbrev})</div>
-                                ))}
-                            </div>
-                            <div className="mt-2 text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
-                                Total: {formatContract(teamASalary)}
-                            </div>
-                        </div>
-                        <div className="h-px bg-slate-800"></div>
-                        <div className="text-center">
-                            <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">To {teamA?.abbrev || 'Team A'}</div>
-                            <div className="space-y-1">
-                                {teamBPlayers.map(p => (
-                                    <div key={p.internalId} className="text-[10px] font-bold text-white truncate">{p.name}</div>
-                                ))}
-                                {teamBPicks.map(p => (
-                                    <div key={p.dpid} className="text-[10px] font-bold text-slate-400">{p.season} {p.round === 1 ? '1st' : '2nd'} ({state.teams.find(t => t.id === p.originalTid)?.abbrev})</div>
-                                ))}
-                            </div>
-                            <div className="mt-2 text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
-                                Total: {formatContract(teamBSalary)}
-                            </div>
-                        </div>
-                        
-                        <div className="pt-4 border-t border-slate-800 text-center">
-                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Salary Diff</div>
-                            <div className={`text-xs font-black ${salaryMismatch ? 'text-rose-400' : 'text-emerald-400'}`}>
-                                {formatContract(Math.abs(teamASalary - teamBSalary))}
-                            </div>
-                            {salaryMismatch && (
-                                <div className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl">
-                                    <p className="text-[10px] font-bold text-rose-400 leading-tight">
-                                        {salaryMismatch.message}
-                                    </p>
-                                </div>
-                            )}
-                        </div>
+                {teamAPlayers.length > 0 && (
+                    <div className="px-4 pb-4 flex flex-wrap gap-2">
+                        {teamAPlayers.map(p => (
+                            <OutgoingPill key={p.internalId} player={p} onRemove={() => setTeamAPlayers(teamAPlayers.filter(x => x.internalId !== p.internalId))} />
+                        ))}
                     </div>
-                </div>
-                <div className="p-4 lg:p-6 border-t border-slate-800">
-                    <button
-                        onClick={() => setCircumventCap(!circumventCap)}
-                        className={`w-full py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all mb-2 border ${
-                            circumventCap
-                            ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
-                            : 'bg-white/5 border-white/10 text-slate-600 hover:text-slate-400'
-                        }`}
-                    >
-                        {circumventCap ? '⚠️ Cap Bypassed' : 'Circumvent Cap'}
-                    </button>
-                    <button
-                        onClick={handleConfirm}
-                        disabled={!!salaryMismatch || !teamAId || !teamBId || (teamAPlayers.length === 0 && teamAPicks.length === 0 && teamBPlayers.length === 0 && teamBPicks.length === 0)}
-                        className="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50"
-                    >
-                        {salaryMismatch ? 'Invalid Salaries' : 'Execute Trade'}
-                    </button>
-                </div>
+                )}
             </div>
 
-            {/* Team B Column */}
-            <div className="flex-1 border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col min-h-[300px]">
-                <div className="p-6 border-b border-slate-800 bg-slate-900/30">
-                    <select 
-                        value={teamBId ?? ''} 
-                        onChange={(e) => {
-                            const id = parseInt(e.target.value);
-                            setTeamBId(id);
-                            setTeamBPlayers([]);
-                            setTeamBPicks([]);
-                        }}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-sm font-bold text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                    >
-                        <option value="" disabled hidden>Select Team B</option>
-                        {sortedTeams.filter(t => t.id !== teamAId).map(t => (
-                            <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                    </select>
-                </div>
-                <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
-                    {teamB ? (
-                        <>
-                            <div className="space-y-4">
-                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <User size={12} /> Roster
-                                </h4>
-                                <div className="space-y-2">
-                                    {teamBRoster.map(player => {
-                                        const isSelected = teamBPlayers.some(p => p.internalId === player.internalId);
-                                        return (
-                                            <button 
-                                                key={player.internalId}
-                                                onClick={() => {
-                                                    if (isSelected) setTeamBPlayers(teamBPlayers.filter(p => p.internalId !== player.internalId));
-                                                    else setTeamBPlayers([...teamBPlayers, player]);
-                                                }}
-                                                className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${isSelected ? 'bg-indigo-600/20 border-indigo-500/50' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'}`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <img src={player.imgURL} alt={player.name} className="w-8 h-8 rounded-lg object-cover bg-slate-800" referrerPolicy="no-referrer" />
-                                                    <div className="text-left">
-                                                        <div className="text-xs font-bold text-white">{player.name}</div>
-                                                        <div className="text-[10px] text-slate-500">{player.pos} • {convertTo2KRating(player.overallRating)} OVR</div>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="text-[10px] font-mono font-bold text-slate-400">{formatContract(player.contract?.amount || 0)}</div>
-                                                    <div className="text-[10px] text-slate-600">Exp: {player.contract?.exp}</div>
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                            <div className="space-y-4">
-                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <Calendar size={12} /> Draft Picks
-                                </h4>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {teamBPicksAvailable.map(pick => {
-                                        const isSelected = teamBPicks.some(p => p.dpid === pick.dpid);
-                                        const originalTeam = state.teams.find(t => t.id === pick.originalTid);
-                                        return (
-                                            <button 
-                                                key={pick.dpid}
-                                                onClick={() => {
-                                                    if (isSelected) setTeamBPicks(teamBPicks.filter(p => p.dpid !== pick.dpid));
-                                                    else setTeamBPicks([...teamBPicks, pick]);
-                                                }}
-                                                className={`flex flex-col p-2 rounded-xl border text-left transition-all ${isSelected ? 'bg-indigo-600/20 border-indigo-500/50' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'}`}
-                                            >
-                                                <div className="text-[10px] font-bold text-white">{pick.season} {pick.round === 1 ? '1st' : '2nd'} Rd</div>
-                                                <div className="text-[8px] text-slate-500 uppercase tracking-tighter">via {originalTeam?.abbrev}</div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="h-full flex flex-col items-center justify-center text-slate-700 gap-4 opacity-50">
-                            <ArrowLeftRight size={48} />
-                            <p className="text-xs font-bold uppercase tracking-widest">Select a team to view assets</p>
-                        </div>
-                    )}
-                </div>
+            <div className="border-b border-slate-700/30 bg-[#161616]/50 p-2 flex items-center justify-between text-[10px] font-black text-slate-500 uppercase tracking-widest px-4">
+                <span>Incoming <strong className="text-indigo-400 ml-2">+{formatContract(teamBSalary)}</strong></span>
+                <ChevronDown size={14} className="opacity-30" />
+            </div>
+
+            <div className="flex gap-6 px-5 pt-4 border-b border-slate-700/50 text-[11px] font-black text-slate-500 uppercase tracking-widest">
+                <button onClick={() => setActiveTabA('roster')} className={`pb-3 transition-all ${activeTabA === 'roster' ? 'border-b-2 border-white text-white' : 'hover:text-slate-300'}`}>Roster ({displayTeamARoster.length})</button>
+                <button onClick={() => setActiveTabA('picks')} className={`pb-3 transition-all ${activeTabA === 'picks' ? 'border-b-2 border-white text-white' : 'hover:text-slate-300'}`}>Picks ({teamAPicksAvailable.length})</button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#1a1a1a]">
+                {activeTabA === 'roster' ? (
+                    displayTeamARoster.map(player => (
+                        <PlayerRow 
+                            key={player.internalId} 
+                            player={player} 
+                            isSelected={teamAPlayers.some(x => x.internalId === player.internalId)} 
+                            onToggle={() => setTeamAPlayers([...teamAPlayers, player])}
+                            formatContract={formatContract}
+                            teams={state.teams}
+                            disabled={!canClickAssets || player.isIncoming}
+                        />
+                    ))
+                ) : (
+                    <div className="p-4 space-y-2">
+                        {teamAPicksAvailable.map(pick => {
+                            const isSelected = teamAPicks.some(p => p.dpid === pick.dpid);
+                            const origTeam = state.teams.find(t => t.id === pick.originalTid);
+                            return (
+                                <button 
+                                    key={pick.dpid}
+                                    disabled={!canClickAssets}
+                                    onClick={() => isSelected ? setTeamAPicks(teamAPicks.filter(p => p.dpid !== pick.dpid)) : setTeamAPicks([...teamAPicks, pick])}
+                                    className={`w-full flex items-center gap-4 p-3 rounded-xl border-2 transition-all ${isSelected ? 'bg-blue-600/10 border-blue-500/50' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'}`}
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center p-2 shadow-inner flex-shrink-0">
+                                        <img src={origTeam?.logoUrl} alt="" className="w-full h-full object-contain" />
+                                    </div>
+                                    <div className="flex-1 text-left min-w-0">
+                                        <div className="text-sm font-black text-white uppercase tracking-tight">{pick.season} {pick.round === 1 ? '1ST' : '2ND'} ROUND</div>
+                                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Via {origTeam?.name}</div>
+                                    </div>
+                                    {isSelected && <div className="w-3 h-3 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
           </div>
-        </motion.div>
+
+          {/* ======================= TEAM 2 COLUMN ======================= */}
+          <div className="flex-1 flex flex-col bg-[#1e1e1e] border border-slate-700/50 rounded-2xl overflow-hidden relative shadow-2xl">
+            
+            <div className="p-5 border-b border-slate-700/50 bg-[#161616]">
+                <TeamDropdown 
+                    label="Team 2" 
+                    selectedTeamId={teamBId} 
+                    onSelect={(id) => { setTeamBId(id); setTeamBPlayers([]); setTeamBPicks([]); }} 
+                    teams={teamsWithRecords} 
+                    otherTeamId={teamAId}
+                    isOpen={openDropdown === 'B'}
+                    onToggle={() => setOpenDropdown(openDropdown === 'B' ? null : 'B')}
+                />
+            </div>
+
+            <div className="border-b border-slate-700/30 bg-[#161616]/50">
+                <div className="flex items-center justify-between px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    <span>Outgoing <strong className="text-white ml-2">-{formatContract(teamBSalary)}</strong></span>
+                    <ChevronUp size={14} className="opacity-30" />
+                </div>
+                {teamBPlayers.length > 0 && (
+                    <div className="px-4 pb-4 flex flex-wrap gap-2">
+                        {teamBPlayers.map(p => (
+                            <OutgoingPill key={p.internalId} player={p} onRemove={() => setTeamBPlayers(teamBPlayers.filter(x => x.internalId !== p.internalId))} />
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div className="border-b border-slate-700/30 bg-[#161616]/50 p-2 flex items-center justify-between text-[10px] font-black text-slate-500 uppercase tracking-widest px-4">
+                <span>Incoming <strong className="text-indigo-400 ml-2">+{formatContract(teamASalary)}</strong></span>
+                <ChevronDown size={14} className="opacity-30" />
+            </div>
+
+            <div className="flex gap-6 px-5 pt-4 border-b border-slate-700/50 text-[11px] font-black text-slate-500 uppercase tracking-widest">
+                <button onClick={() => setActiveTabB('roster')} className={`pb-3 transition-all ${activeTabB === 'roster' ? 'border-b-2 border-white text-white' : 'hover:text-slate-300'}`}>Roster ({displayTeamBRoster.length})</button>
+                <button onClick={() => setActiveTabB('picks')} className={`pb-3 transition-all ${activeTabB === 'picks' ? 'border-b-2 border-white text-white' : 'hover:text-slate-300'}`}>Picks ({teamBPicksAvailable.length})</button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#1a1a1a]">
+                {activeTabB === 'roster' ? (
+                    displayTeamBRoster.map(player => (
+                        <PlayerRow 
+                            key={player.internalId} 
+                            player={player} 
+                            isSelected={teamBPlayers.some(x => x.internalId === player.internalId)} 
+                            onToggle={() => setTeamBPlayers([...teamBPlayers, player])}
+                            formatContract={formatContract}
+                            teams={state.teams}
+                            disabled={!canClickAssets || player.isIncoming}
+                        />
+                    ))
+                ) : (
+                    <div className="p-4 space-y-2">
+                        {teamBPicksAvailable.map(pick => {
+                            const isSelected = teamBPicks.some(p => p.dpid === pick.dpid);
+                            const origTeam = state.teams.find(t => t.id === pick.originalTid);
+                            return (
+                                <button 
+                                    key={pick.dpid}
+                                    disabled={!canClickAssets}
+                                    onClick={() => isSelected ? setTeamBPicks(teamBPicks.filter(p => p.dpid !== pick.dpid)) : setTeamBPicks([...teamBPicks, pick])}
+                                    className={`w-full flex items-center gap-4 p-3 rounded-xl border-2 transition-all ${isSelected ? 'bg-blue-600/10 border-blue-500/50' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'}`}
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center p-2 shadow-inner flex-shrink-0">
+                                        <img src={origTeam?.logoUrl} alt="" className="w-full h-full object-contain" />
+                                    </div>
+                                    <div className="flex-1 text-left min-w-0">
+                                        <div className="text-sm font-black text-white uppercase tracking-tight">{pick.season} {pick.round === 1 ? '1ST' : '2ND'} ROUND</div>
+                                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Via {origTeam?.name}</div>
+                                    </div>
+                                    {isSelected && <div className="w-3 h-3 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+          </div>
+        </div>
+
+        {teamA && teamB && showSummaryModal && (
+            <TradeSummaryModal
+                isOpen={showSummaryModal}
+                onClose={() => setShowSummaryModal(false)}
+                onConfirmTrade={() => handleExecuteTrade(false)}
+                onForceTrade={() => handleExecuteTrade(true)}
+                tradeDetails={{
+                    teamA, teamB,
+                    teamAPlayers, teamBPlayers,
+                    teamAPicks, teamBPicks,
+                    teamASentSalary: teamASalary,
+                    teamBSentSalary: teamBSalary,
+                }}
+                salaryMismatchInfo={salaryMismatchInfo}
+            />
+        )}
       </motion.div>
     </AnimatePresence>
   );

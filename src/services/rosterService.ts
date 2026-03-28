@@ -121,18 +121,34 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                         
                         // Create a map of existing players to avoid duplicates
                         const existingPlayerNames = new Set((data.players || []).map(p => {
-                            let name = p.name;
-                            if (!name && p.firstName && p.lastName) name = `${p.firstName} ${p.lastName}`;
+                            let name = p.name || `${p.firstName || ''} ${p.lastName || ''}`;
+                            if (name.toLowerCase().includes('booker')) {
+                                console.log(`🏀 DEBUG: NBA Roster has ${name} (tid: ${p.tid}) → will be in existingPlayerNames`);
+                            }
                             return name?.toLowerCase();
                         }));
+
+                        // Players that CAN have duplicates: same name but different tid/league
+                        const ALLOW_DUPLICATE_NAMES = new Set(['devin booker']);
 
                         // Merge extra retired players who aren't in the main roster
                         const mergedPlayersRaw = [...(data.players || [])];
                         let mergedCount = 0;
                         extraRetiredRaw.forEach((p: any) => {
-                            let name = p.name;
-                            if (!name && p.firstName && p.lastName) name = `${p.firstName} ${p.lastName}`;
-                            if (name && !existingPlayerNames.has(name.toLowerCase())) {
+                            let name = p.name || `${p.firstName || ''} ${p.lastName || ''}`;
+                            const nameLower = name?.toLowerCase();
+                            
+                            if (name.toLowerCase().includes('booker')) {
+                                const inExisting = existingPlayerNames.has(nameLower);
+                                const isAllowedDuplicate = ALLOW_DUPLICATE_NAMES.has(nameLower);
+                                console.log(`🏀 DEBUG: Extra Retired ${name} (tid: ${p.tid}) → inExisting: ${inExisting}, isAllowedDuplicate: ${isAllowedDuplicate}`);
+                            }
+                            
+                            // STEP 5: If it's Devin Booker, ALWAYS allow him through
+                            if (name && (!existingPlayerNames.has(nameLower) || ALLOW_DUPLICATE_NAMES.has(nameLower))) {
+                                if (name.toLowerCase().includes('booker')) {
+                                    console.log(`✅ DEBUG: MERGING ${name} (tid: ${p.tid}) into roster!`);
+                                }
                                 mergedPlayersRaw.push(p);
                                 mergedCount++;
                             }
@@ -163,6 +179,13 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                             let playerName = p.name;
                             if (!playerName && p.firstName && p.lastName) {
                                 playerName = `${p.firstName} ${p.lastName}`;
+                            }
+
+                            // STEP 3: Ensure the NBA Booker (tid < 100) stays as "Devin Booker"
+                            // Only rename to full name if his tid is in the Euroleague range (100-199)
+                            if (playerName === "Devin Booker" && p.tid >= 100 && p.tid < 200) {
+                                console.log(`🏀 DEBUG: Renaming main roster Devin Booker (tid: ${p.tid}) → "Devin Rydale Booker"`);
+                                playerName = "Devin Rydale Booker";
                             }
 
                             if (!playerName) {
@@ -199,7 +222,10 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                                 contract: p.contract || { amount: 0, exp: startYear - 1 },
                                 injury: p.injury || { type: 'Healthy', gamesRemaining: 0 },
                                 tid: isProspect ? -1 : (isRetired ? -3 : teamInfo.tid),
-                                internalId: crypto.randomUUID(),
+                                // STEP 4: Unique ID including the tid
+                                // NBA Booker ID: nba-DevinBooker-24
+                                // EU Booker ID: euro-DevinBooker-105
+                                internalId: `${p.tid < 100 ? 'nba' : 'euro'}-${playerName.replace(/\s+/g, '')}-${Math.abs(p.tid)}`,
                                 overallRating: calculatePlayerOverallForYear(p, startYear),
                                 status: isProspect ? 'Prospect' : (isRetired ? 'Retired' : (teamInfo.tid === -1 ? 'Free Agent' : 'Active')),
                                 diedYear: p.diedYear,

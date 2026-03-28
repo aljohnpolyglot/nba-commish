@@ -3,6 +3,8 @@ import { calculateOutcome } from '../../../services/logic/outcomeDecider';
 import { advanceDay } from '../../../services/llm/llm';
 import { generateFreeAgentSigningReactions } from '../../../services/llm/services/freeAgentService';
 import { calculateSocialEngagement } from '../../../utils/helpers';
+import { buildShamsSigningPost } from '../../../services/social/templates/charania';
+import { NewsGenerator } from '../../../services/news/NewsGenerator';
 
 export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const { playerId, teamId, playerName, teamName } = action.payload;
@@ -11,7 +13,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
     
     if (!player || !team) return { isProcessing: false };
 
-    if (player.status !== 'Active' && player.status !== 'Free Agent' && player.status !== 'Euroleague' && player.status !== 'PBA') {
+    if (player.status !== 'Active' && player.status !== 'Free Agent' && player.status !== 'Euroleague' && player.status !== 'PBA' && player.status !== 'B-League') {
         return await advanceDay(stateWithSim, action, [], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
     } else {
         const gmPlayer = player as any;
@@ -51,6 +53,31 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                 isNew: true
             };
         });
+
+        // Auto Charania post (fires even when LLM is off)
+        const shamsContent = buildShamsSigningPost(
+            player.name,
+            team.name,
+            team.abbrev,
+            player.overallRating ?? 60,
+            previousTeamName,
+            previousLeague
+        );
+        if (shamsContent) {
+            const shamsEngagement = calculateSocialEngagement('@ShamsCharania', shamsContent, player?.overallRating);
+            newSocial.unshift({
+                id: `shams-sign-${Date.now()}`,
+                author: 'Shams Charania',
+                handle: '@ShamsCharania',
+                content: shamsContent,
+                date: stateWithSim.date,
+                likes: shamsEngagement.likes,
+                retweets: shamsEngagement.retweets,
+                playerPortraitUrl: player.imgURL,
+                source: 'TwitterX',
+                isNew: true,
+            } as any);
+        }
 
         // Minimum contract in BBGM units (thousands) = $1,300,000
         const MIN_CONTRACT_AMOUNT = 1300;
@@ -99,6 +126,13 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                     : p
             );
         }
+
+        // Auto news item for the signing (fires regardless of LLM)
+        const signingNewsItem = NewsGenerator.generate('signing_confirmed', stateWithSim.date, {
+            playerName: player.name,
+            teamName: team.name,
+        }, team.logoUrl);
+        if (signingNewsItem) newNews.unshift(signingNewsItem);
 
         result.newEmails = [...newEmails, ...(result.newEmails || [])];
         result.newNews = [...newNews, ...(result.newNews || [])];
@@ -217,6 +251,18 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
     result.statChanges = result.statChanges || {};
     result.statChanges.playerApproval = (result.statChanges.playerApproval || 0) - 2;
 
+    // Always add a League News item for the waive (fires even when LLM is off)
+    const waiveNewsItem = {
+        id: `waive-news-${Date.now()}`,
+        headline: `${player.name} Waived`,
+        content: `The Commissioner has officially waived ${player.name} from ${teamName}. ${player.name} is now a free agent and eligible to sign with any team.`,
+        date: stateWithSim.date,
+        isNew: true,
+        image: team?.logoUrl,
+        newsType: 'daily' as const,
+    };
+    result.newNews = [waiveNewsItem, ...(result.newNews || [])];
+
     return result;
 };
 
@@ -249,6 +295,17 @@ export const handleFirePersonnel = async (stateWithSim: GameState, action: UserA
 
     result.statChanges = result.statChanges || {};
     result.statChanges.ownerApproval = (result.statChanges.ownerApproval || 0) - 3;
+
+    // Always add a League News item for the firing (fires even when LLM is off)
+    const fireNewsItem = {
+        id: `fire-news-${Date.now()}`,
+        headline: `${person.name} Fired`,
+        content: `The Commissioner has fired ${person.name} (${person.title}) from ${person.organization}. The basketball world reacts to the sudden front-office shakeup.`,
+        date: stateWithSim.date,
+        isNew: true,
+        newsType: 'daily' as const,
+    };
+    result.newNews = [fireNewsItem, ...(result.newNews || [])];
 
     return result;
 };

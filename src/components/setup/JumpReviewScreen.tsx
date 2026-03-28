@@ -31,7 +31,7 @@ const AUTO_RESOLVED_ITEMS: ReviewItem[] = [
   { date: '2026-02-08', label: '🎯 3-Point Contest Field',      how: 'Best shooters auto-selected',                      status: 'live' },
   { date: '2026-02-13', label: '✨ All-Star Weekend',           how: 'All events fully simulated',                       status: 'live' },
   { date: '2026-02-15', label: '🔄 Trade Deadline',             how: 'Passed with no trades — rosters unchanged',        status: 'live' },
-  { date: '2025-10-24', label: '📺 Broadcasting Deal',          how: 'Auto-applied: ESPN/ABC + NBC/Peacock + Amazon, LP $99/yr', status: 'live' },
+  { date: '2025-08-12', label: '📺 Broadcasting Deal',          how: 'Default ESPN/ABC + NBC/Peacock + Amazon applied; edit in Broadcasting before Oct 24', status: 'live' },
   { date: '2026-01-29', label: '🩺 All-Star Replacements',      how: 'Not yet available — auto-handled',                 status: 'placeholder' },
   { date: '2026-01-29', label: '🎯 Skills Challenge',           how: 'Not yet available — auto-simmed if enabled',       status: 'placeholder' },
   { date: '2026-01-29', label: '🌟 Shooting Stars',             how: 'Not yet available — auto-simmed if enabled',       status: 'placeholder' },
@@ -39,7 +39,7 @@ const AUTO_RESOLVED_ITEMS: ReviewItem[] = [
 
 const UPCOMING_ITEMS: UpcomingItem[] = [
   { date: '2025-08-13', label: '📅 Set Christmas & Global Games',  sublabel: 'Planning window open' },
-  { date: '2025-10-23', label: '📺 Broadcasting Deal Deadline',    sublabel: 'Finalize before Opening Night' },
+  { date: '2025-08-12', label: '📺 Broadcasting Deal',             sublabel: 'Default deal active — customize before Opening Night' },
   { date: '2025-10-24', label: '🎉 Opening Night',                 sublabel: 'Season tips off' },
   { date: '2025-11-28', label: '🏆 NBA Cup',                       sublabel: 'In-Season Tournament begins' },
   { date: '2025-12-17', label: '🗳️ All-Star Voting Opens',         sublabel: 'Fan voting starts' },

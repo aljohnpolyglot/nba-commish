@@ -28,6 +28,7 @@ export const LeagueOfficeView: React.FC = () => {
     dinner:     'INVITE_DINNER',
     movie:      'INVITE_DINNER',
     suspension: 'SUSPEND_PLAYER',
+    fire:       'FIRE_PERSONNEL',
   };
 
   // Stub kept for ActionModalsRenderer prop compatibility (not used in LeagueOffice flow)

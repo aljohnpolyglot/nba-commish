@@ -1,6 +1,7 @@
 import { GameState, UserAction, LeagueStats } from '../../../types';
 import { ViewershipService } from '../../../services/logic/ViewershipService';
 import { calculateDailyLeagueFunds } from '../../../services/logic/financialService';
+import { DEFAULT_MEDIA_RIGHTS } from '../../../utils/broadcastingUtils';
 
 export const calculateNewStats = (state: GameState, action: UserAction, result: any, allSimResults: any[], totalNetPay: number, dateString: string) => {
     const combinedStatChanges = {
@@ -16,7 +17,7 @@ export const calculateNewStats = (state: GameState, action: UserAction, result: 
     // Cap stat changes from LLM to prevent glitches
     const capStat = (val: number, max: number = 100) => Math.max(-max, Math.min(max, val));
     combinedStatChanges.leagueFunds = capStat(combinedStatChanges.leagueFunds, 500); // Max $500M change per day
-    combinedStatChanges.personalWealth = capStat(combinedStatChanges.personalWealth || 0, 50); // Max $50M change per day
+    combinedStatChanges.personalWealth = capStat(combinedStatChanges.personalWealth || 0, 8); // Max $8M change per day (LLM should only return -3 to +3)
 
     if (!action || action.type === 'ADVANCE_DAY') {
         // More varied fluctuations for each group
@@ -57,25 +58,30 @@ export const calculateNewStats = (state: GameState, action: UserAction, result: 
         legacy: Math.round(Math.max(0, Math.min(100, state.stats.legacy + capChange(combinedStatChanges.legacy || 0)))),
     };
 
-    // Auto-apply default media rights if opening night passes without a deal
+    // Fallback: auto-lock the default deal at Opening Night if the player
+    // never finalized one.  Initialization now seeds DEFAULT_MEDIA_RIGHTS so
+    // this branch only fires on very old save files that pre-date that change.
     const OPENING_NIGHT = '2025-10-24';
     if (!state.leagueStats.mediaRights && dateString >= OPENING_NIGHT) {
-        const defaultMediaRev = 6.9;  // ESPN/ABC + NBC/Peacock + Amazon (B)
-        const defaultLpRev    = 0.40; // League Pass at $99/yr (~4M subs)
-        const defaultTotalRev = parseFloat((defaultMediaRev + defaultLpRev).toFixed(2));
         state = {
             ...state,
             leagueStats: {
                 ...state.leagueStats,
-                mediaRights: {
-                    activeBroadcasters: ['espn', 'nbc', 'amazon'],
-                    lpPrice: 99,
-                    totalRev: defaultTotalRev,
-                    mediaRev: defaultMediaRev,
-                    lpRev: defaultLpRev,
-                    salaryCap: 154.6,
-                    isLocked: true,
-                },
+                mediaRights: { ...DEFAULT_MEDIA_RIGHTS, isLocked: true },
+            },
+        };
+    }
+    // Lock the deal automatically once Opening Night is reached
+    if (
+        state.leagueStats.mediaRights &&
+        !state.leagueStats.mediaRights.isLocked &&
+        dateString >= OPENING_NIGHT
+    ) {
+        state = {
+            ...state,
+            leagueStats: {
+                ...state.leagueStats,
+                mediaRights: { ...state.leagueStats.mediaRights, isLocked: true },
             },
         };
     }

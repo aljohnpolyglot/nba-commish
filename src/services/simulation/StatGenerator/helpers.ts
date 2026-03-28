@@ -2,8 +2,6 @@ import { NBAPlayer as Player } from '../../../types';
 import { PlayerGameStats } from '../types';
 import { getVariance } from '../utils';
 
-const CLUB_DEBUFF_RATINGS = new Set(['spd', 'jmp', 'tp', 'ft', 'oiq', 'diq', 'endu', 'pss']);
-const DEBUFF_AMOUNTS = { heavy: 20, moderate: 12, mild: 5 } as const;
 export let activeClubDebuffs: Map<string, 'heavy' | 'moderate' | 'mild'> = new Map();
 export function setClubDebuffs(debuffs: Map<string, 'heavy' | 'moderate' | 'mild'>) { activeClubDebuffs = debuffs; }
 export function clearClubDebuffs() { activeClubDebuffs = new Map(); }
@@ -19,15 +17,12 @@ export function getScaledRating(p: Player, key: string, season: number): number 
   if (key === 'hgt') return val as number;
   if (p.status === 'Euroleague') return (val as number) * 0.733;
   if (p.status === 'PBA')        return (val as number) * 0.62;
+  if (p.status === 'B-League')   return (val as number) * 0.68;
   return val as number;
 }
 
 export function R(p: Player, k: string, season: number): number {
-  const base = getScaledRating(p, k, season);
-  if (!CLUB_DEBUFF_RATINGS.has(k)) return base;
-  const severity = activeClubDebuffs.get(String(p.internalId));
-  if (!severity) return base;
-  return Math.max(0, base - DEBUFF_AMOUNTS[severity]);
+  return getScaledRating(p, k, season);
 }
 
 export function distributePie(

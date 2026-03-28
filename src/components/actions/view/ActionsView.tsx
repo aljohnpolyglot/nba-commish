@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { Users, Eye, Zap, Gavel } from 'lucide-react';
+import { Users, Eye, Gavel } from 'lucide-react';
 import { ActionCard } from '../ActionCard';
 import { Contact } from '../../../types';
 import { getActionsConfig } from './actionConfig';
@@ -15,7 +15,6 @@ const ActionsView: React.FC = () => {
   
   const categories = [
     { id: 'executive', name: 'Executive', icon: Gavel, color: 'indigo' },
-    { id: 'season', name: 'Seasonal', icon: Zap, color: 'amber' },
     { id: 'personal', name: 'Personal', icon: Users, color: 'emerald' },
     { id: 'covert', name: 'Covert', icon: Eye, color: 'rose' }
   ];

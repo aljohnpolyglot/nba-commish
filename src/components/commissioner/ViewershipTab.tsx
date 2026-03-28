@@ -7,14 +7,14 @@ import { VIEWERSHIP_MEANS } from '../../services/logic/ViewershipService';
 
 const ViewershipTab: React.FC = () => {
   const { state } = useGame();
-  const [timeRange, setTimeRange] = useState<7 | 30 | 90>(7);
+  const [timeRange, setTimeRange] = useState<7 | 30 | 90 | 'all'>(7);
 
   if (!state) return null;
 
   const history = state.leagueStats.viewershipHistory || [];
-  
+
   // Filter history based on time range
-  const filteredHistory = history.slice(-timeRange);
+  const filteredHistory = timeRange === 'all' ? history : history.slice(-timeRange);
 
   // Format data for chart
   const chartData = filteredHistory.map(point => ({
@@ -97,17 +97,17 @@ const ViewershipTab: React.FC = () => {
           <h3 className="text-lg font-bold text-white">Season Viewership Trend</h3>
           
           <div className="flex items-center gap-1 bg-slate-800/50 p-1 rounded-xl border border-slate-700">
-            {[7, 30, 90].map((range) => (
+            {([7, 30, 90, 'all'] as const).map((range) => (
               <button
                 key={range}
-                onClick={() => setTimeRange(range as any)}
+                onClick={() => setTimeRange(range)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  timeRange === range 
-                    ? 'bg-indigo-600 text-white shadow-lg' 
+                  timeRange === range
+                    ? 'bg-indigo-600 text-white shadow-lg'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'
                 }`}
               >
-                {range}D
+                {range === 'all' ? 'Season' : `${range}D`}
               </button>
             ))}
           </div>

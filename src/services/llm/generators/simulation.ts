@@ -121,8 +121,21 @@ const getModelForAction = (actionType?: string): string => {
 export async function advanceDay(currentState: GameState, action: UserAction | null, storySeeds: string[] = [], dailyResults: any[] = [], pendingHypnosis: any[] = [], recentDMs: any[] = []): Promise<any> {
   const settings = SettingsManager.getSettings();
   if (!settings.enableLLM) {
+    let outcomeText = "The day has passed with standard league activities.";
+    if (action?.type === 'SIMULATE_TO_DATE') {
+      outcomeText = "Simulation completed successfully.";
+    } else if (action?.payload?.outcomeText) {
+      outcomeText = action.payload.outcomeText;
+    } else if (dailyResults && dailyResults.length > 0) {
+      const gameCount = dailyResults.length;
+      const otGames = dailyResults.filter((g: any) => g.isOT).length;
+      const blowouts = dailyResults.filter((g: any) => Math.abs((g.homeScore || 0) - (g.awayScore || 0)) >= 20).length;
+      const otNote = otGames > 0 ? ` (${otGames} OT)` : '';
+      const blowoutNote = blowouts > 0 ? ` — ${blowouts} blowout${blowouts > 1 ? 's' : ''}` : '';
+      outcomeText = `${gameCount} game${gameCount > 1 ? 's' : ''} played today${otNote}${blowoutNote}.`;
+    }
     return {
-      outcomeText: action?.type === 'SIMULATE_TO_DATE' ? "Simulation completed successfully." : "The day has passed with standard league activities.",
+      outcomeText,
       statChanges: {
         publicApproval: 0,
         ownerApproval: 0,
@@ -149,8 +162,12 @@ export async function advanceDay(currentState: GameState, action: UserAction | n
   if (action && action.type === 'SET_CHRISTMAS_GAMES' && action.payload?.games) {
       leagueContext += "\n" + generateChristmasContext(currentState.players, currentState.teams, action.payload.games);
   } else if (currentState.christmasGames && currentState.christmasGames.length > 0) {
-      // Also include it if it was recently set and we are advancing
-      leagueContext += "\n" + generateChristmasContext(currentState.players, currentState.teams, currentState.christmasGames);
+      // Only include Christmas context if Christmas Day (Dec 25) is still upcoming
+      const now = new Date(currentState.date);
+      const isBeforeChristmas = now.getMonth() < 11 || (now.getMonth() === 11 && now.getDate() <= 25);
+      if (isBeforeChristmas) {
+          leagueContext += "\n" + generateChristmasContext(currentState.players, currentState.teams, currentState.christmasGames);
+      }
   }
   
   // Extract target names for history

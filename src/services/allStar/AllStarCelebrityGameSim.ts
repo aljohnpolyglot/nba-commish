@@ -2,6 +2,7 @@ import { GameState, GameResult } from '../../types';
 import { generateContentWithRetry } from '../llm/utils/api';
 import { fetchRatedCelebrities, RatedCelebrity } from '../../data/celebrities';
 import { simulateGames } from '../simulationService';
+import { SettingsManager } from '../SettingsManager';
 
 export const getCelebrityRosterNames = (state: GameState): string[] => {
   const roster = state.allStar?.celebrityRoster || state.leagueStats.celebrityRoster;
@@ -30,13 +31,28 @@ export class AllStarCelebrityGameSim {
       ratedMap.has(name.toLowerCase())
     );
     
+    const llmEnabled = SettingsManager.getSettings().enableLLM;
+
     if (allRated || state.leagueStats.celebrityRosterAutoSelected) {
-      // ALL picks are from rated pool
-      // Use GameSim!!
+      // ALL picks are from rated pool — use GameSim
       return this.simulateCelebrityWithGameSim(rosterNames, ratedMap, state);
+    } else if (!llmEnabled) {
+      // LLM off — fill unrated personas with rock-bottom attributes and use GameSim
+      const fallbackRatedMap = new Map(ratedMap);
+      for (const name of rosterNames) {
+        if (!fallbackRatedMap.has(name.toLowerCase())) {
+          fallbackRatedMap.set(name.toLowerCase(), {
+            name,
+            type: 'celebrity',
+            hgt: 20, stre: 20, spd: 20, jmp: 20, endu: 20,
+            ins: 20, dnk: 20, ft: 20, fg: 20, tp: 20,
+            diq: 20, oiq: 20, drb: 20, pss: 20, reb: 20,
+          } as RatedCelebrity);
+        }
+      }
+      return this.simulateCelebrityWithGameSim(rosterNames, fallbackRatedMap, state);
     } else {
-      // Some picks from 1000+ CSV
-      // Use LLM
+      // Some picks from 1000+ CSV — use LLM
       return this.simulateCelebrityWithLLM(rosterNames, state);
     }
   }

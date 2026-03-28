@@ -613,7 +613,7 @@ export const processTurn = async (
             const deduped = boxScoresWithDate.filter(b => !existingIds.has(b.gameId));
             return [...(state.boxScores || []), ...deduped];
         })(),
-        history: [...state.history, result.outcomeText],
+        history: [...state.history, { text: result.outcomeText || '', date: dateString, type: 'League Event' } as any],
         isProcessing: false,
         isWatchingGame: false,
       lastOutcome: result.outcomeText || result.narrative,

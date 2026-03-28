@@ -2,6 +2,9 @@ import { GameState, UserAction } from '../../../types';
 import { calculateOutcome } from '../../../services/logic/outcomeDecider';
 import { advanceDay } from '../../../services/llm/llm';
 import { executeExecutiveTrade } from '../../../services/tradeService';
+import { buildShamsTradePost } from '../../../services/social/templates/charania';
+import { calculateSocialEngagement } from '../../../utils/helpers';
+import { NewsGenerator } from '../../../services/news/NewsGenerator';
 
 export const handleExecutiveTrade = async (stateWithSim: GameState, action: UserAction, executiveTradeTransactionRef: { current: any }, simResults: any[], recentDMs: any[]) => {
     const tradeResult = executeExecutiveTrade(action.payload, stateWithSim.players, stateWithSim.teams, stateWithSim.draftPicks);
@@ -17,7 +20,7 @@ export const handleExecutiveTrade = async (stateWithSim: GameState, action: User
     const assetsA = [...playersA, ...picksA].join(', ') || 'None';
     const assetsB = [...playersB, ...picksB].join(', ') || 'None';
 
-    return await advanceDay(stateWithSim, {
+    const result = await advanceDay(stateWithSim, {
         type: 'EXECUTIVE_TRADE',
         payload: {
             teamAId: action.payload.teamAId,
@@ -27,6 +30,43 @@ export const handleExecutiveTrade = async (stateWithSim: GameState, action: User
             announcements: tradeResult.announcements
         }
     } as any, [], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
+
+    // Auto Charania trade post — injected directly into result.newSocialPosts
+    // so it fires even when LLM is off (advanceDay early-return ignores payload.announcements)
+    const shamsContent = buildShamsTradePost(
+        teamA?.name ?? teamA?.abbrev ?? 'Team A',
+        teamA?.abbrev ?? 'TMA',
+        teamB?.name ?? teamB?.abbrev ?? 'Team B',
+        teamB?.abbrev ?? 'TMB',
+        [...playersA, ...picksA],
+        [...playersB, ...picksB]
+    );
+    if (shamsContent) {
+        const shamsEngagement = calculateSocialEngagement('@ShamsCharania', shamsContent, 82);
+        const shamsPost = {
+            id: `shams-trade-${Date.now()}`,
+            author: 'Shams Charania',
+            handle: '@ShamsCharania',
+            content: shamsContent,
+            date: stateWithSim.date,
+            likes: shamsEngagement.likes,
+            retweets: shamsEngagement.retweets,
+            source: 'TwitterX',
+            isNew: true,
+        };
+        result.newSocialPosts = [shamsPost, ...(result.newSocialPosts || [])];
+    }
+
+    // Auto trade news item (fires regardless of LLM)
+    const tradeNewsItem = NewsGenerator.generate('trade_confirmed', stateWithSim.date, {
+        teamAName: teamA?.name ?? teamA?.abbrev ?? 'Team A',
+        teamBName: teamB?.name ?? teamB?.abbrev ?? 'Team B',
+        assetsToB: assetsA,
+        assetsToA: assetsB,
+    }, teamA?.logoUrl);
+    if (tradeNewsItem) result.newNews = [tradeNewsItem, ...(result.newNews || [])];
+
+    return result;
 };
 
 export const handleForceTrade = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {

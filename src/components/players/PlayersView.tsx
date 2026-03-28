@@ -23,7 +23,7 @@ export const PlayersView: React.FC = () => {
   };
 
   const getContactFromPlayer = (player: NBAPlayer): Contact => {
-    const isNBA = !['WNBA', 'Euroleague', 'PBA'].includes(player.status || '');
+    const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League'].includes(player.status || '');
     const playerTeam = isNBA ? state.teams.find(t => t.id === player.tid) : null;
     const nonNBATeam = !isNBA ? state.nonNBATeams.find(t => t.tid === player.tid && t.league === player.status) : null;
     

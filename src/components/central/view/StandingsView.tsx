@@ -159,7 +159,7 @@ export const StandingsView: React.FC = () => {
     } else {
       const divNames = [...new Set(teams.map(t => t.division))].filter(Boolean).sort() as string[];
       return divNames.map(div => ({
-        title: `${div} Division`,
+        title: div.toLowerCase().endsWith('division') ? div : `${div} Division`,
         teams: teams.filter(t => t.division === div),
       }));
     }

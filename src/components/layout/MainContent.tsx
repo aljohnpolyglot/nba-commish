@@ -12,6 +12,11 @@ import { PersonalView } from '../personal/PersonalView';
 import { ScheduleView } from '../schedule/view/ScheduleView';
 import { AwardRacesView } from '../view/AwardRacesView';
 import { PlayersView } from '../players/PlayersView';
+import { FreeAgentsView } from '../players/view/FreeAgentsView';
+import { TransactionsView } from '../central/view/TransactionsView';
+import { LeagueEvent } from '../central/view/LeagueEvent';
+import { TradeMachineView } from '../central/view/TradeMachineView';
+import { TradeProposalsView } from '../central/view/TradeProposalsView';
 import { TeamStatsView } from '../team-stats/TeamStatsView';
 import { AllStarView } from '../allstar/AllStarView';
 import { PlayoffView } from '../playoffs/PlayoffView';
@@ -21,17 +26,22 @@ import { StatisticalFeatsView } from '../central/view/StatisticalFeatsView';
 import { StandingsView } from '../central/view/StandingsView';
 import { InjuriesView } from '../central/view/InjuriesView';
 import { BroadcastingView } from '../operations/BroadcastingView';
+import { LeagueFinancesView } from '../central/view/LeagueFinancesView';
+import { TeamFinancesViewDetailed } from '../central/view/TeamFinancesViewDetailed';
 import { DraftScoutingView } from '../central/view/DraftScoutingView';
 import { DraftLotteryView } from '../draft/DraftLotteryView';
 import Dashboard from '../commissioner/Dashboard';
 import ViewershipTab from '../commissioner/ViewershipTab';
+import CommishStore from '../central/view/CommishStore';
+import SeasonalView from '../seasonal/SeasonalView';
 import { Tab } from '../../types';
 
 interface MainContentProps {
   currentView: Tab;
+  onViewChange: (view: Tab) => void;
 }
 
-export const MainContent: React.FC<MainContentProps> = ({ currentView }) => {
+export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewChange }) => {
   switch (currentView) {
     case 'Inbox':
       return <Inbox />;
@@ -69,6 +79,16 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView }) => {
       return <NBACentral />;
     case 'Players':
       return <PlayersView />;
+    case 'Transactions':
+      return <TransactionsView />;
+    case 'Events':
+      return <LeagueEvent />;
+    case 'Trade Machine':
+      return <TradeMachineView onViewChange={onViewChange} />;
+    case 'Trade Proposals':
+      return <TradeProposalsView />;
+    case 'Free Agents':
+      return <FreeAgentsView />;
     case 'Commissioner':
       return <CommissionerView />;
     case 'League Settings':
@@ -85,6 +105,8 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView }) => {
       );
     case 'Actions':
       return <ActionsView />;
+    case 'Seasonal':
+      return <SeasonalView />;
     case 'Personal':
       return <PersonalView />;
     case 'League Office':
@@ -141,10 +163,20 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView }) => {
           </div>
         </div>
       );
+    case 'League Finances':
+      return <LeagueFinancesView />;
+    case 'Team Finances':
+      return <TeamFinancesViewDetailed />;
     case 'Draft Scouting':
       return <DraftScoutingView />;
     case 'Draft Lottery':
       return <DraftLotteryView />;
+    case 'Commish Store':
+      return (
+        <div className="h-full overflow-y-auto">
+          <CommishStore />
+        </div>
+      );
     default:
       return null;
   }

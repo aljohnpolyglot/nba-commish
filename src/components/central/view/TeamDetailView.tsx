@@ -31,9 +31,10 @@ export const TeamDetailView: React.FC<TeamDetailViewProps> = ({
     return players
       .filter(p => 
         p.tid === team.id && 
-        p.status !== 'WNBA' && 
-        p.status !== 'Euroleague' && 
-        p.status !== 'PBA'
+        p.status !== 'WNBA' &&
+        p.status !== 'Euroleague' &&
+        p.status !== 'PBA' &&
+        p.status !== 'B-League'
       )
       .sort((a, b) => {
         const ratingA = convertTo2KRating(a.overallRating, a.ratings?.[a.ratings.length - 1]?.hgt ?? 50);

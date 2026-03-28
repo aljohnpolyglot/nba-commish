@@ -16,6 +16,7 @@ export class StarterService {
     if (key === 'hgt') return val as number;
     if (p.status === 'Euroleague') return (val as number) * 0.733;
     if (p.status === 'PBA')        return (val as number) * 0.62;
+    if (p.status === 'B-League')   return (val as number) * 0.68;
     return val as number;
   }
 

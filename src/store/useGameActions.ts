@@ -14,10 +14,11 @@ export const useGameActions = (setState: React.Dispatch<React.SetStateAction<Gam
   };
 
   const saveSocialThread = (postId: string, replies: any[]) => {
+    const ensureIds = replies.map((r, i) => r.id ? r : { ...r, id: `reply-${postId}-${i}-${Date.now()}` });
     setState(prev => ({
       ...prev,
-      socialFeed: prev.socialFeed.map(post => 
-        post.id === postId ? { ...post, replies } : post
+      socialFeed: prev.socialFeed.map(post =>
+        post.id === postId ? { ...post, replies: ensureIds } : post
       )
     }));
   };

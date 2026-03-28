@@ -113,6 +113,92 @@ function parseTableRows(table: Element | undefined): { label: string; value: str
 }
 
 // ─────────────────────────────────────────────────────────────────
+// BIO TEXT PARSERS
+// ─────────────────────────────────────────────────────────────────
+
+function htmlToPlainText(html: string): string {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return (div.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+/** Split text into sentences on ". Capital" boundaries */
+function splitSentences(text: string): string[] {
+  return text
+    .split(/(?<=[.!?])\s+(?=[A-Z])/)
+    .map(s => s.trim())
+    .filter(s => s.length > 5);
+}
+
+interface ParsedCoachBio {
+  intro: string[];
+  career: string[];
+  background: string[];
+}
+
+function parseCoachBio(bioHtml: string): ParsedCoachBio {
+  const text = htmlToPlainText(bioHtml);
+  const sentences = splitSentences(text);
+
+  const intro: string[] = [];
+  const career: string[] = [];
+  const background: string[] = [];
+
+  const careerTrigger = /^(Prior to (joining|that)|He also (became|served|was an? )|Before (joining|that))/i;
+  const backgroundTrigger = /\bwas born\b|attended (and played|college|the University)|\bplayed (at|for) the [A-Z]|\bdegree in\b|In \d{4},.*(Coach|he) (was named|became)/i;
+
+  let inCareer = false;
+  let inBackground = false;
+
+  for (const s of sentences) {
+    if (inBackground) {
+      background.push(s);
+    } else if (backgroundTrigger.test(s)) {
+      inBackground = true;
+      background.push(s);
+    } else if (careerTrigger.test(s)) {
+      inCareer = true;
+      career.push(s);
+    } else if (!inCareer) {
+      intro.push(s);
+    } else {
+      career.push(s);
+    }
+  }
+
+  return { intro, career, background };
+}
+
+/** Extract clean paragraphs from referee bio HTML */
+function parseRefParagraphs(bioHtml: string): string[] {
+  const div = document.createElement('div');
+  div.innerHTML = bioHtml;
+
+  // Prefer explicit <p> elements
+  const pEls = Array.from(div.querySelectorAll('p'));
+  if (pEls.length > 1) {
+    return pEls.map(p => p.textContent?.trim() || '').filter(Boolean);
+  }
+
+  // Fallback: group sentences into topic paragraphs
+  const text = (div.textContent || '').replace(/\s+/g, ' ').trim();
+  const sentences = splitSentences(text);
+  const paragraphs: string[] = [];
+  let current: string[] = [];
+
+  for (const s of sentences) {
+    current.push(s);
+    // Break on clear topic shifts
+    if (/^(A standout|He was also|has done charitable|went on to play|In April)/i.test(s)) {
+      paragraphs.push(current.join(' '));
+      current = [];
+    }
+  }
+  if (current.length) paragraphs.push(current.join(' '));
+  return paragraphs.filter(Boolean);
+}
+
+// ─────────────────────────────────────────────────────────────────
 // SKELETON
 // ─────────────────────────────────────────────────────────────────
 
@@ -289,15 +375,19 @@ export const PersonnelBioView: React.FC<PersonnelBioViewProps> = ({ person, onBa
               </div>
 
               {/* Bio */}
-              {data.bioHtml && (
-                <div>
-                  <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3">Biography</p>
-                  <div
-                    className="prose-sm prose-invert bg-slate-950/40 border border-slate-800 rounded-2xl p-6 text-slate-300 leading-relaxed text-sm"
-                    dangerouslySetInnerHTML={{ __html: data.bioHtml }}
-                  />
-                </div>
-              )}
+              {data.bioHtml && (() => {
+                const paras = parseRefParagraphs(data.bioHtml);
+                return (
+                  <div>
+                    <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3">Biography</p>
+                    <div className="bg-slate-950/40 border border-slate-800 rounded-2xl p-6 space-y-4">
+                      {paras.map((para, i) => (
+                        <p key={i} className="text-slate-300 text-sm leading-relaxed">{para}</p>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Fun facts grid */}
               {data.funFactRows.length > 0 && (
@@ -322,14 +412,15 @@ export const PersonnelBioView: React.FC<PersonnelBioViewProps> = ({ person, onBa
         {/* ── COACH BIO ──────────────────────────────────────── */}
         {!loading && !error && bioData?.kind === 'coach' && (() => {
           const { data } = bioData;
+          const coachImgSrc = data.imgSrc || person.playerPortraitUrl || '';
           return (
             <div className="p-6 space-y-8">
               {/* Hero */}
               <div className="flex flex-col md:flex-row gap-8">
-                {data.imgSrc && (
+                {coachImgSrc && (
                   <div className="flex-shrink-0">
                     <img
-                      src={data.imgSrc}
+                      src={coachImgSrc}
                       alt={person.name}
                       className="w-48 rounded-2xl border border-slate-700 shadow-xl object-cover"
                       referrerPolicy="no-referrer"
@@ -345,13 +436,51 @@ export const PersonnelBioView: React.FC<PersonnelBioViewProps> = ({ person, onBa
                   </div>
                 )}
 
-                {/* Bio */}
-                {data.bioHtml && (
-                  <div
-                    className="flex-1 min-w-0 prose-sm prose-invert text-slate-300 leading-relaxed text-sm"
-                    dangerouslySetInnerHTML={{ __html: data.bioHtml }}
-                  />
-                )}
+                {/* Intro + career timeline */}
+                {data.bioHtml && (() => {
+                  const { intro, career, background } = parseCoachBio(data.bioHtml);
+                  return (
+                    <div className="flex-1 min-w-0 space-y-6">
+                      {/* Intro */}
+                      {intro.length > 0 && (
+                        <p className="text-slate-200 text-sm leading-relaxed font-medium">
+                          {intro.join(' ')}
+                        </p>
+                      )}
+
+                      {/* Career Timeline */}
+                      {career.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3">
+                            Career Timeline
+                          </p>
+                          <ul className="space-y-2.5">
+                            {career.map((s, i) => (
+                              <li key={i} className="flex gap-3 items-start">
+                                <span className="mt-[7px] w-1.5 h-1.5 rounded-sm bg-indigo-500 flex-shrink-0" />
+                                <span className="text-slate-300 text-sm leading-relaxed">{s}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Background */}
+                      {background.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3">
+                            Background
+                          </p>
+                          <div className="bg-slate-950/40 border border-slate-800 rounded-2xl p-4 space-y-2">
+                            {background.map((s, i) => (
+                              <p key={i} className="text-slate-400 text-sm leading-relaxed">{s}</p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Coaching staff */}

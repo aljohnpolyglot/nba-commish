@@ -1,8 +1,10 @@
 import React from 'react';
 import { Personnel } from './LeagueOfficeSearcher';
-import { Eye, MessageSquare, HandCoins, Gavel, Utensils, Film, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ContactAvatar } from '../../common/ContactAvatar';
+import { PERSON_ACTION_DEFS, isPersonnelEligible, StaffType } from '../../../data/personActionDefs';
+
 // ─────────────────────────────────────────────────────────────────
 // TYPES
 // ─────────────────────────────────────────────────────────────────
@@ -23,85 +25,9 @@ interface PersonnelActionsModalProps {
   onActionSelect: (actionType: PersonnelActionType) => void;
 }
 
-// ─────────────────────────────────────────────────────────────────
-// ACTION DEFINITIONS — same structure as PlayerActionsModal
-// ─────────────────────────────────────────────────────────────────
-
-const ALL_ACTIONS: {
-  id: PersonnelActionType;
-  name: string;
-  Icon: React.FC<{ size: number }>;
-  color: string;
-  hover: string;
-  description: string;
-  /** which person types this action is available for */
-  availableFor: Personnel['type'][];
-}[] = [
-  {
-    id: 'view_bio',
-    name: 'View Bio',
-    Icon: Eye,
-    color: 'bg-blue-500',
-    hover: 'hover:bg-blue-600',
-    description: 'View detailed background and career history.',
-    availableFor: ['coach', 'referee'],
-  },
-  {
-    id: 'contact',
-    name: 'Direct Message',
-    Icon: MessageSquare,
-    color: 'bg-indigo-500',
-    hover: 'hover:bg-indigo-600',
-    description: 'Send a private message to this person.',
-    availableFor: ['gm', 'owner', 'coach', 'referee', 'league_office'],
-  },
-  {
-    id: 'bribe',
-    name: 'Bribe',
-    Icon: HandCoins,
-    color: 'bg-emerald-500',
-    hover: 'hover:bg-emerald-600',
-    description: 'Offer money for favorable decisions.',
-    availableFor: ['gm', 'owner', 'coach', 'referee', 'league_office'],
-  },
-  {
-    id: 'fine',
-    name: 'Fine',
-    Icon: Gavel,
-    color: 'bg-rose-500',
-    hover: 'hover:bg-rose-600',
-    description: 'Issue a formal financial penalty.',
-    // owners cannot be fined
-    availableFor: ['gm', 'coach', 'referee', 'league_office'],
-  },
-  {
-    id: 'dinner',
-    name: 'Invite to Dinner',
-    Icon: Utensils,
-    color: 'bg-amber-500',
-    hover: 'hover:bg-amber-600',
-    description: 'Discuss matters over a private meal.',
-    availableFor: ['gm', 'owner', 'coach', 'referee', 'league_office'],
-  },
-  {
-    id: 'movie',
-    name: 'Invite to Movie',
-    Icon: Film,
-    color: 'bg-sky-500',
-    hover: 'hover:bg-sky-600',
-    description: 'Casual bonding over a film screening.',
-    availableFor: ['gm', 'owner', 'coach', 'referee', 'league_office'],
-  },
-  {
-    id: 'suspension',
-    name: 'Suspend',
-    Icon: Gavel,
-    color: 'bg-red-600',
-    hover: 'hover:bg-red-700',
-    description: 'Suspend from upcoming duties.',
-    // owners cannot be suspended
-    availableFor: ['gm', 'coach', 'referee', 'league_office'],
-  },
+// Ordered list of actions shown in this modal.
+const MODAL_ACTION_IDS: PersonnelActionType[] = [
+  'view_bio', 'contact', 'bribe', 'fine', 'dinner', 'movie', 'suspension',
 ];
 
 // ─────────────────────────────────────────────────────────────────
@@ -116,7 +42,10 @@ export const PersonnelActionsModal: React.FC<PersonnelActionsModalProps> = ({
 }) => {
   if (!person) return null;
 
-  const actions = ALL_ACTIONS.filter(a => a.availableFor.includes(person.type));
+  const actions = MODAL_ACTION_IDS
+    .map(id => PERSON_ACTION_DEFS.find(def => def.id === id))
+    .filter((def): def is NonNullable<typeof def> => !!def)
+    .filter(def => isPersonnelEligible(person.type as StaffType, def.eligibility));
 
   return (
     <AnimatePresence>
@@ -137,7 +66,7 @@ export const PersonnelActionsModal: React.FC<PersonnelActionsModalProps> = ({
             <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-slate-800 overflow-hidden border border-slate-700 flex-shrink-0">
-        {person.playerPortraitUrl ? (
+                  {person.playerPortraitUrl ? (
                     <img
                       src={person.playerPortraitUrl}
                       alt={person.name}
@@ -172,19 +101,19 @@ export const PersonnelActionsModal: React.FC<PersonnelActionsModalProps> = ({
               </button>
             </div>
 
-            {/* Actions — identical layout to PlayerActionsModal */}
+            {/* Actions */}
             <div className="p-6 space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
               {actions.map(action => (
                 <button
                   key={action.id}
-                  onClick={() => onActionSelect(action.id)}
+                  onClick={() => onActionSelect(action.id as PersonnelActionType)}
                   className="w-full flex items-center gap-4 p-4 rounded-2xl border border-slate-800 bg-slate-900/50 hover:bg-slate-800 transition-all text-left group"
                 >
                   <div className={`p-3 rounded-xl text-white ${action.color} ${action.hover} transition-colors`}>
-                    <action.Icon size={20} />
+                    <action.icon size={20} />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-white uppercase tracking-wider">{action.name}</h4>
+                    <h4 className="text-sm font-bold text-white uppercase tracking-wider">{action.title}</h4>
                     <p className="text-xs text-slate-500 mt-0.5">{action.description}</p>
                   </div>
                 </button>

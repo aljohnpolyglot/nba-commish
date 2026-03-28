@@ -6,7 +6,7 @@ const playerMatchCache: Record<string, any> = {};
 export async function loadBadges() {
   if (badgesData) return;
   console.log('[BadgeService] Fetching badges from:', GIST_URL);
-  
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 

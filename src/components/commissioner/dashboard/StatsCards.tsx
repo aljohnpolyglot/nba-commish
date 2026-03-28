@@ -10,7 +10,7 @@ interface StatsCardsProps {
 
 export const StatsCards: React.FC<StatsCardsProps> = ({ leagueStats, onRevenueClick, onViewershipClick }) => {
   const statsCards = [
-    { label: 'Total Revenue', value: `$${(leagueStats.revenue / 1000).toFixed(1)}B`, icon: DollarSign, color: 'text-emerald-400', bg: 'bg-emerald-500/10', onClick: onRevenueClick },
+    { label: 'Total Expected Rev', value: `$${(leagueStats.revenue / 1000).toFixed(1)}B`, icon: DollarSign, color: 'text-emerald-400', bg: 'bg-emerald-500/10', onClick: onRevenueClick },
     { label: 'Avg Viewership', value: `${leagueStats.viewership}M`, icon: Users, color: 'text-indigo-400', bg: 'bg-indigo-500/10', onClick: onViewershipClick },
     { label: 'Salary Cap', value: `$${(leagueStats.salaryCap / 1000).toFixed(1)}M`, icon: BarChart3, color: 'text-amber-400', bg: 'bg-amber-500/10' },
     { label: 'Luxury Tax', value: `${(leagueStats.luxuryTax * 100).toFixed(0)}%`, icon: Target, color: 'text-rose-400', bg: 'bg-rose-500/10' },

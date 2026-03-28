@@ -19,6 +19,9 @@ export interface Game {
   isPlayIn?: boolean;
   playoffSeriesId?: string;
   playoffGameNumber?: number;
+  broadcaster?: string;      // broadcaster ID (e.g. 'espn', 'amazon')
+  broadcasterName?: string;  // display name (e.g. 'ESPN/ABC')
+  tipoffTime?: string;       // e.g. '7:30 PM ET'
 }
 
 export interface PlayoffSeries {
@@ -435,6 +438,12 @@ export interface Email {
   thread?: { sender: string, text: string }[];
 }
 
+export interface HistoryEntry {
+  text: string;
+  date: string;
+  type?: string;
+}
+
 export interface NewsItem {
   id: string;
   headline: string;
@@ -444,6 +453,8 @@ export interface NewsItem {
   /** Portrait URL used as last-resort fallback after Imagn enrichment is attempted */
   playerPortraitUrl?: string;
   isNew?: boolean;
+  /** 'daily' = single-game/breaking news. 'weekly' = multi-day batch recap or period summary. */
+  newsType?: 'daily' | 'weekly';
 }
 
 export interface NBAConf {
@@ -579,7 +590,7 @@ export interface NBAPlayer {
     reason: string;
     gamesRemaining: number;
   };
-  status?: 'Active' | 'Prospect' | 'Free Agent' | 'Retired' | 'WNBA' | 'Draft Prospect' | 'Euroleague' | 'PBA';
+  status?: 'Active' | 'Prospect' | 'Free Agent' | 'Retired' | 'WNBA' | 'Draft Prospect' | 'Euroleague' | 'PBA' | 'B-League';
   diedYear?: number;
   hof?: boolean;
   jerseyNumber?: string;
@@ -737,7 +748,7 @@ export interface NonNBATeam {
   stadiumCapacity: number;
   imgURL?: string;
   colors?: string[];
-  league: 'Euroleague' | 'PBA' | 'WNBA';
+  league: 'Euroleague' | 'PBA' | 'WNBA' | 'B-League';
 }
 
 export interface ChatMessage {
@@ -832,6 +843,7 @@ export interface AllStarState {
   celebrityTeams?: string[];
   dunkContestAnnounced?: boolean;
   threePointAnnounced?: boolean;
+  hasRiggedVoting?: boolean;
   roster: AllStarPlayer[];
   risingStarsRoster?: AllStarPlayer[];
   celebrityRoster?: string[];
@@ -875,7 +887,7 @@ export interface GameState {
   chats: Chat[];
   news: NewsItem[];
   socialFeed: SocialPost[];
-  history: string[];
+  history: Array<string | HistoryEntry>;
   isProcessing: boolean;
   isWatchingGame?: boolean;
   isClubbing?: boolean;
@@ -912,9 +924,10 @@ export interface GameState {
   pendingClubDebuff?: { playerId: string; playerName: string; severity: 'heavy' | 'moderate' | 'mild'; clubName: string }[];
   headToHead?: HeadToHead;
   lazySimProgress?: LazySimProgress;
+  tradeProposals?: TradeProposal[];
 }
 
-export type ActionType = 'REPLY_EMAIL' | 'BRIBE' | 'HYPNOTIZE' | 'PUBLIC_STATEMENT' | 'ADVANCE_DAY' | 'DIRECT_MESSAGE' | 'SEND_MESSAGE' | 'SEND_CHAT_MESSAGE' | 'UPDATE_RULES' | 'SUSPEND_PLAYER' | 'CLEAR_OUTCOME' | 'SAVE_SOCIAL_THREAD' | 'FINE_PERSON' | 'BRIBE_PERSON' | 'GLOBAL_GAMES' | 'LEAK_SCANDAL' | 'HYPNOTIC_BROADCAST' | 'RIG_LOTTERY' | 'CELEBRITY_ROSTER' | 'OWNER_DINNER' | 'PUBLIC_ANNOUNCEMENT' | 'SUSPEND_PERSON' | 'DRUG_TEST_PERSON' | 'INVITE_DINNER' | 'EXPANSION_DRAFT' | 'ANNOUNCE_CHANGE' | 'START_GAME' | 'LOAD_GAME' | 'UPDATE_SAVE_ID' | 'SIGN_FREE_AGENT' | 'EXECUTIVE_TRADE' | 'TRAVEL' | 'GIVE_MONEY' | 'VISIT_NON_NBA_TEAM' | 'INVITE_PERFORMANCE' | 'FORCE_TRADE' | 'ADJUST_FINANCIALS' | 'FOLLOW_USER' | 'UNFOLLOW_USER' | 'ADD_PENDING_HYPNOSIS' | 'MARK_PAYSLIPS_READ' | 'TRANSFER_FUNDS' | 'SET_CHRISTMAS_GAMES' | 'SABOTAGE_PLAYER' | 'GO_TO_CLUB' | 'ENDORSE_HOF' | 'SIMULATE_TO_DATE' | 'ADD_PRESEASON_INTERNATIONAL' | 'ALL_STAR_ADVANCE_VOTES' | 'ALL_STAR_ANNOUNCE_STARTERS' | 'ALL_STAR_ANNOUNCE_RESERVES' | 'ALL_STAR_SIMULATE_WEEKEND' | 'GENERATE_PLAYOFF_BRACKET' | 'SIM_PLAYOFF_ROUND' | 'SAVE_CONTEST_RESULT' | 'RECORD_WATCHED_GAME' | 'WAIVE_PLAYER' | 'FIRE_PERSONNEL';
+export type ActionType = 'REPLY_EMAIL' | 'BRIBE' | 'HYPNOTIZE' | 'PUBLIC_STATEMENT' | 'ADVANCE_DAY' | 'DIRECT_MESSAGE' | 'SEND_MESSAGE' | 'SEND_CHAT_MESSAGE' | 'UPDATE_RULES' | 'SUSPEND_PLAYER' | 'CLEAR_OUTCOME' | 'SAVE_SOCIAL_THREAD' | 'FINE_PERSON' | 'BRIBE_PERSON' | 'GLOBAL_GAMES' | 'LEAK_SCANDAL' | 'HYPNOTIC_BROADCAST' | 'RIG_LOTTERY' | 'CELEBRITY_ROSTER' | 'OWNER_DINNER' | 'PUBLIC_ANNOUNCEMENT' | 'SUSPEND_PERSON' | 'DRUG_TEST_PERSON' | 'INVITE_DINNER' | 'EXPANSION_DRAFT' | 'ANNOUNCE_CHANGE' | 'START_GAME' | 'LOAD_GAME' | 'UPDATE_SAVE_ID' | 'SIGN_FREE_AGENT' | 'EXECUTIVE_TRADE' | 'TRAVEL' | 'GIVE_MONEY' | 'VISIT_NON_NBA_TEAM' | 'INVITE_PERFORMANCE' | 'FORCE_TRADE' | 'ADJUST_FINANCIALS' | 'FOLLOW_USER' | 'UNFOLLOW_USER' | 'ADD_PENDING_HYPNOSIS' | 'MARK_PAYSLIPS_READ' | 'TRANSFER_FUNDS' | 'SET_CHRISTMAS_GAMES' | 'SABOTAGE_PLAYER' | 'GO_TO_CLUB' | 'ENDORSE_HOF' | 'SIMULATE_TO_DATE' | 'ADD_PRESEASON_INTERNATIONAL' | 'ALL_STAR_ADVANCE_VOTES' | 'ALL_STAR_ANNOUNCE_STARTERS' | 'ALL_STAR_ANNOUNCE_RESERVES' | 'ALL_STAR_SIMULATE_WEEKEND' | 'GENERATE_PLAYOFF_BRACKET' | 'SIM_PLAYOFF_ROUND' | 'SAVE_CONTEST_RESULT' | 'RECORD_WATCHED_GAME' | 'WAIVE_PLAYER' | 'FIRE_PERSONNEL' | 'STORE_PURCHASE' | 'RIG_ALL_STAR_VOTING' | 'SET_ALL_STAR_REPLACEMENT' | 'SET_DUNK_CONTESTANTS' | 'SET_THREE_POINT_CONTESTANTS';
 
 export interface UserAction {
   type: ActionType;
@@ -923,7 +936,23 @@ export interface UserAction {
 
 export type Conference = 'East' | 'West';
 export type GamePhase = 'Preseason' | 'Opening Week' | 'Regular Season (Early)' | 'Regular Season (Mid)' | 'All-Star Break' | 'Trade Deadline' | 'Regular Season (Late)' | 'Play-In Tournament' | 'Playoffs (Round 1)' | 'Playoffs (Round 2)' | 'Conference Finals' | 'NBA Finals' | 'Offseason' | 'Draft' | 'Draft Lottery' | 'Free Agency' | 'Schedule Planning' | 'Schedule Release' | 'Training Camp';
-export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Players' | 'Team Stats' | 'All-Star' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats';
+export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Players' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal';
+
+// ─── AI Trade / Free Agency ───────────────────────────────────────────────────
+export interface TradeProposal {
+  id: string;
+  proposingTeamId: number;
+  receivingTeamId: number;
+  proposingGMName: string;
+  playersOffered: string[];   // internalIds
+  playersRequested: string[]; // internalIds
+  picksOffered: number[];     // dpids
+  picksRequested: number[];   // dpids
+  proposedDate: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'expired';
+  isAIvsAI: boolean;
+  tradeText?: string;
+}
 export type CommissionerTab = 'Approvals' | 'Viewership' | 'Finances';
 // ─── Imagn Photo Types ────────────────────────────────────────────────────────
 export type { ImagnPhoto } from './services/ImagnPhotoService';

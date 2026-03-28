@@ -1,5 +1,6 @@
 import React from 'react';
-import { DollarSign, Info } from 'lucide-react';
+import { DollarSign, Info, Lock, Tv } from 'lucide-react';
+import { useGame } from '../../../../store/GameContext';
 
 const InfoTooltip = ({ text }: { text: string }) => (
     <div className="group relative inline-flex items-center justify-center ml-1">
@@ -12,6 +13,12 @@ const InfoTooltip = ({ text }: { text: string }) => (
 );
 
 export const EconomyFinancesSection = ({ props }: { props: any }) => {
+    const { state } = useGame();
+    const mediaRights  = state.leagueStats.mediaRights;
+    const dealLocked   = mediaRights?.isLocked === true;
+    const broadcastCap = dealLocked ? mediaRights?.salaryCap : null; // $M value from broadcasting
+    const totalRev     = dealLocked ? mediaRights?.totalRev : null;
+
     return (
         <div className="bg-slate-800/40 p-6 rounded-3xl border border-slate-800/50 space-y-6">
             <div className="flex items-center justify-between">
@@ -33,23 +40,50 @@ export const EconomyFinancesSection = ({ props }: { props: any }) => {
             {props.salaryCapEnabled && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
                     <div className="flex flex-col gap-2">
-                        <div className="flex items-center">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Salary Cap Amount</span>
-                            <InfoTooltip text="The maximum amount a team can spend on player salaries." />
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Salary Cap Amount</span>
+                                <InfoTooltip text="The maximum amount a team can spend on player salaries. When a Broadcasting Deal is locked, this is derived from league revenue." />
+                            </div>
+                            {dealLocked && (
+                                <div className="flex items-center gap-1 text-[9px] font-bold text-sky-400">
+                                    <Tv size={10} /> Broadcasting Deal
+                                </div>
+                            )}
                         </div>
-                        <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-                            <input 
-                                type="number" 
-                                value={props.salaryCap / 1000000} 
-                                onChange={(e) => {
-                                    const val = parseFloat(e.target.value);
-                                    if (!isNaN(val) && val >= 0) props.setSalaryCap(val * 1000000);
-                                }}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-xl text-white text-sm py-2 pl-8 pr-8 focus:outline-none focus:border-indigo-500"
-                            />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">M</span>
-                        </div>
+
+                        {dealLocked ? (
+                            // Read-only display — cap is driven by broadcasting revenue
+                            <div className="bg-slate-950 border border-sky-500/30 rounded-xl px-3 py-2.5 flex items-center justify-between">
+                                <div>
+                                    <div className="text-lg font-black text-sky-400">
+                                        ${(props.salaryCap / 1_000_000).toFixed(1)}M
+                                    </div>
+                                    <div className="text-[9px] text-slate-500 mt-0.5">
+                                        {totalRev != null
+                                            ? `$${totalRev.toFixed(2)}B revenue × ${((props.salaryCap / 1_000_000) / totalRev * 100).toFixed(1)}% per-team share`
+                                            : 'Derived from Broadcasting Deal'
+                                        }
+                                    </div>
+                                </div>
+                                <Lock size={14} className="text-sky-500/60" />
+                            </div>
+                        ) : (
+                            // Editable when no deal is locked
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                                <input
+                                    type="number"
+                                    value={props.salaryCap / 1000000}
+                                    onChange={(e) => {
+                                        const val = parseFloat(e.target.value);
+                                        if (!isNaN(val) && val >= 0) props.setSalaryCap(val * 1000000);
+                                    }}
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-xl text-white text-sm py-2 pl-8 pr-8 focus:outline-none focus:border-indigo-500"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">M</span>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex flex-col gap-2">
@@ -211,6 +245,38 @@ export const EconomyFinancesSection = ({ props }: { props: any }) => {
                             )}
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Live threshold summary — always visible when salary cap is enabled */}
+            {props.salaryCapEnabled && (
+                <div className="bg-slate-900/60 rounded-2xl p-4 border border-slate-700/30 space-y-2">
+                    <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">
+                        Derived Thresholds — {state.leagueStats.year}–{state.leagueStats.year + 1}
+                    </div>
+                    {[
+                        { label: 'Salary Cap',   val: props.salaryCap / 1_000_000,                                                          color: 'text-sky-400',    bar: 'bg-sky-400' },
+                        { label: 'Luxury Tax',   val: props.salaryCap * (props.luxuryTaxThresholdPercentage ?? 121.5) / 100 / 1_000_000,    color: 'text-yellow-400', bar: 'bg-yellow-400' },
+                        { label: '1st Apron',    val: props.salaryCapEnabled && props.apronsEnabled ? props.salaryCap * (props.firstApronPercentage ?? 126.7) / 100 / 1_000_000 : null, color: 'text-orange-400', bar: 'bg-orange-400' },
+                        { label: '2nd Apron',    val: props.salaryCapEnabled && props.apronsEnabled && props.numberOfAprons > 1 ? props.salaryCap * (props.secondApronPercentage ?? 134.4) / 100 / 1_000_000 : null, color: 'text-rose-400', bar: 'bg-rose-400' },
+                        { label: 'Min Payroll',  val: props.minimumPayrollEnabled ? props.salaryCap * (props.minimumPayrollPercentage ?? 90) / 100 / 1_000_000 : null, color: 'text-slate-400', bar: 'bg-slate-400' },
+                    ].filter(row => row.val != null).map(row => (
+                        <div key={row.label} className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 w-24 flex-shrink-0">
+                                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${row.bar}`} />
+                                <span className="text-[10px] text-slate-400">{row.label}</span>
+                            </div>
+                            <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full rounded-full ${row.bar} opacity-60`}
+                                    style={{ width: `${Math.min((row.val! / ((props.salaryCap * (props.secondApronPercentage ?? 134.4) / 100 / 1_000_000) * 1.05)) * 100, 100)}%` }}
+                                />
+                            </div>
+                            <span className={`text-[10px] font-black w-16 text-right tabular-nums ${row.color}`}>
+                                ${row.val!.toFixed(1)}M
+                            </span>
+                        </div>
+                    ))}
                 </div>
             )}
         </div>

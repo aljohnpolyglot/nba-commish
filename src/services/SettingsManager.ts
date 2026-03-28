@@ -3,6 +3,8 @@ export interface GameSettings {
   simulationDepth: number;    // 1–10: scales context size + output volume
   gameSpeed: number;          // 1–10: controls UI/delay pacing
   enableLLM: boolean;
+  allowAITrades: boolean;     // AI teams trade with each other autonomously
+  allowAIFreeAgency: boolean; // AI teams sign free agents autonomously
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -10,6 +12,8 @@ const DEFAULT_SETTINGS: GameSettings = {
   simulationDepth: 7,
   gameSpeed: 5,
   enableLLM: true,
+  allowAITrades: true,
+  allowAIFreeAgency: true,
 };
 
 export class SettingsManager {

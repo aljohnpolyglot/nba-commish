@@ -13,7 +13,7 @@ interface PlayerSearchCardProps {
 }
 
 export const PlayerSearchCard: React.FC<PlayerSearchCardProps> = ({ player, teams, nonNBATeams, onClick, onTeamClick }) => {
-  const isNBA = !['WNBA', 'Euroleague', 'PBA'].includes(player.status || '');
+  const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League'].includes(player.status || '');
   const team = isNBA ? teams.find(t => t.id === player.tid) : null;
   const nonNBATeam = !isNBA ? nonNBATeams.find(t => t.tid === player.tid && t.league === player.status) : null;
   

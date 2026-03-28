@@ -27,6 +27,8 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionCl
     statusLabel = 'Euroleague';
   } else if (player.status === 'PBA') {
     statusLabel = 'PBA';
+  } else if (player.status === 'B-League') {
+    statusLabel = 'B-League';
   }
 
   // Handle image source safely

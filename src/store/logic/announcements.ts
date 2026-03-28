@@ -90,7 +90,7 @@ export const handleAnnounceChange = async (state: GameState, payload: any): Prom
         news: [...newNews, ...state.news],
         socialFeed: [...newSocial, ...state.socialFeed],
         isProcessing: false,
-        history: [...state.history, description],
+        history: [...state.history, { text: description, date: state.date, type: 'League Event' } as any],
         lastOutcome: description,
         lastConsequence: consequence
     };

@@ -4,6 +4,12 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* NBA brand tokens — used by CommishStore and any branded component */
+  --color-nba-blue:  #1d428a;
+  --color-nba-red:   #c8102e;
+  --color-nba-green: #00ff88;
+  --color-nba-dark:  #111111;
 }
 
 /* Custom Scrollbar */
@@ -35,4 +41,40 @@
 body {
   background-color: #09090b;
   color: #fafafa;
+}
+
+/* ── CommishStore utilities ─────────────────────────────────────────── */
+
+/* Hide scrollbar (used in CommishStore sidebar) */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Sticky sidebar inner scroll — no scrollbar */
+.sticky.overflow-y-auto::-webkit-scrollbar { display: none; }
+.sticky.overflow-y-auto {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Skeleton shimmer loader */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ── View transition timing ─────────────────────────────────────────── */
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 0.25s;
+  animation-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
 }

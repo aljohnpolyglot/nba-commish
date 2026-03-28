@@ -1,5 +1,25 @@
 import { Mic, Users, Syringe, Dna, DollarSign, Eye, Utensils, Gavel, Globe, HandCoins, Ban, Star, Map, Zap, Plane, MessageSquare, Music, Trophy, AlertTriangle, UserX } from 'lucide-react';
 import { GameState } from '../../../types';
+import type { LucideIcon } from 'lucide-react';
+
+export interface ActionItem {
+  id: string;
+  title: string;
+  description: string;
+  cost: string;
+  benefit: string;
+  icon: LucideIcon;
+  color: string;
+  disabled?: boolean;
+  onClick: () => void;
+}
+
+export interface ActionsConfig {
+  executive: ActionItem[];
+  season: ActionItem[];
+  personal: ActionItem[];
+  covert: ActionItem[];
+}
 
 export const getActionsConfig = (state: GameState, callbacks: {
     setAnnouncementModalOpen: (open: boolean) => void;
@@ -17,12 +37,12 @@ export const getActionsConfig = (state: GameState, callbacks: {
     setGlobalGamesModalOpen: (open: boolean) => void;
     setPreseasonInternationalModalOpen: (open: boolean) => void;
     confirmAction: (type: string, title: string, desc: string) => void;
-}) => ({
+}): ActionsConfig => ({
     executive: [
       {
         id: 'PUBLIC_ANNOUNCEMENT',
         title: "Public Announcement",
-        description: "Bypass the media and speak directly to the world. Announce trades, fines, or new eras.",
+        description: "Bypass team PR filters and speak directly to the world. Issue official league communications about trades, policy changes, fines, or landmark moments. Your words carry the full weight of the commissioner's office.",
         cost: "None",
         benefit: "+Authority / +Clarity",
         icon: Mic,
@@ -32,9 +52,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'FINE_PERSON',
         title: "Levy Fine",
-        description: "Issue a monetary fine to a player, coach, or team for conduct detrimental to the league.",
+        description: "Issue a formal monetary fine to any player, coach, or team for conduct detrimental to the league. Fine amounts can range from minor disciplinary actions to franchise-shaking penalties. All fines flow directly to league operational funds.",
         cost: "None",
-        benefit: "+League Funds",
+        benefit: "+League Funds / +Discipline",
         icon: Ban,
         color: "rose",
         onClick: () => callbacks.openPersonSelector('fine')
@@ -42,9 +62,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'SUSPEND_PERSON',
         title: "Suspend Personnel",
-        description: "Issue an immediate suspension to a player, coach, or GM. Requires justification.",
+        description: "Issue an immediate suspension without pay to any player, coach, or GM. Suspended personnel miss games and face heavy media scrutiny. Extended suspensions damage trust with player associations — use with documented justification.",
         cost: "-Approval (Target Group)",
-        benefit: "+Authority",
+        benefit: "+Authority / +League Integrity",
         icon: Gavel,
         color: "rose",
         onClick: () => callbacks.openPersonSelector('suspension')
@@ -52,8 +72,8 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'DRUG_TEST',
         title: "Mandatory Drug Test",
-        description: "Target ANYONE for a 'random' drug test. High chance of suspension or scandal. Requires justification.",
-        cost: "-Player Approval",
+        description: "Order a 'randomly selected' drug test for any individual in the league. A positive result triggers an automatic suspension and potential career-altering scandal. A clean test still draws suspicion from the union. Use sparingly — this is a loaded weapon.",
+        cost: "-Player Approval / -Union Trust",
         benefit: "+Legacy (Tough on Crime)",
         icon: Syringe,
         color: "emerald",
@@ -62,9 +82,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'EXPANSION_DRAFT',
         title: "League Expansion",
-        description: "Select new cities to grant NBA franchises. Increases league footprint but dilutes talent.",
-        cost: "-$500M League Funds (Startup)",
-        benefit: "++Revenue / +Legacy",
+        description: "Authorize new NBA franchises in selected cities. Each new team participates in a dedicated expansion draft, pulling talent from existing rosters. A historic decision that permanently reshapes the competitive landscape and grows league-wide revenue — but dilutes star power across the board.",
+        cost: "-$500M League Funds (Per Franchise)",
+        benefit: "+++Revenue / ++Legacy",
         icon: Map,
         color: "indigo",
         disabled: state.leagueStats.hasExpanded,
@@ -73,9 +93,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'ENDORSE_HOF',
         title: "Endorse for Hall of Fame",
-        description: "Endorse a retired player for the Hall of Fame. You can do this multiple times.",
+        description: "Formally endorse a retired player for induction into the Basketball Hall of Fame. Your endorsement carries significant institutional weight and can fast-track a legacy. You may endorse multiple players across your tenure. This is your gift to basketball history.",
         cost: "None",
-        benefit: "+Legacy / +Relationship",
+        benefit: "+Legacy / +Relationship with Player/Family",
         icon: Trophy,
         color: "amber",
         onClick: () => callbacks.openPersonSelector('endorse_hof')
@@ -83,9 +103,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'EXECUTIVE_TRADE',
         title: "Executive Trade",
-        description: "Force a trade between any two teams. Bypass GM approval and salary cap restrictions.",
-        cost: "-Legacy / -Owner Approval",
-        benefit: "Total Control",
+        description: "Exercise commissioner authority to force a trade between any two teams, bypassing GM approval and salary cap restrictions. Comparable to the Adam Silver override. Owners will not forget this — and neither will the public. Use only when the league's competitive balance demands it.",
+        cost: "-Legacy / -Owner Approval / -GM Trust",
+        benefit: "Total Roster Control",
         icon: Gavel,
         color: "indigo",
         onClick: () => callbacks.setTradeModalOpen(true)
@@ -93,9 +113,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'SIGN_FREE_AGENT',
         title: "Force Sign Free Agent",
-        description: "Force a team to sign a specific free agent to a minimum contract. Looks like a standard team move.",
+        description: "Compel a specific team to sign a free agent — including international players from Euroleague, PBA, or the B-League — at minimum contract terms. The transaction appears as a standard team move in the wire. Useful for steering talent to struggling franchises or setting up future moves.",
         cost: "None (Covert)",
-        benefit: "Roster Control",
+        benefit: "Roster Control / +International Diplomacy",
         icon: Users,
         color: "indigo",
         onClick: () => callbacks.setSignFreeAgentModalOpen(true)
@@ -103,9 +123,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'WAIVE_PLAYER',
         title: "Waive Player",
-        description: "Force a team to immediately waive a specific player. The player becomes a free agent.",
-        cost: "-Player Approval",
-        benefit: "Roster Control",
+        description: "Force a team to immediately release a specific player onto the waiver wire. The player clears waivers and enters free agency within 48 hours. Powerful for breaking up roster logjams — but the affected team's front office will remember who issued the order.",
+        cost: "-Player Approval / -Team Relationship",
+        benefit: "Roster Control / +Free Agent Market Activity",
         icon: UserX,
         color: "rose",
         onClick: () => callbacks.openPersonSelector('waive')
@@ -113,77 +133,22 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'FIRE_PERSONNEL',
         title: "Fire Personnel",
-        description: "Terminate a GM, Coach, Owner, or Referee. They are immediately removed from their role.",
-        cost: "-Approval (Target Group)",
-        benefit: "+Authority",
+        description: "Immediately terminate a GM, Head Coach, Team Owner, or Referee. They are stripped of credentials and removed from any active role. This sends a clear message to the entire league about the standards you expect — but will trigger sharp backlash from their colleagues and allies.",
+        cost: "-Approval (Target's Peer Group) / -Public Trust",
+        benefit: "+Authority / +Standards Enforcement",
         icon: UserX,
         color: "rose",
         onClick: () => callbacks.openPersonSelector('fire')
       }
     ],
-    season: [
-      {
-        id: 'CELEBRITY_ROSTER',
-        title: "Celebrity Game Roster",
-        description: "Hand-pick the celebrities and influencers for the All-Star Celebrity Game.",
-        cost: "None",
-        benefit: "++Viewership",
-        icon: Star,
-        color: "amber",
-        disabled: state.leagueStats.hasSetCelebrityRoster,
-        onClick: () => callbacks.confirmAction('CELEBRITY_ROSTER', 'Celebrity Game Roster', 'Are you sure you want to set the celebrity game roster? This can only be done once per season.')
-      },
-      {
-        id: 'GLOBAL_GAMES',
-        title: "Global Games Cities",
-        description: "Select the international cities that will host regular season games this year.",
-        cost: "-$100k League Funds",
-        benefit: "+++Global Revenue",
-        icon: Globe,
-        color: "blue",
-        disabled: state.leagueStats.hasScheduledGlobalGames || (state.schedule.length > 0 && state.schedule.some(g => g.played)),
-        onClick: () => callbacks.setGlobalGamesModalOpen(true)
-      },
-      {
-        id: 'INVITE_PERFORMANCE',
-        title: "Invite Performance",
-        description: "Book artists for halftime shows, national anthems, or special ceremonies. Boost league popularity.",
-        cost: "League Funds ($$$)",
-        benefit: "+Popularity / +Viewership",
-        icon: Music,
-        color: "amber",
-        onClick: () => callbacks.setInvitePerformanceModalOpen(true)
-      },
-      {
-        id: 'SET_CHRISTMAS_GAMES',
-        title: "Set Christmas Day Games",
-        description: "Hand-pick the matchups for the NBA's biggest regular season showcase. Mix and match teams for maximum ratings.",
-        cost: "None",
-        benefit: "+++Viewership / +Revenue",
-        icon: Trophy,
-        color: "rose",
-        disabled: (state.christmasGames && state.christmasGames.length > 0) || (state.schedule.length > 0 && state.schedule.some(g => g.played)), // Inactive once set or games start
-        onClick: () => callbacks.setChristmasModalOpen(true)
-      },
-      {
-        id: 'ADD_PRESEASON_INTERNATIONAL',
-        title: "International Preseason",
-        description: "Schedule a preseason game against a top international club (Euroleague, PBA, etc.).",
-        cost: "-$10k Personal Wealth",
-        benefit: "+Global Diplomacy / +Scouting",
-        icon: Globe,
-        color: "emerald",
-        disabled: state.schedule.length > 0 && state.schedule.some(g => g.played),
-        onClick: () => callbacks.setPreseasonInternationalModalOpen(true)
-      }
-    ],
+    season: [],
     personal: [
       {
         id: 'TRANSFER_FUNDS',
         title: "Transfer Funds",
-        description: "Move money between your personal wealth and the league's operational funds.",
+        description: "Shift capital between your personal wealth account and the league's operational treasury. Use this to inject cash when the league faces a budget shortfall, or to extract profits when finances are healthy. No transaction is ever publicly disclosed.",
         cost: "None",
-        benefit: "Financial Flexibility",
+        benefit: "Financial Flexibility / Emergency Liquidity",
         icon: DollarSign,
         color: "emerald",
         onClick: () => callbacks.setTransferFundsModalOpen(true)
@@ -191,9 +156,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'INVITE_DINNER',
         title: "Host Private Dinner",
-        description: "Invite up to 100 guests (Owners, GMs, Players, WNBA, Media) for a lavish private dinner.",
+        description: "Host an exclusive private dinner for up to 100 guests from across the basketball world — team owners, GMs, star players, WNBA athletes, or media executives. A carefully composed guest list can mend fractured relationships, forge key alliances, and generate enormous personal goodwill.",
         cost: "-$50k Personal Wealth",
-        benefit: "+Approval (Guests)",
+        benefit: "+Approval (All Guests) / +Relationships",
         icon: Utensils,
         color: "amber",
         onClick: () => callbacks.openPersonSelector('dinner')
@@ -201,9 +166,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'INVITE_MOVIE',
         title: "Invite to Movie",
-        description: "Rent out a theater for a private screening. Great for bonding with players, WNBA players, or staff.",
+        description: "Reserve an entire private cinema for an exclusive screening. A low-key but effective bonding experience — particularly valued by players who want access without the formal pressure of league events. Great for building off-the-record trust with key influencers.",
         cost: "-$10k Personal Wealth",
-        benefit: "+Player/Staff Approval",
+        benefit: "+Player / +Staff Approval",
         icon: Utensils,
         color: "indigo",
         onClick: () => callbacks.openPersonSelector('movie')
@@ -211,9 +176,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'GIVE_MONEY',
         title: "Disburse Funds",
-        description: "Give money to anyone in the league (or WNBA) for any reason. Performance bonuses, charitable gifts, or just 'handling out' cash.",
-        cost: "-Personal Wealth",
-        benefit: "+++Approval (Target)",
+        description: "Discreetly transfer personal funds to any individual in the basketball ecosystem — performance bonuses, charitable gifts, or informal 'appreciation' payments. Recipients experience a significant approval boost. No questions asked, no public record. The most direct tool in your relationship-building arsenal.",
+        cost: "-Personal Wealth (Custom Amount)",
+        benefit: "+++Approval (Target) / +Loyalty",
         icon: HandCoins,
         color: "emerald",
         onClick: () => callbacks.openPersonSelector('give_money')
@@ -221,9 +186,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'TRAVEL',
         title: "Travel",
-        description: "Travel to a domestic or international city for business or pleasure. State your reason and invite guests.",
+        description: "Embark on a domestic or international trip for business or pleasure. Visit a city, attach an official reason (scouting, diplomacy, community outreach), and invite guests to join. International travel boosts global presence and opens doors to conversations that can't happen over a video call.",
         cost: "-$20k Personal Wealth",
-        benefit: "+Legacy / +Approval",
+        benefit: "+Legacy / +Approval (Destination) / +Global Presence",
         icon: Globe,
         color: "emerald",
         onClick: () => callbacks.setTravelModalOpen(true)
@@ -231,9 +196,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'VISIT_NON_NBA',
         title: "Visit Non-NBA Team",
-        description: "Travel to international or other league teams for scouting and diplomacy. Visit Euroleague, PBA, or WNBA teams.",
+        description: "Fly out to visit an international or alternative league club — Euroleague contenders, PBA powerhouses, B-League teams, or WNBA franchises. Build diplomatic bridges, personally scout foreign talent, and signal the NBA's commitment to global basketball. These visits often precede major international signings.",
         cost: "-$10k Personal Wealth",
-        benefit: "+Scouting / +Diplomacy",
+        benefit: "+Scouting Access / ++Diplomacy / +International Signing Pipeline",
         icon: Plane,
         color: "sky",
         onClick: () => callbacks.setVisitNonNBAModalOpen(true)
@@ -241,9 +206,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'CONTACT_PERSON',
         title: "Direct Message",
-        description: "Reach out to anyone in the basketball world. Players, GMs, Owners, WNBA stars, or Hall of Fame legends.",
+        description: "Send a personal message to anyone in the basketball world — active players, retired legends, coaches, GMs, owners, WNBA stars, or Hall of Fame icons. A direct line from the commissioner's desk carries enormous weight. Use it to open negotiations, extend olive branches, or set the record straight.",
         cost: "None",
-        benefit: "+Influence / +Relationship",
+        benefit: "+Influence / +Relationship / Conversation Starter",
         icon: MessageSquare,
         color: "emerald",
         onClick: () => callbacks.openPersonSelector('contact')
@@ -251,9 +216,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'GO_TO_CLUB',
         title: "Go to Club",
-        description: "Visit a top nightclub in the USA. Experience the nightlife, flashing lights, and potential social encounters.",
+        description: "Hit one of the USA's top nightlife venues for a night out. You may run into players, agents, celebrities, or journalists in an informal setting where conversations flow freely. A rare chance to build street-level credibility and access — though your public image could catch some heat.",
         cost: "-$20k Personal Wealth",
-        benefit: "+Legacy / +Social Presence",
+        benefit: "+Social Presence / +Unexpected Connections",
         icon: Music,
         color: "violet",
         onClick: () => callbacks.openPersonSelector('club')
@@ -263,9 +228,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'HYPNOTIZE',
         title: "Hypnotize",
-        description: "Influence a target to perform any action without direct attribution. Suspicion may arise.",
-        cost: "None (Covert)",
-        benefit: "Total Control",
+        description: "Deploy a shadowy network of psychological influence to compel a target — player, coach, or executive — to perform a specific action without any traceable link back to you. Success rate is high, but strange behavioral patterns can attract attention. Use for outcomes that can't be achieved through normal channels.",
+        cost: "None (Covert) / +Suspicion Risk",
+        benefit: "Total Behavioral Control",
         icon: Zap,
         color: "violet",
         onClick: () => callbacks.openPersonSelector('hypnotize')
@@ -273,9 +238,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'SABOTAGE_PLAYER',
         title: "Sabotage Player",
-        description: "Quietly ensure a player is sidelined with an injury. The media will find a 'natural' explanation.",
-        cost: "None (Covert)",
-        benefit: "Roster Sabotage",
+        description: "Arrange for a player to suffer a 'natural' injury that sidelines them for a defined period. The team's medical staff will handle the public narrative — a rolled ankle here, a back spasm there. Extremely difficult to trace. Extremely dangerous if discovered. Reserve for rivals who threaten the league's competitive balance.",
+        cost: "None (Covert) / -Morality / High Detection Risk",
+        benefit: "Targeted Roster Disruption",
         icon: AlertTriangle,
         color: "rose",
         onClick: () => callbacks.openPersonSelector('sabotage')
@@ -283,9 +248,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'BRIBE_PERSON',
         title: "Offer Bribe",
-        description: "Quietly offer money to influence a player, coach, or official. Highly illegal.",
-        cost: "-Personal Wealth",
-        benefit: "+Influence / +Outcome",
+        description: "Discreetly deliver a financial incentive to a player, coach, official, or media figure in exchange for a specific outcome. Cash payments, luxury gifts, or back-channel favors. Illegal under any jurisdiction — but extraordinarily effective. If exposed, the consequences are career-ending. If buried, the results speak for themselves.",
+        cost: "-Personal Wealth (Variable) / Criminal Exposure Risk",
+        benefit: "++Influence / +Guaranteed Outcome",
         icon: HandCoins,
         color: "emerald",
         onClick: () => callbacks.openPersonSelector('bribe')
@@ -293,9 +258,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'LEAK_SCANDAL',
         title: "Leak Scandal",
-        description: "Target a specific player to anonymously leak a scandal about. Distracts from league controversies.",
-        cost: "-Legacy",
-        benefit: "+Viewership",
+        description: "Anonymously surface damaging personal or professional information about a target. Fed through trusted media intermediaries, the story takes on a life of its own. The scandal hijacks the news cycle, redirects heat away from the league, and can permanently damage an enemy's reputation. Your fingerprints will never appear.",
+        cost: "-Legacy (If Attributed) / -Moral Standing",
+        benefit: "+Viewership / +Distraction Effect / -Target's Reputation",
         icon: Eye,
         color: "rose",
         onClick: () => callbacks.openPersonSelector('leak_scandal')
@@ -303,9 +268,9 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'RIG_LOTTERY',
         title: "Fix the Lottery",
-        description: "Ensure the worst team gets the #1 pick... or whoever pays the most.",
-        cost: "-Legacy (High Risk)",
-        benefit: "+Owner Approval",
+        description: "Manipulate the NBA Draft Lottery outcome to deliver the #1 pick to the team of your choosing — whether the worst team in the league, the highest bidder behind closed doors, or a franchise you're quietly building into a dynasty. The 'random' ping-pong balls have a way of landing exactly where you want them. If this ever leaks, your legacy burns.",
+        cost: "-Legacy (Catastrophic if Exposed) / Criminal Risk",
+        benefit: "+Owner Approval (Beneficiary) / Total Draft Control",
         icon: Dna,
         color: "violet",
         disabled: state.leagueStats.draftType !== 'lottery',

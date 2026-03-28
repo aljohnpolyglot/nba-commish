@@ -1,6 +1,9 @@
-import { GameState, LazySimProgress } from '../../types';
+import { GameState, LazySimProgress, HistoricalStatPoint } from '../../types';
 import { runSimulation } from '../../store/logic/turn/simulationHandler';
 import { processSimulationResults } from '../../store/logic/turn/postProcessor';
+import { calculateNewStats } from '../../store/logic/turn/statUpdater';
+import { generatePaychecks } from './financialService';
+import { SocialEngine } from '../social/SocialEngine';
 import { SettingsManager } from '../SettingsManager';
 import { normalizeDate, calculateSocialEngagement } from '../../utils/helpers';
 import { buildShamsPost } from '../social/templates/charania';
@@ -16,6 +19,7 @@ import {
   autoSelectThreePointContestants,
   autoSimAllStarWeekend,
 } from './autoResolvers';
+import { DEFAULT_MEDIA_RIGHTS, attachBroadcastersToGames } from '../../utils/broadcastingUtils';
 
 interface AutoResolveEvent {
   date: string;
@@ -24,7 +28,22 @@ interface AutoResolveEvent {
   phase: string;
 }
 
+// Ensure the schedule has broadcaster metadata before the season begins.
+// Uses whatever deal the player set, falling back to the default ESPN/NBC/Amazon package.
+const autoBroadcastingDefault = (state: GameState): Partial<GameState> => {
+  const mediaRights = state.leagueStats.mediaRights ?? DEFAULT_MEDIA_RIGHTS;
+  const updatedSchedule = attachBroadcastersToGames(state.schedule, mediaRights, state.teams);
+  return {
+    leagueStats: {
+      ...state.leagueStats,
+      mediaRights,
+    },
+    schedule: updatedSchedule,
+  };
+};
+
 const AUTO_RESOLVE_EVENTS: AutoResolveEvent[] = [
+  { date: '2025-08-12', key: 'broadcasting_default',   resolver: autoBroadcastingDefault,        phase: 'Setting Broadcasting Deal...' },
   { date: '2025-08-13', key: 'global_games',           resolver: autoPickGlobalGames,            phase: 'Finalizing Global Schedule...' },
   { date: '2025-12-24', key: 'christmas_games',        resolver: autoPickChristmasGames,         phase: 'Setting Christmas Games...' },
   { date: '2026-01-14', key: 'allstar_votes',          resolver: autoSimVotes,                   phase: 'Simulating All-Star Voting...' },
@@ -148,7 +167,7 @@ export const runLazySim = async (
       const batchDays = Math.min(BATCH_SIZE, remaining);
       if (batchDays <= 0) break;
 
-      const { stateWithSim, allSimResults } = runSimulation(state, batchDays, undefined);
+      const { stateWithSim, allSimResults, perDayResults } = runSimulation(state, batchDays, undefined);
 
       // Accumulate player season stats — normally called in processTurn, bypassed here
       const { updatedPlayers, updatedDraftPicks } = processSimulationResults(
@@ -158,7 +177,42 @@ export const runLazySim = async (
         stateWithSim.schedule
       );
 
-      // Shams injury posts — surface key injuries even during lazy sim
+      // Calculate per-day stats (approvals, viewership, funds) and build history points
+      // This mirrors what gameLogic.ts does for normal turns so graphs stay continuous
+      let runningState = { ...state };
+      const newHistoricalPoints: HistoricalStatPoint[] = [];
+      for (const dayData of perDayResults) {
+        const { newStats, newLeagueStats } = calculateNewStats(
+          runningState,
+          { type: 'ADVANCE_DAY' } as any,
+          {},
+          dayData.results,
+          0,
+          dayData.date
+        );
+        runningState = {
+          ...runningState,
+          stats: { ...runningState.stats, ...newStats },
+          leagueStats: { ...runningState.leagueStats, ...newLeagueStats },
+        };
+        newHistoricalPoints.push({
+          date: dayData.date,
+          publicApproval: newStats.publicApproval,
+          ownerApproval: newStats.ownerApproval,
+          playerApproval: newStats.playerApproval,
+          legacy: newStats.legacy,
+          revenue: newLeagueStats.revenue,
+          viewership: newLeagueStats.viewership,
+        });
+      }
+
+      // Generate social posts for the batch — player reactions, media posts, Shams injuries
+      const nbaPlayers = updatedPlayers.filter(p => !['WNBA', 'Euroleague', 'PBA', 'B-League'].includes(p.status || ''));
+      const socialEngine = new SocialEngine();
+      const batchDateString = stateWithSim.date;
+      const enginePosts = await socialEngine.generateDailyPosts(allSimResults, nbaPlayers, stateWithSim.teams, batchDateString, batchDays);
+
+      // Shams injury posts — supplement engine with explicit injury coverage
       const shamsInjuryPosts: any[] = [];
       for (const simResult of allSimResults) {
         if (!simResult.injuries?.length) continue;
@@ -184,6 +238,7 @@ export const runLazySim = async (
           });
         }
       }
+      const allBatchPosts = [...enginePosts, ...shamsInjuryPosts];
 
       // Generate narrative news for this batch (streaks, big games, injuries, drama)
       const batchNews = generateLazySimNews(
@@ -191,23 +246,43 @@ export const runLazySim = async (
         updatedPlayers,
         allSimResults,
         stateWithSim.date,
-        reportedInjuries
+        reportedInjuries,
+        false,
+        state.teams
       );
+
+      // Apply paychecks earned during this batch — prevents all salary from
+      // stacking up and landing in one lump sum on the next real-day advance
+      const batchPayResult = generatePaychecks(
+        state.lastPayDate || new Date(initialState.date).toISOString(),
+        new Date(stateWithSim.date).toISOString(),
+        state.salary || 10000000
+      );
+      const batchPayWealth = batchPayResult.totalNetPay / 1_000_000;
 
       state = {
         ...stateWithSim,
+        // Apply the compounded stats from per-day calculations
+        stats: {
+          ...runningState.stats,
+          personalWealth: Number((runningState.stats.personalWealth + batchPayWealth).toFixed(2)),
+        },
+        leagueStats: runningState.leagueStats,
         players: updatedPlayers,
         draftPicks: updatedDraftPicks,
+        historicalStats: [...(state.historicalStats || []), ...newHistoricalPoints].slice(-365),
         boxScores: [
           ...(stateWithSim.boxScores || []),
           ...allSimResults.map(r => ({ ...r, date: r.date || stateWithSim.date }))
         ],
-        socialFeed: shamsInjuryPosts.length > 0
-          ? [...shamsInjuryPosts, ...(stateWithSim.socialFeed || [])].slice(0, 500)
+        socialFeed: allBatchPosts.length > 0
+          ? [...allBatchPosts, ...(stateWithSim.socialFeed || [])].slice(0, 500)
           : stateWithSim.socialFeed,
         news: batchNews.length > 0
           ? [...batchNews, ...(stateWithSim.news || [])].slice(0, 200)
           : stateWithSim.news,
+        lastPayDate: batchPayResult.newLastPayDate,
+        payslips: [...(state.payslips || []), ...batchPayResult.newPayslips].slice(-50),
       };
       daysComplete += batchDays;
 

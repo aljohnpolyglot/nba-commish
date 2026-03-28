@@ -352,7 +352,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                 ) : (
                   plays.slice(0, currentIndex + 1).map((play, idx) => {
                     if (!play) return null;
-                    const isGameWinner = play.isGameWinner;
+                    const isGameWinner = play.isGameWinner && isFinal;
                     const isSpecialLine = play.desc?.includes('End of Regulation') || play.desc?.includes('We are TIED');
 
                     return (

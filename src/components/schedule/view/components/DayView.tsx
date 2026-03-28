@@ -229,7 +229,11 @@ export const DayView: React.FC<DayViewProps> = ({
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
                         <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                          {isIntraSquad ? 'Scrimmage' : game.played ? 'Final' : 'Scheduled'}
+                          {isIntraSquad ? 'Scrimmage' : game.played ? (() => {
+                            const bs = boxScores?.find(b => b.gameId === game.gid);
+                            if (!bs?.isOT) return 'Final';
+                            return bs.otCount && bs.otCount > 1 ? `Final ${bs.otCount}OT` : 'Final OT';
+                          })() : 'Scheduled'}
                         </div>
                         {(game.isPlayoff || game.isPlayIn) && (
                           <img

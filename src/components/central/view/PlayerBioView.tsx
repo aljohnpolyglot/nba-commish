@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { NBAPlayer, Game } from '../../../types';
-import { ArrowLeft, Loader2, Trophy } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
 import { AwardsView } from './AwardsView';
+import { PlayerBioHero } from './PlayerBioHero';
+import { TabBar } from '../../shared/ui/TabBar';
+import { BoxScoreModal } from '../../modals/BoxScoreModal';
 
 interface PlayerBioViewProps {
   player: NBAPlayer;
@@ -15,7 +18,8 @@ interface PlayerBioViewProps {
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { memCache, isCacheValid, fetchWithDedup, prefetchPlayerBio, getPlayerImage } from './bioCache';
+import { memCache, isCacheValid, fetchWithDedup, prefetchPlayerBio, getPlayerImage, getNonNBABioData } from './bioCache';
+import { ensureNonNBAFetched, getNonNBAGistData } from './nonNBACache';
 import { extractNbaId, hdPortrait } from '../../../utils/helpers';
 
 // Request queue — max 1 concurrent fetch to avoid AllOrigins rate limits
@@ -98,10 +102,11 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
   const [isSyncing, setIsSyncing] = useState(() => !!extractNbaId(player.imgURL || ""));
   const [fetchDone, setFetchDone] = useState(false);
   const [portraitSrc, setPortraitSrc] = useState<string>(() => getPlayerImage(player) || "");
-  const [activeTab, setActiveTab] = useState<'Overview' | 'Historical Data' | 'Game Log' | 'Awards'>('Overview');
+  const [activeTab, setActiveTab] = useState<'Overview' | 'Historical Data' | 'Game Log' | 'Awards'>('Historical Data');
   const [showPlayoffs, setShowPlayoffs] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [gameLogSort, setGameLogSort] = useState<{ field: string; dir: 'asc' | 'desc' }>({ field: 'date', dir: 'desc' });
+  const [localBoxScoreGame, setLocalBoxScoreGame] = useState<Game | null>(null);
 
   const OPENING_NIGHT_MS = new Date('2025-10-24T00:00:00Z').getTime();
 
@@ -155,7 +160,9 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
             teamAbbrev: team?.abbrev || 'UNK',
             isAway: !isHome,
             oppAbbrev: opp?.abbrev || 'UNK',
-            result: resultStr,
+            result: game.isOT
+              ? `${resultStr}${game.otCount && game.otCount > 1 ? ` ${game.otCount}OT` : ' OT'}`
+              : resultStr,
             isWin,
             gs: stats.gs > 0,
             mp: Math.floor(stats.min) + ':' + String(Math.floor((stats.min % 1) * 60)).padStart(2, '0'),
@@ -202,7 +209,9 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
           teamAbbrev: team?.abbrev || 'UNK',
           isAway: !isHomeTeam,
           oppAbbrev: opp?.abbrev || 'UNK',
-          result: `${isWin ? 'W' : 'L'}, ${score}`,
+          result: game.isOT
+            ? `${isWin ? 'W' : 'L'}, ${score}${game.otCount && game.otCount > 1 ? ` ${game.otCount}OT` : ' OT'}`
+            : `${isWin ? 'W' : 'L'}, ${score}`,
           isWin,
           gs: false,
           mp: '—', fgm: 0, fga: 0, fgp: '—', tpm: 0, tpa: 0, tpp: '—',
@@ -266,7 +275,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
   }, [gameLog, gameLogSort]);
 
   const team = useMemo(() => {
-    const isNBA = !["WNBA","Euroleague","PBA","Draft Prospect","Prospect"].includes(player.status || "");
+    const isNBA = !["WNBA","Euroleague","PBA","B-League","Draft Prospect","Prospect"].includes(player.status || "");
     return isNBA
       ? state.teams.find(t => t.id === player.tid)
       : state.nonNBATeams.find(t => t.tid === player.tid && t.league === player.status);
@@ -274,6 +283,10 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
 
   const teamColor = team?.colors?.[0] || "#CE1141";
   const teamLogo  = (team as any)?.logoUrl || (team as any)?.imgURL;
+  // For NonNBATeam, combine region + name (BBGM stores them separately)
+  const teamFullName = team
+    ? ((team as any).region ? `${(team as any).region} ${team.name}`.trim() : team.name)
+    : null;
 
   const maxSeason = useMemo(() => {
     return state.players.reduce((max, p) => {
@@ -296,9 +309,10 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
       const ss = getBestStat(player.stats, curYear);
       const gp = ss?.gp || 1;
 
+      const nonNBABio = getNonNBABioData(player);
       const baseData = {
         n: player.name,
-        m: `${team?.name || "Free Agent"} | #${player.jerseyNumber || "00"} | ${player.pos}`,
+        m: `${teamFullName || "Free Agent"} | #${player.jerseyNumber || "00"} | ${player.pos}`,
         h: player.hgt    ? `${Math.floor(player.hgt / 12)}'${player.hgt % 12}"` : "Unknown",
         w: player.weight ? `${player.weight}lb` : "Unknown",
         c: player.born?.loc || "Unknown",
@@ -314,10 +328,44 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
           STL: ss ? ((ss.stl || 0) / gp).toFixed(1) : "0.0",
           BLK: ss ? ((ss.blk || 0) / gp).toFixed(1) : "0.0",
         },
-        bio: { pro: "", pre: "", per: "" },
+        bio: nonNBABio?.bio || { pro: "", pre: "", per: "" },
       };
 
       if (isMounted) setBioData(baseData);
+
+      // ── Non-NBA players: enrich hero stats + info + bio from gist ─────────
+      if (nonNBABio) {
+        if (isMounted) setIsSyncing(true);
+        try {
+          await ensureNonNBAFetched(player.status!);
+          const gist = getNonNBAGistData(player.status!, player.name);
+          if (isMounted && gist) {
+            setBioData((prev: any) => ({
+              ...prev,
+              // Override hero stats bar with real league stats
+              stats: {
+                PTS: gist.stats.PTS,
+                REB: gist.stats.REB,
+                AST: gist.stats.AST,
+                STL: gist.stats.STL ?? prev.stats.STL,
+                BLK: gist.stats.BLK ?? prev.stats.BLK,
+              },
+              // Override info grid fields if gist has better data
+              ...(gist.h && { h: gist.h }),
+              ...(gist.w && { w: gist.w }),
+              ...(gist.c && { c: gist.c }),
+              ...(gist.s && { s: gist.s }),
+              ...(gist.b && { b: gist.b }),
+              ...(gist.a && { a: gist.a }),
+              ...(gist.d && { d: gist.d }),
+              // Bio section
+              bio: { pro: gist.proBio || prev.bio.pro, pre: '', per: '' },
+            }));
+          }
+        } catch (_) {}
+        if (isMounted) { setIsSyncing(false); setFetchDone(true); }
+        return;
+      }
 
       // ── 2. Extract NBA ID ────────────────────────────────────────────────
       const nbaId = extractNbaId(player.imgURL || "");
@@ -356,6 +404,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
   if (!bioData) return null;
 
   return (
+    <>
     <div className="flex-1 flex flex-col h-full bg-[#0a0a0a] text-white overflow-hidden rounded-[2.5rem] border border-white/10 relative shadow-2xl">
       <button onClick={onBack} className="absolute top-6 left-6 z-50 w-10 h-10 bg-black/50 backdrop-blur-md border border-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors">
         <ArrowLeft size={20} />
@@ -364,121 +413,29 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
       <div className="flex-1 overflow-y-auto custom-scrollbar">
 
         {/* ── HERO ── */}
-        <div
-      className="relative h-auto min-h-[350px] flex flex-col md:flex-row items-center md:items-end px-[5%] overflow-hidden pt-16 pb-4 md:pb-0 md:pt-0 md:h-[350px]"
-          style={{ backgroundColor: teamColor }}
-        >
-          {teamLogo && (
-            <img src={teamLogo} alt=""
-              className="absolute top-1/2 left-[10%] -translate-y-[45%] w-[120%] max-w-[1000px] opacity-[0.20] pointer-events-none z-0 select-none grayscale brightness-200"
-              style={{ mixBlendMode: "screen" }}
-              onError={e => e.currentTarget.style.display = "none"} />
-          )}
-          {teamLogo && (
-            <div className="absolute top-8 left-10 md:left-24 z-30 flex flex-col items-center">
-              <img src={teamLogo} alt="Team Logo" className="w-16 md:w-20 h-auto drop-shadow-xl"
-                   onError={e => e.currentTarget.style.display = "none"} />
-              <span className="hidden md:block text-[10px] font-black tracking-[3px] mt-2 text-white/80 uppercase text-center leading-tight max-w-[100px]">
-                {team?.name || "TEAM"}
-              </span>
-            </div>
-          )}
-
-          {/* HD portrait — fallback chain: cdn HD → original ak-static → hide */}
-          <img
-            key={portraitSrc}
-            src={portraitSrc}
-            alt={player.name}
-            className="h-48 md:h-[90%] z-20 drop-shadow-[10px_0_20px_rgba(0,0,0,0.5)] object-contain mt-8 md:mt-0 md:ml-10"
-            onError={e => {
-              const img = e.currentTarget;
-              if (player.imgURL && img.src !== player.imgURL) {
-                img.src = player.imgURL;
-              } else {
-                img.style.display = "none";
-              }
-            }}
-          />
-
-          <div className="z-20 text-center md:text-left mb-6 md:mb-12 md:ml-10 flex-1">
-            <p className="m-0 uppercase text-sm font-medium tracking-widest text-white/90">{bioData.m}</p>
-<h1 className="m-0 mt-1 text-2xl sm:text-3xl md:text-[64px] leading-[0.95] uppercase font-black tracking-tight text-white break-words w-full">
-              {bioData.n.split(" ").map((part: string, i: number) => (
-                <React.Fragment key={i}>{part}<br /></React.Fragment>
-              ))}
-            </h1>
-          </div>
-          <div className="hidden md:flex z-20 mb-12 mr-4">
-            <button className="px-6 py-2 rounded-full border border-white text-white font-medium hover:bg-white/10 transition-colors flex items-center gap-2">
-              <span>☆</span> FOLLOW
-            </button>
-          </div>
-        </div>
-
-        {/* ── STATS BAR ── */}
-        <div className="flex flex-col md:flex-row border-y border-white/20" style={{ backgroundColor: teamColor }}>
-          <div className="flex flex-row w-full md:w-2/5 border-b md:border-b-0 md:border-r border-white/20 bg-black/20">
-            {([["PTS","PPG"],["REB","RPG"],["AST","APG"]] as const).map(([key, label], i, arr) => (
-              <div key={key} className={`flex-1 flex flex-col justify-center items-center py-4 md:py-6 ${i < arr.length - 1 ? "border-r border-white/20" : ""}`}>
-                <span className="text-[10px] text-white/80 uppercase mb-1 tracking-widest font-bold">{label}</span>
-                <span className="text-2xl md:text-3xl font-black text-white">{bioData.stats[key]}</span>
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 w-full md:w-3/5 bg-black/40">
-            {[
-              { label: "Height",        val: bioData.h, border: "border-r border-b" },
-              { label: "Weight",        val: bioData.w, border: "border-r border-b" },
-              { label: "Country",       val: bioData.c, border: "border-r border-b" },
-              { label: "Last Attended", val: bioData.s, border: "border-r border-b" },
-              { label: "Age",           val: bioData.a, border: "border-r border-b" },
-              { label: "Birthdate",     val: bioData.b, border: "border-b" },
-              { label: "Draft",         val: bioData.d, border: "border-r" },
-              { label: "Experience",    val: bioData.e, border: "border-r" },
-            ].map(({ label, val, border }) => (
-              <div key={label} className={`${border} border-white/20 flex flex-col justify-center items-center py-3 px-2 text-center`}>
-                <span className="bg-white/10 text-white/70 text-[8px] px-2 py-0.5 rounded-sm uppercase font-bold mb-1 tracking-widest">{label}</span>
-                <span className="text-sm font-semibold text-white leading-tight">{val}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <PlayerBioHero
+          bioData={bioData}
+          teamColor={teamColor}
+          teamLogo={teamLogo}
+          teamFullName={teamFullName}
+          portraitSrc={portraitSrc}
+          playerImgURL={player.imgURL}
+          isSyncing={isSyncing}
+          fetchDone={fetchDone}
+        />
 
         {/* ── TABS ── */}
-        <div className="flex border-b border-white/10 px-2 mt-4 overflow-x-auto no-scrollbar">
-          <button
-            onClick={() => setActiveTab('Overview')}
-            className={`px-3 md:px-6 py-3 text-xs md:text-sm font-bold uppercase tracking-widest whitespace-nowrap transition-colors border-b-2 ${
-              activeTab === 'Overview' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveTab('Historical Data')}
-            className={`px-3 md:px-6 py-3 text-xs md:text-sm font-bold uppercase tracking-widest whitespace-nowrap transition-colors border-b-2 ${
-              activeTab === 'Historical Data' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            Historical Data
-          </button>
-          <button
-            onClick={() => setActiveTab('Game Log')}
-            className={`px-3 md:px-6 py-3 text-xs md:text-sm font-bold uppercase tracking-widest whitespace-nowrap transition-colors border-b-2 ${
-              activeTab === 'Game Log' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            Game Log
-          </button>
-          <button
-            onClick={() => setActiveTab('Awards')}
-            className={`px-3 md:px-6 py-3 text-xs md:text-sm font-bold uppercase tracking-widest whitespace-nowrap transition-colors border-b-2 ${
-              activeTab === 'Awards' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            Awards
-          </button>
-        </div>
+        <TabBar
+          className="px-2 mt-4"
+          tabs={[
+            { id: 'Historical Data', label: 'Historical Data' },
+            { id: 'Overview',        label: 'Overview' },
+            { id: 'Game Log',        label: 'Game Log' },
+            { id: 'Awards',          label: 'Awards' },
+          ]}
+          active={activeTab}
+          onChange={id => setActiveTab(id as typeof activeTab)}
+        />
 
         {activeTab === 'Overview' && (
           <div className="p-6 md:p-12 bg-[#080808]">
@@ -734,11 +691,14 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
                             onClick={() => onTeamClick && log.oppTeamId && onTeamClick(log.oppTeamId)}
                           >{log.oppAbbrev}</td>
                           <td
-                            className={`px-3 py-2 ${log.isWin ? 'text-emerald-400' : 'text-red-400'}${onGameClick && log.gameId ? ' cursor-pointer hover:underline' : ''}`}
+                            className={`px-3 py-2 ${log.isWin ? 'text-emerald-400' : 'text-red-400'}${log.gameId ? ' cursor-pointer hover:underline' : ''}`}
                             onClick={() => {
-                              if (onGameClick && log.gameId) {
+                              if (log.gameId) {
                                 const sg = state.schedule.find((g: any) => g.gid === log.gameId);
-                                if (sg) onGameClick(sg);
+                                if (sg) {
+                                  if (onGameClick) onGameClick(sg);
+                                  else setLocalBoxScoreGame(sg);
+                                }
                               }
                             }}
                           >{log.result}</td>
@@ -760,11 +720,14 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
                             onClick={() => onTeamClick && log.oppTeamId && onTeamClick(log.oppTeamId)}
                           >{log.oppAbbrev}</td>
                           <td
-                            className={`px-3 py-2 ${log.isWin ? 'text-emerald-400' : 'text-red-400'}${onGameClick && log.gameId ? ' cursor-pointer hover:underline' : ''}`}
+                            className={`px-3 py-2 ${log.isWin ? 'text-emerald-400' : 'text-red-400'}${log.gameId ? ' cursor-pointer hover:underline' : ''}`}
                             onClick={() => {
-                              if (onGameClick && log.gameId) {
+                              if (log.gameId) {
                                 const sg = state.schedule.find((g: any) => g.gid === log.gameId);
-                                if (sg) onGameClick(sg);
+                                if (sg) {
+                                  if (onGameClick) onGameClick(sg);
+                                  else setLocalBoxScoreGame(sg);
+                                }
                               }
                             }}
                           >{log.result}</td>
@@ -793,11 +756,14 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
                           <td className="px-3 py-2 text-right">{log.pf}</td>
                           <td className="px-3 py-2 text-right font-bold text-white">{log.pts}</td>
                           <td
-                            className={`px-3 py-2 text-right${onGameClick && log.gameId ? ' cursor-pointer hover:underline' : ''}`}
+                            className={`px-3 py-2 text-right${log.gameId ? ' cursor-pointer hover:underline' : ''}`}
                             onClick={() => {
-                              if (onGameClick && log.gameId) {
+                              if (log.gameId) {
                                 const sg = state.schedule.find((g: any) => g.gid === log.gameId);
-                                if (sg) onGameClick(sg);
+                                if (sg) {
+                                  if (onGameClick) onGameClick(sg);
+                                  else setLocalBoxScoreGame(sg);
+                                }
                               }
                             }}
                           >{log.gmsc}</td>
@@ -827,13 +793,25 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
         )}
 
       </div>
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        .bio-list { list-style: none; padding: 0; margin: 0; }
-        .bio-list li { padding-left: 25px; position: relative; line-height: 1.7; color: #999; font-size: 15px; margin-bottom: 12px; }
-        .bio-list li::before { content: ""; width: 6px; height: 6px; background: ${teamColor}; position: absolute; left: 0; top: 8px; border-radius: 1px; }
-        .bio-list b { color: #eee; font-weight: 700; }
-      `}} />
     </div>
+
+    {localBoxScoreGame && (() => {
+      const bsResult = state.boxScores.find((b: any) => b.gameId === localBoxScoreGame.gid);
+      const homeTeam = state.teams.find((t: any) => t.id === localBoxScoreGame.homeTid);
+      const awayTeam = state.teams.find((t: any) => t.id === localBoxScoreGame.awayTid);
+      if (!homeTeam || !awayTeam) return null;
+      return (
+        <BoxScoreModal
+          game={localBoxScoreGame}
+          result={bsResult}
+          homeTeam={homeTeam}
+          awayTeam={awayTeam}
+          players={state.players}
+          onClose={() => setLocalBoxScoreGame(null)}
+          onPlayerClick={() => setLocalBoxScoreGame(null)}
+        />
+      );
+    })()}
+    </>
   );
 };

@@ -1,6 +1,40 @@
 import { GameState } from "../../../types";
 import { SettingsManager } from "../../SettingsManager";
 
+function buildSeasonCalendarContext(dateString: string, gamePhase: string): string {
+    const d = new Date(dateString);
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    const year = d.getFullYear();
+
+    const christmasPassed = month > 12 || (month === 12 && day > 25) || month < 12;
+    const tradePassed = month > 2 || (month === 2 && day > 20);
+    const allStarPassed = month > 2 || (month === 2 && day > 19);
+    const playoffsStarted = month >= 4 && day >= 15;
+
+    const notes: string[] = [];
+
+    if (month === 10) notes.push("The NBA season just began (October).");
+    else if (month === 11) notes.push("The season is in its early stretch (November).");
+    else if (month === 12 && day <= 24) notes.push(`Christmas Day (Dec 25) is ${25 - day} day(s) away — Christmas games are scheduled.`);
+    else if (month === 12 && day === 25) notes.push("Today is Christmas Day — the marquee NBA Christmas games are being played.");
+    else if (month === 12 && day > 25) notes.push("Christmas has already passed. The season continues into the new year.");
+    else if (month === 1) notes.push("It is January — mid-season grind. Christmas games have already been played.");
+    else if (month === 2 && day < 14) notes.push("It is early February — the All-Star break is approaching in mid-February. Christmas games have already been played.");
+    else if (month === 2 && day >= 14 && day <= 19) notes.push("It is NBA All-Star Weekend (mid-February). Christmas has already passed.");
+    else if (month === 2 && day === 20) notes.push("Today is the NBA Trade Deadline. Christmas and All-Star weekend have already passed.");
+    else if (month === 2 && day > 20) notes.push("The trade deadline has passed. Christmas and All-Star weekend are over. The playoff push begins.");
+    else if (month === 3) notes.push("It is March — the playoff race is heating up. All major mid-season events (Christmas, All-Star, Trade Deadline) are in the past.");
+    else if (month >= 4 && !playoffsStarted) notes.push("It is early April — the regular season is in its final days.");
+    else if (playoffsStarted) notes.push("The NBA Playoffs are underway.");
+
+    return `SEASON CALENDAR AWARENESS:
+Current Date: ${dateString}
+Current Phase: ${gamePhase}
+${notes.join(' ')}
+CRITICAL: All characters (players, staff, media) must be aware of the current date. They MUST NOT reference future events (e.g., Christmas games, All-Star Weekend) as "upcoming" if those dates have already passed. They should only reference events that are genuinely in the future relative to ${dateString}.`;
+}
+
 export const generateAdvanceDayPrompt = (
     currentState: GameState,
     gamePhase: string,
@@ -150,11 +184,15 @@ ${dm.messages.map((m: any) => `  [${m.senderName}]: ${m.text}`).join('\n')}`).jo
         `;
     }
 
+    const seasonCalendarContext = buildSeasonCalendarContext(currentState.date, gamePhase);
+
     return `
 CRITICAL FORMATTING RULE: Respond with ONLY raw JSON. No markdown, no backticks, no headers, no bullet points. Start your response with { and end with }. Nothing else.
 
 ${leagueContext}
 ${leagueSummaryContext}
+
+${seasonCalendarContext}
 
 Current Game State:
 Date: ${currentState.date} (${gamePhase})
@@ -223,9 +261,12 @@ export const generateLeaguePulsePrompt = (
     leagueContext: string,
     leagueSummaryContext: string = ""
 ): string => {
+    const seasonCalendarContext = buildSeasonCalendarContext(currentState.date, gamePhase);
     return `
     ${leagueContext}
     ${leagueSummaryContext}
+
+    ${seasonCalendarContext}
 
     Current Game State:
     Date: ${currentState.date} (${gamePhase})

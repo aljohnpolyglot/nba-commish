@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useRef, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useRef, useEffect, useCallback } from 'react';
 import { GameState, UserAction, Tab } from '../types';
 import { processTurn, handleStartGame, handleAnnounceChange } from './logic/gameLogic';
 import { useGameActions } from './useGameActions';
@@ -26,6 +26,7 @@ interface GameContextType {
   selectedTeamId: number | null;
   setSelectedTeamId: (id: number | null) => void;
   navigateToTeam: (teamId: number) => void;
+  navigateToTeamFinances: (teamId: number) => void;
   pendingStatSort: { type: 'player' | 'team'; field: string; order: 'asc' | 'desc' } | null;
   setPendingStatSort: (sort: { type: 'player' | 'team'; field: string; order: 'asc' | 'desc' } | null) => void;
 }
@@ -49,6 +50,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const navigateToTeam = (teamId: number) => {
     setSelectedTeamId(teamId);
     setCurrentView('NBA Central');
+  };
+
+  const navigateToTeamFinances = (teamId: number) => {
+    setSelectedTeamId(teamId);
+    setCurrentView('Team Finances');
   };
 
   const dispatchAction = async (action: UserAction) => {
@@ -144,11 +150,56 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
+    if (action.type === 'STORE_PURCHASE') {
+      const { amountMillion } = action.payload as { amountMillion: number };
+      setState(prev => ({
+        ...prev,
+        stats: {
+          ...prev.stats,
+          personalWealth: Math.max(0, Number((prev.stats.personalWealth - amountMillion).toFixed(4))),
+        },
+      }));
+      return;
+    }
+
+    if (action.type === 'RIG_ALL_STAR_VOTING') {
+      const { playerId, ghostVotes } = action.payload as { playerId: string; ghostVotes: number };
+      setState(prev => ({
+        ...prev,
+        allStar: prev.allStar ? {
+          ...prev.allStar,
+          hasRiggedVoting: true,
+          votes: prev.allStar.votes.map(v =>
+            v.playerId === playerId ? { ...v, votes: v.votes + ghostVotes } : v
+          ),
+        } : prev.allStar,
+      }));
+      return;
+    }
+
+    if (action.type === 'SET_DUNK_CONTESTANTS') {
+      const { contestants } = action.payload as { contestants: any[] };
+      setState(prev => ({
+        ...prev,
+        allStar: prev.allStar ? { ...prev.allStar, dunkContestContestants: contestants } : prev.allStar,
+      }));
+      return;
+    }
+
+    if (action.type === 'SET_THREE_POINT_CONTESTANTS') {
+      const { contestants } = action.payload as { contestants: any[] };
+      setState(prev => ({
+        ...prev,
+        allStar: prev.allStar ? { ...prev.allStar, threePointContestants: contestants } : prev.allStar,
+      }));
+      return;
+    }
+
     if (action.type === 'LOAD_GAME') {
-      setState({ 
+      setState({
         ...initialState,
-        ...action.payload, 
-        isProcessing: false 
+        ...action.payload,
+        isProcessing: false
       });
       return;
     }
@@ -200,8 +251,16 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       } else if (action.type === 'ANNOUNCE_CHANGE') {
         newStatePatch = await handleAnnounceChange(state, action.payload);
       } else if (action.type === 'UPDATE_RULES') {
+        const updatedLeagueStats = { ...state.leagueStats, ...action.payload };
+        let updatedSchedule = state.schedule;
+        // When a media deal is finalized, re-attach broadcasters to all unplayed games
+        if (action.payload.mediaRights) {
+          const { attachBroadcastersToGames } = await import('../utils/broadcastingUtils');
+          updatedSchedule = attachBroadcastersToGames(state.schedule, action.payload.mediaRights, state.teams);
+        }
         newStatePatch = {
-          leagueStats: { ...state.leagueStats, ...action.payload },
+          leagueStats: updatedLeagueStats,
+          schedule: updatedSchedule,
           isProcessing: false
         };
       } else if (action.type === 'SEND_CHAT_MESSAGE') {
@@ -454,7 +513,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       }));
     }
   };
- useEffect(() => {
+  useEffect(() => {
     if (!state.players || state.players.length === 0) return;
     const sorted = [...state.players]
       .filter(p => p.status === 'Active')
@@ -463,6 +522,28 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       setTimeout(() => prefetchPlayerBio(player), i * 4000);
     });
   }, [!!state.players?.length]);
+
+  // Lazy-load staff when the browser is idle after game init
+  useEffect(() => {
+    if (!state.isDataLoaded || state.staff || !state.players?.length || !state.teams?.length) return;
+
+    const load = () => {
+      import('../services/staffService').then(({ getStaffData }) => {
+        const teamNameMap = new Map(state.teams.map(t => [t.name.toLowerCase(), t]));
+        getStaffData(state.players, teamNameMap).then(staff => {
+          setState(prev => ({ ...prev, staff }));
+        });
+      });
+    };
+
+    if (typeof requestIdleCallback !== 'undefined') {
+      const id = requestIdleCallback(load, { timeout: 5000 });
+      return () => cancelIdleCallback(id);
+    } else {
+      const id = setTimeout(load, 2000);
+      return () => clearTimeout(id);
+    }
+  }, [state.isDataLoaded, !!state.staff]);
 
   return (
     <GameContext.Provider value={{ 
@@ -473,6 +554,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       selectedTeamId,
       setSelectedTeamId,
       navigateToTeam,
+      navigateToTeamFinances,
       pendingStatSort,
       setPendingStatSort,
       ...actions

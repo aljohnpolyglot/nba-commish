@@ -120,6 +120,14 @@ Rules for Stat Changes:
 - Legacy is a special stat (0-100) representing the commissioner's long-term impact.
 - Be creative but logical with consequences.
 
+CRITICAL — PERSONAL WEALTH vs LEAGUE FUNDS (TWO SEPARATE ECONOMIES):
+- 'leagueFunds': The NBA's organizational treasury. Used for league operations, expansions, and fines collected. This is NOT the Commissioner's personal money.
+- 'personalWealth': The Commissioner's own private money. Used for personal gifts, dinners, club nights, and luxury purchases from their own pocket.
+- WHEN A COMMISSIONER GIFTS SOMETHING PERSONAL (a car, merchandise, trophy, invitation to dinner, etc.) — this ALWAYS comes from 'personalWealth', NEVER from 'leagueFunds'.
+- NEVER write emails or news implying that league funds were used for personal gifts or private expenses. Steve Ballmer should NEVER complain about "league funds" being used for something the Commissioner bought with their own money.
+- 'personalWealth' statChanges should be tiny: typically -3 to +3 per action. Never output personalWealth changes larger than ±5 unless the action is explicitly a massive financial deal.
+- 'leagueFunds' changes represent organizational revenue or expenses (e.g., expansion fees, broadcast deals), not personal spending.
+
 HYPNOSIS & EXECUTIVE OVERRIDE (INTERNAL):
 - The user can "hypnotize" people to do things.
 - In the public narrative (news, social posts, emails), do NOT mention "hypnosis," "mind control," or "magic."

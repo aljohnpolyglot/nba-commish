@@ -127,8 +127,20 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                 </div>
               );
             }
-            const winner = players.find(p => p.internalId === dunkContestResult.winnerId);
-            if (!winner) return null;
+            const winner = players.find(p => p.internalId === dunkContestResult.winnerId)
+              || players.find(p => p.name === dunkContestResult.winnerName);
+            if (!winner) {
+              // Fallback: just show winner name text without photo
+              return (
+                <div className="flex flex-col items-center text-center mb-10">
+                  <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-yellow-500 bg-zinc-800 flex items-center justify-center mb-4">
+                    <Trophy className="w-12 h-12 text-yellow-500" />
+                  </div>
+                  <h2 className="text-3xl font-black italic tracking-tighter mt-3 text-white">{dunkContestResult.winnerName}</h2>
+                  <p className="text-xs text-zinc-500 mt-1">Slam Dunk Contest Champion</p>
+                </div>
+              );
+            }
             const winnerNbaId = winner.nbaId || extractNbaId(winner.imgURL || "", winner.name);
             return (
               <div className="flex flex-col items-center text-center mb-10">

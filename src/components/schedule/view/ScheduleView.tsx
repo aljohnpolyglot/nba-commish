@@ -205,7 +205,7 @@ export const ScheduleView: React.FC = () => {
     // Advance the day — exhibition games (All-Star weekend) skip this
     const isExhibition = watchingGame.homeTid < 0;
     if (!isExhibition) {
-      await dispatchAction({ type: 'ADVANCE_DAY' });
+      await dispatchAction({ type: 'ADVANCE_DAY', payload: { watchedGameResult: result } } as any);
     }
   };
 

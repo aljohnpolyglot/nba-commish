@@ -1,8 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { NBAPlayer, NBATeam } from '../../../types';
+import { NBAPlayer, NBATeam, Game } from '../../../types';
 import { Search } from 'lucide-react';
 import { PlayerBioView } from './PlayerBioView';
+import { BoxScoreModal } from '../../modals/BoxScoreModal';
+
+interface StatisticalFeatsViewProps {
+  onGameClick?: (game: Game) => void;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS & TYPES
@@ -19,6 +24,7 @@ const FEAT_CATEGORIES = [
 
 interface FeatEntry {
   id: string;
+  gameId: number;
   player: NBAPlayer;
   playerName: string;
   teamId: number;
@@ -63,8 +69,9 @@ interface FeatEntry {
 // COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const StatisticalFeatsView: React.FC = () => {
+export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGameClick }) => {
   const { state, navigateToTeam } = useGame();
+  const [selectedBoxScoreGame, setSelectedBoxScoreGame] = useState<Game | null>(null);
   
   // State
   const [selectedPlayer, setSelectedPlayer] = useState<NBAPlayer | null>(null);
@@ -92,9 +99,17 @@ export const StatisticalFeatsView: React.FC = () => {
       '5×5': 0
     };
 
+    const OPENING_NIGHT_MS = new Date('2025-10-24T00:00:00Z').getTime();
+
     state.boxScores.forEach(game => {
       // Skip All-Star & Rising Stars
       if (game.isAllStar || game.isRisingStars) return;
+
+      // Skip Preseason
+      const schedGame = state.schedule.find((g: any) => g.gid === game.gameId);
+      const isPreseason = schedGame?.isPreseason === true ||
+        (() => { try { return new Date(game.date).getTime() < OPENING_NIGHT_MS; } catch { return false; } })();
+      if (isPreseason) return;
 
       const homeTeam = state.teams.find(t => t.id === game.homeTeamId);
       const awayTeam = state.teams.find(t => t.id === game.awayTeamId);
@@ -154,6 +169,7 @@ export const StatisticalFeatsView: React.FC = () => {
 
             extracted.push({
               id: `${game.gameId}-${player.internalId}`,
+              gameId: game.gameId,
               player,
               playerName: player.name,
               teamId: team.id,
@@ -162,7 +178,9 @@ export const StatisticalFeatsView: React.FC = () => {
               oppAbbrev: isHome ? opp.abbrev : `@${opp.abbrev}`,
               date: game.date || '',
               isWin,
-              result: `${isWin ? 'W' : 'L'}, ${scoreStr}`,
+              result: game.isOT
+                ? `${isWin ? 'W' : 'L'}, ${scoreStr}${game.otCount && game.otCount > 1 ? ` ${game.otCount}OT` : ' OT'}`
+                : `${isWin ? 'W' : 'L'}, ${scoreStr}`,
               featsFound: activeFeats,
               gs: stat.gs > 0,
               min: stat.min || 0,
@@ -191,7 +209,7 @@ export const StatisticalFeatsView: React.FC = () => {
     });
 
     return { feats: extracted, summaryCounts: counts };
-  }, [state.boxScores, state.players, state.teams]);
+  }, [state.boxScores, state.players, state.teams, state.schedule]);
 
   // ─── 2. FILTER ───────────────────────────────────────────────────────────────
   const filteredFeats = useMemo(() => {
@@ -268,8 +286,23 @@ export const StatisticalFeatsView: React.FC = () => {
     setCurrentPage(1);
   };
 
+  const handleGameClick = (game: Game) => {
+    if (onGameClick) {
+      onGameClick(game);
+    } else {
+      setSelectedBoxScoreGame(game);
+    }
+  };
+
   if (selectedPlayer) {
-    return <PlayerBioView player={selectedPlayer} onBack={() => setSelectedPlayer(null)} />;
+    return (
+      <PlayerBioView
+        player={selectedPlayer}
+        onBack={() => setSelectedPlayer(null)}
+        onGameClick={handleGameClick}
+        onTeamClick={navigateToTeam}
+      />
+    );
   }
 
   return (
@@ -412,7 +445,13 @@ export const StatisticalFeatsView: React.FC = () => {
                   >
                     {row.oppAbbrev.replace('@', '')}
                   </td>
-                  <td className={`px-3 py-2 font-medium ${row.isWin ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <td
+                    className={`px-3 py-2 font-medium cursor-pointer hover:underline ${row.isWin ? 'text-emerald-400' : 'text-red-400'}`}
+                    onClick={() => {
+                      const sg = state.schedule.find((g: Game) => g.gid === row.gameId);
+                      if (sg) handleGameClick(sg);
+                    }}
+                  >
                     {row.result}
                   </td>
                   <td className="px-3 py-2 text-center text-slate-500">{row.gs ? '*' : ''}</td>
@@ -496,6 +535,20 @@ export const StatisticalFeatsView: React.FC = () => {
         </div>
       )}
 
+      {selectedBoxScoreGame && (
+        <BoxScoreModal
+          game={selectedBoxScoreGame}
+          result={state.boxScores.find(b => b.gameId === selectedBoxScoreGame.gid)}
+          homeTeam={state.teams.find(t => t.id === selectedBoxScoreGame.homeTid)!}
+          awayTeam={state.teams.find(t => t.id === selectedBoxScoreGame.awayTid)!}
+          players={state.players}
+          onClose={() => setSelectedBoxScoreGame(null)}
+          onPlayerClick={(player) => {
+            setSelectedBoxScoreGame(null);
+            setSelectedPlayer(player);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -343,6 +343,13 @@ export const BroadcastingView: React.FC = () => {
     return { totalRev, mediaRev, lpRev, salaryCap, viewership, avgReach, approval, approvalGrade, subs, streamingCount, hasStreameast, integrityPenalty };
   }, [activeBroadcasters, lpPrice, phaseAssignments, scheduleAssignments]);
 
+  // When locked, the stored mediaRights values are authoritative (prevents formula
+  // drift if e.g. LP pricing logic changes after the deal was finalized).
+  const savedRights   = readOnly ? state.leagueStats.mediaRights : null;
+  const dispMediaRev  = savedRights?.mediaRev  ?? metrics.mediaRev;
+  const dispTotalRev  = savedRights?.totalRev  ?? metrics.totalRev;
+  const dispSalaryCap = savedRights?.salaryCap ?? metrics.salaryCap;
+
   // ─── Broadcaster toggle ────────────────────────────────────────────────────
 
   const toggleBroadcaster = (id: string) => {
@@ -433,6 +440,13 @@ export const BroadcastingView: React.FC = () => {
       setView('dashboard');
     } else if (view === 'dashboard' && !readOnly) {
       // Finalize deal — save media rights state
+      // Derive all cap thresholds from the new salary cap + existing Economy percentages
+      const newCapUSD        = Math.round(metrics.salaryCap * 1_000_000);
+      const taxPct           = state.leagueStats.luxuryTaxThresholdPercentage ?? 121.5;
+      const firstApronPct    = state.leagueStats.firstApronPercentage ?? 126.7;
+      const secondApronPct   = state.leagueStats.secondApronPercentage ?? 134.4;
+      const minPayrollPct    = state.leagueStats.minimumPayrollPercentage ?? 90;
+
       dispatchAction({
         type: 'UPDATE_RULES',
         payload: {
@@ -448,7 +462,10 @@ export const BroadcastingView: React.FC = () => {
             scheduleAssignments,
             isLocked: true,
           },
-          salaryCap: Math.round(metrics.salaryCap * 1_000_000),
+          // Persist updated cap and all derived thresholds so every system
+          // (salaryUtils, finance views, AI logic) reads consistent values
+          salaryCap:    newCapUSD,
+          luxuryPayroll: Math.round(newCapUSD * taxPct / 100),
         },
       });
 
@@ -519,17 +536,17 @@ export const BroadcastingView: React.FC = () => {
           <div className="flex flex-wrap items-center gap-4 md:gap-6">
             <div className="flex flex-col items-end">
               <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Broadcasting</span>
-              <span className={`text-base font-black ${metrics.mediaRev >= 6.9 ? 'text-indigo-400' : 'text-white'}`}>${metrics.mediaRev.toFixed(2)}B</span>
+              <span className={`text-base font-black ${dispMediaRev >= 6.9 ? 'text-indigo-400' : 'text-white'}`}>${dispMediaRev.toFixed(2)}B</span>
             </div>
             <div className="h-6 w-px bg-zinc-800" />
             <div className="flex flex-col items-end">
-              <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Total Rev</span>
-              <span className={`text-base font-black ${metrics.totalRev >= TOTAL_REV_TARGET ? 'text-emerald-400' : 'text-white'}`}>${metrics.totalRev.toFixed(2)}B</span>
+              <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Total Expected Rev</span>
+              <span className={`text-base font-black ${dispTotalRev >= TOTAL_REV_TARGET ? 'text-emerald-400' : 'text-white'}`}>${dispTotalRev.toFixed(2)}B</span>
             </div>
             <div className="h-6 w-px bg-zinc-800" />
             <div className="flex flex-col items-end">
               <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Salary Cap</span>
-              <span className="text-base font-black text-amber-400">${metrics.salaryCap.toFixed(1)}M</span>
+              <span className="text-base font-black text-amber-400">${dispSalaryCap.toFixed(1)}M</span>
             </div>
             <div className="h-6 w-px bg-zinc-800" />
             <div className="flex flex-col items-end">
@@ -826,7 +843,7 @@ export const BroadcastingView: React.FC = () => {
                       <div className="bg-zinc-950 rounded-2xl p-6 border border-zinc-800 flex flex-col justify-center">
                         <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mb-1">Est. Subscribers</div>
                         <div className="text-3xl font-black text-white mb-4">{metrics.subs.toFixed(1)}M</div>
-                        <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mb-1">Annual Revenue</div>
+                        <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mb-1">Expected Annual Rev</div>
                         <div className="text-xl font-bold text-emerald-400">${(metrics.lpRev * 1000).toFixed(0)}M</div>
                       </div>
                     </div>
@@ -872,7 +889,7 @@ export const BroadcastingView: React.FC = () => {
                   {[
                     { label: 'Media Rev', val: `$${metrics.mediaRev.toFixed(2)}B` },
                     { label: 'League Pass', val: `$${metrics.lpRev.toFixed(2)}B` },
-                    { label: 'Total Rev', val: `$${metrics.totalRev.toFixed(2)}B` },
+                    { label: 'Total Expected Rev', val: `$${metrics.totalRev.toFixed(2)}B` },
                     { label: 'Salary Cap', val: `$${metrics.salaryCap.toFixed(1)}M` },
                     { label: 'Subscribers', val: `${metrics.subs.toFixed(1)}M` },
                   ].map(({ label, val }) => (
@@ -895,7 +912,7 @@ export const BroadcastingView: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard icon={DollarSign} label="Total Revenue"  value={`$${metrics.totalRev.toFixed(2)}B`}  subValue={`Target: $${TOTAL_REV_TARGET}B`} color="emerald" trend={((metrics.totalRev / TOTAL_REV_TARGET) - 1) * 100} />
+                <StatCard icon={DollarSign} label="Total Expected Rev"  value={`$${metrics.totalRev.toFixed(2)}B`}  subValue={`Target: $${TOTAL_REV_TARGET}B`} color="emerald" trend={((metrics.totalRev / TOTAL_REV_TARGET) - 1) * 100} />
                 <StatCard icon={Users}      label="Est. Viewership" value={`${metrics.viewership.toFixed(1)}M`} subValue="Avg. per marquee game"              color="blue"    trend={null} />
                 <StatCard icon={ThumbsUp}   label="Fan Approval"   value={metrics.approvalGrade}               subValue={metrics.approval > 0.8 ? 'Beloved deal' : 'Fan backlash risk'} color="amber" trend={null} />
                 <StatCard icon={Zap}        label="Market Reach"   value={`${Math.round(metrics.avgReach * 100)}%`} subValue="Global penetration"           color="indigo"  trend={null} />
@@ -904,7 +921,7 @@ export const BroadcastingView: React.FC = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Revenue mix */}
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8">
-                  <h3 className="text-xl font-black text-white uppercase italic mb-6">Revenue Mix</h3>
+                  <h3 className="text-xl font-black text-white uppercase italic mb-6">Expected Revenue Mix</h3>
                   <div className="space-y-6">
                     {[
                       { label: 'Base Revenue (Sponsorship/Merch/Tickets)', val: 6.9, color: 'bg-zinc-500' },

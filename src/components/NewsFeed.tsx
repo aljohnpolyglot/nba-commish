@@ -154,6 +154,11 @@ function useGameLookup(): Map<number, GamePhotoInfo> {
 export const NewsFeed: React.FC = () => {
     const { state } = useGame();
     const gameLookup = useGameLookup();
+    const [activeTab, setActiveTab] = React.useState<'daily' | 'weekly'>('daily');
+
+    const dailyNews = state.news.filter(n => !n.newsType || n.newsType === 'daily');
+    const weeklyNews = state.news.filter(n => n.newsType === 'weekly');
+    const visibleNews = activeTab === 'weekly' ? weeklyNews : dailyNews;
 
     return (
         <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-300 overflow-hidden rounded-[2.5rem] border border-slate-800 shadow-2xl">
@@ -167,19 +172,33 @@ export const NewsFeed: React.FC = () => {
                         Official NBA Press Terminal
                     </p>
                 </div>
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 bg-slate-950 px-4 py-2 rounded-xl border border-slate-800">
-                        <Clock size={14} className="text-indigo-500" />
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            Real-time Updates
-                        </span>
-                    </div>
+                <div className="flex items-center gap-2 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+                    <button
+                        onClick={() => setActiveTab('daily')}
+                        className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${
+                            activeTab === 'daily'
+                                ? 'bg-indigo-600 text-white'
+                                : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                    >
+                        Daily News {dailyNews.length > 0 && <span className="ml-1 opacity-60">({dailyNews.length})</span>}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('weekly')}
+                        className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${
+                            activeTab === 'weekly'
+                                ? 'bg-indigo-600 text-white'
+                                : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                    >
+                        Period Recaps {weeklyNews.length > 0 && <span className="ml-1 opacity-60">({weeklyNews.length})</span>}
+                    </button>
                 </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar">
                 <div className="max-w-5xl mx-auto space-y-10">
-                    {state.news.map((item, index) => (
+                    {visibleNews.map((item, index) => (
                         <LazyNewsCard
                             key={item.id || `news-${index}`}
                             item={item}
@@ -189,7 +208,7 @@ export const NewsFeed: React.FC = () => {
                     ))}
                 </div>
 
-                {state.news.length === 0 && (
+                {visibleNews.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-96 text-slate-700 gap-8">
                         <div className="w-32 h-32 rounded-full bg-slate-900 flex items-center justify-center border-4 border-slate-800 opacity-20">
                             <Newspaper size={64} />
@@ -199,7 +218,7 @@ export const NewsFeed: React.FC = () => {
                                 Silence in the Press Room
                             </p>
                             <p className="text-sm font-bold uppercase tracking-widest mt-2">
-                                Awaiting the next major league development
+                                {activeTab === 'weekly' ? 'No period recaps yet — simulate multiple days' : 'Awaiting the next major league development'}
                             </p>
                         </div>
                     </div>

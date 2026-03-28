@@ -11,6 +11,7 @@ interface SocialThreadModalProps {
   batchCount: Record<string, number>;
   loadMoreReplies: (post: SocialPost) => Promise<void>;
   handleReplyToReply: (parentPost: SocialPost, reply: SocialPost) => Promise<void>;
+  llmEnabled?: boolean;
 }
 
 export const SocialThreadModal: React.FC<SocialThreadModalProps> = ({
@@ -19,7 +20,8 @@ export const SocialThreadModal: React.FC<SocialThreadModalProps> = ({
   isLoadingThread,
   batchCount,
   loadMoreReplies,
-  handleReplyToReply
+  handleReplyToReply,
+  llmEnabled = true,
 }) => {
   return (
     <motion.div 
@@ -52,8 +54,8 @@ export const SocialThreadModal: React.FC<SocialThreadModalProps> = ({
                 </div>
                 
                 <div className="pl-8 border-l-2 border-slate-800 space-y-6">
-                    {selectedPost.replies?.map(reply => (
-                        <div key={reply.id} className="space-y-4">
+                    {selectedPost.replies?.map((reply, idx) => (
+                        <div key={reply.id || `reply-${idx}-${reply.handle}`} className="space-y-4">
                             <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2">
@@ -83,8 +85,8 @@ export const SocialThreadModal: React.FC<SocialThreadModalProps> = ({
                             {/* Nested Replies */}
                             {reply.replies && reply.replies.length > 0 && (
                                 <div className="pl-6 border-l border-slate-800 space-y-4">
-                                    {reply.replies.map(nested => (
-                                        <div key={nested.id} className="bg-slate-900/30 border border-slate-800/50 rounded-2xl p-3">
+                                    {reply.replies.map((nested, nIdx) => (
+                                        <div key={nested.id || `nested-${nIdx}-${nested.handle}`} className="bg-slate-900/30 border border-slate-800/50 rounded-2xl p-3">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className="text-xs font-bold text-white">{nested.author}</span>
                                                 <span className="text-[10px] text-slate-500">{nested.handle}</span>
@@ -102,9 +104,13 @@ export const SocialThreadModal: React.FC<SocialThreadModalProps> = ({
                             <RefreshCw size={16} className="animate-spin" />
                             <span className="text-xs font-bold uppercase tracking-widest">Generating...</span>
                         </div>
+                    ) : !llmEnabled ? (
+                        <p className="text-center text-xs text-slate-600 py-4 border-t border-slate-800/50 mt-4">
+                            Enable AI in settings to load more replies
+                        </p>
                     ) : (
                         (batchCount[selectedPost.id] || 0) < 5 && (
-                            <button 
+                            <button
                                 onClick={() => loadMoreReplies(selectedPost)}
                                 className="w-full py-4 text-xs font-black text-slate-500 uppercase tracking-[0.2em] hover:text-indigo-500 transition-colors border-t border-slate-800/50 mt-4"
                             >

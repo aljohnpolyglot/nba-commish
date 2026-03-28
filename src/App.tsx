@@ -144,7 +144,7 @@ function GameLayout() {
           <div className="w-8" /> {/* Spacer for visual balance */}
         </div>
 
-        <MainContent currentView={currentView} />
+        <MainContent currentView={currentView} onViewChange={setCurrentView} />
 
         {state.isProcessing && !state.isWatchingGame && (
           <LoadingOverlay

@@ -31,7 +31,7 @@ export const NBACentral: React.FC = () => {
   const [selectedPlayerContact, setSelectedPlayerContact] = useState<Contact | null>(null);
   
   const [personSelectorOpen, setPersonSelectorOpen] = useState(false);
-  const [personSelectorType, setPersonSelectorType] = useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'sabotage'>('general');
+  const [personSelectorType, setPersonSelectorType] = useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'sabotage' | 'waive'>('general');
   const personSelectorTitle = '';
 
   // Game Watch State
@@ -113,7 +113,7 @@ export const NBACentral: React.FC = () => {
   };
 
   const getContactFromPlayer = (player: NBAPlayer): Contact => {
-    const isNBA = !['WNBA', 'Euroleague', 'PBA'].includes(player.status || '');
+    const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League'].includes(player.status || '');
     const playerTeam = isNBA ? state.teams.find(t => t.id === player.tid) : null;
     const nonNBATeam = !isNBA ? state.nonNBATeams.find(t => t.tid === player.tid && t.league === player.status) : null;
     
@@ -130,6 +130,8 @@ export const NBACentral: React.FC = () => {
       org = 'Euroleague';
     } else if (player.status === 'PBA') {
       org = 'PBA';
+    } else if (player.status === 'B-League') {
+      org = 'B-League';
     }
 
     return {
@@ -142,7 +144,7 @@ export const NBACentral: React.FC = () => {
     };
   };
 
-  const handleActionSelect = (actionType: 'view_bio' | 'contact' | 'bribe' | 'fine' | 'dinner' | 'movie' | 'suspension' | 'sabotage') => {
+  const handleActionSelect = (actionType: 'view_bio' | 'contact' | 'bribe' | 'fine' | 'dinner' | 'movie' | 'suspension' | 'waive' | 'sabotage') => {
     if (!selectedPlayerForActions) return;
     
     if (actionType === 'view_bio') {
@@ -196,6 +198,7 @@ export const NBACentral: React.FC = () => {
       if (personSelectorType === 'leak_scandal') actionType = 'LEAK_SCANDAL';
       if (personSelectorType === 'give_money') actionType = 'GIVE_MONEY';
       if (personSelectorType === 'sabotage') actionType = 'SABOTAGE_PLAYER';
+      if (personSelectorType === 'waive') actionType = 'WAIVE_PLAYER';
 
       const targetNames = contacts.map(c => c.name).join(', ');
       const targetRoles = contacts.map(c => c.title).join(', ');

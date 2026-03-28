@@ -4,32 +4,67 @@ import { DollarSign, Activity } from 'lucide-react'; // Kept only necessary icon
 import { ApprovalChart } from './dashboard/ApprovalChart';
 import { ViewershipChart } from './dashboard/ViewershipChart';
 import { RevenueChart } from './dashboard/RevenueChart';
+import { getGamePhase } from '../../utils/helpers';
+import { VIEWERSHIP_MEANS } from '../../services/logic/ViewershipService';
 
 interface DashboardProps {
   initialTab?: 'approvals' | 'finances';
+}
+
+// Phase-weighted season revenue: Finals days are worth ~6x more than Preseason days.
+// Total weighted season budget: sum(phase_weight * phase_days) across all phases.
+// Each historical point accumulates revenue proportional to the phase it was in.
+const SEASON_PHASE_BUDGETS: { days: number; phaseKey: string }[] = [
+  { phaseKey: 'Preseason', days: 21 },
+  { phaseKey: 'Opening Week', days: 7 },
+  { phaseKey: 'Regular Season (Early)', days: 45 },
+  { phaseKey: 'Regular Season (Mid)', days: 50 },
+  { phaseKey: 'Regular Season (Late)', days: 45 },
+  { phaseKey: 'Play-In Tournament', days: 4 },
+  { phaseKey: 'Playoffs (Round 1)', days: 16 },
+  { phaseKey: 'Playoffs (Round 2)', days: 14 },
+  { phaseKey: 'Conference Finals', days: 10 },
+  { phaseKey: 'NBA Finals', days: 14 },
+];
+
+const TOTAL_WEIGHTED_BUDGET = SEASON_PHASE_BUDGETS.reduce(
+  (sum, p) => sum + (VIEWERSHIP_MEANS[p.phaseKey as any] ?? 1.8) * p.days,
+  0
+);
+
+function getPhaseWeight(dateStr: string): number {
+  const phase = getGamePhase(dateStr);
+  return VIEWERSHIP_MEANS[phase] ?? 1.8;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ initialTab = 'approvals' }) => {
   const { state } = useGame();
   const { leagueStats, stats, historicalStats } = state;
 
-  // Season revenue calculations
+  // Season revenue calculations — phase-weighted so Finals days earn more than Preseason days
   const openingNight = new Date('2025-10-24');
   const currentDate  = new Date(state.date);
   const daysSinceOpening = Math.max(0, (currentDate.getTime() - openingNight.getTime()) / (1000 * 60 * 60 * 24));
   const annualRevB   = leagueStats.mediaRights?.totalRev ?? 0;
-  const seasonRevB   = parseFloat(((daysSinceOpening / 365) * annualRevB).toFixed(2));
+
+  // Compute phase-weighted season revenue for the current date
+  const currentPhaseWeight = getPhaseWeight(state.date);
+  const weightedDaysCurrent = daysSinceOpening * (currentPhaseWeight / (TOTAL_WEIGHTED_BUDGET / 265));
+  const seasonRevB = parseFloat(Math.min((weightedDaysCurrent / 265) * annualRevB, annualRevB).toFixed(2));
 
   const displayRevenue = leagueStats.mediaRights?.totalRev
-    ? leagueStats.mediaRights.totalRev * 1000 
+    ? leagueStats.mediaRights.totalRev * 1000
     : leagueStats.revenue;
 
-  // For each historical point compute how much of annual revenue had accrued by that date
+  // For each historical point compute phase-weighted season revenue accrued by that date
   const chartData = historicalStats.map(stat => {
       const pointDate = new Date(stat.date);
       const daysIn = Math.max(0, (pointDate.getTime() - openingNight.getTime()) / (1000 * 60 * 60 * 24));
       const pointAnnualRevB = stat.revenue / 1000; // raw millions → billions
-      const seasonRevAtPoint = parseFloat(((daysIn / 365) * pointAnnualRevB).toFixed(2));
+      const phaseWeight = getPhaseWeight(stat.date);
+      const avgDailyWeight = TOTAL_WEIGHTED_BUDGET / 265;
+      const weightedDays = daysIn * (phaseWeight / avgDailyWeight);
+      const seasonRevAtPoint = parseFloat(Math.min((weightedDays / 265) * pointAnnualRevB, pointAnnualRevB).toFixed(2));
       return { ...stat, seasonRevenue: seasonRevAtPoint * 1000 }; // keep same million scale as revenue for RevenueChart to divide
   });
 
@@ -84,7 +119,7 @@ const Dashboard: React.FC<DashboardProps> = ({ initialTab = 'approvals' }) => {
                     <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl backdrop-blur-sm">
                         <div className="flex items-center gap-3 mb-2">
                             <DollarSign size={18} className="text-emerald-400" />
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Revenue</span>
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Expected Annual Revenue</span>
                         </div>
                         <span className="text-2xl font-black text-white">${(displayRevenue / 1000).toFixed(1)}B</span>
                     </div>
@@ -92,7 +127,7 @@ const Dashboard: React.FC<DashboardProps> = ({ initialTab = 'approvals' }) => {
                     <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl backdrop-blur-sm">
                         <div className="flex items-center gap-3 mb-2">
                             <Activity size={18} className="text-violet-400" />
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Season Revenue</span>
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Expected Season Rev</span>
                         </div>
                         <span className="text-2xl font-black text-white">
                           {annualRevB === 0

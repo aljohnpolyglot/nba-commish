@@ -99,9 +99,10 @@ function getSeasonContext(ctx: SocialContext): string | null {
     const season = getCurrentSeasonStats(player);
     if (!season) return null;
 
-    const pts = season.pts;
-    const reb = (season.trb ?? (season.orb ?? 0) + (season.drb ?? 0));
-    const ast = season.ast;
+    const gp = season.gp || 1;
+    const pts = (season.pts || 0) / gp;
+    const reb = ((season.trb ?? (season.orb ?? 0) + (season.drb ?? 0)) || 0) / gp;
+    const ast = (season.ast || 0) / gp;
 
     if (!pts || pts < 12) return null;
 
@@ -251,6 +252,78 @@ function buildShamsPost(ctx: SocialContext): string {
     if (seasonCtx) parts.push(seasonCtx);
 
     return parts.join(' ');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FREE AGENT SIGNING POST BUILDER
+// Standalone — call from playerActions when LLM is off
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function buildShamsSigningPost(
+    playerName: string,
+    teamName: string,
+    teamAbbrev: string,
+    overallRating: number,
+    prevTeamName?: string | null,
+    prevLeague?: string | null,
+    salary?: number // thousands of dollars (BBGM units)
+): string {
+    const src = getSource();
+    const salaryStr = salary && salary >= 5000
+        ? ` on a $${(salary / 1000).toFixed(1)}M deal`
+        : '';
+    const prevStr = prevTeamName
+        ? ` He was previously with the ${prevTeamName}.`
+        : prevLeague && prevLeague !== 'Free Agent'
+            ? ` He comes from the ${prevLeague}.`
+            : '';
+    const isStar = overallRating >= 85;
+    const isVet = overallRating >= 78;
+
+    if (isStar) {
+        const variants = [
+            `Sources: ${playerName} is signing with the ${teamName}${salaryStr}, ${src}${prevStr}`,
+            `BREAKING: ${teamName} are signing ${playerName}${salaryStr}, ${src}${prevStr}`,
+            `${playerName} is heading to the ${teamName}${salaryStr}, ${src}${prevStr}`,
+        ];
+        return variants[Math.floor(Math.random() * variants.length)];
+    }
+    if (isVet) {
+        const variants = [
+            `${teamName} are signing veteran ${playerName}${salaryStr}, ${src}${prevStr}`,
+            `${playerName} has agreed to a deal with the ${teamName}${salaryStr}, ${src}${prevStr}`,
+        ];
+        return variants[Math.floor(Math.random() * variants.length)];
+    }
+    return `${teamAbbrev} are signing ${playerName}${salaryStr}, ${src}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TRADE POST BUILDER
+// Standalone — call from tradeActions when LLM is off
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function buildShamsTradePost(
+    teamAName: string,
+    teamAAbbrev: string,
+    teamBName: string,
+    teamBAbbrev: string,
+    assetsToB: string[],   // names of players/picks going to teamB
+    assetsToA: string[]    // names of players/picks going to teamA
+): string {
+    const src = getSource();
+    const toBStr = assetsToB.join(', ') || 'future considerations';
+    const toAStr = assetsToA.join(', ') || 'future considerations';
+
+    const isMajor = assetsToB.length + assetsToA.length >= 4;
+    const prefix = isMajor ? 'BREAKING: ' : 'Sources: ';
+
+    const variants = [
+        `${prefix}The ${teamAName} are trading ${toBStr} to the ${teamBName} in exchange for ${toAStr}, ${src}`,
+        `${prefix}${teamAName}–${teamBName} trade: ${teamAAbbrev} sends ${toBStr} to ${teamBAbbrev} for ${toAStr}, ${src}`,
+        `${prefix}A deal has been struck between the ${teamAName} and ${teamBName}. ${toBStr} head to ${teamBAbbrev}; ${toAStr} go to ${teamAAbbrev}, ${src}`,
+    ];
+    return variants[Math.floor(Math.random() * variants.length)];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { X, Play, Shield, ChevronRight } from 'lucide-react';
+import { X, Play, Shield, ChevronRight, Tv } from 'lucide-react';
 import { NBATeam, Game, NBAPlayer } from '../../types';
 import { useGame } from '../../store/GameContext';
 import { calculateTeamStrength } from '../../utils/playerRatings';
@@ -11,6 +11,7 @@ import { REFS } from '../central/view/LeagueOfficeSearcher';
 import { RefereePickerModal } from './RefereePickerModal';
 import { RigConfirmModal } from './RigConfirmModal';
 import { fetchRefereeData, getRefereePhoto } from '../../data/photos';
+import { pickBroadcasterForGame, BROADCASTER_NAMES, BROADCASTER_LOGOS } from '../../utils/broadcastingUtils';
 
 interface SelectedRef {
   id: string;
@@ -56,6 +57,25 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
 
   const homeOvr = homeTeam.id < 0 ? 85 : calculateTeamStrength(homeTeam.id, players);
   const awayOvr = awayTeam.id < 0 ? 85 : calculateTeamStrength(awayTeam.id, players);
+
+  // Broadcaster + tipoff time — prefer pre-attached data on game, compute as fallback
+  const gameBroadcastInfo = (() => {
+    if (game.broadcasterName && game.tipoffTime) {
+      return { broadcasterName: game.broadcasterName, tipoffTime: game.tipoffTime };
+    }
+    const mediaRights = state.leagueStats?.mediaRights;
+    if (mediaRights) {
+      const allTeams = state.teams || [];
+      const { broadcasterName, tipoffTime } = pickBroadcasterForGame(
+        game, mediaRights,
+        allTeams.find((t: NBATeam) => t.id === game.homeTid),
+        allTeams.find((t: NBATeam) => t.id === game.awayTid),
+        allTeams,
+      );
+      return { broadcasterName, tipoffTime };
+    }
+    return { broadcasterName: 'NBA League Pass', tipoffTime: '7:30 PM ET' };
+  })();
 
   // Rig state
   const [riggedForTid, setRiggedForTid] = useState<number | undefined>(undefined);
@@ -191,6 +211,33 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
                 <div className="mt-2 md:mt-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
                   {new Date(game.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                 </div>
+                <div className="mt-1 text-[11px] font-bold text-indigo-400 text-center">
+                  {gameBroadcastInfo.tipoffTime}
+                </div>
+                {!isCelebrity && !isAllStar && !isRisingStars && (() => {
+                  const bcId   = game.broadcaster || '';
+                  const logoUrl = BROADCASTER_LOGOS[bcId];
+                  return (
+                    <div className="mt-2 flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
+                      {logoUrl ? (
+                        <div className="w-7 h-7 bg-white rounded-md p-1 flex items-center justify-center overflow-hidden shrink-0">
+                          <img
+                            src={logoUrl}
+                            alt={gameBroadcastInfo.broadcasterName}
+                            className="max-w-full max-h-full object-contain"
+                            referrerPolicy="no-referrer"
+                            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                        </div>
+                      ) : (
+                        <Tv size={13} className="text-slate-400 shrink-0" />
+                      )}
+                      <span className="text-[10px] font-bold text-slate-300 whitespace-nowrap">
+                        {gameBroadcastInfo.broadcasterName}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
 
               {renderTeamPreview(homeTeam, homeStarters, homeOvr, true)}
@@ -211,7 +258,7 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
                   <div className="p-5 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-4">
                     <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Select Favored Team</p>
                     <div className="flex gap-3">
-                      {[homeTeam, awayTeam].map(team => (
+                      {[awayTeam, homeTeam].map(team => (
                         <button
                           key={team.id}
                           onClick={() => setRiggedForTid(riggedForTid === team.id ? undefined : team.id)}

@@ -1,7 +1,7 @@
 export type PlayerImageMap = Record<string, string>;
 
 // The Gist URL for Player Images
-const PLAYER_IMAGES_GIST = "https://gist.githubusercontent.com/aljohnpolyglot/daa76f3421f5b5b965a5d7ac263b9d80/raw/b594df84e6c716d04b5cbb7bccc132a218632a9f/statmuse_avatars";
+const PLAYER_IMAGES_GIST = "https://gist.githubusercontent.com/aljohnpolyglot/daa76f3421f5b5b965a5d7ac263b9d80/raw/b3d8b85d5d4f122aab987a63a83eb35542972349/statmuse_avatars";
 
 /**
  * These are exported so index.ts doesn't break.

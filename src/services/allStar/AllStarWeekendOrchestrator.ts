@@ -46,7 +46,7 @@ export function getAllStarWeekendDates(year: number): {
   const saturday = new Date(allStarSunday);
   saturday.setDate(allStarSunday.getDate() - 1);
   const breakStart = new Date(allStarSunday);
-  breakStart.setDate(allStarSunday.getDate() - 3);
+  breakStart.setDate(allStarSunday.getDate() - 2); // Friday (Rising Stars day) — Thursday games still play
   const breakEnd = new Date(allStarSunday);
   breakEnd.setDate(allStarSunday.getDate() + 1);
   const regularResumes = new Date(allStarSunday);

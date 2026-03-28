@@ -18,13 +18,18 @@ export class NewsGenerator {
     category: NewsCategory,
     dateString: string,
     vars: Record<string, string | number>,
-    image?: string
+    image?: string,
+    newsType?: 'daily' | 'weekly'
   ): NewsItem | null {
     const template = NEWS_TEMPLATES.find(t => t.category === category);
     if (!template) return null;
 
     const headlineTpl = this.sample(template.headlines);
     const contentTpl = this.sample(template.contents);
+
+    // Default weekly categories
+    const weeklyCategories: NewsCategory[] = ['batch_recap', 'preseason_recap'];
+    const resolvedType = newsType ?? (weeklyCategories.includes(category) ? 'weekly' : 'daily');
 
     return {
       id: `news-${category}-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
@@ -33,6 +38,7 @@ export class NewsGenerator {
       date: dateString,
       isNew: true,
       image,
+      newsType: resolvedType,
     };
   }
 }

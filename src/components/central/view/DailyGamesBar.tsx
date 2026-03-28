@@ -39,19 +39,17 @@ export const DailyGamesBar: React.FC<DailyGamesBarProps> = ({ games, teams, onWa
                                 
                                 <div className="flex items-center justify-between w-full px-0.5 gap-2">
                                     <div className="flex flex-col items-center gap-0.5">
-                                        <div className="flex flex-col items-center gap-0.5">
-                                            <img src={awayTeam.logoUrl} alt={awayTeam.abbrev} className="w-7 h-7 object-contain" referrerPolicy="no-referrer" />
-                                            <span className="text-[9px] font-black text-white uppercase tracking-tighter">{awayTeam.abbrev}</span>
-                                        </div>
+                                        <img src={awayTeam.logoUrl} alt={awayTeam.abbrev} className="w-7 h-7 object-contain" referrerPolicy="no-referrer" />
+                                        <span className="text-[9px] font-black text-white uppercase tracking-tighter">{awayTeam.abbrev}</span>
+                                        <span className="text-[8px] text-slate-500 font-mono">{awayTeam.wins ?? 0}-{awayTeam.losses ?? 0}</span>
                                     </div>
-                                    
+
                                     <span className="text-[10px] font-black text-slate-700">@</span>
-                                    
+
                                     <div className="flex flex-col items-center gap-0.5">
-                                        <div className="flex flex-col items-center gap-0.5">
-                                            <img src={homeTeam.logoUrl} alt={homeTeam.abbrev} className="w-7 h-7 object-contain" referrerPolicy="no-referrer" />
-                                            <span className="text-[9px] font-black text-white uppercase tracking-tighter">{homeTeam.abbrev}</span>
-                                        </div>
+                                        <img src={homeTeam.logoUrl} alt={homeTeam.abbrev} className="w-7 h-7 object-contain" referrerPolicy="no-referrer" />
+                                        <span className="text-[9px] font-black text-white uppercase tracking-tighter">{homeTeam.abbrev}</span>
+                                        <span className="text-[8px] text-slate-500 font-mono">{homeTeam.wins ?? 0}-{homeTeam.losses ?? 0}</span>
                                     </div>
                                 </div>
                             </div>

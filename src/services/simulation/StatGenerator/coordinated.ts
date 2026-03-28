@@ -164,6 +164,10 @@ export function generateCoordinatedStats(
     }
   }
 
+  // ── Hard cap: no player can exceed total game length (handles any rounding drift)
+  const maxMins = 48 + otCount * 5;
+  stats.forEach(s => { s.min = Math.min(maxMins, Math.max(0, s.min)); });
+
   // ── Cleanup & GameScore
   stats.forEach(s => {
     s.reb = s.orb + s.drb;

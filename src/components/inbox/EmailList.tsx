@@ -51,7 +51,7 @@ export const EmailList: React.FC<EmailListProps> = ({
           <button
             key={email.id}
             onClick={() => onSelect(email.id)}
-            className={`w-full text-left px-4 py-3 border-b border-slate-800/30 transition-all duration-200 relative group ${
+            className={`w-full text-left px-4 py-4 border-b border-slate-700/60 transition-all duration-200 relative group ${
               selectedEmailId === email.id ? 'bg-indigo-600/10' : 'hover:bg-slate-800/40'
             }`}
           >
@@ -63,7 +63,7 @@ export const EmailList: React.FC<EmailListProps> = ({
                 {email.sender}
               </span>
               <span className="text-[10px] text-slate-500 shrink-0">
-                {formatGameRelativeDate(email.date, gameDate)}
+                {formatGameRelativeDate(email.date, gameDate) || email.date?.split(' ').slice(0, 2).join(' ') || ''}
               </span>
             </div>
             <div className={`text-xs font-bold mb-1 line-clamp-1 ${!email.read ? 'text-slate-200' : 'text-slate-500'}`}>

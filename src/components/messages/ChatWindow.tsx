@@ -29,14 +29,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
     const player = state.players.find(p => p.internalId === id);
     if (player) {
         let org = 'Free Agent';
-        if (player.status === 'PBA') {
-             const team = state.nonNBATeams.find(t => t.league === 'PBA' && t.tid === player.tid);
-             if (team) org = team.name;
-        } else if (player.status === 'WNBA') {
-             const team = state.nonNBATeams.find(t => t.league === 'WNBA' && t.tid === player.tid);
-             if (team) org = team.name;
-        } else if (player.status === 'Euroleague') {
-             const team = state.nonNBATeams.find(t => t.league === 'Euroleague' && t.tid === player.tid);
+        if (['PBA', 'WNBA', 'Euroleague', 'B-League'].includes(player.status || '')) {
+             const team = state.nonNBATeams.find(t => t.league === player.status && t.tid === player.tid);
              if (team) org = team.name;
         } else {
              const team = state.teams.find(t => t.id === player.tid);
@@ -84,20 +78,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
             org = team.name;
             console.log(`ChatWindow Debug: Found team ${team.name}. Logo: ${teamLogoUrl}`);
         }
-      } else if (player.status === 'PBA') {
-          const team = state.nonNBATeams.find(t => t.league === 'PBA' && t.tid === player.tid);
-          if (team) {
-              org = team.name;
-              teamLogoUrl = team.imgURL;
-          }
-      } else if (player.status === 'WNBA') {
-          const team = state.nonNBATeams.find(t => t.league === 'WNBA' && t.tid === player.tid);
-          if (team) {
-              org = team.name;
-              teamLogoUrl = team.imgURL;
-          }
-      } else if (player.status === 'Euroleague') {
-          const team = state.nonNBATeams.find(t => t.league === 'Euroleague' && t.tid === player.tid);
+      } else if (['PBA', 'WNBA', 'Euroleague', 'B-League'].includes(player.status || '')) {
+          const team = state.nonNBATeams.find(t => t.league === player.status && t.tid === player.tid);
           if (team) {
               org = team.name;
               teamLogoUrl = team.imgURL;
@@ -156,14 +138,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
                 teamLogoUrl = team.logoUrl;
                 org = team.name;
             }
-          } else if (player.status === 'PBA') {
-              const team = state.nonNBATeams.find(t => t.league === 'PBA' && t.tid === player.tid);
-              if (team) org = team.name;
-          } else if (player.status === 'WNBA') {
-              const team = state.nonNBATeams.find(t => t.league === 'WNBA' && t.tid === player.tid);
-              if (team) org = team.name;
-          } else if (player.status === 'Euroleague') {
-              const team = state.nonNBATeams.find(t => t.league === 'Euroleague' && t.tid === player.tid);
+          } else if (['PBA', 'WNBA', 'Euroleague', 'B-League'].includes(player.status || '')) {
+              const team = state.nonNBATeams.find(t => t.league === player.status && t.tid === player.tid);
               if (team) org = team.name;
           } else {
               org = 'Free Agent';
@@ -260,15 +236,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
     let org = 'Unknown';
     const player = state.players.find(p => p.internalId === participant!.id);
     if (player) {
-        if (player.status === 'PBA') {
-             const team = state.nonNBATeams.find(t => t.league === 'PBA' && t.tid === player.tid);
-             org = team ? team.name : 'PBA Free Agent';
-        } else if (player.status === 'WNBA') {
-             const team = state.nonNBATeams.find(t => t.league === 'WNBA' && t.tid === player.tid);
-             org = team ? team.name : 'WNBA Free Agent';
-        } else if (player.status === 'Euroleague') {
-             const team = state.nonNBATeams.find(t => t.league === 'Euroleague' && t.tid === player.tid);
-             org = team ? team.name : 'Euroleague Free Agent';
+        if (['PBA', 'WNBA', 'Euroleague', 'B-League'].includes(player.status || '')) {
+             const team = state.nonNBATeams.find(t => t.league === player.status && t.tid === player.tid);
+             org = team ? team.name : `${player.status} Free Agent`;
         } else {
              const team = state.teams.find(t => t.id === player.tid);
              org = team ? team.name : 'Free Agent';

@@ -61,13 +61,13 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
                     onClick={() => setShowProfit(false)}
                     className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${!showProfit ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                    Revenue
+                    Annual Est.
                 </button>
                 <button
                     onClick={() => setShowProfit(true)}
                     className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${showProfit ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                    Season Rev
+                    Season Est.
                 </button>
             </div>
         </div>
@@ -95,7 +95,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Area
-                    name={showProfit ? "Season Rev" : "Annual Rev"}
+                    name={showProfit ? "Season Est." : "Annual Est."}
                     type="monotone"
                     dataKey={showProfit ? "seasonRevenue" : "revenue"}
                     stroke="#10b981"

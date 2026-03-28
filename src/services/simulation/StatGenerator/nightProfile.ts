@@ -1,4 +1,5 @@
 import { NBAPlayer as Player } from '../../../types';
+import { activeClubDebuffs } from './helpers';
 
 export interface NightProfile {
   ptsTargetMult: number;   // Scoring volume (rollS)
@@ -42,7 +43,29 @@ function approxNormal(): number {
   return (Math.random() + Math.random() + Math.random() + Math.random() - 2) / 2;
 }
 
-export function getNightProfile(
+function applyClubDebuff(profile: NightProfile, severity: 'heavy' | 'moderate' | 'mild'): void {
+  if (severity === 'heavy') {
+    profile.ptsTargetMult  *= 0.78;
+    profile.efficiencyMult *= 0.82;
+    profile.ballControlMult *= 0.72;  // more TOs — foggy decision-making
+    profile.assistMult     *= 0.82;
+    profile.stlMult        *= 0.80;
+    profile.blkMult        *= 0.80;
+  } else if (severity === 'moderate') {
+    profile.ptsTargetMult  *= 0.88;
+    profile.efficiencyMult *= 0.90;
+    profile.ballControlMult *= 0.85;
+    profile.assistMult     *= 0.90;
+    profile.stlMult        *= 0.90;
+    profile.blkMult        *= 0.90;
+  } else {
+    profile.ptsTargetMult  *= 0.94;
+    profile.efficiencyMult *= 0.96;
+    profile.ballControlMult *= 0.93;
+  }
+}
+
+function computeNightProfile(
   p: Player,
   season: number,
   lead: number = 0,
@@ -121,6 +144,9 @@ export function getNightProfile(
       stlMult = 1.50; blkMult = 1.00; rebBoost = 1.00; // Clamps / Pickpocket
     }
 
+    const archetype = isHybrid ? 'Hybrid' : isBig ? 'Big' : 'Guard';
+    console.log(`[NightProfile] 🛡️ HUSTLE GOD — ${p.name} (${archetype}) | stl×${stlMult} blk×${blkMult} reb×${rebBoost} | blockBonus=${blockBonus.toFixed(2)} stealBonus=${stealBonus.toFixed(2)}`);
+
     return {
       ptsTargetMult:  0.45 + Math.random() * 0.30,
       efficiencyMult: 0.80 + Math.random() * 0.20,
@@ -150,9 +176,12 @@ export function getNightProfile(
   if (lightningRoll < 0.008) {
     const isStarScorer = (ins > 60 || fg > 60 || tp > 20 || oiq > 70);
     const floor = isStarScorer ? 0.45 : 0.25; // Stars don't drop to 9 points
+    const pts = (floor + Math.random() * 0.25);
+    const eff = (0.55 + Math.random() * 0.15);
+    console.log(`[NightProfile] 💀 DISASTER — ${p.name} (OVR ${ovr}) | pts×${pts.toFixed(2)} eff×${eff.toFixed(2)} | star=${isStarScorer}`);
     return {
-      ptsTargetMult:  floor + Math.random() * 0.25,
-      efficiencyMult: 0.55 + Math.random() * 0.15,
+      ptsTargetMult:  pts,
+      efficiencyMult: eff,
       shotDietShift,
       assistMult:      0.3 + Math.random() * 0.4,
       ballControlMult: 0.4 + Math.random() * 0.3,
@@ -168,9 +197,12 @@ export function getNightProfile(
   // ins>40 OR fg>60 OR tp>45 = has a scoring skill; AND drb>40 = can put it on the floor
   if (lightningRoll < 0.023 && (ins > 40 || fg > 60 || tp > 45) && drb > 40) {
     const explosionCeiling = 1.05 + (ovr / 100) * 0.55;
+    const pts = (1.45 + Math.random() * (explosionCeiling - 1.35));
+    const eff = (1.15 + Math.random() * 0.20);
+    console.log(`[NightProfile] 💥 EXPLOSION — ${p.name} (OVR ${ovr}) | pts×${pts.toFixed(2)} eff×${eff.toFixed(2)} ceiling=${explosionCeiling.toFixed(2)}`);
     return {
-      ptsTargetMult:  1.35 + Math.random() * (explosionCeiling - 1.35),
-      efficiencyMult: 1.15 + Math.random() * 0.20,
+      ptsTargetMult:  pts,
+      efficiencyMult: eff,
       shotDietShift,
       assistMult:      1.0 + Math.random() * 0.6,
       ballControlMult: 1.0 + Math.random() * 0.6,
@@ -185,12 +217,15 @@ export function getNightProfile(
   // POINT GOD — gate: must be a real facilitator (blocks scorers-only, pure big men)
   // drb>40 AND pss>55 — Jokic/LeBron/CP3 qualify, pure scorers without passing don't
   if (lightningRoll < 0.053 && drb > 40 && pss > 55) {
+    const ast = (1.8 + Math.random() * 0.6);
+    const bc  = (2.0 + Math.random() * 0.8);
+    console.log(`[NightProfile] 🎩 POINT GOD — ${p.name} (pss=${pss}) | ast×${ast.toFixed(2)} ballControl×${bc.toFixed(2)}`);
     return {
       ptsTargetMult:  0.80 + Math.random() * 0.40,
       efficiencyMult: 1.0,
       shotDietShift:  -0.05,
-      assistMult:      1.8 + Math.random() * 0.6,  // kept sane — high but not broken
-      ballControlMult: 2.0 + Math.random() * 0.8,  // wizard night = very few TOs
+      assistMult:      ast,
+      ballControlMult: bc,
       orbMult:         1.0 + Math.random() * 0.3,
       drbMult:         1.0 + Math.random() * 0.3,
       stlMult:         1.0,
@@ -201,6 +236,7 @@ export function getNightProfile(
 
   // ZUBAC GOLIATH (~0.2%) - Math safe multipliers
   if (lightningRoll < 0.057 && hgt > 60 && stre > 30 && reb > 70) {
+    console.log(`[NightProfile] 🏔️ ZUBAC GOLIATH — ${p.name} (hgt=${hgt} reb=${reb}) | orb×1.5 drb×1.2 pts×1.35`);
     return {
       ptsTargetMult:  1.35,
       efficiencyMult: 1.15,
@@ -220,6 +256,7 @@ export function getNightProfile(
   if (lightningRoll < 0.060 && tp >= 20 && tp <= 40) {
     const isSuccess = Math.random() > 0.5;
     const shift = tp < 30 ? 0.06 : 0.10; // 20-30 range gets tiny shift, 30-40 gets slight shift
+    console.log(`[NightProfile] 🎰 LIMBO SHOOTER — ${p.name} (tp=${tp}) | success=${isSuccess} shift=${isSuccess ? shift : shift * 0.5}`);
     return {
       ptsTargetMult:  isSuccess ? 1.25 : 0.90,
       efficiencyMult: isSuccess ? 1.35 : 0.75,
@@ -238,6 +275,7 @@ export function getNightProfile(
   // Gate: spd>50, oiq>60, drb>60, pss>40 — real playmakers only
   // Kept at ~1% window to avoid avg distortion (5% would shave ~0.5 ppg off stars)
   if (lightningRoll < 0.063 && spd > 50 && oiq > 60 && drb > 60 && pss > 40) {
+    console.log(`[NightProfile] 🕊️ PASSIVE STAR — ${p.name} (OVR ${ovr}) | pts×0.70 ast×1.50 bc×1.80`);
     return {
       ptsTargetMult:  0.70,
       efficiencyMult: 1.15,
@@ -252,10 +290,31 @@ export function getNightProfile(
     };
   }
 
+ // COREY BREWER / MALACHI FLYNN 50-BOMB (~0.1%) — Scrub randomly turns into prime MJ
+  // Gate: Player must be a role player/bench guy (ovr < 76) with at least minor perimeter capability (drb > 30)
+  if (lightningRoll < 0.032 && ovr < 76 && drb > 35 && tp > 30) {
+    const pts = (1.2 + Math.random() * 1.3);
+    const eff = (1.5 + Math.random() * 0.3);
+    console.log(`[NightProfile] 🎆 COREY BREWER 50-BOMB — ${p.name} (OVR ${ovr}) | pts×${pts.toFixed(2)} eff×${eff.toFixed(2)} ftAgg×2.3`);
+    return {
+      ptsTargetMult:  pts,
+      efficiencyMult: eff,
+      shotDietShift:  0.2,                        // Chucking from deep
+      assistMult:     0.7 + Math.random() * 0.3,   // Absolute tunnel vision, heat check mode
+      ballControlMult:1.0 + Math.random() * 0.5,
+      orbMult:        1.0,
+      drbMult:        1.0,
+      stlMult:        1.4,                         // Getting easy fast break layups like Brewer
+      blkMult:        1.0,
+      ftAggression:   2.3, ftSkill: 1.15,          // Attacking the rim relentlessly
+    };
+  }
+
   // ── Simmons Effect (5% — everyone, regardless of rating) ────────────────
   // Passes up shots, defers, plays "the right way." shotDietShift capped at -0.15
   // to avoid tanking league-wide 3PA averages (original -0.35 was too aggressive).
   if (Math.random() > 0.95) {
+    console.log(`[NightProfile] 🙅 SIMMONS EFFECT — ${p.name} | pts×0.82 shotDiet=-0.15 ast×${(1.20 + rollV * 0.2).toFixed(2)}`);
     return {
       ptsTargetMult:  0.82,
       efficiencyMult: 1.12,
@@ -286,6 +345,7 @@ export function getNightProfile(
 
     // TIER 1: BRICKFEST (13%) — low volume, low efficiency
     if (shooterLuck < 0.13) {
+      console.log(`[NightProfile] 🧱 SHOOTER BRICKFEST — ${p.name} (tp=${tp}) | pts×0.45 eff×0.65`);
       return {
         ptsTargetMult:  0.45, efficiencyMult: 0.65, shotDietShift: -0.20,
         assistMult:      0.8 + rollV * 0.2,
@@ -300,6 +360,7 @@ export function getNightProfile(
 
     // TIER 2: COLD (17%) — lower volume, struggling
     if (shooterLuck < 0.30) {
+      console.log(`[NightProfile] 🥶 SHOOTER COLD — ${p.name} (tp=${tp}) | pts×0.75 eff×0.82`);
       return {
         ptsTargetMult:  0.75, efficiencyMult: 0.82, shotDietShift: -0.10,
         assistMult:      0.9 + rollV * 0.25,
@@ -314,6 +375,7 @@ export function getNightProfile(
 
     // TIER 3: OFF-NIGHT (8%) — lid on the rim, 5-for-18, normal volume bad efficiency
     if (shooterLuck < 0.38) {
+      console.log(`[NightProfile] 🪣 SHOOTER OFF-NIGHT — ${p.name} (tp=${tp}) | pts×0.95 eff×0.72`);
       return {
         ptsTargetMult:  0.95, efficiencyMult: 0.72, shotDietShift: 0,
         assistMult:      1.0 + rollV * 0.3,
@@ -328,6 +390,7 @@ export function getNightProfile(
 
     // TIER 4: DESPERATE CHUCKER (7%) — hunting shots to break slump, 7-for-26
     if (shooterLuck < 0.45) {
+      console.log(`[NightProfile] 🤡 SHOOTER DESPERATE CHUCKER — ${p.name} (tp=${tp}) | pts×0.80 eff×0.65 diet+0.15`);
       return {
         ptsTargetMult:  0.80, efficiencyMult: 0.65, shotDietShift: 0.15,
         assistMult:      0.7 + rollV * 0.2,
@@ -340,22 +403,11 @@ export function getNightProfile(
       };
     }
 
-    // TIER 5: SOLID (35%) — bread-and-butter game
-    if (shooterLuck < 0.80) {
-      return {
-        ptsTargetMult:  1.0, efficiencyMult: 1.0, shotDietShift: 0,
-        assistMult:      1.0 + rollV * 0.4,
-        ballControlMult: 1.0 + rollV * 0.35,
-        orbMult:         1.0 + rollH * 0.45,
-        drbMult:         1.0 + rollH * 0.45,
-        stlMult:         1.0 + rollH * 0.45,
-        blkMult:         1.0 + rollH * 0.45,
-        ftAggression: 1.0, ftSkill: 1.0,
-      };
-    }
+    // TIER 5: SOLID (35%) — bread-and-butter game — no log (too common)
 
     // TIER 6: HOT (12%) — high efficiency night
-    if (shooterLuck < 0.92) {
+    if (shooterLuck >= 0.80 && shooterLuck < 0.92) {
+      console.log(`[NightProfile] 🔥 SHOOTER HOT — ${p.name} (tp=${tp}) | pts×1.25 eff×1.18`);
       return {
         ptsTargetMult:  1.25, efficiencyMult: 1.18, shotDietShift: 0.10,
         assistMult:      1.1 + rollV * 0.25,
@@ -369,15 +421,30 @@ export function getNightProfile(
     }
 
     // TIER 7: TORCH (8%) — everything falling, 40+ pt territory
+    if (shooterLuck >= 0.92) {
+      console.log(`[NightProfile] 🔦 SHOOTER TORCH — ${p.name} (tp=${tp}) | pts×1.38 eff×1.35`);
+      return {
+        ptsTargetMult:  1.38, efficiencyMult: 1.35, shotDietShift: 0.12,
+        assistMult:      1.2 + rollV * 0.2,
+        ballControlMult: 1.3 + rollV * 0.2,
+        orbMult:         1.0 + rollH * 0.4,
+        drbMult:         1.0 + rollH * 0.4,
+        stlMult:         1.0 + rollH * 0.5,
+        blkMult:         1.0 + rollH * 0.5,
+        ftAggression: 1.45, ftSkill: 1.12,
+      };
+    }
+
+    // TIER 5: SOLID (35%) — bread-and-butter, fallthrough
     return {
-      ptsTargetMult:  1.38, efficiencyMult: 1.35, shotDietShift: 0.12,
-      assistMult:      1.2 + rollV * 0.2,
-      ballControlMult: 1.3 + rollV * 0.2,
-      orbMult:         1.0 + rollH * 0.4,
-      drbMult:         1.0 + rollH * 0.4,
-      stlMult:         1.0 + rollH * 0.5,
-      blkMult:         1.0 + rollH * 0.5,
-      ftAggression: 1.45, ftSkill: 1.12,
+      ptsTargetMult:  1.0, efficiencyMult: 1.0, shotDietShift: 0,
+      assistMult:      1.0 + rollV * 0.4,
+      ballControlMult: 1.0 + rollV * 0.35,
+      orbMult:         1.0 + rollH * 0.45,
+      drbMult:         1.0 + rollH * 0.45,
+      stlMult:         1.0 + rollH * 0.45,
+      blkMult:         1.0 + rollH * 0.45,
+      ftAggression: 1.0, ftSkill: 1.0,
     };
   }
 
@@ -390,8 +457,9 @@ export function getNightProfile(
 
     // CHUCKER (25%) — 6-for-22 night, volume steady but nothing falling
     if (microwaveLuck < 0.25) {
+      console.log(`[NightProfile] 🌊 MICROWAVE CHUCKER — ${p.name} | pts×0.85 eff×0.72`);
       return {
-        ptsTargetMult:  0.85, efficiencyMult: 0.72, shotDietShift: 0.05,
+        ptsTargetMult:  0.85, efficiencyMult: 0.72, shotDietShift: 0.08,
         assistMult:      0.8 + rollV * 0.2,
         ballControlMult: 0.7 + rollV * 0.2,
         orbMult:         0.9 + rollH * 0.3,
@@ -402,30 +470,31 @@ export function getNightProfile(
       };
     }
 
-    // PROFESSIONAL (50%) — standard night, 1.0 across the board
-    if (microwaveLuck < 0.75) {
+    // ALL-STAR (25%) — same volume, everything a swish, people calling for him to start
+    if (microwaveLuck >= 0.75) {
+      console.log(`[NightProfile] ⭐ MICROWAVE ALL-STAR — ${p.name} | pts×1.25 eff×1.28`);
       return {
-        ptsTargetMult:  1.0, efficiencyMult: 1.0, shotDietShift: 0,
-        assistMult:      1.0 + rollV * 0.4,
-        ballControlMult: 1.0 + rollV * 0.35,
-        orbMult:         1.0 + rollH * 0.4,
-        drbMult:         1.0 + rollH * 0.4,
-        stlMult:         1.0 + rollH * 0.4,
-        blkMult:         1.0 + rollH * 0.4,
-        ftAggression: 1.0, ftSkill: 1.0,
+        ptsTargetMult:  1.25, efficiencyMult: 1.28, shotDietShift: 0.10,
+        assistMult:      1.2 + rollV * 0.2,
+        ballControlMult: 1.2 + rollV * 0.2,
+        orbMult:         1.1 + rollH * 0.3,
+        drbMult:         1.1 + rollH * 0.3,
+        stlMult:         1.1 + rollH * 0.3,
+        blkMult:         1.1 + rollH * 0.3,
+        ftAggression: 1.28, ftSkill: 1.10,
       };
     }
 
-    // ALL-STAR (25%) — same volume, everything a swish, people calling for him to start
+    // PROFESSIONAL (50%) — standard night — no log (too common)
     return {
-      ptsTargetMult:  1.15, efficiencyMult: 1.28, shotDietShift: 0.10,
-      assistMult:      1.2 + rollV * 0.2,
-      ballControlMult: 1.2 + rollV * 0.2,
-      orbMult:         1.1 + rollH * 0.3,
-      drbMult:         1.1 + rollH * 0.3,
-      stlMult:         1.1 + rollH * 0.3,
-      blkMult:         1.1 + rollH * 0.3,
-      ftAggression: 1.28, ftSkill: 1.10,
+      ptsTargetMult:  1.0, efficiencyMult: 1.0, shotDietShift: 0,
+      assistMult:      1.0 + rollV * 0.4,
+      ballControlMult: 1.0 + rollV * 0.35,
+      orbMult:         1.0 + rollH * 0.4,
+      drbMult:         1.0 + rollH * 0.4,
+      stlMult:         1.0 + rollH * 0.4,
+      blkMult:         1.0 + rollH * 0.4,
+      ftAggression: 1.0, ftSkill: 1.0,
     };
   }
 
@@ -457,4 +526,22 @@ export function getNightProfile(
   const ftAggression = Math.max(0.5, Math.min(1.6, 1.0 + rollS * 0.40));
   const ftSkill = Math.max(0.80, Math.min(1.15, 1.0 + rollS * 0.10));
   return { ptsTargetMult, efficiencyMult, shotDietShift, assistMult, ballControlMult, orbMult, drbMult, stlMult, blkMult, ftAggression, ftSkill };
+}
+
+export function getNightProfile(
+  p: Player,
+  season: number,
+  lead: number = 0,
+  isWinner: boolean = true,
+  offShare: number = 0.1,
+  oppDefProfile?: { overallDef: number; steal: number; passPerception: number }
+): NightProfile {
+  const profile = computeNightProfile(p, season, lead, isWinner, offShare, oppDefProfile);
+  const severity = activeClubDebuffs.get(String(p.internalId));
+  if (severity) {
+    console.log(`[NightProfile] 🌙 CLUB DEBUFF — ${p.name} severity=${severity} | pts×before=${profile.ptsTargetMult.toFixed(2)}`);
+    applyClubDebuff(profile, severity);
+    console.log(`[NightProfile]   → pts×after=${profile.ptsTargetMult.toFixed(2)} eff×${profile.efficiencyMult.toFixed(2)} bc×${profile.ballControlMult.toFixed(2)}`);
+  }
+  return profile;
 }

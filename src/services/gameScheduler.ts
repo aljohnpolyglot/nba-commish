@@ -1,12 +1,14 @@
-import { NBATeam, Game } from '../types';
+import { NBATeam, Game, MediaRights } from '../types';
 import { getAllStarWeekendDates } from './allStar/AllStarWeekendOrchestrator';
+import { attachBroadcastersToGames } from '../utils/broadcastingUtils';
 
 export const generateSchedule = (
   teams: NBATeam[],
   christmasGames?: { homeTid: number; awayTid: number }[],
   globalGames?: { homeTid: number; awayTid: number; date: string; city: string; country: string }[],
   divisionGames?: number | null,
-  conferenceGames?: number | null
+  conferenceGames?: number | null,
+  mediaRights?: MediaRights | null,
 ): Game[] => {
   const games: Game[] = [];
   let gameId = 0; // gid 90000-90001 reserved for All-Star games
@@ -276,6 +278,11 @@ export const generateSchedule = (
 
   // Sort by date
   games.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  // Attach broadcaster + tipoff metadata when a media deal is available
+  if (mediaRights) {
+    return attachBroadcastersToGames(games, mediaRights, teams);
+  }
 
   return games;
 };

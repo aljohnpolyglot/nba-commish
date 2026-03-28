@@ -358,6 +358,20 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
                     <div className="text-[10px] text-red-400 font-black uppercase tracking-widest">West</div>
                   </div>
                 </div>
+                {/* MVP */}
+                {(() => {
+                  const mvp = [...(allStarBoxScore.homeStats || []), ...(allStarBoxScore.awayStats || [])]
+                    .sort((a: any, b: any) => (b.pts || 0) - (a.pts || 0))[0];
+                  if (!mvp) return null;
+                  return (
+                    <div className="flex flex-col items-center mb-4">
+                      <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-2">All-Star Game MVP</div>
+                      <div className="px-6 py-2 bg-amber-500 text-black rounded-full text-sm font-black uppercase tracking-tight shadow-xl shadow-amber-500/20">
+                        {mvp.name} · {mvp.pts} PTS
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="flex gap-3">
                   <button
                     onClick={() => onViewRosters('all-star')}

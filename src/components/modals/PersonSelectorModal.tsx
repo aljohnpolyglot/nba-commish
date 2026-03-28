@@ -13,6 +13,7 @@ import { convertTo2KRating } from '../../utils/helpers';
 import { INJURIES } from '../../data/injuries';
 import { InjurySystem } from '../../services/simulation/InjurySystem';
 import { getAllReferees, fetchRefereeData, getRefereePhoto } from '../../data/photos';
+import { PERSON_ACTION_MAP } from '../../data/personActionDefs';
 
 interface PersonSelectorModalProps {
   onSelect: (contacts: Contact[], reason?: string, amount?: number, location?: string, duration?: string) => void;
@@ -123,7 +124,11 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
     const contactsMap = new Map<string, Contact>();
     const { staff, players, teams, nonNBATeams } = state;
 
-    if (actionType === 'fine' || actionType === 'give_money') {
+    // Derive inclusion flags from the action registry
+    const actionDef = PERSON_ACTION_MAP.get(actionType);
+    const eligibility = actionDef?.eligibility ?? {};
+
+    if (eligibility.includesTeams) {
         teams.forEach(t => {
             contactsMap.set(`team-${t.id}`, {
                 id: `team-${t.id}`,
@@ -135,9 +140,8 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
             });
         });
     }
-    
-    // Also include non-NBA teams for these actions if applicable
-    if (actionType === 'give_money') {
+
+    if (eligibility.includesNonNBATeams) {
         nonNBATeams.forEach(t => {
             contactsMap.set(`non-nba-team-${t.tid}`, {
                 id: `non-nba-team-${t.tid}`,
@@ -150,17 +154,17 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
         });
     }
 
-    if (staff) {
+    if (staff && (eligibility.includesStaff || eligibility.staffOnly)) {
         staff.gms.forEach(gm => {
             const id = `gm-${gm.name}`;
             const org = gm.team || 'NBA';
-            contactsMap.set(id, { 
-                id, 
-                name: gm.name, 
-                title: 'General Manager', 
-                organization: org, 
-                type: 'gm' as const, 
-                playerPortraitUrl: gm.playerPortraitUrl, 
+            contactsMap.set(id, {
+                id,
+                name: gm.name,
+                title: 'General Manager',
+                organization: org,
+                type: 'gm' as const,
+                playerPortraitUrl: gm.playerPortraitUrl,
                 teamLogoUrl: gm.teamLogoUrl,
                 league: 'GM'
             });
@@ -168,13 +172,13 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
         staff.owners.forEach(o => {
             const id = `owner-${o.name}`;
             const org = o.team || 'NBA';
-            contactsMap.set(id, { 
-                id, 
-                name: o.name, 
-                title: 'Owner', 
-                organization: org, 
-                type: 'owner' as const, 
-                playerPortraitUrl: o.playerPortraitUrl, 
+            contactsMap.set(id, {
+                id,
+                name: o.name,
+                title: 'Owner',
+                organization: org,
+                type: 'owner' as const,
+                playerPortraitUrl: o.playerPortraitUrl,
                 teamLogoUrl: o.teamLogoUrl,
                 league: 'Owner'
             });
@@ -182,33 +186,34 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
         staff.coaches.forEach(c => {
             const id = `coach-${c.name}`;
             const org = c.team || 'NBA';
-            contactsMap.set(id, { 
-                id, 
-                name: c.name, 
-                title: 'Head Coach', 
-                organization: org, 
-                type: 'coach' as const, 
-                playerPortraitUrl: c.playerPortraitUrl, 
+            contactsMap.set(id, {
+                id,
+                name: c.name,
+                title: 'Head Coach',
+                organization: org,
+                type: 'coach' as const,
+                playerPortraitUrl: c.playerPortraitUrl,
                 teamLogoUrl: c.teamLogoUrl,
                 league: 'Coach'
             });
         });
+    }
+
+    if (staff && (eligibility.includesLeagueOffice || eligibility.staffOnly)) {
         staff.leagueOffice.forEach(lo => {
             const id = `league-office-${lo.name}`;
-            contactsMap.set(id, { 
-                id, 
-                name: lo.name, 
-                title: lo.jobTitle || 'Executive', 
-                organization: 'NBA League Office', 
+            contactsMap.set(id, {
+                id,
+                name: lo.name,
+                title: lo.jobTitle || 'Executive',
+                organization: 'NBA League Office',
                 type: 'league_office' as const,
-                playerPortraitUrl: lo.playerPortraitUrl 
+                playerPortraitUrl: lo.playerPortraitUrl
             });
         });
     }
 
-    // Inject referees (only for eligible action types)
-    const refEligibleActions = ['fine', 'bribe', 'dinner', 'suspension', 'drug_test', 'contact', 'give_money', 'general', 'fire'];
-    if (refEligibleActions.includes(actionType)) {
+    if (eligibility.includesRefs || eligibility.staffOnly) {
         getAllReferees().forEach(ref => {
             const id = `ref-${ref.id}`;
             const photo = getRefereePhoto(ref.name) || undefined;
@@ -224,66 +229,35 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
         });
     }
 
-    // For 'fire', we only want staff/refs — skip all players entirely
-    if (actionType === 'fire') {
+    // Actions that skip all player entries entirely
+    if (eligibility.staffOnly) {
         return Array.from(contactsMap.values()).sort((a, b) => (a.organization || '').localeCompare(b.organization || ''));
     }
 
-    const activePlayers = players.filter(p => {
-        // Exclude deceased players
+    const filteredPlayers = players.filter(p => {
         if (p.diedYear) return false;
+        if (p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect') return false;
 
-        // For waive: only active NBA players (on a real team)
-        if (actionType === 'waive') {
-            return p.status === 'Active' && p.tid >= 0;
-        }
-
-        if (actionType === 'endorse_hof') {
+        // endorse_hof: only Retired players not already in HOF / already endorsed
+        if (eligibility.excludeHOF) {
             return (p.status === 'Retired' || p.tid === -3) && !p.hof;
         }
 
-        // Include retired players only for personal actions
-        if (p.status === 'Retired' || p.tid === -3) {
-            return ['dinner', 'movie', 'give_money', 'bribe', 'contact', 'hypnotize', 'club'].includes(actionType);
+        // requireActiveNBA: only on-roster NBA players
+        if (eligibility.requireActiveNBA) {
+            if (p.status !== 'Active' || (p.tid ?? -1) < 0) return false;
+            if (eligibility.excludeInjured && p.injury && p.injury.gamesRemaining > 0) return false;
+            return true;
         }
 
-        // Include WNBA players only for personal actions
-        if (p.status === 'WNBA' || p.tid === -100) {
-            return ['dinner', 'movie', 'give_money', 'bribe', 'contact', 'hypnotize', 'club'].includes(actionType);
+        // playerStatuses whitelist
+        if (eligibility.playerStatuses) {
+            return eligibility.playerStatuses.includes(p.status as any);
         }
 
-        // Include PBA/Euroleague only for personal actions or specific executive actions if needed (but user said exclude)
-        if (p.status === 'PBA' || p.status === 'Euroleague') {
-             return ['dinner', 'movie', 'give_money', 'bribe', 'contact', 'hypnotize', 'club'].includes(actionType);
-        }
-
+        // Default: all non-draft, non-deceased players
         return true;
     });
-    
-    // Filter out prospects and free agents for discipline actions
-    const disciplineActions = ['suspension', 'fine', 'drug_test', 'leak_scandal', 'sabotage'];
-    const filteredPlayers = disciplineActions.includes(actionType) 
-        ? activePlayers.filter(p => {
-            const isExcludedStatus = 
-                p.tid === -2 || 
-                p.tid === -1 || 
-                p.status === 'Prospect' || 
-                p.status === 'Draft Prospect' || 
-                p.status === 'WNBA' ||
-                p.status === 'Free Agent' ||
-                p.status === 'Euroleague' ||
-                p.status === 'PBA';
-            
-            if (isExcludedStatus) return false;
-            
-            // Exclude already injured players for sabotage
-            if (actionType === 'sabotage' && p.injury && p.injury.gamesRemaining > 0) {
-                return false;
-            }
-            
-            return true;
-        })
-        : activePlayers;
 
     const processedPlayerNames = new Set<string>();
     filteredPlayers.forEach(p => {
@@ -299,7 +273,7 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
         let title = 'Player';
         let league = 'NBA';
         
-        const isNBA = !['WNBA', 'Euroleague', 'PBA', 'Draft Prospect', 'Prospect'].includes(p.status || '');
+        const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'Draft Prospect', 'Prospect'].includes(p.status || '');
         const playerTeam = isNBA ? teams.find(t => t.id === p.tid) : null;
         const nonNBATeam = !isNBA ? nonNBATeams.find(t => t.tid === p.tid && t.league === p.status) : null;
 
@@ -364,7 +338,7 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
   }, [state, actionType, refsLoaded]);
 
   const availableFilters = useMemo(() => {
-    const filters = ['All', 'NBA', 'Euroleague', 'PBA', 'WNBA', 'Draft Prospect', 'Owner', 'GM', 'Coach', 'Referee', 'Free Agent', 'Retired'];
+    const filters = ['All', 'NBA', 'Euroleague', 'PBA', 'B-League', 'WNBA', 'Draft Prospect', 'Owner', 'GM', 'Coach', 'Referee', 'Free Agent', 'Retired'];
     return filters.filter(filter => {
       if (filter === 'All') return true;
       if (actionType === 'endorse_hof' && ['Owner', 'GM', 'Coach', 'Referee'].includes(filter)) return false;

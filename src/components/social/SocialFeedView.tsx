@@ -3,6 +3,7 @@ import type { SocialPost, GameResult } from '../../types';
 import SocialPostCard from './SocialPostCard';
 import { generateSocialThread } from '../../services/llm/llm';
 import { useGame } from '../../store/GameContext';
+import { SettingsManager } from '../../services/SettingsManager';
 import { AnimatePresence } from 'motion/react';
 import { SocialThreadModal } from './SocialThreadModal';
 import { ImageModal } from './ImageModal';
@@ -245,6 +246,7 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ posts }) => {
                         batchCount={batchCount}
                         loadMoreReplies={loadMoreReplies}
                         handleReplyToReply={handleReplyToReply}
+                        llmEnabled={SettingsManager.getSettings().enableLLM}
                     />
                 )}
                 <ImageModal

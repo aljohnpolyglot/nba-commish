@@ -21,6 +21,7 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
 
     let allSimResults: any[] = [];
     let lastDaySimResults: any[] = [];
+    const perDayResults: Array<{ date: string; results: any[] }> = [];
 
     const effectiveRiggedForTid: number | undefined = action?.payload?.riggedForTid ?? undefined;
 
@@ -48,11 +49,12 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
         };
 
         allSimResults.push(...simPatch.results);
+        perDayResults.push({ date: stateWithSim.date, results: simPatch.results });
 
         if (i === daysToSimulate - 1) {
             lastDaySimResults = simPatch.results;
         }
     }
 
-    return { stateWithSim, allSimResults, lastDaySimResults };
+    return { stateWithSim, allSimResults, lastDaySimResults, perDayResults };
 };

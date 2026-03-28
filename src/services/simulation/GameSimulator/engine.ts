@@ -11,6 +11,7 @@ import { generateSyntheticPM, applyPMToStats } from './syntheticPM';
 import { setClubDebuffs, clearClubDebuffs } from '../StatGenerator/helpers';
 import { fetchGamePhotos } from '../../ImagnPhotoService';
 import { Defense2KService } from '../../Defense2KService';
+import { SimulatorKnobs, KNOBS_DEFAULT, KNOBS_ALL_STAR, KNOBS_RISING_STARS, KNOBS_CELEBRITY } from '../SimulatorKnobs';
 export class GameSimulator {
 
   private static calcWinProb(strengthDiff: number): number {
@@ -48,17 +49,19 @@ export class GameSimulator {
     awayOverridePlayers?: Player[],
     isAllStar?: boolean,
     isRisingStars?: boolean,
-    riggedForTid?: number
+    riggedForTid?: number,
+    homeKnobs: SimulatorKnobs = KNOBS_DEFAULT,
+    awayKnobs: SimulatorKnobs = KNOBS_DEFAULT,
   ): GameResult {
     // 500-retry loop to enforce rigged result
     for (let attempt = 0; attempt < 500; attempt++) {
-      const result = this._simulateGameOnce(homeTeam, awayTeam, players, gameId, date, playerApproval, homeOverridePlayers, awayOverridePlayers, isAllStar, isRisingStars);
+      const result = this._simulateGameOnce(homeTeam, awayTeam, players, gameId, date, playerApproval, homeOverridePlayers, awayOverridePlayers, isAllStar, isRisingStars, homeKnobs, awayKnobs);
       if (!riggedForTid || result.winnerId === riggedForTid) {
         return result;
       }
     }
     // Fallback: return last attempt even if rig failed (shouldn't happen with 500 tries)
-    return this._simulateGameOnce(homeTeam, awayTeam, players, gameId, date, playerApproval, homeOverridePlayers, awayOverridePlayers, isAllStar, isRisingStars);
+    return this._simulateGameOnce(homeTeam, awayTeam, players, gameId, date, playerApproval, homeOverridePlayers, awayOverridePlayers, isAllStar, isRisingStars, homeKnobs, awayKnobs);
   }
 
   private static _simulateGameOnce(
@@ -71,7 +74,9 @@ export class GameSimulator {
     homeOverridePlayers?: Player[],
     awayOverridePlayers?: Player[],
     isAllStar?: boolean,
-    isRisingStars?: boolean
+    isRisingStars?: boolean,
+    homeKnobs: SimulatorKnobs = KNOBS_DEFAULT,
+    awayKnobs: SimulatorKnobs = KNOBS_DEFAULT,
   ): GameResult {
 
     const homeStrength = calculateTeamStrength(homeTeam.id, players, homeOverridePlayers);
@@ -160,6 +165,14 @@ export class GameSimulator {
     finalHomeScore = Math.max(75, Math.round(finalHomeScore * paceRoll * homeEffRoll));
     finalAwayScore = Math.max(70, Math.round(finalAwayScore * paceRoll * awayEffRoll));
 
+    // Exhibition score boost — applied BEFORE stat generation so player totals
+    // match the scoreboard.  paceMultiplier in knobs is kept at 1.0 for All-Star
+    // to avoid double-counting.
+    const homeExhibMult = homeKnobs.exhibitionScoreMult ?? 1.0;
+    const awayExhibMult = awayKnobs.exhibitionScoreMult ?? 1.0;
+    if (homeExhibMult !== 1.0) finalHomeScore = Math.max(75, Math.round(finalHomeScore * homeExhibMult));
+    if (awayExhibMult !== 1.0) finalAwayScore = Math.max(70, Math.round(finalAwayScore * awayExhibMult));
+
     if (finalHomeScore === finalAwayScore) {
       if (Math.random() < 0.5) finalHomeScore += 1;
       else finalAwayScore += 1;
@@ -173,10 +186,10 @@ export class GameSimulator {
 
     const actualMargin = Math.abs(finalHomeScore - finalAwayScore);
     const homeInitial = StatGenerator.generateStatsForTeam(
-      homeTeam, players, finalHomeScore, homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, homeOverridePlayers, otCount, away2KDef
+      homeTeam, players, finalHomeScore, homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, homeOverridePlayers, otCount, away2KDef, homeKnobs
     );
     const awayInitial = StatGenerator.generateStatsForTeam(
-      awayTeam, players, finalAwayScore, !homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, awayOverridePlayers, otCount, home2KDef
+      awayTeam, players, finalAwayScore, !homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, awayOverridePlayers, otCount, home2KDef, awayKnobs
     );
 
     const homeMisses = homeInitial.reduce(
@@ -310,6 +323,40 @@ export class GameSimulator {
     };
   }
 
+  /**
+   * Pre-compute conference standings context for every team.
+   * Returns rank (1-15), GB from conference leader, and games remaining.
+   * Used to build per-team SimulatorKnobs so rotation depth / star MPG
+   * reflect real standings pressure at time of simulation.
+   */
+  private static buildStandingsContext(teams: Team[]): Map<number, { conferenceRank: number; gbFromLeader: number; gamesRemaining: number }> {
+    const ctx = new Map<number, { conferenceRank: number; gbFromLeader: number; gamesRemaining: number }>();
+
+    for (const conf of ['East', 'West'] as const) {
+      const confTeams = teams
+        .filter(t => t.conference === conf)
+        .sort((a, b) => {
+          const aPct = a.wins / Math.max(1, a.wins + a.losses);
+          const bPct = b.wins / Math.max(1, b.wins + b.losses);
+          return bPct - aPct || b.wins - a.wins;
+        });
+
+      const leader = confTeams[0];
+      confTeams.forEach((t, idx) => {
+        const gb = leader
+          ? Math.max(0, ((leader.wins - t.wins) + (t.losses - leader.losses)) / 2)
+          : 0;
+        ctx.set(t.id, {
+          conferenceRank: idx + 1,   // was 'rank' — key must match SimulatorKnobs.conferenceRank
+          gbFromLeader: gb,
+          gamesRemaining: Math.max(0, 82 - (t.wins + t.losses)),
+        });
+      });
+    }
+
+    return ctx;
+  }
+
   static simulateDay(
     teams: Team[],
     players: Player[],
@@ -323,6 +370,9 @@ export class GameSimulator {
     clubDebuffs?: Map<string, 'heavy' | 'moderate' | 'mild'>
   ): GameResult[] {
     const results: GameResult[] = [];
+
+    // Build standings context once for the whole day
+    const standingsCtx = this.buildStandingsContext(teams);
 
     for (const game of gamesToSimulate) {
       let home = teams.find(t => t.id === game.homeTid);
@@ -389,13 +439,31 @@ export class GameSimulator {
           awayOverride = roster.slice(mid);
         }
 
+        // ── Pick simulator knobs based on game type ──────────────────────────
+        let homeKnobs: SimulatorKnobs;
+        let awayKnobs: SimulatorKnobs;
+
+        if (game.isCelebrityGame) {
+          homeKnobs = awayKnobs = KNOBS_CELEBRITY;
+        } else if (game.isRisingStars) {
+          homeKnobs = awayKnobs = KNOBS_RISING_STARS;
+        } else if (game.isAllStar) {
+          homeKnobs = awayKnobs = KNOBS_ALL_STAR;
+        } else {
+          // Regular game: per-team standings context drives rotation depth + star MPG
+          const homeCtx = standingsCtx.get(home.id) ?? { rank: 8, gbFromLeader: 0, gamesRemaining: 41 };
+          const awayCtx = standingsCtx.get(away.id) ?? { rank: 8, gbFromLeader: 0, gamesRemaining: 41 };
+          homeKnobs = { ...KNOBS_DEFAULT, ...homeCtx };
+          awayKnobs = { ...KNOBS_DEFAULT, ...awayCtx };
+        }
+
         // Apply club debuffs around this game
         if (clubDebuffs && clubDebuffs.size > 0) setClubDebuffs(clubDebuffs);
         const gameRig = riggedForTid !== undefined &&
           (home.id === riggedForTid || away.id === riggedForTid)
           ? riggedForTid : undefined;
         results.push(
-          this.simulateGame(home, away, players, game.gid, date, playerApproval, homeOverride, awayOverride, game.isAllStar, game.isRisingStars, gameRig)
+          this.simulateGame(home, away, players, game.gid, date, playerApproval, homeOverride, awayOverride, game.isAllStar, game.isRisingStars, gameRig, homeKnobs, awayKnobs)
         );
         if (clubDebuffs && clubDebuffs.size > 0) clearClubDebuffs();
 

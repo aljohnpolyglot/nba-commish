@@ -75,6 +75,7 @@ export const generateLeagueContext = (
             p.status !== 'WNBA' &&
             p.status !== 'Euroleague' &&
             p.status !== 'PBA' &&
+            p.status !== 'B-League' &&
             p.status !== 'Retired' &&
             p.status !== 'Draft Prospect' &&
             p.status !== 'Prospect' &&

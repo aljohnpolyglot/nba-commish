@@ -150,3 +150,60 @@ export function prefetchPlayerBio(player: NBAPlayer): void {
   if (!nbaId || memCache.has(nbaId) || inFlight.has(nbaId)) return;
   fetchWithDedup(nbaId).catch(() => {});
 }
+
+// ── NON-NBA BIO DATA ─────────────────────────────────────────────────────────
+// For PBA, Euroleague, and B-League players, build bio data directly from the
+// player's stored notes and stats fields — no HTTP fetch required.
+// ─────────────────────────────────────────────────────────────────────────────
+export function getNonNBABioData(player: NBAPlayer): { bio: { pro: string; pre: string; per: string } } | null {
+  const NON_NBA = ['PBA', 'Euroleague', 'B-League', 'WNBA'];
+  if (!NON_NBA.includes(player.status || '')) return null;
+
+  const notes: string = (player as any).notes || '';
+  let proBio = '';
+
+  if (notes.trim().length > 10) {
+    // Split into sentences and convert to bullet list
+    const sentences = notes
+      .split(/(?<=[.!?])\s+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 8);
+    proBio = sentences
+      .map(s => `<li>${s.endsWith('.') || s.endsWith('!') || s.endsWith('?') ? s : s + '.'}</li>`)
+      .join('');
+  }
+
+  // Build stats bullets from stored stats array
+  const stats = player.stats;
+  let statsBio = '';
+  if (Array.isArray(stats) && stats.length > 0) {
+    const latest = [...stats].sort((a, b) => (b.season || 0) - (a.season || 0))[0];
+    if (latest) {
+      const gp = latest.gp || 1;
+      const pts = latest.pts != null ? (latest.pts / gp).toFixed(1) : null;
+      const trb = (latest.trb ?? ((latest.orb || 0) + (latest.drb || 0)));
+      const trbPg = trb != null ? (trb / gp).toFixed(1) : null;
+      const ast = latest.ast != null ? (latest.ast / gp).toFixed(1) : null;
+      const min = latest.min != null ? (latest.min / gp).toFixed(1) : null;
+      const parts: string[] = [];
+      if (min && parseFloat(min) > 0) parts.push(`${min} MPG`);
+      if (pts && parseFloat(pts) > 0) parts.push(`${pts} PPG`);
+      if (trbPg && parseFloat(trbPg) > 0) parts.push(`${trbPg} RPG`);
+      if (ast && parseFloat(ast) > 0) parts.push(`${ast} APG`);
+      if (parts.length > 0) {
+        const season = latest.season ? `${latest.season - 1}-${String(latest.season).slice(-2)}` : 'Latest';
+        statsBio = `<li><b>${season} Season Stats:</b> ${parts.join(' · ')} in ${gp} games.</li>`;
+      }
+    }
+  }
+
+  const combinedPro = [statsBio, proBio].filter(Boolean).join('');
+
+  return {
+    bio: {
+      pro: combinedPro || '',
+      pre: '',
+      per: '',
+    }
+  };
+}

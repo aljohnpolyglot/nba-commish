@@ -1,10 +1,10 @@
 import { GameState, HistoricalStatPoint, NBAPlayer as Player, DraftPick, LazySimProgress } from '../../types';
 import { generateInitialContent } from '../../services/llm/llm';
 import { getRosterData } from '../../services/rosterService';
-import { getStaffData } from '../../services/staffService';
 import { generateSchedule } from '../../services/gameScheduler';
 import { INITIAL_LEAGUE_STATS } from '../../constants';
-import { fetchEuroleagueRoster, fetchWNBARoster, fetchPBARoster } from '../../services/externalRosterService';
+import { DEFAULT_MEDIA_RIGHTS } from '../../utils/broadcastingUtils';
+import { fetchEuroleagueRoster, fetchWNBARoster, fetchPBARoster, fetchBLeagueRoster } from '../../services/externalRosterService';
 
 import { calculateSocialEngagement } from '../../utils/helpers';
 
@@ -19,23 +19,25 @@ interface StartGamePayload {
 
 export const handleStartGame = async (payload: StartGamePayload): Promise<Partial<GameState>> => {
     const { name: commissionerName } = payload;
-    const { teams, players: rawNbaPlayers, draftPicks, teamNameMap } = await getRosterData(2025, 'Opening Week');
+    const { teams, players: rawNbaPlayers, draftPicks } = await getRosterData(2025, 'Opening Week');
 
     // Fetch external rosters
     const { players: euroPlayers, teams: euroTeams } = await fetchEuroleagueRoster();
     const { players: wnbaPlayers, teams: wnbaTeams } = await fetchWNBARoster();
     const { players: pbaPlayers, teams: pbaTeams } = await fetchPBARoster();
+    const { players: bleaguePlayers, teams: bleagueTeams } = await fetchBLeagueRoster();
 
     const externalNames = new Set([
         ...euroPlayers.map(p => p.name.toLowerCase()),
         ...wnbaPlayers.map(p => p.name.toLowerCase()),
-        ...pbaPlayers.map(p => p.name.toLowerCase())
+        ...pbaPlayers.map(p => p.name.toLowerCase()),
+        ...bleaguePlayers.map(p => p.name.toLowerCase()),
     ]);
 
     const nbaPlayers = rawNbaPlayers.filter(p => {
         const nameLower = p.name.toLowerCase();
         if (externalNames.has(nameLower)) return false;
-        if (p.status === 'WNBA' || p.status === 'Euroleague' || p.status === 'PBA') return false;
+        if (p.status === 'WNBA' || p.status === 'Euroleague' || p.status === 'PBA' || p.status === 'B-League') return false;
         return true;
     });
 
@@ -51,16 +53,23 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         status: p.status || 'PBA'
     }));
 
-    const players = [...nbaPlayers, ...uniqueEuroPlayers, ...uniquePBAPlayers, ...wnbaPlayers];
+    const uniqueBLeaguePlayers = bleaguePlayers.filter(p => !existingNbaNames.has(p.name.toLowerCase())).map(p => ({
+        ...p,
+        status: p.status || 'B-League'
+    }));
+
+    const players = [...nbaPlayers, ...uniqueEuroPlayers, ...uniquePBAPlayers, ...uniqueBLeaguePlayers, ...wnbaPlayers];
 
     if (players.some(p => p.name.toLowerCase() === 'devin booker')) {
         console.log("🏀 DEV1N B00K3R 1S L0AD3D! 🏀");
     }
 
-    const staff = await getStaffData(players, teamNameMap);
+    // Staff loaded lazily after game init (see GameContext idle effect)
+    const emptyStaff = { owners: [], gms: [], coaches: [], leagueOffice: [] };
 
-    // Always generate the full schedule; always start from Aug 12
-    const schedule = generateSchedule(teams);
+    // Always generate the full schedule with a default broadcasting deal so
+    // every game has a broadcaster + tipoff time from day one.
+    const schedule = generateSchedule(teams, undefined, undefined, null, null, DEFAULT_MEDIA_RIGHTS);
     const startDateFormatted = new Date('2025-08-12T00:00:00.000Z').toLocaleDateString('en-US', {
         month: 'short', day: 'numeric', year: 'numeric'
     });
@@ -68,7 +77,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     // Generate Initial Content via AI (based on Aug 12 — the simulation start point)
     let initialContent: any = { newEmails: [], newNews: [], newSocialPosts: [] };
     if (!payload.skipLLM) {
-        initialContent = await generateInitialContent(startDateFormatted, commissionerName, players, teams, staff);
+        initialContent = await generateInitialContent(startDateFormatted, commissionerName, players, teams, emptyStaff);
     } else {
         initialContent = {
             newEmails: [{
@@ -145,6 +154,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     console.log(`WNBA: ${wnbaPlayers.length} players, ${wnbaTeams.length} teams`);
     console.log(`Euroleague: ${euroPlayers.length} players, ${euroTeams.length} teams`);
     console.log(`PBA: ${pbaPlayers.length} players, ${pbaTeams.length} teams`);
+    console.log(`B-League: ${bleaguePlayers.length} players, ${bleagueTeams.length} teams`);
     console.log(`Total Players: ${players.length}`);
     console.log("====================================");
 
@@ -154,23 +164,27 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     const statePatch: Partial<GameState> = {
         commissionerName,
         teams,
-        nonNBATeams: [...euroTeams, ...pbaTeams, ...wnbaTeams],
+        nonNBATeams: [...euroTeams, ...pbaTeams, ...wnbaTeams, ...bleagueTeams],
         players,
         draftPicks,
-        staff,
+        staff: null,
         schedule,
         inbox: initialInbox,
         news: initialNews,
         socialFeed: initialSocial,
         historicalStats: [initialHistoricalPoint],
         followedHandles: ['nba', 'wojespn', 'shamscharania', 'statmuse'],
-        history: [`${commissionerName} took office as the new NBA Commissioner.`],
+        history: [{ text: `${commissionerName} took office as the new NBA Commissioner.`, date: startDateFormatted || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), type: 'League Event' } as any],
         isDataLoaded: true,
         isProcessing: false,
         date: startDateFormatted,
         day: 1,
         saveId: undefined,
         allStar: initialAllStar as any,
+        leagueStats: {
+            ...INITIAL_LEAGUE_STATS,
+            mediaRights: DEFAULT_MEDIA_RIGHTS,
+        },
     };
 
     // ── Lazy sim: jump to chosen start date ───────────────────────────────────

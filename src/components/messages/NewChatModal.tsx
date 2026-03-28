@@ -11,7 +11,7 @@ interface NewChatModalProps {
   onSelect: (contact: any) => void;
 }
 
-type FilterType = 'All' | 'NBA' | 'Euroleague' | 'PBA' | 'WNBA' | 'Draft Prospect' | 'Owner' | 'GM' | 'Coach' | 'Retired' | 'Referee';
+type FilterType = 'All' | 'NBA' | 'Euroleague' | 'PBA' | 'B-League' | 'WNBA' | 'Draft Prospect' | 'Owner' | 'GM' | 'Coach' | 'Retired' | 'Referee';
 
 export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect }) => {
   const { state } = useGame();
@@ -45,18 +45,14 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
         } else if (p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect') {
             league = 'Draft Prospect';
             org = 'Draft Prospect';
-        } else if (p.status === 'PBA') {
-            league = 'PBA';
-            const team = state.nonNBATeams.find(t => t.league === 'PBA' && t.tid === p.tid);
-            if (team) org = team.name;
-        } else if (p.status === 'Euroleague') {
-            league = 'Euroleague';
-            const team = state.nonNBATeams.find(t => t.league === 'Euroleague' && t.tid === p.tid);
+        } else if (p.status === 'PBA' || p.status === 'Euroleague' || p.status === 'B-League') {
+            league = p.status;
+            const team = state.nonNBATeams.find(t => t.league === p.status && t.tid === p.tid);
             if (team) org = team.name;
         }
 
         const team = state.teams.find(t => t.id === p.tid);
-        if (team && !['Euroleague', 'PBA', 'WNBA', 'Draft Prospect'].includes(league)) {
+        if (team && !['Euroleague', 'PBA', 'B-League', 'WNBA', 'Draft Prospect'].includes(league)) {
             org = team.name;
             league = 'NBA';
         }
@@ -163,7 +159,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-            {(['All', 'NBA', 'Euroleague', 'PBA', 'WNBA', 'Draft Prospect', 'Owner', 'GM', 'Coach', 'Retired', 'Referee'] as FilterType[]).map((filter) => (
+            {(['All', 'NBA', 'Euroleague', 'PBA', 'B-League', 'WNBA', 'Draft Prospect', 'Owner', 'GM', 'Coach', 'Retired', 'Referee'] as FilterType[]).map((filter) => (
                 <button
                     key={filter}
                     onClick={() => setActiveFilter(filter)}
