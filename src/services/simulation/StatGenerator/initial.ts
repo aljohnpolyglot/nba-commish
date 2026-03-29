@@ -268,6 +268,10 @@ if (tpComposite >= 20 && tpComposite <= 60) {
     wLowPost *= Math.min(1.25, Math.max(0.40, 1.0 - intDelta * 0.015));
     wMidRange *= Math.min(1.25, Math.max(0.60, 1.0 + intDelta * 0.015));
 
+    // Rule-change knobs (commissioner settings → shot location shift)
+    wAtRim   *= (knobs.rimRateMult   ?? 1.0);
+    wLowPost *= (knobs.lowPostRateMult ?? 1.0);
+
     const wTotal = wAtRim + wLowPost + wMidRange;
 
     const fgaAtRim    = Math.round(twoPa * (wAtRim    / wTotal));

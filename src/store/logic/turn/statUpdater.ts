@@ -91,6 +91,7 @@ export const calculateNewStats = (state: GameState, action: UserAction, result: 
         revenue: Math.round(Math.max(0, state.leagueStats.revenue + (combinedStatChanges.revenue || 0))),
         viewership: finalViewership,
         viewershipHistory: [...(state.leagueStats.viewershipHistory || []), { date: dateString, viewers: finalViewership }].slice(-365),
+        revenueHistory: [...(state.leagueStats.revenueHistory || []), { date: dateString, revenue: Math.round(dailyProfit * 100) / 100 }].slice(-365),
         morale: {
             fans: Math.round(Math.max(0, Math.min(100, state.leagueStats.morale.fans + (combinedStatChanges.morale.fans || 0)))),
             players: Math.round(Math.max(0, Math.min(100, state.leagueStats.morale.players + (combinedStatChanges.morale.players || 0)))),

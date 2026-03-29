@@ -1,4 +1,5 @@
 import { NBAPlayer as Player } from '../types';
+import { loadRatings, getRawTeams } from '../data/NBA2kRatings';
 
 export interface Defense2K {
   interiorDef: number;
@@ -29,8 +30,8 @@ export class Defense2KService {
 
   static async initialize() {
     try {
-      const response = await fetch('https://gist.githubusercontent.com/aljohnpolyglot/10016f0800ee9b57420c4c74ad9060e3/raw/f6f4fbb0024f37e08f823379577ca2d0ae77abe4/NBA2k26_Ratings');
-      const teams = await response.json();
+      await loadRatings();
+      const teams = getRawTeams();
 
       for (const team of teams) {
         for (const p of team.roster) {

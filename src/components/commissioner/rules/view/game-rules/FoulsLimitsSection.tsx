@@ -55,6 +55,9 @@ export const FoulsLimitsSection: React.FC<FoulsLimitsSectionProps> = ({
                 <ShieldAlert size={16} className="text-rose-400" />
                 <h5 className="text-sm font-bold text-slate-200 uppercase tracking-widest">Fouls & Limits</h5>
             </div>
+            {/* TODO(sim): foulOutLimit / teamFoulPenalty / flagrant/screen/overBack/looseBall toggles / ejection limits — stored only, not wired to engine */}
+            {/* handcheckingEnabled ✅ wired: handchecking allowed → 0.82× ftRateMult (refs swallow contact fouls) */}
+            {/* chargingEnabled ✅ wired: charging disabled → 1.12× rimRateMult (players drive fearlessly) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                 <RuleInput id="foulOutLimit" value={foulOutLimit} onChange={setFoulOutLimit} />
                 <RuleInput id="teamFoulPenalty" value={teamFoulPenalty} onChange={setTeamFoulPenalty} />

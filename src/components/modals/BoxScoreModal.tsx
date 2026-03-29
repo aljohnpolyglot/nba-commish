@@ -325,9 +325,10 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                   </td>
                   <td className="px-2 py-2 font-mono text-slate-500">{p.pos || 'N/A'}</td>
                   <td colSpan={15} className="px-2 py-2 text-slate-500 italic font-mono text-[11px] uppercase tracking-widest">
-                    {(p.injury?.gamesRemaining ?? 0) > 0
-                      ? `DNP — Injury (${p.injury!.type})`
-                      : "DNP — Coach's Decision"}
+                    {result?.playerDNPs?.[p.internalId] ??
+                      ((p.injury?.gamesRemaining ?? 0) > 0
+                        ? `DNP — Injury (${p.injury!.type})`
+                        : "DNP — Coach's Decision")}
                   </td>
                 </tr>
               ))}

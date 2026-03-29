@@ -1,153 +1,107 @@
-# Commissioner Rules → Simulator Knobs — Connection Plan
-_Last updated: 2026-03-28_
+# Rules → Sim Connection Plan
+
+Tracks which commissioner rule settings are wired to the simulation engine
+vs. stored-only (flavor/UI only). Update this file as new rules get wired.
+
+> **How to wire a new rule — step-by-step guide, file list, and common mistakes:**
+> see **[LEAGUE_RULES_README.md](./LEAGUE_RULES_README.md)**
+
+**Engine entry point:** `SimulatorKnobs` → `engine.ts` `leagueBaseKnobs` →
+passed to `StatGenerator.generateStatsForTeam` + `generateCoordinatedStats`.
 
 ---
 
-## Overview
+## ✅ WIRED — rule changes actually affect sim output
 
-The commissioner rules UI (`src/components/commissioner/rules/view/`) lets the user
-configure the league.  Several of those settings should feed directly into the
-stat-generator engine via **SimulatorKnobs** so that rule changes actually change
-how games are simulated, not just how the UI looks.
+| Rule field (`leagueStats.*`) | Knob(s) affected | Effect |
+|---|---|---|
+| `quarterLength` | `quarterLength` | Scales total minutes budget; shorter = fewer stats |
+| `shotClockValue` | `paceMultiplier` | `24/value` → 1.0 at 24s, 2.0 at 12s, capped 2.0× |
+| `shotClockEnabled = false` | `paceMultiplier` | 0.78× pace (slow-down ball era) |
+| `threePointLineEnabled = false` | `threePointAvailable`, `threePointRateMult` | No 3PA generated; shots redistributed to 2PT |
+| `defensiveThreeSecondEnabled = false` | `rimRateMult` ×0.72, `threePointRateMult` ×1.22 | Paint clogged → fewer rim drives, more perimeter |
+| `offensiveThreeSecondEnabled = false` | `lowPostRateMult` ×1.35, `rimRateMult` ×1.15 | Post camping → more post-ups + rim via post |
+| `handcheckingEnabled = true` | `ftRateMult` ×0.82 | Refs swallow contact fouls → ~18% fewer FTA |
+| `goaltendingEnabled = false` | `blockRateMult` ×1.6, `efficiencyMultiplier` ×0.93 | Defenders swat freely at rim → more blocks, lower eFG% |
+| `chargingEnabled = false` | `rimRateMult` ×1.12 | No charge calls → aggressive rim drives |
+| `noDribbleRule = true` | `paceMultiplier` ×0.72, `rimRateMult` ×0.65, `threePointRateMult` ×1.40 | Catch-and-shoot only → slow/perimeter game |
 
-The stat-generator knobs live in `src/services/simulation/SimulatorKnobs.ts`.
+**Note:** All rule multipliers stack with each other (they multiply, not add).
+Combined extreme rules (e.g. no shot clock + no 3PT + no goaltending) produce
+intentionally chaotic results — that's the point.
+
+---
+
+## ❌ STORED ONLY — saved to leagueStats but engine ignores them
+
+### Game Structure
+- `gameFormat` (timed vs target_score) — engine always uses timed format
+- `numQuarters` — hardcoded 4 quarters
+- All overtime settings (`overtimeDuration`, `overtimeTargetPoints`,
+  `overtimeType`, `maxOvertimes`, `overtimeTieBreaker`) — engine uses its own OT logic
+
+### Timing Violations
+- `shotClockResetOffensiveRebound` — shot clock reset rule not wired
+- `backcourtTimerEnabled/Value` — backcourt timer not wired
+- `inboundTimerEnabled/Value` — inbound timer not wired
+- `backToBasketTimerEnabled/Value` — back-to-basket timer not wired
+- `offensiveThreeSecondValue` / `defensiveThreeSecondValue` — value duration not used (only enabled/disabled)
+- `illegalZoneDefenseEnabled` — not wired
+
+### Court Violations
+- `travelingEnabled` / `doubleDribbleEnabled` — flavor only
+- `basketInterferenceEnabled` / `kickedBallEnabled` — flavor only
+- `backcourtViolationEnabled` — flavor only
+
+### Scoring
+- `fourPointLine` / `fourPointLineDistance` — no 4PT attempts generated
+- `dunkValue` / `midrangeValue` — sim uses fixed point values (2/3)
+- `heaveRuleEnabled` / `halfCourtShotValue` — not wired
+- Physical court dimensions (`freeThrowDistance`, `rimHeight`) — flavor only
+
+### Fouls & Limits
+- `foulOutLimit` / `teamFoulPenalty` — not tracked per-player during sim
+- `flagrantFoulPenaltyEnabled` / `clearPathFoulEnabled` / `illegalScreenEnabled`
+  / `overTheBackFoulEnabled` / `looseBallFoulEnabled` — flavor only
+- `techEjectionLimit` / `flagrant1EjectionLimit` / `flagrant2EjectionLimit` — not wired
+- `fightingInstantEjection` / `useYellowRedCards` — UI flavor only (FightGenerator is separate)
+
+### Personnel & Subs
+- `maxPlayersOnCourt` — hardcoded 5-on-5
+- `substitutionLimitEnabled` / `maxSubstitutions` — not wired
+- `multiballEnabled` / `multiballCount` — flavor only
+
+### Court Geometry
+- `courtLength` / `baselineLength` / `keyWidth` — flavor only
+
+---
+
+## 🚧 FUTURE WIRING IDEAS (not started)
+
+| Rule | Sim idea |
+|---|---|
+| `foulOutLimit` (e.g. 4 instead of 6) | Pull star players earlier → `starMpgOverride` reduction |
+| `maxPlayersOnCourt` (e.g. 4-on-4) | Adjust minutes budget total (4×48 instead of 5×48) |
+| `fourPointLine = true` | Add 4PA bucket at ~0.05× 3PA rate; value = 4 pts |
+| `heaveRuleEnabled` | Add end-of-quarter heave FGA pool with ~10% FG% |
+| `dunkValue = 3` | Bump fgm value for interior shots |
+| `overtimeTargetPoints` | Target-score OT format in quarters sim |
 
 ---
 
 ## Architecture
 
 ```
-CommissionerRulesModal
-  └─ rules/view/
-       ├─ GameplayTab.tsx          ← quarter length, shot clock, 3PT line toggle
-       ├─ EconomyTab.tsx           ← salary cap, luxury tax (economy only)
-       └─ ...
-
-leagueStats (in Redux store)
-  ├─ quarterLength: number        (12 = NBA, 10 = FIBA)
-  ├─ shotClockSeconds: number     (24 = NBA, 14 after OR)
-  ├─ threePointLineEnabled: bool  (false = no 3PT attempts)
-  └─ ...
-
-SimulatorKnobs (per-game struct)
-  ├─ quarterLength
-  ├─ shotClockSeconds
-  ├─ threePointAvailable
-  └─ (+ exhibition presets overriding all of the above)
-
-GameSimulator.simulateDay()
-  └─ builds knobs from leagueStats + game.type flag
-  └─ passes knobs → generateStatsForTeam()
+simulationRunner.ts
+  → simulateGames() [simulationService.ts]
+    → GameSimulator.simulateDay() [engine.ts]
+        builds leagueBaseKnobs from leagueStats fields (all wired rules)
+        exhibition presets (All-Star/Rising Stars/Celebrity) OVERRIDE entirely
+        regular games: leagueBaseKnobs + per-team standingsCtx
+        calls generateStatsForTeam() → applies knobs to shot location, pace, FT rate
+        calls generateCoordinatedStats() → applies blockRateMult to block pool
 ```
 
----
-
-## Step-by-step
-
-### Step 1 — Add rule fields to `leagueStats` in `types.ts`
-
-```ts
-// In LeagueStats interface
-quarterLength?:         number;   // 12 (NBA default)
-shotClockSeconds?:      number;   // 24 (NBA default)
-threePointLineEnabled?: boolean;  // true (NBA default)
-```
-
-### Step 2 — Wire GameplayTab to leagueStats
-
-In `GameplayTab.tsx` (or create it if it doesn't exist):
-- Quarter length selector: 10 / 12 / custom
-- Shot clock input: 14 / 24 / custom
-- Three-point line toggle
-
-On save → dispatch `UPDATE_RULES` → writes to `leagueStats`.
-
-### Step 3 — Build knobs from leagueStats in engine
-
-In `GameSimulator.simulateDay()`, read `leagueStats` from state and build a
-"league rules knob base":
-
-```ts
-// In simulateDay params, add: leagueStats?: LeagueStats
-const leagueKnobs = getKnobs({
-  quarterLength:       leagueStats?.quarterLength       ?? 12,
-  shotClockSeconds:    leagueStats?.shotClockSeconds    ?? 24,
-  threePointAvailable: leagueStats?.threePointLineEnabled ?? true,
-});
-
-// Exhibition presets override leagueKnobs
-const gameKnobs: SimulatorKnobs =
-  game.isCelebrityGame ? KNOBS_CELEBRITY  :
-  game.isRisingStars   ? KNOBS_RISING_STARS :
-  game.isAllStar       ? KNOBS_ALL_STAR   :
-  leagueKnobs;                             // ← regular game uses league rules
-```
-
-### Step 4 — Pass leagueStats through the call chain
-
-| File | Change |
-|---|---|
-| `simulationHandler.ts` | pass `state.leagueStats` to `simulateDay` |
-| `GameSimulator.simulateDay()` | add `leagueStats?` param, build `leagueKnobs` |
-| `GameSimulator.simulateGame()` | already receives `knobs` — no change needed |
-| `generateStatsForTeam()` | already uses `knobs.quarterLength` for minute budget |
-
-### Step 5 — Minute budget for non-12 quarter lengths
-
-`initial.ts` already computes:
-```ts
-const totalMinuteBudget = (knobs.quarterLength * 4 + otCount * 5) * 5;
-```
-FIBA 10-min quarters → `(10 × 4) × 5 = 200 player-minutes` vs NBA `(12 × 4) × 5 = 240`.
-No other changes needed — the minute allocator scales naturally.
-
-### Step 6 — Shot clock → pace modifier (optional enhancement)
-
-The current engine doesn't model pace from shot clock directly.
-If you want it:
-```ts
-// In SimulatorKnobs:
-paceMultiplier: shotClockSeconds < 24 ? 0.94 : 1.0,
-```
-Or expose it as a separate `shotClockPaceMult` that the engine applies to
-`expectedTeamScore` before the normal pace roll.
-
----
-
-## Exhibition Presets — What They Do Today
-
-| Preset | Depth | StarMPG | 3PA Mult | Eff Mult | FT Mult | Flat Min |
-|---|---|---|---|---|---|---|
-| `KNOBS_DEFAULT` | standings-based | standings-based | ×1.0 | ×1.0 | ×1.0 | no |
-| `KNOBS_ALL_STAR` | 12 (all) | 26 | ×1.35 | ×1.22 | ×0.38 | no |
-| `KNOBS_RISING_STARS` | 10 | 22 | ×1.20 | ×1.08 | ×0.55 | no |
-| `KNOBS_CELEBRITY` | 10 | flat | ×0.35 | ×0.78 | ×0.60 | 14 min |
-
-Celebrity game also sets `ratingFloor: 32` to prevent 0-stat lines for celebs
-who have no NBA `ratings` array.
-
----
-
-## Files Map
-
-| Concern | File |
-|---|---|
-| Knob interface + presets | `src/services/simulation/SimulatorKnobs.ts` |
-| Apply knobs to stats | `src/services/simulation/StatGenerator/initial.ts` |
-| Pick knobs per game | `src/services/simulation/GameSimulator/engine.ts` |
-| League rules storage | `src/types.ts → LeagueStats` |
-| Commissioner UI | `src/components/commissioner/rules/view/GameplayTab.tsx` |
-| Save rules → store | `UPDATE_RULES` reducer action |
-
----
-
-## Checklist
-
-- [x] `SimulatorKnobs.ts` — interface, DEFAULT + exhibition presets
-- [x] `initial.ts` — accepts `knobs` param, applies all knob dimensions
-- [x] `engine.ts` — detects game type, passes right preset to `simulateGame`
-- [ ] `types.ts → LeagueStats` — add `quarterLength`, `shotClockSeconds`, `threePointLineEnabled`
-- [ ] `GameplayTab.tsx` — UI for the three rule-change fields above
-- [ ] `simulationHandler.ts` — thread `leagueStats` → `simulateDay`
-- [ ] `engine.ts simulateDay` — build `leagueKnobs` from `leagueStats`
-- [ ] (optional) shot clock → pace multiplier connection
+Exhibition presets bypass all commissioner rules — `KNOBS_ALL_STAR` etc. are hardcoded.
+To make All-Star game respect commissioner rules, set `allStarMirrorLeagueRules = true`
+and pass `leagueBaseKnobs` as the base for the All-Star knob merge (not done yet).

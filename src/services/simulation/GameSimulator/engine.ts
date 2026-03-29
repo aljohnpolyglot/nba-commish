@@ -9,9 +9,10 @@ import { simulateQuarters } from './quarters';
 import { pickGameWinner } from './clutch';
 import { generateSyntheticPM, applyPMToStats } from './syntheticPM';
 import { setClubDebuffs, clearClubDebuffs } from '../StatGenerator/helpers';
+import { generateFight } from '../../FightGenerator';
 import { fetchGamePhotos } from '../../ImagnPhotoService';
 import { Defense2KService } from '../../Defense2KService';
-import { SimulatorKnobs, KNOBS_DEFAULT, KNOBS_ALL_STAR, KNOBS_RISING_STARS, KNOBS_CELEBRITY } from '../SimulatorKnobs';
+import { SimulatorKnobs, KNOBS_DEFAULT, KNOBS_ALL_STAR, KNOBS_RISING_STARS, KNOBS_CELEBRITY, getKnobs } from '../SimulatorKnobs';
 export class GameSimulator {
 
   private static calcWinProb(strengthDiff: number): number {
@@ -211,13 +212,16 @@ export class GameSimulator {
     const homeFTA = homeInitial.reduce((sum, p) => sum + p.fta, 0);
     const awayFTA = awayInitial.reduce((sum, p) => sum + p.fta, 0);
 
+    const homeBlkMult = homeKnobs.blockRateMult ?? 1.0;
+    const awayBlkMult = awayKnobs.blockRateMult ?? 1.0;
+
     const homeStats = StatGenerator.generateCoordinatedStats(
       homeInitial,
       homeTeam,
       availablePlayers,
       awayMisses         * 0.69,
       awayTov            * 0.60,
-      awayInteriorMisses * 0.33,
+      awayInteriorMisses * 0.33 * awayBlkMult,  // blockRateMult scales away team's blockable interior misses
       awayFTA,
       2026,
       otCount,
@@ -230,7 +234,7 @@ export class GameSimulator {
       availablePlayers,
       homeMisses         * 0.69,
       homeTov            * 0.60,
-      homeInteriorMisses * 0.33,
+      homeInteriorMisses * 0.33 * homeBlkMult,  // blockRateMult scales home team's blockable interior misses
       homeFTA,
       2026,
       otCount,
@@ -302,6 +306,36 @@ export class GameSimulator {
         );
     const injuries = InjurySystem.checkInjuries(gamePlayers, homeTeam, awayTeam);
 
+    // Record DNP reasons at time of simulation so historical views stay accurate
+    const playedHomeIds = new Set(homeStatsFinal.map(s => s.playerId));
+    const playedAwayIds = new Set(awayStatsFinal.map(s => s.playerId));
+    const playerDNPs: Record<string, string> = {};
+    for (const p of homePlayers) {
+      if (!playedHomeIds.has(p.internalId) && p.status === 'Active') {
+        playerDNPs[p.internalId] = (p.injury?.gamesRemaining ?? 0) > 0
+          ? `DNP — Injury (${p.injury!.type})`
+          : "DNP — Coach's Decision";
+      }
+    }
+    for (const p of awayPlayers) {
+      if (!playedAwayIds.has(p.internalId) && p.status === 'Active') {
+        playerDNPs[p.internalId] = (p.injury?.gamesRemaining ?? 0) > 0
+          ? `DNP — Injury (${p.injury!.type})`
+          : "DNP — Coach's Decision";
+      }
+    }
+
+    // ── Fight check (skipped for All-Star / exhibition games) ────────────────
+    const fight = (!isAllStar && !isRisingStars)
+      ? generateFight(
+          homeStatsFinal.map(s => s.playerId),
+          awayStatsFinal.map(s => s.playerId),
+          availablePlayers,
+          [homeTeam, awayTeam] as any,
+          date,
+        ) ?? undefined
+      : undefined;
+
     return {
       gameId,
       homeTeamId: homeTeam.id,
@@ -320,6 +354,8 @@ export class GameSimulator {
       injuries,
       quarterScores,
       gameWinner,
+      playerDNPs,
+      fight,
     };
   }
 
@@ -367,12 +403,77 @@ export class GameSimulator {
     homeOverridePlayers?: Player[],
     awayOverridePlayers?: Player[],
     riggedForTid?: number,
-    clubDebuffs?: Map<string, 'heavy' | 'moderate' | 'mild'>
+    clubDebuffs?: Map<string, 'heavy' | 'moderate' | 'mild'>,
+    leagueStats?: {
+      quarterLength?: number;
+      shotClockValue?: number;
+      shotClockEnabled?: boolean;
+      threePointLineEnabled?: boolean;
+      defensiveThreeSecondEnabled?: boolean;
+      offensiveThreeSecondEnabled?: boolean;
+      handcheckingEnabled?: boolean;
+      goaltendingEnabled?: boolean;
+      chargingEnabled?: boolean;
+      noDribbleRule?: boolean;
+    }
   ): GameResult[] {
     const results: GameResult[] = [];
 
     // Build standings context once for the whole day
     const standingsCtx = this.buildStandingsContext(teams);
+
+    // Build league-rules base knobs from commissioner rule changes
+    const shotClock    = leagueStats?.shotClockValue      ?? 24;
+    const shotClockOn  = leagueStats?.shotClockEnabled    ?? true;
+    const def3sec      = leagueStats?.defensiveThreeSecondEnabled  ?? true;
+    const off3sec      = leagueStats?.offensiveThreeSecondEnabled  ?? true;
+    const threeOn      = leagueStats?.threePointLineEnabled ?? true;
+    const handchecking  = leagueStats?.handcheckingEnabled    ?? false;
+    const goaltending   = leagueStats?.goaltendingEnabled     ?? true;
+    const charging      = leagueStats?.chargingEnabled        ?? true;
+    const noDribble     = leagueStats?.noDribbleRule           ?? false;
+
+    // Shot clock → pace: 24/shotClock gives 1.0 at NBA default, 2.0 at 12s.
+    // No shot clock at all → slow-down ball → 0.78× pace, fewer 3s.
+    const shotClockPace = shotClockOn
+      ? Math.min(2.0, 24 / Math.max(8, shotClock))
+      : 0.78;
+
+    // Defensive 3-second disabled → defenders clog the paint → fewer rim drives, more 3s/mid
+    const rimMult      = def3sec  ? 1.0  : 0.72;
+    const threeBumpD   = def3sec  ? 1.0  : 1.22;  // more perimeter shots when lane is clogged
+
+    // Offensive 3-second disabled → players can camp in the paint → more post / rim
+    const lowPostMult  = off3sec  ? 1.0  : 1.35;
+    const rimBumpO     = off3sec  ? 1.0  : 1.15;
+
+    // Handchecking allowed → refs swallow whistles on contact → fewer free throws
+    const handcheckFtMult = handchecking ? 0.82 : 1.0;
+
+    // Goaltending disabled → defenders freely swat near rim → more blocks, slightly lower rim efficiency
+    const blockMult        = goaltending ? 1.0 : 1.6;
+    const goaltendEffMult  = goaltending ? 1.0 : 0.93;
+
+    // Charging disabled → no charge calls → players drive fearlessly → more rim attempts
+    const chargingRimBump  = charging ? 1.0 : 1.12;
+
+    // No-dribble rule → everything is catch-and-shoot or post → slower pace, fewer rim drives, more 3s
+    const noDribblePaceMult   = noDribble ? 0.72 : 1.0;
+    const noDribbleRimMult    = noDribble ? 0.65 : 1.0;
+    const noDribble3PMult     = noDribble ? 1.40 : 1.0;
+
+    const leagueBaseKnobs = getKnobs({
+      quarterLength:       leagueStats?.quarterLength ?? 12,
+      shotClockSeconds:    shotClock,
+      threePointAvailable: threeOn,
+      threePointRateMult:  threeOn ? (1.0 * threeBumpD * noDribble3PMult) : 0,
+      paceMultiplier:      shotClockPace * noDribblePaceMult,
+      efficiencyMultiplier: goaltendEffMult,
+      rimRateMult:         rimMult * rimBumpO * chargingRimBump * noDribbleRimMult,
+      lowPostRateMult:     lowPostMult,
+      ftRateMult:          handcheckFtMult,
+      blockRateMult:       blockMult,
+    });
 
     for (const game of gamesToSimulate) {
       let home = teams.find(t => t.id === game.homeTid);
@@ -451,10 +552,11 @@ export class GameSimulator {
           homeKnobs = awayKnobs = KNOBS_ALL_STAR;
         } else {
           // Regular game: per-team standings context drives rotation depth + star MPG
+          // Base is leagueBaseKnobs (commissioner rule changes) not raw KNOBS_DEFAULT
           const homeCtx = standingsCtx.get(home.id) ?? { rank: 8, gbFromLeader: 0, gamesRemaining: 41 };
           const awayCtx = standingsCtx.get(away.id) ?? { rank: 8, gbFromLeader: 0, gamesRemaining: 41 };
-          homeKnobs = { ...KNOBS_DEFAULT, ...homeCtx };
-          awayKnobs = { ...KNOBS_DEFAULT, ...awayCtx };
+          homeKnobs = { ...leagueBaseKnobs, ...homeCtx };
+          awayKnobs = { ...leagueBaseKnobs, ...awayCtx };
         }
 
         // Apply club debuffs around this game

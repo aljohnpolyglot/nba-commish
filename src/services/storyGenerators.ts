@@ -1,4 +1,5 @@
 import { NBAPlayer, NBATeam, StaffData, DraftPick, Sender } from '../types';
+export { generatePlayerDisciplineStory } from './playerDisciplineGenerator';
 
 export interface StoryContextResult {
     story: string;
@@ -176,55 +177,7 @@ export const generatePlayerAppealStory = (players: NBAPlayer[]): StoryContextRes
     return { story: `A superstar player is contacting your office directly, bypassing the NBPA. ${player.name} has a personal concern about a league policy, the demanding travel schedule, or player wellness initiatives he'd like to see implemented.`, sender, playerPortraitUrl: player.imgURL };
 };
 
-export const generatePlayerDisciplineStory = (players: NBAPlayer[], teams: NBATeam[]): StoryContextResult | null => {
-    const extremeScenarios = [
-        "was seen flashing a firearm on a social media live stream, raising concerns about their judgment and the league's image.",
-        "is facing allegations of domestic violence, leading to a police investigation and intense media scrutiny.",
-        "was involved in a late-night altercation at a nightclub, resulting in a viral video and negative press.",
-        "has been linked to an illegal sports betting operation, calling into question the integrity of the game.",
-        "was arrested for driving under the influence after a high-profile team event."
-    ];
-
-    const standardScenarios = [
-        "was caught using a burner account on social media to argue with fans and criticize their own teammates.",
-        "got into a heated, public shouting match with their head coach during a timeout that went viral.",
-        "made a series of controversial and offensive statements about the league's officiating on a popular podcast.",
-        "publicly demanded a trade during a post-game press conference, completely blindsiding the front office.",
-        "was fined for kicking a chair into the stands after a frustrating loss, narrowly missing a fan.",
-        "skipped a mandatory team practice to attend a high-profile fashion show, infuriating the front office.",
-        "was involved in a minor scuffle at a club late before a game, resulting in a viral video but no arrests.",
-        "refused to enter the game in the 4th quarter, leading to a massive internal team suspension.",
-        "leaked sensitive locker room conversations to a prominent media member, destroying team chemistry."
-    ];
-
-    const familyMen = [
-        "Nikola Jokic", "Stephen Curry", "LeBron James", "Giannis Antetokounmpo", 
-        "Jayson Tatum", "Jrue Holiday", "Mike Conley", "Al Horford", 
-        "Klay Thompson", "DeMar DeRozan", "Damian Lillard", "Luka Doncic",
-        "Shai Gilgeous-Alexander", "Tyrese Haliburton", "Jalen Brunson"
-    ];
-
-    const highProfilePlayers = players.filter(p => p.overallRating >= 75 && p.tid >= 0);
-    if (highProfilePlayers.length === 0) return null;
-
-    const player = selectRandom(highProfilePlayers, 1)[0];
-    const isFamilyMan = familyMen.includes(player.name);
-    
-    // If they are a known family man, they only get standard scenarios. Otherwise, they can get either.
-    const eligibleScenarios = isFamilyMan ? standardScenarios : [...standardScenarios, ...extremeScenarios];
-    const scenario = selectRandom(eligibleScenarios, 1)[0];
-    const playerTeam = teams.find(t => t.id === player.tid);
-
-    const sender: Sender = { 
-        name: "Joe Dumars", 
-        title: "Executive VP, Head of Basketball Operations", 
-        organization: "NBA League Office" 
-    };
-    
-    const story = `A major off-court incident has occurred. ${player.name} of the ${playerTeam?.name || 'Unknown Team'} ${scenario}`;
-    
-    return { story, sender, playerPortraitUrl: player.imgURL, teamLogoUrl: playerTeam?.logoUrl };
-};
+// generatePlayerDisciplineStory is now in ./playerDisciplineGenerator (re-exported above)
 
 // The main generator function is now async and much cleaner
 export const generateSponsorProposalStory = async (startYear: number): Promise<StoryContextResult | null> => {

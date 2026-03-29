@@ -1,10 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useGame } from '../../store/GameContext';
 import { AwardService, AwardCandidate, CoachCandidate, AllNBASpot } from '../../services/logic/AwardService';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, TrendingUp, Target, Zap, Star, ChevronRight, Info, Shield, Users, UserCheck } from 'lucide-react';
+import { Trophy, TrendingUp, Target, Zap, Star, Info, Users, UserCheck } from 'lucide-react';
 import { PlayerBioView } from '../central/view/PlayerBioView';
 import { NBAPlayer } from '../../types';
+import { fetchCoachData, getCoachPhoto } from '../../data/photos/coaches';
+import { RankedPersonCard, StatPills } from '../shared/ui';
 
 type AwardTab = 'mvp' | 'dpoy' | 'roty' | 'smoy' | 'mip' | 'coy' | 'allNBA';
 
@@ -12,6 +14,11 @@ export const AwardRacesView: React.FC = () => {
   const { state } = useGame();
   const [selectedAward, setSelectedAward] = useState<AwardTab>('mvp');
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
+  const [coachPhotosLoaded, setCoachPhotosLoaded] = useState(false);
+
+  useEffect(() => {
+    fetchCoachData().then(() => setCoachPhotosLoaded(true));
+  }, []);
 
   const races = useMemo(() => {
     return AwardService.calculateAwardRaces(
@@ -68,10 +75,14 @@ export const AwardRacesView: React.FC = () => {
                   <p className="font-bold text-white text-xs truncate group-hover:text-indigo-400 transition-colors">{spot.player.name}</p>
                   <p className="text-[10px] text-slate-500">{spot.pos} · {spot.team.abbrev}</p>
                 </div>
-                <div className="text-[10px] text-slate-500 font-mono text-right">
-                  <div className="text-slate-300 font-bold">{(spot.stats.pts / spot.stats.gp).toFixed(1)}</div>
-                  <div>PPG</div>
-                </div>
+                <StatPills
+                  stats={[
+                    { label: 'PPG', val: (spot.stats.pts / spot.stats.gp).toFixed(1) },
+                    { label: 'RPG', val: ((spot.stats.trb || (spot.stats.orb || 0) + (spot.stats.drb || 0)) / spot.stats.gp).toFixed(1) },
+                    { label: 'APG', val: (spot.stats.ast / spot.stats.gp).toFixed(1) },
+                  ]}
+                  size="xs"
+                />
               </motion.div>
             ))}
           </div>
@@ -85,31 +96,21 @@ export const AwardRacesView: React.FC = () => {
   const CoYList = () => (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {races.coy.map((c: CoachCandidate, i) => (
-        <motion.div
+        <RankedPersonCard
           key={`${c.coachName}-${c.team.id}`}
-          initial={{ opacity: 0, x: i % 2 === 0 ? -20 : 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: i * 0.05 }}
-          className="group relative bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center gap-4"
-        >
-          <div className="w-8 text-center font-black text-slate-700 group-hover:text-teal-500 transition-colors">{i + 1}</div>
-          <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
-            {c.team.logoUrl
-              ? <img src={c.team.logoUrl} alt={c.team.abbrev} className="w-10 h-10 object-contain" />
-              : <UserCheck size={24} className="text-slate-500" />}
-          </div>
-          <div className="flex-1">
-            <p className="font-bold text-white">{c.coachName}</p>
-            <p className="text-xs text-slate-500">{c.team.name} · {c.wins}–{c.losses}</p>
-            <p className={`text-[10px] font-bold mt-1 ${c.improvement > 0 ? 'text-emerald-400' : c.improvement < 0 ? 'text-red-400' : 'text-slate-500'}`}>
-              {c.improvement > 0 ? `+${c.improvement}` : c.improvement < 0 ? `${c.improvement}` : '±0'} wins vs last season
-            </p>
-          </div>
-          <div className="text-right pr-2">
-            <div className={`text-lg font-black tracking-tighter ${i === 0 ? 'text-teal-400' : 'text-white'}`}>{c.odds}</div>
-            <div className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Odds</div>
-          </div>
-        </motion.div>
+          rank={i + 1}
+          portraitUrl={getCoachPhoto(c.coachName) || undefined}
+          name={c.coachName}
+          subtitle={`${c.team.name} · ${c.wins}–${c.losses}`}
+          teamLogoUrl={c.team.logoUrl}
+          metaLine={{
+            text: `${c.improvement > 0 ? `+${c.improvement}` : c.improvement < 0 ? `${c.improvement}` : '±0'} wins vs last season`,
+            color: c.improvement > 0 ? 'text-emerald-400' : c.improvement < 0 ? 'text-red-400' : 'text-slate-500',
+          }}
+          odds={c.odds}
+          accentColor="teal"
+          animDelay={i * 0.05}
+        />
       ))}
     </div>
   );
@@ -218,61 +219,24 @@ export const AwardRacesView: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <AnimatePresence mode="wait">
                 {(races[selectedAward] as AwardCandidate[]).map((candidate, index) => (
-                  <motion.div
+                  <RankedPersonCard
                     key={candidate.player.internalId}
-                    initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
+                    rank={index + 1}
+                    portraitUrl={candidate.player.imgURL || `https://picsum.photos/seed/${candidate.player.name}/200/200`}
+                    name={candidate.player.name}
+                    badge={candidate.player.pos}
+                    subtitle={`${candidate.team.name} · ${candidate.team.wins}-${candidate.team.losses}`}
+                    teamLogoUrl={candidate.team.logoUrl}
+                    stats={[
+                      { label: 'PTS', val: (candidate.stats.pts / candidate.stats.gp).toFixed(1) },
+                      { label: 'REB', val: ((candidate.stats.trb || (candidate.stats as any).reb || (candidate.stats.orb || 0) + (candidate.stats.drb || 0)) / candidate.stats.gp).toFixed(1) },
+                      { label: 'AST', val: (candidate.stats.ast / candidate.stats.gp).toFixed(1) },
+                    ]}
+                    odds={candidate.odds}
+                    accentColor="indigo"
+                    animDelay={index * 0.05}
                     onClick={() => setViewingPlayer(candidate.player)}
-                    className="group relative bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 rounded-2xl p-4 transition-all cursor-pointer flex items-center gap-4"
-                  >
-                    <div className="w-8 text-center font-black text-slate-700 group-hover:text-indigo-500 transition-colors">
-                      {index + 1}
-                    </div>
-                    <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-800 border border-slate-700">
-                      <img
-                        src={candidate.player.imgURL || `https://picsum.photos/seed/${candidate.player.name}/200/200`}
-                        alt={candidate.player.name}
-                        className="w-full h-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute bottom-0 right-0 w-6 h-6 bg-white rounded-tl-lg p-1">
-                        <img src={candidate.team.logoUrl} alt={candidate.team.abbrev} className="w-full h-full object-contain" />
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-white group-hover:text-indigo-400 transition-colors">{candidate.player.name}</h4>
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 uppercase">
-                          {candidate.player.pos}
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-500 flex items-center gap-2">
-                        <span>{candidate.team.name}</span>
-                        <span className="w-1 h-1 rounded-full bg-slate-700" />
-                        <span>{candidate.team.wins}-{candidate.team.losses}</span>
-                      </div>
-                      <div className="flex gap-3 mt-2">
-                        {[
-                          { label: 'PTS', val: (candidate.stats.pts / candidate.stats.gp).toFixed(1) },
-                          { label: 'REB', val: ((candidate.stats.trb || (candidate.stats as any).reb || (candidate.stats.orb || 0) + (candidate.stats.drb || 0)) / candidate.stats.gp).toFixed(1) },
-                          { label: 'AST', val: (candidate.stats.ast / candidate.stats.gp).toFixed(1) },
-                        ].map(({ label, val }) => (
-                          <div key={label} className="text-[10px] uppercase tracking-tighter">
-                            <span className="text-slate-500">{label}</span>
-                            <div className="font-bold text-slate-300">{val}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="text-right pr-2">
-                      <div className={`text-lg font-black tracking-tighter ${index === 0 ? 'text-indigo-400' : 'text-white'}`}>
-                        {candidate.odds}
-                      </div>
-                      <div className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Odds</div>
-                    </div>
-                    <ChevronRight size={16} className="text-slate-700 group-hover:text-indigo-500 transition-colors" />
-                  </motion.div>
+                  />
                 ))}
               </AnimatePresence>
             </div>

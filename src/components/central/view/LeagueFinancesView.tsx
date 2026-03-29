@@ -11,6 +11,9 @@ import {
 import {
   estimateAttendance, getArenaCapacity, formatAttendance, formatRevM, ARENA_HARD_CAP,
 } from '../../../utils/attendanceUtils';
+import {
+  AreaChart, Area, CartesianGrid, Tooltip as RechartTooltip, ResponsiveContainer, XAxis, YAxis,
+} from 'recharts';
 
 // ─── shared types ─────────────────────────────────────────────────────────────
 interface TeamEnriched {
@@ -244,11 +247,12 @@ const AttRow: React.FC<{ d: TeamEnriched; rank: number; onClick: () => void }> =
 };
 
 // ─── Main view ────────────────────────────────────────────────────────────────
-type TabKey = 'cap' | 'trade' | 'attendance';
+type TabKey = 'cap' | 'trade' | 'attendance' | 'revenue';
 
 export const LeagueFinancesView: React.FC = () => {
   const { state, navigateToTeamFinances } = useGame();
   const [tab, setTab]         = useState<TabKey>('cap');
+  const [revenueRange, setRevenueRange] = useState<7 | 30 | 90 | 'season'>(30);
   const [capSort, setCapSort] = useState<CapSortKey>('payroll');
   const [capDir, setCapDir]   = useState<'desc' | 'asc'>('desc');
   const [attSort, setAttSort] = useState<AttSortKey>('attendance');
@@ -447,6 +451,7 @@ export const LeagueFinancesView: React.FC = () => {
             {t.label}
           </button>
         ))}
+        <button onClick={() => setTab('revenue')} className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${tab === 'revenue' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-white'}`}>Revenue</button>
       </div>
 
       {/* ── Content ── */}
@@ -602,6 +607,90 @@ export const LeagueFinancesView: React.FC = () => {
             ))}
           </div>
         </>
+      )}
+
+      {tab === 'revenue' && (
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-black text-white uppercase tracking-tight">League Revenue</h3>
+              <p className="text-slate-500 text-xs font-medium">Daily revenue tick — phase-weighted across the season</p>
+            </div>
+            <div className="flex gap-1">
+              {([7, 30, 90, 'season'] as const).map(r => (
+                <button
+                  key={r}
+                  onClick={() => setRevenueRange(r)}
+                  className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${revenueRange === r ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-white hover:bg-slate-800'}`}
+                >{r === 'season' ? 'Season' : `${r}D`}</button>
+              ))}
+            </div>
+          </div>
+
+          {(() => {
+            const history = state.leagueStats.revenueHistory || [];
+            const filtered = revenueRange === 'season' ? history : history.slice(-revenueRange);
+            const chartData = filtered.map(p => ({
+              date: new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              revenue: p.revenue,
+            }));
+            const total = filtered.reduce((s, p) => s + p.revenue, 0);
+            const avg = filtered.length ? total / filtered.length : 0;
+            const latest = history[history.length - 1]?.revenue ?? 0;
+            const prev = history[history.length - 2]?.revenue ?? latest;
+            const delta = latest - prev;
+
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4">
+                    <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Today</p>
+                    <p className="text-2xl font-black text-white">${latest.toFixed(1)}M</p>
+                    <p className={`text-xs font-bold mt-1 ${delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{delta >= 0 ? '+' : ''}{delta.toFixed(1)}M vs yesterday</p>
+                  </div>
+                  <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4">
+                    <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Period Total</p>
+                    <p className="text-2xl font-black text-white">${(total / 1000).toFixed(2)}B</p>
+                    <p className="text-xs text-slate-500 mt-1">{filtered.length} days</p>
+                  </div>
+                  <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4">
+                    <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Daily Avg</p>
+                    <p className="text-2xl font-black text-white">${avg.toFixed(1)}M</p>
+                    <p className="text-xs text-slate-500 mt-1">per day</p>
+                  </div>
+                </div>
+
+                {chartData.length > 0 ? (
+                  <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 h-72">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData}>
+                        <defs>
+                          <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                        <XAxis dataKey="date" stroke="#475569" fontSize={10} tickLine={false} axisLine={false} tick={{ fontWeight: 'bold' }} minTickGap={40} />
+                        <YAxis stroke="#475569" fontSize={10} tickLine={false} axisLine={false} tick={{ fontWeight: 'bold' }} tickFormatter={v => `$${v}M`} />
+                        <RechartTooltip
+                          contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: 12 }}
+                          formatter={(v: number) => [`$${v.toFixed(1)}M`, 'Revenue']}
+                          labelStyle={{ color: '#94a3b8', fontSize: 11, fontWeight: 'bold' }}
+                        />
+                        <Area name="Revenue" type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" connectNulls />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-12 text-center text-slate-500 text-sm">
+                    No revenue history yet — advance a few days to populate the chart.
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
       )}
     </div>
   );

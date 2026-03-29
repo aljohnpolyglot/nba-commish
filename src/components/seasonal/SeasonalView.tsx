@@ -172,10 +172,15 @@ const SeasonalView: React.FC = () => {
     });
   };
 
-  const handleAllStarReplacement = async (injuredId: string, injuredName: string, replacementId: string, replacementName: string) => {
+  const handleAllStarReplacement = async (injuredId: string, injuredName: string, replacementId: string, replacementName: string, conference: string) => {
     setReplacementOpen(false);
+    // Update roster immediately (no day advance for this action)
+    dispatchAction({
+      type: 'ADD_ALL_STAR_REPLACEMENT' as any,
+      payload: { injuredId, replacementId, replacementName, conference }
+    });
     await exec('ADVANCE_DAY', {
-      outcomeText: `Commissioner designated ${replacementName} as the official All-Star replacement for the injured ${injuredName}.`,
+      outcomeText: `Due to injury, ${injuredName} will not participate in the All-Star Game. Commissioner has selected ${replacementName} as the official replacement — they will receive All-Star honors.`,
       isSpecificEvent: true
     });
   };
@@ -306,9 +311,16 @@ const SeasonalView: React.FC = () => {
     // All-Star Roster Edit (deadline = saturday)
     {
       id: 'SET_ALL_STAR_REPLACEMENT', title: 'All-Star Roster Edit',
-      description: startersAnnounced
-        ? `${(state.allStar?.roster ?? []).length} All-Stars selected — swap any player with a top candidate.`
-        : 'Once starters are announced, swap any All-Star with a deserving replacement.',
+      description: (() => {
+        if (!startersAnnounced) return 'Once starters are announced, manage roster — swap players or add injury replacements.';
+        const roster = state.allStar?.roster ?? [];
+        const injured = roster.filter(r => {
+          const p = state.players.find(pl => pl.internalId === r.playerId);
+          return !!(p as any)?.injury && !r.isInjuredDNP;
+        });
+        if (injured.length > 0) return `${injured.length} All-Star${injured.length > 1 ? 's are' : ' is'} injured and cannot participate — add your replacements.`;
+        return `${roster.filter(r => !r.isInjuryReplacement).length} All-Stars selected — swap any player or add injury replacements.`;
+      })(),
       cost: 'None', benefit: '+Roster Control / +Fair Play',
       icon: RotateCcw, color: 'sky', deadline: dates.saturday,
       disabled: false,

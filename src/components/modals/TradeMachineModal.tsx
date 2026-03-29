@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useGame } from '../../store/GameContext';
 import { X, ChevronUp, ChevronDown, MoreVertical } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { NBAPlayer, DraftPick } from '../../types';
+import { NBAPlayer, NBATeam, DraftPick } from '../../types';
 import { TradeSummaryModal } from './TradeSummaryModal';
 import { TeamDropdown } from '../shared/TeamDropdown';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
@@ -26,16 +26,22 @@ const OutgoingPill = ({ player, onRemove }: { player: NBAPlayer, onRemove: () =>
 );
 
 // HELPER: PlayerRow component
-const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabled }: {
+const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabled, currentSeason }: {
   player: NBAPlayer & { isIncoming?: boolean };
   isSelected: boolean;
   onToggle: () => void;
   formatContract: (amount: number) => string;
   teams: NBATeam[];
   disabled: boolean;
+  currentSeason?: number;
 }) => {
   const team = teams.find(t => t.id === player.tid);
-  
+  const seasonStats = player.stats?.find(s => s.season === currentSeason) ?? player.stats?.at(-1);
+  const gp = seasonStats?.gp || 0;
+  const ppg = gp > 0 ? (seasonStats!.pts / gp).toFixed(1) : '—';
+  const rpg = gp > 0 ? (seasonStats!.trb / gp).toFixed(1) : '—';
+  const apg = gp > 0 ? (seasonStats!.ast / gp).toFixed(1) : '—';
+
   return (
     <div
       onClick={() => !disabled && onToggle()}
@@ -57,8 +63,9 @@ const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabl
           <div className="text-sm font-black text-white truncate group-hover:text-blue-400 transition-colors">{player.name}</div>
           <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{player.pos} • {player.contract?.exp} YRS</div>
           <div className="flex gap-3 mt-1 text-[9px] text-slate-500 font-mono">
-              <span><strong className="text-slate-300">22.4</strong> PER</span>
-              <span><strong className="text-slate-300">19.1</strong> PTS</span>
+              <span><strong className="text-slate-300">{ppg}</strong> PPG</span>
+              <span><strong className="text-slate-300">{rpg}</strong> RPG</span>
+              <span><strong className="text-slate-300">{apg}</strong> APG</span>
           </div>
       </div>
 
@@ -233,14 +240,15 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({ onClose, o
             <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#1a1a1a]">
                 {activeTabA === 'roster' ? (
                     displayTeamARoster.map(player => (
-                        <PlayerRow 
-                            key={player.internalId} 
-                            player={player} 
-                            isSelected={teamAPlayers.some(x => x.internalId === player.internalId)} 
+                        <PlayerRow
+                            key={player.internalId}
+                            player={player}
+                            isSelected={teamAPlayers.some(x => x.internalId === player.internalId)}
                             onToggle={() => setTeamAPlayers([...teamAPlayers, player])}
                             formatContract={formatContract}
                             teams={state.teams}
                             disabled={!canClickAssets || player.isIncoming}
+                            currentSeason={state.leagueStats.year}
                         />
                     ))
                 ) : (
@@ -313,14 +321,15 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({ onClose, o
             <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#1a1a1a]">
                 {activeTabB === 'roster' ? (
                     displayTeamBRoster.map(player => (
-                        <PlayerRow 
-                            key={player.internalId} 
-                            player={player} 
-                            isSelected={teamBPlayers.some(x => x.internalId === player.internalId)} 
+                        <PlayerRow
+                            key={player.internalId}
+                            player={player}
+                            isSelected={teamBPlayers.some(x => x.internalId === player.internalId)}
                             onToggle={() => setTeamBPlayers([...teamBPlayers, player])}
                             formatContract={formatContract}
                             teams={state.teams}
                             disabled={!canClickAssets || player.isIncoming}
+                            currentSeason={state.leagueStats.year}
                         />
                     ))
                 ) : (

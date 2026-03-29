@@ -45,7 +45,19 @@ export const simulateDayGames = (state: GameState, watchedGameResult?: any, rigg
         clubDebuffs.size > 0 ? clubDebuffs : undefined,
         state.headToHead,
         state.leagueStats.otl,
-        state.leagueStats.year
+        state.leagueStats.year,
+        {
+            quarterLength:                 state.leagueStats.quarterLength,
+            shotClockValue:                state.leagueStats.shotClockValue,
+            shotClockEnabled:              state.leagueStats.shotClockEnabled,
+            threePointLineEnabled:         state.leagueStats.threePointLineEnabled,
+            defensiveThreeSecondEnabled:   state.leagueStats.defensiveThreeSecondEnabled,
+            offensiveThreeSecondEnabled:   state.leagueStats.offensiveThreeSecondEnabled,
+            handcheckingEnabled:           state.leagueStats.handcheckingEnabled,
+            goaltendingEnabled:            state.leagueStats.goaltendingEnabled,
+            chargingEnabled:               state.leagueStats.chargingEnabled,
+            noDribbleRule:                 state.leagueStats.noDribbleRule,
+        }
     );
 
     // Compute clinch/elimination status after standings update

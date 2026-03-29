@@ -30,7 +30,17 @@
       "Bash(find /c/Users/user-MSI/Downloads/nba-commish -name *photos* -o -name *photo*)",
       "Bash(curl:*)",
       "Bash(npm cache:*)",
-      "Bash(grep -v \"comment\\\\|//\")"
+      "Bash(grep -v \"comment\\\\|//\")",
+      "Bash(find C:Usersuser-MSIDownloadsnba-commishsrccomponents -type f -name *all* -o -name *All*)",
+      "Bash(find C:Usersuser-MSIDownloadsnba-commishsrc -type f \\\\\\(-name *Award* -o -name *honor* \\\\\\))",
+      "Bash(grep -r AllNBA C:Usersuser-MSIDownloadsnba-commishsrc --include=*.tsx --include=*.ts)",
+      "Bash(find ./src -name *allstar* -o -name *AllStar* -o -name *all-star*)",
+      "Bash(wc:*)",
+      "Bash(find /c/Users/user-MSI/Downloads/nba-commish/src/components -type f -name \"*.tsx\" -exec grep -l \"rounded-\\\\\\(xl\\\\|2xl\\\\|3xl\\\\\\)\" {})",
+      "Bash(sed -n '1,10p' src/components/allstar/allstarevents/dunk/DunkContest.tsx)",
+      "Bash(sed -n '1,10p' src/components/allstar/allstarevents/dunk/PlayFeed.tsx)",
+      "Bash(sed -n '1,10p' src/components/allstar/allstarevents/dunk/Scoreboard.tsx)",
+      "Bash(sed -n '1,10p' src/components/allstar/allstarevents/dunk/useDunkContest.ts)"
     ]
   }
 }

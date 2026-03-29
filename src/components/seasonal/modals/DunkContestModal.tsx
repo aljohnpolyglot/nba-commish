@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { useGame } from '../../../store/GameContext';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
 import { NBAPlayer } from '../../../types';
+import { loadRatings, getRawTeams } from '../../../data/NBA2kRatings';
 
 interface DunkRating { drivingDunk: number; vertical: number; score: number; }
 
@@ -48,9 +49,9 @@ export const DunkContestModal: React.FC<DunkContestModalProps> = ({ onClose, onC
     const existingIds = new Set((state.allStar?.dunkContestContestants ?? []).map((p: NBAPlayer) => p.internalId));
     setSelected(existingIds);
 
-    fetch('https://gist.githubusercontent.com/aljohnpolyglot/10016f0800ee9b57420c4c74ad9060e3/raw/f6f4fbb0024f37e08f823379577ca2d0ae77abe4/NBA2k26_Ratings')
-      .then(r => r.json())
-      .then((teams: any[]) => {
+    loadRatings()
+      .then(() => {
+        const teams = getRawTeams();
         const map = new Map<string, DunkRating>();
         for (const team of teams) {
           for (const p of team.roster) {

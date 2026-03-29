@@ -4,9 +4,25 @@ import { BookOpen, Calendar, Gift, Utensils, Plane, Music, Star, Zap, AlertTrian
 import { motion } from 'motion/react';
 import { HistoryEntry } from '../../../types';
 
-function resolveEntry(raw: string | HistoryEntry, fallbackDate: string): HistoryEntry {
-  if (typeof raw === 'string') return { text: raw, date: fallbackDate, type: 'League Event' };
-  return raw as HistoryEntry;
+/**
+ * Strip redundant "Commissioner [Name] has " / "The Commissioner has " prefixes
+ * from diary entries so the text reads as a standalone headline.
+ */
+function normalizeEntryText(text: string): string {
+  // "Commissioner John Smith has unveiled..." → "Unveiled..."
+  let t = text.replace(/^Commissioner\s+[\w\s]+?\s+has\s+/i, '');
+  // "The Commissioner has finalized..." → "Finalized..."
+  t = t.replace(/^The\s+Commissioner\s+has\s+/i, '');
+  // Capitalise first letter in case it was lowered
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+function resolveEntry(raw: string | HistoryEntry | null | undefined, fallbackDate: string): HistoryEntry | null {
+  if (raw == null) return null;
+  if (typeof raw === 'string') return { text: normalizeEntryText(raw), date: fallbackDate, type: 'League Event' };
+  if (typeof (raw as HistoryEntry).text !== 'string') return null;
+  const entry = raw as HistoryEntry;
+  return { ...entry, text: normalizeEntryText(entry.text) };
 }
 
 function detectEventKind(text: string): {
@@ -45,6 +61,7 @@ export const LeagueEvent: React.FC = () => {
     return [...(state.history || [])]
       .reverse()
       .map(raw => resolveEntry(raw, state.date))
+      .filter((entry): entry is HistoryEntry => entry != null)
       .filter(entry => {
         const kind = (entry.type || '').toLowerCase();
         // Only show non-transaction entries (League Events, commissioner actions)

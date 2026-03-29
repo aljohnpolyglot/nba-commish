@@ -265,3 +265,57 @@ Both return `string | null`. Null means "not newsworthy enough" (e.g., very low 
 | `src/services/llm/generators/simulation.ts` | LLM-off fallback; reads `payload.outcomeText` |
 | `src/components/central/view/TransactionsView.tsx` | Reads `state.leagueHistory`; parses text for team/player |
 | `src/components/messages/ChatList.tsx` | Social feed display |
+
+---
+
+## 8. All-Star Weekend Event Pipeline
+
+### Overview
+All-Star Weekend events are auto-triggered by `gameLogic.ts` as the season date progresses. The commissioner can also manually control key events via `SeasonalView.tsx`.
+
+### Key Dates (2026 season)
+| Event | Date | Auto-triggered? | Commissioner-overridable? |
+|---|---|---|---|
+| Voting opens | Dec 25 | ✓ (vote simulation each day) | ✗ |
+| Starters announced | Jan 22 | ✓ | ✗ |
+| Reserves announced | Jan 29 | ✓ | ✗ |
+| Celebrity roster | Jan 29 | ✓ auto-selects if not set | ✓ via Seasonal tab |
+| Dunk Contest field | Feb 5 | ✓ auto-selects if not set | ✓ via Seasonal tab |
+| 3-Point Contest field | Feb 8 | ✓ auto-selects if not set | ✓ via Seasonal tab |
+| Games injected | Feb 12 | ✓ | ✗ |
+| Rising Stars (Fri) | Feb 13 | ✓ auto-sim after day passes | ✓ Watch Live |
+| Dunk+3PT contests (Sat) | Feb 14 | ✓ auto-sim after day passes | ✓ Watch Live |
+| All-Star Game (Sun) | Feb 15 | ✓ auto-sim after day passes | ✓ Watch Live |
+
+### Files
+| File | Purpose |
+|---|---|
+| `src/services/allStar/AllStarWeekendOrchestrator.ts` | Master orchestrator — injects games, simulates weekend, returns state patches |
+| `src/services/allStar/AllStarSelectionService.ts` | Voting simulation, starter/reserve/Rising Stars selection |
+| `src/services/allStar/AllStarDunkContestSim.ts` | Dunk contest scoring simulation |
+| `src/services/allStar/AllStarThreePointContestSim.ts` | 3-point contest scoring simulation |
+| `src/services/allStar/AllStarCelebrityGameSim.ts` | Celebrity game simulation |
+| `src/store/logic/gameLogic.ts` (lines 231–498) | All-Star logic within `advanceDay` — checks dates, fires events |
+| `src/components/seasonal/SeasonalView.tsx` | Commissioner controls: rig voting, replacements, dunk/3pt/celebrity |
+| `src/components/allstar/AllStarView.tsx` | Full All-Star weekend UI (7 tabs) |
+| `src/components/allstar/AllStarRoster.tsx` | Roster display + injury replacement rows |
+
+### Lazy Sim Guard
+When the commissioner manually sets dunk/3-point contestants via `SeasonalView`, `GameContext` sets `dunkContestAnnounced: true` / `threePointAnnounced: true` immediately. `gameLogic.ts` checks these flags before auto-selecting, so the commissioner's choices are preserved.
+
+### Injury Replacement Flow
+1. Commissioner opens **All-Star Roster Edit** in Seasonal tab
+2. Injured players are shown with **"Add Replacement"** button
+3. Commissioner picks a replacement from the MVP-ranked candidate grid
+4. `ADD_ALL_STAR_REPLACEMENT` action fires synchronously (no day advance)
+5. `ADVANCE_DAY` fires with an outcomeText describing the injury replacement
+6. The injured player gets `isInjuredDNP: true` — they hold All-Star honor but are auto-DNP
+7. The replacement gets `isInjuryReplacement: true` + `injuredPlayerId` — they play in the game
+8. `AllStarRoster.tsx` shows a dedicated **Injury Replacements** section with before/after rows
+
+### Adding a New All-Star Event
+Follow the same pattern as dunk contest:
+1. Add a date entry in `getAllStarWeekendDates()` in `AllStarWeekendOrchestrator.ts`
+2. Add a `wasDateReached()` check block in `gameLogic.ts` (section 3.x)
+3. Add a state flag to `AllStarState` interface in `types.ts`
+4. Optionally add a `SeasonalView` action card to let the commissioner override

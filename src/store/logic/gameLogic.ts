@@ -2,6 +2,7 @@ import { GameState, UserAction, HistoricalStatPoint, NBAPlayer as Player, DraftP
 import { PlayoffGenerator } from '../../services/playoffs/PlayoffGenerator';
 import { PlayoffAdvancer } from '../../services/playoffs/PlayoffAdvancer';
 import { normalizeDate, extractNbaId, extractTeamId, convertTo2KRating } from '../../utils/helpers';
+import { genMoodTraits } from '../../utils/mood';
 import { executeForcedTrade } from '../../services/tradeService';
 import { generateSchedule } from '../../services/gameScheduler';
 import { handleStartGame } from './initialization';
@@ -80,6 +81,11 @@ export const processTurn = async (
     
     // 5. Post-process simulation results (injuries, stats)
     let { updatedPlayers, updatedDraftPicks } = processSimulationResults(allSimResults, result.players || stateWithSim.players, result.draftPicks || stateWithSim.draftPicks, stateWithSim.schedule);
+
+    // Lazily assign mood traits to any player who doesn't have them yet
+    updatedPlayers = updatedPlayers.map(p =>
+        p.moodTraits && p.moodTraits.length > 0 ? p : { ...p, moodTraits: genMoodTraits(p.internalId) }
+    );
 
     // 6. Handle forced trades from result
     let forcedTradeTransaction = null;
@@ -498,7 +504,9 @@ export const processTurn = async (
     }
 
     // ── PLAYOFFS LOGIC ────────────────────────────────────────────────────────
-    let playoffsPatch: PlayoffBracket | undefined = state.playoffs;
+    // Prefer stateWithSim.playoffs — runSimulation may have already generated/advanced
+    // the bracket inside its day loop (handles multi-day sims that cross April 13).
+    let playoffsPatch: PlayoffBracket | undefined = stateWithSim.playoffs ?? state.playoffs;
     const currentDateNorm2 = normalizeDate(dateString);
 
     // 1. Generate bracket when regular season ends (around Apr 14)

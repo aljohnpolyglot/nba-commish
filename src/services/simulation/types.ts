@@ -40,6 +40,17 @@ export interface PlayerGameStats {
   _nightBallCtrl?: number;
 }
 
+export interface FightResult {
+  player1Id: string;
+  player1Name: string;
+  player1TeamId: number;
+  player2Id: string;
+  player2Name: string;
+  player2TeamId: number;
+  severity: 'scuffle' | 'ejection' | 'brawl';
+  description: string; // used as LLM story seed
+}
+
 export interface GameResult {
   gameId: number;
   homeTeamId: number;
@@ -52,6 +63,7 @@ export interface GameResult {
   lead: number;
   isOT: boolean;
   otCount: number;
+  playerDNPs?: Record<string, string>; // playerId → "DNP — Injury (Type)" | "DNP — Coach's Decision"
   isAllStar?: boolean;
   isRisingStars?: boolean;
   gameWinner?: {
@@ -74,6 +86,7 @@ export interface GameResult {
     injuryType: string;
     gamesRemaining: number;
   }[];
+  fight?: FightResult;
 }
 
 /** Live per-player box-score accumulated by useGameStats */

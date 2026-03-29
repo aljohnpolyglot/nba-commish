@@ -181,7 +181,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       const { contestants } = action.payload as { contestants: any[] };
       setState(prev => ({
         ...prev,
-        allStar: prev.allStar ? { ...prev.allStar, dunkContestContestants: contestants } : prev.allStar,
+        allStar: prev.allStar ? { ...prev.allStar, dunkContestContestants: contestants, dunkContestAnnounced: true } : prev.allStar,
       }));
       return;
     }
@@ -190,8 +190,41 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       const { contestants } = action.payload as { contestants: any[] };
       setState(prev => ({
         ...prev,
-        allStar: prev.allStar ? { ...prev.allStar, threePointContestants: contestants } : prev.allStar,
+        allStar: prev.allStar ? { ...prev.allStar, threePointContestants: contestants, threePointAnnounced: true } : prev.allStar,
       }));
+      return;
+    }
+
+    if (action.type === 'ADD_ALL_STAR_REPLACEMENT') {
+      const { injuredId, replacementId, replacementName, conference, position } = action.payload as any;
+      setState(prev => {
+        if (!prev.allStar) return prev;
+        const replacementPlayer = prev.players.find(p => p.internalId === replacementId);
+        const replacementTeam = prev.teams.find(t => t.id === replacementPlayer?.tid);
+        // Mark injured player as DNP
+        const updatedRoster = prev.allStar.roster.map(r =>
+          r.playerId === injuredId ? { ...r, isInjuredDNP: true } : r
+        );
+        // Only add replacement if not already in roster
+        const alreadyIn = updatedRoster.some(r => r.playerId === replacementId);
+        if (!alreadyIn && replacementPlayer) {
+          updatedRoster.push({
+            playerId: replacementPlayer.internalId,
+            playerName: replacementPlayer.name,
+            teamAbbrev: replacementTeam?.abbrev ?? '',
+            nbaId: null,
+            teamNbaId: null,
+            conference: conference || (replacementTeam?.conference ?? 'East'),
+            isStarter: false,
+            position: replacementPlayer.pos ?? 'F',
+            category: (replacementPlayer.pos?.includes('G') ? 'Guard' : 'Frontcourt') as 'Guard' | 'Frontcourt',
+            ovr: replacementPlayer.overallRating,
+            isInjuryReplacement: true,
+            injuredPlayerId: injuredId,
+          });
+        }
+        return { ...prev, allStar: { ...prev.allStar, roster: updatedRoster } };
+      });
       return;
     }
 

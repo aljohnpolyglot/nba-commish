@@ -203,9 +203,10 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
           gameId: game.gameId,
           teamId: player.tid,
           oppTeamId: oppId,
-          dnpReason: (player.injury?.gamesRemaining ?? 0) > 0
-            ? `DNP — Injury (${player.injury!.type})`
-            : "DNP — Coach's Decision",
+          dnpReason: game.playerDNPs?.[player.internalId] ??
+            ((player.injury?.gamesRemaining ?? 0) > 0
+              ? `DNP — Injury (${player.injury!.type})`
+              : "DNP — Coach's Decision"),
           teamAbbrev: team?.abbrev || 'UNK',
           isAway: !isHomeTeam,
           oppAbbrev: opp?.abbrev || 'UNK',

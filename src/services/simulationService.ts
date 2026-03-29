@@ -37,7 +37,19 @@ export const simulateGames = (
     clubDebuffs?: Map<string, 'heavy' | 'moderate' | 'mild'>,
     currentHeadToHead?: HeadToHead,
     otlEnabled?: boolean,
-    season?: number
+    season?: number,
+    leagueStats?: {
+        quarterLength?: number;
+        shotClockValue?: number;
+        shotClockEnabled?: boolean;
+        threePointLineEnabled?: boolean;
+        defensiveThreeSecondEnabled?: boolean;
+        offensiveThreeSecondEnabled?: boolean;
+        handcheckingEnabled?: boolean;
+        goaltendingEnabled?: boolean;
+        chargingEnabled?: boolean;
+        noDribbleRule?: boolean;
+    }
 ): { updatedTeams: NBATeam[], results: GameResult[], headToHead?: HeadToHead } => {
     const updatedTeams = [...teams].map(t => ({ ...t }));
     const allResults: GameResult[] = [];
@@ -58,7 +70,8 @@ export const simulateGames = (
         homeOverridePlayers,
         awayOverridePlayers,
         riggedForTid,
-        clubDebuffs
+        clubDebuffs,
+        leagueStats
     );
     allResults.push(...dayResults);
 

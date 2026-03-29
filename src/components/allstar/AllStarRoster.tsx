@@ -211,17 +211,77 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, on
         </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <ConfRoster 
+        <ConfRoster
           players={east}
           logo="https://static.wikia.nocookie.net/logopedia/images/8/89/Eastern_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191748"
           label="Eastern Conference"
         />
-        <ConfRoster 
+        <ConfRoster
           players={west}
           logo="https://static.wikia.nocookie.net/logopedia/images/0/06/Western_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191726"
           label="Western Conference"
         />
       </div>
+
+      {/* Injury Replacements */}
+      {(() => {
+        const replacements = allStar.roster.filter((p: any) => p.isInjuryReplacement);
+        const dnps = allStar.roster.filter((p: any) => p.isInjuredDNP);
+        if (replacements.length === 0 && dnps.length === 0) return null;
+        return (
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-3 flex-1">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider whitespace-nowrap flex items-center gap-2">
+                  <span className="text-rose-400">⚡</span> Injury Replacements
+                </h3>
+                <div className="h-px bg-slate-800 flex-1" />
+              </div>
+            </div>
+            <div className="bg-slate-900/20 rounded-xl border border-slate-800 overflow-hidden">
+              {dnps.map((p: any) => {
+                const replacement = replacements.find((r: any) => r.injuredPlayerId === p.playerId);
+                return (
+                  <div key={p.playerId} className="flex items-center gap-4 px-4 py-3 border-b border-slate-800 last:border-0">
+                    <div className="flex items-center gap-2 flex-1">
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-800 opacity-50">
+                        <img src={`https://cdn.nba.com/headshots/nba/latest/1040x760/${p.nbaId || p.playerId}.png`} className="w-full h-full object-cover" alt={p.playerName} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${p.playerId}/100/100`; }} />
+                      </div>
+                      <div>
+                        <span className="text-sm font-bold text-slate-500 line-through">{p.playerName}</span>
+                        <span className="ml-2 text-[8px] font-black text-rose-400 bg-rose-500/10 border border-rose-500/20 px-1 py-0.5 rounded">DNP · INJURY</span>
+                      </div>
+                    </div>
+                    {replacement && (
+                      <>
+                        <span className="text-slate-700 text-xs">→</span>
+                        <div className="flex items-center gap-2 flex-1">
+                          <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-800">
+                            <img src={`https://cdn.nba.com/headshots/nba/latest/1040x760/${replacement.nbaId || replacement.playerId}.png`} className="w-full h-full object-cover" alt={replacement.playerName} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${replacement.playerId}/100/100`; }} />
+                          </div>
+                          <div>
+                            <span className="text-sm font-bold text-white">{replacement.playerName}</span>
+                            <span className="ml-2 text-[8px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.5 rounded">REPLACEMENT</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+              {replacements.filter((r: any) => !dnps.find((d: any) => d.playerId === r.injuredPlayerId)).map((r: any) => (
+                <div key={r.playerId} className="flex items-center gap-2 px-4 py-3 border-b border-slate-800 last:border-0">
+                  <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-800">
+                    <img src={`https://cdn.nba.com/headshots/nba/latest/1040x760/${r.nbaId || r.playerId}.png`} className="w-full h-full object-cover" alt={r.playerName} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${r.playerId}/100/100`; }} />
+                  </div>
+                  <span className="text-sm font-bold text-white">{r.playerName}</span>
+                  <span className="text-[8px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.5 rounded">REPLACEMENT</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

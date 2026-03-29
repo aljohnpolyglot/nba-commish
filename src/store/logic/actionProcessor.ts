@@ -4,6 +4,7 @@ import { advanceDay, sendDirectMessage } from '../../services/llm/llm';
 import { generateFreeAgentSigningReactions } from '../../services/llm/services/freeAgentService';
 import { executeExecutiveTrade } from '../../services/tradeService';
 import { calculateSocialEngagement, getGamePhase, normalizeDate } from '../../utils/helpers';
+import { computeMoodScore, dramaProbability, moodToStoryType } from '../../utils/mood';
 import * as StoryGenerators from '../../services/storyGenerators';
 import { handleTransferFunds, handleGiveMoney, handleFinePerson, handleBribePerson, handleAdjustFinancials } from './actions/financeActions';
 import { handleExecutiveTrade, handleForceTrade } from './actions/tradeActions';
@@ -175,17 +176,75 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
             if (sponsorStory) storySeeds.push(`From: ${sponsorStory.sender.name} (${sponsorStory.sender.title}, ${sponsorStory.sender.organization}) - ${sponsorStory.story}`);
         }
 
+        // ── Mood-weighted player story routing (Section 6 of moodtodo.md) ──────
+        // Pre-compute mood scores for all active players once
+        const activePlayers = stateWithSim.players.filter(
+            p => p.overallRating >= 65 && p.tid >= 0 && p.status === 'Active'
+        );
+        const moodMap = new Map(activePlayers.map(p => {
+            const team = stateWithSim.teams.find(t => t.id === p.tid);
+            const endorsed = (stateWithSim.endorsedPlayers ?? []).includes(p.internalId);
+            const { score } = computeMoodScore(p, team, stateWithSim.date, endorsed, false, false, activePlayers);
+            return [p.internalId, score];
+        }));
+
         for (let i = 0; i < numToGen; i++) {
             const rand = Math.random();
             let storyResult = null;
-            
-            if (rand < 0.10) storyResult = await StoryGenerators.generateSponsorProposalStory(2025);
-            else if (rand < 0.20) storyResult = StoryGenerators.generateAgentAgitationStory(stateWithSim.players, 2025);
-            else if (rand < 0.35) storyResult = StoryGenerators.generateGmConcernStory(stateWithSim.teams, stateWithSim.players, stateWithSim.staff, [], 2025);
-            else if (rand < 0.50) storyResult = StoryGenerators.generateMediaInquiryStory(2025);
-            else if (rand < 0.65) storyResult = StoryGenerators.generateOwnerDemandStory(stateWithSim.teams, stateWithSim.staff, [], 2025);
-            else if (rand < 0.80) storyResult = StoryGenerators.generatePlayerAppealStory(stateWithSim.players);
-            else storyResult = StoryGenerators.generatePlayerDisciplineStory(stateWithSim.players, stateWithSim.teams);
+
+            if (rand < 0.10) {
+                storyResult = await StoryGenerators.generateSponsorProposalStory(2025);
+            } else if (rand < 0.25) {
+                storyResult = StoryGenerators.generateGmConcernStory(stateWithSim.teams, stateWithSim.players, stateWithSim.staff, [], 2025);
+            } else if (rand < 0.40) {
+                storyResult = StoryGenerators.generateMediaInquiryStory(2025);
+            } else if (rand < 0.55) {
+                storyResult = StoryGenerators.generateOwnerDemandStory(stateWithSim.teams, stateWithSim.staff, [], 2025);
+            } else {
+                // Mood-based player story: pick player by dramaProbability weight, route by mood
+                const weights = activePlayers.map(p => {
+                    const mood = moodMap.get(p.internalId) ?? 0;
+                    return dramaProbability(mood, p.moodTraits ?? []);
+                });
+                const total = weights.reduce((a, b) => a + b, 0);
+                let pick = Math.random() * total;
+                let chosenPlayer = activePlayers[activePlayers.length - 1];
+                for (let j = 0; j < activePlayers.length; j++) {
+                    pick -= weights[j];
+                    if (pick <= 0) { chosenPlayer = activePlayers[j]; break; }
+                }
+                const chosenMood = moodMap.get(chosenPlayer.internalId) ?? 0;
+                const storyType = moodToStoryType(chosenMood);
+
+                if (storyType === 'appeal') {
+                    // Mood 0 to +3 — positive outreach; filter to happy players
+                    const happyPlayers = activePlayers.filter(p => (moodMap.get(p.internalId) ?? 0) >= 0);
+                    storyResult = StoryGenerators.generatePlayerAppealStory(happyPlayers.length > 0 ? happyPlayers : stateWithSim.players);
+                } else if (storyType === 'agitation') {
+                    // Mood −3 to 0 — restless; filter to restless players for agent agitation
+                    const restlessPlayers = activePlayers.filter(p => {
+                        const m = moodMap.get(p.internalId) ?? 0;
+                        return m >= -3 && m < 0;
+                    });
+                    storyResult = StoryGenerators.generateAgentAgitationStory(
+                        restlessPlayers.length > 0 ? restlessPlayers : stateWithSim.players,
+                        2025
+                    );
+                } else {
+                    // Mood −6 and below — discipline (fine/warn or suspend tier already handled inside)
+                    storyResult = StoryGenerators.generatePlayerDisciplineStory(
+                        stateWithSim.players, stateWithSim.teams, stateWithSim.date, stateWithSim.endorsedPlayers
+                    );
+                    // Disgruntled players (−10 to −7): append trade demand seed
+                    if (storyType === 'discipline_suspend' && chosenMood <= -7) {
+                        const team = stateWithSim.teams.find(t => t.id === chosenPlayer.tid);
+                        storySeeds.push(
+                            `TRADE DEMAND SIGNAL: ${chosenPlayer.name} of the ${team?.name ?? 'Unknown'} is reportedly disgruntled and has privately asked for a trade. ` +
+                            `His mood is at an all-time low. Agents and insiders are buzzing. Include this tension in social/news coverage.`
+                        );
+                    }
+                }
+            }
 
             if (storyResult) {
                 storySeeds.push(`From: ${storyResult.sender.name} (${storyResult.sender.title}, ${storyResult.sender.organization}) - ${storyResult.story}`);
@@ -204,6 +263,33 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
                 `Players, coaches and media noticed and reacted to the Commissioner being there live. ` +
                 `Include this in the news and social posts — the Commissioner watched this game personally.`
             );
+        }
+
+        // Inject any in-game fight stories from today's simulated games
+        for (const gameRes of simResults) {
+            if (gameRes.fight) {
+                const f = gameRes.fight;
+                const homeTeam = stateWithSim.teams.find(t => t.id === gameRes.homeTeamId);
+                const awayTeam = stateWithSim.teams.find(t => t.id === gameRes.awayTeamId);
+                const matchup = `${awayTeam?.name ?? 'Away'} @ ${homeTeam?.name ?? 'Home'}`;
+
+                if (f.severity === 'scuffle') {
+                    // Minor — just news + social coverage
+                    storySeeds.unshift(
+                        `BREAKING — IN-GAME SCUFFLE (${matchup}): ${f.description} ` +
+                        `Both players remained in the game. Cover this in news and social posts.`
+                    );
+                } else {
+                    // Ejection or brawl — also generate a formal email to the Commissioner requesting a decision
+                    const sevLabel = f.severity === 'brawl' ? 'BRAWL' : 'ALTERCATION';
+                    storySeeds.unshift(
+                        `BREAKING — IN-GAME ${sevLabel} REQUIRING COMMISSIONER DECISION (${matchup}): ${f.description} ` +
+                        `Both players involved (${f.player1Name} of ${homeTeam?.name ?? 'Unknown'} and ${f.player2Name} of ${awayTeam?.name ?? 'Unknown'}) are from the SAME game — do NOT invent other opponents. ` +
+                        `REQUIRED: Generate a formal email from Joe Dumars (Executive VP, Head of Basketball Operations, NBA League Office) to the Commissioner with subject "Incident Report: ${f.player1Name} vs ${f.player2Name}" asking for a suspension/fine ruling. ` +
+                        `Set senderRole to "league_office" so it routes to Inbox. Include 2–3 social posts and a news headline about the incident.`
+                    );
+                }
+            }
         }
 
         result = await advanceDay(stateWithSim, effectiveAction, storySeeds, simResults, stateWithSim.pendingHypnosis || [], recentDMs);

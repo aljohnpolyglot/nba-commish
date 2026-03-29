@@ -84,9 +84,25 @@ export interface SimulatorKnobs {
    *  Affects the total minutes budget passed to allocateMinutes. */
   quarterLength: number;
 
-  /** Shot clock in seconds (informational; affects pace knob indirectly).
-   *  24 = NBA default, 14 = after offensive rebound */
+  /** Shot clock in seconds. Drives paceMultiplier — 24/shotClockSeconds.
+   *  24 = NBA default (1.0×), 12 = 2.0× pace, 14 = ~1.7× pace. */
   shotClockSeconds: number;
+
+  /** Multiplier on the rim-attempt weight in shot-location distribution.
+   *  1.0 = NBA default. <1.0 = fewer drives/rim attacks (e.g. no def-3-sec rule).
+   *  Set via rule: defensiveThreeSecondEnabled=false → 0.72 */
+  rimRateMult: number;
+
+  /** Multiplier on the low-post attempt weight in shot-location distribution.
+   *  1.0 = NBA default. >1.0 = more post play (e.g. no offensive-3-sec rule).
+   *  Set via rule: offensiveThreeSecondEnabled=false → 1.35 */
+  lowPostRateMult: number;
+
+  /** Multiplier on the available-blocks pool passed to generateCoordinatedStats.
+   *  1.0 = NBA default. >1.0 = more blocks (e.g. goaltending disabled → defenders
+   *  can freely swat shots at/past the rim). 0 = blocks completely removed.
+   *  Set via rule: goaltendingEnabled=false → 1.6 */
+  blockRateMult: number;
 
   // ── Exhibition score boost ─────────────────────────────────────────────────
   /** Applied in engine.ts to the raw game score BEFORE stat generation.
@@ -113,6 +129,9 @@ export const KNOBS_DEFAULT: SimulatorKnobs = {
   gamesRemaining:       41,
   quarterLength:        12,
   shotClockSeconds:     24,
+  rimRateMult:          1.0,
+  lowPostRateMult:      1.0,
+  blockRateMult:        1.0,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -146,6 +165,9 @@ export const KNOBS_ALL_STAR: SimulatorKnobs = {
   gamesRemaining:        82,
   quarterLength:         12,
   shotClockSeconds:      24,
+  rimRateMult:           1.0,
+  lowPostRateMult:       1.0,
+  blockRateMult:         1.0,
   exhibitionScoreMult:   1.48,   // base ~110 → ~163 pts per team (realistic ASG range)
 };
 
@@ -169,6 +191,9 @@ export const KNOBS_RISING_STARS: SimulatorKnobs = {
   gamesRemaining:        82,
   quarterLength:         12,
   shotClockSeconds:      24,
+  rimRateMult:           1.0,
+  lowPostRateMult:       1.0,
+  blockRateMult:         1.0,
   exhibitionScoreMult:   1.18,   // modest boost for Rising Stars (~130 per team)
 };
 
@@ -193,6 +218,9 @@ export const KNOBS_CELEBRITY: SimulatorKnobs = {
   gamesRemaining:        41,
   quarterLength:         12,
   shotClockSeconds:      24,
+  rimRateMult:           1.0,
+  lowPostRateMult:       1.0,
+  blockRateMult:         1.0,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -219,6 +247,9 @@ export const KNOBS_PRESEASON: SimulatorKnobs = {
   gamesRemaining:        82,
   quarterLength:         12,
   shotClockSeconds:      24,
+  rimRateMult:           1.0,
+  lowPostRateMult:       1.0,
+  blockRateMult:         1.0,
 };
 
 /** FIBA-style: 10-min quarters, no 3PT (hypothetical rule experiment). */
