@@ -2,125 +2,16 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { formatCurrency, normalizeDate } from '../../../utils/helpers';
 import {
-  Activity, CheckCircle, XCircle, Clock,
-  Plus, Trash2, TrendingUp, TrendingDown, Target,
+  Activity, Clock, Plus, TrendingUp, TrendingDown,
   Trophy, BarChart2, ChevronDown, ChevronUp,
-  Layers, User, AlertCircle, Zap
+  User, Zap, Target, X
 } from 'lucide-react';
-
-/* ─── Types ─────────────────────────────────────────────────── */
-type BetTab = 'lines' | 'props' | 'mybets';
-// CHANGED: added 'pra' to PropStat
-type PropStat = 'pts' | 'reb' | 'ast' | 'pra';
-type SlipMode = 'single' | 'parlay';
-
-interface SlipLeg {
-  id: string;
-  gameId?: number;
-  playerId?: string;
-  description: string;
-  subDescription?: string;
-  odds: number;
-  condition: string;
-  type: 'moneyline' | 'over_under' | 'spread';
-}
-
-/* ─── Helpers ────────────────────────────────────────────────── */
-const decimalToAmerican = (d: number): string => {
-  if (d >= 2) return `+${Math.round((d - 1) * 100)}`;
-  return `${Math.round(-100 / (d - 1))}`;
-};
-
-const decimalToAmericanNum = (d: number): number => {
-  if (d >= 2) return Math.round((d - 1) * 100);
-  return Math.round(-100 / (d - 1));
-};
-
-const combinedOdds = (legs: SlipLeg[]): number =>
-  legs.reduce((acc, l) => acc * l.odds, 1);
-
-const round05 = (n: number) => Math.round(n * 2) / 2;
-
-// Mirrors AwardService.getBestStat exactly
-const getBestStat = (stats: any[] | undefined, season: number) => {
-  if (!stats?.length) return null;
-  const seasonStats = stats.filter((s: any) => s.season === season && !s.playoffs);
-  if (!seasonStats.length) return null;
-  return seasonStats.reduce((prev: any, cur: any) => (prev.gp >= cur.gp ? prev : cur));
-};
-
-const getTrb = (s: any): number =>
-  s.trb ?? s.reb ?? ((s.orb ?? 0) + (s.drb ?? 0));
-
-const getPlayerStats = (player: any, season: number) => {
-  // Try current season first, fall back to most recent previous season
-  const s = getBestStat(player?.stats, season) ?? getBestStat(player?.stats, season - 1);
-  if (!s) return null;
-  const gp = Math.max(s.gp || 1, 1);
-  return {
-    ppg: parseFloat((s.pts / gp).toFixed(1)),
-    rpg: parseFloat((getTrb(s) / gp).toFixed(1)),
-    apg: parseFloat((s.ast / gp).toFixed(1)),
-    spg: parseFloat((s.stl / gp).toFixed(1)),
-    bpg: parseFloat((s.blk / gp).toFixed(1)),
-    gp,
-  };
-};
-
-/* ─── Sub-components ─────────────────────────────────────────── */
-
-const OddsButton = ({
-  odds, label, selected, onClick, size = 'md', wide = false
-}: {
-  odds: number; label?: string; selected: boolean;
-  onClick: () => void; size?: 'sm' | 'md'; wide?: boolean;
-}) => {
-  const american = decimalToAmerican(odds);
-  const isPos = decimalToAmericanNum(odds) > 0;
-  return (
-    <button
-      onClick={onClick}
-      className={`group relative flex flex-col items-center justify-center transition-all duration-200 rounded-lg border font-mono font-bold select-none
-        ${size === 'sm' ? 'px-2 py-2 text-xs' : 'px-4 py-2.5 text-sm'}
-        ${wide ? 'flex-1' : 'min-w-[60px]'}
-        ${selected
-          ? 'bg-emerald-500 border-emerald-400 text-white shadow-[0_0_16px_rgba(16,185,129,0.35)]'
-          : 'bg-slate-800/70 border-slate-700/60 text-amber-400 hover:bg-slate-700/80 hover:border-slate-600'
-        }`}
-    >
-      {label && (
-        <span className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${selected ? 'text-emerald-100' : 'text-slate-400'}`}>
-          {label}
-        </span>
-      )}
-      <span className={selected ? 'text-white' : isPos ? 'text-amber-400' : 'text-slate-300'}>
-        {american}
-      </span>
-    </button>
-  );
-};
-
-const TabButton = ({ active, onClick, icon: Icon, label, badge }: {
-  active: boolean; onClick: () => void;
-  icon: any; label: string; badge?: number;
-}) => (
-  <button
-    onClick={onClick}
-    className={`relative flex items-center gap-2 px-5 py-2.5 text-sm font-bold uppercase tracking-widest transition-all duration-200 border-b-2 whitespace-nowrap
-      ${active
-        ? 'text-emerald-400 border-emerald-500 bg-emerald-500/5'
-        : 'text-slate-500 border-transparent hover:text-slate-300 hover:border-slate-600'
-      }`}
-  >
-    <Icon className="w-4 h-4" />
-    {label}
-    {badge !== undefined && badge > 0 && (
-      <span className="bg-emerald-500 text-white text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center">
-        {badge}
-      </span>
-    )}
-  </button>
-);
+import {
+  BetTab, PropStat, SlipMode, SlipLeg,
+  decimalToAmerican, combinedOdds, round05, getPlayerStats
+} from './sportsbook/sportsbookTypes';
+import { OddsButton, TabButton, StatusBadge, EmptyState } from './sportsbook/SportsbookShared';
+import { BetSlipPanel } from './sportsbook/BetSlipPanel';
 
 /* ─── Main Component ─────────────────────────────────────────── */
 export const SportsbookView = () => {
@@ -128,10 +19,16 @@ export const SportsbookView = () => {
   const [activeTab, setActiveTab] = useState<BetTab>('lines');
   const [slipLegs, setSlipLegs] = useState<SlipLeg[]>([]);
   const [slipMode, setSlipMode] = useState<SlipMode>('single');
-  const [wager, setWager] = useState(100);
+  // Wager as string to support clearing/decimals. Value is in actual DOLLARS.
+  const [wagerStr, setWagerStr] = useState('10');
   const [propStat, setPropStat] = useState<PropStat>('pts');
-  // CHANGED: Set<number> so each game card can be independently expanded
   const [expandedGames, setExpandedGames] = useState<Set<number>>(new Set());
+  // Mobile: slip drawer open
+  const [slipDrawerOpen, setSlipDrawerOpen] = useState(false);
+
+  const wager = Math.max(0, parseFloat(wagerStr) || 0);
+  // personalWealth is in millions → max wager in dollars
+  const maxWagerDollars = state.stats.personalWealth * 1_000_000;
 
   const toggleExpanded = (gid: number) =>
     setExpandedGames(prev => {
@@ -153,7 +50,6 @@ export const SportsbookView = () => {
     const away = state.teams.find((t: any) => t.id === game.awayTid);
     if (!home || !away) return null;
 
-    // ── Moneyline ──
     const juice = 0.05;
     const hAdv = 5;
     const hStr = home.strength + hAdv;
@@ -164,19 +60,16 @@ export const SportsbookView = () => {
     const homeML = Number((1 / (hProb + juice)).toFixed(2));
     const awayML = Number((1 / (aProb + juice)).toFixed(2));
 
-    // ── Spread ──
     const rawSpread = round05((home.strength + hAdv - away.strength) / 2);
     const homeSpread = -rawSpread;
     const awaySpread = +rawSpread;
-    const spreadOdds = Number((1 / 0.5238).toFixed(3)); // -110 both sides
+    const spreadOdds = Number((1 / 0.5238).toFixed(3));
 
-    // ── Game Total ──
     const projTotal = Math.round(210 + (home.strength + away.strength) / 2 * 0.3);
     const ouJuice   = 0.053;
     const overOdds  = Number((1 / (0.5 + ouJuice)).toFixed(2));
     const underOdds = Number((1 / (0.5 + ouJuice)).toFixed(2));
 
-    // ── Team Totals ──
     const awayTeamTotal = round05(projTotal * 0.47);
     const homeTeamTotal = round05(projTotal * 0.53);
     const ttOdds = Number((1 / 0.5238).toFixed(3));
@@ -224,10 +117,7 @@ export const SportsbookView = () => {
           const stats = getPlayerStats(p, season);
           if (!stats || stats.gp < 1) return;
           props.push({
-            player: p,
-            team,
-            opponent: opp,
-            stats,
+            player: p, team, opponent: opp, stats,
             line: {
               pts: round05(stats.ppg),
               reb: round05(stats.rpg),
@@ -271,11 +161,11 @@ export const SportsbookView = () => {
 
   const removeLeg = (id: string) => setSlipLegs(prev => prev.filter(l => l.id !== id));
 
-  const parlayOdds    = combinedOdds(slipLegs);
+  const parlayOdds = combinedOdds(slipLegs);
   const potentialPayout = wager * (slipMode === 'parlay' ? parlayOdds : (slipLegs[0]?.odds ?? 1));
 
   const handlePlace = () => {
-    if (!slipLegs.length || wager <= 0 || wager > state.stats.personalWealth) return;
+    if (!slipLegs.length || wager <= 0 || wager > maxWagerDollars) return;
     placeBet({
       type: slipMode === 'parlay' ? 'parlay' as any : slipLegs[0].type as any,
       wager,
@@ -289,7 +179,8 @@ export const SportsbookView = () => {
       })),
     });
     setSlipLegs([]);
-    setWager(100);
+    setWagerStr('10');
+    setSlipDrawerOpen(false);
   };
 
   /* ─── My Bets Stats ─────────────────────────────────────── */
@@ -338,33 +229,35 @@ export const SportsbookView = () => {
     };
   }, [state.bets]);
 
+  const showSlip = activeTab !== 'mybets';
+
   /* ─── Render ──────────────────────────────────────────────── */
   return (
     <div className="h-full flex flex-col overflow-hidden bg-[#161a20]">
 
       {/* ── Header ── */}
-      <div className="flex-shrink-0 flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-800/60">
+      <div className="flex-shrink-0 flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b border-slate-800/60">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
-              <Activity className="w-4 h-4 text-emerald-400" />
+          <div className="flex items-center gap-2 sm:gap-3 mb-1">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
+              <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
             </div>
-            <h2 className="text-2xl font-black text-white tracking-tight uppercase">Commissioner's Book</h2>
+            <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight uppercase">Commissioner's Book</h2>
           </div>
-          <p className="text-slate-500 text-xs font-medium tracking-wide pl-11">Private sportsbook — insider action only</p>
+          <p className="text-slate-500 text-[10px] sm:text-xs font-medium tracking-wide pl-9 sm:pl-11">Private sportsbook — insider action only</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="text-right">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Bankroll</p>
-            <p className="text-2xl font-black text-emerald-400 font-mono">{formatCurrency(state.stats.personalWealth)}</p>
+            <p className="text-lg sm:text-2xl font-black text-emerald-400 font-mono">{formatCurrency(state.stats.personalWealth)}</p>
           </div>
           {betStats.profit !== 0 && (
-            <div className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5
+            <div className={`hidden sm:flex px-3 py-1.5 rounded-lg text-xs font-bold items-center gap-1.5
               ${betStats.profit >= 0
                 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                 : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
               {betStats.profit >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-              {betStats.profit >= 0 ? '+' : ''}{formatCurrency(betStats.profit)}
+              {betStats.profit >= 0 ? '+' : ''}{formatCurrency(betStats.profit, false)}
             </div>
           )}
         </div>
@@ -378,10 +271,10 @@ export const SportsbookView = () => {
       </div>
 
       {/* ── Body ── */}
-      <div className="flex-1 overflow-hidden flex">
+      <div className="flex-1 overflow-hidden flex relative">
 
         {/* ── Main Content ── */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-4 custom-scrollbar">
 
           {/* ════ TODAY'S LINES ════ */}
           {activeTab === 'lines' && (
@@ -390,75 +283,55 @@ export const SportsbookView = () => {
                 <EmptyState icon={<Clock className="w-8 h-8" />} title="No games today" body="Check back tomorrow for fresh lines." />
               ) : gameCards.map((card: any) => card && (
                 <div key={card.game.gid} className="bg-[#1e232c] border border-slate-700/40 rounded-xl overflow-hidden hover:border-slate-600/60 transition-colors">
-                  <div className="p-4">
-
+                  <div className="p-3 sm:p-4">
                     {/* Teams Row */}
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="flex-1 flex items-center gap-3">
-                        <img src={card.away.logoUrl} alt={card.away.abbrev} className="w-9 h-9 object-contain" referrerPolicy="no-referrer" />
+                    <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                      <div className="flex-1 flex items-center gap-2 sm:gap-3">
+                        <img src={card.away.logoUrl} alt={card.away.abbrev} className="w-7 h-7 sm:w-9 sm:h-9 object-contain" referrerPolicy="no-referrer" />
                         <div>
-                          <p className="font-black text-white text-sm uppercase">{card.away.abbrev}</p>
-                          <p className="text-xs text-slate-500">{card.away.name.split(' ').slice(-1)[0]}</p>
+                          <p className="font-black text-white text-xs sm:text-sm uppercase">{card.away.abbrev}</p>
+                          <p className="text-[10px] sm:text-xs text-slate-500">{card.away.name.split(' ').slice(-1)[0]}</p>
                         </div>
                       </div>
-                      <div className="flex flex-col items-center px-2">
-                        <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">@</span>
-                      </div>
-                      <div className="flex-1 flex items-center gap-3 justify-end">
+                      <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">@</span>
+                      <div className="flex-1 flex items-center gap-2 sm:gap-3 justify-end">
                         <div className="text-right">
-                          <p className="font-black text-white text-sm uppercase">{card.home.abbrev}</p>
-                          <p className="text-xs text-slate-500">{card.home.name.split(' ').slice(-1)[0]}</p>
+                          <p className="font-black text-white text-xs sm:text-sm uppercase">{card.home.abbrev}</p>
+                          <p className="text-[10px] sm:text-xs text-slate-500">{card.home.name.split(' ').slice(-1)[0]}</p>
                         </div>
-                        <img src={card.home.logoUrl} alt={card.home.abbrev} className="w-9 h-9 object-contain" referrerPolicy="no-referrer" />
+                        <img src={card.home.logoUrl} alt={card.home.abbrev} className="w-7 h-7 sm:w-9 sm:h-9 object-contain" referrerPolicy="no-referrer" />
                       </div>
                     </div>
 
-                    {/* ── 3 Market Columns: Spread | Moneyline | Total ── */}
-                    <div className="grid grid-cols-3 gap-2">
-
+                    {/* 3 Market Columns */}
+                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                       {/* SPREAD */}
-                      <div className="bg-slate-900/50 rounded-lg p-2.5">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 text-center">Spread</p>
-                        <div className="flex gap-1.5">
+                      <div className="bg-slate-900/50 rounded-lg p-2 sm:p-2.5">
+                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 sm:mb-2 text-center">Spread</p>
+                        <div className="flex gap-1 sm:gap-1.5">
                           <button
-                            onClick={() => toggleLeg({
-                              id: `sp-${card.game.gid}-away`, gameId: card.game.gid,
-                              description: `${card.away.abbrev} ${card.awaySpread > 0 ? '+' : ''}${card.awaySpread}`,
-                              subDescription: `vs ${card.home.abbrev}`,
-                              odds: card.spreadOdds, condition: 'away_spread', type: 'spread',
-                            })}
-                            className={`flex-1 flex flex-col items-center justify-center py-2 rounded-lg border text-xs font-bold font-mono transition-all
-                              ${isInSlip(`sp-${card.game.gid}-away`)
-                                ? 'bg-emerald-500 border-emerald-400 text-white shadow-[0_0_12px_rgba(16,185,129,0.3)]'
-                                : 'bg-slate-800/70 border-slate-700/60 hover:bg-slate-700/80'}`}
+                            onClick={() => toggleLeg({ id: `sp-${card.game.gid}-away`, gameId: card.game.gid, description: `${card.away.abbrev} ${card.awaySpread > 0 ? '+' : ''}${card.awaySpread}`, subDescription: `vs ${card.home.abbrev}`, odds: card.spreadOdds, condition: 'away_spread', type: 'spread' })}
+                            className={`flex-1 flex flex-col items-center justify-center py-1.5 sm:py-2 rounded-lg border text-[10px] sm:text-xs font-bold font-mono transition-all ${isInSlip(`sp-${card.game.gid}-away`) ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-slate-800/70 border-slate-700/60 hover:bg-slate-700/80'}`}
                           >
-                            <span className={`text-[10px] mb-0.5 font-bold uppercase tracking-wider ${isInSlip(`sp-${card.game.gid}-away`) ? 'text-emerald-100' : 'text-slate-400'}`}>{card.away.abbrev}</span>
+                            <span className={`text-[9px] sm:text-[10px] mb-0.5 font-bold uppercase tracking-wider ${isInSlip(`sp-${card.game.gid}-away`) ? 'text-emerald-100' : 'text-slate-400'}`}>{card.away.abbrev}</span>
                             <span className={isInSlip(`sp-${card.game.gid}-away`) ? 'text-white' : 'text-slate-200'}>{card.awaySpread > 0 ? '+' : ''}{card.awaySpread}</span>
-                            <span className={`text-[10px] mt-0.5 ${isInSlip(`sp-${card.game.gid}-away`) ? 'text-emerald-100' : 'text-amber-400'}`}>{decimalToAmerican(card.spreadOdds)}</span>
+                            <span className={`text-[9px] sm:text-[10px] mt-0.5 ${isInSlip(`sp-${card.game.gid}-away`) ? 'text-emerald-100' : 'text-amber-400'}`}>{decimalToAmerican(card.spreadOdds)}</span>
                           </button>
                           <button
-                            onClick={() => toggleLeg({
-                              id: `sp-${card.game.gid}-home`, gameId: card.game.gid,
-                              description: `${card.home.abbrev} ${card.homeSpread > 0 ? '+' : ''}${card.homeSpread}`,
-                              subDescription: `vs ${card.away.abbrev} (Home)`,
-                              odds: card.spreadOdds, condition: 'home_spread', type: 'spread',
-                            })}
-                            className={`flex-1 flex flex-col items-center justify-center py-2 rounded-lg border text-xs font-bold font-mono transition-all
-                              ${isInSlip(`sp-${card.game.gid}-home`)
-                                ? 'bg-emerald-500 border-emerald-400 text-white shadow-[0_0_12px_rgba(16,185,129,0.3)]'
-                                : 'bg-slate-800/70 border-slate-700/60 hover:bg-slate-700/80'}`}
+                            onClick={() => toggleLeg({ id: `sp-${card.game.gid}-home`, gameId: card.game.gid, description: `${card.home.abbrev} ${card.homeSpread > 0 ? '+' : ''}${card.homeSpread}`, subDescription: `vs ${card.away.abbrev} (Home)`, odds: card.spreadOdds, condition: 'home_spread', type: 'spread' })}
+                            className={`flex-1 flex flex-col items-center justify-center py-1.5 sm:py-2 rounded-lg border text-[10px] sm:text-xs font-bold font-mono transition-all ${isInSlip(`sp-${card.game.gid}-home`) ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-slate-800/70 border-slate-700/60 hover:bg-slate-700/80'}`}
                           >
-                            <span className={`text-[10px] mb-0.5 font-bold uppercase tracking-wider ${isInSlip(`sp-${card.game.gid}-home`) ? 'text-emerald-100' : 'text-slate-400'}`}>{card.home.abbrev}</span>
+                            <span className={`text-[9px] sm:text-[10px] mb-0.5 font-bold uppercase tracking-wider ${isInSlip(`sp-${card.game.gid}-home`) ? 'text-emerald-100' : 'text-slate-400'}`}>{card.home.abbrev}</span>
                             <span className={isInSlip(`sp-${card.game.gid}-home`) ? 'text-white' : 'text-slate-200'}>{card.homeSpread > 0 ? '+' : ''}{card.homeSpread}</span>
-                            <span className={`text-[10px] mt-0.5 ${isInSlip(`sp-${card.game.gid}-home`) ? 'text-emerald-100' : 'text-amber-400'}`}>{decimalToAmerican(card.spreadOdds)}</span>
+                            <span className={`text-[9px] sm:text-[10px] mt-0.5 ${isInSlip(`sp-${card.game.gid}-home`) ? 'text-emerald-100' : 'text-amber-400'}`}>{decimalToAmerican(card.spreadOdds)}</span>
                           </button>
                         </div>
                       </div>
 
                       {/* MONEYLINE */}
-                      <div className="bg-slate-900/50 rounded-lg p-2.5">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 text-center">Moneyline</p>
-                        <div className="flex gap-1.5">
+                      <div className="bg-slate-900/50 rounded-lg p-2 sm:p-2.5">
+                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 sm:mb-2 text-center">ML</p>
+                        <div className="flex gap-1 sm:gap-1.5">
                           <OddsButton size="sm" wide odds={card.awayML} label={card.away.abbrev}
                             selected={isInSlip(`ml-${card.game.gid}-away`)}
                             onClick={() => toggleLeg({ id: `ml-${card.game.gid}-away`, gameId: card.game.gid, description: `${card.away.name} ML`, subDescription: `vs ${card.home.abbrev}`, odds: card.awayML, condition: 'away_win', type: 'moneyline' })}
@@ -471,9 +344,9 @@ export const SportsbookView = () => {
                       </div>
 
                       {/* TOTAL */}
-                      <div className="bg-slate-900/50 rounded-lg p-2.5">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 text-center">Total {card.projTotal}</p>
-                        <div className="flex gap-1.5">
+                      <div className="bg-slate-900/50 rounded-lg p-2 sm:p-2.5">
+                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 sm:mb-2 text-center">O/U {card.projTotal}</p>
+                        <div className="flex gap-1 sm:gap-1.5">
                           <OddsButton size="sm" wide odds={card.overOdds} label="Over"
                             selected={isInSlip(`ou-${card.game.gid}-over`)}
                             onClick={() => toggleLeg({ id: `ou-${card.game.gid}-over`, gameId: card.game.gid, description: `Over ${card.projTotal} pts`, subDescription: `${card.away.abbrev} @ ${card.home.abbrev}`, odds: card.overOdds, condition: 'over', type: 'over_under' })}
@@ -486,56 +359,41 @@ export const SportsbookView = () => {
                       </div>
                     </div>
 
-                    {/* ── More Markets Toggle ── */}
+                    {/* More Markets Toggle */}
                     <button
                       onClick={() => toggleExpanded(card.game.gid)}
-                      className="mt-3 w-full flex items-center justify-center gap-1.5 text-[10px] font-bold text-slate-500 hover:text-slate-300 uppercase tracking-widest py-1.5 border border-slate-700/40 rounded-lg hover:border-slate-600/60 transition-all"
+                      className="mt-2 sm:mt-3 w-full flex items-center justify-center gap-1.5 text-[10px] font-bold text-slate-500 hover:text-slate-300 uppercase tracking-widest py-1.5 border border-slate-700/40 rounded-lg hover:border-slate-600/60 transition-all"
                     >
                       {expandedGames.has(card.game.gid)
                         ? <><ChevronUp className="w-3 h-3" /> Hide Markets</>
                         : <><ChevronDown className="w-3 h-3" /> More Markets</>}
                     </button>
 
-                    {/* Team Totals — shown when expanded */}
                     {expandedGames.has(card.game.gid) && (
                       <div className="mt-2 space-y-1.5">
                         <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest px-0.5 mb-1">Team Totals</p>
-
-                        <div className="bg-slate-900/40 rounded-lg p-2.5 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <img src={card.away.logoUrl} alt={card.away.abbrev} className="w-5 h-5 object-contain flex-shrink-0" referrerPolicy="no-referrer" />
-                            <span className="text-xs font-bold text-slate-300 truncate">{card.away.name} Total</span>
-                            <span className="text-[10px] font-bold text-slate-500 font-mono flex-shrink-0">{card.awayTeamTotal}</span>
+                        {[
+                          { team: card.away, opp: card.home, total: card.awayTeamTotal, side: 'away' },
+                          { team: card.home, opp: card.away, total: card.homeTeamTotal, side: 'home' },
+                        ].map(({ team, opp, total, side }) => (
+                          <div key={side} className="bg-slate-900/40 rounded-lg p-2 sm:p-2.5 flex items-center justify-between gap-2 sm:gap-3">
+                            <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+                              <img src={team.logoUrl} alt={team.abbrev} className="w-4 sm:w-5 h-4 sm:h-5 object-contain flex-shrink-0" referrerPolicy="no-referrer" />
+                              <span className="text-xs font-bold text-slate-300 truncate">{team.name} Total</span>
+                              <span className="text-[10px] font-bold text-slate-500 font-mono flex-shrink-0">{total}</span>
+                            </div>
+                            <div className="flex gap-1 sm:gap-1.5 flex-shrink-0">
+                              <OddsButton size="sm" odds={card.ttOdds} label={`O ${total}`}
+                                selected={isInSlip(`tt-${card.game.gid}-${side}-over`)}
+                                onClick={() => toggleLeg({ id: `tt-${card.game.gid}-${side}-over`, gameId: card.game.gid, description: `${team.name} Total Over ${total}`, subDescription: `vs ${opp.abbrev}`, odds: card.ttOdds, condition: `${side}_team_total_over`, type: 'over_under' })}
+                              />
+                              <OddsButton size="sm" odds={card.ttOdds} label={`U ${total}`}
+                                selected={isInSlip(`tt-${card.game.gid}-${side}-under`)}
+                                onClick={() => toggleLeg({ id: `tt-${card.game.gid}-${side}-under`, gameId: card.game.gid, description: `${team.name} Total Under ${total}`, subDescription: `vs ${opp.abbrev}`, odds: card.ttOdds, condition: `${side}_team_total_under`, type: 'over_under' })}
+                              />
+                            </div>
                           </div>
-                          <div className="flex gap-1.5 flex-shrink-0">
-                            <OddsButton size="sm" odds={card.ttOdds} label={`O ${card.awayTeamTotal}`}
-                              selected={isInSlip(`tt-${card.game.gid}-away-over`)}
-                              onClick={() => toggleLeg({ id: `tt-${card.game.gid}-away-over`, gameId: card.game.gid, description: `${card.away.name} Team Total Over ${card.awayTeamTotal}`, subDescription: `@ ${card.home.abbrev}`, odds: card.ttOdds, condition: 'away_team_total_over', type: 'over_under' })}
-                            />
-                            <OddsButton size="sm" odds={card.ttOdds} label={`U ${card.awayTeamTotal}`}
-                              selected={isInSlip(`tt-${card.game.gid}-away-under`)}
-                              onClick={() => toggleLeg({ id: `tt-${card.game.gid}-away-under`, gameId: card.game.gid, description: `${card.away.name} Team Total Under ${card.awayTeamTotal}`, subDescription: `@ ${card.home.abbrev}`, odds: card.ttOdds, condition: 'away_team_total_under', type: 'over_under' })}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="bg-slate-900/40 rounded-lg p-2.5 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <img src={card.home.logoUrl} alt={card.home.abbrev} className="w-5 h-5 object-contain flex-shrink-0" referrerPolicy="no-referrer" />
-                            <span className="text-xs font-bold text-slate-300 truncate">{card.home.name} Total</span>
-                            <span className="text-[10px] font-bold text-slate-500 font-mono flex-shrink-0">{card.homeTeamTotal}</span>
-                          </div>
-                          <div className="flex gap-1.5 flex-shrink-0">
-                            <OddsButton size="sm" odds={card.ttOdds} label={`O ${card.homeTeamTotal}`}
-                              selected={isInSlip(`tt-${card.game.gid}-home-over`)}
-                              onClick={() => toggleLeg({ id: `tt-${card.game.gid}-home-over`, gameId: card.game.gid, description: `${card.home.name} Team Total Over ${card.homeTeamTotal}`, subDescription: `vs ${card.away.abbrev} (Home)`, odds: card.ttOdds, condition: 'home_team_total_over', type: 'over_under' })}
-                            />
-                            <OddsButton size="sm" odds={card.ttOdds} label={`U ${card.homeTeamTotal}`}
-                              selected={isInSlip(`tt-${card.game.gid}-home-under`)}
-                              onClick={() => toggleLeg({ id: `tt-${card.game.gid}-home-under`, gameId: card.game.gid, description: `${card.home.name} Team Total Under ${card.homeTeamTotal}`, subDescription: `vs ${card.away.abbrev} (Home)`, odds: card.ttOdds, condition: 'home_team_total_under', type: 'over_under' })}
-                            />
-                          </div>
-                        </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -547,17 +405,17 @@ export const SportsbookView = () => {
           {/* ════ PLAYER PROPS ════ */}
           {activeTab === 'props' && (
             <>
-              <div className="flex gap-2 sticky top-0 z-10 bg-[#161a20] pb-2">
+              <div className="flex gap-1.5 sm:gap-2 sticky top-0 z-10 bg-[#161a20] pb-2">
                 {([
-                  { key: 'pts', label: 'Points'  },
-                  { key: 'reb', label: 'Rebounds' },
-                  { key: 'ast', label: 'Assists'  },
-                  { key: 'pra', label: 'PRA'      },
+                  { key: 'pts', label: 'Points'   },
+                  { key: 'reb', label: 'Rebounds'  },
+                  { key: 'ast', label: 'Assists'   },
+                  { key: 'pra', label: 'PRA'       },
                 ] as { key: PropStat; label: string }[]).map(({ key, label }) => (
                   <button
                     key={key}
                     onClick={() => setPropStat(key)}
-                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-lg border transition-all
+                    className={`flex-1 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-widest rounded-lg border transition-all
                       ${propStat === key
                         ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
                         : 'bg-slate-800/40 border-slate-700/40 text-slate-500 hover:text-slate-300'}`}
@@ -571,7 +429,7 @@ export const SportsbookView = () => {
                 <div className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 rounded-lg px-3 py-2">
                   <Zap className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
                   <p className="text-[11px] text-indigo-300 font-medium">
-                    <span className="font-black">PRA</span> — Points + Rebounds + Assists combined. Most popular combo prop in NBA betting.
+                    <span className="font-black">PRA</span> — Points + Rebounds + Assists combined.
                   </p>
                 </div>
               )}
@@ -579,40 +437,33 @@ export const SportsbookView = () => {
               {playerProps.length === 0 ? (
                 <EmptyState icon={<User className="w-8 h-8" />} title="No props available" body="Props are generated from players in today's games." />
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                   {playerProps.map((prop: any, i: number) => {
                     const line    = prop.line[propStat];
                     const overId  = `prop-${prop.player.internalId}-${propStat}-over`;
                     const underId = `prop-${prop.player.internalId}-${propStat}-under`;
-
-                    const marketLabel = propStat === 'pts' ? 'Points'
-                      : propStat === 'reb' ? 'Rebounds'
-                      : propStat === 'ast' ? 'Assists'
-                      : 'Pts+Reb+Ast';
-                    const avg = propStat === 'pts' ? prop.stats.ppg
-                      : propStat === 'reb' ? prop.stats.rpg
-                      : propStat === 'ast' ? prop.stats.apg
-                      : round05(prop.stats.ppg + prop.stats.rpg + prop.stats.apg);
+                    const marketLabel = propStat === 'pts' ? 'Points' : propStat === 'reb' ? 'Rebounds' : propStat === 'ast' ? 'Assists' : 'Pts+Reb+Ast';
+                    const avg = propStat === 'pts' ? prop.stats.ppg : propStat === 'reb' ? prop.stats.rpg : propStat === 'ast' ? prop.stats.apg : round05(prop.stats.ppg + prop.stats.rpg + prop.stats.apg);
 
                     return (
-                      <div key={i} className="bg-[#1e232c] border border-slate-700/40 rounded-xl p-4 hover:border-slate-600/60 transition-colors">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 rounded-full bg-slate-700/60 border border-slate-600/40 flex items-center justify-center text-sm font-black text-slate-300 flex-shrink-0 overflow-hidden">
+                      <div key={i} className="bg-[#1e232c] border border-slate-700/40 rounded-xl p-3 sm:p-4 hover:border-slate-600/60 transition-colors">
+                        <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-700/60 border border-slate-600/40 flex items-center justify-center text-sm font-black text-slate-300 flex-shrink-0 overflow-hidden">
                             {prop.player.imgURL
                               ? <img src={prop.player.imgURL} alt={prop.player.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                               : <span>{(prop.player.name ?? '??').split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</span>
                             }
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-black text-white text-sm truncate">{prop.player.name ?? 'Unknown'}</p>
-                            <p className="text-xs text-slate-500">
+                            <p className="font-black text-white text-xs sm:text-sm truncate">{prop.player.name ?? 'Unknown'}</p>
+                            <p className="text-[10px] text-slate-500">
                               <span className="text-slate-600 font-bold mr-1.5">{prop.player.pos ?? '—'}</span>
                               <span className="text-slate-400 font-medium">{prop.team.abbrev}</span>
                               <span className="mx-1.5 text-slate-700">vs</span>
                               <span>{prop.opponent.abbrev}</span>
                             </p>
                           </div>
-                          <div className="text-right flex-shrink-0">
+                          <div className="text-right flex-shrink-0 hidden sm:block">
                             <p className="text-[10px] font-bold text-slate-500 mb-0.5">Season Avg</p>
                             <p className="text-[10px] text-slate-400 font-mono leading-tight">{prop.stats.ppg} PPG</p>
                             <p className="text-[10px] text-slate-400 font-mono leading-tight">{prop.stats.rpg} RPG</p>
@@ -620,8 +471,8 @@ export const SportsbookView = () => {
                           </div>
                         </div>
 
-                        <div className="border-t border-slate-700/40 pt-3">
-                          <div className="flex items-center justify-between mb-2">
+                        <div className="border-t border-slate-700/40 pt-2 sm:pt-3">
+                          <div className="flex items-center justify-between mb-1.5 sm:mb-2">
                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                               {marketLabel} O/U {line}
                             </p>
@@ -631,7 +482,7 @@ export const SportsbookView = () => {
                               </span>
                             )}
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1.5 sm:gap-2">
                             <OddsButton wide odds={prop.overOdds} label={`Over ${line}`} selected={isInSlip(overId)}
                               onClick={() => toggleLeg({ id: overId, playerId: prop.player.internalId, description: `${prop.player.name ?? 'Player'} Over ${line} ${marketLabel}`, subDescription: `${prop.team.abbrev} vs ${prop.opponent.abbrev}`, odds: prop.overOdds, condition: `${propStat}_over`, type: 'over_under' })}
                             />
@@ -651,7 +502,7 @@ export const SportsbookView = () => {
           {/* ════ MY BETS ════ */}
           {activeTab === 'mybets' && (
             <>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 {[
                   { label: 'Pending',  value: betStats.pending,       color: 'amber'   },
                   { label: 'Won',      value: betStats.won,           color: 'emerald' },
@@ -659,35 +510,24 @@ export const SportsbookView = () => {
                   { label: 'Win Rate', value: `${betStats.winRate}%`, color: 'indigo'  },
                 ].map(stat => (
                   <div key={stat.label} className={`bg-[#1e232c] border rounded-xl p-3 text-center border-${stat.color}-500/20`}>
-                    <p className={`text-2xl font-black text-${stat.color}-400 font-mono`}>{stat.value}</p>
+                    <p className={`text-xl sm:text-2xl font-black text-${stat.color}-400 font-mono`}>{stat.value}</p>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{stat.label}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="grid grid-cols-4 gap-3">
-                <div className="bg-[#1e232c] border border-slate-700/30 rounded-xl p-3 text-center">
-                  <p className="text-lg font-black text-emerald-400 font-mono">
-                    {betStats.biggestWin !== null ? `+${formatCurrency(betStats.biggestWin)}` : '--'}
-                  </p>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Biggest Win</p>
-                </div>
-                <div className="bg-[#1e232c] border border-slate-700/30 rounded-xl p-3 text-center">
-                  <p className="text-lg font-black text-indigo-400 font-mono">
-                    {betStats.bestParlay !== null ? decimalToAmerican(betStats.bestParlay) : '--'}
-                  </p>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Best Parlay</p>
-                </div>
-                <div className="bg-[#1e232c] border border-slate-700/30 rounded-xl p-3 text-center">
-                  <p className="text-lg font-black text-white font-mono">{formatCurrency(betStats.totalWagered)}</p>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Total Wagered</p>
-                </div>
-                <div className="bg-[#1e232c] border border-slate-700/30 rounded-xl p-3 text-center">
-                  <p className="text-lg font-black text-amber-400 font-mono">
-                    {betStats.longestStreak > 0 ? `${betStats.longestStreak}W` : '--'}
-                  </p>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Best Streak</p>
-                </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                {[
+                  { label: 'Biggest Win',   value: betStats.biggestWin !== null ? `+${formatCurrency(betStats.biggestWin, false)}` : '--', color: 'emerald' },
+                  { label: 'Best Parlay',   value: betStats.bestParlay !== null ? decimalToAmerican(betStats.bestParlay) : '--',            color: 'indigo'  },
+                  { label: 'Total Wagered', value: formatCurrency(betStats.totalWagered, false),                                           color: 'white'   },
+                  { label: 'Best Streak',   value: betStats.longestStreak > 0 ? `${betStats.longestStreak}W` : '--',                       color: 'amber'   },
+                ].map(stat => (
+                  <div key={stat.label} className="bg-[#1e232c] border border-slate-700/30 rounded-xl p-3 text-center">
+                    <p className={`text-base sm:text-lg font-black text-${stat.color}-400 font-mono`}>{stat.value}</p>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{stat.label}</p>
+                  </div>
+                ))}
               </div>
 
               {(betStats.won + betStats.lost) > 0 && (
@@ -695,14 +535,12 @@ export const SportsbookView = () => {
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total P&L</span>
                     <span className={`text-sm font-black font-mono ${betStats.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {betStats.profit >= 0 ? '+' : ''}{formatCurrency(betStats.profit)}
+                      {betStats.profit >= 0 ? '+' : ''}{formatCurrency(betStats.profit, false)}
                     </span>
                   </div>
                   <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${betStats.profit >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                      style={{ width: `${Math.min(100, Math.abs(betStats.winRate))}%` }}
-                    />
+                    <div className={`h-full rounded-full transition-all ${betStats.profit >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                      style={{ width: `${Math.min(100, Math.abs(betStats.winRate))}%` }} />
                   </div>
                 </div>
               )}
@@ -712,11 +550,11 @@ export const SportsbookView = () => {
               ) : (
                 <div className="space-y-2">
                   {[...state.bets].reverse().map((bet: any) => (
-                    <div key={bet.id} className={`bg-[#1e232c] rounded-xl border p-4 transition-colors
+                    <div key={bet.id} className={`bg-[#1e232c] rounded-xl border p-3 sm:p-4 transition-colors
                       ${bet.status === 'won' ? 'border-emerald-500/30' : bet.status === 'lost' ? 'border-rose-500/20' : 'border-slate-700/40'}`}>
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start justify-between gap-2 sm:gap-3">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5 flex-wrap">
                             <StatusBadge status={bet.status} />
                             {bet.legs?.length > 1 && (
                               <span className="text-[10px] font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -727,17 +565,17 @@ export const SportsbookView = () => {
                           </div>
                           <div className="space-y-0.5">
                             {bet.legs?.map((leg: any, i: number) => (
-                              <p key={i} className="text-sm text-slate-300 font-medium">{leg.description}</p>
+                              <p key={i} className="text-xs sm:text-sm text-slate-300 font-medium">{leg.description}</p>
                             ))}
                           </div>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <p className="text-xs text-slate-500 font-mono">Wager</p>
-                          <p className="text-sm font-bold text-white font-mono">{formatCurrency(bet.wager)}</p>
-                          <p className="text-xs text-slate-500 font-mono mt-1">To Win</p>
-                          <p className={`text-sm font-bold font-mono
+                          <p className="text-[10px] text-slate-500 font-mono">Wager</p>
+                          <p className="text-xs sm:text-sm font-bold text-white font-mono">{formatCurrency(bet.wager, false)}</p>
+                          <p className="text-[10px] text-slate-500 font-mono mt-1">To Win</p>
+                          <p className={`text-xs sm:text-sm font-bold font-mono
                             ${bet.status === 'won' ? 'text-emerald-400' : bet.status === 'lost' ? 'text-slate-600 line-through' : 'text-amber-400'}`}>
-                            {formatCurrency(bet.potentialPayout - bet.wager)}
+                            {formatCurrency(bet.potentialPayout - bet.wager, false)}
                           </p>
                         </div>
                       </div>
@@ -749,154 +587,64 @@ export const SportsbookView = () => {
           )}
         </div>
 
-        {/* ── Bet Slip Sidebar ── */}
-        {activeTab !== 'mybets' && (
-          <div className="w-72 flex-shrink-0 border-l border-slate-800/60 bg-[#1a1e26] flex flex-col">
-            <div className="p-4 border-b border-slate-800/60">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-emerald-400" />
-                  Bet Slip
-                  {slipLegs.length > 0 && (
-                    <span className="bg-emerald-500 text-white text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center">
-                      {slipLegs.length}
-                    </span>
-                  )}
-                </h3>
-                {slipLegs.length > 0 && (
-                  <button onClick={() => setSlipLegs([])} className="text-slate-600 hover:text-rose-400 transition-colors">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-              <div className="flex bg-slate-900/60 rounded-lg p-0.5">
-                {(['single', 'parlay'] as SlipMode[]).map(m => (
-                  <button key={m}
-                    onClick={() => { setSlipMode(m); if (m === 'single' && slipLegs.length > 1) setSlipLegs([slipLegs[slipLegs.length - 1]]); }}
-                    className={`flex-1 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded-md transition-all ${slipMode === m ? 'bg-emerald-500 text-white' : 'text-slate-500 hover:text-slate-300'}`}
-                  >
-                    {m === 'single' ? 'Single' : `Parlay${slipLegs.length > 1 ? ` (${slipLegs.length})` : ''}`}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
-              {slipLegs.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center px-4 py-12">
-                  <div className="w-12 h-12 rounded-full bg-slate-800/60 flex items-center justify-center mb-3">
-                    <Plus className="w-5 h-5 text-slate-600" />
-                  </div>
-                  <p className="text-slate-500 text-xs font-medium">Click any odds button<br />to add a selection</p>
-                </div>
-              ) : slipLegs.map(leg => (
-                <div key={leg.id} className="bg-slate-900/60 rounded-lg p-3 border border-emerald-500/20 relative group">
-                  <button onClick={() => removeLeg(leg.id)} className="absolute top-2 right-2 text-slate-700 hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100">
-                    <XCircle className="w-3.5 h-3.5" />
-                  </button>
-                  <p className="text-xs font-bold text-white pr-5 leading-snug">{leg.description}</p>
-                  {leg.subDescription && <p className="text-[10px] text-slate-500 mt-0.5">{leg.subDescription}</p>}
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider">
-                      {leg.type === 'moneyline' ? 'Moneyline' : leg.type === 'spread' ? 'Spread' : 'O/U'}
-                    </span>
-                    <span className="text-sm font-black text-amber-400 font-mono">{decimalToAmerican(leg.odds)}</span>
-                  </div>
-                </div>
-              ))}
-
-              {slipMode === 'parlay' && slipLegs.length > 1 && (
-                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 text-center">
-                  <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-0.5">Combined Odds</p>
-                  <p className="text-xl font-black text-emerald-400 font-mono">{decimalToAmerican(parlayOdds)}</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">{parlayOdds.toFixed(2)}x</p>
-                </div>
-              )}
-            </div>
-
-            {slipLegs.length > 0 && (
-              <div className="p-4 border-t border-slate-800/60 space-y-3">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Wager</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-bold">$</span>
-                    <input type="number" min="1" max={state.stats.personalWealth} value={wager}
-                      onChange={e => setWager(Math.max(0, Number(e.target.value)))}
-                      className="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 pl-7 pr-3 text-white font-mono font-bold text-sm focus:outline-none focus:border-emerald-500/60 transition-colors"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 gap-1 mt-1.5">
-                    {[100, 500, 1000, 5000].map(amt => (
-                      <button key={amt} onClick={() => setWager(amt)}
-                        className="bg-slate-800/60 hover:bg-slate-700/60 text-slate-400 hover:text-white text-[10px] font-bold py-1 rounded transition-colors border border-slate-700/40">
-                        ${amt >= 1000 ? `${amt / 1000}k` : amt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-slate-900/50 rounded-lg p-3 space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-500">Wager</span>
-                    <span className="text-white font-mono font-bold">{formatCurrency(wager)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-500">Odds</span>
-                    <span className="text-amber-400 font-mono font-bold">
-                      {decimalToAmerican(slipMode === 'parlay' ? parlayOdds : slipLegs[0]?.odds ?? 1)}
-                    </span>
-                  </div>
-                  <div className="border-t border-slate-700/40 pt-1.5 flex justify-between">
-                    <span className="text-xs font-bold text-slate-400">To Win</span>
-                    <span className="text-base font-black text-emerald-400 font-mono">{formatCurrency(potentialPayout - wager)}</span>
-                  </div>
-                </div>
-
-                <button onClick={handlePlace} disabled={wager <= 0 || wager > state.stats.personalWealth}
-                  className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 disabled:text-slate-600 text-white font-black py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm uppercase tracking-widest shadow-[0_4px_20px_rgba(16,185,129,0.25)] hover:shadow-[0_4px_28px_rgba(16,185,129,0.4)] disabled:shadow-none"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Place {slipMode === 'parlay' ? 'Parlay' : 'Bet'}
-                </button>
-                {wager > state.stats.personalWealth && (
-                  <p className="text-rose-400 text-[10px] font-bold text-center flex items-center justify-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> Insufficient funds
-                  </p>
-                )}
-              </div>
-            )}
+        {/* ── Desktop Bet Slip Sidebar (md+) ── */}
+        {showSlip && (
+          <div className="hidden md:flex w-64 lg:w-72 flex-shrink-0 border-l border-slate-800/60 bg-[#1a1e26] flex-col">
+            <BetSlipPanel
+              slipLegs={slipLegs}
+              slipMode={slipMode}
+              wagerStr={wagerStr}
+              setWagerStr={setWagerStr}
+              setSlipMode={setSlipMode}
+              setSlipLegs={setSlipLegs}
+              removeLeg={removeLeg}
+              handlePlace={handlePlace}
+              maxWagerDollars={maxWagerDollars}
+            />
           </div>
         )}
+
+        {/* ── Mobile Bet Slip FAB ── */}
+        {showSlip && slipLegs.length > 0 && (
+          <button
+            onClick={() => setSlipDrawerOpen(true)}
+            className="md:hidden fixed bottom-4 right-4 z-50 bg-emerald-500 hover:bg-emerald-400 text-white font-black px-4 py-3 rounded-2xl shadow-[0_4px_20px_rgba(16,185,129,0.4)] flex items-center gap-2 text-sm uppercase tracking-widest"
+          >
+            <Plus className="w-4 h-4" />
+            Slip ({slipLegs.length})
+          </button>
+        )}
       </div>
+
+      {/* ── Mobile Bet Slip Bottom Drawer ── */}
+      {slipDrawerOpen && showSlip && (
+        <div className="md:hidden fixed inset-0 z-[200] flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setSlipDrawerOpen(false)} />
+          <div className="relative bg-[#1a1e26] rounded-t-2xl flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between px-4 pt-4 pb-0">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Bet Slip</span>
+              <button onClick={() => setSlipDrawerOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex flex-col flex-1 overflow-hidden">
+              <BetSlipPanel
+                slipLegs={slipLegs}
+                slipMode={slipMode}
+                wagerStr={wagerStr}
+                setWagerStr={setWagerStr}
+                setSlipMode={setSlipMode}
+                setSlipLegs={setSlipLegs}
+                removeLeg={removeLeg}
+                handlePlace={handlePlace}
+                maxWagerDollars={maxWagerDollars}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default SportsbookView;
-
-/* ─── Shared tiny components ──────────────────────────────────── */
-
-const StatusBadge = ({ status }: { status: string }) => {
-  const map: Record<string, { cls: string; label: string; Icon: any }> = {
-    pending: { cls: 'bg-amber-500/15 text-amber-400 border-amber-500/20',      label: 'Pending', Icon: Clock       },
-    won:     { cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', label: 'Won',     Icon: CheckCircle },
-    lost:    { cls: 'bg-rose-500/15 text-rose-400 border-rose-500/20',          label: 'Lost',    Icon: XCircle     },
-  };
-  const cfg = map[status] ?? map.pending;
-  return (
-    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${cfg.cls}`}>
-      <cfg.Icon className="w-2.5 h-2.5" />
-      {cfg.label}
-    </span>
-  );
-};
-
-const EmptyState = ({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) => (
-  <div className="flex flex-col items-center justify-center py-20 text-center">
-    <div className="w-16 h-16 rounded-full bg-slate-800/60 flex items-center justify-center text-slate-600 mb-4">
-      {icon}
-    </div>
-    <p className="text-slate-300 font-bold text-lg mb-1">{title}</p>
-    <p className="text-slate-500 text-sm max-w-xs">{body}</p>
-  </div>
-);

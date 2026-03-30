@@ -106,98 +106,102 @@ export const TeamFinancesViewDetailed: React.FC = () => {
   return (
     <div className="h-full flex flex-col bg-[#1a1d24] text-slate-200">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-slate-800/50 p-6">
-        <div className="flex items-center gap-4 mb-4">
+      <div className="flex-shrink-0 border-b border-slate-800/50 p-4 sm:p-6">
+        <div className="flex items-center gap-3 sm:gap-4 mb-0">
           <button
             onClick={() => setCurrentView('League Finances')}
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-white transition-colors"
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-white transition-colors flex-shrink-0"
           >
-            <ArrowLeft size={14} /> All Teams
+            <ArrowLeft size={14} /> <span className="hidden sm:inline">All Teams</span>
           </button>
-          <div className="w-px h-5 bg-slate-700" />
-          <div className="w-10 h-10 flex-shrink-0 bg-slate-800 rounded-full p-1.5 flex items-center justify-center">
+          <div className="w-px h-5 bg-slate-700 flex-shrink-0" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 bg-slate-800 rounded-full p-1 sm:p-1.5 flex items-center justify-center">
             <img src={selectedTeam.logoUrl} alt={selectedTeam.abbrev} className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">
+            <h1 className="text-lg sm:text-2xl font-bold text-white tracking-tight">
               {selectedTeam.city || selectedTeam.region} {selectedTeam.name}
             </h1>
-            <p className="text-sm text-slate-400">{currentYear}–{currentYear + 1} Salary Cap Analysis</p>
+            <p className="text-xs sm:text-sm text-slate-400">{currentYear}–{currentYear + 1} Salary Cap Analysis</p>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6">
+        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
 
           {/* Top Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Total Payroll */}
-            <div className="bg-[#232730] rounded-xl p-6 border border-slate-800/50">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+            <div className="bg-[#232730] rounded-xl p-4 sm:p-6 border border-slate-800/50">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 sm:mb-6 flex items-center gap-2">
                 <span className="text-slate-500">$</span> TOTAL PAYROLL
               </h3>
-              <div className="flex flex-col items-center justify-center mb-8">
-                <p className="text-5xl font-bold text-white tracking-tight">{formatSalaryM(payroll)}</p>
+              <div className="flex flex-col items-center justify-center mb-4 sm:mb-8">
+                <p className="text-3xl sm:text-5xl font-bold text-white tracking-tight">{formatSalaryM(payroll)}</p>
               </div>
-              <div className="flex items-center justify-between text-sm flex-wrap gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm flex-wrap gap-2">
                 <ApronStatus space={firstApronSpace} label="1st Apron" />
                 <ApronStatus space={secondApronSpace} label="2nd Apron" />
               </div>
             </div>
 
             {/* Cap Utilization */}
-            <div className="bg-[#232730] rounded-xl p-6 border border-slate-800/50">
-              <div className="flex justify-between items-center mb-8">
+            <div className="bg-[#232730] rounded-xl p-4 sm:p-6 border border-slate-800/50">
+              <div className="flex justify-between items-center mb-4 sm:mb-8">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <img src={selectedTeam.logoUrl} className="w-4 h-4 object-contain" referrerPolicy="no-referrer" />
                   CAP UTILIZATION
                 </h3>
-                <span className="text-xl font-bold text-white">{formatSalaryM(payroll)}</span>
+                <span className="text-lg sm:text-xl font-bold text-white">{formatSalaryM(payroll)}</span>
               </div>
-              <div className="text-center text-xs text-slate-500 mb-2">
-                Range: {formatSalaryM(salaryCap * 0.8)} → {formatSalaryM(secondApron * 1.05)}
-              </div>
-              <div className="relative h-8 bg-slate-800/50 rounded-full overflow-hidden mb-6 flex">
-                <div className="h-full bg-[#38bdf8]" style={{ width: `${capPct}%` }} />
-                <div className="h-full bg-[#facc15]" style={{ width: `${taxPct}%` }} />
-                <div className="h-full bg-[#334155]" style={{ width: `${apron1Pct}%` }} />
-                <div className="h-full bg-[#1e293b]" style={{ width: `${apron2Pct}%` }} />
-              </div>
-              <div className="relative h-10 text-xs font-medium">
-                <div className="absolute flex flex-col items-center" style={{ left: `${capPct}%`, transform: 'translateX(-50%)' }}>
-                  <span className="text-[#38bdf8]">Cap</span>
-                  <span className="text-slate-500">{formatSalaryM(salaryCap)}</span>
-                </div>
-                <div className="absolute flex flex-col items-center" style={{ left: `${capPct + taxPct}%`, transform: 'translateX(-50%)' }}>
-                  <span className="text-[#facc15]">Tax</span>
-                  <span className="text-slate-500">{formatSalaryM(luxuryPayroll)}</span>
-                </div>
-                <div className="absolute flex flex-col items-center" style={{ left: `${capPct + taxPct + apron1Pct}%`, transform: 'translateX(-50%)' }}>
-                  <span className="text-slate-400">1st Apron</span>
-                  <span className="text-slate-500">{formatSalaryM(firstApron)}</span>
-                </div>
-                <div className="absolute flex flex-col items-center" style={{ left: `${capPct + taxPct + apron1Pct + apron2Pct}%`, transform: 'translateX(-50%)' }}>
-                  <span className="text-orange-400">2nd Apron</span>
-                  <span className="text-slate-500">{formatSalaryM(secondApron)}</span>
+              <div className="overflow-x-auto">
+                <div className="min-w-[260px]">
+                  <div className="text-center text-xs text-slate-500 mb-2">
+                    Range: {formatSalaryM(salaryCap * 0.8)} → {formatSalaryM(secondApron * 1.05)}
+                  </div>
+                  <div className="relative h-8 bg-slate-800/50 rounded-full overflow-hidden mb-4 flex">
+                    <div className="h-full bg-[#38bdf8]" style={{ width: `${capPct}%` }} />
+                    <div className="h-full bg-[#facc15]" style={{ width: `${taxPct}%` }} />
+                    <div className="h-full bg-[#334155]" style={{ width: `${apron1Pct}%` }} />
+                    <div className="h-full bg-[#1e293b]" style={{ width: `${apron2Pct}%` }} />
+                  </div>
+                  <div className="relative h-14 text-xs font-medium">
+                    <div className="absolute flex flex-col items-center" style={{ left: `${capPct}%`, transform: 'translateX(-50%)' }}>
+                      <span className="text-[#38bdf8]">Cap</span>
+                      <span className="text-slate-500">{formatSalaryM(salaryCap)}</span>
+                    </div>
+                    <div className="absolute flex flex-col items-center" style={{ left: `${capPct + taxPct}%`, transform: 'translateX(-50%)' }}>
+                      <span className="text-[#facc15]">Tax</span>
+                      <span className="text-slate-500">{formatSalaryM(luxuryPayroll)}</span>
+                    </div>
+                    <div className="absolute flex flex-col items-center" style={{ left: `${capPct + taxPct + apron1Pct}%`, transform: 'translateX(-50%)' }}>
+                      <span className="text-slate-400">1st</span>
+                      <span className="text-slate-500">{formatSalaryM(firstApron)}</span>
+                    </div>
+                    <div className="absolute flex flex-col items-center" style={{ left: `${capPct + taxPct + apron1Pct + apron2Pct}%`, transform: 'translateX(-50%)' }}>
+                      <span className="text-orange-400">2nd</span>
+                      <span className="text-slate-500">{formatSalaryM(secondApron)}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Middle Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Payroll Flow */}
-            <div className="bg-[#232730] rounded-xl p-6 border border-slate-800/50 flex flex-col">
-              <div className="flex justify-between items-center mb-6">
+            <div className="bg-[#232730] rounded-xl p-4 sm:p-6 border border-slate-800/50 flex flex-col">
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <img src={selectedTeam.logoUrl} className="w-4 h-4 object-contain" referrerPolicy="no-referrer" />
                   PAYROLL FLOW
                 </h3>
                 <span className="text-xs text-slate-500">Total → Position → Player</span>
               </div>
-              <div className="flex-1 min-h-[400px]">
+              <div className="flex-1 min-h-[220px] sm:min-h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <Sankey data={sankeyData} nodePadding={10} margin={{ top: 20, right: 20, bottom: 20, left: 20 }} link={{ stroke: '#334155' }} node={{ fill: '#38bdf8' }}>
                     <Tooltip formatter={(value: number) => formatCurrency(value, false)} contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }} />
@@ -208,13 +212,13 @@ export const TeamFinancesViewDetailed: React.FC = () => {
 
             {/* Contract Timeline */}
             <div className="bg-[#232730] rounded-xl border border-slate-800/50 overflow-hidden flex flex-col">
-              <div className="p-6 border-b border-slate-800/50 flex justify-between items-center">
+              <div className="p-4 sm:p-6 border-b border-slate-800/50 flex justify-between items-center">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <img src={selectedTeam.logoUrl} className="w-4 h-4 object-contain" referrerPolicy="no-referrer" />
                   CONTRACT TIMELINE
                 </h3>
               </div>
-              <div className="overflow-x-auto custom-scrollbar p-6 flex-1">
+              <div className="overflow-x-auto custom-scrollbar p-3 sm:p-6 flex-1">
                 <table className="w-full text-sm text-left whitespace-nowrap border-separate border-spacing-y-2">
                   <thead>
                     <tr className="text-slate-400">
@@ -263,18 +267,18 @@ export const TeamFinancesViewDetailed: React.FC = () => {
           </div>
 
           {/* Bottom Row: Pie Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Payroll Pie Breakdown */}
-            <div className="bg-[#232730] rounded-xl p-6 border border-slate-800/50">
-              <div className="flex justify-between items-center mb-6">
+            <div className="bg-[#232730] rounded-xl p-4 sm:p-6 border border-slate-800/50">
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <img src={selectedTeam.logoUrl} className="w-4 h-4 object-contain" referrerPolicy="no-referrer" />
                   PAYROLL PIE BREAKDOWN
                 </h3>
                 <span className="text-xs text-slate-500">{formatSalaryM(payroll)} total</span>
               </div>
-              <div className="flex flex-col md:flex-row items-center">
-                <div className="w-64 h-64 relative">
+              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-0">
+                <div className="w-56 h-56 sm:w-64 sm:h-64 relative flex-shrink-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Tooltip formatter={(value: number) => formatCurrency(value, false)} contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }} />
@@ -295,10 +299,10 @@ export const TeamFinancesViewDetailed: React.FC = () => {
                     <span className="text-[10px] text-slate-500">{positionData.length} groups</span>
                   </div>
                 </div>
-                <div className="ml-8 space-y-4">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider text-right mb-2">Position Share</h4>
+                <div className="sm:ml-8 space-y-3 sm:space-y-4 w-full sm:w-auto">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Position Share</h4>
                   {positionData.map((pos, idx) => (
-                    <div key={pos.name} className="flex items-center justify-between gap-8">
+                    <div key={pos.name} className="flex items-center justify-between gap-4 sm:gap-8">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
                         <span className="text-sm font-medium text-slate-300">{pos.name}</span>
@@ -311,16 +315,16 @@ export const TeamFinancesViewDetailed: React.FC = () => {
             </div>
 
             {/* High-Earners Pie */}
-            <div className="bg-[#232730] rounded-xl p-6 border border-slate-800/50">
-              <div className="flex justify-between items-center mb-6">
+            <div className="bg-[#232730] rounded-xl p-4 sm:p-6 border border-slate-800/50">
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <img src={selectedTeam.logoUrl} className="w-4 h-4 object-contain" referrerPolicy="no-referrer" />
                   HIGH-EARNERS PIE
                 </h3>
                 <span className="text-xs text-slate-500">$8M+ only</span>
               </div>
-              <div className="flex flex-col md:flex-row items-center">
-                <div className="w-64 h-64 relative">
+              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-0">
+                <div className="w-56 h-56 sm:w-64 sm:h-64 relative flex-shrink-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Tooltip formatter={(value: number) => formatCurrency(value, false)} contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }} />
@@ -338,11 +342,11 @@ export const TeamFinancesViewDetailed: React.FC = () => {
                     <span className="text-[10px] text-slate-500">{highEarners.length} players at $8M+</span>
                   </div>
                 </div>
-                <div className="ml-8 flex-1">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider text-right mb-2">
+                <div className="sm:ml-8 flex-1 w-full">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
                     Players ({formatSalaryM(highEarners.reduce((s, p) => s + p.value, 0))} Total)
                   </h4>
-                  <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                  <div className="space-y-2 sm:space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
                     {highEarners.map((player, idx) => {
                       const pi = player.pos.includes('G') ? 0 : player.pos.includes('F') ? 1 : 2;
                       return (

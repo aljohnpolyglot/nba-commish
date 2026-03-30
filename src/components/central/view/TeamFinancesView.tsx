@@ -119,28 +119,28 @@ export const TeamFinancesView: React.FC = () => {
   return (
     <div className="h-full flex flex-col bg-[#1a1d24] text-slate-200">
       {/* Header Bar */}
-      <div className="flex-shrink-0 border-b border-slate-800/50 p-6">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-12 h-12 flex-shrink-0 bg-slate-800 rounded-full p-2 flex items-center justify-center">
-            <img 
-              src={selectedTeam.logoUrl} 
+      <div className="flex-shrink-0 border-b border-slate-800/50 p-4 sm:p-6">
+        <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
+          <div className="w-9 h-9 sm:w-12 sm:h-12 flex-shrink-0 bg-slate-800 rounded-full p-1.5 sm:p-2 flex items-center justify-center">
+            <img
+              src={selectedTeam.logoUrl}
               alt={selectedTeam.abbrev}
               className="max-w-full max-h-full object-contain"
               referrerPolicy="no-referrer"
             />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">
+            <h1 className="text-lg sm:text-2xl font-bold text-white tracking-tight">
               {selectedTeam.city || selectedTeam.region} {selectedTeam.name} Contracts
             </h1>
-            <p className="text-sm text-slate-400">{currentYear}-{currentYear + 1} Salary Cap Analysis</p>
+            <p className="text-xs sm:text-sm text-slate-400">{currentYear}-{currentYear + 1} Salary Cap Analysis</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="relative">
-            <select 
-              className="appearance-none bg-[#232730] border border-slate-700/50 text-white text-sm font-medium pl-10 pr-10 py-2 rounded-lg outline-none cursor-pointer hover:bg-slate-800 transition-colors"
+            <select
+              className="appearance-none bg-[#232730] border border-slate-700/50 text-white text-xs sm:text-sm font-medium pl-8 sm:pl-10 pr-8 sm:pr-10 py-2 rounded-lg outline-none cursor-pointer hover:bg-slate-800 transition-colors"
               value={selectedTeamId}
               onChange={(e) => setSelectedTeamId(Number(e.target.value))}
             >
@@ -150,37 +150,37 @@ export const TeamFinancesView: React.FC = () => {
                 </option>
               ))}
             </select>
-            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-               <img src={selectedTeam.logoUrl} className="w-5 h-5 object-contain" referrerPolicy="no-referrer" />
+            <div className="absolute inset-y-0 left-2 sm:left-3 flex items-center pointer-events-none">
+              <img src={selectedTeam.logoUrl} className="w-4 sm:w-5 h-4 sm:h-5 object-contain" referrerPolicy="no-referrer" />
             </div>
-            <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
+            <div className="absolute inset-y-0 right-2 sm:right-3 flex items-center pointer-events-none text-slate-400">
               <ChevronDown className="w-4 h-4" />
             </div>
           </div>
-          
-          <div className="bg-[#232730] border border-slate-700/50 text-white text-sm font-medium px-4 py-2 rounded-lg">
+
+          <div className="bg-[#232730] border border-slate-700/50 text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-2 rounded-lg">
             {currentYear}-{currentYear + 1}
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
-          
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6">
+        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+
           {/* Top Row: Total Payroll & Cap Utilization */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Total Payroll */}
-            <div className="bg-[#232730] rounded-xl p-6 border border-slate-800/50">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+            <div className="bg-[#232730] rounded-xl p-4 sm:p-6 border border-slate-800/50">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 sm:mb-6 flex items-center gap-2">
                 <span className="text-slate-500">$</span> TOTAL PAYROLL
               </h3>
-              <div className="flex flex-col items-center justify-center mb-8">
-                <p className="text-5xl font-bold text-white tracking-tight">
+              <div className="flex flex-col items-center justify-center mb-4 sm:mb-8">
+                <p className="text-3xl sm:text-5xl font-bold text-white tracking-tight">
                   {formatSalaryM(payroll)}
                 </p>
               </div>
-              <div className="flex items-center justify-between text-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm gap-2">
                 <div className="flex items-center gap-2">
                   <TrendingDown className="w-4 h-4 text-emerald-400" />
                   <span className="font-bold text-emerald-400">Below 1st Apron</span>
@@ -195,62 +195,61 @@ export const TeamFinancesView: React.FC = () => {
             </div>
 
             {/* Cap Utilization */}
-            <div className="bg-[#232730] rounded-xl p-6 border border-slate-800/50">
-              <div className="flex justify-between items-center mb-8">
+            <div className="bg-[#232730] rounded-xl p-4 sm:p-6 border border-slate-800/50">
+              <div className="flex justify-between items-center mb-4 sm:mb-8">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <img src={selectedTeam.logoUrl} className="w-4 h-4 object-contain" referrerPolicy="no-referrer" />
                   CAP UTILIZATION
                 </h3>
-                <span className="text-xl font-bold text-white">{formatSalaryM(payroll)}</span>
-              </div>
-              
-              <div className="text-center text-xs text-slate-500 mb-2">
-                Focused range: {formatSalaryM(salaryCap * 0.8)} to {formatSalaryM(secondApron * 1.05)}
+                <span className="text-lg sm:text-xl font-bold text-white">{formatSalaryM(payroll)}</span>
               </div>
 
-              <div className="relative h-8 bg-slate-800/50 rounded-full overflow-hidden mb-6 flex">
-                {/* Background segments */}
-                <div className="h-full bg-[#38bdf8]" style={{ width: `${capPct}%` }}></div>
-                <div className="h-full bg-[#facc15]" style={{ width: `${taxPct}%` }}></div>
-                <div className="h-full bg-[#334155]" style={{ width: `${apron1Pct}%` }}></div>
-                <div className="h-full bg-[#1e293b]" style={{ width: `${apron2Pct}%` }}></div>
-                
-                {/* Actual Payroll Overlay (if we wanted to overlay it, but the design shows segments) */}
-              </div>
-
-              <div className="relative h-10 text-xs font-medium">
-                <div className="absolute flex flex-col items-center" style={{ left: `${capPct}%`, transform: 'translateX(-50%)' }}>
-                  <span className="text-[#38bdf8]">Cap</span>
-                  <span className="text-slate-500">{formatSalaryM(salaryCap)}</span>
-                </div>
-                <div className="absolute flex flex-col items-center" style={{ left: `${capPct + taxPct}%`, transform: 'translateX(-50%)' }}>
-                  <span className="text-[#facc15]">Tax</span>
-                  <span className="text-slate-500">{formatSalaryM(luxuryPayroll)}</span>
-                </div>
-                <div className="absolute flex flex-col items-center" style={{ left: `${capPct + taxPct + apron1Pct}%`, transform: 'translateX(-50%)' }}>
-                  <span className="text-slate-400">1st Apron</span>
-                  <span className="text-slate-500">{formatSalaryM(firstApron)}</span>
-                </div>
-                <div className="absolute flex flex-col items-center" style={{ left: `${capPct + taxPct + apron1Pct + apron2Pct}%`, transform: 'translateX(-50%)' }}>
-                  <span className="text-orange-400">2nd Apron</span>
-                  <span className="text-slate-500">{formatSalaryM(secondApron)}</span>
+              <div className="overflow-x-auto">
+                <div className="min-w-[260px]">
+                  <div className="text-center text-xs text-slate-500 mb-2">
+                    Range: {formatSalaryM(salaryCap * 0.8)} → {formatSalaryM(secondApron * 1.05)}
+                  </div>
+                  <div className="relative h-8 bg-slate-800/50 rounded-full overflow-hidden mb-4 flex">
+                    <div className="h-full bg-[#38bdf8]" style={{ width: `${capPct}%` }}></div>
+                    <div className="h-full bg-[#facc15]" style={{ width: `${taxPct}%` }}></div>
+                    <div className="h-full bg-[#334155]" style={{ width: `${apron1Pct}%` }}></div>
+                    <div className="h-full bg-[#1e293b]" style={{ width: `${apron2Pct}%` }}></div>
+                  </div>
+                  <div className="relative h-14 text-xs font-medium">
+                    <div className="absolute flex flex-col items-center" style={{ left: `${capPct}%`, transform: 'translateX(-50%)' }}>
+                      <span className="text-[#38bdf8]">Cap</span>
+                      <span className="text-slate-500">{formatSalaryM(salaryCap)}</span>
+                    </div>
+                    <div className="absolute flex flex-col items-center" style={{ left: `${capPct + taxPct}%`, transform: 'translateX(-50%)' }}>
+                      <span className="text-[#facc15]">Tax</span>
+                      <span className="text-slate-500">{formatSalaryM(luxuryPayroll)}</span>
+                    </div>
+                    <div className="absolute flex flex-col items-center" style={{ left: `${capPct + taxPct + apron1Pct}%`, transform: 'translateX(-50%)' }}>
+                      <span className="text-slate-400">1st</span>
+                      <span className="text-slate-500">{formatSalaryM(firstApron)}</span>
+                    </div>
+                    <div className="absolute flex flex-col items-center" style={{ left: `${capPct + taxPct + apron1Pct + apron2Pct}%`, transform: 'translateX(-50%)' }}>
+                      <span className="text-orange-400">2nd</span>
+                      <span className="text-slate-500">{formatSalaryM(secondApron)}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Middle Row: Payroll Flow & Contract Timeline */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Payroll Flow */}
-            <div className="bg-[#232730] rounded-xl p-6 border border-slate-800/50 flex flex-col">
-              <div className="flex justify-between items-center mb-6">
+            <div className="bg-[#232730] rounded-xl p-4 sm:p-6 border border-slate-800/50 flex flex-col">
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <img src={selectedTeam.logoUrl} className="w-4 h-4 object-contain" referrerPolicy="no-referrer" />
                   PAYROLL FLOW
                 </h3>
-                <span className="text-xs text-slate-500">Total → Position Group → Player</span>
+                <span className="text-xs text-slate-500">Total → Position → Player</span>
               </div>
-              <div className="flex-1 min-h-[400px]">
+              <div className="flex-1 min-h-[220px] sm:min-h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <Sankey
                     data={sankeyData}
@@ -270,13 +269,13 @@ export const TeamFinancesView: React.FC = () => {
 
             {/* Contract Timeline */}
             <div className="bg-[#232730] rounded-xl border border-slate-800/50 overflow-hidden flex flex-col">
-              <div className="p-6 border-b border-slate-800/50 flex justify-between items-center">
+              <div className="p-4 sm:p-6 border-b border-slate-800/50 flex justify-between items-center">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <img src={selectedTeam.logoUrl} className="w-4 h-4 object-contain" referrerPolicy="no-referrer" />
                   CONTRACT TIMELINE
                 </h3>
               </div>
-              <div className="overflow-x-auto custom-scrollbar p-6 flex-1">
+              <div className="overflow-x-auto custom-scrollbar p-3 sm:p-6 flex-1">
               <table className="w-full text-sm text-left whitespace-nowrap border-separate border-spacing-y-2">
                 <thead>
                   <tr className="text-slate-400">
@@ -383,10 +382,10 @@ export const TeamFinancesView: React.FC = () => {
           </div>
 
           {/* Bottom Row: Pie Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Payroll Pie Breakdown */}
-            <div className="bg-[#232730] rounded-xl p-6 border border-slate-800/50">
-              <div className="flex justify-between items-center mb-6">
+            <div className="bg-[#232730] rounded-xl p-4 sm:p-6 border border-slate-800/50">
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <img src={selectedTeam.logoUrl} className="w-4 h-4 object-contain" referrerPolicy="no-referrer" />
                   PAYROLL PIE BREAKDOWN
@@ -394,40 +393,18 @@ export const TeamFinancesView: React.FC = () => {
                 <span className="text-xs text-slate-500">{formatSalaryM(payroll)} total</span>
               </div>
               
-              <div className="flex flex-col md:flex-row items-center">
-                <div className="w-64 h-64 relative">
+              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-0">
+                <div className="w-56 h-56 sm:w-64 sm:h-64 relative flex-shrink-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Tooltip 
+                      <Tooltip
                         formatter={(value: number) => formatCurrency(value, false)}
                         contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }}
                       />
-                      {/* Inner Ring (Positions) */}
-                      <Pie
-                        data={positionData}
-                        dataKey="value"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={80}
-                        stroke="#232730"
-                        strokeWidth={2}
-                      >
-                        {positionData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
+                      <Pie data={positionData} dataKey="value" cx="50%" cy="50%" innerRadius={50} outerRadius={80} stroke="#232730" strokeWidth={2}>
+                        {positionData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                       </Pie>
-                      {/* Outer Ring (Players) */}
-                      <Pie
-                        data={playerPieData}
-                        dataKey="value"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={85}
-                        outerRadius={110}
-                        stroke="#232730"
-                        strokeWidth={2}
-                      >
+                      <Pie data={playerPieData} dataKey="value" cx="50%" cy="50%" innerRadius={85} outerRadius={110} stroke="#232730" strokeWidth={2}>
                         {playerPieData.map((entry, index) => {
                           const posIndex = entry.pos.includes('G') ? 0 : entry.pos.includes('F') ? 1 : 2;
                           return <Cell key={`cell-${index}`} fill={COLORS[posIndex % COLORS.length]} />;
@@ -441,18 +418,15 @@ export const TeamFinancesView: React.FC = () => {
                     <span className="text-[10px] text-slate-500">{positionData.length} position groups</span>
                   </div>
                 </div>
-                
-                <div className="ml-8 space-y-4">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider text-right mb-2">Position Share</h4>
+                <div className="sm:ml-8 space-y-3 sm:space-y-4 w-full sm:w-auto">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Position Share</h4>
                   {positionData.map((pos, idx) => (
-                    <div key={pos.name} className="flex items-center justify-between gap-8">
+                    <div key={pos.name} className="flex items-center justify-between gap-4 sm:gap-8">
                       <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></div>
+                        <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
                         <span className="text-sm font-medium text-slate-300">{pos.name}</span>
                       </div>
-                      <span className="text-sm text-slate-400">
-                        {((pos.value / payroll) * 100).toFixed(1)}%
-                      </span>
+                      <span className="text-sm text-slate-400">{((pos.value / payroll) * 100).toFixed(1)}%</span>
                     </div>
                   ))}
                 </div>
@@ -460,33 +434,23 @@ export const TeamFinancesView: React.FC = () => {
             </div>
 
             {/* High-Earners Pie */}
-            <div className="bg-[#232730] rounded-xl p-6 border border-slate-800/50">
-              <div className="flex justify-between items-center mb-6">
+            <div className="bg-[#232730] rounded-xl p-4 sm:p-6 border border-slate-800/50">
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <img src={selectedTeam.logoUrl} className="w-4 h-4 object-contain" referrerPolicy="no-referrer" />
                   HIGH-EARNERS PIE
                 </h3>
                 <span className="text-xs text-slate-500">$8M+ only</span>
               </div>
-              
-              <div className="flex flex-col md:flex-row items-center">
-                <div className="w-64 h-64 relative">
+              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-0">
+                <div className="w-56 h-56 sm:w-64 sm:h-64 relative flex-shrink-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Tooltip 
+                      <Tooltip
                         formatter={(value: number) => formatCurrency(value, false)}
                         contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }}
                       />
-                      <Pie
-                        data={highEarners}
-                        dataKey="value"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={110}
-                        stroke="#232730"
-                        strokeWidth={3}
-                      >
+                      <Pie data={highEarners} dataKey="value" cx="50%" cy="50%" innerRadius={60} outerRadius={110} stroke="#232730" strokeWidth={3}>
                         {highEarners.map((entry, index) => {
                           const posIndex = entry.pos.includes('G') ? 0 : entry.pos.includes('F') ? 1 : 2;
                           return <Cell key={`cell-${index}`} fill={COLORS[posIndex % COLORS.length]} />;
@@ -500,23 +464,20 @@ export const TeamFinancesView: React.FC = () => {
                     <span className="text-[10px] text-slate-500">{highEarners.length} players at $8M+</span>
                   </div>
                 </div>
-                
-                <div className="ml-8 flex-1">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider text-right mb-2">
+                <div className="sm:ml-8 flex-1 w-full">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
                     Players ({formatSalaryM(highEarners.reduce((s, p) => s + p.value, 0))} Total)
                   </h4>
-                  <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                  <div className="space-y-2 sm:space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
                     {highEarners.map((player, idx) => {
                       const posIndex = player.pos.includes('G') ? 0 : player.pos.includes('F') ? 1 : 2;
                       return (
                         <div key={player.name} className="flex items-center justify-between gap-4">
                           <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: COLORS[posIndex % COLORS.length] }}></div>
+                            <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: COLORS[posIndex % COLORS.length] }} />
                             <span className="text-sm font-medium text-slate-300 truncate max-w-[120px]">{player.name}</span>
                           </div>
-                          <span className="text-sm font-bold text-white">
-                            {formatSalaryM(player.value)}
-                          </span>
+                          <span className="text-sm font-bold text-white">{formatSalaryM(player.value)}</span>
                         </div>
                       );
                     })}

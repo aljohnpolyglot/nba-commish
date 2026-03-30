@@ -43,7 +43,7 @@ export function generatePaychecks(
         const stateTax = grossPay * stateTaxRate;
         const cityTax = grossPay * cityTaxRate;
         const netPay = grossPay - federalTax - stateTax - cityTax;
-        
+
         const payslip: Payslip = {
             id: `payslip-${nextPayday.getTime()}`,
             date: nextPayday.toISOString(),

@@ -6,21 +6,17 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  ShoppingBag, 
-  Briefcase, 
-  Wallet, 
-  Gift, 
-  UserPlus, 
-  DollarSign, 
-  Trash2, 
-  MapPin, 
-  Bed, 
-  Bath, 
+import {
+  ShoppingBag,
+  Briefcase,
+  Wallet,
+  DollarSign,
+  MapPin,
+  Bed,
+  Bath,
   Building,
   Info,
   Loader2,
-  X,
   TrendingUp,
   TrendingDown,
   Layers,
@@ -30,8 +26,7 @@ import {
 import { Asset, OwnedAsset } from './realsternTypes';
 import { INITIAL_ASSETS, US_STATES } from './realsternData';
 import { useGame } from '../../../store/GameContext';
-import { PersonSelectorModal } from '../../modals/PersonSelectorModal';
-import { Contact } from '../../../types';
+import { RealSternActionModal } from '../../modals/RealSternActionModal';
 
 const IMAGE_FALLBACK = 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800';
 
@@ -72,10 +67,8 @@ export default function RealStern() {
   const [selectedAssetForPurchase, setSelectedAssetForPurchase] = useState<Asset | null>(null);
   const [lifetimeEarnings, setLifetimeEarnings] = useState(0);
   
-  // Modals
-  const [inviteModalAsset, setInviteModalAsset] = useState<OwnedAsset | null>(null);
-  const [giftModalAsset, setGiftModalAsset] = useState<OwnedAsset | null>(null);
-  const [abandonConfirm, setAbandonConfirm] = useState<string | null>(null);
+  // Asset action modal (replaces inline gift/invite/abandon buttons)
+  const [actionModalAsset, setActionModalAsset] = useState<OwnedAsset | null>(null);
 
   // Pagination / Lazy Loading
   const [visibleCount, setVisibleCount] = useState(12);
@@ -330,39 +323,41 @@ export default function RealStern() {
   return (
     <div className="prestige-scope min-h-screen flex flex-col bg-white">
       {/* Header */}
-      <header className="bg-prestige-black text-white p-6 shadow-2xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-prestige-gold rounded-full flex items-center justify-center shadow-inner">
-              <Building className="text-prestige-black" size={24} />
+      <header className="bg-prestige-black text-white px-4 sm:px-6 py-4 shadow-2xl sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 sm:w-12 sm:h-12 bg-prestige-gold rounded-full flex items-center justify-center shadow-inner flex-shrink-0">
+              <Building className="text-prestige-black" size={18} />
             </div>
             <div>
-              <h1 className="serif text-3xl font-light tracking-widest uppercase">Real Stern</h1>
-              <p className="text-[10px] uppercase tracking-[0.3em] text-prestige-gold font-semibold">Private Acquisitions · Commissioner's Office</p>
+              <h1 className="serif text-xl sm:text-3xl font-light tracking-widest uppercase">Real Stern</h1>
+              <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] sm:tracking-[0.3em] text-prestige-gold font-semibold">Private Acquisitions · Commissioner's Office</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-8">
-            <div className="flex flex-col items-end">
-              <span className="text-[10px] uppercase tracking-widest text-gray-400">Personal Liquidity</span>
-              <div className="flex items-center gap-2 text-prestige-gold">
-                <Wallet size={18} />
-                <span className="text-2xl font-light tracking-tighter serif">${wealth.toLocaleString()}</span>
+          <div className="flex items-center gap-4 sm:gap-8 w-full sm:w-auto justify-between sm:justify-end">
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase tracking-widest text-gray-400">Liquidity</span>
+              <div className="flex items-center gap-1.5 text-prestige-gold">
+                <Wallet size={14} className="sm:w-[18px] sm:h-[18px]" />
+                <span className="text-base sm:text-2xl font-light tracking-tighter serif">${wealth.toLocaleString()}</span>
               </div>
             </div>
-            
+
             <nav className="flex bg-white/5 rounded-full p-1 border border-white/10">
-              <button 
+              <button
                 onClick={() => setView('store')}
-                className={`px-6 py-2 rounded-full text-xs uppercase tracking-widest transition-all ${view === 'store' ? 'bg-prestige-gold text-prestige-black font-bold' : 'text-gray-400 hover:text-white'}`}
+                className={`px-3 sm:px-6 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs uppercase tracking-widest transition-all ${view === 'store' ? 'bg-prestige-gold text-prestige-black font-bold' : 'text-gray-400 hover:text-white'}`}
               >
-                Acquisitions
+                <span className="hidden sm:inline">Acquisitions</span>
+                <span className="sm:hidden">Buy</span>
               </button>
-              <button 
+              <button
                 onClick={() => setView('inventory')}
-                className={`px-6 py-2 rounded-full text-xs uppercase tracking-widest transition-all ${view === 'inventory' ? 'bg-prestige-gold text-prestige-black font-bold' : 'text-gray-400 hover:text-white'}`}
+                className={`px-3 sm:px-6 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs uppercase tracking-widest transition-all ${view === 'inventory' ? 'bg-prestige-gold text-prestige-black font-bold' : 'text-gray-400 hover:text-white'}`}
               >
-                Portfolio ({inventory.length})
+                <span className="hidden sm:inline">Portfolio ({inventory.length})</span>
+                <span className="sm:hidden">Portfolio ({inventory.length})</span>
               </button>
             </nav>
           </div>
@@ -370,7 +365,7 @@ export default function RealStern() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow p-8 max-w-7xl mx-auto w-full">
+      <main className="flex-grow p-4 sm:p-8 max-w-7xl mx-auto w-full">
         <AnimatePresence mode="wait">
           {view === 'store' ? (
             <motion.div 
@@ -378,11 +373,11 @@ export default function RealStern() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="space-y-8"
+              className="space-y-4 sm:space-y-8"
             >
-              <div className="flex flex-col md:flex-row justify-between items-end gap-6">
+              <div className="flex flex-col md:flex-row justify-between items-end gap-4 sm:gap-6">
                 <div>
-                  <h2 className="serif text-5xl font-light mb-1">Available Assets</h2>
+                  <h2 className="serif text-3xl sm:text-5xl font-light mb-1">Available Assets</h2>
                   <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-4">
                     {filteredAssets.length} properties available · {affordableCount} within your budget
                   </p>
@@ -445,7 +440,7 @@ export default function RealStern() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
                 {loading ? (
                   Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)
                 ) : (
@@ -481,10 +476,10 @@ export default function RealStern() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="space-y-12"
+              className="space-y-6 sm:space-y-12"
             >
               <div className="mb-8">
-                <h2 className="serif text-5xl font-light mb-2">Your Portfolio</h2>
+                <h2 className="serif text-3xl sm:text-5xl font-light mb-2">Your Portfolio</h2>
                 <div className="h-px bg-prestige-black/10 w-full mb-4"></div>
                 <p className="text-sm text-gray-500 uppercase tracking-widest">Managing {inventory.length} high-value assets</p>
               </div>
@@ -508,18 +503,12 @@ export default function RealStern() {
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
                   {inventory.map((asset) => (
-                    <InventoryCard 
-                      key={asset.instanceId} 
-                      asset={asset} 
-                      onGift={() => setGiftModalAsset(asset)}
-                      onInvite={() => setInviteModalAsset(asset)}
-                      onSell={() => sellAsset(asset.instanceId)}
-                      onAbandonRequest={() => setAbandonConfirm(asset.instanceId)}
-                      onAbandonConfirm={() => abandonAsset(asset.instanceId)}
-                      onAbandonCancel={() => setAbandonConfirm(null)}
-                      confirmingAbandon={abandonConfirm === asset.instanceId}
+                    <InventoryCard
+                      key={asset.instanceId}
+                      asset={asset}
+                      onClick={() => setActionModalAsset(asset)}
                     />
                   ))}
                 </div>
@@ -532,29 +521,25 @@ export default function RealStern() {
       {/* Modals */}
       <AnimatePresence>
         {selectedAssetForPurchase && (
-          <PurchaseModal 
-            asset={selectedAssetForPurchase} 
-            wealth={wealth} 
-            onConfirm={confirmPurchase} 
-            onClose={() => setSelectedAssetForPurchase(null)} 
-          />
-        )}
-        
-        {inviteModalAsset && (
-          <PersonSelectorModal
-            title="Invite to Property"
-            actionType="general"
-            onSelect={(contacts, reason) => inviteToAsset(contacts, inviteModalAsset, reason)}
-            onClose={() => setInviteModalAsset(null)}
+          <PurchaseModal
+            asset={selectedAssetForPurchase}
+            wealth={wealth}
+            onConfirm={confirmPurchase}
+            onClose={() => setSelectedAssetForPurchase(null)}
           />
         )}
 
-        {giftModalAsset && (
-          <PersonSelectorModal
-            title="Gift Property"
-            actionType="general"
-            onSelect={(contacts) => giftAsset(contacts, giftModalAsset)}
-            onClose={() => setGiftModalAsset(null)}
+        {actionModalAsset && (
+          <RealSternActionModal
+            asset={actionModalAsset}
+            onClose={() => setActionModalAsset(null)}
+            onSell={(instanceId) => { sellAsset(instanceId); setActionModalAsset(null); }}
+            onAbandon={(instanceId) => { abandonAsset(instanceId); setActionModalAsset(null); }}
+            onGiftComplete={() => {
+              setInventory(prev => prev.filter(a => a.instanceId !== actionModalAsset?.instanceId));
+              setActionModalAsset(null);
+            }}
+            onInviteComplete={() => setActionModalAsset(null)}
           />
         )}
       </AnimatePresence>
@@ -575,7 +560,7 @@ export default function RealStern() {
       </AnimatePresence>
 
       {/* Footer */}
-      <footer className="p-12 border-t border-prestige-black/5 text-center">
+      <footer className="p-6 sm:p-12 border-t border-prestige-black/5 text-center">
         <p className="text-[10px] uppercase tracking-[0.5em] text-gray-400">
           Real Stern Private Holdings · Commissioner's Office Division · Est. 2026 · All Acquisitions Confidential
         </p>
@@ -621,34 +606,37 @@ function PortfolioSummaryHeader({ inventory, lifetimeEarnings }: { inventory: Ow
 }
 
 function PurchaseModal({ asset, wealth, onConfirm, onClose }: { asset: Asset, wealth: number, onConfirm: () => void, onClose: () => void }) {
+  const [confirmed, setConfirmed] = useState(false);
+  const canAfford = wealth >= asset.price;
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <motion.div 
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
         className="absolute inset-0 bg-prestige-black/80 backdrop-blur-sm"
       />
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative bg-white rounded-3xl overflow-hidden shadow-2xl max-w-2xl w-full flex flex-col md:flex-row"
+        className="relative bg-white rounded-3xl overflow-hidden shadow-2xl max-w-2xl w-full flex flex-col sm:flex-row max-h-[90vh] overflow-y-auto"
       >
-        <div className="w-full md:w-1/2 h-64 md:h-auto">
-          <img 
-            src={asset.image || IMAGE_FALLBACK} 
-            alt={asset.title} 
+        <div className="w-full sm:w-1/2 h-48 sm:h-auto flex-shrink-0">
+          <img
+            src={asset.image || IMAGE_FALLBACK}
+            alt={asset.title}
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
           />
         </div>
-        <div className="p-8 w-full md:w-1/2 flex flex-col">
-          <div className="mb-6">
+        <div className="p-6 sm:p-8 w-full sm:w-1/2 flex flex-col">
+          <div className="mb-4 sm:mb-6">
             <div className="text-[10px] uppercase tracking-widest text-prestige-gold font-bold mb-1">{asset.category}</div>
-            <h3 className="serif text-3xl font-medium mb-2">{asset.title}</h3>
-            <div className="flex flex-col gap-1 mb-4">
+            <h3 className="serif text-2xl sm:text-3xl font-medium mb-2">{asset.title}</h3>
+            <div className="flex flex-col gap-1 mb-3 sm:mb-4">
               <div className="flex items-center gap-1 text-gray-400 text-[10px] uppercase tracking-widest">
                 <MapPin size={10} />
                 {asset.location}
@@ -657,34 +645,47 @@ function PurchaseModal({ asset, wealth, onConfirm, onClose }: { asset: Asset, we
                 Listed {fakeDaysListed(asset.id)} days ago
               </div>
             </div>
-            <div className="serif text-4xl font-light text-prestige-black mb-4">${asset.price.toLocaleString()}</div>
-            
-            <div className="space-y-2 mb-6">
-              {(asset.details?.beds || asset.details?.baths) && (
-                <div className="flex items-center gap-2 text-[10px] text-gray-500 uppercase tracking-widest">
-                  <Building size={12} />
-                  ~{estimateSqm(asset.details.beds, asset.details.baths).toLocaleString()} sqm (est.)
-                </div>
-              )}
-              <p className="text-xs text-gray-500 leading-relaxed italic">
-                "This acquisition will significantly enhance your influence in the {asset.state} region. Confirm the transfer of funds to proceed."
-              </p>
+            <div className="serif text-3xl sm:text-4xl font-light text-prestige-black mb-3 sm:mb-4">
+              ${asset.price.toLocaleString()}
             </div>
+
+            {(asset.details?.beds || asset.details?.baths) && (
+              <div className="flex items-center gap-2 text-[10px] text-gray-500 uppercase tracking-widest mb-3">
+                <Building size={12} />
+                ~{estimateSqm(asset.details.beds, asset.details.baths).toLocaleString()} sqm (est.)
+              </div>
+            )}
           </div>
 
           <div className="mt-auto flex flex-col gap-3">
-            <button 
+            {/* Confirmation checkbox */}
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={e => setConfirmed(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-prestige-gold cursor-pointer flex-shrink-0"
+              />
+              <span className="text-[10px] text-gray-500 uppercase tracking-wider leading-relaxed">
+                I confirm I want to acquire this property for{' '}
+                <span className="font-bold text-prestige-black">${asset.price.toLocaleString()}</span>
+                {' '}from my personal funds.
+              </span>
+            </label>
+
+            <button
               onClick={onConfirm}
-              disabled={wealth < asset.price}
+              disabled={!canAfford || !confirmed}
               className={`w-full py-4 rounded-xl text-[10px] uppercase tracking-[0.3em] font-bold transition-all flex items-center justify-center gap-2 ${
-                wealth >= asset.price 
-                  ? 'bg-prestige-black text-white hover:bg-prestige-gold hover:text-prestige-black' 
+                canAfford && confirmed
+                  ? 'bg-prestige-black text-white hover:bg-prestige-gold hover:text-prestige-black'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
               }`}
             >
-              <DollarSign size={14} /> Confirm Acquisition
+              <DollarSign size={14} />
+              {!canAfford ? 'Insufficient Funds' : !confirmed ? 'Check Box to Confirm' : 'Confirm Acquisition'}
             </button>
-            <button 
+            <button
               onClick={onClose}
               className="w-full py-3 text-[10px] uppercase tracking-widest text-gray-400 font-bold hover:text-prestige-black transition-colors"
             >
@@ -811,18 +812,10 @@ const AssetCard: React.FC<AssetCardProps> = ({ asset, onAction, actionLabel, can
 
 interface InventoryCardProps {
   asset: OwnedAsset;
-  onGift: () => void;
-  onInvite: () => void;
-  onSell: () => void;
-  onAbandonRequest: () => void;
-  onAbandonConfirm: () => void;
-  onAbandonCancel: () => void;
-  confirmingAbandon: boolean;
+  onClick: () => void;
 }
 
-const InventoryCard: React.FC<InventoryCardProps> = ({ 
-  asset, onGift, onInvite, onSell, onAbandonRequest, onAbandonConfirm, onAbandonCancel, confirmingAbandon 
-}) => {
+const InventoryCard: React.FC<InventoryCardProps> = ({ asset, onClick }) => {
   const sqm = estimateSqm(asset.details?.beds, asset.details?.baths);
   const monthlyIncome = Math.floor(asset.price * 0.004);
   const daysOwned = Math.floor(
@@ -830,30 +823,33 @@ const InventoryCard: React.FC<InventoryCardProps> = ({
   );
 
   return (
-    <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-prestige-black/5 flex flex-col md:flex-row h-full min-h-0">
-      <div className="w-full md:w-2/5 h-64 md:h-auto overflow-hidden relative">
-        <img 
-          src={asset.image || IMAGE_FALLBACK} 
-          alt={asset.title} 
-          className="w-full h-full object-cover"
+    <div
+      onClick={onClick}
+      className="group bg-white rounded-3xl overflow-hidden shadow-xl border border-prestige-black/5 flex flex-col sm:flex-row cursor-pointer hover:shadow-2xl transition-all duration-300"
+    >
+      <div className="w-full sm:w-2/5 h-48 sm:h-auto overflow-hidden relative">
+        <img
+          src={asset.image || IMAGE_FALLBACK}
+          alt={asset.title}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           referrerPolicy="no-referrer"
           loading="lazy"
         />
-        <div className="absolute top-4 right-4 bg-prestige-gold text-prestige-black px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold shadow-lg">
+        <div className="absolute top-3 right-3 bg-prestige-gold text-prestige-black px-2.5 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold shadow-lg">
           Owned {daysOwned}d
         </div>
       </div>
-      
-      <div className="p-8 flex-grow flex flex-col">
-        <div className="flex justify-between items-start mb-6">
-          <div>
+
+      <div className="p-5 sm:p-7 flex-grow flex flex-col">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex-1 min-w-0 pr-3">
             <div className="text-[10px] uppercase tracking-widest text-prestige-gold font-bold mb-1">{asset.category}</div>
-            <h3 className="serif text-3xl font-medium mb-1">{asset.title}</h3>
+            <h3 className="serif text-xl sm:text-2xl font-medium mb-1 line-clamp-2">{asset.title}</h3>
             <div className="flex items-center gap-1 text-gray-400 text-[10px] uppercase tracking-widest mb-1">
               <MapPin size={10} />
-              {asset.location}
+              <span className="truncate">{asset.location}</span>
             </div>
-            <div className="text-[10px] text-green-600 font-bold uppercase tracking-widest mb-3">
+            <div className="text-[10px] text-green-600 font-bold uppercase tracking-widest mb-2">
               ~${monthlyIncome.toLocaleString()} / mo passive
             </div>
             {(asset.details?.beds || asset.details?.baths) && (
@@ -863,75 +859,16 @@ const InventoryCard: React.FC<InventoryCardProps> = ({
               </div>
             )}
           </div>
-          <div className="text-right">
-            <div className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Acquired Value</div>
-            <div className="serif text-2xl font-light text-prestige-black">${asset.price.toLocaleString()}</div>
+          <div className="text-right flex-shrink-0">
+            <div className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Acquired</div>
+            <div className="serif text-lg sm:text-2xl font-light text-prestige-black">${asset.price.toLocaleString()}</div>
           </div>
         </div>
 
-        <div className="mt-auto">
-          <AnimatePresence mode="wait">
-            {confirmingAbandon ? (
-              <motion.div 
-                key="confirm"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="bg-red-50 p-4 rounded-2xl border border-red-100"
-              >
-                <p className="text-[10px] uppercase tracking-widest text-red-600 font-bold mb-3 text-center">
-                  This action is permanent and cannot be undone.
-                </p>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={onAbandonConfirm}
-                    className="flex-grow py-3 rounded-xl bg-red-600 text-white text-[10px] uppercase tracking-widest font-bold hover:bg-red-700 transition-all"
-                  >
-                    Confirm Abandon
-                  </button>
-                  <button 
-                    onClick={onAbandonCancel}
-                    className="px-6 py-3 rounded-xl bg-gray-200 text-gray-600 text-[10px] uppercase tracking-widest font-bold hover:bg-gray-300 transition-all"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div 
-                key="actions"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="grid grid-cols-2 gap-2"
-              >
-                <button 
-                  onClick={onGift}
-                  className="flex items-center justify-center gap-2 py-3 rounded-lg border border-prestige-black/10 text-[10px] uppercase tracking-widest font-bold hover:bg-prestige-black hover:text-white transition-all"
-                >
-                  <Gift size={14} /> Gift
-                </button>
-                <button 
-                  onClick={onInvite}
-                  className="flex items-center justify-center gap-2 py-3 rounded-lg border border-prestige-black/10 text-[10px] uppercase tracking-widest font-bold hover:bg-prestige-black hover:text-white transition-all"
-                >
-                  <UserPlus size={14} /> Invite
-                </button>
-                <button 
-                  onClick={onSell}
-                  className="flex items-center justify-center gap-2 py-3 rounded-lg border border-prestige-black/10 text-[10px] uppercase tracking-widest font-bold hover:bg-green-600 hover:text-white hover:border-green-600 transition-all"
-                >
-                  <DollarSign size={14} /> Sell (80%)
-                </button>
-                <button 
-                  onClick={onAbandonRequest}
-                  className="flex items-center justify-center gap-2 py-3 rounded-lg border border-prestige-black/10 text-[10px] uppercase tracking-widest font-bold hover:bg-red-600 hover:text-white hover:border-red-600 transition-all"
-                >
-                  <Trash2 size={14} /> Abandon
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <div className="mt-auto pt-3 border-t border-prestige-black/5">
+          <p className="text-[10px] text-gray-400 uppercase tracking-widest text-center font-bold group-hover:text-prestige-gold transition-colors">
+            Tap to manage this property →
+          </p>
         </div>
       </div>
     </div>

@@ -601,6 +601,17 @@ export const processTurn = async (
     const remainingDebuffs = (result.pendingClubDebuff ?? state.pendingClubDebuff ?? [])
         .filter((d: any) => !playedPlayerIds.has(d.playerId));
 
+    // Ghost real estate passive income — silently added to wealth, never shown in payslips
+    const monthlyPassive = (state.realEstateInventory ?? [])
+        .reduce((s: number, a: any) => s + Math.floor(a.price * 0.004), 0);
+    if (monthlyPassive > 0) {
+        const passiveThisPeriod = monthlyPassive * (daysToAdvance / 30);
+        newStats = {
+            ...newStats,
+            personalWealth: Number((newStats.personalWealth + passiveThisPeriod / 1_000_000).toFixed(4)),
+        };
+    }
+
     // Resolve pending bets against today's sim results
     const betResolution = resolveBets(state.bets ?? [], allSimResults);
     if (betResolution.netChange !== 0) {
@@ -609,6 +620,15 @@ export const processTurn = async (
             personalWealth: Number((newStats.personalWealth + betResolution.netChange / 1_000_000).toFixed(4)),
         };
     }
+    // Prune resolved bets — keep all pending + the 50 most recent resolved
+    const MAX_ARCHIVED_BETS = 50;
+    const prunedBets = [
+        ...betResolution.updatedBets.filter(b => b.status === 'pending'),
+        ...betResolution.updatedBets
+            .filter(b => b.status !== 'pending')
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, MAX_ARCHIVED_BETS),
+    ];
 
     return {
         day: result.day || (stateWithSim.day + 1),
@@ -649,6 +669,6 @@ export const processTurn = async (
         lastSimResults: allSimResults || [],
         prevTeams: state.teams,
         daysSimulated: daysToSimulate,
-        bets: betResolution.updatedBets,
+        bets: prunedBets,
     };
 };

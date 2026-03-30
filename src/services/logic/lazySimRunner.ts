@@ -260,12 +260,19 @@ export const runLazySim = async (
       );
       const batchPayWealth = batchPayResult.totalNetPay / 1_000_000;
 
+      // Ghost real estate passive income — silently trickles in each batch
+      const monthlyPassive = (state.realEstateInventory ?? [])
+        .reduce((s: number, a: any) => s + Math.floor(a.price * 0.004), 0);
+      const passiveBatchWealth = monthlyPassive > 0
+        ? (monthlyPassive * (batchDays / 30)) / 1_000_000
+        : 0;
+
       state = {
         ...stateWithSim,
         // Apply the compounded stats from per-day calculations
         stats: {
           ...runningState.stats,
-          personalWealth: Number((runningState.stats.personalWealth + batchPayWealth).toFixed(2)),
+          personalWealth: Number((runningState.stats.personalWealth + batchPayWealth + passiveBatchWealth).toFixed(2)),
         },
         leagueStats: runningState.leagueStats,
         players: updatedPlayers,

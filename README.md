@@ -1,3 +1,13 @@
+## Developer Docs
+
+| Doc | What it covers |
+|-----|----------------|
+| [EVENTS_README.md](./EVENTS_README.md) | Full event pipeline — actions → social posts → news feed → UI |
+| [SOCIAL_README.md](./SOCIAL_README.md) | Social feed deep-dive — handles, templates, SocialEngine, Charania builders |
+| [NEWS_README.md](./NEWS_README.md) | News feed deep-dive — NewsItem type, NewsGenerator, lazySimNewsGenerator 5 passes, NewsFeed.tsx anatomy, photo enrichment, knowledge gaps |
+
+---
+
 ## Run Locally
 
 **Prerequisites:** Node.js, a Gemini API key
@@ -62,6 +72,13 @@ Two gist-backed data files live in `src/data/` and are fetched once per session 
 | Mar 2026 | LLM echoed payload outcomeText verbatim in news/social/emails | `simulation.ts` instruction #2 + `isSpecificEvent` block + `system.ts` line 94 reworded: `outcomeText` is now an "event hint" (factual context only). LLM writes its own response `outcomeText`; all content (news, @Shams tweets, fan posts, emails) must use authentic voices — never copy the hint verbatim. |
 | Mar 2026 | Dinner action excluded referees | Added `includesRefs: true` to `dinner` eligibility in `personActionDefs.ts`. Refs now appear alongside players and league office staff. |
 | Mar 2026 | SIMULATE_TO_DATE crossing Apr 13–20 didn't generate/simulate play-in | `runSimulation` day loop in `simulationHandler.ts` didn't run bracket injection (that happened in `gameLogic.ts` after the loop returned). Fixed by extracting `applyPlayoffLogic()` and calling it BEFORE each day (inject games) and AFTER (advance bracket). `gameLogic.ts` now prefers `stateWithSim.playoffs` over `state.playoffs` to prevent double-generation. |
+| Mar 2026 | `state.bets` grew unbounded — no archival for resolved bets | After `resolveBets()` in `gameLogic.ts`: keep all `pending` + 50 most-recent resolved (sorted by date desc). Older resolved bets pruned each turn. |
+| Mar 2026 | RealStern `monthlyPassive` income was cosmetic only | `gameLogic.ts`: `monthlyPassive = inventory.reduce(price × 0.004)` applied as ghost `personalWealth` addition per turn (`monthlyPassive × daysToAdvance / 30 / 1M`). Same in `lazySimRunner.ts` per batch. Payslip unchanged — shows league salary only. |
+| Mar 2026 | Sportsbook wager showed $100M when entering 100 | `formatCurrency(wager)` treated wager as millions. Fixed: `formatCurrency(wager, false)`. Validation: `wager > personalWealth * 1_000_000`. Input uses string state (`wagerStr`) to allow clearing and cents (step=0.01). |
+| Mar 2026 | Sportsbook input stuck at 0, couldn't clear to retype | Wager state was `number` — `Number('')` = 0 prevented clearing. Changed to `string` state; parsed to float only on use. `Math.max(0, ...)` removed from onChange. |
+| Mar 2026 | RealStern portfolio cards had cluttered inline action buttons | Replaced with `RealSternActionModal` — cards are now fully clickable, modal shows all actions (invite, gift, sell 80%, abandon with confirm). |
+| Mar 2026 | RealStern purchase had no misclick protection | Added checkbox confirmation to `PurchaseModal`: "I confirm I want to acquire X for $Y". Button disabled until checked + affordable. |
+| Mar 2026 | TeamFinancesView / Detailed not mobile-friendly | Pie chart containers: `w-56 h-56 sm:w-64 sm:h-64`. Legend: `sm:ml-8`. Flex direction: `flex-col sm:flex-row`. Header font sizes and padding scale with `sm:` breakpoints. |
 
 ### Non-Obvious Architecture Notes
 
@@ -110,6 +127,13 @@ Two gist-backed data files live in `src/data/` and are fetched once per session 
 - **Seasonal sidebar badge**: `NavigationMenu` computes `seasonalBadge` — counts urgent seasonal actions (≤7 days to deadline, not completed). Checks: rig voting, celebrity roster, dunk contest, 3-point contest, injured All-Star. Badge count shown on the "Seasonal Actions" nav item.
 - **betResolver — wager deduction model (Model A)**: `placeBet` in `GameContext.tsx` deducts the wager from `personalWealth` immediately at placement. `resolveBets` therefore returns `netChange = potentialPayout - wager` on a win and `0` on a loss (money is already gone). Don't switch to Model B (deduct-on-loss) without updating both `placeBet` and `resolveBets`.
 - **betResolver — reb fallback**: `PlayerGameStats.reb` is initialized at 0 in coordinated stats but may stay 0. Always use `stat.reb || (stat.orb + stat.drb)` when resolving reb/pra props. The fallback is baked into `betResolver.ts`.
+- **Sportsbook wager units**: `wager` is always in ACTUAL DOLLARS (not millions). `placeBet` divides by 1,000,000 to deduct from `personalWealth`. All display calls must use `formatCurrency(wager, false)` (isBaseMillions=false). Validation: `wager > state.stats.personalWealth * 1_000_000`. Default wager is $10. Quick buttons: $10/$50/$100/$500. Input accepts step 0.01 for cents.
+- **Sportsbook file split (Mar 2026)**: `SportsBookView.tsx` imports from `./sportsbook/` subfolder — `sportsbookTypes.ts` (types + pure helpers), `SportsbookShared.tsx` (OddsButton, TabButton, StatusBadge, EmptyState), `BetSlipPanel.tsx` (wager + slip UI). Mobile: slip appears as FAB + bottom drawer on screens < md; desktop keeps the right sidebar.
+- **Mobile-first design requirement**: All views must be responsive via Tailwind breakpoints (`sm:`, `md:`, `lg:`). Mobile-first means: default classes apply to small screens, breakpoint-prefixed classes override for larger screens. Use `flex-col` → `sm:flex-row`, `text-sm` → `sm:text-xl`, `p-3` → `sm:p-6` patterns. Never hardcode fixed widths (e.g. `w-64`) without a mobile fallback. Pie chart containers: use `w-56 h-56 sm:w-64 sm:h-64`. Grids: `grid-cols-1 sm:grid-cols-2` or `grid-cols-2 sm:grid-cols-4`.
+- **Confirmation modals for destructive/costly actions**: Always gate irreversible purchases with a checkbox ("I confirm I want to acquire X for $Y") before the submit button activates. `PurchaseModal` in `RealStern.tsx` uses a `useState(false)` checkbox — button is `disabled={!canAfford || !confirmed}`. This pattern prevents misclicks on expensive real estate.
+- **PersonSelectorModal reuse**: `src/components/modals/PersonSelectorModal.tsx` is the single modal for picking contacts (players, staff, league office, refs). Pass `actionType="general"` for neutral contexts (invite, gift, donate). Pass `title` to customize the header. `onSelect` receives `(contacts: Contact[], reason?: string)` — the optional `reason` textarea appears for `actionType="general"`. Always reuse this modal instead of building custom contact pickers.
+- **AssetActionModal (CommishStore)**: `src/components/modals/AssetActionModal.tsx` — actions for store inventory items: Gift (→ PersonSelectorModal), Sell (70% refund), Discard, Deploy (LLM-driven). For real estate inventory use `RealSternActionModal.tsx` (separate file, different actions: Invite, Gift, Sell 80%, Abandon).
+- **RealSternActionModal**: `src/components/modals/RealSternActionModal.tsx` — replaces inline action buttons in `InventoryCard`. Click any portfolio card → modal opens. Actions: Invite Guest (→ PersonSelectorModal with optional reason), Gift (→ PersonSelectorModal), Sell 80%, Abandon (inline confirm inside modal). InventoryCard is now fully clickable with no action buttons on card surface.
 - **betResolver — playerId is internalId**: `BetLeg.playerId` is `player.internalId` (the BBGM UUID string), NOT the NBA.com numeric ID. `GameResult.homeStats[].playerId` is also `internalId`. Never join on `player.id` or `nbaId` for bet resolution.
 - **betResolver — DNP behavior**: If a player appears in `GameResult.playerDNPs` or is absent from both `homeStats` and `awayStats`, their leg returns `null` → bet stays `pending`, never `lost`. This prevents bettors from losing wagers on scratches/DNPs.
 - **betResolver — parseLine**: Extracts the numeric line from a description string. Handles `"Over X"` / `"Under X"` patterns (for totals and props) and signed spread patterns like `"LAL -3.5"` / `"BOS +3.5"`. Spread descriptions come from SportsBookView as `"${abbrev} ${sign}${number}"` (e.g. `"BOS +3.5"` or `"LAL -3.5"`). Over/Under descriptions are `"Over 220.5 pts"` or `"LeBron James Over 25.5 PTS"`.
@@ -298,7 +322,112 @@ See `LEAGUE_RULES_README.md` for how to wire commissioner rule toggles/sliders t
 
 ---
 
-## Pending Work (pick up here next session)
+## Knowledge Gaps (Things That Are Broken, Unfinished, or Surprising)
+
+These are issues discovered while reading the code — not bugs that crashed things, but sharp edges that will cause problems during a makeover or when adding new features.
+
+### News Feed
+
+| Gap | Location | Impact |
+|-----|----------|--------|
+| `NewsItem` has no `category` field | `types.ts:461` | Every card says "Breaking News" hardcoded — can't badge by type without parsing the ID string |
+| Drama pass (coach hot seat + trade rumor) never fires in regular gameplay | `lazySimNewsGenerator.ts:173` | `if (skipInjuries) return news` exits BEFORE Pass 5. `socialHandler` always passes `skipInjuries=true`. Drama only fires during multi-day lazy sim. |
+| 4 playoff/finals templates exist but have zero callers | `newsTemplates.ts` | `playoff_series_win`, `playoff_elimination`, `nba_champion`, `finals_mvp` are scaffolding only — no code calls `NewsGenerator.generate()` for these yet |
+| "Read Full Report" button is a dead CTA | `NewsFeed.tsx:111` | No click handler, no modal. Either remove or wire a `NewsDetailModal` |
+| Bookmark + Share buttons are visual-only | `NewsFeed.tsx:87-93` | No state, no handler, no persistence |
+| `newsType: 'weekly' as any` cast in fallback | `lazySimNewsGenerator.ts:239` | `NewsItem` type was missing `newsType` when fallback was written — needs cleanup |
+| `gamesToTime()` duplicated in two files | `lazySimNewsGenerator.ts` + `charania.ts` | Identical function exists twice. Fix in one doesn't fix the other |
+
+### Social Feed
+
+| Gap | Location | Impact |
+|-----|----------|--------|
+| `wojnarowski.ts` and `aggregators.ts` are commented out | `templates/index.ts` | These template files exist but are not loaded — probably incomplete/broken. Check before makeover |
+| `handlers.ts` (legacy `TWITTER_HANDLERS[]`) is not consumed by `SocialEngine` | `src/data/social/handlers.ts` | Has `probability` and `descriptions` fields. Unknown if anything still imports it. Don't delete without grepping usages |
+| `src/data/social/templates.ts` is a separate barrel from `src/services/social/templates/` | Both paths exist | Two `templates.ts` files with different shapes. The data folder one may be legacy. Confirm before makeover |
+| `LLM_OWNED_HANDLES` suppresses `shams`+`woj` `type:'news'` templates when LLM ON | `SocialEngine.ts:13` | If you add a new insider template and forget `type:'news'`, it will duplicate with LLM posts |
+| `photoEnricher` cache never cleared between simulations unless explicitly called | `photoEnricher.ts` | `clearPhotoEnricherCache()` must be called when starting a new game — otherwise stale photo → null mappings persist from prior session |
+
+### Sportsbook
+
+| Gap | Location | Impact |
+|-----|----------|--------|
+| Lines/odds regenerate every time the view opens | `SportsBookView.tsx` | Cosmetic inconsistency — opened bets show different odds than when placed |
+| Push (exact tie) resolves as loss | `betResolver.ts` | No push/refund logic. Bettors lose on exact ties |
+| ~~`state.bets` grows unbounded~~ — **FIXED Mar 2026** | `gameLogic.ts` | After each `resolveBets` call: all `pending` bets kept + up to 50 most-recent resolved bets by date. Older resolved bets pruned. |
+
+### RealStern
+
+| Gap | Location | Impact |
+|-----|----------|--------|
+| ~~`monthlyPassive` income purely cosmetic~~ — **FIXED Mar 2026** | `gameLogic.ts`, `lazySimRunner.ts` | `monthlyPassive` (`price × 0.004` per asset) now silently added to `personalWealth` each day advance (pro-rated: `monthlyPassive × days / 30 / 1_000_000`). Not in payslips — payslip is league salary only. Both regular turns and lazy-sim batches wired. |
+
+### Architecture
+
+| Gap | Location | Impact |
+|-----|----------|--------|
+| `GameResult` defined in two places | `src/types.ts` + `src/services/simulation/types.ts` | Any new field MUST be added to BOTH files or TypeScript errors in the engine only |
+| Raw BBGM OVR vs 2K OVR conflation risk | everywhere | `player.overallRating` is ~0–100 BBGM scale. `convertTo2KRating()` maps to ~60–99 2K scale. Displaying `overallRating` directly as a 2K number (e.g. "OVR 72") understates good players significantly |
+| `Revenue` labels say "Expected" — sponsor system not built | `Dashboard.tsx`, `BroadcastingView.tsx` | "Expected Annual Revenue" is a placeholder. When sponsors are added the label and value formula both change |
+| `workerProviders.ts` `TOGETHER_WORKER` constant | `api.ts` | `@google/genai` package removed Mar 2026. Local shims replace `GenerateContentParameters` etc. If you add a new LLM call, use Together AI Worker path, not any `@google/genai` import |
+
+---
+
+## Session Contributions (What Was Added to This Codebase and Why)
+
+A reverse-chronological record of significant additions from dev sessions, with the rationale preserved so future sessions understand the context.
+
+### Mar 30, 2026 — Bets archival + RealStern passive income
+- `state.bets` was growing unbounded — after each `resolveBets`, pruned to `pending` bets + 50 most-recent resolved (by date desc)
+- `monthlyPassive` real estate income was cosmetic-only — now silently applied to `personalWealth` in both `gameLogic.ts` (regular turns, pro-rated by `daysToAdvance`) and `lazySimRunner.ts` (lazy-sim batches, pro-rated by `batchDays`). Rate: `price × 0.004` per asset per month. Not surfaced in payslips — payslip is league salary only.
+
+### Mar 30, 2026 — Social & News Docs
+- Added `SOCIAL_README.md` — full social feed system documentation (handles registry, SocialEngine, template architecture, Charania two-layer system, transaction injection pattern)
+- Added `NEWS_README.md` — full news feed documentation (NewsItem type, NewsGenerator, lazySimNewsGenerator 5 passes, NewsFeed anatomy, photo enrichment, knowledge gaps)
+- Updated `README.md` developer docs table + knowledge gaps section + session contributions
+
+### Mar 2026 — Sportsbook
+- `SportsBookView.tsx` split into `./sportsbook/` subfolder: `sportsbookTypes.ts` (pure types + helpers), `SportsbookShared.tsx` (shared UI atoms), `BetSlipPanel.tsx` (wager + slip)
+- Wager state changed from `number` to `string` to allow clearing/retyping (input stuck at 0 bug)
+- `formatCurrency(wager, false)` fix — wager is actual dollars, not millions
+- Mobile: BetSlip appears as FAB + bottom drawer on `< md`; desktop keeps right sidebar
+
+### Mar 2026 — RealStern
+- `RealSternActionModal.tsx` added — replaces inline action buttons on portfolio cards
+- Click any owned asset → modal with: Invite Guest, Gift, Sell 80%, Abandon (confirm inside modal)
+- `PurchaseModal` added checkbox confirmation guard ("I confirm I want to acquire X for $Y")
+- Mobile: pie chart / legend layout uses `sm:` breakpoints for responsiveness
+
+### Mar 2026 — Playoff + Play-in Fix
+- `applyPlayoffLogic()` extracted in `simulationHandler.ts`, called BEFORE each day (inject games) and AFTER (advance bracket)
+- Fixes `SIMULATE_TO_DATE` crossing Apr 13–20 not generating play-in games
+
+### Mar 2026 — Mood System (Phase 1)
+- `src/utils/mood/` barrel added: `moodScore.ts`, `moodTraits.ts`, `dramaProbability.ts`, `moodTypes.ts`
+- 7 traits: DIVA, LOYAL, MERCENARY, COMPETITOR (BBGM-inspired), VOLATILE, AMBASSADOR, DRAMA_MAGNET
+- `computeMoodScore()` is stateless (computed fresh, not cached in player object)
+- Traits stored in `player.moodTraits?` — backfilled lazily in `gameLogic.ts`
+- Discipline story lottery now mood-weighted
+
+### Mar 2026 — FightGenerator
+- `src/services/FightGenerator.ts` — 0.4% base per game, boosted by VOLATILE/DRAMA_MAGNET traits
+- `GameResult.fight?: FightResult` on both `types.ts` AND `simulation/types.ts`
+- Fight seeds injected into `actionProcessor.ts` story loop alongside discipline stories
+
+### Mar 2026 — Win Streak / Snapped News
+- Streak thresholds changed from `[5, 8, 12]` to `[5, 7, 10, 14]`
+- `long_win_streak` category added (8+ games, more dramatic language)
+- `streak_snapped` category added — fires when team drops from 5+ W streak to L
+- `prevTeams` optional arg added to `generateLazySimNews` for streak comparison
+
+### Mar 2026 — LLM Anti-Echo Fix
+- `simulation.ts` prompt instruction #2: `outcomeText` reframed as "event hint" not output to copy
+- `isSpecificEvent` block + `system.ts` line 94 updated to same effect
+- All generated content must use authentic voices — never verbatim from the hint
+
+### Mar 2026 — Paycheck / Lazy Sim Batch Fix
+- `generatePaychecks` now called per batch in `lazySimRunner.ts` with `lastPayDate` tracking
+- Prevents all paychecks from stacking and firing on the next real day
 
 ### Real Stern — passive income not wired
 - `monthlyPassive` income is computed in RealStern UI but **not** wired into `generatePaychecks`.
