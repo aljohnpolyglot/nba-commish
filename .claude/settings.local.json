@@ -40,7 +40,8 @@
       "Bash(sed -n '1,10p' src/components/allstar/allstarevents/dunk/DunkContest.tsx)",
       "Bash(sed -n '1,10p' src/components/allstar/allstarevents/dunk/PlayFeed.tsx)",
       "Bash(sed -n '1,10p' src/components/allstar/allstarevents/dunk/Scoreboard.tsx)",
-      "Bash(sed -n '1,10p' src/components/allstar/allstarevents/dunk/useDunkContest.ts)"
+      "Bash(sed -n '1,10p' src/components/allstar/allstarevents/dunk/useDunkContest.ts)",
+      "Bash(grep:*)"
     ]
   }
 }
