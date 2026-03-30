@@ -620,15 +620,8 @@ export const processTurn = async (
             personalWealth: Number((newStats.personalWealth + betResolution.netChange / 1_000_000).toFixed(4)),
         };
     }
-    // Prune resolved bets — keep all pending + the 50 most recent resolved
-    const MAX_ARCHIVED_BETS = 50;
-    const prunedBets = [
-        ...betResolution.updatedBets.filter(b => b.status === 'pending'),
-        ...betResolution.updatedBets
-            .filter(b => b.status !== 'pending')
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-            .slice(0, MAX_ARCHIVED_BETS),
-    ];
+    // Keep all bets — pagination in the UI handles large lists
+    const prunedBets = betResolution.updatedBets;
 
     return {
         day: result.day || (stateWithSim.day + 1),

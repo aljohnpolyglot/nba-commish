@@ -418,9 +418,9 @@ export default function CommishStore() {
   return (
     <div className="min-h-screen flex flex-col bg-[#f4f4f4] text-[#333]">
       {/* Navbar */}
-      <nav className="bg-nba-dark px-4 md:px-6 py-3 sticky top-0 z-50 border-b-4 border-nba-blue shadow-xl">
+      <nav className="bg-nba-dark px-3 md:px-6 py-2 md:py-3 sticky top-0 z-50 border-b-4 border-nba-blue shadow-xl">
         {/* Row 1: logo + compact right */}
-        <div className="flex justify-between items-center mb-2 md:mb-0">
+        <div className="flex justify-between items-center mb-1 md:mb-0">
           <h1
             className="text-white font-black text-lg md:text-xl tracking-tighter cursor-pointer flex items-center gap-2 shrink-0"
             onClick={goHome}

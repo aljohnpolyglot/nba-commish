@@ -30,6 +30,9 @@ export const combinedOdds = (legs: SlipLeg[]): number =>
 
 export const round05 = (n: number) => Math.round(n * 2) / 2;
 
+// Always returns a .5 line (e.g. 18.9 → 18.5, 21.1 → 21.5) to avoid push situations
+export const ensureHalf = (n: number): number => Math.floor(n) + 0.5;
+
 export const getBestStat = (stats: any[] | undefined, season: number) => {
   if (!stats?.length) return null;
   const seasonStats = stats.filter((s: any) => s.season === season && !s.playoffs);

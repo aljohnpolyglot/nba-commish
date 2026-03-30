@@ -128,8 +128,10 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
           const opp = state.teams.find(t => t.id === oppId);
 
           const schedGame = state.schedule.find((g: any) => g.gid === game.gameId);
-          const isPreseason = schedGame?.isPreseason === true ||
-            (() => { try { return new Date(game.date).getTime() < OPENING_NIGHT_MS; } catch { return false; } })();
+          const gameTimeMs = (() => { try { return new Date(game.date).getTime(); } catch { return 0; } })();
+          // Never flag as preseason if the game date is on or after opening night
+          const isPreseason = gameTimeMs > 0 && gameTimeMs < OPENING_NIGHT_MS &&
+            (schedGame?.isPreseason === true || !schedGame);
 
           const isWin = isHome ? game.homeScore > game.awayScore : game.awayScore > game.homeScore;
           const resultStr = `${isWin ? 'W' : 'L'}, ${isHome ? game.homeScore : game.awayScore}-${isHome ? game.awayScore : game.homeScore}`;

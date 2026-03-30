@@ -323,41 +323,40 @@ export default function RealStern() {
   return (
     <div className="prestige-scope min-h-screen flex flex-col bg-white">
       {/* Header */}
-      <header className="bg-prestige-black text-white px-4 sm:px-6 py-4 shadow-2xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 sm:w-12 sm:h-12 bg-prestige-gold rounded-full flex items-center justify-center shadow-inner flex-shrink-0">
-              <Building className="text-prestige-black" size={18} />
+      <header className="bg-prestige-black text-white px-3 sm:px-6 py-2 sm:py-4 shadow-2xl sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto flex flex-row items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            <div className="w-7 h-7 sm:w-12 sm:h-12 bg-prestige-gold rounded-full flex items-center justify-center shadow-inner flex-shrink-0">
+              <Building className="text-prestige-black" size={14} />
             </div>
-            <div>
-              <h1 className="serif text-xl sm:text-3xl font-light tracking-widest uppercase">Real Stern</h1>
-              <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] sm:tracking-[0.3em] text-prestige-gold font-semibold">Private Acquisitions · Commissioner's Office</p>
+            <div className="min-w-0">
+              <h1 className="serif text-base sm:text-3xl font-light tracking-widest uppercase truncate">Real Stern</h1>
+              <p className="hidden sm:block text-[9px] sm:text-[10px] uppercase tracking-[0.2em] sm:tracking-[0.3em] text-prestige-gold font-semibold">Private Acquisitions · Commissioner's Office</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 sm:gap-8 w-full sm:w-auto justify-between sm:justify-end">
-            <div className="flex flex-col">
-              <span className="text-[10px] uppercase tracking-widest text-gray-400">Liquidity</span>
-              <div className="flex items-center gap-1.5 text-prestige-gold">
-                <Wallet size={14} className="sm:w-[18px] sm:h-[18px]" />
-                <span className="text-base sm:text-2xl font-light tracking-tighter serif">${wealth.toLocaleString()}</span>
+          <div className="flex items-center gap-2 sm:gap-8 flex-shrink-0">
+            <div className="flex flex-col items-end sm:items-start">
+              <span className="hidden sm:block text-[10px] uppercase tracking-widest text-gray-400">Liquidity</span>
+              <div className="flex items-center gap-1 sm:gap-1.5 text-prestige-gold">
+                <Wallet size={12} className="sm:w-[18px] sm:h-[18px]" />
+                <span className="text-xs sm:text-2xl font-light tracking-tighter serif">${wealth.toLocaleString()}</span>
               </div>
             </div>
 
-            <nav className="flex bg-white/5 rounded-full p-1 border border-white/10">
+            <nav className="flex bg-white/5 rounded-full p-0.5 sm:p-1 border border-white/10">
               <button
                 onClick={() => setView('store')}
-                className={`px-3 sm:px-6 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs uppercase tracking-widest transition-all ${view === 'store' ? 'bg-prestige-gold text-prestige-black font-bold' : 'text-gray-400 hover:text-white'}`}
+                className={`px-2 sm:px-6 py-1 sm:py-2 rounded-full text-[9px] sm:text-xs uppercase tracking-widest transition-all ${view === 'store' ? 'bg-prestige-gold text-prestige-black font-bold' : 'text-gray-400 hover:text-white'}`}
               >
                 <span className="hidden sm:inline">Acquisitions</span>
                 <span className="sm:hidden">Buy</span>
               </button>
               <button
                 onClick={() => setView('inventory')}
-                className={`px-3 sm:px-6 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs uppercase tracking-widest transition-all ${view === 'inventory' ? 'bg-prestige-gold text-prestige-black font-bold' : 'text-gray-400 hover:text-white'}`}
+                className={`px-2 sm:px-6 py-1 sm:py-2 rounded-full text-[9px] sm:text-xs uppercase tracking-widest transition-all ${view === 'inventory' ? 'bg-prestige-gold text-prestige-black font-bold' : 'text-gray-400 hover:text-white'}`}
               >
-                <span className="hidden sm:inline">Portfolio ({inventory.length})</span>
-                <span className="sm:hidden">Portfolio ({inventory.length})</span>
+                Portfolio ({inventory.length})
               </button>
             </nav>
           </div>

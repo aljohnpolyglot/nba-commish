@@ -8,10 +8,12 @@ import {
 } from 'lucide-react';
 import {
   BetTab, PropStat, SlipMode, SlipLeg,
-  decimalToAmerican, combinedOdds, round05, getPlayerStats
+  decimalToAmerican, combinedOdds, round05, getPlayerStats, ensureHalf
 } from './sportsbook/sportsbookTypes';
 import { OddsButton, TabButton, StatusBadge, EmptyState } from './sportsbook/SportsbookShared';
 import { BetSlipPanel } from './sportsbook/BetSlipPanel';
+import { BoxScoreModal } from '../../modals/BoxScoreModal';
+import { calcTeamRatings, expectedTeamScore } from '../../../services/simulation/teamratinghelper';
 
 /* ─── Main Component ─────────────────────────────────────────── */
 export const SportsbookView = () => {
@@ -25,6 +27,10 @@ export const SportsbookView = () => {
   const [expandedGames, setExpandedGames] = useState<Set<number>>(new Set());
   // Mobile: slip drawer open
   const [slipDrawerOpen, setSlipDrawerOpen] = useState(false);
+  // Boxscore modal for settled bets
+  const [selectedBoxScore, setSelectedBoxScore] = useState<any>(null);
+  // My Bets pagination
+  const [myBetsPage, setMyBetsPage] = useState(0);
 
   const wager = Math.max(0, parseFloat(wagerStr) || 0);
   // personalWealth is in millions → max wager in dollars
@@ -50,22 +56,29 @@ export const SportsbookView = () => {
     const away = state.teams.find((t: any) => t.id === game.awayTid);
     if (!home || !away) return null;
 
-    const juice = 0.05;
-    const hAdv = 5;
-    const hStr = home.strength + hAdv;
-    const aStr = away.strength;
-    const total = hStr + aStr;
-    const hProb = hStr / total;
-    const aProb = aStr / total;
-    const homeML = Number((1 / (hProb + juice)).toFixed(2));
-    const awayML = Number((1 / (aProb + juice)).toFixed(2));
+    // Use team ratings from the simulator for realistic projected scores
+    const homeRatings = calcTeamRatings(home.id, state.players);
+    const awayRatings = calcTeamRatings(away.id, state.players);
+    const homeExpected = expectedTeamScore(homeRatings.offRating, awayRatings.defRating, homeRatings.pace);
+    const awayExpected = expectedTeamScore(awayRatings.offRating, homeRatings.defRating, awayRatings.pace);
 
-    const rawSpread = round05((home.strength + hAdv - away.strength) / 2);
+    const HOME_PTS_ADV = 3;
+    const projTotal = Math.round(homeExpected + awayExpected);
+
+    // Spread: home expected point margin (positive = home favored)
+    const rawSpread = round05(homeExpected - awayExpected + HOME_PTS_ADV);
     const homeSpread = -rawSpread;
     const awaySpread = +rawSpread;
-    const spreadOdds = Number((1 / 0.5238).toFixed(3));
+    const spreadOdds = Number((1 / 0.5238).toFixed(3)); // -110
 
-    const projTotal = Math.round(210 + (home.strength + away.strength) / 2 * 0.3);
+    // ML scaled from spread so heavy favorites aren't cheap
+    // scale=0.031: spread=9 → ~-430 favorite, spread=0 → -110 pick-em
+    const hProbTrue = Math.min(0.92, Math.max(0.08, 0.5 + rawSpread * 0.031));
+    const aProbTrue = 1 - hProbTrue;
+    const mlVig = 1.04;
+    const homeML = Number((1 / (hProbTrue * mlVig)).toFixed(3));
+    const awayML = Number((1 / (aProbTrue * mlVig)).toFixed(3));
+
     const ouJuice   = 0.053;
     const overOdds  = Number((1 / (0.5 + ouJuice)).toFixed(2));
     const underOdds = Number((1 / (0.5 + ouJuice)).toFixed(2));
@@ -81,7 +94,25 @@ export const SportsbookView = () => {
       projTotal, overOdds, underOdds,
       awayTeamTotal, homeTeamTotal, ttOdds,
     };
-  }).filter(Boolean), [todaysGames, state.teams]);
+  }).filter(Boolean), [todaysGames, state.teams, state.players]);
+
+  /* ─── Team Records (for Today's Lines) ──────────────────── */
+  const teamRecords = useMemo(() => {
+    const records: Record<number, { w: number; l: number }> = {};
+    const nonRegularGids = new Set(
+      state.schedule.filter((g: any) => g.isPreseason || g.isPlayoff || g.isPlayIn).map((g: any) => g.gid)
+    );
+    (state.boxScores as any[]).filter(g =>
+      !g.isAllStar && !g.isRisingStars && !g.isCelebrityGame && !nonRegularGids.has(g.gameId)
+    ).forEach(g => {
+      const homeWon = g.homeScore > g.awayScore;
+      if (!records[g.homeTeamId]) records[g.homeTeamId] = { w: 0, l: 0 };
+      if (!records[g.awayTeamId]) records[g.awayTeamId] = { w: 0, l: 0 };
+      homeWon ? records[g.homeTeamId].w++ : records[g.homeTeamId].l++;
+      homeWon ? records[g.awayTeamId].l++ : records[g.awayTeamId].w++;
+    });
+    return records;
+  }, [state.boxScores, state.schedule]);
 
   /* ─── Player Props ────────────────────────────────────────── */
   const playerProps = useMemo(() => {
@@ -119,10 +150,10 @@ export const SportsbookView = () => {
           props.push({
             player: p, team, opponent: opp, stats,
             line: {
-              pts: round05(stats.ppg),
-              reb: round05(stats.rpg),
-              ast: round05(stats.apg),
-              pra: round05(stats.ppg + stats.rpg + stats.apg),
+              pts: ensureHalf(stats.ppg),
+              reb: ensureHalf(stats.rpg),
+              ast: ensureHalf(stats.apg),
+              pra: ensureHalf(stats.ppg + stats.rpg + stats.apg),
             },
             overOdds:  Number((1 / (0.52 + 0.005)).toFixed(3)),
             underOdds: Number((1 / (0.48 + 0.005)).toFixed(3)),
@@ -199,6 +230,10 @@ export const SportsbookView = () => {
       ? Math.max(...won.map((b: any) => b.potentialPayout - b.wager))
       : null;
 
+    const biggestLoss = lost.length
+      ? Math.max(...lost.map((b: any) => b.wager))
+      : null;
+
     const bestParlay = won
       .filter((b: any) => b.type === 'parlay' || (b.legs?.length ?? 0) > 1)
       .reduce((best: number | null, b: any) => {
@@ -225,7 +260,7 @@ export const SportsbookView = () => {
     return {
       pending: bets.filter(b => b.status === 'pending').length,
       won: won.length, lost: lost.length, winRate, profit,
-      biggestWin, bestParlay, totalWagered, longestStreak,
+      biggestWin, biggestLoss, bestParlay, totalWagered, longestStreak,
     };
   }, [state.bets]);
 
@@ -291,6 +326,9 @@ export const SportsbookView = () => {
                         <div>
                           <p className="font-black text-white text-xs sm:text-sm uppercase">{card.away.abbrev}</p>
                           <p className="text-[10px] sm:text-xs text-slate-500">{card.away.name.split(' ').slice(-1)[0]}</p>
+                          {teamRecords[card.away.id] && (
+                            <p className="text-[10px] text-slate-600 font-mono">{teamRecords[card.away.id].w}-{teamRecords[card.away.id].l}</p>
+                          )}
                         </div>
                       </div>
                       <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">@</span>
@@ -298,6 +336,9 @@ export const SportsbookView = () => {
                         <div className="text-right">
                           <p className="font-black text-white text-xs sm:text-sm uppercase">{card.home.abbrev}</p>
                           <p className="text-[10px] sm:text-xs text-slate-500">{card.home.name.split(' ').slice(-1)[0]}</p>
+                          {teamRecords[card.home.id] && (
+                            <p className="text-[10px] text-slate-600 font-mono">{teamRecords[card.home.id].w}-{teamRecords[card.home.id].l}</p>
+                          )}
                         </div>
                         <img src={card.home.logoUrl} alt={card.home.abbrev} className="w-7 h-7 sm:w-9 sm:h-9 object-contain" referrerPolicy="no-referrer" />
                       </div>
@@ -465,9 +506,10 @@ export const SportsbookView = () => {
                           </div>
                           <div className="text-right flex-shrink-0 hidden sm:block">
                             <p className="text-[10px] font-bold text-slate-500 mb-0.5">Season Avg</p>
-                            <p className="text-[10px] text-slate-400 font-mono leading-tight">{prop.stats.ppg} PPG</p>
-                            <p className="text-[10px] text-slate-400 font-mono leading-tight">{prop.stats.rpg} RPG</p>
-                            <p className="text-[10px] text-slate-400 font-mono leading-tight">{prop.stats.apg} APG</p>
+                            {propStat === 'pts' && <p className="text-sm font-black text-emerald-300 font-mono">{prop.stats.ppg} PPG</p>}
+                            {propStat === 'reb' && <p className="text-sm font-black text-emerald-300 font-mono">{prop.stats.rpg} RPG</p>}
+                            {propStat === 'ast' && <p className="text-sm font-black text-emerald-300 font-mono">{prop.stats.apg} APG</p>}
+                            {propStat === 'pra' && <p className="text-sm font-black text-indigo-300 font-mono">{round05(prop.stats.ppg + prop.stats.rpg + prop.stats.apg)} PRA</p>}
                           </div>
                         </div>
 
@@ -516,12 +558,13 @@ export const SportsbookView = () => {
                 ))}
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
                 {[
-                  { label: 'Biggest Win',   value: betStats.biggestWin !== null ? `+${formatCurrency(betStats.biggestWin, false)}` : '--', color: 'emerald' },
-                  { label: 'Best Parlay',   value: betStats.bestParlay !== null ? decimalToAmerican(betStats.bestParlay) : '--',            color: 'indigo'  },
-                  { label: 'Total Wagered', value: formatCurrency(betStats.totalWagered, false),                                           color: 'white'   },
-                  { label: 'Best Streak',   value: betStats.longestStreak > 0 ? `${betStats.longestStreak}W` : '--',                       color: 'amber'   },
+                  { label: 'Biggest Win',  value: betStats.biggestWin  !== null ? `+${formatCurrency(betStats.biggestWin, false)}`  : '--', color: 'emerald' },
+                  { label: 'Biggest Loss', value: betStats.biggestLoss !== null ? `-${formatCurrency(betStats.biggestLoss, false)}` : '--', color: 'rose'    },
+                  { label: 'Best Parlay',  value: betStats.bestParlay  !== null ? decimalToAmerican(betStats.bestParlay) : '--',             color: 'indigo'  },
+                  { label: 'Total Wagered',value: formatCurrency(betStats.totalWagered, false),                                             color: 'white'   },
+                  { label: 'Best Streak',  value: betStats.longestStreak > 0 ? `${betStats.longestStreak}W` : '--',                         color: 'amber'   },
                 ].map(stat => (
                   <div key={stat.label} className="bg-[#1e232c] border border-slate-700/30 rounded-xl p-3 text-center">
                     <p className={`text-base sm:text-lg font-black text-${stat.color}-400 font-mono`}>{stat.value}</p>
@@ -547,42 +590,89 @@ export const SportsbookView = () => {
 
               {(state.bets?.length ?? 0) === 0 ? (
                 <EmptyState icon={<Trophy className="w-8 h-8" />} title="No bets yet" body="Place your first bet from the Lines or Props tabs." />
-              ) : (
-                <div className="space-y-2">
-                  {[...state.bets].reverse().map((bet: any) => (
-                    <div key={bet.id} className={`bg-[#1e232c] rounded-xl border p-3 sm:p-4 transition-colors
-                      ${bet.status === 'won' ? 'border-emerald-500/30' : bet.status === 'lost' ? 'border-rose-500/20' : 'border-slate-700/40'}`}>
-                      <div className="flex items-start justify-between gap-2 sm:gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5 flex-wrap">
-                            <StatusBadge status={bet.status} />
-                            {bet.legs?.length > 1 && (
-                              <span className="text-[10px] font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                {bet.legs.length}-Leg Parlay
-                              </span>
+              ) : (() => {
+                const BETS_PER_PAGE = 20;
+                const allBets = [...(state.bets ?? [])].reverse();
+                const totalPages = Math.ceil(allBets.length / BETS_PER_PAGE);
+                const pageBets = allBets.slice(myBetsPage * BETS_PER_PAGE, (myBetsPage + 1) * BETS_PER_PAGE);
+                return (
+                  <div className="space-y-2">
+                    {pageBets.map((bet: any) => {
+                      const propPlayerId = bet.legs?.length === 1 ? bet.legs[0].playerId : null;
+                      const propPlayer = propPlayerId ? (state.players as any[]).find(p => p.internalId === propPlayerId) : null;
+                      const hasBoxScore = !!bet.legs?.[0]?.gameId && (state.boxScores as any[]).some(b => b.gameId === bet.legs[0].gameId);
+                      return (
+                        <div
+                          key={bet.id}
+                          onClick={() => {
+                            const gameId = bet.legs?.[0]?.gameId;
+                            if (!gameId) return;
+                            const bs = (state.boxScores as any[]).find(b => b.gameId === gameId);
+                            if (bs) setSelectedBoxScore(bs);
+                          }}
+                          className={`bg-[#1e232c] rounded-xl border p-3 sm:p-4 transition-colors
+                            ${hasBoxScore ? 'cursor-pointer hover:border-slate-500/60' : ''}
+                            ${bet.status === 'won' ? 'border-emerald-500/30' : bet.status === 'lost' ? 'border-rose-500/20' : 'border-slate-700/40'}`}
+                        >
+                          <div className="flex items-start gap-2 sm:gap-3">
+                            {propPlayer && (
+                              <div className="w-9 h-9 rounded-full bg-slate-700 border border-slate-600/60 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                {propPlayer.imgURL
+                                  ? <img src={propPlayer.imgURL} alt={propPlayer.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                  : <span className="text-[10px] font-bold text-slate-300">{(propPlayer.name ?? '??').split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</span>
+                                }
+                              </div>
                             )}
-                            <span className="text-[10px] text-slate-600 font-mono">{new Date(bet.date).toLocaleDateString()}</span>
-                          </div>
-                          <div className="space-y-0.5">
-                            {bet.legs?.map((leg: any, i: number) => (
-                              <p key={i} className="text-xs sm:text-sm text-slate-300 font-medium">{leg.description}</p>
-                            ))}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5 flex-wrap">
+                                <StatusBadge status={bet.status} />
+                                {bet.legs?.length > 1 && (
+                                  <span className="text-[10px] font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                    {bet.legs.length}-Leg Parlay
+                                  </span>
+                                )}
+                                <span className="text-[10px] text-slate-600 font-mono">{new Date(bet.date).toLocaleDateString()}</span>
+                                {hasBoxScore && bet.status !== 'pending' && (
+                                  <span className="text-[10px] text-slate-600 font-medium">· tap for boxscore</span>
+                                )}
+                              </div>
+                              <div className="space-y-0.5">
+                                {bet.legs?.map((leg: any, i: number) => (
+                                  <p key={i} className="text-xs sm:text-sm text-slate-300 font-medium">{leg.description}</p>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-[10px] text-slate-500 font-mono">Wager</p>
+                              <p className="text-xs sm:text-sm font-bold text-white font-mono">{formatCurrency(bet.wager, false)}</p>
+                              <p className="text-[10px] text-slate-500 font-mono mt-1">To Win</p>
+                              <p className={`text-xs sm:text-sm font-bold font-mono
+                                ${bet.status === 'won' ? 'text-emerald-400' : bet.status === 'lost' ? 'text-slate-600 line-through' : 'text-amber-400'}`}>
+                                {formatCurrency(bet.potentialPayout - bet.wager, false)}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-[10px] text-slate-500 font-mono">Wager</p>
-                          <p className="text-xs sm:text-sm font-bold text-white font-mono">{formatCurrency(bet.wager, false)}</p>
-                          <p className="text-[10px] text-slate-500 font-mono mt-1">To Win</p>
-                          <p className={`text-xs sm:text-sm font-bold font-mono
-                            ${bet.status === 'won' ? 'text-emerald-400' : bet.status === 'lost' ? 'text-slate-600 line-through' : 'text-amber-400'}`}>
-                            {formatCurrency(bet.potentialPayout - bet.wager, false)}
-                          </p>
-                        </div>
+                      );
+                    })}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-2 pt-2">
+                        <button
+                          onClick={() => setMyBetsPage(p => Math.max(0, p - 1))}
+                          disabled={myBetsPage === 0}
+                          className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-700/60 text-slate-400 hover:text-white hover:border-slate-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        >← Prev</button>
+                        <span className="text-[11px] text-slate-500 font-mono">{myBetsPage + 1} / {totalPages}</span>
+                        <button
+                          onClick={() => setMyBetsPage(p => Math.min(totalPages - 1, p + 1))}
+                          disabled={myBetsPage >= totalPages - 1}
+                          className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-700/60 text-slate-400 hover:text-white hover:border-slate-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        >Next →</button>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    )}
+                  </div>
+                );
+              })()}
             </>
           )}
         </div>
@@ -615,6 +705,22 @@ export const SportsbookView = () => {
           </button>
         )}
       </div>
+
+      {/* ── Boxscore Modal (from My Bets click) ── */}
+      {selectedBoxScore && (() => {
+        const homeTeam = (state.teams as any[]).find(t => t.id === selectedBoxScore.homeTeamId);
+        const awayTeam = (state.teams as any[]).find(t => t.id === selectedBoxScore.awayTeamId);
+        if (!homeTeam || !awayTeam) return null;
+        return (
+          <BoxScoreModal
+            game={selectedBoxScore}
+            homeTeam={homeTeam}
+            awayTeam={awayTeam}
+            players={state.players as any[]}
+            onClose={() => setSelectedBoxScore(null)}
+          />
+        );
+      })()}
 
       {/* ── Mobile Bet Slip Bottom Drawer ── */}
       {slipDrawerOpen && showSlip && (
