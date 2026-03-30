@@ -50,6 +50,12 @@ const fakeDaysListed = (id: string) => {
 
 type SortOption = 'premium' | 'popular' | 'recent' | 'price-asc' | 'price-desc' | 'area-asc' | 'area-desc' | 'price-m2-asc' | 'price-m2-desc';
 
+const formatWealth = (millions: number) => {
+  if (millions >= 1000) return `$${(millions / 1000).toFixed(2)}B`;
+  if (millions >= 1) return `$${millions.toFixed(2)}M`;
+  return `$${(millions * 1000).toFixed(0)}K`;
+};
+
 export default function RealStern() {
   const { state, dispatchAction } = useGame();
   const wealth = state.stats.personalWealth * 1_000_000;
@@ -340,7 +346,7 @@ export default function RealStern() {
               <span className="hidden sm:block text-[10px] uppercase tracking-widest text-gray-400">Liquidity</span>
               <div className="flex items-center gap-1 sm:gap-1.5 text-prestige-gold">
                 <Wallet size={12} className="sm:w-[18px] sm:h-[18px]" />
-                <span className="text-xs sm:text-2xl font-light tracking-tighter serif">${wealth.toLocaleString()}</span>
+                <span className="text-xs sm:text-2xl font-light tracking-tighter serif">{formatWealth(state.stats.personalWealth)}</span>
               </div>
             </div>
 

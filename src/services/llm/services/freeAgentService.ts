@@ -36,7 +36,26 @@ export async function generateFreeAgentSigningReactions(
 
         const text = response.text;
         if (!text) throw new Error("No response from LLM");
-        const data = JSON.parse(text);
+        // Strip markdown wrappers and repair truncated JSON (same approach as simulation.ts)
+        const cleaned = text
+            .replace(/<think>[\s\S]*?<\/think>/gi, '')
+            .replace(/^```json\s*/im, '').replace(/^```\s*/im, '').replace(/```\s*$/im, '')
+            .trim();
+        let repaired = cleaned;
+        // Close any unclosed braces/brackets
+        let ob = 0, ob2 = 0, inStr = false, esc = false;
+        for (const c of repaired) {
+            if (esc) { esc = false; continue; }
+            if (c === '\\' && inStr) { esc = true; continue; }
+            if (c === '"') { inStr = !inStr; continue; }
+            if (inStr) continue;
+            if (c === '{') ob++; if (c === '}') ob--;
+            if (c === '[') ob2++; if (c === ']') ob2--;
+        }
+        if (inStr) repaired += '"';
+        while (ob2 > 0) { repaired += ']'; ob2--; }
+        while (ob > 0) { repaired += '}'; ob--; }
+        const data = JSON.parse(repaired);
 
         // Post-process avatars
         const avatars = await fetchAvatarData();

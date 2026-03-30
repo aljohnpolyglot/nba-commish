@@ -130,10 +130,10 @@ function useGameLookup(): Map<number, GamePhotoInfo> {
             if (!home || !away) continue;
 
             const topPlayers = [
-                ...(bs.homeStats || []),
-                ...(bs.awayStats || []),
+                ...(bs.homeStats ?? []),
+                ...(bs.awayStats ?? []),
             ]
-                .sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0))
+                .sort((a: any, b: any) => ((b.gameScore as number) ?? 0) - ((a.gameScore as number) ?? 0))
                 .slice(0, 10)
                 .map(s => ({ name: s.name, gameScore: s.gameScore ?? 0 }));
 
@@ -156,8 +156,8 @@ export const NewsFeed: React.FC = () => {
     const gameLookup = useGameLookup();
     const [activeTab, setActiveTab] = React.useState<'daily' | 'weekly'>('daily');
 
-    const dailyNews = state.news.filter(n => !n.newsType || n.newsType === 'daily');
-    const weeklyNews = state.news.filter(n => n.newsType === 'weekly');
+    const dailyNews = (state.news || []).filter(n => !n.newsType || n.newsType === 'daily');
+    const weeklyNews = (state.news || []).filter(n => n.newsType === 'weekly');
     const visibleNews = activeTab === 'weekly' ? weeklyNews : dailyNews;
 
     return (

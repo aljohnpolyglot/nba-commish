@@ -192,8 +192,9 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
         const team = state.teams.find(t => t.id === player.tid);
         const opp = state.teams.find(t => t.id === oppId);
         const schedGame = state.schedule.find((g: any) => g.gid === game.gameId);
-        const isPreseason = schedGame?.isPreseason === true ||
-          (() => { try { return new Date(game.date).getTime() < OPENING_NIGHT_MS; } catch { return false; } })();
+        const gameMs2 = (() => { try { return new Date(game.date).getTime(); } catch { return 0; } })();
+        const isPreseason = gameMs2 > 0 && gameMs2 < OPENING_NIGHT_MS &&
+          (schedGame?.isPreseason === true || !schedGame);
         const isWin = isHomeTeam ? game.homeScore > game.awayScore : game.awayScore > game.homeScore;
         const score = isHomeTeam
           ? `${game.homeScore}-${game.awayScore}`

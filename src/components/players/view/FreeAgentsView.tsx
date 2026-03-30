@@ -245,20 +245,21 @@ export const FreeAgentsView: React.FC = () => {
 
   return (
     <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-950 rounded-[2.5rem] border border-slate-800 shadow-2xl">
-      <div className="p-8 space-y-8">
+      <div className="p-4 sm:p-8 space-y-4 sm:space-y-8">
         {/* Header */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-rose-600/20 rounded-2xl flex items-center justify-center border border-rose-500/30">
-              <UserX size={32} className="text-rose-400" />
+        <div className="space-y-3 sm:space-y-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-16 sm:h-16 bg-rose-600/20 rounded-xl sm:rounded-2xl flex items-center justify-center border border-rose-500/30 flex-shrink-0">
+              <UserX size={20} className="text-rose-400 sm:hidden" />
+              <UserX size={32} className="text-rose-400 hidden sm:block" />
             </div>
-            <div className="flex-1">
-              <h1 className="text-3xl font-black text-white uppercase tracking-tight">Free Agent Market</h1>
-              <p className="text-sm text-slate-500 mt-1 font-medium">Browse and interact with available players</p>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-3xl font-black text-white uppercase tracking-tight">Free Agent Market</h1>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1 font-medium">Browse and interact with available players</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-6 text-sm">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
               <span className="text-slate-400 font-medium">{nbaFreeAgents} NBA Free Agents</span>

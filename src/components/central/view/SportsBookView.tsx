@@ -504,7 +504,7 @@ export const SportsbookView = () => {
                               <span>{prop.opponent.abbrev}</span>
                             </p>
                           </div>
-                          <div className="text-right flex-shrink-0 hidden sm:block">
+                          <div className="text-right flex-shrink-0">
                             <p className="text-[10px] font-bold text-slate-500 mb-0.5">Season Avg</p>
                             {propStat === 'pts' && <p className="text-sm font-black text-emerald-300 font-mono">{prop.stats.ppg} PPG</p>}
                             {propStat === 'reb' && <p className="text-sm font-black text-emerald-300 font-mono">{prop.stats.rpg} RPG</p>}
@@ -595,11 +595,86 @@ export const SportsbookView = () => {
                 const allBets = [...(state.bets ?? [])].reverse();
                 const totalPages = Math.ceil(allBets.length / BETS_PER_PAGE);
                 const pageBets = allBets.slice(myBetsPage * BETS_PER_PAGE, (myBetsPage + 1) * BETS_PER_PAGE);
+
+                // Biggest single loss bet
+                const biggestLossBet = (state.bets ?? []).reduce((best: any, b: any) => {
+                  if (b.status !== 'lost') return best;
+                  return !best || b.wager > best.wager ? b : best;
+                }, null);
+
+                // Helper: given a bet, get the team logo to display (for team-based bets)
+                const getBetTeamLogo = (bet: any): string | null => {
+                  if (!bet.legs?.length) return null;
+                  const leg = bet.legs[0];
+                  if (!leg.gameId || leg.playerId) return null;
+                  const cond: string = leg.condition ?? '';
+                  const isHomeBet = cond.startsWith('home');
+                  const isAwayBet = cond.startsWith('away');
+                  if (!isHomeBet && !isAwayBet) return null;
+                  const schedGame = (state.schedule as any[]).find(g => g.gid === leg.gameId);
+                  const bs = (state.boxScores as any[]).find(b => b.gameId === leg.gameId);
+                  const homeTid = schedGame?.homeTid ?? bs?.homeTeamId;
+                  const awayTid = schedGame?.awayTid ?? bs?.awayTeamId;
+                  const tid = isHomeBet ? homeTid : awayTid;
+                  if (!tid) return null;
+                  const team = (state.teams as any[]).find(t => t.id === tid);
+                  return team?.logoUrl ?? null;
+                };
+
                 return (
                   <div className="space-y-2">
+                    {/* Biggest Loss Banner */}
+                    {biggestLossBet && myBetsPage === 0 && (
+                      <div
+                        onClick={() => {
+                          const gameId = biggestLossBet.legs?.[0]?.gameId;
+                          if (!gameId) return;
+                          const bs = (state.boxScores as any[]).find(b => b.gameId === gameId);
+                          if (bs) setSelectedBoxScore(bs);
+                        }}
+                        className={`bg-rose-950/40 border border-rose-500/40 rounded-xl p-3 sm:p-4 ${biggestLossBet.legs?.[0]?.gameId && (state.boxScores as any[]).some(b => b.gameId === biggestLossBet.legs[0].gameId) ? 'cursor-pointer hover:border-rose-400/60' : ''}`}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <TrendingDown className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
+                          <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Biggest Loss</span>
+                        </div>
+                        <div className="flex items-start gap-2 sm:gap-3">
+                          {(() => {
+                            const propPid = biggestLossBet.legs?.length === 1 ? biggestLossBet.legs[0].playerId : null;
+                            const pp = propPid ? (state.players as any[]).find(p => p.internalId === propPid) : null;
+                            const teamLogo = getBetTeamLogo(biggestLossBet);
+                            if (pp) return (
+                              <div className="w-10 h-10 rounded-full bg-slate-700 border border-rose-500/30 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                {pp.imgURL ? <img src={pp.imgURL} alt={pp.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-[10px] font-bold text-slate-300">{(pp.name ?? '??').split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</span>}
+                              </div>
+                            );
+                            if (teamLogo) return (
+                              <div className="w-10 h-10 rounded-lg bg-slate-800/60 border border-rose-500/30 overflow-hidden flex-shrink-0 flex items-center justify-center p-1">
+                                <img src={teamLogo} alt="team" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                              </div>
+                            );
+                            return null;
+                          })()}
+                          <div className="flex-1 min-w-0">
+                            <div className="space-y-0.5">
+                              {biggestLossBet.legs?.map((leg: any, i: number) => (
+                                <p key={i} className="text-xs sm:text-sm text-rose-200 font-medium">{leg.description}</p>
+                              ))}
+                            </div>
+                            <p className="text-[10px] text-rose-500 font-mono mt-1">{new Date(biggestLossBet.date).toLocaleDateString()}</p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-[10px] text-rose-500 font-mono">Lost</p>
+                            <p className="text-sm font-black text-rose-400 font-mono">-{formatCurrency(biggestLossBet.wager, false)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {pageBets.map((bet: any) => {
                       const propPlayerId = bet.legs?.length === 1 ? bet.legs[0].playerId : null;
                       const propPlayer = propPlayerId ? (state.players as any[]).find(p => p.internalId === propPlayerId) : null;
+                      const teamLogo = getBetTeamLogo(bet);
                       const hasBoxScore = !!bet.legs?.[0]?.gameId && (state.boxScores as any[]).some(b => b.gameId === bet.legs[0].gameId);
                       return (
                         <div
@@ -615,14 +690,18 @@ export const SportsbookView = () => {
                             ${bet.status === 'won' ? 'border-emerald-500/30' : bet.status === 'lost' ? 'border-rose-500/20' : 'border-slate-700/40'}`}
                         >
                           <div className="flex items-start gap-2 sm:gap-3">
-                            {propPlayer && (
+                            {propPlayer ? (
                               <div className="w-9 h-9 rounded-full bg-slate-700 border border-slate-600/60 overflow-hidden flex-shrink-0 flex items-center justify-center">
                                 {propPlayer.imgURL
                                   ? <img src={propPlayer.imgURL} alt={propPlayer.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                   : <span className="text-[10px] font-bold text-slate-300">{(propPlayer.name ?? '??').split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</span>
                                 }
                               </div>
-                            )}
+                            ) : teamLogo ? (
+                              <div className="w-9 h-9 rounded-lg bg-slate-800/60 border border-slate-600/40 overflow-hidden flex-shrink-0 flex items-center justify-center p-1">
+                                <img src={teamLogo} alt="team" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                              </div>
+                            ) : null}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5 flex-wrap">
                                 <StatusBadge status={bet.status} />

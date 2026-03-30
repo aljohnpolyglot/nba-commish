@@ -20,16 +20,19 @@ export const handleExecutiveTrade = async (stateWithSim: GameState, action: User
     const assetsA = [...playersA, ...picksA].join(', ') || 'None';
     const assetsB = [...playersB, ...picksB].join(', ') || 'None';
 
+    const tradeSeed = `BREAKING TRADE: The ${teamA?.name} and ${teamB?.name} have completed a trade. ` +
+        `${teamB?.name} receive: ${assetsA}. ${teamA?.name} receive: ${assetsB}. ` +
+        `Generate immediate reactions — insider tweets breaking the trade, fan reactions, ` +
+        `analysts debating the winners and losers, and at least one post from @ShamsCharania or @wojespn.`;
+
     const result = await advanceDay(stateWithSim, {
         type: 'EXECUTIVE_TRADE',
         payload: {
             teamAId: action.payload.teamAId,
             teamBId: action.payload.teamBId,
             outcomeText: `A trade has been finalized between the ${teamA?.name} and ${teamB?.name}. ${assetsA} have been moved to the ${teamB?.abbrev}, while ${assetsB} have been sent to the ${teamA?.abbrev}.`,
-            transaction: tradeResult.transaction,
-            announcements: tradeResult.announcements
         }
-    } as any, [], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
+    } as any, [tradeSeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
 
     // Auto Charania trade post — injected directly into result.newSocialPosts
     // so it fires even when LLM is off (advanceDay early-return ignores payload.announcements)
@@ -71,7 +74,10 @@ export const handleExecutiveTrade = async (stateWithSim: GameState, action: User
 
 export const handleForceTrade = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const outcome = calculateOutcome('FORCE_TRADE', action.payload, stateWithSim);
-    const result = await advanceDay(stateWithSim, action, [], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
+    const forceSeed = action.payload?.outcomeText
+        ? `COMMISSIONER-FORCED TRADE: ${action.payload.outcomeText} This is a controversial move — generate shocked reactions, insider tweets, and owner/player responses.`
+        : `COMMISSIONER-FORCED TRADE just occurred. Generate shocked reactions, insider tweets, and controversy.`;
+    const result = await advanceDay(stateWithSim, action, [forceSeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
     result.consequence = result.consequence || {};
     result.consequence.statChanges = result.consequence.statChanges || {};
     result.consequence.statChanges.viewership = (result.consequence.statChanges.viewership || 0) + (outcome.viewership || 0);

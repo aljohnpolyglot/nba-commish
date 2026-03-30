@@ -41,7 +41,8 @@
       "Bash(sed -n '1,10p' src/components/allstar/allstarevents/dunk/PlayFeed.tsx)",
       "Bash(sed -n '1,10p' src/components/allstar/allstarevents/dunk/Scoreboard.tsx)",
       "Bash(sed -n '1,10p' src/components/allstar/allstarevents/dunk/useDunkContest.ts)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(find C:Usersuser-MSIDownloadsnba-commish -name tailwind* -maxdepth 3)"
     ]
   }
 }

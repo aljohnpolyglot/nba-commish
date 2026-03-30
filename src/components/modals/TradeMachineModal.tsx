@@ -157,8 +157,9 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({ onClose, o
 
   const salaryMismatchInfo = useMemo(() => {
     if (teamAPlayers.length === 0 && teamBPlayers.length === 0) return null;
-    const maxA = (teamAPlayers.length > 0 ? teamASalary : 0) * 1.25 + 100000;
-    const maxB = (teamBPlayers.length > 0 ? teamBSalary : 0) * 1.25 + 100000;
+    // Contracts stored in thousands of dollars; $100K buffer = 100 units
+    const maxA = (teamAPlayers.length > 0 ? teamASalary : 0) * 1.25 + 100;
+    const maxB = (teamBPlayers.length > 0 ? teamBSalary : 0) * 1.25 + 100;
     if (teamBSalary > maxA && teamAPlayers.length > 0) return { message: `${teamA?.abbrev || 'Team A'} receiving too much salary.`, team: 'A' as const };
     if (teamASalary > maxB && teamBPlayers.length > 0) return { message: `${teamB?.abbrev || 'Team B'} receiving too much salary.`, team: 'B' as const };
     return null;
@@ -185,21 +186,21 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({ onClose, o
 
   return (
     <AnimatePresence>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center p-4 font-sans backdrop-blur-md">
-        
-        {/* ACTION BAR */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-4 z-50 bg-[#161616] p-2 rounded-2xl border border-slate-700 shadow-2xl">
-            <button onClick={handleConfirm} disabled={!canClickAssets || (teamAPlayers.length === 0 && teamBPlayers.length === 0 && teamAPicks.length === 0 && teamBPicks.length === 0)} className="px-8 py-3 rounded-xl font-black text-xs uppercase bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-600/20">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/95 z-[60] flex flex-col items-center justify-start lg:justify-center p-3 sm:p-4 font-sans backdrop-blur-md overflow-y-auto">
+
+        {/* ACTION BAR — sticky on mobile, absolute on desktop */}
+        <div className="sticky top-0 lg:fixed lg:bottom-6 lg:top-auto z-50 flex gap-2 sm:gap-4 bg-[#161616] p-2 rounded-2xl border border-slate-700 shadow-2xl mb-3 lg:mb-0 w-full max-w-xs sm:max-w-sm lg:max-w-none lg:w-auto lg:left-1/2 lg:-translate-x-1/2">
+            <button onClick={handleConfirm} disabled={!canClickAssets || (teamAPlayers.length === 0 && teamBPlayers.length === 0 && teamAPicks.length === 0 && teamBPicks.length === 0)} className="flex-1 lg:flex-none px-4 sm:px-8 py-2.5 sm:py-3 rounded-xl font-black text-xs uppercase bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-600/20">
                 Validate Deal
             </button>
-            <button onClick={onClose} className="px-6 py-3 rounded-xl font-black text-xs uppercase bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all">Close</button>
+            <button onClick={onClose} className="flex-1 lg:flex-none px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-black text-xs uppercase bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all">Close</button>
         </div>
 
         {/* MAIN 2-COLUMN WRAPPER */}
-        <div className="w-full max-w-6xl h-[85vh] flex flex-col lg:flex-row gap-6">
+        <div className="w-full max-w-6xl h-auto lg:h-[80vh] flex flex-col lg:flex-row gap-3 sm:gap-6 pb-4 lg:pb-0">
           
           {/* ======================= TEAM 1 COLUMN ======================= */}
-          <div className="flex-1 flex flex-col bg-[#1e1e1e] border border-slate-700/50 rounded-2xl overflow-hidden relative shadow-2xl">
+          <div className="flex-1 flex flex-col bg-[#1e1e1e] border border-slate-700/50 rounded-2xl overflow-hidden relative shadow-2xl min-h-[50vh] lg:min-h-0">
             
             <div className="p-5 border-b border-slate-700/50 bg-[#161616]">
                 <TeamDropdown 
@@ -280,7 +281,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({ onClose, o
           </div>
 
           {/* ======================= TEAM 2 COLUMN ======================= */}
-          <div className="flex-1 flex flex-col bg-[#1e1e1e] border border-slate-700/50 rounded-2xl overflow-hidden relative shadow-2xl">
+          <div className="flex-1 flex flex-col bg-[#1e1e1e] border border-slate-700/50 rounded-2xl overflow-hidden relative shadow-2xl min-h-[50vh] lg:min-h-0">
             
             <div className="p-5 border-b border-slate-700/50 bg-[#161616]">
                 <TeamDropdown 

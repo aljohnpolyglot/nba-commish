@@ -111,34 +111,34 @@ export const TransactionsView: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-slate-950 text-slate-200">
       {/* Header */}
-      <div className="p-8 border-b border-slate-800 bg-slate-900/50">
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-4 sm:p-8 border-b border-slate-800 bg-slate-900/50">
+        <div className="flex flex-col gap-3 sm:gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div>
-              <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-                <ArrowRightLeft className="text-indigo-500" size={32} />
+              <h2 className="text-xl sm:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
+                <ArrowRightLeft className="text-indigo-500" size={24} />
                 League Transactions
               </h2>
-              <p className="text-slate-400 mt-1">
+              <p className="text-slate-400 text-xs sm:text-sm mt-0.5 sm:mt-1">
                 Official record of all player movements, trades, and league-wide personnel changes.
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+              <div className="relative w-full sm:w-auto">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
                 <input
                   type="text"
                   placeholder="Search transactions..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-slate-800 border border-slate-700 rounded-lg py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 w-64"
+                  className="bg-slate-800 border border-slate-700 rounded-lg py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 w-full sm:w-64"
                 />
               </div>
             </div>
           </div>
 
           {/* Filters Row */}
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
             <FilterSelect label="Transaction Type" value={filterType} onChange={setFilterType}>
               <option value="">All Transactions</option>
               <option value="Signing">Signing</option>
@@ -171,7 +171,7 @@ export const TransactionsView: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-8 custom-scrollbar">
         <div className="max-w-4xl mx-auto space-y-4">
           {filteredHistory.length > 0 ? (
             filteredHistory.map((entry, index) => {

@@ -82,15 +82,18 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
         // Minimum contract in BBGM units (thousands) = $1,300,000
         const MIN_CONTRACT_AMOUNT = 1300;
 
+        const signingSeed = `BREAKING SIGNING: The ${teamName} have signed free agent ${playerName}. ` +
+            `Generate reactions — tweets from @ShamsCharania or @wojespn breaking the news, fan reactions, ` +
+            `analyst takes on the deal's impact.`;
+
         const result = await advanceDay(stateWithSim, {
             type: 'SIGN_FREE_AGENT',
             payload: {
                 outcomeText: `The ${teamName} have signed free agent ${playerName}.`,
                 playerId,
                 teamId,
-                announcements: [...newEmails, ...newNews, ...newSocial]
             }
-        } as any, [], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
+        } as any, [signingSeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
 
         // Force correct contract amount — LLM generates wrong units
         // Update the player directly in result.players if present

@@ -309,31 +309,31 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
     <div className="flex-1 flex flex-col h-full bg-[#0a0a0a] text-white overflow-hidden rounded-[2.5rem] border border-white/10 relative shadow-2xl">
       
       {/* ── HEADER AREA ── */}
-      <div className="flex-shrink-0 bg-[#080808] border-b border-white/10 p-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex-shrink-0 bg-[#080808] border-b border-white/10 p-3 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
           <div>
-            <h1 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+            <h1 className="text-lg sm:text-2xl font-black text-white uppercase tracking-tight flex items-center gap-2">
               Statistical Feats
             </h1>
-            <p className="text-xs text-slate-500 font-medium tracking-wide uppercase mt-1">
+            <p className="text-[10px] sm:text-xs text-slate-500 font-medium tracking-wide uppercase mt-0.5 sm:mt-1">
               Top Performances • {currentYear} Season
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input 
-                type="text" 
-                placeholder="Search Player..." 
-                className="bg-black/50 border border-white/10 text-white text-xs font-bold tracking-wider rounded-full pl-9 pr-4 py-2 outline-none focus:border-indigo-500 transition-colors w-full md:w-48 placeholder-slate-600"
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="relative flex-1 sm:flex-none">
+              <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search Player..."
+                className="bg-black/50 border border-white/10 text-white text-xs font-bold tracking-wider rounded-full pl-8 sm:pl-9 pr-3 sm:pr-4 py-1.5 sm:py-2 outline-none focus:border-indigo-500 transition-colors w-full sm:w-48 placeholder-slate-600"
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
               />
             </div>
 
-            <select 
-              className="bg-black/50 border border-white/10 text-white text-xs font-bold tracking-wider uppercase rounded-full px-4 py-2 outline-none cursor-pointer appearance-none transition-colors hover:border-white/30"
+            <select
+              className="bg-black/50 border border-white/10 text-white text-xs font-bold tracking-wider uppercase rounded-full px-2 sm:px-4 py-1.5 sm:py-2 outline-none cursor-pointer appearance-none transition-colors hover:border-white/30 flex-shrink-0"
               value={selectedTeam}
               onChange={(e) => { setSelectedTeam(e.target.value); setCurrentPage(1); }}
             >
@@ -347,7 +347,7 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
       </div>
 
       {/* ── SUMMARY BOXES (CLICKABLE) ── */}
-      <div className="flex-shrink-0 grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-4 px-6 py-4 bg-[#080808] border-b border-white/5">
+      <div className="flex-shrink-0 grid grid-cols-3 md:grid-cols-6 gap-1.5 sm:gap-2 md:gap-4 px-3 sm:px-6 py-3 sm:py-4 bg-[#080808] border-b border-white/5">
         {FEAT_CATEGORIES.map(feat => {
           const isActive = activeFilters.includes(feat);
           return (
@@ -360,10 +360,10 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
                   : 'bg-black/30 border-white/5 hover:bg-white/5 hover:border-white/10 text-slate-500'
               }`}
             >
-              <span className={`text-2xl md:text-3xl font-black ${isActive ? 'text-white' : 'text-slate-400'}`}>
+              <span className={`text-xl sm:text-2xl md:text-3xl font-black ${isActive ? 'text-white' : 'text-slate-400'}`}>
                 {summaryCounts[feat]}
               </span>
-              <span className={`text-[9px] md:text-[10px] font-bold uppercase tracking-widest mt-1 text-center ${isActive ? 'text-indigo-300' : 'text-slate-600'}`}>
+              <span className={`text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-widest mt-0.5 sm:mt-1 text-center leading-tight ${isActive ? 'text-indigo-300' : 'text-slate-600'}`}>
                 {feat}
               </span>
             </button>

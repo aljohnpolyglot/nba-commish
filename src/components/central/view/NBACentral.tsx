@@ -388,9 +388,17 @@ export const NBACentral: React.FC = () => {
                 allStar={state.allStar}
                 isProcessing={state.isProcessing}
                 onClose={async () => {
-                    const result = precomputedResult;
+                    const gameId = gameToWatch!.gid;
+                    const homeTeam = state.teams.find(t => t.id === gameToWatch!.homeTid)!;
+                    const awayTeam = state.teams.find(t => t.id === gameToWatch!.awayTid)!;
+                    const result = precomputedResult ?? GameSimulator.simulateGame(
+                        homeTeam, awayTeam, state.players,
+                        gameToWatch!.gid, gameToWatch!.date,
+                        state.stats.playerApproval
+                    );
                     setGameToWatch(null); setRiggedForTid(undefined); setPrecomputedResult(null);
-                    await dispatchAction({ type: 'ADVANCE_DAY', payload: result ? { watchedGameResult: result } : undefined } as any);
+                    await dispatchAction({ type: 'RECORD_WATCHED_GAME' as any, payload: { gameId, result } });
+                    await dispatchAction({ type: 'ADVANCE_DAY', payload: { watchedGameResult: result } } as any);
                 }}
                 onComplete={executeWatchGame}
                 otherGamesToday={otherGamesToday}

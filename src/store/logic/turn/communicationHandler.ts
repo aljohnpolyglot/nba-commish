@@ -134,7 +134,17 @@ export const handleCommunication = (state: GameState, action: UserAction, result
     }
 
     const existingEmailIds = new Set(state.inbox.map(e => e.id));
-    const uniqueNewEmails = newInboxEmails.filter(e => !existingEmailIds.has(e.id));
+    // Also deduplicate by sender + subject to prevent spam from same sender with same topic
+    const recentSenderSubjects = new Set(
+        state.inbox.map(e => `${(e.sender || '').toLowerCase()}|${(e.subject || '').toLowerCase().slice(0, 40)}`)
+    );
+    const uniqueNewEmails = newInboxEmails.filter(e => {
+        if (existingEmailIds.has(e.id)) return false;
+        const key = `${(e.sender || '').toLowerCase()}|${(e.subject || '').toLowerCase().slice(0, 40)}`;
+        if (recentSenderSubjects.has(key)) return false;
+        recentSenderSubjects.add(key);
+        return true;
+    });
 
     let updatedChats = [...state.chats];
     newChatMessages.forEach(msg => {

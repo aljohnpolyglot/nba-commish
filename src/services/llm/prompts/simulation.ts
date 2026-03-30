@@ -241,10 +241,13 @@ Generate the outcome for the next day.
    - **USE THE LEAGUE SUMMARY:** You MUST reference the 'LEAGUE SUMMARY' provided above. Talk about teams on winning/losing streaks, players leading the league in stats, or recent crazy box scores. Weave these real stats into the narratives and debates!
    - **FORMAT:** Use a mix of short takes and multi-post "threads" or "debates" between different handles.
    - **BREAKING NEWS:** If a major transaction occurred (signing, trade, suspension), at least one post MUST be from @wojespn or @ShamsCharania breaking the news.
-3. 1-3 Emails arising from the events.
-   - **FORMAL BUSINESS:** Ensure at least one email is a formal business communication (e.g., from a Sponsor, Media Executive, or League Official) that would appear in a professional Inbox.
+3. 0-3 Emails arising from the events. **It is perfectly fine to generate ZERO emails.** Fewer, higher-quality emails are better than many repetitive ones.
+   - **FORMAL BUSINESS:** Business communications (Sponsor, Media Executive, League Official) should be specific — name the actual company, deal value, or issue. Do NOT send vague emails that lack specifics (e.g., if proposing a sponsorship, NAME the brand).
    - **ISSUES & SCANDALS:** If a player has low morale, is unhappy, or has been involved in a controversy (check 'Relevant History'), generate an email from their agent, a team owner, or the player themselves complaining or demanding action.
    - **DISCIPLINE:** If a player was suspended or fined, generate an email from the player's agent appealing the decision or the team owner reacting to it.
+   - **NO REPETITION:** If the 'Relevant History' or thread shows that a sender already sent an email on this topic, do NOT send another email from the same sender on the same subject. Move on or close the thread.
+   - **THREAD AWARENESS:** If the user action includes a REPLY_EMAIL with a thread, the sender's follow-up (if any) MUST directly address what the Commissioner said. If the Commissioner asked a direct question (e.g., "What brand?"), the reply must answer it specifically. If there is nothing new to add, generate 0 emails.
+   - **SILENCE IS OKAY:** Owners, GMs, and staff do not need to respond to every Commissioner message. It is normal and realistic for a conversation to simply end.
    - **ORGANIZATION:** Make sure to include the 'organization' field in the email schema (e.g., "Spotify", "Nike", "NBPA", "Los Angeles Lakers") so the correct email domain can be generated.
    ${sponsorInstruction}
 

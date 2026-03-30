@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { BookOpen, Calendar, Gift, Utensils, Plane, Music, Star, Zap, AlertTriangle, Gavel, TrendingUp, Search } from 'lucide-react';
+import { BookOpen, Calendar, Gift, Utensils, Plane, Music, Star, Zap, AlertTriangle, Gavel, TrendingUp, Search, ArrowRightLeft, UserCheck, UserX, Users } from 'lucide-react';
 import { motion } from 'motion/react';
 import { HistoryEntry } from '../../../types';
 
@@ -25,13 +25,24 @@ function resolveEntry(raw: string | HistoryEntry | null | undefined, fallbackDat
   return { ...entry, text: normalizeEntryText(entry.text) };
 }
 
-function detectEventKind(text: string): {
+function detectEventKind(text: string, type?: string): {
   icon: React.ReactNode;
   label: string;
   color: string;
   bg: string;
 } {
   const t = text.toLowerCase();
+  const ty = (type || '').toLowerCase();
+  // Type-based detection first (most reliable)
+  if (ty === 'trade') return { icon: <ArrowRightLeft size={16} />, label: 'Trade', color: 'text-blue-400', bg: 'bg-blue-500/10' };
+  if (ty === 'signing') return { icon: <UserCheck size={16} />, label: 'Signing', color: 'text-emerald-400', bg: 'bg-emerald-500/10' };
+  if (ty === 'waive') return { icon: <UserX size={16} />, label: 'Waiver', color: 'text-amber-400', bg: 'bg-amber-500/10' };
+  if (ty === 'suspension') return { icon: <AlertTriangle size={16} />, label: 'Suspension', color: 'text-rose-400', bg: 'bg-rose-500/10' };
+  if (ty === 'personnel') return { icon: <Users size={16} />, label: 'Personnel', color: 'text-purple-400', bg: 'bg-purple-500/10' };
+  // Text-based detection for untyped entries
+  if (t.includes('trade') || t.includes('traded')) return { icon: <ArrowRightLeft size={16} />, label: 'Trade', color: 'text-blue-400', bg: 'bg-blue-500/10' };
+  if (t.includes('signed') || t.includes('signing')) return { icon: <UserCheck size={16} />, label: 'Signing', color: 'text-emerald-400', bg: 'bg-emerald-500/10' };
+  if (t.includes('waived')) return { icon: <UserX size={16} />, label: 'Waiver', color: 'text-amber-400', bg: 'bg-amber-500/10' };
   if (t.includes('gift') || t.includes('gifted') || t.includes('trophy') || t.includes('lamborghini') || t.includes('valued at'))
     return { icon: <Gift size={16} />, label: 'Gift', color: 'text-pink-400', bg: 'bg-pink-500/10' };
   if (t.includes('dinner') || t.includes('dining') || t.includes('meal') || t.includes('restaurant'))
@@ -63,14 +74,13 @@ export const LeagueEvent: React.FC = () => {
       .map(raw => resolveEntry(raw, state.date))
       .filter((entry): entry is HistoryEntry => entry != null && entry.text.trim().length > 0)
       .filter(entry => {
-        const kind = (entry.type || '').toLowerCase();
-        // Only show non-transaction entries (League Events, commissioner actions)
-        const isTransaction = ['trade', 'signing', 'waive', 'suspension', 'personnel', 'waiver'].some(
-          k => kind.includes(k) || entry.text.toLowerCase().includes(`${k}`)
-        );
-        // Transactions with these keywords belong in TransactionsView
-        const transactionText = /\b(signed|waived|traded|firing|hired|fired|suspension)\b/i.test(entry.text);
-        return !transactionText || isNaN(Date.parse(entry.date));
+        const ty = (entry.type || '').toLowerCase();
+        // Always show commissioner-action types (these ARE diary events even if they involve transactions)
+        if (['trade', 'signing', 'waive', 'suspension', 'personnel'].includes(ty)) return true;
+        // For plain League Events, exclude entries that are purely roster-move text
+        // (those are shown in TransactionsView with richer context)
+        const isRosterMove = /\b(signed|waived|traded|fired|hired)\b/i.test(entry.text);
+        return !isRosterMove;
       })
       .filter(entry => {
         if (!searchQuery) return true;
@@ -121,7 +131,7 @@ export const LeagueEvent: React.FC = () => {
 
               <div className="space-y-4">
                 {events.map((entry, index) => {
-                  const { icon, label, color, bg } = detectEventKind(entry.text);
+                  const { icon, label, color, bg } = detectEventKind(entry.text, entry.type);
                   return (
                     <motion.div
                       key={index}

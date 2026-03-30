@@ -644,7 +644,17 @@ export const processTurn = async (
             const deduped = boxScoresWithDate.filter(b => !existingIds.has(b.gameId));
             return [...(state.boxScores || []), ...deduped];
         })(),
-        history: [...state.history, { text: result.outcomeText || '', date: dateString, type: 'League Event' } as any],
+        history: [...state.history, { text: result.outcomeText || '', date: dateString, type: (() => {
+            switch (action.type) {
+                case 'EXECUTIVE_TRADE':
+                case 'FORCE_TRADE': return 'Trade';
+                case 'SIGN_FREE_AGENT': return 'Signing';
+                case 'WAIVE_PLAYER': return 'Waive';
+                case 'SUSPEND_PLAYER': return 'Suspension';
+                case 'FIRE_PERSONNEL': return 'Personnel';
+                default: return 'League Event';
+            }
+        })() } as any],
         isProcessing: false,
         isWatchingGame: false,
       lastOutcome: result.outcomeText || result.narrative,

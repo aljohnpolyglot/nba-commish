@@ -426,8 +426,8 @@ export default function CommishStore() {
             onClick={goHome}
           >
             <span className="text-xl">🏀</span>
-            <span className="hidden xs:inline">COMMISH STORE</span>
-            <span className="xs:hidden">STORE</span>
+            <span className="hidden sm:inline">COMMISH STORE</span>
+            <span className="sm:hidden">STORE</span>
           </h1>
 
           {/* Desktop: search in center row */}
