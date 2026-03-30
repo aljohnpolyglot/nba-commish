@@ -59,6 +59,8 @@ Two gist-backed data files live in `src/data/` and are fetched once per session 
 | Mar 2026 | Trade machine showing hardcoded "22.3 PER / 19.1 PTS" for all players | Replaced with live `player.stats` lookup: finds current season stats, computes PPG/RPG/APG from `pts/gp`, `trb/gp`, `ast/gp`. Both PlayerRow usages pass `currentSeason={state.leagueStats.year}`. |
 | Mar 2026 | All-NBA cards only showed PPG (missing REB/AST) | `AwardRacesView.tsx` AllNBASection cards now render a 3-column PPG+RPG+APG stat block. Uses `trb \|\| (orb+drb)` fallback for total rebounds. |
 | Mar 2026 | BoxScore/game log showed "Coach's Decision" for historically injured players | DNP reason was read from current `player.injury` state, not from game time. Fixed with `playerDNPs?: Record<string, string>` on `GameResult` (both `src/types.ts` AND `src/services/simulation/types.ts`). `engine.ts` populates it at sim time; `BoxScoreModal` + `PlayerBioView` use it first, fall back to current state. |
+| Mar 2026 | LLM echoed payload outcomeText verbatim in news/social/emails | `simulation.ts` instruction #2 + `isSpecificEvent` block + `system.ts` line 94 reworded: `outcomeText` is now an "event hint" (factual context only). LLM writes its own response `outcomeText`; all content (news, @Shams tweets, fan posts, emails) must use authentic voices — never copy the hint verbatim. |
+| Mar 2026 | Dinner action excluded referees | Added `includesRefs: true` to `dinner` eligibility in `personActionDefs.ts`. Refs now appear alongside players and league office staff. |
 | Mar 2026 | SIMULATE_TO_DATE crossing Apr 13–20 didn't generate/simulate play-in | `runSimulation` day loop in `simulationHandler.ts` didn't run bracket injection (that happened in `gameLogic.ts` after the loop returned). Fixed by extracting `applyPlayoffLogic()` and calling it BEFORE each day (inject games) and AFTER (advance bracket). `gameLogic.ts` now prefers `stateWithSim.playoffs` over `state.playoffs` to prevent double-generation. |
 
 ### Non-Obvious Architecture Notes
@@ -84,9 +86,10 @@ Two gist-backed data files live in `src/data/` and are fetched once per session 
 - **Dunk/3PT contestant modals are always editable**: Cards are never `disabled/completed` after announcement. The modal shows an "Editing" banner when contestants already exist. The description line updates to show count (e.g. "6 contestants set — click to edit").
 - **Sidebar Legacy group**: Approvals, Viewership, and Finances are under "Legacy" in NavigationMenu. The **Finances** legacy tab now renders `LeagueFinancesView` with `initialTab="revenue"` — showing the League Revenue chart directly. Don't move them back or restore `Dashboard initialTab="finances"` — that tab was retired.
 - **League Finances tabs**: `LeagueFinancesView` has tabs `cap | trade | attendance | revenue`. The Revenue tab button is hidden in the normal tab bar (`League Finances` nav item) since it's accessible via `Legacy > Finances`. Don't re-add the Revenue button to the tab bar.
+- **LLM prompt always has full league context**: `leagueContext` (top 50 players, rosters) and `leagueSummaryContext` (standings, streaks, stats leaders) are injected at the top of EVERY `generateAdvanceDayPrompt` call — even when `isSpecificEvent: true`. The `isSpecificEvent` block only narrows the FOCUS of the narrative; it does not remove league awareness. The LLM always knows who's on what team.
 - **LLM providers (post-Mar 2026)**: `@google/genai` package removed. Local type shims in `api.ts` replace `GenerateContentParameters` / `GenerateContentResponse` / `ThinkingLevel`. Chat → Groq Worker (no fallback). Non-chat → Together AI Worker (`TOGETHER_WORKER_URL`). `workerProviders.ts` uses `TOGETHER_WORKER` constant.
 - **`general` PersonSelectorModal actionType**: Used by RealStern invite/gift. Registered in `PERSON_ACTION_MAP` via `GENERAL_ACTION_DEF` in `personActionDefs.ts`. Eligibility: players (all statuses) + staff + league office. Shows an optional "Reason for Invite" text box. Don't remove this entry — without it the modal only shows players (no staff/league office).
-- **Referees in social actions**: `dinner` and `movie` actions do NOT include refs (removed Mar 2026). `bribe`, `fine`, `suspension`, `contact` still include refs — that's intentional. Don't add `includesRefs: true` back to `dinner` or `movie`.
+- **Referees in social actions**: `dinner` includes refs (`includesRefs: true` added Mar 2026). `movie` does NOT include refs. `bribe`, `fine`, `suspension`, `contact` also include refs — that's intentional. Don't add `includesRefs: true` to `movie`.
 - **Mood system — Phase 1 (drama-only)**: `src/utils/mood/` is a barrel export. `computeMoodScore(player, team, dateStr, endorsed, suspended, sabotaged)` returns `{ score, components }` — score is −10 to +10, computed fresh each call (no cached field in Phase 1). `genMoodTraits(internalId)` is deterministic (string hash). Traits are stored in `player.moodTraits?: MoodTrait[]`. `gameLogic.ts` lazily backfills traits for any player missing them on each day advance. `dramaProbability(score, traits)` outputs per-player weight for the discipline story lottery. 7 traits: 4 core personality types (DIVA=F, LOYAL=L, MERCENARY=$, COMPETITOR=W — BBGM-inspired) plus VOLATILE, AMBASSADOR, DRAMA_MAGNET.
 - **FightGenerator**: `src/services/FightGenerator.ts` — base probability 0.4% per game. Weighted by both players' mood/traits. Real player propensity map matches by `player.name` substring (case-insensitive). Result stored in `GameResult.fight?: FightResult`. Engine calls `FightGenerator.generate(homeStats, awayStats, players, teams, date)` after the game sim loop. Fight story seeds injected into `actionProcessor.ts` story loop (same path as discipline/sponsor stories). Both `GameResult` interfaces must stay in sync — `src/types.ts` AND `src/services/simulation/types.ts`.
 - **Raw OVR vs 2K-ified OVR**: `player.overallRating` (and `ratings[n].ovr`) is the raw BBGM-style 0–100 scale. `convertTo2KRating(ovr, hgt)` in `utils/helpers.ts` converts to approximate NBA 2K scale (~60–99 for pros). Always use `convertTo2KRating` when displaying player ratings in 2K-style contexts (Defense2KService, BadgeService, SeasonalView dunk contest). Never display raw `overallRating` as a 2K rating — the scales differ significantly (raw 70 ≈ 2K 78; raw 90 ≈ 2K 92).
@@ -301,10 +304,12 @@ See `LEAGUE_RULES_README.md` for how to wire commissioner rule toggles/sliders t
 - `monthlyPassive` income is computed in RealStern UI but **not** wired into `generatePaychecks`.
 - **TODO**: Add `state.realEstatePassive` ($/month number) and accumulate monthly in the payslip logic.
 
-### LLM outcome text — still partially generic when LLM enabled
-- Root cause: `generateAdvanceDayPrompt` treats `payload.outcomeText` as "ABSOLUTE SOURCE OF TRUTH" — the LLM echoes it rather than enriching it freely.
-- **TODO**: Rename the payload field to `eventHint` (or add `isHintOnly: true` flag). When `enableLLM: true`, prompt should say: "The `eventHint` is the raw event context — use it as the FACTUAL BASIS but write your own compelling `outcomeText` from scratch." When LLM is off, use `eventHint` verbatim as the fallback. This cleanly separates lazy-sim text from LLM narration.
-- `isSpecificEvent: true` (added to RealStern/CommishStore dispatches Mar 2026) partially helps but doesn't fully override the system prompt's wording.
+### ~~LLM outcome text echoing~~ — FIXED Mar 2026
+- `generateAdvanceDayPrompt` instruction #2 and `isSpecificEvent` block now explicitly tell the LLM to treat `outcomeText` as an **event hint/context** — not text to copy verbatim.
+- LLM must write its own fresh `outcomeText` in the response JSON.
+- News headlines, @Shams/@woj social posts, fan tweets, and emails are each instructed to use their own voice and phrasing — never copy the hint directly.
+- `system.ts` line 94 also updated to the same effect.
+- The payload field name `outcomeText` was NOT renamed (too many dispatch sites); the prompt refers to it as "eventHint (also called outcomeText)" for clarity.
 
 ### Sports Book — known gaps
 - Lines/odds regenerate on each open (cosmetic only — placed bets unaffected).
@@ -327,7 +332,7 @@ The simulation has **two completely separate narrative modes**. Understand this 
 ### LLM ("live sim") — `enableLLM: true`
 - Calls **Groq Worker** (chat: `bypassLLMCheck: true`) or **Together AI Worker** (all sim/narrative turns).
 - `advanceDay()` sends full league context + action → LLM returns rich JSON: `outcomeText`, `statChanges`, `newEmails`, `newNews`, `newSocialPosts`.
-- The payload `outcomeText` is provided as the factual basis ("what happened") — LLM should rewrite into engaging content. This is still partially imperfect (see Pending Work above).
+- The payload `outcomeText` is provided as an **event hint** — factual context about what happened. The LLM writes its own fresh `outcomeText` in the response, and all generated content (news, social, emails) must be written in authentic voices, not copied from the hint.
 - Provider routing: chat → Groq Worker only (no fallback). Non-chat → Together AI Worker (worker-side Gemini fallback, server only).
 - `@google/genai` npm package is **not used** (removed Mar 2026). Local type shims live in `src/services/llm/utils/api.ts`.
 
