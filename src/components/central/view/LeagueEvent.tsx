@@ -61,7 +61,7 @@ export const LeagueEvent: React.FC = () => {
     return [...(state.history || [])]
       .reverse()
       .map(raw => resolveEntry(raw, state.date))
-      .filter((entry): entry is HistoryEntry => entry != null)
+      .filter((entry): entry is HistoryEntry => entry != null && entry.text.trim().length > 0)
       .filter(entry => {
         const kind = (entry.type || '').toLowerCase();
         // Only show non-transaction entries (League Events, commissioner actions)

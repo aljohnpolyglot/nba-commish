@@ -1,4 +1,11 @@
-import { Type } from "@google/genai";
+// Inline type constants — no @google/genai dependency needed (schema only used for worker format)
+const Type = {
+  OBJECT:  'OBJECT',
+  ARRAY:   'ARRAY',
+  STRING:  'STRING',
+  NUMBER:  'NUMBER',
+  BOOLEAN: 'BOOLEAN',
+} as const;
 
 export const OUTCOME_SCHEMA = {
   type: Type.OBJECT,

@@ -784,14 +784,16 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
                             </div>
                         )}
                         
-                        {(actionType === 'dinner' || actionType === 'movie' || actionType === 'club') && (
+                        {(actionType === 'dinner' || actionType === 'movie' || actionType === 'club' || actionType === 'general') && (
                              <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Occasion / Note (Optional)</label>
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                  {actionType === 'general' ? 'Reason for Invite (Optional)' : 'Occasion / Note (Optional)'}
+                                </label>
                                 <input
                                     type="text"
                                     value={reason}
                                     onChange={(e) => setReason(e.target.value)}
-                                    placeholder={actionType === 'dinner' ? "Discussing contract extension..." : actionType === 'movie' ? "Team bonding..." : actionType === 'club' ? "Night out..." : "Violation of league policy..."}
+                                    placeholder={actionType === 'dinner' ? "Discussing contract extension..." : actionType === 'movie' ? "Team bonding..." : actionType === 'club' ? "Night out..." : "Business meeting, partnership discussion..."}
                                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-medium text-slate-200 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none placeholder:text-slate-700 transition-all"
                                 />
                             </div>

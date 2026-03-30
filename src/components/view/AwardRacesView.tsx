@@ -74,6 +74,7 @@ export const AwardRacesView: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-white text-xs truncate group-hover:text-indigo-400 transition-colors">{spot.player.name}</p>
                   <p className="text-[10px] text-slate-500">{spot.pos} · {spot.team.abbrev}</p>
+                  <p className="text-[10px] text-slate-600">{spot.team.wins}–{spot.team.losses}</p>
                 </div>
                 <StatPills
                   stats={[

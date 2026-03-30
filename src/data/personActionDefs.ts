@@ -166,6 +166,7 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
     eligibility: {
       playerStatuses: PERSONAL_STATUSES,
       includesStaff: true,
+      includesLeagueOffice: true,
       includesRefs: true,
       staffTypes: ALL_STAFF,
     },
@@ -341,7 +342,24 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
   },
 ];
 
+// ─── General-purpose selector (used by RealStern invite/gift, etc.) ──────────
+// Not shown in the actions tab — just registered so PersonSelectorModal
+// gets the correct eligibility (players + staff + league office).
+export const GENERAL_ACTION_DEF: PersonActionDef = {
+  id: 'general',
+  title: 'Select Person',
+  description: 'Select anyone from the league.',
+  icon: MessageSquare,
+  color: 'bg-slate-600',
+  hover: 'hover:bg-slate-500',
+  eligibility: {
+    playerStatuses: PERSONAL_STATUSES,
+    includesStaff: true,
+    includesLeagueOffice: true,
+  },
+};
+
 /** Quick lookup by id. */
 export const PERSON_ACTION_MAP = new Map<string, PersonActionDef>(
-  PERSON_ACTION_DEFS.map(def => [def.id, def])
+  [...PERSON_ACTION_DEFS, GENERAL_ACTION_DEF].map(def => [def.id, def])
 );

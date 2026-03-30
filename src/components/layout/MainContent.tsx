@@ -33,6 +33,8 @@ import { DraftLotteryView } from '../draft/DraftLotteryView';
 import Dashboard from '../commissioner/Dashboard';
 import ViewershipTab from '../commissioner/ViewershipTab';
 import CommishStore from '../central/view/CommishStore';
+import RealStern from '../central/view/RealStern';
+import SportsBookView from '../central/view/SportsBookView';
 import SeasonalView from '../seasonal/SeasonalView';
 import { Tab } from '../../types';
 
@@ -152,17 +154,7 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
         </div>
       );
     case 'Finances':
-      return (
-        <div className="h-full overflow-hidden p-4 md:p-8">
-          <div className="max-w-4xl mx-auto w-full h-full overflow-y-auto custom-scrollbar">
-            <div className="mb-6">
-              <h2 className="text-3xl font-black text-white uppercase tracking-tight">Finances</h2>
-              <p className="text-slate-500 font-medium">Revenue, salary cap and daily profit/loss</p>
-            </div>
-            <Dashboard initialTab="finances" />
-          </div>
-        </div>
-      );
+      return <LeagueFinancesView initialTab="revenue" />;
     case 'League Finances':
       return <LeagueFinancesView />;
     case 'Team Finances':
@@ -175,6 +167,18 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       return (
         <div className="h-full overflow-y-auto">
           <CommishStore />
+        </div>
+      );
+    case 'Real Stern':
+      return (
+        <div className="h-full overflow-y-auto">
+          <RealStern />
+        </div>
+      );
+    case 'Sports Book':
+      return (
+        <div className="h-full overflow-y-auto">
+          <SportsBookView />
         </div>
       );
     default:

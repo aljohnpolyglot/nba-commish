@@ -159,23 +159,44 @@ Manipulate the NBA Draft Lottery outcome to deliver the #1 pick to the team of y
 When **LLM mode is enabled** (`Settings → Enable LLM`), every call to `advanceDay()` sends a full prompt to the model. The action itself is serialised as `JSON.stringify(action)` and injected under **"User Action Taken"** in the prompt.
 
 ### The `outcomeText` contract
-Set `action.payload.outcomeText` to a human-readable sentence before calling `advanceDay`. The LLM treats this as the **source of truth** — it will write news headlines, social posts, and emails that react to exactly this text. Without it, the LLM improvises (and may hallucinate).
+Set `action.payload.outcomeText` to a factual sentence describing what happened before calling `advanceDay`. The LLM uses this as context — it writes news, social posts, and emails reacting to this event. Without it, the LLM improvises (and may hallucinate).
 
 ```ts
-// ✅ LLM will narrate exactly this
+// ✅ LLM will narrate this event
 payload.outcomeText = `Commissioner fined LeBron James $500,000 for conduct detrimental to the league.`;
+
+// ✅ Add isSpecificEvent: true for STRICT MODE — LLM focuses entirely on this single event
+payload.isSpecificEvent = true;
 
 // ❌ No outcomeText — LLM guesses what happened
 ```
 
+**Known issue (Mar 2026)**: When LLM enabled, the model sometimes echoes `outcomeText` verbatim rather than enriching it. Root cause: system prompt calls it "ABSOLUTE SOURCE OF TRUTH". Fix tracked in `README.md > Pending Work` — requires renaming to `eventHint` and updating `system.ts`.
+
 ### When LLM is OFF
 `advanceDay` falls back gracefully:
-1. If `payload.outcomeText` is set → uses it verbatim for history
-2. If games were played → generates a game-count summary
+1. If `payload.outcomeText` is set → used verbatim for history
+2. If games were played → game-count summary
 3. Otherwise → `"The day has passed with standard league activities."`
 
+The **game simulation is full-fidelity in both modes** — stats, trades, schedule all work the same. Only narrative flavor differs.
+
 ### Actions that always go to LLM (when enabled)
-Any `dispatchAction` that is NOT in the immediate-handler list in `GameContext.tsx` flows through `processTurn` → `advanceDay` → LLM prompt. This includes all custom actions, `ADVANCE_DAY`, and any action dispatched from `AssetActionModal` (GIFT / DEPLOY).
+Any `dispatchAction` not in the immediate-handler list in `GameContext.tsx` flows through `processTurn` → `advanceDay` → LLM. This includes all custom actions, `ADVANCE_DAY`, and actions from `AssetActionModal` (GIFT / DEPLOY).
+
+### PersonSelectorModal — actionType eligibility
+`PersonSelectorModal` looks up eligibility from `PERSON_ACTION_MAP` in `src/data/personActionDefs.ts`. Always pass a registered `actionType`. Key types:
+
+| actionType | Who appears |
+|---|---|
+| `general` | Players + staff + league office (RealStern invite/gift) |
+| `dinner` | Players + staff + league office (no refs — removed Mar 2026) |
+| `movie` | Players + staff (no refs, no league office) |
+| `give_money` | Players + staff + teams |
+| `fine` / `bribe` | Players + staff + refs |
+| `suspension` | Active NBA players only |
+
+`general` is registered via `GENERAL_ACTION_DEF` at the bottom of `personActionDefs.ts`. Without it only players appear.
 
 ---
 

@@ -82,7 +82,11 @@ Two gist-backed data files live in `src/data/` and are fetched once per session 
 - **Rig voting one-time gate**: `allStar.hasRiggedVoting` (boolean, set immediately in GameContext) prevents firing again. Check before enabling the Seasonal card. Rig voting is additionally gated on `allStar.startersAnnounced` — can't rig before the ballot is published.
 - **Dunk contestants 2K fetch**: SeasonalView fetches the same gist URL used by Defense2KService. Extracts `attributes["Inside Scoring"]["Driving Dunk"]` and `attributes.Athleticism.Vertical`. Keys may have `+1 /  -2 ` prefixes — strip them with `.replace(/^[+-]\d+\s+/, '').trim()`. Players without 2K data still appear in the selector (shown as "no 2K data") so any active player can be picked.
 - **Dunk/3PT contestant modals are always editable**: Cards are never `disabled/completed` after announcement. The modal shows an "Editing" banner when contestants already exist. The description line updates to show count (e.g. "6 contestants set — click to edit").
-- **Sidebar Legacy group**: Approvals, Viewership, and Finances are now under the "Legacy" group in NavigationMenu — not in Command Center. Don't move them back.
+- **Sidebar Legacy group**: Approvals, Viewership, and Finances are under "Legacy" in NavigationMenu. The **Finances** legacy tab now renders `LeagueFinancesView` with `initialTab="revenue"` — showing the League Revenue chart directly. Don't move them back or restore `Dashboard initialTab="finances"` — that tab was retired.
+- **League Finances tabs**: `LeagueFinancesView` has tabs `cap | trade | attendance | revenue`. The Revenue tab button is hidden in the normal tab bar (`League Finances` nav item) since it's accessible via `Legacy > Finances`. Don't re-add the Revenue button to the tab bar.
+- **LLM providers (post-Mar 2026)**: `@google/genai` package removed. Local type shims in `api.ts` replace `GenerateContentParameters` / `GenerateContentResponse` / `ThinkingLevel`. Chat → Groq Worker (no fallback). Non-chat → Together AI Worker (`TOGETHER_WORKER_URL`). `workerProviders.ts` uses `TOGETHER_WORKER` constant.
+- **`general` PersonSelectorModal actionType**: Used by RealStern invite/gift. Registered in `PERSON_ACTION_MAP` via `GENERAL_ACTION_DEF` in `personActionDefs.ts`. Eligibility: players (all statuses) + staff + league office. Shows an optional "Reason for Invite" text box. Don't remove this entry — without it the modal only shows players (no staff/league office).
+- **Referees in social actions**: `dinner` and `movie` actions do NOT include refs (removed Mar 2026). `bribe`, `fine`, `suspension`, `contact` still include refs — that's intentional. Don't add `includesRefs: true` back to `dinner` or `movie`.
 - **Mood system — Phase 1 (drama-only)**: `src/utils/mood/` is a barrel export. `computeMoodScore(player, team, dateStr, endorsed, suspended, sabotaged)` returns `{ score, components }` — score is −10 to +10, computed fresh each call (no cached field in Phase 1). `genMoodTraits(internalId)` is deterministic (string hash). Traits are stored in `player.moodTraits?: MoodTrait[]`. `gameLogic.ts` lazily backfills traits for any player missing them on each day advance. `dramaProbability(score, traits)` outputs per-player weight for the discipline story lottery. 7 traits: 4 core personality types (DIVA=F, LOYAL=L, MERCENARY=$, COMPETITOR=W — BBGM-inspired) plus VOLATILE, AMBASSADOR, DRAMA_MAGNET.
 - **FightGenerator**: `src/services/FightGenerator.ts` — base probability 0.4% per game. Weighted by both players' mood/traits. Real player propensity map matches by `player.name` substring (case-insensitive). Result stored in `GameResult.fight?: FightResult`. Engine calls `FightGenerator.generate(homeStats, awayStats, players, teams, date)` after the game sim loop. Fight story seeds injected into `actionProcessor.ts` story loop (same path as discipline/sponsor stories). Both `GameResult` interfaces must stay in sync — `src/types.ts` AND `src/services/simulation/types.ts`.
 - **Raw OVR vs 2K-ified OVR**: `player.overallRating` (and `ratings[n].ovr`) is the raw BBGM-style 0–100 scale. `convertTo2KRating(ovr, hgt)` in `utils/helpers.ts` converts to approximate NBA 2K scale (~60–99 for pros). Always use `convertTo2KRating` when displaying player ratings in 2K-style contexts (Defense2KService, BadgeService, SeasonalView dunk contest). Never display raw `overallRating` as a 2K rating — the scales differ significantly (raw 70 ≈ 2K 78; raw 90 ≈ 2K 92).
@@ -93,13 +97,20 @@ Two gist-backed data files live in `src/data/` and are fetched once per session 
 - **`playerDNPs` — DNP reason stored at sim time**: `GameResult.playerDNPs` is a `Record<playerId, reason>` map populated by `engine.ts` when the game is simulated. Always prefer `result.playerDNPs[playerId]` over computing the reason from current `player.injury` — injury state changes after the game is played, so the historical reason is only accurate from the stored map.
 - **`applyPlayoffLogic` in simulationHandler**: The multi-day sim loop in `simulationHandler.ts` runs `applyPlayoffLogic(state, [], ...)` BEFORE each day (injects bracket/play-in games into schedule) and `applyPlayoffLogic(state, results, ...)` AFTER (advances the bracket). This mirrors the playoff block in `gameLogic.ts` so that `SIMULATE_TO_DATE` crossing April 13–20 correctly generates and simulates play-in games. Don't remove either call.
 - **Playoff games in DayView**: `DayView` renders games from `gamesForSelectedDate`, filtered from `state.schedule`. Playoff/play-in games only appear there after being injected by `PlayoffGenerator.injectPlayInGames`. With the `simulationHandler` fix, games are injected during multi-day sim. For manual day-by-day advancement, bracket injection still happens in `gameLogic.ts`.
-- **All-NBA / All-Defense / All-Rookie Teams**: `AwardService.calculateAllNBATeams()` produces 3 All-NBA, 2 All-Defense, 2 All-Rookie teams using positional slots (2G, 2F, 1C). Players can only appear on one team per category (shared `globalUsed` Set across picks). Returns `AllNBATeams` type with `allNBA`, `allDefense`, `allRookie` arrays. Visible in Award Races view under the "allNBA" tab.
+- **All-NBA / All-Defense / All-Rookie Teams**: `AwardService.calculateAllNBATeams()` produces 3 All-NBA, 2 All-Defense, 2 All-Rookie teams using positional slots (2G, 2F, 1C). Players can only appear on one team per category (shared `globalUsed` Set across picks). Returns `AllNBATeams` type with `allNBA`, `allDefense`, `allRookie` arrays. Visible in Award Races view under the "allNBA" tab. Cards show W-L team record below position/abbrev.
+- **AwardService season-start fallback**: `getBestStat(stats, season)` tries `season` first, then `season - 1`. This handles day 1 where current-season stats don't exist yet (only prior-season BBGM data loaded). `isEligible` uses `gp >= 1` threshold on day 0 (teamGames === 0). All per-game calcs use `Math.max(gp, 1)` as divisor to avoid divide-by-zero. Without this fallback, all award races show empty on game start.
 - **Coach of the Year**: `AwardService.calculateCOY(teams, season, staff)` scores coaches by win% + improvement over previous season. Coach name resolved via `state.staff.coaches` (matching by `team.name` or `team.abbrev`). Falls back to `"<TeamName> Head Coach"` if no staff entry found. Visible as "coy" tab in Award Races. Coach portraits fetched via `getCoachPhoto(name)` from `src/data/photos/coaches.ts` — call `fetchCoachData()` once on mount to hydrate the gist cache.
 - **`src/data/` is the home for all external/static data**: Coach photos (`data/photos/coaches.ts`), celebrity rosters (`data/celebrities.ts`), and any other gist-backed lookup tables live here. Always check `src/data/` first before searching services or components for portrait URLs or external data.
 - **`src/components/shared/` is for reusable UI**: `PlayerPortrait`, `TeamDropdown`, `TabBar`, `SortableTh` are already there. Always use or extend shared components before writing inline UI in a feature component.
 - **Award announcement dates**: Each award tab in `AwardRacesView` shows its announcement date (CoY=Apr 19 → MVP=May 21). Dates shown in the tab selector and in the info card header.
 - **All-Star break fix**: `breakStart` changed from `allStarSunday - 3` (Thursday) to `allStarSunday - 2` (Friday). Thursday games before All-Star break now simulate normally. The break filter in `simulationRunner.ts` only activates starting Friday (Rising Stars day).
 - **Seasonal sidebar badge**: `NavigationMenu` computes `seasonalBadge` — counts urgent seasonal actions (≤7 days to deadline, not completed). Checks: rig voting, celebrity roster, dunk contest, 3-point contest, injured All-Star. Badge count shown on the "Seasonal Actions" nav item.
+- **betResolver — wager deduction model (Model A)**: `placeBet` in `GameContext.tsx` deducts the wager from `personalWealth` immediately at placement. `resolveBets` therefore returns `netChange = potentialPayout - wager` on a win and `0` on a loss (money is already gone). Don't switch to Model B (deduct-on-loss) without updating both `placeBet` and `resolveBets`.
+- **betResolver — reb fallback**: `PlayerGameStats.reb` is initialized at 0 in coordinated stats but may stay 0. Always use `stat.reb || (stat.orb + stat.drb)` when resolving reb/pra props. The fallback is baked into `betResolver.ts`.
+- **betResolver — playerId is internalId**: `BetLeg.playerId` is `player.internalId` (the BBGM UUID string), NOT the NBA.com numeric ID. `GameResult.homeStats[].playerId` is also `internalId`. Never join on `player.id` or `nbaId` for bet resolution.
+- **betResolver — DNP behavior**: If a player appears in `GameResult.playerDNPs` or is absent from both `homeStats` and `awayStats`, their leg returns `null` → bet stays `pending`, never `lost`. This prevents bettors from losing wagers on scratches/DNPs.
+- **betResolver — parseLine**: Extracts the numeric line from a description string. Handles `"Over X"` / `"Under X"` patterns (for totals and props) and signed spread patterns like `"LAL -3.5"` / `"BOS +3.5"`. Spread descriptions come from SportsBookView as `"${abbrev} ${sign}${number}"` (e.g. `"BOS +3.5"` or `"LAL -3.5"`). Over/Under descriptions are `"Over 220.5 pts"` or `"LeBron James Over 25.5 PTS"`.
+- **betResolver — parlay batching**: Parlay legs all use `gameId` or `playerId` to look up results. If any leg's game isn't in the current `allSimResults` batch, the whole parlay stays pending. Same-day parlays resolve in one turn. Multi-day parlays resolve only if all their games fall within the same `SIMULATE_TO_DATE` batch.
 
 ---
 
@@ -281,3 +292,50 @@ See `LEAGUE_RULES_README.md` for how to wire commissioner rule toggles/sliders t
 ---
 
 *Lead the league. Build your legacy. Become the ultimate NBA Commissioner.*
+
+---
+
+## Pending Work (pick up here next session)
+
+### Real Stern — passive income not wired
+- `monthlyPassive` income is computed in RealStern UI but **not** wired into `generatePaychecks`.
+- **TODO**: Add `state.realEstatePassive` ($/month number) and accumulate monthly in the payslip logic.
+
+### LLM outcome text — still partially generic when LLM enabled
+- Root cause: `generateAdvanceDayPrompt` treats `payload.outcomeText` as "ABSOLUTE SOURCE OF TRUTH" — the LLM echoes it rather than enriching it freely.
+- **TODO**: Rename the payload field to `eventHint` (or add `isHintOnly: true` flag). When `enableLLM: true`, prompt should say: "The `eventHint` is the raw event context — use it as the FACTUAL BASIS but write your own compelling `outcomeText` from scratch." When LLM is off, use `eventHint` verbatim as the fallback. This cleanly separates lazy-sim text from LLM narration.
+- `isSpecificEvent: true` (added to RealStern/CommishStore dispatches Mar 2026) partially helps but doesn't fully override the system prompt's wording.
+
+### Sports Book — known gaps
+- Lines/odds regenerate on each open (cosmetic only — placed bets unaffected).
+- Push (exact tie on spread/total) resolves as a loss — no push/refund logic in `betResolver.ts`.
+- `state.bets` grows unbounded — no archival for old resolved bets.
+
+---
+
+## LLM Mode vs. Lazy Sim (Non-LLM) — Important Separation
+
+The simulation has **two completely separate narrative modes**. Understand this before touching `advanceDay` or prompt logic.
+
+### Non-LLM ("lazy sim") — `enableLLM: false`
+- Default / fast mode. No API calls.
+- `advanceDay()` returns static text: `action.payload.outcomeText` (factual description) or a game-count summary.
+- News, social, emails generated by `generateLazySimNews()` (template-based).
+- Full game simulation still runs — only the **narrative flavor** is templated.
+- Commissioner's Diary entries read as plain factual text with no embellishment.
+
+### LLM ("live sim") — `enableLLM: true`
+- Calls **Groq Worker** (chat: `bypassLLMCheck: true`) or **Together AI Worker** (all sim/narrative turns).
+- `advanceDay()` sends full league context + action → LLM returns rich JSON: `outcomeText`, `statChanges`, `newEmails`, `newNews`, `newSocialPosts`.
+- The payload `outcomeText` is provided as the factual basis ("what happened") — LLM should rewrite into engaging content. This is still partially imperfect (see Pending Work above).
+- Provider routing: chat → Groq Worker only (no fallback). Non-chat → Together AI Worker (worker-side Gemini fallback, server only).
+- `@google/genai` npm package is **not used** (removed Mar 2026). Local type shims live in `src/services/llm/utils/api.ts`.
+
+### Key files
+| File | Purpose |
+|------|---------|
+| `src/services/llm/generators/simulation.ts` | `advanceDay()` entry point, LLM vs lazy-sim branch |
+| `src/services/llm/prompts/system.ts` | Master system prompt |
+| `src/services/llm/prompts/simulation.ts` | `generateAdvanceDayPrompt()` with `isSpecificEvent` handling |
+| `src/services/llm/utils/api.ts` | Groq Worker vs Together Worker routing |
+| `src/services/llm/generators/lazySimNews.ts` | Template news for non-LLM mode |

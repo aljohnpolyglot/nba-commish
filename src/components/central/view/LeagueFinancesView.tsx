@@ -249,9 +249,9 @@ const AttRow: React.FC<{ d: TeamEnriched; rank: number; onClick: () => void }> =
 // ─── Main view ────────────────────────────────────────────────────────────────
 type TabKey = 'cap' | 'trade' | 'attendance' | 'revenue';
 
-export const LeagueFinancesView: React.FC = () => {
+export const LeagueFinancesView: React.FC<{ initialTab?: TabKey }> = ({ initialTab }) => {
   const { state, navigateToTeamFinances } = useGame();
-  const [tab, setTab]         = useState<TabKey>('cap');
+  const [tab, setTab]         = useState<TabKey>(initialTab ?? 'cap');
   const [revenueRange, setRevenueRange] = useState<7 | 30 | 90 | 'season'>(30);
   const [capSort, setCapSort] = useState<CapSortKey>('payroll');
   const [capDir, setCapDir]   = useState<'desc' | 'asc'>('desc');
@@ -451,7 +451,7 @@ export const LeagueFinancesView: React.FC = () => {
             {t.label}
           </button>
         ))}
-        <button onClick={() => setTab('revenue')} className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${tab === 'revenue' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-white'}`}>Revenue</button>
+        {/* Revenue tab hidden here — accessible via Legacy > Finances in sidebar */}
       </div>
 
       {/* ── Content ── */}

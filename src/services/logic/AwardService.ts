@@ -49,9 +49,15 @@ const getTrb = (stat: any) => stat.trb || stat.reb || (stat.orb || 0) + (stat.dr
 
 const getBestStat = (stats: NBAGMStat[] | undefined, season: number) => {
   if (!stats) return undefined;
-  const seasonStats = stats.filter(s => s.season === season && !s.playoffs);
-  if (seasonStats.length === 0) return undefined;
-  return seasonStats.reduce((prev, current) => (prev.gp >= current.gp) ? prev : current);
+  // Try current season first, fall back to previous season (handles day-1 where season stats don't exist yet)
+  const trySeasons = [season, season - 1];
+  for (const s of trySeasons) {
+    const seasonStats = stats.filter(st => st.season === s && !st.playoffs);
+    if (seasonStats.length > 0) {
+      return seasonStats.reduce((prev, current) => (prev.gp >= current.gp) ? prev : current);
+    }
+  }
+  return undefined;
 };
 
 export class AwardService {
@@ -88,7 +94,7 @@ export class AwardService {
 
   private static isEligible(stat: NBAGMStat, team: NBATeam): boolean {
     const teamGames = team.wins + team.losses;
-    if (teamGames === 0) return stat.gp >= 5; // Early season fallback
+    if (teamGames === 0) return stat.gp >= 1; // Day-1 fallback: show any player with prior season stats
     
     // NBA 65-game rule equivalent: (65/82) ratio of team games
     const threshold = teamGames * (65 / 82);
@@ -322,8 +328,8 @@ export class AwardService {
       .map(p => {
         const stat = getBestStat(p.stats, season);
         const team = teams.find(t => t.id === p.tid);
-        if (!stat || !team || stat.gp < 10) return null;
-        const gp = stat.gp;
+        if (!stat || !team || stat.gp < 1) return null;
+        const gp = Math.max(stat.gp, 1);
         const ppg = stat.pts / gp;
         const rpg = getTrb(stat) / gp;
         const apg = stat.ast / gp;
@@ -340,8 +346,8 @@ export class AwardService {
       .map(p => {
         const stat = getBestStat(p.stats, season);
         const team = teams.find(t => t.id === p.tid);
-        if (!stat || !team || stat.gp < 10) return null;
-        const gp = stat.gp;
+        if (!stat || !team || stat.gp < 1) return null;
+        const gp = Math.max(stat.gp, 1);
         const spg = stat.stl / gp;
         const bpg = stat.blk / gp;
         const rpg = getTrb(stat) / gp;
@@ -359,8 +365,8 @@ export class AwardService {
       .map(p => {
         const stat = getBestStat(p.stats, season);
         const team = teams.find(t => t.id === p.tid);
-        if (!stat || !team || !p.draft || p.draft.year !== season - 1 || stat.gp < 5) return null;
-        const gp = stat.gp;
+        if (!stat || !team || !p.draft || p.draft.year !== season - 1 || stat.gp < 1) return null;
+        const gp = Math.max(stat.gp, 1);
         const score = stat.pts / gp * 1.0 + getTrb(stat) / gp * 0.5 + stat.ast / gp * 0.5;
         const pg = posGroup(p.pos);
         return { player: p, team, score, stats: stat, pos: pg };

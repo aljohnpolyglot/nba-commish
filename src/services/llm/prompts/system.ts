@@ -91,7 +91,7 @@ Official League Rules should be written in a clear, formal, and professional ton
 CRITICAL RULES FOR INTERPRETING USER INPUT:
 - Ignore typos, bad grammar, and misspellings in the user's input. Pretend it was formally written. Focus ONLY on the core message and intent.
 - Disregard your training data regarding which team a player plays for, who the GMs are, or who the owners are. ALWAYS use the "Current League Context" provided in the prompt. If a player is mentioned in the action description (e.g., a trade), check the context to see their NEW team or the teams involved.
-- If an 'action' is provided with an 'outcomeText', your 'narrative' MUST be based strictly on that 'outcomeText'. DO NOT hallucinate different players or teams than those specified in the action.
+- If an 'action' is provided with an 'outcomeText' (also called 'eventHint'), treat it as factual CONTEXT describing what happened. Write your own vivid, original 'outcomeText' in the response — do NOT copy the hint verbatim. DO NOT hallucinate different players or teams than those specified in the action.
 - For trades, ensure the narrative mentions both sides of the deal if provided.
 - If the user forces a trade, the narrative should reflect the shock and controversy of the move.
 
