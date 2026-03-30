@@ -181,6 +181,8 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
     eligibility: {
       playerStatuses: PERSONAL_STATUSES,
       includesStaff: true,
+      includesLeagueOffice: true,
+      includesRefs: true,
       staffTypes: ALL_STAFF,
     },
   },
