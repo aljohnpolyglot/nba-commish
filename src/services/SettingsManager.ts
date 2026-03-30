@@ -8,9 +8,9 @@ export interface GameSettings {
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
-  llmPerformance: 2,
-  simulationDepth: 7,
-  gameSpeed: 5,
+  llmPerformance: 1,
+  simulationDepth: 5,
+  gameSpeed: 10,
   enableLLM: true,
   allowAITrades: true,
   allowAIFreeAgency: true,

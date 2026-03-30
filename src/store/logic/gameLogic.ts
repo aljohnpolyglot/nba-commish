@@ -18,6 +18,7 @@ import { calculateNewStats } from './turn/statUpdater';
 import { handleSocialAndNews } from './turn/socialHandler';
 import { handleCommunication } from './turn/communicationHandler';
 import { SettingsManager } from '../../services/SettingsManager';
+import { resolveBets } from '../../services/logic/betResolver';
 
 export { handleStartGame, handleAnnounceChange };
 
@@ -600,6 +601,15 @@ export const processTurn = async (
     const remainingDebuffs = (result.pendingClubDebuff ?? state.pendingClubDebuff ?? [])
         .filter((d: any) => !playedPlayerIds.has(d.playerId));
 
+    // Resolve pending bets against today's sim results
+    const betResolution = resolveBets(state.bets ?? [], allSimResults);
+    if (betResolution.netChange !== 0) {
+        newStats = {
+            ...newStats,
+            personalWealth: Number((newStats.personalWealth + betResolution.netChange / 1_000_000).toFixed(4)),
+        };
+    }
+
     return {
         day: result.day || (stateWithSim.day + 1),
         date: dateString,
@@ -639,5 +649,6 @@ export const processTurn = async (
         lastSimResults: allSimResults || [],
         prevTeams: state.teams,
         daysSimulated: daysToSimulate,
+        bets: betResolution.updatedBets,
     };
 };

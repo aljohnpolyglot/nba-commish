@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useRef, useEffect, useCallback } from 'react';
-import { GameState, UserAction, Tab } from '../types';
+import { GameState, UserAction, Tab, Bet, BetLeg } from '../types';
 import { processTurn, handleStartGame, handleAnnounceChange } from './logic/gameLogic';
 import { useGameActions } from './useGameActions';
 import { initialState } from './initialState';
@@ -29,6 +29,7 @@ interface GameContextType {
   navigateToTeamFinances: (teamId: number) => void;
   pendingStatSort: { type: 'player' | 'team'; field: string; order: 'asc' | 'desc' } | null;
   setPendingStatSort: (sort: { type: 'player' | 'team'; field: string; order: 'asc' | 'desc' } | null) => void;
+  placeBet: (bet: { type: Bet['type']; wager: number; potentialPayout: number; legs: BetLeg[] }) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -159,6 +160,16 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           personalWealth: Math.max(0, Number((prev.stats.personalWealth - amountMillion).toFixed(4))),
         },
       }));
+      return;
+    }
+
+    if (action.type === 'REAL_ESTATE_INVENTORY_UPDATE') {
+      setState(prev => ({ ...prev, realEstateInventory: action.payload.inventory }));
+      return;
+    }
+
+    if (action.type === 'COMMISH_STORE_INVENTORY_UPDATE') {
+      setState(prev => ({ ...prev, commishStoreInventory: action.payload.inventory }));
       return;
     }
 
@@ -578,10 +589,31 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [state.isDataLoaded, !!state.staff]);
 
+  const placeBet = (bet: { type: Bet['type']; wager: number; potentialPayout: number; legs: BetLeg[] }) => {
+    const newBet: Bet = {
+      id: `bet-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      date: state.date,
+      type: bet.type,
+      status: 'pending',
+      wager: bet.wager,
+      potentialPayout: bet.potentialPayout,
+      legs: bet.legs,
+    };
+    setState(prev => ({
+      ...prev,
+      bets: [newBet, ...(prev.bets ?? [])],
+      stats: {
+        ...prev.stats,
+        personalWealth: Math.max(0, Number((prev.stats.personalWealth - bet.wager / 1_000_000).toFixed(4))),
+      },
+    }));
+  };
+
   return (
-    <GameContext.Provider value={{ 
-      state, 
-      dispatchAction, 
+    <GameContext.Provider value={{
+      state,
+      dispatchAction,
+      placeBet,
       currentView,
       setCurrentView,
       selectedTeamId,

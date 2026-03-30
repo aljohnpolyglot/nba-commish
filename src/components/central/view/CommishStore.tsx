@@ -27,7 +27,11 @@ export default function CommishStore() {
   const [currentPage, setCurrentPage] = useState(1);
   const [productType, setProductType] = useState('');
   const [teamFilter, setTeamFilter] = useState('');
-  const [assets, setAssets] = useState<{ product: Product; quantity: number; date: string }[]>([]);
+  const assets = (state.commishStoreInventory ?? []) as { product: Product; quantity: number; date: string }[];
+  const setAssets = (updater: typeof assets | ((prev: typeof assets) => typeof assets)) => {
+    const next = typeof updater === 'function' ? updater(assets) : updater;
+    dispatchAction({ type: 'COMMISH_STORE_INVENTORY_UPDATE', payload: { inventory: next } });
+  };
   const [purchaseQuantity, setPurchaseQuantity] = useState(1);
   const [selectedAssetForAction, setSelectedAssetForAction] = useState<{
     product: Product;
@@ -414,74 +418,97 @@ export default function CommishStore() {
   return (
     <div className="min-h-screen flex flex-col bg-[#f4f4f4] text-[#333]">
       {/* Navbar */}
-      <nav className="bg-nba-dark px-6 py-4 flex justify-between items-center sticky top-0 z-50 border-b-4 border-nba-blue shadow-xl">
-        <h1
-          className="text-white font-black text-xl tracking-tighter cursor-pointer flex items-center gap-2"
-          onClick={goHome}
-        >
-          <span className="text-2xl">🏀</span> COMMISH STORE
-        </h1>
+      <nav className="bg-nba-dark px-4 md:px-6 py-3 sticky top-0 z-50 border-b-4 border-nba-blue shadow-xl">
+        {/* Row 1: logo + compact right */}
+        <div className="flex justify-between items-center mb-2 md:mb-0">
+          <h1
+            className="text-white font-black text-lg md:text-xl tracking-tighter cursor-pointer flex items-center gap-2 shrink-0"
+            onClick={goHome}
+          >
+            <span className="text-xl">🏀</span>
+            <span className="hidden xs:inline">COMMISH STORE</span>
+            <span className="xs:hidden">STORE</span>
+          </h1>
 
-        <div className="flex gap-2 items-center">
-          <div className="relative flex items-center">
-            <input
-              type="text"
-              placeholder="Search"
-              className="bg-white px-4 py-2 rounded-l-md outline-none w-48 md:w-64 text-sm focus:ring-2 focus:ring-nba-blue transition-all"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') {
-                  setProductType('');
-                  setTeamFilter('');
-                  setMinPrice('');
-                  setMaxPrice('');
+          {/* Desktop: search in center row */}
+          <div className="hidden md:flex gap-2 items-center flex-1 justify-center px-6">
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                placeholder="Search"
+                className="bg-white px-4 py-2 rounded-l-md outline-none w-64 text-sm focus:ring-2 focus:ring-nba-blue transition-all"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    setProductType(''); setTeamFilter(''); setMinPrice(''); setMaxPrice('');
+                    setCurrentFilters({});
+                    executeSearch(searchQuery, {}, 1, false, { productType: '', teamFilter: '', minPrice: '', maxPrice: '' });
+                  }
+                }}
+              />
+              <button
+                className="bg-nba-blue text-white px-4 py-2 rounded-r-md font-bold text-sm hover:bg-blue-700 transition-colors flex items-center justify-center h-[36px]"
+                onClick={() => {
+                  setProductType(''); setTeamFilter(''); setMinPrice(''); setMaxPrice('');
                   setCurrentFilters({});
-                  executeSearch(searchQuery, {}, 1, false, {
-                    productType: '',
-                    teamFilter: '',
-                    minPrice: '',
-                    maxPrice: '',
-                  });
-                }
-              }}
-            />
+                  executeSearch(searchQuery, {}, 1, false, { productType: '', teamFilter: '', minPrice: '', maxPrice: '' });
+                }}
+              >
+                <Search size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Right: cart + wallet (always visible, compact on mobile) */}
+          <div className="flex items-center gap-3 md:gap-6 shrink-0">
             <button
-              className="bg-nba-blue text-white px-4 py-2 rounded-r-md font-bold text-sm hover:bg-blue-700 transition-colors flex items-center justify-center h-[36px]"
-              onClick={() => {
-                setProductType('');
-                setTeamFilter('');
-                setMinPrice('');
-                setMaxPrice('');
-                setCurrentFilters({});
-                executeSearch(searchQuery, {}, 1, false, {
-                  productType: '',
-                  teamFilter: '',
-                  minPrice: '',
-                  maxPrice: '',
-                });
-              }}
+              onClick={() => setView('inventory')}
+              className={`relative flex items-center gap-1.5 font-mono font-bold text-sm transition-all ${
+                view === 'inventory' ? 'text-white' : 'text-white/70 hover:text-white'
+              }`}
             >
-              <Search size={18} />
+              <ShoppingCart size={18} />
+              <span className="hidden md:inline">ASSETS </span>
+              {assets.reduce((acc, curr) => acc + curr.quantity, 0) > 0 && (
+                <span className="absolute -top-2 -right-2 md:static md:ml-0 bg-nba-red text-white text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center md:w-auto md:h-auto md:bg-transparent md:text-white md:rounded-none md:text-sm">
+                  {assets.reduce((acc, curr) => acc + curr.quantity, 0)}
+                </span>
+              )}
             </button>
+            <div className="flex items-center gap-1.5 text-nba-green font-mono font-bold text-sm md:text-lg">
+              <Wallet size={16} className="md:w-5 md:h-5" />
+              {formatFunds(personalWealth)}
+            </div>
           </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-6">
+        {/* Row 2: search on mobile only */}
+        <div className="md:hidden flex gap-2 items-center">
+          <input
+            type="text"
+            placeholder="Search gear..."
+            className="bg-white px-3 py-2 rounded-l-md outline-none flex-1 text-sm focus:ring-2 focus:ring-nba-blue transition-all"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                setProductType(''); setTeamFilter(''); setMinPrice(''); setMaxPrice('');
+                setCurrentFilters({});
+                executeSearch(searchQuery, {}, 1, false, { productType: '', teamFilter: '', minPrice: '', maxPrice: '' });
+              }
+            }}
+          />
           <button
-            onClick={() => setView('inventory')}
-            className={`flex items-center gap-2 font-mono font-bold text-sm transition-all ${
-              view === 'inventory' ? 'text-white' : 'text-white/70 hover:text-white'
-            }`}
+            className="bg-nba-blue text-white px-3 py-2 rounded-r-md font-bold text-sm hover:bg-blue-700 transition-colors flex items-center justify-center"
+            onClick={() => {
+              setProductType(''); setTeamFilter(''); setMinPrice(''); setMaxPrice('');
+              setCurrentFilters({});
+              executeSearch(searchQuery, {}, 1, false, { productType: '', teamFilter: '', minPrice: '', maxPrice: '' });
+            }}
           >
-            <ShoppingCart size={18} />
-            ASSETS ({assets.reduce((acc, curr) => acc + curr.quantity, 0)})
+            <Search size={16} />
           </button>
-
-          <div className="flex items-center gap-2 text-nba-green font-mono font-bold text-lg">
-            <Wallet size={20} />
-            {formatFunds(personalWealth)}
-          </div>
         </div>
       </nav>
 
@@ -1053,9 +1080,9 @@ export default function CommishStore() {
               initial={{ opacity: 0, scale: 0.95, x: '-50%', y: '-40%' }}
               animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
               exit={{ opacity: 0, scale: 0.95, x: '-50%', y: '-40%' }}
-              className="fixed top-1/2 left-1/2 bg-white rounded-3xl overflow-hidden w-[95%] max-w-2xl z-[101] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.4)] flex flex-col md:flex-row"
+              className="fixed top-1/2 left-1/2 bg-white rounded-3xl overflow-hidden w-[95%] max-w-2xl max-h-[90vh] overflow-y-auto z-[101] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.4)] flex flex-col md:flex-row"
             >
-              <div className="w-full md:w-1/2 bg-gray-50 p-8 flex items-center justify-center border-b md:border-b-0 md:border-r border-gray-100 relative">
+              <div className="w-full md:w-1/2 bg-gray-50 p-6 md:p-8 flex items-center justify-center border-b md:border-b-0 md:border-r border-gray-100 relative min-h-[160px] md:min-h-0">
                 {selectedItem.isStatic && (
                   <div className="absolute top-4 left-4 bg-nba-dark text-white text-[10px] font-black px-3 py-1.5 rounded-full z-10 flex items-center gap-1.5 shadow-xl">
                     <Trophy size={10} /> OFFICIAL
@@ -1064,7 +1091,7 @@ export default function CommishStore() {
                 <img
                   src={selectedItem.image}
                   alt={selectedItem.title}
-                  className="max-w-full max-h-[400px] object-contain drop-shadow-2xl"
+                  className="max-w-full max-h-[180px] md:max-h-[400px] object-contain drop-shadow-2xl"
                   referrerPolicy="no-referrer"
                 />
               </div>

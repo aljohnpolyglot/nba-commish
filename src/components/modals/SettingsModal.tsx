@@ -3,21 +3,9 @@ import { X, Settings2, Zap, Cpu, Layers } from 'lucide-react';
 import { SettingsManager, GameSettings } from '../../services/SettingsManager';
 
 const GAME_MODE_OPTIONS = [
-  {
-    value: 1 as const,
-    label: '⚡ Fast',
-    description: 'Lean feeds, quick turns.',
-  },
-  {
-    value: 2 as const,
-    label: '⚖️ Balanced',
-    description: 'Good mix of speed and detail.',
-  },
-  {
-    value: 3 as const,
-    label: '🧠 Best',
-    description: 'Full narrative, max detail.',
-  },
+  { value: 1 as const, label: '⚡ Fast',     description: 'Lean feeds, quick turns.' },
+  { value: 2 as const, label: '⚖️ Balanced', description: 'Good mix of speed and detail.' },
+  { value: 3 as const, label: '🧠 Best',     description: 'Full narrative, max detail.' },
 ];
 
 interface SettingsModalProps {
@@ -55,6 +43,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         </div>
 
         <div className="p-6 overflow-y-auto custom-scrollbar flex flex-col gap-6">
+
+          {/* Enable AI Toggle — TOP of settings (core toggle) */}
+          <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
+            <div className="space-y-1">
+              <label className="text-sm font-bold text-white flex items-center gap-2">
+                <Cpu size={16} className={settings.enableLLM ? "text-emerald-400" : "text-slate-500"} />
+                AI Commentary &amp; Narratives
+              </label>
+              <p className="text-xs text-slate-400">
+                Powers news, social posts, DMs &amp; reactions. Off = fast offline play.
+              </p>
+            </div>
+            <button
+              onClick={() => setSettings({ ...settings, enableLLM: !settings.enableLLM })}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                settings.enableLLM ? 'bg-indigo-500' : 'bg-slate-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  settings.enableLLM ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
 
           {/* Game Mode — 3-card picker (only when AI is ON) */}
           {settings.enableLLM && (
@@ -144,31 +157,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               <span>Slow</span>
               <span>Fast</span>
             </div>
-          </div>
-
-          {/* Enable AI Toggle */}
-          <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
-            <div className="space-y-1">
-              <label className="text-sm font-bold text-white flex items-center gap-2">
-                <Cpu size={16} className={settings.enableLLM ? "text-emerald-400" : "text-slate-500"} />
-                Enable Generation
-              </label>
-              <p className="text-xs text-slate-400">
-                Turn off to skip content generation entirely and use fallback text.
-              </p>
-            </div>
-            <button
-              onClick={() => setSettings({ ...settings, enableLLM: !settings.enableLLM })}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                settings.enableLLM ? 'bg-indigo-500' : 'bg-slate-600'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  settings.enableLLM ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
           </div>
         </div>
 

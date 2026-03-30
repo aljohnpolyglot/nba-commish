@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -10,6 +10,34 @@
   --color-nba-red:   #c8102e;
   --color-nba-green: #00ff88;
   --color-nba-dark:  #111111;
+
+  /* Prestige tokens — used by Real Stern and Sports Book */
+  --color-prestige-gold:  #c5a059;
+  --color-prestige-black: #1a1a1a;
+  --color-prestige-cream: #f5f2ed;
+}
+
+/* Prestige utilities (Real Stern / Sports Book) */
+.serif {
+  font-family: "Cormorant Garamond", Georgia, serif;
+}
+
+/* Root scope — resets body white text so prestige components render correctly */
+.prestige-scope {
+  color: #1a1a1a;
+  background-color: #ffffff;
+}
+
+/* Text helpers scoped to prestige views */
+.prestige-scope .stern-text          { color: #1a1a1a; }
+.prestige-scope .stern-text-gold     { color: #c5a059; }
+.prestige-scope .stern-text-muted    { color: #6b7280; }
+.prestige-scope .stern-text-light    { color: #9ca3af; }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Custom Scrollbar */

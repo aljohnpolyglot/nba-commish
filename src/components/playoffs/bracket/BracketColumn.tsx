@@ -14,11 +14,12 @@ interface BracketColumnProps {
   selectedSeriesId: string | null;
   justify?: 'flex-start' | 'center' | 'space-around' | 'space-between';
   seriesLabels?: Record<string, string>;
+  baseDelay?: number;
 }
 
 export const BracketColumn: React.FC<BracketColumnProps> = ({
   label,
-  labelColor = 'text-slate-600',
+  labelColor = 'text-slate-500',
   seriesIds,
   playoffs,
   teams,
@@ -28,12 +29,17 @@ export const BracketColumn: React.FC<BracketColumnProps> = ({
   selectedSeriesId,
   justify = 'flex-start',
   seriesLabels = {},
+  baseDelay = 0,
 }) => {
   return (
-    <div className="flex flex-col w-44 shrink-0">
-      <div className={`text-[9px] font-black uppercase tracking-widest mb-2 ${labelColor}`}>{label}</div>
+    <div className="flex flex-col shrink-0">
+      {label && (
+        <h3 className={`text-center text-[10px] font-bold tracking-[0.2em] mb-3 uppercase ${labelColor}`}>
+          {label}
+        </h3>
+      )}
       <div className="flex flex-col gap-4 flex-1" style={{ justifyContent: justify }}>
-        {seriesIds.map(id => {
+        {seriesIds.map((id, i) => {
           const series = playoffs.series.find(s => s.id === id) ?? null;
           return (
             <SeriesCard
@@ -45,6 +51,7 @@ export const BracketColumn: React.FC<BracketColumnProps> = ({
               isSelected={selectedSeriesId === id}
               onClick={() => onSeriesClick(id)}
               label={seriesLabels[id]}
+              delay={baseDelay + i * 0.05}
             />
           );
         })}

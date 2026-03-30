@@ -59,4 +59,7 @@ export const initialState: GameState = {
   endorsedPlayers: [],
   allStar: undefined,
   pendingClubDebuff: [],
+  bets: [],
+  realEstateInventory: [],
+  commishStoreInventory: [],
 };

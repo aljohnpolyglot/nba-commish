@@ -6,6 +6,11 @@ import { SocialContext } from './types';
 import { TEAM_ARENAS } from '../../data/arenas';
 import { TEAM_HANDLES } from '../../data/teamHandles';
 import { fetchAvatarData, getAvatarByHandle } from '../avatarService';
+import { SettingsManager } from '../SettingsManager';
+
+// Handles whose injury/news templates are suppressed when LLM is active
+// (the LLM generates richer, more contextual versions of these posts)
+const LLM_OWNED_HANDLES = new Set(['shams', 'woj']);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HOW MANY POSTS PER HANDLE PER GAME (max)
@@ -122,9 +127,15 @@ export class SocialEngine {
           return pb - pa;
       });
 
+      const llmEnabled = SettingsManager.getSettings().enableLLM;
+
       for (const template of sortedTemplates) {
           try {
               const handleId = template.handle;
+
+              // ── LLM override: skip injury/news templates for LLM-owned handles ──
+              // When LLM is ON it generates richer versions; templates would duplicate.
+              if (llmEnabled && LLM_OWNED_HANDLES.has(handleId) && template.type === 'news') continue;
 
               // ── Dedup: same template already fired this game ───────────────
               if (usedTemplateIds.has(template.id)) continue;

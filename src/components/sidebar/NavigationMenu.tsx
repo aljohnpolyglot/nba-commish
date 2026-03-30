@@ -90,10 +90,9 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
     {
       label: 'Command Center',
       items: [
-        { id: 'Schedule',      label: 'Schedule',      icon: Calendar },
-        { id: 'Actions',       label: 'Actions',        icon: Sparkles },
-        { id: 'Commish Store', label: 'Store',          icon: ShoppingBag },
-        { id: 'Events',        label: 'Timeline',       icon: Clock },
+        { id: 'Schedule',  label: 'Schedule',  icon: Calendar },
+        { id: 'Actions',   label: 'Actions',   icon: Sparkles },
+        { id: 'Events',    label: 'Timeline',  icon: Clock },
       ],
     },
     {
@@ -153,9 +152,12 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
       ],
     },
     {
-      label: 'Personal',
+      label: 'Wealth',
       items: [
-        { id: 'Personal', label: 'Personal Wealth', icon: User, badge: hasUnreadPayslip ? 1 : 0 },
+        { id: 'Personal',      label: 'Payslips',      icon: User,        badge: hasUnreadPayslip ? 1 : 0 },
+        { id: 'Commish Store', label: 'Store',          icon: ShoppingBag },
+        { id: 'Real Stern',    label: 'Real Stern',     icon: Building2 },
+        { id: 'Sports Book',   label: 'Sports Book',    icon: TrendingUp },
       ],
     },
     {

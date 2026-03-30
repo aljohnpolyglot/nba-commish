@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { Game, PlayoffSeries, NBATeam } from '../../../types';
 import { normalizeDate } from '../../../utils/helpers';
 
@@ -10,8 +11,61 @@ interface SeriesCardProps {
   isSelected: boolean;
   onClick: () => void;
   label?: string;
+  delay?: number;
 }
 
+// ── TeamRow ─────────────────────────────────────────────────────────────────
+const TeamRow = ({
+  team,
+  seed,
+  wins,
+  isTop,
+  isWinner,
+  isLoser,
+}: {
+  team: NBATeam | null | undefined;
+  seed: number;
+  wins: number;
+  isTop?: boolean;
+  isWinner?: boolean;
+  isLoser?: boolean;
+}) => (
+  <div
+    className={`flex items-center justify-between p-2.5 bg-[#131823] ${isTop ? 'border-b border-slate-800' : ''} ${isLoser ? 'opacity-35' : ''}`}
+  >
+    <div className="flex items-center gap-3">
+      {team ? (
+        <img
+          src={team.logoUrl}
+          className="w-7 h-7 object-contain drop-shadow-md"
+          alt={team.abbrev}
+          referrerPolicy="no-referrer"
+        />
+      ) : (
+        <div className="w-7 h-7 flex items-center justify-center bg-slate-800/50 rounded-full border border-slate-700/50">
+          <span className="text-slate-500 text-[10px] font-bold">?</span>
+        </div>
+      )}
+      <div className="flex items-baseline gap-2">
+        <span className="text-[10px] font-bold text-slate-500 w-3 text-right">{seed}</span>
+        <span
+          className={`text-xs font-semibold tracking-wide ${
+            isWinner ? 'text-white font-bold' : 'text-slate-300'
+          }`}
+        >
+          {team?.abbrev ?? 'TBD'}
+        </span>
+      </div>
+    </div>
+    <span
+      className={`text-xs font-black pr-1 ${isWinner ? 'text-emerald-400' : 'text-slate-400'}`}
+    >
+      {wins}
+    </span>
+  </div>
+);
+
+// ── SeriesCard ───────────────────────────────────────────────────────────────
 export const SeriesCard: React.FC<SeriesCardProps> = ({
   series,
   teams,
@@ -20,12 +74,20 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
   isSelected,
   onClick,
   label,
+  delay = 0,
 }) => {
   if (!series) {
     return (
-      <div className="bg-white/[0.02] border border-dashed border-white/10 rounded-xl p-3 flex items-center justify-center min-h-[120px]">
-        <span className="text-slate-700 text-[10px] font-bold">{label || 'TBD'}</span>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4, delay }}
+        className="flex flex-col rounded-lg overflow-hidden border border-slate-700/30 bg-[#0f131c] w-48 shrink-0 min-h-[76px] items-center justify-center"
+      >
+        <span className="text-slate-700 text-[10px] font-bold px-2 text-center">
+          {label || 'TBD'}
+        </span>
+      </motion.div>
     );
   }
 
@@ -34,70 +96,85 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
   const isComplete = series.status === 'complete';
   const higherWon = isComplete && series.winnerId === series.higherSeedTid;
   const lowerWon = isComplete && series.winnerId === series.lowerSeedTid;
-  const nextGame = schedule.find(g => g.playoffSeriesId === series.id && !g.played);
-  const isToday = nextGame ? normalizeDate(nextGame.date) === normalizeDate(stateDate) : false;
   const isFinals = series.conference === 'Finals';
 
-  let borderClass = 'border-white/10';
-  if (isSelected) {
-    borderClass = isFinals ? 'border-yellow-400/60' : 'border-indigo-400/60';
-  } else if (isToday && !isComplete) {
-    borderClass = 'border-indigo-500/40 animate-pulse';
-  } else if (isComplete && isFinals) {
-    borderClass = 'border-yellow-400/30';
-  } else if (isComplete) {
-    borderClass = 'border-white/5';
+  const nextGame = schedule.find(g => g.playoffSeriesId === series.id && !g.played);
+  const isToday = nextGame ? normalizeDate(nextGame.date) === normalizeDate(stateDate) : false;
+
+  // Result footer text
+  let resultText = '';
+  if (isComplete) {
+    const winner = higherWon ? higher : lower;
+    const wW = higherWon ? series.higherSeedWins : series.lowerSeedWins;
+    const lW = higherWon ? series.lowerSeedWins : series.higherSeedWins;
+    resultText = `${winner?.abbrev ?? 'TBD'} WINS ${wW}-${lW}`;
+  } else if (isToday && nextGame) {
+    resultText = `GAME ${nextGame.playoffGameNumber} · TODAY`;
+  } else if (nextGame) {
+    const d = new Date(nextGame.date);
+    resultText = d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' });
+  } else if (series.higherSeedWins > 0 || series.lowerSeedWins > 0) {
+    resultText = `SERIES IN PROGRESS`;
+  } else {
+    resultText = 'NOT STARTED';
   }
 
+  const borderClass = isSelected
+    ? isFinals
+      ? 'border-amber-400/60'
+      : 'border-indigo-400/60'
+    : isToday && !isComplete
+    ? 'border-indigo-500/40'
+    : isFinals && isComplete
+    ? 'border-amber-400/30'
+    : 'border-slate-700/60';
+
   return (
-    <button
+    <motion.button
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.4, delay }}
       onClick={onClick}
-      className={`w-full text-left bg-[#111] border ${borderClass} rounded-xl p-2.5 flex flex-col gap-1 transition-all hover:bg-white/[0.04] ${isSelected ? 'ring-1 ring-inset ' + (isFinals ? 'ring-yellow-400/30' : 'ring-indigo-400/20') : ''}`}
+      className={`flex flex-col rounded-lg overflow-hidden border ${borderClass} bg-[#0f131c] transition-all duration-300 hover:border-slate-400 hover:shadow-xl w-48 shrink-0 text-left ${
+        isSelected ? `ring-1 ring-inset ${isFinals ? 'ring-amber-400/30' : 'ring-indigo-400/20'}` : ''
+      } ${isToday && !isComplete ? 'shadow-[0_0_12px_rgba(99,102,241,0.15)]' : 'shadow-md'}`}
     >
-      {/* Higher seed */}
-      <div className={`flex items-center gap-1.5 ${lowerWon ? 'opacity-30' : ''}`}>
-        <span className="text-[9px] text-slate-600 w-3.5 font-mono shrink-0">{series.higherSeed}</span>
-        {higher
-          ? <img src={higher.logoUrl} className="w-5 h-5 object-contain shrink-0" alt="" referrerPolicy="no-referrer" />
-          : <div className="w-5 h-5 bg-slate-800 rounded-full shrink-0" />}
-        <span className="text-xs font-bold text-white truncate flex-1">{higher?.abbrev ?? 'TBD'}</span>
-        <span className={`text-xs font-black shrink-0 ${higherWon ? 'text-emerald-400' : 'text-white'}`}>
-          {series.higherSeedWins}{higherWon ? ' 🏆' : ''}
+      <TeamRow
+        team={higher}
+        seed={series.higherSeed}
+        wins={series.higherSeedWins}
+        isTop
+        isWinner={higherWon}
+        isLoser={lowerWon}
+      />
+      <TeamRow
+        team={lower}
+        seed={series.lowerSeed}
+        wins={series.lowerSeedWins}
+        isWinner={lowerWon}
+        isLoser={higherWon}
+      />
+      <div
+        className={`text-center py-1 border-t border-slate-700/60 ${
+          isComplete
+            ? 'bg-slate-800/90'
+            : isToday
+            ? 'bg-indigo-900/40'
+            : 'bg-slate-900/60'
+        }`}
+      >
+        <span
+          className={`text-[9px] font-black tracking-wider uppercase ${
+            isComplete
+              ? 'text-slate-300'
+              : isToday
+              ? 'text-indigo-300'
+              : 'text-slate-600'
+          }`}
+        >
+          {resultText}
         </span>
       </div>
-
-      {/* Lower seed */}
-      <div className={`flex items-center gap-1.5 ${higherWon ? 'opacity-30' : ''}`}>
-        <span className="text-[9px] text-slate-600 w-3.5 font-mono shrink-0">{series.lowerSeed}</span>
-        {lower
-          ? <img src={lower.logoUrl} className="w-5 h-5 object-contain shrink-0" alt="" referrerPolicy="no-referrer" />
-          : <div className="w-5 h-5 bg-slate-800 rounded-full shrink-0" />}
-        <span className="text-xs font-bold text-white truncate flex-1">{lower?.abbrev ?? 'TBD'}</span>
-        <span className={`text-xs font-black shrink-0 ${lowerWon ? 'text-emerald-400' : 'text-white'}`}>
-          {series.lowerSeedWins}{lowerWon ? ' 🏆' : ''}
-        </span>
-      </div>
-
-      {/* Status footer */}
-      <div className="border-t border-white/5 pt-1 mt-0.5">
-        {isToday && !isComplete ? (
-          <div className="text-[9px] font-black text-indigo-400 uppercase tracking-wide">
-            Game {nextGame?.playoffGameNumber} — Today
-          </div>
-        ) : isComplete ? (
-          <div className="text-[9px] font-bold text-emerald-400 truncate">
-            {series.winnerId === series.higherSeedTid
-              ? `${higher?.abbrev} wins ${series.higherSeedWins}-${series.lowerSeedWins}`
-              : `${lower?.abbrev} wins ${series.lowerSeedWins}-${series.higherSeedWins}`}
-          </div>
-        ) : nextGame ? (
-          <div className="text-[9px] text-slate-600">
-            {new Date(nextGame.date).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })}
-          </div>
-        ) : (
-          <div className="text-[9px] text-slate-700">Not started</div>
-        )}
-      </div>
-    </button>
+    </motion.button>
   );
 };
