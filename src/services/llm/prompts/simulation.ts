@@ -214,7 +214,12 @@ ${specificInstructions}
 
 CRITICAL INSTRUCTIONS TO PREVENT HALLUCINATIONS:
 1. **COMMISSIONER IDENTITY:** The Commissioner's name is "${commissionerName}". NEVER use placeholders like "[Your Name]" or "[Commissioner Name]". Always use "${commissionerName}" or "Commissioner ${commissionerName.split(' ').pop()}".
-2. **NARRATIVE GENERATION:** If the User Action Taken contains an 'outcomeText' (also called 'eventHint'), treat it as factual CONTEXT about what happened — NOT as the final text to copy. Write your own fresh, compelling 'outcomeText' in the response JSON (a vivid 1-2 sentence narrative summary). Generate news headlines and social posts that react to the event's facts, but craft them in your own voice. DO NOT copy the hint text verbatim.
+2. **NARRATIVE GENERATION:** If the User Action Taken contains an 'outcomeText' (also called 'eventHint'), treat it as factual CONTEXT about what happened — NOT as the final text to copy verbatim.
+   - **Response 'outcomeText' field:** Write your own fresh, compelling summary (1-2 vivid sentences). Different phrasing from the hint.
+   - **News headlines:** Write original journalist-style headlines — do NOT repeat the hint text word-for-word. Use different phrasing, add drama, add context.
+   - **Social posts (including @wojespn / @ShamsCharania):** These MUST sound like real tweets — reactive, opinionated, written in that person's voice. They should NEVER just paste the hint as a tweet. Fans react, analysts debate, insiders break it down in their own words.
+   - **Emails:** Written naturally in the sender's voice. Reference the event facts but don't quote the hint directly.
+   - The event hint tells you WHAT happened. YOU decide HOW it's reported and discussed.
 3. **DO NOT HALLUCINATE TRADES, SIGNINGS, OR ROSTER MOVES** unless they are explicitly described in the 'User Action Taken' or 'outcomeText'. 
    - If the action is "Watching a game" or "Visiting a team", the output MUST focus ONLY on the game, the atmosphere, the players' performance in that specific game, or the meeting details. 
    - Do NOT invent "blockbuster deals", "shockwaves", or rumors about players moving teams if no trade action occurred.
