@@ -2,6 +2,10 @@
 
 This document covers every layer of the social feed: data sources, handle registry, template architecture, the `SocialEngine`, the `SocialContext`, all template files, and the `Charania` standalone builders. Read this before doing any social makeover work.
 
+> **⚠️ LLM API Preference**: This app uses **Groq + Together AI workers only**. `@google/genai` and `process.env.GEMINI_API_KEY` are NOT used — any reference to them is legacy/broken. Always call `generateContentWithRetry` from `src/services/llm/utils/api.ts`. Chat → Groq Worker. Non-chat (social post generation, news, simulation) → Together AI Worker.
+
+> **⚠️ Post Dating**: Shams injury posts and any social post tied to a specific game must use `result.date` (the game's date from `GameResult`), NOT `state.date` or `endDateString`. See `socialHandler.ts` and the README for the full dating rules.
+
 ---
 
 ## 1. High-Level Architecture
@@ -365,10 +369,13 @@ Posts dedup against existing `state.socialFeed` by `id` before merge.
 | `src/services/social/helpers.ts` | Template utility functions |
 | `src/services/social/photoEnricher.ts` | Media/image attachment for posts |
 | `src/services/social/gameImageGenerator.ts` | Stat card image generation |
+| `src/services/social/charaniaphotos.ts` | Fetches real Shams tweet photos from GitHub; `findShamsPhoto()` |
+| `src/services/social/nbaMemesFetcher.ts` | Fetches real NBA memes from GitHub; `pickMemePost()` |
 | `src/services/social/templates/index.ts` | Merges all template arrays |
 | `src/services/social/templates/charania.ts` | Shams injury templates + standalone builders |
 | `src/services/social/templates/statmuse.ts` | StatMuse stat line posts |
 | `src/services/social/templates/insiders.ts` | Insider news templates (LLM-suppressed) |
+| `src/services/social/templates/nbaMemes.ts` | **Empty** — game-context memes retired; real memes via `nbaMemesFetcher.ts` |
 | `src/services/social/templates/personalities.ts` | Debate personality posts |
 | `src/services/social/templates/underdog.ts` | Lineup/injury alerts |
 | `src/store/logic/turn/socialHandler.ts` | Orchestrates merge + dedup per batch |
@@ -389,6 +396,91 @@ Posts dedup against existing `state.socialFeed` by `id` before merge.
 3. Add to the correct file in `src/services/social/templates/`
 4. Export and import in `index.ts`
 5. Check `HANDLE_POST_CAPS` — if your handle posts a lot, add a cap entry
+
+---
+
+## 12. Charania Photo Helper (`charaniaphotos.ts`)
+
+Fetches a pool of real Shams tweet photos from GitHub at app startup (same pattern as `statmuseImages.ts`). Called in `App.tsx` → `fetchCharaniaPhotos()`.
+
+**`findShamsPhoto(playerName, teamName)`** — match order (NO fallback, returns null if nothing hits):
+
+| Priority | Rule | Example |
+|---|---|---|
+| 1st | Last name + team | `"green" + "Warriors"` → Draymond, not Jalen Green |
+| 2nd | Full player name | `"stephen curry"` |
+| 3rd | Last name only | acceptable near-miss (user accepts Seth finding Stephen) |
+
+When a match is found → photo always attached (`mediaUrl`) + real engagement numbers used. When no match → post is sent without a photo, never a random fallback.
+
+**Data source:** `https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/shamstweetsphotos`
+
+---
+
+## 13. NBA Memes Fetcher (`nbaMemesFetcher.ts`)
+
+Fetches a pool of real `@NBAMemes` tweets from GitHub at app startup. Called in `App.tsx` → `fetchNBAMemes()`.
+
+Game-context meme templates (`nbaMemes.ts`) are **retired** (empty array). Memes now fire independently of game results in `socialHandler.ts` via `pickMemePost(date)`.
+
+**Frequency:**
+
+| Period | Chance per sim day |
+|---|---|
+| Regular season / playoffs | ~28% (~2× per week) |
+| Offseason (Jul 1 – Oct 23) | ~70% (high activity) |
+
+- One meme per calendar day max
+- Cycles through all memes before repeating
+- Real engagement numbers (likes/reposts) from the JSON
+
+**Data source:** `https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbamemestweets`
+
+---
+
+## 14. HighlightGenerator (`src/services/simulation/HighlightGenerator.ts`)
+
+Called at the end of every `_simulateGameOnce()` in `engine.ts`. Returns `GameHighlight[]` stored on `GameResult.highlights`.
+
+**Phase 1:** generate + store only. **Phase 2 (future):** social templates + live commentary consume `highlights[]`.
+
+### Highlight types
+
+| Type | Badge / Source | Stored extra fields |
+|---|---|---|
+| `driving_dunk` | `Inside Scoring['Driving Dunk']` rating | — |
+| `standing_dunk` | `Inside Scoring['Standing Dunk']` rating | — (NO posterize) |
+| `posterizer` | Posterizer badge (driving dunk only) | `victimId`, `victimName` (opposing big) |
+| `alley_oop` | Aerial Wizard badge (dunker) | `assisterId`, `assisterName` (passer) |
+| `fastbreak_dunk` | team STL ≥ 3 + driving dunk roll | `assisterId`, `assisterName` (break starter) |
+| `break_starter` | Break Starter badge + STL > 0 | `assisterId`, `assisterName` (finisher/receiver) |
+| `layup_mixmaster` | Layup Mixmaster badge (non-dunk rim make) | — |
+| `limitless_3` | Limitless Range badge + 3PM | `pts: 3` |
+| `ankle_breaker` | Ankle Assassin badge (mid/post make) | `victimId`, `victimName` (opposing guard/wing) |
+| `versatile_visionary` | Versatile Visionary badge + AST | `assisterId`, `assisterName` (recipient) |
+| `tech_foul` | cosmetic — max-pf player in high-foul game | — |
+| `timeout` | cosmetic — both teams, 4-7 per team | `description` |
+| `coach_challenge` | cosmetic — ~15% per game | `description` (overturned/upheld) |
+
+### How templates access highlights
+
+```ts
+// In any SocialTemplate condition/resolve:
+const hl: any[] = (ctx.game as any).highlights ?? [];
+
+// Find a specific event for the current player:
+const posterizer = hl.find((h: any) => h.type === 'posterizer' && h.playerId === ctx.player?.internalId);
+
+// Check if this player is a VICTIM:
+const gotAnklesBroken = hl.some((h: any) => h.type === 'ankle_breaker' && h.victimId === ctx.player?.internalId);
+```
+
+### Template files using highlights
+
+| File | Templates | What they consume |
+|---|---|---|
+| `bleacherReport.ts` | `br_poster`, `br_alley_oop`, `br_fastbreak`, `br_detonated` | posterizer (victim name), alley_oop (passer), fastbreak_dunk (starter) |
+| `nbaCentel.ts` | `centel_tech`, `centel_posterized`, `centel_ankles` | tech_foul (T'd-up player), posterizer victim, ankle_breaker victim |
 
 ---
 

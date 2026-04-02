@@ -2,6 +2,10 @@
 
 This document maps the full lifecycle of every event that generates social posts and/or news items, from commissioner action to displayed feed. Use it whenever you add a new action, a new social template, or a new news category.
 
+> **⚠️ LLM API Preference**: This app uses **Groq + Together AI workers only**. `@google/genai` and `process.env.GEMINI_API_KEY` are NOT used. Always call `generateContentWithRetry` from `src/services/llm/utils/api.ts`. Chat → Groq Worker. Non-chat (simulation, news, social) → Together AI Worker.
+
+> **⚠️ News/Post Dating**: All game-specific articles and posts must use the actual `game.date` from `GameResult` — never `state.date` (sim start) or `endDateString` (sim end). See `lazySimNewsGenerator.ts` (game articles use `game.date`) and `socialHandler.ts` (Shams posts use `result.date`). Batch-level items (recaps, streaks, drama) correctly use `currentDate` (sim end).
+
 ---
 
 ## 1. High-Level Flow
@@ -209,12 +213,44 @@ Both feeds dedup against existing IDs before merging — no duplicates across si
 
 ## 6. Deterministic News Categories (no LLM needed)
 
+### 6a. Category ID → NewsFeed display tab
+
+Every `NewsItem` now carries a `category` string (set by `NewsGenerator.generate`) that maps directly to the SubNav tab filters in `NewsFeed.tsx`. The mapping lives in `CATEGORY_DISPLAY` inside `NewsFeed.tsx`:
+
+| `category` (stored on NewsItem) | SubNav tab shown |
+|---|---|
+| `major_injury` | Injury Update |
+| `signing_confirmed`, `trade_confirmed` | Transaction |
+| `monster_performance`, `preseason_performance`, `triple_double`, `milestone` | Breaking News |
+| `win_streak`, `long_win_streak`, `lose_streak`, `streak_snapped` | Breaking News |
+| `all_star_winner`, `all_star_mvp`, `playoff_series_win`, `playoff_elimination`, `nba_champion`, `finals_mvp` | Breaking News |
+| `batch_recap`, `preseason_recap`, `trade_rumor`, `coach_hot_seat` | League News |
+
+**Rule:** Always set `category` via `NewsGenerator.generate(category, ...)` — it stores it on the `NewsItem` automatically. For hand-built news items (standings fallback, LLM news), set `category` explicitly so it routes to the right tab.
+
+### 6b. Game context fields
+
+Game-linked news items also store `gameId`, `homeTeamId`, `awayTeamId`. These are passed through to `ArticleViewer`, which uses them to look up the real box score and inject actual stats (score, quarter breakdown, top performers) into the LLM elaboration prompt — so generated articles reference real numbers, not hallucinated ones.
+
+Set these whenever you generate news from a `GameResult`:
+```ts
+if (item) {
+  item.gameId = game.gameId;
+  item.homeTeamId = game.homeTeamId;
+  item.awayTeamId = game.awayTeamId;
+}
+```
+
+### 6c. Template categories and triggers
+
 | Category | Trigger | Template vars |
 |---|---|---|
 | `batch_recap` | Top gameScore performer each batch | `playerName, teamName, pts, reb, ast` |
 | `preseason_recap` | Same, during preseason | same |
-| `win_streak` | Team streak hits 5, 8, or 12 | `teamName, streakCount` |
-| `lose_streak` | Team streak hits 5, 8, or 12 | `teamName, streakCount` |
+| `win_streak` | Team streak hits 5, 7, 10, 14 | `teamName, streakCount` |
+| `long_win_streak` | Same, count ≥ 8 | same |
+| `lose_streak` | Team loss streak hits threshold | `teamName, streakCount` |
+| `streak_snapped` | Win streak ≥ 5 just ended | `teamName, streakCount` |
 | `monster_performance` | 40+ pts (80% chance) | `playerName, teamName, opponentName, statValue, statType` |
 | `preseason_performance` | Same, during preseason | same |
 | `triple_double` | 10/10/10 (60% chance) | `playerName, teamName, pts, reb, ast` |
