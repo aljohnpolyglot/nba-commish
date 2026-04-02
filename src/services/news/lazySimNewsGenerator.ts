@@ -3,7 +3,7 @@ import { NewsGenerator } from './NewsGenerator';
 import { convertTo2KRating } from '../../utils/helpers';
 
 const get2KOvr = (p: NBAPlayer) =>
-  convertTo2KRating(p.overallRating ?? p.ratings?.[0]?.ovr ?? 0, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50);
+  convertTo2KRating(p.overallRating ?? p.ratings?.[0]?.ovr ?? 0, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp);
 
 function gamesToTime(games: number, remainingInSeason?: number): string {
   if (games <= 0)  return 'day-to-day';
@@ -71,6 +71,11 @@ export const generateLazySimNews = (
       statLines.sort((a, b) => (b.stat.gameScore ?? 0) - (a.stat.gameScore ?? 0));
       const top = statLines[0];
       const team = teams.find(t => t.id === top.teamId);
+      // Find the game this stat line came from
+      const topGame = allSimResults.find(g =>
+        (g.homeTeamId === top.teamId || g.awayTeamId === top.teamId) &&
+        [...g.homeStats, ...g.awayStats].some(s => s.playerId === top.stat.playerId)
+      );
       if (team) {
         const player = players.find(p => p.internalId === top.stat.playerId);
         const item = withPortrait(NewsGenerator.generate(isPreseason ? 'preseason_recap' : 'batch_recap', currentDate, {
@@ -80,7 +85,10 @@ export const generateLazySimNews = (
           reb: top.stat.reb,
           ast: top.stat.ast,
         }), player?.imgURL);
-        if (item) news.push(item);
+        if (item) {
+          if (topGame) { item.gameId = topGame.gameId; item.homeTeamId = topGame.homeTeamId; item.awayTeamId = topGame.awayTeamId; }
+          news.push(item);
+        }
       }
     }
   }
@@ -144,12 +152,15 @@ export const generateLazySimNews = (
         if (stat.pts >= 40 && Math.random() < 0.8) {
           const item = withPortrait(NewsGenerator.generate(isPreseason ? 'preseason_performance' : 'monster_performance', currentDate, {
             playerName: stat.name,
-            teamName:     team.name,  // guaranteed to be the player's actual team
-            opponentName: opp.name,   // guaranteed to be the actual opponent
+            teamName:     team.name,
+            opponentName: opp.name,
             statValue: stat.pts,
             statType: 'PTS',
           }), player.imgURL);
-          if (item) news.push(item);
+          if (item) {
+            item.gameId = game.gameId; item.homeTeamId = game.homeTeamId; item.awayTeamId = game.awayTeamId;
+            news.push(item);
+          }
           continue;
         }
 
@@ -162,33 +173,175 @@ export const generateLazySimNews = (
             reb: stat.reb,
             ast: stat.ast,
           }), player.imgURL);
-          if (item) news.push(item);
+          if (item) {
+            item.gameId = game.gameId; item.homeTeamId = game.homeTeamId; item.awayTeamId = game.awayTeamId;
+            news.push(item);
+          }
         }
       }
     }
   }
 
-  // ── 4. MAJOR INJURIES — 2K OVR 75+, 20+ games out ────────────────────────
-  // Skipped in regular gameplay (skipInjuries=true) — Shams posts handle injuries there.
-  if (skipInjuries) return news;
-  for (const player of players) {
-    if (!player.injury || player.injury.gamesRemaining < 20) continue;
-    if (get2KOvr(player) < 75) continue;
+  // ── 3b. GAME RESULTS — sample 1-2 notable games per batch ───────────────────
+  if (!isPreseason && allSimResults.length > 0) {
+    // Pick up to 2 games to report on (skip scrimmages, prefer closer or higher-scoring games)
+    const eligibleGames = allSimResults.filter(g => {
+      const ht = teams.find(t => t.id === g.homeTeamId);
+      const at = teams.find(t => t.id === g.awayTeamId);
+      return ht && at && ht !== at;
+    });
+    const shuffled = eligibleGames.sort(() => Math.random() - 0.5).slice(0, 2);
+    for (const game of shuffled) {
+      if (Math.random() > 0.5) continue; // 50% chance to skip — keeps feed fresh
+      const homeTeam = teams.find(t => t.id === game.homeTeamId)!;
+      const awayTeam = teams.find(t => t.id === game.awayTeamId)!;
+      const homeWon = game.homeScore > game.awayScore;
+      const winner = homeWon ? homeTeam : awayTeam;
+      const loser = homeWon ? awayTeam : homeTeam;
+      const winnerScore = homeWon ? game.homeScore : game.awayScore;
+      const loserScore = homeWon ? game.awayScore : game.homeScore;
+      const allStats = [...game.homeStats, ...game.awayStats].sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0));
+      const topStat = allStats[0];
+      const item = NewsGenerator.generate('game_result', currentDate, {
+        winnerName: winner.name,
+        loserName: loser.name,
+        winnerScore,
+        loserScore,
+        winnerRecord: `${winner.wins}-${winner.losses}`,
+        loserRecord: `${loser.wins}-${loser.losses}`,
+        gameType: isPreseason ? 'preseason' : 'regular season',
+        topPerformer: topStat?.name ?? 'The leading scorer',
+        topPts: topStat?.pts ?? 0,
+      }, winner.logoUrl);
+      if (item) {
+        item.gameId = game.gameId;
+        item.homeTeamId = game.homeTeamId;
+        item.awayTeamId = game.awayTeamId;
+        news.push(item);
+      }
+    }
+  }
 
-    const injuryKey = `${player.internalId}-${player.injury.type}`;
-    if (reportedInjuries.has(injuryKey)) continue;
+  // ── 3c. TEAM FEATS — 30-39 PT games + triple-doubles (team-page only) ───────
+  // These appear on the team home page but are filtered from the main news feed.
+  for (const game of allSimResults) {
+    const homeTeam = teams.find(t => t.id === game.homeTeamId);
+    const awayTeam = teams.find(t => t.id === game.awayTeamId);
+    if (!homeTeam || !awayTeam || homeTeam === awayTeam) continue;
+
+    const sides: { stats: typeof game.homeStats; team: typeof homeTeam; opp: typeof awayTeam }[] = [
+      { stats: game.homeStats, team: homeTeam, opp: awayTeam },
+      { stats: game.awayStats, team: awayTeam, opp: homeTeam },
+    ];
+
+    for (const { stats, team, opp } of sides) {
+      for (const stat of stats) {
+        const player = players.find(p => p.internalId === stat.playerId);
+        if (!player) continue;
+
+        const isModestScorer = stat.pts >= 30 && stat.pts < 40; // already handled at 40+ by monster_performance
+        const isTripleDouble = stat.pts >= 10 && stat.reb >= 10 && stat.ast >= 10;
+
+        if (!isModestScorer && !isTripleDouble) continue;
+        if (Math.random() > 0.55) continue; // 55% chance — keeps it sparse enough
+
+        const item = withPortrait(NewsGenerator.generate('team_feat', currentDate, {
+          playerName: stat.name,
+          teamName: team.name,
+          opponentName: opp.name,
+          pts: stat.pts,
+          reb: stat.reb,
+          ast: stat.ast,
+        }), player.imgURL);
+        if (item) {
+          item.id = `news-feat-${game.gameId}-${stat.playerId}`;
+          item.gameId = game.gameId;
+          item.homeTeamId = game.homeTeamId;
+          item.awayTeamId = game.awayTeamId;
+          item.teamOnly = true;
+          news.push(item);
+        }
+      }
+    }
+  }
+
+  // ── 3d. DUO PERFORMANCES — both gameScore ≥ 20 on same team ────────────────
+  for (const game of allSimResults) {
+    const homeTeam = teams.find(t => t.id === game.homeTeamId);
+    const awayTeam = teams.find(t => t.id === game.awayTeamId);
+    if (!homeTeam || !awayTeam || homeTeam === awayTeam) continue;
+
+    const sides: { stats: typeof game.homeStats; team: typeof homeTeam; opp: typeof awayTeam }[] = [
+      { stats: game.homeStats, team: homeTeam, opp: awayTeam },
+      { stats: game.awayStats, team: awayTeam, opp: homeTeam },
+    ];
+
+    for (const { stats, team, opp } of sides) {
+      const stars = stats
+        .filter(s => (s.gameScore ?? 0) >= 20)
+        .sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0));
+      if (stars.length < 2) continue;
+      if (Math.random() > 0.65) continue; // 65% chance to generate
+      const s1 = stars[0];
+      const s2 = stars[1];
+      const p1 = players.find(p => p.internalId === s1.playerId);
+      const item = withPortrait(NewsGenerator.generate('duo_performance', currentDate, {
+        player1Name: s1.name,
+        player2Name: s2.name,
+        teamName: team.name,
+        opponentName: opp.name,
+        pts1: s1.pts,
+        reb1: s1.reb,
+        ast1: s1.ast,
+        pts2: s2.pts,
+        reb2: s2.reb,
+        ast2: s2.ast,
+        combinedPts: s1.pts + s2.pts,
+      }), p1?.imgURL);
+      if (item) {
+        item.id = `news-duo-${game.gameId}-${s1.playerId}-${s2.playerId}`;
+        item.gameId = game.gameId;
+        item.homeTeamId = game.homeTeamId;
+        item.awayTeamId = game.awayTeamId;
+        news.push(item);
+      }
+    }
+  }
+
+  // ── 4. INJURIES — only newly-injured players from this sim batch ──────────
+  // Pre-existing (BBGM/initial) injuries are NOT in allSimResults.injuries,
+  // so they won't be re-reported on every batch. Stable IDs prevent duplicates.
+  if (skipInjuries) return news;
+
+  const newlyInjuredIds = new Set<string>();
+  for (const game of allSimResults) {
+    if (!game.injuries?.length) continue;
+    for (const inj of game.injuries) {
+      newlyInjuredIds.add(inj.playerId);
+    }
+  }
+
+  for (const player of players) {
+    if (!newlyInjuredIds.has(player.internalId)) continue;
+    if (!player.injury || player.injury.gamesRemaining <= 0) continue;
+
+    const stableId = `news-injury-${player.internalId}-${player.injury.type.replace(/\s+/g, '-').toLowerCase()}`;
+    if (reportedInjuries.has(stableId)) continue;
 
     const team = teams.find(t => t.id === player.tid);
     if (!team) continue;
 
-    reportedInjuries.add(injuryKey);
+    reportedInjuries.add(stableId);
     const item = withPortrait(NewsGenerator.generate('major_injury', currentDate, {
       playerName: player.name,
       teamName: team.name,
       injuryType: player.injury.type,
       duration: gamesToTime(player.injury.gamesRemaining),
     }), player.imgURL);
-    if (item) news.push(item);
+    if (item) {
+      item.id = stableId; // stable ID prevents re-generation across batches
+      news.push(item);
+    }
   }
 
   // ── 5. DRAMA — bad teams: 40% chance per batch ───────────────────────────
@@ -224,17 +377,20 @@ export const generateLazySimNews = (
   }
 
   // ── FALLBACK: If no news was generated (e.g. off-day batch), add a brief standings note ──
-  if (news.length === 0 && teams.length > 0) {
+  // Skip during preseason or when teams haven't played any games yet (all 0-0)
+  const totalGamesPlayed = teams.reduce((sum, t) => sum + t.wins + t.losses, 0);
+  if (news.length === 0 && teams.length > 0 && !isPreseason && totalGamesPlayed > 0) {
     const east = teams.filter(t => (t as any).conference === 'East').sort((a: any, b: any) => (b.wins / (b.wins + b.losses || 1)) - (a.wins / (a.wins + a.losses || 1)));
     const west = teams.filter(t => (t as any).conference === 'West').sort((a: any, b: any) => (b.wins / (b.wins + b.losses || 1)) - (a.wins / (a.wins + a.losses || 1)));
     const eastLeader = east[0];
     const westLeader = west[0];
-    if (eastLeader && westLeader) {
+    if (eastLeader && westLeader && (eastLeader.wins > 0 || westLeader.wins > 0)) {
       news.push({
         id: `standings-recap-${Date.now()}`,
         headline: `Standings Update: ${eastLeader.name} Lead East, ${westLeader.name} Lead West`,
         content: `After the latest stretch of games, the ${eastLeader.name} (${eastLeader.wins}-${eastLeader.losses}) lead the Eastern Conference while the ${westLeader.name} (${westLeader.wins}-${westLeader.losses}) sit atop the West.`,
         date: currentDate,
+        category: 'batch_recap',
         isNew: true,
         newsType: 'weekly' as any,
       });

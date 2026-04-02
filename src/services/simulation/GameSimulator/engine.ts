@@ -13,6 +13,7 @@ import { generateFight } from '../../FightGenerator';
 import { fetchGamePhotos } from '../../ImagnPhotoService';
 import { Defense2KService } from '../../Defense2KService';
 import { SimulatorKnobs, KNOBS_DEFAULT, KNOBS_ALL_STAR, KNOBS_RISING_STARS, KNOBS_CELEBRITY, getKnobs } from '../SimulatorKnobs';
+import { HighlightGenerator } from '../HighlightGenerator';
 export class GameSimulator {
 
   private static calcWinProb(strengthDiff: number): number {
@@ -336,6 +337,14 @@ export class GameSimulator {
         ) ?? undefined
       : undefined;
 
+    const highlights = HighlightGenerator.processGame(
+      homeStatsFinal,
+      awayStatsFinal,
+      homeTeam.id,
+      awayTeam.id,
+      availablePlayers,
+    );
+
     return {
       gameId,
       homeTeamId: homeTeam.id,
@@ -356,6 +365,12 @@ export class GameSimulator {
       gameWinner,
       playerDNPs,
       fight,
+      highlights,
+      // Snapshot records at tip-off (before this game's result is applied)
+      homeWins:   homeTeam.wins   ?? 0,
+      homeLosses: homeTeam.losses ?? 0,
+      awayWins:   awayTeam.wins   ?? 0,
+      awayLosses: awayTeam.losses ?? 0,
     };
   }
 
@@ -408,6 +423,7 @@ export class GameSimulator {
       quarterLength?: number;
       shotClockValue?: number;
       shotClockEnabled?: boolean;
+      shotClockResetOffensiveRebound?: boolean;
       threePointLineEnabled?: boolean;
       defensiveThreeSecondEnabled?: boolean;
       offensiveThreeSecondEnabled?: boolean;
@@ -415,6 +431,17 @@ export class GameSimulator {
       goaltendingEnabled?: boolean;
       chargingEnabled?: boolean;
       noDribbleRule?: boolean;
+      backcourtTimerEnabled?: boolean;
+      backToBasketTimerEnabled?: boolean;
+      illegalZoneDefenseEnabled?: boolean;
+      travelingEnabled?: boolean;
+      doubleDribbleEnabled?: boolean;
+      backcourtViolationEnabled?: boolean;
+      freeThrowDistance?: number;
+      rimHeight?: number;
+      courtLength?: number;
+      baselineLength?: number;
+      keyWidth?: number;
     }
   ): GameResult[] {
     const results: GameResult[] = [];
@@ -462,17 +489,72 @@ export class GameSimulator {
     const noDribbleRimMult    = noDribble ? 0.65 : 1.0;
     const noDribble3PMult     = noDribble ? 1.40 : 1.0;
 
+    // ── New Phase 1A rules ────────────────────────────────────────────────────
+
+    // Off-reb doesn't reset shot clock → less urgency, fewer possessions
+    const noSCResetPace = (leagueStats?.shotClockResetOffensiveRebound === false) ? 0.88 : 1.0;
+
+    // No backcourt timer → slower game, fewer forced TOs
+    const backcourtTimerOn = leagueStats?.backcourtTimerEnabled ?? true;
+    const backcourtPace    = backcourtTimerOn ? 1.0 : 0.90;
+    const backcourtTovMult = backcourtTimerOn ? 1.0 : 0.85;
+
+    // Back-to-basket timer → faster post reads → fewer post attempts
+    const backToBasketTimer = leagueStats?.backToBasketTimerEnabled ?? false;
+    const backToBasketLowPost = backToBasketTimer ? 0.90 : 1.0;
+
+    // Illegal zone defense: false = zone allowed → clog paint, kick out; true = must play man → drives
+    const illegalZone = leagueStats?.illegalZoneDefenseEnabled ?? true;
+    const zoneRimMult   = illegalZone ? 1.0 : 0.90;   // zone clogs paint
+    const zone3PMult    = illegalZone ? 1.0 : 1.10;   // zone kicks to perimeter
+    const manRimBump    = illegalZone ? 1.05 : 1.0;   // man-to-man → more dribble penetration (guard at 1.0 NBA default)
+
+    // Violation flags → fewer TOs when disabled
+    const travelOn   = leagueStats?.travelingEnabled        ?? true;
+    const dblDribOn  = leagueStats?.doubleDribbleEnabled    ?? true;
+    const backctViol = leagueStats?.backcourtViolationEnabled ?? true;
+    let tovMult = 1.0;
+    if (!travelOn)   tovMult *= 0.88;
+    if (!dblDribOn)  tovMult *= 0.90;
+    if (!backctViol) tovMult *= 0.92;
+    tovMult *= backcourtTovMult;
+
+    // Free throw distance: farther line → lower FT%
+    const ftDist = leagueStats?.freeThrowDistance ?? 15;
+    const ftEfficiencyMult = Math.min(1.0, Math.max(0.65, 15 / Math.max(10, ftDist)));
+
+    // Rim height: taller rim → lower overall efficiency (efficiencyMultiplier)
+    const rimH = leagueStats?.rimHeight ?? 10;
+    const rimHeightEffMult = Math.min(1.0, Math.max(0.5, Math.pow(10 / Math.max(8, rimH), 1.5)));
+
+    // Court length: bigger court → slower pace, fewer TOs
+    const courtLen = leagueStats?.courtLength ?? 94;
+    const courtLenPace   = Math.pow(94 / Math.max(70, courtLen), 0.4);
+    const courtLenTov    = Math.pow(94 / Math.max(70, courtLen), 0.2);
+    tovMult *= courtLenTov;
+
+    // Baseline (court width): wider court → slightly slower pace
+    const baseline = leagueStats?.baselineLength ?? 50;
+    const baselinePace  = Math.pow(50 / Math.max(40, baseline), 0.3);
+
+    // Key width: wider key → harder to camp paint → less post, fewer rim drives
+    const keyW = leagueStats?.keyWidth ?? 16;
+    const keyLowPost = Math.pow(16 / Math.max(10, keyW), 0.5);
+    const keyRimMult = Math.pow(16 / Math.max(10, keyW), 0.3);
+
     const leagueBaseKnobs = getKnobs({
       quarterLength:       leagueStats?.quarterLength ?? 12,
       shotClockSeconds:    shotClock,
       threePointAvailable: threeOn,
-      threePointRateMult:  threeOn ? (1.0 * threeBumpD * noDribble3PMult) : 0,
-      paceMultiplier:      shotClockPace * noDribblePaceMult,
-      efficiencyMultiplier: goaltendEffMult,
-      rimRateMult:         rimMult * rimBumpO * chargingRimBump * noDribbleRimMult,
-      lowPostRateMult:     lowPostMult,
+      threePointRateMult:  threeOn ? (1.0 * threeBumpD * noDribble3PMult * zone3PMult) : 0,
+      paceMultiplier:      shotClockPace * noDribblePaceMult * noSCResetPace * backcourtPace * courtLenPace * baselinePace,
+      efficiencyMultiplier: goaltendEffMult * rimHeightEffMult,
+      rimRateMult:         rimMult * rimBumpO * chargingRimBump * noDribbleRimMult * zoneRimMult * manRimBump * keyRimMult,
+      lowPostRateMult:     lowPostMult * backToBasketLowPost * keyLowPost,
       ftRateMult:          handcheckFtMult,
       blockRateMult:       blockMult,
+      tovMult,
+      ftEfficiencyMult,
     });
 
     for (const game of gamesToSimulate) {

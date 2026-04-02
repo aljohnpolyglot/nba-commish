@@ -1,229 +1,388 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useGame } from '../store/GameContext';
-import { Newspaper, Clock, TrendingUp, Share2, Bookmark } from 'lucide-react';
-import { motion } from 'motion/react';
-import { useInView } from '../hooks/useInView';
-import { enrichNewsWithPhoto, getResolvedUrl, type GamePhotoInfo } from '../services/social/photoEnricher';
-import type { GameResult } from '../types';
+import Navbar from './news/Navbar';
+import SubNav from './news/SubNav';
+import Footer from './news/Footer';
+import ArticleCard from './news/ArticleCard';
+import ArticleViewer from './news/ArticleViewer';
+import Pagination from './news/Pagination';
+import { NewsItem } from './news/types';
+import { fetchWriters } from '../services/social/authorService';
+import type { Author } from './news/types';
+import { enrichNewsWithPhoto } from '../services/social/photoEnricher';
+import type { GamePhotoInfo } from '../services/social/photoEnricher';
 
-// ─── Per-item lazy photo wrapper ──────────────────────────────────────────────
+// ─── Build gameLookup from boxScores + teams ───────────────────────────────────
 
-interface LazyNewsCardProps {
-    item: { id: string; headline: string; content: string; date: string; image?: string; playerPortraitUrl?: string; isNew?: boolean };
-    gameLookup: Map<number, GamePhotoInfo>;
-    index: number;
+function buildGameLookup(
+  boxScores: any[],
+  teams: any[]
+): Map<number, GamePhotoInfo> {
+  const teamById = new Map(teams.map((t: any) => [t.id, t]));
+  const lookup = new Map<number, GamePhotoInfo>();
+  for (const game of boxScores) {
+    const homeTeam = teamById.get(game.homeTeamId);
+    const awayTeam = teamById.get(game.awayTeamId);
+    if (!homeTeam || !awayTeam) continue;
+    const allStats = [...(game.homeStats || []), ...(game.awayStats || [])];
+    const topPlayers = allStats
+      .sort((a: any, b: any) => (b.gameScore ?? 0) - (a.gameScore ?? 0))
+      .slice(0, 10)
+      .map((s: any) => ({ name: s.name, gameScore: s.gameScore ?? 0 }));
+    lookup.set(game.gameId, { homeTeam, awayTeam, topPlayers, date: game.date });
+  }
+  return lookup;
 }
 
-const LazyNewsCard: React.FC<LazyNewsCardProps> = ({ item, gameLookup, index }) => {
-    const { ref, inView } = useInView(0.05);
-    const [resolvedImage, setResolvedImage] = useState<string | undefined>(() => {
-        const cached = getResolvedUrl(item.id);
-        if (cached) return cached;
-        // playerPortraitUrl = "player news — try Imagn first, don't pre-populate"
-        // image only = team logo or already-resolved photo — use immediately
-        return item.playerPortraitUrl ? undefined : item.image;
-    });
-    const [enrichmentDone, setEnrichmentDone] = useState(false);
+// ─── Category → display tab mapping ───────────────────────────────────────────
+// Matches the SubNav tab values exactly. Any NewsCategory not listed defaults to 'League News'.
 
-    React.useEffect(() => {
-        if (!inView) return;
-        // Skip if already resolved AND not a player news item (portrait = always worth an Imagn attempt)
-        if (resolvedImage && !item.playerPortraitUrl) return;
-
-        enrichNewsWithPhoto(item, gameLookup).then(url => {
-            setEnrichmentDone(true);
-            if (url) setResolvedImage(url);
-            else if (!resolvedImage && item.playerPortraitUrl) setResolvedImage(item.playerPortraitUrl);
-        });
-    }, [inView]); // only fire once on scroll into view
-
-    return (
-        <motion.div
-            ref={ref}
-            key={item.id}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: Math.min(index * 0.1, 0.5), duration: 0.5 }}
-            className="bg-slate-900/40 border border-slate-800 rounded-[3rem] overflow-hidden flex flex-col lg:flex-row shadow-2xl hover:border-indigo-500/30 transition-all duration-500 group"
-        >
-            {resolvedImage && (
-                <div className="lg:w-80 h-64 lg:h-auto bg-slate-800 flex-shrink-0 relative overflow-hidden">
-                    <img
-                        src={resolvedImage}
-                        alt={item.headline}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                        referrerPolicy="no-referrer"
-                        onError={() => {
-                            // CDN timeout or 404 — fall back to portrait, or hide image slot
-                            if (item.playerPortraitUrl && resolvedImage !== item.playerPortraitUrl) {
-                                setResolvedImage(item.playerPortraitUrl);
-                            } else {
-                                setResolvedImage(undefined);
-                            }
-                            setEnrichmentDone(true);
-                        }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                </div>
-            )}
-
-            {/* Placeholder shimmer while enrichment is in-flight */}
-            {!resolvedImage && inView && !enrichmentDone && (
-                <div className="lg:w-80 h-64 lg:h-auto bg-slate-800/50 flex-shrink-0 animate-pulse" />
-            )}
-
-            <div className="p-10 flex-1 flex flex-col justify-center relative">
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500 bg-indigo-500/10 px-3 py-1.5 rounded-lg">
-                            Breaking News
-                        </span>
-                        <div className="w-1 h-1 rounded-full bg-slate-700" />
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                            {item.date}
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <button className="p-2 hover:bg-slate-800 rounded-xl text-slate-500 hover:text-white transition-all">
-                            <Bookmark size={16} />
-                        </button>
-                        <button className="p-2 hover:bg-slate-800 rounded-xl text-slate-500 hover:text-white transition-all">
-                            <Share2 size={16} />
-                        </button>
-                    </div>
-                </div>
-
-                <h3 className="text-3xl font-black text-white mb-6 leading-[1.1] tracking-tight group-hover:text-indigo-400 transition-colors duration-300">
-                    {item.headline}
-                </h3>
-                <p className="text-slate-400 leading-relaxed text-lg font-medium italic">
-                    "{item.content}"
-                </p>
-
-                <div className="mt-8 pt-8 border-t border-slate-800/50 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <TrendingUp size={14} className="text-emerald-500" />
-                        <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
-                            High Impact Event
-                        </span>
-                    </div>
-                    <button className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] hover:text-indigo-400 transition-colors">
-                        Read Full Report →
-                    </button>
-                </div>
-            </div>
-        </motion.div>
-    );
+const CATEGORY_DISPLAY: Record<string, string> = {
+  // Injuries
+  major_injury:           'Injury Update',
+  // Transactions
+  signing_confirmed:      'Transaction',
+  trade_confirmed:        'Transaction',
+  // Breaking (high-impact single events)
+  monster_performance:    'Breaking News',
+  preseason_performance:  'Breaking News',
+  triple_double:          'Breaking News',
+  milestone:              'Breaking News',
+  win_streak:             'Breaking News',
+  long_win_streak:        'Breaking News',
+  lose_streak:            'Breaking News',
+  streak_snapped:         'Breaking News',
+  all_star_winner:        'Breaking News',
+  all_star_mvp:           'Breaking News',
+  playoff_series_win:     'Breaking News',
+  playoff_elimination:    'Breaking News',
+  nba_champion:           'Breaking News',
+  finals_mvp:             'Breaking News',
+  // League News (recaps, rumors, coaching drama)
+  batch_recap:            'League News',
+  preseason_recap:        'League News',
+  game_result:            'League News',
+  duo_performance:        'Breaking News',
+  team_feat:              'League News',
+  trade_rumor:            'League News',
+  coach_hot_seat:         'League News',
 };
 
-// ─── Build game lookup (same pattern as SocialFeedView) ───────────────────────
+function resolveDisplayCategory(n: any): string {
+  // 1. Stored category from NewsGenerator (most reliable)
+  if (n.category && CATEGORY_DISPLAY[n.category]) return CATEGORY_DISPLAY[n.category];
 
-function useGameLookup(): Map<number, GamePhotoInfo> {
-    const { state } = useGame();
+  // 2. LLM-generated news has n.type set by normalizeResult
+  const t = (n.type || '').toLowerCase();
+  if (t.includes('injur'))                                     return 'Injury Update';
+  if (t === 'trade' || t === 'signing' || t === 'transaction') return 'Transaction';
+  if (t === 'breaking')                                        return 'Breaking News';
 
-    return useMemo(() => {
-        const lookup = new Map<number, GamePhotoInfo>();
-        for (const bs of (state.boxScores || []) as GameResult[]) {
-            if (!bs.gameId || bs.homeTeamId <= 0 || bs.awayTeamId <= 0) continue;
-            const home = state.teams.find(t => t.id === bs.homeTeamId);
-            const away = state.teams.find(t => t.id === bs.awayTeamId);
-            if (!home || !away) continue;
-
-            const topPlayers = [
-                ...(bs.homeStats ?? []),
-                ...(bs.awayStats ?? []),
-            ]
-                .sort((a: any, b: any) => ((b.gameScore as number) ?? 0) - ((a.gameScore as number) ?? 0))
-                .slice(0, 10)
-                .map(s => ({ name: s.name, gameScore: s.gameScore ?? 0 }));
-
-            lookup.set(bs.gameId, {
-                homeTeam: home,
-                awayTeam: away,
-                topPlayers,
-                date: bs.date || '',
-            });
-        }
-        return lookup;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [state.boxScores, state.teams]);
+  // 3. Default
+  return 'League News';
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Map game-state news items to NewsItem ─────────────────────────────────────
+
+function mapToNewsItem(n: any, authors: Author[]): NewsItem {
+  const category = resolveDisplayCategory(n);
+
+  const seed = (n.id || '').split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
+  const author = authors.length > 0 ? authors[seed % authors.length] : undefined;
+
+  // Format date to human-readable
+  let dateStr = n.date || '';
+  if (dateStr && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+    try {
+      dateStr = new Date(dateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    } catch { /* keep raw */ }
+  }
+
+  return {
+    id: n.id || String(Math.random()),
+    category,
+    date: dateStr,
+    title: n.headline || n.title || 'League Update',
+    content: n.content || '',
+    imageUrl: n.image || n.playerPortraitUrl,
+    impact: n.isNew ? 'high' : 'standard',
+    url: '#',
+    author,
+    gameId:     n.gameId,
+    homeTeamId: n.homeTeamId,
+    awayTeamId: n.awayTeamId,
+  };
+}
+
+// ─── Main component ────────────────────────────────────────────────────────────
+
+const ARTICLES_PER_PAGE = 10;
 
 export const NewsFeed: React.FC = () => {
-    const { state } = useGame();
-    const gameLookup = useGameLookup();
-    const [activeTab, setActiveTab] = React.useState<'daily' | 'weekly'>('daily');
+  const { state } = useGame();
 
-    const dailyNews = (state.news || []).filter(n => !n.newsType || n.newsType === 'daily');
-    const weeklyNews = (state.news || []).filter(n => n.newsType === 'weekly');
-    const visibleNews = activeTab === 'weekly' ? weeklyNews : dailyNews;
+  const [authors, setAuthors] = useState<Author[]>([]);
+  useEffect(() => { fetchWriters().then(setAuthors).catch(() => {}); }, []);
 
-    return (
-        <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-300 overflow-hidden rounded-[2.5rem] border border-slate-800 shadow-2xl">
-            <div className="p-10 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between backdrop-blur-md">
-                <div className="flex flex-col">
-                    <h2 className="text-3xl font-black text-white flex items-center gap-4 tracking-tighter uppercase">
-                        <Newspaper className="text-indigo-500" size={32} />
-                        League News
-                    </h2>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.3em] mt-2">
-                        Official NBA Press Terminal
-                    </p>
-                </div>
-                <div className="flex items-center gap-2 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
-                    <button
-                        onClick={() => setActiveTab('daily')}
-                        className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${
-                            activeTab === 'daily'
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-slate-500 hover:text-slate-300'
-                        }`}
-                    >
-                        Daily News {dailyNews.length > 0 && <span className="ml-1 opacity-60">({dailyNews.length})</span>}
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('weekly')}
-                        className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${
-                            activeTab === 'weekly'
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-slate-500 hover:text-slate-300'
-                        }`}
-                    >
-                        Period Recaps {weeklyNews.length > 0 && <span className="ml-1 opacity-60">({weeklyNews.length})</span>}
-                    </button>
-                </div>
-            </div>
+  const [bookmarks, setBookmarks] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('nba_news_bookmarks') || '[]'); } catch { return []; }
+  });
+  const [aiCache, setAiCache] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem('nba_news_ai_cache') || '{}'); } catch { return {}; }
+  });
+  useEffect(() => { localStorage.setItem('nba_news_bookmarks', JSON.stringify(bookmarks)); }, [bookmarks]);
+  useEffect(() => { localStorage.setItem('nba_news_ai_cache', JSON.stringify(aiCache)); }, [aiCache]);
 
-            <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar">
-                <div className="max-w-5xl mx-auto space-y-10">
-                    {visibleNews.map((item, index) => (
-                        <LazyNewsCard
-                            key={item.id || `news-${index}`}
-                            item={item}
-                            gameLookup={gameLookup}
-                            index={index}
-                        />
-                    ))}
-                </div>
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [showBookmarksOnly, setShowBookmarksOnly] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
 
-                {visibleNews.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-96 text-slate-700 gap-8">
-                        <div className="w-32 h-32 rounded-full bg-slate-900 flex items-center justify-center border-4 border-slate-800 opacity-20">
-                            <Newspaper size={64} />
-                        </div>
-                        <div className="text-center">
-                            <p className="text-2xl font-black uppercase tracking-tighter">
-                                Silence in the Press Room
-                            </p>
-                            <p className="text-sm font-bold uppercase tracking-widest mt-2">
-                                {activeTab === 'weekly' ? 'No period recaps yet — simulate multiple days' : 'Awaiting the next major league development'}
-                            </p>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
+  // Imagn enriched image cache: articleId → resolved URL | null
+  const [imagnImages, setImagnImages] = useState<Record<string, string | null>>({});
+  const enrichingRef = useRef(new Set<string>());
+
+  const gameLookup = useMemo(
+    () => buildGameLookup(state.boxScores || [], state.teams || []),
+    [state.boxScores, state.teams]
+  );
+
+  const allArticles = useMemo<NewsItem[]>(() => {
+    // state.news prepends new items: [...newNews, ...state.news] → index 0 is newest
+    // Exclude teamOnly articles — those only appear on team home pages
+    return (state.news || []).filter((n: any) => !n.teamOnly).map(n => mapToNewsItem(n, authors));
+  }, [state.news, authors]);
+
+  const filteredArticles = useMemo(() => {
+    return allArticles.filter(article => {
+      if (showBookmarksOnly && !bookmarks.includes(article.id)) return false;
+      if (selectedTeam) {
+        const text = (article.title + ' ' + article.content).toLowerCase();
+        const parts = selectedTeam.toLowerCase().split(' ');
+        if (!parts.some(p => p.length > 3 && text.includes(p))) return false;
+      }
+      if (selectedType && article.category !== selectedType) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        if (!article.title.toLowerCase().includes(q) && !article.content.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [allArticles, selectedTeam, selectedType, showBookmarksOnly, searchQuery, bookmarks]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredArticles.length / ARTICLES_PER_PAGE));
+  const paginatedArticles = filteredArticles.slice(
+    (currentPage - 1) * ARTICLES_PER_PAGE,
+    currentPage * ARTICLES_PER_PAGE
+  );
+
+  const resetPage = () => setCurrentPage(1);
+
+  const handleSelectTeam = (team: string | null) => {
+    setSelectedTeam(team);
+    setSelectedType(null);
+    resetPage();
+  };
+
+  const handleSelectType = (type: string | null) => {
+    setSelectedType(type);
+    resetPage();
+  };
+
+  const handleToggleBookmarks = () => {
+    setShowBookmarksOnly(prev => !prev);
+    setSelectedTeam(null);
+    setSelectedType(null);
+    setSearchQuery('');
+    resetPage();
+  };
+
+  const handleToggleBookmark = (id: string) => {
+    setBookmarks(prev =>
+      prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id]
     );
+  };
+
+  // Lazy Imagn enrichment — runs whenever visible articles change
+  const visibleIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (filteredArticles[0]) ids.add(filteredArticles[0].id);
+    filteredArticles.slice(1, 9).forEach(a => ids.add(a.id));
+    paginatedArticles.forEach(a => ids.add(a.id));
+    return ids;
+  }, [filteredArticles, paginatedArticles]);
+
+  useEffect(() => {
+    const rawNews = state.news || [];
+    for (const id of visibleIds) {
+      if (enrichingRef.current.has(id) || id in imagnImages) continue;
+      const rawItem = rawNews.find((n: any) => (n.id || '') === id);
+      if (!rawItem) continue;
+      // Skip if already has a static logo image (no portrait = team logo, no enrichment needed)
+      if (rawItem.image && !rawItem.playerPortraitUrl) continue;
+      enrichingRef.current.add(id);
+      enrichNewsWithPhoto(
+        { id, headline: rawItem.headline || '', content: rawItem.content || '', image: rawItem.image, playerPortraitUrl: rawItem.playerPortraitUrl },
+        gameLookup
+      ).then(url => {
+        setImagnImages(prev => ({ ...prev, [id]: url }));
+      }).catch(() => {
+        setImagnImages(prev => ({ ...prev, [id]: null }));
+      });
+    }
+  }, [visibleIds, gameLookup, state.news]); // imagnImages intentionally excluded to avoid loop
+
+  // Merge enriched photo into article before rendering
+  const withEnrichedImage = (article: NewsItem): NewsItem => {
+    if (!(article.id in imagnImages)) return article;
+    const url = imagnImages[article.id];
+    return url ? { ...article, imageUrl: url } : article;
+  };
+
+  // Top Stories — last 7 days of game-linked articles, ranked by game score of top performer
+  const topStories = useMemo(() => {
+    const rawNews = state.news || [];
+    const latestDate = rawNews.length > 0
+      ? Math.max(...rawNews.map((n: any) => { try { return new Date(n.date).getTime(); } catch { return 0; } }))
+      : Date.now();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const cutoff = latestDate - sevenDaysMs;
+
+    // Build a gameScore lookup: gameId → top gameScore in that game
+    const gameScoreLookup = new Map<number, number>();
+    for (const box of (state.boxScores || [])) {
+      const top = [...(box.homeStats || []), ...(box.awayStats || [])]
+        .reduce((max, s) => Math.max(max, s.gameScore ?? 0), 0);
+      gameScoreLookup.set(box.gameId, top);
+    }
+
+    return allArticles
+      .filter(a => {
+        const rawItem = rawNews.find((n: any) => n.id === a.id);
+        const ts = rawItem ? (() => { try { return new Date(rawItem.date).getTime(); } catch { return 0; } })() : 0;
+        return ts >= cutoff;
+      })
+      .sort((a, b) => {
+        const gsA = a.gameId ? (gameScoreLookup.get(a.gameId) ?? 0) : (a.impact === 'high' ? 30 : 0);
+        const gsB = b.gameId ? (gameScoreLookup.get(b.gameId) ?? 0) : (b.impact === 'high' ? 30 : 0);
+        return gsB - gsA;
+      })
+      .slice(0, 8);
+  }, [allArticles, state.news, state.boxScores]);
+
+  const sidebarArticles = topStories.length > 0 ? topStories : allArticles.slice(0, 8);
+
+  const heroArticle = filteredArticles[0];
+  const relatedArticles = filteredArticles.slice(1, 4);
+  const heroBelowArticles = filteredArticles.slice(4, 9);
+
+  const showHeroSection = !searchQuery && !showBookmarksOnly && filteredArticles.length > 0;
+
+  return (
+    <div className="min-h-full bg-gray-50 font-sans text-gray-900 flex flex-col">
+      <Navbar searchQuery={searchQuery} onSearchChange={(q) => { setSearchQuery(q); resetPage(); }} />
+
+      <SubNav
+        selectedTeam={selectedTeam}
+        selectedType={selectedType}
+        showBookmarksOnly={showBookmarksOnly}
+        onSelectTeam={handleSelectTeam}
+        onSelectType={handleSelectType}
+        onToggleBookmarks={handleToggleBookmarks}
+        gameTeams={state.teams}
+      />
+
+      <main className="flex-1">
+        {showHeroSection && (
+          <section className="max-w-[1400px] mx-auto px-4 py-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-9">
+                <ArticleCard article={withEnrichedImage(heroArticle)} variant="hero" onOpen={setSelectedArticle} />
+              </div>
+
+              <div className="lg:col-span-3 flex flex-col gap-4">
+                {relatedArticles.map((article) => (
+                  <ArticleCard key={article.id} article={withEnrichedImage(article)} variant="related" onOpen={setSelectedArticle} />
+                ))}
+              </div>
+            </div>
+
+            {heroBelowArticles.length > 0 && (
+              <div className="mt-8 pt-8 border-t border-gray-200">
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-gray-500 mb-6">
+                  More Stories
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                  {heroBelowArticles.map((article) => (
+                    <ArticleCard key={article.id} article={withEnrichedImage(article)} variant="hero-bottom" onOpen={setSelectedArticle} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        <section className="max-w-[1400px] mx-auto px-4 py-8 border-t border-gray-100">
+          <div className="flex flex-col lg:flex-row gap-12">
+            <div className="flex-grow">
+              <h2 className="text-sm font-black uppercase tracking-[0.15em] text-gray-900 mb-6 pb-3 border-b-2 border-gray-900">
+                {searchQuery ? (
+                  <>Search Results: <span className="text-[#0078ff]">{searchQuery}</span></>
+                ) : selectedType ? selectedType : showBookmarksOnly ? 'Saved Articles' : 'Latest News'}
+              </h2>
+
+              <div className="space-y-4">
+                {paginatedArticles.length > 0 ? (
+                  paginatedArticles.map((article) => (
+                    <ArticleCard key={article.id} article={withEnrichedImage(article)} variant="latest" onOpen={setSelectedArticle} />
+                  ))
+                ) : (
+                  <div className="py-24 text-center">
+                    <p className="text-gray-400 font-bold text-lg">No articles found.</p>
+                    <p className="text-gray-400 text-sm mt-2">Try adjusting your filters.</p>
+                  </div>
+                )}
+              </div>
+
+              {totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              )}
+            </div>
+
+            <div className="lg:w-72 xl:w-80 flex-shrink-0">
+              <div className="sticky top-[130px]">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400 mb-4 pb-3 border-b border-gray-100">
+                  Top Stories
+                </h3>
+                <div>
+                  {sidebarArticles.slice(0, 6).map((article) => (
+                    <ArticleCard key={article.id} article={article} variant="sidebar" onOpen={setSelectedArticle} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <Footer />
+
+      <ArticleViewer
+        article={selectedArticle}
+        onClose={() => setSelectedArticle(null)}
+        isBookmarked={selectedArticle ? bookmarks.includes(selectedArticle.id) : false}
+        onToggleBookmark={handleToggleBookmark}
+        cachedContent={selectedArticle ? aiCache[selectedArticle.id] ?? null : null}
+        onCacheContent={(id, content) => setAiCache(prev => ({ ...prev, [id]: content }))}
+        boxScores={state.boxScores || []}
+        teams={state.teams || []}
+      />
+    </div>
+  );
 };

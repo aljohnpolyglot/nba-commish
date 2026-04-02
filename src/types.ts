@@ -141,6 +141,11 @@ export interface GameResult {
   mvpName?: string;
   homeTeamName?: string;
   awayTeamName?: string;
+  // W-L records at the time the game was played (pre-game snapshot)
+  homeWins?: number;
+  homeLosses?: number;
+  awayWins?: number;
+  awayLosses?: number;
   injuries?: {
     playerId: string;
     playerName: string;
@@ -149,6 +154,7 @@ export interface GameResult {
     gamesRemaining: number;
   }[];
   fight?: FightResult;
+  highlights?: import('./services/simulation/types').GameHighlight[];
 }
 
 export interface TransactionDto {
@@ -463,12 +469,20 @@ export interface NewsItem {
   headline: string;
   content: string;
   date: string;
+  /** NewsCategory string stored at generation time — used by NewsFeed for tab routing. */
+  category?: string;
   image?: string;
   /** Portrait URL used as last-resort fallback after Imagn enrichment is attempted */
   playerPortraitUrl?: string;
   isNew?: boolean;
   /** 'daily' = single-game/breaking news. 'weekly' = multi-day batch recap or period summary. */
   newsType?: 'daily' | 'weekly';
+  /** Game context — stored so ArticleViewer can enrich the LLM prompt with real box score data. */
+  gameId?: number;
+  homeTeamId?: number;
+  awayTeamId?: number;
+  /** When true, article is scoped to a specific team page and hidden from the main news feed. */
+  teamOnly?: boolean;
 }
 
 export interface NBAConf {
@@ -963,6 +977,18 @@ export interface GameState {
   bets: Bet[];
   realEstateInventory?: OwnedRealEstateAsset[];
   commishStoreInventory?: CommishStoreItem[];
+  commissionerLog?: CommissionerLogEntry[];
+  pendingNarratives?: string[];
+}
+
+export interface CommissionerLogEntry {
+  id: string;
+  type: 'HEAL_PLAYER' | 'SABOTAGE_PLAYER';
+  date: string;
+  subject: string;
+  subjectId: string;
+  coverStory: string;
+  internalNote: string;
 }
 
 export interface CommishStoreItem {
@@ -1002,7 +1028,7 @@ export interface UserAction {
 
 export type Conference = 'East' | 'West';
 export type GamePhase = 'Preseason' | 'Opening Week' | 'Regular Season (Early)' | 'Regular Season (Mid)' | 'All-Star Break' | 'Trade Deadline' | 'Regular Season (Late)' | 'Play-In Tournament' | 'Playoffs (Round 1)' | 'Playoffs (Round 2)' | 'Conference Finals' | 'NBA Finals' | 'Offseason' | 'Draft' | 'Draft Lottery' | 'Free Agency' | 'Schedule Planning' | 'Schedule Release' | 'Training Camp';
-export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Players' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book';
+export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Players' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings';
 
 // ─── AI Trade / Free Agency ───────────────────────────────────────────────────
 export interface TradeProposal {

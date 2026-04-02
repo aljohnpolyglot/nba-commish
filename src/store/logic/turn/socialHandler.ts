@@ -2,6 +2,8 @@ import { GameState, NBAPlayer as Player, NBATeam } from '../../../types';
 import { calculateSocialEngagement } from '../../../utils/helpers';
 import { SocialEngine } from '../../../services/social/SocialEngine';
 import { generateLazySimNews } from '../../../services/news/lazySimNewsGenerator';
+import { findShamsPhoto } from '../../../services/social/charaniaphotos';
+import { pickMemePost } from '../../../services/social/nbaMemesFetcher';
 
 export const handleSocialAndNews = async (
     state: GameState, 
@@ -94,17 +96,20 @@ export const handleSocialAndNews = async (
             if (!content) continue;
 
             const engagement = calculateSocialEngagement('@ShamsCharania', content, player.overallRating);
+            // Attach real Shams tweet photo — always attach when a name match is found, never when not
+            const photo = findShamsPhoto(player.name, team.name);
             shamsInjuryPosts.push({
-                id: `shams-injury-${injury.playerId}-${Date.now()}`,
+                id: `shams-injury-${injury.playerId}-${(injury.injuryType || 'injury').replace(/\s+/g, '-').toLowerCase()}`,
                 author: 'Shams Charania',
                 handle: '@ShamsCharania',
                 content,
-                date: new Date(state.date).toISOString(),
-                likes: engagement.likes,
-                retweets: engagement.retweets,
+                date: new Date(endDateString).toISOString(),
+                likes: photo ? parseInt(photo.stats.likes.replace(/,/g, ''), 10) || engagement.likes : engagement.likes,
+                retweets: photo ? parseInt(photo.stats.reposts.replace(/,/g, ''), 10) || engagement.retweets : engagement.retweets,
                 source: 'TwitterX',
                 isNew: true,
                 playerPortraitUrl: player.imgURL,
+                ...(photo ? { mediaUrl: photo.image_url } : {}),
             });
         }
     }
@@ -112,13 +117,32 @@ export const handleSocialAndNews = async (
     allNewPosts.push(...shamsInjuryPosts);
     allNewPosts.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+    // ── NBA Memes — fetched real tweets, fire nonsensically by frequency ─────
+    const meme = pickMemePost(endDateString);
+    if (meme) {
+        const likes = parseInt(String(meme.stats.likes).replace(/\D/g, ''), 10) || 500;
+        const retweets = parseInt(String(meme.stats.reposts).replace(/\D/g, ''), 10) || 100;
+        allNewPosts.push({
+            id: `nba-memes-${meme.id}`,
+            author: 'NBA Memes',
+            handle: '@NBAMemes',
+            content: meme.text,
+            date: new Date(endDateString).toISOString(),
+            likes,
+            retweets,
+            source: 'TwitterX',
+            isNew: true,
+            mediaUrl: meme.image,
+        });
+    }
+
     const existingPostIds = new Set(state.socialFeed.map(p => p.id));
     const uniqueNewPosts = allNewPosts.filter(p => !existingPostIds.has(p.id));
 
     const newNews = (result.newNews || []).map((n: any, i: number) => ({
         ...n,
         id: n.id || `llm-news-${state.day}-${i}-${Date.now()}`,
-        date: n.date || new Date(state.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        date: endDateString, // always date to end of sim batch, not individual game/event date
         isNew: true
     }));
     newNews.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -129,16 +153,24 @@ export const handleSocialAndNews = async (
     console.log('[SocialHandler] incoming newNews:', result?.newNews?.length);
     console.log('[SocialHandler] incoming newSocialPosts:', result?.newSocialPosts?.length);
 
-    // ── Generate deterministic news from sim results (streaks, big games, drama) ──
-    // skipInjuries=true — Shams posts already surface injuries in the regular flow.
+    // ── Generate deterministic news from sim results (streaks, big games, drama, injuries) ──
     if (allSimResults.length > 0) {
+        // Build a set of injury keys that Shams already posted about this run (same player+type)
+        const shamsReportedInjuries = new Set<string>(
+            shamsInjuryPosts.map((p: any) => {
+                // Extract playerId from the stable Shams post id: shams-injury-{playerId}-{type}
+                const parts = p.id?.split('-') || [];
+                return parts.slice(2).join('-'); // everything after "shams-injury-"
+            })
+        );
+
         const simNews = generateLazySimNews(
             updatedTeams,
             updatedPlayers,
             allSimResults,
             endDateString,
-            new Set<string>(),
-            true, // skipInjuries
+            new Set<string>(), // injury dedup handled by existingNewsIds below
+            false, // include injury news — Shams covers social, news feed needs it too
             state.teams
         );
         const simNewsUnique = simNews.filter(n => !existingNewsIds.has(n.id));

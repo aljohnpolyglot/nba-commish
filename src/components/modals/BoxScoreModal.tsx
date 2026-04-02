@@ -350,8 +350,15 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10 bg-[#111]">
-          <h2 className="text-2xl font-black text-white uppercase tracking-tight">{isIntraSquad ? 'Scrimmage' : 'Box Score'}</h2>
-          <button 
+          <div>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight">{isIntraSquad ? 'Scrimmage' : 'Box Score'}</h2>
+            {(result?.date || game.date) && (
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                {new Date(result?.date || game.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+              </p>
+            )}
+          </div>
+          <button
             onClick={onClose}
             className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
           >
@@ -363,13 +370,18 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
         <div className="flex flex-col items-center justify-center p-4 md:p-8 bg-gradient-to-b from-[#111] to-[#0a0a0a]">
           <div className="flex items-center justify-center gap-2 md:gap-16 w-full">
             <div className="flex flex-col items-center gap-2 md:gap-4 w-1/3">
-              <button 
+              <button
                 onClick={() => onTeamClick && onTeamClick(awayTeam.id)}
                 className="group flex flex-col items-center gap-2 md:gap-4"
               >
                 {renderTeamLogo(awayTeam)}
                 <div className="text-center">
                   <div className="font-black text-xs md:text-2xl text-white tracking-tight group-hover:text-indigo-400 transition-colors">{awayDisplayName}</div>
+                  {awayTeam.id >= 0 && (
+                    <div className="text-[11px] font-bold text-slate-500 tracking-widest mt-0.5">
+                      {result?.awayWins ?? awayTeam.wins ?? 0}–{result?.awayLosses ?? awayTeam.losses ?? 0}
+                    </div>
+                  )}
                 </div>
               </button>
             </div>
@@ -388,6 +400,11 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                 {renderTeamLogo(homeTeam)}
                 <div className="text-center">
                   <div className="font-black text-xs md:text-2xl text-white tracking-tight group-hover:text-indigo-400 transition-colors">{homeDisplayName}</div>
+                  {homeTeam.id >= 0 && (
+                    <div className="text-[11px] font-bold text-slate-500 tracking-widest mt-0.5">
+                      {result?.homeWins ?? homeTeam.wins ?? 0}–{result?.homeLosses ?? homeTeam.losses ?? 0}
+                    </div>
+                  )}
                 </div>
               </button>
             </div>
