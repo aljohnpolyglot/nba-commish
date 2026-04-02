@@ -10,26 +10,33 @@
 
 ## Run Locally
 
-**Prerequisites:** Node.js, a Gemini API key
+**Prerequisites:** Node.js
 
 1. Install dependencies: `npm install`
-2. Set `GEMINI_API_KEY` in `.env.local`
-3. Run: `npm run dev`
+2. Run: `npm run dev`
+
+> **No API keys needed on the client.** All LLM calls route through Cloudflare Workers (Groq for chat, Together AI for everything else). Keys live on the workers, not in `.env.local`. Any reference to `GEMINI_API_KEY` or `GoogleGenAI` in this codebase is legacy/broken — use `generateContentWithRetry` from `src/services/llm/utils/api.ts`.
 
 ---
 
 ## NBA 2K Data Sources
 
-Two gist-backed data files live in `src/data/` and are fetched once per session (cached in memory):
+Gist-backed data files fetched once per session (cached in memory):
 
 | File | Gist | Used by |
 |------|------|---------|
 | `NBA2kBadges.ts` | `aljohnpolyglot/e7b25218…` — player badge tiers (HOF/Gold/Silver/Bronze) | `badgeService.ts` → live game commentary, dunk contest sim |
 | `NBA2kRatings.ts` | `aljohnpolyglot/10016f08…` — full NBA 2K26 attribute ratings per team/player | `Defense2KService.ts` (team defense weighting), `DunkContestModal.tsx` (dunk/vertical scores) |
+| `injuryService.ts` | `aljohnpolyglot/nba-store-data/nbainjurieslist` — 100+ injury types with real historical frequency + avg games missed | `InjurySystem.ts` (injury selection), `PersonSelectorModal.tsx` (manual injury picker UI) |
+| `playerInjuryData.ts` | `aljohnpolyglot/nba-store-data/nbainjuriesdata` — per-player career injury history: total count + body part breakdown | `InjurySystem.ts` → durability multiplier + body-part weighted injury selection |
 
 `NBA2kBadges.ts` exports `loadBadges()` + `getBadgeProb(player, badge, baseProb)` — badge tier multiplies the base probability (HOF ×1.5, Gold ×1.2, Silver ×1.0, Bronze ×0.6, none → 0).
 
 `NBA2kRatings.ts` exports `loadRatings()` + `getRawTeams()` — consumers call `await loadRatings()` then `getRawTeams()` and parse the attributes they need.
+
+`injuryService.ts` exports `fetchInjuryData()` + `getInjuries()` — call fetch at app startup (App.tsx), then use `getInjuries()` synchronously anywhere. No local fallback — if the gist is unreachable, `getInjuries()` returns `[]`. `src/data/injuries.ts` has been deleted; the gist is the only source.
+
+`playerInjuryData.ts` exports `fetchPlayerInjuryData()` + `getPlayerInjuryProfile(name)` + `get2KExplosiveness(name, pos)`. Profile lookup does exact normalized match first, then last-name+first-initial fallback. `normalizeBodyPart(raw)` collapses messy gist keys into canonical buckets (ankle, knee, foot, achilles, groin, etc.).
 
 ---
 
@@ -72,6 +79,10 @@ Two gist-backed data files live in `src/data/` and are fetched once per session 
 | Mar 2026 | LLM echoed payload outcomeText verbatim in news/social/emails | `simulation.ts` instruction #2 + `isSpecificEvent` block + `system.ts` line 94 reworded: `outcomeText` is now an "event hint" (factual context only). LLM writes its own response `outcomeText`; all content (news, @Shams tweets, fan posts, emails) must use authentic voices — never copy the hint verbatim. |
 | Mar 2026 | Dinner action excluded referees | Added `includesRefs: true` to `dinner` eligibility in `personActionDefs.ts`. Refs now appear alongside players and league office staff. |
 | Mar 2026 | SIMULATE_TO_DATE crossing Apr 13–20 didn't generate/simulate play-in | `runSimulation` day loop in `simulationHandler.ts` didn't run bracket injection (that happened in `gameLogic.ts` after the loop returned). Fixed by extracting `applyPlayoffLogic()` and calling it BEFORE each day (inject games) and AFTER (advance bracket). `gameLogic.ts` now prefers `stateWithSim.playoffs` over `state.playoffs` to prevent double-generation. |
+| Apr 2026 | Shams/news spamming same injury every batch | Injury news IDs now stable: `news-injury-${playerId}-${injuryType}`. Section 4 of `lazySimNewsGenerator` only processes players in `allSimResults.injuries` (newly injured this batch) — pre-existing BBGM injuries never appear in sim results so they're silently skipped. Shams posts use stable ID `shams-injury-${playerId}-${injuryType}` deduplicated by `existingPostIds`. |
+| Apr 2026 | Imagn photo enrichment broken (complex caption/subject matching failing) | `enrichNewsWithPhoto` rewrote to: flatten all fetched photos into one pool, pick by `seed % min(poolSize,10)` where seed = article ID char sum — deterministic so same article always gets same photo, but simple enough to never fail. Removed `pickBestPhoto`/`isSubjectOfCaption` from news path. |
+| Apr 2026 | Team home page had no team-specific news | Added `teamNews` useMemo in `TeamDetailView.tsx` — filters `state.news` by team name mention, player last name mention, or `gameId`/`homeTeamId`/`awayTeamId` match. Rendered as a "Team News" section (with thumbnail + headline + date) between Schedule and Roster. |
+| Apr 2026 | Top Stories sidebar showed stale all-time high-impact items | Replaced with last-7-days window sorted by `gameScore` of top performer in linked game — surfaces the craziest recent performances instead of oldest `isNew` items. |
 | Mar 2026 | `state.bets` grew unbounded — no archival for resolved bets | After `resolveBets()` in `gameLogic.ts`: keep all `pending` + 50 most-recent resolved (sorted by date desc). Older resolved bets pruned each turn. |
 | Mar 2026 | RealStern `monthlyPassive` income was cosmetic only | `gameLogic.ts`: `monthlyPassive = inventory.reduce(price × 0.004)` applied as ghost `personalWealth` addition per turn (`monthlyPassive × daysToAdvance / 30 / 1M`). Same in `lazySimRunner.ts` per batch. Payslip unchanged — shows league salary only. |
 | Mar 2026 | Sportsbook wager showed $100M when entering 100 | `formatCurrency(wager)` treated wager as millions. Fixed: `formatCurrency(wager, false)`. Validation: `wager > personalWealth * 1_000_000`. Input uses string state (`wagerStr`) to allow clearing and cents (step=0.01). |
@@ -79,6 +90,11 @@ Two gist-backed data files live in `src/data/` and are fetched once per session 
 | Mar 2026 | RealStern portfolio cards had cluttered inline action buttons | Replaced with `RealSternActionModal` — cards are now fully clickable, modal shows all actions (invite, gift, sell 80%, abandon with confirm). |
 | Mar 2026 | RealStern purchase had no misclick protection | Added checkbox confirmation to `PurchaseModal`: "I confirm I want to acquire X for $Y". Button disabled until checked + affordable. |
 | Mar 2026 | TeamFinancesView / Detailed not mobile-friendly | Pie chart containers: `w-56 h-56 sm:w-64 sm:h-64`. Legend: `sm:ml-8`. Flex direction: `flex-col sm:flex-row`. Header font sizes and padding scale with `sm:` breakpoints. |
+| Apr 2026 | Injury system overhauled — player-profile aware + gist-backed | `InjurySystem.ts` rewritten: durabilityMultiplier (career injuries ÷ yearsPro ÷ 10, clamped 0.2–3x), computeBMIWear (BMI > 25 × 2K speed factor → lower-body injury bias for Zion/Embiid, cancels out for Jokic), profiledInjury (body-part weighted from career breakdown → BODY_PART_TO_INJURIES → exact name from gist list), genericInjury (cumulative-sum frequency pick). `src/data/injuries.ts` deleted — gist is the only source. `PersonSelectorModal` updated to use `getInjuries()`. HighlightGenerator added: 13 event types (driving_dunk, standing_dunk, posterizer with victimName, alley_oop with assisterName, fastbreak_dunk, break_starter, layup_mixmaster, versatile_visionary, limitless_3, ankle_breaker with victimName, tech_foul, timeout, coach_challenge). Driving vs standing dunks use separate 2K attributes — Gobert can't posterize. bleacherReport.ts and nbaCentel.ts templates updated to use highlight victim/passer names. |
+| Apr 2026 | Young/lottery teams (SA Spurs, OKC) gave starters 35+ min, benched young players 5 min | `MinutesPlayedService.ts`: when `starMpgTarget ≤ 31` (lottery/development signal), all 5 starters step down proportionally (star: ~31 min, 2nd: ~29, 3rd: ~27, 4th: ~25, 5th: ~23) instead of slots 1-4 always getting 35-38 min. Deep bench slots 3+ get +6 min bonus in youth mode. OKC/SA rookies (Harper, Wembanyama backups) now get 10-16 min. |
+| Apr 2026 | TransactionsView trade entry showed just "Trade" with no detail text | `tradeActions.ts`: added `result.outcomeText` fallback after `advanceDay` returns — if LLM returns empty string, fills in canonical trade text (`TeamA and TeamB complete a trade. TeamB receive: X. TeamA receive: Y.`). History entry always has rich text now. |
+| Apr 2026 | ScheduleView rig game → watch live: rigged team didn't persist for other same-day games | `ScheduleView.executeWatchGame`: captured `riggedForTid` before clearing state, passes it to `ADVANCE_DAY` dispatch. Also calls `setRiggedForTid(undefined)` on cleanup. Now matches `NBACentral.executeWatchGame` behavior. |
+| Apr 2026 | Pre-existing injuries flooded league news and social at season start | `lazySimRunner.ts`: `reportedInjuries` Set now pre-seeded with all injuries already on players before the lazy sim begins (`initialState.players.filter(injured).map(key)`). Only injuries that occur DURING the sim generate Shams posts and news items. |
 
 ### Non-Obvious Architecture Notes
 
@@ -136,8 +152,20 @@ Two gist-backed data files live in `src/data/` and are fetched once per session 
 - **RealSternActionModal**: `src/components/modals/RealSternActionModal.tsx` — replaces inline action buttons in `InventoryCard`. Click any portfolio card → modal opens. Actions: Invite Guest (→ PersonSelectorModal with optional reason), Gift (→ PersonSelectorModal), Sell 80%, Abandon (inline confirm inside modal). InventoryCard is now fully clickable with no action buttons on card surface.
 - **betResolver — playerId is internalId**: `BetLeg.playerId` is `player.internalId` (the BBGM UUID string), NOT the NBA.com numeric ID. `GameResult.homeStats[].playerId` is also `internalId`. Never join on `player.id` or `nbaId` for bet resolution.
 - **betResolver — DNP behavior**: If a player appears in `GameResult.playerDNPs` or is absent from both `homeStats` and `awayStats`, their leg returns `null` → bet stays `pending`, never `lost`. This prevents bettors from losing wagers on scratches/DNPs.
+- **Youth rotation mode (starMpgTarget ≤ 31)**: In `allocateMinutes`, when `starMpgTarget ≤ 31` (lottery team signal from `standingsProfile`), ALL starters get stepped-down minutes: slot 0 = target, slot 1 = target-2, …, slot 4 = target-8 (floor 20 min). Deep bench slots (depth 3+) get +6 min bonus. This makes OKC/SA play their young guys instead of giving every starter 35+ min. Don't remove `isYouthMode` — it's intentional for rebuilding franchises.
+- **Injury system — gist-only, no local fallback**: `src/data/injuries.ts` is deleted. `getInjuries()` returns the fetched gist list or `[]` if the fetch failed. `InjurySystem.ts` and `PersonSelectorModal.tsx` both call `getInjuries()`. Never re-add a local INJURIES constant — update the gist instead.
+- **Injury profiling — three layers**: (1) `durabilityMultiplier`: historical injury frequency → scales per-game injury rate 0.2–3x. (2) `profiledInjury`: body-part weighted from career breakdown, boosted toward lower-body for high-BMI explosive players via `computeBMIWear`. (3) `genericInjury`: cumulative-sum frequency pick from gist list when no profile exists. Zion/Embiid get lower-body bias; Jokic's low 2K speed cancels out his high BMI.
+- **`BODY_PART_TO_INJURIES` in `playerInjuryData.ts`**: Maps canonical body-part buckets (knee, ankle, achilles, etc.) to exact injury names from the nbainjurieslist gist. The string match must be exact — if you add/rename an injury in the gist, update this map too.
+- **HighlightGenerator — driving vs standing dunks are separate**: `driving_dunk` uses `Inside Scoring['Driving Dunk']` from 2K gist; `standing_dunk` uses `['Standing Dunk']`. Only driving dunks can posterize (victim via `pickRimDefender()` — C/PF on the opposing team). Standing dunks never posterize. Gobert has high standing dunk but low driving dunk — this is intentional.
+- **HighlightGenerator — victim and passer fields**: Posterizer + ankle_breaker store `victimId` + `victimName`. Alley_oop + fastbreak_dunk + versatile_visionary store `assisterId` + `assisterName`. Social templates access these via `(ctx.game as any).highlights ?? []`. Both `GameResult` types (`src/types.ts` + `src/services/simulation/types.ts`) must have `highlights?: GameHighlight[]`.
+- **Injury news — only fresh injuries**: `lazySimRunner.ts` pre-seeds `reportedInjuries` with all players' current injuries before the sim loop. This prevents existing injuries (e.g. season-opening carryovers) from generating Shams posts and news items. Only injuries that first appear DURING the lazy sim batch trigger coverage. Regular day-by-day games are always fresh (injuries come from `result.injuries`, which is only populated by that game's `InjurySystem.checkInjuries` call).
 - **betResolver — parseLine**: Extracts the numeric line from a description string. Handles `"Over X"` / `"Under X"` patterns (for totals and props) and signed spread patterns like `"LAL -3.5"` / `"BOS +3.5"`. Spread descriptions come from SportsBookView as `"${abbrev} ${sign}${number}"` (e.g. `"BOS +3.5"` or `"LAL -3.5"`). Over/Under descriptions are `"Over 220.5 pts"` or `"LeBron James Over 25.5 PTS"`.
 - **betResolver — parlay batching**: Parlay legs all use `gameId` or `playerId` to look up results. If any leg's game isn't in the current `allSimResults` batch, the whole parlay stays pending. Same-day parlays resolve in one turn. Multi-day parlays resolve only if all their games fall within the same `SIMULATE_TO_DATE` batch.
+- **LLM stack — Groq + Together AI only. No Google SDK.**: `@google/genai` package is NOT used anywhere in this app. ALL LLM calls go through `generateContentWithRetry` in `src/services/llm/utils/api.ts`. Chat calls → Groq Worker (`GROQ_WORKER_URL`, model `llama-3.3-70b-versatile`). Everything else → Together AI Worker (`TOGETHER_WORKER_URL`) which proxies to Gemini models on the backend. `process.env.GEMINI_API_KEY` is irrelevant — keys are on the worker, not the client. Any component that imports `GoogleGenAI` from `@google/genai` and uses `process.env.GEMINI_API_KEY` directly will silently fail (no API key on client). Always use `generateContentWithRetry`.
+- **Article viewer LLM elaboration**: `ArticleViewer.tsx` uses `generateContentWithRetry` (not GoogleGenAI). Box score context (`buildBoxScoreContext`) + highlight plays are injected into the prompt when `item.gameId` is set. The `enableLLM` check in `generateContentWithRetry` will return a mock if disabled — but the gate is in the worker, so the viewer should always attempt elaboration.
+- **Accurate article dating — game date, not sim end date**: Game-specific news articles (monster_performance, game_result, duo_performance, team_feat, triple_double, major_injury) must use `game.date` as the article date — the actual date the game was played, stored on `GameResult`. Batch-level articles (batch_recap, streaks, drama, standings) use `currentDate` (end of sim batch). Shams injury posts use `result.date` (the game's date). LLM-generated news (`result.newNews`) uses `n.date` if provided by the LLM, otherwise falls back to `endDateString`. Never use `state.date` (sim START date) as the date for news/social items — it's always stale.
+- **GameResult snapshot W-L records**: `GameResult` stores `homeWins/homeLosses/awayWins/awayLosses` — the team records AT TIP-OFF (before this game's result is applied). `engine.ts` captures these from `homeTeam.wins/losses` at simulation time. `BoxScoreModal` always displays these snapshot values so historical box scores show the correct record, not the team's current live record.
+- **teamOnly news items**: Articles tagged `teamOnly: true` (generated by `lazySimNewsGenerator` section 3c for 30-39 PT games and triple-doubles) are filtered from the main `NewsFeed` but still appear in `TeamDetailView`'s `teamNews` filter which reads raw `state.news`. Don't move `teamOnly` into a separate state array — the filter approach keeps a single source of truth.
 
 ---
 

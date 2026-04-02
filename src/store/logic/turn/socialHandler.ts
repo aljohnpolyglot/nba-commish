@@ -103,7 +103,7 @@ export const handleSocialAndNews = async (
                 author: 'Shams Charania',
                 handle: '@ShamsCharania',
                 content,
-                date: new Date(endDateString).toISOString(),
+                date: result.date ? new Date(result.date).toISOString() : new Date(endDateString).toISOString(),
                 likes: photo ? parseInt(photo.stats.likes.replace(/,/g, ''), 10) || engagement.likes : engagement.likes,
                 retweets: photo ? parseInt(photo.stats.reposts.replace(/,/g, ''), 10) || engagement.retweets : engagement.retweets,
                 source: 'TwitterX',
@@ -142,7 +142,7 @@ export const handleSocialAndNews = async (
     const newNews = (result.newNews || []).map((n: any, i: number) => ({
         ...n,
         id: n.id || `llm-news-${state.day}-${i}-${Date.now()}`,
-        date: endDateString, // always date to end of sim batch, not individual game/event date
+        date: n.date || endDateString, // use LLM-provided date if available, otherwise sim end
         isNew: true
     }));
     newNews.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());

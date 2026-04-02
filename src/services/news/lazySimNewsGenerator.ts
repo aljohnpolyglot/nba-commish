@@ -150,7 +150,7 @@ export const generateLazySimNews = (
         if (!player) continue;
 
         if (stat.pts >= 40 && Math.random() < 0.8) {
-          const item = withPortrait(NewsGenerator.generate(isPreseason ? 'preseason_performance' : 'monster_performance', currentDate, {
+          const item = withPortrait(NewsGenerator.generate(isPreseason ? 'preseason_performance' : 'monster_performance', game.date, {
             playerName: stat.name,
             teamName:     team.name,
             opponentName: opp.name,
@@ -166,7 +166,7 @@ export const generateLazySimNews = (
 
         // Standard triple-double (10/10/10) — 60% chance to report
         if (stat.pts >= 10 && stat.reb >= 10 && stat.ast >= 10 && Math.random() < 0.6) {
-          const item = withPortrait(NewsGenerator.generate('triple_double', currentDate, {
+          const item = withPortrait(NewsGenerator.generate('triple_double', game.date, {
             playerName: stat.name,
             teamName:   team.name,
             pts: stat.pts,
@@ -202,7 +202,7 @@ export const generateLazySimNews = (
       const loserScore = homeWon ? game.awayScore : game.homeScore;
       const allStats = [...game.homeStats, ...game.awayStats].sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0));
       const topStat = allStats[0];
-      const item = NewsGenerator.generate('game_result', currentDate, {
+      const item = NewsGenerator.generate('game_result', game.date, {
         winnerName: winner.name,
         loserName: loser.name,
         winnerScore,
@@ -245,7 +245,7 @@ export const generateLazySimNews = (
         if (!isModestScorer && !isTripleDouble) continue;
         if (Math.random() > 0.55) continue; // 55% chance — keeps it sparse enough
 
-        const item = withPortrait(NewsGenerator.generate('team_feat', currentDate, {
+        const item = withPortrait(NewsGenerator.generate('team_feat', game.date, {
           playerName: stat.name,
           teamName: team.name,
           opponentName: opp.name,
@@ -285,7 +285,7 @@ export const generateLazySimNews = (
       const s1 = stars[0];
       const s2 = stars[1];
       const p1 = players.find(p => p.internalId === s1.playerId);
-      const item = withPortrait(NewsGenerator.generate('duo_performance', currentDate, {
+      const item = withPortrait(NewsGenerator.generate('duo_performance', game.date, {
         player1Name: s1.name,
         player2Name: s2.name,
         teamName: team.name,
@@ -313,11 +313,14 @@ export const generateLazySimNews = (
   // so they won't be re-reported on every batch. Stable IDs prevent duplicates.
   if (skipInjuries) return news;
 
+  // Map playerId → the actual game date when the injury occurred
   const newlyInjuredIds = new Set<string>();
+  const injuryGameDate = new Map<string, string>();
   for (const game of allSimResults) {
     if (!game.injuries?.length) continue;
     for (const inj of game.injuries) {
       newlyInjuredIds.add(inj.playerId);
+      if (!injuryGameDate.has(inj.playerId)) injuryGameDate.set(inj.playerId, game.date);
     }
   }
 
@@ -332,7 +335,8 @@ export const generateLazySimNews = (
     if (!team) continue;
 
     reportedInjuries.add(stableId);
-    const item = withPortrait(NewsGenerator.generate('major_injury', currentDate, {
+    const injDate = injuryGameDate.get(player.internalId) || currentDate;
+    const item = withPortrait(NewsGenerator.generate('major_injury', injDate, {
       playerName: player.name,
       teamName: team.name,
       injuryType: player.injury.type,
