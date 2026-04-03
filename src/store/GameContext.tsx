@@ -66,6 +66,19 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
+    // Social-only actions — never advance the game day
+    if (action.type === 'CACHE_PROFILE') {
+      const { handle, profile } = (action as any).payload;
+      setState(prev => ({
+        ...prev,
+        cachedProfiles: {
+          ...(prev.cachedProfiles || {}),
+          [handle.replace('@', '')]: profile,
+        },
+      }));
+      return;
+    }
+
     if (action.type === 'SAVE_SOCIAL_THREAD') {
       actions.saveSocialThread(action.payload.postId, action.payload.replies);
       return;
