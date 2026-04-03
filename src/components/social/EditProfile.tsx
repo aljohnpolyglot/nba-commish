@@ -1,93 +1,137 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Camera } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
+import { UserProfile } from '../../types';
 
 interface EditProfileProps {
+  initialData: UserProfile;
   onClose: () => void;
+  onSave: (data: UserProfile) => void;
 }
 
-const EditProfile: React.FC<EditProfileProps> = ({ onClose }) => {
-  const { state, dispatchAction } = useGame();
-  const commName = state.commissionerName || 'Commissioner';
-  const current = state.userProfile ?? {
-    name: commName,
-    handle: '@' + commName.toLowerCase().replace(/\s+/g, ''),
-    bio: '',
-    location: '',
-    website: '',
+export const EditProfile: React.FC<EditProfileProps> = ({ initialData, onClose, onSave }) => {
+  const { updateProfile } = useGame();
+  const [formData, setFormData] = useState(initialData);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateProfile(formData);
+    onSave(formData);
   };
 
-  const [name, setName] = useState(current.name || commName);
-  const [bio, setBio] = useState(current.bio || '');
-  const [location, setLocation] = useState(current.location || '');
-  const [website, setWebsite] = useState(current.website || '');
-
-  const handleSave = () => {
-    dispatchAction({
-      type: 'UPDATE_USER_PROFILE' as any,
-      payload: { name, bio, location, website },
-    } as any);
-    onClose();
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'banner') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (type === 'avatar') {
+          setFormData({ ...formData, avatarUrl: reader.result as string });
+        } else {
+          setFormData({ ...formData, bannerUrl: reader.result as string });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-start justify-center bg-black/60 backdrop-blur-sm pt-10 px-4">
-      <div className="bg-black border border-[#2f3336] rounded-2xl w-full max-w-lg">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#2f3336]">
-          <div className="flex items-center gap-6">
-            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-white/10 transition-colors">
-              <X size={20} className="text-white" />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#5b7083]/40 backdrop-blur-sm p-4">
+      <div className="bg-black w-full max-w-[600px] rounded-2xl overflow-hidden flex flex-col max-h-[90vh] relative z-[101]">
+        <div className="px-4 py-3 flex items-center justify-between sticky top-0 bg-black/80 backdrop-blur-md z-[110]">
+          <div className="flex items-center space-x-8">
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+              <X size={20} />
             </button>
-            <h2 className="text-xl font-bold text-white">Edit profile</h2>
+            <h2 className="text-xl font-bold">Edit profile</h2>
           </div>
           <button
-            onClick={handleSave}
-            className="bg-white text-black font-bold text-sm px-4 py-1.5 rounded-full hover:bg-zinc-200 transition-colors"
+            onClick={handleSubmit}
+            className="bg-white text-black font-bold px-4 py-1.5 rounded-full hover:bg-zinc-200 transition-colors"
           >
             Save
           </button>
         </div>
 
-        {/* Form */}
-        <div className="p-4 space-y-4">
-          <div className="border border-[#2f3336] rounded-lg px-3 pt-2 pb-2 focus-within:border-sky-500 transition-colors">
-            <label className="text-xs text-zinc-500">Name</label>
-            <input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              maxLength={50}
-              className="w-full bg-transparent text-white outline-none text-[15px] mt-0.5"
-            />
+        <div className="overflow-y-auto flex-1">
+          <div className="h-[200px] bg-zinc-800 relative group cursor-pointer overflow-hidden z-[102]">
+            {formData.bannerUrl ? (
+              <img src={formData.bannerUrl} alt="Banner" className="w-full h-full object-cover" />
+            ) : null}
+            <label className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-[103] cursor-pointer">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleFileChange(e, 'banner')}
+              />
+              <div className="p-3 rounded-full bg-black/40 backdrop-blur-sm">
+                <Camera size={24} className="text-white" />
+              </div>
+            </label>
+            <div className="absolute -bottom-16 left-4 p-1 bg-black rounded-full z-[104]">
+              <div className="w-32 h-32 rounded-full bg-zinc-900 border-4 border-black overflow-hidden relative group/avatar cursor-pointer z-[105]">
+                {formData.avatarUrl ? (
+                  <img src={formData.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-white">
+                    {formData.name[0]}
+                  </div>
+                )}
+                <label className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity z-[106] cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleFileChange(e, 'avatar')}
+                  />
+                  <div className="p-3 rounded-full bg-black/40 backdrop-blur-sm">
+                    <Camera size={24} className="text-white" />
+                  </div>
+                </label>
+              </div>
+            </div>
           </div>
-          <div className="border border-[#2f3336] rounded-lg px-3 pt-2 pb-2 focus-within:border-sky-500 transition-colors">
-            <label className="text-xs text-zinc-500">Bio</label>
-            <textarea
-              value={bio}
-              onChange={e => setBio(e.target.value)}
-              maxLength={160}
-              rows={3}
-              className="w-full bg-transparent text-white outline-none text-[15px] mt-0.5 resize-none"
-            />
-          </div>
-          <div className="border border-[#2f3336] rounded-lg px-3 pt-2 pb-2 focus-within:border-sky-500 transition-colors">
-            <label className="text-xs text-zinc-500">Location</label>
-            <input
-              value={location}
-              onChange={e => setLocation(e.target.value)}
-              maxLength={30}
-              className="w-full bg-transparent text-white outline-none text-[15px] mt-0.5"
-            />
-          </div>
-          <div className="border border-[#2f3336] rounded-lg px-3 pt-2 pb-2 focus-within:border-sky-500 transition-colors">
-            <label className="text-xs text-zinc-500">Website</label>
-            <input
-              value={website}
-              onChange={e => setWebsite(e.target.value)}
-              maxLength={100}
-              className="w-full bg-transparent text-white outline-none text-[15px] mt-0.5"
-            />
-          </div>
+
+          <form className="mt-20 px-4 pb-8 space-y-6" onSubmit={handleSubmit}>
+            <div className="relative group">
+              <div className="absolute top-2 left-3 text-xs text-zinc-500 group-focus-within:text-sky-500 transition-colors">Name</div>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full pt-6 pb-2 px-3 bg-transparent border border-zinc-800 rounded-md focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none text-white transition-all"
+              />
+            </div>
+
+            <div className="relative group">
+              <div className="absolute top-2 left-3 text-xs text-zinc-500 group-focus-within:text-sky-500 transition-colors">Bio</div>
+              <textarea
+                value={formData.bio || ''}
+                onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                className="w-full pt-6 pb-2 px-3 bg-transparent border border-zinc-800 rounded-md focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none text-white transition-all min-h-[100px] resize-none"
+              />
+            </div>
+
+            <div className="relative group">
+              <div className="absolute top-2 left-3 text-xs text-zinc-500 group-focus-within:text-sky-500 transition-colors">Location</div>
+              <input
+                type="text"
+                value={formData.location || ''}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                className="w-full pt-6 pb-2 px-3 bg-transparent border border-zinc-800 rounded-md focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none text-white transition-all"
+              />
+            </div>
+
+            <div className="relative group">
+              <div className="absolute top-2 left-3 text-xs text-zinc-500 group-focus-within:text-sky-500 transition-colors">Website</div>
+              <input
+                type="text"
+                value={formData.website || ''}
+                onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                className="w-full pt-6 pb-2 px-3 bg-transparent border border-zinc-800 rounded-md focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none text-white transition-all"
+              />
+            </div>
+          </form>
         </div>
       </div>
     </div>

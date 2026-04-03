@@ -114,6 +114,13 @@ export const useGameActions = (setState: React.Dispatch<React.SetStateAction<Gam
     }));
   };
 
+  const updateProfile = (profile: Partial<import('../types').UserProfile>) => {
+    setState(prev => ({
+      ...prev,
+      userProfile: { ...(prev.userProfile || { name: '', handle: '' }), ...profile },
+    }));
+  };
+
   const healPlayer = (playerId: string) => {
     setState(prev => {
       const player = prev.players.find(p => p.internalId === playerId);
@@ -161,6 +168,7 @@ export const useGameActions = (setState: React.Dispatch<React.SetStateAction<Gam
     unfollowUser,
     markPayslipsRead,
     updatePlayerRatings,
+    updateProfile,
     healPlayer,
   };
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Sidebar } from './Sidebar';
 import { RightSidebar } from './RightSidebar';
 import { TweetInput } from '../social/TweetInput';
@@ -15,6 +15,53 @@ import { useBackgroundFetcher } from '../../hooks/useBackgroundFetcher';
 import { TrendItem, WhoToFollow } from '../social/SidebarComponents';
 import { cn } from '../../lib/utils';
 import { Settings2, ArrowLeft, Search, Menu, X, Loader2 } from 'lucide-react';
+import { useInView } from '../../hooks/useInView';
+import { enrichPostWithPhoto, getResolvedUrl, type GamePhotoInfo } from '../../services/social/photoEnricher';
+import type { GameResult, SocialPost } from '../../types';
+
+// ─── Game photo lookup (boxScores + teams) ────────────────────────────────────
+function useGameLookup(): Map<number, GamePhotoInfo> {
+  const { state } = useGame();
+  return useMemo(() => {
+    const lookup = new Map<number, GamePhotoInfo>();
+    for (const bs of (state.boxScores || []) as GameResult[]) {
+      if (!bs.gameId || bs.homeTeamId <= 0 || bs.awayTeamId <= 0) continue;
+      const home = state.teams.find(t => t.id === bs.homeTeamId);
+      const away = state.teams.find(t => t.id === bs.awayTeamId);
+      if (!home || !away) continue;
+      const topPlayers = [...(bs.homeStats || []), ...(bs.awayStats || [])]
+        .sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0))
+        .slice(0, 10)
+        .map(s => ({ name: s.name, gameScore: s.gameScore ?? 0 }));
+      lookup.set(bs.gameId, { homeTeam: home, awayTeam: away, topPlayers, date: bs.date || '' });
+    }
+    return lookup;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.boxScores, state.teams]);
+}
+
+// ─── Lazy-photo wrapper (only enriches when post scrolls into view) ───────────
+const LazyPhotoCard: React.FC<{ post: SocialPost; gameLookup: Map<number, GamePhotoInfo>; onClick: () => void; onProfileClick: (h?: string) => void }> = ({ post, gameLookup, onClick, onProfileClick }) => {
+  const { ref, inView } = useInView(0.05);
+  const [resolvedMediaUrl, setResolvedMediaUrl] = useState<string | undefined>(() => {
+    const cached = getResolvedUrl(post.id);
+    return cached ?? post.mediaUrl ?? undefined;
+  });
+  useEffect(() => {
+    if (!inView || resolvedMediaUrl) return;
+    let cancelled = false;
+    enrichPostWithPhoto(post, gameLookup).then(url => {
+      if (!cancelled && url) setResolvedMediaUrl(url);
+    });
+    return () => { cancelled = true; };
+  }, [inView, gameLookup]);
+  const enriched: SocialPost = resolvedMediaUrl ? { ...post, mediaUrl: resolvedMediaUrl } : post;
+  return (
+    <div ref={ref}>
+      <SocialPostCard post={enriched} onClick={onClick} onProfileClick={onProfileClick} />
+    </div>
+  );
+};
 
 const WhoToFollowFeedBlock = ({ onProfileClick, suggestedUsersList }: { onProfileClick: (handle: string) => void, suggestedUsersList: any[] }) => {
   const { state, followUser, unfollowUser } = useGame();
@@ -50,6 +97,7 @@ export const TwitterLayout = () => {
   const { trends, allTrends, suggestedUsersList } = useSidebarData();
   const [activeTab, setActiveTab] = useState<'for-you' | 'following'>('for-you');
   const [searchQuery, setSearchQuery] = useState('');
+  const gameLookup = useGameLookup();
   const [view, setView] = useState<{ type: 'feed' | 'profile' | 'thread' | 'following-list' | 'explore' | 'connect'; handle?: string; postId?: string }>({ type: 'feed' });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [displayLimit, setDisplayLimit] = useState(10);
@@ -343,8 +391,9 @@ export const TwitterLayout = () => {
                       .slice(0, displayLimit)
                       .map((post, index) => (
                         <React.Fragment key={post.id}>
-                          <SocialPostCard 
-                            post={post} 
+                          <LazyPhotoCard
+                            post={post}
+                            gameLookup={gameLookup}
                             onClick={() => handlePostClick(post.id)}
                             onProfileClick={(handle) => handleProfileClick(handle || post.handle)}
                           />
@@ -490,9 +539,10 @@ export const TwitterLayout = () => {
                           return 0;
                         })
                         .map((post) => (
-                          <SocialPostCard 
-                            key={post.id} 
-                            post={post} 
+                          <LazyPhotoCard
+                            key={post.id}
+                            post={post}
+                            gameLookup={gameLookup}
                             onClick={() => handlePostClick(post.id)}
                             onProfileClick={(handle) => handleProfileClick(handle || post.handle)}
                           />

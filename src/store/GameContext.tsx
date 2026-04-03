@@ -31,6 +31,7 @@ interface GameContextType {
   setPendingStatSort: (sort: { type: 'player' | 'team'; field: string; order: 'asc' | 'desc' } | null) => void;
   placeBet: (bet: { type: Bet['type']; wager: number; potentialPayout: number; legs: BetLeg[] }) => void;
   updatePlayerRatings: (playerId: string, season: number, ratings: Record<string, number>) => void;
+  updateProfile: (profile: Partial<import('../types').UserProfile>) => void;
   healPlayer: (playerId: string) => void;
 }
 

@@ -181,7 +181,21 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ handle, onBack, onPost
           />
         ))
       )}
-      {showEditProfile && <EditProfile onClose={() => setShowEditProfile(false)} />}
+      {showEditProfile && (
+        <EditProfile
+          initialData={{
+            name: state.userProfile?.name || commName,
+            handle: state.userProfile?.handle || ('@' + commName.toLowerCase().replace(/\s+/g, '')),
+            bio: state.userProfile?.bio || '',
+            location: state.userProfile?.location || '',
+            website: state.userProfile?.website || '',
+            avatarUrl: state.userProfile?.avatarUrl,
+            bannerUrl: state.userProfile?.bannerUrl,
+          }}
+          onClose={() => setShowEditProfile(false)}
+          onSave={() => setShowEditProfile(false)}
+        />
+      )}
     </div>
   );
 };
