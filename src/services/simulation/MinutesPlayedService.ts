@@ -132,7 +132,7 @@ function ageAdjustment(
   const avgAge =
     players.reduce((s, p) => s + (season - (p.born?.year ?? season - 24)), 0) / players.length;
 
-  if (avgAge < 24) return { depth: Math.min(depth + 1, 13), starMpg };              // OKC/SAS youth model
+  if (avgAge < 24) return { depth: Math.min(depth + 2, 13), starMpg: Math.min(starMpg, 31) }; // OKC/SAS: cap starMpg → triggers youth mode in allocateMinutes
   if (avgAge > 29) return { depth: Math.max(depth - 1,  7), starMpg: Math.min(starMpg, 34) }; // LAC load manage
   return { depth, starMpg };
 }
@@ -142,7 +142,7 @@ function sortByOVR(players: Player[], season: number): Player[] {
   return [...players].sort((a, b) => {
     const hgtA = a.ratings?.[a.ratings.length - 1]?.hgt ?? 50;
     const hgtB = b.ratings?.[b.ratings.length - 1]?.hgt ?? 50;
-    return convertTo2KRating(b.overallRating, hgtB) - convertTo2KRating(a.overallRating, hgtA);
+    return convertTo2KRating(b.overallRating, hgtB, b.ratings?.[b.ratings.length - 1]?.tp) - convertTo2KRating(a.overallRating, hgtA, a.ratings?.[a.ratings.length - 1]?.tp);
   });
 }
 
@@ -254,13 +254,23 @@ export class MinutesPlayedService {
     const gameLengthMin = 48 + otCount * 5;
     const otMultiplier  = gameLengthMin / 48;  // 1.0 reg, ~1.10 1OT, ~1.21 2OT
 
+    // Youth/development mode: lottery teams (starMpgTarget ≤ 31) spread minutes
+    // across the full rotation instead of piling 35+ min on every starter.
+    // Star still leads, but each subsequent starter steps down ~2 min, freeing
+    // real minutes for the 9th–12th men (Dylan Harper, OKC depth guys, etc.).
+    const isYouthMode = starMpgTarget !== undefined && starMpgTarget <= 31;
+
     const weights = rotation.map((p, i) => {
       const endu = R(p, 'endu', season);
       let baseMins: number;
 
       if (i < 5) {
-        // Starters — use starMpgTarget for slot 0 when provided
-        if (i === 0 && starMpgTarget !== undefined) {
+        if (isYouthMode && starMpgTarget !== undefined) {
+          // Youth starters: star gets target, each next slot steps down 2 min.
+          // Slot 0: ~31, Slot 1: ~29, Slot 2: ~27, Slot 3: ~25, Slot 4: ~23
+          const slotDrop = i * 2;
+          baseMins = Math.max(20, starMpgTarget - slotDrop) + (Math.random() - 0.5) * 2;
+        } else if (i === 0 && starMpgTarget !== undefined) {
           baseMins = starMpgTarget + (Math.random() - 0.5) * 2; // ±1 min wobble
         } else {
           baseMins = isBigBlowout
@@ -277,7 +287,9 @@ export class MinutesPlayedService {
         const depthSlot = Math.min(i - 5, BENCH_TIERS.length - 1);
         const { base, spread } = BENCH_TIERS[depthSlot];
         const blowoutBonus = isBigBlowout ? 8 : isBlowout ? 4 : 0;
-        baseMins = base + Math.random() * spread + blowoutBonus;
+        // Youth teams boost deep bench slots so young reserves actually play
+        const youthBonus = isYouthMode && depthSlot >= 3 ? 6 : 0;
+        baseMins = base + Math.random() * spread + blowoutBonus + youthBonus;
         const fatigue = endu < 40 ? (40 - endu) * 0.10 : 0;
         baseMins -= fatigue;
       }

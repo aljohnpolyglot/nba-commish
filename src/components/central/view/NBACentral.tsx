@@ -7,6 +7,7 @@ import ContactModal from '../../ContactModal';
 import { PersonSelectorModal } from '../../modals/PersonSelectorModal';
 import { PlayerActionsModal } from './PlayerActionsModal';
 import { PlayerBioView } from './PlayerBioView';
+import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
 import type { NBAPlayer, Contact, Game } from '../../../types';
 import { TeamDetailView } from './TeamDetailView';
 import { normalizeDate } from '../../../utils/helpers';
@@ -22,12 +23,13 @@ import { WatchGamePreviewModal } from '../../modals/WatchGamePreviewModal';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
 
 export const NBACentral: React.FC = () => {
-  const { state, dispatchAction, selectedTeamId, setSelectedTeamId } = useGame();
+  const { state, dispatchAction, selectedTeamId, setSelectedTeamId, healPlayer } = useGame();
   const [searchTerm, setSearchTerm] = useState('');
   
   // Modals State
   const [selectedPlayerForActions, setSelectedPlayerForActions] = useState<NBAPlayer | null>(null);
   const [viewingBioPlayer, setViewingBioPlayer] = useState<NBAPlayer | null>(null);
+  const [viewingRatingsPlayer, setViewingRatingsPlayer] = useState<NBAPlayer | null>(null);
   const [selectedPlayerContact, setSelectedPlayerContact] = useState<Contact | null>(null);
   
   const [personSelectorOpen, setPersonSelectorOpen] = useState(false);
@@ -144,11 +146,17 @@ export const NBACentral: React.FC = () => {
     };
   };
 
-  const handleActionSelect = (actionType: 'view_bio' | 'contact' | 'bribe' | 'fine' | 'dinner' | 'movie' | 'suspension' | 'waive' | 'sabotage') => {
+  const handleActionSelect = (actionType: string) => {
     if (!selectedPlayerForActions) return;
-    
+
     if (actionType === 'view_bio') {
       setViewingBioPlayer(selectedPlayerForActions);
+      setSelectedPlayerForActions(null);
+      return;
+    }
+
+    if (actionType === 'view_ratings') {
+      setViewingRatingsPlayer(selectedPlayerForActions);
       setSelectedPlayerForActions(null);
       return;
     }
@@ -346,6 +354,7 @@ export const NBACentral: React.FC = () => {
           player={selectedPlayerForActions}
           onClose={() => setSelectedPlayerForActions(null)}
           onActionSelect={handleActionSelect}
+          onHeal={() => { healPlayer(selectedPlayerForActions.internalId); setSelectedPlayerForActions(null); }}
         />
       )}
 
@@ -465,6 +474,14 @@ export const NBACentral: React.FC = () => {
                 setSelectedBoxScoreGame(null);
               }}
           />
+      )}
+
+      {viewingRatingsPlayer && (
+        <PlayerRatingsModal
+          player={viewingRatingsPlayer}
+          season={state.leagueStats?.year ?? 2026}
+          onClose={() => setViewingRatingsPlayer(null)}
+        />
       )}
     </>
   );

@@ -1,13 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { Star, Calendar, LayoutGrid, BarChart2 } from 'lucide-react';
 import { NBATeam, Game, NBAPlayer } from '../../../types';
-import { calculateTeamStrength } from '../../../utils/playerRatings';
 import { convertTo2KRating, normalizeDate } from '../../../utils/helpers';
 import { PlayerCard } from './PlayerCard';
 import { GameBar } from './GameBar';
 import { TeamDetailHeader } from './TeamDetailHeader';
 import { TeamStatsCards } from './TeamStatsCards';
-
 interface TeamDetailViewProps {
   team: NBATeam;
   players: NBAPlayer[];
@@ -22,8 +20,8 @@ interface TeamDetailViewProps {
   onTeamClick?: (teamId: number) => void;
 }
 
-export const TeamDetailView: React.FC<TeamDetailViewProps> = ({ 
-  team, players, allTeams, schedule, currentDate, onBack, onContact, onViewBio, onVisit, onGameClick, onTeamClick 
+export const TeamDetailView: React.FC<TeamDetailViewProps> = ({
+  team, players, allTeams, schedule, currentDate, onBack, onContact, onViewBio, onVisit, onGameClick, onTeamClick
 }) => {
   const [activeTab, setActiveTab] = useState<'roster' | 'stats'>('roster');
 
@@ -37,8 +35,8 @@ export const TeamDetailView: React.FC<TeamDetailViewProps> = ({
         p.status !== 'B-League'
       )
       .sort((a, b) => {
-        const ratingA = convertTo2KRating(a.overallRating, a.ratings?.[a.ratings.length - 1]?.hgt ?? 50);
-        const ratingB = convertTo2KRating(b.overallRating, b.ratings?.[b.ratings.length - 1]?.hgt ?? 50);
+        const ratingA = convertTo2KRating(a.overallRating, a.ratings?.[a.ratings.length - 1]?.hgt ?? 50, a.ratings?.[a.ratings.length - 1]?.tp);
+        const ratingB = convertTo2KRating(b.overallRating, b.ratings?.[b.ratings.length - 1]?.hgt ?? 50, b.ratings?.[b.ratings.length - 1]?.tp);
         return ratingB - ratingA;
       });
   }, [players, team.id]);
@@ -80,6 +78,7 @@ const currentSeason = useMemo(() => {
       const oppId = gameToday.homeTid === team.id ? gameToday.awayTid : gameToday.homeTid;
       return allTeams.find(t => t.id === oppId);
   }, [gameToday, allTeams, team.id]);
+
 
   const isScheduleRevealed = useMemo(() => {
     const date = new Date(currentDate);

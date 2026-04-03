@@ -327,7 +327,7 @@ export const processTurn = async (
                     position: p.pos || 'F',
                     category: getCategory(p.pos || 'F'),
                     isRookie: true,
-                    ovr: convertTo2KRating(p.overallRating ?? 50, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50)
+                    ovr: convertTo2KRating(p.overallRating ?? 50, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp)
                 };
             }),
             ...sophs.map(p => {
@@ -343,7 +343,7 @@ export const processTurn = async (
                     position: p.pos || 'F',
                     category: getCategory(p.pos || 'F'),
                     isRookie: false,
-                    ovr: convertTo2KRating(p.overallRating ?? 50, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50)
+                    ovr: convertTo2KRating(p.overallRating ?? 50, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp)
                 };
             })
         ];
@@ -652,6 +652,24 @@ export const processTurn = async (
                 case 'WAIVE_PLAYER': return 'Waive';
                 case 'SUSPEND_PLAYER': return 'Suspension';
                 case 'FIRE_PERSONNEL': return 'Personnel';
+                case 'SIMULATE_TO_DATE': return 'Simulation';
+                case 'INVITE_DINNER': return action.payload?.subType === 'movie' ? 'Movie Night' : 'Dinner';
+                case 'GO_TO_CLUB': return 'Night Out';
+                case 'TRAVEL': return 'Travel';
+                case 'INVITE_PERFORMANCE': return 'Performance';
+                case 'DRUG_TEST_PERSON': return 'Drug Test';
+                case 'FINE_PERSON': return 'Fine';
+                case 'BRIBE_PERSON': return 'Bribe';
+                case 'GIVE_MONEY': return 'Finance';
+                case 'TRANSFER_FUNDS': return 'Finance';
+                case 'SABOTAGE_PLAYER': return 'Sabotage';
+                case 'LEAK_SCANDAL': return 'Leak';
+                case 'HYPNOTIZE':
+                case 'HYPNOTIC_BROADCAST': return 'Covert Op';
+                case 'GLOBAL_GAMES': return 'Global Games';
+                case 'ENDORSE_HOF': return 'HOF';
+                case 'RIG_LOTTERY': return 'Lottery';
+                case 'VISIT_NON_NBA_TEAM': return 'Travel';
                 default: return 'League Event';
             }
         })() } as any],
@@ -660,6 +678,8 @@ export const processTurn = async (
       lastOutcome: result.outcomeText || result.narrative,
         lastConsequence: finalConsequence,
         pendingHypnosis: [],
+        pendingNarratives: [],
+        commissionerLog: state.commissionerLog || [],
         payslips: [...(state.payslips || []), ...newPayslips],
         lastPayDate: newLastPayDate,
         hasUnreadPayslip: newPayslips.length > 0 ? true : (state.hasUnreadPayslip || false),

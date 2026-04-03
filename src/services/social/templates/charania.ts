@@ -272,13 +272,17 @@ export function buildShamsSigningPost(
     const salaryStr = salary && salary >= 5000
         ? ` on a $${(salary / 1000).toFixed(1)}M deal`
         : '';
-    const prevStr = prevTeamName
-        ? ` He was previously with the ${prevTeamName}.`
-        : prevLeague && prevLeague !== 'Free Agent'
-            ? ` He comes from the ${prevLeague}.`
-            : '';
+    const intlLeagues = ['Euroleague', 'PBA', 'B-League', 'WNBA'];
+    const isReturn = prevLeague && intlLeagues.includes(prevLeague);
+    const prevStr = isReturn
+        ? ` He is returning to the NBA after playing in the ${prevLeague}.`
+        : prevTeamName
+            ? ` He was previously with the ${prevTeamName}.`
+            : prevLeague && prevLeague !== 'Free Agent'
+                ? ` He was most recently in the ${prevLeague}.`
+                : '';
     const isStar = overallRating >= 85;
-    const isVet = overallRating >= 78;
+    const isVet = overallRating >= 76;
 
     if (isStar) {
         const variants = [
@@ -292,10 +296,16 @@ export function buildShamsSigningPost(
         const variants = [
             `${teamName} are signing veteran ${playerName}${salaryStr}, ${src}${prevStr}`,
             `${playerName} has agreed to a deal with the ${teamName}${salaryStr}, ${src}${prevStr}`,
+            `Sources: ${teamAbbrev} finalizing a deal with ${playerName}${salaryStr}, ${src}${prevStr}`,
         ];
         return variants[Math.floor(Math.random() * variants.length)];
     }
-    return `${teamAbbrev} are signing ${playerName}${salaryStr}, ${src}`;
+    // Role player — still include context
+    const variants = [
+        `${teamName} are signing ${playerName}${salaryStr}, ${src}${prevStr}`,
+        `Sources: ${teamAbbrev} are adding ${playerName}${salaryStr} to their roster, ${src}${prevStr}`,
+    ];
+    return variants[Math.floor(Math.random() * variants.length)];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

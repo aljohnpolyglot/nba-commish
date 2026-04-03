@@ -131,12 +131,20 @@ export const formatHeight = (hgt: number, isAttribute: boolean = false): string 
 
 export const convertTo2KRating = (
   bbgmRating: number,
-  hgtAttribute: number = 50  // expects BBGM 0-100 attribute, NOT bio inches
+  hgtAttribute: number = 50,  // expects BBGM 0-100 attribute, NOT bio inches
+  eliteSkillRating?: number   // highest single skill (tp, ins, spd, etc.) — adds +excess above 90
 ): number => {
   let rating = 0.88 * bbgmRating + 31;
 
+  // Height bonus (existing): tall guys trend higher in 2K
   if (hgtAttribute > 68) {
     rating += (hgtAttribute - 68) * (6 / 32); // max +6 at hgt=100
+  }
+
+  // Three-point elite bonus: 90+ tp adds the excess.
+  // Curry tp=95 → +5. Elite shooters open the offense → higher 2K overall.
+  if (eliteSkillRating !== undefined && eliteSkillRating > 90) {
+    rating += eliteSkillRating - 90;
   }
 
   rating = Math.round(rating);

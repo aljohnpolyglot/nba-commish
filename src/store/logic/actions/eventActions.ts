@@ -1,6 +1,7 @@
 import { GameState, UserAction } from '../../../types';
 import { calculateOutcome } from '../../../services/logic/outcomeDecider';
 import { advanceDay } from '../../../services/llm/llm';
+import { convertTo2KRating } from '../../../utils/helpers';
 
 export const handleInvitePerformance = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const outcome = calculateOutcome('INVITE_PERFORMANCE', action.payload, stateWithSim);
@@ -24,19 +25,30 @@ export const handleInvitePerformance = async (stateWithSim: GameState, action: U
         }
     }
 
+    const commish = stateWithSim.commissionerName || 'The Commissioner';
+
     if (type === 'performance') {
         if (event === 'Regular Season Halftime' && teamId) {
             const team = stateWithSim.teams.find(t => t.id === teamId);
             if (team) homeTeamName = team.name;
-            outcomeText = `The NBA has booked ${artistsList} for a special halftime performance at the ${team?.name} home game${gameText}. This high-profile booking is expected to drive massive viewership and social media engagement.`;
+            outcomeText = `Commissioner ${commish} personally booked ${artistsList} for a halftime show at the ${team?.name} home game${gameText}. The booking was finalized today — insiders say the Commissioner pushed hard for this act specifically. Ticket demand is already spiking and social media is buzzing.`;
+        } else if (event === 'NBA Finals Halftime' || event?.toLowerCase().includes('finals')) {
+            outcomeText = `Commissioner ${commish} has locked in ${artistsList} for the NBA Finals Halftime Show — one of the most-watched entertainment moments of the year. Sources say negotiations were intense and the Commissioner personally sealed the deal. Expect massive viewership and a cultural moment.`;
+        } else if (event === 'All-Star Halftime' || event?.toLowerCase().includes('all-star')) {
+            outcomeText = `Commissioner ${commish} has booked ${artistsList} for the All-Star Weekend Halftime Show. The announcement is already generating huge buzz online — fans are stoked. This is expected to be one of the most-streamed All-Star performances ever.`;
         } else {
-            outcomeText = `The NBA has officially booked ${artistsList} to perform at the ${event}. This high-profile booking is expected to drive massive viewership and social media engagement.`;
+            outcomeText = `Commissioner ${commish} officially booked ${artistsList} to perform at the ${event}. The Commissioner personally selected this act — insiders say it was a calculated move to maximize viewership and cultural impact. Fans are reacting loudly on social media.`;
         }
     } else {
         const team = stateWithSim.teams.find(t => t.id === teamId);
         if (team) homeTeamName = team.name;
-        outcomeText = `${artistsList} has been invited to perform the National Anthem at the ${team?.name} home game${gameText}. Fans are already buzzing about the performance.`;
+        outcomeText = `Commissioner ${commish} personally invited ${artistsList} to perform the National Anthem at the ${team?.name} home game${gameText}. It's a high-profile pick that's getting fans talking ahead of tip-off.`;
     }
+
+    // Build story seed for rich LLM output
+    const performanceSeed = type === 'performance'
+        ? `COMMISSIONER BOOKING: Commissioner ${commish} just personally booked ${artistsList} for ${event === 'Regular Season Halftime' ? `a halftime show at the ${homeTeamName} game${gameText}` : `the ${event}`}. This is a CONFIRMED booking — the Commissioner made it happen. Generate: 4-6 social posts with fan excitement, music fans hyping it up, sports fans reacting, @ShamsCharania or @wojespn breaking the news. 1-2 news headlines. Make it feel like a real celebrity booking announcement.`
+        : `NATIONAL ANTHEM BOOKING: ${artistsList} will perform the National Anthem at the ${homeTeamName} game. Generate 2-3 social posts and a news headline covering this.`;
 
     const result = await advanceDay(stateWithSim, {
         type: 'INVITE_PERFORMANCE',
@@ -52,7 +64,7 @@ export const handleInvitePerformance = async (stateWithSim: GameState, action: U
             gameResult,
             isSpecificEvent: true
         }
-    } as any, [], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
+    } as any, [performanceSeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
     result.statChanges = result.statChanges || {};
     result.statChanges.leagueFunds = (result.statChanges.leagueFunds || 0) + (outcome.revenue || 0);
     result.consequence = result.consequence || {};
@@ -216,4 +228,89 @@ export const handleVisitNonNbaTeam = async (stateWithSim: GameState, action: Use
             agenda
         }
     } as any, [], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
+};
+
+export const handleInviteDinner = async (state: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
+    const { reason, location, subType, count, contacts } = action.payload;
+    const isMovie = subType === 'movie';
+    const actionLabel = isMovie ? 'movie night' : 'private dinner';
+    const commish = state.commissionerName || 'The Commissioner';
+
+    const guestNames = contacts?.length > 0
+        ? contacts.map((c: any) => c.name).join(', ')
+        : action.payload.targetName || 'unknown guest';
+
+    // Strip appended " at [location]" from reason so we get the pure discussion topic
+    const rawReason = (reason || '').replace(location ? ` at ${location}` : '', '').trim();
+    const discussionTopic = (rawReason && rawReason !== 'No reason provided.' && rawReason !== 'Movie Night')
+        ? rawReason
+        : (isMovie ? 'casual bonding' : 'general league matters');
+
+    const locationText = location ? ` at ${location}` : '';
+    const isGroup = (count || 1) > 1;
+
+    // Build rich player context for HOF/retirement-age players if available
+    const guestContextLines = (contacts || []).map((c: any) => {
+        const player = state.players.find((p: any) => p.internalId === (c.id || c.internalId));
+        if (!player) return null;
+        const team = state.teams.find(t => t.id === player.tid);
+        const age = player.born?.year ? new Date(state.date).getFullYear() - player.born.year : null;
+        const rating = convertTo2KRating(player.overallRating || 0, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp);
+        return `${c.name} (${player.pos || 'F'}${age ? `, age ${age}` : ''}, ${team?.name || 'Free Agent'}, skill level ${rating})`;
+    }).filter(Boolean);
+
+    const guestContext = guestContextLines.length > 0 ? `\nGuest info: ${guestContextLines.join('; ')}` : '';
+
+    const outcomeText = isMovie
+        ? `Commissioner ${commish} took ${guestNames} to a movie${locationText}. Side agenda: ${discussionTopic}.`
+        : `Commissioner ${commish} hosted a private ${isGroup ? 'group dinner' : 'one-on-one dinner'} with ${guestNames}${locationText}. ` +
+          `The meeting specifically addressed: ${discussionTopic}. Word has leaked to NBA insiders.${guestContext}`;
+
+    // Seed 1: mandatory player DM after the event
+    const playerDMSeed =
+        `REQUIRED OUTPUT: ${guestNames} MUST send a personal DM/chat to Commissioner ${commish} after this ${actionLabel}. ` +
+        `Put it in newEmails with senderRole: 'Player' (routes to CHAT, not inbox). ` +
+        `Write it like an iMessage — casual, no formal greeting, no sign-off, use natural speech, emojis OK. ` +
+        `The message MUST specifically reference the actual discussion topic: "${discussionTopic}". ` +
+        `Show the player's real reaction (hyped, guarded, skeptical, grateful) — not just "thanks for dinner."`;
+
+    // Seed 2: social media coverage with specifics
+    const socialSeed = isMovie
+        ? `Paparazzi caught Commissioner ${commish} at a movie with ${guestNames}${locationText}. ` +
+          `Generate 4-6 social posts — fan jokes, speculation about hidden agenda, meme reactions.`
+        : `BREAKING (insider scoop): Commissioner ${commish} had a private dinner with ${guestNames}${locationText}. ` +
+          `The meeting was specifically about: "${discussionTopic}". ` +
+          `@ShamsCharania should report this as an insider tip. ` +
+          `Generate 4-6 varied social posts — some with "inside info" about the topic, fans reacting, one conspiracy take. ` +
+          `CRITICAL: Posts MUST reference the actual discussion topic ("${discussionTopic}"). ` +
+          `Do NOT write vague "sparking curiosity" or "what could they have discussed" language — insiders KNOW what it was about.`;
+
+    const result = await advanceDay(
+        state,
+        {
+            type: 'INVITE_DINNER',
+            payload: {
+                outcomeText,
+                targetName: guestNames,
+                location,
+                discussionTopic,
+                subType,
+                contacts,
+            }
+        } as any,
+        [playerDMSeed, socialSeed],
+        simResults,
+        state.pendingHypnosis || [],
+        recentDMs
+    );
+
+    const outcomeChanges = calculateOutcome('INVITE_DINNER', action.payload, state);
+    result.statChanges = {
+        ...result.statChanges,
+        personalWealth: (result.statChanges?.personalWealth || 0) - 0.05,
+        playerApproval: (result.statChanges?.playerApproval || 0) + (outcomeChanges.playerApproval || 0),
+        morale: (result.statChanges?.morale || 0) + (outcomeChanges.morale || 0),
+    };
+
+    return result;
 };

@@ -69,7 +69,8 @@ export const calculateTeamStrength = (teamId: number, players: Player[], overrid
     
     const top8Players = teamPlayers.slice(0, 8);
     const top8_2k = top8Players.map(p => {
-        const base = convertTo2KRating(p.overallRating, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50);
+        const r = p.ratings?.[p.ratings.length - 1];
+        const base = convertTo2KRating(p.overallRating, r?.hgt ?? 50, r?.tp);
         const severity = activeClubDebuffs.get(String(p.internalId));
         return severity ? Math.max(40, base - STRENGTH_DEBUFF_AMOUNTS[severity]) : base;
     });

@@ -80,6 +80,16 @@ export const generateReactionPrompt = (
 
     CRITICAL: NEVER mention numerical ratings (e.g., "80-rated", "71 OIQ") or "gamified" terminology in the output. Use descriptive language instead.
 
+    ANTI-GENERIC WRITING RULES — MANDATORY:
+    - Every social post must have a SPECIFIC TAKE, not a vague reaction. BAD: "Bold move by the Commissioner." GOOD: "Reducing max contract years to 3?? Stars are gonna flee to Europe. This is the NBPA's worst nightmare 💀"
+    - BAD phrases to NEVER use: "bold move", "generate buzz", "sends a strong message", "make no mistake", "this will be interesting", "time will tell"
+    - Fans must use fan language — slang, memes, hot takes, frustration or hype (not corporate speak)
+    - Analysts must argue a specific angle — is this good for small-market teams? does it hurt max-contract stars? does it help parity?
+    - If it's a rule change affecting players' money or freedom → NBPA/player reps MUST push back in at least one post
+    - If it's a rule change that helps competitive balance → small-market fans cheer, big-market fans whine
+    - No two social posts can say the same thing. Each must represent a distinct perspective and emotional register.
+    - News articles must include a specific detail, quote angle, or implication — not just restate what happened
+
     ${JSON_FORMAT_HINT}
     `;
 };

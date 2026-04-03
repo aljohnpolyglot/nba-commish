@@ -38,7 +38,7 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, on
       const teamId = p.teamNbaId || (team ? extractTeamId(team.logoUrl, p.teamAbbrev) : null) || 1610612737;
       const teamColor = team?.colors?.[0] || '#64748b';
       const fullPlayer = state.players?.find((pl: any) => pl.internalId === p.playerId);
-      const rating = convertTo2KRating(fullPlayer?.overallRating || p.ovr || 60, fullPlayer?.ratings?.[fullPlayer.ratings.length - 1]?.hgt ?? 50);
+      const rating = convertTo2KRating(fullPlayer?.overallRating || p.ovr || 60, fullPlayer?.ratings?.[fullPlayer.ratings.length - 1]?.hgt ?? 50, fullPlayer?.ratings?.[fullPlayer.ratings.length - 1]?.tp);
       const pastAllStars = fullPlayer?.awards?.filter((a: any) => a.type === 'All-Star').length ?? 0;
       const allStarCount = pastAllStars + 1; // +1 for this season
 

@@ -123,9 +123,45 @@ export async function advanceDay(currentState: GameState, action: UserAction | n
   if (!settings.enableLLM) {
     let outcomeText = "The day has passed with standard league activities.";
     if (action?.type === 'SIMULATE_TO_DATE') {
-      outcomeText = "Simulation completed successfully.";
+      // Build a rich summary from dailyResults
+      if (dailyResults && dailyResults.length > 0) {
+        const gameCount = dailyResults.length;
+        const otGames = dailyResults.filter((g: any) => g.isOT).length;
+        const blowouts = dailyResults.filter((g: any) => Math.abs((g.homeScore || 0) - (g.awayScore || 0)) >= 25).length;
+        const uniqueDays = new Set(dailyResults.map((g: any) => g.date)).size;
+
+        const highlights: string[] = [];
+        dailyResults.forEach((game: any) => {
+          const allStats = [...(game.homeStats || []), ...(game.awayStats || [])];
+          allStats.forEach((s: any) => {
+            const pts = s.pts || 0;
+            const reb = s.reb || 0;
+            const ast = s.ast || 0;
+            const isTriple = [pts, reb, ast].filter(v => v >= 10).length >= 3;
+            if (pts >= 45) highlights.push(`${s.name} dropped ${pts} pts`);
+            else if (isTriple) highlights.push(`${s.name} had a triple-double (${pts}/${reb}/${ast})`);
+            else if (pts >= 40) highlights.push(`${s.name} scored ${pts} pts`);
+            else if (reb >= 18) highlights.push(`${s.name} grabbed ${reb} rebounds`);
+            else if (ast >= 15) highlights.push(`${s.name} dished ${ast} assists`);
+          });
+        });
+
+        const parts: string[] = [];
+        if (otGames > 0) parts.push(`${otGames} OT`);
+        if (blowouts > 0) parts.push(`${blowouts} blowout${blowouts > 1 ? 's' : ''}`);
+        const extra = parts.length > 0 ? ` (${parts.join(', ')})` : '';
+
+        outcomeText = `Simulated ${uniqueDays} day${uniqueDays > 1 ? 's' : ''} — ${gameCount} game${gameCount > 1 ? 's' : ''}${extra}.`;
+        if (highlights.length > 0) {
+          outcomeText += ` Highlights: ${highlights.slice(0, 4).join('; ')}.`;
+        }
+      } else {
+        outcomeText = "Simulated to target date. No games were played during this period.";
+      }
     } else if (action?.payload?.outcomeText) {
       outcomeText = action.payload.outcomeText;
+    } else if ((action as any)?.description) {
+      outcomeText = (action as any).description;
     } else if (dailyResults && dailyResults.length > 0) {
       const gameCount = dailyResults.length;
       const otGames = dailyResults.filter((g: any) => g.isOT).length;
@@ -189,7 +225,10 @@ export async function advanceDay(currentState: GameState, action: UserAction | n
   const leagueSummaryContext = generateLeagueSummaryContext(currentState.teams, currentState.players, dailyResults)
       + "\n\n" + generateStaffContext(currentState);
 
-  const prompt = generateAdvanceDayPrompt(currentState, gamePhase, leagueContext, action, storySeeds, relevantHistory, dailyResults, generateSponsorMessage, pendingHypnosis, recentDMs, leagueSummaryContext);
+  // Merge any queued narratives (e.g. from healPlayer) into this turn's storySeeds
+  const allStorySeeds = [...storySeeds, ...(currentState.pendingNarratives || [])];
+
+  const prompt = generateAdvanceDayPrompt(currentState, gamePhase, leagueContext, action, allStorySeeds, relevantHistory, dailyResults, generateSponsorMessage, pendingHypnosis, recentDMs, leagueSummaryContext);
 
   try {
     const response = await generateContentWithRetry({
@@ -242,6 +281,11 @@ export async function advanceDay(currentState: GameState, action: UserAction | n
         ...email,
         playerPortraitUrl: email.playerPortraitUrl || getAvatarByHandle(email.sender, avatars) || getAvatarByName(email.sender, avatars)
       }));
+    }
+
+    // Clear consumed pendingNarratives so they don't replay next turn
+    if ((currentState.pendingNarratives || []).length > 0) {
+      data.pendingNarratives = [];
     }
 
     return data;

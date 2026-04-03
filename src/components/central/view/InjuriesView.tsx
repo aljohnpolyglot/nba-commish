@@ -1,13 +1,99 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { NBAPlayer } from '../../../types';
+import { NBAPlayer, Contact } from '../../../types';
+import { PlayerActionsModal } from './PlayerActionsModal';
 import { PlayerBioView } from './PlayerBioView';
+import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
+import ContactModal from '../../ContactModal';
+import { PersonSelectorModal } from '../../modals/PersonSelectorModal';
 import { format, addDays } from 'date-fns';
 
 export const InjuriesView: React.FC = () => {
-  const { state, navigateToTeam } = useGame();
-  const [viewingPlayer, setViewingPlayer] = React.useState<NBAPlayer | null>(null);
+  const { state, navigateToTeam, healPlayer, dispatchAction } = useGame();
+  const [actionsPlayer, setActionsPlayer] = React.useState<NBAPlayer | null>(null);
   const [selectedTeamId, setSelectedTeamId] = React.useState<number | 'all'>('all');
+  const [viewingBioPlayer, setViewingBioPlayer] = React.useState<NBAPlayer | null>(null);
+  const [viewingRatingsPlayer, setViewingRatingsPlayer] = React.useState<NBAPlayer | null>(null);
+  const [selectedPlayerContact, setSelectedPlayerContact] = React.useState<Contact | null>(null);
+  const [personSelectorOpen, setPersonSelectorOpen] = React.useState(false);
+  const [personSelectorType, setPersonSelectorType] = React.useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'sabotage' | 'waive'>('general');
+
+  const getContactFromPlayer = (player: NBAPlayer): Contact => {
+    const playerTeam = state.teams.find(t => t.id === player.tid);
+    return {
+      id: player.internalId,
+      name: player.name,
+      title: 'Player',
+      organization: playerTeam?.name || 'Free Agent',
+      type: 'player',
+      playerPortraitUrl: player.imgURL,
+    };
+  };
+
+  const handleActionSelect = (actionType: string) => {
+    if (!actionsPlayer) return;
+    if (actionType === 'view_bio') {
+      setViewingBioPlayer(actionsPlayer);
+      setActionsPlayer(null);
+      return;
+    }
+    if (actionType === 'view_ratings') {
+      setViewingRatingsPlayer(actionsPlayer);
+      setActionsPlayer(null);
+      return;
+    }
+    const contact = getContactFromPlayer(actionsPlayer);
+    setActionsPlayer(null);
+    if (actionType === 'contact') {
+      setSelectedPlayerContact(contact);
+    } else {
+      setPersonSelectorType(actionType as any);
+      setSelectedPlayerContact(contact);
+      setPersonSelectorOpen(true);
+    }
+  };
+
+  const handleSendMessage = async (params: { message: string }) => {
+    if (selectedPlayerContact) {
+      const chat = state.chats.find(c => c.participants.includes(selectedPlayerContact.id));
+      await dispatchAction({
+        type: 'SEND_CHAT_MESSAGE',
+        payload: {
+          chatId: chat?.id,
+          text: params.message,
+          targetId: selectedPlayerContact.id,
+          targetName: selectedPlayerContact.name,
+          targetRole: selectedPlayerContact.title,
+          targetOrg: (selectedPlayerContact as any).teamId || 'Unknown',
+          avatarUrl: selectedPlayerContact.playerPortraitUrl
+        }
+      });
+      setSelectedPlayerContact(null);
+    }
+  };
+
+  const handlePersonSelected = async (contacts: Contact[], reason?: string, amount?: number, location?: string, duration?: string) => {
+    setPersonSelectorOpen(false);
+    setSelectedPlayerContact(null);
+    let actionType = '';
+    if (personSelectorType === 'suspension') actionType = 'SUSPEND_PLAYER';
+    if (personSelectorType === 'dinner') actionType = 'INVITE_DINNER';
+    if (personSelectorType === 'movie') actionType = 'INVITE_DINNER';
+    if (personSelectorType === 'fine') actionType = 'FINE_PERSON';
+    if (personSelectorType === 'bribe') actionType = 'BRIBE_PERSON';
+    if (personSelectorType === 'sabotage') actionType = 'SABOTAGE_PLAYER';
+    if (personSelectorType === 'waive') actionType = 'WAIVE_PLAYER';
+    if (!actionType) return;
+    const targetNames = contacts.map(c => c.name).join(', ');
+    const targetRoles = contacts.map(c => c.title).join(', ');
+    const targetIds = contacts.map(c => c.id).join(',');
+    let finalReason = reason || (personSelectorType === 'movie' ? 'Movie Night' : 'No reason provided.');
+    if (location) finalReason += ` at ${location}`;
+    await dispatchAction({
+      type: actionType as any,
+      payload: { targetName: targetNames, targetRole: targetRoles, targetId: targetIds, reason: finalReason, amount, duration, count: contacts.length, subType: personSelectorType, location, contacts }
+    });
+  };
 
   const injuredPlayersByTeam = useMemo(() => {
     const grouped: Record<number, NBAPlayer[]> = {};
@@ -105,13 +191,45 @@ export const InjuriesView: React.FC = () => {
   // Comments only regenerate when injury status changes (out → day-to-day)
   }, [injuredPlayersByTeam, state.teams]);
 
-  // Early return AFTER all hooks — React requires hooks to run unconditionally
-  if (viewingPlayer) {
-    return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
+  if (viewingBioPlayer) {
+    return (
+      <PlayerBioView
+        player={viewingBioPlayer}
+        onBack={() => setViewingBioPlayer(null)}
+      />
+    );
   }
 
   return (
     <div className="h-full overflow-hidden p-4 md:p-8">
+      {actionsPlayer && (
+        <PlayerActionsModal
+          player={actionsPlayer}
+          onClose={() => setActionsPlayer(null)}
+          onActionSelect={handleActionSelect}
+          onHeal={() => { healPlayer(actionsPlayer.internalId); setActionsPlayer(null); }}
+        />
+      )}
+      {viewingRatingsPlayer && (
+        <PlayerRatingsModal player={viewingRatingsPlayer} season={state.leagueStats?.year ?? 2026} onClose={() => setViewingRatingsPlayer(null)} />
+      )}
+      {selectedPlayerContact && !personSelectorOpen && (
+        <ContactModal
+          contact={selectedPlayerContact}
+          onClose={() => setSelectedPlayerContact(null)}
+          onSend={handleSendMessage}
+          isLoading={state.isProcessing}
+        />
+      )}
+      {personSelectorOpen && (
+        <PersonSelectorModal
+          title=""
+          actionType={personSelectorType}
+          onClose={() => { setPersonSelectorOpen(false); setSelectedPlayerContact(null); }}
+          onSelect={handlePersonSelected}
+          preSelectedContact={selectedPlayerContact || undefined}
+        />
+      )}
       <div className="max-w-6xl mx-auto h-full overflow-y-auto custom-scrollbar">
         <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -175,7 +293,7 @@ export const InjuriesView: React.FC = () => {
                               <td className="px-6 py-4">
                                 <span 
                                   className="font-medium text-indigo-400 cursor-pointer hover:text-indigo-300 hover:underline"
-                                  onClick={() => setViewingPlayer(player)}
+                                  onClick={() => setActionsPlayer(player)}
                                 >
                                   {player.name}
                                 </span>

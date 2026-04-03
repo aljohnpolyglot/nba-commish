@@ -1,6 +1,6 @@
 import React from 'react';
 import { NBAPlayer } from '../../../types';
-import { X } from 'lucide-react';
+import { X, HeartPulse } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getPlayerImage } from './bioCache';
 import { PERSON_ACTION_DEFS, isPlayerEligible } from '../../../data/personActionDefs';
@@ -9,11 +9,13 @@ interface PlayerActionsModalProps {
   player: NBAPlayer;
   onClose: () => void;
   onActionSelect: (actionType: string) => void;
+  onHeal?: () => void;
 }
 
 // The ordered list of actions shown in this modal (player-focused quick-actions).
 const MODAL_ACTION_IDS = [
   'view_bio',
+  'view_ratings',
   'sign_player',
   'contact',
   'bribe',
@@ -25,7 +27,8 @@ const MODAL_ACTION_IDS = [
   'sabotage',
 ];
 
-export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, onClose, onActionSelect }) => {
+export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, onClose, onActionSelect, onHeal }) => {
+  const isInjured = (player as any)?.injury?.gamesRemaining > 0;
   const actions = MODAL_ACTION_IDS
     .map(id => PERSON_ACTION_DEFS.find(def => def.id === id))
     .filter((def): def is NonNullable<typeof def> => !!def)
@@ -67,6 +70,20 @@ export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, 
           </div>
 
           <div className="p-6 space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
+            {isInjured && onHeal && (
+              <button
+                onClick={onHeal}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-emerald-700/50 bg-emerald-950/30 hover:bg-emerald-900/40 transition-all text-left group"
+              >
+                <div className="p-3 rounded-xl text-white bg-emerald-600 hover:bg-emerald-500 transition-colors">
+                  <HeartPulse size={20} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-emerald-400 uppercase tracking-wider">Heal Player</h4>
+                  <p className="text-xs text-slate-500 mt-0.5">Clear this player's injury immediately</p>
+                </div>
+              </button>
+            )}
             {actions.map(action => (
               <button
                 key={action.id}

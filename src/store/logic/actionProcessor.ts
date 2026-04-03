@@ -9,7 +9,7 @@ import * as StoryGenerators from '../../services/storyGenerators';
 import { handleTransferFunds, handleGiveMoney, handleFinePerson, handleBribePerson, handleAdjustFinancials } from './actions/financeActions';
 import { handleExecutiveTrade, handleForceTrade } from './actions/tradeActions';
 import { handleSignFreeAgent, handleSuspendPlayer, handleSabotagePlayer, handleDrugTestPerson, handleWaivePlayer, handleFirePersonnel } from './actions/playerActions';
-import { handleInvitePerformance, handleGlobalGames, handleRigLottery, handleHypnotize, handleHypnoticBroadcast, handleVisitNonNbaTeam, handleTravel } from './actions/eventActions';
+import { handleInvitePerformance, handleGlobalGames, handleRigLottery, handleHypnotize, handleHypnoticBroadcast, handleVisitNonNbaTeam, handleTravel, handleInviteDinner } from './actions/eventActions';
 import { handleGoToClub } from './actions/clubActions';
 import { handleEndorseHof } from './actions/hofActions';
 
@@ -107,6 +107,15 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
         result = await handleFirePersonnel(stateWithSim, action, simResults, recentDMs);
     } else if (action.type === 'SABOTAGE_PLAYER') {
         result = await handleSabotagePlayer(stateWithSim, action, simResults, recentDMs);
+    } else if (action.type === 'LEAK_SCANDAL') {
+        const names = (action.payload?.contacts || []).map((c: any) => c.name).join(', ') || action.payload?.targetName || 'Unknown';
+        const reason = action.payload?.reason || 'damaging personal information';
+        const leakOutcomeText = `Commissioner ${stateWithSim.commissionerName} anonymously leaked damaging information about ${names}. The leak: ${reason}. Sources close to the league say the information is spreading fast through insider circles.`;
+        const leakSeed = `BREAKING SCANDAL: Damaging information about ${names} has been anonymously leaked to NBA insiders. The details: ${reason}. Media and social media are erupting with reactions. Generate 4-6 social posts — shocked reactions, insider reports, speculation about who leaked it, and a news headline. NEVER attribute the leak to the Commissioner.`;
+        result = await advanceDay(stateWithSim, {
+            type: 'LEAK_SCANDAL',
+            payload: { ...action.payload, outcomeText: leakOutcomeText }
+        } as any, [leakSeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
     } else if (action.type === 'FINE_PERSON') {
         result = await handleFinePerson(stateWithSim, action, simResults, recentDMs);
     } else if (action.type === 'GIVE_MONEY') {
@@ -119,6 +128,8 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
         result = await handleInvitePerformance(stateWithSim, action, simResults, recentDMs);
     } else if (action.type === 'TRAVEL') {
         result = await handleTravel(stateWithSim, action, simResults, recentDMs);
+    } else if (action.type === 'INVITE_DINNER') {
+        result = await handleInviteDinner(stateWithSim, action, simResults, recentDMs);
     } else if (action.type === 'GO_TO_CLUB') {
         result = await handleGoToClub(stateWithSim, action, simResults, recentDMs);
     } else if (action.type === 'ENDORSE_HOF') {

@@ -5,6 +5,7 @@ import { generateFreeAgentSigningReactions } from '../../../services/llm/service
 import { calculateSocialEngagement } from '../../../utils/helpers';
 import { buildShamsSigningPost } from '../../../services/social/templates/charania';
 import { NewsGenerator } from '../../../services/news/NewsGenerator';
+import { SettingsManager } from '../../../services/SettingsManager';
 
 export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const { playerId, teamId, playerName, teamName } = action.payload;
@@ -22,7 +23,17 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
             : null;
         const previousTeam = previousTeamId ? stateWithSim.teams.find(t => t.id === previousTeamId) : null;
         const previousTeamName = previousTeam ? previousTeam.name : null;
-        const previousLeague = player?.status || null;
+        // Map player status to meaningful league label for the LLM prompt
+        const statusToLeague: Record<string, string> = {
+            'Euroleague': 'Euroleague',
+            'PBA': 'PBA (Philippine Basketball Association)',
+            'B-League': 'Japan B.League',
+            'WNBA': 'WNBA',
+            'G-League': 'NBA G League',
+            'Free Agent': previousTeamName ? 'NBA (previously unsigned)' : 'Free Agency',
+            'Active': previousTeamName ? 'NBA' : 'Free Agency',
+        };
+        const previousLeague = statusToLeague[player?.status || ''] ?? player?.status ?? null;
 
         const reactions = await generateFreeAgentSigningReactions(player as any, team as any, previousTeamName, previousLeague, stateWithSim);
         
@@ -54,15 +65,16 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
             };
         });
 
-        // Auto Charania post (fires even when LLM is off)
-        const shamsContent = buildShamsSigningPost(
+        // Auto Charania post — only when LLM is off (LLM generates its own Shams post)
+        const llmEnabled = SettingsManager.getSettings().enableLLM;
+        const shamsContent = !llmEnabled ? buildShamsSigningPost(
             player.name,
             team.name,
             team.abbrev,
             player.overallRating ?? 60,
             previousTeamName,
             previousLeague
-        );
+        ) : null;
         if (shamsContent) {
             const shamsEngagement = calculateSocialEngagement('@ShamsCharania', shamsContent, player?.overallRating);
             newSocial.unshift({
@@ -82,14 +94,23 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
         // Minimum contract in BBGM units (thousands) = $1,300,000
         const MIN_CONTRACT_AMOUNT = 1300;
 
-        const signingSeed = `BREAKING SIGNING: The ${teamName} have signed free agent ${playerName}. ` +
-            `Generate reactions — tweets from @ShamsCharania or @wojespn breaking the news, fan reactions, ` +
-            `analyst takes on the deal's impact.`;
+        const returnContext = previousLeague && ['Euroleague', 'PBA', 'B-League'].includes(previousLeague)
+            ? ` ${playerName} is returning to the NBA after playing in the ${previousLeague}.`
+            : previousTeamName
+                ? ` ${playerName} was previously with the ${previousTeamName}.`
+                : '';
+
+        const signingOutcomeText = `The ${teamName} have officially signed ${playerName}.${returnContext} The deal is confirmed, sources say.`;
+
+        const signingSeed = `BREAKING SIGNING: The ${teamName} have signed ${playerName}.${returnContext} ` +
+            `REQUIRED: @ShamsCharania MUST break this in a detailed tweet — name the team, the player, any context (returning from abroad, veteran presence, etc.), and what he brings. ` +
+            `Then generate 3-4 varied fan and analyst reactions. ` +
+            `Do NOT write two identical Shams tweets. One detailed Shams tweet, then fan/analyst reactions only.`;
 
         const result = await advanceDay(stateWithSim, {
             type: 'SIGN_FREE_AGENT',
             payload: {
-                outcomeText: `The ${teamName} have signed free agent ${playerName}.`,
+                outcomeText: signingOutcomeText,
                 playerId,
                 teamId,
             }
@@ -157,9 +178,16 @@ export const handleSuspendPlayer = async (stateWithSim: GameState, action: UserA
     const games = parseInt(duration) || 0;
     const playerNames = players.map((p: any) => p.name).join(', ');
     const outcomeText = `The NBA has suspended ${playerNames} for ${games} games. Reason: ${reason}.`;
-    
+    const suspendSeed = `BREAKING: The NBA Commissioner just handed ${playerNames} a ${games}-game suspension. Reason: ${reason}. ` +
+        `@ShamsCharania breaks it with a detailed tweet covering the incident, the severity of the punishment, and the league's stance. ` +
+        `Then generate: one outraged fan defending ${playerNames.split(',')[0]} ("${games} games is way too much"), ` +
+        `one fan saying they deserved it or even worse, ` +
+        `one analyst debating whether the punishment fits the crime or sets a dangerous precedent, ` +
+        `and a reaction from an NBPA rep or player agent questioning the Commissioner's judgment. ` +
+        `Make it feel like a real NBA controversy — specific, heated takes.`;
+
     const outcome = calculateOutcome('SUSPEND_PLAYER', action.payload, stateWithSim);
-    
+
     const result = await advanceDay(stateWithSim, {
         type: 'SUSPEND_PLAYER',
         payload: {
@@ -168,7 +196,7 @@ export const handleSuspendPlayer = async (stateWithSim: GameState, action: UserA
             reason,
             games
         }
-    } as any, [], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
+    } as any, [suspendSeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
     
     result.statChanges = result.statChanges || {};
     result.statChanges.publicApproval = (result.statChanges.publicApproval || 0) + (outcome.publicApproval || 0);
@@ -195,12 +223,23 @@ export const handleDrugTestPerson = async (stateWithSim: GameState, action: User
     // Randomly decide if they fail or pass based on some logic or just random
     const failed = Math.random() < 0.3; // 30% chance of failing for now
     const games = failed ? Math.floor(Math.random() * 10) + 5 : 0;
-    
+
     let outcomeText = `Mandatory Drug Test for ${player.name}. Reason: ${reason}. Results: Negative (Passed).`;
     if (failed) {
         outcomeText = `Mandatory Drug Test for ${player.name}. Reason: ${reason}. Results: Positive (Failed). The league has suspended them for ${games} games.`;
     }
-    
+
+    const drugTestSeed = failed
+        ? `BREAKING: ${player.name} has tested positive in an NBA-mandated drug test. They will be suspended ${games} games. Reason cited: ${reason}. ` +
+          `@ShamsCharania breaks it. Then: one shocked fan reacting ("no way, not ${player.name.split(' ')[0]}"), ` +
+          `one fan who's not surprised or has a hot take, one analyst on what this means for their team's season, ` +
+          `and a response from the player's camp or agent denying or acknowledging the situation.`
+        : `The NBA Commissioner ordered a mandatory drug test on ${player.name}. Reason: ${reason}. Results came back CLEAN — negative. ` +
+          `Generate: one reporter noting the test was ordered and the result, fans reacting to the Commissioner ordering the test ` +
+          `(some suspicious of why they were singled out, some defending the process), ` +
+          `and one take questioning whether the Commissioner's use of drug testing is becoming a power move. ` +
+          `Make it feel real — people are paying attention to who gets tested and why.`;
+
     const result = await advanceDay(stateWithSim, {
         type: 'DRUG_TEST_PERSON',
         payload: {
@@ -210,7 +249,7 @@ export const handleDrugTestPerson = async (stateWithSim: GameState, action: User
             failed,
             games
         }
-    } as any, [], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
+    } as any, [drugTestSeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
     
     result.statChanges = result.statChanges || {};
     result.statChanges.publicApproval = (result.statChanges.publicApproval || 0) + (outcome.publicApproval || 0);

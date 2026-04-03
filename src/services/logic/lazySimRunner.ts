@@ -117,7 +117,12 @@ export const runLazySim = async (
 
   let state = { ...initialState };
   const firedEvents = new Set<string>();
-  const reportedInjuries = new Set<string>();
+  // Pre-seed with all injuries already on players so only NEW injuries generate news
+  const reportedInjuries = new Set<string>(
+    (initialState.players ?? [])
+      .filter(p => p.injury && p.injury.gamesRemaining > 0)
+      .map(p => `${p.internalId}-${p.injury!.type}`)
+  );
   let daysComplete = 0;
   let currentPhase = 'Starting...';
 
@@ -218,7 +223,7 @@ export const runLazySim = async (
         if (!simResult.injuries?.length) continue;
         for (const injury of simResult.injuries) {
           const player = updatedPlayers.find(p => p.internalId === injury.playerId);
-          if (!player || convertTo2KRating(player.overallRating ?? player.ratings?.[0]?.ovr ?? 0, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50) < 70) continue;
+          if (!player || convertTo2KRating(player.overallRating ?? player.ratings?.[0]?.ovr ?? 0, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp) < 70) continue;
           const team = stateWithSim.teams.find((t: any) => t.id === (injury.teamId ?? player.tid));
           if (!team) continue;
           const content = buildShamsPost({ player, team, injury: { injuryType: injury.injuryType, gamesRemaining: injury.gamesRemaining }, opponent: null } as any);

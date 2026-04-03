@@ -35,6 +35,7 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
   const [selectedCollege, setSelectedCollege] = useState<string>('All');
   const [sortBy, setSortBy] = useState<'name' | 'ovr'>('ovr');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [injuryFilter, setInjuryFilter] = useState<'all' | 'injured' | 'healthy'>('all');
   const [page, setPage] = useState(1);
   const [hasTouched, setHasTouched] = useState(true);
   const loaderRef = useRef<HTMLDivElement>(null);
@@ -78,7 +79,7 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
       const calculatedAge = p.born?.year ? (currentYear - p.born.year) : (p.age || 0);
       
       const rawOvr = p.overallRating || (p.ratings?.[0]?.ovr || 0);
-      const displayOvr = convertTo2KRating(rawOvr, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50);
+      const displayOvr = convertTo2KRating(rawOvr, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp);
 
       return {
         ...p,
@@ -171,6 +172,11 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
       // College Filter
       if (selectedCollege !== 'All' && p.college !== selectedCollege) return false;
 
+      // Injury Filter
+      const isInjured = (p as any)?.injury?.gamesRemaining > 0;
+      if (injuryFilter === 'injured' && !isInjured) return false;
+      if (injuryFilter === 'healthy' && isInjured) return false;
+
       return true;
     });
 
@@ -186,7 +192,7 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
     });
 
     return filtered;
-  }, [playersWithParsedData, searchTerm, selectedLeagues, ageRange, selectedCountry, selectedGender, selectedPosition, selectedCollege, sortBy, sortOrder, hasTouched]);
+  }, [playersWithParsedData, searchTerm, selectedLeagues, ageRange, selectedCountry, selectedGender, selectedPosition, selectedCollege, sortBy, sortOrder, hasTouched, injuryFilter]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -280,6 +286,7 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
                 setSelectedGender(['Men']);
                 setSelectedPosition('All');
                 setSelectedCollege('All');
+                setInjuryFilter('all');
                 setHasTouched(false);
               }}
               className="text-[10px] font-bold text-slate-500 hover:text-white transition-colors"
@@ -442,6 +449,28 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
               <option value="All">All Colleges</option>
               {allColleges.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
+          </div>
+
+          {/* Injury Status */}
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Health Status</label>
+            <div className="flex gap-2">
+              {(['all', 'healthy', 'injured'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => { handleTouch(); setInjuryFilter(f); }}
+                  className={`flex-1 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-tight transition-all border ${
+                    injuryFilter === f
+                      ? f === 'injured' ? 'bg-rose-500/20 text-rose-400 border-rose-500/50'
+                        : f === 'healthy' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
+                        : 'bg-indigo-500/20 text-indigo-400 border-indigo-500/50'
+                      : 'bg-slate-950 text-slate-500 border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  {f === 'all' ? 'All' : f === 'healthy' ? 'Healthy' : 'Injured'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>

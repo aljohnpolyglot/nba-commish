@@ -6,57 +6,91 @@ export function simulateQuarters(
   lead: number,
   otCount: number = 0
 ): { home: number[]; away: number[] } {
-  
-  const distributeScore = (total: number, isWinner: boolean, otCount: number): number[] => {
-    // If OT, reserve some points for OT periods (roughly 8-12 points per OT)
-    const otPoints = otCount > 0 ? Array.from({ length: otCount }, () => Math.max(5, Math.round(10 * normalRandom(1.0, 0.2)))) : [];
-    const totalOTPoints = otPoints.reduce((sum, p) => sum + p, 0);
-    
-    const regulationTotal = Math.max(40, total - totalOTPoints);
 
+  const homeWins = homeTotal > awayTotal;
+
+  if (otCount > 0) {
+    // OT games: both teams MUST be tied at end of regulation.
+    // Estimate loser's OT contribution (~10 pts per OT period) to back out the tied reg score.
+    const loserOTEstimate = otCount * 10;
+    const regTied = Math.max(60, Math.min(homeTotal, awayTotal) - loserOTEstimate);
+    const homeOT = Math.max(2, homeTotal - regTied);
+    const awayOT = Math.max(2, awayTotal - regTied);
+
+    // Distribute the same tied regulation total for each team (slight per-quarter variance for realism)
+    const distributeReg = (total: number, isWinner: boolean): number[] => {
+      const w = isWinner
+        ? [0.24, 0.26, 0.28, 0.22]
+        : [0.26, 0.24, 0.22, 0.28];
+      const raw = w.map(weight => Math.max(10, Math.round(total * weight * normalRandom(1.0, 0.06))));
+      // First drift fix into Q2
+      const drift1 = total - raw.reduce((a, b) => a + b, 0);
+      raw[1] = Math.max(8, raw[1] + drift1);
+      // Second precision fix into Q4 (so sum is exact)
+      const drift2 = total - raw.reduce((a, b) => a + b, 0);
+      raw[3] = Math.max(8, raw[3] + drift2);
+      return raw;
+    };
+
+    const homeReg = distributeReg(regTied, homeWins);
+    const awayReg = distributeReg(regTied, !homeWins);
+
+    // Distribute OT points across periods
+    const homeOTByPeriod: number[] = [];
+    const awayOTByPeriod: number[] = [];
+
+    if (otCount === 1) {
+      homeOTByPeriod.push(homeOT);
+      awayOTByPeriod.push(awayOT);
+    } else {
+      // Middle OT periods are roughly tied; last is decisive
+      let hRem = homeOT;
+      let aRem = awayOT;
+      for (let i = 0; i < otCount - 1; i++) {
+        const pts = Math.max(5, Math.round(normalRandom(10, 1)));
+        homeOTByPeriod.push(pts);
+        awayOTByPeriod.push(pts);
+        hRem -= pts;
+        aRem -= pts;
+      }
+      homeOTByPeriod.push(Math.max(2, hRem));
+      awayOTByPeriod.push(Math.max(2, aRem));
+    }
+
+    // Ensure decisive (last) OT period goes to the right winner
+    const last = otCount - 1;
+    if (homeWins && homeOTByPeriod[last] <= awayOTByPeriod[last]) {
+      homeOTByPeriod[last] = awayOTByPeriod[last] + Math.max(1, Math.round(normalRandom(2, 1)));
+    } else if (!homeWins && awayOTByPeriod[last] <= homeOTByPeriod[last]) {
+      awayOTByPeriod[last] = homeOTByPeriod[last] + Math.max(1, Math.round(normalRandom(2, 1)));
+    }
+
+    return {
+      home: [...homeReg, ...homeOTByPeriod],
+      away: [...awayReg, ...awayOTByPeriod],
+    };
+  }
+
+  // ── Non-OT: original distribution ────────────────────────────────────────
+  const distributeScore = (total: number, isWinner: boolean): number[] => {
     const w = isWinner
       ? [0.24, 0.26, 0.28, 0.22]
       : [0.26, 0.24, 0.22, 0.28];
 
     const raw = w.map(weight =>
-      Math.max(10, Math.round(regulationTotal * weight * normalRandom(1.0, 0.08)))
+      Math.max(10, Math.round(total * weight * normalRandom(1.0, 0.08)))
     );
 
-    const drift = regulationTotal - (raw[0] + raw[1] + raw[2] + raw[3]);
+    const drift = total - (raw[0] + raw[1] + raw[2] + raw[3]);
     raw[3] = Math.max(10, raw[3] + drift);
 
-    return [...raw, ...otPoints];
+    return raw;
   };
 
-  const homeWins = homeTotal > awayTotal;
-  const home = distributeScore(homeTotal, homeWins, otCount);
-  const away = distributeScore(awayTotal, !homeWins, otCount);
+  const home = distributeScore(homeTotal, homeWins);
+  const away = distributeScore(awayTotal, !homeWins);
 
-  // Adjust OT points to ensure winner wins the last OT
-  if (otCount > 0) {
-    const lastOTIndex = 3 + otCount;
-    
-    if (homeWins) {
-      if (home[lastOTIndex] <= away[lastOTIndex]) {
-        // Give home the win in last OT, redistribute within OT periods only
-        home[lastOTIndex] = away[lastOTIndex] + Math.max(1, Math.round(normalRandom(2, 1)));
-      }
-    } else {
-      if (away[lastOTIndex] <= home[lastOTIndex]) {
-        away[lastOTIndex] = home[lastOTIndex] + Math.max(1, Math.round(normalRandom(2, 1)));
-      }
-    }
-
-    // Non-decisive OT periods should be tied or very close
-    for (let ot = 1; ot < otCount; ot++) {
-      const idx = 3 + ot;
-      const avg = Math.round((home[idx] + away[idx]) / 2);
-      home[idx] = avg;
-      away[idx] = avg;
-    }
-  }
-
-  if (lead > 20 && otCount === 0) {
+  if (lead > 20) {
     home[3] = Math.max(15, Math.round(home[3] * 0.82));
     away[3] = Math.max(15, Math.round(away[3] * 0.82));
     const homeDrift = homeTotal - home.reduce((a, b) => a + b, 0);
@@ -65,10 +99,9 @@ export function simulateQuarters(
     away[2] += awayDrift;
   }
 
-  // Final drift correction — spread across middle quarters not Q1
+  // Final drift correction into Q2
   const homeDrift = homeTotal - home.reduce((a, b) => a + b, 0);
   const awayDrift = awayTotal - away.reduce((a, b) => a + b, 0);
-  // Dump into Q2 which is least narratively important
   home[1] = Math.max(8, home[1] + homeDrift);
   away[1] = Math.max(8, away[1] + awayDrift);
 

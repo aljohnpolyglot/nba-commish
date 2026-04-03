@@ -43,7 +43,10 @@ export class ViewershipService {
             // Take top 3 players
             const top3 = teamPlayers.slice(0, 3);
             if (top3.length > 0) {
-                const avgTop3Rating = top3.reduce((sum, p) => sum + convertTo2KRating(p.overallRating), 0) / top3.length;
+                const avgTop3Rating = top3.reduce((sum, p) => {
+                    const r = p.ratings?.[p.ratings.length - 1];
+                    return sum + convertTo2KRating(p.overallRating, r?.hgt ?? 50, r?.tp);
+                }, 0) / top3.length;
                 // If avg top 3 is > 78, give a bonus. If < 78, give a penalty.
                 strengthBonus = (avgTop3Rating - 78) / 100; // e.g., 90 avg -> +0.12, 70 avg -> -0.08
             }
@@ -93,7 +96,7 @@ export class ViewershipService {
                 case 'SUSPEND_PLAYER': {
                     const { player } = action.payload;
                     if (!player) break;
-                    const rating2k = convertTo2KRating(player.overallRating);
+                    const rating2k = convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp);
                     // 75 is neutral. 99 is massive drop.
                     if (rating2k > 75) {
                         const scale = (rating2k - 75) / 25;
@@ -108,7 +111,7 @@ export class ViewershipService {
                     const player = state.players.find(p => p.internalId === playerId);
                     const team = state.teams.find(t => t.id === teamId);
                     if (player && team) {
-                        const rating2k = convertTo2KRating(player.overallRating);
+                        const rating2k = convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp);
                         if (rating2k > 70) {
                             const scale = (rating2k - 70) / 30;
                             const marketMult = this.calculateTeamMultiplier(team, state.teams, state.players);

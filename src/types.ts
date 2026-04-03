@@ -627,6 +627,17 @@ export interface NBAPlayer {
   moodTraits?: import('./utils/mood').MoodTrait[];
 }
 
+export interface UserProfile {
+  name: string;
+  handle: string;
+  bio?: string;
+  location?: string;
+  website?: string;
+  avatarUrl?: string;
+  bannerUrl?: string;
+  followingCount?: number;
+  followersCount?: number;
+}
 export interface SocialPost {
   id: string;
   author: string;
@@ -648,6 +659,10 @@ export interface SocialPost {
   data?: any; // Context for thread generation (game stats, player info, etc.)
   mediaUrl?: string;
   mediaBackgroundColor?: string;
+  replyToId?: string;
+  replyCount?: number;
+  isAI?: boolean;
+  verified?: boolean;
 }
 
 export interface TwitterHandler {
@@ -956,6 +971,8 @@ export interface GameState {
   staff: StaffData | null;
   isDataLoaded: boolean;
   followedHandles: string[];
+  cachedProfiles?: Record<string, any>;
+  userProfile?: UserProfile;
   commissionerName: string;
   saveId?: string;
   pendingHypnosis?: { targetName: string; command: string }[];

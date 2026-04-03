@@ -104,12 +104,34 @@ export interface SimulatorKnobs {
    *  Set via rule: goaltendingEnabled=false → 1.6 */
   blockRateMult: number;
 
+  /** Multiplier applied to LEAGUE_AVG_TOV in generateStatsForTeam.
+   *  <1.0 = fewer turnovers (violations disabled, bigger court, no backcourt timer).
+   *  Set via: travelingEnabled=false → 0.88, doubleDribbleEnabled=false → 0.90, etc. */
+  tovMult: number;
+
+  /** Multiplier applied to per-player FT% (gameFtp) — distinct from ftRateMult.
+   *  ftRateMult controls how many FTA are *drawn*; ftEfficiencyMult controls how many *go in*.
+   *  Set via: freeThrowDistance > 15 → <1.0 (farther line = harder shots). */
+  ftEfficiencyMult: number;
+
   // ── Exhibition score boost ─────────────────────────────────────────────────
   /** Applied in engine.ts to the raw game score BEFORE stat generation.
    *  Use for exhibition games (All-Star ~1.45, Rising Stars ~1.18) so the
    *  scoreboard shows realistic totals without double-counting paceMultiplier.
    *  When set, keep paceMultiplier = 1.0 so stats match the boosted score. */
   exhibitionScoreMult?: number;
+
+  // ── Play-through-injuries ──────────────────────────────────────────────────
+  /** 0–4 scale. Controls how badly injured players are still included in the
+   *  sim rotation and how much their performance is reduced.
+   *  0 = injured players don't play (default).
+   *  1 = day-to-day nags play at -2.5%.
+   *  2 = moderate injuries play at -5%.
+   *  3 = significant injuries play at -7.5%.
+   *  4 = gut-it-out mode, all injuries play at -10%.
+   *
+   *  Applied per-player: factor = 1 − 0.025 × min(severity, playThroughInjuries). */
+  playThroughInjuries?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -132,6 +154,8 @@ export const KNOBS_DEFAULT: SimulatorKnobs = {
   rimRateMult:          1.0,
   lowPostRateMult:      1.0,
   blockRateMult:        1.0,
+  tovMult:              1.0,
+  ftEfficiencyMult:     1.0,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -168,6 +192,8 @@ export const KNOBS_ALL_STAR: SimulatorKnobs = {
   rimRateMult:           1.0,
   lowPostRateMult:       1.0,
   blockRateMult:         1.0,
+  tovMult:               1.0,
+  ftEfficiencyMult:      1.0,
   exhibitionScoreMult:   1.48,   // base ~110 → ~163 pts per team (realistic ASG range)
 };
 
@@ -194,6 +220,8 @@ export const KNOBS_RISING_STARS: SimulatorKnobs = {
   rimRateMult:           1.0,
   lowPostRateMult:       1.0,
   blockRateMult:         1.0,
+  tovMult:               1.0,
+  ftEfficiencyMult:      1.0,
   exhibitionScoreMult:   1.18,   // modest boost for Rising Stars (~130 per team)
 };
 
@@ -221,6 +249,8 @@ export const KNOBS_CELEBRITY: SimulatorKnobs = {
   rimRateMult:           1.0,
   lowPostRateMult:       1.0,
   blockRateMult:         1.0,
+  tovMult:               1.0,
+  ftEfficiencyMult:      1.0,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -250,6 +280,8 @@ export const KNOBS_PRESEASON: SimulatorKnobs = {
   rimRateMult:           1.0,
   lowPostRateMult:       1.0,
   blockRateMult:         1.0,
+  tovMult:               1.0,
+  ftEfficiencyMult:      1.0,
 };
 
 /** FIBA-style: 10-min quarters, no 3PT (hypothetical rule experiment). */

@@ -1,4 +1,4 @@
-import { type LucideIcon, MessageSquare, HandCoins, Gavel, Utensils, Film, Eye, PenTool, AlertTriangle, Zap, UserX, Ban, Syringe, Trophy, Music } from 'lucide-react';
+import { type LucideIcon, MessageSquare, HandCoins, Gavel, Utensils, Film, Eye, PenTool, AlertTriangle, Zap, UserX, Ban, Syringe, Trophy, Music, BarChart2 } from 'lucide-react';
 import { NBAPlayer } from '../types';
 
 // ─── Personnel type ───────────────────────────────────────────────────────────
@@ -125,6 +125,17 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
     eligibility: {
       // Eligible for any player; for staff: coaches + refs only
       staffTypes: ['coach', 'referee'],
+    },
+  },
+  {
+    id: 'view_ratings',
+    title: 'View Ratings',
+    description: 'View and edit attribute ratings.',
+    icon: BarChart2,
+    color: 'bg-violet-500',
+    hover: 'hover:bg-violet-600',
+    eligibility: {
+      playerStatuses: ['Active', 'Free Agent', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'Retired'],
     },
   },
   {

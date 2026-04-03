@@ -118,7 +118,7 @@ export class AllStarSelectionService {
     const starters: AllStarPlayer[] = [];
     // Build a quick lookup for ovr by internalId
     const playerOvrMap = new Map<string, number>(
-      players.map(p => [p.internalId, convertTo2KRating(p.overallRating ?? 50, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50)])
+      players.map(p => [p.internalId, convertTo2KRating(p.overallRating ?? 50, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp)])
     );
 
     for (const conf of ['East', 'West'] as const) {
@@ -244,7 +244,7 @@ export class AllStarSelectionService {
           position: player.pos ?? 'F',
           isStarter: false,
           category: 'Frontcourt',
-          ovr: convertTo2KRating(player.overallRating ?? 50, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50),
+          ovr: convertTo2KRating(player.overallRating ?? 50, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp),
         });
         pickedIds.add(player.internalId);
       });
@@ -264,7 +264,7 @@ export class AllStarSelectionService {
           position: player.pos ?? 'G',
           isStarter: false,
           category: 'Guard',
-          ovr: convertTo2KRating(player.overallRating ?? 50, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50),
+          ovr: convertTo2KRating(player.overallRating ?? 50, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp),
         });
         pickedIds.add(player.internalId);
       });
@@ -283,7 +283,7 @@ export class AllStarSelectionService {
           position: player.pos ?? 'F',
           isStarter: false,
           category: isGuard(player.pos ?? '') ? 'Guard' : 'Frontcourt',
-          ovr: convertTo2KRating(player.overallRating ?? 50, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50),
+          ovr: convertTo2KRating(player.overallRating ?? 50, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp),
         });
         pickedIds.add(player.internalId);
       });

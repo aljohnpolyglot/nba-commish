@@ -5,6 +5,7 @@ import { Game, NBATeam, NBAPlayer } from '../../types';
 import { useLiveGame } from '../../hooks/useLiveGame';
 import { SettingsManager } from '../../services/SettingsManager';
 import { getTeamForGame, getPlayersForExhibitionTeam } from '../../utils/helpers';
+import { PlayerRatingsModal } from '../modals/PlayerRatingsModal';
 
 interface GameSimulatorScreenProps {
   game: Game;
@@ -83,6 +84,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
   const [activeTab, setActiveTab] = useState('boxscore');
   const [loadingMessage, setLoadingMessage] = useState("Players taking the court...");
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [clickedLivePlayer, setClickedLivePlayer] = useState<NBAPlayer | null>(null);
   const settings = SettingsManager.getSettings();
   const feedRef = useRef<HTMLDivElement>(null);
 
@@ -524,7 +526,15 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                                     <td className="text-left py-1 pr-2 text-gray-200 font-medium">
                                       <div className="flex items-center gap-1.5">
                                         {isOnFloor && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />}
-                                        <span className="truncate max-w-[70px] sm:max-w-none">{p.n}</span>
+                                        <button
+                                          onClick={() => {
+                                            const nbaPlayer = players.find(pl => pl.internalId === p.id || String(pl.internalId) === String(p.id));
+                                            if (nbaPlayer) setClickedLivePlayer(nbaPlayer);
+                                          }}
+                                          className="truncate max-w-[70px] sm:max-w-none hover:text-sky-400 hover:underline transition-colors text-left"
+                                        >
+                                          {p.n}
+                                        </button>
                                       </div>
                                     </td>
                                     <td className="py-1 px-1 text-gray-400 font-mono">{displayMin}</td>
@@ -562,6 +572,31 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                           </tfoot>
                         </table>
                       </div>
+                      {/* DNP players */}
+                      {(() => {
+                        const teamId = tm === 'HOME' ? game.homeTid : game.awayTid;
+                        const dnpPlayers = players.filter(p =>
+                          p.tid === teamId &&
+                          p.status === 'Active' &&
+                          !liveStats[tm][p.internalId]
+                        );
+                        if (dnpPlayers.length === 0) return null;
+                        return (
+                          <div className="mt-1 border-t border-gray-800/50">
+                            {dnpPlayers.map(p => (
+                              <div key={p.internalId} className="flex items-center justify-between py-0.5 px-1 opacity-40 text-[9px] sm:text-[10px]">
+                                <span className="text-gray-400 truncate max-w-[70px] sm:max-w-none">{p.name}</span>
+                                <span className="text-gray-600 italic ml-2 shrink-0">
+                                  {finalResult?.playerDNPs?.[p.internalId] ??
+                                    ((p.injury?.gamesRemaining ?? 0) > 0
+                                      ? `DNP — Injury (${p.injury!.type})`
+                                      : "DNP — CD")}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>
@@ -718,6 +753,14 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
     </motion.div>
 
     {/* Leave confirmation — shown when there are other games today */}
+    {clickedLivePlayer && (
+      <PlayerRatingsModal
+        player={clickedLivePlayer}
+        season={new Date().getFullYear()}
+        onClose={() => setClickedLivePlayer(null)}
+      />
+    )}
+
     {showLeaveConfirm && (
       <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
         <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowLeaveConfirm(false)} />

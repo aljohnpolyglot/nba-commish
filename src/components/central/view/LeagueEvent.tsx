@@ -55,13 +55,31 @@ function detectEventKind(text: string, type?: string): {
     return { icon: <Zap size={16} />, label: 'Deployed', color: 'text-yellow-400', bg: 'bg-yellow-500/10' };
   if (t.includes('suspended') || t.includes('fined') || t.includes('disciplin'))
     return { icon: <AlertTriangle size={16} />, label: 'Discipline', color: 'text-rose-400', bg: 'bg-rose-500/10' };
+  if (t.includes('drug test') || t.includes('tested positive') || t.includes('failed') || t.includes('negative'))
+    return { icon: <AlertTriangle size={16} />, label: 'Drug Test', color: 'text-orange-400', bg: 'bg-orange-500/10' };
   if (t.includes('rule') || t.includes('policy') || t.includes('changed') || t.includes('announced'))
     return { icon: <Gavel size={16} />, label: 'Decree', color: 'text-indigo-400', bg: 'bg-indigo-500/10' };
-  if (t.includes('took office') || t.includes('commissioner') || t.includes('inaugural'))
-    return { icon: <Star size={16} />, label: 'Milestone', color: 'text-gold-400', bg: 'bg-yellow-500/10' };
+  if (t.includes('took office') || t.includes('inaugural'))
+    return { icon: <Star size={16} />, label: 'Milestone', color: 'text-yellow-400', bg: 'bg-yellow-500/10' };
+  if (t.includes('bribed') || t.includes('bribe') || t.includes('covertly offered'))
+    return { icon: <TrendingUp size={16} />, label: 'Bribe', color: 'text-emerald-400', bg: 'bg-emerald-500/10' };
+  if (t.includes('hypnoti') || t.includes('covertly influenced') || t.includes('hypnotic'))
+    return { icon: <Zap size={16} />, label: 'Covert Op', color: 'text-violet-400', bg: 'bg-violet-500/10' };
+  if (t.includes('sabotag') || t.includes('sidelined') || t.includes('covert action'))
+    return { icon: <AlertTriangle size={16} />, label: 'Sabotage', color: 'text-rose-500', bg: 'bg-rose-600/10' };
+  if (t.includes('scandal') || t.includes('leaked') || t.includes('leak'))
+    return { icon: <AlertTriangle size={16} />, label: 'Leak', color: 'text-pink-400', bg: 'bg-pink-500/10' };
+  if (t.includes('simulated') || t.includes('highlights:') || t.startsWith('simulated ') || t.includes('days —'))
+    return { icon: <TrendingUp size={16} />, label: 'Simulation', color: 'text-cyan-400', bg: 'bg-cyan-500/10' };
+  if (t.includes('game') && (t.includes('played') || t.includes('ot') || t.includes('blowout')))
+    return { icon: <TrendingUp size={16} />, label: 'Game Day', color: 'text-blue-400', bg: 'bg-blue-500/10' };
   if (t.includes('all-star') || t.includes('performance') || t.includes('concert') || t.includes('event'))
     return { icon: <Star size={16} />, label: 'League Event', color: 'text-emerald-400', bg: 'bg-emerald-500/10' };
-  return { icon: <TrendingUp size={16} />, label: 'Action', color: 'text-slate-400', bg: 'bg-slate-800' };
+  if (t.includes('disbursed') || t.includes('transferred') || t.includes('penalty') || t.includes('funds'))
+    return { icon: <TrendingUp size={16} />, label: 'Finance', color: 'text-emerald-400', bg: 'bg-emerald-500/10' };
+  if (t.includes('hall of fame') || t.includes('hof') || t.includes('endorse'))
+    return { icon: <Star size={16} />, label: 'HOF', color: 'text-amber-400', bg: 'bg-amber-500/10' };
+  return { icon: <TrendingUp size={16} />, label: 'League Event', color: 'text-slate-400', bg: 'bg-slate-800' };
 }
 
 export const LeagueEvent: React.FC = () => {

@@ -206,12 +206,12 @@ export async function genPlays(
         });
       }
 
-      // Add Tip-off line for new quarters (except Q1 which is handled separately)
+      // Add period-start line for new quarters (except Q1 which is handled separately)
       if (poss.quarter > 1) {
         const qLabel = PERIOD_LABELS[poss.quarter - 1];
         const isOT = poss.quarter > 4;
         const otNum = isOT ? poss.quarter - 4 : 0;
-        
+
         allLines.push({
           id: makeId(`tipoff_${poss.quarter}`),
           tm: poss.team,
@@ -221,8 +221,8 @@ export async function genPlays(
           time: `${qLabel} ${isOT ? '5:00' : '12:00'}`,
           gs: poss.gs - 0.1,
           pts: 0,
-          desc: isOT ? `Overtime ${otNum}! Tip-off!!` : `${qLabel} Tip-off!!`,
-          type: 'jumpball',
+          desc: isOT ? `Overtime ${otNum}! Here we go!!` : `${qLabel} quarter underway.`,
+          type: 'gameOver',
           cs, ds,
           possession: poss.team,
           otNum: isOT ? otNum : undefined,

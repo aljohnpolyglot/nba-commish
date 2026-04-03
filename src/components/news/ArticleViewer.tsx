@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { X, Sparkles, Share2, Bookmark } from 'lucide-react';
+import { X, Loader2, Sparkles, Share2, Bookmark } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { NewsItem } from './types';
 import { generateContentWithRetry } from '../../services/llm/utils/api';
+import { SettingsManager } from '../../services/SettingsManager';
 import Markdown from 'react-markdown';
 import type { GameResult, NBATeam } from '../../types';
 
@@ -34,49 +35,20 @@ function buildBoxScoreContext(item: NewsItem, boxScores: GameResult[], teams: NB
 
   const performers = allStats.map(s => {
     const teamName = game.homeStats.some(h => h.playerId === s.playerId) ? homeTeam.name : awayTeam.name;
-    return `  - ${s.name} (${teamName}): ${s.pts} pts, ${s.reb} reb, ${s.ast} ast — GmSc ${s.gameScore?.toFixed(1) ?? '0.0'} (${Math.floor(s.min)} min)`;
+    return `  - ${s.name} (${teamName}): ${s.pts} pts, ${s.reb} reb, ${s.ast} ast, ${s.stl} stl, ${s.blk} blk (${s.min} min)`;
   }).join('\n');
 
   const quarters = game.quarterScores
     ? `Q1: ${game.quarterScores.away[0]}–${game.quarterScores.home[0]}, Q2: ${game.quarterScores.away[1]}–${game.quarterScores.home[1]}, Q3: ${game.quarterScores.away[2]}–${game.quarterScores.home[2]}, Q4: ${game.quarterScores.away[3]}–${game.quarterScores.home[3]}${game.isOT ? ` OT×${game.otCount}` : ''}`
     : '';
 
-  // Format notable highlights (posterizers, alley-oops, buzzer beaters, etc.)
-  let highlightLines = '';
-  if (game.highlights && game.highlights.length > 0) {
-    const notable = game.highlights
-      .filter(h => ['posterizer', 'alley_oop', 'limitless_3', 'ankle_breaker', 'fastbreak_dunk'].includes(h.type))
-      .slice(0, 6);
-    if (notable.length > 0) {
-      const labelMap: Record<string, string> = {
-        posterizer: 'POSTERIZER DUNK',
-        alley_oop: 'ALLEY-OOP',
-        limitless_3: 'LIMITLESS 3-POINTER',
-        ankle_breaker: 'ANKLE BREAKER',
-        fastbreak_dunk: 'FASTBREAK SLAM',
-      };
-      highlightLines = '\n  Notable Plays:\n' + notable.map(h => {
-        const desc = labelMap[h.type] ?? h.type.replace(/_/g, ' ').toUpperCase();
-        const assist = h.assisterName ? ` (assisted by ${h.assisterName})` : '';
-        const victim = h.victimName ? ` on ${h.victimName}` : '';
-        return `    - ${h.playerName}: ${desc}${victim}${assist}`;
-      }).join('\n');
-    }
-  }
-
-  if (game.gameWinner) {
-    const gw = game.gameWinner;
-    const shotDesc = gw.shotType === 'clutch_3' ? 'walk-off 3-pointer' : gw.shotType === 'clutch_ft' ? 'clutch free throw' : 'walk-off shot';
-    highlightLines += `\n  Game Winner: ${gw.playerName} hit a ${shotDesc} (${gw.clockRemaining} remaining)`;
-  }
-
   return `
-GAME BOX SCORE — use these real stats to write a detailed, accurate article:
+GAME BOX SCORE (use these real stats to write a detailed, accurate article):
   Matchup: ${awayTeam.name} @ ${homeTeam.name}
   Final Score: ${awayTeam.name} ${game.awayScore} – ${homeTeam.name} ${game.homeScore}${game.isOT ? ` (OT)` : ''}
   ${quarters ? `Quarter Scores: ${quarters}` : ''}
   Top Performers:
-${performers}${highlightLines}`;
+${performers}`;
 }
 
 export default function ArticleViewer({
@@ -109,12 +81,19 @@ export default function ArticleViewer({
   }, [article, cachedContent]);
 
   const elaborateNews = async (item: NewsItem) => {
+    const settings = SettingsManager.getSettings();
+    if (!settings.enableLLM) {
+      setElaboratedContent(item.content);
+      return;
+    }
+
+    const boxScoreContext = buildBoxScoreContext(item, boxScores, teams);
+
     setIsLoading(true);
     try {
-      const boxScoreContext = buildBoxScoreContext(item, boxScores, teams);
       const response = await generateContentWithRetry({
         model: 'gemini-2.5-flash-lite',
-        contents: `You are an expert NBA sports journalist. Elaborate on the following news report into a detailed, engaging, and professional article. Include background context, analysis of how this impacts the team and league, and a "Scout's Take" section at the end.
+        contents: `You are an expert sports journalist. Elaborate on the following NBA news report to provide a detailed, engaging, and professional article. Include background context, potential impact on the league, and a "Scout's Take" section.
 
 Title: ${item.title}
 Short Summary: ${item.content}
@@ -126,22 +105,21 @@ CRITICAL INSTRUCTIONS:
 1. DO NOT include the title in your response.
 2. DO NOT include "By: [Name]", "Category:", or "Date:".
 3. Start directly with the article body.
-4. If box score data is provided above, reference the REAL stats (exact numbers) — do not invent or change statistics.
-5. If notable plays are listed, weave them into the narrative naturally.
-6. Use Markdown for formatting (bolding, headers, lists).
-7. Write 3-5 paragraphs in professional sports journalism style, followed by a ## Scout's Take section.`,
+4. If box score data is provided above, reference the REAL stats (exact numbers) in your article — do not invent statistics.
+5. Use Markdown for formatting (bolding, headers, lists).
+6. Format the output with clear headings and professional sports journalism style.`,
         config: {
           maxOutputTokens: 1024,
-          temperature: 0.75,
+          temperature: 0.7,
         },
       });
 
-      const content = response.text || item.content;
+      const content = response.text || 'Failed to generate content.';
       setElaboratedContent(content);
       onCacheContent(item.id, content);
     } catch (error) {
       console.error('Error elaborating news:', error);
-      setElaboratedContent(item.content || '');
+      setElaboratedContent(item.content);
     } finally {
       setIsLoading(false);
     }
@@ -178,7 +156,7 @@ CRITICAL INSTRUCTIONS:
                   : 'bg-white/10 hover:bg-white/20 text-white'
               }`}
             >
-              <Bookmark size={20} fill={isBookmarked ? 'currentColor' : 'none'} />
+              <Bookmark size={20} fill={isBookmarked ? "currentColor" : "none"} />
             </button>
             <button className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-colors">
               <Share2 size={20} />
@@ -230,16 +208,16 @@ CRITICAL INSTRUCTIONS:
                 <div className="flex items-center gap-4 mb-10 pb-8 border-b border-gray-100">
                   <div className="w-12 h-12 rounded-full bg-gray-200 flex-shrink-0 overflow-hidden">
                     <img
-                      src={article.author?.image_url || 'https://i.pravatar.cc/150?u=commish'}
-                      alt={article.author?.name || 'Author'}
+                      src={article.author?.image_url || "https://i.pravatar.cc/150?u=commish"}
+                      alt={article.author?.name || "Author"}
                       className="w-full h-full object-cover"
                       referrerPolicy="no-referrer"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-gray-900">{article.author?.name || 'Commish Sim Reports'}</p>
-                    <p className="text-xs text-gray-500">{article.author?.position?.replace(/\s*\[\d{4}\]/g, '').trim() || 'Lead Insider • Verified Source'}</p>
+                    <p className="text-sm font-bold text-gray-900">{article.author?.name || "Commish Sim Reports"}</p>
+                    <p className="text-xs text-gray-500">{article.author?.position?.replace(/\s*\[\d{4}\]/g, '').trim() || "Lead Insider • Verified Source"}</p>
                   </div>
                 </div>
 
@@ -260,7 +238,7 @@ CRITICAL INSTRUCTIONS:
                     </div>
                   ) : (
                     <div className="text-gray-800 leading-relaxed font-serif text-lg [&_p]:mb-6 [&_h2]:mt-10 [&_h2]:mb-4 [&_h2]:text-2xl [&_h2]:font-bold [&_h3]:mt-8 [&_h3]:mb-3 [&_h3]:text-xl [&_h3]:font-bold">
-                      <Markdown>{elaboratedContent || article.content || `*${article.title}*\n\nNo additional details are available for this article.`}</Markdown>
+                      <Markdown>{elaboratedContent || article.content || `*${article.title}*\n\nNo additional details are available for this article at this time.`}</Markdown>
                     </div>
                   )}
                 </div>
@@ -274,7 +252,7 @@ CRITICAL INSTRUCTIONS:
                         isBookmarked ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-600'
                       }`}
                     >
-                      <Bookmark size={20} fill={isBookmarked ? 'currentColor' : 'none'} />
+                      <Bookmark size={20} fill={isBookmarked ? "currentColor" : "none"} />
                       <span className="text-sm font-bold">{isBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
                     </button>
                     <button className="flex items-center gap-2 text-gray-500 hover:text-indigo-600 transition-colors">

@@ -1,6 +1,33 @@
 # Social Feed System — NBA Commish Sim
 
-This document covers every layer of the social feed: data sources, handle registry, template architecture, the `SocialEngine`, the `SocialContext`, all template files, and the `Charania` standalone builders. Read this before doing any social makeover work.
+This document covers the complete social feed architecture: the **backend post generation system** (SocialEngine, templates, game integration) and the **frontend feed display system** (React components, real-time enrichment, interactive UI).
+
+## Overview: Two-Layer Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ BACKEND: Post Generation & Game Integration                    │
+├─────────────────────────────────────────────────────────────────┤
+│ • GameResult[] → SocialEngine.generateDailyPosts()              │
+│ • SocialTemplate matching, token replacement, deduping         │
+│ • LLM-generated posts (if enabled)                             │
+│ • Shams transaction posts (signings, trades)                   │
+│ • Result: SocialPost[] → state.socialFeed                      │
+└─────────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ FRONTEND: Feed Display & Real-Time Enrichment                   │
+├─────────────────────────────────────────────────────────────────┤
+│ • SocialFeedView: main feed container                           │
+│ • SocialPostCard: individual post UI w/ avatar, media           │
+│ • SocialThreadModal: thread expansion + LLM replies            │
+│ • socialapi.ts: real X profile fetcher (live data fallback)    │
+│ • socialhelpers.ts: date formatting, stat generation           │
+│ • photoEnricher.ts: lazy-load player/game photos              │
+│ • Result: Interactive, responsive social feed UI              │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 > **⚠️ LLM API Preference**: This app uses **Groq + Together AI workers only**. `@google/genai` and `process.env.GEMINI_API_KEY` are NOT used — any reference to them is legacy/broken. Always call `generateContentWithRetry` from `src/services/llm/utils/api.ts`. Chat → Groq Worker. Non-chat (social post generation, news, simulation) → Together AI Worker.
 
@@ -8,7 +35,129 @@ This document covers every layer of the social feed: data sources, handle regist
 
 ---
 
-## 1. High-Level Architecture
+## FRONTEND: React Social Feed System
+
+### Components
+
+#### `SocialFeedView.tsx`
+The main feed container that renders a paginated, virtualized list of posts with lazy-loaded media enrichment.
+
+**Key features:**
+- Game lookup map built from `state.boxScores` and `state.teams`
+- Lazy-loads post media via `enrichPostWithPhoto()`
+- Thread expansion modal integration
+- Image modal for full-screen media viewing
+- IntersectionObserver for viewport optimization
+
+**Props:**
+```ts
+interface SocialFeedViewProps {
+    posts: SocialPost[];
+}
+```
+
+**Usage:**
+```tsx
+<SocialFeedView posts={state.socialFeed} />
+```
+
+#### `SocialPostCard.tsx`
+Renders a single post with full Twitter-like UI:
+- Author avatar (cached from `socialapi.ts` or generated)
+- Verified badge
+- Author handle, name, timestamp
+- Post content with hashtag/mention highlighting
+- Media (image/video) with background color
+- Interaction buttons (like, retweet, reply, share)
+- Thread context indicator
+
+**Key internals:**
+- Integrates `photoEnricher.ts` to fetch player/game photos
+- Uses `formatTwitterDate()` from `socialhelpers.ts` for relative timestamps
+- Real Twitter avatar fallback via `fetchProfileData()` from `socialapi.ts`
+
+#### `SocialThreadModal.tsx`
+Modal dialog that expands a post thread:
+- Parent post display
+- LLM-generated reply thread (if enabled)
+- Close button and keyboard support (ESC)
+- Smooth animations via `motion/react`
+
+**Thread generation:**
+Calls `generateSocialThread(post, context)` from `src/services/llm/llm.ts` if LLM is enabled, producing realistic reply dynamics.
+
+#### `ImageModal.tsx`
+Full-screen image viewer for post media:
+- Zoom, pan, fullscreen support
+- Context-aware title (player name, stat line, etc.)
+- Keyboard navigation
+
+### Utilities
+
+#### `src/utils/socialapi.ts`
+Real-time Twitter/X profile fetcher integrated with fallback generation.
+
+**Key export:**
+```ts
+export const fetchProfileData = async (handle: string, dispatchAction: (action: any) => void)
+  => Promise<ProfileData>
+```
+
+**Behavior:**
+1. Fetches live profile data from `https://twitterfollowers.mogatas-princealjohn-05082003.workers.dev`
+2. On success: extracts name, bio, followers, avatar, banner, verified status
+3. On failure: generates synthetic stats via `generateSocialStats(handle)` for consistency
+4. Caches result in state via `CACHE_PROFILE` action
+
+**Generated profile fallback:**
+- Followers: deterministic hash-based (50–3000)
+- Following: deterministic hash-based (100–1500)
+- No avatar URL (defaults to placeholder in UI)
+
+#### `src/utils/socialhelpers.ts`
+Formatting and helper functions for the feed.
+
+**Key exports:**
+
+| Function | Returns | Purpose |
+|---|---|---|
+| `formatTwitterDate(dateStr, currentDate)` | string | Converts ISO dates to Twitter format: "just now", "2m", "3h", "Nov 12" |
+| `generateSocialStats(seed)` | `{ followers, following }` | Deterministic follower/following counts from a string seed |
+
+### Photo Enrichment
+
+#### `src/services/social/photoEnricher.ts`
+Lazy-loads and caches photos for posts (player portraits, stat cards, game images).
+
+**Key functions:**
+
+```ts
+export const enrichPostWithPhoto = async (
+  post: SocialPost,
+  gameLookup: Map<number, GamePhotoInfo>,
+  statmuseImages: Record<string, string>
+): Promise<{ url: string; bgColor: string } | null>
+```
+
+Enrichment priority:
+1. **StatMuse posts**: player portrait from `STATMUSE_PLAYER_IMAGES` gist
+2. **Game posts**: top player from game lookup
+3. **Player posts**: career photo from `statmuseImages`
+4. Fallback: none (post displays without media)
+
+**GamePhotoInfo interface:**
+```ts
+interface GamePhotoInfo {
+  homeTeam: NBATeam;
+  awayTeam: NBATeam;
+  topPlayers: { name: string; gameScore: number }[];
+  date: string;
+}
+```
+
+---
+
+## BACKEND: Post Generation System
 
 ```
 Game Results (GameResult[])

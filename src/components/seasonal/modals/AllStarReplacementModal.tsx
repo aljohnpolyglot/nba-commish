@@ -3,7 +3,6 @@ import { AlertTriangle, RotateCcw, Search, UserPlus, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useGame } from '../../../store/GameContext';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
-import { AwardService } from '../../../services/logic/AwardService';
 
 interface AllStarReplacementModalProps {
   onClose: () => void;
@@ -31,27 +30,30 @@ export const AllStarReplacementModal: React.FC<AllStarReplacementModalProps> = (
   const [pickerForId, setPickerForId] = useState<string | null>(null); // injuredId or playerId being swapped
   const [search, setSearch] = useState('');
 
+  // All players in the league not already in the All-Star game — sorted by OVR
   const candidateRanking = useMemo(() => {
-    if (!state.players || !state.teams) return [];
-    const races = AwardService.calculateAwardRaces(state.players, state.teams, season);
-    return races.mvp
-      .filter(c => !allStarIds.has(c.player.internalId) && c.player.status === 'Active' && c.player.tid >= 0)
-      .slice(0, 40);
-  }, [state.players, state.teams, season, allStarRoster.length]);
+    if (!state.players) return [];
+    return state.players
+      .filter(p =>
+        !allStarIds.has(p.internalId) &&
+        !((p as any).injury?.gamesRemaining > 0) // exclude currently injured
+      )
+      .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
+  }, [state.players, allStarIds]);
 
   const filteredCandidates = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return candidateRanking;
-    return candidateRanking.filter(c =>
-      c.player.name.toLowerCase().includes(q) ||
-      (state.teams.find(t => t.id === c.player.tid)?.abbrev ?? '').toLowerCase().includes(q)
+    return candidateRanking.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      (state.teams.find(t => t.id === p.tid)?.abbrev ?? '').toLowerCase().includes(q)
     );
   }, [candidateRanking, search, state.teams]);
 
   // Partition roster
   const injuredPlayers = allStarRoster.filter(r => {
     const p = state.players.find(pl => pl.internalId === r.playerId);
-    return !!(p as any)?.injury && !r.isInjuredDNP;
+    return (p as any)?.injury?.gamesRemaining > 0 && !r.isInjuredDNP;
   });
   const activeRoster = allStarRoster.filter(r => !r.isInjuredDNP && !r.isInjuryReplacement);
   const injuredDNP = allStarRoster.filter(r => r.isInjuredDNP);
@@ -60,7 +62,9 @@ export const AllStarReplacementModal: React.FC<AllStarReplacementModalProps> = (
   const pickerEntry = pickerForId ? allStarRoster.find(r => r.playerId === pickerForId) : null;
   const pickerPlayer = pickerForId ? state.players.find(p => p.internalId === pickerForId) : null;
   const pickerTeam = pickerPlayer ? state.teams.find(t => t.id === pickerPlayer.tid) : null;
-  const isAddingReplacement = pickerEntry ? (!!(state.players.find(p => p.internalId === pickerForId) as any)?.injury && !pickerEntry.isInjuredDNP) : false;
+  const isAddingReplacement = pickerEntry
+    ? ((state.players.find(p => p.internalId === pickerForId) as any)?.injury?.gamesRemaining > 0 && !pickerEntry.isInjuredDNP)
+    : false;
 
   // ── Step 2: Player picker ─────────────────────────────────────────────────
   if (pickerForId) {
@@ -99,26 +103,32 @@ export const AllStarReplacementModal: React.FC<AllStarReplacementModalProps> = (
         <div className="overflow-y-auto custom-scrollbar px-8 pb-6 flex-1">
           <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
             {filteredCandidates.map(c => {
-              const team = state.teams.find(t => t.id === c.player.tid);
-              const gp = c.stats.gp || 1;
+              const team = state.teams.find(t => t.id === c.tid);
+              const stats = c.stats?.find((s: any) => s.season === season) ?? c.stats?.[c.stats.length - 1];
+              const gp = stats?.gp || 1;
               return (
                 <button
-                  key={c.player.internalId}
+                  key={c.internalId}
                   onClick={() => {
                     const conf = pickerEntry?.conference ?? (team?.conference ?? 'East');
-                    onConfirm(pickerForId, pickerEntry?.playerName ?? '', c.player.internalId, c.player.name, conf);
+                    onConfirm(pickerForId, pickerEntry?.playerName ?? '', c.internalId, c.name, conf);
                   }}
                   className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-slate-800 bg-slate-900/50 hover:border-sky-500/50 hover:bg-sky-500/10 transition-all text-center"
                 >
-                  <PlayerPortrait imgUrl={c.player.imgURL} teamLogoUrl={team?.logoUrl} overallRating={c.player.overallRating} size={64} />
-                  <p className="font-bold text-white text-[11px] leading-tight line-clamp-2">{c.player.name}</p>
-                  <p className="text-[9px] text-slate-500">{c.player.pos} · {team?.abbrev ?? '—'}</p>
-                  <p className="text-[9px] text-slate-600 font-mono">
-                    {(c.stats.pts / gp).toFixed(1)}p · {((c.stats.trb || 0) / gp).toFixed(1)}r · {(c.stats.ast / gp).toFixed(1)}a
-                  </p>
+                  <PlayerPortrait imgUrl={c.imgURL} teamLogoUrl={team?.logoUrl} overallRating={c.overallRating} size={64} />
+                  <p className="font-bold text-white text-[11px] leading-tight line-clamp-2">{c.name}</p>
+                  <p className="text-[9px] text-slate-500">{c.pos} · {team?.abbrev ?? '—'}</p>
+                  {stats && (
+                    <p className="text-[9px] text-slate-600 font-mono">
+                      {(stats.pts / gp).toFixed(1)}p · {((stats.trb || 0) / gp).toFixed(1)}r · {(stats.ast / gp).toFixed(1)}a
+                    </p>
+                  )}
                 </button>
               );
             })}
+            {filteredCandidates.length === 0 && (
+              <p className="col-span-5 text-center text-slate-500 text-sm py-8">No eligible players found</p>
+            )}
           </div>
         </div>
 

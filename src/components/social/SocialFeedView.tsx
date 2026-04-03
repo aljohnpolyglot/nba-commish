@@ -3,6 +3,7 @@ import type { SocialPost, GameResult } from '../../types';
 import SocialPostCard from './SocialPostCard';
 import { generateSocialThread } from '../../services/llm/llm';
 import { useGame } from '../../store/GameContext';
+
 import { SettingsManager } from '../../services/SettingsManager';
 import { AnimatePresence } from 'motion/react';
 import { SocialThreadModal } from './SocialThreadModal';
@@ -91,7 +92,9 @@ const LazyPhotoPost: React.FC<LazyPostProps> = ({ post, gameLookup, onClick, onI
 
 // ─── Main feed ────────────────────────────────────────────────────────────────
 const SocialFeedView: React.FC<SocialFeedViewProps> = ({ posts }) => {
-    const { state, dispatchAction } = useGame();
+    
+    const { state: gameState, dispatchAction } = useGame();
+
     const gameLookup = useGameLookup();
 
     const [selectedPost, setSelectedPost] = useState<SocialPost | null>(null);
@@ -119,7 +122,7 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ posts }) => {
         console.log('[SocialFeed] loadMoreReplies → generating thread for:', post.id, post.handle, post.content.slice(0, 60));
 
         try {
-            const replies = await generateSocialThread(post, state);
+            const replies = await generateSocialThread(post, gameState);
             console.log('[SocialFeed] generateSocialThread returned:', replies?.length, 'replies');
 
             if (!replies || replies.length === 0) {
@@ -144,7 +147,7 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ posts }) => {
         } finally {
             setIsLoadingThread(false);
         }
-    }, [batchCount, state, dispatchAction]);
+   }, [batchCount, gameState]);
 
     const handlePostClick = useCallback(async (post: SocialPost) => {
         setSelectedPost(post);
@@ -167,7 +170,7 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ posts }) => {
         console.log('[SocialFeed] handleReplyToReply → generating nested thread for:', reply.id, reply.content.slice(0, 60));
 
         try {
-            const nestedReplies = await generateSocialThread(reply, state);
+            const nestedReplies = await generateSocialThread(reply, gameState);
             console.log('[SocialFeed] nested replies returned:', nestedReplies?.length);
 
             if (!nestedReplies?.length) return;
@@ -196,7 +199,7 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ posts }) => {
         } finally {
             setIsLoadingThread(false);
         }
-    }, [state, dispatchAction]);
+  }, [gameState, dispatchAction]);
 
     if (posts.length === 0) {
         return (

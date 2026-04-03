@@ -571,6 +571,8 @@ export class AllStarDunkContestSim {
     const withComposite = players
       .filter(p => this.getDrivingDunk(p.name) !== undefined && (this.getDrivingDunk(p.name) || 0) >= 40) // Basic gate
       .map(p => ({ player: p, composite: this.calcComposite(p) }))
+      // Exclude pure centers unless they have elite composite (≥90) — avoids Zubac-type picks
+      .filter(c => c.player.pos !== 'C' || c.composite >= 90)
       .sort((a,b) => b.composite - a.composite);
 
     console.log(`[DunkSim] Ranked candidates:`, withComposite.map(c => `${c.player.name} (${c.composite.toFixed(1)})`));

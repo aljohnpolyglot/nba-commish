@@ -19,7 +19,7 @@ interface FreeAgentCardProps {
 export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeams = [], onClick }) => {
   const currentYear = new Date().getFullYear();
   const age = player.born?.year ? currentYear - player.born.year : player.age || 0;
-  const ovr = convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50);
+  const ovr = convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp);
   const country = getCountryFromLoc(player.born?.loc);
   const countryCode = getCountryCode(country);
 

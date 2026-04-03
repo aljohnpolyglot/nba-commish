@@ -1,5 +1,25 @@
 import { NBAPlayer as Player, NBATeam as Team } from '../../types';
 
+export interface GameHighlight {
+  type: 'driving_dunk' | 'standing_dunk' | 'posterizer' |
+        'alley_oop' |           // lob catch — Aerial Wizard badge; assisterId = passer
+        'fastbreak_dunk' |      // transition finish off steal; assisterId = break starter
+        'break_starter' |       // outlet pass / pushes pace; assisterId = finisher
+        'layup_mixmaster' |     // euro step / reverse layup — Layup Mixmaster badge
+        'versatile_visionary' | // creative pass — Versatile Visionary badge; assisterId = recipient
+        'limitless_3' | 'ankle_breaker' |
+        'tech_foul' | 'timeout' | 'coach_challenge';
+  playerId: string;
+  playerName: string;
+  teamId: number;
+  victimId?: string;      // posterizers, ankle breakers — who got dunked on / ankles broken
+  victimName?: string;
+  assisterId?: string;    // alley_oop (passer), fastbreak_dunk (break starter), break_starter (finisher), versatile_visionary (recipient)
+  assisterName?: string;
+  pts?: number;           // for scoring plays
+  description?: string;   // flavor text (cosmetics, or future tweet seed)
+}
+
 export interface PlayerGameStats {
   playerId: string;
   name: string;
@@ -87,6 +107,7 @@ export interface GameResult {
     gamesRemaining: number;
   }[];
   fight?: FightResult;
+  highlights?: GameHighlight[];
 }
 
 /** Live per-player box-score accumulated by useGameStats */

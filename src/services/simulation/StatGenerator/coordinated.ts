@@ -38,7 +38,7 @@ export function generateCoordinatedStats(
 
   const finalSteals = Math.round(availableSteals * (1.0 + stlAura));
   const finalBlocks = Math.round(availableBlocks * (1.0 + blkTalentFactor * 0.4));
-  const assistRatio = Math.max(0.55, 0.77 - passAura);
+  const assistRatio = Math.max(0.44, 0.62 - passAura);
 
   const ownMisses = stats.reduce((s, p) => s + Math.max(0, p.fga - p.fgm), 0);
 
@@ -86,17 +86,17 @@ export function generateCoordinatedStats(
       const oiq = rHelper(p, 'oiq');
       return Math.pow(
         Math.max(0.1, drb * 0.4 + pss * 1.0 + oiq * 0.5),
-        3.8
+        2.5
       ) * minFrac(p) * (getNight(p)?._nightAssistMult ?? 1);
     },
     'ast', 1.0,
     rotation, stats
   );
 
-  // Soft-cap assists above 14
+  // Soft-cap assists above 13
   stats.forEach(s => {
-    if (s.ast > 14) {
-      s.ast = Math.round(14 + (s.ast - 14) * 0.55);
+    if (s.ast > 13) {
+      s.ast = Math.round(13 + (s.ast - 13) * 0.50);
     }
   });
 

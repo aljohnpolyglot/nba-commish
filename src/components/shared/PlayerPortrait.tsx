@@ -6,6 +6,8 @@ export interface PlayerPortraitProps {
   imgUrl?: string;
   teamLogoUrl?: string;
   overallRating?: number;
+  /** Player ratings array — used to apply tp elite bonus to the OVR badge */
+  ratings?: any[];
   /** Portrait diameter in px (default 48) */
   size?: number;
   /** Show the incoming arrow badge (blue, bottom-left) */
@@ -28,6 +30,7 @@ export const PlayerPortrait: React.FC<PlayerPortraitProps> = ({
   imgUrl,
   teamLogoUrl,
   overallRating,
+  ratings,
   size = 48,
   isIncoming = false,
   ovrLabel,
@@ -67,7 +70,7 @@ export const PlayerPortrait: React.FC<PlayerPortraitProps> = ({
       {overallRating !== undefined && (
         <div className="absolute -bottom-1 -right-1 bg-slate-950 border-2 border-slate-800 rounded-lg px-1.5 py-0.5 shadow-lg z-10">
           <span className="text-[9px] font-black text-white italic">
-            {ovrLabel ?? convertTo2KRating(overallRating)}
+            {ovrLabel ?? convertTo2KRating(overallRating ?? 0, ratings?.[ratings.length - 1]?.hgt ?? 50, ratings?.[ratings.length - 1]?.tp)}
           </span>
         </div>
       )}

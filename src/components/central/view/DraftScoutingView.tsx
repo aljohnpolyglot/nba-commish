@@ -89,7 +89,7 @@ export const DraftScoutingView: React.FC = () => {
     // Calculate displayOvr for each prospect
     const prospectsWithOvr = draftProspects.map(p => {
       const rawOvr = p.overallRating || (p.ratings?.[0]?.ovr || 0);
-      const displayOvr = convertTo2KRating(rawOvr, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50);
+      const displayOvr = convertTo2KRating(rawOvr, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp);
       return { ...p, displayOvr, rawOvr };
     });
 

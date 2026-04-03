@@ -149,63 +149,137 @@ export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
         },
     },
 
-    // ── DETONATED / POSTER ────────────────────────────────────────────────────
+    // ── POSTERIZER — fires on actual posterizer highlight, uses victim name ──────
+    {
+        id: 'br_poster',
+        handle: 'bleacher_report',
+        template: 'DYNAMIC',
+        priority: 96,
+        type: 'highlight',
+        condition: (ctx: SocialContext) => {
+            if (!ctx.player) return false;
+            const hl: any[] = (ctx.game as any).highlights ?? [];
+            return hl.some((h: any) => h.type === 'posterizer' && h.playerId === ctx.player!.internalId);
+        },
+        resolve: (_: string, ctx: SocialContext) => {
+            const hl: any[]  = (ctx.game as any).highlights ?? [];
+            const pid         = ctx.player?.internalId;
+            const event       = hl.find((h: any) => h.type === 'posterizer' && h.playerId === pid);
+            const name        = ctx.player?.name ?? 'Unknown';
+            const victim      = event?.victimName as string | undefined;
+            const victimUp    = victim?.toUpperCase() ?? 'THE DEFENDER';
+            const nameUp      = name.toUpperCase();
+            const variants = victim ? [
+                `${nameUp} JUST PUT ${victimUp} ON A POSTER 😱💥📸`,
+                `${nameUp} DETONATED ON ${victimUp} WITH NO REGARD FOR HUMAN LIFE 😭💀`,
+                `Hang it in the Louvre.\n\n${nameUp} POSTERIZED ${victimUp}. 🖼️🔥`,
+                `${victim} will never be the same. ${nameUp} cooked him. 💀`,
+                `R.I.P. ${victim}. ${nameUp} went right at him. 😭`,
+            ] : [
+                `This ${name} poster doesn't even look real ✌️😭`,
+                `${nameUp} JUST CAUGHT A BODY 💀📸`,
+                `Hang it in the Louvre. ${name} is different. 🖼️🔥`,
+                `${nameUp} WITH NO REGARD FOR HUMAN LIFE 😭💥`,
+            ];
+            return { content: variants[Math.floor(Math.random() * variants.length)] };
+        },
+    },
+
+    // ── ALLEY-OOP ─────────────────────────────────────────────────────────────
+    {
+        id: 'br_alley_oop',
+        handle: 'bleacher_report',
+        template: 'DYNAMIC',
+        priority: 94,
+        type: 'highlight',
+        condition: (ctx: SocialContext) => {
+            if (!ctx.player) return false;
+            const hl: any[] = (ctx.game as any).highlights ?? [];
+            return hl.some((h: any) => h.type === 'alley_oop' && h.playerId === ctx.player!.internalId);
+        },
+        resolve: (_: string, ctx: SocialContext) => {
+            const hl: any[] = (ctx.game as any).highlights ?? [];
+            const pid        = ctx.player?.internalId;
+            const event      = hl.find((h: any) => h.type === 'alley_oop' && h.playerId === pid);
+            const nameUp     = (ctx.player?.name ?? '').toUpperCase();
+            const passer     = event?.assisterName as string | undefined;
+            const passerUp   = passer?.toUpperCase();
+            const variants = passer ? [
+                `${passerUp} ➡️ ${nameUp} FOR THE LOB 😱🔥\n\nThe crowd just erupted.`,
+                `${nameUp} CAUGHT THE OOP 🤯\n\n${passer} with the perfect lob.`,
+                `${passerUp} FINDS ${nameUp} ABOVE THE RIM 🔥`,
+                `THE LOB CONNECTION 😱\n\n${passer} → ${ctx.player?.name}`,
+            ] : [
+                `${nameUp} CAUGHT THE OOP 😱🔥`,
+                `${nameUp} ABOVE THE RIM 🤯 THE CROWD HAS LOST IT`,
+                `SOMEBODY FOUND ${nameUp} FOR THE LOB 🔥`,
+            ];
+            return { content: variants[Math.floor(Math.random() * variants.length)] };
+        },
+    },
+
+    // ── FAST BREAK DUNK ───────────────────────────────────────────────────────
+    {
+        id: 'br_fastbreak',
+        handle: 'bleacher_report',
+        template: 'DYNAMIC',
+        priority: 91,
+        type: 'highlight',
+        condition: (ctx: SocialContext) => {
+            if (!ctx.player) return false;
+            const hl: any[] = (ctx.game as any).highlights ?? [];
+            return hl.some((h: any) => h.type === 'fastbreak_dunk' && h.playerId === ctx.player!.internalId);
+        },
+        resolve: (_: string, ctx: SocialContext) => {
+            const hl: any[]  = (ctx.game as any).highlights ?? [];
+            const pid         = ctx.player?.internalId;
+            const event       = hl.find((h: any) => h.type === 'fastbreak_dunk' && h.playerId === pid);
+            const nameUp      = (ctx.player?.name ?? '').toUpperCase();
+            const starter     = event?.assisterName as string | undefined;
+            const isSelf      = starter === ctx.player?.name;
+            const variants = (starter && !isSelf) ? [
+                `${starter.toUpperCase()} STARTS THE BREAK ➡️ ${nameUp} FINISHES 💨🔥`,
+                `TRANSITION DUNK 🏃‍♂️💨\n\n${starter} with the steal, ${ctx.player?.name} with the finish.`,
+                `${nameUp} IN THE OPEN FLOOR — NOBODY STOPPING HIM 😤`,
+            ] : [
+                `${nameUp} STEAL AND SCORE 💨🔥`,
+                `${nameUp} ON THE FASTBREAK — GOOD NIGHT 😱`,
+                `${nameUp} TOOK IT THE DISTANCE 🏃‍♂️🔥`,
+            ];
+            return { content: variants[Math.floor(Math.random() * variants.length)] };
+        },
+    },
+
+    // ── DETONATED / GENERIC DUNK (fallback when no highlight data) ────────────
     {
         id: 'br_detonated',
         handle: 'bleacher_report',
         template: 'DYNAMIC',
-        priority: 93,
+        priority: 88,
         type: 'highlight',
         condition: (ctx: SocialContext) => {
             if (!ctx.player || !ctx.stats) return false;
+            // Only fire if no specific dunk highlight already covered this player
+            const hl: any[] = (ctx.game as any).highlights ?? [];
+            const pid = ctx.player.internalId;
+            const hasSpecific = hl.some((h: any) =>
+                ['posterizer', 'alley_oop', 'fastbreak_dunk'].includes(h.type) && h.playerId === pid
+            );
+            if (hasSpecific) return false;
             const drb = getRating(ctx.player, 'drb');
             const spd = getRating(ctx.player, 'spd');
             const dnk = getRating(ctx.player, 'dnk');
             return drb > 65 && spd > 65 && dnk > 70 && ctx.stats.pts > 20;
         },
         resolve: (_: string, ctx: SocialContext) => {
-            const oppStats = ctx.game.homeTeamId === ctx.opponent?.id
-                ? ctx.game.homeStats : ctx.game.awayStats;
-            const oppPlayer = oppStats.sort((a: any, b: any) => b.pts - a.pts)[0];
-            const nameUp    = (ctx.player?.name ?? '').toUpperCase();
-            const oppUp     = (oppPlayer?.name ?? 'THE DEFENSE').toUpperCase();
-
+            const nameUp = (ctx.player?.name ?? '').toUpperCase();
             const variants = [
-                `${nameUp} JUST DETONATED ON ${oppUp} 😱💥`,
-                `${nameUp} PUT ${oppUp} ON A POSTER 📸💀`,
+                `${nameUp} JUST DETONATED ON THE DEFENSE 😱💥`,
+                `${nameUp} PUT SOMEONE ON A POSTER 📸💀`,
                 `OH MY GOODNESS ${nameUp} 🤯🔥`,
                 `${nameUp} WITH NO REGARD FOR HUMAN LIFE 😭`,
             ];
-            return {
-                content: variants[Math.floor(Math.random() * variants.length)],
-            };
-        },
-    },
-
-    // ── POSTER VARIATION ─────────────────────────────────────────────────────
-    {
-        id: 'br_poster',
-        handle: 'bleacher_report',
-        template: 'DYNAMIC',
-        priority: 85,
-        type: 'highlight',
-        condition: (ctx: SocialContext) => {
-            if (!ctx.player || !ctx.stats) return false;
-            const dnk = getRating(ctx.player, 'dnk');
-            const jmp = getRating(ctx.player, 'jmp');
-            return dnk > 80 && jmp > 75 && ctx.stats.pts > 15;
-        },
-        resolve: (_: string, ctx: SocialContext) => {
-            const name     = ctx.player?.name ?? 'Unknown';
-            const variants = [
-                `This ${name} poster doesn't even look real ✌️😭`,
-                `${name} just caught a body 💀📸`,
-                `Hang it in the Louvre. ${name} is different. 🖼️🔥`,
-                `${name} really did that in a real NBA game 🤯`,
-            ];
-            return {
-                content: variants[Math.floor(Math.random() * variants.length)],
-            };
+            return { content: variants[Math.floor(Math.random() * variants.length)] };
         },
     },
 
@@ -345,8 +419,8 @@ export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
                 if (teamPlayers.length < 2) return;
 
                 teamPlayers.sort((a: any, b: any) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
-                const p1_2k = convertTo2KRating(teamPlayers[0].overallRating ?? 0);
-                const p2_2k = convertTo2KRating(teamPlayers[1].overallRating ?? 0);
+                const p1_2k = convertTo2KRating(teamPlayers[0].overallRating ?? 0, teamPlayers[0].ratings?.[teamPlayers[0].ratings.length-1]?.hgt ?? 50, teamPlayers[0].ratings?.[teamPlayers[0].ratings.length-1]?.tp);
+                const p2_2k = convertTo2KRating(teamPlayers[1].overallRating ?? 0, teamPlayers[1].ratings?.[teamPlayers[1].ratings.length-1]?.hgt ?? 50, teamPlayers[1].ratings?.[teamPlayers[1].ratings.length-1]?.tp);
                 const avg2k = (p1_2k + p2_2k) / 2;
 
                 if (avg2k < 87) return;

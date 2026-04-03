@@ -3,7 +3,7 @@ import { convertTo2KRating } from '../../utils/helpers';
 /** Convert a player's BBGM overallRating to 2K scale (same formula the player searcher uses) */
 export const get2KRating = (player: any): number => {
     if (!player) return 60;
-    return convertTo2KRating(player.overallRating ?? 50, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50);
+    return convertTo2KRating(player.overallRating ?? 50, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp);
 };
 
 export const calculateAge = (player: any) => {

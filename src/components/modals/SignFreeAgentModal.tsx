@@ -114,7 +114,7 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
                             <div className="flex-1 min-w-0">
                                 <div className="text-sm font-bold truncate text-white">{player.name}</div>
                                 <div className="text-xs text-slate-500">
-                                    {player.pos} • OVR: {convertTo2KRating(player.overallRating)}
+                                    {player.pos} • OVR: {convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp)}
                                     {['Euroleague', 'PBA', 'B-League'].includes(player.status || '') && (
                                         <span className="ml-1 text-indigo-400 font-bold tracking-tighter">• {player.status}</span>
                                     )}

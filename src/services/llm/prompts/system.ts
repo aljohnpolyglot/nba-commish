@@ -107,11 +107,16 @@ The 'TOP PLAYERS' list and team rosters in the League Context are the ABSOLUTE s
 Violation of this rule corrupts the game simulation. It is unacceptable.
 
 Rules for Social Media Posts:
-- Generate 4-8 social posts per day.
+- Follow the volume instruction in each prompt (10–20 posts per single-day simulation). Never undershoot.
 - Sources are 'TwitterX' or 'Feddit'.
-- Handles should be realistic or funny (e.g., @wojespn, @ShamsCharania, @LeBronFan69, @AngryOwner).
+- Handles should be realistic or funny (e.g., @ShamsCharania, @HoopHeads, @LeBronFan69, @AngryOwner, @nba_insider99).
 - Content should be reactive to the commissioner's actions or general league drama.
 - Use 'playerPortraitUrl' if the post is from a known player.
+
+CRITICAL — INSIDER HANDLES (READ CAREFULLY):
+- @ShamsCharania (The Athletic): TRANSACTIONAL ONLY. He reports signings, trades, suspensions, and league-office moves. He does NOT post opinion takes, league analysis, or "state of the league" commentary. Example: "Sources: [Team] signing [Player]." NOT: "This is a pivotal moment for the NBA."
+- @wojespn: RETIRED. Do NOT generate posts from @wojespn. He left ESPN in 2023. Use @ShamsCharania, @EspnNBA, or @AdamKalinsky for ESPN coverage.
+- For opinion pieces, analysis, or commentary: use handles like @BasketballInsider, @HoopCentral, @NBAAnalysis, @ESPNScoop, or fan accounts.
 
 Rules for Stat Changes:
 - Approvals are 0-100.
@@ -138,9 +143,17 @@ HYPNOSIS & EXECUTIVE OVERRIDE (INTERNAL):
 
 Rules for Specific Actions:
 - 'RIG_LOTTERY': The user is rigging the draft lottery. Ensure the outcome reflects this. Legacy penalty is high.
-- 'SUSPEND_PERSON': The user is suspending a specific person. Include a social post from a major insider (e.g., @wojespn or @ShamsCharania) breaking the news first, before other reactions.
-- 'DRUG_TEST_PERSON': The user is ordering a drug test for a specific person.
-- 'INVITE_DINNER': The user is inviting a specific person to dinner.
+- 'SUSPEND_PERSON': The user is suspending a specific person. Include a social post from @ShamsCharania breaking the news first, before other reactions.
+- 'DRUG_TEST_PERSON': The user is ordering a drug test for a specific person. Make it feel targeted and suspicious. Generate a reaction from the player via chat DM.
+- 'FINE_PERSON': The Commissioner issued a fine. Generate a chat DM from the fined person reacting (angry, confused, or resigned), plus social posts. Reference the specific reason and amount.
+- 'BRIBE_PERSON': A secret bribe was offered. The narrative should feel covert — maybe a vague social post from a "source" hinting at back-channel dealings. Generate a chat DM from the target reacting privately.
+- 'GIVE_MONEY': Commissioner disbursed funds to someone. Generate a reaction DM from the recipient and social posts reacting to the news if it leaks.
+- 'INVITE_DINNER': The Commissioner hosted a private dinner or movie night. CRITICAL rules:
+  1. The 'discussionTopic' in the payload is WHAT WAS ACTUALLY DISCUSSED — use it explicitly. Do NOT write "sparking curiosity about potential topics." REPORT the topic directly.
+  2. A chat DM (senderRole: 'Player') from the guest MUST be included — casual, personal, referencing the actual topic discussed.
+  3. Generate 4-6 social posts — some insiders with "inside info" on the topic, fans reacting, one speculation take. All must reference the ACTUAL discussion topic.
+  4. If the optional note says something specific (e.g. "contract extension", "trade talk", "league matters"), the coverage MUST reflect that specific topic.
+- 'ENDORSE_HOF': Commissioner endorsed a retired player for the Hall of Fame. CRITICAL: Generate a news article that recaps the player's SPECIFIC career achievements — All-Star selections, championship runs, iconic performances, legacy. Use your knowledge of well-known players. Do NOT write generic "debate about HOF criteria." Include reactions from fans and former teammates.
 - 'ALL_STAR_CHANGES': The user is modifying All-Star Weekend. Be aware of new formats like 'USA vs World' and the highly controversial/satirical 'Blacks vs Whites'. If 'Blacks vs Whites' is selected, generate extreme social media outrage, think-pieces about the "end of civilization," and intense debate. If the 'Celebrity Game' is disabled, fans might be relieved or outraged depending on the current league pulse. If specific events like the '1v1 Tournament' or 'HORSE' are enabled after being absent, generate hype about the "return of pure basketball" or skepticism about the format.
 
 The 'consequence' object is CRITICAL. It must contain:
@@ -167,7 +180,8 @@ CONTEXT-DEPENDENT — Owner or GM:
 
 ALWAYS EMAIL (senderRole = 'Owner', 'GM', 'General Manager', 'Sponsor', 'Media', 'League Office', 'Referee', 'Executive', 'Press'):
 - Professional, formal tone
-- NEVER open with "Dear Commissioner" or "Hi Commissioner" — use their actual name: "Commissioner \${commissionerName}," or go straight to the subject
+- NEVER open with "Dear Commissioner", "Hi Commissioner", "I hope this email finds you well", "I hope you're doing well", or any variant of that filler phrase
+- Go straight to the point: use their actual name mid-sentence, or open directly with the subject matter (e.g. "Regarding the recent suspension of..." or "Following today's announcement...")
 - Clear subject line
 - Proper sign-off with sender name and organization
 - Examples: sponsorship proposals, official complaints, trade requests, disciplinary notices
@@ -177,4 +191,38 @@ NEVER make a Player or Coach send a formal email — they always DM.
 Referees ALWAYS email — they never DM the Commissioner.
 Sponsors ALWAYS email — never DM.
 
-Generate 1-3 new emails and 1-3 news items per day.`;
+CRITICAL — GM/OWNER EMAIL RELEVANCE:
+- GMs and Owners ONLY email about matters DIRECTLY related to their own franchise.
+- A GM from Team X should NEVER email about a different team's player signing, trade, or HOF nomination unless it directly impacts their roster or salary cap.
+- If an action involves Player Y of Team Z, only Team Z's GM/Owner or Player Y themselves should email.
+- Irrelevant GMs emailing about unrelated matters is immersion-breaking. Do NOT do it.
+
+Generate 0-2 new emails per action (fewer, higher-quality emails beat quantity). 0 emails is fine if nothing relevant happened.
+
+CRITICAL — ANTI-GENERIC WRITING RULES:
+These rules override all defaults. Generic, boring output is a FAILURE.
+
+BAD tweet examples (NEVER write like this):
+- "Love the signing! He's exactly what we needed."
+- "The Commissioner made a bold move today. This will generate buzz."
+- "Great decision by the league. This is exciting news!"
+- "Sources: GSW are signing Kendrick Nunn, sources tell me."
+- "This is a pivotal moment for the franchise going forward."
+- "Fans are reacting to the Commissioner's latest decision."
+
+GOOD tweet examples (ALWAYS aim for this):
+- "@fan_account: lmao that fine was for WHAT the commissioner is wildin rn"
+- "@insider: The optics of a private dinner between [Commissioner] and [Player]'s agent 2 days before the trade deadline... something is cooking"
+- "@ShamsCharania: [Player], returning to the NBA after 2 seasons in the Euroleague, has agreed to a 1-year deal with the [Team], sources tell The Athletic."
+- "@HeatFan22: [Player] went 4-18 and everyone acts shocked but has anyone watched [Opponent]'s defense this week??"
+- "@analyst: The [Team] front office is NOT happy. You can't fine the coach AND the star and expect everyone to just smile. Something's gotta give."
+
+RULES FOR EVERY TWEET:
+1. Every tweet must have a SPECIFIC take, opinion, or piece of information — not just a description of what happened.
+2. Fan tweets sound like real humans — use slang, lowercase, abbreviations, emojis naturally.
+3. Analyst/insider tweets have a specific ANGLE — not "this is significant" but WHY it's significant and what it means.
+4. @ShamsCharania is TRANSACTION ONLY: "[Player] is signing with [Team], sources tell The Athletic." No opinions, no hype, just facts. Always reference player context (returning from abroad, career situation, etc.).
+5. If the Commissioner did something controversial (fine, dinner with a player's agent, suspension, bribe), at least ONE tweet MUST question the motive or call them out.
+6. NEVER write two tweets that say essentially the same thing from different accounts.
+7. If the action involves a specific player or team, tweets must reference ACTUAL details — their record, recent games, contract situation, personality — not vague references.`;
+

@@ -10,6 +10,7 @@ import { SettingsManager } from '../../../services/SettingsManager';
 import { GameSimulatorScreen } from '../../shared/GameSimulatorScreen';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
 import { WatchGamePreviewModal } from '../../modals/WatchGamePreviewModal';
+import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
 
 // Sub-components
 import { AllStarDayView } from './components/AllStarDayView';
@@ -33,6 +34,7 @@ export const ScheduleView: React.FC = () => {
   const [standingsConference, setStandingsConference] = useState<'East' | 'West'>('East');
   const [allStarModalTab, setAllStarModalTab] = useState<string | null>(null);
   const [contestModalType, setContestModalType] = useState<'dunk' | 'three' | null>(null);
+  const [boxScoreClickedPlayer, setBoxScoreClickedPlayer] = useState<NBAPlayer | null>(null);
   
   const settings = useMemo(() => SettingsManager.getSettings(), [state.isProcessing]);
   const MAX_SIM_DAYS = useMemo(() => {
@@ -193,7 +195,9 @@ export const ScheduleView: React.FC = () => {
   const executeWatchGame = async (result: any) => {
     if (!watchingGame) return;
     const gameId = watchingGame.gid;
+    const currentRig = riggedForTid; // capture before clearing state
     setWatchingGame(null);
+    setRiggedForTid(undefined);
     setViewMode('day');
 
     // Save the live game result immediately (no LLM, marks game as played)
@@ -205,7 +209,13 @@ export const ScheduleView: React.FC = () => {
     // Advance the day — exhibition games (All-Star weekend) skip this
     const isExhibition = watchingGame.homeTid < 0;
     if (!isExhibition) {
-      await dispatchAction({ type: 'ADVANCE_DAY', payload: { watchedGameResult: result } } as any);
+      await dispatchAction({
+        type: 'ADVANCE_DAY',
+        payload: {
+          watchedGameResult: result,
+          ...(currentRig !== undefined ? { riggedForTid: currentRig } : {}),
+        }
+      } as any);
     }
   };
 
@@ -440,6 +450,15 @@ export const ScheduleView: React.FC = () => {
             awayTeam={getTeamForGame(selectedBoxScoreGame.awayTid, state.teams)}
             players={state.players}
             onClose={() => setSelectedBoxScoreGame(null)}
+            onPlayerClick={p => setBoxScoreClickedPlayer(p)}
+          />
+        )}
+
+        {boxScoreClickedPlayer && (
+          <PlayerRatingsModal
+            player={boxScoreClickedPlayer}
+            season={state.leagueStats?.year ?? 2026}
+            onClose={() => setBoxScoreClickedPlayer(null)}
           />
         )}
       </AnimatePresence>

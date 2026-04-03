@@ -20,7 +20,7 @@ export const generateTradeContext = (
             .sort((a, b) => (b?.overallRating || 0) - (a?.overallRating || 0))
             .map(p => {
                 const age = p.born?.year ? new Date().getFullYear() - p.born.year : 25;
-                const rating2k = convertTo2KRating(p.overallRating || 0);
+                const rating2k = convertTo2KRating(p.overallRating || 0, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp);
                 const height = p.hgt ? formatHeight(p.hgt) : 'Unknown';
                 return `  - ${p.name} #${p.jerseyNumber || '?'} (${p.pos}, ${height}, Age: ${age}, Rating: ${rating2k})`;
             })
@@ -90,7 +90,7 @@ export const generateLeagueContext = (
         .map(p => {
             const team = teams.find(t => t.id === p.tid);
             const age = p.born?.year ? new Date().getFullYear() - p.born.year : 25;
-            const rating2k = convertTo2KRating(p.overallRating || 0);
+            const rating2k = convertTo2KRating(p.overallRating || 0, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp);
             const height = p.hgt ? formatHeight(p.hgt) : 'Unknown';
             return `${p.name} #${p.jerseyNumber || '?'} (${p.pos}, ${height}, ${team ? team.abbrev : 'FA'}, Age: ${age}, Rating: ${rating2k})`;
         })
@@ -132,7 +132,7 @@ export const generateChristmasContext = (
             .slice(0, 8) // Top 8 players for context
             .map(p => {
                 const age = p.born?.year ? new Date().getFullYear() - p.born.year : 25;
-                const rating2k = convertTo2KRating(p.overallRating || 0);
+                const rating2k = convertTo2KRating(p.overallRating || 0, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp);
                 return `    - ${p.name} (${p.pos}, Age: ${age}, OVR: ${rating2k})`;
             })
             .join('\n');

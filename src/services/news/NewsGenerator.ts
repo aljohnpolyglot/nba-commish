@@ -36,6 +36,7 @@ export class NewsGenerator {
       headline: this.interpolate(headlineTpl, vars),
       content: this.interpolate(contentTpl, vars),
       date: dateString,
+      category,
       isNew: true,
       image,
       newsType: resolvedType,

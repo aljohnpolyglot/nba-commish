@@ -18,7 +18,7 @@ export const ForceSignModal: React.FC<ForceSignModalProps> = ({ player, teams, o
 
   const currentYear = new Date().getFullYear();
   const age = player.born?.year ? currentYear - player.born.year : player.age || 0;
-  const ovr = convertTo2KRating(player.overallRating);
+  const ovr = convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp);
 
   const filteredTeams = useMemo(() => {
     return teams

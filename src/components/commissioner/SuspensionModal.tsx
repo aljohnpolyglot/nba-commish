@@ -31,7 +31,7 @@ const SuspensionModal: React.FC<SuspensionModalProps> = ({ player, onClose, onCo
             <div className="flex-1">
               <p className="text-sm text-red-400 font-semibold">PLAYER DISCIPLINE</p>
               <h2 className="text-2xl font-bold mt-1 text-white">Suspend {player.name}</h2>
-              <p className="text-sm text-slate-400 mt-1">{player.pos} | {convertTo2KRating(player.overallRating)} 2K OVR</p>
+              <p className="text-sm text-slate-400 mt-1">{player.pos} | {convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp)} 2K OVR</p>
             </div>
             <button onClick={onClose} className="text-slate-400 hover:text-white ml-4 text-2xl leading-none">&times;</button>
           </div>

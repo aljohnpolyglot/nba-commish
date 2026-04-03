@@ -41,6 +41,14 @@ Generate:
    - **ORGANIZATION:** Make sure to include the 'organization' field in the email schema (e.g., "Klutch Sports", "Los Angeles Lakers") so the correct email domain can be generated.
 4. If the player is international, include reactions from their home country.
 
+REAL-WORLD PLAYER KNOWLEDGE (CRITICAL):
+Use your training knowledge to enrich coverage of this signing. If you know this player from real-world basketball:
+- Mention their most notable career achievements (FIBA World Cup, Olympic Games, Euroleague titles, All-Star appearances, etc.)
+- If they are an international star known for a specific tournament performance (e.g., helped their national team beat the USA, won a FIBA title, starred at the Olympics), that backstory MUST be included in at least one news item and one social post
+- Example: A German player known for the 2023 FIBA World Cup → reference the World Cup, Germany's run, his role in it
+- Example: A Euroleague MVP → reference his Euroleague dominance
+- If you know nothing specific about the player, use the Scouting Report attributes to describe their game style instead
+
 CRITICAL INSTRUCTIONS TO PREVENT HALLUCINATIONS:
 - You MUST use the provided signing details as the ABSOLUTE SOURCE OF TRUTH.
 - DO NOT invent, hallucinate, or assume any other trades, signings, injuries, or roster moves that are not explicitly stated.

@@ -131,9 +131,12 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
           </div>
           <div className="flex flex-col">
             <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter">{team.name}</h3>
-            <div className={`flex items-center gap-2 mt-1 ${isHome ? 'justify-end' : 'justify-start'}`}>
+            <div className={`flex items-center gap-3 mt-1 ${isHome ? 'justify-end' : 'justify-start'}`}>
               <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">OVR</span>
               <span className="text-2xl font-black font-mono text-indigo-400">{ovr}</span>
+              {team.id >= 0 && (
+                <span className="text-sm font-bold text-slate-400 font-mono">{team.wins ?? 0}–{team.losses ?? 0}</span>
+              )}
             </div>
           </div>
         </div>
@@ -142,7 +145,7 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
           <div className="w-full space-y-3">
             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 border-b border-white/10 pb-2">Projected Starters</h4>
             {starters.map((player) => {
-              const rating = convertTo2KRating(player.overallRating || (player as any).ovr || (player as any).rating || 60, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50);
+              const rating = convertTo2KRating(player.overallRating || (player as any).ovr || (player as any).rating || 60, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp);
               const playerName = player.name ?? (player as any).playerName ?? 'Player';
               const playerId = player.internalId ?? (player as any).playerId ?? Math.random().toString();
               const nbaId = (player as any).nbaId || extractNbaId(player.imgURL || "", playerName);

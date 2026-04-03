@@ -1,3 +1,4 @@
+//proballersplayerlst
 (async () => {
     console.log("🚀 SCRAPER ACB 25-26 ESTRICTO (Sólo estadísticas de Liga Endesa este año)...");
     const players = [];

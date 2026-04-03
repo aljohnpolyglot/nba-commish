@@ -14,6 +14,10 @@ import { SaveManager } from './services/SaveManager';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { fetchStatmuseData } from './data/social/statmuseImages';
 import { fetchAvatarData } from './data/avatars';
+import { fetchCharaniaPhotos } from './services/social/charaniaphotos';
+import { fetchNBAMemes } from './services/social/nbaMemesFetcher';
+import { fetchInjuryData } from './services/injuryService';
+import { fetchPlayerInjuryData } from './data/playerInjuryData';
 
 function GameLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -24,6 +28,10 @@ function GameLayout() {
   useEffect(() => {
     fetchStatmuseData();
     fetchAvatarData();
+    fetchCharaniaPhotos();
+    fetchNBAMemes();
+    fetchInjuryData();
+    fetchPlayerInjuryData();
   }, []);
 
   // Auto-save effect (Debounced)

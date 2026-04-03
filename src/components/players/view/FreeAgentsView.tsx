@@ -7,6 +7,7 @@ import { ForceSignModal } from './ForceSignModal';
 import { PlayerActionsModal } from '../../central/view/PlayerActionsModal';
 import { PlayerBioView } from '../../central/view/PlayerBioView';
 import { PersonSelectorModal } from '../../modals/PersonSelectorModal';
+import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
 import ContactModal from '../../ContactModal';
 import { getCountryFromLoc } from '../../../utils/helpers';
 import type { NBAPlayer } from '../../../types';
@@ -22,7 +23,7 @@ const MARKET_POOLS = [
 const POSITIONS = ['All', 'PG', 'SG', 'SF', 'PF', 'C'];
 
 export const FreeAgentsView: React.FC = () => {
-  const { state, dispatchAction } = useGame();
+  const { state, dispatchAction, healPlayer } = useGame();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPool, setSelectedPool] = useState('all');
   const [selectedPosition, setSelectedPosition] = useState('All');
@@ -37,6 +38,7 @@ export const FreeAgentsView: React.FC = () => {
   const [selectedPlayerForSign, setSelectedPlayerForSign] = useState<NBAPlayer | null>(null);
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
   const [viewingBioPlayer, setViewingBioPlayer] = useState<NBAPlayer | null>(null);
+  const [viewingRatingsPlayer, setViewingRatingsPlayer] = useState<NBAPlayer | null>(null);
   const [personSelectorOpen, setPersonSelectorOpen] = useState(false);
   const [personSelectorType, setPersonSelectorType] = useState<'contact' | 'bribe' | 'dinner' | 'movie' | 'suspension' | 'waive' | 'sabotage' | 'general'>('general');
   const [preSelectedContact, setPreSelectedContact] = useState<any>(null);
@@ -152,6 +154,12 @@ export const FreeAgentsView: React.FC = () => {
 
     if (actionType === 'view_bio') {
       setViewingBioPlayer(selectedActionPlayer);
+      setSelectedActionPlayer(null);
+      return;
+    }
+
+    if (actionType === 'view_ratings') {
+      setViewingRatingsPlayer(selectedActionPlayer);
       setSelectedActionPlayer(null);
       return;
     }
@@ -420,6 +428,7 @@ export const FreeAgentsView: React.FC = () => {
           player={selectedActionPlayer}
           onClose={() => setSelectedActionPlayer(null)}
           onActionSelect={handleActionSelect}
+          onHeal={() => { healPlayer(selectedActionPlayer.internalId); setSelectedActionPlayer(null); }}
         />
       )}
 
@@ -459,6 +468,14 @@ export const FreeAgentsView: React.FC = () => {
             setContactModalPerson(null);
           }}
           isLoading={state.isProcessing}
+        />
+      )}
+
+      {viewingRatingsPlayer && (
+        <PlayerRatingsModal
+          player={viewingRatingsPlayer}
+          season={state.leagueStats?.year ?? 2026}
+          onClose={() => setViewingRatingsPlayer(null)}
         />
       )}
 

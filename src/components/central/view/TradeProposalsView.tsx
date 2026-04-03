@@ -26,7 +26,7 @@ const StatusPill: React.FC<{ status: TradeProposal['status'] }> = ({ status }) =
 // ── Asset chip ────────────────────────────────────────────────────────────────
 
 const PlayerChip: React.FC<{ player: NBAPlayer }> = ({ player }) => {
-  const rating = convertTo2KRating(player.overallRating ?? 60);
+  const rating = convertTo2KRating(player.overallRating ?? 60, player.ratings?.[player.ratings.length-1]?.hgt ?? 50, player.ratings?.[player.ratings.length-1]?.tp);
   return (
     <div className="flex items-center gap-2 bg-white/5 border border-white/8 rounded-lg px-2.5 py-1.5">
       <div className="w-7 h-7 rounded-full bg-slate-800 overflow-hidden flex-shrink-0">

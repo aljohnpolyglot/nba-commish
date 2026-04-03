@@ -5,6 +5,7 @@ import { getScaledRating, R } from './helpers';
 import { getVariance } from '../utils';
 import { getNightProfile } from './nightProfile';
 import { SimulatorKnobs, KNOBS_DEFAULT } from '../SimulatorKnobs';
+import { playThroughInjuriesFactor, injurySeverityLevel } from '../playThroughInjuriesFactor';
 
 export function generateStatsForTeam(
   team: Team,
@@ -71,6 +72,7 @@ export function generateStatsForTeam(
   const rHelper = (p: Player, k: string) => Math.max(rFloor, R(p, k, season));
 
   // ── Scoring Potential ──────────────────────────────────────────────────
+  const ptiLevel = knobs.playThroughInjuries ?? 0;
   const scoringPotentials = rotation.map((p, i) => {
     const oiq = rHelper(p, 'oiq'), drb = rHelper(p, 'drb'), ins = rHelper(p, 'ins');
     const fg  = rHelper(p, 'fg'),  tp  = rHelper(p, 'tp'),  dnk = rHelper(p, 'dnk');
@@ -80,7 +82,17 @@ export function generateStatsForTeam(
     const inside  = ins * 0.6 + dnk * 0.4;
     const outside = fg  * 0.5 + tp  * 0.5;
     const skill   = (Math.max(inside, outside) * 1.5 + Math.min(inside, outside) * 0.5) / 2;
-    return Math.pow(usage * (skill / 100), 1.25);
+    const raw = Math.pow(usage * (skill / 100), 1.25);
+
+    // Play-through-injuries: reduce performance for players with active injuries.
+    // The effective penalty = min(injury severity, team's playThroughInjuries setting).
+    const injGames = p.injury?.gamesRemaining ?? 0;
+    if (injGames > 0 && ptiLevel > 0) {
+      const severity  = injurySeverityLevel(injGames);
+      const effective = Math.min(severity, ptiLevel);
+      return raw * playThroughInjuriesFactor(effective);
+    }
+    return raw;
   });
   const totalScoringPotential = scoringPotentials.reduce((a, b) => a + b, 0);
 
@@ -151,7 +163,7 @@ export function generateStatsForTeam(
     // TRUE BELL CURVE FT%: An 80% shooter should occasionally shoot 60% or 100% in a single game.
     // ftSkill nudges % up on hot nights (Torch: +12%) and down on cold nights (Brickfest: -18%).
     const ftpBase = (ft / 100) * 0.50 + 0.42;
-    let gameFtp = ftpBase * nightProfile.ftSkill * getVariance(1.0, 0.15) * (1.0 + (nightProfile.efficiencyMult - 1.0) * 0.2);
+    let gameFtp = ftpBase * nightProfile.ftSkill * getVariance(1.0, 0.15) * (1.0 + (nightProfile.efficiencyMult - 1.0) * 0.2) * (knobs.ftEfficiencyMult ?? 1.0);
 
     // Bell curve cap — naturally creates authentic 6-for-6 or 8-for-8 nights
     gameFtp = Math.max(0.20, Math.min(1.0, gameFtp));
@@ -213,10 +225,16 @@ if (tpComposite >= 20 && tpComposite <= 60) {
       threePointRate = Math.min(personalCap, threePointRate * knobs.threePointRateMult);
     }
 
-    const threePctBase = (weights.threePmBase || 0.30) + (tp / 100) * (weights.threePmScale || 0.15);
+    // Bad-shooter floor penalty: players with tp < 50 get a downward correction
+    // so Giannis (tp≈20) shoots ~20% not 33%, without touching league average.
+    // Each tp point below 50 costs 0.45pp — max ~22pp reduction at tp=0.
+    const tpFloorPenalty = tp < 50 ? (50 - tp) * 0.0045 : 0;
+    const threePctBase = Math.max(0.05,
+      (weights.threePmBase ?? 0.30) + (tp / 100) * (weights.threePmScale ?? 0.15) - tpFloorPenalty
+    );
     // Perimeter D modifier: elite (+) tanks 3PT%, bad (-) boosts it. Clamp to sane range.
     const perimPenalty = Math.min(1.20, Math.max(0.75, 1.0 - perimDelta * 0.008));
-    const threePctEffective = Math.max(0.05, threePctBase * nightProfile.efficiencyMult * perimPenalty * knobs.efficiencyMultiplier);
+    const threePctEffective = Math.max(0.04, threePctBase * nightProfile.efficiencyMult * perimPenalty * knobs.efficiencyMultiplier);
 
     // Calculate 2PT efficiency
     const isIn = tp < 40;
@@ -236,9 +254,11 @@ if (tpComposite >= 20 && tpComposite <= 60) {
     }
     threePa = Math.max(0, threePa);
 
-    // Calculate makes
-    let threePm = Math.round(threePa * threePctEffective * getVariance(1.0, 0.12));
-    threePm = Math.min(threePm, threePa, Math.floor(fgPts / 3));
+    // Calculate makes — wider variance (0.28 σ) allows real cold/hot nights:
+    // Giannis 3/3 at 21% base: round(0.63 × N(1,0.28)) → 0 or 1 depending on roll.
+    // Good shooters 10/10 at 38%: round(3.8 × N(1,0.28)) → 2–6 range realistically.
+    let threePm = Math.round(threePa * threePctEffective * getVariance(1.0, 0.28));
+    threePm = Math.max(0, Math.min(threePm, threePa, Math.floor(fgPts / 3)));
 
     // Loose shaver: allow record-breaking nights (13+ makes) but taper slightly
     if (threePm >= 13 && Math.random() < 0.40) {
@@ -335,7 +355,7 @@ if (tpComposite >= 20 && tpComposite <= 60) {
   // Previously: usageProxy * 4 + constants gave everyone base ~140, ratio only 1.6:1 → all capped at 2.
   // Steal/pass pressure: positive = elite (more TOV), negative = bad defense (fewer TOV)
   const stealPressure = oppDefProfile ? (oppDefProfile.steal + oppDefProfile.passPerception - 130) / 15 : 0;
-  const LEAGUE_AVG_TOV = Math.round(Math.max(10, 14 + stealPressure) * (48 + otCount * 5) / 48);
+  const LEAGUE_AVG_TOV = Math.round(Math.max(10, 14 + stealPressure) * (48 + otCount * 5) / 48 * (knobs.tovMult ?? 1.0));
 // was 13 — bumps team avg from 12 to 14-15
   const tovFactors = rotation.map((_, i) => {
     const usageProxy = totalScoringPotential > 0

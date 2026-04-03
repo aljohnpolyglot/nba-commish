@@ -48,12 +48,12 @@ export class StarterService {
     const SUPERSTAR_THRESHOLD = 87; // 2K 87+ = franchise cornerstone; hgt now passes BBGM attribute so no bio-inches inflation
     const [stars, rolePlayers] = teamPlayers.reduce<[Player[], Player[]]>(
       ([s, r], p) =>
-        convertTo2KRating(p.overallRating, this.getScaledRating(p, 'hgt', season)) >= SUPERSTAR_THRESHOLD ? [[...s, p], r] : [s, [...r, p]],
+        convertTo2KRating(p.overallRating, this.getScaledRating(p, 'hgt', season), this.getScaledRating(p, 'tp', season)) >= SUPERSTAR_THRESHOLD ? [[...s, p], r] : [s, [...r, p]],
       [[], []]
     );
 
-    stars.sort((a, b) => convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season)) - convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season)));
-    rolePlayers.sort((a, b) => convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season)) - convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season)));
+    stars.sort((a, b) => convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season), this.getScaledRating(b, 'tp', season)) - convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season), this.getScaledRating(a, 'tp', season)));
+    rolePlayers.sort((a, b) => convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season), this.getScaledRating(b, 'tp', season)) - convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season), this.getScaledRating(a, 'tp', season)));
 
     const lineup: Player[] = [...stars.slice(0, 5)];
 
@@ -115,12 +115,12 @@ export class StarterService {
     ): void => {
       const benchPool = teamPlayers
         .filter(p => !lineup.includes(p))
-        .sort((a, b) => convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season)) - convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season)));
+        .sort((a, b) => convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season), this.getScaledRating(b, 'tp', season)) - convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season), this.getScaledRating(a, 'tp', season)));
       const candidate = benchPool.find(swapInFn);
       if (!candidate) return;
       const victim = [...lineup]
-        .filter(p => convertTo2KRating(p.overallRating, this.getScaledRating(p, 'hgt', season)) < SUPERSTAR_THRESHOLD && swapOutFn(p))
-        .sort((a, b) => convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season)) - convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season)))[0];
+        .filter(p => convertTo2KRating(p.overallRating, this.getScaledRating(p, 'hgt', season), this.getScaledRating(p, 'tp', season)) < SUPERSTAR_THRESHOLD && swapOutFn(p))
+        .sort((a, b) => convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season), this.getScaledRating(a, 'tp', season)) - convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season), this.getScaledRating(b, 'tp', season)))[0];
       if (!victim) return;
       lineup.splice(lineup.indexOf(victim), 1, candidate);
     };
@@ -162,7 +162,7 @@ export class StarterService {
 
     const benchPool = teamPlayers
       .filter(p => !finalStarters.includes(p))
-      .sort((a, b) => convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season)) - convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season)));
+      .sort((a, b) => convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season), this.getScaledRating(b, 'tp', season)) - convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season), this.getScaledRating(a, 'tp', season)));
 
     const benchLineup: Player[] = [];
     const notInBench = () => benchPool.filter(p => !benchLineup.includes(p));

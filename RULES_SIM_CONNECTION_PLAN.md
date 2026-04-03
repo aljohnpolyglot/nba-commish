@@ -25,6 +25,19 @@ passed to `StatGenerator.generateStatsForTeam` + `generateCoordinatedStats`.
 | `goaltendingEnabled = false` | `blockRateMult` ×1.6, `efficiencyMultiplier` ×0.93 | Defenders swat freely at rim → more blocks, lower eFG% |
 | `chargingEnabled = false` | `rimRateMult` ×1.12 | No charge calls → aggressive rim drives |
 | `noDribbleRule = true` | `paceMultiplier` ×0.72, `rimRateMult` ×0.65, `threePointRateMult` ×1.40 | Catch-and-shoot only → slow/perimeter game |
+| `shotClockResetOffensiveRebound = false` | `paceMultiplier` ×0.88 | Off-reb doesn't reset clock → fewer possessions |
+| `backcourtTimerEnabled = false` | `paceMultiplier` ×0.90, `tovMult` ×0.85 | No backcourt pressure → slower game, fewer forced TOs |
+| `backToBasketTimerEnabled = true` | `lowPostRateMult` ×0.90 | Post timer forces quicker decisions → fewer deep post plays |
+| `illegalZoneDefenseEnabled = false` | `rimRateMult` ×0.90, `threePointRateMult` ×1.10 | Zone clogs paint → fewer drives, more perimeter |
+| `illegalZoneDefenseEnabled = true` | `rimRateMult` ×1.05 | Mandatory man-to-man → more dribble penetration (guard — NBA default already here) |
+| `travelingEnabled = false` | `tovMult` ×0.88 | No travel calls → fewer turnovers |
+| `doubleDribbleEnabled = false` | `tovMult` ×0.90 | No double-dribble calls → fewer turnovers |
+| `backcourtViolationEnabled = false` | `tovMult` ×0.92 | No backcourt calls → fewer turnovers |
+| `freeThrowDistance` (default 15 ft) | `ftEfficiencyMult = clamp(15/dist, 0.65–1.0)` | Farther line → harder shots → lower FT% |
+| `rimHeight` (default 10 ft) | `efficiencyMultiplier` × `clamp((10/h)^1.5, 0.5–1.0)` | Taller rim → lower overall FG efficiency |
+| `courtLength` (default 94 ft) | `paceMultiplier` × `(94/len)^0.4`, `tovMult` × `(94/len)^0.2` | Bigger court → slower pace, more spacing → fewer TOs |
+| `baselineLength` (default 50 ft) | `paceMultiplier` × `(50/baseline)^0.3` | Wider court → slightly slower pace |
+| `keyWidth` (default 16 ft) | `lowPostRateMult` × `(16/w)^0.5`, `rimRateMult` × `(16/w)^0.3` | Wider key → harder to camp paint → fewer post/rim plays |
 
 **Note:** All rule multipliers stack with each other (they multiply, not add).
 Combined extreme rules (e.g. no shot clock + no 3PT + no goaltending) produce
@@ -41,23 +54,18 @@ intentionally chaotic results — that's the point.
   `overtimeType`, `maxOvertimes`, `overtimeTieBreaker`) — engine uses its own OT logic
 
 ### Timing Violations
-- `shotClockResetOffensiveRebound` — shot clock reset rule not wired
-- `backcourtTimerEnabled/Value` — backcourt timer not wired
 - `inboundTimerEnabled/Value` — inbound timer not wired
-- `backToBasketTimerEnabled/Value` — back-to-basket timer not wired
 - `offensiveThreeSecondValue` / `defensiveThreeSecondValue` — value duration not used (only enabled/disabled)
-- `illegalZoneDefenseEnabled` — not wired
+- `backcourtTimerValue` — timer value duration not used (only enabled/disabled)
+- `backToBasketTimerValue` — timer value duration not used (only enabled/disabled)
 
 ### Court Violations
-- `travelingEnabled` / `doubleDribbleEnabled` — flavor only
 - `basketInterferenceEnabled` / `kickedBallEnabled` — flavor only
-- `backcourtViolationEnabled` — flavor only
 
 ### Scoring
 - `fourPointLine` / `fourPointLineDistance` — no 4PT attempts generated
 - `dunkValue` / `midrangeValue` — sim uses fixed point values (2/3)
 - `heaveRuleEnabled` / `halfCourtShotValue` — not wired
-- Physical court dimensions (`freeThrowDistance`, `rimHeight`) — flavor only
 
 ### Fouls & Limits
 - `foulOutLimit` / `teamFoulPenalty` — not tracked per-player during sim
@@ -70,9 +78,6 @@ intentionally chaotic results — that's the point.
 - `maxPlayersOnCourt` — hardcoded 5-on-5
 - `substitutionLimitEnabled` / `maxSubstitutions` — not wired
 - `multiballEnabled` / `multiballCount` — flavor only
-
-### Court Geometry
-- `courtLength` / `baselineLength` / `keyWidth` — flavor only
 
 ---
 

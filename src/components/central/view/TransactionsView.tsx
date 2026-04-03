@@ -214,7 +214,7 @@ export const TransactionsView: React.FC = () => {
                         </div>
                       </div>
                       <p className="text-slate-200 leading-relaxed font-medium">
-                        {entry.text}
+                        {entry.text || `${style.label} transaction recorded.`}
                       </p>
                     </div>
 

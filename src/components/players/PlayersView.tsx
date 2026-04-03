@@ -4,15 +4,17 @@ import { UniversalPlayerSearcher } from '../central/view/UniversalPlayerSearcher
 import { NBAPlayer, Contact } from '../../types';
 import { PlayerActionsModal } from '../central/view/PlayerActionsModal';
 import { PlayerBioView } from '../central/view/PlayerBioView';
+import { PlayerRatingsModal } from '../modals/PlayerRatingsModal';
 import ContactModal from '../ContactModal';
 import { PersonSelectorModal } from '../modals/PersonSelectorModal';
 
 export const PlayersView: React.FC = () => {
-  const { state, dispatchAction, navigateToTeam } = useGame();
+  const { state, dispatchAction, navigateToTeam, healPlayer } = useGame();
 
   // Modals State
   const [selectedPlayerForActions, setSelectedPlayerForActions] = useState<NBAPlayer | null>(null);
   const [viewingBioPlayer, setViewingBioPlayer] = useState<NBAPlayer | null>(null);
+  const [viewingRatingsPlayer, setViewingRatingsPlayer] = useState<NBAPlayer | null>(null);
   const [selectedPlayerContact, setSelectedPlayerContact] = useState<Contact | null>(null);
   
   const [personSelectorOpen, setPersonSelectorOpen] = useState(false);
@@ -46,11 +48,17 @@ export const PlayersView: React.FC = () => {
     };
   };
 
-  const handleActionSelect = (actionType: 'view_bio' | 'contact' | 'bribe' | 'fine' | 'dinner' | 'movie' | 'suspension' | 'sabotage') => {
+  const handleActionSelect = (actionType: string) => {
     if (!selectedPlayerForActions) return;
-    
+
     if (actionType === 'view_bio') {
       setViewingBioPlayer(selectedPlayerForActions);
+      setSelectedPlayerForActions(null);
+      return;
+    }
+
+    if (actionType === 'view_ratings') {
+      setViewingRatingsPlayer(selectedPlayerForActions);
       setSelectedPlayerForActions(null);
       return;
     }
@@ -116,6 +124,7 @@ export const PlayersView: React.FC = () => {
           player={selectedPlayerForActions}
           onClose={() => setSelectedPlayerForActions(null)}
           onActionSelect={handleActionSelect}
+          onHeal={() => { healPlayer(selectedPlayerForActions.internalId); setSelectedPlayerForActions(null); }}
         />
       )}
 
@@ -139,6 +148,14 @@ export const PlayersView: React.FC = () => {
             setSelectedPlayerContact(null);
           }}
           preSelectedPerson={selectedPlayerContact || undefined}
+        />
+      )}
+
+      {viewingRatingsPlayer && (
+        <PlayerRatingsModal
+          player={viewingRatingsPlayer}
+          season={state.leagueStats?.year ?? 2026}
+          onClose={() => setViewingRatingsPlayer(null)}
         />
       )}
     </div>

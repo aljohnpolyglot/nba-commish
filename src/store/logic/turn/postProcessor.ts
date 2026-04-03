@@ -1,4 +1,5 @@
 import { NBAPlayer as Player, DraftPick, Game } from '../../../types';
+import { applyMajorInjuryStatChanges } from '../../../services/simulation/InjurySystem';
 
 export const processSimulationResults = (
     allSimResults: any[],
@@ -19,11 +20,18 @@ export const processSimulationResults = (
 
         if (res.injuries) {
             res.injuries.forEach((injury: any) => {
-                updatedPlayers = updatedPlayers.map(p =>
-                    p.internalId === injury.playerId
-                        ? { ...p, injury: { type: injury.injuryType, gamesRemaining: injury.gamesRemaining } }
-                        : p
-                );
+                updatedPlayers = updatedPlayers.map(p => {
+                    if (p.internalId !== injury.playerId) return p;
+                    const updated = { ...p, injury: { type: injury.injuryType, gamesRemaining: injury.gamesRemaining } };
+                    // Apply permanent stat changes for major injuries (e.g. ACL, Achilles).
+                    // statChanges is only present on major injuries (>= 15 games).
+                    if (injury.statChanges) {
+                        // Deep-clone ratings so we don't mutate the original array reference
+                        updated.ratings = updated.ratings ? updated.ratings.map((r: any) => ({ ...r })) : [];
+                        applyMajorInjuryStatChanges(updated, (updated.stats?.[updated.stats.length - 1]?.season ?? 2025), injury.statChanges);
+                    }
+                    return updated;
+                });
             });
         }
 

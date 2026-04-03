@@ -10,7 +10,7 @@ import { ClubStep } from './PersonSelector/ClubStep';
 import { Club } from '../../data/clubs';
 import { ContactList } from './PersonSelector/ContactList';
 import { convertTo2KRating } from '../../utils/helpers';
-import { INJURIES } from '../../data/injuries';
+import { getInjuries } from '../../services/injuryService';
 import { InjurySystem } from '../../services/simulation/InjurySystem';
 import { getAllReferees, fetchRefereeData, getRefereePhoto } from '../../data/photos';
 import { PERSON_ACTION_MAP } from '../../data/personActionDefs';
@@ -304,7 +304,7 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
         // Actually, let's just keep title simple as requested to avoid duplication
         // title = `${title} • ${org}`; // REMOVED to avoid duplication
 
-        const rating2k = convertTo2KRating(p.overallRating || 0, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50);
+        const rating2k = convertTo2KRating(p.overallRating || 0, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp);
 
         const teamLogoUrl = playerTeam?.logoUrl || nonNBATeam?.imgURL;
         contactsMap.set(p.internalId, {
@@ -375,7 +375,7 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
   }, [restaurants, restaurantSearch]);
 
   const sortedInjuries = useMemo(() => {
-    return [...INJURIES].sort((a, b) => {
+    return [...getInjuries()].sort((a, b) => {
       if (injurySort === 'name') return a.name.localeCompare(b.name);
       if (injurySort === 'games-asc') return a.games - b.games;
       if (injurySort === 'games-desc') return b.games - a.games;
@@ -386,7 +386,7 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
   const handleInjurySelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const injuryName = e.target.value;
     setSelectedInjuryName(injuryName);
-    const injury = INJURIES.find(i => i.name === injuryName);
+    const injury = getInjuries().find(i => i.name === injuryName);
     if (injury) {
       setReason(injury.name);
       // Use InjurySystem to calculate fluctuating games

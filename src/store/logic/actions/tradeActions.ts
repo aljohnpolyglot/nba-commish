@@ -34,6 +34,11 @@ export const handleExecutiveTrade = async (stateWithSim: GameState, action: User
         }
     } as any, [tradeSeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
 
+    // Ensure outcomeText is always rich (LLM may return empty string when it fails)
+    if (!result.outcomeText) {
+        result.outcomeText = `${teamA?.name} and ${teamB?.name} complete a trade. ${teamB?.abbrev} receive: ${assetsA}. ${teamA?.abbrev} receive: ${assetsB}.`;
+    }
+
     // Auto Charania trade post — injected directly into result.newSocialPosts
     // so it fires even when LLM is off (advanceDay early-return ignores payload.announcements)
     const shamsContent = buildShamsTradePost(

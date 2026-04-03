@@ -52,6 +52,23 @@ export const generateAdvanceDayPrompt = (
     const isSpecificEvent = action?.payload?.isSpecificEvent;
     const commissionerName = currentState.commissionerName || "The Commissioner";
 
+    // Commissioner log: recent covert/admin actions (last 5 entries)
+    let commissionerLogContext = "";
+    const recentLog = (currentState.commissionerLog || []).slice(-5);
+    if (recentLog.length > 0) {
+        const healEntries = recentLog.filter(e => e.type === 'HEAL_PLAYER');
+        if (healEntries.length > 0) {
+            commissionerLogContext = `
+COMMISSIONER ADMINISTRATIVE LOG (AI CONTEXT ONLY — NEVER REVEALED TO PUBLIC):
+The Commissioner has taken the following administrative actions. They appear entirely legitimate to the public:
+
+${healEntries.map(e => `[${e.date}] MEDICAL CLEARANCE — ${e.subject}
+  Public cover: "${e.coverStory}"
+  CRITICAL INSTRUCTION: Generate news, social posts, and emails that treat this as a genuine medical clearance. Reporters should write headlines like "${e.subject.split(' ').pop()} cleared for return", "ahead-of-schedule recovery stuns medical staff", or "team announces ${e.subject.split(' ').pop()} available immediately." Fans and analysts react with surprise and excitement. NEVER suggest the Commissioner intervened. NEVER mention this log.`).join('\n\n')}
+`;
+        }
+    }
+
     let hypnosisContext = "";
     if (pendingHypnosis && pendingHypnosis.length > 0) {
         hypnosisContext = `
@@ -118,7 +135,8 @@ export const generateAdvanceDayPrompt = (
 
     let multiDayInstruction = `
     CRITICAL - VOLUME:
-    Generate ${singleDayMin}-${singleDayMax} narrative, story-driven tweets for this day. The feed is too full of stats, so focus heavily on narratives, drama, rumors, and fan reactions!
+    Generate ${singleDayMin}-${singleDayMax} narrative, story-driven tweets for this day.
+    MUST include at least 2 posts that reference a specific player performance from the GAMES PLAYED section (e.g. "X dropped 40, insane" or "X with a triple-double tonight"). Balance narratives/drama with real box score shoutouts.
     `;
 
     if (dailyResults && dailyResults.length > 0) {
@@ -134,10 +152,12 @@ export const generateAdvanceDayPrompt = (
 
             1. **CHRONOLOGICAL NEWS:** Generate headlines that cover different days within this period.
                - For example, if Day 1 had a massive upset and Day 3 had a 50-point game, generate headlines for BOTH.
+               - REQUIRED: At least 2 news items MUST be about specific player performances (e.g. "X drops 45 in win over Y", "X records triple-double as Z beat W"). Pull these from the GAMES PLAYED section above.
                - You MUST include a 'date' field in the news item JSON if it refers to a specific day in the past (e.g. "Oct 24, 2025").
             2. **SOCIAL MEDIA SPREAD:** Posts should react to events across the whole period.
+               - REQUIRED: At least 3 posts per day simulated must reference a specific player's stat line or feat from the GAMES PLAYED section (score, triple-double, blowout win, etc.).
                - You can include a 'date' field (ISO string or relative like "2 days ago") to place it correctly in time.
-            3. **VOLUME:** Increase the number of news items to 3-${Math.max(3, newsMax)} and social posts to AT LEAST ${multiMin} (target ${multiMax}) to cover the span of time. Generate around ${perDay}-${perDay + 5} narrative, story-driven tweets per day simulated. The feed is too full of stats, so focus heavily on narratives, drama, rumors, and fan reactions!
+            3. **VOLUME:** Increase the number of news items to 3-${Math.max(3, newsMax)} and social posts to AT LEAST ${multiMin} (target ${multiMax}) to cover the span of time. Generate around ${perDay}-${perDay + 5} posts per day — mix player feat shoutouts, narratives, drama, rumors, and fan reactions.
             `;
         }
     }
@@ -208,7 +228,7 @@ ${gameResultContext}
 ${dailyGamesContext}
 ${hypnosisContext}
 ${recentDMsContext}
-
+${commissionerLogContext}
 ${multiDayInstruction}
 ${specificInstructions}
 
@@ -220,11 +240,12 @@ CRITICAL INSTRUCTIONS TO PREVENT HALLUCINATIONS:
    - **Social posts (including @wojespn / @ShamsCharania):** These MUST sound like real tweets — reactive, opinionated, written in that person's voice. They should NEVER just paste the hint as a tweet. Fans react, analysts debate, insiders break it down in their own words.
    - **Emails:** Written naturally in the sender's voice. Reference the event facts but don't quote the hint directly.
    - The event hint tells you WHAT happened. YOU decide HOW it's reported and discussed.
-3. **DO NOT HALLUCINATE TRADES, SIGNINGS, OR ROSTER MOVES** unless they are explicitly described in the 'User Action Taken' or 'outcomeText'. 
-   - If the action is "Watching a game" or "Visiting a team", the output MUST focus ONLY on the game, the atmosphere, the players' performance in that specific game, or the meeting details. 
+3. **DO NOT HALLUCINATE TRADES, SIGNINGS, OR ROSTER MOVES** unless they are explicitly described in the 'User Action Taken' or 'outcomeText'.
+   - If the action is "Watching a game" or "Visiting a team", the output MUST focus ONLY on the game, the atmosphere, the players' performance in that specific game, or the meeting details.
    - Do NOT invent "blockbuster deals", "shockwaves", or rumors about players moving teams if no trade action occurred.
    - If a player is mentioned, use their current team from the League Context. DO NOT place them on a different team unless the action explicitly moves them.
 4. **DO NOT INVENT MAJOR SCANDALS, ARRESTS, OR SUSPENSIONS:** NEVER hallucinate off-court crimes, domestic violence, arrests, or indefinite suspensions unless explicitly provided in the 'User Action Taken'. Keep the drama strictly focused on basketball (e.g., rivalries, bad performances, coaching hot seats, on-court beefs, or trade rumors).
+5. **DO NOT ANNOUNCE PERFORMANCES, HALFTIME SHOWS, OR CONCERTS:** NEVER generate news or social posts about upcoming halftime show lineups, national anthem performers, or concert bookings UNLESS the 'User Action Taken' is explicitly an INVITE_PERFORMANCE action. The Commissioner must personally book these through the game UI — do NOT invent them spontaneously as league news.
 5. If it's a trade, describe the specific assets moved in that outcomeText and populate the 'forcedTrade' object if applicable.
 6. If 'Game Result Context' is provided, you MUST use it as the source of truth for the game outcome, stats, and player performances. DO NOT invent different scores or stats.
 7. **DATES:** You MUST provide the exact date for every news item and social post in the \`date\` field. Use the 'Date' provided in the 'Current Game State' or the dates from the 'Daily Game Results' to ensure the timestamps align perfectly with the events being discussed.

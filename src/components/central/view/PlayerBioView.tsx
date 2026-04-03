@@ -112,6 +112,22 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
 
   const gameLog = useMemo(() => {
     const logs: any[] = [];
+
+    // Build earliest-played-game date per team for this player, to avoid showing
+    // DNP rows for games that occurred before the player joined the team (post-trade).
+    const firstGameForTeam = new Map<number, number>(); // teamId → ms timestamp
+    state.boxScores.forEach(game => {
+      const isHome = game.homeStats.some(p => p.playerId === player.internalId);
+      const isAway = game.awayStats.some(p => p.playerId === player.internalId);
+      if (isHome || isAway) {
+        const tid = isHome ? game.homeTeamId : game.awayTeamId;
+        const ms = (() => { try { return new Date(game.date).getTime(); } catch { return 0; } })();
+        if (ms > 0 && (!firstGameForTeam.has(tid) || ms < firstGameForTeam.get(tid)!)) {
+          firstGameForTeam.set(tid, ms);
+        }
+      }
+    });
+
     state.boxScores.forEach(game => {
       const isHome = game.homeStats.some(p => p.playerId === player.internalId);
       const isAway = game.awayStats.some(p => p.playerId === player.internalId);
@@ -188,6 +204,10 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
         }
       } else if (game.homeTeamId === player.tid || game.awayTeamId === player.tid) {
         const isHomeTeam = game.homeTeamId === player.tid;
+        // Skip DNP rows for games that occurred before the player joined this team
+        const gameMsDNP = (() => { try { return new Date(game.date).getTime(); } catch { return 0; } })();
+        const joinMs = firstGameForTeam.get(player.tid) ?? 0;
+        if (gameMsDNP > 0 && joinMs > 0 && gameMsDNP < joinMs) return;
         const oppId = isHomeTeam ? game.awayTeamId : game.homeTeamId;
         const team = state.teams.find(t => t.id === player.tid);
         const opp = state.teams.find(t => t.id === oppId);

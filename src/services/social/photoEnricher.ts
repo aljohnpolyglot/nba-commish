@@ -433,13 +433,16 @@ export async function enrichNewsWithPhoto(
 ): Promise<string | null> {
     // Already resolved (including null = "tried and found nothing")
     if (resolvedPosts.has(item.id)) return resolvedPosts.get(item.id)!;
-    // Static image (team logo etc.) with no Imagn override expected → use immediately
-    if (item.image && !item.playerPortraitUrl) return item.image;
+    // Static image (team logo) with no portrait override → use immediately, no Imagn needed
+    if (item.image && !item.playerPortraitUrl) {
+        resolvedPosts.set(item.id, item.image);
+        return item.image;
+    }
 
     const text = `${item.headline} ${item.content}`;
     const textLower = text.toLowerCase();
 
-    // Find best matching game by team name mention
+    // ── Find best matching game by team/player name mention ───────────────────
     let bestGameInfo: GamePhotoInfo | null = null;
     let bestMatchScore = 0;
 
@@ -450,60 +453,82 @@ export async function enrichNewsWithPhoto(
         const awayAbbrev = info.awayTeam.abbrev.toLowerCase();
 
         let score = 0;
-        if (textLower.includes(homeWord)) score++;
-        if (textLower.includes(awayWord)) score++;
-        if (textLower.includes(homeAbbrev)) score++;
-        if (textLower.includes(awayAbbrev)) score++;
-
-        // Also check if any top player from this game is mentioned
+        if (textLower.includes(homeWord)) score += 1;
+        if (textLower.includes(awayWord)) score += 1;
+        if (textLower.includes(homeAbbrev)) score += 1;
+        if (textLower.includes(awayAbbrev)) score += 1;
         for (const tp of info.topPlayers) {
-            const lastName = tp.name.split(/\s+/).pop()?.toLowerCase() || '';
-            if (lastName.length > 3 && textLower.includes(lastName)) {
-                score += 2; // Player mention is a strong signal
-                break;
-            }
+            const lastName = (tp.name.split(/\s+/).pop() || '').toLowerCase();
+            if (lastName.length > 3 && textLower.includes(lastName)) { score += 3; break; }
         }
 
-        if (score > bestMatchScore) {
-            bestMatchScore = score;
-            bestGameInfo = info;
-        }
+        if (score > bestMatchScore) { bestMatchScore = score; bestGameInfo = info; }
     }
 
-    if (!bestGameInfo || bestMatchScore === 0) return item.playerPortraitUrl || null;
+    if (!bestGameInfo || bestMatchScore === 0) {
+        resolvedPosts.set(item.id, item.playerPortraitUrl || null);
+        return item.playerPortraitUrl || null;
+    }
 
     const playerPhotoMap = await Promise.race([
         fetchForGame(bestGameInfo),
-        new Promise<Map<string, ImagnPhoto[]>>(resolve =>
-            setTimeout(() => resolve(new Map()), 4000)
-        )
+        new Promise<Map<string, ImagnPhoto[]>>(resolve => setTimeout(() => resolve(new Map()), 5000))
     ]);
-    if (playerPhotoMap.size === 0) return item.playerPortraitUrl || null;
 
-    // Cross-reference against topPlayers who actually played (same as social feed)
+    if (playerPhotoMap.size === 0) {
+        const result = item.playerPortraitUrl || null;
+        resolvedPosts.set(item.id, result);
+        return result;
+    }
+
+    // ── Match player by name in headline/content (same logic as social feed) ─
+    let targetPlayerName: string | null = null;
     const sortedPlayers = [...bestGameInfo.topPlayers].sort((a, b) => b.gameScore - a.gameScore);
-
     for (const tp of sortedPlayers) {
-        const lastName = tp.name.split(/\s+/).pop()?.toLowerCase() || '';
-        if (!lastName || lastName.length <= 3) continue;
-        if (!textLower.includes(lastName) && !textLower.includes(tp.name.toLowerCase())) continue;
-
-        const photos = playerPhotoMap.get(tp.name) ||
-            [...playerPhotoMap.entries()]
-                .find(([n]) => n.toLowerCase().endsWith(lastName))?.[1];
-
-        const photo = pickBestPhoto(photos || [], item.headline || '');
-        if (photo) {
-            console.log(`[PhotoEnricher] News photo matched: "${tp.name}" → "${(photo.captionClean || '').slice(0, 70)}"`);
-            // Prefer medUrl (450px, faster) — only use largeUrl if med is missing
-            return photo.medUrl || photo.largeUrl;
+        const lastName = (tp.name.split(/\s+/).pop() || '').toLowerCase();
+        if (lastName.length > 3 && textLower.includes(lastName)) {
+            targetPlayerName = tp.name;
+            break;
+        }
+        if (textLower.includes(tp.name.toLowerCase())) {
+            targetPlayerName = tp.name;
+            break;
         }
     }
 
-    // Fallback: top performer from the matched game, then portrait
-    const firstPhotos = [...playerPhotoMap.values()][0];
-    const photo = pickBestPhoto(firstPhotos || [], item.headline || '');
-    return photo?.medUrl || photo?.largeUrl || item.playerPortraitUrl || null;
+    let photo: ImagnPhoto | null = null;
+
+    if (targetPlayerName) {
+        const lastName = (targetPlayerName.toLowerCase().split(/\s+/).pop() || '');
+        const matchedPhotos = playerPhotoMap.get(targetPlayerName) ||
+            [...playerPhotoMap.entries()]
+                .find(([name]) =>
+                    name.toLowerCase().endsWith(lastName) ||
+                    targetPlayerName!.toLowerCase().endsWith((name.toLowerCase().split(/\s+/).pop() || ''))
+                )?.[1];
+        if (matchedPhotos) {
+            photo = pickBestPhoto(matchedPhotos, item.headline);
+            console.log(`[PhotoEnricher] News "${item.headline.slice(0, 50)}" → player "${targetPlayerName}" → "${(photo?.captionClean || '').slice(0, 60)}"`);
+        }
+    }
+
+    // Fallback: first player in photo map when no name extracted
+    if (!photo) {
+        const firstPhotos = [...playerPhotoMap.values()][0];
+        if (firstPhotos) {
+            photo = pickBestPhoto(firstPhotos, item.headline);
+            if (photo) console.log(`[PhotoEnricher] News "${item.headline.slice(0, 50)}" → fallback photo`);
+        }
+    }
+
+    if (!photo) {
+        const result = item.playerPortraitUrl || null;
+        resolvedPosts.set(item.id, result);
+        return result;
+    }
+
+    resolvedPosts.set(item.id, photo.medUrl || null);
+    return photo.medUrl || null;
 }
 
 /** Synchronously check if a post already has a resolved URL in cache */

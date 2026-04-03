@@ -25,7 +25,8 @@ import { LeagueLeadersView } from '../central/view/LeagueLeadersView';
 import { StatisticalFeatsView } from '../central/view/StatisticalFeatsView';
 import { StandingsView } from '../central/view/StandingsView';
 import { InjuriesView } from '../central/view/InjuriesView';
-import { BroadcastingView } from '../operations/BroadcastingView';
+import { BroadcastingView } from '../operations/BroadcastingView.tsx';
+import { TwitterLayout } from './Twitterlayout';
 import { LeagueFinancesView } from '../central/view/LeagueFinancesView';
 import { TeamFinancesViewDetailed } from '../central/view/TeamFinancesViewDetailed';
 import { DraftScoutingView } from '../central/view/DraftScoutingView';
@@ -36,6 +37,7 @@ import CommishStore from '../central/view/CommishStore';
 import RealStern from '../central/view/RealStern';
 import SportsBookView from '../central/view/SportsBookView';
 import SeasonalView from '../seasonal/SeasonalView';
+import { PlayerRatingsView } from '../central/view/PlayerRatingsView';
 import { Tab } from '../../types';
 
 interface MainContentProps {
@@ -52,19 +54,11 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
     case 'Schedule':
       return <ScheduleView />;
     case 'Social Feed':
-      return (
-        <div className="h-full overflow-hidden p-4 md:p-8">
-          <div className="max-w-3xl mx-auto h-full overflow-y-auto custom-scrollbar">
-            <SocialFeed />
-          </div>
-        </div>
-      );
+      return <TwitterLayout />;
     case 'League News':
       return (
-        <div className="h-full overflow-hidden p-4 md:p-8">
-          <div className="max-w-4xl mx-auto h-full overflow-y-auto custom-scrollbar">
-            <NewsFeed />
-          </div>
+        <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          <NewsFeed />
         </div>
       );
     case 'Player Stats':
@@ -181,6 +175,8 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
           <SportsBookView />
         </div>
       );
+    case 'Player Ratings':
+      return <PlayerRatingsView />;
     default:
       return null;
   }

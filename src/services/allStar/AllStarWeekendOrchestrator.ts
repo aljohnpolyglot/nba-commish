@@ -507,7 +507,7 @@ export class AllStarWeekendOrchestrator {
       }
       currentState = { ...currentState, ...asgUpdate, boxScores: accumulatedBoxScores };
     }
-    
+       if (!currentState.allStar) return {};
     const weekendComplete = currentState.allStar.allStarGameId !== undefined;
 
     return {
