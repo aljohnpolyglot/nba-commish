@@ -44,7 +44,7 @@ const WhoToFollowFeedBlock = ({ onProfileClick, suggestedUsersList }: { onProfil
 };
 
 export const TwitterLayout = () => {
-  const { state, followUser, unfollowUser } = useGame();
+  const { state, followUser, unfollowUser, dispatchAction } = useGame();
   const { loading } = useTwitterData();
   useBackgroundFetcher();
   const { trends, allTrends, suggestedUsersList } = useSidebarData();
@@ -123,7 +123,7 @@ export const TwitterLayout = () => {
 
   return (
     <SocialGameProvider>
-      <div className="min-h-screen bg-black text-[#e7e9ea] flex justify-center relative overflow-x-clip">
+      <div className="h-screen overflow-hidden bg-black text-[#e7e9ea] flex justify-center relative overflow-x-clip">
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div 
@@ -132,13 +132,12 @@ export const TwitterLayout = () => {
         />
       )}
 
-      <div className="flex w-full max-w-[1300px]">
+      <div className="flex w-full max-w-[1300px] h-full">
         {/* Left Sidebar (Desktop) */}
         <div className="hidden sm:flex flex-shrink-0 w-[80px] xl:w-[275px]">
           <Sidebar 
             onHomeClick={handleHomeClick} 
-       onProfileClick={() => handleProfileClick(state.userProfile?.handle ?? '@username')}
-
+            onProfileClick={() => handleProfileClick(state.userProfile?.handle ?? ('@' + (state.commissionerName || 'commissioner').toLowerCase().replace(/\s+/g, '')))}
             onFollowingClick={handleFollowingListClick}
             onExploreClick={handleExploreClick}
             activeView={view.type}
@@ -146,7 +145,7 @@ export const TwitterLayout = () => {
         </div>
 
         {/* Main Content */}
-        <main className="flex-1 max-w-[600px] border-x border-[#2f3336] min-h-screen w-full">
+        <main className="flex-1 max-w-[600px] border-x border-[#2f3336] h-screen overflow-y-auto no-scrollbar w-full">
           {view.type === 'feed' ? (
             <>
               <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-[#2f3336]">
@@ -231,7 +230,26 @@ export const TwitterLayout = () => {
                 )}
               </header>
 
-              {!searchQuery && <TweetInput />}
+              {!searchQuery && <TweetInput onTweet={(content) => {
+                const commName = state.commissionerName || 'Commissioner';
+                const commHandle = '@' + commName.toLowerCase().replace(/\s+/g, '');
+                const newPost = {
+                  id: `user-post-${Date.now()}`,
+                  author: commName,
+                  handle: commHandle,
+                  avatarUrl: state.userProfile?.avatarUrl,
+                  content,
+                  date: new Date().toISOString(),
+                  likes: 0,
+                  retweets: 0,
+                  replies: [],
+                  source: 'TwitterX' as const,
+                  isLiked: false,
+                  isRetweeted: false,
+                  isNew: false,
+                };
+                dispatchAction({ type: 'ADD_USER_POST', payload: newPost } as any);
+              }} />}
 
               {loading ? (
                 <div className="flex justify-center py-10">
@@ -530,7 +548,7 @@ export const TwitterLayout = () => {
         <div className="sm:hidden fixed bottom-0 left-0 right-0 h-16 bg-black border-t border-zinc-800 flex justify-around items-center z-[100]">
           <Sidebar 
             onHomeClick={handleHomeClick} 
-         onProfileClick={() => handleProfileClick(state.userProfile?.handle ?? '@username')}
+            onProfileClick={() => handleProfileClick(state.userProfile?.handle ?? ('@' + (state.commissionerName || 'commissioner').toLowerCase().replace(/\s+/g, '')))}
             onFollowingClick={handleFollowingListClick}
             onExploreClick={handleExploreClick}
             activeView={view.type}

@@ -67,6 +67,22 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }
 
     // Social-only actions — never advance the game day
+    if (action.type === 'UPDATE_USER_PROFILE') {
+      setState(prev => ({
+        ...prev,
+        userProfile: { ...(prev.userProfile || {}), ...(action as any).payload },
+      }));
+      return;
+    }
+
+    if (action.type === 'ADD_USER_POST') {
+      setState(prev => ({
+        ...prev,
+        socialFeed: [(action as any).payload, ...prev.socialFeed],
+      }));
+      return;
+    }
+
     if (action.type === 'CACHE_PROFILE') {
       const { handle, profile } = (action as any).payload;
       setState(prev => ({

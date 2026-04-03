@@ -43,7 +43,9 @@ export const Sidebar = ({
   forceFull?: boolean
 }) => {
   const { state } = useGame();
- const userProfile = state.userProfile ?? { name: '', handle: '@username', avatarUrl: undefined };
+  const commName = state.commissionerName || 'Commissioner';
+  const commHandle = '@' + commName.toLowerCase().replace(/\s+/g, '');
+  const userProfile = state.userProfile ?? { name: commName, handle: commHandle, avatarUrl: undefined };
 
   return (
     <div className="flex flex-row sm:flex-col h-full sm:h-screen sticky top-0 px-2 xl:px-4 py-2 justify-around sm:justify-between overflow-y-auto no-scrollbar w-full">

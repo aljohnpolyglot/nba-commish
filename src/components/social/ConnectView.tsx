@@ -2,7 +2,7 @@ import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { useSidebarData } from '../../hooks/useSidebarData';
-import { WhoToFollow } from './SidebarComponents.tsx';
+import { WhoToFollow } from './SidebarComponents';
 
 interface ConnectViewProps {
   onBack: () => void;

@@ -136,7 +136,11 @@ const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onImageClick, onC
           <p className="text-[15px] text-white leading-normal mt-0.5 whitespace-pre-wrap">{post.content}</p>
 
           {post.mediaUrl && post.mediaUrl !== avatarSrc && (
-            <div className="mt-3 rounded-2xl overflow-hidden border border-zinc-800" onClick={e => e.stopPropagation()}>
+            <div
+              className="mt-3 rounded-2xl overflow-hidden border border-zinc-800"
+              style={post.mediaBackgroundColor ? { backgroundColor: post.mediaBackgroundColor } : undefined}
+              onClick={e => e.stopPropagation()}
+            >
               <img
                 src={post.mediaUrl}
                 alt=""
