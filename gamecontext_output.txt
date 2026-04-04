@@ -31,12 +31,7 @@ interface GameContextType {
   setPendingStatSort: (sort: { type: 'player' | 'team'; field: string; order: 'asc' | 'desc' } | null) => void;
   placeBet: (bet: { type: Bet['type']; wager: number; potentialPayout: number; legs: BetLeg[] }) => void;
   updatePlayerRatings: (playerId: string, season: number, ratings: Record<string, number>) => void;
-  updateProfile: (profile: Partial<import('../types').UserProfile>) => void;
   healPlayer: (playerId: string) => void;
-  addPost: (post: import('../types').SocialPost) => void;
-  addReply: (postId: string, reply: import('../types').SocialPost) => void;
-  generateReplies: (postId: string) => Promise<void>;
-  isGeneratingReplies: Record<string, boolean>;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -53,7 +48,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     stateRef.current = state;
   }, [state]);
 
-  const actions = useGameActions(setState, () => stateRef.current);
+  const actions = useGameActions(setState);
 
   const navigateToTeam = (teamId: number) => {
     setSelectedTeamId(teamId);
@@ -71,52 +66,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Social-only actions — never advance the game day
-    if (action.type === 'UPDATE_USER_PROFILE') {
-      setState(prev => ({
-        ...prev,
-        userProfile: { ...(prev.userProfile || {}), ...(action as any).payload },
-      }));
-      return;
-    }
-
-    if (action.type === 'ADD_USER_POST') {
-      setState(prev => ({
-        ...prev,
-        socialFeed: [(action as any).payload, ...prev.socialFeed],
-      }));
-      return;
-    }
-
-    if (action.type === 'CACHE_PROFILE') {
-      const { handle, profile } = (action as any).payload;
-      setState(prev => ({
-        ...prev,
-        cachedProfiles: {
-          ...(prev.cachedProfiles || {}),
-          [handle.replace('@', '')]: profile,
-        },
-      }));
-      return;
-    }
-
     if (action.type === 'SAVE_SOCIAL_THREAD') {
       actions.saveSocialThread(action.payload.postId, action.payload.replies);
-      return;
-    }
-
-    if (action.type === 'ADD_REPLIES') {
-      const { replies } = (action as any).payload;
-      setState(prev => {
-        const ids = new Set(prev.socialFeed.map((p: any) => p.id));
-        const unique = replies.filter((r: any) => !ids.has(r.id));
-        return { ...prev, socialFeed: [...prev.socialFeed, ...unique] };
-      });
-      return;
-    }
-
-    if (action.type === 'SET_FEED') {
-      setState(prev => ({ ...prev, socialFeed: (action as any).payload }));
       return;
     }
 

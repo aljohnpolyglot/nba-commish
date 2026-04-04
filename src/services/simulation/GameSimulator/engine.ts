@@ -14,6 +14,19 @@ import { fetchGamePhotos } from '../../ImagnPhotoService';
 import { Defense2KService } from '../../Defense2KService';
 import { SimulatorKnobs, KNOBS_DEFAULT, KNOBS_ALL_STAR, KNOBS_RISING_STARS, KNOBS_CELEBRITY, getKnobs } from '../SimulatorKnobs';
 import { HighlightGenerator } from '../HighlightGenerator';
+import { getInjuries, getRandomInjury } from '../../injuryService';
+/**
+ * Maps a team's final score to a shot-efficiency multiplier.
+ * High-scoring games reflect hot shooting; low-scoring games are grind nights.
+ * Curve: +1% efficiency per 3 pts above average (avg ≈ 114).
+ * Clamped to [0.90, 1.12] so extreme scores don't produce nonsense lines.
+ * Long-run league average is preserved because score distributions are symmetric.
+ */
+function getEfficiencyMultFromScore(teamPts: number, avgPts = 114): number {
+  const delta = (teamPts - avgPts) / 3;
+  return Math.max(0.90, Math.min(1.12, 1.0 + delta * 0.01));
+}
+
 export class GameSimulator {
 
   private static calcWinProb(strengthDiff: number): number {
@@ -187,11 +200,20 @@ export class GameSimulator {
     );
 
     const actualMargin = Math.abs(finalHomeScore - finalAwayScore);
+
+    // Score-efficiency correlation: high-scoring games reflect hot shooting nights,
+    // low-scoring games are grind/cold-shooting games. Multiplied into the knobs
+    // so stat lines match the scoreboard energy. League avg preserved over many games.
+    const homeEffMult = getEfficiencyMultFromScore(finalHomeScore);
+    const awayEffMult = getEfficiencyMultFromScore(finalAwayScore);
+    const homeKnobsEff = { ...homeKnobs, efficiencyMultiplier: (homeKnobs.efficiencyMultiplier ?? 1.0) * homeEffMult };
+    const awayKnobsEff = { ...awayKnobs, efficiencyMultiplier: (awayKnobs.efficiencyMultiplier ?? 1.0) * awayEffMult };
+
     const homeInitial = StatGenerator.generateStatsForTeam(
-      homeTeam, players, finalHomeScore, homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, homeOverridePlayers, otCount, away2KDef, homeKnobs
+      homeTeam, players, finalHomeScore, homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, homeOverridePlayers, otCount, away2KDef, homeKnobsEff
     );
     const awayInitial = StatGenerator.generateStatsForTeam(
-      awayTeam, players, finalAwayScore, !homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, awayOverridePlayers, otCount, home2KDef, awayKnobs
+      awayTeam, players, finalAwayScore, !homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, awayOverridePlayers, otCount, home2KDef, awayKnobsEff
     );
 
     const homeMisses = homeInitial.reduce(
@@ -220,7 +242,7 @@ export class GameSimulator {
       homeInitial,
       homeTeam,
       availablePlayers,
-      awayMisses         * 0.69,
+      awayMisses         * 0.56,
       awayTov            * 0.60,
       awayInteriorMisses * 0.33 * awayBlkMult,  // blockRateMult scales away team's blockable interior misses
       awayFTA,
@@ -326,6 +348,46 @@ export class GameSimulator {
       }
     }
 
+    // ── Mid-game injuries — any player can roll, low-minute players much more likely ──
+    // Low minutes (< 15) = clearly left early → 20% chance it's real
+    // Short night (15-25) = possible early exit → 7% chance
+    // Full game (25-35) = contact/twist late → 2% chance
+    // Iron man (35+) → 0.6% chance
+    const injuryDefs = getInjuries();
+    const playerInGameInjuries: Record<string, string> = {};
+    if (injuryDefs.length > 0 && !isAllStar && !isRisingStars) {
+      const allPlayedStats = [...homeStatsFinal, ...awayStatsFinal];
+      for (const stat of allPlayedStats) {
+        const player = availablePlayers.find(p => p.internalId === stat.playerId);
+        if (!player || (player.injury?.gamesRemaining ?? 0) > 0) continue;
+
+        const min = stat.min;
+        const injuryChance =
+          min < 15  ? 0.20 :
+          min < 25  ? 0.07 :
+          min < 35  ? 0.02 :
+                      0.006;
+
+        if (Math.random() >= injuryChance) continue;
+
+        const drawn = getRandomInjury(injuryDefs);
+        // Scale games: low-minute exits lean shorter (×0.3-0.8), full-game contacts normal (×0.5-1.5)
+        const durationMult = min < 15 ? 0.3 + Math.random() * 0.5
+                           : min < 25 ? 0.4 + Math.random() * 0.8
+                           :            0.5 + Math.random() * 1.0;
+        const gamesRemaining = Math.max(1, Math.round(drawn.games * durationMult));
+
+        injuries.push({
+          playerId:       player.internalId,
+          playerName:     player.name,
+          teamId:         player.tid,
+          injuryType:     drawn.name,
+          gamesRemaining,
+        });
+        playerInGameInjuries[player.internalId] = drawn.name;
+      }
+    }
+
     // ── Fight check (skipped for All-Star / exhibition games) ────────────────
     const fight = (!isAllStar && !isRisingStars)
       ? generateFight(
@@ -364,6 +426,7 @@ export class GameSimulator {
       quarterScores,
       gameWinner,
       playerDNPs,
+      playerInGameInjuries,
       fight,
       highlights,
       // Snapshot records at tip-off (before this game's result is applied)

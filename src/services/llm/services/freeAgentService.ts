@@ -30,7 +30,7 @@ export async function generateFreeAgentSigningReactions(
                 systemInstruction: SYSTEM_PROMPT,
                 responseMimeType: "application/json",
                 responseSchema: OUTCOME_SCHEMA as any,
-                maxOutputTokens: SettingsManager.getMaxTokens(8192),
+                maxOutputTokens: SettingsManager.getMaxTokens(4096),
             },
         });
 

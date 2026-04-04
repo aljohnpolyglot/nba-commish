@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>God Mode API Tester v8</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .loader { border: 2px solid #222; border-top: 2px solid #fbbf24; border-radius: 50%; width: 14px; height: 14px; animation: spin 0.8s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .response-box { max-height: 500px; overflow-y: auto; scrollbar-width: thin; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+        .card-enter { animation: slideIn 0.3s ease-out forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        #focusModal { display: none; }
+        #focusModal.open { display: flex; }
+        .tab-btn.active { background: rgba(251,191,36,0.15); color: #fbbf24; border-color: rgba(251,191,36,0.4); }
+    </style>
+</head>
+<body class="bg-[#030303] text-slate-300 min-h-screen p-4 md:p-8 font-sans selection:bg-yellow-500/30">
+
+<!-- ── FOCUS MODE MODAL ─────────────────────────────────────────────── -->
+<div id="focusModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 items-center justify-center p-4">
+    <div class="bg-[#0a0a0a] border border-white/10 rounded-[2rem] w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+        <div class="flex items-center justify-between p-6 border-b border-white/5">
+            <div>
+                <h2 class="text-xl font-black uppercase tracking-widest text-yellow-400">Focus Mode</h2>
+                <p class="text-[10px] text-slate-600 uppercase tracking-widest mt-1">Deep test — full prompt, full response</p>
+            </div>
+            <button onclick="closeFocus()" class="text-slate-500 hover:text-white text-2xl font-black px-3">✕</button>
+        </div>
+        <div class="flex gap-4 p-6 border-b border-white/5 flex-wrap">
+            <div class="flex-1 min-w-[200px]">
+                <label class="text-[9px] font-black uppercase text-slate-500 tracking-widest">Provider</label>
+                <select id="focusProvider" onchange="updateFocusModelHint()" class="w-full mt-1 bg-black/50 border border-white/5 rounded-xl p-3 text-sm text-slate-300 outline-none focus:ring-1 focus:ring-yellow-500">
+                    <option value="groq">Groq</option>
+                    <option value="together">Together AI</option>
+                    <option value="gemini">Gemini</option>
+                    <option value="openrouter">OpenRouter</option>
+                    <option value="cerebras">Cerebras</option>
+                    <option value="deepseek">DeepSeek</option>
+                    <option value="openai">OpenAI</option>
+                </select>
+            </div>
+            <div class="flex-1 min-w-[200px]">
+                <label class="text-[9px] font-black uppercase text-slate-500 tracking-widest">API Key</label>
+                <input id="focusKey" class="w-full mt-1 bg-black/50 border border-white/5 rounded-xl p-3 text-xs font-mono text-slate-300 outline-none focus:ring-1 focus:ring-yellow-500" placeholder="Paste key here...">
+            </div>
+            <div class="flex-1 min-w-[250px]">
+                <label class="text-[9px] font-black uppercase text-slate-500 tracking-widest">Model <span id="focusModelHint" class="text-yellow-600 normal-case ml-1"></span></label>
+                <input id="focusModel" class="w-full mt-1 bg-black/50 border border-white/5 rounded-xl p-3 text-xs font-mono text-slate-300 outline-none focus:ring-1 focus:ring-yellow-500" value="llama-3.3-70b-versatile">
+            </div>
+            <div class="w-28">
+                <label class="text-[9px] font-black uppercase text-slate-500 tracking-widest">Max Tokens</label>
+                <input id="focusTokens" type="number" class="w-full mt-1 bg-black/50 border border-white/5 rounded-xl p-3 text-sm text-slate-300 outline-none focus:ring-1 focus:ring-yellow-500" value="4096">
+            </div>
+        </div>
+        <div class="flex-1 overflow-hidden flex flex-col p-6 gap-4">
+            <div class="flex gap-2">
+                <button onclick="setFocusTab('prompt')" id="tab-prompt" class="tab-btn active text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-xl border border-white/10 transition-all">Prompt</button>
+                <button onclick="setFocusTab('response')" id="tab-response" class="tab-btn text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-xl border border-white/10 transition-all">Response</button>
+                <button onclick="runFocusTest()" id="focusRunBtn" class="ml-auto bg-yellow-500 hover:bg-yellow-400 text-black px-8 py-2 rounded-xl font-black text-sm uppercase tracking-widest transition-all active:scale-95">Run Full Test</button>
+            </div>
+            <div id="focusPromptArea" class="flex-1 overflow-auto">
+                <textarea id="focusPrompt" class="w-full h-full min-h-[300px] bg-[#080808] border border-white/5 rounded-2xl p-4 font-mono text-xs text-slate-300 outline-none focus:ring-1 focus:ring-yellow-500 resize-none" placeholder="Paste your full prompt here..."></textarea>
+            </div>
+            <div id="focusResponseArea" class="flex-1 overflow-auto hidden">
+                <div id="focusStatus" class="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3"></div>
+                <pre id="focusResponseText" class="w-full h-full bg-[#080808] border border-white/5 rounded-2xl p-4 font-mono text-xs text-slate-300 overflow-auto whitespace-pre-wrap"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-[1600px] mx-auto">
+    <!-- Header -->
+    <header class="mb-10 border-b border-white/5 pb-8 flex flex-col lg:flex-row justify-between items-end gap-6">
+        <div>
+            <h1 class="text-7xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-yellow-400 via-orange-500 to-red-600 uppercase leading-none">OMNIBUS TESTER</h1>
+            <p class="text-slate-500 text-[10px] mt-4 uppercase tracking-[0.5em] font-black">OpenAI • OpenRouter • DeepSeek • Groq • Gemini • Together • Cerebras • Nvidia</p>
+        </div>
+        <div class="flex gap-4">
+            <button onclick="openFocusMode()" class="bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest transition-all">⚡ Focus Mode</button>
+            <div class="bg-white/5 px-8 py-4 rounded-[2rem] border border-white/10 text-center min-w-[140px]">
+                <span class="block text-[9px] text-yellow-500 font-black uppercase mb-1 tracking-widest">Live</span>
+                <span class="text-4xl font-mono font-black text-white" id="stat-success">0</span>
+            </div>
+            <div class="bg-white/5 px-8 py-4 rounded-[2rem] border border-white/10 text-center min-w-[140px]">
+                <span class="block text-[9px] text-red-600 font-black uppercase mb-1 tracking-widest">Dead</span>
+                <span class="text-4xl font-mono font-black text-white" id="stat-fail">0</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <!-- Input Area -->
+        <div class="lg:col-span-3 space-y-6">
+            <div class="bg-white/[0.02] p-1 rounded-[3rem] border border-white/10 shadow-inner">
+                <textarea id="keyInput" class="w-full h-[400px] bg-[#080808] border-none rounded-[2.9rem] p-10 font-mono text-[11px] focus:ring-0 outline-none transition-all placeholder:text-slate-800" placeholder="Paste your entire .env here..."></textarea>
+            </div>
+            <div class="bg-white/[0.02] p-6 rounded-[2rem] border border-white/10 space-y-3">
+                <span class="text-[10px] font-black uppercase text-slate-600 tracking-widest">Batch Ping Prompt (keep short)</span>
+                <input id="promptInput" class="w-full bg-black/60 border border-white/5 rounded-2xl p-4 text-sm focus:ring-1 focus:ring-yellow-500 outline-none text-slate-100" value='{"commissioner":"Sss","topPlayers":[{"name":"Nikola Jokic","number":15,"position":"C","height":"6'\''11"}]}'>
+                <div class="flex items-center gap-4">
+                    <span class="text-[9px] font-black uppercase text-slate-600 tracking-widest">Batch Max Tokens</span>
+                    <input id="batchTokens" type="number" class="w-24 bg-black/50 border border-white/5 rounded-xl p-2 text-sm text-slate-300 outline-none focus:ring-1 focus:ring-yellow-500" value="500">
+                    <span class="text-[9px] text-slate-700">Keep low (80–150) for fast ping. Use Focus Mode for quality testing.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Config Sidebar -->
+        <div class="lg:col-span-2 space-y-6">
+            <div class="bg-white/[0.02] p-8 rounded-[3rem] border border-white/10 shadow-2xl flex flex-col gap-5 sticky top-8">
+                <h3 class="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] border-b border-white/5 pb-4">Target Models (Batch)</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[9px] text-purple-400 font-black uppercase tracking-widest">Cerebras</label>
+                        <input id="cerebrasModel" class="w-full bg-black/50 border border-white/5 rounded-xl p-3 text-xs text-slate-400 mt-1" value="llama3.3-70b">
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-green-400 font-black uppercase tracking-widest">Nvidia</label>
+                        <input id="nvidiaModel" class="w-full bg-black/50 border border-white/5 rounded-xl p-3 text-xs text-slate-400 mt-1" value="meta/llama-3.3-70b-instruct">
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-white font-black uppercase tracking-widest opacity-50">OpenAI</label>
+                        <input id="openaiModel" class="w-full bg-black/50 border border-white/5 rounded-xl p-3 text-xs text-slate-400 mt-1" value="gpt-4o-mini">
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-emerald-400 font-black uppercase tracking-widest">OpenRouter</label>
+                        <input id="openrouterModel" class="w-full bg-black/50 border border-white/5 rounded-xl p-3 text-xs text-slate-400 mt-1" value="google/gemini-2.0-flash-001">
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-cyan-400 font-black uppercase tracking-widest">DeepSeek</label>
+                        <input id="deepseekModel" class="w-full bg-black/50 border border-white/5 rounded-xl p-3 text-xs text-slate-400 mt-1" value="deepseek-chat">
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-orange-400 font-black uppercase tracking-widest">Groq</label>
+                        <input id="groqModel" class="w-full bg-black/50 border border-white/5 rounded-xl p-3 text-xs text-slate-400 mt-1" value="llama-3.3-70b-versatile">
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-blue-400 font-black uppercase tracking-widest">Gemini</label>
+                        <input id="geminiModel" class="w-full bg-black/50 border border-white/5 rounded-xl p-3 text-xs text-slate-400 mt-1" value="gemini-2.0-flash">
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-yellow-400 font-black uppercase tracking-widest">Together AI</label>
+                        <input id="togetherModel" class="w-full bg-black/50 border border-white/5 rounded-xl p-3 text-xs text-slate-400 mt-1" value="meta-llama/Llama-3.3-70B-Instruct-Turbo">
+                    </div>
+                </div>
+                <div class="mt-2 flex flex-col gap-3">
+                    <button onclick="runBatchTest()" id="testBtn" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-[2rem] font-black transition-all active:scale-95 uppercase tracking-widest text-sm shadow-2xl shadow-yellow-500/20">Execute All Tests</button>
+                    <button onclick="copyWorking()" id="copyBtn" class="hidden w-full bg-white/5 hover:bg-white/10 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all">Copy Working List</button>
+                </div>
+            </div>
+
+            <!-- Together AI model quick-pick -->
+            <div class="bg-white/[0.02] p-6 rounded-[2rem] border border-white/10">
+                <h3 class="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] border-b border-white/5 pb-3 mb-4">Together AI Models (for Focus Mode)</h3>
+                <div class="space-y-2 text-[10px] font-mono">
+                    <div class="flex justify-between items-center py-1 border-b border-white/5 cursor-pointer hover:text-yellow-400 transition-colors" onclick="setFocusToTogether('zai-org/GLM-5-FP4')">
+                        <span>GLM-5-FP4</span><span class="text-slate-600 text-[9px]">$1.00 / $3.20</span>
+                    </div>
+                    <div class="flex justify-between items-center py-1 border-b border-white/5 cursor-pointer hover:text-yellow-400 transition-colors" onclick="setFocusToTogether('Qwen/Qwen3.5-397B-A17b')">
+                        <span>Qwen3.5 397B</span><span class="text-slate-600 text-[9px]">$0.60 / $3.60</span>
+                    </div>
+                    <div class="flex justify-between items-center py-1 border-b border-white/5 cursor-pointer hover:text-yellow-400 transition-colors" onclick="setFocusToTogether('MiniMaxAI/MiniMax-M2.5-FP4')">
+                        <span>MiniMax M2.5</span><span class="text-slate-600 text-[9px]">$0.30 / $1.20</span>
+                    </div>
+                    <div class="flex justify-between items-center py-1 border-b border-white/5 cursor-pointer hover:text-yellow-400 transition-colors" onclick="setFocusToTogether('MoonshotAI/Kimi-K2.5')">
+                        <span>Kimi K2.5</span><span class="text-slate-600 text-[9px]">$0.50 / $2.80</span>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Grid -->
+    <div id="resultsArea" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-16 pb-32"></div>
+</div>
+
+<script>
+    let workingKeys = []; // { type, key, model, line }
+
+    // ── Focus Mode ────────────────────────────────────────────────────────────
+    function openFocusMode() {
+        document.getElementById('focusModal').classList.add('open');
+    }
+    function closeFocus() {
+        document.getElementById('focusModal').classList.remove('open');
+    }
+    function setFocusTab(tab) {
+        document.getElementById('focusPromptArea').classList.toggle('hidden', tab !== 'prompt');
+        document.getElementById('focusResponseArea').classList.toggle('hidden', tab !== 'response');
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + tab).classList.add('active');
+    }
+    function updateFocusModelHint() {
+        const p = document.getElementById('focusProvider').value;
+        const hints = {
+            groq: 'llama-3.3-70b-versatile',
+            together: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+            gemini: 'gemini-2.0-flash',
+            openrouter: 'google/gemini-2.0-flash-001',
+            cerebras: 'llama3.3-70b',
+            deepseek: 'deepseek-chat',
+            openai: 'gpt-4o-mini',
+        };
+        document.getElementById('focusModel').value = hints[p] || '';
+        document.getElementById('focusModelHint').textContent = '→ ' + (hints[p] || '');
+    }
+    function setFocusToTogether(model) {
+        document.getElementById('focusProvider').value = 'together';
+        document.getElementById('focusModel').value = model;
+        document.getElementById('focusModelHint').textContent = '→ ' + model;
+        openFocusMode();
+    }
+    function openFocusWithCard(type, key, model) {
+        document.getElementById('focusProvider').value = type.toLowerCase();
+        document.getElementById('focusKey').value = key;
+        document.getElementById('focusModel').value = model;
+        document.getElementById('focusModelHint').textContent = '→ ' + model;
+        document.getElementById('focusTokens').value = 4096;
+        openFocusMode();
+    }
+
+    async function runFocusTest() {
+        const provider = document.getElementById('focusProvider').value;
+        const key      = document.getElementById('focusKey').value.trim();
+        const model    = document.getElementById('focusModel').value.trim();
+        const maxTok   = parseInt(document.getElementById('focusTokens').value) || 4096;
+        const prompt   = document.getElementById('focusPrompt').value.trim();
+
+        if (!key || !prompt) return alert('Key and prompt are required.');
+
+        const btn = document.getElementById('focusRunBtn');
+        btn.textContent = 'Running...';
+        btn.disabled = true;
+
+        const statusEl = document.getElementById('focusStatus');
+        const responseEl = document.getElementById('focusResponseText');
+        statusEl.textContent = 'Sending request...';
+        responseEl.textContent = '';
+        setFocusTab('response');
+
+        try {
+            const { url, headers, body } = buildRequest(provider, key, model, prompt, maxTok);
+            const startMs = Date.now();
+            const response = await fetch(url, { method: 'POST', headers, body });
+            const elapsed = ((Date.now() - startMs) / 1000).toFixed(1);
+            const data = await response.json();
+
+            if (!response.ok) {
+                statusEl.textContent = `✗ FAILED (${response.status}) — ${elapsed}s`;
+                statusEl.className = 'text-[10px] font-black uppercase tracking-widest text-red-500 mb-3';
+                responseEl.textContent = JSON.stringify(data, null, 2);
+            } else {
+                const txt = provider === 'gemini'
+                    ? data.candidates?.[0]?.content?.parts?.[0]?.text
+                    : data.choices?.[0]?.message?.content;
+                const usage = data.usage ? ` | ${data.usage.prompt_tokens ?? '?'}p + ${data.usage.completion_tokens ?? '?'}c tokens` : '';
+                statusEl.textContent = `✓ SUCCESS — ${elapsed}s${usage}`;
+                statusEl.className = 'text-[10px] font-black uppercase tracking-widest text-yellow-400 mb-3';
+                responseEl.textContent = txt || JSON.stringify(data, null, 2);
+            }
+        } catch (e) {
+            statusEl.textContent = `✗ ERROR: ${e.message}`;
+            statusEl.className = 'text-[10px] font-black uppercase tracking-widest text-red-500 mb-3';
+            responseEl.textContent = e.toString();
+        }
+
+        btn.textContent = 'Run Full Test';
+        btn.disabled = false;
+    }
+
+    // ── Shared request builder ────────────────────────────────────────────────
+    function buildRequest(type, key, model, prompt, maxTok) {
+        const headers = { 'Content-Type': 'application/json' };
+        let url, body;
+
+        if (type === 'gemini') {
+            url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+            body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: maxTok } });
+        } else {
+            headers['Authorization'] = `Bearer ${key}`;
+            const endpointMap = {
+                groq:       'https://api.groq.com/openai/v1/chat/completions',
+                together:   'https://api.together.xyz/v1/chat/completions',
+                openrouter: 'https://openrouter.ai/api/v1/chat/completions',
+                cerebras:   'https://api.cerebras.ai/v1/chat/completions',
+                deepseek:   'https://api.deepseek.com/chat/completions',
+                openai:     'https://api.openai.com/v1/chat/completions',
+                nvidia:     'https://integrate.api.nvidia.com/v1/chat/completions',
+            };
+            url = endpointMap[type] || endpointMap['groq'];
+            body = JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], max_tokens: maxTok });
+        }
+        return { url, headers, body };
+    }
+
+    // ── Batch Test ────────────────────────────────────────────────────────────
+    async function runBatchTest() {
+        const keyText   = document.getElementById('keyInput').value;
+        const prompt    = document.getElementById('promptInput').value;
+        const maxTok    = parseInt(document.getElementById('batchTokens').value) || 80;
+        const resultsArea = document.getElementById('resultsArea');
+        const testBtn   = document.getElementById('testBtn');
+
+        const lines = keyText.split('\n').filter(l => l.trim() !== '' && !l.trim().startsWith('#'));
+        if (!lines.length) return alert('Input is empty.');
+
+        resultsArea.innerHTML = '';
+        workingKeys = [];
+        let successCount = 0, failCount = 0;
+        testBtn.disabled = true;
+        testBtn.innerText = 'TESTING...';
+        document.getElementById('stat-success').innerText = 0;
+        document.getElementById('stat-fail').innerText = 0;
+
+        for (let line of lines) {
+            let key = '', type = '', model = '';
+
+            if (line.match(/csk-[a-zA-Z0-9]{40,}/)) {
+                key = line.match(/csk-[a-zA-Z0-9]{40,}/)[0]; type = 'Cerebras';
+                model = document.getElementById('cerebrasModel').value;
+            } else if (line.match(/nvapi-[a-zA-Z0-9-]{64,}/)) {
+                key = line.match(/nvapi-[a-zA-Z0-9-]{64,}/)[0]; type = 'Nvidia';
+                model = document.getElementById('nvidiaModel').value;
+            } else if (line.match(/sk-or-v1-[a-zA-Z0-9]{40,}/)) {
+                key = line.match(/sk-or-v1-[a-zA-Z0-9]{40,}/)[0]; type = 'OpenRouter';
+                model = document.getElementById('openrouterModel').value;
+            } else if (line.match(/sk-(proj-)?[a-zA-Z0-9-]{40,}/) && (line.toUpperCase().includes('OPENAI') || line.includes('sk-proj-'))) {
+                key = line.match(/sk-(proj-)?[a-zA-Z0-9-]{40,}/)[0]; type = 'OpenAI';
+                model = document.getElementById('openaiModel').value;
+            } else if (line.toUpperCase().includes('DEEPSEEK') && line.match(/sk-[a-zA-Z0-9]{32}/)) {
+                key = line.match(/sk-[a-zA-Z0-9]{32}/)[0]; type = 'DeepSeek';
+                model = document.getElementById('deepseekModel').value;
+            } else if (line.match(/gsk_[a-zA-Z0-9]{40,}/)) {
+                key = line.match(/gsk_[a-zA-Z0-9]{40,}/)[0]; type = 'Groq';
+                model = document.getElementById('groqModel').value;
+            } else if (line.match(/AIzaSy[a-zA-Z0-9\-_]{33}/)) {
+                key = line.match(/AIzaSy[a-zA-Z0-9\-_]{33}/)[0]; type = 'Gemini';
+                model = document.getElementById('geminiModel').value;
+            } else if (line.match(/[a-f0-9]{64}/)) {
+                key = line.match(/[a-f0-9]{64}/)[0]; type = 'Together';
+                model = document.getElementById('togetherModel').value;
+            }
+
+            if (!key) continue;
+
+            const card = document.createElement('div');
+            card.className = 'card-enter p-6 rounded-[2.5rem] bg-white/[0.02] border border-white/5 flex flex-col gap-3 transition-all hover:bg-white/[0.04]';
+            card.innerHTML = `
+                <div class="flex justify-between items-center border-b border-white/5 pb-3">
+                    <span class="text-[9px] font-black uppercase text-slate-600 tracking-[0.2em]">${type}</span>
+                    <div class="status font-black text-[9px] flex items-center gap-2 tracking-widest text-slate-500"><span class="loader"></span></div>
+                </div>
+                <code class="text-[9px] text-slate-700 truncate font-mono bg-black/20 p-2 rounded-lg">${key.substring(0,20)}…</code>
+                <code class="text-[9px] text-slate-600 truncate font-mono">${model}</code>
+                <div class="response-box text-xs text-slate-500 italic mt-1 font-serif">...</div>
+                <button class="focus-btn hidden mt-1 text-[9px] font-black uppercase tracking-widest bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 border border-yellow-500/20 rounded-xl py-2 transition-all" onclick="openFocusWithCard('${type.toLowerCase()}', '${key}', '${model}')">⚡ Deep Test</button>
+            `;
+            resultsArea.appendChild(card);
+
+            try {
+                const { url, headers, body } = buildRequest(type.toLowerCase(), key, model, prompt, maxTok);
+                const response = await fetch(url, { method: 'POST', headers, body });
+                const data = await response.json();
+
+                if (response.ok) {
+                    const txt = type === 'Gemini'
+                        ? data.candidates?.[0]?.content?.parts?.[0]?.text
+                        : data.choices?.[0]?.message?.content;
+                    card.classList.add('border-yellow-500/20', 'bg-yellow-500/[0.01]');
+                    card.querySelector('.status').innerHTML = `<span class="text-yellow-500 uppercase tracking-widest">✓ LIVE</span>`;
+                    card.querySelector('.response-box').innerText = JSON.stringify(data, null, 2);
+                    card.querySelector('.response-box').classList.replace('text-slate-500', 'text-slate-200');
+                    card.querySelector('.focus-btn').classList.remove('hidden');
+                    workingKeys.push({ type, key, model, line });
+                    successCount++;
+                } else {
+                    throw new Error(data.error?.message || data.error || 'Denied');
+                }
+            } catch (e) {
+                card.classList.add('border-red-500/20');
+                card.querySelector('.status').innerHTML = `<span class="text-red-600 uppercase tracking-widest">✗ DEAD</span>`;
+                card.querySelector('.response-box').innerText = e.message;
+                card.querySelector('.response-box').classList.add('text-red-900/60', 'not-italic');
+                failCount++;
+            }
+
+            document.getElementById('stat-success').innerText = successCount;
+            document.getElementById('stat-fail').innerText = failCount;
+        }
+
+        testBtn.disabled = false;
+        testBtn.innerText = 'EXECUTE ALL TESTS';
+        if (workingKeys.length > 0) document.getElementById('copyBtn').classList.remove('hidden');
+    }
+
+    function copyWorking() {
+        navigator.clipboard.writeText(workingKeys.map(k => k.line).join('\n'));
+        alert(`${workingKeys.length} live key lines copied.`);
+    }
+</script>
+</body>
+</html>

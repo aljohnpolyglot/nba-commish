@@ -12,15 +12,15 @@ const ALLOWED_ORIGINS = [
 ];
 
 const MODEL_MAP = {
-  1: "meta-llama/Llama-3.3-70B-Instruct-Turbo",  // Fast
-  2: "moonshotai/Kimi-K2.5",                       // Balanced
-  3: "zai-org/GLM-5-Plus"                          // Best
+  1: "meta-llama/Llama-3.3-70B-Instruct-Turbo",  // Blitz fallback (Groq gpt-oss-120b handles primary client-side)
+  2: "deepcogito/cogito-v2-1-671b",                 // Standard
+  3: "MiniMaxAI/MiniMax-M2.5-FP4"                 // Elite
 };
 const MODEL_FALLBACK_CAROUSEL = [
+  "MiniMaxAI/MiniMax-M2.5-FP4",
+  "deepseek-ai/DeepSeek-V3",
   "meta-llama/Llama-3.3-70B-Instruct-Turbo",
   "moonshotai/Kimi-K2.5",
-  "zai-org/GLM-5-Plus",
-  "deepseek-ai/DeepSeek-V3",
 ];
 const ENABLE_GEMINI_FALLBACK = false; // set to true to re-enable Gemini fallback
 

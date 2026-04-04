@@ -34,7 +34,7 @@ export async function generateInitialContent(
                 systemInstruction: SYSTEM_PROMPT,
                 responseMimeType: "application/json",
                 responseSchema: OUTCOME_SCHEMA as any,
-                maxOutputTokens: SettingsManager.getMaxTokens(8192),
+                maxOutputTokens: SettingsManager.getMaxTokens(4096),
             },
         });
 
@@ -86,7 +86,7 @@ export async function generateReactions(
                 systemInstruction: SYSTEM_PROMPT,
                 responseMimeType: "application/json",
                 responseSchema: OUTCOME_SCHEMA as any,
-                maxOutputTokens: SettingsManager.getMaxTokens(8192),
+                maxOutputTokens: SettingsManager.getMaxTokens(4096),
             },
         });
 

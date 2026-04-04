@@ -150,9 +150,16 @@ export const NewsFeed: React.FC = () => {
   );
 
   const allArticles = useMemo<NewsItem[]>(() => {
-    // state.news prepends new items: [...newNews, ...state.news] → index 0 is newest
-    // Exclude teamOnly articles — those only appear on team home pages
-    return (state.news || []).filter((n: any) => !n.teamOnly).map(n => mapToNewsItem(n, authors));
+    // Sort by date descending so newest articles always appear first regardless of insertion order.
+    return (state.news || [])
+      .filter((n: any) => !n.teamOnly)
+      .slice()
+      .sort((a: any, b: any) => {
+        const ta = a.date ? new Date(a.date).getTime() : 0;
+        const tb = b.date ? new Date(b.date).getTime() : 0;
+        return tb - ta;
+      })
+      .map(n => mapToNewsItem(n, authors));
   }, [state.news, authors]);
 
   const filteredArticles = useMemo(() => {

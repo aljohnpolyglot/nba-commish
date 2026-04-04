@@ -105,9 +105,14 @@
     return messages;
   }
 
-  // ── Route A: Groq Worker (chat) ───────────────────────────────────────────────
-  async function callViaGroqWorker(params: GenerateContentParameters): Promise<GenerateContentResponse> {
+  // ── Route A: Groq Worker ──────────────────────────────────────────────────────
+  async function callViaGroqWorker(
+    params: GenerateContentParameters,
+    model: string = GROQ_CHAT_MODEL,
+    label: string = "chat"
+  ): Promise<GenerateContentResponse> {
     const messages = geminiToOpenAIMessages(params);
+    const isJson = params.config?.responseMimeType === "application/json";
 
     const response = await fetch(GROQ_WORKER_URL, {
       method: "POST",
@@ -116,10 +121,11 @@
         "X-Target-Endpoint": "chat/completions",
       },
       body: JSON.stringify({
-        model: GROQ_CHAT_MODEL,
+        model,
         messages,
         max_tokens: params.config?.maxOutputTokens ?? 1024,
         temperature: params.config?.temperature ?? 0.7,
+        ...(isJson ? { response_format: { type: "json_object" } } : {}),
       }),
     });
 
@@ -131,7 +137,7 @@
     const data = await response.json();
     const text = data?.choices?.[0]?.message?.content ?? "";
     const nickname = response.headers.get("X-Groq-Key-Nickname") ?? "?";
-    console.log(`%c[LLM] ✅ Groq Worker (${nickname}) → chat`, "color:#a855f7;font-weight:bold");
+    console.log(`%c[LLM] ✅ Groq Worker (${nickname}) → ${label}`, "color:#a855f7;font-weight:bold");
     return wrapText(text);
   }
 
@@ -271,6 +277,17 @@
     }
 
     // ── Non-chat calls → Gemini cascade ──────────────────────────────────────
+
+    // Mode 1 (Blitz): route to Groq gpt-oss-120b first — fast JSON, ~500 T/s
+    if (settings.llmPerformance === 1) {
+      try {
+        const result = await callViaGroqWorker(params, "openai/gpt-oss-120b", "sim/blitz");
+        return result;
+      } catch (groqErr: any) {
+        console.warn(`[LLM] Groq Blitz failed: ${groqErr?.message} — falling through to Gemini cascade`);
+      }
+    }
+
     const tier = settings.llmPerformance as 1 | 2 | 3;
     const models = MODEL_TIERS[tier] ?? MODEL_TIERS[2];
     const localKeys = getAllKeys();
@@ -315,11 +332,10 @@
 
     // ── Last resort: workerProviders chain ────────────────────────────────────
     try {
-      console.warn("[LLM] All Gemini tiers exhausted — trying workerProviders.");
       const messages = geminiParamsToMessages(params);
       const isJson = params.config?.responseMimeType === "application/json";
       const opts: WorkerOptions = {
-        maxTokens: SettingsManager.getMaxTokens(8192),
+        maxTokens: SettingsManager.getMaxTokens(4096),
         temperature: 0.7,
         json: isJson,
       };

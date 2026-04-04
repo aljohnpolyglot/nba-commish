@@ -28,17 +28,13 @@ export function generateCoordinatedStats(
   // ── 2K Team Aura: scales pool sizes, not individual distribution weights ──
   // Centered at 70: elite defense grows pools, bad defense shrinks them.
   // BBGM ratings still decide who on the team gets each steal/block/assist.
-  const stlAura = team2KDef ? (team2KDef.steal + team2KDef.passPerception - 140) * 0.005 : 0;
-  const passAura = opp2KDef ? (opp2KDef.passPerception - 70) * 0.008 : 0;
-
-  // Block pool: talent-based boost centered at 70.
-  // Even when opponents avoid the paint (fewer interior misses), elite shot-blockers
-  // "find" extra blocks via recovery/transition — so we boost the pool by their talent.
-  const blkTalentFactor = team2KDef ? Math.max(0, (team2KDef.block - 70) / 10) : 0;
+  const stlAura  = team2KDef ? (team2KDef.steal + team2KDef.passPerception - 140) * 0.005 : 0;
+  const blkAura  = team2KDef ? (team2KDef.block + team2KDef.interiorDef    - 140) * 0.005 : 0;
+  const passAura = opp2KDef  ? (opp2KDef.passPerception - 70)              * 0.008 : 0;
 
   const finalSteals = Math.round(availableSteals * (1.0 + stlAura));
-  const finalBlocks = Math.round(availableBlocks * (1.0 + blkTalentFactor * 0.4));
-  const assistRatio = Math.max(0.44, 0.62 - passAura);
+  const finalBlocks = Math.round(availableBlocks * (1.0 + blkAura));
+  const assistRatio = Math.max(0.42, 0.62 - passAura);
 
   const ownMisses = stats.reduce((s, p) => s + Math.max(0, p.fga - p.fgm), 0);
 
@@ -57,7 +53,7 @@ export function generateCoordinatedStats(
 
   // ── Offensive Rebounds
   distributePie(
-    Math.round(ownMisses * 0.25),
+    Math.round(ownMisses * 0.20),
     (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 1.0 + rHelper(p, 'jmp') * 0.5) * minFrac(p) * (getNight(p)?._nightOrbMult ?? 1),
     'orb', 2.0, rotation, stats, 0.22
   );
@@ -73,7 +69,7 @@ export function generateCoordinatedStats(
   distributePie(
     finalBlocks,
     (p) => (rHelper(p, 'hgt') * 2.5 + rHelper(p, 'jmp') * 1.5 + rHelper(p, 'diq') * 0.5) * (getNight(p)?._nightBlkMult ?? 1),
-    'blk', 5, rotation, stats
+    'blk', 4.0, rotation, stats
   );
 
   // ── Assists (pool shrinks vs elite pass-disruptors, grows vs bad ones)
@@ -86,17 +82,17 @@ export function generateCoordinatedStats(
       const oiq = rHelper(p, 'oiq');
       return Math.pow(
         Math.max(0.1, drb * 0.4 + pss * 1.0 + oiq * 0.5),
-        2.5
+        3.8
       ) * minFrac(p) * (getNight(p)?._nightAssistMult ?? 1);
     },
     'ast', 1.0,
     rotation, stats
   );
 
-  // Soft-cap assists above 13
+  // Soft-cap assists above 11
   stats.forEach(s => {
-    if (s.ast > 13) {
-      s.ast = Math.round(13 + (s.ast - 13) * 0.50);
+    if (s.ast > 11) {
+      s.ast = Math.round(11 + (s.ast - 11) * 0.45);
     }
   });
 
@@ -164,9 +160,23 @@ export function generateCoordinatedStats(
     }
   }
 
-  // ── Hard cap: no player can exceed total game length (handles any rounding drift)
+  // ── Hard cap: no player can exceed total game length + sync sec field
   const maxMins = 48 + otCount * 5;
-  stats.forEach(s => { s.min = Math.min(maxMins, Math.max(0, s.min)); });
+  stats.forEach(s => {
+    s.min = Math.min(maxMins, Math.max(0, s.min));
+    s.sec = Math.floor((s.min % 1) * 60);
+  });
+
+  // ── Final minutes enforcer — hard cap above may clip players to maxMins, drifting total ──
+  // Distributes the remainder to the highest-minute player not already at cap.
+  const cappedTotal = stats.reduce((sum, s) => sum + s.min, 0);
+  const cappedDiff  = totalTarget - cappedTotal;
+  if (Math.abs(cappedDiff) >= 0.5) {
+    const eligible = stats.filter(s => s.min < maxMins).sort((a, b) => b.min - a.min);
+    if (eligible.length > 0) {
+      eligible[0].min = Math.max(0, eligible[0].min + cappedDiff);
+    }
+  }
 
   // ── Cleanup & GameScore
   stats.forEach(s => {

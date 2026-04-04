@@ -16,6 +16,7 @@ import { runSimulation } from './turn/simulationHandler';
 import { processSimulationResults } from './turn/postProcessor';
 import { calculateNewStats } from './turn/statUpdater';
 import { handleSocialAndNews } from './turn/socialHandler';
+import { generateLazySimNews } from '../../services/news/lazySimNewsGenerator';
 import { handleCommunication } from './turn/communicationHandler';
 import { SettingsManager } from '../../services/SettingsManager';
 import { resolveBets } from '../../services/logic/betResolver';
@@ -153,6 +154,15 @@ export const processTurn = async (
 
     // 7. Handle Social and News
     const { uniqueNewPosts, uniqueNewNews } = await handleSocialAndNews(state, result, allSimResults, updatedPlayers, stateWithSim.teams, daysToSimulate, stateWithSim.date);
+
+    // Supplement with template-based news (always fires, LLM-agnostic) — same engine as lazy sim batches
+    if (allSimResults.length > 0) {
+        const reportedInjuries = new Set<string>(state.news.map((n: any) => n.injuryPlayerId).filter(Boolean));
+        const templateNews = generateLazySimNews(stateWithSim.teams, updatedPlayers, allSimResults, stateWithSim.date, reportedInjuries, false, state.teams);
+        const existingIds = new Set([...state.news.map((n: any) => n.id), ...uniqueNewNews.map((n: any) => n.id)]);
+        templateNews.filter(n => !existingIds.has(n.id)).forEach(n => uniqueNewNews.push(n));
+    }
+
     console.log('[GameLogic] uniqueNewNews:', uniqueNewNews?.length);
     console.log('[GameLogic] uniqueNewPosts:', uniqueNewPosts?.length);
 

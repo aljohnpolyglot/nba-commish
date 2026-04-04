@@ -68,7 +68,7 @@ export const generateReactionPrompt = (
     1. 1-2 News headlines covering the change.
        - CRITICAL: Rewrite the action description into a realistic news headline and hook. Do NOT just copy it.
     2. 3-5 Social media posts reacting to it.
-        - CRITICAL: If the action is a major transaction (signing, trade, suspension, fine), at least one post MUST be from @wojespn or @ShamsCharania breaking the news.
+        - CRITICAL: If the action is a major transaction (signing, trade, suspension, fine), at least one post MUST be from @ShamsCharania breaking the news.
     3. (Optional) An email from a relevant stakeholder (Owner, Player, or GM) if the change is controversial.
        - **ORGANIZATION:** Make sure to include the 'organization' field in the email schema (e.g., "Spotify", "Nike", "NBPA", "Los Angeles Lakers") so the correct email domain can be generated.
 

@@ -5,7 +5,8 @@ import { getScaledRating, R } from './helpers';
 import { getVariance } from '../utils';
 import { getNightProfile } from './nightProfile';
 import { SimulatorKnobs, KNOBS_DEFAULT } from '../SimulatorKnobs';
-import { playThroughInjuriesFactor, injurySeverityLevel } from '../playThroughInjuriesFactor';
+import { playThroughInjuriesFactor, injurySeverityLevel, minutesRestrictionFactor } from '../playThroughInjuriesFactor';
+import { generateGamePlan } from '../GamePlan';
 
 export function generateStatsForTeam(
   team: Team,
@@ -67,6 +68,35 @@ export function generateStatsForTeam(
     playerMinutes = minutes;
   }
 
+  // ── GamePlan: per-game role lottery (stars stable, bench volatile) ─────────
+  // ptsMult and minutesMult are correlated but not identical; both normalize to mean=1.0.
+  const gamePlan = generateGamePlan(rotation.length);
+
+  // Apply minutes multiplier now, re-normalize to keep team total exact.
+  // Also apply injury minutes restriction: day-to-day players lose ~12%, significant injuries ~40%.
+  const _ptiLevel = knobs.playThroughInjuries ?? 0;
+  playerMinutes = playerMinutes.map((m, i) => {
+    const injGames = rotation[i]?.injury?.gamesRemaining ?? 0;
+    const minRestriction = injGames > 0 && _ptiLevel > 0
+      ? minutesRestrictionFactor(Math.min(injurySeverityLevel(injGames), _ptiLevel))
+      : 1.0;
+    return Math.max(1, m * gamePlan.minutesMult[i] * minRestriction);
+  });
+  const actualMinTotal = playerMinutes.reduce((a, b) => a + b, 0) || 1;
+  playerMinutes = playerMinutes.map(m =>
+    m * (totalMinuteBudget / actualMinTotal)
+  );
+
+  // Hard per-player cap: no player can exceed 48 min (reg) or 53/58 (OT).
+  // Iterate up to 4 times — redistributing excess each pass until no one is over.
+  const perPlayerMax = 48 + otCount * 5;
+  for (let iter = 0; iter < 4; iter++) {
+    if (!playerMinutes.some(m => m > perPlayerMax + 0.01)) break;
+    playerMinutes = playerMinutes.map(m => Math.min(perPlayerMax, m));
+    const cappedTotal = playerMinutes.reduce((a, b) => a + b, 0) || 1;
+    playerMinutes = playerMinutes.map(m => m * (totalMinuteBudget / cappedTotal));
+  }
+
   // ── Rating-floor helper (protects celebrity/mock players from 0-stat lines) ──
   const rFloor = knobs.ratingFloor;
   const rHelper = (p: Player, k: string) => Math.max(rFloor, R(p, k, season));
@@ -84,15 +114,19 @@ export function generateStatsForTeam(
     const skill   = (Math.max(inside, outside) * 1.5 + Math.min(inside, outside) * 0.5) / 2;
     const raw = Math.pow(usage * (skill / 100), 1.25);
 
+    // Structural taper: softens star concentration. GamePlan handles per-game variance.
+    const SLOT_SCORE_MULT = [1.0, 0.88, 0.76, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
+    const slotMult = SLOT_SCORE_MULT[i] ?? 1.0;
+
     // Play-through-injuries: reduce performance for players with active injuries.
     // The effective penalty = min(injury severity, team's playThroughInjuries setting).
     const injGames = p.injury?.gamesRemaining ?? 0;
     if (injGames > 0 && ptiLevel > 0) {
       const severity  = injurySeverityLevel(injGames);
       const effective = Math.min(severity, ptiLevel);
-      return raw * playThroughInjuriesFactor(effective);
+      return raw * slotMult * playThroughInjuriesFactor(effective);
     }
-    return raw;
+    return raw * slotMult;
   });
   const totalScoringPotential = scoringPotentials.reduce((a, b) => a + b, 0);
 
@@ -100,12 +134,13 @@ export function generateStatsForTeam(
   let teamBonusBucket = 0;
   const initialTargets = rotation.map((_, i) => {
     const share    = scoringPotentials[i] / totalScoringPotential;
-    let rawTarget  = adjustedScore * share;
-    if (rawTarget > 34) {
-      const excess      = rawTarget - 34;
-      const shavedPoints = excess * 0.40;
+    // GamePlan ptsMult shifts tonight's distribution (bench eruption, 2nd-option takeover, etc.)
+    let rawTarget  = adjustedScore * share * gamePlan.ptsMult[i];
+    if (rawTarget > 24) {
+      const excess      = rawTarget - 24;
+      const shavedPoints = excess * 0.60;
       teamBonusBucket  += shavedPoints;
-      rawTarget          = 34 + (excess - shavedPoints);
+      rawTarget          = 24 + (excess - shavedPoints);
     }
     return { rawTarget, share };
   });
@@ -146,7 +181,12 @@ export function generateStatsForTeam(
     const maxFtRate = tp > 85 ? 0.14 : 0.40;
     baseFtRate = Math.min(baseFtRate, maxFtRate) * knobs.ftRateMult;
 
-    const estimatedFga = ptsTarget / 1.1;
+    // Score-correlation: high-scoring team nights mean efficient shooting → fewer attempts needed.
+    // Divide fgaMult by efficiencyMultiplier (range 0.90–1.12 from getEfficiencyMultFromScore).
+    // 154-pt game (effMult=1.12): BRICKFEST 1.60→1.43, TORCH 0.88→0.79.
+    // 90-pt game (effMult=0.90): BRICKFEST 1.60→1.78, NORMAL 1.0→1.11.
+    const effScore = Math.max(0.88, Math.min(1.12, knobs.efficiencyMultiplier ?? 1.0));
+    const estimatedFga = (ptsTarget / 1.1) * (nightProfile.fgaMult / effScore);
     // Cap ftaBase at 34 pts equivalent — prevents explosion nights from producing 20 FTA.
     // ftAggression scales FTA with the night profile: Torch/Explosion nights draw more fouls,
     // Brickfest/Passive nights draw fewer.
@@ -215,8 +255,11 @@ if (tpComposite >= 20 && tpComposite <= 60) {
       tpComposite > 10 ? 0.15 :
       0.04;
 
-    // Apply night profile shift
-    threePointRate = Math.max(0, threePointRate + nightProfile.shotDietShift);
+    // Apply night profile diet shift — pure shooters (tp>75) already live on the arc.
+    // Their torch expression should be better makes, not more attempts.
+    // For them, clamp diet shift to near-zero; the efficiency path handles the rest.
+    const effectiveDietShift = tp > 75 ? Math.min(0.015, nightProfile.shotDietShift) : nightProfile.shotDietShift;
+    threePointRate = Math.max(0, threePointRate + effectiveDietShift);
 
     // Knobs: exhibition / rule-change modifiers (applied after personal cap)
     if (!knobs.threePointAvailable) {
@@ -228,13 +271,48 @@ if (tpComposite >= 20 && tpComposite <= 60) {
     // Bad-shooter floor penalty: players with tp < 50 get a downward correction
     // so Giannis (tp≈20) shoots ~20% not 33%, without touching league average.
     // Each tp point below 50 costs 0.45pp — max ~22pp reduction at tp=0.
-    const tpFloorPenalty = tp < 50 ? (50 - tp) * 0.0045 : 0;
+    const tpFloorPenalty = tp < 50 ? (50 - tp) * 0.003 : 0;
+    // Mid-elite shooter bump: tp 60-80 (Klay/MPJ/Duncan Robinson tier) gets a small efficiency lift.
+    // Not Curry's tier (tp>80), not the whole league.
+    const tierEfficiencyBonus = (tp >= 60 && tp < 80) ? 0.025 : 0;
     const threePctBase = Math.max(0.05,
-      (weights.threePmBase ?? 0.30) + (tp / 100) * (weights.threePmScale ?? 0.15) - tpFloorPenalty
+      (weights.threePmBase ?? 0.31) + (tp / 100) * (weights.threePmScale ?? 0.13) - tpFloorPenalty + tierEfficiencyBonus
     );
     // Perimeter D modifier: elite (+) tanks 3PT%, bad (-) boosts it. Clamp to sane range.
     const perimPenalty = Math.min(1.20, Math.max(0.75, 1.0 - perimDelta * 0.008));
-    const threePctEffective = Math.max(0.04, threePctBase * nightProfile.efficiencyMult * perimPenalty * knobs.efficiencyMultiplier);
+
+    // 🎲 Attributes-Based Volume (calculated from rate, not makes)
+    // league3PAMult applied HERE — after the cap — so it actually scales attempts instead of being swallowed
+    let threePa = Math.round((estimatedFga * threePointRate) * (weights.league3PAMult || 1.5) * getVariance(1.0, 0.22));
+
+    // Integer Wobble: -2 to +2 to break robot cycles (only when already taking attempts)
+    if (threePa > 0) {
+      threePa += Math.floor(Math.random() * 5) - 2;
+    }
+    threePa = Math.max(0, threePa);
+
+    // Soft cap: no hard ceiling but each attempt above 16 has only 30% survival.
+    // Allows Klay/Curry torch nights at 18-20+ but makes it very rare.
+    if (threePa > 16) {
+      let softCapped = 16;
+      for (let a = 0; a < threePa - 16; a++) {
+        if (Math.random() < 0.30) softCapped++;
+      }
+      threePa = softCapped;
+    }
+
+    // Diminishing efficiency: high-volume 3PA costs accuracy above the player's natural range.
+    // Every attempt above naturalVol reduces hit rate by 2.5%.
+    // MPJ at 15 3PA (natural vol 8): 7 extra × 2.5% = −17.5% → shoots ~28% not 38%.
+    // Curry at 15 3PA (natural vol 10): 5 extra × 2.5% = −12.5% → still ~38% (high base).
+    const naturalVol = tp > 85 ? 11 : tp > 70 ? 9 : tp > 60 ? 8 : tp > 50 ? 6 : 4;
+    const volDecay = threePa > naturalVol
+      ? Math.max(0.55, 1.0 - (threePa - naturalVol) * 0.018)
+      : 1.0;
+
+    const threePctEffective = Math.max(0.04,
+      threePctBase * nightProfile.efficiencyMult * perimPenalty * knobs.efficiencyMultiplier * volDecay
+    );
 
     // Calculate 2PT efficiency
     const isIn = tp < 40;
@@ -244,20 +322,10 @@ if (tpComposite >= 20 && tpComposite <= 60) {
     const pct2Raw = 0.34 + (eff2 / 100) * 0.28;
     const pct2 = Math.max(0.28, Math.min(0.72, pct2Raw * nightProfile.efficiencyMult * knobs.efficiencyMultiplier * getVariance(1.0, 0.08)));
 
-    // 🎲 Attributes-Based Volume (calculated from rate, not makes)
-    // league3PAMult applied HERE — after the cap — so it actually scales attempts instead of being swallowed
-    let threePa = Math.round((estimatedFga * threePointRate) * (weights.league3PAMult || 1.5) * getVariance(1.0, 0.22));
-
-    // Integer Wobble: -2 to +2 to break robot cycles
-    if (threePa > 0 || threePointRate > 0.08) {
-      threePa += Math.floor(Math.random() * 5) - 2;
-    }
-    threePa = Math.max(0, threePa);
-
     // Calculate makes — wider variance (0.28 σ) allows real cold/hot nights:
     // Giannis 3/3 at 21% base: round(0.63 × N(1,0.28)) → 0 or 1 depending on roll.
     // Good shooters 10/10 at 38%: round(3.8 × N(1,0.28)) → 2–6 range realistically.
-    let threePm = Math.round(threePa * threePctEffective * getVariance(1.0, 0.28));
+    let threePm = Math.round(threePa * threePctEffective * getVariance(1.0, 0.32));
     threePm = Math.max(0, Math.min(threePm, threePa, Math.floor(fgPts / 3)));
 
     // Loose shaver: allow record-breaking nights (13+ makes) but taper slightly

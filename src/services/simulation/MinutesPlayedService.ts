@@ -50,11 +50,11 @@ export interface MinuteAllocation {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const BENCH_TIERS = [
-  { base: 22, spread: 6 },  // depth slot 0 → 6th man  → 22–28, avg 25
+  { base: 20, spread: 6 },  // depth slot 0 → 6th man  → 20–26, avg 23
   { base: 17, spread: 6 },  // depth slot 1 → 7th man  → 17–23, avg 20
-  { base: 11, spread: 6 },  // depth slot 2 → 8th man  → 11–17, avg 14
-  { base: 4,  spread: 4 },  // depth slot 3 → 9th man  →  4–8,  avg  6
-  { base: 1,  spread: 3 },  // depth slot 4+→ deep res →  1–4,  avg  2.5
+  { base: 13, spread: 6 },  // depth slot 2 → 8th man  → 13–19, avg 16
+  { base: 7,  spread: 5 },  // depth slot 3 → 9th man  →  7–12, avg  9.5
+  { base: 2,  spread: 4 },  // depth slot 4+→ deep res →  2–6,  avg  4
 ] as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -273,11 +273,13 @@ export class MinutesPlayedService {
         } else if (i === 0 && starMpgTarget !== undefined) {
           baseMins = starMpgTarget + (Math.random() - 0.5) * 2; // ±1 min wobble
         } else {
-          baseMins = isBigBlowout
-            ? 30 + Math.random() * 4   // 30–34
-            : isBlowout
-            ? 33 + Math.random() * 3   // 33–36
-            : 35 + Math.random() * 3;  // 35–38
+          // Each subsequent starter slot steps down relative to the star's load.
+          // Slot 1: ~star+1, Slot 2: ~star-3, Slot 3: ~star-7, Slot 4: ~star-12
+          const slotDrops = [-3, -5, -8, -13];
+          const slotDrop = slotDrops[i - 1] ?? -13;
+          const starRef = Math.min(37, (starMpgTarget ?? 36) + 1);
+          const normalRef = isBigBlowout ? Math.min(31, starRef) : isBlowout ? Math.min(34, starRef) : starRef;
+          baseMins = Math.max(20, normalRef + slotDrop + (Math.random() - 0.5) * 4);
         }
         // Soft fatigue: endu < 40 clips up to ~4.5 min (e.g. Wemby endu=10 → –4.5 min)
         const fatigue = endu < 40 ? (40 - endu) * 0.15 : 0;

@@ -280,6 +280,11 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                   >
                     {s.name}
                   </button>
+                  {result?.playerInGameInjuries?.[s.playerId] && (
+                    <span className="ml-2 text-[10px] font-bold text-orange-400/80 uppercase tracking-wide whitespace-nowrap">
+                      ✦ Left early ({result.playerInGameInjuries[s.playerId]})
+                    </span>
+                  )}
                 </td>
                 <td className="px-2 py-3 font-mono text-slate-400">{getPlayerPos(s.playerId)}</td>
                 <td className="px-2 py-3 text-right font-mono">{Math.floor(s.min)}:{Math.floor((s.min % 1) * 60).toString().padStart(2, '0')}</td>

@@ -1,0 +1,3267 @@
+=== src\types.ts (GameState, UserProfile, SocialPost, ActionType only) ===
+  }
+  
+> export type SocialSource = 'TwitterX' | 'Feddit';
+  
+  export interface Sender {
+  }
+  
+> export interface UserProfile {
+    name: string;
+    handle: string;
+  }
+  
+> export interface SocialPost {
+    id: string;
+    author: string;
+    likes: number;
+    retweets: number;
+>   source: SocialSource;
+    playerPortraitUrl?: string;
+    teamLogoUrl?: string;
+    avatarUrl?: string;
+    isNew?: boolean;
+>   replies?: SocialPost[];
+    isReply?: boolean;
+    isLiked?: boolean;
+  }
+  
+> export interface GameState {
+    day: number;
+    date: string;
+    chats: Chat[];
+    news: NewsItem[];
+>   socialFeed: SocialPost[];
+    history: Array<string | HistoryEntry>;
+    isProcessing: boolean;
+    tickerSimResults?: any[];
+    prevTeams?: NBATeam[];
+>   lastActionType?: string;
+    lastActionPayload?: any;
+    teams: NBATeam[];
+    followedHandles: string[];
+    cachedProfiles?: Record<string, any>;
+>   userProfile?: UserProfile;
+    commissionerName: string;
+    saveId?: string;
+  }
+  
+> export type ActionType = 'REPLY_EMAIL' | 'BRIBE' | 'HYPNOTIZE' | 'PUBLIC_STATEMENT' | 'ADVANCE_DAY' | 'DIRECT_MESSAGE' | 'SEND_MESSAGE' | 'SEND_CHAT_MESSAGE' | 'UPDATE_RULES' | 'SUSPEND_PLAYER' | 'CLEAR_OUTCOME' | 'SAVE_SOCIAL_THREAD' | 'FINE_PERSON' | 'BRIBE_PERSON' | 'GLOBAL_GAMES' | 'LEAK_SCANDAL' | 'HYPNOTIC_BROADCAST' | 'RIG_LOTTERY' | 'CELEBRITY_ROSTER' | 'OWNER_DINNER' | 'PUBLIC_ANNOUNCEMENT' | 'SUSPEND_PERSON' | 'DRUG_TEST_PERSON' | 'INVITE_DINNER' | 'EXPANSION_DRAFT' | 'ANNOUNCE_CHANGE' | 'START_GAME' | 'LOAD_GAME' | 'UPDATE_SAVE_ID' | 'SIGN_FREE_AGENT' | 'EXECUTIVE_TRADE' | 'TRAVEL' | 'GIVE_MONEY' | 'VISIT_NON_NBA_TEAM' | 'INVITE_PERFORMANCE' | 'FORCE_TRADE' | 'ADJUST_FINANCIALS' | 'FOLLOW_USER' | 'UNFOLLOW_USER' | 'ADD_PENDING_HYPNOSIS' | 'MARK_PAYSLIPS_READ' | 'TRANSFER_FUNDS' | 'SET_CHRISTMAS_GAMES' | 'SABOTAGE_PLAYER' | 'GO_TO_CLUB' | 'ENDORSE_HOF' | 'SIMULATE_TO_DATE' | 'ADD_PRESEASON_INTERNATIONAL' | 'ALL_STAR_ADVANCE_VOTES' | 'ALL_STAR_ANNOUNCE_STARTERS' | 'ALL_STAR_ANNOUNCE_RESERVES' | 'ALL_STAR_SIMULATE_WEEKEND' | 'GENERATE_PLAYOFF_BRACKET' | 'SIM_PLAYOFF_ROUND' | 'SAVE_CONTEST_RESULT' | 'RECORD_WATCHED_GAME' | 'WAIVE_PLAYER' | 'FIRE_PERSONNEL' | 'STORE_PURCHASE' | 'RIG_ALL_STAR_VOTING' | 'SET_ALL_STAR_REPLACEMENT' | 'SET_DUNK_CONTESTANTS' | 'SET_THREE_POINT_CONTESTANTS' | 'ADD_ALL_STAR_REPLACEMENT' | 'REAL_ESTATE_INVENTORY_UPDATE' | 'COMMISH_STORE_INVENTORY_UPDATE';
+  
+> export interface UserAction {
+>   type: ActionType;
+    payload?: any;
+  }
+
+=== CURRENT TS ERRORS ===
+src/components/actions/view/ActionsView.tsx(133,11): error TS2367: This comparison appears to be unintentional because the types '"fine" | "general" | "bribe" | "dinner" | "movie" | "give_money" | "club" | "suspension" | "drug_test" | "waive" | "fire" | "endorse_hof" | "sabotage" | "leak_scandal"' and '"hypnotize"' have no overlap.
+src/components/allstar/allstarevents/dunk/DunkContest.tsx(4,10): error TS2459: Module '"../../../../services/allStar/AllStarDunkContestSim"' declares 'NBAPlayer' locally, but it is not exported.
+src/components/allstar/allstarevents/dunk/PlayFeed.tsx(3,16): error TS2459: Module '"../../../../services/allStar/AllStarDunkContestSim"' declares 'NBAPlayer' locally, but it is not exported.
+src/components/allstar/allstarevents/dunk/Scoreboard.tsx(3,10): error TS2459: Module '"../../../../services/allStar/AllStarDunkContestSim"' declares 'NBAPlayer' locally, but it is not exported.
+src/components/allstar/allstarevents/dunk/useDunkContest.ts(3,3): error TS2459: Module '"../../../../services/allStar/AllStarDunkContestSim"' declares 'NBAPlayer' locally, but it is not exported.
+src/components/allstar/allstarevents/src/components/MiniCourt.tsx(16,35): error TS2339: Property 'launchSpot' does not exist on type 'Play'.
+src/components/allstar/allstarevents/src/components/MiniCourt.tsx(87,8): error TS2367: This comparison appears to be unintentional because the types '"perfect" | "section_header" | "player_intro" | "standings" | "winner" | "crowd_reaction" | "dunk_setup" | "retry" | "dunk_toss" | "dunk_in_air" | "dunk_outcome_made" | "dunk_reveal" | "dunk_outcome_miss" | "score_reveal" | "bail"' and '"made"' have no overlap.
+src/components/allstar/allstarevents/src/components/ThreePointContest.tsx(52,48): error TS2339: Property 'total' does not exist on type 'ThreePointPlay'.
+src/components/allstar/allstarevents/src/components/ThreePointContest.tsx(53,30): error TS2339: Property 'total' does not exist on type 'ThreePointPlay'.
+src/components/allstar/allstarevents/threepoint/ThreePointContest.tsx(65,48): error TS2339: Property 'total' does not exist on type 'ThreePointPlay'.
+src/components/allstar/allstarevents/threepoint/ThreePointContest.tsx(66,30): error TS2339: Property 'total' does not exist on type 'ThreePointPlay'.
+src/components/allstar/AllStarView.tsx(266,13): error TS2322: Type 'Dispatch<SetStateAction<AllStarTab>>' is not assignable to type '(tab: AllStarTab) => void'.
+  Types of parameters 'value' and 'tab' are incompatible.
+    Type 'AllStarTab' is not assignable to type 'SetStateAction<AllStarTab>'.
+      Type '"all-star-game"' is not assignable to type 'SetStateAction<AllStarTab>'.
+src/components/central/view/DraftScoutingView.tsx(276,99): error TS2339: Property 'displayOvr' does not exist on type 'EnhancedProspect'.
+src/components/central/view/DraftScoutingView.tsx(280,99): error TS2339: Property 'displayOvr' does not exist on type 'EnhancedProspect'.
+src/components/central/view/DraftScoutingView.tsx(284,99): error TS2339: Property 'displayOvr' does not exist on type 'EnhancedProspect'.
+src/components/central/view/NBACentral.tsx(170,29): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<"fine" | "general" | "bribe" | "dinner" | "movie" | "give_money" | "suspension" | "drug_test" | "waive" | "sabotage" | "leak_scandal">'.
+src/components/central/view/PlayerBioView.tsx(343,19): error TS2339: Property 'college' does not exist on type 'NBAPlayer'.
+src/components/central/view/RealStern.tsx(194,38): error TS2304: Cannot find name 'Contact'.
+src/components/central/view/RealStern.tsx(198,5): error TS2304: Cannot find name 'setGiftModalAsset'.
+src/components/central/view/RealStern.tsx(209,42): error TS2304: Cannot find name 'Contact'.
+src/components/central/view/RealStern.tsx(212,5): error TS2304: Cannot find name 'setInviteModalAsset'.
+src/components/central/view/RealStern.tsx(229,7): error TS2304: Cannot find name 'setAbandonConfirm'.
+src/components/central/view/StatisticalFeatsView.tsx(263,72): error TS2339: Property 'city' does not exist on type 'NBATeam'.
+src/components/central/view/StatisticalFeatsView.tsx(263,100): error TS2339: Property 'city' does not exist on type 'NBATeam'.
+src/components/central/view/TeamFinancesView.tsx(14,29): error TS2339: Property 'season' does not exist on type 'GameState'.
+src/components/central/view/TeamFinancesView.tsx(134,29): error TS2339: Property 'city' does not exist on type 'NBATeam'.
+src/components/central/view/TeamFinancesView.tsx(149,25): error TS2339: Property 'city' does not exist on type 'NBATeam'.
+src/components/central/view/TeamFinancesViewDetailed.tsx(123,29): error TS2339: Property 'city' does not exist on type 'NBATeam'.
+src/components/central/view/UniversalPlayerSearcher.tsx(104,13): error TS2339: Property 'college' does not exist on type '{ extractedCountry: string; calculatedAge: number; displayOvr: number; internalId: string; tid: number; name: string; overallRating: number; ratings: any[]; stats?: NBAGMStat[]; imgURL?: string; ... 16 more ...; moodTraits?: MoodTrait[]; }'.
+src/components/central/view/UniversalPlayerSearcher.tsx(105,32): error TS2339: Property 'college' does not exist on type '{ extractedCountry: string; calculatedAge: number; displayOvr: number; internalId: string; tid: number; name: string; overallRating: number; ratings: any[]; stats?: NBAGMStat[]; imgURL?: string; ... 16 more ...; moodTraits?: MoodTrait[]; }'.
+src/components/central/view/UniversalPlayerSearcher.tsx(107,21): error TS2339: Property 'college' does not exist on type '{ extractedCountry: string; calculatedAge: number; displayOvr: number; internalId: string; tid: number; name: string; overallRating: number; ratings: any[]; stats?: NBAGMStat[]; imgURL?: string; ... 16 more ...; moodTraits?: MoodTrait[]; }'.
+src/components/central/view/UniversalPlayerSearcher.tsx(173,42): error TS2339: Property 'college' does not exist on type '{ extractedCountry: string; calculatedAge: number; displayOvr: number; internalId: string; tid: number; name: string; overallRating: number; ratings: any[]; stats?: NBAGMStat[]; imgURL?: string; ... 16 more ...; moodTraits?: MoodTrait[]; }'.
+src/components/commissioner/Dashboard.tsx(111,32): error TS2322: Type '{ date: string; publicApproval: number; ownerApproval: number; playerApproval: number; viewership: number; revenue: number; seasonRevenue: number; }[]' is not assignable to type 'HistoricalStatPoint[]'.
+  Property 'legacy' is missing in type '{ date: string; publicApproval: number; ownerApproval: number; playerApproval: number; viewership: number; revenue: number; seasonRevenue: number; }' but required in type 'HistoricalStatPoint'.
+src/components/commissioner/Dashboard.tsx(145,31): error TS2322: Type '{ date: string; publicApproval: number; ownerApproval: number; playerApproval: number; viewership: number; revenue: number; seasonRevenue: number; }[]' is not assignable to type 'HistoricalStatPoint[]'.
+  Property 'legacy' is missing in type '{ date: string; publicApproval: number; ownerApproval: number; playerApproval: number; viewership: number; revenue: number; seasonRevenue: number; }' but required in type 'HistoricalStatPoint'.
+src/components/commissioner/rules/view/all-star/AllStarGameSection.tsx(112,34): error TS2739: Type '{ gameFormat: "timed" | "target_score"; setGameFormat: (val: "timed" | "target_score") => void; gameTargetScore: number; setGameTargetScore: (val: number) => void; quarterLength: number; ... 18 more ...; setShootoutRounds: (val: number) => void; }' is missing the following properties from type 'GameStructureSectionProps': startOfPossessionMethod, setStartOfPossessionMethod, possessionPattern, setPossessionPattern
+src/components/commissioner/rules/view/AllStarTab.tsx(112,25): error TS2322: Type '{ allStarGameEnabled: boolean; setAllStarGameEnabled: (val: boolean) => void; allStarFormat: string; setAllStarFormat: (val: string) => void; allStarTeams: number; setAllStarTeams: (val: number) => void; ... 21 more ...; setAllStarOvertimeTieBreaker: (val: string) => void; }' is not assignable to type 'IntrinsicAttributes & AllStarGameSectionProps'.
+  Property 'setNumQuarters' does not exist on type 'IntrinsicAttributes & AllStarGameSectionProps'.
+src/components/commissioner/rules/view/TabsContent.tsx(37,22): error TS2739: Type '{ playIn: any; setPlayIn: any; inSeasonTournament: any; setInSeasonTournament: any; playoffFormat: any; updatePlayoffFormat: (index: number, value: string) => void; minGamesRequirement: any; ... 6 more ...; setConferenceGames: any; }' is missing the following properties from type 'FormatTabProps': customScheduleEnabled, setCustomScheduleEnabled
+src/components/common/SimulationTicker.tsx(205,43): error TS2322: Type '{ hidden: { opacity: number; y: number; scale: number; }; visible: { opacity: number; y: number; scale: number; transition: { duration: number; ease: string; }; }; }' is not assignable to type 'Variants'.
+  Property 'visible' is incompatible with index signature.
+    Type '{ opacity: number; y: number; scale: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'Variant'.
+      Type '{ opacity: number; y: number; scale: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'TargetAndTransition'.
+        Type '{ opacity: number; y: number; scale: number; transition: { duration: number; ease: string; }; }' is not assignable to type '{ transition?: Transition<any>; transitionEnd?: ResolvedValues$1; }'.
+          Types of property 'transition' are incompatible.
+            Type '{ duration: number; ease: string; }' is not assignable to type 'Transition<any>'.
+              Type '{ duration: number; ease: string; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+                Type '{ duration: number; ease: string; }' is not assignable to type 'ValueAnimationTransition<any>'.
+                  Types of property 'ease' are incompatible.
+                    Type 'string' is not assignable to type 'Easing | Easing[]'.
+src/components/common/SimulationTicker.tsx(224,44): error TS2322: Type '{ hidden: { opacity: number; y: number; scale: number; }; visible: { opacity: number; y: number; scale: number; transition: { duration: number; ease: string; }; }; }' is not assignable to type 'Variants'.
+  Property 'visible' is incompatible with index signature.
+    Type '{ opacity: number; y: number; scale: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'Variant'.
+      Type '{ opacity: number; y: number; scale: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'TargetAndTransition'.
+        Type '{ opacity: number; y: number; scale: number; transition: { duration: number; ease: string; }; }' is not assignable to type '{ transition?: Transition<any>; transitionEnd?: ResolvedValues$1; }'.
+          Types of property 'transition' are incompatible.
+            Type '{ duration: number; ease: string; }' is not assignable to type 'Transition<any>'.
+              Type '{ duration: number; ease: string; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+                Type '{ duration: number; ease: string; }' is not assignable to type 'ValueAnimationTransition<any>'.
+                  Types of property 'ease' are incompatible.
+                    Type 'string' is not assignable to type 'Easing | Easing[]'.
+src/components/common/SimulationTicker.tsx(290,43): error TS2322: Type '{ hidden: { opacity: number; y: number; scale: number; }; visible: { opacity: number; y: number; scale: number; transition: { duration: number; ease: string; }; }; }' is not assignable to type 'Variants'.
+  Property 'visible' is incompatible with index signature.
+    Type '{ opacity: number; y: number; scale: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'Variant'.
+      Type '{ opacity: number; y: number; scale: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'TargetAndTransition'.
+        Type '{ opacity: number; y: number; scale: number; transition: { duration: number; ease: string; }; }' is not assignable to type '{ transition?: Transition<any>; transitionEnd?: ResolvedValues$1; }'.
+          Types of property 'transition' are incompatible.
+            Type '{ duration: number; ease: string; }' is not assignable to type 'Transition<any>'.
+              Type '{ duration: number; ease: string; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+                Type '{ duration: number; ease: string; }' is not assignable to type 'ValueAnimationTransition<any>'.
+                  Types of property 'ease' are incompatible.
+                    Type 'string' is not assignable to type 'Easing | Easing[]'.
+src/components/common/SimulationTicker.tsx(352,37): error TS2322: Type '{ hidden: { opacity: number; y: number; scale: number; }; visible: { opacity: number; y: number; scale: number; transition: { duration: number; ease: string; }; }; }' is not assignable to type 'Variants'.
+  Property 'visible' is incompatible with index signature.
+    Type '{ opacity: number; y: number; scale: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'Variant'.
+      Type '{ opacity: number; y: number; scale: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'TargetAndTransition'.
+        Type '{ opacity: number; y: number; scale: number; transition: { duration: number; ease: string; }; }' is not assignable to type '{ transition?: Transition<any>; transitionEnd?: ResolvedValues$1; }'.
+          Types of property 'transition' are incompatible.
+            Type '{ duration: number; ease: string; }' is not assignable to type 'Transition<any>'.
+              Type '{ duration: number; ease: string; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+                Type '{ duration: number; ease: string; }' is not assignable to type 'ValueAnimationTransition<any>'.
+                  Types of property 'ease' are incompatible.
+                    Type 'string' is not assignable to type 'Easing | Easing[]'.
+src/components/messages/NewChatModal.tsx(44,23): error TS2322: Type 'string' is not assignable to type '"WNBA" | "Euroleague" | "PBA" | "B-League" | "Active" | "Free Agent" | "Retired" | "Draft Prospect" | "Prospect"'.
+src/components/messages/NewChatModal.tsx(51,23): error TS2322: Type 'string' is not assignable to type '"WNBA" | "Euroleague" | "PBA" | "B-League" | "Active" | "Free Agent" | "Retired" | "Draft Prospect" | "Prospect"'.
+src/components/messages/NewChatModal.tsx(56,13): error TS2322: Type 'string' is not assignable to type '"WNBA" | "Euroleague" | "PBA" | "B-League" | "Active" | "Free Agent" | "Retired" | "Draft Prospect" | "Prospect"'.
+src/components/modals/PersonSelectorModal.tsx(458,53): error TS2367: This comparison appears to be unintentional because the types '"location" | "people"' and '"club_choice"' have no overlap.
+src/components/modals/PlayerRatingsModal.tsx(342,38): error TS2551: Property 'logoURL' does not exist on type 'NBATeam'. Did you mean 'logoUrl'?
+src/components/modals/TradeMachineModal.tsx(251,65): error TS2339: Property 'isIncoming' does not exist on type 'NBAPlayer'.
+src/components/modals/TradeMachineModal.tsx(332,65): error TS2339: Property 'isIncoming' does not exist on type 'NBAPlayer'.
+src/components/players/PlayersView.tsx(72,29): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<"fine" | "general" | "bribe" | "dinner" | "movie" | "give_money" | "suspension" | "drug_test" | "sabotage" | "leak_scandal">'.
+src/components/players/PlayersView.tsx(150,11): error TS2322: Type '{ title: string; actionType: "fine" | "general" | "bribe" | "dinner" | "movie" | "give_money" | "suspension" | "drug_test" | "sabotage" | "leak_scandal"; onClose: () => void; preSelectedPerson: Contact; }' is not assignable to type 'IntrinsicAttributes & PersonSelectorModalProps'.
+  Property 'preSelectedPerson' does not exist on type 'IntrinsicAttributes & PersonSelectorModalProps'.
+src/components/social/SocialFeedView.tsx(140,13): error TS2304: Cannot find name 'dispatchAction'.
+src/components/social/SocialFeedView.tsx(192,13): error TS2304: Cannot find name 'dispatchAction'.
+src/components/social/SocialFeedView.tsx(201,9): error TS2304: Cannot find name 'state'.
+src/components/social/SocialFeedView.tsx(201,16): error TS2304: Cannot find name 'dispatchAction'.
+src/components/team-stats/TeamStatsView.tsx(159,18): error TS2551: Property 'homeTeamStats' does not exist on type 'GameResult'. Did you mean 'homeStats'?
+src/components/team-stats/TeamStatsView.tsx(160,34): error TS2551: Property 'homeTeamStats' does not exist on type 'GameResult'. Did you mean 'homeStats'?
+src/components/team-stats/TeamStatsView.tsx(161,34): error TS2551: Property 'homeTeamStats' does not exist on type 'GameResult'. Did you mean 'homeStats'?
+src/components/team-stats/TeamStatsView.tsx(190,18): error TS2551: Property 'awayTeamStats' does not exist on type 'GameResult'. Did you mean 'awayStats'?
+src/components/team-stats/TeamStatsView.tsx(191,34): error TS2551: Property 'awayTeamStats' does not exist on type 'GameResult'. Did you mean 'awayStats'?
+src/components/team-stats/TeamStatsView.tsx(192,34): error TS2551: Property 'awayTeamStats' does not exist on type 'GameResult'. Did you mean 'awayStats'?
+src/components/team-stats/TeamStatsView.tsx(292,9): error TS2322: Type 'string' is not assignable to type 'number | NBATeam'.
+src/components/team-stats/TeamStatsView.tsx(293,9): error TS2322: Type 'string' is not assignable to type 'number | NBATeam'.
+src/hooks/useBackgroundFetcher.ts(52,9): error TS2304: Cannot find name 'timerRef'.
+src/hooks/useBackgroundFetcher.ts(56,5): error TS2304: Cannot find name 'timerRef'.
+src/hooks/useBackgroundFetcher.ts(57,31): error TS2304: Cannot find name 'timerRef'.
+src/main.tsx(8,35): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/services/llm/generators/content.ts(77,48): error TS2345: Argument of type '(string | HistoryEntry)[]' is not assignable to parameter of type 'string[]'.
+  Type 'string | HistoryEntry' is not assignable to type 'string'.
+    Type 'HistoryEntry' is not assignable to type 'string'.
+src/services/llm/generators/interaction.ts(101,46): error TS2345: Argument of type '(string | HistoryEntry)[]' is not assignable to parameter of type 'string[]'.
+  Type 'string | HistoryEntry' is not assignable to type 'string'.
+    Type 'HistoryEntry' is not assignable to type 'string'.
+src/services/llm/generators/simulation.ts(220,46): error TS2345: Argument of type '(string | HistoryEntry)[]' is not assignable to parameter of type 'string[]'.
+  Type 'string | HistoryEntry' is not assignable to type 'string'.
+    Type 'HistoryEntry' is not assignable to type 'string'.
+src/services/llm/utils/workerProviders.ts(76,15): error TS2459: Module '"./api"' declares 'GenerateContentParameters' locally, but it is not exported.
+src/services/simulation/GameSimulator/engine.ts(370,7): error TS2353: Object literal may only specify known properties, and 'homeWins' does not exist in type 'GameResult'.
+src/services/simulation/RotationService.ts(2,10): error TS2323: Cannot redeclare exported variable 'RotationService'.
+src/services/simulation/RotationService.ts(2,10): error TS2484: Export declaration conflicts with exported declaration of 'RotationService'.
+src/services/simulation/RotationService.ts(3,15): error TS2484: Export declaration conflicts with exported declaration of 'RotationResult'.
+src/services/simulation/RotationService.ts(6,54): error TS2307: Cannot find module '../../../types' or its corresponding type declarations.
+src/services/simulation/RotationService.ts(7,35): error TS2307: Cannot find module '../../../utils/helpers' or its corresponding type declarations.
+src/services/simulation/RotationService.ts(34,14): error TS2323: Cannot redeclare exported variable 'RotationService'.
+test/testTypes.ts(29,3): error TS2322: Type '"Regular Season"' is not assignable to type 'GamePhase'.
+
+
+=== src\store\SocialGameContext.tsx ===
+import React, { createContext, useContext, useReducer, ReactNode, useState } from 'react';
+import { SocialPost, UserProfile } from '../types';
+import { fetchProfileData } from '../utils/socialapi';
+import { generateContentWithRetry } from '../services/llm/utils/api';
+
+interface SocialGameState {
+  date: string;
+  socialFeed: SocialPost[];
+  followedHandles: string[];
+  teams: any[];
+  boxScores: any[];
+  userProfile: UserProfile;
+  cachedProfiles: Record<string, any>;
+}
+
+type Action =
+  | { type: 'SET_FEED'; payload: SocialPost[] }
+  | { type: 'TOGGLE_LIKE'; payload: string }
+  | { type: 'TOGGLE_RETWEET'; payload: string }
+  | { type: 'FOLLOW_USER'; payload: string }
+  | { type: 'UNFOLLOW_USER'; payload: string }
+  | { type: 'SAVE_SOCIAL_THREAD'; payload: { postId: string; replies: SocialPost[] } }
+  | { type: 'UPDATE_PROFILE'; payload: Partial<UserProfile> }
+  | { type: 'ADD_POST'; payload: SocialPost }
+  | { type: 'ADD_REPLY'; payload: { postId: string; reply: SocialPost } }
+  | { type: 'ADD_REPLIES'; payload: { postId: string; replies: SocialPost[] } }
+  | { type: 'CACHE_PROFILE'; payload: { handle: string; profile: any } };
+
+const STORAGE_KEY = 'twitter_game_state';
+
+const loadState = (): SocialGameState => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error("Failed to load state:", e);
+  }
+  return {
+    date: '2026-04-02',
+    socialFeed: [],
+    followedHandles: ['ShamsCharania', 'Wojespn', 'NBA'],
+    teams: [],
+    boxScores: [],
+    userProfile: {
+      name: 'User Name',
+      handle: '@username',
+      bio: '',
+      location: 'Global',
+      website: 'x.com/username',
+      followingCount: 0,
+      followersCount: 0,
+    },
+    cachedProfiles: {}
+  };
+};
+
+const initialState: SocialGameState = loadState();
+
+function gameReducer(state: SocialGameState, action: Action): SocialGameState {
+  let newState: SocialGameState;
+  switch (action.type) {
+    case 'SET_FEED':
+      newState = { ...state, socialFeed: action.payload };
+      break;
+    case 'TOGGLE_LIKE':
+      newState = {
+        ...state,
+        socialFeed: state.socialFeed.map(post =>
+          post.id === action.payload
+            ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
+            : post
+        ),
+      };
+      break;
+    case 'TOGGLE_RETWEET':
+      newState = {
+        ...state,
+        socialFeed: state.socialFeed.map(post =>
+          post.id === action.payload
+            ? { ...post, isRetweeted: !post.isRetweeted, retweets: post.isRetweeted ? post.retweets - 1 : post.retweets + 1 }
+            : post
+        ),
+      };
+      break;
+    case 'FOLLOW_USER':
+      newState = { ...state, followedHandles: [...state.followedHandles, action.payload] };
+      break;
+    case 'UNFOLLOW_USER':
+      newState = { ...state, followedHandles: state.followedHandles.filter(h => h !== action.payload) };
+      break;
+    case 'SAVE_SOCIAL_THREAD':
+      const existingIds = new Set(state.socialFeed.map(p => p.id));
+      const uniqueNewReplies = action.payload.replies.filter(r => !existingIds.has(r.id));
+      newState = {
+        ...state,
+        socialFeed: [...state.socialFeed, ...uniqueNewReplies]
+      };
+      break;
+    case 'UPDATE_PROFILE':
+      newState = {
+        ...state,
+        userProfile: { ...state.userProfile, ...action.payload }
+      };
+      break;
+    case 'ADD_POST':
+      newState = {
+        ...state,
+        socialFeed: [action.payload, ...state.socialFeed]
+      };
+      break;
+    case 'ADD_REPLY':
+      newState = {
+        ...state,
+        socialFeed: [action.payload.reply, ...state.socialFeed]
+      };
+      break;
+    case 'ADD_REPLIES': {
+      const existingIds = new Set(state.socialFeed.map(p => p.id));
+      const uniqueNewReplies = action.payload.replies.filter(r => !existingIds.has(r.id));
+      newState = {
+        ...state,
+        socialFeed: [...state.socialFeed, ...uniqueNewReplies]
+      };
+      break;
+    }
+    case 'CACHE_PROFILE':
+      newState = {
+        ...state,
+        cachedProfiles: {
+          ...(state.cachedProfiles || {}),
+          [action.payload.handle.replace('@', '')]: action.payload.profile
+        }
+      };
+      break;
+    default:
+      return state;
+  }
+  
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
+  return newState;
+}
+
+const SocialGameContext = createContext<{
+  state: SocialGameState;
+  dispatchAction: React.Dispatch<Action>;
+  toggleLike: (id: string) => void;
+  toggleRetweet: (id: string) => void;
+  followUser: (handle: string) => void;
+  unfollowUser: (handle: string) => void;
+  updateProfile: (profile: Partial<UserProfile>) => void;
+  addPost: (post: SocialPost) => void;
+  addReply: (postId: string, reply: SocialPost) => void;
+  generateReplies: (postId: string) => Promise<void>;
+  isGeneratingReplies: Record<string, boolean>;
+} | undefined>(undefined);
+
+export function SocialGameProvider({ children }: { children: ReactNode }) {
+  const [state, dispatchAction] = useReducer(gameReducer, initialState);
+  const [isGeneratingReplies, setIsGeneratingReplies] = useState<Record<string, boolean>>({});
+
+  const toggleLike = (id: string) => dispatchAction({ type: 'TOGGLE_LIKE', payload: id });
+  const toggleRetweet = (id: string) => dispatchAction({ type: 'TOGGLE_RETWEET', payload: id });
+  const followUser = (handle: string) => dispatchAction({ type: 'FOLLOW_USER', payload: handle });
+  const unfollowUser = (handle: string) => dispatchAction({ type: 'UNFOLLOW_USER', payload: handle });
+  const updateProfile = (profile: Partial<UserProfile>) => dispatchAction({ type: 'UPDATE_PROFILE', payload: profile });
+  const addPost = (post: SocialPost) => dispatchAction({ type: 'ADD_POST', payload: post });
+  const addReply = (postId: string, reply: SocialPost) => dispatchAction({ type: 'ADD_REPLY', payload: { postId, reply } });
+
+  const generateReplies = async (postId: string) => {
+    const post = state.socialFeed.find((p) => p.id === postId);
+    if (!post || post.replies?.length || isGeneratingReplies[postId]) return;
+
+    setIsGeneratingReplies((prev) => ({ ...prev, [postId]: true }));
+
+    try {
+      const response = await generateContentWithRetry({
+        model: 'gemini-2.5-flash-lite',
+        contents: `Generate 3-5 realistic Twitter replies to this tweet by ${post.author} (${post.handle}): "${post.content}". Return ONLY a JSON array, no markdown, with objects: {author, handle, content, likes, retweets}`,
+      });
+      const generatedData = JSON.parse(response.text?.replace(/```json|```/g, '').trim() || '[]');
+      
+      // Add replies to state immediately
+      const newReplies: SocialPost[] = generatedData.map((data: any, index: number) => ({
+        id: `gen-reply-${postId}-${index}-${Date.now()}`,
+        author: data.author,
+        handle: data.handle,
+        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.handle.replace('@', '')}`,
+        content: data.content,
+        date: 'Just now',
+        likes: data.likes,
+        retweets: data.retweets,
+        replies: [],
+        source: 'TwitterX',
+        replyToId: postId,
+        isLiked: false,
+        isRetweeted: false,
+        isAI: true,
+      }));
+      
+      dispatchAction({ type: 'ADD_REPLIES', payload: { postId, replies: newReplies } });
+
+      // Proactively fetch profile data for generated handles
+      const uniqueHandles = Array.from(new Set(generatedData.map((d: any) => d.handle.replace('@', '')))) as string[];
+      await Promise.all(uniqueHandles.map(handle => fetchProfileData(handle, dispatchAction)));
+    } catch (error) {
+      console.error("Failed to generate replies:", error);
+    } finally {
+      setIsGeneratingReplies((prev) => ({ ...prev, [postId]: false }));
+    }
+  };
+
+  return (
+    <SocialGameContext.Provider value={{ state, dispatchAction, toggleLike, toggleRetweet, followUser, unfollowUser, updateProfile, addPost, addReply, generateReplies, isGeneratingReplies }}>
+      {children}
+    </SocialGameContext.Provider>
+  );
+}
+
+export function useSocialGame() {
+  const context = useContext(SocialGameContext);
+  if (!context) throw new Error('useSocialGame must be used within a SocialGameProvider');
+  return context;
+}
+
+
+=== src\store\GameContext.tsx ===
+import React, { createContext, useContext, useState, ReactNode, useRef, useEffect, useCallback } from 'react';
+import { GameState, UserAction, Tab, Bet, BetLeg } from '../types';
+import { processTurn, handleStartGame, handleAnnounceChange } from './logic/gameLogic';
+import { useGameActions } from './useGameActions';
+import { initialState } from './initialState';
+import { sendChatMessage } from '../services/llm/llm';
+import { prefetchPlayerBio } from '../components/central/view/bioCache';
+import { SettingsManager } from '../services/SettingsManager';
+
+interface GameContextType {
+  state: GameState;
+  dispatchAction: (action: UserAction) => Promise<void>;
+  markEmailRead: (id: string) => void;
+  clearOutcome: () => void;
+  saveSocialThread: (postId: string, replies: any[]) => void;
+  toggleLike: (postId: string) => void;
+  toggleRetweet: (postId: string) => void;
+  markSocialRead: () => void;
+  markNewsRead: () => void;
+  markChatRead: (chatId: string) => void;
+  followUser: (handle: string) => void;
+  unfollowUser: (handle: string) => void;
+  markPayslipsRead: () => void;
+  currentView: Tab;
+  setCurrentView: (view: Tab) => void;
+  selectedTeamId: number | null;
+  setSelectedTeamId: (id: number | null) => void;
+  navigateToTeam: (teamId: number) => void;
+  navigateToTeamFinances: (teamId: number) => void;
+  pendingStatSort: { type: 'player' | 'team'; field: string; order: 'asc' | 'desc' } | null;
+  setPendingStatSort: (sort: { type: 'player' | 'team'; field: string; order: 'asc' | 'desc' } | null) => void;
+  placeBet: (bet: { type: Bet['type']; wager: number; potentialPayout: number; legs: BetLeg[] }) => void;
+  updatePlayerRatings: (playerId: string, season: number, ratings: Record<string, number>) => void;
+  healPlayer: (playerId: string) => void;
+}
+
+const GameContext = createContext<GameContextType | undefined>(undefined);
+
+export const GameProvider = ({ children }: { children: ReactNode }) => {
+  const [state, setState] = useState<GameState>(initialState);
+  const [currentView, setCurrentView] = useState<Tab>('Schedule');
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  const [pendingStatSort, setPendingStatSort] = useState<{ type: 'player' | 'team'; field: string; order: 'asc' | 'desc' } | null>(null);
+  const generationIdRef = useRef(0);
+
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  const actions = useGameActions(setState);
+
+  const navigateToTeam = (teamId: number) => {
+    setSelectedTeamId(teamId);
+    setCurrentView('NBA Central');
+  };
+
+  const navigateToTeamFinances = (teamId: number) => {
+    setSelectedTeamId(teamId);
+    setCurrentView('Team Finances');
+  };
+
+  const dispatchAction = async (action: UserAction) => {
+    if (action.type === 'CLEAR_OUTCOME') {
+      actions.clearOutcome();
+      return;
+    }
+
+    if (action.type === 'SAVE_SOCIAL_THREAD') {
+      actions.saveSocialThread(action.payload.postId, action.payload.replies);
+      return;
+    }
+
+    if (action.type === 'ADD_PENDING_HYPNOSIS') {
+      setState(prev => ({
+        ...prev,
+        pendingHypnosis: [...(prev.pendingHypnosis || []), action.payload]
+      }));
+      return;
+    }
+
+    if (action.type === 'UPDATE_SAVE_ID') {
+      setState(prev => ({ ...prev, saveId: action.payload }));
+      return;
+    }
+
+    if (action.type === 'SAVE_CONTEST_RESULT') {
+      const { contest, result } = action.payload;
+      setState(prev => {
+        if (!prev.allStar) return prev;
+        return {
+          ...prev,
+          allStar: {
+            ...prev.allStar,
+            ...(contest === 'dunk' ? { dunkContest: result } : { threePointContest: result }),
+          }
+        };
+      });
+      return;
+    }
+
+    if (action.type === 'RECORD_WATCHED_GAME') {
+      const { gameId, result } = action.payload;
+      setState(prev => {
+        const newSchedule = prev.schedule.map((g: any) =>
+          g.gid === gameId ? { ...g, played: true, homeScore: result.homeScore, awayScore: result.awayScore } : g
+        );
+        const boxScoreEntry = { ...result, gameId, date: prev.date };
+        const existing = (prev.boxScores || []).findIndex((b: any) => b.gameId === gameId);
+        const newBoxScores = existing >= 0
+          ? (prev.boxScores || []).map((b: any, i: number) => i === existing ? boxScoreEntry : b)
+          : [...(prev.boxScores || []), boxScoreEntry];
+        // Update wins/losses for real teams only (not exhibition)
+        let newTeams = prev.teams;
+        if (result.homeTeamId > 0 && result.awayTeamId > 0) {
+          newTeams = prev.teams.map((t: any) => {
+            if (t.id === result.homeTeamId) {
+              const won = result.homeScore > result.awayScore;
+              return {
+                ...t,
+                wins: won ? t.wins + 1 : t.wins,
+                losses: won ? t.losses : t.losses + 1,
+                streak: won
+                  ? (t.streak?.type === 'W' ? { type: 'W', count: t.streak.count + 1 } : { type: 'W', count: 1 })
+                  : (t.streak?.type === 'L' ? { type: 'L', count: t.streak.count + 1 } : { type: 'L', count: 1 })
+              };
+            }
+            if (t.id === result.awayTeamId) {
+              const won = result.awayScore > result.homeScore;
+              return {
+                ...t,
+                wins: won ? t.wins + 1 : t.wins,
+                losses: won ? t.losses : t.losses + 1,
+                streak: won
+                  ? (t.streak?.type === 'W' ? { type: 'W', count: t.streak.count + 1 } : { type: 'W', count: 1 })
+                  : (t.streak?.type === 'L' ? { type: 'L', count: t.streak.count + 1 } : { type: 'L', count: 1 })
+              };
+            }
+            return t;
+          });
+        }
+        return { ...prev, schedule: newSchedule, boxScores: newBoxScores, teams: newTeams };
+      });
+
+      // Fire photo fetch for watched game — non-blocking
+      const watchedHome = state.teams.find(t => t.id === result.homeTeamId);
+      const watchedAway = state.teams.find(t => t.id === result.awayTeamId);
+      if (watchedHome && watchedAway) {
+        import('../services/ImagnPhotoService').then(({ fetchGamePhotos }) => {
+          fetchGamePhotos({ homeTeam: watchedHome, awayTeam: watchedAway }).catch(() => {});
+        });
+      }
+      return;
+    }
+
+    if (action.type === 'STORE_PURCHASE') {
+      const { amountMillion } = action.payload as { amountMillion: number };
+      setState(prev => ({
+        ...prev,
+        stats: {
+          ...prev.stats,
+          personalWealth: Math.max(0, Number((prev.stats.personalWealth - amountMillion).toFixed(4))),
+        },
+      }));
+      return;
+    }
+
+    if (action.type === 'REAL_ESTATE_INVENTORY_UPDATE') {
+      setState(prev => ({ ...prev, realEstateInventory: action.payload.inventory }));
+      return;
+    }
+
+    if (action.type === 'COMMISH_STORE_INVENTORY_UPDATE') {
+      setState(prev => ({ ...prev, commishStoreInventory: action.payload.inventory }));
+      return;
+    }
+
+    if (action.type === 'RIG_ALL_STAR_VOTING') {
+      const { playerId, ghostVotes } = action.payload as { playerId: string; ghostVotes: number };
+      setState(prev => ({
+        ...prev,
+        allStar: prev.allStar ? {
+          ...prev.allStar,
+          hasRiggedVoting: true,
+          votes: prev.allStar.votes.map(v =>
+            v.playerId === playerId ? { ...v, votes: v.votes + ghostVotes } : v
+          ),
+        } : prev.allStar,
+      }));
+      return;
+    }
+
+    if (action.type === 'SET_DUNK_CONTESTANTS') {
+      const { contestants } = action.payload as { contestants: any[] };
+      setState(prev => ({
+        ...prev,
+        allStar: prev.allStar ? { ...prev.allStar, dunkContestContestants: contestants, dunkContestAnnounced: true } : prev.allStar,
+      }));
+      return;
+    }
+
+    if (action.type === 'SET_THREE_POINT_CONTESTANTS') {
+      const { contestants } = action.payload as { contestants: any[] };
+      setState(prev => ({
+        ...prev,
+        allStar: prev.allStar ? { ...prev.allStar, threePointContestants: contestants, threePointAnnounced: true } : prev.allStar,
+      }));
+      return;
+    }
+
+    if (action.type === 'ADD_ALL_STAR_REPLACEMENT') {
+      const { injuredId, replacementId, replacementName, conference, position } = action.payload as any;
+      setState(prev => {
+        if (!prev.allStar) return prev;
+        const replacementPlayer = prev.players.find(p => p.internalId === replacementId);
+        const replacementTeam = prev.teams.find(t => t.id === replacementPlayer?.tid);
+        // Mark injured player as DNP
+        const updatedRoster = prev.allStar.roster.map(r =>
+          r.playerId === injuredId ? { ...r, isInjuredDNP: true } : r
+        );
+        // Only add replacement if not already in roster
+        const alreadyIn = updatedRoster.some(r => r.playerId === replacementId);
+        if (!alreadyIn && replacementPlayer) {
+          updatedRoster.push({
+            playerId: replacementPlayer.internalId,
+            playerName: replacementPlayer.name,
+            teamAbbrev: replacementTeam?.abbrev ?? '',
+            nbaId: null,
+            teamNbaId: null,
+            conference: conference || (replacementTeam?.conference ?? 'East'),
+            isStarter: false,
+            position: replacementPlayer.pos ?? 'F',
+            category: (replacementPlayer.pos?.includes('G') ? 'Guard' : 'Frontcourt') as 'Guard' | 'Frontcourt',
+            ovr: replacementPlayer.overallRating,
+            isInjuryReplacement: true,
+            injuredPlayerId: injuredId,
+          });
+        }
+        return { ...prev, allStar: { ...prev.allStar, roster: updatedRoster } };
+      });
+      return;
+    }
+
+    if (action.type === 'LOAD_GAME') {
+      setState({
+        ...initialState,
+        ...action.payload,
+        isProcessing: false
+      });
+      return;
+    }
+
+    const isClubbing = action.type === 'GO_TO_CLUB';
+    const isWatchingGame = action.payload?.isWatchingGame === true;
+    setState(prev => ({
+      ...prev,
+      isProcessing: true,
+      isClubbing: isClubbing,
+      isWatchingGame: isWatchingGame,
+      pendingStartPayload: action.type === 'START_GAME' ? action.payload : prev.pendingStartPayload,
+      lastActionType: action.type,
+      lastActionPayload: action.payload,
+      lastSimResults: [],
+      tickerSimResults: [],
+      prevTeams: prev.teams,
+    }));
+
+    if (isClubbing) {
+        setTimeout(() => {
+            setState(prev => ({ ...prev, isClubbing: false }));
+        }, SettingsManager.getDelay(5000));
+    }
+
+    try {
+      let newStatePatch: Partial<GameState> = {};
+
+      if (action.type === 'START_GAME') {
+        const genId = ++generationIdRef.current;
+        setState(prev => ({ ...prev, isProcessing: true, pendingStartPayload: action.payload }));
+
+        const payloadWithProgress = {
+          ...action.payload,
+          onProgress: (progress: any) => {
+            setState(prev => ({ ...prev, lazySimProgress: progress }));
+          },
+        };
+
+        const newStatePatch = await handleStartGame(payloadWithProgress);
+
+        setState(prev => {
+          if (genId === generationIdRef.current) {
+            return { ...prev, ...newStatePatch, lazySimProgress: undefined, pendingStartPayload: undefined };
+          }
+          return prev;
+        });
+        return;
+      } else if (action.type === 'ANNOUNCE_CHANGE') {
+        newStatePatch = await handleAnnounceChange(state, action.payload);
+      } else if (action.type === 'UPDATE_RULES') {
+        const updatedLeagueStats = { ...state.leagueStats, ...action.payload };
+        let updatedSchedule = state.schedule;
+        // When a media deal is finalized, re-attach broadcasters to all unplayed games
+        if (action.payload.mediaRights) {
+          const { attachBroadcastersToGames } = await import('../utils/broadcastingUtils');
+          updatedSchedule = attachBroadcastersToGames(state.schedule, action.payload.mediaRights, state.teams);
+        }
+        newStatePatch = {
+          leagueStats: updatedLeagueStats,
+          schedule: updatedSchedule,
+          isProcessing: false
+        };
+      } else if (action.type === 'SEND_CHAT_MESSAGE') {
+        // Handle chat message
+        const { chatId, text, imageUrl, targetId, targetName, targetRole, targetOrg, avatarUrl, isHypnotized } = action.payload;
+        
+        // 1. Add user message immediately
+        let newChats = [...stateRef.current.chats];
+        let chatIndex = newChats.findIndex(c => c.id === chatId);
+        let chat = chatIndex !== -1 ? { ...newChats[chatIndex] } : null;
+
+        if (!chat && targetId) {
+          // Check if a chat with this target already exists by participants
+          const existingChatIndex = newChats.findIndex(c => 
+            c.participants.includes('commissioner') && c.participants.includes(targetId)
+          );
+          
+          if (existingChatIndex !== -1) {
+            chat = { ...newChats[existingChatIndex] };
+            chatIndex = existingChatIndex;
+          }
+        }
+
+        if (!chat) {
+          // Create new chat
+          chat = {
+            id: chatId || `chat-${Date.now()}`,
+            participants: ['commissioner', targetId],
+            participantDetails: [
+              { id: 'commissioner', name: stateRef.current.commissionerName, role: 'Commissioner' },
+              { id: targetId, name: targetName, role: targetRole, avatarUrl }
+            ],
+            messages: [],
+            unreadCount: 0,
+            isTyping: true
+          };
+          newChats.unshift(chat);
+          chatIndex = 0;
+        } else {
+          chat.isTyping = true;
+          chat.messages = chat.messages.map(m => ({ ...m, seen: true })); // Mark previous messages as seen when user replies
+          newChats[chatIndex] = chat;
+          // Move to top
+          newChats.splice(chatIndex, 1);
+          newChats.unshift(chat);
+          chatIndex = 0;
+        }
+
+        const gameDate = new Date(stateRef.current.date);
+        const now = new Date();
+        gameDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+        const timestamp = gameDate.toISOString();
+
+        const userMessage = {
+          id: `msg-${Date.now()}`,
+          senderId: 'commissioner',
+          senderName: stateRef.current.commissionerName,
+          text,
+          imageUrl,
+          timestamp,
+          read: true,
+          seen: false,
+          type: 'text' as const
+        };
+
+        chat.messages = [...chat.messages, userMessage];
+        // Limit history to 100 messages in state (50 for prompt is handled in llm service)
+        if (chat.messages.length > 100) {
+          chat.messages = chat.messages.slice(-100);
+        }
+        chat.lastMessage = userMessage;
+
+        setState(prev => ({ ...prev, chats: newChats, isProcessing: false })); // Update UI immediately
+
+        // 2. Get LLM response asynchronously
+        try {
+          const responseText = await sendChatMessage(stateRef.current, targetName, targetRole, targetOrg, chat.messages, isHypnotized);
+
+          // If hypnotized, add to pending hypnosis to be processed next day
+          if (isHypnotized) {
+              const commandText = text.replace('[HYPNOTIC COMMAND]: ', '').trim();
+              dispatchAction({
+                  type: 'ADD_PENDING_HYPNOSIS',
+                  payload: { targetName, command: commandText }
+              });
+              
+              // Set outcome for hypnotize so the user knows it worked
+              setState(prev => ({
+                  ...prev,
+                  lastOutcome: `Hypnotic command transmitted to ${targetName}. They are now under your influence. The effects will manifest as the simulation progresses.`
+              }));
+          }
+
+          // 3. Add bot message with realistic delay and potential splitting
+          if (responseText && responseText.trim().length > 0 && !responseText.toLowerCase().includes("[seen zone]")) {
+            // Split by sentences or paragraphs for realism if long
+            const parts = responseText.split(/\n\n+/).filter(p => p.trim().length > 0);
+            
+            for (let i = 0; i < parts.length; i++) {
+              // Typing delay based on length
+              const part = parts[i];
+              const baseDelay = Math.min(3000, Math.max(1000, part.length * 20));
+              const delay = SettingsManager.getDelay(baseDelay);
+              await new Promise(resolve => setTimeout(resolve, delay));
+
+              setState(prev => {
+                const updatedChats = [...prev.chats];
+                const updatedChatIndex = updatedChats.findIndex(c => c.id === chat!.id);
+                if (updatedChatIndex !== -1) {
+                  const updatedChat = { ...updatedChats[updatedChatIndex] };
+                  // Only stop typing on the last part
+                  if (i === parts.length - 1) {
+                    updatedChat.isTyping = false;
+                  }
+                  
+                  const botTimestamp = new Date(timestamp);
+                  botTimestamp.setSeconds(botTimestamp.getSeconds() + i + 1);
+
+                  const botMessage = {
+                    id: `msg-${Date.now()}-${i}`,
+                    senderId: targetId,
+                    senderName: targetName,
+                    text: part,
+                    timestamp: botTimestamp.toISOString(),
+                    read: false,
+                    seen: false,
+                    type: 'text' as const
+                  };
+                  updatedChat.messages = [...updatedChat.messages, botMessage];
+                  updatedChat.lastMessage = botMessage;
+                  updatedChat.unreadCount += 1;
+                  updatedChats[updatedChatIndex] = updatedChat;
+                }
+                return { ...prev, chats: updatedChats };
+              });
+            }
+          } else {
+            // Seen zone or empty response
+            const baseDelay = 1500 + Math.random() * 2000;
+            const delay = SettingsManager.getDelay(baseDelay);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            
+            setState(prev => {
+              const updatedChats = [...prev.chats];
+              const updatedChatIndex = updatedChats.findIndex(c => c.id === chat!.id);
+              if (updatedChatIndex !== -1) {
+                const updatedChat = { ...updatedChats[updatedChatIndex], isTyping: false };
+                // Mark user message as seen
+                updatedChat.messages = updatedChat.messages.map(m => 
+                  m.senderId === 'commissioner' ? { ...m, seen: true } : m
+                );
+                updatedChats[updatedChatIndex] = updatedChat;
+              }
+              return { ...prev, chats: updatedChats };
+            });
+          }
+        } catch (error) {
+          console.error("Chat LLM Error:", error);
+          setState(prev => {
+            const updatedChats = [...prev.chats];
+            const updatedChatIndex = updatedChats.findIndex(c => c.id === chat!.id);
+            if (updatedChatIndex !== -1) {
+              const updatedChat = { ...updatedChats[updatedChatIndex], isTyping: false };
+              updatedChats[updatedChatIndex] = updatedChat;
+            }
+            return { ...prev, chats: updatedChats };
+          });
+        }
+        return;
+      } else {
+        newStatePatch = await processTurn(stateRef.current, action, (simResults) => {
+          setState(prev => ({ ...prev, tickerSimResults: simResults }));
+        });
+      }
+
+      // Phase 1 (immediate — show modal)
+      setState(prev => ({
+        ...prev,
+        ...newStatePatch,
+        stats: newStatePatch.stats || prev.stats,
+        leagueStats: newStatePatch.leagueStats || prev.leagueStats,
+        lastOutcome: newStatePatch.lastOutcome || prev.lastOutcome,
+        lastConsequence: newStatePatch.lastConsequence || prev.lastConsequence,
+        date: newStatePatch.date || prev.date,
+        day: newStatePatch.day || prev.day,
+        teams: newStatePatch.teams || prev.teams,
+        players: newStatePatch.players || prev.players,
+        schedule: newStatePatch.schedule || prev.schedule,
+        lastSimResults: newStatePatch.lastSimResults || [],
+        isProcessing: false,
+      }));
+
+      // Phase 2 (background — silent patch inbox/news/social)
+      setTimeout(() => {
+        setState(prev => {
+          // Merge new chats with existing — don't overwrite if patch is empty
+          const patchChats = newStatePatch.chats;
+          const mergedChats = patchChats && patchChats.length > 0
+            ? patchChats
+            : prev.chats;
+          return {
+            ...prev,
+            inbox: (newStatePatch.inbox ?? []).length > 0 ? newStatePatch.inbox : prev.inbox,
+            news: (newStatePatch.news ?? []).length > 0 ? newStatePatch.news : prev.news,
+            socialFeed: (newStatePatch.socialFeed ?? []).length > 0
+              ? newStatePatch.socialFeed
+              : prev.socialFeed,
+            chats: mergedChats,
+          };
+        });
+      }, 100);
+
+      // Phase 3 — fire generateLeaguePulse in background
+      // Only for ADVANCE_DAY and similar non-action turns
+      if (!action || action.type === 'ADVANCE_DAY' || action.type === 'SIMULATE_TO_DATE') {
+        const shouldRunPulse = Math.random() < ((newStatePatch as any).daysSimulated > 1 ? 0.90 : 0.60);
+        if (shouldRunPulse) {
+          import('../services/llm/llm').then(({ generateLeaguePulse }) => {
+            generateLeaguePulse(stateRef.current, (newStatePatch as any).lastSimResults || []).then(pulse => {
+              if (!pulse || (!pulse.newNews?.length && !pulse.newSocialPosts?.length && !pulse.newEmails?.length)) return;
+              setState(prev => {
+                const existingPostIds = new Set(prev.socialFeed.map((p: any) => p.id));
+                const existingNewsIds = new Set(prev.news.map((n: any) => n.id));
+                const existingEmailIds = new Set(prev.inbox.map((e: any) => e.id));
+                const newPosts = (pulse.newSocialPosts || [])
+                  .filter((p: any) => !existingPostIds.has(p.id))
+                  .map((p: any, i: number) => ({ ...p, id: p.id || `pulse-${Date.now()}-${i}`, isNew: true }));
+                const newNews = (pulse.newNews || [])
+                  .filter((n: any) => !existingNewsIds.has(n.id))
+                  .map((n: any, i: number) => ({ ...n, id: n.id || `pulse-news-${Date.now()}-${i}`, isNew: true }));
+                const newEmails = (pulse.newEmails || [])
+                  .filter((e: any) => !existingEmailIds.has(e.id));
+                return {
+                  ...prev,
+                  socialFeed: [...newPosts, ...prev.socialFeed].slice(0, 500),
+                  news: [...newNews, ...prev.news],
+                  inbox: [...newEmails, ...prev.inbox],
+                };
+              });
+            }).catch(err => console.warn('[Pulse] Background league pulse failed:', err));
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to process action:", error);
+      setState(prev => ({ 
+        ...prev, 
+        isProcessing: false, 
+        lastOutcome: "An error occurred while processing your action. The simulation glitched." 
+      }));
+    }
+  };
+  useEffect(() => {
+    if (!state.players || state.players.length === 0) return;
+    const sorted = [...state.players]
+      .filter(p => p.status === 'Active')
+      .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
+    sorted.forEach((player, i) => {
+      setTimeout(() => prefetchPlayerBio(player), i * 4000);
+    });
+  }, [!!state.players?.length]);
+
+  // Lazy-load staff when the browser is idle after game init
+  useEffect(() => {
+    if (!state.isDataLoaded || state.staff || !state.players?.length || !state.teams?.length) return;
+
+    const load = () => {
+      import('../services/staffService').then(({ getStaffData }) => {
+        const teamNameMap = new Map(state.teams.map(t => [t.name.toLowerCase(), t]));
+        getStaffData(state.players, teamNameMap).then(staff => {
+          setState(prev => ({ ...prev, staff }));
+        });
+      });
+    };
+
+    if (typeof requestIdleCallback !== 'undefined') {
+      const id = requestIdleCallback(load, { timeout: 5000 });
+      return () => cancelIdleCallback(id);
+    } else {
+      const id = setTimeout(load, 2000);
+      return () => clearTimeout(id);
+    }
+  }, [state.isDataLoaded, !!state.staff]);
+
+  const placeBet = (bet: { type: Bet['type']; wager: number; potentialPayout: number; legs: BetLeg[] }) => {
+    const newBet: Bet = {
+      id: `bet-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      date: state.date,
+      type: bet.type,
+      status: 'pending',
+      wager: bet.wager,
+      potentialPayout: bet.potentialPayout,
+      legs: bet.legs,
+    };
+    setState(prev => ({
+      ...prev,
+      bets: [newBet, ...(prev.bets ?? [])],
+      stats: {
+        ...prev.stats,
+        personalWealth: Math.max(0, Number((prev.stats.personalWealth - bet.wager / 1_000_000).toFixed(4))),
+      },
+    }));
+  };
+
+  return (
+    <GameContext.Provider value={{
+      state,
+      dispatchAction,
+      placeBet,
+      currentView,
+      setCurrentView,
+      selectedTeamId,
+      setSelectedTeamId,
+      navigateToTeam,
+      navigateToTeamFinances,
+      pendingStatSort,
+      setPendingStatSort,
+      ...actions
+    }}>
+      {children}
+    </GameContext.Provider>
+  );
+};
+
+export const useGame = () => {
+  const context = useContext(GameContext);
+  if (!context) throw new Error('useGame must be used within a GameProvider');
+  return context;
+};
+
+
+
+
+=== src\components\social\SocialFeedView.tsx ===
+import React, { useState, useCallback, useMemo } from 'react';
+import type { SocialPost, GameResult } from '../../types';
+import SocialPostCard from './SocialPostCard';
+import { generateSocialThread } from '../../services/llm/llm';
+import { useGame } from '../../store/GameContext';
+
+import { SettingsManager } from '../../services/SettingsManager';
+import { AnimatePresence } from 'motion/react';
+import { SocialThreadModal } from './SocialThreadModal';
+import { ImageModal } from './ImageModal';
+import { useInView } from '../../hooks/useInView';
+import { enrichPostWithPhoto, getResolvedUrl, type GamePhotoInfo } from '../../services/social/photoEnricher';
+
+interface SocialFeedViewProps {
+    posts: SocialPost[];
+}
+
+// ─── Build game lookup from boxScores + teams ─────────────────────────────────
+function useGameLookup(): Map<number, GamePhotoInfo> {
+    const { state } = useGame();
+
+    return useMemo(() => {
+        const lookup = new Map<number, GamePhotoInfo>();
+        for (const bs of (state.boxScores || []) as GameResult[]) {
+            if (!bs.gameId || bs.homeTeamId <= 0 || bs.awayTeamId <= 0) continue;
+            const home = state.teams.find(t => t.id === bs.homeTeamId);
+            const away = state.teams.find(t => t.id === bs.awayTeamId);
+            if (!home || !away) continue;
+
+            const topPlayers = [
+                ...(bs.homeStats || []),
+                ...(bs.awayStats || []),
+            ]
+                .sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0))
+                .slice(0, 10)
+                .map(s => ({ name: s.name, gameScore: s.gameScore ?? 0 }));
+
+            lookup.set(bs.gameId, {
+                homeTeam: home,
+                awayTeam: away,
+                topPlayers,
+                date: bs.date || '',
+            });
+        }
+        return lookup;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [state.boxScores, state.teams]);
+}
+
+// ─── Per-post lazy photo wrapper ──────────────────────────────────────────────
+interface LazyPostProps {
+    post: SocialPost;
+    gameLookup: Map<number, GamePhotoInfo>;
+    onClick: () => void;
+    onImageClick: (url: string) => void;
+}
+
+const LazyPhotoPost: React.FC<LazyPostProps> = ({ post, gameLookup, onClick, onImageClick }) => {
+    const { ref, inView } = useInView(0.05);
+    const [resolvedMediaUrl, setResolvedMediaUrl] = useState<string | undefined>(() => {
+        // Initialize from cache so image shows instantly on re-mount (navigation back)
+        const cached = getResolvedUrl(post.id);
+        if (cached) return cached;
+        return post.mediaUrl ?? undefined;
+    });
+
+    React.useEffect(() => {
+        if (!inView) return;
+        if (resolvedMediaUrl) return; // already have one
+
+        let cancelled = false;
+        enrichPostWithPhoto(post, gameLookup).then(url => {
+            if (!cancelled && url) setResolvedMediaUrl(url);
+        });
+        return () => { cancelled = true; };
+    }, [inView, gameLookup]); // re-run if gameLookup updates (new boxScore data)
+
+    const enrichedPost: SocialPost = resolvedMediaUrl
+        ? { ...post, mediaUrl: resolvedMediaUrl }
+        : post;
+
+    return (
+        <div
+            ref={ref}
+            onClick={onClick}
+            className="cursor-pointer transition-transform hover:scale-[1.01]"
+        >
+            <SocialPostCard post={enrichedPost} onImageClick={onImageClick} />
+        </div>
+    );
+};
+
+// ─── Main feed ────────────────────────────────────────────────────────────────
+const SocialFeedView: React.FC<SocialFeedViewProps> = ({ posts }) => {
+    const { state: gameState } = useGame();
+
+    const gameLookup = useGameLookup();
+
+    const [selectedPost, setSelectedPost] = useState<SocialPost | null>(null);
+    const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
+    const [isLoadingThread, setIsLoadingThread] = useState(false);
+    const [batchCount, setBatchCount] = useState<Record<string, number>>({});
+
+    // Keep selectedPost in sync when replies arrive from global state
+    React.useEffect(() => {
+        if (!selectedPost) return;
+        const updated = posts.find(p => p.id === selectedPost.id);
+        if (
+            updated &&
+            JSON.stringify(updated.replies) !== JSON.stringify(selectedPost.replies)
+        ) {
+            setSelectedPost(updated);
+        }
+    }, [posts, selectedPost]);
+
+    const loadMoreReplies = useCallback(async (post: SocialPost) => {
+        const currentBatch = batchCount[post.id] || 0;
+        if (currentBatch >= 5) return;
+
+        setIsLoadingThread(true);
+        console.log('[SocialFeed] loadMoreReplies → generating thread for:', post.id, post.handle, post.content.slice(0, 60));
+
+        try {
+            const replies = await generateSocialThread(post, gameState);
+            console.log('[SocialFeed] generateSocialThread returned:', replies?.length, 'replies');
+
+            if (!replies || replies.length === 0) {
+                console.warn('[SocialFeed] No replies returned from generateSocialThread');
+                return;
+            }
+
+            const existingReplies = post.replies || [];
+            const updatedReplies = [...existingReplies, ...replies];
+
+            setSelectedPost(prev =>
+                prev?.id === post.id ? { ...prev, replies: updatedReplies } : prev
+            );
+            setBatchCount(prev => ({ ...prev, [post.id]: currentBatch + 1 }));
+
+            dispatchAction({
+                type: 'SAVE_SOCIAL_THREAD',
+                payload: { postId: post.id, replies: updatedReplies },
+            });
+        } catch (error) {
+            console.error('[SocialFeed] generateSocialThread failed:', error);
+        } finally {
+            setIsLoadingThread(false);
+        }
+    }, [batchCount, gameState]);
+
+    const handlePostClick = useCallback(async (post: SocialPost) => {
+        setSelectedPost(post);
+        console.log('[SocialFeed] Post clicked:', post.id, '| existing replies:', post.replies?.length ?? 0);
+
+        if (post.replies && post.replies.length > 0) {
+            console.log('[SocialFeed] Already has replies, skipping fetch.');
+            return;
+        }
+        await loadMoreReplies(post);
+    }, [loadMoreReplies]);
+
+    const handleReplyToReply = useCallback(async (
+        parentPost: SocialPost,
+        reply: SocialPost
+    ) => {
+        if (reply.replies && reply.replies.length > 0) return;
+
+        setIsLoadingThread(true);
+        console.log('[SocialFeed] handleReplyToReply → generating nested thread for:', reply.id, reply.content.slice(0, 60));
+
+        try {
+            const nestedReplies = await generateSocialThread(reply, gameState);
+            console.log('[SocialFeed] nested replies returned:', nestedReplies?.length);
+
+            if (!nestedReplies?.length) return;
+
+            const updateNested = (arr: SocialPost[]): SocialPost[] =>
+                arr.map(p => {
+                    if (p.id === reply.id) return { ...p, replies: nestedReplies };
+                    if (p.replies) return { ...p, replies: updateNested(p.replies) };
+                    return p;
+                });
+
+            const updatedTopLevelReplies = updateNested(parentPost.replies || []);
+
+            setSelectedPost(prev =>
+                prev?.id === parentPost.id
+                    ? { ...parentPost, replies: updatedTopLevelReplies }
+                    : prev
+            );
+
+            dispatchAction({
+                type: 'SAVE_SOCIAL_THREAD',
+                payload: { postId: parentPost.id, replies: updatedTopLevelReplies },
+            });
+        } catch (error) {
+            console.error('[SocialFeed] handleReplyToReply failed:', error);
+        } finally {
+            setIsLoadingThread(false);
+        }
+    }, [state, dispatchAction]);
+
+    if (posts.length === 0) {
+        return (
+            <div className="text-center py-20">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="mx-auto h-12 w-12 text-slate-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                </svg>
+                <h3 className="mt-2 text-lg font-medium text-white">The Digital Sphere is Quiet</h3>
+                <p className="mt-1 text-sm text-slate-400">
+                    Make a decision to see how the world reacts.
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4 p-4 md:p-6">
+            <h2 className="text-xl font-bold text-white mb-2">Social Feed</h2>
+
+            {posts.map((post, index) => (
+                <LazyPhotoPost
+                    key={post.id || `post-${index}`}
+                    post={post}
+                    gameLookup={gameLookup}
+                    onClick={() => handlePostClick(post)}
+                    onImageClick={(url) => setModalImageUrl(url)}
+                />
+            ))}
+
+            <AnimatePresence>
+                {selectedPost && (
+                    <SocialThreadModal
+                        selectedPost={selectedPost}
+                        setSelectedPost={setSelectedPost}
+                        isLoadingThread={isLoadingThread}
+                        batchCount={batchCount}
+                        loadMoreReplies={loadMoreReplies}
+                        handleReplyToReply={handleReplyToReply}
+                        llmEnabled={SettingsManager.getSettings().enableLLM}
+                    />
+                )}
+                <ImageModal
+                    url={modalImageUrl}
+                    onClose={() => setModalImageUrl(null)}
+                />
+            </AnimatePresence>
+        </div>
+    );
+};
+
+export default SocialFeedView;
+
+
+=== src\components\social\SocialPostCard.tsx ===
+import React from 'react';
+import { useSocialGame as useGame } from '../../store/SocialGameContext';
+import { SocialPost, SocialSource } from '../../types';
+import { UserPlus, UserMinus, Heart, MessageCircle, Repeat2, Share, MoreHorizontal } from 'lucide-react';
+import { formatTwitterDate } from '../../utils/socialhelpers';
+import { getUnavatarUrl, canUseUnavatar } from '../../data/photos/social';
+import { AVATAR_DATA } from '../../data/avatars';
+import { needsCanvasEditor } from '../../services/social/photoEnricher';
+import { cn } from '../../lib/utils';
+
+const avatarCache = new Map<string, string | null>();
+
+const SourceIcon: React.FC<{ source: SocialSource }> = ({ source }) => {
+  if (source === 'TwitterX') {
+    return (
+      <svg className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
+      </svg>
+    );
+  }
+  return null;
+};
+
+interface SocialPostCardProps {
+  post: SocialPost;
+  onImageClick?: (url: string) => void;
+  onClick?: () => void;
+  onProfileClick?: (handle?: string) => void;
+}
+
+const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onImageClick, onClick, onProfileClick }) => {
+  const { state, toggleLike, toggleRetweet, followUser, unfollowUser } = useGame();
+
+  const cleanHandle = post.handle.replace('@', '');
+  const isFollowing = (state.followedHandles || []).includes(cleanHandle);
+  const cachedProfile = state.cachedProfiles?.[cleanHandle];
+
+  const handleLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleLike(post.id);
+  };
+
+  const handleRetweet = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleRetweet(post.id);
+  };
+
+  const handleProfileClick = (e: React.MouseEvent, handle?: string) => {
+    e.stopPropagation();
+    onProfileClick?.(handle || post.handle);
+  };
+
+  const [avatarSrc, setAvatarSrc] = React.useState<string | null | undefined>(() => {
+    const cached = avatarCache.get(post.handle);
+    return cached !== undefined ? cached : undefined;
+  });
+
+  React.useEffect(() => {
+    if (avatarSrc !== undefined) return;
+    
+    const resolve = async () => {
+      // 1. Try provided avatarUrl if it's not a placeholder
+      if (post.avatarUrl && typeof post.avatarUrl === 'string' && !post.avatarUrl.includes('placeholder') && !post.avatarUrl.includes('default')) {
+        setAvatarSrc(post.avatarUrl);
+        avatarCache.set(post.handle, post.avatarUrl);
+        return;
+      }
+
+      // 2. Try unavatar as fallback
+      if (post.source === 'TwitterX' && canUseUnavatar()) {
+        const url = getUnavatarUrl(post.handle);
+        setAvatarSrc(url);
+        avatarCache.set(post.handle, url);
+        return;
+      }
+
+      setAvatarSrc(null);
+      avatarCache.set(post.handle, null);
+    };
+    resolve();
+  }, [post.handle, post.avatarUrl]);
+
+  return (
+    <div 
+      onClick={onClick}
+      className="px-4 py-3 border-b border-[#2f3336] hover:bg-white/[0.03] transition-colors cursor-pointer group/card"
+    >
+      <div className="flex space-x-3">
+        <div className="flex-shrink-0" onClick={handleProfileClick}>
+          {(cachedProfile?.avatarUrl || avatarSrc) ? (
+            <img
+              src={cachedProfile?.avatarUrl || avatarSrc!}
+              alt={post.author}
+              className={cn("h-10 w-10 rounded-full object-cover bg-zinc-800", post.isAI && !cachedProfile && "animate-pulse")}
+              referrerPolicy="no-referrer"
+              onError={() => setAvatarSrc(null)}
+            />
+          ) : (
+            <div className={cn("h-10 w-10 flex items-center justify-center bg-zinc-800 rounded-full text-white font-bold", post.isAI && !cachedProfile && "animate-pulse")}>
+              {post.author?.[0] || '?'}
+            </div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-1 truncate" onClick={handleProfileClick}>
+              <span className="font-bold text-[15px] text-white hover:underline truncate">{cachedProfile?.name || post.author}</span>
+              {(cachedProfile?.verified || post.verified) && (
+                <svg className="w-4 h-4 text-sky-500 flex-shrink-0" viewBox="0 0 512 512" fill="currentColor">
+                  <path d="M504 256c0 136.967-111.033 248-248 248S8 392.967 8 256 119.033 8 256 8s248 111.033 248 248zM227.314 387.314l184-184c6.248-6.248 6.248-16.379 0-22.627l-22.627-22.627c-6.248-6.249-16.379-6.249-22.628 0L216 308.118l-70.059-70.059c-6.248-6.248-16.379-6.248-22.628 0l-22.627 22.627c-6.248 6.248-6.248 16.379 0 22.627l104 104c6.249 6.249 16.379 6.249 22.628.001z"></path>
+                </svg>
+              )}
+              <span className="text-[15px] text-zinc-500 truncate">{post.handle}</span>
+              <span className="text-zinc-500 text-[15px]">·</span>
+              <span className="text-zinc-500 text-[15px] hover:underline">{formatTwitterDate(post.date, state.date)}</span>
+            </div>
+            <button className="text-zinc-500 hover:text-sky-500 p-1.5 rounded-full hover:bg-sky-500/10 transition-colors">
+              <MoreHorizontal size={18} />
+            </button>
+          </div>
+
+          {post.replyToId && (
+            <div className="text-zinc-500 text-[13px] mt-0.5">
+              Replying to <span 
+                className="text-sky-500 hover:underline cursor-pointer"
+                onClick={(e) => {
+                  const replyHandle = state.socialFeed.find(p => p.id === post.replyToId)?.handle;
+                  if (replyHandle) handleProfileClick(e, replyHandle);
+                }}
+              >
+                {state.socialFeed.find(p => p.id === post.replyToId)?.handle || '@someone'}
+              </span>
+            </div>
+          )}
+          
+          <p className="text-[15px] text-white leading-normal mt-0.5 whitespace-pre-wrap">{post.content}</p>
+
+          {post.mediaUrl && post.mediaUrl !== avatarSrc && (
+            <div className="mt-3 rounded-2xl overflow-hidden border border-zinc-800" onClick={e => e.stopPropagation()}>
+              <img
+                src={post.mediaUrl}
+                alt=""
+                className="w-full object-cover max-h-[512px]"
+                referrerPolicy="no-referrer"
+                onClick={() => onImageClick?.(post.mediaUrl!)}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            </div>
+          )}
+
+          <div className="mt-3 flex items-center justify-between max-w-md text-zinc-500">
+            <button className="flex items-center space-x-2 group/btn hover:text-sky-500 transition-colors">
+              <div className="p-2 rounded-full group-hover/btn:bg-sky-500/10">
+                <MessageCircle size={18} />
+              </div>
+              <span className="text-xs">{post.replies?.length || post.replyCount || 0}</span>
+            </button>
+            <button 
+              onClick={handleRetweet}
+              className={cn(
+                "flex items-center space-x-2 group/btn transition-colors",
+                post.isRetweeted ? "text-emerald-500" : "hover:text-emerald-500"
+              )}
+            >
+              <div className="p-2 rounded-full group-hover/btn:bg-emerald-500/10">
+                <Repeat2 size={18} className={cn(post.isRetweeted && "fill-current")} />
+              </div>
+              <span className="text-xs">{post.retweets}</span>
+            </button>
+            <button 
+              onClick={handleLike}
+              className={cn(
+                "flex items-center space-x-2 group/btn transition-colors",
+                post.isLiked ? "text-rose-500" : "hover:text-rose-500"
+              )}
+            >
+              <div className="p-2 rounded-full group-hover/btn:bg-rose-500/10">
+                <Heart size={18} className={cn(post.isLiked && "fill-current")} />
+              </div>
+              <span className="text-xs">{post.likes}</span>
+            </button>
+            <button className="flex items-center space-x-2 group/btn hover:text-sky-500 transition-colors" onClick={e => e.stopPropagation()}>
+              <div className="p-2 rounded-full group-hover/btn:bg-sky-500/10">
+                <Share size={18} />
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SocialPostCard;
+
+
+=== src\components\social\TweetInput.tsx ===
+import React, { useState } from 'react';
+import { Image as ImageIcon, Heart, MessageCircle, Share } from 'lucide-react';
+
+interface TweetInputProps {
+  onTweet?: (content: string) => void;
+  placeholder?: string;
+}
+
+export const TweetInput: React.FC<TweetInputProps> = ({
+  onTweet,
+  placeholder = "What's happening!",
+}) => {
+  const [content, setContent] = useState('');
+
+  const handleTweet = () => {
+    if (content.trim()) {
+      onTweet?.(content);
+      setContent('');
+    }
+  };
+
+  return (
+    <div className="border-b border-zinc-700 p-4 space-y-4">
+      <div className="flex gap-4">
+        <div className="w-12 h-12 rounded-full bg-zinc-800 flex-shrink-0"></div>
+        <div className="flex-1">
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder={placeholder}
+            className="w-full bg-transparent text-2xl text-white placeholder-zinc-500 outline-none resize-none"
+            rows={3}
+          />
+          <div className="flex items-center justify-between mt-4">
+            <div className="flex gap-2 text-sky-500">
+              <ImageIcon size={20} className="cursor-pointer hover:opacity-80" />
+            </div>
+            <button
+              onClick={handleTweet}
+              disabled={!content.trim()}
+              className="bg-sky-500 text-white font-bold py-2 px-6 rounded-full hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Post
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+=== src\components\social\EditProfile.tsx ===
+
+
+=== src\components\social\ProfileView.tsx ===
+import React from 'react';
+import { ArrowLeft } from 'lucide-react';
+
+interface ProfileViewProps {
+  handle?: string;
+  onBack?: () => void;
+  onPostClick?: (postId: string) => void;
+  onProfileClick?: (handle: string) => void;
+}
+
+export const ProfileView: React.FC<ProfileViewProps> = ({ handle, onBack, onPostClick, onProfileClick }) => {
+  return (
+    <div className="flex-1 flex flex-col border-l border-zinc-700">
+      <div className="flex items-center gap-4 p-4 border-b border-zinc-700 sticky top-0 bg-black/80 backdrop-blur">
+        <button onClick={onBack} className="hover:bg-white/10 rounded-full p-2 transition-colors">
+          <ArrowLeft size={20} className="text-white" />
+        </button>
+        <div>
+          <h2 className="text-xl font-bold text-white">{handle}</h2>
+          <p className="text-sm text-zinc-500">Profile</p>
+        </div>
+      </div>
+      <div className="flex-1 p-4 text-zinc-500">
+        {/* Profile content placeholder */}
+        Profile view for {handle}
+      </div>
+    </div>
+  );
+};
+
+
+=== src\components\social\ThreadView.tsx ===
+import React from 'react';
+import { ArrowLeft } from 'lucide-react';
+
+interface ThreadViewProps {
+  postId?: string;
+  onBack?: () => void;
+  onProfileClick?: (handle: string) => void;
+  onPostClick?: (postId: string) => void;
+}
+
+export const ThreadView: React.FC<ThreadViewProps> = ({ postId, onBack, onProfileClick, onPostClick }) => {
+  return (
+    <div className="flex-1 flex flex-col border-l border-zinc-700">
+      <div className="flex items-center gap-4 p-4 border-b border-zinc-700 sticky top-0 bg-black/80 backdrop-blur">
+        <button onClick={onBack} className="hover:bg-white/10 rounded-full p-2 transition-colors">
+          <ArrowLeft size={20} className="text-white" />
+        </button>
+        <div>
+          <h2 className="text-xl font-bold text-white">Post</h2>
+          <p className="text-sm text-zinc-500">Thread view</p>
+        </div>
+      </div>
+      <div className="flex-1 p-4 text-zinc-500">
+        {/* Thread content placeholder */}
+        Thread view for post {postId}
+      </div>
+    </div>
+  );
+};
+
+
+=== src\hooks\useBackgroundFetcher.ts ===
+import { useEffect, useRef, useState } from 'react';
+import { useSocialGame as useGame } from '../store/SocialGameContext';
+import { fetchProfileData } from '../utils/socialapi';
+
+export const useBackgroundFetcher = () => {
+  const { state, dispatchAction } = useGame();
+  const processedHandles = useRef<Set<string>>(new Set());
+  const isFetching = useRef(false);
+  useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  useEffect(() => {
+    const fetchLoop = async () => {
+      if (isFetching.current) return;
+
+      const handlesToFetch = Array.from(new Set(
+        state.socialFeed
+          .map(p => p.handle.replace('@', ''))
+          .filter(h => h !== 'username' && !processedHandles.current.has(h) && !state.cachedProfiles?.[h])
+      ));
+
+      if (handlesToFetch.length === 0) return;
+
+      const handle = handlesToFetch[0] as string;
+      processedHandles.current.add(handle);
+      isFetching.current = true;
+
+      try {
+        const profileData = await fetchProfileData(handle, dispatchAction);
+
+        // Only update feed if we got real data back
+        if (profileData.avatarUrl || profileData.name !== handle) {
+          const updatedFeed = state.socialFeed.map(post => {
+            if (post.handle.replace('@', '') === handle) {
+              return {
+                ...post,
+                author: profileData.name,
+                avatarUrl: profileData.avatarUrl || post.avatarUrl,
+                verified: profileData.verified
+              };
+            }
+            return post;
+          });
+
+          if (JSON.stringify(updatedFeed) !== JSON.stringify(state.socialFeed)) {
+            dispatchAction({ type: 'SET_FEED', payload: updatedFeed });
+          }
+        }
+      } catch (e) {
+        // Silently fail — handle just doesn't exist on Twitter
+      } finally {
+        isFetching.current = false;
+        timerRef.current = setTimeout(fetchLoop, 3000);
+      }
+    };
+
+    timerRef.current = setTimeout(fetchLoop, 3000);
+    return () => clearTimeout(timerRef.current);
+  }, [state.socialFeed.length, state.cachedProfiles]);
+};
+
+
+=== src\hooks\useTwitterData.ts ===
+import React, { useState, useEffect } from 'react';
+import { useSocialGame as useGame } from '../store/SocialGameContext';
+import { SocialPost } from '../types';
+
+export function useTwitterData() {
+  const { state, dispatchAction } = useGame();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (state.socialFeed.length > 0) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Using the raw URL provided by the user (mapped to raw content)
+        const response = await fetch('https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/mocktweets');
+        const data = await response.json();
+        
+        const mappedPosts: SocialPost[] = (data || []).map((item: any, index: number) => {
+          const likes = parseInt((item.stats?.likes || '0').replace(/,/g, ''));
+          const retweets = parseInt((item.stats?.retweets || '0').replace(/,/g, ''));
+          // Twitter ratio: replies are usually 1-5% of likes, plus some variance
+          const replyCount = Math.floor(likes * (0.01 + Math.random() * 0.04) + retweets * 0.1);
+          
+          return {
+            id: `tweet-${index}`,
+            author: item.user?.name || 'Unknown',
+            handle: item.user?.handle || '@unknown',
+            content: item.content || '',
+            date: item.posted || 'Just now',
+            likes,
+            retweets,
+            source: 'TwitterX',
+            avatarUrl: item.user?.profilePic || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.user?.handle?.replace('@', '') || index}`,
+            mediaUrl: item.media?.mainImage || (item.media?.allImages && item.media?.allImages[0]),
+            isLiked: false,
+            isRetweeted: false,
+            replies: [],
+            replyCount
+          };
+        });
+
+        dispatchAction({ type: 'SET_FEED', payload: mappedPosts });
+      } catch (error) {
+        console.error('Error fetching mock tweets:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [dispatchAction]);
+
+  return { loading };
+}
+
+
+=== src\hooks\useSidebarData.ts ===
+import { useMemo, useState, useEffect } from 'react';
+import { useGame } from '../store/GameContext';
+
+export const useSidebarData = () => {
+  const { state } = useGame();
+  const [suggestedUsersList, setSuggestedUsersList] = useState<{ name: string, handle: string, avatar?: string }[]>([]);
+
+  const trendsData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 'to', 'for', 'in', 'on', 'at', 'by', 'with', 'this', 'that', 'it', 'from', 'as', 'of', 'be', 'has', 'have', 'had', 'will', 'would', 'can', 'could', 'should', 'my', 'your', 'his', 'her', 'their', 'our', 'i', 'you', 'he', 'she', 'they', 'we', 'me', 'him', 'them', 'us', 'all', 'any', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', 'should', 'now']);
+
+    const teamKeywords = [
+      'Los Angeles Lakers', 'Lakers', 'Golden State Warriors', 'Warriors', 
+      'Boston Celtics', 'Celtics', 'New York Knicks', 'Knicks', 
+      'LA Clippers', 'Clippers', 'Phoenix Suns', 'Suns', 
+      'Milwaukee Bucks', 'Bucks', 'Denver Nuggets', 'Nuggets', 
+      'Miami Heat', 'Heat', 'Philadelphia 76ers', 'Sixers', 
+      'Dallas Mavericks', 'Mavs', 'Chicago Bulls', 'Bulls', 
+      'Houston Rockets', 'Rockets', 'San Antonio Spurs', 'Spurs', 
+      'Brooklyn Nets', 'Nets', 'Cleveland Cavaliers', 'Cavs', 
+      'Sacramento Kings', 'Kings', 'Oklahoma City Thunder', 'Thunder', 
+      'Memphis Grizzlies', 'Grizzlies', 'New Orleans Pelicans', 'Pelicans', 
+      'Minnesota Timberwolves', 'Timberwolves', 'Indiana Pacers', 'Pacers', 
+      'Atlanta Hawks', 'Hawks', 'Toronto Raptors', 'Raptors', 
+      'Orlando Magic', 'Magic', 'Utah Jazz', 'Jazz', 
+      'Portland Trail Blazers', 'Blazers', 'Detroit Pistons', 'Pistons', 
+      'Charlotte Hornets', 'Hornets', 'Washington Wizards', 'Wizards'
+    ];
+
+    state.socialFeed.forEach(post => {
+      teamKeywords.forEach(team => {
+        if (post.content.toLowerCase().includes(team.toLowerCase())) {
+          counts[team] = (counts[team] || 0) + 4;
+        }
+      });
+
+      const capPairs = post.content.match(/[A-Z][a-z]+ [A-Z][a-z]+/g);
+      if (capPairs) {
+        capPairs.forEach(pair => {
+          if (!teamKeywords.some(t => t.toLowerCase() === pair.toLowerCase())) {
+            counts[pair] = (counts[pair] || 0) + 5;
+          }
+        });
+      }
+
+      const words = post.content.match(/\b\w+\b/g);
+      if (words) {
+        words.forEach(word => {
+          const lowerWord = word.toLowerCase();
+          const capitalizedWord = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+          
+          if (word.length > 3 && !stopWords.has(lowerWord) && !teamKeywords.some(t => t.toLowerCase().includes(lowerWord))) {
+            counts[capitalizedWord] = (counts[capitalizedWord] || 0) + 1;
+          }
+        });
+      }
+    });
+
+    const sortedTrends = Object.entries(counts)
+      .sort(([, a], [, b]) => b - a)
+      .map(([title, count]) => ({
+        category: 'Trending',
+        title,
+        posts: count * 123
+      }));
+
+    return {
+      trends: sortedTrends.slice(0, 5),
+      allTrends: sortedTrends
+    };
+  }, [state.socialFeed]);
+
+  const [allSuggestedUsers, setAllSuggestedUsers] = useState<{ name: string, handle: string, avatar?: string }[]>([]);
+
+  useEffect(() => {
+    if (state.socialFeed.length > 0) {
+      const users = new Map<string, { name: string, handle: string, avatar?: string }>();
+      
+      state.socialFeed.forEach(post => {
+        const cleanHandle = post.handle.replace('@', '');
+        if (cleanHandle !== 'username') {
+          // Check cache first for more up-to-date info
+          const cached = state.cachedProfiles?.[cleanHandle];
+          users.set(cleanHandle, {
+            name: cached?.name || post.author,
+            handle: post.handle,
+            avatar: cached?.avatarUrl || post.avatarUrl
+          });
+        }
+      });
+
+      const allUsers = Array.from(users.values());
+      // Only shuffle if we haven't set the list yet or if the feed changed significantly
+      if (allSuggestedUsers.length === 0) {
+        for (let i = allUsers.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [allUsers[i], allUsers[j]] = [allUsers[j], allUsers[i]];
+        }
+        setAllSuggestedUsers(allUsers);
+      } else {
+        // Just update existing users with new data without re-shuffling
+        const updatedUsers = allSuggestedUsers.map(existing => {
+          const fresh = users.get(existing.handle.replace('@', ''));
+          return fresh ? { ...existing, ...fresh } : existing;
+        });
+        
+        // Also add any new users that appeared in the feed
+        const existingHandles = new Set(allSuggestedUsers.map(u => u.handle));
+        const newUsers = allUsers.filter(u => !existingHandles.has(u.handle));
+        
+        if (newUsers.length > 0 || JSON.stringify(updatedUsers) !== JSON.stringify(allSuggestedUsers)) {
+          setAllSuggestedUsers([...updatedUsers, ...newUsers]);
+        }
+      }
+    }
+  }, [state.socialFeed, state.cachedProfiles]);
+
+  useEffect(() => {
+    const filtered = allSuggestedUsers.filter(user => 
+      !(state.followedHandles || []).includes(user.handle.replace('@', ''))
+    );
+    setSuggestedUsersList(filtered);
+  }, [allSuggestedUsers, state.followedHandles]);
+
+  return { trends: trendsData.trends, allTrends: trendsData.allTrends, suggestedUsersList };
+};
+
+
+=== src\lib\utils.ts ===
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+
+=== src\utils\socialapi.ts ===
+import { generateSocialStats } from './socialhelpers';
+
+export const fetchProfileData = async (handle: string, dispatchAction: (action: any) => void) => {
+  const cleanHandle = handle.replace('@', '');
+
+  try {
+    const API = "https://twitterfollowers.mogatas-princealjohn-05082003.workers.dev";
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    
+    const r = await fetch(`${API}?handle=${cleanHandle}`, { signal: controller.signal });
+    const d = await r.json();
+    clearTimeout(timeoutId);
+
+    let profileData;
+    if (d && d.success !== false && d.name) {
+      let bio = d.aboutBio || "";
+      if (bio.includes("Everything is directly taken from official API Service")) bio = "";
+
+      profileData = {
+        name: d.name || cleanHandle,
+        handle: `@${cleanHandle}`,
+        bio,
+        location: 'Global',
+        website: `x.com/${cleanHandle}`,
+        avatarUrl: d.scrapedAvatar || undefined,
+        bannerUrl: d.scrapedBanner || undefined,
+        followingCount: d.bottomOdos?.[1] || 0,
+        followersCount: d.followerCount || 0,
+        verified: d.verified || false
+      };
+    } else {
+      // Handle doesn't exist on Twitter — use generated stats, no avatar
+      const stats = generateSocialStats(cleanHandle);
+      profileData = {
+        name: cleanHandle,
+        handle: `@${cleanHandle}`,
+        bio: "",
+        location: 'Global',
+        website: `x.com/${cleanHandle}`,
+        followingCount: stats.following,
+        followersCount: stats.followers,
+        verified: false,
+        avatarUrl: undefined
+      };
+    }
+
+    dispatchAction({ type: 'CACHE_PROFILE', payload: { handle: cleanHandle, profile: profileData } });
+    return profileData;
+  } catch (e: any) {
+    const stats = generateSocialStats(cleanHandle);
+    const fallback = {
+      name: cleanHandle,
+      handle: `@${cleanHandle}`,
+      bio: "",
+      location: 'Global',
+      website: `x.com/${cleanHandle}`,
+      followingCount: stats.following,
+      followersCount: stats.followers,
+      verified: false,
+      avatarUrl: undefined
+    };
+    dispatchAction({ type: 'CACHE_PROFILE', payload: { handle: cleanHandle, profile: fallback } });
+    return fallback;
+  }
+};
+
+
+=== src\utils\socialhelpers.ts ===
+import { SocialPost } from '../types';
+
+export function formatTwitterDate(dateStr: string, currentDate: string): string {
+  if (!dateStr || typeof dateStr !== 'string') return '2h';
+  if (dateStr === 'Just now') return 'just now';
+  // Already formatted like "Nov 12"
+  if (/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/.test(dateStr)) return dateStr;
+  // Try parsing
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '2h';
+  const now = new Date(currentDate);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins}m`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+export const generateSocialStats = (seed: string) => {
+  // Use string hash for deterministic but "random" looking numbers
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    hash |= 0; // Convert to 32bit integer
+  }
+  const absHash = Math.abs(hash);
+  
+  // Followers: 50 to 3000 (regular people)
+  const followers = (absHash % 2950) + 50;
+  // Following: 100 to 1500
+  const following = (absHash % 1400) + 100;
+  
+  return { followers, following };
+};
+
+
+=== src\services\llm\utils\api.ts ===
+  // src/services/llm/utils/api.ts
+  // Routing strategy:
+  //   Chat (interaction) → Groq Worker → Gemini Worker fallback
+  //   Non-chat localhost → Direct Gemini keys → Gemini Worker (Together AI primary) → workerProviders
+  //   Non-chat prod      → Gemini Worker (Together AI primary, Gemini fallback) → workerProviders
+  //   (Direct Gemini skipped in prod — Cloudflare Pages IPs are geo-blocked by Gemini)
+
+  import {
+    GoogleGenAI,
+    GenerateContentResponse,
+    GenerateContentParameters,
+    ThinkingLevel,
+  } from "@google/genai";
+  import { SettingsManager } from "../../SettingsManager";
+  import {
+    generateWithFallback,
+    geminiParamsToMessages,
+    WorkerOptions,
+  } from "./workerProviders";
+
+  export { ThinkingLevel };
+
+  // ── Config ────────────────────────────────────────────────────────────────────
+  const GEMINI_WORKER_URL = "https://geminisatellite.mogatas-princealjohn-05082003.workers.dev/";
+  const GROQ_WORKER_URL = (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_CHAT_WORKER_URL)
+    ?? "https://nba-chat-worker.mogatas-princealjohn-05082003.workers.dev/";
+  // Model used for all chat/interaction calls (routed to Groq)
+  const GROQ_CHAT_MODEL = "llama-3.3-70b-versatile";
+
+  // Gemini cascade tiers for non-chat calls
+  const MODEL_TIERS: Record<1 | 2 | 3, string[]> = {
+    1: ["gemini-2.5-flash-lite", "gemini-2.5-flash"],
+    2: ["gemini-2.5-flash",      "gemini-2.5-flash-lite"],
+    3: ["gemini-2.5-flash",      "gemini-2.5-pro", "gemini-2.5-flash-lite"],
+  };
+
+  // ── Local Gemini keys (dev only) ──────────────────────────────────────────────
+  function getAllKeys(): string[] {
+    const e = (typeof import.meta !== "undefined" && (import.meta as any).env)
+      ? (import.meta as any).env : {};
+    const p = (typeof process !== "undefined" && process.env) ? process.env : {};
+
+    return [
+      e.VITE_GEMINI_API_KEY         ?? p.GEMINI_API_KEY,
+      e.VITE_GEMINI_API_KEY_ALT     ?? p.GEMINI_API_KEY_ALT,
+      e.VITE_GEMINI_API_KEY_ALT_2   ?? p.GEMINI_API_KEY_ALT_2,
+      e.VITE_GEMINI_API_KEY_ALT_3   ?? p.GEMINI_API_KEY_ALT_3,
+      e.VITE_GEMINI_API_KEY_ALT_4   ?? p.GEMINI_API_KEY_ALT_4,
+      e.VITE_GEMINI_API_KEY_ALT_5   ?? p.GEMINI_API_KEY_ALT_5,
+      e.VITE_GEMINI_API_KEY_ALT_6   ?? p.GEMINI_API_KEY_ALT_6,
+      e.VITE_GEMINI_API_KEY_ALT_7   ?? p.GEMINI_API_KEY_ALT_7,
+      e.VITE_GEMINI_API_KEY_ALT_8   ?? p.GEMINI_API_KEY_ALT_8,
+      e.VITE_GEMINI_API_KEY_ALT_9   ?? p.GEMINI_API_KEY_ALT_9,
+      e.VITE_GEMINI_API_KEY_ALT_10  ?? p.GEMINI_API_KEY_ALT_10,
+      e.VITE_GEMINI_API_KEY_ALT_11  ?? p.GEMINI_API_KEY_ALT_11,
+    ].filter((k): k is string => typeof k === "string" && k.length > 10);
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────────
+  function wrapText(text: string): GenerateContentResponse {
+    return { text } as GenerateContentResponse;
+  }
+
+  function buildMockResponse(params: GenerateContentParameters): GenerateContentResponse {
+    const isJson = params.config?.responseMimeType === "application/json";
+    return wrapText(
+      isJson
+        ? JSON.stringify({ newEmails: [], newNews: [], newSocialPosts: [], replies: [], title: "Fallback Title", description: "Fallback Description" })
+        : "AI features are disabled in settings."
+    );
+  }
+
+  /** Convert Gemini GenerateContentParameters → OpenAI messages array */
+  function geminiToOpenAIMessages(params: GenerateContentParameters): { role: string; content: string }[] {
+    const messages: { role: string; content: string }[] = [];
+
+    // System instruction
+    const sysInstr = params.config?.systemInstruction;
+    const sysText = typeof sysInstr === "string"
+      ? sysInstr
+      : (sysInstr as any)?.parts?.map((p: any) => p.text ?? "").join("") ?? "";
+    if (sysText) messages.push({ role: "system", content: sysText });
+
+    // Contents
+    const contents = params.contents;
+    if (typeof contents === "string") {
+      messages.push({ role: "user", content: contents });
+    } else if (Array.isArray(contents)) {
+      for (const c of contents as any[]) {
+        const role = c.role === "model" ? "assistant" : (c.role ?? "user");
+        const content = Array.isArray(c.parts)
+          ? c.parts.map((p: any) => p.text ?? "").join("")
+          : (c.text ?? "");
+        if (content) messages.push({ role, content });
+      }
+    } else if (contents && typeof (contents as any) === "object") {
+      const c = contents as any;
+      const role = c.role === "model" ? "assistant" : (c.role ?? "user");
+      const content = Array.isArray(c.parts)
+        ? c.parts.map((p: any) => p.text ?? "").join("")
+        : (c.text ?? "");
+      if (content) messages.push({ role, content });
+    }
+
+    return messages;
+  }
+
+  // ── Route A: Groq Worker (chat) ───────────────────────────────────────────────
+  async function callViaGroqWorker(params: GenerateContentParameters): Promise<GenerateContentResponse> {
+    const messages = geminiToOpenAIMessages(params);
+
+    const response = await fetch(GROQ_WORKER_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Target-Endpoint": "chat/completions",
+      },
+      body: JSON.stringify({
+        model: GROQ_CHAT_MODEL,
+        messages,
+        max_tokens: params.config?.maxOutputTokens ?? 1024,
+        temperature: params.config?.temperature ?? 0.7,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(`Groq Worker ${response.status}: ${JSON.stringify(err)}`);
+    }
+
+    const data = await response.json();
+    const text = data?.choices?.[0]?.message?.content ?? "";
+    const nickname = response.headers.get("X-Groq-Key-Nickname") ?? "?";
+    console.log(`%c[LLM] ✅ Groq Worker (${nickname}) → chat`, "color:#a855f7;font-weight:bold");
+    return wrapText(text);
+  }
+
+  // ── Route B: Gemini Worker ────────────────────────────────────────────────────
+  async function callViaGeminiWorker(params: GenerateContentParameters): Promise<GenerateContentResponse> {
+    const model = params.model ?? "gemini-2.5-flash";
+
+    let normalizedContents: any[];
+    if (typeof params.contents === "string") {
+      normalizedContents = [{ role: "user", parts: [{ text: params.contents }] }];
+    } else if (Array.isArray(params.contents)) {
+      normalizedContents = params.contents as any[];
+    } else {
+      normalizedContents = [params.contents];
+    }
+
+    const sysInstr = params.config?.systemInstruction;
+    const sysInstrText = typeof sysInstr === "string"
+      ? sysInstr
+      : (sysInstr as any)?.parts?.map((p: any) => p.text ?? "").join("") ?? "";
+
+    const body = {
+      contents: normalizedContents,
+      modelTier: SettingsManager.getSettings().llmPerformance,
+      ...(params.config ? {
+        generationConfig: {
+          ...(params.config.responseMimeType  && { responseMimeType:  params.config.responseMimeType }),
+          ...(params.config.maxOutputTokens   && { maxOutputTokens:   params.config.maxOutputTokens }),
+          ...(params.config.temperature !== undefined && { temperature: params.config.temperature }),
+          ...(params.config.topP        !== undefined && { topP:        params.config.topP }),
+          ...(params.config.topK        !== undefined && { topK:        params.config.topK }),
+        }
+      } : {}),
+      ...(sysInstrText ? { system_instruction: { parts: [{ text: sysInstrText }] } } : {}),
+    };
+
+    const response = await fetch(`${GEMINI_WORKER_URL}?model=${encodeURIComponent(model)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(`Gemini Worker ${response.status}: ${JSON.stringify(err)}`);
+    }
+
+    const data = await response.json();
+    console.log(`[LLM] Worker response from: ${data.provider || 'unknown'}`);
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    return wrapText(text);
+  }
+
+  // ── Route C: Direct Gemini SDK (local dev) ────────────────────────────────────
+  const _sdkCache = new Map<string, GoogleGenAI>();
+  function getSDK(key: string): GoogleGenAI {
+    if (!_sdkCache.has(key)) _sdkCache.set(key, new GoogleGenAI({ apiKey: key }));
+    return _sdkCache.get(key)!;
+  }
+
+  async function callDirectWithRotation(
+    params: GenerateContentParameters,
+    maxRetries: number,
+    initialDelayMs: number
+  ): Promise<{ response: GenerateContentResponse; allRateLimited: false } | { response: null; allRateLimited: boolean }> {
+    const keys = getAllKeys();
+    if (keys.length === 0) return { response: null, allRateLimited: false };
+
+    const shuffled = [...keys].sort(() => Math.random() - 0.5);
+    let rateLimitedCount = 0;
+
+    for (let k = 0; k < shuffled.length; k++) {
+      const sdk = getSDK(shuffled[k]);
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`[LLM] Direct key ${k + 1}/${shuffled.length}, attempt ${attempt + 1} (${params.model})`);
+          const response = await sdk.models.generateContent(params);
+          return { response, allRateLimited: false };
+        } catch (err: any) {
+          const status: number = err?.status ?? err?.response?.status ?? 0;
+          if (status === 429) {
+            console.warn(`[LLM] Key ${k + 1} rate-limited (429) for ${params.model} — skipping`);
+            rateLimitedCount++;
+            break;
+          } else if (status >= 500 && status < 600) {
+            if (attempt === maxRetries) { break; }
+            const delay = Math.min(initialDelayMs * Math.pow(2, attempt), 8000) + Math.random() * 500;
+            console.warn(`[LLM] Key ${k + 1} got ${status}, retry in ${delay.toFixed(0)}ms`);
+            await new Promise(r => setTimeout(r, delay));
+          } else {
+            console.warn(`[LLM] Key ${k + 1} non-retriable ${status} (${params.model})`);
+            break;
+          }
+        }
+      }
+    }
+
+    const allRateLimited = rateLimitedCount === shuffled.length;
+    return { response: null, allRateLimited };
+  }
+
+  // ── Public entry point ────────────────────────────────────────────────────────
+  export async function generateContentWithRetry(
+    params: GenerateContentParameters,
+    maxRetries: number = 2,
+    initialDelayMs: number = 800,
+    bypassLLMCheck: boolean = false
+  ): Promise<GenerateContentResponse> {
+    const settings = SettingsManager.getSettings();
+
+    if (!settings.enableLLM && !bypassLLMCheck) {
+      console.log("[LLM] Disabled — returning mock.");
+      return buildMockResponse(params);
+    }
+
+    // ── Chat calls → Groq Worker (fast lane, always bypasses Gemini) ──────────
+    // Use bypassLLMCheck as the sole signal — sendChatMessage always sets it to true.
+    // Model-name comparison is unreliable: simulation can use the same model name as
+    // interaction (e.g. gemini-2.5-flash-lite at perf level 1), which would incorrectly
+    // route JSON-schema simulation calls to Groq, causing markdown parse failures.
+    const isChat = bypassLLMCheck;
+
+    if (isChat) {
+      try {
+        return await callViaGroqWorker(params);
+      } catch (groqErr: any) {
+        console.warn(`[LLM] Groq Worker failed: ${groqErr?.message} — trying Gemini Worker`);
+        try {
+          // Strip thinkingConfig — Gemini worker doesn't support it for chat
+          const cleanParams = { ...params, model: 'gemini-2.5-flash', config: { ...params.config, thinkingConfig: undefined } };
+          return await callViaGeminiWorker(cleanParams);
+        } catch (geminiErr: any) {
+          console.warn(`[LLM] Gemini Worker failed: ${geminiErr?.message}`);
+          return wrapText("I'm having trouble connecting right now. Try again in a moment.");
+        }
+      }
+    }
+
+    // ── Non-chat calls → Gemini cascade ──────────────────────────────────────
+    const tier = settings.llmPerformance as 1 | 2 | 3;
+    const models = MODEL_TIERS[tier] ?? MODEL_TIERS[2];
+    const localKeys = getAllKeys();
+    // VITE_ keys are bundled into the prod build, so check hostname to avoid
+    // calling Gemini directly from Cloudflare Pages (geo-blocked datacenter IPs).
+    const isProd = typeof window !== "undefined"
+      && !window.location.hostname.includes("localhost")
+      && !window.location.hostname.includes("127.0.0.1");
+    const isLocalDev = localKeys.length > 0 && !isProd;
+    console.log(`[LLM] isProd: ${isProd}, using: ${isProd ? 'Worker (Together→Gemini)' : 'Direct keys'}`);
+
+    for (let i = 0; i < models.length; i++) {
+      const model = models[i];
+      const nextModel = models[i + 1];
+      const paramsWithModel: GenerateContentParameters = { ...params, model };
+      let skipWorker = false;
+
+      if (isLocalDev) {
+        const { response, allRateLimited } = await callDirectWithRotation(paramsWithModel, maxRetries, initialDelayMs);
+        if (response) {
+          console.log(`%c[LLM] ✅ Direct succeeded (${model})`, "color:#22c55e;font-weight:bold");
+          return response;
+        }
+        if (allRateLimited) {
+          skipWorker = true;
+          if (nextModel) console.log(`[LLM] ⬇️ Cascading to: ${nextModel}`);
+        } else {
+          console.log(`[LLM] 🌐 Falling back to Gemini Worker (${model})`);
+        }
+      }
+
+      if (!skipWorker) {
+        try {
+          const result = await callViaGeminiWorker(paramsWithModel);
+          console.log(`%c[LLM] ✅ Gemini Worker succeeded (${model})`, "color:#22c55e;font-weight:bold");
+          return result;
+        } catch (workerErr: any) {
+          console.warn(`[LLM] Gemini Worker failed (${model}): ${workerErr?.message}${nextModel ? ` — trying ${nextModel}` : ""}`);
+        }
+      }
+    }
+
+    // ── Last resort: workerProviders chain ────────────────────────────────────
+    try {
+      console.warn("[LLM] All Gemini tiers exhausted — trying workerProviders.");
+      const messages = geminiParamsToMessages(params);
+      const isJson = params.config?.responseMimeType === "application/json";
+      const opts: WorkerOptions = {
+        maxTokens: SettingsManager.getMaxTokens(8192),
+        temperature: 0.7,
+        json: isJson,
+      };
+      const text = await generateWithFallback(messages, opts);
+      return wrapText(text);
+    } catch (e: any) {
+      console.error("[LLM] All providers failed:", e?.message);
+      return buildMockResponse(params);
+    }
+  }
+
+
+=== src\store\logic\turn\socialHandler.ts ===
+import { GameState, NBAPlayer as Player, NBATeam } from '../../../types';
+import { calculateSocialEngagement } from '../../../utils/helpers';
+import { SocialEngine } from '../../../services/social/SocialEngine';
+import { generateLazySimNews } from '../../../services/news/lazySimNewsGenerator';
+import { findShamsPhoto } from '../../../services/social/charaniaphotos';
+import { pickMemePost } from '../../../services/social/nbaMemesFetcher';
+
+export const handleSocialAndNews = async (
+    state: GameState, 
+    result: any, 
+    allSimResults: any[], 
+    updatedPlayers: Player[], 
+    updatedTeams: NBATeam[],
+    daysToSimulate: number,
+    endDateString: string
+) => {
+    // Clear AI image cache once per simulation day
+    if (daysToSimulate >= 1) {
+        import('../../../services/social/gameImageGenerator')
+            .then(({ clearGameImageCache }) => clearGameImageCache())
+            .catch(() => {});
+    }
+
+    // Smarter Engagement Algorithm for Social Posts
+    if (result.newSocialPosts) {
+        const startDate = new Date(state.date);
+        const endDate = new Date(endDateString);
+        const timeDiff = endDate.getTime() - startDate.getTime();
+        
+        result.newSocialPosts = result.newSocialPosts.map((post: any, index: number) => {
+            const handle = (post.handle || '').toLowerCase();
+            const player = state.players.find(p => p.name === post.author || (handle && handle.includes(p.name.toLowerCase().replace(' ', ''))));
+            const team = state.teams.find(t => t.name === post.author || (handle && handle.includes(t.abbrev.toLowerCase())));
+            
+            const engagement = calculateSocialEngagement(post.handle, post.content, player?.overallRating);
+            
+            // Spread posts across the simulation period
+            const randomOffset = Math.random() * (timeDiff + (1000 * 60 * 60 * 24));
+            const postDate = new Date(startDate.getTime() + randomOffset);
+            
+            // Randomize time of day
+            const hours = Math.floor(Math.random() * 24);
+            const minutes = Math.floor(Math.random() * 60);
+            postDate.setHours(hours, minutes);
+            
+            return {
+                ...post,
+                likes: engagement.likes,
+                retweets: engagement.retweets,
+                date: postDate.toISOString(),
+                playerPortraitUrl: post.playerPortraitUrl || player?.imgURL,
+                teamLogoUrl: post.teamLogoUrl || team?.logoUrl,
+                isNew: true
+            };
+        }).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+
+    const socialEngine = new SocialEngine();
+    const socialDateString = new Date(state.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const nbaPlayers = updatedPlayers.filter(p => !['WNBA', 'Euroleague', 'PBA', 'B-League'].includes(p.status || ''));
+    const newSocialPostsFromEngine = await socialEngine.generateDailyPosts(allSimResults, nbaPlayers, updatedTeams, socialDateString, daysToSimulate);
+
+    const newLLMPosts = (result.newSocialPosts || []).map((p: any, i: number) => ({
+        ...p,
+        id: p.id || `llm-social-${state.day}-${i}-${Date.now()}`,
+        date: p.date || new Date(state.date).toISOString(),
+        isNew: true
+    }));
+    const allNewPosts = [...newLLMPosts, ...newSocialPostsFromEngine];
+    allNewPosts.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    // ── Shams injury posts ────────────────────────────────────────────────────
+    const { buildShamsPost } = await import('../../../services/social/templates/charania');
+    const shamsInjuryPosts: any[] = [];
+
+    for (const result of allSimResults) {
+        if (!result.injuries?.length) continue;
+        for (const injury of result.injuries) {
+            const player = updatedPlayers.find(p => p.internalId === injury.playerId);
+            if (!player) continue;
+            const team = updatedTeams.find(t => t.id === (injury.teamId ?? player.tid));
+            if (!team) continue;
+            if ((player.overallRating ?? 0) < 70) continue; // skip low OVR
+
+            const ctx = {
+                player,
+                team,
+                injury: {
+                    injuryType: injury.injuryType,
+                    gamesRemaining: injury.gamesRemaining,
+                },
+                opponent: null,
+            };
+
+            const content = buildShamsPost(ctx as any);
+            if (!content) continue;
+
+            const engagement = calculateSocialEngagement('@ShamsCharania', content, player.overallRating);
+            // Attach real Shams tweet photo — always attach when a name match is found, never when not
+            const photo = findShamsPhoto(player.name, team.name);
+            shamsInjuryPosts.push({
+                id: `shams-injury-${injury.playerId}-${(injury.injuryType || 'injury').replace(/\s+/g, '-').toLowerCase()}`,
+                author: 'Shams Charania',
+                handle: '@ShamsCharania',
+                content,
+                date: result.date ? new Date(result.date).toISOString() : new Date(endDateString).toISOString(),
+                likes: photo ? parseInt(photo.stats.likes.replace(/,/g, ''), 10) || engagement.likes : engagement.likes,
+                retweets: photo ? parseInt(photo.stats.reposts.replace(/,/g, ''), 10) || engagement.retweets : engagement.retweets,
+                source: 'TwitterX',
+                isNew: true,
+                playerPortraitUrl: player.imgURL,
+                ...(photo ? { mediaUrl: photo.image_url } : {}),
+            });
+        }
+    }
+
+    allNewPosts.push(...shamsInjuryPosts);
+    allNewPosts.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    // ── NBA Memes — fetched real tweets, fire nonsensically by frequency ─────
+    const meme = pickMemePost(endDateString);
+    if (meme) {
+        const likes = parseInt(String(meme.stats.likes).replace(/\D/g, ''), 10) || 500;
+        const retweets = parseInt(String(meme.stats.reposts).replace(/\D/g, ''), 10) || 100;
+        allNewPosts.push({
+            id: `nba-memes-${meme.id}`,
+            author: 'NBA Memes',
+            handle: '@NBAMemes',
+            content: meme.text,
+            date: new Date(endDateString).toISOString(),
+            likes,
+            retweets,
+            source: 'TwitterX',
+            isNew: true,
+            mediaUrl: meme.image,
+        });
+    }
+
+    const existingPostIds = new Set(state.socialFeed.map(p => p.id));
+    const uniqueNewPosts = allNewPosts.filter(p => !existingPostIds.has(p.id));
+
+    const newNews = (result.newNews || []).map((n: any, i: number) => ({
+        ...n,
+        id: n.id || `llm-news-${state.day}-${i}-${Date.now()}`,
+        date: n.date || endDateString, // use LLM-provided date if available, otherwise sim end
+        isNew: true
+    }));
+    newNews.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const existingNewsIds = new Set(state.news.map(n => n.id));
+    const uniqueNewNews = newNews.filter(n => !existingNewsIds.has(n.id));
+
+    console.log('[SocialHandler] incoming newNews:', result?.newNews?.length);
+    console.log('[SocialHandler] incoming newSocialPosts:', result?.newSocialPosts?.length);
+
+    // ── Generate deterministic news from sim results (streaks, big games, drama, injuries) ──
+    if (allSimResults.length > 0) {
+        // Build a set of injury keys that Shams already posted about this run (same player+type)
+        const shamsReportedInjuries = new Set<string>(
+            shamsInjuryPosts.map((p: any) => {
+                // Extract playerId from the stable Shams post id: shams-injury-{playerId}-{type}
+                const parts = p.id?.split('-') || [];
+                return parts.slice(2).join('-'); // everything after "shams-injury-"
+            })
+        );
+
+        const simNews = generateLazySimNews(
+            updatedTeams,
+            updatedPlayers,
+            allSimResults,
+            endDateString,
+            new Set<string>(), // injury dedup handled by existingNewsIds below
+            false, // include injury news — Shams covers social, news feed needs it too
+            state.teams
+        );
+        const simNewsUnique = simNews.filter(n => !existingNewsIds.has(n.id));
+        uniqueNewNews.push(...simNewsUnique);
+    }
+
+    return { uniqueNewPosts, uniqueNewNews };
+};
+
+
+=== src\components\layout\Twitterlayout.tsx ===
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Sidebar } from './Sidebar';
+import { RightSidebar } from './RightSidebar';
+import { TweetInput } from '../social/TweetInput';
+import SocialPostCard from '../social/SocialPostCard';
+import { ProfileView } from '../social/ProfileView';
+import { ThreadView } from '../social/ThreadView';
+import { FollowingListView } from '../social/FollowingListView';
+import { ConnectView } from '../social/ConnectView';
+import { useGame } from '../../store/GameContext';
+import { SocialGameProvider } from '../../store/SocialGameContext';
+import { useTwitterData } from '../../hooks/useTwitterData';
+import { useSidebarData } from '../../hooks/useSidebarData';
+import { useBackgroundFetcher } from '../../hooks/useBackgroundFetcher';
+import { TrendItem, WhoToFollow } from '../social/SidebarComponents';
+import { cn } from '../../lib/utils';
+import { Settings2, ArrowLeft, Search, Menu, X, Loader2 } from 'lucide-react';
+
+const WhoToFollowFeedBlock = ({ onProfileClick, suggestedUsersList }: { onProfileClick: (handle: string) => void, suggestedUsersList: any[] }) => {
+  const { state, followUser, unfollowUser } = useGame();
+
+  if (!suggestedUsersList || suggestedUsersList.length === 0) return null;
+
+  return (
+    <>
+      {suggestedUsersList.slice(0, 3).map((user: any, i: number) => (
+        <WhoToFollow 
+          key={i} 
+          {...user} 
+          isFollowing={(state.followedHandles || []).includes(user.handle.replace('@', ''))}
+          onToggleFollow={() => {
+            const cleanHandle = user.handle.replace('@', '');
+            if ((state.followedHandles || []).includes(cleanHandle)) {
+              unfollowUser(cleanHandle);
+            } else {
+              followUser(cleanHandle);
+            }
+          }}
+          onProfileClick={() => onProfileClick(user.handle)}
+        />
+      ))}
+    </>
+  );
+};
+
+export const TwitterLayout = () => {
+  const { state, followUser, unfollowUser } = useGame();
+  const { loading } = useTwitterData();
+  useBackgroundFetcher();
+  const { trends, allTrends, suggestedUsersList } = useSidebarData();
+  const [activeTab, setActiveTab] = useState<'for-you' | 'following'>('for-you');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [view, setView] = useState<{ type: 'feed' | 'profile' | 'thread' | 'following-list' | 'explore' | 'connect'; handle?: string; postId?: string }>({ type: 'feed' });
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [displayLimit, setDisplayLimit] = useState(10);
+  const observer = useRef<IntersectionObserver | null>(null);
+  const scrollPositionRef = useRef(0);
+
+  const lastTweetElementRef = useCallback((node: HTMLDivElement | null) => {
+    if (observer.current) observer.current.disconnect();
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) {
+        setDisplayLimit(prev => prev + 10);
+      }
+    }, { threshold: 0.1 });
+    if (node) observer.current.observe(node);
+  }, []);
+
+  // Reset display limit when changing tabs or searching
+  useEffect(() => {
+    setDisplayLimit(10);
+  }, [activeTab, searchQuery, view.type]);
+
+  const handleProfileClick = (handle: string) => {
+    scrollPositionRef.current = window.scrollY;
+    setView({ type: 'profile', handle });
+    setIsMobileMenuOpen(false);
+    window.scrollTo(0, 0);
+  };
+
+  const handlePostClick = (postId: string) => {
+    scrollPositionRef.current = window.scrollY;
+    setView({ type: 'thread', postId });
+    window.scrollTo(0, 0);
+  };
+
+  const handleHomeClick = () => {
+    setView({ type: 'feed' });
+    setSearchQuery('');
+    setIsMobileMenuOpen(false);
+    setTimeout(() => window.scrollTo(0, scrollPositionRef.current), 0);
+  };
+
+  const handleExploreClick = () => {
+    scrollPositionRef.current = window.scrollY;
+    setView({ type: 'explore' });
+    setIsMobileMenuOpen(false);
+    window.scrollTo(0, 0);
+  };
+
+  const handleFollowingListClick = () => {
+    scrollPositionRef.current = window.scrollY;
+    setView({ type: 'following-list' });
+    setIsMobileMenuOpen(false);
+    window.scrollTo(0, 0);
+  };
+
+  const handleConnectClick = () => {
+    scrollPositionRef.current = window.scrollY;
+    setView({ type: 'connect' });
+    setIsMobileMenuOpen(false);
+    window.scrollTo(0, 0);
+  };
+
+  const handleTrendClick = (query: string) => {
+    setSearchQuery(query);
+    setView({ type: 'feed' });
+    setActiveTab('for-you');
+    window.scrollTo(0, 0);
+  };
+
+  const [searchTab, setSearchTab] = useState<'top' | 'latest' | 'people' | 'media'>('top');
+
+  return (
+    <SocialGameProvider>
+      <div className="min-h-screen bg-black text-[#e7e9ea] flex justify-center relative overflow-x-clip">
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-white/10 backdrop-blur-sm z-[100] xl:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      <div className="flex w-full max-w-[1300px]">
+        {/* Left Sidebar (Desktop) */}
+        <div className="hidden sm:flex flex-shrink-0 w-[80px] xl:w-[275px]">
+          <Sidebar 
+            onHomeClick={handleHomeClick} 
+            onProfileClick={() => handleProfileClick(state.userProfile.handle)}
+            onFollowingClick={handleFollowingListClick}
+            onExploreClick={handleExploreClick}
+            activeView={view.type}
+          />
+        </div>
+
+        {/* Main Content */}
+        <main className="flex-1 max-w-[600px] border-x border-[#2f3336] min-h-screen w-full">
+          {view.type === 'feed' ? (
+            <>
+              <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-[#2f3336]">
+                <div className="px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center space-x-4 flex-1">
+                    {searchQuery ? (
+                      <>
+                        <button onClick={() => setSearchQuery('')} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                          <ArrowLeft size={20} />
+                        </button>
+                        <div className="flex-1 bg-zinc-900 rounded-full px-4 py-2 flex items-center space-x-3 border border-transparent focus-within:border-sky-500 focus-within:bg-black transition-all">
+                          <Search size={18} className="text-zinc-500" />
+                          <input 
+                            type="text" 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="bg-transparent border-none outline-none text-white w-full"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-between w-full">
+                        <h1 className="text-xl font-bold">Home</h1>
+                        <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                          <Settings2 size={20} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {searchQuery ? (
+                  <div className="flex w-full overflow-x-auto no-scrollbar">
+                    {['Top', 'Latest', 'People', 'Media'].map((tab) => (
+                      <button 
+                        key={tab}
+                        onClick={() => setSearchTab(tab.toLowerCase() as any)}
+                        className="flex-1 py-4 hover:bg-white/5 transition-colors relative min-w-[100px]"
+                      >
+                        <span className={cn(
+                          "text-[15px] font-bold",
+                          searchTab === tab.toLowerCase() ? "text-white" : "text-[#71767b]"
+                        )}>
+                          {tab}
+                        </span>
+                        {searchTab === tab.toLowerCase() && (
+                          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-1 bg-[#1d9bf0] rounded-full" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex w-full">
+                    <button 
+                      onClick={() => setActiveTab('for-you')}
+                      className="flex-1 py-4 hover:bg-white/5 transition-colors relative"
+                    >
+                      <span className={cn(
+                        "text-[15px] font-bold",
+                        activeTab === 'for-you' ? "text-white" : "text-[#71767b]"
+                      )}>
+                        For you
+                      </span>
+                      {activeTab === 'for-you' && (
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-1 bg-[#1d9bf0] rounded-full" />
+                      )}
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('following')}
+                      className="flex-1 py-4 hover:bg-white/5 transition-colors relative"
+                    >
+                      <span className={cn(
+                        "text-[15px] font-bold",
+                        activeTab === 'following' ? "text-white" : "text-[#71767b]"
+                      )}>
+                        Following
+                      </span>
+                      {activeTab === 'following' && (
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-1 bg-[#1d9bf0] rounded-full" />
+                      )}
+                    </button>
+                  </div>
+                )}
+              </header>
+
+              {!searchQuery && <TweetInput />}
+
+              {loading ? (
+                <div className="flex justify-center py-10">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#1d9bf0]" />
+                </div>
+              ) : (
+                <div className="flex flex-col">
+                  {searchQuery && searchTab === 'people' ? (
+                    // People Tab: Show users matching the query
+                    <div className="flex flex-col">
+                      {Array.from(new Map(state.socialFeed
+                        .filter(post => 
+                          post.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          post.handle.toLowerCase().includes(searchQuery.toLowerCase())
+                        )
+                        .map(post => [post.handle, { name: post.author, handle: post.handle, avatar: post.avatarUrl }])
+                      ).values()).map((user: any) => (
+                        <div 
+                          key={user.handle}
+                          onClick={() => handleProfileClick(user.handle)}
+                          className="px-4 py-3 hover:bg-white/5 cursor-pointer transition-colors flex items-center justify-between border-b border-zinc-800"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-full bg-zinc-800 overflow-hidden">
+                              {user.avatar ? (
+                                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-white font-bold">?</div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-white font-bold text-[15px] hover:underline">{user.name}</p>
+                              <p className="text-zinc-500 text-[15px]">{user.handle}</p>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const cleanHandle = user.handle.replace('@', '');
+                              if ((state.followedHandles || []).includes(cleanHandle)) {
+                                unfollowUser(cleanHandle);
+                              } else {
+                                followUser(cleanHandle);
+                              }
+                            }}
+                            className={cn(
+                              "font-bold text-sm px-4 py-1.5 rounded-full transition-colors",
+                              (state.followedHandles || []).includes(user.handle.replace('@', ''))
+                                ? "bg-transparent border border-zinc-500 text-white hover:bg-rose-500/10 hover:border-rose-500 hover:text-rose-500"
+                                : "bg-white text-black hover:bg-zinc-200"
+                            )}
+                          >
+                            {(state.followedHandles || []).includes(user.handle.replace('@', '')) ? "Following" : "Follow"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    // Other Tabs: Show posts
+                    state.socialFeed
+                      .filter(post => {
+                        if (post.replyToId) return false; // Don't show replies in main feed
+                        
+                        if (searchQuery) {
+                          const matchesSearch = post.content.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                 post.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                 post.handle.toLowerCase().includes(searchQuery.toLowerCase());
+                          
+                          if (!matchesSearch) return false;
+
+                          if (searchTab === 'media') return !!post.mediaUrl;
+                          return true;
+                        }
+                        return activeTab === 'for-you' || (state.followedHandles || []).includes(post.handle.replace('@', ''));
+                      })
+                      .sort((a, b) => {
+                        if (searchQuery) {
+                          if (searchTab === 'latest') {
+                            // Sort by ID or simulated timestamp (newer first)
+                            return b.id.localeCompare(a.id);
+                          }
+                          if (searchTab === 'top') {
+                            // Weighted score for 'Top'
+                            const scoreA = (a.likes || 0) * 2 + (a.retweets || 0) * 3 + (a.replyCount ?? 0);
+                            const scoreB = (b.likes || 0) * 2 + (b.retweets || 0) * 3 + (b.replyCount ?? 0);
+                            return scoreB - scoreA;
+                          }
+                        }
+                        return 0;
+                      })
+                      .slice(0, displayLimit)
+                      .map((post, index) => (
+                        <React.Fragment key={post.id}>
+                          <SocialPostCard 
+                            post={post} 
+                            onClick={() => handlePostClick(post.id)}
+                            onProfileClick={(handle) => handleProfileClick(handle || post.handle)}
+                          />
+                          {!searchQuery && activeTab === 'for-you' && index === 2 && suggestedUsersList && suggestedUsersList.length > 0 && (
+                            <div className="border-b border-[#2f3336]">
+                              <h2 className="px-4 py-3 text-xl font-black text-white">Who to follow</h2>
+                              <WhoToFollowFeedBlock onProfileClick={handleProfileClick} suggestedUsersList={suggestedUsersList} />
+                            </div>
+                          )}
+                        </React.Fragment>
+                      ))
+                  )}
+                  {/* Lazy load trigger */}
+                  {state.socialFeed.length > 0 && displayLimit < state.socialFeed.length && (
+                    <div ref={lastTweetElementRef} className="h-20 flex items-center justify-center">
+                      <Loader2 className="animate-spin text-sky-500" size={24} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          ) : view.type === 'explore' ? (
+            <div className="flex flex-col min-h-screen">
+              <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-[#2f3336] px-4 py-3">
+                <div className="flex items-center space-x-4">
+                  <button 
+                    onClick={() => setIsMobileMenuOpen(true)}
+                    className="sm:hidden w-8 h-8 rounded-full bg-zinc-800 overflow-hidden flex-shrink-0"
+                  >
+                    {state.userProfile.avatarUrl ? (
+                      <img src={state.userProfile.avatarUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-white font-bold text-xs">{state.userProfile.name[0]}</span>
+                    )}
+                  </button>
+                  <div className="flex-1 bg-zinc-900 rounded-full px-4 py-2 flex items-center space-x-3 border border-transparent focus-within:border-sky-500 focus-within:bg-black transition-all">
+                    <Search size={18} className="text-zinc-500" />
+                    <input 
+                      type="text" 
+                      placeholder="Search"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleTrendClick(searchQuery)}
+                      className="bg-transparent border-none outline-none text-white w-full"
+                    />
+                  </div>
+                  <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                    <Settings2 size={20} />
+                  </button>
+                </div>
+              </header>
+              <div className="flex flex-col">
+                {searchQuery ? (
+                  <>
+                    <div className="flex w-full overflow-x-auto no-scrollbar border-b border-zinc-800">
+                      {['Top', 'Latest', 'People', 'Media'].map((tab) => (
+                        <button 
+                          key={tab}
+                          onClick={() => setSearchTab(tab.toLowerCase() as any)}
+                          className="flex-1 py-4 hover:bg-white/5 transition-colors relative min-w-[100px]"
+                        >
+                          <span className={cn(
+                            "text-[15px] font-bold",
+                            searchTab === tab.toLowerCase() ? "text-white" : "text-[#71767b]"
+                          )}>
+                            {tab}
+                          </span>
+                          {searchTab === tab.toLowerCase() && (
+                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-1 bg-[#1d9bf0] rounded-full" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    {searchTab === 'people' ? (
+                      <div className="flex flex-col">
+                        {Array.from(new Map(state.socialFeed
+                          .filter(post => 
+                            post.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            post.handle.toLowerCase().includes(searchQuery.toLowerCase())
+                          )
+                          .map(post => [post.handle, { name: post.author, handle: post.handle, avatar: post.avatarUrl }])
+                        ).values()).map((user: any) => (
+                          <div 
+                            key={user.handle}
+                            onClick={() => handleProfileClick(user.handle)}
+                            className="px-4 py-3 hover:bg-white/5 cursor-pointer transition-colors flex items-center justify-between border-b border-zinc-800"
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 rounded-full bg-zinc-800 overflow-hidden">
+                                {user.avatar ? (
+                                  <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-white font-bold">?</div>
+                                )}
+                              </div>
+                              <div>
+                                <p className="text-white font-bold text-[15px] hover:underline">{user.name}</p>
+                                <p className="text-zinc-500 text-[15px]">{user.handle}</p>
+                              </div>
+                            </div>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const cleanHandle = user.handle.replace('@', '');
+                                if ((state.followedHandles || []).includes(cleanHandle)) {
+                                  unfollowUser(cleanHandle);
+                                } else {
+                                  followUser(cleanHandle);
+                                }
+                              }}
+                              className={cn(
+                                "font-bold text-sm px-4 py-1.5 rounded-full transition-colors",
+                                (state.followedHandles || []).includes(user.handle.replace('@', ''))
+                                  ? "bg-transparent border border-zinc-500 text-white hover:bg-rose-500/10 hover:border-rose-500 hover:text-rose-500"
+                                  : "bg-white text-black hover:bg-zinc-200"
+                              )}
+                            >
+                              {(state.followedHandles || []).includes(user.handle.replace('@', '')) ? "Following" : "Follow"}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      state.socialFeed
+                        .filter(post => {
+                          if (post.replyToId) return false; // Don't show replies in main feed
+                          
+                          const matchesSearch = post.content.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                 post.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                 post.handle.toLowerCase().includes(searchQuery.toLowerCase());
+                          
+                          if (!matchesSearch) return false;
+                          if (searchTab === 'media') return !!post.mediaUrl;
+                          return true;
+                        })
+                        .sort((a, b) => {
+                          if (searchTab === 'latest') return b.id.localeCompare(a.id);
+                          if (searchTab === 'top') {
+                            const scoreA = (a.likes || 0) * 2 + (a.retweets || 0) * 3 + (a.replyCount ?? 0);
+                            const scoreB = (b.likes || 0) * 2 + (b.retweets || 0) * 3 + (b.replyCount ?? 0);
+                            return scoreB - scoreA;
+                          }
+                          return 0;
+                        })
+                        .map((post) => (
+                          <SocialPostCard 
+                            key={post.id} 
+                            post={post} 
+                            onClick={() => handlePostClick(post.id)}
+                            onProfileClick={(handle) => handleProfileClick(handle || post.handle)}
+                          />
+                        ))
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <h2 className="px-4 py-3 text-xl font-black text-white">What's happening</h2>
+                    {allTrends.map((trend, i) => (
+                      <TrendItem key={i} {...trend} onClick={() => handleTrendClick(trend.title)} />
+                    ))}
+                  </>
+                )}
+              </div>
+            </div>
+          ) : view.type === 'profile' ? (
+            <ProfileView 
+              handle={view.handle!} 
+              onBack={handleHomeClick} 
+              onPostClick={handlePostClick}
+              onProfileClick={handleProfileClick}
+            />
+          ) : view.type === 'thread' ? (
+            <ThreadView 
+              postId={view.postId!} 
+              onBack={handleHomeClick} 
+              onProfileClick={handleProfileClick}
+              onPostClick={handlePostClick}
+            />
+          ) : view.type === 'following-list' ? (
+            <FollowingListView 
+              onBack={handleHomeClick}
+              onProfileClick={handleProfileClick}
+            />
+          ) : (
+            <ConnectView
+              onBack={handleHomeClick}
+              onProfileClick={handleProfileClick}
+            />
+          )}
+        </main>
+
+        {/* Right Sidebar */}
+        <RightSidebar 
+          onTrendClick={handleTrendClick} 
+          onProfileClick={handleProfileClick} 
+          onConnectClick={handleConnectClick} 
+          onExploreClick={handleExploreClick}
+        />
+
+        {/* Mobile Bottom Navigation */}
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 h-16 bg-black border-t border-zinc-800 flex justify-around items-center z-[100]">
+          <Sidebar 
+            onHomeClick={handleHomeClick} 
+            onProfileClick={() => handleProfileClick(state.userProfile.handle)}
+            onFollowingClick={handleFollowingListClick}
+            onExploreClick={handleExploreClick}
+            activeView={view.type}
+            forceFull={false}
+          />
+        </div>
+      </div>
+    </div>
+    </SocialGameProvider>
+  );
+};
+
+
+=== src\components\layout\MainContent.tsx ===
+import React from 'react';
+import { Inbox } from '../Inbox';
+import { MessagesView } from '../MessagesView';
+import { NewsFeed } from '../NewsFeed';
+import { SocialFeed } from '../SocialFeed';
+import { NBACentral } from '../central/view/NBACentral';
+import { PlayerStatsView } from '../central/view/PlayerStatsView';
+import { CommissionerView } from '../commissioner/CommissionerView';
+import RulesView from '../commissioner/rules/view/RulesView';
+import ActionsView from '../actions/view/ActionsView';
+import { PersonalView } from '../personal/PersonalView';
+import { ScheduleView } from '../schedule/view/ScheduleView';
+import { AwardRacesView } from '../view/AwardRacesView';
+import { PlayersView } from '../players/PlayersView';
+import { FreeAgentsView } from '../players/view/FreeAgentsView';
+import { TransactionsView } from '../central/view/TransactionsView';
+import { LeagueEvent } from '../central/view/LeagueEvent';
+import { TradeMachineView } from '../central/view/TradeMachineView';
+import { TradeProposalsView } from '../central/view/TradeProposalsView';
+import { TeamStatsView } from '../team-stats/TeamStatsView';
+import { AllStarView } from '../allstar/AllStarView';
+import { PlayoffView } from '../playoffs/PlayoffView';
+import { LeagueOfficeView } from '../league-office/LeagueOfficeView';
+import { LeagueLeadersView } from '../central/view/LeagueLeadersView';
+import { StatisticalFeatsView } from '../central/view/StatisticalFeatsView';
+import { StandingsView } from '../central/view/StandingsView';
+import { InjuriesView } from '../central/view/InjuriesView';
+import { BroadcastingView } from '../operations/BroadcastingView.tsx';
+import { LeagueFinancesView } from '../central/view/LeagueFinancesView';
+import { TeamFinancesViewDetailed } from '../central/view/TeamFinancesViewDetailed';
+import { DraftScoutingView } from '../central/view/DraftScoutingView';
+import { DraftLotteryView } from '../draft/DraftLotteryView';
+import Dashboard from '../commissioner/Dashboard';
+import ViewershipTab from '../commissioner/ViewershipTab';
+import CommishStore from '../central/view/CommishStore';
+import RealStern from '../central/view/RealStern';
+import SportsBookView from '../central/view/SportsBookView';
+import SeasonalView from '../seasonal/SeasonalView';
+import { PlayerRatingsView } from '../central/view/PlayerRatingsView';
+import { Tab } from '../../types';
+
+interface MainContentProps {
+  currentView: Tab;
+  onViewChange: (view: Tab) => void;
+}
+
+export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewChange }) => {
+  switch (currentView) {
+    case 'Inbox':
+      return <Inbox />;
+    case 'Messages':
+      return <MessagesView />;
+    case 'Schedule':
+      return <ScheduleView />;
+    case 'Social Feed':
+      return (
+        <div className="h-full overflow-hidden p-4 md:p-8">
+          <div className="max-w-3xl mx-auto h-full overflow-y-auto custom-scrollbar">
+            <SocialFeed />
+          </div>
+        </div>
+      );
+    case 'League News':
+      return (
+        <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          <NewsFeed />
+        </div>
+      );
+    case 'Player Stats':
+      return <PlayerStatsView />;
+    case 'Team Stats':
+      return <TeamStatsView />;
+    case 'Award Races':
+      return <AwardRacesView />;
+    case 'All-Star':
+      return <AllStarView />;
+    case 'Playoffs':
+      return <PlayoffView />;
+    case 'NBA Central':
+      return <NBACentral />;
+    case 'Players':
+      return <PlayersView />;
+    case 'Transactions':
+      return <TransactionsView />;
+    case 'Events':
+      return <LeagueEvent />;
+    case 'Trade Machine':
+      return <TradeMachineView onViewChange={onViewChange} />;
+    case 'Trade Proposals':
+      return <TradeProposalsView />;
+    case 'Free Agents':
+      return <FreeAgentsView />;
+    case 'Commissioner':
+      return <CommissionerView />;
+    case 'League Settings':
+      return (
+        <div className="h-full overflow-hidden p-4 md:p-8">
+          <div className="max-w-6xl mx-auto h-full overflow-y-auto custom-scrollbar">
+            <div className="mb-8">
+              <h2 className="text-3xl font-black text-white uppercase tracking-tight">Active League Rules</h2>
+              <p className="text-slate-500 font-medium">Modify the fundamental laws of the NBA</p>
+            </div>
+            <RulesView />
+          </div>
+        </div>
+      );
+    case 'Actions':
+      return <ActionsView />;
+    case 'Seasonal':
+      return <SeasonalView />;
+    case 'Personal':
+      return <PersonalView />;
+    case 'League Office':
+      return <LeagueOfficeView />;
+    case 'League Leaders':
+      return <LeagueLeadersView />;
+    case 'Statistical Feats':
+      return <StatisticalFeatsView />;
+    case 'Injuries':
+      return <InjuriesView />;
+    case 'Standings':
+      return <StandingsView />;
+    case 'Broadcasting':
+      return (
+        <div className="h-full overflow-hidden p-4 md:p-8">
+          <div className="max-w-7xl mx-auto h-full overflow-y-auto custom-scrollbar">
+            <BroadcastingView />
+          </div>
+        </div>
+      );
+    case 'Approvals':
+      return (
+        <div className="h-full overflow-hidden p-4 md:p-8">
+          <div className="max-w-4xl mx-auto w-full h-full overflow-y-auto custom-scrollbar">
+            <div className="mb-6">
+              <h2 className="text-3xl font-black text-white uppercase tracking-tight">Approvals</h2>
+              <p className="text-slate-500 font-medium">Public, owner and player sentiment over time</p>
+            </div>
+            <Dashboard initialTab="approvals" />
+          </div>
+        </div>
+      );
+    case 'Viewership':
+      return (
+        <div className="h-full overflow-hidden p-4 md:p-8">
+          <div className="max-w-4xl mx-auto w-full h-full overflow-y-auto custom-scrollbar">
+            <div className="mb-6">
+              <h2 className="text-3xl font-black text-white uppercase tracking-tight">Viewership</h2>
+              <p className="text-slate-500 font-medium">Live ratings and broadcast performance</p>
+            </div>
+            <ViewershipTab />
+          </div>
+        </div>
+      );
+    case 'Finances':
+      return <LeagueFinancesView initialTab="revenue" />;
+    case 'League Finances':
+      return <LeagueFinancesView />;
+    case 'Team Finances':
+      return <TeamFinancesViewDetailed />;
+    case 'Draft Scouting':
+      return <DraftScoutingView />;
+    case 'Draft Lottery':
+      return <DraftLotteryView />;
+    case 'Commish Store':
+      return (
+        <div className="h-full overflow-y-auto">
+          <CommishStore />
+        </div>
+      );
+    case 'Real Stern':
+      return (
+        <div className="h-full overflow-y-auto">
+          <RealStern />
+        </div>
+      );
+    case 'Sports Book':
+      return (
+        <div className="h-full overflow-y-auto">
+          <SportsBookView />
+        </div>
+      );
+    case 'Player Ratings':
+      return <PlayerRatingsView />;
+    default:
+      return null;
+  }
+};

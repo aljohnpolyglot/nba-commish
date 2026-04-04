@@ -84,6 +84,7 @@ export interface GameResult {
   isOT: boolean;
   otCount: number;
   playerDNPs?: Record<string, string>; // playerId → "DNP — Injury (Type)" | "DNP — Coach's Decision"
+  playerInGameInjuries?: Record<string, string>; // playerId → injuryName for players who left mid-game
   isAllStar?: boolean;
   isRisingStars?: boolean;
   gameWinner?: {

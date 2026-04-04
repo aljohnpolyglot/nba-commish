@@ -8,7 +8,6 @@ import { ThreadView } from '../social/ThreadView';
 import { FollowingListView } from '../social/FollowingListView';
 import { ConnectView } from '../social/ConnectView';
 import { useGame } from '../../store/GameContext';
-import { SocialGameProvider } from '../../store/SocialGameContext';
 import { useTwitterData } from '../../hooks/useTwitterData';
 import { useSidebarData } from '../../hooks/useSidebarData';
 import { useBackgroundFetcher } from '../../hooks/useBackgroundFetcher';
@@ -170,8 +169,7 @@ export const TwitterLayout = () => {
   const [searchTab, setSearchTab] = useState<'top' | 'latest' | 'people' | 'media'>('top');
 
   return (
-    <SocialGameProvider>
-      <div className="h-screen overflow-hidden bg-black text-[#e7e9ea] flex justify-center relative overflow-x-clip">
+    <div className="h-screen overflow-hidden bg-black text-[#e7e9ea] flex justify-center relative overflow-x-clip">
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div 
@@ -278,26 +276,7 @@ export const TwitterLayout = () => {
                 )}
               </header>
 
-              {!searchQuery && <TweetInput onTweet={(content) => {
-                const commName = state.commissionerName || 'Commissioner';
-                const commHandle = '@' + commName.toLowerCase().replace(/\s+/g, '');
-                const newPost = {
-                  id: `user-post-${Date.now()}`,
-                  author: commName,
-                  handle: commHandle,
-                  avatarUrl: state.userProfile?.avatarUrl,
-                  content,
-                  date: new Date().toISOString(),
-                  likes: 0,
-                  retweets: 0,
-                  replies: [],
-                  source: 'TwitterX' as const,
-                  isLiked: false,
-                  isRetweeted: false,
-                  isNew: false,
-                };
-                dispatchAction({ type: 'ADD_USER_POST', payload: newPost } as any);
-              }} />}
+              {!searchQuery && <TweetInput />}
 
               {loading ? (
                 <div className="flex justify-center py-10">
@@ -371,7 +350,7 @@ export const TwitterLayout = () => {
                           if (searchTab === 'media') return !!post.mediaUrl;
                           return true;
                         }
-                        return activeTab === 'for-you' || (state.followedHandles || []).includes(post.handle.replace('@', ''));
+                        return activeTab === 'for-you' || (state.followedHandles || []).some(h => h.toLowerCase() === post.handle.replace('@', '').toLowerCase());
                       })
                       .sort((a, b) => {
                         if (searchQuery) {
@@ -607,6 +586,5 @@ export const TwitterLayout = () => {
         </div>
       </div>
     </div>
-    </SocialGameProvider>
   );
 };

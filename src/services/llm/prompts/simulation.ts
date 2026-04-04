@@ -129,8 +129,8 @@ ${healEntries.map(e => `[${e.date}] MEDICAL CLEARANCE — ${e.subject}
 
     const _cm = SettingsManager.getContentMultiplier();
     // Scaled volume targets (always at least 1 item)
-    const singleDayMin  = Math.max(1,  Math.round(10 * _cm));
-    const singleDayMax  = Math.max(2,  Math.round(20 * _cm));
+    const singleDayMin  = _cm <= 0.1 ? 5 : _cm <= 0.5 ? 7 : 9;
+    const singleDayMax  = _cm <= 0.1 ? 7 : _cm <= 0.5 ? 9 : 12;
     const newsMax       = Math.max(1,  Math.round(5  * _cm));
 
     let multiDayInstruction = `
@@ -199,7 +199,7 @@ ${dm.messages.map((m: any) => `  [${m.senderName}]: ${m.text}`).join('\n')}`).jo
         - HOWEVER, if the Commissioner said something extremely aggressive, controversial, or "crazy" to a player or staff member, it MIGHT leak.
         - LEAK SOURCES:
             1. **The Recipient Speaks Out**: The player or staff member might post a cryptic or direct tweet (e.g., "Can't believe what I just read in my DMs..."), talk to a news outlet, or mention it in a podcast interview.
-            2. **Insider Leaks**: A "puppetmaster" or insider (like @wojespn, @ShamsCharania, or a burner account) might report on it (e.g., "Sources say the Commissioner slid into [Player]'s DMs today with a wild threat...").
+            2. **Insider Leaks**: A "puppetmaster" or insider (like @ShamsCharania, @EspnNBA, or a burner account) might report on it (e.g., "Sources say the Commissioner slid into [Player]'s DMs today with a wild threat...").
         - The more "out of pocket" the Commissioner's message, the higher the chance of a leak.
         `;
     }
@@ -237,7 +237,7 @@ CRITICAL INSTRUCTIONS TO PREVENT HALLUCINATIONS:
 2. **NARRATIVE GENERATION:** If the User Action Taken contains an 'outcomeText' (also called 'eventHint'), treat it as factual CONTEXT about what happened — NOT as the final text to copy verbatim.
    - **Response 'outcomeText' field:** Write your own fresh, compelling summary (1-2 vivid sentences). Different phrasing from the hint.
    - **News headlines:** Write original journalist-style headlines — do NOT repeat the hint text word-for-word. Use different phrasing, add drama, add context.
-   - **Social posts (including @wojespn / @ShamsCharania):** These MUST sound like real tweets — reactive, opinionated, written in that person's voice. They should NEVER just paste the hint as a tweet. Fans react, analysts debate, insiders break it down in their own words.
+   - **Social posts (including @ShamsCharania / @EspnNBA):** These MUST sound like real tweets — reactive, opinionated, written in that person's voice. They should NEVER just paste the hint as a tweet. Fans react, analysts debate, insiders break it down in their own words.
    - **Emails:** Written naturally in the sender's voice. Reference the event facts but don't quote the hint directly.
    - The event hint tells you WHAT happened. YOU decide HOW it's reported and discussed.
 3. **DO NOT HALLUCINATE TRADES, SIGNINGS, OR ROSTER MOVES** unless they are explicitly described in the 'User Action Taken' or 'outcomeText'.
@@ -261,7 +261,7 @@ Generate the outcome for the next day.
    - **NARRATIVES:** Focus heavily on league-wide narratives, drama, rumors, and how the Commissioner's decisions are being received.
    - **USE THE LEAGUE SUMMARY:** You MUST reference the 'LEAGUE SUMMARY' provided above. Talk about teams on winning/losing streaks, players leading the league in stats, or recent crazy box scores. Weave these real stats into the narratives and debates!
    - **FORMAT:** Use a mix of short takes and multi-post "threads" or "debates" between different handles.
-   - **BREAKING NEWS:** If a major transaction occurred (signing, trade, suspension), at least one post MUST be from @wojespn or @ShamsCharania breaking the news.
+   - **BREAKING NEWS:** If a major transaction occurred (signing, trade, suspension), at least one post MUST be from @ShamsCharania breaking the news.
 3. 0-3 Emails arising from the events. **It is perfectly fine to generate ZERO emails.** Fewer, higher-quality emails are better than many repetitive ones.
    - **FORMAL BUSINESS:** Business communications (Sponsor, Media Executive, League Official) should be specific — name the actual company, deal value, or issue. Do NOT send vague emails that lack specifics (e.g., if proposing a sponsorship, NAME the brand).
    - **ISSUES & SCANDALS:** If a player has low morale, is unhappy, or has been involved in a controversy (check 'Relevant History'), generate an email from their agent, a team owner, or the player themselves complaining or demanding action.

@@ -1,4 +1,5 @@
 /**
+/**
  * playThroughInjuriesFactor
  *
  * Mirrors BBGM's approach: each "level" of playing through an injury reduces
@@ -36,4 +37,22 @@ export function injurySeverityLevel(gamesRemaining: number): number {
   if (gamesRemaining <= 7)  return 2;
   if (gamesRemaining <= 14) return 3;
   return 4;
+}
+
+/**
+ * minutesRestrictionFactor
+ *
+ * Returns a multiplier applied to a player's expected minutes when they are
+ * playing through an injury. Higher severity = harder minutes cap.
+ *
+ * Examples (applied to a typical 32-min starter):
+ *   0  → 1.00  (healthy — no restriction)
+ *   1  → 0.88  (~28 min — coach keeping them fresh, day-to-day)
+ *   2  → 0.75  (~24 min — minutes restriction in place)
+ *   3  → 0.60  (~19 min — limited role, being monitored closely)
+ *   4  → 0.45  (~14 min — gutting it out, heavily restricted)
+ */
+export function minutesRestrictionFactor(severityLevel: number): number {
+  const factors = [1.00, 0.88, 0.75, 0.60, 0.45];
+  return factors[Math.max(0, Math.min(4, severityLevel))];
 }

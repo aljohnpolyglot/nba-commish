@@ -1,5 +1,5 @@
 export interface GameSettings {
-  llmPerformance: 1 | 2 | 3; // 1=Fast, 2=Balanced, 3=Best
+  llmPerformance: 1 | 2 | 3; // 1=Blitz (Groq gpt-oss-120b), 2=Standard (Together cogito-v2), 3=Elite (Together MiniMax-M2.5)
   simulationDepth: number;    // 1–10: scales context size + output volume
   gameSpeed: number;          // 1–10: controls UI/delay pacing
   enableLLM: boolean;
@@ -67,9 +67,9 @@ export class SettingsManager {
     if (taskType === 'interaction') return 'gemini-2.5-flash-lite';
     if (!settings.enableLLM) return 'gemini-2.5-flash-lite';
     switch (settings.llmPerformance) {
-      case 1: return 'fast';      // Worker: Llama 3.3 70B
-      case 2: return 'balanced';  // Worker: Kimi K2.5
-      case 3: return 'best';      // Worker: GLM-5
+      case 1: return 'fast';      // Blitz: Groq gpt-oss-120b (500 T/s) → Together fallback
+      case 2: return 'balanced';  // Standard: Together cogito-v2 (update worker tier 2)
+      case 3: return 'best';      // Elite: Together MiniMax-M2.5 → DeepSeek-V3 (update worker tier 3)
       default: return 'balanced';
     }
   }
@@ -100,7 +100,7 @@ export class SettingsManager {
     const { llmPerformance, simulationDepth } = this.getSettings();
     const modeCap: Record<number, number> = { 1: 0.4, 2: 0.8, 3: 1.5 };
     const depthScale = 0.4 + (simulationDepth - 1) / 9 * 0.6; // 0.4 → 1.0
-    return Math.max(4096, Math.round(baseTokens * (modeCap[llmPerformance] ?? 0.8) * depthScale));
+    return Math.max(2048, Math.round(baseTokens * (modeCap[llmPerformance] ?? 0.8) * depthScale));
   }
 
   // ─── Game speed delay ─────────────────────────────────────────────────────

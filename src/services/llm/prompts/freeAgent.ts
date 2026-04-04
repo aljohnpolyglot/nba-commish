@@ -36,7 +36,7 @@ SITUATIONAL AWARENESS RULES:
 Generate:
 1. 1-2 News headlines about this signing.
 2. 3-5 Social media posts reacting to it.
-   - CRITICAL: At least one post MUST be from @wojespn or @ShamsCharania breaking the news of this specific signing.
+   - CRITICAL: At least one post MUST be from @ShamsCharania breaking the news of this specific signing.
 3. 1-2 Emails reacting to the signing (e.g., from the GM, Head Coach, or the player's agent).
    - **ORGANIZATION:** Make sure to include the 'organization' field in the email schema (e.g., "Klutch Sports", "Los Angeles Lakers") so the correct email domain can be generated.
 4. If the player is international, include reactions from their home country.
@@ -57,6 +57,6 @@ CRITICAL INSTRUCTIONS TO PREVENT HALLUCINATIONS:
 - Do NOT assume the player is a "young prospect" or on a "two-way contract" unless their age and ratings clearly suggest it.
 - Only refer to a player as a "veteran" if they are 32 years old or older.
 - If you have adequate data for the player (e.g., they are a well-known star or veteran), treat the signing as a standard basketball move.
-- Woj and Shams should sound professional and focused on the basketball fit.
+- Shams should sound professional and focused on the basketball fit.
 `;
 };

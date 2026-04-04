@@ -42,7 +42,14 @@
       "Bash(sed -n '1,10p' src/components/allstar/allstarevents/dunk/Scoreboard.tsx)",
       "Bash(sed -n '1,10p' src/components/allstar/allstarevents/dunk/useDunkContest.ts)",
       "Bash(grep:*)",
-      "Bash(find C:Usersuser-MSIDownloadsnba-commish -name tailwind* -maxdepth 3)"
+      "Bash(find C:Usersuser-MSIDownloadsnba-commish -name tailwind* -maxdepth 3)",
+      "Bash(find C:Usersuser-MSIDownloadsnba-commish -type f -name *highlight*)",
+      "Bash(find C:/Users/user-MSI/Downloads/nba-commish/src -name *FreeAgent* -o -name *WNBA* -o -name *free-agent*)",
+      "Bash(find C:/Users/user-MSI/Downloads/nba-commish/src/data -name *2k* -o -name *nba2k* -o -name *ratings*)",
+      "Bash(powershell -command \"Get-PSDrive C | Select-Object Used,Free\" 2>/dev/null)",
+      "Bash(npm install:*)",
+      "Bash(echo \"---EXIT $?---\")",
+      "Bash(npm run:*)"
     ]
   }
 }

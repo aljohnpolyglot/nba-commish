@@ -1,0 +1,15 @@
+        accumulatedBoxScores.push(...newBox);
+      }
+      currentState = { ...currentState, ...asgUpdate, boxScores: accumulatedBoxScores };
+    }
+    
+    const weekendComplete = currentState.allStar.allStarGameId !== undefined;
+
+    return {
+      schedule: currentState.schedule,
+      boxScores: accumulatedBoxScores,
+      allStar: {
+        ...currentState.allStar,
+        weekendComplete
+      }
+    };

@@ -25,7 +25,23 @@ export const useBackgroundFetcher = () => {
       isFetching.current = true;
 
       try {
-        await fetchProfileData(handle, dispatchAction);
+        const profileData = await fetchProfileData(handle, dispatchAction);
+        if (profileData && (profileData.avatarUrl || profileData.name !== handle)) {
+          const updatedFeed = state.socialFeed.map(post => {
+            if (post.handle.replace('@', '') === handle) {
+              return {
+                ...post,
+                author: profileData.name || post.author,
+                avatarUrl: profileData.avatarUrl || post.avatarUrl,
+                verified: profileData.verified || post.verified,
+              };
+            }
+            return post;
+          });
+          if (JSON.stringify(updatedFeed) !== JSON.stringify(state.socialFeed)) {
+            dispatchAction({ type: 'SET_FEED', payload: updatedFeed } as any);
+          }
+        }
       } catch (e) {
         // Silently fail — handle just doesn't exist on Twitter
       } finally {

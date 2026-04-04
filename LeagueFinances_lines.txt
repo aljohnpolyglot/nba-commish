@@ -1,0 +1,130 @@
+import React, { useMemo, useState } from 'react';
+import { useGame } from '../../../store/GameContext';
+import {
+  DollarSign, ChevronDown, ChevronUp, ExternalLink,
+  TrendingUp, TrendingDown, Minus, Users, Ticket,
+} from 'lucide-react';
+import {
+  getCapThresholds, getCapStatus, formatSalaryM, contractToUSD,
+  getTradeOutlook, CapThresholds,
+} from '../../../utils/salaryUtils';
+import {
+  estimateAttendance, getArenaCapacity, formatAttendance, formatRevM, ARENA_HARD_CAP,
+} from '../../../utils/attendanceUtils';
+import {
+  AreaChart, Area, CartesianGrid, Tooltip as RechartTooltip, ResponsiveContainer, XAxis, YAxis,
+} from 'recharts';
+
+// ─── shared types ─────────────────────────────────────────────────────────────
+interface TeamEnriched {
+  team: any;
+  payroll: number;
+  playerCount: number;
+  expiringCount: number;
+  confRank: number;       // 1-15 within conference
+  gbFromLeader: number;   // games behind conference leader
+}
+
+// ─── PayrollBar ───────────────────────────────────────────────────────────────
+const PayrollBar: React.FC<{ payroll: number; thresholds: CapThresholds; maxPayroll: number }> = ({
+  payroll, thresholds, maxPayroll,
+}) => {
+  const status = getCapStatus(payroll, thresholds);
+  const pct    = Math.min((payroll / maxPayroll) * 100, 100);
+  const capPct = Math.min((thresholds.salaryCap / maxPayroll) * 100, 100);
+  const taxPct = Math.min((thresholds.luxuryTax / maxPayroll) * 100, 100);
+  const ap1Pct = Math.min((thresholds.firstApron  / maxPayroll) * 100, 100);
+  return (
+    <div className="relative h-3 bg-slate-800 rounded-full overflow-hidden w-full">
+      <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: status.barColor }} />
+      <div className="absolute inset-y-0 w-px bg-sky-400/70"    style={{ left: `${capPct}%` }} />
+      <div className="absolute inset-y-0 w-px bg-yellow-400/70" style={{ left: `${taxPct}%` }} />
+      <div className="absolute inset-y-0 w-px bg-orange-400/50" style={{ left: `${ap1Pct}%` }} />
+    </div>
+  );
+};
+
+// ─── AttendanceBar ────────────────────────────────────────────────────────────
+const AttendanceBar: React.FC<{ fill: number }> = ({ fill }) => {
+  const pct = Math.min(fill * 100, 100);
+  const color = fill >= 0.9 ? '#34d399' : fill >= 0.75 ? '#60a5fa' : fill >= 0.6 ? '#facc15' : '#f87171';
+  return (
+    <div className="relative h-3 bg-slate-800 rounded-full overflow-hidden w-full">
+      <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: color }} />
+    </div>
+  );
+};
+
+// ─── Cap Overview row ─────────────────────────────────────────────────────────
+type CapSortKey = 'payroll' | 'space' | 'wins' | 'name';
+
+const CapRow: React.FC<{
+  d: TeamEnriched; thresholds: CapThresholds; maxPayroll: number;
+  rank: number; onClick: () => void; seasonYear: number;
+}> = ({ d, thresholds, maxPayroll, rank, onClick, seasonYear }) => {
+  const { team, payroll, playerCount, expiringCount, confRank, gbFromLeader } = d;
+  const status    = getCapStatus(payroll, thresholds);
+  const outlook   = getTradeOutlook(payroll, team.wins, team.losses, expiringCount, thresholds, d.confRank, d.gbFromLeader);
+  const capSpace  = thresholds.salaryCap - payroll;
+  const taxOver   = payroll - thresholds.luxuryTax;
+
+  return (
+    <div
+      className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/30 cursor-pointer transition-colors border-b border-slate-800/40 last:border-0 group"
+      onClick={onClick}
+    >
+      <span className="text-[10px] font-mono text-slate-600 w-4 flex-shrink-0 text-right">{rank}</span>
+
+      {/* Logo + Name */}
+      <div className="flex items-center gap-2 w-36 flex-shrink-0">
+        <img src={team.logoUrl} alt="" className="w-6 h-6 object-contain flex-shrink-0" />
+        <div className="min-w-0">
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-black text-white uppercase tracking-tight leading-none">{team.abbrev}</span>
+            <span className={`text-[8px] font-black tabular-nums leading-none ${
+              confRank <= 6 ? 'text-emerald-500' : confRank <= 10 ? 'text-yellow-500' : 'text-slate-600'
+            }`}>#{confRank}</span>
+          </div>
+          <div className="text-[9px] text-slate-500 truncate">
+            {gbFromLeader === 0 ? 'Conf leader' : `${gbFromLeader % 1 === 0 ? gbFromLeader : gbFromLeader.toFixed(1)} GB`}
+          </div>
+        </div>
+      </div>
+
+      {/* W-L */}
+      <div className="text-[10px] font-bold text-slate-300 w-14 flex-shrink-0 text-center tabular-nums">
+        {team.wins}–{team.losses}
+      </div>
+
+      {/* Trade role */}
+      <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md flex-shrink-0 w-24 text-center ${outlook.bgColor} ${outlook.color}`}>
+        {outlook.label}
+      </span>
+
+      {/* Cap status */}
+      <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md flex-shrink-0 w-20 text-center ${status.bgColor} ${status.color}`}>
+        {status.label}
+      </span>
+
+      {/* Payroll bar */}
+      <div className="flex-1 min-w-0 px-1">
+        <PayrollBar payroll={payroll} thresholds={thresholds} maxPayroll={maxPayroll} />
+      </div>
+
+      {/* Payroll + space/over */}
+      <div className="text-right flex-shrink-0 w-24">
+        <div className="text-sm font-black text-white leading-none">{formatSalaryM(payroll)}</div>
+        <div className={`text-[9px] font-bold leading-none mt-0.5 ${capSpace >= 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
+          {capSpace >= 0
+            ? `+${formatSalaryM(capSpace)} space`
+            : taxOver > 0
+              ? <span className="text-yellow-400">{formatSalaryM(taxOver)} tax</span>
+              : `${formatSalaryM(Math.abs(capSpace))} over`
+          }
+        </div>
+      </div>
+
+      {/* Expiring */}
+      <div className="text-[10px] text-slate-500 w-12 text-right flex-shrink-0">
+        {expiringCount > 0
+          ? <span className="text-amber-400 font-bold">{expiringCount} exp</span>

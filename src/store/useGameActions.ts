@@ -1,7 +1,8 @@
-import React from 'react';
-import { GameState, CommissionerLogEntry } from '../types';
+import React, { useState } from 'react';
+import { GameState, CommissionerLogEntry, SocialPost } from '../types';
 
-export const useGameActions = (setState: React.Dispatch<React.SetStateAction<GameState>>) => {
+export const useGameActions = (setState: React.Dispatch<React.SetStateAction<GameState>>, getState: () => GameState) => {
+  const [isGeneratingReplies, setIsGeneratingReplies] = useState<Record<string, boolean>>({});
   const markEmailRead = (id: string) => {
     setState(prev => ({
       ...prev,
@@ -121,6 +122,69 @@ export const useGameActions = (setState: React.Dispatch<React.SetStateAction<Gam
     }));
   };
 
+  const addPost = (post: SocialPost) => {
+    setState(prev => ({
+      ...prev,
+      socialFeed: [post, ...prev.socialFeed],
+    }));
+  };
+
+  const addReply = (postId: string, reply: SocialPost) => {
+    setState(prev => ({
+      ...prev,
+      socialFeed: [reply, ...prev.socialFeed],
+    }));
+  };
+
+  const generateReplies = async (postId: string) => {
+    const currentState = getState();
+    const post = currentState.socialFeed.find(p => p.id === postId);
+    if (!post || isGeneratingReplies[postId]) return;
+
+    // Check if replies already exist in feed
+    const existingReplies = currentState.socialFeed.filter(p => p.replyToId === postId);
+    if (existingReplies.length > 0) return;
+
+    setIsGeneratingReplies(prev => ({ ...prev, [postId]: true }));
+
+    try {
+      const { generateContentWithRetry } = await import('../services/llm/utils/api');
+      const response = await generateContentWithRetry({
+        model: 'gemini-2.5-flash-lite',
+        contents: `Generate 3-5 realistic Twitter replies to this tweet by ${post.author} (${post.handle}): "${post.content}". Return ONLY a JSON array, no markdown, with objects: {author, handle, content, likes, retweets}`,
+      });
+      const generatedData = JSON.parse(response.text?.replace(/```json|```/g, '').trim() || '[]');
+
+      const newReplies: SocialPost[] = generatedData.map((data: any, index: number) => ({
+        id: `gen-reply-${postId}-${index}-${Date.now()}`,
+        author: data.author,
+        handle: data.handle,
+        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.handle.replace('@', '')}`,
+        content: data.content,
+        date: new Date().toISOString(),
+        likes: data.likes || 0,
+        retweets: data.retweets || 0,
+        replies: [],
+        source: 'TwitterX',
+        replyToId: postId,
+        isLiked: false,
+        isRetweeted: false,
+        isAI: true,
+      }));
+
+      const ids = new Set(currentState.socialFeed.map(p => p.id));
+      const unique = newReplies.filter(r => !ids.has(r.id));
+      setState(prev => ({
+        ...prev,
+        socialFeed: [...prev.socialFeed, ...unique],
+      }));
+    } catch (error) {
+      console.error('[generateReplies] failed:', error);
+    } finally {
+      setIsGeneratingReplies(prev => ({ ...prev, [postId]: false }));
+    }
+  };
+
   const healPlayer = (playerId: string) => {
     setState(prev => {
       const player = prev.players.find(p => p.internalId === playerId);
@@ -170,5 +234,9 @@ export const useGameActions = (setState: React.Dispatch<React.SetStateAction<Gam
     updatePlayerRatings,
     updateProfile,
     healPlayer,
+    addPost,
+    addReply,
+    generateReplies,
+    isGeneratingReplies,
   };
 };

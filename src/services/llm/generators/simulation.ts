@@ -238,7 +238,7 @@ export async function advanceDay(currentState: GameState, action: UserAction | n
         systemInstruction: SYSTEM_PROMPT,
         responseMimeType: "application/json",
         responseSchema: OUTCOME_SCHEMA as any,
-        maxOutputTokens: SettingsManager.getMaxTokens(16384),
+        maxOutputTokens: SettingsManager.getMaxTokens(7000),
       },
     });
 
@@ -317,7 +317,7 @@ export async function generateLeaguePulse(
                 systemInstruction: SYSTEM_PROMPT,
                 responseMimeType: "application/json",
                 responseSchema: OUTCOME_SCHEMA as any,
-                maxOutputTokens: SettingsManager.getMaxTokens(8192),
+                maxOutputTokens: SettingsManager.getMaxTokens(6000),
             },
         });
 
