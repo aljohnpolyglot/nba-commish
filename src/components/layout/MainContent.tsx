@@ -148,7 +148,17 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
         </div>
       );
     case 'Finances':
-      return <LeagueFinancesView initialTab="revenue" />;
+      return (
+        <div className="h-full overflow-hidden p-4 md:p-8">
+          <div className="max-w-4xl mx-auto w-full h-full overflow-y-auto custom-scrollbar">
+            <div className="mb-6">
+              <h2 className="text-3xl font-black text-white uppercase tracking-tight">Finances</h2>
+              <p className="text-slate-500 font-medium">Revenue, salary cap and daily profit/loss</p>
+            </div>
+            <Dashboard initialTab="finances" />
+          </div>
+        </div>
+      );
     case 'League Finances':
       return <LeagueFinancesView />;
     case 'Team Finances':

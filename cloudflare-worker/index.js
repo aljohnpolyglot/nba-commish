@@ -97,21 +97,25 @@ async function callTogetherPrimary(togetherKeys, geminiBody, corsHeaders, modelT
   }
 
   const maxTokens = geminiBody.generationConfig?.maxOutputTokens ?? 8192;
+  const wantsJson = geminiBody.generationConfig?.responseMimeType === "application/json";
+  const responseFormat = wantsJson ? { type: "json_object" } : undefined;
 
   for (let i = 0; i < shuffled.length; i++) {
+    const reqBody = {
+      model: MODEL_MAP[modelTier] || MODEL_MAP[2],
+      messages,
+      max_tokens: maxTokens,
+      temperature: 0.7,
+    };
+    if (responseFormat) reqBody.response_format = responseFormat;
+
     const res = await fetch("https://api.together.xyz/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${shuffled[i]}`,
       },
-      body: JSON.stringify({
-        model: MODEL_MAP[modelTier] || MODEL_MAP[2],
-        messages,
-        max_tokens: maxTokens,
-        temperature: 0.7,
-        response_format: { type: "json_object" },
-      }),
+      body: JSON.stringify(reqBody),
     });
 
     if (res.ok) {
@@ -122,10 +126,12 @@ async function callTogetherPrimary(togetherKeys, geminiBody, corsHeaders, modelT
         console.warn(`[Worker] Model ${MODEL_MAP[modelTier]} returned empty — trying carousel fallback`);
         for (const fallbackModel of MODEL_FALLBACK_CAROUSEL) {
           if (fallbackModel === (MODEL_MAP[modelTier] || MODEL_MAP[2])) continue;
+          const fallbackReqBody = { model: fallbackModel, messages, max_tokens: maxTokens, temperature: 0.7 };
+          if (responseFormat) fallbackReqBody.response_format = responseFormat;
           const fallbackRes = await fetch("https://api.together.xyz/v1/chat/completions", {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${shuffled[i]}` },
-            body: JSON.stringify({ model: fallbackModel, messages, max_tokens: maxTokens, temperature: 0.7, response_format: { type: "json_object" } }),
+            body: JSON.stringify(fallbackReqBody),
           });
           if (fallbackRes.ok) {
             const fallbackData = await fallbackRes.json();

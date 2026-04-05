@@ -49,7 +49,9 @@
       "Bash(powershell -command \"Get-PSDrive C | Select-Object Used,Free\" 2>/dev/null)",
       "Bash(npm install:*)",
       "Bash(echo \"---EXIT $?---\")",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(rm:*)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }

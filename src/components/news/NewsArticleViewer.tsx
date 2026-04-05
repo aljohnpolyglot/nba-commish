@@ -64,7 +64,14 @@ INSTRUCTIONS:
         config: { maxOutputTokens: 1024, temperature: 0.7 },
       });
 
-      const content = response.text || item.content;
+      let content = response.text || item.content;
+      // Strip Together AI's { "response": "..." } JSON wrapper if present
+      if (content.trimStart().startsWith('{')) {
+        try {
+          const parsed = JSON.parse(content);
+          if (typeof parsed.response === 'string') content = parsed.response;
+        } catch {}
+      }
       setElaboratedContent(content);
       onCacheContent(item.id, content);
     } catch {

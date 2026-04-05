@@ -148,12 +148,32 @@ export const useGameActions = (setState: React.Dispatch<React.SetStateAction<Gam
     setIsGeneratingReplies(prev => ({ ...prev, [postId]: true }));
 
     try {
-      const { generateContentWithRetry } = await import('../services/llm/utils/api');
-      const response = await generateContentWithRetry({
-        model: 'gemini-2.5-flash-lite',
-        contents: `Generate 3-5 realistic Twitter replies to this tweet by ${post.author} (${post.handle}): "${post.content}". Return ONLY a JSON array, no markdown, with objects: {author, handle, content, likes, retweets}`,
-      });
-      const generatedData = JSON.parse(response.text?.replace(/```json|```/g, '').trim() || '[]');
+      const { SettingsManager } = await import('../services/SettingsManager');
+      const settings = SettingsManager.getSettings();
+
+      let generatedData: any[] = [];
+
+      if (!settings.enableLLM) {
+        // LLM disabled — generate 3 static NBA Twitter-style replies
+        const templates = [
+          { author: 'NBA Fan', handle: '@NBAFan2026', content: '🔥🔥🔥', likes: Math.floor(Math.random() * 200) + 10, retweets: Math.floor(Math.random() * 30) + 1 },
+          { author: 'HoopHead', handle: '@HoopHeadNBA', content: 'Facts 💯', likes: Math.floor(Math.random() * 150) + 5, retweets: Math.floor(Math.random() * 20) },
+          { author: 'StatWatch', handle: '@StatWatchNBA', content: 'Big news 👀', likes: Math.floor(Math.random() * 100) + 5, retweets: Math.floor(Math.random() * 15) },
+        ];
+        generatedData = templates;
+      } else {
+        const { generateContentWithRetry } = await import('../services/llm/utils/api');
+        const response = await generateContentWithRetry({
+          model: 'gemini-2.5-flash-lite',
+          contents: `Generate 3-5 realistic Twitter replies to this tweet by ${post.author} (${post.handle}): "${post.content}". Return ONLY a JSON array, no markdown, with objects: {author, handle, content, likes, retweets}`,
+          config: { responseMimeType: 'application/json' },
+        });
+        const raw = response.text?.replace(/```json|```/g, '').trim() || '[]';
+        try {
+          const parsed = JSON.parse(raw);
+          generatedData = Array.isArray(parsed) ? parsed : [];
+        } catch { generatedData = []; }
+      }
 
       const newReplies: SocialPost[] = generatedData.map((data: any, index: number) => ({
         id: `gen-reply-${postId}-${index}-${Date.now()}`,

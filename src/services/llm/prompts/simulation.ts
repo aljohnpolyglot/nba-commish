@@ -1,5 +1,6 @@
 import { GameState } from "../../../types";
 import { SettingsManager } from "../../SettingsManager";
+import { getArenaForTeam } from "../../../utils/arenaData";
 
 function buildSeasonCalendarContext(dateString: string, gamePhase: string): string {
     const d = new Date(dateString);
@@ -122,7 +123,16 @@ ${healEntries.map(e => `[${e.date}] MEDICAL CLEARANCE — ${e.subject}
                 topPerformer?.blk >= 3 ? `${topPerformer.blk} BLK` : null,
                 topPerformer?.stl >= 3 ? `${topPerformer.stl} STL` : null,
             ].filter(Boolean).join(', ');
-            return `- [${r.date}] ${winner?.abbrev} def. ${loser?.abbrev} (${r.homeScore}-${r.awayScore}). Top Performer: ${topPerformer?.name} (${statLine})`;
+            // Venue info: international games use city/country; home games use arena name
+            const schedGame = currentState.schedule?.find(g => g.gid === r.gameId);
+            let venueStr = '';
+            if (schedGame?.city && schedGame?.country) {
+              venueStr = ` @ ${schedGame.city}, ${schedGame.country} (INTERNATIONAL)`;
+            } else if (home) {
+              const arena = getArenaForTeam(home.name);
+              if (arena) venueStr = ` @ ${arena.arena_name}, ${arena.arena_location}`;
+            }
+            return `- [${r.date}] ${winner?.abbrev} def. ${loser?.abbrev} (${r.homeScore}-${r.awayScore})${venueStr}. Top Performer: ${topPerformer?.name} (${statLine})`;
         }).join('\n')}
         `;
     }

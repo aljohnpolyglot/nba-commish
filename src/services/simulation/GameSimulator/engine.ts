@@ -242,7 +242,7 @@ export class GameSimulator {
       homeInitial,
       homeTeam,
       availablePlayers,
-      awayMisses         * 0.56,
+      awayMisses         * 0.70,
       awayTov            * 0.60,
       awayInteriorMisses * 0.33 * awayBlkMult,  // blockRateMult scales away team's blockable interior misses
       awayFTA,
@@ -255,7 +255,7 @@ export class GameSimulator {
       awayInitial,
       awayTeam,
       availablePlayers,
-      homeMisses         * 0.69,
+      homeMisses         * 0.70,
       homeTov            * 0.60,
       homeInteriorMisses * 0.33 * homeBlkMult,  // blockRateMult scales home team's blockable interior misses
       homeFTA,

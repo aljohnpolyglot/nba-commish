@@ -6,6 +6,10 @@ import { initialState } from './initialState';
 import { sendChatMessage } from '../services/llm/llm';
 import { prefetchPlayerBio } from '../components/central/view/bioCache';
 import { SettingsManager } from '../services/SettingsManager';
+import { loadArenas } from '../utils/arenaData';
+
+// Pre-warm arena data cache at module load time
+loadArenas();
 
 interface GameContextType {
   state: GameState;

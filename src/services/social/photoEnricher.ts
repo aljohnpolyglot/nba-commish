@@ -280,6 +280,10 @@ export async function enrichPostWithPhoto(
 
     // Already has a photo from somewhere
     if (post.mediaUrl) {
+        const tplId = (post.data?.templateId || '') as string;
+        if (tplId.startsWith('nba_')) {
+            console.log(`[PhotoEnricher] @NBA post "${tplId}" already has mediaUrl="${post.mediaUrl?.slice(0, 80)}" — skipping enrichment`);
+        }
         resolvedPosts.set(post.id, post.mediaUrl);
         return post.mediaUrl;
     }
@@ -295,12 +299,21 @@ export async function enrichPostWithPhoto(
 
     // Only nba_ templates (and StatMuse shield) get Imagn photos
     if (!isAllowed(post)) {
+        const tplId = (post.data?.templateId || '') as string;
+        if (tplId.startsWith('nba_')) {
+            console.warn(`[PhotoEnricher] @NBA post "${tplId}" blocked by isAllowed — templateId check failed! handle="${post.handle}" post.data=`, post.data);
+        }
         // StatMuse: skip enrichment entirely, leave their post and mediaUrl untouched
         const handle = (post.handle || '').toLowerCase().replace('@', '').trim();
         if (!handle.includes('statmuse')) {
             resolvedPosts.set(post.id, null);
         }
         return null;
+    }
+
+    const allowedTplId = (post.data?.templateId || '') as string;
+    if (allowedTplId.startsWith('nba_')) {
+        console.log(`[PhotoEnricher] @NBA post "${allowedTplId}" passed isAllowed — fetching game photo. gameId=${post.data?.gameId}`);
     }
 
     // No game association = no photo

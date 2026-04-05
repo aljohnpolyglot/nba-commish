@@ -46,11 +46,13 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
 
   const handleOpponentSelect = (team: NonNBATeam) => {
     setSelectedOpponent(team);
+    setSearchTerm('');
     setStep('NBA_TEAM');
   };
 
   const handleNBATeamSelect = (teamId: number) => {
     setSelectedNBATeamId(teamId);
+    setSearchTerm('');
     setStep('DATE');
   };
 

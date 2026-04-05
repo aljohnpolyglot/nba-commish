@@ -55,15 +55,20 @@ export const RightSidebar = ({ onTrendClick, onProfileClick, onConnectClick, onE
       
       <div className="bg-zinc-900 rounded-2xl overflow-hidden border border-[#2f3336]">
         <h2 className="px-4 py-3 text-xl font-black text-white">Who to follow</h2>
-      {suggestedUsersList.slice(0, 3).map((user: { name: string; handle: string; avatar?: string }, i: number) => (
-          <WhoToFollow 
-            key={i} 
-            {...user} 
-            isFollowing={(state.followedHandles || []).includes(user.handle.replace('@', ''))}
-            onToggleFollow={() => handleToggleFollow(user.handle)}
-            onProfileClick={() => onProfileClick?.(user.handle)}
-          />
-        ))}
+      {suggestedUsersList.slice(0, 3).map((user: { name: string; handle: string; avatar?: string }, i: number) => {
+          const cleanHandle = user.handle.replace('@', '');
+          const cached = state.cachedProfiles?.[cleanHandle];
+          return (
+            <WhoToFollow
+              key={i}
+              {...user}
+              avatar={cached?.avatarUrl || user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanHandle}`}
+              isFollowing={(state.followedHandles || []).includes(cleanHandle)}
+              onToggleFollow={() => handleToggleFollow(user.handle)}
+              onProfileClick={() => onProfileClick?.(user.handle)}
+            />
+          );
+        })}
         <div 
           onClick={() => onConnectClick?.()}
           className="px-4 py-3 hover:bg-white/5 cursor-pointer transition-colors"

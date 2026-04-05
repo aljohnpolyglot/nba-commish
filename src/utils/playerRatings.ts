@@ -59,7 +59,10 @@ export const clearTeamStrengthCache = () => teamStrengthCache.clear();
 
 export const calculateTeamStrength = (teamId: number, players: Player[], overridePlayers?: Player[]): number => {
     // Only cache if not using override players
-    const cacheKey = !overridePlayers ? `${teamId}-${players.length}-${players[0]?.internalId}` : null;
+    const injuryFingerprint = !overridePlayers
+      ? players.filter(p => p.tid === teamId && p.injury && p.injury.gamesRemaining > 0).map(p => p.internalId).sort().join(',')
+      : '';
+    const cacheKey = !overridePlayers ? `${teamId}-${players.length}-${players[0]?.internalId}-${injuryFingerprint}` : null;
     if (cacheKey && teamStrengthCache.has(cacheKey)) {
         return teamStrengthCache.get(cacheKey)!;
     }

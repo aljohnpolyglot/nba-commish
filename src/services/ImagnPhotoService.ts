@@ -156,7 +156,7 @@ function parseAsset(raw: any): ImagnPhoto {
     id,
     setId       : raw.setId          || 0,
     headLine    : raw.headLine       || '',
-    medUrl      : raw.hover_url      || `https://cdn.imagn.com/image/thumb/450-425/${id}.jpg`,
+    medUrl      : (raw.hover_url || `https://imagn.com/image/thumb/450-425/${id}.jpg`).replace('cdn.imagn.com', 'imagn.com'),
     largeUrl    : `https://imagn.com/image/thumb/1024-922/${id}.jpg`,
     caption     : raw.caption        || '',
     captionClean: raw.captionClean   || '',

@@ -33,16 +33,21 @@ export const ConnectView: React.FC<ConnectViewProps> = ({ onBack, onProfileClick
 
       <div className="flex flex-col">
         <h2 className="px-4 py-3 text-xl font-black text-white border-b border-[#2f3336]">Suggested for you</h2>
-     {suggestedUsersList.map((user: { name: string; handle: string; avatar?: string }, i: number) => (
-          <div key={i} className="border-b border-[#2f3336]">
-            <WhoToFollow 
-              {...user} 
-              isFollowing={(state.followedHandles || []).includes(user.handle.replace('@', ''))}
-              onToggleFollow={() => handleToggleFollow(user.handle)}
-              onProfileClick={() => onProfileClick(user.handle)}
-            />
-          </div>
-        ))}
+     {suggestedUsersList.map((user: { name: string; handle: string; avatar?: string }, i: number) => {
+            const cleanHandle = user.handle.replace('@', '');
+            const cached = state.cachedProfiles?.[cleanHandle];
+            return (
+              <div key={i} className="border-b border-[#2f3336]">
+                <WhoToFollow
+                  {...user}
+                  avatar={cached?.avatarUrl || user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanHandle}`}
+                  isFollowing={(state.followedHandles || []).includes(cleanHandle)}
+                  onToggleFollow={() => handleToggleFollow(user.handle)}
+                  onProfileClick={() => onProfileClick(user.handle)}
+                />
+              </div>
+            );
+          })}
       </div>
     </div>
   );

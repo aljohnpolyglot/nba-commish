@@ -84,7 +84,7 @@ export const useSidebarData = () => {
           users.set(cleanHandle, {
             name: cached?.name || post.author,
             handle: post.handle,
-            avatar: cached?.avatarUrl || post.avatarUrl
+            avatar: cached?.avatarUrl || post.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanHandle}`
           });
         }
       });

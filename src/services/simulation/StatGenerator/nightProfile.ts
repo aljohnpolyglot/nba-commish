@@ -298,24 +298,24 @@ function computeNightProfile(
     };
   }
 
- // COREY BREWER / MALACHI FLYNN 50-BOMB (~0.1%) — Scrub randomly turns into prime MJ
-  // Gate: Player must be a role player/bench guy (ovr < 76) with at least minor perimeter capability (drb > 30)
-  if (lightningRoll < 0.032 && ovr < 76 && drb > 35 && tp > 30) {
-    const pts = (1.2 + Math.random() * 1.3);
-    const eff = (1.5 + Math.random() * 0.3);
-    console.log(`[NightProfile] 🎆 COREY BREWER 50-BOMB — ${p.name} (OVR ${ovr}) | pts×${pts.toFixed(2)} eff×${eff.toFixed(2)} ftAgg×2.3`);
+ // COREY BREWER / MALACHI FLYNN 50-BOMB (~0.1%) — Role player has a career night (not 80pts tho)
+  // Gate: raw BBGM OVR < 62 ≈ 2K < 86 (excludes starters like Maxey at raw 67). drb>35 + tp>30 = can shoot & dribble
+  if (lightningRoll < 0.032 && ovr < 62 && drb > 35 && tp > 30) {
+    const pts = (1.1 + Math.random() * 0.5);   // 1.10–1.60x (was 1.2–2.5x — too insane)
+    const eff = (1.15 + Math.random() * 0.15);  // 1.15–1.30x (was 1.5–1.8x)
+    console.log(`[NightProfile] 🎆 COREY BREWER 50-BOMB — ${p.name} (OVR ${ovr}) | pts×${pts.toFixed(2)} eff×${eff.toFixed(2)} ftAgg×1.2`);
     return {
       ptsTargetMult:  pts,
       efficiencyMult: eff,
-      fgaMult:        1.40,
-      shotDietShift:  0.2,                        // Chucking from deep
-      assistMult:     0.7 + Math.random() * 0.3,   // Absolute tunnel vision, heat check mode
-      ballControlMult:1.0 + Math.random() * 0.5,
+      fgaMult:        1.15,                        // was 1.40 — too many FGA for a role player
+      shotDietShift:  0.10,                        // still chucking from deep, but not insane
+      assistMult:     0.7 + Math.random() * 0.3,   // Tunnel vision, heat check mode
+      ballControlMult:1.0 + Math.random() * 0.4,
       orbMult:        1.0,
       drbMult:        1.0,
-      stlMult:        1.4,                         // Getting easy fast break layups like Brewer
+      stlMult:        1.3,
       blkMult:        1.0,
-      ftAggression:   2.3, ftSkill: 1.15,          // Attacking the rim relentlessly
+      ftAggression:   1.2, ftSkill: 1.08,          // was 2.3 — no more 20+ FTA nights for bench guys
     };
   }
 
@@ -430,18 +430,18 @@ function computeNightProfile(
       };
     }
 
-    // TIER 7: TORCH (8%) — everything falling, 40+ pt territory
+    // TIER 7: TORCH (8%) — everything falling, 30-35 pt territory (was too OP at 1.38×1.35=1.86x)
     if (shooterLuck >= 0.92) {
-      console.log(`[NightProfile] 🔦 SHOOTER TORCH — ${p.name} (tp=${tp}) | pts×1.38 eff×1.35 fga×0.88`);
+      console.log(`[NightProfile] 🔦 SHOOTER TORCH — ${p.name} (tp=${tp}) | pts×1.22 eff×1.18 fga×0.92`);
       return {
-        ptsTargetMult:  1.38, efficiencyMult: 1.35, fgaMult: 0.88, shotDietShift: 0.12,
+        ptsTargetMult:  1.22, efficiencyMult: 1.18, fgaMult: 0.92, shotDietShift: 0.12,
         assistMult:      1.2 + rollV * 0.2,
         ballControlMult: 1.3 + rollV * 0.2,
         orbMult:         1.0 + rollH * 0.4,
         drbMult:         1.0 + rollH * 0.4,
         stlMult:         1.0 + rollH * 0.5,
         blkMult:         1.0 + rollH * 0.5,
-        ftAggression: 1.45, ftSkill: 1.12,
+        ftAggression: 1.25, ftSkill: 1.08,
       };
     }
 

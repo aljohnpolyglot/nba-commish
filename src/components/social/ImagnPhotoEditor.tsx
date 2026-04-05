@@ -11,6 +11,8 @@ interface Props {
   awayAbbrev    : string;
   homeScore     : number;
   awayScore     : number;
+  homeLogoUrl?  : string;
+  awayLogoUrl?  : string;
   onExport?     : (dataUrl: string) => void;
   /** When true, renders auto-composed image with no UI controls (for social feed) */
   readOnly?     : boolean;
@@ -26,9 +28,51 @@ const PRESETS: Record<CropPreset, { w: number; h: number; label: string }> = {
 
 export const ImagnPhotoEditor: React.FC<Props> = ({
   photo, homeTeamColor, awayTeamColor,
-  homeAbbrev, awayAbbrev, homeScore, awayScore, onExport,
+  homeAbbrev, awayAbbrev, homeScore, awayScore,
+  homeLogoUrl, awayLogoUrl, onExport,
   readOnly = false,
 }) => {
+  // ── readOnly: pure CSS overlay, no canvas, no proxy needed ───────────────
+  if (readOnly) {
+    return (
+      <div className="relative w-full rounded-xl overflow-hidden">
+        <img
+          src={photo.medUrl}
+          alt=""
+          className="w-full object-cover"
+          style={{ maxHeight: 400 }}
+          referrerPolicy="no-referrer"
+        />
+        {/* bottom gradient */}
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.72) 100%)' }} />
+        {/* score bar */}
+        <div className="absolute bottom-0 left-0 right-0 flex" style={{ height: 44 }}>
+          {/* away side */}
+          <div className="flex-1 flex items-center px-3 gap-2" style={{ backgroundColor: awayTeamColor }}>
+            {awayLogoUrl && <img src={awayLogoUrl} alt={awayAbbrev} className="h-6 w-6 object-contain" referrerPolicy="no-referrer" />}
+            <span className="text-white font-bold text-sm">{awayAbbrev}</span>
+            <span className="text-white font-bold text-base ml-auto">{awayScore}</span>
+          </div>
+          {/* FINAL divider */}
+          <div className="flex items-center px-3" style={{ backgroundColor: 'rgba(0,0,0,0.75)' }}>
+            <span className="text-white text-xs font-semibold tracking-widest opacity-80">FINAL</span>
+          </div>
+          {/* home side */}
+          <div className="flex-1 flex items-center px-3 gap-2" style={{ backgroundColor: homeTeamColor }}>
+            <span className="text-white font-bold text-base">{homeScore}</span>
+            <span className="text-white font-bold text-sm ml-auto">{homeAbbrev}</span>
+            {homeLogoUrl && <img src={homeLogoUrl} alt={homeAbbrev} className="h-6 w-6 object-contain" referrerPolicy="no-referrer" />}
+          </div>
+        </div>
+        {photo.photographer && (
+          <div className="absolute text-white text-xs opacity-40" style={{ bottom: 50, right: 8 }}>
+            © {photo.photographer} / Imagn
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const canvasRef               = useRef<HTMLCanvasElement>(null);
   const [preset, setPreset]     = useState<CropPreset>('square');
   const [overlay, setOverlay]   = useState(true);
@@ -36,9 +80,7 @@ export const ImagnPhotoEditor: React.FC<Props> = ({
   const [zoom, setZoom]         = useState(1.0);
   const [offsetY, setOffsetY]   = useState(0);
 
-  // In read-only mode, force square preset (social feed standard)
-  const activePreset = readOnly ? 'square' : preset;
-
+  const activePreset = preset;
   const { w: outW, h: outH } = PRESETS[activePreset];
 
   useEffect(() => {
@@ -52,6 +94,9 @@ export const ImagnPhotoEditor: React.FC<Props> = ({
     img.crossOrigin = 'anonymous';
     img.src = PROXY + encodeURIComponent(photo.medUrl);
 
+    img.onerror = () => {
+      console.error(`[ImagnPhotoEditor] canvas: failed to load via proxy — "${photo.medUrl?.slice(0, 80)}"`);
+    };
     img.onload = () => {
       // ── Photo (cropped + zoomed) ──────────────────────────────────────
       const scale = Math.max(outW / img.width, outH / img.height) * zoom;

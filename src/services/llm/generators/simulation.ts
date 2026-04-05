@@ -258,7 +258,12 @@ export async function advanceDay(currentState: GameState, action: UserAction | n
       const cleaned = cleanLLMJson(text);
       console.log('[LLM] Raw response preview:', cleaned.substring(0, 200));
       const repaired = repairTruncatedJson(cleaned);
-      data = normalizeResult(JSON.parse(repaired));
+      let parsed = JSON.parse(repaired);
+      // Some Together AI models wrap their response: { "response": "<json string>" }
+      if (parsed && typeof parsed.response === 'string' && !parsed.newNews) {
+        try { parsed = JSON.parse(parsed.response); } catch {}
+      }
+      data = normalizeResult(parsed);
     } catch (parseErr) {
       console.warn('[LLM] advanceDay JSON parse failed — using empty fallback', parseErr);
       data = {
@@ -331,7 +336,11 @@ export async function generateLeaguePulse(
         try {
             const cleaned = cleanLLMJson(text);
             const repaired = repairTruncatedJson(cleaned);
-            data = normalizeResult(JSON.parse(repaired));
+            let parsed = JSON.parse(repaired);
+            if (parsed && typeof parsed.response === 'string' && !parsed.newNews) {
+              try { parsed = JSON.parse(parsed.response); } catch {}
+            }
+            data = normalizeResult(parsed);
         } catch (e) {
             console.warn('[LLM] League pulse JSON truncated — using empty fallback');
             data = { newEmails: [], newNews: [], newSocialPosts: [], replies: [] };

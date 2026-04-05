@@ -6,6 +6,7 @@ import { formatTwitterDate } from '../../utils/socialhelpers';
 import { getUnavatarUrl, canUseUnavatar } from '../../data/photos/social';
 import { AVATAR_DATA } from '../../data/avatars';
 import { needsCanvasEditor } from '../../services/social/photoEnricher';
+import { ImagnPhotoEditor } from './ImagnPhotoEditor';
 import { cn } from '../../lib/utils';
 
 const avatarCache = new Map<string, string | null>();
@@ -135,29 +136,61 @@ const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onImageClick, onC
           
           <p className="text-[15px] text-white leading-normal mt-0.5 whitespace-pre-wrap">{post.content}</p>
 
-          {post.mediaUrl && post.mediaUrl !== avatarSrc && (
-            <div
-              className="mt-3 rounded-2xl overflow-hidden border border-zinc-800"
-              style={post.mediaBackgroundColor ? { backgroundColor: post.mediaBackgroundColor } : undefined}
-              onClick={e => e.stopPropagation()}
-            >
-              <img
-                src={post.mediaUrl}
-                alt=""
-                className="w-full object-cover max-h-[512px]"
-                referrerPolicy="no-referrer"
-                onClick={() => onImageClick?.(post.mediaUrl!)}
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-              />
-            </div>
-          )}
+          {post.mediaUrl && post.mediaUrl !== avatarSrc && (() => {
+            const d = post.data as any;
+            const tplId = d?.templateId || '';
+            if (tplId.startsWith('nba_')) {
+              console.log(`[SocialPostCard] @NBA post rendering: templateId="${tplId}" mediaUrl="${post.mediaUrl?.slice(0,80)}" needsCanvas=${needsCanvasEditor(post)} hasHomeTeam=${!!d?.homeTeam} hasAwayTeam=${!!d?.awayTeam}`);
+            }
+            if (needsCanvasEditor(post) && d?.homeTeam && d?.awayTeam) {
+              const photo = {
+                id: 0, setId: 0, headLine: '', caption: '', captionClean: '',
+                players: [], photographer: '', location: '', date: '',
+                width: 0, height: 0, isTopPic: false,
+                medUrl: post.mediaUrl!,
+                largeUrl: post.mediaUrl!,
+              };
+              return (
+                <div className="mt-3 rounded-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+                  <ImagnPhotoEditor
+                    photo={photo}
+                    homeTeamColor={d.homeTeam.color ?? '#1d428a'}
+                    awayTeamColor={d.awayTeam.color ?? '#c8102e'}
+                    homeAbbrev={d.homeTeam.abbrev ?? ''}
+                    awayAbbrev={d.awayTeam.abbrev ?? ''}
+                    homeScore={d.homeTeam.score ?? 0}
+                    awayScore={d.awayTeam.score ?? 0}
+                    homeLogoUrl={d.homeTeam.logoUrl}
+                    awayLogoUrl={d.awayTeam.logoUrl}
+                    readOnly
+                  />
+                </div>
+              );
+            }
+            return (
+              <div
+                className="mt-3 rounded-2xl overflow-hidden border border-zinc-800"
+                style={post.mediaBackgroundColor ? { backgroundColor: post.mediaBackgroundColor } : undefined}
+                onClick={e => e.stopPropagation()}
+              >
+                <img
+                  src={post.mediaUrl}
+                  alt=""
+                  className="w-full object-cover max-h-[512px]"
+                  referrerPolicy="no-referrer"
+                  onClick={() => onImageClick?.(post.mediaUrl!)}
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              </div>
+            );
+          })()}
 
           <div className="mt-3 flex items-center justify-between max-w-md text-zinc-500">
             <button className="flex items-center space-x-2 group/btn hover:text-sky-500 transition-colors">
               <div className="p-2 rounded-full group-hover/btn:bg-sky-500/10">
                 <MessageCircle size={18} />
               </div>
-              <span className="text-xs">{post.replies?.length || post.replyCount || 0}</span>
+              <span className="text-xs">{post.replies?.length || post.replyCount || Math.round((post.retweets + post.likes) * 0.12) || 0}</span>
             </button>
             <button 
               onClick={handleRetweet}
