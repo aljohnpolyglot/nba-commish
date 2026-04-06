@@ -23,6 +23,7 @@ import { NBAPlayer as Player, NBATeam as Team } from '../../types';
 import { convertTo2KRating } from '../../utils/helpers';
 import { R } from './StatGenerator/helpers';
 import { StarterService } from './StarterService';
+import { getPlayerInjuryProfile } from '../../data/playerInjuryData';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -92,15 +93,15 @@ function standingsProfile(
   // Late-season play-in crunch: rank 7-10 in the final 20 games.
   // Every game counts — tightest possible rotation.
   if (rank >= 7 && rank <= 10 && gamesRemaining <= 20) {
-    return { baseDepth: 7, starMpg: 38.5 };
+    return { baseDepth: 8, starMpg: 36.0 };
   }
 
   // ── Standard rank profiles ────────────────────────────────────────────────
-  if (rank <= 3)  return { baseDepth: 10, starMpg: 33.0 };  // secured — rest stars
-  if (rank <= 5)  return { baseDepth: 8,  starMpg: 36.5 };  // comfortable contender
-  if (rank <= 8)  return { baseDepth: 8,  starMpg: 37.5 };  // must-win zone
-  if (rank <= 10) return { baseDepth: 9,  starMpg: 36.0 };  // play-in bubble
-  return                 { baseDepth: 11, starMpg: 31.0 };  // lottery — evaluate youth
+  if (rank <= 3)  return { baseDepth: 10, starMpg: 32.0 };  // secured — rest stars
+  if (rank <= 5)  return { baseDepth: 9,  starMpg: 34.0 };  // comfortable contender
+  if (rank <= 8)  return { baseDepth: 9,  starMpg: 35.0 };  // must-win zone
+  if (rank <= 10) return { baseDepth: 9,  starMpg: 34.0 };  // play-in bubble
+  return                 { baseDepth: 11, starMpg: 30.0 };  // lottery — evaluate youth
 }
 
 /** Roster health: cap depth to available healthy bodies. */
@@ -147,6 +148,35 @@ function sortByOVR(players: Player[], season: number): Player[] {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// DURABILITY MINUTE CAP
+// ─────────────────────────────────────────────────────────────────────────────
+
+const NBA_AVG_INJURY_FREQ = 10;
+
+/**
+ * Returns a maximum starter minutes cap for injury-prone players, derived from
+ * real career injury history (same dataset used by InjurySystem.ts).
+ *
+ *   factor = careerInjuries / (yearsPro × NBA_AVG)
+ *   ≤ 1.0  → durable / no data   → no cap (40 min ceiling)
+ *   ≤ 1.5  → slightly prone      → 36 min cap  (e.g. LeBron era management)
+ *   ≤ 2.0  → injury-prone        → 33 min cap  (Anthony Davis, Kawhi)
+ *   > 2.0  → extremely prone     → 30 min cap  (Zion, early-career Embiid)
+ */
+function durabilityMinuteCap(player: Player): number {
+  const profile = getPlayerInjuryProfile(player.name);
+  if (!profile) return 40;
+
+  const yearsPro = Math.max(1, (player.age ?? 26) - 19);
+  const factor   = profile.careerCount / (yearsPro * NBA_AVG_INJURY_FREQ);
+
+  if (factor <= 1.0) return 40;
+  if (factor <= 1.5) return 36;
+  if (factor <= 2.0) return 33;
+  return 30;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PUBLIC SERVICE
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -190,7 +220,7 @@ export class MinutesPlayedService {
     // standings-based depth so that all selected players actually get into the rotation.
     const depth = depthOverride
       ? Math.min(depthOverride, pool.length)
-      : Math.max(7, Math.min(13, finalDepth));
+      : Math.max(8, Math.min(13, finalDepth));
 
     // ── Ordered rotation — StarterService for role-aware starters + bench ───
     // StarterService.getRotation returns [5 starters, N bench] sorted by role fit
@@ -284,6 +314,9 @@ export class MinutesPlayedService {
         // Soft fatigue: endu < 40 clips up to ~4.5 min (e.g. Wemby endu=10 → –4.5 min)
         const fatigue = endu < 40 ? (40 - endu) * 0.15 : 0;
         baseMins -= fatigue;
+        // Durability cap: injury-prone stars (AD, Kawhi, Zion) play fewer minutes
+        // than the standings model would otherwise suggest (load management).
+        baseMins = Math.min(baseMins, durabilityMinuteCap(p));
       } else {
         // Bench — depth-tiered base minutes
         const depthSlot = Math.min(i - 5, BENCH_TIERS.length - 1);

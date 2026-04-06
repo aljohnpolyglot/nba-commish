@@ -108,12 +108,12 @@ Files that show league filter dropdowns need the new league added:
 
 External leagues have weaker competition. Raw ratings from their data sources are scaled **down** during fetch to reflect this:
 
-| League     | Attribute Scale | Sim Stat Multiplier | Notes |
-|------------|----------------|---------------------|-------|
-| Euroleague | ~0.90 (varies) | 0.733               | Best non-NBA competition |
-| B-League   | 0.85           | 0.68                | Japan pro league |
-| PBA        | (raw)          | 0.62                | Philippines, weaker competition |
-| WNBA       | (raw)          | N/A (separate sim)  | Women's league |
+| League     | Attribute Scale | Sim Stat Multiplier | OVR Cap (BBGM) | Notes |
+|------------|----------------|---------------------|----------------|-------|
+| Euroleague | ~0.90 (varies) | 0.733               | ~75            | Best non-NBA competition |
+| B-League   | 0.85           | 0.68                | 75             | Japan pro league |
+| PBA        | (raw)          | 0.62                | 60             | Philippines, weaker competition |
+| WNBA       | (raw)          | N/A (separate sim)  | —              | Women's league |
 
 **Two-step scaling for B-League:**
 1. During `fetchBLeagueRoster()` — scale all non-height attributes by `× 0.85` before storing
@@ -123,11 +123,66 @@ Height (`hgt`) is **never scaled** — it's a physical measurement.
 
 **OVR Calculation:** Each league has its own OVR formula that tiers down the overall rating:
 ```ts
-// B-League: cap at 68 OVR, tier reductions in steps of 5
-if (ovr >= 75) reduction = 26; // 75 → 49 max... capped to 68
+// B-League: cap at 75 OVR → best player ~75 2K overall (raised from 68)
+if (ovr >= 75) reduction = 18;
 // ...
-if (ovr > 68) ovr = 68;
+if (ovr > 75) ovr = 75;
+
+// PBA: cap at 60 OVR → best player ~60 2K overall (lowered from 65)
+if (ovr >= 75) reduction = 35;
+// ...
+if (ovr > 60) ovr = 60;
 ```
+
+**Ratings View — League Display Scaling (Fixed):**
+The `getScaledRating()` sim multipliers (0.62 PBA, 0.68 B-League, 0.733 Euroleague) used to apply **only during simulation**, leaving raw BBGM attribute values visible in the UI. This is now fixed.
+
+A `useLeagueScaledRatings` hook (`src/hooks/useLeagueScaledRatings.ts`) was added to mirror the sim multipliers in the display layer:
+
+```ts
+// Exported pure function — safe to call inside existing useMemo blocks
+export function applyLeagueDisplayScale(status, ratings): Record<string, any>;
+
+// React hook — memoised wrapper for use in components
+export function useLeagueScaledRatings(status, rawRatings): Record<string, any>;
+
+// Multipliers mirror getScaledRating() exactly
+export const LEAGUE_DISPLAY_MULTIPLIERS = {
+  Euroleague: 0.733,
+  PBA:        0.62,
+  'B-League': 0.68,
+};
+```
+
+`hgt`, `ovr`, `pot`, `fuzz`, `injuryIndex`, `skills`, and `jerseyNumber` are **never scaled** — only the skill attributes (spd, fg, tp, etc.) are multiplied.
+
+Components updated:
+- `PlayerRatingsView.tsx` — uses `applyLeagueDisplayScale` inside the `rows` useMemo
+- `PlayerRatingsModal.tsx` — uses `useLeagueScaledRatings` hook; also shows an amber league badge (e.g. "PBA • 62% strength") in the player header so it's clear ratings are nerfed
+
+---
+
+## Preseason International Games
+
+**Status: Fully playable** (as of 2026-04-06).
+
+Games scheduled via the **International Preseason** modal (`ADD_PRESEASON_INTERNATIONAL` action) are added to the schedule with `isPreseason: true` and the nonNBA team's `tid` as `homeTid` or `awayTid`.
+
+The simulator now handles these correctly:
+- When one side's `tid ≥ 100` (nonNBA offset), a **synthetic team object** is built on the fly
+- That team's actual players (already in the shared `players` pool with their status tag) are used as the roster
+- Sim stat multipliers from `getScaledRating()` still nerf their performance appropriately
+- Standings and season stats are **not affected** (`isPreseason` flag skips score updates and stat accumulation)
+- The game IS logged in boxScores and the game log for flavor/narrative
+
+League strength baselines used for synthetic team:
+
+| League     | Synthetic strength |
+|------------|-------------------|
+| Euroleague | 85                |
+| WNBA       | 75                |
+| PBA        | 72                |
+| B-League   | 78                |
 
 ---
 

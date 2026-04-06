@@ -1,7 +1,7 @@
 import { NBATeam as Team, NBAPlayer as Player, Game } from '../../../types';
 import { StatGenerator } from '../StatGenerator';
 import { GameResult } from '../types';
-import { InjurySystem } from '../InjurySystem';
+import { InjurySystem, enforceSeasonEndingMinimum } from '../InjurySystem';
 import { calculateTeamStrength } from '../../../utils/playerRatings';
 import { calcTeamRatings, expectedTeamScore } from '../teamratinghelper';
 import { normalRandom } from '../utils';
@@ -371,11 +371,14 @@ export class GameSimulator {
         if (Math.random() >= injuryChance) continue;
 
         const drawn = getRandomInjury(injuryDefs);
-        // Scale games: low-minute exits lean shorter (×0.3-0.8), full-game contacts normal (×0.5-1.5)
-        const durationMult = min < 15 ? 0.3 + Math.random() * 0.5
-                           : min < 25 ? 0.4 + Math.random() * 0.8
-                           :            0.5 + Math.random() * 1.0;
-        const gamesRemaining = Math.max(1, Math.round(drawn.games * durationMult));
+        // JSON `games` is the empirical mean — stay close to it (σ=0.15, clamp 0.75–1.30).
+        // Early exits are slightly milder; full-game contacts are full severity.
+        const u1 = 1 - Math.random(), u2 = 1 - Math.random();
+        const z  = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+        const baseMult = Math.max(0.75, Math.min(1.30, 1.0 + z * 0.15));
+        const severityAdj = min < 15 ? -0.10 : min < 25 ? -0.05 : 0;
+        const gameMult = Math.max(0.70, baseMult + severityAdj);
+        const gamesRemaining = enforceSeasonEndingMinimum(drawn.name, Math.max(1, Math.round(drawn.games * gameMult)));
 
         injuries.push({
           playerId:       player.internalId,
@@ -652,11 +655,11 @@ export class GameSimulator {
       }
 
       if (!away && game.awayTid < 0) {
-        const teamName = game.awayTid === -2 ? 'West All-Stars' : 
-                        game.awayTid === -4 ? 'Team World' : 
+        const teamName = game.awayTid === -2 ? 'West All-Stars' :
+                        game.awayTid === -4 ? 'Team World' :
                         game.awayTid === -6 ? 'Team Stephen A' : 'All-Stars';
         away = { id: game.awayTid, name: teamName } as any;
-        
+
         if (!awayOverride && allStar) {
           if (game.isCelebrityGame) {
             awayOverride = (allStar.celebrityRoster || []).filter((p: any) => p.team === 'StephenA');
@@ -665,12 +668,46 @@ export class GameSimulator {
             const roster = isRisingStars ? (allStar.risingStarsRoster || []) : (allStar.roster || []);
 
             const rosterIds = new Set(
-              isRisingStars 
+              isRisingStars
                 ? roster.slice(10, 20).map((r: any) => r.playerId)
                 : roster.filter((r: any) => r.conference === 'West').map((r: any) => r.playerId)
             );
             awayOverride = players.filter(p => rosterIds.has(p.internalId));
           }
+        }
+      }
+
+      // ── Preseason international games: one side is a nonNBA club (tid ≥ 100) ──
+      // nonNBA teams are not in the `teams` array (NBA only). Build a synthetic
+      // team and use that club's actual player roster from the shared players pool.
+      // Sim multipliers in getScaledRating already nerf their ratings appropriately.
+      if ((game as any).isPreseason) {
+        const buildNonNBATeam = (tid: number): { team: Team; roster: Player[] } | null => {
+          const clubPlayers = players.filter(p => p.tid === tid);
+          if (clubPlayers.length === 0) return null;
+          // Synthetic strength: league-tier averages (Euroleague ≈ 85, B-League ≈ 78, PBA ≈ 72)
+          // Offsets: Euroleague +1000, PBA +2000, WNBA +3000, B-League +4000
+          const leagueStr = tid >= 4000 ? 78 : tid >= 3000 ? 75 : tid >= 2000 ? 72 : 85;
+          const synTeam: Team = {
+            id: tid,
+            name: `Club ${tid}`,
+            abbrev: `C${tid}`,
+            conference: 'West',
+            did: 0,
+            wins: 0,
+            losses: 0,
+            strength: leagueStr,
+          } as any;
+          return { team: synTeam, roster: clubPlayers };
+        };
+
+        if (!home && game.homeTid >= 100) {
+          const result = buildNonNBATeam(game.homeTid);
+          if (result) { home = result.team; if (!homeOverride) homeOverride = result.roster; }
+        }
+        if (!away && game.awayTid >= 100) {
+          const result = buildNonNBATeam(game.awayTid);
+          if (result) { away = result.team; if (!awayOverride) awayOverride = result.roster; }
         }
       }
 

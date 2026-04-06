@@ -5,6 +5,7 @@ import { NBAPlayer } from '../../../types';
 import { calculateK2, K2_CATS, K2Data } from '../../../services/simulation/convert2kAttributes';
 import { convertTo2KRating } from '../../../utils/helpers';
 import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
+import { applyLeagueDisplayScale } from '../../../hooks/useLeagueScaledRatings';
 
 // Category summary config
 const CAT_CONFIG = [
@@ -111,9 +112,11 @@ export const PlayerRatingsView: React.FC = () => {
           ins: 50, dnk: 50, ft: 50, fg: 50, tp: 50,
           oiq: 50, diq: 50, drb: 50, pss: 50, reb: 50,
         };
-        const r = { ...defaults, ...ratings };
+        const rawR = { ...defaults, ...ratings };
+        // Apply league-strength nerf for display (mirrors sim getScaledRating multipliers)
+        const r = applyLeagueDisplayScale(player.status, rawR);
         const age = (player as any).born?.year ? currentYear - (player as any).born.year : player.age || 0;
-        const k2 = calculateK2(r, {
+        const k2 = calculateK2(r as any, {
           pos: player.pos,
           heightIn: player.hgt,
           weightLbs: player.weight,

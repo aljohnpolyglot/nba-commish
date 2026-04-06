@@ -136,11 +136,11 @@ export function generateStatsForTeam(
     const share    = scoringPotentials[i] / totalScoringPotential;
     // GamePlan ptsMult shifts tonight's distribution (bench eruption, 2nd-option takeover, etc.)
     let rawTarget  = adjustedScore * share * gamePlan.ptsMult[i];
-    if (rawTarget > 24) {
-      const excess      = rawTarget - 24;
+    if (rawTarget > 27) {
+      const excess      = rawTarget - 27;
       const shavedPoints = excess * 0.60;
       teamBonusBucket  += shavedPoints;
-      rawTarget          = 24 + (excess - shavedPoints);
+      rawTarget          = 27 + (excess - shavedPoints);
     }
     return { rawTarget, share };
   });
@@ -150,7 +150,7 @@ export function generateStatsForTeam(
     let ptsTarget = initialTargets[i].rawTarget;
     const share   = initialTargets[i].share;
 
-    if (ptsTarget < 25) {
+    if (ptsTarget < 28) {
       const bonusShare = (1 - share) / (rotation.length - 1);
       ptsTarget += teamBonusBucket * bonusShare;
     }
@@ -320,7 +320,10 @@ if (tpComposite >= 20 && tpComposite <= 60) {
       ? ins * 0.45 + dnk * 0.50 + fg * 0.05
       : ins * 0.10 + dnk * 0.05 + fg * 0.85;
     const pct2Raw = 0.34 + (eff2 / 100) * 0.28;
-    const pct2 = Math.max(0.28, Math.min(0.72, pct2Raw * nightProfile.efficiencyMult * knobs.efficiencyMultiplier * getVariance(1.0, 0.08)));
+    // Rim runners (isIn) are mechanically consistent — lower variance.
+    // Perimeter players' midrange is shot-creation dependent — wider swings.
+    const pct2Sigma = isIn ? 0.10 : 0.20;
+    const pct2 = Math.max(0.28, Math.min(0.72, pct2Raw * nightProfile.efficiencyMult * knobs.efficiencyMultiplier * getVariance(1.0, pct2Sigma)));
 
     // Calculate makes — wider variance (0.28 σ) allows real cold/hot nights:
     // Giannis 3/3 at 21% base: round(0.63 × N(1,0.28)) → 0 or 1 depending on roll.

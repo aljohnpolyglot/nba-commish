@@ -13,9 +13,9 @@ export interface KeyDate {
 
 export const KEY_DATES: KeyDate[] = [
   // OFFSEASON
-  { date: '2025-08-12', label: 'Day 1',             sublabel: 'Earliest start — planning window',        icon: '🏀', zone: 'offseason' },
-  { date: '2025-08-12', label: 'Broadcasting',      sublabel: 'TV Deal Window',                          icon: '📺', zone: 'offseason', placeholder: true, placeholderLabel: 'Broadcasting Negotiations — Future Feature' },
-  { date: '2025-08-12', label: 'Arena Naming',      sublabel: 'Sponsorship Rights',                      icon: '🏟️', zone: 'offseason', placeholder: true, placeholderLabel: 'Arena Naming Rights — Future Feature' },
+  { date: '2025-08-06', label: 'Day 1',             sublabel: 'Earliest start — planning window',        icon: '🏀', zone: 'offseason' },
+  { date: '2025-08-06', label: 'Broadcasting',      sublabel: 'TV Deal Window',                          icon: '📺', zone: 'offseason', placeholder: true, placeholderLabel: 'Broadcasting Negotiations — Future Feature' },
+  { date: '2025-08-06', label: 'Arena Naming',      sublabel: 'Sponsorship Rights',                      icon: '🏟️', zone: 'offseason', placeholder: true, placeholderLabel: 'Arena Naming Rights — Future Feature' },
   { date: '2025-08-14', label: 'Schedule Release',  sublabel: 'Full 82-game schedule generated',         icon: '📅', zone: 'offseason' },
   { date: '2025-10-01', label: 'Training Camp',     sublabel: 'Preseason begins',                        icon: '💪', zone: 'offseason' },
   { date: '2025-10-24', label: 'Opening Night',     sublabel: 'Regular season tips off',                 icon: '🎉', zone: 'early' },
@@ -56,7 +56,7 @@ export const KEY_DATES: KeyDate[] = [
   { date: '2026-07-01', label: 'Free Agency',       sublabel: 'LOCKED',                                  icon: '✍️',  zone: 'locked', locked: true },
 ];
 
-export const TIMELINE_MIN = '2025-08-12';
+export const TIMELINE_MIN = '2025-08-06';
 export const TIMELINE_MAX = '2026-04-15';
 export const TIMELINE_DISPLAY_END = '2026-07-10';
 

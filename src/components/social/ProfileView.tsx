@@ -34,13 +34,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ handle, onBack, onPost
   const isOwnProfile = cleanHandle === ownHandle;
   const isFollowing = (state.followedHandles || []).includes(cleanHandle);
 
-  const userPosts = (state.socialFeed || []).filter(p => {
-    const ph = p.handle.replace('@', '');
-    if (activeTab === 'posts') return ph === cleanHandle && !p.replyToId;
-    if (activeTab === 'replies') return ph === cleanHandle && !!p.replyToId;
-    if (activeTab === 'media') return ph === cleanHandle && !!p.mediaUrl;
-    return false;
-  });
+  const userPosts = (state.socialFeed || [])
+    .filter(p => {
+      const ph = p.handle.replace('@', '');
+      if (activeTab === 'posts') return ph === cleanHandle && !p.replyToId;
+      if (activeTab === 'replies') return ph === cleanHandle && !!p.replyToId;
+      if (activeTab === 'media') return ph === cleanHandle && !!p.mediaUrl;
+      return false;
+    })
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const handleFollow = (e: React.MouseEvent) => {
     e.stopPropagation();

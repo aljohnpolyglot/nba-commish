@@ -220,7 +220,7 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
                       </div>
                       <div>
                         <div className="font-black text-white uppercase tracking-tight group-hover:text-emerald-400">{team.region} {team.name}</div>
-                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{team.abbrev} • Pop: {team.pop.toFixed(1)}M</div>
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{team.abbrev} • Pop: {(team.pop || 0).toFixed(1)}M</div>
                       </div>
                     </button>
                   ))}

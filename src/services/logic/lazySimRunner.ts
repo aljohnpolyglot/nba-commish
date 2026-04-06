@@ -11,6 +11,8 @@ import { findShamsPhoto } from '../social/charaniaphotos';
 import { generateLazySimNews } from '../news/lazySimNewsGenerator';
 import { convertTo2KRating } from '../../utils/helpers';
 import {
+  autoGenerateSchedule,
+  autoScheduleIntlPreseason,
   autoPickChristmasGames,
   autoPickGlobalGames,
   autoSimVotes,
@@ -44,8 +46,10 @@ const autoBroadcastingDefault = (state: GameState): Partial<GameState> => {
 };
 
 const AUTO_RESOLVE_EVENTS: AutoResolveEvent[] = [
-  { date: '2025-08-12', key: 'broadcasting_default',   resolver: autoBroadcastingDefault,        phase: 'Setting Broadcasting Deal...' },
+  { date: '2025-08-06', key: 'broadcasting_default',   resolver: autoBroadcastingDefault,        phase: 'Setting Broadcasting Deal...' },
   { date: '2025-08-13', key: 'global_games',           resolver: autoPickGlobalGames,            phase: 'Finalizing Global Schedule...' },
+  { date: '2025-08-13', key: 'intl_preseason',         resolver: autoScheduleIntlPreseason,      phase: 'Scheduling International Preseason...' },
+  { date: '2025-08-14', key: 'schedule_generation',    resolver: autoGenerateSchedule,           phase: 'Generating Schedule...' },
   { date: '2025-12-24', key: 'christmas_games',        resolver: autoPickChristmasGames,         phase: 'Setting Christmas Games...' },
   { date: '2026-01-14', key: 'allstar_votes',          resolver: autoSimVotes,                   phase: 'Simulating All-Star Voting...' },
   { date: '2026-01-22', key: 'allstar_starters',       resolver: autoAnnounceStarters,           phase: 'Announcing All-Star Starters...' },

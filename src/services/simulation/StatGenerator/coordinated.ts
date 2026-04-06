@@ -34,7 +34,7 @@ export function generateCoordinatedStats(
 
   const finalSteals = Math.round(availableSteals * (1.0 + stlAura));
   const finalBlocks = Math.round(availableBlocks * (1.0 + blkAura));
-  const assistRatio = Math.max(0.42, 0.62 - passAura);
+  const assistRatio = Math.max(0.47, 0.67 - passAura);
 
   const ownMisses = stats.reduce((s, p) => s + Math.max(0, p.fga - p.fgm), 0);
 
@@ -81,7 +81,7 @@ export function generateCoordinatedStats(
       const pss = rHelper(p, 'pss');
       const oiq = rHelper(p, 'oiq');
       return Math.pow(
-        Math.max(0.1, drb * 0.4 + pss * 1.0 + oiq * 0.5),
+        Math.max(0.1, drb * 0.4 + pss * 2.0 + oiq * 0.4),
         3.8
       ) * minFrac(p) * (getNight(p)?._nightAssistMult ?? 1);
     },

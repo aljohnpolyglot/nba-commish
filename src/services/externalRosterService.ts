@@ -21,13 +21,13 @@ export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], t
         if (data.teams && Array.isArray(data.teams)) {
             data.teams.forEach((t: any) => {
                 teams.push({
-                    tid: t.tid + 100, // Offset Euroleague by 100
+                    tid: t.tid + 1000, // Offset Euroleague by 1000 (avoids collision with PBA/WNBA/B-League)
                     cid: t.cid,
                     did: t.did,
                     region: t.region,
                     name: t.name,
                     abbrev: t.abbrev,
-                    pop: t.pop,
+                    pop: t.pop || 1.0,
                     stadiumCapacity: t.stadiumCapacity,
                     imgURL: t.imgURL,
                     colors: t.colors,
@@ -60,8 +60,8 @@ export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], t
                 if (playerName && item.ratings) { 
                      const player: NBAPlayer = {
                         // STEP 2: Use the 'euro-' prefix + tid to make his ID totally unique
-                        internalId: `euro-${playerName.replace(/\s+/g, '')}-${item.tid + 100}`,
-                        tid: item.tid !== undefined ? item.tid + 100 : -1, // Offset Euroleague by 100
+                        internalId: `euro-${playerName.replace(/\s+/g, '')}-${item.tid + 1000}`,
+                        tid: item.tid !== undefined ? item.tid + 1000 : -1, // Offset Euroleague by 1000
                         name: playerName,
                         overallRating: calculateEuroleagueOverall(item.ratings?.[0]), // Use new helper
                         ratings: item.ratings || [],
@@ -108,13 +108,13 @@ export const fetchPBARoster = async (): Promise<{ players: NBAPlayer[], teams: N
         if (data.teams && Array.isArray(data.teams)) {
             data.teams.forEach((t: any) => {
                 teams.push({
-                    tid: t.tid + 200, // Offset PBA by 200
+                    tid: t.tid + 2000, // Offset PBA by 2000 (avoids collision with Euroleague's 1000-1297 range)
                     cid: t.cid,
                     did: t.did,
                     region: t.region,
                     name: t.name,
                     abbrev: t.abbrev,
-                    pop: t.pop,
+                    pop: t.pop || 1.0,
                     stadiumCapacity: t.stadiumCapacity,
                     imgURL: t.imgURL,
                     colors: t.colors,
@@ -156,7 +156,7 @@ export const fetchPBARoster = async (): Promise<{ players: NBAPlayer[], teams: N
                 if (playerName && item.ratings) { 
                      const player: NBAPlayer = {
                         internalId: `pba-${item.tid}-${playerName.replace(/\s+/g, '')}-${item.born?.year || '0'}`,
-                        tid: item.tid !== undefined ? item.tid + 200 : -1, // Offset PBA by 200
+                        tid: item.tid !== undefined ? item.tid + 2000 : -1, // Offset PBA by 2000
                         name: playerName,
                         overallRating: calculatePBAOverall(item.ratings?.[0]), // Use PBA helper
                         ratings: item.ratings || [],
@@ -214,13 +214,13 @@ export const fetchWNBARoster = async (): Promise<{ players: NBAPlayer[], teams: 
         if (data.teams && Array.isArray(data.teams)) {
             data.teams.forEach((t: any) => {
                 teams.push({
-                    tid: t.tid + 300, // Offset WNBA by 300
+                    tid: t.tid + 3000, // Offset WNBA by 3000
                     cid: t.cid,
                     did: t.did,
                     region: t.region,
                     name: t.name,
                     abbrev: t.abbrev,
-                    pop: t.pop,
+                    pop: t.pop || 1.0,
                     stadiumCapacity: t.stadiumCapacity,
                     imgURL: t.imgURL,
                     colors: t.colors,
@@ -233,7 +233,7 @@ export const fetchWNBARoster = async (): Promise<{ players: NBAPlayer[], teams: 
             data.players.forEach((item: any, index: number) => {
                 const player: NBAPlayer = {
                     internalId: `wnba-${index}-${item.firstName}-${item.lastName}`,
-                    tid: item.tid !== undefined ? item.tid + 300 : -100, // Offset WNBA by 300
+                    tid: item.tid !== undefined ? item.tid + 3000 : -100, // Offset WNBA by 3000
                     name: `${item.firstName} ${item.lastName}`,
                     overallRating: item.ratings?.[0]?.ovr || 70, 
                     ratings: item.ratings || [],
@@ -277,13 +277,13 @@ export const fetchBLeagueRoster = async (): Promise<{ players: NBAPlayer[], team
         if (data.teams && Array.isArray(data.teams)) {
             data.teams.forEach((t: any) => {
                 teams.push({
-                    tid: t.tid + 400,
+                    tid: t.tid + 4000,
                     cid: t.cid,
                     did: t.did,
                     region: t.region,
                     name: t.name,
                     abbrev: t.abbrev,
-                    pop: t.pop,
+                    pop: t.pop || 1.0,
                     stadiumCapacity: t.stadiumCapacity,
                     imgURL: t.imgURL,
                     colors: t.colors,
@@ -326,7 +326,7 @@ export const fetchBLeagueRoster = async (): Promise<{ players: NBAPlayer[], team
 
                     const player: NBAPlayer = {
                         internalId: `bleague-${item.tid}-${playerName.replace(/\s+/g, '')}-${item.born?.year || '0'}`,
-                        tid: item.tid !== undefined ? item.tid + 400 : -1,
+                        tid: item.tid !== undefined ? item.tid + 4000 : -1, // Offset B-League by 4000
                         name: playerName,
                         overallRating: calculateBLeagueOverall(scaledRatings[0]),
                         ratings: scaledRatings,

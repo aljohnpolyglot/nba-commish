@@ -34,7 +34,15 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
         </div>
       );
     }
-    return <img src={team.logoUrl} alt={team.name} className="w-12 h-12 md:w-24 md:h-24 object-contain drop-shadow-2xl group-hover:scale-110 transition-transform" referrerPolicy="no-referrer" />;
+    if (team.logoUrl) {
+      return <img src={team.logoUrl} alt={team.name} className="w-12 h-12 md:w-24 md:h-24 object-contain drop-shadow-2xl group-hover:scale-110 transition-transform" referrerPolicy="no-referrer" />;
+    }
+    // Non-NBA team without logo
+    return (
+      <div className="w-12 h-12 md:w-24 md:h-24 rounded-full bg-emerald-900/30 border-2 border-emerald-500/40 flex items-center justify-center text-emerald-400 font-black text-lg group-hover:scale-110 transition-transform">
+        {team.abbrev?.slice(0, 3) || '?'}
+      </div>
+    );
   };
   const [activeTab, setActiveTab] = React.useState<'away' | 'home' | 'comparison'>('away');
   const [sortConfig, setSortConfig] = React.useState<{ key: SortKey; direction: 'asc' | 'desc' }>({

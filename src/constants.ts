@@ -335,8 +335,8 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
 };
 
 export const SEASON_DATES = [
-  { phase: 'Offseason' as GamePhase, displayName: 'Offseason', start: [7, 1], end: [8, 11] },
-  { phase: 'Schedule Planning' as GamePhase, displayName: 'Schedule Planning', start: [8, 12], end: [8, 13] },
+  { phase: 'Offseason' as GamePhase, displayName: 'Offseason', start: [7, 1], end: [8, 5] },
+  { phase: 'Schedule Planning' as GamePhase, displayName: 'Schedule Planning', start: [8, 6], end: [8, 13] },
   { phase: 'Schedule Release' as GamePhase, displayName: 'Schedule Release', start: [8, 14], end: [8, 14] },
   { phase: 'Training Camp' as GamePhase, displayName: 'Training Camp', start: [8, 15], end: [9, 30] },
   { phase: 'Preseason' as GamePhase, displayName: 'Preseason', start: [10, 1], end: [10, 23] },

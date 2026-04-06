@@ -1,5 +1,6 @@
 import { NBAPlayer, NBATeam } from '../../types';
 import { getInjuries } from '../injuryService';
+import { normalRandom } from './utils';
 import {
   getPlayerInjuryProfile,
   get2KExplosiveness,
@@ -79,6 +80,28 @@ const MAJOR_INJURY_STAT_CHANGES: Record<string, Partial<Record<string, number>>>
 const MAJOR_INJURY_GAMES_THRESHOLD = 15;
 
 /**
+ * Season-ending injuries: always force a minimum of 82 gamesRemaining so the
+ * player cannot return in the same season regardless of the random duration roll.
+ * 82 is one full NBA regular season — enough to guarantee they miss the remainder
+ * of the current year (and a handful of games at the start of next season, which
+ * mirrors real ACL / Achilles recovery timelines).
+ */
+const SEASON_ENDING_INJURIES = new Set([
+  'Torn ACL',
+  'Torn Achilles',
+  'Torn Patellar Tendon',
+  'Tibial Fracture',
+  'Hip Fracture',
+]);
+const SEASON_ENDING_MIN_GAMES = 82;
+
+export function enforceSeasonEndingMinimum(type: string, games: number): number {
+  return SEASON_ENDING_INJURIES.has(type)
+    ? Math.max(SEASON_ENDING_MIN_GAMES, games)
+    : games;
+}
+
+/**
  * Apply permanent stat changes to a player's current-season ratings when
  * a major injury event occurs.  Clamps each rating to [0, 99].
  *
@@ -108,6 +131,17 @@ export function applyMajorInjuryStatChanges(
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
+}
+
+/**
+ * Duration multiplier around the JSON mean.
+ * Uses a normal distribution (σ=0.15) clamped to [0.75, 1.30] so the
+ * empirically-calibrated JSON `games` stays close to reality.
+ * healthLevel boosts severity (injured-prone / cumulative wear) additively.
+ */
+function durationMult(healthLevel = 0): number {
+  const base = clamp(normalRandom(1.0, 0.15), 0.75, 1.30);
+  return base + healthLevel * 0.10;
 }
 
 /** Weighted random pick from an array of [item, weight] pairs. */
@@ -155,10 +189,10 @@ function genericInjury(healthLevel = 0): { type: string; gamesRemaining: number 
   let index   = _cumSums.findIndex(cs => cs >= rand);
   if (index === -1) index = injuries.length - 1;
   const inj   = injuries[index];
-  const mult  = 0.25 + Math.random() * 1.5;
+  const games = Math.max(1, Math.round(durationMult(healthLevel) * inj.games));
   return {
     type: inj.name,
-    gamesRemaining: Math.max(1, Math.round((1 + healthLevel) * mult * inj.games)),
+    gamesRemaining: enforceSeasonEndingMinimum(inj.name, games),
   };
 }
 
@@ -200,10 +234,10 @@ function profiledInjury(
   const inj = weightedRandom(injPool);
   if (!inj) return genericInjury(healthLevel);
 
-  const mult = 0.25 + Math.random() * 1.5;
+  const games = Math.max(1, Math.round(durationMult(healthLevel) * inj.games));
   return {
     type: inj.name,
-    gamesRemaining: Math.max(1, Math.round((1 + healthLevel) * mult * inj.games)),
+    gamesRemaining: enforceSeasonEndingMinimum(inj.name, games),
   };
 }
 

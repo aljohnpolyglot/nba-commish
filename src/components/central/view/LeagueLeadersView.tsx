@@ -39,7 +39,7 @@ export const LeagueLeadersView: React.FC = () => {
     // NBA-style qualifying minimums — only kick in after 10 games have been played
     const maxGP = Math.max(...playersWithStats.map(p => p.stat?.gp || 0), 1);
     const seasonsStarted = maxGP >= 10;
-    const minGP = Math.max(10, Math.floor(maxGP * 0.3)); // 30% of max games played, floor 10
+    const minGP = Math.max(1, Math.floor(maxGP * 0.3)); // 30% of max games played, no hard floor early season
 
     const getTop5 = (cat: StatCategory, asc = false, qualifier?: (s: any) => boolean) => {
       const pool = (seasonsStarted && qualifier)
@@ -58,8 +58,8 @@ export const LeagueLeadersView: React.FC = () => {
     // Qualifier helpers (ignored entirely before 10 games played)
     const qVolume   = (s: any) => s.gp >= minGP;                                          // per-game counting stats
     const qFGPct    = (s: any) => s.gp >= minGP && s.fga / s.gp >= 3.0;                  // FG%: ≥3 FGA/game
-    const q3PPct    = (s: any) => s.gp >= 10    && s.tpa / s.gp >= 1.0;                  // 3P%: ≥1 3PA/game
-    const qFTPct    = (s: any) => s.gp >= 10    && s.fta / s.gp >= 2.0;                  // FT%: ≥2 FTA/game
+    const q3PPct    = (s: any) => s.gp >= minGP  && s.tpa / s.gp >= 1.0;                  // 3P%: ≥1 3PA/game
+    const qFTPct    = (s: any) => s.gp >= minGP  && s.fta / s.gp >= 2.0;                  // FT%: ≥2 FTA/game
     const qAdvanced = (s: any) => s.gp >= minGP && s.min / s.gp >= 10;                   // advanced: ≥10 MPG
     const qRating   = (s: any) => s.gp >= minGP && s.min / s.gp >= 15;                   // ORtg/DRtg: ≥15 MPG
 

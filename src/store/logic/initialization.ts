@@ -1,7 +1,6 @@
 import { GameState, HistoricalStatPoint, NBAPlayer as Player, DraftPick, LazySimProgress } from '../../types';
 import { generateInitialContent } from '../../services/llm/llm';
 import { getRosterData } from '../../services/rosterService';
-import { generateSchedule } from '../../services/gameScheduler';
 import { INITIAL_LEAGUE_STATS } from '../../constants';
 import { DEFAULT_MEDIA_RIGHTS } from '../../utils/broadcastingUtils';
 import { fetchEuroleagueRoster, fetchWNBARoster, fetchPBARoster, fetchBLeagueRoster } from '../../services/externalRosterService';
@@ -67,14 +66,14 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     // Staff loaded lazily after game init (see GameContext idle effect)
     const emptyStaff = { owners: [], gms: [], coaches: [], leagueOffice: [] };
 
-    // Always generate the full schedule with a default broadcasting deal so
-    // every game has a broadcaster + tipoff time from day one.
-    const schedule = generateSchedule(teams, undefined, undefined, null, null, DEFAULT_MEDIA_RIGHTS);
-    const startDateFormatted = new Date('2025-08-12T00:00:00.000Z').toLocaleDateString('en-US', {
+    // Schedule is intentionally empty at start — generated on Aug 14 (Schedule Release Day)
+    // so the commissioner has Aug 6-13 to configure Christmas, Global Games, and Intl Preseason.
+    const schedule: any[] = [];
+    const startDateFormatted = new Date('2025-08-06T00:00:00.000Z').toLocaleDateString('en-US', {
         month: 'short', day: 'numeric', year: 'numeric'
     });
 
-    // Generate Initial Content via AI (based on Aug 12 — the simulation start point)
+    // Generate Initial Content via AI (based on Aug 6 — the simulation start point)
     let initialContent: any = { newEmails: [], newNews: [], newSocialPosts: [] };
     if (!payload.skipLLM) {
         initialContent = await generateInitialContent(startDateFormatted, commissionerName, players, teams, emptyStaff);
@@ -84,7 +83,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
                 sender: 'League Office',
                 senderRole: 'Operations',
                 subject: 'Schedule Generation Approaching',
-                body: `Commissioner ${commissionerName}, the league schedule will be generated on August 14. You have until then to set the Christmas Day matchups and any Global Games.`,
+                body: `Commissioner ${commissionerName}, the league schedule will be generated on August 14. You have until then to set Christmas Day matchups, Global Games, and International Preseason games.`,
                 playerPortraitUrl: 'https://cdn.nba.com/headshots/nba/latest/1040x760/logoman.png'
             }],
             newNews: [{
@@ -188,7 +187,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     };
 
     // ── Lazy sim: jump to chosen start date ───────────────────────────────────
-    if (payload.jumpRequired && payload.startDate && payload.startDate > '2025-08-12') {
+    if (payload.jumpRequired && payload.startDate && payload.startDate > '2025-08-06') {
         const { runLazySim } = await import('../../services/logic/lazySimRunner');
         const { initialState } = await import('../initialState');
 

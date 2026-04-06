@@ -13,6 +13,7 @@ import {
 } from '../../services/simulation/convert2kAttributes';
 import { convertTo2KRating } from '../../utils/helpers';
 import { getPlayerRealK2 } from '../../data/NBA2kRatings';
+import { useLeagueScaledRatings, LEAGUE_DISPLAY_MULTIPLIERS } from '../../hooks/useLeagueScaledRatings';
 
 interface PlayerRatingsModalProps {
   player: NBAPlayer;
@@ -250,14 +251,21 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
   const [localRatings, setLocalRatings] = useState<Record<string, number>>(currentRatings);
   const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>({});
 
-  const team = state.teams.find(t => t.id === player.tid);
+  const team = state.teams.find(t => t.id === player.tid)
+    ?? (state.nonNBATeams ?? []).find((t: any) => t.tid === player.tid);
 
-  const k2 = useMemo(() => calculateK2(localRatings as any, {
+  // For external-league players apply the same sim-scale multiplier to ratings before
+  // computing K2, so the displayed attributes match in-game performance levels.
+  // In edit mode we still scale — the user sees effective values as they tweak BBGM numbers.
+  const isExternalLeague = !!LEAGUE_DISPLAY_MULTIPLIERS[player.status ?? ''];
+  const scaledRatings = useLeagueScaledRatings(player.status, localRatings);
+
+  const k2 = useMemo(() => calculateK2(scaledRatings as any, {
     pos: player.pos,
     heightIn: player.hgt,
     weightLbs: player.weight,
     age: player.age,
-  }), [localRatings, player]);
+  }), [scaledRatings, player]);
 
   // Real 2K data from gist — averaged with computed k2 for display (UI-only, no gameplay effect)
   const real2KSubs = useMemo(() => getPlayerRealK2(player.name), [player.name]);
@@ -348,9 +356,14 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
                   <h2 className="text-lg font-black uppercase tracking-tight text-white leading-none truncate">
                     {player.name}
                   </h2>
-                  <p className="text-xs text-slate-400 font-medium mt-0.5">
+                    <p className="text-xs text-slate-400 font-medium mt-0.5">
                     {player.pos} &bull; {team?.name ?? 'Free Agent'} &bull; Age {(player as any).born?.year ? new Date().getFullYear() - (player as any).born.year : player.age}
                   </p>
+                  {isExternalLeague && (
+                    <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-amber-500/10 border border-amber-500/25 rounded-full text-[9px] font-black text-amber-400 uppercase tracking-widest">
+                      {player.status}
+                    </span>
+                  )}
                 </div>
                 {/* 2K OVR badge */}
                 <div

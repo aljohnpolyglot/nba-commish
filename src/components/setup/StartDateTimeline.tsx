@@ -42,7 +42,7 @@ const dateToX = (iso: string): number =>
 
 // Zone segments for the colored track background
 const ZONE_SEGMENTS: { start: string; end: string; zone: DateZone }[] = [
-  { start: '2025-08-12', end: '2025-10-23', zone: 'offseason' },
+  { start: '2025-08-06', end: '2025-10-23', zone: 'offseason' },
   { start: '2025-10-24', end: '2026-01-13', zone: 'early' },
   { start: '2026-01-14', end: '2026-02-12', zone: 'mid' },
   { start: '2026-02-13', end: '2026-02-16', zone: 'allstar' },

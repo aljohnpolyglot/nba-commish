@@ -21,7 +21,7 @@ type Step = 'name' | 'timeline' | 'review';
 export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, onBack }) => {
   const [step, setStep] = useState<Step>('name');
   const [name, setName] = useState('');
-  const [chosenDate, setChosenDate] = useState<string>('2025-08-12');
+  const [chosenDate, setChosenDate] = useState<string>('2025-08-06');
   const [showSettings, setShowSettings] = useState(true);
   const [settings, setSettings] = useState(() => SettingsManager.getSettings());
 
@@ -49,13 +49,13 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, o
       startScenario: 'regular_season',
       skipLLM: !settings.enableLLM,
       startDate: date,
-      jumpRequired: date > '2025-08-12',
+      jumpRequired: date > '2025-08-06',
     });
   };
 
   const handleDateSelected = (date: string) => {
     setChosenDate(date);
-    if (date === '2025-08-12') {
+    if (date === '2025-08-06') {
       handleStart(date);
     } else {
       setStep('review');

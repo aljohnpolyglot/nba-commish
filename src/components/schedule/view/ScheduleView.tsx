@@ -270,7 +270,7 @@ export const ScheduleView: React.FC = () => {
               exit={{ opacity: 0 }}
               className="flex-1 overflow-y-auto custom-scrollbar"
             >
-              <DayView 
+              <DayView
                 selectedDate={selectedDate}
                 setSelectedDate={setSelectedDate}
                 setViewMode={setViewMode}
@@ -291,6 +291,7 @@ export const ScheduleView: React.FC = () => {
                 openConfirmModal={openConfirmModal}
                 boxScores={state.boxScores}
                 players={state.players}
+                nonNBATeams={state.nonNBATeams}
               />
             </motion.div>
           )}
@@ -446,8 +447,22 @@ export const ScheduleView: React.FC = () => {
           <BoxScoreModal
             game={selectedBoxScoreGame}
             result={state.boxScores.find(b => b.gameId === selectedBoxScoreGame.gid)}
-            homeTeam={getTeamForGame(selectedBoxScoreGame.homeTid, state.teams)}
-            awayTeam={getTeamForGame(selectedBoxScoreGame.awayTid, state.teams)}
+            homeTeam={(() => {
+              const tid = selectedBoxScoreGame.homeTid;
+              if (tid >= 100) {
+                const t = state.nonNBATeams?.find((t: any) => t.tid === tid);
+                return t ? { id: tid, name: t.name, abbrev: t.abbrev, logoUrl: t.imgURL, conference: t.league } as any : getTeamForGame(tid, state.teams);
+              }
+              return getTeamForGame(tid, state.teams);
+            })()}
+            awayTeam={(() => {
+              const tid = selectedBoxScoreGame.awayTid;
+              if (tid >= 100) {
+                const t = state.nonNBATeams?.find((t: any) => t.tid === tid);
+                return t ? { id: tid, name: t.name, abbrev: t.abbrev, logoUrl: t.imgURL, conference: t.league } as any : getTeamForGame(tid, state.teams);
+              }
+              return getTeamForGame(tid, state.teams);
+            })()}
             players={state.players}
             onClose={() => setSelectedBoxScoreGame(null)}
             onPlayerClick={p => setBoxScoreClickedPlayer(p)}

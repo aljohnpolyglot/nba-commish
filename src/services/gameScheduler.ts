@@ -279,6 +279,41 @@ export const generateSchedule = (
   // Sort by date
   games.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+  // ── Schedule summary log ────────────────────────────────────────────────────
+  const preseasonScrimmages = games.filter(g => (g as any).isExhibition).length;
+  const preseasonGames      = games.filter(g => (g as any).isPreseason && !(g as any).isExhibition).length;
+  const christmasCount      = christmasGames?.length ?? 0;
+  const globalCount         = globalGames?.length ?? 0;
+  const regularSeason       = games.filter(g => !(g as any).isPreseason).length;
+  console.log(
+    `[Scheduler] Generated schedule — ` +
+    `preseason: ${preseasonGames} (+ ${preseasonScrimmages} scrimmages) | ` +
+    `Christmas: ${christmasCount} | global: ${globalCount} | reg season: ${regularSeason} | total: ${games.length}`
+  );
+  if (globalGames && globalGames.length > 0) {
+    globalGames.forEach(g => {
+      const home = teams.find(t => t.id === g.homeTid)?.abbrev ?? g.homeTid;
+      const away = teams.find(t => t.id === g.awayTid)?.abbrev ?? g.awayTid;
+      console.log(`  [Global Game] ${home} vs ${away} — ${g.date.slice(0, 10)} in ${g.city}, ${g.country}`);
+    });
+  }
+
+  // Per-team game count check (regular season only)
+  const teamGameCounts = new Map<number, number>();
+  games.filter(g => !(g as any).isPreseason).forEach(g => {
+    teamGameCounts.set(g.homeTid, (teamGameCounts.get(g.homeTid) ?? 0) + 1);
+    teamGameCounts.set(g.awayTid, (teamGameCounts.get(g.awayTid) ?? 0) + 1);
+  });
+  const counts = [...teamGameCounts.values()];
+  const minGames = Math.min(...counts), maxGames = Math.max(...counts);
+  console.log(`[Scheduler] Per-team reg-season game count: min=${minGames} max=${maxGames} (should be ~82)`);
+  if (maxGames !== minGames) {
+    [...teamGameCounts.entries()].sort((a,b) => b[1]-a[1]).slice(0,5).forEach(([tid, cnt]) => {
+      const abbrev = teams.find(t => t.id === tid)?.abbrev ?? tid;
+      console.log(`  ${abbrev}: ${cnt} games`);
+    });
+  }
+
   // Attach broadcaster + tipoff metadata when a media deal is available
   if (mediaRights) {
     return attachBroadcastersToGames(games, mediaRights, teams);

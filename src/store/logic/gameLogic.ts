@@ -211,13 +211,24 @@ export const processTurn = async (
         actualChanges
     } : null;
 
-    // Schedule generation
+    // Schedule generation — fires ONCE on Aug 14 (Schedule Release Day).
+    // Christmas games, Global Games, and Intl Preseason are stored in state during Aug 6-13
+    // and consumed here. No mid-season regenerations.
     let finalSchedule = stateWithSim.schedule;
     const normalizedFinalDate = normalizeDate(dateString);
-    if (finalSchedule.length === 0 && normalizedFinalDate === '2025-08-14') {
-        finalSchedule = generateSchedule(state.teams, result.christmasGames || state.christmasGames, result.globalGames || state.globalGames, state.leagueStats.divisionGames, state.leagueStats.conferenceGames);
-    } else if (finalSchedule.length > 0 && !finalSchedule.some(g => g.played) && (action.type === 'SET_CHRISTMAS_GAMES' || action.type === 'GLOBAL_GAMES')) {
-        finalSchedule = generateSchedule(state.teams, result.christmasGames || state.christmasGames, result.globalGames || state.globalGames, state.leagueStats.divisionGames, state.leagueStats.conferenceGames);
+    const hasRegularSeasonGames = finalSchedule.some(g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn);
+    if (!hasRegularSeasonGames && normalizedFinalDate >= '2025-08-14') {
+        console.log(`[Schedule] GENERATING on Aug14 — christmas=${(result.christmasGames || state.christmasGames)?.length ?? 0} global=${(result.globalGames || state.globalGames)?.length ?? 0}`);
+        // Preserve any intl preseason games added before Aug 14
+        const intlPreseasonGames = finalSchedule.filter(g => (g as any).isPreseason && (g.homeTid >= 100 || g.awayTid >= 100));
+        finalSchedule = generateSchedule(state.teams, result.christmasGames || state.christmasGames, result.globalGames || state.globalGames, state.leagueStats.numGamesDiv ?? null, state.leagueStats.numGamesConf ?? null, state.leagueStats.mediaRights);
+        if (intlPreseasonGames.length > 0) {
+            // Re-gid to avoid collisions with schedule gids (which start from 0)
+            const maxGid = Math.max(0, ...finalSchedule.map(g => g.gid));
+            const renumbered = intlPreseasonGames.map((g, i) => ({ ...g, gid: maxGid + 1 + i }));
+            finalSchedule = [...finalSchedule, ...renumbered].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        }
+        console.log(`[Schedule] Generated: ${finalSchedule.length} total games (${intlPreseasonGames.length} intl preseason preserved)`);
     }
 
     if (action.type === 'ADD_PRESEASON_INTERNATIONAL') {

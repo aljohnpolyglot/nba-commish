@@ -36,25 +36,23 @@ export const calculatePBAOverall = (ratings: any): number => {
     // User Request: "add more tiers pls by increments of 5"
     
     let reduction = 0;
-    
-    if (ovr >= 75) reduction = 30;
-    else if (ovr >= 70) reduction = 27;
-    else if (ovr >= 65) reduction = 24;
-    else if (ovr >= 60) reduction = 21;
-    else if (ovr >= 55) reduction = 18;
-    else if (ovr >= 50) reduction = 15;
-    else if (ovr >= 45) reduction = 12;
-    else reduction = 7; // < 45
-    
+
+    if (ovr >= 75) reduction = 35;
+    else if (ovr >= 70) reduction = 32;
+    else if (ovr >= 65) reduction = 29;
+    else if (ovr >= 60) reduction = 26;
+    else if (ovr >= 55) reduction = 23;
+    else if (ovr >= 50) reduction = 20;
+    else if (ovr >= 45) reduction = 17;
+    else reduction = 12;
+
     ovr = ovr - reduction;
-    
-    // Floor at 10 (User requested)
-    if (ovr < 10) {
-        ovr = 10;
-    }
-    
-    // Cap at 65 (approx NBA deep bench/role player level) to prevent OP PBA players unless exceptional
-    if (ovr > 65) ovr = 65;
+
+    // Floor at 10
+    if (ovr < 10) ovr = 10;
+
+    // Cap at 60 (better than the 65 cap that was producing OP PBA players)
+    if (ovr > 60) ovr = 60;
 
     return Math.round(ovr);
 };

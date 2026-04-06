@@ -182,8 +182,8 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                             }
 
                             // STEP 3: Ensure the NBA Booker (tid < 100) stays as "Devin Booker"
-                            // Only rename to full name if his tid is in the Euroleague range (100-199)
-                            if (playerName === "Devin Booker" && p.tid >= 100 && p.tid < 200) {
+                            // Only rename to full name if his tid is in the Euroleague range (1000-1999)
+                            if (playerName === "Devin Booker" && p.tid >= 1000 && p.tid < 2000) {
                                 console.log(`🏀 DEBUG: Renaming main roster Devin Booker (tid: ${p.tid}) → "Devin Rydale Booker"`);
                                 playerName = "Devin Rydale Booker";
                             }

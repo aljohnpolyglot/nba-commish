@@ -45,19 +45,19 @@ export const calculateBLeagueOverall = (ratings: any): number => {
     if (hgt > 60) ovr += (hgt - 60) * 0.2;
 
     let reduction = 0;
-    if (ovr >= 75) reduction = 26;
-    else if (ovr >= 70) reduction = 24;
-    else if (ovr >= 65) reduction = 21;
-    else if (ovr >= 60) reduction = 18;
-    else if (ovr >= 55) reduction = 15;
-    else if (ovr >= 50) reduction = 12;
-    else if (ovr >= 45) reduction = 9;
-    else reduction = 5;
+    if (ovr >= 75) reduction = 18;
+    else if (ovr >= 70) reduction = 16;
+    else if (ovr >= 65) reduction = 13;
+    else if (ovr >= 60) reduction = 10;
+    else if (ovr >= 55) reduction = 7;
+    else if (ovr >= 50) reduction = 4;
+    else if (ovr >= 45) reduction = 1;
+    else reduction = 0;
 
     ovr = ovr - reduction;
 
     if (ovr < 10) ovr = 10;
-    if (ovr > 68) ovr = 68;
+    if (ovr > 75) ovr = 75;
 
     return Math.round(ovr);
 };

@@ -1,6 +1,6 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight, Play, MonitorPlay, FastForward } from 'lucide-react';
-import { Game, NBATeam, NBAPlayer } from '../../../../types';
+import { ChevronLeft, ChevronRight, Play, MonitorPlay, FastForward, Globe } from 'lucide-react';
+import { Game, NBATeam, NBAPlayer, NonNBATeam } from '../../../../types';
 import { normalizeDate, getTeamForGame } from '../../../../utils/helpers';
 import { AllStarDayView } from './AllStarDayView';
 import { AllStarGameCard } from './AllStarGameCard';
@@ -26,6 +26,7 @@ interface DayViewProps {
   openConfirmModal: (title: string, message: string, onConfirm: () => void) => void;
   boxScores?: any[];
   players?: NBAPlayer[];
+  nonNBATeams?: NonNBATeam[];
 }
 
 export const DayView: React.FC<DayViewProps> = ({
@@ -49,6 +50,7 @@ export const DayView: React.FC<DayViewProps> = ({
   openConfirmModal,
   boxScores,
   players,
+  nonNBATeams = [],
 }) => {
   const stateDateNorm = normalizeDate(state.date);
   const selectedDateNorm = normalizeDate(selectedDate);
@@ -207,8 +209,20 @@ export const DayView: React.FC<DayViewProps> = ({
                   />;
                 }
 
-                const homeTeam = getTeamForGame(game.homeTid, state.teams);
-                const awayTeam = getTeamForGame(game.awayTid, state.teams);
+                const isIntlPreseason = (game as any).isPreseason && (game.homeTid >= 100 || game.awayTid >= 100);
+
+                // Resolve teams — NBA teams from state.teams, non-NBA clubs from nonNBATeams
+                const resolveTeam = (tid: number) => {
+                  if (tid >= 100) {
+                    const nonNba = nonNBATeams.find(t => t.tid === tid);
+                    if (nonNba) return { id: tid, name: nonNba.name, abbrev: nonNba.abbrev, logoUrl: nonNba.imgURL, conference: nonNba.league };
+                    return null;
+                  }
+                  return getTeamForGame(tid, state.teams);
+                };
+
+                const homeTeam = resolveTeam(game.homeTid);
+                const awayTeam = resolveTeam(game.awayTid);
                 if (!homeTeam || !awayTeam) return null;
 
                 const isIntraSquad = game.homeTid === game.awayTid;
@@ -225,16 +239,19 @@ export const DayView: React.FC<DayViewProps> = ({
                   : null;
 
                 return (
-                  <div key={game.gid} className={`bg-[#111] border rounded-2xl p-4 transition-all hover:border-white/10 ${game.isPlayoff || game.isPlayIn ? 'border-indigo-500/20' : 'border-white/5'}`}>
+                  <div key={game.gid} className={`bg-[#111] border rounded-2xl p-4 transition-all hover:border-white/10 ${game.isPlayoff || game.isPlayIn ? 'border-indigo-500/20' : isIntlPreseason ? 'border-emerald-500/20' : 'border-white/5'}`}>
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
                         <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                          {isIntraSquad ? 'Scrimmage' : game.played ? (() => {
+                          {isIntraSquad ? 'Scrimmage' : isIntlPreseason ? (game.played ? 'Intl Preseason · Final' : `Intl Preseason${(game as any).city ? ` · ${(game as any).city}` : ''}`) : game.played ? (() => {
                             const bs = boxScores?.find(b => b.gameId === game.gid);
                             if (!bs?.isOT) return 'Final';
                             return bs.otCount && bs.otCount > 1 ? `Final ${bs.otCount}OT` : 'Final OT';
                           })() : 'Scheduled'}
                         </div>
+                        {isIntlPreseason && (
+                          <Globe size={14} className="text-emerald-500" />
+                        )}
                         {(game.isPlayoff || game.isPlayIn) && (
                           <img
                             src="https://content.sportslogos.net/logos/6/981/full/_nba_playoffs_logo_primary_2022_sportslogosnet-4785.png"
@@ -256,12 +273,13 @@ export const DayView: React.FC<DayViewProps> = ({
                     <div className="flex items-center justify-between gap-4">
                       {/* Away Team */}
                       <div className="flex-1 flex flex-col items-center gap-2">
-                        <img
-                          src={awayTeam.logoUrl}
-                          className="w-12 h-12 object-contain"
-                          alt={awayName}
-                          referrerPolicy="no-referrer"
-                        />
+                        {(awayTeam as any).logoUrl ? (
+                          <img src={(awayTeam as any).logoUrl} className="w-12 h-12 object-contain" alt={awayName} referrerPolicy="no-referrer" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-emerald-900/30 border border-emerald-500/30 flex items-center justify-center">
+                            <Globe size={20} className="text-emerald-400" />
+                          </div>
+                        )}
                         <div className="text-center">
                           <div className="text-sm font-black text-white">{awayLabel}</div>
                           <div className="text-[10px] text-slate-500 font-bold">{awayName}</div>
@@ -276,7 +294,7 @@ export const DayView: React.FC<DayViewProps> = ({
                       <div className="flex flex-col items-center gap-2">
                         <div className="text-xs font-black text-slate-800 italic">VS</div>
                         {!game.played && isActuallyToday && (
-                          <button 
+                          <button
                             onClick={() => handleWatchGame(game)}
                             className="p-2 rounded-full bg-white text-black hover:bg-emerald-400 transition-all"
                           >
@@ -287,12 +305,13 @@ export const DayView: React.FC<DayViewProps> = ({
 
                       {/* Home Team */}
                       <div className="flex-1 flex flex-col items-center gap-2">
-                        <img
-                          src={homeTeam.logoUrl}
-                          className="w-12 h-12 object-contain"
-                          alt={homeName}
-                          referrerPolicy="no-referrer"
-                        />
+                        {(homeTeam as any).logoUrl ? (
+                          <img src={(homeTeam as any).logoUrl} className="w-12 h-12 object-contain" alt={homeName} referrerPolicy="no-referrer" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-emerald-900/30 border border-emerald-500/30 flex items-center justify-center">
+                            <Globe size={20} className="text-emerald-400" />
+                          </div>
+                        )}
                         <div className="text-center">
                           <div className="text-sm font-black text-white">{homeLabel}</div>
                           <div className="text-[10px] text-slate-500 font-bold">{homeName}</div>
