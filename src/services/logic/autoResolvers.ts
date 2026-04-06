@@ -69,10 +69,12 @@ export const autoScheduleIntlPreseason = (state: GameState): Partial<GameState> 
   };
 
   // Non-NBA opponents: pick randomly from top 5 by player strength, no repeats
+  // Require at least 9 players so the sim can field a proper rotation
+  const playerCount = (tid: number) => playersByTid.get(tid)?.length ?? 0;
   const usedNonNBA = new Set<number>();
   const pickNonNBA = (league: NonNBATeam['league']) => {
     const pool = nonNBATeams
-      .filter(t => t.league === league && !usedNonNBA.has(t.tid))
+      .filter(t => t.league === league && !usedNonNBA.has(t.tid) && playerCount(t.tid) >= 9)
       .sort((a, b) => teamStrength(b.tid) - teamStrength(a.tid))
       .slice(0, 5);
     if (pool.length === 0) return null;

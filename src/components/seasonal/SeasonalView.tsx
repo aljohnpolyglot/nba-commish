@@ -426,7 +426,7 @@ const SeasonalView: React.FC = () => {
       {preseasonIntlModalOpen && (
         <PreseasonInternationalModal
           teams={state.teams}
-          nonNBATeams={state.nonNBATeams}
+          nonNBATeams={(state.nonNBATeams ?? []).filter(t => (state.players ?? []).filter(p => p.tid === t.tid).length >= 9)}
           onClose={() => setPreseasonIntlModalOpen(false)}
           onConfirm={handlePreseasonIntl}
         />
