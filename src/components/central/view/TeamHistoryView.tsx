@@ -252,8 +252,22 @@ export const TeamHistoryView: React.FC = () => {
   // ── Franchise records processing ──────────────────────────────────────────
   const processedRecords = useMemo(() => {
     const source = recordType === 'regular' ? regularRecords : playoffRecords;
+    // Filter out records from the 2025-26 real-life NBA season (Oct 2025 – Jun 2026)
+    // since our simulation starts in 2025 and those real records conflict with simulated data.
+    const filtered = source.filter(rec => {
+      if (!rec.DATE) return true;
+      try {
+        const d = new Date(rec.DATE);
+        const yr = d.getFullYear();
+        const mo = d.getMonth() + 1; // 1-indexed
+        // 2025-26 season: Oct 2025 – Jun 2026
+        if (yr === 2025 && mo >= 10) return false;
+        if (yr === 2026 && mo <= 6) return false;
+      } catch { /* keep if unparseable */ }
+      return true;
+    });
     const grouped: Record<string, any[]> = {};
-    source.forEach(rec => {
+    filtered.forEach(rec => {
       const cat = rec.SearchCategory;
       if (!grouped[cat]) grouped[cat] = [];
       grouped[cat].push(rec);

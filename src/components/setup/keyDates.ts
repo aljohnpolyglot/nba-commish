@@ -47,17 +47,16 @@ export const KEY_DATES: KeyDate[] = [
   { date: '2026-04-10', label: 'Play-In Format',    sublabel: 'Confirm bracket rules',                   icon: '📐', zone: 'late', placeholder: true, placeholderLabel: 'Play-In Format Confirmation — Future Feature' },
   { date: '2026-04-15', label: 'Season Ends',       sublabel: 'Latest possible start date',              icon: '🏁', zone: 'late' },
 
-  // LOCKED
-  { date: '2026-04-16', label: 'Play-In Starts',    sublabel: 'LOCKED',                                  icon: '🔒', zone: 'locked', locked: true },
-  { date: '2026-04-18', label: 'Playoffs Begin',    sublabel: 'LOCKED',                                  icon: '🏆', zone: 'locked', locked: true },
-  { date: '2026-06-01', label: 'Finals',            sublabel: 'LOCKED',                                  icon: '🏆', zone: 'locked', locked: true },
-  { date: '2026-06-21', label: 'Draft Lottery',     sublabel: 'LOCKED',                                  icon: '🎰', zone: 'locked', locked: true },
-  { date: '2026-06-25', label: 'NBA Draft',         sublabel: 'LOCKED',                                  icon: '📋', zone: 'locked', locked: true },
-  { date: '2026-07-01', label: 'Free Agency',       sublabel: 'LOCKED',                                  icon: '✍️',  zone: 'locked', locked: true },
+  // POST-SEASON
+  { date: '2026-04-16', label: 'Play-In',           sublabel: 'Play-In Tournament',                      icon: '⚡', zone: 'late' },
+  { date: '2026-04-19', label: 'Playoffs',          sublabel: 'First Round begins',                      icon: '🏆', zone: 'late' },
+  { date: '2026-06-01', label: 'Finals',            sublabel: 'NBA Finals begin',                        icon: '🏆', zone: 'late' },
+  { date: '2026-06-21', label: 'Draft Lottery',     sublabel: 'Draft order determined',                  icon: '🎰', zone: 'late' },
+  { date: '2026-06-25', label: 'NBA Draft',         sublabel: 'Rookie selection',                        icon: '📋', zone: 'late' },
 ];
 
 export const TIMELINE_MIN = '2025-08-06';
-export const TIMELINE_MAX = '2026-04-15';
+export const TIMELINE_MAX = '2026-06-29';
 export const TIMELINE_DISPLAY_END = '2026-07-10';
 
 export const ZONE_COLORS: Record<DateZone, string> = {

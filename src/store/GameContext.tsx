@@ -110,36 +110,9 @@ const actions = useGameActions(setState, () => stateRef.current);
         const newBoxScores = existing >= 0
           ? (prev.boxScores || []).map((b: any, i: number) => i === existing ? boxScoreEntry : b)
           : [...(prev.boxScores || []), boxScoreEntry];
-        // Update wins/losses for real teams only (not exhibition)
-        let newTeams = prev.teams;
-        if (result.homeTeamId > 0 && result.awayTeamId > 0) {
-          newTeams = prev.teams.map((t: any) => {
-            if (t.id === result.homeTeamId) {
-              const won = result.homeScore > result.awayScore;
-              return {
-                ...t,
-                wins: won ? t.wins + 1 : t.wins,
-                losses: won ? t.losses : t.losses + 1,
-                streak: won
-                  ? (t.streak?.type === 'W' ? { type: 'W', count: t.streak.count + 1 } : { type: 'W', count: 1 })
-                  : (t.streak?.type === 'L' ? { type: 'L', count: t.streak.count + 1 } : { type: 'L', count: 1 })
-              };
-            }
-            if (t.id === result.awayTeamId) {
-              const won = result.awayScore > result.homeScore;
-              return {
-                ...t,
-                wins: won ? t.wins + 1 : t.wins,
-                losses: won ? t.losses : t.losses + 1,
-                streak: won
-                  ? (t.streak?.type === 'W' ? { type: 'W', count: t.streak.count + 1 } : { type: 'W', count: 1 })
-                  : (t.streak?.type === 'L' ? { type: 'L', count: t.streak.count + 1 } : { type: 'L', count: 1 })
-              };
-            }
-            return t;
-          });
-        }
-        return { ...prev, schedule: newSchedule, boxScores: newBoxScores, teams: newTeams };
+        // NOTE: wins/losses are NOT updated here — ADVANCE_DAY handles that via the watchedGameResult
+        // injection in simulateGames to avoid double-counting (RECORD_WATCHED_GAME + ADVANCE_DAY race).
+        return { ...prev, schedule: newSchedule, boxScores: newBoxScores };
       });
 
       // Fire photo fetch for watched game — non-blocking

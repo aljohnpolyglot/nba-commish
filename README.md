@@ -222,6 +222,31 @@ Non-obvious facts uncovered while tracing bugs — saved here so we don't have t
 
 ---
 
+### ⚠️ Draft Data Model Pitfalls (learned Apr 2026)
+
+These bit us building the Draft Board — document them so we never repeat them.
+
+| Pitfall | Wrong | Right |
+|---------|-------|-------|
+| Deceased player check | `player.born?.died` | `(player as any).diedYear` — top-level field, NOT nested inside `born` |
+| Drafting team | `player.draft?.originalTid` | `player.draft?.tid` = team that made the pick; `originalTid` = team that originally owned the pick before any trade |
+| External league players in draft results | Using `player.draft.year` alone | PBA (tid 2000+) and Euroleague (tid 1000+) players have real-world `draft.year` values — always filter using `nbaTids.has(p.tid)` where `nbaTids = new Set(state.teams.map(t => t.id))` |
+| Draft prospects in results | Checking `draft.year` only | Draft prospects have `tid === -2`; they appear in BBGM data with `draft.year` set — exclude them from results panels |
+| Duplicate picks | Treating each player row as unique | Multiple players can share the same `draft.round + draft.pick` — deduplicate by pick slot via `Map<slot, player>` keeping highest OVR |
+| Historical draft accuracy | Assuming `draft.tid` matches real NBA history | Pre-sim historical data from alexnoob roster may have inaccurate `draft.tid` values for years before the simulation started — this is a data fidelity limitation, not a code bug |
+| POT at draft time | `estimatePot(currentOvr, ...)` | For historical classes, find `ratings.find(r => r.season === draftYear)` and compute `draftAge = player.age - (currentYear - draftYear)` — current ratings are inflated by years of development |
+| Draft board gating | Showing interactive board at all times | Gate the board: before June 25 → prospects shown as read-only scouting; on/after June 25 → interactive; after `state.draftComplete` → results only |
+| Lazy sim vs commissioner draft | No conflict handling | `autoRunDraft` checks `if (state.draftComplete) return {}` — commissioner-run draft takes precedence; lazy sim only runs the draft if the commissioner hasn't done it yet |
+
+**Key canonical checks:**
+- `player.tid === -2` → future draft prospect (not yet in the league)
+- `player.tid === -1` → free agent
+- `(state as any).draftComplete === true` → commissioner or lazy sim ran the draft this season (cleared on rollover)
+- `state.draftLotteryResult` → lottery was run this season (cleared on rollover)
+- Lottery date: May 14 (`${season}-05-14`), Draft date: June 25 (`${season}-06-25`), rollover: June 30
+
+---
+
 # NBA Commissioner Simulator
 
 A deep, narrative-driven NBA management game where you play as the **Commissioner of the entire NBA** — not a team. Every decision you make ripples through the league: player careers, team finances, public opinion, and your own legacy.
@@ -461,6 +486,16 @@ See `LEAGUE_RULES_README.md` for how to wire commissioner rule toggles/sliders t
 - **`p.stats.filter(row => row.gp > 0)`** — BBGM always filters zero-GP rows before exposing stats. We should do the same in any stat-aggregation utility to avoid dividing by zero.
 - **Per-season `AwardsAndChamp` layout** — Champion + Finals MVP hero → Best Record (by conf) → MVP → DPOY/SMOY/MIP/ROY → All-League/All-Defensive/All-Rookie. This is the canonical BBGM history layout; our `LeagueHistoryDetailView` mirrors it.
 - **`groupAwards` for player profiles** — BBGM groups `player.awards[]` by type and counts them ("3× MVP (2022, 2024, 2026)"). Our `PlayerBioView` already does this in a simpler way; formalize when building player profile pages.
+
+---
+
+#### Session Apr 12 2026 — Fixes:
+
+| Fix | Files | Notes |
+|-----|-------|-------|
+| **WNBA/external roster FA leak** | `src/services/logic/seasonRollover.ts` | Added `EXTERNAL_LEAGUES` guard in contract-expiry loop. Players with status `WNBA / Euroleague / PBA / B-League / G-League / Endesa` now skip contract expiry entirely — they just age, roster stays frozen. Without this, any WNBA player whose BBGM contract year expired was converted to `tid:-1, status:'Free Agent'` and immediately picked up by `runAIFreeAgencyRound`. |
+| **PlayerStatsView — players disappear after contract expires** | `src/components/central/view/PlayerStatsView.tsx` | Pre-filter used `player.tid` (current tid = -1 after expiry) for team filter, hiding any player whose contract expired. Fix: active NBA players (`tid > 0`) still pre-filtered; FA/expired players pass through and are filtered at the stats-record level using `agg.tid` (the team they actually played for). |
+| **DraftSimulatorView crash — leagueYear before initialization** | `src/components/draft/DraftSimulatorView.tsx` | `leagueYear` was declared inside the component body after the `allProspects` useMemo that referenced it, causing a TDZ error. Moved the entire date-gating block (`leagueYear`, `draftDate`, `today`, `isDraftTime`, `isDraftDone`) above `allProspects`. Removed the duplicate block. |
 
 ---
 

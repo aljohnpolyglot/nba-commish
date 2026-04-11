@@ -1,6 +1,24 @@
 import { PlayoffBracket, GameResult, Game, PlayInGame, PlayoffSeries } from '../../types';
 import { PlayoffGenerator } from './PlayoffGenerator';
 
+// Defines which pair of completed series creates each next-round matchup.
+// feeder1 = West/Away side, feeder2 = East/Home side (matters only for Finals home-court).
+const MATCHUP_PAIRS: ReadonlyArray<{
+  feeder1: string; feeder2: string; targetId: string;
+  round: 2 | 3 | 4; conference: 'East' | 'West' | 'Finals';
+}> = [
+  // First Round → Semis
+  { feeder1: 'WR1S1', feeder2: 'WR1S4', targetId: 'WR2S1', round: 2, conference: 'West' },
+  { feeder1: 'WR1S2', feeder2: 'WR1S3', targetId: 'WR2S2', round: 2, conference: 'West' },
+  { feeder1: 'ER1S1', feeder2: 'ER1S4', targetId: 'ER2S1', round: 2, conference: 'East' },
+  { feeder1: 'ER1S2', feeder2: 'ER1S3', targetId: 'ER2S2', round: 2, conference: 'East' },
+  // Semis → Conference Finals
+  { feeder1: 'WR2S1', feeder2: 'WR2S2', targetId: 'WR3S1', round: 3, conference: 'West' },
+  { feeder1: 'ER2S1', feeder2: 'ER2S2', targetId: 'ER3S1', round: 3, conference: 'East' },
+  // Conference Finals → NBA Finals (feeder1=WCF, feeder2=ECF — East gets home court)
+  { feeder1: 'WR3S1', feeder2: 'ER3S1', targetId: 'Finals', round: 4, conference: 'Finals' },
+];
+
 export class PlayoffAdvancer {
 
   // Call after each batch of sim results. Returns updated bracket + new games to inject.
@@ -13,13 +31,12 @@ export class PlayoffAdvancer {
     // Deep clone to avoid mutation
     let b: PlayoffBracket = {
       ...bracket,
-      series: bracket.series.map(s => ({ ...s })),
+      series: bracket.series.map(s => ({ ...s, higherSeedWins: s.higherSeedWins ?? 0, lowerSeedWins: s.lowerSeedWins ?? 0 })),
       playInGames: bracket.playInGames.map(p => ({ ...p })),
     };
 
     const newGames: Game[] = [];
-    const allGames = [...schedule, ...newGames];
-    const maxGid = Math.max(0, ...allGames.map(g => g.gid));
+    const maxGid = Math.max(0, ...schedule.map(g => g.gid));
 
     // Process all results for this batch
     for (const result of results) {
@@ -82,28 +99,48 @@ export class PlayoffAdvancer {
       }
     }
 
-    // Advance rounds: when all series in round N complete, inject round N+1
-    for (const round of [1, 2, 3] as const) {
-      const roundSeries = b.series.filter(s => s.round === round);
-      if (roundSeries.length === 0) continue;
-      if (!roundSeries.every(s => s.status === 'complete')) continue;
+    // Per-matchup advancement: as soon as BOTH feeder series complete, create the next-round
+    // matchup and schedule its games. This prevents the cascade where all next-round series wait
+    // for the slowest G7 — each matchup starts 3 days after its own two feeders finish.
+    for (const pair of MATCHUP_PAIRS) {
+      // Skip if target series already exists
+      if (b.series.some(s => s.id === pair.targetId)) continue;
 
-      const nextRound = (round + 1) as 2 | 3 | 4;
-      const alreadyBuilt = b.series.some(s => s.round === nextRound);
-      if (alreadyBuilt) continue;
+      const s1 = b.series.find(s => s.id === pair.feeder1);
+      const s2 = b.series.find(s => s.id === pair.feeder2);
+      if (!s1 || !s2 || s1.status !== 'complete' || s2.status !== 'complete') continue;
 
-      const nextSeries = PlayoffGenerator.buildNextRound(roundSeries, nextRound, numGamesPerRound[nextRound - 1] ?? 7);
-      b.series = [...b.series, ...nextSeries];
+      const numGames = numGamesPerRound[pair.round - 1] ?? 7;
+      const newSeries = this.buildSingleMatchup(s1, s2, pair.targetId, pair.round, pair.conference, numGames);
+      if (!newSeries) continue;
 
-      // Start next round ~3 days after the last game of current round
-      const lastDate = this.getLastGameDate(schedule, newGames, roundSeries, b.season);
-      const nextStart = new Date(lastDate);
+      b.series = [...b.series, newSeries];
+
+      // Start 3 days after the LATER of the two feeder series' last games
+      const s1End = this.getLastGameDate(schedule, newGames, [s1], b.season);
+      const s2End = this.getLastGameDate(schedule, newGames, [s2], b.season);
+      const laterEnd = s1End.getTime() >= s2End.getTime() ? s1End : s2End;
+      const nextStart = new Date(laterEnd);
       nextStart.setDate(nextStart.getDate() + 3);
 
-      const curMaxGid2 = Math.max(maxGid, ...newGames.map(g => g.gid), 0);
-      const injected = PlayoffGenerator.injectSeriesGames(nextSeries, nextStart, curMaxGid2);
+      // Finals cap: start by June 10 so Game 7 lands no later than ~June 22
+      if (pair.round === 4) {
+        const juneMaxStart = new Date(`${b.season}-06-10T00:00:00Z`);
+        if (nextStart > juneMaxStart) nextStart.setTime(juneMaxStart.getTime());
+      }
+
+      const curMaxGid = Math.max(maxGid, ...newGames.map(g => g.gid), 0);
+      const injected = PlayoffGenerator.injectSeriesGames([newSeries], nextStart, curMaxGid);
       newGames.push(...injected);
-      b.currentRound = nextRound;
+    }
+
+    // Update currentRound to the lowest round that still has active (incomplete) series.
+    // This keeps "Sim Round" targeting the earliest unfinished round.
+    const activeSeries = b.series.filter(s => s.status !== 'complete');
+    if (activeSeries.length > 0) {
+      b.currentRound = Math.min(...activeSeries.map(s => s.round)) as any;
+    } else if (b.series.length > 0) {
+      b.currentRound = Math.max(...b.series.map(s => s.round)) as any;
     }
 
     // Crown champion when Finals complete
@@ -114,6 +151,59 @@ export class PlayoffAdvancer {
     }
 
     return { bracket: b, newGames };
+  }
+
+  // Build a single next-round series from two completed feeder series.
+  // For the Finals (round 4), the East champ (feeder2) always gets home court.
+  private static buildSingleMatchup(
+    feeder1: PlayoffSeries,
+    feeder2: PlayoffSeries,
+    targetId: string,
+    round: number,
+    conference: string,
+    numGames: number
+  ): PlayoffSeries | null {
+    const w1 = feeder1.winnerId;
+    const w2 = feeder2.winnerId;
+    if (w1 == null || w2 == null) return null;
+
+    const seed1 = w1 === feeder1.higherSeedTid ? feeder1.higherSeed : feeder1.lowerSeed;
+    const seed2 = w2 === feeder2.higherSeedTid ? feeder2.higherSeed : feeder2.lowerSeed;
+
+    let higherTid: number;
+    let lowerTid: number;
+    let hSeed: number;
+    let lSeed: number;
+
+    if (round === 4) {
+      // Finals: East champ (feeder2 = ECF winner) always has home court
+      higherTid = w2;
+      lowerTid = w1;
+      hSeed = seed2;
+      lSeed = seed1;
+    } else {
+      // Within-conference: lower seed number = higher seeding = home court
+      if (seed1 <= seed2) {
+        [higherTid, lowerTid, hSeed, lSeed] = [w1, w2, seed1, seed2];
+      } else {
+        [higherTid, lowerTid, hSeed, lSeed] = [w2, w1, seed2, seed1];
+      }
+    }
+
+    return {
+      id: targetId,
+      round: round as any,
+      conference: conference as any,
+      higherSeedTid: higherTid,
+      lowerSeedTid: lowerTid,
+      higherSeedWins: 0,
+      lowerSeedWins: 0,
+      gamesNeeded: numGames,
+      gameIds: [],
+      status: 'active',
+      higherSeed: hSeed,
+      lowerSeed: lSeed,
+    };
   }
 
   // After a play-in game resolves, wire up the loser game slots progressively.

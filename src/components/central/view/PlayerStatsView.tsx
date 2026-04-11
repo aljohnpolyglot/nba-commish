@@ -357,9 +357,13 @@ export const PlayerStatsView: React.FC = () => {
     for (const player of state.players) {
       if (!player.name || player.diedYear) continue;
 
-      const team = state.teams.find(t => t.id === player.tid);
-      const teamAbbrev = team?.abbrev ?? (player.tid < 0 ? 'FA' : '?');
-      if (teamFilter !== 'all' && teamAbbrev !== teamFilter) continue;
+      const currentTeam = state.teams.find(t => t.id === player.tid);
+      const currentTeamAbbrev = currentTeam?.abbrev ?? (player.tid < 0 ? 'FA' : '?');
+
+      // For active NBA players we can pre-filter by current team cheaply.
+      // For FAs / expired-contract players their stats may still reference the team
+      // they played for — so let them through and filter at the stats level below.
+      if (teamFilter !== 'all' && player.tid > 0 && currentTeamAbbrev !== teamFilter) continue;
 
       const age = player.age
         ?? ((player as any).born?.year ? (state.leagueStats.year ?? 2026) - (player as any).born.year : 0);
@@ -374,7 +378,7 @@ export const PlayerStatsView: React.FC = () => {
         }
         const agg = aggregateStats(stats);
         if (agg.gp < 1) continue;
-        result.push(toRow(player, agg, statType, 'career', teamAbbrev, age));
+        result.push(toRow(player, agg, statType, 'career', currentTeamAbbrev, age));
       } else if (season === 'all') {
         const allSeasonYears = new Set<number>((player.stats ?? []).map(s => s.season));
         for (const yr of allSeasonYears) {
@@ -383,7 +387,9 @@ export const PlayerStatsView: React.FC = () => {
           const agg = stats.length > 1 ? aggregateStats(stats) : stats[0];
           if (agg.gp < 1) continue;
           const t = state.teams.find(t2 => t2.id === agg.tid);
-          result.push(toRow(player, agg, statType, yr, t?.abbrev ?? teamAbbrev, age));
+          const rowTeam = t?.abbrev ?? currentTeamAbbrev;
+          if (teamFilter !== 'all' && rowTeam !== teamFilter) continue;
+          result.push(toRow(player, agg, statType, yr, rowTeam, age));
         }
       } else {
         const stats = getPhaseStats(player, season as number);
@@ -391,7 +397,9 @@ export const PlayerStatsView: React.FC = () => {
         const agg = stats.length > 1 ? aggregateStats(stats) : stats[0];
         if (agg.gp < 1) continue;
         const t = state.teams.find(t2 => t2.id === agg.tid);
-        result.push(toRow(player, agg, statType, season as number, t?.abbrev ?? teamAbbrev, age));
+        const rowTeam = t?.abbrev ?? currentTeamAbbrev;
+        if (teamFilter !== 'all' && rowTeam !== teamFilter) continue;
+        result.push(toRow(player, agg, statType, season as number, rowTeam, age));
       }
     }
     return result;

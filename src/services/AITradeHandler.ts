@@ -12,8 +12,9 @@ import { SettingsManager } from './SettingsManager';
 // ── §2a: Player value ─────────────────────────────────────────────────────────
 
 function playerValue(p: NBAPlayer, currentYear: number): number {
-  const age = p.age ?? 26;
-  const rating = p.overallRating ?? 60;
+  const age = (p as any).age ?? ((p as any).born?.year ? currentYear - (p as any).born.year : 26);
+  const lastRating = (p as any).ratings?.[(p as any).ratings?.length - 1];
+  const rating = p.overallRating ?? lastRating?.ovr ?? 60;
   const yearsLeft = (p.contract?.exp ?? currentYear) - currentYear;
 
   const ageMult = age <= 24 ? 0.85 + age * 0.01
@@ -83,15 +84,56 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
   const userTeamId = state.teams[0]?.id;
   const thresholds = getCapThresholds(state.leagueStats as any);
 
-  const getOutlook = (t: NBATeam) => getTradeOutlook(
-    state.players.filter(p => p.tid === t.id).reduce((s, p) => s + ((p.contract?.amount ?? 0) * 1_000_000), 0),
-    (t as any).wins ?? 0,
-    (t as any).losses ?? 0,
-    state.players.filter(p => p.tid === t.id && ((p.contract?.exp ?? 0) <= currentYear)).length,
-    thresholds,
-  );
+  // Compute conference standings so getTradeOutlook can use confRank + GB
+  const eastTeams = state.teams.filter(t => t.conference === 'East').sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses));
+  const westTeams = state.teams.filter(t => t.conference === 'West').sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses));
+  const confStandings = new Map<number, { confRank: number; gbFromLeader: number }>();
+  for (const confTeams of [eastTeams, westTeams]) {
+    const leader = confTeams[0];
+    const leaderWins = (leader as any).wins ?? 0;
+    const leaderLosses = (leader as any).losses ?? 0;
+    confTeams.forEach((t, i) => {
+      const wins = (t as any).wins ?? 0;
+      const losses = (t as any).losses ?? 0;
+      const gb = ((leaderWins - wins) + (losses - leaderLosses)) / 2;
+      confStandings.set(t.id, { confRank: i + 1, gbFromLeader: Math.max(0, gb) });
+    });
+  }
 
-  const buyerTeams = state.teams.filter(t => t.id !== userTeamId && ['buyer', 'heavy_buyer'].includes(getOutlook(t).role));
+  const getOutlook = (t: NBATeam) => {
+    const standings = confStandings.get(t.id);
+    return getTradeOutlook(
+      state.players.filter(p => p.tid === t.id).reduce((s, p) => s + ((p.contract?.amount ?? 0) * 1_000_000), 0),
+      (t as any).wins ?? 0,
+      (t as any).losses ?? 0,
+      state.players.filter(p => p.tid === t.id && ((p.contract?.exp ?? 0) <= currentYear)).length,
+      thresholds,
+      standings?.confRank,
+      standings?.gbFromLeader,
+    );
+  };
+
+  // Franchise-timeline anchor: teams whose best player is ≤ 25 and not in playoffs
+  // are developing and should not initiate as buyers
+  const getOvr = (p: NBAPlayer): number => {
+    const lastRating = (p as any).ratings?.[(p as any).ratings?.length - 1];
+    return p.overallRating ?? lastRating?.ovr ?? 60;
+  };
+  const isBuildingAroundYouth = (t: NBATeam): boolean => {
+    const standings = confStandings.get(t.id);
+    if (!standings || standings.confRank <= 6) return false; // playoff teams always OK
+    const roster = state.players.filter(p => p.tid === t.id);
+    const starPlayer = roster.sort((a, b) => getOvr(b) - getOvr(a))[0];
+    if (!starPlayer) return false;
+    const starAge = (starPlayer as any).age ?? ((starPlayer as any).born?.year ? currentYear - (starPlayer as any).born.year : 27);
+    return starAge <= 25 && getOvr(starPlayer) >= 65;
+  };
+
+  const buyerTeams = state.teams.filter(t =>
+    t.id !== userTeamId &&
+    ['buyer', 'heavy_buyer'].includes(getOutlook(t).role) &&
+    !isBuildingAroundYouth(t)
+  );
   const sellerTeams = state.teams.filter(t => t.id !== userTeamId && !['buyer', 'heavy_buyer'].includes(getOutlook(t).role));
 
   if (buyerTeams.length === 0 || sellerTeams.length === 0) return [];

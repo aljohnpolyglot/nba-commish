@@ -64,7 +64,7 @@ export const fetchAndParseBBGMData = async () => {
                 }
 
                 return {
-                    internalId: Math.random().toString(36).substring(2, 15),
+                    internalId: `bbgm-${fullName.replace(/\s+/g, '')}-${p.pid ?? p.tid ?? '0'}`,
                     tid: p.tid,
                     name: fullName,
                     overallRating: overallRating,

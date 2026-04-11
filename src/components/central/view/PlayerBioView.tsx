@@ -823,7 +823,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
               </div>
             </div>
             <div className="overflow-x-auto overflow-y-auto max-h-[60vh] md:max-h-[70vh] custom-scrollbar">
-              <table className="w-full text-sm text-left text-slate-300">
+              <table className="min-w-max text-sm text-left text-slate-300">
                 <thead className="text-xs text-slate-400 uppercase bg-slate-900/50 border-b border-slate-800">
                   <tr>
                     <th className="px-4 py-3 font-semibold">Season</th>
@@ -965,7 +965,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
               </h3>
             </div>
             <div className="overflow-x-auto overflow-y-auto max-h-[60vh] md:max-h-[70vh] custom-scrollbar">
-              <table className="w-full text-sm text-left text-slate-300">
+              <table className="min-w-max text-sm text-left text-slate-300">
                 <thead className="text-[10px] text-slate-400 uppercase bg-slate-900/50 border-b border-slate-800 whitespace-nowrap">
                   <tr>
                     <th className="px-3 py-2 font-semibold">Rk</th>
@@ -1224,8 +1224,15 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
 
     {localBoxScoreGame && (() => {
       const bsResult = state.boxScores.find((b: any) => b.gameId === localBoxScoreGame.gid);
-      const homeTeam = state.teams.find((t: any) => t.id === localBoxScoreGame.homeTid);
-      const awayTeam = state.teams.find((t: any) => t.id === localBoxScoreGame.awayTid);
+      const resolveTeam = (tid: number) => {
+        const nba = state.teams.find((t: any) => t.id === tid);
+        if (nba) return nba;
+        const nonNBA = (state.nonNBATeams ?? []).find((t: any) => t.tid === tid);
+        if (nonNBA) return { id: tid, name: nonNBA.name ?? nonNBA.league ?? 'International', abbrev: (nonNBA.name ?? 'INT').slice(0, 3).toUpperCase(), logoUrl: '', conference: 'East' } as any;
+        return null;
+      };
+      const homeTeam = resolveTeam(localBoxScoreGame.homeTid);
+      const awayTeam = resolveTeam(localBoxScoreGame.awayTid);
       if (!homeTeam || !awayTeam) return null;
       return (
         <BoxScoreModal

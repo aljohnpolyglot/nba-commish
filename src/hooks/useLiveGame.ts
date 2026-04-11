@@ -175,19 +175,49 @@ export function useLiveGame(
 
   const liveStats = useMemo(() => {
     const stats: any = { HOME: {}, AWAY: {} };
-    
-    if (finalResult) {
-      finalResult.homeStats.forEach(stat => {
-        const p = players.find(p => p.internalId?.toString() === stat.playerId)
-          ?? homeOverridePlayers?.find(p => p.internalId?.toString() === stat.playerId);
-        if (p) stats.HOME[stat.playerId] = { ...p, n: stat.name, fgm: 0, fga: 0, tp: 0, tpa: 0, ftm: 0, fta: 0, ast: 0, orb: 0, drb: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, pm: 0, sec: 0 };
-      });
-      finalResult.awayStats.forEach(stat => {
-        const p = players.find(p => p.internalId?.toString() === stat.playerId)
-          ?? awayOverridePlayers?.find(p => p.internalId?.toString() === stat.playerId);
-        if (p) stats.AWAY[stat.playerId] = { ...p, n: stat.name, fgm: 0, fga: 0, tp: 0, tpa: 0, ftm: 0, fta: 0, ast: 0, orb: 0, drb: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, pm: 0, sec: 0 };
-      });
+
+    if (!finalResult) return stats;
+
+    // When game is complete, populate liveStats directly from finalResult for accuracy.
+    // This ensures the box score player lines match the engine's reconciled stats.
+    const isGameComplete = plays.length > 0 && currentIndex >= plays.length - 1;
+    if (isGameComplete) {
+      const fillStats = (statList: any[], side: 'HOME' | 'AWAY', overridePlayers?: any[]) => {
+        statList.forEach(stat => {
+          const p = players.find(pl => pl.internalId?.toString() === stat.playerId)
+            ?? overridePlayers?.find(pl => pl.internalId?.toString() === stat.playerId);
+          if (p) {
+            stats[side][stat.playerId] = {
+              ...p, n: stat.name,
+              fgm: stat.fgm, fga: stat.fga,
+              tp: stat.threePm ?? 0, tpa: stat.threePa ?? 0,
+              ftm: stat.ftm, fta: stat.fta,
+              ast: stat.ast,
+              orb: stat.orb ?? 0, drb: stat.drb ?? 0,
+              stl: stat.stl, blk: stat.blk,
+              tov: stat.tov, pf: stat.pf,
+              pts: stat.pts, pm: stat.pm ?? 0,
+              sec: stat.sec ?? Math.round(stat.min * 60),
+            };
+          }
+        });
+      };
+      fillStats(finalResult.homeStats, 'HOME', homeOverridePlayers);
+      fillStats(finalResult.awayStats, 'AWAY', awayOverridePlayers);
+      return stats;
     }
+
+    // Pre-game: initialize with zeros for players that will appear
+    finalResult.homeStats.forEach(stat => {
+      const p = players.find(p => p.internalId?.toString() === stat.playerId)
+        ?? homeOverridePlayers?.find(p => p.internalId?.toString() === stat.playerId);
+      if (p) stats.HOME[stat.playerId] = { ...p, n: stat.name, fgm: 0, fga: 0, tp: 0, tpa: 0, ftm: 0, fta: 0, ast: 0, orb: 0, drb: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, pm: 0, sec: 0 };
+    });
+    finalResult.awayStats.forEach(stat => {
+      const p = players.find(p => p.internalId?.toString() === stat.playerId)
+        ?? awayOverridePlayers?.find(p => p.internalId?.toString() === stat.playerId);
+      if (p) stats.AWAY[stat.playerId] = { ...p, n: stat.name, fgm: 0, fga: 0, tp: 0, tpa: 0, ftm: 0, fta: 0, ast: 0, orb: 0, drb: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, pm: 0, sec: 0 };
+    });
 
     for (let i = 0; i <= currentIndex; i++) {
       const play = plays[i];
@@ -256,19 +286,50 @@ export function useLiveGame(
       }
     }
     return stats;
-  }, [currentIndex, plays, players, homeTeam.id, finalResult]);
+  }, [currentIndex, plays, players, homeTeam.id, finalResult, homeOverridePlayers, awayOverridePlayers]);
 
   const teamStats = useMemo(() => {
     const ts: any = {
       HOME: { fgm:0,fga:0,tp:0,tpa:0,ftm:0,fta:0,ast:0,reb:0,orb:0,drb:0,stl:0,blk:0,tov:0,pts:0,pf:0 },
       AWAY: { fgm:0,fga:0,tp:0,tpa:0,ftm:0,fta:0,ast:0,reb:0,orb:0,drb:0,stl:0,blk:0,tov:0,pts:0,pf:0 },
     };
+
+    // When game is complete, build teamStats from finalResult for accuracy.
+    // Play-by-play accumulation can drift from the engine's reconciled stats.
+    const isGameComplete = finalResult && plays.length > 0 && currentIndex >= plays.length - 1;
+    if (isGameComplete) {
+      finalResult.homeStats.forEach((s: any) => {
+        ts.HOME.fgm += s.fgm; ts.HOME.fga += s.fga;
+        ts.HOME.tp  += s.threePm ?? 0; ts.HOME.tpa += s.threePa ?? 0;
+        ts.HOME.ftm += s.ftm; ts.HOME.fta += s.fta;
+        ts.HOME.ast += s.ast;
+        ts.HOME.reb += (s.orb ?? 0) + (s.drb ?? 0);
+        ts.HOME.orb += s.orb ?? 0; ts.HOME.drb += s.drb ?? 0;
+        ts.HOME.stl += s.stl; ts.HOME.blk += s.blk;
+        ts.HOME.tov += s.tov; ts.HOME.pf  += s.pf;
+      });
+      ts.HOME.pts = finalResult.homeScore;
+      finalResult.awayStats.forEach((s: any) => {
+        ts.AWAY.fgm += s.fgm; ts.AWAY.fga += s.fga;
+        ts.AWAY.tp  += s.threePm ?? 0; ts.AWAY.tpa += s.threePa ?? 0;
+        ts.AWAY.ftm += s.ftm; ts.AWAY.fta += s.fta;
+        ts.AWAY.ast += s.ast;
+        ts.AWAY.reb += (s.orb ?? 0) + (s.drb ?? 0);
+        ts.AWAY.orb += s.orb ?? 0; ts.AWAY.drb += s.drb ?? 0;
+        ts.AWAY.stl += s.stl; ts.AWAY.blk += s.blk;
+        ts.AWAY.tov += s.tov; ts.AWAY.pf  += s.pf;
+      });
+      ts.AWAY.pts = finalResult.awayScore;
+      return ts;
+    }
+
+    // During game: accumulate from live play-by-play
     ['HOME','AWAY'].forEach(tm => {
       Object.values(liveStats[tm]).forEach((p: any) => {
         ts[tm].fgm += p.fgm; ts[tm].fga += p.fga;
         ts[tm].tp  += p.tp;  ts[tm].tpa += p.tpa;
         ts[tm].ftm += p.ftm; ts[tm].fta += p.fta;
-        ts[tm].ast += p.ast; 
+        ts[tm].ast += p.ast;
         ts[tm].reb += p.orb + p.drb;
         ts[tm].orb += p.orb; ts[tm].drb += p.drb;
         ts[tm].stl += p.stl; ts[tm].blk += p.blk;
@@ -277,7 +338,7 @@ export function useLiveGame(
       });
     });
     return ts;
-  }, [liveStats]);
+  }, [liveStats, finalResult, currentIndex, plays.length]);
 
   return {
     isSimulating: isPlaying,

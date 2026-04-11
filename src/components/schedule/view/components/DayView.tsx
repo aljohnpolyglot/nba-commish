@@ -291,7 +291,7 @@ export const DayView: React.FC<DayViewProps> = ({
                       onClick={onNavigateToDraftBoard}
                       className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-[10px] uppercase tracking-widest transition-all"
                     >
-                      Open Draft Board
+                      Watch Draft
                     </button>
                   )}
                 </div>
@@ -333,6 +333,20 @@ export const DayView: React.FC<DayViewProps> = ({
               gamesForSelectedDate.map(game => {
                 if ((game as any).isDunkContest || (game as any).isThreePointContest) {
                   return null;
+                }
+
+                // For playoff games: only show the next unplayed game in the series.
+                // All 7 games are pre-scheduled at round start, so hide any game beyond "played + 1".
+                if (game.isPlayoff && game.playoffSeriesId) {
+                  const ser = state.playoffs?.series.find((s: any) => s.id === game.playoffSeriesId);
+                  if (ser) {
+                    // Hide if series is complete and game isn't played
+                    if (ser.status === 'complete' && !game.played) return null;
+                    // Hide if this game is more than 1 ahead of the games already played
+                    const playedInSeries = (ser.higherSeedWins ?? 0) + (ser.lowerSeedWins ?? 0);
+                    const gameNum = (game as any).playoffGameNumber ?? 1;
+                    if (!game.played && gameNum > playedInSeries + 1) return null;
+                  }
                 }
                 
                 if (game.isAllStar || game.isRisingStars || (game as any).isCelebrityGame) {
@@ -393,6 +407,7 @@ export const DayView: React.FC<DayViewProps> = ({
                             src="https://content.sportslogos.net/logos/6/981/full/_nba_playoffs_logo_primary_2022_sportslogosnet-4785.png"
                             className="w-6 h-6 object-contain"
                             alt="Playoffs"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                           />
                         )}
                       </div>

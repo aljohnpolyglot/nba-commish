@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
 import { X } from 'lucide-react';
-import { NBATeam, Game, GameResult, PlayerGameStats, NBAPlayer } from '../../types';
+import { NBATeam, Game, GameResult, PlayerGameStats, NBAPlayer, PlayoffBracket } from '../../types';
 
 interface BoxScoreModalProps {
   game: Game;
@@ -12,13 +12,36 @@ interface BoxScoreModalProps {
   onClose: () => void;
   onPlayerClick?: (player: NBAPlayer) => void;
   onTeamClick?: (teamId: number) => void;
+  playoffs?: PlayoffBracket | null;
+  schedule?: Game[];
 }
 
 type SortKey = keyof PlayerGameStats | 'fgp' | 'tpp' | 'ftp';
 
 export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
-  game, result, homeTeam, awayTeam, players, onClose, onPlayerClick, onTeamClick
+  game, result, homeTeam, awayTeam, players, onClose, onPlayerClick, onTeamClick, playoffs, schedule
 }) => {
+  // For playoff/play-in games, find the series to show series score instead of W-L record
+  const seriesInfo = useMemo(() => {
+    if ((!game.isPlayoff && !game.isPlayIn) || !playoffs || !game.playoffSeriesId) return null;
+    const series = playoffs.series.find(s => s.id === game.playoffSeriesId);
+    if (!series) return null;
+    const hW = series.higherSeedTid === homeTeam.id ? series.higherSeedWins : series.lowerSeedWins;
+    const aW = series.higherSeedTid === awayTeam.id ? series.higherSeedWins : series.lowerSeedWins;
+    const winsNeeded = Math.ceil(series.gamesNeeded / 2);
+    const complete = series.status === 'complete';
+    const homeSeriesW = hW;
+    const awaySeriesW = aW;
+    if (complete) {
+      const champ = series.winnerId === homeTeam.id ? homeTeam.abbrev : awayTeam.abbrev;
+      return { homeLabel: `${homeSeriesW}`, awayLabel: `${awaySeriesW}`, sub: `${champ} WINS ${Math.max(hW,aW)}-${Math.min(hW,aW)}` };
+    }
+    const leader = hW > aW ? homeTeam.abbrev : aW > hW ? awayTeam.abbrev : null;
+    const sub = leader
+      ? `${leader} leads ${Math.max(hW,aW)}-${Math.min(hW,aW)}`
+      : `Series tied ${hW}-${aW}`;
+    return { homeLabel: `${homeSeriesW}`, awayLabel: `${awaySeriesW}`, sub };
+  }, [game, playoffs, homeTeam, awayTeam]);
   const isIntraSquad = game.homeTid === game.awayTid;
   const awayDisplayName = isIntraSquad ? `${awayTeam.name} B` : awayTeam.name;
   const homeDisplayName = isIntraSquad ? `${homeTeam.name} A` : homeTeam.name;
@@ -392,17 +415,22 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                   <div className="font-black text-xs md:text-2xl text-white tracking-tight group-hover:text-indigo-400 transition-colors">{awayDisplayName}</div>
                   {awayTeam.id >= 0 && (
                     <div className="text-[11px] font-bold text-slate-500 tracking-widest mt-0.5">
-                      {result?.awayWins ?? awayTeam.wins ?? 0}–{result?.awayLosses ?? awayTeam.losses ?? 0}
+                      {seriesInfo ? seriesInfo.awayLabel : `${result?.awayWins ?? awayTeam.wins ?? 0}–${result?.awayLosses ?? awayTeam.losses ?? 0}`}
                     </div>
                   )}
                 </div>
               </button>
             </div>
 
-            <div className="flex items-center gap-2 md:gap-8">
-              <span className={`text-3xl md:text-6xl font-black font-mono tracking-tighter ${(game.awayScore || 0) > (game.homeScore || 0) ? 'text-white' : 'text-slate-500'}`}>{game.awayScore || 0}</span>
-              <span className="text-slate-800 font-black text-xl md:text-3xl">-</span>
-              <span className={`text-3xl md:text-6xl font-black font-mono tracking-tighter ${(game.homeScore || 0) > (game.awayScore || 0) ? 'text-white' : 'text-slate-500'}`}>{game.homeScore || 0}</span>
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center gap-2 md:gap-8">
+                <span className={`text-3xl md:text-6xl font-black font-mono tracking-tighter ${(game.awayScore || 0) > (game.homeScore || 0) ? 'text-white' : 'text-slate-500'}`}>{game.awayScore || 0}</span>
+                <span className="text-slate-800 font-black text-xl md:text-3xl">-</span>
+                <span className={`text-3xl md:text-6xl font-black font-mono tracking-tighter ${(game.homeScore || 0) > (game.awayScore || 0) ? 'text-white' : 'text-slate-500'}`}>{game.homeScore || 0}</span>
+              </div>
+              {seriesInfo?.sub && (
+                <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{seriesInfo.sub}</div>
+              )}
             </div>
 
             <div className="flex flex-col items-center gap-2 md:gap-4 w-1/3">
@@ -415,7 +443,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                   <div className="font-black text-xs md:text-2xl text-white tracking-tight group-hover:text-indigo-400 transition-colors">{homeDisplayName}</div>
                   {homeTeam.id >= 0 && (
                     <div className="text-[11px] font-bold text-slate-500 tracking-widest mt-0.5">
-                      {result?.homeWins ?? homeTeam.wins ?? 0}–{result?.homeLosses ?? homeTeam.losses ?? 0}
+                      {seriesInfo ? seriesInfo.homeLabel : `${result?.homeWins ?? homeTeam.wins ?? 0}–${result?.homeLosses ?? homeTeam.losses ?? 0}`}
                     </div>
                   )}
                 </div>

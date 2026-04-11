@@ -28,6 +28,8 @@ import {
   autoAnnounceROY,
   autoAnnounceAllNBA,
   autoAnnounceMVP,
+  autoRunLottery,
+  autoRunDraft,
 } from './autoResolvers';
 import { NewsGenerator } from '../news/NewsGenerator';
 import { PlayoffSeries, HistoricalAward } from '../../types';
@@ -54,27 +56,36 @@ const autoBroadcastingDefault = (state: GameState): Partial<GameState> => {
   };
 };
 
-const AUTO_RESOLVE_EVENTS: AutoResolveEvent[] = [
-  { date: '2025-08-06', key: 'broadcasting_default',   resolver: autoBroadcastingDefault,        phase: 'Setting Broadcasting Deal...' },
-  { date: '2025-08-13', key: 'global_games',           resolver: autoPickGlobalGames,            phase: 'Finalizing Global Schedule...' },
-  { date: '2025-08-13', key: 'intl_preseason',         resolver: autoScheduleIntlPreseason,      phase: 'Scheduling International Preseason...' },
-  { date: '2025-08-14', key: 'schedule_generation',    resolver: autoGenerateSchedule,           phase: 'Generating Schedule...' },
-  { date: '2025-12-24', key: 'christmas_games',        resolver: autoPickChristmasGames,         phase: 'Setting Christmas Games...' },
-  { date: '2026-01-14', key: 'allstar_votes',          resolver: autoSimVotes,                   phase: 'Simulating All-Star Voting...' },
-  { date: '2026-01-22', key: 'allstar_starters',       resolver: autoAnnounceStarters,           phase: 'Announcing All-Star Starters...' },
-  { date: '2026-01-29', key: 'allstar_reserves',       resolver: autoAnnounceReserves,           phase: 'Announcing Reserves + Rising Stars...' },
-  { date: '2026-02-05', key: 'dunk_contestants',       resolver: autoSelectDunkContestants,      phase: 'Selecting Dunk Contest Field...' },
-  { date: '2026-02-08', key: 'threepoint_contestants', resolver: autoSelectThreePointContestants, phase: 'Selecting 3-Point Contest Field...' },
-  { date: '2026-02-13', key: 'allstar_weekend',   resolver: autoSimAllStarWeekend, phase: 'Simulating All-Star Weekend...' },
-  // Award announcements — staggered to match real NBA calendar
-  { date: '2026-04-19', key: 'award_coy',         resolver: autoAnnounceCOY,       phase: 'Announcing Coach of the Year...' },
-  { date: '2026-04-22', key: 'award_smoy',        resolver: autoAnnounceSMOY,      phase: 'Announcing Sixth Man of the Year...' },
-  { date: '2026-04-25', key: 'award_mip',         resolver: autoAnnounceMIP,       phase: 'Announcing Most Improved Player...' },
-  { date: '2026-04-28', key: 'award_dpoy',        resolver: autoAnnounceDPOY,      phase: 'Announcing Defensive Player of the Year...' },
-  { date: '2026-05-02', key: 'award_roy',         resolver: autoAnnounceROY,       phase: 'Announcing Rookie of the Year...' },
-  { date: '2026-05-07', key: 'award_allnba',      resolver: autoAnnounceAllNBA,    phase: 'Announcing All-NBA Teams...' },
-  { date: '2026-05-21', key: 'award_mvp',         resolver: autoAnnounceMVP,       phase: 'Announcing MVP...' },
-];
+/** Builds milestone events dynamically from the current season year.
+ *  y  = season end year (e.g. 2026 for the 2025-26 season)
+ *  y1 = previous calendar year (e.g. 2025) — preseason / early-season events */
+const buildAutoResolveEvents = (y: number): AutoResolveEvent[] => {
+  const y1 = y - 1;
+  return [
+    { date: `${y1}-08-06`, key: 'broadcasting_default',   resolver: autoBroadcastingDefault,         phase: 'Setting Broadcasting Deal...' },
+    { date: `${y1}-08-13`, key: 'global_games',           resolver: autoPickGlobalGames,             phase: 'Finalizing Global Schedule...' },
+    { date: `${y1}-08-13`, key: 'intl_preseason',         resolver: autoScheduleIntlPreseason,       phase: 'Scheduling International Preseason...' },
+    { date: `${y1}-08-14`, key: 'schedule_generation',    resolver: autoGenerateSchedule,            phase: 'Generating Schedule...' },
+    { date: `${y1}-12-24`, key: 'christmas_games',        resolver: autoPickChristmasGames,          phase: 'Setting Christmas Games...' },
+    { date: `${y}-01-14`,  key: 'allstar_votes',          resolver: autoSimVotes,                    phase: 'Simulating All-Star Voting...' },
+    { date: `${y}-01-22`,  key: 'allstar_starters',       resolver: autoAnnounceStarters,            phase: 'Announcing All-Star Starters...' },
+    { date: `${y}-01-29`,  key: 'allstar_reserves',       resolver: autoAnnounceReserves,            phase: 'Announcing Reserves + Rising Stars...' },
+    { date: `${y}-02-05`,  key: 'dunk_contestants',       resolver: autoSelectDunkContestants,       phase: 'Selecting Dunk Contest Field...' },
+    { date: `${y}-02-08`,  key: 'threepoint_contestants', resolver: autoSelectThreePointContestants, phase: 'Selecting 3-Point Contest Field...' },
+    { date: `${y}-02-13`,  key: 'allstar_weekend',        resolver: autoSimAllStarWeekend,           phase: 'Simulating All-Star Weekend...' },
+    // Award announcements — staggered to match real NBA calendar
+    { date: `${y}-04-19`,  key: 'award_coy',              resolver: autoAnnounceCOY,                 phase: 'Announcing Coach of the Year...' },
+    { date: `${y}-04-22`,  key: 'award_smoy',             resolver: autoAnnounceSMOY,                phase: 'Announcing Sixth Man of the Year...' },
+    { date: `${y}-04-25`,  key: 'award_mip',              resolver: autoAnnounceMIP,                 phase: 'Announcing Most Improved Player...' },
+    { date: `${y}-04-28`,  key: 'award_dpoy',             resolver: autoAnnounceDPOY,                phase: 'Announcing Defensive Player of the Year...' },
+    { date: `${y}-05-02`,  key: 'award_roy',              resolver: autoAnnounceROY,                 phase: 'Announcing Rookie of the Year...' },
+    { date: `${y}-05-07`,  key: 'award_allnba',           resolver: autoAnnounceAllNBA,              phase: 'Announcing All-NBA Teams...' },
+    { date: `${y}-05-21`,  key: 'award_mvp',              resolver: autoAnnounceMVP,                 phase: 'Announcing MVP...' },
+    // Draft events
+    { date: `${y}-05-14`,  key: 'draft_lottery',          resolver: autoRunLottery,                  phase: 'Running Draft Lottery...' },
+    { date: `${y}-06-26`,  key: 'draft_execute',          resolver: autoRunDraft,                    phase: 'Executing NBA Draft...' },
+  ];
+};
 
 const buildAutoNews = (eventKey: string, state: GameState) => {
   const date = state.date;
@@ -86,6 +97,8 @@ const buildAutoNews = (eventKey: string, state: GameState) => {
     // award_* keys: news is injected directly by each resolver — no auto-news needed here
     award_coy: null, award_smoy: null, award_mip: null,
     award_dpoy: null, award_roy: null, award_allnba: null, award_mvp: null,
+    draft_lottery: { id: `auto-lottery-${Date.now()}`, headline: 'Draft Lottery Complete', content: 'The NBA Draft Lottery has concluded. View the Draft Lottery tab for full results.', date },
+    draft_execute: { id: `auto-draft-${Date.now()}`, headline: 'NBA Draft Complete', content: 'The NBA Draft has concluded. All prospects have been assigned to teams. Undrafted players are now free agents.', date },
   };
   return map[eventKey] ?? null;
 };
@@ -152,15 +165,21 @@ function generatePlayoffSeriesNews(
   return news;
 }
 
-const getPhaseLabel = (dateStr: string): string => {
-  if (dateStr < '2025-10-24') return 'Preseason...';
-  if (dateStr < '2025-12-01') return 'Early Season...';
-  if (dateStr < '2025-12-25') return 'NBA Cup & Voting...';
-  if (dateStr < '2026-01-22') return 'Mid Season...';
-  if (dateStr < '2026-02-12') return 'All-Star Race...';
-  if (dateStr < '2026-02-17') return 'All-Star Weekend...';
-  if (dateStr < '2026-04-01') return 'Late Season Push...';
-  return 'Final Days...';
+const getPhaseLabel = (dateStr: string, year: number): string => {
+  const y1 = year - 1;
+  if (dateStr < `${y1}-10-24`) return 'Preseason...';
+  if (dateStr < `${y1}-12-01`) return 'Early Season...';
+  if (dateStr < `${y1}-12-25`) return 'NBA Cup & Voting...';
+  if (dateStr < `${year}-01-22`) return 'Mid Season...';
+  if (dateStr < `${year}-02-12`) return 'All-Star Race...';
+  if (dateStr < `${year}-02-17`) return 'All-Star Weekend...';
+  if (dateStr < `${year}-04-01`) return 'Late Season Push...';
+  if (dateStr < `${year}-04-20`) return 'Regular Season Final Days...';
+  if (dateStr < `${year}-05-15`) return 'Playoffs...';
+  if (dateStr < `${year}-06-01`) return 'Conference Finals & Draft Lottery...';
+  if (dateStr < `${year}-06-20`) return 'NBA Finals...';
+  if (dateStr < `${year}-06-27`) return 'NBA Draft...';
+  return 'Offseason...';
 };
 
 const daysBetween = (a: string, b: string): number =>
@@ -203,6 +222,7 @@ export const runLazySim = async (
   window.addEventListener('beforeunload', restoreOnUnload);
 
   let state = { ...initialState };
+  // Keys are `${seasonYear}:${eventKey}` so events re-fire correctly after season rollover
   const firedEvents = new Set<string>();
   // Pre-seed with all injuries already on players so only NEW injuries generate news
   const reportedInjuries = new Set<string>(
@@ -233,9 +253,12 @@ export const runLazySim = async (
       const currentNorm = normalizeDate(state.date);
       if (currentNorm >= targetNorm) break;
 
-      // Fire any auto-resolvers whose date has been reached
-      for (const event of AUTO_RESOLVE_EVENTS) {
-        if (!firedEvents.has(event.key) && event.date <= currentNorm) {
+      // Fire any auto-resolvers whose date has been reached.
+      // Events are keyed by `${seasonYear}:${key}` so they re-fire after season rollover.
+      const seasonYear = state.leagueStats.year;
+      for (const event of buildAutoResolveEvents(seasonYear)) {
+        const compositeKey = `${seasonYear}:${event.key}`;
+        if (!firedEvents.has(compositeKey) && event.date <= currentNorm) {
           currentPhase = event.phase;
           report();
           try {
@@ -246,7 +269,7 @@ export const runLazySim = async (
           } catch (err) {
             console.warn(`Auto-resolver ${event.key} failed:`, err);
           }
-          firedEvents.add(event.key);
+          firedEvents.add(compositeKey);
           const autoNews = buildAutoNews(event.key, state);
           if (autoNews) {
             state = { ...state, news: [autoNews, ...(state.news || [])] };
@@ -396,6 +419,20 @@ export const runLazySim = async (
           });
         }
 
+        // Write 'NBA Champion' award to every player on the champ team
+        if (champTeam) {
+          const champRosterIds = new Set(
+            updatedPlayers.filter(p => p.tid === champTid).map(p => p.internalId)
+          );
+          const withChampion = updatedPlayers.map(p => {
+            if (!champRosterIds.has(p.internalId)) return p;
+            const already = (p.awards ?? []).some(a => a.season === season && a.type === 'NBA Champion');
+            if (already) return p;
+            return { ...p, awards: [...(p.awards ?? []), { season, type: 'NBA Champion' }] };
+          });
+          Object.assign(updatedPlayers, withChampion);
+        }
+
         // Finals MVP: highest gameScore among champ players in this batch's playoff games
         const champStats = allSimResults
           .filter(r => r.homeTeamId === champTid || r.awayTeamId === champTid)
@@ -453,8 +490,16 @@ export const runLazySim = async (
         : 0;
 
       const allBatchNews = [...playoffSeriesNews, ...batchNews];
+
+      // Defensive: if the sim returned an empty schedule but we had one before the batch
+      // (can happen when no games fall in the Aug 14–Oct 23 window), preserve the pre-batch schedule.
+      const safeSchedule = stateWithSim.schedule.length === 0 && state.schedule.length > 0
+        ? state.schedule
+        : stateWithSim.schedule;
+
       state = {
         ...stateWithSim,
+        schedule: safeSchedule,
         // Apply the compounded stats from per-day calculations
         stats: {
           ...runningState.stats,
@@ -490,7 +535,7 @@ export const runLazySim = async (
         state = advanceDateByOne(state);
       }
 
-      currentPhase = getPhaseLabel(normalizeDate(state.date));
+      currentPhase = getPhaseLabel(normalizeDate(state.date), state.leagueStats.year);
       report();
 
       // Yield to keep UI responsive
@@ -498,8 +543,10 @@ export const runLazySim = async (
     }
 
     // Fire any remaining events that should have fired before target but were missed
-    for (const event of AUTO_RESOLVE_EVENTS) {
-      if (!firedEvents.has(event.key) && event.date < targetNorm) {
+    const finalSeasonYear = state.leagueStats.year;
+    for (const event of buildAutoResolveEvents(finalSeasonYear)) {
+      const compositeKey = `${finalSeasonYear}:${event.key}`;
+      if (!firedEvents.has(compositeKey) && event.date < targetNorm) {
         try {
           const patch = await event.resolver(state);
           if (patch && Object.keys(patch).length > 0) {
@@ -508,7 +555,7 @@ export const runLazySim = async (
         } catch (err) {
           console.warn(`Auto-resolver ${event.key} (post-loop) failed:`, err);
         }
-        firedEvents.add(event.key);
+        firedEvents.add(compositeKey);
       }
     }
   } finally {

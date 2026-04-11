@@ -135,19 +135,30 @@ export const generateLazySimNews = (
         }), player?.imgURL);
         if (item) {
           if (topGame) { item.gameId = topGame.gameId; item.homeTeamId = topGame.homeTeamId; item.awayTeamId = topGame.awayTeamId; }
-          // Rewrite batch_recap headline during playoffs to feel like postseason
-          if (isPlayoffs && item && top.stat.pts >= 20) {
+          // Rewrite batch_recap headline during playoffs — always rephrase for postseason feel
+          if (isPlayoffs && item) {
             const lastName = top.stat.name.split(' ').pop() ?? top.stat.name;
+            const pts = top.stat.pts, reb = top.stat.reb, ast = top.stat.ast;
             const seriesCtx = topGame ? getSeriesContext(topGame) : null;
-            const playoffTitles = seriesCtx
+            const playInGame = topGame && schedule?.find(sg => sg.gid === topGame.gameId)?.isPlayIn;
+            const playInCtx = playInGame ? 'Play-In Tournament' : null;
+            const contextLabel = seriesCtx ?? playInCtx;
+            const isElimination = seriesCtx?.includes('advance') ?? false;
+            const playoffTitles = contextLabel
               ? [
-                  `${top.stat.name} Drops ${top.stat.pts} PTS in Playoff Run · ${seriesCtx}`,
-                  `${lastName} Takes Over: ${top.stat.pts} PTS, ${top.stat.reb} REB, ${top.stat.ast} AST`,
+                  ...(isElimination ? [
+                    `${top.stat.name} Carries ${team.name} · ${contextLabel}`,
+                    `${lastName} Leads the Way: ${pts} PTS, ${reb} REB, ${ast} AST · ${contextLabel}`,
+                  ] : [
+                    `${top.stat.name} Drops ${pts} PTS · ${contextLabel}`,
+                    `${lastName} Takes Over: ${pts} PTS, ${reb} REB, ${ast} AST · ${contextLabel}`,
+                  ]),
                   `Postseason Spotlight: ${top.stat.name} Puts ${team.name} on His Back`,
                 ]
               : [
-                  `Playoff Standout: ${top.stat.name} Leads ${team.name} with ${top.stat.pts} PTS`,
-                  `${lastName} Cannot Be Stopped — ${top.stat.pts} PTS in Playoff Action`,
+                  `Playoff Standout: ${top.stat.name} Leads ${team.name} with ${pts} PTS`,
+                  `${lastName} Cannot Be Stopped — ${pts} PTS in Playoff Action`,
+                  `${top.stat.name} Steps Up in the Postseason: ${pts}/${reb}/${ast}`,
                 ];
             item.headline = playoffTitles[Math.floor(Math.random() * playoffTitles.length)];
           }
@@ -401,7 +412,129 @@ export const generateLazySimNews = (
         item.gameId = game.gameId;
         item.homeTeamId = game.homeTeamId;
         item.awayTeamId = game.awayTeamId;
+        // Add playoff context to duo headline
+        if (isPlayoffs && schedule) {
+          const gameForDuo = schedule.find(sg => sg.gid === game.gameId);
+          if (gameForDuo?.isPlayoff || gameForDuo?.isPlayIn) {
+            const seriesCtxForDuo = getSeriesContext(game);
+            const duoCtx = seriesCtxForDuo ?? (gameForDuo.isPlayIn ? 'Play-In Tournament' : null);
+            if (duoCtx) {
+              const lastName1 = s1.name.split(' ').pop() ?? s1.name;
+              const lastName2 = s2.name.split(' ').pop() ?? s2.name;
+              const duoPlayoffHeadlines = [
+                `${s1.name} and ${s2.name} Power ${team.name} · ${duoCtx}`,
+                `Postseason Duo: ${lastName1} & ${lastName2} Combine for ${s1.pts + s2.pts} in Playoff Win`,
+                `${lastName1}/${lastName2} Show Up When It Matters · ${duoCtx}`,
+              ];
+              item.headline = duoPlayoffHeadlines[Math.floor(Math.random() * duoPlayoffHeadlines.length)];
+            }
+          }
+        }
         news.push(item);
+      }
+    }
+  }
+
+  // ── 3e. PLAY-IN ADVANCEMENT / ELIMINATION NEWS ───────────────────────────
+  if (playoffs && schedule) {
+    for (const result of allSimResults) {
+      const g = schedule.find(sg => sg.gid === result.gameId);
+      if (!g?.isPlayIn || !g.playoffSeriesId) continue;
+      const pig = playoffs.playInGames.find(p => p.id === g.playoffSeriesId);
+      if (!pig?.played || pig.winnerId == null) continue;
+
+      const winner = teams.find(t => t.id === pig.winnerId);
+      const loserTid = pig.team1Tid === pig.winnerId ? pig.team2Tid : pig.team1Tid;
+      const loser = teams.find(t => t.id === loserTid);
+      if (!winner || !loser) continue;
+
+      const stableId = `news-playin-${g.playoffSeriesId}-${result.gameId}`;
+      if (news.some(n => n.id === stableId)) continue;
+
+      const allStats = [...result.homeStats, ...result.awayStats].sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0));
+      const topStat = allStats[0];
+      const winnerScore = result.homeTeamId === winner.id ? result.homeScore : result.awayScore;
+      const loserScore = result.homeTeamId === winner.id ? result.awayScore : result.homeScore;
+      const topNote = topStat ? ` ${topStat.name} led the way with ${topStat.pts} points.` : '';
+
+      let headline: string;
+      let body: string;
+
+      if (pig.gameType === 'loserGame') {
+        headline = `${winner.name} Punch Their Ticket to the Playoffs — ${loser.name} Eliminated`;
+        body = `${winner.name} edged out ${loser.name} ${winnerScore}–${loserScore} in the Play-In eliminator to claim the 8-seed.${topNote}`;
+      } else if (pig.gameType === '7v8') {
+        headline = `${winner.name} Win Play-In, Advance as 7-Seed`;
+        body = `${winner.name} defeated ${loser.name} ${winnerScore}–${loserScore} in the Play-In to advance directly to the first round. ${loser.name} get another chance in the loser game.${topNote}`;
+      } else {
+        headline = `${winner.name} Survive Play-In — ${loser.name} Season Ends`;
+        body = `${winner.name} defeated ${loser.name} ${winnerScore}–${loserScore}. ${loser.name} are eliminated. ${winner.name} will now face the loser of the 7v8 game for the 8-seed.${topNote}`;
+      }
+
+      news.push({
+        id: stableId,
+        headline,
+        body,
+        category: 'game_result',
+        date: result.date || currentDate,
+        image: winner.logoUrl,
+        isNew: true,
+        gameId: result.gameId,
+        homeTeamId: result.homeTeamId,
+        awayTeamId: result.awayTeamId,
+      } as unknown as NewsItem);
+    }
+  }
+
+  // ── 3f. CHAMPIONSHIP NEWS — when Finals clinch game is in this batch ───────
+  if (playoffs?.champion && playoffs.bracketComplete && schedule) {
+    const finals = playoffs.series.find(s => s.round === 4 && s.status === 'complete');
+    if (finals) {
+      const champResult = allSimResults.find(r => {
+        const g = schedule.find(sg => sg.gid === r.gameId);
+        return g?.playoffSeriesId === finals.id;
+      });
+      if (champResult) {
+        const stableId = `news-championship-${playoffs.season ?? 'finals'}-${playoffs.champion}`;
+        if (!news.some(n => n.id === stableId)) {
+          const champTeam = teams.find(t => t.id === playoffs.champion);
+          const loserTid = finals.higherSeedTid === playoffs.champion ? finals.lowerSeedTid : finals.higherSeedTid;
+          const loserTeam = teams.find(t => t.id === loserTid);
+          const totalGames = finals.higherSeedWins + finals.lowerSeedWins;
+          const year = new Date(currentDate).getFullYear();
+          const champWins = finals.winnerId === finals.higherSeedTid ? finals.higherSeedWins : finals.lowerSeedWins;
+          const loserWins = finals.winnerId === finals.higherSeedTid ? finals.lowerSeedWins : finals.higherSeedWins;
+          const winnerScore = champResult.homeTeamId === playoffs.champion ? champResult.homeScore : champResult.awayScore;
+          const loserScore  = champResult.homeTeamId === playoffs.champion ? champResult.awayScore  : champResult.homeScore;
+
+          const allStats = [...champResult.homeStats, ...champResult.awayStats]
+            .sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0));
+          const mvpStat = allStats[0];
+          const mvpPlayer = mvpStat ? players.find(p => p.internalId === mvpStat.playerId) : null;
+
+          const headlines = [
+            `${champTeam?.name ?? 'Champions'} Win the NBA Title — ${year} NBA Champions`,
+            `${champTeam?.abbrev ?? '???'} Are NBA Champions! Historic Run Ends With ${totalGames}-Game Finals`,
+            `${champTeam?.name ?? 'Champions'} Defeat ${loserTeam?.name ?? 'Opponents'} in ${totalGames} Games, Claim ${year} Championship`,
+          ];
+          const headline = headlines[Math.floor(Math.random() * headlines.length)];
+
+          const mvpNote = mvpPlayer ? ` ${mvpPlayer.name} led the way with ${mvpStat.pts} points, ${mvpStat.reb} rebounds, and ${mvpStat.ast} assists to earn the Finals MVP.` : '';
+          const body = `The ${champTeam?.name ?? 'Champions'} are ${year} NBA Champions after defeating the ${loserTeam?.name ?? 'opponent'} ${winnerScore}–${loserScore} in Game ${totalGames} to win the series ${champWins}–${loserWins}.${mvpNote} The city of ${champTeam?.region ?? champTeam?.name} erupts in celebration as the confetti falls.`;
+
+          news.push({
+            id: stableId,
+            headline,
+            body,
+            category: 'game_result',
+            date: currentDate,
+            image: champTeam?.logoUrl,
+            isNew: true,
+            gameId: champResult.gameId,
+            homeTeamId: champResult.homeTeamId,
+            awayTeamId: champResult.awayTeamId,
+          } as unknown as NewsItem);
+        }
       }
     }
   }

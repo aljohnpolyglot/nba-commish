@@ -5,6 +5,8 @@ import { normalizeDate } from '../../../utils/helpers';
 import { PlayoffGenerator } from '../../../services/playoffs/PlayoffGenerator';
 import { PlayoffAdvancer } from '../../../services/playoffs/PlayoffAdvancer';
 import { applyDailyProgression, applySeasonalBreakouts } from '../../../services/playerDevelopment/ProgressionEngine';
+import { markLightningStrikes, resolveLightningStrikes } from '../../../services/playerDevelopment/seasonalBreakouts';
+import { markFatherTimeInjections, resolveFatherTimeInjections, applyMiddleClassBoosts } from '../../../services/playerDevelopment/washedAlgorithm';
 import { generateAIDayTradeProposals } from '../../../services/AITradeHandler';
 import { runAIFreeAgencyRound, runAIMidSeasonExtensions } from '../../../services/AIFreeAgentHandler';
 import { applySeasonRollover, shouldFireRollover } from '../../../services/logic/seasonRollover';
@@ -180,6 +182,53 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
             }
         }
 
+        // ── Training Camp (Oct 1) ─────────────────────────────────────────────────
+        // Mark lightning strikes (60 young players, spread across season) + Father Time (50 vets, due Apr 1)
+        // + Middle-class boosts batch 0 (15 players aged 25-29, immediate, silent)
+        const trainingCampDate = `${stateWithSim.leagueStats.year - 1}-10-01`;
+        if (simDateForEvents === trainingCampDate) {
+            const currentYear = stateWithSim.leagueStats.year;
+
+            // Mark lightning strikes — dates spread Oct 1 → Apr 1, resolve silently daily
+            const { players: p1 } = markLightningStrikes(
+                stateWithSim.players, currentYear,
+                trainingCampDate, `${currentYear}-04-01`,
+            );
+            stateWithSim = { ...stateWithSim, players: p1 };
+
+            // Father Time injections — decline locked in, resolves Apr 1
+            const { players: p2 } = markFatherTimeInjections(
+                stateWithSim.players, currentYear,
+                trainingCampDate, `${currentYear}-04-01`,
+            );
+            stateWithSim = { ...stateWithSim, players: p2 };
+
+            // Middle-class prime boosts batch 0 — immediate, silent
+            const { players: p3 } = applyMiddleClassBoosts(stateWithSim.players, currentYear, 0);
+            stateWithSim = { ...stateWithSim, players: p3 };
+        }
+
+        // ── Post All-Star (Feb 17) ────────────────────────────────────────────────
+        // Middle-class boosts batch 1 (15 more players aged 25-29, immediate, silent)
+        const postAsbDate = `${stateWithSim.leagueStats.year}-02-17`;
+        if (simDateForEvents === postAsbDate) {
+            const { players: p4 } = applyMiddleClassBoosts(
+                stateWithSim.players, stateWithSim.leagueStats.year, 1,
+            );
+            stateWithSim = { ...stateWithSim, players: p4 };
+        }
+
+        // ── Daily: resolve lightning strikes + Father Time injections (silent) ────
+        {
+            const currentYear = stateWithSim.leagueStats.year;
+
+            const { players: p5 } = resolveLightningStrikes(stateWithSim.players, simDateForEvents, currentYear);
+            stateWithSim = { ...stateWithSim, players: p5 };
+
+            const { players: p6 } = resolveFatherTimeInjections(stateWithSim.players, simDateForEvents, currentYear);
+            stateWithSim = { ...stateWithSim, players: p6 };
+        }
+
         // Daily player progression — stagnates during playoffs
         const isPlayoffDay = !!(stateWithSim.playoffs && !stateWithSim.playoffs.bracketComplete);
         stateWithSim = {
@@ -220,13 +269,18 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
                     }),
                 };
 
-                // Log notable extensions (stars only)
-                extensions.filter(e => !e.declined).forEach(e => {
-                    const p = stateWithSim.players.find(pl => pl.internalId === e.playerId);
-                    if (p && (p.overallRating ?? 0) >= 80) {
-                        console.log(`[Extension] ${e.playerName} re-signs with ${e.teamName}: $${e.newAmount}M / exp ${e.newExp}`);
-                    }
-                });
+                // Log extensions to history (all accepted, not just stars)
+                const extHistoryEntries = extensions.filter(e => !e.declined).map(e => ({
+                    text: `${e.playerName} has re-signed with the ${e.teamName} on a $${e.newAmount.toFixed(1)}M deal through ${e.newExp}.`,
+                    date: stateWithSim.date,
+                    type: 'Signing',
+                }));
+                if (extHistoryEntries.length > 0) {
+                    stateWithSim = {
+                        ...stateWithSim,
+                        history: [...(stateWithSim.history ?? []), ...extHistoryEntries],
+                    };
+                }
             }
         }
 
@@ -274,6 +328,16 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
                             ? { ...p, tid: signings.find(s => s.playerId === p.internalId)!.teamId, status: 'Active' as const }
                             : p
                     ),
+                };
+                // Log FA signings to history
+                const faHistoryEntries = signings.map(s => ({
+                    text: `${s.playerName} has signed with the ${s.teamName}.`,
+                    date: stateWithSim.date,
+                    type: 'Signing',
+                }));
+                stateWithSim = {
+                    ...stateWithSim,
+                    history: [...(stateWithSim.history ?? []), ...faHistoryEntries],
                 };
             }
         }

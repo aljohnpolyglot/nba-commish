@@ -517,6 +517,8 @@ export const ScheduleView: React.FC = () => {
             players={state.players}
             onClose={() => setSelectedBoxScoreGame(null)}
             onPlayerClick={p => setBoxScoreClickedPlayer(p)}
+            playoffs={state.playoffs}
+            schedule={state.schedule}
           />
         )}
 

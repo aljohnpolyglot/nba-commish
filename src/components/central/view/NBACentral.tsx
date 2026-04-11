@@ -12,7 +12,6 @@ import type { NBAPlayer, Contact, Game } from '../../../types';
 import { TeamDetailView } from './TeamDetailView';
 import { normalizeDate } from '../../../utils/helpers';
 import { GameSimulator } from '../../../services/simulation/GameSimulator';
-import { GameResult } from '../../../services/simulation/StatGenerator';
 import { PlayerService } from '../../../services/data/PlayerService';
 import { TeamService } from '../../../services/data/TeamService';
 import { DailyGamesBar } from './DailyGamesBar';
@@ -41,7 +40,7 @@ export const NBACentral: React.FC = () => {
   const [pendingGameToWatch, setPendingGameToWatch] = useState<Game | null>(null);
   const [selectedBoxScoreGame, setSelectedBoxScoreGame] = useState<Game | null>(null);
   const [riggedForTid, setRiggedForTid] = useState<number | undefined>(undefined);
-  const [precomputedResult, setPrecomputedResult] = useState<GameResult | null>(null);
+  const [precomputedResult, setPrecomputedResult] = useState<any | null>(null);
 
   const playerService = useMemo(() => new PlayerService(state.players), [state.players]);
   const teamService = useMemo(() => new TeamService(state.teams), [state.teams]);
@@ -64,8 +63,8 @@ export const NBACentral: React.FC = () => {
     const date = new Date(state.date);
     const month = date.getMonth() + 1;
     const day = date.getDate();
-    // Season opener is Oct 24. Revealed 3 days before (Oct 21).
-    if (month === 10) return day >= 21;
+    // Season opener is Oct 24. Schedule visible from Opening Night.
+    if (month === 10) return day >= 24;
     if (month > 10 || month < 7) return true;
     return false;
   }, [state.date]);
@@ -88,30 +87,6 @@ export const NBACentral: React.FC = () => {
               console.log("Cannot watch future games.");
           }
       }
-  };
-
-  const executeWatchGame = async (result: GameResult) => {
-      if (!gameToWatch) return;
-      const gameId = gameToWatch.gid;
-      const currentRig = riggedForTid;
-      setGameToWatch(null);
-      setRiggedForTid(undefined);
-      setPrecomputedResult(null);
-
-      // Save the live game result immediately (no LLM, marks game as played)
-      await dispatchAction({
-          type: 'RECORD_WATCHED_GAME' as any,
-          payload: { gameId, result }
-      });
-
-      // Advance the day (LLM generates story; watched game is already marked played so won't re-simulate)
-      await dispatchAction({
-          type: 'ADVANCE_DAY',
-          payload: {
-              ...(currentRig !== undefined ? { riggedForTid: currentRig } : {}),
-              watchedGameResult: result
-          }
-      } as any);
   };
 
   const getContactFromPlayer = (player: NBAPlayer): Contact => {
@@ -315,7 +290,7 @@ export const NBACentral: React.FC = () => {
                       </div>
                       <div>
                         <h4 className="text-sm font-black text-white uppercase tracking-tight">Schedule Reveal Pending</h4>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">The 2025-26 Season Schedule will be revealed on Oct 21.</p>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">The 2025-26 Season Schedule will be revealed on Opening Night (Oct 24).</p>
                       </div>
                     </div>
                     <div className="hidden md:block">
@@ -402,20 +377,13 @@ export const NBACentral: React.FC = () => {
                 players={state.players}
                 allStar={state.allStar}
                 isProcessing={state.isProcessing}
-                onClose={async () => {
-                    const gameId = gameToWatch!.gid;
-                    const homeTeam = state.teams.find(t => t.id === gameToWatch!.homeTid)!;
-                    const awayTeam = state.teams.find(t => t.id === gameToWatch!.awayTid)!;
-                    const result = precomputedResult ?? GameSimulator.simulateGame(
-                        homeTeam, awayTeam, state.players,
-                        gameToWatch!.gid, gameToWatch!.date,
-                        state.stats.playerApproval
-                    );
+                onClose={() => {
+                    // Day already advanced in onConfirm before this screen opened — just close.
                     setGameToWatch(null); setRiggedForTid(undefined); setPrecomputedResult(null);
-                    await dispatchAction({ type: 'RECORD_WATCHED_GAME' as any, payload: { gameId, result } });
-                    await dispatchAction({ type: 'ADVANCE_DAY', payload: { watchedGameResult: result } } as any);
                 }}
-                onComplete={executeWatchGame}
+                onComplete={() => {
+                    setGameToWatch(null); setRiggedForTid(undefined); setPrecomputedResult(null);
+                }}
                 otherGamesToday={otherGamesToday}
                 riggedForTid={riggedForTid}
                 precomputedResult={precomputedResult ?? undefined}
@@ -431,8 +399,6 @@ export const NBACentral: React.FC = () => {
               awayTeam={state.teams.find(t => t.id === pendingGameToWatch.awayTid)!}
               players={state.players}
               onConfirm={async (rig, watchLive) => {
-                  const gameId = pendingGameToWatch.gid;
-                  setRiggedForTid(rig);
                   if (watchLive === false) {
                       // Just simulate — dispatch ADVANCE_DAY with riggedForTid
                       setPendingGameToWatch(null);
@@ -441,21 +407,25 @@ export const NBACentral: React.FC = () => {
                           payload: { riggedForTid: rig }
                       });
                   } else {
-                      // Watch live — pre-compute rigged result if rigged
-                      if (rig !== undefined) {
-                          const homeTeam = state.teams.find(t => t.id === pendingGameToWatch.homeTid)!;
-                          const awayTeam = state.teams.find(t => t.id === pendingGameToWatch.awayTid)!;
-                          const preResult = GameSimulator.simulateGame(
-                              homeTeam, awayTeam, state.players,
-                              pendingGameToWatch.gid, pendingGameToWatch.date,
-                              state.stats.playerApproval,
-                              undefined, undefined, undefined, undefined, rig
-                          );
-                          setPrecomputedResult(preResult);
-                      } else {
-                          setPrecomputedResult(null);
-                      }
-                      setGameToWatch(pendingGameToWatch);
+                      // Mirror ScheduleView: pre-sim + RECORD + ADVANCE_DAY before opening viewer.
+                      // "Leave Game" is then a pure close — no re-simulation on exit.
+                      const game = pendingGameToWatch;
+                      const homeTeam = state.teams.find(t => t.id === game.homeTid)!;
+                      const awayTeam = state.teams.find(t => t.id === game.awayTid)!;
+                      const preResult = GameSimulator.simulateGame(
+                          homeTeam, awayTeam, state.players,
+                          game.gid, game.date,
+                          state.stats.playerApproval,
+                          undefined, undefined, undefined, undefined, rig
+                      );
+                      await dispatchAction({ type: 'RECORD_WATCHED_GAME' as any, payload: { gameId: game.gid, result: preResult } });
+                      await dispatchAction({
+                          type: 'ADVANCE_DAY' as any,
+                          payload: { watchedGameResult: preResult, isWatchingGame: true, ...(rig !== undefined ? { riggedForTid: rig } : {}) }
+                      });
+                      setPrecomputedResult(preResult);
+                      setRiggedForTid(rig);
+                      setGameToWatch(game);
                       setPendingGameToWatch(null);
                   }
               }}
@@ -463,12 +433,24 @@ export const NBACentral: React.FC = () => {
           />
       )}
 
-      {selectedBoxScoreGame && (
+      {selectedBoxScoreGame && (() => {
+          // For intl preseason games the away/home team may be a nonNBA team (tid >= 100).
+          // Fall back to a minimal team stub so BoxScoreModal never crashes on .name.
+          const resolveTeam = (tid: number) => {
+              const nba = state.teams.find(t => t.id === tid);
+              if (nba) return nba;
+              const nonNBA = (state.nonNBATeams ?? []).find((t: any) => t.tid === tid);
+              if (nonNBA) return { id: tid, name: nonNBA.name ?? nonNBA.league ?? 'International', abbrev: (nonNBA.name ?? 'INT').slice(0, 3).toUpperCase(), logoUrl: '', conference: 'East' } as any;
+              return { id: tid, name: 'Unknown', abbrev: 'UNK', logoUrl: '', conference: 'East' } as any;
+          };
+          const bsHome = resolveTeam(selectedBoxScoreGame.homeTid);
+          const bsAway = resolveTeam(selectedBoxScoreGame.awayTid);
+          return (
           <BoxScoreModal
               game={selectedBoxScoreGame}
               result={state.boxScores.find(b => b.gameId === selectedBoxScoreGame.gid)}
-              homeTeam={state.teams.find(t => t.id === selectedBoxScoreGame.homeTid)!}
-              awayTeam={state.teams.find(t => t.id === selectedBoxScoreGame.awayTid)!}
+              homeTeam={bsHome}
+              awayTeam={bsAway}
               players={state.players}
               onClose={() => setSelectedBoxScoreGame(null)}
               onPlayerClick={(player) => {
@@ -479,8 +461,11 @@ export const NBACentral: React.FC = () => {
                 setSelectedTeamId(teamId);
                 setSelectedBoxScoreGame(null);
               }}
+              playoffs={state.playoffs}
+              schedule={state.schedule}
           />
-      )}
+          );
+      })()}
 
       {viewingRatingsPlayer && (
         <PlayerRatingsModal

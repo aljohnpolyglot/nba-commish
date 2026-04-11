@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BBGM Stats Converter</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f4f4f9;
+            margin: 0;
+        }
+        #drop-zone {
+            width: 80%;
+            max-width: 600px;
+            height: 300px;
+            border: 3px dashed #4a90e2;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-align: center;
+            padding: 20px;
+        }
+        #drop-zone.hover {
+            background: #e1f0ff;
+            border-color: #357abd;
+            transform: scale(1.02);
+        }
+        h1 { color: #333; margin-bottom: 10px; }
+        p { color: #666; }
+        .status {
+            margin-top: 20px;
+            font-weight: bold;
+            color: #2ecc71;
+        }
+        .error {
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>BBGM Converter</h1>
+    <p>Drag and drop your stats JSON file here to convert and auto-download.</p>
+
+    <div id="drop-zone">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#4a90e2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <p>Drop JSON file here</p>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <script>
+        const L_3P_AVG = 33.8;
+        const L_FG_AVG = 43.9;
+        const L_FT_AVG = 78.7;
+
+        const dropZone = document.getElementById('drop-zone');
+        const status = document.getElementById('status');
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('hover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('hover'), false);
+        });
+
+        // Handle dropped files
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const file = dt.files[0];
+
+            if (file && file.type === "application/json" || file.name.endsWith('.json')) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        processData(data, file.name);
+                    } catch (err) {
+                        showError("Invalid JSON file logic.");
+                        console.error(err);
+                    }
+                };
+                reader.readAsText(file);
+            } else {
+                showError("Please drop a valid JSON file.");
+            }
+        }
+
+        function clamp(val, low = 0, high = 100) {
+            return Math.max(low, Math.min(high, Math.floor(val)));
+        }
+
+        function calculateRatings(player, hgtIn) {
+            const s = (player.stats && player.stats.length > 0) ? player.stats[0] : {};
+            const pos = player.pos || 'GF';
+            const gp = s.gp || 0;
+            const mpg = s.min || 0;
+            const ppg = s.pts || 0;
+            const apg = s.ast || 0;
+
+          const gpWeight = Math.min(1.0, gp / 3); // Now only needs 3 games to show true talent
+            const valueWeight = Math.min(1.0, mpg / 22);
+
+            const adjustForSample = (calcRating, floor = 15) => {
+                return (calcRating * gpWeight) + (floor * (1 - gpWeight));
+            };
+
+            // Physicals
+           let hgtRating = (hgtIn - 61) * 4.5;
+if (hgtIn < 70) hgtRating += 5; // Small boost to help guards reach higher OVRs
+
+            if (pos.includes('G')) {
+                spd = 58 + ((s.stl || 0) * 10) + (valueWeight * 10);
+                stre = 20 + (hgtRating * 0.15) + (valueWeight * 10);
+            } else if (pos.includes('F')) {
+                spd = 45 + ((s.stl || 0) * 5) + (valueWeight * 10);
+                stre = 30 + (hgtRating * 0.3) + (valueWeight * 15);
+            } else { // Centers
+                spd = 22 + ((s.stl || 0) * 3) + (valueWeight * 5);
+                stre = 58 + (hgtRating * 0.5) + (valueWeight * 20);
+            }
+
+            // Shooting
+   // --- SHOOTING (Guard/Forward Volume Buff) ---
+const tpPct = s.tpp || 0;
+let tpVolumeBonus = 0;
+
+// Only boost G/F types. If they score, we assume they take a lot of 3s.
+if (pos.includes('G') || pos.includes('F')) {
+    if (ppg > 18) tpVolumeBonus = 30; // The "Caitlin" Tier
+    else if (ppg > 14) tpVolumeBonus = 20; // The "Sabrina" Tier
+    else if (ppg > 10) tpVolumeBonus = 10;
+}
+
+// Calculate raw 3P rating
+let rawTp = tpPct > 0 ? (52 + (tpPct - L_3P_AVG) * 4.5 + tpVolumeBonus) : 0;
+
+// Star Floor: If a Guard/Forward scores 15+ PPG, their 3P threat shouldn't be below 60
+if ((pos.includes('G') || pos.includes('F')) && ppg > 15 && tpPct > 20 && rawTp < 60) {
+    rawTp = 60;
+}
+
+const tp = adjustForSample(rawTp, 0); // Reese stays at 0 because her % is 0
+
+const rawIns = 30 + (ppg * 2.5); // Focus almost entirely on PPG volume
+const ins = adjustForSample(rawIns, 30);
+const ft = adjustForSample(60 + ((s.ftp || 0) - L_FT_AVG) * 1.2, 40);
+
+// --- SKILLS (Passing is king for Clark/Ionescu) ---
+const pss = adjustForSample(apg * 8, 25);
+const drb = adjustForSample(35 + (apg * 5.5), 30);
+const reb = adjustForSample(((s.trb || 0) * 6) + (hgtRating * 0.2), 20);
+
+// --- IQ (This is what makes them 70+ OVR) ---
+// We give a massive boost if PPG + APG is high (The "Star" factor)
+const starPower = (ppg + apg) > 20 ? 15 : 0; 
+const rawOiq = 5 + (ppg * 2.8) + (apg * 3.5) + starPower;
+const oiq = adjustForSample(rawOiq, 20);
+
+const rawDiq = 5 + ((s.stl || 0) * 20) + ((s.blk || 0) * 25) + (starPower * 0.1);
+const diq = adjustForSample(rawDiq, 15);
+
+            const endu = (mpg / 30) * 90;
+
+            return {
+                hgt: clamp(hgtRating), stre: clamp(stre), spd: clamp(spd),
+                jmp: clamp(spd * 0.82), endu: clamp(endu), ins: clamp(ins),
+                dnk: clamp(pos.includes('C') ? ins * 1.15 : ins * 0.7),
+                fg: clamp(ins * 0.85), tp: clamp(tp), ft: clamp(ft),
+                pss: clamp(pss), reb: clamp(reb), drb: clamp(drb),
+                oiq: clamp(oiq), diq: clamp(diq)
+            };
+        }
+
+        function processData(data, originalName) {
+            status.innerHTML = "Processing...";
+            status.className = "status";
+
+            try {
+                // Teams Sorting
+                const sortedTeams = [...data.teams].sort((a, b) => a.name.localeCompare(b.name));
+                const idMap = {};
+                sortedTeams.forEach((team, index) => {
+                    idMap[team.id] = index;
+                });
+
+                const bbgmTeams = sortedTeams.map((team, i) => {
+                    const parts = team.name.split(' ');
+                    const region = parts[0];
+                    const name = parts.length > 1 ? parts.slice(1).join(' ') : region;
+                    return {
+                        tid: i,
+                        cid: i < 14 ? 0 : 1,
+                        did: Math.floor(i / 7),
+                        region: region,
+                        name: name,
+                        abbrev: region.substring(0, 3).toUpperCase(),
+                        imgURL: team.logoUrl || ""
+                    };
+                });
+
+                // Players Processing
+                const bbgmPlayers = data.players.map(p => {
+                    const rawName = p.name.replace(/\u00a0/g, ' ').replace(/\n/g, ' ');
+                    const parts = rawName.split(/\s+/).filter(x => x.trim().length > 0);
+                    let first, last;
+                    
+                    if (parts.length >= 2) {
+                        first = parts[parts.length - 1];
+                        last = parts.slice(0, -1).join(' ');
+                    } else {
+                        first = parts[0] || "Player";
+                        last = "";
+                    }
+
+                    const hgtCm = p.hgt || 190;
+                    const hgtIn = Math.round(hgtCm / 2.54);
+                    const currentAge = p.age || 25;
+                    const calcBirthYear = 2026 - currentAge;
+
+                    return {
+                        firstName: first,
+                        lastName: last,
+                        tid: idMap[p.tid] !== undefined ? idMap[p.tid] : -1,
+                        pos: (p.pos && p.pos !== '-') ? p.pos : "GF",
+                        age: currentAge,
+                        hgt: hgtIn,
+                        ratings: [calculateRatings(p, hgtIn)],
+                        imgURL: p.imgURL || "",
+                        notes: p.notes || "",
+                        college: "",
+                        born: { loc: p.born ? p.born.loc : "", year: calcBirthYear }
+                    };
+                });
+
+                const outputJson = {
+                    version: 66,
+                    startingSeason: 2025,
+                    confs: [{ cid: 0, name: "East" }, { cid: 1, name: "West" }],
+                    divs: [
+                        { did: 0, cid: 0, name: "A" }, { did: 1, cid: 0, name: "B" },
+                        { did: 2, cid: 1, name: "C" }, { did: 3, cid: 1, name: "D" }
+                    ],
+                    teams: bbgmTeams,
+                    players: bbgmPlayers
+                };
+
+                download(outputJson, `converted_${originalName}`);
+                status.innerHTML = `✅ Success! Converted ${bbgmPlayers.length} players.`;
+            } catch (err) {
+                showError("Processing failed. Make sure JSON format is correct.");
+                console.error(err);
+            }
+        }
+
+        function download(data, filename) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function showError(msg) {
+            status.innerHTML = msg;
+            status.className = "status error";
+        }
+    </script>
+</body>
+</html>

@@ -271,21 +271,42 @@ export class GameSimulator {
     // sum of player pts can drift 10-25 pts above the scoreboard total. Fix via FTM adjustment.
     // Removal: lowest scorers first → preserves the star's big night (EXPLOSION stays at 55).
     // Addition: highest scorers first → realistic (stars make the extra FTs).
+    // Pass 2: if FTM-based pass can't fully close the gap (due to low ftm), adjust FGM (2-pt) as fallback.
     const reconcileToScore = (stats: any[], target: number) => {
       let delta = target - stats.reduce((s: number, p: any) => s + (p.pts || 0), 0);
       if (delta === 0) return;
       const sorted = delta < 0
         ? [...stats].sort((a: any, b: any) => a.pts - b.pts)   // remove from low scorers first
         : [...stats].sort((a: any, b: any) => b.pts - a.pts);  // add to top scorers first
+      // Pass 1: adjust via FTM (capped at 4 per player to preserve star lines)
       for (const s of sorted) {
         if (delta === 0) break;
         if (delta > 0) {
           const add = Math.min(delta, 4);
           s.ftm += add; s.fta = Math.max(s.fta, s.ftm); s.pts += add; delta -= add;
         } else {
-          // Cap at 4 pts removed per player — prevents stripping a star's entire FT line
           const remove = Math.min(-delta, Math.min(4, Math.max(0, s.ftm)));
           if (remove > 0) { s.ftm -= remove; s.pts -= remove; delta += remove; }
+        }
+      }
+      // Pass 2: if delta still remains, adjust via 2-pt FGM (add/remove 2-pointers)
+      if (delta !== 0) {
+        const pass2 = delta < 0
+          ? [...stats].sort((a: any, b: any) => a.pts - b.pts)
+          : [...stats].sort((a: any, b: any) => b.pts - a.pts);
+        for (const s of pass2) {
+          if (delta === 0) break;
+          const twoPm = Math.max(0, s.fgm - (s.threePm ?? s.tp ?? 0));
+          if (delta > 0) {
+            // Add a 2-pointer
+            s.fgm += 1; s.fga = Math.max(s.fga, s.fgm); s.pts += 2; delta -= 2;
+          } else if (twoPm > 0 && delta <= -2) {
+            // Remove a 2-pointer
+            s.fgm -= 1; s.pts -= 2; delta += 2;
+          } else if (delta === -1) {
+            // Odd-point gap: remove 1 FT from whoever has one
+            if (s.ftm > 0) { s.ftm -= 1; s.pts -= 1; delta += 1; }
+          }
         }
       }
     };
@@ -677,14 +698,23 @@ export class GameSimulator {
           } else {
             const isRisingStars = game.isRisingStars;
             const roster = isRisingStars ? (allStar.risingStarsRoster || []) : (allStar.roster || []);
-            
+
             const rosterIds = new Set(
-              isRisingStars 
+              isRisingStars
                 ? roster.slice(0, 10).map((r: any) => r.playerId)
                 : roster.filter((r: any) => r.conference === 'East').map((r: any) => r.playerId)
             );
             homeOverride = players.filter(p => rosterIds.has(p.internalId));
           }
+        }
+        // Ensure minimum 8 players — fill from top available NBA players not already on either side
+        if (homeOverride && homeOverride.length < 8 && !game.isCelebrityGame) {
+          const usedIds = new Set([...(homeOverride || []), ...(awayOverride || [])].map((p: any) => p.internalId));
+          const INELIGIBLE = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa']);
+          const fillers = players
+            .filter(p => !usedIds.has(p.internalId) && !INELIGIBLE.has((p as any).status ?? '') && ((p as any).injury?.gamesRemaining ?? 0) === 0)
+            .sort((a: any, b: any) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
+          while (homeOverride.length < 12 && fillers.length > 0) homeOverride.push(fillers.shift()!);
         }
       }
 
@@ -708,6 +738,15 @@ export class GameSimulator {
             );
             awayOverride = players.filter(p => rosterIds.has(p.internalId));
           }
+        }
+        // Ensure minimum 8 players — fill from top available NBA players not already on either side
+        if (awayOverride && awayOverride.length < 8 && !game.isCelebrityGame) {
+          const usedIds = new Set([...(homeOverride || []), ...(awayOverride || [])].map((p: any) => p.internalId));
+          const INELIGIBLE = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa']);
+          const fillers = players
+            .filter(p => !usedIds.has(p.internalId) && !INELIGIBLE.has((p as any).status ?? '') && ((p as any).injury?.gamesRemaining ?? 0) === 0)
+            .sort((a: any, b: any) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
+          while (awayOverride.length < 12 && fillers.length > 0) awayOverride.push(fillers.shift()!);
         }
       }
 

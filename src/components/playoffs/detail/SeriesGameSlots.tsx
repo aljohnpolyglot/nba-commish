@@ -33,7 +33,14 @@ export const SeriesGameSlots: React.FC<SeriesGameSlotsProps> = ({
       .map(id => schedule.find(g => g.gid === id))
       .filter((g): g is Game => !!g)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    slotCount = series.gamesNeeded;
+    const playedCount = games.filter(g => g.played).length;
+    const isComplete = series.status === 'complete';
+    // Show: played games + 1 next (minimum = winsNeeded so at least 4 slots for best-of-7)
+    // When complete: show only played games. Cap at gamesNeeded.
+    const winsNeeded = Math.ceil(series.gamesNeeded / 2);
+    slotCount = isComplete
+      ? playedCount
+      : Math.min(series.gamesNeeded, Math.max(winsNeeded, playedCount + 1));
   } else {
     games = series.gameId ? [schedule.find(g => g.gid === series.gameId)].filter((g): g is Game => !!g) : [];
     slotCount = 1;

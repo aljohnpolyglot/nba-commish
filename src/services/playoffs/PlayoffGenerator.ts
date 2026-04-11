@@ -103,6 +103,15 @@ export class PlayoffGenerator {
       const eastChamp = eastWinners[0];
       const westChamp = westWinners[0];
       if (eastChamp != null && westChamp != null) {
+        const eastSeries = prevSeries.filter(s => s.conference === 'East');
+        const westSeries = prevSeries.filter(s => s.conference === 'West');
+        const getWinnerSeedLocal = (tid: number, confSeries: PlayoffSeries[]): number => {
+          const s = confSeries.find(ps => ps.winnerId === tid);
+          if (!s) return 1;
+          return s.winnerId === s.higherSeedTid ? s.higherSeed : s.lowerSeed;
+        };
+        const eastSeed = getWinnerSeedLocal(eastChamp, eastSeries);
+        const westSeed = getWinnerSeedLocal(westChamp, westSeries);
         series.push({
           id: 'Finals',
           round: 4,
@@ -114,8 +123,8 @@ export class PlayoffGenerator {
           gamesNeeded: numGames,
           gameIds: [],
           status: 'active',
-          higherSeed: 1,
-          lowerSeed: 1,
+          higherSeed: eastSeed,
+          lowerSeed: westSeed,
         });
       }
     } else {
@@ -211,8 +220,9 @@ export class PlayoffGenerator {
         } as Game);
         seriesGameIds.push(gid);
         gid++;
-        // 2 days between games, 3 days extra rest after games 2 and 4
-        const gap = (g === 1 || g === 3) ? 3 : 2;
+        // 2 days between games, 3 days extra rest after games 2 and 4 (not for Finals — keep it tight)
+        const isFinals = s.round === 4;
+        const gap = isFinals ? 2 : ((g === 1 || g === 3) ? 3 : 2);
         gameDate = new Date(gameDate);
         gameDate.setDate(gameDate.getDate() + gap);
       }

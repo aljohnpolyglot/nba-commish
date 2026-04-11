@@ -76,9 +76,9 @@
 
 ### Known constraints
 - External roster players (Euroleague, PBA) have BBGM `ratings[]` — they develop too (correct behavior)
-- Draft prospects (`tid === -2`) in the roster file up to 2028 — no generation needed
+- Draft prospects (`tid === -2`) in the roster file up to 2028 — ✅ ratings FROZEN (Apr 2026 session 5) — they do not develop until drafted
 - `overallRating` recalculated via `calculatePlayerOverallForYear` after each update
-- HOF/deceased players skipped
+- HOF/deceased players skipped (`diedYear` check in `applyDailyProgression`)
 
 ### What changed Apr 2026
 - ✅ **pot (potential) cap** — `potMod(ovr, pot)` in ProgressionEngine. Dev rate tapers as ovr approaches pot ceiling. Creates natural busts for low-pot prospects, non-linear dev for all.
@@ -264,8 +264,10 @@ Order of operations when user/system triggers end-of-season advance:
   - Clears: `christmasGames`, `playoffs`, `allStar`, `draftLotteryResult`
   - Generates rollover news item with new cap + expired count
   - Wired into `simulationHandler.ts` daily loop
-- [ ] Age increment (step 12) — `player.age += 1` annually; update `player.ratings` with new season entry
-- [ ] Schedule regen at rollover is handled by `autoResolvers.ts` on Aug 14 (already done)
+- ✅ Age increment (step 12) — `player.age += 1` on rollover (Apr 2026 session 5)
+  - All active players age (contracted, FA, external league, retired)
+  - Deceased (`diedYear` set) and future draft prospects (`tid === -2`) are skipped
+- ✅ Schedule regen at rollover is handled by `autoResolvers.ts` on Aug 14 (already done)
 
 ---
 
@@ -377,8 +379,13 @@ In `DayView.tsx`, add two special cards that appear on the right calendar dates:
 - ✅ Wired into `NavigationMenu.tsx` and `MainContent.tsx`
 
 **Remaining:**
-- [ ] `EXECUTE_DRAFT_PICK` action — moves prospect to team with rookie contract scale by pick slot
-- [ ] Undrafted after 60 picks → `undraftedFreeAgents[]`
+- ✅ Draft pick execution — `finalizeDraft()` in `DraftSimulatorView.tsx` (Apr 2026 session 5)
+  - Respects `leagueStats.rookieScaleType` (dynamic/static) and `rookieContractLength`
+  - R1 picks: 4-yr rookie deal (user-configurable), R2 picks: 2-yr deal
+  - Undrafted prospects (`tid === -2`) → `tid = -1, status = 'Free Agent'`
+  - Dispatches `UPDATE_STATE` to persist to game state; shows "Commit Picks" button when draft completes
+- ✅ Draft Board always shown in sidebar nav under 'Draft' section (Apr 2026 session 5)
+  - Defaults to showing previous draft class results when no current draft is in progress
 
 ### §8d — Key pure functions ✅ DONE Apr 2026
 `src/services/draft/runLottery.ts` — `runDraftLottery(teams)` implements weighted draw with NBA 2019 odds (140/140/140/125/105/90/75/60/45/30/20/15/10/5). Top 4 picks drawn from combination pool, picks 5-14 fill in standing order.
@@ -519,4 +526,4 @@ grep -rn "2025\|2026\|2027\|START_DATE_STR\|currentSeason = 20" src/ --include="
 | `BroadcastingView.tsx` | deadline | `10-24` (Opening Night) | `${year}-06-30` | ✅ Done |
 | `NavigationMenu.tsx` | badge | `10-24` | `${year}-06-30` | ✅ Done |
 | `initialization.ts` | TBD | any 2025/2026 strings | audit | [ ] |
-| `lazySimRunner.ts` | 58-76, 156-162 | milestone dates | derive from season year | [ ] |
+| `lazySimRunner.ts` | 58-76, 156-162 | milestone dates | `buildAutoResolveEvents(year)` + year-aware `getPhaseLabel` | ✅ Apr 2026 session 5 |

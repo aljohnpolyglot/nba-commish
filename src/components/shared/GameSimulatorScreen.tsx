@@ -416,13 +416,15 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
 
           {/* ── tab bar ── */}
           <div className="flex bg-[#111] border-y border-gray-700 text-[9px] sm:text-[10px] font-bold tracking-[0.1em] sm:tracking-[0.15em] text-gray-400 overflow-x-auto">
-            <button
-              onClick={togglePlay}
-              className="bg-[#e61938] text-white px-4 sm:px-6 md:px-10 py-3 border-r border-gray-700 flex items-center justify-center gap-2 hover:bg-red-700 transition-colors shrink-0"
-            >
-              {isSimulating ? 'PAUSE' : (isFinal ? 'RESTART' : 'PLAY')}
-              <div className={`w-2 h-2 ${isSimulating ? 'bg-white' : 'border border-white'}`}></div>
-            </button>
+            {!isFinal && (
+              <button
+                onClick={togglePlay}
+                className="bg-[#e61938] text-white px-4 sm:px-6 md:px-10 py-3 border-r border-gray-700 flex items-center justify-center gap-2 hover:bg-red-700 transition-colors shrink-0"
+              >
+                {isSimulating ? 'PAUSE' : 'PLAY'}
+                <div className={`w-2 h-2 ${isSimulating ? 'bg-white' : 'border border-white'}`}></div>
+              </button>
+            )}
             {[
               ['boxscore',   'BOX SCORE'],
               ['comparison', 'TEAM STATS'],
@@ -564,14 +566,18 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                           </tfoot>
                         </table>
                       </div>
-                      {/* DNP players */}
+                      {/* DNP players — before final result, only reveal injured players (hide coach decisions as spoilers) */}
                       {(() => {
                         const teamId = tm === 'HOME' ? game.homeTid : game.awayTid;
-                        const dnpPlayers = players.filter(p =>
+                        const allDnp = players.filter(p =>
                           p.tid === teamId &&
                           p.status === 'Active' &&
                           !liveStats[tm][p.internalId]
                         );
+                        // Pre-sim: filter to injured only so we don't spoil coach rotations
+                        const dnpPlayers = finalResult
+                          ? allDnp
+                          : allDnp.filter(p => (p.injury?.gamesRemaining ?? 0) > 0);
                         if (dnpPlayers.length === 0) return null;
                         return (
                           <div className="mt-1 border-t border-gray-800/50">
@@ -582,7 +588,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                                   {finalResult?.playerDNPs?.[p.internalId] ??
                                     ((p.injury?.gamesRemaining ?? 0) > 0
                                       ? `DNP — Injury (${p.injury!.type})`
-                                      : "DNP — CD")}
+                                      : 'DNP — CD')}
                                 </span>
                               </div>
                             ))}
@@ -613,10 +619,10 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                 return (
                   <div className="w-full flex flex-col gap-3">
                     <div className="overflow-x-auto custom-scrollbar">
-                      <table className="w-full text-xs text-center min-w-[280px]">
+                      <table className="w-full text-xs text-center" style={{ minWidth: '260px' }}>
                         <thead className="text-[9px] sm:text-[10px] text-gray-500 uppercase tracking-widest border-b border-gray-800">
                           <tr>
-                            <th className="py-2 text-left font-normal">Team</th>
+                            <th className="py-2 text-left font-normal sticky left-0 bg-[#0f1117] pr-2">Team</th>
                             <th className="py-2 font-normal">eFG%</th>
                             <th className="py-2 font-normal">TOV%</th>
                             <th className="py-2 font-normal">ORB%</th>
@@ -625,14 +631,14 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                         </thead>
                         <tbody className="divide-y divide-gray-800/50">
                           <tr>
-                            <td className="py-2 text-left font-bold text-white text-[10px]">{awayTeam.abbreviation}</td>
+                            <td className="py-2 text-left font-bold text-white text-[10px] sticky left-0 bg-[#0f1117] pr-2">{awayTeam.abbreviation}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{awayAdv.eFG.toFixed(1)}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{awayAdv.tovPct.toFixed(1)}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{awayAdv.orbPct.toFixed(1)}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{awayAdv.ftFga.toFixed(3)}</td>
                           </tr>
                           <tr>
-                            <td className="py-2 text-left font-bold text-blue-400 text-[10px]">{homeTeam.abbreviation}</td>
+                            <td className="py-2 text-left font-bold text-blue-400 text-[10px] sticky left-0 bg-[#0f1117] pr-2">{homeTeam.abbreviation}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{homeAdv.eFG.toFixed(1)}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{homeAdv.tovPct.toFixed(1)}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{homeAdv.orbPct.toFixed(1)}</td>

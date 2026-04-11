@@ -235,9 +235,16 @@ function progressPlayer(player: NBAPlayer, currentYear: number, date: string): N
 
   const pot: number = rating.pot ?? 70;
 
+  // Per-player developmental fingerprint: stable offset seeded ONLY by pid (not year).
+  // Shifts each player's effective age curve — some 26-year-olds are still improving,
+  // others already declining. Range [-2, +2] annual units → visible OVR divergence over a season.
+  const careerOffset = seededUniform(pid + 'career', -2.0, 2.0);
+
   // Annual base change for this player this season (deterministic per pid+year)
   // Divide by 365 for daily application. pot passed for wine-aging modifier.
-  const annualBase = calcBaseChange(age, pid + currentYear, pot);
+  const rawBase = calcBaseChange(age, pid + currentYear, pot);
+  // Only apply the offset when the base isn't already large (don't double-boost elite youth)
+  const annualBase = rawBase + (Math.abs(rawBase) < 4 ? careerOffset : careerOffset * 0.3);
   const dailyBase = annualBase / 365;
 
   // Skip attribute delta if base is exactly 0 and not overseas (peak-age NBA player)
@@ -324,6 +331,7 @@ export function applyDailyProgression(
     if (!player.ratings || player.ratings.length === 0) return player;
     if ((player as any).diedYear) return player;
     if (player.status === 'Retired') return player;
+    if (player.tid === -2) return player; // future draft prospect — ratings frozen until drafted
     try {
       return progressPlayer(player, currentYear, date);
     } catch (_) {

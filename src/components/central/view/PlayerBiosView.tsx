@@ -190,6 +190,7 @@ export const PlayerBiosView: React.FC = () => {
       {label}<SortIcon k={k} />
     </th>
   );
+  const STICKY_BG = '#161a20';
 
   const visibleTeams = useMemo(() => {
     const base = (league === 'NBA' || league === 'All') ? teams : [];
@@ -288,28 +289,13 @@ export const PlayerBiosView: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto custom-scrollbar">
-        {/* Mobile cards */}
-        <div className="md:hidden p-3 space-y-2">
-          {paginated.map(p => (
-            <div key={p.internalId} onClick={() => setViewingPlayer(p as unknown as NBAPlayer)} className="bg-[#1e232c] border border-slate-800/60 rounded-xl p-3 active:bg-slate-800/50 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-slate-700 overflow-hidden shrink-0">
-                {p.imgURL ? <img src={p.imgURL} alt={p.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="w-full h-full flex items-center justify-center text-xs font-black text-slate-400">{p.name[0]}</span>}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-white text-sm truncate">{p.name}</div>
-                <div className="text-xs text-slate-400">{p.teamAbbrev} · {p.pos} · Age {p.age}</div>
-              </div>
-              <span className={`text-xs font-black px-2 py-0.5 rounded border ${ovrBadge(p.displayOvr)}`}>{p.displayOvr}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Desktop table */}
-        <table className="hidden md:table w-full text-left border-collapse">
+      <div className="flex-1 overflow-auto custom-scrollbar" style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+        <table className="w-full text-left border-collapse" style={{ minWidth: '900px' }}>
           <thead className="bg-slate-900/60 sticky top-0 z-10">
             <tr>
-              <Th k="name" label="Player" cls="pl-4" />
+              <th onClick={() => sort('name')} className="py-3 px-3 pl-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 select-none whitespace-nowrap sticky left-0 z-20" style={{ backgroundColor: '#1a1e26' }}>
+                Player<SortIcon k="name" />
+              </th>
               <Th k="displayOvr" label="OVR" />
               <Th k="displayPot" label="POT" />
               <Th k="team" label="Team" />
@@ -326,8 +312,8 @@ export const PlayerBiosView: React.FC = () => {
             </tr>
             {showColFilters && (
               <tr className="bg-slate-900/40">
-                {['name','displayOvr','displayPot','team','jerseyNumber','pos','age','formattedHeight','formattedWeight','college','extractedCountry','draftStr','pickStr','experience'].map(k => (
-                  <td key={k} className="p-1.5">
+                {['name','displayOvr','displayPot','team','jerseyNumber','pos','age','formattedHeight','formattedWeight','college','extractedCountry','draftStr','pickStr','experience'].map((k, i) => (
+                  <td key={k} className={`p-1.5${i === 0 ? ' sticky left-0 z-20' : ''}`} style={i === 0 ? { backgroundColor: '#1a1e26' } : undefined}>
                     <input type="text" value={colFilters[k] || ''} onChange={e => setColFilters(prev => ({ ...prev, [k]: e.target.value }))}
                       className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500" placeholder="…" />
                   </td>
@@ -339,7 +325,7 @@ export const PlayerBiosView: React.FC = () => {
             {paginated.map(p => (
               <tr key={p.internalId} onClick={() => setViewingPlayer(p as unknown as NBAPlayer)}
                 className="border-b border-slate-800/30 hover:bg-slate-800/30 cursor-pointer transition-colors">
-                <td className="py-2.5 px-3 pl-4">
+                <td className="py-2.5 px-3 pl-4 sticky left-0 z-10 whitespace-nowrap" style={{ backgroundColor: STICKY_BG }}>
                   <div className="flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-full bg-slate-700 overflow-hidden shrink-0">
                       {p.imgURL ? <img src={p.imgURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="w-full h-full flex items-center justify-center text-[10px] font-black text-slate-400">{p.name[0]}</span>}

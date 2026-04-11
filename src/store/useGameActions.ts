@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { GameState, CommissionerLogEntry, SocialPost } from '../types';
+import { calculatePlayerOverallForYear } from '../utils/playerRatings';
 
 export const useGameActions = (setState: React.Dispatch<React.SetStateAction<GameState>>, getState: () => GameState) => {
   const [isGeneratingReplies, setIsGeneratingReplies] = useState<Record<string, boolean>>({});
@@ -105,12 +106,13 @@ export const useGameActions = (setState: React.Dispatch<React.SetStateAction<Gam
           r.season === season ? { ...r, ...ratings } : r
         ) ?? [];
         const hasMatch = p.ratings?.some((r: any) => r.season === season);
-        return {
-          ...p,
-          ratings: hasMatch ? updatedRatings : p.ratings?.map((r: any, i: number) =>
-            i === (p.ratings!.length - 1) ? { ...r, ...ratings } : r
-          ) ?? [],
-        };
+        const newRatings = hasMatch ? updatedRatings : p.ratings?.map((r: any, i: number) =>
+          i === (p.ratings!.length - 1) ? { ...r, ...ratings } : r
+        ) ?? [];
+        // Recalculate overallRating immediately so UI reflects the change without waiting for next-day sim
+        const updatedPlayer = { ...p, ratings: newRatings } as any;
+        const newOvr = calculatePlayerOverallForYear(updatedPlayer, season);
+        return { ...updatedPlayer, overallRating: newOvr };
       }),
     }));
   };

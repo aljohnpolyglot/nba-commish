@@ -29,17 +29,26 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   // We track yearsWithTeam by inspecting the existing field or incrementing by 1.
   const expiredIds = new Set<string>();
   const updatedPlayers: NBAPlayer[] = state.players.map(p => {
-    if (!p.contract) return p;
-    if (p.tid < 0) return p;           // already FA / draft prospect
-    if ((p as any).status === 'Retired') return p;
+    // Everyone ages (retired, external, FA, contracted) except deceased players and unborn prospects
+    if ((p as any).diedYear) return p;                   // deceased — do not age
+    if (p.tid === -2) return p;                          // future draft prospect — birth year is source of truth
+
+    const EXTERNAL_LEAGUES = ['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'];
+    // tid >= 100: non-NBA team roster slot (WNBA ≥3000, Euroleague ≥1000, etc.) — never convert to NBA FA
+    if ((p as any).status === 'Retired' || EXTERNAL_LEAGUES.includes((p as any).status ?? '') || p.tid >= 100 || !p.contract || p.tid < 0) {
+      // Retired / external league / unsigned — age but freeze roster (no contract changes, no FA conversion)
+      return typeof p.age === 'number' ? { ...p, age: p.age + 1 } as NBAPlayer : p;
+    }
 
     const contractExp: number = p.contract.exp ?? 0;
+    const newAge = typeof p.age === 'number' ? p.age + 1 : p.age;
 
     // Contract expired at end of the season that just finished
     if (contractExp <= currentYear) {
       expiredIds.add(p.internalId);
       return {
         ...p,
+        age: newAge,
         tid: -1,
         status: 'Free Agent' as const,
         yearsWithTeam: 0,
@@ -54,7 +63,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
         ? true
         : (p as any).hasBirdRights ?? false;
 
-    return { ...p, yearsWithTeam: yrsWithTeam, hasBirdRights, midSeasonExtensionDeclined: undefined } as any;
+    return { ...p, age: newAge, yearsWithTeam: yrsWithTeam, hasBirdRights, midSeasonExtensionDeclined: undefined } as any;
   });
 
   // ── 2. Cap inflation ────────────────────────────────────────────────────
@@ -121,6 +130,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     playoffs: undefined,
     allStar: undefined,
     draftLotteryResult: undefined,
+    draftComplete: undefined,
     leagueStats: {
       ...state.leagueStats,
       year: nextYear,

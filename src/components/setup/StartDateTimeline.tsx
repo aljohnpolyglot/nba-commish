@@ -47,7 +47,7 @@ const ZONE_SEGMENTS: { start: string; end: string; zone: DateZone }[] = [
   { start: '2026-01-14', end: '2026-02-12', zone: 'mid' },
   { start: '2026-02-13', end: '2026-02-16', zone: 'allstar' },
   { start: '2026-02-17', end: '2026-04-15', zone: 'late' },
-  { start: '2026-04-16', end: TIMELINE_DISPLAY_END, zone: 'locked' },
+  { start: '2026-04-16', end: TIMELINE_DISPLAY_END, zone: 'late' },
 ];
 
 // Month ticks
@@ -277,21 +277,6 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
               );
             })}
 
-            {/* Locked overlay */}
-            {(() => {
-              const lockX = dateToX('2026-04-16');
-              return (
-                <div
-                  className="absolute top-0 bottom-0 flex items-center justify-center pointer-events-none"
-                  style={{ left: lockX, right: 0, background: 'rgba(0,0,0,0.5)', zIndex: 15 }}
-                >
-                  <div className="text-center opacity-40">
-                    <div className="text-2xl">🔒</div>
-                    <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">Post-Season Locked</div>
-                  </div>
-                </div>
-              );
-            })()}
           </div>
         </div>
 

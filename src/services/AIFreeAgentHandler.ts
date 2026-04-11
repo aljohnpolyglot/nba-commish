@@ -125,8 +125,12 @@ export interface ExtensionResult {
 
 /** Rough market value in USD for a player (used for contract offers). */
 function estimateMarketValueUSD(player: NBAPlayer): number {
-  const base = Math.max(0, (player.overallRating ?? 60) - 60) * 1_000_000;
-  const agePenalty = player.age && player.age > 30 ? (player.age - 30) * 500_000 : 0;
+  // overallRating may be undefined — fall back to ratings array OVR
+  const lastRating = (player as any).ratings?.[(player as any).ratings.length - 1];
+  const ovr = player.overallRating ?? lastRating?.ovr ?? 60;
+  const base = Math.max(0, ovr - 60) * 1_000_000;
+  const age = player.age ?? ((player as any).born?.year ? 2026 - (player as any).born.year : 27);
+  const agePenalty = age > 30 ? (age - 30) * 500_000 : 0;
   return Math.max(2_000_000, base - agePenalty);
 }
 

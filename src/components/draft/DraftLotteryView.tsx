@@ -7,11 +7,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  RotateCcw, Play, Share2, HelpCircle, Info,
+  Play, Info,
   TrendingUp, TrendingDown, Minus,
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
-import { DraftSimulatorView } from './DraftSimulatorView';
+import { normalizeDate } from '../../utils/helpers';
 
 // ─── Fanspo CSS (injected once) ──────────────────────────────────────────────
 const FANSPO_CSS = `
@@ -144,9 +144,19 @@ if (typeof document !== 'undefined' && !document.getElementById('fanspo-draft-cs
   document.head.appendChild(s);
 }
 
-// ─── NBA 2019 odds (1000 combinations) ───────────────────────────────────────
-const NBA2019_CHANCES = [140, 140, 140, 125, 105, 90, 75, 60, 45, 30, 20, 15, 10, 5];
-const TOTAL_COMBS = 1000;
+// ─── Lottery presets (mirrors League Settings draftType options) ───────────────
+const LOTTERY_PRESETS: Record<string, { chances: number[]; numToPick: number; total: number; label: string }> = {
+  nba2019:  { chances: [140,140,140,125,105,90,75,60,45,30,20,15,10,5],                                    numToPick: 4, total: 1000, label: 'NBA 2019-present' },
+  nba1994:  { chances: [250,199,156,119,88,63,43,28,17,11,8,7,6,5],                                        numToPick: 3, total: 1000, label: 'NBA 1994-2018' },
+  nba1990:  { chances: [11,10,9,8,7,6,5,4,3,2,1],                                                          numToPick: 3, total: 66,   label: 'NBA 1990-1993' },
+  nba1987:  { chances: [1,1,1,1,1,1,1],                                                                     numToPick: 3, total: 7,    label: 'NBA 1987-1989' },
+  nba1985:  { chances: [1,1,1,1,1,1,1],                                                                     numToPick: 7, total: 7,    label: 'NBA 1985-1986' },
+  nba1966:  { chances: [1,1,0,0,0,0,0],                                                                     numToPick: 2, total: 2,    label: 'NBA 1966-1984' },
+  nhl2021:  { chances: [185,135,115,95,85,75,65,60,50,35,30,25,20,15,5,5],                                 numToPick: 2, total: 1000, label: 'NHL 2021-present' },
+  nhl2017:  { chances: [185,135,115,95,85,75,65,60,50,35,30,25,20,15,10],                                  numToPick: 3, total: 1000, label: 'NHL 2017-2020' },
+  mlb2022:  { chances: [1650,1650,1650,1325,1000,750,550,390,270,180,140,110,90,76,62,48,36,23],           numToPick: 6, total: 10000,label: 'MLB 2022-present' },
+};
+const DEFAULT_PRESET = LOTTERY_PRESETS['nba2019'];
 
 // ─── Lottery runner (mirrors /lib/lottery.ts) ─────────────────────────────────
 interface LotteryTeam {
@@ -224,14 +234,25 @@ const LotteryBall = ({ number, state: bs, team }: BallProps) => (
 export const DraftLotteryView = () => {
   const { state, dispatchAction } = useGame();
   const season = state.leagueStats?.year ?? new Date(state.date).getFullYear();
+  const activePreset = LOTTERY_PRESETS[state.leagueStats?.draftType ?? 'nba2019'] ?? DEFAULT_PRESET;
 
-  const [appMode, setAppMode] = useState<'lottery' | 'draft'>('lottery');
+  // ─── Date gating ──────────────────────────────────────────────────────────
+  const today = state.date ? normalizeDate(state.date) : '';
+  const lotteryDate = `${season}-05-14`;
+  const isLotteryTime = today >= lotteryDate;
+
+  // Draft Board is now a separate nav view — no appMode toggle needed here
   const [speed, setSpeed] = useState('normal');
   const [showHistory, setShowHistory] = useState(false);
-  const [results, setResults] = useState<LotteryResult[]>([]);
-  const [history, setHistory] = useState<LotteryResult[][]>([]);
+
+  // Lazy initializers: restore from game state if lottery was already run this season
+  const savedResults = (state as any).draftLotteryResult as LotteryResult[] | undefined;
+  const hasSaved = savedResults && savedResults.length > 0;
+  const [results, setResults] = useState<LotteryResult[]>(() => hasSaved ? savedResults! : []);
+  const [history, setHistory] = useState<LotteryResult[][]>(() => hasSaved ? [savedResults!] : []);
   const [isSimulating, setIsSimulating] = useState(false);
-  const [revealIndex, setRevealIndex] = useState(15); // idle = length+1
+  // 0 = fully revealed (restored), numTeams+1 = idle (no results yet)
+  const [revealIndex, setRevealIndex] = useState<number>(() => hasSaved ? 0 : 15);
 
   // Build lottery teams from worst 14 in state
   const activeTeams: LotteryTeam[] = useMemo(() => {
@@ -245,9 +266,9 @@ export const DraftLotteryView = () => {
       .slice(0, 14);
 
     return sorted.map((t, i) => {
-      const chance = NBA2019_CHANCES[i] ?? 0;
-      const odds1st = parseFloat(((chance / TOTAL_COMBS) * 100).toFixed(1));
-      const oddsTop4 = parseFloat((odds1st * 3.7).toFixed(1));
+      const chance = activePreset.chances[i] ?? 0;
+      const odds1st = parseFloat(((chance / activePreset.total) * 100).toFixed(1));
+      const oddsTop4 = parseFloat((odds1st * activePreset.numToPick).toFixed(1));
       const gp = t.wins + t.losses;
       const winPct = gp > 0 ? (t.wins / gp).toFixed(3) : '.000';
       return {
@@ -268,8 +289,8 @@ export const DraftLotteryView = () => {
 
   const numTeams = activeTeams.length;
 
-  // Init reveal index to idle
-  useEffect(() => { setRevealIndex(numTeams + 1); }, [numTeams]);
+  // Only reset to idle if there are no results — don't clobber restored saved state
+  useEffect(() => { if (results.length === 0) setRevealIndex(numTeams + 1); }, [numTeams]);
 
   const getBallState = (n: number): 'unrevealed' | 'revealed' | 'past' => {
     if (revealIndex > numTeams) return 'unrevealed';
@@ -288,7 +309,7 @@ export const DraftLotteryView = () => {
   const startSimulation = useCallback(() => {
     if (isSimulating) return;
     setIsSimulating(true);
-    const newResults = runLottery(activeTeams, NBA2019_CHANCES, 4);
+    const newResults = runLottery(activeTeams, activePreset.chances, activePreset.numToPick);
     setResults(newResults);
 
     const speedMs: Record<string, number> = { fastest: 100, normal: 300, slow: 500, slower: 1000, dramatic: 3000 };
@@ -342,27 +363,8 @@ export const DraftLotteryView = () => {
             <div className="flex justify-between items-center py-4">
               <div>
                 <h4 className="tss-u92z5m-headerTitle text-2xl md:text-3xl">
-                  {season} NBA {appMode === 'lottery' ? 'Draft Lottery' : 'Mock Draft'} Simulator
+                  {season} NBA Draft Lottery
                 </h4>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="bg-[#1A1A1A] border border-[#333] rounded-md p-1 flex">
-                  <button
-                    className={`px-3 py-1 text-xs font-bold rounded-sm transition-colors ${appMode === 'lottery' ? 'bg-[#f15a22] text-white' : 'text-white/60 hover:text-white'}`}
-                    onClick={() => setAppMode('lottery')}
-                  >
-                    LOTTERY
-                  </button>
-                  <button
-                    className={`px-3 py-1 text-xs font-bold rounded-sm transition-colors ${appMode === 'draft' ? 'bg-[#f15a22] text-white' : 'text-white/60 hover:text-white'}`}
-                    onClick={() => setAppMode('draft')}
-                  >
-                    DRAFT
-                  </button>
-                </div>
-                <button className="text-white/60 font-bold text-xs uppercase flex items-center gap-1 px-2 py-1 hover:text-white">
-                  <Share2 size={14} /> SHARE
-                </button>
               </div>
             </div>
           </div>
@@ -371,7 +373,7 @@ export const DraftLotteryView = () => {
         <hr className="tss-81m6u9-headerDivider" />
 
         {/* TOOLBAR (lottery only) */}
-        {appMode === 'lottery' && (
+        {true && (
           <div className="bg-[#141415] border-b border-[#1A1A1A]">
             <div className="px-4">
               <div className="flex items-center justify-between py-2 flex-wrap gap-4">
@@ -388,9 +390,9 @@ export const DraftLotteryView = () => {
                     <option value="slower" className="bg-[#1A1A1A]">Slower</option>
                     <option value="dramatic" className="bg-[#1A1A1A]">Dramatic</option>
                   </select>
-                  {/* Preset locked to NBA 2019 */}
+                  {/* Preset comes from League Settings → Draft Type */}
                   <div className="h-9 bg-transparent border border-[#333] text-xs font-bold text-white/40 px-3 rounded-md flex items-center">
-                    NBA 2019-present
+                    {activePreset.label}
                   </div>
                 </div>
                 <label className="flex items-center gap-3 cursor-pointer">
@@ -414,7 +416,7 @@ export const DraftLotteryView = () => {
         {/* MAIN CONTENT */}
         <main className="flex-1">
           <div className="container mx-auto px-4 py-6">
-            {appMode === 'lottery' ? (
+            {(
               <div className="flex flex-col max-w-4xl mx-auto gap-6">
                 <div className="space-y-6">
 
@@ -435,34 +437,33 @@ export const DraftLotteryView = () => {
                       })}
                     </div>
 
-                    <div className="flex justify-center gap-4 mt-8">
+                    <div className="flex flex-col items-center gap-3 mt-8">
+                      {!isLotteryTime && revealIndex > numTeams && (
+                        <p className="text-yellow-400/70 text-xs font-black uppercase tracking-widest">
+                          Lottery draws on May 14, {season}
+                        </p>
+                      )}
+                    <div className="flex justify-center gap-4">
                       {revealIndex > numTeams ? (
                         <button
                           onClick={startSimulation}
-                          className="bg-[#f15a22] hover:bg-[#d44a1a] text-white font-bold uppercase rounded-sm px-10 py-3 text-sm transition-colors"
+                          disabled={!isLotteryTime}
+                          className={`text-white font-bold uppercase rounded-sm px-10 py-3 text-sm transition-colors ${
+                            isLotteryTime
+                              ? 'bg-[#f15a22] hover:bg-[#d44a1a]'
+                              : 'bg-[#333] cursor-not-allowed opacity-50'
+                          }`}
                         >
                           Sim Lottery
                         </button>
                       ) : revealIndex === 0 ? (
-                        <>
-                          <button
-                            onClick={reset}
-                            className="border border-white/10 text-white/40 hover:text-white uppercase font-bold text-xs rounded-none h-10 px-6 flex items-center gap-2 transition-colors"
-                          >
-                            <RotateCcw size={14} /> Reset
-                          </button>
-                          <button
-                            onClick={startSimulation}
-                            className="bg-[#f15a22] hover:bg-[#d44a1a] text-white font-bold uppercase rounded-none h-10 px-10 transition-colors"
-                          >
-                            Sim Again
-                          </button>
-                        </>
+                        null
                       ) : (
                         <button disabled className="bg-[#333] text-white/40 font-bold uppercase rounded-sm px-10 py-3 text-sm cursor-not-allowed">
                           Simulating…
                         </button>
                       )}
+                    </div>
                     </div>
                   </section>
 
@@ -470,16 +471,6 @@ export const DraftLotteryView = () => {
                   <article className="bg-[#1A1A1A] rounded-sm overflow-hidden">
                     <div className="p-4 flex items-center justify-between border-b border-white/5">
                       <h6 className="text-sm font-bold uppercase tracking-widest">Lottery</h6>
-                      <div className="flex gap-2">
-                        <button className="h-7 text-[10px] font-bold text-white/40 hover:text-white border border-white/10 rounded-full px-4 flex items-center gap-1">
-                          HELP <HelpCircle size={11} />
-                        </button>
-                        {revealIndex === 0 && (
-                          <button onClick={reset} className="h-7 text-[10px] font-bold text-white/40 hover:text-white border border-white/10 rounded-full px-4 flex items-center gap-1">
-                            RESET <RotateCcw size={11} />
-                          </button>
-                        )}
-                      </div>
                     </div>
 
                     <div className="mui-1auy16m">
@@ -592,8 +583,6 @@ export const DraftLotteryView = () => {
                   </AnimatePresence>
                 </div>
               </div>
-            ) : (
-              <DraftSimulatorView />
             )}
           </div>
         </main>

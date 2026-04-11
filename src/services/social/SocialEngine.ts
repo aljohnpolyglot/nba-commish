@@ -211,41 +211,97 @@ export class SocialEngine {
       const topPlayer = topStat ? players.find(p => p.internalId === topStat.playerId) : null;
 
       if (isComplete) {
+        const isChampionship = series.round === 4;
+        const year = new Date(date).getFullYear();
+        const winnerScore = result.homeTeamId === winner.id ? result.homeScore : result.awayScore;
+        const loserScore  = result.homeTeamId === loser.id  ? result.homeScore : result.awayScore;
+        const seriesScore = higherSeedTeam.id === winner.id ? `${higherWins}-${lowerWins}` : `${lowerWins}-${higherWins}`;
+
         // ── Series clinching posts ────────────────────────────────────────────
         if (Math.random() < 0.85 * multiplier) {
-          const advanceMsg = series.round < 4
-            ? `FINAL | Game ${totalGames}\n\n${winner.name} ${result.homeTeamId === winner.id ? result.homeScore : result.awayScore} – ${result.homeTeamId === loser.id ? result.homeScore : result.awayScore} ${loser.name}\n\n${winner.abbrev} advance to the ${roundName(series.round + 1)}! Series: ${higherSeedTeam.id === winner.id ? `${higherWins}-${lowerWins}` : `${lowerWins}-${higherWins}`}`
-            : `FINAL | Game ${totalGames}\n\n${winner.name} ${result.homeTeamId === winner.id ? result.homeScore : result.awayScore} – ${result.homeTeamId === loser.id ? result.homeScore : result.awayScore} ${loser.name}\n\n🏆 ${winner.abbrev} ARE YOUR ${new Date(date).getFullYear()} NBA CHAMPIONS!`;
+          const advanceMsg = !isChampionship
+            ? `FINAL | Game ${totalGames}\n\n${winner.name} ${winnerScore} – ${loserScore} ${loser.name}\n\n${winner.abbrev} advance to the ${roundName(series.round + 1)}! Series: ${seriesScore}`
+            : `FINAL | NBA Finals — Game ${totalGames}\n\n${winner.name} ${winnerScore} – ${loserScore} ${loser.name}\n\n🏆 ${winner.name.toUpperCase()} ARE YOUR ${year} NBA CHAMPIONS!\n\n${winner.abbrev} win the series ${seriesScore}`;
           const p = makePost('nba_official', advanceMsg, winner.logoUrl);
-          if (p) posts.push(p);
+          if (p) {
+            if (isChampionship) { p.likes = 250000 + Math.floor(Math.random() * 200000); p.retweets = 80000 + Math.floor(Math.random() * 60000); }
+            posts.push(p);
+          }
         }
 
         if (Math.random() < 0.75 * multiplier) {
-          const reactions = series.round === 4
+          const reactions = !isChampionship
             ? [
-                `${winner.abbrev} WIN THE CHAMPIONSHIP 🏆🏆🏆`,
-                `IT'S OVER. ${winner.name.toUpperCase()} ARE CHAMPIONS.`,
-                `${winner.abbrev} in ${totalGames}. NBA Finals champions.`,
-              ]
-            : [
                 `${winner.abbrev} advance. ${loser.abbrev} eliminated. ${rAbbr} done.`,
                 `${winner.name} move on — ${loser.name} go home.`,
                 `Series over in ${totalGames} games. ${winner.abbrev} onto the next round.`,
                 `${winner.abbrev} punch their ticket. ${loser.abbrev} season is over.`,
+              ]
+            : [
+                `${winner.abbrev} WIN THE CHIP 🏆🏆🏆\n\nNBA CHAMPIONS.`,
+                `IT'S OVER. THE ${winner.name.toUpperCase()} ARE NBA CHAMPIONS. 🏆`,
+                `${winner.abbrev} in ${totalGames}. WORLD CHAMPIONS.`,
+                `${winner.name.toUpperCase()} ARE CHAMPIONS OF THE WORLD 🏆`,
               ];
           const content = reactions[Math.floor(Math.random() * reactions.length)];
           const p = makePost('nba_central', content, winner.logoUrl);
-          if (p) posts.push(p);
+          if (p) {
+            if (isChampionship) { p.likes = 180000 + Math.floor(Math.random() * 120000); p.retweets = 55000 + Math.floor(Math.random() * 40000); }
+            posts.push(p);
+          }
         }
 
         if (topPlayer && Math.random() < 0.65 * multiplier) {
-          const lines = [
-            `${topPlayer.name} in the ${rAbbr}: ${topStat.pts}/${topStat.reb}/${topStat.ast}. What a series.`,
-            `${topPlayer.name} closes out the series with ${topStat.pts} points. ${winner.abbrev} advance.`,
-            `Playoff ${topPlayer.name}: ${topStat.pts}pts, ${topStat.reb}reb, ${topStat.ast}ast in Game ${totalGames}.`,
-          ];
+          const lines = !isChampionship
+            ? [
+                `${topPlayer.name} in the ${rAbbr}: ${topStat.pts}/${topStat.reb}/${topStat.ast}. What a series.`,
+                `${topPlayer.name} closes out the series with ${topStat.pts} points. ${winner.abbrev} advance.`,
+                `Playoff ${topPlayer.name}: ${topStat.pts}pts, ${topStat.reb}reb, ${topStat.ast}ast in Game ${totalGames}.`,
+              ]
+            : [
+                `${topPlayer.name} FINALS MVP. ${topStat.pts}/${topStat.reb}/${topStat.ast} in Game ${totalGames}. CHAMPION. 🏆`,
+                `${topPlayer.name} is a CHAMPION. ${topStat.pts} points in the clincher. ${winner.abbrev} win the title.`,
+                `Finals MVP ${topPlayer.name}: ${topStat.pts}/${topStat.reb}/${topStat.ast}. ${winner.abbrev} are NBA Champions.`,
+              ];
           const p = makePost('legion_hoops', lines[Math.floor(Math.random() * lines.length)], undefined, topPlayer.imgURL);
-          if (p) posts.push(p);
+          if (p) {
+            if (isChampionship) { p.likes = 120000 + Math.floor(Math.random() * 80000); p.retweets = 35000 + Math.floor(Math.random() * 25000); }
+            posts.push(p);
+          }
+        }
+
+        // ── Extra championship celebration burst ─────────────────────────────
+        if (isChampionship) {
+          const celebPosts: Array<[string, string]> = [
+            ['bleacher_report', `🚨 BREAKING: The ${winner.name} are the ${year} NBA Champions. They win in ${totalGames} games over the ${loser.name}. 🏆`],
+            ['hoop_central',    `${winner.abbrev} WIN THE CHIP!!!! ${winner.name} are NBA Champions 🏆🏆🏆`],
+            ['statmuse',        `${winner.name} ${year} NBA Champions\n\n${totalGames} games needed`],
+            ['bball_forever',   `${winner.name.toUpperCase()} ARE CHAMPIONS OF THE WORLD 🌍🏆\n\nThis city deserves it.`],
+            ['nba_centel',      `${winner.abbrev} FANS STORMING THE COURT RIGHT NOW 👀`],
+          ];
+          for (const [handle, content] of celebPosts) {
+            if (Math.random() < 0.80 * multiplier) {
+              const p = makePost(handle, content, winner.logoUrl);
+              if (p) {
+                p.likes    = 80000 + Math.floor(Math.random() * 120000);
+                p.retweets = 20000 + Math.floor(Math.random() * 40000);
+                posts.push(p);
+              }
+            }
+          }
+          // Top player championship callout
+          if (topPlayer) {
+            if (Math.random() < 0.80 * multiplier) {
+              const content = `${topPlayer.name} IS AN NBA CHAMPION 🏆\n\n${topStat.pts}/${topStat.reb}/${topStat.ast} in the clinching game. Add it to the resume.`;
+              const p = makePost('bleacher_report', content, undefined, topPlayer.imgURL);
+              if (p) { p.likes = 90000 + Math.floor(Math.random() * 60000); p.retweets = 28000 + Math.floor(Math.random() * 20000); posts.push(p); }
+            }
+            if (Math.random() < 0.70 * multiplier) {
+              const content = `🏆 ${topPlayer.name} just won his ring.\n\n${topStat.pts} PTS · ${topStat.reb} REB · ${topStat.ast} AST\n\nFinale MVP. Champion.`;
+              const p = makePost('statmuse', content, undefined, topPlayer.imgURL);
+              if (p) { p.likes = 70000 + Math.floor(Math.random() * 50000); p.retweets = 22000 + Math.floor(Math.random() * 15000); posts.push(p); }
+            }
+          }
         }
 
       } else {

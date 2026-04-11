@@ -216,6 +216,16 @@ export const autoAnnounceReserves = async (state: GameState): Promise<Partial<Ga
     );
     const fullRoster = [...(state.allStar?.roster ?? []), ...reserves];
 
+    // Write All-Star selection to player.awards (idempotent: skip if already present)
+    const season = state.leagueStats.year;
+    const allStarIds = new Set(fullRoster.map((r: any) => r.playerId));
+    const playersWithAllStar = state.players.map(p => {
+      if (!allStarIds.has(p.internalId)) return p;
+      const already = (p.awards ?? []).some(a => a.season === season && a.type === 'All-Star');
+      if (already) return p;
+      return { ...p, awards: [...(p.awards ?? []), { season, type: 'All-Star' }] };
+    });
+
     let risingStarsRoster: any[] = [];
     try {
       const { rookies, sophs } = AllStarSelectionService.getRisingStarsRoster(
@@ -256,6 +266,7 @@ export const autoAnnounceReserves = async (state: GameState): Promise<Partial<Ga
     const shuffled = [...broadcasters].sort(() => Math.random() - 0.5);
 
     return {
+      players: playersWithAllStar,
       allStar: {
         ...(state.allStar as any),
         roster: fullRoster,
@@ -523,6 +534,7 @@ function announceAward(state: GameState, key: AwardKey): Partial<GameState> {
       allNBA.forEach((team, i) => {
         for (const spot of team) {
           newAwards.push({ season, type: allNBANames[i], name: spot.player.name, pid: spot.player.internalId, tid: spot.team.id });
+          addPlayerAward(allNBANames[i], spot.player.internalId);
         }
       });
 
@@ -531,6 +543,7 @@ function announceAward(state: GameState, key: AwardKey): Partial<GameState> {
       allDefense.forEach((team, i) => {
         for (const spot of team) {
           newAwards.push({ season, type: allDefNames[i], name: spot.player.name, pid: spot.player.internalId, tid: spot.team.id });
+          addPlayerAward(allDefNames[i], spot.player.internalId);
         }
       });
 
@@ -539,6 +552,7 @@ function announceAward(state: GameState, key: AwardKey): Partial<GameState> {
       allRookie.forEach((team, i) => {
         for (const spot of team) {
           newAwards.push({ season, type: allRookieNames[i], name: spot.player.name, pid: spot.player.internalId, tid: spot.team.id });
+          addPlayerAward(allRookieNames[i], spot.player.internalId);
         }
       });
 
@@ -587,3 +601,167 @@ export const autoAnnounceMVP    = (s: GameState) => announceAward(s, 'MVP');
 
 /** @deprecated — kept for callers that haven't migrated; now a no-op since awards are staggered. */
 export const autoAnnounceAwards = (_state: GameState): Partial<GameState> => ({});
+
+// ── Rookie contract scale (mirrors DraftSimulatorView) ────────────────────
+const _rookieScale = [
+  10.1, 9.5, 9.0, 8.5, 7.9, 7.4, 6.9, 6.5, 6.1, 5.7,
+  5.4, 5.1, 4.8, 4.5, 4.3, 4.1, 3.9, 3.7, 3.6, 3.4,
+  3.3, 3.2, 3.1, 3.0, 2.9, 2.8, 2.7, 2.6, 2.5, 2.4,
+];
+const _getRookieAmount = (slot: number): number => {
+  if (slot <= 30) return (_rookieScale[slot - 1] ?? 2.4) * 1_000_000;
+  const r2Frac = (slot - 31) / 29;
+  return Math.round((1_800_000 - r2Frac * 530_000) / 1000) * 1000;
+};
+
+// ── Draft Lottery presets (mirrors DraftLotteryView LOTTERY_PRESETS) ──────
+const _LOTTERY_PRESETS: Record<string, { chances: number[]; numToPick: number; total: number }> = {
+  nba2019: { chances: [140,140,140,125,105,90,75,60,45,30,20,15,10,5], numToPick: 4, total: 1000 },
+  nba1994: { chances: [250,199,156,119,88,63,43,28,17,11,8,7,6,5], numToPick: 3, total: 1000 },
+  nba1990: { chances: [11,10,9,8,7,6,5,4,3,2,1], numToPick: 3, total: 66 },
+  nba1987: { chances: [36,30,25,20,15,10,8,7,6,5,4,3,2,1], numToPick: 7, total: 172 },
+  nba1985: { chances: [1,1,1,1,1,1,1], numToPick: 1, total: 7 },
+  nba1966: { chances: [1,1], numToPick: 1, total: 2 },
+  nhl2021: { chances: [185,135,115,95,85,75,65,60,50,35,30,25,20,5], numToPick: 2, total: 985 },
+  nhl2017: { chances: [185,135,115,95,85,75,65,60,50,35,30,25,20,5], numToPick: 3, total: 985 },
+  mlb2022: { chances: [165,165,165,130,110,100,90,76,65,50,40,30,10,4], numToPick: 6, total: 1200 },
+};
+
+function _runWeightedLottery<T extends { originalSeed: number }>(
+  teams: T[],
+  chances: number[],
+  numToPick: number
+): { pick: number; team: T; change: number }[] {
+  const results: { pick: number; team: T; change: number }[] = [];
+  const drawnSeeds = new Set<number>();
+  const actual = Math.min(numToPick, teams.length);
+
+  for (let i = 1; i <= actual; i++) {
+    const avail = teams.filter(t => !drawnSeeds.has(t.originalSeed));
+    const totalW = avail.reduce((s, t) => s + (chances[t.originalSeed - 1] ?? 0), 0);
+    if (!totalW) break;
+    let rnd = Math.random() * totalW;
+    let winner = avail[0];
+    for (const t of avail) {
+      rnd -= chances[t.originalSeed - 1] ?? 0;
+      if (rnd <= 0) { winner = t; break; }
+    }
+    drawnSeeds.add(winner.originalSeed);
+    results.push({ pick: i, team: winner, change: winner.originalSeed - i });
+  }
+
+  // Fill remaining picks in standing order
+  teams
+    .filter(t => !drawnSeeds.has(t.originalSeed))
+    .sort((a, b) => a.originalSeed - b.originalSeed)
+    .forEach((t, idx) => results.push({ pick: idx + actual + 1, team: t, change: t.originalSeed - (idx + actual + 1) }));
+
+  return results;
+}
+
+// ── Auto Draft Lottery (May 14) ───────────────────────────────────────────
+/** Runs the draft lottery automatically and saves results to state.draftLotteryResult.
+ *  Skips if lottery has already been run this season. */
+export const autoRunLottery = (state: GameState): Partial<GameState> => {
+  if ((state as any).draftLotteryResult) return {}; // already run
+
+  const preset = _LOTTERY_PRESETS[state.leagueStats?.draftType ?? 'nba2019'] ?? _LOTTERY_PRESETS.nba2019;
+
+  const sorted = [...state.teams]
+    .filter(t => t.id > 0)
+    .sort((a, b) => (a.wins / Math.max(1, a.wins + a.losses)) - (b.wins / Math.max(1, b.wins + b.losses)))
+    .slice(0, 14);
+
+  const lotteryTeams = sorted.map((t, i) => {
+    const chance = preset.chances[i] ?? 0;
+    const gp = t.wins + t.losses;
+    const winPct = gp > 0 ? (t.wins / gp).toFixed(3) : '.000';
+    return {
+      id: String(t.id),
+      tid: t.id,
+      name: t.name,
+      city: (t as any).region ?? t.name,
+      logoUrl: (t as any).logoUrl ?? '',
+      record: `${t.wins}-${t.losses}`,
+      winPct,
+      odds1st: parseFloat(((chance / preset.total) * 100).toFixed(1)),
+      oddsTop4: parseFloat(((chance / preset.total) * 100 * preset.numToPick).toFixed(1)),
+      color: (t as any).colors?.[0] ?? '#333333',
+      originalSeed: i + 1,
+    };
+  });
+
+  const draftLotteryResult = _runWeightedLottery(lotteryTeams, preset.chances, preset.numToPick);
+  return { draftLotteryResult } as any;
+};
+
+// ── Auto Draft (June 26) ──────────────────────────────────────────────────
+/** Auto-executes the NBA Draft: assigns top-OVR prospect to each pick slot.
+ *  Commissioner-run drafts take precedence (skips if draftComplete is already true). */
+export const autoRunDraft = (state: GameState): Partial<GameState> => {
+  if ((state as any).draftComplete) return {}; // commissioner already ran the draft
+
+  const season = state.leagueStats?.year ?? 2026;
+  const rookieScaleType = state.leagueStats?.rookieScaleType ?? 'dynamic';
+  const rookieContractYrs = state.leagueStats?.rookieContractLength ?? 4;
+  const staticRookieAmt = ((state.leagueStats as any)?.rookieScaleStaticAmount ?? 3) * 1_000_000;
+
+  const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa']);
+
+  // Draft order: worst → best (R1 then R2)
+  const sorted = [...state.teams]
+    .filter(t => t.id > 0)
+    .sort((a, b) => (a.wins / Math.max(1, a.wins + a.losses)) - (b.wins / Math.max(1, b.wins + b.losses)));
+  const draftOrder = [...sorted, ...sorted];
+
+  // Available prospects for THIS season's draft class only (filter out future classes)
+  const prospects = state.players
+    .filter(p => {
+      const isProspect = p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect';
+      if (!isProspect) return false;
+      if (EXTERNAL_STATUSES.has(p.status ?? '')) return false;
+      const draftYear = (p as any).draft?.year;
+      if (draftYear && Number(draftYear) !== season) return false;
+      return true;
+    })
+    .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
+
+  // Assign picks (best OVR available to each slot)
+  const assignedIds = new Set<string>();
+  const pickMap = new Map<number, { player: typeof state.players[0]; team: typeof state.teams[0] }>();
+
+  for (let slot = 1; slot <= draftOrder.length; slot++) {
+    const team = draftOrder[slot - 1];
+    const best = prospects.find(p => !assignedIds.has(p.internalId));
+    if (!best) break;
+    assignedIds.add(best.internalId);
+    pickMap.set(slot, { player: best, team });
+  }
+
+  // Apply picks to players
+  const updatedPlayers = state.players.map(p => {
+    for (const [slot, { player, team }] of pickMap.entries()) {
+      if (player.internalId !== p.internalId) continue;
+      const round = slot <= 30 ? 1 : 2;
+      const pickInRound = slot <= 30 ? slot : slot - 30;
+      const salaryAmount = rookieScaleType === 'static' ? staticRookieAmt : _getRookieAmount(slot);
+      const contractYrs = round === 1 ? rookieContractYrs : 2;
+      return {
+        ...p,
+        tid: team.id,
+        status: 'Active' as const,
+        draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: team.id },
+        contract: { amount: salaryAmount / 1_000_000, exp: season + contractYrs - 1, salaryDetails: [{ season, amount: salaryAmount }] },
+      };
+    }
+    // Undrafted current-year prospects → free agents (future classes stay as prospects)
+    const draftYear = (p as any).draft?.year;
+    const isCurrentClass = !draftYear || Number(draftYear) === season;
+    if (isCurrentClass && (p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect') && !assignedIds.has(p.internalId)) {
+      return { ...p, tid: -1 as const, status: 'Free Agent' as const };
+    }
+    return p;
+  });
+
+  return { players: updatedPlayers, draftComplete: true } as any;
+};

@@ -76,8 +76,10 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
     isComplete = series.status === 'complete';
     winnerId = series.winnerId;
   } else if (playIn) {
-    team1 = playIn.team1Tid > 0 ? teams.find(t => t.id === playIn.team1Tid) : undefined;
-    team2 = playIn.team2Tid > 0 ? teams.find(t => t.id === playIn.team2Tid) : undefined;
+    const pi1Tid = Number(playIn.team1Tid);
+    const pi2Tid = Number(playIn.team2Tid);
+    team1 = pi1Tid > 0 ? teams.find(t => t.id === pi1Tid) : undefined;
+    team2 = pi2Tid > 0 ? teams.find(t => t.id === pi2Tid) : undefined;
     confLabel = `${playIn.conference}ern Conference`;
     const typeMap: Record<string, string> = { '7v8': '7 vs 8 Seed', '9v10': '9 vs 10 Seed', 'loserGame': 'Loser Game' };
     roundLabel = `Play-In · ${typeMap[playIn.gameType] ?? playIn.gameType}`;
@@ -234,6 +236,8 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
             awayTeam={bsAway}
             players={players}
             onClose={() => setBoxScoreTarget(null)}
+            playoffs={playoffs}
+            schedule={schedule}
           />
         );
       })()}

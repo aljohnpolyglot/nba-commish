@@ -4,7 +4,7 @@ import {
   User, Calendar, BarChart2, TrendingUp,
   Search, Users, Star, Building2, Settings2, ChevronDown,
   ListOrdered, Stethoscope, Tv, ThumbsUp, Eye, DollarSign,
-  Target, Ticket, Table2, Zap, UserX, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock
+  Target, Ticket, Table2, Zap, UserX, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { Tab } from '../../types';
@@ -145,6 +145,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
       items: [
         { id: 'Draft Scouting', label: 'Scouting',      icon: Target },
         { id: 'Draft Lottery',  label: 'Draft Lottery', icon: Ticket },
+        { id: 'Draft Board',    label: 'Draft Board',   icon: ClipboardList },
       ],
     },
     {

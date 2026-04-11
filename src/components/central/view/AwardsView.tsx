@@ -14,7 +14,7 @@ interface AwardsViewProps {
 const getAwardIcon = (type: string) => {
   const lowerType = type.toLowerCase();
   
-  if (lowerType.includes('mvp') || lowerType.includes('championship')) {
+  if (lowerType.includes('mvp') || lowerType.includes('championship') || lowerType.includes('champion')) {
     return (
       <div className="relative">
         <Trophy size={22} className="text-yellow-500 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]" />
@@ -99,7 +99,7 @@ export const AwardsView: React.FC<AwardsViewProps> = ({ awards, teamColor = '#63
   const sortedAwardTypes = Object.keys(summaryMap).sort((a, b) => {
     const importance = (type: string) => {
       const t = type.toLowerCase();
-      if (t.includes('championship')) return 100;
+      if (t.includes('championship') || t.includes('champion')) return 100;
       if (t.includes('mvp')) return 90;
       if (t.includes('defensive player')) return 80;
       if (t.includes('first team all-league')) return 70;

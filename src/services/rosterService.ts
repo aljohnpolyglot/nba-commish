@@ -222,10 +222,9 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                                 contract: p.contract || { amount: 0, exp: startYear - 1 },
                                 injury: p.injury || { type: 'Healthy', gamesRemaining: 0 },
                                 tid: isProspect ? -1 : (isRetired ? -3 : teamInfo.tid),
-                                // STEP 4: Unique ID including the tid
-                                // NBA Booker ID: nba-DevinBooker-24
-                                // EU Booker ID: euro-DevinBooker-105
-                                internalId: `${p.tid < 100 ? 'nba' : 'euro'}-${playerName.replace(/\s+/g, '')}-${Math.abs(p.tid)}`,
+                                // STEP 4: Stable ID based on name + birth year (not tid, which changes on trades)
+                                // nba-DevinBooker-1996  euro-LukaKrajnc-2001
+                                internalId: `${p.tid < 100 ? 'nba' : 'euro'}-${playerName.replace(/\s+/g, '')}-${(p as any).born?.year ?? Math.abs(p.tid)}`,
                                 overallRating: calculatePlayerOverallForYear(p, startYear),
                                 status: isProspect ? 'Prospect' : (isRetired ? 'Retired' : (teamInfo.tid === -1 ? 'Free Agent' : 'Active')),
                                 diedYear: p.diedYear,

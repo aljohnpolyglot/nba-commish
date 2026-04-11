@@ -30,13 +30,17 @@ export const AllStarReplacementModal: React.FC<AllStarReplacementModalProps> = (
   const [pickerForId, setPickerForId] = useState<string | null>(null); // injuredId or playerId being swapped
   const [search, setSearch] = useState('');
 
+  // Non-NBA statuses that should never appear as All-Star candidates
+  const INELIGIBLE_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa']);
+
   // All players in the league not already in the All-Star game — sorted by OVR
   const candidateRanking = useMemo(() => {
     if (!state.players) return [];
     return state.players
       .filter(p =>
         !allStarIds.has(p.internalId) &&
-        !((p as any).injury?.gamesRemaining > 0) // exclude currently injured
+        !((p as any).injury?.gamesRemaining > 0) && // exclude currently injured
+        !INELIGIBLE_STATUSES.has(p.status ?? '')    // exclude non-NBA / retired players
       )
       .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
   }, [state.players, allStarIds]);

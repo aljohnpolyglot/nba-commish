@@ -13,8 +13,15 @@ export const simulateDayGames = (state: GameState, watchedGameResult?: any, rigg
     const breakEndNorm = normalizeDate(dates.breakEnd.toISOString());
     const isAllStarBreak = normalizedCurrent >= breakStartNorm && normalizedCurrent <= breakEndNorm;
 
-    // Simulate games for the current day
-    const gamesToday = state.schedule.filter(g => !g.played && normalizeDate(g.date) === normalizedCurrent);
+    // Simulate games for the current day.
+    // The watched game is included even if already marked `played: true` (by RECORD_WATCHED_GAME)
+    // because stateRef may not be committed yet when ADVANCE_DAY reads it. simulateGames then
+    // excludes it from actual simulation (via gid filter) but injects the precomputed result into
+    // allResults so standings update correctly — no double-count.
+    const watchedGameId = watchedGameResult?.gameId;
+    const gamesToday = state.schedule.filter(g =>
+      (!g.played || g.gid === watchedGameId) && normalizeDate(g.date) === normalizedCurrent
+    );
 
     // During All-Star break, only simulate All-Star/Rising Stars games (not regular season)
     // Playoff and play-in games are never during All-Star break so they always pass through

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ArrowLeftRight } from 'lucide-react';
-import { convertTo2KRating } from '../../utils/helpers';
+import { convertTo2KRating, extractNbaId, hdPortrait } from '../../utils/helpers';
 
 export interface PlayerPortraitProps {
   imgUrl?: string;
@@ -14,6 +14,8 @@ export interface PlayerPortraitProps {
   isIncoming?: boolean;
   /** Custom badge content instead of OVR number */
   ovrLabel?: string;
+  /** Player name — used for initials fallback */
+  playerName?: string;
 }
 
 /**
@@ -34,20 +36,53 @@ export const PlayerPortrait: React.FC<PlayerPortraitProps> = ({
   size = 48,
   isIncoming = false,
   ovrLabel,
+  playerName,
 }) => {
   const px = `${size}px`;
   const badgeSize = Math.round(size * 0.5);  // team logo badge ~50% of portrait
-  const ovrSize = Math.round(size * 0.5);     // OVR badge
+
+  // Fallback chain: BBGM portrait → NBA HD CDN → initials avatar
+  const [imgSrc, setImgSrc] = useState<string | null>(imgUrl ?? null);
+  const [fallbackLevel, setFallbackLevel] = useState(0);
+
+  const handleImgError = () => {
+    if (fallbackLevel === 0) {
+      // Try NBA HD CDN
+      const nbaId = extractNbaId(imgUrl ?? '', playerName);
+      if (nbaId) {
+        setImgSrc(hdPortrait(nbaId));
+        setFallbackLevel(1);
+        return;
+      }
+    }
+    // Give up — show initials
+    setImgSrc(null);
+    setFallbackLevel(2);
+  };
+
+  const initials = playerName
+    ? playerName.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+    : '?';
 
   return (
     <div className="relative flex-shrink-0" style={{ width: px, height: px }}>
       {/* Player photo */}
-      <img
-        src={imgUrl}
-        alt=""
-        className="rounded-full object-cover bg-slate-800 border-2 border-slate-700 group-hover:border-slate-500 transition-colors w-full h-full"
-        referrerPolicy="no-referrer"
-      />
+      {imgSrc ? (
+        <img
+          src={imgSrc}
+          alt={playerName ?? ''}
+          className="rounded-full object-cover bg-slate-800 border-2 border-slate-700 group-hover:border-slate-500 transition-colors w-full h-full"
+          referrerPolicy="no-referrer"
+          onError={handleImgError}
+        />
+      ) : (
+        <div
+          className="rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center w-full h-full"
+          style={{ fontSize: `${Math.round(size * 0.33)}px` }}
+        >
+          <span className="font-black text-slate-300">{initials}</span>
+        </div>
+      )}
 
       {/* Team logo — top-left */}
       {teamLogoUrl && (

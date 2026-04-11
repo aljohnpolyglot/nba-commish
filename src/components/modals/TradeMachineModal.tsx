@@ -36,11 +36,15 @@ const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabl
   currentSeason?: number;
 }) => {
   const team = teams.find(t => t.id === player.tid);
-  const seasonStats = player.stats?.find(s => s.season === currentSeason) ?? player.stats?.at(-1);
+  // Use current season stats if player has played (gp > 0), otherwise fall back to last season
+  const currentSeasonStats = player.stats?.find(s => s.season === currentSeason);
+  const seasonStats = (currentSeasonStats && (currentSeasonStats.gp ?? 0) > 0)
+    ? currentSeasonStats
+    : (player.stats?.filter(s => (s.gp ?? 0) > 0).at(-1) ?? currentSeasonStats);
   const gp = seasonStats?.gp || 0;
-  const ppg = gp > 0 ? (seasonStats!.pts / gp).toFixed(1) : '—';
-  const rpg = gp > 0 ? (seasonStats!.trb / gp).toFixed(1) : '—';
-  const apg = gp > 0 ? (seasonStats!.ast / gp).toFixed(1) : '—';
+  const ppg = gp > 0 ? ((seasonStats!.pts ?? 0) / gp).toFixed(1) : '—';
+  const rpg = gp > 0 ? ((seasonStats!.trb ?? seasonStats!.reb ?? 0) / gp).toFixed(1) : '—';
+  const apg = gp > 0 ? ((seasonStats!.ast ?? 0) / gp).toFixed(1) : '—';
 
   return (
     <div

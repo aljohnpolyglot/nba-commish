@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trophy, FastForward } from 'lucide-react';
+import { Trophy, FastForward, Play } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { useGame } from '../../store/GameContext';
 import { Game } from '../../types';
@@ -66,13 +66,17 @@ export const PlayoffView: React.FC = () => {
     } as any);
   };
 
+  const handleSimDay = () => {
+    dispatchAction({ type: 'ADVANCE_DAY' } as any);
+  };
+
   const handleSimulateRound = () => {
     if (!playoffs) return;
 
     if (!playoffs.playInComplete) {
       // Can't filter by known teams — loser game teams are TBD until 7v8/9v10 resolve.
       // Sim to fixed end date so all three play-in games complete and Round 1 injects.
-      const PLAYIN_END = '2026-04-20';
+      const PLAYIN_END = `${year}-04-20`;
       dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: PLAYIN_END } } as any);
       return;
     }
@@ -123,9 +127,12 @@ export const PlayoffView: React.FC = () => {
           allStar={state.allStar}
           isProcessing={state.isProcessing}
           onClose={async () => {
-              const result = precomputedResult;
+              // precomputedResult is always set before GameSimulatorScreen opens (see onConfirm).
+              const result = precomputedResult!;
+              const gameId = watchingGame!.gid;
               setWatchingGame(null); setRiggedForTid(undefined); setPrecomputedResult(null);
-              await dispatchAction({ type: 'ADVANCE_DAY', payload: result ? { watchedGameResult: result } : undefined } as any);
+              await dispatchAction({ type: 'RECORD_WATCHED_GAME' as any, payload: { gameId, result } });
+              await dispatchAction({ type: 'ADVANCE_DAY', payload: { watchedGameResult: result } } as any);
           }}
           onComplete={executeWatchGame}
           otherGamesToday={state.schedule.filter(g =>
@@ -161,16 +168,26 @@ export const PlayoffView: React.FC = () => {
           </div>
         </div>
 
-        {playoffs && !playoffs.bracketComplete && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={handleSimulateRound}
+            onClick={handleSimDay}
             disabled={state.isProcessing}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-black rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
           >
-            <FastForward size={14} />
-            {playoffs.playInComplete ? `Sim ${roundLabel[playoffs.currentRound] ?? 'Round'}` : 'Sim Play-In'}
+            <Play size={14} />
+            Sim Day
           </button>
-        )}
+          {playoffs && !playoffs.bracketComplete && (
+            <button
+              onClick={handleSimulateRound}
+              disabled={state.isProcessing}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              <FastForward size={14} />
+              {playoffs.playInComplete ? `Sim ${roundLabel[playoffs.currentRound] ?? 'Round'}` : 'Sim Play-In'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Content */}
@@ -290,7 +307,9 @@ export const PlayoffView: React.FC = () => {
                 });
               } else {
                 setRiggedForTid(rig);
-                if (rig !== undefined && pendingWatchGame) {
+                // Always pre-compute before opening the live game screen so onClose and onComplete
+                // both use the same result — prevents score discrepancies on early exit.
+                if (pendingWatchGame) {
                   const { GameSimulator } = await import('../../services/simulation/GameSimulator');
                   const homeTeam = state.teams.find(t => t.id === pendingWatchGame.homeTid)!;
                   const awayTeam = state.teams.find(t => t.id === pendingWatchGame.awayTid)!;
@@ -301,8 +320,6 @@ export const PlayoffView: React.FC = () => {
                     undefined, undefined, undefined, undefined, rig
                   );
                   setPrecomputedResult(preResult);
-                } else {
-                  setPrecomputedResult(null);
                 }
                 setWatchingGame(pendingWatchGame);
                 setPendingWatchGame(null);
