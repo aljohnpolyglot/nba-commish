@@ -4,8 +4,9 @@ import { NBAPlayer } from '../../../types';
 import { ChevronDown, Loader2, AlertCircle, Search, Target } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { convertTo2KRating } from '../../../utils/helpers';
+import { findTopComparisons } from '../../../utils/playerComparisons';
 
-const GIST_URL = "https://gist.githubusercontent.com/aljohnpolyglot/bb8c80155c6c225cf1be9428892c6329/raw/2026classScouting";
+const GIST_BASE = "https://gist.githubusercontent.com/aljohnpolyglot/bb8c80155c6c225cf1be9428892c6329/raw/";
 
 interface GistProspect {
   id: string;
@@ -61,30 +62,32 @@ export const DraftScoutingView: React.FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const draftYear = state.leagueStats?.year ?? 2026;
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log("Fetching draft scouting data from Gist...");
-        const res = await fetch(GIST_URL);
+        const url = `${GIST_BASE}${draftYear}classScouting`;
+        const res = await fetch(url);
         const text = await res.text();
         const jsonStart = text.indexOf('[');
         if (jsonStart === -1) throw new Error("Invalid Gist format");
         const json = text.substring(jsonStart);
         const data = JSON.parse(json);
-        console.log(`Successfully loaded ${data.length} prospects from Gist.`);
         setGistData(data);
       } catch (e) {
         console.error("Failed to fetch scouting data:", e);
-        setError("Could not fetch scouting data.");
+        setError(`Could not fetch ${draftYear} scouting data. Showing game prospects only.`);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [draftYear]);
 
   const prospects = useMemo(() => {
     const draftProspects = state.players.filter(p => p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect');
+    const activePlayers = state.players.filter(p => p.tid >= 0);
     
     // Calculate displayOvr for each prospect
     const prospectsWithOvr = draftProspects.map(p => {
@@ -125,6 +128,10 @@ export const DraftScoutingView: React.FC = () => {
       const espnRank = Math.max(1, Math.round(consensusRank + (random(1) * 10 - 5)));
       const noCeilingsRank = Math.max(1, Math.round(consensusRank + (random(2) * 14 - 7)));
 
+      // REAL-TIME PRO COMPARISONS
+      const topMatches = findTopComparisons(player, activePlayers);
+      const comparisonNames = topMatches.slice(0, 3).map(m => m.comparison.name).join(', ');
+
       return {
         ...player,
         gistData: gistMatch,
@@ -134,7 +141,7 @@ export const DraftScoutingView: React.FC = () => {
           noCeilings: noCeilingsRank,
         },
         scoutingReport: gistMatch?.scoutingReport || "Highly touted prospect with significant upside. Scouts are impressed by his physical tools and basketball IQ. Expected to be a high-impact player at the next level.",
-        comparisons: gistMatch?.comparisons || "TBD"
+        comparisons: comparisonNames || gistMatch?.comparisons || "TBD"
       } as EnhancedProspect;
     });
 

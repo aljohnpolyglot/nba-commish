@@ -38,6 +38,9 @@ import RealStern from '../central/view/RealStern';
 import SportsBookView from '../central/view/SportsBookView';
 import SeasonalView from '../seasonal/SeasonalView';
 import { PlayerRatingsView } from '../central/view/PlayerRatingsView';
+import { LeagueHistoryView } from '../central/view/LeagueHistoryView';
+import { PlayerBiosView } from '../central/view/PlayerBiosView';
+import { TeamHistoryView } from '../central/view/TeamHistoryView';
 import { Tab } from '../../types';
 
 interface MainContentProps {
@@ -73,7 +76,7 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       return <PlayoffView />;
     case 'NBA Central':
       return <NBACentral />;
-    case 'Players':
+    case 'Player Search':
       return <PlayersView />;
     case 'Transactions':
       return <TransactionsView />;
@@ -187,6 +190,12 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       );
     case 'Player Ratings':
       return <PlayerRatingsView />;
+    case 'League History':
+      return <LeagueHistoryView />;
+    case 'Player Bios':
+      return <PlayerBiosView />;
+    case 'Team History':
+      return <TeamHistoryView />;
     default:
       return null;
   }

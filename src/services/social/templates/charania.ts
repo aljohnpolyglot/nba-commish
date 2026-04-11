@@ -272,7 +272,7 @@ export function buildShamsSigningPost(
     const salaryStr = salary && salary >= 5000
         ? ` on a $${(salary / 1000).toFixed(1)}M deal`
         : '';
-    const intlLeagues = ['Euroleague', 'PBA', 'B-League', 'WNBA'];
+    const intlLeagues = ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'WNBA'];
     const isReturn = prevLeague && intlLeagues.includes(prevLeague);
     const prevStr = isReturn
         ? ` He is returning to the NBA after playing in the ${prevLeague}.`

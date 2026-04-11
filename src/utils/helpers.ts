@@ -129,6 +129,22 @@ export const formatHeight = (hgt: number, isAttribute: boolean = false): string 
   return `${feet}'${inches}"`;
 };
 
+/**
+ * Returns just the mascot/nickname part of a team name by stripping the region prefix.
+ * NBATeam.name is stored as the full name ("Oklahoma City Thunder") while
+ * NBATeam.region is the city ("Oklahoma City"). Concatenating them gives double city.
+ * Use this when you need to show region + mascot in two different colors.
+ *
+ * @example getMascot("Oklahoma City Thunder", "Oklahoma City") → "Thunder"
+ * @example getMascot("Golden State Warriors", "Golden State") → "Warriors"
+ */
+export function getTeamMascot(name: string, region?: string | null): string {
+  if (!region) return name;
+  const prefix = region.trim();
+  if (name.startsWith(prefix)) return name.slice(prefix.length).trim();
+  return name;
+}
+
 export const convertTo2KRating = (
   bbgmRating: number,
   hgtAttribute: number = 50,  // expects BBGM 0-100 attribute, NOT bio inches

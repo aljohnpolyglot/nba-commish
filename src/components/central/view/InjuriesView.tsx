@@ -244,8 +244,8 @@ export const InjuriesView: React.FC = () => {
               onChange={(e) => setSelectedTeamId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
             >
               <option value="all">All Teams</option>
-              {state.teams.map(team => (
-                <option key={team.id} value={team.id}>{team.region} {team.name}</option>
+              {[...state.teams].sort((a, b) => a.name.localeCompare(b.name)).map(team => (
+                <option key={team.id} value={team.id}>{team.name}</option>
               ))}
             </select>
           </div>
@@ -271,7 +271,7 @@ export const InjuriesView: React.FC = () => {
                         {team.abbrev}
                       </div>
                     )}
-                    <h3 className="text-lg font-bold text-white">{team.region} {team.name}</h3>
+                    <h3 className="text-lg font-bold text-white">{team.name}</h3>
                   </div>
                   
                   <div className="overflow-x-auto">

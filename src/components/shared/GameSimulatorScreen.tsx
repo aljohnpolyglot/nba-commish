@@ -83,7 +83,6 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
 
   const [activeTab, setActiveTab] = useState('boxscore');
   const [loadingMessage, setLoadingMessage] = useState("Players taking the court...");
-  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [clickedLivePlayer, setClickedLivePlayer] = useState<NBAPlayer | null>(null);
   const settings = SettingsManager.getSettings();
   const feedRef = useRef<HTMLDivElement>(null);
@@ -111,6 +110,11 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
 
   const currentPossession = currentPlay ? currentPlay.possession : null;
   const isFinal = isFinished;
+
+  // When the game is finished, snap to the precomputed final score so the
+  // watch-game display always matches what gets committed on Leave Game.
+  const displayHomeScore = isFinal && finalResult ? finalResult.homeScore : homeScore;
+  const displayAwayScore = isFinal && finalResult ? finalResult.awayScore : awayScore;
 
   const getClockDisplay = () => {
     if (isFinal) return '0:00';
@@ -191,21 +195,9 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
     return 'text-gray-400';
   };
 
-  const doLeaveGame = () => {
-    if (finalResult) {
-      onComplete(finalResult);
-    } else {
-      onClose();
-    }
-  };
-
-  const handleLeaveGame = () => {
-    if (otherGamesToday > 0) {
-      setShowLeaveConfirm(true);
-    } else {
-      doLeaveGame();
-    }
-  };
+  // Game is already pre-simulated and recorded before this screen opens.
+  // Leave Game is a pure close — no re-simulation.
+  const handleLeaveGame = () => onClose();
 
   if (!badgesLoaded) {
     return (
@@ -297,7 +289,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
               <div className="flex justify-between items-center px-5 sm:px-10 md:px-16 py-5 sm:py-8 md:py-12 z-10">
                 <div className="text-center flex flex-col items-center">
                   <div className="text-gray-400 font-bold tracking-[0.2em] mb-1 md:mb-4 text-[10px] md:text-sm">AWAY</div>
-                  <div className="text-4xl sm:text-5xl md:text-7xl font-black font-mono text-white tracking-tighter">{awayScore}</div>
+                  <div className="text-4xl sm:text-5xl md:text-7xl font-black font-mono text-white tracking-tighter">{displayAwayScore}</div>
                 </div>
                 <div className="text-center flex flex-col items-center justify-center mt-1 md:mt-4">
                   <div className="text-white font-bold tracking-[0.2em] mb-0.5 md:mb-2 text-xs md:text-lg">{periodDisplay}</div>
@@ -310,7 +302,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                 </div>
                 <div className="text-center flex flex-col items-center">
                   <div className="text-gray-400 font-bold tracking-[0.2em] mb-1 md:mb-4 text-[10px] md:text-sm">HOME</div>
-                  <div className="text-4xl sm:text-5xl md:text-7xl font-black font-mono text-yellow-500 tracking-tighter">{homeScore}</div>
+                  <div className="text-4xl sm:text-5xl md:text-7xl font-black font-mono text-yellow-500 tracking-tighter">{displayHomeScore}</div>
                 </div>
               </div>
 
@@ -705,8 +697,8 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                     </thead>
                     <tbody className="font-mono text-sm sm:text-base">
                       {[
-                        { label: awayTeam.abbreviation, logo: awayLogo, qs: qScores.away, final: awayScore, color: 'text-gray-300', finalColor: 'text-white' },
-                        { label: homeTeam.abbreviation, logo: homeLogo, qs: qScores.home, final: homeScore, color: 'text-yellow-600', finalColor: 'text-yellow-500' },
+                        { label: awayTeam.abbreviation, logo: awayLogo, qs: qScores.away, final: displayAwayScore, color: 'text-gray-300', finalColor: 'text-white' },
+                        { label: homeTeam.abbreviation, logo: homeLogo, qs: qScores.home, final: displayHomeScore, color: 'text-yellow-600', finalColor: 'text-yellow-500' },
                       ].map(row => (
                         <tr key={row.label} className="border-b border-gray-800/30">
                           <td className="py-2">
@@ -761,32 +753,6 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
       />
     )}
 
-    {showLeaveConfirm && (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowLeaveConfirm(false)} />
-        <div className="relative bg-[#111] border border-white/10 rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center">
-          <div className="text-4xl mb-4">🏀</div>
-          <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Another Event Today</h3>
-          <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-            There {otherGamesToday === 1 ? 'is' : 'are'} <span className="text-white font-bold">{otherGamesToday}</span> more event{otherGamesToday !== 1 ? 's' : ''} happening today. Are you sure you want to leave?
-          </p>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowLeaveConfirm(false)}
-              className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold text-sm transition-all"
-            >
-              Stay
-            </button>
-            <button
-              onClick={() => { setShowLeaveConfirm(false); doLeaveGame(); }}
-              className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm transition-all"
-            >
-              Leave
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
     </>
   );
 };

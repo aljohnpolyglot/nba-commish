@@ -49,7 +49,8 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
 
   const broadcastingBadge = (() => {
     if (state.leagueStats.mediaRights?.isLocked) return 0;
-    if (new Date(state.date) >= new Date('2025-10-24')) return 0;
+    const broadcastDeadline = `${state.leagueStats.year ?? 2026}-06-30`;
+    if (new Date(state.date) >= new Date(broadcastDeadline)) return 0;
     return '!';
   })();
 
@@ -120,7 +121,8 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         { id: 'Transactions',     label: 'Transactions',    icon: ArrowRightLeft },
         { id: 'Trade Machine',    label: 'Trade Machine',   icon: Cpu },
         { id: 'Trade Proposals',  label: 'Trade Proposals', icon: GitPullRequest, badge: fmt(pendingTradesCount) },
-        { id: 'Players',          label: 'Players',         icon: Search },
+        { id: 'Player Search',    label: 'Player Search',   icon: Search },
+        { id: 'Player Bios',      label: 'Player Bios',     icon: Users },
         { id: 'Free Agents',      label: 'Free Agents',     icon: UserX },
         { id: 'Injuries',         label: 'Injuries',        icon: Stethoscope },
       ],
@@ -134,6 +136,8 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         { id: 'Award Races',     label: 'Award Races',     icon: TrendingUp },
         { id: 'Statistical Feats', label: 'Statistical Feats', icon: Zap },
         { id: 'League Leaders',  label: 'League Leaders',  icon: ListOrdered },
+        { id: 'League History',  label: 'League History',  icon: Trophy },
+        { id: 'Team History',    label: 'Team History',    icon: BookOpen },
       ],
     },
     {

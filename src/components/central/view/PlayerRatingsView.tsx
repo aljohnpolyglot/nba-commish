@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Search, ChevronUp, ChevronDown, LayoutList, Rows3 } from 'lucide-react';
+import { Search, ChevronUp, ChevronDown, LayoutList, Rows3, SlidersHorizontal } from 'lucide-react';
+import { evaluateFilter } from '../../../utils/filterUtils';
 import { useGame } from '../../../store/GameContext';
 import { NBAPlayer } from '../../../types';
 import { calculateK2, K2_CATS, K2Data } from '../../../services/simulation/convert2kAttributes';
@@ -48,12 +49,13 @@ const CAT_COLORS: Record<CatKey, string> = {
   RB: '#eab308',
 };
 
-type SortField = 'name' | 'age' | 'ovr' | CatKey | string; // string covers detail sub keys like 'OS.0'
+type SortField = 'name' | 'age' | 'ovr' | 'pot' | CatKey | string; // string covers detail sub keys like 'OS.0'
 
 interface RowData {
   player: NBAPlayer;
   age: number;
   ovr: number;
+  pot: number;
   k2: K2Data;
   OS: number; AT: number; IS: number; PL: number; DF: number; RB: number;
 }
@@ -92,6 +94,8 @@ export const PlayerRatingsView: React.FC = () => {
   const [selectedPlayer, setSelectedPlayer] = useState<NBAPlayer | null>(null);
   const [detailMode, setDetailMode] = useState(false);
   const [page, setPage] = useState(0);
+  const [showColFilters, setShowColFilters] = useState(false);
+  const [colFilters, setColFilters] = useState<Record<string, string>>({});
 
   const PAGE_SIZE = 50;
 
@@ -123,10 +127,15 @@ export const PlayerRatingsView: React.FC = () => {
           age,
         });
         const ovr = convertTo2KRating(player.overallRating ?? 60, r.hgt, r.tp);
+        // POT: BBGM potEstimator (age+ovr), clamped to never be below current OVR, then K2 scale
+        const rawBbgmOvr = player.overallRating ?? 60;
+        const potBbgm = age >= 29 ? rawBbgmOvr : Math.max(rawBbgmOvr, Math.round(72.31428908571982 + (-2.33062761 * age) + (0.83308748 * rawBbgmOvr)));
+        const pot = convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), r.hgt, r.tp);
         return {
           player,
           age,
           ovr,
+          pot,
           k2,
           OS: k2.OS.ovr,
           AT: k2.AT.ovr,
@@ -149,8 +158,24 @@ export const PlayerRatingsView: React.FC = () => {
       const q = search.trim().toLowerCase();
       r = r.filter(row => row.player.name.toLowerCase().includes(q));
     }
+    if (Object.values(colFilters).some(Boolean)) {
+      r = r.filter(row => {
+        for (const [key, flt] of Object.entries(colFilters)) {
+          if (!flt) continue;
+          let val: string | number = '';
+          if (key === 'name') val = row.player.name;
+          else if (key === 'age') val = row.age;
+          else if (key === 'ovr') val = row.ovr;
+          else if (key === 'pot') val = row.pot;
+          else if (['OS','AT','IS','PL','DF','RB'].includes(key)) val = (row as any)[key];
+          else if (key.includes('.')) val = getSubVal(row, key);
+          if (!evaluateFilter(String(val), flt)) return false;
+        }
+        return true;
+      });
+    }
     return r;
-  }, [rows, teamFilter, search]);
+  }, [rows, teamFilter, search, colFilters]);
 
   // Sort
   const sorted = useMemo(() => {
@@ -159,6 +184,7 @@ export const PlayerRatingsView: React.FC = () => {
       if (sortField === 'name') cmp = a.player.name.localeCompare(b.player.name);
       else if (sortField === 'age') cmp = a.age - b.age;
       else if (sortField === 'ovr') cmp = a.ovr - b.ovr;
+      else if (sortField === 'pot') cmp = a.pot - b.pot;
       else if (['OS', 'AT', 'IS', 'PL', 'DF', 'RB'].includes(sortField)) {
         cmp = (a as any)[sortField] - (b as any)[sortField];
       } else if (sortField.includes('.')) {
@@ -191,6 +217,7 @@ export const PlayerRatingsView: React.FC = () => {
     { key: 'name', label: 'Name', sticky: true },
     { key: 'age',  label: 'AGE' },
     { key: 'ovr',  label: 'OVR' },
+    { key: 'pot',  label: 'POT', title: 'Potential' },
     ...CAT_CONFIG.map(c => ({ key: c.key as SortField, label: c.label, title: c.full })),
   ];
 
@@ -257,6 +284,20 @@ export const PlayerRatingsView: React.FC = () => {
         >
           {detailMode ? <LayoutList size={13} /> : <Rows3 size={13} />}
           {detailMode ? 'Summary' : 'Detailed'}
+        </button>
+
+        {/* Column filter toggle */}
+        <button
+          onClick={() => setShowColFilters(prev => !prev)}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
+            showColFilters
+              ? 'bg-indigo-600 border-indigo-500 text-white'
+              : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'
+          }`}
+          title="Toggle column filters"
+        >
+          <SlidersHorizontal size={13} />
+          Filter
         </button>
 
         <span className="text-xs text-slate-500 self-center">{sorted.length} players</span>
@@ -336,6 +377,29 @@ export const PlayerRatingsView: React.FC = () => {
                 );
               })}
             </tr>
+            {/* Column filter row */}
+            {showColFilters && (
+              <tr className="bg-slate-900/60 border-b border-slate-700">
+                {columns.map((col, colIdx) => {
+                  const catKey = (col as any).catKey as CatKey | undefined;
+                  const isCatBorder = detailMode && catKey && col.key === `${catKey}.0` && colIdx > 3;
+                  return (
+                    <th
+                      key={col.key}
+                      className={`p-1 ${col.sticky ? 'sticky left-0 bg-slate-900 z-20' : ''} ${isCatBorder ? 'border-l border-slate-700' : ''}`}
+                    >
+                      <input
+                        type="text"
+                        value={colFilters[col.key] ?? ''}
+                        onChange={e => { setColFilters(prev => ({ ...prev, [col.key]: e.target.value })); setPage(0); }}
+                        placeholder="…"
+                        className="w-full bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 text-[10px] text-white focus:outline-none focus:border-indigo-500 tabular-nums font-normal"
+                      />
+                    </th>
+                  );
+                })}
+              </tr>
+            )}
           </thead>
           <tbody>
             {paginated.map((row, idx) => {
@@ -375,6 +439,10 @@ export const PlayerRatingsView: React.FC = () => {
                     }
                     if (col.key === 'age') return <td key={col.key} className="px-3 py-2.5 text-xs text-slate-400 tabular-nums">{row.age || '—'}</td>;
                     if (col.key === 'ovr') return <td key={col.key} className="px-3 py-2.5"><RatingCell value={row.ovr} /></td>;
+                    if (col.key === 'pot') {
+                      const potColor = row.pot >= 90 ? '#3b82f6' : row.pot >= 80 ? '#22c55e' : row.pot >= 70 ? '#eab308' : '#94a3b8';
+                      return <td key={col.key} className="px-3 py-2.5 text-xs tabular-nums font-black" style={{ color: potColor }}>{row.pot}</td>;
+                    }
 
                     const catKey = (col as any).catKey as CatKey | undefined;
                     const isCatBorder = detailMode && catKey && col.key === `${catKey}.0` && colIdx > 3;

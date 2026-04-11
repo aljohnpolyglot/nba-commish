@@ -240,7 +240,10 @@ export const BroadcastingView: React.FC = () => {
   const { state, dispatchAction } = useGame();
 
   const isLocked        = state.leagueStats.mediaRights?.isLocked === true;
-  const isAfterDeadline = new Date(state.date) >= new Date('2025-10-24');
+  // Lock broadcasting edits on June 30 of each season year (day before FA opens July 1).
+  // This lets commissioners finalize the new season's cap before free agency.
+  const broadcastDeadline = `${state.leagueStats.year ?? 2026}-06-30`;
+  const isAfterDeadline = new Date(state.date) >= new Date(broadcastDeadline);
   const readOnly        = isLocked || isAfterDeadline;
 
   const [view,                setView]                = useState<View>('roster');

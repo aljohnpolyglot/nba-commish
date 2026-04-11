@@ -183,7 +183,7 @@ export const ActionModalsRenderer: React.FC<ActionModalsRendererProps> = ({
       {modals.preseasonInternationalModalOpen && (
         <PreseasonInternationalModal
           teams={state.teams}
-          nonNBATeams={(state.nonNBATeams ?? []).filter(t => (state.players ?? []).filter(p => p.tid === t.tid).length >= 9)}
+          nonNBATeams={(state.nonNBATeams ?? []).filter(t => (state.players ?? []).filter(p => p.tid === t.tid).length >= 8)}
           onClose={() => modals.setPreseasonInternationalModalOpen(false)}
           onConfirm={async (payloads) => {
             modals.setPreseasonInternationalModalOpen(false);

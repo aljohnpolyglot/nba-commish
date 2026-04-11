@@ -275,7 +275,7 @@ export const LeagueLeadersView: React.FC = () => {
                       className="font-medium text-indigo-400 cursor-pointer hover:text-indigo-300 hover:underline"
                       onClick={() => navigateToTeam(item.team.id)}
                     >
-                      {item.team.region} {item.team.name}
+                      {item.team.name}
                     </span>
                   </div>
                 </td>

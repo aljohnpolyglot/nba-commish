@@ -1,4 +1,4 @@
-import { NBATeam, NBAPlayer, GameResult, NewsItem } from '../../types';
+import { NBATeam, NBAPlayer, GameResult, NewsItem, PlayoffBracket, Game } from '../../types';
 import { NewsGenerator } from './NewsGenerator';
 import { convertTo2KRating } from '../../utils/helpers';
 
@@ -54,10 +54,57 @@ export const generateLazySimNews = (
   currentDate: string,
   reportedInjuries: Set<string>,
   skipInjuries = false,
-  prevTeams?: NBATeam[]
+  prevTeams?: NBATeam[],
+  playoffs?: PlayoffBracket | null,
+  schedule?: Game[]
 ): NewsItem[] => {
   const news: NewsItem[] = [];
   const isPreseason = dateIsPreseason(currentDate);
+  // Suppress standings/season-narrative items during playoffs — series news is generated separately
+  const isPlayoffs = !!playoffs && (playoffs.series.some(s => s.status !== 'pending') || playoffs.playInComplete);
+
+  // Build set of team IDs that are active playoff participants (for news filtering)
+  const playoffTeamIds = new Set<number>();
+  if (isPlayoffs && playoffs) {
+    playoffs.series.forEach(s => { playoffTeamIds.add(s.higherSeedTid); playoffTeamIds.add(s.lowerSeedTid); });
+    // Also include play-in teams
+    playoffs.playInGames?.forEach(p => {
+      if (p.team1Tid > 0) playoffTeamIds.add(p.team1Tid);
+      if (p.team2Tid > 0) playoffTeamIds.add(p.team2Tid);
+    });
+  }
+
+  // Helper: is this game result a playoff game?
+  const isPlayoffResult = (r: GameResult): boolean => {
+    if (!schedule) return false;
+    const g = schedule.find(sg => sg.gid === r.gameId);
+    return !!(g?.isPlayoff || g?.isPlayIn);
+  };
+
+  // Helper: get series context string for a playoff game result
+  const getSeriesContext = (r: GameResult): string | null => {
+    if (!playoffs || !schedule) return null;
+    const g = schedule.find(sg => sg.gid === r.gameId);
+    if (!g?.playoffSeriesId) return null;
+    const series = playoffs.series.find(s => s.id === g.playoffSeriesId);
+    if (!series) return null;
+    const higher = teams.find(t => t.id === series.higherSeedTid);
+    const lower = teams.find(t => t.id === series.lowerSeedTid);
+    const gameNum = (g as any).playoffGameNumber || (series.higherSeedWins + series.lowerSeedWins);
+    const hW = series.higherSeedWins;
+    const lW = series.lowerSeedWins;
+    const winsNeeded = Math.ceil(series.gamesNeeded / 2);
+    if (hW >= winsNeeded || lW >= winsNeeded) {
+      const winner = hW >= winsNeeded ? higher : lower;
+      return `Game ${gameNum} · ${winner?.name ?? 'Winner'} advance`;
+    }
+    if (hW === lW) return `Game ${gameNum} · Series tied ${hW}-${lW}`;
+    const leader = hW > lW ? higher : lower;
+    const leaderW = Math.max(hW, lW);
+    const trailerW = Math.min(hW, lW);
+    if (leaderW === winsNeeded - 1) return `Game ${gameNum} · ${leader?.name ?? 'Leader'} one win away`;
+    return `Game ${gameNum} · ${leader?.name ?? 'Leader'} leads ${leaderW}-${trailerW}`;
+  };
 
   // ── 1. BATCH RECAP — always fires for the top performer of the 7-day batch ──
   {
@@ -78,7 +125,8 @@ export const generateLazySimNews = (
       );
       if (team) {
         const player = players.find(p => p.internalId === top.stat.playerId);
-        const item = withPortrait(NewsGenerator.generate(isPreseason ? 'preseason_recap' : 'batch_recap', currentDate, {
+        const category = isPreseason ? 'preseason_recap' : 'batch_recap';
+        const item = withPortrait(NewsGenerator.generate(category, currentDate, {
           playerName: top.stat.name,
           teamName: team.name,
           pts: top.stat.pts,
@@ -87,6 +135,22 @@ export const generateLazySimNews = (
         }), player?.imgURL);
         if (item) {
           if (topGame) { item.gameId = topGame.gameId; item.homeTeamId = topGame.homeTeamId; item.awayTeamId = topGame.awayTeamId; }
+          // Rewrite batch_recap headline during playoffs to feel like postseason
+          if (isPlayoffs && item && top.stat.pts >= 20) {
+            const lastName = top.stat.name.split(' ').pop() ?? top.stat.name;
+            const seriesCtx = topGame ? getSeriesContext(topGame) : null;
+            const playoffTitles = seriesCtx
+              ? [
+                  `${top.stat.name} Drops ${top.stat.pts} PTS in Playoff Run · ${seriesCtx}`,
+                  `${lastName} Takes Over: ${top.stat.pts} PTS, ${top.stat.reb} REB, ${top.stat.ast} AST`,
+                  `Postseason Spotlight: ${top.stat.name} Puts ${team.name} on His Back`,
+                ]
+              : [
+                  `Playoff Standout: ${top.stat.name} Leads ${team.name} with ${top.stat.pts} PTS`,
+                  `${lastName} Cannot Be Stopped — ${top.stat.pts} PTS in Playoff Action`,
+                ];
+            item.headline = playoffTitles[Math.floor(Math.random() * playoffTitles.length)];
+          }
           news.push(item);
         }
       }
@@ -94,11 +158,14 @@ export const generateLazySimNews = (
   }
 
   // ── 2. WIN / LOSE STREAKS — team logos stay as `image` (no Imagn needed) ──
+  // During playoffs, only show streak news for active playoff teams (not eliminated/non-playoff teams)
   const STREAK_THRESHOLDS = [5, 7, 10, 14];
   for (const team of teams) {
     if (!team.streak) continue;
     const { type, count } = team.streak;
     if (!STREAK_THRESHOLDS.includes(count)) continue;
+    // Suppress streaks for non-playoff teams when playoffs are underway
+    if (isPlayoffs && playoffTeamIds.size > 0 && !playoffTeamIds.has(team.id)) continue;
 
     if (type === 'W') {
       const category = count >= 8 ? 'long_win_streak' : 'win_streak';
@@ -108,6 +175,8 @@ export const generateLazySimNews = (
       }, team.logoUrl);
       if (item) news.push(item);
     } else {
+      // During playoffs, suppress regular loss streak news (non-playoff teams aren't playing)
+      if (isPlayoffs) continue;
       const item = NewsGenerator.generate('lose_streak', currentDate, {
         teamName: team.name,
         streakCount: count,
@@ -184,15 +253,26 @@ export const generateLazySimNews = (
 
   // ── 3b. GAME RESULTS — sample 1-2 notable games per batch ───────────────────
   if (!isPreseason && allSimResults.length > 0) {
-    // Pick up to 2 games to report on (skip scrimmages, prefer closer or higher-scoring games)
+    // During playoffs: prefer playoff games; during regular season: any game
     const eligibleGames = allSimResults.filter(g => {
       const ht = teams.find(t => t.id === g.homeTeamId);
       const at = teams.find(t => t.id === g.awayTeamId);
       return ht && at && ht !== at;
     });
-    const shuffled = eligibleGames.sort(() => Math.random() - 0.5).slice(0, 2);
-    for (const game of shuffled) {
-      if (Math.random() > 0.5) continue; // 50% chance to skip — keeps feed fresh
+
+    // Sort: playoff games first (closer scores preferred within each group)
+    const sorted = eligibleGames.sort((a, b) => {
+      const aIsPlayoff = isPlayoffResult(a) ? 1 : 0;
+      const bIsPlayoff = isPlayoffResult(b) ? 1 : 0;
+      if (aIsPlayoff !== bIsPlayoff) return bIsPlayoff - aIsPlayoff;
+      const aDiff = Math.abs(a.homeScore - a.awayScore);
+      const bDiff = Math.abs(b.homeScore - b.awayScore);
+      return aDiff - bDiff; // closer games first
+    });
+    const picked = sorted.slice(0, isPlayoffs ? 3 : 2);
+
+    for (const game of picked) {
+      if (!isPlayoffs && Math.random() > 0.5) continue; // Regular season: 50% skip
       const homeTeam = teams.find(t => t.id === game.homeTeamId)!;
       const awayTeam = teams.find(t => t.id === game.awayTeamId)!;
       const homeWon = game.homeScore > game.awayScore;
@@ -202,17 +282,35 @@ export const generateLazySimNews = (
       const loserScore = homeWon ? game.awayScore : game.homeScore;
       const allStats = [...game.homeStats, ...game.awayStats].sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0));
       const topStat = allStats[0];
-      const item = NewsGenerator.generate('game_result', game.date, {
+      const gameIsPlayoff = isPlayoffResult(game);
+      const seriesCtx = gameIsPlayoff ? getSeriesContext(game) : null;
+
+      // For playoff games, inject series context into the headline directly
+      let item = NewsGenerator.generate('game_result', game.date, {
         winnerName: winner.name,
         loserName: loser.name,
         winnerScore,
         loserScore,
-        winnerRecord: `${winner.wins}-${winner.losses}`,
+        winnerRecord: seriesCtx ?? `${winner.wins}-${winner.losses}`,
         loserRecord: `${loser.wins}-${loser.losses}`,
-        gameType: isPreseason ? 'preseason' : 'regular season',
+        gameType: gameIsPlayoff ? 'playoff' : (isPreseason ? 'preseason' : 'regular season'),
         topPerformer: topStat?.name ?? 'The leading scorer',
         topPts: topStat?.pts ?? 0,
       }, winner.logoUrl);
+
+      // Rewrite headline for playoff games to feel like postseason
+      if (item && gameIsPlayoff && seriesCtx && topStat) {
+        const lastName = topStat.name.split(' ').pop() ?? topStat.name;
+        const playoffHeadlines = [
+          `${topStat.name} Drops ${topStat.pts} as ${winner.name} Take ${seriesCtx}`,
+          `${winner.name} Win ${seriesCtx} — ${lastName} Leads with ${topStat.pts} PTS`,
+          `${lastName} Erupts for ${topStat.pts} to Push ${winner.name}: ${seriesCtx}`,
+          `Playoffs: ${winner.name} Hold Off ${loser.name} ${winnerScore}-${loserScore} · ${seriesCtx}`,
+        ];
+        const idx = Math.floor(Math.random() * playoffHeadlines.length);
+        item.headline = playoffHeadlines[idx];
+      }
+
       if (item) {
         item.gameId = game.gameId;
         item.homeTeamId = game.homeTeamId;
@@ -348,8 +446,8 @@ export const generateLazySimNews = (
     }
   }
 
-  // ── 5. DRAMA — bad teams: 40% chance per batch ───────────────────────────
-  if (Math.random() < 0.4) {
+  // ── 5. DRAMA — bad teams: 40% chance per batch (suppressed during playoffs) ──
+  if (!isPlayoffs && Math.random() < 0.4) {
     const badTeams = teams.filter(t => {
       const played = t.wins + t.losses;
       return played >= 15 && t.wins / played < 0.40;
@@ -380,24 +478,50 @@ export const generateLazySimNews = (
     }
   }
 
-  // ── FALLBACK: If no news was generated (e.g. off-day batch), add a brief standings note ──
+  // ── FALLBACK: If no news was generated (e.g. off-day batch), add a brief standings/playoff note ──
   // Skip during preseason or when teams haven't played any games yet (all 0-0)
   const totalGamesPlayed = teams.reduce((sum, t) => sum + t.wins + t.losses, 0);
   if (news.length === 0 && teams.length > 0 && !isPreseason && totalGamesPlayed > 0) {
-    const east = teams.filter(t => (t as any).conference === 'East').sort((a: any, b: any) => (b.wins / (b.wins + b.losses || 1)) - (a.wins / (a.wins + a.losses || 1)));
-    const west = teams.filter(t => (t as any).conference === 'West').sort((a: any, b: any) => (b.wins / (b.wins + b.losses || 1)) - (a.wins / (a.wins + a.losses || 1)));
-    const eastLeader = east[0];
-    const westLeader = west[0];
-    if (eastLeader && westLeader && (eastLeader.wins > 0 || westLeader.wins > 0)) {
-      news.push({
-        id: `standings-recap-${Date.now()}`,
-        headline: `Standings Update: ${eastLeader.name} Lead East, ${westLeader.name} Lead West`,
-        content: `After the latest stretch of games, the ${eastLeader.name} (${eastLeader.wins}-${eastLeader.losses}) lead the Eastern Conference while the ${westLeader.name} (${westLeader.wins}-${westLeader.losses}) sit atop the West.`,
-        date: currentDate,
-        category: 'batch_recap',
-        isNew: true,
-        newsType: 'weekly' as any,
-      });
+    if (isPlayoffs) {
+      // During playoffs: show active series summary instead of standings
+      const activeSeries = playoffs!.series.filter(s => s.status === 'active');
+      if (activeSeries.length > 0) {
+        const s = activeSeries[0];
+        const higher = teams.find(t => t.id === s.higherSeedTid);
+        const lower  = teams.find(t => t.id === s.lowerSeedTid);
+        if (higher && lower) {
+          const leader = s.higherSeedWins > s.lowerSeedWins ? higher : s.lowerSeedWins > s.higherSeedWins ? lower : null;
+          const content = leader
+            ? `The ${higher.name} and ${lower.name} continue their series. ${leader.name} lead ${Math.max(s.higherSeedWins, s.lowerSeedWins)}-${Math.min(s.higherSeedWins, s.lowerSeedWins)}.`
+            : `The ${higher.name} and ${lower.name} are tied in their series at ${s.higherSeedWins}-${s.lowerSeedWins}.`;
+          news.push({
+            id: `playoff-update-${s.id}-${Date.now()}`,
+            headline: `Playoff Update: ${higher.name} vs. ${lower.name}`,
+            content,
+            date: currentDate,
+            category: 'batch_recap',
+            isNew: true,
+            newsType: 'weekly' as any,
+            image: leader?.logoUrl,
+          });
+        }
+      }
+    } else {
+      const east = teams.filter(t => (t as any).conference === 'East').sort((a: any, b: any) => (b.wins / (b.wins + b.losses || 1)) - (a.wins / (a.wins + a.losses || 1)));
+      const west = teams.filter(t => (t as any).conference === 'West').sort((a: any, b: any) => (b.wins / (b.wins + b.losses || 1)) - (a.wins / (a.wins + a.losses || 1)));
+      const eastLeader = east[0];
+      const westLeader = west[0];
+      if (eastLeader && westLeader && (eastLeader.wins > 0 || westLeader.wins > 0)) {
+        news.push({
+          id: `standings-recap-${Date.now()}`,
+          headline: `Standings Update: ${eastLeader.name} Lead East, ${westLeader.name} Lead West`,
+          content: `After the latest stretch of games, the ${eastLeader.name} (${eastLeader.wins}-${eastLeader.losses}) lead the Eastern Conference while the ${westLeader.name} (${westLeader.wins}-${westLeader.losses}) sit atop the West.`,
+          date: currentDate,
+          category: 'batch_recap',
+          isNew: true,
+          newsType: 'weekly' as any,
+        });
+      }
     }
   }
 

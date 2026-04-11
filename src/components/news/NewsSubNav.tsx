@@ -22,7 +22,7 @@ const CATEGORIES = [
 
 const TeamDropdown: React.FC<{ teams: NBATeam[]; selectedTeam: string | null; onSelect: (name: string | null) => void }> = ({ teams, selectedTeam, onSelect }) => {
   const [open, setOpen] = useState(false);
-  const selected = teams.find(t => `${t.region} ${t.name}` === selectedTeam);
+  const selected = teams.find(t => t.name === selectedTeam);
 
   return (
     <div className="relative">
@@ -51,16 +51,15 @@ const TeamDropdown: React.FC<{ teams: NBATeam[]; selectedTeam: string | null; on
               >
                 All Teams
               </button>
-              {teams.filter(t => t.id > 0).sort((a, b) => `${a.region} ${a.name}`.localeCompare(`${b.region} ${b.name}`)).map(team => {
-                const fullName = `${team.region} ${team.name}`;
+              {teams.filter(t => t.id > 0).sort((a, b) => a.name.localeCompare(b.name)).map(team => {
                 return (
                   <button
                     key={team.id}
-                    onClick={() => { onSelect(fullName); setOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${selectedTeam === fullName ? 'bg-blue-50 text-[#0078ff]' : 'text-gray-700 hover:bg-gray-50'}`}
+                    onClick={() => { onSelect(team.name); setOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${selectedTeam === team.name ? 'bg-blue-50 text-[#0078ff]' : 'text-gray-700 hover:bg-gray-50'}`}
                   >
                     {team.logoUrl && <img src={team.logoUrl} alt="" className="w-6 h-6 object-contain" referrerPolicy="no-referrer" />}
-                    <span>{fullName}</span>
+                    <span>{team.name}</span>
                   </button>
                 );
               })}

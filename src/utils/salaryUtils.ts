@@ -118,12 +118,12 @@ export const getTradeOutlook = (
   if (confRank !== undefined && confRank <= 3 && capSpace > 5_000_000)
     return { role: 'heavy_buyer', label: 'Heavy Buyer', color: 'text-emerald-300', bgColor: 'bg-emerald-500/20', dot: '#6ee7b7', reason: `#${confRank} seed — title window open` };
 
-  // Playoff team (top 6) with any meaningful cap space
-  if (inPlayoffs && capSpace > 2_000_000)
+  // Playoff team (top 6): buyer if cap space available OR under luxury tax (MLE available)
+  if (inPlayoffs && (capSpace > 2_000_000 || payrollUSD < thresholds.luxuryTax))
     return { role: 'buyer', label: 'Buyer', color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', dot: '#34d399', reason: `Playoff seed #${confRank} — adding pieces` };
 
   // Play-in team with cap room = opportunistic buyer
-  if (inPlayIn && capSpace > 5_000_000)
+  if (inPlayIn && (capSpace > 3_000_000 || payrollUSD < thresholds.luxuryTax - 5_000_000))
     return { role: 'buyer', label: 'Buyer', color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', dot: '#34d399', reason: `Play-in #${confRank} — push for playoffs` };
 
   // Way out of it = rebuilding (regardless of cap)
@@ -135,9 +135,9 @@ export const getTradeOutlook = (
     return { role: 'seller', label: 'Seller', color: 'text-rose-400', bgColor: 'bg-rose-500/20', dot: '#f87171', reason: 'Outside play-in, over tax' };
 
   // Fallbacks without standings data
-  if (winPct >= 0.55 && capSpace > 10_000_000)
+  if (winPct >= 0.55 && (capSpace > 5_000_000 || payrollUSD < thresholds.luxuryTax))
     return { role: 'heavy_buyer', label: 'Heavy Buyer', color: 'text-emerald-300', bgColor: 'bg-emerald-500/20', dot: '#6ee7b7', reason: 'Contender with cap room' };
-  if (winPct >= 0.48 && capSpace > 3_000_000)
+  if (winPct >= 0.48 && (capSpace > 0 || payrollUSD < thresholds.luxuryTax))
     return { role: 'buyer', label: 'Buyer', color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', dot: '#34d399', reason: 'Winning, room to add' };
   if (winPct < 0.35 || (winPct < 0.42 && expiringCount >= 3))
     return { role: 'rebuilding', label: 'Rebuilding', color: 'text-purple-400', bgColor: 'bg-purple-500/20', dot: '#c084fc', reason: 'Future-focused' };

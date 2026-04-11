@@ -82,7 +82,7 @@ export const processTurn = async (
     const executiveTradeTransactionFinal = executiveTradeTransactionRef.current;
     
     // 5. Post-process simulation results (injuries, stats)
-    let { updatedPlayers, updatedDraftPicks } = processSimulationResults(allSimResults, result.players || stateWithSim.players, result.draftPicks || stateWithSim.draftPicks, stateWithSim.schedule);
+    let { updatedPlayers, updatedDraftPicks } = processSimulationResults(allSimResults, result.players || stateWithSim.players, result.draftPicks || stateWithSim.draftPicks, stateWithSim.schedule, stateWithSim.leagueStats?.year);
 
     // Lazily assign mood traits to any player who doesn't have them yet
     updatedPlayers = updatedPlayers.map(p =>
@@ -158,7 +158,7 @@ export const processTurn = async (
     // Supplement with template-based news (always fires, LLM-agnostic) — same engine as lazy sim batches
     if (allSimResults.length > 0) {
         const reportedInjuries = new Set<string>(state.news.map((n: any) => n.injuryPlayerId).filter(Boolean));
-        const templateNews = generateLazySimNews(stateWithSim.teams, updatedPlayers, allSimResults, stateWithSim.date, reportedInjuries, false, state.teams);
+        const templateNews = generateLazySimNews(stateWithSim.teams, updatedPlayers, allSimResults, stateWithSim.date, reportedInjuries, false, state.teams, stateWithSim.playoffs, stateWithSim.schedule);
         const existingIds = new Set([...state.news.map((n: any) => n.id), ...uniqueNewNews.map((n: any) => n.id)]);
         templateNews.filter(n => !existingIds.has(n.id)).forEach(n => uniqueNewNews.push(n));
     }
@@ -217,11 +217,12 @@ export const processTurn = async (
     let finalSchedule = stateWithSim.schedule;
     const normalizedFinalDate = normalizeDate(dateString);
     const hasRegularSeasonGames = finalSchedule.some(g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn);
-    if (!hasRegularSeasonGames && normalizedFinalDate >= '2025-08-14') {
+    const scheduleYear = state.leagueStats?.year ?? 2026;
+    if (!hasRegularSeasonGames && normalizedFinalDate >= `${scheduleYear - 1}-08-14`) {
         console.log(`[Schedule] GENERATING on Aug14 — christmas=${(result.christmasGames || state.christmasGames)?.length ?? 0} global=${(result.globalGames || state.globalGames)?.length ?? 0}`);
         // Preserve any intl preseason games added before Aug 14
         const intlPreseasonGames = finalSchedule.filter(g => (g as any).isPreseason && (g.homeTid >= 100 || g.awayTid >= 100));
-        finalSchedule = generateSchedule(state.teams, result.christmasGames || state.christmasGames, result.globalGames || state.globalGames, state.leagueStats.numGamesDiv ?? null, state.leagueStats.numGamesConf ?? null, state.leagueStats.mediaRights);
+        finalSchedule = generateSchedule(state.teams, result.christmasGames || state.christmasGames, result.globalGames || state.globalGames, state.leagueStats.numGamesDiv ?? null, state.leagueStats.numGamesConf ?? null, state.leagueStats.mediaRights, scheduleYear);
         if (intlPreseasonGames.length > 0) {
             // Re-gid to avoid collisions with schedule gids (which start from 0)
             const maxGid = Math.max(0, ...finalSchedule.map(g => g.gid));
@@ -532,7 +533,8 @@ export const processTurn = async (
     const currentDateNorm2 = normalizeDate(dateString);
 
     // 1. Generate bracket when regular season ends (around Apr 14)
-    if (!playoffsPatch && currentDateNorm2 >= '2026-04-13') {
+    const playoffSeasonYear = state.leagueStats?.year ?? 2026;
+    if (!playoffsPatch && currentDateNorm2 >= `${playoffSeasonYear}-04-13`) {
         const numGamesPerRound = state.leagueStats.numGamesPlayoffSeries ?? [7, 7, 7, 7];
         playoffsPatch = PlayoffGenerator.generateBracket(
             stateWithSim.teams,
@@ -543,7 +545,7 @@ export const processTurn = async (
 
     // 2. Inject play-in games into the schedule once bracket is created
     if (playoffsPatch && !playoffsPatch.gamesInjected) {
-        const playInStart = new Date('2026-04-15T00:00:00Z');
+        const playInStart = new Date(`${playoffSeasonYear}-04-15T00:00:00Z`);
         const maxGid = Math.max(0, ...finalSchedule.map(g => g.gid));
         const playInGamesToInject = PlayoffGenerator.injectPlayInGames(
             playoffsPatch.playInGames,
@@ -556,7 +558,12 @@ export const processTurn = async (
     }
 
     // 3. Advance bracket based on today's playoff/play-in results
-    if (playoffsPatch && allSimResults.length > 0) {
+    // NOTE: simulationHandler.ts (runSimulation) already calls applyPlayoffLogic per-day
+    // inside its loop, so stateWithSim.playoffs already has the correctly advanced bracket.
+    // Only run here if simulationHandler did NOT handle it (stateWithSim.playoffs is still
+    // the same reference as state.playoffs — i.e., the bracket was just generated above in step 1).
+    const simHandledPlayoffs = stateWithSim.playoffs != null && stateWithSim.playoffs !== state.playoffs;
+    if (!simHandledPlayoffs && playoffsPatch && allSimResults.length > 0) {
         const playoffResults = allSimResults.filter(r => {
             const game = finalSchedule.find(g => g.gid === r.gameId);
             return game && (game.isPlayoff || game.isPlayIn);
@@ -581,7 +588,7 @@ export const processTurn = async (
         for (const pig of playoffsPatch.playInGames) {
             if (pig.gameType === 'loserGame' && pig.team1Tid > 0 && pig.team2Tid > 0 && !pig.gameId) {
                 const maxGid = Math.max(0, ...finalSchedule.map(g => g.gid));
-                const playInStart = new Date('2026-04-15T00:00:00Z');
+                const playInStart = new Date(`${playoffSeasonYear}-04-15T00:00:00Z`);
                 const dayOffset = pig.conference === 'East' ? 3 : 4;
                 const gameDate = new Date(playInStart);
                 gameDate.setDate(gameDate.getDate() + dayOffset);

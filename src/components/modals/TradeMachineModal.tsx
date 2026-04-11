@@ -128,12 +128,12 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({ onClose, o
 
   // Memos for rosters and picks
   const teamARoster = useMemo(() => state.players
-    .filter(p => p.tid === teamAId && !['WNBA', 'Euroleague', 'PBA', 'B-League'].includes(p.status || ''))
+    .filter(p => p.tid === teamAId && !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || ''))
     .sort((a, b) => (b.contract?.amount || 0) - (a.contract?.amount || 0)),
   [state.players, teamAId]);
 
   const teamBRoster = useMemo(() => state.players
-    .filter(p => p.tid === teamBId && !['WNBA', 'Euroleague', 'PBA', 'B-League'].includes(p.status || ''))
+    .filter(p => p.tid === teamBId && !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || ''))
     .sort((a, b) => (b.contract?.amount || 0) - (a.contract?.amount || 0)),
   [state.players, teamBId]);
 

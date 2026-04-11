@@ -18,9 +18,20 @@ export const simulateDayGames = (state: GameState, watchedGameResult?: any, rigg
 
     // During All-Star break, only simulate All-Star/Rising Stars games (not regular season)
     // Playoff and play-in games are never during All-Star break so they always pass through
-    const gamesToSimulate = isAllStarBreak
+    const gamesToSimulate = (isAllStarBreak
         ? gamesToday.filter(g => g.isAllStar || g.isRisingStars || g.isPlayoff || g.isPlayIn)
-        : gamesToday;
+        : gamesToday
+    ).filter(g => {
+        // Skip playoff games whose series is already complete (prevents ghost games 6/7 after early series end)
+        if ((g.isPlayoff || g.isPlayIn) && g.playoffSeriesId && state.playoffs) {
+            const series = state.playoffs.series.find(s => s.id === g.playoffSeriesId);
+            if (series?.status === 'complete') return false;
+            // Also skip play-in games that are already marked played
+            const pig = state.playoffs.playInGames?.find(p => p.id === g.playoffSeriesId);
+            if (pig?.played) return false;
+        }
+        return true;
+    });
 
     if (gamesToSimulate.length === 0) return { teams: state.teams, schedule: state.schedule, results: [] };
 

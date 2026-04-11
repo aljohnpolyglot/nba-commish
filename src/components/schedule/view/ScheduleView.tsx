@@ -6,6 +6,7 @@ import { NBATeam, Game, Tab, NBAPlayer } from '../../../types';
 import { DunkContest } from '../../../services/allStar/DunkContest';
 import { ThreePointContest, mapPlayerToContestant } from '../../allstar/allstarevents';
 import { normalizeDate, getTeamForGame, getPlayersForExhibitionTeam } from '../../../utils/helpers';
+import { GameSimulator } from '../../../services/simulation/GameSimulator';
 import { SettingsManager } from '../../../services/SettingsManager';
 import { GameSimulatorScreen } from '../../shared/GameSimulatorScreen';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
@@ -29,6 +30,7 @@ export const ScheduleView: React.FC = () => {
   const [watchingThreePoint, setWatchingThreePoint] = useState(false);
   const [pendingWatchGame, setPendingWatchGame] = useState<Game | null>(null);
   const [riggedForTid, setRiggedForTid] = useState<number | undefined>(undefined);
+  const [precomputedWatchResult, setPrecomputedWatchResult] = useState<any>(null);
   const [selectedBoxScoreGame, setSelectedBoxScoreGame] = useState<Game | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date(state.date));
   const [standingsConference, setStandingsConference] = useState<'East' | 'West'>('East');
@@ -184,12 +186,34 @@ export const ScheduleView: React.FC = () => {
   const handleWatchGame = (game: Game) => {
     const gameDateNorm = normalizeDate(game.date);
     const stateDateNorm = normalizeDate(state.date);
-
     const isToday = gameDateNorm === stateDateNorm;
 
     if (isToday) {
       setPendingWatchGame(game);
     }
+  };
+
+  // Resolve a team by tid — handles NBA teams, non-NBA teams (tid ≥ 100), and exhibition mocks
+  const resolveTeam = (tid: number): NBATeam => {
+    if (tid >= 100) {
+      const nonNBA = (state.nonNBATeams ?? []).find((t: any) => t.tid === tid);
+      if (nonNBA) {
+        return {
+          id: tid,
+          name: nonNBA.name,
+          abbrev: nonNBA.abbrev || nonNBA.name.substring(0, 3).toUpperCase(),
+          logoUrl: nonNBA.imgURL || '',
+          wins: 0, losses: 0, city: '', state: '', pop: 0, region: '',
+          conference: nonNBA.league, division: '',
+          primaryColor: '', secondaryColor: '',
+          arena: '', capacity: 0, championships: 0, playoffAppearances: 0,
+          history: [], retiredNumbers: [], rivals: [],
+          fanBase: 0, marketSize: 0, prestige: 0, facilities: 0, budget: 0,
+          expenses: { scouting: 0, coaching: 0, health: 0, facilities: 0 },
+        } as unknown as NBATeam;
+      }
+    }
+    return getTeamForGame(tid, state.teams);
   };
 
   const executeWatchGame = async (result: any) => {
@@ -292,6 +316,8 @@ export const ScheduleView: React.FC = () => {
                 boxScores={state.boxScores}
                 players={state.players}
                 nonNBATeams={state.nonNBATeams}
+                onNavigateToDraftLottery={() => setCurrentView('Draft Lottery' as Tab)}
+                onNavigateToDraftBoard={() => setCurrentView('Draft Scouting' as Tab)}
               />
             </motion.div>
           )}
@@ -306,17 +332,18 @@ export const ScheduleView: React.FC = () => {
             >
               <GameSimulatorScreen
                 game={watchingGame}
-                teams={state.teams}
+                teams={[...state.teams, ...(state.nonNBATeams ?? []).map((t: any) => ({
+                  id: t.tid, name: t.name, abbrev: t.abbrev || t.name.substring(0,3).toUpperCase(),
+                  logoUrl: t.imgURL || '', wins: 0, losses: 0, conference: t.league,
+                } as unknown as NBATeam))]}
                 players={state.players}
                 allStar={state.allStar}
                 isProcessing={state.isProcessing}
-                onClose={() => setViewMode('day')}
-                onComplete={executeWatchGame}
+                precomputedResult={precomputedWatchResult}
+                onClose={() => { setViewMode('day'); setPrecomputedWatchResult(null); }}
+                onComplete={() => { setViewMode('day'); setPrecomputedWatchResult(null); }}
                 riggedForTid={riggedForTid}
-                otherGamesToday={state.schedule.filter(g =>
-                  normalizeDate(g.date) === normalizeDate(state.date) &&
-                  !g.played && g.gid !== watchingGame.gid
-                ).length}
+                otherGamesToday={0}
               />
             </motion.div>
           )}
@@ -422,8 +449,8 @@ export const ScheduleView: React.FC = () => {
           return (
             <WatchGamePreviewModal
               game={pendingWatchGame}
-              homeTeam={pendingWatchGame.isRisingStars ? fakeHomeTeam : getTeamForGame(pendingWatchGame.homeTid, state.teams)}
-              awayTeam={pendingWatchGame.isRisingStars ? fakeAwayTeam : getTeamForGame(pendingWatchGame.awayTid, state.teams)}
+              homeTeam={pendingWatchGame.isRisingStars ? fakeHomeTeam : resolveTeam(pendingWatchGame.homeTid)}
+              awayTeam={pendingWatchGame.isRisingStars ? fakeAwayTeam : resolveTeam(pendingWatchGame.awayTid)}
               players={state.players}
               homeStartersOverride={getPlayersForExhibitionTeam(pendingWatchGame, true, state.allStar, state.players)}
               awayStartersOverride={getPlayersForExhibitionTeam(pendingWatchGame, false, state.allStar, state.players)}
@@ -433,10 +460,34 @@ export const ScheduleView: React.FC = () => {
                   await dispatchAction({ type: 'ADVANCE_DAY', payload: rig !== undefined ? { riggedForTid: rig } : undefined } as any);
                   setPendingWatchGame(null);
                 } else {
+                  // Pre-simulate the game and record the result BEFORE opening the watch screen.
+                  // This makes Leave Game a pure exit button — no re-simulation on close.
+                  const game = pendingWatchGame;
+                  const isExhibition = game.homeTid < 0;
+                  const homeT = game.isRisingStars ? fakeHomeTeam : resolveTeam(game.homeTid);
+                  const awayT = game.isRisingStars ? fakeAwayTeam : resolveTeam(game.awayTid);
+                  const homeOverride = getPlayersForExhibitionTeam(game, true, state.allStar, state.players);
+                  const awayOverride = getPlayersForExhibitionTeam(game, false, state.allStar, state.players);
+                  const simResult = GameSimulator.simulateGame(
+                    homeT, awayT, state.players,
+                    game.gid, game.date, 50,
+                    homeOverride?.length ? homeOverride : undefined,
+                    awayOverride?.length ? awayOverride : undefined,
+                    undefined, undefined, rig
+                  );
+                  console.log(`[WatchGame] pre-sim done — home=${simResult.homeScore} away=${simResult.awayScore} gid=${simResult.gameId}`);
+                  await dispatchAction({ type: 'RECORD_WATCHED_GAME' as any, payload: { gameId: game.gid, result: simResult } });
+                  if (!isExhibition) {
+                    await dispatchAction({
+                      type: 'ADVANCE_DAY',
+                      payload: { watchedGameResult: simResult, isWatchingGame: true, ...(rig !== undefined ? { riggedForTid: rig } : {}) },
+                    } as any);
+                  }
+                  setPrecomputedWatchResult(simResult);
                   setRiggedForTid(rig);
-                  setWatchingGame(pendingWatchGame);
-                  setViewMode('watching');
+                  setWatchingGame(game);
                   setPendingWatchGame(null);
+                  setViewMode('watching');
                 }
               }}
             />

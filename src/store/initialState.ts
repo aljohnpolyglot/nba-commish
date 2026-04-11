@@ -14,6 +14,7 @@ export const initialState: GameState = {
   },
   leagueStats: INITIAL_LEAGUE_STATS,
   historicalStats: [],
+  historicalAwards: [], 
   inbox: [
     {
       id: 'init-1',

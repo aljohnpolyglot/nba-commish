@@ -6,11 +6,13 @@ import { AllStarSelectionService } from './AllStarSelectionService';
 import { simulateGames } from '../simulationService';
 
 export function getAllStarSunday(year: number): Date {
-  const feb1 = new Date(year, 1, 1);
+  // Use UTC to avoid timezone-dependent date shifts
+  const feb1 = new Date(Date.UTC(year, 1, 1));
+  const dayOfWeek = feb1.getUTCDay(); // 0=Sun
   const firstSunday = new Date(feb1);
-  firstSunday.setDate(1 + ((7 - feb1.getDay()) % 7));
+  firstSunday.setUTCDate(1 + ((7 - dayOfWeek) % 7));
   const thirdSunday = new Date(firstSunday);
-  thirdSunday.setDate(firstSunday.getDate() + 14);
+  thirdSunday.setUTCDate(firstSunday.getUTCDate() + 14);
   return thirdSunday;
 }
 
@@ -42,15 +44,17 @@ export function getAllStarWeekendDates(year: number): {
 } {
   const allStarSunday = getAllStarSunday(year);
   const friday = new Date(allStarSunday);
-  friday.setDate(allStarSunday.getDate() - 2);
+  friday.setUTCDate(allStarSunday.getUTCDate() - 2);
   const saturday = new Date(allStarSunday);
-  saturday.setDate(allStarSunday.getDate() - 1);
+  saturday.setUTCDate(allStarSunday.getUTCDate() - 1);
+  // breakStart = Thursday (day before Rising Stars) so Feb 12 is also blacked out
+  // and games are redistributed away from the day before All-Star break.
   const breakStart = new Date(allStarSunday);
-  breakStart.setDate(allStarSunday.getDate() - 2); // Friday (Rising Stars day) — Thursday games still play
+  breakStart.setUTCDate(allStarSunday.getUTCDate() - 3); // Thu (one day before Friday Rising Stars)
   const breakEnd = new Date(allStarSunday);
-  breakEnd.setDate(allStarSunday.getDate() + 1);
+  breakEnd.setUTCDate(allStarSunday.getUTCDate() + 1);
   const regularResumes = new Date(allStarSunday);
-  regularResumes.setDate(allStarSunday.getDate() + 2);
+  regularResumes.setUTCDate(allStarSunday.getUTCDate() + 2);
   const votingStart = new Date(year - 1, 11, 17);
   const votingEnd = new Date(year, 0, 14);
   const startersAnnounced = new Date(year, 0, 22);

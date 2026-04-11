@@ -285,7 +285,7 @@ export const LeagueFinancesView: React.FC = () => {
   const teamData: TeamEnriched[] = useMemo(() => state.teams.map(team => {
     const players = state.players.filter(p =>
       p.tid === team.id &&
-      !['WNBA', 'Euroleague', 'PBA', 'B-League'].includes(p.status || '')
+      !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || '')
     );
     const payroll       = players.reduce((s, p) => s + contractToUSD(p.contract?.amount || 0), 0);
     const expiringCount = players.filter(p => (p.contract?.exp ?? 0) <= seasonYear).length;

@@ -1,5 +1,7 @@
-import { GameState, NonNBATeam } from '../../types';
+import { GameState, NonNBATeam, NewsItem } from '../../types';
 import { generateSchedule } from '../gameScheduler';
+import { AwardService } from './AwardService';
+import { NewsGenerator } from '../news/NewsGenerator';
 
 // ── Schedule Generation (Aug 14) ──────────────────────────────────────────
 export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
@@ -16,7 +18,8 @@ export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
     state.globalGames,
     state.leagueStats.numGamesDiv ?? null,
     state.leagueStats.numGamesConf ?? null,
-    state.leagueStats.mediaRights
+    state.leagueStats.mediaRights,
+    state.leagueStats.year
   );
   if (intlPreseasonGames.length > 0) {
     // Re-gid intl games to start after the freshly generated schedule's max gid
@@ -74,7 +77,7 @@ export const autoScheduleIntlPreseason = (state: GameState): Partial<GameState> 
   const usedNonNBA = new Set<number>();
   const pickNonNBA = (league: NonNBATeam['league']) => {
     const pool = nonNBATeams
-      .filter(t => t.league === league && !usedNonNBA.has(t.tid) && playerCount(t.tid) >= 9)
+      .filter(t => t.league === league && !usedNonNBA.has(t.tid) && playerCount(t.tid) >= 8)
       .sort((a, b) => teamStrength(b.tid) - teamStrength(a.tid))
       .slice(0, 5);
     if (pool.length === 0) return null;
@@ -316,18 +319,73 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
     const { AllStarWeekendOrchestrator, getAllStarWeekendDates } = await import('../allStar/AllStarWeekendOrchestrator');
 
     let stateForSim = state;
-    if (!(state.allStar as any)?.gamesInjected) {
+
+    // Auto-replace injured All-Stars before simulating the weekend
+    if (stateForSim.allStar?.roster && stateForSim.allStar.roster.length > 0) {
+      const updatedRoster = [...stateForSim.allStar.roster];
+      let rosterChanged = false;
+
+      for (const rosterSpot of updatedRoster) {
+        if (rosterSpot.isInjuredDNP) continue; // already marked DNP
+
+        // Find if this All-Star is currently injured
+        const player = stateForSim.players.find(p => p.internalId === rosterSpot.playerId);
+        if (!player?.injury || player.injury.gamesRemaining <= 0) continue;
+
+        // Mark as DNP
+        rosterSpot.isInjuredDNP = true;
+        rosterChanged = true;
+
+        // Find a replacement from the same conference who isn't already in the roster
+        const rosterIds = new Set(updatedRoster.map(r => r.playerId));
+        const conf = rosterSpot.conference;
+        const candidate = [...stateForSim.players]
+          .filter(p =>
+            !rosterIds.has(p.internalId) &&
+            (!p.injury || p.injury.gamesRemaining <= 0) &&
+            stateForSim.teams.find(t => t.id === p.tid)?.conference === conf
+          )
+          .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0))[0];
+
+        if (candidate) {
+          const candidateTeam = stateForSim.teams.find(t => t.id === candidate.tid);
+          updatedRoster.push({
+            playerId: candidate.internalId,
+            playerName: candidate.name,
+            teamAbbrev: candidateTeam?.abbrev ?? '',
+            nbaId: null,
+            teamNbaId: null,
+            conference: conf,
+            isStarter: false,
+            position: candidate.pos ?? 'F',
+            category: (candidate.pos?.includes('G') ? 'Guard' : 'Frontcourt') as 'Guard' | 'Frontcourt',
+            ovr: candidate.overallRating,
+            isInjuryReplacement: true,
+            injuredPlayerId: rosterSpot.playerId,
+          });
+        }
+      }
+
+      if (rosterChanged) {
+        stateForSim = {
+          ...stateForSim,
+          allStar: { ...stateForSim.allStar, roster: updatedRoster },
+        };
+      }
+    }
+
+    if (!(stateForSim.allStar as any)?.gamesInjected) {
       const newSchedule = AllStarWeekendOrchestrator.injectAllStarGames(
-        state.schedule,
-        state.teams,
-        state.leagueStats.year,
-        state.allStar?.roster ?? [],
-        state.leagueStats
+        stateForSim.schedule,
+        stateForSim.teams,
+        stateForSim.leagueStats.year,
+        stateForSim.allStar?.roster ?? [],
+        stateForSim.leagueStats
       );
       stateForSim = {
-        ...state,
+        ...stateForSim,
         schedule: newSchedule,
-        allStar: { ...(state.allStar as any), gamesInjected: true },
+        allStar: { ...(stateForSim.allStar as any), gamesInjected: true },
       };
     }
 
@@ -337,9 +395,195 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
       sunday: true,
     });
 
+    // Carry forward the updated roster with injury replacements applied
+    if (patch.allStar) {
+      patch.allStar = { ...(patch.allStar as any), roster: stateForSim.allStar?.roster ?? (patch.allStar as any).roster };
+    }
+
     return patch;
   } catch (err) {
     console.warn('autoSimAllStarWeekend failed:', err);
     return {};
   }
 };
+
+// ── Season Award Announcements — staggered by real NBA dates ─────────────────
+// Each award is announced on its own date. The resolver checks if that specific
+// award is already stored before running, so re-fires are safe.
+//
+// COY    Apr 19   SMOY   Apr 22   MIP    Apr 25
+// DPOY   Apr 28   ROY    May 2    All-NBA May 7    MVP    May 21
+
+type AwardKey = 'COY' | 'SMOY' | 'MIP' | 'DPOY' | 'ROY' | 'All-NBA' | 'MVP';
+
+const PLAYER_AWARD_TYPE_MAP: Record<string, string> = {
+  MVP:  'Most Valuable Player',
+  DPOY: 'Defensive Player of the Year',
+  ROY:  'Rookie of the Year',
+  SMOY: 'Sixth Man of the Year',
+  MIP:  'Most Improved Player',
+};
+
+function announceAward(state: GameState, key: AwardKey): Partial<GameState> {
+  const season = state.leagueStats.year;
+  const existing = (state.historicalAwards ?? []).filter(a => a.season === season);
+
+  // Idempotency guard — map award key to the stored type name
+  const storedType = key === 'All-NBA' ? 'All-NBA First Team' : key;
+  if (existing.some(a => a.type === storedType)) return {};
+
+  try {
+    const races = AwardService.calculateAwardRaces(
+      state.players, state.teams, season, state.staff, state.leagueStats.minGamesRequirement
+    );
+
+    const date = state.date;
+    const newAwards: import('../../types').HistoricalAward[] = [];
+    const newsItems: NewsItem[] = [];
+    let updatedPlayers = state.players;
+
+    const addPlayerAward = (type: string, pid: string) => {
+      const normalType = PLAYER_AWARD_TYPE_MAP[type] ?? type;
+      updatedPlayers = updatedPlayers.map(p =>
+        p.internalId === pid
+          ? { ...p, awards: [...(p.awards ?? []), { season, type: normalType }] }
+          : p
+      );
+    };
+
+    if (key === 'COY') {
+      const coy = races.coy[0];
+      if (!coy) return {};
+      newAwards.push({ season, type: 'COY', name: coy.coachName, tid: coy.team.id });
+      const item = NewsGenerator.generate('award_coy', date, {
+        coachName: coy.coachName, teamName: coy.team.name, year: season,
+        wins: coy.wins, losses: coy.losses,
+      }, coy.team.logoUrl);
+      if (item) newsItems.push(item);
+    }
+
+    else if (key === 'SMOY') {
+      const smoy = races.smoy[0];
+      if (!smoy) return {};
+      newAwards.push({ season, type: 'SMOY', name: smoy.player.name, pid: smoy.player.internalId, tid: smoy.team.id });
+      addPlayerAward('SMOY', smoy.player.internalId);
+      const gp = smoy.stats.gp || 1;
+      const item = NewsGenerator.generate('award_smoy', date, {
+        playerName: smoy.player.name, teamName: smoy.team.name, year: season,
+        pts: (smoy.stats.pts / gp).toFixed(1),
+      }, smoy.player.imgURL);
+      if (item) { item.playerPortraitUrl = smoy.player.imgURL; newsItems.push(item); }
+    }
+
+    else if (key === 'MIP') {
+      const mip = races.mip[0];
+      if (!mip) return {};
+      newAwards.push({ season, type: 'MIP', name: mip.player.name, pid: mip.player.internalId, tid: mip.team.id });
+      addPlayerAward('MIP', mip.player.internalId);
+      const gp = mip.stats.gp || 1;
+      const item = NewsGenerator.generate('award_mip', date, {
+        playerName: mip.player.name, teamName: mip.team.name, year: season,
+        pts: (mip.stats.pts / gp).toFixed(1),
+      }, mip.player.imgURL);
+      if (item) { item.playerPortraitUrl = mip.player.imgURL; newsItems.push(item); }
+    }
+
+    else if (key === 'DPOY') {
+      const dpoy = races.dpoy[0];
+      if (!dpoy) return {};
+      newAwards.push({ season, type: 'DPOY', name: dpoy.player.name, pid: dpoy.player.internalId, tid: dpoy.team.id });
+      addPlayerAward('DPOY', dpoy.player.internalId);
+      const item = NewsGenerator.generate('award_dpoy', date, {
+        playerName: dpoy.player.name, teamName: dpoy.team.name, year: season,
+      }, dpoy.player.imgURL);
+      if (item) { item.playerPortraitUrl = dpoy.player.imgURL; newsItems.push(item); }
+    }
+
+    else if (key === 'ROY') {
+      const roty = races.roty[0];
+      if (!roty) return {};
+      newAwards.push({ season, type: 'ROY', name: roty.player.name, pid: roty.player.internalId, tid: roty.team.id });
+      addPlayerAward('ROY', roty.player.internalId);
+      const gp = roty.stats.gp || 1;
+      const item = NewsGenerator.generate('award_roty', date, {
+        playerName: roty.player.name, teamName: roty.team.name, year: season,
+        pts: (roty.stats.pts / gp).toFixed(1),
+        reb: ((roty.stats.trb ?? 0) / gp).toFixed(1),
+        ast: (roty.stats.ast / gp).toFixed(1),
+      }, roty.player.imgURL);
+      if (item) { item.playerPortraitUrl = roty.player.imgURL; newsItems.push(item); }
+    }
+
+    else if (key === 'All-NBA') {
+      const { allNBA, allDefense, allRookie } = races.allNBATeams;
+      if (!allNBA[0]?.length) return {};
+
+      // All-NBA 1st / 2nd / 3rd teams
+      const allNBANames = ['All-NBA First Team', 'All-NBA Second Team', 'All-NBA Third Team'] as const;
+      allNBA.forEach((team, i) => {
+        for (const spot of team) {
+          newAwards.push({ season, type: allNBANames[i], name: spot.player.name, pid: spot.player.internalId, tid: spot.team.id });
+        }
+      });
+
+      // All-Defensive 1st / 2nd teams
+      const allDefNames = ['All-Defensive First Team', 'All-Defensive Second Team'] as const;
+      allDefense.forEach((team, i) => {
+        for (const spot of team) {
+          newAwards.push({ season, type: allDefNames[i], name: spot.player.name, pid: spot.player.internalId, tid: spot.team.id });
+        }
+      });
+
+      // All-Rookie 1st / 2nd teams
+      const allRookieNames = ['All-Rookie First Team', 'All-Rookie Second Team'] as const;
+      allRookie.forEach((team, i) => {
+        for (const spot of team) {
+          newAwards.push({ season, type: allRookieNames[i], name: spot.player.name, pid: spot.player.internalId, tid: spot.team.id });
+        }
+      });
+
+      const top = allNBA[0][0];
+      const item = NewsGenerator.generate('award_allnba', date, {
+        playerName: top.player.name, teamName: top.team.name, year: season,
+      }, top.player.imgURL);
+      if (item) { item.playerPortraitUrl = top.player.imgURL; newsItems.push(item); }
+    }
+
+    else if (key === 'MVP') {
+      const mvp = races.mvp[0];
+      if (!mvp) return {};
+      newAwards.push({ season, type: 'MVP', name: mvp.player.name, pid: mvp.player.internalId, tid: mvp.team.id });
+      addPlayerAward('MVP', mvp.player.internalId);
+      const gp = mvp.stats.gp || 1;
+      const item = NewsGenerator.generate('award_mvp', date, {
+        playerName: mvp.player.name, teamName: mvp.team.name, year: season,
+        pts: (mvp.stats.pts / gp).toFixed(1),
+        reb: ((mvp.stats.trb ?? 0) / gp).toFixed(1),
+        ast: (mvp.stats.ast / gp).toFixed(1),
+      }, mvp.player.imgURL);
+      if (item) { item.playerPortraitUrl = mvp.player.imgURL; newsItems.push(item); }
+    }
+
+    return {
+      players: updatedPlayers,
+      historicalAwards: [...(state.historicalAwards ?? []), ...newAwards],
+      news: newsItems.length > 0
+        ? [...newsItems, ...(state.news ?? [])].slice(0, 200)
+        : state.news,
+    };
+  } catch (err) {
+    console.warn(`announceAward(${key}) failed:`, err);
+    return {};
+  }
+}
+
+export const autoAnnounceCOY    = (s: GameState) => announceAward(s, 'COY');
+export const autoAnnounceSMOY   = (s: GameState) => announceAward(s, 'SMOY');
+export const autoAnnounceMIP    = (s: GameState) => announceAward(s, 'MIP');
+export const autoAnnounceDPOY   = (s: GameState) => announceAward(s, 'DPOY');
+export const autoAnnounceROY    = (s: GameState) => announceAward(s, 'ROY');
+export const autoAnnounceAllNBA = (s: GameState) => announceAward(s, 'All-NBA');
+export const autoAnnounceMVP    = (s: GameState) => announceAward(s, 'MVP');
+
+/** @deprecated — kept for callers that haven't migrated; now a no-op since awards are staggered. */
+export const autoAnnounceAwards = (_state: GameState): Partial<GameState> => ({});

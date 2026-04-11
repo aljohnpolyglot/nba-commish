@@ -635,7 +635,7 @@ export default function CommishStore() {
                         <button
                           key={team.id}
                           onClick={() => {
-                            const searchName = team.region ? `${team.region} ${team.name}` : team.name;
+                            const searchName = team.name;
                             setProductType('');
                             setTeamFilter(searchName);
                             setMinPrice('');
@@ -676,7 +676,7 @@ export default function CommishStore() {
                         <button
                           key={team.id}
                           onClick={() => {
-                            const searchName = team.region ? `${team.region} ${team.name}` : team.name;
+                            const searchName = team.name;
                             setProductType('');
                             setTeamFilter(searchName);
                             setMinPrice('');
@@ -939,10 +939,10 @@ export default function CommishStore() {
                           {nbaTeams.map(team => (
                             <option
                               key={team.id}
-                              value={team.region ? `${team.region} ${team.name}` : team.name}
+                              value={team.name}
                               className="bg-white text-gray-800"
                             >
-                              {team.region ? `${team.region} ${team.name}` : team.name}
+                              {team.name}
                             </option>
                           ))}
                         </select>

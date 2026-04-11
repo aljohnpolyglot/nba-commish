@@ -73,7 +73,7 @@ export class PlayoffAdvancer {
       if (east8.length === 8 && west8.length === 8) {
         const r1Series = PlayoffGenerator.buildRound1(east8, west8, numGamesPerRound[0] ?? 7);
         b.series = [...b.series, ...r1Series];
-        const startDate = new Date('2026-04-22T00:00:00Z');
+        const startDate = new Date(`${b.season}-04-22T00:00:00Z`);
         const curMaxGid = Math.max(maxGid, ...newGames.map(g => g.gid), 0);
         const injected = PlayoffGenerator.injectSeriesGames(r1Series, startDate, curMaxGid);
         newGames.push(...injected);
@@ -96,7 +96,7 @@ export class PlayoffAdvancer {
       b.series = [...b.series, ...nextSeries];
 
       // Start next round ~3 days after the last game of current round
-      const lastDate = this.getLastGameDate(schedule, newGames, roundSeries);
+      const lastDate = this.getLastGameDate(schedule, newGames, roundSeries, b.season);
       const nextStart = new Date(lastDate);
       nextStart.setDate(nextStart.getDate() + 3);
 
@@ -116,7 +116,8 @@ export class PlayoffAdvancer {
     return { bracket: b, newGames };
   }
 
-  // After a play-in game resolves, wire up the loser game if both 7v8 and 9v10 are done.
+  // After a play-in game resolves, wire up the loser game slots progressively.
+  // team1 (loser of 7v8) is set as soon as 7v8 is done; team2 (winner of 9v10) once 9v10 is done.
   private static resolvePlayInLoserGame(bracket: PlayoffBracket, resolvedGame: PlayInGame): void {
     if (resolvedGame.gameType !== '7v8' && resolvedGame.gameType !== '9v10') return;
 
@@ -128,11 +129,16 @@ export class PlayoffAdvancer {
     const game7v8 = bracket.playInGames.find(p => p.id === `${prefix}7v8`);
     const game9v10 = bracket.playInGames.find(p => p.id === `${prefix}9v10`);
 
-    if (game7v8?.played && game9v10?.played && game7v8.winnerId != null && game9v10.winnerId != null) {
+    // Set team1 (loser of 7v8) as soon as 7v8 resolves
+    if (game7v8?.played && game7v8.winnerId != null) {
       const loserOf7v8 = game7v8.team1Tid === game7v8.winnerId
         ? game7v8.team2Tid
         : game7v8.team1Tid;
       loserGame.team1Tid = loserOf7v8;
+    }
+
+    // Set team2 (winner of 9v10) as soon as 9v10 resolves
+    if (game9v10?.played && game9v10.winnerId != null) {
       loserGame.team2Tid = game9v10.winnerId;
     }
   }
@@ -155,10 +161,10 @@ export class PlayoffAdvancer {
     return [...top6, seed7, seed8];
   }
 
-  private static getLastGameDate(schedule: Game[], newGames: Game[], series: PlayoffSeries[]): Date {
+  private static getLastGameDate(schedule: Game[], newGames: Game[], series: PlayoffSeries[], seasonYear?: number): Date {
     const allGameIds = new Set(series.flatMap(s => s.gameIds));
     const allGames = [...schedule, ...newGames].filter(g => allGameIds.has(g.gid));
-    if (allGames.length === 0) return new Date('2026-04-18T00:00:00Z');
+    if (allGames.length === 0) return new Date(`${seasonYear ?? 2026}-04-18T00:00:00Z`);
     const dates = allGames.map(g => new Date(g.date).getTime());
     return new Date(Math.max(...dates));
   }

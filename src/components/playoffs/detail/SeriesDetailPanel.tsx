@@ -127,45 +127,49 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
             {confLabel} · {roundLabel}
           </div>
 
-          {/* Teams banner */}
-          <div className="flex items-center justify-between gap-2 mt-3">
-            {/* Team 1 */}
-            <div className={`flex flex-col items-center gap-1 flex-1 ${isComplete && winnerId !== team1?.id ? 'opacity-30' : ''}`}>
-              {team1 ? (
-                <img src={team1.logoUrl} className="w-12 h-12 object-contain" alt="" referrerPolicy="no-referrer" />
-              ) : (
-                <div className="w-12 h-12 bg-slate-800 rounded-full" />
-              )}
-              <span className="text-xs font-black text-white">{team1?.abbrev ?? 'TBD'}</span>
-              {team1 && <span className="text-[9px] text-slate-500">{team1.name.split(' ').slice(-1)[0]}</span>}
-            </div>
-
-            {/* Series score */}
-            <div className="flex flex-col items-center shrink-0">
-              {(team1Wins > 0 || team2Wins > 0 || isComplete) ? (
-                <div className="text-2xl font-black text-white tabular-nums">
-                  {team1Wins} — {team2Wins}
+          {/* Teams banner — vertically stacked rows */}
+          <div className="flex flex-col gap-2 mt-3">
+            {/* Team 1 row */}
+            <div className={`flex items-center justify-between ${isComplete && winnerId !== team1?.id ? 'opacity-30' : ''}`}>
+              <div className="flex items-center gap-2">
+                {team1 ? (
+                  <img src={team1.logoUrl} className="w-9 h-9 object-contain" alt="" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-9 h-9 bg-slate-800 rounded-full" />
+                )}
+                <div>
+                  <div className="text-xs font-black text-white">{team1?.abbrev ?? 'TBD'}</div>
+                  {team1 && <div className="text-[9px] text-slate-500">{team1.name.split(' ').slice(-1)[0]}</div>}
                 </div>
-              ) : (
-                <div className="text-xs font-black text-slate-600 uppercase tracking-widest">vs</div>
-              )}
-              {isComplete && winnerId && (
-                <div className="text-[9px] font-bold text-emerald-400 mt-0.5">
-                  {teams.find(t => t.id === winnerId)?.abbrev} wins
+              </div>
+              <span className={`text-2xl font-black tabular-nums ${isComplete && winnerId === team1?.id ? 'text-emerald-400' : 'text-white'}`}>
+                {team1Wins > 0 || team2Wins > 0 || isComplete ? team1Wins : '–'}
+              </span>
+            </div>
+            {/* Divider */}
+            <div className="border-t border-white/8" />
+            {/* Team 2 row */}
+            <div className={`flex items-center justify-between ${isComplete && winnerId !== team2?.id ? 'opacity-30' : ''}`}>
+              <div className="flex items-center gap-2">
+                {team2 ? (
+                  <img src={team2.logoUrl} className="w-9 h-9 object-contain" alt="" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-9 h-9 bg-slate-800 rounded-full" />
+                )}
+                <div>
+                  <div className="text-xs font-black text-white">{team2?.abbrev ?? 'TBD'}</div>
+                  {team2 && <div className="text-[9px] text-slate-500">{team2.name.split(' ').slice(-1)[0]}</div>}
                 </div>
-              )}
+              </div>
+              <span className={`text-2xl font-black tabular-nums ${isComplete && winnerId === team2?.id ? 'text-emerald-400' : 'text-white'}`}>
+                {team1Wins > 0 || team2Wins > 0 || isComplete ? team2Wins : '–'}
+              </span>
             </div>
-
-            {/* Team 2 */}
-            <div className={`flex flex-col items-center gap-1 flex-1 ${isComplete && winnerId !== team2?.id ? 'opacity-30' : ''}`}>
-              {team2 ? (
-                <img src={team2.logoUrl} className="w-12 h-12 object-contain" alt="" referrerPolicy="no-referrer" />
-              ) : (
-                <div className="w-12 h-12 bg-slate-800 rounded-full" />
-              )}
-              <span className="text-xs font-black text-white">{team2?.abbrev ?? 'TBD'}</span>
-              {team2 && <span className="text-[9px] text-slate-500">{team2.name.split(' ').slice(-1)[0]}</span>}
-            </div>
+            {isComplete && winnerId && (
+              <div className="text-[9px] font-bold text-emerald-400 text-center">
+                {teams.find(t => t.id === winnerId)?.abbrev} wins
+              </div>
+            )}
           </div>
         </div>
 

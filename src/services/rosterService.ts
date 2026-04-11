@@ -244,6 +244,7 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                                 id: t.tid,
                                 name: `${seasonData.region || t.region} ${seasonData.name || t.name}`,
                                 abbrev: seasonData.abbrev || t.abbrev,
+                                region: seasonData.region || t.region || '',
                                 conference: t.cid === 0 ? 'East' : 'West',
                                 cid: typeof t.cid === 'number' ? t.cid : (t.cid === 0 ? 0 : 1),
                                 did: typeof t.did === 'number' ? t.did : 0,
@@ -253,6 +254,15 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                                 logoUrl: t.imgURLSmall,
                                 colors: t.colors,
                                 streak: { type: 'W', count: 0 },
+                                // Preserved for TeamHistoryView — essential for franchise season records
+                                seasons: (t.seasons ?? []).map((s: any) => ({
+                                    season: s.season,
+                                    won: s.won ?? 0,
+                                    lost: s.lost ?? 0,
+                                    playoffRoundsWon: s.playoffRoundsWon ?? -1,
+                                    imgURLSmall: s.imgURLSmall,
+                                })),
+                                retiredJerseyNumbers: t.retiredJerseyNumbers ?? [],
                             };
                         });
 
@@ -284,3 +294,14 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
         }).catch(err => reject(err));
     });
 };
+export const getHistoricalAwards = async (): Promise<any[]> => {
+    try {
+        const response = await fetch(ROSTER_URL);
+        const data = await response.json();
+        // BBGM stores history in the 'awards' property
+        return data.awards || [];
+    } catch (err) {
+        console.warn("RosterService: Failed to fetch historical awards:", err);
+        return [];
+    }
+};  

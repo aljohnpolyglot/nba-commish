@@ -14,7 +14,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
     
     if (!player || !team) return { isProcessing: false };
 
-    if (player.status !== 'Active' && player.status !== 'Free Agent' && player.status !== 'Euroleague' && player.status !== 'PBA' && player.status !== 'B-League') {
+    if (player.status !== 'Active' && player.status !== 'Free Agent' && !['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(player.status || '')) {
         return await advanceDay(stateWithSim, action, [], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
     } else {
         const gmPlayer = player as any;
@@ -30,6 +30,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
             'B-League': 'Japan B.League',
             'WNBA': 'WNBA',
             'G-League': 'NBA G League',
+            'Endesa': 'Liga ACB (Spain)',
             'Free Agent': previousTeamName ? 'NBA (previously unsigned)' : 'Free Agency',
             'Active': previousTeamName ? 'NBA' : 'Free Agency',
         };
@@ -94,7 +95,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
         // Minimum contract in BBGM units (thousands) = $1,300,000
         const MIN_CONTRACT_AMOUNT = 1300;
 
-        const returnContext = previousLeague && ['Euroleague', 'PBA', 'B-League'].includes(previousLeague)
+        const returnContext = previousLeague && ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(previousLeague)
             ? ` ${playerName} is returning to the NBA after playing in the ${previousLeague}.`
             : previousTeamName
                 ? ` ${playerName} was previously with the ${previousTeamName}.`

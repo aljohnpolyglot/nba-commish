@@ -9,13 +9,18 @@ export const generateSchedule = (
   divisionGames?: number | null,
   conferenceGames?: number | null,
   mediaRights?: MediaRights | null,
+  seasonYear?: number,
 ): Game[] => {
   const games: Game[] = [];
   let gameId = 0; // gid 90000-90001 reserved for All-Star games
 
+  // Derive season dates from seasonYear (e.g. 2026 → Oct 24 2025 – Apr 13 2026)
+  const yr = seasonYear ?? 2026;
+  const prevYr = yr - 1;
+
   // BUG 7 FIX: use T00:00:00Z to ensure UTC parsing
-  const startDate = new Date('2025-10-24T00:00:00Z');
-  const endDate = new Date('2026-04-13T00:00:00Z'); // Regular season ends Apr 12; +1 so last slot is Apr 12
+  const startDate = new Date(`${prevYr}-10-24T00:00:00Z`);
+  const endDate = new Date(`${yr}-04-13T00:00:00Z`); // Regular season ends Apr 12; +1 so last slot is Apr 12
   const seasonLengthDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
 
   // Pre-sort teams by conference for deterministic 82-game schedule:
@@ -27,8 +32,7 @@ export const generateSchedule = (
   eastTeams.forEach((t, i) => confIdx.set(t.id, i));
   westTeams.forEach((t, i) => confIdx.set(t.id, i));
 
-  const seasonYear = new Date(endDate).getUTCFullYear();
-  const asDate = getAllStarWeekendDates(seasonYear);
+  const asDate = getAllStarWeekendDates(yr);
 
   // BUG 7 FIX: use T00:00:00Z to avoid local-timezone shift in blackout check
   const isAllStarBlackout = (dateStr: string) => {
@@ -57,7 +61,7 @@ export const generateSchedule = (
   // BUG 4 FIX: Preseason Games (Oct 1 to Oct 15)
   // Iterate pairs so each game counts for both teams simultaneously.
   // Target: 4 preseason games per team → schedule (teams.length * 2) total games.
-  const preseasonStart = new Date('2025-10-01T00:00:00Z');
+  const preseasonStart = new Date(`${prevYr}-10-01T00:00:00Z`);
   const preseasonLength = 15;
   const preseasonTarget = (teams.length * 4) / 2; // each game covers 2 teams
   let preseasonScheduled = 0;
@@ -119,7 +123,7 @@ export const generateSchedule = (
   // Pre-fill Christmas Day games if provided
   if (christmasGames && christmasGames.length > 0) {
       // BUG 7 FIX: use T00:00:00Z
-      const christmasDate = new Date('2025-12-25T00:00:00Z');
+      const christmasDate = new Date(`${prevYr}-12-25T00:00:00Z`);
       const dateStr = christmasDate.toISOString().split('T')[0];
 
       for (const game of christmasGames) {

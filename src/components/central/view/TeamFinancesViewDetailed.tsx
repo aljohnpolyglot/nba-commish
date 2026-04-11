@@ -19,7 +19,7 @@ export const TeamFinancesViewDetailed: React.FC = () => {
 
   const selectedTeam = state.teams.find(t => t.id === teamId);
   const teamPlayers = useMemo(
-    () => state.players.filter(p => p.tid === teamId && !['WNBA', 'Euroleague', 'PBA', 'B-League'].includes(p.status || '')),
+    () => state.players.filter(p => p.tid === teamId && !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || '')),
     [state.players, teamId]
   );
 
@@ -121,7 +121,7 @@ export const TeamFinancesViewDetailed: React.FC = () => {
           </div>
           <div>
             <h1 className="text-lg sm:text-2xl font-bold text-white tracking-tight">
-              {selectedTeam.region} {selectedTeam.name}
+              {selectedTeam.name}
             </h1>
             <p className="text-xs sm:text-sm text-slate-400">{currentYear}–{currentYear + 1} Salary Cap Analysis</p>
           </div>

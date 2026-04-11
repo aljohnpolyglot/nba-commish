@@ -15,9 +15,8 @@ export function getScaledRating(p: Player, key: string, season: number): number 
   if (!rating) return 50;
   let val = (rating as any)[key] ?? 50;
   if (key === 'hgt') return val as number;
-  if (p.status === 'Euroleague') val = (val as number) * 0.733;
-  else if (p.status === 'PBA')   val = (val as number) * 0.62;
-  else if (p.status === 'B-League') val = (val as number) * 0.68;
+  // Non-NBA league attributes are pre-scaled at fetch time (scaleRatings in externalRosterService).
+  // No per-league multipliers needed here — values already reflect league strength.
   // Elite bonus: ratings above 90 add their excess on top (2K effect).
   // e.g. Curry tp=95 → 95 + (95−90) = 100. Opens the offense way more in formulas.
   if ((val as number) > 90) val = (val as number) + ((val as number) - 90);

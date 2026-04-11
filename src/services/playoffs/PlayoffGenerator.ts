@@ -119,23 +119,40 @@ export class PlayoffGenerator {
         });
       }
     } else {
-      // Pair winners 1-2, 3-4 within each conference
-      for (const [conf, winners] of [['East', eastWinners], ['West', westWinners]] as [string, number[]][]) {
+      // Helper: find a team's original seed from prevSeries
+      const getWinnerSeed = (tid: number, confSeries: PlayoffSeries[]): number => {
+        const s = confSeries.find(ps => ps.winnerId === tid);
+        if (!s) return 99;
+        return s.winnerId === s.higherSeedTid ? s.higherSeed : s.lowerSeed;
+      };
+
+      // Pair winners 1-2, 3-4 within each conference, carrying forward original seeds
+      for (const conf of ['East', 'West'] as const) {
+        const winners = conf === 'East' ? eastWinners : westWinners;
+        const confPrevSeries = prevSeries.filter(s => s.conference === conf);
         for (let i = 0; i < winners.length; i += 2) {
-          if (winners[i] != null && winners[i + 1] != null) {
+          const w1 = winners[i];
+          const w2 = winners[i + 1];
+          if (w1 != null && w2 != null) {
+            const seed1 = getWinnerSeed(w1, confPrevSeries);
+            const seed2 = getWinnerSeed(w2, confPrevSeries);
+            // Lower seed number = higher seed (1 beats 8)
+            const [higherTid, lowerTid, hSeed, lSeed] = seed1 <= seed2
+              ? [w1, w2, seed1, seed2]
+              : [w2, w1, seed2, seed1];
             series.push({
               id: `${conf[0]}R${round}S${Math.floor(i / 2) + 1}`,
               round: round as any,
               conference: conf as any,
-              higherSeedTid: winners[i],
-              lowerSeedTid: winners[i + 1],
+              higherSeedTid: higherTid,
+              lowerSeedTid: lowerTid,
               higherSeedWins: 0,
               lowerSeedWins: 0,
               gamesNeeded: numGames,
               gameIds: [],
               status: 'active',
-              higherSeed: 1,
-              lowerSeed: 2,
+              higherSeed: hSeed,
+              lowerSeed: lSeed,
             });
           }
         }

@@ -1,5 +1,5 @@
-import React from 'react';
-import { ChevronLeft, ChevronRight, Play, MonitorPlay, FastForward, Globe } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Play, MonitorPlay, FastForward, Globe, Ticket, Star } from 'lucide-react';
 import { Game, NBATeam, NBAPlayer, NonNBATeam } from '../../../../types';
 import { normalizeDate, getTeamForGame } from '../../../../utils/helpers';
 import { AllStarDayView } from './AllStarDayView';
@@ -27,6 +27,8 @@ interface DayViewProps {
   boxScores?: any[];
   players?: NBAPlayer[];
   nonNBATeams?: NonNBATeam[];
+  onNavigateToDraftLottery?: () => void;
+  onNavigateToDraftBoard?: () => void;
 }
 
 export const DayView: React.FC<DayViewProps> = ({
@@ -51,6 +53,8 @@ export const DayView: React.FC<DayViewProps> = ({
   boxScores,
   players,
   nonNBATeams = [],
+  onNavigateToDraftLottery,
+  onNavigateToDraftBoard,
 }) => {
   const stateDateNorm = normalizeDate(state.date);
   const selectedDateNorm = normalizeDate(selectedDate);
@@ -63,6 +67,35 @@ export const DayView: React.FC<DayViewProps> = ({
   const isCelebrityGameDay = month === 2 && day === 13;
 
   const isAllStarWeekend = isRisingStarsDay || isSaturdayEventsDay || isAllStarGameDay || isCelebrityGameDay;
+
+  // Draft calendar events — fixed dates relative to the season year
+  const isDraftLotteryDay = month === 5 && day === 14;  // mid-May, during playoffs
+  const isNBADraftDay = month === 6 && day === 25;       // late June, post-playoffs
+
+  // Non-playoff teams sorted by worst record (for lottery odds display)
+  const lotteryTeams = useMemo(() => {
+    if (!isDraftLotteryDay || !state?.teams || !state?.playoffs) return [];
+    const playoffTeamIds = new Set<number>();
+    (state.playoffs?.series ?? []).forEach((s: any) => {
+      playoffTeamIds.add(s.higherSeedTid);
+      playoffTeamIds.add(s.lowerSeedTid);
+    });
+    // Also add play-in teams that advanced
+    (state.playoffs?.playInGames ?? []).forEach((p: any) => {
+      if (p.winner) playoffTeamIds.add(p.winner);
+    });
+    const nonPlayoff = (state.teams as NBATeam[]).filter(t => !playoffTeamIds.has(t.id));
+    return nonPlayoff.sort((a, b) => (a.wins - a.losses) - (b.wins - b.losses)).slice(0, 14);
+  }, [isDraftLotteryDay, state?.teams, state?.playoffs]);
+
+  // Top draft prospects for NBA Draft card
+  const topProspects = useMemo(() => {
+    if (!isNBADraftDay || !players) return [];
+    return players
+      .filter(p => p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect')
+      .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0))
+      .slice(0, 5);
+  }, [isNBADraftDay, players]);
 
   const selectedDateUTC = new Date(`${selectedDateNorm}T00:00:00Z`);
   const stateDateUTC = new Date(`${stateDateNorm}T00:00:00Z`);
@@ -187,13 +220,116 @@ export const DayView: React.FC<DayViewProps> = ({
           />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {gamesForSelectedDate.length === 0 ? (
+            {/* Draft Lottery Event Card */}
+            {isDraftLotteryDay && (
+              <div className="col-span-full bg-gradient-to-br from-indigo-950/80 to-purple-950/80 border border-indigo-500/30 rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-indigo-500/20 rounded-xl">
+                      <Ticket size={20} className="text-indigo-400" />
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Tonight</div>
+                      <h3 className="text-xl font-black text-white uppercase tracking-tight">Draft Lottery</h3>
+                    </div>
+                  </div>
+                  {onNavigateToDraftLottery && (
+                    <button
+                      onClick={onNavigateToDraftLottery}
+                      className="px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-black text-[10px] uppercase tracking-widest transition-all"
+                    >
+                      View Lottery
+                    </button>
+                  )}
+                </div>
+                <p className="text-slate-400 text-xs mb-5">
+                  The {year} NBA Draft Lottery determines the pick order for the {year} Draft. The 14 non-playoff teams compete for the top picks.
+                </p>
+                {lotteryTeams.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Lottery Teams</div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                      {lotteryTeams.map((team, idx) => {
+                        // NBA lottery odds: top 4 teams share highest odds, simplified display
+                        const oddsTable = [14.0, 14.0, 14.0, 12.5, 10.5, 9.0, 7.5, 6.0, 4.5, 3.0, 2.0, 1.5, 1.0, 0.5];
+                        const odds = oddsTable[idx] ?? 0.5;
+                        return (
+                          <div key={team.id} className="flex items-center gap-2 bg-white/5 rounded-lg p-2">
+                            <span className="text-[10px] font-black text-slate-600 w-4 text-right">{idx + 1}</span>
+                            {(team as any).logoUrl && (
+                              <img src={(team as any).logoUrl} className="w-5 h-5 object-contain shrink-0" alt={team.abbrev} referrerPolicy="no-referrer" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[10px] font-black text-white truncate">{team.abbrev}</div>
+                              <div className="text-[9px] text-slate-500">{team.wins}-{team.losses}</div>
+                            </div>
+                            <div className="text-[9px] font-mono text-indigo-400 shrink-0">{odds}%</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* NBA Draft Event Card */}
+            {isNBADraftDay && (
+              <div className="col-span-full bg-gradient-to-br from-amber-950/80 to-orange-950/80 border border-amber-500/30 rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-amber-500/20 rounded-xl">
+                      <Star size={20} className="text-amber-400" />
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Tonight</div>
+                      <h3 className="text-xl font-black text-white uppercase tracking-tight">{year} NBA Draft</h3>
+                    </div>
+                  </div>
+                  {onNavigateToDraftBoard && (
+                    <button
+                      onClick={onNavigateToDraftBoard}
+                      className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-[10px] uppercase tracking-widest transition-all"
+                    >
+                      Open Draft Board
+                    </button>
+                  )}
+                </div>
+                <p className="text-slate-400 text-xs mb-5">
+                  The {year} NBA Draft. 30 teams, 60 picks, 2 rounds. Teams select the next generation of NBA talent.
+                </p>
+                {topProspects.length > 0 && (
+                  <div>
+                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Top Prospects</div>
+                    <div className="space-y-2">
+                      {topProspects.map((prospect, idx) => (
+                        <div key={prospect.internalId ?? prospect.name} className="flex items-center gap-3 bg-white/5 rounded-lg p-2">
+                          <span className="text-[10px] font-black text-slate-600 w-4 text-right">#{idx + 1}</span>
+                          {prospect.imgURL && (
+                            <img src={prospect.imgURL} className="w-7 h-7 rounded-full object-cover border border-slate-700 shrink-0" alt={prospect.name} referrerPolicy="no-referrer" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-black text-white truncate">{prospect.name}</div>
+                            <div className="text-[9px] text-slate-500">
+                              {prospect.ratings?.[prospect.ratings.length - 1]?.pos ?? ''}{prospect.age ? ` · Age ${prospect.age}` : ''}
+                            </div>
+                          </div>
+                          <div className="text-xs font-mono text-amber-400 font-black shrink-0">{prospect.overallRating ?? '—'}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {gamesForSelectedDate.length === 0 && !isDraftLotteryDay && !isNBADraftDay ? (
               <div className="col-span-full text-center py-20 bg-white/[0.02] border border-dashed border-white/10 rounded-2xl">
                 <div className="text-4xl mb-4">🌙</div>
                 <h3 className="text-xl font-black text-white uppercase tracking-tight">No Games Scheduled</h3>
                 <p className="text-slate-500 text-xs">There are no NBA games on this date.</p>
               </div>
-            ) : (
+            ) : gamesForSelectedDate.length > 0 ? (
               gamesForSelectedDate.map(game => {
                 if ((game as any).isDunkContest || (game as any).isThreePointContest) {
                   return null;
@@ -375,7 +511,7 @@ export const DayView: React.FC<DayViewProps> = ({
                   </div>
                 );
               })
-            )}
+            ) : null}
           </div>
         )}
       </div>

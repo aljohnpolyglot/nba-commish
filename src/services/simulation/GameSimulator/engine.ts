@@ -12,7 +12,7 @@ import { setClubDebuffs, clearClubDebuffs } from '../StatGenerator/helpers';
 import { generateFight } from '../../FightGenerator';
 import { fetchGamePhotos } from '../../ImagnPhotoService';
 import { Defense2KService } from '../../Defense2KService';
-import { SimulatorKnobs, KNOBS_DEFAULT, KNOBS_ALL_STAR, KNOBS_RISING_STARS, KNOBS_CELEBRITY, getKnobs } from '../SimulatorKnobs';
+import { SimulatorKnobs, KNOBS_DEFAULT, KNOBS_ALL_STAR, KNOBS_RISING_STARS, KNOBS_CELEBRITY, KNOBS_BLEAGUE, KNOBS_EUROLEAGUE, KNOBS_PBA, getKnobs } from '../SimulatorKnobs';
 import { HighlightGenerator } from '../HighlightGenerator';
 import { getInjuries, getRandomInjury } from '../../injuryService';
 /**
@@ -24,7 +24,9 @@ import { getInjuries, getRandomInjury } from '../../injuryService';
  */
 function getEfficiencyMultFromScore(teamPts: number, avgPts = 114): number {
   const delta = (teamPts - avgPts) / 3;
-  return Math.max(0.90, Math.min(1.12, 1.0 + delta * 0.01));
+  // Wider range [0.82, 1.22]: 165-pt game → 1.22 (22% more efficient, fewer FGA, more FT)
+  // 90-pt game → 0.88 (brickfest — lower FG%, more attempts)
+  return Math.max(0.82, Math.min(1.22, 1.0 + delta * 0.013));
 }
 
 export class GameSimulator {
@@ -264,6 +266,32 @@ export class GameSimulator {
       away2KDef,  // away team's defensive ratings
       home2KDef   // home team's pass perception
     );
+    // Reconcile player pts to match the final team score.
+    // nightProfile boosts individuals asymmetrically (EXPLOSION 1.5× on one player) so the
+    // sum of player pts can drift 10-25 pts above the scoreboard total. Fix via FTM adjustment.
+    // Removal: lowest scorers first → preserves the star's big night (EXPLOSION stays at 55).
+    // Addition: highest scorers first → realistic (stars make the extra FTs).
+    const reconcileToScore = (stats: any[], target: number) => {
+      let delta = target - stats.reduce((s: number, p: any) => s + (p.pts || 0), 0);
+      if (delta === 0) return;
+      const sorted = delta < 0
+        ? [...stats].sort((a: any, b: any) => a.pts - b.pts)   // remove from low scorers first
+        : [...stats].sort((a: any, b: any) => b.pts - a.pts);  // add to top scorers first
+      for (const s of sorted) {
+        if (delta === 0) break;
+        if (delta > 0) {
+          const add = Math.min(delta, 4);
+          s.ftm += add; s.fta = Math.max(s.fta, s.ftm); s.pts += add; delta -= add;
+        } else {
+          // Cap at 4 pts removed per player — prevents stripping a star's entire FT line
+          const remove = Math.min(-delta, Math.min(4, Math.max(0, s.ftm)));
+          if (remove > 0) { s.ftm -= remove; s.pts -= remove; delta += remove; }
+        }
+      }
+    };
+    reconcileToScore(homeStats, finalHomeScore);
+    reconcileToScore(awayStats, finalAwayScore);
+
  // ✅ ADD HERE
     const { homePM, awayPM } = generateSyntheticPM(
       homeStats, awayStats,
@@ -355,6 +383,9 @@ export class GameSimulator {
     // Iron man (35+) → 0.6% chance
     const injuryDefs = getInjuries();
     const playerInGameInjuries: Record<string, string> = {};
+    // Detect international preseason: one side is a non-NBA team (tid ≥ 100).
+    // `game` is not in scope here — derive from homeTeam/awayTeam ids that were passed in.
+    const isIntlPreseason = homeTeam.id >= 100 || awayTeam.id >= 100;
     if (injuryDefs.length > 0 && !isAllStar && !isRisingStars) {
       const allPlayedStats = [...homeStatsFinal, ...awayStatsFinal];
       for (const stat of allPlayedStats) {
@@ -362,11 +393,14 @@ export class GameSimulator {
         if (!player || (player.injury?.gamesRemaining ?? 0) > 0) continue;
 
         const min = stat.min;
-        const injuryChance =
+        // Preseason international games: NBA stars are treated cautiously,
+        // sharply reduced injury risk (coaches pull guys early if anything feels off).
+        const preseasonFactor = isIntlPreseason ? 0.25 : 1.0;
+        const injuryChance = preseasonFactor * (
           min < 15  ? 0.20 :
           min < 25  ? 0.07 :
           min < 35  ? 0.02 :
-                      0.006;
+                      0.006);
 
         if (Math.random() >= injuryChance) continue;
 
@@ -685,9 +719,14 @@ export class GameSimulator {
         const buildNonNBATeam = (tid: number): { team: Team; roster: Player[] } | null => {
           const clubPlayers = players.filter(p => p.tid === tid);
           if (clubPlayers.length === 0) return null;
-          // Synthetic strength: league-tier averages (Euroleague ≈ 85, B-League ≈ 78, PBA ≈ 72)
-          // Offsets: Euroleague +1000, PBA +2000, WNBA +3000, B-League +4000
-          const leagueStr = tid >= 4000 ? 78 : tid >= 3000 ? 75 : tid >= 2000 ? 72 : 85;
+          // Compute strength from actual pre-scaled player OVRs (top-8 average, like calculateTeamStrength).
+          // This naturally reflects the league multiplier — PBA at 0.54× will produce ~38-45 OVR players,
+          // giving a strength of ~40-45 vs NBA teams at ~82-88. No hardcoded values needed.
+          const sorted = [...clubPlayers].sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
+          const top8 = sorted.slice(0, 8);
+          const computedStr = top8.length > 0
+            ? top8.reduce((s, p) => s + (p.overallRating ?? 50), 0) / top8.length
+            : 50;
           const synTeam: Team = {
             id: tid,
             name: `Club ${tid}`,
@@ -696,7 +735,7 @@ export class GameSimulator {
             did: 0,
             wins: 0,
             losses: 0,
-            strength: leagueStr,
+            strength: computedStr,
           } as any;
           return { team: synTeam, roster: clubPlayers };
         };
@@ -732,13 +771,33 @@ export class GameSimulator {
           homeKnobs = awayKnobs = KNOBS_RISING_STARS;
         } else if (game.isAllStar) {
           homeKnobs = awayKnobs = KNOBS_ALL_STAR;
+        } else if ((game as any).isPreseason && (game.homeTid >= 100 || game.awayTid >= 100)) {
+          // International preseason: use league-specific knobs calibrated to real 2025-26 averages.
+          // Detect which league the non-NBA side belongs to by TID range.
+          const intlTid = game.homeTid >= 100 ? game.homeTid : game.awayTid;
+          let intlKnobs: SimulatorKnobs;
+          if      (intlTid >= 4000 && intlTid < 5000) intlKnobs = KNOBS_BLEAGUE;    // B-League +4000
+          else if (intlTid >= 1000 && intlTid < 2000) intlKnobs = KNOBS_EUROLEAGUE; // Euroleague +1000
+          else if (intlTid >= 5000 && intlTid < 6000) intlKnobs = KNOBS_EUROLEAGUE; // Endesa/ACB — similar style
+          else if (intlTid >= 2000 && intlTid < 3000) intlKnobs = KNOBS_PBA;        // PBA +2000
+          else intlKnobs = { ...KNOBS_BLEAGUE };                                      // G-League/WNBA/unknown → B-League baseline
+          homeKnobs = awayKnobs = intlKnobs;
         } else {
           // Regular game: per-team standings context drives rotation depth + star MPG
           // Base is leagueBaseKnobs (commissioner rule changes) not raw KNOBS_DEFAULT
-          const homeCtx = standingsCtx.get(home.id) ?? { rank: 8, gbFromLeader: 0, gamesRemaining: 41 };
-          const awayCtx = standingsCtx.get(away.id) ?? { rank: 8, gbFromLeader: 0, gamesRemaining: 41 };
-          homeKnobs = { ...leagueBaseKnobs, ...homeCtx };
-          awayKnobs = { ...leagueBaseKnobs, ...awayCtx };
+          const homeCtx = standingsCtx.get(home.id) ?? { conferenceRank: 8, gbFromLeader: 0, gamesRemaining: 41 };
+          const awayCtx = standingsCtx.get(away.id) ?? { conferenceRank: 8, gbFromLeader: 0, gamesRemaining: 41 };
+          if (game.isPlayIn || game.isPlayoff) {
+            // Post-season: override gbFromLeader=0 and gamesRemaining=7 to prevent teams from
+            // being treated as "eliminated" (82 reg-season games done → gamesRemaining=0, gb>0
+            // → standingsProfile returns 12-deep exhibition-style rotation). All remaining
+            // playoff teams are still competing — use tight, star-heavy playoff rotation.
+            homeKnobs = { ...leagueBaseKnobs, ...homeCtx, gbFromLeader: 0, gamesRemaining: 7 };
+            awayKnobs = { ...leagueBaseKnobs, ...awayCtx, gbFromLeader: 0, gamesRemaining: 7 };
+          } else {
+            homeKnobs = { ...leagueBaseKnobs, ...homeCtx };
+            awayKnobs = { ...leagueBaseKnobs, ...awayCtx };
+          }
         }
 
         // Apply club debuffs around this game

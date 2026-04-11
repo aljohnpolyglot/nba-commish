@@ -75,15 +75,6 @@ export const SeriesActionMenu: React.FC<SeriesActionMenuProps> = ({
         </>
       )}
 
-      {hasPlayedGames && (
-        <button
-          onClick={onViewStats}
-          className="w-full flex items-center gap-3 px-4 py-2.5 bg-white/[0.03] text-slate-400 font-bold text-xs rounded-xl hover:bg-white/[0.06] hover:text-white transition-all"
-        >
-          <BarChart2 size={14} />
-          View Box Score
-        </button>
-      )}
     </div>
   );
 };

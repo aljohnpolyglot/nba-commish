@@ -12,11 +12,8 @@ export class StarterService {
     if (!p.ratings || !p.ratings.length) return 50;
     const rating = p.ratings.find(r => r.season === season) || p.ratings[p.ratings.length - 1];
     if (!rating) return 50;
-    let val = (rating as any)[key] ?? 50;
-    if (key === 'hgt') return val as number;
-    if (p.status === 'Euroleague') return (val as number) * 0.733;
-    if (p.status === 'PBA')        return (val as number) * 0.62;
-    if (p.status === 'B-League')   return (val as number) * 0.68;
+    const val = (rating as any)[key] ?? 50;
+    // hgt is physical — never scaled. All other attributes are pre-scaled at fetch.
     return val as number;
   }
 

@@ -80,7 +80,10 @@ export function generateStatsForTeam(
     const minRestriction = injGames > 0 && _ptiLevel > 0
       ? minutesRestrictionFactor(Math.min(injurySeverityLevel(injGames), _ptiLevel))
       : 1.0;
-    return Math.max(1, m * gamePlan.minutesMult[i] * minRestriction);
+    // Skip minutesMult for flat-minute games (All-Star, Celebrity, Rising Stars) —
+    // the point is even distribution; variance would skew KAT to 40 min.
+    const minMult = knobs.flatMinutes ? 1.0 : gamePlan.minutesMult[i];
+    return Math.max(1, m * minMult * minRestriction);
   });
   const actualMinTotal = playerMinutes.reduce((a, b) => a + b, 0) || 1;
   playerMinutes = playerMinutes.map(m =>
@@ -88,8 +91,11 @@ export function generateStatsForTeam(
   );
 
   // Hard per-player cap: no player can exceed 48 min (reg) or 53/58 (OT).
-  // Iterate up to 4 times — redistributing excess each pass until no one is over.
-  const perPlayerMax = 48 + otCount * 5;
+  // Short-handed teams (< 9 players): tighter cap so role players don't marathon 48 min
+  // when the star and 2 others draw high minutesMult. E.g. 8 players → max ~41 min each.
+  const perPlayerMax = rotation.length < 9
+    ? Math.min(42 + otCount * 5, Math.floor((totalMinuteBudget / rotation.length) * 1.35))
+    : 48 + otCount * 5;
   for (let iter = 0; iter < 4; iter++) {
     if (!playerMinutes.some(m => m > perPlayerMax + 0.01)) break;
     playerMinutes = playerMinutes.map(m => Math.min(perPlayerMax, m));
@@ -145,20 +151,33 @@ export function generateStatsForTeam(
     return { rawTarget, share };
   });
 
+  // ── Pass 1: compute ptsTargets with nightProfile, then normalize to adjustedScore ──
+  // nightProfile boosts individuals asymmetrically (EXPLOSION 1.5×), breaking the sum.
+  // Normalizing BEFORE computing shooting stats eliminates the 0-49 FT reconciliation bug.
+  const pass1 = rotation.map((p, i) => {
+    let pts = initialTargets[i].rawTarget;
+    const share = initialTargets[i].share;
+    if (pts < 28) {
+      const bonusShare = (1 - share) / (rotation.length - 1);
+      pts += teamBonusBucket * bonusShare;
+    }
+    const np = getNightProfile(p, season, lead, isWinner, share, oppDefProfile);
+    const _gpElev = gamePlan.ptsMult[i];
+    const _dampF  = _gpElev > 1.55 ? Math.max(0.50, 1.55 / _gpElev) : 1.0;
+    const _nightM = 1.0 + (np.ptsTargetMult - 1.0) * _dampF;
+    return { rawPts: Math.min(65, Math.max(0, Math.round(pts * _nightM))), np, share };
+  });
+  const rawPtsSum   = pass1.reduce((s, r) => s + r.rawPts, 0) || 1;
+  const normScale   = adjustedScore / rawPtsSum;
+  const finalPtsTargets = pass1.map(r => Math.min(65, Math.max(0, Math.round(r.rawPts * normScale))));
+
   // ── Build Per-Player Stat Lines ────────────────────────────────────────
   const playerStats: PlayerGameStats[] = rotation.map((p, i) => {
-    let ptsTarget = initialTargets[i].rawTarget;
-    const share   = initialTargets[i].share;
-
-    if (ptsTarget < 28) {
-      const bonusShare = (1 - share) / (rotation.length - 1);
-      ptsTarget += teamBonusBucket * bonusShare;
-    }
-    const nightProfile = getNightProfile(p, season, lead, isWinner, share, oppDefProfile);
-    ptsTarget = Math.max(0, Math.round(ptsTarget * nightProfile.ptsTargetMult));
+    const ptsTarget    = finalPtsTargets[i];
+    const { np: nightProfile, share } = pass1[i];
     const _nightOrbMult   = nightProfile.orbMult;
     const _nightDrbMult   = nightProfile.drbMult;
-    const _nightAssistMult = nightProfile.assistMult;
+    const _nightAssistMult = nightProfile.assistMult * gamePlan.astMult[i];
     const _nightStlMult   = nightProfile.stlMult; // Split!
     const _nightBlkMult   = nightProfile.blkMult; // Split!
     const _nightBallCtrl  = nightProfile.ballControlMult;
@@ -185,13 +204,15 @@ export function generateStatsForTeam(
     // Divide fgaMult by efficiencyMultiplier (range 0.90–1.12 from getEfficiencyMultFromScore).
     // 154-pt game (effMult=1.12): BRICKFEST 1.60→1.43, TORCH 0.88→0.79.
     // 90-pt game (effMult=0.90): BRICKFEST 1.60→1.78, NORMAL 1.0→1.11.
-    const effScore = Math.max(0.88, Math.min(1.12, knobs.efficiencyMultiplier ?? 1.0));
-    const estimatedFga = (ptsTarget / 1.1) * (nightProfile.fgaMult / effScore);
+    const effScore = Math.max(0.82, Math.min(1.22, knobs.efficiencyMultiplier ?? 1.0));
+    // effScore only affects FG% — NOT FGA count. High-scoring games = hot shooting, not fewer shots.
+    // FGA stays driven by ptsTarget and nightProfile.fgaMult alone.
+    const estimatedFga = (ptsTarget / 1.1) * nightProfile.fgaMult;
     // Cap ftaBase at 34 pts equivalent — prevents explosion nights from producing 20 FTA.
     // ftAggression scales FTA with the night profile: Torch/Explosion nights draw more fouls,
     // Brickfest/Passive nights draw fewer.
     const ftaBase = Math.min(ptsTarget, 34) / 1.20;
-    let fta = Math.round(ftaBase * baseFtRate * nightProfile.ftAggression * getVariance(1.0, 0.18));
+    let fta = Math.round(ftaBase * baseFtRate * nightProfile.ftAggression * gamePlan.ftaMult[i] * getVariance(1.0, 0.18));
 
     // Floor: every active scorer draws at least some contact
     fta = Math.max(Math.round(ptsTarget * 0.04), fta);
@@ -311,7 +332,7 @@ if (tpComposite >= 20 && tpComposite <= 60) {
       : 1.0;
 
     const threePctEffective = Math.max(0.04,
-      threePctBase * nightProfile.efficiencyMult * perimPenalty * knobs.efficiencyMultiplier * volDecay
+      threePctBase * nightProfile.efficiencyMult * gamePlan.effMult[i] * perimPenalty * knobs.efficiencyMultiplier * volDecay
     );
 
     // Calculate 2PT efficiency
@@ -323,7 +344,7 @@ if (tpComposite >= 20 && tpComposite <= 60) {
     // Rim runners (isIn) are mechanically consistent — lower variance.
     // Perimeter players' midrange is shot-creation dependent — wider swings.
     const pct2Sigma = isIn ? 0.10 : 0.20;
-    const pct2 = Math.max(0.28, Math.min(0.72, pct2Raw * nightProfile.efficiencyMult * knobs.efficiencyMultiplier * getVariance(1.0, pct2Sigma)));
+    const pct2 = Math.max(0.28, Math.min(0.72, pct2Raw * nightProfile.efficiencyMult * gamePlan.effMult[i] * knobs.efficiencyMultiplier * getVariance(1.0, pct2Sigma)));
 
     // Calculate makes — wider variance (0.28 σ) allows real cold/hot nights:
     // Giannis 3/3 at 21% base: round(0.63 × N(1,0.28)) → 0 or 1 depending on roll.

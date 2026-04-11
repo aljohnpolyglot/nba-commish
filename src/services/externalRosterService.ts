@@ -1,7 +1,76 @@
 import { NBAPlayer, NonNBATeam } from '../types';
-import { calculateEuroleagueOverall } from './logic/EuroleagueSigningLogic';
-import { calculatePBAOverall } from './logic/PBASigningLogic';
-import { calculateBLeagueOverall } from './logic/BLeagueSigningLogic';
+import {
+  LEAGUE_MULTIPLIERS,
+  calculateLeagueOverall,
+} from './logic/leagueOvr';
+
+// Attributes that are physical/skill-ceiling and must never be scaled.
+// hgt = physical measurement.
+// ft = free-throw skill — shooting form doesn't change by league strength;
+//      real international leagues often brick FTs at realistic rates regardless of level.
+// ovr/pot/fuzz/injuryIndex/skills/jerseyNumber = metadata.
+const ATTR_SKIP = new Set(['hgt', 'ft', 'season', 'ovr', 'pot', 'fuzz', 'injuryIndex', 'skills', 'jerseyNumber']);
+
+/**
+ * Pre-scale all non-physical numeric attributes in a ratings array by the
+ * league multiplier. Stored once at fetch so every downstream consumer
+ * (sim, AI eval, trade logic, display) gets the correct values automatically.
+ * `hgt` is skipped by default; pass `hgtMult` to also scale height (e.g. PBA).
+ */
+function scaleRatings(ratings: any[], mult: number, hgtMult?: number): any[] {
+  if (!ratings.length) return ratings;
+  return ratings.map(r => {
+    const out: any = {};
+    for (const [k, v] of Object.entries(r)) {
+      if (typeof v !== 'number') {
+        out[k] = v;
+      } else if (k === 'hgt') {
+        out[k] = hgtMult ? Math.round((v as number) * hgtMult) : v;
+      } else if (ATTR_SKIP.has(k)) {
+        out[k] = v;
+      } else {
+        out[k] = mult < 1.0 ? Math.round((v as number) * mult) : v;
+      }
+    }
+    return out;
+  });
+}
+
+/**
+ * Compute overallRating from source data for a given league.
+ *
+ * Two strategies, chosen per-league:
+ *
+ *  A) srcOvr × mult  — uses BBGM's position-aware `ovr` field directly.
+ *     Best when the source export has meaningful per-player diversity in its
+ *     `ovr` values (G-League, Endesa, Euroleague, B-League sources all do).
+ *     Falls back to calcRawOvr if srcOvr is missing.
+ *
+ *  B) calcRawOvr × mult — recomputes OVR from individual attributes.
+ *     Used for PBA whose BBGM export has a flat/uniform `ovr` field (~122 for
+ *     every player); calcRawOvr at least captures whatever attr diversity exists.
+ *     TODO: swap PBA to srcOvr once the 2026 hand-crafted roster lands.
+ *
+ * Always pass the original item.ratings[0] (BEFORE scaleRatings is called) so
+ * the absolute height bonus in calcRawOvr fires correctly on full-size values.
+ */
+function computeLeagueOvr(rawRatings: any, league: string): number {
+  const mult = LEAGUE_MULTIPLIERS[league] ?? 1.0;
+
+  // PBA source has flat ovr (~122 for all players) — skip srcOvr, use attr formula
+  if (league === 'PBA') {
+    return calculateLeagueOverall(rawRatings, league);
+  }
+
+  // All other leagues: prefer BBGM's own per-player ovr for better diversity
+  const srcOvr = rawRatings?.ovr;
+  if (srcOvr && srcOvr > 0 && srcOvr <= 100) {
+    return Math.round(Math.max(10, srcOvr * mult));
+  }
+
+  // Fallback: attr-based formula (e.g. missing ovr field)
+  return calculateLeagueOverall(rawRatings, league);
+}
 
 export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], teams: NonNBATeam[] }> => {
     // ... existing Euroleague logic ...
@@ -57,20 +126,23 @@ export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], t
                 }
 
                 // Check if it's a player object (has name/constructed name, ratings)
-                if (playerName && item.ratings) { 
+                if (playerName && item.ratings) {
+                        const scaledRatings = scaleRatings(item.ratings || [], LEAGUE_MULTIPLIERS['Euroleague']);
                      const player: NBAPlayer = {
                         // STEP 2: Use the 'euro-' prefix + tid to make his ID totally unique
                         internalId: `euro-${playerName.replace(/\s+/g, '')}-${item.tid + 1000}`,
                         tid: item.tid !== undefined ? item.tid + 1000 : -1, // Offset Euroleague by 1000
                         name: playerName,
-                        overallRating: calculateEuroleagueOverall(item.ratings?.[0]), // Use new helper
-                        ratings: item.ratings || [],
+                        overallRating: computeLeagueOvr(item.ratings?.[0], 'Euroleague'),
+                        ratings: scaledRatings,
                         stats: item.stats || [],
                         imgURL: item.imgURL && item.imgURL.trim() !== '' ? item.imgURL : undefined, // Handle empty string
                         pos: item.pos || 'GF',
                         hgt: item.hgt,
                         weight: item.weight,
                         born: item.born,
+                        draft: item.draft,
+                        college: item.college,
                         contract: item.contract,
                         injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
                         status: 'Euroleague',
@@ -153,19 +225,30 @@ export const fetchPBARoster = async (): Promise<{ players: NBAPlayer[], teams: N
                 }
 
                 // Check if it's a player object (has name/constructed name, ratings)
-                if (playerName && item.ratings) { 
+                if (playerName && item.ratings) {
+                        // TODO: updated 2026 PBA roster pending — swap URL when ready.
+                        // hgtMult 0.85: PBA source heights are inflated vs NBA scale,
+                        // nerf them so players don't get undeserved hgt boosts in 2K OVR.
+                        // OVR: PBA BBGM export has flat `ovr` ~122 for all players (out of the
+                        // normal 0-100 range), so srcOvr path is skipped in computeLeagueOvr.
+                        // calcRawOvr also produces uniform results (~66 2K) because the source
+                        // attrs are auto-generated without meaningful per-player variance.
+                        // Diversity will improve once the hand-crafted 2026 PBA roster lands.
+                        const scaledRatings = scaleRatings(item.ratings || [], LEAGUE_MULTIPLIERS['PBA'], 0.85);
                      const player: NBAPlayer = {
                         internalId: `pba-${item.tid}-${playerName.replace(/\s+/g, '')}-${item.born?.year || '0'}`,
                         tid: item.tid !== undefined ? item.tid + 2000 : -1, // Offset PBA by 2000
                         name: playerName,
-                        overallRating: calculatePBAOverall(item.ratings?.[0]), // Use PBA helper
-                        ratings: item.ratings || [],
+                        overallRating: computeLeagueOvr(item.ratings?.[0], 'PBA'),
+                        ratings: scaledRatings,
                         stats: item.stats || [],
                         imgURL: item.imgURL && item.imgURL.trim() !== '' ? item.imgURL : undefined, // Handle empty string
                         pos: item.pos || 'GF',
                         hgt: item.hgt,
                         weight: item.weight,
                         born: item.born,
+                        draft: item.draft,
+                        college: item.college,
                         contract: item.contract,
                         injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
                         status: 'PBA',
@@ -294,8 +377,6 @@ export const fetchBLeagueRoster = async (): Promise<{ players: NBAPlayer[], team
 
         const sourceList = Array.isArray(data) ? data : (data.players || []);
 
-        const scaleTo85 = (val: number | undefined) => (val !== undefined ? Math.round(val * 0.85) : val);
-
         if (Array.isArray(sourceList)) {
             sourceList.forEach((item: any) => {
                 let playerName = item.name;
@@ -306,29 +387,12 @@ export const fetchBLeagueRoster = async (): Promise<{ players: NBAPlayer[], team
                 }
 
                 if (playerName && item.ratings) {
-                    const scaledRatings = item.ratings.map((r: any) => ({
-                        ...r,
-                        stre: scaleTo85(r.stre),
-                        spd: scaleTo85(r.spd),
-                        jmp: scaleTo85(r.jmp),
-                        endu: scaleTo85(r.endu),
-                        ins: scaleTo85(r.ins),
-                        dnk: scaleTo85(r.dnk),
-                        ft: scaleTo85(r.ft),
-                        fg: scaleTo85(r.fg),
-                        tp: scaleTo85(r.tp),
-                        oiq: scaleTo85(r.oiq),
-                        diq: scaleTo85(r.diq),
-                        drb: scaleTo85(r.drb),
-                        pss: scaleTo85(r.pss),
-                        reb: scaleTo85(r.reb),
-                    }));
-
+                    const scaledRatings = scaleRatings(item.ratings || [], LEAGUE_MULTIPLIERS['B-League']);
                     const player: NBAPlayer = {
                         internalId: `bleague-${item.tid}-${playerName.replace(/\s+/g, '')}-${item.born?.year || '0'}`,
                         tid: item.tid !== undefined ? item.tid + 4000 : -1, // Offset B-League by 4000
                         name: playerName,
-                        overallRating: calculateBLeagueOverall(scaledRatings[0]),
+                        overallRating: computeLeagueOvr(item.ratings?.[0], 'B-League'),
                         ratings: scaledRatings,
                         stats: item.stats || [],
                         imgURL: item.imgURL && item.imgURL.trim() !== '' ? item.imgURL : undefined,
@@ -336,6 +400,8 @@ export const fetchBLeagueRoster = async (): Promise<{ players: NBAPlayer[], team
                         hgt: item.hgt ? Math.round(item.hgt / 2.54) : item.hgt,
                         weight: item.weight,
                         born: item.born,
+                        draft: item.draft,
+                        college: item.college,
                         contract: item.contract,
                         injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
                         status: 'B-League',
@@ -350,6 +416,200 @@ export const fetchBLeagueRoster = async (): Promise<{ players: NBAPlayer[], team
         return { players, teams };
     } catch (error) {
         console.error('Error fetching B-League roster:', error);
+        return { players: [], teams: [] };
+    }
+};
+
+export const fetchGLeagueRoster = async (): Promise<{ players: NBAPlayer[], teams: NonNBATeam[] }> => {
+    console.log('RosterService: Fetching G-League roster...');
+    try {
+        const [ratingsRes, bioRes, teamsRes] = await Promise.all([
+            fetch('https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/gleagueratings'),
+            fetch('https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/gleaguebio'),
+            fetch('https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/gleagueteams'),
+        ]);
+        if (!ratingsRes.ok) { console.error('Failed to fetch G-League ratings'); return { players: [], teams: [] }; }
+
+        const ratingsData = await ratingsRes.json();
+        const bioArr: any[] = bioRes.ok ? await bioRes.json() : [];
+        const teamsJson: any = teamsRes.ok ? await teamsRes.json() : {};
+
+        // Build sister-city map: G-League full team name → NBA affiliate
+        const affiliateMap = new Map<string, string>();
+        const allTeamsJson: any[] = [
+            ...(teamsJson.nba_g_league_teams?.eastern_conference ?? []),
+            ...(teamsJson.nba_g_league_teams?.western_conference ?? []),
+        ];
+        allTeamsJson.forEach((t: any) => {
+            if (t.team && t.nba_affiliate) affiliateMap.set(t.team.toLowerCase(), t.nba_affiliate);
+        });
+
+        // Build bio lookup by name
+        const bioMap = new Map<string, any>();
+        bioArr.forEach((b: any) => { if (b.name) bioMap.set(b.name.toLowerCase(), b); });
+
+        const players: NBAPlayer[] = [];
+        const teams: NonNBATeam[] = [];
+
+        // Teams
+        if (ratingsData.teams && Array.isArray(ratingsData.teams)) {
+            ratingsData.teams.forEach((t: any) => {
+                const fullName = `${t.region} ${t.name}`;
+                const nbaAffiliate = affiliateMap.get(fullName.toLowerCase());
+                teams.push({
+                    tid: t.tid + 6000,
+                    cid: t.cid,
+                    did: t.did,
+                    region: t.region,
+                    name: t.name,
+                    abbrev: t.abbrev,
+                    pop: t.pop || 1.0,
+                    stadiumCapacity: t.stadiumCapacity,
+                    imgURL: t.imgURL,
+                    colors: t.colors,
+                    league: 'G-League',
+                    nbaAffiliate,
+                });
+            });
+        }
+
+        // Players
+        const sourceList: any[] = Array.isArray(ratingsData) ? ratingsData : (ratingsData.players || []);
+        sourceList.forEach((item: any) => {
+            let playerName = item.name;
+            if (!playerName && item.firstName && item.lastName) playerName = `${item.firstName} ${item.lastName}`;
+            if (!playerName) return;
+            if (!item.ratings) return;
+
+            const bio = bioMap.get(playerName.toLowerCase());
+            const isTwoWay = !!(bio?.nba_status && bio.nba_status.toLowerCase().includes('two-way'));
+
+            const scaledRatings = scaleRatings(item.ratings || [], LEAGUE_MULTIPLIERS['G-League']);
+            const player: NBAPlayer = {
+                internalId: `gleague-${item.tid}-${playerName.replace(/\s+/g, '')}-${item.born?.year || '0'}`,
+                tid: item.tid !== undefined ? item.tid + 6000 : -1,
+                name: playerName,
+                overallRating: computeLeagueOvr(item.ratings?.[0], 'G-League'),
+                ratings: scaledRatings,
+                stats: item.stats || [],
+                imgURL: bio?.image && bio.image.trim() !== '' ? bio.image : (item.imgURL || undefined),
+                pos: item.pos || 'GF',
+                hgt: item.hgt,
+                weight: item.weight,
+                born: item.born,
+                draft: item.draft,
+                contract: item.contract,
+                injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
+                status: 'G-League',
+                twoWayCandidate: isTwoWay || undefined,
+                hof: false,
+                jerseyNumber: item.stats?.length > 0 ? String(item.stats[item.stats.length - 1].jerseyNumber || '') : undefined,
+            };
+            players.push(player);
+        });
+
+        // Bottom-3 OVR per team (age < 32) → twoWayCandidate
+        const currentYear = new Date().getFullYear();
+        const byTeam = new Map<number, NBAPlayer[]>();
+        players.forEach(p => {
+            if (!byTeam.has(p.tid)) byTeam.set(p.tid, []);
+            byTeam.get(p.tid)!.push(p);
+        });
+        byTeam.forEach(roster => {
+            const eligible = roster
+                .filter(p => {
+                    const age = p.born?.year ? currentYear - p.born.year : 99;
+                    return age < 32;
+                })
+                .sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0));
+            eligible.slice(0, 3).forEach(p => { p.twoWayCandidate = true; });
+        });
+
+        console.log(`RosterService: Successfully processed ${players.length} G-League players and ${teams.length} teams.`);
+        return { players, teams };
+    } catch (error) {
+        console.error('Error fetching G-League roster:', error);
+        return { players: [], teams: [] };
+    }
+};
+
+export const fetchEndesaRoster = async (): Promise<{ players: NBAPlayer[], teams: NonNBATeam[] }> => {
+    console.log('RosterService: Fetching Endesa (Liga ACB) roster...');
+    try {
+        const [ratingsRes, bioRes] = await Promise.all([
+            fetch('https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/ligaendesabbgmjson'),
+            fetch('https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/ligaendesabio'),
+        ]);
+        if (!ratingsRes.ok) { console.error('Failed to fetch Endesa ratings'); return { players: [], teams: [] }; }
+
+        const ratingsData = await ratingsRes.json();
+        const bioArr: any[] = bioRes.ok ? await bioRes.json() : [];
+
+        const bioMap = new Map<string, any>();
+        bioArr.forEach((b: any) => { if (b.name) bioMap.set(b.name.toLowerCase(), b); });
+
+        const players: NBAPlayer[] = [];
+        const teams: NonNBATeam[] = [];
+        const currentYear = new Date().getFullYear();
+
+        if (ratingsData.teams && Array.isArray(ratingsData.teams)) {
+            ratingsData.teams.forEach((t: any) => {
+                teams.push({
+                    tid: t.tid + 5000,
+                    cid: t.cid,
+                    did: t.did,
+                    region: t.region,
+                    name: t.name,
+                    abbrev: t.abbrev,
+                    pop: t.pop || 1.0,
+                    stadiumCapacity: t.stadiumCapacity,
+                    imgURL: t.imgURL,
+                    colors: t.colors,
+                    league: 'Endesa',
+                });
+            });
+        }
+
+        const sourceList: any[] = Array.isArray(ratingsData) ? ratingsData : (ratingsData.players || []);
+        sourceList.forEach((item: any) => {
+            let playerName = item.name;
+            if (!playerName && item.firstName && item.lastName) playerName = `${item.firstName} ${item.lastName}`;
+            if (!playerName) return;
+            if (!item.ratings) return;
+
+            // Hide very young prospects (age < 19)
+            const age = item.born?.year ? currentYear - item.born.year : 99;
+            if (age < 19) return;
+
+            const bio = bioMap.get(playerName.toLowerCase());
+
+            const scaledRatings = scaleRatings(item.ratings || [], LEAGUE_MULTIPLIERS['Endesa']);
+            const player: NBAPlayer = {
+                internalId: `endesa-${item.tid}-${playerName.replace(/\s+/g, '')}-${item.born?.year || '0'}`,
+                tid: item.tid !== undefined ? item.tid + 5000 : -1,
+                name: playerName,
+                overallRating: computeLeagueOvr(item.ratings?.[0], 'Endesa'),
+                ratings: scaledRatings,
+                stats: item.stats || [],
+                imgURL: bio?.image && bio.image.trim() !== '' ? bio.image : (item.imgURL || undefined),
+                pos: item.pos || 'GF',
+                hgt: item.hgt,
+                weight: item.weight,
+                born: item.born,
+                draft: item.draft,
+                contract: item.contract,
+                injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
+                status: 'Endesa',
+                hof: false,
+                jerseyNumber: item.stats?.length > 0 ? String(item.stats[item.stats.length - 1].jerseyNumber || '') : undefined,
+            };
+            players.push(player);
+        });
+
+        console.log(`RosterService: Successfully processed ${players.length} Endesa players and ${teams.length} teams.`);
+        return { players, teams };
+    } catch (error) {
+        console.error('Error fetching Endesa roster:', error);
         return { players: [], teams: [] };
     }
 };

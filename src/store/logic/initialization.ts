@@ -1,9 +1,9 @@
 import { GameState, HistoricalStatPoint, NBAPlayer as Player, DraftPick, LazySimProgress } from '../../types';
 import { generateInitialContent } from '../../services/llm/llm';
-import { getRosterData } from '../../services/rosterService';
+import { getRosterData, getHistoricalAwards } from '../../services/rosterService';
 import { INITIAL_LEAGUE_STATS } from '../../constants';
 import { DEFAULT_MEDIA_RIGHTS } from '../../utils/broadcastingUtils';
-import { fetchEuroleagueRoster, fetchWNBARoster, fetchPBARoster, fetchBLeagueRoster } from '../../services/externalRosterService';
+import { fetchEuroleagueRoster, fetchWNBARoster, fetchPBARoster, fetchBLeagueRoster, fetchGLeagueRoster, fetchEndesaRoster } from '../../services/externalRosterService';
 
 import { calculateSocialEngagement } from '../../utils/helpers';
 
@@ -19,15 +19,35 @@ interface StartGamePayload {
 export const handleStartGame = async (payload: StartGamePayload): Promise<Partial<GameState>> => {
     const { name: commissionerName } = payload;
     const { teams, players: rawNbaPlayers, draftPicks } = await getRosterData(2025, 'Opening Week');
+    
+    const historicalAwardsData = await getHistoricalAwards(); 
 
-    // Fetch external rosters
-    const { players: euroPlayers, teams: euroTeams } = await fetchEuroleagueRoster();
-    const { players: wnbaPlayers, teams: wnbaTeams } = await fetchWNBARoster();
-    const { players: pbaPlayers, teams: pbaTeams } = await fetchPBARoster();
-    const { players: bleaguePlayers, teams: bleagueTeams } = await fetchBLeagueRoster();
+    // Fetch external rosters (all in parallel for speed)
+    const [
+        { players: euroPlayers,    teams: euroTeams },
+        { players: wnbaPlayers,    teams: wnbaTeams },
+        { players: pbaPlayers,     teams: pbaTeams },
+        { players: bleaguePlayers, teams: bleagueTeams },
+        { players: endesaPlayers,  teams: endesaTeams },
+        { players: gleaguePlayers, teams: gleagueTeams },
+    ] = await Promise.all([
+        fetchEuroleagueRoster(),
+        fetchWNBARoster(),
+        fetchPBARoster(),
+        fetchBLeagueRoster(),
+        fetchEndesaRoster(),
+        fetchGLeagueRoster(),
+    ]);
 
+    // Euroleague beats Endesa for overlapping players (Real Madrid, Barcelona, etc.)
+    const euroNames = new Set(euroPlayers.map(p => p.name.toLowerCase()));
+    const uniqueEuroPlayers = euroPlayers
+        .map(p => ({ ...p, status: p.status || 'Euroleague' as const }));
+
+    // Euroleague/PBA/B-League names filter raw NBA data (they're true non-NBA players).
+    // G-League and Endesa are NOT included here — NBA is always the source of truth for those.
     const externalNames = new Set([
-        ...euroPlayers.map(p => p.name.toLowerCase()),
+        ...uniqueEuroPlayers.map(p => p.name.toLowerCase()),
         ...wnbaPlayers.map(p => p.name.toLowerCase()),
         ...pbaPlayers.map(p => p.name.toLowerCase()),
         ...bleaguePlayers.map(p => p.name.toLowerCase()),
@@ -36,28 +56,38 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     const nbaPlayers = rawNbaPlayers.filter(p => {
         const nameLower = p.name.toLowerCase();
         if (externalNames.has(nameLower)) return false;
-        if (p.status === 'WNBA' || p.status === 'Euroleague' || p.status === 'PBA' || p.status === 'B-League') return false;
+        if (['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || '')) return false;
         return true;
     });
 
     const existingNbaNames = new Set(nbaPlayers.map(p => p.name.toLowerCase()));
 
-    const uniqueEuroPlayers = euroPlayers.filter(p => !existingNbaNames.has(p.name.toLowerCase())).map(p => ({
-        ...p,
-        status: p.status || 'Euroleague'
-    }));
+    // G-League: NBA takes priority — drop any G-League player whose name is already in NBA
+    const uniqueGLeaguePlayers = gleaguePlayers
+        .filter(p => !existingNbaNames.has(p.name.toLowerCase()))
+        .map(p => ({ ...p, status: 'G-League' as const }));
 
-    const uniquePBAPlayers = pbaPlayers.filter(p => !existingNbaNames.has(p.name.toLowerCase())).map(p => ({
-        ...p,
-        status: p.status || 'PBA'
-    }));
+    const uniqueEndesaPlayers = endesaPlayers
+        .filter(p => !existingNbaNames.has(p.name.toLowerCase()) && !euroNames.has(p.name.toLowerCase()))
+        .map(p => ({ ...p, status: 'Endesa' as const }));
 
-    const uniqueBLeaguePlayers = bleaguePlayers.filter(p => !existingNbaNames.has(p.name.toLowerCase())).map(p => ({
-        ...p,
-        status: p.status || 'B-League'
-    }));
+    const uniquePBAPlayers = pbaPlayers
+        .filter(p => !existingNbaNames.has(p.name.toLowerCase()))
+        .map(p => ({ ...p, status: p.status || 'PBA' as const }));
 
-    const players = [...nbaPlayers, ...uniqueEuroPlayers, ...uniquePBAPlayers, ...uniqueBLeaguePlayers, ...wnbaPlayers];
+    const uniqueBLeaguePlayers = bleaguePlayers
+        .filter(p => !existingNbaNames.has(p.name.toLowerCase()))
+        .map(p => ({ ...p, status: p.status || 'B-League' as const }));
+
+    const players = [
+        ...nbaPlayers,
+        ...uniqueEuroPlayers,
+        ...uniquePBAPlayers,
+        ...uniqueBLeaguePlayers,
+        ...uniqueEndesaPlayers,
+        ...uniqueGLeaguePlayers,
+        ...wnbaPlayers,
+    ];
 
     if (players.some(p => p.name.toLowerCase() === 'devin booker')) {
         console.log("🏀 DEV1N B00K3R 1S L0AD3D! 🏀");
@@ -163,7 +193,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     const statePatch: Partial<GameState> = {
         commissionerName,
         teams,
-        nonNBATeams: [...euroTeams, ...pbaTeams, ...wnbaTeams, ...bleagueTeams],
+        nonNBATeams: [...euroTeams, ...pbaTeams, ...wnbaTeams, ...bleagueTeams, ...endesaTeams, ...gleagueTeams],
         players,
         draftPicks,
         staff: null,
@@ -172,8 +202,10 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         news: initialNews,
         socialFeed: initialSocial,
         historicalStats: [initialHistoricalPoint],
-        followedHandles: ['nba', 'wojespn', 'shamscharania', 'statmuse'],
+         historicalAwards: historicalAwardsData, 
+        followedHandles: ['nba', 'wojespn', 'ShamsCharania', 'statmuse'],
         history: [{ text: `${commissionerName} took office as the new NBA Commissioner.`, date: startDateFormatted || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), type: 'League Event' } as any],
+        
         isDataLoaded: true,
         isProcessing: false,
         date: startDateFormatted,

@@ -222,7 +222,7 @@ export async function advanceDay(currentState: GameState, action: UserAction | n
   // Sponsor message probability (approx 1-5% per month, so ~0.1% per day)
   const generateSponsorMessage = Math.random() < 0.005; 
 
-  const leagueSummaryContext = generateLeagueSummaryContext(currentState.teams, currentState.players, dailyResults)
+  const leagueSummaryContext = generateLeagueSummaryContext(currentState.teams, currentState.players, dailyResults, currentState.leagueStats?.year)
       + "\n\n" + generateStaffContext(currentState);
 
   // Merge any queued narratives (e.g. from healPlayer) into this turn's storySeeds
@@ -311,7 +311,7 @@ export async function generateLeaguePulse(
 
     const gamePhase = getGamePhase(currentState.date);
     const leagueContext = generateLeagueContext(currentState.players, currentState.teams, currentState.staff!, currentState.commissionerName);
-    const leagueSummaryContext = generateLeagueSummaryContext(currentState.teams, currentState.players, dailyResults);
+    const leagueSummaryContext = generateLeagueSummaryContext(currentState.teams, currentState.players, dailyResults, currentState.leagueStats?.year);
     const prompt = generateLeaguePulsePrompt(currentState, gamePhase, leagueContext, leagueSummaryContext);
 
     try {

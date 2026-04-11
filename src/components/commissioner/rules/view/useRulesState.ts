@@ -195,6 +195,16 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
   const [playerOptionsEnabled, setPlayerOptionsEnabled] = useState(leagueStats.playerOptionsEnabled ?? true);
   const [tenDayContractsEnabled, setTenDayContractsEnabled] = useState(leagueStats.tenDayContractsEnabled ?? true);
 
+  // Economy - Cap Inflation
+  const [inflationEnabled, setInflationEnabled] = useState(leagueStats.inflationEnabled ?? true);
+  const [inflationMin, setInflationMin] = useState(leagueStats.inflationMin ?? 0);
+  const [inflationMax, setInflationMax] = useState(leagueStats.inflationMax ?? 8);
+  const [inflationAverage, setInflationAverage] = useState(leagueStats.inflationAverage ?? 3.5);
+  const [inflationStdDev, setInflationStdDev] = useState(leagueStats.inflationStdDev ?? 1.5);
+
+  // Economy - Draft Picks
+  const [tradableDraftPickSeasons, setTradableDraftPickSeasons] = useState(leagueStats.tradableDraftPickSeasons ?? 7);
+
   // Economy - Rookie Contracts
   const [rookieScaleType, setRookieScaleType] = useState(leagueStats.rookieScaleType ?? 'dynamic');
   const [rookieStaticAmount, setRookieStaticAmount] = useState(leagueStats.rookieStaticAmount ?? 5.0);
@@ -349,6 +359,12 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
         maxContractLengthBird !== (leagueStats.maxContractLengthBird ?? 5) ||
         playerOptionsEnabled !== (leagueStats.playerOptionsEnabled ?? true) ||
         tenDayContractsEnabled !== (leagueStats.tenDayContractsEnabled ?? true) ||
+        inflationEnabled !== (leagueStats.inflationEnabled ?? true) ||
+        inflationMin !== (leagueStats.inflationMin ?? 0) ||
+        inflationMax !== (leagueStats.inflationMax ?? 8) ||
+        inflationAverage !== (leagueStats.inflationAverage ?? 3.5) ||
+        inflationStdDev !== (leagueStats.inflationStdDev ?? 1.5) ||
+        tradableDraftPickSeasons !== (leagueStats.tradableDraftPickSeasons ?? 7) ||
         rookieScaleType !== (leagueStats.rookieScaleType ?? 'dynamic') ||
         rookieStaticAmount !== (leagueStats.rookieStaticAmount ?? 5.0) ||
         rookieMaxContractPercentage !== (leagueStats.rookieMaxContractPercentage ?? 9) ||
@@ -384,7 +400,7 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
         shotClockResetOffensiveRebound !== (leagueStats.shotClockResetOffensiveRebound ?? 14);
     
     setHasConfigChanges(isDifferent);
-  }, [playIn, inSeasonTournament, playoffFormat, draftType, eligibilityRule, minAgeRequirement, minGamesRequirement, allStarGameEnabled, allStarFormat, allStarTeams, allStarMirrorLeagueRules, allStarDunkContest, allStarDunkContestPlayers, allStarThreePointContest, allStarThreePointContestPlayers, allStarShootingStars, allStarShootingStarsMode, allStarShootingStarsTeams, allStarShootingStarsPlayersPerTeam, allStarShootingStarsTotalPlayers, allStarSkillsChallenge, allStarSkillsChallengeMode, allStarSkillsChallengeTeams, allStarSkillsChallengePlayersPerTeam, allStarSkillsChallengeTotalPlayers, allStarHorse, allStarHorseParticipants, allStarOneOnOneEnabled, allStarOneOnOneParticipants, risingStarsEnabled, risingStarsFormat, risingStarsMirrorLeagueRules, celebrityGameEnabled, celebrityGameMirrorLeagueRules, allStarGameFormat, allStarQuarterLength, allStarNumQuarters, allStarOvertimeDuration, allStarOvertimeTargetPoints, allStarShootoutRounds, allStarOvertimeType, allStarMaxOvertimesEnabled, allStarMaxOvertimes, allStarOvertimeTieBreaker, gameFormat, gameTargetScore, fourPointLine, foulOutLimit, teamFoulPenalty, quarterLength, numQuarters, overtimeDuration, overtimeTargetPoints, shootoutRounds, overtimeType, maxTimeouts, coachChallenges, maxCoachChallenges, challengeReimbursed, shotClockEnabled, shotClockValue, backcourtTimerEnabled, backcourtTimerValue, offensiveThreeSecondEnabled, offensiveThreeSecondValue, defensiveThreeSecondEnabled, defensiveThreeSecondValue, inboundTimerEnabled, inboundTimerValue, backToBasketTimerEnabled, backToBasketTimerValue, backcourtViolationEnabled, travelingEnabled, doubleDribbleEnabled, goaltendingEnabled, basketInterferenceEnabled, kickedBallEnabled, flagrantFoulPenaltyEnabled, clearPathFoulEnabled, illegalScreenEnabled, overTheBackFoulEnabled, looseBallFoulEnabled, chargingEnabled, overtimeEnabled, maxOvertimesEnabled, maxOvertimes, overtimeTieBreaker, maxPlayersOnCourt, substitutionLimitEnabled, maxSubstitutions, noDribbleRule, multiballEnabled, multiballCount, threePointLineDistance, fourPointLineDistance, dunkValue, midrangeValue, heaveRuleEnabled, halfCourtShotValue, clutchTimeoutLimit, salaryCap, salaryCapEnabled, salaryCapType, minimumPayrollEnabled, minimumPayrollPercentage, luxuryTaxEnabled, luxuryTaxThresholdPercentage, apronsEnabled, numberOfAprons, firstApronPercentage, secondApronPercentage, twoWayContractsEnabled, minPlayersPerTeam, maxPlayersPerTeam, maxStandardPlayersPerTeam, maxTwoWayPlayersPerTeam, minContractType, minContractStaticAmount, maxContractType, maxContractStaticPercentage, supermaxEnabled, supermaxPercentage, birdRightsEnabled, minContractLength, maxContractLengthStandard, maxContractLengthBird, playerOptionsEnabled, tenDayContractsEnabled, rookieScaleType, rookieStaticAmount, rookieMaxContractPercentage, rookieScaleAppliesTo, rookieContractLength, rookieTeamOptionsEnabled, rookieTeamOptionYears, rookieRestrictedFreeAgentEligibility, rookieContractCapException, allNbaTeams, allNbaPlayersPerTeam, allDefenseTeams, allDefensePlayersPerTeam, allRookieTeams, allRookiePlayersPerTeam, positionlessAwards, leagueStats, handcheckingEnabled, illegalZoneDefenseEnabled, outOfBoundsEnabled, freeThrowDistance, rimHeight, ballWeight, startOfPossessionMethod, possessionPattern, courtLength, baselineLength, keyWidth, cornerThrowInEnabled, techEjectionLimit, flagrant1EjectionLimit, flagrant2EjectionLimit, fightingInstantEjection, useYellowRedCards, shotClockResetOffensiveRebound]);
+  }, [playIn, inSeasonTournament, playoffFormat, draftType, eligibilityRule, minAgeRequirement, minGamesRequirement, allStarGameEnabled, allStarFormat, allStarTeams, allStarMirrorLeagueRules, allStarDunkContest, allStarDunkContestPlayers, allStarThreePointContest, allStarThreePointContestPlayers, allStarShootingStars, allStarShootingStarsMode, allStarShootingStarsTeams, allStarShootingStarsPlayersPerTeam, allStarShootingStarsTotalPlayers, allStarSkillsChallenge, allStarSkillsChallengeMode, allStarSkillsChallengeTeams, allStarSkillsChallengePlayersPerTeam, allStarSkillsChallengeTotalPlayers, allStarHorse, allStarHorseParticipants, allStarOneOnOneEnabled, allStarOneOnOneParticipants, risingStarsEnabled, risingStarsFormat, risingStarsMirrorLeagueRules, celebrityGameEnabled, celebrityGameMirrorLeagueRules, allStarGameFormat, allStarQuarterLength, allStarNumQuarters, allStarOvertimeDuration, allStarOvertimeTargetPoints, allStarShootoutRounds, allStarOvertimeType, allStarMaxOvertimesEnabled, allStarMaxOvertimes, allStarOvertimeTieBreaker, gameFormat, gameTargetScore, fourPointLine, foulOutLimit, teamFoulPenalty, quarterLength, numQuarters, overtimeDuration, overtimeTargetPoints, shootoutRounds, overtimeType, maxTimeouts, coachChallenges, maxCoachChallenges, challengeReimbursed, shotClockEnabled, shotClockValue, backcourtTimerEnabled, backcourtTimerValue, offensiveThreeSecondEnabled, offensiveThreeSecondValue, defensiveThreeSecondEnabled, defensiveThreeSecondValue, inboundTimerEnabled, inboundTimerValue, backToBasketTimerEnabled, backToBasketTimerValue, backcourtViolationEnabled, travelingEnabled, doubleDribbleEnabled, goaltendingEnabled, basketInterferenceEnabled, kickedBallEnabled, flagrantFoulPenaltyEnabled, clearPathFoulEnabled, illegalScreenEnabled, overTheBackFoulEnabled, looseBallFoulEnabled, chargingEnabled, overtimeEnabled, maxOvertimesEnabled, maxOvertimes, overtimeTieBreaker, maxPlayersOnCourt, substitutionLimitEnabled, maxSubstitutions, noDribbleRule, multiballEnabled, multiballCount, threePointLineDistance, fourPointLineDistance, dunkValue, midrangeValue, heaveRuleEnabled, halfCourtShotValue, clutchTimeoutLimit, salaryCap, salaryCapEnabled, salaryCapType, minimumPayrollEnabled, minimumPayrollPercentage, luxuryTaxEnabled, luxuryTaxThresholdPercentage, apronsEnabled, numberOfAprons, firstApronPercentage, secondApronPercentage, twoWayContractsEnabled, minPlayersPerTeam, maxPlayersPerTeam, maxStandardPlayersPerTeam, maxTwoWayPlayersPerTeam, minContractType, minContractStaticAmount, maxContractType, maxContractStaticPercentage, supermaxEnabled, supermaxPercentage, birdRightsEnabled, minContractLength, maxContractLengthStandard, maxContractLengthBird, playerOptionsEnabled, tenDayContractsEnabled, inflationEnabled, inflationMin, inflationMax, inflationAverage, inflationStdDev, tradableDraftPickSeasons, rookieScaleType, rookieStaticAmount, rookieMaxContractPercentage, rookieScaleAppliesTo, rookieContractLength, rookieTeamOptionsEnabled, rookieTeamOptionYears, rookieRestrictedFreeAgentEligibility, rookieContractCapException, allNbaTeams, allNbaPlayersPerTeam, allDefenseTeams, allDefensePlayersPerTeam, allRookieTeams, allRookiePlayersPerTeam, positionlessAwards, leagueStats, handcheckingEnabled, illegalZoneDefenseEnabled, outOfBoundsEnabled, freeThrowDistance, rimHeight, ballWeight, startOfPossessionMethod, possessionPattern, courtLength, baselineLength, keyWidth, cornerThrowInEnabled, techEjectionLimit, flagrant1EjectionLimit, flagrant2EjectionLimit, fightingInstantEjection, useYellowRedCards, shotClockResetOffensiveRebound]);
 
   const handleSaveConfig = async () => {
     setIsSaving(true);
@@ -655,6 +671,12 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
             maxContractLengthBird,
             playerOptionsEnabled,
             tenDayContractsEnabled,
+            inflationEnabled,
+            inflationMin,
+            inflationMax,
+            inflationAverage,
+            inflationStdDev,
+            tradableDraftPickSeasons,
             rookieScaleType,
             rookieStaticAmount,
             rookieMaxContractPercentage,
@@ -852,6 +874,12 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
     setMaxContractLengthBird(leagueStats.maxContractLengthBird ?? 5);
     setPlayerOptionsEnabled(leagueStats.playerOptionsEnabled ?? true);
     setTenDayContractsEnabled(leagueStats.tenDayContractsEnabled ?? true);
+    setInflationEnabled(leagueStats.inflationEnabled ?? true);
+    setInflationMin(leagueStats.inflationMin ?? 0);
+    setInflationMax(leagueStats.inflationMax ?? 8);
+    setInflationAverage(leagueStats.inflationAverage ?? 3.5);
+    setInflationStdDev(leagueStats.inflationStdDev ?? 1.5);
+    setTradableDraftPickSeasons(leagueStats.tradableDraftPickSeasons ?? 7);
     setRookieScaleType(leagueStats.rookieScaleType ?? 'dynamic');
     setRookieStaticAmount(leagueStats.rookieStaticAmount ?? 5.0);
     setRookieMaxContractPercentage(leagueStats.rookieMaxContractPercentage ?? 9);
@@ -1133,6 +1161,12 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
     maxContractLengthBird, setMaxContractLengthBird,
     playerOptionsEnabled, setPlayerOptionsEnabled,
     tenDayContractsEnabled, setTenDayContractsEnabled,
+    inflationEnabled, setInflationEnabled,
+    inflationMin, setInflationMin,
+    inflationMax, setInflationMax,
+    inflationAverage, setInflationAverage,
+    inflationStdDev, setInflationStdDev,
+    tradableDraftPickSeasons, setTradableDraftPickSeasons,
     rookieScaleType, setRookieScaleType,
     rookieStaticAmount, setRookieStaticAmount,
     rookieMaxContractPercentage, setRookieMaxContractPercentage,

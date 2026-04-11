@@ -1,8 +1,9 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ArrowLeftRight, DollarSign, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, ArrowLeftRight, DollarSign, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { NBAPlayer, DraftPick, NBATeam } from '../../types';
 import { useGame } from '../../store/GameContext';
+import { normalizeDate } from '../../utils/helpers';
 
 interface TradeSummaryModalProps {
   isOpen: boolean;
@@ -45,6 +46,8 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
   };
 
   const tradeIsValid = !salaryMismatchInfo;
+  const tradeDeadline = `${state.leagueStats?.year ?? 2026}-02-15`;
+  const isPastDeadline = normalizeDate(state.date) > tradeDeadline;
 
   return (
     <AnimatePresence>
@@ -68,10 +71,18 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
             </button>
           </div>
 
+          {/* Past Trade Deadline Banner */}
+          {isPastDeadline && (
+            <div className="px-4 py-2 border-b bg-amber-500/10 border-amber-500/20 text-amber-400 flex items-center gap-2">
+              <Clock size={14} />
+              <span className="text-xs font-bold uppercase tracking-wide">Past Trade Deadline (Feb 15)</span>
+            </div>
+          )}
+
           {/* Trade Status Banner */}
           <div className={`px-4 py-3 border-b ${
-            tradeIsValid 
-              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' 
+            tradeIsValid
+              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
               : 'bg-rose-500/10 border-rose-500/20 text-rose-500'
           }`}>
             <div className="flex items-center gap-3">
@@ -82,7 +93,10 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
               )}
               <div>
                 <div className="text-sm font-bold">
-                  {tradeIsValid ? 'Trade Valid' : 'Salary Mismatch'}
+                  {tradeIsValid
+                    ? isPastDeadline ? 'Salaries Match — Past Deadline' : 'Trade Valid'
+                    : isPastDeadline ? 'Past Deadline + Salary Mismatch' : 'Salary Mismatch'
+                  }
                 </div>
                 {salaryMismatchInfo?.message && (
                   <div className="text-xs mt-0.5">
@@ -149,19 +163,35 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
           </div>
 
           {/* Footer Buttons */}
-          <div className="p-4 border-t border-slate-700/50 bg-[#161616] flex justify-end gap-3">
-            <button onClick={onClose} className="px-5 py-2 rounded-md font-bold text-xs uppercase bg-slate-700 hover:bg-slate-600 text-white transition-colors">
-              Go Back
-            </button>
-            {tradeIsValid ? (
-              <button onClick={onConfirmTrade} className="px-5 py-2 rounded-md font-bold text-xs uppercase bg-emerald-600 hover:bg-emerald-500 text-white transition-colors">
-                Confirm Trade
-              </button>
-            ) : (
-              <button onClick={onForceTrade} className="px-5 py-2 rounded-md font-bold text-xs uppercase bg-rose-600 hover:bg-rose-500 text-white transition-colors">
-                Force Trade
-              </button>
+          <div className="p-4 border-t border-slate-700/50 bg-[#161616] space-y-2">
+            {isPastDeadline && (
+              <p className="text-amber-400/70 text-xs text-center">
+                {tradeIsValid
+                  ? 'Trade deadline has passed. Proceeding requires commissioner override.'
+                  : 'Trade deadline has passed and salaries don\'t match. Force trade to override both.'}
+              </p>
             )}
+            <div className="flex justify-end gap-3">
+              <button onClick={onClose} className="px-5 py-2 rounded-md font-bold text-xs uppercase bg-slate-700 hover:bg-slate-600 text-white transition-colors">
+                Go Back
+              </button>
+              {tradeIsValid ? (
+                <button
+                  onClick={onConfirmTrade}
+                  className={`px-5 py-2 rounded-md font-bold text-xs uppercase text-white transition-colors ${
+                    isPastDeadline
+                      ? 'bg-amber-600 hover:bg-amber-500'
+                      : 'bg-emerald-600 hover:bg-emerald-500'
+                  }`}
+                >
+                  {isPastDeadline ? 'Override Deadline & Confirm' : 'Confirm Trade'}
+                </button>
+              ) : (
+                <button onClick={onForceTrade} className="px-5 py-2 rounded-md font-bold text-xs uppercase bg-rose-600 hover:bg-rose-500 text-white transition-colors">
+                  {isPastDeadline ? 'Force Trade (Override All)' : 'Force Trade'}
+                </button>
+              )}
+            </div>
           </div>
         </motion.div>
       </motion.div>

@@ -37,6 +37,10 @@ const GIST_URLS: Record<string, string> = {
     'https://gist.githubusercontent.com/aljohnpolyglot/60406083729779fb19533e04baead405/raw/bfd8196e3e5b787917bce4baf4fea0cb3007625b/euroleaguestats',
   'B-League':
     'https://gist.githubusercontent.com/aljohnpolyglot/0ffa999888dac89005a31b6f1b41b0ba/raw/c73a664f6507078afa48cc365f2cfdf7eaa326b5/bleaguebio',
+  'G-League':
+    'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/gleaguebio',
+  Endesa:
+    'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/ligaendesabio',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -86,7 +90,7 @@ function buildFlatEntry(item: any): NonNBAGistEntry {
 
   const c = item.nationality || undefined;
   const s = (item.pre_draft && !['N/A', '-', ''].includes(item.pre_draft))
-    ? item.pre_draft
+    ? item.pre_draft.replace(/\s*\([^)]*\)\s*$/, '').trim()  // strip class suffix e.g. "(So)"
     : undefined;
 
   let b: string | undefined;
@@ -166,7 +170,7 @@ async function fetchLeagueData(league: string): Promise<void> {
     const data = await res.json();
     const map = new Map<string, NonNBAGistEntry>();
 
-    if (league === 'PBA' || league === 'Euroleague' || league === 'B-League') {
+    if (league === 'PBA' || league === 'Euroleague' || league === 'B-League' || league === 'G-League' || league === 'Endesa') {
       const arr: any[] = Array.isArray(data) ? data : (data.players ?? []);
       arr.forEach((item: any) => {
         if (item.name) map.set(item.name.toLowerCase(), buildFlatEntry(item));

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BBGM Ultimate Bio-Sync Converter (Expanded Edition)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #0f172a;
+            color: #f8fafc;
+            margin: 0;
+        }
+        #drop-zone {
+            width: 80%;
+            max-width: 700px;
+            height: 350px;
+            border: 3px dashed #38bdf8;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #1e293b;
+            cursor: pointer;
+            text-align: center;
+            padding: 30px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+        }
+        #drop-zone.hover {
+            background: #334155;
+            border-color: #7dd3fc;
+            transform: scale(1.02);
+        }
+        h1 {
+            margin-bottom: 5px;
+            color: #38bdf8;
+            font-size: 2.2rem;
+        }
+        p {
+            color: #94a3b8;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+        .status {
+            margin-top: 25px;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-weight: bold;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .success {
+            background: #065f46;
+            color: #34d399;
+            border: 1px solid #059669;
+        }
+        .error {
+            background: #7f1d1d;
+            color: #f87171;
+            border: 1px solid #dc2626;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>BBGM Ultimate Converter</h1>
+    <p>Everything included: Images, Contracts, Colleges, Draft Years, and Advanced Ratings.</p>
+
+    <div id="drop-zone">
+        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <h2 style="margin: 15px 0 5px 0;">Drop JSON File Here</h2>
+        <p style="font-size: 0.9rem;">The most complete version. Over 300 lines of data mapping.</p>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <script>
+        // LEAGUE SETTINGS
+        const START_YEAR = 2025;
+        const L_3P_AVG = 33.5;
+        const L_FG_AVG = 45.0;
+        const L_FT_AVG = 74.0;
+
+        const dropZone = document.getElementById('drop-zone');
+        const status = document.getElementById('status');
+
+        // Drag and drop event listeners
+        dropZone.addEventListener('dragenter', preventDefaults, false);
+        dropZone.addEventListener('dragover', preventDefaults, false);
+        dropZone.addEventListener('dragleave', preventDefaults, false);
+        dropZone.addEventListener('drop', preventDefaults, false);
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        dropZone.addEventListener('dragenter', function() {
+            dropZone.classList.add('hover');
+        });
+
+        dropZone.addEventListener('dragover', function() {
+            dropZone.classList.add('hover');
+        });
+
+        dropZone.addEventListener('dragleave', function() {
+            dropZone.classList.remove('hover');
+        });
+
+        dropZone.addEventListener('drop', function(e) {
+            dropZone.classList.remove('hover');
+            const file = e.dataTransfer.files[0];
+            
+            if (!file) {
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const parsedData = JSON.parse(event.target.result);
+                    processData(parsedData, file.name);
+                } catch (err) {
+                    showStatus("CRITICAL ERROR: Invalid JSON File format.", "error");
+                    console.error(err);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // UTILITY FUNCTIONS
+        function clamp(value) {
+            let result = Math.floor(value);
+            if (result < 0) result = 0;
+            if (result > 100) result = 100;
+            return result;
+        }
+
+        function parseHeightCm(heightString) {
+            if (!heightString) {
+                return 198; // Default height
+            }
+            const match = heightString.match(/\((\d+)cm\)/);
+            if (match) {
+                return parseInt(match[1]);
+            }
+            return 198;
+        }
+
+        // ADVANCED RATING ENGINE
+        function calculateRatings(player) {
+            const pos = player.position || 'GF';
+            const gp = parseFloat(player.gp) || 0;
+            const ppg = parseFloat(player.ppg) || 0;
+            const apg = parseFloat(player.apg) || 0;
+            const rpg = parseFloat(player.rpg) || 0;
+            const spg = parseFloat(player.spg) || 0;
+            const bpg = parseFloat(player.bpg) || 0;
+            const mpg = parseFloat(player.mpg) || 25;
+            const tov = parseFloat(player.tov) || 0;
+
+            // Normalize Percentages (Fixing .331 vs 33.1)
+            let tpPct = parseFloat(player.p3p) || 0;
+            if (player.p3p && player.p3p.toString().startsWith('.')) {
+                tpPct = tpPct * 100;
+            }
+
+            let fgPct = parseFloat(player.fgp) || 0;
+            if (player.fgp && player.fgp.toString().startsWith('.')) {
+                fgPct = fgPct * 100;
+            }
+
+            let ftPct = parseFloat(player.ftp) || 0;
+            if (player.ftp && player.ftp.toString().startsWith('.')) {
+                ftPct = ftPct * 100;
+            }
+
+            // Physicals calculation
+            const hgtCm = parseHeightCm(player.height);
+            const hgtIn = hgtCm / 2.54;
+            const hgtRating = (hgtIn - 67) * 4.2;
+
+            let spd = 50 + (spg * 10);
+            let stre = 30 + (hgtRating * 0.3);
+
+            // Positional adjustments for physicals
+            if (pos.includes('G')) {
+                spd = spd + 12;
+                stre = stre - 10;
+            } else if (pos.includes('C')) {
+                spd = spd - 12;
+                stre = stre + 25;
+            } else if (pos.includes('F')) {
+                spd = spd + 2;
+                stre = stre + 5;
+            }
+
+            // Adjustments for Sample Size (Games Played)
+            const gpWeight = Math.min(1.0, gp / 15);
+            function adjustForSample(calculatedValue, floorValue) {
+                return (calculatedValue * gpWeight) + (floorValue * (1 - gpWeight));
+            }
+
+            // Skill Calculations
+            const tp = adjustForSample(35 + (tpPct - L_3P_AVG) * 3.5 + (ppg * 0.4), 15);
+            const ins = adjustForSample(25 + (ppg * 2.0) + (fgPct - L_FG_AVG), 20);
+            const ft = adjustForSample(45 + (ftPct - L_FT_AVG) * 1.6, 20);
+            const pss = adjustForSample((apg * 11) - (tov * 4), 10);
+            const reb = adjustForSample((rpg * 6.5) + (hgtRating * 0.25), 15);
+
+            // IQ Calculations
+            const oiq = adjustForSample(25 + (ppg * 1.8) + (apg * 2.2), 15);
+            const diq = adjustForSample(25 + (spg * 18) + (bpg * 22), 15);
+
+            // Dunking based on position
+            let dnkRating = ins * 0.75;
+            if (pos.includes('C') || pos.includes('F')) {
+                dnkRating = ins * 1.2;
+            }
+
+            // Build final ratings object
+            return {
+                hgt: clamp(hgtRating),
+                stre: clamp(stre),
+                spd: clamp(spd),
+                jmp: clamp(spd * 0.82),
+                endu: clamp((mpg / 36) * 100),
+                ins: clamp(ins),
+                dnk: clamp(dnkRating),
+                fg: clamp(ins * 0.9),
+                tp: clamp(tp),
+                ft: clamp(ft),
+                pss: clamp(pss),
+                reb: clamp(reb),
+                drb: clamp(30 + (apg * 4)),
+                oiq: clamp(oiq),
+                diq: clamp(diq)
+            };
+        }
+
+        // MAIN PROCESSING LOGIC
+        function processData(inputData, fileName) {
+            let rawPlayers = [];
+            if (Array.isArray(inputData)) {
+                rawPlayers = inputData;
+            } else {
+                rawPlayers = inputData.players;
+            }
+
+            // 1. EXTRACT UNIQUE TEAMS
+            const uniqueAbbrevs = [];
+            for (let i = 0; i < rawPlayers.length; i++) {
+                let abbrev = rawPlayers[i].team;
+                if (!abbrev) {
+                    abbrev = "FA";
+                }
+                if (!uniqueAbbrevs.includes(abbrev)) {
+                    uniqueAbbrevs.push(abbrev);
+                }
+            }
+
+            // 2. CREATE BBGM TEAMS (Resolving full college names)
+            const teamMap = {};
+            const bbgmTeams = [];
+
+            for (let i = 0; i < uniqueAbbrevs.length; i++) {
+                let abbrev = uniqueAbbrevs[i];
+                let fullName = abbrev;
+
+                // Find the first player on this team to steal their college/HS name
+                let samplePlayer = rawPlayers.find(p => p.team === abbrev);
+                
+                if (samplePlayer) {
+                    if (samplePlayer.college && samplePlayer.college !== "N/A") {
+                        fullName = samplePlayer.college.trim();
+                    } else if (samplePlayer.high_school && samplePlayer.high_school !== "N/A") {
+                        fullName = samplePlayer.high_school.split('(')[0].trim();
+                    }
+                }
+
+                // Assign to a conference (15 teams per conference)
+                let confId = Math.floor(i / 15);
+
+                let newTeam = {
+                    tid: i,
+                    cid: confId,
+                    did: confId,
+                    region: fullName, // e.g. "Brigham Young"
+                    name: "",          // e.g. Mascot is blank
+                    abbrev: abbrev,   // e.g. "BYU"
+                    pop: 1.0
+                };
+
+                bbgmTeams.push(newTeam);
+                teamMap[abbrev] = i; // Save ID for player mapping later
+            }
+
+            // 3. CREATE CONFERENCES AND DIVISIONS
+            const numConfs = Math.ceil(bbgmTeams.length / 15);
+            const bbgmConfs = [];
+            const bbgmDivs = [];
+
+            for (let i = 0; i < numConfs; i++) {
+                bbgmConfs.push({
+                    cid: i,
+                    name: "Conference " + (i + 1)
+                });
+                bbgmDivs.push({
+                    did: i,
+                    cid: i,
+                    name: "Division"
+                });
+            }
+
+            // 4. MAP PLAYERS (Bio, Images, Age, Draft, Contract)
+            const bbgmPlayers = [];
+
+            for (let i = 0; i < rawPlayers.length; i++) {
+                let p = rawPlayers[i];
+
+                // Split Name
+                let nameParts = p.name.split(/\s+/);
+                let firstName = nameParts[0];
+                let lastName = nameParts.slice(1).join(' ');
+
+                // Age Fix Calculation
+                let age = 18; // Default age
+                if (p.born) {
+                    let ageMatch = p.born.match(/(\d+)\s+years\s+old/);
+                    if (ageMatch) {
+                        age = parseInt(ageMatch[1]);
+                    }
+                }
+                let birthYear = START_YEAR - age;
+
+                // College / High School String
+                let schoolName = "";
+                if (p.college && p.college !== "N/A") {
+                    schoolName = p.college.trim();
+                } else if (p.high_school && p.high_school !== "N/A") {
+                    schoolName = p.high_school.split('(')[0].trim();
+                }
+
+                // Hometown String Creation
+                let hometown = "";
+                if (p.hometown && p.hometown !== "N/A") {
+                    hometown = p.hometown;
+                }
+                if (p.nationality && p.nationality !== "N/A" && p.nationality !== "United States") {
+                    if (hometown !== "") {
+                        hometown = hometown + ", " + p.nationality;
+                    } else {
+                        hometown = p.nationality;
+                    }
+                }
+
+                // Draft Year Calculation
+                let draftYear = START_YEAR;
+                if (p.nba_status && p.nba_status !== "N/A") {
+                    let draftMatch = p.nba_status.match(/\d{4}/);
+                    if (draftMatch) {
+                        draftYear = parseInt(draftMatch[0]);
+                    }
+                }
+
+                // Image Proxy Fix (Bypasses RealGM blocking the images)
+                let finalImageUrl = "";
+                if (p.image && p.image !== "N/A" && p.image.includes("http")) {
+                    finalImageUrl = "https://wsrv.nl/?url=" + encodeURIComponent(p.image);
+                }
+
+                // RealGM Profile Note
+                let profileNotes = "";
+                if (p.profile_url && p.profile_url !== "N/A") {
+                    profileNotes = "RealGM Profile: " + p.profile_url;
+                }
+
+                // Get Team ID
+                let teamId = -1;
+                if (teamMap[p.team] !== undefined) {
+                    teamId = teamMap[p.team];
+                }
+
+                // Parse physicals
+                let hgtCm = parseHeightCm(p.height);
+                let finalHgtInches = Math.round(hgtCm / 2.54);
+                
+                let finalWeight = 200;
+                if (p.weight) {
+                    finalWeight = parseInt(p.weight);
+                }
+
+                // Calculate the attributes
+                let playerRatings = calculateRatings(p);
+
+                // Build Final Player Object
+                let newPlayer = {
+                    firstName: firstName,
+                    lastName: lastName,
+                    tid: teamId,
+                    pos: p.position || "GF",
+                    hgt: finalHgtInches,
+                    weight: finalWeight,
+                    born: {
+                        year: birthYear,
+                        loc: hometown
+                    },
+                    college: schoolName,
+                    draft: {
+                        year: draftYear,
+                        round: 0,
+                        pick: 0,
+                        tid: -1,
+                        originalTid: -1
+                    },
+                    contract: {
+                        amount: 0,
+                        exp: draftYear
+                    },
+                    imgURL: finalImageUrl,
+                    notes: profileNotes,
+                    ratings: [ playerRatings ]
+                };
+
+                bbgmPlayers.push(newPlayer);
+            }
+
+            // 5. ASSEMBLE FINAL ROSTER JSON
+            const outputJSON = {
+                version: 66,
+                startingSeason: START_YEAR,
+                confs: bbgmConfs,
+                divs: bbgmDivs,
+                teams: bbgmTeams,
+                players: bbgmPlayers
+            };
+
+            // Trigger Download
+            downloadFile(outputJSON, "BBGM_Ultimate_Roster.json");
+            showStatus("SUCCESS! Mapped " + bbgmPlayers.length + " players with Full Bios.", "success");
+        }
+
+        // DOWNLOAD HANDLER
+        function downloadFile(dataObject, filename) {
+            const jsonString = JSON.stringify(dataObject, null, 2);
+            const blob = new Blob([jsonString], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            
+            const downloadLink = document.createElement('a');
+            downloadLink.href = url;
+            downloadLink.download = filename;
+            
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            
+            URL.revokeObjectURL(url);
+        }
+
+        // STATUS UI HANDLER
+        function showStatus(messageText, typeClass) {
+            status.style.display = "block";
+            status.className = "status " + typeClass;
+            status.innerText = messageText;
+        }
+    </script>
+</body>
+</html>

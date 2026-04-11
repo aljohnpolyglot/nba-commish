@@ -284,6 +284,70 @@ export const KNOBS_PRESEASON: SimulatorKnobs = {
   ftEfficiencyMult:      1.0,
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// INTERNATIONAL PRESEASON KNOBS
+// Calibrated from real 2025-26 league averages.
+// B-League and Euroleague use 40-min FIBA games (10-min quarters).
+// PBA uses 48-min games but with heavy mid-range/FT tendencies.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * B-League (Japan) — calibrated from Japan national team vs Philippines (FIBA).
+ * NBA preseason uses NBA rules (12-min quarters). Japan FG%: 48.5%, 3P%: 37.1%,
+ * FT%: 92% (Japanese players are elite FT shooters — one of the highest in the world).
+ * More disciplined than PBA, good perimeter shooting, physical interior.
+ * B-League is meaningfully above PBA level (Japan beat PH by 21 in 40 min).
+ */
+export const KNOBS_BLEAGUE: SimulatorKnobs = {
+  ...KNOBS_PRESEASON,
+  quarterLength:         12,    // NBA preseason uses NBA rules
+  paceMultiplier:        0.90,  // slightly below NBA pace but not drastically slower
+  efficiencyMultiplier:  0.93,  // FG% ~48% — close to NBA, small rust factor
+  threePointRateMult:    0.82,  // moderate 3PA, less volume than NBA but not inside-only
+  ftRateMult:            0.88,  // fewer FTA than NBA
+  ftEfficiencyMult:      1.05,  // Japanese players shoot FTs exceptionally well (~90%+)
+  rotationDepthOverride: 11,
+  tovMult:               0.88,  // disciplined ball movement
+};
+
+/**
+ * Euroleague vs NBA preseason — calibrated from real Dallas vs Real Madrid box score.
+ * NBA rules apply (12-min quarters). Combined 250 pts, FG% 47% both sides,
+ * heavy 3PA volume (97 combined vs NBA ~65), FT% lower (~65% vs NBA 77%).
+ * Euroleague adapts to NBA pace — they don't slow it down, they run with it.
+ */
+export const KNOBS_EUROLEAGUE: SimulatorKnobs = {
+  ...KNOBS_PRESEASON,
+  quarterLength:         12,    // NBA rules in international preseason games
+  paceMultiplier:        1.05,  // Euroleague actually scores MORE vs NBA (open up and run)
+  efficiencyMultiplier:  0.95,  // FG% near identical to NBA, slight rust factor
+  threePointRateMult:    1.10,  // Euroleague shoots MORE 3s than NBA in this context (97 vs ~65)
+  ftRateMult:            0.85,  // fewer trips to the line vs NBA pace
+  ftEfficiencyMult:      0.88,  // FT% ~65% vs NBA ~77% — real Euroleague trait
+  rotationDepthOverride: 11,
+  tovMult:               0.90,  // disciplined ball movement, fewer TOs
+};
+
+/**
+ * PBA — calibrated from real international data.
+ * Serbia (BA-caliber) beat Philippines 126–67 in FIBA 40-min.
+ * Japan beat Philippines 102–81. PBA style: inside-heavy (16.7% 3P vs Serbia),
+ * low FG% (37.3% vs Serbia), physical with FTs, FT%: ~66-72%.
+ * PBA cannot compete with NBA — no upset potential. Knobs set realistic style;
+ * outcomes driven by pre-scaled attributes at 0.54×.
+ */
+export const KNOBS_PBA: SimulatorKnobs = {
+  ...KNOBS_PRESEASON,
+  quarterLength:         12,    // NBA preseason uses NBA rules
+  paceMultiplier:        0.82,  // slow, methodical — not a high-pace league
+  efficiencyMultiplier:  0.83,  // FG% ~37-44% vs strong opposition
+  threePointRateMult:    0.55,  // extremely inside-heavy: 16.7% 3P rate vs Serbia
+  ftRateMult:            1.25,  // very physical → high FTA
+  ftEfficiencyMult:      0.92,  // FT% ~66-72% — below NBA average
+  tovMult:               1.10,  // more turnovers under pressure vs superior athletes
+  rotationDepthOverride: 12,
+};
+
 /** FIBA-style: 10-min quarters, no 3PT (hypothetical rule experiment). */
 export const KNOBS_NO_THREE: SimulatorKnobs = {
   ...KNOBS_DEFAULT,

@@ -218,7 +218,7 @@ export const StandingsView: React.FC = () => {
                           onClick={() => navigateToTeam(team.id)}
                           className="font-medium text-slate-200 hover:text-indigo-400 transition-colors text-left flex items-center gap-1.5"
                         >
-                          <span className="hidden sm:inline">{team.region} {team.name}</span>
+                          <span className="hidden sm:inline">{team.name}</span>
                           <span className="sm:hidden">{team.abbrev}</span>
                           {team.clinchedPlayoffs && (
                             <span className="text-[10px] text-slate-500 font-bold">{team.clinchedPlayoffs}</span>

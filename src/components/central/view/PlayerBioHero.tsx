@@ -10,6 +10,7 @@ interface PlayerBioHeroProps {
   playerImgURL?: string;
   isSyncing: boolean;
   fetchDone: boolean;
+  isHoF?: boolean;
 }
 
 /**
@@ -21,6 +22,8 @@ interface PlayerBioHeroProps {
  *  - Stats bar (PTS / REB / AST / STL / BLK)
  *  - Info grid (height, weight, country, school, age, birthdate, draft, experience)
  */
+const HOF_LOGO = 'https://upload.wikimedia.org/wikipedia/en/7/7e/Naismith_Basketball_Hall_of_Fame_logo.png';
+
 export const PlayerBioHero: React.FC<PlayerBioHeroProps> = ({
   bioData,
   teamColor,
@@ -30,6 +33,7 @@ export const PlayerBioHero: React.FC<PlayerBioHeroProps> = ({
   playerImgURL,
   isSyncing,
   fetchDone,
+  isHoF,
 }) => (
   <>
     {/* ── Hero Banner ── */}
@@ -58,20 +62,31 @@ export const PlayerBioHero: React.FC<PlayerBioHeroProps> = ({
         </div>
       )}
 
-      <img
-        key={portraitSrc}
-        src={portraitSrc}
-        alt={bioData.n}
-        className="h-48 md:h-[90%] z-20 drop-shadow-[10px_0_20px_rgba(0,0,0,0.5)] object-contain mt-8 md:mt-0 md:ml-10"
-        onError={e => {
-          const img = e.currentTarget;
-          if (playerImgURL && img.src !== playerImgURL) {
-            img.src = playerImgURL;
-          } else {
-            img.style.display = 'none';
-          }
-        }}
-      />
+      <div className="relative z-20 mt-8 md:mt-0 md:ml-10 flex flex-col items-center self-end">
+        <img
+          key={portraitSrc}
+          src={portraitSrc}
+          alt={bioData.n}
+          className="h-48 md:h-[340px] drop-shadow-[10px_0_20px_rgba(0,0,0,0.5)] object-contain object-bottom"
+          referrerPolicy="no-referrer"
+          onError={e => {
+            const img = e.currentTarget;
+            // Use data-attribute to track whether we've already tried the BBGM fallback,
+            // avoiding false-equality issues when img.src is normalized by the browser.
+            if (playerImgURL && !img.dataset.triedFallback) {
+              img.dataset.triedFallback = '1';
+              img.src = playerImgURL;
+            } else {
+              img.style.display = 'none';
+            }
+          }}
+        />
+        {isHoF && (
+          <div className="absolute -bottom-2 -right-2 md:-right-4 w-10 h-10 md:w-14 md:h-14 bg-white rounded-full flex items-center justify-center shadow-xl border-2 border-white/30 z-30" title="Basketball Hall of Fame">
+            <img src={HOF_LOGO} alt="Hall of Fame" className="w-8 h-8 md:w-11 md:h-11 object-contain" referrerPolicy="no-referrer" />
+          </div>
+        )}
+      </div>
 
       <div className="z-20 text-center md:text-left mb-6 md:mb-12 md:ml-10 flex-1">
         <p className="m-0 uppercase text-sm font-medium tracking-widest text-white/90">{bioData.m}</p>

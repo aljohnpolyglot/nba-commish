@@ -19,6 +19,8 @@ const LEAGUES = [
   { id: 'pba', name: 'PBA' },
   { id: 'euroleague', name: 'Euroleague' },
   { id: 'bleague', name: 'B-League' },
+  { id: 'gleague', name: 'G-League' },
+  { id: 'endesa', name: 'Endesa' },
   { id: 'draft', name: 'Draft Prospects' }
 ];
 
@@ -128,10 +130,7 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
         if (selectedLeagues.includes('nba')) {
           // NBA includes Active players on teams (tid >= 0) and Free Agents who aren't specifically tagged as other leagues
           if ((p.tid >= 0 || p.tid === -1) &&
-              p.status !== 'WNBA' &&
-              p.status !== 'PBA' &&
-              p.status !== 'Euroleague' &&
-              p.status !== 'B-League' &&
+              !['WNBA', 'PBA', 'Euroleague', 'B-League', 'G-League', 'Endesa'].includes(p.status || '') &&
               p.status !== 'Prospect' &&
               p.tid !== -2) {
             matchesLeague = true;
@@ -143,6 +142,8 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
         if (selectedLeagues.includes('pba') && p.status === 'PBA') matchesLeague = true;
         if (selectedLeagues.includes('euroleague') && p.status === 'Euroleague') matchesLeague = true;
         if (selectedLeagues.includes('bleague') && p.status === 'B-League') matchesLeague = true;
+        if (selectedLeagues.includes('gleague') && p.status === 'G-League') matchesLeague = true;
+        if (selectedLeagues.includes('endesa') && p.status === 'Endesa') matchesLeague = true;
         
         if (!matchesLeague) return false;
       }

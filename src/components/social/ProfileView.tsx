@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ArrowLeft, Link2 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import SocialPostCard from './SocialPostCard';
 import { cn } from '../../lib/utils';
 import EditProfile from './EditProfile';
+import { fetchProfileData } from '../../utils/socialapi';
 
 interface ProfileViewProps {
   handle?: string;
@@ -13,25 +14,38 @@ interface ProfileViewProps {
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ handle, onBack, onPostClick, onProfileClick }) => {
-  const { state, followUser, unfollowUser } = useGame();
+  const { state, followUser, unfollowUser, dispatchAction } = useGame();
   const [activeTab, setActiveTab] = React.useState<'posts' | 'replies' | 'media'>('posts');
   const [showEditProfile, setShowEditProfile] = React.useState(false);
+  const [isFetching, setIsFetching] = React.useState(false);
 
   const commName = state.commissionerName || 'Commissioner';
   const ownHandle = (state.userProfile?.handle || ('@' + commName.toLowerCase().replace(/\s+/g, ''))).replace('@', '');
 
   const cleanHandle = (handle || '').replace('@', '');
   const cached = state.cachedProfiles?.[cleanHandle];
+  const isOwnProfile = cleanHandle === ownHandle;
 
-  const displayName = cached?.name || cleanHandle;
-  const bio = cached?.bio || '';
-  const avatarUrl = cached?.avatarUrl;
-  const bannerUrl = cached?.bannerUrl;
+  // Trigger a fetch when navigating to a profile not yet in cache
+  useEffect(() => {
+    if (!cleanHandle || isOwnProfile) return;
+    if (cached) return;
+    setIsFetching(true);
+    fetchProfileData(cleanHandle, dispatchAction).finally(() => setIsFetching(false));
+  }, [cleanHandle]);
+
+  // Own profile: prefer state.userProfile for avatar/banner set via EditProfile
+  const ownAvatarUrl = isOwnProfile ? (state.userProfile?.avatarUrl || cached?.avatarUrl) : cached?.avatarUrl;
+  const ownBannerUrl = isOwnProfile ? (state.userProfile?.bannerUrl || cached?.bannerUrl) : cached?.bannerUrl;
+
+  const displayName = (isOwnProfile ? state.userProfile?.name : null) || cached?.name || cleanHandle;
+  const bio = (isOwnProfile ? state.userProfile?.bio : null) || cached?.bio || '';
+  const avatarUrl = ownAvatarUrl;
+  const bannerUrl = ownBannerUrl;
   const followersCount = cached?.followersCount ?? 0;
   const followingCount = cached?.followingCount ?? 0;
   const verified = cached?.verified ?? false;
 
-  const isOwnProfile = cleanHandle === ownHandle;
   const isFollowing = (state.followedHandles || []).includes(cleanHandle);
 
   const userPosts = (state.socialFeed || [])
@@ -66,16 +80,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ handle, onBack, onPost
       </div>
 
       {/* Banner */}
-      <div className="h-36 bg-zinc-800 relative flex-shrink-0">
+      <div className={`h-36 relative flex-shrink-0 ${isFetching && !bannerUrl ? 'bg-zinc-800 animate-pulse' : 'bg-zinc-800'}`}>
         {bannerUrl && (
-          <img src={bannerUrl} alt="" className="w-full h-full object-cover" />
+          <img src={bannerUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
         )}
       </div>
 
       {/* Avatar + Follow button */}
       <div className="px-4 pb-3 border-b border-[#2f3336] relative z-10 bg-black">
         <div className="flex justify-between items-start -mt-12 mb-3">
-          <div className="w-24 h-24 rounded-full border-4 border-black bg-zinc-800 overflow-hidden">
+          <div className={`w-24 h-24 rounded-full border-4 border-black overflow-hidden ${isFetching && !avatarUrl ? 'bg-zinc-700 animate-pulse' : 'bg-zinc-800'}`}>
             {avatarUrl ? (
               <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             ) : (
@@ -107,15 +121,24 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ handle, onBack, onPost
         </div>
 
         <div className="mb-3">
-          <div className="flex items-center gap-1">
-            <p className="text-white font-bold text-xl">{displayName}</p>
-            {verified && (
-              <svg viewBox="0 0 24 24" className="w-5 h-5 text-sky-500 fill-current">
-                <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z" />
-              </svg>
-            )}
-          </div>
-          <p className="text-zinc-500 text-sm">@{cleanHandle}</p>
+          {isFetching && !cached ? (
+            <div className="space-y-2 animate-pulse">
+              <div className="h-5 bg-zinc-800 rounded w-32" />
+              <div className="h-3 bg-zinc-900 rounded w-24" />
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-1">
+                <p className="text-white font-bold text-xl">{displayName}</p>
+                {verified && (
+                  <svg viewBox="0 0 24 24" className="w-5 h-5 text-sky-500 fill-current">
+                    <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z" />
+                  </svg>
+                )}
+              </div>
+              <p className="text-zinc-500 text-sm">@{cleanHandle}</p>
+            </>
+          )}
         </div>
 
         {bio && <p className="text-white text-sm mb-3 leading-relaxed">{bio}</p>}
@@ -127,10 +150,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ handle, onBack, onPost
           </span>
         </div>
 
-        <div className="flex gap-5 text-sm">
-          <span><span className="text-white font-bold">{followingCount.toLocaleString()}</span> <span className="text-zinc-500">Following</span></span>
-          <span><span className="text-white font-bold">{followersCount.toLocaleString()}</span> <span className="text-zinc-500">Followers</span></span>
-        </div>
+        {isFetching && !cached ? (
+          <div className="flex gap-5 animate-pulse">
+            <div className="h-4 bg-zinc-800 rounded w-20" />
+            <div className="h-4 bg-zinc-800 rounded w-20" />
+          </div>
+        ) : (
+          <div className="flex gap-5 text-sm">
+            <span><span className="text-white font-bold">{followingCount.toLocaleString()}</span> <span className="text-zinc-500">Following</span></span>
+            <span><span className="text-white font-bold">{followersCount.toLocaleString()}</span> <span className="text-zinc-500">Followers</span></span>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}

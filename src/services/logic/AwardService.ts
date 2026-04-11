@@ -61,12 +61,19 @@ const getBestStat = (stats: NBAGMStat[] | undefined, season: number) => {
 };
 
 export class AwardService {
+  // Configurable minimum-games threshold (default: NBA 65-game rule)
+  private static minGamesTarget = 65;
+
   static calculateAwardRaces(
     players: NBAPlayer[],
     teams: NBATeam[],
     currentSeason: number = 2026,
-    staff?: StaffData | null
+    staff?: StaffData | null,
+    minGamesRequirement?: number
   ): AwardRaces {
+    // Apply commissioner-set minimum-games requirement
+    this.minGamesTarget = minGamesRequirement ?? 65;
+
     // Determine the actual current season based on the data to avoid being "one year late"
     const maxSeason = players.reduce((max, p) => {
       const playerMax = p.stats?.reduce((m, s) => Math.max(m, s.season), 0) || 0;
@@ -92,12 +99,23 @@ export class AwardService {
     };
   }
 
-  private static isEligible(stat: NBAGMStat, team: NBATeam): boolean {
+  private static isEligible(stat: NBAGMStat, team: NBATeam, checkInjuryException = false): boolean {
     const teamGames = team.wins + team.losses;
     if (teamGames === 0) return stat.gp >= 1; // Day-1 fallback: show any player with prior season stats
-    
-    // NBA 65-game rule equivalent: (65/82) ratio of team games
-    const threshold = teamGames * (65 / 82);
+
+    const fullSeasonGames = 82;
+    const targetGames = this.minGamesTarget; // commissioner-configurable (default: 65)
+
+    if (teamGames >= fullSeasonGames) {
+      // Full season: hard minimum-games floor (real NBA rule)
+      const meetsHard = stat.gp >= targetGames;
+      // Season-ending injury exception (real NBA rule): ≥ targetGames-3 games with active injury still qualifies
+      if (!meetsHard && checkInjuryException && stat.gp >= Math.max(targetGames - 3, 1)) return true;
+      return meetsHard;
+    }
+
+    // Mid-season: proportional threshold so candidates appear throughout the season
+    const threshold = teamGames * (targetGames / fullSeasonGames);
     return stat.gp >= threshold;
   }
 
@@ -106,7 +124,9 @@ export class AwardService {
       .map(p => {
         const stat = getBestStat(p.stats, season);
         const team = teams.find(t => t.id === p.tid);
-        if (!stat || !team || !this.isEligible(stat, team)) return null;
+        // Injury exception applies: 62+ games with active injury counts for MVP
+        const hasInjury = !!(p.injury && p.injury.gamesRemaining > 0);
+        if (!stat || !team || !this.isEligible(stat, team, hasInjury)) return null;
 
         const gp = stat.gp;
         const ppg = stat.pts / gp;
@@ -144,7 +164,8 @@ export class AwardService {
       .map(p => {
         const stat = getBestStat(p.stats, season);
         const team = teams.find(t => t.id === p.tid);
-        if (!stat || !team || !this.isEligible(stat, team)) return null;
+        const hasInjury = !!(p.injury && p.injury.gamesRemaining > 0);
+        if (!stat || !team || !this.isEligible(stat, team, hasInjury)) return null;
 
         if (seasonsStarted) {
           if (stat.gp < minGP) return null;

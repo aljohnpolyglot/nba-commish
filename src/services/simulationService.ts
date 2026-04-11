@@ -88,6 +88,8 @@ export const simulateGames = (
         const game = gamesToSimulate.find(g => g.gid === res.gameId);
         if (game?.isExhibition) return;
         if (game?.isPreseason) return;
+        // Playoff and play-in results don't affect regular season standings
+        if (game?.isPlayoff || game?.isPlayIn) return;
         if (res.homeTeamId < 0 || res.awayTeamId < 0) return;
 
         const home = updatedTeams.find(t => t.id === res.homeTeamId);

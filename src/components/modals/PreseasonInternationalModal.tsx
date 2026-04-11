@@ -16,7 +16,7 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
   const [step, setStep] = useState<Step>('LEAGUE');
   const [pendingGames, setPendingGames] = useState<{ teamId: number; opponentId: number; date: string; city: string; country: string; opponentName: string; nbaTeamName: string; opponentLogo?: string; nbaLogo?: string }[]>([]);
   
-  const [selectedLeague, setSelectedLeague] = useState<'Euroleague' | 'PBA' | 'WNBA' | 'B-League' | null>(null);
+  const [selectedLeague, setSelectedLeague] = useState<'Euroleague' | 'PBA' | 'WNBA' | 'B-League' | 'G-League' | 'Endesa' | null>(null);
   const [selectedOpponent, setSelectedOpponent] = useState<NonNBATeam | null>(null);
   const [selectedNBATeamId, setSelectedNBATeamId] = useState<number>(-1);
   const [date, setDate] = useState('2025-10-01');
@@ -26,7 +26,9 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
     { name: 'Euroleague', logo: 'https://r2.thesportsdb.com/images/media/league/badge/7xjtuy1554397263.png' },
     { name: 'PBA', logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/d/dd/Philippine_Basketball_Association_%28logo%29.svg/1280px-Philippine_Basketball_Association_%28logo%29.svg.png' },
     { name: 'WNBA', logo: 'https://content.sportslogos.net/logos/16/1152/full/6613__wnba-alternate-2020.png' },
-    { name: 'B-League', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/B.LEAGUE_Logo.svg/1280px-B.LEAGUE_Logo.svg.png' }
+    { name: 'B-League', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/B.LEAGUE_Logo.svg/1280px-B.LEAGUE_Logo.svg.png' },
+    { name: 'G-League', logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/NBA_G_League_logo.svg/1280px-NBA_G_League_logo.svg.png' },
+    { name: 'Endesa', logo: 'https://r2.thesportsdb.com/images/media/league/badge/9i99ii1549879285.png' },
   ];
 
   const handleClose = () => {

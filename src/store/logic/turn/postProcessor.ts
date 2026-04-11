@@ -5,8 +5,10 @@ export const processSimulationResults = (
     allSimResults: any[],
     players: Player[],
     draftPicks: DraftPick[],
-    schedule?: Game[]
+    schedule?: Game[],
+    seasonYear?: number
 ) => {
+    const currentSeasonYear = seasonYear ?? 2026;
     let updatedPlayers = [...players];
     let updatedDraftPicks = [...draftPicks];
 
@@ -65,7 +67,7 @@ export const processSimulationResults = (
             if (!gameStats) return p;
 
             const stats = [...(p.stats || [])];
-            const currentSeason = 2026;
+            const currentSeason = currentSeasonYear;
             let seasonStatIndex = stats.findIndex(s => s.season === currentSeason && !s.playoffs);
             
             let seasonStat: any;
@@ -156,7 +158,7 @@ export const processSimulationResults = (
             if (!gameStats) return p;
 
             const stats = [...(p.stats || [])];
-            const currentSeason = 2026;
+            const currentSeason = currentSeasonYear;
             let statIndex = stats.findIndex(s => s.season === currentSeason && s.playoffs === true);
 
             let seasonStat: any;

@@ -332,6 +332,18 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
                         setRookieRestrictedFreeAgentEligibility={rulesState.setRookieRestrictedFreeAgentEligibility}
                         rookieContractCapException={rulesState.rookieContractCapException}
                         setRookieContractCapException={rulesState.setRookieContractCapException}
+                        inflationEnabled={rulesState.inflationEnabled}
+                        setInflationEnabled={rulesState.setInflationEnabled}
+                        inflationMin={rulesState.inflationMin}
+                        setInflationMin={rulesState.setInflationMin}
+                        inflationMax={rulesState.inflationMax}
+                        setInflationMax={rulesState.setInflationMax}
+                        inflationAverage={rulesState.inflationAverage}
+                        setInflationAverage={rulesState.setInflationAverage}
+                        inflationStdDev={rulesState.inflationStdDev}
+                        setInflationStdDev={rulesState.setInflationStdDev}
+                        tradableDraftPickSeasons={rulesState.tradableDraftPickSeasons}
+                        setTradableDraftPickSeasons={rulesState.setTradableDraftPickSeasons}
                     />
                 )}
             </motion.div>

@@ -25,7 +25,10 @@ export const DailyGamesBar: React.FC<DailyGamesBarProps> = ({ games, teams, onWa
                         const homeTeam = teams.find(t => t.id === game.homeTid);
                         const awayTeam = teams.find(t => t.id === game.awayTid);
 
-                        if (!homeTeam || !awayTeam) return null;
+                        if (!homeTeam && !awayTeam) return null;
+
+                        const home = homeTeam ?? { id: game.homeTid, name: 'Intl', abbrev: 'INTL', logoUrl: '', wins: 0, losses: 0 } as any;
+                        const away = awayTeam ?? { id: game.awayTid, name: 'Intl', abbrev: 'INTL', logoUrl: '', wins: 0, losses: 0 } as any;
 
                         return (
                             <div
@@ -39,17 +42,25 @@ export const DailyGamesBar: React.FC<DailyGamesBarProps> = ({ games, teams, onWa
                                 
                                 <div className="flex items-center justify-between w-full px-0.5 gap-2">
                                     <div className="flex flex-col items-center gap-0.5">
-                                        <img src={awayTeam.logoUrl} alt={awayTeam.abbrev} className="w-7 h-7 object-contain" referrerPolicy="no-referrer" />
-                                        <span className="text-[9px] font-black text-white uppercase tracking-tighter">{awayTeam.abbrev}</span>
-                                        <span className="text-[8px] text-slate-500 font-mono">{awayTeam.wins ?? 0}-{awayTeam.losses ?? 0}</span>
+                                        {away.logoUrl ? (
+                                          <img src={away.logoUrl} alt={away.abbrev} className="w-7 h-7 object-contain" referrerPolicy="no-referrer" />
+                                        ) : (
+                                          <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-[8px] font-black text-slate-300">{away.abbrev?.slice(0,3)}</div>
+                                        )}
+                                        <span className="text-[9px] font-black text-white uppercase tracking-tighter">{away.abbrev}</span>
+                                        <span className="text-[8px] text-slate-500 font-mono">{away.wins ?? 0}-{away.losses ?? 0}</span>
                                     </div>
 
                                     <span className="text-[10px] font-black text-slate-700">@</span>
 
                                     <div className="flex flex-col items-center gap-0.5">
-                                        <img src={homeTeam.logoUrl} alt={homeTeam.abbrev} className="w-7 h-7 object-contain" referrerPolicy="no-referrer" />
-                                        <span className="text-[9px] font-black text-white uppercase tracking-tighter">{homeTeam.abbrev}</span>
-                                        <span className="text-[8px] text-slate-500 font-mono">{homeTeam.wins ?? 0}-{homeTeam.losses ?? 0}</span>
+                                        {home.logoUrl ? (
+                                          <img src={home.logoUrl} alt={home.abbrev} className="w-7 h-7 object-contain" referrerPolicy="no-referrer" />
+                                        ) : (
+                                          <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-[8px] font-black text-slate-300">{home.abbrev?.slice(0,3)}</div>
+                                        )}
+                                        <span className="text-[9px] font-black text-white uppercase tracking-tighter">{home.abbrev}</span>
+                                        <span className="text-[8px] text-slate-500 font-mono">{home.wins ?? 0}-{home.losses ?? 0}</span>
                                     </div>
                                 </div>
                             </div>

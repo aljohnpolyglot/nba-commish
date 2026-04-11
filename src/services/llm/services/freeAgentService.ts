@@ -18,7 +18,7 @@ export async function generateFreeAgentSigningReactions(
     const teammates = currentState.players.filter(p => 
         p.tid === team.id && 
         p.internalId !== player.internalId &&
-        !['WNBA', 'Euroleague', 'PBA', 'B-League'].includes(p.status || '')
+        !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || '')
     );
     const prompt = generateFreeAgentSigningPrompt(player, team, previousTeamName, previousLeague, leagueContext, teammates);
 

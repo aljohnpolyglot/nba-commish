@@ -21,7 +21,16 @@ import {
   autoSelectDunkContestants,
   autoSelectThreePointContestants,
   autoSimAllStarWeekend,
+  autoAnnounceCOY,
+  autoAnnounceSMOY,
+  autoAnnounceMIP,
+  autoAnnounceDPOY,
+  autoAnnounceROY,
+  autoAnnounceAllNBA,
+  autoAnnounceMVP,
 } from './autoResolvers';
+import { NewsGenerator } from '../news/NewsGenerator';
+import { PlayoffSeries, HistoricalAward } from '../../types';
 import { DEFAULT_MEDIA_RIGHTS, attachBroadcastersToGames } from '../../utils/broadcastingUtils';
 
 interface AutoResolveEvent {
@@ -56,19 +65,92 @@ const AUTO_RESOLVE_EVENTS: AutoResolveEvent[] = [
   { date: '2026-01-29', key: 'allstar_reserves',       resolver: autoAnnounceReserves,           phase: 'Announcing Reserves + Rising Stars...' },
   { date: '2026-02-05', key: 'dunk_contestants',       resolver: autoSelectDunkContestants,      phase: 'Selecting Dunk Contest Field...' },
   { date: '2026-02-08', key: 'threepoint_contestants', resolver: autoSelectThreePointContestants, phase: 'Selecting 3-Point Contest Field...' },
-  { date: '2026-02-13', key: 'allstar_weekend',        resolver: autoSimAllStarWeekend,          phase: 'Simulating All-Star Weekend...' },
+  { date: '2026-02-13', key: 'allstar_weekend',   resolver: autoSimAllStarWeekend, phase: 'Simulating All-Star Weekend...' },
+  // Award announcements — staggered to match real NBA calendar
+  { date: '2026-04-19', key: 'award_coy',         resolver: autoAnnounceCOY,       phase: 'Announcing Coach of the Year...' },
+  { date: '2026-04-22', key: 'award_smoy',        resolver: autoAnnounceSMOY,      phase: 'Announcing Sixth Man of the Year...' },
+  { date: '2026-04-25', key: 'award_mip',         resolver: autoAnnounceMIP,       phase: 'Announcing Most Improved Player...' },
+  { date: '2026-04-28', key: 'award_dpoy',        resolver: autoAnnounceDPOY,      phase: 'Announcing Defensive Player of the Year...' },
+  { date: '2026-05-02', key: 'award_roy',         resolver: autoAnnounceROY,       phase: 'Announcing Rookie of the Year...' },
+  { date: '2026-05-07', key: 'award_allnba',      resolver: autoAnnounceAllNBA,    phase: 'Announcing All-NBA Teams...' },
+  { date: '2026-05-21', key: 'award_mvp',         resolver: autoAnnounceMVP,       phase: 'Announcing MVP...' },
 ];
 
 const buildAutoNews = (eventKey: string, state: GameState) => {
   const date = state.date;
   const map: Record<string, any> = {
-    christmas_games:  { id: `auto-xmas-${Date.now()}`,      headline: 'Christmas Day Games Set',       content: 'The NBA has finalized its Christmas Day slate.',                                     date },
-    allstar_starters: { id: `auto-starters-${Date.now()}`,  headline: 'All-Star Starters Announced',   content: 'Fan voting has concluded. The All-Star starters have been revealed.',              date },
-    allstar_reserves: { id: `auto-reserves-${Date.now()}`,  headline: 'Full All-Star Rosters Set',     content: 'Coaches have made their picks. The complete All-Star rosters are finalized.',      date },
-    allstar_weekend:  { id: `auto-asw-${Date.now()}`,       headline: 'All-Star Weekend Complete',     content: 'The NBA All-Star Weekend has concluded. Check the All-Star tab for results.',      date },
+    christmas_games:     { id: `auto-xmas-${Date.now()}`,    headline: 'Christmas Day Games Set',       content: 'The NBA has finalized its Christmas Day slate.',                               date },
+    allstar_starters:    { id: `auto-starters-${Date.now()}`, headline: 'All-Star Starters Announced', content: 'Fan voting has concluded. The All-Star starters have been revealed.',           date },
+    allstar_reserves:    { id: `auto-reserves-${Date.now()}`, headline: 'Full All-Star Rosters Set',   content: 'Coaches have made their picks. The complete All-Star rosters are finalized.',   date },
+    allstar_weekend:     { id: `auto-asw-${Date.now()}`,      headline: 'All-Star Weekend Complete',   content: 'The NBA All-Star Weekend has concluded. Check the All-Star tab for results.',   date },
+    // award_* keys: news is injected directly by each resolver — no auto-news needed here
+    award_coy: null, award_smoy: null, award_mip: null,
+    award_dpoy: null, award_roy: null, award_allnba: null, award_mvp: null,
   };
   return map[eventKey] ?? null;
 };
+
+/** Detect newly-completed playoff series and championship, return news items. */
+function generatePlayoffSeriesNews(
+  prevPlayoffs: GameState['playoffs'],
+  newPlayoffs: GameState['playoffs'],
+  teams: GameState['teams'],
+  date: string,
+  season: number
+): import('../../types').NewsItem[] {
+  if (!newPlayoffs || !prevPlayoffs) return [];
+  const news: import('../../types').NewsItem[] = [];
+
+  for (const series of newPlayoffs.series) {
+    const prev = prevPlayoffs.series.find(s => s.id === series.id);
+    if (!prev || prev.status === 'complete' || series.status !== 'complete') continue;
+
+    const winner = teams.find(t => t.id === series.winnerId);
+    const loser  = teams.find(t => t.id === (series.winnerId === series.higherSeedTid ? series.lowerSeedTid : series.higherSeedTid));
+    if (!winner || !loser) continue;
+
+    const totalGames = series.higherSeedWins + series.lowerSeedWins;
+    const isChampionship = series.round === 4;
+
+    if (!isChampionship) {
+      const winItem = NewsGenerator.generate('playoff_series_win', date, {
+        teamName: winner.name, teamCity: winner.region ?? winner.name,
+        opponentName: loser.name, gamesCount: totalGames,
+      }, winner.logoUrl);
+      if (winItem) news.push(winItem);
+
+      const elimItem = NewsGenerator.generate('playoff_elimination', date, {
+        teamName: loser.name, teamCity: loser.region ?? loser.name,
+        opponentName: winner.name, gamesCount: totalGames,
+      }, loser.logoUrl);
+      if (elimItem) news.push(elimItem);
+    }
+  }
+
+  // Championship — only when bracket completes and wasn't complete before
+  if (newPlayoffs.bracketComplete && !prevPlayoffs.bracketComplete && newPlayoffs.champion) {
+    const champTeam = teams.find(t => t.id === newPlayoffs.champion);
+    const finalsSeries = newPlayoffs.series.find(s => s.round === 4 && s.status === 'complete');
+    const loserTeam = finalsSeries
+      ? teams.find(t => t.id === (finalsSeries.winnerId === finalsSeries.higherSeedTid ? finalsSeries.lowerSeedTid : finalsSeries.higherSeedTid))
+      : undefined;
+    const totalGames = finalsSeries ? finalsSeries.higherSeedWins + finalsSeries.lowerSeedWins : 0;
+
+    if (champTeam) {
+      const champItem = NewsGenerator.generate('nba_champion', date, {
+        teamName: champTeam.name, teamCity: champTeam.region ?? champTeam.name,
+        opponentName: loserTeam?.name ?? 'their opponent',
+        year: season, gamesCount: totalGames,
+      }, champTeam.logoUrl);
+      if (champItem) news.push(champItem);
+
+      // Determine Finals MVP: highest-scoring player on champ team in Finals
+      // (approximate from player.stats playoff data — use the Finals winner's top performer)
+    }
+  }
+
+  return news;
+}
 
 const getPhaseLabel = (dateStr: string): string => {
   if (dateStr < '2025-10-24') return 'Preseason...';
@@ -184,7 +266,8 @@ export const runLazySim = async (
         allSimResults,
         stateWithSim.players,
         stateWithSim.draftPicks,
-        stateWithSim.schedule
+        stateWithSim.schedule,
+        stateWithSim.leagueStats?.year
       );
 
       // Calculate per-day stats (approvals, viewership, funds) and build history points
@@ -217,10 +300,10 @@ export const runLazySim = async (
       }
 
       // Generate social posts for the batch — player reactions, media posts, Shams injuries
-      const nbaPlayers = updatedPlayers.filter(p => !['WNBA', 'Euroleague', 'PBA', 'B-League'].includes(p.status || ''));
+      const nbaPlayers = updatedPlayers.filter(p => !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || ''));
       const socialEngine = new SocialEngine();
       const batchDateString = stateWithSim.date;
-      const enginePosts = await socialEngine.generateDailyPosts(allSimResults, nbaPlayers, stateWithSim.teams, batchDateString, batchDays);
+      const enginePosts = await socialEngine.generateDailyPosts(allSimResults, nbaPlayers, stateWithSim.teams, batchDateString, batchDays, stateWithSim.playoffs, stateWithSim.schedule);
 
       // Shams injury posts — supplement engine with explicit injury coverage
       const shamsInjuryPosts: any[] = [];
@@ -260,8 +343,98 @@ export const runLazySim = async (
         stateWithSim.date,
         reportedInjuries,
         false,
-        state.teams
+        state.teams,
+        stateWithSim.playoffs,
+        stateWithSim.schedule
       );
+
+      // Playoff series news — detect series completions & championship this batch
+      const playoffSeriesNews = generatePlayoffSeriesNews(
+        state.playoffs,
+        stateWithSim.playoffs,
+        stateWithSim.teams,
+        stateWithSim.date,
+        state.leagueStats.year
+      );
+
+      // Store championship in historicalAwards (Finals MVP determined by top playoff scorer on champ team)
+      let champHistoricalAwards: HistoricalAward[] = [];
+      let champTeamsWithRoundsWon: typeof stateWithSim.teams | null = null;
+      if (stateWithSim.playoffs?.bracketComplete && !state.playoffs?.bracketComplete && stateWithSim.playoffs.champion) {
+        const champTid = stateWithSim.playoffs.champion;
+        // Derive runner-up from champTid directly — avoids relying on winnerId/status
+        const finalsSeries = stateWithSim.playoffs.series.find(s => s.round === 4);
+        const loserTid = finalsSeries
+          ? (finalsSeries.higherSeedTid === champTid ? finalsSeries.lowerSeedTid : finalsSeries.higherSeedTid)
+          : undefined;
+        const champTeam = stateWithSim.teams.find(t => t.id === champTid);
+        const loserTeam = loserTid !== undefined ? stateWithSim.teams.find(t => t.id === loserTid) : undefined;
+        const season = state.leagueStats.year;
+
+        if (champTeam) {
+          champHistoricalAwards.push({ season, type: 'Champion', name: champTeam.name, tid: champTid });
+        }
+        if (loserTeam) {
+          champHistoricalAwards.push({ season, type: 'Runner Up', name: loserTeam.name, tid: loserTid });
+        }
+
+        // Also stamp playoffRoundsWon on the teams' current-season record so the
+        // playoffRoundsWon fallback in LeagueHistoryView works for the sim season.
+        if (champTeam || loserTeam) {
+          champTeamsWithRoundsWon = stateWithSim.teams.map(t => {
+            const isChamp  = t.id === champTid;
+            const isRunner = loserTid !== undefined && t.id === loserTid;
+            if (!isChamp && !isRunner) return t;
+            return {
+              ...t,
+              seasons: (t.seasons ?? []).map((s: any) =>
+                Number(s.season) === Number(season)
+                  ? { ...s, playoffRoundsWon: isChamp ? 4 : 3 }
+                  : s
+              ),
+            };
+          });
+        }
+
+        // Finals MVP: highest gameScore among champ players in this batch's playoff games
+        const champStats = allSimResults
+          .filter(r => r.homeTeamId === champTid || r.awayTeamId === champTid)
+          .flatMap(r => r.homeTeamId === champTid ? r.homeStats : r.awayStats)
+          .filter(s => s.gameScore !== undefined);
+        if (champStats.length > 0) {
+          const mvpStat = champStats.sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0))[0];
+          const mvpPlayer = updatedPlayers.find(p => p.internalId === mvpStat.playerId);
+          if (mvpPlayer) {
+            champHistoricalAwards.push({ season, type: 'Finals MVP', name: mvpPlayer.name, pid: mvpPlayer.internalId, tid: champTid });
+            // Also add to player awards
+            const updatedWithMvp = updatedPlayers.map(p =>
+              p.internalId === mvpPlayer.internalId
+                ? { ...p, awards: [...(p.awards ?? []), { season, type: 'Finals MVP' }] }
+                : p
+            );
+            // Patch updatedPlayers (we reassign below when building state)
+            Object.assign(updatedPlayers, updatedWithMvp); // mutable patch before state build
+          }
+        }
+
+        // Finals MVP news
+        const fmvpAward = champHistoricalAwards.find(a => a.type === 'Finals MVP');
+        if (fmvpAward && champTeam) {
+          const champPlayerStats = allSimResults
+            .filter(r => r.homeTeamId === champTid || r.awayTeamId === champTid)
+            .flatMap(r => r.homeTeamId === champTid ? r.homeStats : r.awayStats)
+            .filter(s => s.playerId === fmvpAward.pid);
+          const avgPts = champPlayerStats.length > 0
+            ? (champPlayerStats.reduce((s, x) => s + x.pts, 0) / champPlayerStats.length).toFixed(1)
+            : '?';
+          const fmvpItem = NewsGenerator.generate('finals_mvp', stateWithSim.date, {
+            playerName: fmvpAward.name, teamName: champTeam.name,
+            teamCity: champTeam.region ?? champTeam.name,
+            year: season, pts: avgPts,
+          });
+          if (fmvpItem) playoffSeriesNews.push(fmvpItem);
+        }
+      }
 
       // Apply paychecks earned during this batch — prevents all salary from
       // stacking up and landing in one lump sum on the next real-day advance
@@ -279,6 +452,7 @@ export const runLazySim = async (
         ? (monthlyPassive * (batchDays / 30)) / 1_000_000
         : 0;
 
+      const allBatchNews = [...playoffSeriesNews, ...batchNews];
       state = {
         ...stateWithSim,
         // Apply the compounded stats from per-day calculations
@@ -297,11 +471,15 @@ export const runLazySim = async (
         socialFeed: allBatchPosts.length > 0
           ? [...allBatchPosts, ...(stateWithSim.socialFeed || [])].slice(0, 500)
           : stateWithSim.socialFeed,
-        news: batchNews.length > 0
-          ? [...batchNews, ...(stateWithSim.news || [])].slice(0, 200)
+        news: allBatchNews.length > 0
+          ? [...allBatchNews, ...(stateWithSim.news || [])].slice(0, 200)
           : stateWithSim.news,
         lastPayDate: batchPayResult.newLastPayDate,
         payslips: [...(state.payslips || []), ...batchPayResult.newPayslips].slice(-50),
+        historicalAwards: champHistoricalAwards.length > 0
+          ? [...(stateWithSim.historicalAwards ?? []), ...champHistoricalAwards]
+          : stateWithSim.historicalAwards,
+        ...(champTeamsWithRoundsWon ? { teams: champTeamsWithRoundsWon } : {}),
       };
       daysComplete += batchDays;
 

@@ -44,8 +44,7 @@ export default function TeamsDropdown({ selectedTeam, onSelectTeam, gameTeams = 
   // Build a logo lookup from live game state (fallback to TEAM_COLORS)
   const logoLookup: Record<string, string> = {};
   gameTeams.forEach(t => {
-    const fullName = `${t.region} ${t.name}`;
-    if (t.logoUrl) logoLookup[fullName] = t.logoUrl;
+    if (t.logoUrl) logoLookup[t.name] = t.logoUrl;
   });
   const getLogoUrl = (name: string) => logoLookup[name] || TEAM_COLORS[name]?.logo || '';
 

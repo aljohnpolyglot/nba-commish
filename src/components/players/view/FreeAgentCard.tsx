@@ -8,6 +8,8 @@ const LEAGUE_LOGOS: Record<string, string> = {
   PBA: 'https://upload.wikimedia.org/wikipedia/en/thumb/9/93/Philippine_Basketball_Association_logo.svg/200px-Philippine_Basketball_Association_logo.svg.png',
   Euroleague: 'https://upload.wikimedia.org/wikipedia/en/thumb/b/b7/EuroLeague_logo.svg/200px-EuroLeague_logo.svg.png',
   'B-League': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSmjuA28r8Wi0G12PZR5iGIk8X2sMvjOgyyXw&s',
+  'G-League': 'https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/NBA_G_League_logo.svg/200px-NBA_G_League_logo.svg.png',
+  Endesa: 'https://r2.thesportsdb.com/images/media/league/badge/9i99ii1549879285.png',
 };
 
 interface FreeAgentCardProps {
@@ -23,7 +25,7 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
   const country = getCountryFromLoc(player.born?.loc);
   const countryCode = getCountryCode(country);
 
-  const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League'].includes(player.status || '');
+  const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(player.status || '');
   const nonNBATeam = !isNBA ? nonNBATeams.find(t => t.tid === player.tid && t.league === player.status) : null;
   const teamLogo = nonNBATeam?.imgURL || null;
   const leagueLogo = player.status ? LEAGUE_LOGOS[player.status] || null : null;
@@ -34,12 +36,8 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
     orgLabel = nonNBATeam.region
       ? `${nonNBATeam.region} ${nonNBATeam.name}`.trim()
       : nonNBATeam.name;
-  } else if (player.status === 'Euroleague') {
-    orgLabel = 'Euroleague';
-  } else if (player.status === 'PBA') {
-    orgLabel = 'PBA';
-  } else if (player.status === 'B-League') {
-    orgLabel = 'B-League';
+  } else if (['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(player.status || '')) {
+    orgLabel = player.status!;
   }
 
   const isInjured = player.injury && player.injury.type !== 'Healthy' && player.injury.gamesRemaining > 0;

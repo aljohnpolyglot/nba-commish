@@ -28,7 +28,7 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
       // 2. Inclusion Logic
       // A player is a "Free Agent" if they are in an international league (Euroleague/PBA)
       // OR if they are a standard NBA free agent (tid: -1 or status: 'Free Agent')
-      const isInternational = p.status === 'Euroleague' || p.status === 'PBA' || p.status === 'B-League';
+      const isInternational = ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || '');
       const isNBAFreeAgent = p.tid === -1 || p.status === 'Free Agent';
 
       return isInternational || isNBAFreeAgent;
@@ -115,7 +115,7 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
                                 <div className="text-sm font-bold truncate text-white">{player.name}</div>
                                 <div className="text-xs text-slate-500">
                                     {player.pos} • OVR: {convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp)}
-                                    {['Euroleague', 'PBA', 'B-League'].includes(player.status || '') && (
+                                    {['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(player.status || '') && (
                                         <span className="ml-1 text-indigo-400 font-bold tracking-tighter">• {player.status}</span>
                                     )}
                                 </div>

@@ -42,18 +42,53 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
   const isCelebrity = !!(game as any).isCelebrityGame;
   const isRisingStars = !!(game as any).isRisingStars;
   const isAllStar = !!(game as any).isAllStar;
+  const isIntrasquad = homeTeam.id === awayTeam.id;
 
-  const homeStarters = homeStartersOverride && homeStartersOverride.length > 0
-    ? homeStartersOverride.slice(0, 5)
-    : isCelebrity || isRisingStars || isAllStar
-      ? getPlayersForExhibitionTeam(game, true, state.allStar, players).slice(0, 5)
-      : StarterService.getProjectedStarters(homeTeam, players);
+  // For non-NBA (external) teams tid ≥ 100, StarterService's `status === 'Active'`
+  // filter produces an empty list. Fall back to top-5 by rating instead.
+  const getStarters = (team: NBATeam, isHome: boolean): NBAPlayer[] => {
+    if (isHome && homeStartersOverride && homeStartersOverride.length > 0)
+      return homeStartersOverride.slice(0, 5);
+    if (!isHome && awayStartersOverride && awayStartersOverride.length > 0)
+      return awayStartersOverride.slice(0, 5);
+    if (isCelebrity || isRisingStars || isAllStar)
+      return getPlayersForExhibitionTeam(game, isHome, state.allStar, players).slice(0, 5);
+    if (team.id >= 100) {
+      // External / non-NBA roster — pick 1C, 2F, 2G by position, sorted by overall
+      const roster = players
+        .filter(p => p.tid === team.id)
+        .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
+      const starters: NBAPlayer[] = [];
+      const used = new Set<string>();
+      const pickPos = (posTokens: string[], need: number) => {
+        for (const p of roster) {
+          if (need === 0) break;
+          if (used.has(p.internalId)) continue;
+          if (posTokens.some(tok => (p.pos ?? '').includes(tok))) {
+            starters.push(p); used.add(p.internalId); need--;
+          }
+        }
+        // fill gaps from remaining roster
+        for (const p of roster) {
+          if (need === 0) break;
+          if (!used.has(p.internalId)) { starters.push(p); used.add(p.internalId); need--; }
+        }
+      };
+      pickPos(['C'], 1);
+      pickPos(['F'], 2);
+      pickPos(['G'], 2);
+      // safety — shouldn't be needed but fill if still short
+      for (const p of roster) {
+        if (starters.length >= 5) break;
+        if (!used.has(p.internalId)) starters.push(p);
+      }
+      return starters;
+    }
+    return StarterService.getProjectedStarters(team, players);
+  };
 
-  const awayStarters = awayStartersOverride && awayStartersOverride.length > 0
-    ? awayStartersOverride.slice(0, 5)
-    : isCelebrity || isRisingStars || isAllStar
-      ? getPlayersForExhibitionTeam(game, false, state.allStar, players).slice(0, 5)
-      : StarterService.getProjectedStarters(awayTeam, players);
+  const homeStarters = getStarters(homeTeam, true);
+  const awayStarters = getStarters(awayTeam, false);
 
   const homeOvr = homeTeam.id < 0 ? 85 : calculateTeamStrength(homeTeam.id, players);
   const awayOvr = awayTeam.id < 0 ? 85 : calculateTeamStrength(awayTeam.id, players);
@@ -141,7 +176,7 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
           </div>
         </div>
 
-        {!isCelebrity ? (
+        {!isCelebrity && !isIntrasquad ? (
           <div className="w-full space-y-3">
             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 border-b border-white/10 pb-2">Projected Starters</h4>
             {starters.map((player) => {
@@ -149,11 +184,15 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
               const playerName = player.name ?? (player as any).playerName ?? 'Player';
               const playerId = player.internalId ?? (player as any).playerId ?? Math.random().toString();
               const nbaId = (player as any).nbaId || extractNbaId(player.imgURL || "", playerName);
+              // For external players with no NBA CDN ID, use imgURL directly
+              const portraitSrc = nbaId
+                ? getPlayerHeadshot(playerId, nbaId)
+                : (player.imgURL || getPlayerHeadshot(playerId, null));
               return (
                 <div key={playerId} className={`flex items-center gap-3 bg-white/5 p-2 rounded-xl border border-white/5 ${isHome ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className="w-10 h-10 rounded-full bg-slate-800 overflow-hidden flex-shrink-0 border border-white/10 relative">
                     <img
-                      src={getPlayerHeadshot(playerId, nbaId)}
+                      src={portraitSrc}
                       alt={playerName}
                       className="w-full h-full object-cover absolute inset-0"
                       onError={(e) => {
@@ -172,6 +211,11 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
                 </div>
               );
             })}
+          </div>
+        ) : isIntrasquad ? (
+          <div className="w-full mt-4 p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 text-center">
+            <div className="text-3xl mb-2">🏀</div>
+            <p className="text-slate-500 text-[10px] mt-1 uppercase tracking-widest">Intrasquad Scrimmage</p>
           </div>
         ) : (
           <div className="w-full mt-4 p-4 rounded-2xl bg-fuchsia-500/5 border border-fuchsia-500/20 text-center">
@@ -247,7 +291,7 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
             </div>
 
             {/* Rig Panel */}
-            {!isCelebrity && !isAllStar && !isRisingStars && (
+            {!isCelebrity && !isAllStar && !isRisingStars && !isIntrasquad && (
               <div className="px-6 md:px-12 pb-6">
                 {!showRigPanel ? (
                   <button

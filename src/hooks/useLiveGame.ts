@@ -30,7 +30,22 @@ export function useLiveGame(
   const [speed, setSpeed] = useState(160);
   const simulatedRef = useRef(false);
 
+  // Freeze players/overrides at init time so ADVANCE_DAY state updates don't
+  // restart the live game mid-playback. Only game identity triggers a reset.
+  const playersRef = useRef(players);
+  const homeOverrideRef = useRef(homeOverridePlayers);
+  const awayOverrideRef = useRef(awayOverridePlayers);
+
+  // Stable identity key — only regenerate when the actual game/teams change
+  const gameKey = `${game.gid}-${homeTeam?.id}-${awayTeam?.id}-${riggedForTid ?? ''}`;
+
   useEffect(() => {
+    console.log(`[useLiveGame] effect triggered — gameKey=${gameKey} hasPrecomputed=${!!precomputedResult} precomputedScore=${precomputedResult ? `${precomputedResult.homeScore}-${precomputedResult.awayScore}` : 'none'}`);
+
+    playersRef.current = players;
+    homeOverrideRef.current = homeOverridePlayers;
+    awayOverrideRef.current = awayOverridePlayers;
+
     simulatedRef.current = false;
     setCurrentIndex(-1);
     setPlays([]);
@@ -38,16 +53,20 @@ export function useLiveGame(
     setFinalResult(null);
     setBadgesLoaded(false);
 
+    const frozenPlayers = playersRef.current;
+    const frozenHome = homeOverrideRef.current;
+    const frozenAway = awayOverrideRef.current;
+
     loadBadges().then(async () => {
       if (simulatedRef.current) return;
       simulatedRef.current = true;
 
       try {
-        const result = precomputedResult ?? GameSimulator.simulateGame(homeTeam, awayTeam, players, game.gid, game.date, 50, homeOverridePlayers, awayOverridePlayers, undefined, undefined, riggedForTid);
+        const usedPrecomputed = !!precomputedResult;
+        const result = precomputedResult ?? GameSimulator.simulateGame(homeTeam, awayTeam, frozenPlayers, game.gid, game.date, 50, frozenHome, frozenAway, undefined, undefined, riggedForTid);
+        console.log(`[useLiveGame] ${usedPrecomputed ? '✅ using precomputed' : '🔄 fresh sim'} — home=${result.homeScore} away=${result.awayScore} gid=${result.gameId}`);
         setFinalResult(result);
         window.__finalResult = result;
-        console.log("Set window.__finalResult to:", result);
-        console.log('Raw result:', window.__finalResult);
         const qs = result.quarterScores;
         const otCount = result.otCount ?? 0;
 
@@ -56,7 +75,7 @@ export function useLiveGame(
           setPlays([]);
         } else {
           const generatedPlays = await genPlays(
-            result.homeStats, result.awayStats, players,
+            result.homeStats, result.awayStats, frozenPlayers,
             qs,
             otCount,
             result.gameWinner,
@@ -72,7 +91,8 @@ export function useLiveGame(
         setBadgesLoaded(true);
       }
     });
-  }, [game, homeTeam, awayTeam, players, homeOverridePlayers, awayOverridePlayers, riggedForTid, precomputedResult]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameKey, precomputedResult]);
 
   useEffect(() => {
     let timer: any;

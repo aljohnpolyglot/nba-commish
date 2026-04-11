@@ -16,15 +16,29 @@ export const AwardRacesView: React.FC = () => {
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
   const [coachPhotosLoaded, setCoachPhotosLoaded] = useState(false);
 
+  // Per-award "announced" flags — each award is announced on its own date
+  const seasonAwards = (state.historicalAwards ?? []).filter(a => a.season === state.leagueStats.year);
+  const announcedMap: Record<AwardTab, boolean> = {
+    coy:    seasonAwards.some(a => a.type === 'COY'),
+    smoy:   seasonAwards.some(a => a.type === 'SMOY'),
+    mip:    seasonAwards.some(a => a.type === 'MIP'),
+    dpoy:   seasonAwards.some(a => a.type === 'DPOY'),
+    roty:   seasonAwards.some(a => a.type === 'ROY'),
+    allNBA: seasonAwards.some(a => a.type === 'All-NBA First Team'),
+    mvp:    seasonAwards.some(a => a.type === 'MVP'),
+  };
+  const awardsAnnounced = announcedMap[selectedAward];
+
   useEffect(() => {
     fetchCoachData().then(() => setCoachPhotosLoaded(true));
   }, []);
 
   const races = useMemo(() => {
     return AwardService.calculateAwardRaces(
-      state.players, state.teams, state.leagueStats.year, state.staff
+      state.players, state.teams, state.leagueStats.year, state.staff,
+      state.leagueStats.minGamesRequirement
     );
-  }, [state.players, state.teams, state.leagueStats.year, state.staff]);
+  }, [state.players, state.teams, state.leagueStats.year, state.staff, state.leagueStats.minGamesRequirement]);
 
   const awardLabels: Record<AwardTab, { title: string; icon: React.ReactElement; desc: string }> = {
     mvp:    { title: 'Most Valuable Player',         icon: <Star className="text-yellow-400" />,   desc: 'The best player in the league' },
@@ -181,7 +195,9 @@ export const AwardRacesView: React.FC = () => {
             </div>
             {selectedAward !== 'allNBA' && (
               <div className="ml-auto hidden md:block text-right">
-                <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Favorite</span>
+                <span className={`text-xs font-bold uppercase tracking-widest ${awardsAnnounced ? 'text-amber-400' : 'text-indigo-400'}`}>
+                  {awardsAnnounced ? 'Winner' : 'Projected Winner'}
+                </span>
                 <div className="text-xl font-black text-white">
                   {selectedAward === 'coy'
                     ? races.coy[0]?.coachName

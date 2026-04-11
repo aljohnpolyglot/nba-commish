@@ -1,5 +1,5 @@
 import React from 'react';
-import { DollarSign, Info, Lock, Tv } from 'lucide-react';
+import { DollarSign, Info, Lock, Tv, TrendingUp } from 'lucide-react';
 import { useGame } from '../../../../store/GameContext';
 
 const InfoTooltip = ({ text }: { text: string }) => (
@@ -247,6 +247,64 @@ export const EconomyFinancesSection = ({ props }: { props: any }) => {
                     )}
                 </div>
             )}
+
+            {/* Cap Inflation Section */}
+            <div className="pt-4 border-t border-slate-800/50 space-y-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <TrendingUp size={13} className="text-emerald-400" />
+                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Cap Inflation</span>
+                        <InfoTooltip text="Each season at rollover, the salary cap and all thresholds inflate by a random % drawn from a normal distribution within the Min–Max range. Mimics real CBA revenue growth." />
+                    </div>
+                    <button
+                        onClick={() => props.setInflationEnabled(!props.inflationEnabled)}
+                        className={`w-8 h-4 rounded-full transition-all duration-200 relative ${props.inflationEnabled ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                    >
+                        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform duration-200 ${props.inflationEnabled ? 'left-4.5' : 'left-0.5'}`} />
+                    </button>
+                </div>
+                {props.inflationEnabled && (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Min %</span>
+                                <input type="number" min="0" max={props.inflationMax} step="0.5"
+                                    value={props.inflationMin}
+                                    onChange={e => props.setInflationMin(Math.max(0, parseFloat(e.target.value) || 0))}
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-xl text-white text-sm py-1.5 px-3 focus:outline-none focus:border-indigo-500"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Max %</span>
+                                <input type="number" min={props.inflationMin} max="20" step="0.5"
+                                    value={props.inflationMax}
+                                    onChange={e => props.setInflationMax(Math.max(props.inflationMin, parseFloat(e.target.value) || 0))}
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-xl text-white text-sm py-1.5 px-3 focus:outline-none focus:border-indigo-500"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Mean %</span>
+                                <input type="number" min={props.inflationMin} max={props.inflationMax} step="0.1"
+                                    value={props.inflationAverage}
+                                    onChange={e => props.setInflationAverage(parseFloat(e.target.value) || 0)}
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-xl text-white text-sm py-1.5 px-3 focus:outline-none focus:border-indigo-500"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Std Dev %</span>
+                                <input type="number" min="0" max="5" step="0.1"
+                                    value={props.inflationStdDev}
+                                    onChange={e => props.setInflationStdDev(Math.max(0, parseFloat(e.target.value) || 0))}
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-xl text-white text-sm py-1.5 px-3 focus:outline-none focus:border-indigo-500"
+                                />
+                            </div>
+                        </div>
+                        <p className="text-[9px] text-slate-500 italic">
+                            Each offseason cap inflates by ~{props.inflationAverage}% ± {props.inflationStdDev}%, between {props.inflationMin}%–{props.inflationMax}%. Affects cap, luxury tax, aprons, and min contract.
+                        </p>
+                    </div>
+                )}
+            </div>
 
             {/* Live threshold summary — always visible when salary cap is enabled */}
             {props.salaryCapEnabled && (

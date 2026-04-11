@@ -28,7 +28,7 @@ function enqueue<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 export function getPlayerImage(player: NBAPlayer): string | undefined {
-  const nbaId = extractNbaId(player.imgURL || "");
+  const nbaId = extractNbaId(player.imgURL || "", player.name);
   if (nbaId) return hdPortrait(nbaId);
   return player.imgURL && player.imgURL.trim() !== '' ? player.imgURL : undefined;
 }
@@ -156,7 +156,7 @@ export function prefetchPlayerBio(player: NBAPlayer): void {
 // player's stored notes and stats fields — no HTTP fetch required.
 // ─────────────────────────────────────────────────────────────────────────────
 export function getNonNBABioData(player: NBAPlayer): { bio: { pro: string; pre: string; per: string } } | null {
-  const NON_NBA = ['PBA', 'Euroleague', 'B-League', 'WNBA'];
+  const NON_NBA = ['PBA', 'Euroleague', 'B-League', 'WNBA', 'G-League', 'Endesa'];
   if (!NON_NBA.includes(player.status || '')) return null;
 
   const notes: string = (player as any).notes || '';

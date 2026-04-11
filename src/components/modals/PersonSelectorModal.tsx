@@ -273,7 +273,7 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
         let title = 'Player';
         let league = 'NBA';
         
-        const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'Draft Prospect', 'Prospect'].includes(p.status || '');
+        const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'Draft Prospect', 'Prospect'].includes(p.status || '');
         const playerTeam = isNBA ? teams.find(t => t.id === p.tid) : null;
         const nonNBATeam = !isNBA ? nonNBATeams.find(t => t.tid === p.tid && t.league === p.status) : null;
 
@@ -338,7 +338,7 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
   }, [state, actionType, refsLoaded]);
 
   const availableFilters = useMemo(() => {
-    const filters = ['All', 'NBA', 'Euroleague', 'PBA', 'B-League', 'WNBA', 'Draft Prospect', 'Owner', 'GM', 'Coach', 'Referee', 'Free Agent', 'Retired'];
+    const filters = ['All', 'NBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'WNBA', 'Draft Prospect', 'Owner', 'GM', 'Coach', 'Referee', 'Free Agent', 'Retired'];
     return filters.filter(filter => {
       if (filter === 'All') return true;
       if (actionType === 'endorse_hof' && ['Owner', 'GM', 'Coach', 'Referee'].includes(filter)) return false;

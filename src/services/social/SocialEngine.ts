@@ -1,5 +1,5 @@
 import { GameResult, PlayerGameStats } from '../simulation/StatGenerator';
-import { NBAPlayer, NBATeam, SocialPost } from '../../types';
+import { NBAPlayer, NBATeam, SocialPost, PlayoffBracket, Game } from '../../types';
 import { SOCIAL_HANDLES } from '../../data/social/handles';
 import { SOCIAL_TEMPLATES } from './SocialRegistry';
 import { SocialContext } from './types';
@@ -36,11 +36,13 @@ export class SocialEngine {
   constructor() {}
 
   async generateDailyPosts(
-    gameResults: GameResult[], 
-    players: NBAPlayer[], 
+    gameResults: GameResult[],
+    players: NBAPlayer[],
     teams: NBATeam[],
     date: string,
-    daysToSimulate: number = 1
+    daysToSimulate: number = 1,
+    playoffs?: PlayoffBracket | null,
+    schedule?: Game[]
   ): Promise<SocialPost[]> {
     const posts: SocialPost[] = [];
     const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
@@ -96,7 +98,7 @@ export class SocialEngine {
         if (result.injuries) {
             for (const injury of result.injuries) {
                 const player = players.find(p => p.internalId === injury.playerId);
-                if (!player || ['WNBA', 'Euroleague', 'PBA', 'B-League'].includes(player.status || '')) continue;
+                if (!player || ['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(player.status || '')) continue;
 
                 const team     = player.tid === homeTeam.id ? homeTeam : awayTeam;
                 const opponent = player.tid === homeTeam.id ? awayTeam : homeTeam;
@@ -106,6 +108,202 @@ export class SocialEngine {
                 }, usedTemplateIds, handlePlayerUsed, handlePostCount, avatars, multiplier);
             }
         }
+    }
+
+    // Playoff-specific social posts — fire when series context is available
+    if (playoffs && schedule) {
+      const avatars = await fetchAvatarData();
+      const playoffPosts = this.generatePlayoffPosts(gameResults, teams, players, date, playoffs, schedule, avatars, daysToSimulate);
+      posts.push(...playoffPosts);
+    }
+
+    return posts;
+  }
+
+  private generatePlayoffPosts(
+    gameResults: GameResult[],
+    teams: NBATeam[],
+    players: NBAPlayer[],
+    date: string,
+    playoffs: PlayoffBracket,
+    schedule: Game[],
+    avatars: any[],
+    daysToSimulate: number
+  ): SocialPost[] {
+    const posts: SocialPost[] = [];
+    const multiplier = daysToSimulate <= 1 ? 1.0 : Math.max(0.1, 1.0 / daysToSimulate);
+
+    const roundName = (round: number, conf?: 'East' | 'West'): string => {
+      if (round === 1) return conf ? `${conf}ern First Round` : 'First Round';
+      if (round === 2) return conf ? `${conf}ern Semifinals` : 'Semifinals';
+      if (round === 3) return conf ? `${conf}ern Conference Finals` : 'Conference Finals';
+      return 'NBA Finals';
+    };
+
+    const roundAbbr = (round: number): string => {
+      if (round === 1) return 'R1';
+      if (round === 2) return 'Semis';
+      if (round === 3) return 'Conf Finals';
+      return 'Finals';
+    };
+
+    const makePost = (handle: string, content: string, teamLogoUrl?: string, playerPortraitUrl?: string): SocialPost | null => {
+      const handleObj = Object.values(SOCIAL_HANDLES).find(h => h.id === handle);
+      if (!handleObj) return null;
+      const avatarUrl = getAvatarByHandle(handleObj.handle, avatars) || handleObj.avatarUrl;
+      const postDate = new Date(date);
+      postDate.setHours(20 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60));
+      return {
+        id: crypto.randomUUID(),
+        author: handleObj.name,
+        handle: `@${handleObj.handle}`,
+        avatarUrl,
+        content,
+        likes: Math.floor(Math.random() * 8000) + 500,
+        retweets: Math.floor(Math.random() * 2000) + 100,
+        date: postDate.toISOString(),
+        source: 'TwitterX',
+        category: 'GAME_EVENT',
+        data: {},
+        teamLogoUrl,
+        playerPortraitUrl,
+        isNew: true,
+      };
+    };
+
+    for (const result of gameResults) {
+      const schedGame = schedule.find(g => g.gid === result.gameId);
+      if (!schedGame?.isPlayoff || !schedGame.playoffSeriesId) continue;
+
+      const series = playoffs.series.find(s => s.id === schedGame.playoffSeriesId);
+      if (!series) continue;
+
+      const winner = teams.find(t => t.id === result.winnerId);
+      const loser  = teams.find(t => t.id === (result.homeTeamId === result.winnerId ? result.awayTeamId : result.homeTeamId));
+      if (!winner || !loser) continue;
+
+      const higherSeedTeam = teams.find(t => t.id === series.higherSeedTid);
+      const lowerSeedTeam  = teams.find(t => t.id === series.lowerSeedTid);
+      if (!higherSeedTeam || !lowerSeedTeam) continue;
+
+      const higherWins = series.higherSeedWins;
+      const lowerWins  = series.lowerSeedWins;
+      const totalGames = higherWins + lowerWins;
+      const winsNeeded = Math.ceil(series.gamesNeeded / 2);
+      const isComplete = series.status === 'complete';
+      const conf = series.round < 4
+        ? (higherSeedTeam as any).conference === 'East' ? 'East' : 'West'
+        : undefined;
+      const rName = roundName(series.round, conf as any);
+      const rAbbr = roundAbbr(series.round);
+
+      // Series leader context
+      const leaderTeam = higherWins > lowerWins ? higherSeedTeam
+        : lowerWins > higherWins ? lowerSeedTeam
+        : null; // tied
+      const leaderWins = Math.max(higherWins, lowerWins);
+      const trailerWins = Math.min(higherWins, lowerWins);
+
+      // Top performer
+      const allStats = [...result.homeStats, ...result.awayStats]
+        .sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0));
+      const topStat = allStats[0];
+      const topPlayer = topStat ? players.find(p => p.internalId === topStat.playerId) : null;
+
+      if (isComplete) {
+        // ── Series clinching posts ────────────────────────────────────────────
+        if (Math.random() < 0.85 * multiplier) {
+          const advanceMsg = series.round < 4
+            ? `FINAL | Game ${totalGames}\n\n${winner.name} ${result.homeTeamId === winner.id ? result.homeScore : result.awayScore} – ${result.homeTeamId === loser.id ? result.homeScore : result.awayScore} ${loser.name}\n\n${winner.abbrev} advance to the ${roundName(series.round + 1)}! Series: ${higherSeedTeam.id === winner.id ? `${higherWins}-${lowerWins}` : `${lowerWins}-${higherWins}`}`
+            : `FINAL | Game ${totalGames}\n\n${winner.name} ${result.homeTeamId === winner.id ? result.homeScore : result.awayScore} – ${result.homeTeamId === loser.id ? result.homeScore : result.awayScore} ${loser.name}\n\n🏆 ${winner.abbrev} ARE YOUR ${new Date(date).getFullYear()} NBA CHAMPIONS!`;
+          const p = makePost('nba_official', advanceMsg, winner.logoUrl);
+          if (p) posts.push(p);
+        }
+
+        if (Math.random() < 0.75 * multiplier) {
+          const reactions = series.round === 4
+            ? [
+                `${winner.abbrev} WIN THE CHAMPIONSHIP 🏆🏆🏆`,
+                `IT'S OVER. ${winner.name.toUpperCase()} ARE CHAMPIONS.`,
+                `${winner.abbrev} in ${totalGames}. NBA Finals champions.`,
+              ]
+            : [
+                `${winner.abbrev} advance. ${loser.abbrev} eliminated. ${rAbbr} done.`,
+                `${winner.name} move on — ${loser.name} go home.`,
+                `Series over in ${totalGames} games. ${winner.abbrev} onto the next round.`,
+                `${winner.abbrev} punch their ticket. ${loser.abbrev} season is over.`,
+              ];
+          const content = reactions[Math.floor(Math.random() * reactions.length)];
+          const p = makePost('nba_central', content, winner.logoUrl);
+          if (p) posts.push(p);
+        }
+
+        if (topPlayer && Math.random() < 0.65 * multiplier) {
+          const lines = [
+            `${topPlayer.name} in the ${rAbbr}: ${topStat.pts}/${topStat.reb}/${topStat.ast}. What a series.`,
+            `${topPlayer.name} closes out the series with ${topStat.pts} points. ${winner.abbrev} advance.`,
+            `Playoff ${topPlayer.name}: ${topStat.pts}pts, ${topStat.reb}reb, ${topStat.ast}ast in Game ${totalGames}.`,
+          ];
+          const p = makePost('legion_hoops', lines[Math.floor(Math.random() * lines.length)], undefined, topPlayer.imgURL);
+          if (p) posts.push(p);
+        }
+
+      } else {
+        // ── In-series game posts ─────────────────────────────────────────────
+        if (Math.random() < 0.7 * multiplier) {
+          const scoreLine = `${winner.name} ${result.homeTeamId === winner.id ? result.homeScore : result.awayScore} – ${result.homeTeamId === loser.id ? result.homeScore : result.awayScore} ${loser.name}`;
+          const seriesLine = leaderTeam
+            ? `${leaderTeam.abbrev} lead ${leaderWins}-${trailerWins}`
+            : `Series tied ${higherWins}-${lowerWins}`;
+          const content = `FINAL | ${rName} — Game ${totalGames}\n\n${scoreLine}\n\n${seriesLine}`;
+          const p = makePost('nba_official', content, winner.logoUrl);
+          if (p) posts.push(p);
+        }
+
+        if (Math.random() < 0.6 * multiplier) {
+          const reactions = leaderTeam ? [
+            `${leaderTeam.abbrev} now lead ${leaderWins}-${trailerWins} in the ${rAbbr}.`,
+            `${leaderTeam.abbrev} ${leaderWins}-${trailerWins} in the series. In control.`,
+            `${leaderTeam.abbrev} taking control. ${leaderWins}-${trailerWins}.`,
+            leaderWins === winsNeeded - 1
+              ? `${leaderTeam.abbrev} one win away from advancing. ${leaderWins}-${trailerWins}.`
+              : `${leaderTeam.abbrev} lead ${leaderWins}-${trailerWins}. ${winsNeeded - leaderWins} more to advance.`,
+          ] : [
+            `${higherSeedTeam.abbrev} vs ${lowerSeedTeam.abbrev} is tied ${higherWins}-${lowerWins}. Anyone's series.`,
+            `All square. ${rAbbr} is tied at ${higherWins}-${lowerWins}.`,
+            `Tied ${higherWins} apiece. The ${rAbbr} just got interesting.`,
+          ];
+          const content = reactions[Math.floor(Math.random() * reactions.length)];
+          const p = makePost('nba_central', content, leaderTeam?.logoUrl ?? winner.logoUrl);
+          if (p) posts.push(p);
+        }
+
+        if (topPlayer && topStat && topStat.pts >= 25 && Math.random() < 0.6 * multiplier) {
+          const lines = [
+            `${topPlayer.name} tonight in Game ${totalGames}: ${topStat.pts}/${topStat.reb}/${topStat.ast}`,
+            `Playoff ${topPlayer.name}: ${topStat.pts} points. ${winner.abbrev} win.`,
+            `${topStat.pts}/${topStat.reb}/${topStat.ast} from ${topPlayer.name}. Playoff mode is different.`,
+            `Game ${totalGames} goes to ${winner.abbrev}. ${topPlayer.name} had ${topStat.pts}/${topStat.reb}/${topStat.ast}.`,
+          ];
+          const p = makePost('legion_hoops', lines[Math.floor(Math.random() * lines.length)], undefined, topPlayer.imgURL);
+          if (p) posts.push(p);
+        }
+
+        // Shoutout for must-win / down 3-0 / up 3-0 situations
+        if (Math.random() < 0.5 * multiplier) {
+          const loserWinsInSeries = higherSeedTeam.id === loser.id ? higherWins : lowerWins;
+          const winnerWinsInSeries = higherSeedTeam.id === winner.id ? higherWins : lowerWins;
+          if (loserWinsInSeries === 0 && winnerWinsInSeries === winsNeeded - 1) {
+            const dramatic = [
+              `${loser.abbrev} need a miracle. Down ${winnerWinsInSeries}-0.`,
+              `${loser.abbrev} haven't won yet. ${winnerWinsInSeries}-0 series.`,
+              `${winner.abbrev} one away. ${loser.abbrev} backs against the wall.`,
+            ];
+            const p = makePost('hoop_central', dramatic[Math.floor(Math.random() * dramatic.length)], loser.logoUrl);
+            if (p) posts.push(p);
+          }
+        }
+      }
     }
 
     return posts;

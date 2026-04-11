@@ -145,6 +145,16 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   rookieRestrictedFreeAgentEligibility: true,
   rookieContractCapException: true,
 
+  // Economy - Cap Inflation
+  inflationEnabled: true,
+  inflationMin: 0,
+  inflationMax: 8,
+  inflationAverage: 3.5,
+  inflationStdDev: 1.5,
+
+  // Economy - Draft Picks
+  tradableDraftPickSeasons: 7,
+
   // Honors
   allNbaTeams: 3,
   allNbaPlayersPerTeam: 5,

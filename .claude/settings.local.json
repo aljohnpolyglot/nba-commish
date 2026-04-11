@@ -51,7 +51,16 @@
       "Bash(echo \"---EXIT $?---\")",
       "Bash(npm run:*)",
       "Bash(rm:*)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(python3:*)",
+      "Bash(node:*)",
+      "Bash(sed:*)",
+      "Bash(cat vite.config.ts)",
+      "Bash(cat vite.config.js)",
+      "Bash(gh api:*)",
+      "Bash(powershell -Command \"\\(Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/gleagueratings'\\).Content.Substring\\(0,200\\)\")",
+      "Bash(powershell -Command ':*)",
+      "Bash(powershell:*)"
     ]
   }
 }

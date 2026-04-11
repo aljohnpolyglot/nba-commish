@@ -1,5 +1,6 @@
 import { SocialTemplate, SocialContext } from '../types';
-import { isTripleDouble, isDoubleDouble, is5x5, getCurrentSeasonStats, get2KRating } from '../helpers';
+import { isTripleDouble, isDoubleDouble, is5x5, getCurrentSeasonStats, get2KRating, getCareerHigh } from '../helpers';
+import { TEAM_HANDLES } from '../../../data/teamHandles';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITIES
@@ -23,6 +24,31 @@ function otSuffix(ctx: SocialContext): string {
     const count = ctx.game.otCount ?? 1;
     if (count === 1) return ' (OT)';
     return ` (${count}OT)`;
+}
+
+/** Top N performers from the winning team, sorted by gameScore */
+function getWinnerTopPerformers(ctx: SocialContext, n = 4) {
+    if (!ctx.game) return [];
+    const winnerId = ctx.game.winnerId;
+    const winnerStats = ctx.game.homeTeamId === winnerId
+        ? ctx.game.homeStats
+        : ctx.game.awayStats;
+    if (!winnerStats?.length) return [];
+    return [...winnerStats]
+        .sort((a, b) => b.gameScore - a.gameScore)
+        .slice(0, n);
+}
+
+/** Format a stat line for the FINAL SCORES multi-player template: "Name: 28 PTS, 9 REB, 3 3PM" */
+function formatFinalScoresLine(name: string, s: any, careerHighFlag = false): string {
+    const parts: string[] = [`${s.pts} PTS`];
+    if (s.reb >= 6)     parts.push(`${s.reb} REB`);
+    if (s.ast >= 5)     parts.push(`${s.ast} AST`);
+    if (s.threePm >= 3) parts.push(`${s.threePm} 3PM`);
+    if (s.stl >= 3)     parts.push(`${s.stl} STL`);
+    if (s.blk >= 3)     parts.push(`${s.blk} BLK`);
+    const chFlag = careerHighFlag ? ' 🔥 (Career High)' : '';
+    return `${name}: ${parts.join(', ')}${chFlag}`;
 }
 
 /** Top performer from the winning team */
@@ -435,6 +461,117 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
 
             return {
                 content: `FINAL: Rising Stars — ${winner}-${loser} 🌟\n\nThe future of the NBA is bright.\n\n${topPlayer?.name ?? ''}: ${topStat ? formatStatline(topStat) : ''}\n\n${tags}`,
+            };
+        },
+    },
+
+    // ── MULTI-PLAYER FINAL SCORES ─────────────────────────────────────────────
+    // "🏀 TUESDAY'S FINAL SCORES 🏀" style post with 3-4 top performers
+    // Only fires once per game (home team context), not during All-Star
+    {
+        id: 'nba_final_scores_multi',
+        handle: 'nba_official',
+        template: 'DYNAMIC',
+        priority: 85,
+        type: 'general',
+        condition: (ctx: SocialContext) =>
+            !!(ctx.game &&
+               !ctx.player &&
+               !ctx.game.isAllStar &&
+               !ctx.game.isRisingStars &&
+               ctx.team?.id === ctx.game.homeTeamId),   // fires once per game (home ctx only)
+        resolve: (_: string, ctx: SocialContext) => {
+            const { winner, loser, winName, loseName } = scores(ctx);
+            const ot      = otSuffix(ctx);
+            const day     = ctx.dayOfWeek?.toUpperCase() ?? 'TONIGHT\'S';
+            const tag     = '#NBA';
+
+            // Win streak headline
+            const winnerId = ctx.game.winnerId;
+            const winTeam  = ctx.teams?.find((t: any) => t.id === winnerId);
+            const streak   = winTeam?.streak;
+            const streakStr = (streak?.type === 'W' && streak.count >= 3)
+                ? ` — ${winTeam?.abbrev ?? winName} win their ${streak.count}th straight!`
+                : '';
+
+            // Build per-performer lines (top 3-4 from winner)
+            const topStats = getWinnerTopPerformers(ctx, 4);
+            const lines: string[] = [];
+            for (const s of topStats) {
+                if (s.pts < 10) continue; // skip bench scrubs
+                const p = findPlayer(ctx, s.playerId);
+                if (!p) continue;
+                const careerHigh = getCareerHigh(p, 'pts');
+                const isCareerHigh = s.pts >= 30 && s.pts > careerHigh;
+                lines.push(formatFinalScoresLine(p.name, s, isCareerHigh));
+            }
+            if (lines.length === 0) return { content: '', data: null }; // safety valve
+
+            // Headline: top performer + streak callout
+            const topP = findPlayer(ctx, topStats[0].playerId);
+            const winHandle = winTeam ? (TEAM_HANDLES[winTeam.name] ?? `@${winTeam.abbrev}`) : winName;
+            const headline = `${topP?.name ?? winName} and the ${winHandle} win${streakStr}`;
+
+            const content = [
+                `🏀 ${day}'S FINAL SCORES 🏀`,
+                ``,
+                `${winName} def. ${loseName}, ${winner}-${loser}${ot}`,
+                ``,
+                headline,
+                ``,
+                ...lines,
+                ``,
+                tag,
+            ].join('\n');
+
+            return {
+                content,
+                data: buildGameData(ctx),
+            };
+        },
+    },
+
+    // ── PLAYOFF / SEEDING CLINCH ──────────────────────────────────────────────
+    // "With their win tonight… the [Team] clinch a [Conference] top-[N] seed"
+    {
+        id: 'nba_clinch_seeding',
+        handle: 'nba_official',
+        template: 'DYNAMIC',
+        priority: 102,
+        type: 'general',
+        condition: (ctx: SocialContext) =>
+            !!(ctx.game &&
+               !ctx.player &&
+               ctx.team?.id === ctx.game.winnerId &&
+               ctx.team?.clinchedPlayoffs &&
+               ctx.team.clinchedPlayoffs !== 'o'),
+        resolve: (_: string, ctx: SocialContext) => {
+            const team      = ctx.team!;
+            const clinch    = team.clinchedPlayoffs;
+            const tag       = '#NBA';
+            const { winner, loser, winName, loseName } = scores(ctx);
+            const ot        = otSuffix(ctx);
+
+            // Describe what was clinched
+            let clinchDesc = 'a playoff berth';
+            if      (clinch === 'z') clinchDesc = 'the #1 seed';
+            else if (clinch === 'y') clinchDesc = 'a top-2 seed';
+            else if (clinch === 'x') clinchDesc = 'a playoff spot';
+            else if (clinch === 'w') clinchDesc = 'a play-in spot';
+
+            // Opponent mention
+            const opp = ctx.opponent;
+            const oppStr = opp ? ` and the ${opp.name} loss` : '';
+
+            const variants = [
+                `With their win tonight${oppStr}, the ${winName} clinch ${clinchDesc}! 🎉\n\nFINAL: ${winName} ${winner}, ${loseName} ${loser}${ot}\n\n${tag}`,
+                `OFFICIAL: The ${winName} have clinched ${clinchDesc}! 🎉\n\n${winner}-${loser}${ot} vs. ${loseName}\n\n${tag}`,
+                `The ${winName} are IN. ${winName} clinch ${clinchDesc} with a ${winner}-${loser}${ot} win over the ${loseName}.\n\n${tag}`,
+            ];
+
+            return {
+                content: variants[Math.floor(Math.random() * variants.length)],
+                data: buildGameData(ctx),
             };
         },
     },

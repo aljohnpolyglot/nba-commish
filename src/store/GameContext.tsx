@@ -6,10 +6,6 @@ import { initialState } from './initialState';
 import { sendChatMessage } from '../services/llm/llm';
 import { prefetchPlayerBio } from '../components/central/view/bioCache';
 import { SettingsManager } from '../services/SettingsManager';
-import { loadArenas } from '../utils/arenaData';
-
-// Pre-warm arena data cache at module load time
-loadArenas();
 
 interface GameContextType {
   state: GameState;
@@ -35,12 +31,7 @@ interface GameContextType {
   setPendingStatSort: (sort: { type: 'player' | 'team'; field: string; order: 'asc' | 'desc' } | null) => void;
   placeBet: (bet: { type: Bet['type']; wager: number; potentialPayout: number; legs: BetLeg[] }) => void;
   updatePlayerRatings: (playerId: string, season: number, ratings: Record<string, number>) => void;
-  updateProfile: (profile: Partial<import('../types').UserProfile>) => void;
   healPlayer: (playerId: string) => void;
-  addPost: (post: import('../types').SocialPost) => void;
-  addReply: (postId: string, reply: import('../types').SocialPost) => void;
-  generateReplies: (postId: string) => Promise<void>;
-  isGeneratingReplies: Record<string, boolean>;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -57,7 +48,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     stateRef.current = state;
   }, [state]);
 
-  const actions = useGameActions(setState, () => stateRef.current);
+const actions = useGameActions(setState, () => stateRef.current);
 
   const navigateToTeam = (teamId: number) => {
     setSelectedTeamId(teamId);
@@ -75,52 +66,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Social-only actions — never advance the game day
-    if (action.type === 'UPDATE_USER_PROFILE') {
-      setState(prev => ({
-        ...prev,
-        userProfile: { ...(prev.userProfile || {}), ...(action as any).payload },
-      }));
-      return;
-    }
-
-    if (action.type === 'ADD_USER_POST') {
-      setState(prev => ({
-        ...prev,
-        socialFeed: [(action as any).payload, ...prev.socialFeed],
-      }));
-      return;
-    }
-
-    if (action.type === 'CACHE_PROFILE') {
-      const { handle, profile } = (action as any).payload;
-      setState(prev => ({
-        ...prev,
-        cachedProfiles: {
-          ...(prev.cachedProfiles || {}),
-          [handle.replace('@', '')]: profile,
-        },
-      }));
-      return;
-    }
-
     if (action.type === 'SAVE_SOCIAL_THREAD') {
       actions.saveSocialThread(action.payload.postId, action.payload.replies);
-      return;
-    }
-
-    if (action.type === 'ADD_REPLIES') {
-      const { replies } = (action as any).payload;
-      setState(prev => {
-        const ids = new Set(prev.socialFeed.map((p: any) => p.id));
-        const unique = replies.filter((r: any) => !ids.has(r.id));
-        return { ...prev, socialFeed: [...prev.socialFeed, ...unique] };
-      });
-      return;
-    }
-
-    if (action.type === 'SET_FEED') {
-      setState(prev => ({ ...prev, socialFeed: (action as any).payload }));
       return;
     }
 
@@ -300,6 +247,56 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         ...action.payload,
         isProcessing: false
       });
+      return;
+    }
+    if (action.type === 'UPDATE_STATE') {
+      setState(prev => ({ ...prev, ...action.payload }));
+      return;
+    }
+
+    // ── Social-only actions — pure state patches, never run the simulation ──
+    if (action.type === 'CACHE_PROFILE') {
+      const { handle, profile } = (action as any).payload;
+      setState(prev => ({
+        ...prev,
+        cachedProfiles: { ...(prev.cachedProfiles || {}), [handle.replace('@', '')]: profile },
+      }));
+      return;
+    }
+    if (action.type === 'TOGGLE_LIKE') {
+      const id = (action as any).payload;
+      setState(prev => ({
+        ...prev,
+        socialFeed: prev.socialFeed.map((p: any) =>
+          p.id === id ? { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 } : p
+        ),
+      }));
+      return;
+    }
+    if (action.type === 'TOGGLE_RETWEET') {
+      const id = (action as any).payload;
+      setState(prev => ({
+        ...prev,
+        socialFeed: prev.socialFeed.map((p: any) =>
+          p.id === id ? { ...p, isRetweeted: !p.isRetweeted, retweets: p.isRetweeted ? p.retweets - 1 : p.retweets + 1 } : p
+        ),
+      }));
+      return;
+    }
+    if (action.type === 'ADD_POST') {
+      setState(prev => ({ ...prev, socialFeed: [(action as any).payload, ...prev.socialFeed] }));
+      return;
+    }
+    if (action.type === 'ADD_REPLY' || action.type === 'ADD_REPLIES') {
+      const { replies, reply } = (action as any).payload;
+      const newPosts: any[] = replies ?? (reply ? [reply] : []);
+      if (newPosts.length > 0) {
+        setState(prev => {
+          const existingIds = new Set(prev.socialFeed.map((p: any) => p.id));
+          const unique = newPosts.filter((p: any) => !existingIds.has(p.id));
+          return unique.length > 0 ? { ...prev, socialFeed: [...prev.socialFeed, ...unique] } : prev;
+        });
+      }
       return;
     }
 
@@ -552,25 +549,25 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         isProcessing: false,
       }));
 
-      // Phase 2 (background — silent patch inbox/news/social)
-      setTimeout(() => {
-        setState(prev => {
-          // Merge new chats with existing — don't overwrite if patch is empty
-          const patchChats = newStatePatch.chats;
-          const mergedChats = patchChats && patchChats.length > 0
-            ? patchChats
-            : prev.chats;
-          return {
-            ...prev,
-            inbox: (newStatePatch.inbox ?? []).length > 0 ? newStatePatch.inbox : prev.inbox,
-            news: (newStatePatch.news ?? []).length > 0 ? newStatePatch.news : prev.news,
-            socialFeed: (newStatePatch.socialFeed ?? []).length > 0
-              ? newStatePatch.socialFeed
-              : prev.socialFeed,
-            chats: mergedChats,
-          };
-        });
-      }, 100);
+        // Phase 2 (background — silent patch inbox/news/social)
+        setTimeout(() => {
+          setState(prev => {
+            // Merge new chats with existing — don't overwrite if patch is empty
+            const patchChats = newStatePatch.chats;
+            const mergedChats = patchChats && patchChats.length > 0
+              ? patchChats
+              : prev.chats;
+            return {
+              ...prev,
+              inbox: (newStatePatch.inbox ?? []).length > 0 ? newStatePatch.inbox! : prev.inbox,
+              news: (newStatePatch.news ?? []).length > 0 ? newStatePatch.news! : prev.news,
+              socialFeed: (newStatePatch.socialFeed ?? []).length > 0
+                ? newStatePatch.socialFeed!
+                : prev.socialFeed,
+              chats: mergedChats,
+            };
+          });
+        }, 100);
 
       // Phase 3 — fire generateLeaguePulse in background
       // Only for ADVANCE_DAY and similar non-action turns

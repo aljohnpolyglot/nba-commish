@@ -23,12 +23,8 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionCl
     statusLabel = 'Draft Prospect';
   } else if (player.status === 'WNBA') {
     statusLabel = 'WNBA';
-  } else if (player.status === 'Euroleague') {
-    statusLabel = 'Euroleague';
-  } else if (player.status === 'PBA') {
-    statusLabel = 'PBA';
-  } else if (player.status === 'B-League') {
-    statusLabel = 'B-League';
+  } else if (['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(player.status || '')) {
+    statusLabel = player.status!;
   }
 
   // Handle image source safely

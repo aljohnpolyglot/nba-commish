@@ -1,18 +1,14 @@
 import { useMemo } from 'react';
 
 /**
- * League display-scale multipliers — mirror the sim multipliers in
- * StatGenerator/helpers.ts getScaledRating().
+ * League display-scale multipliers.
  *
- * B-League is stored at 0.85× already (scaled during fetch), so we apply
- * the sim multiplier (0.68×) on top for a total effective 0.578×.
- * Euroleague and PBA are stored at raw BBGM, so we apply their full multiplier.
+ * All external league attributes are pre-scaled at fetch time via scaleRatings()
+ * in externalRosterService.ts. Stored ratings already reflect league strength,
+ * so no additional multiplier is needed here — this map is intentionally empty.
+ * Kept as an exported constant for any consumer that references it.
  */
-export const LEAGUE_DISPLAY_MULTIPLIERS: Record<string, number> = {
-  Euroleague: 0.733,
-  PBA:        0.62,
-  'B-League': 0.68,
-};
+export const LEAGUE_DISPLAY_MULTIPLIERS: Record<string, number> = {};
 
 const SKIP_KEYS = new Set(['hgt', 'season', 'ovr', 'pot', 'fuzz', 'injuryIndex', 'skills', 'jerseyNumber']);
 

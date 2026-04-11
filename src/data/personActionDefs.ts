@@ -72,7 +72,7 @@ const ALL_STAFF: StaffType[] = ['gm', 'owner', 'coach', 'referee', 'league_offic
 const STAFF_NO_OWNER: StaffType[] = ['gm', 'coach', 'referee', 'league_office'];
 
 const PERSONAL_STATUSES: Array<NonNullable<NBAPlayer['status']>> = [
-  'Active', 'Free Agent', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'Retired',
+  'Active', 'Free Agent', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'Retired',
 ];
 
 const ACTIVE_NBA_ONLY: Array<NonNullable<NBAPlayer['status']>> = ['Active'];
@@ -90,7 +90,7 @@ export function isPlayerEligible(player: NBAPlayer, eligibility: PersonEligibili
 
   if (eligibility.requireFreeAgentOrInternational) {
     const freeOrInt: Array<NonNullable<NBAPlayer['status']>> = [
-      'Free Agent', 'Euroleague', 'PBA', 'B-League',
+      'Free Agent', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa',
     ];
     return (player.tid === -1) || freeOrInt.includes(player.status as any);
   }
@@ -135,7 +135,7 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
     color: 'bg-violet-500',
     hover: 'hover:bg-violet-600',
     eligibility: {
-      playerStatuses: ['Active', 'Free Agent', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'Retired'],
+      playerStatuses: ['Active', 'Free Agent', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'Retired'],
     },
   },
   {

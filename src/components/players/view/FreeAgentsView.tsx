@@ -18,6 +18,8 @@ const MARKET_POOLS = [
   { id: 'euroleague', label: 'Euroleague', icon: Trophy },
   { id: 'pba', label: 'PBA', icon: Trophy },
   { id: 'bleague', label: 'B-League', icon: Trophy },
+  { id: 'gleague', label: 'G-League', icon: Trophy },
+  { id: 'endesa', label: 'Endesa', icon: Trophy },
 ];
 
 const POSITIONS = ['All', 'PG', 'SG', 'SF', 'PF', 'C'];
@@ -45,16 +47,23 @@ export const FreeAgentsView: React.FC = () => {
   const [contactModalPerson, setContactModalPerson] = useState<any>(null);
 
   const freeAgents = useMemo(() => {
+    const currentYear = new Date(state.date || Date.now()).getFullYear();
     return state.players.filter(p => {
       if (p.status === 'Retired' || p.hof || p.tid === -100) return false;
       if (p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect') return false;
 
-      const isInternational = p.status === 'Euroleague' || p.status === 'PBA' || p.status === 'B-League';
+      const isInternational = ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || '');
       const isNBAFreeAgent = p.tid === -1 || p.status === 'Free Agent';
 
-      return isInternational || isNBAFreeAgent;
+      if (!isInternational && !isNBAFreeAgent) return false;
+
+      // Hide under-19s from the free agent market (international prospects not yet draft-eligible)
+      const age = p.born?.year ? currentYear - p.born.year : (p.age ?? 99);
+      if (age < 19) return false;
+
+      return true;
     });
-  }, [state.players]);
+  }, [state.players, state.date]);
 
   // All unique countries from the current free agent pool
   const allCountries = useMemo(() => {
@@ -69,7 +78,7 @@ export const FreeAgentsView: React.FC = () => {
   // Teams available for the selected non-NBA league
   const leagueTeams = useMemo(() => {
     if (selectedPool === 'all' || selectedPool === 'nba') return [];
-    const leagueMap: Record<string, string> = { euroleague: 'Euroleague', pba: 'PBA', bleague: 'B-League' };
+    const leagueMap: Record<string, string> = { euroleague: 'Euroleague', pba: 'PBA', bleague: 'B-League', gleague: 'G-League', endesa: 'Endesa' };
     const league = leagueMap[selectedPool];
     if (!league) return [];
     return state.nonNBATeams.filter(t => t.league === league);
@@ -84,6 +93,8 @@ export const FreeAgentsView: React.FC = () => {
         if (selectedPool === 'euroleague' && p.status !== 'Euroleague') return false;
         if (selectedPool === 'pba' && p.status !== 'PBA') return false;
         if (selectedPool === 'bleague' && p.status !== 'B-League') return false;
+        if (selectedPool === 'gleague' && p.status !== 'G-League') return false;
+        if (selectedPool === 'endesa' && p.status !== 'Endesa') return false;
       }
 
       if (selectedPosition !== 'All') {
@@ -132,7 +143,7 @@ export const FreeAgentsView: React.FC = () => {
   }, [freeAgents, searchTerm, selectedPool, selectedPosition, sortBy, sortOrder, selectedCountry, selectedTeamId]);
 
   const getContactFromPlayer = (player: NBAPlayer) => {
-    const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League'].includes(player.status || '');
+    const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(player.status || '');
     const playerTeam = isNBA ? state.teams.find(t => t.id === player.tid) : null;
     const nonNBATeam = !isNBA ? state.nonNBATeams?.find((t: any) => t.tid === player.tid) : null;
     return {
@@ -240,7 +251,7 @@ export const FreeAgentsView: React.FC = () => {
   };
 
   const nbaFreeAgents = freeAgents.filter(p => p.status === 'Free Agent' || p.tid === -1).length;
-  const internationalPlayers = freeAgents.filter(p => ['Euroleague', 'PBA', 'B-League'].includes(p.status || '')).length;
+  const internationalPlayers = freeAgents.filter(p => ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || '')).length;
 
   if (viewingBioPlayer) {
     return (

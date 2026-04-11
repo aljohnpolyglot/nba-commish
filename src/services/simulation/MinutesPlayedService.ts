@@ -207,7 +207,20 @@ export class MinutesPlayedService {
   ): RotationResult {
     const roster  = overridePlayers ?? players.filter(p => p.tid === team.id);
     const healthy = roster.filter(p => !p.injury || p.injury.gamesRemaining <= 0);
-    const pool    = healthy.length >= 5 ? healthy : roster.slice(0, Math.max(5, roster.length));
+    let pool      = healthy.length >= 5 ? healthy : roster.slice(0, Math.max(5, roster.length));
+
+    // Next-man-up: if short-handed (< 8 healthy bodies), pull the next available player
+    // from the team's own roster — least-injured first (day-to-day before long-term).
+    // Mirrors NBA "next man up" culture: the 9th/10th guy steps in, not a FA signing.
+    const MIN_ROTATION = 8;
+    if (pool.length < MIN_ROTATION) {
+      const alreadyIn = new Set(pool.map(p => p.internalId));
+      const callups = roster
+        .filter(p => !alreadyIn.has(p.internalId))
+        .sort((a, b) => (a.injury?.gamesRemaining ?? 0) - (b.injury?.gamesRemaining ?? 0))
+        .slice(0, MIN_ROTATION - pool.length);
+      pool = [...pool, ...callups];
+    }
 
     // ── Depth calculation (standings + health + context + age) ──────────────
     const { baseDepth, starMpg: baseMpg }  = standingsProfile(conferenceRank, gbFromLeader, gamesRemaining);

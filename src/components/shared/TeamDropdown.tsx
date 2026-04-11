@@ -73,7 +73,7 @@ export const TeamDropdown: React.FC<TeamDropdownProps> = ({
                             <img src={t.logoUrl} alt="" className="w-8 h-8 object-contain" />
                             <div className="text-left truncate">
                               <div className="text-sm font-black uppercase tracking-tight truncate">{t.abbrev}</div>
-                              <div className="text-[10px] font-bold text-slate-500 truncate">{t.region} {t.name}</div>
+                              <div className="text-[10px] font-bold text-slate-500 truncate">{t.name}</div>
                             </div>
                           </div>
                           <div className="text-xs font-mono font-black text-slate-400">

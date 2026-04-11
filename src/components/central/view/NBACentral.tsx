@@ -115,7 +115,7 @@ export const NBACentral: React.FC = () => {
   };
 
   const getContactFromPlayer = (player: NBAPlayer): Contact => {
-    const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League'].includes(player.status || '');
+    const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(player.status || '');
     const playerTeam = isNBA ? state.teams.find(t => t.id === player.tid) : null;
     const nonNBATeam = !isNBA ? state.nonNBATeams.find(t => t.tid === player.tid && t.league === player.status) : null;
     
@@ -126,14 +126,8 @@ export const NBACentral: React.FC = () => {
       org = playerTeam.name;
     } else if (nonNBATeam) {
       org = nonNBATeam.name;
-    } else if (player.status === 'WNBA') {
-      org = 'WNBA';
-    } else if (player.status === 'Euroleague') {
-      org = 'Euroleague';
-    } else if (player.status === 'PBA') {
-      org = 'PBA';
-    } else if (player.status === 'B-League') {
-      org = 'B-League';
+    } else if (['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(player.status || '')) {
+      org = player.status!;
     }
 
     return {
@@ -244,10 +238,16 @@ export const NBACentral: React.FC = () => {
           onTeamClick={(teamId) => { setViewingBioPlayer(null); setSelectedTeamId(teamId); }}
         />
       ) : selectedTeam ? (
-        <TeamDetailView 
+        <TeamDetailView
           team={selectedTeam}
           players={state.players}
-          allTeams={state.teams}
+          allTeams={[
+            ...state.teams,
+            ...(state.nonNBATeams ?? []).map((t: any) => ({
+              id: t.tid, name: t.name, abbrev: t.abbrev,
+              logoUrl: t.imgURL || '', wins: 0, losses: 0, conference: t.league,
+            } as any)),
+          ]}
           schedule={state.schedule}
           currentDate={state.date}
           onBack={() => setSelectedTeamId(null)}
@@ -323,10 +323,16 @@ export const NBACentral: React.FC = () => {
                     </div>
                   </div>
                 )}
-          <DailyGamesBar 
-              games={todayGames} 
-              teams={state.teams} 
-              onWatch={handleWatchGame} 
+          <DailyGamesBar
+              games={todayGames}
+              teams={[
+                ...state.teams,
+                ...(state.nonNBATeams ?? []).map((t: any) => ({
+                  id: t.tid, name: t.name, abbrev: t.abbrev,
+                  logoUrl: t.imgURL || '', wins: 0, losses: 0, conference: t.league,
+                } as any)),
+              ]}
+              onWatch={handleWatchGame}
               onTeamClick={setSelectedTeamId}
           />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
