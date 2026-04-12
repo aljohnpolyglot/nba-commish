@@ -7,6 +7,7 @@ import { PlayoffAdvancer } from '../../../services/playoffs/PlayoffAdvancer';
 import { applyDailyProgression, applySeasonalBreakouts } from '../../../services/playerDevelopment/ProgressionEngine';
 import { markLightningStrikes, resolveLightningStrikes } from '../../../services/playerDevelopment/seasonalBreakouts';
 import { markFatherTimeInjections, resolveFatherTimeInjections, applyMiddleClassBoosts } from '../../../services/playerDevelopment/washedAlgorithm';
+import { markBustLottery, resolveBustLottery } from '../../../services/playerDevelopment/bustLottery';
 import { generateAIDayTradeProposals } from '../../../services/AITradeHandler';
 import { runAIFreeAgencyRound, runAIMidSeasonExtensions } from '../../../services/AIFreeAgentHandler';
 import { applySeasonRollover, shouldFireRollover } from '../../../services/logic/seasonRollover';
@@ -155,6 +156,7 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
             const { players: playersWithEvents, events } = applySeasonalBreakouts(
                 stateWithSim.players,
                 stateWithSim.leagueStats.year,
+                stateWithSim.saveId ?? 'default',
             );
             stateWithSim = { ...stateWithSim, players: playersWithEvents };
             if (events.length > 0) {
@@ -193,6 +195,7 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
             const { players: p1 } = markLightningStrikes(
                 stateWithSim.players, currentYear,
                 trainingCampDate, `${currentYear}-04-01`,
+                stateWithSim.saveId ?? 'default',
             );
             stateWithSim = { ...stateWithSim, players: p1 };
 
@@ -200,12 +203,21 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
             const { players: p2 } = markFatherTimeInjections(
                 stateWithSim.players, currentYear,
                 trainingCampDate, `${currentYear}-04-01`,
+                stateWithSim.saveId ?? 'default',
             );
             stateWithSim = { ...stateWithSim, players: p2 };
 
             // Middle-class prime boosts batch 0 — immediate, silent
-            const { players: p3 } = applyMiddleClassBoosts(stateWithSim.players, currentYear, 0);
+            const { players: p3 } = applyMiddleClassBoosts(stateWithSim.players, currentYear, 0, stateWithSim.saveId ?? 'default');
             stateWithSim = { ...stateWithSim, players: p3 };
+
+            // Bust lottery — sophomore slumps, unfulfilled potential, contract hangovers
+            const { players: pBust } = markBustLottery(
+                stateWithSim.players, currentYear,
+                trainingCampDate, `${currentYear}-04-01`,
+                stateWithSim.saveId ?? 'default',
+            );
+            stateWithSim = { ...stateWithSim, players: pBust };
         }
 
         // ── Post All-Star (Feb 17) ────────────────────────────────────────────────
@@ -213,7 +225,7 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
         const postAsbDate = `${stateWithSim.leagueStats.year}-02-17`;
         if (simDateForEvents === postAsbDate) {
             const { players: p4 } = applyMiddleClassBoosts(
-                stateWithSim.players, stateWithSim.leagueStats.year, 1,
+                stateWithSim.players, stateWithSim.leagueStats.year, 1, stateWithSim.saveId ?? 'default',
             );
             stateWithSim = { ...stateWithSim, players: p4 };
         }
@@ -227,6 +239,9 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
 
             const { players: p6 } = resolveFatherTimeInjections(stateWithSim.players, simDateForEvents, currentYear);
             stateWithSim = { ...stateWithSim, players: p6 };
+
+            const { players: p7 } = resolveBustLottery(stateWithSim.players, simDateForEvents, currentYear);
+            stateWithSim = { ...stateWithSim, players: p7 };
         }
 
         // Daily player progression — stagnates during playoffs

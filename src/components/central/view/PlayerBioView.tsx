@@ -168,13 +168,15 @@ function ProgressionTabContent({
   const [collapsedCats, setCollapsedCats] = React.useState<Record<string, boolean>>({});
   const toggleCat = (k: string) => setCollapsedCats(prev => ({ ...prev, [k]: !prev[k] }));
 
-  // 1Y: use weekly ovrTimeline snapshots (raw BBGM float → K2 float for smooth trend)
+  // 1Y: use weekly ovrTimeline snapshots (raw BBGM float → K2 using same formula as header badge)
   const MON = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const _hgt = currentRating?.hgt ?? 50;
+  const _tp  = currentRating?.tp  ?? 50;
   const weeklyData = ovrTimeline.map((s: { date: string; ovr: number }) => {
     const [, mm, dd] = s.date.split('-');
     return {
       season: `${MON[parseInt(mm)]} ${parseInt(dd)}`,
-      ovr: parseFloat((0.88 * s.ovr + 31).toFixed(2)), // K2 float — preserves sub-1pt trends
+      ovr: convertTo2KRating(s.ovr, _hgt, _tp), // matches header formula incl. hgt/TP bonuses
     };
   });
   const rawChartData = period === 'Career' ? ratingHistory
@@ -709,8 +711,9 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
         return;
       }
 
-      // Upgrade portrait to HD immediately (before network fetch)
-      if (isMounted) setPortraitSrc(hdPortrait(nbaId));
+      // Don't eagerly switch to CDN — keep BBGM portrait until we confirm
+      // the CDN has a better one (returned in payload.imgHD below).
+      // CDN URLs rely on NBA player IDs which can mismatch for non-current players.
 
       // ── 3. Fetch (deduped — returns instantly from cache if available) ───
       setIsSyncing(true);
@@ -753,6 +756,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
           teamFullName={teamFullName}
           portraitSrc={portraitSrc}
           playerImgURL={player.imgURL}
+          playerName={player.name}
           isSyncing={isSyncing}
           fetchDone={fetchDone}
           isHoF={!!player.hof}

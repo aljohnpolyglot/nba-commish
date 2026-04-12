@@ -1019,8 +1019,28 @@ historicalAwards: HistoricalAward[];
   commissionerLog?: CommissionerLogEntry[];
   pendingNarratives?: string[];
   draftLotteryResult?: any[]; // LotteryResult[] from runLottery.ts — populated after running Draft Lottery
+  retirementAnnouncements?: import('./services/playerDevelopment/retirementChecker').RetireeRecord[]; // populated at rollover, consumed by Season Preview
+  seasonPreviewDismissed?: boolean; // cleared at rollover so it shows again each new year
+  draftComplete?: boolean; // set by DraftSimulatorView when all picks committed
+  seasonHistory?: SeasonHistoryEntry[]; // one entry per completed season, appended at bracketComplete
 
 }
+export interface SeasonHistoryEntry {
+  year: number;
+  champion: string;
+  championTid: number;
+  runnerUp?: string;
+  runnerUpTid?: number;
+  mvp?: string;
+  mvpPid?: string;
+  finalsMvp?: string;
+  finalsMvpPid?: string;
+  roty?: string;
+  rotyPid?: string;
+  dpoy?: string;
+  dpoyPid?: string;
+}
+
 export interface AwardPlayer {
   pid: number | string;
   name: string;
@@ -1096,7 +1116,7 @@ export interface UserAction {
 
 export type Conference = 'East' | 'West';
 export type GamePhase = 'Preseason' | 'Opening Week' | 'Regular Season (Early)' | 'Regular Season (Mid)' | 'All-Star Break' | 'Trade Deadline' | 'Regular Season (Late)' | 'Play-In Tournament' | 'Playoffs (Round 1)' | 'Playoffs (Round 2)' | 'Conference Finals' | 'NBA Finals' | 'Offseason' | 'Draft' | 'Draft Lottery' | 'Free Agency' | 'Schedule Planning' | 'Schedule Release' | 'Training Camp';
-export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'League History' | 'Player Bios' | 'Team History';
+export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'League History' | 'Player Bios' | 'Team History' | 'Season Preview';
 
 // ─── AI Trade / Free Agency ───────────────────────────────────────────────────
 export interface TradeProposal {

@@ -31,6 +31,7 @@ import { LeagueFinancesView } from '../central/view/LeagueFinancesView';
 import { TeamFinancesViewDetailed } from '../central/view/TeamFinancesViewDetailed';
 import { DraftScoutingView } from '../central/view/DraftScoutingView';
 import { DraftLotteryView } from '../draft/DraftLotteryView';
+import { SeasonPreviewView } from '../seasonPreview/SeasonPreviewView';
 import { DraftSimulatorView } from '../draft/DraftSimulatorView';
 import Dashboard from '../commissioner/Dashboard';
 import ViewershipTab from '../commissioner/ViewershipTab';
@@ -177,6 +178,8 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
           <DraftSimulatorView onViewChange={onViewChange} />
         </div>
       );
+    case 'Season Preview':
+      return <SeasonPreviewView onViewChange={onViewChange} />;
     case 'Commish Store':
       return (
         <div className="h-full overflow-y-auto">

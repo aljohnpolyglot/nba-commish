@@ -29,6 +29,7 @@ interface DayViewProps {
   nonNBATeams?: NonNBATeam[];
   onNavigateToDraftLottery?: () => void;
   onNavigateToDraftBoard?: () => void;
+  onNavigateToSeasonPreview?: () => void;
 }
 
 export const DayView: React.FC<DayViewProps> = ({
@@ -55,6 +56,7 @@ export const DayView: React.FC<DayViewProps> = ({
   nonNBATeams = [],
   onNavigateToDraftLottery,
   onNavigateToDraftBoard,
+  onNavigateToSeasonPreview,
 }) => {
   const stateDateNorm = normalizeDate(state.date);
   const selectedDateNorm = normalizeDate(selectedDate);
@@ -71,6 +73,10 @@ export const DayView: React.FC<DayViewProps> = ({
   // Draft calendar events — fixed dates relative to the season year
   const isDraftLotteryDay = month === 5 && day === 14;  // mid-May, during playoffs
   const isNBADraftDay = month === 6 && day === 25;       // late June, post-playoffs
+
+  // Season Preview — shows on Aug 14 (schedule release day) until dismissed
+  const isScheduleReleaseDay = month === 8 && day === 14;
+  const showSeasonPreviewCard = isScheduleReleaseDay && !state?.seasonPreviewDismissed && !!state?.seasonHistory?.length;
 
   // Non-playoff teams sorted by worst record (for lottery odds display)
   const lotteryTeams = useMemo(() => {
@@ -317,6 +323,49 @@ export const DayView: React.FC<DayViewProps> = ({
                           <div className="text-xs font-mono text-amber-400 font-black shrink-0">{prospect.overallRating ?? '—'}</div>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Season Preview Card */}
+            {showSeasonPreviewCard && (
+              <div className="col-span-full bg-gradient-to-br from-amber-950/60 via-[#0f0a00] to-[#111] border border-amber-500/20 rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <div className="text-[10px] font-black text-amber-400 uppercase tracking-widest">New Season</div>
+                    <h3 className="text-2xl font-black text-white uppercase tracking-tight">{year} Season Preview</h3>
+                    <p className="text-slate-500 text-xs mt-1">Power rankings, offseason recap & retirement announcements</p>
+                  </div>
+                  {onNavigateToSeasonPreview && (
+                    <button
+                      onClick={onNavigateToSeasonPreview}
+                      className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-amber-500/20"
+                    >
+                      Open Preview
+                    </button>
+                  )}
+                </div>
+                {/* Retirement teasers */}
+                {state?.retirementAnnouncements && state.retirementAnnouncements.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-amber-500/10">
+                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Notable Retirements</div>
+                    <div className="flex flex-wrap gap-2">
+                      {state.retirementAnnouncements.slice(0, 5).map((r: any) => (
+                        <div key={r.pid ?? r.name} className="flex items-center gap-1.5 bg-white/5 rounded-lg px-2 py-1">
+                          {r.imgURL && (
+                            <img src={r.imgURL} className="w-5 h-5 rounded-full object-cover border border-slate-700" alt={r.name} referrerPolicy="no-referrer" />
+                          )}
+                          <span className="text-[10px] font-bold text-white">{r.name}</span>
+                          <span className="text-[9px] text-slate-500">Age {r.age}</span>
+                        </div>
+                      ))}
+                      {state.retirementAnnouncements.length > 5 && (
+                        <div className="flex items-center px-2 py-1">
+                          <span className="text-[10px] text-slate-600">+{state.retirementAnnouncements.length - 5} more</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

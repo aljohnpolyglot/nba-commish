@@ -49,6 +49,13 @@ const EXTERNAL_LEAGUE_STATUSES = new Set([
   'G-League', 'PBA', 'Euroleague', 'B-League', 'Endesa',
 ]);
 
+/** NBA-active: on an NBA roster (not FA, not overseas, not WNBA/retired/prospect) */
+function isNBAActive(p: NBAPlayer): boolean {
+  const s = p.status ?? 'Active';
+  return s !== 'Free Agent' && !EXTERNAL_LEAGUE_STATUSES.has(s) && s !== 'WNBA'
+      && s !== 'Draft Prospect' && s !== 'Prospect' && s !== 'Retired';
+}
+
 // ─── Seeded RNG ────────────────────────────────────────────────────────────────
 
 function seededHash(seed: string): number {
@@ -65,21 +72,22 @@ function seededInt(seed: string, min: number, max: number): number {
 
 // ─── BBGM-calibrated decline table ───────────────────────────────────────────
 
+// Calibrated from BBGM samples: Sabonis (age 30) shows ft/tp/diq -5 at 1.0× multiplier
 const DECLINE_TABLE: Record<string, { min: number; max: number }> = {
   spd:  { min: 2, max: 7  },
   jmp:  { min: 2, max: 10 },
   endu: { min: 2, max: 8  },
   stre: { min: 1, max: 6  },
-  ins:  { min: 1, max: 4  },
-  dnk:  { min: 1, max: 4  },
-  ft:   { min: 1, max: 3  },
-  fg:   { min: 1, max: 3  },
-  tp:   { min: 1, max: 3  },
-  oiq:  { min: 1, max: 3  },
-  diq:  { min: 1, max: 3  },
-  drb:  { min: 1, max: 2  },
-  pss:  { min: 1, max: 2  },
-  reb:  { min: 1, max: 3  },
+  ins:  { min: 1, max: 5  },
+  dnk:  { min: 1, max: 5  },
+  ft:   { min: 1, max: 5  },
+  fg:   { min: 1, max: 5  },
+  tp:   { min: 1, max: 5  },
+  oiq:  { min: 1, max: 5  },
+  diq:  { min: 1, max: 5  },
+  drb:  { min: 1, max: 4  },
+  pss:  { min: 1, max: 4  },
+  reb:  { min: 1, max: 5  },
 };
 
 function ageMultiplier(age: number): number {
@@ -90,13 +98,7 @@ function ageMultiplier(age: number): number {
   return 2.40;
 }
 
-function numDecliningAttrs(age: number): { min: number; max: number } {
-  if (age <= 31) return { min: 4, max: 7  };
-  if (age <= 34) return { min: 5, max: 9  };
-  if (age <= 37) return { min: 6, max: 10 };
-  if (age <= 40) return { min: 7, max: 11 };
-  return          { min: 8, max: 12 };
-}
+// All attrs in DECLINE_TABLE decline — no subset picking (matches BBGM behavior)
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -117,7 +119,9 @@ function recomputeOvr(player: NBAPlayer, newRating: any, currentYear: number): n
     : calculatePlayerOverallForYear(player, currentYear);
 }
 
-/** Compute the pending decline changes for a player without applying them. */
+/** Compute the pending decline changes for a player without applying them.
+ *  All attrs in DECLINE_TABLE get a decline (matches BBGM: every attr declines, just by different amounts).
+ */
 function computeDeclineChanges(
   player: NBAPlayer,
   age: number,
@@ -127,18 +131,9 @@ function computeDeclineChanges(
   const rating: any = (player.ratings as any[])[ratingIdx];
   const pid = player.internalId ?? player.name;
   const mult = ageMultiplier(age);
-  const nRange = numDecliningAttrs(age);
-  const nAttrs = seededInt(`ft-${currentYear}-${pid}-n`, nRange.min, nRange.max);
-
-  const allAttrs = Object.keys(DECLINE_TABLE);
-  const shuffled = [...allAttrs].sort((a, b) =>
-    seededRand(`ft-${currentYear}-${pid}-shuf-${a}`) -
-    seededRand(`ft-${currentYear}-${pid}-shuf-${b}`)
-  );
 
   const changes: { attr: string; delta: number }[] = [];
-  for (let ai = 0; ai < nAttrs; ai++) {
-    const attr = shuffled[ai];
+  for (const attr of Object.keys(DECLINE_TABLE)) {
     if (rating[attr] == null) continue;
     const range = DECLINE_TABLE[attr];
     const rawMin = Math.round(range.min * mult);
@@ -217,6 +212,7 @@ export function markFatherTimeInjections(
   currentYear: number,
   injectionDate: string,
   dueDate: string,
+  saveSeed: string = 'default',
 ): { players: NBAPlayer[]; events: FatherTimeInjectionEvent[] } {
   const brackets: Array<{ minAge: number; maxAge: number; slots: number }> = [
     { minAge: 30, maxAge: 31, slots: 15 },
@@ -230,30 +226,41 @@ export function markFatherTimeInjections(
     if (!p.ratings || p.ratings.length === 0) return false;
     if (p.status === 'Retired' || (p as any).diedYear) return false;
     if (p.status === 'Draft Prospect' || p.status === 'Prospect') return false;
+    if (p.status === 'WNBA') return false; // women's league excluded
     if ((p as any).pendingFatherTime) return false; // already injected
     return true;
+    // Note: FAs and overseas players ARE included — Father Time hits all men's basketball.
+    // But the 70/30 bracket split below ensures NBA players get the majority of picks.
   });
 
   const events: FatherTimeInjectionEvent[] = [];
   const playerMap = new Map<string, NBAPlayer>(players.map(p => [p.internalId, p]));
 
   for (const bracket of brackets) {
-    const candidates = eligible.filter(p => {
+    const forBracket = eligible.filter(p => {
       const age = getPlayerAge(p, currentYear);
       return age >= bracket.minAge && age <= bracket.maxAge;
     });
-    if (candidates.length === 0) continue;
+    if (forBracket.length === 0) continue;
 
-    // Older players have higher odds
-    const weights = candidates.map(p => Math.pow(getPlayerAge(p, currentYear), 1.5));
-    const picks = weightedPickN(
-      weights,
-      Math.min(bracket.slots, candidates.length),
-      `ft-inject-${currentYear}-${bracket.minAge}`,
-    );
+    // 70% NBA, 30% outside (FA + overseas) — older players weighted higher within each pool
+    const nbaPool = forBracket.filter(isNBAActive);
+    const extPool = forBracket.filter(p => !isNBAActive(p));
+    const nbaSlots = Math.round(bracket.slots * 0.7);
+    const extSlots = bracket.slots - nbaSlots;
 
-    for (const idx of picks) {
-      const player = candidates[idx];
+    const ageWeights = (pool: NBAPlayer[]) => pool.map(p => Math.pow(getPlayerAge(p, currentYear), 1.5));
+
+    const nbaPicks = weightedPickN(ageWeights(nbaPool), Math.min(nbaSlots, nbaPool.length), `ft-inject-${saveSeed}-${currentYear}-${bracket.minAge}-nba`);
+    const extPicks = weightedPickN(ageWeights(extPool), Math.min(extSlots, extPool.length), `ft-inject-${saveSeed}-${currentYear}-${bracket.minAge}-ext`);
+
+    const allPicks: Array<{ pool: NBAPlayer[]; idx: number }> = [
+      ...nbaPicks.map(idx => ({ pool: nbaPool, idx })),
+      ...extPicks.map(idx => ({ pool: extPool, idx })),
+    ];
+
+    for (const { pool, idx } of allPicks) {
+      const player = pool[idx];
       const age = getPlayerAge(player, currentYear);
       const ovrBefore = player.overallRating ?? 60;
       const pendingChanges = computeDeclineChanges(player, age, currentYear);
@@ -353,93 +360,186 @@ export function resolveFatherTimeInjections(
   return { players: changed ? result : players, events };
 }
 
-// ─── Middle-class prime boost (ages 25-29, two batches) ───────────────────────
+// ─── Middle-class prime window (ages 25-29, two batches) ─────────────────────
+//
+// Each batch: 30 BUFF players + 30 NERF players, POT^1.5-weighted, immediate.
+// Total across season: 60 buffs + 60 nerfs.
+//
+// BUFF pattern (calibrated from BBGM: Sam Hauser +1→+5, Donovan Mitchell +1→+3):
+//   Skill/IQ attrs (oiq, diq, pss, reb, ft, fg, tp, ins): +1 to +5 each, 3-6 attrs
+//   Physical (endu, stre): small +1 to +3 occasionally
+//
+// NERF pattern (calibrated from BBGM: Kris Dunn — physical -1→-4, skills ±1):
+//   Physical (spd, jmp, endu, stre): -1 to -4 each (legs go first)
+//   Shooting/skill: random ±1 (wear-and-tear mixed with experience)
+//   Endurance declines harder — BBGM shows it as the first casualty of mileage
+//
+// TODO(archetype): In a future pass, bias buff/nerf attr selection by player role:
+//   - Defensive specialist → DIQ, stre, reb buffs prioritised
+//   - Paint anchor         → ins, reb, stre; spd/jmp nerf harder
+//   - Three-and-D          → tp, diq; ft, endu buff track
+//   For now: BBGM flat-distribution, no archetype weighting.
 
-/**
- * Fires at Training Camp (batch 0) and Post All-Star (batch 1).
- * 15 players per batch = 30 total. POT^1.5-weighted. Applies immediately.
- */
+// Attrs eligible for the buff pool (skill/IQ/shooting — what "gets better with reps")
+const MC_BUFF_ATTRS  = ['oiq', 'diq', 'pss', 'drb', 'reb', 'ft', 'fg', 'tp', 'ins', 'endu', 'stre'] as const;
+// Physical attrs that decline first in the nerf pool
+const MC_NERF_PHYS   = ['spd', 'jmp', 'endu', 'stre'] as const;
+// Skill/shooting attrs that wobble ±1 in the nerf pool
+const MC_NERF_SKILL  = ['oiq', 'diq', 'pss', 'drb', 'reb', 'ft', 'fg', 'tp', 'ins', 'dnk'] as const;
+
 export function applyMiddleClassBoosts(
   players: NBAPlayer[],
   currentYear: number,
   batch: 0 | 1,
+  saveSeed: string = 'default',
 ): { players: NBAPlayer[]; events: MiddleClassBoostEvent[] } {
-  const PICKS = 15;
+  // 70% NBA (28/40) + 30% outside — FAs + G-League + overseas (12/40)
+  const NBA_BUFF = 28; const EXT_BUFF = 12;
+  const NBA_NERF = 28; const EXT_NERF = 12;
 
-  const candidates = players.filter(p => {
+  const isEligible = (p: NBAPlayer) => {
     if (!p.ratings || p.ratings.length === 0) return false;
     if (p.status === 'Retired' || (p as any).diedYear) return false;
     if (p.status === 'Draft Prospect' || p.status === 'Prospect') return false;
+    if (p.status === 'WNBA') return false;
     const age = getPlayerAge(p, currentYear);
     return age >= 25 && age <= 29;
-  });
+  };
 
-  if (candidates.length === 0) return { players, events: [] };
+  const allCandidates = players.filter(isEligible);
+  if (allCandidates.length === 0) return { players, events: [] };
 
-  const weights = candidates.map(p => {
+  const nbaCandidates = allCandidates.filter(isNBAActive);
+  const extCandidates = allCandidates.filter(p => !isNBAActive(p));
+
+  const getPotWeights = (pool: NBAPlayer[]) => pool.map(p => {
     const lastRating = (p as any).ratings?.[(p as any).ratings.length - 1];
     const pot: number = lastRating?.pot ?? 70;
     return Math.pow(pot, 1.5);
   });
 
-  const picks = weightedPickN(
-    weights,
-    Math.min(PICKS, candidates.length),
-    `mc-boost-${currentYear}-b${batch}`,
-  );
+  // ── Buff picks: 28 NBA + 12 outside ──────────────────────────────────────
+  const nbaBuffPicks = weightedPickN(getPotWeights(nbaCandidates), Math.min(NBA_BUFF, nbaCandidates.length), `mc-boost-${saveSeed}-${currentYear}-b${batch}-nba`);
+  const extBuffPicks = weightedPickN(getPotWeights(extCandidates), Math.min(EXT_BUFF, extCandidates.length), `mc-boost-${saveSeed}-${currentYear}-b${batch}-ext`);
+
+  const nbaBuffSet = new Set(nbaBuffPicks);
+  const extBuffSet = new Set(extBuffPicks);
+
+  // Nerf pools: everyone not already in the buff picks for their tier
+  const nbaNerfCandidates = nbaCandidates.filter((_, i) => !nbaBuffSet.has(i));
+  const extNerfCandidates = extCandidates.filter((_, i) => !extBuffSet.has(i));
+
+  const nbaNerfPicks = weightedPickN(getPotWeights(nbaNerfCandidates), Math.min(NBA_NERF, nbaNerfCandidates.length), `mc-nerf-${saveSeed}-${currentYear}-b${batch}-nba`);
+  const extNerfPicks = weightedPickN(getPotWeights(extNerfCandidates), Math.min(EXT_NERF, extNerfCandidates.length), `mc-nerf-${saveSeed}-${currentYear}-b${batch}-ext`);
+
+  // Flatten into unified buff/nerf index lists with pool reference
+  const buffPicks = [
+    ...nbaBuffPicks.map(i => ({ candidates: nbaCandidates, idx: i })),
+    ...extBuffPicks.map(i => ({ candidates: extCandidates, idx: i })),
+  ];
+  const nerfPicksLocal = [
+    ...nbaNerfPicks.map(i => ({ candidates: nbaNerfCandidates, idx: i })),
+    ...extNerfPicks.map(i => ({ candidates: extNerfCandidates, idx: i })),
+  ];
 
   const events: MiddleClassBoostEvent[] = [];
   const playerMap = new Map<string, NBAPlayer>(players.map(p => [p.internalId, p]));
-  const boostAttrs = ['spd', 'jmp', 'endu', 'stre', 'ins', 'dnk', 'ft', 'fg', 'tp', 'oiq', 'diq', 'drb', 'pss', 'reb'];
 
-  for (const idx of picks) {
-    const player = candidates[idx];
-    const pid = player.internalId ?? player.name;
-    const age = getPlayerAge(player, currentYear);
-    const ratingIdx = getLastRatingIdx(player, currentYear);
-    const rating: any = { ...(player.ratings as any[])[ratingIdx] };
+  // ── BUFF batch ────────────────────────────────────────────────────────────
+  for (const { candidates: pool, idx } of buffPicks) {
+    const player  = pool[idx];
+    const pid     = player.internalId ?? player.name;
+    const age     = getPlayerAge(player, currentYear);
+    const rIdx    = getLastRatingIdx(player, currentYear);
+    const rating: any = { ...(player.ratings as any[])[rIdx] };
     const ovrBefore = player.overallRating ?? 60;
+    const pSeed   = `mc-${saveSeed}-${currentYear}-b${batch}-${pid}`;
 
-    const shuffled = [...boostAttrs].sort((a, b) =>
-      seededRand(`mc-${currentYear}-b${batch}-${pid}-${a}`) -
-      seededRand(`mc-${currentYear}-b${batch}-${pid}-${b}`)
-    );
-    const nAttrs = seededInt(`mc-${currentYear}-b${batch}-${pid}-n`, 2, 4);
+    const nAttrs  = seededInt(`${pSeed}-buff-n`, 3, 6);
+    // Bias toward attrs the player already has — Zubac shouldn't get TP buffs.
+    // Weight = current attr value (higher = more likely to be developed).
+    // Attrs below 25 are considered non-skills and get near-zero weight.
+    const buffPool = [...MC_BUFF_ATTRS].filter(a => rating[a] != null && (rating[a] as number) >= 20);
+    const buffWeights = buffPool.map(a => {
+      const v: number = rating[a] as number;
+      return v < 25 ? 0.05 : Math.pow(v / 99, 2.0); // near-zero weight for dump attrs
+    });
+    const totalBuffW = buffWeights.reduce((s, w) => s + w, 0);
+    const shuffled: string[] = [];
+    const remaining = buffPool.map((a, i) => ({ a, w: buffWeights[i] }));
+    for (let slot = 0; slot < buffPool.length; slot++) {
+      const tot = remaining.reduce((s, x) => s + x.w, 0);
+      if (tot <= 0) break;
+      const roll = seededRand(`${pSeed}-buff-pick-${slot}`) * tot;
+      let run = 0; let chosen = 0;
+      for (let j = 0; j < remaining.length; j++) {
+        run += remaining[j].w;
+        if (roll <= run || j === remaining.length - 1) { chosen = j; break; }
+      }
+      shuffled.push(remaining[chosen].a);
+      remaining.splice(chosen, 1);
+    }
+    void totalBuffW; // suppress unused warning
     const boosts: { attr: string; delta: number }[] = [];
-
-    for (let ai = 0; ai < nAttrs; ai++) {
+    for (let ai = 0; ai < Math.min(nAttrs, shuffled.length); ai++) {
       const attr = shuffled[ai];
       if (rating[attr] == null) continue;
-      const delta = seededInt(`mc-${currentYear}-b${batch}-${pid}-${attr}`, 2, 8);
+      const delta = seededInt(`${pSeed}-buff-${attr}`, 1, 5);
       rating[attr] = Math.min(99, rating[attr] + delta);
       boosts.push({ attr, delta });
     }
-
     if (boosts.length === 0) continue;
 
-    const newRatings = (player.ratings as any[]).map((r: any, i: number) =>
-      i === ratingIdx ? rating : r
-    );
-    const updatedPlayer: NBAPlayer = { ...player, ratings: newRatings };
-    // Boost raw BBGM attrs, then recalculate 2K OVR from those attrs
-    updatedPlayer.overallRating = recomputeOvr(updatedPlayer, rating, currentYear);
+    const newRatings = (player.ratings as any[]).map((r: any, i: number) => i === rIdx ? rating : r);
+    const up: NBAPlayer = { ...player, ratings: newRatings };
+    up.overallRating = recomputeOvr(up, rating, currentYear);
+    playerMap.set(player.internalId, up);
+    events.push({ playerId: player.internalId, playerName: player.name, age, batch, boosts, ovrBefore, ovrAfter: up.overallRating ?? ovrBefore });
+    console.log(`[MC BUFF B${batch}] ${player.name} (age ${age}) | OVR ${ovrBefore} → ${up.overallRating ?? ovrBefore} | ${boosts.map(b => `${b.attr}+${b.delta}`).join(', ')}`);
+  }
 
-    playerMap.set(player.internalId, updatedPlayer);
-    events.push({
-      playerId: player.internalId,
-      playerName: player.name,
-      age,
-      batch,
-      boosts,
-      ovrBefore,
-      ovrAfter: updatedPlayer.overallRating ?? ovrBefore,
-    });
+  // ── NERF batch ────────────────────────────────────────────────────────────
+  for (const { candidates: pool, idx: localIdx } of nerfPicksLocal) {
+    const player  = pool[localIdx];
+    const pid     = player.internalId ?? player.name;
+    const age     = getPlayerAge(player, currentYear);
+    const rIdx    = getLastRatingIdx(player, currentYear);
+    const rating: any = { ...(player.ratings as any[])[rIdx] };
+    const ovrBefore = player.overallRating ?? 60;
+    const pSeed   = `mc-${saveSeed}-${currentYear}-b${batch}-${pid}`;
 
-    // ── Debug log ──────────────────────────────────────────────────────────
-    console.log(
-      `[MiddleClassBoost B${batch}] ${player.name} (age ${age}) | OVR ${ovrBefore} → ${updatedPlayer.overallRating ?? ovrBefore}` +
-      ` | ${boosts.map(b => `${b.attr}+${b.delta}`).join(', ')}`
-    );
+    const changes: { attr: string; delta: number }[] = [];
+
+    // Physical: calibrated from BBGM (JJJ age 27: spd -4, jmp -6, endu -3, stre -2)
+    const physMax: Record<string, number> = { spd: 5, jmp: 6, endu: 5, stre: 4 };
+    for (const attr of MC_NERF_PHYS) {
+      if (rating[attr] == null) continue;
+      const delta = -seededInt(`${pSeed}-nerf-${attr}`, 1, physMax[attr] ?? 4);
+      rating[attr] = Math.max(20, rating[attr] + delta);
+      changes.push({ attr, delta });
+    }
+
+    // Skill/shooting: -1 to -4 (BBGM: JJJ shows oiq -4, ins -4, tp -4, drb -3 at age 27)
+    for (const attr of MC_NERF_SKILL) {
+      if (rating[attr] == null) continue;
+      const r = seededRand(`${pSeed}-nerf-skill-${attr}`);
+      // 50% chance of decline (-1 to -4), 35% no change, 15% slight gain (+1)
+      const delta = r < 0.50 ? -seededInt(`${pSeed}-nerf-skill-${attr}-d`, 1, 4)
+                  : r < 0.85 ? 0
+                  : 1;
+      if (delta === 0) continue;
+      rating[attr] = Math.min(99, Math.max(20, rating[attr] + delta));
+      changes.push({ attr, delta });
+    }
+
+    if (changes.length === 0) continue;
+
+    const newRatings = (player.ratings as any[]).map((r: any, i: number) => i === rIdx ? rating : r);
+    const up: NBAPlayer = { ...player, ratings: newRatings };
+    up.overallRating = recomputeOvr(up, rating, currentYear);
+    playerMap.set(player.internalId, up);
+    events.push({ playerId: player.internalId, playerName: player.name, age, batch, boosts: changes, ovrBefore, ovrAfter: up.overallRating ?? ovrBefore });
+    console.log(`[MC NERF B${batch}] ${player.name} (age ${age}) | OVR ${ovrBefore} → ${up.overallRating ?? ovrBefore} | ${changes.map(c => `${c.attr}${c.delta > 0 ? '+' : ''}${c.delta}`).join(', ')}`);
   }
 
   const result = players.map(p => playerMap.get(p.internalId) ?? p);

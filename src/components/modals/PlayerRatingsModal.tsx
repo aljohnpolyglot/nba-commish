@@ -688,13 +688,13 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
                   )}
 
                   {viewTab === 'Progression' && (() => {
-                    // 1Y: use weekly ovrTimeline snapshots (raw BBGM float → K2 float for smooth trend)
+                    // 1Y: use weekly ovrTimeline snapshots — convert with same formula as header badge
                     const MON_ABB = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
                     const weeklyData = (player.ovrTimeline ?? []).map((s: { date: string; ovr: number }) => {
                       const [, mm, dd] = s.date.split('-');
                       return {
                         season: `${MON_ABB[parseInt(mm)]} ${parseInt(dd)}`,
-                        ovr: parseFloat((0.88 * s.ovr + 31).toFixed(2)),
+                        ovr: convertTo2KRating(s.ovr, currentRatings.hgt ?? 50, currentRatings.tp ?? 50),
                       };
                     });
                     const rawChartData = progressPeriod === 'Career' ? ratingHistory

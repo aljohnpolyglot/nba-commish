@@ -1,13 +1,15 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
+import { extractNbaId, hdPortrait } from '../../../utils/helpers';
 
 interface PlayerBioHeroProps {
   bioData: any;
   teamColor: string;
   teamLogo: string | null | undefined;
   teamFullName: string | null;
-  portraitSrc: string;
-  playerImgURL?: string;
+  portraitSrc: string;         // starts as BBGM portrait
+  playerImgURL?: string;       // BBGM fallback (same as portraitSrc initially)
+  playerName?: string;         // used to derive CDN fallback via NAME_TO_ID
   isSyncing: boolean;
   fetchDone: boolean;
   isHoF?: boolean;
@@ -31,10 +33,18 @@ export const PlayerBioHero: React.FC<PlayerBioHeroProps> = ({
   teamFullName,
   portraitSrc,
   playerImgURL,
+  playerName,
   isSyncing,
   fetchDone,
   isHoF,
-}) => (
+}) => {
+  // CDN fallback URL — only built if we can extract an NBA ID
+  const cdnFallback = (() => {
+    const nbaId = extractNbaId(playerImgURL ?? '', playerName ?? '');
+    return nbaId ? hdPortrait(nbaId) : null;
+  })();
+
+  return (
   <>
     {/* ── Hero Banner ── */}
     <div
@@ -71,11 +81,11 @@ export const PlayerBioHero: React.FC<PlayerBioHeroProps> = ({
           referrerPolicy="no-referrer"
           onError={e => {
             const img = e.currentTarget;
-            // Use data-attribute to track whether we've already tried the BBGM fallback,
-            // avoiding false-equality issues when img.src is normalized by the browser.
-            if (playerImgURL && !img.dataset.triedFallback) {
+            // Chain: BBGM → CDN → hide
+            // triedFallback=1 means CDN was tried; triedFallback=2 means give up.
+            if (!img.dataset.triedFallback && cdnFallback) {
               img.dataset.triedFallback = '1';
-              img.src = playerImgURL;
+              img.src = cdnFallback;
             } else {
               img.style.display = 'none';
             }
@@ -142,4 +152,5 @@ export const PlayerBioHero: React.FC<PlayerBioHeroProps> = ({
       .bio-list b { color: #eee; font-weight: 700; }
     `}} />
   </>
-);
+  );
+};

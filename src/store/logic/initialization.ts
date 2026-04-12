@@ -210,7 +210,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         isProcessing: false,
         date: startDateFormatted,
         day: 1,
-        saveId: undefined,
+        saveId: `nba_commish_save_${Date.now()}`,
         allStar: initialAllStar as any,
         leagueStats: {
             ...INITIAL_LEAGUE_STATS,

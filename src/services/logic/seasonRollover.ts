@@ -17,6 +17,8 @@
 
 import { GameState, NBAPlayer } from '../../types';
 import { applyCapInflation } from '../../utils/finance/inflationUtils';
+import { runRetirementChecks, RetireeRecord } from '../playerDevelopment/retirementChecker';
+import { generateFuturePicks, pruneExpiredPicks } from '../draft/DraftPickGenerator';
 
 /** Fired when the sim has just crossed into a new offseason (Oct 1, new year).
  *  Returns the rolled-over GameState patch. Does NOT mutate input. */
@@ -102,6 +104,18 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   // Schedule regen is NOT done here — autoResolvers.ts handles it on Aug 14
   // when it detects no regular-season games exist for the new year.
 
+  // ── 3. Retirement checks ─────────────────────────────────────────────────
+  // Run AFTER age increments (updatedPlayers already has age+1).
+  // We pass `currentYear` (the season that just ended) as the retirement year stamp.
+  const { players: playersAfterRetire, newRetirees } = runRetirementChecks(updatedPlayers, currentYear);
+
+  // ── 3b. Draft pick bookkeeping ───────────────────────────────────────────
+  const windowSize = state.leagueStats.tradableDraftPickSeasons ?? 4;
+  const nbaNBATeams = (state.teams ?? []).filter((t: any) => t.tid >= 0 && t.tid < 100);
+  // Prune stale picks THEN generate new window for the new season
+  const prunedPicks = pruneExpiredPicks(state.draftPicks ?? [], currentYear);
+  const updatedPicks = generateFuturePicks(prunedPicks, nbaNBATeams as any, nextYear, windowSize);
+
   // ── 4. Rollover news item ────────────────────────────────────────────────
   const capM  = (newSalaryCap / 1_000_000).toFixed(1);
   const pctStr = inflationPctApplied >= 0
@@ -117,20 +131,45 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     read: false,
   };
 
+  // ── Retirement news items ────────────────────────────────────────────────
+  const retirementNewsItems = newRetirees.map((r: RetireeRecord) => {
+    const pgStr = r.careerGP > 0
+      ? `${(r.careerPts / r.careerGP).toFixed(1)} PPG / ${(r.careerReb / r.careerGP).toFixed(1)} RPG / ${(r.careerAst / r.careerGP).toFixed(1)} APG over ${r.careerGP} games`
+      : 'career stats unavailable';
+    const accolades: string[] = [];
+    if (r.allStarAppearances > 0) accolades.push(`${r.allStarAppearances}× All-Star`);
+    if (r.championships > 0) accolades.push(`${r.championships}× Champion`);
+    const accoladeStr = accolades.length > 0 ? ` His career included ${accolades.join(', ')}.` : '';
+    const headline = r.isLegend
+      ? `Legend Retires: ${r.name} Ends Storied Career After ${r.careerGP} Games`
+      : `${r.name} Announces Retirement`;
+    return {
+      id: `retire-${r.playerId}-${Date.now()}`,
+      headline,
+      content: `${r.name} (age ${r.age}) has officially announced his retirement.${accoladeStr} He averaged ${pgStr}.`,
+      date: state.date,
+      type: (r.isLegend ? 'player' : 'roster') as any,
+      isNew: true,
+      read: false,
+    };
+  });
+
   console.log(
     `[SeasonRollover] ${currentYear} → ${nextYear} | ` +
     `Cap: $${(state.leagueStats.salaryCap ?? 0) / 1_000_000 | 0}M → $${capM}M (${pctStr}) | ` +
-    `${expiredIds.size} contracts expired`
+    `${expiredIds.size} contracts expired | ` +
+    `${newRetirees.length} retirements | ` +
+    `${updatedPicks.length} total draft picks`
   );
 
   return {
-    players: updatedPlayers,
+    players: playersAfterRetire,
+    draftPicks: updatedPicks,
     christmasGames: [],
     globalGames: state.globalGames ?? [],
     playoffs: undefined,
     allStar: undefined,
     draftLotteryResult: undefined,
-    draftComplete: undefined,
     leagueStats: {
       ...state.leagueStats,
       year: nextYear,
@@ -140,7 +179,10 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       ...(newSecondApron != null ? { secondApronAmount: newSecondApron } : {}),
       minContractStaticAmount: newMinContract,
     },
-    news: [rolloverNews, ...(state.news ?? [])].slice(0, 200),
+    retirementAnnouncements: newRetirees,
+    seasonPreviewDismissed: false, // reset each year so preview shows for new season
+    draftComplete: undefined,      // reset so draft can run for new year
+    news: [...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
   };
 }
 

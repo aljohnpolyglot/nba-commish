@@ -454,7 +454,7 @@ export const DraftLotteryView = () => {
                               : 'bg-[#333] cursor-not-allowed opacity-50'
                           }`}
                         >
-                          Sim Lottery
+                          Start Lottery
                         </button>
                       ) : revealIndex === 0 ? (
                         null

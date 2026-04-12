@@ -99,9 +99,12 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
     {
       label: 'Seasonal',
       items: [
-        { id: 'Seasonal',  label: 'Seasonal Actions', icon: Clock, badge: seasonalBadge || undefined },
-        { id: 'All-Star',  label: 'All-Star',          icon: Star },
-        { id: 'Playoffs',  label: 'Playoffs',           icon: Trophy, badge: playoffBadge },
+        { id: 'Seasonal',       label: 'Seasonal Actions', icon: Clock,  badge: seasonalBadge || undefined },
+        ...((!state.seasonPreviewDismissed && (state.seasonHistory ?? []).length > 0)
+          ? [{ id: 'Season Preview' as Tab, label: 'Season Preview',  icon: Sparkles, badge: '!' as string }]
+          : []),
+        { id: 'All-Star',       label: 'All-Star',          icon: Star },
+        { id: 'Playoffs',       label: 'Playoffs',           icon: Trophy, badge: playoffBadge },
       ],
     },
     {

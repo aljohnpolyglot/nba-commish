@@ -106,7 +106,7 @@ export const PlayerRatingsView: React.FC = () => {
   // Build row data
   const rows: RowData[] = useMemo(() => {
     return state.players
-      .filter(p => p.status === 'Active' || p.status === 'Free Agent')
+      .filter(p => p.status === 'Active' || p.status === 'Free Agent' || p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect')
       .map(player => {
         const ratings = player.ratings?.find((r: any) => r.season === season)
           ?? player.ratings?.[player.ratings?.length - 1]
@@ -267,6 +267,7 @@ export const PlayerRatingsView: React.FC = () => {
         >
           <option value="all">All Teams</option>
           <option value="-1">Free Agents</option>
+          <option value="-2">Draft Prospects</option>
           {nbaTeams.map(t => (
             <option key={t.id} value={t.id}>{t.name}</option>
           ))}

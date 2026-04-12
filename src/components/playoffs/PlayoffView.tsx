@@ -113,7 +113,7 @@ export const PlayoffView: React.FC = () => {
   };
 
   const handleSimPlayoffs = () => {
-    dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: '2026-06-30' } } as any);
+    dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: `${year}-06-30` } } as any);
   };
 
   // ─── Full-screen game simulator ──────────────────────────────────────────

@@ -28,9 +28,13 @@ function enqueue<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 export function getPlayerImage(player: NBAPlayer): string | undefined {
-  const nbaId = extractNbaId(player.imgURL || "", player.name);
+  // BBGM portrait first — it's reliable and doesn't need an NBA ID lookup.
+  // CDN portrait is used as fallback only (via onError in PlayerBioHero).
+  if (player.imgURL && player.imgURL.trim() !== '') return player.imgURL;
+  // No BBGM portrait — fall back to CDN if we can extract an ID
+  const nbaId = extractNbaId('', player.name);
   if (nbaId) return hdPortrait(nbaId);
-  return player.imgURL && player.imgURL.trim() !== '' ? player.imgURL : undefined;
+  return undefined;
 }
 
 export function isCacheValid(p: any): boolean {

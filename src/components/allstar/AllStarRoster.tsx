@@ -57,12 +57,18 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, on
               style={{ borderColor: `${teamColor}40` }}
             >
               <img
-                src={getPlayerHeadshot(p.playerId, p.nbaId)}
+                src={fullPlayer?.imgURL || getPlayerHeadshot(p.playerId, p.nbaId)}
                 className="w-full h-full object-cover"
                 alt={p.playerName}
                 referrerPolicy="no-referrer"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${p.playerId}/100/100`;
+                  const img = e.target as HTMLImageElement;
+                  if (!img.dataset.triedCdn) {
+                    img.dataset.triedCdn = '1';
+                    img.src = getPlayerHeadshot(p.playerId, p.nbaId);
+                  } else {
+                    img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.playerName)}&background=1e293b&color=94a3b8&size=100`;
+                  }
                 }}
               />
             </div>
@@ -245,7 +251,7 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, on
                   <div key={p.playerId} className="flex items-center gap-4 px-4 py-3 border-b border-slate-800 last:border-0">
                     <div className="flex items-center gap-2 flex-1">
                       <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-800 opacity-50">
-                        <img src={`https://cdn.nba.com/headshots/nba/latest/1040x760/${p.nbaId || p.playerId}.png`} className="w-full h-full object-cover" alt={p.playerName} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${p.playerId}/100/100`; }} />
+                        <img src={state.players?.find((pl: any) => pl.internalId === p.playerId)?.imgURL || `https://cdn.nba.com/headshots/nba/latest/1040x760/${p.nbaId || p.playerId}.png`} className="w-full h-full object-cover" alt={p.playerName} referrerPolicy="no-referrer" onError={(e) => { const img = e.target as HTMLImageElement; if (!img.dataset.triedCdn) { img.dataset.triedCdn = '1'; img.src = `https://cdn.nba.com/headshots/nba/latest/1040x760/${p.nbaId || p.playerId}.png`; } else { img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.playerName)}&background=1e293b&color=94a3b8&size=100`; } }} />
                       </div>
                       <div>
                         <span className="text-sm font-bold text-slate-500 line-through">{p.playerName}</span>
@@ -257,7 +263,7 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, on
                         <span className="text-slate-700 text-xs">→</span>
                         <div className="flex items-center gap-2 flex-1">
                           <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-800">
-                            <img src={`https://cdn.nba.com/headshots/nba/latest/1040x760/${replacement.nbaId || replacement.playerId}.png`} className="w-full h-full object-cover" alt={replacement.playerName} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${replacement.playerId}/100/100`; }} />
+                            <img src={state.players?.find((pl: any) => pl.internalId === replacement.playerId)?.imgURL || `https://cdn.nba.com/headshots/nba/latest/1040x760/${replacement.nbaId || replacement.playerId}.png`} className="w-full h-full object-cover" alt={replacement.playerName} referrerPolicy="no-referrer" onError={(e) => { const img = e.target as HTMLImageElement; if (!img.dataset.triedCdn) { img.dataset.triedCdn = '1'; img.src = `https://cdn.nba.com/headshots/nba/latest/1040x760/${replacement.nbaId || replacement.playerId}.png`; } else { img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(replacement.playerName)}&background=1e293b&color=94a3b8&size=100`; } }} />
                           </div>
                           <div>
                             <span className="text-sm font-bold text-white">{replacement.playerName}</span>
@@ -272,7 +278,7 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, on
               {replacements.filter((r: any) => !dnps.find((d: any) => d.playerId === r.injuredPlayerId)).map((r: any) => (
                 <div key={r.playerId} className="flex items-center gap-2 px-4 py-3 border-b border-slate-800 last:border-0">
                   <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-800">
-                    <img src={`https://cdn.nba.com/headshots/nba/latest/1040x760/${r.nbaId || r.playerId}.png`} className="w-full h-full object-cover" alt={r.playerName} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${r.playerId}/100/100`; }} />
+                    <img src={state.players?.find((pl: any) => pl.internalId === r.playerId)?.imgURL || `https://cdn.nba.com/headshots/nba/latest/1040x760/${r.nbaId || r.playerId}.png`} className="w-full h-full object-cover" alt={r.playerName} referrerPolicy="no-referrer" onError={(e) => { const img = e.target as HTMLImageElement; if (!img.dataset.triedCdn) { img.dataset.triedCdn = '1'; img.src = `https://cdn.nba.com/headshots/nba/latest/1040x760/${r.nbaId || r.playerId}.png`; } else { img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(r.playerName)}&background=1e293b&color=94a3b8&size=100`; } }} />
                   </div>
                   <span className="text-sm font-bold text-white">{r.playerName}</span>
                   <span className="text-[8px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.5 rounded">REPLACEMENT</span>

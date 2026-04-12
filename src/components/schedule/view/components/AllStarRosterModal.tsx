@@ -224,13 +224,17 @@ export const AllStarRosterModal: React.FC<AllStarRosterModalProps> = ({ tab, all
                         <span className="text-xs">★</span> Starters (Fan Vote)
                       </div>
                       <div className="space-y-2">
-                        {starters.map((p: any) => (
+                        {starters.map((p: any) => {
+                          const fullPlayerS = state.players.find((np: NBAPlayer) => np.internalId === p.playerId);
+                          return (
                           <div key={p.playerId} className="flex items-center gap-3 p-2 rounded-xl bg-amber-500/5 border border-amber-500/10">
                             <img
-                              src={`https://cdn.nba.com/headshots/nba/latest/260x190/${p.nbaId || p.playerId}.png`}
+                              src={fullPlayerS?.imgURL || `https://cdn.nba.com/headshots/nba/latest/260x190/${p.nbaId || p.playerId}.png`}
                               className="w-8 h-8 rounded-full object-cover bg-slate-800 border border-amber-500/20"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.playerName)}&background=D97706&color=fff`;
+                                const img = e.target as HTMLImageElement;
+                                if (!img.dataset.triedCdn) { img.dataset.triedCdn = '1'; img.src = `https://cdn.nba.com/headshots/nba/latest/260x190/${p.nbaId || p.playerId}.png`; }
+                                else { img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.playerName)}&background=D97706&color=fff`; }
                               }}
                               referrerPolicy="no-referrer"
                               alt={p.playerName}
@@ -249,7 +253,7 @@ export const AllStarRosterModal: React.FC<AllStarRosterModalProps> = ({ tab, all
                               ) : null;
                             })()}
                           </div>
-                        ))}
+                        );})}
                       </div>
                     </div>
 
@@ -259,13 +263,17 @@ export const AllStarRosterModal: React.FC<AllStarRosterModalProps> = ({ tab, all
                         Reserves (Coach Select)
                       </div>
                       <div className="space-y-2">
-                        {reserves.map((p: any) => (
+                        {reserves.map((p: any) => {
+                          const fullPlayerR = state.players.find((np: NBAPlayer) => np.internalId === p.playerId);
+                          return (
                           <div key={p.playerId} className="flex items-center gap-3 p-2 rounded-xl bg-slate-900/50">
                             <img
-                              src={`https://cdn.nba.com/headshots/nba/latest/260x190/${p.nbaId || p.playerId}.png`}
+                              src={fullPlayerR?.imgURL || `https://cdn.nba.com/headshots/nba/latest/260x190/${p.nbaId || p.playerId}.png`}
                               className="w-8 h-8 rounded-full object-cover bg-slate-800"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.playerName)}&background=334155&color=fff`;
+                                const img = e.target as HTMLImageElement;
+                                if (!img.dataset.triedCdn) { img.dataset.triedCdn = '1'; img.src = `https://cdn.nba.com/headshots/nba/latest/260x190/${p.nbaId || p.playerId}.png`; }
+                                else { img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.playerName)}&background=334155&color=fff`; }
                               }}
                               referrerPolicy="no-referrer"
                               alt={p.playerName}
@@ -284,7 +292,7 @@ export const AllStarRosterModal: React.FC<AllStarRosterModalProps> = ({ tab, all
                               ) : null;
                             })()}
                           </div>
-                        ))}
+                        );})}
                       </div>
                     </div>
                   </div>

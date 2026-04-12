@@ -651,6 +651,47 @@ export const processTurn = async (
     // Keep all bets — pagination in the UI handles large lists
     const prunedBets = betResolution.updatedBets;
 
+    // ── Draft Lottery & Draft Auto-Fire ──────────────────────────────────────
+    // autoRunLottery / autoRunDraft only fire inside lazySimRunner's event loop.
+    // For ADVANCE_DAY / SIMULATE_TO_DATE (PlayoffView, Schedule "To Date", daily sim)
+    // we must replicate them here using the same wasDateReached() helper.
+    const draftYear = state.leagueStats?.year ?? 2026;
+    let autoDraftLotteryResult = state.draftLotteryResult;
+    let autoDraftComplete = state.draftComplete;
+
+    if (wasDateReached(new Date(`${draftYear}-05-14T00:00:00Z`)) && !autoDraftLotteryResult) {
+        try {
+            const { autoRunLottery } = await import('../../services/logic/autoResolvers');
+            const patch = autoRunLottery({ ...state, players: updatedPlayers } as any);
+            if ((patch as any).draftLotteryResult) {
+                autoDraftLotteryResult = (patch as any).draftLotteryResult;
+                uniqueNewNews.push({
+                    id: `auto-lottery-gl-${Date.now()}`,
+                    headline: 'Draft Lottery Complete',
+                    content: 'The NBA Draft Lottery has concluded. View the Draft Lottery tab for full results.',
+                    date: dateString, type: 'league', read: false, isNew: true,
+                } as any);
+            }
+        } catch (e) { console.warn('[GameLogic] autoRunLottery failed:', e); }
+    }
+
+    if (wasDateReached(new Date(`${draftYear}-06-26T00:00:00Z`)) && !autoDraftComplete) {
+        try {
+            const { autoRunDraft } = await import('../../services/logic/autoResolvers');
+            const patch = autoRunDraft({ ...state, players: updatedPlayers, draftLotteryResult: autoDraftLotteryResult } as any);
+            if ((patch as any).players) updatedPlayers = (patch as any).players;
+            if ((patch as any).draftComplete) {
+                autoDraftComplete = true;
+                uniqueNewNews.push({
+                    id: `auto-draft-gl-${Date.now()}`,
+                    headline: 'NBA Draft Complete',
+                    content: 'The NBA Draft has concluded. All prospects have been assigned to teams. Undrafted players are now free agents.',
+                    date: dateString, type: 'league', read: false, isNew: true,
+                } as any);
+            }
+        } catch (e) { console.warn('[GameLogic] autoRunDraft failed:', e); }
+    }
+
     return {
         day: result.day || (stateWithSim.day + 1),
         date: dateString,
@@ -721,5 +762,7 @@ export const processTurn = async (
         prevTeams: state.teams,
         daysSimulated: daysToSimulate,
         bets: prunedBets,
+        draftLotteryResult: autoDraftLotteryResult ?? state.draftLotteryResult,
+        draftComplete: autoDraftComplete ?? state.draftComplete,
     };
 };

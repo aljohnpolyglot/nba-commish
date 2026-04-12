@@ -45,7 +45,7 @@ const calculateOverallFromRating = (rating: any): number => {
         rawOvr = rawOvr * 0.95; // Keeps role players in the 60s-70s
     }
 
-    return Math.max(40, Math.min(99, Math.round(rawOvr)));
+    return Math.max(25, Math.min(99, Math.round(rawOvr)));
 }
 
 export const calculatePlayerOverall = (player: NBAGMPlayer): number => {
@@ -140,3 +140,48 @@ export const processPlayerStats = (stats: any | undefined): ProcessedStats => {
         ftPct: stats.fta > 0 ? ((stats.ft / stats.fta) * 100).toFixed(1) : '0.0',
     };
 };
+
+export interface CareerStatLine {
+  gp: number;
+  pts: number; reb: number; ast: number; stl: number; blk: number;
+  fg: number; fga: number; tp: number; tpa: number; ft: number; fta: number;
+  // per-game averages (rounded to 1dp)
+  ppg: number; rpg: number; apg: number; spg: number; bpg: number;
+  // shooting pcts (0–100)
+  fgPct: number; tpPct: number; ftPct: number;
+  seasons: number; // distinct regular-season entries
+}
+
+/**
+ * Aggregate career regular-season totals from player.stats[].
+ * Skips playoff rows. Returns zeros if no data.
+ */
+export function computeCareerStats(player: Player): CareerStatLine {
+  const rows = (player.stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0);
+  let gp = 0, pts = 0, reb = 0, ast = 0, stl = 0, blk = 0;
+  let fg = 0, fga = 0, tp = 0, tpa = 0, ft = 0, fta = 0;
+
+  for (const s of rows) {
+    gp  += s.gp  ?? 0;
+    pts += s.pts ?? 0;
+    reb += s.trb ?? ((s.orb ?? 0) + (s.drb ?? 0));
+    ast += s.ast ?? 0;
+    stl += s.stl ?? 0;
+    blk += s.blk ?? 0;
+    fg  += s.fg  ?? 0;
+    fga += s.fga ?? 0;
+    tp  += s.tp  ?? 0;
+    tpa += s.tpa ?? 0;
+    ft  += s.ft  ?? 0;
+    fta += s.fta ?? 0;
+  }
+
+  const safe = (n: number, d: number, dec = 1) => d > 0 ? parseFloat((n / d).toFixed(dec)) : 0;
+  return {
+    gp, pts, reb, ast, stl, blk, fg, fga, tp, tpa, ft, fta,
+    ppg: safe(pts, gp), rpg: safe(reb, gp), apg: safe(ast, gp),
+    spg: safe(stl, gp), bpg: safe(blk, gp),
+    fgPct: safe(fg * 100, fga), tpPct: safe(tp * 100, tpa), ftPct: safe(ft * 100, fta),
+    seasons: rows.length,
+  };
+}

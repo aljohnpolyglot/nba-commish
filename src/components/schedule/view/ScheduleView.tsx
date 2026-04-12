@@ -318,6 +318,7 @@ export const ScheduleView: React.FC = () => {
                 nonNBATeams={state.nonNBATeams}
                 onNavigateToDraftLottery={() => setCurrentView('Draft Lottery' as Tab)}
                 onNavigateToDraftBoard={() => setCurrentView('Draft Scouting' as Tab)}
+                onNavigateToSeasonPreview={() => setCurrentView('Season Preview' as Tab)}
               />
             </motion.div>
           )}

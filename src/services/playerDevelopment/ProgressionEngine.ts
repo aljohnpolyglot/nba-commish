@@ -39,6 +39,13 @@ const EXTERNAL_LEAGUE_STATUSES = new Set([
   'G-League', 'PBA', 'Euroleague', 'B-League', 'Endesa',
 ]);
 
+/** NBA-active: on an NBA roster (not FA, not overseas, not WNBA/retired/prospect) */
+function isNBAActive(p: NBAPlayer): boolean {
+  const s = p.status ?? 'Active';
+  return s !== 'Free Agent' && !EXTERNAL_LEAGUE_STATUSES.has(s) && s !== 'WNBA'
+      && s !== 'Draft Prospect' && s !== 'Prospect' && s !== 'Retired';
+}
+
 // ─── Seeded RNG ────────────────────────────────────────────────────────────────
 
 function seededHash(seed: string): number {
@@ -79,9 +86,15 @@ function seededUniform(seed: string, lo: number, hi: number): number {
 function calcBaseChange(age: number, seed: string, pot: number = 70): number {
   let val: number;
 
-  if      (age <= 21) val = 2;
-  else if (age <= 25) val = 1;
-  else if (age <= 27) val = 0;
+  // Calibrated upward for young players — Cooper Flagg at 19 should visibly grow each season.
+  // BBGM shows young high-pot players gaining +5-15 OVR/yr; our shared-base model needs a
+  // stronger starting value to drive meaningful attr accumulation across all 14 attrs.
+  if      (age <= 18) val = 6;
+  else if (age <= 20) val = 5;
+  else if (age <= 21) val = 4;
+  else if (age <= 22) val = 3; // bust still possible: 3+(-4)+careerOffset(-2) = -3 annualBase
+  else if (age <= 25) val = 2;
+  else if (age <= 27) val = 1;
   else if (age <= 29) val = -1;
   else if (age <= 31) val = -2;
   else if (age <= 34) val = -3;
@@ -158,7 +171,8 @@ const ATTR_FORMULAS: Record<string, AttrFormula> = {
       if (age <= 40) return -4;
       return -8;
     },
-    changeLimits: () => [-12, 2],
+    // Young players can genuinely develop athleticism — BBGM shows +4-8 spd for age 18-22
+    changeLimits: (age) => age <= 22 ? [-12, 8] : age <= 26 ? [-12, 4] : [-12, 2],
   },
   jmp: {
     ageModifier: (age) => {
@@ -168,7 +182,7 @@ const ATTR_FORMULAS: Record<string, AttrFormula> = {
       if (age <= 40) return -5;
       return -10;
     },
-    changeLimits: () => [-12, 2],
+    changeLimits: (age) => age <= 22 ? [-12, 8] : age <= 26 ? [-12, 4] : [-12, 2],
   },
   endu: {
     ageModifier: (age, seed?: string) => {
@@ -358,6 +372,7 @@ export interface SeasonalEvent {
 export function applySeasonalBreakouts(
   players: NBAPlayer[],
   currentYear: number,
+  saveSeed: string = 'default',
 ): { players: NBAPlayer[]; events: SeasonalEvent[] } {
   const events: SeasonalEvent[] = [];
 
@@ -365,9 +380,19 @@ export function applySeasonalBreakouts(
     if (!player.ratings || player.ratings.length === 0) return player;
     if (player.status === 'Retired' || (player as any).diedYear) return player;
     if (player.tid < 0) return player;
+    if (player.status === 'WNBA') return player;
+    // Injured players skip the training-camp breakout event — they're not in camp.
+    // They still accumulate daily progression (Chet Holmgren effect: quiet off-court work).
+    if (((player as any).injury?.gamesRemaining ?? 0) > 0) return player;
+
+    // 70/30 NBA/outside split: non-NBA players (FAs + overseas) get 43% hit rate
+    // relative to NBA players. NBA=4% base, outside=~1.7% → realistic distribution.
+    const nba = isNBAActive(player);
+    const hitRate = nba ? 1.0 : 0.43;
 
     const age = player.age ?? 25;
     const pid = player.internalId ?? player.name;
+    const pSeed = `${pid}-${saveSeed}`;
     const ratingIdx = (() => {
       const i = player.ratings.findIndex((r: any) => r.season === currentYear);
       return i !== -1 ? i : player.ratings.length - 1;
@@ -376,12 +401,12 @@ export function applySeasonalBreakouts(
 
     let event: SeasonalEvent | null = null;
 
-    // Breakout: 18–24, 4%
+    // Breakout: 18–24, 4% NBA / ~1.7% outside (70/30 distribution via hitRate)
     if (age >= 18 && age <= 24) {
-      if (seededRand(pid + 'breakout' + currentYear) < 0.04) {
+      if (seededRand(pSeed + 'breakout' + currentYear) < 0.04 * hitRate) {
         const attrList = [...BREAKOUT_ATTRS];
-        const attr = attrList[seededInt(pid + 'battr' + currentYear, 0, attrList.length - 1)];
-        const delta = seededInt(pid + 'bdelta' + currentYear, 6, 10);
+        const attr = attrList[seededInt(pSeed + 'battr' + currentYear, 0, attrList.length - 1)];
+        const delta = seededInt(pSeed + 'bdelta' + currentYear, 6, 10);
         if (rating[attr] != null) {
           rating[attr] = Math.min(99, rating[attr] + delta);
           event = { playerId: pid, playerName: player.name, type: 'breakout', attr, delta };
@@ -389,12 +414,12 @@ export function applySeasonalBreakouts(
       }
     }
 
-    // Late bloomer: 28–32, 4%
+    // Late bloomer: 28–32, 4% NBA / ~1.7% outside
     if (!event && age >= 28 && age <= 32) {
-      if (seededRand(pid + 'bloom' + currentYear) < 0.04) {
+      if (seededRand(pSeed + 'bloom' + currentYear) < 0.04 * hitRate) {
         const attrList = [...LATE_BLOOM_ATTRS];
-        const attr = attrList[seededInt(pid + 'lattr' + currentYear, 0, attrList.length - 1)];
-        const delta = seededInt(pid + 'ldelta' + currentYear, 3, 6);
+        const attr = attrList[seededInt(pSeed + 'lattr' + currentYear, 0, attrList.length - 1)];
+        const delta = seededInt(pSeed + 'ldelta' + currentYear, 3, 6);
         if (rating[attr] != null) {
           rating[attr] = Math.min(99, rating[attr] + delta);
           event = { playerId: pid, playerName: player.name, type: 'late_bloomer', attr, delta };
@@ -402,13 +427,13 @@ export function applySeasonalBreakouts(
       }
     }
 
-    // Bust: 19–23, high pot, 3%
+    // Bust: 19–23, high pot, 3% NBA / ~1.3% outside
     if (!event && age >= 19 && age <= 23) {
       const pot: number = rating.pot ?? 99;
-      if (pot >= 75 && seededRand(pid + 'bust' + currentYear) < 0.03) {
+      if (pot >= 75 && seededRand(pSeed + 'bust' + currentYear) < 0.03 * hitRate) {
         const attrList = [...BUST_ATTRS];
-        const attr = attrList[seededInt(pid + 'buattr' + currentYear, 0, attrList.length - 1)];
-        const delta = seededInt(pid + 'budelta' + currentYear, 5, 8);
+        const attr = attrList[seededInt(pSeed + 'buattr' + currentYear, 0, attrList.length - 1)];
+        const delta = seededInt(pSeed + 'budelta' + currentYear, 5, 8);
         if (rating[attr] != null) {
           rating[attr] = Math.max(20, rating[attr] - delta);
           event = { playerId: pid, playerName: player.name, type: 'bust', attr, delta: -delta };
@@ -416,7 +441,34 @@ export function applySeasonalBreakouts(
       }
     }
 
-    if (!event) return player;
+    if (!event) {
+      // ── Injury-history athleticism hit ────────────────────────────────────
+      // Players still injured when training camp opens (gamesRemaining > 30)
+      // take a small additional athleticism hit from the layoff (ligament/muscle
+      // adaptation loss). This is separate from normal decline — it represents
+      // structural wear, not aging. NOT gated by the seasonal event roll.
+      const injuredGames = (player as any).injury?.gamesRemaining ?? 0;
+      if (injuredGames > 30) {
+        const INJURY_PHYS_ATTRS = ['spd', 'jmp', 'endu', 'stre'] as const;
+        let injuryModified = false;
+        for (const attr of INJURY_PHYS_ATTRS) {
+          if (rating[attr] == null) continue;
+          // Deterministic drop: −1 to −2 for each physique attr, seeded per player+year+attr
+          const drop = seededInt(pSeed + 'injhit' + currentYear + attr, 1, 2);
+          rating[attr] = Math.max(20, rating[attr] - drop);
+          injuryModified = true;
+        }
+        if (injuryModified) {
+          const newRatings = player.ratings.map((r: any, i: number) => i === ratingIdx ? rating : r);
+          const up: NBAPlayer = { ...player, ratings: newRatings };
+          up.overallRating = EXTERNAL_LEAGUE_STATUSES.has(player.status ?? '')
+            ? calculateLeagueOverall(rating)
+            : calculatePlayerOverallForYear(up, currentYear);
+          return up;
+        }
+      }
+      return player;
+    }
 
     events.push(event);
     const newRatings = player.ratings.map((r: any, i: number) => i === ratingIdx ? rating : r);

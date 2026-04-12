@@ -1,6 +1,6 @@
 # NBA Commish — Multi-Season & Economy Master Plan
 
-> Last updated: 2026-04-10 (session 3)
+> Last updated: 2026-04-12 (session 7)
 > Goal: Full multi-season loop (development → offseason → draft → FA → new season) + AI trades/FA + economy inflation.
 > **Consolidates:** `multiseason_todo.md` + `AI_AND_ECONOMY_PLAN.md` (delete that file — it's now here)
 
@@ -85,10 +85,10 @@
 - ✅ **Overseas OVR fix** — ProgressionEngine applies `applyLeagueDisplayScale` before computing overallRating for Euroleague/PBA/B-League players. Now stored OVR is NBA-equivalent everywhere.
 
 ### Future enhancements
-- [ ] **Injury history modifier** — players with prior `gamesRemaining > 30` injury take extra `[-2, 0]` athleticism hit
+- ✅ **Injury history modifier** — players still injured at training camp (gamesRemaining > 30) take extra −1 to −2 per physique attr (spd/jmp/endu/stre) in `applySeasonalBreakouts` (Apr 2026 session 6)
 - [ ] **Breakout event** — 2% chance per young player per season to get `+8` to one key rating + news headline
-- [ ] **Retire detection** — age > 37 AND ovr < 65 → roll retire probability. Move to `retiredPlayers[]`.
-- [ ] **HOF eligibility** — trigger `hofActions.ts` check on retired players
+- ✅ **Retire detection** — probabilistic retire in `retirementChecker.ts` wired into `seasonRollover.ts`; news items generated per retiree; `RetireeRecord[]` stored on `state.retirementAnnouncements` (Apr 2026 session 6)
+- [ ] **HOF eligibility** — trigger `hofActions.ts` check on retired players (read `state.retirementAnnouncements` at rollover)
 - [ ] **Rating edit audit** — `manualRatingEdit: true` flag on player when edited via modal
 - [ ] **Draft prospects rating display** — add "Prospects" filter to `PlayerRatingsView`
 - [ ] **Position archetypes** — preset buttons in edit mode: "3&D Wing", "Pass-First PG", etc.
@@ -229,7 +229,7 @@ All of these scale together: salaryCap, luxuryPayroll, firstApron, secondApron, 
 ### §4d — Trade Pick Seasons Setting
 - ✅ Add `tradableDraftPickSeasons: number` (default: 4) to `LeagueStats` (Apr 2026 session 4)
 - ✅ League Settings UI — "Draft Picks" card in Economy tab with 1–7 slider (Apr 2026 session 4)
-- [ ] `DraftPickGenerator.ts` — on rollover, `generateFuturePicks(teams, currentYear, N)`
+- ✅ `DraftPickGenerator.ts` — `generateFuturePicks()` + `pruneExpiredPicks()`, wired into `seasonRollover.ts` (Apr 2026 session 6). Generates R1+R2 for all 30 NBA tids for each season in the `tradableDraftPickSeasons` window; idempotent; prunes passed seasons.
 - [ ] `tradeService.ts` — filter picks to `season <= currentYear + tradableDraftPickSeasons`
 
 ---
@@ -283,6 +283,94 @@ Order of operations when user/system triggers end-of-season advance:
 - [ ] AI signing loop (`AIFreeAgentHandler.runAIFreeAgencyRound`) — runs each "day" of FA period
 - [ ] Salary cap refresh at rollover (§4c inflation applies first)
 - [ ] After July 31: remaining FAs become mid-season available
+
+### §6c — 🔴 Contract Salary Formula (settled externally, NOT YET WIRED)
+
+> Confirmed formula from external Claude session. Current bug: everyone signs for ~$2M (flat min) because no scoring formula drives contract value. Implement this immediately.
+
+**Formula:**
+```
+Score     = (POT × 0.50) + (OVR × 0.50)
+Salary    = MAX(minSalary, maxContract × ((MAX(0, Score − 68) / (99 − 68)) ^ 1.6))
+```
+- `OVR` = `player.overallRating` (raw BBGM scale, ~50–85 for NBA players)
+- `POT` = `player.ratings[last].pot` (same scale)
+- `maxContract` and `minSalary` come from **per-year-of-service tables** below
+
+**Score-based tier labels** (cosmetic / for UI display):
+| Score | Tier |
+|-------|------|
+| ≥ 95  | Superstar |
+| ≥ 90  | Star |
+| ≥ 85  | All-Star |
+| ≥ 78  | Starter |
+| ≥ 72  | Bench |
+| < 72  | Charity (min contract) |
+
+**Max contract by years of NBA service** (based on cap = $154.6M):
+| Yrs | % of Cap | $ Value |
+|-----|----------|---------|
+| 0   | 25%      | $38.662M |
+| 1   | 26%      | $40.208M |
+| 2   | 27%      | $41.755M |
+| 3   | 28%      | $43.301M |
+| 4   | 29%      | $44.848M |
+| 5   | 30%      | $46.394M |
+| 6   | 31%      | $47.941M |
+| 7   | 32%      | $49.487M |
+| 8   | 33%      | $51.034M |
+| 9   | 34%      | $52.580M |
+| 10+ | 35%      | $54.126M |
+
+> These percentages should scale with cap inflation — compute as `(pct / 100) × state.leagueStats.salaryCap` dynamically.
+
+**Min contract by years of NBA service:**
+| Yrs | Min |
+|-----|-----|
+| 0   | $1.273M |
+| 1   | $1.426M |
+| 2   | $1.598M |
+| 3   | $1.790M |
+| 4   | $2.006M |
+| 5   | $2.247M |
+| 6   | $2.518M |
+| 7   | $2.821M |
+| 8   | $3.161M |
+| 9   | $3.541M |
+| 10+ | $3.967M |
+
+**Mood modifier** (apply after base salary calculation):
+- `LOYAL` → +5–8% on top (player accepts below-market to stay; AI offers market rate, player accepts)
+- `Happy` → no adjustment (market rate)
+- `Neutral` → −3% (slight team discount possible)
+- `Restless` → +8–12% premium (player wants to leave; AI team must overpay to sign)
+- `Unhappy` → +15–20% premium OR player flat refuses same team re-sign if mood is directed at that team
+- Mood also gates **contract length**: Restless/Unhappy players prefer shorter deals (1–2 yrs max); Loyal players will sign longer (4–5 yrs)
+
+**Contract length formula** (separate from salary):
+- Base length: `clamp(round(yearsOfService / 2) + 2, 1, 5)` — vets get longer deals
+- Superstar/Star tier → max 5 yrs; Bench/Charity → max 2 yrs
+- Mood override: Restless = max 2 yrs regardless of tier; Loyal = +1 yr bonus up to 5
+
+**READ THIS FILE FIRST before implementing:**
+`src/components/commissioner/rules/view/EconomyContractsSection.tsx`
+- Already has full UI for: `minContractType` (none/static/dynamic), `maxContractType` (none/static/service_tiered), `maxContractStaticPercentage` slider, `supermaxEnabled`, Bird Rights, `minContractLength`, `maxContractLengthStandard`, `maxContractLengthBird`, `playerOptionsEnabled`, 10-day contracts
+- The `service_tiered` max contract type and the `dynamic` min contract type map **exactly** to the per-year tables above — the UI settings gate whether to use flat or tiered values
+- All these settings already live in `leagueStats` (read from `props.*`) — the formula just needs to consume them instead of hardcoding
+- `setIsMinContractModalOpen` / `setIsMaxContractModalOpen` → "See Computations" modal already exists for showing the per-year breakdown to the commissioner
+
+**Where to wire this:**
+- `src/services/AIFreeAgentHandler.ts` → `getBestFit()` / `runAIFreeAgencyRound()` — replace the current flat/placeholder salary with the formula above
+- `src/utils/salaryUtils.ts` → add `computeContractOffer(player, salaryCap, yearsOfService, leagueStats): { salary, years, tier }` pure function — reads `leagueStats.minContractType`, `maxContractType`, `maxContractStaticPercentage`, etc. to respect commissioner settings
+- `src/services/logic/seasonRollover.ts` → when re-signing players at rollover, use same function
+- [ ] Derive `yearsOfService` inline from `player.stats.filter(s => !s.playoffs && s.gp > 0).length` (no new field needed)
+
+**Tasks:**
+- [ ] Add `computeContractOffer()` to `salaryUtils.ts`
+- [ ] Wire into `AIFreeAgentHandler.runAIFreeAgencyRound()` — replaces current placeholder salary
+- [ ] Wire into `AIFreeAgentHandler.runAIMidSeasonExtensions()` — same formula
+- [ ] Wire mood modifier into both paths (read `player.moodTraits` via `computeMoodScore()` already in codebase)
+- [ ] Derive `yearsOfService` inline from `player.stats` (no new field needed unless performance is an issue)
 
 ---
 
@@ -390,6 +478,65 @@ In `DayView.tsx`, add two special cards that appear on the right calendar dates:
 ### §8d — Key pure functions ✅ DONE Apr 2026
 `src/services/draft/runLottery.ts` — `runDraftLottery(teams)` implements weighted draw with NBA 2019 odds (140/140/140/125/105/90/75/60/45/30/20/15/10/5). Top 4 picks drawn from combination pool, picks 5-14 fill in standing order.
 
+### §8e — ✅ FIXED Apr 12 2026: Auto-Lottery & Auto-Draft Now Fire in All Sim Paths
+
+**Investigated and fixed Apr 12 2026.**
+
+**What's broken:** When simming past May 14 (Draft Lottery) or June 26 (NBA Draft) via:
+- Schedule "Simulate Day" / "To Date" (`ADVANCE_DAY` / `SIMULATE_TO_DATE` → `gameLogic.ts`)
+- PlayoffView sims (`SIMULATE_TO_DATE` with target like `'2026-06-30'`)
+- Any direct dispatch of `SIMULATE_TO_DATE`
+
+...the lottery and draft **never auto-fire**. The DayView Draft Lottery / NBA Draft cards still show "Run Lottery" / "Watch Draft" with the manual button, because `state.draftLotteryResult` and `state.draftComplete` are both `undefined`.
+
+**Why:** `autoRunLottery` and `autoRunDraft` live inside `lazySimRunner.ts`'s event loop (`buildAutoResolveEvents`). `gameLogic.ts` (`processTurn`) calls `runSimulation` directly — it has no equivalent event-firing logic. The only path that fires them today is the initialization `runLazySim` (start game with jump date past June).
+
+**The fix (ready to implement):**
+
+In `src/store/logic/gameLogic.ts`, right before the `return {}` block (after bets, ~line 652), add using the existing `wasDateReached()` helper:
+
+```ts
+// ── Draft Lottery & Draft Auto-Fire ──────────────────────────────────────
+const draftYear = state.leagueStats?.year ?? 2026;
+let autoDraftLotteryResult = state.draftLotteryResult;
+let autoDraftComplete = state.draftComplete;
+
+if (wasDateReached(new Date(`${draftYear}-05-14T00:00:00Z`)) && !autoDraftLotteryResult) {
+    const { autoRunLottery } = await import('../../services/logic/autoResolvers');
+    const patch = autoRunLottery({ ...state, players: updatedPlayers });
+    if ((patch as any).draftLotteryResult) {
+        autoDraftLotteryResult = (patch as any).draftLotteryResult;
+        uniqueNewNews.push({ id: `auto-lottery-gl-${Date.now()}`, headline: 'Draft Lottery Complete',
+            content: 'The NBA Draft Lottery has concluded. View the Draft Lottery tab for full results.',
+            date: dateString, type: 'league', read: false, isNew: true } as any);
+    }
+}
+if (wasDateReached(new Date(`${draftYear}-06-26T00:00:00Z`)) && !autoDraftComplete) {
+    const { autoRunDraft } = await import('../../services/logic/autoResolvers');
+    const patch = autoRunDraft({ ...state, players: updatedPlayers, draftLotteryResult: autoDraftLotteryResult } as any);
+    if ((patch as any).players) updatedPlayers = (patch as any).players;
+    if ((patch as any).draftComplete) {
+        autoDraftComplete = true;
+        uniqueNewNews.push({ id: `auto-draft-gl-${Date.now()}`, headline: 'NBA Draft Complete',
+            content: 'The NBA Draft has concluded. All prospects have been assigned to teams.',
+            date: dateString, type: 'league', read: false, isNew: true } as any);
+    }
+}
+```
+
+Then in the `return` statement add:
+```ts
+draftLotteryResult: autoDraftLotteryResult ?? state.draftLotteryResult,
+draftComplete: autoDraftComplete ?? state.draftComplete,
+```
+(These fields currently aren't spread in the return — that's the second bug.)
+
+**Also:** DraftLotteryView "Sim Lottery" button label → rename to "Start Lottery" (cosmetic).
+File: `src/components/draft/DraftLotteryView.tsx` — grep for `Sim Lottery` text.
+
+**Also:** PlayoffView hardcoded `'2026-06-30'` target date → should use `${leagueStats.year}-06-30`.
+File: `src/components/playoffs/PlayoffView.tsx:116`
+
 ---
 
 ## 9. Season Preview UI
@@ -437,10 +584,11 @@ Retirement should be **announced before the season starts** (shown prominently i
 ```
 
 **Tasks:**
-- [ ] `retirementChecker.ts` — run at rollover (age > 37 AND ovr < 65 → probabilistic retire roll). Sets `player.status = 'Retired'`, stamps `player.retiredYear = currentYear`, `player.careerStats` snapshot.
-- [ ] All-Star appearance count — `player.careerAllStarAppearances: number` incremented each year a player makes the All-Star game (in `allStarActions.ts` or All-Star orchestrator)
-- [ ] `retirementAnnouncements[]` on `GameState` — populated at rollover, consumed by Season Preview + news generator on Aug 14
-- [ ] Prominent news item for 5+ AS retirees: `type: 'retirement_legend'` renders with player photo, career stats, tribute format
+- ✅ `retirementChecker.ts` — probabilistic retire by age + OVR viability formula; seeded deterministic; stamps `player.retiredYear`, computes career totals snapshot (Apr 2026 session 6)
+- [ ] All-Star appearance count — already tracked via `player.awards[].type === 'All-Star'`; retirement checker reads it directly — no separate field needed ✅
+- ✅ `retirementAnnouncements: RetireeRecord[]` on `GameState` — populated at rollover via `seasonRollover.ts`, reset each year. Contains `isLegend` (≥5 AS) flag for prominent display. (Apr 2026 session 6)
+- ✅ News items generated per retiree at rollover — legend retirees get `type: 'player'` headline "Legend Retires: X Ends Storied Career", regular get `type: 'roster'` (Apr 2026 session 6)
+- [ ] Prominent news item for 5+ AS retirees: `type: 'retirement_legend'` renders with player photo, career stats, tribute format — retirement news exists but dedicated `retirement_legend` news card with photo is still TODO
 
 - [ ] Data shape:
   ```ts
@@ -486,22 +634,26 @@ Run through this before starting each new season:
 | Concern | File |
 |---|---|
 | Daily player progression | `src/services/playerDevelopment/ProgressionEngine.ts` ✅ |
+| Bust lottery | `src/services/playerDevelopment/bustLottery.ts` ✅ Apr 2026 |
+| Retirement checker | `src/services/playerDevelopment/retirementChecker.ts` ✅ Apr 2026 |
+| Season rollover | `src/services/logic/seasonRollover.ts` ✅ Apr 2026 |
 | Cap thresholds | `src/utils/salaryUtils.ts` ✅ |
 | Trade outlook (buyer/seller) | `src/utils/salaryUtils.ts → getTradeOutlook()` ✅ |
 | Attendance estimates | `src/utils/attendanceUtils.ts` ✅ |
-| AI trade logic | `src/services/AITradeHandler.ts` [ ] |
-| AI FA logic | `src/services/AIFreeAgentHandler.ts` [ ] |
-| Draft lottery pure fn | `src/services/draft/runLottery.ts` — copy from user's `lottery.ts` |
+| AI trade logic | `src/services/AITradeHandler.ts` ✅ implemented |
+| AI FA logic | `src/services/AIFreeAgentHandler.ts` ✅ implemented |
+| Draft pick generator | `src/services/draft/DraftPickGenerator.ts` ✅ Apr 2026 |
+| Draft lottery pure fn | `src/services/draft/runLottery.ts` ✅ |
 | Draft class generation | `src/services/draft/DraftClassGenerator.ts` [ ] |
 | Trade execution | `src/store/logic/actions/tradeActions.ts → handleExecutiveTrade()` ✅ |
 | Sim day loop | `src/store/logic/turn/simulationHandler.ts` ✅ |
-| Cap inflation | `src/utils/finance/inflationUtils.ts` [ ] |
+| Cap inflation | `src/utils/finance/inflationUtils.ts` ✅ |
 | Broadcasting cap calc | `src/components/operations/BroadcastingView.tsx` ✅ |
 | Economy settings | `src/components/commissioner/rules/view/EconomyTab.tsx` ✅ |
 | News injection | `src/services/lazySimNewsGenerator.ts → NewsGenerator` ✅ |
-| Draft Lottery View | `src/components/draft/DraftLotteryView.tsx` ✅ Apr 2026 | Built last session — ball animation, real team records, saves result |
-| Draft Board View | `src/components/draft/DraftSimulatorView.tsx` ✅ Apr 2026 | Built last session — state prospects, auto-sim, pick modal, draft table |
-| Player Stats View | `src/components/central/view/PlayerStatsView.tsx` ✅ Apr 2026 | BBGM-style full rewrite: team/season/phase/stat-type filters, career aggregation, per-36/advanced, bref fetch, HOF highlights, mobile-friendly |
+| Draft Lottery View | `src/components/draft/DraftLotteryView.tsx` ✅ Apr 2026 |
+| Draft Board View | `src/components/draft/DraftSimulatorView.tsx` ✅ Apr 2026 |
+| Player Stats View | `src/components/central/view/PlayerStatsView.tsx` ✅ Apr 2026 |
 
 ---
 
@@ -527,3 +679,70 @@ grep -rn "2025\|2026\|2027\|START_DATE_STR\|currentSeason = 20" src/ --include="
 | `NavigationMenu.tsx` | badge | `10-24` | `${year}-06-30` | ✅ Done |
 | `initialization.ts` | TBD | any 2025/2026 strings | audit | [ ] |
 | `lazySimRunner.ts` | 58-76, 156-162 | milestone dates | `buildAutoResolveEvents(year)` + year-aware `getPhaseLabel` | ✅ Apr 2026 session 5 |
+| `AIFreeAgentHandler.ts` | ~132 | `2026 - born.year` | use `state.leagueStats.year` | [ ] |
+
+---
+
+## 14. Architectural Notes & Design Decisions
+
+> Captured from sessions — non-obvious logic that future dev should know.
+
+### Retirement probability curve (retirementChecker.ts)
+- Uses a "viability OVR" threshold per age (62 + 1.0 × (age−34)) — rises each year. OVR below this = real retirement risk.
+- `ageFactor` (0→1 over ages 34→43) and `gapContrib` (how far below viability) blend 45/55.
+- Age 43+ always retires. Age < 34 never retires unless OVR < 50 (freak injury/career ruin case).
+- Seeded deterministic: same player + year → same outcome on replay. Seed: `retire_{internalId}_{year}`.
+- **Watch out**: players in FA pool (tid=-1) also get retirement rolls — this is intentional. Unsigned 38-year-old should retire, not sit forever.
+
+### DraftPick ownership invariant
+- `tid` = current owner (changes when traded). `originalTid` = who it was issued to (immutable).
+- `generateFuturePicks()` creates with `tid === originalTid` — untraded picks belong to original team.
+- `pruneExpiredPicks()` keeps `season >= currentYear` — the current year's draft hasn't happened yet so keep it.
+- Collision-proof `dpid`: `900000 + counter + Date.now() % 10000`.
+
+### All-Star appearance tracking
+- Stored in `player.awards[]` as `{ type: 'All-Star', season: number }`.
+- Added by `autoResolvers.ts` when All-Star rosters are announced. No separate counter needed.
+- Retirement checker reads `player.awards?.filter(a => a.type === 'All-Star').length` directly.
+
+### 70/30 NBA/outside lottery split (seasonal events)
+- `isNBAActive(p)` = on NBA roster, not FA/overseas/retired/WNBA.
+- Lightning strikes, Father Time brackets, MiddleClassBoosts: 70% NBA slots / 30% external.
+- `applySeasonalBreakouts`: `hitRate = nba ? 1.0 : 0.43` so outside players get ~43% event probability.
+- Root cause: 1637 FAs+overseas vs 703 NBA players — without split, FAs dominated all lottery outcomes.
+
+### Portrait fallback chain
+- Always: `player.imgURL` (BBGM) → CDN (`hdPortrait(nbaId)`) → initials (ui-avatars).
+- `getPlayerImage()` in `bioCache.ts` returns BBGM first. CDN only if no BBGM URL.
+- `PlayerBioHero`: eager CDN upgrade removed — only switches to CDN after successful network fetch.
+- `AllStarRosterModal`, `AllStarRoster`: all img tags use `fullPlayer?.imgURL || CDN_URL`.
+
+### `saveId` at init
+- Fixed: `saveId: \`nba_commish_save_${Date.now()}\`` set at game creation time.
+- All lottery seeds use `saveSeed` — without unique saveId, every new save had identical progressions.
+
+### Season rollover order
+1. Age all players (except deceased + tid=-2 prospects)
+2. Contract expiry → Free Agent
+3. Bird rights accumulation
+4. Cap inflation
+5. **Retirement checks** (new Apr 2026) — runs on post-age players
+6. **Draft pick generation** (new Apr 2026) — extends pick window by 1 season
+7. News items (inflation + retirements)
+8. Clear: `christmasGames`, `playoffs`, `allStar`, `draftLotteryResult`, `draftComplete`
+9. Reset: `seasonPreviewDismissed = false`, `retirementAnnouncements = newRetirees`
+
+---
+
+## 15. Future Ideas
+
+- [ ] **Player option tracking** — `hasPlayerOption: boolean` on contract. At rollover: AI opts in if `marketValue > contractAmount × 0.9`, opts out if better market exists.
+- [ ] **Team option tracking** — `hasTeamOption: boolean`. AI teams pick up options if OVR still starter-level (>= 75).
+- [ ] **Qualifying offers** — for restricted FAs (rookies on 4yr deals): team must tender QO to maintain matching rights. Auto-decline QO if team is rebuilding (OVR rank < 20).
+- [ ] **Stretch provision** — waived player's salary split over 2×remaining years. Useful for cap management view.
+- [ ] **Trade exception** — when receiving fewer salaries in a trade, generate a TPE = difference. Expires after 1 year. Currently not tracked.
+- [ ] **Buyout market** — midseason, teams with bad vets can buy them out. Bought-out players enter FA with 50% salary guaranteed. Typically happens around trade deadline.
+- [ ] **Two-way contract expansion** — currently `twoWayCandidate` flag only. Should track 2-way as a contract type with 45-game NBA limit.
+- [ ] **G-League call-up** — `G-League` status player → call up to NBA roster mid-season (replaces waived player). Sets tid, status='Active', keeps same contract.
+- [ ] **Salary arbitration** — young players (years 2-4) who outperform their rookie deal significantly (OVR gap vs salary) can request arb. Generates news + forces extension offer.
+- [ ] **CareerStats snapshot UI** — `retirementChecker.ts` already computes career totals at retirement. Hook into `PlayerBioView` to show career averages for retired players (currently only shows current season stats).

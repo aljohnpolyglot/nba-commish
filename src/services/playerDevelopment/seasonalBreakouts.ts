@@ -29,6 +29,18 @@ const EXTERNAL_LEAGUE_STATUSES = new Set([
   'G-League', 'PBA', 'Euroleague', 'B-League', 'Endesa',
 ]);
 
+// Statuses excluded from lightning strikes entirely
+const NON_LIGHTNING_STATUSES = new Set([
+  'WNBA', 'G-League', 'PBA', 'Euroleague', 'B-League', 'Endesa',
+]);
+
+/** NBA-active: on an NBA roster (not overseas, not FA, not retired/prospect) */
+function isNBAActive(p: NBAPlayer): boolean {
+  const s = p.status ?? 'Active';
+  return s !== 'Free Agent' && !EXTERNAL_LEAGUE_STATUSES.has(s) && s !== 'WNBA'
+      && s !== 'Draft Prospect' && s !== 'Prospect' && s !== 'Retired';
+}
+
 const BOOST_ATTRS = [
   'stre', 'spd', 'jmp', 'endu',
   'ins', 'dnk', 'ft', 'fg', 'tp',
@@ -58,10 +70,11 @@ function addDays(dateStr: string, days: number): string {
 }
 
 function maxBoostForAge(age: number): number {
+  // Lowered values: 19yo now gets max +12 instead of +23
   const table: Record<number, number> = {
-    19: 22, 20: 20, 21: 17, 22: 14, 23: 12, 24: 10, 25: 8,
+    19: 14, 20: 12, 21: 10, 22: 9, 23: 8, 24: 7, 25: 6,
   };
-  return table[age] ?? 8;
+  return table[age] ?? 5;
 }
 
 function weightedPickN(weights: number[], n: number, baseSeed: string): number[] {
@@ -102,6 +115,11 @@ interface PendingLightningBoost {
   age: number;
   ovrBefore: number;
   boosts: { attr: string; delta: number }[];
+  // Gradual mode — boost trickles in daily from strikeDate → graduationDate.
+  // Mirrors real life: some players click immediately; others grind into it.
+  isGradual?: boolean;
+  graduationDate?: string;          // deadline; remainder force-applied on this date
+  applied?: Record<string, number>; // running sum already applied (gradual only)
 }
 
 // ─── MARK: assign strikes at Training Camp ────────────────────────────────────
@@ -119,9 +137,12 @@ export function markLightningStrikes(
   currentYear: number,
   seasonStart: string,
   seasonEnd: string,
+  saveSeed: string = 'default',
 ): { players: NBAPlayer[]; markedCount: number } {
   const AGE_GROUPS = [19, 20, 21, 22, 23, 24, 25];
-  const PICKS_PER_GROUP = 9; // 9 × 7 = 63 ≈ 60 worldwide
+  // 70% NBA (7/group) + 30% outside — FAs + G-League + overseas (3/group)
+  const NBA_PICKS_PER_GROUP = 7;
+  const EXT_PICKS_PER_GROUP = 3;
 
   const startMs = new Date(seasonStart).getTime();
   const endMs   = new Date(seasonEnd).getTime();
@@ -131,62 +152,90 @@ export function markLightningStrikes(
     if (!p.ratings || p.ratings.length === 0) return false;
     if (p.status === 'Retired' || (p as any).diedYear) return false;
     if (p.status === 'Draft Prospect' || p.status === 'Prospect') return false;
+    if (p.status === 'WNBA') return false; // WNBA excluded from lightning strikes
     if ((p as any).pendingLightningBoost) return false; // already marked
     return true;
+  });
+
+  const getWeights = (pool: NBAPlayer[]) => pool.map(p => {
+    const lastRating = (p as any).ratings?.[(p as any).ratings.length - 1];
+    const pot: number = lastRating?.pot ?? 70;
+    // Using a lower exponent (or no exponent) allows mid-tier prospects to occasionally breakout
+    return Math.pow(pot, 1.1); 
   });
 
   const playerMap = new Map<string, NBAPlayer>(players.map(p => [p.internalId, p]));
   let markedCount = 0;
 
   for (const targetAge of AGE_GROUPS) {
-    const candidates = eligiblePool.filter(p => {
+    const forAge = eligiblePool.filter(p => {
       const age = (p as any).age ?? ((p as any).born?.year ? currentYear - (p as any).born.year : 25);
       return age === targetAge;
     });
-    if (candidates.length === 0) continue;
+    if (forAge.length === 0) continue;
 
-    const weights = candidates.map(p => {
-      const lastRating = (p as any).ratings?.[(p as any).ratings.length - 1];
-      const pot: number = lastRating?.pot ?? 70;
-      return Math.pow(pot, 1.5);
-    });
+    // Split into NBA (70%) and outside — FAs + G-League + overseas (30%)
+    const nbaPool = forAge.filter(isNBAActive);
+    const extPool = forAge.filter(p => !isNBAActive(p));
 
-    const picks = weightedPickN(
-      weights,
-      Math.min(PICKS_PER_GROUP, candidates.length),
-      `ls-mark-${currentYear}-age${targetAge}`,
+    const nbaPicks = weightedPickN(
+      getWeights(nbaPool),
+      Math.min(NBA_PICKS_PER_GROUP, nbaPool.length),
+      `ls-mark-${saveSeed}-${currentYear}-age${targetAge}-nba`,
+    );
+    const extPicks = weightedPickN(
+      getWeights(extPool),
+      Math.min(EXT_PICKS_PER_GROUP, extPool.length),
+      `ls-mark-${saveSeed}-${currentYear}-age${targetAge}-ext`,
     );
 
-    for (const idx of picks) {
-      const player = candidates[idx];
+    const allPicks: Array<{ pool: NBAPlayer[]; idx: number }> = [
+      ...nbaPicks.map(idx => ({ pool: nbaPool, idx })),
+      ...extPicks.map(idx => ({ pool: extPool, idx })),
+    ];
+
+    for (const { pool, idx } of allPicks) {
+      const player = pool[idx];
       const pid = player.internalId ?? player.name;
+      const pSeed = `ls-${saveSeed}-${currentYear}-${pid}`;
 
       // Assign a random strike date spread across the season window
-      const dayOffset = Math.round(seededRand(`ls-${currentYear}-${pid}-day`) * (totalDays - 1));
+      const dayOffset = Math.round(seededRand(`${pSeed}-day`) * (totalDays - 1));
       const strikeDate = addDays(seasonStart, dayOffset);
 
-      // Precompute the boost (deterministic, same as before)
+      // Precompute the boost — all BOOST_ATTRS get a boost (like BBGM), only hgt excluded
       const ratingIdx = (() => {
         const i = (player.ratings as any[]).findIndex((r: any) => r.season === currentYear);
         return i !== -1 ? i : player.ratings.length - 1;
       })();
       const rating: any = (player.ratings as any[])[ratingIdx];
       const maxBoost = maxBoostForAge(targetAge);
-      const numAttrs = seededInt(`ls-${currentYear}-${pid}-n`, 3, 6);
-      const shuffled = [...BOOST_ATTRS].sort((a, b) =>
-        seededRand(`ls-${currentYear}-${pid}-${a}`) - seededRand(`ls-${currentYear}-${pid}-${b}`)
-      );
 
       const boosts: { attr: string; delta: number }[] = [];
-      for (let ai = 0; ai < numAttrs; ai++) {
-        const attr = shuffled[ai];
+      for (const attr of BOOST_ATTRS) {
         if (rating[attr] == null) continue;
-        const pct = 0.30 + seededRand(`ls-${currentYear}-${pid}-${attr}-pct`) * 0.70;
+        // pct in [0.05, 0.95] — allows small (+1) to large boosts per attr, matching BBGM data
+        const pct = 0.05 + seededRand(`${pSeed}-${attr}-pct`) * 0.90;
         const delta = Math.round(maxBoost * pct);
         if (delta <= 0) continue;
         boosts.push({ attr, delta });
       }
       if (boosts.length === 0) continue;
+
+      // 50% immediate, 50% gradual — seeded coin flip per player
+      const isGradual = seededRand(`${pSeed}-gradual`) < 0.5;
+
+      // Gradual: graduation date is random between strikeDate+45 and Mar 31
+      // (some bloom by Dec, others grind all the way to the playoff push)
+      const seasonEndMs = new Date(`${currentYear}-03-31`).getTime();
+      const graduationDate = isGradual ? (() => {
+        const earliest = new Date(strikeDate);
+        earliest.setDate(earliest.getDate() + 45);
+        const earliestMs = Math.min(earliest.getTime(), seasonEndMs - 1);
+        const window = Math.max(0, seasonEndMs - earliestMs);
+        const gradOffset = Math.round(seededRand(`${pSeed}-grad-day`) * window / 86_400_000);
+        return addDays(earliest.toISOString().slice(0, 10), gradOffset);
+      })() : undefined;
 
       const pending: PendingLightningBoost = {
         strikeDate,
@@ -194,13 +243,14 @@ export function markLightningStrikes(
         age: targetAge,
         ovrBefore: player.overallRating ?? 60,
         boosts,
+        ...(isGradual && { isGradual: true, graduationDate, applied: {} }),
       };
 
       playerMap.set(pid, { ...player, pendingLightningBoost: pending } as any);
       markedCount++;
 
       console.log(
-        `[LightningStrike MARK] ${player.name} (age ${targetAge}) | strike date: ${strikeDate}` +
+        `[LightningStrike MARK] ${player.name} (age ${targetAge}) | ${isGradual ? `GRADUAL ${strikeDate}→${graduationDate}` : `INSTANT ${strikeDate}`}` +
         ` | ${boosts.map(b => `${b.attr}+${b.delta}`).join(', ')}`
       );
     }
@@ -234,8 +284,66 @@ export function resolveLightningStrikes(
       return i !== -1 ? i : player.ratings.length - 1;
     })();
     const rating: any = { ...(player.ratings as any[])[ratingIdx] };
-    const applied: { attr: string; delta: number }[] = [];
 
+    // ── GRADUAL mode ─────────────────────────────────────────────────────────
+    if (pending.isGradual && pending.graduationDate) {
+      const startMs = new Date(pending.strikeDate).getTime();
+      const endMs   = new Date(pending.graduationDate).getTime();
+      const nowMs   = new Date(currentDate).getTime();
+      const totalDays = Math.max(1, Math.round((endMs - startMs) / 86_400_000));
+      const elapsed   = Math.min(Math.round((nowMs - startMs) / 86_400_000), totalDays);
+      const fraction  = elapsed / totalDays;
+      const isDone    = currentDate >= pending.graduationDate;
+
+      const alreadyApplied: Record<string, number> = pending.applied ?? {};
+      const deltaThisTick: { attr: string; delta: number }[] = [];
+
+      for (const { attr, delta } of pending.boosts) {
+        if (rating[attr] == null) continue;
+        const soFar   = alreadyApplied[attr] ?? 0;
+        // On graduation day apply the full remainder; otherwise proportional target
+        const target  = isDone ? delta : Math.round(delta * fraction);
+        const toApply = target - soFar;
+        if (toApply <= 0) continue;
+        rating[attr] = Math.min(99, rating[attr] + toApply);
+        alreadyApplied[attr] = soFar + toApply;
+        deltaThisTick.push({ attr, delta: toApply });
+      }
+
+      if (deltaThisTick.length === 0 && !isDone) return player; // nothing new today
+
+      const newRatings = (player.ratings as any[]).map((r: any, i: number) =>
+        i === ratingIdx ? rating : r
+      );
+      const updated: NBAPlayer = { ...player, ratings: newRatings };
+
+      if (isDone) {
+        delete (updated as any).pendingLightningBoost; // fully resolved
+      } else {
+        // Keep pending with updated applied counts
+        (updated as any).pendingLightningBoost = { ...pending, applied: alreadyApplied };
+      }
+
+      updated.overallRating = EXTERNAL_LEAGUE_STATUSES.has(player.status ?? '')
+        ? calculateLeagueOverall(rating)
+        : calculatePlayerOverallForYear(updated, currentYear);
+
+      if (isDone) {
+        const ovrAfter = updated.overallRating ?? pending.ovrBefore;
+        events.push({
+          playerId: player.internalId, playerName: player.name, age: pending.age,
+          strikeDate: pending.strikeDate, boosts: pending.boosts,
+          ovrBefore: pending.ovrBefore, ovrAfter,
+        });
+        console.log(`[LightningStrike GRADUAL DONE] ${player.name} | OVR ${pending.ovrBefore} → ${ovrAfter}`);
+      }
+
+      changed = true;
+      return updated;
+    }
+
+    // ── IMMEDIATE mode (original behaviour) ──────────────────────────────────
+    const applied: { attr: string; delta: number }[] = [];
     for (const { attr, delta } of pending.boosts) {
       if (rating[attr] == null) continue;
       rating[attr] = Math.min(99, rating[attr] + delta);
@@ -250,24 +358,19 @@ export function resolveLightningStrikes(
     const updated: NBAPlayer = { ...player, ratings: newRatings };
     delete (updated as any).pendingLightningBoost;
 
-    // Boost raw BBGM attrs, then recalculate 2K OVR from those attrs
     updated.overallRating = EXTERNAL_LEAGUE_STATUSES.has(player.status ?? '')
       ? calculateLeagueOverall(rating)
       : calculatePlayerOverallForYear(updated, currentYear);
 
     const ovrAfter = updated.overallRating ?? pending.ovrBefore;
     events.push({
-      playerId: player.internalId,
-      playerName: player.name,
-      age: pending.age,
-      strikeDate: pending.strikeDate,
-      boosts: applied,
-      ovrBefore: pending.ovrBefore,
-      ovrAfter,
+      playerId: player.internalId, playerName: player.name, age: pending.age,
+      strikeDate: pending.strikeDate, boosts: applied,
+      ovrBefore: pending.ovrBefore, ovrAfter,
     });
 
     console.log(
-      `[LightningStrike RESOLVE] ${player.name} (age ${pending.age}) | OVR ${pending.ovrBefore} → ${ovrAfter}` +
+      `[LightningStrike INSTANT] ${player.name} (age ${pending.age}) | OVR ${pending.ovrBefore} → ${ovrAfter}` +
       ` | ${applied.map(b => `${b.attr}+${b.delta}`).join(', ')}`
     );
 

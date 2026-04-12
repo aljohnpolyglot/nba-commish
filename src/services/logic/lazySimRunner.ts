@@ -32,7 +32,7 @@ import {
   autoRunDraft,
 } from './autoResolvers';
 import { NewsGenerator } from '../news/NewsGenerator';
-import { PlayoffSeries, HistoricalAward } from '../../types';
+import { PlayoffSeries, HistoricalAward, SeasonHistoryEntry } from '../../types';
 import { DEFAULT_MEDIA_RIGHTS, attachBroadcastersToGames } from '../../utils/broadcastingUtils';
 
 interface AutoResolveEvent {
@@ -525,6 +525,44 @@ export const runLazySim = async (
           ? [...(stateWithSim.historicalAwards ?? []), ...champHistoricalAwards]
           : stateWithSim.historicalAwards,
         ...(champTeamsWithRoundsWon ? { teams: champTeamsWithRoundsWon } : {}),
+        // ── Season history snapshot ───────────────────────────────────────
+        // Appended exactly once when bracketComplete flips true this batch.
+        ...(stateWithSim.playoffs?.bracketComplete && !state.playoffs?.bracketComplete && stateWithSim.playoffs.champion
+          ? (() => {
+              const champTidSnap = stateWithSim.playoffs.champion;
+              const loserSnap = stateWithSim.playoffs.series.find((s: any) => s.round === 4);
+              const loserTidSnap = loserSnap
+                ? (loserSnap.higherSeedTid === champTidSnap ? loserSnap.lowerSeedTid : loserSnap.higherSeedTid)
+                : undefined;
+              const yearSnap = state.leagueStats.year;
+              const champTeamSnap = stateWithSim.teams.find(t => t.id === champTidSnap);
+              const loserTeamSnap = loserTidSnap != null ? stateWithSim.teams.find(t => t.id === loserTidSnap) : undefined;
+              // Pull current-season award winners from historicalAwards
+              const awards = [...(stateWithSim.historicalAwards ?? []), ...champHistoricalAwards];
+              const seasonAward = (type: string) => awards.find(a => a.season === yearSnap && a.type === type);
+              const newEntry: SeasonHistoryEntry = {
+                year: yearSnap,
+                champion: champTeamSnap?.name ?? 'Unknown',
+                championTid: champTidSnap,
+                runnerUp: loserTeamSnap?.name,
+                runnerUpTid: loserTidSnap,
+                mvp: seasonAward('MVP')?.name,
+                mvpPid: seasonAward('MVP')?.pid as string | undefined,
+                finalsMvp: seasonAward('Finals MVP')?.name,
+                finalsMvpPid: seasonAward('Finals MVP')?.pid as string | undefined,
+                roty: seasonAward('ROY')?.name,
+                rotyPid: seasonAward('ROY')?.pid as string | undefined,
+                dpoy: seasonAward('DPOY')?.name,
+                dpoyPid: seasonAward('DPOY')?.pid as string | undefined,
+              };
+              return {
+                seasonHistory: [
+                  ...(stateWithSim.seasonHistory ?? []).filter(e => e.year !== yearSnap),
+                  newEntry,
+                ],
+              };
+            })()
+          : {}),
       };
       daysComplete += batchDays;
 
