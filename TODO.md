@@ -66,4 +66,10 @@
 ### FRANCHISEHUB-lemakicatta@gmail.com
 ### restaurants gist-->https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbarestaurantsdata
 
+---
+
+## UPCOMING / NEXT SESSION
+
+- **DraftScoutingView pro comparisons use prospect's potential** — `findTopComparisons` currently projects BOTH the prospect AND the NBA comparison players. Fix: prospect is projected to their POT ceiling; NBA players compared at their CURRENT ratings (not projected). This gives "who this player will be like at their peak" instead of "who they are now". `src/utils/playerComparisons.ts` + `src/components/central/view/DraftScoutingView.tsx` ✅ Done session 9
+
 *Last updated: 2026-04-13 (session 9)*

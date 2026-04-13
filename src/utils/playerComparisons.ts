@@ -74,7 +74,16 @@ function projectPlayer(p: Record<string, number>): Record<string, number> {
   return projected;
 }
 
-export function findTopComparisons(target: NBAPlayer, allPlayers: NBAPlayer[]): ComparisonResult[] {
+/**
+ * @param projectComparisons - if false, compare NBA players at their CURRENT ratings
+ *   (not projected to potential). Use false for draft scouting: "who will this prospect
+ *   play like at their peak?" vs a current NBA star already AT their peak.
+ */
+export function findTopComparisons(
+  target: NBAPlayer,
+  allPlayers: NBAPlayer[],
+  projectComparisons = true,
+): ComparisonResult[] {
   const targetAttrs = getPlayerAttributes(target);
   const projectedTarget = projectPlayer(targetAttrs);
   const pVec = getVector(projectedTarget);
@@ -85,8 +94,8 @@ export function findTopComparisons(target: NBAPlayer, allPlayers: NBAPlayer[]): 
     if (p.internalId === target.internalId) continue; // Skip self
 
     const compAttrs = getPlayerAttributes(p);
-    const projectedComp = projectPlayer(compAttrs);
-    const eVec = getVector(projectedComp);
+    const resolvedComp = projectComparisons ? projectPlayer(compAttrs) : compAttrs;
+    const eVec = getVector(resolvedComp);
     let sim = cosineSimilarity(pVec, eVec);
 
     const differences: Record<string, number> = {};
@@ -94,7 +103,7 @@ export function findTopComparisons(target: NBAPlayer, allPlayers: NBAPlayer[]): 
     let totalBonus = 0;
 
     COMPARISON_ATTRIBUTES.forEach(attr => {
-      const diff = projectedTarget[attr] - projectedComp[attr];
+      const diff = projectedTarget[attr] - resolvedComp[attr];
       differences[attr] = diff;
       
       const absDiff = Math.abs(diff);

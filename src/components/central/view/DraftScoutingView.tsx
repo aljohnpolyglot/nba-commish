@@ -128,8 +128,8 @@ export const DraftScoutingView: React.FC = () => {
       const espnRank = Math.max(1, Math.round(consensusRank + (random(1) * 10 - 5)));
       const noCeilingsRank = Math.max(1, Math.round(consensusRank + (random(2) * 14 - 7)));
 
-      // REAL-TIME PRO COMPARISONS
-      const topMatches = findTopComparisons(player, activePlayers);
+      // REAL-TIME PRO COMPARISONS — prospect projected to POT ceiling vs NBA players at current ratings
+      const topMatches = findTopComparisons(player, activePlayers, false);
       const comparisonNames = topMatches.slice(0, 3).map(m => m.comparison.name).join(', ');
 
       return {
