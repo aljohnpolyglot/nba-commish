@@ -1,4 +1,5 @@
 import { NBAPlayer } from '../types';
+import { convertTo2KRating } from './helpers';
 
 /** BBGM contract.amount is in thousands of dollars.
  *  Multiply by 1000 to get actual USD. */
@@ -183,3 +184,171 @@ export const getTeamCapProfile = (
     isBuyer: capSpaceUSD > 5_000_000 && winPct >= 0.5,
   };
 };
+
+// ─── Contract Offer Engine ────────────────────────────────────────────────────
+
+/** Tier labels used for UI display (cosmetic only). */
+export type ContractTier = 'Superstar' | 'Star' | 'All-Star' | 'Starter' | 'Bench' | 'Charity';
+
+export interface ContractOffer {
+  salaryUSD: number;    // annual value in USD
+  years: number;        // contract length
+  tier: ContractTier;
+  hasPlayerOption: boolean; // player can opt out in final year
+}
+
+// Max contract % of cap by years of service; index = min(yrs, 10)
+const MAX_CONTRACT_PCT = [0.25, 0.26, 0.27, 0.28, 0.29, 0.30, 0.31, 0.32, 0.33, 0.34, 0.35];
+
+// Min contract $M calibrated at cap = $154.6M; index = min(yrs, 10)
+// Scaled proportionally when cap differs.
+const MIN_CONTRACT_BASE_M = [1.273, 1.426, 1.598, 1.790, 2.006, 2.247, 2.518, 2.821, 3.161, 3.541, 3.967];
+const BASE_CAP_M = 154.6;
+
+type ContractLeagueStats = Pick<
+  import('../types').LeagueStats,
+  | 'salaryCap'
+  | 'minContractType'
+  | 'minContractStaticAmount'
+  | 'maxContractType'
+  | 'maxContractStaticPercentage'
+  | 'minContractLength'
+  | 'maxContractLengthStandard'
+>;
+
+/**
+ * Compute a full contract offer for a player using the spec from §6c.
+ *
+ * Formula:
+ *   score  = OVR × 0.5 + POT × 0.5
+ *   salary = MAX(minSalary, maxContract × ((MAX(0, score − 68) / 31) ^ 1.6))
+ *
+ * @param player       - the player being offered
+ * @param leagueStats  - for cap + contract settings
+ * @param moodTraits   - player's mood traits (LOYAL, MERCENARY, etc.)
+ * @param moodScore    - numeric mood score from computeMoodScore (0 = neutral)
+ */
+export function computeContractOffer(
+  player: NBAPlayer,
+  leagueStats: ContractLeagueStats,
+  moodTraits: string[] = [],
+  moodScore: number = 0,
+): ContractOffer {
+  // leagueStats.salaryCap is stored in USD (e.g. 154_647_000). Convert to millions.
+  const salaryCapUSD = leagueStats.salaryCap ?? (BASE_CAP_M * 1_000_000);
+  const capM = salaryCapUSD / 1_000_000;
+
+  // ── Years of service (no new field needed) ──────────────────────────────
+  const yearsOfService = (player as any).stats
+    ? (player as any).stats.filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length
+    : 0;
+  const svcIdx = Math.min(yearsOfService, 10);
+
+  // ── Max contract ────────────────────────────────────────────────────────
+  let maxContractUSD: number;
+  if ((leagueStats.maxContractType ?? 'service_tiered') === 'service_tiered') {
+    maxContractUSD = (capM * MAX_CONTRACT_PCT[svcIdx]) * 1_000_000;
+  } else {
+    const pct = (leagueStats.maxContractStaticPercentage ?? 25) / 100;
+    maxContractUSD = capM * pct * 1_000_000;
+  }
+
+  // ── Min salary ──────────────────────────────────────────────────────────
+  let minSalaryUSD: number;
+  if ((leagueStats.minContractType ?? 'dynamic') === 'dynamic') {
+    // Scale proportionally from base cap
+    minSalaryUSD = (MIN_CONTRACT_BASE_M[svcIdx] / BASE_CAP_M) * capM * 1_000_000;
+  } else {
+    // Static — stored in thousands (BBGM convention)
+    minSalaryUSD = ((leagueStats.minContractStaticAmount ?? 1273) as number) * 1_000;
+  }
+
+  // ── OVR + POT (K2 scale, formula calibrated for 60–99) ─────────────────
+  // ratings[].ovr is BBGM scale (40–85). Convert → K2 (60–99) before using.
+  const lastRating = (player as any).ratings?.[(player as any).ratings?.length - 1];
+  const bbgmOvr = lastRating?.ovr ?? player.overallRating ?? 60;
+  const bbgmPot = lastRating?.pot ?? bbgmOvr;
+  const hgtAttr = lastRating?.hgt ?? 50;
+  const ovr = convertTo2KRating(bbgmOvr, hgtAttr);
+  const pot = convertTo2KRating(bbgmPot, hgtAttr);
+  const score = ovr * 0.5 + pot * 0.5;
+
+  // ── Tier ────────────────────────────────────────────────────────────────
+  let tier: ContractTier;
+  if      (score >= 95) tier = 'Superstar';
+  else if (score >= 90) tier = 'Star';
+  else if (score >= 85) tier = 'All-Star';
+  else if (score >= 78) tier = 'Starter';
+  else if (score >= 72) tier = 'Bench';
+  else                  tier = 'Charity';
+
+  // ── Base salary ─────────────────────────────────────────────────────────
+  const normalised = Math.max(0, score - 68) / (99 - 68);
+  let salaryUSD = Math.max(minSalaryUSD, maxContractUSD * Math.pow(normalised, 1.6));
+
+  // ── Mood modifier ───────────────────────────────────────────────────────
+  if (moodTraits.includes('LOYAL')) {
+    salaryUSD *= 0.92;                    // L — hometown discount
+  } else if (moodTraits.includes('MERCENARY')) {
+    salaryUSD *= 1.28;                    // $ — fatter contract, demands premium
+  } else if (moodTraits.includes('COMPETITOR')) {
+    salaryUSD *= 0.91;                    // W — paycut to chase a ring
+  } else if (moodScore < -2) {
+    salaryUSD *= 1.17;                    // unhappy — costs more to keep/acquire
+  } else if (moodScore < 2) {
+    salaryUSD *= 1.10;                    // restless — slight premium
+  }
+  // Happy/Neutral → no adjustment
+
+  salaryUSD = Math.max(minSalaryUSD, salaryUSD);
+
+  // ── Contract length ─────────────────────────────────────────────────────
+  // Seeded variance (0 or 1) so different players get slightly different lengths
+  let varSeed = 0;
+  const pid = (player as any).internalId ?? '';
+  for (let ci = 0; ci < pid.length; ci++) varSeed += pid.charCodeAt(ci);
+  varSeed += yearsOfService * 37;
+  const sinV = Math.abs((Math.sin(varSeed) * 10000) % 1);  // 0–1
+  const plusOne = sinV > 0.5 ? 1 : 0;                       // 0 or 1
+
+  // Last-season GP — injury penalty
+  const statsArr = (player as any).stats ?? [];
+  const lastSeasonStats = statsArr.filter((s: any) => !s.playoffs).at(-1);
+  const lastGP = lastSeasonStats?.gp ?? 82;
+  const injuryPenalty = lastGP < 40 ? 1 : 0;
+
+  // Base years by OVR (K2 scale: 60=fringe, 99=legend)
+  // Also check raw BBGM pot > 99 (impossible but used as flag for generated elite prospects)
+  const isEliteProspect = bbgmPot > 99 || pot >= 97;
+  let years: number;
+  if (isEliteProspect) {
+    years = 5;                            // elite prospect → auto 5yr
+  } else if (ovr >= 85) {
+    years = 4 + plusOne;                  // star (K2 85+) → 4–5 yrs
+  } else if (ovr >= 76) {
+    years = 3 + plusOne;                  // rotation (K2 76+) → 3–4 yrs
+  } else if (ovr >= 70) {
+    years = 2 + plusOne;                  // bench (K2 70+) → 2–3 yrs
+  } else {
+    years = 1 + plusOne;                  // fringe/veteran (K2 <70) → 1–2 yrs
+  }
+
+  // Injury deduction
+  years = Math.max(1, years - injuryPenalty);
+
+  // Mood overrides
+  if (moodScore < -2) years = Math.min(years, 2);
+  if (moodTraits.includes('LOYAL')) years = Math.min(years + 1, 5);
+
+  years = Math.min(years, leagueStats.maxContractLengthStandard ?? 5);
+  years = Math.max(leagueStats.minContractLength ?? 1, years);
+
+  // ── Player option ────────────────────────────────────────────────────────
+  // High-OVR players often hold a player option on their final year
+  const optV = Math.abs((Math.cos(varSeed + 42) * 10000) % 1);
+  const hasPlayerOption =
+    (ovr >= 85 && optV > 0.20) ||   // ~80 % chance for K2 85+ (stars)
+    (ovr >= 76 && optV > 0.50);     // ~50 % chance for K2 76+ (rotation)
+
+  return { salaryUSD, years, tier, hasPlayerOption };
+}

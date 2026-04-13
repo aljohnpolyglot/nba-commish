@@ -1,9 +1,20 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { ArrowRightLeft, Calendar, Info, Search, Filter, UserCheck, UserX, AlertTriangle, Users } from 'lucide-react';
+import { ArrowRightLeft, Calendar, Info, Search, Filter, UserCheck, UserX, AlertTriangle, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
+
+/** NBA season year from a date string: Oct-Dec → calYear+1, else → calYear. */
+function getSeasonYear(dateStr: string): number {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 0;
+    const month = d.getMonth() + 1;
+    const calYear = d.getFullYear();
+    return month >= 10 ? calYear + 1 : calYear;
+  } catch { return 0; }
+}
 
 function detectType(text: string, type?: string) {
   const t = text.toLowerCase();
@@ -30,6 +41,20 @@ export const TransactionsView: React.FC = () => {
   const [filterTeam, setFilterTeam] = React.useState('');
   const [filterMonth, setFilterMonth] = React.useState('');
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [selectedYear, setSelectedYear] = React.useState<number>(() => state.leagueStats?.year ?? 2026);
+
+  // Collect all unique season years that have transaction-type entries
+  const availableYears = useMemo(() => {
+    const yearSet = new Set<number>();
+    (state.history || []).forEach(raw => {
+      const entry = typeof raw === 'string' ? { text: raw, date: state.date } : raw as any;
+      const kind = detectType(entry.text || '', entry.type);
+      if (kind === 'League Event') return;
+      const yr = getSeasonYear(entry.date || '');
+      if (yr > 2000) yearSet.add(yr);
+    });
+    return Array.from(yearSet).sort((a, b) => b - a); // newest first
+  }, [state.history, state.date]);
 
   // Pre-build lookup maps
   const teamByName = useMemo(() => {
@@ -77,6 +102,8 @@ export const TransactionsView: React.FC = () => {
   const filteredHistory = enrichedHistory.filter(entry => {
     // Events view handles League Events — Transactions shows only roster/personnel moves
     if (entry.kind === 'League Event') return false;
+    // Year filter
+    if (selectedYear && getSeasonYear(entry.date || '') !== selectedYear) return false;
     const text = entry.text || '';
     if (searchQuery && !text.toLowerCase().includes(searchQuery.toLowerCase())) return false;
 
@@ -124,6 +151,34 @@ export const TransactionsView: React.FC = () => {
               </p>
             </div>
             <div className="flex items-center gap-3">
+              {/* Year chevron picker */}
+              {availableYears.length > 0 && (
+                <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5">
+                  <button
+                    onClick={() => {
+                      const idx = availableYears.indexOf(selectedYear);
+                      if (idx < availableYears.length - 1) setSelectedYear(availableYears[idx + 1]);
+                    }}
+                    disabled={availableYears.indexOf(selectedYear) === availableYears.length - 1}
+                    className="p-0.5 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <span className="text-xs font-black text-white px-1 min-w-[40px] text-center">
+                    {selectedYear}
+                  </span>
+                  <button
+                    onClick={() => {
+                      const idx = availableYears.indexOf(selectedYear);
+                      if (idx > 0) setSelectedYear(availableYears[idx - 1]);
+                    }}
+                    disabled={availableYears.indexOf(selectedYear) === 0}
+                    className="p-0.5 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
               <div className="relative w-full sm:w-auto">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
                 <input

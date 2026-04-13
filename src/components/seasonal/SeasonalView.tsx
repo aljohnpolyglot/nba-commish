@@ -419,6 +419,7 @@ const SeasonalView: React.FC = () => {
       {globalGamesModalOpen && (
         <GlobalGamesModal
           teams={state.teams}
+          seasonYear={state.leagueStats?.year}
           onClose={() => setGlobalGamesModalOpen(false)}
           onConfirm={handleGlobalGames}
         />

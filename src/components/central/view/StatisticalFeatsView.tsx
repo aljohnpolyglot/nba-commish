@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { NBAPlayer, NBATeam, Game } from '../../../types';
+import { getOpeningNightDate } from '../../../utils/dateUtils';
 import { Search } from 'lucide-react';
 import { PlayerBioView } from './PlayerBioView';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
@@ -99,7 +100,7 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
       '5×5': 0
     };
 
-    const OPENING_NIGHT_MS = new Date('2025-10-24T00:00:00Z').getTime();
+    const OPENING_NIGHT_MS = getOpeningNightDate(state.leagueStats.year).getTime();
 
     state.boxScores.forEach(game => {
       // Skip All-Star & Rising Stars

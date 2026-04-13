@@ -5,6 +5,7 @@ import { ApprovalChart } from './dashboard/ApprovalChart';
 import { ViewershipChart } from './dashboard/ViewershipChart';
 import { RevenueChart } from './dashboard/RevenueChart';
 import { getGamePhase } from '../../utils/helpers';
+import { getOpeningNightDate } from '../../utils/dateUtils';
 import { VIEWERSHIP_MEANS } from '../../services/logic/ViewershipService';
 
 interface DashboardProps {
@@ -42,7 +43,7 @@ const Dashboard: React.FC<DashboardProps> = ({ initialTab = 'approvals' }) => {
   const { leagueStats, stats, historicalStats } = state;
 
   // Season revenue calculations — phase-weighted so Finals days earn more than Preseason days
-  const openingNight = new Date('2025-10-24');
+  const openingNight = getOpeningNightDate(leagueStats.year);
   const currentDate  = new Date(state.date);
   const daysSinceOpening = Math.max(0, (currentDate.getTime() - openingNight.getTime()) / (1000 * 60 * 60 * 24));
   const annualRevB   = leagueStats.mediaRights?.totalRev ?? 0;

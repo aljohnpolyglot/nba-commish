@@ -377,7 +377,7 @@ function calcOWS(
   lgORTG: number
 ): number {
   const margOff = ((playerORTG / 100) - (lgORTG / 100) * 0.92) * playerPoss;
-  const margPtsPerWin = 0.32 * lgORTG;
+  const margPtsPerWin = 0.32 * lgORTG * 2.3;
   return margPtsPerWin > 0 ? safe(margOff / margPtsPerWin) : 0;
 }
 
@@ -392,7 +392,7 @@ function calcDWS(
   teamPoss: number
 ): number {
   const margDef = ((lgORTG / 100) * 1.08 - (drtg / 100)) * teamPoss * playerMinFraction;
-  const margPtsPerWin = 0.32 * lgORTG;
+  const margPtsPerWin = 0.32 * lgORTG * 2.3;
   return margPtsPerWin > 0 ? safe(margDef / margPtsPerWin) : 0;
 }
 
@@ -438,7 +438,8 @@ function calcBPM(
     - 1.92                    // replacement-level baseline
   );
 
-  return { obpm, dbpm, bpm: safe(obpm + dbpm) };
+  const BPM_SCALE = 0.40;
+  return { obpm: safe(obpm * BPM_SCALE), dbpm: safe(dbpm * BPM_SCALE), bpm: safe((obpm + dbpm) * BPM_SCALE) };
 }
 
 /** VORP — accumulates value above replacement over minutes played. */

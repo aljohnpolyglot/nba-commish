@@ -8,7 +8,7 @@ import { memCache } from './bioCache';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
-type StatType = 'perGame' | 'per36' | 'totals' | 'advanced';
+type StatType = 'perGame' | 'per36' | 'totals' | 'advanced' | 'shotLocations';
 type Phase    = 'regular' | 'playoffs' | 'combined';
 type SeasonMode = number | 'career' | 'all';
 
@@ -18,7 +18,10 @@ type SortField =
   | 'twop' | 'twopa' | 'twopPct' | 'efgPct'
   | 'ft' | 'fta' | 'ftPct'
   | 'orb' | 'drb' | 'trb' | 'ast' | 'tov' | 'stl' | 'blk' | 'pf' | 'pts' | 'pm'
-  | 'per' | 'tsPct' | 'efgPctA' | 'usgPct' | 'ortg' | 'drtg' | 'bpm' | 'ws' | 'vorp';
+  | 'per' | 'tsPct' | 'efgPctA' | 'usgPct' | 'ortg' | 'drtg' | 'bpm' | 'ws' | 'vorp'
+  | 'rimFgm' | 'rimFga' | 'rimFgPct' | 'lpFgm' | 'lpFga' | 'lpFgPct'
+  | 'mrFgm' | 'mrFga' | 'mrFgPct' | 'slTpm' | 'slTpa' | 'slTpPct'
+  | 'ba' | 'dd' | 'td' | 'qd' | 'fiveX5';
 
 interface ComputedRow {
   player: NBAPlayer;
@@ -35,6 +38,12 @@ interface ComputedRow {
   ast: number; tov: number; stl: number; blk: number; pf: number; pts: number; pm: number;
   per: number; tsPct: number; efgPctA: number; usgPct: number;
   ortg: number; drtg: number; bpm: number; ws: number; vorp: number;
+  // Shot location & feats (populated when statType === 'shotLocations')
+  rimFgm?: number; rimFga?: number; rimFgPct?: number;
+  lpFgm?: number;  lpFga?: number;  lpFgPct?: number;
+  mrFgm?: number;  mrFga?: number;  mrFgPct?: number;
+  slTpm?: number;  slTpa?: number;  slTpPct?: number;
+  ba?: number; dd?: number; td?: number; qd?: number; fiveX5?: number;
   fromBref?: boolean;
 }
 
@@ -260,6 +269,37 @@ const ADV_COLS: { key: SortField; label: string; dim?: boolean }[] = [
   { key: 'vorp',   label: 'VORP' },
 ];
 
+interface ShotLocAgg {
+  rimFgm: number; rimFga: number;
+  lpFgm:  number; lpFga:  number;
+  mrFgm:  number; mrFga:  number;
+  tpFgm:  number; tpFga:  number;
+  ba: number;
+  dd: number; td: number; qd: number; fiveX5: number;
+}
+
+const SL_COLS: { key: SortField; label: string; dim?: boolean }[] = [
+  { key: 'gp',       label: 'G' },
+  { key: 'min',      label: 'MP' },
+  { key: 'rimFgm',   label: 'RimFG' },
+  { key: 'rimFga',   label: 'RimA',  dim: true },
+  { key: 'rimFgPct', label: 'Rim%' },
+  { key: 'lpFgm',    label: 'LPFG' },
+  { key: 'lpFga',    label: 'LPA',   dim: true },
+  { key: 'lpFgPct',  label: 'LP%' },
+  { key: 'mrFgm',    label: 'MidFG' },
+  { key: 'mrFga',    label: 'MidA',  dim: true },
+  { key: 'mrFgPct',  label: 'Mid%' },
+  { key: 'slTpm',    label: '3P' },
+  { key: 'slTpa',    label: '3PA',   dim: true },
+  { key: 'slTpPct',  label: '3P%' },
+  { key: 'ba',       label: 'BA',    dim: true },
+  { key: 'dd',       label: 'DD' },
+  { key: 'td',       label: 'TD' },
+  { key: 'qd',       label: 'QD',    dim: true },
+  { key: 'fiveX5',   label: '5×5',   dim: true },
+];
+
 const PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -432,9 +472,80 @@ export const PlayerStatsView: React.FC = () => {
     });
   }, [season, state.players]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Shot location aggregation from box scores ──────────────────────────
+  const shotLocMap = useMemo((): Map<string, ShotLocAgg> => {
+    if (statType !== 'shotLocations') return new Map();
+    const map = new Map<string, ShotLocAgg>();
+    const zero = (): ShotLocAgg => ({ rimFgm:0,rimFga:0,lpFgm:0,lpFga:0,mrFgm:0,mrFga:0,tpFgm:0,tpFga:0,ba:0,dd:0,td:0,qd:0,fiveX5:0 });
+
+    (state.boxScores as any[]).forEach(game => {
+      const d = new Date(game.date ?? '');
+      if (isNaN(d.getTime())) return;
+      const yr = d.getFullYear();
+      const gameSeasonYear = d.getMonth() < 9 ? yr : yr + 1;
+      if (season !== 'career' && season !== 'all' && gameSeasonYear !== season) return;
+
+      const isPlayoff = !!(game.isPlayoff || game.isPlayIn);
+      if (phase === 'regular' && isPlayoff) return;
+      if (phase === 'playoffs' && !isPlayoff) return;
+
+      const process = (stats: any[]) => {
+        (stats ?? []).forEach((s: any) => {
+          const pid: string = s.playerId;
+          if (!pid) return;
+          const key = season === 'all' ? `${pid}_${gameSeasonYear}` : pid;
+          if (!map.has(key)) map.set(key, zero());
+          const agg = map.get(key)!;
+          const sp = (v: any): number => (typeof v === 'number' && isFinite(v) ? v : 0);
+          agg.rimFgm += sp(s.fgAtRim);
+          agg.rimFga += sp(s.fgaAtRim);
+          agg.lpFgm  += sp(s.fgLowPost);
+          agg.lpFga  += sp(s.fgaLowPost);
+          agg.mrFgm  += sp(s.fgMidRange);
+          agg.mrFga  += sp(s.fgaMidRange);
+          agg.tpFgm  += sp(s.threePm);
+          agg.tpFga  += sp(s.threePa);
+          agg.ba     += sp(s.ba);
+          const pts = sp(s.pts);
+          const reb = sp(s.trb || s.reb || (s.orb||0)+(s.drb||0));
+          const ast = sp(s.ast);
+          const stl = sp(s.stl);
+          const blk = sp(s.blk);
+          const cats10 = [pts>=10,reb>=10,ast>=10,stl>=10,blk>=10].filter(Boolean).length;
+          if (cats10 >= 4) agg.qd++;
+          else if (cats10 >= 3) agg.td++;
+          else if (cats10 >= 2) agg.dd++;
+          const cats5 = [pts>=5,reb>=5,ast>=5,stl>=5,blk>=5].filter(Boolean).length;
+          if (cats5 >= 5) agg.fiveX5++;
+        });
+      };
+      process(game.homeStats);
+      process(game.awayStats);
+    });
+    return map;
+  }, [state.boxScores, statType, season, phase]);
+
+  // ── Enrich rows with shot loc data when in shotLocations mode ─────────
+  const enrichedRows = useMemo((): ComputedRow[] => {
+    if (statType !== 'shotLocations') return rows;
+    return rows.map(r => {
+      const slKey = season === 'all' ? `${r.player.internalId}_${r.season}` : r.player.internalId;
+      const sl = shotLocMap.get(slKey);
+      if (!sl) return r;
+      return {
+        ...r,
+        rimFgm: sl.rimFgm, rimFga: sl.rimFga, rimFgPct: sl.rimFga > 0 ? sl.rimFgm / sl.rimFga : 0,
+        lpFgm:  sl.lpFgm,  lpFga:  sl.lpFga,  lpFgPct:  sl.lpFga  > 0 ? sl.lpFgm  / sl.lpFga  : 0,
+        mrFgm:  sl.mrFgm,  mrFga:  sl.mrFga,  mrFgPct:  sl.mrFga  > 0 ? sl.mrFgm  / sl.mrFga  : 0,
+        slTpm:  sl.tpFgm,  slTpa:  sl.tpFga,  slTpPct:  sl.tpFga  > 0 ? sl.tpFgm  / sl.tpFga  : 0,
+        ba: sl.ba, dd: sl.dd, td: sl.td, qd: sl.qd, fiveX5: sl.fiveX5,
+      };
+    });
+  }, [rows, shotLocMap, statType, season]);
+
   // ── Filter + sort ──────────────────────────────────────────────────────
   const filteredRows = useMemo(() => {
-    let data = rows;
+    let data = enrichedRows;
 
     if (searchTerm) {
       const t = searchTerm.toLowerCase();
@@ -470,7 +581,7 @@ export const PlayerStatsView: React.FC = () => {
       if (av > bv) return sortOrder === 'asc' ?  1 : -1;
       return 0;
     });
-  }, [rows, searchTerm, columnFilters, sortField, sortOrder]);
+  }, [enrichedRows, searchTerm, columnFilters, sortField, sortOrder]);
 
   const totalPages = Math.ceil(filteredRows.length / perPage);
   const pageRows   = filteredRows.slice((currentPage - 1) * perPage, currentPage * perPage);
@@ -507,7 +618,7 @@ export const PlayerStatsView: React.FC = () => {
     return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
   }
 
-  const activeCols = statType === 'advanced' ? ADV_COLS : BASIC_COLS;
+  const activeCols = statType === 'advanced' ? ADV_COLS : statType === 'shotLocations' ? SL_COLS : BASIC_COLS;
   const seasonLabel = season === 'career' ? 'Career' : season === 'all' ? 'All Time' : `${(season as number) - 1}–${String(season).slice(2)}`;
 
   return (
@@ -583,6 +694,7 @@ export const PlayerStatsView: React.FC = () => {
             <option value="per36">Per 36</option>
             <option value="totals">Totals</option>
             <option value="advanced">Advanced</option>
+            <option value="shotLocations">Shot Locations & Feats</option>
           </select>
 
           {/* Phase */}
@@ -648,7 +760,7 @@ export const PlayerStatsView: React.FC = () => {
           <span className="text-rose-400">■</span> Hall of Fame
           {brefRows.size > 0 && <span className="ml-3 text-slate-600">† bref career</span>}
         </span>
-        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{seasonLabel} · {statType === 'perGame' ? 'Per Game' : statType === 'per36' ? 'Per 36 Min' : statType === 'totals' ? 'Totals' : 'Advanced'} · {phase === 'regular' ? 'Reg Season' : phase === 'playoffs' ? 'Playoffs' : 'Combined'}</span>
+        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{seasonLabel} · {statType === 'perGame' ? 'Per Game' : statType === 'per36' ? 'Per 36 Min' : statType === 'totals' ? 'Totals' : statType === 'shotLocations' ? 'Shot Locations & Feats' : 'Advanced'} · {phase === 'regular' ? 'Reg Season' : phase === 'playoffs' ? 'Playoffs' : 'Combined'}</span>
       </div>
 
       {/* ── Table ────────────────────────────────────────────────────── */}
@@ -658,7 +770,7 @@ export const PlayerStatsView: React.FC = () => {
       >
         <table
           className="w-full text-xs text-left border-collapse"
-          style={{ minWidth: statType === 'advanced' ? 820 : 1360 }}
+          style={{ minWidth: statType === 'advanced' ? 820 : statType === 'shotLocations' ? 1050 : 1360 }}
         >
           <thead className="sticky top-0 z-20 bg-slate-900 border-b-2 border-slate-700">
             <tr>
@@ -791,7 +903,29 @@ export const PlayerStatsView: React.FC = () => {
                     </td>
                   )}
                   {/* Stat values */}
-                  {statType !== 'advanced' ? (
+                  {statType === 'shotLocations' ? (
+                    <>
+                      <td className="px-2 py-1.5 text-right">{r.gp}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-400">{fmt1(r.min)}</td>
+                      <td className="px-2 py-1.5 text-right">{r.rimFgm ?? 0}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-500">{r.rimFga ?? 0}</td>
+                      <td className="px-2 py-1.5 text-right">{fmt3(r.rimFgPct ?? 0)}</td>
+                      <td className="px-2 py-1.5 text-right">{r.lpFgm ?? 0}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-500">{r.lpFga ?? 0}</td>
+                      <td className="px-2 py-1.5 text-right">{fmt3(r.lpFgPct ?? 0)}</td>
+                      <td className="px-2 py-1.5 text-right">{r.mrFgm ?? 0}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-500">{r.mrFga ?? 0}</td>
+                      <td className="px-2 py-1.5 text-right">{fmt3(r.mrFgPct ?? 0)}</td>
+                      <td className="px-2 py-1.5 text-right text-indigo-300">{r.slTpm ?? 0}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-500">{r.slTpa ?? 0}</td>
+                      <td className="px-2 py-1.5 text-right text-indigo-300">{fmt3(r.slTpPct ?? 0)}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-500">{r.ba ?? 0}</td>
+                      <td className="px-2 py-1.5 text-right text-emerald-300 font-medium">{r.dd ?? 0}</td>
+                      <td className="px-2 py-1.5 text-right text-amber-300 font-bold">{r.td ?? 0}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-500">{r.qd ?? 0}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-500">{r.fiveX5 ?? 0}</td>
+                    </>
+                  ) : statType !== 'advanced' ? (
                     <>
                       <td className="px-2 py-1.5 text-right">{r.gp}</td>
                       <td className="px-2 py-1.5 text-right text-slate-500">{r.gs}</td>

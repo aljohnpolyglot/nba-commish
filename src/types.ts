@@ -619,7 +619,7 @@ export interface NBAPlayer {
   weight?: number;
   born?: { year: number; loc: string };
   draft?: { year: number; tid: number; round?: number; pick?: number; originalTid?: number };
-  contract?: { amount: number; exp: number; rookie?: boolean };
+  contract?: { amount: number; exp: number; rookie?: boolean; hasPlayerOption?: boolean };
   awards?: Array<{ season: number; type: string }>;
   injury: {
     type: string;

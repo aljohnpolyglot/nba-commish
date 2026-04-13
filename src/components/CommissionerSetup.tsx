@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { User, ArrowRight, Crown, ArrowLeft, Settings, ChevronDown, ChevronUp, Bot } from 'lucide-react';
 import { SettingsManager } from '../services/SettingsManager';
+import { INITIAL_LEAGUE_STATS } from '../constants';
+import { getSeasonSimStartDate, toISODateString } from '../utils/dateUtils';
+
+const SIM_START_DATE = toISODateString(getSeasonSimStartDate(INITIAL_LEAGUE_STATS.year)); // e.g. '2025-08-06'
 import { StartDateTimeline } from './setup/StartDateTimeline';
 import { JumpReviewScreen } from './setup/JumpReviewScreen';
 
@@ -21,7 +25,7 @@ type Step = 'name' | 'timeline' | 'review';
 export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, onBack }) => {
   const [step, setStep] = useState<Step>('name');
   const [name, setName] = useState('');
-  const [chosenDate, setChosenDate] = useState<string>('2025-08-06');
+  const [chosenDate, setChosenDate] = useState<string>(SIM_START_DATE);
   const [showSettings, setShowSettings] = useState(true);
   const [settings, setSettings] = useState(() => SettingsManager.getSettings());
 
@@ -49,13 +53,13 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, o
       startScenario: 'regular_season',
       skipLLM: !settings.enableLLM,
       startDate: date,
-      jumpRequired: date > '2025-08-06',
+      jumpRequired: date > SIM_START_DATE,
     });
   };
 
   const handleDateSelected = (date: string) => {
     setChosenDate(date);
-    if (date === '2025-08-06') {
+    if (date === SIM_START_DATE) {
       handleStart(date);
     } else {
       setStep('review');

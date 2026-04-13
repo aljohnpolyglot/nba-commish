@@ -172,6 +172,7 @@ export const ActionModalsRenderer: React.FC<ActionModalsRendererProps> = ({
       {modals.globalGamesModalOpen && (
         <GlobalGamesModal
           teams={state.teams}
+          seasonYear={state.leagueStats?.year}
           onClose={() => modals.setGlobalGamesModalOpen(false)}
           onConfirm={async (games) => {
             modals.setGlobalGamesModalOpen(false);

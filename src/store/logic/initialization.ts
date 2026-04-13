@@ -2,6 +2,7 @@ import { GameState, HistoricalStatPoint, NBAPlayer as Player, DraftPick, LazySim
 import { generateInitialContent } from '../../services/llm/llm';
 import { getRosterData, getHistoricalAwards } from '../../services/rosterService';
 import { INITIAL_LEAGUE_STATS } from '../../constants';
+import { getSeasonSimStartDate } from '../../utils/dateUtils';
 import { DEFAULT_MEDIA_RIGHTS } from '../../utils/broadcastingUtils';
 import { fetchEuroleagueRoster, fetchWNBARoster, fetchPBARoster, fetchBLeagueRoster, fetchGLeagueRoster, fetchEndesaRoster } from '../../services/externalRosterService';
 
@@ -99,7 +100,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     // Schedule is intentionally empty at start — generated on Aug 14 (Schedule Release Day)
     // so the commissioner has Aug 6-13 to configure Christmas, Global Games, and Intl Preseason.
     const schedule: any[] = [];
-    const startDateFormatted = new Date('2025-08-06T00:00:00.000Z').toLocaleDateString('en-US', {
+    const startDateFormatted = getSeasonSimStartDate(INITIAL_LEAGUE_STATS.year).toLocaleDateString('en-US', {
         month: 'short', day: 'numeric', year: 'numeric'
     });
 
@@ -219,7 +220,8 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     };
 
     // ── Lazy sim: jump to chosen start date ───────────────────────────────────
-    if (payload.jumpRequired && payload.startDate && payload.startDate > '2025-08-06') {
+    const defaultSimStart = getSeasonSimStartDate(INITIAL_LEAGUE_STATS.year).toISOString().slice(0, 10);
+    if (payload.jumpRequired && payload.startDate && payload.startDate > defaultSimStart) {
         const { runLazySim } = await import('../../services/logic/lazySimRunner');
         const { initialState } = await import('../initialState');
 

@@ -12,7 +12,8 @@ export const COMMISSIONER_TABS: CommissionerTab[] = ['Approvals', 'Viewership', 
 export const ROSTER_URL = 'https://raw.githubusercontent.com/alexnoob/BasketBall-GM-Rosters/master/2025-26.NBA.Roster.json';
 export const EXTRA_RETIRED_PLAYERS_URL = 'https://api.npoint.io/d94bdfeeecf4246b481d';
 
-export const START_DATE_STR = '2025-08-01';
+/** Season year offset: the sim calendar year is (leagueStats.year - SEASON_YEAR_OFFSET). */
+export const SEASON_YEAR_OFFSET = 1;
 
 export const DEFAULT_CONFS: NBAConf[] = [
   { cid: 0, name: 'Eastern Conference' },

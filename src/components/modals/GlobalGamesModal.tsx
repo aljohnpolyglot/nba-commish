@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, Globe, Search, MapPin } from 'lucide-react';
 import { NBATeam } from '../../types';
+import { getOpeningNightDate, toISODateString } from '../../utils/dateUtils';
 
 interface City {
   name: string;
@@ -13,6 +14,7 @@ interface GlobalGamesModalProps {
   teams: NBATeam[];
   onClose: () => void;
   onConfirm: (games: { homeTid: number; awayTid: number; date: string; city: string; country: string }[]) => void;
+  seasonYear?: number;
 }
 
 const GLOBAL_CITIES_URL = 'https://gist.githubusercontent.com/randymeech/e9398d4f6fb827e2294a/raw/22925b92339f0f4c005159ae4d36f8f3988e9d39/top-1000-cities.json';
@@ -28,7 +30,9 @@ const FALLBACK_CITIES: City[] = [
   { name: 'Madrid', lat: 40.4168, lng: -3.7038, country: 'Spain' }
 ];
 
-export const GlobalGamesModal: React.FC<GlobalGamesModalProps> = ({ teams, onClose, onConfirm }) => {
+export const GlobalGamesModal: React.FC<GlobalGamesModalProps> = ({ teams, onClose, onConfirm, seasonYear = 2026 }) => {
+  const openingNightMs = getOpeningNightDate(seasonYear).getTime();
+  const regularSeasonEnd = new Date(Date.UTC(seasonYear - 1, 3, 15)).getTime(); // Apr 15 of pre-season year
   const [games, setGames] = useState<{ homeTid: number; awayTid: number; date: string; city: string; country: string }[]>([
     { homeTid: -1, awayTid: -1, date: '2026-01-15', city: '', country: '' }
   ]);
@@ -105,8 +109,8 @@ export const GlobalGamesModal: React.FC<GlobalGamesModalProps> = ({ teams, onClo
 
   const isValid = activeGames.length > 0 && activeGames.every(g => {
     const gameDate = new Date(g.date).getTime();
-    const minDate = new Date('2025-10-24').getTime();
-    const maxDate = new Date('2026-04-15').getTime();
+    const minDate = openingNightMs;
+    const maxDate = regularSeasonEnd;
     
     return (
       g.homeTid !== -1 && 

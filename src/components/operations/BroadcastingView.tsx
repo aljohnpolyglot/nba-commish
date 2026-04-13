@@ -478,7 +478,7 @@ export const BroadcastingView: React.FC = () => {
         .filter(Boolean)
         .join(', ');
       const dealOutcome = [
-        `Commissioner ${state.commissionerName || 'of the NBA'} has officially finalized the league's media rights deal for the 2025-26 season.`,
+        `Commissioner ${state.commissionerName || 'of the NBA'} has officially finalized the league's media rights deal for the ${(state.leagueStats.year ?? 2026) - 1}-${String(state.leagueStats.year ?? 2026).slice(2)} season.`,
         `Broadcasting partners: ${partnerNames}.`,
         `Total media revenue: $${metrics.mediaRev.toFixed(2)}B. League Pass priced at $${lpPrice.toFixed(2)}/month (${metrics.subs.toFixed(1)}M projected subscribers).`,
         `Combined annual broadcast revenue: $${metrics.totalRev.toFixed(2)}B. New salary cap set at $${metrics.salaryCap.toFixed(1)}M.`,

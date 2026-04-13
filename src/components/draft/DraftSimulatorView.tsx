@@ -12,19 +12,31 @@ import { convertTo2KRating, normalizeDate } from '../../utils/helpers';
 import { PlayerBioView } from '../central/view/PlayerBioView';
 import type { NBAPlayer } from '../../types';
 
-// Rookie contract scale by pick slot (slot 1 = 120% of max rookie, slot 60 = min contract)
-// NBA rookie scale: first 13 picks have fixed amounts; rest scale down linearly
-const getRookieContractAmount = (pickSlot: number): number => {
-  // Approximate NBA rookie scale in millions (round 1 scaled amounts)
-  const r1Scale = [
-    10.1, 9.5, 9.0, 8.5, 7.9, 7.4, 6.9, 6.5, 6.1, 5.7,
-    5.4, 5.1, 4.8, 4.5, 4.3, 4.1, 3.9, 3.7, 3.6, 3.4,
-    3.3, 3.2, 3.1, 3.0, 2.9, 2.8, 2.7, 2.6, 2.5, 2.4,
-  ];
-  if (pickSlot <= 30) return (r1Scale[pickSlot - 1] ?? 2.4) * 1_000_000;
-  // Round 2: scale from $1.8M (pick 31) down to $1.27M (pick 60)
-  const r2Fraction = (pickSlot - 31) / 29;
-  return Math.round((1_800_000 - r2Fraction * 530_000) / 1000) * 1000;
+// Shape ratios for the 30-pick rookie scale (pick 1 = 1.0, pick 30 ≈ 0.238).
+// Multiplicative 5.42% step-down per slot, as described in EconomyRookieContractsSection.
+const R1_SHAPE: number[] = Array.from({ length: 30 }, (_, i) => Math.pow(1 - 0.0542, i));
+
+/**
+ * Compute rookie contract salary in USD for a given pick slot.
+ * @param pickSlot   1-60
+ * @param capM       Current salary cap in millions (e.g. 154.6)
+ * @param maxPct     Commissioner's rookieMaxContractPercentage (e.g. 9 = 9% of cap)
+ * @param minSalary  Minimum salary in USD (floor for all picks)
+ */
+const getRookieContractAmount = (
+  pickSlot: number,
+  capM: number,
+  maxPct: number,
+  minSalary: number,
+): number => {
+  const pick1USD = (capM * maxPct / 100) * 1_000_000;
+  if (pickSlot <= 30) {
+    const ratio = R1_SHAPE[pickSlot - 1] ?? R1_SHAPE[29];
+    return Math.max(minSalary, Math.round(pick1USD * ratio));
+  }
+  // Round 2 (continues the same shape from slot 31 onward)
+  const ratio = R1_SHAPE[29] * Math.pow(1 - 0.0542, pickSlot - 30);
+  return Math.max(minSalary, Math.round(pick1USD * ratio));
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -37,6 +49,108 @@ const getOrdinalSuffix = (n: number) => {
 
 const POSITIONS = ['ALL', 'PG', 'SG', 'SF', 'PF', 'C'];
 
+// ─── Full Draft Table ─────────────────────────────────────────────────────────
+
+interface FullDraftTableProps {
+  drafted: Record<number, any>;
+  draftOrder: any[];
+  onReview: (player: any, pick: number) => void;
+}
+
+const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, draftOrder, onReview }) => {
+  const [teamFilter, setTeamFilter] = useState<string>('ALL');
+
+  // Build sorted alphabetical team list from draft order (deduplicated)
+  const teamOptions = useMemo(() => {
+    const seen = new Map<string, any>();
+    draftOrder.forEach(t => {
+      if (t && t.name && !seen.has(t.name)) seen.set(t.name, t);
+    });
+    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [draftOrder]);
+
+  const filteredEntries = useMemo(() => {
+    const entries = Object.entries(drafted)
+      .sort(([a], [b]) => parseInt(a) - parseInt(b));
+    if (teamFilter === 'ALL') return entries;
+    return entries.filter(([pick]) => {
+      const team = draftOrder[parseInt(pick) - 1];
+      return team?.name === teamFilter;
+    });
+  }, [drafted, draftOrder, teamFilter]);
+
+  return (
+    <div className="mt-10 space-y-5">
+      <div className="border-b border-[#333] pb-3 flex items-center justify-between gap-4">
+        <h4 className="text-xl font-black text-white uppercase tracking-tight">Full Draft</h4>
+        <select
+          value={teamFilter}
+          onChange={e => setTeamFilter(e.target.value)}
+          className="bg-[#1A1A1A] border border-[#444] text-white text-[11px] font-black uppercase tracking-widest rounded-sm px-3 py-1.5 focus:outline-none focus:border-indigo-500 cursor-pointer"
+        >
+          <option value="ALL">All Teams</option>
+          {teamOptions.map(t => (
+            <option key={t.id ?? t.name} value={t.name}>{t.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {filteredEntries.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <p className="text-white/20 font-black text-sm uppercase tracking-widest">No picks for this team</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {filteredEntries.map(([pick, player]: [string, any]) => {
+            const team = draftOrder[parseInt(pick) - 1];
+            return (
+              <div
+                key={pick}
+                onClick={() => onReview(player, parseInt(pick))}
+                className="bg-[#1A1A1A] border border-[#333] rounded-sm flex h-20 overflow-hidden hover:border-indigo-600 transition-colors cursor-pointer group"
+              >
+                {/* Pick # */}
+                <div className="w-11 bg-indigo-900/60 flex items-center justify-center shrink-0">
+                  <span className="text-xl font-black text-white">{pick.padStart(2, '0')}</span>
+                </div>
+
+                {/* Player photo */}
+                <div className="w-20 bg-[#111] relative shrink-0 overflow-hidden">
+                  {player.imgURL ? (
+                    <img src={player.imgURL} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-2xl font-black text-indigo-900">
+                      {player.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Player info */}
+                <div className="flex-1 p-3 flex flex-col justify-center min-w-0">
+                  <p className="font-black text-white text-base truncate uppercase tracking-tight">{player.name}</p>
+                  <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                    {player.pos} · OVR {player.displayOvr}
+                    {player.college && ` · ${player.college}`}
+                  </div>
+                </div>
+
+                {/* Team logo */}
+                <div className="w-14 flex items-center justify-center shrink-0 border-l border-[#333] bg-black/20 group-hover:bg-black/40 transition-colors">
+                  {team?.logoUrl ? (
+                    <img src={team.logoUrl} alt="" className="w-9 h-9 object-contain" referrerPolicy="no-referrer" />
+                  ) : (
+                    <span className="text-[10px] font-black text-white/30">{team?.abbrev}</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface DraftSimulatorViewProps {
@@ -44,22 +158,48 @@ interface DraftSimulatorViewProps {
 }
 
 export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewChange }) => {
-  const { state, dispatch } = useGame();
+  const { state, dispatchAction: dispatch } = useGame();
 
-  // Build 60-pick draft order: worst-to-best for R1, then R2
+  // Build 60-pick draft order:
+  // R1: picks 1-14 from lottery results (if available), picks 15-30 from playoff teams worst→best.
+  // R2: same team order as R1.
   const draftOrder = useMemo(() => {
-    const sorted = [...state.teams]
+    const lotteryResults: any[] = state.draftLotteryResult ?? [];
+    const lotteryTids = new Set(lotteryResults.map((r: any) => r.team?.tid ?? r.tid));
+
+    // Sort all 30 teams by win pct
+    const allSorted = [...state.teams]
       .filter(t => t.id > 0)
       .sort((a, b) => {
         const wa = a.wins / Math.max(1, a.wins + a.losses);
         const wb = b.wins / Math.max(1, b.wins + b.losses);
         return wa - wb;
       });
+
+    let r1Order: any[];
+    if (lotteryResults.length >= 14) {
+      // Picks 1-14: use lottery result order
+      const lotteryPicks = [...lotteryResults]
+        .sort((a: any, b: any) => a.pickNumber - b.pickNumber)
+        .map((r: any) => state.teams.find(t => t.id === (r.team?.tid ?? r.tid)))
+        .filter(Boolean);
+
+      // Picks 15-30: playoff teams (not in lottery) sorted best record → worst
+      const playoffTeams = allSorted
+        .filter(t => !lotteryTids.has(t.id))
+        .reverse(); // best record gets last pick (#30)
+
+      r1Order = [...lotteryPicks, ...playoffTeams];
+    } else {
+      // No lottery result yet — fall back to standings order
+      r1Order = allSorted;
+    }
+
     return [
-      ...sorted,
-      ...sorted.map(t => ({ ...t, _r2: true })),
+      ...r1Order,
+      ...r1Order.map(t => ({ ...t, _r2: true })),
     ] as any[];
-  }, [state.teams]);
+  }, [state.teams, state.draftLotteryResult]);
 
   const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa']);
 
@@ -181,15 +321,27 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   }, [state.players, state.leagueStats?.year]);
 
   const [viewingBioPlayer, setViewingBioPlayer] = useState<NBAPlayer | null>(null);
-  const [currentPick, setCurrentPick] = useState(1);
-  const [drafted, setDrafted] = useState<Record<number, any>>({});
+
+  // Restore in-progress draft from game state so switching views doesn't lose picks
+  const savedDraftPicks: Record<number, any> = (state as any).activeDraftPicks ?? {};
+  const savedPickCount = Object.keys(savedDraftPicks).length;
+  const [currentPick, setCurrentPick] = useState<number>(() =>
+    savedPickCount > 0 ? Math.max(...Object.keys(savedDraftPicks).map(Number)) + 1 : 1
+  );
+  const [drafted, setDrafted] = useState<Record<number, any>>(() => savedDraftPicks);
   const [posFilter, setPosFilter] = useState('ALL');
   const [isSimulating, setIsSimulating] = useState(false);
   const [simSpeed, setSimSpeed] = useState('normal');
-  const [hasStarted, setHasStarted] = useState(false);
+  const [hasStarted, setHasStarted] = useState<boolean>(() => savedPickCount > 0);
   const [modalPlayer, setModalPlayer] = useState<any>(null);
   const [modalMode, setModalMode] = useState<'draft' | 'scouting' | 'review'>('draft');
   const [reviewPick, setReviewPick] = useState<number | null>(null);
+
+  // Persist each pick to game state immediately so view switches never lose progress
+  useEffect(() => {
+    if (!hasStarted || Object.keys(drafted).length === 0) return;
+    dispatch({ type: 'UPDATE_STATE', payload: { activeDraftPicks: drafted } } as any);
+  }, [drafted, hasStarted]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const draftedSet = useMemo(() => new Set(Object.values(drafted).map((p: any) => p.internalId)), [drafted]);
 
@@ -237,16 +389,33 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     }
   };
 
-  // Commit all draft picks to game state
+  // Auto-commit picks to game state when draft completes — no manual button needed
   const [draftFinalized, setDraftFinalized] = useState(false);
+  useEffect(() => {
+    if (isDraftComplete && hasStarted && !draftFinalized) {
+      finalizeDraft();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDraftComplete, hasStarted, draftFinalized]);
+
   const finalizeDraft = () => {
-    const season = state.leagueStats?.year ?? 2026;
-    const rookieScaleType = state.leagueStats?.rookieScaleType ?? 'dynamic';
-    const rookieContractYrs = state.leagueStats?.rookieContractLength ?? 4;
-    const staticRookieAmt = (state.leagueStats?.rookieScaleStaticAmount ?? 3) * 1_000_000;
+    const ls = state.leagueStats ?? {};
+    const season: number = (ls as any).year ?? 2026;
+
+    // ── Commissioner rookie contract settings ──────────────────────────────
+    const rookieScaleType: string   = (ls as any).rookieScaleType ?? 'dynamic';
+    const capM: number              = (ls as any).salaryCap ?? 154.6;
+    const maxPct: number            = (ls as any).rookieMaxContractPercentage ?? 9;
+    const staticAmtUSD: number      = ((ls as any).rookieStaticAmount ?? 3) * 1_000_000;
+    const scaleAppliesTo: string    = (ls as any).rookieScaleAppliesTo ?? 'first_round';
+    const guaranteedYrs: number     = (ls as any).rookieContractLength ?? 2;
+    const teamOptEnabled: boolean   = (ls as any).rookieTeamOptionsEnabled ?? true;
+    const teamOptYears: number      = (ls as any).rookieTeamOptionYears ?? 2;
+    const restrictedFA: boolean     = (ls as any).rookieRestrictedFreeAgentEligibility ?? true;
+    // Min salary floor in USD (contract.amount in thousands → multiply back)
+    const minSalaryUSD: number      = ((ls as any).minContract ?? 1.273) * 1_000_000;
 
     const updatedPlayers = state.players.map(p => {
-      // Find if this player was drafted
       const pickEntry = Object.entries(drafted).find(([, pl]: [string, any]) => pl.internalId === p.internalId);
       if (!pickEntry) return p;
 
@@ -256,12 +425,27 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
 
       const round = pickSlot <= 30 ? 1 : 2;
       const pickInRound = pickSlot <= 30 ? pickSlot : pickSlot - 30;
-      const salaryAmount = rookieScaleType === 'static'
-        ? staticRookieAmt
-        : getRookieContractAmount(pickSlot);
 
-      // Contract length: user setting for R1 (default 4yr), R2 always 2yr
-      const contractYrs = round === 1 ? rookieContractYrs : 2;
+      // ── Salary ────────────────────────────────────────────────────────────
+      let salaryAmtUSD: number;
+      if (rookieScaleType === 'none') {
+        salaryAmtUSD = minSalaryUSD;
+      } else if (rookieScaleType === 'static') {
+        salaryAmtUSD = staticAmtUSD;
+      } else {
+        // dynamic: slot-based scale; R2 only gets it if setting is 'both_rounds'
+        const useScale = round === 1 || scaleAppliesTo === 'both_rounds';
+        salaryAmtUSD = useScale
+          ? getRookieContractAmount(pickSlot, capM, maxPct, minSalaryUSD)
+          : minSalaryUSD;
+      }
+
+      // ── Contract length ───────────────────────────────────────────────────
+      // R1: guaranteed years from setting + team option years (if enabled)
+      // R2: always 2yr guaranteed, no team options
+      const baseYrs     = round === 1 ? guaranteedYrs : 2;
+      const optionYrs   = (round === 1 && teamOptEnabled) ? teamOptYears : 0;
+      const totalYrs    = baseYrs + optionYrs;
 
       return {
         ...p,
@@ -269,9 +453,16 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         status: 'Active' as const,
         draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: team.id },
         contract: {
-          amount: salaryAmount / 1_000_000,
-          exp: season + contractYrs - 1,
-          salaryDetails: [{ season, amount: salaryAmount }],
+          // BBGM convention: amount in thousands of dollars
+          amount: Math.round(salaryAmtUSD / 1_000),
+          exp: season + totalYrs - 1,
+          // Team option and RFA metadata (used by seasonRollover + trade logic)
+          ...(optionYrs > 0 && {
+            hasTeamOption: true,
+            teamOptionExp: season + baseYrs - 1, // option kicks in after guaranteed portion
+          }),
+          ...(round === 1 && restrictedFA && { restrictedFA: true }),
+          rookie: true,
         },
       };
     });
@@ -292,6 +483,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
       payload: {
         players: finalPlayers,
         draftComplete: true,
+        activeDraftPicks: undefined, // clear in-progress picks — draft is done
       },
     } as any);
     setDraftFinalized(true);
@@ -432,20 +624,9 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
             </div>
 
             {isDraftComplete && hasStarted ? (
-              <div className="flex flex-col gap-3">
-                <p className="text-white font-black text-lg uppercase tracking-tight">Draft Complete</p>
-                {!draftFinalized ? (
-                  <button
-                    onClick={finalizeDraft}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-black uppercase text-xs rounded-sm transition-colors w-fit"
-                  >
-                    <CheckCircle size={14} /> Commit Picks to Game State
-                  </button>
-                ) : (
-                  <p className="text-emerald-400 font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                    <CheckCircle size={13} /> Draft results committed to game state
-                  </p>
-                )}
+              <div className="flex items-center gap-2">
+                <CheckCircle size={16} className="text-emerald-400 shrink-0" />
+                <p className="text-emerald-300 font-black text-sm uppercase tracking-tight">Draft Complete</p>
               </div>
             ) : !isDraftComplete && teamOnClock ? (
               <div className="flex items-center gap-4">
@@ -733,59 +914,11 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
 
       {/* FULL DRAFT TABLE */}
       {hasStarted && Object.keys(drafted).length > 0 && (
-        <div className="mt-10 space-y-5">
-          <div className="border-b border-[#333] pb-2">
-            <h4 className="text-xl font-black text-white uppercase tracking-tight">Full Draft</h4>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {Object.entries(drafted)
-              .sort(([a], [b]) => parseInt(a) - parseInt(b))
-              .map(([pick, player]: [string, any]) => {
-                const team = draftOrder[parseInt(pick) - 1];
-                return (
-                  <div
-                    key={pick}
-                    onClick={() => { setModalPlayer(player); setReviewPick(parseInt(pick)); setModalMode('review'); }}
-                    className="bg-[#1A1A1A] border border-[#333] rounded-sm flex h-20 overflow-hidden hover:border-indigo-600 transition-colors cursor-pointer group"
-                  >
-                    {/* Pick # */}
-                    <div className="w-11 bg-indigo-900/60 flex items-center justify-center shrink-0">
-                      <span className="text-xl font-black text-white">{pick.padStart(2, '0')}</span>
-                    </div>
-
-                    {/* Player photo */}
-                    <div className="w-20 bg-[#111] relative shrink-0 overflow-hidden">
-                      {player.imgURL ? (
-                        <img src={player.imgURL} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-2xl font-black text-indigo-900">
-                          {player.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Player info */}
-                    <div className="flex-1 p-3 flex flex-col justify-center min-w-0">
-                      <p className="font-black text-white text-base truncate uppercase tracking-tight">{player.name}</p>
-                      <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
-                        {player.pos} · OVR {player.displayOvr}
-                        {(player as any).college && ` · ${(player as any).college}`}
-                      </div>
-                    </div>
-
-                    {/* Team logo */}
-                    <div className="w-14 flex items-center justify-center shrink-0 border-l border-[#333] bg-black/20 group-hover:bg-black/40 transition-colors">
-                      {team?.logoUrl ? (
-                        <img src={team.logoUrl} alt="" className="w-9 h-9 object-contain" referrerPolicy="no-referrer" />
-                      ) : (
-                        <span className="text-[10px] font-black text-white/30">{team?.abbrev}</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        </div>
+        <FullDraftTable
+          drafted={drafted}
+          draftOrder={draftOrder}
+          onReview={(player, pick) => { setModalPlayer(player); setReviewPick(pick); setModalMode('review'); }}
+        />
       )}
     </div>
   );

@@ -187,8 +187,13 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
         // ── Training Camp (Oct 1) ─────────────────────────────────────────────────
         // Mark lightning strikes (60 young players, spread across season) + Father Time (50 vets, due Apr 1)
         // + Middle-class boosts batch 0 (15 players aged 25-29, immediate, silent)
+        // Also: unlock Season Preview badge — rosters are finalized, preview makes sense here.
         const trainingCampDate = `${stateWithSim.leagueStats.year - 1}-10-01`;
         if (simDateForEvents === trainingCampDate) {
+            // Reveal Season Preview now that rosters are set (stayed hidden through FA period)
+            if (stateWithSim.seasonPreviewDismissed && (stateWithSim.seasonHistory ?? []).length > 0) {
+                stateWithSim = { ...stateWithSim, seasonPreviewDismissed: false };
+            }
             const currentYear = stateWithSim.leagueStats.year;
 
             // Mark lightning strikes — dates spread Oct 1 → Apr 1, resolve silently daily
@@ -274,7 +279,8 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
                             const ext = extMap.get(p.internalId)!;
                             return {
                                 ...p,
-                                contract: { ...p.contract, amount: ext.newAmount, exp: ext.newExp },
+                                // newAmount is in millions (e.g. 3.2) → convert to thousands for BBGM convention
+                                contract: { ...p.contract, amount: Math.round(ext.newAmount * 1_000), exp: ext.newExp },
                             };
                         }
                         if (declinedIds.has(p.internalId)) {
@@ -328,21 +334,38 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
             stateWithSim.teams = updateTeamStrengths(stateWithSim.teams, stateWithSim.players);
         }
 
-        // AI free agency — run during offseason (July–September, before regular season tip-off)
+        // AI free agency — FA pool stays open July 1 → Feb 28 (March 1 = playoff eligibility deadline).
+        // Frequency tapers like real NBA:
+        //   Jul  1–15:  every day     (signing frenzy — moratorium lifts Jul 6)
+        //   Jul 16–31:  every 2 days  (major deals wrapping up)
+        //   August:     every 4 days  (role players / vets min)
+        //   September:  every 7 days  (camp invites, stragglers)
+        //   Oct–Feb:    every 14 days (occasional vet-minimum / waiver wire pickups)
         const simDateNorm = normalizeDate(stateWithSim.date);
-        const [, simMonth] = simDateNorm.split('-').map(Number);
-        const isFreeAgencySeason = simMonth >= 7 && simMonth <= 9;
-        if (isFreeAgencySeason && stateWithSim.day % 3 === 0) {
+        const [, simMonth, simDayNum] = simDateNorm.split('-').map(Number);
+        // Summer FA: July–Sep; In-season FA: Oct–Feb (month ≥10 or month ≤2); stop at March 1
+        const isFreeAgencySeason = (simMonth >= 7 && simMonth <= 9) || simMonth >= 10 || simMonth <= 2;
+        const faFrequency = simMonth === 7 && simDayNum <= 15 ? 1
+                          : simMonth === 7 ? 2
+                          : simMonth === 8 ? 4
+                          : simMonth === 9 ? 7
+                          : 14; // Oct–Feb in-season
+        if (isFreeAgencySeason && stateWithSim.day % faFrequency === 0) {
             const signings = runAIFreeAgencyRound(stateWithSim);
             if (signings.length > 0) {
-                const signedIds = new Set(signings.map(s => s.playerId));
                 stateWithSim = {
                     ...stateWithSim,
-                    players: stateWithSim.players.map(p =>
-                        signedIds.has(p.internalId)
-                            ? { ...p, tid: signings.find(s => s.playerId === p.internalId)!.teamId, status: 'Active' as const }
-                            : p
-                    ),
+                    players: stateWithSim.players.map(p => {
+                        const signing = signings.find(s => s.playerId === p.internalId);
+                        if (!signing) return p;
+                        // Apply contract from the offer — amount in thousands (BBGM convention)
+                        const newContract = {
+                            amount: Math.round(signing.salaryUSD / 1_000),
+                            exp: signing.contractExp,
+                            hasPlayerOption: signing.hasPlayerOption,
+                        };
+                        return { ...p, tid: signing.teamId, status: 'Active' as const, contract: newContract };
+                    }),
                 };
                 // Log FA signings to history
                 const faHistoryEntries = signings.map(s => ({

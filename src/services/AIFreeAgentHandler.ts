@@ -6,12 +6,12 @@
  */
 
 import type { GameState, NBAPlayer, NBATeam } from '../types';
-import { getCapThresholds, getTeamCapProfile } from '../utils/salaryUtils';
+import { getCapThresholds, getTeamCapProfile, computeContractOffer } from '../utils/salaryUtils';
 import { SettingsManager } from './SettingsManager';
 import { computeMoodScore } from '../utils/mood/moodScore';
 import type { MoodTrait } from '../utils/mood/moodTypes';
 
-const MAX_ROSTER = 15;
+const DEFAULT_MAX_ROSTER = 15;
 
 // ── §3a: Player mood for team ─────────────────────────────────────────────────
 
@@ -57,8 +57,9 @@ function getBestFit(
 
   return freeAgents
     .filter(p => {
-      const contractUSD = ((p.contract?.amount ?? 0) as number) * 1_000_000;
-      if (contractUSD > profile.capSpaceUSD + 2_000_000) return false;
+      // Use the actual contract formula to check affordability, not the stale p.contract.amount
+      const offer = computeContractOffer(p, state.leagueStats as any);
+      if (offer.salaryUSD > profile.capSpaceUSD + 2_000_000) return false;
       if (playerMoodForTeam(p, team, state) < 1) return false;
       return true;
     })
@@ -72,6 +73,10 @@ export interface SigningResult {
   teamId: number;
   playerName: string;
   teamName: string;
+  salaryUSD: number;   // annual contract value in USD
+  contractYears: number;
+  contractExp: number; // season year contract expires
+  hasPlayerOption: boolean;
 }
 
 /**
@@ -91,18 +96,27 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
     .filter(t => t.id !== userTeamId)
     .sort((a, b) => ((b as any).wins ?? 0) - ((a as any).wins ?? 0));
 
+  const maxRoster = state.leagueStats.maxPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
+
   for (const team of sortedAITeams) {
     const rosterSize = state.players.filter(p => p.tid === team.id).length;
-    if (rosterSize >= MAX_ROSTER) continue;
+    if (rosterSize >= maxRoster) continue;
 
     const best = getBestFit(team, pool, state);
     if (!best) continue;
+
+    const offer = computeContractOffer(best, state.leagueStats as any);
+    const currentYear = state.leagueStats.year;
 
     results.push({
       playerId: best.internalId,
       teamId: team.id,
       playerName: best.name,
       teamName: team.name,
+      salaryUSD: offer.salaryUSD,
+      contractYears: offer.years,
+      contractExp: currentYear + offer.years - 1,
+      hasPlayerOption: offer.hasPlayerOption,
     });
 
     pool = pool.filter(p => p.internalId !== best.internalId);
@@ -123,13 +137,12 @@ export interface ExtensionResult {
   declined: boolean;
 }
 
-/** Rough market value in USD for a player (used for contract offers). */
-function estimateMarketValueUSD(player: NBAPlayer): number {
-  // overallRating may be undefined — fall back to ratings array OVR
+/** @deprecated Use computeContractOffer() from salaryUtils instead. */
+function _legacyEstimateMarketValueUSD_unused(player: NBAPlayer, seasonYear: number): number {
   const lastRating = (player as any).ratings?.[(player as any).ratings.length - 1];
   const ovr = player.overallRating ?? lastRating?.ovr ?? 60;
   const base = Math.max(0, ovr - 60) * 1_000_000;
-  const age = player.age ?? ((player as any).born?.year ? 2026 - (player as any).born.year : 27);
+  const age = player.age ?? ((player as any).born?.year ? seasonYear - (player as any).born.year : 27);
   const agePenalty = age > 30 ? (age - 30) * 500_000 : 0;
   return Math.max(2_000_000, base - agePenalty);
 }
@@ -217,22 +230,15 @@ export function runAIMidSeasonExtensions(state: GameState): ExtensionResult[] {
     const roll = (Math.sin(seed) * 10000) % 1;
     const accepted = roll > 0 && (Math.abs(roll) - Math.floor(Math.abs(roll))) < basePct;
 
-    // ── Contract offer ───────────────────────────────────────────────────
-    const marketUSD = estimateMarketValueUSD(player);
-    let offerUSD = marketUSD;
-    if (traits.includes('MERCENARY')) offerUSD *= 1.25;
-    if (traits.includes('LOYAL')) offerUSD *= 0.90; // slight hometown discount
-
-    // Extension length: stars get longer deals
-    const ovr = player.overallRating ?? 60;
-    const age = player.age ?? 27;
-    let extensionYears = 1;
-    if (ovr >= 85 && age <= 29) extensionYears = 4;
-    else if (ovr >= 80 && age <= 31) extensionYears = 3;
-    else if (ovr >= 70) extensionYears = 2;
-
-    const maxLength = state.leagueStats.maxContractLengthStandard ?? 4;
-    extensionYears = Math.min(extensionYears, maxLength);
+    // ── Contract offer (uses full formula from §6c) ──────────────────────
+    const extensionOffer = computeContractOffer(
+      player,
+      state.leagueStats as any,
+      traits,
+      score,
+    );
+    const offerUSD = extensionOffer.salaryUSD;
+    const extensionYears = extensionOffer.years;
 
     results.push({
       playerId: player.internalId,

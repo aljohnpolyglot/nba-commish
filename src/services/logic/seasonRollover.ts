@@ -19,12 +19,43 @@ import { GameState, NBAPlayer } from '../../types';
 import { applyCapInflation } from '../../utils/finance/inflationUtils';
 import { runRetirementChecks, RetireeRecord } from '../playerDevelopment/retirementChecker';
 import { generateFuturePicks, pruneExpiredPicks } from '../draft/DraftPickGenerator';
+import { computeContractOffer } from '../../utils/salaryUtils';
 
 /** Fired when the sim has just crossed into a new offseason (Oct 1, new year).
  *  Returns the rolled-over GameState patch. Does NOT mutate input. */
 export function applySeasonRollover(state: GameState): Partial<GameState> {
   const currentYear = state.leagueStats.year;
   const nextYear    = currentYear + 1;
+
+  // ── 0. Player options ───────────────────────────────────────────────────
+  // Players with a player option on their expiring contract decide before rollover:
+  //  - Opt IN  (market value < current contract × 0.9) → keep contract, exp advances +1
+  //  - Opt OUT (market value ≥ current contract × 0.9) → become FA at rollover
+  // Note: current BBGM roster data has no player options; this fires for future AI-generated contracts.
+  const playerOptOutIds = new Set<string>();
+  const playerOptInIds  = new Set<string>();
+  const playerOptionNews: string[] = [];
+
+  for (const p of state.players) {
+    if (!(p as any).contract?.hasPlayerOption) continue;
+    if (!p.contract || (p.contract.exp ?? 0) !== currentYear) continue;
+    if (p.tid < 0 || p.tid >= 100) continue; // only active NBA players
+
+    const offer = computeContractOffer(p, state.leagueStats as any);
+    const currentAmountUSD = (p.contract.amount ?? 0) * 1_000; // BBGM thousands → USD
+    // Opt in if current contract pays more than 90% of what market would offer
+    if (currentAmountUSD >= offer.salaryUSD * 0.9) {
+      playerOptInIds.add(p.internalId);
+      // Player opts in — contract effectively extends one year; we leave exp as-is
+      // (the player is still under contract, won't become FA at expiry check below)
+    } else {
+      playerOptOutIds.add(p.internalId);
+      const team = state.teams.find(t => t.id === p.tid);
+      playerOptionNews.push(
+        `${p.name} has exercised his player option and will test the free agent market${team ? `, declining his ${(currentAmountUSD / 1_000_000).toFixed(1)}M option with the ${team.name}` : ''}.`,
+      );
+    }
+  }
 
   // ── 1. Contract expiry ──────────────────────────────────────────────────
   // Players whose contract ends at or before the just-completed season become FAs.
@@ -45,8 +76,8 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     const contractExp: number = p.contract.exp ?? 0;
     const newAge = typeof p.age === 'number' ? p.age + 1 : p.age;
 
-    // Contract expired at end of the season that just finished
-    if (contractExp <= currentYear) {
+    // Contract expired OR player opted out of their player option
+    if (contractExp <= currentYear || playerOptOutIds.has(p.internalId)) {
       expiredIds.add(p.internalId);
       return {
         ...p,
@@ -55,6 +86,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
         status: 'Free Agent' as const,
         yearsWithTeam: 0,
         midSeasonExtensionDeclined: undefined, // reset for next season
+        contract: { ...p.contract, hasPlayerOption: false }, // option consumed
       } as any;
     }
 
@@ -131,6 +163,17 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     read: false,
   };
 
+  // ── Player option news items ─────────────────────────────────────────────
+  const playerOptionNewsItems = playerOptionNews.map((text, i) => ({
+    id: `player-option-${currentYear}-${i}-${Date.now()}`,
+    headline: text.split(',')[0] ?? text,
+    content: text,
+    date: state.date,
+    type: 'roster' as const,
+    isNew: true,
+    read: false,
+  }));
+
   // ── Retirement news items ────────────────────────────────────────────────
   const retirementNewsItems = newRetirees.map((r: RetireeRecord) => {
     const pgStr = r.careerGP > 0
@@ -162,9 +205,14 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     `${updatedPicks.length} total draft picks`
   );
 
+  // ── Bets pruning — drop resolved bets (won/lost) older than 2 seasons ────
+  const cutoffDate = `${currentYear - 1}-10-01`; // beginning of the season 2 years ago
+  const prunedBets = (state.bets ?? []).filter(b => b.status === 'pending' || b.date >= cutoffDate);
+
   return {
     players: playersAfterRetire,
     draftPicks: updatedPicks,
+    bets: prunedBets,
     christmasGames: [],
     globalGames: state.globalGames ?? [],
     playoffs: undefined,
@@ -180,9 +228,9 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       minContractStaticAmount: newMinContract,
     },
     retirementAnnouncements: newRetirees,
-    seasonPreviewDismissed: false, // reset each year so preview shows for new season
+    seasonPreviewDismissed: true,  // stays hidden through FA; shown when preseason starts (Oct 1)
     draftComplete: undefined,      // reset so draft can run for new year
-    news: [...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
+    news: [...playerOptionNewsItems, ...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
   };
 }
 

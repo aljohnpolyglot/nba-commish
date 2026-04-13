@@ -35,6 +35,18 @@
 - **PLAYIN_END hardcoded** — Now dynamic: `` `${year}-04-20` `` using `state.leagueStats.year` in PlayoffView.tsx.
 - **FGM/3PM/FTM don't sum to final score** — Fixed in two places: (1) `reconcileToScore` in engine.ts now has a second pass that adjusts FGM (2-pt) if FTM-based pass can't fully close the gap; (2) `teamStats` in useLiveGame.ts now uses `finalResult` stats directly when game ends, guaranteeing pts = finalScore and consistent FGM/FTM.
 - **Extension amounts all at minimum ($2M)** — Root cause: `player.overallRating` was `undefined` for most players (defaulting to 60 → $2M minimum). Fixed: `estimateMarketValueUSD` now falls back to `ratings[last].ovr`. Same fix applied to `playerValue` and `isBuildingAroundYouth` in AITradeHandler.
+- **WS / BPM formula inflation** — `calcOWS`/`calcDWS`: multiply `margPtsPerWin` by 2.3 (denominator ~81 not ~35); `calcBPM`: `BPM_SCALE = 0.40` applied to all output. `src/services/simulation/StatGenerator/advancedstats.ts`. → multiseason_todo §10
+- **TeamStatsView complete overhaul** — 5 stat modes (Team / Opponent / Shot Locations & Feats / Opp. Shot Locations / Advanced), header mirrors PlayerStatsView exactly (`h-7` compact selects, season chevron, phase select, SlidersHorizontal filter toggle), single-pass box-score aggregation, pythagorean W/L, four factors, pace. `src/components/team-stats/TeamStatsView.tsx`. → multiseason_todo §10
+- **PlayoffView historical bracket + year chevron** — Year left/right chevron in header (always visible, min 1984, max current year). `HistoricalPlayoffBracket.tsx` fetches from gist with module-level cache, NBA CDN logos, 8-column bracket, motion animations. `src/components/playoffs/PlayoffView.tsx` + `src/components/playoffs/HistoricalPlayoffBracket.tsx`. → multiseason_todo §8
+- **FA frequency taper** — AI free agency now tapers like real NBA: Jul 1–15 daily, Jul 16–31 every 2d, Aug every 4d, Sep every 7d. `src/store/logic/turn/simulationHandler.ts`. → multiseason_todo §6b
+- **FA window extended July–February** — FA pool stays open through Feb 28 (March 1 = playoff eligibility deadline). Oct–Feb fires every 14 days for vet-min / waiver wire pickups. `simulationHandler.ts`. → multiseason_todo §6b
+- **Season Preview timing** — `seasonPreviewDismissed: true` at June 30 rollover (stays hidden through FA). Unlocked on Oct 1 (training camp) only when `seasonHistory.length > 0`. `seasonRollover.ts` + `simulationHandler.ts`. → multiseason_todo §9
+- **MAX_ROSTER hardcoded 15** — `AIFreeAgentHandler.ts` now reads `state.leagueStats.maxPlayersPerTeam ?? 15` instead of hardcoded constant. → multiseason_todo §3 / §6b
+- **Player option resolution at rollover** — `seasonRollover.ts` checks `hasPlayerOption && contract.exp === currentYear`: opt-out if market value ≥ 90% of current deal, generates news item, player becomes FA. No-op for current BBGM data (no player options); fires for AI-generated future contracts (2030+). → multiseason_todo §6a
+- **Bets pruning at rollover** — `seasonRollover.ts` drops resolved bets (`won`/`lost`) older than 2 seasons on every June 30 rollover. → multiseason_todo §11
+- **`yearsWithTeam` + Bird Rights tracking confirmed** — already implemented in `seasonRollover.ts` (increments for under-contract players, resets to 0 on FA, sets `hasBirdRights: true` at ≥3 years). → multiseason_todo §6a
+- **Transaction log for AI FA signings confirmed** — signings and mid-season extensions already write to `state.history` with `type: 'Signing'`; TransactionsView year chevron already present. → multiseason_todo §3 / §10
+- **multiseason_todo.md §6 + §11 checklists updated** — §6a/b/c status corrected, critical remaining table rewritten with accurate statuses. → multiseason_todo §6, §11
 
 ---
 
@@ -54,4 +66,4 @@
 ### FRANCHISEHUB-lemakicatta@gmail.com
 ### restaurants gist-->https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbarestaurantsdata
 
-*Last updated: 2026-04-14*
+*Last updated: 2026-04-13 (session 9)*

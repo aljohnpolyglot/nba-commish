@@ -312,6 +312,10 @@ export const DraftLotteryView = () => {
     const newResults = runLottery(activeTeams, activePreset.chances, activePreset.numToPick);
     setResults(newResults);
 
+    // Save to game state immediately — animation is purely visual.
+    // This ensures results survive view switches mid-animation.
+    dispatchAction({ type: 'UPDATE_STATE' as any, payload: { draftLotteryResult: newResults } });
+
     const speedMs: Record<string, number> = { fastest: 100, normal: 300, slow: 500, slower: 1000, dramatic: 3000 };
     const interval = speedMs[speed] ?? 300;
 
@@ -325,8 +329,6 @@ export const DraftLotteryView = () => {
         setIsSimulating(false);
         setHistory(prev => [newResults, ...prev].slice(0, 10));
         setRevealIndex(0);
-        // Save to game state
-        dispatchAction({ type: 'UPDATE_STATE' as any, payload: { draftLotteryResult: newResults } });
       } else {
         setRevealIndex(current);
       }

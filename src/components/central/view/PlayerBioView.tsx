@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { NBAPlayer, Game } from '../../../types';
-import { ArrowLeft, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Loader2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { calculateK2, K2_CATS, getRadarValues, RADAR_AXES } from '../../../services/simulation/convert2kAttributes';
 import { applyLeagueDisplayScale } from '../../../hooks/useLeagueScaledRatings';
 import { convertTo2KRating } from '../../../utils/helpers';
 import { useGame } from '../../../store/GameContext';
+import { getOpeningNightDate } from '../../../utils/dateUtils';
 import { AwardsView } from './AwardsView';
 import { PlayerBioHero } from './PlayerBioHero';
 import { TabBar } from '../../shared/ui/TabBar';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
+import { PlayerBioStatsHistory } from './PlayerBioStatsHistory';
 
 interface PlayerBioViewProps {
   player: NBAPlayer;
@@ -358,12 +360,11 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
   const [fetchDone, setFetchDone] = useState(false);
   const [portraitSrc, setPortraitSrc] = useState<string>(() => getPlayerImage(player) || "");
   const [activeTab, setActiveTab] = useState<'Overview' | 'Historical Data' | 'Game Log' | 'Awards' | 'Ratings'>('Historical Data');
-  const [showPlayoffs, setShowPlayoffs] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [gameLogSort, setGameLogSort] = useState<{ field: string; dir: 'asc' | 'desc' }>({ field: 'date', dir: 'desc' });
+  const [gameLogSeason, setGameLogSeason] = useState<number | null>(null); // null = auto (latest)
   const [localBoxScoreGame, setLocalBoxScoreGame] = useState<Game | null>(null);
 
-  const OPENING_NIGHT_MS = new Date('2025-10-24T00:00:00Z').getTime();
+  const OPENING_NIGHT_MS = getOpeningNightDate(state.leagueStats.year).getTime();
 
   const gameLog = useMemo(() => {
     const logs: any[] = [];
@@ -513,8 +514,33 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
     }));
   }, [state.boxScores, state.schedule, player.internalId, player.tid, player.injury, state.teams]);
 
+  // Available seasons in the game log (NBA season year = calendar year of Jan–Jun games)
+  const gameLogSeasons = useMemo(() => {
+    const years = new Set<number>();
+    gameLog.forEach(l => {
+      const d = new Date(l.date);
+      if (!isNaN(d.getTime())) {
+        // Season year: Jan–Sep games belong to that calendar year's season
+        const yr = d.getFullYear();
+        years.add(d.getMonth() < 9 ? yr : yr + 1);
+      }
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [gameLog]);
+
+  // Effective season: use selected, or default to most recent season with data
+  const effectiveGameLogSeason = gameLogSeason ?? gameLogSeasons[0] ?? state.leagueStats.year;
+
   const sortedGameLog = useMemo(() => {
-    return [...gameLog].sort((a, b) => {
+    // Filter to selected season
+    const filtered = gameLog.filter(l => {
+      const d = new Date(l.date);
+      if (isNaN(d.getTime())) return true;
+      const yr = d.getFullYear();
+      const seasonYear = d.getMonth() < 9 ? yr : yr + 1;
+      return seasonYear === effectiveGameLogSeason;
+    });
+    return [...filtered].sort((a, b) => {
       const dir = gameLogSort.dir === 'asc' ? 1 : -1;
       if (gameLogSort.field === 'date') {
         return (new Date(a.date).getTime() - new Date(b.date).getTime()) * dir;
@@ -721,7 +747,9 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
     const payload = await fetchWithDedup(nbaId);
         if (isMounted) {
           setBioData((prev: any) => ({ ...prev, ...payload }));
-          if (payload.imgHD) setPortraitSrc(payload.imgHD);
+          // Only upgrade to CDN HD portrait if the player has no BBGM imgURL.
+          // BBGM portraits are the canonical source-of-truth and should not be replaced.
+          if (payload.imgHD && !player.imgURL) setPortraitSrc(payload.imgHD);
           console.log(`%c[Scout Intel] Bio applied for ${player.name}`, "color:#10b981;font-weight:bold");
         }
       } catch (err: any) {
@@ -806,167 +834,50 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
         )}
         
         {activeTab === 'Historical Data' && (
-          <div className="p-4 md:p-8 bg-[#080808]">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-white uppercase tracking-wider">
-                {showPlayoffs ? 'Playoff Stats' : 'Regular Season Stats'}
-              </h3>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-colors"
-                >
-                  {showAdvanced ? 'Basic Stats' : 'Advanced Stats'}
-                </button>
-                <button
-                  onClick={() => setShowPlayoffs(!showPlayoffs)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-colors"
-                >
-                  Switch to {showPlayoffs ? 'Regular Season' : 'Playoffs'}
-                </button>
-              </div>
-            </div>
-            <div className="overflow-x-auto overflow-y-auto max-h-[60vh] md:max-h-[70vh] custom-scrollbar">
-              <table className="min-w-max text-sm text-left text-slate-300">
-                <thead className="text-xs text-slate-400 uppercase bg-slate-900/50 border-b border-slate-800">
-                  <tr>
-                    <th className="px-4 py-3 font-semibold">Season</th>
-                    <th className="px-4 py-3 font-semibold">Team</th>
-                    <th className="px-4 py-3 font-semibold text-right">GP</th>
-                    <th className="px-4 py-3 font-semibold text-right">GS</th>
-                    <th className="px-4 py-3 font-semibold text-right">MIN</th>
-                    {!showAdvanced ? (
-                      <>
-                        <th className="px-4 py-3 font-semibold text-right text-white">PTS</th>
-                        <th className="px-4 py-3 font-semibold text-right">ORB</th>
-                        <th className="px-4 py-3 font-semibold text-right">DRB</th>
-                        <th className="px-4 py-3 font-semibold text-right">REB</th>
-                        <th className="px-4 py-3 font-semibold text-right">AST</th>
-                        <th className="px-4 py-3 font-semibold text-right">STL</th>
-                        <th className="px-4 py-3 font-semibold text-right">BLK</th>
-                        <th className="px-4 py-3 font-semibold text-right">TOV</th>
-                        <th className="px-4 py-3 font-semibold text-right">PF</th>
-                        <th className="px-4 py-3 font-semibold text-right">FGM</th>
-                        <th className="px-4 py-3 font-semibold text-right">FGA</th>
-                        <th className="px-4 py-3 font-semibold text-right">FG%</th>
-                        <th className="px-4 py-3 font-semibold text-right">3PM</th>
-                        <th className="px-4 py-3 font-semibold text-right">3PA</th>
-                        <th className="px-4 py-3 font-semibold text-right">3P%</th>
-                        <th className="px-4 py-3 font-semibold text-right">FTM</th>
-                        <th className="px-4 py-3 font-semibold text-right">FTA</th>
-                        <th className="px-4 py-3 font-semibold text-right">FT%</th>
-                      </>
-                    ) : (
-                      <>
-                        <th className="px-4 py-3 font-semibold text-right text-white">PER</th>
-                        <th className="px-4 py-3 font-semibold text-right">TS%</th>
-                        <th className="px-4 py-3 font-semibold text-right">eFG%</th>
-                        <th className="px-4 py-3 font-semibold text-right">ORtg</th>
-                        <th className="px-4 py-3 font-semibold text-right">DRtg</th>
-                        <th className="px-4 py-3 font-semibold text-right">AST%</th>
-                        <th className="px-4 py-3 font-semibold text-right">REB%</th>
-                        <th className="px-4 py-3 font-semibold text-right">STL%</th>
-                        <th className="px-4 py-3 font-semibold text-right">BLK%</th>
-                        <th className="px-4 py-3 font-semibold text-right">TOV%</th>
-                        <th className="px-4 py-3 font-semibold text-right">USG%</th>
-                        <th className="px-4 py-3 font-semibold text-right">OWS</th>
-                        <th className="px-4 py-3 font-semibold text-right">DWS</th>
-                        <th className="px-4 py-3 font-semibold text-right">WS</th>
-                        <th className="px-4 py-3 font-semibold text-right">WS/48</th>
-                        <th className="px-4 py-3 font-semibold text-right">OBPM</th>
-                        <th className="px-4 py-3 font-semibold text-right">DBPM</th>
-                        <th className="px-4 py-3 font-semibold text-right">BPM</th>
-                        <th className="px-4 py-3 font-semibold text-right">VORP</th>
-                      </>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/50">
-                  {player.stats?.filter(s => !!s.playoffs === showPlayoffs).map((s, i) => {
-                    const t = state.teams.find(team => team.id === s.tid);
-                    const gp = s.gp || 1;
-                    return (
-                      <tr key={i} className="hover:bg-slate-800/50 transition-colors">
-                        <td className="px-4 py-3 whitespace-nowrap">{(s.season - 1)}-{String(s.season).slice(2)}</td>
-                        <td className="px-4 py-3">{t?.abbrev || 'FA'}</td>
-                        <td className="px-4 py-3 text-right">{s.gp || 0}</td>
-                        <td className="px-4 py-3 text-right">{s.gs || 0}</td>
-                        <td className="px-4 py-3 text-right">{((s.min || 0) / gp).toFixed(1)}</td>
-                        {!showAdvanced ? (
-                          <>
-                            <td className="px-4 py-3 text-right font-bold text-white">{((s.pts || 0) / gp).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">
-                              {((s.orb || 0) + (s.drb || 0) > 0) ? ((s.orb || 0) / gp).toFixed(1) : (((s.trb || (s as any).reb || 0)) * 0.22 / gp).toFixed(1)}
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              {((s.orb || 0) + (s.drb || 0) > 0) ? ((s.drb || 0) / gp).toFixed(1) : (((s.trb || (s as any).reb || 0)) * 0.78 / gp).toFixed(1)}
-                            </td>
-                            <td className="px-4 py-3 text-right">{(((s.trb || (s as any).reb || (s.orb || 0) + (s.drb || 0))) / gp).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{((s.ast || 0) / gp).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{((s.stl || 0) / gp).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{((s.blk || 0) / gp).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{((s.tov || 0) / gp).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{((s.pf || 0) / gp).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{((s.fg || 0) / gp).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{((s.fga || 0) / gp).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.fga > 0 ? ((s.fg || 0) / s.fga) * 100 : 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{((s.tp || 0) / gp).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{((s.tpa || 0) / gp).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.tpa > 0 ? ((s.tp || 0) / s.tpa) * 100 : 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{((s.ft || 0) / gp).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{((s.fta || 0) / gp).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.fta > 0 ? ((s.ft || 0) / s.fta) * 100 : 0).toFixed(1)}</td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="px-4 py-3 text-right font-bold text-white">{(s.per || 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.tsPct || 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.efgPct || 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.ortg || 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.drtg || 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.astPct || 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.rebPct || 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.stlPct || 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.blkPct || 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.tovPct || 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.usgPct || 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.ows || 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.dws || 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.ws || 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.ws48 || 0).toFixed(3)}</td>
-                            <td className="px-4 py-3 text-right">{(s.obpm || 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.dbpm || 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.bpm || 0).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-right">{(s.vorp || 0).toFixed(1)}</td>
-                          </>
-                        )}
-                      </tr>
-                    );
-                  })}
-                  {!player.stats?.filter(s => !!s.playoffs === showPlayoffs).length && (
-                    <tr>
-                      <td colSpan={23} className="px-4 py-8 text-center text-slate-500">
-                        No historical data available.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+          <div className="bg-[#080808]">
+            <PlayerBioStatsHistory player={player} />
           </div>
         )}
 
         {activeTab === 'Game Log' && (
           <div className="p-4 md:p-8 bg-[#080808] flex flex-col" style={{ minHeight: 0 }}>
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
               <h3 className="text-lg font-bold text-white uppercase tracking-wider">
-                {state.leagueStats.year}-{String(state.leagueStats.year + 1).slice(2)} Game Log
-                {gameLog.filter(g => !g.isPreseason && !g.isDNP).length > 0 && (
+                {effectiveGameLogSeason - 1}-{String(effectiveGameLogSeason).slice(2)} Game Log
+                {sortedGameLog.filter(g => !g.isPreseason && !g.isDNP).length > 0 && (
                   <span className="ml-3 text-xs font-normal text-slate-400 normal-case tracking-normal">
-                    {gameLog.filter(g => !g.isPreseason && !g.isDNP).length} regular season games
+                    {sortedGameLog.filter(g => !g.isPreseason && !g.isDNP).length} regular season games
                   </span>
                 )}
               </h3>
+              {/* Season chevron */}
+              {gameLogSeasons.length > 1 && (
+                <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl p-0.5 shrink-0">
+                  <button
+                    onClick={() => {
+                      const idx = gameLogSeasons.indexOf(effectiveGameLogSeason);
+                      if (idx < gameLogSeasons.length - 1) setGameLogSeason(gameLogSeasons[idx + 1]);
+                    }}
+                    disabled={gameLogSeasons.indexOf(effectiveGameLogSeason) >= gameLogSeasons.length - 1}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-25 transition-all"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <span className="text-xs font-black text-white px-2 min-w-[56px] text-center">
+                    {effectiveGameLogSeason - 1}-{String(effectiveGameLogSeason).slice(2)}
+                  </span>
+                  <button
+                    onClick={() => {
+                      const idx = gameLogSeasons.indexOf(effectiveGameLogSeason);
+                      if (idx > 0) setGameLogSeason(gameLogSeasons[idx - 1]);
+                    }}
+                    disabled={gameLogSeasons.indexOf(effectiveGameLogSeason) <= 0}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-25 transition-all"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
             </div>
             <div className="overflow-x-auto overflow-y-auto max-h-[60vh] md:max-h-[70vh] custom-scrollbar">
               <table className="min-w-max text-sm text-left text-slate-300">

@@ -1,4 +1,4 @@
-import { GameState, UserAction, HistoricalStatPoint, NBAPlayer as Player, DraftPick, Game, AllStarPlayer, PlayoffBracket } from '../../types';
+import { GameState, UserAction, HistoricalStatPoint, NBAPlayer as Player, DraftPick, Game, AllStarPlayer, PlayoffBracket, SeasonHistoryEntry } from '../../types';
 import { PlayoffGenerator } from '../../services/playoffs/PlayoffGenerator';
 import { PlayoffAdvancer } from '../../services/playoffs/PlayoffAdvancer';
 import { normalizeDate, extractNbaId, extractTeamId, convertTo2KRating } from '../../utils/helpers';
@@ -158,7 +158,7 @@ export const processTurn = async (
     // Supplement with template-based news (always fires, LLM-agnostic) — same engine as lazy sim batches
     if (allSimResults.length > 0) {
         const reportedInjuries = new Set<string>(state.news.map((n: any) => n.injuryPlayerId).filter(Boolean));
-        const templateNews = generateLazySimNews(stateWithSim.teams, updatedPlayers, allSimResults, stateWithSim.date, reportedInjuries, false, state.teams, stateWithSim.playoffs, stateWithSim.schedule);
+        const templateNews = generateLazySimNews(stateWithSim.teams, updatedPlayers, allSimResults, stateWithSim.date, reportedInjuries, false, state.teams, stateWithSim.playoffs, stateWithSim.schedule, stateWithSim.leagueStats?.year ?? 2026);
         const existingIds = new Set([...state.news.map((n: any) => n.id), ...uniqueNewNews.map((n: any) => n.id)]);
         templateNews.filter(n => !existingIds.has(n.id)).forEach(n => uniqueNewNews.push(n));
     }
@@ -756,6 +756,42 @@ export const processTurn = async (
         endorsedPlayers: result.endorsedPlayers || state.endorsedPlayers,
         allStar: allStarPatch,
         playoffs: playoffsPatch,
+        // ── Season history snapshot — mirrors lazySimRunner logic ─────────────
+        ...(playoffsPatch?.bracketComplete && !state.playoffs?.bracketComplete && playoffsPatch.champion
+          ? (() => {
+              const champTid = playoffsPatch.champion;
+              const finalsSeries = playoffsPatch.series?.find((s: any) => s.round === 4);
+              const loserTid = finalsSeries
+                ? (finalsSeries.higherSeedTid === champTid ? finalsSeries.lowerSeedTid : finalsSeries.higherSeedTid)
+                : undefined;
+              const yr = state.leagueStats.year;
+              const champTeam = stateWithSim.teams.find(t => t.id === champTid);
+              const loserTeam = loserTid != null ? stateWithSim.teams.find(t => t.id === loserTid) : undefined;
+              const awards = state.historicalAwards ?? [];
+              const seasonAward = (type: string) => awards.find((a: any) => a.season === yr && a.type === type);
+              const entry: SeasonHistoryEntry = {
+                year: yr,
+                champion: champTeam?.name ?? 'Unknown',
+                championTid: champTid,
+                runnerUp: loserTeam?.name,
+                runnerUpTid: loserTid,
+                mvp: seasonAward('MVP')?.name,
+                mvpPid: seasonAward('MVP')?.pid as string | undefined,
+                finalsMvp: seasonAward('Finals MVP')?.name,
+                finalsMvpPid: seasonAward('Finals MVP')?.pid as string | undefined,
+                roty: seasonAward('ROY')?.name,
+                rotyPid: seasonAward('ROY')?.pid as string | undefined,
+                dpoy: seasonAward('DPOY')?.name,
+                dpoyPid: seasonAward('DPOY')?.pid as string | undefined,
+              };
+              return {
+                seasonHistory: [
+                  ...(state.seasonHistory ?? []).filter(e => e.year !== yr),
+                  entry,
+                ],
+              };
+            })()
+          : {}),
         pendingClubDebuff: remainingDebuffs,
         headToHead: stateWithSim.headToHead,
         lastSimResults: allSimResults || [],

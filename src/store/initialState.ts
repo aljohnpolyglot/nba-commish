@@ -1,9 +1,15 @@
 import { GameState } from '../types';
-import { INITIAL_LEAGUE_STATS, START_DATE_STR } from '../constants';
+import { INITIAL_LEAGUE_STATS } from '../constants';
+
+// Derive placeholder start date from season year: Aug 1 of the pre-season calendar year.
+// This is overwritten immediately by handleStartGame — it's just a safe default.
+const _initYear = INITIAL_LEAGUE_STATS.year - 1;
+const _initDateObj = new Date(Date.UTC(_initYear, 7, 1)); // Aug 1
+const _initDateStr = _initDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
 export const initialState: GameState = {
   day: 1,
-  date: new Date(START_DATE_STR).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+  date: _initDateStr,
   stats: {
     publicApproval: 50,
     ownerApproval: 50,
@@ -25,7 +31,7 @@ export const initialState: GameState = {
       read: false,
       replied: false,
       playerPortraitUrl: 'https://cdn.nba.com/headshots/nba/latest/1040x760/logoman.png',
-      date: new Date(START_DATE_STR).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      date: _initDateStr,
     }
   ],
   chats: [],
@@ -34,7 +40,7 @@ export const initialState: GameState = {
       id: 'news-1',
       headline: 'Offseason Planning Begins',
       content: 'The NBA offseason is in full swing. With the schedule release approaching on August 14th, all eyes are on the new commissioner to see how the league will be shaped this year.',
-      date: new Date(START_DATE_STR).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      date: _initDateStr,
     }
   ],
   socialFeed: [],
@@ -55,7 +61,7 @@ export const initialState: GameState = {
   boxScores: [],
   salary: 10000000,
   payslips: [],
-  lastPayDate: new Date(START_DATE_STR).toISOString(),
+  lastPayDate: _initDateObj.toISOString(),
   hasUnreadPayslip: false,
   endorsedPlayers: [],
   allStar: undefined,

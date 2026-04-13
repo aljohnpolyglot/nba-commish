@@ -94,14 +94,15 @@ export const DayView: React.FC<DayViewProps> = ({
     return nonPlayoff.sort((a, b) => (a.wins - a.losses) - (b.wins - b.losses)).slice(0, 14);
   }, [isDraftLotteryDay, state?.teams, state?.playoffs]);
 
-  // Top draft prospects for NBA Draft card
+  // Top draft prospects for NBA Draft card — only undrafted (tid === -2) players, excludes
+  // anyone who has already been picked (tid changed to a real team by DraftSimulatorView).
   const topProspects = useMemo(() => {
-    if (!isNBADraftDay || !players) return [];
+    if (!players) return [];
     return players
-      .filter(p => p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect')
+      .filter(p => p.tid === -2)
       .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0))
       .slice(0, 5);
-  }, [isNBADraftDay, players]);
+  }, [players]);
 
   const selectedDateUTC = new Date(`${selectedDateNorm}T00:00:00Z`);
   const stateDateUTC = new Date(`${stateDateNorm}T00:00:00Z`);

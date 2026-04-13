@@ -368,7 +368,8 @@ export const runLazySim = async (
         false,
         state.teams,
         stateWithSim.playoffs,
-        stateWithSim.schedule
+        stateWithSim.schedule,
+        stateWithSim.leagueStats?.year ?? 2026
       );
 
       // Playoff series news — detect series completions & championship this batch

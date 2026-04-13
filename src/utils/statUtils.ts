@@ -43,7 +43,7 @@ export function getStatValue(stat: NBAGMStat | undefined, cat: StatCategory): nu
     case 'DRtg':  return stat.drtg   || 0;
     case 'BPM':   return stat.bpm    || 0;
     case 'WS':    return stat.ws     || 0;
-    case 'WS/48': return (stat as any).wsPer48 ?? (stat.ws && stat.min ? stat.ws / ((stat.min / gp) / 48) : 0);
+    case 'WS/48': return (stat as any).wsPer48 ?? (stat.ws && stat.min ? (stat.ws * 48) / stat.min : 0);
     case 'VORP':  return stat.vorp   || 0;
     default:      return 0;
   }

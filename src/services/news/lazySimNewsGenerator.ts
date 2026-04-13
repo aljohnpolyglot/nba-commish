@@ -1,6 +1,7 @@
 import { NBATeam, NBAPlayer, GameResult, NewsItem, PlayoffBracket, Game } from '../../types';
 import { NewsGenerator } from './NewsGenerator';
 import { convertTo2KRating } from '../../utils/helpers';
+import { getOpeningNightDate } from '../../utils/dateUtils';
 
 const get2KOvr = (p: NBAPlayer) =>
   convertTo2KRating(p.overallRating ?? p.ratings?.[0]?.ovr ?? 0, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp);
@@ -41,10 +42,8 @@ function withPortrait(item: NewsItem | null, url?: string): NewsItem | null {
  * NewsFeed can attempt Imagn enrichment first and fall back to portrait.
  * Team logos are stored as `image` — they're used immediately, no Imagn needed.
  */
-const OPENING_NIGHT = new Date('2025-10-24T00:00:00Z').getTime();
-
-function dateIsPreseason(dateStr: string): boolean {
-  try { return new Date(dateStr).getTime() < OPENING_NIGHT; } catch { return false; }
+function dateIsPreseason(dateStr: string, openingNightMs: number): boolean {
+  try { return new Date(dateStr).getTime() < openingNightMs; } catch { return false; }
 }
 
 export const generateLazySimNews = (
@@ -56,10 +55,12 @@ export const generateLazySimNews = (
   skipInjuries = false,
   prevTeams?: NBATeam[],
   playoffs?: PlayoffBracket | null,
-  schedule?: Game[]
+  schedule?: Game[],
+  seasonYear = 2026
 ): NewsItem[] => {
+  const OPENING_NIGHT = getOpeningNightDate(seasonYear).getTime();
   const news: NewsItem[] = [];
-  const isPreseason = dateIsPreseason(currentDate);
+  const isPreseason = dateIsPreseason(currentDate, OPENING_NIGHT);
   // Suppress standings/season-narrative items during playoffs — series news is generated separately
   const isPlayoffs = !!playoffs && (playoffs.series.some(s => s.status !== 'pending') || playoffs.playInComplete);
 

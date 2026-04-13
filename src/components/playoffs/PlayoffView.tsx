@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Trophy, FastForward, Play } from 'lucide-react';
+import { Trophy, FastForward, Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { useGame } from '../../store/GameContext';
+import { HistoricalPlayoffBracket } from './HistoricalPlayoffBracket';
 import { Game } from '../../types';
 import { GameSimulatorScreen } from '../shared/GameSimulatorScreen';
 import { WatchGamePreviewModal } from '../modals/WatchGamePreviewModal';
@@ -22,6 +23,10 @@ export const PlayoffView: React.FC = () => {
   const [riggedForTid, setRiggedForTid] = useState<number | undefined>(undefined);
   const [precomputedResult, setPrecomputedResult] = useState<any | null>(null);
   const [confFilter, setConfFilter] = useState<'East' | 'West'>('East');
+  const [viewYear, setViewYear]     = useState<number>(year);
+
+  const isHistorical = viewYear !== year;
+  const navYear = (dir: 1 | -1) => setViewYear(y => Math.max(1984, Math.min(year, y + dir)));
 
   // ─── Derived ──────────────────────────────────────────────────────────────
   const roundLabel = ['', 'First Round', 'Second Round', 'Conf. Finals', 'NBA Finals'];
@@ -155,43 +160,97 @@ export const PlayoffView: React.FC = () => {
         <div className="flex items-center gap-3">
           <Trophy size={22} className="text-yellow-400" />
           <div>
-            <h2 className="text-2xl font-black uppercase tracking-tight">NBA Playoffs {year}</h2>
+            <h2 className="text-2xl font-black uppercase tracking-tight">
+              NBA Playoffs {viewYear - 1}–{String(viewYear).slice(-2)}
+            </h2>
             <p className="text-slate-500 text-xs">
-              {!playoffs
-                ? 'Begins April 14'
-                : playoffs.bracketComplete
-                ? 'Complete'
-                : playoffs.playInComplete
-                ? (roundLabel[playoffs.currentRound] ?? `Round ${playoffs.currentRound}`)
+              {isHistorical ? 'Historical Season' :
+                !playoffs ? 'Begins April 14'
+                : playoffs.bracketComplete ? 'Complete'
+                : playoffs.playInComplete ? (roundLabel[playoffs.currentRound] ?? `Round ${playoffs.currentRound}`)
                 : 'Play-In Tournament'}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleSimDay}
-            disabled={state.isProcessing}
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-black rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
-          >
-            <Play size={14} />
-            Sim Day
-          </button>
-          {playoffs && !playoffs.bracketComplete && (
+          {/* Year chevron — always visible */}
+          <div className="flex items-center gap-0 bg-white/5 border border-white/10 rounded-xl p-1">
             <button
-              onClick={handleSimulateRound}
-              disabled={state.isProcessing}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+              onClick={() => navYear(-1)}
+              disabled={viewYear <= 1984}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30"
             >
-              <FastForward size={14} />
-              {playoffs.playInComplete ? `Sim ${roundLabel[playoffs.currentRound] ?? 'Round'}` : 'Sim Play-In'}
+              <ChevronLeft size={14} />
             </button>
+            <span className="text-xs font-black text-white px-2 min-w-[52px] text-center">
+              {viewYear - 1}–{String(viewYear).slice(-2)}
+            </span>
+            <button
+              onClick={() => navYear(1)}
+              disabled={viewYear >= year}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+
+          {/* East / West chevron — only for current year pre-bracket */}
+          {!isHistorical && !playoffs && (
+            <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-xl p-1">
+              <button
+                onClick={() => setConfFilter(confFilter === 'East' ? 'West' : 'East')}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <span className="text-xs font-black text-white px-2 min-w-[48px] text-center">{confFilter}</span>
+              <button
+                onClick={() => setConfFilter(confFilter === 'East' ? 'West' : 'East')}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
+
+          {/* Sim buttons — only for current season */}
+          {!isHistorical && (
+            <>
+              <button
+                onClick={handleSimDay}
+                disabled={state.isProcessing}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-black rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+              >
+                <Play size={14} />
+                Sim Day
+              </button>
+              {playoffs && !playoffs.bracketComplete && (
+                <button
+                  onClick={handleSimulateRound}
+                  disabled={state.isProcessing}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  <FastForward size={14} />
+                  {playoffs.playInComplete ? `Sim ${roundLabel[playoffs.currentRound] ?? 'Round'}` : 'Sim Play-In'}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+      <div className="flex-1 overflow-hidden flex flex-col">
+
+        {/* ── Historical bracket ───────────────────────────────────────────── */}
+        {isHistorical && (
+          <HistoricalPlayoffBracket viewYear={viewYear} />
+        )}
+
+        {/* ── Current season content ───────────────────────────────────────── */}
+        {!isHistorical && (
+        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
 
         {/* ── Pre-playoff standings ────────────────────────────────────────── */}
         {!playoffs && (
@@ -204,17 +263,6 @@ export const PlayoffView: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex gap-2 mb-4">
-              {(['East', 'West'] as const).map(conf => (
-                <button
-                  key={conf}
-                  onClick={() => setConfFilter(conf)}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${confFilter === conf ? 'bg-indigo-600 text-white' : 'bg-white/5 text-slate-400 hover:text-white'}`}
-                >
-                  {conf}
-                </button>
-              ))}
-            </div>
 
             <div className="space-y-2">
               {(confFilter === 'East' ? eastStandings : westStandings).map((team, idx) => (
@@ -264,7 +312,10 @@ export const PlayoffView: React.FC = () => {
           </div>
         )}
 
-      </div>
+        </div>
+        )}{/* end !isHistorical */}
+
+      </div>{/* end content container */}
 
       {/* ── Series detail panel ───────────────────────────────────────────── */}
       {selectedSeriesId && playoffs && (
