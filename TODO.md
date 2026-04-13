@@ -71,5 +71,8 @@
 ## UPCOMING / NEXT SESSION
 
 - **DraftScoutingView pro comparisons use prospect's potential** — `findTopComparisons` currently projects BOTH the prospect AND the NBA comparison players. Fix: prospect is projected to their POT ceiling; NBA players compared at their CURRENT ratings (not projected). This gives "who this player will be like at their peak" instead of "who they are now". `src/utils/playerComparisons.ts` + `src/components/central/view/DraftScoutingView.tsx` ✅ Done session 9
+- **autoRunDraft ignored draftLotteryResult** — lazy sim / skip-to-date auto-draft was assigning players purely by standings order, ignoring who won the lottery. Fixed: `autoRunDraft` in `autoResolvers.ts` now mirrors DraftSimulatorView logic (picks 1–14 from lottery order, 15–30 playoff teams best→worst, fallback to standings if no lottery result). ✅ Done session 9
+- **§4d Pick season filter** — `TradeMachineModal` and `tradeService.ts` need to filter tradable picks to `p.season <= currentYear + tradableDraftPickSeasons` so picks beyond the window can't be traded. Apply to `teamAPicksAvailable` / `teamBPicksAvailable` memos in TradeMachineModal + same filter in tradeService. `multiseason_todo §4d`
+- **AI-vs-AI trade execution** — `tradeProposals` with `isAIvsAI && status === 'accepted'` are generated but never executed. Wire `handleExecutiveTrade` for these in `simulationHandler.ts`. Pick assets in `TradeProposal` must be `dpid[]` matching `state.draftPicks` filtered by `p.tid === teamId`. Being handled in isolation by user. `multiseason_todo §2f`
 
 *Last updated: 2026-04-13 (session 9)*
