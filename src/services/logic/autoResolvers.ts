@@ -708,11 +708,30 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
 
   const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa']);
 
-  // Draft order: worst → best (R1 then R2)
-  const sorted = [...state.teams]
+  // Draft order: use lottery results for picks 1-14, playoff teams for 15-30 (mirrors DraftSimulatorView)
+  const allSortedByRecord = [...state.teams]
     .filter(t => t.id > 0)
     .sort((a, b) => (a.wins / Math.max(1, a.wins + a.losses)) - (b.wins / Math.max(1, b.wins + b.losses)));
-  const draftOrder = [...sorted, ...sorted];
+
+  const lotteryResults: any[] = state.draftLotteryResult ?? [];
+  let r1Order: typeof allSortedByRecord;
+
+  if (lotteryResults.length >= 14) {
+    const lotteryTids = new Set(lotteryResults.map((r: any) => r.team?.tid ?? r.tid));
+    const lotteryPicks = [...lotteryResults]
+      .sort((a: any, b: any) => a.pickNumber - b.pickNumber)
+      .map((r: any) => state.teams.find(t => t.id === (r.team?.tid ?? r.tid)))
+      .filter(Boolean) as typeof allSortedByRecord;
+    const playoffTeams = allSortedByRecord
+      .filter(t => !lotteryTids.has(t.id))
+      .reverse(); // best record picks last
+    r1Order = [...lotteryPicks, ...playoffTeams];
+  } else {
+    // No lottery result — fall back to standings order (worst record first)
+    r1Order = allSortedByRecord;
+  }
+
+  const draftOrder = [...r1Order, ...r1Order];
 
   // Available prospects for THIS season's draft class only (filter out future classes)
   const prospects = state.players
