@@ -123,4 +123,111 @@ Wire into `AITradeHandler.ts`:
 - Each page should be a React component that reads from `state` via `useGame()`
 - No new API calls needed — all data is already in game state or staff gist
 
+---
+
+## Staff Service Data Sources (Updated)
+
+### Gist URLs
+| Data | URL |
+|------|-----|
+| Staff (owners/GMs/coaches/league office) | `https://gist.githubusercontent.com/aljohnpolyglot/27eff0d6d9a204338987e03c7f3bf444/raw/staff_complete_2025` |
+| GM Ratings | `https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbagmratings` |
+| Coach Photos | `https://gist.githubusercontent.com/aljohnpolyglot/60f5ef1e4d09066d1001a9acf3de127a/raw/516852da634669f0f2cd68d6fb1ba5371cb5d15a/coach_photos.json` |
+| Coach Bios | `https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbacoachesbio` |
+| NBA2K Coach List | `https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nba2kcoachlist` |
+| Coach Contracts | `https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbacoachescontract` |
+| Coach Assistants Worker | `https://fragrant-bar-f766.mogatas-princealjohn-05082003.workers.dev/?slug={slug}` |
+
+### Data Types
+
+**CoachData** (from `nbacoachesbio`):
+```ts
+{ staff, team, startSeason, yearsInRole, birthDate, nationality, img? }
+```
+
+**NBA2KCoachData** (from `nba2kcoachlist`):
+```ts
+{ name, image, url, team, position, league, born, age, nationality, college?, coaching_career?, career_history?, playing_career?, nba_draft?, high_school?, weight?, height? }
+```
+
+**CoachContractData** (from `nbacoachescontract`):
+```ts
+{
+  name, total_exp_years, current_team_2026,
+  history: [{ team, contract_length, start_year, end_year, annual_salary, total_value }]
+}
+```
+
+**GM Ratings** (from `nbagmratings`):
+```ts
+// Array of GM objects with trade tendency, build strategy, draft focus fields
+// Exact schema TBD — fetch and log to see structure
+```
+
+### Staff Service Functions (from api.ts)
+
+```ts
+getStaffData(players, teamNameMap)  → { owners, gms, coaches, leagueOffice }
+getGMRatings()                      → GM ratings array
+fetchCoachData()                    → loads photos + bios + 2K + contracts (cached)
+getCoachPhoto(name)                 → image URL
+getCoachBio(name)                   → CoachData
+getNBA2KCoach(name)                 → NBA2KCoachData
+getTeamStaff(teamName)              → NBA2KCoachData[] (all staff for team)
+getCoachContract(name)              → CoachContractData
+getCoachAssistants(coachName)       → string[] (scraped from worker)
+normalizeName(name)                 → lowercase stripped string for matching
+```
+
+### Image Priority for Staff
+1. Explicit override (`COACH_IMAGES`, `OWNER_IMAGES`)
+2. `imageUrl` from gist
+3. RealGM pattern: `basketball.realgm.com/images/nba/4.2/profiles/photos/2006/{Last}_{First}.jpg`
+4. Player portrait match (if staff member was a former player)
+5. Team logo fallback
+
+### Owner Replacement Pool (for fire/hire UI)
+```ts
+['Mark Cuban', 'Peter Guber', 'Larry Ellison', 'David Tepper', 'Tilman Fertitta']
+```
+
+### EnrichedStaffMember Type
+```ts
+interface EnrichedStaffMember {
+  name: string;
+  position?: string;      // team name (new gist format)
+  team?: string;           // team name (legacy format)
+  jobTitle?: string;
+  imageUrl?: string | null;
+  playerPortraitUrl?: string;  // resolved portrait
+  teamLogoUrl?: string;        // fallback logo
+}
+```
+
+### Migration Plan for api.ts → Game State
+
+The current `api.ts` in TeamOffice fetches independently. Migration:
+
+1. **Move staff fetching to `staffService.ts`** (already exists at `src/services/staffService.ts`)
+   - Merge `getStaffData`, `fetchCoachData`, `getGMRatings` into the existing service
+   - Store results in `state.staff` (already has `owners`, `gms`, `coaches`, `leagueOffice`)
+   - Add new fields: `state.staff.coachBios`, `state.staff.coachContracts`, `state.staff.gmRatings`
+
+2. **TeamOffice pages use `useGame()` hook** instead of direct fetch
+   - `Home.tsx` → reads `state.teams`, `state.staff`, `state.leagueStats`
+   - `GeneralManager.tsx` → reads `state.staff.gms` + `state.staff.gmRatings`
+   - `CoachingView.tsx` → reads `state.staff.coaches` + coach bios/contracts/photos
+   - `DraftPicks.tsx` → reads `state.draftPicks`
+   - `TeamNeeds.tsx` → computes from `state.players` by position
+   - `TradingBlock.tsx` → reads `player.onTradingBlock` + mood ≤ -3
+   - `TeamIntel.tsx` → AI-generated or template-based scouting
+
+3. **GM Ratings → AI Trade Handler**
+   - Load at init alongside staff data
+   - Pass GM tendency to `generateAIDayTradeProposals`
+   - Aggressive GM: frequency ×1.5, overpay tolerance +10%
+   - Conservative GM: frequency ×0.5, only clear wins
+   - Win-now GM: protect picks less, target stars
+   - Rebuild GM: hoard picks, dump salary
+
 *Created: 2026-04-17 (session 22)*
