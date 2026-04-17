@@ -1,4 +1,15 @@
 import { formatDistance, isValid, formatDistanceToNow } from 'date-fns';
+
+/**
+ * Compute player age from born.year and sim year.
+ * ALWAYS use this instead of player.age — player.age is stale from BBGM load.
+ * See README.md pitfall #4.
+ */
+export function computeAge(player: { age?: number; born?: { year?: number } }, simYear: number): number {
+  if (player.born?.year) return simYear - player.born.year;
+  if (typeof player.age === 'number' && player.age > 0) return player.age;
+  return 25; // fallback
+}
 import { SEASON_DATES } from '../constants';
 import { GamePhase, NBATeam } from '../types';
 import { getRatedCelebrityNames } from '../data/celebrities';

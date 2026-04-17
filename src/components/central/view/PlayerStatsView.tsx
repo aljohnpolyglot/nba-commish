@@ -457,8 +457,9 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
       // they played for — so let them through and filter at the stats level below.
       if (teamFilter !== 'all' && player.tid > 0 && currentTeamAbbrev !== teamFilter) continue;
 
-      const age = player.age
-        ?? ((player as any).born?.year ? (state.leagueStats.year ?? 2026) - (player as any).born.year : 0);
+      const age = (player as any).born?.year
+        ? (state.leagueStats.year ?? 2026) - (player as any).born.year
+        : (player.age ?? 0);
 
       if (season === 'career') {
         const stats = getPhaseStats(player, null);

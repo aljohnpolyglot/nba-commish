@@ -101,7 +101,7 @@ export const PlayerRatingsView: React.FC = () => {
 
   const season = state.leagueStats?.year ?? 2026;
 
-  const currentYear = new Date().getFullYear();
+  const currentYear = season;
 
   // Build row data
   const rows: RowData[] = useMemo(() => {

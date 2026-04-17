@@ -2,74 +2,72 @@
 
 ---
 
-## ACTIVE — Verify on Next Playthrough
+## ACTIVE — Verify on New Save
 
-- **Retirements** — retirement formula rewritten to use raw BBGM OVR (was inflated by 2K conversion). Verify players now retire.
-- **ContractYears history** — fixed session 22. Verify on NEW save.
-- **July games** — batch=1 near Jun 30 + yearAdvanced guard. Verify no ghost games.
-- **Roster trimming** — verify `autoTrimOversizedRosters` fires in season 2+.
+- **Retirements** — formula rewritten + born.year age across ALL progression. Verify players retire properly.
+- **Progression balance** — all 6 dev files now use born.year age. Verify young players don't hit 90+ OVR en masse.
+- **Broadcasting cap** — mediaRights inflated at rollover, BroadcastingView reads leagueStats.salaryCap. Verify alignment.
+- **Stale ages** — 9 UI components fixed to use simYear. Verify ages correct everywhere.
 
 ---
 
 ## BUGS — Remaining
 
-### Start Date timeline UI broken for multi-season
-**Symptom:** Timeline squished — 4 years (2025-2029) crammed into 1600px designed for 1 year. Labels overlap, zones don't loop per season.
-**Fix:** Scale `TRACK_WIDTH` proportionally to day range, or loop the timeline per-season with year labels. The zone colors (offseason/early/mid/late) should repeat each season.
-**Files:** `StartDateTimeline.tsx`, `keyDates.ts`
+### Player option timing off by 1 year
+**Symptom:** Drummond accepts player option Jul 1 2026 then signs with Knicks Sep 2026 as a free agent. The option acceptance should lock him for the upcoming season but he's becoming a FA anyway.
+**Root cause:** The player option check uses `contract.exp === currentYear` where `currentYear` is the season ending. If the option is for 2025-26 (exp=2026) and rollover fires at Jun 30 2026, `exp === currentYear` is true → but the option should EXTEND to 2026-27. The opt-in should set `contract.exp += 1`.
+**Files:** `seasonRollover.ts` (player option block ~line 50)
+
+### Transaction amounts showing $1M instead of actual (e.g. $600K)
+**Symptom:** Two-way and minimum signings show "$1M/1yr" in TransactionsView instead of "$0.6M/1yr" or "$625K/1yr".
+**Fix:** The rounding `Math.round(annualM)` rounds $0.6M → $1M. Use `annualM.toFixed(1)` or handle sub-$1M amounts.
+**Files:** `simulationHandler.ts` (FA signing history text generation)
+
+### ~~CRITICAL: Over-cap teams can't sign anyone — MLE-aware FA logic~~ ✅ FIXED
+**Symptom:** 22/30 teams over cap can't sign FAs. They should use MLE.
+**Fix:** In `AIFreeAgentHandler.ts`: if no cap space, check `getMLEAvailability()`, search FA pool for players ≤ MLE amount. If < 15 regular, prioritize regular signings. If 15 regular but < 3 two-way, sign two-way.
+**Files:** `AIFreeAgentHandler.ts`
 
 ### NBA Finals Game 7 never simulates
-**Symptom:** Finals series stuck at 3-3 ("SERIES IN PROGRESS") — Game 7 never gets scheduled/simulated. May be a schedule conflict or the PlayoffAdvancer not injecting Game 7 for the Finals round.
-**Files:** `PlayoffAdvancer.ts` (game injection for round 4), `simulationHandler.ts` (playoff logic)
+**Symptom:** Finals stuck at 3-3. Game 7 never scheduled.
+**Files:** `PlayoffAdvancer.ts`, `simulationHandler.ts`
 
 ### Playoff "Sim Round" button buggy
-**Symptom:** Sim Round in PlayoffView header triggers the jumpstart commissioner setup modal. Also doesn't respect series length — should sim until Game 7 resolves (if exists) or Game 4 (if sweep).
-**Fix:** Check what action `handleSimulateRound` dispatches. It may be dispatching wrong action type. Also: sim should advance to furthest unplayed game date in the current round.
-**Files:** `PlayoffView.tsx` (sim round handler)
+**Symptom:** Triggers jumpstart modal. Doesn't respect series length.
+**Files:** `PlayoffView.tsx`
 
-### PlayerStatsView historical: show ALL players who played for team that season
-**Symptom:** When viewing historical season stats for a team (e.g. CHI 2026-27 Playoffs), only currently rostered players show. Traded/released players who played that season are missing.
-**Fix:** Filter by `stats[].tid === teamId && stats[].season === selectedYear` instead of `player.tid === teamId`. Players still on the team get normal styling; former players get dimmed/italic.
-**Files:** `PlayerStatsView.tsx` (historical season filter)
-Also: show 🏆 ring icon and ⭐ All-Star badge next to player name if they won a championship or made All-Star that season (read from `player.awards[]`).
+### Rookie contract length not matching Economy tab
+**Symptom:** Some rookies get 1-year contracts instead of configured 2+2.
+**Files:** `DraftSimulatorView.tsx`, `autoResolvers.ts`
 
-### Broadcasting salary cap doesn't match leagueStats cap after inflation
-**Symptom:** BroadcastingView shows $154M but leagueStats.salaryCap is $164M after inflation. They don't align.
-**Root cause:** Inflation is applied at rollover to `leagueStats.salaryCap` but BroadcastingView derives cap from its own formula (`totalRev / 14.3 × 154.6`). These are independent calculations.
-**Fix:** Either (1) BroadcastingView reads `leagueStats.salaryCap` instead of computing its own, or (2) apply inflation to the broadcasting revenue inputs so the derived cap matches.
-**Files:** `BroadcastingView.tsx`, `seasonRollover.ts` (inflation), `inflationUtils.ts`
+### 2026 draft class disappearing from Draft History
+**Symptom:** Some picks missing. FA draftees now included but contract length may cause early expiry.
+**Files:** `DraftHistoryView.tsx`, `DraftSimulatorView.tsx`, `autoResolvers.ts`
 
-### Team options + supermax not activating in season 2+
-**Symptom:** Rollover shows "0 team opts exercised / 0 team opts declined". Team options and supermax eligibility may not be checked correctly for sim-generated contracts.
-**Files:** `seasonRollover.ts` (team option block), `salaryUtils.ts` (supermax eligibility)
-
-### COY still shows "OKC Coach" after fix
-**Symptom:** Agent fixed case-insensitive lookup but COY still shows placeholder. The staff gist data may not have coaches loaded, or the coach field names don't match.
-**Debug:** Check if `state.staff.coaches` is populated. Log the coach lookup in AwardService.
+### COY still shows "OKC Coach"
+**Status:** Agent fixed case-insensitive lookup. Still showing placeholder — staff data may not load coaches.
+**Debug:** Log `state.staff.coaches` at rollover.
 **Files:** `AwardService.ts`, `staffService.ts`
 
-### Progression system too aggressive — too many 90+ OVR young players
-**Symptom:** Every U22 player reaches 90+ OVR. Lightning strikes + daily progression + training camp shuffle compound.
-**Fix:** Audit all progression systems. Net progression should be ~zero-sum across the league (gains ≈ declines). May need to reduce `calcBaseChange` for ages 19-22, reduce training camp shuffle deltas, or add regression systems for overperformers.
-**Files:** `ProgressionEngine.ts`, `trainingCampShuffle.ts`, `seasonalBreakouts.ts`, `washedAlgorithm.ts`
+### Team options + supermax not activating
+**Symptom:** Rollover shows "0 team opts". Sim-generated contracts may not have `hasTeamOption` set.
+**Files:** `seasonRollover.ts`, `salaryUtils.ts`
 
-### Youth progression too aggressive
-**Symptom:** Every player under 22 reaches 90+ OVR — 5 Derrick Rose/Luka/Wemby-tier players in one draft class. The training camp shuffle + seasonal breakouts + daily progression compound too much for young players.
-**Fix:** Review `ProgressionEngine.ts` age brackets — `calcBaseChange` for ages 19-22 may be too generous. Also verify `trainingCampShuffle` progress bucket delta (+2 to +4 per attr × 14 attrs = up to +56 total) isn't too much.
-**Files:** `ProgressionEngine.ts`, `trainingCampShuffle.ts`, `seasonalBreakouts.ts`
+### Roster trimming (season 2+)
+Verify `autoTrimOversizedRosters` fires correctly.
 
 ---
 
-## RECENTLY FIXED (Session 22 Agents)
+## BUGS — UI (Lower Priority)
 
-- **~~Retirement bug~~** ✅ — `retireProb()` was using 2K-inflated OVR (raw 67 → 2K 90 = "never retire"). Rewritten to use raw BBGM OVR directly. Age 45+ auto-retire, 43-44 high chance but LeBron-tier (OVR 70+) can survive.
-- **~~bioCache hardcoded age~~** ✅ — removed `SIM_DATE = new Date("2026-01-08")`, now accepts `simYear` param from `state.leagueStats.year`
-- **~~Nick Smith Jr. dedup~~** ✅ — `normName` strips Jr/Sr/II/III/IV suffixes. All external league dedup filters now use `normName()` consistently.
-- **~~COY "SAS Coach"~~** ✅ — case-insensitive coach lookup in AwardService
-- **~~Save isolation~~** ✅ — `saveId` now includes `Date.now() + random suffix`. Each save gets unique seed.
-- **~~Draft History missing FAs~~** ✅ — includes `tid === -1` players with valid draft data
-- **~~Draft picks in TransactionsView~~** ✅ — `'Draft'` type with purple Trophy icon, ordinal suffix ("1st overall pick"), filter option added
-- **~~Portrait preservation~~** ✅ — confirmed LOAD_GAME doesn't strip ProBallers URLs (was already correct)
+### News cards missing player photos
+Attach `imageUrl: player.imgURL` to news objects.
+
+### PlayerStatsView historical: show ALL players who played for team
+Filter by `stats[].tid` not `player.tid`. Show ring/All-Star badges.
+
+### Start Date timeline UI
+Reverted to 1 season. Manual date input for multi-season jumps.
 
 ---
 
@@ -77,7 +75,7 @@ Also: show 🏆 ring icon and ⭐ All-Star badge next to player name if they won
 
 ### AI trade: contending teams protect K2 80+ players
 ### Dead money / ghost contracts (Luol Deng rule)
-### BroadcastingView auto-inflation
+### BroadcastingView auto-inflation (inflate broadcaster offers)
 ### Image caching (Performance setting)
 
 ---
@@ -85,9 +83,8 @@ Also: show 🏆 ring icon and ⭐ All-Star badge next to player name if they won
 ## FUTURE / BACKLOG
 
 ### Live Trade Debug UI (GM Dashboard)
-### External League Economy (constants ready in `constants.ts`, see `NEW_FEATURES.md`)
+### External League Economy (constants ready in `constants.ts`)
 ### Career highs tracking for PlayerBioView
-### News cards player photos
 
 ---
 
@@ -105,8 +102,71 @@ Also: show 🏆 ring icon and ⭐ All-Star badge next to player name if they won
 
 ---
 
-## FIXED ✅ (Session 22 — 45+ items)
+## FIXED ✅ (Session 22 — 60+ items)
 
-See git history. Highlights: unified sim engine, training camp shuffle, playoff bracket archival, year chevrons on all views, two-way OVR cap, MLE column, standings from box scores, career progression chart, Shams transaction tweets, social feed perf, rollover team reset, and more.
+**Architecture:**
+- §1 UNIFIED SIMULATION ENGINE — `runLazySim` single engine for ALL multi-day advances
+- ADVANCE_DAY event date-match — `>=` fires on exact day
+- Simulate-to-Date always overlay — progress screen for all skips
+- `computeAge()` helper created in `helpers.ts` — canonical age calculation
+
+**Age System (ROOT CAUSE FIX):**
+- ALL 6 progression files use `born.year` age (was using stale `player.age` from BBGM load)
+- 9 UI components fixed to use `simYear - born.year`
+- ProgressionEngine, seasonalBreakouts, washedAlgorithm, bustLottery, retirementChecker, trainingCampShuffle
+- PlayerCard, FreeAgentCard, UniversalPlayerSearcher, PlayerRatingsModal, PlayerStatsView, etc.
+
+**Retirement:**
+- Formula rewritten for BBGM scale (65+ = All-Star immune through 37, proper age scaling)
+- born.year age fallback (was defaulting to 0 → nobody hit 34+ threshold)
+- Debug logging: `[Retirement] player (age X, OVR Y) — prob Z%, roll W → RETIRED/SURVIVED`
+
+**Rollover:**
+- Team W-L reset + archive to team.seasons[]
+- Team streak reset
+- July games guard (batch=1 near Jun 30)
+- Award Races offseason screen
+- Broadcasting cap: mediaRights inflated at rollover, display reads leagueStats.salaryCap
+- Season Preview → Oct 1, rank-based tiers, O/U only
+- Player options date → Jul 1
+- Career OVR snapshot (ovrHistory[])
+- Playoff archival (state.historicalPlayoffs[year])
+- PlayoffView: BracketLayout for ALL views (live, historical, empty)
+
+**Features:**
+- F2-F7: signing cards, training camp cut, FAME trait, G-League filters, Draft History, Stats tab
+- Training camp shuffle (1/3 progress/stale/regress)
+- Shams transaction tweets
+- MLE column in Cap Overview
+- Draft picks in TransactionsView (purple Trophy icon)
+- Standings year chevron (box score derived)
+- League Leaders + Statistical Feats year chevrons
+- Game log playoff/play-in labels (PLF/PI)
+- Progression dark colors (ensureVisibleColor)
+
+**Bug fixes:**
+- AI contractYears sync (3 paths + history preservation)
+- ImageGen guard (enableLLM)
+- POT mismatch (overallRating + born.year)
+- Minutes cap (reg ~40-42, playoffs ~44-46 + isPlayoffs knob)
+- G-League DNP (allSimResults GP + trade grace period)
+- B-League signing (fallback chain)
+- COMPETITOR morale (effectiveRecord)
+- PBA preseason (per-team knobs)
+- Social feed perf (removed JSON.stringify cascade)
+- Two-way OVR cap (≤45)
+- Double team name fix
+- Nick Smith Jr. dedup (normName strips Jr/Sr/II/III/IV)
+- COY case-insensitive lookup
+- Save isolation (unique saveId)
+- Vet age gate (36+ K2<72 skip routing)
+- bioCache hardcoded age removed
+- storyGenerator crash (injury null guard)
+- Draft R?P? defensive display
+- Twitter avatar fallback
+
+## FIXED ✅ (Sessions 8–21)
+
+146+ items. See git history and session memory files.
 
 *Last updated: 2026-04-17 (session 22)*

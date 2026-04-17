@@ -346,12 +346,15 @@ export const BroadcastingView: React.FC = () => {
     return { totalRev, mediaRev, lpRev, salaryCap, viewership, avgReach, approval, approvalGrade, subs, streamingCount, hasStreameast, integrityPenalty };
   }, [activeBroadcasters, lpPrice, phaseAssignments, scheduleAssignments]);
 
-  // When locked, the stored mediaRights values are authoritative (prevents formula
-  // drift if e.g. LP pricing logic changes after the deal was finalized).
+  // When locked, use leagueStats.salaryCap as the source of truth — it includes
+  // inflation applied at rollover. Media/total rev from saved rights are display-only.
   const savedRights   = readOnly ? state.leagueStats.mediaRights : null;
   const dispMediaRev  = savedRights?.mediaRev  ?? metrics.mediaRev;
   const dispTotalRev  = savedRights?.totalRev  ?? metrics.totalRev;
-  const dispSalaryCap = savedRights?.salaryCap ?? metrics.salaryCap;
+  // salaryCap from leagueStats is authoritative after inflation; fall back to formula only when editing
+  const dispSalaryCap = readOnly
+    ? (state.leagueStats.salaryCap ?? 154_647_000) / 1_000_000
+    : metrics.salaryCap;
 
   // ─── Broadcaster toggle ────────────────────────────────────────────────────
 

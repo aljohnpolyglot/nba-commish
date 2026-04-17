@@ -38,9 +38,14 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   const playerOptionNews: string[] = [];
   const playerOptionHistory: Array<{ text: string; date: string; type: string }> = [];
 
+  // Player options: gist labels option on the season it APPLIES TO.
+  // "2025-26 Player Option" → parsed exp = 2026.
+  // Decision happens at SUMMER BEFORE that season = Jun 30 of currentYear (2025).
+  // So at Jun 30 2025 rollover (currentYear=2025), check exp === nextYear (2026).
+  // This way the player decides NOW whether to play the upcoming option year.
   for (const p of state.players) {
     if (!(p as any).contract?.hasPlayerOption) continue;
-    if (!p.contract || (p.contract.exp ?? 0) !== currentYear) continue;
+    if (!p.contract || (p.contract.exp ?? 0) !== nextYear) continue;
     if (p.tid < 0 || p.tid >= 100) continue; // only active NBA players
 
     const offer = computeContractOffer(p, state.leagueStats as any);
@@ -66,9 +71,9 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   }
 
   // ── 0b. Rookie team option exercise ─────────────────────────────────────
-  // AI teams automatically exercise team options on good players (OVR ≥ 68 BBGM).
-  // When the guaranteed portion ends (teamOptionExp === currentYear), the team
-  // either exercises (contract remains until contract.exp) or declines (player → FA).
+  // AI teams automatically exercise team options on good players (OVR ≥ 50 BBGM).
+  // Gist labels option on the season it applies to: "2023-24 Team" → parsed teamOptionExp = 2024.
+  // Decision at summer BEFORE = Jun 30 2023 (currentYear=2023) → check teamOptionExp === nextYear (2024).
   const teamOptionExercisedIds  = new Set<string>();
   const teamOptionDeclinedIds   = new Set<string>();
   const teamOptionNews: string[] = [];
@@ -76,7 +81,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   for (const p of state.players) {
     if (!(p as any).contract?.hasTeamOption) continue;
     const teamOptExp: number = (p as any).contract?.teamOptionExp ?? -1;
-    if (teamOptExp !== currentYear) continue;          // not decision time yet
+    if (teamOptExp !== nextYear) continue;          // not decision time yet
     if (p.tid < 0 || p.tid >= 100) continue;
     if ((p as any).status === 'Retired') continue;
 
@@ -439,6 +444,19 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       ...(newSecondApron != null ? { secondApronAmount: newSecondApron } : {}),
       minContractStaticAmount: newMinContract,
       mleUsage: {},  // reset MLE usage each season
+      // Inflate mediaRights revenue inputs so BroadcastingView formula stays
+      // consistent with the inflated leagueStats.salaryCap, and unlock so the
+      // commissioner can re-finalize a new deal each season.
+      ...(state.leagueStats.mediaRights ? {
+        mediaRights: {
+          ...state.leagueStats.mediaRights,
+          salaryCap: newSalaryCap / 1_000_000,
+          totalRev:  (state.leagueStats.mediaRights.totalRev  ?? 0) * (newSalaryCap / (state.leagueStats.salaryCap || newSalaryCap)),
+          mediaRev:  (state.leagueStats.mediaRights.mediaRev  ?? 0) * (newSalaryCap / (state.leagueStats.salaryCap || newSalaryCap)),
+          lpRev:     (state.leagueStats.mediaRights.lpRev     ?? 0) * (newSalaryCap / (state.leagueStats.salaryCap || newSalaryCap)),
+          isLocked:  false,
+        },
+      } : {}),
     },
     retirementAnnouncements: newRetirees,
     seasonPreviewDismissed: true,  // stays hidden through FA; shown when preseason starts (Oct 1)

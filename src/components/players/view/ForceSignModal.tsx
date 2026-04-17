@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { NBAPlayer, NBATeam } from '../../../types';
 import { convertTo2KRating } from '../../../utils/helpers';
 import { getPlayerImage } from '../../central/view/bioCache';
+import { useGame } from '../../../store/GameContext';
 
 interface ForceSignModalProps {
   player: NBAPlayer;
@@ -16,7 +17,8 @@ export const ForceSignModal: React.FC<ForceSignModalProps> = ({ player, teams, o
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTeam, setSelectedTeam] = useState<NBATeam | null>(null);
 
-  const currentYear = new Date().getFullYear();
+  const { state } = useGame();
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const age = player.born?.year ? currentYear - player.born.year : player.age || 0;
   const ovr = convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp);
 

@@ -588,7 +588,9 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
         if (isFreeAgencySeason && stateWithSim.day % faFrequency === 0) {
             // Trim teams that exceeded the roster limit (e.g. due to trades or draft)
             // Pass simMonth so the trimmer uses the training camp limit during Jul–Sep
+            console.log(`[RosterTrim] Calling autoTrimOversizedRosters: simMonth=${simMonth}, date=${stateWithSim.date}, day=${stateWithSim.day}`);
             const waivers = autoTrimOversizedRosters(stateWithSim, simMonth);
+            console.log(`[RosterTrim] Month=${simMonth}, trimmed=${waivers.length} players`);
             if (waivers.length > 0) {
                 const waiverIds = new Set(waivers.map(w => w.playerId));
                 // October+ = regular season roster cut: release training camp players to FA pool

@@ -713,7 +713,10 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
 
   const season = state.leagueStats?.year ?? 2026;
   const rookieScaleType = state.leagueStats?.rookieScaleType ?? 'dynamic';
-  const rookieContractYrs = state.leagueStats?.rookieContractLength ?? 4;
+  const guaranteedYrs = state.leagueStats?.rookieContractLength ?? 2;
+  const teamOptEnabled: boolean = (state.leagueStats as any)?.rookieTeamOptionsEnabled ?? true;
+  const teamOptYears: number = (state.leagueStats as any)?.rookieTeamOptionYears ?? 2;
+  const restrictedFA: boolean = (state.leagueStats as any)?.rookieRestrictedFreeAgentEligibility ?? true;
   const staticRookieAmt = ((state.leagueStats as any)?.rookieScaleStaticAmount ?? 3) * 1_000_000;
 
   const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
@@ -774,13 +777,27 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
       const round = slot <= 30 ? 1 : 2;
       const pickInRound = slot <= 30 ? slot : slot - 30;
       const salaryAmount = rookieScaleType === 'static' ? staticRookieAmt : _getRookieAmount(slot);
-      const contractYrs = round === 1 ? rookieContractYrs : 2;
+      // R1: guaranteed years + team option years; R2: always 2yr, no team options
+      const baseYrs   = round === 1 ? guaranteedYrs : 2;
+      const optionYrs = (round === 1 && teamOptEnabled) ? teamOptYears : 0;
+      const totalYrs  = baseYrs + optionYrs;
       return {
         ...p,
         tid: team.id,
         status: 'Active' as const,
         draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: team.id },
-        contract: { amount: salaryAmount / 1_000, exp: season + contractYrs - 1, salaryDetails: [{ season, amount: salaryAmount }] },
+        contract: {
+          amount: salaryAmount / 1_000,
+          exp: season + totalYrs - 1,
+          salaryDetails: [{ season, amount: salaryAmount }],
+          // Team option and RFA metadata (mirrors finalizeDraft in DraftSimulatorView)
+          ...(optionYrs > 0 && {
+            hasTeamOption: true,
+            teamOptionExp: season + baseYrs - 1, // option kicks in after guaranteed portion
+          }),
+          ...(round === 1 && restrictedFA && { restrictedFA: true }),
+          rookie: true,
+        },
       };
     }
     // Undrafted current-year prospects → free agents (future classes stay as prospects)

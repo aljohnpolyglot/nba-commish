@@ -128,7 +128,7 @@ export const FreeAgentsView: React.FC = () => {
 
     filtered.sort((a, b) => {
       let comparison = 0;
-      const currentYear = new Date().getFullYear();
+      const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
 
       if (sortBy === 'ovr') {
         comparison = (a.overallRating || 0) - (b.overallRating || 0);

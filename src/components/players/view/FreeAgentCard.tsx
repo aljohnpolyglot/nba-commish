@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { NBAPlayer, NonNBATeam } from '../../../types';
 import { convertTo2KRating, getCountryFromLoc, getCountryCode } from '../../../utils/helpers';
 import { getPlayerImage } from '../../central/view/bioCache';
+import { useGame } from '../../../store/GameContext';
 
 const LEAGUE_LOGOS: Record<string, string> = {
   PBA: 'https://upload.wikimedia.org/wikipedia/en/thumb/9/93/Philippine_Basketball_Association_logo.svg/200px-Philippine_Basketball_Association_logo.svg.png',
@@ -19,8 +20,9 @@ interface FreeAgentCardProps {
 }
 
 export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeams = [], onClick }) => {
-  const currentYear = new Date().getFullYear();
-  const age = player.born?.year ? currentYear - player.born.year : player.age || 0;
+  const { state } = useGame();
+  const simYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const age = player.born?.year ? simYear - player.born.year : player.age || 0;
   const ovr = convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp);
   const country = getCountryFromLoc(player.born?.loc);
   const countryCode = getCountryCode(country);

@@ -232,7 +232,7 @@ export const runLazySim = async (
   const startNorm = normalizeDate(initialState.date);
   const daysTotal = daysBetween(startNorm, targetNorm);
 
-  if (daysTotal <= 0) return { state: initialState, lastSimResults: [] };
+  if (daysTotal < 0) return { state: initialState, lastSimResults: [] };
 
   // Force LLM off for the entire lazy sim
   const originalSettings = SettingsManager.getSettings();
@@ -300,7 +300,7 @@ export const runLazySim = async (
   try {
     while (true) {
       const currentNorm = normalizeDate(state.date);
-      if (currentNorm >= targetNorm) break;
+      if (currentNorm > targetNorm) break;
 
       // Fire any auto-resolvers whose date has been reached.
       // Events are keyed by `${seasonYear}:${key}` so they re-fire after season rollover.
@@ -342,8 +342,9 @@ export const runLazySim = async (
       const nearRollover = currentNorm >= `${state.leagueStats.year}-06-25` && currentNorm < rolloverDate;
       const remaining = daysBetween(currentNorm, targetNorm);
       const effectiveBatch = nearRollover ? 1 : BATCH_SIZE;
-      const batchDays = Math.min(effectiveBatch, remaining);
-      if (batchDays <= 0) break;
+      // remaining=0 when currentNorm==targetNorm — still need 1 iteration to sim today's games
+      const batchDays = Math.max(1, Math.min(effectiveBatch, remaining));
+      if (remaining < 0) break;
 
       const { stateWithSim, allSimResults, perDayResults } = runSimulation(state, batchDays, undefined);
       lastBatchSimResults = allSimResults; // track for silent mode return
@@ -635,10 +636,12 @@ export const runLazySim = async (
 
       // Advance past the last simulated day so the next batch starts fresh,
       // but only if we haven't reached the target yet
-      const currentNormAfterSim = normalizeDate(stateWithSim.date);
-      if (currentNormAfterSim < targetNorm) {
-        state = advanceDateByOne(state);
+      const currentNormAfterSim = normalizeDate(state.date);
+      if (currentNormAfterSim >= targetNorm) {
+        // We've simmed the target day — exit the loop
+        break;
       }
+      state = advanceDateByOne(state);
 
       currentPhase = getPhaseLabel(normalizeDate(state.date), state.leagueStats.year);
       report();

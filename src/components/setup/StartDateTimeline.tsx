@@ -313,7 +313,7 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
               type="date"
               value={selectedDate}
               min={TIMELINE_MIN}
-              max={TIMELINE_MAX}
+              max="2029-06-29"
               onChange={e => applyDate(e.target.value)}
               className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm font-mono focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none"
             />

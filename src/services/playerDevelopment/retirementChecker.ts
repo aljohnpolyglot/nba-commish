@@ -83,35 +83,62 @@ export function retireProb(age: number, rawOvr: number): number {
 
   // ── Age 45+: auto-retire (beyond any realistic playing career) ────
   if (age >= 45) return 1.0;
-  // ── Age 43-44: very high but LeBron-tier players can survive ────
-  if (age >= 43) return rawOvr >= 70 ? 0.80 : 0.95;
 
-  // ── Elite raw OVR gates (BBGM scale) ────────────────────────────────────
-  // 75+ raw = LeBron/Curry/KD tier: still dominant, tiny chance to retire
-  if (rawOvr >= 75) return age >= 38 ? 0.05 : 0;
-  // 70-74 raw = All-Star / borderline All-NBA: tiny personal-choice risk
-  if (rawOvr >= 70) return Math.min(0.05, (age - 34) * 0.005);
-  // 65-69 raw = good starter: low risk, rises with age
-  if (rawOvr >= 65) return Math.min(0.15, (age - 34) * 0.015);
+  // ── BBGM OVR scale (practical range 35-82): ─────────────────────────────
+  //   65+ = All-Star / superstar (top ~15 in league)
+  //   55-64 = solid starter
+  //   45-54 = rotation / bench
+  //   <45  = end of bench / washed
+  //
+  // Key principle: OVR matters MORE than age. A 40-year-old still putting up
+  // All-Star numbers (BBGM 68+) should almost never retire. A 36-year-old
+  // who can't crack a rotation (BBGM 42) probably should.
 
-  // ── Standard viability formula for rotation/bench players ────────────────
-  // Base probability scales with age above 34
-  const ageFactor = Math.min(0.95, (age - 34) / 8); // 0 at 34, 0.50 at 38, 0.95 at 42
+  // ── All-Star / superstar (BBGM 65+) ─────────────────────────────────────
+  if (rawOvr >= 65) {
+    if (age <= 37) return 0;                         // still elite, won't retire
+    if (age <= 38) return 0.03;                      // starting to think about it
+    if (age <= 39) return 0.05;
+    if (age <= 40) return 0.08;
+    if (age <= 41) return 0.15;
+    if (age <= 42) return 0.25;
+    if (age <= 43) return 0.40;
+    return 0.60;                                     // age 44
+  }
 
-  // Viability: minimum raw OVR to keep getting contracts at this age
-  // Rises with age — even at 40, a raw 58 (decent role player) can hang on
-  const viabilityOvr = 55 + Math.max(0, age - 34) * 1.2; // ~55 at 34, ~62 at 40
+  // ── Solid starter (BBGM 55-64) ──────────────────────────────────────────
+  if (rawOvr >= 55) {
+    if (age <= 34) return 0.05;
+    if (age <= 35) return 0.10;
+    if (age <= 36) return 0.15;
+    if (age <= 37) return 0.25;
+    if (age <= 38) return 0.35;
+    if (age <= 39) return 0.50;
+    if (age <= 40) return 0.60;
+    if (age <= 41) return 0.70;
+    return 0.80;                                     // age 42-44
+  }
 
-  // Distance below viability: negative = below the bar
-  const ovrGap = rawOvr - viabilityOvr;
+  // ── Rotation / bench (BBGM 45-54) ───────────────────────────────────────
+  if (rawOvr >= 45) {
+    if (age <= 34) return 0.15;
+    if (age <= 35) return 0.25;
+    if (age <= 36) return 0.35;
+    if (age <= 37) return 0.50;
+    if (age <= 38) return 0.60;
+    if (age <= 39) return 0.75;
+    if (age <= 40) return 0.85;
+    return 0.95;                                     // age 41-44
+  }
 
-  // Below bar by >6 → near-certain retire; above bar by >6 → mostly keep playing
-  const gapContrib = Math.max(0, Math.min(1, (6 - ovrGap) / 14));
-
-  // Blend: age pushes toward retire, OVR gap modulates
-  const raw = ageFactor * 0.50 + gapContrib * 0.50;
-
-  return Math.max(0, Math.min(0.97, raw));
+  // ── Washed (BBGM < 45) ──────────────────────────────────────────────────
+  if (age <= 34) return 0.30;
+  if (age <= 35) return 0.40;
+  if (age <= 36) return 0.60;
+  if (age <= 37) return 0.70;
+  if (age <= 38) return 0.80;
+  if (age <= 39) return 0.90;
+  return 0.95;                                       // age 40-44
 }
 
 // ─── Career stats snapshot ────────────────────────────────────────────────────
@@ -210,7 +237,8 @@ export function runFarewellTourChecks(
     if (p.tid === -2) return p;
     if ((p as any).farewellTour) return p; // already flagged from prior rollover
 
-    const age = typeof p.age === 'number' ? p.age : 0;
+    // Prefer born.year calculation — player.age can be stale/wrong from BBGM load
+    const age = p.born?.year ? (year - p.born.year) : (typeof p.age === 'number' && p.age > 0 ? p.age : 0);
     if (age < 34) return p;
 
     const allStarCount = countAllStarAppearances(p);
@@ -264,10 +292,8 @@ export function runRetirementChecks(
     if (p.tid === -2) return p; // unborn draft prospect
     if ((p as any).status === 'WNBA') return p;
 
-    // Use p.age if available, otherwise derive from born.year + season year
-    const age = typeof p.age === 'number' && p.age > 0
-      ? p.age
-      : (p.born?.year ? year - p.born.year : 0);
+    // Prefer born.year calculation — player.age can be stale/wrong from BBGM load
+    const age = p.born?.year ? (year - p.born.year) : (typeof p.age === 'number' && p.age > 0 ? p.age : 0);
     if (age < 34) return p; // too young to consider
 
     const ovr = p.overallRating ?? 60;
@@ -329,7 +355,8 @@ export function runRetirementChecks(
     const ACTIVE = new Set(['Active', 'Free Agent', 'Prospect']);
     if (!ACTIVE.has((p as any).status ?? 'Active')) return false;
     if ((p as any).diedYear || p.tid === -2 || (p as any).status === 'WNBA') return false;
-    return (typeof p.age === 'number' ? p.age : 0) >= 34;
+    const a = p.born?.year ? (year - p.born.year) : (typeof p.age === 'number' ? p.age : 0);
+    return a >= 34;
   }).length;
   console.log(`[Retirement] Checked ${checked34Plus} players age 34+, ${newRetirees.length} retired, ${checked34Plus - newRetirees.length} survived`);
 

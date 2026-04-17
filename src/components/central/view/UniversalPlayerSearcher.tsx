@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import type { NBAPlayer, NBATeam, NonNBATeam } from '../../../types';
 import { convertTo2KRating, getCountryFromLoc, getCountryCode } from '../../../utils/helpers';
 import { PlayerSearchCard } from './PlayerSearchCard';
+import { useGame } from '../../../store/GameContext';
 
 interface UniversalPlayerSearcherProps {
   players: NBAPlayer[];
@@ -30,6 +31,7 @@ const POSITIONS = ['PG', 'SG', 'SF', 'PF', 'C'];
 const GENDERS = ['Men', 'Women'];
 
 export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = ({ players, teams, nonNBATeams = [], onActionClick, onTeamClick }) => {
+  const { state } = useGame();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLeagues, setSelectedLeagues] = useState<string[]>(['nba']);
   const [ageRange, setAgeRange] = useState({ min: 18, max: 45 });
@@ -76,11 +78,11 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
       }
     });
 
-    const currentYear = new Date().getFullYear();
+    const simYear = state.leagueStats?.year ?? new Date().getFullYear();
 
     return Array.from(uniquePlayers.values()).map(p => {
       const country = getCountryFromLoc(p.born?.loc);
-      const calculatedAge = p.born?.year ? (currentYear - p.born.year) : (p.age || 0);
+      const calculatedAge = p.born?.year ? (simYear - p.born.year) : (p.age || 0);
       
       const rawOvr = p.overallRating || (p.ratings?.[0]?.ovr || 0);
       const displayOvr = convertTo2KRating(rawOvr, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp);
@@ -92,7 +94,7 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
         displayOvr
       };
     });
-  }, [players]);
+  }, [players, state.leagueStats?.year]);
 
   const allCountries = useMemo(() => {
     const set = new Set<string>();

@@ -242,7 +242,8 @@ function progressPlayer(player: NBAPlayer, currentYear: number, date: string): N
   })();
   const rating: any = { ...player.ratings[ratingIdx] };
 
-  const age = player.age ?? (currentYear - (player.born?.year ?? (currentYear - 25)));
+  // Prefer born.year calculation — player.age can be stale/wrong from BBGM load
+  const age = player.born?.year ? (currentYear - player.born.year) : (typeof player.age === 'number' && player.age > 0 ? player.age : 25);
   const pid = player.internalId ?? player.name;
   const isOverseasPlayer = !!LEAGUE_DISPLAY_MULTIPLIERS[player.status ?? ''];
   const pos = player.pos ?? 'F';
@@ -390,7 +391,8 @@ export function applySeasonalBreakouts(
     const nba = isNBAActive(player);
     const hitRate = nba ? 1.0 : 0.43;
 
-    const age = player.age ?? 25;
+    // Prefer born.year calculation — player.age can be stale/wrong from BBGM load
+    const age = player.born?.year ? (currentYear - player.born.year) : (typeof player.age === 'number' && player.age > 0 ? player.age : 25);
     const pid = player.internalId ?? player.name;
     const pSeed = `${pid}-${saveSeed}`;
     const ratingIdx = (() => {

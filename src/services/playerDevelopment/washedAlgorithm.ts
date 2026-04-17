@@ -103,8 +103,9 @@ function ageMultiplier(age: number): number {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getPlayerAge(player: NBAPlayer, currentYear: number): number {
-  return (player as any).age
-    ?? ((player as any).born?.year ? currentYear - (player as any).born.year : 27);
+  // Prefer born.year calculation — player.age can be stale/wrong from BBGM load
+  if ((player as any).born?.year) return currentYear - (player as any).born.year;
+  return typeof (player as any).age === 'number' && (player as any).age > 0 ? (player as any).age : 27;
 }
 
 function getLastRatingIdx(player: NBAPlayer, currentYear: number): number {

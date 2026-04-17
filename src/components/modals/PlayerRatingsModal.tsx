@@ -375,7 +375,8 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
     setCollapsedCats(prev => ({ ...prev, [k]: !prev[k] }));
   };
 
-  const playerAge = player.age ?? ((player as any).born?.year ? new Date().getFullYear() - (player as any).born.year : 25);
+  const simYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const playerAge = (player as any).born?.year ? simYear - (player as any).born.year : (player.age ?? 25);
   const rawBbgmOvr = player.overallRating ?? 60;
   const potBbgm = playerAge >= 29 ? rawBbgmOvr : Math.max(rawBbgmOvr, Math.round(72.31428908571982 + (-2.33062761 * playerAge) + (0.83308748 * rawBbgmOvr)));
   const potK2 = convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), localRatings.hgt, localRatings.tp);
@@ -412,7 +413,7 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
                     {player.name}
                   </h2>
                     <p className="text-xs text-slate-400 font-medium mt-0.5">
-                    {player.pos} &bull; {team?.name ?? 'Free Agent'} &bull; Age {(player as any).born?.year ? new Date().getFullYear() - (player as any).born.year : player.age}
+                    {player.pos} &bull; {team?.name ?? 'Free Agent'} &bull; Age {(player as any).born?.year ? simYear - (player as any).born.year : player.age}
                   </p>
                   {isExternalLeague && (
                     <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-amber-500/10 border border-amber-500/25 rounded-full text-[9px] font-black text-amber-400 uppercase tracking-widest">

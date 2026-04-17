@@ -326,13 +326,37 @@ export class AwardService {
         // team name in the new gist format, team holds it in the legacy format)
         const tNameLc = t.name.toLowerCase();
         const tAbbrLc = t.abbrev.toLowerCase();
+        // Also extract the mascot portion (e.g. "Thunder" from "Oklahoma City Thunder")
+        const tRegionLc = (t as any).region ? (t as any).region.toLowerCase() : '';
+        const tMascotLc = tRegionLc && tNameLc.startsWith(tRegionLc)
+          ? tNameLc.slice(tRegionLc.length).trim()
+          : '';
         const coachEntry = staff?.coaches?.find(c => {
-          const cTeam = (c.team ?? '').toLowerCase();
-          const cPos  = (c.position ?? '').toLowerCase();
+          const cTeam = (c.team ?? '').toLowerCase().trim();
+          const cPos  = (c.position ?? '').toLowerCase().trim();
           return cTeam === tNameLc || cTeam === tAbbrLc ||
-                 cPos  === tNameLc || cPos  === tAbbrLc;
+                 cPos  === tNameLc || cPos  === tAbbrLc ||
+                 // Also match mascot-only (e.g. "Thunder") and region-only (e.g. "Oklahoma City")
+                 (tMascotLc && (cTeam === tMascotLc || cPos === tMascotLc)) ||
+                 (tRegionLc && (cTeam === tRegionLc || cPos === tRegionLc)) ||
+                 // Partial containment: gist value contains team name or vice versa
+                 (cTeam && (cTeam.includes(tNameLc) || tNameLc.includes(cTeam))) ||
+                 (cPos  && (cPos.includes(tNameLc)  || tNameLc.includes(cPos)));
         });
-        const coachName = coachEntry?.name ?? `${t.abbrev} Coach`;
+
+        // Fallback: if no coach found, try deriving from GM data (GMs are always populated)
+        let coachName = coachEntry?.name;
+        if (!coachName && staff?.gms && staff.gms.length > 0) {
+          // GMs don't give us coach names, but at least we know staff loaded.
+          // Log so we can diagnose the mismatch.
+          console.log(`[COY DEBUG] No coach found for ${t.name} (${t.abbrev}). Staff coaches count: ${staff?.coaches?.length ?? 0}. GM count: ${staff?.gms?.length ?? 0}.`);
+          if (staff.coaches && staff.coaches.length > 0) {
+            console.log(`[COY DEBUG] Available coach teams:`, staff.coaches.map(c => `${c.name}: team="${c.team}" pos="${c.position}"`));
+          }
+        } else if (!coachName) {
+          console.log(`[COY DEBUG] staff.coaches is EMPTY or staff not loaded for ${t.name}. staff exists: ${!!staff}, coaches length: ${staff?.coaches?.length ?? 'N/A'}`);
+        }
+        coachName = coachName ?? `${t.abbrev} Coach`;
 
         return { coachName, team: t, score, odds: '', wins, losses, improvement };
       })

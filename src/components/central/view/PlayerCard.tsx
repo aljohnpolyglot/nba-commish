@@ -3,6 +3,7 @@ import { Activity } from 'lucide-react';
 import { NBAPlayer, NBATeam } from '../../../types';
 import { convertTo2KRating } from '../../../utils/helpers';
 import { getPlayerImage } from './bioCache';
+import { useGame } from '../../../store/GameContext';
 
 interface PlayerCardProps {
   player: NBAPlayer;
@@ -11,6 +12,8 @@ interface PlayerCardProps {
 }
 
 export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionClick }) => {
+  const { state } = useGame();
+  const simYear = state.leagueStats?.year ?? new Date().getFullYear();
   const isInjured = player.injury && player.injury.type !== 'Healthy' && player.injury.gamesRemaining > 0;
   const isSuspended = player.suspension && player.suspension.gamesRemaining > 0;
   const isAvailable = !isInjured && !isSuspended;
@@ -69,7 +72,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionCl
               {player.pos}
             </span>
             <span className="bg-slate-500/10 text-slate-400 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
-              {new Date().getFullYear() - (player.born?.year || 2000)} YRS
+              {simYear - (player.born?.year || 2000)} YRS
             </span>
           </div>
         </div>

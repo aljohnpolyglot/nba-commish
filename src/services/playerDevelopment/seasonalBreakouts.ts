@@ -169,7 +169,8 @@ export function markLightningStrikes(
 
   for (const targetAge of AGE_GROUPS) {
     const forAge = eligiblePool.filter(p => {
-      const age = (p as any).age ?? ((p as any).born?.year ? currentYear - (p as any).born.year : 25);
+      // Prefer born.year calculation — player.age can be stale/wrong from BBGM load
+      const age = (p as any).born?.year ? (currentYear - (p as any).born.year) : (typeof (p as any).age === 'number' && (p as any).age > 0 ? (p as any).age : 25);
       return age === targetAge;
     });
     if (forAge.length === 0) continue;

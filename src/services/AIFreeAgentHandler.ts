@@ -133,6 +133,33 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
 
   const thresholds = getCapThresholds(state.leagueStats as any);
 
+  const currentYear = state.leagueStats.year;
+
+  // Helper: record a signing into results + remove from pool
+  const signPlayer = (
+    player: NBAPlayer,
+    team: NBATeam,
+    offer: { salaryUSD: number; years: number; hasPlayerOption: boolean },
+    mleTypeUsed: MleType = null,
+    mleAmountUSD = 0,
+    twoWay = false,
+  ) => {
+    results.push({
+      playerId: player.internalId,
+      teamId: team.id,
+      playerName: player.name,
+      teamName: team.name,
+      salaryUSD: offer.salaryUSD,
+      contractYears: offer.years,
+      contractExp: currentYear + offer.years - 1,
+      hasPlayerOption: offer.hasPlayerOption,
+      ...(mleTypeUsed ? { mleTypeUsed, mleAmountUSD } : {}),
+      ...(twoWay ? { twoWay: true } as any : {}),
+    });
+    pool = pool.filter(p => p.internalId !== player.internalId);
+  };
+
+  // ── Pass 1: Normal signings (cap space + MLE for best available) ──────
   for (const team of sortedAITeams) {
     const rosterSize = state.players.filter(p => p.tid === team.id && !(p as any).twoWay).length;
     if (rosterSize >= maxStandard) continue;
@@ -141,7 +168,6 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
     if (!best) continue;
 
     const offer = computeContractOffer(best, state.leagueStats as any);
-    const currentYear = state.leagueStats.year;
 
     // Determine if this is a cap-space signing or MLE signing
     const profile = getTeamCapProfile(
@@ -168,19 +194,100 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
       }
     }
 
-    results.push({
-      playerId: best.internalId,
-      teamId: team.id,
-      playerName: best.name,
-      teamName: team.name,
-      salaryUSD: offer.salaryUSD,
-      contractYears: offer.years,
-      contractExp: currentYear + offer.years - 1,
-      hasPlayerOption: offer.hasPlayerOption,
-      ...(mleTypeUsed ? { mleTypeUsed, mleAmountUSD } : {}),
-    });
+    signPlayer(best, team, offer, mleTypeUsed, mleAmountUSD);
+  }
 
-    pool = pool.filter(p => p.internalId !== best.internalId);
+  // ── Pass 2: Minimum-roster enforcement ────────────────────────────────
+  // Teams with < 15 regular-contract players MUST sign someone, even on a
+  // minimum contract.  Over-cap teams use the MLE; if MLE is exhausted,
+  // minimum-salary FAs can always be signed (league rule).
+  for (const team of sortedAITeams) {
+    // Count standard roster INCLUDING players we just signed in Pass 1
+    const alreadySigned = results.filter(r => r.teamId === team.id && !(r as any).twoWay).length;
+    const rosterSize = state.players.filter(p => p.tid === team.id && !(p as any).twoWay).length + alreadySigned;
+    if (rosterSize >= maxStandard) continue;
+
+    const profile = getTeamCapProfile(
+      state.players, team.id,
+      (team as any).wins ?? 0, (team as any).losses ?? 0, thresholds,
+    );
+
+    // Try MLE first for the best available player
+    const localEntry = localMleUsed.get(team.id);
+    const effectiveLS = localEntry
+      ? { ...state.leagueStats, mleUsage: { ...(state.leagueStats as any).mleUsage, [team.id]: localEntry } }
+      : state.leagueStats;
+
+    // Find cheapest viable FA (sorted by salary ascending, then OVR descending)
+    const candidates = pool
+      .map(p => ({ player: p, offer: computeContractOffer(p, state.leagueStats as any) }))
+      .sort((a, b) => a.offer.salaryUSD - b.offer.salaryUSD || (b.player.overallRating ?? 0) - (a.player.overallRating ?? 0));
+
+    let signed = false;
+    for (const { player, offer } of candidates) {
+      // Can we afford via cap space?
+      if (offer.salaryUSD <= profile.capSpaceUSD + 2_000_000) {
+        signPlayer(player, team, offer);
+        signed = true;
+        break;
+      }
+
+      // Can we afford via MLE?
+      const mleAvail = getMLEAvailability(team.id, profile.payrollUSD, offer.salaryUSD, thresholds, effectiveLS as any);
+      if (!mleAvail.blocked && mleAvail.type && offer.salaryUSD <= mleAvail.available) {
+        const prevUsed = localEntry?.usedUSD ?? 0;
+        localMleUsed.set(team.id, { type: mleAvail.type, usedUSD: prevUsed + offer.salaryUSD });
+        signPlayer(player, team, offer, mleAvail.type, offer.salaryUSD);
+        signed = true;
+        break;
+      }
+    }
+
+    // Last resort: sign the cheapest FA on a minimum deal regardless of cap
+    // (NBA teams below 15 players are required to fill roster spots)
+    if (!signed && candidates.length > 0) {
+      const cheapest = candidates[0];
+      signPlayer(cheapest.player, team, cheapest.offer);
+    }
+  }
+
+  // ── Pass 3: Two-way contract signings ─────────────────────────────────
+  // Teams with 15 regular players but fewer than maxTwoWayPlayersPerTeam
+  // two-way players should sign low-OVR FAs on two-way deals.
+  const maxTwoWay = state.leagueStats.maxTwoWayPlayersPerTeam ?? 2;
+  const twoWayEnabled = (state.leagueStats as any).twoWayContractsEnabled ?? true;
+  const TWO_WAY_OVR_CAP = 45; // raw BBGM OVR — fringe/bubble players only
+  const TWO_WAY_SALARY_USD = 625_000;
+
+  if (twoWayEnabled && maxTwoWay > 0) {
+    for (const team of sortedAITeams) {
+      // Count existing two-way players + any signed this round
+      const existingTwoWay = state.players.filter(p => p.tid === team.id && !!(p as any).twoWay).length;
+      const signedTwoWay = results.filter(r => r.teamId === team.id && !!(r as any).twoWay).length;
+      const currentTwoWay = existingTwoWay + signedTwoWay;
+      if (currentTwoWay >= maxTwoWay) continue;
+
+      const slotsAvailable = maxTwoWay - currentTwoWay;
+
+      // Pool: low-OVR FAs only
+      const twoWayCandidates = pool
+        .filter(p => (p.overallRating ?? 99) <= TWO_WAY_OVR_CAP)
+        .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0)); // best of the fringe first
+
+      let filled = 0;
+      for (const candidate of twoWayCandidates) {
+        if (filled >= slotsAvailable) break;
+        signPlayer(
+          candidate,
+          team,
+          { salaryUSD: TWO_WAY_SALARY_USD, years: 1, hasPlayerOption: false },
+          null,
+          0,
+          true,
+        );
+        filled++;
+      }
+    }
   }
 
   return results;
@@ -229,10 +336,15 @@ export function autoTrimOversizedRosters(state: GameState, month?: number): Waiv
     const glPlayers = roster.filter(p => !!(p as any).gLeagueAssigned)
       .sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0));
     const trimPool = [...nonGL, ...glPlayers];
+    const teamWaivers: WaiverResult[] = [];
     for (let i = 0; i < excess && i < trimPool.length; i++) {
       const p = trimPool[i];
-      results.push({ playerId: p.internalId, teamId: team.id, playerName: p.name, teamName: team.name });
+      teamWaivers.push({ playerId: p.internalId, teamId: team.id, playerName: p.name, teamName: team.name });
     }
+    if (teamWaivers.length > 0) {
+      console.log(`[RosterTrim] Month=${month}, team=${team.name}, roster=${roster.length}, limit=${effectiveLimit}, trimmed=${teamWaivers.length} players: ${teamWaivers.map(w => w.playerName).join(', ')}`);
+    }
+    results.push(...teamWaivers);
   }
 
   return results;

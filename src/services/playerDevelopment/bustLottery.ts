@@ -182,7 +182,8 @@ export function markBustLottery(
 
   for (const tier of tiers) {
     const forTier = eligible.filter(p => {
-      const age = (p as any).age ?? ((p as any).born?.year ? currentYear - (p as any).born.year : 25);
+      // Prefer born.year calculation — player.age can be stale/wrong from BBGM load
+      const age = (p as any).born?.year ? (currentYear - (p as any).born.year) : (typeof (p as any).age === 'number' && (p as any).age > 0 ? (p as any).age : 25);
       return age >= tier.minAge && age <= tier.maxAge;
     });
     if (forTier.length === 0) continue;
@@ -209,7 +210,8 @@ export function markBustLottery(
     for (const { pool, idx } of allPicks) {
       const player = pool[idx];
       const pid    = player.internalId ?? player.name;
-      const age    = (player as any).age ?? ((player as any).born?.year ? currentYear - (player as any).born.year : 25);
+      // Prefer born.year calculation — player.age can be stale/wrong from BBGM load
+      const age    = (player as any).born?.year ? (currentYear - (player as any).born.year) : (typeof (player as any).age === 'number' && (player as any).age > 0 ? (player as any).age : 25);
       const pSeed  = `bust-${saveSeed}-${currentYear}-${pid}`;
 
       // Bust start date: random anywhere in season window

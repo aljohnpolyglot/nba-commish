@@ -556,13 +556,16 @@ const actions = useGameActions(setState, () => stateRef.current);
         );
         const genId = ++generationIdRef.current;
         const { runLazySim } = await import('../services/logic/lazySimRunner');
+        // Short sims (≤30 days, e.g. playoff round) use silent mode to avoid
+        // the full-screen lazy-sim overlay that looks like the jumpstart screen.
+        const simMode = diffDays > 30 ? 'overlay' : 'silent';
         const result = await runLazySim(
           stateRef.current,
           action.payload.targetDate,
           (progress: any) => {
             setState(prev => ({ ...prev, lazySimProgress: progress }));
           },
-          { mode: 'overlay', batchSize: diffDays > 30 ? 7 : 1 }
+          { mode: simMode, batchSize: diffDays > 30 ? 7 : 1 }
         );
         setState(prev => {
           if (genId !== generationIdRef.current) return prev;

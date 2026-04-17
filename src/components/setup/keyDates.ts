@@ -56,8 +56,10 @@ export const KEY_DATES: KeyDate[] = [
 ];
 
 export const TIMELINE_MIN = '2025-08-06';
-export const TIMELINE_MAX = '2029-06-29';  // Extended to end of 2028-29 season for multi-season testing
-export const TIMELINE_DISPLAY_END = '2029-07-10';
+export const TIMELINE_MAX = '2026-06-29';  // Timeline slider shows season 1 only
+export const TIMELINE_DISPLAY_END = '2026-07-10';
+// For multi-season jumps: user types date manually in the date input below the timeline.
+// The lazy sim handles unlimited forward jumps — no timeline slider needed for 2027+.
 
 export const ZONE_COLORS: Record<DateZone, string> = {
   offseason: '#334155',

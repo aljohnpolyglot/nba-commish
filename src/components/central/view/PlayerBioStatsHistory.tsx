@@ -832,8 +832,11 @@ export const PlayerBioStatsHistory: React.FC<Props> = ({ player }) => {
   const boxData = useBoxData(player.internalId, state.boxScores);
   const stats   = (player.stats ?? []) as NBAGMStat[];
 
+  const computedAge = player.born?.year
+    ? state.leagueStats.year - player.born.year
+    : (player.age ?? 0);
   const build = (phase: Phase) =>
-    buildSeasonRows(stats, state.teams, state.leagueStats.year, player.age, boxData, phase);
+    buildSeasonRows(stats, state.teams, state.leagueStats.year, computedAge, boxData, phase);
 
   const pgData  = useMemo(() => build(pgPhase),  [pgPhase,  stats, boxData]);
   const slData  = useMemo(() => build(slPhase),  [slPhase,  stats, boxData]);
