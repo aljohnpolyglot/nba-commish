@@ -7,6 +7,7 @@ import {
 import {
   getCapThresholds, getCapStatus, formatSalaryM, contractToUSD,
   getTradeOutlook, effectiveRecord, topNAvgK2, CapThresholds,
+  getMLEAvailability,
 } from '../../../utils/salaryUtils';
 import {
   estimateAttendance, getArenaCapacity, formatAttendance, formatRevM, ARENA_HARD_CAP,
@@ -61,8 +62,8 @@ type CapSortKey = 'payroll' | 'space' | 'wins' | 'name';
 
 const CapRow: React.FC<{
   d: TeamEnriched; thresholds: CapThresholds; maxPayroll: number;
-  rank: number; onClick: () => void; seasonYear: number;
-}> = ({ d, thresholds, maxPayroll, rank, onClick, seasonYear }) => {
+  rank: number; onClick: () => void; seasonYear: number; leagueStats: any;
+}> = ({ d, thresholds, maxPayroll, rank, onClick, seasonYear, leagueStats }) => {
   const { team, payroll, playerCount, expiringCount, confRank, gbFromLeader, effectiveWins, effectiveLosses } = d;
   const status    = getCapStatus(payroll, thresholds);
   const baseOutlook = getTradeOutlook(payroll, effectiveWins, effectiveLosses, expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2);
@@ -120,6 +121,20 @@ const CapRow: React.FC<{
           }
         </div>
       </div>
+
+      {/* MLE */}
+      {(() => {
+        const mle = getMLEAvailability(team.id, payroll, 0, thresholds, leagueStats);
+        if (!mle.type || mle.blocked) return <div className="text-[9px] text-slate-600 w-16 text-right flex-shrink-0">—</div>;
+        const remainM = formatSalaryM(mle.available);
+        const typeLabel = mle.type === 'room' ? 'Room' : mle.type === 'taxpayer' ? 'Tax' : 'NT';
+        return (
+          <div className="text-right flex-shrink-0 w-16">
+            <div className="text-[10px] font-bold text-cyan-400">{remainM}</div>
+            <div className="text-[8px] text-slate-500">{typeLabel} MLE</div>
+          </div>
+        );
+      })()}
 
       {/* Expiring */}
       <div className="text-[10px] text-slate-500 w-12 text-right flex-shrink-0">
@@ -489,6 +504,7 @@ export const LeagueFinancesView: React.FC = () => {
                 maxPayroll={maxPayroll}
                 rank={i + 1}
                 seasonYear={seasonYear}
+                leagueStats={state.leagueStats}
                 onClick={() => navigateToTeamFinances(d.team.id)}
               />
             ))}

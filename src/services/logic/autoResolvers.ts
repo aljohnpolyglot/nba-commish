@@ -803,9 +803,12 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
   let twoWayPlayers = [...updatedPlayers];
 
   if (twoWayEnabled && maxTwoWay > 0) {
-    // Pool: newly-undrafted FAs (lowest OVR first — bubble/fringe candidates)
+    // Pool: low-OVR FAs only (fringe/bubble candidates, NOT established NBA players).
+    // Ben Simmons (OVR 50+) should NOT be on a two-way — only true fringe players.
+    // K2 < 72 threshold ensures established players sign regular contracts instead.
+    const TWO_WAY_OVR_CAP = 45; // raw BBGM OVR cap — roughly K2 ~70
     const twoWayPool = twoWayPlayers
-      .filter(p => p.tid === -1 && p.status === 'Free Agent')
+      .filter(p => p.tid === -1 && p.status === 'Free Agent' && (p.overallRating ?? 99) <= TWO_WAY_OVR_CAP)
       .sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0));
 
     const twoWayAssignments = new Map<string, number>(); // internalId → teamId
@@ -833,7 +836,8 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
         const teamId = twoWayAssignments.get(p.internalId);
         if (teamId === undefined) return p;
         const team = state.teams.find(t => t.id === teamId);
-        const teamName = team ? `${team.region ?? ''} ${team.name}`.trim() : `Team ${teamId}`;
+        // team.name already includes the city (e.g. "Indiana Pacers") — don't prepend region
+        const teamName = team?.name ?? `Team ${teamId}`;
         twoWayHistoryEntries.push({
           text: `${p.name} signed a two-way contract with the ${teamName}.`,
           date: state.date ?? `Jul 1, ${season}`,

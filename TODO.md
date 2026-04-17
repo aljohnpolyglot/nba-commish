@@ -19,8 +19,8 @@
 ### ~~Standings stale W-L after rollover~~ ✅ FIXED
 StandingsView now derives ALL data from box scores (not team.wins/losses), filtered by season year (Oct 24 → Apr 20 date range). Year chevron added to browse historical seasons. Playoff box scores excluded via date range + isPlayoff flag.
 
-### Two-way contract distribution (season 2+)
-Some teams get 4+ two-way, others get 0. Needs: (1) respect `maxTwoWayPlayersPerTeam`, (2) ensure every team gets 1-2 at training camp.
+### ~~Two-way contract distribution~~ ✅ FIXED
+Two-way pool now capped at raw OVR ≤ 45 (K2 ~70) — established players (Ben Simmons, Terry Rozier) no longer eligible. Double team name ("Indiana Indiana Pacers") also fixed.
 
 ### Roster trimming (season 2+)
 Verify `autoTrimOversizedRosters` fires in preseason (21 limit) and regular season (15 limit) for season 2+.
@@ -79,8 +79,8 @@ Bump protection from K2 78 → 80. Sort tradeable players K2 ascending (worst fi
 ### Dead money / ghost contracts (Luol Deng rule)
 Waived players' remaining guaranteed salary counts against cap. `deadContracts[]` on team state. Gray dashed row in TeamFinancesView.
 
-### MLE remaining column in Cap Overview
-Add column next to Payroll in `LeagueFinancesView.tsx`.
+### ~~MLE remaining column in Cap Overview~~ ✅ FIXED
+Shows MLE type (Room/NT/Tax) + remaining amount in cyan per team. Uses `getMLEAvailability()` from salaryUtils.
 
 ### BroadcastingView auto-inflation
 Cap should grow automatically at rollover even if commissioner doesn't touch BroadcastingView.
