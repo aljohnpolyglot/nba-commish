@@ -33,6 +33,9 @@ Root cause: roster trim sends injured players to G-League by changing `player.ti
 Role-first slot filling skips high-OVR players when their classified role doesn't match open slots. Fix: start top-5 by OVR, THEN assign positions by best fit. Affects TeamIntel lineup, WatchGamePreviewModal, and sim engine.
 **Files:** `StarterService.ts`
 
+### Draft Scouting: projected team per pick slot + player comparisons use POT not just OVR
+Mock draft should show which team is projected at each slot. Player comparison tool (if exists) should weight POT for young players, not just current OVR. DraftScouting tab already has the 70/30 value/fit scoring — wire it into the main sidebar DraftScoutingView as well.
+
 ### Unify AI trades with TradeFinder engine
 Extract `findOffers` core logic from `TradeFinderView.tsx` into `src/services/trade/tradeFinderEngine.ts`. Both TradeFinder UI and `AITradeHandler` should call the same engine. Delete duplicate trade generation code in AITradeHandler. One source of truth for all trades.
 **Files:** `TradeFinderView.tsx`, `AITradeHandler.ts`, new `tradeFinderEngine.ts`
