@@ -33,6 +33,26 @@
 **Files:** `PlayerStatsView.tsx` (historical season filter)
 Also: show 🏆 ring icon and ⭐ All-Star badge next to player name if they won a championship or made All-Star that season (read from `player.awards[]`).
 
+### Broadcasting salary cap doesn't match leagueStats cap after inflation
+**Symptom:** BroadcastingView shows $154M but leagueStats.salaryCap is $164M after inflation. They don't align.
+**Root cause:** Inflation is applied at rollover to `leagueStats.salaryCap` but BroadcastingView derives cap from its own formula (`totalRev / 14.3 × 154.6`). These are independent calculations.
+**Fix:** Either (1) BroadcastingView reads `leagueStats.salaryCap` instead of computing its own, or (2) apply inflation to the broadcasting revenue inputs so the derived cap matches.
+**Files:** `BroadcastingView.tsx`, `seasonRollover.ts` (inflation), `inflationUtils.ts`
+
+### Team options + supermax not activating in season 2+
+**Symptom:** Rollover shows "0 team opts exercised / 0 team opts declined". Team options and supermax eligibility may not be checked correctly for sim-generated contracts.
+**Files:** `seasonRollover.ts` (team option block), `salaryUtils.ts` (supermax eligibility)
+
+### COY still shows "OKC Coach" after fix
+**Symptom:** Agent fixed case-insensitive lookup but COY still shows placeholder. The staff gist data may not have coaches loaded, or the coach field names don't match.
+**Debug:** Check if `state.staff.coaches` is populated. Log the coach lookup in AwardService.
+**Files:** `AwardService.ts`, `staffService.ts`
+
+### Progression system too aggressive — too many 90+ OVR young players
+**Symptom:** Every U22 player reaches 90+ OVR. Lightning strikes + daily progression + training camp shuffle compound.
+**Fix:** Audit all progression systems. Net progression should be ~zero-sum across the league (gains ≈ declines). May need to reduce `calcBaseChange` for ages 19-22, reduce training camp shuffle deltas, or add regression systems for overperformers.
+**Files:** `ProgressionEngine.ts`, `trainingCampShuffle.ts`, `seasonalBreakouts.ts`, `washedAlgorithm.ts`
+
 ### Youth progression too aggressive
 **Symptom:** Every player under 22 reaches 90+ OVR — 5 Derrick Rose/Luka/Wemby-tier players in one draft class. The training camp shuffle + seasonal breakouts + daily progression compound too much for young players.
 **Fix:** Review `ProgressionEngine.ts` age brackets — `calcBaseChange` for ages 19-22 may be too generous. Also verify `trainingCampShuffle` progress bucket delta (+2 to +4 per attr × 14 attrs = up to +56 total) isn't too much.

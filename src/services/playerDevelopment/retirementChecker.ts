@@ -264,7 +264,10 @@ export function runRetirementChecks(
     if (p.tid === -2) return p; // unborn draft prospect
     if ((p as any).status === 'WNBA') return p;
 
-    const age = typeof p.age === 'number' ? p.age : 0;
+    // Use p.age if available, otherwise derive from born.year + season year
+    const age = typeof p.age === 'number' && p.age > 0
+      ? p.age
+      : (p.born?.year ? year - p.born.year : 0);
     if (age < 34) return p; // too young to consider
 
     const ovr = p.overallRating ?? 60;
