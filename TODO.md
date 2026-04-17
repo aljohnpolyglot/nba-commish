@@ -40,6 +40,11 @@ In-season columns (Last Wk, ▲▼, Streak, Diff, Last 10) hidden when `seasonNo
 **What:** Track `player.careerHighs: { pts, reb, ast, stl, blk, gameId }` — updated after each game if a new career high is set. Display in PlayerBioView overview tab. Connect with `boxScoreHistory` from game settings for pruning.
 **Files:** `postProcessor.ts` (update career highs), `PlayerBioOverviewTab.tsx` (display)
 
+### bioCache.ts age uses hardcoded date instead of game state
+**Symptom:** `bioCache.ts:116` has `SIM_DATE = new Date("2026-01-08")` — age calc uses real-world hardcoded date instead of `state.leagueStats.year`. After season 2+, player ages in hero bio are wrong.
+**Fix:** Pass `leagueStats.year` into bioCache age calc. Use `simYear - born.year` instead of `new Date("2026-01-08").getFullYear() - born.year`.
+**Files:** `bioCache.ts` (line 116-121), `PlayerBioView.tsx` (passes age context)
+
 ### COY award shows "SAS Coach" instead of real coach name
 **Symptom:** League History detail view shows COY as "SAS Coach" instead of the actual coach name from staff data. AwardService already reads from staffService but the name isn't propagating to historicalAwards.
 **Files:** `AwardService.ts` (COY name resolution), `LeagueHistoryDetailView.tsx` (display)
