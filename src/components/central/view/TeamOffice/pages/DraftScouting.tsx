@@ -228,7 +228,7 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
                     <span className="text-sm font-bold text-white truncate">{p.player.name}</span>
                     {p.fitBonus && <span className="text-[9px] font-bold text-sky-400 bg-sky-400/10 rounded px-1">FIT</span>}
                   </div>
-                  <span className="text-[10px] text-slate-500">{p.player.pos} · {p.posGroup}</span>
+                  <span className="text-[10px] text-slate-500">{p.player.pos}{p.player.born?.year ? ` | ${currentYear - p.player.born.year}y` : ''}</span>
                 </div>
                 <div className="flex items-center gap-4 shrink-0">
                   <div className="text-center">
