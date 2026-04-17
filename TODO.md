@@ -27,6 +27,12 @@
 **Fix:** Check what action `handleSimulateRound` dispatches. It may be dispatching wrong action type. Also: sim should advance to furthest unplayed game date in the current round.
 **Files:** `PlayoffView.tsx` (sim round handler)
 
+### PlayerStatsView historical: show ALL players who played for team that season
+**Symptom:** When viewing historical season stats for a team (e.g. CHI 2026-27 Playoffs), only currently rostered players show. Traded/released players who played that season are missing.
+**Fix:** Filter by `stats[].tid === teamId && stats[].season === selectedYear` instead of `player.tid === teamId`. Players still on the team get normal styling; former players get dimmed/italic.
+**Files:** `PlayerStatsView.tsx` (historical season filter)
+Also: show 🏆 ring icon and ⭐ All-Star badge next to player name if they won a championship or made All-Star that season (read from `player.awards[]`).
+
 ### Youth progression too aggressive
 **Symptom:** Every player under 22 reaches 90+ OVR — 5 Derrick Rose/Luka/Wemby-tier players in one draft class. The training camp shuffle + seasonal breakouts + daily progression compound too much for young players.
 **Fix:** Review `ProgressionEngine.ts` age brackets — `calcBaseChange` for ages 19-22 may be too generous. Also verify `trainingCampShuffle` progress bucket delta (+2 to +4 per attr × 14 attrs = up to +56 total) isn't too much.
