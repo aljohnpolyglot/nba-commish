@@ -140,33 +140,43 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
 
   const attrKeys = ['stre', 'spd', 'jmp', 'endu', 'ins', 'dnk', 'ft', 'fg', 'tp', 'oiq', 'diq', 'drb', 'pss', 'reb'];
   const ratingHistory = (() => {
-    // Prefer ovrHistory (snapshotted at each rollover — accurate per-season progression)
     const ovrHist: any[] = (player as any).ovrHistory ?? [];
-    if (ovrHist.length > 0) {
-      const _h = currentRating?.hgt ?? 50;
-      const _t = currentRating?.tp;
-      const history = ovrHist
-        .sort((a: any, b: any) => a.season - b.season)
-        .map((h: any) => ({ season: `'${String(h.season).slice(-2)}`, ovr: convertTo2KRating(h.ovr, _h, _t) }));
-      // Append current season if not yet snapshotted
-      const lastSnap = ovrHist[ovrHist.length - 1]?.season;
-      if (lastSnap !== currentYear) {
-        history.push({ season: `'${String(currentYear).slice(-2)}`, ovr: overall2k });
-      }
-      return history;
-    }
-    // Fallback: derive from ratings[] array (first season / pre-ovrHistory saves)
-    const history = (player.ratings ?? [])
-      .filter((r: any) => r.season != null)
+    const ovrHistSeasons = new Set(ovrHist.map((h: any) => h.season));
+    const _h = currentRating?.hgt ?? 50;
+    const _t = currentRating?.tp;
+
+    // Step 1: Historical seasons from ratings[] (BBGM pre-game data — 2020, 2021, etc.)
+    // Only include seasons NOT already in ovrHistory (ovrHistory is more accurate for sim years)
+    const ratingsEntries = (player.ratings ?? [])
+      .filter((r: any) => r.season != null && !ovrHistSeasons.has(r.season))
       .sort((a: any, b: any) => a.season - b.season)
       .map((r: any) => {
         const baseOvr = (r.ovr && r.ovr > 0 && r.ovr <= 100)
           ? r.ovr
           : Math.round(attrKeys.reduce((s: number, k: string) => s + (r[k] ?? 50), 0) / attrKeys.length);
-        return { season: `'${String(r.season).slice(-2)}`, ovr: convertTo2KRating(baseOvr, r.hgt ?? 50, r.tp) };
+        return { season: r.season as number, label: `'${String(r.season).slice(-2)}`, ovr: convertTo2KRating(baseOvr, r.hgt ?? 50, r.tp) };
       });
-    if (history.length > 0) history[history.length - 1] = { ...history[history.length - 1], ovr: overall2k };
-    return history;
+
+    // Step 2: Sim-generated seasons from ovrHistory[] (snapshotted at each rollover)
+    const ovrEntries = ovrHist
+      .sort((a: any, b: any) => a.season - b.season)
+      .map((h: any) => ({ season: h.season as number, label: `'${String(h.season).slice(-2)}`, ovr: convertTo2KRating(h.ovr, _h, _t) }));
+
+    // Step 3: Merge, sort, dedupe by season
+    const merged = [...ratingsEntries, ...ovrEntries].sort((a, b) => a.season - b.season);
+    const seen = new Set<number>();
+    const deduped = merged.filter(e => { if (seen.has(e.season)) return false; seen.add(e.season); return true; });
+
+    // Step 4: Append current season if not yet snapshotted
+    const lastSeason = deduped[deduped.length - 1]?.season;
+    if (lastSeason !== currentYear) {
+      deduped.push({ season: currentYear, label: `'${String(currentYear).slice(-2)}`, ovr: overall2k });
+    } else {
+      // Update last entry to current live OVR
+      deduped[deduped.length - 1] = { ...deduped[deduped.length - 1], ovr: overall2k };
+    }
+
+    return deduped.map(e => ({ season: e.label, ovr: e.ovr }));
   })();
 
   const _hgt = currentRating?.hgt ?? 50;

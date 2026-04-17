@@ -53,6 +53,9 @@ NBA players routed to G-League/PBA lose ProBallers portrait. LOAD_GAME migration
 **Fix:** In `PlayerBioGameLogTab.tsx`, check `isPlayoff` / `isPlayIn` flags on the box score BEFORE checking `isPreseason`. Render with "PLF" / "PI" prefix instead of "PRE". Also fix All-Star game showing as "UNK vs UNK" — resolve team names from allStar rosters.
 **Files:** `PlayerBioGameLogTab.tsx` (game type detection + display), `engine.ts` or `postProcessor.ts` (verify isPlayoff flag is set on box score results)
 
+### ~~Career/3Y progression chart data lost at rollover~~ ✅ FIXED
+Chart now merges `ratings[]` (BBGM historical) + `ovrHistory[]` (sim rollover snapshots) + current live OVR. No data loss across seasons. `ovrHistory` takes priority for overlapping seasons.
+
 ### Sim-to-date from DayView may not show progress overlay
 **Status:** Fixed in session 22 — ALL `SIMULATE_TO_DATE` uses overlay mode now. If still seeing "Processing Executive Order", hard refresh (`Ctrl+Shift+R`) to clear stale bundle cache.
 
