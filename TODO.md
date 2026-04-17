@@ -50,6 +50,16 @@ In-season columns (Last Wk, ▲▼, Streak, Diff, Last 10) hidden when `seasonNo
 **Fix:** Pass `leagueStats.year` into bioCache age calc. Use `simYear - born.year` instead of `new Date("2026-01-08").getFullYear() - born.year`.
 **Files:** `bioCache.ts` (line 116-121), `PlayerBioView.tsx` (passes age context)
 
+### 2026 draft class players disappearing from Draft History / becoming FAs
+**Symptom:** Some 2026 draft picks (picks #2, #6, #10, #12, #13, #20, #21 missing) don't show in Draft History. Others from the 2026 class become free agents the next year — their rookie contracts may be 1-year instead of the configured length from Economy tab.
+**Fix:** (1) Draft History should show ALL drafted players regardless of current FA status. (2) Check `finalizeDraft()` rookie contract length — may not be reading `leagueStats.rookieContractLength` correctly for all picks.
+**Files:** `DraftHistoryView.tsx` (show FAs too), `DraftSimulatorView.tsx` (finalizeDraft contract length), `autoResolvers.ts` (autoRunDraft contract length)
+
+### Rookie contract length/salary not matching Economy tab settings
+**Symptom:** Some rookies get 1-year contracts instead of the configured 2+2 (2 guaranteed + 2 team option) from Economy tab. Salary amounts may also vary unexpectedly.
+**Fix:** Verify `finalizeDraft()` and `autoRunDraft()` both read `leagueStats.rookieContractLength`, `rookieTeamOptionsEnabled`, `rookieTeamOptionYears` correctly.
+**Files:** `DraftSimulatorView.tsx`, `autoResolvers.ts`
+
 ### COY award shows "SAS Coach" instead of real coach name
 **Symptom:** League History detail view shows COY as "SAS Coach" instead of the actual coach name from staff data. AwardService already reads from staffService but the name isn't propagating to historicalAwards.
 **Files:** `AwardService.ts` (COY name resolution), `LeagueHistoryDetailView.tsx` (display)
