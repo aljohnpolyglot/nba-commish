@@ -56,8 +56,8 @@ export const KEY_DATES: KeyDate[] = [
 ];
 
 export const TIMELINE_MIN = '2025-08-06';
-export const TIMELINE_MAX = '2026-06-29';
-export const TIMELINE_DISPLAY_END = '2026-07-10';
+export const TIMELINE_MAX = '2029-06-29';  // Extended to end of 2028-29 season for multi-season testing
+export const TIMELINE_DISPLAY_END = '2029-07-10';
 
 export const ZONE_COLORS: Record<DateZone, string> = {
   offseason: '#334155',

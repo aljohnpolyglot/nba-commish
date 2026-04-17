@@ -55,6 +55,10 @@ In-season columns (Last Wk, ▲▼, Streak, Diff, Last 10) hidden when `seasonNo
 **Fix:** (1) Draft History should show ALL drafted players regardless of current FA status. (2) Check `finalizeDraft()` rookie contract length — may not be reading `leagueStats.rookieContractLength` correctly for all picks.
 **Files:** `DraftHistoryView.tsx` (show FAs too), `DraftSimulatorView.tsx` (finalizeDraft contract length), `autoResolvers.ts` (autoRunDraft contract length)
 
+### Draft picks visible in TransactionsView
+**What:** Draft picks should appear as transactions: "The [Team] selects [Player] as the Xth overall pick of the 20XX NBA Draft." Add `'Draft'` as a transaction type with its own icon/style in TransactionsView. Write to `state.history` from both `finalizeDraft()` and `autoRunDraft()`.
+**Files:** `DraftSimulatorView.tsx` (finalizeDraft history), `autoResolvers.ts` (autoRunDraft history), `TransactionsView.tsx` (add Draft type style + filter option)
+
 ### Rookie contract length/salary not matching Economy tab settings
 **Symptom:** Some rookies get 1-year contracts instead of the configured 2+2 (2 guaranteed + 2 team option) from Economy tab. Salary amounts may also vary unexpectedly.
 **Fix:** Verify `finalizeDraft()` and `autoRunDraft()` both read `leagueStats.rookieContractLength`, `rookieTeamOptionsEnabled`, `rookieTeamOptionYears` correctly.
