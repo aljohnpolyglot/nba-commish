@@ -7,7 +7,24 @@ type StandingsViewType = 'league' | 'conf' | 'div';
 export const StandingsView: React.FC = () => {
   const { state, navigateToTeam } = useGame();
   const [viewType, setViewType] = useState<StandingsViewType>('conf');
-  const currentYear = state.leagueStats.year;
+  const leagueYear = state.leagueStats.year;
+
+  // Available years from box scores + current year
+  const availableYears = useMemo(() => {
+    const years = new Set<number>([leagueYear]);
+    state.boxScores.forEach(g => {
+      try {
+        const d = new Date(g.date);
+        const m = d.getMonth() + 1;
+        const y = m >= 7 ? d.getFullYear() + 1 : d.getFullYear();
+        if (y > 2000) years.add(y);
+      } catch {}
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [state.boxScores, leagueYear]);
+
+  const [selectedYear, setSelectedYear] = useState(leagueYear);
+  const currentYear = selectedYear;
 
   const standingsData = useMemo(() => {
     // Fast team lookup for conf/div comparisons
@@ -42,13 +59,21 @@ export const StandingsView: React.FC = () => {
       };
     });
 
-    // Regular season only — exclude preseason/playoff/play-in via schedule lookup,
-    // plus all-star variants which have no gid match
+    // Regular season only — exclude preseason/playoff/play-in/all-star.
+    // Filter to selected season year. Regular season runs ~Oct 24 → Apr 13.
+    const regSeasonStart = `${currentYear - 1}-10-24`;
+    const regSeasonEnd   = `${currentYear}-04-20`; // buffer past Apr 13
     state.boxScores
-      .filter(g =>
-        !g.isAllStar && !g.isRisingStars && !g.isCelebrityGame &&
-        !nonRegularGids.has(g.gameId)
-      )
+      .filter(g => {
+        if (g.isAllStar || g.isRisingStars || g.isCelebrityGame) return false;
+        if (nonRegularGids.has(g.gameId)) return false;
+        // Also check isPlayoff/isPlayIn directly on box score (may not be in schedule after rollover)
+        if ((g as any).isPlayoff || (g as any).isPlayIn) return false;
+        try {
+          const dateNorm = new Date(g.date).toISOString().slice(0, 10);
+          return dateNorm >= regSeasonStart && dateNorm <= regSeasonEnd;
+        } catch { return true; }
+      })
       .forEach(g => {
         const homeAcc = acc[g.homeTeamId];
         const awayAcc = acc[g.awayTeamId];
@@ -163,7 +188,7 @@ export const StandingsView: React.FC = () => {
         teams: teams.filter(t => t.division === div),
       }));
     }
-  }, [state.teams, state.boxScores, state.schedule, state.leagueStats.divs, viewType]);
+  }, [state.teams, state.boxScores, state.schedule, state.leagueStats.divs, viewType, currentYear]);
 
   const renderTable = (group: { title: string; teams: any[] }) => {
     const leader = group.teams[0];
@@ -261,11 +286,25 @@ export const StandingsView: React.FC = () => {
           <div className="flex items-center gap-3">
             {/* Year indicator */}
             <div className="flex items-center bg-slate-900 border border-slate-700 rounded-md overflow-hidden">
-              <button className="px-2 py-1.5 hover:bg-slate-800 text-slate-400 transition-colors border-r border-slate-700" disabled>
-                <ChevronLeft className="w-4 h-4 opacity-50" />
+              <button
+                className="px-2 py-1.5 hover:bg-slate-800 text-slate-400 transition-colors border-r border-slate-700 disabled:opacity-30"
+                disabled={availableYears.indexOf(selectedYear) >= availableYears.length - 1}
+                onClick={() => {
+                  const idx = availableYears.indexOf(selectedYear);
+                  if (idx < availableYears.length - 1) setSelectedYear(availableYears[idx + 1]);
+                }}
+              >
+                <ChevronLeft className="w-4 h-4" />
               </button>
-              <button className="px-2 py-1.5 hover:bg-slate-800 text-slate-400 transition-colors border-r border-slate-700" disabled>
-                <ChevronRight className="w-4 h-4 opacity-50" />
+              <button
+                className="px-2 py-1.5 hover:bg-slate-800 text-slate-400 transition-colors border-r border-slate-700 disabled:opacity-30"
+                disabled={availableYears.indexOf(selectedYear) <= 0}
+                onClick={() => {
+                  const idx = availableYears.indexOf(selectedYear);
+                  if (idx > 0) setSelectedYear(availableYears[idx - 1]);
+                }}
+              >
+                <ChevronRight className="w-4 h-4" />
               </button>
               <span className="bg-transparent text-white text-sm font-medium px-3 py-1.5 select-none">
                 {currentYear}

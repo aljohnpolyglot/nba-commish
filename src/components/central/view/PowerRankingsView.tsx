@@ -171,14 +171,14 @@ export const PowerRankingsView: React.FC = () => {
                 <tr>
                   <th className="px-3 md:px-6 py-3 md:py-4 font-bold text-center w-12 md:w-16">Rank</th>
                   <th className="px-3 md:px-6 py-3 md:py-4 font-bold">Team</th>
-                  <th className="hidden sm:table-cell px-3 md:px-4 py-3 md:py-4 font-bold text-center w-14 md:w-18">Last Wk</th>
-                  <th className="hidden sm:table-cell px-3 md:px-4 py-3 md:py-4 font-bold text-center w-10 md:w-14">▲▼</th>
+                  {!seasonNotStarted && <th className="hidden sm:table-cell px-3 md:px-4 py-3 md:py-4 font-bold text-center w-14 md:w-18">Last Wk</th>}
+                  {!seasonNotStarted && <th className="hidden sm:table-cell px-3 md:px-4 py-3 md:py-4 font-bold text-center w-10 md:w-14">▲▼</th>}
                   <th className="hidden md:table-cell px-3 md:px-4 py-3 md:py-4 font-bold text-center w-14 md:w-18">Pre-S</th>
-                  <th className="hidden md:table-cell px-3 md:px-4 py-3 md:py-4 font-bold text-center w-10 md:w-14">▲▼</th>
-                  <th className="px-3 md:px-6 py-3 md:py-4 font-bold text-center w-16 md:w-20">Streak</th>
-                  <th className="px-3 md:px-6 py-3 md:py-4 font-bold text-center w-16 md:w-20">Diff</th>
+                  {!seasonNotStarted && <th className="hidden md:table-cell px-3 md:px-4 py-3 md:py-4 font-bold text-center w-10 md:w-14">▲▼</th>}
+                  {!seasonNotStarted && <th className="px-3 md:px-6 py-3 md:py-4 font-bold text-center w-16 md:w-20">Streak</th>}
+                  {!seasonNotStarted && <th className="px-3 md:px-6 py-3 md:py-4 font-bold text-center w-16 md:w-20">Diff</th>}
                   <th className="hidden lg:table-cell px-4 md:px-6 py-4 font-bold text-center w-20">Avg Age</th>
-                  <th className="px-3 md:px-6 py-3 md:py-4 font-bold w-32 md:w-48">Last 10</th>
+                  {!seasonNotStarted && <th className="px-3 md:px-6 py-3 md:py-4 font-bold w-32 md:w-48">Last 10</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/50">
@@ -213,9 +213,12 @@ export const PowerRankingsView: React.FC = () => {
                         </div>
                       </div>
                     </td>
+                    {!seasonNotStarted && (
                     <td className="hidden sm:table-cell px-3 md:px-4 py-3 md:py-4 text-center">
                       <span className="text-slate-400 font-bold text-xs md:text-sm">{row.lastWeekRank}</span>
                     </td>
+                    )}
+                    {!seasonNotStarted && (
                     <td className="hidden sm:table-cell px-2 md:px-3 py-3 md:py-4 text-center">
                       <span className={`font-bold text-xs md:text-sm ${
                         row.jumpVsLastWeek > 0 ? 'text-emerald-400' : row.jumpVsLastWeek < 0 ? 'text-rose-400' : 'text-slate-600'
@@ -223,9 +226,11 @@ export const PowerRankingsView: React.FC = () => {
                         {row.jumpVsLastWeek > 0 ? `+${row.jumpVsLastWeek}` : row.jumpVsLastWeek < 0 ? row.jumpVsLastWeek : '–'}
                       </span>
                     </td>
+                    )}
                     <td className="hidden md:table-cell px-3 md:px-4 py-3 md:py-4 text-center">
                       <span className="text-slate-500 font-bold text-xs md:text-sm">{row.preseasonRank}</span>
                     </td>
+                    {!seasonNotStarted && (
                     <td className="hidden md:table-cell px-2 md:px-3 py-3 md:py-4 text-center">
                       <span className={`font-bold text-xs md:text-sm ${
                         row.jumpVsPreseason > 0 ? 'text-emerald-400' : row.jumpVsPreseason < 0 ? 'text-rose-400' : 'text-slate-600'
@@ -233,6 +238,8 @@ export const PowerRankingsView: React.FC = () => {
                         {row.jumpVsPreseason > 0 ? `+${row.jumpVsPreseason}` : row.jumpVsPreseason < 0 ? row.jumpVsPreseason : '–'}
                       </span>
                     </td>
+                    )}
+                    {!seasonNotStarted && (
                     <td className="px-3 md:px-6 py-3 md:py-4 text-center">
                       <span className={`font-bold text-xs md:text-sm ${
                         row.streakStr.startsWith('W') ? 'text-emerald-400' : row.streakStr.startsWith('L') ? 'text-rose-400' : 'text-slate-500'
@@ -240,6 +247,8 @@ export const PowerRankingsView: React.FC = () => {
                         {row.streakStr}
                       </span>
                     </td>
+                    )}
+                    {!seasonNotStarted && (
                     <td className="px-3 md:px-6 py-3 md:py-4 text-center">
                       <span className={`font-bold text-xs md:text-sm ${
                         parseFloat(row.differential) > 0 ? 'text-emerald-400' : parseFloat(row.differential) < 0 ? 'text-rose-400' : 'text-slate-400'
@@ -247,9 +256,11 @@ export const PowerRankingsView: React.FC = () => {
                         {parseFloat(row.differential) > 0 ? '+' : ''}{row.differential}
                       </span>
                     </td>
+                    )}
                     <td className="hidden lg:table-cell px-4 md:px-6 py-4 text-center">
                       <span className="text-slate-300 font-bold text-sm">{row.avgAge}</span>
                     </td>
+                    {!seasonNotStarted && (
                     <td className="px-3 md:px-6 py-3 md:py-4">
                       <div className="flex items-center gap-0.5 md:gap-1">
                         {row.l10Sequence.length > 0 ? (
@@ -270,6 +281,7 @@ export const PowerRankingsView: React.FC = () => {
                         )}
                       </div>
                     </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

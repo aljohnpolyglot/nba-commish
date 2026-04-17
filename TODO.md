@@ -16,9 +16,8 @@
 ### G-League trade grace period ✅ FIXED
 `yearsWithTeam === 0 && teamGP < 14` guard prevents immediate assign/recall loop for traded players.
 
-### Standings / NBA Central stale W-L after rollover
-**Root cause:** If July games leak past rollover, W-L accumulates on zeroed teams. Also `effectiveRecord()` fallback shows last season when `gp=0`.
-**Fix:** Standings should show raw `team.wins/losses`. `effectiveRecord` only for morale/trade outlook.
+### ~~Standings stale W-L after rollover~~ ✅ FIXED
+StandingsView now derives ALL data from box scores (not team.wins/losses), filtered by season year (Oct 24 → Apr 20 date range). Year chevron added to browse historical seasons. Playoff box scores excluded via date range + isPlayoff flag.
 
 ### Two-way contract distribution (season 2+)
 Some teams get 4+ two-way, others get 0. Needs: (1) respect `maxTwoWayPlayersPerTeam`, (2) ensure every team gets 1-2 at training camp.
@@ -26,13 +25,16 @@ Some teams get 4+ two-way, others get 0. Needs: (1) respect `maxTwoWayPlayersPer
 ### Roster trimming (season 2+)
 Verify `autoTrimOversizedRosters` fires in preseason (21 limit) and regular season (15 limit) for season 2+.
 
-### Historical playoff bracket not saved for completed season
-**Status:** Rollover now archives `state.playoffs` to `state.historicalPlayoffs[year]` (done session 22).
-**Remaining:** `HistoricalPlayoffBracket.tsx` needs to check `state.historicalPlayoffs[year]` first, then fall back to gist. The sim `playoffs.series[]` format needs to be converted to the gist `playoffBracketMap` format (30-element array with specific index layout for R1/Semis/Finals matchups). This conversion should happen at rollover time.
-**Files:** `seasonRollover.ts` (convert series→bracketMap), `HistoricalPlayoffBracket.tsx` (check state first)
+### ~~Historical playoff bracket not saved~~ ✅ FIXED
+Rollover archives `state.playoffs` to `state.historicalPlayoffs[year]`. `HistoricalPlayoffBracket` now checks `state.historicalPlayoffs[year]` first — renders sim bracket with team logos, series scores (4-column grid), champion banner. Falls back to gist for real NBA historical data.
 
-### Power Rankings View rollover
-Shows stale W-L columns after rollover. Add `totalGP === 0` guard → show preseason-only OVR rankings.
+### ~~Power Rankings View rollover~~ ✅ FIXED
+In-season columns (Last Wk, ▲▼, Streak, Diff, Last 10) hidden when `seasonNotStarted`. Shows preseason-only view with rank + team + Pre-S rank + Avg Age.
+
+### CRITICAL: Save file isolation — progression leaks between saves
+**Symptom:** All saves share the same progression outcomes because `saveId`/`saveSeed` isn't unique per save or gets reset on load. Player progressions (lightning strikes, Father Time, bust lottery) are seeded by `saveSeed` — if two saves have the same seed, identical players get identical outcomes.
+**Fix:** Add `meta: { uniqueId, commissionerName }` to the save JSON root. Generate `uniqueId = crypto.randomUUID()` at game creation. Use `uniqueId` as the `saveSeed` for ALL seeded systems. On LOAD_GAME, verify `saveId` matches and DON'T share seeds across saves.
+**Files:** `initialState.ts` (generate uniqueId), `GameContext.tsx` (LOAD_GAME — preserve uniqueId), all seeded systems already use `state.saveId`
 
 ---
 

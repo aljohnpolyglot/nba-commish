@@ -110,7 +110,7 @@ export const generateGmConcernStory = (teams: NBATeam[], players: NBAPlayer[], s
     }
 
     if (starPlayer) {
-         if (starPlayer.injury.type !== 'Healthy') {
+         if (starPlayer.injury && starPlayer.injury.type !== 'Healthy') {
              return { story: `The GM of the ${team.name} is contacting you. Their star player, ${starPlayer.name}, is currently injured with a ${starPlayer.injury.type}, and there's pressure from the media and fans about the team's prospects. The concern should be about managing these expectations or league injury reporting rules.`, sender, teamLogoUrl: team.logoUrl, playerPortraitUrl: starPlayer.imgURL };
          }
          return { story: `The GM of the ${team.name} has a concern. Their star player, ${starPlayer.name}, is key to their success, and the GM might be proposing a trade to build around them, or raising a concern about a recent on-court incident involving them.`, sender, teamLogoUrl: team.logoUrl, playerPortraitUrl: starPlayer.imgURL };
