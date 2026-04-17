@@ -420,11 +420,13 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     schedule: [],          // clear old season schedule so autoGenerateSchedule runs fresh
     christmasGames: [],
     globalGames: state.globalGames ?? [],
-    // Archive completed playoff bracket so HistoricalPlayoffBracket can show sim-generated seasons
-    historicalPlayoffs: {
-      ...((state as any).historicalPlayoffs ?? {}),
-      ...(state.playoffs ? { [currentYear]: state.playoffs } : {}),
-    },
+    ...({
+      // Archive completed playoff bracket so HistoricalPlayoffBracket can show sim-generated seasons
+      historicalPlayoffs: {
+        ...((state as any).historicalPlayoffs ?? {}),
+        ...(state.playoffs ? { [currentYear]: state.playoffs } : {}),
+      },
+    } as any),
     playoffs: undefined,
     allStar: undefined,
     draftLotteryResult: undefined,

@@ -792,6 +792,21 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     return p;
   });
 
+  // ── Draft history entries ──────────────────────────────────────────────────
+  const _ordinal = (n: number): string => {
+    const s = ['th', 'st', 'nd', 'rd'];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  };
+  const draftHistoryEntries: Array<{ text: string; date: string; type: string }> = [];
+  for (const [slot, { player, team }] of pickMap.entries()) {
+    draftHistoryEntries.push({
+      text: `The ${team.name} select ${player.name} as the ${_ordinal(slot)} overall pick of the ${season} NBA Draft.`,
+      date: state.date,
+      type: 'Draft',
+    });
+  }
+
   // ── Two-way contract auto-assignment ──────────────────────────────────────
   // After the draft, each team may sign up to maxTwoWayPlayersPerTeam additional
   // players on two-way deals ($625K, don't count against 15-man standard cap).
@@ -854,9 +869,10 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     }
     if (twoWayHistoryEntries.length > 0) {
       const existingHistory: any[] = (state.history as any[]) ?? [];
-      return { players: twoWayPlayers, draftComplete: true, history: [...existingHistory, ...twoWayHistoryEntries] } as any;
+      return { players: twoWayPlayers, draftComplete: true, history: [...existingHistory, ...draftHistoryEntries, ...twoWayHistoryEntries] } as any;
     }
   }
 
-  return { players: twoWayPlayers, draftComplete: true } as any;
+  const existingHistory: any[] = (state.history as any[]) ?? [];
+  return { players: twoWayPlayers, draftComplete: true, history: [...existingHistory, ...draftHistoryEntries] } as any;
 };

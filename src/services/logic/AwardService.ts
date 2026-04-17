@@ -322,11 +322,16 @@ export class AwardService {
         // A bad-record team with big improvement beats a coasting good-record team
         const score = winPct * 60 + Math.max(0, improvement) * 1.5 + Math.min(0, improvement) * 0.5;
 
-        // Find coach name from staff data
-        const coachEntry = staff?.coaches?.find(c =>
-          c.team === t.name || c.team === t.abbrev ||
-          c.position === t.name || c.position === t.abbrev
-        );
+        // Find coach name from staff data (case-insensitive; position holds full
+        // team name in the new gist format, team holds it in the legacy format)
+        const tNameLc = t.name.toLowerCase();
+        const tAbbrLc = t.abbrev.toLowerCase();
+        const coachEntry = staff?.coaches?.find(c => {
+          const cTeam = (c.team ?? '').toLowerCase();
+          const cPos  = (c.position ?? '').toLowerCase();
+          return cTeam === tNameLc || cTeam === tAbbrLc ||
+                 cPos  === tNameLc || cPos  === tAbbrLc;
+        });
         const coachName = coachEntry?.name ?? `${t.abbrev} Coach`;
 
         return { coachName, team: t, score, odds: '', wins, losses, improvement };

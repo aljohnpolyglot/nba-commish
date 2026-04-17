@@ -282,7 +282,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
       // ── 3. Fetch (deduped — returns instantly from cache if available) ───
       setIsSyncing(true);
       try {
-    const payload = await fetchWithDedup(nbaId);
+    const payload = await fetchWithDedup(nbaId, state.leagueStats?.year);
         if (isMounted) {
           setBioData((prev: any) => ({ ...prev, ...payload }));
           // Only upgrade to CDN HD portrait if the player has no BBGM imgURL.

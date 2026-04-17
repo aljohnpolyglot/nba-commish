@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { ArrowRightLeft, Calendar, Info, Search, Filter, UserCheck, UserX, AlertTriangle, Users, ChevronLeft, ChevronRight, Sunset, TrendingDown, TrendingUp } from 'lucide-react';
+import { ArrowRightLeft, Calendar, Info, Search, Filter, UserCheck, UserX, AlertTriangle, Users, ChevronLeft, ChevronRight, Sunset, TrendingDown, TrendingUp, Trophy } from 'lucide-react';
 import { motion } from 'motion/react';
 import { NBAPlayer } from '../../../types';
 import { PlayerBioView } from './PlayerBioView';
@@ -32,6 +32,7 @@ function detectType(text: string, type?: string) {
   if (type === 'Training Camp Release' || t.includes('released from training camp')) return 'Training Camp Release';
   if (type === 'G-League Assignment' || t.includes('assigned to g-league'))  return 'G-League Assignment';
   if (type === 'G-League Callup'     || t.includes('recalled from g-league')) return 'G-League Callup';
+  if (type === 'Draft'       || t.includes('overall pick of the'))     return 'Draft';
   if (type === 'Retirement'  || t.includes('has retired') || t.includes('announced his retirement') || t.includes('announced retirement')) return 'Retirement';
   if (type === 'Trade'       || t.includes('trade'))                   return 'Trade';
   if (type === 'Signing'     || t.includes('signed') || t.includes('re-signed') || t.includes('signs with')) return 'Signing';
@@ -42,6 +43,7 @@ function detectType(text: string, type?: string) {
 }
 
 const TYPE_STYLE: Record<string, { color: string; bg: string; icon: React.ReactNode; label: string }> = {
+  Draft:                { color: 'text-violet-400',   bg: 'bg-violet-500/10',   icon: <Trophy size={18}/>,         label: 'Draft' },
   Trade:                { color: 'text-blue-400',    bg: 'bg-blue-500/10',     icon: <ArrowRightLeft size={18}/>, label: 'Trade' },
   Signing:              { color: 'text-emerald-400', bg: 'bg-emerald-500/10',  icon: <UserCheck size={18}/>,      label: 'Signing' },
   Waive:                { color: 'text-amber-400',   bg: 'bg-amber-500/10',    icon: <UserX size={18}/>,          label: 'Waiver' },
@@ -326,6 +328,7 @@ export const TransactionsView: React.FC = () => {
             </FilterSelect>
             <FilterSelect label="Transaction Type" value={filterType} onChange={setFilterType}>
               <option value="">All Transactions</option>
+              <option value="Draft">Draft</option>
               <option value="Signing">Signing / Extension</option>
               <option value="Trade">Trade</option>
               <option value="Waive">Waive</option>
@@ -675,6 +678,7 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
           className="appearance-none bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer text-slate-300"
         >
           <option value="">All Types</option>
+          <option value="Draft">Draft</option>
           <option value="Signing">Signing</option>
           <option value="Trade">Trade</option>
           <option value="Waive">Waive</option>

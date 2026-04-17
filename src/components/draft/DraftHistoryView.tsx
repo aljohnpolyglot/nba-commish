@@ -96,7 +96,8 @@ export const DraftHistoryView: React.FC = () => {
       if (!dRound || !dPick) continue;
       const isOnNBATeam = nbaTids.has(p.tid);
       const isExternalDrafted = !!BIO_LEAGUE_MAP[p.status ?? ''] && !!dRound && !!dPick;
-      if (!isOnNBATeam && !isExternalDrafted) continue;
+      const isFreeAgentDraftee = p.tid === -1 && dYear === viewDraftYear && !!dRound && !!dPick;
+      if (!isOnNBATeam && !isExternalDrafted && !isFreeAgentDraftee) continue;
       candidates.push({ ...p, _draftRound: dRound, _draftPick: dPick, _bioDraftTeamName: bioDraftTeamName });
     }
     const bySlot = new Map<number, any>();

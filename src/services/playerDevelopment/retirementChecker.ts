@@ -66,47 +66,50 @@ function toApprox2K(rawOvr: number): number {
 /**
  * Returns the probability [0, 1] that a player retires this offseason.
  *
- * All OVR thresholds are in the 2K-display scale (what the user sees in UI).
- * `toApprox2K()` converts raw overallRating before comparison.
- *
- * No hard age cap — Vince Carter played to 43, it can happen. Age just
- * raises the base probability; a high OVR can override that indefinitely.
+ * All thresholds use RAW BBGM overallRating (typically 30-85 range):
+ *   - 75+ raw = superstar (LeBron, Curry)
+ *   - 68-74 = All-Star / star starter
+ *   - 60-67 = solid starter
+ *   - 50-59 = rotation / bench
+ *   - <50   = end of bench / out of league
  *
  * @public — exported so PlayerBioMoraleTab can show a retirement risk indicator.
  */
 export function retireProb(age: number, rawOvr: number): number {
   if (age < 34) {
     // Ultra-early retirement — freak injury ruin case only
-    return rawOvr < 50 ? 0.12 : 0;
+    return rawOvr < 45 ? 0.12 : 0;
   }
 
-  const ovr2K = toApprox2K(rawOvr);
+  // ── Age 45+: auto-retire (beyond any realistic playing career) ────
+  if (age >= 45) return 1.0;
+  // ── Age 43-44: very high but LeBron-tier players can survive ────
+  if (age >= 43) return rawOvr >= 70 ? 0.80 : 0.95;
 
-  // ── Elite OVR hard stops (2K scale) ──────────────────────────────────────
-  // LeBron/Curry/KD playing at 90+ 2K: body still holds, agents keep them in.
-  // They simply don't retire — only massive decline will force the decision.
-  if (ovr2K >= 90) return 0;
-  // 2K 85–89 (star, All-NBA level): tiny chance — personal/family decision only
-  if (ovr2K >= 85) return 0.03;
-  // 2K 80–84 (solid starter, rotation star): low risk even deep into 30s
-  if (ovr2K >= 80) return Math.min(0.07, (age - 34) * 0.009); // peaks ~6% at age 41
+  // ── Elite raw OVR gates (BBGM scale) ────────────────────────────────────
+  // 75+ raw = LeBron/Curry/KD tier: still dominant, tiny chance to retire
+  if (rawOvr >= 75) return age >= 38 ? 0.05 : 0;
+  // 70-74 raw = All-Star / borderline All-NBA: tiny personal-choice risk
+  if (rawOvr >= 70) return Math.min(0.05, (age - 34) * 0.005);
+  // 65-69 raw = good starter: low risk, rises with age
+  if (rawOvr >= 65) return Math.min(0.15, (age - 34) * 0.015);
 
-  // ── Standard viability formula for players below starter level ───────────
-  // Base probability scales with age above 34 — no hard ceiling
-  const ageFactor = Math.min(0.90, (age - 34) / 10); // 0 at 34, 0.90 at 43, stays there
+  // ── Standard viability formula for rotation/bench players ────────────────
+  // Base probability scales with age above 34
+  const ageFactor = Math.min(0.95, (age - 34) / 8); // 0 at 34, 0.50 at 38, 0.95 at 42
 
-  // Viability: minimum 2K OVR needed to keep getting contracts at this age.
-  // Rises slowly — even at 40, a 76 2K OVR (useful role player) can find a team.
-  const viability2K = 79 + Math.max(0, age - 34) * 0.7; // ~79 at 34, ~85 at 42
+  // Viability: minimum raw OVR to keep getting contracts at this age
+  // Rises with age — even at 40, a raw 58 (decent role player) can hang on
+  const viabilityOvr = 55 + Math.max(0, age - 34) * 1.2; // ~55 at 34, ~62 at 40
 
   // Distance below viability: negative = below the bar
-  const ovrGap = ovr2K - viability2K;
+  const ovrGap = rawOvr - viabilityOvr;
 
-  // Below bar by > 8 → near-certain retire; above bar by > 8 → mostly keep playing
-  const gapContrib = Math.max(0, Math.min(1, (8 - ovrGap) / 18));
+  // Below bar by >6 → near-certain retire; above bar by >6 → mostly keep playing
+  const gapContrib = Math.max(0, Math.min(1, (6 - ovrGap) / 14));
 
   // Blend: age pushes toward retire, OVR gap modulates
-  const raw = ageFactor * 0.45 + gapContrib * 0.55;
+  const raw = ageFactor * 0.50 + gapContrib * 0.50;
 
   return Math.max(0, Math.min(0.97, raw));
 }
@@ -152,14 +155,11 @@ function countChampionships(player: NBAPlayer): number {
 export function farewellTourProb(age: number, rawOvr: number, allStarApps: number): number {
   if (age < 34) return 0;
 
-  const ovr2K = toApprox2K(rawOvr);
+  // Elite raw OVR (still playing at star level): never a farewell — they just keep going.
+  if (rawOvr >= 75) return 0;
 
-  // Elite OVR (still playing at star level): never a farewell — they just keep going.
-  // This is the "LeBron exception" — if he's still 90+ OVR, he hasn't declined enough.
-  if (ovr2K >= 90) return 0;
-
-  // Legend tier: ≥15 All-Star + significant age + past-star OVR → guaranteed farewell
-  if (allStarApps >= 15 && age >= 37 && ovr2K < 90) return 1.0;
+  // Legend tier: ≥15 All-Star + significant age → guaranteed farewell
+  if (allStarApps >= 15 && age >= 37) return 1.0;
 
   // High All-Star (10-14) + aging
   if (allStarApps >= 10 && age >= 39) return 0.95;
@@ -271,31 +271,22 @@ export function runRetirementChecks(
     const isFarewell = !!(p as any).farewellTour;
 
     // Farewell tour players retire guaranteed — they already had their goodbye season.
-    // Exception: if their OVR shot back up to elite (≥90 2K), they un-retired mentally.
-    const ovr2K = toApprox2K(ovr);
-    if (isFarewell && ovr2K < 90) {
+    // Exception: if their raw OVR shot back up to elite (≥75), they un-retired mentally.
+    if (isFarewell && ovr < 75) {
       // Guaranteed retirement — no roll needed
-      if (age >= 35) {
-        console.log(
-          `[Retirement] ${p.name} (age ${age}, OVR ${ovr}, 2K ${ovr2K}) — FAREWELL TOUR → RETIRED`
-        );
-      }
+      console.log(
+        `[Retirement] ${p.name} (age ${age}, OVR ${ovr}) — FAREWELL TOUR → RETIRED`
+      );
     } else {
       const prob = retireProb(age, ovr);
       if (prob <= 0) {
-        if (age >= 35) {
-          console.log(
-            `[Retirement] ${p.name} (age ${age}, OVR ${ovr}, 2K ${ovr2K}) — prob: 0% → SURVIVED (immune)`
-          );
-        }
         return p;
       }
       const roll = seededRandom(`retire_${p.internalId}_${year}`);
-      if (age >= 35) {
+      if (age >= 34) {
         const survived = roll >= prob;
         console.log(
-          `[Retirement] ${p.name} (age ${age}, OVR ${ovr}, 2K ${ovr2K}) — prob: ${(prob * 100).toFixed(1)}%, roll: ${roll.toFixed(4)} → ${survived ? 'SURVIVED' : 'RETIRED'}` +
-          ` (seed: retire_${p.internalId}_${year})`
+          `[Retirement] ${p.name} (age ${age}, OVR ${ovr}) — prob: ${(prob * 100).toFixed(1)}%, roll: ${roll.toFixed(4)} → ${survived ? 'SURVIVED' : 'RETIRED'}`
         );
       }
       if (roll >= prob) return p;
@@ -329,6 +320,15 @@ export function runRetirementChecks(
       contract:     undefined,
     } as any as NBAPlayer;
   });
+
+  // Summary log for debugging
+  const checked34Plus = players.filter(p => {
+    const ACTIVE = new Set(['Active', 'Free Agent', 'Prospect']);
+    if (!ACTIVE.has((p as any).status ?? 'Active')) return false;
+    if ((p as any).diedYear || p.tid === -2 || (p as any).status === 'WNBA') return false;
+    return (typeof p.age === 'number' ? p.age : 0) >= 34;
+  }).length;
+  console.log(`[Retirement] Checked ${checked34Plus} players age 34+, ${newRetirees.length} retired, ${checked34Plus - newRetirees.length} survived`);
 
   return { players: updated, newRetirees };
 }

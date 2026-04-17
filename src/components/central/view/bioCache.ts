@@ -50,15 +50,15 @@ export function isCacheValid(p: any): boolean {
   return !!(p?.bio?.pro || p?.bio?.pre || p?.bio?.per);
 }
 
-export async function fetchWithDedup(nbaId: string): Promise<any> {
+export async function fetchWithDedup(nbaId: string, simYear?: number): Promise<any> {
   if (memCache.has(nbaId)) return memCache.get(nbaId);
   if (inFlight.has(nbaId)) return inFlight.get(nbaId)!;
-  const p = doFetch(nbaId).finally(() => inFlight.delete(nbaId));
+  const p = doFetch(nbaId, simYear).finally(() => inFlight.delete(nbaId));
   inFlight.set(nbaId, p);
   return p;
 }
 
-async function doFetch(nbaId: string): Promise<any> {
+async function doFetch(nbaId: string, simYear?: number): Promise<any> {
   const cacheKey = `${CACHE_VER}_${nbaId}`;
   if (memCache.has(nbaId)) return memCache.get(nbaId);
   try {
@@ -113,13 +113,14 @@ const url = `https://www.nba.com/player/${nbaId}/bio`;
   });
   if (!bios.pro && (tDiv.textContent || "").trim().length > 20) bios.pro = bulletize(tDiv.innerHTML);
 
-  const SIM_DATE = new Date("2026-01-08");
+  const ageYear = simYear ?? new Date().getFullYear();
   const payload: Record<string, any> = { bio: bios, imgHD: hdPortrait(nbaId) };
   const birthStr = info.BIRTHDATE || info.birthdate || "";
   if (birthStr) {
     const bD = new Date(birthStr);
-    let age = SIM_DATE.getFullYear() - bD.getFullYear();
-    if (SIM_DATE.getMonth() < bD.getMonth() || (SIM_DATE.getMonth() === bD.getMonth() && SIM_DATE.getDate() < bD.getDate())) age--;
+    let age = ageYear - bD.getFullYear();
+    const now = new Date();
+    if (now.getMonth() < bD.getMonth() || (now.getMonth() === bD.getMonth() && now.getDate() < bD.getDate())) age--;
     payload.b = bD.toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" });
     payload.a = `${age} years`;
   }

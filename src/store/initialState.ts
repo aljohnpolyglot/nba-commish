@@ -57,6 +57,7 @@ export const initialState: GameState = {
   isDataLoaded: false,
   staff: null,
   followedHandles: ['nba', 'wojespn', 'shamscharania', 'statmuse'],
+  saveId: `nba_commish_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
   commissionerName: 'The Commissioner',
   boxScores: [],
   salary: 10000000,

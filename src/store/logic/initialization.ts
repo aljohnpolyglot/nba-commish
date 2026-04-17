@@ -46,7 +46,13 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     ]);
 
     // Normalize name for dedup: lowercase + strip dots (handles "L.J." vs "LJ", "Jr." vs "Jr")
-    const normName = (name: string) => name.toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
+    // Also strip generational suffixes so "Nick Smith Jr." matches "Nick Smith"
+    const normName = (name: string) =>
+        name.toLowerCase()
+            .replace(/\./g, '')
+            .replace(/\b(jr|sr|ii|iii|iv)\b/gi, '')
+            .replace(/\s+/g, ' ')
+            .trim();
 
     // Euroleague beats Endesa for overlapping players (Real Madrid, Barcelona, etc.)
     const euroNames = new Set(euroPlayers.map(p => normName(p.name)));
@@ -79,23 +85,23 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         .map(p => ({ ...p, status: 'G-League' as const }));
 
     const uniqueEndesaPlayers = endesaPlayers
-        .filter(p => !existingNbaNames.has(p.name.toLowerCase()) && !euroNames.has(p.name.toLowerCase()))
+        .filter(p => !existingNbaNames.has(normName(p.name)) && !euroNames.has(normName(p.name)))
         .map(p => ({ ...p, status: 'Endesa' as const }));
 
     const uniquePBAPlayers = pbaPlayers
-        .filter(p => !existingNbaNames.has(p.name.toLowerCase()))
+        .filter(p => !existingNbaNames.has(normName(p.name)))
         .map(p => ({ ...p, status: p.status || 'PBA' as const }));
 
     const uniqueBLeaguePlayers = bleaguePlayers
-        .filter(p => !existingNbaNames.has(p.name.toLowerCase()))
+        .filter(p => !existingNbaNames.has(normName(p.name)))
         .map(p => ({ ...p, status: p.status || 'B-League' as const }));
 
     const uniqueChinaPlayers = chinaPlayers
-        .filter(p => !existingNbaNames.has(p.name.toLowerCase()))
+        .filter(p => !existingNbaNames.has(normName(p.name)))
         .map(p => ({ ...p, status: 'China CBA' as const }));
 
     const uniqueNBLAusPlayers = nblAusPlayers
-        .filter(p => !existingNbaNames.has(p.name.toLowerCase()))
+        .filter(p => !existingNbaNames.has(normName(p.name)))
         .map(p => ({ ...p, status: 'NBL Australia' as const }));
 
     const players = [
@@ -242,7 +248,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         isProcessing: false,
         date: startDateFormatted,
         day: 1,
-        saveId: `nba_commish_save_${Date.now()}`,
+        saveId: `nba_commish_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         allStar: initialAllStar as any,
         leagueStats: {
             ...INITIAL_LEAGUE_STATS,
