@@ -275,10 +275,29 @@ export function runRetirementChecks(
     const ovr2K = toApprox2K(ovr);
     if (isFarewell && ovr2K < 90) {
       // Guaranteed retirement — no roll needed
+      if (age >= 35) {
+        console.log(
+          `[Retirement] ${p.name} (age ${age}, OVR ${ovr}, 2K ${ovr2K}) — FAREWELL TOUR → RETIRED`
+        );
+      }
     } else {
       const prob = retireProb(age, ovr);
-      if (prob <= 0) return p;
+      if (prob <= 0) {
+        if (age >= 35) {
+          console.log(
+            `[Retirement] ${p.name} (age ${age}, OVR ${ovr}, 2K ${ovr2K}) — prob: 0% → SURVIVED (immune)`
+          );
+        }
+        return p;
+      }
       const roll = seededRandom(`retire_${p.internalId}_${year}`);
+      if (age >= 35) {
+        const survived = roll >= prob;
+        console.log(
+          `[Retirement] ${p.name} (age ${age}, OVR ${ovr}, 2K ${ovr2K}) — prob: ${(prob * 100).toFixed(1)}%, roll: ${roll.toFixed(4)} → ${survived ? 'SURVIVED' : 'RETIRED'}` +
+          ` (seed: retire_${p.internalId}_${year})`
+        );
+      }
       if (roll >= prob) return p;
     }
 
