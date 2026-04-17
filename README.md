@@ -846,6 +846,16 @@ Don't auto-assign newly traded/signed players to G-League. Check `yearsWithTeam 
 ### 15. Dead Money Display (Luol Deng Rule)
 Waived/bought-out players with remaining guaranteed salary should appear in `TeamFinancesViewDetailed` as a grayed-out row with dashed border — still counted in cap payroll but visually distinct from active roster. The `deadContracts[]` array on team state stores `{ playerName, amount, expYear }`. These rows should have a "WAIVED" label badge and reduced opacity so they don't look like active players.
 
+### 17. Training Camp Shuffle (trainingCampShuffle.ts)
+At Oct 1 each season, every active player (all leagues) is assigned to one of three buckets:
+- **1/3 Progress** — all 14 attrs get +2 to +4 (subtle improvement, "came into camp in the best shape of his life")
+- **1/3 Stale** — no change
+- **1/3 Regress** — all 14 attrs get -2 to -3 ("lost a step over the summer")
+
+This is a **flat 1/3 split regardless of age** — age-based decline is handled separately by Father Time, bust lottery, and washed algorithm. The camp shuffle creates roster variability so each season feels different.
+
+Changes are **gradual** (MARK at Oct 1, RESOLVE daily Oct 1-23) so roster cuts during preseason are informed by training camp performance. Players who regressed in camp are more likely to be cut.
+
 ### 16. Preseason Self-Scrimmages Are Intentional
 Game logs may show "DET @ DET W, 161-118" during preseason — this is an **intrasquad scrimmage**, not a bug. NBA teams hold these during training camp. The schedule generator creates them by design. Players on the game log who show a different team (e.g. GSW playing on Oct 11, traded to DET on Oct 13) is correct historical accuracy — they WERE on that team at game time.
 

@@ -13,6 +13,7 @@ import { runAIFreeAgencyRound, runAIMidSeasonExtensions, runAISeasonEndExtension
 import { routeUnsignedPlayers } from '../../../services/externalSigningRouter';
 import { applySeasonRollover, shouldFireRollover } from '../../../services/logic/seasonRollover';
 import { SettingsManager } from '../../../services/SettingsManager';
+import { markTrainingCampShuffle, resolveTrainingCampChanges } from '../../../services/playerDevelopment/trainingCampShuffle';
 import { buildShamsTransactionPost } from '../../../services/social/templates/charania';
 import { findShamsPhoto } from '../../../services/social/charaniaphotos';
 
@@ -264,6 +265,16 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
                 stateWithSim.saveId ?? 'default',
             );
             stateWithSim = { ...stateWithSim, players: pBust };
+
+            // Training camp shuffle — 1/3 progress, 1/3 stale, 1/3 regress
+            // Gradual: due dates spread Oct 1 → Oct 23 (pre-tipoff)
+            const campEnd = `${currentYear - 1}-10-23`;
+            const { players: pCamp } = markTrainingCampShuffle(
+                stateWithSim.players, currentYear,
+                trainingCampDate, campEnd,
+                stateWithSim.saveId ?? 'default',
+            );
+            stateWithSim = { ...stateWithSim, players: pCamp };
         }
 
         // ── Post All-Star (Feb 17) ────────────────────────────────────────────────
@@ -288,6 +299,10 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
 
             const { players: p7 } = resolveBustLottery(stateWithSim.players, simDateForEvents, currentYear);
             stateWithSim = { ...stateWithSim, players: p7 };
+
+            // Training camp shuffle — resolve pending camp boosts whose dueDate <= today
+            const { players: pCampResolve } = resolveTrainingCampChanges(stateWithSim.players, simDateForEvents, currentYear);
+            stateWithSim = { ...stateWithSim, players: pCampResolve };
         }
 
         // Daily player progression — stagnates during playoffs

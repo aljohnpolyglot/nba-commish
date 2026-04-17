@@ -26,6 +26,12 @@ Some teams get 4+ two-way, others get 0. Needs: (1) respect `maxTwoWayPlayersPer
 ### Roster trimming (season 2+)
 Verify `autoTrimOversizedRosters` fires in preseason (21 limit) and regular season (15 limit) for season 2+.
 
+### Historical playoff bracket not saved for completed season
+**Symptom:** After rollover, PlayoffView shows "No bracket data for 2025-26" even though the 2025-26 playoffs were completed. The historical bracket gist only has real NBA data (1946-2025), not sim-generated seasons.
+**Root cause:** `lazySimRunner.ts` writes `seasonHistory` entry on `bracketComplete`, but the actual playoff bracket data (`state.playoffs.series[]`) is cleared at rollover. The `HistoricalPlayoffBracket` component fetches from gist, which doesn't have sim-generated data.
+**Fix:** At rollover, archive `state.playoffs` (series, champion, bracket) to `state.historicalPlayoffs: Record<number, PlayoffBracket>`. `HistoricalPlayoffBracket` should check `state.historicalPlayoffs[year]` first, then fall back to gist.
+**Files:** `seasonRollover.ts` (archive playoffs before clearing), `HistoricalPlayoffBracket.tsx` (check state first)
+
 ### Power Rankings View rollover
 Shows stale W-L columns after rollover. Add `totalGP === 0` guard → show preseason-only OVR rankings.
 
