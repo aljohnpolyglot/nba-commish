@@ -9,8 +9,9 @@ import { TeamIntel } from './pages/TeamIntel';
 import { GeneralManager } from './pages/GeneralManager';
 import { DraftPicks } from './pages/DraftPicks';
 import { CoachingPage } from './pages/CoachingPage';
+import { DraftScouting } from './pages/DraftScouting';
 
-type OfficeTab = 'home' | 'gm' | 'coaching' | 'intel' | 'needs' | 'trading' | 'picks';
+type OfficeTab = 'home' | 'gm' | 'coaching' | 'intel' | 'needs' | 'trading' | 'picks' | 'scouting';
 
 const TABS: { id: OfficeTab; label: string }[] = [
   { id: 'gm', label: 'General Manager' },
@@ -19,6 +20,7 @@ const TABS: { id: OfficeTab; label: string }[] = [
   { id: 'needs', label: 'Team Needs' },
   { id: 'trading', label: 'Trade Hub' },
   { id: 'picks', label: 'Draft Picks' },
+  { id: 'scouting', label: 'Draft Scouting' },
 ];
 
 export function TeamOfficeView() {
@@ -52,6 +54,7 @@ export function TeamOfficeView() {
       case 'needs': return <TeamNeeds teamId={currentTeam.id} />;
       case 'trading': return <TradingBlock teamId={currentTeam.id} />;
       case 'picks': return <DraftPicks teamId={currentTeam.id} />;
+      case 'scouting': return <DraftScouting teamId={currentTeam.id} />;
       default: return null;
     }
   };
