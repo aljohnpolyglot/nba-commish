@@ -25,8 +25,10 @@ Two-way pool now capped at raw OVR ≤ 45 (K2 ~70) — established players (Ben 
 ### Roster trimming (season 2+)
 Verify `autoTrimOversizedRosters` fires in preseason (21 limit) and regular season (15 limit) for season 2+.
 
-### ~~Historical playoff bracket not saved~~ ✅ FIXED
-Rollover archives `state.playoffs` to `state.historicalPlayoffs[year]`. `HistoricalPlayoffBracket` now checks `state.historicalPlayoffs[year]` first — renders sim bracket with team logos, series scores (4-column grid), champion banner. Falls back to gist for real NBA historical data.
+### Historical playoff bracket — use SAME UI as live bracket
+**Status:** Data archived correctly (`state.historicalPlayoffs[year]`). But the renderer uses an ugly 4-column grid instead of the beautiful 8-column live bracket UI from PlayoffView.
+**Fix:** Delete the 4-column grid renderer in `HistoricalPlayoffBracket.tsx`. Instead, pass `state.historicalPlayoffs[year]` as `playoffs` prop to the SAME bracket components used by PlayoffView (SeriesCard, BracketColumn, etc.). Two UIs total: live bracket (active) and historical bracket (same layout, completed data). NOT three.
+**Files:** `HistoricalPlayoffBracket.tsx` (replace sim renderer), `PlayoffView.tsx` (extract bracket into reusable component)
 
 ### ~~Power Rankings View rollover~~ ✅ FIXED
 In-season columns (Last Wk, ▲▼, Streak, Diff, Last 10) hidden when `seasonNotStarted`. Shows preseason-only view with rank + team + Pre-S rank + Avg Age.

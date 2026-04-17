@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Loader2, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
-import { useGame } from '../../store/GameContext';
 
 type HistoricalSeason = {
   season: string;
@@ -145,7 +144,6 @@ interface Props {
 }
 
 export const HistoricalPlayoffBracket: React.FC<Props> = ({ viewYear }) => {
-  const { state } = useGame();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<HistoricalSeason[]>(_cachedData ?? []);
   const [loading, setLoading] = useState(!_cachedData);
@@ -263,58 +261,6 @@ export const HistoricalPlayoffBracket: React.FC<Props> = ({ viewYear }) => {
         <AlertCircle className="w-10 h-10 text-red-500" />
         <p className="text-red-400 font-bold">Could not load historical bracket data.</p>
         <p className="text-slate-500 text-xs">Check your connection and try again.</p>
-      </div>
-    );
-  }
-
-  // Check for sim-generated playoff data (archived at rollover)
-  const simPlayoffs = (state as any).historicalPlayoffs?.[viewYear];
-
-  if (!seasonData && simPlayoffs?.series) {
-    // Render sim playoffs from archived state data
-    const roundNames: Record<number, string> = { 1: 'First Round', 2: 'Conference Semis', 3: 'Conference Finals', 4: 'NBA Finals' };
-    const champTeam = simPlayoffs.champion ? state.teams.find((t: any) => t.id === simPlayoffs.champion) : null;
-    return (
-      <div className="flex-1 overflow-y-auto p-6">
-        {champTeam && (
-          <div className="flex items-center justify-center gap-3 mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-            <Trophy className="text-amber-400" size={24} />
-            {champTeam.logoUrl && <img src={champTeam.logoUrl} className="w-10 h-10 object-contain" alt="" referrerPolicy="no-referrer" />}
-            <span className="text-lg font-black text-amber-400 uppercase tracking-tight">{champTeam.name} — {seasonKey} Champions</span>
-          </div>
-        )}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(round => {
-            const roundSeries = (simPlayoffs.series as any[]).filter((s: any) => s.round === round);
-            if (roundSeries.length === 0) return null;
-            return (
-              <div key={round}>
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-2">{roundNames[round] ?? `Round ${round}`}</h3>
-                <div className="space-y-2">
-                  {roundSeries.map((s: any) => {
-                    const hi = state.teams.find((t: any) => t.id === s.higherSeedTid);
-                    const lo = state.teams.find((t: any) => t.id === s.lowerSeedTid);
-                    const winner = s.winnerId === s.higherSeedTid ? 'hi' : s.winnerId === s.lowerSeedTid ? 'lo' : null;
-                    return (
-                      <div key={s.id} className="bg-slate-900/60 border border-slate-800 rounded-lg p-2 text-xs">
-                        <div className={`flex items-center gap-2 py-1 ${winner === 'hi' ? 'text-white font-bold' : 'text-slate-500'}`}>
-                          {hi?.logoUrl && <img src={hi.logoUrl} className="w-5 h-5 object-contain" alt="" referrerPolicy="no-referrer" />}
-                          <span className="flex-1">{hi?.name ?? '?'}</span>
-                          <span className="font-mono">{s.higherSeedWins}</span>
-                        </div>
-                        <div className={`flex items-center gap-2 py-1 ${winner === 'lo' ? 'text-white font-bold' : 'text-slate-500'}`}>
-                          {lo?.logoUrl && <img src={lo.logoUrl} className="w-5 h-5 object-contain" alt="" referrerPolicy="no-referrer" />}
-                          <span className="flex-1">{lo?.name ?? '?'}</span>
-                          <span className="font-mono">{s.lowerSeedWins}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
       </div>
     );
   }

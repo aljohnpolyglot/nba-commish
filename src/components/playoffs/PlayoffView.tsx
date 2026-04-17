@@ -244,28 +244,65 @@ export const PlayoffView: React.FC = () => {
       <div className="flex-1 overflow-hidden flex flex-col">
 
         {/* ── Historical bracket ───────────────────────────────────────────── */}
-        {isHistorical && (
-          <HistoricalPlayoffBracket viewYear={viewYear} />
-        )}
+        {isHistorical && (() => {
+          // Check for sim-generated playoff data first (same beautiful bracket UI)
+          const simPlayoffs = (state as any).historicalPlayoffs?.[viewYear];
+          if (simPlayoffs?.series) {
+            const champTeam = simPlayoffs.champion ? state.teams.find((t: any) => t.id === simPlayoffs.champion) : null;
+            return (
+              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                {champTeam && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-400/10 border border-yellow-400/20 rounded-xl mb-4 w-fit">
+                    <span className="text-yellow-400">🏆</span>
+                    <span className="font-black text-yellow-300 text-sm">{champTeam.name} — {viewYear - 1}-{String(viewYear).slice(-2)} Champions</span>
+                  </div>
+                )}
+                <BracketLayout
+                  playoffs={simPlayoffs}
+                  teams={state.teams}
+                  schedule={[]}
+                  stateDate={state.date}
+                  onSeriesClick={() => {}}
+                  selectedSeriesId={null}
+                />
+              </div>
+            );
+          }
+          // Fall back to gist-based historical bracket (real NBA data)
+          return <HistoricalPlayoffBracket viewYear={viewYear} />;
+        })()}
 
         {/* ── Current season content ───────────────────────────────────────── */}
         {!isHistorical && (
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
 
-        {/* ── No active playoffs: show last year's historical bracket ─────── */}
-        {!playoffs && (
-          <div className="max-w-full mx-auto">
-            <div className="mb-6 p-5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-center">
-              <Trophy size={32} className="text-indigo-400 mx-auto mb-2" />
-              <h3 className="text-lg font-black text-white mb-1">Playoffs Begin April 14</h3>
-              <p className="text-slate-400 text-sm">
-                Use the year chevron to view past playoff brackets, or wait for the regular season to end.
-              </p>
-            </div>
-            {/* Show last year's bracket if available */}
-            <HistoricalPlayoffBracket viewYear={viewYear - 1} />
-          </div>
-        )}
+        {/* ── No active playoffs: show last season's completed bracket ────── */}
+        {!playoffs && (() => {
+          const lastSimPlayoffs = (state as any).historicalPlayoffs?.[viewYear - 1] ?? (state as any).historicalPlayoffs?.[viewYear];
+          if (lastSimPlayoffs?.series) {
+            const champTeam = lastSimPlayoffs.champion ? state.teams.find((t: any) => t.id === lastSimPlayoffs.champion) : null;
+            return (
+              <div>
+                {champTeam && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-400/10 border border-yellow-400/20 rounded-xl mb-4 w-fit">
+                    <span className="text-yellow-400">🏆</span>
+                    <span className="font-black text-yellow-300 text-sm">{champTeam.name} — Last Season's Champions</span>
+                  </div>
+                )}
+                <BracketLayout
+                  playoffs={lastSimPlayoffs}
+                  teams={state.teams}
+                  schedule={[]}
+                  stateDate={state.date}
+                  onSeriesClick={() => {}}
+                  selectedSeriesId={null}
+                />
+              </div>
+            );
+          }
+          // No sim data — show gist historical
+          return <HistoricalPlayoffBracket viewYear={viewYear - 1} />;
+        })()}
 
         {/* ── Bracket + Play-In layout ─────────────────────────────────────── */}
         {playoffs && (
