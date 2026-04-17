@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { NBAPlayer, NBATeam, Game } from '../../../types';
 import { getOpeningNightDate } from '../../../utils/dateUtils';
-import { Search } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PlayerBioView } from './PlayerBioView';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
 
@@ -86,7 +86,23 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(25);
 
-  const currentYear = state.leagueStats.year.toString();
+  // Available seasons from box scores
+  const availableSeasons = useMemo(() => {
+    const years = new Set<number>();
+    state.boxScores.forEach(g => {
+      if (g.isAllStar || g.isRisingStars) return;
+      try {
+        const d = new Date(g.date);
+        const m = d.getMonth() + 1;
+        const yr = m >= 7 ? d.getFullYear() + 1 : d.getFullYear();
+        if (yr > 2000) years.add(yr);
+      } catch {}
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [state.boxScores]);
+
+  const [selectedSeason, setSelectedSeason] = useState(state.leagueStats.year);
+  const currentYear = selectedSeason.toString();
 
   // ─── 1. EXTRACT DATA AND CALCULATE FEATS ─────────────────────────────────────
   const { feats, summaryCounts } = useMemo(() => {
@@ -100,11 +116,19 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
       '5×5': 0
     };
 
-    const OPENING_NIGHT_MS = getOpeningNightDate(state.leagueStats.year).getTime();
+    const OPENING_NIGHT_MS = getOpeningNightDate(selectedSeason).getTime();
+    const seasonEnd = `${selectedSeason}-06-30`;
 
     state.boxScores.forEach(game => {
       // Skip All-Star & Rising Stars
       if (game.isAllStar || game.isRisingStars) return;
+      // Filter to selected season
+      try {
+        const d = new Date(game.date);
+        const m = d.getMonth() + 1;
+        const yr = m >= 7 ? d.getFullYear() + 1 : d.getFullYear();
+        if (yr !== selectedSeason) return;
+      } catch { return; }
 
       // Skip Preseason
       const schedGame = state.schedule.find((g: any) => g.gid === game.gameId);
@@ -210,7 +234,7 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
     });
 
     return { feats: extracted, summaryCounts: counts };
-  }, [state.boxScores, state.players, state.teams, state.schedule]);
+  }, [state.boxScores, state.players, state.teams, state.schedule, selectedSeason]);
 
   // ─── 2. FILTER ───────────────────────────────────────────────────────────────
   const filteredFeats = useMemo(() => {
@@ -317,11 +341,26 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
               Statistical Feats
             </h1>
             <p className="text-[10px] sm:text-xs text-slate-500 font-medium tracking-wide uppercase mt-0.5 sm:mt-1">
-              Top Performances • {currentYear} Season
+              Top Performances • {selectedSeason - 1}-{String(selectedSeason).slice(-2)} Season
             </p>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {availableSeasons.length > 1 && (
+              <div className="flex items-center gap-0.5 bg-slate-900 border border-slate-700 rounded-md p-0.5">
+                <button
+                  onClick={() => { const idx = availableSeasons.indexOf(selectedSeason); if (idx < availableSeasons.length - 1) setSelectedSeason(availableSeasons[idx + 1]); }}
+                  disabled={availableSeasons.indexOf(selectedSeason) >= availableSeasons.length - 1}
+                  className="p-1 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+                ><ChevronLeft size={14} /></button>
+                <span className="text-xs font-black text-white px-1.5">{selectedSeason}</span>
+                <button
+                  onClick={() => { const idx = availableSeasons.indexOf(selectedSeason); if (idx > 0) setSelectedSeason(availableSeasons[idx - 1]); }}
+                  disabled={availableSeasons.indexOf(selectedSeason) <= 0}
+                  className="p-1 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+                ><ChevronRight size={14} /></button>
+              </div>
+            )}
             <div className="relative flex-1 sm:flex-none">
               <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input

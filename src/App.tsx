@@ -154,7 +154,13 @@ function GameLayout() {
 
         <MainContent currentView={currentView} onViewChange={setCurrentView} />
 
-        {state.isProcessing && !state.isWatchingGame && (
+        {/* Lazy sim progress overlay — takes priority over generic LoadingOverlay */}
+        {state.lazySimProgress && (
+          <div className="fixed inset-0 z-[9999] bg-slate-950/95 flex items-center justify-center">
+            <LazySimLoadingScreen progress={state.lazySimProgress} />
+          </div>
+        )}
+        {state.isProcessing && !state.isWatchingGame && !state.lazySimProgress && (
           <LoadingOverlay
             simResults={state.tickerSimResults || state.lastSimResults}
             teams={state.teams}

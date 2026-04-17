@@ -31,6 +31,19 @@ Rollover archives `state.playoffs` to `state.historicalPlayoffs[year]`. `Histori
 ### ~~Power Rankings View rollover~~ ✅ FIXED
 In-season columns (Last Wk, ▲▼, Streak, Diff, Last 10) hidden when `seasonNotStarted`. Shows preseason-only view with rank + team + Pre-S rank + Avg Age.
 
+### Draft prospects too OP when entering league
+**Symptom:** Future draft prospects (tid=-2) may arrive with inflated ratings after multiple seasons of sim. All progression systems have `tid === -2` guards, but the source BBGM gist may have prospects with OVR 80+ that are already too high.
+**Investigation:** Check if BBGM gist prospect ratings get modified by any system before draft. May need to freeze `overallRating` for tid=-2 players at load time and only compute it fresh at draft.
+**Files:** `ProgressionEngine.ts`, `seasonalBreakouts.ts`, `trainingCampShuffle.ts` (all have guards — verify they work)
+
+### Statistical feats: store career highs for PlayerBioView
+**What:** Track `player.careerHighs: { pts, reb, ast, stl, blk, gameId }` — updated after each game if a new career high is set. Display in PlayerBioView overview tab. Connect with `boxScoreHistory` from game settings for pruning.
+**Files:** `postProcessor.ts` (update career highs), `PlayerBioOverviewTab.tsx` (display)
+
+### COY award shows "SAS Coach" instead of real coach name
+**Symptom:** League History detail view shows COY as "SAS Coach" instead of the actual coach name from staff data. AwardService already reads from staffService but the name isn't propagating to historicalAwards.
+**Files:** `AwardService.ts` (COY name resolution), `LeagueHistoryDetailView.tsx` (display)
+
 ### CRITICAL: Save file isolation — progression leaks between saves
 **Symptom:** All saves share the same progression outcomes because `saveId`/`saveSeed` isn't unique per save or gets reset on load. Player progressions (lightning strikes, Father Time, bust lottery) are seeded by `saveSeed` — if two saves have the same seed, identical players get identical outcomes.
 **Fix:** Add `meta: { uniqueId, commissionerName }` to the save JSON root. Generate `uniqueId = crypto.randomUUID()` at game creation. Use `uniqueId` as the `saveSeed` for ALL seeded systems. On LOAD_GAME, verify `saveId` matches and DON'T share seeds across saves.

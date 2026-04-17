@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { NBAPlayer, NBATeam } from '../../../types';
 import { PlayerBioView } from './PlayerBioView';
-import { ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { StatCategory, getStatValue } from '../../../utils/statUtils';
 
 export const LeagueLeadersView: React.FC = () => {
@@ -10,19 +10,21 @@ export const LeagueLeadersView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'Player' | 'Team'>('Player');
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
 
-  // Derive the season from player stats rather than leagueStats.year.
-  // leagueStats.year rolls over at offseason before new stats are written,
-  // which would leave most players' stats under the previous year number.
-  const season = useMemo(() => {
-    let max = 0;
+  // Available seasons from player stats
+  const availableSeasons = useMemo(() => {
+    const years = new Set<number>();
     for (const p of state.players) {
       if (!p.stats) continue;
       for (const s of p.stats) {
-        if (!s.playoffs && s.gp > 0 && s.season > max) max = s.season;
+        if (!s.playoffs && s.gp > 0) years.add(s.season);
       }
     }
-    return max || state.leagueStats.year;
-  }, [state.players, state.leagueStats.year]);
+    return Array.from(years).sort((a, b) => b - a);
+  }, [state.players]);
+
+  const defaultSeason = availableSeasons[0] || state.leagueStats.year;
+  const [selectedSeason, setSelectedSeason] = useState(defaultSeason);
+  const season = selectedSeason;
 
   const handleCompleteLeaders = (type: 'player' | 'team', field: string, order: 'asc' | 'desc' = 'desc') => {
     setPendingStatSort({ type, field, order });
@@ -304,9 +306,26 @@ export const LeagueLeadersView: React.FC = () => {
   return (
     <div className="h-full flex flex-col bg-slate-950 text-slate-200 overflow-hidden">
       <div className="p-6 border-b border-slate-800 shrink-0">
-        <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-6">
-          NBA Stat Leaders {season - 1}-{String(season).slice(2)}
-        </h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-black text-white uppercase tracking-tight">
+            NBA Stat Leaders {season - 1}-{String(season).slice(2)}
+          </h2>
+          {availableSeasons.length > 1 && (
+            <div className="flex items-center gap-1 bg-slate-900 border border-slate-700 rounded-md p-0.5">
+              <button
+                onClick={() => { const idx = availableSeasons.indexOf(selectedSeason); if (idx < availableSeasons.length - 1) setSelectedSeason(availableSeasons[idx + 1]); }}
+                disabled={availableSeasons.indexOf(selectedSeason) >= availableSeasons.length - 1}
+                className="p-1.5 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+              ><ChevronLeft size={14} /></button>
+              <span className="text-sm font-black text-white px-2">{season}</span>
+              <button
+                onClick={() => { const idx = availableSeasons.indexOf(selectedSeason); if (idx > 0) setSelectedSeason(availableSeasons[idx - 1]); }}
+                disabled={availableSeasons.indexOf(selectedSeason) <= 0}
+                className="p-1.5 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+              ><ChevronRight size={14} /></button>
+            </div>
+          )}
+        </div>
         
         <div className="flex gap-6 border-b border-slate-800">
           <button
