@@ -245,7 +245,7 @@ export const PlayoffView: React.FC = () => {
 
         {/* ── Historical bracket ───────────────────────────────────────────── */}
         {isHistorical && (() => {
-          // Check for sim-generated playoff data first (same beautiful bracket UI)
+          // Check for sim-generated playoff data for THIS EXACT year
           const simPlayoffs = (state as any).historicalPlayoffs?.[viewYear];
           if (simPlayoffs?.series) {
             const champTeam = simPlayoffs.champion ? state.teams.find((t: any) => t.id === simPlayoffs.champion) : null;
@@ -276,33 +276,17 @@ export const PlayoffView: React.FC = () => {
         {!isHistorical && (
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
 
-        {/* ── No active playoffs: show last season's completed bracket ────── */}
-        {!playoffs && (() => {
-          const lastSimPlayoffs = (state as any).historicalPlayoffs?.[viewYear - 1] ?? (state as any).historicalPlayoffs?.[viewYear];
-          if (lastSimPlayoffs?.series) {
-            const champTeam = lastSimPlayoffs.champion ? state.teams.find((t: any) => t.id === lastSimPlayoffs.champion) : null;
-            return (
-              <div>
-                {champTeam && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-400/10 border border-yellow-400/20 rounded-xl mb-4 w-fit">
-                    <span className="text-yellow-400">🏆</span>
-                    <span className="font-black text-yellow-300 text-sm">{champTeam.name} — Last Season's Champions</span>
-                  </div>
-                )}
-                <BracketLayout
-                  playoffs={lastSimPlayoffs}
-                  teams={state.teams}
-                  schedule={[]}
-                  stateDate={state.date}
-                  onSeriesClick={() => {}}
-                  selectedSeriesId={null}
-                />
-              </div>
-            );
-          }
-          // No sim data — show gist historical
-          return <HistoricalPlayoffBracket viewYear={viewYear - 1} />;
-        })()}
+        {/* ── No active playoffs: show empty bracket (TBD slots) ────────── */}
+        {!playoffs && (
+          <BracketLayout
+            playoffs={{ series: [], playInGames: [], currentRound: 1 as any, bracketComplete: false, playInComplete: false, season: viewYear } as any}
+            teams={state.teams}
+            schedule={[]}
+            stateDate={state.date}
+            onSeriesClick={() => {}}
+            selectedSeriesId={null}
+          />
+        )}
 
         {/* ── Bracket + Play-In layout ─────────────────────────────────────── */}
         {playoffs && (
