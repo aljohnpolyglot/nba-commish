@@ -9,6 +9,10 @@ export interface GameSettings {
   maxBoxScoreYears: number;   // default 2
   /** AI trade frequency 0-100. 50 = default cadence. 0 = trades off. 100 = double frequency. */
   aiTradeFrequency: number;   // default 50
+  /** Auto-download player portrait images to IndexedDB for faster/offline loading. */
+  enableImageCache: boolean;  // default true
+  /** Advance day after signing/trading transactions. Off = transactions don't consume a day. */
+  advanceDayOnTransaction: boolean; // default false
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -20,6 +24,8 @@ const DEFAULT_SETTINGS: GameSettings = {
   allowAIFreeAgency: true,
   maxBoxScoreYears: 2,
   aiTradeFrequency: 50,
+  enableImageCache: true,
+  advanceDayOnTransaction: false,
 };
 
 export class SettingsManager {

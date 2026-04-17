@@ -1,0 +1,196 @@
+import React, { useEffect, useState } from 'react';
+import { cn } from '../../../../../lib/utils';
+import { useGame } from '../../../../../store/GameContext';
+import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
+
+interface GeneralManagerProps {
+  teamId: number;
+}
+
+const GM_RATINGS_URL = 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbagmratings';
+
+let gmRatingsCache: any[] | null = null;
+
+async function fetchGMRatings(): Promise<any[]> {
+  if (gmRatingsCache) return gmRatingsCache;
+  try {
+    const res = await fetch(GM_RATINGS_URL);
+    if (!res.ok) return [];
+    gmRatingsCache = await res.json();
+    return gmRatingsCache!;
+  } catch {
+    return [];
+  }
+}
+
+export function GeneralManager({ teamId }: GeneralManagerProps) {
+  const { state } = useGame();
+  const team = state.teams.find(t => t.id === teamId);
+  const staff = state.staff;
+  const teamColor = team?.colors?.[0] || '#552583';
+  const teamName = team ? `${team.region} ${team.name}` : '';
+
+  const [gmRatings, setGmRatings] = useState<any[]>([]);
+  const [loadingRatings, setLoadingRatings] = useState(false);
+
+  // Find GM from staff data
+  const gm = staff?.gms.find(g => {
+    const teamField = (g.position || g.team || '').toLowerCase();
+    return teamField.includes(team?.name.toLowerCase() || '') || teamField.includes((team?.region || '').toLowerCase());
+  });
+
+  // Fallback: fetch GM ratings gist if GM not found in staff
+  useEffect(() => {
+    if (!gm && !gmRatingsCache) {
+      setLoadingRatings(true);
+      fetchGMRatings().then(data => {
+        setGmRatings(data);
+        setLoadingRatings(false);
+      });
+    } else if (gmRatingsCache) {
+      setGmRatings(gmRatingsCache);
+    }
+  }, [gm]);
+
+  if (!team) {
+    return <div className="text-red-400 font-bold uppercase tracking-widest">Team not found</div>;
+  }
+
+  if (!staff && !loadingRatings) {
+    return <div className="text-[#8b949e] font-bold uppercase tracking-widest animate-pulse">Loading Staff Data...</div>;
+  }
+
+  // Fallback GM from ratings gist
+  let gmName = gm?.name;
+  let gmPortrait = gm?.playerPortraitUrl;
+  let gmStats: any = null;
+
+  if (!gm && gmRatings.length > 0) {
+    // Find GM by matching team name in tenures
+    const fallback = gmRatings.find(r =>
+      r.tenures?.some((t: any) =>
+        t.team?.toLowerCase().includes(team.name.toLowerCase()) &&
+        t.span?.toLowerCase().includes('present')
+      )
+    );
+    if (fallback) {
+      gmName = fallback.name;
+      gmPortrait = `https://ui-avatars.com/api/?name=${encodeURIComponent(fallback.name)}&background=random&size=256`;
+      gmStats = fallback;
+    }
+  }
+
+  // Also try to match in ratings for attributes
+  if (!gmStats && gmName && gmRatings.length > 0) {
+    gmStats = gmRatings.find(r => r.name?.toLowerCase() === gmName?.toLowerCase());
+  }
+
+  if (!gmName) {
+    if (loadingRatings) {
+      return <div className="text-[#8b949e] font-bold uppercase tracking-widest animate-pulse">Loading GM Data...</div>;
+    }
+    return <div className="text-red-400 font-bold uppercase tracking-widest">GM not found for {teamName}</div>;
+  }
+
+  // Calculate years with team from tenure data
+  let yearsWithTeam = 0;
+  const currentTenure = gmStats?.tenures?.find((t: any) =>
+    t.team?.toLowerCase().includes(team.name.toLowerCase()) &&
+    t.span?.toLowerCase().includes('present')
+  ) || gmStats?.tenures?.[0];
+
+  if (currentTenure?.span) {
+    const startYearMatch = currentTenure.span.match(/(\d{4})/);
+    if (startYearMatch) yearsWithTeam = (state.leagueStats?.year || 2026) - parseInt(startYearMatch[1], 10);
+  }
+
+  // NOTE FOR MAIN GAME INTEGRATION:
+  // Attribute Logic (AI Frequency) - Scale: 50-100 (Floor is 50 to avoid perception of "bad" at 0)
+  //
+  // Trade Aggression: 80+ = spam trade offers; 50-60 = rarely initiates
+  // Scouting Focus: High (70+) = values picks > 75 OVR players; Low = values "win now" players
+  // Work Ethic: High (70+) = constant roster churn; Low = stable roster
+  // Spending: Above 75 = overpays 10-20%; 50-60 = lowballs
+  const attributes = gmStats?.attributes || {
+    trade_aggression: 65,
+    scouting_focus: 60,
+    work_ethic: 55,
+    spending: 60,
+  };
+
+  return (
+    <div className="h-full flex flex-col relative z-10">
+      <div
+        className="rounded-t-lg p-4 sm:p-8 flex flex-col md:flex-row items-center justify-between border border-[#30363d] border-b-0 relative overflow-hidden gap-6 md:gap-0"
+        style={{ backgroundColor: teamColor }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-b md:bg-gradient-to-r from-black/80 via-black/50 to-transparent z-0" />
+        <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4 sm:gap-8 text-center sm:text-left">
+          <div className="w-24 h-24 sm:w-32 sm:h-32 bg-[#161b22]/80 backdrop-blur-md rounded-full border-4 border-[#FDB927]/50 flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.5)] p-1 overflow-hidden shrink-0">
+            <PlayerPortrait
+              playerName={gmName}
+              imgUrl={gmPortrait}
+              size={120}
+            />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-4xl font-black text-white drop-shadow-md uppercase tracking-tight">{gmName}</h1>
+            <div className="text-[#FDB927] font-bold uppercase tracking-widest mt-1 text-sm sm:text-base">General Manager</div>
+          </div>
+        </div>
+
+        <div className="relative z-10 flex gap-6 sm:gap-16 text-center w-full md:w-auto justify-center">
+          <div>
+            <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/70 mb-2 border-b border-white/20 pb-1">Years w/ Team</div>
+            <div className="text-xl sm:text-3xl font-light text-white drop-shadow-md">{yearsWithTeam}</div>
+          </div>
+          <div>
+            <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/70 mb-2 border-b border-white/20 pb-1">Record</div>
+            <div className="text-xl sm:text-3xl font-light text-white drop-shadow-md">{team.wins}-{team.losses}</div>
+          </div>
+          <div>
+            <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/70 mb-2 border-b border-white/20 pb-1">Trades</div>
+            <div className="text-xl sm:text-3xl font-light text-white drop-shadow-md">{gmStats?.stats?.trades || 0}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 flex border border-[#30363d] rounded-b-lg overflow-hidden bg-[#161b22]/80 backdrop-blur-md p-4 sm:p-8">
+        <div className="w-full max-w-2xl mx-auto flex flex-col gap-8">
+          <h2 className="text-xl font-black uppercase tracking-widest text-[#e6edf3] border-b border-[#30363d] pb-4">GM Attributes</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <AttributeBar label="Trade Aggression" value={attributes.trade_aggression} />
+            <AttributeBar label="Scouting Focus" value={attributes.scouting_focus} />
+            <AttributeBar label="Work Ethic" value={attributes.work_ethic} />
+            <AttributeBar label="Spending" value={attributes.spending} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AttributeBar({ label, value }: { label: string; value: number }) {
+  const getColor = (val: number) => {
+    if (val >= 90) return 'bg-emerald-500';
+    if (val >= 80) return 'bg-[#FDB927]';
+    if (val >= 70) return 'bg-[#e6edf3]';
+    return 'bg-[#8b949e]';
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex justify-between items-end">
+        <span className="text-xs font-bold uppercase tracking-widest text-[#8b949e]">{label}</span>
+        <span className="text-lg font-black text-[#e6edf3]">{value}</span>
+      </div>
+      <div className="h-2 bg-[#2c2c2e] rounded overflow-hidden">
+        <div
+          className={cn("h-full transition-all duration-1000", getColor(value))}
+          style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
+        />
+      </div>
+    </div>
+  );
+}

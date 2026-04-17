@@ -4,6 +4,7 @@ import { X, HeartPulse } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getPlayerImage } from './bioCache';
 import { PERSON_ACTION_DEFS, isPlayerEligible } from '../../../data/personActionDefs';
+import { useGame } from '../../../store/GameContext';
 
 interface PlayerActionsModalProps {
   player: NBAPlayer;
@@ -27,12 +28,18 @@ const MODAL_ACTION_IDS = [
   'sabotage',
 ];
 
+// Actions hidden in GM mode — commissioner-only powers
+const GM_HIDDEN_ACTIONS = new Set(['fine', 'bribe', 'dinner', 'movie', 'suspension', 'sabotage', 'contact']);
+
 export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, onClose, onActionSelect, onHeal }) => {
+  const { state } = useGame();
+  const isGM = state.gameMode === 'gm';
   const isInjured = (player as any)?.injury?.gamesRemaining > 0;
   const actions = MODAL_ACTION_IDS
     .map(id => PERSON_ACTION_DEFS.find(def => def.id === id))
     .filter((def): def is NonNullable<typeof def> => !!def)
-    .filter(def => isPlayerEligible(player, def.eligibility));
+    .filter(def => isPlayerEligible(player, def.eligibility))
+    .filter(def => !isGM || !GM_HIDDEN_ACTIONS.has(def.id));
 
   return (
     <AnimatePresence>
@@ -70,7 +77,7 @@ export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, 
           </div>
 
           <div className="p-6 space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
-            {isInjured && onHeal && (
+            {isInjured && onHeal && !isGM && (
               <button
                 onClick={onHeal}
                 className="w-full flex items-center gap-4 p-4 rounded-2xl border border-emerald-700/50 bg-emerald-950/30 hover:bg-emerald-900/40 transition-all text-left group"

@@ -27,6 +27,11 @@ const AwardCell = ({ award, isCurrent }: { award: any; isCurrent?: boolean }) =>
           alt={award.name}
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
+          onError={(e) => {
+            const img = e.target as HTMLImageElement;
+            if (award.teamLogoUrl && img.src !== award.teamLogoUrl) { img.src = award.teamLogoUrl; img.className = 'w-full h-full object-contain p-1'; }
+            else img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(award.name)}&background=1e293b&color=e2e8f0&size=64&bold=true`;
+          }}
         />
         {award.teamLogoUrl && (
           <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-slate-900 rounded-full flex items-center justify-center border border-slate-700">
@@ -235,11 +240,17 @@ export const LeagueHistoryView: React.FC = () => {
       const runnerEntry = flat('Runner Up');
       if (champEntry) {
         const team = state.teams.find(t => t.id === champEntry.tid);
-        if (team) champ = { ...team, record: '' };
+        if (team) {
+          const ts = team.seasons?.find((s: any) => Number(s.season) === Number(season));
+          champ = { ...team, record: ts ? `${(ts as any).won ?? (ts as any).wins ?? 0}-${(ts as any).lost ?? (ts as any).losses ?? 0}` : '' };
+        }
       }
       if (runnerEntry) {
         const team = state.teams.find(t => t.id === runnerEntry.tid);
-        if (team) runnerUp = { ...team, record: '' };
+        if (team) {
+          const ts = team.seasons?.find((s: any) => Number(s.season) === Number(season));
+          runnerUp = { ...team, record: ts ? `${(ts as any).won ?? (ts as any).wins ?? 0}-${(ts as any).lost ?? (ts as any).losses ?? 0}` : '' };
+        }
       }
 
       // Fallback: playoffRoundsWon (works once rosterService populates seasons)
@@ -255,9 +266,9 @@ export const LeagueHistoryView: React.FC = () => {
             const ts = t.seasons?.find((s: any) => Number(s.season) === Number(season));
             if (!ts) return;
             if (!champ && ts.playoffRoundsWon === maxRounds)
-              champ = { ...t, record: `${ts.won}-${ts.lost}` };
+              champ = { ...t, record: `${(ts as any).won ?? (ts as any).wins ?? 0}-${(ts as any).lost ?? (ts as any).losses ?? 0}` };
             else if (!runnerUp && ts.playoffRoundsWon === maxRounds - 1)
-              runnerUp = { ...t, record: `${ts.won}-${ts.lost}` };
+              runnerUp = { ...t, record: `${(ts as any).won ?? (ts as any).wins ?? 0}-${(ts as any).lost ?? (ts as any).losses ?? 0}` };
           });
         }
       }
@@ -267,7 +278,10 @@ export const LeagueHistoryView: React.FC = () => {
         const fmvpEntry = flat('Finals MVP') ?? bbgmRecord?.finalsMvp;
         if (fmvpEntry) {
           const team = state.teams.find(t => t.id === fmvpEntry.tid);
-          if (team) champ = { ...team, record: '' };
+          if (team) {
+            const ts = team.seasons?.find((s: any) => Number(s.season) === Number(season));
+            champ = { ...team, record: ts ? `${(ts as any).won ?? (ts as any).wins ?? 0}-${(ts as any).lost ?? (ts as any).losses ?? 0}` : '' };
+          }
         }
       }
 
@@ -275,11 +289,17 @@ export const LeagueHistoryView: React.FC = () => {
       const wikiSeason = getAllCachedSeasons().get(season) ?? bref;
       if (!champ && wikiSeason?.champion) {
         const matched = matchTeamByWikiName(wikiSeason.champion.name, state.teams as any[]) as any;
-        if (matched) champ = { ...matched, record: '' };
+        if (matched) {
+          const ts = matched.seasons?.find((s: any) => Number(s.season) === Number(season));
+          champ = { ...matched, record: ts ? `${(ts as any).won ?? (ts as any).wins ?? 0}-${(ts as any).lost ?? (ts as any).losses ?? 0}` : '' };
+        }
       }
       if (!runnerUp && wikiSeason?.runnerUp) {
         const matched = matchTeamByWikiName(wikiSeason.runnerUp.name, state.teams as any[]) as any;
-        if (matched) runnerUp = { ...matched, record: '' };
+        if (matched) {
+          const ts = matched.seasons?.find((s: any) => Number(s.season) === Number(season));
+          runnerUp = { ...matched, record: ts ? `${(ts as any).won ?? (ts as any).wins ?? 0}-${(ts as any).lost ?? (ts as any).losses ?? 0}` : '' };
+        }
       }
 
       // ── Awards (unified from both schemas) ────────────────────────────────

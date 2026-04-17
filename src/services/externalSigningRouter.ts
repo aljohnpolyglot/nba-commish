@@ -18,6 +18,7 @@
 
 import type { GameState, NBAPlayer } from '../types';
 import { convertTo2KRating } from '../utils/helpers';
+import { EXTERNAL_SALARY_SCALE } from '../constants';
 
 export interface ExternalRoutingResult {
   playerId: string;
@@ -25,6 +26,7 @@ export interface ExternalRoutingResult {
   league: 'Euroleague' | 'Endesa' | 'G-League' | 'PBA' | 'B-League' | 'China CBA' | 'NBL Australia';
   teamTid: number;
   teamName: string;
+  salaryUSD?: number;
 }
 
 /** Seeded random float 0–1 based on a numeric seed. */
@@ -161,18 +163,33 @@ export function routeUnsignedPlayers(
     const dest = pickDestination(k2Ovr, playerAge, state.nonNBATeams ?? [], playerSeed);
     if (!dest) return p;
 
+    // Generate contract with salary based on EXTERNAL_SALARY_SCALE
+    const salaryCap = state.leagueStats?.salaryCap ?? 154_600_000;
+    const scale = EXTERNAL_SALARY_SCALE[dest.league];
+    const ovrNorm = Math.min(1, Math.max(0, (k2Ovr - 55) / 30)); // 55=floor, 85=ceiling
+    const salaryUSD = scale
+      ? Math.round(salaryCap * (scale.minPct + ovrNorm * (scale.maxPct - scale.minPct)))
+      : 500_000;
+    const years = k2Ovr >= 70 ? 2 : 1;
+    const contractExp = (state.leagueStats?.year ?? 2026) + years - 1;
+
     results.push({
       playerId: p.internalId,
       playerName: p.name,
       league: dest.league,
       teamTid: dest.tid,
       teamName: dest.teamName,
+      salaryUSD,
     });
 
     return {
       ...p,
       tid: dest.tid,
       status: dest.league as NBAPlayer['status'],
+      contract: {
+        amount: Math.round(salaryUSD / 1_000), // BBGM convention: thousands
+        exp: contractExp,
+      },
     };
   });
 

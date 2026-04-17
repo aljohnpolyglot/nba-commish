@@ -518,7 +518,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
           // Team option and RFA metadata (used by seasonRollover + trade logic)
           ...(optionYrs > 0 && {
             hasTeamOption: true,
-            teamOptionExp: season + baseYrs - 1, // option kicks in after guaranteed portion
+            teamOptionExp: season + baseYrs, // option kicks in after guaranteed years (decision summer before this season)
           }),
           ...(round === 1 && restrictedFA && { restrictedFA: true }),
           rookie: true,

@@ -23,7 +23,8 @@ function getSeasonYear(dateStr: string): number {
     if (isNaN(d.getTime())) return 0;
     const month = d.getMonth() + 1; // 1-indexed
     const calYear = d.getFullYear();
-    return month >= 7 ? calYear + 1 : calYear;
+    // Jun 28+ belongs to the NEW season (draft is Jun 26-28, options Jun 29, FA Jul 1+)
+    return month >= 7 || (month === 6 && d.getDate() >= 28) ? calYear + 1 : calYear;
   } catch { return 0; }
 }
 

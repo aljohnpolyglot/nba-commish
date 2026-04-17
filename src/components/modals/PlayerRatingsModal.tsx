@@ -443,6 +443,7 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
                 })()}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
+                {state.gameMode !== 'gm' && (
                 <button
                   onClick={() => {
                     if (editMode) {
@@ -463,6 +464,7 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
                   <Edit2 size={12} />
                   {editMode ? 'Cancel' : 'Edit'}
                 </button>
+                )}
                 {editMode && (
                   <button
                     onClick={handleSave}

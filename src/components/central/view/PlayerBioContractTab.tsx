@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { contractToUSD, formatSalaryM } from '../../../utils/salaryUtils';
+import { formatExternalSalary } from '../../../constants';
 import type { NBAPlayer } from '../../../types';
 
 interface PlayerBioContractTabProps {
@@ -21,8 +22,10 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
   const teamNameMap = useMemo(() => {
     const m = new Map<number, string>();
     state.teams.forEach(t => m.set(t.id, t.name));
+    // Include external league teams so overseas players don't show "Unknown"
+    (state.nonNBATeams ?? []).forEach((t: any) => m.set(t.tid, t.region ? `${t.region} ${t.name}` : t.name));
     return m;
-  }, [state.teams]);
+  }, [state.teams, state.nonNBATeams]);
 
   // Current team name for future rows
   const currentTeamName = useMemo(() => {
@@ -183,10 +186,12 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
                   {row.season - 1}–{String(row.season).slice(-2)}
                 </td>
                 <td className="py-2 text-left text-slate-200 font-medium">{row.teamName}</td>
-                <td className="py-2 text-center text-slate-400">NBA</td>
+                <td className="py-2 text-center text-slate-400">{player.status && !['Active', 'Free Agent'].includes(player.status) ? player.status : 'NBA'}</td>
                 <td className="py-2 text-right font-mono font-bold text-slate-100">
                   {row.salaryUSD > 0
-                    ? formatSalaryM(row.salaryUSD)
+                    ? (player.status && !['Active', 'Free Agent'].includes(player.status)
+                        ? formatExternalSalary(row.salaryUSD, player.status)
+                        : formatSalaryM(row.salaryUSD))
                     : <span className="text-slate-600">—</span>
                   }
                 </td>

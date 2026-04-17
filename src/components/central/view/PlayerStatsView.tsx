@@ -452,10 +452,10 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
       const currentTeam = state.teams.find(t => t.id === player.tid);
       const currentTeamAbbrev = currentTeam?.abbrev ?? (player.tid < 0 ? 'FA' : '?');
 
-      // For active NBA players we can pre-filter by current team cheaply.
-      // For FAs / expired-contract players their stats may still reference the team
-      // they played for — so let them through and filter at the stats level below.
-      if (teamFilter !== 'all' && player.tid > 0 && currentTeamAbbrev !== teamFilter) continue;
+      // Pre-filter by current team ONLY for current season / career views.
+      // For historical seasons, skip this — a player's stats[].tid may differ from their current tid
+      // (e.g. LeBron on CLE in 2015-16 but currently on LAL). The stats-level filter handles it.
+      if (teamFilter !== 'all' && player.tid > 0 && currentTeamAbbrev !== teamFilter && (season === 'career' || season === state.leagueStats.year)) continue;
 
       const age = (player as any).born?.year
         ? (state.leagueStats.year ?? 2026) - (player as any).born.year
@@ -675,7 +675,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
   const seasonLabel = season === 'career' ? 'Career' : season === 'all' ? 'All Time' : `${(season as number) - 1}–${String(season).slice(2)}`;
 
   return (
-    <div className="h-full flex flex-col bg-slate-950 text-slate-200">
+    <div className="h-full flex-1 min-h-0 flex flex-col bg-slate-950 text-slate-200">
 
       {/* ── Header controls (BBGM-style) ────────────────────────────── */}
       <div className="shrink-0 px-3 sm:px-4 py-2.5 border-b border-slate-800 bg-slate-950">
@@ -811,6 +811,8 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
       <div className="shrink-0 px-3 sm:px-4 py-1 border-b border-slate-800/40 flex items-center justify-between">
         <span className="text-[10px] text-slate-600">
           <span className="text-rose-400">■</span> Hall of Fame
+          {typeof season === 'number' && <><span className="ml-3">💍</span> Champion</>}
+          {typeof season === 'number' && <><span className="ml-3">⭐</span> All-Star</>}
           {brefRows.size > 0 && <span className="ml-3 text-slate-600">† bref career</span>}
         </span>
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{seasonLabel} · {statType === 'perGame' ? 'Per Game' : statType === 'per36' ? 'Per 36 Min' : statType === 'totals' ? 'Totals' : statType === 'shotLocations' ? 'Shot Locations & Feats' : 'Advanced'} · {phase === 'regular' ? 'Reg Season' : phase === 'playoffs' ? 'Playoffs' : 'Combined'}</span>
@@ -934,6 +936,20 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
                   >
                     {r.player.name}
                     {r.fromBref && <span className="ml-1 text-[9px] text-slate-600">†</span>}
+                    {/* Season-specific badges */}
+                    {(() => {
+                      const awards = r.player.awards ?? [];
+                      const targetSeason = typeof r.season === 'number' ? r.season : null;
+                      if (!targetSeason) return null;
+                      const isChamp = awards.some(a => a.season === targetSeason && a.type?.toLowerCase().includes('champion'));
+                      const isAllStar = awards.some(a => a.season === targetSeason && (a.type?.toLowerCase().includes('all-star') || a.type?.toLowerCase() === 'allstar'));
+                      return (
+                        <>
+                          {isChamp && <span className="ml-1 text-[9px]" title={`${targetSeason} Champion`}>💍</span>}
+                          {isAllStar && <span className="ml-1 text-[9px]" title={`${targetSeason} All-Star`}>⭐</span>}
+                        </>
+                      );
+                    })()}
                   </td>
                   {/* Pos */}
                   <td className="px-2 py-1.5 text-slate-400">{r.player.pos ?? '—'}</td>

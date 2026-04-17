@@ -1,6 +1,6 @@
 # Team Office — Integration Plan
 
-> **Status:** Standalone UI built. Needs wiring to game state + sidebar.
+> **Status:** Standalone UI fully built (all pages have content). Needs: missing lib/utils files, sidebar wiring, game state connection.
 > **Delete this file** when integration is complete.
 
 ---
@@ -9,123 +9,210 @@
 
 ```
 src/components/central/view/TeamOffice/
-├── TeamOfficeView.tsx          ← Main view (tab router)
+├── TeamOfficeView.tsx          ← Main view (BrowserRouter + Layout) — 5.7 KB ✅
 ├── data/
-│   └── api.ts                  ← Data fetching (currently standalone, needs game state)
+│   ├── api.ts                  ← Standalone data fetcher (2K gist + BBGM roster) — 7.5 KB ✅
+│   └── staff.ts                ← ❌ MISSING — imported by GeneralManager.tsx
 └── pages/
-    ├── Home.tsx                ← Dashboard overview
-    ├── GeneralManager.tsx      ← GM profile + trade tendencies
-    ├── CoachingViewMain.tsx    ← Coaching staff overview
+    ├── Home.tsx                ← Team selector grid (30 teams, logo + OVR) — 4.7 KB ✅
+    ├── GeneralManager.tsx      ← GM profile + attribute bars (trade aggression, scouting, etc.) — 9 KB ✅
+    ├── CoachingViewMain.tsx    ← Standalone coaching app (fetches own data) — 8.5 KB ✅
     ├── CoachingView/
-    │   ├── CoachingView.tsx    ← Detailed coaching view
-    │   ├── PlayerPortrait.tsx  ← Coach portrait component
-    │   └── TeamCard.tsx        ← Team card for coaching
-    ├── DraftPicks.tsx          ← Draft pick inventory
-    ├── TeamIntel.tsx           ← Scouting / intel reports
-    ├── TeamNeeds.tsx           ← Positional needs heatmap
-    └── TradingBlock.tsx        ← Players on the trading block
+    │   ├── CoachingView.tsx    ← Detailed coaching view (court SVG, systems, roster) — 39.9 KB ✅
+    │   ├── PlayerPortrait.tsx  ← Coach portrait with OVR badge — 2.9 KB ✅
+    │   └── TeamCard.tsx        ← Team card with K2 sliders/proficiencies — 11.5 KB ✅
+    ├── DraftPicks.tsx          ← Placeholder (just shows "Draft Picks UI Placeholder") — 1.1 KB ⚠️
+    ├── TeamIntel.tsx           ← Scouting report (lineup, cap space, status, expiring) — 11.7 KB ✅
+    ├── TeamNeeds.tsx           ← Positional strength + category needs (grades A-F) — 11.3 KB ✅
+    └── TradingBlock.tsx        ← 3-column (Targets, Block, Untouchables) + PlayerPortrait — 12.5 KB ✅
+
+Missing utility files (referenced but don't exist):
+├── lib/
+│   ├── utils.ts                ← ❌ MISSING — exports `cn()` (classname merge)
+│   ├── staffService.ts         ← ❌ MISSING — exports coach data functions
+│   ├── k2Engine.ts             ← ❌ MISSING — exports `convertTo2KRating`
+│   ├── starterService.ts       ← ❌ MISSING — exports `StarterService`
+│   └── systemDescriptions.ts   ← ❌ MISSING — exports system/scheme descriptions
+├── utils/
+│   └── nbaTeams.ts             ← ❌ MISSING — exports `NBA_TEAMS`, `getTeamLogo`
+└── data/
+    └── staff.ts                ← ❌ MISSING — exports `getStaffData`, `getGMRatings`, `StaffData`, `EnrichedStaffMember`
 ```
 
-Supporting files:
-- `src/utils/coachSliders.ts` — Coaching slider definitions
-- `src/utils/systemDescriptions.ts` — System/scheme descriptions
+---
+
+## What's Built (Page-by-Page)
+
+### TeamOfficeView.tsx
+- Uses `BrowserRouter` + `react-router-dom` (standalone app pattern)
+- `Layout` component: top nav bar ("Team **Office**"), team selector header, tab navigation
+- Tabs: General Manager, Coaching, Team Intel, Team Needs, Trade Hub, Draft Picks
+- Uses `Outlet` context to pass `{ currentTeam, setCurrentTeam }` to child pages
+- **Integration issue:** BrowserRouter conflicts with main app's router — needs refactor to local state tabs
+
+### Home.tsx
+- Team selector grid (30 teams) — loads from `data/api.ts` `loadRatings()`
+- Shows team logo (NBA CDN), player count, Team OVR (top-8 average)
+- Click → sets currentTeam + navigates to `/general-manager`
+- **Integration note:** Replace `loadRatings()` with `useGame().state.teams` + `state.players`
+
+### GeneralManager.tsx
+- GM profile hero banner (portrait, name, years with team, trades, drafts)
+- GM Attribute bars: Trade Aggression, Scouting Focus, Work Ethic, Spending (50-100 scale)
+- Fetches from `data/staff.ts` (`getStaffData`, `getGMRatings`) — **file doesn't exist yet**
+- Has detailed integration notes in comments about how attributes map to AI behavior:
+  - Trade Aggression 80+: spam trade offers; 50-60: rarely initiates
+  - Scouting Focus high: values picks > 75 OVR players; low: values "win now" players
+  - Work Ethic high: constant roster churn; low: stable roster
+  - Spending above 75: overpays 10-20%; 50-60: lowballs
+
+### CoachingViewMain.tsx
+- Standalone app — fetches BBGM roster JSON + staff gist independently
+- Computes K2 ratings, 2K ratings, coach sliders, system proficiencies
+- Imports from `./lib/k2Engine`, `./lib/staffService`, `./lib/coachSliders` (standalone lib, different from `../lib/`)
+- **Integration note:** This is the entry point that feeds data into `CoachingView/CoachingView.tsx`
+
+### CoachingView/CoachingView.tsx (39.9 KB — largest file)
+- Court SVG visualization with player positions
+- Coaching system selector with proficiency ratings
+- Coach info (photo, bio, contract from staffService)
+- Player K2 breakdown, starter rotation, bench analysis
+- Imports: `../lib/staffService`, `../lib/starterService`, `../lib/systemDescriptions`
+
+### CoachingView/PlayerPortrait.tsx
+- Portrait component with OVR badge, team logo badge, incoming arrow
+- Uses `../lib/k2Engine` for `convertTo2KRating`
+- Comment says "delete this because this is already from shared" — duplicate of TradingBlock's PlayerPortrait
+
+### CoachingView/TeamCard.tsx
+- Team summary card with K2 category bars, preference sliders, system proficiencies
+- Uses local types (`K2Result`, `PlayerK2`, `CoachSliders`)
+
+### DraftPicks.tsx
+- **Placeholder only** — shows centered icon + "Draft Picks UI Placeholder" text
+- Comment: "Import the picks UI from the main game here"
+- Needs: wire to `state.draftPicks` and build actual pick inventory table
+
+### TeamIntel.tsx
+- Team scouting report: hero banner (logo, record, cap space), lineup sidebar, status text
+- Status computed from top-8 OVR: CONTENDING / BUYING / REBUILDING
+- Dynamic prose based on status (trade outlook, untouchables, expiring contracts)
+- Has extensive inline comments with exact text templates for each status
+
+### TeamNeeds.tsx
+- Two panels: Positional Strength (PG-C bars) + Category Needs (11 categories graded A+-F)
+- Categories: 3PT Shooting, Int Defense, Per Defense, Rebounding, Playmaking, Inside Scoring, Ball Handling, Shot Creation, Mid-Range, Basketball IQ, Size
+- Computes vs league averages — "Gap" badge when below average
+
+### TradingBlock.tsx
+- Three columns: Target List, Trading Block, Untouchables (3 players each)
+- `calculateTradeValue()` function: OVR/POT-based with contract surplus, age penalty, expiring discount
+- Mode-aware: contend vs rebuild affects who goes on block and who's targeted
+- "Add Item" button placeholder (comment: use All-Star replacements modal style)
+- Exports shared `PlayerPortrait` component used by other pages
 
 ---
 
 ## Integration Steps
 
-### Step 1: Wire to Sidebar (see SIDEBAR_SETUP.md)
-1. Add `'Team Office'` to `Tab` type in `src/types.ts`
-2. Add menu item to NavigationMenu.tsx (use `Building2` icon from lucide)
-3. Add case to MainContent.tsx switch
-4. Place in "Operations" or "League" group
+### Step 1: Create Missing Utility Files
+These files are imported but don't exist — the app won't compile without them.
 
-### Step 2: Connect to Game State
-Currently `data/api.ts` fetches from standalone sources. Replace with game state reads:
+| Missing File | Imported By | What It Needs |
+|-------------|------------|---------------|
+| `lib/utils.ts` | Home, GM, TeamIntel, TeamNeeds, TradingBlock | `cn()` — use `clsx` + `tailwind-merge` or copy from shadcn |
+| `utils/nbaTeams.ts` | Home, GM, TeamIntel, TeamOfficeView | `NBA_TEAMS` (id, name, primaryColor), `getTeamLogo(name)` |
+| `data/staff.ts` | GeneralManager | `getStaffData()`, `getGMRatings()`, `StaffData`, `EnrichedStaffMember` types |
+| `lib/staffService.ts` | CoachingView | Coach data functions (photos, bios, 2K data, contracts, assistants) |
+| `lib/k2Engine.ts` | CoachingViewMain, PlayerPortrait | `calculateK2`, `getSystemProficiency`, `convertTo2KRating`, `calculateOverallFromRating` |
+| `lib/starterService.ts` | CoachingView | `StarterService` class |
+| `lib/systemDescriptions.ts` | CoachingView | System/scheme description text map |
 
-| Page | Data Source | Game State Connection |
-|------|------------|----------------------|
-| Home | — | `state.teams`, `state.leagueStats` |
-| GeneralManager | staff gist | `state.staff.gms` — already loaded lazily |
-| CoachingView | staff gist | `state.staff.coaches` — already loaded lazily |
-| DraftPicks | — | `state.draftPicks` — already in state |
-| TeamNeeds | — | Compute from `state.players` by position per team |
-| TradingBlock | — | `player.onTradingBlock` flag (new) + mood ≤ -3 |
-| TeamIntel | — | AI-generated scouting reports (LLM or template) |
+**Option A (standalone first):** Create these files to make TeamOffice work as-is with standalone data.
+**Option B (integrate directly):** Skip standalone files, refactor pages to use `useGame()` + main app services.
 
-### Step 3: GM Trade Tendencies
-The GM data from the staff gist includes trade tendency fields. Wire these into:
-- `AITradeHandler.ts` — GM with "aggressive" tendency proposes more trades
-- `AIFreeAgentHandler.ts` — GM with "patient" tendency waits longer in FA
-- Display in `GeneralManager.tsx` with slider visualizations
+### Step 2: Wire to Sidebar
+1. Add `'Team Office'` to `Tab` type in `src/types.ts:1154`
+2. Add menu item to `NavigationMenu.tsx:165-172` ("Operations" group, use `Briefcase` icon — `Building2` already used by League Office)
+3. Add `case 'Team Office':` to `MainContent.tsx` switch (before `default:` at line 233)
 
-### Step 4: Trading Block Feature
-New field on player: `onTradingBlock?: boolean`
-- Commissioner can toggle in Team Office UI
-- AI Trade handler respects it: players on block get proposed first
-- Players with mood ≤ -3 auto-flagged as "wants out"
-- Display: red border/badge on trading block page
+### Step 3: Refactor TeamOfficeView.tsx Router
+Current: uses `BrowserRouter` + `Routes` + `react-router-dom` (standalone app pattern).
+Problem: main app already has its own router — nested BrowserRouter will conflict.
+Fix: replace with local `useState` tab switching (like other views in the app).
 
-### Step 5: Team Needs Heatmap
-Compute from roster composition:
-```ts
-const needs = computeTeamNeeds(teamId, players);
-// Returns: { PG: 'solid', SG: 'moderate', SF: 'major', PF: 'solid', C: 'major' }
-// Based on: starter OVR at each position vs league average
 ```
-Display as a 30×5 heatmap (all teams × 5 positions) with red/amber/green cells.
+TeamOfficeView.tsx should:
+1. Accept selectedTeamId prop (or manage internally)
+2. Use useState for active tab ('home'|'gm'|'coaching'|'intel'|'needs'|'trading'|'picks')
+3. Render the matching page component directly (no Routes)
+4. Pass team data via props instead of Outlet context
+```
 
-### Step 6: Coaching Sliders
-`coachSliders.ts` defines slider categories. Wire to game state so changes persist:
-- Store in `state.coachingSettings` per team
-- Affect sim engine via `SimulatorKnobs` (e.g. pace slider → paceMultiplier adjustment)
+### Step 4: Connect Pages to Game State
+Replace `loadRatings()` / standalone fetches with `useGame()` hook reads.
+
+| Page | Currently Fetches | Replace With |
+|------|------------------|-------------|
+| Home | `loadRatings()` → 2K gist + BBGM roster | `state.teams` (NBATeam[]) — render team grid from game state |
+| GeneralManager | `loadRatings()` + `getStaffData()` + `getGMRatings()` | `state.staff.gms` + new `state.staff.gmRatings` |
+| CoachingViewMain | BBGM roster JSON + staff gist (full standalone fetch) | `state.players` + `state.teams` + `state.staff.coaches` |
+| CoachingView | `../lib/staffService` (coach photos/bios/contracts) | Merge coach data into `state.staff` at lazy-load time |
+| TeamIntel | `loadRatings()` | `state.teams` + `state.players` (compute lineup, cap, status) |
+| TeamNeeds | `loadRatings()` | `state.players` (compute positional + category needs) |
+| TradingBlock | `loadRatings()` | `state.players` + future `player.onTradingBlock` flag |
+| DraftPicks | Nothing (placeholder) | `state.draftPicks` — build real pick inventory table |
+
+### Step 5: Extend Staff Service + State
+Merge standalone staff/coach/GM data into the existing `staffService.ts` + `state.staff`:
+
+1. **Add to `StaffData` interface** (`types.ts:750`):
+   ```ts
+   coachBios?: Map<string, CoachData>;
+   coachContracts?: Map<string, CoachContractData>;
+   gmRatings?: GMRating[];
+   ```
+
+2. **Add to `staffService.ts`** (`src/services/staffService.ts`):
+   - `fetchCoachData()` — load photos + bios + 2K + contracts (cached)
+   - `getGMRatings()` — fetch from `nbagmratings` gist
+   - Individual lookup functions: `getCoachPhoto`, `getCoachBio`, `getNBA2KCoach`, etc.
+
+3. **Lazy-load in GameContext.tsx** (alongside existing staff load at line 676):
+   - Fetch coach bios/contracts/GM ratings in parallel with staff gist
+   - Store in `state.staff.coachBios`, `state.staff.coachContracts`, `state.staff.gmRatings`
+
+### Step 6: GM Attributes → AI Trade Handler
+Wire GM attributes from `GeneralManager.tsx` into `AITradeHandler.ts`:
+
+| Attribute | AI Behavior |
+|-----------|------------|
+| Trade Aggression 80+ | `generateAIDayTradeProposals` frequency ×1.5, more proposals per day |
+| Trade Aggression 50-60 | frequency ×0.5, declines most offers |
+| Scouting Focus high (70+) | Values picks > 75 OVR players — "sell high" on vets |
+| Scouting Focus low (50-60) | Values win-now players — treats picks as filler |
+| Work Ethic high (70+) | Constant roster churn — cycles bench/FAs for marginal upgrades |
+| Work Ethic low (50-60) | Stable roster from opening night to playoffs |
+| Spending above 75 | Offers 10-20% above market value |
+| Spending 50-60 | Lowballs, walks away if player asks for more |
+
+### Step 7: Trading Block Feature (New)
+1. Add `onTradingBlock?: boolean` to `NBAPlayer` interface (`types.ts:623`)
+2. Commissioner can toggle in TradingBlock page UI ("Add Item" button → player selector modal)
+3. `AITradeHandler.ts` respects it: trading block players proposed first
+4. Players with mood ≤ -3 auto-flagged as "wants out"
+5. A player CANNOT be on both Untouchables and Trading Block (already enforced in UI logic)
+
+### Step 8: Build Real DraftPicks Page
+Replace placeholder with actual pick inventory:
+- Read `state.draftPicks` filtered by team
+- Show: round, season, original team, current owner
+- Mark traded picks visually
+- Group by season (current year + future)
 
 ---
 
-## GM Trade Tendency Fields (from staff gist)
-
-The staff gist GM entries may include:
-- `tradeTendency`: 'aggressive' | 'moderate' | 'conservative'
-- `buildStrategy`: 'win-now' | 'balanced' | 'rebuild'  
-- `draftFocus`: 'best-available' | 'positional-need' | 'upside'
-
-Wire into `AITradeHandler.ts`:
-- Aggressive GMs: trade frequency ×1.5, more willing to overpay
-- Conservative GMs: trade frequency ×0.5, only take clear wins
-- Win-now GMs: protect picks less, target stars
-- Rebuild GMs: hoard picks, dump salary
-
----
-
-## Dependencies
-
-- `state.staff` must be loaded (lazy load happens after init — verify timing)
-- `SIDEBAR_SETUP.md` for wiring guide
-- `RULES_SIM_CONNECTION_PLAN.md` for coaching slider → sim knob mapping
-- `AITradeHandler.ts` for GM tendency integration
-- `types.ts` for new fields (`onTradingBlock`, `coachingSettings`)
-
----
-
-## Bugs to Address During Integration
-
-- Team records not passed to League History view for best records display
-- Staff coaches may not load in time for COY award (see TODO)
-- GM names in trade proposals should come from `state.staff.gms` (partially done via `getGMName`)
-
----
-
-## Session Notes
-
-- Team Office was built as a standalone app before integration
-- Files already exist in the repo (committed session 22)
-- The `api.ts` data layer needs to be replaced with `useGame()` hooks
-- Each page should be a React component that reads from `state` via `useGame()`
-- No new API calls needed — all data is already in game state or staff gist
-
----
-
-## Staff Service Data Sources (Updated)
+## Staff Service Data Sources
 
 ### Gist URLs
 | Data | URL |
@@ -160,11 +247,15 @@ Wire into `AITradeHandler.ts`:
 
 **GM Ratings** (from `nbagmratings`):
 ```ts
-// Array of GM objects with trade tendency, build strategy, draft focus fields
-// Exact schema TBD — fetch and log to see structure
+{
+  name: string;
+  tenures: [{ team, span }];
+  stats: { trades, drafts };
+  attributes: { trade_aggression, scouting_focus, work_ethic, spending }; // 50-100 scale
+}
 ```
 
-### Staff Service Functions (from api.ts)
+### Staff Service Functions (needed in lib/staffService.ts)
 
 ```ts
 getStaffData(players, teamNameMap)  → { owners, gms, coaches, leagueOffice }
@@ -186,48 +277,44 @@ normalizeName(name)                 → lowercase stripped string for matching
 4. Player portrait match (if staff member was a former player)
 5. Team logo fallback
 
-### Owner Replacement Pool (for fire/hire UI)
-```ts
-['Mark Cuban', 'Peter Guber', 'Larry Ellison', 'David Tepper', 'Tilman Fertitta']
-```
+---
 
-### EnrichedStaffMember Type
-```ts
-interface EnrichedStaffMember {
-  name: string;
-  position?: string;      // team name (new gist format)
-  team?: string;           // team name (legacy format)
-  jobTitle?: string;
-  imageUrl?: string | null;
-  playerPortraitUrl?: string;  // resolved portrait
-  teamLogoUrl?: string;        // fallback logo
-}
-```
+## Key In-Code Notes (from the user's comments)
 
-### Migration Plan for api.ts → Game State
+These comments are embedded in the source files — preserve their intent during integration:
 
-The current `api.ts` in TeamOffice fetches independently. Migration:
+- **TeamOfficeView.tsx:152** — "Remove this dropdown of team and team logo in the future. It will be connected directly to the whole team office UI in the header."
+- **TeamOfficeView.tsx:90** — "This second tab is reserved for Coaching.tsx which is developed in isolation"
+- **TeamOfficeView.tsx:95** — "This tab should list all available picks of the team based on game state. Import the picks UI from the main game."
+- **GeneralManager.tsx:100-118** — Detailed GM attribute → AI behavior mapping notes
+- **TeamIntel.tsx:129** — "Clicking player name here opens their playerbioview"
+- **TeamIntel.tsx:144-168** — Detailed status text templates (REBUILDING, BUYING, CONTENDING)
+- **TradingBlock.tsx:99-101** — "Untouchables list can hold up to 10 players. A player CANNOT be on both lists."
+- **TradingBlock.tsx:161** — "Add Item button opens a specific team player selector modal. Use the UI/modal style from 'all star replacements' because it 'looks sick'."
+- **TradingBlock.tsx:139** — "Do not change anything here. Keep everything 1:1, just changing the game state."
+- **TradingBlock.tsx:220** — "Default to the game player portrait vs CDN here."
+- **CoachingView/PlayerPortrait.tsx:1** — "delete this because this is already from shared"
 
-1. **Move staff fetching to `staffService.ts`** (already exists at `src/services/staffService.ts`)
-   - Merge `getStaffData`, `fetchCoachData`, `getGMRatings` into the existing service
-   - Store results in `state.staff` (already has `owners`, `gms`, `coaches`, `leagueOffice`)
-   - Add new fields: `state.staff.coachBios`, `state.staff.coachContracts`, `state.staff.gmRatings`
+---
 
-2. **TeamOffice pages use `useGame()` hook** instead of direct fetch
-   - `Home.tsx` → reads `state.teams`, `state.staff`, `state.leagueStats`
-   - `GeneralManager.tsx` → reads `state.staff.gms` + `state.staff.gmRatings`
-   - `CoachingView.tsx` → reads `state.staff.coaches` + coach bios/contracts/photos
-   - `DraftPicks.tsx` → reads `state.draftPicks`
-   - `TeamNeeds.tsx` → computes from `state.players` by position
-   - `TradingBlock.tsx` → reads `player.onTradingBlock` + mood ≤ -3
-   - `TeamIntel.tsx` → AI-generated or template-based scouting
+## Bugs to Address During Integration
 
-3. **GM Ratings → AI Trade Handler**
-   - Load at init alongside staff data
-   - Pass GM tendency to `generateAIDayTradeProposals`
-   - Aggressive GM: frequency ×1.5, overpay tolerance +10%
-   - Conservative GM: frequency ×0.5, only clear wins
-   - Win-now GM: protect picks less, target stars
-   - Rebuild GM: hoard picks, dump salary
+- Team records not passed to League History view for best records display
+- Staff coaches may not load in time for COY award (see TODO)
+- GM names in trade proposals should come from `state.staff.gms` (partially done via `getGMName`)
+- CoachingView/PlayerPortrait.tsx is a duplicate — delete and use TradingBlock's shared `PlayerPortrait` export
 
-*Created: 2026-04-17 (session 22)*
+---
+
+## Duplicate Code to Consolidate
+
+| Component | Location A | Location B | Resolution |
+|-----------|-----------|-----------|------------|
+| PlayerPortrait | `TradingBlock.tsx:200-318` (shared export) | `CoachingView/PlayerPortrait.tsx` (standalone) | Delete CoachingView/PlayerPortrait.tsx, import from TradingBlock |
+| cn() | Needs `lib/utils.ts` | Main app may already have this | Use main app's if exists, otherwise create |
+| NBA_TEAMS | Needs `utils/nbaTeams.ts` | Could exist elsewhere in main app | Check main app for team data utilities |
+| Staff fetching | `data/api.ts` (standalone) + `data/staff.ts` (missing) | `src/services/staffService.ts` (main app) | Use main app's staffService via `state.staff` |
+
+---
+
+*Updated: 2026-04-17 (session 23 — accurate audit of all built files)*

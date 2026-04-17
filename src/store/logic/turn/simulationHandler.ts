@@ -11,6 +11,7 @@ import { markBustLottery, resolveBustLottery } from '../../../services/playerDev
 import { generateAIDayTradeProposals, executeAITrade } from '../../../services/AITradeHandler';
 import { runAIFreeAgencyRound, runAIMidSeasonExtensions, runAISeasonEndExtensions, autoTrimOversizedRosters } from '../../../services/AIFreeAgentHandler';
 import { routeUnsignedPlayers } from '../../../services/externalSigningRouter';
+import { formatExternalSalary } from '../../../constants';
 import { applySeasonRollover, shouldFireRollover } from '../../../services/logic/seasonRollover';
 import { SettingsManager } from '../../../services/SettingsManager';
 import { markTrainingCampShuffle, resolveTrainingCampChanges } from '../../../services/playerDevelopment/trainingCampShuffle';
@@ -203,21 +204,29 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
             const { results: routedResults, players: routedPlayers } = routeUnsignedPlayers(stateWithSim);
             if (routedResults.length > 0) {
                 stateWithSim = { ...stateWithSim, players: routedPlayers };
-                const routingNews = routedResults.slice(0, 5).map((r, i) => ({
-                    id: `ext-route-${r.playerId}-${Date.now()}-${i}`,
-                    headline: `${r.playerName} Signs Overseas with ${r.teamName}`,
-                    content: `Unable to land an NBA deal, ${r.playerName} has signed with ${r.teamName} in the ${r.league}.`,
-                    date: stateWithSim.date,
-                    type: 'roster' as const,
-                    isNew: true,
-                    read: false,
-                }));
-                const routingHistory = routedResults.map(r => ({
-                    text: `${r.playerName} signs overseas with ${r.teamName} (${r.league}).`,
-                    date: stateWithSim.date,
-                    type: 'Signing',
-                    league: r.league,
-                }));
+                const routingNews = routedResults.slice(0, 5).map((r, i) => {
+                    const isDomestic = r.league === 'G-League';
+                    const salaryStr = r.salaryUSD ? formatExternalSalary(r.salaryUSD, r.league) + '/yr' : '';
+                    return {
+                        id: `ext-route-${r.playerId}-${Date.now()}-${i}`,
+                        headline: `${r.playerName} Signs ${isDomestic ? 'with' : 'Overseas with'} ${r.teamName}`,
+                        content: `Unable to land an NBA deal, ${r.playerName} has signed with ${r.teamName} in the ${r.league}${salaryStr ? ' for ' + salaryStr : ''}.`,
+                        date: stateWithSim.date,
+                        type: 'roster' as const,
+                        isNew: true,
+                        read: false,
+                    };
+                });
+                const routingHistory = routedResults.map(r => {
+                    const isDomestic = r.league === 'G-League';
+                    const salaryStr = r.salaryUSD ? formatExternalSalary(r.salaryUSD, r.league) + '/yr' : '';
+                    return {
+                        text: `${r.playerName} signs ${isDomestic ? 'with' : 'overseas with'} ${r.teamName} (${r.league})${salaryStr ? ': ' + salaryStr : ''}.`,
+                        date: stateWithSim.date,
+                        type: 'Signing',
+                        league: r.league,
+                    };
+                });
                 stateWithSim = {
                     ...stateWithSim,
                     news: [...routingNews, ...(stateWithSim.news ?? [])].slice(0, 200),
@@ -545,6 +554,10 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
             const glUpdatedPlayers = stateWithSim.players.map(p => {
                 if (p.tid === userTeamId || p.tid < 0 || p.tid >= 100) return p;
                 if ((p as any).twoWay || (p as any).injury?.gamesRemaining > 0) return p;
+                // Never G-League assign quality players — only fringe/end-of-bench guys
+                const _r = (p as any).ratings?.[(p as any).ratings?.length - 1];
+                const _k2 = 0.88 * (p.overallRating ?? 60) + 31 + ((_r?.hgt ?? 50) > 70 ? 2 : 0);
+                if (_k2 >= 78) return p;
                 const teamGP = (stateWithSim.teams.find(t => t.id === p.tid)?.wins ?? 0) +
                                (stateWithSim.teams.find(t => t.id === p.tid)?.losses ?? 0);
                 // Grace period: don't G-League assign players who just joined via trade/signing
@@ -559,7 +572,7 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
                 // If team has played 15+ games and this player has 0 GP → G-League
                 if (teamGP >= 15 && playerGP === 0 && !(p as any).gLeagueAssigned) {
                     glAssigned.push(p.name);
-                    return { ...p, gLeagueAssigned: true };
+                    return { ...p, gLeagueAssigned: true, gLeagueParentTid: p.tid };
                 }
                 // If player now has GP and was G-League assigned → return to active roster
                 if ((p as any).gLeagueAssigned && playerGP > 0) {
@@ -648,7 +661,18 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
                         });
                         // Mark playoff ineligible if signed on/after March 1 (cosmetic flag)
                         const isAfterMarchDeadline = simMonth === 3 && simDayNum >= 1 || simMonth > 3;
-                        return { ...p, tid: signing.teamId, status: 'Active' as const, contract: newContract, contractYears: [...historicalYears, ...newContractYears], playoffEligible: isAfterMarchDeadline ? false : undefined };
+                        return {
+                            ...p,
+                            tid: signing.teamId,
+                            status: 'Active' as const,
+                            contract: newContract,
+                            contractYears: [...historicalYears, ...newContractYears],
+                            playoffEligible: isAfterMarchDeadline ? false : undefined,
+                            // Preserve two-way flag from Pass 3 signing — these players don't count against the 15-man roster
+                            ...((signing as any).twoWay ? { twoWay: true } : {}),
+                            // Track MLE signing type so TeamFinancesView can color MLE contract cells
+                            ...(signing.mleTypeUsed ? { mleSignedVia: signing.mleTypeUsed } : {}),
+                        };
                     }),
                 };
                 // Log FA signings to history — stagger dates within current window

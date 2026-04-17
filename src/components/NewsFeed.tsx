@@ -11,6 +11,8 @@ import { fetchWriters } from '../services/social/authorService';
 import type { Author } from './news/types';
 import { enrichNewsWithPhoto } from '../services/social/photoEnricher';
 import type { GamePhotoInfo } from '../services/social/photoEnricher';
+import type { NBAPlayer } from '../types';
+import { getPlayerImage } from './central/view/bioCache';
 
 // ─── Build gameLookup from boxScores + teams ───────────────────────────────────
 
@@ -84,7 +86,32 @@ function resolveDisplayCategory(n: any): string {
 
 // ─── Map game-state news items to NewsItem ─────────────────────────────────────
 
-function mapToNewsItem(n: any, authors: Author[]): NewsItem {
+/** Try to find a player portrait from the headline/content by matching against state.players */
+function resolvePlayerPortrait(text: string, players: NBAPlayer[]): string | undefined {
+  if (!text || !players.length) return undefined;
+  const lower = text.toLowerCase();
+  // Try matching full name first (longer names first to avoid partial matches)
+  const sorted = [...players].sort((a, b) => b.name.length - a.name.length);
+  for (const p of sorted) {
+    if (!p.name || p.name.length < 4) continue;
+    if (lower.includes(p.name.toLowerCase())) {
+      const img = getPlayerImage(p);
+      if (img) return img;
+    }
+  }
+  // Fallback: try last name match (only for names > 4 chars to avoid false positives)
+  for (const p of sorted) {
+    if (!p.name) continue;
+    const lastName = p.name.split(/\s+/).pop() || '';
+    if (lastName.length > 4 && lower.includes(lastName.toLowerCase())) {
+      const img = getPlayerImage(p);
+      if (img) return img;
+    }
+  }
+  return undefined;
+}
+
+function mapToNewsItem(n: any, authors: Author[], players: NBAPlayer[]): NewsItem {
   const category = resolveDisplayCategory(n);
 
   const seed = (n.id || '').split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
@@ -98,13 +125,20 @@ function mapToNewsItem(n: any, authors: Author[]): NewsItem {
     } catch { /* keep raw */ }
   }
 
+  // Resolve image: explicit image > playerPortraitUrl > player match from game state
+  let imageUrl = n.image || n.playerPortraitUrl;
+  if (!imageUrl) {
+    const text = `${n.headline || n.title || ''} ${n.content || ''}`;
+    imageUrl = resolvePlayerPortrait(text, players);
+  }
+
   return {
     id: n.id || String(Math.random()),
     category,
     date: dateStr,
     title: n.headline || n.title || 'League Update',
     content: n.content || '',
-    imageUrl: n.image || n.playerPortraitUrl,
+    imageUrl,
     impact: n.isNew ? 'high' : 'standard',
     url: '#',
     author,
@@ -159,8 +193,8 @@ export const NewsFeed: React.FC = () => {
         const tb = b.date ? new Date(b.date).getTime() : 0;
         return tb - ta;
       })
-      .map(n => mapToNewsItem(n, authors));
-  }, [state.news, authors]);
+      .map(n => mapToNewsItem(n, authors, state.players || []));
+  }, [state.news, authors, state.players]);
 
   const filteredArticles = useMemo(() => {
     return allArticles.filter(article => {

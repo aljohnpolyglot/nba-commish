@@ -953,12 +953,12 @@ export const BroadcastingView: React.FC = () => {
                   <div className="mt-10 grid grid-cols-2 gap-8">
                     <div>
                       <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Salary Cap Projection</div>
-                      <div className="text-3xl font-black text-white">${metrics.salaryCap.toFixed(1)}M</div>
+                      <div className="text-3xl font-black text-white">${dispSalaryCap.toFixed(1)}M</div>
                       <div className="text-[10px] text-emerald-400 font-bold uppercase">Dynamic (Rev-based)</div>
                     </div>
                     <div>
                       <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Player Share (51%)</div>
-                      <div className="text-3xl font-black text-white">${(metrics.totalRev * 0.51).toFixed(2)}B</div>
+                      <div className="text-3xl font-black text-white">${(dispTotalRev * 0.51).toFixed(2)}B</div>
                       <div className="text-[10px] text-zinc-500 font-bold uppercase">CBA Compliant</div>
                     </div>
                   </div>

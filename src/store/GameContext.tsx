@@ -6,6 +6,7 @@ import { initialState } from './initialState';
 import { sendChatMessage } from '../services/llm/llm';
 import { prefetchPlayerBio } from '../components/central/view/bioCache';
 import { SettingsManager } from '../services/SettingsManager';
+import { initImageCache } from '../services/imageCache';
 import { normalizeDate } from '../utils/helpers';
 
 interface GameContextType {
@@ -48,6 +49,13 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+
+  // Set default view for GM mode when game first loads
+  useEffect(() => {
+    if (state.isDataLoaded && state.gameMode === 'gm' && currentView === 'Schedule') {
+      setCurrentView('Team Office');
+    }
+  }, [state.isDataLoaded, state.gameMode]);
 
 const actions = useGameActions(setState, () => stateRef.current);
 
@@ -258,12 +266,18 @@ const actions = useGameActions(setState, () => stateRef.current);
         return updated;
       }) ?? loaded.players;
 
+      const finalPlayers = migratedPlayers ?? loaded.players;
       setState({
         ...initialState,
         ...loaded,
         ...(migratedPlayers ? { players: migratedPlayers } : {}),
         isProcessing: false
       });
+
+      // Kick off background image caching if enabled
+      if (SettingsManager.getSettings().enableImageCache && finalPlayers) {
+        initImageCache(finalPlayers).catch(() => {});
+      }
       return;
     }
     if (action.type === 'UPDATE_STATE') {
@@ -677,9 +691,15 @@ const actions = useGameActions(setState, () => stateRef.current);
     if (!state.isDataLoaded || state.staff || !state.players?.length || !state.teams?.length) return;
 
     const load = () => {
-      import('../services/staffService').then(({ getStaffData }) => {
+      Promise.all([
+        import('../services/staffService'),
+        import('../data/photos/coaches'),
+      ]).then(([staffMod, coachesMod]) => {
         const teamNameMap = new Map(state.teams.map(t => [t.name.toLowerCase(), t]));
-        getStaffData(state.players, teamNameMap).then(staff => {
+        Promise.all([
+          staffMod.getStaffData(state.players, teamNameMap),
+          coachesMod.fetchCoachData(),
+        ]).then(([staff]) => {
           setState(prev => ({ ...prev, staff }));
         });
       });

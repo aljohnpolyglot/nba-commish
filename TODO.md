@@ -1,63 +1,60 @@
-# NBA Commish — TODO (updated 2026-04-17, session 22)
+# NBA Commish — TODO (updated 2026-04-17, session 23)
 
 ---
 
 ## ACTIVE — Verify on New Save
 
-- **Retirements** — formula rewritten + born.year age. Verify proper retirement rates.
-- **Progression balance** — all 6 dev files use born.year. Verify no more 90+ OVR inflation.
-- **Player/team options** — timing fixed to `nextYear`. Verify options fire correctly.
-- **MLE signings** — 3-pass system. Verify over-cap teams sign FAs via MLE.
-- **Rookie contracts** — autoRunDraft sets hasTeamOption + teamOptionExp. Verify 2+2 deals.
-- **Broadcasting cap** — mediaRights inflated. Verify cap alignment.
-- **Two-way cap** — Pass 3 checks existing count. Verify max respected.
-- **Finals Game 7** — lazy sim loop fixed. Verify series complete.
+- **Retirements** — legendMult applied to ALL tiers + user All-Star clamps. Verify LeBron/Curry survive past 2026.
+- **Two-way contracts** — twoWay flag transferred, maxTwoWay=3, OVR cap=52. Verify 15+3 rosters.
+- **Rookie team options** — teamOptionExp fixed (was off-by-1). Verify no instant decline after draft.
+- **Player option chronology** — options Jun 29, FA Jun 30+. Verify correct order in TransactionsView.
+- **Draft pick trading** — completed picks filtered. Verify no past-draft picks tradeable.
+- **Playoff game log** — per-game opening night. Verify no PLF as PRE.
+- **Image caching** — IndexedDB auto-download, default ON. Verify cache works.
+- **External league economy** — contracts generated at routing. Verify salary in PlayerBio.
+- **Exhibition stale scores** — pruned at rollover. Verify clean All-Star Weekend in season 2.
+- **MLE tracking** — `mleSignedVia` now saved on player. Verify TeamFinancesView can color cells.
+- **COY coach name** — staff lookup fix (agent). Verify real coach name shows.
+- **Dashboard salary cap** — reads live `leagueStats.salaryCap`. Verify updates after rollover.
+- **League History best records** — reads from `team.seasons[]`. Verify sim seasons show.
+- **News card photos** — player portraits on news cards. Verify photos render.
+- **PlayerStatsView historical** — shows all players + ring/All-Star badges.
 
 ---
 
 ## BUGS — Remaining
 
-### MLE contract cells in TeamFinancesView
-Legend added (cyan). Need `player.mleSignedVia` tracked at signing for cell coloring.
+### CRITICAL: Injured players get tid changed to G-League — breaks game log + creates fake transactions
+Root cause: roster trim sends injured players to G-League by changing `player.tid` to the affiliate. This causes: (1) NBA games vanish from game log during assignment, (2) fake "assigned to G-League" transactions for stars like Paul George, (3) game log rank resets when player returns, (4) box score shows them on the team but game log doesn't.
+**Fix:** Don't change `tid` for injured players. Use `gLeagueAssigned: true` flag only (already exists). Game log checks `player.tid` which stays as the NBA team → DNP entries show correctly. Guard: never G-League assign K2 >= 78 players.
+**Files:** `simulationHandler.ts` (roster trim / G-League assignment block), `PlayerBioGameLogTab.tsx` (already works if tid stays correct)
 
-### COY still shows "OKC Coach"
-Agent broadened matching. May need staff data load verification. Debug logs added.
+### StarterService produces wrong lineups (Tatum benched for Pritchard)
+Role-first slot filling skips high-OVR players when their classified role doesn't match open slots. Fix: start top-5 by OVR, THEN assign positions by best fit. Affects TeamIntel lineup, WatchGamePreviewModal, and sim engine.
+**Files:** `StarterService.ts`
 
-### Inflation editor in Game Settings (BBGM-style)
-Add Min/Max/Avg/StdDev % inputs to Economy tab. Values already in leagueStats.
+### Unify AI trades with TradeFinder engine
+Extract `findOffers` core logic from `TradeFinderView.tsx` into `src/services/trade/tradeFinderEngine.ts`. Both TradeFinder UI and `AITradeHandler` should call the same engine. Delete duplicate trade generation code in AITradeHandler. One source of truth for all trades.
+**Files:** `TradeFinderView.tsx`, `AITradeHandler.ts`, new `tradeFinderEngine.ts`
 
-### BroadcastingView still shows $154.6M static
-Agent fixed read-only display. Verify on new save. May need further broadcaster offer inflation.
+### All-Star Weekend dates use static dates instead of day-of-week resolvers
+Need `resolveSeasonDate()`-style helpers so All-Star Sunday = Sunday, Saturday = Saturday.
+**Files:** `dateUtils.ts`, `autoResolvers.ts` / `lazySimRunner.ts`
 
----
+### Inflation editor in Game Settings modal
+Add Min/Max/Avg/StdDev % inputs to `SettingsModal.tsx`. Values already in leagueStats.
 
-## BUGS — UI
-
-### Team records not passed to League History view
-**Symptom:** League History best records section doesn't show sim-generated season records. Only shows historical data.
-**Fix:** At rollover, `team.seasons[]` is archived (done session 22). League History view needs to read from `team.seasons[]` for best records display.
-**Files:** `LeagueHistoryView.tsx` or `LeagueHistoryDetailView.tsx`
-
-### News cards missing player photos
-### PlayerStatsView historical: show ALL players + ring/All-Star badges
 ### Start Date timeline: reverted to 1 season, manual date for multi-season
 
 ---
 
 ## FEATURES — Next Priority
 
-### AI trade: contending teams protect K2 80+ players
-### Dead money / ghost contracts (Luol Deng rule)
-### Image caching (Performance setting)
-
----
-
-## FUTURE / BACKLOG
-
-### Live Trade Debug UI (GM Dashboard)
-### External League Economy (constants in `constants.ts`)
-### Career highs tracking
-### DraftClassGenerator for 2029+ seasons
+### GM Mode (see `GM_MODE_README.md`)
+Phase 1: mode toggle + sidebar gating + player action filtering + settings toggle
+Phase 2: trade system (lock to user team, AI accept/reject)
+Phase 3: FA signing modal (contract builder, value meter, cap display)
+Phase 3.5: Draft — "Sim One Pick" + "Sim to My Pick" buttons
 
 ---
 
@@ -75,24 +72,14 @@ Agent fixed read-only display. Verify on new save. May need further broadcaster 
 
 ---
 
-## FIXED ✅ (Session 22 — 70+ items)
+## FIXED — Session 23 (12+ items)
 
-**Root cause: Age system** — ALL progression + UI used stale `player.age`. Now uses `born.year`. `computeAge()` helper created.
+Retirement legendMult, two-way contracts (3 bugs), rookie team option off-by-1, player option chronology, draft pick trade filter, playoff game log PRE fix, G-League "overseas" label, image caching (IndexedDB), exhibition stale scores pruned, dead PlayoffView chevron removed, external league economy (contracts + salaries), mobile pagination + All-Star box score clickable, MLE tracking, COY coach name, Dashboard salary cap, League History records, news photos, PlayerStats historical.
 
-**Retirement** — BBGM-scale thresholds, born.year fallback, debug logging.
+## FIXED — Session 22 (70+ items)
 
-**Options** — player/team options check `nextYear` (gist labels option on the season it applies to). `autoRunDraft` sets hasTeamOption/teamOptionExp/restrictedFA.
+Age system rewrite (born.year), retirement BBGM thresholds, player/team options nextYear, unified sim engine (runLazySim), MLE 3-pass, draft picks in TransactionsView, year chevrons, playoff bracket, rollover W-L reset, and 50+ more.
 
-**Simulation** — unified engine (runLazySim), ADVANCE_DAY `>=`, Finals G7 fix (sim target day), overlay for all sim-to-date.
+**Full history:** See `CHANGELOG.md` and `README_OLD.md`
 
-**Economy** — MLE 3-pass FA signing, MLE column in Cap Overview, broadcasting cap inflated at rollover, save isolation (unique saveId).
-
-**Draft** — draft picks in TransactionsView, Draft History includes FAs, rookie contracts match Economy tab, Nick Smith Jr. dedup.
-
-**UI** — year chevrons (Standings, League Leaders, Statistical Feats), playoff bracket (BracketLayout everywhere), Award Races offseason, Power Rankings preseason, game log PLF/PI labels, progression dark colors, career OVR snapshot, training camp shuffle, Shams transactions, social feed perf, Season Preview Oct 1.
-
-**Rollover** — team W-L reset, streak reset, July games guard, player options Jul 1 date, bioCache age, vet age gate, two-way OVR cap, double team name, B-League bio gist URL, transaction amounts (sub-$1M), storyGenerator crash, COY case-insensitive, roster trim logging.
-
-**Plus 146+ items from sessions 8–21.**
-
-*Last updated: 2026-04-17 (session 22)*
+*Last updated: 2026-04-17 (session 23)*

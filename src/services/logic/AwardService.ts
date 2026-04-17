@@ -1,4 +1,5 @@
 import { NBAPlayer, NBATeam, NBAGMStat, StaffData } from '../../types';
+import { getAllCoaches as getAllCoachBios } from '../staffService';
 
 export interface AwardCandidate {
   player: NBAPlayer;
@@ -344,17 +345,22 @@ export class AwardService {
                  (cPos  && (cPos.includes(tNameLc)  || tNameLc.includes(cPos)));
         });
 
-        // Fallback: if no coach found, try deriving from GM data (GMs are always populated)
+        // Fallback: if no coach found from staff gist, try the coach bio data
+        // (fetched independently via staffService.fetchCoachData — may be available even
+        // when state.staff hasn't loaded yet)
         let coachName = coachEntry?.name;
-        if (!coachName && staff?.gms && staff.gms.length > 0) {
-          // GMs don't give us coach names, but at least we know staff loaded.
-          // Log so we can diagnose the mismatch.
-          console.log(`[COY DEBUG] No coach found for ${t.name} (${t.abbrev}). Staff coaches count: ${staff?.coaches?.length ?? 0}. GM count: ${staff?.gms?.length ?? 0}.`);
-          if (staff.coaches && staff.coaches.length > 0) {
-            console.log(`[COY DEBUG] Available coach teams:`, staff.coaches.map(c => `${c.name}: team="${c.team}" pos="${c.position}"`));
+        if (!coachName) {
+          const coachBios = getAllCoachBios();
+          if (coachBios.length > 0) {
+            const bioMatch = coachBios.find(cb => {
+              const cbTeam = (cb.team ?? '').toLowerCase().trim();
+              return cbTeam === tNameLc || cbTeam === tAbbrLc ||
+                     (tMascotLc && cbTeam === tMascotLc) ||
+                     (tRegionLc && cbTeam === tRegionLc) ||
+                     (cbTeam && (cbTeam.includes(tNameLc) || tNameLc.includes(cbTeam)));
+            });
+            if (bioMatch) coachName = bioMatch.staff;
           }
-        } else if (!coachName) {
-          console.log(`[COY DEBUG] staff.coaches is EMPTY or staff not loaded for ${t.name}. staff exists: ${!!staff}, coaches length: ${staff?.coaches?.length ?? 'N/A'}`);
         }
         coachName = coachName ?? `${t.abbrev} Coach`;
 

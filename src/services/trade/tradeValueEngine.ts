@@ -7,8 +7,40 @@
 
 import type { NBAPlayer, DraftPick } from '../../types';
 import { convertTo2KRating } from '../../utils/helpers';
+import { getPlayerInjuryProfile } from '../../data/playerInjuryData';
 
 export type TeamMode = 'contend' | 'rebuild' | 'presti';
+
+// ── Untouchable / Trading Block classification ──────────────────────────────
+// Used by AI trades, TradeFinder, and TradingBlock UI for consistent behavior.
+
+/** Check if a player is untouchable (should NOT be included in trade offers). */
+export function isUntouchable(player: NBAPlayer, mode: TeamMode, currentYear: number): boolean {
+  const ovr = calcOvr2K(player);
+  const pot = calcPot2K(player, currentYear);
+  const age = player.born?.year ? currentYear - player.born.year : (player.age ?? 27);
+
+  // Loyalty rule: 10+ years with the same team = always untouchable (Curry/Dirk/Duncan)
+  const yearsWithTeam = player.stats
+    ? player.stats.filter((s: any) => s.tid === player.tid && !s.playoffs && s.gp > 0).length
+    : 1;
+  if (yearsWithTeam >= 10) return true;
+
+  if (mode === 'contend') return ovr >= 82;             // core rotation pieces
+  if (mode === 'rebuild' || mode === 'presti') return age < 25 && pot >= 86;  // young + high ceiling
+  return ovr >= 85 || (age < 24 && pot >= 88);          // neutral: stars or elite prospects
+}
+
+/** Check if a player is on the trading block (AI is willing to trade). */
+export function isOnTradingBlock(player: NBAPlayer, mode: TeamMode, currentYear: number): boolean {
+  if (isUntouchable(player, mode, currentYear)) return false;
+  const ovr = calcOvr2K(player);
+  const age = player.born?.year ? currentYear - player.born.year : (player.age ?? 27);
+
+  if (mode === 'contend') return ovr < 78 || ((player.contract?.exp ?? currentYear + 5) <= currentYear + 1);
+  if (mode === 'rebuild' || mode === 'presti') return age >= 28 && ovr >= 75;
+  return (player.contract?.amount ?? 0) > 15000 && ovr < 82;
+}
 
 // ── Player display ratings ────────────────────────────────────────────────────
 
@@ -46,6 +78,23 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
 
   if (age >= 35) val = Math.round(val * Math.pow(0.75, age - 34));
   if ((player.contract?.exp ?? currentYear + 1) <= currentYear) val = Math.round(val * 0.5);
+
+  // Durability penalty — injury-prone players are worth less (AD, Embiid, Zion)
+  // Based on career injury history, NOT current injury status
+  const profile = getPlayerInjuryProfile(player.name);
+  if (profile) {
+    const careerGP = player.stats
+      ? player.stats.filter((s: any) => !s.playoffs && (s.tid ?? -1) >= 0).reduce((sum: number, s: any) => sum + (s.gp ?? 0), 0)
+      : 0;
+    const durability = careerGP > 0
+      ? Math.max(0, Math.min(99, Math.round(99 - ((profile.careerCount / careerGP) * 100) * 5)))
+      : (player as any).durability ?? 75;
+    // Glass (< 30): 0.65x, Injury-Prone (30-44): 0.75x, Fragile (45-59): 0.85x, Average (60-74): 0.93x, Durable (75+): no penalty
+    if (durability < 30)       val = Math.round(val * 0.65);
+    else if (durability < 45)  val = Math.round(val * 0.75);
+    else if (durability < 60)  val = Math.round(val * 0.85);
+    else if (durability < 75)  val = Math.round(val * 0.93);
+  }
 
   return Math.max(0, val);
 }
@@ -189,9 +238,9 @@ export function autoBalance(
   const originalGap = gap;
   const usedIds = new Set([...basketA, ...basketB].map(i => i.id));
 
-  // 1. Find a player to fill the gap
+  // 1. Find a player to fill the gap (exclude untouchables — they're off-limits)
   const available = players
-    .filter(p => p.tid === targetTid && !usedIds.has(p.internalId))
+    .filter(p => p.tid === targetTid && !usedIds.has(p.internalId) && !isUntouchable(p, modeWeak, currentYear))
     .map(p => ({ ...p, tv: calcPlayerTV(p, modeWeak, currentYear) }))
     .filter(p => p.tv > 0 && p.tv <= gap * 1.8)
     .sort((a, b) => Math.abs(a.tv - gap) - Math.abs(b.tv - gap));

@@ -57,15 +57,15 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       // Player opts in — contract stays (handled above; we leave exp as-is)
       const text = `${p.name} has accepted his player option with the ${team?.name ?? 'team'}: $${(currentAmountUSD / 1_000_000).toFixed(1)}M`;
       playerOptionNews.push(text);
-      // Use Jul 1 date so player options appear in the NEW season's transaction view
-      // (Jun 30 maps to the old season year in getSeasonYear, making them invisible)
-      const optionDateStr = `Jul 1, ${currentYear}`;
+      // Jun 29 — options happen BEFORE free agency (Jul 1+). getSeasonYear boundary at Jun 28+
+      // ensures these still appear in the new season's transaction view.
+      const optionDateStr = `Jun 29, ${currentYear}`;
       playerOptionHistory.push({ text, date: optionDateStr, type: 'Signing' });
     } else {
       playerOptOutIds.add(p.internalId);
       const text = `${p.name} has declined his player option${team ? ` with the ${team.name}` : ''}, becoming a free agent.`;
       playerOptionNews.push(text);
-      const optionDateStr = `Jul 1, ${currentYear}`;
+      const optionDateStr = `Jun 29, ${currentYear}`;
       playerOptionHistory.push({ text, date: optionDateStr, type: 'Signing' });
     }
   }
@@ -323,7 +323,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   // ── Team option history entries ──────────────────────────────────────────
   const teamOptionHistoryEntries = teamOptionNews.map(text => ({
     text,
-    date: state.date,
+    date: `Jun 29, ${currentYear}`,
     type: 'Signing' as const,
   }));
 
@@ -390,6 +390,9 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   const maxBoxScoreYears = SettingsManager.getSettings().maxBoxScoreYears ?? 2;
   const boxScoreCutoffYear = currentYear - maxBoxScoreYears; // keep games from this year onward
   const prunedBoxScores = (state.boxScores ?? []).filter(g => {
+    // Drop exhibition game box scores (negative team IDs: All-Star, Rising Stars, Celebrity)
+    // so next season's All-Star Weekend starts with a clean slate
+    if (g.homeTeamId < 0 || g.awayTeamId < 0) return false;
     const parts = g.date?.split(',');
     const yr = parts ? parseInt(parts[parts.length - 1]?.trim() ?? '0', 10) : 0;
     return yr > boxScoreCutoffYear;

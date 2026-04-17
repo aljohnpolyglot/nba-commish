@@ -75,7 +75,7 @@ function toApprox2K(rawOvr: number): number {
  *
  * @public — exported so PlayerBioMoraleTab can show a retirement risk indicator.
  */
-export function retireProb(age: number, rawOvr: number): number {
+export function retireProb(age: number, rawOvr: number, allStarApps = 0): number {
   if (age < 34) {
     // Ultra-early retirement — freak injury ruin case only
     return rawOvr < 45 ? 0.12 : 0;
@@ -83,6 +83,12 @@ export function retireProb(age: number, rawOvr: number): number {
 
   // ── Age 45+: auto-retire (beyond any realistic playing career) ────
   if (age >= 45) return 1.0;
+
+  // ── Legend multiplier — all-time greats hang on longer ───────────
+  const legendMult = allStarApps >= 15 ? 0.30
+                   : allStarApps >= 10 ? 0.50
+                   : allStarApps >= 5  ? 0.75
+                   : 1.0;
 
   // ── BBGM OVR scale (practical range 35-82): ─────────────────────────────
   //   65+ = All-Star / superstar (top ~15 in league)
@@ -97,50 +103,48 @@ export function retireProb(age: number, rawOvr: number): number {
   // ── All-Star / superstar (BBGM 65+) ─────────────────────────────────────
   if (rawOvr >= 65) {
     if (age <= 37) return 0;                         // still elite, won't retire
-    if (age <= 38) return 0.03;                      // starting to think about it
-    if (age <= 39) return 0.05;
-    if (age <= 40) return 0.08;
-    if (age <= 41) return 0.15;
-    if (age <= 42) return 0.25;
-    if (age <= 43) return 0.40;
-    return 0.60;                                     // age 44
+    if (age <= 38) return 0.03 * legendMult;         // starting to think about it
+    if (age <= 39) return 0.05 * legendMult;
+    if (age <= 40) return 0.08 * legendMult;
+    if (age <= 41) return 0.15 * legendMult;
+    if (age <= 42) return 0.25 * legendMult;
+    if (age <= 43) return 0.40 * legendMult;
+    return 0.60 * legendMult;                        // age 44
   }
 
   // ── Solid starter (BBGM 55-64) ──────────────────────────────────────────
   if (rawOvr >= 55) {
-    if (age <= 34) return 0.05;
-    if (age <= 35) return 0.10;
-    if (age <= 36) return 0.15;
-    if (age <= 37) return 0.25;
-    if (age <= 38) return 0.35;
-    if (age <= 39) return 0.50;
-    if (age <= 40) return 0.60;
-    if (age <= 41) return 0.70;
-    return 0.80;                                     // age 42-44
+    if (age <= 34) return 0.05 * legendMult;
+    if (age <= 35) return 0.10 * legendMult;
+    if (age <= 36) return 0.15 * legendMult;
+    if (age <= 37) return 0.25 * legendMult;
+    if (age <= 38) return 0.35 * legendMult;
+    if (age <= 39) return 0.50 * legendMult;
+    if (age <= 40) return 0.60 * legendMult;
+    if (age <= 41) return 0.70 * legendMult;
+    return 0.80 * legendMult;                        // age 42-44
   }
 
   // ── Rotation / bench (BBGM 45-54) ───────────────────────────────────────
   if (rawOvr >= 45) {
-    if (age <= 34) return 0.15;
-    if (age <= 35) return 0.25;
-    if (age <= 36) return 0.35;
-    if (age <= 37) return 0.50;
-    if (age <= 38) return 0.60;
-    if (age <= 39) return 0.75;
-    if (age <= 40) return 0.85;
-    return 0.95;                                     // age 41-44
+    if (age <= 34) return 0.15 * legendMult;
+    if (age <= 35) return 0.25 * legendMult;
+    if (age <= 36) return 0.35 * legendMult;
+    if (age <= 37) return 0.50 * legendMult;
+    if (age <= 38) return 0.60 * legendMult;
+    if (age <= 39) return 0.75 * legendMult;
+    if (age <= 40) return 0.85 * legendMult;
+    return Math.min(1.0, 0.95 * legendMult);           // age 40-44
   }
-
   // ── Washed (BBGM < 45) ──────────────────────────────────────────────────
-  if (age <= 34) return 0.30;
-  if (age <= 35) return 0.40;
-  if (age <= 36) return 0.60;
-  if (age <= 37) return 0.70;
-  if (age <= 38) return 0.80;
-  if (age <= 39) return 0.90;
-  return 0.95;                                       // age 40-44
+  if (age <= 34) return 0.30 * legendMult;
+  if (age <= 35) return 0.40 * legendMult;
+  if (age <= 36) return 0.60 * legendMult;
+  if (age <= 37) return 0.70 * legendMult;
+  if (age <= 38) return 0.80 * legendMult;
+  if (age <= 39) return 0.90 * legendMult;
+  return Math.min(1.0, 0.95 * legendMult);             // age 40-44
 }
-
 // ─── Career stats snapshot ────────────────────────────────────────────────────
 function computeCareerTotals(player: NBAPlayer): { gp: number; pts: number; reb: number; ast: number } {
   const stats = player.stats ?? [];
@@ -296,8 +300,9 @@ export function runRetirementChecks(
     const age = p.born?.year ? (year - p.born.year) : (typeof p.age === 'number' && p.age > 0 ? p.age : 0);
     if (age < 34) return p; // too young to consider
 
-    const ovr = p.overallRating ?? 60;
+      const ovr = p.overallRating ?? 60;
     const isFarewell = !!(p as any).farewellTour;
+    const allStarCount = countAllStarAppearances(p);
 
     // Farewell tour players retire guaranteed — they already had their goodbye season.
     // Exception: if their raw OVR shot back up to elite (≥75), they un-retired mentally.
@@ -307,7 +312,7 @@ export function runRetirementChecks(
         `[Retirement] ${p.name} (age ${age}, OVR ${ovr}) — FAREWELL TOUR → RETIRED`
       );
     } else {
-      const prob = retireProb(age, ovr);
+      const prob = retireProb(age, ovr, allStarCount);
       if (prob <= 0) {
         return p;
       }
@@ -322,9 +327,9 @@ export function runRetirementChecks(
     }
 
     // Retiring!
+     // Retiring!
     const { gp, pts, reb, ast } = computeCareerTotals(p);
-    const allStarCount = countAllStarAppearances(p);
-    const champCount   = countChampionships(p);
+    const champCount = countChampionships(p);
 
     newRetirees.push({
       playerId:           p.internalId,

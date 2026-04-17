@@ -22,7 +22,6 @@ export const PlayoffView: React.FC = () => {
   const [pendingWatchGame, setPendingWatchGame] = useState<Game | null>(null);
   const [riggedForTid, setRiggedForTid] = useState<number | undefined>(undefined);
   const [precomputedResult, setPrecomputedResult] = useState<any | null>(null);
-  const [confFilter, setConfFilter] = useState<'East' | 'West'>('East');
   const [viewYear, setViewYear]     = useState<number>(year);
 
   const isHistorical = viewYear !== year;
@@ -30,8 +29,6 @@ export const PlayoffView: React.FC = () => {
 
   // ─── Derived ──────────────────────────────────────────────────────────────
   const roundLabel = ['', 'First Round', 'Second Round', 'Conf. Finals', 'NBA Finals'];
-  const eastStandings = [...state.teams].filter(t => t.conference === 'East').sort((a, b) => b.wins - a.wins || a.losses - b.losses);
-  const westStandings = [...state.teams].filter(t => t.conference === 'West').sort((a, b) => b.wins - a.wins || a.losses - b.losses);
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
@@ -194,25 +191,6 @@ export const PlayoffView: React.FC = () => {
               <ChevronRight size={14} />
             </button>
           </div>
-
-          {/* East / West chevron — only for current year pre-bracket */}
-          {!isHistorical && !playoffs && (
-            <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-xl p-1">
-              <button
-                onClick={() => setConfFilter(confFilter === 'East' ? 'West' : 'East')}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all"
-              >
-                <ChevronLeft size={14} />
-              </button>
-              <span className="text-xs font-black text-white px-2 min-w-[48px] text-center">{confFilter}</span>
-              <button
-                onClick={() => setConfFilter(confFilter === 'East' ? 'West' : 'East')}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all"
-              >
-                <ChevronRight size={14} />
-              </button>
-            </div>
-          )}
 
           {/* Sim buttons — only for current season */}
           {!isHistorical && (

@@ -19,7 +19,15 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
   const [gameLogSeason, setGameLogSeason] = useState<number | null>(null);
   const [localBoxScoreGame, setLocalBoxScoreGame] = useState<Game | null>(null);
 
-  const OPENING_NIGHT_MS = getOpeningNightDate(state.leagueStats.year).getTime();
+  // Compute opening night per-game-season (not just current season) to avoid
+  // previous-season playoff games being misclassified as preseason.
+  const openingNightCache = useMemo(() => {
+    const cache = new Map<number, number>();
+    return (seasonYear: number) => {
+      if (!cache.has(seasonYear)) cache.set(seasonYear, getOpeningNightDate(seasonYear).getTime());
+      return cache.get(seasonYear)!;
+    };
+  }, []);
 
   const gameLog = useMemo(() => {
     const logs: any[] = [];
@@ -56,9 +64,14 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
           const isPlayoff = !!(schedGame?.isPlayoff) || !!(game as any).isPlayoff;
           const isPlayIn = !!(schedGame?.isPlayIn) || !!(game as any).isPlayIn;
           const isAllStarGame = !!(schedGame?.isAllStar) || !!(game as any).isAllStar;
-          // Preseason: before Opening Night AND not a playoff/play-in/all-star game
+          // Preseason: before Opening Night of the game's OWN season (not current season)
+          // This prevents previous-season playoff games from being mislabeled as preseason.
+          const gameDate = new Date(game.date);
+          const gameMonth = gameDate.getMonth(); // 0-indexed (0=Jan, 9=Oct)
+          const gameSeasonYear = gameMonth < 9 ? gameDate.getFullYear() : gameDate.getFullYear() + 1;
+          const gameOpeningNightMs = openingNightCache(gameSeasonYear);
           const isPreseason = !isPlayoff && !isPlayIn && !isAllStarGame &&
-            gameTimeMs > 0 && gameTimeMs < OPENING_NIGHT_MS &&
+            gameTimeMs > 0 && gameTimeMs < gameOpeningNightMs &&
             (schedGame?.isPreseason === true || !schedGame);
           const isWin = isHome ? game.homeScore > game.awayScore : game.awayScore > game.homeScore;
           const resultStr = `${isWin ? 'W' : 'L'}, ${isHome ? game.homeScore : game.awayScore}-${isHome ? game.awayScore : game.homeScore}`;
@@ -95,8 +108,14 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
       } else if (game.homeTeamId === player.tid || game.awayTeamId === player.tid) {
         const isHomeTeam = game.homeTeamId === player.tid;
         const gameMsDNP = (() => { try { return new Date(game.date).getTime(); } catch { return 0; } })();
+        // Only skip pre-join DNPs for mid-season acquisitions (traded/signed players).
+        // Players on the team from the start of the season should show all DNPs (injuries, suspensions).
         const joinMs = firstGameForTeam.get(player.tid) ?? 0;
-        if (gameMsDNP > 0 && joinMs > 0 && gameMsDNP < joinMs) return;
+        const dnpGameDate = new Date(game.date);
+        const dnpSeasonYr = dnpGameDate.getMonth() < 9 ? dnpGameDate.getFullYear() : dnpGameDate.getFullYear() + 1;
+        const seasonStartMs = openingNightCache(dnpSeasonYr);
+        const joinedMidSeason = joinMs > 0 && joinMs > seasonStartMs + 7 * 86400000;
+        if (joinedMidSeason && gameMsDNP > 0 && joinMs > 0 && gameMsDNP < joinMs) return;
         const oppId = isHomeTeam ? game.awayTeamId : game.homeTeamId;
         const team  = state.teams.find(t => t.id === player.tid);
         const opp   = state.teams.find(t => t.id === oppId);
@@ -105,8 +124,12 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
         const dnpIsPlayoff = !!(schedGame?.isPlayoff) || !!(game as any).isPlayoff;
         const dnpIsPlayIn = !!(schedGame?.isPlayIn) || !!(game as any).isPlayIn;
         const dnpIsAllStar = !!(schedGame?.isAllStar) || !!(game as any).isAllStar;
+        const dnpDate = new Date(game.date);
+        const dnpMonth = dnpDate.getMonth();
+        const dnpSeasonYear = dnpMonth < 9 ? dnpDate.getFullYear() : dnpDate.getFullYear() + 1;
+        const dnpOpeningNightMs = openingNightCache(dnpSeasonYear);
         const isPreseason = !dnpIsPlayoff && !dnpIsPlayIn && !dnpIsAllStar &&
-          gameMs2 > 0 && gameMs2 < OPENING_NIGHT_MS &&
+          gameMs2 > 0 && gameMs2 < dnpOpeningNightMs &&
           (schedGame?.isPreseason === true || !schedGame);
         const isWin = isHomeTeam ? game.homeScore > game.awayScore : game.awayScore > game.homeScore;
         const score = isHomeTeam ? `${game.homeScore}-${game.awayScore}` : `${game.awayScore}-${game.homeScore}`;
@@ -138,7 +161,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
       ...l,
       rank: (l.isPreseason || l.isPlayoff || l.isPlayIn || l.isDNP) ? null : rsRank--,
     }));
-  }, [state.boxScores, state.schedule, player.internalId, player.tid, player.injury, state.teams, OPENING_NIGHT_MS]);
+  }, [state.boxScores, state.schedule, player.internalId, player.tid, player.injury, state.teams, openingNightCache]);
 
   const gameLogSeasons = useMemo(() => {
     const years = new Set<number>();
@@ -184,6 +207,18 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
   );
 
   const resolveTeam = (tid: number) => {
+    if (tid < 0) {
+      const names: Record<number, { name: string; abbrev: string }> = {
+        [-1]: { name: 'East All-Stars', abbrev: 'EAST' },
+        [-2]: { name: 'West All-Stars', abbrev: 'WEST' },
+        [-3]: { name: 'Team USA', abbrev: 'USA' },
+        [-4]: { name: 'Team World', abbrev: 'WLD' },
+        [-5]: { name: 'Team Kenny', abbrev: 'KEN' },
+        [-6]: { name: 'Team Ernie', abbrev: 'ERN' },
+      };
+      const info = names[tid] ?? { name: 'Exhibition', abbrev: 'EXH' };
+      return { id: tid, name: info.name, abbrev: info.abbrev, logoUrl: '', conference: 'East' } as any;
+    }
     const nba = state.teams.find((t: any) => t.id === tid);
     if (nba) return nba;
     const nonNBA = (state.nonNBATeams ?? []).find((t: any) => t.tid === tid);

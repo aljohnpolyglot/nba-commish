@@ -50,16 +50,17 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
   const selectedDateNorm = `${y}-${m}-${d}`;
   const isActuallyToday = selectedDateNorm === stateDateNorm;
 
-  // Box scores
-  const risingStarsBoxScore = state.boxScores?.find((b: any) =>
-    b.gameId === allStar?.risingStarsGameId || (b.homeTeamId === -3 && b.awayTeamId === -4)
-  );
-  const allStarBoxScore = state.boxScores?.find((b: any) =>
-    b.gameId === allStar?.allStarGameId || (b.homeTeamId === -1 && b.awayTeamId === -2)
-  );
-  const celebrityBoxScore = state.boxScores?.find((b: any) =>
-    b.gameId === 90002 || (b.homeTeamId === -5 && b.awayTeamId === -6)
-  );
+  // Box scores — only match by current season's game IDs (no hardcoded team ID fallbacks,
+  // which would match stale box scores from previous seasons after allStar state is cleared)
+  const risingStarsBoxScore = allStar?.risingStarsGameId
+    ? state.boxScores?.find((b: any) => b.gameId === allStar.risingStarsGameId)
+    : null;
+  const allStarBoxScore = allStar?.allStarGameId
+    ? state.boxScores?.find((b: any) => b.gameId === allStar.allStarGameId)
+    : null;
+  const celebrityBoxScore = allStar?.celebrityGameId
+    ? state.boxScores?.find((b: any) => b.gameId === allStar.celebrityGameId)
+    : null;
   const celebrityGameResult = allStar?.celebrityGameResult || (celebrityBoxScore ? {
     homeScore: celebrityBoxScore.homeScore,
     awayScore: celebrityBoxScore.awayScore,

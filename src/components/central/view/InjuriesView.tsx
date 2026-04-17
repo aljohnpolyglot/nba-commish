@@ -8,10 +8,15 @@ import ContactModal from '../../ContactModal';
 import { PersonSelectorModal } from '../../modals/PersonSelectorModal';
 import { format, addDays } from 'date-fns';
 
-export const InjuriesView: React.FC = () => {
+interface InjuriesViewProps {
+  filteredTeamId?: number;  // pre-filter to a single team (used in TeamDetailView)
+  embedded?: boolean;       // hide header/dropdown when embedded
+}
+
+export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embedded }) => {
   const { state, navigateToTeam, healPlayer, dispatchAction } = useGame();
   const [actionsPlayer, setActionsPlayer] = React.useState<NBAPlayer | null>(null);
-  const [selectedTeamId, setSelectedTeamId] = React.useState<number | 'all'>('all');
+  const [selectedTeamId, setSelectedTeamId] = React.useState<number | 'all'>(filteredTeamId ?? 'all');
   const [viewingBioPlayer, setViewingBioPlayer] = React.useState<NBAPlayer | null>(null);
   const [viewingRatingsPlayer, setViewingRatingsPlayer] = React.useState<NBAPlayer | null>(null);
   const [selectedPlayerContact, setSelectedPlayerContact] = React.useState<Contact | null>(null);
@@ -230,26 +235,28 @@ export const InjuriesView: React.FC = () => {
           preSelectedContact={selectedPlayerContact || undefined}
         />
       )}
-      <div className="max-w-6xl mx-auto h-full overflow-y-auto custom-scrollbar">
-        <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <h2 className="text-3xl font-black text-white uppercase tracking-tight">NBA Injuries</h2>
-            <p className="text-slate-500 font-medium">Current injury report across the league</p>
+      <div className={embedded ? 'h-full overflow-y-auto' : 'max-w-6xl mx-auto h-full overflow-y-auto custom-scrollbar'}>
+        {!embedded && (
+          <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <h2 className="text-3xl font-black text-white uppercase tracking-tight">NBA Injuries</h2>
+              <p className="text-slate-500 font-medium">Current injury report across the league</p>
+            </div>
+
+            <div className="w-full md:w-64">
+              <select
+                className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 outline-none"
+                value={selectedTeamId}
+                onChange={(e) => setSelectedTeamId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+              >
+                <option value="all">All Teams</option>
+                {[...state.teams].sort((a, b) => a.name.localeCompare(b.name)).map(team => (
+                  <option key={team.id} value={team.id}>{team.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          
-          <div className="w-full md:w-64">
-            <select
-              className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 outline-none"
-              value={selectedTeamId}
-              onChange={(e) => setSelectedTeamId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-            >
-              <option value="all">All Teams</option>
-              {[...state.teams].sort((a, b) => a.name.localeCompare(b.name)).map(team => (
-                <option key={team.id} value={team.id}>{team.name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
+        )}
 
         <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
           {filteredTeamsWithInjuries.length === 0 ? (

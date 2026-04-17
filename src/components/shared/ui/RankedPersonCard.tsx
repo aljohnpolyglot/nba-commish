@@ -106,7 +106,8 @@ export const RankedPersonCard: React.FC<RankedPersonCardProps> = ({
             referrerPolicy="no-referrer"
             onError={(e) => {
               const img = e.target as HTMLImageElement;
-              if (teamLogoUrl) { img.src = teamLogoUrl; img.className = 'w-full h-full object-contain p-2'; }
+              if (teamLogoUrl && img.src !== teamLogoUrl) { img.src = teamLogoUrl; img.className = 'w-full h-full object-contain p-2'; }
+              else { img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e293b&color=e2e8f0&size=128&bold=true`; img.className = 'w-full h-full object-cover'; }
             }}
           />
         ) : teamLogoUrl ? (

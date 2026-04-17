@@ -5,7 +5,7 @@ import {
   User, Calendar, BarChart2, TrendingUp,
   Search, Users, Star, Building2, Settings2, ChevronDown,
   ListOrdered, Stethoscope, Tv, ThumbsUp, Eye, DollarSign,
-  Target, Ticket, Table2, Zap, UserX, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList
+  Target, Ticket, Table2, Zap, UserX, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { Tab } from '../../types';
@@ -31,6 +31,16 @@ interface NavGroup {
 
 export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onViewChange, onClose }) => {
   const { state, markSocialRead, markNewsRead, markPayslipsRead } = useGame();
+  const isGM = state.gameMode === 'gm';
+
+  // Trade deadline + FA period detection for GM mode gating
+  const currentDateNorm = normalizeDate(state.date ?? '');
+  const seasonYear = state.leagueStats?.year ?? 2026;
+  const tradeDeadline = `${seasonYear}-02-06`; // NBA trade deadline ~Feb 6
+  const isPastTradeDeadline = isGM && currentDateNorm > tradeDeadline && currentDateNorm < `${seasonYear}-07-01`;
+  const faStart = `${seasonYear}-07-01`;
+  const faEnd = `${seasonYear}-10-01`;
+  const isFreeAgencyPeriod = currentDateNorm >= faStart && currentDateNorm < faEnd;
 
   const pendingTradesCount   = (state.tradeProposals || []).filter(p => p.status === 'pending').length;
   const unreadCount          = (state.inbox      || []).filter(e  => !e.read).length;
@@ -90,19 +100,21 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
 
   const groups: NavGroup[] = [
     {
-      label: 'Command Center',
+      label: isGM ? 'My Team' : 'Command Center',
       items: [
         { id: 'Schedule',  label: 'Schedule',  icon: Calendar },
-        { id: 'Actions',   label: 'Actions',   icon: Sparkles },
-        { id: 'Events',    label: 'Timeline',  icon: Clock },
+        ...(!isGM ? [
+          { id: 'Actions' as Tab,   label: 'Actions',   icon: Sparkles },
+          { id: 'Events' as Tab,    label: 'Timeline',  icon: Clock },
+        ] : []),
+        ...(isGM ? [{ id: 'Team Office' as Tab, label: 'Team Office', icon: Briefcase }] : []),
       ],
     },
-    {
+    ...(!isGM ? [{
       label: 'Seasonal',
       items: [
-        { id: 'Seasonal',       label: 'Seasonal Actions', icon: Clock,  badge: seasonalBadge || undefined },
+        { id: 'Seasonal' as Tab,       label: 'Seasonal Actions', icon: Clock,  badge: seasonalBadge || undefined },
         ...(() => {
-          // Only show Season Preview after Oct 1 (rosters finalized) and before regular season starts
           const yr = state.leagueStats?.year ?? 2026;
           const currentNorm = normalizeDate(state.date ?? '');
           const oct1 = `${yr - 1}-10-01`;
@@ -111,17 +123,25 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
             ? [{ id: 'Season Preview' as Tab, label: 'Season Preview', icon: Sparkles, badge: '!' as string }]
             : [];
         })(),
-        { id: 'All-Star',       label: 'All-Star',          icon: Star },
-        { id: 'Playoffs',       label: 'Playoffs',           icon: Trophy, badge: playoffBadge },
+        { id: 'All-Star' as Tab,       label: 'All-Star',          icon: Star },
+        { id: 'Playoffs' as Tab,       label: 'Playoffs',           icon: Trophy, badge: playoffBadge },
       ],
-    },
+    }] : [{
+      label: 'Season',
+      items: [
+        { id: 'All-Star' as Tab,  label: 'All-Star',  icon: Star },
+        { id: 'Playoffs' as Tab,  label: 'Playoffs',  icon: Trophy, badge: playoffBadge },
+      ],
+    }]),
     {
       label: 'Communications',
       items: [
-        { id: 'Inbox',        label: 'Inbox',        icon: Inbox,          badge: fmt(unreadCount) },
-        { id: 'Messages',     label: 'Messages',     icon: MessageSquare,  badge: fmt(unreadMessagesCount) },
-        { id: 'Social Feed',  label: 'Social Feed',  icon: Activity,       badge: fmt(socialCount) },
-        { id: 'League News',  label: 'League News',  icon: Newspaper,      badge: fmt(newsCount) },
+        ...(!isGM ? [
+          { id: 'Inbox' as Tab,        label: 'Inbox',        icon: Inbox,          badge: fmt(unreadCount) },
+          { id: 'Messages' as Tab,     label: 'Messages',     icon: MessageSquare,  badge: fmt(unreadMessagesCount) },
+        ] : []),
+        { id: 'Social Feed' as Tab,  label: 'Social Feed',  icon: Activity,       badge: fmt(socialCount) },
+        { id: 'League News' as Tab,  label: 'League News',  icon: Newspaper,      badge: fmt(newsCount) },
       ],
     },
     {
@@ -130,12 +150,14 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         { id: 'NBA Central',      label: 'NBA Central',     icon: Trophy },
         { id: 'Standings',        label: 'Standings',       icon: Table2 },
         { id: 'Transactions',     label: 'Transactions',    icon: ArrowRightLeft },
-        { id: 'Trade Machine',    label: 'Trade Machine',   icon: Cpu },
-        { id: 'Trade Finder',     label: 'Trade Finder',    icon: Search },
+        ...(!isPastTradeDeadline ? [
+          { id: 'Trade Machine' as Tab,    label: isPastTradeDeadline ? 'Trade Machine (Locked)' : 'Trade Machine',   icon: Cpu },
+          { id: 'Trade Finder' as Tab,     label: 'Trade Finder',    icon: Search },
+        ] : []),
         { id: 'Trade Proposals',  label: 'Trade Proposals', icon: GitPullRequest, badge: fmt(pendingTradesCount) },
         { id: 'Player Search',    label: 'Player Search',   icon: Search },
         { id: 'Player Bios',      label: 'Player Bios',     icon: Users },
-        { id: 'Free Agents',      label: 'Free Agents',     icon: UserX },
+        ...(!isGM || isFreeAgencyPeriod ? [{ id: 'Free Agents' as Tab, label: 'Free Agents', icon: UserX }] : []),
         { id: 'Injuries',         label: 'Injuries',        icon: Stethoscope },
       ],
     },
@@ -164,29 +186,41 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
     {
       label: 'Operations',
       items: [
-        { id: 'League Office',    label: 'League Office',   icon: Building2 },
-        { id: 'League Settings',  label: 'League Settings', icon: Settings2 },
-        { id: 'Broadcasting',     label: 'Broadcasting',    icon: Tv, badge: broadcastingBadge },
-        { id: 'League Finances',  label: 'Team Finances',   icon: DollarSign },
+        ...(isGM ? [] : [{ id: 'Team Office' as Tab, label: 'Team Office', icon: Briefcase }]),
+        ...(!isGM ? [
+          { id: 'League Office' as Tab,    label: 'League Office',   icon: Building2 },
+          { id: 'League Settings' as Tab,  label: 'League Settings', icon: Settings2 },
+          { id: 'Broadcasting' as Tab,     label: 'Broadcasting',    icon: Tv, badge: broadcastingBadge },
+        ] : []),
+        { id: 'League Finances' as Tab,  label: 'Team Finances',   icon: DollarSign },
       ],
     },
-    {
-      label: 'Wealth',
-      items: [
-        { id: 'Personal',      label: 'Payslips',      icon: User,        badge: hasUnreadPayslip ? 1 : 0 },
-        { id: 'Commish Store', label: 'Store',          icon: ShoppingBag },
-        { id: 'Real Stern',    label: 'Real Stern',     icon: Building2 },
-        { id: 'Sports Book',   label: 'Sports Book',    icon: TrendingUp },
-      ],
-    },
-    {
-      label: 'Legacy',
-      items: [
-        { id: 'Approvals',  label: 'Approvals',  icon: ThumbsUp },
-        { id: 'Viewership', label: 'Viewership', icon: Eye },
-        { id: 'Finances',   label: 'Finances',   icon: DollarSign },
-      ],
-    },
+    ...(!isGM ? [
+      {
+        label: 'Wealth',
+        items: [
+          { id: 'Personal' as Tab,      label: 'Payslips',      icon: User,        badge: hasUnreadPayslip ? 1 : 0 },
+          { id: 'Commish Store' as Tab, label: 'Store',          icon: ShoppingBag },
+          { id: 'Real Stern' as Tab,    label: 'Real Stern',     icon: Building2 },
+          { id: 'Sports Book' as Tab,   label: 'Sports Book',    icon: TrendingUp },
+        ],
+      },
+      {
+        label: 'Legacy',
+        items: [
+          { id: 'Approvals' as Tab,  label: 'Approvals',  icon: ThumbsUp },
+          { id: 'Viewership' as Tab, label: 'Viewership', icon: Eye },
+          { id: 'Finances' as Tab,   label: 'Finances',   icon: DollarSign },
+        ],
+      },
+    ] : [
+      {
+        label: 'Entertainment',
+        items: [
+          { id: 'Sports Book' as Tab,   label: 'Sports Book',    icon: TrendingUp },
+        ],
+      },
+    ]),
   ];
 
   // All groups expanded by default

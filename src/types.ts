@@ -674,6 +674,22 @@ export interface NBAPlayer {
   playoffEligible?: boolean;
 }
 
+export interface K2Result {
+  OS: number[];
+  AT: number[];
+  IS: number[];
+  PL: number[];
+  DF: number[];
+  RB: number[];
+}
+
+export interface PlayerK2 extends NBAPlayer {
+  k2: K2Result;
+  rating2K: number;
+  bbgmOvr: number;
+  currentRating: any;
+}
+
 export interface UserProfile {
   name: string;
   handle: string;
@@ -1059,6 +1075,33 @@ historicalAwards: HistoricalAward[];
   draftComplete?: boolean; // set by DraftSimulatorView when all picks committed
   seasonHistory?: SeasonHistoryEntry[]; // one entry per completed season, appended at bracketComplete
 
+  // ── Game Mode ─────────────────────────────────────────────────────────────
+  gameMode?: 'commissioner' | 'gm';  // default: 'commissioner'
+  userTeamId?: number;                // set in GM mode — the team the user manages
+
+  // ── FA Bidding (GM Mode) ──────────────────────────────────────────────────
+  faBidding?: {
+    markets: Array<{
+      playerId: string;
+      playerName: string;
+      bids: Array<{
+        id: string;
+        playerId: string;
+        teamId: number;
+        teamName: string;
+        teamLogoUrl?: string;
+        salaryUSD: number;
+        years: number;
+        option: 'NONE' | 'PLAYER' | 'TEAM';
+        isUserBid: boolean;
+        submittedDay: number;
+        expiresDay: number;
+        status: 'active' | 'accepted' | 'rejected' | 'withdrawn' | 'outbid';
+      }>;
+      decidesOnDay: number;
+      resolved: boolean;
+    }>;
+  };
 }
 export interface SeasonHistoryEntry {
   year: number;
@@ -1151,7 +1194,7 @@ export interface UserAction {
 
 export type Conference = 'East' | 'West';
 export type GamePhase = 'Preseason' | 'Opening Week' | 'Regular Season (Early)' | 'Regular Season (Mid)' | 'All-Star Break' | 'Trade Deadline' | 'Regular Season (Late)' | 'Play-In Tournament' | 'Playoffs (Round 1)' | 'Playoffs (Round 2)' | 'Conference Finals' | 'NBA Finals' | 'Offseason' | 'Draft' | 'Draft Lottery' | 'Free Agency' | 'Schedule Planning' | 'Schedule Release' | 'Training Camp';
-export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'League History' | 'Player Bios' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History';
+export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'League History' | 'Player Bios' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History' | 'Team Office';
 
 // ─── AI Trade / Free Agency ───────────────────────────────────────────────────
 export interface TradeProposal {

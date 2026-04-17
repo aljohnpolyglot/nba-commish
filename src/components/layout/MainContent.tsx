@@ -48,6 +48,7 @@ import { PlayerBiosView } from '../central/view/PlayerBiosView';
 import { TeamHistoryView } from '../central/view/TeamHistoryView';
 import { PowerRankingsView } from '../central/view/PowerRankingsView';
 import { TradeFinderView } from '../central/view/TradeFinderView';
+import { TeamOfficeView } from '../central/view/TeamOffice/TeamOfficeView';
 import { Tab } from '../../types';
 
 interface MainContentProps {
@@ -230,6 +231,12 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       return <TeamHistoryView />;
     case 'Power Rankings':
       return <PowerRankingsView />;
+    case 'Team Office':
+      return (
+        <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          <TeamOfficeView />
+        </div>
+      );
     default:
       return null;
   }

@@ -16,6 +16,8 @@ interface StartGamePayload {
     startDate?: string;
     jumpRequired?: boolean;
     onProgress?: (progress: LazySimProgress) => void;
+    gameMode?: 'commissioner' | 'gm';
+    userTeamId?: number;
 }
 
 export const handleStartGame = async (payload: StartGamePayload): Promise<Partial<GameState>> => {
@@ -249,6 +251,8 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         date: startDateFormatted,
         day: 1,
         saveId: `nba_commish_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        gameMode: payload.gameMode ?? 'commissioner',
+        userTeamId: payload.userTeamId,
         allStar: initialAllStar as any,
         leagueStats: {
             ...INITIAL_LEAGUE_STATS,

@@ -440,10 +440,14 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
     const byConf: Record<string, { team: any; ts: any }[]> = {};
     state.teams.forEach((t: any) => {
       const ts = t.seasons?.find((s: any) => Number(s.season) === Number(season));
-      if (!ts || ts.won === undefined) return;
+      if (!ts) return;
+      // Rollover stores wins/losses, BBGM stores won/lost — handle both
+      const won = ts.won ?? ts.wins;
+      const lost = ts.lost ?? ts.losses;
+      if (won === undefined) return;
       const conf = t.conference ?? 'Unknown';
       if (!byConf[conf]) byConf[conf] = [];
-      byConf[conf].push({ team: t, ts });
+      byConf[conf].push({ team: t, ts: { ...ts, won, lost } });
     });
     const result: { conference: string; team: any; ts: any }[] = [];
     for (const [conf, entries] of Object.entries(byConf)) {

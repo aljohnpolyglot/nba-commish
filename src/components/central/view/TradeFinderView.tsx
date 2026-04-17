@@ -21,6 +21,7 @@ import {
 import { getTradeOutlook, effectiveRecord, getCapThresholds, getTeamPayrollUSD, topNAvgK2, type TradeOutlook } from '../../../utils/salaryUtils';
 import { computeMoodScore } from '../../../utils/mood/moodScore';
 import type { NBAPlayer, DraftPick, NBATeam } from '../../../types';
+import { generateCounterOffers } from '../../../services/trade/tradeFinderEngine';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -72,15 +73,17 @@ function teamPowerRanks(teams: NBATeam[], currentYear: number): Map<number, numb
   return map;
 }
 
-function moodDot(player: NBAPlayer, team: NBATeam | undefined, dateStr: string): React.ReactNode {
+function playerIndicators(player: NBAPlayer, team: NBATeam | undefined, dateStr: string): React.ReactNode {
   const { score } = computeMoodScore(player, team, dateStr);
-  const color = score <= -3 ? 'bg-emerald-400' : score >= 4 ? 'bg-red-400' : 'bg-slate-600';
+  const emoji = score <= -3 ? '😤' : score >= 4 ? '😊' : '😐';
   const label = score <= -3 ? 'Wants out' : score >= 4 ? 'Happy / Loyal' : 'Neutral';
+  const isInjured = (player as any).injury?.gamesRemaining > 0;
+  const injuryType = (player as any).injury?.type ?? 'Injured';
   return (
-    <span
-      title={`Mood: ${label} (${score > 0 ? '+' : ''}${score})`}
-      className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${color}`}
-    />
+    <span className="inline-flex items-center gap-0.5 flex-shrink-0 leading-none">
+      <span title={`Mood: ${label} (${score > 0 ? '+' : ''}${score})`} className="text-[10px]">{emoji}</span>
+      {isInjured && <span title={`Out — ${injuryType}`} className="text-[8px] font-black text-red-500">✚</span>}
+    </span>
   );
 }
 
@@ -127,7 +130,7 @@ const PlayerRow: React.FC<{
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-bold text-white truncate">{player.name}</span>
-          {moodDot(player, team, dateStr)}
+          {playerIndicators(player, team, dateStr)}
         </div>
         <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide truncate">
           {player.pos} · {player.born?.year ? currentYear - player.born.year : player.age ?? '?'}y
@@ -251,7 +254,10 @@ const OfferCard: React.FC<{
               <>
                 <PlayerPortrait imgUrl={item.player.imgURL} size={28} playerName={item.player.name} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold text-white truncate">{item.player.name}</div>
+                  <div className="text-xs font-bold text-white truncate flex items-center gap-1">
+                    {item.player.name}
+                    {playerIndicators(item.player, teams.find(t => t.id === item.player!.tid), state.date)}
+                  </div>
                   <div className="text-[10px] text-slate-500">{item.player.pos}</div>
                 </div>
                 {/* OVR + POT */}
@@ -324,7 +330,8 @@ export const TradeFinderView: React.FC = () => {
   const { players, teams, draftPicks } = state;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
 
-  const [selectedTid, setSelectedTid] = useState<number>(teams[0]?.id ?? 0);
+  const isGM = state.gameMode === 'gm';
+  const [selectedTid, setSelectedTid] = useState<number>(isGM && state.userTeamId != null ? state.userTeamId : (teams[0]?.id ?? 0));
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'roster' | 'picks'>('roster');
@@ -405,9 +412,11 @@ export const TradeFinderView: React.FC = () => {
     teamRoster.filter(p => p.name.toLowerCase().includes(search.toLowerCase())),
   [teamRoster, search]);
 
+  // Filter out picks for drafts that already happened
+  const minTradableSeason = (state as any).draftComplete ? currentYear + 1 : currentYear;
   const teamPicksList = useMemo(() =>
-    draftPicks.filter(pk => pk.tid === selectedTid).sort((a, b) => a.season - b.season || a.round - b.round),
-  [draftPicks, selectedTid]);
+    draftPicks.filter(pk => pk.tid === selectedTid && pk.season >= minTradableSeason).sort((a, b) => a.season - b.season || a.round - b.round),
+  [draftPicks, selectedTid, minTradableSeason]);
 
   const filteredPicks = useMemo(() =>
     teamPicksList.filter(pk => {
@@ -463,120 +472,30 @@ export const TradeFinderView: React.FC = () => {
     setFoundOffers(null);
 
     setTimeout(() => {
-      const offers: FoundOffer[] = [];
       const myVal = basket.reduce((s, i) => s + i.val, 0);
-      const usedInBasket = new Set(basket.map(i => i.id));
 
-      teams.forEach(team => {
-        if (team.id === selectedTid) return;
-
-        const outlook = teamOutlooks.get(team.id) ?? { role: 'neutral', label: 'Neutral', color: 'text-slate-400', bgColor: 'bg-slate-700/40', dot: '#94a3b8', reason: '' };
-        const theirMode = roleToMode(outlook.role);
-        const theirRank = powerRanks.get(team.id) ?? Math.ceil(teams.length / 2);
-
-        const usedIds = new Set(usedInBasket);
-        const returnItems: TradeItem[] = [];
-        let gap = myVal;
-
-        // Protect top players: don't offer a team's franchise player(s)
-        const theirRosterSorted = players
-          .filter(p => p.tid === team.id && !EXTERNAL.includes(p.status ?? '') && p.tid !== -2)
-          .sort((a, b) => b.overallRating - a.overallRating);
-
-        const protectedCount = myVal >= 150 ? 1 : myVal >= 80 ? 2 : 3;
-        const protectedIds = new Set(theirRosterSorted.slice(0, protectedCount).map(p => p.internalId));
-
-        // Build roster with TVs (excluding protected + basket)
-        const theirRoster = theirRosterSorted
-          .filter(p => !usedIds.has(p.internalId) && !protectedIds.has(p.internalId))
-          .map(p => ({ ...p, tv: calcPlayerTV(p, theirMode, currentYear) }))
-          .filter(p => p.tv > 0 && p.tv <= gap * 1.8)
-          .sort((a, b) => Math.abs(a.tv - gap) - Math.abs(b.tv - gap));
-
-        // First player
-        if (theirRoster.length > 0) {
-          const p = theirRoster[0];
-          returnItems.push({
-            id: p.internalId, type: 'player', label: p.name,
-            val: p.tv, player: p,
-            ovr: calcOvr2K(p), pot: calcPot2K(p, currentYear),
-          });
-          usedIds.add(p.internalId);
-          gap -= p.tv;
-        }
-
-        // Second player if still a big gap (> 20 TV)
-        if (gap > 20) {
-          const second = theirRosterSorted
-            .filter(p => !usedIds.has(p.internalId) && !protectedIds.has(p.internalId))
-            .map(p => ({ ...p, tv: calcPlayerTV(p, theirMode, currentYear) }))
-            .filter(p => p.tv > 0 && p.tv <= gap * 1.5)
-            .sort((a, b) => Math.abs(a.tv - gap) - Math.abs(b.tv - gap))[0];
-          if (second) {
-            returnItems.push({
-              id: second.internalId, type: 'player', label: second.name,
-              val: second.tv, player: second,
-              ovr: calcOvr2K(second), pot: calcPot2K(second, currentYear),
-            });
-            usedIds.add(second.internalId);
-            gap -= second.tv;
-          }
-        }
-
-        // Third player if gap is still large (> 40 TV) — max 3 players total
-        if (gap > 40) {
-          const third = theirRosterSorted
-            .filter(p => !usedIds.has(p.internalId) && !protectedIds.has(p.internalId))
-            .map(p => ({ ...p, tv: calcPlayerTV(p, theirMode, currentYear) }))
-            .filter(p => p.tv > 0 && p.tv <= gap * 1.5)
-            .sort((a, b) => Math.abs(a.tv - gap) - Math.abs(b.tv - gap))[0];
-          if (third) {
-            returnItems.push({
-              id: third.internalId, type: 'player', label: third.name,
-              val: third.tv, player: third,
-              ovr: calcOvr2K(third), pot: calcPot2K(third, currentYear),
-            });
-            usedIds.add(third.internalId);
-            gap -= third.tv;
-          }
-        }
-
-        // Fill remaining gap with picks (no salary fillers)
-        const theirPicks = draftPicks
-          .filter(pk => pk.tid === team.id && !usedIds.has(String(pk.dpid)))
-          .sort((a, b) => a.season - b.season);
-
-        let picksAdded = 0;
-        let safety = 0;
-        while (gap > 2 && picksAdded < 4 && safety++ < 8 && theirPicks.length > 0) {
-          const pk = theirPicks.shift()!;
-          const pv = calcPickTV(pk.round, theirRank, teams.length, Math.max(1, pk.season - currentYear));
-          if (pv > gap + 14) break;
-          returnItems.push({
-            id: String(pk.dpid), type: 'pick',
-            label: `${pk.season} ${pk.round === 1 ? '1st' : '2nd'} Round`,
-            val: pv, pick: pk,
-          });
-          usedIds.add(String(pk.dpid));
-          gap -= pv;
-          picksAdded++;
-        }
-
-        if (returnItems.length === 0) return;
-
-        // Dynamic ratio threshold — mirrors autoBalance: high-value trades allow tighter window
-        const returnVal = returnItems.reduce((s, i) => s + i.val, 0);
-        const ratio = Math.max(myVal, returnVal) / Math.max(1, Math.min(myVal, returnVal));
-        const totalVal = Math.max(myVal, returnVal);
-        const ratioThreshold = totalVal >= 200 ? 1.15 : totalVal >= 100 ? 1.35 : 1.45;
-        if (ratio > ratioThreshold) return;
-
-        offers.push({ tid: team.id, items: returnItems, outlook });
+      // Use unified trade engine
+      const engineOffers = generateCounterOffers({
+        fromTid: selectedTid,
+        offerValue: myVal,
+        usedIds: new Set(basket.map(i => i.id)),
+        players,
+        teams,
+        draftPicks,
+        currentYear,
+        minTradableSeason,
+        powerRanks,
+        teamOutlooks: teamOutlooks as any,
       });
 
-      setFoundOffers(offers.sort((a, b) =>
-        b.items.reduce((s, i) => s + i.val, 0) - a.items.reduce((s, i) => s + i.val, 0)
-      ));
+      // Map engine results to UI format
+      const offers: FoundOffer[] = engineOffers.map(o => ({
+        tid: o.tid,
+        items: o.items as TradeItem[],
+        outlook: teamOutlooks.get(o.tid) ?? { role: 'neutral', label: 'Neutral', color: 'text-slate-400', bgColor: 'bg-slate-700/40', dot: '#94a3b8', reason: '' },
+      }));
+
+      setFoundOffers(offers);
       setIsSearching(false);
     }, 80);
   };
@@ -643,12 +562,12 @@ export const TradeFinderView: React.FC = () => {
           {/* Team picker (TeamDropdown) + search + tabs */}
           <div className="flex-shrink-0 p-3 border-b border-slate-800 space-y-2">
             <TeamDropdown
-              label="Team"
+              label={isGM ? 'Your Team' : 'Team'}
               selectedTeamId={selectedTid}
-              onSelect={id => { setSelectedTid(id); clearBasket(); }}
+              onSelect={id => { if (!isGM) { setSelectedTid(id); clearBasket(); } }}
               teams={teamsWithRecord}
-              isOpen={dropdownOpen}
-              onToggle={() => setDropdownOpen(v => !v)}
+              isOpen={isGM ? false : dropdownOpen}
+              onToggle={() => { if (!isGM) setDropdownOpen(v => !v); }}
             />
 
             {/* Search */}

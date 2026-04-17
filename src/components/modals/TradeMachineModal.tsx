@@ -100,7 +100,8 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   initialTeamAPickDpids, initialTeamBPickDpids,
 }) => {
   const { state } = useGame();
-  const [teamAId, setTeamAId] = useState<number | null>(initialTeamAId ?? null);
+  const isGM = state.gameMode === 'gm';
+  const [teamAId, setTeamAId] = useState<number | null>(isGM && state.userTeamId != null ? state.userTeamId : (initialTeamAId ?? null));
   const [teamBId, setTeamBId] = useState<number | null>(initialTeamBId ?? null);
 
   // Pre-load players/picks from Trade Finder if provided
@@ -118,6 +119,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   );
   
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [tradeResponse, setTradeResponse] = useState<{ accepted: boolean; gmName: string; reason: string } | null>(null);
   const [activeTabA, setActiveTabA] = useState<'roster' | 'picks'>('roster');
   const [activeTabB, setActiveTabB] = useState<'roster' | 'picks'>('roster');
   const [openDropdown, setOpenDropdown] = useState<'A' | 'B' | null>(null);
@@ -163,8 +165,10 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   [state.players, teamBId]);
 
   const tradablePickCutoff = (state.leagueStats.year ?? new Date().getFullYear()) + (state.leagueStats.tradableDraftPickSeasons ?? 7);
-  const teamAPicksAvailable = useMemo(() => state.draftPicks.filter(p => p.tid === teamAId && p.season <= tradablePickCutoff), [state.draftPicks, teamAId, tradablePickCutoff]);
-  const teamBPicksAvailable = useMemo(() => state.draftPicks.filter(p => p.tid === teamBId && p.season <= tradablePickCutoff), [state.draftPicks, teamBId, tradablePickCutoff]);
+  // Filter out picks for drafts that already happened (current year if draftComplete, all past years always)
+  const minTradableSeason = (state as any).draftComplete ? (state.leagueStats.year ?? 2026) + 1 : (state.leagueStats.year ?? 2026);
+  const teamAPicksAvailable = useMemo(() => state.draftPicks.filter(p => p.tid === teamAId && p.season >= minTradableSeason && p.season <= tradablePickCutoff), [state.draftPicks, teamAId, minTradableSeason, tradablePickCutoff]);
+  const teamBPicksAvailable = useMemo(() => state.draftPicks.filter(p => p.tid === teamBId && p.season >= minTradableSeason && p.season <= tradablePickCutoff), [state.draftPicks, teamBId, minTradableSeason, tradablePickCutoff]);
 
   const displayTeamARoster = useMemo(() => {
     const incoming = teamBPlayers.map(p => ({ ...p, isIncoming: true }));
@@ -207,16 +211,42 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   };
 
   const handleExecuteTrade = (force: boolean) => {
-    if (teamAId !== null && teamBId !== null) {
-      setShowSummaryModal(false);
-      onConfirm({
-        teamAId, teamBId,
-        teamAPlayers: teamAPlayers.map(p => p.internalId),
-        teamBPlayers: teamBPlayers.map(p => p.internalId),
-        teamAPicks: teamAPicks.map(p => p.dpid),
-        teamBPicks: teamBPicks.map(p => p.dpid)
-      });
+    if (teamAId === null || teamBId === null) return;
+
+    // GM Mode: evaluate whether the other team accepts
+    if (isGM && !force) {
+      const currentYear = state.leagueStats?.year ?? 2026;
+      const { calcPlayerTV, calcPickTV } = require('../../services/trade/tradeValueEngine');
+      const otherTeam = state.teams.find(t => t.id === teamBId);
+      const otherGMName = otherTeam ? `${otherTeam.name} GM` : 'Their GM';
+
+      // Calculate trade value for Team B (receiving team A's players/picks, giving their own)
+      const teamBReceivesTV = teamAPlayers.reduce((sum, p) => sum + calcPlayerTV(p, 'neutral', currentYear), 0)
+        + teamAPicks.reduce((sum, pk) => sum + calcPickTV(pk.round, 15, 30, Math.max(1, pk.season - currentYear)), 0);
+      const teamBGivesTV = teamBPlayers.reduce((sum, p) => sum + calcPlayerTV(p, 'neutral', currentYear), 0)
+        + teamBPicks.reduce((sum, pk) => sum + calcPickTV(pk.round, 15, 30, Math.max(1, pk.season - currentYear)), 0);
+
+      const netValue = teamBReceivesTV - teamBGivesTV;
+      // Accept if they receive more value than they give (threshold: -5 allows slight overpay)
+      const accepted = netValue >= -5;
+      const reason = accepted
+        ? netValue > 10 ? 'This is a great deal for us. Done!' : 'Fair trade. We can work with this.'
+        : netValue > -15 ? `We\'d need a bit more to make this work. You\'re about ${Math.abs(Math.round(netValue))} points short.`
+        : 'No way. This isn\'t even close to fair value for what we\'re giving up.';
+
+      setTradeResponse({ accepted, gmName: otherGMName, reason });
+      if (!accepted) return; // Don't execute if rejected
     }
+
+    setShowSummaryModal(false);
+    setTradeResponse(null);
+    onConfirm({
+      teamAId, teamBId,
+      teamAPlayers: teamAPlayers.map(p => p.internalId),
+      teamBPlayers: teamBPlayers.map(p => p.internalId),
+      teamAPicks: teamAPicks.map(p => p.dpid),
+      teamBPicks: teamBPicks.map(p => p.dpid)
+    });
   };
 
   const canClickAssets = teamAId !== null && teamBId !== null;
@@ -241,13 +271,13 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
             
             <div className="p-5 border-b border-slate-700/50 bg-[#161616]">
                 <TeamDropdown 
-                    label="Team 1" 
-                    selectedTeamId={teamAId} 
-                    onSelect={(id) => { setTeamAId(id); setTeamAPlayers([]); setTeamAPicks([]); }} 
-                    teams={teamsWithRecords} 
+                    label={isGM ? 'Your Team' : 'Team 1'}
+                    selectedTeamId={teamAId}
+                    onSelect={(id) => { if (!isGM) { setTeamAId(id); setTeamAPlayers([]); setTeamAPicks([]); } }}
+                    teams={teamsWithRecords}
                     otherTeamId={teamBId}
-                    isOpen={openDropdown === 'A'}
-                    onToggle={() => setOpenDropdown(openDropdown === 'A' ? null : 'A')}
+                    isOpen={isGM ? false : openDropdown === 'A'}
+                    onToggle={() => { if (!isGM) setOpenDropdown(openDropdown === 'A' ? null : 'A'); }}
                 />
             </div>
 
@@ -416,6 +446,37 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
             </div>
           </div>
         </div>
+
+        {/* GM Mode: Trade Response Overlay */}
+        {tradeResponse && (
+          <div className="fixed inset-0 z-[80] bg-black/90 flex items-center justify-center p-4">
+            <div className={`max-w-md w-full rounded-2xl border-2 p-8 text-center space-y-4 ${
+              tradeResponse.accepted ? 'border-emerald-500 bg-emerald-500/10' : 'border-red-500 bg-red-500/10'
+            }`}>
+              <div className={`text-5xl font-black italic uppercase ${tradeResponse.accepted ? 'text-emerald-400' : 'text-red-400'}`}>
+                {tradeResponse.accepted ? 'ACCEPTED' : 'REJECTED'}
+              </div>
+              <div className="text-sm font-bold text-white/70">{tradeResponse.gmName}</div>
+              <p className="text-sm text-slate-300 leading-relaxed">"{tradeResponse.reason}"</p>
+              <div className="flex gap-3 justify-center pt-4">
+                <button
+                  onClick={() => setTradeResponse(null)}
+                  className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase rounded-xl"
+                >
+                  {tradeResponse.accepted ? 'Back' : 'Adjust Offer'}
+                </button>
+                {tradeResponse.accepted && (
+                  <button
+                    onClick={() => handleExecuteTrade(true)}
+                    className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase rounded-xl"
+                  >
+                    Finalize Trade
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {teamA && teamB && showSummaryModal && (
             <TradeSummaryModal

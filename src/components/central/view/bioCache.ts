@@ -1,5 +1,7 @@
 import type { NBAPlayer } from '../../../types';
 import { extractNbaId, hdPortrait } from '../../../utils/helpers';
+import { getCachedImageUrl } from '../../../services/imageCache';
+import { SettingsManager } from '../../../services/SettingsManager';
 
 const CACHE_VER  = "nba_v21";
 
@@ -37,12 +39,26 @@ function isDefaultProballers(url: string): boolean {
 export function getPlayerImage(player: NBAPlayer): string | undefined {
   // BBGM/ProBallers portrait is the canonical source for all leagues.
   // Skip the ProBallers default placeholder (head-par-defaut) — treat as no photo.
-  if (player.imgURL && player.imgURL.trim() !== '' && !isDefaultProballers(player.imgURL)) return player.imgURL;
+  if (player.imgURL && player.imgURL.trim() !== '' && !isDefaultProballers(player.imgURL)) {
+    // Check blob cache first for instant offline loading
+    if (SettingsManager.getSettings().enableImageCache) {
+      const cached = getCachedImageUrl(player.imgURL);
+      if (cached) return cached;
+    }
+    return player.imgURL;
+  }
   // External league players: no CDN fallback — show initials instead of passport-style headshot.
   if (EXTERNAL_STATUSES.has(player.status ?? '')) return undefined;
   // NBA players without a BBGM portrait: try the official NBA CDN.
   const nbaId = extractNbaId('', player.name);
-  if (nbaId) return hdPortrait(nbaId);
+  if (nbaId) {
+    const cdnUrl = hdPortrait(nbaId);
+    if (SettingsManager.getSettings().enableImageCache) {
+      const cached = getCachedImageUrl(cdnUrl);
+      if (cached) return cached;
+    }
+    return cdnUrl;
+  }
   return undefined;
 }
 

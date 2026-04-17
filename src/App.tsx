@@ -44,7 +44,8 @@ function GameLayout() {
 
       // Set new timeout for 2 seconds
       saveTimeoutRef.current = setTimeout(() => {
-        const saveName = `${state.commissionerName}'s Legacy`;
+        const modePrefix = state.gameMode === 'gm' ? 'GM' : 'Commissioner';
+        const saveName = `${modePrefix}: ${state.commissionerName}'s Legacy`;
         SaveManager.saveGame(state, saveName).then(id => {
           if (!state.saveId) {
             dispatchAction({ type: 'UPDATE_SAVE_ID', payload: id });

@@ -135,6 +135,97 @@ export async function getCoachAssistants(coachName: string): Promise<string[]> {
   }
 }
 
+// ── Coach data fetchers ───────────────────────────────────────────────────────
+
+const COACH_PHOTOS_GIST = "https://gist.githubusercontent.com/aljohnpolyglot/60f5ef1e4d09066d1001a9acf3de127a/raw/516852da634669f0f2cd68d6fb1ba5371cb5d15a/coach_photos.json";
+const COACHES_BIO_URL = "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbacoachesbio";
+const NBA2K_COACH_LIST_URL = "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nba2kcoachlist";
+const COACH_CONTRACTS_URL = "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbacoachescontract";
+
+export interface CoachData {
+  staff: string;
+  team: string;
+  startSeason: string;
+  yearsInRole: number;
+  birthDate: string | null;
+  nationality: string;
+  img?: string;
+}
+
+export interface NBA2KCoachData {
+  name: string;
+  image: string;
+  url: string;
+  team: string;
+  position: string;
+  league: string;
+  born: string;
+  age: string;
+  nationality: string;
+  college?: string;
+  coaching_career?: string;
+  career_history?: string;
+  playing_career?: string;
+  nba_draft?: string;
+  high_school?: string;
+  weight?: string;
+  height?: string;
+}
+
+export interface CoachContractHistory {
+  team: string;
+  contract_length: number;
+  start_year: number;
+  end_year: number;
+  annual_salary: number;
+  total_value: number;
+}
+
+export interface CoachContractData {
+  name: string;
+  total_exp_years: number;
+  current_team_2026: string;
+  history: CoachContractHistory[];
+}
+
+let _coachPhotos: Record<string, string> = {};
+let _coachBios: CoachData[] = [];
+let _nba2kCoaches: NBA2KCoachData[] = [];
+let _coachContracts: CoachContractData[] = [];
+let _coachDataFetched = false;
+
+function normalizeName(name: string): string {
+  if (!name) return '';
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+}
+
+export const fetchCoachData = async (): Promise<void> => {
+  if (_coachDataFetched) return;
+  try {
+    const [photosRes, biosRes, nba2kRes, contractsRes] = await Promise.all([
+      fetch(COACH_PHOTOS_GIST), fetch(COACHES_BIO_URL), fetch(NBA2K_COACH_LIST_URL), fetch(COACH_CONTRACTS_URL),
+    ]);
+    if (photosRes.ok) {
+      const rawPhotos = await photosRes.json();
+      _coachPhotos = {};
+      for (const key in rawPhotos) _coachPhotos[normalizeName(key)] = rawPhotos[key];
+    }
+    if (biosRes.ok) _coachBios = await biosRes.json();
+    if (nba2kRes.ok) _nba2kCoaches = await nba2kRes.json();
+    if (contractsRes.ok) _coachContracts = await contractsRes.json();
+    _coachDataFetched = true;
+  } catch (e) {
+    console.error('[CoachData] fetch failed', e);
+  }
+};
+
+export const getCoachPhoto = (name: string): string | undefined => _coachPhotos[normalizeName(name)];
+export const getCoachBio = (name: string): CoachData | undefined => _coachBios.find(c => normalizeName(c.staff) === normalizeName(name));
+export const getAllCoaches = (): CoachData[] => _coachBios;
+export const getNBA2KCoach = (name: string): NBA2KCoachData | undefined => _nba2kCoaches.find(c => normalizeName(c.name) === normalizeName(name));
+export const getTeamStaff = (teamName: string): NBA2KCoachData[] => _nba2kCoaches.filter(c => c.team === teamName);
+export const getCoachContract = (name: string): CoachContractData | undefined => _coachContracts.find(c => normalizeName(c.name) === normalizeName(name));
+
 // ── Main export ────────────────────────────────────────────────────────────────
 
 export const getStaffData = async (

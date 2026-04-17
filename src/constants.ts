@@ -411,14 +411,36 @@ export const ENDESA_TEAM_COUNTRY = 'Spain';
  *   PBA max        = $46.2M × 0.0043 ≈ $200K
  */
 export const EXTERNAL_SALARY_SCALE: Record<string, { maxPct: number; minPct: number }> = {
-  Euroleague:       { maxPct: 0.108,  minPct: 0.0043 },  // ~$5M max, ~$200K min at $154M cap
-  Endesa:           { maxPct: 0.065,  minPct: 0.0032 },  // ~$3M max, ~$150K min
-  'B-League':       { maxPct: 0.0065, minPct: 0.00065 }, // ~$300K max, ~$30K min
-  PBA:              { maxPct: 0.0043, minPct: 0.00043 }, // ~$200K max, ~$20K min
-  'G-League':       { maxPct: 0.0108, minPct: 0.0011 },  // ~$500K max, ~$50K min
-  'China CBA':      { maxPct: 0.0216, minPct: 0.0017 },  // ~$1M max, ~$80K min
-  'NBL Australia':  { maxPct: 0.0108, minPct: 0.0011 },  // ~$500K max, ~$50K min
+  Euroleague:       { maxPct: 0.032,  minPct: 0.003 },   // ~$5M max, ~$460K min at $154M cap
+  Endesa:           { maxPct: 0.019,  minPct: 0.0019 },  // ~$3M max, ~$290K min
+  'B-League':       { maxPct: 0.0065, minPct: 0.00065 }, // ~$1M max, ~$100K min
+  PBA:              { maxPct: 0.0013, minPct: 0.00013 }, // ~$200K max, ~$20K min
+  'G-League':       { maxPct: 0.003,  minPct: 0.0003 },  // ~$460K max, ~$46K min
+  'China CBA':      { maxPct: 0.019,  minPct: 0.0013 },  // ~$3M max, ~$200K min
+  'NBL Australia':  { maxPct: 0.0065, minPct: 0.00065 }, // ~$1M max, ~$100K min
 };
+
+/** Currency display for external leagues — USD stored internally, converted at display */
+export const EXTERNAL_CURRENCY: Record<string, { symbol: string; code: string; rate: number }> = {
+  Euroleague:      { symbol: '€',  code: 'EUR', rate: 0.92 },
+  Endesa:          { symbol: '€',  code: 'EUR', rate: 0.92 },
+  'B-League':      { symbol: '¥',  code: 'JPY', rate: 149.5 },
+  PBA:             { symbol: '₱',  code: 'PHP', rate: 56.2 },
+  'G-League':      { symbol: '$',  code: 'USD', rate: 1 },
+  'China CBA':     { symbol: '¥',  code: 'CNY', rate: 7.24 },
+  'NBL Australia': { symbol: 'A$', code: 'AUD', rate: 1.53 },
+};
+
+/** Format salary in local currency for an external league */
+export function formatExternalSalary(usd: number, league: string): string {
+  const cur = EXTERNAL_CURRENCY[league];
+  if (!cur || cur.rate === 1) return `$${(usd / 1_000_000).toFixed(1)}M`;
+  const local = usd * cur.rate;
+  if (local >= 1_000_000_000) return `${cur.symbol}${(local / 1_000_000_000).toFixed(1)}B`;
+  if (local >= 1_000_000) return `${cur.symbol}${(local / 1_000_000).toFixed(1)}M`;
+  if (local >= 1_000) return `${cur.symbol}${(local / 1_000).toFixed(0)}K`;
+  return `${cur.symbol}${Math.round(local)}`;
+}
 
 /** Re-signing probability: chance player stays in same league at contract expiry */
 export const EXTERNAL_RESIGN_PROBABILITY = 0.90; // 90% re-sign same league, 10% explore

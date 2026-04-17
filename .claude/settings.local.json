@@ -62,7 +62,9 @@
       "Bash(powershell -Command ':*)",
       "Bash(powershell:*)",
       "Bash(ls AI_AND_ECONOMY_PLAN.md README.md)",
-      "Bash(ls *.md)"
+      "Bash(ls *.md)",
+      "Bash(find src/components/central/view/TeamOffice -type f -exec wc -c {} \\\\;)",
+      "Bash(sort -k2)"
     ]
   }
 }

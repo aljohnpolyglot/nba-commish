@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Settings2, Zap, Cpu, Layers, Gamepad2, Bot, Database } from 'lucide-react';
+import { X, Settings2, Zap, Cpu, Layers, Gamepad2, Bot, Database, HardDrive, Crown, User } from 'lucide-react';
+import { clearImageCache } from '../../services/imageCache';
 import { SettingsManager, GameSettings } from '../../services/SettingsManager';
+import { useGame } from '../../store/GameContext';
 
 const GAME_MODE_OPTIONS = [
   { value: 1 as const, label: '⚡ Fast',     description: 'Lean feeds, quick turns.' },
@@ -17,7 +19,10 @@ interface SettingsModalProps {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [settings, setSettings] = useState<GameSettings>(SettingsManager.getSettings());
+  const { state, dispatchAction } = useGame();
+  const isGM = state.gameMode === 'gm';
   const [activeTab, setActiveTab] = useState<Tab>('ai');
+  const [cacheClearing, setCacheClearing] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -165,6 +170,58 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           {/* ── Gameplay ───────────────────────────────────────────────── */}
           {activeTab === 'gameplay' && (
             <>
+              {/* Game Mode Toggle */}
+              <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                <div className="space-y-1">
+                  <label className="text-sm font-bold text-white flex items-center gap-2">
+                    {isGM ? <User size={16} className="text-emerald-400" /> : <Crown size={16} className="text-indigo-400" />}
+                    {isGM ? 'GM Mode' : 'Commissioner Mode'}
+                  </label>
+                  <p className="text-xs text-slate-400">
+                    {isGM ? 'Manage one team. Switch to Commissioner for full league control.' : 'Control the entire league. Switch to GM for single-team management.'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    const newMode = isGM ? 'commissioner' : 'gm';
+                    dispatchAction({ type: 'UPDATE_STATE', payload: {
+                      gameMode: newMode,
+                      userTeamId: newMode === 'gm' ? (state.userTeamId ?? state.teams[0]?.id) : undefined,
+                    }} as any);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                    isGM
+                      ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                      : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                  }`}
+                >
+                  Switch to {isGM ? 'Commissioner' : 'GM'}
+                </button>
+              </div>
+
+              {/* Advance Day on Transaction */}
+              <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                <div className="space-y-1">
+                  <label className="text-sm font-bold text-white flex items-center gap-2">
+                    <Gamepad2 size={16} className={settings.advanceDayOnTransaction ? 'text-amber-400' : 'text-slate-500'} />
+                    Advance Day on Transactions
+                  </label>
+                  <p className="text-xs text-slate-400">
+                    Signing or trading advances the sim day. Turn off for instant transactions.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSettings({ ...settings, advanceDayOnTransaction: !settings.advanceDayOnTransaction })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    settings.advanceDayOnTransaction ? 'bg-amber-500' : 'bg-slate-600'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    settings.advanceDayOnTransaction ? 'translate-x-6' : 'translate-x-1'
+                  }`} />
+                </button>
+              </div>
+
               {/* Allow AI Trades */}
               <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
                 <div className="space-y-1">
@@ -276,30 +333,66 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
           {/* ── Performance ────────────────────────────────────────────── */}
           {activeTab === 'performance' && (
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <label className="text-sm font-bold text-white flex items-center gap-2">
-                  <Zap size={16} className="text-amber-400" />
-                  Game Speed
-                </label>
-                <span className="text-xs font-mono text-amber-400 bg-amber-500/10 px-2 py-1 rounded">
-                  {settings.gameSpeed}/10
-                </span>
+            <>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-bold text-white flex items-center gap-2">
+                    <Zap size={16} className="text-amber-400" />
+                    Game Speed
+                  </label>
+                  <span className="text-xs font-mono text-amber-400 bg-amber-500/10 px-2 py-1 rounded">
+                    {settings.gameSpeed}/10
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Controls the delay between simulated days and UI animations.
+                </p>
+                <input
+                  type="range" min="1" max="10"
+                  value={settings.gameSpeed}
+                  onChange={e => setSettings({ ...settings, gameSpeed: parseInt(e.target.value) })}
+                  className="w-full accent-amber-500"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500 font-medium uppercase tracking-wider">
+                  <span>Slow</span>
+                  <span>Fast</span>
+                </div>
               </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Controls the delay between simulated days and UI animations.
-              </p>
-              <input
-                type="range" min="1" max="10"
-                value={settings.gameSpeed}
-                onChange={e => setSettings({ ...settings, gameSpeed: parseInt(e.target.value) })}
-                className="w-full accent-amber-500"
-              />
-              <div className="flex justify-between text-[10px] text-slate-500 font-medium uppercase tracking-wider">
-                <span>Slow</span>
-                <span>Fast</span>
+
+              {/* Image Caching */}
+              <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                <div className="space-y-1 flex-1 mr-3">
+                  <label className="text-sm font-bold text-white flex items-center gap-2">
+                    <HardDrive size={16} className={settings.enableImageCache ? 'text-teal-400' : 'text-slate-500'} />
+                    Image Caching
+                  </label>
+                  <p className="text-xs text-slate-400">
+                    Auto-downloads player photos for faster loading. Disable to save storage.
+                  </p>
+                  <button
+                    onClick={async () => {
+                      setCacheClearing(true);
+                      await clearImageCache();
+                      setCacheClearing(false);
+                    }}
+                    disabled={cacheClearing}
+                    className="mt-1.5 text-[10px] font-bold uppercase tracking-wider text-red-400 hover:text-red-300 transition-colors disabled:text-slate-600"
+                  >
+                    {cacheClearing ? 'Clearing...' : 'Clear Cache'}
+                  </button>
+                </div>
+                <button
+                  onClick={() => setSettings({ ...settings, enableImageCache: !settings.enableImageCache })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    settings.enableImageCache ? 'bg-teal-500' : 'bg-slate-600'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    settings.enableImageCache ? 'translate-x-6' : 'translate-x-1'
+                  }`} />
+                </button>
               </div>
-            </div>
+            </>
           )}
 
         </div>

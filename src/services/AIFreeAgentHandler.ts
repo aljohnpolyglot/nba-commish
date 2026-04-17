@@ -116,7 +116,8 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   if (!SettingsManager.getSettings().allowAIFreeAgency) return [];
 
   const results: SigningResult[] = [];
-  const userTeamId = state.teams[0]?.id;
+  // In GM mode, exclude user's team from AI signings; in commissioner mode, exclude team[0] (convention)
+  const userTeamId = (state as any).userTeamId ?? state.teams[0]?.id;
 
   let pool = state.players.filter(p => p.tid < 0 && p.status === 'Free Agent');
   if (pool.length === 0) return [];
@@ -254,9 +255,9 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   // ── Pass 3: Two-way contract signings ─────────────────────────────────
   // Teams with 15 regular players but fewer than maxTwoWayPlayersPerTeam
   // two-way players should sign low-OVR FAs on two-way deals.
-  const maxTwoWay = state.leagueStats.maxTwoWayPlayersPerTeam ?? 2;
+  const maxTwoWay = state.leagueStats.maxTwoWayPlayersPerTeam ?? 3;
   const twoWayEnabled = (state.leagueStats as any).twoWayContractsEnabled ?? true;
-  const TWO_WAY_OVR_CAP = 45; // raw BBGM OVR — fringe/bubble players only
+  const TWO_WAY_OVR_CAP = 52; // raw BBGM OVR — fringe rotation / end-of-bench players
   const TWO_WAY_SALARY_USD = 625_000;
 
   if (twoWayEnabled && maxTwoWay > 0) {

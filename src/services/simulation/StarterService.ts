@@ -41,19 +41,19 @@ export class StarterService {
     if (teamPlayers.length === 0) return [];
 
     const Rb = (p: Player, k: string) => this.getScaledRating(p, k, season);
+    const getK2 = (p: Player) => convertTo2KRating(p.overallRating, this.getScaledRating(p, 'hgt', season), this.getScaledRating(p, 'tp', season));
 
-    const SUPERSTAR_THRESHOLD = 87; // 2K 87+ = franchise cornerstone; hgt now passes BBGM attribute so no bio-inches inflation
-    const [stars, rolePlayers] = teamPlayers.reduce<[Player[], Player[]]>(
-      ([s, r], p) =>
-        convertTo2KRating(p.overallRating, this.getScaledRating(p, 'hgt', season), this.getScaledRating(p, 'tp', season)) >= SUPERSTAR_THRESHOLD ? [[...s, p], r] : [s, [...r, p]],
-      [[], []]
-    );
+    // Sort ALL players by K2 OVR descending — top 5 are always starters regardless of role
+    const sortedByOvr = [...teamPlayers].sort((a, b) => getK2(b) - getK2(a));
 
-    stars.sort((a, b) => convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season), this.getScaledRating(b, 'tp', season)) - convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season), this.getScaledRating(a, 'tp', season)));
-    rolePlayers.sort((a, b) => convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season), this.getScaledRating(b, 'tp', season)) - convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season), this.getScaledRating(a, 'tp', season)));
+    // Take top 5 by OVR — this guarantees the best players start (no Tatum on bench)
+    const lineup: Player[] = sortedByOvr.slice(0, 5);
 
-    const lineup: Player[] = [...stars.slice(0, 5)];
+    // If fewer than 5 available, return what we have
+    if (lineup.length <= 5 && teamPlayers.length <= 5) return lineup;
 
+    // Role classification is still used for positional assignment downstream,
+    // but NEVER for starter selection. The old role-first slot filling was the bug.
     const SLOT_SPECS: SlotSpec[] = modern
       ? [
           // Modern 5-out: PG + SG + 3 wings/bigs who can shoot
@@ -72,79 +72,16 @@ export class StarterService {
           { roles: ['WingDefender', 'Slasher', 'Combo'], fallbackSort: p => Rb(p, 'spd') + Rb(p, 'dnk') + Rb(p, 'diq') },
         ];
 
-    const notYetInLineup = () => rolePlayers.filter(p => !lineup.includes(p));
-    const coveredRoles = new Set<Role>(lineup.map(p => this.classifyRole(p, season)));
-
-    for (const spec of SLOT_SPECS) {
-      if (lineup.length >= 5) break;
-      const pool = notYetInLineup();
-      if (pool.length === 0) break;
-
-      const uncoveredRoles = spec.roles.filter(r => !coveredRoles.has(r));
-      let pick: Player | undefined;
-
-      if (uncoveredRoles.length > 0) {
-        for (const role of uncoveredRoles) {
-          pick = pool.find(p => this.classifyRole(p, season) === role);
-          if (pick) break;
-        }
-      }
-
-      if (!pick) {
-        [pick] = [...pool].sort((a, b) => spec.fallbackSort(b) - spec.fallbackSort(a));
-      }
-
-      if (pick) {
-        lineup.push(pick);
-        coveredRoles.add(this.classifyRole(pick, season));
+    // Positional sanity check: ensure at least one big (hgt >= 62) is in the lineup.
+    // If top 5 by OVR are all guards/wings, swap the weakest for the best available big.
+    if (!lineup.some(p => Rb(p, 'hgt') >= 62)) {
+      const bestBig = sortedByOvr.find(p => !lineup.includes(p) && Rb(p, 'hgt') >= 62);
+      if (bestBig) {
+        // Swap out the lowest-OVR starter for the big
+        const worstStarter = [...lineup].sort((a, b) => getK2(a) - getK2(b))[0];
+        if (worstStarter) lineup.splice(lineup.indexOf(worstStarter), 1, bestBig);
       }
     }
-
-    while (lineup.length < 5) {
-      const extra = rolePlayers.find(p => !lineup.includes(p));
-      if (!extra) break;
-      lineup.push(extra);
-    }
-
-    const swapNonStar = (
-      swapOutFn: (p: Player) => boolean,
-      swapInFn:  (p: Player) => boolean
-    ): void => {
-      const benchPool = teamPlayers
-        .filter(p => !lineup.includes(p))
-        .sort((a, b) => convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season), this.getScaledRating(b, 'tp', season)) - convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season), this.getScaledRating(a, 'tp', season)));
-      const candidate = benchPool.find(swapInFn);
-      if (!candidate) return;
-      const victim = [...lineup]
-        .filter(p => convertTo2KRating(p.overallRating, this.getScaledRating(p, 'hgt', season), this.getScaledRating(p, 'tp', season)) < SUPERSTAR_THRESHOLD && swapOutFn(p))
-        .sort((a, b) => convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season), this.getScaledRating(a, 'tp', season)) - convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season), this.getScaledRating(b, 'tp', season)))[0];
-      if (!victim) return;
-      lineup.splice(lineup.indexOf(victim), 1, candidate);
-    };
-
-    if (!lineup.some(p => Rb(p, 'hgt') >= 75)) {
-      swapNonStar(p => Rb(p, 'hgt') < 62 && Rb(p, 'tp') < 50, p => Rb(p, 'hgt') >= 62);
-    }
-    if (lineup.filter(p => Rb(p, 'tp') >= 55).length < 2) {
-      swapNonStar(p => Rb(p, 'tp') <= 35, p => Rb(p, 'tp') >= 55 && !lineup.includes(p));
-    }
-    if (!lineup.some(p => Rb(p, 'pss') + Rb(p, 'oiq') >= 130)) {
-      swapNonStar(p => Rb(p, 'pss') < 50, p => Rb(p, 'pss') + Rb(p, 'oiq') >= 130 && !lineup.includes(p));
-    }
-    if (lineup.filter(p => Rb(p, 'tp') <= 35).length > 2) {
-      swapNonStar(p => Rb(p, 'tp') <= 35, p => Rb(p, 'tp') >= 50 && !lineup.includes(p));
-    }
-
-    const MAX_BIGS = modern ? 1 : 2;
-    const BIG_THRESHOLD = modern ? 60 : 72; // catches JV(hgt=69) in modern
-    const bigCount = () => lineup.filter(p => Rb(p, 'hgt') >= BIG_THRESHOLD).length;
-    while (bigCount() > MAX_BIGS) {
-      const before = bigCount();
-      swapNonStar(p => Rb(p, 'hgt') >= BIG_THRESHOLD, p => Rb(p, 'hgt') < BIG_THRESHOLD && !lineup.includes(p));
-      if (bigCount() >= before) break; // no progress — remaining bigs are all superstars, can't evict
-      if (teamPlayers.filter(p => !lineup.includes(p) && Rb(p, 'hgt') < BIG_THRESHOLD).length === 0) break;
-    }
-
     return lineup.slice(0, 5);
   }
 

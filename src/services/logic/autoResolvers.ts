@@ -793,7 +793,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
           // Team option and RFA metadata (mirrors finalizeDraft in DraftSimulatorView)
           ...(optionYrs > 0 && {
             hasTeamOption: true,
-            teamOptionExp: season + baseYrs - 1, // option kicks in after guaranteed portion
+            teamOptionExp: season + baseYrs, // option kicks in after guaranteed years (decision summer before this season)
           }),
           ...(round === 1 && restrictedFA && { restrictedFA: true }),
           rookie: true,

@@ -7,7 +7,7 @@
 
 import type { GameState, NBAPlayer, NBATeam, DraftPick, TradeProposal } from '../types';
 import { getCapThresholds, getTradeOutlook, effectiveRecord, topNAvgK2 } from '../utils/salaryUtils';
-import { isSalaryLegal, calcOvr2K, calcPlayerTV, calcPot2K } from './trade/tradeValueEngine';
+import { isSalaryLegal, calcOvr2K, calcPlayerTV, calcPot2K, isUntouchable } from './trade/tradeValueEngine';
 import type { TeamMode } from './trade/tradeValueEngine';
 import { SettingsManager } from './SettingsManager';
 
@@ -71,7 +71,7 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
 
   const proposals: TradeProposal[] = [];
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
-  const userTeamId = state.teams[0]?.id;
+  const userTeamId = (state as any).userTeamId ?? state.teams[0]?.id;
   const thresholds = getCapThresholds(state.leagueStats as any);
 
   // Compute conference standings so getTradeOutlook can use confRank + GB
@@ -152,15 +152,13 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
     for (const sellerTeam of sellerTeams) {
       const sellerRoster = state.players.filter(p => p.tid === sellerTeam.id)
         .sort((a, b) => getRawK2(b) - getRawK2(a));
-      const cornerstoneId = sellerRoster.reduce((best, p) =>
-        getRawK2(p) > getRawK2(best) ? p : best, sellerRoster[0])?.internalId;
+      const sellerUntouchMode: TeamMode = getOutlook(sellerTeam).role === 'rebuilding' ? 'presti'
+        : ['buyer', 'heavy_buyer'].includes(getOutlook(sellerTeam).role) ? 'contend' : 'rebuild';
 
-      // Skip: franchise cornerstone, recently traded, superstars (K2 ≥ 85)
-      // Role players and rotation guys (K2 60–84) are all fair game
+      // Skip: untouchable players (loyalty, core rotation, young stars), recently traded
       const targetPlayer = sellerRoster.find(p => {
-        if (p.internalId === cornerstoneId) return false; // never trade franchise cornerstone
+        if (isUntouchable(p, sellerUntouchMode, currentYear)) return false;
         if (recentlyTraded.has(p.internalId)) return false;
-        if (getRawK2(p) >= 85) return false; // protect stars
         return true;
       });
       if (!targetPlayer) continue;
@@ -304,18 +302,15 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
       const sellerRoster = state.players.filter(p => p.tid === sellerTeam.id);
 
       // Find the worst-value expiring contract on this team (dump candidate)
-      // Protect: young players (≤26), quality starters (K2 ≥75), high-upside prospects (POT ≥78)
+      // Use isUntouchable to protect key players, then filter for expiring salary
+      const dumpSellerMode: TeamMode = getOutlook(sellerTeam).role === 'rebuilding' ? 'presti'
+        : ['buyer', 'heavy_buyer'].includes(getOutlook(sellerTeam).role) ? 'contend' : 'rebuild';
       const dumpCandidate = sellerRoster
         .filter(p => {
           if (recentlyTraded.has(p.internalId)) return false;
-          if (p.internalId === sellerRoster.reduce((best, x) =>
-            getRawK2(x) > getRawK2(best) ? x : best, sellerRoster[0])?.internalId) return false;
-          const age = (p as any).age ?? ((p as any).born?.year ? currentYear - (p as any).born.year : 27);
-          if (age <= 26) return false; // never dump young players
-          if (getRawK2(p) >= 75) return false; // never dump quality starters
-          if (calcPot2K(p, currentYear) >= 78) return false; // never dump high-upside players
+          if (isUntouchable(p, dumpSellerMode, currentYear)) return false;
           const exp = p.contract?.exp ?? (currentYear + 2);
-          return exp <= currentYear + 1 && (p.contract?.amount ?? 0) > 10_000; // expiring + not min-salary
+          return exp <= currentYear + 1 && (p.contract?.amount ?? 0) > 10_000;
         })
         .sort((a, b) => (b.contract?.amount ?? 0) - (a.contract?.amount ?? 0))[0]; // biggest expiring salary
 

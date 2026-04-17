@@ -16,14 +16,18 @@ interface CommissionerSetupProps {
     skipLLM?: boolean;
     startDate: string;
     jumpRequired: boolean;
+    gameMode?: 'commissioner' | 'gm';
+    userTeamId?: number;
   }) => void;
   onBack: () => void;
 }
 
-type Step = 'name' | 'timeline' | 'review';
+type Step = 'mode' | 'name' | 'timeline' | 'review';
 
 export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, onBack }) => {
-  const [step, setStep] = useState<Step>('name');
+  const [step, setStep] = useState<Step>('mode');
+  const [gameMode, setGameMode] = useState<'commissioner' | 'gm'>('commissioner');
+  const [userTeamId, setUserTeamId] = useState<number>(0); // default first team
   const [name, setName] = useState('');
   const [chosenDate, setChosenDate] = useState<string>(SIM_START_DATE);
   const [showSettings, setShowSettings] = useState(true);
@@ -54,6 +58,8 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, o
       skipLLM: !settings.enableLLM,
       startDate: date,
       jumpRequired: date > SIM_START_DATE,
+      gameMode,
+      userTeamId: gameMode === 'gm' ? userTeamId : undefined,
     });
   };
 
@@ -71,10 +77,80 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, o
       setStep('timeline');
     } else if (step === 'timeline') {
       setStep('name');
+    } else if (step === 'name') {
+      setStep('mode');
     } else {
       onBack();
     }
   };
+
+  // ── Mode Picker (first screen) ────────────────────────────────────────────
+  if (step === 'mode') {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-slate-950 to-slate-950" />
+        <button
+          onClick={onBack}
+          className="absolute top-8 left-8 text-slate-400 hover:text-white flex items-center gap-2 transition-colors z-20"
+        >
+          <ArrowLeft size={20} /> Back to Menu
+        </button>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 w-full max-w-2xl">
+          <div className="text-center mb-10">
+            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white mb-3">Choose Your Role</h1>
+            <p className="text-slate-400 text-sm">How do you want to experience the NBA?</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Commissioner Card */}
+            <button
+              onClick={() => { setGameMode('commissioner'); setStep('name'); }}
+              className={`group relative p-6 rounded-2xl border-2 transition-all text-left ${
+                gameMode === 'commissioner'
+                  ? 'border-indigo-500 bg-indigo-500/10'
+                  : 'border-slate-800 bg-slate-900/50 hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <Crown size={24} className="text-indigo-400" />
+                <h3 className="text-xl font-black text-white uppercase tracking-tight">Commissioner</h3>
+              </div>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Control the <span className="text-white font-bold">entire league</span>. Set rules, suspend players, force trades, manage finances, and shape the narrative.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                {['Rules', 'Suspensions', 'Economy', 'LLM Narrative', 'All Teams'].map(tag => (
+                  <span key={tag} className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-indigo-500/10 text-indigo-400 rounded">{tag}</span>
+                ))}
+              </div>
+            </button>
+
+            {/* GM Card */}
+            <button
+              onClick={() => { setGameMode('gm'); setStep('name'); }}
+              className={`group relative p-6 rounded-2xl border-2 transition-all text-left ${
+                gameMode === 'gm'
+                  ? 'border-emerald-500 bg-emerald-500/10'
+                  : 'border-slate-800 bg-slate-900/50 hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <User size={24} className="text-emerald-400" />
+                <h3 className="text-xl font-black text-white uppercase tracking-tight">General Manager</h3>
+              </div>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Manage <span className="text-white font-bold">one team</span>. Build your roster through trades, free agency, and the draft. Compete for a championship.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                {['Trades', 'Free Agency', 'Draft', 'Roster', 'Your Team'].map(tag => (
+                  <span key={tag} className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded">{tag}</span>
+                ))}
+              </div>
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   // Timeline and review are full-screen, handled separately
   if (step === 'timeline') {

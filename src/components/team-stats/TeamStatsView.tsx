@@ -523,7 +523,7 @@ export const TeamStatsView: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-slate-950 text-slate-200">
+    <div className="h-full flex-1 min-h-0 flex flex-col bg-slate-950 text-slate-200">
 
       {/* ── Header controls (BBGM-style, mirrors PlayerStatsView) ── */}
       <div className="shrink-0 px-3 sm:px-4 py-2.5 border-b border-slate-800 bg-slate-950">
