@@ -33,6 +33,11 @@ Agent fixed read-only display. Verify on new save. May need further broadcaster 
 
 ## BUGS — UI
 
+### Team records not passed to League History view
+**Symptom:** League History best records section doesn't show sim-generated season records. Only shows historical data.
+**Fix:** At rollover, `team.seasons[]` is archived (done session 22). League History view needs to read from `team.seasons[]` for best records display.
+**Files:** `LeagueHistoryView.tsx` or `LeagueHistoryDetailView.tsx`
+
 ### News cards missing player photos
 ### PlayerStatsView historical: show ALL players + ring/All-Star badges
 ### Start Date timeline: reverted to 1 season, manual date for multi-season
