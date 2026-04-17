@@ -655,16 +655,18 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
                 const faBaseDate = new Date(stateWithSim.date);
                 const faHistoryEntries = signings.map(s => {
                     const annualM = Math.round(s.salaryUSD / 100_000) / 10;
-                    const totalM  = Math.round(annualM * (s.contractYears ?? 1));
+                    const totalRaw = annualM * (s.contractYears ?? 1);
+                    // Show $0.6M not $1M for sub-million deals
+                    const totalStr = totalRaw < 1 ? totalRaw.toFixed(1) : Math.round(totalRaw).toString();
                     const optTag  = s.hasPlayerOption ? ' (player option)' : '';
                     let pSeed = 0;
                     for (let ci = 0; ci < s.playerId.length; ci++) pSeed += s.playerId.charCodeAt(ci);
-                    const dayOff = pSeed % 5; // FA batches fire every 1–14 days; spread within ±5
+                    const dayOff = pSeed % 5;
                     const eDate = new Date(faBaseDate);
                     eDate.setDate(eDate.getDate() - dayOff);
                     const dateStr = eDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                     return {
-                        text: `${s.playerName} signs with the ${s.teamName}: $${totalM}M/${s.contractYears ?? 1}yr${optTag}`,
+                        text: `${s.playerName} signs with the ${s.teamName}: $${totalStr}M/${s.contractYears ?? 1}yr${optTag}`,
                         date: dateStr,
                         type: 'Signing',
                     };

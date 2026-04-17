@@ -363,10 +363,12 @@ export const fetchWNBARoster = async (): Promise<{ players: NBAPlayer[], teams: 
 export const fetchBLeagueRoster = async (): Promise<{ players: NBAPlayer[], teams: NonNBATeam[] }> => {
     console.log("RosterService: Fetching B-League roster...");
     try {
-        const BASE = 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/';
+        // B-League bio uses a gist URL (not the nba-store-data repo) because the B-League
+        // bio data was created as a gist BEFORE the repo existed. All other leagues use the repo.
+        const BLEAGUE_BIO_GIST = 'https://gist.githubusercontent.com/aljohnpolyglot/0ffa999888dac89005a31b6f1b41b0ba/raw/bleaguebio';
         const [response, bioRes] = await Promise.all([
             fetch('https://gist.githubusercontent.com/aljohnpolyglot/d15d468522ee6709ce2a10394a47c329/raw/72e7df921daffea43889135396b6ac5af6ad8393/bleaguejapanbbgm'),
-            fetch(BASE + 'bleaguebio').catch(() => null),
+            fetch(BLEAGUE_BIO_GIST).catch(() => null),
         ]);
         if (!response.ok) {
             console.error('Failed to fetch B-League roster');

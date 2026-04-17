@@ -298,6 +298,7 @@ export const TeamFinancesViewDetailed: React.FC = () => {
                 </table>
                 <div className="mt-6 flex items-center gap-6 text-xs text-slate-400 flex-wrap">
                   <div className="flex items-center gap-2"><div className="w-3 h-3 bg-[#facc15] rounded-sm" /><span>Guaranteed</span></div>
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 bg-cyan-500/20 border border-cyan-500/30 rounded-sm" /><span className="text-cyan-300">MLE</span></div>
                   <div className="flex items-center gap-2"><div className="w-3 h-3 bg-purple-500/20 border border-purple-500/30 rounded-sm" /><span className="text-purple-300">Two-Way</span></div>
                   <div className="flex items-center gap-2 border border-slate-500 border-dashed px-2 py-0.5 rounded"><span>Player option</span></div>
                   <div className="flex items-center gap-2 border border-[#38bdf8] border-dashed px-2 py-0.5 rounded text-[#38bdf8]"><span>Team option</span></div>
@@ -532,6 +533,7 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
       </table>
       <div className="mt-6 flex items-center gap-6 text-xs text-slate-400 flex-wrap">
         <div className="flex items-center gap-2"><div className="w-3 h-3 bg-[#facc15] rounded-sm" /><span>Guaranteed</span></div>
+        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-cyan-500/20 border border-cyan-500/30 rounded-sm" /><span className="text-cyan-300">MLE</span></div>
         <div className="flex items-center gap-2"><div className="w-3 h-3 bg-purple-500/20 border border-purple-500/30 rounded-sm" /><span className="text-purple-300">Two-Way</span></div>
         <div className="flex items-center gap-2 border border-slate-500 border-dashed px-2 py-0.5 rounded"><span>Player option</span></div>
         <div className="flex items-center gap-2 border border-[#38bdf8] border-dashed px-2 py-0.5 rounded text-[#38bdf8]"><span>Team option</span></div>
