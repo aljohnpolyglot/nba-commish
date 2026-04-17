@@ -47,6 +47,15 @@ Add `<2026>` year chevron. Filter feats by season. **Files:** `StatisticalFeatsV
 ### External league players losing portraits after routing
 NBA players routed to G-League/PBA lose ProBallers portrait. LOAD_GAME migration may strip imgURL on status change. **Fix:** Don't touch `imgURL` for players with ProBallers URLs regardless of status.
 
+### Game log shows playoff/play-in games as "Preseason" (PRE)
+**Symptom:** PlayerBioGameLogTab shows May playoff games (BOS vs DET semis, BOS vs PHI R1) and Feb All-Star game (UNK vs UNK) tagged as "PRE" preseason. These should show as "PLAYOFFS" or "PLAY-IN" with proper labels.
+**Root cause:** The game log categorizes by checking `isPreseason` flag on the game/box score. Playoff and play-in games likely don't have `isPlayoff`/`isPlayIn` flags set on the box score result, so they fall through to a catch-all that treats non-regular-season games as preseason.
+**Fix:** In `PlayerBioGameLogTab.tsx`, check `isPlayoff` / `isPlayIn` flags on the box score BEFORE checking `isPreseason`. Render with "PLF" / "PI" prefix instead of "PRE". Also fix All-Star game showing as "UNK vs UNK" — resolve team names from allStar rosters.
+**Files:** `PlayerBioGameLogTab.tsx` (game type detection + display), `engine.ts` or `postProcessor.ts` (verify isPlayoff flag is set on box score results)
+
+### Sim-to-date from DayView may not show progress overlay
+**Status:** Fixed in session 22 — ALL `SIMULATE_TO_DATE` uses overlay mode now. If still seeing "Processing Executive Order", hard refresh (`Ctrl+Shift+R`) to clear stale bundle cache.
+
 ### News cards missing player photos
 Transaction news (signings, player options) show blank image. Attach `imageUrl: player.imgURL` to news objects.
 
