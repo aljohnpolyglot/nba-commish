@@ -151,11 +151,16 @@ export const PowerRankingsView: React.FC = () => {
     });
   }, [state.teams, state.players, state.schedule, state.leagueStats.year, state.date]);
 
+  const totalGP = state.teams.reduce((sum, t) => sum + (t.wins ?? 0) + (t.losses ?? 0), 0);
+  const seasonNotStarted = totalGP === 0;
+
   return (
     <div className="h-full flex flex-col bg-[#0f172a] text-slate-200 overflow-hidden">
       <div className="p-4 md:p-6 border-b border-slate-800 shrink-0">
         <h2 className="text-xl md:text-3xl font-black text-white uppercase tracking-tight">Power Rankings</h2>
-        <p className="text-slate-400 text-xs md:text-sm font-medium mt-1">Updated weekly based on performance, strength, and momentum</p>
+        <p className="text-slate-400 text-xs md:text-sm font-medium mt-1">
+          {seasonNotStarted ? 'Preseason projections based on roster strength' : 'Updated weekly based on performance, strength, and momentum'}
+        </p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 md:p-6 custom-scrollbar">

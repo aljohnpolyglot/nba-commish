@@ -53,9 +53,13 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
           const opp    = state.teams.find(t => t.id === oppId);
           const schedGame = state.schedule.find((g: any) => g.gid === game.gameId);
           const gameTimeMs = (() => { try { return new Date(game.date).getTime(); } catch { return 0; } })();
-          const isPreseason = gameTimeMs > 0 && gameTimeMs < OPENING_NIGHT_MS &&
+          const isPlayoff = !!(schedGame?.isPlayoff) || !!(game as any).isPlayoff;
+          const isPlayIn = !!(schedGame?.isPlayIn) || !!(game as any).isPlayIn;
+          const isAllStarGame = !!(schedGame?.isAllStar) || !!(game as any).isAllStar;
+          // Preseason: before Opening Night AND not a playoff/play-in/all-star game
+          const isPreseason = !isPlayoff && !isPlayIn && !isAllStarGame &&
+            gameTimeMs > 0 && gameTimeMs < OPENING_NIGHT_MS &&
             (schedGame?.isPreseason === true || !schedGame);
-          const isAllStarGame = !!(schedGame?.isAllStar);
           const isWin = isHome ? game.homeScore > game.awayScore : game.awayScore > game.homeScore;
           const resultStr = `${isWin ? 'W' : 'L'}, ${isHome ? game.homeScore : game.awayScore}-${isHome ? game.awayScore : game.homeScore}`;
 
@@ -70,7 +74,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
           const ftp  = fta  > 0 ? (ftm  / fta ).toFixed(3).replace(/^0+/, '') : '.000';
 
           logs.push({
-            date: game.date, isPreseason, isAllStar: isAllStarGame, isDNP: false,
+            date: game.date, isPreseason, isPlayoff, isPlayIn, isAllStar: isAllStarGame, isDNP: false,
             gameId: game.gameId, teamId, oppTeamId: oppId,
             teamAbbrev: isAllStarGame ? 'ASG' : (team?.abbrev || 'UNK'),
             isAway: !isHome,
@@ -98,12 +102,16 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
         const opp   = state.teams.find(t => t.id === oppId);
         const schedGame = state.schedule.find((g: any) => g.gid === game.gameId);
         const gameMs2 = (() => { try { return new Date(game.date).getTime(); } catch { return 0; } })();
-        const isPreseason = gameMs2 > 0 && gameMs2 < OPENING_NIGHT_MS &&
+        const dnpIsPlayoff = !!(schedGame?.isPlayoff) || !!(game as any).isPlayoff;
+        const dnpIsPlayIn = !!(schedGame?.isPlayIn) || !!(game as any).isPlayIn;
+        const dnpIsAllStar = !!(schedGame?.isAllStar) || !!(game as any).isAllStar;
+        const isPreseason = !dnpIsPlayoff && !dnpIsPlayIn && !dnpIsAllStar &&
+          gameMs2 > 0 && gameMs2 < OPENING_NIGHT_MS &&
           (schedGame?.isPreseason === true || !schedGame);
         const isWin = isHomeTeam ? game.homeScore > game.awayScore : game.awayScore > game.homeScore;
         const score = isHomeTeam ? `${game.homeScore}-${game.awayScore}` : `${game.awayScore}-${game.homeScore}`;
         logs.push({
-          date: game.date, isPreseason, isDNP: true, gameId: game.gameId,
+          date: game.date, isPreseason, isPlayoff: dnpIsPlayoff, isPlayIn: dnpIsPlayIn, isDNP: true, gameId: game.gameId,
           teamId: player.tid, oppTeamId: oppId,
           dnpReason: game.playerDNPs?.[player.internalId] ??
             ((player.injury?.gamesRemaining ?? 0) > 0
@@ -123,9 +131,13 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
     });
 
     const reversed = logs.reverse();
-    const rsTotal = reversed.filter(l => !l.isPreseason && !l.isDNP).length;
+    // Regular season games get numbered ranks; playoff/preseason/DNP get null
+    const rsTotal = reversed.filter(l => !l.isPreseason && !l.isPlayoff && !l.isPlayIn && !l.isDNP).length;
     let rsRank = rsTotal;
-    return reversed.map(l => ({ ...l, rank: l.isPreseason || l.isDNP ? null : rsRank-- }));
+    return reversed.map(l => ({
+      ...l,
+      rank: (l.isPreseason || l.isPlayoff || l.isPlayIn || l.isDNP) ? null : rsRank--,
+    }));
   }, [state.boxScores, state.schedule, player.internalId, player.tid, player.injury, state.teams, OPENING_NIGHT_MS]);
 
   const gameLogSeasons = useMemo(() => {
@@ -244,9 +256,17 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
           </thead>
           <tbody className="divide-y divide-slate-800/50">
             {sortedGameLog.map((log, i) => {
-              const showPreseasonDivider = gameLogSort.field === 'date' && log.isPreseason && (i === 0 || !sortedGameLog[i - 1].isPreseason);
+              const showPreseasonDivider = gameLogSort.field === 'date' && log.isPreseason && (i === 0 || !sortedGameLog[i - 1]?.isPreseason);
+              const showPlayoffDivider = gameLogSort.field === 'date' && (log.isPlayoff || log.isPlayIn) && (i === 0 || (!sortedGameLog[i - 1]?.isPlayoff && !sortedGameLog[i - 1]?.isPlayIn));
               return (
                 <React.Fragment key={i}>
+                  {showPlayoffDivider && (
+                    <tr>
+                      <td colSpan={32} className="px-3 py-2 bg-slate-900/80 border-y border-slate-700">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400">Playoffs</span>
+                      </td>
+                    </tr>
+                  )}
                   {showPreseasonDivider && (
                     <tr>
                       <td colSpan={32} className="px-3 py-2 bg-slate-900/80 border-y border-slate-700">
@@ -265,9 +285,11 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
                       <td colSpan={26} className="px-3 py-2 text-slate-500 italic">{log.dnpReason}</td>
                     </tr>
                   ) : (
-                    <tr className={`hover:bg-slate-800/50 transition-colors whitespace-nowrap text-xs ${log.isPreseason ? 'opacity-70' : ''}`}>
+                    <tr className={`hover:bg-slate-800/50 transition-colors whitespace-nowrap text-xs ${log.isPreseason ? 'opacity-70' : ''} ${log.isPlayoff || log.isPlayIn ? 'bg-indigo-500/5' : ''}`}>
                       <td className="px-3 py-2">
                         {log.isAllStar ? <span title="All-Star Game">⭐</span>
+                          : log.isPlayoff ? <span className="text-[10px] font-bold text-indigo-400">PLF</span>
+                          : log.isPlayIn ? <span className="text-[10px] font-bold text-sky-400">PI</span>
                           : log.rank !== null ? log.rank
                           : <span className="text-[10px] font-bold text-amber-500/70">PRE</span>}
                       </td>

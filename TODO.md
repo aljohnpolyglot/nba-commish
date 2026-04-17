@@ -47,11 +47,16 @@ Add `<2026>` year chevron. Filter feats by season. **Files:** `StatisticalFeatsV
 ### External league players losing portraits after routing
 NBA players routed to G-League/PBA lose ProBallers portrait. LOAD_GAME migration may strip imgURL on status change. **Fix:** Don't touch `imgURL` for players with ProBallers URLs regardless of status.
 
-### Game log shows playoff/play-in games as "Preseason" (PRE)
-**Symptom:** PlayerBioGameLogTab shows May playoff games (BOS vs DET semis, BOS vs PHI R1) and Feb All-Star game (UNK vs UNK) tagged as "PRE" preseason. These should show as "PLAYOFFS" or "PLAY-IN" with proper labels.
-**Root cause:** The game log categorizes by checking `isPreseason` flag on the game/box score. Playoff and play-in games likely don't have `isPlayoff`/`isPlayIn` flags set on the box score result, so they fall through to a catch-all that treats non-regular-season games as preseason.
-**Fix:** In `PlayerBioGameLogTab.tsx`, check `isPlayoff` / `isPlayIn` flags on the box score BEFORE checking `isPreseason`. Render with "PLF" / "PI" prefix instead of "PRE". Also fix All-Star game showing as "UNK vs UNK" — resolve team names from allStar rosters.
-**Files:** `PlayerBioGameLogTab.tsx` (game type detection + display), `engine.ts` or `postProcessor.ts` (verify isPlayoff flag is set on box score results)
+### ~~Game log shows playoff/play-in games as "Preseason" (PRE)~~ ✅ FIXED
+Added `isPlayoff` / `isPlayIn` flag checks before `isPreseason`. Playoff games show "PLF" label with indigo tint, play-in shows "PI" with sky blue. Preseason games still show "PRE" with amber. Playoff divider header added.
+
+### ~~Veteran players signing overseas instead of retiring~~ ✅ FIXED
+Age gate added: players 36+ with K2 < 72 skip external routing, stay as unsigned FAs → retire at next rollover.
+
+### G-League duplicate players (Nick Smith vs Nick Smith Jr.)
+**Symptom:** G-League roster has "Nick Smith" (85 OVR) who is the same person as NBA "Nick Smith Jr." (75 OVR). Both appear in game.
+**Fix:** In `externalRosterService.ts` G-League fetch, when deduplicating by name, treat "Jr." as optional — if NBA roster already has "Nick Smith Jr.", delete the G-League "Nick Smith" entry. Prefer NBA roster file over G-League for the same person.
+**Files:** `externalRosterService.ts` (G-League fetch dedup), `initialization.ts` (name collision guard)
 
 ### ~~Career/3Y progression chart data lost at rollover~~ ✅ FIXED
 Chart now merges `ratings[]` (BBGM historical) + `ovrHistory[]` (sim rollover snapshots) + current live OVR. No data loss across seasons. `ovrHistory` takes priority for overlapping seasons.

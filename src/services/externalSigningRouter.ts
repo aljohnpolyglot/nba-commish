@@ -153,6 +153,8 @@ export function routeUnsignedPlayers(
     if (protectedIds.has(p.internalId)) return p;
 
     const playerAge = (p as any).age ?? ((p as any).born?.year ? new Date(state.date ?? '').getFullYear() - (p as any).born.year : 27);
+    // Skip aging vets — let them retire naturally instead of signing overseas
+    if (playerAge >= 36 && k2Ovr < 72) return p;
     let playerSeed = 0;
     for (let ci = 0; ci < p.internalId.length; ci++) playerSeed += p.internalId.charCodeAt(ci);
 
