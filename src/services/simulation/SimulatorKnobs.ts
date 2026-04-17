@@ -79,6 +79,9 @@ export interface SimulatorKnobs {
    *  When gbFromLeader > gamesRemaining → team is eliminated → youth rotation. */
   gamesRemaining: number;
 
+  /** True for playoff/play-in games. Raises minute cap to ~44-46 min for stars. */
+  isPlayoffs?: boolean;
+
   // ── Rule Changes (future-proofing) ────────────────────────────────────────
   /** Quarter length in minutes.  12 = NBA, 10 = FIBA.
    *  Affects the total minutes budget passed to allocateMinutes. */

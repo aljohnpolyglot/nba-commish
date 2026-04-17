@@ -15,7 +15,7 @@ const StatusPill: React.FC<{ status: TradeProposal['status'] }> = ({ status }) =
     rejected: { icon: <XCircle size={11} />,       label: 'Rejected', cls: 'bg-rose-500/15 text-rose-400 border-rose-500/30' },
     expired:  { icon: <Clock size={11} />,         label: 'Expired',  cls: 'bg-slate-700 text-slate-500 border-slate-600' },
   } as const;
-  const { icon, label, cls } = map[status];
+  const { icon, label, cls } = map[status] ?? map.expired;
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-widest ${cls}`}>
       {icon}{label}
@@ -30,7 +30,7 @@ const PlayerChip: React.FC<{ player: NBAPlayer }> = ({ player }) => {
   return (
     <div className="flex items-center gap-2 bg-white/5 border border-white/8 rounded-lg px-2.5 py-1.5">
       <div className="w-7 h-7 rounded-full bg-slate-800 overflow-hidden flex-shrink-0">
-        <img src={player.imgURL} alt={player.name} className="w-full h-full object-cover"
+        <img src={player.imgURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=334155&color=fff`} alt={player.name} className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
           onError={e => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=334155&color=fff`; }} />
       </div>

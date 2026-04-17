@@ -252,40 +252,18 @@ export const PlayoffView: React.FC = () => {
         {!isHistorical && (
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
 
-        {/* ── Pre-playoff standings ────────────────────────────────────────── */}
+        {/* ── No active playoffs: show last year's historical bracket ─────── */}
         {!playoffs && (
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-full mx-auto">
             <div className="mb-6 p-5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-center">
               <Trophy size={32} className="text-indigo-400 mx-auto mb-2" />
               <h3 className="text-lg font-black text-white mb-1">Playoffs Begin April 14</h3>
               <p className="text-slate-400 text-sm">
-                The top 6 teams per conference plus Play-In participants (seeds 7–10) will compete for the NBA Championship.
+                Use the year chevron to view past playoff brackets, or wait for the regular season to end.
               </p>
             </div>
-
-
-            <div className="space-y-2">
-              {(confFilter === 'East' ? eastStandings : westStandings).map((team, idx) => (
-                <div
-                  key={team.id}
-                  className={`flex items-center gap-3 p-3 rounded-xl border ${
-                    idx < 6
-                      ? 'bg-[#111] border-white/5'
-                      : idx < 10
-                      ? 'bg-[#111] border-indigo-500/20'
-                      : 'bg-white/[0.02] border-white/5 opacity-40'
-                  }`}
-                >
-                  <span className="text-xs font-black text-slate-600 w-5">{idx + 1}</span>
-                  <img src={team.logoUrl} className="w-8 h-8 object-contain" alt="" referrerPolicy="no-referrer" />
-                  <span className="font-bold text-white">{team.name}</span>
-                  {idx >= 6 && idx < 10 && (
-                    <span className="text-[9px] font-bold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">Play-In</span>
-                  )}
-                  <span className="ml-auto font-mono font-black text-indigo-400">{team.wins}-{team.losses}</span>
-                </div>
-              ))}
-            </div>
+            {/* Show last year's bracket if available */}
+            <HistoricalPlayoffBracket viewYear={viewYear - 1} />
           </div>
         )}
 

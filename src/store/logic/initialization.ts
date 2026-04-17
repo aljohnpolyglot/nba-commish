@@ -4,9 +4,10 @@ import { getRosterData, getHistoricalAwards } from '../../services/rosterService
 import { INITIAL_LEAGUE_STATS } from '../../constants';
 import { getSeasonSimStartDate } from '../../utils/dateUtils';
 import { DEFAULT_MEDIA_RIGHTS } from '../../utils/broadcastingUtils';
-import { fetchEuroleagueRoster, fetchWNBARoster, fetchPBARoster, fetchBLeagueRoster, fetchGLeagueRoster, fetchEndesaRoster } from '../../services/externalRosterService';
+import { fetchEuroleagueRoster, fetchWNBARoster, fetchPBARoster, fetchBLeagueRoster, fetchGLeagueRoster, fetchEndesaRoster, fetchChinaCBARoster, fetchNBLAustraliaRoster } from '../../services/externalRosterService';
 
 import { calculateSocialEngagement } from '../../utils/helpers';
+import { generateFuturePicks } from '../../services/draft/DraftPickGenerator';
 
 interface StartGamePayload {
     name: string;
@@ -31,6 +32,8 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         { players: bleaguePlayers, teams: bleagueTeams },
         { players: endesaPlayers,  teams: endesaTeams },
         { players: gleaguePlayers, teams: gleagueTeams },
+        { players: chinaPlayers,   teams: chinaTeams },
+        { players: nblAusPlayers,  teams: nblAusTeams },
     ] = await Promise.all([
         fetchEuroleagueRoster(),
         fetchWNBARoster(),
@@ -38,34 +41,41 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         fetchBLeagueRoster(),
         fetchEndesaRoster(),
         fetchGLeagueRoster(),
+        fetchChinaCBARoster(),
+        fetchNBLAustraliaRoster(),
     ]);
 
+    // Normalize name for dedup: lowercase + strip dots (handles "L.J." vs "LJ", "Jr." vs "Jr")
+    const normName = (name: string) => name.toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
+
     // Euroleague beats Endesa for overlapping players (Real Madrid, Barcelona, etc.)
-    const euroNames = new Set(euroPlayers.map(p => p.name.toLowerCase()));
+    const euroNames = new Set(euroPlayers.map(p => normName(p.name)));
     const uniqueEuroPlayers = euroPlayers
         .map(p => ({ ...p, status: p.status || 'Euroleague' as const }));
 
     // Euroleague/PBA/B-League names filter raw NBA data (they're true non-NBA players).
     // G-League and Endesa are NOT included here — NBA is always the source of truth for those.
     const externalNames = new Set([
-        ...uniqueEuroPlayers.map(p => p.name.toLowerCase()),
-        ...wnbaPlayers.map(p => p.name.toLowerCase()),
-        ...pbaPlayers.map(p => p.name.toLowerCase()),
-        ...bleaguePlayers.map(p => p.name.toLowerCase()),
+        ...uniqueEuroPlayers.map(p => normName(p.name)),
+        ...wnbaPlayers.map(p => normName(p.name)),
+        ...pbaPlayers.map(p => normName(p.name)),
+        ...bleaguePlayers.map(p => normName(p.name)),
+        ...chinaPlayers.map(p => normName(p.name)),
+        ...nblAusPlayers.map(p => normName(p.name)),
     ]);
 
     const nbaPlayers = rawNbaPlayers.filter(p => {
-        const nameLower = p.name.toLowerCase();
-        if (externalNames.has(nameLower)) return false;
-        if (['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || '')) return false;
+        if (externalNames.has(normName(p.name))) return false;
+        if (['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '')) return false;
         return true;
     });
 
-    const existingNbaNames = new Set(nbaPlayers.map(p => p.name.toLowerCase()));
+    const existingNbaNames = new Set(nbaPlayers.map(p => normName(p.name)));
 
     // G-League: NBA takes priority — drop any G-League player whose name is already in NBA
+    // Uses normName so "L.J. Cryer" matches "LJ Cryer" etc.
     const uniqueGLeaguePlayers = gleaguePlayers
-        .filter(p => !existingNbaNames.has(p.name.toLowerCase()))
+        .filter(p => !existingNbaNames.has(normName(p.name)))
         .map(p => ({ ...p, status: 'G-League' as const }));
 
     const uniqueEndesaPlayers = endesaPlayers
@@ -80,6 +90,14 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         .filter(p => !existingNbaNames.has(p.name.toLowerCase()))
         .map(p => ({ ...p, status: p.status || 'B-League' as const }));
 
+    const uniqueChinaPlayers = chinaPlayers
+        .filter(p => !existingNbaNames.has(p.name.toLowerCase()))
+        .map(p => ({ ...p, status: 'China CBA' as const }));
+
+    const uniqueNBLAusPlayers = nblAusPlayers
+        .filter(p => !existingNbaNames.has(p.name.toLowerCase()))
+        .map(p => ({ ...p, status: 'NBL Australia' as const }));
+
     const players = [
         ...nbaPlayers,
         ...uniqueEuroPlayers,
@@ -88,6 +106,8 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         ...uniqueEndesaPlayers,
         ...uniqueGLeaguePlayers,
         ...wnbaPlayers,
+        ...uniqueChinaPlayers,
+        ...uniqueNBLAusPlayers,
     ];
 
     if (players.some(p => p.name.toLowerCase() === 'devin booker')) {
@@ -185,18 +205,29 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     console.log(`Euroleague: ${euroPlayers.length} players, ${euroTeams.length} teams`);
     console.log(`PBA: ${pbaPlayers.length} players, ${pbaTeams.length} teams`);
     console.log(`B-League: ${bleaguePlayers.length} players, ${bleagueTeams.length} teams`);
+    console.log(`G-League: ${gleaguePlayers.length} players, ${gleagueTeams.length} teams`);
+    console.log(`Endesa: ${endesaPlayers.length} players, ${endesaTeams.length} teams`);
+    console.log(`China CBA: ${chinaPlayers.length} players, ${chinaTeams.length} teams`);
+    console.log(`NBL Australia: ${nblAusPlayers.length} players, ${nblAusTeams.length} teams`);
     console.log(`Total Players: ${players.length}`);
     console.log("====================================");
 
     // All-Star Initialization (none needed at Aug 12 — voting hasn't started)
     const initialAllStar = null;
 
+    // Extend draft pick window to cover all tradable future seasons from day 1.
+    // BBGM data only includes current + next year; generateFuturePicks adds the rest.
+    const nbaNBATeams = teams.filter((t: any) => t.id > 0 && t.id < 100);
+    const initYear = INITIAL_LEAGUE_STATS.year;
+    const initWindowSize = INITIAL_LEAGUE_STATS.tradableDraftPickSeasons ?? 7;
+    const initialDraftPicks = generateFuturePicks(draftPicks, nbaNBATeams as any, initYear, initWindowSize);
+
     const statePatch: Partial<GameState> = {
         commissionerName,
         teams,
-        nonNBATeams: [...euroTeams, ...pbaTeams, ...wnbaTeams, ...bleagueTeams, ...endesaTeams, ...gleagueTeams],
+        nonNBATeams: [...euroTeams, ...pbaTeams, ...wnbaTeams, ...bleagueTeams, ...endesaTeams, ...gleagueTeams, ...chinaTeams, ...nblAusTeams],
         players,
-        draftPicks,
+        draftPicks: initialDraftPicks,
         staff: null,
         schedule,
         inbox: initialInbox,
@@ -230,14 +261,14 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
             ...statePatch,
         } as GameState;
 
-        const laziedState = await runLazySim(
+        const lazyResult = await runLazySim(
             fullInitialState,
             payload.startDate,
             payload.onProgress
         );
 
         return {
-            ...laziedState,
+            ...lazyResult.state,
             isProcessing: false,
             isDataLoaded: true,
         };

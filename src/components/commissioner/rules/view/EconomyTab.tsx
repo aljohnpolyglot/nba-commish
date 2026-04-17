@@ -40,6 +40,8 @@ interface EconomyTabProps {
     setMaxStandardPlayersPerTeam: (val: number) => void;
     maxTwoWayPlayersPerTeam: number;
     setMaxTwoWayPlayersPerTeam: (val: number) => void;
+    maxTrainingCampRoster: number;
+    setMaxTrainingCampRoster: (val: number) => void;
     minContractType: string;
     setMinContractType: (val: string) => void;
     minContractStaticAmount: number;
@@ -94,6 +96,18 @@ interface EconomyTabProps {
     setInflationStdDev: (val: number) => void;
     tradableDraftPickSeasons: number;
     setTradableDraftPickSeasons: (val: number) => void;
+    mleEnabled: boolean;
+    setMleEnabled: (val: boolean) => void;
+    roomMleAmount: number;
+    setRoomMleAmount: (val: number) => void;
+    nonTaxpayerMleAmount: number;
+    setNonTaxpayerMleAmount: (val: number) => void;
+    taxpayerMleAmount: number;
+    setTaxpayerMleAmount: (val: number) => void;
+    biannualEnabled: boolean;
+    setBiannualEnabled: (val: boolean) => void;
+    biannualAmount: number;
+    setBiannualAmount: (val: number) => void;
 }
 
 export const EconomyTab: React.FC<EconomyTabProps> = (props) => {

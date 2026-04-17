@@ -1,11 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import { Star, Calendar, LayoutGrid, BarChart2 } from 'lucide-react';
+import { Star, Calendar, LayoutGrid, BarChart2, DollarSign, ArrowRightLeft } from 'lucide-react';
 import { NBATeam, Game, NBAPlayer } from '../../../types';
 import { convertTo2KRating, normalizeDate } from '../../../utils/helpers';
 import { PlayerCard } from './PlayerCard';
 import { GameBar } from './GameBar';
 import { TeamDetailHeader } from './TeamDetailHeader';
 import { TeamStatsCards } from './TeamStatsCards';
+import { ContractTimeline } from './TeamFinancesViewDetailed';
+import { TeamTransactionsTab } from './TransactionsView';
+import { PlayerStatsView } from './PlayerStatsView';
 interface TeamDetailViewProps {
   team: NBATeam;
   players: NBAPlayer[];
@@ -23,13 +26,13 @@ interface TeamDetailViewProps {
 export const TeamDetailView: React.FC<TeamDetailViewProps> = ({
   team, players, allTeams, schedule, currentDate, onBack, onContact, onViewBio, onVisit, onGameClick, onTeamClick
 }) => {
-  const [activeTab, setActiveTab] = useState<'roster' | 'stats'>('roster');
+  const [activeTab, setActiveTab] = useState<'roster' | 'stats' | 'contracts' | 'transactions'>('roster');
 
   const teamPlayers = useMemo(() => {
     return players
       .filter(p => 
         p.tid === team.id && 
-        !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || '')
+        !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '')
       )
       .sort((a, b) => {
         const ratingA = convertTo2KRating(a.overallRating, a.ratings?.[a.ratings.length - 1]?.hgt ?? 50, a.ratings?.[a.ratings.length - 1]?.tp);
@@ -59,6 +62,20 @@ const currentSeason = useMemo(() => {
       .filter(t => t.conference === team.conference)
       .sort((a, b) => (b.wins / (b.wins + b.losses || 1)) - (a.wins / (a.wins + a.losses || 1)))
       .findIndex(t => t.id === team.id) + 1;
+  }, [allTeams, team]);
+
+  // Percentile-based market size: top 33% = High, middle = Medium, bottom = Low
+  // Only compare against NBA teams (East/West) — external league teams have pop=0 and skew rankings
+  const marketTier = useMemo((): 'High' | 'Medium' | 'Low' => {
+    const nbaTeams = allTeams.filter(t => t.conference === 'East' || t.conference === 'West');
+    const pops = nbaTeams.map(t => (t as any).pop ?? 0).sort((a, b) => a - b);
+    if (pops.length === 0) return 'Medium';
+    const thisPop = (team as any).pop ?? 0;
+    const rank = pops.filter(p => p <= thisPop).length; // 1-indexed rank (lowest=1)
+    const pct = rank / pops.length; // 0–1
+    if (pct >= 0.667) return 'High';
+    if (pct >= 0.333) return 'Medium';
+    return 'Low';
   }, [allTeams, team]);
 
   const gameToday = useMemo(() => {
@@ -99,9 +116,10 @@ const currentSeason = useMemo(() => {
         onTeamClick={onTeamClick}
       />
       <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 md:space-y-10 custom-scrollbar">
-        <TeamStatsCards 
+        <TeamStatsCards
           conferenceRank={conferenceRank}
           rosterSize={teamPlayers.length}
+          marketTier={marketTier}
         />
 
         <div className="bg-slate-900/40 border border-slate-800 p-3 md:p-6 rounded-2xl md:rounded-3xl backdrop-blur-sm">
@@ -136,7 +154,7 @@ const currentSeason = useMemo(() => {
             <div className="flex items-center gap-4">
               <h3 className="text-lg md:text-xl font-black text-white flex items-center gap-2 md:gap-3 uppercase tracking-tight">
                 <Star size={18} className="text-indigo-500" />
-                {activeTab === 'roster' ? 'Active Roster' : 'Team Statistics'}
+                {activeTab === 'roster' ? 'Active Roster' : activeTab === 'stats' ? 'Player Stats' : activeTab === 'contracts' ? 'Contracts' : 'Transactions'}
               </h3>
               
               <div className="flex bg-slate-900/80 border border-slate-800 p-1 rounded-xl">
@@ -151,23 +169,49 @@ const currentSeason = useMemo(() => {
                   <LayoutGrid size={12} />
                   Roster
                 </button>
-                <button 
+                <button
                   onClick={() => setActiveTab('stats')}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                    activeTab === 'stats' 
-                      ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' 
+                    activeTab === 'stats'
+                      ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
                       : 'text-slate-500 hover:text-slate-300'
                   }`}
                 >
                   <BarChart2 size={12} />
                   Stats
                 </button>
+                <button
+                  onClick={() => setActiveTab('contracts')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    activeTab === 'contracts'
+                      ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                      : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  <DollarSign size={12} />
+                  Contracts
+                </button>
+                <button
+                  onClick={() => setActiveTab('transactions')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    activeTab === 'transactions'
+                      ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                      : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  <ArrowRightLeft size={12} />
+                  Moves
+                </button>
               </div>
             </div>
             <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Season 2025-26</span>
           </div>
           
-          {activeTab === 'roster' ? (
+          {activeTab === 'contracts' ? (
+            <ContractTimeline teamId={team.id} />
+          ) : activeTab === 'transactions' ? (
+            <TeamTransactionsTab team={team} />
+          ) : activeTab === 'roster' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
               {teamPlayers.map(player => (
                 <PlayerCard 
@@ -179,81 +223,7 @@ const currentSeason = useMemo(() => {
               ))}
             </div>
           ) : (
-            <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
-              <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-xs text-left min-w-[1000px]">
-                  <thead className="text-[10px] text-slate-500 uppercase bg-slate-900/50 border-b border-slate-800">
-                    <tr>
-                      <th className="px-6 py-4 font-black tracking-widest">Player</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">GP</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">GS</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">MIN</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right text-white">PTS</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">ORB</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">DRB</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">REB</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">AST</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">STL</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">BLK</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">FGM</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">FGA</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">FG%</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">3PM</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">3PA</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">3P%</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">FTM</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">FTA</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">FT%</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">TOV</th>
-                      <th className="px-4 py-4 font-black tracking-widest text-right">PF</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/50">
-                    {playerStats.map((item) => {
-                      const s = item.stat!;
-                      return (
-                        <tr key={item.player.internalId} className="hover:bg-slate-800/40 transition-colors">
-                          <td 
-                            className="px-6 py-4 font-bold text-indigo-400 cursor-pointer hover:text-indigo-300 hover:underline"
-                            onClick={() => onViewBio ? onViewBio(item.player) : onContact(item.player)}
-                          >
-                            {item.player.name}
-                          </td>
-                          <td className="px-4 py-4 text-right font-mono">{s.gp}</td>
-                          <td className="px-4 py-4 text-right font-mono">{s.gs || 0}</td>
-                          <td className="px-4 py-4 text-right font-mono">{(s.min / s.gp).toFixed(1)}</td>
-                          <td className="px-4 py-4 text-right font-mono font-bold text-white">{(s.pts / s.gp).toFixed(1)}</td>
-                          <td className="px-4 py-4 text-right font-mono">{(s.orb / s.gp).toFixed(1)}</td>
-                          <td className="px-4 py-4 text-right font-mono">{(s.drb / s.gp).toFixed(1)}</td>
-                          <td className="px-4 py-4 text-right font-mono">{((s.trb || (s.orb || 0) + (s.drb || 0)) / s.gp).toFixed(1)}</td>
-                          <td className="px-4 py-4 text-right font-mono">{(s.ast / s.gp).toFixed(1)}</td>
-                          <td className="px-4 py-4 text-right font-mono">{(s.stl / s.gp).toFixed(1)}</td>
-                          <td className="px-4 py-4 text-right font-mono">{(s.blk / s.gp).toFixed(1)}</td>
-                          <td className="px-4 py-4 text-right font-mono">{(s.fg / s.gp).toFixed(1)}</td>
-                          <td className="px-4 py-4 text-right font-mono">{(s.fga / s.gp).toFixed(1)}</td>
-                          <td className="px-4 py-4 text-right font-mono">{(s.fga > 0 ? (s.fg / s.fga) * 100 : 0).toFixed(1)}%</td>
-                          <td className="px-4 py-4 text-right font-mono">{(s.tp / s.gp).toFixed(1)}</td>
-                          <td className="px-4 py-4 text-right font-mono">{(s.tpa / s.gp).toFixed(1)}</td>
-                          <td className="px-4 py-4 text-right font-mono">{(s.tpa > 0 ? (s.tp / s.tpa) * 100 : 0).toFixed(1)}%</td>
-                          <td className="px-4 py-4 text-right font-mono">{(s.ft / s.gp).toFixed(1)}</td>
-                          <td className="px-4 py-4 text-right font-mono">{(s.fta / s.gp).toFixed(1)}</td>
-                          <td className="px-4 py-4 text-right font-mono">{(s.fta > 0 ? (s.ft / s.fta) * 100 : 0).toFixed(1)}%</td>
-                          <td className="px-4 py-4 text-right font-mono">{(s.tov / s.gp).toFixed(1)}</td>
-                          <td className="px-4 py-4 text-right font-mono">{(s.pf / s.gp).toFixed(1)}</td>
-                        </tr>
-                      );
-                    })}
-                    {playerStats.length === 0 && (
-                      <tr>
-                        <td colSpan={22} className="px-6 py-12 text-center text-slate-500 font-bold uppercase tracking-widest">
-                          No statistics recorded for this season
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <PlayerStatsView initialTeamFilter={team.abbrev} />
           )}
         </div>
       </div>

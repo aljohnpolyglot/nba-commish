@@ -62,6 +62,7 @@ export const TeamStatsView: React.FC = () => {
 
   const [statType, setStatType]     = useState<StatType>('team');
   const [season,   setSeason]       = useState<number | 'all'>(state.leagueStats.year);
+  useEffect(() => { setSeason(state.leagueStats.year); }, [state.leagueStats.year]);
   const [phase,    setPhase]        = useState<Phase>('regular');
   const [sortField, setSortField]   = useState<string>('pts');
   const [sortOrder, setSortOrder]   = useState<'asc' | 'desc'>('desc');
@@ -245,12 +246,12 @@ export const TeamStatsView: React.FC = () => {
         lpFgm:  a.lpFgm/g,  lpFga:  a.lpFga/g,  lpFgp:  a.lpFga  > 0 ? a.lpFgm/a.lpFga   : 0,
         mrFgm:  a.mrFgm/g,  mrFga:  a.mrFga/g,  mrFgp:  a.mrFga  > 0 ? a.mrFgm/a.mrFga   : 0,
         slTpm: a.tpm/g, slTpa: a.tpa/g, slTpp: tpp,
-        dd: a.dd/g, td: a.td/g, qd: a.qd/g, fiveX5: a.fiveX5/g,
+        dd: a.dd, td: a.td, qd: a.qd, fiveX5: a.fiveX5,
         oppRimFgm: a.oppRimFgm/g, oppRimFga: a.oppRimFga/g, oppRimFgp: a.oppRimFga > 0 ? a.oppRimFgm/a.oppRimFga : 0,
         oppLpFgm:  a.oppLpFgm/g,  oppLpFga:  a.oppLpFga/g,  oppLpFgp:  a.oppLpFga  > 0 ? a.oppLpFgm/a.oppLpFga  : 0,
         oppMrFgm:  a.oppMrFgm/g,  oppMrFga:  a.oppMrFga/g,  oppMrFgp:  a.oppMrFga  > 0 ? a.oppMrFgm/a.oppMrFga  : 0,
         oppSlTpm: a.oppTpm/g, oppSlTpa: a.oppTpa/g, oppSlTpp: oppTpp,
-        oppDd: a.oppDd/g, oppTd: a.oppTd/g, oppQd: a.oppQd/g, oppFiveX5: a.oppFiveX5/g,
+        oppDd: a.oppDd, oppTd: a.oppTd, oppQd: a.oppQd, oppFiveX5: a.oppFiveX5,
         pw, pl: a.g - pw, ortg, drtg, nrtg, pace, threePar, ftr, tsPct, efgPct,
         tovPct, orbPct, ftFga, dEfgPct, dTovPct, drbPct, dFtFga,
       };
@@ -458,8 +459,8 @@ export const TeamStatsView: React.FC = () => {
           <td className={tc}>{fn(lp[0])}</td> <td className={tc}>{fn(lp[1])}</td> <td className={tca}>{fPc(lp[2])}</td>
           <td className={tc}>{fn(mr[0])}</td> <td className={tc}>{fn(mr[1])}</td> <td className={tca}>{fPc(mr[2])}</td>
           <td className={tc}>{fn(tp[0])}</td> <td className={tc}>{fn(tp[1])}</td> <td className={tca}>{fPc(tp[2])}</td>
-          <td className={tc}>{fn(feats[0], 2)}</td><td className={tc}>{fn(feats[1], 2)}</td>
-          <td className={tc}>{fn(feats[2], 2)}</td><td className={tc}>{fn(feats[3], 2)}</td>
+          <td className={tc}>{fn(feats[0], 0)}</td><td className={tc}>{fn(feats[1], 0)}</td>
+          <td className={tc}>{fn(feats[2], 0)}</td><td className={tc}>{fn(feats[3], 0)}</td>
         </>
       );
     }

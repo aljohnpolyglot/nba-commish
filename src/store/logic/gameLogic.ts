@@ -20,6 +20,7 @@ import { generateLazySimNews } from '../../services/news/lazySimNewsGenerator';
 import { handleCommunication } from './turn/communicationHandler';
 import { SettingsManager } from '../../services/SettingsManager';
 import { resolveBets } from '../../services/logic/betResolver';
+import { buildAutoResolveEvents } from '../../services/logic/lazySimRunner';
 
 export { handleStartGame, handleAnnounceChange };
 
@@ -29,11 +30,40 @@ export const processTurn = async (
   onSimComplete?: (simResults: any[]) => void
 ) => {
     let executiveTradeTransactionRef = { current: null };
-    
+
     // 1. Pre-process roster-altering actions
-    const { stateForSim, executiveTradeTransaction } = await preProcessAction(state, action);
+    let { stateForSim, executiveTradeTransaction } = await preProcessAction(state, action);
     if (executiveTradeTransaction) {
         executiveTradeTransactionRef.current = executiveTradeTransaction;
+    }
+
+    // §0 fix for SIMULATE_TO_DATE: if we're before Aug 14 with no regular-season schedule,
+    // eagerly fire broadcasting/global_games/intl_preseason/schedule_generation so games
+    // are in state before the sim loop runs — same preflight as runLazySim.
+    if (action.type === 'SIMULATE_TO_DATE') {
+        const targetNorm = normalizeDate(action.payload.targetDate);
+        const hasRegularSeason = stateForSim.schedule.some(
+            (g: any) => !g.isPreseason && !g.isPlayoff && !g.isPlayIn
+        );
+        if (!hasRegularSeason) {
+            const eagerKeys = ['broadcasting_default', 'global_games', 'intl_preseason', 'schedule_generation'];
+            const seasonYear = stateForSim.leagueStats.year;
+            const firedEager = new Set<string>();
+            for (const event of buildAutoResolveEvents(seasonYear)) {
+                if (!eagerKeys.includes(event.key)) continue;
+                if (event.date >= targetNorm) continue;
+                if (firedEager.has(event.key)) continue;
+                try {
+                    const patch = await event.resolver(stateForSim);
+                    if (patch && Object.keys(patch).length > 0) {
+                        stateForSim = { ...stateForSim, ...patch };
+                    }
+                } catch (err) {
+                    console.warn(`[processTurn eager] ${event.key} failed:`, err);
+                }
+                firedEager.add(event.key);
+            }
+        }
     }
 
     // 2. Determine days to simulate
@@ -60,7 +90,33 @@ export const processTurn = async (
     }
 
     // 3. Run simulation
-    const { stateWithSim, allSimResults } = runSimulation(stateForSim, daysToSimulate, action);
+    const simStartNorm = normalizeDate(stateForSim.date);
+    let { stateWithSim, allSimResults } = runSimulation(stateForSim, daysToSimulate, action);
+
+    // 3b. Fire any auto-resolve calendar events crossed during this sim batch
+    // (All-Star voting, schedule gen, award announcements, etc.)
+    // Only for ADVANCE_DAY / SIMULATE_TO_DATE — not for action turns.
+    if (action.type === 'ADVANCE_DAY' || action.type === 'SIMULATE_TO_DATE') {
+        const simEndNorm = normalizeDate(stateWithSim.date);
+        const seasonYear = stateWithSim.leagueStats.year;
+        // Accumulate fired keys per season so re-runs across rollovers stay correct
+        const firedKeys = new Set<string>();
+        for (const event of buildAutoResolveEvents(seasonYear)) {
+            const compositeKey = `${seasonYear}:${event.key}`;
+            // Fire if the event date falls on the current day or within this sim window
+            if (event.date >= simStartNorm && event.date <= simEndNorm && !firedKeys.has(compositeKey)) {
+                try {
+                    const patch = await event.resolver(stateWithSim);
+                    if (patch && Object.keys(patch).length > 0) {
+                        stateWithSim = { ...stateWithSim, ...patch };
+                    }
+                } catch (err) {
+                    console.warn(`[processTurn calendar] ${event.key} failed:`, err);
+                }
+                firedKeys.add(compositeKey);
+            }
+        }
+    }
 
     // Fire callback with sim results BEFORE LLM call starts
     if (onSimComplete && allSimResults.length > 0) {
@@ -700,7 +756,7 @@ export const processTurn = async (
         historicalStats: [...state.historicalStats, historicalPoint].slice(-365),
         inbox: [...uniqueNewEmails, ...updatedInbox],
         chats: updatedChats,
-        news: [...uniqueNewNews, ...state.news],
+        news: [...uniqueNewNews, ...(stateWithSim.news ?? state.news)],
         socialFeed: [...uniqueNewPosts, ...state.socialFeed].slice(0, 500),
         teams: stateWithSim.teams,
         schedule: finalSchedule,
@@ -713,7 +769,7 @@ export const processTurn = async (
             const deduped = boxScoresWithDate.filter(b => !existingIds.has(b.gameId));
             return [...(state.boxScores || []), ...deduped];
         })(),
-        history: [...state.history, { text: result.outcomeText || '', date: dateString, type: (() => {
+        history: [...(stateWithSim.history ?? state.history), { text: result.outcomeText || '', date: dateString, commissioner: true, type: (() => {
             switch (action.type) {
                 case 'EXECUTIVE_TRADE':
                 case 'FORCE_TRADE': return 'Trade';

@@ -21,11 +21,14 @@
  * These multipliers are what bring them in line with NBA sim values.
  */
 export const LEAGUE_MULTIPLIERS: Record<string, number> = {
-  Euroleague: 0.780,
-  PBA:        0.540,
-  'B-League': 0.850,
-  Endesa:     0.830,  // +0.03 bump — Endesa top players were landing too low (72-ish ceiling)
-  'G-League': 0.780,  // +0.03 bump — best G-League guys were topping out at 72, should reach ~75+
+  Euroleague:   0.980,  // just below NBA — top Euroleague players approach NBA starter level
+  PBA:          0.510,
+  'B-League':   0.850,
+  Endesa:       0.830,  // +0.03 bump — Endesa top players were landing too low (72-ish ceiling)
+  'G-League':   0.780,  // +0.03 bump — best G-League guys were topping out at 72, should reach ~75+
+  WNBA:         1.000,  // WNBA rated on full BBGM scale — no downscaling
+  'China CBA':     0.700,  // Chinese Basketball Association — below Euroleague/Endesa
+  'NBL Australia': 0.750,  // National Basketball League (Australia) — strong developmental league
 };
 
 function calcRawOvr(ratings: any): number {
@@ -80,8 +83,10 @@ export function calculateLeagueOverall(ratings: any, league?: string): number {
 }
 
 // Named convenience exports — used by externalRosterService
-export const calculateEuroleagueOverall = (r: any) => calculateLeagueOverall(r);
-export const calculatePBAOverall        = (r: any) => calculateLeagueOverall(r);
-export const calculateBLeagueOverall    = (r: any) => calculateLeagueOverall(r);
-export const calculateEndesaOverall     = (r: any) => calculateLeagueOverall(r);
-export const calculateGLeagueOverall    = (r: any) => calculateLeagueOverall(r);
+export const calculateEuroleagueOverall  = (r: any) => calculateLeagueOverall(r);
+export const calculatePBAOverall         = (r: any) => calculateLeagueOverall(r);
+export const calculateBLeagueOverall     = (r: any) => calculateLeagueOverall(r);
+export const calculateEndesaOverall      = (r: any) => calculateLeagueOverall(r);
+export const calculateGLeagueOverall     = (r: any) => calculateLeagueOverall(r);
+export const calculateChinaCBAOverall    = (r: any) => calculateLeagueOverall(r, 'China CBA');
+export const calculateNBLAustraliaOverall = (r: any) => calculateLeagueOverall(r, 'NBL Australia');

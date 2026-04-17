@@ -57,7 +57,7 @@ const getSponsorData = async (): Promise<SponsorData | null> => {
 };
 
 export const generateAgentAgitationStory = (players: NBAPlayer[], startYear: number): StoryContextResult | null => {
-    const starPlayers = players.filter(p => p.overallRating > 85 && p.tid >= 0); // Active players only
+    const starPlayers = players.filter(p => p.overallRating > 65 && p.tid >= 0); // BBGM 65+ = star tier (MVP range is 65-75 in our formula)
     if(starPlayers.length === 0) return null;
 
     const player = selectRandom(starPlayers, 1)[0];
@@ -102,7 +102,7 @@ export const generateGmConcernStory = (teams: NBATeam[], players: NBAPlayer[], s
     const sender = { name: gmName, title: "General Manager", organization: team.name };
 
     const teamPlayers = players.filter(p => p.tid === team.id);
-    const starPlayer = selectRandom(teamPlayers.filter(p => p.overallRating > 80), 1)[0];
+    const starPlayer = selectRandom(teamPlayers.filter(p => p.overallRating > 62), 1)[0]; // BBGM 62+ = starter with trade value
     const teamPicks = allPicks.filter(p => p.tid === team.id);
 
     if (team.strength < 75 && teamPicks.length > 5 && starPlayer) {
@@ -168,7 +168,7 @@ export const generateOwnerDemandStory = (teams: NBATeam[], staff: StaffData | nu
 };
 
 export const generatePlayerAppealStory = (players: NBAPlayer[]): StoryContextResult | null => {
-    const mvpCandidates = players.filter(p => p.overallRating > 90 && p.tid >= 0);
+    const mvpCandidates = players.filter(p => p.overallRating > 68 && p.tid >= 0); // BBGM 68+ = MVP candidate range (65-72 per practical table)
     if(mvpCandidates.length === 0) return null;
 
     const player = selectRandom(mvpCandidates, 1)[0];

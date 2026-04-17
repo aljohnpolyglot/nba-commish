@@ -1,15 +1,14 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import { extractNbaId, hdPortrait } from '../../../utils/helpers';
 
 interface PlayerBioHeroProps {
   bioData: any;
   teamColor: string;
   teamLogo: string | null | undefined;
   teamFullName: string | null;
-  portraitSrc: string;         // starts as BBGM portrait
-  playerImgURL?: string;       // BBGM fallback (same as portraitSrc initially)
-  playerName?: string;         // used to derive CDN fallback via NAME_TO_ID
+  portraitSrc: string;         // BBGM/ProBallers portrait URL
+  playerImgURL?: string;       // kept for API compat, not used for CDN fallback
+  playerName?: string;
   isSyncing: boolean;
   fetchDone: boolean;
   isHoF?: boolean;
@@ -38,12 +37,6 @@ export const PlayerBioHero: React.FC<PlayerBioHeroProps> = ({
   fetchDone,
   isHoF,
 }) => {
-  // CDN fallback URL — only built if we can extract an NBA ID
-  const cdnFallback = (() => {
-    const nbaId = extractNbaId(playerImgURL ?? '', playerName ?? '');
-    return nbaId ? hdPortrait(nbaId) : null;
-  })();
-
   return (
   <>
     {/* ── Hero Banner ── */}
@@ -79,17 +72,7 @@ export const PlayerBioHero: React.FC<PlayerBioHeroProps> = ({
           alt={bioData.n}
           className="h-48 md:h-[340px] drop-shadow-[10px_0_20px_rgba(0,0,0,0.5)] object-contain object-bottom"
           referrerPolicy="no-referrer"
-          onError={e => {
-            const img = e.currentTarget;
-            // Chain: BBGM → CDN → hide
-            // triedFallback=1 means CDN was tried; triedFallback=2 means give up.
-            if (!img.dataset.triedFallback && cdnFallback) {
-              img.dataset.triedFallback = '1';
-              img.src = cdnFallback;
-            } else {
-              img.style.display = 'none';
-            }
-          }}
+          onError={e => { e.currentTarget.style.display = 'none'; }}
         />
         {isHoF && (
           <div className="absolute -bottom-2 -right-2 md:-right-4 w-10 h-10 md:w-14 md:h-14 bg-white rounded-full flex items-center justify-center shadow-xl border-2 border-white/30 z-30" title="Basketball Hall of Fame">

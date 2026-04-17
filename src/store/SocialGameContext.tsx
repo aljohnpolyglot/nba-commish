@@ -203,7 +203,7 @@ export function SocialGameProvider({ children }: { children: ReactNode }) {
 
       // Proactively fetch profile data for generated handles
       const uniqueHandles = Array.from(new Set(generatedData.map((d: any) => d.handle.replace('@', '')))) as string[];
-      await Promise.all(uniqueHandles.map(handle => fetchProfileData(handle, dispatchAction)));
+      await Promise.all(uniqueHandles.map(handle => fetchProfileData(handle, dispatchAction, state)));
     } catch (error) {
       console.error("Failed to generate replies:", error);
     } finally {

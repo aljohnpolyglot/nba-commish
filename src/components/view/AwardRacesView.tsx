@@ -50,6 +50,10 @@ export const AwardRacesView: React.FC = () => {
     allNBA: { title: 'All-NBA / All-Defense / All-Rookie', icon: <Users className="text-indigo-400" />, desc: '1st, 2nd & 3rd teams + Defense + Rookie' },
   };
 
+  // Don't show award projections before the season starts (0 games played)
+  const totalGP = state.teams.reduce((sum, t) => sum + (t.wins ?? 0) + (t.losses ?? 0), 0);
+  const seasonNotStarted = totalGP === 0;
+
   if (viewingPlayer) {
     return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
   }
@@ -141,6 +145,16 @@ export const AwardRacesView: React.FC = () => {
     allNBA: 'May  7',
     mvp:    'May 21',
   };
+
+  if (seasonNotStarted) {
+    return (
+      <div className="h-full flex flex-col bg-slate-950 items-center justify-center gap-4 p-12 text-center">
+        <Trophy className="text-slate-700" size={48} />
+        <h2 className="text-2xl font-black text-white uppercase tracking-tight">Award Races</h2>
+        <p className="text-slate-500 text-sm max-w-md">Award projections will be available once the {state.leagueStats.year - 1}-{String(state.leagueStats.year).slice(-2)} regular season begins and players accumulate stats.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-slate-950 overflow-hidden">

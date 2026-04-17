@@ -272,7 +272,7 @@ export function buildShamsSigningPost(
     const salaryStr = salary && salary >= 5000
         ? ` on a $${(salary / 1000).toFixed(1)}M deal`
         : '';
-    const intlLeagues = ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'WNBA'];
+    const intlLeagues = ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'WNBA', 'China CBA', 'NBL Australia'];
     const isReturn = prevLeague && intlLeagues.includes(prevLeague);
     const prevStr = isReturn
         ? ` He is returning to the NBA after playing in the ${prevLeague}.`
@@ -281,8 +281,9 @@ export function buildShamsSigningPost(
             : prevLeague && prevLeague !== 'Free Agent'
                 ? ` He was most recently in the ${prevLeague}.`
                 : '';
-    const isStar = overallRating >= 85;
-    const isVet = overallRating >= 76;
+    // BBGM scale: 73+ = All-Star/franchise player (BREAKING tweet), 55+ = starter (veteran framing)
+    const isStar = overallRating >= 73;
+    const isVet = overallRating >= 55;
 
     if (isStar) {
         const variants = [
@@ -472,4 +473,53 @@ export const CHARANIA_TEMPLATES: SocialTemplate[] = [
     },
 ];
 
-export { buildShamsPost };
+/**
+ * Build a Shams-style transaction tweet (signings, trades, extensions).
+ * Only fires for notable players (K2 ≥ 78) to avoid noise.
+ */
+function buildShamsTransactionPost(opts: {
+    type: 'signing' | 'trade' | 'extension';
+    playerName: string;
+    teamName: string;
+    amount?: number;  // annual in millions
+    years?: number;
+    hasPlayerOption?: boolean;
+    otherTeamName?: string; // for trades
+}): string {
+    const src = getSource();
+    const { type, playerName, teamName, amount, years, hasPlayerOption, otherTeamName } = opts;
+
+    if (type === 'signing') {
+        const dealStr = amount && years
+            ? `${years}-year, $${Math.round(amount * (years ?? 1))}M deal`
+            : 'a deal';
+        const optStr = hasPlayerOption ? ' with a player option on the final year' : '';
+        const variants = [
+            `${playerName} has agreed to a ${dealStr} with the ${teamName}${optStr}, ${src}`,
+            `Free agent ${playerName} is signing with the ${teamName} on a ${dealStr}${optStr}, ${src}`,
+            `The ${teamName} are signing ${playerName} to a ${dealStr}${optStr}, sources tell ESPN.`,
+        ];
+        return variants[Math.floor(Math.random() * variants.length)];
+    }
+
+    if (type === 'trade') {
+        const variants = [
+            `BREAKING: The ${teamName} are trading ${playerName} to the ${otherTeamName ?? 'another team'}, ${src}`,
+            `${playerName} is being traded to the ${otherTeamName ?? 'another team'}, sources tell ESPN and @Stadium.`,
+            `Trade: ${teamName} sending ${playerName} to ${otherTeamName ?? 'another team'} in a deal, per sources.`,
+        ];
+        return variants[Math.floor(Math.random() * variants.length)];
+    }
+
+    // extension
+    const dealStr = amount && years
+        ? `${years}-year, $${Math.round(amount * (years ?? 1))}M extension`
+        : 'a contract extension';
+    const variants = [
+        `${playerName} has agreed to ${dealStr} with the ${teamName}, ${src}`,
+        `The ${teamName} and ${playerName} have agreed to ${dealStr}, ${src}`,
+    ];
+    return variants[Math.floor(Math.random() * variants.length)];
+}
+
+export { buildShamsPost, buildShamsTransactionPost };

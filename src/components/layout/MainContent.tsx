@@ -1,4 +1,6 @@
 import React from 'react';
+import { normalizeDate } from '../../utils/helpers';
+import { useGame } from '../../store/GameContext';
 import { Inbox } from '../Inbox';
 import { MessagesView } from '../MessagesView';
 import { NewsFeed } from '../NewsFeed';
@@ -33,6 +35,7 @@ import { DraftScoutingView } from '../central/view/DraftScoutingView';
 import { DraftLotteryView } from '../draft/DraftLotteryView';
 import { SeasonPreviewView } from '../seasonPreview/SeasonPreviewView';
 import { DraftSimulatorView } from '../draft/DraftSimulatorView';
+import { DraftHistoryView } from '../draft/DraftHistoryView';
 import Dashboard from '../commissioner/Dashboard';
 import ViewershipTab from '../commissioner/ViewershipTab';
 import CommishStore from '../central/view/CommishStore';
@@ -43,6 +46,8 @@ import { PlayerRatingsView } from '../central/view/PlayerRatingsView';
 import { LeagueHistoryView } from '../central/view/LeagueHistoryView';
 import { PlayerBiosView } from '../central/view/PlayerBiosView';
 import { TeamHistoryView } from '../central/view/TeamHistoryView';
+import { PowerRankingsView } from '../central/view/PowerRankingsView';
+import { TradeFinderView } from '../central/view/TradeFinderView';
 import { Tab } from '../../types';
 
 interface MainContentProps {
@@ -51,6 +56,7 @@ interface MainContentProps {
 }
 
 export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewChange }) => {
+  const { state } = useGame();
   switch (currentView) {
     case 'Inbox':
       return <Inbox />;
@@ -86,6 +92,8 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       return <LeagueEvent />;
     case 'Trade Machine':
       return <TradeMachineView onViewChange={onViewChange} />;
+    case 'Trade Finder':
+      return <TradeFinderView />;
     case 'Trade Proposals':
       return <TradeProposalsView />;
     case 'Free Agents':
@@ -173,11 +181,25 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
     case 'Draft Lottery':
       return <DraftLotteryView />;
     case 'Draft Board':
+    case 'Draft History': {
+      // On draft day (and draft not yet complete) → show the live simulator
+      // Otherwise → show draft history (past draft classes)
+      const _ls = state?.leagueStats ?? {} as any;
+      const _yr = (_ls as any).year ?? 2026;
+      const _draftDate = `${_yr}-06-25`;
+      const _today = state?.date ? normalizeDate(state.date) : '';
+      const _isDraftDay = _today >= _draftDate && _today <= `${_yr}-06-30`;
+      const _isDraftDone = !!(state as any)?.draftComplete;
+      const showSimulator = _isDraftDay && !_isDraftDone;
       return (
         <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
-          <DraftSimulatorView onViewChange={onViewChange} />
+          {showSimulator
+            ? <DraftSimulatorView onViewChange={onViewChange} />
+            : <DraftHistoryView />
+          }
         </div>
       );
+    }
     case 'Season Preview':
       return <SeasonPreviewView onViewChange={onViewChange} />;
     case 'Commish Store':
@@ -206,6 +228,8 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       return <PlayerBiosView />;
     case 'Team History':
       return <TeamHistoryView />;
+    case 'Power Rankings':
+      return <PowerRankingsView />;
     default:
       return null;
   }

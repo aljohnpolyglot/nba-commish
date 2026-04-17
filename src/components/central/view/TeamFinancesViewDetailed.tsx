@@ -1,9 +1,15 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { formatCurrency } from '../../../utils/helpers';
-import { contractToUSD, formatSalaryM, getCapThresholds, getTeamPayrollUSD } from '../../../utils/salaryUtils';
+import { formatCurrency, convertTo2KRating } from '../../../utils/helpers';
+import { contractToUSD, formatSalaryM, getCapThresholds, getTeamPayrollUSD, getMLEAvailability } from '../../../utils/salaryUtils';
 import { ArrowLeft, AlertTriangle, TrendingDown, TrendingUp } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Sankey } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+
+/** Apply NBA-standard ~5% annual raise to locked contract years (baked in at signing). */
+function annualRaise(baseUSD: number, yearsFromNow: number): number {
+  if (yearsFromNow <= 0) return baseUSD;
+  return Math.round(baseUSD * Math.pow(1.05, yearsFromNow));
+}
 
 const COLORS = ['#38bdf8', '#facc15', '#4ade80', '#f87171', '#c084fc', '#fb923c', '#94a3b8'];
 
@@ -19,7 +25,7 @@ export const TeamFinancesViewDetailed: React.FC = () => {
 
   const selectedTeam = state.teams.find(t => t.id === teamId);
   const teamPlayers = useMemo(
-    () => state.players.filter(p => p.tid === teamId && !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || '')),
+    () => state.players.filter(p => p.tid === teamId && !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '')),
     [state.players, teamId]
   );
 
@@ -54,35 +60,20 @@ export const TeamFinancesViewDetailed: React.FC = () => {
 
   const highEarners = useMemo(() => playerPieData.filter(p => p.value >= 8_000_000), [playerPieData]);
 
-  const sankeyData = useMemo(() => {
-    const nodes = [
-      { name: 'Total Payroll' },
-      { name: 'Guards' },
-      { name: 'Forwards' },
-      { name: 'Centers' },
-    ];
-    const links: any[] = [];
-    let playerIndex = 4;
-    const addGroup = (group: typeof teamPlayers, sourceIndex: number) => {
-      let groupTotal = 0;
-      group.forEach(p => {
-        const amount = contractToUSD(p.contract?.amount || 0);
-        if (amount > 0) {
-          nodes.push({ name: p.name });
-          links.push({ source: sourceIndex, target: playerIndex, value: amount });
-          playerIndex++;
-          groupTotal += amount;
-        }
-      });
-      if (groupTotal > 0) links.push({ source: 0, target: sourceIndex, value: groupTotal });
-    };
-    addGroup(teamPlayers.filter(p => (p.pos || '').includes('G')), 1);
-    addGroup(teamPlayers.filter(p => (p.pos || '').includes('F')), 2);
-    addGroup(teamPlayers.filter(p => (p.pos || '').includes('C')), 3);
-    return { nodes, links };
-  }, [teamPlayers]);
-
   if (!selectedTeam) return null;
+
+  // MLE availability (signingUSD=0 → what's available RIGHT NOW)
+  const mleAvail = (state.leagueStats.mleEnabled ?? true)
+    ? getMLEAvailability(teamId, payroll, 0, capThresholds, state.leagueStats as any)
+    : null;
+  const mleBadge: { label: string; color: string; bg: string } | null =
+    mleAvail && !mleAvail.blocked && mleAvail.available > 0
+      ? mleAvail.type === 'room'
+        ? { label: `Room MLE · ${formatSalaryM(mleAvail.available)}`, color: 'text-emerald-300', bg: 'bg-emerald-500/15 border-emerald-500/30' }
+        : mleAvail.type === 'non_taxpayer'
+        ? { label: `Non-Tax MLE · ${formatSalaryM(mleAvail.available)}`, color: 'text-blue-300', bg: 'bg-blue-500/15 border-blue-500/30' }
+        : { label: `Tax MLE · ${formatSalaryM(mleAvail.available)}`, color: 'text-yellow-300', bg: 'bg-yellow-500/15 border-yellow-500/30' }
+      : null;
 
   const maxBarValue = Math.max(payroll, secondApron * 1.05);
   const capPct = (salaryCap / maxBarValue) * 100;
@@ -146,6 +137,12 @@ export const TeamFinancesViewDetailed: React.FC = () => {
                 <ApronStatus space={firstApronSpace} label="1st Apron" />
                 <ApronStatus space={secondApronSpace} label="2nd Apron" />
               </div>
+              {mleBadge && (
+                <div className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest ${mleBadge.bg} ${mleBadge.color}`}>
+                  <span>⚡</span>
+                  {mleBadge.label}
+                </div>
+              )}
             </div>
 
             {/* Cap Utilization */}
@@ -191,28 +188,8 @@ export const TeamFinancesViewDetailed: React.FC = () => {
             </div>
           </div>
 
-          {/* Middle Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            {/* Payroll Flow */}
-            <div className="bg-[#232730] rounded-xl p-4 sm:p-6 border border-slate-800/50 flex flex-col">
-              <div className="flex justify-between items-center mb-4 sm:mb-6">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                  <img src={selectedTeam.logoUrl} className="w-4 h-4 object-contain" referrerPolicy="no-referrer" />
-                  PAYROLL FLOW
-                </h3>
-                <span className="text-xs text-slate-500">Total → Position → Player</span>
-              </div>
-              <div className="flex-1 min-h-[220px] sm:min-h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <Sankey data={sankeyData} nodePadding={10} margin={{ top: 20, right: 20, bottom: 20, left: 20 }} link={{ stroke: '#334155' }} node={{ fill: '#38bdf8' }}>
-                    <Tooltip formatter={(value: number | undefined) => formatCurrency(value ?? 0, false)} contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }} />
-                  </Sankey>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Contract Timeline */}
-            <div className="bg-[#232730] rounded-xl border border-slate-800/50 overflow-hidden flex flex-col">
+          {/* Contract Timeline */}
+          <div className="bg-[#232730] rounded-xl border border-slate-800/50 overflow-hidden flex flex-col">
               <div className="p-4 sm:p-6 border-b border-slate-800/50 flex justify-between items-center">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <img src={selectedTeam.logoUrl} className="w-4 h-4 object-contain" referrerPolicy="no-referrer" />
@@ -224,45 +201,110 @@ export const TeamFinancesViewDetailed: React.FC = () => {
                   <thead>
                     <tr className="text-slate-400">
                       <th className="pb-4 font-medium w-1/4">Player</th>
-                      <th className="pb-4 font-medium text-center w-32 text-yellow-500 border-b-2 border-yellow-500">{currentYear}-{String(currentYear + 1).slice(2)}</th>
+                      {/* Column n = offset from currentYear; current season label is (currentYear-1)-(currentYear) */}
+                      <th className="pb-4 font-medium text-center w-32 text-yellow-500 border-b-2 border-yellow-500">{currentYear - 1}-{String(currentYear).slice(2)}</th>
+                      <th className="pb-4 font-medium text-center w-32">{currentYear}-{String(currentYear + 1).slice(2)}</th>
                       <th className="pb-4 font-medium text-center w-32">{currentYear + 1}-{String(currentYear + 2).slice(2)}</th>
                       <th className="pb-4 font-medium text-center w-32">{currentYear + 2}-{String(currentYear + 3).slice(2)}</th>
                       <th className="pb-4 font-medium text-center w-32">{currentYear + 3}-{String(currentYear + 4).slice(2)}</th>
-                      <th className="pb-4 font-medium text-center w-32">{currentYear + 4}-{String(currentYear + 5).slice(2)}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {[...teamPlayers].sort((a, b) => (b.contract?.amount || 0) - (a.contract?.amount || 0)).map(player => {
-                      const amount = player.contract?.amount || 0;
+                      const isTwoWayPlayer = !!(player as any).twoWay;
+                      const baseUSD = isTwoWayPlayer ? 625_000 : contractToUSD(player.contract?.amount || 0);
                       const expYear = player.contract?.exp || currentYear;
                       const yearsLeft = expYear - currentYear + 1;
+
+                      // Real per-season contract data (from nbacontractsdata gist)
+                      const contractYears: Array<{ season: string; guaranteed: number; option: string }> =
+                        (player as any).contractYears ?? [];
+                      const cyByYear = new Map<number, { guaranteed: number; option: string }>();
+                      contractYears.forEach(cy => {
+                        const y = parseInt(cy.season.split('-')[0], 10) + 1;
+                        cyByYear.set(y, { guaranteed: cy.guaranteed, option: cy.option });
+                      });
+
+                      // Last non-zero guaranteed amount from real contract data (for option year fallback)
+                      const lastNonZeroEntry = [...cyByYear.entries()]
+                        .filter(([, v]) => v.guaranteed > 0)
+                        .sort(([a], [b]) => b - a)[0];
+                      const lastNonZeroYear  = lastNonZeroEntry?.[0] ?? currentYear;
+                      const lastNonZeroUSD   = lastNonZeroEntry?.[1]?.guaranteed ?? baseUSD;
+
+                      // Amount getter — real data first, then annualRaise for game-generated contracts.
+                      // Option years with guaranteed=0 extrapolate from last known salary.
+                      const yr = (n: number): number => {
+                        if (isTwoWayPlayer) return 625_000;
+                        const y = currentYear + n;
+                        const cy = cyByYear.get(y);
+                        if (cy) {
+                          // If the entry has a real salary, use it
+                          if (cy.guaranteed > 0) return cy.guaranteed;
+                          // Option year with $0 guaranteed — project from last non-zero year
+                          const delta = y - lastNonZeroYear;
+                          return annualRaise(lastNonZeroUSD, delta);
+                        }
+                        return annualRaise(baseUSD, n);
+                      };
+
+                      // Option type for a given year offset
+                      const optType = (n: number): 'player' | 'team' | 'twoway' | null => {
+                        if (isTwoWayPlayer) return 'twoway';
+                        const y = currentYear + n;
+                        const cy = cyByYear.get(y);
+                        if (cy?.option === 'Player') return 'player';
+                        if (cy?.option === 'Team')   return 'team';
+                        // Fallback: contract flags for game-generated contracts
+                        if (y === expYear) {
+                          if (player.contract?.hasPlayerOption) return 'player';
+                          if ((player.contract as any)?.hasTeamOption) return 'team';
+                        }
+                        return null;
+                      };
+
+                      const getCellStyle = (n: number) => {
+                        const opt = optType(n);
+                        if (opt === 'twoway')  return 'bg-purple-500/20 text-purple-300 font-bold text-center py-1.5 rounded border border-purple-500/30';
+                        if (opt === 'player')  return 'bg-[#facc15]/10 text-[#facc15] font-bold text-center py-1.5 rounded border border-[#facc15] border-dashed';
+                        if (opt === 'team')    return 'bg-[#38bdf8]/10 text-[#38bdf8] font-bold text-center py-1.5 rounded border border-[#38bdf8] border-dashed';
+                        return 'bg-[#facc15] text-slate-900 font-bold text-center py-1.5 rounded';
+                      };
+
+                      const faCell = <div className="text-slate-600 text-xs text-center py-1.5">FA</div>;
+                      const emptyCell = <div className="text-slate-800 text-xs text-center py-1.5">—</div>;
+                      const cell = (n: number) => yearsLeft > n
+                        ? <div className={getCellStyle(n)}>{formatSalaryM(yr(n))}</div>
+                        : (yearsLeft === n ? faCell : emptyCell);
+
                       return (
                         <tr key={player.internalId}>
                           <td className="py-1">
                             <div className="flex items-center gap-2">
-                              <span className="font-bold text-slate-200">{player.name.split(' ')[0][0]}. {player.name.split(' ').slice(1).join(' ')}</span>
-                              <span className={`text-xs ${player.overallRating > 80 ? 'text-emerald-400' : 'text-slate-400'}`}>{player.overallRating}</span>
+                              <span className={`font-bold ${isTwoWayPlayer ? 'text-purple-300' : 'text-slate-200'}`}>{player.name.split(' ')[0][0]}. {player.name.split(' ').slice(1).join(' ')}</span>
+                              {(() => { const k2 = convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length-1]?.hgt ?? 50, player.ratings?.[player.ratings.length-1]?.tp); return <span className={`text-xs ${k2 >= 85 ? 'text-emerald-400' : k2 >= 75 ? 'text-slate-300' : 'text-slate-500'}`}>{k2}</span>; })()}
+                              {isTwoWayPlayer && <span className="text-[8px] font-black text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded-full uppercase tracking-widest">2W</span>}
                             </div>
                           </td>
-                          <td className="py-1 px-1"><div className="bg-[#facc15] text-slate-900 font-bold text-center py-1.5 rounded">{formatSalaryM(contractToUSD(amount))}</div></td>
-                          <td className="py-1 px-1">{yearsLeft >= 2 ? <div className="bg-[#facc15] text-slate-900 font-bold text-center py-1.5 rounded">{formatSalaryM(contractToUSD(amount))}</div> : <div className="text-slate-600 text-xs text-center py-1.5">FA</div>}</td>
-                          <td className="py-1 px-1">{yearsLeft >= 3 ? <div className="bg-[#facc15] text-slate-900 font-bold text-center py-1.5 rounded">{formatSalaryM(contractToUSD(amount))}</div> : <div className="text-slate-600 text-xs text-center py-1.5">{yearsLeft === 2 ? 'FA' : ''}</div>}</td>
-                          <td className="py-1 px-1">{yearsLeft >= 4 ? <div className="bg-[#facc15] text-slate-900 font-bold text-center py-1.5 rounded">{formatSalaryM(contractToUSD(amount))}</div> : <div className="text-slate-600 text-xs text-center py-1.5">{yearsLeft === 3 ? 'FA' : ''}</div>}</td>
-                          <td className="py-1 px-1">{yearsLeft >= 5 ? <div className="bg-[#facc15] text-slate-900 font-bold text-center py-1.5 rounded">{formatSalaryM(contractToUSD(amount))}</div> : <div className="text-slate-600 text-xs text-center py-1.5">{yearsLeft === 4 ? 'FA' : ''}</div>}</td>
+                          <td className="py-1 px-1">{cell(0)}</td>
+                          <td className="py-1 px-1">{cell(1)}</td>
+                          <td className="py-1 px-1">{cell(2)}</td>
+                          <td className="py-1 px-1">{cell(3)}</td>
+                          <td className="py-1 px-1">{cell(4)}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
-                <div className="mt-6 flex items-center gap-6 text-xs text-slate-400">
+                <div className="mt-6 flex items-center gap-6 text-xs text-slate-400 flex-wrap">
                   <div className="flex items-center gap-2"><div className="w-3 h-3 bg-[#facc15] rounded-sm" /><span>Guaranteed</span></div>
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 bg-purple-500/20 border border-purple-500/30 rounded-sm" /><span className="text-purple-300">Two-Way</span></div>
                   <div className="flex items-center gap-2 border border-slate-500 border-dashed px-2 py-0.5 rounded"><span>Player option</span></div>
                   <div className="flex items-center gap-2 border border-[#38bdf8] border-dashed px-2 py-0.5 rounded text-[#38bdf8]"><span>Team option</span></div>
                   <div className="flex items-center gap-2"><span className="text-slate-600 font-bold">FA</span><span>Free agent</span></div>
                 </div>
               </div>
             </div>
-          </div>
 
           {/* Bottom Row: Pie Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
@@ -367,6 +409,133 @@ export const TeamFinancesViewDetailed: React.FC = () => {
           </div>
 
         </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Standalone contract timeline (reused in TeamDetailView Contracts tab) ─────
+
+interface ContractTimelineProps {
+  teamId: number;
+  /** Optional: override currentYear (defaults to leagueStats.year) */
+  currentYear?: number;
+}
+
+export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, currentYear: yearProp }) => {
+  const { state } = useGame();
+  const currentYear = yearProp ?? state.leagueStats.year;
+
+  const teamPlayers = useMemo(
+    () => state.players.filter(p =>
+      p.tid === teamId &&
+      !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '')
+    ),
+    [state.players, teamId]
+  );
+
+  const selectedTeam = state.teams.find(t => t.id === teamId);
+
+  return (
+    <div className="overflow-x-auto custom-scrollbar p-3 sm:p-6">
+      <table className="w-full text-sm text-left whitespace-nowrap border-separate border-spacing-y-2">
+        <thead>
+          <tr className="text-slate-400">
+            <th className="pb-4 font-medium w-1/4">Player</th>
+            <th className="pb-4 font-medium text-center w-32 text-yellow-500 border-b-2 border-yellow-500">{currentYear - 1}-{String(currentYear).slice(2)}</th>
+            <th className="pb-4 font-medium text-center w-32">{currentYear}-{String(currentYear + 1).slice(2)}</th>
+            <th className="pb-4 font-medium text-center w-32">{currentYear + 1}-{String(currentYear + 2).slice(2)}</th>
+            <th className="pb-4 font-medium text-center w-32">{currentYear + 2}-{String(currentYear + 3).slice(2)}</th>
+            <th className="pb-4 font-medium text-center w-32">{currentYear + 3}-{String(currentYear + 4).slice(2)}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[...teamPlayers].sort((a, b) => (b.contract?.amount || 0) - (a.contract?.amount || 0)).map(player => {
+            const isTwoWayPlayer = !!(player as any).twoWay;
+            const baseUSD = isTwoWayPlayer ? 625_000 : contractToUSD(player.contract?.amount || 0);
+            const expYear = player.contract?.exp || currentYear;
+            const yearsLeft = expYear - currentYear + 1;
+
+            const contractYears: Array<{ season: string; guaranteed: number; option: string }> =
+              (player as any).contractYears ?? [];
+            const cyByYear = new Map<number, { guaranteed: number; option: string }>();
+            contractYears.forEach(cy => {
+              const y = parseInt(cy.season.split('-')[0], 10) + 1;
+              cyByYear.set(y, { guaranteed: cy.guaranteed, option: cy.option });
+            });
+
+            const lastNonZeroEntry = [...cyByYear.entries()]
+              .filter(([, v]) => v.guaranteed > 0)
+              .sort(([a], [b]) => b - a)[0];
+            const lastNonZeroYear = lastNonZeroEntry?.[0] ?? currentYear;
+            const lastNonZeroUSD  = lastNonZeroEntry?.[1]?.guaranteed ?? baseUSD;
+
+            const yr = (n: number): number => {
+              if (isTwoWayPlayer) return 625_000;
+              const y = currentYear + n;
+              const cy = cyByYear.get(y);
+              if (cy) {
+                if (cy.guaranteed > 0) return cy.guaranteed;
+                const delta = y - lastNonZeroYear;
+                return annualRaise(lastNonZeroUSD, delta);
+              }
+              return annualRaise(baseUSD, n);
+            };
+
+            const optType = (n: number): 'player' | 'team' | 'twoway' | null => {
+              if (isTwoWayPlayer) return 'twoway';
+              const y = currentYear + n;
+              const cy = cyByYear.get(y);
+              if (cy?.option === 'Player') return 'player';
+              if (cy?.option === 'Team')   return 'team';
+              if (y === expYear) {
+                if (player.contract?.hasPlayerOption) return 'player';
+                if ((player.contract as any)?.hasTeamOption) return 'team';
+              }
+              return null;
+            };
+
+            const getCellStyle = (n: number) => {
+              const opt = optType(n);
+              if (opt === 'twoway') return 'bg-purple-500/20 text-purple-300 font-bold text-center py-1.5 rounded border border-purple-500/30';
+              if (opt === 'player') return 'bg-[#facc15]/10 text-[#facc15] font-bold text-center py-1.5 rounded border border-[#facc15] border-dashed';
+              if (opt === 'team')   return 'bg-[#38bdf8]/10 text-[#38bdf8] font-bold text-center py-1.5 rounded border border-[#38bdf8] border-dashed';
+              return 'bg-[#facc15] text-slate-900 font-bold text-center py-1.5 rounded';
+            };
+
+            const faCell    = <div className="text-slate-600 text-xs text-center py-1.5">FA</div>;
+            const emptyCell = <div className="text-slate-800 text-xs text-center py-1.5">—</div>;
+            const cell = (n: number) => yearsLeft > n
+              ? <div className={getCellStyle(n)}>{formatSalaryM(yr(n))}</div>
+              : (yearsLeft === n ? faCell : emptyCell);
+
+            return (
+              <tr key={player.internalId}>
+                <td className="py-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`font-bold ${isTwoWayPlayer ? 'text-purple-300' : 'text-slate-200'}`}>
+                      {player.name.split(' ')[0][0]}. {player.name.split(' ').slice(1).join(' ')}
+                    </span>
+                    {(() => { const k2 = convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length-1]?.hgt ?? 50, player.ratings?.[player.ratings.length-1]?.tp); return <span className={`text-xs ${k2 >= 85 ? 'text-emerald-400' : k2 >= 75 ? 'text-slate-300' : 'text-slate-500'}`}>{k2}</span>; })()}
+                    {isTwoWayPlayer && <span className="text-[8px] font-black text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded-full uppercase tracking-widest">2W</span>}
+                  </div>
+                </td>
+                <td className="py-1 px-1">{cell(0)}</td>
+                <td className="py-1 px-1">{cell(1)}</td>
+                <td className="py-1 px-1">{cell(2)}</td>
+                <td className="py-1 px-1">{cell(3)}</td>
+                <td className="py-1 px-1">{cell(4)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <div className="mt-6 flex items-center gap-6 text-xs text-slate-400 flex-wrap">
+        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-[#facc15] rounded-sm" /><span>Guaranteed</span></div>
+        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-purple-500/20 border border-purple-500/30 rounded-sm" /><span className="text-purple-300">Two-Way</span></div>
+        <div className="flex items-center gap-2 border border-slate-500 border-dashed px-2 py-0.5 rounded"><span>Player option</span></div>
+        <div className="flex items-center gap-2 border border-[#38bdf8] border-dashed px-2 py-0.5 rounded text-[#38bdf8]"><span>Team option</span></div>
+        <div className="flex items-center gap-2"><span className="text-slate-600 font-bold">FA</span><span>Free agent</span></div>
       </div>
     </div>
   );

@@ -46,7 +46,7 @@ export class PlayoffAdvancer {
       if (game.isPlayIn && game.playoffSeriesId) {
         const pig = b.playInGames.find(p => p.id === game.playoffSeriesId);
         if (pig && !pig.played) {
-          pig.winnerId = result.winnerId;
+          pig.winnerId = Number(result.winnerId);
           pig.played = true;
           this.resolvePlayInLoserGame(b, pig);
         }
@@ -220,16 +220,17 @@ export class PlayoffAdvancer {
     const game9v10 = bracket.playInGames.find(p => p.id === `${prefix}9v10`);
 
     // Set team1 (loser of 7v8) as soon as 7v8 resolves
+    // Use Number() coercion on both sides — JSON deserialization can produce string IDs
     if (game7v8?.played && game7v8.winnerId != null) {
-      const loserOf7v8 = game7v8.team1Tid === game7v8.winnerId
+      const loserOf7v8 = Number(game7v8.team1Tid) === Number(game7v8.winnerId)
         ? game7v8.team2Tid
         : game7v8.team1Tid;
-      loserGame.team1Tid = loserOf7v8;
+      loserGame.team1Tid = Number(loserOf7v8);
     }
 
     // Set team2 (winner of 9v10) as soon as 9v10 resolves
     if (game9v10?.played && game9v10.winnerId != null) {
-      loserGame.team2Tid = game9v10.winnerId;
+      loserGame.team2Tid = Number(game9v10.winnerId);
     }
   }
 

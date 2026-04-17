@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { NBAPlayer } from '../../../types';
-import { ChevronDown, Loader2, AlertCircle, Search, Target } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Loader2, Search, Target } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { convertTo2KRating } from '../../../utils/helpers';
 import { findTopComparisons } from '../../../utils/playerComparisons';
@@ -41,6 +41,8 @@ interface EnhancedProspect extends NBAPlayer {
   };
   scoutingReport?: string;
   comparisons?: string;
+  displayOvr: number;
+  displayPot: number;
 }
 
 // Helper to normalize names for better matching
@@ -62,9 +64,19 @@ export const DraftScoutingView: React.FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const draftYear = state.leagueStats?.year ?? 2026;
+  const baseYear = state.leagueStats?.year ?? 2026;
+  // Default to current draft class (roll forward after draft completes)
+  const defaultDraftYear = state.draftComplete ? baseYear + 1 : baseYear;
+  const [selectedYear, setSelectedYear] = useState(defaultDraftYear);
+  // Clamp browsing range: 3 years back, 5 years forward
+  const minYear = baseYear - 3;
+  const maxYear = baseYear + 5;
+  const draftYear = selectedYear;
 
   useEffect(() => {
+    setGistData([]);
+    setError(null);
+    setLoading(true);
     const fetchData = async () => {
       try {
         const url = `${GIST_BASE}${draftYear}classScouting`;
@@ -77,7 +89,7 @@ export const DraftScoutingView: React.FC = () => {
         setGistData(data);
       } catch (e) {
         console.error("Failed to fetch scouting data:", e);
-        setError(`Could not fetch ${draftYear} scouting data. Showing game prospects only.`);
+        setError(`Scout reports unavailable for the ${draftYear} class. Showing prospects from game data.`);
       } finally {
         setLoading(false);
       }
@@ -86,45 +98,64 @@ export const DraftScoutingView: React.FC = () => {
   }, [draftYear]);
 
   const prospects = useMemo(() => {
-    const draftProspects = state.players.filter(p => p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect');
-    const activePlayers = state.players.filter(p => p.tid >= 0);
-    
-    // Calculate displayOvr for each prospect
+    // Only show prospects from the active draft class (tid === -2 + correct draft.year)
+    const draftProspects = state.players.filter(p =>
+      (p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect') &&
+      (p as any).draft?.year === draftYear
+    );
+    const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+    const activePlayers = state.players.filter(p =>
+      p.tid >= 0 && p.tid < 100 &&
+      p.status !== 'Draft Prospect' &&
+      p.status !== 'Prospect' &&
+      ((p as any).draft?.year ?? 0) < currentYear
+    );
+
+    // Calculate displayOvr + displayPot (K2 scale) for each prospect
     const prospectsWithOvr = draftProspects.map(p => {
-      const rawOvr = p.overallRating || (p.ratings?.[0]?.ovr || 0);
-      const displayOvr = convertTo2KRating(rawOvr, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp);
-      return { ...p, displayOvr, rawOvr };
+      const lastRating = p.ratings?.[p.ratings.length - 1];
+      const rawOvr = p.overallRating || (lastRating?.ovr || 0);
+      const hgt = lastRating?.hgt ?? 50;
+      const tp  = lastRating?.tp;
+      const displayOvr = convertTo2KRating(rawOvr, hgt, tp);
+      // POT: same formula as PlayerBiosView / tradeValueEngine
+      const age = (p as any).born?.year ? currentYear - (p as any).born.year : ((p as any).age ?? 20);
+      const potBbgm = age >= 29 ? rawOvr : Math.max(rawOvr, Math.round(72.314 + (-2.331 * age) + (0.833 * rawOvr)));
+      const displayPot = convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), hgt, tp);
+      return { ...p, displayOvr, displayPot, rawOvr };
     });
 
     // Sort by overall rating to determine initial consensus rank
     const sortedByOverall = prospectsWithOvr.sort((a, b) => b.displayOvr - a.displayOvr);
-    
-    // First, find matches and filter out those without a Gist match
-    const matchedProspects = sortedByOverall.map(player => {
+
+    // When gist is loaded, only show gist-matched players (scoped to this year's class).
+    // When gist failed (error), show all tid=-2 as fallback — gistMatch will be null for all.
+    const gistLoaded = gistData.length > 0;
+    const withGistMatch = sortedByOverall.map(player => {
+      if (!gistLoaded) return { player, gistMatch: null as GistProspect | null };
       const normalizedPlayerName = normalizeName(player.name);
       const gistMatch = gistData.find(g => {
         const normalizedGistName = normalizeName(g.name);
-        return normalizedGistName === normalizedPlayerName || 
-               normalizedGistName.includes(normalizedPlayerName) || 
+        return normalizedGistName === normalizedPlayerName ||
+               normalizedGistName.includes(normalizedPlayerName) ||
                normalizedPlayerName.includes(normalizedGistName);
       });
-      return { player, gistMatch };
-    }).filter(item => item.gistMatch);
+      return { player, gistMatch: gistMatch ?? null };
+    });
+    // Filter to gist-matched when gist is available; otherwise show everything
+    const candidateProspects = gistLoaded
+      ? withGistMatch.filter(item => item.gistMatch !== null)
+      : withGistMatch;
 
-    let matchCount = matchedProspects.length;
-
-    const enhanced = matchedProspects.map(({ player, gistMatch }, index) => {
+    const enhanced = candidateProspects.map(({ player, gistMatch }, index) => {
       const consensusRank = index + 1;
-      
-      // Generate some variance for ESPN and No Ceilings ranks
-      // Use a consistent seed based on player name/id for stability
+
       const seed = player.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
       const random = (offset: number) => {
         const x = Math.sin(seed + offset) * 10000;
         return x - Math.floor(x);
       };
 
-      // Ranks are based on consensus rank but with some "scout disagreement"
       const espnRank = Math.max(1, Math.round(consensusRank + (random(1) * 10 - 5)));
       const noCeilingsRank = Math.max(1, Math.round(consensusRank + (random(2) * 14 - 7)));
 
@@ -134,7 +165,7 @@ export const DraftScoutingView: React.FC = () => {
 
       return {
         ...player,
-        gistData: gistMatch,
+        gistData: gistMatch ?? undefined,
         scoutRanks: {
           consensus: consensusRank,
           espn: espnRank,
@@ -145,7 +176,6 @@ export const DraftScoutingView: React.FC = () => {
       } as EnhancedProspect;
     });
 
-    console.log(`Showing ${matchCount} draft prospects with Gist data (filtered out ${draftProspects.length - matchCount} generic prospects).`);
     return enhanced;
   }, [state.players, gistData]);
 
@@ -177,17 +207,7 @@ export const DraftScoutingView: React.FC = () => {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-slate-400">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-4" />
-        <p className="text-sm uppercase tracking-wider font-medium">Loading Scouting Reports...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-slate-400">
-        <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-        <h3 className="text-xl text-red-400 mb-2 font-bold">Failed to load</h3>
-        <p>{error}</p>
+        <p className="text-sm uppercase tracking-wider font-medium">Loading Draft Board...</p>
       </div>
     );
   }
@@ -196,13 +216,35 @@ export const DraftScoutingView: React.FC = () => {
     <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-200 overflow-hidden">
       {/* Header */}
       <div className="flex-shrink-0 bg-slate-950 border-b border-slate-800 p-4 sm:p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-indigo-500/20 rounded-lg">
-            <Target className="w-6 h-6 text-indigo-400" />
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-500/20 rounded-lg">
+              <Target className="w-6 h-6 text-indigo-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black text-white uppercase tracking-tight">Draft Scouting</h1>
+              <p className="text-sm text-slate-400">Big Board & Prospect Analysis</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-black text-white uppercase tracking-tight">Draft Scouting</h1>
-            <p className="text-sm text-slate-400">Big Board & Prospect Analysis</p>
+          {/* Year chevron picker */}
+          <div className="flex items-center gap-1 bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2">
+            <button
+              onClick={() => { setSelectedYear(y => Math.max(minYear, y - 1)); setExpandedId(null); }}
+              disabled={selectedYear <= minYear}
+              className="p-0.5 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span className="text-sm font-black text-white px-2 min-w-[52px] text-center">
+              {draftYear}
+            </span>
+            <button
+              onClick={() => { setSelectedYear(y => Math.min(maxYear, y + 1)); setExpandedId(null); }}
+              disabled={selectedYear >= maxYear}
+              className="p-0.5 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
         </div>
 
@@ -268,7 +310,7 @@ export const DraftScoutingView: React.FC = () => {
                 <div className="text-sm text-slate-400 truncate">
                   <span className="text-slate-300 font-semibold">{p.pos}</span>
                   <span className="mx-1.5 text-slate-600">·</span>
-                  <span>{p.gistData?.college || 'International'}</span>
+                  <span>{p.gistData?.college || (p as any).college || 'International'}</span>
                   {p.age && (
                     <>
                       <span className="mx-1.5 text-slate-600">|</span>
@@ -278,18 +320,31 @@ export const DraftScoutingView: React.FC = () => {
                 </div>
               </div>
 
+              {/* Stats — real when gist available, N/A otherwise (NCAA/external sims coming) */}
               <div className="hidden sm:flex gap-6 flex-shrink-0 mr-4">
                 <div className="text-center">
-                  <b className="block text-lg font-bold text-white">{p.gistData?.stats?.pts || (p.displayOvr / 4).toFixed(1)}</b>
+                  <b className="block text-lg font-bold text-white">{p.gistData?.stats?.pts ?? '—'}</b>
                   <small className="text-[10px] text-slate-500 font-semibold tracking-wider uppercase">PTS</small>
                 </div>
                 <div className="text-center">
-                  <b className="block text-lg font-bold text-white">{p.gistData?.stats?.reb || (p.displayOvr / 8).toFixed(1)}</b>
+                  <b className="block text-lg font-bold text-white">{p.gistData?.stats?.reb ?? '—'}</b>
                   <small className="text-[10px] text-slate-500 font-semibold tracking-wider uppercase">REB</small>
                 </div>
                 <div className="text-center">
-                  <b className="block text-lg font-bold text-white">{p.gistData?.stats?.ast || (p.displayOvr / 10).toFixed(1)}</b>
+                  <b className="block text-lg font-bold text-white">{p.gistData?.stats?.ast ?? '—'}</b>
                   <small className="text-[10px] text-slate-500 font-semibold tracking-wider uppercase">AST</small>
+                </div>
+              </div>
+
+              {/* OVR / POT badges */}
+              <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                <div className="flex items-center gap-1">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase">OVR</span>
+                  <span className={`text-sm font-black ${(p as any).displayOvr >= 85 ? 'text-emerald-400' : (p as any).displayOvr >= 75 ? 'text-slate-200' : 'text-slate-400'}`}>{(p as any).displayOvr}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase">POT</span>
+                  <span className={`text-sm font-black ${(p as any).displayPot >= 90 ? 'text-yellow-400' : (p as any).displayPot >= 85 ? 'text-emerald-400' : (p as any).displayPot >= 78 ? 'text-indigo-400' : 'text-slate-400'}`}>{(p as any).displayPot}</span>
                 </div>
               </div>
 

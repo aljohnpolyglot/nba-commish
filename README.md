@@ -8,6 +8,44 @@
 
 ---
 
+## Simulate-to-Date Architecture (Session 22 Fix)
+
+**"Simulate to Date" now routes through two paths:**
+
+| Gap | Engine | UI | Status |
+|-----|--------|----|--------|
+| **> 30 days** | `runLazySim` (iterative, day-by-day batches) | Progress overlay (phase labels, %) | ✅ All events fire correctly |
+| **≤ 30 days** | `processTurn` (single batch) | Game results modal | ✅ Calendar events fire via post-sim auto-resolver loop |
+
+Long skips (> 30 days) now use the same reliable `runLazySim` engine as the LOAD_GAME jumpstart — it checks every calendar event trigger at every day boundary. Short skips show the familiar game results modal.
+
+**Developer guidance:**
+- Both paths use `runLazySim` — single source of truth for all multi-day simulation
+- `runLazySim` handles season rollover (`applySeasonRollover`) when crossing Jun 30
+- `processTurn` is now ONLY used for single-day `ADVANCE_DAY` actions
+- To add a new calendar event: add it to `buildAutoResolveEvents()` in `lazySimRunner.ts` — it fires automatically at the right date boundary
+
+---
+
+## Player Portrait Priority
+
+Portrait images across all views (PlayerBioHero, PlayerBiosView, PlayerPortrait component, TransactionsView, TradeMachineModal, etc.) follow a strict priority order:
+
+1. **`player.imgURL`** (BBGM gist URL) — canonical source for NBA and all external league players. NBA players use ProBallers cutout photos via the alexnoob BBGM roster gist. External league players (PBA, Euroleague, B-League, G-League, etc.) use whatever imgURL the league's BBGM export provides — these are NOT ProBallers URLs and that is expected/correct.
+2. **NBA CDN fallback** (`cdn.nba.com/headshots/...`) — only for NBA players who have no `imgURL` at all. External league players never fall back to the NBA CDN, since those passport-style headshots would show the wrong person.
+3. **Initials avatar** — shown when both 1 and 2 fail.
+
+**Important:** The `LOAD_GAME` migration in `GameContext.tsx` only clears `head-par-defaut` placeholders and NBA CDN URLs on external players. It must NOT clear other URLs just because they are not `proballers.com` — external league gist URLs are legitimate portraits from basketball-reference, ESPN, etc.
+
+Key files:
+- `src/components/central/view/bioCache.ts` — `getPlayerImage(player)` implements this priority; external statuses are skipped before the NBA CDN step.
+- `src/components/shared/PlayerPortrait.tsx` — shared portrait component; `onError` goes straight to initials (no CDN retry).
+- `src/components/central/view/PlayerBioHero.tsx` — hero portrait; `onError` hides the image (no CDN retry).
+
+The NBA.com bio fetch (`fetchWithDedup`) only runs for NBA players and only updates `portraitSrc` if the player has **no** `imgURL` at all (line in `PlayerBioView.tsx`).
+
+---
+
 ## NBA 2K Data Sources
 
 Two gist-backed data files live in `src/data/` and are fetched once per session (cached in memory):
@@ -141,6 +179,20 @@ markdown
 | Apr 2026 | **All hardcoded 2025/2026 date literals removed for multi-season** | `START_DATE_STR` removed from `constants.ts`. New `src/utils/dateUtils.ts`: `resolveSeasonDate()`, `getSeasonSimStartDate()`, `getOpeningNightDate()` all derive from `leagueStats.year`. Fixed in: `initialState.ts`, `initialization.ts`, `CommissionerSetup.tsx`, `Dashboard.tsx`, `PlayerBioView.tsx`, `StatisticalFeatsView.tsx`, `lazySimNewsGenerator.ts` (added `seasonYear` param), `GlobalGamesModal.tsx` (added `seasonYear` prop). `BroadcastingView.tsx` deal summary string now uses dynamic season label. |
 | Apr 2026 | **`seasonHistory[]` not written during normal day-by-day sim** | `lazySimRunner.ts` wrote `seasonHistory` at `bracketComplete`, but `gameLogic.ts` (regular `ADVANCE_DAY` sim) had no equivalent. Result: playing through the playoffs manually would never append to `seasonHistory` — LeagueHistoryView would miss the season. Fix: added the same `bracketComplete` guard + `SeasonHistoryEntry` construction to `gameLogic.ts` return block. Now fires in ALL sim paths. |
 | Apr 2026 | **`TransactionsView` showed all seasons mixed together** | No way to see just this season's trades/signings vs last season. Added left/right chevron year picker at top-right of the view header. `getSeasonYear(dateStr)` converts transaction dates to NBA season year (Oct-Dec → calYear+1, else → calYear). Initialized to `leagueStats.year`. Navigates through all seasons that have transaction entries. |
+| Apr 2026 | **Calendar events (All-Star, awards, schedule gen) missed when using day-view sim or SIMULATE_TO_DATE** | `processTurn` in `gameLogic.ts` called `runSimulation` directly — a batch that had no auto-resolve event loop. Unlike `runLazySim`, no All-Star votes, schedule generation, or award announcements fired. Two fixes: (1) Eager preflight — if no regular-season schedule exists and target is past Aug 14, fire broadcasting/global_games/intl_preseason/schedule_generation before the sim runs. (2) Post-sim event sweep — after `runSimulation` returns, fire all `buildAutoResolveEvents` entries whose date fell within the sim window. All resolvers are idempotent (guarded by state flags), so re-firing is safe. `buildAutoResolveEvents` exported from `lazySimRunner.ts`. |
+| Apr 2026 | **Real contract data (China CBA / NBL Australia / etc.) — leagues renamed with spaces** | `ChinaCBA` → `China CBA`, `NBLAustralia` → `NBL Australia` everywhere in display strings. Code identifiers kept camelCase (`fetchChinaCBARoster`, `calculateChinaCBAOverall`). All object literal keys with spaces now quoted. |
+| Apr 2026 | **Real per-season contract amounts from nbacontractsdata gist** | `applyContractOverrides` now stores ALL seasons as `contractYears[]` on each player. `PlayerBioContractTab` uses real per-year guaranteed amounts (path A) vs `annualRaise` escalator only for game-generated contracts (path B). `TeamFinancesViewDetailed` shows Player Option (dashed yellow) / Team Option (dashed blue) cell styling. |
+| Apr 2026 | **Draft board missing external league players who were NBA-drafted** | `latestDraftClass` only looked at `player.draft.round/pick` from BBGM data. Players whose draft info comes from bio gists (e.g. Willy Hernangomez "2015 Round 2, Pick 5, Philadelphia Sixers") had no draft fields in their BBGM object. Fix: for external league players, fall back to `getNonNBAGistData` → `parseBioDraftStr()` to extract year/round/pick/team. Draftee team resolved by fuzzy-matching team name against `state.teams`. Current team logo from `nonNBATeams` for overseas players. |
+| Apr 2026 | **Market size percentile — all 30 teams showing "High"** | `TeamDetailView.tsx` computed `marketTier` percentile using `allTeams` which included non-NBA external teams (CBA/NBL/WNBA with `pop: 0`). This flattened the distribution making every NBA team's pop land in the top tier. Fix: filter to `conference === 'East' \|\| 'West'` before building the percentile array. |
+| Apr 2026 | **TransactionsView stops showing entries after Jun 30 offseason** | `selectedYear` was initialized with `useState(state.leagueStats.year)` — React only runs the initializer once. After rollover bumped `leagueStats.year` to 2027, `selectedYear` stayed 2026, and all Jul+ entries (season=2027) were filtered out. Fix: `useEffect(() => setSelectedYear(state.leagueStats.year), [state.leagueStats.year])` in `TransactionsView`, `TeamTransactionsTab`, and `TeamStatsView`. |
+| Apr 2026 | **G-League assignments appearing in Commissioner Diary for everyone** | `LeagueEvent.tsx` `TRANSACTION_TYPES` set didn't include `'g-league assignment'` / `'g-league callup'`. History entries bypassed the `commissioner: true` gate and fell through to the text-based catch-all regex — `'assigned'` didn't match `\bsigned?\b` so they appeared everywhere. Fix: add both keys to `TRANSACTION_TYPES`. |
+| Apr 2026 | **FA pool drains entirely to external leagues** | `externalSigningRouter.ts` routed all K2 55+ unsigned players overseas on every offseason cycle, leaving zero good players for NBA FAs. Fix: protect top 30 K2 ≥ 70 players and top 30 K2 60–69 players as NBA FAs before routing the remainder. |
+| Apr 2026 | **Two-way contracts not detected on first-season load** | BBGM data loads players with ~$625K salaries (two-way scale) but no `twoWay: true` flag. `autoTrimOversizedRosters` counted them as standard roster spots → teams with 15+3 two-way players got their two-way slots incorrectly waived. Fix: `rosterService.ts` detects `contract.amount < 800` (< $800K) on load and sets `twoWay: true`. Same detection runs in `LOAD_GAME` migration in `GameContext.tsx`. |
+| Apr 2026 | **Season 2 unplayable — schedule never generates after rollover** | `applySeasonRollover` returned no `schedule` key — old season's games stayed in state. `autoGenerateSchedule`'s guard `state.schedule.some(regularGame)` found those stale games and returned `{}` without generating the new season. Additionally, `lazySimRunner.ts` never called `applySeasonRollover` — simming past Jun 30 via lazy sim left `leagueStats.year` stuck at 2026 forever. Three-part fix: (1) `seasonRollover.ts` now returns `schedule: []` to clear old games. (2) `autoGenerateSchedule` guard is year-scoped — only counts games within `Oct(year-1)..Jun(year)` date range. (3) `lazySimRunner.ts` main loop now calls `applySeasonRollover` / `shouldFireRollover` when crossing Jun 30. |
+| Apr 2026 | **"Left early" label in box score for healthy players** | `engine.ts` added players to `playerInGameInjuries` unconditionally when rolling an in-game injury. In edge cases `gamesRemaining` could be 0 (minor bruise, immediate recovery) — player showed "Left early" in the box score but appeared healthy in subsequent games. Fix: guard `playerInGameInjuries[id] = injuryName` with `if (gamesRemaining > 0)`. |
+| Apr 2026 | **TradeProposals shows "AI GM" instead of real GM name** | `AITradeHandler.ts` hardcoded `proposingGMName: 'AI GM'`. Fix: `getGMName(state, teamId)` helper looks up `state.staff.gms` by team name / city / abbrev, falls back to `"${team.name} GM"`. |
+| Apr 2026 | **Player option history missing from TransactionsView** | `seasonRollover.ts` opt-in branch added no history entry. Opt-out branch said "exercised his player option" (should be "declined"). Fix: added `playerOptionHistory[]` written to `state.history` for both decisions; corrected wording; added `playerOptionNewsItems[]` to the rollover news array. |
+| Apr 2026 | **Commissioner signing (`SignFreeAgentModal`) missing `contractYears`** | `playerActions.ts` `handleSignFreeAgent` stamped `contract: { amount, exp }` but no `contractYears[]`, so `PlayerBioContractTab` showed the old pre-signing deal. Fix: build a 1-year minimum `contractYears[]` entry (`$1.3M`) alongside the minimum contract in both result.players branches. |
 
 ### Investigation Findings (Things Discovered Through Digging)
 
@@ -162,7 +214,59 @@ Non-obvious facts uncovered while tracing bugs — saved here so we don't have t
 - **Historical BBGM players are not in `state.players`** — players who retired before the sim started (Manu Ginobili, KG, etc.) exist in `state.historicalAwards` and team `seasons` data but are never loaded into `state.players`. `findPlayer()` will always return undefined for them. Don't show an error toast; instead build a minimal player stub and pass it to `PlayerBioView`, which will then use `NAME_TO_ID` to fetch real bio/portrait data.
 - **`extractNbaId(imgURL, name)` name param is underused** — the second `name` arg checks `NAME_TO_ID` first. Many historical callers only pass `imgURL`. For stubs with no `imgURL` (historical legends), pass `player.name` as the second arg so the name-lookup path fires. Fixed in `PlayerBioView.tsx` for both `isSyncing` initial state and the `run()` fetch.
 - **Career stats for retired players**: `getBestStat(player.stats, curYear)` returns null when the player last played before `curYear`. Don't show zeros. Instead sum all regular-season entries (`!s.playoffs && s.tid >= 0`) and divide by total GP. The `trb` fallback chain applies here too: `s.trb ?? s.reb ?? ((s.orb ?? 0) + (s.drb ?? 0))`.
-- **External roster players need BBGM fields `draft` and `college`** added to their player objects in `externalRosterService.ts` — these were previously omitted, causing experience and college to always show as `—`. Add `draft: item.draft, college: item.college` to each league's player construction in all four fetchers (Euroleague, PBA, WNBA, B-League).
+- **External roster players need BBGM fields `draft` and `college`** added to their player objects in `externalRosterService.ts`
+- **`lazySimRunner` NEVER called `applySeasonRollover`** — the rollover was only wired in `simulationHandler.ts` (normal day-advance turns). If the user used "Simulate to Date" across Jun 30, contracts never expired, year stayed at 2026 forever, and `schedule_generation` couldn't re-fire. Always add season-rollover logic to BOTH `simulationHandler` and `lazySimRunner` when making rollover changes.
+- **`applySeasonRollover` must return `schedule: []`** — without clearing the schedule, old season games remain in state. `autoGenerateSchedule` guards on `state.schedule.some(regularGame)` — it will skip generating the new season if any regular-season games exist, regardless of their date.
+- **`state.staff.gms` keyed by team field**: each GM object has a `position` or `team` field containing the team name (e.g. "Atlanta Hawks"). Match by `teamName.toLowerCase()` or `teamCity.toLowerCase()` — never by `tid`. Staff data is loaded once per session from the gist and stored in `state.staff`. — these were previously omitted, causing experience and college to always show as `—`. Add `draft: item.draft, college: item.college` to each league's player construction in all four fetchers (Euroleague, PBA, WNBA, B-League).
+
+### BBGM vs K2 Rating Scales — CRITICAL (Read Before Touching Any Rating Logic)
+
+**Two separate rating scales coexist in this codebase. Confusing them breaks routing, contracts, and thresholds.**
+
+#### BBGM OVR scale (`player.overallRating`, `ratings[].ovr`) — practical range in this sim: 35–82
+This is the raw basketball ability score computed by `calculateOverallFromRating()` using weighted BBGM attributes. BBGM's own docs describe the *theoretical* scale (0–99), but with our 2024 roster data + `calculateOverallFromRating()` formula the **practical range is compressed**:
+
+| BBGM OVR (our sim) | Player tier |
+|---|---|
+| **78–82** | True superstar (LeBron/Giannis ceiling — barely 5 players) |
+| **72–77** | MVP candidate / franchise player |
+| **65–72** | All-Star caliber |
+| **58–65** | Good starter |
+| **50–58** | Rotation / role player |
+| **42–50** | Fringe NBA / end-of-bench |
+| **below 42** | G-League / not NBA caliber |
+
+**Why compressed:** `calculateOverallFromRating()` averages 4 component groups (scoring, playmaking, defense, physicals). Even elite players don't max all groups — Giannis scores ~76 BBGM because his TP/FG drag scoring down; Curry scores ~79 because his defense/physicals are below elite. The superstar boost (rawOvr > 80 → `80 + excess * 1.4`) only fires for truly exceptional all-around players, which is rare with real 2024 BBGM attributes.
+
+**Key rule:** Any threshold `>= 85` in game logic is effectively dead code. `>= 90` never fires. Use 68–72 for "star-level", 74–78 for "MVP-level" comparisons.
+
+#### K2 scale (`convertTo2KRating(bbgmOvr, hgtAttr, tp)`) — mapped to ~66–99 for real NBA players
+Used for display and salary tiers. Formula: `0.88 * bbgmOvr + 31` + height/TP bonuses. Quick reference for real 2024 player data:
+- K2 97–99 → BBGM ~75–82 (True superstar — Giannis/Curry level)
+- K2 92–96 → BBGM ~70–74 (All-Star / franchise player)
+- K2 87–91 → BBGM ~64–68 (Good starter / MVP candidate range)
+- K2 82–86 → BBGM ~58–63 (Solid starter)
+- K2 75–81 → BBGM ~50–57 (Rotation/role player)
+- K2 66–74 → BBGM ~40–49 (Fringe/G-League caliber)
+
+Salary tiers in `salaryUtils.ts` (K2 scale): ≥95 Superstar | ≥90 Star | ≥85 All-Star | ≥78 Starter | ≥72 Bench | <72 Charity
+
+#### Rule: always document which scale a threshold uses
+```ts
+// WRONG — mixes scales silently:
+if (player.overallRating >= 72) { /* "rotation level" — but 72 BBGM is an All-Star! */ }
+
+// CORRECT option A — K2 comparison:
+const k2Ovr = convertTo2KRating(player.overallRating, lastRating?.hgt ?? 50);
+if (k2Ovr >= 72) { /* rotation-level (K2 72 = BBGM ~47) */ }
+
+// CORRECT option B — explicit BBGM threshold:
+if (player.overallRating >= 47) { /* BBGM 47 = rotation-level per BBGM docs */ }
+```
+
+Salary logic (`computeContractOffer`, `salaryUtils.ts`) uses **K2 scale** throughout — it converts via `convertTo2KRating` before all tier comparisons. External routing (`externalSigningRouter.ts`) and option-exercise logic also use K2. Do not pass raw BBGM OVR to any function that expects K2 tier thresholds.
+
+---
 
 ### Non-Obvious Architecture Notes
 
@@ -577,4 +681,173 @@ Regular Season (Phase 2): Games are played, stats accumulate.
 
 Playoffs (Phase 3): Bracket logic, Series MVPs, and Championship crowning.
 
+---
+
+## Stats & Data Hubs (Quick Reference for Feature Work)
+
+This section maps out where stats and data live so you can jump straight to the right file.
+
+### Per-Game Advanced Stats Pipeline
+
+```
+advancedstats.ts          ← Compute per-game advanced stats from box score rows
+  └→ engine.ts            ← Assign computed stats to homeStatsFinal / awayStatsFinal
+       └→ postProcessor.ts ← Accumulate game stats into player.stats[] (season totals)
+```
+
+**Key files:**
+| File | Role |
+|------|------|
+| `src/services/simulation/GameSimulator/advancedstats.ts` | Computes PER, EWA, TS%, ORB%, DRB%, TRB%, AST%, STL%, BLK%, TOV%, USG%, OWS, DWS, OBPM, DBPM per game |
+| `src/services/simulation/GameSimulator/engine.ts` | Runs game sim; assigns advanced stats to `homeStatsFinal[i]` / `awayStatsFinal[i]` (look for the `Object.assign` block) |
+| `src/store/logic/turn/postProcessor.ts` | After each game, accumulates per-game box score rows into `player.stats[]` season totals. Also initializes new season entries with zeroed fields. |
+
+**Fields on `NBAGMStat` (types.ts) worth knowing:**
+- `per`, `tsPct`, `efgPct`, `usgPct`, `ortg`, `drtg`, `bpm`, `obpm`, `dbpm`
+- `ws`, `ows`, `dws`, `ewa`, `vorp`
+- `orbPct`, `drbPct`, `rebPct`, `astPct`, `stlPct`, `blkPct`, `tovPct`
+
+### Where Stats Are Displayed
+
+| View | File | Notes |
+|------|------|-------|
+| Player bio stats history | `PlayerBioStatsHistory.tsx` | Per-season table + advanced tab, reads `player.stats[]` |
+| League-wide player stats | `PlayerStatsView.tsx` | Sortable table, all BBGM advanced cols, bref career row fallback |
+| Team stats (feats, opp) | `TeamStatsView.tsx` | DD/TD/QD/5x5 are integer totals (not per-game) |
+| Award races | `AwardRacesView.tsx` | Reads `player.stats[]` directly; uses `getBestStat()` helper |
+| League leaders | `LeagueLeadersView.tsx` | Reads `player.stats[]` directly |
+
+### Player Bio View Architecture
+
+The player bio view (`PlayerBioView.tsx`) is now split into dedicated tab files:
+
+| Tab | File |
+|-----|------|
+| Overview (bio text) | `PlayerBioOverviewTab.tsx` |
+| Ratings / Progression | `PlayerBioRatingsTab.tsx` |
+| Game Log | `PlayerBioGameLogTab.tsx` |
+| Historical Stats | `PlayerBioStatsHistory.tsx` |
+| Awards | `AwardsView.tsx` |
+
+### Staff / Coach Data
+
+Coaches are loaded from an external gist via `staffService.ts`. Two data formats exist:
+- **Legacy format:** `c.team` holds the team name/abbrev
+- **New gist format:** `c.position` holds the team name (e.g. `"Atlanta Hawks"`)
+
+`AwardService.ts` COY lookup checks **both** `c.team` and `c.position` when finding a coach for a team.
+
+### Draft Pick Schema
+
+`DraftPick` has: `dpid`, `tid` (current owner), `originalTid`, `season`, `round`. In `TradeMachineModal.tsx`, picks are grouped by season for display. See `project_draft_picks_schema.md` in memory.
+
 Draft & Free Agency (Phases 4-6): Players retire, rookies are generated via genPlayers.ts, and AI teams manage their salary caps to sign free agents.
+
+---
+
+### Session Apr 17, 2026 — Sessions 21–22
+
+#### Bugs Fixed:
+| Bug | Fix | Files |
+|-----|-----|-------|
+| Next season unplayable (schedule ends at Sep) | `lazySimRunner` now calls `applySeasonRollover` when crossing Jun 30; `schedule: []` clears old games; `autoGenerateSchedule` guard scoped to current season dates | `lazySimRunner.ts`, `seasonRollover.ts`, `autoResolvers.ts` |
+| No FA/trade activity in offseason | Root cause was rollover never firing in lazy sim — same fix as above | `lazySimRunner.ts` |
+| Player option news/history missing | `seasonRollover.ts` writes `playerOptionHistory[]` + `playerOptionNewsItems[]`; corrected wording "exercised → declined" for opt-out | `seasonRollover.ts` |
+| "Left early" for healthy players | `engine.ts` only adds to `playerInGameInjuries` when `gamesRemaining > 0` | `engine.ts` |
+| TradeProposals shows "AI GM" | `getGMName()` helper looks up `state.staff.gms` by team name/city/abbrev | `AITradeHandler.ts` |
+| Commissioner signing missing contractYears | `handleSignFreeAgent` now builds `contractYears[]` | `playerActions.ts` |
+| AI extension/signing salary not synced to PlayerBioView | Mid-season extensions, season-end extensions, and FA signings now all build `contractYears[]` preserving historical rows | `simulationHandler.ts` |
+| ImageGen fires when AI disabled | `photoEnricher.ts` checks `enableLLM` before AI fallback paths | `photoEnricher.ts` |
+| POT mismatch in Draft Board vs other views | Draft board was using stale `lastRatings.ovr` instead of `p.overallRating`; age calc now uses `born.year` relative to sim year — matches `PlayerBiosView` exactly | `DraftHistoryView.tsx`, `PlayerRatingsModal.tsx` |
+
+#### Features Added:
+| Feature | Details | Files |
+|---------|---------|-------|
+| Simulate-to-Date routing | >30 days → `runLazySim` (progress overlay); ≤30 days → `processTurn` (game results modal) | `GameContext.tsx` |
+| TransactionsView signing cards clickable | Card row navigates to PlayerBioView; "View Profile →" hint on hover | `TransactionsView.tsx` |
+| FAME trait + market size morale rework | All players get base market tier bonus (High+2/Mid+1/Low+0); FAME doubles; win cap raised to +5 | `moodScore.ts`, `moodTypes.ts`, `PlayerBioMoraleTab.tsx` |
+| G-League filter options | "G-League Assignment" and "G-League Callup" in Transaction Type dropdown | `TransactionsView.tsx` |
+| Training camp roster cut | Oct+ trim releases players to FA with `'Training Camp Release'` type; Jul-Sep assigns to G-League | `simulationHandler.ts`, `TransactionsView.tsx`, `LeagueEvent.tsx` |
+| Draft History View (separated from Draft Simulator) | `DraftHistoryView.tsx` — standalone view; `MainContent` shows simulator only on draft day, otherwise draft history | `DraftHistoryView.tsx`, `DraftSimulatorView.tsx`, `MainContent.tsx` |
+
+#### Investigation Findings:
+- `runSimulation` in `simulationHandler.ts` handles playoff logic per-day inside its loop — short-skip ≤30 day `SIMULATE_TO_DATE` fires calendar events via the post-sim auto-resolver loop
+- `contractYears[]` must be built on EVERY signing/extension path — `contract.amount` alone only updates TeamFinances; `PlayerBioContractTab` reads `contractYears[]` exclusively when it exists (Path A)
+- `estimatePot` formula must use `p.overallRating` (updated by ProgressionEngine) NOT `lastRatings.ovr` (stale ratings array entry); age must come from `born.year - simYear` not `p.age` for consistency
+
+---
+
+## Biggest Pitfalls & Lessons Learned (Dev Guide)
+
+### 1. Simulation Architecture — The One Ring
+**Before session 22:** Three separate simulation paths (`processTurn` for ADVANCE_DAY, `processTurn` for SIMULATE_TO_DATE, `runLazySim` for LOAD_GAME). Events fired at different times, causing playoffs/awards/All-Star to be skipped depending on which path was used.
+
+**After session 22:** `runLazySim` is the single engine for ALL multi-day advances. `processTurn` only handles single-day ADVANCE_DAY.
+
+**Rule:** If you need to add a new calendar event (new award, new phase gate), add it to `buildAutoResolveEvents()` in `lazySimRunner.ts`. It automatically fires at the right date in every sim path. Never add event logic directly to `processTurn` or `gameLogic.ts`.
+
+### 2. contractYears[] Must Be Built on EVERY Signing Path
+`TeamFinancesViewDetailed` reads `contract.amount` (BBGM thousands). But `PlayerBioContractTab` reads `contractYears[]` (per-year breakdowns from gist). If you update `contract.amount` without building `contractYears[]`, TeamFinances shows the new salary but PlayerBioView shows the old one.
+
+**There are 4 signing paths** — all must build `contractYears[]`:
+1. AI FA signing (`simulationHandler.ts` ~line 580)
+2. AI mid-season extension (`simulationHandler.ts` ~line 320)
+3. AI season-end extension (`simulationHandler.ts` ~line 390)
+4. Commissioner signing (`playerActions.ts` `handleSignFreeAgent`)
+
+**Critical:** When building new `contractYears[]`, preserve historical rows (`existingPast` filter keeps `yr < currentYear`) so career history from the gist isn't lost.
+
+### 3. overallRating vs ratings[].ovr
+`player.overallRating` is updated by `ProgressionEngine` every season — it's the authoritative current OVR. `player.ratings[last].ovr` is the raw BBGM value from the ratings array which can be stale (especially after progression runs).
+
+**Rule:** Always use `p.overallRating` for OVR. Use `ratings[last].hgt` and `ratings[last].tp` for height/three-point (these don't change). Never use `ratings[last].ovr` as the primary OVR source.
+
+### 4. Age Calculation
+Use `player.born.year` relative to the game's `state.leagueStats.year` (or `simYear`), NOT `player.age` (can be stale) or `new Date().getFullYear()` (real-world clock, wrong in simulation). The canonical pattern:
+```ts
+const age = p.born?.year ? simYear - p.born.year : (typeof p.age === 'number' ? p.age : 25);
+```
+
+### 5. SimulatorKnobs Are Per-Team
+International preseason games must use different knobs for each team. The NBA team gets `KNOBS_PRESEASON`, the international team gets their league-specific knobs (KNOBS_PBA, KNOBS_BLEAGUE, etc.). Setting `homeKnobs = awayKnobs = intlKnobs` makes both teams play at the same reduced level.
+
+### 6. Auto-Resolver Idempotency
+All resolvers in `buildAutoResolveEvents()` must be idempotent. `ADVANCE_DAY` fires events with `event.date >= simStartNorm` (inclusive), so the same event can be checked multiple days in a row. Resolvers guard with checks like:
+- `if (historicalAwards.some(a => a.type === type && a.season === season)) return {};`
+- `if (state.draftLotteryResult) return {};`
+- `if (hasRegularSeason) return {};`
+
+### 7. Minutes Allocation
+`MinutesPlayedService.allocateMinutes` caps individual player minutes at ~40-42 min (regular season) or ~44-46 min (playoffs) with random jitter to avoid robotic "42:00" lines. The `isPlayoffs` flag on `SimulatorKnobs` controls this — set by `engine.ts` when `game.isPlayIn || game.isPlayoff`.
+
+### 8. External League Routing
+`externalSigningRouter.ts` routes unsigned FAs to overseas leagues. Two critical guards:
+- **Top 30 K2≥70 + top 30 K2 60-69 always kept as NBA FAs** (prevents roster stagnation)
+- **Fallback chain must NOT skip the target league** — if B-League has 0 teams loaded (gist 404), the fallback tries all leagues in order without skipping
+
+### 9. G-League Assignment Timing
+The DNP-based G-League assignment in `simulationHandler.ts` reads from `allSimResults` (box scores from the current batch), not from `player.stats[]` (which isn't updated until `postProcessor` runs after the sim loop). If you only check `p.stats[].gp`, it's always stale during the sim loop.
+
+### 10. Season Rollover in Lazy Sim
+`lazySimRunner` must call `applySeasonRollover` when the date crosses Jun 30. Without this, `leagueStats.year` stays frozen, no new schedule generates, FA/trade activity stops, and season 2+ is unplayable. The rollover clears `schedule: []`, advances the year, resolves player/team options, and prunes old data.
+
+### 11. Rollover Must Reset ALL Team State
+At rollover, `seasonRollover.ts` must reset on every team object:
+- `wins: 0, losses: 0` — or standings carry last season's records
+- `streak: { type: 'W', count: 0 }` — or "rock bottom" news fires after first loss in new season
+- Archive completed season to `team.seasons[]` before zeroing
+
+### 12. Batch Size Near Jun 30
+`lazySimRunner` uses `batchSize=1` when within 5 days of Jun 30 (`nearRollover` guard). Without this, a 7-day batch crossing Jun 30 would sim July 1-5 with the OLD schedule before rollover fires, causing ghost games in July.
+
+### 13. G-League Assignment Grace Period
+Don't auto-assign newly traded/signed players to G-League. Check `yearsWithTeam === 0 && teamGP < 14` — gives the player 14 team games to earn playing time before the DNP trigger fires. Without this, traded players get immediately sent down and recalled in a loop.
+
+### 15. Dead Money Display (Luol Deng Rule)
+Waived/bought-out players with remaining guaranteed salary should appear in `TeamFinancesViewDetailed` as a grayed-out row with dashed border — still counted in cap payroll but visually distinct from active roster. The `deadContracts[]` array on team state stores `{ playerName, amount, expYear }`. These rows should have a "WAIVED" label badge and reduced opacity so they don't look like active players.
+
+### 16. Preseason Self-Scrimmages Are Intentional
+Game logs may show "DET @ DET W, 161-118" during preseason — this is an **intrasquad scrimmage**, not a bug. NBA teams hold these during training camp. The schedule generator creates them by design. Players on the game log who show a different team (e.g. GSW playing on Oct 11, traded to DET on Oct 13) is correct historical accuracy — they WERE on that team at game time.
+
+### 14. safeSchedule Guard After Rollover
+The defensive `safeSchedule` check in `lazySimRunner.ts` (`stateWithSim.schedule.length === 0 && state.schedule.length > 0`) must NOT restore the old schedule when the year just advanced. Check `yearAdvanced` flag — if the year changed, the empty schedule is intentional (rollover cleared it).

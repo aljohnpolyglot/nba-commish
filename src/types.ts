@@ -308,6 +308,7 @@ export interface LeagueStats {
   maxPlayersPerTeam?: number;
   maxStandardPlayersPerTeam?: number;
   maxTwoWayPlayersPerTeam?: number;
+  maxTrainingCampRoster?: number;
 
   // Economy - Contracts
   minContractType?: 'static' | 'dynamic';
@@ -340,6 +341,16 @@ export interface LeagueStats {
   inflationMax?: number;       // % ceiling, e.g. 8
   inflationAverage?: number;   // mean %, e.g. 3.5
   inflationStdDev?: number;    // std dev %, e.g. 1.5
+
+  // Economy - Exceptions (MLE / Biannual)
+  mleEnabled?: boolean;              // master toggle (default true)
+  roomMleAmount?: number;            // USD, default 8_781_000
+  nonTaxpayerMleAmount?: number;     // USD, default 14_104_000
+  taxpayerMleAmount?: number;        // USD, default 5_685_000
+  biannualEnabled?: boolean;
+  biannualAmount?: number;           // USD, default 4_767_000
+  /** Per-team MLE usage tracker; resets each season via rollover. key = teamId */
+  mleUsage?: Record<number, { type: 'room' | 'non_taxpayer' | 'taxpayer'; usedUSD: number }>;
 
   // Economy - Draft Picks
   tradableDraftPickSeasons?: number; // how many future seasons of picks can be traded, e.g. 4
@@ -473,6 +484,8 @@ export interface HistoryEntry {
   text: string;
   date: string;
   type?: string;
+  /** True when the entry was created by a commissioner action (not AI sim logic). */
+  commissioner?: boolean;
 }
 
 export interface NewsItem {
@@ -585,6 +598,8 @@ export interface NBAGMStat {
   vorp?: number;
   ewa?: number;
   astPct?: number;
+  orbPct?: number;
+  drbPct?: number;
   rebPct?: number;
   stlPct?: number;
   blkPct?: number;
@@ -629,8 +644,14 @@ export interface NBAPlayer {
     reason: string;
     gamesRemaining: number;
   };
-  status?: 'Active' | 'Prospect' | 'Free Agent' | 'Retired' | 'WNBA' | 'Draft Prospect' | 'Euroleague' | 'PBA' | 'B-League' | 'G-League' | 'Endesa';
+  status?: 'Active' | 'Prospect' | 'Free Agent' | 'Retired' | 'WNBA' | 'Draft Prospect' | 'Euroleague' | 'PBA' | 'B-League' | 'G-League' | 'Endesa' | 'China CBA' | 'NBL Australia';
   twoWayCandidate?: boolean;
+  /** True when AI has assigned this player to the G-League affiliate (0 GP, 15+ team games played). Cleared on next signing/trade/return. */
+  gLeagueAssigned?: boolean;
+  /** True when player is on a two-way contract (doesn't count against 15-man standard roster; earns ~$625K; ineligible for playoffs unless converted). */
+  twoWay?: boolean;
+  /** True when player qualifies for a designated veteran (super-max) extension with their current team. Recomputed every rollover. */
+  superMaxEligible?: boolean;
   diedYear?: number;
   hof?: boolean;
   jerseyNumber?: string;
@@ -639,6 +660,18 @@ export interface NBAPlayer {
   moodTraits?: import('./utils/mood').MoodTrait[];
   /** Weekly OVR snapshots — recorded every Sunday by ProgressionEngine. date=YYYY-MM-DD, ovr=raw BBGM float. Keep last 56 (~1yr). */
   ovrTimeline?: { date: string; ovr: number }[];
+  /** Basketball-Reference slug (e.g. "curryst01") */
+  srID?: string;
+  /** College/university attended */
+  college?: string;
+  /** BBGM transaction log: draft, trade, waive events */
+  transactions?: Array<{ season: number; tid: number; type?: string; phase?: number; pickNum?: number }>;
+  /** Durability rating (0-100). 100 = iron man, 0 = chronically injured. Derived from playerInjuryData.ts career count. Default 70 when no data. */
+  durability?: number;
+  /** Set at season rollover when the player is projected to retire at the end of this season. Guarantees retirement at next rollover. */
+  farewellTour?: boolean;
+  /** False when the player was signed after the March 1 playoff eligibility deadline. Cleared at rollover. Cosmetic — AI stops signing before this date automatically. */
+  playoffEligible?: boolean;
 }
 
 export interface UserProfile {
@@ -707,6 +740,8 @@ export interface DraftPick {
 export interface StaffMember {
   name: string;
   team?: string;
+  /** New gist format: contains team name (e.g. "Atlanta Hawks") */
+  position?: string;
   jobTitle?: string;
   playerPortraitUrl?: string;
   teamLogoUrl?: string;
@@ -806,7 +841,7 @@ export interface NonNBATeam {
   stadiumCapacity: number;
   imgURL?: string;
   colors?: string[];
-  league: 'Euroleague' | 'PBA' | 'WNBA' | 'B-League' | 'G-League' | 'Endesa';
+  league: 'Euroleague' | 'PBA' | 'WNBA' | 'B-League' | 'G-League' | 'Endesa' | 'China CBA' | 'NBL Australia';
   nbaAffiliate?: string; // G-League sister city NBA team name
 }
 
@@ -1116,7 +1151,7 @@ export interface UserAction {
 
 export type Conference = 'East' | 'West';
 export type GamePhase = 'Preseason' | 'Opening Week' | 'Regular Season (Early)' | 'Regular Season (Mid)' | 'All-Star Break' | 'Trade Deadline' | 'Regular Season (Late)' | 'Play-In Tournament' | 'Playoffs (Round 1)' | 'Playoffs (Round 2)' | 'Conference Finals' | 'NBA Finals' | 'Offseason' | 'Draft' | 'Draft Lottery' | 'Free Agency' | 'Schedule Planning' | 'Schedule Release' | 'Training Camp';
-export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'League History' | 'Player Bios' | 'Team History' | 'Season Preview';
+export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'League History' | 'Player Bios' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History';
 
 // ─── AI Trade / Free Agency ───────────────────────────────────────────────────
 export interface TradeProposal {
@@ -1129,7 +1164,7 @@ export interface TradeProposal {
   picksOffered: number[];     // dpids
   picksRequested: number[];   // dpids
   proposedDate: string;
-  status: 'pending' | 'accepted' | 'rejected' | 'expired';
+  status: 'pending' | 'accepted' | 'rejected' | 'expired' | 'executed';
   isAIvsAI: boolean;
   tradeText?: string;
 }

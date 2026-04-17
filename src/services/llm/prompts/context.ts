@@ -72,7 +72,7 @@ export const generateLeagueContext = (
         .filter(p =>
             p &&
             p.name &&
-            !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || '') &&
+            !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '') &&
             p.status !== 'Retired' &&
             p.status !== 'Draft Prospect' &&
             p.status !== 'Prospect' &&

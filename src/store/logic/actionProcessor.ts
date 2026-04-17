@@ -190,7 +190,7 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
         // ── Mood-weighted player story routing (Section 6 of moodtodo.md) ──────
         // Pre-compute mood scores for all active players once
         const activePlayers = stateWithSim.players.filter(
-            p => p.overallRating >= 65 && p.tid >= 0 && p.status === 'Active'
+            p => p.overallRating >= 58 && p.tid >= 0 && p.status === 'Active' // BBGM 58+ = starter tier
         );
         const moodMap = new Map(activePlayers.map(p => {
             const team = stateWithSim.teams.find(t => t.id === p.tid);

@@ -46,6 +46,7 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
   };
 
   const tradeIsValid = !salaryMismatchInfo;
+  const isPicksOnly = teamAPlayers.length === 0 || teamBPlayers.length === 0;
   const tradeDeadline = `${state.leagueStats?.year ?? 2026}-02-15`;
   const isPastDeadline = normalizeDate(state.date) > tradeDeadline;
 
@@ -93,9 +94,11 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
               )}
               <div>
                 <div className="text-sm font-bold">
-                  {tradeIsValid
-                    ? isPastDeadline ? 'Salaries Match — Past Deadline' : 'Trade Valid'
-                    : isPastDeadline ? 'Past Deadline + Salary Mismatch' : 'Salary Mismatch'
+                  {isPicksOnly
+                    ? 'Picks-Only Trade — Always Valid'
+                    : tradeIsValid
+                      ? isPastDeadline ? 'Salaries Match — Past Deadline' : 'Trade Valid'
+                      : isPastDeadline ? 'Past Deadline + Salary Mismatch' : 'Salary Mismatch'
                   }
                 </div>
                 {salaryMismatchInfo?.message && (
@@ -128,10 +131,12 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
                     <span className="text-white">{teamAPicks.map(getPickDescription).join(', ')}</span>
                   </div>
                 )}
-                <div className="flex items-center gap-1 text-slate-400 text-xs">
-                  <DollarSign size={12} />
-                  <span>Salary: <strong className="text-white">{formatContract(teamASentSalary)}</strong></span>
-                </div>
+                {teamAPlayers.length > 0 && (
+                  <div className="flex items-center gap-1 text-slate-400 text-xs">
+                    <DollarSign size={12} />
+                    <span>Salary: <strong className="text-white">{formatContract(teamASentSalary)}</strong></span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -154,10 +159,12 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
                     <span className="text-white">{teamBPicks.map(getPickDescription).join(', ')}</span>
                   </div>
                 )}
-                <div className="flex items-center gap-1 text-slate-400 text-xs">
-                  <DollarSign size={12} />
-                  <span>Salary: <strong className="text-white">{formatContract(teamBSentSalary)}</strong></span>
-                </div>
+                {teamBPlayers.length > 0 && (
+                  <div className="flex items-center gap-1 text-slate-400 text-xs">
+                    <DollarSign size={12} />
+                    <span>Salary: <strong className="text-white">{formatContract(teamBSentSalary)}</strong></span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

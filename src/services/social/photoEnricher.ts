@@ -7,6 +7,7 @@
 
 import type { SocialPost, NBATeam } from '../../types';
 import { fetchGamePlayerPhotos, type ImagnPhoto } from '../ImagnPhotoService';
+import { SettingsManager } from '../SettingsManager';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -339,7 +340,7 @@ export async function enrichPostWithPhoto(
     if (playerPhotoMap.size === 0) {
         // Still allow AI fallback for named players even when Imagn has nothing
         const playerName = extractPlayerName(post, gameInfo.topPlayers);
-        if (!playerName) {
+        if (!playerName || !SettingsManager.getSettings().enableLLM) {
             resolvedPosts.set(post.id, null);
             return null;
         }
@@ -412,7 +413,7 @@ export async function enrichPostWithPhoto(
     }
 
     // ── AI fallback: generate photo when Imagn has nothing ────────────────────
-    if (!photo && playerName && gameInfo) {
+    if (!photo && playerName && gameInfo && SettingsManager.getSettings().enableLLM) {
         const { generateGamePhoto } = await import('./gameImageGenerator');
         const aiKey = `ai-${gameInfo.homeTeam.abbrev}-${gameInfo.awayTeam.abbrev}-${gameInfo.date.slice(0, 10)}-${playerName.replace(/\s+/g, '_')}`;
         const aiUrl = await generateGamePhoto({

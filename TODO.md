@@ -1,78 +1,125 @@
-# NBA Commish — TODO (updated 2026-04-12)
+# NBA Commish — TODO (updated 2026-04-17, session 22)
 
 ---
 
-## FIXED ✅
+## ACTIVE — Verify on Next Playthrough
 
-- **Lightning strikes: WNBA players affected** — WNBA excluded from `eligiblePool` in `seasonalBreakouts.ts`; pool now 70 (all leagues except WNBA).
-- **Lightning strikes: only 3-6 attrs boosted** — Now boosts ALL 14 BOOST_ATTRS (hgt excluded) matching BBGM; pct range [0.05, 0.95] to match +1 → +22 spread; maxBoostForAge table recalibrated.
-- **Lightning strikes: same players across saves** — `saveSeed` (from `state.saveId`) injected into `weightedPickN` baseSeed; each save gets unique lottery.
-- **Father Time: only subset of attrs declined** — `numDecliningAttrs` limiter removed; all 14 attrs in DECLINE_TABLE now decline every year (matches BBGM). DECLINE_TABLE shooting/skill maxes raised to 5 (was 3) based on Sabonis age-30 data.
-- **DraftSimulatorView crash** — `leagueYear` before initialization. Fixed.
-- **WNBA/external players leaking to FA pool** — `seasonRollover.ts` external status guard + `tid >= 100` belt-and-suspenders.
-- **PlayerStatsView players disappear after contract expires** — stats-based team filter.
-- **BUG 2: Playoff cascade / TBD sidebar** — PlayoffAdvancer rewritten with MATCHUP_PAIRS per-feeder scheduling.
-- **BUG 4: Pre-Aug14 lazy sim wipes schedule** — defensive guard in lazySimRunner.
-- **BUG 5: Oct 21 first game** — `isScheduleRevealed` fixed to day >= 24.
-- **Intl preseason box score crash** — resolveTeam() with nonNBATeams fallback in NBACentral + PlayerBioView.
-- **Trade Machine rebounds NaN** — fallback to last season with gp > 0.
-- **NBA Playoffs logo timeout** — onError fallback in DayView.tsx.
-- **"Watch Draft" button text** — changed from "Open Draft Board".
-- **Awards not in PlayerBioView** — All-NBA, All-Star, NBA Champion, All-Defensive, All-Rookie all flow to player.awards now.
-- **Watch Game from NBA Central** — pre-sim + ADVANCE_DAY before opening viewer; Leave Game = pure close.
-- **DNP spoiler** — coach decisions hidden pre-sim; only injuries shown until game completes.
-- **Player portrait fallback** — BBGM → NBA HD CDN → initials chain in PlayerPortrait.tsx.
-- **All player progression same trajectory (CRITICAL)** — per-player careerOffset (-2 to +2 annual) in ProgressionEngine; stable deterministic internalIds in bbgmParser + rosterService.
-- **Young players flat all season (Cooper Flagg stuck at 80 OVR)** — `calcBaseChange` bases too low for young ages. Rebalanced: age≤18→6, age≤20→5, age≤21→4, age≤22→3, age≤25→2, age≤27→1. Bust still possible at all ages via Gaussian(-4) + careerOffset(-2).
-- **K2 OVR chart mismatch (header 86, chart 81)** — `weeklyData` in PlayerBioView + PlayerRatingsModal was using bare `0.88*ovr+31` formula, missing hgt/tp bonuses. Fixed to use `convertTo2KRating(ovr, hgt, tp)` matching the header display.
-- **MiddleClassBoosts redesign** — Old logic was random single-attr. Rebuilt: 40 buff picks weighted by current attr value (`pow(v/99, 2.0)`, attrs < 25 excluded — fixes Zubac TP bug), 40 nerf picks split between physical decay (−1 to physMax) and skill wobble (50% −1/−4, 35% zero, 15% +1). WNBA excluded. saveSeed injected for cross-save uniqueness.
-- **Lightning strikes: gradual mode** — 50% of strikes are now gradual (trickle-in from strikeDate → graduationDate, forced complete on graduation day). Tracked via `isGradual`, `graduationDate`, `applied` dict on `PendingLightningBoost`.
-- **Breakout season: injured players included** — `applySeasonalBreakouts` now skips players with `injury?.gamesRemaining > 0`.
-- **OVR/POT K2 floor stuck at 66** — `calculateOverallFromRating` floored at `Math.max(40,...)`, and `convertTo2KRating(40) = 66`. Lowered floor to `Math.max(25,...)` so washed/weak players can display K2 OVRs down to ~53 instead of always 66. Duplicate players (G-League dedup): already handled in `initialization.ts:65-68` via name-match filter. Player BioView mobile tables: `overflow-x-auto + min-w-max` already present on both table wrappers.
-- **Player Bios mobile list** — Replaced mobile-only card view with unified scrollable table (sticky player name column, minWidth 900px). All columns now reachable on mobile.
-- **Player resigning visible in TransactionsView** — Extensions + FA signings now write to `state.history` with type `'Signing'` in simulationHandler.ts.
-- **Trade initiation gating** — `generateAIDayTradeProposals` now computes conference rank + GB for each team and passes to `getTradeOutlook`. Youth-franchise check (star ≤ 25, OVR ≥ 65 BBGM, outside playoffs) blocks those teams from initiating as buyers.
-- **PLAYIN_END hardcoded** — Now dynamic: `` `${year}-04-20` `` using `state.leagueStats.year` in PlayoffView.tsx.
-- **FGM/3PM/FTM don't sum to final score** — Fixed in two places: (1) `reconcileToScore` in engine.ts now has a second pass that adjusts FGM (2-pt) if FTM-based pass can't fully close the gap; (2) `teamStats` in useLiveGame.ts now uses `finalResult` stats directly when game ends, guaranteeing pts = finalScore and consistent FGM/FTM.
-- **Extension amounts all at minimum ($2M)** — Root cause: `player.overallRating` was `undefined` for most players (defaulting to 60 → $2M minimum). Fixed: `estimateMarketValueUSD` now falls back to `ratings[last].ovr`. Same fix applied to `playerValue` and `isBuildingAroundYouth` in AITradeHandler.
-- **WS / BPM formula inflation** — `calcOWS`/`calcDWS`: multiply `margPtsPerWin` by 2.3 (denominator ~81 not ~35); `calcBPM`: `BPM_SCALE = 0.40` applied to all output. `src/services/simulation/StatGenerator/advancedstats.ts`. → multiseason_todo §10
-- **TeamStatsView complete overhaul** — 5 stat modes (Team / Opponent / Shot Locations & Feats / Opp. Shot Locations / Advanced), header mirrors PlayerStatsView exactly (`h-7` compact selects, season chevron, phase select, SlidersHorizontal filter toggle), single-pass box-score aggregation, pythagorean W/L, four factors, pace. `src/components/team-stats/TeamStatsView.tsx`. → multiseason_todo §10
-- **PlayoffView historical bracket + year chevron** — Year left/right chevron in header (always visible, min 1984, max current year). `HistoricalPlayoffBracket.tsx` fetches from gist with module-level cache, NBA CDN logos, 8-column bracket, motion animations. `src/components/playoffs/PlayoffView.tsx` + `src/components/playoffs/HistoricalPlayoffBracket.tsx`. → multiseason_todo §8
-- **FA frequency taper** — AI free agency now tapers like real NBA: Jul 1–15 daily, Jul 16–31 every 2d, Aug every 4d, Sep every 7d. `src/store/logic/turn/simulationHandler.ts`. → multiseason_todo §6b
-- **FA window extended July–February** — FA pool stays open through Feb 28 (March 1 = playoff eligibility deadline). Oct–Feb fires every 14 days for vet-min / waiver wire pickups. `simulationHandler.ts`. → multiseason_todo §6b
-- **Season Preview timing** — `seasonPreviewDismissed: true` at June 30 rollover (stays hidden through FA). Unlocked on Oct 1 (training camp) only when `seasonHistory.length > 0`. `seasonRollover.ts` + `simulationHandler.ts`. → multiseason_todo §9
-- **MAX_ROSTER hardcoded 15** — `AIFreeAgentHandler.ts` now reads `state.leagueStats.maxPlayersPerTeam ?? 15` instead of hardcoded constant. → multiseason_todo §3 / §6b
-- **Player option resolution at rollover** — `seasonRollover.ts` checks `hasPlayerOption && contract.exp === currentYear`: opt-out if market value ≥ 90% of current deal, generates news item, player becomes FA. No-op for current BBGM data (no player options); fires for AI-generated future contracts (2030+). → multiseason_todo §6a
-- **Bets pruning at rollover** — `seasonRollover.ts` drops resolved bets (`won`/`lost`) older than 2 seasons on every June 30 rollover. → multiseason_todo §11
-- **`yearsWithTeam` + Bird Rights tracking confirmed** — already implemented in `seasonRollover.ts` (increments for under-contract players, resets to 0 on FA, sets `hasBirdRights: true` at ≥3 years). → multiseason_todo §6a
-- **Transaction log for AI FA signings confirmed** — signings and mid-season extensions already write to `state.history` with `type: 'Signing'`; TransactionsView year chevron already present. → multiseason_todo §3 / §10
-- **multiseason_todo.md §6 + §11 checklists updated** — §6a/b/c status corrected, critical remaining table rewritten with accurate statuses. → multiseason_todo §6, §11
+- **TeamFinancesView timeline rollover** — likely auto-resolved by session 21. Verify columns shift.
+- **ContractYears history preservation** — fixed session 22. Verify on NEW save.
+- **July games after rollover** — batch=1 near Jun 30 + yearAdvanced safeSchedule guard added. Verify no ghost games.
+- **Retirements in season 2+** — code is wired (`retirementChecker` called at rollover). Verify players actually retire.
 
 ---
 
-## REMAINING — DO BEFORE MULTISEASON
+## BUGS — Season 2+ Rollover Issues
 
-> **Context:** Cleaning up single-season sim before multiseason launch. Focus on stability + correctness, not new features.
+### G-League trade grace period ✅ FIXED
+`yearsWithTeam === 0 && teamGP < 14` guard prevents immediate assign/recall loop for traded players.
 
-*(All pre-multiseason items resolved — see FIXED above.)*
+### Standings / NBA Central stale W-L after rollover
+**Root cause:** If July games leak past rollover, W-L accumulates on zeroed teams. Also `effectiveRecord()` fallback shows last season when `gp=0`.
+**Fix:** Standings should show raw `team.wins/losses`. `effectiveRecord` only for morale/trade outlook.
+
+### Two-way contract distribution (season 2+)
+Some teams get 4+ two-way, others get 0. Needs: (1) respect `maxTwoWayPlayersPerTeam`, (2) ensure every team gets 1-2 at training camp.
+
+### Roster trimming (season 2+)
+Verify `autoTrimOversizedRosters` fires in preseason (21 limit) and regular season (15 limit) for season 2+.
+
+### Power Rankings View rollover
+Shows stale W-L columns after rollover. Add `totalGP === 0` guard → show preseason-only OVR rankings.
 
 ---
 
-### SEPARATE DEVELOPMENTS
+## BUGS — UI
 
-### DRAFT LOTTERY/DRAFT-->princealjohnmogatas@gmial.com
-### COACHING-->lemakicatta@gmail.com
-### GRUBHUB--> mogatas.princealjohn.05082003@gmail.com
-### FRANCHISEHUB-lemakicatta@gmail.com
-### restaurants gist-->https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbarestaurantsdata
+### League Leaders View — season year chevron
+Add `<2026>` year chevron. Filter leaders by season. **Files:** `LeagueLeadersView.tsx`
+
+### Statistical Feats View — season year chevron
+Add `<2026>` year chevron. Filter feats by season. **Files:** `StatisticalFeatsView.tsx`
+
+### External league players losing portraits after routing
+NBA players routed to G-League/PBA lose ProBallers portrait. LOAD_GAME migration may strip imgURL on status change. **Fix:** Don't touch `imgURL` for players with ProBallers URLs regardless of status.
+
+### News cards missing player photos
+Transaction news (signings, player options) show blank image. Attach `imageUrl: player.imgURL` to news objects.
 
 ---
 
-## UPCOMING / NEXT SESSION
+## FEATURES — Next Priority
 
-- **DraftScoutingView pro comparisons use prospect's potential** — `findTopComparisons` currently projects BOTH the prospect AND the NBA comparison players. Fix: prospect is projected to their POT ceiling; NBA players compared at their CURRENT ratings (not projected). This gives "who this player will be like at their peak" instead of "who they are now". `src/utils/playerComparisons.ts` + `src/components/central/view/DraftScoutingView.tsx` ✅ Done session 9
-- **autoRunDraft ignored draftLotteryResult** — lazy sim / skip-to-date auto-draft was assigning players purely by standings order, ignoring who won the lottery. Fixed: `autoRunDraft` in `autoResolvers.ts` now mirrors DraftSimulatorView logic (picks 1–14 from lottery order, 15–30 playoff teams best→worst, fallback to standings if no lottery result). ✅ Done session 9
-- **§4d Pick season filter** — `TradeMachineModal` and `tradeService.ts` need to filter tradable picks to `p.season <= currentYear + tradableDraftPickSeasons` so picks beyond the window can't be traded. Apply to `teamAPicksAvailable` / `teamBPicksAvailable` memos in TradeMachineModal + same filter in tradeService. `multiseason_todo §4d`
-- **AI-vs-AI trade execution** — `tradeProposals` with `isAIvsAI && status === 'accepted'` are generated but never executed. Wire `handleExecutiveTrade` for these in `simulationHandler.ts`. Pick assets in `TradeProposal` must be `dpid[]` matching `state.draftPicks` filtered by `p.tid === teamId`. Being handled in isolation by user. `multiseason_todo §2f`
+### AI trade: contending teams protect K2 80+ players
+Bump protection from K2 78 → 80. Sort tradeable players K2 ascending (worst first) when building packages.
 
-*Last updated: 2026-04-13 (session 9)*
+### Dead money / ghost contracts (Luol Deng rule)
+Waived players' remaining guaranteed salary counts against cap. `deadContracts[]` on team state. Gray dashed row in TeamFinancesView.
+
+### MLE remaining column in Cap Overview
+Add column next to Payroll in `LeagueFinancesView.tsx`.
+
+### BroadcastingView auto-inflation
+Cap should grow automatically at rollover even if commissioner doesn't touch BroadcastingView.
+
+### Image caching (Performance setting)
+Cache player portraits in localStorage/IndexedDB. Default ON. `SettingsModal.tsx` Performance tab.
+
+---
+
+## FUTURE / BACKLOG
+
+### Live Trade Debug UI (GM Dashboard)
+- **Trading Block** — mood ≤ −3 players, toggleable `onTradingBlock` flag
+- **Team Needs** — 30 teams × 5 positions heatmap
+- **Untouchables** — `player.untouchable` flag; AI never proposes them
+
+---
+
+## SEPARATE DEVELOPMENTS (Accounts)
+
+| Project | Account |
+|---------|---------|
+| Draft Lottery / Draft | princealjohnmogatas@gmail.com |
+| Coaching | lemakicatta@gmail.com |
+| GrubHub | mogatas.princealjohn.05082003@gmail.com |
+| FranchiseHub | lemakicatta@gmail.com |
+| Restaurants gist | https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbarestaurantsdata |
+| Hall of Fame UI | princealjohnmogatas@gmail.com |
+| Team Office | mogatas.princealjohn.05082003@gmail.com |
+
+---
+
+## FIXED ✅ (Session 22 — 30+ items)
+
+- **§1 UNIFIED SIMULATION ENGINE** — `runLazySim` single engine for ALL multi-day advances
+- **ADVANCE_DAY event date-match** — `>=` so events fire on exact day
+- **Simulate-to-Date always overlay** — progress screen for all skips (batchSize 1 vs 7)
+- **Season Preview** — Oct 1 trigger, rank-based tiers, double name fix, W-L→O/U only, nav date-gated
+- **F2-F7** — signing cards clickable, training camp cut, FAME trait, G-League filters, Draft History View, Stats tab upgraded
+- **AI contractYears sync** — all 3 signing paths + history preservation
+- **ImageGen guard** — checks enableLLM
+- **POT mismatch** — overallRating + born.year age
+- **Minutes cap** — reg ~40-42, playoffs ~44-46 with jitter + isPlayoffs knob
+- **G-League DNP** — reads GP from allSimResults + trade grace period
+- **B-League signing** — fallback chain fix
+- **COMPETITOR morale** — effectiveRecord for offseason
+- **Draft R?P?** — defensive display fallback
+- **PBA preseason** — per-team knobs (NBA vs intl)
+- **Twitter avatar** — post feed fallback
+- **Shams transactions** — buildShamsTransactionPost for signings/extensions
+- **Social feed perf** — removed JSON.stringify cascade + SET_FEED dispatch
+- **Team W-L reset** — rollover now zeros wins/losses + archives to team.seasons[]
+- **Team streak reset** — prevents "rock bottom" news after rollover
+- **July games guard** — batch=1 near Jun 30 + yearAdvanced safeSchedule
+- **Award Races offseason** — "season hasn't started" screen
+- **PlayoffView** — shows last year's historical bracket when no active playoffs
+- **Progression dark colors** — ensureVisibleColor() luminance check
+- **Career OVR snapshot** — ovrHistory[] at rollover, chart reads it
+- **Player options date** — Jul 1 so they show in new season TransactionsView
+- **Player option history** — seasonRollover writes playerOptionHistory + news
+
+## FIXED ✅ (Sessions 8–21)
+
+146+ items. See git history and session memory files.
+
+*Last updated: 2026-04-17 (session 22)*

@@ -25,32 +25,22 @@ export const useBackgroundFetcher = () => {
       isFetching.current = true;
 
       try {
-        const profileData = await fetchProfileData(handle, dispatchAction);
-        if (profileData && (profileData.avatarUrl || profileData.name !== handle)) {
-          const updatedFeed = state.socialFeed.map(post => {
-            if (post.handle.replace('@', '') === handle) {
-              return {
-                ...post,
-                author: profileData.name || post.author,
-                avatarUrl: profileData.avatarUrl || post.avatarUrl,
-                verified: profileData.verified || post.verified,
-              };
-            }
-            return post;
-          });
-          if (JSON.stringify(updatedFeed) !== JSON.stringify(state.socialFeed)) {
-            dispatchAction({ type: 'SET_FEED', payload: updatedFeed } as any);
-          }
-        }
+        // fetchProfileData already dispatches CACHE_PROFILE — that's sufficient.
+        // No need to replace the entire socialFeed array (was causing expensive
+        // JSON.stringify deep-compare + full re-render of 500 posts).
+        await fetchProfileData(handle, dispatchAction, state);
       } catch (e) {
         // Silently fail — handle just doesn't exist on Twitter
       } finally {
         isFetching.current = false;
-        timerRef.current = setTimeout(fetchLoop, 3000);
+        // Slower cadence (5s) to reduce UI thread pressure
+        timerRef.current = setTimeout(fetchLoop, 5000);
       }
     };
 
-    timerRef.current = setTimeout(fetchLoop, 3000);
+    timerRef.current = setTimeout(fetchLoop, 5000);
     return () => clearTimeout(timerRef.current);
-  }, [state.socialFeed.length, state.cachedProfiles]);
+    // Only re-run when feed size changes significantly (not on every cachedProfile update)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Math.floor((state.socialFeed?.length ?? 0) / 50)]);
 };

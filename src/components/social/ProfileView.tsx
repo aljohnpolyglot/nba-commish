@@ -31,7 +31,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ handle, onBack, onPost
     if (!cleanHandle || isOwnProfile) return;
     if (cached) return;
     setIsFetching(true);
-    fetchProfileData(cleanHandle, dispatchAction).finally(() => setIsFetching(false));
+    fetchProfileData(cleanHandle, dispatchAction, state).finally(() => setIsFetching(false));
   }, [cleanHandle]);
 
   // Own profile: prefer state.userProfile for avatar/banner set via EditProfile

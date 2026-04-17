@@ -78,7 +78,11 @@ export const processSimulationResults = (
                     gp: 0, gs: 0, min: 0, fg: 0, fga: 0, fgp: 0, tp: 0, tpa: 0, tpp: 0, ft: 0, fta: 0, ftp: 0,
                     orb: 0, drb: 0, trb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, per: 0,
                     pm: 0, tsPct: 0, efgPct: 0, usgPct: 0, ortg: 0, drtg: 0, bpm: 0, ws: 0, vorp: 0,
-                    _perSum: 0, _usgPctSum: 0, _ortgSum: 0, _drtgSum: 0, _bpmSum: 0
+                    ows: 0, dws: 0, obpm: 0, dbpm: 0, ewa: 0,
+                    orbPct: 0, drbPct: 0, rebPct: 0, astPct: 0, stlPct: 0, blkPct: 0, tovPct: 0,
+                    _perSum: 0, _usgPctSum: 0, _ortgSum: 0, _drtgSum: 0, _bpmSum: 0,
+                    _obpmSum: 0, _dbpmSum: 0, _orbPctSum: 0, _drbPctSum: 0, _trbPctSum: 0,
+                    _astPctSum: 0, _stlPctSum: 0, _blkPctSum: 0, _tovPctSum: 0,
                 };
                 stats.push(seasonStat);
                 seasonStatIndex = stats.length - 1;
@@ -90,6 +94,15 @@ export const processSimulationResults = (
                 if (seasonStat._ortgSum === undefined) seasonStat._ortgSum = (seasonStat.ortg || 0) * seasonStat.gp;
                 if (seasonStat._drtgSum === undefined) seasonStat._drtgSum = (seasonStat.drtg || 0) * seasonStat.gp;
                 if (seasonStat._bpmSum === undefined) seasonStat._bpmSum = (seasonStat.bpm || 0) * seasonStat.gp;
+                if (seasonStat._obpmSum === undefined) seasonStat._obpmSum = (seasonStat.obpm || 0) * seasonStat.gp;
+                if (seasonStat._dbpmSum === undefined) seasonStat._dbpmSum = (seasonStat.dbpm || 0) * seasonStat.gp;
+                if (seasonStat._orbPctSum === undefined) seasonStat._orbPctSum = (seasonStat.orbPct || 0) * seasonStat.gp;
+                if (seasonStat._drbPctSum === undefined) seasonStat._drbPctSum = (seasonStat.drbPct || 0) * seasonStat.gp;
+                if (seasonStat._trbPctSum === undefined) seasonStat._trbPctSum = (seasonStat.rebPct || 0) * seasonStat.gp;
+                if (seasonStat._astPctSum === undefined) seasonStat._astPctSum = (seasonStat.astPct || 0) * seasonStat.gp;
+                if (seasonStat._stlPctSum === undefined) seasonStat._stlPctSum = (seasonStat.stlPct || 0) * seasonStat.gp;
+                if (seasonStat._blkPctSum === undefined) seasonStat._blkPctSum = (seasonStat.blkPct || 0) * seasonStat.gp;
+                if (seasonStat._tovPctSum === undefined) seasonStat._tovPctSum = (seasonStat.tovPct || 0) * seasonStat.gp;
             }
 
             gameStats.forEach((stat: any) => {
@@ -111,37 +124,57 @@ export const processSimulationResults = (
                 seasonStat.tpa += stat.threePa;
                 seasonStat.ft += stat.ftm;
                 seasonStat.fta += stat.fta;
-                
-                // Advanced stats
-                seasonStat.pm = (seasonStat.pm || 0) + (stat.pm || 0);
-                seasonStat.ws = (seasonStat.ws || 0) + (stat.ws || 0);
-                seasonStat.ows = (seasonStat.ows || 0) + (stat.ows || 0);
-                seasonStat.dws = (seasonStat.dws || 0) + (stat.dws || 0);
+
+                // Advanced stats — cumulative
+                seasonStat.pm   = (seasonStat.pm   || 0) + (stat.pm   || 0);
+                seasonStat.ws   = (seasonStat.ws   || 0) + (stat.ws   || 0);
+                seasonStat.ows  = (seasonStat.ows  || 0) + (stat.ows  || 0);
+                seasonStat.dws  = (seasonStat.dws  || 0) + (stat.dws  || 0);
                 seasonStat.vorp = (seasonStat.vorp || 0) + (stat.vorp || 0);
-                
-                seasonStat._perSum += (stat.per || 0);
+                seasonStat.ewa  = (seasonStat.ewa  || 0) + (stat.ewa  || 0);
+
+                // Advanced stats — weighted-average sums
+                seasonStat._perSum    += (stat.per    || 0);
                 seasonStat._usgPctSum += (stat.usgPct || 0);
-                seasonStat._ortgSum += (stat.ortg || 0);
-                seasonStat._drtgSum += (stat.drtg || 0);
-                seasonStat._bpmSum += (stat.bpm || 0);
+                seasonStat._ortgSum   += (stat.ortg   || 0);
+                seasonStat._drtgSum   += (stat.drtg   || 0);
+                seasonStat._bpmSum    += (stat.bpm    || 0);
+                seasonStat._obpmSum   = (seasonStat._obpmSum   || 0) + (stat.obpm   || 0);
+                seasonStat._dbpmSum   = (seasonStat._dbpmSum   || 0) + (stat.dbpm   || 0);
+                seasonStat._orbPctSum = (seasonStat._orbPctSum || 0) + (stat.orbPct || 0);
+                seasonStat._drbPctSum = (seasonStat._drbPctSum || 0) + (stat.drbPct || 0);
+                seasonStat._trbPctSum = (seasonStat._trbPctSum || 0) + (stat.trbPct || 0);
+                seasonStat._astPctSum = (seasonStat._astPctSum || 0) + (stat.astPct || 0);
+                seasonStat._stlPctSum = (seasonStat._stlPctSum || 0) + (stat.stlPct || 0);
+                seasonStat._blkPctSum = (seasonStat._blkPctSum || 0) + (stat.blkPct || 0);
+                seasonStat._tovPctSum = (seasonStat._tovPctSum || 0) + (stat.tovPct || 0);
             });
-            
+
             // Update percentages and averages
             seasonStat.fgp = seasonStat.fga > 0 ? (seasonStat.fg / seasonStat.fga) * 100 : 0;
             seasonStat.tpp = seasonStat.tpa > 0 ? (seasonStat.tp / seasonStat.tpa) * 100 : 0;
             seasonStat.ftp = seasonStat.fta > 0 ? (seasonStat.ft / seasonStat.fta) * 100 : 0;
 
             if (seasonStat.gp > 0) {
-                seasonStat.per = seasonStat._perSum / seasonStat.gp;
+                seasonStat.per    = seasonStat._perSum    / seasonStat.gp;
                 seasonStat.usgPct = seasonStat._usgPctSum / seasonStat.gp;
-                seasonStat.drtg = seasonStat._drtgSum / seasonStat.gp;
-                seasonStat.bpm = seasonStat._bpmSum / seasonStat.gp;
-                
+                seasonStat.drtg   = seasonStat._drtgSum   / seasonStat.gp;
+                seasonStat.bpm    = seasonStat._bpmSum    / seasonStat.gp;
+                seasonStat.obpm   = seasonStat._obpmSum   / seasonStat.gp;
+                seasonStat.dbpm   = seasonStat._dbpmSum   / seasonStat.gp;
+                seasonStat.orbPct = seasonStat._orbPctSum / seasonStat.gp;
+                seasonStat.drbPct = seasonStat._drbPctSum / seasonStat.gp;
+                seasonStat.rebPct = seasonStat._trbPctSum / seasonStat.gp;
+                seasonStat.astPct = seasonStat._astPctSum / seasonStat.gp;
+                seasonStat.stlPct = seasonStat._stlPctSum / seasonStat.gp;
+                seasonStat.blkPct = seasonStat._blkPctSum / seasonStat.gp;
+                seasonStat.tovPct = seasonStat._tovPctSum / seasonStat.gp;
+
                 // Recalculate season-wide TS%, eFG%, and ORtg
                 const tsDenom = 2 * (seasonStat.fga + 0.44 * seasonStat.fta);
                 seasonStat.tsPct = tsDenom > 0 ? (seasonStat.pts / tsDenom) * 100 : 0;
                 seasonStat.efgPct = seasonStat.fga > 0 ? ((seasonStat.fg + 0.5 * seasonStat.tp) / seasonStat.fga) * 100 : 0;
-                
+
                 const seasonPoss = seasonStat.fga + 0.44 * seasonStat.fta - seasonStat.orb + seasonStat.tov;
                 seasonStat.ortg = seasonPoss > 0 ? (seasonStat.pts * 100) / seasonPoss : 0;
             }
@@ -170,7 +203,11 @@ export const processSimulationResults = (
                     gp: 0, gs: 0, min: 0, fg: 0, fga: 0, fgp: 0, tp: 0, tpa: 0, tpp: 0, ft: 0, fta: 0, ftp: 0,
                     orb: 0, drb: 0, trb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, per: 0,
                     pm: 0, tsPct: 0, efgPct: 0, usgPct: 0, ortg: 0, drtg: 0, bpm: 0, ws: 0, vorp: 0,
-                    _perSum: 0, _usgPctSum: 0, _ortgSum: 0, _drtgSum: 0, _bpmSum: 0
+                    ows: 0, dws: 0, obpm: 0, dbpm: 0, ewa: 0,
+                    orbPct: 0, drbPct: 0, rebPct: 0, astPct: 0, stlPct: 0, blkPct: 0, tovPct: 0,
+                    _perSum: 0, _usgPctSum: 0, _ortgSum: 0, _drtgSum: 0, _bpmSum: 0,
+                    _obpmSum: 0, _dbpmSum: 0, _orbPctSum: 0, _drbPctSum: 0, _trbPctSum: 0,
+                    _astPctSum: 0, _stlPctSum: 0, _blkPctSum: 0, _tovPctSum: 0,
                 };
                 stats.push(seasonStat);
                 statIndex = stats.length - 1;
@@ -181,6 +218,15 @@ export const processSimulationResults = (
                 if (seasonStat._ortgSum === undefined) seasonStat._ortgSum = (seasonStat.ortg || 0) * seasonStat.gp;
                 if (seasonStat._drtgSum === undefined) seasonStat._drtgSum = (seasonStat.drtg || 0) * seasonStat.gp;
                 if (seasonStat._bpmSum === undefined) seasonStat._bpmSum = (seasonStat.bpm || 0) * seasonStat.gp;
+                if (seasonStat._obpmSum === undefined) seasonStat._obpmSum = (seasonStat.obpm || 0) * seasonStat.gp;
+                if (seasonStat._dbpmSum === undefined) seasonStat._dbpmSum = (seasonStat.dbpm || 0) * seasonStat.gp;
+                if (seasonStat._orbPctSum === undefined) seasonStat._orbPctSum = (seasonStat.orbPct || 0) * seasonStat.gp;
+                if (seasonStat._drbPctSum === undefined) seasonStat._drbPctSum = (seasonStat.drbPct || 0) * seasonStat.gp;
+                if (seasonStat._trbPctSum === undefined) seasonStat._trbPctSum = (seasonStat.rebPct || 0) * seasonStat.gp;
+                if (seasonStat._astPctSum === undefined) seasonStat._astPctSum = (seasonStat.astPct || 0) * seasonStat.gp;
+                if (seasonStat._stlPctSum === undefined) seasonStat._stlPctSum = (seasonStat.stlPct || 0) * seasonStat.gp;
+                if (seasonStat._blkPctSum === undefined) seasonStat._blkPctSum = (seasonStat.blkPct || 0) * seasonStat.gp;
+                if (seasonStat._tovPctSum === undefined) seasonStat._tovPctSum = (seasonStat.tovPct || 0) * seasonStat.gp;
             }
 
             gameStats.forEach((stat: any) => {
@@ -202,14 +248,26 @@ export const processSimulationResults = (
                 seasonStat.tpa += stat.threePa;
                 seasonStat.ft += stat.ftm;
                 seasonStat.fta += stat.fta;
-                seasonStat.pm = (seasonStat.pm || 0) + (stat.pm || 0);
-                seasonStat.ws = (seasonStat.ws || 0) + (stat.ws || 0);
+                seasonStat.pm   = (seasonStat.pm   || 0) + (stat.pm   || 0);
+                seasonStat.ws   = (seasonStat.ws   || 0) + (stat.ws   || 0);
+                seasonStat.ows  = (seasonStat.ows  || 0) + (stat.ows  || 0);
+                seasonStat.dws  = (seasonStat.dws  || 0) + (stat.dws  || 0);
                 seasonStat.vorp = (seasonStat.vorp || 0) + (stat.vorp || 0);
-                seasonStat._perSum += (stat.per || 0);
+                seasonStat.ewa  = (seasonStat.ewa  || 0) + (stat.ewa  || 0);
+                seasonStat._perSum    += (stat.per    || 0);
                 seasonStat._usgPctSum += (stat.usgPct || 0);
-                seasonStat._ortgSum += (stat.ortg || 0);
-                seasonStat._drtgSum += (stat.drtg || 0);
-                seasonStat._bpmSum += (stat.bpm || 0);
+                seasonStat._ortgSum   += (stat.ortg   || 0);
+                seasonStat._drtgSum   += (stat.drtg   || 0);
+                seasonStat._bpmSum    += (stat.bpm    || 0);
+                seasonStat._obpmSum   = (seasonStat._obpmSum   || 0) + (stat.obpm   || 0);
+                seasonStat._dbpmSum   = (seasonStat._dbpmSum   || 0) + (stat.dbpm   || 0);
+                seasonStat._orbPctSum = (seasonStat._orbPctSum || 0) + (stat.orbPct || 0);
+                seasonStat._drbPctSum = (seasonStat._drbPctSum || 0) + (stat.drbPct || 0);
+                seasonStat._trbPctSum = (seasonStat._trbPctSum || 0) + (stat.trbPct || 0);
+                seasonStat._astPctSum = (seasonStat._astPctSum || 0) + (stat.astPct || 0);
+                seasonStat._stlPctSum = (seasonStat._stlPctSum || 0) + (stat.stlPct || 0);
+                seasonStat._blkPctSum = (seasonStat._blkPctSum || 0) + (stat.blkPct || 0);
+                seasonStat._tovPctSum = (seasonStat._tovPctSum || 0) + (stat.tovPct || 0);
             });
 
             seasonStat.fgp = seasonStat.fga > 0 ? (seasonStat.fg / seasonStat.fga) * 100 : 0;
@@ -217,10 +275,19 @@ export const processSimulationResults = (
             seasonStat.ftp = seasonStat.fta > 0 ? (seasonStat.ft / seasonStat.fta) * 100 : 0;
 
             if (seasonStat.gp > 0) {
-                seasonStat.per = seasonStat._perSum / seasonStat.gp;
+                seasonStat.per    = seasonStat._perSum    / seasonStat.gp;
                 seasonStat.usgPct = seasonStat._usgPctSum / seasonStat.gp;
-                seasonStat.drtg = seasonStat._drtgSum / seasonStat.gp;
-                seasonStat.bpm = seasonStat._bpmSum / seasonStat.gp;
+                seasonStat.drtg   = seasonStat._drtgSum   / seasonStat.gp;
+                seasonStat.bpm    = seasonStat._bpmSum    / seasonStat.gp;
+                seasonStat.obpm   = seasonStat._obpmSum   / seasonStat.gp;
+                seasonStat.dbpm   = seasonStat._dbpmSum   / seasonStat.gp;
+                seasonStat.orbPct = seasonStat._orbPctSum / seasonStat.gp;
+                seasonStat.drbPct = seasonStat._drbPctSum / seasonStat.gp;
+                seasonStat.rebPct = seasonStat._trbPctSum / seasonStat.gp;
+                seasonStat.astPct = seasonStat._astPctSum / seasonStat.gp;
+                seasonStat.stlPct = seasonStat._stlPctSum / seasonStat.gp;
+                seasonStat.blkPct = seasonStat._blkPctSum / seasonStat.gp;
+                seasonStat.tovPct = seasonStat._tovPctSum / seasonStat.gp;
                 const tsDenom = 2 * (seasonStat.fga + 0.44 * seasonStat.fta);
                 seasonStat.tsPct = tsDenom > 0 ? (seasonStat.pts / tsDenom) * 100 : 0;
                 seasonStat.efgPct = seasonStat.fga > 0 ? ((seasonStat.fg + 0.5 * seasonStat.tp) / seasonStat.fga) * 100 : 0;

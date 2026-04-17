@@ -32,6 +32,7 @@ import {
   autoRunDraft,
 } from './autoResolvers';
 import { NewsGenerator } from '../news/NewsGenerator';
+import { applySeasonRollover, shouldFireRollover } from './seasonRollover';
 import { PlayoffSeries, HistoricalAward, SeasonHistoryEntry } from '../../types';
 import { DEFAULT_MEDIA_RIGHTS, attachBroadcastersToGames } from '../../utils/broadcastingUtils';
 
@@ -59,7 +60,7 @@ const autoBroadcastingDefault = (state: GameState): Partial<GameState> => {
 /** Builds milestone events dynamically from the current season year.
  *  y  = season end year (e.g. 2026 for the 2025-26 season)
  *  y1 = previous calendar year (e.g. 2025) — preseason / early-season events */
-const buildAutoResolveEvents = (y: number): AutoResolveEvent[] => {
+export const buildAutoResolveEvents = (y: number): AutoResolveEvent[] => {
   const y1 = y - 1;
   return [
     { date: `${y1}-08-06`, key: 'broadcasting_default',   resolver: autoBroadcastingDefault,         phase: 'Setting Broadcasting Deal...' },
@@ -204,16 +205,34 @@ const advanceDateByOne = (state: GameState): GameState => {
   };
 };
 
+export interface LazySimOptions {
+  /** 'overlay' = show progress UI (long skips, load game). 'silent' = no UI, collect lastSimResults (short skips). */
+  mode?: 'overlay' | 'silent';
+  /** Days per batch. Default 7 for overlay, 1 for silent. */
+  batchSize?: number;
+}
+
+export interface LazySimResult {
+  state: GameState;
+  /** Box scores from the LAST batch — used by silent mode so GameContext can show game results modal. */
+  lastSimResults: any[];
+}
+
 export const runLazySim = async (
   initialState: GameState,
   targetDateStr: string,
-  onProgress?: (progress: LazySimProgress) => void
-): Promise<GameState> => {
+  onProgress?: (progress: LazySimProgress) => void,
+  options?: LazySimOptions,
+): Promise<LazySimResult> => {
+  const mode = options?.mode ?? 'overlay';
+  const defaultBatch = mode === 'silent' ? 1 : 7;
+  const BATCH_SIZE = options?.batchSize ?? defaultBatch;
+
   const targetNorm = normalizeDate(targetDateStr);
   const startNorm = normalizeDate(initialState.date);
   const daysTotal = daysBetween(startNorm, targetNorm);
 
-  if (daysTotal <= 0) return initialState;
+  if (daysTotal <= 0) return { state: initialState, lastSimResults: [] };
 
   // Force LLM off for the entire lazy sim
   const originalSettings = SettingsManager.getSettings();
@@ -222,8 +241,39 @@ export const runLazySim = async (
   window.addEventListener('beforeunload', restoreOnUnload);
 
   let state = { ...initialState };
+  let lastBatchSimResults: any[] = []; // Track last batch for silent mode
   // Keys are `${seasonYear}:${eventKey}` so events re-fire correctly after season rollover
   const firedEvents = new Set<string>();
+
+  // §0 Fix: if starting before schedule generation (Aug 14) with no regular-season
+  // games, eagerly fire the early-season scheduling events so the full schedule is
+  // in state before any simulation days run. Without this, the schedule is only
+  // patched into state on the first outer-loop iteration that crosses Aug 14, but
+  // by then the batch has already run with an empty schedule for those days.
+  {
+    const eagerSeasonYear = state.leagueStats.year;
+    const eagerKeys = ['broadcasting_default', 'global_games', 'intl_preseason', 'schedule_generation'];
+    const hasRegularSeason = state.schedule.some(
+      (g: any) => !g.isPreseason && !g.isPlayoff && !g.isPlayIn
+    );
+    if (!hasRegularSeason) {
+      for (const event of buildAutoResolveEvents(eagerSeasonYear)) {
+        if (!eagerKeys.includes(event.key)) continue;
+        if (event.date >= targetNorm) continue; // target is before this event
+        const compositeKey = `${eagerSeasonYear}:${event.key}`;
+        if (firedEvents.has(compositeKey)) continue;
+        try {
+          const patch = await event.resolver(state);
+          if (patch && Object.keys(patch).length > 0) {
+            state = { ...state, ...patch };
+          }
+        } catch (err) {
+          console.warn(`[lazySim eager] ${event.key} failed:`, err);
+        }
+        firedEvents.add(compositeKey);
+      }
+    }
+  }
   // Pre-seed with all injuries already on players so only NEW injuries generate news
   const reportedInjuries = new Set<string>(
     (initialState.players ?? [])
@@ -233,9 +283,8 @@ export const runLazySim = async (
   let daysComplete = 0;
   let currentPhase = 'Starting...';
 
-  const BATCH_SIZE = 7;
-
   const report = (override?: Partial<LazySimProgress>) => {
+    if (mode === 'silent') return; // silent mode: no UI updates
     const currentNorm = normalizeDate(state.date);
     onProgress?.({
       currentDate: currentNorm,
@@ -277,12 +326,27 @@ export const runLazySim = async (
         }
       }
 
+      // Season rollover — fires once when date crosses June 30 of the current season year.
+      // Must run in the lazy sim loop (not just simulationHandler) so that contracts expire,
+      // the year advances, and schedule_generation fires for the new season.
+      if (shouldFireRollover(state, currentNorm)) {
+        const rolloverPatch = applySeasonRollover(state);
+        state = { ...state, ...rolloverPatch };
+        currentPhase = 'Season Rollover...';
+        report();
+      }
+
       // Determine batch size (don't overshoot target)
+      // Use batch=1 near Jun 30 to ensure rollover fires BEFORE any July games sim
+      const rolloverDate = `${state.leagueStats.year}-06-30`;
+      const nearRollover = currentNorm >= `${state.leagueStats.year}-06-25` && currentNorm < rolloverDate;
       const remaining = daysBetween(currentNorm, targetNorm);
-      const batchDays = Math.min(BATCH_SIZE, remaining);
+      const effectiveBatch = nearRollover ? 1 : BATCH_SIZE;
+      const batchDays = Math.min(effectiveBatch, remaining);
       if (batchDays <= 0) break;
 
       const { stateWithSim, allSimResults, perDayResults } = runSimulation(state, batchDays, undefined);
+      lastBatchSimResults = allSimResults; // track for silent mode return
 
       // Accumulate player season stats — normally called in processTurn, bypassed here
       const { updatedPlayers, updatedDraftPicks } = processSimulationResults(
@@ -323,7 +387,7 @@ export const runLazySim = async (
       }
 
       // Generate social posts for the batch — player reactions, media posts, Shams injuries
-      const nbaPlayers = updatedPlayers.filter(p => !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || ''));
+      const nbaPlayers = updatedPlayers.filter(p => !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || ''));
       const socialEngine = new SocialEngine();
       const batchDateString = stateWithSim.date;
       const enginePosts = await socialEngine.generateDailyPosts(allSimResults, nbaPlayers, stateWithSim.teams, batchDateString, batchDays, stateWithSim.playoffs, stateWithSim.schedule);
@@ -494,7 +558,9 @@ export const runLazySim = async (
 
       // Defensive: if the sim returned an empty schedule but we had one before the batch
       // (can happen when no games fall in the Aug 14–Oct 23 window), preserve the pre-batch schedule.
-      const safeSchedule = stateWithSim.schedule.length === 0 && state.schedule.length > 0
+      // BUT: if rollover just fired (year advanced), the empty schedule is intentional — don't restore!
+      const yearAdvanced = stateWithSim.leagueStats.year !== state.leagueStats.year;
+      const safeSchedule = !yearAdvanced && stateWithSim.schedule.length === 0 && state.schedule.length > 0
         ? state.schedule
         : stateWithSim.schedule;
 
@@ -604,5 +670,5 @@ export const runLazySim = async (
 
   report({ percentComplete: 100, currentPhase: 'Done!', daysComplete: daysTotal });
 
-  return state;
+  return { state, lastSimResults: lastBatchSimResults };
 };

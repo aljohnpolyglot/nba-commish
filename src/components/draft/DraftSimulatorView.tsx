@@ -9,8 +9,27 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Clock, Play, Pause, CheckCircle, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { convertTo2KRating, normalizeDate } from '../../utils/helpers';
+import { getPlayerImage } from '../central/view/bioCache';
+import { ensureNonNBAFetched, getNonNBAGistData } from '../central/view/nonNBACache';
 import { PlayerBioView } from '../central/view/PlayerBioView';
 import type { NBAPlayer } from '../../types';
+
+// Parse "2015 Round 2, Pick 5, Philadelphia Sixers" → { year, round, pick, team }
+function parseBioDraftStr(s: string | undefined): { year: number; round: number; pick: number; team: string } | null {
+  if (!s || s === 'Undrafted' || s === 'N/A' || s === '-') return null;
+  const m = s.match(/(\d{4})\s+Round\s+(\d+)[,\s]+Pick\s+(\d+)[,\s]+(.+)/i);
+  if (!m) return null;
+  return { year: parseInt(m[1]), round: parseInt(m[2]), pick: parseInt(m[3]), team: m[4].trim() };
+}
+
+const BIO_LEAGUE_MAP: Record<string, string> = {
+  Euroleague: 'Euroleague',
+  'B-League': 'B-League',
+  'G-League': 'G-League',
+  Endesa: 'Endesa',
+  'China CBA': 'China CBA',
+  'NBL Australia': 'NBL Australia',
+};
 
 // Shape ratios for the 30-pick rookie scale (pick 1 = 1.0, pick 30 ≈ 0.238).
 // Multiplicative 5.42% step-down per slot, as described in EconomyRookieContractsSection.
@@ -116,13 +135,13 @@ const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, draftOrder, on
 
                 {/* Player photo */}
                 <div className="w-20 bg-[#111] relative shrink-0 overflow-hidden">
-                  {player.imgURL ? (
-                    <img src={player.imgURL} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
+                  {(() => { const img = getPlayerImage(player as any); return img ? (
+                    <img src={img} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-2xl font-black text-indigo-900">
                       {player.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                     </div>
-                  )}
+                  ); })()}
                 </div>
 
                 {/* Player info */}
@@ -159,6 +178,13 @@ interface DraftSimulatorViewProps {
 
 export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewChange }) => {
   const { state, dispatchAction: dispatch } = useGame();
+
+  // Trigger re-render once external bio gist caches are loaded (they hold NBA draft strings)
+  const [nonNBACacheVer, setNonNBACacheVer] = useState(0);
+  useEffect(() => {
+    Promise.all(Object.values(BIO_LEAGUE_MAP).map(ensureNonNBAFetched))
+      .then(() => setNonNBACacheVer(v => v + 1));
+  }, []);
 
   // Build 60-pick draft order:
   // R1: picks 1-14 from lottery results (if available), picks 15-30 from playoff teams worst→best.
@@ -201,27 +227,33 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     ] as any[];
   }, [state.teams, state.draftLotteryResult]);
 
-  const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa']);
+  const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
 
-  // POT estimator (BBGM formula) — same as used in PlayerRatingsModal
+  // POT estimator (BBGM formula) — matches PlayerBiosView / PlayerBioRatingsTab / tradeValueEngine
   const estimatePot = (rawOvr: number, hgt: number, tp: number | undefined, age: number): number => {
     if (age >= 29) return convertTo2KRating(rawOvr, hgt, tp);
-    const potBbgm = Math.max(rawOvr, 72.31428908571982 + (-2.33062761 * age) + (0.83308748 * rawOvr));
-    return convertTo2KRating(potBbgm, hgt, tp);
+    const potBbgm = Math.max(rawOvr, Math.round(72.31428908571982 + (-2.33062761 * age) + (0.83308748 * rawOvr)));
+    return convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), hgt, tp);
   };
 
-  // All available draft years (from players who have draft.year set and are on NBA teams)
+  // All available draft years — NBA roster players (primary) + bio-gist data for external leagues
   const nbaTids = useMemo(() => new Set(state.teams.map(t => t.id)), [state.teams]);
   const availableDraftYears = useMemo(() => {
     const years = new Set<number>();
     for (const p of state.players) {
+      if (p.status === 'WNBA' || p.status === 'PBA') continue;
       const d = (p as any).draft;
-      if (d?.year && nbaTids.has(p.tid) && !EXTERNAL_STATUSES.has(p.status ?? '')) {
-        years.add(Number(d.year));
+      if (d?.year && d?.round && d?.pick) { years.add(Number(d.year)); continue; }
+      // External player: check bio gist for draft year
+      const league = BIO_LEAGUE_MAP[p.status ?? ''];
+      if (league) {
+        const cached = getNonNBAGistData(league, p.name);
+        const parsed = parseBioDraftStr(cached?.d);
+        if (parsed) years.add(parsed.year);
       }
     }
     return Array.from(years).sort((a, b) => b - a); // newest first
-  }, [state.players, nbaTids]);
+  }, [state.players, nbaTids, nonNBACacheVer]);
 
   const defaultViewYear = availableDraftYears[0] ?? (state.leagueStats?.year ?? 2026) - 1;
   const [viewDraftYear, setViewDraftYear] = useState<number>(defaultViewYear);
@@ -234,19 +266,46 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   }, [availableDraftYears]);
 
   const latestDraftClass = useMemo(() => {
-    const candidates = state.players.filter(p => {
+    // Collect candidates, attaching resolved _draftRound/_draftPick for slot mapping
+    const candidates: any[] = [];
+
+    for (const p of state.players) {
+      // Skip WNBA and PBA entirely
+      if (p.status === 'WNBA' || p.status === 'PBA') continue;
+
       const d = (p as any).draft;
-      if (!d?.year || Number(d.year) !== viewDraftYear) return false;
-      if (EXTERNAL_STATUSES.has(p.status ?? '')) return false;
-      if (!nbaTids.has(p.tid)) return false;
-      return true;
-    });
+      let dYear  = d?.year  ? Number(d.year)  : null;
+      let dRound = d?.round ? Number(d.round) : null;
+      let dPick  = d?.pick  ? Number(d.pick)  : null;
+
+      // For external league players missing draft info in player object,
+      // fall back to the bio gist (RealGM/NBA context — e.g. Willy Hernangomez "2015 R2 P5")
+      let bioDraftTeamName: string | undefined;
+      if ((!dRound || !dPick) && BIO_LEAGUE_MAP[p.status ?? '']) {
+        const league = BIO_LEAGUE_MAP[p.status ?? ''];
+        const cached = getNonNBAGistData(league, p.name);
+        const parsed = parseBioDraftStr(cached?.d);
+        if (parsed) {
+          dYear = parsed.year; dRound = parsed.round; dPick = parsed.pick;
+          bioDraftTeamName = parsed.team; // e.g. "Minnesota Timberwolves"
+        }
+      }
+
+      if (!dYear || dYear !== viewDraftYear) continue;
+      if (!dRound || !dPick) continue;
+
+      // NBA roster players always included; external-league players included if they have a pick
+      const isOnNBATeam = nbaTids.has(p.tid);
+      const isExternalDrafted = !!BIO_LEAGUE_MAP[p.status ?? ''] && !!dRound && !!dPick;
+      if (!isOnNBATeam && !isExternalDrafted) continue;
+
+      candidates.push({ ...p, _draftRound: dRound, _draftPick: dPick, _bioDraftTeamName: bioDraftTeamName });
+    }
 
     // Deduplicate by pick slot (keep highest OVR if collision)
     const bySlot = new Map<number, any>();
     for (const p of candidates) {
-      const d = (p as any).draft;
-      const slot = (d.round === 1 ? 0 : 30) + (d.pick ?? 0);
+      const slot = (p._draftRound === 1 ? 0 : 30) + p._draftPick;
       const existing = bySlot.get(slot);
       if (!existing || (p.overallRating ?? 0) > (existing.overallRating ?? 0)) {
         bySlot.set(slot, p);
@@ -256,21 +315,21 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     return Array.from(bySlot.entries())
       .sort(([a], [b]) => a - b)
       .map(([slot, p]) => {
-        // Use ratings from the draft year if available, otherwise current
-        const draftRatings = p.ratings?.find((r: any) => r.season === viewDraftYear) ?? p.ratings?.[0] ?? {};
-        const currentRatings = p.ratings?.[p.ratings.length - 1] ?? {};
-        const hgt = currentRatings.hgt ?? 50; // height doesn't change
-        const tp = draftRatings.tp;
-        const rawOvr = draftRatings.ovr ?? p.overallRating ?? 0;
-        const draftAge = typeof p.age === 'number' ? p.age - ((state.leagueStats?.year ?? 2026) - viewDraftYear) : 20;
+        const lastRatings = p.ratings?.[p.ratings.length - 1] ?? {};
+        const hgt = lastRatings.hgt ?? 50;
+        const tp = lastRatings.tp;
+        const rawOvr = lastRatings.ovr ?? p.overallRating ?? 0;
+        const age = p.age ?? 26;
+        const displayOvr = convertTo2KRating(rawOvr, hgt, tp);
+        const displayPot = estimatePot(rawOvr, hgt, tp, age); // current age POT
         return {
           ...p,
           _slot: slot,
-          displayOvr: convertTo2KRating(rawOvr, hgt, tp),
-          displayPot: estimatePot(rawOvr, hgt, tp, Math.max(18, draftAge)),
+          displayOvr,
+          displayPot,
         };
       });
-  }, [state.players, viewDraftYear, nbaTids, state.leagueStats?.year]);
+  }, [state.players, viewDraftYear, nbaTids, state.leagueStats?.year, nonNBACacheVer]);
 
   const mostRecentDraftYear = viewDraftYear;
 
@@ -501,113 +560,8 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   return (
     <div className="container mx-auto px-4 py-6">
 
-      {/* PREVIOUS DRAFT RESULTS — shown when no active draft in progress */}
-      {latestDraftClass.length > 0 && !hasStarted && (!isDraftTime || isDraftDone) && (
-        <div className="mb-8">
-          <div className="border-b border-[#333] pb-2 mb-4 flex items-center justify-between">
-            <h4 className="text-xl font-black text-white uppercase tracking-tight">{mostRecentDraftYear} NBA Draft Results</h4>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-white/30 uppercase">{latestDraftClass.length} picks</span>
-              {availableDraftYears.length > 1 && (
-                <div className="flex items-center gap-1 bg-black/40 border border-[#333] rounded-md p-0.5">
-                  <button
-                    onClick={() => {
-                      const idx = availableDraftYears.indexOf(viewDraftYear);
-                      if (idx < availableDraftYears.length - 1) setViewDraftYear(availableDraftYears[idx + 1]);
-                    }}
-                    disabled={availableDraftYears.indexOf(viewDraftYear) === availableDraftYears.length - 1}
-                    className="p-1 text-white/50 hover:text-white disabled:opacity-30 transition-colors"
-                  >
-                    <ChevronLeft size={14} />
-                  </button>
-                  <span className="text-[10px] font-black text-white/60 px-1">{viewDraftYear}</span>
-                  <button
-                    onClick={() => {
-                      const idx = availableDraftYears.indexOf(viewDraftYear);
-                      if (idx > 0) setViewDraftYear(availableDraftYears[idx - 1]);
-                    }}
-                    disabled={availableDraftYears.indexOf(viewDraftYear) === 0}
-                    className="p-1 text-white/50 hover:text-white disabled:opacity-30 transition-colors"
-                  >
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {latestDraftClass.map((player: any) => {
-              // draft.tid = the team that made the pick (not original owner)
-              const team = state.teams.find(t => t.id === player.draft?.tid);
-              return (
-                <div
-                  key={player.internalId}
-                  onClick={() => setViewingBioPlayer(player as NBAPlayer)}
-                  className="bg-[#1A1A1A] border border-[#333] rounded-sm flex h-16 overflow-hidden cursor-pointer hover:border-indigo-600/50 transition-colors"
-                >
-                  <div className="w-10 bg-indigo-900/60 flex items-center justify-center shrink-0">
-                    <span className="text-base font-black text-white">{String(player._slot).padStart(2, '0')}</span>
-                  </div>
-                  <div className="w-16 bg-[#111] relative shrink-0 overflow-hidden">
-                    {player.imgURL ? (
-                      <img src={player.imgURL} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-lg font-black text-indigo-900">
-                        {player.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 p-2 flex flex-col justify-center min-w-0">
-                    <p className="font-black text-white text-sm truncate uppercase tracking-tight">{player.name}</p>
-                    <div className="text-[10px] font-bold text-white/40 uppercase">
-                      {player.pos} · OVR {player.displayOvr} | POT {player.displayPot} · {player.draft?.round === 1 ? 'R1' : 'R2'} #{player.draft?.pick}
-                    </div>
-                  </div>
-                  <div className="w-12 flex items-center justify-center shrink-0 border-l border-[#333] bg-black/20">
-                    {team?.logoUrl ? (
-                      <img src={team.logoUrl} alt="" className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
-                    ) : (
-                      <span className="text-[10px] font-black text-white/30">{team?.abbrev}</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* PRE-DRAFT banner — visible before draft day */}
-      {!isDraftTime && !isDraftDone && (
-        <div className="mb-6 bg-[#111] border border-yellow-700/40 rounded-sm p-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Calendar size={18} className="text-yellow-400 shrink-0" />
-            <div>
-              <p className="text-yellow-300 font-black text-sm uppercase tracking-tight">Draft Day is June 25, {leagueYear}</p>
-              <p className="text-white/40 text-xs font-medium mt-0.5">The draft board unlocks on draft day. Prospects below are for scouting only.</p>
-            </div>
-          </div>
-          {onViewChange && (
-            <button
-              onClick={() => onViewChange('Draft Scouting')}
-              className="shrink-0 text-[10px] font-black uppercase tracking-widest text-yellow-400/70 hover:text-yellow-300 border border-yellow-700/40 hover:border-yellow-600/60 px-3 py-1.5 rounded-sm transition-colors whitespace-nowrap"
-            >
-              Full Scouting Report →
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* DRAFT COMPLETE banner */}
-      {isDraftDone && !hasStarted && (
-        <div className="mb-6 bg-[#111] border border-emerald-700/40 rounded-sm p-4 flex items-center gap-3">
-          <CheckCircle size={18} className="text-emerald-400 shrink-0" />
-          <div>
-            <p className="text-emerald-300 font-black text-sm uppercase tracking-tight">{leagueYear} NBA Draft Complete</p>
-            <p className="text-white/40 text-xs font-medium mt-0.5">Draft results have been committed to the game state. See the results above.</p>
-          </div>
-        </div>
-      )}
+      {/* DraftSimulatorView is now only rendered on draft day when draft is not complete
+          (MainContent routes to DraftHistoryView for all other cases) */}
 
       {/* INTERACTIVE DRAFT BOARD — only shown on/after draft day and draft not yet committed */}
       {isDraftTime && !isDraftDone && (
@@ -706,13 +660,13 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
 
                     {/* Photo */}
                     <div className="w-10 h-10 rounded-full bg-black/40 mr-3 shrink-0 border border-zinc-800 overflow-hidden">
-                      {player.imgURL ? (
-                        <img src={player.imgURL} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
+                      {(() => { const img = getPlayerImage(player as any); return img ? (
+                        <img src={img} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-zinc-500">
                           {player.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                         </div>
-                      )}
+                      ); })()}
                     </div>
 
                     {/* Info */}
@@ -795,13 +749,13 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
               >
                 <div className="w-8 h-8 bg-black/40 rounded-sm font-black text-base text-white/30 mr-3 shrink-0 flex items-center justify-center">{i + 1}</div>
                 <div className="w-9 h-9 rounded-full bg-black/40 mr-3 shrink-0 border border-zinc-800 overflow-hidden">
-                  {player.imgURL ? (
-                    <img src={player.imgURL} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
+                  {(() => { const img = getPlayerImage(player as any); return img ? (
+                    <img src={img} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-zinc-500">
                       {player.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                     </div>
-                  )}
+                  ); })()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-black text-white text-sm leading-tight truncate">{player.name}</p>

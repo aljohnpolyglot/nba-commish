@@ -60,7 +60,9 @@
       "Bash(gh api:*)",
       "Bash(powershell -Command \"\\(Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/gleagueratings'\\).Content.Substring\\(0,200\\)\")",
       "Bash(powershell -Command ':*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(ls AI_AND_ECONOMY_PLAN.md README.md)",
+      "Bash(ls *.md)"
     ]
   }
 }

@@ -52,7 +52,7 @@ export const calculateOutcome = (
                 if (player.born?.loc.includes('Philippines')) {
                     changes.revenue = 1.5;
                 }
-                if (player.overallRating >= 85) {
+                if (player.overallRating >= 65) { // BBGM 65+ = All-Star caliber — signing notable player boosts viewership
                     changes.viewership = vary(2, 0.3);
                     changes.publicApproval = vary(3, 0.3);
                 }
@@ -61,7 +61,7 @@ export const calculateOutcome = (
         }
 
         case 'FORCE_TRADE': {
-            const isSuperstar = payload.playerOverall >= 85;
+            const isSuperstar = payload.playerOverall >= 68; // BBGM 68+ = franchise/All-Star tier (force-trading these causes bigger backlash)
             changes.morale = isSuperstar ? -10 : vary(-4, 0.3);
             changes.playerApproval = isSuperstar ? vary(-5, 0.3) : vary(-2, 0.3);
             break;

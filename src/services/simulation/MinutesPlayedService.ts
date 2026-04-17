@@ -291,6 +291,7 @@ export class MinutesPlayedService {
     lead: number = 0,
     otCount: number = 0,
     starMpgTarget?: number,
+    isPlayoffs: boolean = false,
   ): MinuteAllocation {
     const isBlowout    = Math.abs(lead) > 15;
     const isBigBlowout = Math.abs(lead) > 25;
@@ -343,9 +344,13 @@ export class MinutesPlayedService {
       }
 
       // Scale up for OT: a player who'd play 37 min in regulation plays ~44 min in 2OT.
-      // Cap at full game length so no player exceeds the game clock.
+      // Hard cap with jitter: ~40-42 min regular season, ~44-46 min playoffs.
+      // Jitter prevents robotic "42:00" exactly — produces natural values like 41:17, 42:28.
+      const MAX_BASE = isPlayoffs ? 44 : 40;
+      const MAX_JITTER = 2; // ±0-2 min randomness
+      const maxMinutes = (MAX_BASE + Math.random() * MAX_JITTER) * otMultiplier;
       const scaledMins = Math.max(1, baseMins) * otMultiplier;
-      return Math.min(gameLengthMin, scaledMins);
+      return Math.min(maxMinutes, scaledMins);
     });
 
     // Hard clamp: trim bench first (deepest → shallowest), starters last

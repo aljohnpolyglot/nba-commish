@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { normalizeDate } from '../../utils/helpers';
 import {
   Inbox, MessageSquare, Newspaper, Activity, Trophy, Sparkles,
   User, Calendar, BarChart2, TrendingUp,
@@ -100,9 +101,16 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
       label: 'Seasonal',
       items: [
         { id: 'Seasonal',       label: 'Seasonal Actions', icon: Clock,  badge: seasonalBadge || undefined },
-        ...((!state.seasonPreviewDismissed && (state.seasonHistory ?? []).length > 0)
-          ? [{ id: 'Season Preview' as Tab, label: 'Season Preview',  icon: Sparkles, badge: '!' as string }]
-          : []),
+        ...(() => {
+          // Only show Season Preview after Oct 1 (rosters finalized) and before regular season starts
+          const yr = state.leagueStats?.year ?? 2026;
+          const currentNorm = normalizeDate(state.date ?? '');
+          const oct1 = `${yr - 1}-10-01`;
+          const isAfterOct1 = currentNorm >= oct1;
+          return (!state.seasonPreviewDismissed && (state.seasonHistory ?? []).length > 0 && isAfterOct1)
+            ? [{ id: 'Season Preview' as Tab, label: 'Season Preview', icon: Sparkles, badge: '!' as string }]
+            : [];
+        })(),
         { id: 'All-Star',       label: 'All-Star',          icon: Star },
         { id: 'Playoffs',       label: 'Playoffs',           icon: Trophy, badge: playoffBadge },
       ],
@@ -123,6 +131,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         { id: 'Standings',        label: 'Standings',       icon: Table2 },
         { id: 'Transactions',     label: 'Transactions',    icon: ArrowRightLeft },
         { id: 'Trade Machine',    label: 'Trade Machine',   icon: Cpu },
+        { id: 'Trade Finder',     label: 'Trade Finder',    icon: Search },
         { id: 'Trade Proposals',  label: 'Trade Proposals', icon: GitPullRequest, badge: fmt(pendingTradesCount) },
         { id: 'Player Search',    label: 'Player Search',   icon: Search },
         { id: 'Player Bios',      label: 'Player Bios',     icon: Users },
@@ -141,6 +150,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         { id: 'League Leaders',  label: 'League Leaders',  icon: ListOrdered },
         { id: 'League History',  label: 'League History',  icon: Trophy },
         { id: 'Team History',    label: 'Team History',    icon: BookOpen },
+        { id: 'Power Rankings',  label: 'Power Rankings',  icon: TrendingUp },
       ],
     },
     {

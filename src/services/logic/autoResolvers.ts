@@ -5,12 +5,20 @@ import { NewsGenerator } from '../news/NewsGenerator';
 
 // ── Schedule Generation (Aug 14) ──────────────────────────────────────────
 export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
+  // Only count games from the CURRENT season to avoid stale prior-season games
+  // blocking regeneration after a season rollover.
+  const year = state.leagueStats.year;
+  const seasonStart = `${year - 1}-10-01`;
+  const seasonEnd   = `${year}-06-30`;
   const hasRegularSeason = state.schedule.some(
     g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn
+         && g.date >= seasonStart && g.date <= seasonEnd
   );
   if (hasRegularSeason) return {}; // already generated, skip
+  // Strip any old-season games that are no longer relevant
   const intlPreseasonGames = state.schedule.filter(
     g => (g as any).isPreseason && (g.homeTid >= 100 || g.awayTid >= 100)
+         && g.date >= seasonStart
   );
   let schedule = generateSchedule(
     state.teams,
@@ -100,13 +108,15 @@ export const autoScheduleIntlPreseason = (state: GameState): Partial<GameState> 
     country: nonNBA.league,
   });
 
-  // Schedule: 2 Euroleague (Oct 2, Oct 8), 2 B-League/Japan (Oct 5, Oct 11), 1 PBA (Oct 14)
+  // Schedule: 2 Euroleague, 2 B-League, 1 PBA, 1 China CBA, 1 NBL Australia (all within Oct 1–15 preseason window)
   const plan: [NonNBATeam['league'], string][] = [
-    ['Euroleague', '2025-10-02'],
-    ['B-League',   '2025-10-05'],
-    ['Euroleague', '2025-10-08'],
-    ['B-League',   '2025-10-11'],
-    ['PBA',        '2025-10-14'],
+    ['Euroleague',   '2025-10-02'],
+    ['B-League',     '2025-10-04'],
+    ['Euroleague',   '2025-10-07'],
+    ['China CBA',     '2025-10-09'],
+    ['B-League',     '2025-10-11'],
+    ['NBL Australia', '2025-10-13'],
+    ['PBA',          '2025-10-15'],
   ];
 
   const newGames: any[] = [];
@@ -706,7 +716,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
   const rookieContractYrs = state.leagueStats?.rookieContractLength ?? 4;
   const staticRookieAmt = ((state.leagueStats as any)?.rookieScaleStaticAmount ?? 3) * 1_000_000;
 
-  const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa']);
+  const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
 
   // Draft order: use lottery results for picks 1-14, playoff teams for 15-30 (mirrors DraftSimulatorView)
   const allSortedByRecord = [...state.teams]
@@ -770,7 +780,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
         tid: team.id,
         status: 'Active' as const,
         draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: team.id },
-        contract: { amount: salaryAmount / 1_000_000, exp: season + contractYrs - 1, salaryDetails: [{ season, amount: salaryAmount }] },
+        contract: { amount: salaryAmount / 1_000, exp: season + contractYrs - 1, salaryDetails: [{ season, amount: salaryAmount }] },
       };
     }
     // Undrafted current-year prospects → free agents (future classes stay as prospects)
@@ -782,5 +792,67 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     return p;
   });
 
-  return { players: updatedPlayers, draftComplete: true } as any;
+  // ── Two-way contract auto-assignment ──────────────────────────────────────
+  // After the draft, each team may sign up to maxTwoWayPlayersPerTeam additional
+  // players on two-way deals ($625K, don't count against 15-man standard cap).
+  // Priority: undrafted FAs with lowest OVR (bubble / second-round fringe players).
+  const TWO_WAY_SALARY_THOUSANDS = 625; // $625K in BBGM thousands convention
+  const maxTwoWay = state.leagueStats?.maxTwoWayPlayersPerTeam ?? 2;
+  const twoWayEnabled = state.leagueStats?.twoWayContractsEnabled ?? true;
+
+  let twoWayPlayers = [...updatedPlayers];
+
+  if (twoWayEnabled && maxTwoWay > 0) {
+    // Pool: newly-undrafted FAs (lowest OVR first — bubble/fringe candidates)
+    const twoWayPool = twoWayPlayers
+      .filter(p => p.tid === -1 && p.status === 'Free Agent')
+      .sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0));
+
+    const twoWayAssignments = new Map<string, number>(); // internalId → teamId
+    // Track per-team two-way count as we assign
+    const twoWayCountByTeam = new Map<number, number>();
+
+    // One pass: give each team up to maxTwoWay candidates from the pool
+    for (const team of state.teams.filter(t => t.id > 0)) {
+      const standardCount = twoWayPlayers.filter(p => p.tid === team.id && !(p as any).twoWay).length;
+      if (standardCount < 1) continue; // only teams that received drafted players
+
+      let given = twoWayCountByTeam.get(team.id) ?? 0;
+      for (const candidate of twoWayPool) {
+        if (given >= maxTwoWay) break;
+        if (twoWayAssignments.has(candidate.internalId)) continue;
+        twoWayAssignments.set(candidate.internalId, team.id);
+        given++;
+        twoWayCountByTeam.set(team.id, given);
+      }
+    }
+
+    const twoWayHistoryEntries: Array<{ text: string; date: string; type: string }> = [];
+    if (twoWayAssignments.size > 0) {
+      twoWayPlayers = twoWayPlayers.map(p => {
+        const teamId = twoWayAssignments.get(p.internalId);
+        if (teamId === undefined) return p;
+        const team = state.teams.find(t => t.id === teamId);
+        const teamName = team ? `${team.region ?? ''} ${team.name}`.trim() : `Team ${teamId}`;
+        twoWayHistoryEntries.push({
+          text: `${p.name} signed a two-way contract with the ${teamName}.`,
+          date: state.date ?? `Jul 1, ${season}`,
+          type: 'Signing',
+        });
+        return {
+          ...p,
+          tid: teamId,
+          status: 'Active' as const,
+          twoWay: true,
+          contract: { amount: TWO_WAY_SALARY_THOUSANDS, exp: season },
+        };
+      });
+    }
+    if (twoWayHistoryEntries.length > 0) {
+      const existingHistory: any[] = (state.history as any[]) ?? [];
+      return { players: twoWayPlayers, draftComplete: true, history: [...existingHistory, ...twoWayHistoryEntries] } as any;
+    }
+  }
+
+  return { players: twoWayPlayers, draftComplete: true } as any;
 };

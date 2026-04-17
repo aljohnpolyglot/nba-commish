@@ -290,6 +290,8 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
                         setMaxStandardPlayersPerTeam={rulesState.setMaxStandardPlayersPerTeam}
                         maxTwoWayPlayersPerTeam={rulesState.maxTwoWayPlayersPerTeam}
                         setMaxTwoWayPlayersPerTeam={rulesState.setMaxTwoWayPlayersPerTeam}
+                        maxTrainingCampRoster={rulesState.maxTrainingCampRoster}
+                        setMaxTrainingCampRoster={rulesState.setMaxTrainingCampRoster}
                         minContractType={rulesState.minContractType}
                         setMinContractType={rulesState.setMinContractType}
                         minContractStaticAmount={rulesState.minContractStaticAmount}
@@ -344,6 +346,18 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
                         setInflationStdDev={rulesState.setInflationStdDev}
                         tradableDraftPickSeasons={rulesState.tradableDraftPickSeasons}
                         setTradableDraftPickSeasons={rulesState.setTradableDraftPickSeasons}
+                        mleEnabled={rulesState.mleEnabled}
+                        setMleEnabled={rulesState.setMleEnabled}
+                        roomMleAmount={rulesState.roomMleAmount}
+                        setRoomMleAmount={rulesState.setRoomMleAmount}
+                        nonTaxpayerMleAmount={rulesState.nonTaxpayerMleAmount}
+                        setNonTaxpayerMleAmount={rulesState.setNonTaxpayerMleAmount}
+                        taxpayerMleAmount={rulesState.taxpayerMleAmount}
+                        setTaxpayerMleAmount={rulesState.setTaxpayerMleAmount}
+                        biannualEnabled={rulesState.biannualEnabled}
+                        setBiannualEnabled={rulesState.setBiannualEnabled}
+                        biannualAmount={rulesState.biannualAmount}
+                        setBiannualAmount={rulesState.setBiannualAmount}
                     />
                 )}
             </motion.div>

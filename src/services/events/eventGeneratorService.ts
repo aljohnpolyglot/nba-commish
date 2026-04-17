@@ -167,7 +167,7 @@ export const generateInjuryPost = async (player: Player, team: Team, gamePhase: 
 
     let templateGroup: InjuryTemplateGroup | undefined;
     
-    const isStarPlayer = (player?.overallRating || 0) > 80;
+    const isStarPlayer = (player?.overallRating || 0) > 65; // BBGM 65+ = All-Star caliber (70+ = superstar in our formula)
     const age = (player.born?.year ? new Date().getFullYear() - player.born.year : 25); 
 
     const isPlayoffs = gamePhase.includes('Playoffs') || gamePhase === 'NBA Finals' || gamePhase === 'Conference Finals' || gamePhase === 'Play-In Tournament';

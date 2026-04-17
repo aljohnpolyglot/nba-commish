@@ -74,6 +74,24 @@ const MAJOR_INJURY_STAT_CHANGES: Record<string, Partial<Record<string, number>>>
 };
 
 /**
+ * Worst-case permanent regression for catastrophic injuries (~25% chance).
+ * Reflects career-altering outcomes (e.g. post-Achilles speed collapse).
+ * If worst-case rolls, these REPLACE the base stat changes.
+ */
+const MAJOR_INJURY_WORST_CASE: Record<string, Partial<Record<string, number>>> = {
+  'Torn ACL':             { spd: -9, jmp: -11, endu: -5, oiq: +3, fg: +1, tp: +2 },
+  'Torn Achilles':        { spd: -16, jmp: -20, endu: -13, oiq: +4, fg: +2, tp: +3 },
+  'Torn Patellar Tendon': { spd: -10, jmp: -13, endu: -5, oiq: +2, fg: +1 },
+  'Torn Meniscus':        { spd: -6,  jmp: -8,  endu: -3, oiq: +1 },
+  'Torn Hamstring':       { spd: -8,  jmp: -5,  endu: -4 },
+  'Lisfranc Injury':      { spd: -7,  jmp: -6,  endu: -3, oiq: +1 },
+  'Herniated Disc':       { spd: -5,  jmp: -4,  ins: -4, endu: -3 },
+};
+
+/** Probability of rolling worst-case regression on a catastrophic injury. */
+const WORST_CASE_PROBABILITY = 0.25;
+
+/**
  * Threshold: injuries with >= this many gamesRemaining trigger permanent stat changes.
  * Injuries shorter than this (< 15 games) are considered minor/recoverable.
  */
@@ -331,7 +349,7 @@ export class InjurySystem {
 
       // ── Load management for stars vs weak opponents ────────────────────
       const opponentTeam = player.tid === homeTeam.id ? awayTeam : homeTeam;
-      if (opponentTeam.strength < 85 && player.overallRating > 85) {
+      if (opponentTeam.strength < 85 && player.overallRating > 70) { // BBGM 70+ = All-Star tier (load management realistic at this level)
         if (Math.random() < 0.05) {
           events.push({
             playerId:       player.internalId,
@@ -354,7 +372,11 @@ export class InjurySystem {
           : genericInjury();
 
         const isMajor = result.gamesRemaining >= MAJOR_INJURY_GAMES_THRESHOLD;
-        const statChanges = isMajor ? MAJOR_INJURY_STAT_CHANGES[result.type] : undefined;
+        let statChanges = isMajor ? MAJOR_INJURY_STAT_CHANGES[result.type] : undefined;
+        // Worst-case regression: ~25% chance on catastrophic injuries
+        if (isMajor && MAJOR_INJURY_WORST_CASE[result.type] && Math.random() < WORST_CASE_PROBABILITY) {
+          statChanges = MAJOR_INJURY_WORST_CASE[result.type];
+        }
 
         events.push({
           playerId:       player.internalId,

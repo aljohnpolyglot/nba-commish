@@ -30,6 +30,8 @@ export interface NonNBAGistEntry {
 const gistCache      = new Map<string, Map<string, NonNBAGistEntry>>();
 const pendingFetches = new Map<string, Promise<void>>();
 
+const BASE = 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/';
+
 const GIST_URLS: Record<string, string> = {
   PBA:
     'https://gist.githubusercontent.com/aljohnpolyglot/858c81167c2605178b65961efe8425bf/raw/a12c6dbefd3e077f15f04396e797d192632cea18/pba_final_merged.json',
@@ -37,10 +39,13 @@ const GIST_URLS: Record<string, string> = {
     'https://gist.githubusercontent.com/aljohnpolyglot/60406083729779fb19533e04baead405/raw/bfd8196e3e5b787917bce4baf4fea0cb3007625b/euroleaguestats',
   'B-League':
     'https://gist.githubusercontent.com/aljohnpolyglot/0ffa999888dac89005a31b6f1b41b0ba/raw/c73a664f6507078afa48cc365f2cfdf7eaa326b5/bleaguebio',
-  'G-League':
-    'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/gleaguebio',
-  Endesa:
-    'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/ligaendesabio',
+  'G-League':   BASE + 'gleaguebio',
+  Endesa:       BASE + 'ligaendesabio',
+  'China CBA':     BASE + 'chinacbabio',
+  'NBL Australia': BASE + 'nblaustraliabio',
+  // WNBA uses two bio files merged together — handled as a special case in fetchLeagueData
+  WNBA_BIO1:    BASE + 'wnbabio1',
+  WNBA_BIO2:    BASE + 'wnbabio2',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -121,25 +126,75 @@ function buildFlatEntry(item: any): NonNBAGistEntry {
   return { stats, h, w, c, s, b, a, d, proBio };
 }
 
-// ── B-League — player object with stats array + notes ────────────────────────
+// ── B-League / G-League — BBGM-format player object with stats array + optional flat fields ─────
+// Bio gists may have either BBGM-style fields (hgt in inches, weight number, born.year) or
+// flat-style fields (height string "6-2 (188cm)", weight string "200 lbs", nationality string).
+// We try both so the bio card shows height/weight/country regardless of gist format.
 
-function buildBLeagueEntry(player: any): NonNBAGistEntry {
+function buildBBGMStyleEntry(player: any): NonNBAGistEntry {
+  // ── Stats from stats array ────────────────────────────────────────────────
   const statsArr: any[] = player.stats ?? [];
   let pts = '0.0', reb = '0.0', ast = '0.0', stl = '0.0', blk = '0.0';
-
   if (statsArr.length > 0) {
     const latest = [...statsArr].sort((a, b) => (b.season ?? 0) - (a.season ?? 0))[0];
     if (latest) {
-      pts = fmt(latest.pts);
+      const gp = latest.gp || 1;
+      pts = fmt((latest.pts ?? 0) / gp);
       const trb = latest.trb ?? ((latest.orb ?? 0) + (latest.drb ?? 0));
-      reb = fmt(trb);
-      ast = fmt(latest.ast);
-      stl = fmt(latest.stl);
-      blk = fmt(latest.blk);
+      reb = fmt(trb / gp);
+      ast = fmt((latest.ast ?? 0) / gp);
+      stl = fmt((latest.stl ?? 0) / gp);
+      blk = fmt((latest.blk ?? 0) / gp);
     }
   }
+  // Also try flat ppg/rpg fields if stats array missing
+  if (pts === '0.0' && player.ppg) { pts = fmt(player.ppg); reb = fmt(player.rpg); ast = fmt(player.apg); stl = fmt(player.spg); blk = fmt(player.bpg); }
 
-  // Bio section: notes text → bullet sentences
+  // ── Height ───────────────────────────────────────────────────────────────
+  let h: string | undefined;
+  if (player.hgt) {
+    // BBGM inches
+    const inches = typeof player.hgt === 'number' ? player.hgt : parseInt(player.hgt);
+    if (!isNaN(inches) && inches > 20) h = `${Math.floor(inches / 12)}'${inches % 12}"`;
+  } else if (player.height) {
+    // flat "6-2 (188cm)" format
+    const m = String(player.height).match(/^(\d+)-(\d+)/);
+    h = m ? `${m[1]}'${m[2]}"` : String(player.height);
+  }
+
+  // ── Weight ───────────────────────────────────────────────────────────────
+  let w: string | undefined;
+  if (player.weight && typeof player.weight === 'number') {
+    w = `${player.weight}lb`;
+  } else if (player.weight) {
+    const m = String(player.weight).match(/^(\d+)\s*lbs?/i);
+    w = m ? `${m[1]}lb` : String(player.weight);
+  }
+
+  // ── Country ──────────────────────────────────────────────────────────────
+  const c = player.nationality || player.born?.loc || undefined;
+
+  // ── College / School ─────────────────────────────────────────────────────
+  let s: string | undefined;
+  if (player.college && !['N/A', '-', ''].includes(player.college)) s = player.college;
+  else if (player.pre_draft && !['N/A', '-', ''].includes(player.pre_draft))
+    s = String(player.pre_draft).replace(/\s*\([^)]*\)\s*$/, '').trim();
+
+  // ── Birthdate / Age ───────────────────────────────────────────────────────
+  let b: string | undefined;
+  let a: string | undefined;
+  if (player.born?.year) { b = String(player.born.year); a = `${new Date().getFullYear() - player.born.year} years`; }
+  else if (player.born) { const parsed = parseBorn(String(player.born)); b = parsed.display || undefined; a = parsed.age || undefined; }
+
+  // ── Draft ─────────────────────────────────────────────────────────────────
+  let d: string | undefined;
+  if (player.draft?.year) {
+    d = `${player.draft.year} Round ${player.draft.round ?? '?'}, Pick ${player.draft.pick ?? '?'}`;
+  } else if (player.draft && !['N/A', '-', ''].includes(String(player.draft))) {
+    d = String(player.draft);
+  }
+
+  // ── Bio section: notes text → bullet sentences ────────────────────────────
   const notes: string = player.notes ?? '';
   let proBio = '';
   if (notes.trim().length > 10) {
@@ -153,34 +208,57 @@ function buildBLeagueEntry(player: any): NonNBAGistEntry {
       .join('');
   }
 
-  return {
-    stats: { PTS: pts, REB: reb, AST: ast, STL: stl, BLK: blk },
-    proBio,
-  };
+  return { stats: { PTS: pts, REB: reb, AST: ast, STL: stl, BLK: blk }, h, w, c, s, b, a, d, proBio };
 }
+
+/** @deprecated alias kept for the B-League case — same logic */
+const buildBLeagueEntry = buildBBGMStyleEntry;
 
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 
 async function fetchLeagueData(league: string): Promise<void> {
-  const url = GIST_URLS[league];
-  if (!url) return;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) { gistCache.set(league, new Map()); return; }
-    const data = await res.json();
-    const map = new Map<string, NonNBAGistEntry>();
+  const map = new Map<string, NonNBAGistEntry>();
 
-    if (league === 'PBA' || league === 'Euroleague' || league === 'B-League' || league === 'G-League' || league === 'Endesa') {
+  try {
+    if (league === 'WNBA') {
+      // WNBA has two separate bio files — merge them (bio1 wins on conflict)
+      const [res1, res2] = await Promise.all([
+        fetch(GIST_URLS.WNBA_BIO1),
+        fetch(GIST_URLS.WNBA_BIO2),
+      ]);
+      const arr1: any[] = res1.ok ? await res1.json() : [];
+      const arr2: any[] = res2.ok ? await res2.json() : [];
+      // bio2 first, bio1 overwrites — so bio1 takes priority
+      [...arr2, ...arr1].forEach((item: any) => {
+        if (item.name) map.set(item.name.toLowerCase(), buildFlatEntry(item));
+      });
+    } else if (league === 'B-League' || league === 'G-League') {
+      // Both leagues use BBGM-format roster data — hgt in inches, stats array, etc.
+      const url = GIST_URLS[league];
+      if (!url) { gistCache.set(league, map); return; }
+      const res = await fetch(url);
+      if (!res.ok) { gistCache.set(league, map); return; }
+      const data = await res.json();
+      const arr: any[] = Array.isArray(data) ? data : (data.players ?? []);
+      arr.forEach((item: any) => {
+        if (item.name) map.set(item.name.toLowerCase(), buildBBGMStyleEntry(item));
+      });
+    } else {
+      const url = GIST_URLS[league];
+      if (!url) { gistCache.set(league, map); return; }
+      const res = await fetch(url);
+      if (!res.ok) { gistCache.set(league, map); return; }
+      const data = await res.json();
       const arr: any[] = Array.isArray(data) ? data : (data.players ?? []);
       arr.forEach((item: any) => {
         if (item.name) map.set(item.name.toLowerCase(), buildFlatEntry(item));
       });
     }
-
-    gistCache.set(league, map);
   } catch (_) {
-    gistCache.set(league, new Map()); // silent fail — hero keeps baseData values
+    // silent fail — hero keeps baseData values
   }
+
+  gistCache.set(league, map);
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────

@@ -1,14 +1,15 @@
-import { NBAPlayer } from '../types';
+import { NBAPlayer, NBATeam } from '../types';
 import { convertTo2KRating } from './helpers';
 
 /** BBGM contract.amount is in thousands of dollars.
  *  Multiply by 1000 to get actual USD. */
 export const contractToUSD = (amount: number): number => amount * 1000;
 
-/** Sum all player contracts for a team, returning USD dollars. */
+/** Sum all player contracts for a team, returning USD dollars.
+ *  Two-way players ($625K each) are excluded from cap payroll — they don't count against the salary cap. */
 export const getTeamPayrollUSD = (players: NBAPlayer[], teamId: number): number =>
   players
-    .filter(p => p.tid === teamId)
+    .filter(p => p.tid === teamId && !(p as any).twoWay)
     .reduce((sum, p) => sum + contractToUSD(p.contract?.amount || 0), 0);
 
 /** Format dollar amount as "$X.XM" */
@@ -75,6 +76,26 @@ export const getCapStatus = (payrollUSD: number, t: CapThresholds): CapStatus =>
   return { key: 'under_cap', label: 'Cap Space', color: 'text-emerald-400', bgColor: 'bg-emerald-500/20', barColor: '#34d399' };
 };
 
+// ─── Effective Record ─────────────────────────────────────────────────────────
+
+/**
+ * Returns a team's effective W-L for classification purposes.
+ * During the offseason (or early season with < 10 games played) `team.wins` and
+ * `team.losses` are both 0, which causes `getTradeOutlook` to misclassify every
+ * team as rebuilding. Fall back to the previous season's record when gp < 10.
+ * Mirrors the pattern used in PowerRankingsView.
+ */
+export function effectiveRecord(team: any, currentYear: number): { wins: number; losses: number } {
+  const wins   = team.wins   ?? 0;
+  const losses = team.losses ?? 0;
+  if (wins + losses >= 10) return { wins, losses };
+  const lastSeason = (team.seasons as any[] | undefined)?.find(s => s.season === currentYear - 1);
+  if (lastSeason && (lastSeason.won + lastSeason.lost) > 0) {
+    return { wins: lastSeason.won, losses: lastSeason.lost };
+  }
+  return { wins, losses };
+}
+
 // ─── Trade Outlook ────────────────────────────────────────────────────────────
 
 export type TradeRole = 'heavy_buyer' | 'buyer' | 'neutral' | 'seller' | 'rebuilding';
@@ -89,10 +110,37 @@ export interface TradeOutlook {
 }
 
 /**
+ * Compute the average K2 OVR of a team's top-N players by overall rating.
+ * Used for the star-power override in getTradeOutlook.
+ */
+export function topNAvgK2(players: NBAPlayer[], teamId: number, n = 3): number {
+  const roster = players.filter(p => p.tid === teamId);
+  if (roster.length === 0) return 0;
+  const sorted = roster.slice().sort((a, b) => {
+    const aLast = (a as any).ratings?.[(a as any).ratings?.length - 1];
+    const bLast = (b as any).ratings?.[(b as any).ratings?.length - 1];
+    const aOvr = aLast?.ovr ?? a.overallRating ?? 0;
+    const bOvr = bLast?.ovr ?? b.overallRating ?? 0;
+    return bOvr - aOvr;
+  });
+  const top = sorted.slice(0, n);
+  const sum = top.reduce((acc, p) => {
+    const last = (p as any).ratings?.[(p as any).ratings?.length - 1];
+    const bbgmOvr = last?.ovr ?? p.overallRating ?? 0;
+    const hgt = last?.hgt ?? 50;
+    const tp = last?.tp ?? 50;
+    return acc + convertTo2KRating(bbgmOvr, hgt, tp);
+  }, 0);
+  return sum / top.length;
+}
+
+/**
  * Classifies a team's trade/FA outlook using cap position AND standings context.
  *
- * @param confRank     - 1–15 rank within conference (undefined = ignore standings)
- * @param gbFromLeader - Games Behind the conference leader (undefined = ignore)
+ * @param confRank       - 1–15 rank within conference (undefined = ignore standings)
+ * @param gbFromLeader   - Games Behind the conference leader (undefined = ignore)
+ * @param topThreeAvgK2  - Avg K2 OVR of team's top-3 players. ≥ 88 forces Contending
+ *                         regardless of record (covers dual-star teams in rebuild seasons).
  */
 export const getTradeOutlook = (
   payrollUSD: number,
@@ -102,11 +150,18 @@ export const getTradeOutlook = (
   thresholds: CapThresholds,
   confRank?: number,
   gbFromLeader?: number,
+  topThreeAvgK2?: number,
 ): TradeOutlook => {
   const gp = wins + losses || 1;
   const winPct = wins / gp;
   const capSpace = thresholds.salaryCap - payrollUSD;
   const isOverTax = payrollUSD >= thresholds.luxuryTax;
+
+  // Star-power override: if the top-3 players avg K2 ≥ 88, always Contending
+  // (covers LeBron+AD, Jokic+Murray, etc. even when in a rebuilding season)
+  if (topThreeAvgK2 !== undefined && topThreeAvgK2 >= 88) {
+    return { role: 'heavy_buyer', label: 'Contending', color: 'text-emerald-300', bgColor: 'bg-emerald-500/20', dot: '#6ee7b7', reason: '' };
+  }
 
   // Standings-aware overrides
   const inPlayoffs   = confRank !== undefined && confRank <= 6;
@@ -117,35 +172,35 @@ export const getTradeOutlook = (
 
   // Top 3 seed + cap room = championship hunting
   if (confRank !== undefined && confRank <= 3 && capSpace > 5_000_000)
-    return { role: 'heavy_buyer', label: 'Heavy Buyer', color: 'text-emerald-300', bgColor: 'bg-emerald-500/20', dot: '#6ee7b7', reason: `#${confRank} seed — title window open` };
+    return { role: 'heavy_buyer', label: 'Contending', color: 'text-emerald-300', bgColor: 'bg-emerald-500/20', dot: '#6ee7b7', reason: '' };
 
   // Playoff team (top 6): buyer if cap space available OR under luxury tax (MLE available)
   if (inPlayoffs && (capSpace > 2_000_000 || payrollUSD < thresholds.luxuryTax))
-    return { role: 'buyer', label: 'Buyer', color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', dot: '#34d399', reason: `Playoff seed #${confRank} — adding pieces` };
+    return { role: 'buyer', label: 'Contending', color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', dot: '#34d399', reason: '' };
 
   // Play-in team with cap room = opportunistic buyer
   if (inPlayIn && (capSpace > 3_000_000 || payrollUSD < thresholds.luxuryTax - 5_000_000))
-    return { role: 'buyer', label: 'Buyer', color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', dot: '#34d399', reason: `Play-in #${confRank} — push for playoffs` };
+    return { role: 'buyer', label: 'Contending', color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', dot: '#34d399', reason: '' };
 
   // Way out of it = rebuilding (regardless of cap)
   if (veryFarBehind || (outsidePlayIn && farBehind))
-    return { role: 'rebuilding', label: 'Rebuilding', color: 'text-purple-400', bgColor: 'bg-purple-500/20', dot: '#c084fc', reason: gbFromLeader !== undefined ? `${gbFromLeader} GB — future-focused` : 'Future-focused' };
+    return { role: 'rebuilding', label: 'Rebuilding', color: 'text-purple-400', bgColor: 'bg-purple-500/20', dot: '#c084fc', reason: '' };
 
   // Outside play-in + over tax + losing = motivated seller
   if (outsidePlayIn && isOverTax)
-    return { role: 'seller', label: 'Seller', color: 'text-rose-400', bgColor: 'bg-rose-500/20', dot: '#f87171', reason: 'Outside play-in, over tax' };
+    return { role: 'seller', label: 'Seller', color: 'text-rose-400', bgColor: 'bg-rose-500/20', dot: '#f87171', reason: '' };
 
   // Fallbacks without standings data
   if (winPct >= 0.55 && (capSpace > 5_000_000 || payrollUSD < thresholds.luxuryTax))
-    return { role: 'heavy_buyer', label: 'Heavy Buyer', color: 'text-emerald-300', bgColor: 'bg-emerald-500/20', dot: '#6ee7b7', reason: 'Contender with cap room' };
+    return { role: 'heavy_buyer', label: 'Contending', color: 'text-emerald-300', bgColor: 'bg-emerald-500/20', dot: '#6ee7b7', reason: '' };
   if (winPct >= 0.48 && (capSpace > 0 || payrollUSD < thresholds.luxuryTax))
-    return { role: 'buyer', label: 'Buyer', color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', dot: '#34d399', reason: 'Winning, room to add' };
+    return { role: 'buyer', label: 'Contending', color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', dot: '#34d399', reason: '' };
   if (winPct < 0.35 || (winPct < 0.42 && expiringCount >= 3))
-    return { role: 'rebuilding', label: 'Rebuilding', color: 'text-purple-400', bgColor: 'bg-purple-500/20', dot: '#c084fc', reason: 'Future-focused' };
+    return { role: 'rebuilding', label: 'Rebuilding', color: 'text-purple-400', bgColor: 'bg-purple-500/20', dot: '#c084fc', reason: '' };
   if (winPct < 0.46 && isOverTax)
-    return { role: 'seller', label: 'Seller', color: 'text-rose-400', bgColor: 'bg-rose-500/20', dot: '#f87171', reason: 'Losing & over tax' };
+    return { role: 'seller', label: 'Seller', color: 'text-rose-400', bgColor: 'bg-rose-500/20', dot: '#f87171', reason: '' };
 
-  return { role: 'neutral', label: 'Neutral', color: 'text-slate-400', bgColor: 'bg-slate-700/40', dot: '#94a3b8', reason: 'Holding steady' };
+  return { role: 'neutral', label: 'Neutral', color: 'text-slate-400', bgColor: 'bg-slate-700/40', dot: '#94a3b8', reason: '' };
 };
 
 /** Full cap profile for a team — used by AI trade/FA logic. */
@@ -185,6 +240,106 @@ export const getTeamCapProfile = (
   };
 };
 
+// ─── Mid-Level Exception (MLE) ────────────────────────────────────────────────
+
+export type MleType = 'room' | 'non_taxpayer' | 'taxpayer' | null;
+
+export interface MleAvailability {
+  /** Which MLE type the team qualifies for at this payroll level (null = none). */
+  type: MleType;
+  /** Full dollar limit for this MLE type. */
+  limit: number;
+  /** Dollars already spent from this exception this season. */
+  used: number;
+  /** Remaining dollars available (limit − used). 0 if blocked or conditions not met. */
+  available: number;
+  /** True when no exception is usable (over 2nd apron, already used conflicting exception, etc.). */
+  blocked: boolean;
+}
+
+/**
+ * Determine which MLE (if any) a team can use, and how much of it remains.
+ *
+ * @param teamId          - team to evaluate
+ * @param payrollUSD      - current payroll (before hypothetical signing)
+ * @param signingUSD      - first-year salary of the player being considered (0 = just check status)
+ * @param thresholds      - from getCapThresholds()
+ * @param leagueStats     - for MLE settings and usage tracking
+ */
+export function getMLEAvailability(
+  teamId: number,
+  payrollUSD: number,
+  signingUSD: number,
+  thresholds: CapThresholds,
+  leagueStats: {
+    mleEnabled?: boolean;
+    roomMleAmount?: number;
+    nonTaxpayerMleAmount?: number;
+    taxpayerMleAmount?: number;
+    biannualEnabled?: boolean;
+    biannualAmount?: number;
+    mleUsage?: Record<number, { type: 'room' | 'non_taxpayer' | 'taxpayer'; usedUSD: number }>;
+    apronsEnabled?: boolean;
+  },
+): MleAvailability {
+  const NONE: MleAvailability = { type: null, limit: 0, used: 0, available: 0, blocked: true };
+
+  if (leagueStats.mleEnabled === false) return NONE;
+
+  const ROOM_LIMIT = leagueStats.roomMleAmount        ?? 8_781_000;
+  const NT_LIMIT   = leagueStats.nonTaxpayerMleAmount ?? 14_104_000;
+  const TAX_LIMIT  = leagueStats.taxpayerMleAmount    ?? 5_685_000;
+
+  const usage = leagueStats.mleUsage?.[teamId];
+  const priorType   = usage?.type   ?? null;
+  const priorUsed   = usage?.usedUSD ?? 0;
+
+  const cap        = thresholds.salaryCap;
+  const firstApron = thresholds.firstApron;
+  const secondApron = thresholds.secondApron;
+  const projectedPayroll = payrollUSD + signingUSD;
+
+  // ── Room MLE ───────────────────────────────────────────────────────────────
+  // Team is below the salary cap AND hasn't used biannual/NT-MLE/taxpayer-MLE.
+  if (payrollUSD < cap) {
+    const blocked = priorType === 'non_taxpayer' || priorType === 'taxpayer';
+    if (blocked) return NONE;
+    const usedThisSeason = priorType === 'room' ? priorUsed : 0;
+    const available = Math.max(0, ROOM_LIMIT - usedThisSeason);
+    return { type: 'room', limit: ROOM_LIMIT, used: usedThisSeason, available, blocked: available === 0 };
+  }
+
+  // ── Over 2nd apron → no exceptions ─────────────────────────────────────────
+  if (payrollUSD >= secondApron) return NONE;
+
+  // ── Taxpayer MLE (check first: if signing busts the first apron) ───────────
+  // First year salary causes team to cross the first apron, or already over it.
+  // Must not have used: biannual, room exception, room MLE, NT-MLE.
+  const crossesFirstApron = projectedPayroll >= firstApron || payrollUSD >= firstApron;
+  if (crossesFirstApron) {
+    const blocked = priorType === 'room' || priorType === 'non_taxpayer';
+    if (blocked) return NONE;
+    // Signing must not bust second apron
+    if (projectedPayroll >= secondApron) return NONE;
+    const usedThisSeason = priorType === 'taxpayer' ? priorUsed : 0;
+    const available = Math.max(0, TAX_LIMIT - usedThisSeason);
+    return { type: 'taxpayer', limit: TAX_LIMIT, used: usedThisSeason, available, blocked: available === 0 };
+  }
+
+  // ── Non-Taxpayer MLE ────────────────────────────────────────────────────────
+  // Team is above cap AND below first apron; signing keeps them below first apron.
+  // Must not have used room MLE or taxpayer MLE.
+  if (payrollUSD >= cap && payrollUSD < firstApron && projectedPayroll < firstApron) {
+    const blocked = priorType === 'room' || priorType === 'taxpayer';
+    if (blocked) return NONE;
+    const usedThisSeason = priorType === 'non_taxpayer' ? priorUsed : 0;
+    const available = Math.max(0, NT_LIMIT - usedThisSeason);
+    return { type: 'non_taxpayer', limit: NT_LIMIT, used: usedThisSeason, available, blocked: available === 0 };
+  }
+
+  return NONE;
+}
+
 // ─── Contract Offer Engine ────────────────────────────────────────────────────
 
 /** Tier labels used for UI display (cosmetic only). */
@@ -214,6 +369,8 @@ type ContractLeagueStats = Pick<
   | 'maxContractStaticPercentage'
   | 'minContractLength'
   | 'maxContractLengthStandard'
+  | 'supermaxEnabled'
+  | 'supermaxPercentage'
 >;
 
 /**
@@ -244,9 +401,33 @@ export function computeContractOffer(
     : 0;
   const svcIdx = Math.min(yearsOfService, 10);
 
+  // ── Supermax eligibility ─────────────────────────────────────────────────
+  // Qualifies if: supermaxEnabled AND player.superMaxEligible (precomputed at rollover).
+  // Fallback: compute live for the first season before rollover has run.
+  // Supermax is ONLY available when re-signing with own team (Bird Rights required).
+  const supermaxEnabled = leagueStats.supermaxEnabled ?? true;
+  const supermaxPct = (leagueStats.supermaxPercentage ?? 35) / 100;
+  let isSupermaxEligible: boolean;
+  if ((player as any).superMaxEligible !== undefined) {
+    // Use precomputed flag (set at rollover, includes Bird Rights check)
+    isSupermaxEligible = supermaxEnabled && !!(player as any).superMaxEligible;
+  } else {
+    // First-season fallback: compute from awards + service, require hasBirdRights
+    const awards: Array<{ season: number; type: string }> = (player as any).awards ?? [];
+    const currentSeason = (player as any).stats?.reduce((m: number, s: any) => Math.max(m, s.season ?? 0), 0) ?? 0;
+    const recentAwards = awards.filter(a => a.season >= currentSeason - 2);
+    const hasSupermaxAward = recentAwards.some(a =>
+      /all.nba|mvp|defensive player|dpoy/i.test(a.type),
+    );
+    const hasBirdRights = (player as any).hasBirdRights ?? false;
+    isSupermaxEligible = supermaxEnabled && hasBirdRights && (yearsOfService >= 8 || hasSupermaxAward);
+  }
+
   // ── Max contract ────────────────────────────────────────────────────────
   let maxContractUSD: number;
-  if ((leagueStats.maxContractType ?? 'service_tiered') === 'service_tiered') {
+  if (isSupermaxEligible) {
+    maxContractUSD = capM * supermaxPct * 1_000_000;
+  } else if ((leagueStats.maxContractType ?? 'service_tiered') === 'service_tiered') {
     maxContractUSD = (capM * MAX_CONTRACT_PCT[svcIdx]) * 1_000_000;
   } else {
     const pct = (leagueStats.maxContractStaticPercentage ?? 25) / 100;

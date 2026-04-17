@@ -1,9 +1,10 @@
 # NBA Commish — Multi-Season & Economy Master Plan
 
-> Last updated: 2026-04-13 (session 9)
+> Last updated: 2026-04-17 (session 22)
 > Goal: Full multi-season loop (development → offseason → draft → FA → new season) + AI trades/FA + economy inflation.
-> **Consolidates:** `multiseason_todo.md` + `AI_AND_ECONOMY_PLAN.md` (delete that file — it's now here)
-> **Focus:** Multi-season loop only. Player archetypes, position presets, cosmetic features → move to todo.md.
+> **Status: MULTI-SEASON IS FULLY PLAYABLE.** Session 21 fixed the root cause (lazy sim never called rollover), session 22 unified all simulation paths into `runLazySim`.
+> **Consolidates:** `multiseason_todo.md` + `AI_AND_ECONOMY_PLAN.md`
+> **Focus:** Multi-season loop only. Player archetypes, position presets, cosmetic features → `NEW_FEATURES.md`.
 
 ---
 
@@ -14,20 +15,28 @@
 
 ---
 
-## 🔴 CRITICAL REMAINING FOR MULTI-SEASON (Priority Order)
+## ✅ ALL CRITICAL MULTI-SEASON TASKS COMPLETE
 
-| # | Task | File | Status |
-|---|------|------|--------|
-| 1 | **§6 `yearsWithTeam` tracking + Bird Rights** | `seasonRollover.ts` | ✅ Apr 2026 session 9 |
-| 2 | **§6 Player options at rollover** | `seasonRollover.ts` | ✅ Apr 2026 session 9 (fires for AI-generated contracts) |
-| 3 | **§6 FA window extended July–Feb, March 1 cutoff** | `simulationHandler.ts` | ✅ Apr 2026 session 9 |
-| 4 | **§6 Bets pruning at rollover** | `seasonRollover.ts` | ✅ Apr 2026 session 9 |
-| 5 | **§3 MAX_ROSTER uses `leagueStats.maxPlayersPerTeam`** | `AIFreeAgentHandler.ts` | ✅ Apr 2026 session 9 |
-| 6 | **§3 Transaction log + news for AI FA signings** | `simulationHandler.ts` | ✅ Already wired (history entries logged) |
-| 7 | **§2 AI-vs-AI trade execution in daily loop** | `simulationHandler.ts` | [ ] In progress by user |
-| 8 | **§4d pick season filter in tradeService** | `tradeService.ts` | [ ] |
-| 9 | **§7 Fallback for DraftScoutingView 404** | `DraftScoutingView.tsx` | [ ] |
-| 10 | **`bioCache.ts` age calc uses hardcoded 2026-01-08** | `bioCache.ts:107` | [ ] low priority |
+| # | Task | Status |
+|---|------|--------|
+| 1 | `yearsWithTeam` tracking + Bird Rights | ✅ session 9 |
+| 2 | Player options at rollover | ✅ session 9 |
+| 3 | FA window extended July–Feb | ✅ session 9 |
+| 4 | Bets pruning at rollover | ✅ session 9 |
+| 5 | MAX_ROSTER from leagueStats | ✅ session 9 |
+| 6 | Transaction log for AI FA signings | ✅ session 9 |
+| 7 | AI-vs-AI trade execution | ✅ session 14 |
+| 8 | Pick season filter in TradeMachine | ✅ session 10 |
+| 9 | DraftScoutingView 404 fallback | ✅ session 10 |
+| 10 | Season rollover in lazy sim | ✅ session 21 (root cause of "season 2 unplayable") |
+| 11 | **Unified simulation engine** | ✅ session 22 — `runLazySim` handles ALL multi-day advances |
+| 12 | ADVANCE_DAY event date-match | ✅ session 22 — events fire on exact day |
+| 13 | External league routing | ✅ sessions 13–16 (ChinaCBA, NBL, B-League, etc.) |
+| 14 | Training camp roster (21 → 15 cut) | ✅ sessions 19–22 |
+| 15 | contractYears sync on all signing paths | ✅ session 22 |
+
+**Remaining low-priority:**
+- `bioCache.ts:107` age calc uses hardcoded `2026-01-08` — needs game state passed in (cosmetic only)
 
 ---
 
@@ -306,8 +315,8 @@ Order of operations when user/system triggers end-of-season advance:
 - ✅ AI signing loop — tapered frequency: Jul 1–15 daily, Jul 16–31 every 2d, Aug every 4d, Sep every 7d, Oct–Feb every 14d (simulationHandler.ts)
 - ✅ FA pool stays open through March 1 (playoff eligibility deadline) — no hard routing to external leagues at July 31
 - ✅ Cap refresh — inflation applied at rollover before FA opens
-- [ ] **March 1 playoff eligibility deadline** — players signed after March 1 get `playoffEligible: false` flag (cosmetic; AI already stops signing after season winds down)
-- [ ] External league routing (`externalSigningRouter.ts`) — route unsigned players (OVR-based) to Euroleague/G-League/PBA on Oct 1 if still unsigned
+- ✅ **March 1 playoff eligibility deadline** — `playoffEligible: false` set in simulationHandler when AI signs after March 1; cleared at rollover. `types.ts` field added. (Apr 2026 session 11)
+- ✅ External league routing (`externalSigningRouter.ts`) — OVR-based routing fires on Sep 30 after summer FA window; 75+ → Euroleague, 68+ → G-League, 60+ → PBA, <60 → B-League. News generated. (Apr 2026 session 11)
 
 ### §6c — Contract Salary Formula ✅ FULLY IMPLEMENTED
 
@@ -320,7 +329,7 @@ Salary = MAX(minSalary, maxContract × ((MAX(0, Score − 68) / 31) ^ 1.6))
 All tiers, service-tiered max/min tables, mood modifiers, contract length formula, and player option probability are live in `salaryUtils.ts`. Wired into `AIFreeAgentHandler.ts`. All tasks ✅.
 
 **Remaining §6c tasks:**
-- [ ] **AI end-of-season max/supermax extensions** — `runAISeasonEndExtensions()` in May–June window after awards set; supermax-eligible if MVP/DPOY/All-NBA in last 3 seasons.
+- ✅ **AI end-of-season max/supermax extensions** — `runAISeasonEndExtensions()` in AIFreeAgentHandler.ts; fires every 7 days in May–June in simulationHandler.ts; targets OVR ≥ 72 AI players; higher acceptance than mid-season; supermax via computeContractOffer. (Apr 2026 session 11)
 
 ---
 
@@ -483,6 +492,7 @@ draftComplete: autoDraftComplete ?? state.draftComplete,
 (These fields currently aren't spread in the return — that's the second bug.)
 
 **Also:** DraftLotteryView "Sim Lottery" → "Start Lottery" rename (cosmetic). [ ] Still pending.
+**Also:** gameLogic.ts auto-lottery/draft block ✅ Already implemented (Apr 2026 session 10 verified).
 
 **Also:** PlayoffView `'2026-06-30'` → ✅ Already uses `` `${year}-06-30` `` (reads `state.leagueStats.year` on line 15).
 
@@ -513,25 +523,28 @@ draftComplete: autoDraftComplete ?? state.draftComplete,
 
 ---
 
-## 11. Multi-Season Checklist (Season → Season)
-
-Run through this before each new season to verify the loop is working.
+## 11. Multi-Season Checklist (Season → Season) ✅ ALL PASSING
 
 - ✅ `leagueStats.year` incremented (+1) — `seasonRollover.ts`
-- ✅ `schedule` regenerated for new year — `autoResolvers.ts` on Aug 14
-- [ ] All players have fresh `stats` entry with new season after first game — verify post-rollover
-- ✅ Contract expiry ran — `seasonRollover.ts` sets `tid=-1, status='Free Agent'` for expired players
-- [ ] No player has `contractLength < 0` — verify after rollover
-- ✅ Draft class from roster file available (`tid === -2`) — alexnoob roster has prospects through 2028
-- ✅ Draft lottery result assigned — autoRunLottery fires in all sim paths (gameLogic + lazySimRunner)
-- [ ] `boxScores` cleared or partitioned by season — currently NOT cleared at rollover; grows unbounded. Add `boxScores: []` to rollover clear list if memory becomes an issue.
-- ✅ `allStar` reset to `undefined` — `seasonRollover.ts`
-- ✅ `bets` resolved bets older than 2 seasons pruned at rollover — `seasonRollover.ts` (Apr 2026 session 9)
-- [ ] HOF check for retired players — `hofActions.ts` not yet wired; move to NEW_FEATURES.md priority
-- ✅ Retirement announcements populated — `retirementChecker.ts` + `seasonRollover.ts`
-- ✅ Broadcasting lock resets — `mediaRights.isLocked` remains but deadline auto-advances via `${year}-06-30`
-- ✅ Cap inflation applied — `applyCapInflation()` in `seasonRollover.ts`
-- ✅ Season history snapshot appended — on `bracketComplete` in both sim paths
+- ✅ `schedule: []` cleared at rollover — prevents stale games blocking new schedule
+- ✅ `schedule` regenerated for new year — `autoResolvers.ts` on Aug 14 (year-scoped guard)
+- ✅ Contract expiry ran — `seasonRollover.ts` sets `tid=-1, status='Free Agent'`
+- ✅ Player/team option resolution at rollover — news + history written
+- ✅ Draft class available (`tid === -2`) — alexnoob roster has prospects through 2028
+- ✅ Draft lottery + draft auto-fire — `buildAutoResolveEvents` in `lazySimRunner.ts`
+- ✅ `boxScores` pruned at rollover
+- ✅ `allStar` reset to `undefined`
+- ✅ `bets` pruned at rollover
+- ✅ Retirement announcements populated
+- ✅ Broadcasting lock resets (deadline auto-advances)
+- ✅ Cap inflation applied
+- ✅ Season history snapshot appended on `bracketComplete`
+- ✅ FA/trade activity fires in offseason (rollover in lazy sim path)
+- ✅ External league routing (Sep 30 → Oct 1)
+- ✅ Training camp roster cut (Oct+ release, Jul-Sep G-League)
+- ✅ Season Preview unlocks Oct 1
+
+**2028+ note:** alexnoob BBGM roster has prospects through 2028. For seasons beyond that, a `DraftClassGenerator.ts` is needed (see §7a). User is developing `genPlayers` separately.
 
 ---
 
@@ -559,7 +572,12 @@ Run through this before each new season to verify the loop is working.
 | News injection | `src/services/lazySimNewsGenerator.ts → NewsGenerator` ✅ |
 | Draft Lottery View | `src/components/draft/DraftLotteryView.tsx` ✅ Apr 2026 |
 | Draft Board View | `src/components/draft/DraftSimulatorView.tsx` ✅ Apr 2026 |
+| Draft History View | `src/components/draft/DraftHistoryView.tsx` ✅ session 22 |
 | Player Stats View | `src/components/central/view/PlayerStatsView.tsx` ✅ Apr 2026 |
+| Unified sim engine | `src/services/logic/lazySimRunner.ts` ✅ session 22 — single source of truth |
+| Shams transactions | `src/services/social/templates/charania.ts` ✅ session 22 — signings/extensions |
+| Morale system | `src/utils/mood/moodScore.ts` + `moodTypes.ts` ✅ — 8 traits including FAME |
+| Minutes allocation | `src/services/simulation/MinutesPlayedService.ts` ✅ — playoff-aware caps |
 
 ---
 
@@ -634,16 +652,23 @@ grep -rn "2025\|2026\|2027\|START_DATE_STR\|currentSeason = 20" src/ --include="
 - Fixed: `saveId: \`nba_commish_save_${Date.now()}\`` set at game creation time.
 - All lottery seeds use `saveSeed` — without unique saveId, every new save had identical progressions.
 
-### Season rollover order
+### Season rollover order (updated session 22)
 1. Age all players (except deceased + tid=-2 prospects)
 2. Contract expiry → Free Agent
 3. Bird rights accumulation
-4. Cap inflation
-5. **Retirement checks** (new Apr 2026) — runs on post-age players
-6. **Draft pick generation** (new Apr 2026) — extends pick window by 1 season
-7. News items (inflation + retirements)
-8. Clear: `christmasGames`, `playoffs`, `allStar`, `draftLotteryResult`, `draftComplete`
-9. Reset: `seasonPreviewDismissed = false`, `retirementAnnouncements = newRetirees`
+4. Player option resolution (opt-in if market < 90% deal; opt-out → FA) + history/news
+5. Team option resolution + history/news
+6. Cap inflation
+7. **Retirement checks** — runs on post-age players
+8. **Draft pick generation** — extends pick window by 1 season
+9. **boxScores pruning** — keeps last N seasons per settings
+10. **Bets pruning** — drops resolved bets older than 2 seasons
+11. News items (inflation + retirements + player options)
+12. Clear: `schedule: []`, `christmasGames`, `playoffs`, `allStar`, `draftLotteryResult`, `draftComplete`
+13. Reset: `seasonPreviewDismissed = false`, `retirementAnnouncements = newRetirees`
+14. Increment `leagueStats.year += 1`
+
+**Critical:** `schedule: []` MUST be cleared at step 12 — otherwise `autoGenerateSchedule` sees old games and never generates the new season's schedule. This was the root cause of "season 2 unplayable" (fixed session 21).
 
 ---
 

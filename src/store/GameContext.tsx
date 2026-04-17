@@ -6,6 +6,7 @@ import { initialState } from './initialState';
 import { sendChatMessage } from '../services/llm/llm';
 import { prefetchPlayerBio } from '../components/central/view/bioCache';
 import { SettingsManager } from '../services/SettingsManager';
+import { normalizeDate } from '../utils/helpers';
 
 interface GameContextType {
   state: GameState;
@@ -215,9 +216,52 @@ const actions = useGameActions(setState, () => stateRef.current);
     }
 
     if (action.type === 'LOAD_GAME') {
+      const loaded = action.payload as any;
+      // Portrait migration: external league players whose imgURL came from bio gists
+      // (non-ProBallers URLs) get cleared so they show initials rather than wrong headshots.
+      // The externalRosterService now correctly prefers item.imgURL (ProBallers) over bio.image,
+      // but existing saves may still have bio.image stored. Clear them here.
+      const EXTERNAL_STATUSES_SET = new Set(['WNBA','Euroleague','PBA','B-League','G-League','Endesa','China CBA','NBL Australia']);
+      // Clear bad portrait URLs: only the ProBallers default "no photo" placeholder (head-par-defaut)
+      // and NBA CDN headshots on external-league players (those are passport-style shots of wrong player).
+      // Do NOT clear other URLs — external gists store legit portrait URLs (basketball-ref, ESPN, etc.)
+      const isBadPortrait = (p: any) => {
+        if (!p.imgURL) return false;
+        if (p.imgURL.includes('head-par-defaut')) return true; // ProBallers default placeholder
+        // NBA CDN headshots on external players = wrong person's passport photo
+        if (EXTERNAL_STATUSES_SET.has(p.status ?? '') && p.imgURL.includes('cdn.nba.com/headshots')) return true;
+        return false;
+      };
+      // Contract amount sync: update contract.amount from contractYears[] for the current season.
+      // Without this, saved games always use the year the save was first created (e.g. $13.9M rookie opt
+      // for Cade Cunningham in year 1, even after he signs a max extension for $46M+ in year 2+).
+      const currentSeasonYear: number = loaded.leagueStats?.year ?? new Date().getFullYear();
+      const currentSeasonStr = `${currentSeasonYear - 1}-${String(currentSeasonYear).slice(-2)}`;
+
+      const migratedPlayers = (loaded.players as any[] | undefined)?.map(p => {
+        let updated = isBadPortrait(p) ? { ...p, imgURL: undefined } : p;
+        // Sync contract.amount to current season from contractYears[] if available
+        if (updated.contract && Array.isArray(updated.contractYears)) {
+          const entry = updated.contractYears.find((cy: any) => cy.season === currentSeasonStr);
+          if (entry && entry.guaranteed > 0) {
+            const syncedAmount = Math.round(entry.guaranteed / 1000);
+            if (syncedAmount !== updated.contract.amount) {
+              updated = { ...updated, contract: { ...updated.contract, amount: syncedAmount } };
+            }
+          }
+        }
+        // First-season two-way detection: BBGM data doesn't set twoWay:true, but two-way players
+        // have ~$625K salary (< $800K threshold for grace). Mark them so roster-trim excludes them.
+        if (!updated.twoWay && updated.tid >= 0 && (updated.contract?.amount ?? 0) > 0 && (updated.contract?.amount ?? 9999) < 800) {
+          updated = { ...updated, twoWay: true };
+        }
+        return updated;
+      }) ?? loaded.players;
+
       setState({
         ...initialState,
-        ...action.payload,
+        ...loaded,
+        ...(migratedPlayers ? { players: migratedPlayers } : {}),
         isProcessing: false
       });
       return;
@@ -499,6 +543,39 @@ const actions = useGameActions(setState, () => stateRef.current);
           });
         }
         return;
+      } else if (action.type === 'SIMULATE_TO_DATE') {
+        // ── UNIFIED: ALL simulate-to-date goes through runLazySim ──
+        // Always overlay mode — shows the progress screen (phase labels, %).
+        // Short skips (≤30d) use batch=1 for precise event ordering.
+        // Long skips (>30d) use batch=7 for speed.
+        const targetNorm = normalizeDate(action.payload.targetDate);
+        const currentNorm = normalizeDate(stateRef.current.date);
+        const diffDays = Math.round(
+          (new Date(`${targetNorm}T00:00:00Z`).getTime() - new Date(`${currentNorm}T00:00:00Z`).getTime()) /
+          (1000 * 60 * 60 * 24)
+        );
+        const genId = ++generationIdRef.current;
+        const { runLazySim } = await import('../services/logic/lazySimRunner');
+        const result = await runLazySim(
+          stateRef.current,
+          action.payload.targetDate,
+          (progress: any) => {
+            setState(prev => ({ ...prev, lazySimProgress: progress }));
+          },
+          { mode: 'overlay', batchSize: diffDays > 30 ? 7 : 1 }
+        );
+        setState(prev => {
+          if (genId !== generationIdRef.current) return prev;
+          return {
+            ...prev,
+            ...result.state,
+            lazySimProgress: undefined,
+            isProcessing: false,
+            // Silent mode: surface lastSimResults so game results modal shows
+            lastSimResults: result.lastSimResults.length > 0 ? result.lastSimResults : prev.lastSimResults,
+          };
+        });
+        return;
       } else {
         newStatePatch = await processTurn(stateRef.current, action, (simResults) => {
           setState(prev => ({ ...prev, tickerSimResults: simResults }));
@@ -544,7 +621,7 @@ const actions = useGameActions(setState, () => stateRef.current);
 
       // Phase 3 — fire generateLeaguePulse in background
       // Only for ADVANCE_DAY and similar non-action turns
-      if (!action || action.type === 'ADVANCE_DAY' || action.type === 'SIMULATE_TO_DATE') {
+      if (!action || action.type === 'ADVANCE_DAY') {
         const shouldRunPulse = Math.random() < ((newStatePatch as any).daysSimulated > 1 ? 0.90 : 0.60);
         if (shouldRunPulse) {
           import('../services/llm/llm').then(({ generateLeaguePulse }) => {

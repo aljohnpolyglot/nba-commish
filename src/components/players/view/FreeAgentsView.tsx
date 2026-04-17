@@ -20,6 +20,8 @@ const MARKET_POOLS = [
   { id: 'bleague', label: 'B-League', icon: Trophy },
   { id: 'gleague', label: 'G-League', icon: Trophy },
   { id: 'endesa', label: 'Endesa', icon: Trophy },
+  { id: 'chinacba', label: 'China CBA', icon: Trophy },
+  { id: 'nblaustralia', label: 'NBL Australia', icon: Trophy },
 ];
 
 const POSITIONS = ['All', 'PG', 'SG', 'SF', 'PF', 'C'];
@@ -52,7 +54,7 @@ export const FreeAgentsView: React.FC = () => {
       if (p.status === 'Retired' || p.hof || p.tid === -100) return false;
       if (p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect') return false;
 
-      const isInternational = ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || '');
+      const isInternational = ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '');
       const isNBAFreeAgent = p.tid === -1 || p.status === 'Free Agent';
 
       if (!isInternational && !isNBAFreeAgent) return false;
@@ -78,7 +80,7 @@ export const FreeAgentsView: React.FC = () => {
   // Teams available for the selected non-NBA league
   const leagueTeams = useMemo(() => {
     if (selectedPool === 'all' || selectedPool === 'nba') return [];
-    const leagueMap: Record<string, string> = { euroleague: 'Euroleague', pba: 'PBA', bleague: 'B-League', gleague: 'G-League', endesa: 'Endesa' };
+    const leagueMap: Record<string, string> = { euroleague: 'Euroleague', pba: 'PBA', bleague: 'B-League', gleague: 'G-League', endesa: 'Endesa', chinacba: 'China CBA', nblaustralia: 'NBL Australia' };
     const league = leagueMap[selectedPool];
     if (!league) return [];
     return state.nonNBATeams.filter(t => t.league === league);
@@ -95,6 +97,8 @@ export const FreeAgentsView: React.FC = () => {
         if (selectedPool === 'bleague' && p.status !== 'B-League') return false;
         if (selectedPool === 'gleague' && p.status !== 'G-League') return false;
         if (selectedPool === 'endesa' && p.status !== 'Endesa') return false;
+        if (selectedPool === 'chinacba' && p.status !== 'China CBA') return false;
+        if (selectedPool === 'nblaustralia' && p.status !== 'NBL Australia') return false;
       }
 
       if (selectedPosition !== 'All') {
@@ -143,7 +147,7 @@ export const FreeAgentsView: React.FC = () => {
   }, [freeAgents, searchTerm, selectedPool, selectedPosition, sortBy, sortOrder, selectedCountry, selectedTeamId]);
 
   const getContactFromPlayer = (player: NBAPlayer) => {
-    const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(player.status || '');
+    const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '');
     const playerTeam = isNBA ? state.teams.find(t => t.id === player.tid) : null;
     const nonNBATeam = !isNBA ? state.nonNBATeams?.find((t: any) => t.tid === player.tid) : null;
     return {
@@ -251,7 +255,7 @@ export const FreeAgentsView: React.FC = () => {
   };
 
   const nbaFreeAgents = freeAgents.filter(p => p.status === 'Free Agent' || p.tid === -1).length;
-  const internationalPlayers = freeAgents.filter(p => ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || '')).length;
+  const internationalPlayers = freeAgents.filter(p => ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '')).length;
 
   if (viewingBioPlayer) {
     return (

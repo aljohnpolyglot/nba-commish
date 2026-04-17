@@ -18,7 +18,10 @@ type SortField =
   | 'twop' | 'twopa' | 'twopPct' | 'efgPct'
   | 'ft' | 'fta' | 'ftPct'
   | 'orb' | 'drb' | 'trb' | 'ast' | 'tov' | 'stl' | 'blk' | 'pf' | 'pts' | 'pm'
-  | 'per' | 'tsPct' | 'efgPctA' | 'usgPct' | 'ortg' | 'drtg' | 'bpm' | 'ws' | 'vorp'
+  | 'per' | 'ewa' | 'tsPct' | 'efgPctA' | 'usgPct' | 'ortg' | 'drtg'
+  | 'bpm' | 'obpm' | 'dbpm' | 'ws' | 'ows' | 'dws' | 'ws48' | 'vorp'
+  | 'orbPct' | 'drbPct' | 'trbPct' | 'astPct' | 'stlPct' | 'blkPct' | 'tovPct'
+  | 'threePAr' | 'ftRate'
   | 'rimFgm' | 'rimFga' | 'rimFgPct' | 'lpFgm' | 'lpFga' | 'lpFgPct'
   | 'mrFgm' | 'mrFga' | 'mrFgPct' | 'slTpm' | 'slTpa' | 'slTpPct'
   | 'ba' | 'dd' | 'td' | 'qd' | 'fiveX5';
@@ -36,8 +39,13 @@ interface ComputedRow {
   ft: number; fta: number; ftPct: number;
   orb: number; drb: number; trb: number;
   ast: number; tov: number; stl: number; blk: number; pf: number; pts: number; pm: number;
-  per: number; tsPct: number; efgPctA: number; usgPct: number;
-  ortg: number; drtg: number; bpm: number; ws: number; vorp: number;
+  per: number; ewa: number; tsPct: number; efgPctA: number; usgPct: number;
+  ortg: number; drtg: number;
+  bpm: number; obpm: number; dbpm: number;
+  ws: number; ows: number; dws: number; ws48: number; vorp: number;
+  orbPct: number; drbPct: number; trbPct: number;
+  astPct: number; stlPct: number; blkPct: number; tovPct: number;
+  threePAr: number; ftRate: number;
   // Shot location & feats (populated when statType === 'shotLocations')
   rimFgm?: number; rimFga?: number; rimFgPct?: number;
   lpFgm?: number;  lpFga?: number;  lpFgPct?: number;
@@ -126,7 +134,10 @@ async function fetchBrefRow(player: NBAPlayer): Promise<ComputedRow | null> {
       ast: get('ast'), tov: get('tov'), stl: get('stl'), blk: get('blk'), pf: get('pf'),
       pts: get('pts'), pm: 0,
       per: 0, tsPct: 0, efgPctA: 0, usgPct: 0,
-      ortg: 0, drtg: 0, bpm: 0, ws: 0, vorp: 0,
+      ortg: 0, drtg: 0, bpm: 0, obpm: 0, dbpm: 0,
+      ws: 0, ows: 0, dws: 0, ws48: 0, vorp: 0, ewa: 0,
+      orbPct: 0, drbPct: 0, trbPct: 0, astPct: 0, stlPct: 0, blkPct: 0, tovPct: 0,
+      threePAr: 0, ftRate: 0,
       fromBref: true,
     };
     brefCache.set(cacheKey, row);
@@ -169,15 +180,28 @@ function aggregateStats(statsList: NBAGMStat[]): NBAGMStat {
   out.tpp = safePct(out.tp, out.tpa);
   out.ftp = safePct(out.ft, out.fta);
   const totalGp = out.gp || 1;
-  out.per     = statsList.reduce((a, s) => a + (s.per     ?? 0) * s.gp, 0) / totalGp;
-  out.tsPct   = statsList.reduce((a, s) => a + (s.tsPct   ?? 0) * s.gp, 0) / totalGp;
-  out.efgPct  = statsList.reduce((a, s) => a + (s.efgPct  ?? 0) * s.gp, 0) / totalGp;
-  out.usgPct  = statsList.reduce((a, s) => a + (s.usgPct  ?? 0) * s.gp, 0) / totalGp;
-  out.ortg    = statsList.reduce((a, s) => a + (s.ortg    ?? 0) * s.gp, 0) / totalGp;
-  out.drtg    = statsList.reduce((a, s) => a + (s.drtg    ?? 0) * s.gp, 0) / totalGp;
-  out.bpm     = statsList.reduce((a, s) => a + (s.bpm     ?? 0) * s.gp, 0) / totalGp;
-  out.ws      = statsList.reduce((a, s) => a + (s.ws      ?? 0), 0);
-  out.vorp    = statsList.reduce((a, s) => a + (s.vorp    ?? 0), 0);
+  const wpd = (k: keyof NBAGMStat) => statsList.reduce((a, s) => a + ((s[k] as number) ?? 0) * s.gp, 0) / totalGp;
+  out.per     = wpd('per');
+  out.tsPct   = wpd('tsPct');
+  out.efgPct  = wpd('efgPct');
+  out.usgPct  = wpd('usgPct');
+  out.ortg    = wpd('ortg');
+  out.drtg    = wpd('drtg');
+  out.bpm     = wpd('bpm');
+  out.obpm    = wpd('obpm');
+  out.dbpm    = wpd('dbpm');
+  out.orbPct  = wpd('orbPct');
+  out.drbPct  = wpd('drbPct');
+  out.rebPct  = wpd('rebPct');
+  out.astPct  = wpd('astPct');
+  out.stlPct  = wpd('stlPct');
+  out.blkPct  = wpd('blkPct');
+  out.tovPct  = wpd('tovPct');
+  out.ws      = statsList.reduce((a, s) => a + (s.ws   ?? 0), 0);
+  out.ows     = statsList.reduce((a, s) => a + (s.ows  ?? 0), 0);
+  out.dws     = statsList.reduce((a, s) => a + (s.dws  ?? 0), 0);
+  out.vorp    = statsList.reduce((a, s) => a + (s.vorp ?? 0), 0);
+  out.ewa     = statsList.reduce((a, s) => a + (s.ewa  ?? 0), 0);
   return out;
 }
 
@@ -216,11 +240,19 @@ function toRow(
     blk: s.blk / div, pf: s.pf / div,
     pts: s.pts / div, pm: (s.pm ?? 0) / div,
     per: s.per ?? 0,
+    ewa: s.ewa ?? 0,
     tsPct: s.tsPct ?? 0,
     efgPctA: s.efgPct ?? 0,
     usgPct: s.usgPct ?? 0,
     ortg: s.ortg ?? 0, drtg: s.drtg ?? 0,
-    bpm: s.bpm ?? 0, ws: s.ws ?? 0, vorp: s.vorp ?? 0,
+    bpm: s.bpm ?? 0, obpm: s.obpm ?? 0, dbpm: s.dbpm ?? 0,
+    ws: s.ws ?? 0, ows: s.ows ?? 0, dws: s.dws ?? 0,
+    ws48: s.min > 0 ? (s.ws ?? 0) / (s.min / 48) : 0,
+    vorp: s.vorp ?? 0,
+    orbPct: s.orbPct ?? 0, drbPct: s.drbPct ?? 0, trbPct: s.rebPct ?? 0,
+    astPct: s.astPct ?? 0, stlPct: s.stlPct ?? 0, blkPct: s.blkPct ?? 0, tovPct: s.tovPct ?? 0,
+    threePAr: safePct(s.tpa, s.fga),
+    ftRate: safePct(s.fta, s.fga),
   };
 }
 
@@ -254,19 +286,34 @@ const BASIC_COLS: { key: SortField; label: string; dim?: boolean }[] = [
   { key: 'pts',     label: 'PTS'  },
 ];
 
-const ADV_COLS: { key: SortField; label: string; dim?: boolean }[] = [
-  { key: 'gp',     label: 'G'    },
-  { key: 'gs',     label: 'GS',  dim: true },
-  { key: 'min',    label: 'MP'   },
-  { key: 'per',    label: 'PER'  },
-  { key: 'tsPct',  label: 'TS%'  },
-  { key: 'efgPctA',label: 'eFG%' },
-  { key: 'usgPct', label: 'USG%' },
-  { key: 'ortg',   label: 'ORtg' },
-  { key: 'drtg',   label: 'DRtg' },
-  { key: 'bpm',    label: 'BPM'  },
-  { key: 'ws',     label: 'WS'   },
-  { key: 'vorp',   label: 'VORP' },
+const ADV_COLS: { key: SortField; label: string; title?: string; dim?: boolean }[] = [
+  { key: 'gp',      label: 'G',    title: 'Games Played' },
+  { key: 'gs',      label: 'GS',   title: 'Games Started', dim: true },
+  { key: 'min',     label: 'MP',   title: 'Minutes Per Game' },
+  { key: 'per',     label: 'PER',  title: 'Player Efficiency Rating' },
+  { key: 'ewa',     label: 'EWA',  title: 'Estimated Wins Added', dim: true },
+  { key: 'tsPct',   label: 'TS%',  title: 'True Shooting Percentage' },
+  { key: 'threePAr',label: '3PAr', title: 'Three Point Attempt Rate (3PA / FGA)', dim: true },
+  { key: 'ftRate',  label: 'FTr',  title: 'Free Throw Attempt Rate (FTA / FGA)', dim: true },
+  { key: 'orbPct',  label: 'ORB%', title: 'Percentage of available offensive rebounds grabbed', dim: true },
+  { key: 'drbPct',  label: 'DRB%', title: 'Percentage of available defensive rebounds grabbed', dim: true },
+  { key: 'trbPct',  label: 'TRB%', title: 'Percentage of available rebounds grabbed' },
+  { key: 'astPct',  label: 'AST%', title: 'Percentage of teammate field goals assisted while on the floor' },
+  { key: 'stlPct',  label: 'STL%', title: 'Percentage of opponent possessions ending in steals' },
+  { key: 'blkPct',  label: 'BLK%', title: 'Percentage of opponent two-pointers blocked' },
+  { key: 'tovPct',  label: 'TOV%', title: 'Turnovers per 100 plays', dim: true },
+  { key: 'usgPct',  label: 'USG%', title: 'Percentage of team plays used' },
+  { key: 'pm',      label: '+/-',  title: 'Plus/Minus', dim: true },
+  { key: 'ortg',    label: 'ORtg', title: 'Offensive Rating (points scored per 100 possessions)' },
+  { key: 'drtg',    label: 'DRtg', title: 'Defensive Rating (points allowed per 100 possessions)' },
+  { key: 'ows',     label: 'OWS',  title: 'Offensive Win Shares', dim: true },
+  { key: 'dws',     label: 'DWS',  title: 'Defensive Win Shares', dim: true },
+  { key: 'ws',      label: 'WS',   title: 'Win Shares' },
+  { key: 'ws48',    label: 'WS/48',title: 'Win Shares Per 48 Minutes', dim: true },
+  { key: 'obpm',    label: 'OBPM', title: 'Offensive Box Plus-Minus', dim: true },
+  { key: 'dbpm',    label: 'DBPM', title: 'Defensive Box Plus-Minus', dim: true },
+  { key: 'bpm',     label: 'BPM',  title: 'Box Plus-Minus' },
+  { key: 'vorp',    label: 'VORP', title: 'Value Over Replacement Player' },
 ];
 
 interface ShotLocAgg {
@@ -304,13 +351,18 @@ const PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-export const PlayerStatsView: React.FC = () => {
+interface PlayerStatsViewProps {
+  /** When set, pre-filters to this team's abbrev (e.g. from NBA Central) */
+  initialTeamFilter?: string;
+}
+
+export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFilter }) => {
   const { state, navigateToTeam, pendingStatSort, setPendingStatSort } = useGame();
 
   const [viewingPlayer, setViewingPlayer]   = useState<NBAPlayer | null>(null);
   const [statType, setStatType]             = useState<StatType>('perGame');
   const [phase, setPhase]                   = useState<Phase>('regular');
-  const [teamFilter, setTeamFilter]         = useState<string>('all');
+  const [teamFilter, setTeamFilter]         = useState<string>(initialTeamFilter ?? 'all');
   const [searchTerm, setSearchTerm]         = useState('');
   const [sortField, setSortField]           = useState<SortField>('pts');
   const [sortOrder, setSortOrder]           = useState<'asc' | 'desc'>('desc');
@@ -770,7 +822,7 @@ export const PlayerStatsView: React.FC = () => {
       >
         <table
           className="w-full text-xs text-left border-collapse"
-          style={{ minWidth: statType === 'advanced' ? 820 : statType === 'shotLocations' ? 1050 : 1360 }}
+          style={{ minWidth: statType === 'advanced' ? 1600 : statType === 'shotLocations' ? 1050 : 1360 }}
         >
           <thead className="sticky top-0 z-20 bg-slate-900 border-b-2 border-slate-700">
             <tr>
@@ -843,7 +895,7 @@ export const PlayerStatsView: React.FC = () => {
               )}
               {/* Stat columns */}
               {activeCols.map(col => (
-                <th key={col.key} className={thCls(col.key)} onClick={() => handleSort(col.key)}>
+                <th key={col.key} className={thCls(col.key)} title={(col as any).title} onClick={() => handleSort(col.key)}>
                   {col.label}{arrow(col.key)}
                   {showFilters && (
                     <input
@@ -959,15 +1011,30 @@ export const PlayerStatsView: React.FC = () => {
                       <td className="px-2 py-1.5 text-right text-slate-500">{r.gs}</td>
                       <td className="px-2 py-1.5 text-right text-slate-400">{fmt1(r.min)}</td>
                       <td className="px-2 py-1.5 text-right font-bold text-white">{fmt1(r.per)}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-400">{fmt1(r.ewa)}</td>
                       <td className="px-2 py-1.5 text-right text-indigo-300">{fmt3(r.tsPct / 100)}</td>
-                      <td className="px-2 py-1.5 text-right text-indigo-300">{fmt3(r.efgPctA / 100)}</td>
-                      <td className="px-2 py-1.5 text-right text-indigo-300">{fmt1(r.usgPct)}%</td>
+                      <td className="px-2 py-1.5 text-right text-slate-500">{fmt3(r.threePAr)}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-500">{fmt3(r.ftRate)}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-500">{fmt1(r.orbPct)}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-500">{fmt1(r.drbPct)}</td>
+                      <td className="px-2 py-1.5 text-right">{fmt1(r.trbPct)}</td>
+                      <td className="px-2 py-1.5 text-right">{fmt1(r.astPct)}</td>
+                      <td className="px-2 py-1.5 text-right">{fmt1(r.stlPct)}</td>
+                      <td className="px-2 py-1.5 text-right">{fmt1(r.blkPct)}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-500">{fmt1(r.tovPct)}</td>
+                      <td className="px-2 py-1.5 text-right text-indigo-300">{fmt1(r.usgPct)}</td>
+                      <td className={`px-2 py-1.5 text-right text-slate-400`}>{r.pm >= 0 ? '+' : ''}{fmt1(r.pm)}</td>
                       <td className="px-2 py-1.5 text-right text-emerald-300">{fmt1(r.ortg)}</td>
                       <td className="px-2 py-1.5 text-right text-rose-300">{fmt1(r.drtg)}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-500">{fmt1(r.ows)}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-500">{fmt1(r.dws)}</td>
+                      <td className="px-2 py-1.5 text-right font-bold text-white">{fmt1(r.ws)}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-500">{r.ws48 !== 0 ? r.ws48.toFixed(3) : '—'}</td>
+                      <td className={`px-2 py-1.5 text-right text-slate-400`}>{r.obpm >= 0 ? '+' : ''}{fmt1(r.obpm)}</td>
+                      <td className={`px-2 py-1.5 text-right text-slate-400`}>{r.dbpm >= 0 ? '+' : ''}{fmt1(r.dbpm)}</td>
                       <td className={`px-2 py-1.5 text-right font-medium ${r.bpm >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {r.bpm >= 0 ? '+' : ''}{fmt1(r.bpm)}
                       </td>
-                      <td className="px-2 py-1.5 text-right font-bold text-white">{fmt1(r.ws)}</td>
                       <td className={`px-2 py-1.5 text-right font-medium ${r.vorp >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {fmt1(r.vorp)}
                       </td>

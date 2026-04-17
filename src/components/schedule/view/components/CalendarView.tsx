@@ -32,8 +32,32 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const monthName = calendarMonth.toLocaleString('default', { month: 'long' });
 
-  const isEarliestMonth = year === 2025 && month === 7; // August 2025
-  const isLatestMonth = year > 2026 || (year === 2026 && month >= 5); // June 2026
+  // ── Navigable month bounds ────────────────────────────────────────────────
+  // Earliest: the first game ever in the schedule (or Aug of the first season year).
+  // Latest: the furthest of (last scheduled game, end of current season's offseason).
+  //   We always allow browsing through June of leagueStats.year regardless of whether
+  //   new-season games have been generated yet (schedule gen fires on Aug 14, but
+  //   the offseason months Jul–Sep should still be browsable after rollover).
+  const seasonYear: number = state.leagueStats?.year ?? new Date().getFullYear();
+
+  // Scan schedule once for min/max using reduce (avoids spread stack overflow on large arrays)
+  let minMs = Infinity, maxMs = -Infinity;
+  for (const g of (state.schedule ?? [])) {
+    if (!g.date) continue;
+    const ms = new Date(g.date).getTime();
+    if (!isNaN(ms)) { if (ms < minMs) minMs = ms; if (ms > maxMs) maxMs = ms; }
+  }
+  const minScheduleDate = isFinite(minMs) ? new Date(minMs) : new Date(Date.UTC(seasonYear - 1, 7, 1));
+
+  // Upper bound: max of (last game date, end of current season's offseason = Sep of seasonYear)
+  const offseasonEndMs = Date.UTC(seasonYear, 8, 30); // Sep 30 of the season year (offseason ceiling)
+  const maxMs2 = isFinite(maxMs) ? Math.max(maxMs, offseasonEndMs) : offseasonEndMs;
+  const maxScheduleDate = new Date(maxMs2);
+
+  const isEarliestMonth = year < minScheduleDate.getUTCFullYear() ||
+    (year === minScheduleDate.getUTCFullYear() && month <= minScheduleDate.getUTCMonth());
+  const isLatestMonth = year > maxScheduleDate.getUTCFullYear() ||
+    (year === maxScheduleDate.getUTCFullYear() && month >= maxScheduleDate.getUTCMonth());
 
   return (
     <div className="flex-1 flex flex-col p-4 md:p-6 bg-[#0a0a0a]">

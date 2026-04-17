@@ -274,13 +274,115 @@ export const EconomyContractsSection = ({
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Allow 10-Day Contracts</span>
                         <InfoTooltip text="Short-term contracts allowing teams to sign players for 10 days or 3 games, whichever is longer." />
                     </div>
-                    <button 
-                        onClick={() => props.setTenDayContractsEnabled(!props.tenDayContractsEnabled)} 
+                    <button
+                        onClick={() => props.setTenDayContractsEnabled(!props.tenDayContractsEnabled)}
                         className={`w-8 h-4 rounded-full transition-all duration-200 relative ${props.tenDayContractsEnabled ? 'bg-indigo-500' : 'bg-slate-700'}`}
                     >
                         <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform duration-200 ${props.tenDayContractsEnabled ? 'left-4.5' : 'left-0.5'}`} />
                     </button>
                 </div>
+            </div>
+
+            {/* Cap Exceptions (MLE / Biannual) */}
+            <div className="pt-6 border-t border-slate-800/50 space-y-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                        <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Cap Exceptions</h3>
+                        <InfoTooltip text="Mid-Level Exceptions (MLE) allow teams over the salary cap to sign free agents up to a set dollar amount. Three tiers exist based on team payroll relative to the cap and aprons. Can be split across multiple signings as long as the total doesn't exceed the limit." />
+                    </div>
+                    <button
+                        onClick={() => props.setMleEnabled(!props.mleEnabled)}
+                        className={`w-8 h-4 rounded-full transition-all duration-200 relative ${props.mleEnabled ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                    >
+                        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform duration-200 ${props.mleEnabled ? 'left-4.5' : 'left-0.5'}`} />
+                    </button>
+                </div>
+
+                {props.mleEnabled && (
+                    <div className="space-y-4">
+                        {/* Room MLE */}
+                        <div className="bg-slate-900/60 rounded-2xl p-4 space-y-2 border border-slate-700/50">
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Room MLE</span>
+                                <InfoTooltip text="Available when team is below the salary cap. Cannot use alongside Non-Taxpayer or Taxpayer MLE. Amount auto-reduced to $0 when not applicable." />
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] text-slate-400">
+                                <span>Limit: <span className="text-emerald-400 font-bold">${(props.roomMleAmount / 1_000_000).toFixed(3)}M</span></span>
+                                <span className="text-slate-600 italic">Below salary cap</span>
+                            </div>
+                            <input
+                                type="range" min="1000000" max="20000000" step="100000"
+                                value={props.roomMleAmount}
+                                onChange={e => props.setRoomMleAmount(parseInt(e.target.value))}
+                                className="w-full accent-emerald-500"
+                            />
+                        </div>
+
+                        {/* Non-Taxpayer MLE */}
+                        <div className="bg-slate-900/60 rounded-2xl p-4 space-y-2 border border-slate-700/50">
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Non-Taxpayer MLE</span>
+                                <InfoTooltip text="Available when team is above cap but below the 1st apron, AND the signing keeps payroll below the 1st apron. Cannot combine with Room or Taxpayer MLE." />
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] text-slate-400">
+                                <span>Limit: <span className="text-blue-400 font-bold">${(props.nonTaxpayerMleAmount / 1_000_000).toFixed(3)}M</span></span>
+                                <span className="text-slate-600 italic">Over cap, below 1st apron</span>
+                            </div>
+                            <input
+                                type="range" min="1000000" max="25000000" step="100000"
+                                value={props.nonTaxpayerMleAmount}
+                                onChange={e => props.setNonTaxpayerMleAmount(parseInt(e.target.value))}
+                                className="w-full accent-blue-500"
+                            />
+                        </div>
+
+                        {/* Taxpayer MLE */}
+                        <div className="bg-slate-900/60 rounded-2xl p-4 space-y-2 border border-slate-700/50">
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black text-yellow-400 uppercase tracking-widest">Taxpayer MLE</span>
+                                <InfoTooltip text="Available when a signing would push payroll over the 1st apron AND team is below the 2nd apron. Cannot combine with Room or Non-Taxpayer MLE." />
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] text-slate-400">
+                                <span>Limit: <span className="text-yellow-400 font-bold">${(props.taxpayerMleAmount / 1_000_000).toFixed(3)}M</span></span>
+                                <span className="text-slate-600 italic">Crosses 1st apron, below 2nd</span>
+                            </div>
+                            <input
+                                type="range" min="1000000" max="15000000" step="100000"
+                                value={props.taxpayerMleAmount}
+                                onChange={e => props.setTaxpayerMleAmount(parseInt(e.target.value))}
+                                className="w-full accent-yellow-500"
+                            />
+                        </div>
+
+                        {/* Biannual Exception */}
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Biannual Exception</span>
+                                <InfoTooltip text="A smaller exception available every other year to teams below the 1st apron. Cannot be combined with any MLE." />
+                            </div>
+                            <button
+                                onClick={() => props.setBiannualEnabled(!props.biannualEnabled)}
+                                className={`w-8 h-4 rounded-full transition-all duration-200 relative ${props.biannualEnabled ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                            >
+                                <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform duration-200 ${props.biannualEnabled ? 'left-4.5' : 'left-0.5'}`} />
+                            </button>
+                        </div>
+                        {props.biannualEnabled && (
+                            <div className="bg-slate-900/60 rounded-2xl p-4 space-y-2 border border-slate-700/50">
+                                <div className="flex items-center justify-between text-[10px] text-slate-400">
+                                    <span>Amount: <span className="text-slate-300 font-bold">${(props.biannualAmount / 1_000_000).toFixed(3)}M</span></span>
+                                    <span className="text-slate-600 italic">Every other season</span>
+                                </div>
+                                <input
+                                    type="range" min="500000" max="10000000" step="100000"
+                                    value={props.biannualAmount}
+                                    onChange={e => props.setBiannualAmount(parseInt(e.target.value))}
+                                    className="w-full accent-slate-500"
+                                />
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -52,6 +52,8 @@ interface SeasonRow {
   ghAst: number; ghTov: number; ghStl: number; ghBlk: number; ghBa: number;
   ghPf: number; ghPts: number; ghPm: number; ghGmSc: number;
   isCareer?: boolean;
+  isTot?: boolean;
+  isSubRow?: boolean;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -103,12 +105,16 @@ function PhaseTabs({ phase, onChange }: { phase: Phase; onChange: (p: Phase) => 
 
 // ─── Season label cell with All-Star star ─────────────────────────────────────
 
-function SeasonCell({ row, allStarSeasons }: { row: SeasonRow; allStarSeasons: Set<number> }) {
+function SeasonCell({ row, allStarSeasons, ringSeasons }: { row: SeasonRow; allStarSeasons: Set<number>; ringSeasons: Set<number> }) {
   if (row.isCareer) return <span>Career</span>;
+  if (row.isSubRow) return <span className="text-slate-500">{getSeasonLabel(row.season)}</span>;
   return (
     <span className="flex items-center gap-1">
       {getSeasonLabel(row.season)}
-      {allStarSeasons.has(row.season) && (
+      {ringSeasons.has(row.season) && !row.isTot && (
+        <span className="text-yellow-400 text-[9px]" title="NBA Champion">💍</span>
+      )}
+      {allStarSeasons.has(row.season) && !row.isTot && (
         <span className="text-amber-400 text-[9px]" title="All-Star">★</span>
       )}
     </span>
@@ -130,11 +136,12 @@ interface ColDef {
 }
 
 function StatsTable({
-  rows, cols, allStarSeasons, groupHeaders,
+  rows, cols, allStarSeasons, ringSeasons, groupHeaders,
 }: {
   rows: SeasonRow[];
   cols: ColDef[];
   allStarSeasons: Set<number>;
+  ringSeasons: Set<number>;
   groupHeaders?: { label: string; span: number }[];
 }) {
   const bodyRows  = rows.filter(r => !r.isCareer);
@@ -185,18 +192,29 @@ function StatsTable({
           {bodyRows.map((row, i) => (
             <tr
               key={`${row.season}-${row.teamAbbrev}-${i}`}
-              className="border-b border-slate-800/40 hover:bg-slate-800/25 transition-colors"
+              className={`border-b transition-colors ${
+                row.isSubRow
+                  ? 'border-slate-800/20 hover:bg-slate-800/15 opacity-60'
+                  : row.isTot
+                  ? 'border-slate-700/60 bg-slate-800/30 hover:bg-slate-800/50'
+                  : 'border-slate-800/40 hover:bg-slate-800/25'
+              }`}
             >
               {cols.map(col => (
                 <td
                   key={col.key}
-                  className={`px-2 py-1.5 whitespace-nowrap tabular-nums
+                  className={`whitespace-nowrap tabular-nums
                     ${col.align === 'right' ? 'text-right' : 'text-left'}
-                    ${col.highlight ? 'font-bold text-white' : col.dim ? 'text-slate-500' : 'text-slate-300'}
+                    ${row.isSubRow
+                      ? `px-2 py-1 text-slate-400 ${col.key === 'tm' ? 'pl-4' : ''}`
+                      : row.isTot
+                      ? `px-2 py-1.5 font-semibold ${col.highlight ? 'text-white' : col.dim ? 'text-slate-400' : 'text-slate-200'}`
+                      : `px-2 py-1.5 ${col.highlight ? 'font-bold text-white' : col.dim ? 'text-slate-500' : 'text-slate-300'}`
+                    }
                     ${col.key === 'season' ? 'font-semibold text-slate-200' : ''}
                   `}
                 >
-                  {col.key === 'season' ? <SeasonCell row={row} allStarSeasons={allStarSeasons} /> : col.fmt(row)}
+                  {col.key === 'season' ? <SeasonCell row={row} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} /> : col.fmt(row)}
                 </td>
               ))}
             </tr>
@@ -543,31 +561,107 @@ function buildSeasonRows(
         fgaLowPost:box ? box.lpFga  / box.gp : 0,
         fgMidRange:box ? box.mrFgm  / box.gp : 0,
         fgaMidRange:box? box.mrFga  / box.gp : 0,
-        ba:        box ? box.ba     / box.gp : 0,
-        // feats
-        dd: box?.dd ?? 0, td: box?.td ?? 0, qd: box?.qd ?? 0, fiveBy5: box?.fiveBy5 ?? 0,
+        ba:        box ? box.ba     / box.gp : wpd('ba'),
+        // feats — prefer live box-score counts, fall back to BBGM historical stat field
+        dd: box?.dd ?? list.reduce((a, s) => a + sp((s as any).dd), 0),
+        td: box?.td ?? list.reduce((a, s) => a + sp((s as any).td), 0),
+        qd: box?.qd ?? 0, fiveBy5: box?.fiveBy5 ?? 0,
         // advanced
-        per: wpd('per'), ewa: rawWs / 11.4,
+        per: wpd('per'), ewa: wpd('ewa') || rawWs / 11.4,
         tsPct: (totPts > 0 && (totFga + 0.44 * totFta) > 0) ? totPts / (2 * (totFga + 0.44 * totFta)) : sp(list[0]?.tsPct),
         ftRate: totFga > 0 ? totFta / totFga : 0,
         tpRate: totFga > 0 ? totTpa / totFga : 0,
-        orbPct: wpd('orbPct') || wpd('orb%'),
-        drbPct: wpd('drbPct') || wpd('drb%'),
-        trbPct: wpd('rebPct') || wpd('trbPct') || wpd('reb%'),
-        astPct: wpd('astPct') || wpd('ast%'),
-        stlPct: wpd('stlPct') || wpd('stl%'),
-        blkPct: wpd('blkPct') || wpd('blk%'),
-        tovPct: wpd('tovPct') || wpd('tov%'),
-        usgPct: wpd('usgPct') || wpd('usg%'),
+        // Check camelCase (post-normalize), then BBGM short names, then legacy % variants
+        orbPct: wpd('orbPct') || wpd('orbp') || wpd('orb%'),
+        drbPct: wpd('drbPct') || wpd('drbp') || wpd('drb%'),
+        trbPct: wpd('rebPct') || wpd('trbPct') || wpd('trbp') || wpd('reb%'),
+        astPct: wpd('astPct') || wpd('astp') || wpd('ast%'),
+        stlPct: wpd('stlPct') || wpd('stlp') || wpd('stl%'),
+        blkPct: wpd('blkPct') || wpd('blkp') || wpd('blk%'),
+        tovPct: wpd('tovPct') || wpd('tovp') || wpd('tov%'),
+        usgPct: wpd('usgPct') || wpd('usgp') || wpd('usg%'),
         ortg: wpd('ortg'), drtg: wpd('drtg'),
         ows: rawOws, dws: rawDws, ws: rawWs,
         ws48: totMin > 0 ? rawWs / (totMin / 48) : 0, obpm: wpd('obpm'), dbpm: wpd('dbpm'), bpm: wpd('bpm'),
         vorp: list.reduce((a, s) => a + sp((s as any).vorp), 0),
-        // game highs from box data
-        ...(box?.gh ?? emptyGH()),
+        // game highs — prefer live box scores, fall back to BBGM *Max fields (normalized to _gh*)
+        ...(box?.gh ?? (() => {
+          const mx = (k: string) => Math.max(...list.map(s => sp((s as any)[k])));
+          return {
+            ghMin:  mx('_ghMin'),  ghFgm:  mx('_ghFgm'),  ghFga:  mx('_ghFga'),
+            ghTpm:  mx('_ghTpm'),  ghTpa:  mx('_ghTpa'),
+            ghTwom: mx('_ghTwom'), ghTwoa: mx('_ghTwoa'),
+            ghFtm:  mx('_ghFtm'),  ghFta:  mx('_ghFta'),
+            ghOrb:  mx('_ghOrb'),  ghDrb:  mx('_ghDrb'),  ghTrb:  mx('_ghTrb'),
+            ghAst:  mx('_ghAst'),  ghTov:  mx('_ghTov'),  ghStl:  mx('_ghStl'),
+            ghBlk:  mx('_ghBlk'),  ghBa:   mx('_ghBa'),   ghPf:   mx('_ghPf'),
+            ghPts:  mx('_ghPts'),  ghPm:   mx('_ghPm'),   ghGmSc: mx('_ghGmSc'),
+          };
+        })()),
       });
     });
-    return rows.sort((a, b) => a.season - b.season);
+    rows.sort((a, b) => a.season - b.season);
+
+    // BBRef-style: when player played for multiple teams in same season,
+    // insert a TOT (combined) row followed by individual team sub-rows
+    const bySeason = new Map<number, SeasonRow[]>();
+    for (const r of rows) {
+      if (!bySeason.has(r.season)) bySeason.set(r.season, []);
+      bySeason.get(r.season)!.push(r);
+    }
+
+    const finalRows: SeasonRow[] = [];
+    bySeason.forEach((sRows) => {
+      if (sRows.length === 1) { finalRows.push(sRows[0]); return; }
+      const totGp = sRows.reduce((a, r) => a + r.gp, 0) || 1;
+      const wp = (k: keyof SeasonRow) => sRows.reduce((a, r) => a + (r[k] as number) * r.gp, 0) / totGp;
+      const sm = (k: keyof SeasonRow) => sRows.reduce((a, r) => a + (r[k] as number), 0);
+      const totRow: SeasonRow = {
+        season: sRows[0].season, teamAbbrev: 'TOT', age: sRows[0].age, isTot: true,
+        gp: totGp, gs: sm('gs'),
+        minTotal: sm('minTotal'), minPG: wp('minPG'),
+        fg: wp('fg'), fga: wp('fga'),
+        fgPct: sRows.reduce((a,r)=>a+r.fg*r.gp,0) / (sRows.reduce((a,r)=>a+r.fga*r.gp,0)||1),
+        tp: wp('tp'), tpa: wp('tpa'),
+        tpPct: sRows.reduce((a,r)=>a+r.tp*r.gp,0) / (sRows.reduce((a,r)=>a+r.tpa*r.gp,0)||1),
+        twop: wp('twop'), twopa: wp('twopa'),
+        twopPct: sRows.reduce((a,r)=>a+r.twop*r.gp,0) / (sRows.reduce((a,r)=>a+r.twopa*r.gp,0)||1),
+        efgPct: wp('efgPct'), ft: wp('ft'), fta: wp('fta'),
+        ftPct: sRows.reduce((a,r)=>a+r.ft*r.gp,0) / (sRows.reduce((a,r)=>a+r.fta*r.gp,0)||1),
+        orb: wp('orb'), drb: wp('drb'), trb: wp('trb'),
+        ast: wp('ast'), stl: wp('stl'), blk: wp('blk'),
+        tov: wp('tov'), pf: wp('pf'), pts: wp('pts'), pm: wp('pm'),
+        fgAtRim: wp('fgAtRim'), fgaAtRim: wp('fgaAtRim'),
+        fgLowPost: wp('fgLowPost'), fgaLowPost: wp('fgaLowPost'),
+        fgMidRange: wp('fgMidRange'), fgaMidRange: wp('fgaMidRange'),
+        ba: wp('ba'),
+        dd: sm('dd'), td: sm('td'), qd: sm('qd'), fiveBy5: sm('fiveBy5'),
+        per: wp('per'), ewa: sm('ewa'),
+        tsPct: wp('tsPct'), ftRate: wp('ftRate'), tpRate: wp('tpRate'),
+        orbPct: wp('orbPct'), drbPct: wp('drbPct'), trbPct: wp('trbPct'),
+        astPct: wp('astPct'), stlPct: wp('stlPct'), blkPct: wp('blkPct'),
+        tovPct: wp('tovPct'), usgPct: wp('usgPct'),
+        ortg: wp('ortg'), drtg: wp('drtg'),
+        ows: sm('ows'), dws: sm('dws'), ws: sm('ws'),
+        ws48: sm('minTotal') > 0 ? sm('ws') / (sm('minTotal') / 48) : 0,
+        obpm: wp('obpm'), dbpm: wp('dbpm'), bpm: wp('bpm'), vorp: sm('vorp'),
+        ghMin:  Math.max(...sRows.map(r=>r.ghMin)),  ghFgm:  Math.max(...sRows.map(r=>r.ghFgm)),
+        ghFga:  Math.max(...sRows.map(r=>r.ghFga)),  ghTpm:  Math.max(...sRows.map(r=>r.ghTpm)),
+        ghTpa:  Math.max(...sRows.map(r=>r.ghTpa)),  ghTwom: Math.max(...sRows.map(r=>r.ghTwom)),
+        ghTwoa: Math.max(...sRows.map(r=>r.ghTwoa)), ghFtm:  Math.max(...sRows.map(r=>r.ghFtm)),
+        ghFta:  Math.max(...sRows.map(r=>r.ghFta)),  ghOrb:  Math.max(...sRows.map(r=>r.ghOrb)),
+        ghDrb:  Math.max(...sRows.map(r=>r.ghDrb)),  ghTrb:  Math.max(...sRows.map(r=>r.ghTrb)),
+        ghAst:  Math.max(...sRows.map(r=>r.ghAst)),  ghTov:  Math.max(...sRows.map(r=>r.ghTov)),
+        ghStl:  Math.max(...sRows.map(r=>r.ghStl)),  ghBlk:  Math.max(...sRows.map(r=>r.ghBlk)),
+        ghBa:   Math.max(...sRows.map(r=>r.ghBa)),   ghPf:   Math.max(...sRows.map(r=>r.ghPf)),
+        ghPts:  Math.max(...sRows.map(r=>r.ghPts)),  ghPm:   Math.max(...sRows.map(r=>r.ghPm)),
+        ghGmSc: Math.max(...sRows.map(r=>r.ghGmSc)),
+      };
+      finalRows.push(totRow);
+      sRows.forEach(r => finalRows.push({ ...r, isSubRow: true }));
+    });
+
+    return finalRows;
   };
 
   let body: SeasonRow[];
@@ -578,11 +672,14 @@ function buildSeasonRows(
   } else {
     const rsBy  = makeSeasoned(rsPool, 'rs');
     const plyBy = makeSeasoned(plyPool, 'ply');
-    const seasons = new Set([...rsBy.map(r => r.season), ...plyBy.map(r => r.season)]);
+    // For combined phase, use only TOT rows (or single-team rows) to avoid double-counting
+    const rsNoDup  = rsBy.filter(r => !r.isSubRow);
+    const plyNoDup = plyBy.filter(r => !r.isSubRow);
+    const seasons = new Set([...rsNoDup.map(r => r.season), ...plyNoDup.map(r => r.season)]);
     body = [];
     seasons.forEach(season => {
-      const a = rsBy.find(r => r.season === season);
-      const b = plyBy.find(r => r.season === season);
+      const a = rsNoDup.find(r => r.season === season);
+      const b = plyNoDup.find(r => r.season === season);
       if (!a && !b) return;
       if (!b) { body.push(a!); return; }
       if (!a) { body.push(b!); return; }
@@ -634,22 +731,24 @@ function buildSeasonRows(
 
   if (body.length === 0) return { body, career: null };
 
-  const totGp = body.reduce((a, r) => a + r.gp, 0) || 1;
-  const wpd = (k: keyof SeasonRow) => body.reduce((a, r) => a + (r[k] as number) * r.gp, 0) / totGp;
-  const sum = (k: keyof SeasonRow) => body.reduce((a, r) => a + (r[k] as number), 0);
+  // Career calc uses only non-sub-rows (TOT rows + single-team rows) to avoid double-counting traded seasons
+  const careerBase = body.filter(r => !r.isSubRow);
+  const totGp = careerBase.reduce((a, r) => a + r.gp, 0) || 1;
+  const wpd = (k: keyof SeasonRow) => careerBase.reduce((a, r) => a + (r[k] as number) * r.gp, 0) / totGp;
+  const sum = (k: keyof SeasonRow) => careerBase.reduce((a, r) => a + (r[k] as number), 0);
 
   const career: SeasonRow = {
     season: 0, teamAbbrev: '', age: 0, isCareer: true,
     gp: sum('gp'), gs: sum('gs'),
     minTotal: sum('minTotal'), minPG: wpd('minPG'),
     fg: wpd('fg'), fga: wpd('fga'),
-    fgPct: body.reduce((a,r)=>a+r.fg*r.gp,0) / (body.reduce((a,r)=>a+r.fga*r.gp,0)||1),
+    fgPct: careerBase.reduce((a,r)=>a+r.fg*r.gp,0) / (careerBase.reduce((a,r)=>a+r.fga*r.gp,0)||1),
     tp: wpd('tp'), tpa: wpd('tpa'),
-    tpPct: body.reduce((a,r)=>a+r.tp*r.gp,0) / (body.reduce((a,r)=>a+r.tpa*r.gp,0)||1),
+    tpPct: careerBase.reduce((a,r)=>a+r.tp*r.gp,0) / (careerBase.reduce((a,r)=>a+r.tpa*r.gp,0)||1),
     twop: wpd('twop'), twopa: wpd('twopa'),
-    twopPct: body.reduce((a,r)=>a+r.twop*r.gp,0) / (body.reduce((a,r)=>a+r.twopa*r.gp,0)||1),
+    twopPct: careerBase.reduce((a,r)=>a+r.twop*r.gp,0) / (careerBase.reduce((a,r)=>a+r.twopa*r.gp,0)||1),
     efgPct: wpd('efgPct'), ft: wpd('ft'), fta: wpd('fta'),
-    ftPct: body.reduce((a,r)=>a+r.ft*r.gp,0) / (body.reduce((a,r)=>a+r.fta*r.gp,0)||1),
+    ftPct: careerBase.reduce((a,r)=>a+r.ft*r.gp,0) / (careerBase.reduce((a,r)=>a+r.fta*r.gp,0)||1),
     orb: wpd('orb'), drb: wpd('drb'), trb: wpd('trb'),
     ast: wpd('ast'), stl: wpd('stl'), blk: wpd('blk'),
     tov: wpd('tov'), pf: wpd('pf'), pts: wpd('pts'), pm: wpd('pm'),
@@ -668,28 +767,28 @@ function buildSeasonRows(
     ws48: sum('minTotal') > 0 ? sum('ws') / (sum('minTotal') / 48) : 0,
     obpm: wpd('obpm'), dbpm: wpd('dbpm'), bpm: wpd('bpm'),
     vorp: sum('vorp'),
-    // game highs career = career bests
-    ghMin:  Math.max(...body.map(r => r.ghMin)),
-    ghFgm:  Math.max(...body.map(r => r.ghFgm)),
-    ghFga:  Math.max(...body.map(r => r.ghFga)),
-    ghTpm:  Math.max(...body.map(r => r.ghTpm)),
-    ghTpa:  Math.max(...body.map(r => r.ghTpa)),
-    ghTwom: Math.max(...body.map(r => r.ghTwom)),
-    ghTwoa: Math.max(...body.map(r => r.ghTwoa)),
-    ghFtm:  Math.max(...body.map(r => r.ghFtm)),
-    ghFta:  Math.max(...body.map(r => r.ghFta)),
-    ghOrb:  Math.max(...body.map(r => r.ghOrb)),
-    ghDrb:  Math.max(...body.map(r => r.ghDrb)),
-    ghTrb:  Math.max(...body.map(r => r.ghTrb)),
-    ghAst:  Math.max(...body.map(r => r.ghAst)),
-    ghTov:  Math.max(...body.map(r => r.ghTov)),
-    ghStl:  Math.max(...body.map(r => r.ghStl)),
-    ghBlk:  Math.max(...body.map(r => r.ghBlk)),
-    ghBa:   Math.max(...body.map(r => r.ghBa)),
-    ghPf:   Math.max(...body.map(r => r.ghPf)),
-    ghPts:  Math.max(...body.map(r => r.ghPts)),
-    ghPm:   Math.max(...body.map(r => r.ghPm)),
-    ghGmSc: Math.max(...body.map(r => r.ghGmSc)),
+    // game highs career = career bests (use careerBase to avoid sub-row double-max)
+    ghMin:  Math.max(...careerBase.map(r => r.ghMin)),
+    ghFgm:  Math.max(...careerBase.map(r => r.ghFgm)),
+    ghFga:  Math.max(...careerBase.map(r => r.ghFga)),
+    ghTpm:  Math.max(...careerBase.map(r => r.ghTpm)),
+    ghTpa:  Math.max(...careerBase.map(r => r.ghTpa)),
+    ghTwom: Math.max(...careerBase.map(r => r.ghTwom)),
+    ghTwoa: Math.max(...careerBase.map(r => r.ghTwoa)),
+    ghFtm:  Math.max(...careerBase.map(r => r.ghFtm)),
+    ghFta:  Math.max(...careerBase.map(r => r.ghFta)),
+    ghOrb:  Math.max(...careerBase.map(r => r.ghOrb)),
+    ghDrb:  Math.max(...careerBase.map(r => r.ghDrb)),
+    ghTrb:  Math.max(...careerBase.map(r => r.ghTrb)),
+    ghAst:  Math.max(...careerBase.map(r => r.ghAst)),
+    ghTov:  Math.max(...careerBase.map(r => r.ghTov)),
+    ghStl:  Math.max(...careerBase.map(r => r.ghStl)),
+    ghBlk:  Math.max(...careerBase.map(r => r.ghBlk)),
+    ghBa:   Math.max(...careerBase.map(r => r.ghBa)),
+    ghPf:   Math.max(...careerBase.map(r => r.ghPf)),
+    ghPts:  Math.max(...careerBase.map(r => r.ghPts)),
+    ghPm:   Math.max(...careerBase.map(r => r.ghPm)),
+    ghGmSc: Math.max(...careerBase.map(r => r.ghGmSc)),
   };
 
   return { body, career };
@@ -710,6 +809,20 @@ export const PlayerBioStatsHistory: React.FC<Props> = ({ player }) => {
     const set = new Set<number>();
     (player.awards ?? []).forEach(a => {
       if (a.type && (a.type.toLowerCase().includes('all-star') || a.type.toLowerCase().includes('allstar'))) {
+        set.add(a.season);
+      }
+    });
+    return set;
+  }, [player.awards]);
+
+  const ringSeasons = useMemo<Set<number>>(() => {
+    const set = new Set<number>();
+    (player.awards ?? []).forEach(a => {
+      if (a.type && (
+        a.type.toLowerCase().includes('champion') ||
+        a.type.toLowerCase() === 'nba champion' ||
+        a.type.toLowerCase() === 'nba championship'
+      )) {
         set.add(a.season);
       }
     });
@@ -738,12 +851,17 @@ export const PlayerBioStatsHistory: React.FC<Props> = ({ player }) => {
         <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
           <div>
             <h3 className="text-xs font-black text-slate-400 uppercase tracking-[3px]">Per Game</h3>
-            {allStarSeasons.size > 0 && <p className="text-[10px] text-slate-600 mt-0.5">★ All-Star season</p>}
+            {(allStarSeasons.size > 0 || ringSeasons.size > 0) && (
+              <p className="text-[10px] text-slate-600 mt-0.5">
+                {ringSeasons.size > 0 && '💍 Champion  '}
+                {allStarSeasons.size > 0 && '★ All-Star'}
+              </p>
+            )}
           </div>
           <PhaseTabs phase={pgPhase} onChange={setPgPhase} />
         </div>
         <div className="rounded-xl border border-slate-800 overflow-hidden">
-          <StatsTable rows={toRows(pgData)} cols={PG_COLS} allStarSeasons={allStarSeasons} />
+          <StatsTable rows={toRows(pgData)} cols={PG_COLS} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} />
         </div>
       </section>
 
@@ -754,7 +872,7 @@ export const PlayerBioStatsHistory: React.FC<Props> = ({ player }) => {
           <PhaseTabs phase={slPhase} onChange={setSlPhase} />
         </div>
         <div className="rounded-xl border border-slate-800 overflow-hidden">
-          <StatsTable rows={toRows(slData)} cols={SL_COLS} allStarSeasons={allStarSeasons} groupHeaders={SL_GROUPS} />
+          <StatsTable rows={toRows(slData)} cols={SL_COLS} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} groupHeaders={SL_GROUPS} />
         </div>
       </section>
 
@@ -765,7 +883,7 @@ export const PlayerBioStatsHistory: React.FC<Props> = ({ player }) => {
           <PhaseTabs phase={advPhase} onChange={setAdvPhase} />
         </div>
         <div className="rounded-xl border border-slate-800 overflow-hidden">
-          <StatsTable rows={toRows(advData)} cols={ADV_COLS} allStarSeasons={allStarSeasons} />
+          <StatsTable rows={toRows(advData)} cols={ADV_COLS} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} />
         </div>
       </section>
 
@@ -776,7 +894,7 @@ export const PlayerBioStatsHistory: React.FC<Props> = ({ player }) => {
           <PhaseTabs phase={ghPhase} onChange={setGhPhase} />
         </div>
         <div className="rounded-xl border border-slate-800 overflow-hidden">
-          <StatsTable rows={toRows(ghData)} cols={GH_COLS} allStarSeasons={allStarSeasons} />
+          <StatsTable rows={toRows(ghData)} cols={GH_COLS} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} />
         </div>
       </section>
 

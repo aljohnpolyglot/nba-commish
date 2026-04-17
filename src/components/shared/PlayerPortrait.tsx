@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeftRight } from 'lucide-react';
-import { convertTo2KRating, extractNbaId, hdPortrait } from '../../utils/helpers';
+import { convertTo2KRating } from '../../utils/helpers';
 
 export interface PlayerPortraitProps {
   imgUrl?: string;
@@ -41,23 +41,16 @@ export const PlayerPortrait: React.FC<PlayerPortraitProps> = ({
   const px = `${size}px`;
   const badgeSize = Math.round(size * 0.5);  // team logo badge ~50% of portrait
 
-  // Fallback chain: BBGM portrait → NBA HD CDN → initials avatar
+  // Fallback: BBGM/ProBallers portrait → initials avatar (no NBA CDN fallback — those are passport-style headshots)
   const [imgSrc, setImgSrc] = useState<string | null>(imgUrl ?? null);
-  const [fallbackLevel, setFallbackLevel] = useState(0);
+
+  // Reset when the imgUrl prop changes (e.g. navigating between players without unmount)
+  useEffect(() => {
+    setImgSrc(imgUrl ?? null);
+  }, [imgUrl]);
 
   const handleImgError = () => {
-    if (fallbackLevel === 0) {
-      // Try NBA HD CDN
-      const nbaId = extractNbaId(imgUrl ?? '', playerName);
-      if (nbaId) {
-        setImgSrc(hdPortrait(nbaId));
-        setFallbackLevel(1);
-        return;
-      }
-    }
-    // Give up — show initials
     setImgSrc(null);
-    setFallbackLevel(2);
   };
 
   const initials = playerName

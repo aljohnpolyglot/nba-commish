@@ -57,10 +57,52 @@
 
 ## External Leagues
 
-- **Endesa roster gist** — upload roster + connect `fetchEndesa()` (tid offset TBD)
-- **G-League roster gist** — upload + connect; `calculateGLeagueOverall()` (cap ~75, multiplier ~0.720)
-- **`externalSigningRouter.ts`** — routes unsigned Oct 1 FAs to Euroleague/G-League/PBA based on OVR
+- ~~**Endesa roster gist**~~ ✅ Done (tid +5000)
+- ~~**G-League roster gist**~~ ✅ Done (tid +6000)
+- ~~**`externalSigningRouter.ts`**~~ ✅ Done — routes unsigned FAs to overseas leagues by K2 OVR tier
 - **DraftClassGenerator.ts** — generate 60 players per season for 2029+ when prospects run out
+
+### External League Economy (Constants Ready in `constants.ts`)
+
+**Contract system:**
+- Use contract data from BBGM gist (already has `contract.amount` and `contract.exp`)
+- Scale down salaries using `EXTERNAL_SALARY_SCALE` (% of NBA max — dynamic with inflation)
+- At external league rollover (Jun 30): expire contracts, run external FA round
+
+**Re-signing probability:**
+- `EXTERNAL_RESIGN_PROBABILITY = 0.90` — 90% re-sign same league, 10% explore
+- `HOME_COUNTRY_BIAS = 0.60` — 60% chance to sign with home-country team
+
+**Country mapping (ready):**
+- `EUROLEAGUE_TEAM_COUNTRIES` — maps TID → country (Greece, Germany, Turkey, etc.)
+- `ENDESA_TEAM_COUNTRY = 'Spain'`
+- `NATIONALITY_LEAGUE_BIAS` — Japan→B-League, Philippines→PBA, Australia→NBL, China→ChinaCBA, Spain→Endesa, European countries→Euroleague
+
+**Salary scale (dynamic from NBA cap):**
+| League | Max (% of NBA max) | At $154M cap |
+|--------|-------------------|-------------|
+| Euroleague | 10.8% | ~$5.0M |
+| Endesa | 6.5% | ~$3.0M |
+| China CBA | 2.16% | ~$1.0M |
+| G-League / NBL | 1.08% | ~$500K |
+| B-League | 0.65% | ~$300K |
+| PBA | 0.43% | ~$200K |
+
+**Implementation needed:** `externalLeagueContracts.ts` helper, wire into `seasonRollover.ts` for external contract expiry + external FA round
+
+---
+
+## Mood Traits — Generated Draft Classes
+
+When `DraftClassGenerator.ts` is built (2029+ seasons), generated prospects need mood traits assigned from scratch. Map BBGM-style personality string → `MoodTrait` enum:
+
+- "Play for Winner" / "Competitor" → `COMPETITOR` (W badge)
+- "Financial Security" / "Show Me the Money" → `MERCENARY` ($ badge)
+- "Loyal" / "Homebody" → `LOYAL` (L badge)
+- "Fame" / "Spotlight" / "Diva" → `DIVA` (F badge)
+- Drama modifier traits (`VOLATILE`, `AMBASSADOR`, `DRAMA_MAGNET`) assigned randomly with low probability
+
+Each generated prospect should receive 0–2 core traits + optionally 1 drama modifier. Numberfy/serialize as the string union `MoodTrait[]` on `player.moodTraits`.
 
 ---
 
@@ -68,3 +110,14 @@
 
 - **`prominent retirement_legend` news card** — dedicated news card type with photo, career stats, tribute text for 5+ All-Star retirees (news exists, card styling doesn't)
 - **Transactions log partition guard** — confirm rollover does NOT clear `state.history[]` (currently safe — rollover doesn't touch history)
+
+---
+
+## Monetization — Generic Basketball Mode
+
+- **NBBA Mod Mode** — strip all NBA branding, player names, team names; let users import BBGM rosters for any custom league
+- Generate fictional league with random team names/cities/logos
+- All game mechanics (sim engine, morale, trades, draft, contracts) work identically
+- Users can customize league name, team count, salary cap, draft rules
+- This makes the game monetizable without NBA licensing issues
+- Could offer as a paid "Pro" tier on basketcommissionersim.com

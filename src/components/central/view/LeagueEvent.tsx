@@ -34,11 +34,15 @@ function detectEventKind(text: string, type?: string): {
   const t = text.toLowerCase();
   const ty = (type || '').toLowerCase();
   // Type-based detection first (most reliable)
+  // Type field is the authoritative signal — check it FIRST before any text parsing
   if (ty === 'trade') return { icon: <ArrowRightLeft size={16} />, label: 'Trade', color: 'text-blue-400', bg: 'bg-blue-500/10' };
   if (ty === 'signing') return { icon: <UserCheck size={16} />, label: 'Signing', color: 'text-emerald-400', bg: 'bg-emerald-500/10' };
   if (ty === 'waive') return { icon: <UserX size={16} />, label: 'Waiver', color: 'text-amber-400', bg: 'bg-amber-500/10' };
   if (ty === 'suspension') return { icon: <AlertTriangle size={16} />, label: 'Suspension', color: 'text-rose-400', bg: 'bg-rose-500/10' };
   if (ty === 'personnel') return { icon: <Users size={16} />, label: 'Personnel', color: 'text-purple-400', bg: 'bg-purple-500/10' };
+  // ── Text-based detection below (only reached when type field is absent/generic) ──
+  // NOTE: never text-match for "suspended" in diary — suspensions are type-tagged above.
+  // This prevents injury text that contains "sidelined" from being mislabeled Suspension.
   // Text-based detection for untyped entries
   if (t.includes('trade') || t.includes('traded')) return { icon: <ArrowRightLeft size={16} />, label: 'Trade', color: 'text-blue-400', bg: 'bg-blue-500/10' };
   if (t.includes('signed') || t.includes('signing')) return { icon: <UserCheck size={16} />, label: 'Signing', color: 'text-emerald-400', bg: 'bg-emerald-500/10' };
@@ -87,18 +91,19 @@ export const LeagueEvent: React.FC = () => {
   const [searchQuery, setSearchQuery] = React.useState('');
 
   const events = useMemo(() => {
+    const TRANSACTION_TYPES = new Set(['trade', 'signing', 'waive', 'suspension', 'personnel', 'g-league assignment', 'g-league callup', 'training camp release']);
     return [...(state.history || [])]
       .reverse()
       .map(raw => resolveEntry(raw, state.date))
       .filter((entry): entry is HistoryEntry => entry != null && entry.text.trim().length > 0)
       .filter(entry => {
         const ty = (entry.type || '').toLowerCase();
-        // Always show commissioner-action types (these ARE diary events even if they involve transactions)
-        if (['trade', 'signing', 'waive', 'suspension', 'personnel'].includes(ty)) return true;
-        // For plain League Events, exclude entries that are purely roster-move text
-        // (those are shown in TransactionsView with richer context)
-        const isRosterMove = /\b(signed|waived|traded|fired|hired)\b/i.test(entry.text);
-        return !isRosterMove;
+        // Transaction types: only show if commissioner-initiated
+        if (TRANSACTION_TYPES.has(ty)) return !!(entry as any).commissioner;
+        // For plain League Events, exclude AI-generated roster-move text
+        const isRosterMove = /\b(signed?|waived?|traded?|fired?|hired?)\b/i.test(entry.text);
+        if (isRosterMove && !(entry as any).commissioner) return false;
+        return true;
       })
       .filter(entry => {
         if (!searchQuery) return true;

@@ -21,6 +21,8 @@ const LEAGUES = [
   { id: 'bleague', name: 'B-League' },
   { id: 'gleague', name: 'G-League' },
   { id: 'endesa', name: 'Endesa' },
+  { id: 'chinacba', name: 'China CBA' },
+  { id: 'nblaustralia', name: 'NBL Australia' },
   { id: 'draft', name: 'Draft Prospects' }
 ];
 
@@ -130,7 +132,7 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
         if (selectedLeagues.includes('nba')) {
           // NBA includes Active players on teams (tid >= 0) and Free Agents who aren't specifically tagged as other leagues
           if ((p.tid >= 0 || p.tid === -1) &&
-              !['WNBA', 'PBA', 'Euroleague', 'B-League', 'G-League', 'Endesa'].includes(p.status || '') &&
+              !['WNBA', 'PBA', 'Euroleague', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '') &&
               p.status !== 'Prospect' &&
               p.tid !== -2) {
             matchesLeague = true;
@@ -144,6 +146,8 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
         if (selectedLeagues.includes('bleague') && p.status === 'B-League') matchesLeague = true;
         if (selectedLeagues.includes('gleague') && p.status === 'G-League') matchesLeague = true;
         if (selectedLeagues.includes('endesa') && p.status === 'Endesa') matchesLeague = true;
+        if (selectedLeagues.includes('chinacba') && p.status === 'China CBA') matchesLeague = true;
+        if (selectedLeagues.includes('nblaustralia') && p.status === 'NBL Australia') matchesLeague = true;
         
         if (!matchesLeague) return false;
       }

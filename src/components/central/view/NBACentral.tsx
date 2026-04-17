@@ -90,7 +90,7 @@ export const NBACentral: React.FC = () => {
   };
 
   const getContactFromPlayer = (player: NBAPlayer): Contact => {
-    const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(player.status || '');
+    const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '');
     const playerTeam = isNBA ? state.teams.find(t => t.id === player.tid) : null;
     const nonNBATeam = !isNBA ? state.nonNBATeams.find(t => t.tid === player.tid && t.league === player.status) : null;
     
@@ -101,7 +101,7 @@ export const NBACentral: React.FC = () => {
       org = playerTeam.name;
     } else if (nonNBATeam) {
       org = nonNBATeam.name;
-    } else if (['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(player.status || '')) {
+    } else if (['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) {
       org = player.status!;
     }
 

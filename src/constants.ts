@@ -11,6 +11,7 @@ export const COMMISSIONER_TABS: CommissionerTab[] = ['Approvals', 'Viewership', 
 
 export const ROSTER_URL = 'https://raw.githubusercontent.com/alexnoob/BasketBall-GM-Rosters/master/2025-26.NBA.Roster.json';
 export const EXTRA_RETIRED_PLAYERS_URL = 'https://api.npoint.io/d94bdfeeecf4246b481d';
+export const CONTRACTS_URL = 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbacontractsdata';
 
 /** Season year offset: the sim calendar year is (leagueStats.year - SEASON_YEAR_OFFSET). */
 export const SEASON_YEAR_OFFSET = 1;
@@ -120,6 +121,7 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   maxPlayersPerTeam: 17,
   maxStandardPlayersPerTeam: 15,
   maxTwoWayPlayersPerTeam: 3,
+  maxTrainingCampRoster: 21,
 
   // Economy - Contracts
   minContractType: 'dynamic',
@@ -359,3 +361,85 @@ export const SEASON_DATES = [
   { phase: 'Draft' as GamePhase, displayName: 'Draft', start: [6, 25], end: [6, 25] },
   { phase: 'Free Agency' as GamePhase, displayName: 'Free Agency', start: [7, 1], end: [7, 31] },
 ];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXTERNAL LEAGUE CONSTANTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Euroleague team TID → country */
+export const EUROLEAGUE_TEAM_COUNTRIES: Record<number, string> = {
+  1000: 'Greece',      // AEK Athens
+  1001: 'Germany',     // Alba Berlin
+  1002: 'Turkey',      // Anadolu Efes Istanbul
+  1003: 'France',      // AS Monaco
+  1004: 'Spain',       // Baskonia Vitoria-Gasteiz
+  1005: 'Serbia',      // Crvena Zvezda Belgrade
+  1006: 'Russia',      // CSKA Moscow
+  1007: 'Spain',       // Dreamland Gran Canaria
+  1008: 'UAE',         // Dubai
+  1009: 'Italy',       // EA7 Emporio Armani Milan
+  1010: 'Spain',       // FC Barcelona
+  1011: 'Germany',     // FC Bayern Munich
+  1012: 'Turkey',      // Fenerbahce Istanbul
+  1013: 'Israel',      // Hapoel Tel Aviv
+  1014: 'France',      // LDLC ASVEL
+  1015: 'Israel',      // Maccabi Playtika Tel Aviv
+  1016: 'Greece',      // Olympiacos Piraeus
+  1017: 'Greece',      // Panathinaikos Athens
+  1018: 'France',      // Paris
+  1019: 'Serbia',      // Partizan Belgrade
+  1020: 'Spain',       // Real Madrid
+  1021: 'Lithuania',   // Rytas Vilnius
+  1022: 'Spain',       // Valencia Basket
+  1023: 'Italy',       // Virtus Segafredo Bologna
+  1024: 'Lithuania',   // Zalgiris Kaunas
+  1025: 'Russia',      // Zenit St. Petersburg
+};
+
+/** Endesa (Liga ACB) — all teams are Spanish */
+export const ENDESA_TEAM_COUNTRY = 'Spain';
+
+/**
+ * External league salary scale — percentage of NBA max contract.
+ * Dynamic: reads from leagueStats.salaryCap at runtime, so inflation applies automatically.
+ *
+ * Usage: `maxSalary = nbaSalaryCap * maxContractPct * leagueScale.maxPct`
+ *        `minSalary = nbaSalaryCap * leagueScale.minPct`
+ *
+ * Example (NBA cap $154M, max contract 30% = $46.2M):
+ *   Euroleague max = $46.2M × 0.108 ≈ $5.0M
+ *   PBA max        = $46.2M × 0.0043 ≈ $200K
+ */
+export const EXTERNAL_SALARY_SCALE: Record<string, { maxPct: number; minPct: number }> = {
+  Euroleague:       { maxPct: 0.108,  minPct: 0.0043 },  // ~$5M max, ~$200K min at $154M cap
+  Endesa:           { maxPct: 0.065,  minPct: 0.0032 },  // ~$3M max, ~$150K min
+  'B-League':       { maxPct: 0.0065, minPct: 0.00065 }, // ~$300K max, ~$30K min
+  PBA:              { maxPct: 0.0043, minPct: 0.00043 }, // ~$200K max, ~$20K min
+  'G-League':       { maxPct: 0.0108, minPct: 0.0011 },  // ~$500K max, ~$50K min
+  'China CBA':      { maxPct: 0.0216, minPct: 0.0017 },  // ~$1M max, ~$80K min
+  'NBL Australia':  { maxPct: 0.0108, minPct: 0.0011 },  // ~$500K max, ~$50K min
+};
+
+/** Re-signing probability: chance player stays in same league at contract expiry */
+export const EXTERNAL_RESIGN_PROBABILITY = 0.90; // 90% re-sign same league, 10% explore
+
+/** Home country bias: chance player signs with a team in their home country (if available) */
+export const HOME_COUNTRY_BIAS = 0.60; // 60% home country team, 40% any team in league
+
+/** Nationality → preferred league (90% chance they go here if routed to external) */
+export const NATIONALITY_LEAGUE_BIAS: Record<string, string> = {
+  Japan:       'B-League',
+  Philippines: 'PBA',
+  Australia:   'NBL Australia',
+  China:       'China CBA',
+  Spain:       'Endesa',
+  Greece:      'Euroleague',
+  Turkey:      'Euroleague',
+  Serbia:      'Euroleague',
+  France:      'Euroleague',
+  Germany:     'Euroleague',
+  Italy:       'Euroleague',
+  Lithuania:   'Euroleague',
+  Israel:      'Euroleague',
+  Russia:      'Euroleague',
+};

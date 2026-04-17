@@ -191,7 +191,7 @@ export const generateStaffContext = (state: GameState): string => {
     });
 
     const topPlayers = state.players
-        .filter(p => p.status === 'Active' && p.overallRating >= 85)
+        .filter(p => p.status === 'Active' && p.overallRating >= 70) // BBGM 70+ = good starter and above (stars cap ~82-85)
         .sort((a, b) => b.overallRating - a.overallRating)
         .slice(0, 10);
 

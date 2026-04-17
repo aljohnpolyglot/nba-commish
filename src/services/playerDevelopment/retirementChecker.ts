@@ -71,8 +71,10 @@ function toApprox2K(rawOvr: number): number {
  *
  * No hard age cap — Vince Carter played to 43, it can happen. Age just
  * raises the base probability; a high OVR can override that indefinitely.
+ *
+ * @public — exported so PlayerBioMoraleTab can show a retirement risk indicator.
  */
-function retireProb(age: number, rawOvr: number): number {
+export function retireProb(age: number, rawOvr: number): number {
   if (age < 34) {
     // Ultra-early retirement — freak injury ruin case only
     return rawOvr < 50 ? 0.12 : 0;
@@ -131,11 +133,117 @@ function countChampionships(player: NBAPlayer): number {
   return (player.awards ?? []).filter(a => a.type === 'Champion').length;
 }
 
+// ─── Farewell tour probability ────────────────────────────────────────────────
+/**
+ * Returns the probability [0, 1] that a player's upcoming season is their
+ * farewell tour (i.e. very likely to be their last season).
+ *
+ * Tiers:
+ *  - Legends (≥15 All-Star + age ≥37): automatic — LeBron, Kareem, Jordan never
+ *    get forced out while still star-level, but this fires when the body starts to go.
+ *    We use OVR ≥ 90 (2K scale) as "still All-Star level" — they skip farewell entirely.
+ *  - High All-Star (≥10 All-Star) + age 37+: very likely
+ *  - Moderate All-Star (≥5) + age 38+: likely
+ *  - Regular players: ~70% of retireProb (slightly below, since we want farewell to
+ *    be a reasonable warning, not a certainty for all aging fringe players)
+ *
+ * @public — exported for PlayerBioMoraleTab retirement watch display.
+ */
+export function farewellTourProb(age: number, rawOvr: number, allStarApps: number): number {
+  if (age < 34) return 0;
+
+  const ovr2K = toApprox2K(rawOvr);
+
+  // Elite OVR (still playing at star level): never a farewell — they just keep going.
+  // This is the "LeBron exception" — if he's still 90+ OVR, he hasn't declined enough.
+  if (ovr2K >= 90) return 0;
+
+  // Legend tier: ≥15 All-Star + significant age + past-star OVR → guaranteed farewell
+  if (allStarApps >= 15 && age >= 37 && ovr2K < 90) return 1.0;
+
+  // High All-Star (10-14) + aging
+  if (allStarApps >= 10 && age >= 39) return 0.95;
+  if (allStarApps >= 10 && age >= 37) return 0.75;
+  if (allStarApps >= 10 && age >= 36) return 0.50;
+
+  // Moderate All-Star (5-9)
+  if (allStarApps >= 5 && age >= 40) return 0.90;
+  if (allStarApps >= 5 && age >= 38) return 0.65;
+  if (allStarApps >= 5 && age >= 36) return 0.35;
+
+  // Regular players — base retire prob * 0.7 + small All-Star bonus
+  const base = retireProb(age, rawOvr);
+  if (base <= 0) return 0;
+  const allStarBonus = Math.min(0.15, allStarApps * 0.02);
+  return Math.min(0.90, base * 0.70 + allStarBonus);
+}
+
+export interface FarewellRecord {
+  playerId: string;
+  name: string;
+  age: number;
+  allStarAppearances: number;
+  championships: number;
+  isLegend: boolean; // ≥5 All-Star
+}
+
+/**
+ * Flag players entering their farewell tour season.
+ * Called at rollover AFTER retirement checks (retirees are already removed).
+ * Sets `farewellTour: true` on qualifying players for the UPCOMING season.
+ *
+ * @param players  Post-retirement player list
+ * @param year     The season that just ended
+ */
+export function runFarewellTourChecks(
+  players: NBAPlayer[],
+  year: number,
+): { players: NBAPlayer[]; newFarewells: FarewellRecord[] } {
+  const newFarewells: FarewellRecord[] = [];
+
+  const ACTIVE_STATUSES = new Set(['Active', 'Free Agent']);
+
+  const updated = players.map(p => {
+    // Skip non-active, deceased, external, or already flagged
+    if (!ACTIVE_STATUSES.has((p as any).status ?? 'Active')) return p;
+    if ((p as any).diedYear) return p;
+    if (p.tid === -2) return p;
+    if ((p as any).farewellTour) return p; // already flagged from prior rollover
+
+    const age = typeof p.age === 'number' ? p.age : 0;
+    if (age < 34) return p;
+
+    const allStarCount = countAllStarAppearances(p);
+    const prob = farewellTourProb(age, p.overallRating ?? 60, allStarCount);
+    if (prob <= 0) return p;
+
+    const roll = seededRandom(`farewell_${p.internalId}_${year}`);
+    if (roll >= prob) return p;
+
+    const champCount = countChampionships(p);
+    newFarewells.push({
+      playerId:           p.internalId,
+      name:               p.name,
+      age,
+      allStarAppearances: allStarCount,
+      championships:      champCount,
+      isLegend:           allStarCount >= 5,
+    });
+
+    return { ...p, farewellTour: true } as any as NBAPlayer;
+  });
+
+  return { players: updated, newFarewells };
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
  * Run retirement checks for all active/FA players.
  * Call this inside applySeasonRollover AFTER age increments.
+ *
+ * Players with `farewellTour: true` are guaranteed to retire — no dice roll.
+ * (They already survived one farewell season, that's their last.)
  *
  * @param players  The already-aged player list from rollover
  * @param year     The season that just ended (pre-increment)
@@ -160,12 +268,19 @@ export function runRetirementChecks(
     if (age < 34) return p; // too young to consider
 
     const ovr = p.overallRating ?? 60;
-    const prob = retireProb(age, ovr);
-    if (prob <= 0) return p;
+    const isFarewell = !!(p as any).farewellTour;
 
-    // Deterministic roll — same seed always gives same outcome for the same player+year
-    const roll = seededRandom(`retire_${p.internalId}_${year}`);
-    if (roll >= prob) return p;
+    // Farewell tour players retire guaranteed — they already had their goodbye season.
+    // Exception: if their OVR shot back up to elite (≥90 2K), they un-retired mentally.
+    const ovr2K = toApprox2K(ovr);
+    if (isFarewell && ovr2K < 90) {
+      // Guaranteed retirement — no roll needed
+    } else {
+      const prob = retireProb(age, ovr);
+      if (prob <= 0) return p;
+      const roll = seededRandom(`retire_${p.internalId}_${year}`);
+      if (roll >= prob) return p;
+    }
 
     // Retiring!
     const { gp, pts, reb, ast } = computeCareerTotals(p);
@@ -191,7 +306,7 @@ export function runRetirementChecks(
       status:       'Retired'   as const,
       tid:          -1,
       retiredYear:  year,
-      // Clear active contract so they don't appear in FA pool logic
+      farewellTour: undefined,  // clean up flag
       contract:     undefined,
     } as any as NBAPlayer;
   });

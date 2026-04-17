@@ -32,7 +32,7 @@ function getPlayerAttributes(p: NBAPlayer): Record<string, number> {
     drb: rating.drb || 50,
     pss: rating.pss || 50,
     reb: rating.reb || 50,
-    ovr: p.overallRating || rating.ovr || 50,
+    ovr: rating.ovr || 50,
     pot: rating.pot || 50
   };
 }

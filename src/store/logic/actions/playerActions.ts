@@ -14,7 +14,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
     
     if (!player || !team) return { isProcessing: false };
 
-    if (player.status !== 'Active' && player.status !== 'Free Agent' && !['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(player.status || '')) {
+    if (player.status !== 'Active' && player.status !== 'Free Agent' && !['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) {
         return await advanceDay(stateWithSim, action, [], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
     } else {
         const gmPlayer = player as any;
@@ -94,8 +94,15 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
 
         // Minimum contract in BBGM units (thousands) = $1,300,000
         const MIN_CONTRACT_AMOUNT = 1300;
+        const MIN_CONTRACT_USD = 1_300_000;
+        const signYear = stateWithSim.leagueStats?.year ?? 2026;
+        const minContractYears = [{
+            season: `${signYear - 1}-${String(signYear).slice(-2)}`,
+            guaranteed: MIN_CONTRACT_USD,
+            option: '',
+        }];
 
-        const returnContext = previousLeague && ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(previousLeague)
+        const returnContext = previousLeague && ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(previousLeague)
             ? ` ${playerName} is returning to the NBA after playing in the ${previousLeague}.`
             : previousTeamName
                 ? ` ${playerName} was previously with the ${previousTeamName}.`
@@ -128,9 +135,10 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                         status: 'Active',
                         contract: {
                             amount: MIN_CONTRACT_AMOUNT,
-                            exp: stateWithSim.leagueStats.year + 1,
+                            exp: signYear + 1,
                             rookie: false
-                        }
+                        },
+                        contractYears: minContractYears,
                     }
                     : p
             );
@@ -144,9 +152,10 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                         status: 'Active',
                         contract: {
                             amount: MIN_CONTRACT_AMOUNT,
-                            exp: stateWithSim.leagueStats.year + 1,
+                            exp: signYear + 1,
                             rookie: false
-                        }
+                        },
+                        contractYears: minContractYears,
                     }
                     : p
             );

@@ -63,7 +63,7 @@ export function generateStatsForTeam(
   } else {
     const mpgTarget = knobs.starMpgOverride ?? rotResult.starMpgTarget;
     const { minutes } = MinutesPlayedService.allocateMinutes(
-      rotation, season, lead, otCount, mpgTarget
+      rotation, season, lead, otCount, mpgTarget, !!knobs.isPlayoffs
     );
     playerMinutes = minutes;
   }

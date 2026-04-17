@@ -27,11 +27,20 @@ function enqueue<T>(fn: () => Promise<T>): Promise<T> {
   });
 }
 
+const EXTERNAL_STATUSES = new Set(['WNBA','Euroleague','PBA','B-League','G-League','Endesa','China CBA','NBL Australia','Draft Prospect','Prospect']);
+
+/** True if imgURL is the ProBallers "no photo" placeholder — treat as absent. */
+function isDefaultProballers(url: string): boolean {
+  return url.includes('head-par-defaut');
+}
+
 export function getPlayerImage(player: NBAPlayer): string | undefined {
-  // BBGM portrait first — it's reliable and doesn't need an NBA ID lookup.
-  // CDN portrait is used as fallback only (via onError in PlayerBioHero).
-  if (player.imgURL && player.imgURL.trim() !== '') return player.imgURL;
-  // No BBGM portrait — fall back to CDN if we can extract an ID
+  // BBGM/ProBallers portrait is the canonical source for all leagues.
+  // Skip the ProBallers default placeholder (head-par-defaut) — treat as no photo.
+  if (player.imgURL && player.imgURL.trim() !== '' && !isDefaultProballers(player.imgURL)) return player.imgURL;
+  // External league players: no CDN fallback — show initials instead of passport-style headshot.
+  if (EXTERNAL_STATUSES.has(player.status ?? '')) return undefined;
+  // NBA players without a BBGM portrait: try the official NBA CDN.
   const nbaId = extractNbaId('', player.name);
   if (nbaId) return hdPortrait(nbaId);
   return undefined;
@@ -160,7 +169,7 @@ export function prefetchPlayerBio(player: NBAPlayer): void {
 // player's stored notes and stats fields — no HTTP fetch required.
 // ─────────────────────────────────────────────────────────────────────────────
 export function getNonNBABioData(player: NBAPlayer): { bio: { pro: string; pre: string; per: string } } | null {
-  const NON_NBA = ['PBA', 'Euroleague', 'B-League', 'WNBA', 'G-League', 'Endesa'];
+  const NON_NBA = ['PBA', 'Euroleague', 'B-League', 'WNBA', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'];
   if (!NON_NBA.includes(player.status || '')) return null;
 
   const notes: string = (player as any).notes || '';

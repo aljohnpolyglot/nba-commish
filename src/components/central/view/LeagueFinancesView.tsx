@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import {
   getCapThresholds, getCapStatus, formatSalaryM, contractToUSD,
-  getTradeOutlook, CapThresholds,
+  getTradeOutlook, effectiveRecord, topNAvgK2, CapThresholds,
 } from '../../../utils/salaryUtils';
 import {
   estimateAttendance, getArenaCapacity, formatAttendance, formatRevM, ARENA_HARD_CAP,
@@ -20,6 +20,10 @@ interface TeamEnriched {
   expiringCount: number;
   confRank: number;       // 1-15 within conference
   gbFromLeader: number;   // games behind conference leader
+  effectiveWins: number;  // last-season fallback when offseason
+  effectiveLosses: number;
+  topThreeAvgK2: number;  // avg K2 OVR of top-3 players (star-power override)
+  hasInjuredStar: boolean; // best player is out 30+ games (season-altering injury)
 }
 
 // ─── PayrollBar ───────────────────────────────────────────────────────────────
@@ -59,9 +63,12 @@ const CapRow: React.FC<{
   d: TeamEnriched; thresholds: CapThresholds; maxPayroll: number;
   rank: number; onClick: () => void; seasonYear: number;
 }> = ({ d, thresholds, maxPayroll, rank, onClick, seasonYear }) => {
-  const { team, payroll, playerCount, expiringCount, confRank, gbFromLeader } = d;
+  const { team, payroll, playerCount, expiringCount, confRank, gbFromLeader, effectiveWins, effectiveLosses } = d;
   const status    = getCapStatus(payroll, thresholds);
-  const outlook   = getTradeOutlook(payroll, team.wins, team.losses, expiringCount, thresholds, d.confRank, d.gbFromLeader);
+  const baseOutlook = getTradeOutlook(payroll, effectiveWins, effectiveLosses, expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2);
+  const outlook = d.hasInjuredStar
+    ? { ...baseOutlook, label: 'Injured Star', color: 'text-amber-300', bgColor: 'bg-amber-500/10' }
+    : baseOutlook;
   const capSpace  = thresholds.salaryCap - payroll;
   const taxOver   = payroll - thresholds.luxuryTax;
 
@@ -76,21 +83,14 @@ const CapRow: React.FC<{
       <div className="flex items-center gap-2 w-36 flex-shrink-0">
         <img src={team.logoUrl} alt="" className="w-6 h-6 object-contain flex-shrink-0" />
         <div className="min-w-0">
-          <div className="flex items-center gap-1">
-            <span className="text-xs font-black text-white uppercase tracking-tight leading-none">{team.abbrev}</span>
-            <span className={`text-[8px] font-black tabular-nums leading-none ${
-              confRank <= 6 ? 'text-emerald-500' : confRank <= 10 ? 'text-yellow-500' : 'text-slate-600'
-            }`}>#{confRank}</span>
-          </div>
-          <div className="text-[9px] text-slate-500 truncate">
-            {gbFromLeader === 0 ? 'Conf leader' : `${gbFromLeader % 1 === 0 ? gbFromLeader : gbFromLeader.toFixed(1)} GB`}
-          </div>
+          <span className="text-xs font-black text-white uppercase tracking-tight leading-none">{team.abbrev}</span>
+          <div className="text-[9px] text-slate-500 truncate">{team.name}</div>
         </div>
       </div>
 
       {/* W-L */}
       <div className="text-[10px] font-bold text-slate-300 w-14 flex-shrink-0 text-center tabular-nums">
-        {team.wins}–{team.losses}
+        {effectiveWins}–{effectiveLosses}
       </div>
 
       {/* Trade role */}
@@ -130,7 +130,7 @@ const CapRow: React.FC<{
       </div>
 
       {/* Players */}
-      <div className="text-[10px] text-slate-600 w-5 text-right flex-shrink-0">{playerCount}</div>
+      <div className="text-[10px] text-slate-400 w-5 text-right flex-shrink-0">{playerCount}</div>
 
       <ExternalLink size={10} className="text-slate-700 group-hover:text-slate-400 transition-colors flex-shrink-0" />
     </div>
@@ -141,12 +141,15 @@ const CapRow: React.FC<{
 const TradeCard: React.FC<{
   d: TeamEnriched; thresholds: CapThresholds; onClick: () => void;
 }> = ({ d, thresholds, onClick }) => {
-  const { team, payroll, expiringCount, confRank, gbFromLeader } = d;
-  const outlook  = getTradeOutlook(payroll, team.wins, team.losses, expiringCount, thresholds, confRank, gbFromLeader);
+  const { team, payroll, expiringCount, confRank, gbFromLeader, effectiveWins, effectiveLosses } = d;
+  const baseOutlook = getTradeOutlook(payroll, effectiveWins, effectiveLosses, expiringCount, thresholds, confRank, gbFromLeader, d.topThreeAvgK2);
+  const outlook = d.hasInjuredStar
+    ? { ...baseOutlook, label: 'Injured Star', color: 'text-amber-300', bgColor: 'bg-amber-500/10' }
+    : baseOutlook;
   const capSpace = thresholds.salaryCap - payroll;
   const taxOver  = payroll - thresholds.luxuryTax;
-  const gp       = team.wins + team.losses || 1;
-  const winPct   = team.wins / gp;
+  const gp       = effectiveWins + effectiveLosses || 1;
+  const winPct   = effectiveWins / gp;
 
   return (
     <div
@@ -160,10 +163,8 @@ const TradeCard: React.FC<{
           <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${outlook.bgColor} ${outlook.color}`}>{outlook.label}</span>
         </div>
         <div className="text-[9px] text-slate-500 mt-0.5">
-          {team.wins}–{team.losses} · #{confRank} conf
-          {gbFromLeader > 0 && <span className="text-slate-600"> · {gbFromLeader % 1 === 0 ? gbFromLeader : gbFromLeader.toFixed(1)} GB</span>}
+          {effectiveWins}–{effectiveLosses}
         </div>
-        <div className="text-[9px] text-slate-400 mt-0.5">{outlook.reason}</div>
       </div>
       <div className="text-right flex-shrink-0">
         {capSpace > 0
@@ -185,7 +186,7 @@ const TradeCard: React.FC<{
 type AttSortKey = 'attendance' | 'revenue' | 'fill' | 'name';
 
 const AttRow: React.FC<{ d: TeamEnriched; rank: number; onClick: () => void }> = ({ d, rank, onClick }) => {
-  const { team } = d;
+  const { team, effectiveWins, effectiveLosses } = d;
   const att = estimateAttendance(team);
   const fillPct = (att.fillRate * 100).toFixed(1);
   const fillColor = att.fillRate >= 0.9 ? 'text-emerald-400' : att.fillRate >= 0.75 ? 'text-sky-400' : att.fillRate >= 0.6 ? 'text-yellow-400' : 'text-rose-400';
@@ -208,7 +209,7 @@ const AttRow: React.FC<{ d: TeamEnriched; rank: number; onClick: () => void }> =
 
       {/* W-L */}
       <div className="text-[10px] font-bold text-slate-300 w-12 flex-shrink-0 text-center tabular-nums">
-        {team.wins}–{team.losses}
+        {effectiveWins}–{effectiveLosses}
       </div>
 
       {/* Arena cap */}
@@ -263,7 +264,8 @@ export const LeagueFinancesView: React.FC = () => {
     state.teams.forEach(t => {
       const conf = t.conference || 'East';
       if (!byConf[conf]) byConf[conf] = [];
-      byConf[conf].push({ teamId: t.id, wins: t.wins, losses: t.losses });
+      const rec = effectiveRecord(t, seasonYear);
+      byConf[conf].push({ teamId: t.id, wins: rec.wins, losses: rec.losses });
     });
 
     const result: Record<number, { confRank: number; gbFromLeader: number }> = {};
@@ -285,12 +287,17 @@ export const LeagueFinancesView: React.FC = () => {
   const teamData: TeamEnriched[] = useMemo(() => state.teams.map(team => {
     const players = state.players.filter(p =>
       p.tid === team.id &&
-      !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(p.status || '')
+      !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '')
     );
     const payroll       = players.reduce((s, p) => s + contractToUSD(p.contract?.amount || 0), 0);
     const expiringCount = players.filter(p => (p.contract?.exp ?? 0) <= seasonYear).length;
     const { confRank = 15, gbFromLeader = 0 } = confStandings[team.id] ?? {};
-    return { team, players, payroll, playerCount: players.length, expiringCount, confRank, gbFromLeader };
+    const { wins: effectiveWins, losses: effectiveLosses } = effectiveRecord(team, seasonYear);
+    const topThreeAvgK2 = topNAvgK2(state.players, team.id, 3);
+    // Injured star: franchise best player (by OVR) out 30+ games
+    const topPlayer = [...players].sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0))[0];
+    const hasInjuredStar = !!topPlayer && (topPlayer.injury?.gamesRemaining ?? 0) >= 30;
+    return { team, players, payroll, playerCount: players.length, expiringCount, confRank, gbFromLeader, effectiveWins, effectiveLosses, topThreeAvgK2, hasInjuredStar };
   }), [state.teams, state.players, seasonYear, confStandings]);
 
   const maxPayroll = useMemo(
@@ -340,7 +347,7 @@ export const LeagueFinancesView: React.FC = () => {
   const buyers = useMemo(() =>
     teamData
       .filter(d => {
-        const r = getTradeOutlook(d.payroll, d.team.wins, d.team.losses, d.expiringCount, thresholds).role;
+        const r = getTradeOutlook(d.payroll, d.effectiveWins, d.effectiveLosses, d.expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2).role;
         return r === 'buyer' || r === 'heavy_buyer';
       })
       .sort((a, b) => a.confRank - b.confRank)
@@ -349,7 +356,7 @@ export const LeagueFinancesView: React.FC = () => {
   const sellers = useMemo(() =>
     teamData
       .filter(d => {
-        const r = getTradeOutlook(d.payroll, d.team.wins, d.team.losses, d.expiringCount, thresholds).role;
+        const r = getTradeOutlook(d.payroll, d.effectiveWins, d.effectiveLosses, d.expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2).role;
         return r === 'seller' || r === 'rebuilding';
       })
       .sort((a, b) => b.confRank - a.confRank)
@@ -357,7 +364,7 @@ export const LeagueFinancesView: React.FC = () => {
 
   const neutrals = useMemo(() =>
     teamData.filter(d => {
-      const r = getTradeOutlook(d.payroll, d.team.wins, d.team.losses, d.expiringCount, thresholds).role;
+      const r = getTradeOutlook(d.payroll, d.effectiveWins, d.effectiveLosses, d.expiringCount, thresholds, d.confRank, d.gbFromLeader).role;
       return r === 'neutral';
     })
   , [teamData, thresholds]);
@@ -455,13 +462,23 @@ export const LeagueFinancesView: React.FC = () => {
       {tab === 'cap' && (
         <>
           <div className="flex-shrink-0 border-b border-slate-800/40 bg-[#161616] px-4 py-1.5 flex items-center gap-3 text-[9px] font-black text-slate-600 uppercase tracking-widest">
-            <SortBtn col="payroll" label="Payroll"   current={capSort} dir={capDir} onSort={handleCapSort} />
-            <SortBtn col="space"   label="Cap Space"  current={capSort} dir={capDir} onSort={handleCapSort} />
-            <SortBtn col="wins"    label="W-L"        current={capSort} dir={capDir} onSort={handleCapSort} />
-            <SortBtn col="name"    label="Team"       current={capSort} dir={capDir} onSort={handleCapSort} />
-            <div className="ml-auto text-[9px] text-slate-700">
-              {capSorted.length} teams
+            <span className="w-4 flex-shrink-0" />
+            <div className="w-36 flex-shrink-0">
+              <SortBtn col="name" label="Team" current={capSort} dir={capDir} onSort={handleCapSort} />
             </div>
+            <div className="w-14 flex-shrink-0 text-center flex justify-center">
+              <SortBtn col="wins" label="W-L" current={capSort} dir={capDir} onSort={handleCapSort} />
+            </div>
+            <span className="w-24 flex-shrink-0" />
+            <span className="w-20 flex-shrink-0" />
+            <span className="flex-1 min-w-0" />
+            <div className="w-24 flex-shrink-0 text-right flex flex-col items-end gap-0.5">
+              <SortBtn col="payroll" label="Payroll"  current={capSort} dir={capDir} onSort={handleCapSort} />
+              <SortBtn col="space"   label="Cap Space" current={capSort} dir={capDir} onSort={handleCapSort} />
+            </div>
+            <span className="w-12 flex-shrink-0" />
+            <span className="w-5 flex-shrink-0 text-right text-slate-700">{capSorted.length}</span>
+            <span className="w-2.5 flex-shrink-0" />
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             {capSorted.map((d, i) => (

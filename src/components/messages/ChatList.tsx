@@ -36,7 +36,7 @@ export const ChatList: React.FC<ChatListProps> = ({ chats, selectedChatId, onSel
           if (player.tid !== undefined && player.tid >= 0) {
             const team = state.teams.find(t => t.id === player.tid);
             if (team) teamLogoUrl = team.logoUrl;
-          } else if (['PBA', 'WNBA', 'Euroleague', 'B-League', 'G-League', 'Endesa'].includes(player.status || '')) {
+          } else if (['PBA', 'WNBA', 'Euroleague', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) {
             const team = state.nonNBATeams.find(t => t.league === player.status && t.tid === player.tid);
             if (team) teamLogoUrl = team.imgURL;
           }

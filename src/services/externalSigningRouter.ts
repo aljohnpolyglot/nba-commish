@@ -1,0 +1,178 @@
+/**
+ * externalSigningRouter.ts
+ *
+ * Routes unsigned free agents (tid === -1, status === 'Free Agent') to external
+ * leagues based on OVR bracket. Fires once on Oct 1 of each season after the
+ * summer FA window closes.
+ *
+ * OVR routing table — K2 scale (converted from p.overallRating via convertTo2KRating):
+ *   K2 ≥ 75 (BBGM ~50+) → Euroleague / Endesa  (quality overseas, fringe starters)
+ *   K2 68–74 (BBGM ~42–50) → G-League           (NBA affiliate pathway)
+ *   K2 60–67 (BBGM ~33–42) → PBA                (regional leagues)
+ *   K2 55–59 (BBGM ~27–33) → B-League           (lower-tier overseas)
+ *   K2 < 55  (BBGM ~<27)   → stays FA           (absolute wash-out)
+ *
+ * Only NBA-caliber FAs are routed (no WNBA, no draft prospects, no external players
+ * who are already in a league).
+ */
+
+import type { GameState, NBAPlayer } from '../types';
+import { convertTo2KRating } from '../utils/helpers';
+
+export interface ExternalRoutingResult {
+  playerId: string;
+  playerName: string;
+  league: 'Euroleague' | 'Endesa' | 'G-League' | 'PBA' | 'B-League' | 'China CBA' | 'NBL Australia';
+  teamTid: number;
+  teamName: string;
+}
+
+/** Seeded random float 0–1 based on a numeric seed. */
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed + 1) * 10000;
+  return x - Math.floor(x);
+}
+
+/** Pick a destination league + team for an unsigned player based on their OVR.
+ *
+ *  Updated routing (K2 scale):
+ *   K2 ≥ 75           → Euroleague (or Endesa fallback)
+ *   K2 68–74, age < 30 → G-League (NBA pathway)
+ *   K2 68–74, age ≥ 30 → China CBA or Euroleague (vets shouldn't grind G-League)
+ *   K2 63–67           → 40% China CBA · 30% NBL Australia · 30% PBA
+ *   K2 55–62           → 35% B-League · 35% PBA · 30% China CBA
+ *   K2 < 55            → stays FA (handled by caller)
+ */
+function pickDestination(
+  ovr: number,
+  age: number,
+  nonNBATeams: GameState['nonNBATeams'],
+  playerSeed: number,
+): { league: ExternalRoutingResult['league']; tid: number; teamName: string } | null {
+  let targetLeague: ExternalRoutingResult['league'];
+
+  const rng = seededRandom(playerSeed);
+
+  if (ovr >= 75) {
+    targetLeague = 'Euroleague';
+  } else if (ovr >= 68) {
+    // Veterans (30+) skip G-League — route to quality overseas instead
+    if (age >= 30) {
+      targetLeague = rng < 0.6 ? 'China CBA' : 'Euroleague';
+    } else {
+      targetLeague = 'G-League';
+    }
+  } else if (ovr >= 63) {
+    // Mid-tier: spread across China CBA, NBL Australia, PBA
+    if (rng < 0.40) targetLeague = 'China CBA';
+    else if (rng < 0.70) targetLeague = 'NBL Australia';
+    else targetLeague = 'PBA';
+  } else {
+    // Lower tier: spread across B-League, PBA, China CBA
+    if (rng < 0.35) targetLeague = 'B-League';
+    else if (rng < 0.70) targetLeague = 'PBA';
+    else targetLeague = 'China CBA';
+  }
+
+  const leagueTeams = nonNBATeams.filter(t => t.league === targetLeague);
+  // Fallback chain if a league has no teams loaded (gist 404, etc.)
+  // Don't skip the target league itself — it may exist elsewhere in nonNBATeams
+  if (leagueTeams.length === 0) {
+    const fallbackOrder: ExternalRoutingResult['league'][] = ['Euroleague', 'G-League', 'China CBA', 'PBA', 'B-League', 'Endesa', 'NBL Australia'];
+    for (const fb of fallbackOrder) {
+      const fbTeams = nonNBATeams.filter(t => t.league === fb);
+      if (fbTeams.length > 0) {
+        const team = fbTeams[Math.floor(seededRandom(playerSeed + 1) * fbTeams.length)];
+        return { league: fb, tid: team.tid, teamName: `${team.region} ${team.name}` };
+      }
+    }
+    return null;
+  }
+
+  // Pick a random team from the league so players spread out across clubs
+  const team = leagueTeams[Math.floor(seededRandom(playerSeed + 2) * leagueTeams.length)];
+  return { league: targetLeague, tid: team.tid, teamName: `${team.region} ${team.name}` };
+}
+
+/**
+ * Route unsigned FAs to external leagues.
+ * Call once on Oct 1 (or end of Sep) after the summer FA window.
+ *
+ * @returns array of routing results (for news generation) and the updated players array
+ */
+/**
+ * Keep a minimum pool of quality FAs in the NBA market so teams always have someone to sign.
+ * Without this, everyone 70+ gets routed overseas and rosters become static.
+ *
+ * Minimums that must remain as NBA FAs after routing:
+ *   K2 ≥ 70  → keep at least 30 players
+ *   K2 60–69 → keep at least 30 players
+ */
+const MIN_NBA_FA_TIER_HIGH  = 30; // K2 ≥ 70
+const MIN_NBA_FA_TIER_MID   = 30; // K2 60–69
+
+export function routeUnsignedPlayers(
+  state: GameState,
+): { results: ExternalRoutingResult[]; players: NBAPlayer[] } {
+  const EXCLUDED_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'Draft Prospect', 'Prospect']);
+
+  // Pre-compute K2 OVR for each eligible FA so we can decide which ones to protect
+  const eligibleFAs = state.players
+    .filter(p => p.tid === -1 && p.status === 'Free Agent' && !EXCLUDED_STATUSES.has(p.status ?? ''))
+    .map(p => {
+      const lastRating = (p as any).ratings?.[(p as any).ratings?.length - 1];
+      const hgtAttr = lastRating?.hgt ?? 50;
+      const k2Ovr = convertTo2KRating(p.overallRating ?? 0, hgtAttr);
+      return { p, k2Ovr };
+    })
+    .filter(({ k2Ovr }) => k2Ovr >= 55); // only those that would be routed
+
+  // Sort each tier by OVR descending; the top N in each tier are "protected" (stay as NBA FAs)
+  const highTier = eligibleFAs.filter(x => x.k2Ovr >= 70).sort((a, b) => b.k2Ovr - a.k2Ovr);
+  const midTier  = eligibleFAs.filter(x => x.k2Ovr >= 60 && x.k2Ovr < 70).sort((a, b) => b.k2Ovr - a.k2Ovr);
+
+  const protectedIds = new Set<string>([
+    ...highTier.slice(0, MIN_NBA_FA_TIER_HIGH).map(x => x.p.internalId),
+    ...midTier.slice(0, MIN_NBA_FA_TIER_MID).map(x => x.p.internalId),
+  ]);
+
+  const results: ExternalRoutingResult[] = [];
+  const updatedPlayers = state.players.map(p => {
+    // Only route NBA free agents (not external players, prospects, or retired)
+    if (p.tid !== -1) return p;
+    if (p.status !== 'Free Agent') return p;
+    if (EXCLUDED_STATUSES.has(p.status ?? '')) return p;
+
+    // Convert to K2 scale — all thresholds below are K2 (per the header comment)
+    const lastRating = (p as any).ratings?.[(p as any).ratings?.length - 1];
+    const hgtAttr = lastRating?.hgt ?? 50;
+    const k2Ovr = convertTo2KRating(p.overallRating ?? 0, hgtAttr);
+    // Skip absolute wash-outs (K2 < 55) — let them stay as unsigned FAs
+    if (k2Ovr < 55) return p;
+    // Skip protected FAs — they must remain available as NBA signings
+    if (protectedIds.has(p.internalId)) return p;
+
+    const playerAge = (p as any).age ?? ((p as any).born?.year ? new Date(state.date ?? '').getFullYear() - (p as any).born.year : 27);
+    let playerSeed = 0;
+    for (let ci = 0; ci < p.internalId.length; ci++) playerSeed += p.internalId.charCodeAt(ci);
+
+    const dest = pickDestination(k2Ovr, playerAge, state.nonNBATeams ?? [], playerSeed);
+    if (!dest) return p;
+
+    results.push({
+      playerId: p.internalId,
+      playerName: p.name,
+      league: dest.league,
+      teamTid: dest.tid,
+      teamName: dest.teamName,
+    });
+
+    return {
+      ...p,
+      tid: dest.tid,
+      status: dest.league as NBAPlayer['status'],
+    };
+  });
+
+  return { results, players: updatedPlayers };
+}

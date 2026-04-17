@@ -6,7 +6,9 @@
  */
 
 import type { GameState, NBAPlayer, NBATeam } from '../types';
-import { getCapThresholds, getTeamCapProfile, computeContractOffer } from '../utils/salaryUtils';
+import { getCapThresholds, getTeamCapProfile, computeContractOffer, getMLEAvailability } from '../utils/salaryUtils';
+import type { MleType } from '../utils/salaryUtils';
+import { convertTo2KRating } from '../utils/helpers';
 import { SettingsManager } from './SettingsManager';
 import { computeMoodScore } from '../utils/mood/moodScore';
 import type { MoodTrait } from '../utils/mood/moodTypes';
@@ -45,6 +47,8 @@ function getBestFit(
   team: NBATeam,
   freeAgents: NBAPlayer[],
   state: GameState,
+  /** Local MLE already spent this round (teamId → usedUSD). Avoids double-spending within a round. */
+  localMleUsed: Map<number, { type: MleType; usedUSD: number }>,
 ): NBAPlayer | null {
   const thresholds = getCapThresholds(state.leagueStats as any);
   const profile = getTeamCapProfile(
@@ -57,9 +61,31 @@ function getBestFit(
 
   return freeAgents
     .filter(p => {
-      // Use the actual contract formula to check affordability, not the stale p.contract.amount
       const offer = computeContractOffer(p, state.leagueStats as any);
-      if (offer.salaryUSD > profile.capSpaceUSD + 2_000_000) return false;
+
+      // Build an effective leagueStats that merges any MLE already spent this round
+      const localEntry = localMleUsed.get(team.id);
+      const effectiveLeagueStats = localEntry
+        ? {
+            ...state.leagueStats,
+            mleUsage: {
+              ...(state.leagueStats as any).mleUsage,
+              [team.id]: localEntry,
+            },
+          }
+        : state.leagueStats;
+
+      const mleAvail = getMLEAvailability(
+        team.id,
+        profile.payrollUSD,
+        offer.salaryUSD,
+        thresholds,
+        effectiveLeagueStats as any,
+      );
+
+      const canAffordViaCap = offer.salaryUSD <= profile.capSpaceUSD + 2_000_000;
+      const canAffordViaMle = !mleAvail.blocked && offer.salaryUSD <= mleAvail.available;
+      if (!canAffordViaCap && !canAffordViaMle) return false;
       if (playerMoodForTeam(p, team, state) < 1) return false;
       return true;
     })
@@ -77,6 +103,9 @@ export interface SigningResult {
   contractYears: number;
   contractExp: number; // season year contract expires
   hasPlayerOption: boolean;
+  /** Set when signing was funded via an MLE rather than cap space. */
+  mleTypeUsed?: MleType;
+  mleAmountUSD?: number;
 }
 
 /**
@@ -96,17 +125,48 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
     .filter(t => t.id !== userTeamId)
     .sort((a, b) => ((b as any).wins ?? 0) - ((a as any).wins ?? 0));
 
-  const maxRoster = state.leagueStats.maxPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
+  // Standard roster limit (15-man) — two-way players don't count against this
+  const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? state.leagueStats.maxPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
+
+  // Track MLE spend within this round so a team can't double-spend before state updates
+  const localMleUsed = new Map<number, { type: MleType; usedUSD: number }>();
+
+  const thresholds = getCapThresholds(state.leagueStats as any);
 
   for (const team of sortedAITeams) {
-    const rosterSize = state.players.filter(p => p.tid === team.id).length;
-    if (rosterSize >= maxRoster) continue;
+    const rosterSize = state.players.filter(p => p.tid === team.id && !(p as any).twoWay).length;
+    if (rosterSize >= maxStandard) continue;
 
-    const best = getBestFit(team, pool, state);
+    const best = getBestFit(team, pool, state, localMleUsed);
     if (!best) continue;
 
     const offer = computeContractOffer(best, state.leagueStats as any);
     const currentYear = state.leagueStats.year;
+
+    // Determine if this is a cap-space signing or MLE signing
+    const profile = getTeamCapProfile(
+      state.players, team.id,
+      (team as any).wins ?? 0, (team as any).losses ?? 0, thresholds,
+    );
+    const isViaCap = offer.salaryUSD <= profile.capSpaceUSD + 2_000_000;
+    let mleTypeUsed: MleType = null;
+    let mleAmountUSD = 0;
+
+    if (!isViaCap) {
+      // Signing is via MLE — figure out which type and record it locally
+      const localEntry = localMleUsed.get(team.id);
+      const effectiveLS = localEntry
+        ? { ...state.leagueStats, mleUsage: { ...(state.leagueStats as any).mleUsage, [team.id]: localEntry } }
+        : state.leagueStats;
+      const mleAvail = getMLEAvailability(team.id, profile.payrollUSD, offer.salaryUSD, thresholds, effectiveLS as any);
+      if (!mleAvail.blocked && mleAvail.type) {
+        mleTypeUsed = mleAvail.type;
+        mleAmountUSD = offer.salaryUSD;
+        // Update local tracker so subsequent signings by this team see reduced MLE
+        const prevUsed = localEntry?.usedUSD ?? 0;
+        localMleUsed.set(team.id, { type: mleAvail.type, usedUSD: prevUsed + offer.salaryUSD });
+      }
+    }
 
     results.push({
       playerId: best.internalId,
@@ -117,6 +177,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
       contractYears: offer.years,
       contractExp: currentYear + offer.years - 1,
       hasPlayerOption: offer.hasPlayerOption,
+      ...(mleTypeUsed ? { mleTypeUsed, mleAmountUSD } : {}),
     });
 
     pool = pool.filter(p => p.internalId !== best.internalId);
@@ -125,15 +186,70 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   return results;
 }
 
+// ── Auto-trim oversized rosters ───────────────────────────────────────────────
+
+export interface WaiverResult {
+  playerId: string;
+  teamId: number;
+  playerName: string;
+  teamName: string;
+}
+
+/**
+ * For each AI team over the roster limit, release the lowest-rated player.
+ * During the offseason/preseason (July–September, month 7–9), teams may carry up to
+ * maxTrainingCampRoster (default 21) players — mimicking NBA training camp rules.
+ * Once the regular season starts (October+), the limit drops to maxStandard (15).
+ * Two-way contract players (twoWay: true) never count against the standard limit.
+ * User's team is never touched.
+ *
+ * @param month - current simulation month (1-12). Pass undefined to always enforce regular-season limit.
+ */
+export function autoTrimOversizedRosters(state: GameState, month?: number): WaiverResult[] {
+  const userTeamId = state.teams[0]?.id;
+  const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
+  const maxTrainingCamp = state.leagueStats.maxTrainingCampRoster ?? 21;
+
+  // During July–September (offseason / training camp), allow the expanded limit.
+  // October onwards = regular season, enforce the standard 15-man cap.
+  const isPreseasonPeriod = month !== undefined && month >= 7 && month <= 9;
+  const effectiveLimit = isPreseasonPeriod ? maxTrainingCamp : maxStandard;
+
+  const results: WaiverResult[] = [];
+
+  for (const team of state.teams) {
+    if (team.id === userTeamId) continue;
+    // Two-way and G-League assigned players don't count against the standard roster cap
+    const roster = state.players.filter(p => p.tid === team.id && !(p as any).twoWay && !(p as any).gLeagueAssigned);
+    if (roster.length <= effectiveLimit) continue;
+    const excess = roster.length - effectiveLimit;
+    // G-League assigned players are last resort — trim non-GL lowest OVR first
+    const nonGL = roster.filter(p => !(p as any).gLeagueAssigned)
+      .sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0));
+    const glPlayers = roster.filter(p => !!(p as any).gLeagueAssigned)
+      .sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0));
+    const trimPool = [...nonGL, ...glPlayers];
+    for (let i = 0; i < excess && i < trimPool.length; i++) {
+      const p = trimPool[i];
+      results.push({ playerId: p.internalId, teamId: team.id, playerName: p.name, teamName: team.name });
+    }
+  }
+
+  return results;
+}
+
 // ── Mid-season extensions ─────────────────────────────────────────────────────
+
 
 export interface ExtensionResult {
   playerId: string;
   teamId: number;
   playerName: string;
   teamName: string;
-  newAmount: number;    // millions
-  newExp: number;       // season year the new contract expires
+  newAmount: number;      // millions (annual)
+  newExp: number;         // season year the new contract expires
+  newYears: number;       // number of seasons
+  hasPlayerOption: boolean;
   declined: boolean;
 }
 
@@ -219,7 +335,8 @@ export function runAIMidSeasonExtensions(state: GameState): ExtensionResult[] {
     // COMPETITOR won't re-sign with a struggling team
     const gp = (team.wins ?? 0) + (team.losses ?? 0);
     const winPct = gp > 0 ? (team.wins ?? 0) / gp : 0.5;
-    if (traits.includes('COMPETITOR') && winPct < 0.40 && (player.overallRating ?? 0) >= 80) {
+    // BBGM 60 ≈ K2 ~84 (solid starter) — a real competitor who'd leave a losing team
+    if (traits.includes('COMPETITOR') && winPct < 0.40 && (player.overallRating ?? 0) >= 60) {
       basePct = Math.min(basePct, 0.10);
     }
 
@@ -247,6 +364,95 @@ export function runAIMidSeasonExtensions(state: GameState): ExtensionResult[] {
       teamName: team.name,
       newAmount: Math.round(offerUSD / 100_000) / 10,  // rounded to $0.1M
       newExp: currentYear + extensionYears,
+      newYears: extensionYears,
+      hasPlayerOption: extensionOffer.hasPlayerOption,
+      declined: !accepted,
+    });
+  }
+
+  return results;
+}
+
+// ── Season-End Extensions (May–June) ─────────────────────────────────────────
+
+/**
+ * Run season-end extension offers in the May–June window (after awards are set,
+ * before the June 30 rollover opens free agency).
+ *
+ * Unlike mid-season extensions (Oct–Feb), this window:
+ *  - Targets rotation players+ on AI teams with expiring contracts (OVR ≥ 72)
+ *  - Higher base acceptance — Bird Rights advantage, team/player both know the stakes
+ *  - Supermax-eligible players get the full designated-veteran offer via computeContractOffer
+ *  - Players who already declined a mid-season extension are skipped
+ */
+export function runAISeasonEndExtensions(state: GameState): ExtensionResult[] {
+  if (!SettingsManager.getSettings().allowAIFreeAgency) return [];
+
+  const currentYear = state.leagueStats.year;
+  const results: ExtensionResult[] = [];
+  const userTeamId = state.teams[0]?.id;
+
+  const expiringPlayers = state.players.filter(p => {
+    if (!p.contract) return false;
+    if (p.contract.exp !== currentYear) return false;
+    if (p.tid <= 0) return false;
+    if (p.tid === userTeamId) return false;
+    if ((p as any).status === 'Retired') return false;
+    if ((p as any).midSeasonExtensionDeclined) return false; // already said no once this season
+    // BBGM 47 = K2 ~72 (rotation-level per salary tiers in salaryUtils.ts)
+    if ((p.overallRating ?? 0) < 47) return false;           // only rotation-level and above (BBGM 47+)
+    return true;
+  });
+
+  if (expiringPlayers.length === 0) return [];
+
+  for (const player of expiringPlayers) {
+    const team = state.teams.find(t => t.id === player.tid);
+    if (!team) continue;
+
+    const traits: MoodTrait[] = (player as any).moodTraits ?? [];
+    const teamPlayers = state.players.filter(p => p.tid === player.tid);
+    const { score } = computeMoodScore(player, team, state.date, false, false, false, teamPlayers);
+
+    // Higher acceptance than mid-season — end of year, clearer picture
+    let basePct: number;
+    if (traits.includes('LOYAL')) {
+      basePct = 0.95;
+    } else if (score >= 4) {
+      basePct = 0.85;
+    } else if (score >= 0) {
+      basePct = 0.70;
+    } else if (score >= -3) {
+      basePct = 0.45;
+    } else {
+      basePct = 0.15; // very unhappy — wants out
+    }
+
+    if (traits.includes('COMPETITOR')) {
+      const gp = (team.wins ?? 0) + (team.losses ?? 0);
+      const winPct = gp > 0 ? (team.wins ?? 0) / gp : 0.5;
+      // BBGM 62 ≈ K2 ~86 (All-Star tier) — star-level competitor won't re-sign with a loser
+      if (winPct < 0.45 && (player.overallRating ?? 0) >= 62) basePct = Math.min(basePct, 0.20);
+    }
+
+    // Different seed than mid-season so the same player doesn't always get the same outcome
+    let seed = 0;
+    for (let i = 0; i < player.internalId.length; i++) seed += player.internalId.charCodeAt(i);
+    seed += (currentYear + 7) * 53;
+    const roll = Math.abs((Math.sin(seed) * 10000) % 1);
+    const accepted = roll < basePct;
+
+    const extensionOffer = computeContractOffer(player, state.leagueStats as any, traits, score);
+
+    results.push({
+      playerId: player.internalId,
+      teamId: player.tid,
+      playerName: player.name,
+      teamName: team.name,
+      newAmount: Math.round(extensionOffer.salaryUSD / 100_000) / 10,
+      newExp: currentYear + extensionOffer.years,
+      newYears: extensionOffer.years,
+      hasPlayerOption: extensionOffer.hasPlayerOption,
       declined: !accepted,
     });
   }

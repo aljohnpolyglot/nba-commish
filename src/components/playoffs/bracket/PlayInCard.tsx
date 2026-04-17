@@ -88,13 +88,14 @@ export const PlayInCard: React.FC<PlayInCardProps> = ({
 
   const game = pig.gameId ? schedule.find(g => g.gid === pig.gameId) : null;
   // Use Number() coercion to handle potential string→number mismatch after JSON deserialization
+  // Use !== -1 (not > 0) because team ID 0 is valid in BBGM
   const t1Tid = Number(pig.team1Tid);
   const t2Tid = Number(pig.team2Tid);
-  let t1 = t1Tid > 0 ? teams.find(t => t.id === t1Tid) : null;
-  let t2 = t2Tid > 0 ? teams.find(t => t.id === t2Tid) : null;
+  let t1 = t1Tid !== -1 ? teams.find(t => t.id === t1Tid) : null;
+  let t2 = t2Tid !== -1 ? teams.find(t => t.id === t2Tid) : null;
   // Fallback: if game exists and team still not found, resolve via game's home/away TIDs
-  if (game && !t1 && game.homeTid > 0) t1 = teams.find(t => t.id === game.homeTid) ?? null;
-  if (game && !t2 && game.awayTid > 0) t2 = teams.find(t => t.id === game.awayTid) ?? null;
+  if (game && !t1 && game.homeTid !== -1) t1 = teams.find(t => t.id === game.homeTid) ?? null;
+  if (game && !t2 && game.awayTid !== -1) t2 = teams.find(t => t.id === game.awayTid) ?? null;
   const isToday = game ? normalizeDate(game.date) === normalizeDate(stateDate) : false;
   const winner = pig.played && pig.winnerId ? teams.find(t => t.id === pig.winnerId) : null;
 

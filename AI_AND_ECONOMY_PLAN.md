@@ -222,3 +222,89 @@ In the reducer, `runAIFreeAgencyRound` results update:
 - [x] `salaryUtils.ts` — luxuryTax derived from percentage (§1a fix)
 - [x] `BroadcastingView.tsx` — persist luxuryPayroll on lock
 - [x] `EconomyFinancesSection.tsx` — show cap as broadcasting-derived, live threshold mini-bars
+
+---
+
+## 6. Mid-Level Exception (MLE) — Implementation Plan
+
+### Background
+Three MLE types under the 2023 CBA. All can be split across multiple contracts (sum ≤ limit).
+2025-26 defaults: Room $8,781,000 · Non-Taxpayer $14,104,000 · Taxpayer $5,685,000
+
+### Eligibility rules
+| Type | Payroll requirement | Keeps payroll | Blocked by (same season) |
+|---|---|---|---|
+| **Room MLE** | Below salary cap | — | Biannual, NT-MLE, TaxMLE |
+| **Non-Taxpayer MLE** | Above cap, below 1st apron | Below 1st apron | Room MLE, TaxMLE |
+| **Taxpayer MLE** | Below 2nd apron; signing crosses 1st apron | — | Biannual, Room Exception, Room MLE, NT-MLE |
+
+Auto-zero rule: exception is reduced to $0 when conditions can't be met (e.g. team below cap can't use NT-MLE; signing would bust 2nd apron).
+
+### Files to create / modify
+
+#### §MLE-1 — `src/types.ts`
+Add to `LeagueStats`:
+```ts
+// Economy - Exceptions
+mleEnabled?: boolean;              // master toggle (default true)
+roomMleAmount?: number;            // USD default 8_781_000
+nonTaxpayerMleAmount?: number;     // USD default 14_104_000
+taxpayerMleAmount?: number;        // USD default 5_685_000
+biannualEnabled?: boolean;
+biannualAmount?: number;           // USD default 4_767_000
+mleUsage?: Record<number, { type: 'room' | 'non_taxpayer' | 'taxpayer'; usedUSD: number }>;
+```
+NBATeam: no changes needed (MLE usage stored in leagueStats)
+
+#### §MLE-2 — `src/utils/salaryUtils.ts`
+Add exported function `getMLEAvailability(teamId, payrollUSD, signingUSD, thresholds, leagueStats)`:
+```ts
+export type MleType = 'room' | 'non_taxpayer' | 'taxpayer' | null;
+export interface MleAvailability {
+  type: MleType;
+  limit: number;      // full dollar limit
+  used: number;       // already used this season
+  available: number;  // limit - used (0 if blocked)
+  blocked: boolean;
+}
+```
+Logic:
+- Room MLE: `payrollUSD < thresholds.salaryCap` AND no prior MLE used
+- Non-Taxpayer MLE: `payrollUSD >= thresholds.salaryCap` AND `payrollUSD < thresholds.firstApron`
+  AND `payrollUSD + signingUSD < thresholds.firstApron`
+- Taxpayer MLE: `payrollUSD < thresholds.secondApron` AND (`payrollUSD >= thresholds.firstApron`
+  OR `payrollUSD + signingUSD >= thresholds.firstApron`) AND no prior NT/room MLE used
+
+#### §MLE-3 — `src/components/commissioner/rules/view/EconomyContractsSection.tsx`
+Add "Exceptions" sub-section after Contract Conditions:
+- `mleEnabled` master toggle
+- Room MLE dollar input
+- Non-Taxpayer MLE dollar input
+- Taxpayer MLE dollar input
+- Biannual Exception toggle + dollar input
+
+#### §MLE-4 — `src/components/commissioner/rules/view/EconomyTab.tsx`
+Pass new MLE props through to EconomyContractsSection.
+
+#### §MLE-5 — `src/components/commissioner/rules/view/useRulesState.ts`
+Add 6 state vars for MLE settings; include in save payload + isDirty check + reset.
+
+#### §MLE-6 — `src/components/central/view/TeamFinancesViewDetailed.tsx` (display)
+Show MLE availability badge per team in the header / finances section.
+
+#### §MLE-7 — `src/services/AIFreeAgentHandler.ts` (AI usage)
+When team has no cap room, check `getMLEAvailability` — allow signing up to the available MLE amount.
+Record usage in `mleUsage[teamId]` via state update.
+
+#### §MLE-8 — Season rollover (`src/services/logic/seasonRollover.ts`)
+Clear `leagueStats.mleUsage = {}` at season start.
+
+### Status
+- [x] §MLE-1 types added
+- [x] §MLE-2 getMLEAvailability implemented
+- [x] §MLE-3 EconomyContractsSection UI
+- [x] §MLE-4 EconomyTab props
+- [x] §MLE-5 useRulesState wired
+- [x] §MLE-6 TeamFinancesViewDetailed display (badge in header)
+- [x] §MLE-7 AI FA signing uses MLE
+- [x] §MLE-8 Season rollover clears usage

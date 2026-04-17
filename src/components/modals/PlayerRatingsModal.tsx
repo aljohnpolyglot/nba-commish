@@ -375,7 +375,7 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
     setCollapsedCats(prev => ({ ...prev, [k]: !prev[k] }));
   };
 
-  const playerAge = (player as any).born?.year ? new Date().getFullYear() - (player as any).born.year : player.age ?? 25;
+  const playerAge = player.age ?? ((player as any).born?.year ? new Date().getFullYear() - (player as any).born.year : 25);
   const rawBbgmOvr = player.overallRating ?? 60;
   const potBbgm = playerAge >= 29 ? rawBbgmOvr : Math.max(rawBbgmOvr, Math.round(72.31428908571982 + (-2.33062761 * playerAge) + (0.83308748 * rawBbgmOvr)));
   const potK2 = convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), localRatings.hgt, localRatings.tp);

@@ -12,7 +12,7 @@ import { setClubDebuffs, clearClubDebuffs } from '../StatGenerator/helpers';
 import { generateFight } from '../../FightGenerator';
 import { fetchGamePhotos } from '../../ImagnPhotoService';
 import { Defense2KService } from '../../Defense2KService';
-import { SimulatorKnobs, KNOBS_DEFAULT, KNOBS_ALL_STAR, KNOBS_RISING_STARS, KNOBS_CELEBRITY, KNOBS_BLEAGUE, KNOBS_EUROLEAGUE, KNOBS_PBA, getKnobs } from '../SimulatorKnobs';
+import { SimulatorKnobs, KNOBS_DEFAULT, KNOBS_PRESEASON, KNOBS_ALL_STAR, KNOBS_RISING_STARS, KNOBS_CELEBRITY, KNOBS_BLEAGUE, KNOBS_EUROLEAGUE, KNOBS_PBA, getKnobs } from '../SimulatorKnobs';
 import { HighlightGenerator } from '../HighlightGenerator';
 import { getInjuries, getRandomInjury } from '../../injuryService';
 /**
@@ -335,8 +335,20 @@ export class GameSimulator {
         drtg: homeAdv[i].drtg,
         usgPct: homeAdv[i].usgPct,
         bpm: homeAdv[i].bpm,
+        obpm: homeAdv[i].obpm,
+        dbpm: homeAdv[i].dbpm,
         ws: homeAdv[i].ws,
+        ows: homeAdv[i].ows,
+        dws: homeAdv[i].dws,
         vorp: homeAdv[i].vorp,
+        ewa: homeAdv[i].ewa,
+        orbPct: homeAdv[i].orbPct,
+        drbPct: homeAdv[i].drbPct,
+        trbPct: homeAdv[i].trbPct,
+        astPct: homeAdv[i].astPct,
+        stlPct: homeAdv[i].stlPct,
+        blkPct: homeAdv[i].blkPct,
+        tovPct: homeAdv[i].tovPct,
       });
     });
 
@@ -349,8 +361,20 @@ export class GameSimulator {
         drtg: awayAdv[i].drtg,
         usgPct: awayAdv[i].usgPct,
         bpm: awayAdv[i].bpm,
+        obpm: awayAdv[i].obpm,
+        dbpm: awayAdv[i].dbpm,
         ws: awayAdv[i].ws,
+        ows: awayAdv[i].ows,
+        dws: awayAdv[i].dws,
         vorp: awayAdv[i].vorp,
+        ewa: awayAdv[i].ewa,
+        orbPct: awayAdv[i].orbPct,
+        drbPct: awayAdv[i].drbPct,
+        trbPct: awayAdv[i].trbPct,
+        astPct: awayAdv[i].astPct,
+        stlPct: awayAdv[i].stlPct,
+        blkPct: awayAdv[i].blkPct,
+        tovPct: awayAdv[i].tovPct,
       });
     });
 
@@ -442,7 +466,10 @@ export class GameSimulator {
           injuryType:     drawn.name,
           gamesRemaining,
         });
-        playerInGameInjuries[player.internalId] = drawn.name;
+        // Only flag "left early" if the injury actually costs the player games.
+        if (gamesRemaining > 0) {
+          playerInGameInjuries[player.internalId] = drawn.name;
+        }
       }
     }
 
@@ -710,7 +737,7 @@ export class GameSimulator {
         // Ensure minimum 8 players — fill from top available NBA players not already on either side
         if (homeOverride && homeOverride.length < 8 && !game.isCelebrityGame) {
           const usedIds = new Set([...(homeOverride || []), ...(awayOverride || [])].map((p: any) => p.internalId));
-          const INELIGIBLE = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa']);
+          const INELIGIBLE = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
           const fillers = players
             .filter(p => !usedIds.has(p.internalId) && !INELIGIBLE.has((p as any).status ?? '') && ((p as any).injury?.gamesRemaining ?? 0) === 0)
             .sort((a: any, b: any) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
@@ -742,7 +769,7 @@ export class GameSimulator {
         // Ensure minimum 8 players — fill from top available NBA players not already on either side
         if (awayOverride && awayOverride.length < 8 && !game.isCelebrityGame) {
           const usedIds = new Set([...(homeOverride || []), ...(awayOverride || [])].map((p: any) => p.internalId));
-          const INELIGIBLE = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa']);
+          const INELIGIBLE = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
           const fillers = players
             .filter(p => !usedIds.has(p.internalId) && !INELIGIBLE.has((p as any).status ?? '') && ((p as any).injury?.gamesRemaining ?? 0) === 0)
             .sort((a: any, b: any) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
@@ -811,16 +838,22 @@ export class GameSimulator {
         } else if (game.isAllStar) {
           homeKnobs = awayKnobs = KNOBS_ALL_STAR;
         } else if ((game as any).isPreseason && (game.homeTid >= 100 || game.awayTid >= 100)) {
-          // International preseason: use league-specific knobs calibrated to real 2025-26 averages.
-          // Detect which league the non-NBA side belongs to by TID range.
+          // International preseason: league-specific knobs for the intl team, NBA preseason for the NBA team.
+          // Previously both teams used the same intl knobs — this meant the NBA team also played at
+          // PBA efficiency (0.83×), making scores unrealistically close.
           const intlTid = game.homeTid >= 100 ? game.homeTid : game.awayTid;
+          const isHomeIntl = game.homeTid >= 100;
           let intlKnobs: SimulatorKnobs;
           if      (intlTid >= 4000 && intlTid < 5000) intlKnobs = KNOBS_BLEAGUE;    // B-League +4000
           else if (intlTid >= 1000 && intlTid < 2000) intlKnobs = KNOBS_EUROLEAGUE; // Euroleague +1000
           else if (intlTid >= 5000 && intlTid < 6000) intlKnobs = KNOBS_EUROLEAGUE; // Endesa/ACB — similar style
           else if (intlTid >= 2000 && intlTid < 3000) intlKnobs = KNOBS_PBA;        // PBA +2000
+          else if (intlTid >= 7000 && intlTid < 8000) intlKnobs = KNOBS_BLEAGUE;    // China CBA +7000 — B-League baseline
+          else if (intlTid >= 8000 && intlTid < 9000) intlKnobs = KNOBS_BLEAGUE;    // NBL Australia +8000 — B-League baseline
           else intlKnobs = { ...KNOBS_BLEAGUE };                                      // G-League/WNBA/unknown → B-League baseline
-          homeKnobs = awayKnobs = intlKnobs;
+          // NBA team uses standard preseason knobs; intl team uses their league-calibrated knobs
+          homeKnobs = isHomeIntl ? intlKnobs : KNOBS_PRESEASON;
+          awayKnobs = isHomeIntl ? KNOBS_PRESEASON : intlKnobs;
         } else {
           // Regular game: per-team standings context drives rotation depth + star MPG
           // Base is leagueBaseKnobs (commissioner rule changes) not raw KNOBS_DEFAULT
@@ -831,8 +864,8 @@ export class GameSimulator {
             // being treated as "eliminated" (82 reg-season games done → gamesRemaining=0, gb>0
             // → standingsProfile returns 12-deep exhibition-style rotation). All remaining
             // playoff teams are still competing — use tight, star-heavy playoff rotation.
-            homeKnobs = { ...leagueBaseKnobs, ...homeCtx, gbFromLeader: 0, gamesRemaining: 7 };
-            awayKnobs = { ...leagueBaseKnobs, ...awayCtx, gbFromLeader: 0, gamesRemaining: 7 };
+            homeKnobs = { ...leagueBaseKnobs, ...homeCtx, gbFromLeader: 0, gamesRemaining: 7, isPlayoffs: true };
+            awayKnobs = { ...leagueBaseKnobs, ...awayCtx, gbFromLeader: 0, gamesRemaining: 7, isPlayoffs: true };
           } else {
             homeKnobs = { ...leagueBaseKnobs, ...homeCtx };
             awayKnobs = { ...leagueBaseKnobs, ...awayCtx };

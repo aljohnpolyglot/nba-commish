@@ -323,8 +323,11 @@ export class AwardService {
         const score = winPct * 60 + Math.max(0, improvement) * 1.5 + Math.min(0, improvement) * 0.5;
 
         // Find coach name from staff data
-        const coachEntry = staff?.coaches?.find(c => c.team === t.name || c.team === t.abbrev);
-        const coachName = coachEntry?.name ?? `${t.name} Head Coach`;
+        const coachEntry = staff?.coaches?.find(c =>
+          c.team === t.name || c.team === t.abbrev ||
+          c.position === t.name || c.position === t.abbrev
+        );
+        const coachName = coachEntry?.name ?? `${t.abbrev} Coach`;
 
         return { coachName, team: t, score, odds: '', wins, losses, improvement };
       })

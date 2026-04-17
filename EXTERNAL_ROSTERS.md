@@ -13,15 +13,17 @@ External players share the same `NBAPlayer` type as NBA players. They are differ
 
 ### TID Offset Convention
 
-| League     | Offset | Example tid |
-|------------|--------|-------------|
-| NBA        | 0      | 0–29        |
-| Euroleague | +1000  | 1000–1999   |
-| PBA        | +2000  | 2000–2999   |
-| WNBA       | +3000  | 3000–3999   |
-| B-League   | +4000  | 4000–4999   |
-| Endesa     | +5000  | 5000–5999   |
-| G-League   | +6000  | 6000–6999   |
+| League       | Offset | Example tid |
+|--------------|--------|-------------|
+| NBA          | 0      | 0–29        |
+| Euroleague   | +1000  | 1000–1999   |
+| PBA          | +2000  | 2000–2999   |
+| WNBA         | +3000  | 3000–3999   |
+| B-League     | +4000  | 4000–4999   |
+| Endesa       | +5000  | 5000–5999   |
+| G-League     | +6000  | 6000–6999   |
+| ChinaCBA     | +7000  | 7000–7999   |
+| NBLAustralia | +8000  | 8000–8999   |
 
 **Why offsets matter:** Many NBA player IDs are small integers (0–30). Without offsets, `player.tid === 5` could mean "LA Lakers" or "B-League team #5" — leading to silent bugs in team lookups.
 
@@ -112,14 +114,16 @@ All external league attrs are **pre-scaled at fetch time** (`scaleRatings()` in 
 
 ### Multiplier Table
 
-| League     | Attr Mult | hgt Mult | OVR Source | Notes |
-|------------|-----------|----------|------------|-------|
-| Euroleague | 0.780     | —        | srcOvr × mult | Best non-NBA competition |
-| B-League   | 0.850     | —        | srcOvr × mult | Japan pro league |
-| PBA        | 0.540     | 0.85     | calcRawOvr × mult | Philippines; hgt nerfed (source heights inflated); source `ovr` field is flat ~122 for all players so calcRawOvr used instead |
-| WNBA       | —         | —        | item.ratings.ovr | Separate sim, not scaled |
-| G-League   | 0.780     | —        | srcOvr × mult | NBA developmental; bumped from 0.750 |
-| Endesa     | 0.830     | —        | srcOvr × mult | Liga ACB Spain; age<19 hidden; bumped from 0.800 |
+| League       | Attr Mult | hgt Mult | OVR Source | Notes |
+|--------------|-----------|----------|------------|-------|
+| Euroleague   | 0.850     | —        | srcOvr × mult | Best non-NBA competition; uses euroleagueratings + euroleaguebio from nba-store-data; 0.95 was too high (insane K2) |
+| B-League     | 0.850     | —        | srcOvr × mult | Japan pro league |
+| PBA          | 0.540     | 0.85     | calcRawOvr × mult | Philippines; hgt nerfed (source heights inflated); source `ovr` field is flat ~122 for all players so calcRawOvr used instead |
+| WNBA         | 1.000     | —        | srcOvr × mult | Uses wnbaratings + wnbabio1 + wnbabio2 from nba-store-data |
+| G-League     | 0.780     | —        | srcOvr × mult | NBA developmental; bumped from 0.750 |
+| Endesa       | 0.830     | —        | srcOvr × mult | Liga ACB Spain; age<19 hidden; bumped from 0.800 |
+| ChinaCBA     | 0.700     | —        | srcOvr × mult | Chinese Basketball Association; chinesecbaratings + chinacbabio |
+| NBLAustralia | 0.750     | —        | srcOvr × mult | National Basketball League Australia; nblaustraliaratings + nblaustraliabio |
 
 > **Multipliers scale BBGM attribute ratings** — they are NOT a direct proxy for league-vs-NBA win probability. The source BBGM exports were auto-generated independently (Python scripts + browser console) and not calibrated to real-world league strength. Multipliers bring attr values into the right sim range.
 
@@ -147,7 +151,9 @@ External players **do progress** (daily attr drift + seasonal breakouts/busts). 
 
 ## Preseason International Games
 
-**Status: Fully playable** (as of 2026-04-06). Updated 2026-04-09.
+**Status: Fully playable** (as of 2026-04-06). Updated 2026-04-15.
+
+**Supported leagues** (pickable in PreseasonInternationalModal): Euroleague, PBA, WNBA, B-League, G-League, Endesa, ChinaCBA, NBLAustralia
 
 Games scheduled via the **International Preseason** modal (`ADD_PRESEASON_INTERNATIONAL` action) are added to the schedule with `isPreseason: true` and the nonNBA team's `tid` as `homeTid` or `awayTid`.
 
@@ -224,18 +230,47 @@ When building a new player browsing view that passes a player to `PlayerBioView`
 
 This is expected for players not covered by the gist data. `PlayerBioView` still renders; it just shows stats-bar data with no photo or bio bullets. Not a bug — data coverage limitation.
 
-**The `playerLeague` classification in list views** must match the same logic as `status`:
+**The `playerLeague` classification in list views** must match the same logic as `status`. In `PlayerBiosView.tsx` this is a long ternary chain — every league must appear or players fall through to `'NBA'` (and filter as NBA players even when you select e.g. "China CBA"). Current correct chain:
 ```ts
 const playerLeague = 
-  p.status === 'Retired'    ? 'Retired'    :
-  p.status === 'WNBA'       ? 'WNBA'       :
-  p.status === 'PBA'        ? 'PBA'        :
-  p.status === 'Euroleague' ? 'Euroleague' :
-  p.status === 'B-League'   ? 'B-League'   : 'NBA';
+  p.status === 'Retired'      ? 'Retired'      :
+  p.status === 'WNBA'         ? 'WNBA'         :
+  p.status === 'PBA'          ? 'PBA'          :
+  p.status === 'Euroleague'   ? 'Euroleague'   :
+  p.status === 'B-League'     ? 'B-League'     :
+  p.status === 'G-League'     ? 'G-League'     :
+  p.status === 'Endesa'       ? 'Endesa'       :
+  p.status === 'ChinaCBA'     ? 'ChinaCBA'     :
+  p.status === 'NBLAustralia' ? 'NBLAustralia' : 'NBA';
 ```
-If a new league is added, add its `status` string here too or its players will be mis-bucketed into the NBA filter.
+If a new league is added, add it here too or its players will be invisible when filtering by that league.
 
-### Pitfall 8 (was 6): StarterService has its own copy of getScaledRating
+### Pitfall 9: `nonNBACache.ts` must have a GIST_URL entry for every league
+
+`externalRosterService.ts` fetches bio data at init and merges it into `player.imgURL` / `player.notes`. But `PlayerBioView` and `PlayerBiosView` **also** call `getNonNBAGistData(league, name)` from `nonNBACache.ts` to populate the hero stats bar (PTS/REB/AST/STL/BLK) and info grid (height, weight, country, school, birthdate, draft). This is a **separate fetch** from the init-time roster load.
+
+If a league's URL is missing from `GIST_URLS` in `nonNBACache.ts`, `fetchLeagueData` returns early and `getNonNBAGistData` always returns `null` for that league. Result: hero stats bar and info grid are completely blank in PlayerBioView, and the enriched columns (country, college, draft) are blank in PlayerBiosView.
+
+**Fix checklist when adding a new league:**
+1. Add the bio gist URL to `GIST_URLS` in `nonNBACache.ts`
+2. If the league has **two** bio files (like WNBA: wnbabio1 + wnbabio2), add `WNBA_BIO1` / `WNBA_BIO2` style keys and handle the merge in `fetchLeagueData`
+3. Add the league to the `isExternal` array in `PlayerBiosView.tsx` (line ~69)
+4. Add the league to the `useEffect` fetch list in `PlayerBiosView.tsx` (line ~28)
+
+**Leagues and their GIST_URLS keys (current):**
+
+| League | Key in GIST_URLS | Source |
+|--------|-----------------|--------|
+| PBA | `PBA` | gist.githubusercontent.com |
+| Euroleague | `Euroleague` | gist.githubusercontent.com |
+| B-League | `B-League` | gist.githubusercontent.com |
+| G-League | `G-League` | raw.githubusercontent.com nba-store-data |
+| Endesa | `Endesa` | raw.githubusercontent.com nba-store-data |
+| ChinaCBA | `ChinaCBA` | raw.githubusercontent.com nba-store-data / chinacbabio |
+| NBLAustralia | `NBLAustralia` | raw.githubusercontent.com nba-store-data / nblaustraliabio |
+| WNBA | `WNBA_BIO1` + `WNBA_BIO2` | raw.githubusercontent.com nba-store-data / wnbabio1 + wnbabio2 |
+
+### Pitfall 10: StarterService has its own copy of getScaledRating
 `StarterService.ts` duplicates the `getScaledRating` function from `helpers.ts`. They must be kept in sync. Any new league's stat multiplier goes in **both** files.
 
 ---
@@ -263,9 +298,45 @@ When choosing a sim multiplier for a new league, the question is: how much bette
 
 Reference points:
 - `0.54` = PBA (Philippine league, large gap from NBA)
+- `0.70` = ChinaCBA (Chinese Basketball Association)
+- `0.75` = NBLAustralia (National Basketball League Australia)
 - `0.78` = G-League (NBA developmental, best non-NBA domestic players)
-- `0.78` = Euroleague (top European competition, some NBA-caliber players)
-- `0.83` = Endesa/ACB Spain (comparable to Euroleague top tier)
+- `0.83` = Endesa/ACB Spain
+- `0.85` = Euroleague (top European; uses euroleagueratings + euroleaguebio from nba-store-data; 0.95 was too high)
 - `0.85` = B-League (Japan; elevated because source BBGM ratings are calibrated lower)
 
 OVR is computed from the source BBGM `ovr` field × multiplier for most leagues (preserves BBGM's position-aware diversity). PBA uses calcRawOvr (source `ovr` is flat). A player with BBGM `ovr` = 75 in the Euroleague export shows as ~59 in the sim (`75 × 0.78`).
+
+---
+
+## External League Economy (Session 22 Constants)
+
+Constants added in `src/constants.ts` for future external league contract/FA system:
+
+### Team Country Mapping
+`EUROLEAGUE_TEAM_COUNTRIES` maps TID → country (Greece, Germany, Turkey, France, Spain, Serbia, Russia, UAE, Italy, Israel, Lithuania). Used for home-country bias when players sign overseas.
+
+`ENDESA_TEAM_COUNTRY = 'Spain'` — all Endesa teams are Spanish.
+
+### Salary Scale (Dynamic from NBA Cap)
+`EXTERNAL_SALARY_SCALE` uses **percentages of NBA max contract**, not hardcoded amounts. Salaries inflate automatically with NBA cap:
+
+| League | Max (% of NBA max) | At $154M cap |
+|--------|-------------------|-------------|
+| Euroleague | 10.8% | ~$5.0M |
+| Endesa | 6.5% | ~$3.0M |
+| China CBA | 2.16% | ~$1.0M |
+| G-League | 1.08% | ~$500K |
+| NBL Australia | 1.08% | ~$500K |
+| B-League | 0.65% | ~$300K |
+| PBA | 0.43% | ~$200K |
+
+### Re-Signing & Nationality Bias
+- `EXTERNAL_RESIGN_PROBABILITY = 0.90` — 90% chance player re-signs with same league
+- `HOME_COUNTRY_BIAS = 0.60` — 60% chance to sign with home-country team
+- `NATIONALITY_LEAGUE_BIAS` — maps nationality to preferred league:
+  - Japan → B-League, Philippines → PBA, Australia → NBL, China → ChinaCBA
+  - Spain → Endesa, Greece/Turkey/Serbia/France/Germany/Italy/Lithuania/Israel/Russia → Euroleague
+
+### Implementation Plan (Not Yet Built)
+At external league rollover (Jun 30): expire contracts using scaled-down BBGM amounts, run external FA round with re-signing probability + nationality bias. External players whose contracts expire have 90% chance to re-sign same league, 10% to explore. Home country teams get 60% preference within the league.

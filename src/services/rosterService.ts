@@ -1,7 +1,69 @@
-import { ROSTER_URL, EXTRA_RETIRED_PLAYERS_URL } from '../constants';
+import { ROSTER_URL, EXTRA_RETIRED_PLAYERS_URL, CONTRACTS_URL } from '../constants';
 import type { NBAGMRosterData, NBAPlayer as Player, NBATeam as Team, DraftPick, NBAGMPlayer, GamePhase } from '../types';
 import JSONParserText from '../utils/JSONParserText';
 import { calculatePlayerOverallForYear, calculateTeamStrength } from '../utils/playerRatings';
+
+/**
+ * Normalize BBGM stat field names to the game's NBAGMStat field names.
+ * alexnoob roster uses short names (orbp, drbp, trbp, astp, stlp, blkp, usgp)
+ * while the engine uses camelCase (orbPct, drbPct, rebPct, astPct, stlPct, blkPct, usgPct).
+ */
+/** Extract a number from either a single number or a single-element array (BBGM stores game highs as arrays). */
+const arrFirst = (v: any): number =>
+  Array.isArray(v) ? (typeof v[0] === 'number' ? v[0] : 0) : (typeof v === 'number' ? v : 0);
+
+function normalizeBBGMStat(s: any): any {
+  return {
+    ...s,
+    // ── Percentage fields (BBGM short names → game camelCase) ──────────────
+    orbPct:  s.orbPct  ?? s.orbp,
+    drbPct:  s.drbPct  ?? s.drbp,
+    rebPct:  s.rebPct  ?? s.trbp,    // TRB%
+    astPct:  s.astPct  ?? s.astp,
+    stlPct:  s.stlPct  ?? s.stlp,
+    blkPct:  s.blkPct  ?? s.blkp,
+    tovPct:  s.tovPct  ?? s.tovp,
+    usgPct:  s.usgPct  ?? s.usgp,
+    // tsPct may be absent; leave undefined so PlayerBioStatsHistory computes it
+    tsPct:   s.tsPct,
+    per:     s.per,
+    ortg:    s.ortg,
+    drtg:    s.drtg,
+    obpm:    s.obpm,
+    dbpm:    s.dbpm,
+    bpm:     s.bpm   ?? ((s.obpm ?? 0) + (s.dbpm ?? 0)),
+    ows:     s.ows,
+    dws:     s.dws,
+    ws:      s.ws    ?? ((s.ows ?? 0) + (s.dws ?? 0)),
+    vorp:    s.vorp,
+    ewa:     s.ewa,
+    dd:      s.dd,
+    td:      s.td,
+    // ── Game highs: BBGM stores as single-element arrays, flatten to numbers ─
+    // Prefixed _gh_ so PlayerBioStatsHistory can read them as fallback
+    _ghMin:  arrFirst(s.minMax),
+    _ghFgm:  arrFirst(s.fgMax),
+    _ghFga:  arrFirst(s.fgaMax),
+    _ghTpm:  arrFirst(s.tpMax),
+    _ghTpa:  arrFirst(s.tpaMax),
+    _ghTwom: arrFirst(s['2pMax']),
+    _ghTwoa: arrFirst(s['2paMax']),
+    _ghFtm:  arrFirst(s.ftMax),
+    _ghFta:  arrFirst(s.ftaMax),
+    _ghOrb:  arrFirst(s.orbMax),
+    _ghDrb:  arrFirst(s.drbMax),
+    _ghTrb:  arrFirst(s.trbMax ?? s.rebMax),
+    _ghAst:  arrFirst(s.astMax),
+    _ghStl:  arrFirst(s.stlMax),
+    _ghBlk:  arrFirst(s.blkMax),
+    _ghBa:   arrFirst(s.baMax),
+    _ghTov:  arrFirst(s.tovMax),
+    _ghPf:   arrFirst(s.pfMax),
+    _ghPts:  arrFirst(s.ptsMax),
+    _ghPm:   arrFirst(s.pmMax),
+    _ghGmSc: arrFirst(s.gmscMax),
+  };
+}
 
 const findTeamInfoForSeason = (player: NBAGMPlayer, startYear: number, startPhase: GamePhase): { tid: number } => {
     if (startYear === 2025) {
@@ -62,10 +124,114 @@ const findTeamInfoForSeason = (player: NBAGMPlayer, startYear: number, startPhas
 };
 
 
+// ── Contract override helpers ─────────────────────────────────────────────────
+
+type ContractEntry = { season: string; option: string; guaranteed: number };
+type ContractsJSON = Record<string, ContractEntry[]>;
+
+/** Normalize a player name for loose matching: lowercase, no periods, no suffixes. */
+function normalizeContractName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\./g, '')
+    .replace(/\s+(jr|sr|ii|iii|iv|v)\.?$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Overlay real-world contract data from HoopsHype gist onto BBGM-parsed players.
+ *
+ * Rules (per gist docs):
+ *  - Duplicate season rows → use highest guaranteed value
+ *  - current season = "${startYear-1}-${String(startYear).slice(-2)}" (e.g. "2025-26" when startYear=2026)
+ *  - contract.amount stored in BBGM thousands (55224526 → 55224)
+ *  - exp = parseInt(lastSeason.split('-')[0]) + 1  (e.g. "2027-28" → 2028)
+ *  - hasPlayerOption / hasTeamOption from the LAST contracted season's option field
+ */
+function applyContractOverrides(players: Player[], contractsData: ContractsJSON, startYear: number): Player[] {
+  const currentSeasonStr = `${startYear - 1}-${String(startYear).slice(-2)}`;
+
+  // Build normalized-name → entries map
+  const contractMap = new Map<string, ContractEntry[]>();
+  for (const [name, entries] of Object.entries(contractsData)) {
+    if (!Array.isArray(entries)) continue;
+    const key = normalizeContractName(name);
+    // Deduplicate by season: keep LOWEST guaranteed per season.
+    // Duplicate rows for the same season are buyout remnants (the inflated number
+    // is the pre-buyout salary; the lower number is the actual cap hit after buyout).
+    const seasonBest = new Map<string, ContractEntry>();
+    for (const e of entries) {
+      const prev = seasonBest.get(e.season);
+      if (!prev || e.guaranteed < prev.guaranteed) seasonBest.set(e.season, e);
+    }
+    contractMap.set(key, Array.from(seasonBest.values()).sort((a, b) => a.season.localeCompare(b.season)));
+  }
+
+  return players.map(player => {
+    const key = normalizeContractName(player.name);
+    const entries = contractMap.get(key);
+    if (!entries || entries.length === 0) return player;
+
+    // Store ALL contract years for PlayerBioContractTab display (real per-season amounts).
+    // If an option year has blank salary (guaranteed===0), estimate from prior year + ~5% escalator.
+    const contractYears = entries.map((e, idx) => {
+      let guaranteed = e.guaranteed;
+      if (guaranteed <= 0 && (e.option === 'Team' || e.option === 'Player')) {
+        // Walk backwards to find last known salary, then apply ~5% compounded escalator
+        let base = 0;
+        let stepsBack = 0;
+        for (let j = idx - 1; j >= 0; j--) {
+          if (entries[j].guaranteed > 0) { base = entries[j].guaranteed; stepsBack = idx - j; break; }
+        }
+        if (base > 0) {
+          guaranteed = Math.round(base * Math.pow(1.05, stepsBack));
+        }
+      }
+      return { season: e.season, guaranteed, option: e.option };
+    });
+
+    // Current season salary (for cap engine)
+    const currentEntry = entries.find(e => e.season === currentSeasonStr);
+    if (!currentEntry || currentEntry.guaranteed <= 0) {
+      // No active current-season contract, but still store years for bio display
+      return { ...player, contractYears };
+    }
+
+    // All seasons from current onward (contract duration for exp computation)
+    const futureEntries = entries.filter(e => e.season >= currentSeasonStr);
+    if (futureEntries.length === 0) return { ...player, contractYears };
+
+    const lastEntry = futureEntries[futureEntries.length - 1];
+    // exp year: first part of last season string + 1  ("2027-28" → 2027+1=2028)
+    const expYear = parseInt(lastEntry.season.split('-')[0], 10) + 1;
+
+    const hasPlayerOption = lastEntry.option === 'Player';
+    const hasTeamOption   = lastEntry.option === 'Team';
+
+    return {
+      ...player,
+      contractYears,  // real per-season amounts for display
+      contract: {
+        ...(player.contract ?? {}),
+        amount: Math.round(currentEntry.guaranteed / 1000), // BBGM thousands
+        exp: expYear,
+        hasPlayerOption: hasPlayerOption || undefined,
+        hasTeamOption:   hasTeamOption   || undefined,
+      },
+    };
+  });
+}
+
 export const getRosterData = (startYear: number, startPhase: GamePhase): Promise<{ players: Player[], teams: Team[], teamNameMap: Map<string, Team>, availableYears: number[], draftPicks: DraftPick[] }> => {
     return new Promise((resolve, reject) => {
         console.log(`RosterService: Fetching MASTER roster to process for ${startYear}...`);
         
+        // Fetch contracts data in parallel
+        const contractsPromise = fetch(CONTRACTS_URL)
+            .then(res => res.json())
+            .catch(() => ({} as ContractsJSON));
+
         // Fetch extra retired players in parallel
         const extraRetiredPromise = fetch(EXTRA_RETIRED_PLAYERS_URL)
             .then(res => {
@@ -216,6 +382,10 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                                 }
                             }
 
+                            // Detect two-way contracts at initialization — BBGM stores two-way salary as 625 (thousands = $625K)
+                            // Use < 800 threshold for grace (some may be slightly above exact 625)
+                            // Mark immediately so roster-trim logic doesn't count them against the 15-man standard cap
+                            const isTwoWay = !isProspect && !isRetired && (p.contract?.amount ?? 0) > 0 && (p.contract?.amount ?? 9999) < 800 && teamInfo.tid >= 0;
                             return {
                                 ...p,
                                 name: playerName,
@@ -229,7 +399,10 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                                 status: isProspect ? 'Prospect' : (isRetired ? 'Retired' : (teamInfo.tid === -1 ? 'Free Agent' : 'Active')),
                                 diedYear: p.diedYear,
                                 hof: p.hof,
-                                jerseyNumber
+                                jerseyNumber,
+                                twoWay: isTwoWay || undefined,
+                                // Normalize BBGM short stat field names → game field names
+                                stats: (p.stats || []).map(normalizeBBGMStat),
                             } as any;
                         })
                         .filter((p): p is Player => p !== null);  
@@ -281,8 +454,10 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
 
                         const draftPicks = (data.draftPicks || []).filter(p => p.season >= startYear);
                         
-                        console.log(`RosterService: Successfully processed ${processedPlayers.length} players and ${processedTeams.length} teams for the ${startYear} season.`);
-                        resolve({ players: processedPlayers, teams: processedTeams, teamNameMap, availableYears, draftPicks });
+                        const contractsData: ContractsJSON = await contractsPromise;
+                        const finalPlayers = applyContractOverrides(processedPlayers, contractsData, startYear);
+                        console.log(`RosterService: Successfully processed ${finalPlayers.length} players and ${processedTeams.length} teams for the ${startYear} season.`);
+                        resolve({ players: finalPlayers, teams: processedTeams, teamNameMap, availableYears, draftPicks });
                     } else {
                        parser.write(decoder.decode(value, { stream: true }));
                        push();

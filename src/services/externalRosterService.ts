@@ -4,6 +4,18 @@ import {
   calculateLeagueOverall,
 } from './logic/leagueOvr';
 
+/** Returns true if the URL is ProBallers' "no photo" placeholder. Treat as missing. */
+function isDefaultProballers(url: string | undefined): boolean {
+  return !!url && url.includes('head-par-defaut');
+}
+
+/** Returns the imgURL from ProBallers ratings gist, treating the default placeholder as absent. */
+function resolveImgURL(itemUrl: string | undefined, bioImage?: string): string | undefined {
+  const ratingsPng = itemUrl && itemUrl.trim() !== '' && !isDefaultProballers(itemUrl) ? itemUrl : undefined;
+  const bioImg = bioImage && bioImage.trim() !== '' && !isDefaultProballers(bioImage) ? bioImage : undefined;
+  return ratingsPng ?? bioImg;
+}
+
 // Attributes that are physical/skill-ceiling and must never be scaled.
 // hgt = physical measurement.
 // ft = free-throw skill — shooting form doesn't change by league strength;
@@ -73,24 +85,31 @@ function computeLeagueOvr(rawRatings: any, league: string): number {
 }
 
 export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], teams: NonNBATeam[] }> => {
-    // ... existing Euroleague logic ...
-    console.log("RosterService: Fetching Euroleague roster...");
+    console.log('RosterService: Fetching Euroleague roster (euroleagueratings + euroleaguebio)...');
     try {
-        const response = await fetch('https://gist.githubusercontent.com/aljohnpolyglot/7ec945dd1258cfb914cd0f5f1e420100/raw/375f3a731a3eb2a0eda1b1ff9941f610d98df8ad/Euroleague_Roster_2025');
-        if (!response.ok) {
-            console.error('Failed to fetch Euroleague roster');
+        const BASE = 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/';
+        const [ratingsRes, bioRes] = await Promise.all([
+            fetch(BASE + 'euroleagueratings'),
+            fetch(BASE + 'euroleaguebio'),
+        ]);
+        if (!ratingsRes.ok) {
+            console.error('Failed to fetch Euroleague ratings');
             return { players: [], teams: [] };
         }
-        const data = await response.json();
-        
+
+        const data = await ratingsRes.json();
+        const bioArr: any[] = bioRes.ok ? await bioRes.json() : [];
+
+        const bioMap = new Map<string, any>();
+        bioArr.forEach((b: any) => { if (b.name) bioMap.set(b.name.toLowerCase(), b); });
+
         const players: NBAPlayer[] = [];
         const teams: NonNBATeam[] = [];
-        
-        // Parse Teams if available
+
         if (data.teams && Array.isArray(data.teams)) {
             data.teams.forEach((t: any) => {
                 teams.push({
-                    tid: t.tid + 1000, // Offset Euroleague by 1000 (avoids collision with PBA/WNBA/B-League)
+                    tid: t.tid + 1000,
                     cid: t.cid,
                     did: t.did,
                     region: t.region,
@@ -100,59 +119,46 @@ export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], t
                     stadiumCapacity: t.stadiumCapacity,
                     imgURL: t.imgURL,
                     colors: t.colors,
-                    league: 'Euroleague'
+                    league: 'Euroleague',
                 });
             });
         }
 
-        // The data might be an object with a 'players' array (standard BBGM export)
-        // or just an array (if it was a raw list).
-        // Based on user input, it's an object with "players": [...]
-        
         const sourceList = Array.isArray(data) ? data : (data.players || []);
+        sourceList.forEach((item: any) => {
+            let playerName = item.name;
+            if (!playerName && item.firstName && item.lastName) playerName = `${item.firstName} ${item.lastName}`;
+            if (!playerName) return;
+            if (!item.ratings) return;
 
-        if (Array.isArray(sourceList)) {
-            sourceList.forEach((item: any) => {
-                // Construct name if missing
-                let playerName = item.name;
-                if (!playerName && item.firstName && item.lastName) {
-                    playerName = `${item.firstName} ${item.lastName}`;
-                }
+            // Rename any Euroleague Devin Booker to avoid collision with NBA player
+            if (playerName === 'Devin Booker') playerName = 'Devin Rydale Booker';
 
-                // Rename Euroleague Devin Booker to his full name to avoid confusion with NBA player
-                if (playerName === 'Devin Booker') {
-                    console.log(`🏀 DEBUG: Renaming Euroleague Devin Booker (born ${item.born?.year}) → "Devin Rydale Booker"`);
-                    playerName = 'Devin Rydale Booker';
-                }
+            const bio = bioMap.get(playerName.toLowerCase());
+            const scaledRatings = scaleRatings(item.ratings || [], LEAGUE_MULTIPLIERS['Euroleague']);
+            const player: NBAPlayer = {
+                internalId: `euro-${playerName.replace(/\s+/g, '')}-${(item.tid ?? 0) + 1000}`,
+                tid: item.tid !== undefined ? item.tid + 1000 : -1,
+                name: playerName,
+                overallRating: computeLeagueOvr(item.ratings?.[0], 'Euroleague'),
+                ratings: scaledRatings,
+                stats: item.stats || [],
+                imgURL: resolveImgURL(item.imgURL, bio?.image),
+                pos: item.pos || 'GF',
+                hgt: item.hgt,
+                weight: item.weight,
+                born: item.born,
+                draft: item.draft,
+                college: item.college,
+                contract: item.contract,
+                injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
+                status: 'Euroleague',
+                hof: false,
+                jerseyNumber: item.stats?.length > 0 ? String(item.stats[item.stats.length - 1].jerseyNumber || '') : undefined,
+            };
+            players.push(player);
+        });
 
-                // Check if it's a player object (has name/constructed name, ratings)
-                if (playerName && item.ratings) {
-                        const scaledRatings = scaleRatings(item.ratings || [], LEAGUE_MULTIPLIERS['Euroleague']);
-                     const player: NBAPlayer = {
-                        // STEP 2: Use the 'euro-' prefix + tid to make his ID totally unique
-                        internalId: `euro-${playerName.replace(/\s+/g, '')}-${item.tid + 1000}`,
-                        tid: item.tid !== undefined ? item.tid + 1000 : -1, // Offset Euroleague by 1000
-                        name: playerName,
-                        overallRating: computeLeagueOvr(item.ratings?.[0], 'Euroleague'),
-                        ratings: scaledRatings,
-                        stats: item.stats || [],
-                        imgURL: item.imgURL && item.imgURL.trim() !== '' ? item.imgURL : undefined, // Handle empty string
-                        pos: item.pos || 'GF',
-                        hgt: item.hgt,
-                        weight: item.weight,
-                        born: item.born,
-                        draft: item.draft,
-                        college: item.college,
-                        contract: item.contract,
-                        injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
-                        status: 'Euroleague',
-                        hof: false,
-                        jerseyNumber: item.stats && item.stats.length > 0 ? String(item.stats[item.stats.length - 1].jerseyNumber || '') : undefined
-                    };
-                    players.push(player);
-                }
-            });
-        }
         console.log(`RosterService: Successfully processed ${players.length} Euroleague players and ${teams.length} teams.`);
         return { players, teams };
     } catch (error) {
@@ -242,7 +248,7 @@ export const fetchPBARoster = async (): Promise<{ players: NBAPlayer[], teams: N
                         overallRating: computeLeagueOvr(item.ratings?.[0], 'PBA'),
                         ratings: scaledRatings,
                         stats: item.stats || [],
-                        imgURL: item.imgURL && item.imgURL.trim() !== '' ? item.imgURL : undefined, // Handle empty string
+                        imgURL: resolveImgURL(item.imgURL),
                         pos: item.pos || 'GF',
                         hgt: item.hgt,
                         weight: item.weight,
@@ -270,34 +276,36 @@ export const fetchPBARoster = async (): Promise<{ players: NBAPlayer[], teams: N
 };
 
 export const fetchWNBARoster = async (): Promise<{ players: NBAPlayer[], teams: NonNBATeam[] }> => {
-    // ... existing WNBA logic ...
-    console.log("RosterService: Fetching WNBA roster...");
+    console.log("RosterService: Fetching WNBA roster (wnbaratings + wnbabio1 + wnbabio2)...");
     try {
-        // Since we can't easily hit dropbox from client without CORS issues potentially, 
-        // we'll try. If it fails, we might need a proxy or the user to provide a different URL.
-        // However, the user provided it, so let's try.
-        // Actually, dropbox 'dl=0' usually shows a page. 'dl=1' downloads. 
-        // The user provided link has `dl=0`. I should probably change it to `dl=1` or `raw=1` for direct JSON.
-        // User link: https://dl.dropboxusercontent.com/scl/fi/0wrm1ivgz90bzt9j0mypq/2024-WNBA-Roster.json?rlkey=2slrtptypwssawgzktrxhbaoz&st=swzo3zs8&dl=0
-        
-        const url = 'https://gist.githubusercontent.com/aljohnpolyglot/cbad21a4f937711896aed7c75d7a9616/raw/993c01df1529bbbf72b98632ab8d01c0fd022dd7/WNBA_Roster_2025';
-        
-        const response = await fetch(url);
-        if (!response.ok) {
-             console.error('Failed to fetch WNBA roster');
-             return { players: [], teams: [] };
+        const BASE = 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/';
+        const [ratingsRes, bio1Res, bio2Res] = await Promise.all([
+            fetch(BASE + 'wnbaratings'),
+            fetch(BASE + 'wnbabio1'),
+            fetch(BASE + 'wnbabio2'),
+        ]);
+        if (!ratingsRes.ok) {
+            console.error('Failed to fetch WNBA ratings');
+            return { players: [], teams: [] };
         }
-        const data = await response.json();
-        
-        // Structure: { version: 60, meta: { name: "WNBA" }, players: [...] }
+
+        const ratingsData = await ratingsRes.json();
+        const bio1Arr: any[] = bio1Res.ok ? await bio1Res.json() : [];
+        const bio2Arr: any[] = bio2Res.ok ? await bio2Res.json() : [];
+
+        // Build bio lookup: bio1 is primary, bio2 fills gaps
+        const bioMap = new Map<string, any>();
+        [...bio2Arr, ...bio1Arr].forEach((b: any) => {
+            if (b.name) bioMap.set(b.name.toLowerCase(), b);
+        });
+
         const players: NBAPlayer[] = [];
         const teams: NonNBATeam[] = [];
 
-        // Parse Teams if available
-        if (data.teams && Array.isArray(data.teams)) {
-            data.teams.forEach((t: any) => {
+        if (ratingsData.teams && Array.isArray(ratingsData.teams)) {
+            ratingsData.teams.forEach((t: any) => {
                 teams.push({
-                    tid: t.tid + 3000, // Offset WNBA by 3000
+                    tid: t.tid + 3000,
                     cid: t.cid,
                     did: t.did,
                     region: t.region,
@@ -307,37 +315,45 @@ export const fetchWNBARoster = async (): Promise<{ players: NBAPlayer[], teams: 
                     stadiumCapacity: t.stadiumCapacity,
                     imgURL: t.imgURL,
                     colors: t.colors,
-                    league: 'WNBA'
+                    league: 'WNBA',
                 });
             });
         }
-        
-        if (data.players && Array.isArray(data.players)) {
-            data.players.forEach((item: any, index: number) => {
-                const player: NBAPlayer = {
-                    internalId: `wnba-${index}-${item.firstName}-${item.lastName}`,
-                    tid: item.tid !== undefined ? item.tid + 3000 : -100, // Offset WNBA by 3000
-                    name: `${item.firstName} ${item.lastName}`,
-                    overallRating: item.ratings?.[0]?.ovr || 70, 
-                    ratings: item.ratings || [],
-                    stats: [],
-                    imgURL: item.imgURL,
-                    pos: item.pos || 'GF',
-                    hgt: item.hgt,
-                    weight: item.weight,
-                    born: item.born,
-                    contract: item.contract,
-                    injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
-                    status: 'WNBA',
-                    hof: false,
-                    jerseyNumber: item.stats && item.stats.length > 0 ? String(item.stats[item.stats.length - 1].jerseyNumber || '') : undefined
-                };
-                players.push(player);
-            });
-        }
+
+        const sourceList: any[] = Array.isArray(ratingsData) ? ratingsData : (ratingsData.players || []);
+        sourceList.forEach((item: any, index: number) => {
+            let playerName = item.name;
+            if (!playerName && item.firstName && item.lastName) playerName = `${item.firstName} ${item.lastName}`;
+            if (!playerName) return;
+            if (!item.ratings) return;
+
+            const bio = bioMap.get(playerName.toLowerCase());
+            const scaledRatings = scaleRatings(item.ratings || [], LEAGUE_MULTIPLIERS['WNBA'] ?? 1.0);
+
+            const player: NBAPlayer = {
+                internalId: `wnba-${item.tid ?? index}-${playerName.replace(/\s+/g, '')}-${item.born?.year || '0'}`,
+                tid: item.tid !== undefined ? item.tid + 3000 : -100,
+                name: playerName,
+                overallRating: computeLeagueOvr(item.ratings?.[0], 'WNBA'),
+                ratings: scaledRatings,
+                stats: item.stats || [],
+                imgURL: resolveImgURL(item.imgURL, bio?.image),
+                pos: item.pos || 'GF',
+                hgt: item.hgt,
+                weight: item.weight,
+                born: item.born,
+                draft: item.draft,
+                contract: item.contract,
+                injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
+                status: 'WNBA',
+                hof: false,
+                jerseyNumber: item.stats?.length > 0 ? String(item.stats[item.stats.length - 1].jerseyNumber || '') : undefined,
+            };
+            players.push(player);
+        });
+
         console.log(`RosterService: Successfully processed ${players.length} WNBA players and ${teams.length} teams.`);
         return { players, teams };
-
     } catch (error) {
         console.error('Error fetching WNBA roster:', error);
         return { players: [], teams: [] };
@@ -347,12 +363,26 @@ export const fetchWNBARoster = async (): Promise<{ players: NBAPlayer[], teams: 
 export const fetchBLeagueRoster = async (): Promise<{ players: NBAPlayer[], teams: NonNBATeam[] }> => {
     console.log("RosterService: Fetching B-League roster...");
     try {
-        const response = await fetch('https://gist.githubusercontent.com/aljohnpolyglot/d15d468522ee6709ce2a10394a47c329/raw/72e7df921daffea43889135396b6ac5af6ad8393/bleaguejapanbbgm');
+        const BASE = 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/';
+        const [response, bioRes] = await Promise.all([
+            fetch('https://gist.githubusercontent.com/aljohnpolyglot/d15d468522ee6709ce2a10394a47c329/raw/72e7df921daffea43889135396b6ac5af6ad8393/bleaguejapanbbgm'),
+            fetch(BASE + 'bleaguebio').catch(() => null),
+        ]);
         if (!response.ok) {
             console.error('Failed to fetch B-League roster');
             return { players: [], teams: [] };
         }
         const data = await response.json();
+
+        // Build bio lookup for portrait fallback
+        const bioMap = new Map<string, any>();
+        if (bioRes?.ok) {
+            try {
+                const bioArr: any[] = await bioRes.json();
+                (Array.isArray(bioArr) ? bioArr : (bioArr as any).players ?? [])
+                    .forEach((b: any) => { if (b.name) bioMap.set(b.name.toLowerCase(), b); });
+            } catch (_) {}
+        }
 
         const players: NBAPlayer[] = [];
         const teams: NonNBATeam[] = [];
@@ -387,6 +417,7 @@ export const fetchBLeagueRoster = async (): Promise<{ players: NBAPlayer[], team
                 }
 
                 if (playerName && item.ratings) {
+                    const bio = bioMap.get(playerName.toLowerCase());
                     const scaledRatings = scaleRatings(item.ratings || [], LEAGUE_MULTIPLIERS['B-League']);
                     const player: NBAPlayer = {
                         internalId: `bleague-${item.tid}-${playerName.replace(/\s+/g, '')}-${item.born?.year || '0'}`,
@@ -395,7 +426,7 @@ export const fetchBLeagueRoster = async (): Promise<{ players: NBAPlayer[], team
                         overallRating: computeLeagueOvr(item.ratings?.[0], 'B-League'),
                         ratings: scaledRatings,
                         stats: item.stats || [],
-                        imgURL: item.imgURL && item.imgURL.trim() !== '' ? item.imgURL : undefined,
+                        imgURL: resolveImgURL(item.imgURL, bio?.image),
                         pos: item.pos || 'GF',
                         hgt: item.hgt ? Math.round(item.hgt / 2.54) : item.hgt,
                         weight: item.weight,
@@ -492,7 +523,7 @@ export const fetchGLeagueRoster = async (): Promise<{ players: NBAPlayer[], team
                 overallRating: computeLeagueOvr(item.ratings?.[0], 'G-League'),
                 ratings: scaledRatings,
                 stats: item.stats || [],
-                imgURL: bio?.image && bio.image.trim() !== '' ? bio.image : (item.imgURL || undefined),
+                imgURL: resolveImgURL(item.imgURL, bio?.image),
                 pos: item.pos || 'GF',
                 hgt: item.hgt,
                 weight: item.weight,
@@ -591,7 +622,7 @@ export const fetchEndesaRoster = async (): Promise<{ players: NBAPlayer[], teams
                 overallRating: computeLeagueOvr(item.ratings?.[0], 'Endesa'),
                 ratings: scaledRatings,
                 stats: item.stats || [],
-                imgURL: bio?.image && bio.image.trim() !== '' ? bio.image : (item.imgURL || undefined),
+                imgURL: resolveImgURL(item.imgURL, bio?.image),
                 pos: item.pos || 'GF',
                 hgt: item.hgt,
                 weight: item.weight,
@@ -610,6 +641,158 @@ export const fetchEndesaRoster = async (): Promise<{ players: NBAPlayer[], teams
         return { players, teams };
     } catch (error) {
         console.error('Error fetching Endesa roster:', error);
+        return { players: [], teams: [] };
+    }
+};
+
+export const fetchChinaCBARoster = async (): Promise<{ players: NBAPlayer[], teams: NonNBATeam[] }> => {
+    console.log('RosterService: Fetching China CBA roster...');
+    try {
+        const BASE = 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/';
+        const [ratingsRes, bioRes] = await Promise.all([
+            fetch(BASE + 'chinesecbaratings'),
+            fetch(BASE + 'chinacbabio'),
+        ]);
+        if (!ratingsRes.ok) { console.error('Failed to fetch China CBA ratings'); return { players: [], teams: [] }; }
+
+        const ratingsData = await ratingsRes.json();
+        const bioArr: any[] = bioRes.ok ? await bioRes.json() : [];
+
+        const bioMap = new Map<string, any>();
+        bioArr.forEach((b: any) => { if (b.name) bioMap.set(b.name.toLowerCase(), b); });
+
+        const players: NBAPlayer[] = [];
+        const teams: NonNBATeam[] = [];
+
+        if (ratingsData.teams && Array.isArray(ratingsData.teams)) {
+            ratingsData.teams.forEach((t: any) => {
+                teams.push({
+                    tid: t.tid + 7000,
+                    cid: t.cid,
+                    did: t.did,
+                    region: t.region,
+                    name: t.name,
+                    abbrev: t.abbrev,
+                    pop: t.pop || 1.0,
+                    stadiumCapacity: t.stadiumCapacity,
+                    imgURL: t.imgURL,
+                    colors: t.colors,
+                    league: 'China CBA',
+                });
+            });
+        }
+
+        const sourceList: any[] = Array.isArray(ratingsData) ? ratingsData : (ratingsData.players || []);
+        sourceList.forEach((item: any) => {
+            let playerName = item.name;
+            if (!playerName && item.firstName && item.lastName) playerName = `${item.firstName} ${item.lastName}`;
+            if (!playerName) return;
+            if (!item.ratings) return;
+
+            const bio = bioMap.get(playerName.toLowerCase());
+            const scaledRatings = scaleRatings(item.ratings || [], LEAGUE_MULTIPLIERS['China CBA']);
+            const player: NBAPlayer = {
+                internalId: `chinacba-${item.tid}-${playerName.replace(/\s+/g, '')}-${item.born?.year || '0'}`,
+                tid: item.tid !== undefined ? item.tid + 7000 : -1,
+                name: playerName,
+                overallRating: computeLeagueOvr(item.ratings?.[0], 'China CBA'),
+                ratings: scaledRatings,
+                stats: item.stats || [],
+                imgURL: resolveImgURL(item.imgURL, bio?.image),
+                pos: item.pos || 'GF',
+                hgt: item.hgt,
+                weight: item.weight,
+                born: item.born,
+                draft: item.draft,
+                contract: item.contract,
+                injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
+                status: 'China CBA',
+                hof: false,
+                jerseyNumber: item.stats?.length > 0 ? String(item.stats[item.stats.length - 1].jerseyNumber || '') : undefined,
+            };
+            players.push(player);
+        });
+
+        console.log(`RosterService: Successfully processed ${players.length} China CBA players and ${teams.length} teams.`);
+        return { players, teams };
+    } catch (error) {
+        console.error('Error fetching China CBA roster:', error);
+        return { players: [], teams: [] };
+    }
+};
+
+export const fetchNBLAustraliaRoster = async (): Promise<{ players: NBAPlayer[], teams: NonNBATeam[] }> => {
+    console.log('RosterService: Fetching NBL Australia roster...');
+    try {
+        const BASE = 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/';
+        const [ratingsRes, bioRes] = await Promise.all([
+            fetch(BASE + 'nblaustraliaratings'),
+            fetch(BASE + 'nblaustraliabio'),
+        ]);
+        if (!ratingsRes.ok) { console.error('Failed to fetch NBL Australia ratings'); return { players: [], teams: [] }; }
+
+        const ratingsData = await ratingsRes.json();
+        const bioArr: any[] = bioRes.ok ? await bioRes.json() : [];
+
+        const bioMap = new Map<string, any>();
+        bioArr.forEach((b: any) => { if (b.name) bioMap.set(b.name.toLowerCase(), b); });
+
+        const players: NBAPlayer[] = [];
+        const teams: NonNBATeam[] = [];
+
+        if (ratingsData.teams && Array.isArray(ratingsData.teams)) {
+            ratingsData.teams.forEach((t: any) => {
+                teams.push({
+                    tid: t.tid + 8000,
+                    cid: t.cid,
+                    did: t.did,
+                    region: t.region,
+                    name: t.name,
+                    abbrev: t.abbrev,
+                    pop: t.pop || 1.0,
+                    stadiumCapacity: t.stadiumCapacity,
+                    imgURL: t.imgURL,
+                    colors: t.colors,
+                    league: 'NBL Australia',
+                });
+            });
+        }
+
+        const sourceList: any[] = Array.isArray(ratingsData) ? ratingsData : (ratingsData.players || []);
+        sourceList.forEach((item: any) => {
+            let playerName = item.name;
+            if (!playerName && item.firstName && item.lastName) playerName = `${item.firstName} ${item.lastName}`;
+            if (!playerName) return;
+            if (!item.ratings) return;
+
+            const bio = bioMap.get(playerName.toLowerCase());
+            const scaledRatings = scaleRatings(item.ratings || [], LEAGUE_MULTIPLIERS['NBL Australia']);
+            const player: NBAPlayer = {
+                internalId: `nblauss-${item.tid}-${playerName.replace(/\s+/g, '')}-${item.born?.year || '0'}`,
+                tid: item.tid !== undefined ? item.tid + 8000 : -1,
+                name: playerName,
+                overallRating: computeLeagueOvr(item.ratings?.[0], 'NBL Australia'),
+                ratings: scaledRatings,
+                stats: item.stats || [],
+                imgURL: resolveImgURL(item.imgURL, bio?.image),
+                pos: item.pos || 'GF',
+                hgt: item.hgt,
+                weight: item.weight,
+                born: item.born,
+                draft: item.draft,
+                contract: item.contract,
+                injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
+                status: 'NBL Australia',
+                hof: false,
+                jerseyNumber: item.stats?.length > 0 ? String(item.stats[item.stats.length - 1].jerseyNumber || '') : undefined,
+            };
+            players.push(player);
+        });
+
+        console.log(`RosterService: Successfully processed ${players.length} NBL Australia players and ${teams.length} teams.`);
+        return { players, teams };
+    } catch (error) {
+        console.error('Error fetching NBL Australia roster:', error);
         return { players: [], teams: [] };
     }
 };

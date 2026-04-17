@@ -98,7 +98,7 @@ export class SocialEngine {
         if (result.injuries) {
             for (const injury of result.injuries) {
                 const player = players.find(p => p.internalId === injury.playerId);
-                if (!player || ['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa'].includes(player.status || '')) continue;
+                if (!player || ['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) continue;
 
                 const team     = player.tid === homeTeam.id ? homeTeam : awayTeam;
                 const opponent = player.tid === homeTeam.id ? awayTeam : homeTeam;

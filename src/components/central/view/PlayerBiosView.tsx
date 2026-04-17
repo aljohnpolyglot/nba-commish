@@ -25,7 +25,7 @@ export const PlayerBiosView: React.FC = () => {
   const [gistVersion, setGistVersion] = useState(0);
 
   useEffect(() => {
-    (['B-League', 'PBA', 'Euroleague', 'G-League', 'Endesa'] as const).forEach(async (l) => {
+    (['B-League', 'PBA', 'Euroleague', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'WNBA'] as any[]).forEach(async (l) => {
       await ensureNonNBAFetched(l);
       setGistVersion(v => v + 1);
     });
@@ -66,7 +66,7 @@ export const PlayerBiosView: React.FC = () => {
         const displayPot = convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), lastRating?.hgt ?? 50, lastRating?.tp);
 
         // For external leagues, augment with gist data (loaded async)
-        const isExternal = ['B-League', 'PBA', 'Euroleague', 'G-League', 'Endesa'].includes(p.status || '');
+        const isExternal = ['B-League', 'PBA', 'Euroleague', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'WNBA'].includes(p.status || '');
         const gist = isExternal ? getNonNBAGistData(p.status!, p.name) : null;
 
         // College: player object → gist school field
@@ -95,7 +95,7 @@ export const PlayerBiosView: React.FC = () => {
             ? new Set(p.stats.filter((s: any) => !s.playoffs).map((s: any) => s.season)).size
             : null);
 
-        const playerLeague = p.status === 'Retired' ? 'Retired' : p.status === 'WNBA' ? 'WNBA' : p.status === 'PBA' ? 'PBA' : p.status === 'Euroleague' ? 'Euroleague' : p.status === 'B-League' ? 'B-League' : p.status === 'G-League' ? 'G-League' : p.status === 'Endesa' ? 'Endesa' : 'NBA';
+        const playerLeague = p.status === 'Retired' ? 'Retired' : p.status === 'WNBA' ? 'WNBA' : p.status === 'PBA' ? 'PBA' : p.status === 'Euroleague' ? 'Euroleague' : p.status === 'B-League' ? 'B-League' : p.status === 'G-League' ? 'G-League' : p.status === 'Endesa' ? 'Endesa' : p.status === 'China CBA' ? 'China CBA' : p.status === 'NBL Australia' ? 'NBL Australia' : 'NBA';
         const isProspect = p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect';
         const teamObj = isProspect ? null : (teams.find(t => t.id === p.tid) || nonNBATeams.find(t => t.tid === p.tid));
         const prospectCollege = isProspect
@@ -114,7 +114,9 @@ export const PlayerBiosView: React.FC = () => {
           teamAbbrev: isProspect ? (prospectCollege || 'DRAFT') : (teamObj?.abbrev || (p.tid === -1 ? 'FA' : 'RET')),
           formattedHeight: p.hgt ? formatHeight(p.hgt) : '—',
           draftStr: draftYear ? `${draftYear}` : '—',
-          pickStr: draftRound && draftPick ? `R${draftRound}P${draftPick}` : '—',
+          // Display as "R-P" (e.g. "1-15", "2-1"), sort as 1-60 (R2P1 = 31)
+          pickNum: draftRound && draftPick ? (draftRound === 1 ? draftPick : 30 + draftPick) : null,
+          pickStr: draftRound && draftPick ? `${draftRound}-${draftPick}` : '—',
           age: p.born?.year ? simYear - p.born.year : '—',
         };
       });
@@ -165,7 +167,7 @@ export const PlayerBiosView: React.FC = () => {
       if (sortConfig.key === 'team') { av = a.teamAbbrev; bv = b.teamAbbrev; }
       else if (sortConfig.key === 'formattedHeight') { av = a.hgt || 0; bv = b.hgt || 0; }
       else if (sortConfig.key === 'formattedWeight') { av = a.weight || 0; bv = b.weight || 0; }
-      else if (sortConfig.key === 'pickStr') { av = (a.draft?.round || 99) * 100 + (a.draft?.pick || 99); bv = (b.draft?.round || 99) * 100 + (b.draft?.pick || 99); }
+      else if (sortConfig.key === 'pickStr') { av = (a as any).pickNum ?? 999; bv = (b as any).pickNum ?? 999; }
       else if (sortConfig.key === 'draftStr') { av = a.draft?.year || 0; bv = b.draft?.year || 0; }
       else if (sortConfig.key === 'name') { av = a.name.toLowerCase(); bv = b.name.toLowerCase(); }
       else { av = (a as any)[sortConfig.key] ?? 0; bv = (b as any)[sortConfig.key] ?? 0; }
@@ -236,7 +238,7 @@ export const PlayerBiosView: React.FC = () => {
       {/* Filters row */}
       <div className="px-4 md:px-6 py-2.5 border-b border-slate-800/60 bg-[#1a1e26] flex flex-wrap items-center gap-2 shrink-0">
         {[
-          { val: league, set: (v: string) => { setLeague(v); setTeamFilter(''); setPage(1); }, opts: [['All','All Leagues'],['NBA','NBA'],['Retired','Retired'],['WNBA','WNBA'],['PBA','PBA'],['Euroleague','Euroleague'],['B-League','B-League'],['G-League','G-League'],['Endesa','Endesa']] },
+          { val: league, set: (v: string) => { setLeague(v); setTeamFilter(''); setPage(1); }, opts: [['All','All Leagues'],['NBA','NBA'],['Retired','Retired'],['WNBA','WNBA'],['PBA','PBA'],['Euroleague','Euroleague'],['B-League','B-League'],['G-League','G-League'],['Endesa','Endesa'],['China CBA','China CBA'],['NBL Australia','NBL Australia']] },
         ].map((f, i) => (
           <div key={i} className="relative">
             <select value={f.val} onChange={e => f.set(e.target.value)} className="appearance-none bg-slate-800 border border-slate-700/60 rounded-lg py-1.5 pl-3 pr-7 text-xs font-medium text-white focus:outline-none">

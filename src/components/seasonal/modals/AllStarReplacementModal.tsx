@@ -31,7 +31,7 @@ export const AllStarReplacementModal: React.FC<AllStarReplacementModalProps> = (
   const [search, setSearch] = useState('');
 
   // Non-NBA statuses that should never appear as All-Star candidates
-  const INELIGIBLE_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa']);
+  const INELIGIBLE_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
 
   // All players in the league not already in the All-Star game — sorted by OVR
   const candidateRanking = useMemo(() => {

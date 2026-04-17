@@ -87,13 +87,32 @@ export const EconomyTeamsSection = ({ props }: { props: any }) => {
                                 </div>
                                 <span className="text-[10px] font-bold text-emerald-400">Total: {props.maxStandardPlayersPerTeam + props.maxTwoWayPlayersPerTeam}</span>
                             </div>
-                            <input 
-                                type="number" 
+                            <input
+                                type="number"
                                 min="0"
-                                value={props.maxTwoWayPlayersPerTeam} 
+                                value={props.maxTwoWayPlayersPerTeam}
                                 onChange={(e) => props.setMaxTwoWayPlayersPerTeam(Math.max(0, parseInt(e.target.value)))}
                                 className="w-full bg-slate-950 border border-slate-700 rounded-xl text-white text-sm py-2 px-3 focus:outline-none focus:border-indigo-500"
                             />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <div className="flex justify-between items-center">
+                                <div className="flex items-center">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Max Training Camp Roster</span>
+                                    <InfoTooltip text="Maximum players allowed on a roster during the offseason and training camp (before the regular season). NBA default is 21. Teams must cut to the regular season limit before games begin." />
+                                </div>
+                                <span className="text-[10px] font-bold text-amber-400">Preseason only</span>
+                            </div>
+                            <input
+                                type="number"
+                                min={props.maxStandardPlayersPerTeam + props.maxTwoWayPlayersPerTeam}
+                                value={props.maxTrainingCampRoster}
+                                onChange={(e) => props.setMaxTrainingCampRoster(Math.max(props.maxStandardPlayersPerTeam + props.maxTwoWayPlayersPerTeam, parseInt(e.target.value)))}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-xl text-white text-sm py-2 px-3 focus:outline-none focus:border-indigo-500"
+                            />
+                            <p className="text-[9px] text-slate-500 italic">
+                                During the offseason (Jul–Sep), teams can carry up to {props.maxTrainingCampRoster} players. Rosters are trimmed to {props.maxStandardPlayersPerTeam + props.maxTwoWayPlayersPerTeam} when the regular season starts.
+                            </p>
                         </div>
                     </>
                 )}

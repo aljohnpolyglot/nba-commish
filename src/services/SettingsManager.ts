@@ -5,6 +5,10 @@ export interface GameSettings {
   enableLLM: boolean;
   allowAITrades: boolean;     // AI teams trade with each other autonomously
   allowAIFreeAgency: boolean; // AI teams sign free agents autonomously
+  /** How many seasons of box scores to keep in memory. Older games are pruned at rollover. */
+  maxBoxScoreYears: number;   // default 2
+  /** AI trade frequency 0-100. 50 = default cadence. 0 = trades off. 100 = double frequency. */
+  aiTradeFrequency: number;   // default 50
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -14,6 +18,8 @@ const DEFAULT_SETTINGS: GameSettings = {
   enableLLM: true,
   allowAITrades: true,
   allowAIFreeAgency: true,
+  maxBoxScoreYears: 2,
+  aiTradeFrequency: 50,
 };
 
 export class SettingsManager {

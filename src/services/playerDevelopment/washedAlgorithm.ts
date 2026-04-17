@@ -213,7 +213,23 @@ export function markFatherTimeInjections(
   injectionDate: string,
   dueDate: string,
   saveSeed: string = 'default',
+  dueDateWindowStart?: string,
 ): { players: NBAPlayer[]; events: FatherTimeInjectionEvent[] } {
+  // Helper: derive a per-player due date spread across [windowStart, dueDate]
+  // so that 50 players don't all decline on the same calendar day.
+  const spreadDueDate = (playerId: string): string => {
+    if (!dueDateWindowStart) return dueDate;
+    const start = new Date(dueDateWindowStart).getTime();
+    const end   = new Date(dueDate).getTime();
+    if (end <= start) return dueDate;
+    const windowMs = end - start;
+    // Deterministic hash of playerId → offset in [0, windowMs)
+    let h = 0;
+    for (let i = 0; i < playerId.length; i++) h = (Math.imul(31, h) + playerId.charCodeAt(i)) | 0;
+    h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) | 0;
+    const offset = ((h ^ (h >>> 16)) >>> 0) % windowMs;
+    return new Date(start + offset).toISOString().slice(0, 10);
+  };
   const brackets: Array<{ minAge: number; maxAge: number; slots: number }> = [
     { minAge: 30, maxAge: 31, slots: 15 },
     { minAge: 32, maxAge: 34, slots: 15 },
@@ -266,9 +282,10 @@ export function markFatherTimeInjections(
       const pendingChanges = computeDeclineChanges(player, age, currentYear);
       if (pendingChanges.length === 0) continue;
 
+      const playerDueDate = spreadDueDate(player.internalId);
       const injected: NBAPlayer = {
         ...player,
-        pendingFatherTime: { changes: pendingChanges, dueDate, age, ovrBefore },
+        pendingFatherTime: { changes: pendingChanges, dueDate: playerDueDate, age, ovrBefore },
       } as any;
 
       playerMap.set(player.internalId, injected);
@@ -284,7 +301,7 @@ export function markFatherTimeInjections(
 
       // ── Debug log ────────────────────────────────────────────────────────
       console.log(
-        `[FatherTime INJECT] ${player.name} (age ${age}) | OVR ${ovrBefore} | due ${dueDate}` +
+        `[FatherTime INJECT] ${player.name} (age ${age}) | OVR ${ovrBefore} | due ${playerDueDate}` +
         ` | pending: ${pendingChanges.map(c => `${c.attr}${c.delta}`).join(', ')}`
       );
     }

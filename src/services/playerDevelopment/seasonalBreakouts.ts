@@ -31,7 +31,7 @@ const EXTERNAL_LEAGUE_STATUSES = new Set([
 
 // Statuses excluded from lightning strikes entirely
 const NON_LIGHTNING_STATUSES = new Set([
-  'WNBA', 'G-League', 'PBA', 'Euroleague', 'B-League', 'Endesa',
+  'WNBA', 'G-League', 'PBA', 'Euroleague', 'B-League', 'Endesa', 'China CBA', 'NBL Australia',
 ]);
 
 /** NBA-active: on an NBA roster (not overseas, not FA, not retired/prospect) */
@@ -142,7 +142,7 @@ export function markLightningStrikes(
   const AGE_GROUPS = [19, 20, 21, 22, 23, 24, 25];
   // 70% NBA (7/group) + 30% outside — FAs + G-League + overseas (3/group)
   const NBA_PICKS_PER_GROUP = 7;
-  const EXT_PICKS_PER_GROUP = 3;
+  const EXT_PICKS_PER_GROUP = 12;
 
   const startMs = new Date(seasonStart).getTime();
   const endMs   = new Date(seasonEnd).getTime();

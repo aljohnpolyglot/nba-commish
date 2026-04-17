@@ -11,11 +11,12 @@ interface SeasonPreviewViewProps {
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-function getTier(strength: number): { label: string; color: string; bg: string; bar: string } {
-  if (strength >= 90) return { label: 'Title',    color: 'text-amber-400',   bg: 'bg-amber-400/15',   bar: 'bg-amber-400' };
-  if (strength >= 83) return { label: 'Playoff',  color: 'text-emerald-400', bg: 'bg-emerald-500/15', bar: 'bg-emerald-500' };
-  if (strength >= 75) return { label: 'Bubble',   color: 'text-blue-400',    bg: 'bg-blue-500/15',    bar: 'bg-blue-500' };
-  return                     { label: 'Lottery',  color: 'text-slate-500',   bg: 'bg-white/5',        bar: 'bg-slate-600' };
+function getTier(strength: number, rank: number): { label: string; color: string; bg: string; bar: string } {
+  // Use rank-based tiers (more reliable than absolute OVR thresholds which inflate)
+  if (rank <= 4)  return { label: 'Title',     color: 'text-amber-400',   bg: 'bg-amber-400/15',   bar: 'bg-amber-400' };
+  if (rank <= 10) return { label: 'Contender', color: 'text-emerald-400', bg: 'bg-emerald-500/15', bar: 'bg-emerald-500' };
+  if (rank <= 20) return { label: 'Bubble',    color: 'text-blue-400',    bg: 'bg-blue-500/15',    bar: 'bg-blue-500' };
+  return                  { label: 'Lottery',   color: 'text-slate-500',   bg: 'bg-white/5',        bar: 'bg-slate-600' };
 }
 
 /** Convert implied probability → American moneyline odds string (+240, -140, etc.) */
@@ -264,7 +265,7 @@ export const SeasonPreviewView: React.FC<SeasonPreviewViewProps> = ({ onViewChan
                   <span className="w-5 shrink-0" />
                   <span className="w-7 shrink-0" />
                   <span className="flex-1">Team</span>
-                  <span className="w-14 shrink-0 text-right">W-L / O/U</span>
+                  <span className="w-14 shrink-0 text-right">O/U</span>
                   <span className="hidden md:block w-20 shrink-0 text-right">Title Odds</span>
                   <span className="hidden md:block w-16 shrink-0 text-right pr-1">Tier</span>
                 </div>
@@ -274,8 +275,8 @@ export const SeasonPreviewView: React.FC<SeasonPreviewViewProps> = ({ onViewChan
                   return (
                     <div className="space-y-1.5">
                       {powerRankings.map((item, rank) => {
-                        const { team, combinedScore, gp } = item;
-                        const tier = getTier(combinedScore);
+                        const { team, combinedScore } = item;
+                        const tier = getTier(combinedScore, rank + 1);
                         const logo = (team as any).logoUrl || (team as any).imgURL;
                         const ou = projectedOU(combinedScore);
                         const odds = champOdds.get(team.id) ?? '+99999';
@@ -308,19 +309,12 @@ export const SeasonPreviewView: React.FC<SeasonPreviewViewProps> = ({ onViewChan
 
                             {/* Name */}
                             <span className="text-sm font-bold text-white flex-1 truncate min-w-0">
-                              {(team as any).region ? `${(team as any).region} ` : ''}{team.name}
+                              {team.name}
                             </span>
 
-                            {/* W-L or O/U */}
+                            {/* Projected O/U */}
                             <div className="text-right shrink-0 w-14">
-                              {gp > 0 ? (
-                                <>
-                                  <span className="text-sm font-bold text-white tabular-nums">{team.wins}</span>
-                                  <span className="text-sm text-slate-600">–{team.losses}</span>
-                                </>
-                              ) : (
-                                <span className="text-xs text-slate-500 font-bold tabular-nums">{ou}.5</span>
-                              )}
+                              <span className="text-xs text-slate-500 font-bold tabular-nums">{ou}.5</span>
                             </div>
 
                             {/* Championship odds */}

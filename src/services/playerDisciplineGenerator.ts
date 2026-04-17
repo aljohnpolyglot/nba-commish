@@ -132,7 +132,7 @@ export const generatePlayerDisciplineStory = (
   dateStr?: string,
   endorsedPlayers?: string[],
 ): DisciplineStoryResult | null => {
-  const activePlayers = players.filter(p => p.overallRating >= 65 && p.tid >= 0 && p.status === 'Active');
+  const activePlayers = players.filter(p => p.overallRating >= 58 && p.tid >= 0 && p.status === 'Active'); // BBGM 58+ = starter tier
   if (activePlayers.length === 0) return null;
 
   // Mood-weighted player selection — disgruntled players more likely to generate stories

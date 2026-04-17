@@ -1,5 +1,19 @@
 import { NBAPlayer, NBATeam } from '../../types';
 import { MoodTrait, MoodComponents } from './moodTypes';
+import { effectiveRecord } from '../salaryUtils';
+
+// ── Normalize BBGM letter codes → full MoodTrait names ────────────────────────
+// BBGM stores traits as single-char letters: "F"=DIVA, "L"=LOYAL, "$"=MERCENARY, "W"=COMPETITOR
+// Our system adds drama modifiers by full name. Support both forms.
+const LETTER_TO_TRAIT: Record<string, MoodTrait> = {
+  F: 'DIVA',
+  L: 'LOYAL',
+  $: 'MERCENARY',
+  W: 'COMPETITOR',
+};
+export function normalizeMoodTraits(raw: string[]): MoodTrait[] {
+  return raw.map(t => LETTER_TO_TRAIT[t] ?? t as MoodTrait).filter(Boolean);
+}
 
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
@@ -29,6 +43,7 @@ function estimateMarketValue(player: NBAPlayer): number {
 /**
  * Computes a mood score in [−10, +10] for a player.
  * Pass `dateStr` (e.g. "Mar 29, 2026") to get deterministic noise.
+ * Pass `currentYear` to enable effective-record offseason fallback for win delta.
  */
 export function computeMoodScore(
   player: NBAPlayer,
@@ -38,8 +53,9 @@ export function computeMoodScore(
   suspendedByCommish = false,
   sabotagedByCommish = false,
   teamPlayers?: NBAPlayer[], // used for DIVA top-3 usage check
+  currentYear?: number,
 ): { score: number; components: MoodComponents } {
-  const traits: MoodTrait[] = (player as any).moodTraits ?? [];
+  const traits: MoodTrait[] = normalizeMoodTraits((player as any).moodTraits ?? []);
 
   // ── Playing time ───────────────────────────────────────────────────────────
   const isInjured = player.injury?.type !== 'Healthy' && player.injury?.gamesRemaining > 0;
@@ -51,16 +67,17 @@ export function computeMoodScore(
     ptDelta = clamp((actualMPG - expMPG) / 3, -3, 3);
   }
 
-  // ── Team success ───────────────────────────────────────────────────────────
+  // ── Team success (use effectiveRecord so offseason 0-0 falls back to last season) ────────
   let winDelta = 0;
   if (team) {
-    const gp = team.wins + team.losses;
-    const winPct = gp > 0 ? team.wins / gp : 0.5;
-    winDelta = clamp((winPct - 0.5) * 4, -2, 2);
+    const rec = currentYear ? effectiveRecord(team, currentYear) : { wins: team.wins, losses: team.losses };
+    const gp = rec.wins + rec.losses;
+    const winPct = gp > 0 ? rec.wins / gp : 0.5;
+    winDelta = clamp((winPct - 0.5) * 6, -3, 3); // wider base range: −3 to +3
     if (winPct >= 0.56) winDelta += 1; // contender floor bonus
     const age = player.age ?? 27;
     if (winPct < 0.40 && age > 30) winDelta -= 1; // vet on rebuilder
-    winDelta = clamp(winDelta, -2, 2);
+    winDelta = clamp(winDelta, -3, 5); // cap raised: max +5 before trait multipliers
   }
 
   // ── Contract satisfaction ──────────────────────────────────────────────────
@@ -78,12 +95,34 @@ export function computeMoodScore(
   if (sabotagedByCommish) relDelta -= 2;
   if (traits.includes('LOYAL')) relDelta += 1;
   if (traits.includes('AMBASSADOR')) relDelta += 1;
+  // LOYAL tenure bonus: 3+ years with same team → +1 (keeps LeBron re-signing)
+  if (traits.includes('LOYAL') && ((player as any).yearsWithTeam ?? 0) >= 3) relDelta += 1;
   relDelta = clamp(relDelta, -2, 2);
+
+  // ── Market size (tier-based: all players get base; FAME doubles; DIVA/MERC extras) ────
+  let marketDelta = 0;
+  if (team) {
+    const pop = (team as any).pop ?? 0; // BBGM population field (millions)
+    // Tier thresholds: top-third of NBA cities ≈ pop ≥ 5M; bottom-third < 2.5M
+    const marketBase = pop >= 5 ? 2 : pop >= 2.5 ? 1 : 0; // High=+2, Mid=+1, Low=0
+    const fameMult = traits.includes('FAME') ? 2 : 1;
+    marketDelta = marketBase * fameMult; // FAME: High→+4, Mid→+2, Low→0
+    // DIVA spotlight bonus: very big market → +1 extra, very small → −1 penalty
+    if (traits.includes('DIVA')) {
+      if (pop >= 5) marketDelta += 1;
+      else if (pop < 1.5) marketDelta -= 1;
+    }
+    // MERCENARY: extra +1 in a big market, −1 in a small market
+    if (traits.includes('MERCENARY')) {
+      marketDelta += marketBase > 0 ? 1 : -1;
+    }
+    marketDelta = clamp(marketDelta, -2, 4);
+  }
 
   // ── Role stability ─────────────────────────────────────────────────────────
   const season = (player.stats ?? []).find(s => !s.playoffs);
   const isStarter = season ? (season.gs / Math.max(1, season.gp)) >= 0.5 : false;
-  const isStar = player.overallRating >= 80;
+  const isStar = player.overallRating >= 65; // BBGM 65+ = All-Star caliber (70+ = superstar)
   const roleDelta = isStarter ? 0.5 : isStar ? -1.5 : 0;
 
   // ── Seeded noise ───────────────────────────────────────────────────────────
@@ -113,10 +152,16 @@ export function computeMoodScore(
     }
   }
   if (traits.includes('COMPETITOR')) {
-    win *= 2; // win-delta 2×
-    if (team && (team.wins / Math.max(1, team.wins + team.losses)) < 0.40) {
-      win -= 2; // extra penalty on rebuilder
+    win *= 2; // win-delta 2× (can reach +5 on elite teams)
+    // Use effectiveRecord so offseason 0-0 falls back to last season's record
+    if (team) {
+      const compRec = currentYear ? effectiveRecord(team, currentYear) : { wins: team.wins, losses: team.losses };
+      const compGP = compRec.wins + compRec.losses;
+      if (compGP > 0 && (compRec.wins / compGP) < 0.40) {
+        win -= 2; // extra penalty on rebuilder
+      }
     }
+    win = clamp(win, -6, 5); // COMPETITOR-specific clamp: allow deeper lows
   }
   if (traits.includes('MERCENARY')) {
     contract *= 2;
@@ -136,10 +181,11 @@ export function computeMoodScore(
 
   const components: MoodComponents = {
     playingTime: clamp(pt, -3, 3),
-    teamSuccess: clamp(win, -2, 2),
+    teamSuccess: clamp(win, -6, 5),
     contractSatisfaction: clamp(contract, -2, 2),
     commishRelationship: clamp(relDelta, -2, 2),
     roleStability: clamp(role, -1.5, 0.5),
+    marketSize: clamp(marketDelta, -2, 4),
     noise: clamp(noiseDelta, -1, 1),
   };
 
