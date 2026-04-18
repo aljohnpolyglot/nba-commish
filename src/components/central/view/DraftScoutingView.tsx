@@ -95,9 +95,16 @@ export const DraftScoutingView: React.FC = () => {
   // Default to current draft class (roll forward after draft completes)
   const defaultDraftYear = state.draftComplete ? baseYear + 1 : baseYear;
   const [selectedYear, setSelectedYear] = useState(defaultDraftYear);
-  // Clamp browsing to the range of draft classes that actually exist as tid=-2
-  // prospects in state. Past classes get drafted/removed so a blind "baseYear-3"
-  // floor leaves the left chevron clickable with nothing to show.
+  // Browse range:
+  //   minYear = lowest draft.year with a tid=-2 prospect still in state (or
+  //     baseYear if none — prevents the left chevron from pointing into empty
+  //     past classes that have already been drafted/removed).
+  //   maxYear = max of (highest tid=-2 draft.year in state, baseYear + 4).
+  //     Future classes only get seeded by ensureDraftClasses at rollover, so
+  //     on a fresh game start only the current class exists. We still want the
+  //     right chevron to let the user look ahead to years the scouting gist
+  //     covers — 4-year horizon matches draftClassFiller's HORIZON_YEARS.
+  const SCOUTING_HORIZON_YEARS = 4;
   const { minYear, maxYear } = useMemo(() => {
     let lo = baseYear;
     let hi = baseYear;
@@ -109,8 +116,9 @@ export const DraftScoutingView: React.FC = () => {
       if (!seen) { lo = hi = dy; seen = true; }
       else { if (dy < lo) lo = dy; if (dy > hi) hi = dy; }
     }
-    if (!seen) return { minYear: baseYear, maxYear: baseYear };
-    return { minYear: lo, maxYear: hi };
+    const forwardHorizon = baseYear + SCOUTING_HORIZON_YEARS;
+    if (!seen) return { minYear: baseYear, maxYear: forwardHorizon };
+    return { minYear: lo, maxYear: Math.max(hi, forwardHorizon) };
   }, [state.players, baseYear]);
   const draftYear = selectedYear;
 
