@@ -11,7 +11,6 @@ import {
 import { extractNbaId, hdPortrait, normalizeDate, convertTo2KRating } from '../../../utils/helpers';
 import { getFreeAgencyStartDate } from '../../../utils/dateUtils';
 import { getPlayerImage } from '../../central/view/bioCache';
-import { loadPlayerRenders, getPlayerRender } from '../../../utils/playerRenders';
 import { PlayerBioMoraleTab, classifyResignIntent } from '../../central/view/PlayerBioMoraleTab';
 import { PlayerBioContractTab } from '../../central/view/PlayerBioContractTab';
 import { computeMoodScore, normalizeMoodTraits } from '../../../utils/mood/moodScore';
@@ -332,20 +331,6 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   }, [player.imgURL, player.name]);
   const portraitFallback = useMemo(() => getPlayerImage(player), [player]);
   const initialSrc = actionRender || portraitFallback;
-
-  // Higher-res /small full-body render from the nba-store-data repo.
-  // Lazy-loaded once at module level; we re-render when the map arrives.
-  const [rendersTick, setRendersTick] = useState(0);
-  useEffect(() => {
-    let cancelled = false;
-    loadPlayerRenders().then(() => { if (!cancelled) setRendersTick(t => t + 1); });
-    return () => { cancelled = true; };
-  }, []);
-  const fullBodyRender = useMemo(
-    () => getPlayerRender(player.name),
-    [player.name, rendersTick],
-  );
-  const primarySrc = fullBodyRender || initialSrc;
 
   const { interest, uncappedInterest } = useMemo(() => {
     const salaryDiffPct = ((salary - initialOffer.salaryUSD) / initialOffer.salaryUSD) * 100;
@@ -801,17 +786,14 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
             <div className="relative z-50 flex-1 flex items-end justify-center overflow-visible min-h-[300px] lg:min-h-[400px]">
               <AnimatePresence mode="wait">
                 <motion.img
-                  key={primarySrc ?? 'fallback'}
+                  key={initialSrc ?? 'fallback'}
                   initial={{ opacity: 0, scale: 1.05, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   transition={{ duration: 0.5, ease: 'easeOut' }}
-                  src={primarySrc || `https://picsum.photos/seed/${encodeURIComponent(player.name ?? 'p')}/600/900`}
+                  src={initialSrc || `https://picsum.photos/seed/${encodeURIComponent(player.name ?? 'p')}/600/900`}
                   onError={e => {
                     const img = e.target as HTMLImageElement;
-                    if (fullBodyRender && !img.dataset.triedAction && actionRender && actionRender !== fullBodyRender) {
-                      img.dataset.triedAction = '1';
-                      img.src = actionRender;
-                    } else if (!img.dataset.triedPortrait && portraitFallback && portraitFallback !== img.src) {
+                    if (actionRender && !img.dataset.triedPortrait && portraitFallback && portraitFallback !== actionRender) {
                       img.dataset.triedPortrait = '1';
                       img.src = portraitFallback;
                     } else {
@@ -819,12 +801,8 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                     }
                   }}
                   referrerPolicy="no-referrer"
-                  className={
-                    fullBodyRender
-                      ? "absolute inset-0 w-full h-full object-cover object-top drop-shadow-[0_0_80px_rgba(226,29,55,0.15)] select-none pointer-events-none"
-                      : "absolute inset-x-0 bottom-0 w-full h-full object-contain object-bottom drop-shadow-[0_0_80px_rgba(226,29,55,0.15)] select-none pointer-events-none scale-[1.05]"
-                  }
-                  style={fullBodyRender ? undefined : { transformOrigin: 'bottom center' }}
+                  className="absolute inset-x-0 bottom-0 w-full h-full object-contain object-bottom drop-shadow-[0_0_80px_rgba(226,29,55,0.15)] select-none pointer-events-none scale-[1.05]"
+                  style={{ transformOrigin: 'bottom center' }}
                 />
               </AnimatePresence>
 

@@ -291,125 +291,6 @@ export function getContractThoughts(
   return `I've got time left on my deal and I'm focused on the season. No drama, just basketball.`;
 }
 
-// ─── Resign probability + factor breakdown ────────────────────────────────────
-
-interface ResignFactor {
-  label: string;
-  delta: number; // percentage-point impact (signed integer)
-}
-
-export function computeResignProbability(
-  player: NBAPlayer,
-  traits: MoodTrait[],
-  moodScore: number,
-  currentYear: number,
-  teamWinPct: number,
-  team: any,
-): { score: number; factors: ResignFactor[] } | null {
-  const yearsLeft = Math.max(0, (player.contract?.exp ?? currentYear) - currentYear);
-  const isFarewell = !!(player as any).farewellTour;
-  const isFA = player.tid === -1 || player.status === 'Free Agent';
-  const externalStatuses = new Set(['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'WNBA']);
-  const isExternal = externalStatuses.has(player.status ?? '');
-  if (isFarewell || isFA || isExternal) return null;
-  // Only show when contract decision is on the horizon
-  if (yearsLeft > 2) return null;
-
-  let score = 50;
-  const factors: ResignFactor[] = [];
-  const add = (label: string, delta: number) => {
-    if (delta === 0) return;
-    factors.push({ label, delta });
-    score += delta;
-  };
-  const traitsAny = traits as any[];
-  const isLoyal = traitsAny.includes('LOYAL') || traitsAny.includes('LOYALTY');
-  const isMercenary = traitsAny.includes('MERCENARY') || traitsAny.includes('$');
-  const isWinner = traitsAny.includes('COMPETITOR') || traitsAny.includes('WINNER');
-  const isFame = traitsAny.includes('FAME') || traitsAny.includes('DIVA');
-  const isAmbassador = traitsAny.includes('AMBASSADOR');
-  const isVolatile = traitsAny.includes('VOLATILE');
-  const isDrama = traitsAny.includes('DRAMA_MAGNET');
-
-  // Mood — single bucket, no double-count
-  if (moodScore >= 5)       add('Loving the situation',     20);
-  else if (moodScore >= 3)  add('Happy here',               12);
-  else if (moodScore >= 1)  add('Mood mildly positive',      5);
-  else if (moodScore <= -5) add('Disgruntled',             -22);
-  else if (moodScore <= -3) add('Unhappy with situation',  -14);
-  else if (moodScore <= -1) add('Mood mildly negative',     -5);
-
-  // Traits
-  if (isLoyal)      add('Loyalty trait',                   18);
-  if (isMercenary)  add('Mercenary — tests market',       -16);
-  if (isAmbassador) add('Ambassador — low drama',           4);
-  if (isDrama)      add('Drama magnet',                    -5);
-  if (isWinner) {
-    if (teamWinPct < 0.42)      add('Winner trait · losing team', -14);
-    else if (teamWinPct > 0.58) add('Winner trait · contender',    10);
-  }
-  if (isFame) {
-    const pop = (team as any)?.pop ?? 2;
-    if (pop >= 5) add('Fame · big market fit',   5);
-    else          add('Fame · small market', -12);
-  }
-  if (isVolatile) {
-    if (moodScore < 0)      add('Volatile · negatives amplified', -5);
-    else if (moodScore > 0) add('Volatile · positives amplified',  3);
-  }
-
-  // Team record
-  if (teamWinPct >= 0.62)      add('Elite team record',  8);
-  else if (teamWinPct <= 0.35) add('Bottom-tier record', -8);
-
-  // Age
-  const age = player.born?.year ? currentYear - player.born.year : 28;
-  if (age >= 34)      add('Veteran seeks stability',  7);
-  else if (age < 24)  add('Young · wants to explore', -4);
-
-  // Final-year option
-  const contractYears = (player as any).contractYears as Array<{ option?: string }> | undefined;
-  const finalOpt = contractYears?.[contractYears.length - 1]?.option;
-  const ovr2K = approx2K(player.overallRating ?? 60);
-  if (finalOpt === 'player' && yearsLeft <= 1) {
-    if (ovr2K >= 88)      add('Star on player option', -15);
-    else if (isLoyal && moodScore >= 3) add('Loyal happy · picks up option',   6);
-    else                 add('Player option year',   -4);
-  }
-  if (finalOpt === 'team' && yearsLeft <= 1) {
-    if (moodScore <= -4) add('Team option · sour mood', -6);
-  }
-
-  // Tenure with current team (seasons logged)
-  const teamTenure = new Set(((player.stats ?? []) as any[])
-    .filter(s => !s.playoffs && s.tid === player.tid && (s.gp ?? 0) > 0)
-    .map(s => s.season)).size;
-  if (teamTenure >= 5)       add('Long tenure with team',  7);
-  else if (teamTenure >= 3)  add('Established with team',  3);
-
-  score = Math.max(0, Math.min(100, Math.round(score)));
-  // Sort factors: largest absolute impact first
-  factors.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
-  return { score, factors };
-}
-
-function resignColor(val: number): string {
-  if (val >= 75) return '#22c55e';
-  if (val >= 60) return '#84cc16';
-  if (val >= 45) return '#eab308';
-  if (val >= 30) return '#f97316';
-  return '#f43f5e';
-}
-
-function resignLabel(val: number): string {
-  if (val >= 80) return 'Will Re-sign';
-  if (val >= 65) return 'Likely Re-sign';
-  if (val >= 50) return 'Leaning Stay';
-  if (val >= 35) return 'Leaning Leave';
-  if (val >= 20) return 'Testing Market';
-  return 'Looking Elsewhere';
-}
-
 // ─── Morale bar color ─────────────────────────────────────────────────────────
 
 function moraleColor(val: number): string {
@@ -456,11 +337,6 @@ export const PlayerBioMoraleTab: React.FC<PlayerBioMoraleTabProps> = ({ player }
   const contractThoughts = useMemo(
     () => getContractThoughts(player, traits, moodScore, currentYear, teamWinPct),
     [player, traits, moodScore, currentYear, teamWinPct],
-  );
-
-  const resign = useMemo(
-    () => computeResignProbability(player, traits, moodScore, currentYear, teamWinPct, team),
-    [player, traits, moodScore, currentYear, teamWinPct, team],
   );
 
   const mColor = moraleColor(morale);
@@ -607,47 +483,6 @@ export const PlayerBioMoraleTab: React.FC<PlayerBioMoraleTabProps> = ({ player }
         <p className="text-sm text-slate-200 leading-relaxed italic">
           "{contractThoughts}"
         </p>
-
-        {resign && (() => {
-          const rColor = resignColor(resign.score);
-          return (
-            <div className="mt-5 pt-4 border-t border-slate-700/50">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Re-sign Probability</span>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-xl font-black" style={{ color: rColor }}>{resign.score}</span>
-                  <span className="text-[10px] text-slate-500">%</span>
-                </div>
-              </div>
-              <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden mb-2">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${resign.score}%`, backgroundColor: rColor }}
-                />
-              </div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-bold" style={{ color: rColor }}>{resignLabel(resign.score)}</span>
-                <span className="text-[10px] text-slate-600">Base 50 · Σ {resign.factors.reduce((a, f) => a + f.delta, 0) >= 0 ? '+' : ''}{resign.factors.reduce((a, f) => a + f.delta, 0)}</span>
-              </div>
-
-              {resign.factors.length > 0 ? (
-                <div className="grid grid-cols-1 gap-y-1 text-[10px]">
-                  <p className="text-[9px] font-black uppercase tracking-wider text-slate-500 mb-0.5">Influences</p>
-                  {resign.factors.map(f => (
-                    <div key={f.label} className="flex items-center justify-between">
-                      <span className="text-slate-400">{f.label}</span>
-                      <span className={`font-black tabular-nums ${f.delta > 0 ? 'text-emerald-400' : f.delta < 0 ? 'text-rose-400' : 'text-slate-500'}`}>
-                        {f.delta > 0 ? '+' : ''}{f.delta}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[10px] text-slate-600 italic">No strong factors either way — purely neutral.</p>
-              )}
-            </div>
-          );
-        })()}
       </div>
 
       {/* ── Farewell Tour banner ───────────────────────────────────────────── */}

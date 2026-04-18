@@ -372,8 +372,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         const lazyResult = await runLazySim(
             fullInitialState,
             payload.startDate,
-            payload.onProgress,
-            { stopBefore: true }
+            payload.onProgress
         );
 
         return {
