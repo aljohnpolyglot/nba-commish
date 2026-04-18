@@ -616,16 +616,24 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
                 <p className="text-emerald-300 font-black text-sm uppercase tracking-tight">Draft Complete</p>
               </div>
             ) : !isDraftComplete && teamOnClock ? (
-              <div className="flex items-center gap-4">
+              <div className={`flex items-center gap-4 ${isUserOnClock ? 'bg-amber-500/10 border border-amber-500/30 rounded-md p-3 -m-1' : ''}`}>
                 {teamOnClock.logoUrl ? (
                   <img src={teamOnClock.logoUrl} alt={teamOnClock.name} className="w-14 h-14 object-contain" referrerPolicy="no-referrer" />
                 ) : (
                   <div className="w-14 h-14 rounded-full bg-indigo-900/40 flex items-center justify-center font-black text-indigo-300">{teamOnClock.abbrev}</div>
                 )}
-                <p className="text-white/70 text-sm leading-relaxed">
-                  With the <strong className="text-white">{currentPick}{getOrdinalSuffix(currentPick)}</strong> pick in the {state.leagueStats?.year ?? ''} NBA draft,
-                  the <strong className="text-white">{teamOnClock.name}</strong> select…
-                </p>
+                <div className="flex-1">
+                  {isUserOnClock && (
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                      <span className="text-[9px] font-black uppercase tracking-[0.3em] text-amber-300">You're on the Clock</span>
+                    </div>
+                  )}
+                  <p className="text-white/70 text-sm leading-relaxed">
+                    With the <strong className="text-white">{currentPick}{getOrdinalSuffix(currentPick)}</strong> pick in the {state.leagueStats?.year ?? ''} NBA draft,
+                    the <strong className="text-white">{teamOnClock.name}</strong> select…
+                  </p>
+                </div>
               </div>
             ) : (
               <p className="text-white/60 font-bold uppercase text-sm tracking-widest">Draft Complete</p>
@@ -668,17 +676,24 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
                       setIsSimulating(false);
                       setSimTarget(null);
                     } else {
-                      // Plain Auto Sim runs open-ended (no target). In GM mode
-                      // keep this available too — lets the user hand control to
-                      // the sim for the whole draft if they want.
-                      setSimTarget(null);
+                      // In GM mode, cap Auto Sim at the user's next pick so
+                      // clicking it from another team's slot can't race past
+                      // the user's turn and pick for them. Commissioner mode
+                      // keeps the open-ended behavior since they draft for
+                      // every team anyway.
+                      if (isGM && userHasMorePicks) {
+                        setSimTarget(nextUserPick);
+                      } else {
+                        setSimTarget(null);
+                      }
                       setIsSimulating(true);
                       setHasStarted(true);
                     }
                   }}
-                  disabled={isDraftComplete}
+                  disabled={isDraftComplete || (isGM && isUserOnClock)}
+                  title={isGM && isUserOnClock ? "You're on the clock — pick a player below" : undefined}
                   className={`h-8 px-3 text-xs font-black uppercase rounded-sm transition-all flex items-center gap-1.5 ${
-                    isSimulating ? 'text-indigo-400 bg-indigo-500/10' : 'text-white/50 hover:text-white'
+                    isSimulating ? 'text-indigo-400 bg-indigo-500/10' : 'text-white/50 hover:text-white disabled:text-white/20 disabled:cursor-not-allowed'
                   }`}
                 >
                   {isSimulating ? <><Pause size={11} className="fill-current" /> Pause</> : <><Play size={11} className="fill-current" /> Auto Sim</>}
