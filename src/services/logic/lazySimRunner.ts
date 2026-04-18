@@ -211,6 +211,11 @@ export interface LazySimOptions {
   mode?: 'overlay' | 'silent';
   /** Days per batch. Default 7 for overlay, 1 for silent. */
   batchSize?: number;
+  /** If true, stop AT target date without simulating target day's games.
+   *  Use for "Sim to Date" from ScheduleView where the user wants to land on that date
+   *  and decide whether to watch/sim those games manually.
+   *  Default false — target day is simmed (needed for Sim Round / Sim Playoffs). */
+  stopBefore?: boolean;
 }
 
 export interface LazySimResult {
@@ -228,12 +233,26 @@ export const runLazySim = async (
   const mode = options?.mode ?? 'overlay';
   const defaultBatch = mode === 'silent' ? 1 : 7;
   const BATCH_SIZE = options?.batchSize ?? defaultBatch;
+  const stopBefore = options?.stopBefore ?? false;
 
   const targetNorm = normalizeDate(targetDateStr);
   const startNorm = normalizeDate(initialState.date);
   const daysTotal = daysBetween(startNorm, targetNorm);
 
-  if (daysTotal < 0) return { state: initialState, lastSimResults: [] };
+  console.log('[LAZY_SIM] ▶️ start', {
+    rawTargetDate: targetDateStr,
+    targetNorm,
+    rawStartDate: initialState.date,
+    startNorm,
+    daysTotal,
+    mode,
+    BATCH_SIZE,
+  });
+
+  if (daysTotal < 0) {
+    console.log('[LAZY_SIM] ⛔ daysTotal < 0 — returning initial state');
+    return { state: initialState, lastSimResults: [] };
+  }
 
   // Force LLM off for the entire lazy sim
   const originalSettings = SettingsManager.getSettings();
@@ -299,9 +318,18 @@ export const runLazySim = async (
   };
 
   try {
+    let iterNum = 0;
     while (true) {
+      iterNum++;
       const currentNorm = normalizeDate(state.date);
-      if (currentNorm > targetNorm) break;
+      console.log(`[LAZY_SIM] 🔁 iter ${iterNum} — currentNorm=${currentNorm}, targetNorm=${targetNorm}, state.day=${state.day}, stopBefore=${stopBefore}`);
+      // stopBefore=true: break AT target (don't sim target day's games — land on target with games unplayed).
+      // stopBefore=false: break only when past target (sim target day's games — default, needed for Sim Round / Sim Playoffs).
+      const shouldBreakTop = stopBefore ? currentNorm >= targetNorm : currentNorm > targetNorm;
+      if (shouldBreakTop) {
+        console.log(`[LAZY_SIM] 🛑 iter ${iterNum} — break at top (stopBefore=${stopBefore})`);
+        break;
+      }
 
       // Fire any auto-resolvers whose date has been reached.
       // Events are keyed by `${seasonYear}:${key}` so they re-fire after season rollover.
@@ -351,9 +379,14 @@ export const runLazySim = async (
       const effectiveBatch = nearRollover ? 1 : BATCH_SIZE;
       // remaining=0 when currentNorm==targetNorm — still need 1 iteration to sim today's games
       const batchDays = Math.max(1, Math.min(effectiveBatch, remaining));
-      if (remaining < 0) break;
+      console.log(`[LAZY_SIM] 📊 iter ${iterNum} — remaining=${remaining}, batchDays=${batchDays}, nearRollover=${nearRollover}`);
+      if (remaining < 0) {
+        console.log(`[LAZY_SIM] 🛑 iter ${iterNum} — remaining < 0, breaking`);
+        break;
+      }
 
       const { stateWithSim, allSimResults, perDayResults } = runSimulation(state, batchDays, undefined);
+      console.log(`[LAZY_SIM] 🎮 iter ${iterNum} — after runSimulation: state.date=${stateWithSim.date}, simResults=${allSimResults.length}, perDayResults=${perDayResults.length}`);
       lastBatchSimResults = allSimResults; // track for silent mode return
 
       // Accumulate player season stats — normally called in processTurn, bypassed here
@@ -455,6 +488,7 @@ export const runLazySim = async (
 
       // Store championship in historicalAwards (Finals MVP determined by top playoff scorer on champ team)
       let champHistoricalAwards: HistoricalAward[] = [];
+      let semifinalsMvpAwards: HistoricalAward[] = [];
       let champTeamsWithRoundsWon: typeof stateWithSim.teams | null = null;
       if (stateWithSim.playoffs?.bracketComplete && !state.playoffs?.bracketComplete && stateWithSim.playoffs.champion) {
         const champTid = stateWithSim.playoffs.champion;
@@ -620,6 +654,104 @@ export const runLazySim = async (
         }
       }
 
+      // Semifinals MVP — one per round-3 (Conference Finals) series that just
+      // completed this batch. Round 3 can finish in an earlier batch than round 4,
+      // so this runs independently of bracketComplete. Box scores may span batches
+      // (prior games in state.boxScores, current in allSimResults) — both consulted.
+      if (stateWithSim.playoffs && state.playoffs) {
+        for (const newSeries of stateWithSim.playoffs.series) {
+          if (newSeries.round !== 3 || newSeries.status !== 'complete') continue;
+          const prevSeries = state.playoffs.series.find(s => s.id === newSeries.id);
+          if (prevSeries && prevSeries.status === 'complete') continue;
+          const winnerTid = newSeries.winnerId;
+          if (winnerTid == null) continue;
+
+          const seriesGameIds = new Set<number>(newSeries.gameIds ?? []);
+          const priorBox = (state.boxScores ?? []) as any[];
+          const seriesResults: any[] = [
+            ...priorBox.filter((b: any) => seriesGameIds.has(b.gameId)),
+            ...allSimResults.filter(r => seriesGameIds.has(r.gameId)),
+          ];
+          if (seriesResults.length === 0) continue;
+
+          type Bag = {
+            pid: string; gp: number; pts: number; reb: number; ast: number;
+            stl: number; blk: number; tov: number; fgm: number; fga: number;
+            ftm: number; fta: number; fg3m: number; fg3a: number; mins: number;
+          };
+          const bags = new Map<string, Bag>();
+          for (const r of seriesResults) {
+            const stats = r.homeTeamId === winnerTid ? r.homeStats
+                        : r.awayTeamId === winnerTid ? r.awayStats
+                        : null;
+            if (!stats) continue;
+            for (const s of stats) {
+              if (!s.playerId) continue;
+              const b = bags.get(s.playerId) ?? {
+                pid: s.playerId, gp: 0, pts: 0, reb: 0, ast: 0,
+                stl: 0, blk: 0, tov: 0, fgm: 0, fga: 0,
+                ftm: 0, fta: 0, fg3m: 0, fg3a: 0, mins: 0,
+              };
+              b.gp += 1;
+              b.pts  += s.pts     ?? 0;
+              b.reb  += s.reb     ?? ((s.orb ?? 0) + (s.drb ?? 0));
+              b.ast  += s.ast     ?? 0;
+              b.stl  += s.stl     ?? 0;
+              b.blk  += s.blk     ?? 0;
+              b.tov  += s.tov     ?? 0;
+              b.fgm  += s.fgm     ?? 0;
+              b.fga  += s.fga     ?? 0;
+              b.ftm  += s.ftm     ?? 0;
+              b.fta  += s.fta     ?? 0;
+              b.fg3m += s.threePm ?? 0;
+              b.fg3a += s.threePa ?? 0;
+              b.mins += s.min     ?? 0;
+              bags.set(s.playerId, b);
+            }
+          }
+          const candidates = [...bags.values()].filter(b => b.gp >= 3);
+          if (candidates.length === 0) continue;
+
+          const LEAGUE_TS = 0.57;
+          const scored = candidates.map(b => {
+            const avgPts = b.pts / b.gp;
+            const avgReb = b.reb / b.gp;
+            const avgAst = b.ast / b.gp;
+            const avgStl = b.stl / b.gp;
+            const avgBlk = b.blk / b.gp;
+            const avgTov = b.tov / b.gp;
+            const tsDenom = 2 * (b.fga + 0.44 * b.fta);
+            const ts = tsDenom > 0 ? b.pts / tsDenom : 0;
+            const score =
+              avgPts * 1.0
+              + avgReb * 0.5
+              + avgAst * 0.7
+              + avgStl * 1.0
+              + avgBlk * 1.0
+              - avgTov * 0.7
+              + (ts - LEAGUE_TS) * 8
+              + Math.min(b.mins / b.gp, 40) / 40 * 3;
+            return { pid: b.pid, score, avgPts };
+          });
+          scored.sort((a, b) => (b.score - a.score) || (b.avgPts - a.avgPts));
+          const mvpStat = scored[0];
+          const season = state.leagueStats.year;
+          const mvpPlayer = updatedPlayers.find(p => p.internalId === mvpStat.pid);
+          if (!mvpPlayer) continue;
+
+          semifinalsMvpAwards.push({
+            season, type: 'Semifinals MVP',
+            name: mvpPlayer.name, pid: mvpPlayer.internalId, tid: winnerTid,
+          });
+          const withSfmvp = updatedPlayers.map(p =>
+            p.internalId === mvpPlayer.internalId
+              ? { ...p, awards: [...(p.awards ?? []), { season, type: 'Semifinals MVP' }] }
+              : p
+          );
+          Object.assign(updatedPlayers, withSfmvp);
+        }
+      }
+
       // Apply paychecks earned during this batch — prevents all salary from
       // stacking up and landing in one lump sum on the next real-day advance
       const batchPayResult = generatePaychecks(
@@ -670,8 +802,8 @@ export const runLazySim = async (
           : stateWithSim.news,
         lastPayDate: batchPayResult.newLastPayDate,
         payslips: [...(state.payslips || []), ...batchPayResult.newPayslips].slice(-50),
-        historicalAwards: champHistoricalAwards.length > 0
-          ? [...(stateWithSim.historicalAwards ?? []), ...champHistoricalAwards]
+        historicalAwards: (champHistoricalAwards.length > 0 || semifinalsMvpAwards.length > 0)
+          ? [...(stateWithSim.historicalAwards ?? []), ...semifinalsMvpAwards, ...champHistoricalAwards]
           : stateWithSim.historicalAwards,
         ...(champTeamsWithRoundsWon ? { teams: champTeamsWithRoundsWon } : {}),
         // ── Season history snapshot ───────────────────────────────────────
@@ -718,11 +850,14 @@ export const runLazySim = async (
       // Advance past the last simulated day so the next batch starts fresh,
       // but only if we haven't reached the target yet
       const currentNormAfterSim = normalizeDate(state.date);
+      console.log(`[LAZY_SIM] 📍 iter ${iterNum} — post-batch: state.date=${state.date}, currentNormAfterSim=${currentNormAfterSim}, daysComplete=${daysComplete}`);
       if (currentNormAfterSim >= targetNorm) {
         // We've simmed the target day — exit the loop
+        console.log(`[LAZY_SIM] 🏁 iter ${iterNum} — currentNormAfterSim >= targetNorm, breaking (target reached)`);
         break;
       }
       state = advanceDateByOne(state);
+      console.log(`[LAZY_SIM] ⏭️ iter ${iterNum} — advanceDateByOne → state.date=${state.date}, state.day=${state.day}`);
 
       currentPhase = getPhaseLabel(normalizeDate(state.date), state.leagueStats.year);
       report();
@@ -753,6 +888,15 @@ export const runLazySim = async (
   }
 
   report({ percentComplete: 100, currentPhase: 'Done!', daysComplete: daysTotal });
+
+  console.log('[LAZY_SIM] 🎯 DONE', {
+    finalStateDate: state.date,
+    finalNorm: normalizeDate(state.date),
+    finalDay: state.day,
+    targetNorm,
+    reachedTarget: normalizeDate(state.date) === targetNorm,
+    lastBatchCount: lastBatchSimResults.length,
+  });
 
   return { state, lastSimResults: lastBatchSimResults };
 };

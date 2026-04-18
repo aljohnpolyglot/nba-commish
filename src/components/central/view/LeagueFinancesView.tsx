@@ -58,7 +58,11 @@ const AttendanceBar: React.FC<{ fill: number }> = ({ fill }) => {
 };
 
 // ─── Cap Overview row ─────────────────────────────────────────────────────────
-type CapSortKey = 'payroll' | 'space' | 'wins' | 'name';
+type CapSortKey = 'payroll' | 'space' | 'wins' | 'name' | 'strategy';
+
+const ROLE_RANK: Record<string, number> = {
+  heavy_buyer: 0, buyer: 1, neutral: 2, seller: 3, rebuilding: 4,
+};
 
 const CapRow: React.FC<{
   d: TeamEnriched; thresholds: CapThresholds; maxPayroll: number;
@@ -78,14 +82,14 @@ const CapRow: React.FC<{
       className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/30 cursor-pointer transition-colors border-b border-slate-800/40 last:border-0 group"
       onClick={onClick}
     >
-      <span className="text-[10px] font-mono text-slate-600 w-4 flex-shrink-0 text-right">{rank}</span>
+      <span className="text-[10px] font-mono text-slate-400 w-4 flex-shrink-0 text-right">{rank}</span>
 
       {/* Logo + Name */}
       <div className="flex items-center gap-2 w-36 flex-shrink-0">
         <img src={team.logoUrl} alt="" className="w-6 h-6 object-contain flex-shrink-0" />
         <div className="min-w-0">
           <span className="text-xs font-black text-white uppercase tracking-tight leading-none">{team.abbrev}</span>
-          <div className="text-[9px] text-slate-500 truncate">{team.name}</div>
+          <div className="text-[9px] text-slate-300 truncate">{team.name}</div>
         </div>
       </div>
 
@@ -112,7 +116,7 @@ const CapRow: React.FC<{
       {/* Payroll + space/over */}
       <div className="text-right flex-shrink-0 w-24">
         <div className="text-sm font-black text-white leading-none">{formatSalaryM(payroll)}</div>
-        <div className={`text-[9px] font-bold leading-none mt-0.5 ${capSpace >= 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
+        <div className={`text-[9px] font-bold leading-none mt-0.5 ${capSpace >= 0 ? 'text-emerald-400' : 'text-slate-300'}`}>
           {capSpace >= 0
             ? `+${formatSalaryM(capSpace)} space`
             : taxOver > 0
@@ -125,19 +129,19 @@ const CapRow: React.FC<{
       {/* MLE */}
       {(() => {
         const mle = getMLEAvailability(team.id, payroll, 0, thresholds, leagueStats);
-        if (!mle.type || mle.blocked) return <div className="text-[9px] text-slate-600 w-16 text-right flex-shrink-0">—</div>;
+        if (!mle.type || mle.blocked) return <div className="text-[9px] text-slate-400 w-16 text-right flex-shrink-0">—</div>;
         const remainM = formatSalaryM(mle.available);
         const typeLabel = mle.type === 'room' ? 'Room' : mle.type === 'taxpayer' ? 'Tax' : 'NT';
         return (
           <div className="text-right flex-shrink-0 w-16">
             <div className="text-[10px] font-bold text-cyan-400">{remainM}</div>
-            <div className="text-[8px] text-slate-500">{typeLabel} MLE</div>
+            <div className="text-[8px] text-slate-300">{typeLabel} MLE</div>
           </div>
         );
       })()}
 
       {/* Expiring */}
-      <div className="text-[10px] text-slate-500 w-12 text-right flex-shrink-0">
+      <div className="text-[10px] text-slate-300 w-12 text-right flex-shrink-0">
         {expiringCount > 0
           ? <span className="text-amber-400 font-bold">{expiringCount} exp</span>
           : <span>–</span>
@@ -145,7 +149,7 @@ const CapRow: React.FC<{
       </div>
 
       {/* Players */}
-      <div className="text-[10px] text-slate-400 w-5 text-right flex-shrink-0">{playerCount}</div>
+      <div className="text-[10px] text-slate-300 w-5 text-right flex-shrink-0">{playerCount}</div>
 
       <ExternalLink size={10} className="text-slate-700 group-hover:text-slate-400 transition-colors flex-shrink-0" />
     </div>
@@ -177,7 +181,7 @@ const TradeCard: React.FC<{
           <span className="text-xs font-black text-white uppercase tracking-tight">{team.abbrev}</span>
           <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${outlook.bgColor} ${outlook.color}`}>{outlook.label}</span>
         </div>
-        <div className="text-[9px] text-slate-500 mt-0.5">
+        <div className="text-[9px] text-slate-300 mt-0.5">
           {effectiveWins}–{effectiveLosses}
         </div>
       </div>
@@ -186,7 +190,7 @@ const TradeCard: React.FC<{
           ? <div className="text-[10px] font-bold text-emerald-400">+{formatSalaryM(capSpace)}</div>
           : taxOver > 0
             ? <div className="text-[10px] font-bold text-yellow-400">{formatSalaryM(taxOver)} tax</div>
-            : <div className="text-[10px] font-bold text-slate-500">{formatSalaryM(Math.abs(capSpace))} over</div>
+            : <div className="text-[10px] font-bold text-slate-300">{formatSalaryM(Math.abs(capSpace))} over</div>
         }
         {expiringCount > 0 && (
           <div className="text-[9px] text-amber-400">{expiringCount} expiring</div>
@@ -332,6 +336,11 @@ export const LeagueFinancesView: React.FC = () => {
     if (capSort === 'payroll') diff = a.payroll - b.payroll;
     else if (capSort === 'space') diff = (thresholds.salaryCap - a.payroll) - (thresholds.salaryCap - b.payroll);
     else if (capSort === 'wins') diff = a.team.wins - b.team.wins;
+    else if (capSort === 'strategy') {
+      const ra = ROLE_RANK[getTradeOutlook(a.payroll, a.effectiveWins, a.effectiveLosses, a.expiringCount, thresholds, a.confRank, a.gbFromLeader, a.topThreeAvgK2).role] ?? 2;
+      const rb = ROLE_RANK[getTradeOutlook(b.payroll, b.effectiveWins, b.effectiveLosses, b.expiringCount, thresholds, b.confRank, b.gbFromLeader, b.topThreeAvgK2).role] ?? 2;
+      diff = rb - ra;
+    }
     else diff = a.team.name.localeCompare(b.team.name);
     return capDir === 'desc' ? -diff : diff;
   }), [teamData, capSort, capDir, thresholds]);
@@ -440,7 +449,7 @@ export const LeagueFinancesView: React.FC = () => {
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap gap-3 mt-3 text-[9px] text-slate-500">
+        <div className="flex flex-wrap gap-3 mt-3 text-[9px] text-slate-300">
           <span className="flex items-center gap-1"><span className="w-2.5 h-px bg-sky-400 inline-block" /> Cap {formatSalaryM(thresholds.salaryCap)}</span>
           <span className="flex items-center gap-1"><span className="w-2.5 h-px bg-yellow-400 inline-block" /> Tax {formatSalaryM(thresholds.luxuryTax)}</span>
           <span className="flex items-center gap-1"><span className="w-2.5 h-px bg-orange-400 inline-block" /> 1st Apron {formatSalaryM(thresholds.firstApron)}</span>
@@ -476,7 +485,7 @@ export const LeagueFinancesView: React.FC = () => {
       {/* CAP OVERVIEW */}
       {tab === 'cap' && (
         <>
-          <div className="flex-shrink-0 border-b border-slate-800/40 bg-[#161616] px-4 py-1.5 flex items-center gap-3 text-[9px] font-black text-slate-600 uppercase tracking-widest">
+          <div className="flex-shrink-0 border-b border-slate-800/40 bg-[#161616] px-4 py-1.5 flex items-center gap-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">
             <span className="w-4 flex-shrink-0" />
             <div className="w-36 flex-shrink-0">
               <SortBtn col="name" label="Team" current={capSort} dir={capDir} onSort={handleCapSort} />
@@ -484,15 +493,18 @@ export const LeagueFinancesView: React.FC = () => {
             <div className="w-14 flex-shrink-0 text-center flex justify-center">
               <SortBtn col="wins" label="W-L" current={capSort} dir={capDir} onSort={handleCapSort} />
             </div>
-            <span className="w-24 flex-shrink-0" />
-            <span className="w-20 flex-shrink-0" />
+            <div className="w-24 flex-shrink-0 text-center flex justify-center">
+              <SortBtn col="strategy" label="Strategy" current={capSort} dir={capDir} onSort={handleCapSort} />
+            </div>
+            <div className="w-20 flex-shrink-0 text-center">Cap</div>
             <span className="flex-1 min-w-0" />
             <div className="w-24 flex-shrink-0 text-right flex flex-col items-end gap-0.5">
               <SortBtn col="payroll" label="Payroll"  current={capSort} dir={capDir} onSort={handleCapSort} />
               <SortBtn col="space"   label="Cap Space" current={capSort} dir={capDir} onSort={handleCapSort} />
             </div>
-            <span className="w-12 flex-shrink-0" />
-            <span className="w-5 flex-shrink-0 text-right text-slate-700">{capSorted.length}</span>
+            <div className="w-16 flex-shrink-0 text-right">MLE</div>
+            <div className="w-12 flex-shrink-0 text-right">Exp</div>
+            <div className="w-5 flex-shrink-0 text-right">Pl</div>
             <span className="w-2.5 flex-shrink-0" />
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -522,12 +534,12 @@ export const LeagueFinancesView: React.FC = () => {
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp size={13} className="text-emerald-400" />
                 <span className="text-xs font-black text-white uppercase tracking-wider">Buyers</span>
-                <span className="text-[9px] text-slate-500 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded-full ml-1">{buyers.length} teams</span>
-                <span className="text-[9px] text-slate-600 ml-auto">Contenders with room to add</span>
+                <span className="text-[9px] text-slate-300 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded-full ml-1">{buyers.length} teams</span>
+                <span className="text-[9px] text-slate-400 ml-auto">Contenders with room to add</span>
               </div>
               <div className="space-y-1.5">
                 {buyers.length === 0
-                  ? <div className="text-[10px] text-slate-600 italic text-center py-4">No teams currently qualify</div>
+                  ? <div className="text-[10px] text-slate-400 italic text-center py-4">No teams currently qualify</div>
                   : buyers.map(d => (
                     <TradeCard key={d.team.id} d={d} thresholds={thresholds} onClick={() => navigateToTeamFinances(d.team.id)} />
                   ))
@@ -540,12 +552,12 @@ export const LeagueFinancesView: React.FC = () => {
               <div className="flex items-center gap-2 mb-3">
                 <TrendingDown size={13} className="text-rose-400" />
                 <span className="text-xs font-black text-white uppercase tracking-wider">Sellers / Rebuilding</span>
-                <span className="text-[9px] text-slate-500 font-bold bg-rose-500/10 px-1.5 py-0.5 rounded-full ml-1">{sellers.length} teams</span>
-                <span className="text-[9px] text-slate-600 ml-auto">Moving assets or shedding salary</span>
+                <span className="text-[9px] text-slate-300 font-bold bg-rose-500/10 px-1.5 py-0.5 rounded-full ml-1">{sellers.length} teams</span>
+                <span className="text-[9px] text-slate-400 ml-auto">Moving assets or shedding salary</span>
               </div>
               <div className="space-y-1.5">
                 {sellers.length === 0
-                  ? <div className="text-[10px] text-slate-600 italic text-center py-4">No teams currently qualify</div>
+                  ? <div className="text-[10px] text-slate-400 italic text-center py-4">No teams currently qualify</div>
                   : sellers.map(d => (
                     <TradeCard key={d.team.id} d={d} thresholds={thresholds} onClick={() => navigateToTeamFinances(d.team.id)} />
                   ))
@@ -559,7 +571,7 @@ export const LeagueFinancesView: React.FC = () => {
                 <div className="flex items-center gap-2 mb-3">
                   <Minus size={13} className="text-slate-400" />
                   <span className="text-xs font-black text-white uppercase tracking-wider">Neutral</span>
-                  <span className="text-[9px] text-slate-500 font-bold bg-slate-700/40 px-1.5 py-0.5 rounded-full ml-1">{neutrals.length} teams</span>
+                  <span className="text-[9px] text-slate-300 font-bold bg-slate-700/40 px-1.5 py-0.5 rounded-full ml-1">{neutrals.length} teams</span>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
                   {neutrals.map(d => (
@@ -598,19 +610,19 @@ export const LeagueFinancesView: React.FC = () => {
           </div>
 
           {/* Sort controls */}
-          <div className="flex-shrink-0 border-b border-slate-800/40 bg-[#161616] px-4 py-1.5 flex items-center gap-3 text-[9px] font-black text-slate-600 uppercase tracking-widest">
+          <div className="flex-shrink-0 border-b border-slate-800/40 bg-[#161616] px-4 py-1.5 flex items-center gap-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">
             <SortBtn col="attendance" label="Attendance" current={attSort} dir={attDir} onSort={handleAttSort} />
             <SortBtn col="revenue"    label="Revenue"    current={attSort} dir={attDir} onSort={handleAttSort} />
             <SortBtn col="fill"       label="Fill %"     current={attSort} dir={attDir} onSort={handleAttSort} />
             <SortBtn col="name"       label="Team"       current={attSort} dir={attDir} onSort={handleAttSort} />
-            <div className="ml-auto text-[9px] text-slate-700 flex items-center gap-1">
+            <div className="ml-auto text-[9px] text-slate-400 flex items-center gap-1">
               <Users size={9} /> Capped at {formatAttendance(ARENA_HARD_CAP)}
             </div>
           </div>
 
           {/* Column headers */}
           <div className="flex-shrink-0 border-b border-slate-800/30 px-4 py-1 bg-[#141414]">
-            <div className="flex items-center gap-3 text-[8px] font-black text-slate-700 uppercase tracking-widest">
+            <div className="flex items-center gap-3 text-[8px] font-black text-slate-400 uppercase tracking-widest">
               <span className="w-4" />
               <span className="w-36">Team</span>
               <span className="w-12 text-center">W–L</span>

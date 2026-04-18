@@ -611,21 +611,45 @@ const actions = useGameActions(setState, () => stateRef.current);
           (new Date(`${targetNorm}T00:00:00Z`).getTime() - new Date(`${currentNorm}T00:00:00Z`).getTime()) /
           (1000 * 60 * 60 * 24)
         );
+        console.log('[SIM_TO_DATE] ▶️ dispatched', {
+          rawTargetDate: action.payload.targetDate,
+          targetNorm,
+          currentStateDate: stateRef.current.date,
+          currentNorm,
+          diffDays,
+          stateDay: stateRef.current.day,
+        });
         const genId = ++generationIdRef.current;
         const { runLazySim } = await import('../services/logic/lazySimRunner');
         // Short sims (≤30 days, e.g. playoff round) use silent mode to avoid
         // the full-screen lazy-sim overlay that looks like the jumpstart screen.
         const simMode = diffDays > 30 ? 'overlay' : 'silent';
+        const stopBefore = action.payload?.stopBefore === true;
+        console.log('[SIM_TO_DATE] ⚙️ runLazySim options', {
+          simMode,
+          batchSize: diffDays > 30 ? 7 : 1,
+          stopBefore,
+        });
         const result = await runLazySim(
           stateRef.current,
           action.payload.targetDate,
           (progress: any) => {
             setState(prev => ({ ...prev, lazySimProgress: progress }));
           },
-          { mode: simMode, batchSize: diffDays > 30 ? 7 : 1 }
+          { mode: simMode, batchSize: diffDays > 30 ? 7 : 1, stopBefore }
         );
+        console.log('[SIM_TO_DATE] ✅ runLazySim returned', {
+          endStateDate: result.state.date,
+          endStateDay: result.state.day,
+          endNorm: normalizeDate(result.state.date),
+          lastSimResultsCount: result.lastSimResults.length,
+          lastSimResultsDates: [...new Set(result.lastSimResults.map((r: any) => r.date))],
+        });
         setState(prev => {
-          if (genId !== generationIdRef.current) return prev;
+          if (genId !== generationIdRef.current) {
+            console.log('[SIM_TO_DATE] ⚠️ genId mismatch — discarding result', { genId, current: generationIdRef.current });
+            return prev;
+          }
           return {
             ...prev,
             ...result.state,

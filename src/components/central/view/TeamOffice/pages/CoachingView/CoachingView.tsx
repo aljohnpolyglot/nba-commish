@@ -9,6 +9,7 @@ import type { CoachData as CoachBioData } from '../../../../../../services/staff
 import { StarterService } from '../lib/starterService';
 import { systemDescriptions } from '../lib/systemDescriptions';
 import { PlayerPortrait } from './PlayerPortrait';
+import { GameplanTab } from './GameplanTab';
 
 interface CoachingViewProps {
   team: any; // The processed team object from App.tsx
@@ -105,7 +106,7 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
   // it increases their shot diet or pts target, but reduces efficiency.
   // Note that these options still don't change overall team strength, 
   // just the tendencies and shot distribution.
-  const [activeTab, setActiveTab] = useState<'SYSTEM' | 'COACHING' | 'PREFERENCES' | 'STAFF'>('SYSTEM');
+  const [activeTab, setActiveTab] = useState<'GAMEPLAN' | 'SYSTEM' | 'COACHING' | 'PREFERENCES' | 'STAFF'>('GAMEPLAN');
   const [starters, setStarters] = useState<any[]>([]);
   const [isMobile, setIsMobile] = useState(false);
   const [selectedSystem, setSelectedSystem] = useState(team.bestSystem);
@@ -406,7 +407,13 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
       <div className="w-full lg:w-2/3 flex flex-col">
         {/* Tabs */}
         <div className="flex border-b border-gray-700 mb-4 overflow-x-auto whitespace-nowrap scrollbar-hide">
-          <button 
+          <button
+            className={`px-4 md:px-6 py-2 font-bold uppercase text-xs md:text-sm flex-shrink-0 ${activeTab === 'GAMEPLAN' ? 'text-white border-b-2 border-white' : 'text-gray-500 hover:text-gray-300'}`}
+            onClick={() => setActiveTab('GAMEPLAN')}
+          >
+            Gameplan
+          </button>
+          <button
             className={`px-4 md:px-6 py-2 font-bold uppercase text-xs md:text-sm flex-shrink-0 ${activeTab === 'SYSTEM' ? 'text-white border-b-2 border-white' : 'text-gray-500 hover:text-gray-300'}`}
             onClick={() => setActiveTab('SYSTEM')}
           >
@@ -434,6 +441,9 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
 
         {/* Tab Content */}
         <div className="flex-grow bg-[#222] rounded-lg border border-gray-700 p-3 md:p-4">
+          {activeTab === 'GAMEPLAN' && (
+            <GameplanTab teamId={Number(team.tid)} />
+          )}
           {activeTab === 'SYSTEM' && (
             <div className="flex flex-col h-full">
               <div className="flex justify-between items-center mb-4">
@@ -450,7 +460,7 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] md:text-xs text-gray-400 uppercase">Active:</span>
-                  <div className={`w-3 h-3 ${selectedSystem === team.bestSystem ? 'bg-green-500' : 'bg-gray-500'} rounded-sm`}></div>
+                  <div className="w-3 h-3 bg-green-500 rounded-sm"></div>
                 </div>
               </div>
               

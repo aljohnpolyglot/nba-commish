@@ -3,6 +3,7 @@ import { X, Settings2, Zap, Cpu, Layers, Gamepad2, Bot, Database, HardDrive, Cro
 import { clearImageCache } from '../../services/imageCache';
 import { SettingsManager, GameSettings } from '../../services/SettingsManager';
 import { useGame } from '../../store/GameContext';
+import { InflationEditor } from '../shared/InflationEditor';
 
 const GAME_MODE_OPTIONS = [
   { value: 1 as const, label: '⚡ Fast',     description: 'Lean feeds, quick turns.' },
@@ -300,6 +301,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   </div>
                 </div>
               )}
+
+              {/* Cap Inflation — Commissioner only */}
+              {!isGM && <InflationEditor compact />}
 
               {/* Max Box Score Years */}
               <div className="space-y-3">

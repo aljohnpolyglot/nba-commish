@@ -7,6 +7,7 @@ import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
 import ContactModal from '../../ContactModal';
 import { PersonSelectorModal } from '../../modals/PersonSelectorModal';
 import { format, addDays } from 'date-fns';
+import { getOwnTeamId } from '../../../utils/helpers';
 
 interface InjuriesViewProps {
   filteredTeamId?: number;  // pre-filter to a single team (used in TeamDetailView)
@@ -15,6 +16,7 @@ interface InjuriesViewProps {
 
 export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embedded }) => {
   const { state, navigateToTeam, healPlayer, dispatchAction } = useGame();
+  const ownTid = getOwnTeamId(state);
   const [actionsPlayer, setActionsPlayer] = React.useState<NBAPlayer | null>(null);
   const [selectedTeamId, setSelectedTeamId] = React.useState<number | 'all'>(filteredTeamId ?? 'all');
   const [viewingBioPlayer, setViewingBioPlayer] = React.useState<NBAPlayer | null>(null);
@@ -265,10 +267,12 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
             </div>
           ) : (
             <div className="divide-y divide-slate-800/50">
-              {filteredTeamsWithInjuries.map(team => (
-                <div key={team.id} className="p-0">
-                  <div 
-                    className="flex items-center gap-3 p-4 bg-slate-800/30 border-b border-slate-800/50 cursor-pointer hover:bg-slate-800/50 transition-colors"
+              {filteredTeamsWithInjuries.map(team => {
+                const isOwn = ownTid !== null && team.id === ownTid;
+                return (
+                <div key={team.id} className={`p-0 ${isOwn ? 'ring-2 ring-indigo-500/40 ring-inset' : ''}`}>
+                  <div
+                    className={`flex items-center gap-3 p-4 border-b border-slate-800/50 cursor-pointer transition-colors ${isOwn ? 'bg-indigo-500/15 hover:bg-indigo-500/20' : 'bg-slate-800/30 hover:bg-slate-800/50'}`}
                     onClick={() => navigateToTeam(team.id)}
                   >
                     {team.logoUrl ? (
@@ -279,6 +283,7 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
                       </div>
                     )}
                     <h3 className="text-lg font-bold text-white">{team.name}</h3>
+                    {isOwn && <span className="text-[9px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/40">Your Team</span>}
                   </div>
                   
                   <div className="overflow-x-auto">
@@ -327,7 +332,8 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
                     </table>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

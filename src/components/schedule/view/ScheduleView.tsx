@@ -85,18 +85,21 @@ export const ScheduleView: React.FC = () => {
   };
 
   const simulateToDate = async (targetDateStr: string) => {
-    await dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: targetDateStr } } as any);
+    // stopBefore: land ON the selected date with that day's games still unplayed,
+    // so the user can choose to watch or sim them manually.
+    await dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: targetDateStr, stopBefore: true } } as any);
   };
 
   const simulateSeason = async () => {
+    // Season sim — include the last day's games (we want the season complete).
     const lastGame = [...state.schedule].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
     if (lastGame) {
-      await simulateToDate(lastGame.date);
+      await dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: lastGame.date } } as any);
     } else {
       const stateDateNorm = normalizeDate(state.date);
       const farDate = new Date(`${stateDateNorm}T00:00:00Z`);
       farDate.setUTCDate(farDate.getUTCDate() + 180);
-      await simulateToDate(farDate.toISOString());
+      await dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: farDate.toISOString() } } as any);
     }
   };
 

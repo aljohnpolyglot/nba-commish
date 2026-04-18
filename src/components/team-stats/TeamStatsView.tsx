@@ -3,6 +3,7 @@ import { useGame } from '../../store/GameContext';
 import { ArrowUpDown, Search, X, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { NBATeam } from '../../types';
 import { evaluateFilter } from '../../utils/filterUtils';
+import { getOwnTeamId } from '../../utils/helpers';
 
 type StatType = 'team' | 'opponent' | 'shotLocations' | 'oppShotLocations' | 'advanced';
 type Phase = 'regular' | 'playoffs' | 'all';
@@ -59,6 +60,7 @@ function countFeats(pts: number, reb: number, ast: number, stl: number, blk: num
 
 export const TeamStatsView: React.FC = () => {
   const { state, navigateToTeam, pendingStatSort, setPendingStatSort } = useGame();
+  const ownTid = getOwnTeamId(state);
 
   const [statType, setStatType]     = useState<StatType>('team');
   const [season,   setSeason]       = useState<number | 'all'>(state.leagueStats.year);
@@ -331,13 +333,14 @@ export const TeamStatsView: React.FC = () => {
     </>
   );
 
-  const commonTds = (row: TeamStatRow, idx: number) => (
+  const commonTds = (row: TeamStatRow, idx: number, isOwn: boolean) => (
     <>
-      <td className="px-2 py-1.5 text-right text-slate-600 text-[11px] sticky left-0 bg-slate-950 z-10">{idx + 1}</td>
+      <td className={`px-2 py-1.5 text-right text-slate-600 text-[11px] sticky left-0 z-10 ${isOwn ? 'bg-indigo-950/60' : 'bg-slate-950'}`}>{idx + 1}</td>
       <td className="px-2 py-1.5 whitespace-nowrap">
         <button onClick={() => navigateToTeam(row.team.id)} className="flex items-center gap-1.5 hover:opacity-80 transition-opacity text-left">
           {(row.team as any).logoUrl && <img src={(row.team as any).logoUrl} alt={row.team.name} className="w-4 h-4 object-contain" />}
           <span className="font-bold text-white">{row.team.name}</span>
+          {isOwn && <span className="text-[8px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-1 py-0.5 rounded border border-indigo-500/40">You</span>}
         </button>
       </td>
       <td className="px-2 py-1.5 text-right text-slate-300">{row.g}</td>
@@ -625,12 +628,15 @@ export const TeamStatsView: React.FC = () => {
           style={{ minWidth: statType === 'advanced' ? 900 : statType === 'shotLocations' || statType === 'oppShotLocations' ? 900 : 1100 }}>
           {renderThead()}
           <tbody className="divide-y divide-slate-800/50">
-            {sortedStats.map((row, idx) => (
-              <tr key={row.team.id} className="hover:bg-slate-800/30 active:bg-slate-800/50 transition-colors">
-                {commonTds(row, idx)}
+            {sortedStats.map((row, idx) => {
+              const isOwn = ownTid !== null && row.team.id === ownTid;
+              return (
+              <tr key={row.team.id} className={`transition-colors ${isOwn ? 'bg-indigo-500/10 hover:bg-indigo-500/15' : 'hover:bg-slate-800/30 active:bg-slate-800/50'}`}>
+                {commonTds(row, idx, isOwn)}
                 {renderRowCells(row)}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

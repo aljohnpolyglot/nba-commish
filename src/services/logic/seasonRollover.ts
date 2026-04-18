@@ -236,9 +236,9 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       },
       {
         inflationMin:     ls.inflationMin     ?? 0,
-        inflationMax:     ls.inflationMax     ?? 8,
-        inflationAverage: ls.inflationAverage ?? 3.5,
-        inflationStdDev:  ls.inflationStdDev  ?? 1.5,
+        inflationMax:     ls.inflationMax     ?? 10,
+        inflationAverage: ls.inflationAverage ?? 5.5,
+        inflationStdDev:  ls.inflationStdDev  ?? 2.0,
       },
     );
     inflationPctApplied = pct;
@@ -478,6 +478,9 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       ...(newSecondApron != null ? { secondApronAmount: newSecondApron } : {}),
       minContractStaticAmount: newMinContract,
       mleUsage: {},  // reset MLE usage each season
+      // Inflate league revenue floor alongside the cap so sponsorship/merch/tickets
+      // scale with the economy rather than sitting flat forever.
+      revenue: Math.round((state.leagueStats.revenue ?? 0) * (newSalaryCap / (state.leagueStats.salaryCap || newSalaryCap))),
       // Inflate mediaRights revenue inputs so BroadcastingView formula stays
       // consistent with the inflated leagueStats.salaryCap, and unlock so the
       // commissioner can re-finalize a new deal each season.

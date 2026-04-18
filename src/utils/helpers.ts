@@ -10,6 +10,10 @@ export function computeAge(player: { age?: number; born?: { year?: number } }, s
   if (typeof player.age === 'number' && player.age > 0) return player.age;
   return 25; // fallback
 }
+
+export function getOwnTeamId(state: { gameMode?: string; userTeamId?: number }): number | null {
+  return state.gameMode === 'gm' && typeof state.userTeamId === 'number' ? state.userTeamId : null;
+}
 import { SEASON_DATES } from '../constants';
 import { GamePhase, NBATeam } from '../types';
 import { getRatedCelebrityNames } from '../data/celebrities';

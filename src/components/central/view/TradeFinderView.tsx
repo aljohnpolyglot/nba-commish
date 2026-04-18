@@ -739,7 +739,7 @@ export const TradeFinderView: React.FC = () => {
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
 
         {/* ── LEFT: Asset selector ── */}
-        <div className={`lg:w-[380px] flex-shrink-0 flex flex-col border-r border-slate-800 min-h-0
+        <div className={`flex-1 lg:flex-none lg:w-[380px] lg:flex-shrink-0 flex flex-col border-r border-slate-800 min-h-0
           ${mobilePanel === 'assets' ? 'flex' : 'hidden'} lg:flex`}>
 
           {/* Team picker (TeamDropdown) + search + tabs */}

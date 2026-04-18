@@ -12,6 +12,7 @@ import { RefereePickerModal } from './RefereePickerModal';
 import { RigConfirmModal } from './RigConfirmModal';
 import { fetchRefereeData, getRefereePhoto } from '../../data/photos';
 import { pickBroadcasterForGame, BROADCASTER_NAMES, BROADCASTER_LOGOS } from '../../utils/broadcastingUtils';
+import { getGameplan } from '../../store/gameplanStore';
 
 interface SelectedRef {
   id: string;
@@ -51,6 +52,17 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
       return homeStartersOverride.slice(0, 5);
     if (!isHome && awayStartersOverride && awayStartersOverride.length > 0)
       return awayStartersOverride.slice(0, 5);
+    // GM's saved gameplan wins over StarterService for their own team
+    if (state.gameMode === 'gm' && team.id === state.userTeamId) {
+      const plan = getGameplan(team.id);
+      if (plan?.starterIds?.length === 5) {
+        const byId = new Map(players.map(p => [p.internalId, p]));
+        const picked = plan.starterIds
+          .map(id => byId.get(id))
+          .filter((p): p is NBAPlayer => !!p && p.tid === team.id);
+        if (picked.length === 5) return picked;
+      }
+    }
     if (isCelebrity || isRisingStars || isAllStar)
       return getPlayersForExhibitionTeam(game, isHome, state.allStar, players).slice(0, 5);
     if (team.id >= 100) {

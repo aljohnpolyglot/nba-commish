@@ -149,11 +149,13 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   rookieContractCapException: true,
 
   // Economy - Cap Inflation
+  // CBA-realistic defaults: historical avg 3.45–7%, hard-capped at 10% post-2016,
+  // can stagnate near 0% in downturns. Std dev 2% gives occasional ceiling/floor hits.
   inflationEnabled: true,
   inflationMin: 0,
-  inflationMax: 8,
-  inflationAverage: 3.5,
-  inflationStdDev: 1.5,
+  inflationMax: 10,
+  inflationAverage: 5.5,
+  inflationStdDev: 2.0,
 
   // Economy - Draft Picks
   tradableDraftPickSeasons: 7,

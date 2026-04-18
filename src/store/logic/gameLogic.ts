@@ -91,7 +91,13 @@ export const processTurn = async (
 
     // 3. Run simulation
     const simStartNorm = normalizeDate(stateForSim.date);
+    if (action.type === 'ADVANCE_DAY' || action.type === 'SIMULATE_TO_DATE') {
+        console.log(`[PROCESS_TURN] ▶️ action=${action.type}, stateForSim.date=${stateForSim.date}, simStartNorm=${simStartNorm}, daysToSimulate=${daysToSimulate}`);
+    }
     let { stateWithSim, allSimResults } = runSimulation(stateForSim, daysToSimulate, action);
+    if (action.type === 'ADVANCE_DAY' || action.type === 'SIMULATE_TO_DATE') {
+        console.log(`[PROCESS_TURN] ✅ runSimulation returned state.date=${stateWithSim.date}, simResults=${allSimResults.length}`);
+    }
 
     // 3b. Fire any auto-resolve calendar events crossed during this sim batch
     // (All-Star voting, schedule gen, award announcements, etc.)

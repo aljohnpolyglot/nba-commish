@@ -1176,7 +1176,7 @@ export interface HistoricalAward {
   allLeague?: AllLeagueTeam[];
   allDefensive?: AllLeagueTeam[];
   allRookie?: AwardPlayer[];
-  type: string;   // 'MVP' | 'DPOY' | 'ROY' | 'SMOY' | 'MIP' | 'Finals MVP' | 'Champion' | 'Runner Up' | 'COY' | 'All-NBA First Team'
+  type: string;   // 'MVP' | 'DPOY' | 'ROY' | 'SMOY' | 'MIP' | 'Finals MVP' | 'Semifinals MVP' | 'Champion' | 'Runner Up' | 'COY' | 'All-NBA First Team'
   name: string;   // player or team name
   pid?: string;   // player internalId (optional — not set for team awards)
   tid?: number;   // team id

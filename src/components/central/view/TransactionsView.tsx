@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { NBAPlayer } from '../../../types';
 import { PlayerBioView } from './PlayerBioView';
 import { TradeDetailView } from './TradeDetailView';
+import { getOwnTeamId } from '../../../utils/helpers';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -68,6 +69,8 @@ type DisplayItem = SingleItem | MultiItem;
 
 export const TransactionsView: React.FC = () => {
   const { state } = useGame();
+  const ownTid = getOwnTeamId(state);
+  const ownTeam = ownTid !== null ? state.teams.find(t => t.id === ownTid) : null;
   const [filterLeague, setFilterLeague] = React.useState<LeagueFilter>('nba');
   const [filterType, setFilterType] = React.useState('');
   const [filterTeam, setFilterTeam] = React.useState('');
@@ -381,6 +384,7 @@ export const TransactionsView: React.FC = () => {
                 });
                 // deduplicate by name
                 const uniqueTeams = legTeams.filter((t, i, arr) => arr.findIndex(x => x.name === t.name) === i);
+                const isOwn = !!ownTeam && item.legs.some(l => (l.text || '').includes(ownTeam.name) || (l.text || '').includes(ownTeam.abbrev));
 
                 return (
                   <motion.div
@@ -388,7 +392,7 @@ export const TransactionsView: React.FC = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: Math.min(index * 0.02, 0.5), duration: 0.3 }}
-                    className="relative bg-blue-950/30 border border-blue-700/40 hover:border-blue-600/60 rounded-xl overflow-hidden transition-all"
+                    className={`relative bg-blue-950/30 border hover:border-blue-600/60 rounded-xl overflow-hidden transition-all ${isOwn ? 'border-indigo-500/60 ring-2 ring-indigo-500/40' : 'border-blue-700/40'}`}
                   >
                     {/* Header — click to open full multi-leg detail */}
                     <div
@@ -403,6 +407,7 @@ export const TransactionsView: React.FC = () => {
                         <span className="text-[11px] font-black uppercase tracking-widest text-blue-300">
                           {item.legs.length + 1}-Team Trade
                         </span>
+                        {isOwn && <span className="text-[9px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/40">You</span>}
                         <div className="flex items-center gap-1 ml-1">
                           {uniqueTeams.slice(0, 4).map((t, i) => (
                             <img key={i} src={t.logo} alt={t.name} title={t.name}
@@ -468,13 +473,18 @@ export const TransactionsView: React.FC = () => {
               const isTrade = entry.kind === 'Trade';
               const isSigningWithPlayer = !isTrade && !!entry.player;
               const isClickable = isTrade || isSigningWithPlayer;
+              const isOwn = ownTid !== null && (
+                (entry.team as any)?.id === ownTid ||
+                (!!ownTeam && (entry.text || '').includes(ownTeam.name)) ||
+                (entry.player as any)?.tid === ownTid
+              );
               return (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(index * 0.02, 0.5), duration: 0.3 }}
-                  className={`group relative bg-slate-900/40 border border-slate-800 hover:border-slate-700 rounded-xl overflow-hidden transition-all hover:bg-slate-900/60 ${isClickable ? 'cursor-pointer' : ''}`}
+                  className={`group relative bg-slate-900/40 border hover:border-slate-700 rounded-xl overflow-hidden transition-all hover:bg-slate-900/60 ${isOwn ? 'border-indigo-500/60 ring-2 ring-indigo-500/30 bg-indigo-950/20' : 'border-slate-800'} ${isClickable ? 'cursor-pointer' : ''}`}
                   onClick={isClickable ? () => {
                     if (isTrade) setSelectedTrade({ text: entry.text, date: entry.date });
                     else if (entry.player) setViewingPlayer(entry.player as NBAPlayer);
@@ -491,6 +501,7 @@ export const TransactionsView: React.FC = () => {
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
                           <span className={`text-[10px] font-bold uppercase tracking-wider ${style.color}`}>{style.label}</span>
+                          {isOwn && <span className="text-[9px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/40">You</span>}
                           {(entry.text || '').toLowerCase().includes('player option') && (
                             <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">Player Opt.</span>
                           )}

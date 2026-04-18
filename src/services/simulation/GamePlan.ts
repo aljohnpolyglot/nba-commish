@@ -30,13 +30,8 @@ function sampleNormal(mean: number, sigma: number): number {
 }
 
 /**
- * σ by slot — stars stable, role players genuinely volatile:
- *   slot 0 (star)       → 0.07   very stable
- *   slot 1 (co-star)    → 0.10
- *   slot 2 (3rd option) → 0.20   occasional 28-33 pt games
- *   slot 3              → 0.34   role player explosion territory
- *   slot 4              → 0.44
- *   slot 5+             → 0.52   deep bench: big variance both ways, capped 0.60
+ * σ by slot for SCORING — stars stable, role players genuinely volatile.
+ * Wide variance so role players can occasionally erupt for 30+ pts.
  */
 function slotSigma(slot: number): number {
   if (slot === 0) return 0.17;                         // star: enough variance to reach 60-pt territory
@@ -45,10 +40,25 @@ function slotSigma(slot: number): number {
   return Math.min(0.65, 0.40 + (slot - 3) * 0.10);   // role players: 0.40, 0.50, 0.60, 0.65+
 }
 
+/**
+ * σ by slot for MINUTES — far tighter than scoring σ.
+ * Real NBA star per-game minutes variance is ±3 min around season MPG, not ±12.
+ * Previously minutes reused slotSigma() (too wide), causing Jokic 48:00 regulation games.
+ */
+function minutesSigma(slot: number): number {
+  if (slot === 0) return 0.05;  // star: ±3 min around MPG
+  if (slot === 1) return 0.07;
+  if (slot === 2) return 0.08;
+  if (slot === 3) return 0.10;
+  if (slot === 4) return 0.12;
+  return Math.min(0.18, 0.14 + (slot - 5) * 0.02);  // deep bench: modest variance
+}
+
 export function generateGamePlan(rotationSize: number): GamePlan {
-  // ── 1. Draw raw minutes weights ───────────────────────────────────────────
+  // ── 1. Draw raw minutes weights (tight σ, tight clamp) ────────────────────
+  // Clamp [0.80, 1.20] means even a hot night can't push a 36-MPG star past ~43.
   const rawMins = Array.from({ length: rotationSize }, (_, i) =>
-    Math.min(1.50, Math.max(0.35, sampleNormal(1.0, slotSigma(i))))
+    Math.min(1.20, Math.max(0.80, sampleNormal(1.0, minutesSigma(i))))
   );
 
   // ── 2. Draw raw pts weights: mostly independent of minutes ──────────────────

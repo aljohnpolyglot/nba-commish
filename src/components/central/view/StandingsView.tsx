@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { getOwnTeamId } from '../../../utils/helpers';
 
 type StandingsViewType = 'league' | 'conf' | 'div';
 
 export const StandingsView: React.FC = () => {
   const { state, navigateToTeam } = useGame();
+  const ownTid = getOwnTeamId(state);
   const [viewType, setViewType] = useState<StandingsViewType>('conf');
   const leagueYear = state.leagueStats.year;
 
@@ -222,9 +224,10 @@ export const StandingsView: React.FC = () => {
               {group.teams.map((team, index) => {
                 const gb = ((leaderWins - team.wins) + (team.losses - leaderLosses)) / 2;
                 const gbDisplay = gb === 0 ? '-' : gb.toFixed(1);
+                const isOwn = ownTid !== null && team.id === ownTid;
 
                 return (
-                  <tr key={team.id} className="hover:bg-slate-800/30 transition-colors">
+                  <tr key={team.id} className={`transition-colors ${isOwn ? 'bg-indigo-500/10 hover:bg-indigo-500/15 ring-1 ring-inset ring-indigo-500/40' : 'hover:bg-slate-800/30'}`}>
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-3">
                         <span className="text-slate-500 w-4 text-right text-xs">{index + 1}</span>
@@ -248,6 +251,7 @@ export const StandingsView: React.FC = () => {
                           {team.clinchedPlayoffs && (
                             <span className="text-[10px] text-slate-500 font-bold">{team.clinchedPlayoffs}</span>
                           )}
+                          {isOwn && <span className="text-[9px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/40">You</span>}
                         </button>
                       </div>
                     </td>

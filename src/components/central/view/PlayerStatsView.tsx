@@ -5,6 +5,7 @@ import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-react';
 import { evaluateFilter } from '../../../utils/filterUtils';
 import { memCache } from './bioCache';
+import { getOwnTeamId } from '../../../utils/helpers';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -358,6 +359,7 @@ interface PlayerStatsViewProps {
 
 export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFilter }) => {
   const { state, navigateToTeam, pendingStatSort, setPendingStatSort } = useGame();
+  const ownTid = getOwnTeamId(state);
   // Unified player name-click stack: actions → bio / ratings / sign / waive.
   const quick = usePlayerQuickActions();
   const [statType, setStatType]             = useState<StatType>('perGame');
@@ -659,13 +661,14 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
     return fmt1(v);
   };
 
-  const rowBg = (i: number, isHof: boolean) => {
+  const rowBg = (i: number, isHof: boolean, isOwn: boolean) => {
+    if (isOwn) return 'bg-indigo-500/10 hover:bg-indigo-500/15';
     if (isHof) return 'bg-rose-950/10 hover:bg-rose-900/15';
     return i % 2 === 0 ? 'hover:bg-slate-800/40' : 'bg-slate-900/20 hover:bg-slate-800/40';
   };
 
-  const stickyBg = (i: number, isHof: boolean) =>
-    isHof ? 'rgb(69,10,10)' : i % 2 === 0 ? 'rgb(2,6,23)' : 'rgb(9,14,27)';
+  const stickyBg = (i: number, isHof: boolean, isOwn: boolean) =>
+    isOwn ? 'rgb(30,27,75)' : isHof ? 'rgb(69,10,10)' : i % 2 === 0 ? 'rgb(2,6,23)' : 'rgb(9,14,27)';
 
   // PlayerBioView takeover routed through the unified quick-actions hook.
   if (quick.fullPageView) return quick.fullPageView;
@@ -916,21 +919,22 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
           <tbody>
             {pageRows.map((r, i) => {
               const isHof = r.player.hof === true;
+              const isOwn = ownTid !== null && r.player.tid === ownTid;
               const globalRank = (currentPage - 1) * perPage + i + 1;
 
               return (
                 <tr
                   key={`${r.player.internalId}-${r.season}-${i}`}
-                  className={`transition-colors ${rowBg(i, isHof)} border-b border-slate-800/20`}
+                  className={`transition-colors ${rowBg(i, isHof, isOwn)} border-b border-slate-800/20`}
                 >
                   {/* Rank */}
-                  <td className="px-2 py-1.5 text-right text-slate-600 sticky left-0 z-10" style={{ backgroundColor: stickyBg(i, isHof) }}>
+                  <td className="px-2 py-1.5 text-right text-slate-600 sticky left-0 z-10" style={{ backgroundColor: stickyBg(i, isHof, isOwn) }}>
                     {globalRank}
                   </td>
                   {/* Name */}
                   <td
                     className={`px-3 py-1.5 font-medium cursor-pointer hover:underline whitespace-nowrap sticky left-8 z-10 ${isHof ? 'text-rose-400' : 'text-indigo-400 hover:text-indigo-300'}`}
-                    style={{ backgroundColor: stickyBg(i, isHof) }}
+                    style={{ backgroundColor: stickyBg(i, isHof, isOwn) }}
                     onClick={() => quick.openFor(r.player)}
                   >
                     {r.player.name}

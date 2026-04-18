@@ -1,9 +1,11 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { NBATeam, Game } from '../../../types';
+import { getOwnTeamId } from '../../../utils/helpers';
 
 export const PowerRankingsView: React.FC = () => {
   const { state, navigateToTeam } = useGame();
+  const ownTid = getOwnTeamId(state);
 
   const rankings = useMemo(() => {
     const teamGames = new Map<number, Game[]>();
@@ -182,10 +184,12 @@ export const PowerRankingsView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/50">
-                {rankings.map((row) => (
-                  <tr 
-                    key={row.team.id} 
-                    className="hover:bg-slate-800/30 transition-colors cursor-pointer group"
+                {rankings.map((row) => {
+                  const isOwn = ownTid !== null && row.team.id === ownTid;
+                  return (
+                  <tr
+                    key={row.team.id}
+                    className={`transition-colors cursor-pointer group ${isOwn ? 'bg-indigo-500/10 hover:bg-indigo-500/15 ring-1 ring-inset ring-indigo-500/40' : 'hover:bg-slate-800/30'}`}
                     onClick={() => navigateToTeam(row.team.id)}
                   >
                     <td className="px-3 md:px-6 py-3 md:py-4 text-center">
@@ -206,8 +210,9 @@ export const PowerRankingsView: React.FC = () => {
                           </div>
                         )}
                         <div className="min-w-0">
-                          <div className="font-bold text-white text-xs md:text-base leading-tight truncate">
-                            <span className="hidden md:inline">{row.team.region} </span>{row.team.name}
+                          <div className="font-bold text-white text-xs md:text-base leading-tight truncate flex items-center gap-1.5">
+                            <span className="truncate"><span className="hidden md:inline">{row.team.region} </span>{row.team.name}</span>
+                            {isOwn && <span className="text-[8px] md:text-[9px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/40 shrink-0">You</span>}
                           </div>
                           <div className="text-[9px] md:text-xs font-medium text-slate-500 uppercase tracking-wider">{row.team.wins}-{row.team.losses}</div>
                         </div>
@@ -283,7 +288,8 @@ export const PowerRankingsView: React.FC = () => {
                     </td>
                     )}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

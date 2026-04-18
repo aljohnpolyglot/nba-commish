@@ -40,6 +40,13 @@
   scrollbar-width: none;
 }
 
+/* Tailwind `scrollbar-hide` utility (used throughout TeamOffice / Coaching) */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;

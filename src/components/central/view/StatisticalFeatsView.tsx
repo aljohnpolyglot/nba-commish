@@ -5,6 +5,7 @@ import { getOpeningNightDate } from '../../../utils/dateUtils';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PlayerBioView } from './PlayerBioView';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
+import { getOwnTeamId } from '../../../utils/helpers';
 
 interface StatisticalFeatsViewProps {
   onGameClick?: (game: Game) => void;
@@ -72,6 +73,7 @@ interface FeatEntry {
 
 export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGameClick }) => {
   const { state, navigateToTeam } = useGame();
+  const ownTid = getOwnTeamId(state);
   const [selectedBoxScoreGame, setSelectedBoxScoreGame] = useState<Game | null>(null);
   
   // State
@@ -463,8 +465,10 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
           </thead>
           <tbody className="divide-y divide-slate-800/50">
             {paginatedData.length > 0 ? (
-              paginatedData.map((row) => (
-                <tr key={row.id} className="hover:bg-slate-800/50 transition-colors whitespace-nowrap text-xs">
+              paginatedData.map((row) => {
+                const isOwn = ownTid !== null && row.teamId === ownTid;
+                return (
+                <tr key={row.id} className={`transition-colors whitespace-nowrap text-xs ${isOwn ? 'bg-indigo-500/10 hover:bg-indigo-500/15' : 'hover:bg-slate-800/50'}`}>
                   <td className="px-3 py-2 text-slate-400 font-mono text-[10px]">{row.date}</td>
                   <td 
                     className="px-3 py-2 font-bold text-white cursor-pointer hover:text-indigo-400 transition-colors"
@@ -523,7 +527,8 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
                     {row.plusMinus != null ? (row.plusMinus > 0 ? `+${row.plusMinus}` : row.plusMinus) : '—'}
                   </td>
                 </tr>
-              ))
+                );
+              })
             ) : (
               <tr>
                 <td colSpan={32} className="px-3 py-12 text-center text-slate-500 uppercase tracking-widest text-xs font-bold">

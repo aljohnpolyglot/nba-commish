@@ -7,6 +7,7 @@ import { getNightProfile } from './nightProfile';
 import { SimulatorKnobs, KNOBS_DEFAULT } from '../SimulatorKnobs';
 import { playThroughInjuriesFactor, injurySeverityLevel, minutesRestrictionFactor } from '../playThroughInjuriesFactor';
 import { generateGamePlan } from '../GamePlan';
+import { getGameplan } from '../../../store/gameplanStore';
 
 export function generateStatsForTeam(
   team: Team,
@@ -33,7 +34,22 @@ export function generateStatsForTeam(
     knobs.rotationDepthOverride,
   );
 
-  const rotation = rotResult.players;
+  let rotation = rotResult.players;
+
+  // GM's saved gameplan — promote saved starters into slots 0-4 if they're healthy
+  // and already in the computed rotation. Displaced starters fall to bench order.
+  const savedPlan = overridePlayers ? null : getGameplan(team.id);
+  if (savedPlan?.starterIds?.length === 5) {
+    const idToPlayer = new Map(rotation.map(p => [p.internalId, p]));
+    const savedStarters = savedPlan.starterIds
+      .map(id => idToPlayer.get(id))
+      .filter((p): p is Player => !!p);
+    if (savedStarters.length === 5) {
+      const startersSet = new Set(savedStarters.map(p => p.internalId));
+      const bench = rotation.filter(p => !startersSet.has(p.internalId));
+      rotation = [...savedStarters, ...bench];
+    }
+  }
 
   if (rotation.length === 0) return [];
 
@@ -66,6 +82,18 @@ export function generateStatsForTeam(
       rotation, season, lead, otCount, mpgTarget, !!knobs.isPlayoffs
     );
     playerMinutes = minutes;
+
+    // Apply GM's saved minute overrides (renormalized so team still hits 240).
+    // We only override players the GM actually set — others keep their computed value.
+    if (savedPlan?.minuteOverrides && Object.keys(savedPlan.minuteOverrides).length > 0) {
+      const overridden = rotation.map((p, i) => {
+        const v = savedPlan.minuteOverrides![p.internalId];
+        return typeof v === 'number' ? v : playerMinutes[i];
+      });
+      const sum = overridden.reduce((a, b) => a + b, 0) || 1;
+      const target = totalMinuteBudget;
+      playerMinutes = overridden.map(m => m * (target / sum));
+    }
   }
 
   // ── GamePlan: per-game role lottery (stars stable, bench volatile) ─────────

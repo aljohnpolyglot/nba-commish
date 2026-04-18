@@ -4,9 +4,11 @@ import { NBAPlayer, NBATeam } from '../../../types';
 import { PlayerBioView } from './PlayerBioView';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { StatCategory, getStatValue } from '../../../utils/statUtils';
+import { getOwnTeamId } from '../../../utils/helpers';
 
 export const LeagueLeadersView: React.FC = () => {
   const { state, navigateToTeam, setCurrentView, setPendingStatSort } = useGame();
+  const ownTid = getOwnTeamId(state);
   const [activeTab, setActiveTab] = useState<'Player' | 'Team'>('Player');
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
 
@@ -202,8 +204,9 @@ export const LeagueLeadersView: React.FC = () => {
           <tbody className="divide-y divide-slate-800/50">
             {data.map((item, index) => {
               const team = state.teams.find(t => t.id === item.stat.tid);
+              const isOwn = ownTid !== null && item.player.tid === ownTid;
               return (
-                <tr key={item.player.internalId} className="hover:bg-slate-800/50 transition-colors">
+                <tr key={item.player.internalId} className={`transition-colors ${isOwn ? 'bg-indigo-500/10 hover:bg-indigo-500/15' : 'hover:bg-slate-800/50'}`}>
                   <td className="px-4 py-3 text-slate-500">{index + 1}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -261,8 +264,10 @@ export const LeagueLeadersView: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/50">
-            {data.map((item, index) => (
-              <tr key={item.team.id} className="hover:bg-slate-800/50 transition-colors">
+            {data.map((item, index) => {
+              const isOwn = ownTid !== null && item.team.id === ownTid;
+              return (
+              <tr key={item.team.id} className={`transition-colors ${isOwn ? 'bg-indigo-500/10 hover:bg-indigo-500/15' : 'hover:bg-slate-800/50'}`}>
                 <td className="px-4 py-3 text-slate-500">{index + 1}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
@@ -273,19 +278,21 @@ export const LeagueLeadersView: React.FC = () => {
                         {item.team.abbrev}
                       </div>
                     )}
-                    <span 
+                    <span
                       className="font-medium text-indigo-400 cursor-pointer hover:text-indigo-300 hover:underline"
                       onClick={() => navigateToTeam(item.team.id)}
                     >
                       {item.team.name}
                     </span>
+                    {isOwn && <span className="text-[9px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/40">You</span>}
                   </div>
                 </td>
                 <td className="px-4 py-3 text-right font-bold text-white">
                   {format === 'percent' ? `${item.value.toFixed(1)}%` : item.value.toFixed(1)}
                 </td>
               </tr>
-            ))}
+              );
+            })}
             {data.length === 0 && (
               <tr>
                 <td colSpan={3} className="px-4 py-6 text-center text-slate-500">No data available</td>
@@ -293,7 +300,7 @@ export const LeagueLeadersView: React.FC = () => {
             )}
           </tbody>
         </table>
-        <button 
+        <button
           onClick={() => handleCompleteLeaders('team', statKey, order)}
           className="w-full py-3 px-4 text-sm font-medium text-indigo-400 hover:text-indigo-300 hover:bg-slate-800/50 transition-colors border-t border-slate-800 flex items-center justify-center gap-1"
         >

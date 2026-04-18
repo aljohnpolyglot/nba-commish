@@ -150,9 +150,7 @@ export function CoachingPage({ teamId }: CoachingPageProps) {
     return <div className="text-red-400 font-bold uppercase tracking-widest">Team not found</div>;
   }
 
-  if (!selectedTeam || !coachDataLoaded) {
-    return <div className="text-[#8b949e] font-bold uppercase tracking-widest animate-pulse">Loading Coaching Data...</div>;
-  }
+  if (!selectedTeam) return null;
 
   return (
     <CoachingView

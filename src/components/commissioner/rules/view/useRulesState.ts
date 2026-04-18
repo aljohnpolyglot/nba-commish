@@ -199,9 +199,9 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
   // Economy - Cap Inflation
   const [inflationEnabled, setInflationEnabled] = useState(leagueStats.inflationEnabled ?? true);
   const [inflationMin, setInflationMin] = useState(leagueStats.inflationMin ?? 0);
-  const [inflationMax, setInflationMax] = useState(leagueStats.inflationMax ?? 8);
-  const [inflationAverage, setInflationAverage] = useState(leagueStats.inflationAverage ?? 3.5);
-  const [inflationStdDev, setInflationStdDev] = useState(leagueStats.inflationStdDev ?? 1.5);
+  const [inflationMax, setInflationMax] = useState(leagueStats.inflationMax ?? 10);
+  const [inflationAverage, setInflationAverage] = useState(leagueStats.inflationAverage ?? 5.5);
+  const [inflationStdDev, setInflationStdDev] = useState(leagueStats.inflationStdDev ?? 2.0);
 
   // Economy - Exceptions (MLE / Biannual)
   const [mleEnabled, setMleEnabled] = useState(leagueStats.mleEnabled ?? true);
@@ -386,9 +386,9 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
         tenDayContractsEnabled !== (leagueStats.tenDayContractsEnabled ?? true) ||
         inflationEnabled !== (leagueStats.inflationEnabled ?? true) ||
         inflationMin !== (leagueStats.inflationMin ?? 0) ||
-        inflationMax !== (leagueStats.inflationMax ?? 8) ||
-        inflationAverage !== (leagueStats.inflationAverage ?? 3.5) ||
-        inflationStdDev !== (leagueStats.inflationStdDev ?? 1.5) ||
+        inflationMax !== (leagueStats.inflationMax ?? 10) ||
+        inflationAverage !== (leagueStats.inflationAverage ?? 5.5) ||
+        inflationStdDev !== (leagueStats.inflationStdDev ?? 2.0) ||
         mleEnabled !== (leagueStats.mleEnabled ?? true) ||
         roomMleAmount !== (leagueStats.roomMleAmount ?? 8_781_000) ||
         nonTaxpayerMleAmount !== (leagueStats.nonTaxpayerMleAmount ?? 14_104_000) ||
@@ -936,9 +936,9 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
     setTenDayContractsEnabled(leagueStats.tenDayContractsEnabled ?? true);
     setInflationEnabled(leagueStats.inflationEnabled ?? true);
     setInflationMin(leagueStats.inflationMin ?? 0);
-    setInflationMax(leagueStats.inflationMax ?? 8);
-    setInflationAverage(leagueStats.inflationAverage ?? 3.5);
-    setInflationStdDev(leagueStats.inflationStdDev ?? 1.5);
+    setInflationMax(leagueStats.inflationMax ?? 10);
+    setInflationAverage(leagueStats.inflationAverage ?? 5.5);
+    setInflationStdDev(leagueStats.inflationStdDev ?? 2.0);
     setMleEnabled(leagueStats.mleEnabled ?? true);
     setRoomMleAmount(leagueStats.roomMleAmount ?? 8_781_000);
     setNonTaxpayerMleAmount(leagueStats.nonTaxpayerMleAmount ?? 14_104_000);

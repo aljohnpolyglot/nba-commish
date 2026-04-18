@@ -105,22 +105,28 @@ export const DraftScoutingView: React.FC = () => {
   //     on a fresh game start only the current class exists. We still want the
   //     right chevron to let the user look ahead to years the scouting gist
   //     covers — 4-year horizon matches draftClassFiller's HORIZON_YEARS.
-  const SCOUTING_HORIZON_YEARS = 4;
   const { minYear, maxYear } = useMemo(() => {
-    let lo = baseYear;
-    let hi = baseYear;
+    // Floor: if the current season's draft is already done, the earliest browsable year is
+    // next season — the current class's prospects are no longer tid=-2 in state.
+    // Ceiling: only let the user navigate to classes that are actually seeded in state
+    // (rookie classes get generated at game init / season rollover). Previously we extended
+    // the horizon 4 years past the floor regardless, which produced "class not generated yet"
+    // dead ends.
+    const floor = state.draftComplete ? baseYear + 1 : baseYear;
+    let lo = floor;
+    let hi = floor;
     let seen = false;
     for (const p of state.players) {
       if (p.tid !== -2) continue;
       const dy = (p as any).draft?.year;
       if (typeof dy !== 'number') continue;
+      if (dy < floor) continue; // skip already-drafted classes
       if (!seen) { lo = hi = dy; seen = true; }
       else { if (dy < lo) lo = dy; if (dy > hi) hi = dy; }
     }
-    const forwardHorizon = baseYear + SCOUTING_HORIZON_YEARS;
-    if (!seen) return { minYear: baseYear, maxYear: forwardHorizon };
-    return { minYear: lo, maxYear: Math.max(hi, forwardHorizon) };
-  }, [state.players, baseYear]);
+    if (!seen) return { minYear: floor, maxYear: floor };
+    return { minYear: lo, maxYear: hi };
+  }, [state.players, baseYear, state.draftComplete]);
   const draftYear = selectedYear;
 
   useEffect(() => {
@@ -146,6 +152,17 @@ export const DraftScoutingView: React.FC = () => {
     });
     return () => { cancelled = true; };
   }, [draftYear]);
+
+  // Future classes are only seeded at season rollover, so state may legitimately have
+  // zero tid=-2 prospects for a year the user can scroll to. Tracking this lets us
+  // show a "class not yet generated" message instead of the filter-miss empty state.
+  const hasRawProspects = useMemo(
+    () => state.players.some(p =>
+      (p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect') &&
+      (p as any).draft?.year === draftYear
+    ),
+    [state.players, draftYear]
+  );
 
   const prospects = useMemo(() => {
     // Only show prospects from the active draft class (tid === -2 + correct draft.year)
@@ -518,9 +535,16 @@ export const DraftScoutingView: React.FC = () => {
           </div>
         ))}
         {filteredAndSorted.length === 0 && (
-          <div className="text-center p-12 text-slate-400">
-            No prospects found matching your filters.
-          </div>
+          hasRawProspects ? (
+            <div className="text-center p-12 text-slate-400">
+              No prospects found matching your filters.
+            </div>
+          ) : (
+            <div className="text-center p-12 text-slate-400 space-y-2">
+              <p className="text-base font-bold text-white">The {draftYear} draft class hasn't been generated yet.</p>
+              <p className="text-sm">Rookie classes are seeded at the start of each season — check back after the league rolls over into {draftYear}.</p>
+            </div>
+          )
         )}
       </div>
     </div>
