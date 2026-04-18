@@ -4,6 +4,10 @@
  * Backed by localStorage so the plan survives refresh. Written from the
  * Coaching → Gameplan tab (GM mode), read by WatchGamePreviewModal and the
  * StatGenerator sim engine so the coach's call is respected everywhere.
+ *
+ * Scoped per saveId: each save keeps its own bucket so minutes don't leak
+ * when the user switches saves. GameContext calls setActiveSaveId() whenever
+ * state.saveId changes.
  */
 
 export interface Gameplan {
@@ -13,15 +17,23 @@ export interface Gameplan {
   minuteOverrides: Record<string, number>;
 }
 
-const STORAGE_KEY = 'nba-commish-gameplans';
-const cache: Map<number, Gameplan> = new Map();
-let hydrated = false;
+const STORAGE_PREFIX = 'nba-commish-gameplans::';
+const DEFAULT_SAVE_ID = '__default';
+
+let activeSaveId: string = DEFAULT_SAVE_ID;
+let cache: Map<number, Gameplan> = new Map();
+let hydratedFor: string | null = null;
+
+function storageKey(saveId: string) {
+  return STORAGE_PREFIX + saveId;
+}
 
 function hydrate() {
-  if (hydrated) return;
-  hydrated = true;
+  if (hydratedFor === activeSaveId) return;
+  cache = new Map();
+  hydratedFor = activeSaveId;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey(activeSaveId));
     if (!raw) return;
     const obj = JSON.parse(raw) as Record<string, Gameplan>;
     for (const [k, v] of Object.entries(obj)) cache.set(Number(k), v);
@@ -34,10 +46,22 @@ function persist() {
   try {
     const obj: Record<number, Gameplan> = {};
     for (const [k, v] of cache) obj[k] = v;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+    localStorage.setItem(storageKey(activeSaveId), JSON.stringify(obj));
   } catch {
     // Storage quota / disabled — not worth crashing for.
   }
+}
+
+/**
+ * Switch the store to a different save. Clears in-memory cache and forces a
+ * rehydrate from that save's bucket on next access. Call whenever the active
+ * saveId changes (load, new game, switch save).
+ */
+export function setActiveSaveId(saveId: string | undefined | null) {
+  const next = saveId && saveId.length > 0 ? saveId : DEFAULT_SAVE_ID;
+  if (next === activeSaveId) return;
+  activeSaveId = next;
+  hydratedFor = null;
 }
 
 export function getGameplan(teamId: number): Gameplan | null {

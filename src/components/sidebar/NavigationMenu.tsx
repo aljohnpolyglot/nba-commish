@@ -5,7 +5,7 @@ import {
   User, Calendar, BarChart2, TrendingUp,
   Search, Users, Star, Building2, Settings2, ChevronDown,
   ListOrdered, Stethoscope, Tv, ThumbsUp, Eye, DollarSign,
-  Target, Ticket, Table2, Zap, UserX, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase
+  Target, Ticket, Table2, Zap, UserX, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase, Crown
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { Tab } from '../../types';
@@ -184,6 +184,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         { id: 'League Leaders',  label: 'League Leaders',  icon: ListOrdered },
         { id: 'League History',  label: 'League History',  icon: Trophy },
         { id: 'Team History',    label: 'Team History',    icon: BookOpen },
+        { id: 'Hall of Fame',    label: 'Hall of Fame',    icon: Crown },
         { id: 'Power Rankings',  label: 'Power Rankings',  icon: TrendingUp },
       ],
     },

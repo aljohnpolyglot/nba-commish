@@ -196,8 +196,10 @@ function computeNightProfile(
 
   // EXPLOSION — gate: must be a real ball-handler who can score (blocks Gobert, Capella)
   // ins>40 OR fg>60 OR tp>45 = has a scoring skill; AND drb>40 = can put it on the floor
+  // Ceiling widened: 95 OVR ceiling 1.57 → 1.91 so compounded with GamePlan takeover (up to 1.34)
+  // a star hits raw target ~65 → realistic 50-58 pt output, matching ~10-15 50-pt games/season target.
   if (lightningRoll < 0.023 && (ins > 40 || fg > 60 || tp > 45) && drb > 40) {
-    const explosionCeiling = 1.05 + (ovr / 100) * 0.55;
+    const explosionCeiling = 1.15 + (ovr / 100) * 0.80;
     const pts = (1.45 + Math.random() * (explosionCeiling - 1.35));
     const eff = (1.15 + Math.random() * 0.20);
     return {

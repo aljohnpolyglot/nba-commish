@@ -737,6 +737,27 @@ export const processTurn = async (
         } catch (e) { console.warn('[GameLogic] autoRunLottery failed:', e); }
     }
 
+    // ── Hall of Fame Induction (first Saturday of September, prior year) ───
+    // Fires once per season for the Class of (seasonYear - 1). Guarded by news-id.
+    const hofClassYear = draftYear - 1;
+    const hofAlready = (state.news ?? []).some(n => (n as any).id?.startsWith(`hof-class-${hofClassYear}-`));
+    const { getHOFCeremonyDate } = await import('../../services/playerDevelopment/hofChecker');
+    const hofCeremonyDate = getHOFCeremonyDate(hofClassYear);
+    if (wasDateReached(hofCeremonyDate) && !hofAlready) {
+        try {
+            const { autoInductHOFClass } = await import('../../services/logic/autoResolvers');
+            const patch = await autoInductHOFClass({ ...state, players: updatedPlayers } as any);
+            // Carry over the hof=true / hofInductionYear flags set on in-game players
+            if ((patch as any).players) updatedPlayers = (patch as any).players;
+            if ((patch as any).news) {
+                // Splice in only the newly-added HOF items (everything in the patch before the existing news)
+                const existingIds = new Set((state.news ?? []).map((n: any) => n.id));
+                const freshHofNews = ((patch as any).news as any[]).filter(n => !existingIds.has(n.id));
+                uniqueNewNews.push(...freshHofNews);
+            }
+        } catch (e) { console.warn('[GameLogic] autoInductHOFClass failed:', e); }
+    }
+
     if (wasDateReached(new Date(`${draftYear}-06-26T00:00:00Z`)) && !autoDraftComplete) {
         try {
             const { autoRunDraft } = await import('../../services/logic/autoResolvers');

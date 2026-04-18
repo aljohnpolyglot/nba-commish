@@ -30,7 +30,9 @@ import {
   autoAnnounceMVP,
   autoRunLottery,
   autoRunDraft,
+  autoInductHOFClass,
 } from './autoResolvers';
+import { getHOFCeremonyDateString } from '../playerDevelopment/hofChecker';
 import { NewsGenerator } from '../news/NewsGenerator';
 import { applySeasonRollover, shouldFireRollover } from './seasonRollover';
 import { autoResolveAllStarHosts } from '../allStar/hostAutoResolver';
@@ -63,11 +65,14 @@ const autoBroadcastingDefault = (state: GameState): Partial<GameState> => {
  *  y1 = previous calendar year (e.g. 2025) — preseason / early-season events */
 export const buildAutoResolveEvents = (y: number): AutoResolveEvent[] => {
   const y1 = y - 1;
+  // HOF ceremony falls on the first Saturday of September (real-life Naismith)
+  const hofCeremony = getHOFCeremonyDateString(y1);
   return [
     { date: `${y1}-08-06`, key: 'broadcasting_default',   resolver: autoBroadcastingDefault,         phase: 'Setting Broadcasting Deal...' },
     { date: `${y1}-08-13`, key: 'global_games',           resolver: autoPickGlobalGames,             phase: 'Finalizing Global Schedule...' },
     { date: `${y1}-08-13`, key: 'intl_preseason',         resolver: autoScheduleIntlPreseason,       phase: 'Scheduling International Preseason...' },
     { date: `${y1}-08-14`, key: 'schedule_generation',    resolver: autoGenerateSchedule,            phase: 'Generating Schedule...' },
+    { date: hofCeremony,   key: 'hof_induction',          resolver: autoInductHOFClass,              phase: 'Inducting Hall of Fame Class...' },
     { date: `${y1}-12-24`, key: 'christmas_games',        resolver: autoPickChristmasGames,          phase: 'Setting Christmas Games...' },
     { date: `${y}-01-14`,  key: 'allstar_votes',          resolver: autoSimVotes,                    phase: 'Simulating All-Star Voting...' },
     { date: `${y}-01-22`,  key: 'allstar_starters',       resolver: autoAnnounceStarters,            phase: 'Announcing All-Star Starters...' },
@@ -101,6 +106,8 @@ const buildAutoNews = (eventKey: string, state: GameState) => {
     award_dpoy: null, award_roy: null, award_allnba: null, award_mvp: null,
     draft_lottery: { id: `auto-lottery-${Date.now()}`, headline: 'Draft Lottery Complete', content: 'The NBA Draft Lottery has concluded. View the Draft Lottery tab for full results.', date },
     draft_execute: { id: `auto-draft-${Date.now()}`, headline: 'NBA Draft Complete', content: 'The NBA Draft has concluded. All prospects have been assigned to teams. Undrafted players are now free agents.', date },
+    // hof_induction: news is injected directly by the resolver (Class item + per-inductee items) — no auto-news needed here
+    hof_induction: null,
   };
   return map[eventKey] ?? null;
 };

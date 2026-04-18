@@ -332,60 +332,60 @@ export function computeResignProbability(
   const isDrama = traitsAny.includes('DRAMA_MAGNET');
 
   // Mood — single bucket, no double-count
-  if (moodScore >= 5)       add('Loving the situation',     20);
-  else if (moodScore >= 3)  add('Happy here',               12);
-  else if (moodScore >= 1)  add('Mood mildly positive',      5);
-  else if (moodScore <= -5) add('Disgruntled',             -22);
-  else if (moodScore <= -3) add('Unhappy with situation',  -14);
-  else if (moodScore <= -1) add('Mood mildly negative',     -5);
+  if (moodScore >= 5)       add('Loves it here',              20);
+  else if (moodScore >= 3)  add('Happy with the situation',   12);
+  else if (moodScore >= 1)  add('Mood is slightly positive',   5);
+  else if (moodScore <= -5) add('Disgruntled with the team', -22);
+  else if (moodScore <= -3) add('Unhappy with the situation',-14);
+  else if (moodScore <= -1) add('Mood is slightly negative',  -5);
 
   // Traits
-  if (isLoyal)      add('Loyalty trait',                   18);
-  if (isMercenary)  add('Mercenary — tests market',       -16);
-  if (isAmbassador) add('Ambassador — low drama',           4);
-  if (isDrama)      add('Drama magnet',                    -5);
+  if (isLoyal)      add('Loyal to the franchise',                 18);
+  if (isMercenary)  add('Chasing the biggest contract',          -16);
+  if (isAmbassador) add('Team-first presence in the locker room', 4);
+  if (isDrama)      add('Brings locker-room drama',               -5);
   if (isWinner) {
-    if (teamWinPct < 0.42)      add('Winner trait · losing team', -14);
-    else if (teamWinPct > 0.58) add('Winner trait · contender',    10);
+    if (teamWinPct < 0.42)      add('Hates playing for a losing team', -14);
+    else if (teamWinPct > 0.58) add('Wants to chase a ring here',       10);
   }
   if (isFame) {
     const pop = (team as any)?.pop ?? 2;
-    if (pop >= 5) add('Fame · big market fit',   5);
-    else          add('Fame · small market', -12);
+    if (pop >= 5) add('Enjoys the big-market spotlight',  5);
+    else          add('Wants a bigger market',          -12);
   }
   if (isVolatile) {
-    if (moodScore < 0)      add('Volatile · negatives amplified', -5);
-    else if (moodScore > 0) add('Volatile · positives amplified',  3);
+    if (moodScore < 0)      add('Mood swings amplify the negatives', -5);
+    else if (moodScore > 0) add('Mood swings amplify the positives',  3);
   }
 
   // Team record
-  if (teamWinPct >= 0.62)      add('Elite team record',  8);
-  else if (teamWinPct <= 0.35) add('Bottom-tier record', -8);
+  if (teamWinPct >= 0.62)      add('Playing for an elite team',    8);
+  else if (teamWinPct <= 0.35) add('Stuck on a bottom-tier team', -8);
 
   // Age
   const age = player.born?.year ? currentYear - player.born.year : 28;
-  if (age >= 34)      add('Veteran seeks stability',  7);
-  else if (age < 24)  add('Young · wants to explore', -4);
+  if (age >= 34)      add('Veteran seeking stability here',  7);
+  else if (age < 24)  add('Young and wants to explore',     -4);
 
   // Final-year option
   const contractYears = (player as any).contractYears as Array<{ option?: string }> | undefined;
   const finalOpt = contractYears?.[contractYears.length - 1]?.option;
   const ovr2K = approx2K(player.overallRating ?? 60);
   if (finalOpt === 'player' && yearsLeft <= 1) {
-    if (ovr2K >= 88)      add('Star on player option', -15);
-    else if (isLoyal && moodScore >= 3) add('Loyal happy · picks up option',   6);
-    else                 add('Player option year',   -4);
+    if (ovr2K >= 88)      add('Star likely to opt out',          -15);
+    else if (isLoyal && moodScore >= 3) add('Happy vet picks up option',   6);
+    else                 add('Facing a player-option decision',   -4);
   }
   if (finalOpt === 'team' && yearsLeft <= 1) {
-    if (moodScore <= -4) add('Team option · sour mood', -6);
+    if (moodScore <= -4) add('Team option — sour on the team', -6);
   }
 
   // Tenure with current team (seasons logged)
   const teamTenure = new Set(((player.stats ?? []) as any[])
     .filter(s => !s.playoffs && s.tid === player.tid && (s.gp ?? 0) > 0)
     .map(s => s.season)).size;
-  if (teamTenure >= 5)       add('Long tenure with team',  7);
-  else if (teamTenure >= 3)  add('Established with team',  3);
+  if (teamTenure >= 5)       add('Long-time face of the franchise', 7);
+  else if (teamTenure >= 3)  add('Well-established with this team', 3);
 
   score = Math.max(0, Math.min(100, Math.round(score)));
   // Sort factors: largest absolute impact first
@@ -513,6 +513,7 @@ export const PlayerBioMoraleTab: React.FC<PlayerBioMoraleTabProps> = ({ player }
             { label: 'Team Success',  val: components.teamSuccess },
             { label: 'Contract',      val: components.contractSatisfaction },
             { label: 'Role',          val: components.roleStability },
+            { label: 'Market Size',   val: components.marketSize },
             { label: 'Commish Rel.',  val: components.commishRelationship },
           ].map(({ label, val }) => (
             <div key={label} className="flex items-center justify-between">

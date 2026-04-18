@@ -18,6 +18,7 @@
 import { GameState, NBAPlayer } from '../../types';
 import { applyCapInflation } from '../../utils/finance/inflationUtils';
 import { runRetirementChecks, runFarewellTourChecks, RetireeRecord, FarewellRecord } from '../playerDevelopment/retirementChecker';
+import { runHOFChecks, HOFInduction } from '../playerDevelopment/hofChecker';
 import { generateFuturePicks, pruneExpiredPicks } from '../draft/DraftPickGenerator';
 import { computeContractOffer } from '../../utils/salaryUtils';
 import { SettingsManager } from '../SettingsManager';
@@ -262,14 +263,20 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   // end of the NEXT season and mark them as farewell tour.
   const { players: playersWithFarewells, newFarewells } = runFarewellTourChecks(playersAfterRetire, currentYear);
 
+  // ── 3c2. Hall of Fame inductions ─────────────────────────────────────────
+  // Players retired ≥ HOF_WAIT_YEARS (3) seasons who clear the Win Shares
+  // threshold get inducted this offseason. Threshold is commissioner-configurable.
+  const hofThreshold = SettingsManager.getSettings().hofWSThreshold ?? 50;
+  const { players: playersAfterHOF, newInductees } = runHOFChecks(playersWithFarewells, currentYear, hofThreshold);
+
   // ── 3d. Top up future draft classes ──────────────────────────────────────
   // Each rollover pushes the horizon one year further. Top up so the player
   // always has 4 populated classes ahead (currentYear+1 through +4 at this point,
   // since nextYear is now the "current" season).
-  const fillResult = ensureDraftClasses(playersWithFarewells, nextYear);
+  const fillResult = ensureDraftClasses(playersAfterHOF, nextYear);
   const playersWithDraftClasses = fillResult.additions.length > 0
-    ? [...playersWithFarewells, ...fillResult.additions]
-    : playersWithFarewells;
+    ? [...playersAfterHOF, ...fillResult.additions]
+    : playersAfterHOF;
 
   // ── 3b. Draft pick bookkeeping ───────────────────────────────────────────
   const windowSize = state.leagueStats.tradableDraftPickSeasons ?? 4;
@@ -388,6 +395,32 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     type: 'Retirement' as const,
   }));
 
+  // ── Hall of Fame induction news items ─────────────────────────────────────
+  const hofNewsItems = newInductees.map((h: HOFInduction, i: number) => {
+    const accolades: string[] = [];
+    if (h.mvps > 0) accolades.push(`${h.mvps}× MVP`);
+    if (h.allStarAppearances > 0) accolades.push(`${h.allStarAppearances}× All-Star`);
+    if (h.championships > 0) accolades.push(`${h.championships}× Champion`);
+    const accoladeStr = accolades.length > 0 ? ` — ${accolades.join(', ')}` : '';
+    const ballotStr = h.firstBallot ? ' (First-Ballot)' : '';
+    return {
+      id: `hof-${h.playerId}-${Date.now()}-${i}`,
+      headline: `${h.name} Inducted Into Hall of Fame${ballotStr}`,
+      content: `${h.name} has been inducted into the Naismith Memorial Basketball Hall of Fame${ballotStr}. Career: ${h.careerWS.toFixed(1)} Win Shares${accoladeStr}.`,
+      date: state.date,
+      type: 'player' as const,
+      isNew: true,
+      read: false,
+    };
+  });
+
+  // ── Hall of Fame history entries ──────────────────────────────────────────
+  const hofHistoryEntries = newInductees.map((h: HOFInduction) => ({
+    text: `${h.name} inducted into the Hall of Fame (Class of ${h.inductionYear})${h.firstBallot ? ' — First-Ballot' : ''}.`,
+    date: state.date,
+    type: 'Retirement' as const,
+  }));
+
   console.log(
     `[SeasonRollover] ${currentYear} → ${nextYear} | ` +
     `Cap: $${(state.leagueStats.salaryCap ?? 0) / 1_000_000 | 0}M → $${capM}M (${pctStr}) | ` +
@@ -395,6 +428,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     `${teamOptionExercisedIds.size} team opts exercised | ` +
     `${teamOptionDeclinedIds.size} team opts declined | ` +
     `${newRetirees.length} retirements | ${newFarewells.length} farewell tours | ` +
+    `${newInductees.length} HOF inductions | ` +
     `${updatedPicks.length} total draft picks`
   );
 
@@ -498,8 +532,8 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     retirementAnnouncements: newRetirees,
     seasonPreviewDismissed: true,  // stays hidden through FA; shown when preseason starts (Oct 1)
     draftComplete: undefined,      // reset so draft can run for new year
-    news: [...farewellNewsItems, ...teamOptionNewsItems, ...playerOptionNewsItems, ...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
-    history: [...(state.history ?? []), ...playerOptionHistory, ...teamOptionHistoryEntries, ...retirementHistoryEntries, ...farewellHistoryEntries],
+    news: [...hofNewsItems, ...farewellNewsItems, ...teamOptionNewsItems, ...playerOptionNewsItems, ...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
+    history: [...(state.history ?? []), ...playerOptionHistory, ...teamOptionHistoryEntries, ...retirementHistoryEntries, ...farewellHistoryEntries, ...hofHistoryEntries],
   };
 }
 

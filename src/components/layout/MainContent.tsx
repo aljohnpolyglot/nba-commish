@@ -49,6 +49,7 @@ import { TeamHistoryView } from '../central/view/TeamHistoryView';
 import { PowerRankingsView } from '../central/view/PowerRankingsView';
 import { TradeFinderView } from '../central/view/TradeFinderView';
 import { TeamOfficeView } from '../central/view/TeamOffice/TeamOfficeView';
+import HallofFameView from '../central/view/HallOfFame/HallofFameView';
 import { Tab } from '../../types';
 
 interface MainContentProps {
@@ -238,6 +239,8 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
           <TeamOfficeView />
         </div>
       );
+    case 'Hall of Fame':
+      return <HallofFameView />;
     default:
       return null;
   }

@@ -8,6 +8,7 @@ import { prefetchPlayerBio } from '../components/central/view/bioCache';
 import { SettingsManager } from '../services/SettingsManager';
 import { initImageCache } from '../services/imageCache';
 import { normalizeDate } from '../utils/helpers';
+import { setActiveSaveId } from './gameplanStore';
 
 interface GameContextType {
   state: GameState;
@@ -49,6 +50,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+
+  useEffect(() => {
+    setActiveSaveId(state.saveId);
+  }, [state.saveId]);
 
   // Set default view for GM mode when game first loads
   useEffect(() => {

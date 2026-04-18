@@ -4,6 +4,38 @@ A chronological log of features added across development sessions.
 
 ---
 
+## Session 25 (Apr 18, 2026)
+
+- **Generated draft classes (infinite sim)** -- `genDraftPlayers.ts`, `draftClassFiller.ts`, `sportData.ts`, `genplayersconstants.ts`, `nameDataFetcher.ts`. `ensureDraftClasses` tops thin years to 100 prospects at rollover. Path mix 70% College / 10% Europe / 6% G-League / 6% Endesa / 4% NBL / 4% B-League. `currentSimYear` rewinds age+ratings for far-future classes. ×0.80 skill nerf + `potEstimator`-derived POT.
+- **Faces (facesjs)** -- `MyFace.tsx` ZenGM-pattern wrapper, 2:3 aspect, reject-loop for non-basketball accessories. `PlayerPortrait` renders faces only when descriptor has real body+head slots. `DraftScoutingView` small + big avatars on facesjs path.
+- **SigningModal end-to-end** -- GM preflight ("Testing Free Agency"), commissioner auto-accept + override, 2-decimal salary + hold-ramp chevrons, MLE row + "Sign with MLE", cap-violation final gate, roster-slot awareness (standard vs two-way), external-league buyout slider with FIBA cap + Mother Team Interest bar. External-league contracts synthesized at init for leagues missing gist contracts. `EXTERNAL_SALARY_SCALE` caps NBA offer at ~3x overseas peak.
+- **Trade Proposals (GM)** -- `inboundProposalGenerator.ts` scans every team vs. user's trading block, builds 1/2/3-for-1/2/3 combos with +/-15% TV parity + salary legality. Auto-refreshes on `state.date` change. Hidden for commissioners.
+- **`usePlayerQuickActions` hook** -- unifies player-row clicks (view_bio / view_ratings / sign / resign / waive) across NBACentral, PlayersView, FreeAgentsView, PlayerRatingsView, PlayerStatsView, PlayerBiosView.
+- **Transaction Calendar (commissioner-editable)** -- `EconomyTab` section with trade-deadline month/ordinal/day-of-week, FA start, moratorium slider, year-round FA toggle, post-deadline multi-year toggle. `dateUtils` gained `getTradeDeadlineDate`, `getFreeAgencyStartDate`, `isPastTradeDeadline`, `isInFreeAgencyWindow`, `canSignMultiYear`.
+- **All-Star Weekend refactor** -- `getAllStarSunday` uses `resolveSeasonDate(y, 2, 3, 'Sun', 0)` so Fri/Sat/break offsets always land on real weekdays. Announcement dates anchored as weekly offsets. `LeagueStats.allStarHosts` seeded. `AllStarHostPickerModal` + `hostAutoResolver.ts` (10-season cooldown). New `AllStarHistoryView` (gist 1951+). Portrait fix (BBGM first, CDN only on fallback).
+- **Finals MVP formula** -- Finals-only aggregate (`finalsSeries.gameIds`), avg pts/reb/ast/stl/blk - tov, TS% above league avg x8, min-3-GP eligibility, minutes-load bonus. Was picking single-highest-gameScore across ALL playoff rounds.
+- **Semifinals MVP** -- one per round-3 series completed in the batch, written to `historicalAwards` + `player.awards[]`. Visible in `LeagueHistoryDetailView`.
+- **LeagueHistoryView best records 0-0 fix** -- rollover now overwrites BBGM-preseeded `seasons[]` entry (was kept as stale 0-0 by old `alreadyArchived` check).
+- **GM Mode polish** -- welcome news tailored to "{Team} Hires {GM Name}", user's team hoists to front of TeamOffice grid with team-color glow + "Your Team" badge. TradingBlock edit-gated. Upcoming FA defaults to user team. Waive dispatches directly.
+- **Inflation editor** -- integrated in `SettingsModal` via `InflationEditor` (commissioner only).
+- **Draft Scouting polish** -- `maxYear` caps at furthest real-prospect year. Right chevron expands to `current+4` on fresh games. Dicebear -> facesjs.
+
+---
+
+## Session 24 (Apr 18, 2026)
+
+- **DraftScouting tab (Team Office)** -- advisor big board (70% value + 30% fit), pick inventory with range projections, team mode awareness. `DraftScouting.tsx`, `TeamOfficeView.tsx`
+- **Game log DNPs for season-start injured** -- `joinedMidSeason` guard lets pre-injured players show DNP rows. `PlayerBioGameLogTab.tsx`
+- **G-League K2 >= 78 guard** -- no more Paul George / star tier assignments to G-League. `simulationHandler.ts`
+- **External salary scale** -- Euroleague capped $5M (was $16M).
+- **Currency display** -- EUR/JPY/PHP/CNY/AUD in transactions + `PlayerBioContractTab`.
+- **PlayerBioContractTab** -- external team names + league column from `player.status`.
+- **PlayerStatsView badges** -- ring + All-Star icons (was "RING"/"AS" text).
+- **GM-mode UI hides** -- edit ratings + heal player hidden in GM mode.
+- **Jumpstart lazy-sim** -- passes `stopBefore: true` so picking Oct 24 lands with opening-night games unplayed.
+
+---
+
 ## Session 23 (Apr 17, 2026)
 
 - **Image Caching** -- IndexedDB blob cache, auto-downloads all player portraits on game load (5-concurrent, 50ms delay), Settings toggle, default ON, clear cache button. `src/services/imageCache.ts`
@@ -255,4 +287,4 @@ A chronological log of features added across development sessions.
 
 ---
 
-*Last updated: 2026-04-17 (session 23)*
+*Last updated: 2026-04-18 (session 25)*

@@ -136,6 +136,14 @@ Two scales coexist. Confusing them breaks everything.
 - Image priority: `player.imgURL` → NBA CDN → initials. External players skip CDN.
 - Image cache: IndexedDB blob cache, toggled in Settings > Performance
 
+### Persistence — Save-Scoped Storage (CRITICAL)
+Anything written to `localStorage` or `IndexedDB` outside of `GameState` MUST be scoped by `state.saveId` or it will leak between saves.
+
+- `state.saveId` is minted in `initialization.ts` (`nba_commish_<ts>_<rand>`) and swapped on `LOAD_GAME` / `UPDATE_SAVE_ID`.
+- `GameContext` already watches `state.saveId` and calls `setActiveSaveId()` on the gameplan store; follow the same pattern for any new per-save side store.
+- Reference: `src/store/gameplanStore.ts` keys localStorage as `nba-commish-gameplans::<saveId>` and rehydrates when the active saveId changes. Do NOT use a single global key for user-editable per-save settings (starters, minute overrides, rotation presets, etc.) — that's how the Gameplan minutes leaked across saves before the fix.
+- Sim-side consumers (e.g. `StatGenerator/initial.ts`) read via `getGameplan(teamId)` — the store resolves the active saveId internally, so the engine signature stays save-agnostic.
+
 ---
 
 ## Key Documents

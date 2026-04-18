@@ -612,6 +612,71 @@ export const autoAnnounceMVP    = (s: GameState) => announceAward(s, 'MVP');
 /** @deprecated — kept for callers that haven't migrated; now a no-op since awards are staggered. */
 export const autoAnnounceAwards = (_state: GameState): Partial<GameState> => ({});
 
+// ── Hall of Fame Class Induction (Sept 6) ─────────────────────────────────
+/**
+ * Real-world HOF ceremony fires on Sept 6 of each in-game year. Pulls that
+ * year's induction class from the external gist (fetchHOFData) and emits news
+ * items. Idempotent — guarded by news-id presence so re-runs don't duplicate.
+ *
+ * Class year = state.leagueStats.year - 1 (e.g. season 2026 → Class of 2025).
+ * Uses the same gist file the HallofFameView reads so both stay in sync.
+ */
+export const autoInductHOFClass = async (state: GameState): Promise<Partial<GameState>> => {
+  const classYear = (state.leagueStats?.year ?? 2026) - 1;
+  const idPrefix = `hof-class-${classYear}-`;
+  const already = (state.news ?? []).some(n => (n as any).id?.startsWith(idPrefix));
+  if (already) return {};
+
+  try {
+    const { fetchHOFData } = await import('../../data/HOFData');
+    const all = await fetchHOFData();
+    const classInductees = all.filter(p => p.inductionYear === classYear);
+    if (classInductees.length === 0) return {};
+
+    // Flip hof=true + hofInductionYear=<classYear> on matching in-game players.
+    // This makes the gist authoritative for real-world HOFers (Howard, Melo,
+    // etc.) whose source data either didn't flag them as HOF or has an older
+    // retiredYear that would otherwise drag them into the wrong class.
+    const normalizeName = (name: string) => (name ?? '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+    const inducteeNameSet = new Set(classInductees.map(p => normalizeName(p.name)));
+    const updatedPlayers = (state.players ?? []).map(p => {
+      if (p.hofInductionYear) return p; // already inducted
+      if (!inducteeNameSet.has(normalizeName(p.name))) return p;
+      return { ...p, hof: true, hofInductionYear: classYear };
+    });
+
+    const names = classInductees.map(p => p.name).filter(Boolean);
+    const date = state.date;
+
+    const classItem = {
+      id: `${idPrefix}${Date.now()}`,
+      headline: `Class of ${classYear} Enshrined in the Hall of Fame`,
+      content: `The Naismith Memorial Basketball Hall of Fame has formally inducted the Class of ${classYear}: ${names.join(', ')}.`,
+      date,
+      type: 'league' as const,
+      isNew: true,
+      read: false,
+    } as any as NewsItem;
+
+    const perInducteeItems = classInductees.slice(0, 10).map((p, i) => ({
+      id: `${idPrefix}p-${i}-${Date.now()}`,
+      headline: `${p.name} Inducted Into Hall of Fame`,
+      content: `${p.name} has been formally enshrined as part of the Class of ${classYear}.`,
+      date,
+      type: 'player' as const,
+      playerPortraitUrl: p.imgURL,
+      isNew: true,
+      read: false,
+    } as any as NewsItem));
+
+    const news = [classItem, ...perInducteeItems, ...(state.news ?? [])].slice(0, 200);
+    return { players: updatedPlayers, news };
+  } catch (err) {
+    console.warn('[autoInductHOFClass] failed:', err);
+    return {};
+  }
+};
+
 // ── Rookie contract scale (mirrors DraftSimulatorView) ────────────────────
 const _rookieScale = [
   10.1, 9.5, 9.0, 8.5, 7.9, 7.4, 6.9, 6.5, 6.1, 5.7,

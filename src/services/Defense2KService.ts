@@ -1,5 +1,6 @@
 import { NBAPlayer as Player } from '../types';
 import { loadRatings, getRawTeams } from '../data/NBA2kRatings';
+import { calculateK2 } from './simulation/convert2kAttributes';
 
 export interface Defense2K {
   interiorDef: number;
@@ -10,6 +11,20 @@ export interface Defense2K {
   passPerception: number;
   defConsistency: number;
   overallDef: number;
+}
+
+function defense2KFromK2Sub(df: number[]): Defense2K {
+  const [intDef, perimDef, stl, blk, help, pass, cons] = df;
+  return {
+    interiorDef: intDef,
+    perimeterDef: perimDef,
+    steal: stl,
+    block: blk,
+    helpDefIq: help,
+    passPerception: pass,
+    defConsistency: cons,
+    overallDef: ((intDef * 0.25) + (perimDef * 0.25) + (help * 0.2) + (stl * 0.1) + (blk * 0.1) + (pass * 0.1)) * (cons / 70),
+  };
 }
 
 export class Defense2KService {
@@ -73,8 +88,27 @@ export class Defense2KService {
     }
   }
 
-  static getPlayerDefense(name: string): Defense2K | undefined {
-    return this.playerMap.get(this.normalize(name));
+  /**
+   * Returns Defense2K for a player. Name-keyed lookup into the 2K gist comes first;
+   * on miss (external-league players, rookies, G-League call-ups not in that year's
+   * gist), derive from the player's own BBGM attrs via calculateK2. External-league
+   * ratings are already pre-scaled by their league multiplier in scaleRatings() at
+   * fetch time, so a LeBron dropped into Euroleague still reads as an elite defender
+   * and a CBA journeyman reads honestly weak — no per-league table required.
+   */
+  static getPlayerDefense(player: Player): Defense2K | undefined {
+    const mapped = this.playerMap.get(this.normalize(player.name));
+    if (mapped) return mapped;
+
+    const r = player.ratings?.[player.ratings.length - 1];
+    if (!r) return undefined;
+    const k2 = calculateK2(r as any, {
+      pos: player.pos,
+      heightIn: (player as any).hgt,
+      weightLbs: (player as any).weight,
+      age: (player as any).age,
+    });
+    return defense2KFromK2Sub(k2.DF.sub);
   }
 
   // Calculates the weighted team averages based on rotation
@@ -88,7 +122,7 @@ export class Defense2KService {
 
     top9.forEach((p, i) => {
       const weight = i < 5 ? 2.0 : 1.0; // Starters matter 2x as much
-      const def = this.getPlayerDefense(p.name) || defaultDef;
+      const def = this.getPlayerDefense(p) || defaultDef;
       
       totals.int += def.interiorDef * weight;
       totals.per += def.perimeterDef * weight;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Settings2, Zap, Cpu, Layers, Gamepad2, Bot, Database, HardDrive, Crown, User, ArrowLeftRight } from 'lucide-react';
+import { X, Settings2, Zap, Cpu, Layers, Gamepad2, Bot, Database, HardDrive, Crown, User, ArrowLeftRight, Trophy } from 'lucide-react';
 import { clearImageCache } from '../../services/imageCache';
 import { SettingsManager, GameSettings } from '../../services/SettingsManager';
 import { useGame } from '../../store/GameContext';
@@ -304,6 +304,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
               {/* Cap Inflation — Commissioner only */}
               {!isGM && <InflationEditor compact />}
+
+              {/* Hall of Fame Threshold — Commissioner only */}
+              {!isGM && (
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="text-sm font-bold text-white flex items-center gap-2">
+                      <Trophy size={16} className="text-yellow-400" />
+                      Hall of Fame Threshold
+                    </label>
+                    <span className="text-xs font-mono text-yellow-400 bg-yellow-500/10 px-2 py-1 rounded">
+                      {settings.hofWSThreshold ?? 50} WS
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Career Win Shares needed for HOF induction. Lower = more inductees, higher = exclusive. Real NBA benchmark is ~100; default 50 makes the hall accessible. Inductions happen 3 seasons after retirement.
+                  </p>
+                  <input
+                    type="range" min="20" max="150" step="5"
+                    value={settings.hofWSThreshold ?? 50}
+                    onChange={e => setSettings({ ...settings, hofWSThreshold: parseInt(e.target.value) })}
+                    className="w-full accent-yellow-500"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-500 font-medium uppercase tracking-wider">
+                    <span>Generous (20)</span>
+                    <span>Default (50)</span>
+                    <span>Elite (150)</span>
+                  </div>
+                </div>
+              )}
 
               {/* Max Box Score Years */}
               <div className="space-y-3">

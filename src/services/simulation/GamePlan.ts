@@ -82,14 +82,16 @@ export function generateGamePlan(rotationSize: number): GamePlan {
     const nm   = Array(rotationSize).fill(1.0);
 
     if (roll < 0.12 && rotationSize > 0) {
-      // Star takeover: slot 0 elevated, rest gently down
-      nm[0] = 1.08 + Math.random() * 0.12;
+      // Star takeover: slot 0 elevated, rest gently down.
+      // Range 1.12–1.34 (was 1.08–1.20): funnels pts to hero on "declared hot game" nights,
+      // stays under _dampF threshold (1.55) so normal compounding with nightProfile still works.
+      nm[0] = 1.12 + Math.random() * 0.22;
       for (let j = 1; j < rotationSize; j++) nm[j] = 0.91 + Math.random() * 0.06;
 
     } else if (roll < 0.22 && rotationSize > 1) {
-      // 2nd-option night: slot 1 or 2 elevated, star slightly off
+      // 2nd-option night: slot 1 or 2 elevated, star slightly off. Same 1.12–1.34 range.
       const hero = rotationSize > 2 && Math.random() < 0.45 ? 2 : 1;
-      nm[hero] = 1.08 + Math.random() * 0.12;
+      nm[hero] = 1.12 + Math.random() * 0.22;
       nm[0]    = 0.90 + Math.random() * 0.07;
 
     } else if (roll < 0.30 && rotationSize > 3) {

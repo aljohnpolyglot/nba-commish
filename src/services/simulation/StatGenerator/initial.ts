@@ -182,6 +182,9 @@ export function generateStatsForTeam(
   // ── Pass 1: compute ptsTargets with nightProfile, then normalize to adjustedScore ──
   // nightProfile boosts individuals asymmetrically (EXPLOSION 1.5×), breaking the sum.
   // Normalizing BEFORE computing shooting stats eliminates the 0-49 FT reconciliation bug.
+  // Per-player cap: 65 normally, 78 on EXPLOSION nights (ptsTargetMult >= 1.45).
+  // Normal TORCH tops at ~35 × 1.22 = 43 — nowhere near 65 — so this gated raise
+  // only affects EXPLOSION, leaving league averages intact.
   const pass1 = rotation.map((p, i) => {
     let pts = initialTargets[i].rawTarget;
     const share = initialTargets[i].share;
@@ -193,11 +196,28 @@ export function generateStatsForTeam(
     const _gpElev = gamePlan.ptsMult[i];
     const _dampF  = _gpElev > 1.55 ? Math.max(0.50, 1.55 / _gpElev) : 1.0;
     const _nightM = 1.0 + (np.ptsTargetMult - 1.0) * _dampF;
-    return { rawPts: Math.min(65, Math.max(0, Math.round(pts * _nightM))), np, share };
+    const ptsCap  = np.ptsTargetMult >= 1.45 ? 78 : 65;
+    return { rawPts: Math.min(ptsCap, Math.max(0, Math.round(pts * _nightM))), np, share };
   });
   const rawPtsSum   = pass1.reduce((s, r) => s + r.rawPts, 0) || 1;
   const normScale   = adjustedScore / rawPtsSum;
-  const finalPtsTargets = pass1.map(r => Math.min(65, Math.max(0, Math.round(r.rawPts * normScale))));
+  // Protect EXPLOSION players from normalization shrinkage — otherwise a 67-pt star
+  // in a 170-pt raw sum gets clipped to 51 when team scores 130. Redistribute the
+  // deficit across non-explosion players instead, letting the hot star keep his pts.
+  const isExp = (np: { ptsTargetMult: number }) => np.ptsTargetMult >= 1.45;
+  const protectedSum = pass1.filter(r => isExp(r.np)).reduce((s, r) => s + r.rawPts, 0);
+  const needsProtection = protectedSum > 0 && normScale < 1;
+  const othersSum      = rawPtsSum - protectedSum;
+  const othersTarget   = Math.max(1, adjustedScore - protectedSum);
+  const othersScale    = othersSum > 0 ? Math.min(1.0, othersTarget / othersSum) : 1;
+  const finalPtsTargets = pass1.map(r => {
+    const ptsCap = isExp(r.np) ? 78 : 65;
+    if (needsProtection && isExp(r.np)) {
+      return Math.min(ptsCap, Math.max(0, Math.round(r.rawPts)));
+    }
+    const scale = needsProtection ? othersScale : normScale;
+    return Math.min(ptsCap, Math.max(0, Math.round(r.rawPts * scale)));
+  });
 
   // ── Build Per-Player Stat Lines ────────────────────────────────────────
   const playerStats: PlayerGameStats[] = rotation.map((p, i) => {

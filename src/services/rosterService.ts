@@ -433,6 +433,7 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                                 strength: 0,
                                 wins: 0,
                                 losses: 0,
+                                pop: seasonData.pop ?? (t as any).pop ?? 0,
                                 logoUrl: t.imgURLSmall,
                                 colors: t.colors,
                                 streak: { type: 'W', count: 0 },

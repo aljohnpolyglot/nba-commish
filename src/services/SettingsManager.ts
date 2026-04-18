@@ -16,6 +16,8 @@ export interface GameSettings {
   /** GM-mode trade difficulty 0-100. 50 = default (AI fleeces by ~10 TV).
    *  0 = AI gives user +60 TV favor; 100 = AI demands +60 TV over their return. */
   tradeDifficulty: number; // default 50
+  /** Career Win Shares required for Hall of Fame induction. Commissioner-only. Default 50 (real NBA benchmark is ~100). */
+  hofWSThreshold: number; // default 50
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -30,6 +32,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   enableImageCache: true,
   advanceDayOnTransaction: false,
   tradeDifficulty: 50,
+  hofWSThreshold: 50,
 };
 
 export class SettingsManager {

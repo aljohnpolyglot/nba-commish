@@ -189,7 +189,7 @@ export const DraftScoutingView: React.FC = () => {
       const age = (p as any).born?.year ? currentYear - (p as any).born.year : ((p as any).age ?? 20);
       const potBbgm = age >= 29 ? rawOvr : Math.max(rawOvr, Math.round(72.314 + (-2.331 * age) + (0.833 * rawOvr)));
       const displayPot = convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), hgt, tp);
-      return { ...p, displayOvr, displayPot, rawOvr };
+      return { ...p, displayOvr, displayPot, rawOvr, potBbgm };
     });
 
     // Sort by overall rating to determine initial consensus rank
@@ -226,8 +226,19 @@ export const DraftScoutingView: React.FC = () => {
       const espnRank = Math.max(1, Math.round(consensusRank + (random(1) * 10 - 5)));
       const noCeilingsRank = Math.max(1, Math.round(consensusRank + (random(2) * 14 - 7)));
 
-      // REAL-TIME PRO COMPARISONS — prospect projected to POT ceiling vs NBA players at current ratings
-      const topMatches = findTopComparisons(player, activePlayers, false);
+      // REAL-TIME PRO COMPARISONS — prospect projected to POT ceiling vs NBA players at current ratings.
+      // BBGM's stored rating.pot is often ~= rating.ovr for freshly-generated prospects, which
+      // collapses projectPlayer's pot/ovr ratio to 1 and silently compares them at their current
+      // attributes. Override pot with the displayed potBbgm so the scaling matches the UI's POT.
+      const potBbgm = (player as any).potBbgm ?? player.ratings?.[player.ratings.length - 1]?.pot ?? 0;
+      const patchedRatings = player.ratings?.length
+        ? [
+            ...player.ratings.slice(0, -1),
+            { ...player.ratings[player.ratings.length - 1], pot: potBbgm },
+          ]
+        : player.ratings;
+      const projectedPlayer = { ...player, ratings: patchedRatings } as NBAPlayer;
+      const topMatches = findTopComparisons(projectedPlayer, activePlayers, false);
       const comparisonNames = topMatches.slice(0, 3).map(m => m.comparison.name).join(', ');
 
       return {
