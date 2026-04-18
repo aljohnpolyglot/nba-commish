@@ -640,17 +640,18 @@ export function getContractLimits(
 
   const supermaxEnabled = leagueStats.supermaxEnabled ?? true;
   const supermaxPct = (leagueStats.supermaxPercentage ?? 35) / 100;
-  let isSupermaxEligible: boolean;
-  if ((player as any).superMaxEligible !== undefined) {
-    isSupermaxEligible = supermaxEnabled && !!(player as any).superMaxEligible;
-  } else {
-    const awards: Array<{ season: number; type: string }> = (player as any).awards ?? [];
-    const currentSeason = (player as any).stats?.reduce((m: number, s: any) => Math.max(m, s.season ?? 0), 0) ?? 0;
-    const recentAwards = awards.filter(a => a.season >= currentSeason - 2);
-    const hasSupermaxAward = recentAwards.some(a => /all.nba|mvp|defensive player|dpoy/i.test(a.type));
-    const hasBirdRights = (player as any).hasBirdRights ?? false;
-    isSupermaxEligible = supermaxEnabled && hasBirdRights && (yearsOfService >= 8 || hasSupermaxAward);
-  }
+  // Always compute fresh eligibility — the precomputed superMaxEligible flag is
+  // a snapshot taken at last rollover and can miss awards earned mid-season
+  // (All-NBA / MVP / DPOY). Union the cached flag with the fresh computation
+  // so a player who qualified via 8+ years service OR recent awards is caught.
+  const awards: Array<{ season: number; type: string }> = (player as any).awards ?? [];
+  const currentSeason = (player as any).stats?.reduce((m: number, s: any) => Math.max(m, s.season ?? 0), 0) ?? 0;
+  const recentAwards = awards.filter(a => a.season >= currentSeason - 2);
+  const hasSupermaxAward = recentAwards.some(a => /all.nba|mvp|defensive player|dpoy/i.test(a.type));
+  const hasBirdRightsForSupermax = (player as any).hasBirdRights ?? false;
+  const cachedSupermax = (player as any).superMaxEligible === true;
+  const freshSupermax = hasBirdRightsForSupermax && (yearsOfService >= 8 || hasSupermaxAward);
+  const isSupermaxEligible = supermaxEnabled && (cachedSupermax || freshSupermax);
 
   // ── Max salary ─────────────────────────────────────────────────────────────
   // Reads EconomyContractsSection: maxContractType ('none' | 'static' | 'service_tiered'),

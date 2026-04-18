@@ -25,7 +25,7 @@ interface SigningModalProps {
   /** When set, renders the player-voiced message screen up-front (reusing the response screen UI) instead of the negotiation panel. */
   preflightMessage?: { title: string; body: string; tone?: 'neutral' | 'positive' };
   onClose: () => void;
-  onSign: (contract: { salary: number; years: number; option: 'NONE' | 'PLAYER' | 'TEAM'; twoWay: boolean }) => void;
+  onSign: (contract: { salary: number; years: number; option: 'NONE' | 'PLAYER' | 'TEAM'; twoWay: boolean; mleType: 'room' | 'non_taxpayer' | 'taxpayer' | null }) => void;
 }
 
 const formatPos = (pos = '') => {
@@ -442,7 +442,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
               </button>
               {autoAccept && (
                 <button
-                  onClick={() => { setShowCapWarning(false); onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY' }); }}
+                  onClick={() => { setShowCapWarning(false); onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', mleType: (contractType === 'TWO_WAY' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) }); }}
                   className="w-full py-3 bg-[#e21d37]/20 border border-[#e21d37]/50 hover:bg-[#e21d37]/40 text-[#e21d37] font-black uppercase tracking-widest text-[10px] transition-colors rounded-sm"
                   title="Cap rules don't apply — you're the Commissioner."
                 >
@@ -600,7 +600,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
               </button>
               {autoAccept && (
                 <button
-                  onClick={() => onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY' })}
+                  onClick={() => onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', mleType: (contractType === 'TWO_WAY' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) })}
                   className="w-full py-3 bg-[#e21d37]/20 border border-[#e21d37]/50 hover:bg-[#e21d37]/40 text-[#e21d37] font-black uppercase tracking-widest text-[10px] transition-colors rounded-sm"
                   title="The overseas club's refusal doesn't matter — you're the Commissioner."
                 >
@@ -678,7 +678,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
             <div className="flex flex-col gap-2 w-full">
               {isAccepted ? (
                 <button
-                  onClick={() => onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY' })}
+                  onClick={() => onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', mleType: (contractType === 'TWO_WAY' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) })}
                   className="w-full py-4 bg-green-600/20 border border-green-500/50 hover:bg-green-600/40 hover:border-green-500 text-green-400 font-black uppercase tracking-widest text-xs transition-colors rounded-sm"
                 >
                   Finalize Deal
@@ -693,7 +693,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                   </button>
                   {autoAccept && (
                     <button
-                      onClick={() => onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY' })}
+                      onClick={() => onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', mleType: (contractType === 'TWO_WAY' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) })}
                       className="w-full py-3 bg-[#e21d37]/20 border border-[#e21d37]/50 hover:bg-[#e21d37]/40 text-[#e21d37] font-black uppercase tracking-widest text-[10px] transition-colors rounded-sm"
                       title="Their rejection doesn't matter — you're the Commissioner."
                     >
@@ -1080,6 +1080,45 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                         ))}
                       </div>
 
+                      {/* Bird Rights + Supermax eligibility read-outs — non-editable,
+                          surface what the contract limits logic derived so the user
+                          knows whether max / supermax / extra years are unlocked. */}
+                      {(() => {
+                        const hasBird = isResign || !!(player as any).hasBirdRights;
+                        const svc = ((player as any).stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
+                        const recent = ((player as any).awards ?? []).filter((a: any) => a.season && a.season >= (leagueStats?.year ?? 2026) - 3);
+                        const notableAwards = recent
+                          .filter((a: any) => /all.nba|mvp|defensive player|dpoy/i.test(a.type ?? ''))
+                          .map((a: any) => a.type);
+                        return (
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 mb-2">Bird Rights</p>
+                              <div className={`flex items-center justify-center h-12 bg-white/[0.04] border rounded-sm ${hasBird ? 'border-emerald-500/40' : 'border-white/10'}`}>
+                                <span className={`text-sm font-black italic uppercase ${hasBird ? 'text-emerald-300' : 'text-white/40'}`}>
+                                  {hasBird ? 'Yes' : 'No'}
+                                </span>
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 mb-2">Supermax</p>
+                              <div className={`flex items-center justify-center h-12 bg-white/[0.04] border rounded-sm ${limits.isSupermaxEligible ? 'border-amber-500/50' : 'border-white/10'}`}>
+                                <span
+                                  className={`text-[10px] font-black italic uppercase text-center leading-tight px-1 ${limits.isSupermaxEligible ? 'text-amber-300' : 'text-white/40'}`}
+                                  title={limits.isSupermaxEligible
+                                    ? (svc >= 8 ? `${svc}yrs service` : notableAwards.slice(0, 2).join(', ') || 'Eligible')
+                                    : `Needs 8+ yrs svc OR recent All-NBA/MVP/DPOY${hasBird ? '' : ' + Bird Rights'}`}
+                                >
+                                  {limits.isSupermaxEligible
+                                    ? (svc >= 8 ? `${svc}yr svc` : (notableAwards[0] ?? 'Eligible'))
+                                    : 'Not Eligible'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       {/* External-league buyout — only for overseas players still under contract abroad */}
                       {buyout.applicable && contractType !== 'TWO_WAY' && (
                         <div>
@@ -1298,7 +1337,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                       return;
                     }
                     if (autoAccept) {
-                      onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY' });
+                      onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', mleType: (contractType === 'TWO_WAY' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) });
                     } else {
                       setShowResponse(true);
                     }

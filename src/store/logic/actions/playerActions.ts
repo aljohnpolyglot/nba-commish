@@ -8,7 +8,7 @@ import { NewsGenerator } from '../../../services/news/NewsGenerator';
 import { SettingsManager } from '../../../services/SettingsManager';
 
 export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
-    const { playerId, teamId, playerName, teamName, salary, years: negotiatedYears, option, twoWay: signedAsTwoWay } = action.payload;
+    const { playerId, teamId, playerName, teamName, salary, years: negotiatedYears, option, twoWay: signedAsTwoWay, mleType: signedMleType } = action.payload;
     const player = stateWithSim.players.find(p => p.internalId === playerId);
     const team = stateWithSim.teams.find(t => t.id === teamId);
     
@@ -113,6 +113,19 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                 option: isOptionYear ? (option === 'PLAYER' ? 'player' : 'team') : '',
             };
         });
+        // Preserve historical (past + prior in-flight) contractYears entries so
+        // PlayerBioContractTab keeps showing the player's existing salary history
+        // after a re-sign. Filter out any entries for seasons the new deal covers
+        // so the new terms win.
+        const existingPlayerForMerge: any = stateWithSim.players.find(p => p.internalId === playerId);
+        const priorContractYears: Array<{ season: string; guaranteed: number; option?: string }> =
+          Array.isArray(existingPlayerForMerge?.contractYears) ? existingPlayerForMerge.contractYears : [];
+        const newSeasonSet = new Set(negotiatedContractYears.map(cy => cy.season));
+        const historicalContractYears = priorContractYears.filter(cy => !newSeasonSet.has(cy.season));
+        const mergedContractYears = [
+            ...historicalContractYears,
+            ...negotiatedContractYears,
+        ].sort((a, b) => a.season.localeCompare(b.season));
 
         const returnContext = previousLeague && ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(previousLeague)
             ? ` ${playerName} is returning to the NBA after playing in the ${previousLeague}.`
@@ -150,12 +163,16 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                             exp: expYear,
                             rookie: false
                         },
-                        contractYears: negotiatedContractYears,
+                        contractYears: mergedContractYears,
                         // Explicitly set/clear twoWay per the signing decision —
                         // otherwise a player who was previously on a two-way deal
                         // keeps the flag via `...p`, so even a GUARANTEED re-signing
                         // ships as a two-way contract.
                         twoWay: !!signedAsTwoWay,
+                        // Stamp MLE source so TeamFinancesView can color the
+                        // contract cell and leagueStats.mleUsage below accounts
+                        // for the draw.
+                        ...(signedMleType ? { mleSignedVia: signedMleType } : {}),
                     }
                     : p
             );
@@ -172,15 +189,38 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                             exp: expYear,
                             rookie: false
                         },
-                        contractYears: negotiatedContractYears,
+                        contractYears: mergedContractYears,
                         // Explicitly set/clear twoWay per the signing decision —
                         // otherwise a player who was previously on a two-way deal
                         // keeps the flag via `...p`, so even a GUARANTEED re-signing
                         // ships as a two-way contract.
                         twoWay: !!signedAsTwoWay,
+                        // Stamp MLE source so TeamFinancesView can color the
+                        // contract cell and leagueStats.mleUsage below accounts
+                        // for the draw.
+                        ...(signedMleType ? { mleSignedVia: signedMleType } : {}),
                     }
                     : p
             );
+        }
+
+        // Update leagueStats.mleUsage so the FreeAgents MLE chip + future
+        // getMLEAvailability checks reflect what this team has already spent.
+        // Each team stores { type, usedUSD } — subsequent signings using the
+        // same MLE type stack the usedUSD; signings on a different type are
+        // blocked by getMLEAvailability's priorType guard.
+        if (signedMleType) {
+            const prevLS: any = result.leagueStats ?? stateWithSim.leagueStats;
+            const prevUsage = (prevLS?.mleUsage ?? {}) as Record<number, { type: string; usedUSD: number }>;
+            const prior = prevUsage[teamId];
+            const stackedUSD = prior?.type === signedMleType ? (prior.usedUSD ?? 0) + baseSalaryUSD : baseSalaryUSD;
+            result.leagueStats = {
+                ...(prevLS ?? {}),
+                mleUsage: {
+                    ...prevUsage,
+                    [teamId]: { type: signedMleType, usedUSD: stackedUSD },
+                },
+            };
         }
 
         // Auto news item for the signing (fires regardless of LLM)
