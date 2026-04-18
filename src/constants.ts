@@ -158,6 +158,25 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   // Economy - Draft Picks
   tradableDraftPickSeasons: 7,
 
+  // Transaction calendar defaults (resolver-based — NBA accurate)
+  tradeDeadlineMonth: 2,
+  tradeDeadlineOrdinal: 1,
+  tradeDeadlineDayOfWeek: 'Thu' as const,
+  faStartMonth: 7,
+  faStartDay: 1,
+  faMoratoriumDays: 6,
+  regularSeasonFAEnabled: true,
+  postDeadlineMultiYearContracts: true,
+
+  // All-Star hosts — real NBA upcoming assignments. Games start summer 2025 so the
+  // 2026 ASG is still unplayed in-game even though it aired IRL; we seed both the
+  // 2026 and 2027 hosts and the history view renders them as UPCOMING until sim plays
+  // past All-Star Sunday of that year.
+  allStarHosts: [
+    { year: 2026, city: 'Inglewood, CA', arena: 'Intuit Dome',             teamIds: [] as number[] },
+    { year: 2027, city: 'Phoenix, AZ',   arena: 'Mortgage Matchup Center', teamIds: [] as number[] },
+  ],
+
   // Honors
   allNbaTeams: 3,
   allNbaPlayersPerTeam: 5,

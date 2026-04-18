@@ -6,9 +6,10 @@
  */
 
 import type { GameState, NBAPlayer, NBATeam, DraftPick, TradeProposal } from '../types';
-import { getCapThresholds, getTradeOutlook, effectiveRecord, topNAvgK2 } from '../utils/salaryUtils';
-import { isSalaryLegal, calcOvr2K, calcPlayerTV, calcPot2K, isUntouchable } from './trade/tradeValueEngine';
+import { getCapThresholds, getTradeOutlook, effectiveRecord, topNAvgK2, getTeamCapProfile } from '../utils/salaryUtils';
+import { calcOvr2K, calcPlayerTV, isUntouchable, isSalaryLegal } from './trade/tradeValueEngine';
 import type { TeamMode } from './trade/tradeValueEngine';
+import { generateAITradeProposal } from './trade/tradeFinderEngine';
 import { SettingsManager } from './SettingsManager';
 
 // ── §2d: Pick values ──────────────────────────────────────────────────────────
@@ -142,143 +143,110 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
     try { const d = new Date(state.date); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; } catch { return `${currentYear}-01`; }
   })() : `${currentYear}-01`;
 
+  // ── Main proposal loop: delegate to tradeFinderEngine ─────────────────────
+  // Share the exact matching logic TradeFinderView uses so AI-AI proposals get
+  // the same variety (star+pick packages, 2-for-1 returns, absorb/dump variants,
+  // untouchable unlocks on monster offers) instead of the old rigid
+  // "one player + picks" shape that made every AI deal read like a salary dump.
+  const teamsList = state.teams.filter(t => t.id > 0 && t.id < 100);
+  const powerRanks = new Map<number, number>();
+  [...teamsList]
+    .map(t => ({ t, rec: effectiveRecord(t, currentYear) }))
+    .sort((a, b) => (b.rec.wins - b.rec.losses) - (a.rec.wins - a.rec.losses))
+    .forEach(({ t }, i) => powerRanks.set(t.id, i + 1));
+
+  const teamOutlooksMap = new Map<number, { role: string }>();
+  for (const t of teamsList) teamOutlooksMap.set(t.id, { role: getOutlook(t).role });
+
+  // Pre-filter recently-traded players from the engine's view so it never
+  // re-proposes a player who just moved.
+  const enginePlayers = state.players.filter(p => !recentlyTraded.has(p.internalId));
+
+  const [, normMonthStr] = normDate.split('-');
+  const normMonth = parseInt(normMonthStr, 10);
+  // After March 1 the current draft has happened — picks for currentYear are
+  // no longer tradable. Matches TradeMachineModal's minTradableSeason gate.
+  const minTradableSeason = normMonth >= 3 ? currentYear + 1 : currentYear;
+
   let count = 0;
   for (const buyerTeam of buyerTeams) {
-    if (count >= 2) break; // max 2 proposals per day (was 3)
-
-    const buyerRoster = state.players.filter(p => p.tid === buyerTeam.id);
-    const buyerIsBuyer = true;
+    if (count >= 2) break; // max 2 proposals per day
 
     for (const sellerTeam of sellerTeams) {
-      const sellerRoster = state.players.filter(p => p.tid === sellerTeam.id)
-        .sort((a, b) => getRawK2(b) - getRawK2(a));
-      const sellerUntouchMode: TeamMode = getOutlook(sellerTeam).role === 'rebuilding' ? 'presti'
-        : ['buyer', 'heavy_buyer'].includes(getOutlook(sellerTeam).role) ? 'contend' : 'rebuild';
-
-      // Skip: untouchable players (loyalty, core rotation, young stars), recently traded
-      const targetPlayer = sellerRoster.find(p => {
-        if (isUntouchable(p, sellerUntouchMode, currentYear)) return false;
-        if (recentlyTraded.has(p.internalId)) return false;
-        return true;
+      if (sellerTeam.id === buyerTeam.id) continue;
+      const proposal = generateAITradeProposal({
+        buyerTid: buyerTeam.id,
+        sellerTid: sellerTeam.id,
+        players: enginePlayers,
+        teams: teamsList,
+        draftPicks: state.draftPicks ?? [],
+        currentYear,
+        minTradableSeason,
+        powerRanks,
+        teamOutlooks: teamOutlooksMap,
       });
-      if (!targetPlayer) continue;
+      if (!proposal) continue;
 
-      // Use calcPlayerTV (same as Trade Finder) with each team's mode for matching.
-      // Match: find buyer's player whose TV (from SELLER'S rebuild perspective) is closest
-      // to the target's TV. This ensures the SELLER sees a fair swap.
-      const buyerCornerstoneId = buyerRoster.reduce((best, p) =>
-        getRawK2(p) > getRawK2(best) ? p : best, buyerRoster[0])?.internalId;
-      const sellerMode = teamMode(sellerTeam);
-      const buyerMode  = teamMode(buyerTeam);
-
-      // Target TV from both perspectives
-      const targetTVSeller = calcPlayerTV(targetPlayer, sellerMode, currentYear);
-      const targetTVBuyer  = calcPlayerTV(targetPlayer, buyerMode,  currentYear);
-
-      // Contending teams protect key contributors (K2 ≥ 78) — only include role players
-      const buyerIsContender = ['buyer', 'heavy_buyer'].includes(getOutlook(buyerTeam).role);
-      const buyerPlayerProtectThreshold = buyerIsContender ? 78 : 999; // 999 = only cornerstone excluded
-
-      const buyerCandidates = [...buyerRoster]
-        .filter(p => {
-          if (p.internalId === buyerCornerstoneId) return false;
-          if (recentlyTraded.has(p.internalId)) return false;
-          if (getRawK2(p) >= buyerPlayerProtectThreshold) return false; // contenders protect starters
-          return (p.contract?.amount ?? 0) > 0;
-        })
-        .sort((a, b) => {
-          // Sort by how close the offer looks to the SELLER (so the deal makes sense for them)
-          const tvA = calcPlayerTV(a, sellerMode, currentYear);
-          const tvB = calcPlayerTV(b, sellerMode, currentYear);
-          return Math.abs(tvA - targetTVSeller) - Math.abs(tvB - targetTVSeller);
-        });
-      const buyerOfferPlayer = buyerCandidates[0];
-      if (!buyerOfferPlayer) continue;
-
-      // NBA trade salary rule (125% + $100K) — same check as TradeMachineModal / TradeFinderView
-      const buyerSends = buyerOfferPlayer.contract?.amount ?? 0; // in thousands
-      const sellerSends = targetPlayer.contract?.amount ?? 0;    // in thousands
-      if (!isSalaryLegal(buyerSends, sellerSends)) continue;
-
-      // TV of what each team sends/receives from their own perspective
-      const offerTVSeller = calcPlayerTV(buyerOfferPlayer, sellerMode, currentYear); // seller values the offer
-      const offerTVBuyer  = calcPlayerTV(buyerOfferPlayer, buyerMode,  currentYear); // buyer values what they give up
-
-      // sellerBalance > 0 means seller is happy; < 0 means seller needs more
-      let sellerBalance = offerTVSeller - targetTVSeller;
-      // buyerBalance > 0 means buyer is happy; < 0 means buyer is overpaying
-      let buyerBalance  = targetTVBuyer  - offerTVBuyer;
-
-      // ── Pick sweetener logic ───────────────────────────────────────────────
-      const [, normMonthStr] = normDate.split('-');
-      const normMonth = parseInt(normMonthStr, 10);
-
-      const buyerAvailPicks = (state.draftPicks ?? []).filter(pk => {
-        if (pk.tid !== buyerTeam.id) return false;
-        if (pk.season <= currentYear && normMonth >= 3) return false;
-        return true;
-      });
-      const buyerSecondRounders = buyerAvailPicks.filter(pk => pk.round === 2);
-      const buyerFirstRounders  = buyerAvailPicks.filter(pk => pk.round === 1);
-
-      const sweetenerPicks: DraftPick[] = [];
-      const usedDpids = new Set<number>();
-
-      // Throw-in: if buyer hoards 2nd rounders (> 4), always add one as a gesture
-      if (buyerSecondRounders.length > 4) {
-        const throwIn = buyerSecondRounders[0];
-        sweetenerPicks.push(throwIn);
-        usedDpids.add(throwIn.dpid);
-        sellerBalance += sweetenerPickValue(throwIn);
-        buyerBalance  -= sweetenerPickValue(throwIn);
+      const playersOffered: string[] = [];
+      const picksOffered: number[] = [];
+      for (const it of proposal.buyerGives) {
+        if (it.type === 'player' && it.player) playersOffered.push(it.player.internalId);
+        else if (it.type === 'pick' && it.pick) picksOffered.push(it.pick.dpid);
       }
-
-      // Gap-fill: if seller still unhappy, add picks to close the value gap
-      if (sellerBalance < -5) {
-        for (const pk of buyerSecondRounders) {
-          if (usedDpids.has(pk.dpid)) continue;
-          if (sellerBalance >= -5) break;
-          if (sweetenerPicks.filter(p => p.round === 2).length >= 2) break;
-          sweetenerPicks.push(pk);
-          usedDpids.add(pk.dpid);
-          sellerBalance += sweetenerPickValue(pk);
-          buyerBalance  -= sweetenerPickValue(pk);
-        }
+      const playersRequested: string[] = [];
+      const picksRequested: number[] = [];
+      for (const it of proposal.sellerGives) {
+        if (it.type === 'player' && it.player) playersRequested.push(it.player.internalId);
+        else if (it.type === 'pick' && it.pick) picksRequested.push(it.pick.dpid);
       }
-      if (sellerBalance < -5) {
-        // Contending teams can offer up to 2 R1 picks; rebuilders cap at 1
-        const maxR1 = buyerIsContender ? 2 : 1;
-        for (const pk of buyerFirstRounders) {
-          if (usedDpids.has(pk.dpid)) continue;
-          if (sellerBalance >= -5) break;
-          if (sweetenerPicks.filter(p => p.round === 1).length >= maxR1) break;
-          sweetenerPicks.push(pk);
-          usedDpids.add(pk.dpid);
-          sellerBalance += sweetenerPickValue(pk);
-          buyerBalance  -= sweetenerPickValue(pk);
+      // Sanity: both sides must have at least one asset (engine guarantees this
+      // but guard anyway against empty baskets sneaking through).
+      if (playersOffered.length + picksOffered.length === 0) continue;
+      if (playersRequested.length + picksRequested.length === 0) continue;
+
+      // CBA 125% salary rule — when both sides send players the engine's match
+      // variant doesn't pre-filter salary, so enforce it here before accepting.
+      // Cap-absorb (one side all-picks) uses cap-space logic; skip the 125% gate
+      // for those so legit absorption trades aren't thrown out.
+      const buyerSalary = proposal.buyerGives
+        .filter(it => it.type === 'player')
+        .reduce((s, it) => s + (it.player?.contract?.amount ?? 0), 0);
+      const sellerSalary = proposal.sellerGives
+        .filter(it => it.type === 'player')
+        .reduce((s, it) => s + (it.player?.contract?.amount ?? 0), 0);
+      const bothHavePlayers = buyerSalary > 0 && sellerSalary > 0;
+      if (bothHavePlayers && !isSalaryLegal(buyerSalary, sellerSalary)) continue;
+      // Picks-only receiving side needs cap room to absorb the incoming salary
+      // (same rule TradeMachineModal enforces for user trades).
+      if (!bothHavePlayers && (buyerSalary + sellerSalary) > 0) {
+        const absorberTid = buyerSalary === 0 ? buyerTeam.id : sellerTeam.id;
+        const absorberTeam = state.teams.find(t => t.id === absorberTid);
+        const incomingSalary = buyerSalary === 0 ? sellerSalary : buyerSalary;
+        if (absorberTeam) {
+          const capK = getTeamCapProfile(
+            state.players, absorberTid,
+            (absorberTeam as any).wins ?? 0, (absorberTeam as any).losses ?? 0,
+            thresholds,
+          ).capSpaceUSD / 1000;
+          if (incomingSalary > capK + 100) continue;
         }
       }
 
-      const sweetenerDpids = sweetenerPicks.map(pk => pk.dpid);
-
-      // Both sides must be satisfied: neither team loses more than 8 TV units
-      if (sellerBalance >= -8 && buyerBalance >= -8) {
-        proposals.push({
-          id: `ai-trade-${buyerTeam.id}-${sellerTeam.id}-${Date.now()}`,
-          proposingTeamId: buyerTeam.id,
-          receivingTeamId: sellerTeam.id,
-          proposingGMName: getGMName(state, buyerTeam.id),
-          playersOffered: [buyerOfferPlayer.internalId],
-          playersRequested: [targetPlayer.internalId],
-          picksOffered: sweetenerDpids,
-          picksRequested: [],
-          proposedDate: state.date,
-          status: 'accepted',
-          isAIvsAI: true,
-        });
-        count++;
-        break;
-      }
+      proposals.push({
+        id: `ai-trade-${buyerTeam.id}-${sellerTeam.id}-${Date.now()}`,
+        proposingTeamId: buyerTeam.id,
+        receivingTeamId: sellerTeam.id,
+        proposingGMName: getGMName(state, buyerTeam.id),
+        playersOffered,
+        playersRequested,
+        picksOffered,
+        picksRequested,
+        proposedDate: state.date,
+        status: 'accepted',
+        isAIvsAI: true,
+      });
+      count++;
+      break;
     }
   }
 
@@ -413,16 +381,29 @@ export function executeAITrade(proposal: TradeProposal, state: GameState): Parti
     const roundStr = pk.round === 1 ? '1st Rd' : '2nd Rd';
     return `${pk.season} ${roundStr} (${origTeam?.abbrev ?? '?'})`;
   };
-  const allPickDpids = [...picksOffered, ...picksRequested];
-  const pickNote = allPickDpids.length > 0
-    ? ` + ${allPickDpids.map(formatPickDesc).join(', ')}`
-    : '';
+  // Keep each side's picks with that side's players so direction is unambiguous:
+  // everything before "to {receivingTeam}" flows TO the receiver; everything
+  // after "for" flows BACK to the proposer. Previously both pick lists were
+  // lumped after the requested-players clause, making it read as if picks
+  // going OUT to the receiver were coming BACK to the proposer.
+  const offeredPicks = picksOffered.map(formatPickDesc);
+  const requestedPicks = picksRequested.map(formatPickDesc);
+  const joinAssets = (players: string[], picks: string[]): string => {
+    if (players.length === 0 && picks.length === 0) return '';
+    if (picks.length === 0) return players.join(', ');
+    if (players.length === 0) return picks.join(', ');
+    return `${players.join(', ')} + ${picks.join(', ')}`;
+  };
+  const sentAssets = joinAssets(offeredNames as string[], offeredPicks);
+  const recvAssets = joinAssets(requestedNames as string[], requestedPicks);
 
-  const historyText = offeredNames.length > 0 && requestedNames.length > 0
-    ? `TRADE: ${proposingTeam.name} sends ${offeredNames.join(', ')} to ${receivingTeam.name} for ${requestedNames.join(', ')}${pickNote}.`
-    : offeredNames.length > 0
-      ? `TRADE: ${proposingTeam.name} sends ${offeredNames.join(', ')} to ${receivingTeam.name}${pickNote}.`
-      : `TRADE: ${proposingTeam.name} and ${receivingTeam.name} exchange picks.`;
+  const historyText = sentAssets && recvAssets
+    ? `TRADE: ${proposingTeam.name} sends ${sentAssets} to ${receivingTeam.name} for ${recvAssets}.`
+    : sentAssets
+      ? `TRADE: ${proposingTeam.name} sends ${sentAssets} to ${receivingTeam.name}.`
+      : recvAssets
+        ? `TRADE: ${proposingTeam.name} receives ${recvAssets} from ${receivingTeam.name}.`
+        : `TRADE: ${proposingTeam.name} and ${receivingTeam.name} exchange picks.`;
 
   const historyEntry = {
     text: historyText,

@@ -3,14 +3,13 @@ import { useGame } from '../../../store/GameContext';
 import { NBAPlayer } from '../../../types';
 import { ChevronDown, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { formatHeight, getCountryFromLoc, convertTo2KRating } from '../../../utils/helpers';
-import { PlayerBioView } from './PlayerBioView';
 import { ensureNonNBAFetched, getNonNBAGistData } from './nonNBACache';
+import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 
 export const PlayerBiosView: React.FC = () => {
   const { state } = useGame();
   const { players, teams, nonNBATeams = [] } = state;
-
-  const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
+  const quick = usePlayerQuickActions();
   const [searchTerm, setSearchTerm] = useState('');
   const [league, setLeague] = useState('NBA');
   const [teamFilter, setTeamFilter] = useState('');
@@ -203,9 +202,8 @@ export const PlayerBiosView: React.FC = () => {
     return [...base].sort((a, b) => a.name.localeCompare(b.name));
   }, [league, nonNBATeams]);
 
-  if (viewingPlayer) {
-    return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
-  }
+  // PlayerBioView takeover handled by the unified hook.
+  if (quick.fullPageView) return quick.fullPageView;
 
   const ovrBadge = (ovr: number) =>
     ovr >= 90 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
@@ -325,7 +323,7 @@ export const PlayerBiosView: React.FC = () => {
           </thead>
           <tbody>
             {paginated.map(p => (
-              <tr key={p.internalId} onClick={() => setViewingPlayer(p as unknown as NBAPlayer)}
+              <tr key={p.internalId} onClick={() => quick.openFor(p as unknown as NBAPlayer)}
                 className="border-b border-slate-800/30 hover:bg-slate-800/30 cursor-pointer transition-colors">
                 <td className="py-2.5 px-3 pl-4 sticky left-0 z-10 whitespace-nowrap" style={{ backgroundColor: STICKY_BG }}>
                   <div className="flex items-center gap-2.5">
@@ -365,6 +363,7 @@ export const PlayerBiosView: React.FC = () => {
           </tbody>
         </table>
       </div>
+      {quick.portals}
     </div>
   );
 };

@@ -15,6 +15,7 @@ import {
 import { convertTo2KRating } from '../../utils/helpers';
 import { getPlayerRealK2 } from '../../data/NBA2kRatings';
 import { useLeagueScaledRatings, LEAGUE_DISPLAY_MULTIPLIERS, applyLeagueDisplayScale } from '../../hooks/useLeagueScaledRatings';
+import { getRealDurability, applyDurabilityToK2 } from '../../utils/durabilityUtils';
 
 interface PlayerRatingsModalProps {
   player: NBAPlayer;
@@ -59,7 +60,7 @@ const K2_DRIVERS: { catKey: string; subIdx: number; bbgmKey: string; multiplier:
   { catKey: 'AT', subIdx: 3, bbgmKey: 'jmp',  multiplier: 0.60 },            // Vertical
   { catKey: 'AT', subIdx: 4, bbgmKey: 'endu', multiplier: 0.60 },            // Stamina
   { catKey: 'AT', subIdx: 5, bbgmKey: 'endu', multiplier: 0.36 },            // Hustle
-  { catKey: 'AT', subIdx: 6, bbgmKey: 'endu', multiplier: 0.60 },            // Durability
+  { catKey: 'AT', subIdx: 6, bbgmKey: 'endu', multiplier: 0.60 },            // Toughness (body frame / endurance ceiling)
   { catKey: 'IS', subIdx: 0, bbgmKey: 'ins',  multiplier: 0.48 },            // Layup
   { catKey: 'IS', subIdx: 1, bbgmKey: 'dnk',  multiplier: 0.24, hgtLimited: true }, // Standing Dunk
   { catKey: 'IS', subIdx: 2, bbgmKey: 'dnk',  multiplier: 0.54 },            // Driving Dunk
@@ -87,6 +88,7 @@ const K2_DRIVERS: { catKey: string; subIdx: number; bbgmKey: string; multiplier:
 const K2_CAT_COLORS: Record<string, string> = {
   OS: '#f97316', AT: '#22c55e', IS: '#ef4444',
   PL: '#3b82f6', DF: '#8b5cf6', RB: '#eab308',
+  MI: '#06b6d4',
 };
 
 function getRatingColor(val: number): string {
@@ -282,17 +284,26 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
   const isExternalLeague = !!LEAGUE_DISPLAY_MULTIPLIERS[player.status ?? ''];
   const scaledRatings = useLeagueScaledRatings(player.status, localRatings);
 
-  const k2 = useMemo(() => calculateK2(scaledRatings as any, {
-    pos: player.pos,
-    heightIn: player.hgt,
-    weightLbs: player.weight,
-    age: player.age,
-  }), [scaledRatings, player]);
+  // Durability is sourced from real injury history, not the `endu`/height formula.
+  // `applyDurabilityToK2` overrides AT.sub[6] with the injury-based value; AT.ovr
+  // still averages all 7 subs so durability contributes to the Athleticism overall.
+  const realDur = useMemo(() => getRealDurability(player), [player]);
+  const k2 = useMemo(() => {
+    const raw = calculateK2(scaledRatings as any, {
+      pos: player.pos,
+      heightIn: player.hgt,
+      weightLbs: player.weight,
+      age: player.age,
+    });
+    return applyDurabilityToK2(raw, realDur);
+  }, [scaledRatings, player, realDur]);
 
   // Real 2K data from gist — used as the launch baseline
   const real2KSubs = useMemo(() => getPlayerRealK2(player.name), [player.name]);
 
-  // K2 from the player's earliest season rating — used to compute the progression delta
+  // K2 from the player's earliest season rating — used to compute the progression delta.
+  // Apply the durability override here too so the blend math (display = real + (cur - base))
+  // produces a zero delta for DUR, leaving the injury-based value intact downstream.
   const baseK2 = useMemo(() => {
     const firstRating = player.ratings?.[0] ?? currentRatings;
     const defaults: Record<string, number> = {
@@ -302,17 +313,18 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
     };
     const base = { ...defaults, ...firstRating };
     const scaled = applyLeagueDisplayScale(player.status, base);
-    return calculateK2(scaled as any, {
+    const raw = calculateK2(scaled as any, {
       pos: player.pos,
       heightIn: player.hgt,
       weightLbs: player.weight,
       age: player.age,
     });
-  }, [player, currentRatings]);
+    return applyDurabilityToK2(raw, realDur);
+  }, [player, currentRatings, realDur]);
 
   // Blended K2: gist as launch baseline + full progression delta from computed K2.
-  // This means development actually shows up — not diluted by the static gist average.
   // Formula: display[i] = gist[i] + (computed[i] - base[i])
+  // Then forces DUR (AT.sub[6]) to the injury-history value so it matches the bio.
   const displayK2 = useMemo((): K2Data => {
     if (!real2KSubs) return k2;
     const blended: any = {};
@@ -325,15 +337,16 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
         if (real === null || real === undefined) return computed;
         const base = baseSubs[i] ?? computed;
         const delta = computed - base;
-        return Math.round(Math.max(25, Math.min(99, real + delta)));
+        return Math.round(Math.max(0, Math.min(99, real + delta)));
       });
       blended[catKey] = {
         sub: blendedSubs,
         ovr: Math.round(blendedSubs.reduce((a: number, b: number) => a + b, 0) / blendedSubs.length),
       };
     }
-    return blended as K2Data;
-  }, [k2, baseK2, real2KSubs]);
+    // Force DUR to the injury-history value after the blend.
+    return applyDurabilityToK2(blended as K2Data, realDur);
+  }, [k2, baseK2, real2KSubs, realDur]);
 
   const overall2k = convertTo2KRating(
     player.overallRating ?? 60,
@@ -578,10 +591,16 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
                                     <span className="text-[10px] font-black w-7 text-right tabular-nums" style={{ color: getRatingColor(currentK2Val) }}>
                                       {currentK2Val}
                                     </span>
-                                    {driver && (
+                                    {driver ? (
                                       <span className={`text-[8px] font-bold w-16 text-right ${driver.hgtLimited ? 'text-amber-600' : 'text-slate-600'}`}>
                                         →{driver.hgtLimited ? '⚠' : ''} {BBGM_DISPLAY_NAMES[driver.bbgmKey] ?? driver.bbgmKey}
                                       </span>
+                                    ) : cat.k === 'MI' && subIdx === 0 ? (
+                                      <span className="text-[8px] font-bold w-16 text-right text-cyan-600 italic">
+                                        injury hist.
+                                      </span>
+                                    ) : (
+                                      <span className="w-16" />
                                     )}
                                   </div>
                                 );

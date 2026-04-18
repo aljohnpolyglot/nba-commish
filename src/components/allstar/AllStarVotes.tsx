@@ -2,6 +2,7 @@ import React from 'react';
 import { Target } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { getPlayerHeadshot, getTeamLogo, extractTeamId } from '../../utils/helpers';
+import { getPlayerImage } from '../central/view/bioCache';
 
 interface AllStarVotesProps {
   allStar: any;
@@ -52,13 +53,19 @@ export const AllStarVotes: React.FC<AllStarVotesProps> = ({ allStar }) => {
                   className="w-9 h-9 rounded-full overflow-hidden bg-slate-800 border-2"
                   style={{ borderColor: `${teamColor}40` }}
                 >
-                  <img 
-                    src={getPlayerHeadshot(v.playerId, v.nbaId)}
+                  <img
+                    src={(() => { const pl = state.players?.find((p: any) => p.internalId === v.playerId); return (pl && getPlayerImage(pl)) || getPlayerHeadshot(v.playerId, v.nbaId); })()}
                     className="w-full h-full object-cover"
                     alt={v.playerName}
                     referrerPolicy="no-referrer"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${v.playerId}/100/100`;
+                      const img = e.target as HTMLImageElement;
+                      if (!img.dataset.triedCdn) {
+                        img.dataset.triedCdn = '1';
+                        img.src = getPlayerHeadshot(v.playerId, v.nbaId);
+                      } else {
+                        img.src = `https://picsum.photos/seed/${v.playerId}/100/100`;
+                      }
                     }}
                   />
                 </div>

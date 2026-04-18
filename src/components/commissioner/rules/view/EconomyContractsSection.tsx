@@ -298,22 +298,42 @@ export const EconomyContractsSection = ({
                     </button>
                 </div>
 
-                {props.mleEnabled && (
+                {props.mleEnabled && (() => {
+                    // MLE / Biannual are driven by % of salary cap so they scale automatically when cap grows.
+                    const cap = props.salaryCap || 154_647_000;
+                    const dollars = (pct: number) => (cap * pct / 100);
+                    const setRoomPct = (pct: number) => {
+                        props.setRoomMlePercentage(pct);
+                        props.setRoomMleAmount(Math.round(dollars(pct)));
+                    };
+                    const setNtPct = (pct: number) => {
+                        props.setNonTaxpayerMlePercentage(pct);
+                        props.setNonTaxpayerMleAmount(Math.round(dollars(pct)));
+                    };
+                    const setTaxPct = (pct: number) => {
+                        props.setTaxpayerMlePercentage(pct);
+                        props.setTaxpayerMleAmount(Math.round(dollars(pct)));
+                    };
+                    const setBiaPct = (pct: number) => {
+                        props.setBiannualPercentage(pct);
+                        props.setBiannualAmount(Math.round(dollars(pct)));
+                    };
+                    return (
                     <div className="space-y-4">
                         {/* Room MLE */}
                         <div className="bg-slate-900/60 rounded-2xl p-4 space-y-2 border border-slate-700/50">
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Room MLE</span>
-                                <InfoTooltip text="Available when team is below the salary cap. Cannot use alongside Non-Taxpayer or Taxpayer MLE. Amount auto-reduced to $0 when not applicable." />
+                                <InfoTooltip text="Available when team is below the salary cap. % of cap — scales automatically when the cap changes." />
                             </div>
                             <div className="flex items-center justify-between text-[10px] text-slate-400">
-                                <span>Limit: <span className="text-emerald-400 font-bold">${(props.roomMleAmount / 1_000_000).toFixed(3)}M</span></span>
+                                <span>{props.roomMlePercentage.toFixed(2)}% of cap → <span className="text-emerald-400 font-bold">${(dollars(props.roomMlePercentage) / 1_000_000).toFixed(3)}M</span></span>
                                 <span className="text-slate-600 italic">Below salary cap</span>
                             </div>
                             <input
-                                type="range" min="1000000" max="20000000" step="100000"
-                                value={props.roomMleAmount}
-                                onChange={e => props.setRoomMleAmount(parseInt(e.target.value))}
+                                type="range" min="0" max="15" step="0.01"
+                                value={props.roomMlePercentage}
+                                onChange={e => setRoomPct(parseFloat(e.target.value))}
                                 className="w-full accent-emerald-500"
                             />
                         </div>
@@ -322,16 +342,16 @@ export const EconomyContractsSection = ({
                         <div className="bg-slate-900/60 rounded-2xl p-4 space-y-2 border border-slate-700/50">
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Non-Taxpayer MLE</span>
-                                <InfoTooltip text="Available when team is above cap but below the 1st apron, AND the signing keeps payroll below the 1st apron. Cannot combine with Room or Taxpayer MLE." />
+                                <InfoTooltip text="Available when team is above cap but below the 1st apron. % of cap." />
                             </div>
                             <div className="flex items-center justify-between text-[10px] text-slate-400">
-                                <span>Limit: <span className="text-blue-400 font-bold">${(props.nonTaxpayerMleAmount / 1_000_000).toFixed(3)}M</span></span>
+                                <span>{props.nonTaxpayerMlePercentage.toFixed(2)}% of cap → <span className="text-blue-400 font-bold">${(dollars(props.nonTaxpayerMlePercentage) / 1_000_000).toFixed(3)}M</span></span>
                                 <span className="text-slate-600 italic">Over cap, below 1st apron</span>
                             </div>
                             <input
-                                type="range" min="1000000" max="25000000" step="100000"
-                                value={props.nonTaxpayerMleAmount}
-                                onChange={e => props.setNonTaxpayerMleAmount(parseInt(e.target.value))}
+                                type="range" min="0" max="20" step="0.01"
+                                value={props.nonTaxpayerMlePercentage}
+                                onChange={e => setNtPct(parseFloat(e.target.value))}
                                 className="w-full accent-blue-500"
                             />
                         </div>
@@ -340,16 +360,16 @@ export const EconomyContractsSection = ({
                         <div className="bg-slate-900/60 rounded-2xl p-4 space-y-2 border border-slate-700/50">
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-black text-yellow-400 uppercase tracking-widest">Taxpayer MLE</span>
-                                <InfoTooltip text="Available when a signing would push payroll over the 1st apron AND team is below the 2nd apron. Cannot combine with Room or Non-Taxpayer MLE." />
+                                <InfoTooltip text="Available when a signing crosses the 1st apron, team stays below the 2nd. % of cap." />
                             </div>
                             <div className="flex items-center justify-between text-[10px] text-slate-400">
-                                <span>Limit: <span className="text-yellow-400 font-bold">${(props.taxpayerMleAmount / 1_000_000).toFixed(3)}M</span></span>
+                                <span>{props.taxpayerMlePercentage.toFixed(2)}% of cap → <span className="text-yellow-400 font-bold">${(dollars(props.taxpayerMlePercentage) / 1_000_000).toFixed(3)}M</span></span>
                                 <span className="text-slate-600 italic">Crosses 1st apron, below 2nd</span>
                             </div>
                             <input
-                                type="range" min="1000000" max="15000000" step="100000"
-                                value={props.taxpayerMleAmount}
-                                onChange={e => props.setTaxpayerMleAmount(parseInt(e.target.value))}
+                                type="range" min="0" max="10" step="0.01"
+                                value={props.taxpayerMlePercentage}
+                                onChange={e => setTaxPct(parseFloat(e.target.value))}
                                 className="w-full accent-yellow-500"
                             />
                         </div>
@@ -370,19 +390,20 @@ export const EconomyContractsSection = ({
                         {props.biannualEnabled && (
                             <div className="bg-slate-900/60 rounded-2xl p-4 space-y-2 border border-slate-700/50">
                                 <div className="flex items-center justify-between text-[10px] text-slate-400">
-                                    <span>Amount: <span className="text-slate-300 font-bold">${(props.biannualAmount / 1_000_000).toFixed(3)}M</span></span>
+                                    <span>{props.biannualPercentage.toFixed(2)}% of cap → <span className="text-slate-300 font-bold">${(dollars(props.biannualPercentage) / 1_000_000).toFixed(3)}M</span></span>
                                     <span className="text-slate-600 italic">Every other season</span>
                                 </div>
                                 <input
-                                    type="range" min="500000" max="10000000" step="100000"
-                                    value={props.biannualAmount}
-                                    onChange={e => props.setBiannualAmount(parseInt(e.target.value))}
+                                    type="range" min="0" max="8" step="0.01"
+                                    value={props.biannualPercentage}
+                                    onChange={e => setBiaPct(parseFloat(e.target.value))}
                                     className="w-full accent-slate-500"
                                 />
                             </div>
                         )}
                     </div>
-                )}
+                    );
+                })()}
             </div>
         </div>
     );

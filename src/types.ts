@@ -344,16 +344,51 @@ export interface LeagueStats {
 
   // Economy - Exceptions (MLE / Biannual)
   mleEnabled?: boolean;              // master toggle (default true)
-  roomMleAmount?: number;            // USD, default 8_781_000
-  nonTaxpayerMleAmount?: number;     // USD, default 14_104_000
-  taxpayerMleAmount?: number;        // USD, default 5_685_000
+  roomMleAmount?: number;            // USD fallback, default 8_781_000
+  nonTaxpayerMleAmount?: number;     // USD fallback, default 14_104_000
+  taxpayerMleAmount?: number;        // USD fallback, default 5_685_000
   biannualEnabled?: boolean;
-  biannualAmount?: number;           // USD, default 4_767_000
+  biannualAmount?: number;           // USD fallback, default 4_767_000
+  // Percentages of salary cap — when set, override the dollar fallback so exceptions scale with the cap.
+  roomMlePercentage?: number;        // %, default 5.68 (NBA 2024-25: $8.78M / $154.65M)
+  nonTaxpayerMlePercentage?: number; // %, default 9.12
+  taxpayerMlePercentage?: number;    // %, default 3.68
+  biannualPercentage?: number;       // %, default 3.08
   /** Per-team MLE usage tracker; resets each season via rollover. key = teamId */
   mleUsage?: Record<number, { type: 'room' | 'non_taxpayer' | 'taxpayer'; usedUSD: number }>;
 
   // Economy - Draft Picks
   tradableDraftPickSeasons?: number; // how many future seasons of picks can be traded, e.g. 4
+
+  // Economy - Transaction Calendar (dates resolved via dateUtils.resolveSeasonDate)
+  /** Trade deadline month (1-12). NBA default: 2 (February) */
+  tradeDeadlineMonth?: number;
+  /** Trade deadline ordinal — which occurrence of the day within the month (1-5). NBA: first Thursday of Feb */
+  tradeDeadlineOrdinal?: number;
+  /** Trade deadline day-of-week: 'Sun'|'Mon'|'Tue'|'Wed'|'Thu'|'Fri'|'Sat'. NBA: 'Thu' */
+  tradeDeadlineDayOfWeek?: 'Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat';
+  /** Free agency start month (1-12). NBA default: 7 (July) */
+  faStartMonth?: number;
+  /** Free agency start day of month (1-31). NBA default: 1 */
+  faStartDay?: number;
+  /** Moratorium length in days from FA start (signings locked). NBA default: 6 */
+  faMoratoriumDays?: number;
+  /** Allow year-round regular-season FA signings (buyouts, 10-days, open-roster). NBA default: true */
+  regularSeasonFAEnabled?: boolean;
+  /** Permit multi-year deals after trade deadline. NBA default: true (only playoff-eligibility rules gate) */
+  postDeadlineMultiYearContracts?: boolean;
+
+  /**
+   * All-Star Weekend host assignments. Seeded with real NBA hosts; commissioner
+   * can append up to 5 years into the future via AllStarTab.
+   * year = season end year (i.e. 2026 = 2025-26 All-Star Game).
+   */
+  allStarHosts?: Array<{
+    year: number;
+    city: string;
+    arena?: string;
+    teamIds: number[]; // one or more host-team ids (NBL-style co-hosts allowed)
+  }>;
 
   // Honors
   allNbaTeams?: number;

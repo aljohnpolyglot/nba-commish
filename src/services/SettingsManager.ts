@@ -13,6 +13,9 @@ export interface GameSettings {
   enableImageCache: boolean;  // default true
   /** Advance day after signing/trading transactions. Off = transactions don't consume a day. */
   advanceDayOnTransaction: boolean; // default false
+  /** GM-mode trade difficulty 0-100. 50 = default (AI fleeces by ~10 TV).
+   *  0 = AI gives user +60 TV favor; 100 = AI demands +60 TV over their return. */
+  tradeDifficulty: number; // default 50
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -26,6 +29,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   aiTradeFrequency: 50,
   enableImageCache: true,
   advanceDayOnTransaction: false,
+  tradeDifficulty: 50,
 };
 
 export class SettingsManager {

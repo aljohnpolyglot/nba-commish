@@ -20,15 +20,40 @@ export function isUntouchable(player: NBAPlayer, mode: TeamMode, currentYear: nu
   const pot = calcPot2K(player, currentYear);
   const age = player.born?.year ? currentYear - player.born.year : (player.age ?? 27);
 
-  // Loyalty rule: 10+ years with the same team = always untouchable (Curry/Dirk/Duncan)
-  const yearsWithTeam = player.stats
-    ? player.stats.filter((s: any) => s.tid === player.tid && !s.playoffs && s.gp > 0).length
-    : 1;
-  if (yearsWithTeam >= 10) return true;
+  // Loyalty rule: 10+ years with the same team = always untouchable (Curry/Dirk/Duncan/Draymond)
+  // Uses MAX(direct yearsWithTeam field, stats count) because the live counter can
+  // lag behind career history early in a game (rollover hasn't incremented yet).
+  const directYrs = (player as any).yearsWithTeam ?? 0;
+  const statYrs = player.stats
+    ? player.stats.filter((s: any) => s.tid === player.tid && !s.playoffs && (s.gp ?? 0) > 0).length
+    : 0;
+  if (Math.max(directYrs, statYrs) >= 10) return true;
 
   if (mode === 'contend') return ovr >= 82;             // core rotation pieces
   if (mode === 'rebuild' || mode === 'presti') return age < 25 && pot >= 86;  // young + high ceiling
   return ovr >= 85 || (age < 24 && pot >= 88);          // neutral: stars or elite prospects
+}
+
+/**
+ * Young-core protection: contending teams whose active roster averages under 27 years
+ * old still lock up high-ceiling prospects (POT ≥ 90). Captures OKC-style teams winning
+ * now but whose young talent hasn't fully cooked yet. Call alongside isUntouchable.
+ */
+export function isYoungContenderCore(
+  player: NBAPlayer,
+  teamRoster: NBAPlayer[],
+  mode: TeamMode,
+  currentYear: number,
+): boolean {
+  if (mode !== 'contend') return false;
+  const pot = calcPot2K(player, currentYear);
+  if (pot < 90) return false;
+  if (teamRoster.length === 0) return false;
+  const sumAge = teamRoster.reduce((s, p) => {
+    const age = p.born?.year ? currentYear - p.born.year : (p.age ?? 27);
+    return s + age;
+  }, 0);
+  return (sumAge / teamRoster.length) < 27;
 }
 
 /** Check if a player is on the trading block (AI is willing to trade). */
@@ -61,23 +86,74 @@ export function calcPot2K(player: NBAPlayer, currentYear: number): number {
 
 // ── Internal TV (never shown to user — used for auto-balance only) ────────────
 
-export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: number): number {
+/** Context for in-season PER adjustment. Passed through by callers that know the
+ * league PER average and whether the sim is currently in regular season. */
+export interface TVContext {
+  leaguePerAvg: number;
+  isRegularSeason: boolean;
+}
+
+/** League-average PER across qualified regular-season players this season.
+ * Qualification: >10 GP AND >12 MPG (matches PlayerStatsView convention).
+ * Weighted by minutes so bench warmers don't skew the average down. */
+export function computeLeaguePerAvg(players: NBAPlayer[], currentYear: number): number {
+  let perTimesMin = 0;
+  let totalMin = 0;
+  for (const p of players) {
+    if (p.tid < 0) continue;
+    const stats = p.stats?.filter((s: any) => s.season === currentYear && !s.playoffs && (s.gp ?? 0) > 0) ?? [];
+    if (stats.length === 0) continue;
+    const gp = stats.reduce((s: number, x: any) => s + (x.gp ?? 0), 0);
+    const minSum = stats.reduce((s: number, x: any) => s + (x.min ?? 0), 0);
+    if (gp <= 10 || (gp > 0 && minSum / gp <= 12)) continue;
+    perTimesMin += stats.reduce((s: number, x: any) => s + (x.per ?? 0) * (x.min ?? 0), 0);
+    totalMin += minSum;
+  }
+  return totalMin > 0 ? perTimesMin / totalMin : 15; // 15 = classic NBA PER baseline
+}
+
+export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: number, ctx?: TVContext): number {
   const ovr = calcOvr2K(player);
   const pot = calcPot2K(player, currentYear);
   const age = player.born?.year ? currentYear - player.born.year : 26;
 
   const ovrBase = ovr >= 68 ? 10 : ovr >= 60 ? 3 : 0;
   const potBase = pot >= 68 ? 10 : pot >= 60 ? 3 : 0;
-  const ovrPart = ovrBase + Math.pow(Math.max(0, ovr - 68) / 31, 2.5) * 140;
-  const potPart = potBase + Math.pow(Math.max(0, pot - 68) / 31, 2.5) * 140;
+  // Flatter curve (exp 2.0) + higher scale (160) — 85-90 OVR players now sit
+  // in real star territory instead of compressing near the role-player floor.
+  // Ref: 87/87 contend = 140 TV (was 102); 94/94 contend = 245 TV (was 200).
+  const ovrPart = ovrBase + Math.pow(Math.max(0, ovr - 68) / 31, 2.0) * 160;
+  const potPart = potBase + Math.pow(Math.max(0, pot - 68) / 31, 2.0) * 160;
 
   let val: number;
   if (mode === 'rebuild')       val = Math.round(ovrPart * 0.6 + potPart * 1.4);
   else if (mode === 'contend')  val = Math.round(ovrPart * 1.4 + potPart * 0.6);
   else /* presti */              val = Math.round(ovrPart * 0.5 + potPart * 1.5);
 
-  if (age >= 35) val = Math.round(val * Math.pow(0.75, age - 34));
+  // Age nerf — minimal. OVR already declines naturally with age in the ratings engine,
+  // so a 41yo still sitting at 94 OVR is a genuine outlier (LeBron, KJ types) and their
+  // TV should reflect that they're still elite. Start at 39, very gentle decay, 72% floor.
+  if (age >= 39) val = Math.round(val * Math.max(0.72, Math.pow(0.97, age - 38)));
   if ((player.contract?.exp ?? currentYear + 1) <= currentYear) val = Math.round(val * 0.5);
+
+  // In-season PER adjustment (marginal, regular-season only). Auto-resets on rollover:
+  // once currentYear increments, the stats filter returns nothing → no boost applied.
+  // Qualified: >10 GP AND >12 MPG this season. Capped at ±10%.
+  if (ctx?.isRegularSeason) {
+    const stats = player.stats?.filter((s: any) => s.season === currentYear && !s.playoffs && (s.gp ?? 0) > 0) ?? [];
+    if (stats.length > 0) {
+      const gp = stats.reduce((s: number, x: any) => s + (x.gp ?? 0), 0);
+      const minSum = stats.reduce((s: number, x: any) => s + (x.min ?? 0), 0);
+      if (gp > 10 && minSum / gp > 12) {
+        const playerPer = minSum > 0
+          ? stats.reduce((s: number, x: any) => s + (x.per ?? 0) * (x.min ?? 0), 0) / minSum
+          : ctx.leaguePerAvg;
+        const perDelta = playerPer - ctx.leaguePerAvg;
+        const mult = 1 + Math.max(-0.10, Math.min(0.10, perDelta / 100));
+        val = Math.round(val * mult);
+      }
+    }
+  }
 
   // Durability penalty — injury-prone players are worth less (AD, Embiid, Zion)
   // Based on career injury history, NOT current injury status

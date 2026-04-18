@@ -1,12 +1,40 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { NBAPlayer } from '../../../types';
-import { ChevronDown, ChevronLeft, ChevronRight, Loader2, Search, Target } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Search, Target } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { convertTo2KRating } from '../../../utils/helpers';
 import { findTopComparisons } from '../../../utils/playerComparisons';
 
 const GIST_BASE = "https://gist.githubusercontent.com/aljohnpolyglot/bb8c80155c6c225cf1be9428892c6329/raw/";
+
+// Module-level cache of scouting gist data keyed by draft year. Lets us prefetch
+// the current class at game init and skip the loading spinner when the user
+// opens Draft Scouting. `null` means the fetch already failed for that year
+// (don't retry on every open).
+const gistCache = new Map<number, GistProspect[] | null>();
+
+async function fetchDraftClassScouting(year: number): Promise<GistProspect[] | null> {
+  try {
+    const res = await fetch(`${GIST_BASE}${year}classScouting`);
+    const text = await res.text();
+    const jsonStart = text.indexOf('[');
+    if (jsonStart === -1) throw new Error('Invalid Gist format');
+    return JSON.parse(text.substring(jsonStart));
+  } catch (e) {
+    console.error(`Failed to fetch scouting data for ${year}:`, e);
+    return null;
+  }
+}
+
+/** Prefetch and cache the scouting gist for a draft year. Safe to fire-and-forget
+ *  from initialization — subsequent DraftScoutingView opens will see the cache. */
+export function prefetchDraftScouting(year: number): Promise<void> {
+  if (gistCache.has(year)) return Promise.resolve();
+  return fetchDraftClassScouting(year).then(data => {
+    gistCache.set(year, data);
+  });
+}
 
 interface GistProspect {
   id: string;
@@ -57,7 +85,6 @@ const normalizeName = (name: string) => {
 export const DraftScoutingView: React.FC = () => {
   const { state } = useGame();
   const [gistData, setGistData] = useState<GistProspect[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortType, setSortType] = useState<'rank' | 'name'>('rank');
   const [posFilter, setPosFilter] = useState('All');
@@ -68,33 +95,47 @@ export const DraftScoutingView: React.FC = () => {
   // Default to current draft class (roll forward after draft completes)
   const defaultDraftYear = state.draftComplete ? baseYear + 1 : baseYear;
   const [selectedYear, setSelectedYear] = useState(defaultDraftYear);
-  // Clamp browsing range: 3 years back, 5 years forward
-  const minYear = baseYear - 3;
-  const maxYear = baseYear + 5;
+  // Clamp browsing to the range of draft classes that actually exist as tid=-2
+  // prospects in state. Past classes get drafted/removed so a blind "baseYear-3"
+  // floor leaves the left chevron clickable with nothing to show.
+  const { minYear, maxYear } = useMemo(() => {
+    let lo = baseYear;
+    let hi = baseYear;
+    let seen = false;
+    for (const p of state.players) {
+      if (p.tid !== -2) continue;
+      const dy = (p as any).draft?.year;
+      if (typeof dy !== 'number') continue;
+      if (!seen) { lo = hi = dy; seen = true; }
+      else { if (dy < lo) lo = dy; if (dy > hi) hi = dy; }
+    }
+    if (!seen) return { minYear: baseYear, maxYear: baseYear };
+    return { minYear: lo, maxYear: hi };
+  }, [state.players, baseYear]);
   const draftYear = selectedYear;
 
   useEffect(() => {
-    setGistData([]);
     setError(null);
-    setLoading(true);
-    const fetchData = async () => {
-      try {
-        const url = `${GIST_BASE}${draftYear}classScouting`;
-        const res = await fetch(url);
-        const text = await res.text();
-        const jsonStart = text.indexOf('[');
-        if (jsonStart === -1) throw new Error("Invalid Gist format");
-        const json = text.substring(jsonStart);
-        const data = JSON.parse(json);
-        setGistData(data);
-      } catch (e) {
-        console.error("Failed to fetch scouting data:", e);
+    // Cache hit — set synchronously, no spinner
+    if (gistCache.has(draftYear)) {
+      const cached = gistCache.get(draftYear);
+      if (cached) setGistData(cached);
+      else {
+        setGistData([]);
         setError(`Scout reports unavailable for the ${draftYear} class. Showing prospects from game data.`);
-      } finally {
-        setLoading(false);
       }
-    };
-    fetchData();
+      return;
+    }
+    // Cache miss — kick off a fetch in the background, populate when it lands
+    setGistData([]);
+    let cancelled = false;
+    fetchDraftClassScouting(draftYear).then(data => {
+      gistCache.set(draftYear, data);
+      if (cancelled) return;
+      if (data) setGistData(data);
+      else setError(`Scout reports unavailable for the ${draftYear} class. Showing prospects from game data.`);
+    });
+    return () => { cancelled = true; };
   }, [draftYear]);
 
   const prospects = useMemo(() => {
@@ -202,15 +243,6 @@ export const DraftScoutingView: React.FC = () => {
       return a.scoutRanks.consensus - b.scoutRanks.consensus;
     });
   }, [prospects, posFilter, sortType, searchTerm]);
-
-  if (loading) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-slate-400">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-4" />
-        <p className="text-sm uppercase tracking-wider font-medium">Loading Draft Board...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-200 overflow-hidden">

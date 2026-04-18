@@ -5,20 +5,22 @@ export interface K2CategoryData {
 
 export interface K2Data {
   OS: K2CategoryData; // Outside Scoring: closeShot, midRange, threePoint, freeThrow, shotIQ, offConsistency
-  AT: K2CategoryData; // Athleticism: speed, agility, strength, vertical, stamina, hustle, durability
+  AT: K2CategoryData; // Athleticism: speed, agility, strength, vertical, stamina, hustle, toughness
   IS: K2CategoryData; // Inside Scoring: layup, standingDunk, drivingDunk, postHook, postFade, postControl, drawFoul, hands
   PL: K2CategoryData; // Playmaking: passAccuracy, ballHandle, speedWithBall, passIQ, passVision
   DF: K2CategoryData; // Defense: interiorDef, perimeterDef, steal, block, helpDefIQ, passPerception, defConsistency
   RB: K2CategoryData; // Rebounding: offRebound, defRebound
+  MI: K2CategoryData; // Misc / Intangibles: durability (from injury history) — extendable for clutch/leadership/etc.
 }
 
 export const K2_CATS = [
   { k: 'OS', n: 'Outside Scoring', sub: ['Close Shot', 'Mid-Range', 'Three-Point', 'Free Throw', 'Shot IQ', 'Off. Consistency'] },
-  { k: 'AT', n: 'Athleticism',     sub: ['Speed', 'Agility', 'Strength', 'Vertical', 'Stamina', 'Hustle', 'Durability'] },
+  { k: 'AT', n: 'Athleticism',     sub: ['Speed', 'Agility', 'Strength', 'Vertical', 'Stamina', 'Hustle', 'Toughness'] },
   { k: 'IS', n: 'Inside Scoring',  sub: ['Layup', 'Standing Dunk', 'Driving Dunk', 'Post Hook', 'Post Fade', 'Post Control', 'Draw Foul', 'Hands'] },
   { k: 'PL', n: 'Playmaking',      sub: ['Pass Accuracy', 'Ball Handle', 'Speed w/ Ball', 'Pass IQ', 'Pass Vision'] },
   { k: 'DF', n: 'Defense',         sub: ['Interior Def.', 'Perimeter Def.', 'Steal', 'Block', 'Help Def. IQ', 'Pass Perception', 'Def. Consistency'] },
   { k: 'RB', n: 'Rebounding',      sub: ['Off. Rebound', 'Def. Rebound'] },
+  { k: 'MI', n: 'Misc',            sub: ['Durability'] },
 ] as const;
 
 // Radar axes (for spider chart) — category OVR + overall
@@ -106,7 +108,7 @@ export function calculateK2(ratings: BBGMRatings, physicals: PlayerPhysicals = {
       s(jmp * (1 - athPenaltyFactor), 15 + athNerf / 2 + (jmp >= 50 ? (spd - 50) / 2 : -(50 - jmp) * 2) + Math.max(0, hgt - 70) / 3), // Vertical
       s(endu, 20 + oiq / 8 - bmiPenalty * 2),                                // Stamina
       s(endu * 0.6 + diq * 0.4, 30 + athNerf - agePenalty),                  // Hustle
-      s(endu, 15 - bmiPenalty * 3 - (hgt - 70) / 3 + Math.max(0, 50 - spd) * 0.5), // Durability
+      s(endu, 15 - bmiPenalty * 3 - (hgt - 70) / 3 + Math.max(0, 50 - spd) * 0.5), // Toughness (body frame / endurance ceiling — not injury history)
     ],
     ovr: 0,
   };
@@ -157,12 +159,19 @@ export function calculateK2(ratings: BBGMRatings, physicals: PlayerPhysicals = {
     ovr: 0,
   };
 
-  // Compute category OVR as average of subs
+  // MI (Misc) — durability placeholder. Real value is overridden at display time
+  // by `applyDurabilityToK2` using the player's injury history. Default 75 when no data.
+  const MI: K2CategoryData = {
+    sub: [75], // Durability — injury-history-based, see durabilityUtils
+    ovr: 75,
+  };
+
+  // Compute category OVR as average of subs (MI skipped — its ovr is just the DUR value)
   for (const cat of [OS, AT, IS, PL, DF, RB]) {
     cat.ovr = Math.round(cat.sub.reduce((a, b) => a + b, 0) / cat.sub.length);
   }
 
-  return { OS, AT, IS, PL, DF, RB };
+  return { OS, AT, IS, PL, DF, RB, MI };
 }
 
 // Returns radar data: [overall2k, OS.ovr, AT.ovr, IS.ovr, PL.ovr, DF.ovr, RB.ovr]

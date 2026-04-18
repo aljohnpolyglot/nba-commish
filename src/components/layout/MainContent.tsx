@@ -96,7 +96,8 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
     case 'Trade Finder':
       return <TradeFinderView />;
     case 'Trade Proposals':
-      return <TradeProposalsView />;
+      // GM-only view — in commissioner mode fall through to the default dashboard.
+      return state.gameMode === 'gm' ? <TradeProposalsView /> : <div className="p-8 text-slate-500">Trade Proposals is available in GM mode.</div>;
     case 'Free Agents':
       return <FreeAgentsView />;
     case 'Commissioner':

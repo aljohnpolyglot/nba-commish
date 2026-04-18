@@ -33,6 +33,7 @@ import {
 } from './autoResolvers';
 import { NewsGenerator } from '../news/NewsGenerator';
 import { applySeasonRollover, shouldFireRollover } from './seasonRollover';
+import { autoResolveAllStarHosts } from '../allStar/hostAutoResolver';
 import { PlayoffSeries, HistoricalAward, SeasonHistoryEntry } from '../../types';
 import { DEFAULT_MEDIA_RIGHTS, attachBroadcastersToGames } from '../../utils/broadcastingUtils';
 
@@ -332,6 +333,12 @@ export const runLazySim = async (
       if (shouldFireRollover(state, currentNorm)) {
         const rolloverPatch = applySeasonRollover(state);
         state = { ...state, ...rolloverPatch };
+        // Ensure All-Star host always has the current + next season locked in
+        // (horizon=1 — like real life we always know "this year" and "next year").
+        const resolvedHosts = autoResolveAllStarHosts(state.leagueStats, state.teams, { horizon: 1 });
+        if (resolvedHosts !== state.leagueStats.allStarHosts) {
+          state = { ...state, leagueStats: { ...state.leagueStats, allStarHosts: resolvedHosts } };
+        }
         currentPhase = 'Season Rollover...';
         report();
       }
@@ -499,24 +506,98 @@ export const runLazySim = async (
           Object.assign(updatedPlayers, withChampion);
         }
 
-        // Finals MVP: highest gameScore among champ players in this batch's playoff games
-        const champStats = allSimResults
-          .filter(r => r.homeTeamId === champTid || r.awayTeamId === champTid)
-          .flatMap(r => r.homeTeamId === champTid ? r.homeStats : r.awayStats)
-          .filter(s => s.gameScore !== undefined);
-        if (champStats.length > 0) {
-          const mvpStat = champStats.sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0))[0];
-          const mvpPlayer = updatedPlayers.find(p => p.internalId === mvpStat.playerId);
-          if (mvpPlayer) {
-            champHistoricalAwards.push({ season, type: 'Finals MVP', name: mvpPlayer.name, pid: mvpPlayer.internalId, tid: champTid });
-            // Also add to player awards
-            const updatedWithMvp = updatedPlayers.map(p =>
-              p.internalId === mvpPlayer.internalId
-                ? { ...p, awards: [...(p.awards ?? []), { season, type: 'Finals MVP' }] }
-                : p
+        // Finals MVP: per-player series score across the Finals ONLY (round 4), not all playoffs.
+        // Formula blends scoring, efficiency, rebounds, assists, defense and team result so
+        // stat-stuffers in losing roles don't outrank the series' primary driver.
+        //
+        // MVP score per player =
+        //   (avgPts * 1.0)
+        // + (avgReb * 0.5) + (avgAst * 0.7)
+        // + (avgStl * 1.0) + (avgBlk * 1.0)
+        // - (avgTov * 0.7)
+        // + (trueShootingPct above league avg) * 8
+        // + (usage bonus: games started / total games) * 3
+        // Min 3 games played to qualify (NBA-style eligibility).
+        const finalsGameIds = new Set<number>(finalsSeries?.gameIds ?? []);
+        const finalsResults = allSimResults.filter(r => finalsGameIds.has(r.gameId));
+        if (finalsResults.length > 0 && finalsSeries) {
+          // Collect per-player Finals stat bags for the champ team
+          type Bag = {
+            pid: string; gp: number; pts: number; reb: number; ast: number;
+            stl: number; blk: number; tov: number; fgm: number; fga: number;
+            ftm: number; fta: number; fg3m: number; fg3a: number; mins: number;
+          };
+          const bags = new Map<string, Bag>();
+          for (const r of finalsResults) {
+            const stats = r.homeTeamId === champTid ? r.homeStats
+                        : r.awayTeamId === champTid ? r.awayStats
+                        : null;
+            if (!stats) continue;
+            for (const s of stats) {
+              if (!s.playerId) continue;
+              const b = bags.get(s.playerId) ?? {
+                pid: s.playerId, gp: 0, pts: 0, reb: 0, ast: 0,
+                stl: 0, blk: 0, tov: 0, fgm: 0, fga: 0,
+                ftm: 0, fta: 0, fg3m: 0, fg3a: 0, mins: 0,
+              };
+              b.gp += 1;
+              b.pts  += s.pts     ?? 0;
+              b.reb  += s.reb     ?? ((s.orb ?? 0) + (s.drb ?? 0));
+              b.ast  += s.ast     ?? 0;
+              b.stl  += s.stl     ?? 0;
+              b.blk  += s.blk     ?? 0;
+              b.tov  += s.tov     ?? 0;
+              b.fgm  += s.fgm     ?? 0;
+              b.fga  += s.fga     ?? 0;
+              b.ftm  += s.ftm     ?? 0;
+              b.fta  += s.fta     ?? 0;
+              b.fg3m += s.threePm ?? 0;
+              b.fg3a += s.threePa ?? 0;
+              b.mins += s.min     ?? 0;
+              bags.set(s.playerId, b);
+            }
+          }
+
+          const candidates = [...bags.values()].filter(b => b.gp >= 3);
+          if (candidates.length > 0) {
+            // League-avg TS% reference (≈0.57 in modern NBA). Used as efficiency baseline.
+            const LEAGUE_TS = 0.57;
+            const scored = candidates.map(b => {
+              const avgPts = b.pts / b.gp;
+              const avgReb = b.reb / b.gp;
+              const avgAst = b.ast / b.gp;
+              const avgStl = b.stl / b.gp;
+              const avgBlk = b.blk / b.gp;
+              const avgTov = b.tov / b.gp;
+              const tsDenom = 2 * (b.fga + 0.44 * b.fta);
+              const ts = tsDenom > 0 ? b.pts / tsDenom : 0;
+              const score =
+                avgPts * 1.0
+                + avgReb * 0.5
+                + avgAst * 0.7
+                + avgStl * 1.0
+                + avgBlk * 1.0
+                - avgTov * 0.7
+                + (ts - LEAGUE_TS) * 8
+                // small minutes-load bonus (fatigue/usage proxy)
+                + Math.min(b.mins / b.gp, 40) / 40 * 3;
+              return { pid: b.pid, score, avgPts };
+            });
+            // Tiebreaker: higher avgPts wins.
+            scored.sort((a, b) =>
+              (b.score - a.score) || (b.avgPts - a.avgPts)
             );
-            // Patch updatedPlayers (we reassign below when building state)
-            Object.assign(updatedPlayers, updatedWithMvp); // mutable patch before state build
+            const mvpStat = scored[0];
+            const mvpPlayer = updatedPlayers.find(p => p.internalId === mvpStat.pid);
+            if (mvpPlayer) {
+              champHistoricalAwards.push({ season, type: 'Finals MVP', name: mvpPlayer.name, pid: mvpPlayer.internalId, tid: champTid });
+              const updatedWithMvp = updatedPlayers.map(p =>
+                p.internalId === mvpPlayer.internalId
+                  ? { ...p, awards: [...(p.awards ?? []), { season, type: 'Finals MVP' }] }
+                  : p
+              );
+              Object.assign(updatedPlayers, updatedWithMvp);
+            }
           }
         }
 

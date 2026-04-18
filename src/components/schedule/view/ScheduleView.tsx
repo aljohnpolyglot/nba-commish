@@ -68,11 +68,13 @@ export const ScheduleView: React.FC = () => {
     onConfirm: () => void;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
-  // Update selected date when state.date changes (e.g. after simulation)
+  // Update selected date when state.date changes (e.g. after simulation).
+  // Key off both date and day — day is a monotonic counter, so even if the
+  // formatted date string somehow reformats identically the effect still runs.
   useEffect(() => {
     setSelectedDate(state.date);
     setCalendarMonth(new Date(state.date));
-  }, [state.date]);
+  }, [state.date, state.day]);
 
   const gamesForSelectedDate = useMemo(() => {
     return state.schedule.filter(g => normalizeDate(g.date) === normalizeDate(selectedDate));
@@ -99,7 +101,13 @@ export const ScheduleView: React.FC = () => {
   };
 
   const formatDateDisplay = (dateStr: string) => {
-    const d = new Date(dateStr);
+    // Anchor the parse in UTC — otherwise `new Date("Apr 29, 2026")` is local
+    // midnight, which in any GMT+X timezone is still Apr 28 in UTC. Combined
+    // with the formatter's `timeZone: 'UTC'` below, that shifts the displayed
+    // weekday/day one day backward — user reports "header still shows Apr 28
+    // even though I'm on Apr 29".
+    const norm = normalizeDate(dateStr);
+    const d = norm ? new Date(`${norm}T00:00:00Z`) : new Date(dateStr);
     return d.toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   };
 

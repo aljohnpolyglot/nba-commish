@@ -2,6 +2,7 @@ import { GameState, NBATeam, NBAPlayer as Player, Game } from '../../../types';
 import { simulateDayGames } from '../../../services/logic/simulationRunner';
 import { calculateTeamStrength, clearTeamStrengthCache } from '../../../utils/playerRatings';
 import { normalizeDate, convertTo2KRating, calculateSocialEngagement } from '../../../utils/helpers';
+import { getTradeDeadlineDate, toISODateString } from '../../../utils/dateUtils';
 import { PlayoffGenerator } from '../../../services/playoffs/PlayoffGenerator';
 import { PlayoffAdvancer } from '../../../services/playoffs/PlayoffAdvancer';
 import { applyDailyProgression, applySeasonalBreakouts } from '../../../services/playerDevelopment/ProgressionEngine';
@@ -342,7 +343,12 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
                     players: stateWithSim.players.map(p => {
                         if (acceptedIds.has(p.internalId)) {
                             const ext = extMap.get(p.internalId)!;
-                            const extBaseYear = stateWithSim.leagueStats?.year ?? 2026;
+                            // Extension kicks in the season AFTER the current one — the player
+                            // is still playing out his existing deal this year. Using
+                            // leagueStats.year (= current season) would overwrite THIS year's
+                            // salary with the new annual amount, which is what caused re-signings
+                            // to retroactively inflate the current-season payroll.
+                            const extBaseYear = (stateWithSim.leagueStats?.year ?? 2026) + 1;
                             const extContractYears = Array.from({ length: ext.newYears ?? 1 }, (_, i) => {
                                 const yr = extBaseYear + i;
                                 return {
@@ -351,15 +357,17 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
                                     option: (i === (ext.newYears ?? 1) - 1 && ext.hasPlayerOption) ? 'Player' : '',
                                 };
                             });
-                            // Preserve historical contractYears (past seasons) and replace current+future
-                            const existingPast = ((p as any).contractYears ?? []).filter((cy: any) => {
+                            // Keep current-season and earlier contractYears untouched — the
+                            // extension only writes new entries for currentYear+1 onward.
+                            const existingThroughCurrent = ((p as any).contractYears ?? []).filter((cy: any) => {
                                 const yr = parseInt(cy.season.split('-')[0], 10) + 1;
                                 return yr < extBaseYear;
                             });
                             return {
                                 ...p,
-                                contract: { ...p.contract, amount: Math.round(ext.newAmount * 1_000), exp: ext.newExp },
-                                contractYears: [...existingPast, ...extContractYears],
+                                // Preserve current-season contract.amount — only exp advances.
+                                contract: { ...p.contract, exp: ext.newExp },
+                                contractYears: [...existingThroughCurrent, ...extContractYears],
                             };
                         }
                         if (declinedIds.has(p.internalId)) {
@@ -441,7 +449,10 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
                     players: stateWithSim.players.map(p => {
                         if (acceptedEE.has(p.internalId)) {
                             const ext = eeMap.get(p.internalId)!;
-                            const eeBaseYear = stateWithSim.leagueStats?.year ?? 2026;
+                            // May/Jun window — player's current deal expires at end of this
+                            // season. Extension starts NEXT season so current-year salary and
+                            // the corresponding contractYears entry stay put.
+                            const eeBaseYear = (stateWithSim.leagueStats?.year ?? 2026) + 1;
                             const eeContractYears = Array.from({ length: ext.newYears ?? 1 }, (_, i) => {
                                 const yr = eeBaseYear + i;
                                 return {
@@ -450,14 +461,14 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
                                     option: (i === (ext.newYears ?? 1) - 1 && ext.hasPlayerOption) ? 'Player' : '',
                                 };
                             });
-                            const existingPast = ((p as any).contractYears ?? []).filter((cy: any) => {
+                            const existingThroughCurrent = ((p as any).contractYears ?? []).filter((cy: any) => {
                                 const yr = parseInt(cy.season.split('-')[0], 10) + 1;
                                 return yr < eeBaseYear;
                             });
                             return {
                                 ...p,
-                                contract: { ...p.contract, amount: Math.round(ext.newAmount * 1_000), exp: ext.newExp },
-                                contractYears: [...existingPast, ...eeContractYears],
+                                contract: { ...p.contract, exp: ext.newExp },
+                                contractYears: [...existingThroughCurrent, ...eeContractYears],
                             };
                         }
                         if (declinedEE.has(p.internalId)) return { ...p, midSeasonExtensionDeclined: true } as any;
@@ -477,7 +488,7 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
 
         // AI trade proposals — frequency increases as trade deadline approaches
         const simDateForTrades = normalizeDate(stateWithSim.date);
-        const tradeDeadline = `${stateWithSim.leagueStats?.year ?? 2026}-02-15`;
+        const tradeDeadline = toISODateString(getTradeDeadlineDate(stateWithSim.leagueStats?.year ?? 2026, stateWithSim.leagueStats));
         const beforeTradeDeadline = simDateForTrades <= tradeDeadline;
         if (!isPlayoffDay && beforeTradeDeadline) {
             const daysToDeadline = (new Date(tradeDeadline).getTime() - new Date(simDateForTrades).getTime()) / 86_400_000;
@@ -540,7 +551,7 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
         // Players with 0 GP on teams that have played 15+ games get assigned to G-League
         if (isRegularSeason && stateWithSim.day % 7 === 0) {
             const currentYear = stateWithSim.leagueStats.year;
-            const userTeamId = stateWithSim.teams[0]?.id;
+            const userTeamId = (stateWithSim as any).userTeamId ?? stateWithSim.teams[0]?.id;
             // Build a set of playerIds who appeared in any sim result this batch
             // (p.stats[] isn't updated until postProcessor, so we count from allSimResults)
             const playersWithGPThisBatch = new Set<string>();
@@ -598,7 +609,15 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
                           : simMonth === 8 ? 4
                           : simMonth === 9 ? 7
                           : 14; // Oct–Feb in-season
-        if (isFreeAgencySeason && stateWithSim.day % faFrequency === 0) {
+        // Immediate refill: if any AI team fell below the league roster minimum
+        // (usually from a just-executed salary-dump trade), bypass the FA schedule
+        // and fire the round so Pass 2 signs minimum-contract FAs to fill the gap.
+        const minRosterSetting = stateWithSim.leagueStats?.minPlayersPerTeam ?? 14;
+        const anyTeamUnderMinRoster = stateWithSim.teams.some(t => {
+            const count = stateWithSim.players.filter(p => p.tid === t.id && !(p as any).twoWay).length;
+            return count < minRosterSetting;
+        });
+        if (isFreeAgencySeason && (stateWithSim.day % faFrequency === 0 || anyTeamUnderMinRoster)) {
             // Trim teams that exceeded the roster limit (e.g. due to trades or draft)
             // Pass simMonth so the trimmer uses the training camp limit during Jul–Sep
             console.log(`[RosterTrim] Calling autoTrimOversizedRosters: simMonth=${simMonth}, date=${stateWithSim.date}, day=${stateWithSim.day}`);

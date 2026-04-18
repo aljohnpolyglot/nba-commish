@@ -101,6 +101,16 @@ export const getActionsConfig = (state: GameState, callbacks: {
         onClick: () => callbacks.openPersonSelector('endorse_hof')
       },
       {
+        id: 'SIGN_FREE_AGENT',
+        title: "Sign Free Agent",
+        description: "Place a free agent with any team. The commissioner's offer is always accepted — you still pick salary, length, and option.",
+        cost: "None (Covert)",
+        benefit: "Roster Control / +International Diplomacy",
+        icon: Users,
+        color: "indigo",
+        onClick: () => callbacks.setSignFreeAgentModalOpen(true)
+      },
+      {
         id: 'EXECUTIVE_TRADE',
         title: "Executive Trade",
         description: "Force a trade between any two teams, bypassing GM approval and salary caps. Owners will not forget — and neither will the public.",
@@ -109,16 +119,6 @@ export const getActionsConfig = (state: GameState, callbacks: {
         icon: Gavel,
         color: "indigo",
         onClick: () => callbacks.setTradeModalOpen(true)
-      },
-      {
-        id: 'SIGN_FREE_AGENT',
-        title: "Force Sign Free Agent",
-        description: "Compel a team to sign a free agent at minimum contract terms. Useful for steering talent to struggling franchises.",
-        cost: "None (Covert)",
-        benefit: "Roster Control / +International Diplomacy",
-        icon: Users,
-        color: "indigo",
-        onClick: () => callbacks.setSignFreeAgentModalOpen(true)
       },
       {
         id: 'WAIVE_PLAYER',

@@ -5,6 +5,9 @@ import { INITIAL_LEAGUE_STATS } from '../../constants';
 import { getSeasonSimStartDate } from '../../utils/dateUtils';
 import { DEFAULT_MEDIA_RIGHTS } from '../../utils/broadcastingUtils';
 import { fetchEuroleagueRoster, fetchWNBARoster, fetchPBARoster, fetchBLeagueRoster, fetchGLeagueRoster, fetchEndesaRoster, fetchChinaCBARoster, fetchNBLAustraliaRoster } from '../../services/externalRosterService';
+import { EXTERNAL_SALARY_SCALE } from '../../constants';
+import { convertTo2KRating } from '../../utils/helpers';
+import { loadNameData } from '../../data/nameDataFetcher';
 
 import { calculateSocialEngagement } from '../../utils/helpers';
 import { generateFuturePicks } from '../../services/draft/DraftPickGenerator';
@@ -22,6 +25,9 @@ interface StartGamePayload {
 
 export const handleStartGame = async (payload: StartGamePayload): Promise<Partial<GameState>> => {
     const { name: commissionerName } = payload;
+    // Kick off name-data fetch early — it runs in parallel with roster loads and
+    // is done by the time we need to synthesize the first draft-class top-up.
+    const nameDataPromise = loadNameData();
     const { teams, players: rawNbaPlayers, draftPicks } = await getRosterData(2025, 'Opening Week');
     
     const historicalAwardsData = await getHistoricalAwards(); 
@@ -118,6 +124,80 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         ...uniqueNBLAusPlayers,
     ];
 
+    // Synthesize contracts for external-league players whose source gist didn't provide one.
+    // Without this, Euroleague/PBA/B-League/etc. guys have no contract.exp → never become FAs,
+    // transaction feed stays empty for those leagues, and PlayerBioContractTab shows blank.
+    const startYear = INITIAL_LEAGUE_STATS.year;
+    const salaryCap = INITIAL_LEAGUE_STATS.salaryCap;
+    const EXTERNAL = new Set(['Euroleague', 'Endesa', 'PBA', 'B-League', 'G-League', 'China CBA', 'NBL Australia']);
+    for (let i = 0; i < players.length; i++) {
+        const p: any = players[i];
+        if (!EXTERNAL.has(p.status)) continue;
+        const hasAmount = p.contract?.amount && p.contract.amount > 0;
+        const hasExp    = typeof p.contract?.exp === 'number' && p.contract.exp >= startYear;
+        if (hasAmount && hasExp) continue;
+
+        const scale = EXTERNAL_SALARY_SCALE[p.status];
+        if (!scale) continue;
+
+        const lastR = p.ratings?.[p.ratings.length - 1];
+        const hgt   = lastR?.hgt ?? 50;
+        const k2    = convertTo2KRating(p.overallRating ?? lastR?.ovr ?? 60, hgt, lastR?.tp);
+        const ovrNorm = Math.min(1, Math.max(0, (k2 - 55) / 30));
+        const salaryUSD = Math.round(salaryCap * (scale.minPct + ovrNorm * (scale.maxPct - scale.minPct)));
+        const years = k2 >= 78 ? 3 : k2 >= 70 ? 2 : 1;
+        const expYear = startYear + years - 1;
+
+        // Seeded year-offset so not every player expires the same season.
+        let seed = 0;
+        for (let ci = 0; ci < (p.internalId ?? '').length; ci++) seed += p.internalId.charCodeAt(ci);
+        const offset = (seed % 3); // 0, 1, or 2 extra seasons
+        const finalExp = expYear + offset;
+
+        const contractYears = Array.from({ length: finalExp - startYear + 1 }).map((_, yi) => {
+            const season = `${startYear + yi - 1}-${String(startYear + yi).slice(-2)}`;
+            const escalated = Math.round(salaryUSD * Math.pow(1.04, yi));
+            return { season, guaranteed: escalated, option: '' };
+        });
+
+        players[i] = {
+            ...p,
+            contract: {
+                ...(p.contract ?? {}),
+                amount: Math.round(salaryUSD / 1_000), // BBGM thousands
+                exp: finalExp,
+            },
+            contractYears,
+        } as any;
+    }
+
+    // Sync contract.amount to the active sim season from contractYears[].
+    // getRosterData(2025, ...) pins contract.amount to the 2024-25 entry, but
+    // INITIAL_LEAGUE_STATS.year = 2026 means the sim starts in 2025-26 (Aug 2025 =
+    // new league year). Without this resync, every post-Jul 1 trade in Year 1 uses
+    // last season's salary until the Jun 30 2026 rollover. Mirrors the LOAD_GAME
+    // sync in GameContext so fresh-start and load-save behave identically.
+    const initSeasonStr = `${startYear - 1}-${String(startYear).slice(-2)}`;
+    for (let i = 0; i < players.length; i++) {
+        const p: any = players[i];
+        if (!p.contract || !Array.isArray(p.contractYears)) continue;
+        const entry = p.contractYears.find((cy: any) => cy.season === initSeasonStr);
+        if (!entry || entry.guaranteed <= 0) continue;
+        const synced = Math.round(entry.guaranteed / 1000);
+        if (synced === p.contract.amount) continue;
+        players[i] = { ...p, contract: { ...p.contract, amount: synced } };
+    }
+
+    // Draft-class top-up runs at rollover only. Prefetch the current-year
+    // scouting gist in the background so DraftScoutingView renders instantly on
+    // first open instead of showing a "Loading Draft Board..." spinner. Errors
+    // are tolerated — DraftScoutingView still has its own lazy fetch path.
+    import('../../components/central/view/DraftScoutingView')
+      .then(m => m.prefetchDraftScouting(INITIAL_LEAGUE_STATS.year))
+      .catch(() => {});
+    // Name data is still warmed in the background so rollover has it ready.
+    nameDataPromise.catch(() => {}); // fire-and-forget; errors tolerable
+
     if (players.some(p => p.name.toLowerCase() === 'devin booker')) {
         console.log("🏀 DEV1N B00K3R 1S L0AD3D! 🏀");
     }
@@ -137,25 +217,40 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     if (!payload.skipLLM) {
         initialContent = await generateInitialContent(startDateFormatted, commissionerName, players, teams, emptyStaff);
     } else {
+        // Mode-aware welcome content: GM hires get a team-specific "X hired by Y as General Manager" post.
+        const isGM = payload.gameMode === 'gm';
+        const userTeam = isGM && typeof payload.userTeamId === 'number'
+            ? teams.find(t => t.id === payload.userTeamId)
+            : undefined;
+        const teamLabel = userTeam ? userTeam.name : 'the league';
+
         initialContent = {
             newEmails: [{
-                sender: 'League Office',
-                senderRole: 'Operations',
-                subject: 'Schedule Generation Approaching',
-                body: `Commissioner ${commissionerName}, the league schedule will be generated on August 14. You have until then to set Christmas Day matchups, Global Games, and International Preseason games.`,
-                playerPortraitUrl: 'https://cdn.nba.com/headshots/nba/latest/1040x760/logoman.png'
+                sender: isGM ? `${userTeam?.name ?? 'Your Team'} Front Office` : 'League Office',
+                senderRole: isGM ? 'Owner' : 'Operations',
+                subject: isGM ? 'Welcome Aboard' : 'Schedule Generation Approaching',
+                body: isGM
+                    ? `${commissionerName}, welcome to the ${teamLabel}. We're signing you to a five-year contract as General Manager. Build us something special.`
+                    : `Commissioner ${commissionerName}, the league schedule will be generated on August 14. You have until then to set Christmas Day matchups, Global Games, and International Preseason games.`,
+                playerPortraitUrl: userTeam?.logoUrl ?? 'https://cdn.nba.com/headshots/nba/latest/1040x760/logoman.png',
             }],
             newNews: [{
-                headline: 'League Awaits Schedule Release',
-                content: `With the schedule release set for August 14, fans and teams are eagerly anticipating the announcement of Christmas Day and Global Games. Commissioner ${commissionerName} has officially taken office.`,
-                type: 'league'
+                headline: isGM
+                    ? `${userTeam?.name ?? 'NBA Team'} Hires ${commissionerName} as General Manager`
+                    : 'League Awaits Schedule Release',
+                content: isGM
+                    ? `The ${teamLabel} have named ${commissionerName} their new General Manager on a five-year contract. The front office cited his vision for roster construction and player development.`
+                    : `With the schedule release set for August 14, fans and teams are eagerly anticipating the announcement of Christmas Day and Global Games. Commissioner ${commissionerName} has officially taken office.`,
+                type: 'league',
             }],
             newSocialPosts: [{
                 author: 'NBA',
                 handle: 'nba',
-                content: `Welcome to the new era of the NBA. Commissioner ${commissionerName} is officially on the job! 🏀`,
-                source: 'TwitterX'
-            }]
+                content: isGM
+                    ? `BREAKING: The ${teamLabel} have hired ${commissionerName} as their new General Manager. Five-year contract. 📝`
+                    : `Welcome to the new era of the NBA. Commissioner ${commissionerName} is officially on the job! 🏀`,
+                source: 'TwitterX',
+            }],
         };
     }
 

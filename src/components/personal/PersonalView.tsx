@@ -176,8 +176,20 @@ export const PersonalView: React.FC = () => {
                     <div>
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Employee Information</p>
                       <p className="font-black text-2xl text-slate-900">{state.commissionerName}</p>
-                      <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">NBA Commissioner • Office of the Commissioner</p>
-                      <p className="text-xs text-slate-400 mt-1">Olympic Tower, 645 5th Ave, New York, NY 10022</p>
+                      {state.gameMode === 'gm' ? (() => {
+                        const userTeam = state.userTeamId != null ? state.teams.find(t => t.id === state.userTeamId) : null;
+                        return (
+                          <>
+                            <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">General Manager{userTeam ? ` • ${userTeam.name}` : ''}</p>
+                            <p className="text-xs text-slate-400 mt-1">{userTeam ? `${userTeam.region ?? ''} ${userTeam.name}`.trim() + ' Front Office' : 'Team Front Office'}</p>
+                          </>
+                        );
+                      })() : (
+                        <>
+                          <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">NBA Commissioner • Office of the Commissioner</p>
+                          <p className="text-xs text-slate-400 mt-1">Olympic Tower, 645 5th Ave, New York, NY 10022</p>
+                        </>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Service Details</p>

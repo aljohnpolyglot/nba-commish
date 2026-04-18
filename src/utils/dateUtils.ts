@@ -55,3 +55,95 @@ export function getOpeningNightDate(seasonYear: number): Date {
 export function toISODateString(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
+
+// ─── Transaction calendar helpers ────────────────────────────────────────────
+// Use leagueStats fields with defaults when absent so legacy saves keep working.
+
+type TxnCalendar = {
+  tradeDeadlineMonth?: number;
+  tradeDeadlineOrdinal?: number;
+  tradeDeadlineDayOfWeek?: DayAbbr;
+  faStartMonth?: number;
+  faStartDay?: number;
+  faMoratoriumDays?: number;
+  regularSeasonFAEnabled?: boolean;
+  postDeadlineMultiYearContracts?: boolean;
+};
+
+/**
+ * NBA trade deadline — Thursday of the first full week of February
+ * (first Thursday whose entire Mon-Sun week falls in February).
+ * Resolver: month=2, ordinal=1, day='Thu'. Year is the *current calendar year*
+ * of the season, i.e. seasonYear 2026 → Feb 2026.
+ */
+export function getTradeDeadlineDate(seasonYear: number, stats?: TxnCalendar): Date {
+  const month = stats?.tradeDeadlineMonth ?? 2;
+  const ordinal = stats?.tradeDeadlineOrdinal ?? 1;
+  const day = (stats?.tradeDeadlineDayOfWeek ?? 'Thu') as DayAbbr;
+  return resolveSeasonDate(seasonYear, month, ordinal, day, 0);
+}
+
+/**
+ * Free agency start — fixed day of month (no weekday resolution; NBA is always Jul 1).
+ * Returns a UTC Date in the current seasonYear.
+ */
+export function getFreeAgencyStartDate(seasonYear: number, stats?: TxnCalendar): Date {
+  const month = stats?.faStartMonth ?? 7;
+  const day = stats?.faStartDay ?? 1;
+  return new Date(Date.UTC(seasonYear, month - 1, day));
+}
+
+/** Moratorium end = faStart + faMoratoriumDays (exclusive). */
+export function getFreeAgencyMoratoriumEndDate(seasonYear: number, stats?: TxnCalendar): Date {
+  const start = getFreeAgencyStartDate(seasonYear, stats);
+  const days = stats?.faMoratoriumDays ?? 6;
+  return new Date(start.getTime() + days * 86_400_000);
+}
+
+function toDate(d: Date | string): Date {
+  return typeof d === 'string' ? new Date(d) : d;
+}
+
+export function isPastTradeDeadline(current: Date | string, seasonYear: number, stats?: TxnCalendar): boolean {
+  return toDate(current) > getTradeDeadlineDate(seasonYear, stats);
+}
+
+/** FA window = faStart (inclusive) → Oct 1 same year (exclusive). */
+export function isInFreeAgencyWindow(current: Date | string, seasonYear: number, stats?: TxnCalendar): boolean {
+  const c = toDate(current);
+  const start = getFreeAgencyStartDate(seasonYear, stats);
+  const end = new Date(Date.UTC(seasonYear, 9, 1)); // Oct 1 — end of dead period before camp
+  return c >= start && c < end;
+}
+
+/** Moratorium = faStart → faStart + moratoriumDays (signings locked, negotiations only). */
+export function isInMoratorium(current: Date | string, seasonYear: number, stats?: TxnCalendar): boolean {
+  const c = toDate(current);
+  return c >= getFreeAgencyStartDate(seasonYear, stats) && c < getFreeAgencyMoratoriumEndDate(seasonYear, stats);
+}
+
+/**
+ * Regular season signings allowed year-round (buyouts, 10-days, open-roster deals)
+ * UNTIL the trade deadline. After deadline, new signings still allowed but see
+ * `canSignMultiYear` for length gating.
+ */
+export function isRegularSeasonSigningOpen(current: Date | string, seasonYear: number, stats?: TxnCalendar): boolean {
+  if (stats?.regularSeasonFAEnabled === false) return false;
+  const c = toDate(current);
+  // Regular season window: after opening night (Oct) → before next FA start (Jul 1)
+  const openingNight = getOpeningNightDate(seasonYear);
+  const nextFAStart = getFreeAgencyStartDate(seasonYear, stats);
+  return c >= openingNight && c < nextFAStart;
+}
+
+/**
+ * Can a new contract be multi-year at this point in the calendar?
+ * - In FA window (Jul-Sep): yes
+ * - Before trade deadline: yes
+ * - After trade deadline: gated by `postDeadlineMultiYearContracts`
+ */
+export function canSignMultiYear(current: Date | string, seasonYear: number, stats?: TxnCalendar): boolean {
+  if (isInFreeAgencyWindow(current, seasonYear, stats)) return true;
+  if (!isPastTradeDeadline(current, seasonYear, stats)) return true;
+  return stats?.postDeadlineMultiYearContracts ?? true;
+}

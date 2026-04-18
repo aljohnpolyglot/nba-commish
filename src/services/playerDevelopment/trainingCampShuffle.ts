@@ -58,11 +58,24 @@ interface PendingCampBoost {
   attrs: Array<{ attr: string; delta: number }>;  // what changes to make
 }
 
-/** Flat 1/3 split regardless of age — age-based systems (Father Time, bust lottery, washed) handle that */
-function pickBucket(seed: string): Bucket {
+/**
+ * Roll the camp bucket. Neutral weighting is 1/3 each; `workEthic` (0–99,
+ * neutral at 65) tilts toward progress/regress without destroying variance.
+ * At 95 work ethic → ~51% progress, 30% stale, 19% regress.
+ * At 35 work ethic → ~19% progress, 30% stale, 51% regress.
+ * Falls back to flat 1/3 when workEthic is absent (pre-existing saves).
+ */
+function pickBucket(seed: string, workEthic?: number): Bucket {
   const r = seededRand(seed);
-  if (r < 0.333) return 'progress';
-  if (r < 0.667) return 'stale';
+  // Tilt magnitude: delta in [-0.18, +0.18] range of probability shifted from
+  // regress → progress. Stale band stays ~33%.
+  const tilt = typeof workEthic === 'number'
+    ? Math.max(-0.18, Math.min(0.18, (workEthic - 65) * 0.006))
+    : 0;
+  const progressCap = 0.333 + tilt;       // higher workEthic → progress more likely
+  const staleCap    = progressCap + 0.333;
+  if (r < progressCap) return 'progress';
+  if (r < staleCap) return 'stale';
   return 'regress';
 }
 
@@ -94,7 +107,7 @@ export function markTrainingCampShuffle(
     if ((p as any).pendingCampBoost) return p;
 
     const playerSeed = `${baseSeed}_${p.internalId}`;
-    const bucket = pickBucket(playerSeed);
+    const bucket = pickBucket(playerSeed, (p as any).workEthic);
 
     if (bucket === 'stale') return p; // no pending change needed
 

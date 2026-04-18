@@ -223,8 +223,18 @@ function applyContractOverrides(players: Player[], contractsData: ContractsJSON,
   });
 }
 
-export const getRosterData = (startYear: number, startPhase: GamePhase): Promise<{ players: Player[], teams: Team[], teamNameMap: Map<string, Team>, availableYears: number[], draftPicks: DraftPick[] }> => {
-    return new Promise((resolve, reject) => {
+type RosterResult = { players: Player[], teams: Team[], teamNameMap: Map<string, Team>, availableYears: number[], draftPicks: DraftPick[] };
+let _rosterCache: { key: string; promise: Promise<RosterResult> } | null = null;
+
+/** Kicks off the roster fetch without waiting. Safe to call multiple times — memoized by (year,phase). */
+export const prewarmRoster = (startYear: number = 2025, startPhase: GamePhase = 'Opening Week'): Promise<RosterResult> => {
+  return getRosterData(startYear, startPhase);
+};
+
+export const getRosterData = (startYear: number, startPhase: GamePhase): Promise<RosterResult> => {
+    const cacheKey = `${startYear}:${startPhase}`;
+    if (_rosterCache && _rosterCache.key === cacheKey) return _rosterCache.promise;
+    const promise = new Promise<RosterResult>((resolve, reject) => {
         console.log(`RosterService: Fetching MASTER roster to process for ${startYear}...`);
         
         // Fetch contracts data in parallel
@@ -467,6 +477,8 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
             push();
         }).catch(err => reject(err));
     });
+    _rosterCache = { key: cacheKey, promise };
+    return promise;
 };
 export const getHistoricalAwards = async (): Promise<any[]> => {
     try {

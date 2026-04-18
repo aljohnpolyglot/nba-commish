@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { User, ArrowRight, Crown, ArrowLeft, Settings, ChevronDown, ChevronUp, Bot } from 'lucide-react';
 import { SettingsManager } from '../services/SettingsManager';
 import { INITIAL_LEAGUE_STATS } from '../constants';
 import { getSeasonSimStartDate, toISODateString } from '../utils/dateUtils';
+import { prewarmRoster } from '../services/rosterService';
+import { Home as FranchisePicker } from './central/view/TeamOffice/pages/Home';
+import type { NBAPlayer, NBATeam } from '../types';
 
 const SIM_START_DATE = toISODateString(getSeasonSimStartDate(INITIAL_LEAGUE_STATS.year)); // e.g. '2025-08-06'
 import { StartDateTimeline } from './setup/StartDateTimeline';
@@ -22,16 +25,33 @@ interface CommissionerSetupProps {
   onBack: () => void;
 }
 
-type Step = 'mode' | 'name' | 'timeline' | 'review';
+type Step = 'mode' | 'name' | 'franchise' | 'timeline' | 'review';
 
 export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, onBack }) => {
   const [step, setStep] = useState<Step>('mode');
   const [gameMode, setGameMode] = useState<'commissioner' | 'gm'>('commissioner');
-  const [userTeamId, setUserTeamId] = useState<number>(0); // default first team
+  // Keep undefined for GM mode — the user picks a team post-init via TeamOffice. No more "everyone is Atlanta".
+  const [userTeamId, setUserTeamId] = useState<number | undefined>(undefined);
   const [name, setName] = useState('');
   const [chosenDate, setChosenDate] = useState<string>(SIM_START_DATE);
   const [showSettings, setShowSettings] = useState(true);
   const [settings, setSettings] = useState(() => SettingsManager.getSettings());
+
+  // Roster was prewarmed when the user clicked "New Game" from the main menu.
+  // Await it here so the franchise picker renders with real team data (logos, records, colors).
+  const [rosterTeams, setRosterTeams] = useState<NBATeam[]>([]);
+  const [rosterPlayers, setRosterPlayers] = useState<NBAPlayer[]>([]);
+  const [rosterLoading, setRosterLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    prewarmRoster().then(data => {
+      if (cancelled) return;
+      setRosterTeams(data.teams);
+      setRosterPlayers(data.players);
+      setRosterLoading(false);
+    }).catch(() => { if (!cancelled) setRosterLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   const updateSetting = <K extends keyof typeof settings>(key: K, value: typeof settings[K]) => {
     const updated = { ...settings, [key]: value };
@@ -41,7 +61,8 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, o
 
   const handleNameSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim()) setStep('timeline');
+    if (!name.trim()) return;
+    setStep(gameMode === 'gm' ? 'franchise' : 'timeline');
   };
 
   const handleStart = (overrideDate?: string) => {
@@ -76,6 +97,8 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, o
     if (step === 'review') {
       setStep('timeline');
     } else if (step === 'timeline') {
+      setStep(gameMode === 'gm' ? 'franchise' : 'name');
+    } else if (step === 'franchise') {
       setStep('name');
     } else if (step === 'name') {
       setStep('mode');
@@ -152,12 +175,45 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, o
     );
   }
 
+  // Fullscreen franchise picker — GM mode only, between name and timeline.
+  // Recycles the TeamOffice Home grid so the visual language matches the in-game Team Office.
+  if (step === 'franchise') {
+    return (
+      <div className="min-h-screen w-full bg-[#0d1117] overflow-y-auto">
+        <button
+          onClick={() => setStep('name')}
+          className="absolute top-6 left-6 text-[#8b949e] hover:text-white flex items-center gap-2 transition-colors z-20 text-sm font-bold uppercase tracking-widest"
+        >
+          <ArrowLeft size={18} /> Back
+        </button>
+        <div className="px-4 md:px-10 py-10">
+          {rosterLoading ? (
+            <div className="min-h-[60vh] flex items-center justify-center text-[#8b949e] font-bold uppercase tracking-widest animate-pulse">
+              Loading franchises…
+            </div>
+          ) : (
+            <FranchisePicker
+              pickerMode
+              selectedTid={userTeamId ?? null}
+              teams={rosterTeams}
+              players={rosterPlayers}
+              onSelectTeam={(teamId) => {
+                setUserTeamId(teamId);
+                setStep('timeline');
+              }}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // Timeline and review are full-screen, handled separately
   if (step === 'timeline') {
     return (
       <StartDateTimeline
         onSelect={handleDateSelected}
-        onBack={() => setStep('name')}
+        onBack={() => setStep(gameMode === 'gm' ? 'franchise' : 'name')}
       />
     );
   }
@@ -200,13 +256,15 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, o
               transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.2 }}
               className="w-20 h-20 bg-indigo-600 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-2xl shadow-indigo-500/30"
             >
-              <Crown size={40} className="text-white" />
+              {gameMode === 'gm' ? <User size={40} className="text-white" /> : <Crown size={40} className="text-white" />}
             </motion.div>
             <h1 className="text-4xl font-black text-white tracking-tight mb-2">
-              Welcome, Commissioner
+              {gameMode === 'gm' ? 'Welcome, GM' : 'Welcome, Commissioner'}
             </h1>
             <p className="text-slate-400 text-lg">
-              The league is waiting for your leadership.
+              {gameMode === 'gm'
+                ? 'A franchise is about to bet five years on you.'
+                : 'The league is waiting for your leadership.'}
             </p>
           </div>
 

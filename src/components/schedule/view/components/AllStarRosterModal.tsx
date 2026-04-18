@@ -98,52 +98,57 @@ export const AllStarRosterModal: React.FC<AllStarRosterModalProps> = ({ tab, all
                       </div>
                     </div>
                     <div className="space-y-2">
-                      {players.map((p: any) => (
+                      {players.map((p: any) => {
+                        const fullPlayer = state.players.find(
+                          (np: NBAPlayer) => np.internalId === p.playerId
+                        );
+                        const rating = fullPlayer
+                          ? convertTo2KRating(
+                              fullPlayer.overallRating,
+                              fullPlayer.hgt || 77,
+                              fullPlayer.ratings?.[fullPlayer.ratings.length - 1]?.tp
+                            )
+                          : null;
+                        return (
                         <div key={p.playerId}
-                             className="flex items-center 
-                                        gap-3 p-2 
-                                        rounded-xl 
+                             className="flex items-center
+                                        gap-3 p-2
+                                        rounded-xl
                                         bg-slate-900/50">
                           <img
-                            src={getPlayerHeadshot(p.playerId, p.nbaId)}
-                            className="w-8 h-8 rounded-full 
+                            src={fullPlayer?.imgURL || getPlayerHeadshot(p.playerId, p.nbaId)}
+                            className="w-8 h-8 rounded-full
                                        object-cover bg-slate-800"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = 
-                                `https://ui-avatars.com/api/?name=${encodeURIComponent(p.playerName)}&background=0369a1&color=fff`;
+                              const img = e.target as HTMLImageElement;
+                              if (!img.dataset.triedCdn) {
+                                img.dataset.triedCdn = '1';
+                                img.src = getPlayerHeadshot(p.playerId, p.nbaId);
+                              } else {
+                                img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.playerName)}&background=0369a1&color=fff`;
+                              }
                             }}
                             referrerPolicy="no-referrer"
                             alt={p.playerName}
                           />
                           <div>
-                            <div className="text-sm font-bold 
+                            <div className="text-sm font-bold
                                             text-white">
                               {p.playerName}
                             </div>
-                            <div className="text-xs 
+                            <div className="text-xs
                                             text-slate-500">
                               {p.teamAbbrev} · {p.position}
                             </div>
                           </div>
-                          {(() => {
-                            const fullPlayer = state.players.find(
-                              (np: NBAPlayer) => np.internalId === p.playerId
-                            );
-                            const rating = fullPlayer
-                              ? convertTo2KRating(
-                                  fullPlayer.overallRating,
-                                  fullPlayer.hgt || 77,
-                                  fullPlayer.ratings?.[fullPlayer.ratings.length - 1]?.tp
-                                )
-                              : null;
-                            return rating ? (
-                              <div className={`text-sm font-black font-mono shrink-0 ml-auto ${rating >= 90 ? 'text-amber-400' : rating >= 80 ? 'text-emerald-400' : 'text-slate-400'}`}>
-                                {rating}
-                              </div>
-                            ) : null;
-                          })()}
+                          {rating ? (
+                            <div className={`text-sm font-black font-mono shrink-0 ml-auto ${rating >= 90 ? 'text-amber-400' : rating >= 80 ? 'text-emerald-400' : 'text-slate-400'}`}>
+                              {rating}
+                            </div>
+                          ) : null}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ))}

@@ -650,7 +650,7 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
                       })()}
                     </div>
                     {champRecord && (
-                      <div className="text-slate-400 font-semibold text-sm">{champRecord.won}-{champRecord.lost}</div>
+                      <div className="text-slate-400 font-semibold text-sm">{champRecord.won ?? champRecord.wins ?? 0}-{champRecord.lost ?? champRecord.losses ?? 0}</div>
                     )}
                     {awards.finalsMvp && (
                       <div
@@ -701,7 +701,7 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
                         );
                       })()}
                     </div>
-                    {ruRecord && <div className="text-sm text-slate-500">{ruRecord.won}-{ruRecord.lost}</div>}
+                    {ruRecord && <div className="text-sm text-slate-500">{ruRecord.won ?? ruRecord.wins ?? 0}-{ruRecord.lost ?? ruRecord.losses ?? 0}</div>}
                   </div>
                 </div>
               </div>

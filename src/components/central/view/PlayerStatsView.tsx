@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { NBAPlayer, NBAGMStat } from '../../../types';
-import { PlayerBioView } from './PlayerBioView';
+import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-react';
 import { evaluateFilter } from '../../../utils/filterUtils';
 import { memCache } from './bioCache';
@@ -358,8 +358,8 @@ interface PlayerStatsViewProps {
 
 export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFilter }) => {
   const { state, navigateToTeam, pendingStatSort, setPendingStatSort } = useGame();
-
-  const [viewingPlayer, setViewingPlayer]   = useState<NBAPlayer | null>(null);
+  // Unified player name-click stack: actions → bio / ratings / sign / waive.
+  const quick = usePlayerQuickActions();
   const [statType, setStatType]             = useState<StatType>('perGame');
   const [phase, setPhase]                   = useState<Phase>('regular');
   const [teamFilter, setTeamFilter]         = useState<string>(initialTeamFilter ?? 'all');
@@ -667,9 +667,8 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
   const stickyBg = (i: number, isHof: boolean) =>
     isHof ? 'rgb(69,10,10)' : i % 2 === 0 ? 'rgb(2,6,23)' : 'rgb(9,14,27)';
 
-  if (viewingPlayer) {
-    return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
-  }
+  // PlayerBioView takeover routed through the unified quick-actions hook.
+  if (quick.fullPageView) return quick.fullPageView;
 
   const activeCols = statType === 'advanced' ? ADV_COLS : statType === 'shotLocations' ? SL_COLS : BASIC_COLS;
   const seasonLabel = season === 'career' ? 'Career' : season === 'all' ? 'All Time' : `${(season as number) - 1}–${String(season).slice(2)}`;
@@ -932,7 +931,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
                   <td
                     className={`px-3 py-1.5 font-medium cursor-pointer hover:underline whitespace-nowrap sticky left-8 z-10 ${isHof ? 'text-rose-400' : 'text-indigo-400 hover:text-indigo-300'}`}
                     style={{ backgroundColor: stickyBg(i, isHof) }}
-                    onClick={() => setViewingPlayer(r.player)}
+                    onClick={() => quick.openFor(r.player)}
                   >
                     {r.player.name}
                     {r.fromBref && <span className="ml-1 text-[9px] text-slate-600">†</span>}
@@ -1111,6 +1110,8 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
           </button>
         </div>
       </div>
+
+      {quick.portals}
     </div>
   );
 };

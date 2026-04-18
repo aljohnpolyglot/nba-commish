@@ -8,8 +8,7 @@ import {
 } from '../../../services/simulation/convert2kAttributes';
 import { applyLeagueDisplayScale } from '../../../hooks/useLeagueScaledRatings';
 import { convertTo2KRating } from '../../../utils/helpers';
-import { getPlayerInjuryProfile } from '../../../data/playerInjuryData';
-import { computeDurability } from './PlayerBioInjuriesTab';
+import { getRealDurability, applyDurabilityToK2 } from '../../../utils/durabilityUtils';
 import type { NBAPlayer } from '../../../types';
 
 // ─── Radar ───────────────────────────────────────────────────────────────────
@@ -69,11 +68,12 @@ const BBGM_LABELS: Record<string, string> = {
   oiq: 'Off. IQ', diq: 'Def. IQ', drb: 'Dribbling', pss: 'Passing',
   reb: 'Rebounding', stre: 'Strength', hgt: 'Height',
 };
-const BBGM_ALL = ['ins', 'dnk', 'ft', 'fg', 'tp', 'spd', 'jmp', 'endu', 'stre', 'oiq', 'diq', 'drb', 'pss', 'reb'];
+const BBGM_ALL = ['hgt', 'ins', 'dnk', 'ft', 'fg', 'tp', 'spd', 'jmp', 'endu', 'stre', 'oiq', 'diq', 'drb', 'pss', 'reb'];
 
 const K2_CAT_COLORS: Record<string, string> = {
   OS: '#f97316', AT: '#22c55e', IS: '#ef4444',
   PL: '#3b82f6', DF: '#8b5cf6', RB: '#eab308',
+  MI: '#06b6d4',
 };
 
 function getRatingColor(val: number): string {
@@ -112,24 +112,8 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
   const k2 = React.useMemo(() => {
     if (!scaledRatingForK2) return null;
     const raw = calculateK2(scaledRatingForK2 as any, { pos: player.pos, heightIn: player.hgt, weightLbs: player.weight, age: player.age });
-    // Override AT.sub[6] (Durability) with injury-data-derived value if available
-    const profile = getPlayerInjuryProfile(player.name);
-    const careerGP = (player.stats ?? [])
-      .filter((s: any) => !s.playoffs && (s.tid ?? -1) >= 0)
-      .reduce((sum: number, s: any) => sum + (s.gp ?? 0), 0);
-    const realDurability = player.durability != null
-      ? player.durability
-      : profile
-        ? computeDurability(profile.careerCount, careerGP)
-        : null;
-    if (realDurability != null) {
-      const clamped = Math.max(25, Math.min(99, realDurability));
-      const newSub = [...raw.AT.sub];
-      newSub[6] = clamped;
-      const newOvr = Math.round(newSub.reduce((s, v) => s + v, 0) / newSub.length);
-      return { ...raw, AT: { sub: newSub, ovr: newOvr } };
-    }
-    return raw;
+    // Durability is sourced from injury history (see durabilityUtils), not K2
+    return applyDurabilityToK2(raw, getRealDurability(player));
   }, [scaledRatingForK2, player.pos, player.hgt, player.weight, player.age, player.name, player.durability, player.stats]);
 
   const overall2k = convertTo2KRating(
@@ -325,15 +309,7 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
           })}
           {/* Durability — derived from real injury data (90 = iron man ceiling) */}
           {(() => {
-            const profile = getPlayerInjuryProfile(player.name);
-            const careerGP = (player.stats ?? [])
-              .filter((s: any) => !s.playoffs && (s.tid ?? -1) >= 0)
-              .reduce((sum: number, s: any) => sum + (s.gp ?? 0), 0);
-            const rawDur = player.durability != null
-              ? player.durability
-              : profile
-                ? computeDurability(profile.careerCount, careerGP)
-                : 70;
+            const rawDur = getRealDurability(player) ?? 70;
             const durVal = Math.max(0, Math.min(99, rawDur));
             const barPct = (durVal / 99) * 100;
             return (

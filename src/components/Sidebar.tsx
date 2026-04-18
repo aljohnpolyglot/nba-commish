@@ -57,7 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, isO
         <NavigationMenu currentView={currentView} onViewChange={onViewChange} onClose={onClose} />
 
         <div className="space-y-6">
-          <ApprovalsWidget />
+          {state.gameMode !== 'gm' && <ApprovalsWidget />}
           <FinancesWidget onViewChange={onViewChange} />
         </div>
       </div>

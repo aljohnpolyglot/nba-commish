@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useGame } from '../../store/GameContext';
 import { Star, Zap, Target, Trophy, Users } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
@@ -18,6 +18,9 @@ import { WatchGamePreviewModal } from '../modals/WatchGamePreviewModal';
 import { BoxScoreModal } from '../modals/BoxScoreModal';
 import { DunkContest, ThreePointContest, mapPlayerToContestant } from './allstarevents';
 import { getTeamForGame, getPlayersForExhibitionTeam, normalizeDate } from '../../utils/helpers';
+import { AllStarHistoryView } from './AllStarHistoryView';
+import { History } from 'lucide-react';
+import { fetchAllStarHistory, getCachedAllStarHistory } from '../../data/allStarHistoryFetcher';
 
 type AllStarTab = 'overview' | 'votes' | 'roster' | 'rising-stars' | 'celebrity' | 'dunk' | 'three-point';
 
@@ -31,6 +34,9 @@ export const AllStarView: React.FC = () => {
   
   const [watchingDunkContest, setWatchingDunkContest] = useState(false);
   const [watchingThreePoint, setWatchingThreePoint] = useState(false);
+  const [showingHistory, setShowingHistory] = useState(false);
+  const [historyVersion, setHistoryVersion] = useState(0);
+  useEffect(() => { fetchAllStarHistory().then(() => setHistoryVersion(v => v + 1)); }, []);
   
   const dates = getAllStarWeekendDates(state.leagueStats.year);
   const dateStr = dates.allStarGame.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -192,40 +198,65 @@ export const AllStarView: React.FC = () => {
     dispatchAction({ type: 'SAVE_CONTEST_RESULT', payload: { contest: 'three', result } });
   };
 
+  if (showingHistory) {
+    return (
+      <div className="h-full flex flex-col bg-slate-950 text-slate-200">
+        <AllStarHistoryView onClose={() => setShowingHistory(false)} />
+      </div>
+    );
+  }
+
+  // Host for current season — prefer leagueStats.allStarHosts, fall back to the
+  // history gist (covers real seasons that haven't been seeded into leagueStats).
+  const currentHost = (state.leagueStats?.allStarHosts ?? []).find((h: any) => h.year === state.leagueStats.year);
+  const gistHistory = getCachedAllStarHistory();
+  const gistEntry = gistHistory?.find(h => h.year === state.leagueStats.year);
+  void historyVersion; // re-read gist after fetch
+  const hostCity = currentHost?.city ?? gistEntry?.host_city ?? 'TBD';
+
   return (
     <div className="h-full flex flex-col bg-slate-950 text-slate-200">
-      
+
       {/* Header */}
       <div className="p-6 border-b border-slate-800 shrink-0">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="flex items-center gap-2">
-            <img 
-              src="https://static.wikia.nocookie.net/logopedia/images/8/89/Eastern_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191748"
-              className="w-6 h-6 object-contain"
-              alt="East"
-            />
-            <img 
-              src="https://static.wikia.nocookie.net/logopedia/images/0/06/Western_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191726"
-              className="w-6 h-6 object-contain"
-              alt="West"
-            />
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <img
+                src="https://static.wikia.nocookie.net/logopedia/images/8/89/Eastern_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191748"
+                className="w-6 h-6 object-contain"
+                alt="East"
+              />
+              <img
+                src="https://static.wikia.nocookie.net/logopedia/images/0/06/Western_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191726"
+                className="w-6 h-6 object-contain"
+                alt="West"
+              />
+            </div>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight">
+              All-Star Weekend
+            </h2>
+            {phase === 'voting' && (
+              <span className="text-xs font-bold bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">
+                VOTING LIVE
+              </span>
+            )}
+            {phase === 'complete' && (
+              <span className="text-xs font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
+                COMPLETE
+              </span>
+            )}
           </div>
-          <h2 className="text-2xl font-black text-white uppercase tracking-tight">
-            All-Star Weekend
-          </h2>
-          {phase === 'voting' && (
-            <span className="text-xs font-bold bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">
-              VOTING LIVE
-            </span>
-          )}
-          {phase === 'complete' && (
-            <span className="text-xs font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
-              COMPLETE
-            </span>
-          )}
+          <button
+            onClick={() => setShowingHistory(true)}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+          >
+            <History size={14} />
+            History
+          </button>
         </div>
         <p className="text-slate-400 text-sm">
-          {dateStr} · Los Angeles
+          {dateStr} · {hostCity}
         </p>
       </div>
 

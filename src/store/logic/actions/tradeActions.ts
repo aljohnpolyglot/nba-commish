@@ -14,11 +14,26 @@ export const handleExecutiveTrade = async (stateWithSim: GameState, action: User
     
     const playersA = stateWithSim.players.filter(p => action.payload.teamAPlayers.includes(p.internalId)).map(p => p.name);
     const playersB = stateWithSim.players.filter(p => action.payload.teamBPlayers.includes(p.internalId)).map(p => p.name);
-    const picksA = stateWithSim.draftPicks.filter(p => action.payload.teamAPicks.includes(p.dpid)).map(p => `${p.season} ${p.round === 1 ? '1st' : '2nd'} Rd`);
-    const picksB = stateWithSim.draftPicks.filter(p => action.payload.teamBPicks.includes(p.dpid)).map(p => `${p.season} ${p.round === 1 ? '1st' : '2nd'} Rd`);
+    // Pick labels include the original-owner abbrev — TradeDetailView's parser
+    // uses " + " to separate the player CSV from the pick CSV, and downstream
+    // pick UI (PickRow, Shams social posts) rely on the "(ABBR)" suffix.
+    const pickLabel = (dpid: number): string => {
+        const pk = stateWithSim.draftPicks.find(p => p.dpid === dpid);
+        if (!pk) return 'pick';
+        const orig = stateWithSim.teams.find(t => t.id === pk.originalTid);
+        return `${pk.season} ${pk.round === 1 ? '1st' : '2nd'} Rd (${orig?.abbrev ?? '?'})`;
+    };
+    const picksA = (action.payload.teamAPicks ?? []).map(pickLabel);
+    const picksB = (action.payload.teamBPicks ?? []).map(pickLabel);
 
-    const assetsA = [...playersA, ...picksA].join(', ') || 'None';
-    const assetsB = [...playersB, ...picksB].join(', ') || 'None';
+    const joinAssets = (players: string[], picks: string[]): string => {
+        if (players.length === 0 && picks.length === 0) return 'None';
+        if (picks.length === 0) return players.join(', ');
+        if (players.length === 0) return picks.join(', ');
+        return `${players.join(', ')} + ${picks.join(', ')}`;
+    };
+    const assetsA = joinAssets(playersA, picksA);
+    const assetsB = joinAssets(playersB, picksB);
 
     const tradeSeed = `BREAKING TRADE: The ${teamA?.name} and ${teamB?.name} have completed a trade. ` +
         `${teamB?.name} receive: ${assetsA}. ${teamA?.name} receive: ${assetsB}. ` +

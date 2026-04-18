@@ -22,6 +22,9 @@ export interface PersonEligibility {
   /** Only show if player is off-roster (free agent or international). */
   requireFreeAgentOrInternational?: boolean;
 
+  /** Only show for players on a roster whose contract expires at or before the current season. */
+  requireExpiringContract?: boolean;
+
   /** Skip players that are already in the HOF. */
   excludeHOF?: boolean;
 
@@ -81,8 +84,22 @@ const ACTIVE_NBA_ONLY: Array<NonNullable<NBAPlayer['status']>> = ['Active'];
  * Returns true if the given player is eligible to be targeted by this action.
  * Used by PlayerActionsModal.
  */
-export function isPlayerEligible(player: NBAPlayer, eligibility: PersonEligibility): boolean {
+export function isPlayerEligible(
+  player: NBAPlayer,
+  eligibility: PersonEligibility,
+  context?: { currentYear?: number; userTeamId?: number | null },
+): boolean {
   if (eligibility.staffOnly) return false;
+
+  if (eligibility.requireExpiringContract) {
+    const onTeam = player.status === 'Active' && (player.tid ?? -1) >= 0;
+    if (!onTeam) return false;
+    // In GM mode, only surface re-sign for players on the user's own team.
+    if (context?.userTeamId != null && player.tid !== context.userTeamId) return false;
+    const exp = player.contract?.exp;
+    const year = context?.currentYear ?? new Date().getUTCFullYear();
+    return typeof exp === 'number' && exp <= year;
+  }
 
   if (eligibility.requireActiveNBA) {
     return player.status === 'Active' && (player.tid ?? -1) >= 0;
@@ -351,6 +368,17 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
     hover: 'hover:bg-rose-600',
     eligibility: {
       requireFreeAgentOrInternational: true,
+    },
+  },
+  {
+    id: 'resign_player',
+    title: 'Re-sign Player',
+    description: 'Negotiate an extension before the player hits free agency. Bird Rights unlock supermax eligibility.',
+    icon: PenTool,
+    color: 'bg-amber-500',
+    hover: 'hover:bg-amber-600',
+    eligibility: {
+      requireExpiringContract: true,
     },
   },
 ];

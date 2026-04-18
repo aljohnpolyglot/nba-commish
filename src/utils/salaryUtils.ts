@@ -1,5 +1,6 @@
 import { NBAPlayer, NBATeam } from '../types';
 import { convertTo2KRating } from './helpers';
+import { EXTERNAL_SALARY_SCALE } from '../constants';
 
 /** BBGM contract.amount is in thousands of dollars.
  *  Multiply by 1000 to get actual USD. */
@@ -15,6 +16,10 @@ export const getTeamPayrollUSD = (players: NBAPlayer[], teamId: number): number 
 /** Format dollar amount as "$X.XM" */
 export const formatSalaryM = (dollars: number): string =>
   `$${(dollars / 1_000_000).toFixed(1)}M`;
+
+/** Format dollar amount with configurable decimal places. Used where fine-grained precision matters (signing UI). */
+export const formatSalaryMPrecise = (dollars: number, decimals = 2): string =>
+  `$${(dollars / 1_000_000).toFixed(decimals)}M`;
 
 /** Format dollar amount as "$X.XM" or "$XXXk" for smaller amounts */
 export const formatSalaryShort = (dollars: number): string =>
@@ -286,15 +291,20 @@ export function getMLEAvailability(
 
   if (leagueStats.mleEnabled === false) return NONE;
 
-  const ROOM_LIMIT = leagueStats.roomMleAmount        ?? 8_781_000;
-  const NT_LIMIT   = leagueStats.nonTaxpayerMleAmount ?? 14_104_000;
-  const TAX_LIMIT  = leagueStats.taxpayerMleAmount    ?? 5_685_000;
+  // Percentage settings scale with the cap (commissioner-tunable in EconomyContractsSection).
+  // Fall back to raw USD when no percentage is configured.
+  const cap = thresholds.salaryCap;
+  const ls = leagueStats as any;
+  const limitFromPct = (pct: number | undefined, fallbackUSD: number) =>
+    typeof pct === 'number' ? Math.round(cap * (pct / 100)) : fallbackUSD;
+  const ROOM_LIMIT = limitFromPct(ls.roomMlePercentage,        leagueStats.roomMleAmount        ?? 8_781_000);
+  const NT_LIMIT   = limitFromPct(ls.nonTaxpayerMlePercentage, leagueStats.nonTaxpayerMleAmount ?? 14_104_000);
+  const TAX_LIMIT  = limitFromPct(ls.taxpayerMlePercentage,    leagueStats.taxpayerMleAmount    ?? 5_685_000);
 
   const usage = leagueStats.mleUsage?.[teamId];
   const priorType   = usage?.type   ?? null;
   const priorUsed   = usage?.usedUSD ?? 0;
 
-  const cap        = thresholds.salaryCap;
   const firstApron = thresholds.firstApron;
   const secondApron = thresholds.secondApron;
   const projectedPayroll = payrollUSD + signingUSD;
@@ -352,10 +362,12 @@ export interface ContractOffer {
   hasPlayerOption: boolean; // player can opt out in final year
 }
 
-// Max contract % of cap by years of service; index = min(yrs, 10)
-const MAX_CONTRACT_PCT = [0.25, 0.26, 0.27, 0.28, 0.29, 0.30, 0.31, 0.32, 0.33, 0.34, 0.35];
+// Max contract % of cap by years of service; index = min(yrs, 10).
+// Real NBA CBA tiers: 0-6 yrs = 25%, 7-9 yrs = 30%, 10+ yrs = 35%.
+const MAX_CONTRACT_PCT = [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.30, 0.30, 0.30, 0.35];
 
-// Min contract $M calibrated at cap = $154.6M; index = min(yrs, 10)
+// Min contract $M calibrated at cap = $154.6M; index = min(yrs, 10).
+// Mirrors the NBA minimum-salary schedule (0-yr rookie ≈ $1.27M → 10+ vet ≈ $3.97M).
 // Scaled proportionally when cap differs.
 const MIN_CONTRACT_BASE_M = [1.273, 1.426, 1.598, 1.790, 2.006, 2.247, 2.518, 2.821, 3.161, 3.541, 3.967];
 const BASE_CAP_M = 154.6;
@@ -481,6 +493,17 @@ export function computeContractOffer(
   }
   // Happy/Neutral → no adjustment
 
+  // ── External-league NBA-offer cap ───────────────────────────────────────
+  // BBGM overrates overseas ratings, so PBA / B-League / etc. can otherwise score 75+ OVR
+  // and trigger NBA mid-tier money. Cap the offer at ~3× the peak salary for that league —
+  // realistic NBA step-up for overseas stars, while the minSalary floor protects NBA minimum.
+  // EXTERNAL_SALARY_SCALE (constants.ts) is the single source of truth for peak overseas pay.
+  const scale = EXTERNAL_SALARY_SCALE[(player as any).status ?? ''];
+  if (scale) {
+    const externalPeakUSD = salaryCapUSD * scale.maxPct;
+    salaryUSD = Math.min(salaryUSD, externalPeakUSD * 3);
+  }
+
   salaryUSD = Math.max(minSalaryUSD, salaryUSD);
 
   // ── Contract length ─────────────────────────────────────────────────────
@@ -532,4 +555,142 @@ export function computeContractOffer(
     (ovr >= 76 && optV > 0.50);     // ~50 % chance for K2 76+ (rotation)
 
   return { salaryUSD, years, tier, hasPlayerOption };
+}
+
+// ── External-league buyout ────────────────────────────────────────────────────
+// Real NBA rule (2024-25 CBA): an NBA team can contribute up to the FIBA buyout cap
+// (~$825K, rises with the cap each year); the rest of the buyout is on the player.
+// Overseas clubs negotiate buyouts; realistic estimates scale by league strength,
+// player OVR, and years left on their current deal.
+
+export interface ExternalBuyout {
+  applicable: boolean;
+  estimatedBuyoutUSD: number;       // total the overseas club asks
+  teamMaxContributionUSD: number;   // FIBA cap — league setting, defaults to $825K
+  recommendedTeamContribUSD: number;// sensible default (min of cap vs. half of buyout)
+  playerContributionUSD: number;    // what the player covers out of pocket
+  league: string;                   // human-readable source league
+}
+
+const EXTERNAL_STATUSES = ['Euroleague', 'China CBA', 'NBL Australia', 'Endesa', 'B-League', 'PBA', 'G-League'] as const;
+
+// League-strength multipliers for buyout estimates.
+// Euroleague clubs command the biggest buyouts; G-League has no buyout (two-way convertible).
+const BUYOUT_LEAGUE_MULT: Record<string, number> = {
+  Euroleague:     1.00,
+  'China CBA':    0.80,
+  'NBL Australia':0.60,
+  Endesa:         0.55,
+  'B-League':     0.45,
+  PBA:            0.40,
+  'G-League':     0.00,
+};
+
+export function computeExternalBuyout(
+  player: NBAPlayer,
+  leagueStats: ContractLeagueStats & { teamBuyoutMaxUSD?: number; year?: number },
+): ExternalBuyout {
+  const status = player.status ?? '';
+  if (!(EXTERNAL_STATUSES as readonly string[]).includes(status)) {
+    return { applicable: false, estimatedBuyoutUSD: 0, teamMaxContributionUSD: 0, recommendedTeamContribUSD: 0, playerContributionUSD: 0, league: status };
+  }
+  const mult = BUYOUT_LEAGUE_MULT[status] ?? 0.3;
+  if (mult === 0) {
+    // G-League has no buyout — NBA teams can promote directly.
+    return { applicable: false, estimatedBuyoutUSD: 0, teamMaxContributionUSD: 0, recommendedTeamContribUSD: 0, playerContributionUSD: 0, league: status };
+  }
+  const cap = leagueStats.salaryCap ?? 154_647_000;
+  // FIBA cap scales with the salary cap (2024-25 ratio: $825K / $140.6M ≈ 0.59%).
+  const teamMaxContributionUSD = leagueStats.teamBuyoutMaxUSD ?? Math.round(cap * 0.00586);
+  // Reuse the existing market-value math — computeContractOffer already factors OVR, POT, and age.
+  // Overseas annual salary ≈ NBA market × league-strength mult. Buyout is ~1 year of that.
+  const marketOffer = computeContractOffer(player, leagueStats as any);
+  const baseUSD = marketOffer.salaryUSD * mult;
+  const estimatedBuyoutUSD = Math.max(100_000, Math.round(baseUSD / 10_000) * 10_000);
+  const recommendedTeamContribUSD = Math.min(teamMaxContributionUSD, Math.round(estimatedBuyoutUSD * 0.5));
+  const playerContributionUSD = Math.max(0, estimatedBuyoutUSD - recommendedTeamContribUSD);
+  return {
+    applicable: true,
+    estimatedBuyoutUSD,
+    teamMaxContributionUSD,
+    recommendedTeamContribUSD,
+    playerContributionUSD,
+    league: status,
+  };
+}
+
+export interface ContractLimits {
+  minSalaryUSD: number;
+  maxSalaryUSD: number;
+  maxPct: number;
+  isSupermaxEligible: boolean;
+}
+
+export function getContractLimits(
+  player: NBAPlayer,
+  leagueStats: ContractLeagueStats,
+): ContractLimits {
+  const salaryCapUSD = leagueStats.salaryCap ?? (BASE_CAP_M * 1_000_000);
+  const capM = salaryCapUSD / 1_000_000;
+
+  const yearsOfService = (player as any).stats
+    ? (player as any).stats.filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length
+    : 0;
+  const svcIdx = Math.min(yearsOfService, 10);
+
+  const supermaxEnabled = leagueStats.supermaxEnabled ?? true;
+  const supermaxPct = (leagueStats.supermaxPercentage ?? 35) / 100;
+  let isSupermaxEligible: boolean;
+  if ((player as any).superMaxEligible !== undefined) {
+    isSupermaxEligible = supermaxEnabled && !!(player as any).superMaxEligible;
+  } else {
+    const awards: Array<{ season: number; type: string }> = (player as any).awards ?? [];
+    const currentSeason = (player as any).stats?.reduce((m: number, s: any) => Math.max(m, s.season ?? 0), 0) ?? 0;
+    const recentAwards = awards.filter(a => a.season >= currentSeason - 2);
+    const hasSupermaxAward = recentAwards.some(a => /all.nba|mvp|defensive player|dpoy/i.test(a.type));
+    const hasBirdRights = (player as any).hasBirdRights ?? false;
+    isSupermaxEligible = supermaxEnabled && hasBirdRights && (yearsOfService >= 8 || hasSupermaxAward);
+  }
+
+  // ── Max salary ─────────────────────────────────────────────────────────────
+  // Reads EconomyContractsSection: maxContractType ('none' | 'static' | 'service_tiered'),
+  // maxContractStaticPercentage, supermaxEnabled, supermaxPercentage, birdRightsEnabled.
+  const maxType = (leagueStats as any).maxContractType ?? 'service_tiered';
+  let maxPct: number;
+  let maxSalaryUSD: number;
+  if (maxType === 'none') {
+    maxPct = 1;
+    maxSalaryUSD = salaryCapUSD * 10; // effectively uncapped
+  } else if (isSupermaxEligible) {
+    maxPct = supermaxPct;
+    maxSalaryUSD = capM * supermaxPct * 1_000_000;
+  } else if (maxType === 'service_tiered') {
+    maxPct = MAX_CONTRACT_PCT[svcIdx];
+    maxSalaryUSD = capM * maxPct * 1_000_000;
+  } else {
+    // static
+    maxPct = ((leagueStats as any).maxContractStaticPercentage ?? 25) / 100;
+    maxSalaryUSD = capM * maxPct * 1_000_000;
+  }
+
+  // ── Min salary ─────────────────────────────────────────────────────────────
+  // Reads EconomyContractsSection: minContractType ('none' | 'static' | 'dynamic'),
+  // minContractStaticAmount (millions, per the "M" UI label).
+  const minType = (leagueStats as any).minContractType ?? 'dynamic';
+  const staticMinM = (leagueStats as any).minContractStaticAmount ?? 1.273;
+  let minSalaryUSD: number;
+  if (minType === 'none') {
+    minSalaryUSD = 0;
+  } else if (minType === 'static') {
+    minSalaryUSD = staticMinM * 1_000_000;
+  } else {
+    // dynamic — scale the NBA service-tier schedule up/down against the configured cap
+    // and against a commissioner-tunable year-0 floor.
+    const baseM = MIN_CONTRACT_BASE_M[svcIdx];
+    const yr0M  = MIN_CONTRACT_BASE_M[0];
+    const floorAdj = staticMinM / yr0M;                  // 1.0 = NBA default
+    minSalaryUSD = (baseM / BASE_CAP_M) * capM * floorAdj * 1_000_000;
+  }
+
+  return { minSalaryUSD, maxSalaryUSD, maxPct, isSupermaxEligible };
 }

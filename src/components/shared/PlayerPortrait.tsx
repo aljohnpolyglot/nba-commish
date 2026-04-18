@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeftRight } from 'lucide-react';
+import { MyFace, isRealFaceConfig } from './MyFace';
 import { convertTo2KRating } from '../../utils/helpers';
 
 export interface PlayerPortraitProps {
@@ -16,6 +17,8 @@ export interface PlayerPortraitProps {
   ovrLabel?: string;
   /** Player name — used for initials fallback */
   playerName?: string;
+  /** facesjs face descriptor — rendered when imgUrl is absent. Only generated prospects carry this. */
+  face?: any;
 }
 
 /**
@@ -37,6 +40,7 @@ export const PlayerPortrait: React.FC<PlayerPortraitProps> = ({
   isIncoming = false,
   ovrLabel,
   playerName,
+  face,
 }) => {
   const px = `${size}px`;
   const badgeSize = Math.round(size * 0.5);  // team logo badge ~50% of portrait
@@ -68,6 +72,15 @@ export const PlayerPortrait: React.FC<PlayerPortraitProps> = ({
           referrerPolicy="no-referrer"
           onError={handleImgError}
         />
+      ) : isRealFaceConfig(face) ? (
+        // Prospect-only: facesjs cartoon via shared MyFace wrapper.
+        // MyFace enforces facesjs's required 2:3 aspect ratio — we just give it a tall container
+        // and center-crop to the circular clip so it still reads as a portrait thumbnail.
+        <div className="rounded-full bg-slate-700 border-2 border-slate-600 overflow-hidden w-full h-full relative">
+          <div className="absolute left-1/2 top-1/2" style={{ width: size * 0.85, height: size * 1.275, transform: 'translate(-50%, -50%)' }}>
+            <MyFace face={face} style={{ width: '100%', height: '100%' }} />
+          </div>
+        </div>
       ) : (
         <div
           className="rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center w-full h-full"

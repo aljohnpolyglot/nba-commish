@@ -10,6 +10,7 @@ import {
 import { useGame } from '../../store/GameContext';
 import { Tab } from '../../types';
 import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
+import { getTradeDeadlineDate, getFreeAgencyStartDate, getOpeningNightDate, toISODateString } from '../../utils/dateUtils';
 
 interface NavigationMenuProps {
   currentView: Tab;
@@ -34,13 +35,24 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
   const isGM = state.gameMode === 'gm';
 
   // Trade deadline + FA period detection for GM mode gating
+  // Dates resolved dynamically via dateUtils.resolveSeasonDate (day-of-week aware).
   const currentDateNorm = normalizeDate(state.date ?? '');
   const seasonYear = state.leagueStats?.year ?? 2026;
-  const tradeDeadline = `${seasonYear}-02-06`; // NBA trade deadline ~Feb 6
-  const isPastTradeDeadline = isGM && currentDateNorm > tradeDeadline && currentDateNorm < `${seasonYear}-07-01`;
-  const faStart = `${seasonYear}-07-01`;
-  const faEnd = `${seasonYear}-10-01`;
+  const tradeDeadline = toISODateString(getTradeDeadlineDate(seasonYear, state.leagueStats));
+  const faStart = toISODateString(getFreeAgencyStartDate(seasonYear, state.leagueStats));
+  const faEnd = `${seasonYear}-10-01`; // dead period ends at training camp
+  const openingNight = toISODateString(getOpeningNightDate(seasonYear));
+
+  const isPastTradeDeadline = isGM && currentDateNorm > tradeDeadline && currentDateNorm < faStart;
   const isFreeAgencyPeriod = currentDateNorm >= faStart && currentDateNorm < faEnd;
+  // Year-round regular-season FA: between opening night and next FA start
+  const regularSeasonFAEnabled = state.leagueStats?.regularSeasonFAEnabled ?? true;
+  const isRegularSeasonSigningWindow = regularSeasonFAEnabled && currentDateNorm >= openingNight && currentDateNorm < faStart;
+  // Post-Finals pre-FA offseason: after playoffs wrap up, GM should still see impending FAs.
+  // Fires whenever date is before the next FA start AND before opening night — i.e. summer dead zone.
+  const isOffseasonPreFA = currentDateNorm < faStart && currentDateNorm < openingNight;
+  // Show FA tab in GM mode during: FA window OR regular season OR offseason pre-FA
+  const showFATabInGM = isFreeAgencyPeriod || isRegularSeasonSigningWindow || isOffseasonPreFA;
 
   const pendingTradesCount   = (state.tradeProposals || []).filter(p => p.status === 'pending').length;
   const unreadCount          = (state.inbox      || []).filter(e  => !e.read).length;
@@ -154,10 +166,10 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
           { id: 'Trade Machine' as Tab,    label: isPastTradeDeadline ? 'Trade Machine (Locked)' : 'Trade Machine',   icon: Cpu },
           { id: 'Trade Finder' as Tab,     label: 'Trade Finder',    icon: Search },
         ] : []),
-        { id: 'Trade Proposals',  label: 'Trade Proposals', icon: GitPullRequest, badge: fmt(pendingTradesCount) },
+        ...(isGM && !isPastTradeDeadline ? [{ id: 'Trade Proposals' as Tab, label: 'Trade Proposals', icon: GitPullRequest, badge: fmt(pendingTradesCount) }] : []),
         { id: 'Player Search',    label: 'Player Search',   icon: Search },
         { id: 'Player Bios',      label: 'Player Bios',     icon: Users },
-        ...(!isGM || isFreeAgencyPeriod ? [{ id: 'Free Agents' as Tab, label: 'Free Agents', icon: UserX }] : []),
+        ...(!isGM || showFATabInGM ? [{ id: 'Free Agents' as Tab, label: 'Free Agents', icon: UserX }] : []),
         { id: 'Injuries',         label: 'Injuries',        icon: Stethoscope },
       ],
     },

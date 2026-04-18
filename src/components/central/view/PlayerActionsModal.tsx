@@ -18,6 +18,7 @@ const MODAL_ACTION_IDS = [
   'view_bio',
   'view_ratings',
   'sign_player',
+  'resign_player',
   'contact',
   'bribe',
   'fine',
@@ -35,10 +36,12 @@ export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, 
   const { state } = useGame();
   const isGM = state.gameMode === 'gm';
   const isInjured = (player as any)?.injury?.gamesRemaining > 0;
+  const currentYear = state.leagueStats?.year ?? new Date().getUTCFullYear();
+  const userTeamId = isGM ? state.userTeamId ?? null : null;
   const actions = MODAL_ACTION_IDS
     .map(id => PERSON_ACTION_DEFS.find(def => def.id === id))
     .filter((def): def is NonNullable<typeof def> => !!def)
-    .filter(def => isPlayerEligible(player, def.eligibility))
+    .filter(def => isPlayerEligible(player, def.eligibility, { currentYear, userTeamId }))
     .filter(def => !isGM || !GM_HIDDEN_ACTIONS.has(def.id));
 
   return (

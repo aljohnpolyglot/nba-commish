@@ -2,37 +2,10 @@ import React, { useMemo } from 'react';
 import { Shield, ShieldAlert, Activity, AlertCircle } from 'lucide-react';
 import { getPlayerInjuryProfile } from '../../../data/playerInjuryData';
 import type { NBAPlayer } from '../../../types';
+import { computeDurability, durabilityColor, durabilityLabel } from '../../../utils/durabilityUtils';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/**
- * Derive a 0–99 durability from career injury count relative to games played.
- * Formula: 99 - (injuriesPerCareer100GP * 5), so 0 injuries → 99, ~20/100GP → ~0.
- * Falls back to 75 if no career GP recorded.
- */
-export function computeDurability(careerCount: number, careerGP: number): number {
-  if (careerGP <= 0) return 75;
-  const per100 = (careerCount / careerGP) * 100;
-  return Math.max(0, Math.min(99, Math.round(99 - per100 * 5)));
-}
-
-/** Color for durability rating */
-function durabilityColor(val: number): string {
-  if (val >= 80) return '#22c55e';   // green
-  if (val >= 60) return '#eab308';   // yellow
-  if (val >= 40) return '#f97316';   // orange
-  return '#f43f5e';                   // red
-}
-
-/** Human label for durability */
-function durabilityLabel(val: number): string {
-  if (val >= 90) return 'Iron Man';
-  if (val >= 75) return 'Durable';
-  if (val >= 60) return 'Average';
-  if (val >= 45) return 'Fragile';
-  if (val >= 30) return 'Injury-Prone';
-  return 'Glass';
-}
+// Re-export for any existing callers still importing from this file.
+export { computeDurability };
 
 /** Emoji for body parts */
 const BODY_PART_ICONS: Record<string, string> = {

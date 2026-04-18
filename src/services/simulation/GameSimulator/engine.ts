@@ -385,7 +385,8 @@ export class GameSimulator {
       winnerStats,
       winnerTeamId,
       Math.abs(finalHomeScore - finalAwayScore),
-      isOT
+      isOT,
+      players,
     );
 
     const quarterScores = simulateQuarters(

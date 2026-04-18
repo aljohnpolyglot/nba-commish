@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useGame } from '../../store/GameContext';
 import {
   Star, Globe, Music, Trophy, Zap,
-  Clock, CheckCircle, Lock, RotateCcw, Target
+  Clock, CheckCircle, Lock, RotateCcw, Target, MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CelebrityRosterModal } from '../modals/CelebrityRosterModal';
@@ -14,6 +14,7 @@ import { RigVotingModal } from './modals/RigVotingModal';
 import { AllStarReplacementModal } from './modals/AllStarReplacementModal';
 import { DunkContestModal } from './modals/DunkContestModal';
 import { ThreePointContestModal } from './modals/ThreePointContestModal';
+import { AllStarHostPickerModal } from './AllStarHostPickerModal';
 import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
 import { SettingsManager } from '../../services/SettingsManager';
 import { NBAPlayer } from '../../types';
@@ -138,6 +139,7 @@ const SeasonalView: React.FC = () => {
   const [globalGamesModalOpen, setGlobalGamesModalOpen] = useState(false);
   const [preseasonIntlModalOpen, setPreseasonIntlModalOpen] = useState(false);
   const [invitePerformanceModalOpen, setInvitePerformanceModalOpen] = useState(false);
+  const [hostPickerOpen, setHostPickerOpen] = useState(false);
 
   const currentDate = new Date(state.date);
   const season = state.leagueStats.year || 2026;
@@ -219,6 +221,25 @@ const SeasonalView: React.FC = () => {
   const handleInvitePerformance = async (details: any) => {
     setInvitePerformanceModalOpen(false);
     await exec('INVITE_PERFORMANCE', details);
+  };
+
+  const handleAllStarHosts = async (hosts: any[]) => {
+    setHostPickerOpen(false);
+    // Immediate state patch so the new hosts persist before the day advances
+    dispatchAction({
+      type: 'UPDATE_STATE' as any,
+      payload: { leagueStats: { ...state.leagueStats, allStarHosts: hosts } },
+    });
+    const futureHosts = (hosts ?? [])
+      .filter((h: any) => h.year >= season)
+      .sort((a: any, b: any) => a.year - b.year);
+    const summary = futureHosts.length > 0
+      ? futureHosts.slice(0, 3).map((h: any) => `${h.year} — ${h.city}${h.arena ? ` (${h.arena})` : ''}`).join(', ')
+      : 'no future assignments';
+    await exec('ADVANCE_DAY', {
+      outcomeText: `${state.commissionerName ?? 'The Commissioner'} finalized upcoming All-Star Weekend hosts: ${summary}.`,
+      isSpecificEvent: true,
+    });
   };
 
   // ─── Action definitions (sorted by deadline) ────────────────────────────────
@@ -339,6 +360,24 @@ const SeasonalView: React.FC = () => {
       completed: false,
       onClick: () => setInvitePerformanceModalOpen(true),
     },
+    // All-Star host assignment — commissioner-only. In GM mode hosts auto-resolve at rollover.
+    ...((state.gameMode === 'gm') ? [] : [{
+      id: 'ASSIGN_ALL_STAR_HOSTS' as const, title: 'All-Star Weekend Hosts',
+      description: (() => {
+        const hosts = state.leagueStats?.allStarHosts ?? [];
+        const future = hosts.filter((h: any) => h.year >= season);
+        if (future.length === 0) return 'Assign host cities and teams for All-Star Weekend up to 5 seasons into the future.';
+        const next = future.sort((a: any, b: any) => a.year - b.year)[0];
+        return `Next host: ${next.year} · ${next.city}${next.arena ? ` (${next.arena})` : ''}. ${future.length} future assignment${future.length > 1 ? 's' : ''} on the books.`;
+      })(),
+      cost: 'None', benefit: '+City Marketing / +Brand',
+      icon: MapPin, color: 'sky' as const, deadline: null,
+      disabled: false,
+      completed: false,
+      locked: false,
+      lockedReason: undefined,
+      onClick: () => setHostPickerOpen(true),
+    }]),
   ] as const;
 
   // Sort by deadline: null deadlines go last, past deadlines sorted by proximity
@@ -436,6 +475,12 @@ const SeasonalView: React.FC = () => {
         <InvitePerformanceModal
           onClose={() => setInvitePerformanceModalOpen(false)}
           onConfirm={handleInvitePerformance}
+        />
+      )}
+      {hostPickerOpen && (
+        <AllStarHostPickerModal
+          onClose={() => setHostPickerOpen(false)}
+          onConfirm={handleAllStarHosts}
         />
       )}
     </div>

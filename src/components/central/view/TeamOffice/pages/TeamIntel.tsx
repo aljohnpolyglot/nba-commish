@@ -240,7 +240,10 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
             const confTeams = state.teams.filter(t => t.conference === team.conference)
               .sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses));
             const confRank = confTeams.findIndex(t => t.id === teamId) + 1;
-            const divTeams = state.teams.filter(t => (t as any).division === (team as any).division)
+            // Divisions live on `did` (numeric), not a `division` string — so the
+            // old team.division equality was `undefined === undefined` for every
+            // team, making divRank identical to a league-wide rank.
+            const divTeams = state.teams.filter(t => (t as any).did === (team as any).did)
               .sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses));
             const divRank = divTeams.findIndex(t => t.id === teamId) + 1;
             return (<>

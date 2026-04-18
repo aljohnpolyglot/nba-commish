@@ -1,21 +1,45 @@
 import { PlayerGameStats, GameResult } from '../types';
+import type { NBAPlayer } from '../../../types';
 
+/**
+ * Picks the game-winning shot taker on the winning team.
+ * Weight = (pts + ftm*0.5) * clutchMult, where clutchMult is derived from the
+ * player's stored `clutch` (0–99, neutral at 65). Dame at clutch=95 wins
+ * buzzer-beaters ~46% more often than raw pts would predict; clutch=35 drops
+ * ~46%. Absent/old saves (no clutch field, or `players` not passed) fall back
+ * to neutral 1.0× — backward compatible.
+ */
 export function pickGameWinner(
   winnerStats: PlayerGameStats[],
   teamId: number,
   lead: number,
-  isOT: boolean
+  isOT: boolean,
+  players?: NBAPlayer[],
 ): GameResult['gameWinner'] {
   if (lead > 6) return undefined;
 
   const candidates = winnerStats.filter(s => s.pts > 0);
   if (candidates.length === 0) return undefined;
 
-  const totalWeight = candidates.reduce((sum, p) => sum + p.pts + p.ftm * 0.5, 0);
+  const clutchById = new Map<string, number>();
+  if (players) {
+    for (const p of players) {
+      const c = (p as any).clutch;
+      if (typeof c === 'number') clutchById.set(p.internalId, c);
+    }
+  }
+  const weightOf = (s: PlayerGameStats): number => {
+    const base = s.pts + s.ftm * 0.5;
+    const clutch = clutchById.get(s.playerId) ?? 65;
+    const mult = 1 + (clutch - 65) * 0.015; // ~0.55× at 35, ~1.46× at 95
+    return Math.max(0.1, base * mult);
+  };
+
+  const totalWeight = candidates.reduce((sum, p) => sum + weightOf(p), 0);
   let r = Math.random() * totalWeight;
   let shooter = candidates[candidates.length - 1];
   for (const p of candidates) {
-    r -= p.pts + p.ftm * 0.5;
+    r -= weightOf(p);
     if (r <= 0) { shooter = p; break; }
   }
 

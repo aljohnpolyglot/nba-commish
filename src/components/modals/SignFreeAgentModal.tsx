@@ -1,73 +1,165 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useGame } from '../../store/GameContext';
 import { X, Search, User, CheckCircle2, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { NBAPlayer, NBATeam } from '../../types';
 import { convertTo2KRating } from '../../utils/helpers';
 import { getPlayerImage } from '../central/view/bioCache';
+import SigningModal from './SigningModal';
+import { classifyResignIntent } from '../central/view/PlayerBioMoraleTab';
+import { computeMoodScore, normalizeMoodTraits } from '../../utils/mood/moodScore';
+
+interface SigningDetails {
+  playerId: string;
+  teamId: number;
+  playerName: string;
+  teamName: string;
+  salary: number;
+  years: number;
+  option: 'NONE' | 'PLAYER' | 'TEAM';
+  twoWay: boolean;
+}
 
 interface SignFreeAgentModalProps {
   onClose: () => void;
-  onConfirm: (payload: { playerId: string, teamId: number, playerName: string, teamName: string }) => void;
+  onConfirm: (payload: SigningDetails) => void;
+  /** Skip player picker and jump straight to team/negotiation for this player. */
+  initialPlayer?: NBAPlayer;
+  /** When set, skip team picker entirely (used for re-signings — team is the player's current team). */
+  initialTeam?: NBATeam;
 }
 
-export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose, onConfirm }) => {
+export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose, onConfirm, initialPlayer, initialTeam }) => {
   const { state } = useGame();
-  const [step, setStep] = useState<'player' | 'team'>('player');
+  const isGM = state.gameMode === 'gm';
+  const userTeam = useMemo(
+    () => (isGM && state.userTeamId != null ? state.teams.find(t => t.id === state.userTeamId) ?? null : null),
+    [isGM, state.userTeamId, state.teams],
+  );
+
+  type Step = 'player' | 'team' | 'negotiate';
+  const lockedTeam = initialTeam ?? (isGM ? userTeam : null);
+  const initialStep: Step = initialPlayer
+    ? (lockedTeam ? 'negotiate' : 'team')
+    : 'player';
+  const [step, setStep] = useState<Step>(initialStep);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPlayer, setSelectedPlayer] = useState<NBAPlayer | null>(null);
-  const [selectedTeam, setSelectedTeam] = useState<NBATeam | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<NBAPlayer | null>(initialPlayer ?? null);
+  const [selectedTeam, setSelectedTeam] = useState<NBATeam | null>(initialPlayer && lockedTeam ? lockedTeam : null);
+
+  useEffect(() => {
+    // In GM mode the team is pre-locked to the user's franchise.
+    if (isGM && userTeam) setSelectedTeam(userTeam);
+  }, [isGM, userTeam]);
 
   const freeAgents = useMemo(() => {
     return state.players.filter(p => {
-      // 1. Basic Exclusions
-      // We strictly exclude Retired players, WNBA players, and Draft Prospects
       if (p.status === 'Retired' || p.status === 'WNBA' || p.tid === -100) return false;
       if (p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect') return false;
-
-      // 2. Inclusion Logic
-      // A player is a "Free Agent" if they are in an international league (Euroleague/PBA)
-      // OR if they are a standard NBA free agent (tid: -1 or status: 'Free Agent')
       const isInternational = ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '');
       const isNBAFreeAgent = p.tid === -1 || p.status === 'Free Agent';
-
       return isInternational || isNBAFreeAgent;
     });
   }, [state.players]);
 
   const filteredPlayers = useMemo(() => {
-    return freeAgents.filter(p => 
+    return freeAgents.filter(p =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase())
-    ).sort((a,b) => b.overallRating - a.overallRating).slice(0, 1000);
+    ).sort((a, b) => b.overallRating - a.overallRating).slice(0, 1000);
   }, [freeAgents, searchTerm]);
 
   const filteredTeams = useMemo(() => {
-    return state.teams.filter(t => 
+    return state.teams.filter(t =>
       t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.abbrev.toLowerCase().includes(searchTerm.toLowerCase())
-    ).sort((a,b) => a.name.localeCompare(b.name));
+    ).sort((a, b) => a.name.localeCompare(b.name));
   }, [state.teams, searchTerm]);
 
-  const handleConfirm = () => {
-    if (selectedPlayer && selectedTeam) {
-      onConfirm({
-        playerId: selectedPlayer.internalId,
-        teamId: selectedTeam.id,
-        playerName: selectedPlayer.name,
-        teamName: selectedTeam.name
-      });
+  // In negotiation step, SigningModal is the source of truth.
+  // Commissioner mode auto-accepts the offer (executive authority); GM must win the interest check.
+  if (step === 'negotiate' && selectedPlayer && selectedTeam) {
+    // Re-sign preflight (GM mode only): if the player's contract thoughts say they're testing the market,
+    // show the "Acknowledge" message in advance instead of opening the negotiation UI.
+    let preflightMessage: { title: string; body: string; tone?: 'neutral' | 'positive' } | undefined;
+    const isResign = selectedPlayer.tid === selectedTeam.id;
+    // Preflight fires in both modes — but commissioner gets an override button via autoAccept.
+    if (isResign) {
+      const traits = normalizeMoodTraits((selectedPlayer as any).moodTraits ?? []);
+      const { score } = computeMoodScore(
+        selectedPlayer,
+        selectedTeam,
+        state.date,
+        false, false, false,
+        state.players.filter(p => p.tid === selectedPlayer.tid),
+        state.leagueStats?.year,
+      );
+      const gp = (selectedTeam.wins ?? 0) + (selectedTeam.losses ?? 0);
+      const winPct = gp > 0 ? (selectedTeam.wins ?? 0) / gp : 0.5;
+      const intent = classifyResignIntent(selectedPlayer, traits, score, state.leagueStats?.year ?? 2026, winPct);
+      if (intent === 'testing_market') {
+        preflightMessage = {
+          title: 'Testing Free Agency',
+          body: `"My contract is up — I want to see what the market looks like before we talk extension. No hard feelings, it's just business."`,
+          tone: 'neutral',
+        };
+      } else if (intent === 'farewell') {
+        preflightMessage = {
+          title: 'Farewell Tour',
+          body: `"This is it for me. I've made my decision — I'm finishing out this season and walking away. An extension isn't in the cards."`,
+          tone: 'neutral',
+        };
+      }
     }
+
+    return (
+      <SigningModal
+        player={selectedPlayer}
+        team={selectedTeam}
+        leagueStats={state.leagueStats}
+        autoAccept={!isGM}
+        preflightMessage={preflightMessage}
+        onClose={onClose}
+        onSign={({ salary, years, option, twoWay }) => {
+          onConfirm({
+            playerId: selectedPlayer.internalId,
+            teamId: selectedTeam.id,
+            playerName: selectedPlayer.name,
+            teamName: selectedTeam.name,
+            salary,
+            years,
+            option,
+            twoWay,
+          });
+        }}
+      />
+    );
+  }
+
+  const goNextFromPlayer = () => {
+    if (!selectedPlayer) return;
+    if (lockedTeam) {
+      setSelectedTeam(lockedTeam);
+      setStep('negotiate');
+    } else {
+      setStep('team');
+      setSearchTerm('');
+    }
+  };
+
+  const goToNegotiation = () => {
+    if (!selectedTeam) return;
+    setStep('negotiate');
   };
 
   return (
     <AnimatePresence>
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
       >
-        <motion.div 
+        <motion.div
           initial={{ scale: 0.95, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.95, y: 20 }}
@@ -77,7 +169,9 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
             <div className="flex items-center gap-2 md:gap-3 text-indigo-400">
                 <User size={20} className="md:w-6 md:h-6" />
                 <h3 className="text-lg md:text-xl font-black uppercase tracking-tight text-white">
-                    {step === 'player' ? 'Select Free Agent' : `Sign to ${selectedTeam?.name || 'Team'}`}
+                    {step === 'player'
+                      ? (isGM && userTeam ? `Select Free Agent for ${userTeam.name}` : 'Select Free Agent')
+                      : `Sign to ${selectedTeam?.name || 'Team'}`}
                 </h3>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
@@ -105,8 +199,8 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
                             key={player.internalId}
                             onClick={() => setSelectedPlayer(player)}
                             className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all duration-200 ${
-                                selectedPlayer?.internalId === player.internalId 
-                                    ? 'bg-indigo-600/20 border-indigo-500/50 shadow-lg shadow-indigo-500/10' 
+                                selectedPlayer?.internalId === player.internalId
+                                    ? 'bg-indigo-600/20 border-indigo-500/50 shadow-lg shadow-indigo-500/10'
                                     : 'bg-slate-900/50 border-slate-800 hover:bg-slate-800 hover:border-slate-700'
                             }`}
                         >
@@ -131,8 +225,8 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
                             key={team.id}
                             onClick={() => setSelectedTeam(team)}
                             className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all duration-200 ${
-                                selectedTeam?.id === team.id 
-                                    ? 'bg-indigo-600/20 border-indigo-500/50 shadow-lg shadow-indigo-500/10' 
+                                selectedTeam?.id === team.id
+                                    ? 'bg-indigo-600/20 border-indigo-500/50 shadow-lg shadow-indigo-500/10'
                                     : 'bg-slate-900/50 border-slate-800 hover:bg-slate-800 hover:border-slate-700'
                             }`}
                         >
@@ -155,20 +249,20 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
                 Cancel
             </button>
             {step === 'player' ? (
-                <button 
-                    onClick={() => { setStep('team'); setSearchTerm(''); }}
+                <button
+                    onClick={goNextFromPlayer}
                     disabled={!selectedPlayer}
                     className="px-6 py-3 md:py-2 rounded-xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-all uppercase tracking-wider flex items-center justify-center gap-2 w-full md:w-auto"
                 >
-                    Next: Select Team <ArrowRight size={14} />
+                    {isGM && userTeam ? 'Open Negotiation' : 'Next: Select Team'} <ArrowRight size={14} />
                 </button>
             ) : (
-                <button 
-                    onClick={handleConfirm}
+                <button
+                    onClick={goToNegotiation}
                     disabled={!selectedTeam}
                     className="px-6 py-3 md:py-2 rounded-xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-all uppercase tracking-wider w-full md:w-auto text-center"
                 >
-                    Confirm Signing
+                    Open Negotiation
                 </button>
             )}
           </div>

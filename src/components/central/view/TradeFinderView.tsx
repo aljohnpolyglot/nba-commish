@@ -15,19 +15,20 @@ import { TeamDropdown } from '../../shared/TeamDropdown';
 import { TradeMachineModal } from '../../modals/TradeMachineModal';
 import {
   calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV,
-  computeLeagueAvg, getPotColor, isSalaryLegal,
-  type TeamMode,
+  computeLeagueAvg, computeLeaguePerAvg, getPotColor, isSalaryLegal, isUntouchable,
+  type TeamMode, type TVContext,
 } from '../../../services/trade/tradeValueEngine';
-import { getTradeOutlook, effectiveRecord, getCapThresholds, getTeamPayrollUSD, topNAvgK2, type TradeOutlook } from '../../../utils/salaryUtils';
+import { getTradeOutlook, effectiveRecord, getCapThresholds, getTeamPayrollUSD, getTeamCapProfile, topNAvgK2, type TradeOutlook } from '../../../utils/salaryUtils';
 import { computeMoodScore } from '../../../utils/mood/moodScore';
 import type { NBAPlayer, DraftPick, NBATeam } from '../../../types';
 import { generateCounterOffers } from '../../../services/trade/tradeFinderEngine';
+import { SettingsManager } from '../../../services/SettingsManager';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface TradeItem {
+export interface TradeItem {
   id: string;
-  type: 'player' | 'pick';
+  type: 'player' | 'pick' | 'absorb';
   label: string;
   val: number;
   player?: NBAPlayer;
@@ -36,10 +37,11 @@ interface TradeItem {
   pot?: number;
 }
 
-interface FoundOffer {
+export interface FoundOffer {
   tid: number;
   items: TradeItem[];
   outlook: TradeOutlook;
+  variant?: 'match' | 'dump' | 'absorb';
 }
 
 interface ManageTradeState {
@@ -210,21 +212,109 @@ const PickRow: React.FC<{
   );
 };
 
+// ── Offer item row ────────────────────────────────────────────────────────────
+// Shared row used in both the main items list and the "For your:" ask section.
+// Keeps visual consistency across TradeFinder and TradeProposals.
+
+const OfferItemRow: React.FC<{
+  item: TradeItem;
+  teams: NBATeam[];
+  dateStr: string;
+  /** 'ask' = render inside the rose "For your" panel (subtle color variant). */
+  tone?: 'normal' | 'ask';
+}> = ({ item, teams, dateStr, tone = 'normal' }) => {
+  const bg = tone === 'ask' ? 'bg-rose-900/20' : 'bg-slate-800/40';
+  return (
+    <div className={`flex items-center gap-2 ${bg} rounded-xl px-2.5 py-1.5`}>
+      {item.type === 'absorb' ? (
+        <>
+          <div className="w-7 h-7 rounded-lg bg-emerald-900/50 border border-emerald-700/50 flex items-center justify-center flex-shrink-0">
+            <span className="text-[11px] font-black text-emerald-300">$</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-black text-emerald-300 uppercase tracking-wider">Salary Dump</div>
+            <div className="text-[10px] text-slate-500">Cap absorption — no players returned</div>
+          </div>
+        </>
+      ) : item.type === 'player' && item.player ? (
+        <>
+          <PlayerPortrait imgUrl={item.player.imgURL} size={28} playerName={item.player.name} />
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-bold text-white truncate flex items-center gap-1">
+              {item.player.name}
+              {playerIndicators(item.player, teams.find(t => t.id === item.player!.tid), dateStr)}
+            </div>
+            <div className="text-[10px] text-slate-500">{item.player.pos}</div>
+          </div>
+          <div className="flex flex-col items-end flex-shrink-0">
+            <div className={`text-xs font-black tabular-nums ${ovrText(item.ovr ?? 70)}`}>{item.ovr ?? '—'}</div>
+            <div className={`text-[10px] font-bold tabular-nums ${getPotColor(item.pot ?? 70)}`}>{item.pot ?? '—'}</div>
+          </div>
+          <div className="text-[10px] text-slate-500 tabular-nums w-12 text-right flex-shrink-0">
+            {formatSalaryM(item.player.contract?.amount ?? 0)}
+          </div>
+        </>
+      ) : item.type === 'pick' && item.pick ? (
+        <>
+          <div className="w-7 h-7 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center p-0.5 flex-shrink-0">
+            {(() => {
+              const origTeam = teams.find(t => t.id === item.pick!.originalTid);
+              return origTeam?.logoUrl
+                ? <img src={origTeam.logoUrl} alt="" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                : <div className="text-[8px] font-black text-indigo-400">{origTeam?.abbrev?.slice(0,3) ?? 'PK'}</div>;
+            })()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-bold text-white">{item.label}</div>
+          </div>
+          <div className="text-[10px] text-indigo-400 font-bold flex-shrink-0">
+            {item.pick.round === 1 ? '1st' : '2nd'}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="w-7 h-7 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center flex-shrink-0">
+            <div className="text-[8px] font-black text-indigo-400">PK</div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-bold text-white">{item.label}</div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 // ── Offer card ────────────────────────────────────────────────────────────────
 
-const OfferCard: React.FC<{
+export const OfferCard: React.FC<{
   offer: FoundOffer;
   myItems: TradeItem[];
   team?: NBATeam;
   teams: NBATeam[];
   currentYear: number;
+  dateStr: string;
+  capSpaceK?: number; // team's cap space in thousands; negative = over cap
   onManage: () => void;
-}> = ({ offer, myItems, team, teams, currentYear, onManage }) => {
+  /** Optional reject handler — if provided, renders a Reject button next to Manage. */
+  onReject?: () => void;
+  /** When true, renders a "For your: ..." section showing what the other team is asking for. */
+  showAsk?: boolean;
+  /** When true, the Manage / Reject buttons in the footer are suppressed.
+   *  Used by TradeSummaryModal which has its own Confirm Trade action. */
+  hideActions?: boolean;
+}> = ({ offer, myItems, team, teams, currentYear, dateStr, capSpaceK, onManage, onReject, showAsk, hideActions }) => {
   const mySalary = myItems.filter(i => i.type === 'player').reduce((s, i) => s + (i.player?.contract?.amount ?? 0), 0);
   const theirSalary = offer.items.filter(i => i.type === 'player').reduce((s, i) => s + (i.player?.contract?.amount ?? 0), 0);
   const bothHavePlayers = myItems.some(i => i.type === 'player') && offer.items.some(i => i.type === 'player');
   const salaryOk = !bothHavePlayers || isSalaryLegal(mySalary, theirSalary);
   const { outlook } = offer;
+  const isAbsorb = offer.variant === 'absorb';
+  // Cap space display — positive = "Xm avail", negative = "Xm over"
+  const capLabel = capSpaceK === undefined ? null
+    : capSpaceK >= 0
+      ? `$${(capSpaceK / 1000).toFixed(1)}M avail`
+      : `-$${(-capSpaceK / 1000).toFixed(1)}M over`;
 
   return (
     <motion.div
@@ -246,78 +336,75 @@ const OfferCard: React.FC<{
         </span>
       </div>
 
-      {/* Items */}
-      <div className="flex-1 p-2 space-y-1">
-        {offer.items.map(item => (
-          <div key={item.id} className="flex items-center gap-2 bg-slate-800/40 rounded-xl px-2.5 py-1.5">
-            {item.type === 'player' && item.player ? (
-              <>
-                <PlayerPortrait imgUrl={item.player.imgURL} size={28} playerName={item.player.name} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold text-white truncate flex items-center gap-1">
-                    {item.player.name}
-                    {playerIndicators(item.player, teams.find(t => t.id === item.player!.tid), state.date)}
-                  </div>
-                  <div className="text-[10px] text-slate-500">{item.player.pos}</div>
-                </div>
-                {/* OVR + POT */}
-                <div className="flex flex-col items-end flex-shrink-0">
-                  <div className={`text-xs font-black tabular-nums ${ovrText(item.ovr ?? 70)}`}>{item.ovr ?? '—'}</div>
-                  <div className={`text-[10px] font-bold tabular-nums ${getPotColor(item.pot ?? 70)}`}>{item.pot ?? '—'}</div>
-                </div>
-                <div className="text-[10px] text-slate-500 tabular-nums w-12 text-right flex-shrink-0">
-                  {formatSalaryM(item.player.contract?.amount ?? 0)}
-                </div>
-              </>
-            ) : item.type === 'pick' && item.pick ? (
-              <>
-                {/* Use original owner's logo instead of "PK" */}
-                <div className="w-7 h-7 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center p-0.5 flex-shrink-0">
-                  {(() => {
-                    const origTeam = teams.find(t => t.id === item.pick!.originalTid);
-                    return origTeam?.logoUrl
-                      ? <img src={origTeam.logoUrl} alt="" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                      : <div className="text-[8px] font-black text-indigo-400">{origTeam?.abbrev?.slice(0,3) ?? 'PK'}</div>;
-                  })()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold text-white">{item.label}</div>
-                </div>
-                <div className="text-[10px] text-indigo-400 font-bold flex-shrink-0">
-                  {item.pick.round === 1 ? '1st' : '2nd'}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="w-7 h-7 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center flex-shrink-0">
-                  <div className="text-[8px] font-black text-indigo-400">PK</div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold text-white">{item.label}</div>
-                </div>
-              </>
-            )}
+      {/* Outgoing section — what user gives up. Only shown in proposal/inbound view. */}
+      {showAsk && myItems.length > 0 && (
+        <div className="px-2 pt-2 pb-1 bg-rose-950/20 border-b border-rose-500/10 space-y-1">
+          <div className="flex items-center gap-1.5 px-1 mb-1">
+            <span className="text-[9px] font-black uppercase tracking-widest text-rose-300 bg-rose-500/15 border border-rose-500/25 rounded px-1.5 py-0.5">
+              ↗ Outgoing{mySalary > 0 && ` · ${formatSalaryM(mySalary)}`}
+            </span>
           </div>
+          {myItems.map(item => (
+            <OfferItemRow key={item.id} item={item} teams={teams} dateStr={dateStr} tone="ask" />
+          ))}
+        </div>
+      )}
+
+      {/* Incoming section — what user receives. Always shown so trade finder cards
+          get the same incoming/outgoing visual cue as proposal cards. */}
+      <div className="flex-1 p-2 space-y-1">
+        <div className="flex items-center gap-1.5 px-1 mb-1">
+          <span className="text-[9px] font-black uppercase tracking-widest text-emerald-300 bg-emerald-500/15 border border-emerald-500/25 rounded px-1.5 py-0.5">
+            ↙ Incoming{theirSalary > 0 && ` · ${formatSalaryM(theirSalary)}`}
+          </span>
+        </div>
+        {offer.items.map(item => (
+          <OfferItemRow key={item.id} item={item} teams={teams} dateStr={dateStr} />
         ))}
       </div>
 
       {/* Footer */}
       <div className="p-2.5 border-t border-slate-800/50 flex items-center justify-between gap-2">
-        {bothHavePlayers && (
-          <span className={`text-[9px] font-bold px-2 py-1 rounded-lg ${
-            salaryOk ? 'bg-emerald-900/40 text-emerald-400' : 'bg-amber-900/40 text-amber-400'
-          }`}>
-            {salaryOk ? '✓ Salary OK' : '⚠ Salary Off'}
-          </span>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {isAbsorb ? (
+            <span className="text-[9px] font-bold px-2 py-1 rounded-lg bg-emerald-900/40 text-emerald-400">
+              ✓ Cap Absorbs
+            </span>
+          ) : bothHavePlayers ? (
+            <span className={`text-[9px] font-bold px-2 py-1 rounded-lg ${
+              salaryOk ? 'bg-emerald-900/40 text-emerald-400' : 'bg-amber-900/40 text-amber-400'
+            }`}>
+              {salaryOk ? '✓ Salary OK' : '⚠ Salary Off'}
+            </span>
+          ) : null}
+          {capLabel && (
+            <span className={`text-[9px] font-bold px-2 py-1 rounded-lg tabular-nums ${
+              (capSpaceK ?? 0) >= 0 ? 'bg-sky-900/40 text-sky-300' : 'bg-rose-900/40 text-rose-300'
+            }`}>
+              {capLabel}
+            </span>
+          )}
+        </div>
+        {!hideActions && (
+          <div className="flex items-center gap-1.5">
+            {onReject && (
+              <button
+                onClick={onReject}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-[10px] font-black uppercase tracking-wide transition-all"
+              >
+                <X size={11} />
+                Reject
+              </button>
+            )}
+            <button
+              onClick={onManage}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase tracking-wide transition-all"
+            >
+              <ArrowLeftRight size={11} />
+              Manage
+            </button>
+          </div>
         )}
-        {!bothHavePlayers && <div />}
-        <button
-          onClick={onManage}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase tracking-wide transition-all"
-        >
-          <ArrowLeftRight size={11} />
-          Manage
-        </button>
       </div>
     </motion.div>
   );
@@ -344,6 +431,27 @@ export const TradeFinderView: React.FC = () => {
   const powerRanks = useMemo(() => teamPowerRanks(teams, currentYear), [teams, currentYear]);
   const leagueAvg = useMemo(() => computeLeagueAvg(players, teams), [players, teams]);
   const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
+
+  // In-season PER adjustment context. Regular season = Oct-Apr. Auto-resets on
+  // rollover because currentYear changes and per-season stats filter to []
+  const tvContext: TVContext | undefined = useMemo(() => {
+    const d = state.date ? new Date(state.date) : null;
+    const month = d ? d.getMonth() + 1 : 0;
+    const isRegularSeason = (month >= 10 && month <= 12) || (month >= 1 && month <= 4);
+    if (!isRegularSeason) return undefined;
+    return { leaguePerAvg: computeLeaguePerAvg(players, currentYear), isRegularSeason: true };
+  }, [players, currentYear, state.date]);
+
+  // Per-team cap space in thousands (matches salary units). Feeds the absorb
+  // variant in the engine and the cap badge in OfferCard.
+  const capSpaces = useMemo(() => {
+    const map = new Map<number, number>();
+    teams.forEach(t => {
+      const profile = getTeamCapProfile(players, t.id, (t as any).wins ?? 0, (t as any).losses ?? 0, thresholds);
+      map.set(t.id, profile.capSpaceUSD / 1000); // cap profile is USD; basket salary is thousands
+    });
+    return map;
+  }, [teams, players, thresholds]);
 
   // Conference standings for getTradeOutlook — uses effectiveRecord so offseason 0-0 falls back to last season
   const confStandings = useMemo(() => {
@@ -432,14 +540,26 @@ export const TradeFinderView: React.FC = () => {
   [basket]);
 
   const myMode = roleToMode(teamOutlooks.get(selectedTid)?.role ?? 'neutral');
+  const isReverseMode = isGM && state.userTeamId != null && selectedTid !== state.userTeamId;
 
   const addPlayer = (player: NBAPlayer) => {
     if (basketIds.has(player.internalId)) return removeItem(player.internalId);
+    // Untouchable tax — reverse mode only. Tiered by raw TV so the big hammer only
+    // lands on genuine superstars. Ordinary untouchables (loyalty vets, rotation guys)
+    // just cost a bit more; Giannis/Jokić tier becomes very hard to pry loose.
+    let val = calcPlayerTV(player, myMode, currentYear, tvContext);
+    if (isReverseMode && isUntouchable(player, myMode, currentYear)) {
+      const tier = val >= 200 ? 0.60
+                 : val >= 150 ? 0.30
+                 : val >= 100 ? 0.15
+                 :               0.10;
+      val = Math.round(val * (1 + tier));
+    }
     setBasket(b => [...b, {
       id: player.internalId,
       type: 'player',
       label: player.name,
-      val: calcPlayerTV(player, myMode, currentYear),
+      val,
       player,
       ovr: calcOvr2K(player),
       pot: calcPot2K(player, currentYear),
@@ -466,15 +586,49 @@ export const TradeFinderView: React.FC = () => {
 
   // ── Enhanced Find Offers ──────────────────────────────────────────────────
 
-  const findOffers = () => {
+  // Reverse mode: user is shopping another team's roster for a target. Engine
+  // flips — counter-offers come from USER's team matching the selected team's basket TV.
+  // (isReverseMode declared above before addPlayer so the untouchable tax can see it.)
+  const [rejectionOpen, setRejectionOpen] = useState(false);
+  // Owner-warning modal: fires in reverse mode when user tries to acquire a 10+yr
+  // lifer (Curry/Draymond tier). Acknowledge = obey owner, no offers. Ignore = override.
+  const [ownerWarningOpen, setOwnerWarningOpen] = useState(false);
+  const [ownerWarningLifer, setOwnerWarningLifer] = useState<string | null>(null);
+  // 'reverse' = user shopping another team's lifer (original flow)
+  // 'own' = user trying to trade their OWN team's lifer (firing-threat variant)
+  const [ownerWarningMode, setOwnerWarningMode] = useState<'reverse' | 'own'>('reverse');
+
+  const findOffers = (allowLifers = false) => {
     if (basket.length === 0) return;
+
+    // Lifer gate — fires in both reverse (shopping another team's lifer) and normal
+    // (trying to move YOUR team's lifer). Copy differs: owner pleads vs fires you.
+    if (!allowLifers) {
+      const lifer = basket.find(item => {
+        if (item.type !== 'player' || !item.player) return false;
+        const p = item.player;
+        const directYrs = (p as any).yearsWithTeam ?? 0;
+        const statYrs = p.stats
+          ? p.stats.filter((s: any) => s.tid === p.tid && !s.playoffs && (s.gp ?? 0) > 0).length
+          : 0;
+        return Math.max(directYrs, statYrs) >= 10;
+      });
+      if (lifer && (isReverseMode || isGM)) {
+        setOwnerWarningLifer(lifer.label);
+        setOwnerWarningMode(isReverseMode ? 'reverse' : 'own');
+        setOwnerWarningOpen(true);
+        return;
+      }
+    }
+
     setIsSearching(true);
     setFoundOffers(null);
 
     setTimeout(() => {
       const myVal = basket.reduce((s, i) => s + i.val, 0);
 
-      // Use unified trade engine
+      // Use unified trade engine. In reverse mode, restrict counter-offer generation
+      // to ONLY the user's team ("what can I give up to get these players?").
       const engineOffers = generateCounterOffers({
         fromTid: selectedTid,
         offerValue: myVal,
@@ -486,6 +640,14 @@ export const TradeFinderView: React.FC = () => {
         minTradableSeason,
         powerRanks,
         teamOutlooks: teamOutlooks as any,
+        tvContext,
+        capSpaces,
+        targetTids: isReverseMode ? [state.userTeamId!] : undefined,
+        tradeDifficulty: isGM ? (SettingsManager.getSettings().tradeDifficulty ?? 50) : undefined,
+        // Star chase: if user is reverse-shopping a ≥150 TV target, their own untouchables
+        // and young core become available in the counter-offer. Be careful what you wish for.
+        bypassUntouchablesForTid: isReverseMode && myVal >= 140 ? state.userTeamId! : undefined,
+        allowLifers,
       });
 
       // Map engine results to UI format
@@ -493,14 +655,35 @@ export const TradeFinderView: React.FC = () => {
         tid: o.tid,
         items: o.items as TradeItem[],
         outlook: teamOutlooks.get(o.tid) ?? { role: 'neutral', label: 'Neutral', color: 'text-slate-400', bgColor: 'bg-slate-700/40', dot: '#94a3b8', reason: '' },
+        variant: o.variant,
       }));
 
       setFoundOffers(offers);
       setIsSearching(false);
+
+      // Reverse mode with zero viable offers — selected team rejects (untouchable,
+      // TV impossible, or user lacks pieces). Pop the rejection card.
+      if (isReverseMode && offers.length === 0) {
+        setRejectionOpen(true);
+      }
     }, 80);
   };
 
   const handleManageTrade = (offer: FoundOffer) => {
+    // Normal: basket is user's (teamA), offer is other team's (teamB).
+    // Reverse: basket is SHOPPED team's players, offer is user's counter. TradeMachineModal
+    // forces teamA=user in GM mode, so we must swap — otherwise both sides end up the same team.
+    if (isReverseMode) {
+      setManageTrade({
+        teamAId: offer.tid,       // user's team (engine's target in reverse)
+        teamBId: selectedTid,     // shopped team
+        teamAPlayerIds: offer.items.filter(i => i.type === 'player').map(i => i.id),
+        teamBPlayerIds: basket.filter(i => i.type === 'player').map(i => i.id),
+        teamAPickDpids: offer.items.filter(i => i.type === 'pick' && i.pick).map(i => i.pick!.dpid),
+        teamBPickDpids: basket.filter(i => i.type === 'pick' && i.pick).map(i => i.pick!.dpid),
+      });
+      return;
+    }
     setManageTrade({
       teamAId: selectedTid,
       teamBId: offer.tid,
@@ -562,12 +745,12 @@ export const TradeFinderView: React.FC = () => {
           {/* Team picker (TeamDropdown) + search + tabs */}
           <div className="flex-shrink-0 p-3 border-b border-slate-800 space-y-2">
             <TeamDropdown
-              label={isGM ? 'Your Team' : 'Team'}
+              label={isGM && selectedTid !== state.userTeamId ? 'Shopping (Reverse)' : 'Team'}
               selectedTeamId={selectedTid}
-              onSelect={id => { if (!isGM) { setSelectedTid(id); clearBasket(); } }}
+              onSelect={id => { setSelectedTid(id); clearBasket(); }}
               teams={teamsWithRecord}
-              isOpen={isGM ? false : dropdownOpen}
-              onToggle={() => { if (!isGM) setDropdownOpen(v => !v); }}
+              isOpen={dropdownOpen}
+              onToggle={() => setDropdownOpen(v => !v)}
             />
 
             {/* Search */}
@@ -654,14 +837,10 @@ export const TradeFinderView: React.FC = () => {
           {/* Basket */}
           <div className="flex-shrink-0 px-4 py-3 border-b border-slate-800 bg-slate-900/30">
             <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black text-white uppercase tracking-widest">Offering</span>
-                <span className="text-[10px] font-bold text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">
-                  {basket.length} asset{basket.length !== 1 ? 's' : ''}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] font-black uppercase tracking-widest text-rose-300 bg-rose-500/15 border border-rose-500/25 rounded px-2 py-0.5">
+                  ↗ Outgoing · {basket.length} asset{basket.length !== 1 ? 's' : ''}{basket.length > 0 ? ` · ${formatSalaryM(mySalary)}` : ''}
                 </span>
-                {basket.length > 0 && (
-                  <span className="text-[10px] font-bold text-slate-500">· {formatSalaryM(mySalary)} out</span>
-                )}
               </div>
               {basket.length > 0 && (
                 <button onClick={clearBasket} className="text-[10px] text-slate-500 hover:text-white transition-colors uppercase tracking-wider font-bold">
@@ -726,12 +905,14 @@ export const TradeFinderView: React.FC = () => {
                     const offerTeam = teams.find(t => t.id === offer.tid);
                     return (
                       <OfferCard
-                        key={offer.tid}
+                        key={`${offer.tid}-${offer.variant ?? 'match'}`}
                         offer={offer}
+                        capSpaceK={capSpaces.get(offer.tid)}
                         myItems={basket}
                         team={offerTeam}
                         teams={teams}
                         currentYear={currentYear}
+                        dateStr={state.date ?? ''}
                         onManage={() => handleManageTrade(offer)}
                       />
                     );
@@ -776,6 +957,95 @@ export const TradeFinderView: React.FC = () => {
           initialTeamAPickDpids={manageTrade.teamAPickDpids}
           initialTeamBPickDpids={manageTrade.teamBPickDpids}
         />
+      )}
+
+      {/* Reverse-mode rejection card — selected team's front office says no. */}
+      {/* Owner warning — lifer gate. In reverse mode, the shopped team's owner
+          pleads. In normal mode (GM trying to move their OWN lifer), the owner
+          threatens to fire the GM. Either way, Acknowledge obeys / Ignore overrides. */}
+      {ownerWarningOpen && selectedTeam && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="relative w-full max-w-md bg-[#0a0a0a] border border-amber-500/30 shadow-2xl rounded flex flex-col items-center text-center overflow-hidden"
+          >
+            <div className="w-full h-48 bg-[#050505] relative flex items-end justify-center pt-8 border-b border-white/5">
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-20 pointer-events-none" />
+              {selectedTeam.logoUrl
+                ? <img src={selectedTeam.logoUrl} className="h-32 object-contain z-10" alt={selectedTeam.name} referrerPolicy="no-referrer" />
+                : <div className="h-24 w-24 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-sm font-black text-amber-300 z-10">{selectedTeam.abbrev}</div>
+              }
+            </div>
+            <div className="p-8 w-full flex flex-col items-center relative z-20">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-300 mb-2">Owner's Message</p>
+              <h2 className="text-2xl font-black italic uppercase tracking-wider mb-4 text-amber-400">
+                Do not touch {ownerWarningLifer}
+              </h2>
+              <p className="text-white/80 italic mb-2 leading-relaxed text-sm">
+                {ownerWarningMode === 'own'
+                  ? `"${ownerWarningLifer} built this franchise. He retires here, period. Don't even bring me an offer or I will fire you."`
+                  : `"${ownerWarningLifer} built this franchise. He retires here, period. Don't even bring me an offer."`
+                }
+              </p>
+              <p className="text-white/50 text-xs mb-8">— {selectedTeam.region} {selectedTeam.name} Ownership</p>
+              <div className="flex flex-col gap-2 w-full">
+                <button
+                  onClick={() => { setOwnerWarningOpen(false); setOwnerWarningLifer(null); }}
+                  className="w-full py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black uppercase tracking-widest text-xs transition-colors rounded-sm"
+                >
+                  Acknowledge — Respect the Legacy
+                </button>
+                <button
+                  onClick={() => {
+                    setOwnerWarningOpen(false);
+                    setOwnerWarningLifer(null);
+                    findOffers(true); // override — generate offers anyway
+                  }}
+                  className="w-full py-3 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-300 font-black uppercase tracking-widest text-[10px] transition-colors rounded-sm"
+                >
+                  {ownerWarningMode === 'own' ? 'Ignore — Risk Getting Fired' : 'Ignore Message — Shop Anyway'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {rejectionOpen && selectedTeam && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="relative w-full max-w-md bg-[#0a0a0a] border border-rose-500/30 shadow-2xl rounded flex flex-col items-center text-center overflow-hidden"
+          >
+            <div className="w-full h-48 bg-[#050505] relative flex items-end justify-center pt-8 border-b border-white/5">
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-20 pointer-events-none" />
+              {selectedTeam.logoUrl
+                ? <img src={selectedTeam.logoUrl} className="h-32 object-contain z-10" alt={selectedTeam.name} referrerPolicy="no-referrer" />
+                : <div className="h-24 w-24 rounded-full bg-rose-500/20 border border-rose-500/50 flex items-center justify-center text-sm font-black text-rose-300 z-10">{selectedTeam.abbrev}</div>
+              }
+            </div>
+            <div className="p-8 w-full flex flex-col items-center relative z-20">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-rose-300 mb-2">{selectedTeam.region} {selectedTeam.name} Front Office</p>
+              <h2 className="text-2xl font-black italic uppercase tracking-wider mb-4 text-rose-400">No Deal</h2>
+              <p className="text-white/80 italic mb-2 leading-relaxed text-sm">
+                {(() => {
+                  const names = basket.filter(i => i.type === 'player').map(i => i.label).slice(0, 2).join(' and ');
+                  if (!names) return `We're not moving our assets for what your team can offer.`;
+                  return `We're not moving ${names} for anything your roster can put together right now.`;
+                })()}
+              </p>
+              <p className="text-white/60 text-xs mb-8">Rework your basket, add future picks, or come back later when the market shifts.</p>
+              <button
+                onClick={() => setRejectionOpen(false)}
+                className="w-full py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black uppercase tracking-widest text-xs transition-colors rounded-sm"
+              >
+                Acknowledge
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   );

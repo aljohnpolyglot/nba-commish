@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Search, ArrowUpDown, User, Globe, Trophy, Briefcase, UserX, ChevronDown } from 'lucide-react';
+import { Search, ArrowUpDown, User, Globe, Trophy, Briefcase, UserX, ChevronDown, Hourglass, Users } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useGame } from '../../../store/GameContext';
 import { FreeAgentCard } from './FreeAgentCard';
-import { ForceSignModal } from './ForceSignModal';
+import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import { PlayerActionsModal } from '../../central/view/PlayerActionsModal';
 import { PlayerBioView } from '../../central/view/PlayerBioView';
 import { PersonSelectorModal } from '../../modals/PersonSelectorModal';
@@ -28,8 +28,11 @@ const POSITIONS = ['All', 'PG', 'SG', 'SF', 'PF', 'C'];
 
 export const FreeAgentsView: React.FC = () => {
   const { state, dispatchAction, healPlayer } = useGame();
+  const isGM = state.gameMode === 'gm';
+  const [viewMode, setViewMode] = useState<'available' | 'upcoming'>('available');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPool, setSelectedPool] = useState('all');
+  // GM defaults to NBA pool (they mostly care about NBA FAs); commissioner sees the whole market.
+  const [selectedPool, setSelectedPool] = useState<string>(isGM ? 'nba' : 'all');
   const [selectedPosition, setSelectedPosition] = useState('All');
   const [sortBy, setSortBy] = useState<'ovr' | 'age' | 'name'>('ovr');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -37,10 +40,15 @@ export const FreeAgentsView: React.FC = () => {
   const [selectedCountry, setSelectedCountry] = useState('All');
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  // Upcoming-FA team filter: 'all' = no team filter; any number = NBA team id.
+  // Defaults to user's team in GM mode so they immediately see their own expiring players.
+  const [upcomingTeamFilter, setUpcomingTeamFilter] = useState<number | 'all'>(
+    isGM && state.userTeamId != null ? state.userTeamId : 'all',
+  );
 
   const [selectedActionPlayer, setSelectedActionPlayer] = useState<NBAPlayer | null>(null);
-  const [selectedPlayerForSign, setSelectedPlayerForSign] = useState<NBAPlayer | null>(null);
-  const [isSignModalOpen, setIsSignModalOpen] = useState(false);
+  // Sign / re-sign / waive are delegated to the shared quick-actions hook.
+  const quick = usePlayerQuickActions();
   const [viewingBioPlayer, setViewingBioPlayer] = useState<NBAPlayer | null>(null);
   const [viewingRatingsPlayer, setViewingRatingsPlayer] = useState<NBAPlayer | null>(null);
   const [personSelectorOpen, setPersonSelectorOpen] = useState(false);
@@ -48,8 +56,9 @@ export const FreeAgentsView: React.FC = () => {
   const [preSelectedContact, setPreSelectedContact] = useState<any>(null);
   const [contactModalPerson, setContactModalPerson] = useState<any>(null);
 
+  const seasonYear = state.leagueStats?.year ?? new Date(state.date || Date.now()).getFullYear();
+
   const freeAgents = useMemo(() => {
-    const currentYear = new Date(state.date || Date.now()).getFullYear();
     return state.players.filter(p => {
       if (p.status === 'Retired' || p.hof || p.tid === -100) return false;
       if (p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect') return false;
@@ -60,22 +69,62 @@ export const FreeAgentsView: React.FC = () => {
       if (!isInternational && !isNBAFreeAgent) return false;
 
       // Hide under-19s from the free agent market (international prospects not yet draft-eligible)
-      const age = p.born?.year ? currentYear - p.born.year : (p.age ?? 99);
+      const age = p.born?.year ? seasonYear - p.born.year : (p.age ?? 99);
       if (age < 19) return false;
 
       return true;
     });
-  }, [state.players, state.date]);
+  }, [state.players, seasonYear]);
 
-  // All unique countries from the current free agent pool
+  // Upcoming FAs: any on-roster player (NBA or overseas club) whose contract expires soon.
+  // Includes: (a) contract ends this season, OR (b) final year is a player/team option — either side can walk.
+  const ON_ROSTER_STATUSES = new Set(['Active', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
+  const upcomingFAs = useMemo(() => {
+    return state.players.filter(p => {
+      if (!ON_ROSTER_STATUSES.has(p.status ?? '')) return false;
+      if ((p.tid ?? -1) < 0) return false;
+      const exp = p.contract?.exp;
+      if (typeof exp !== 'number') return false;
+      if (exp <= seasonYear) return true;
+      // Final year is an option (player/team) → flight risk.
+      const contractYears = (p as any).contractYears as Array<{ option?: string }> | undefined;
+      const finalOpt = contractYears?.[contractYears.length - 1]?.option;
+      if ((finalOpt === 'player' || finalOpt === 'team') && exp <= seasonYear + 1) return true;
+      return false;
+    });
+  }, [state.players, seasonYear]);
+
+  const sourcePool = viewMode === 'upcoming' ? upcomingFAs : freeAgents;
+
+  // GM-mode roster-slot counter — tells the user at a glance how many standard
+  // vs two-way seats remain on their team so they know which contract type is
+  // actually available before opening negotiation.
+  const userRosterSlots = useMemo(() => {
+    if (!isGM || state.userTeamId == null) return null;
+    const roster = state.players.filter(p => p.tid === state.userTeamId);
+    const twoWayCount = roster.filter(p => (p as any).twoWay).length;
+    const standardCount = roster.length - twoWayCount;
+    const maxStandard = state.leagueStats?.maxStandardPlayersPerTeam ?? 15;
+    const maxTwoWay = state.leagueStats?.maxTwoWayPlayersPerTeam ?? 3;
+    return {
+      standardCount,
+      twoWayCount,
+      maxStandard,
+      maxTwoWay,
+      standardLeft: Math.max(0, maxStandard - standardCount),
+      twoWayLeft: Math.max(0, maxTwoWay - twoWayCount),
+    };
+  }, [isGM, state.userTeamId, state.players, state.leagueStats]);
+
+  // All unique countries from the current pool (available OR upcoming)
   const allCountries = useMemo(() => {
     const set = new Set<string>();
-    freeAgents.forEach(p => {
+    sourcePool.forEach(p => {
       const c = getCountryFromLoc(p.born?.loc);
       if (c) set.add(c);
     });
     return Array.from(set).sort();
-  }, [freeAgents]);
+  }, [sourcePool]);
 
   // Teams available for the selected non-NBA league
   const leagueTeams = useMemo(() => {
@@ -87,11 +136,19 @@ export const FreeAgentsView: React.FC = () => {
   }, [selectedPool, state.nonNBATeams]);
 
   const filteredPlayers = useMemo(() => {
-    let filtered = freeAgents.filter(p => {
+    let filtered = sourcePool.filter(p => {
       if (searchTerm && !p.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
 
+      // League chips apply to both pools — upcoming mode now also has Euroleague/PBA/etc. contracts.
       if (selectedPool !== 'all') {
-        if (selectedPool === 'nba' && p.status !== 'Free Agent' && p.tid !== -1) return false;
+        // "NBA" in upcoming mode means on-roster NBA players (status==='Active'); in available mode means FAs.
+        if (selectedPool === 'nba') {
+          if (viewMode === 'upcoming') {
+            if (p.status !== 'Active') return false;
+          } else {
+            if (p.status !== 'Free Agent' && p.tid !== -1) return false;
+          }
+        }
         if (selectedPool === 'euroleague' && p.status !== 'Euroleague') return false;
         if (selectedPool === 'pba' && p.status !== 'PBA') return false;
         if (selectedPool === 'bleague' && p.status !== 'B-League') return false;
@@ -123,6 +180,12 @@ export const FreeAgentsView: React.FC = () => {
         if (p.tid !== selectedTeamId) return false;
       }
 
+      // Upcoming-mode NBA-team filter only applies when viewing NBA pool (or All).
+      // Non-NBA leagues have their own `selectedTeamId` dropdown that handles team filtering there.
+      if (viewMode === 'upcoming' && upcomingTeamFilter !== 'all' && (selectedPool === 'all' || selectedPool === 'nba')) {
+        if (p.tid !== upcomingTeamFilter) return false;
+      }
+
       return true;
     });
 
@@ -144,7 +207,7 @@ export const FreeAgentsView: React.FC = () => {
     });
 
     return filtered;
-  }, [freeAgents, searchTerm, selectedPool, selectedPosition, sortBy, sortOrder, selectedCountry, selectedTeamId]);
+  }, [sourcePool, viewMode, searchTerm, selectedPool, selectedPosition, sortBy, sortOrder, selectedCountry, selectedTeamId, upcomingTeamFilter, state.leagueStats?.year]);
 
   const getContactFromPlayer = (player: NBAPlayer) => {
     const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '');
@@ -179,9 +242,8 @@ export const FreeAgentsView: React.FC = () => {
       return;
     }
 
-    if (actionType === 'sign_player') {
-      setSelectedPlayerForSign(selectedActionPlayer);
-      setIsSignModalOpen(true);
+    // Sign / re-sign / waive → delegated to the shared hook.
+    if (quick.handle(selectedActionPlayer, actionType)) {
       setSelectedActionPlayer(null);
       return;
     }
@@ -248,12 +310,6 @@ export const FreeAgentsView: React.FC = () => {
     });
   };
 
-  const handleConfirmSigning = async (payload: { playerId: string; teamId: number; playerName: string; teamName: string }) => {
-    setIsSignModalOpen(false);
-    await dispatchAction({ type: 'SIGN_FREE_AGENT', payload });
-    setSelectedPlayerForSign(null);
-  };
-
   const nbaFreeAgents = freeAgents.filter(p => p.status === 'Free Agent' || p.tid === -1).length;
   const internationalPlayers = freeAgents.filter(p => ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '')).length;
 
@@ -277,8 +333,35 @@ export const FreeAgentsView: React.FC = () => {
               <UserX size={32} className="text-rose-400 hidden sm:block" />
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-3xl font-black text-white uppercase tracking-tight">Free Agent Market</h1>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1 font-medium">Browse and interact with available players</p>
+              <h1 className="text-xl sm:text-3xl font-black text-white uppercase tracking-tight">
+                {viewMode === 'upcoming' ? 'Upcoming Free Agents' : 'Free Agent Market'}
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1 font-medium">
+                {viewMode === 'upcoming'
+                  ? 'Players on the last year of their deal — re-sign before they hit the market.'
+                  : 'Browse and interact with available players.'}
+              </p>
+            </div>
+            {/* ── Upper-right view toggle ────────────────────────────── */}
+            <div className="ml-auto flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 shrink-0">
+              <button
+                onClick={() => setViewMode('available')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  viewMode === 'available' ? 'bg-rose-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                <Users size={12} />
+                Available
+              </button>
+              <button
+                onClick={() => setViewMode('upcoming')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  viewMode === 'upcoming' ? 'bg-amber-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                <Hourglass size={12} />
+                Upcoming
+              </button>
             </div>
           </div>
 
@@ -295,6 +378,28 @@ export const FreeAgentsView: React.FC = () => {
               <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
               <span className="text-slate-400 font-medium">{freeAgents.length} Total Available</span>
             </div>
+            {userRosterSlots && (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                    userRosterSlots.standardLeft === 0
+                      ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                      : 'bg-sky-500/10 border-sky-500/30 text-sky-300'
+                  }`}>
+                    Guaranteed {userRosterSlots.standardCount}/{userRosterSlots.maxStandard}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                    userRosterSlots.twoWayLeft === 0
+                      ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                      : 'bg-violet-500/10 border-violet-500/30 text-violet-300'
+                  }`}>
+                    Two-Way {userRosterSlots.twoWayCount}/{userRosterSlots.maxTwoWay}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -319,7 +424,7 @@ export const FreeAgentsView: React.FC = () => {
                   onClick={() => { setSelectedPool(pool.id); setSelectedTeamId(null); setSelectedCountry('All'); }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-tight transition-all border ${
                     selectedPool === pool.id
-                      ? 'bg-rose-600 text-white border-rose-500 shadow-lg shadow-rose-500/20'
+                      ? (viewMode === 'upcoming' ? 'bg-amber-600 text-white border-amber-500 shadow-lg shadow-amber-500/20' : 'bg-rose-600 text-white border-rose-500 shadow-lg shadow-rose-500/20')
                       : 'bg-slate-900 text-slate-500 border-slate-800 hover:border-slate-700'
                   }`}
                 >
@@ -339,7 +444,30 @@ export const FreeAgentsView: React.FC = () => {
               ))}
             </select>
 
-            {/* Team dropdown — visible when a non-NBA league is selected */}
+            {/* Upcoming-mode NBA-team dropdown — your team, then ALL PLAYERS, then A-Z.
+                Only shown when filtering the NBA pool; non-NBA leagues use the selectedTeamId dropdown below. */}
+            {viewMode === 'upcoming' && (selectedPool === 'all' || selectedPool === 'nba') && (() => {
+              const userTid = isGM ? state.userTeamId ?? null : null;
+              const userTeam = userTid != null ? state.teams.find(t => t.id === userTid) : null;
+              const sortedTeams = [...state.teams].sort((a, b) => a.name.localeCompare(b.name));
+              return (
+                <select
+                  value={upcomingTeamFilter === 'all' ? 'all' : String(upcomingTeamFilter)}
+                  onChange={e => setUpcomingTeamFilter(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
+                  className="bg-slate-900 border border-slate-800 text-slate-300 text-xs py-2 px-3 rounded-xl focus:outline-none focus:border-amber-500 transition-colors font-bold uppercase tracking-tight max-w-[220px]"
+                >
+                  {userTeam && (
+                    <option value={String(userTeam.id)}>Your Team — {userTeam.name}</option>
+                  )}
+                  <option value="all">All Players</option>
+                  {sortedTeams.filter(t => t.id !== userTid).map(t => (
+                    <option key={t.id} value={String(t.id)}>{t.name}</option>
+                  ))}
+                </select>
+              );
+            })()}
+
+            {/* Team dropdown — visible when a non-NBA league is selected (both modes) */}
             {leagueTeams.length > 0 && (
               <select
                 value={selectedTeamId ?? ''}
@@ -447,17 +575,7 @@ export const FreeAgentsView: React.FC = () => {
         />
       )}
 
-      {isSignModalOpen && selectedPlayerForSign && (
-        <ForceSignModal
-          player={selectedPlayerForSign}
-          teams={state.teams}
-          onClose={() => {
-            setIsSignModalOpen(false);
-            setSelectedPlayerForSign(null);
-          }}
-          onConfirm={handleConfirmSigning}
-        />
-      )}
+      {quick.portals}
 
       {contactModalPerson && (
         <ContactModal

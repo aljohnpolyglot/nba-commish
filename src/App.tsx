@@ -18,6 +18,7 @@ import { fetchCharaniaPhotos } from './services/social/charaniaphotos';
 import { fetchNBAMemes } from './services/social/nbaMemesFetcher';
 import { fetchInjuryData } from './services/injuryService';
 import { fetchPlayerInjuryData } from './data/playerInjuryData';
+import { prewarmRoster } from './services/rosterService';
 
 function GameLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -125,9 +126,9 @@ function GameLayout() {
       />;
     }
 
-    return <MainMenu 
-      onStartNew={() => setShowSetup(true)} 
-      onLoadSave={(loadedState) => dispatchAction({ type: 'LOAD_GAME', payload: loadedState })} 
+    return <MainMenu
+      onStartNew={() => { prewarmRoster(); setShowSetup(true); }}
+      onLoadSave={(loadedState) => dispatchAction({ type: 'LOAD_GAME', payload: loadedState })}
     />;
   }
 
@@ -172,7 +173,7 @@ function GameLayout() {
           />
         )}
         {state.isClubbing && <ClubEffect />}
-        {state.lastOutcome && <OutcomeView />}
+        {state.lastOutcome && !(state.gameMode === 'gm' && (state.lastActionType === 'SIGN_FREE_AGENT' || state.lastActionType === 'EXECUTIVE_TRADE')) && <OutcomeView />}
       </main>
     </div>
   );

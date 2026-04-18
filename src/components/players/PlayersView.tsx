@@ -7,6 +7,7 @@ import { PlayerBioView } from '../central/view/PlayerBioView';
 import { PlayerRatingsModal } from '../modals/PlayerRatingsModal';
 import ContactModal from '../ContactModal';
 import { PersonSelectorModal } from '../modals/PersonSelectorModal';
+import { usePlayerQuickActions } from '../../hooks/usePlayerQuickActions';
 
 export const PlayersView: React.FC = () => {
   const { state, dispatchAction, navigateToTeam, healPlayer } = useGame();
@@ -19,6 +20,9 @@ export const PlayersView: React.FC = () => {
   
   const [personSelectorOpen, setPersonSelectorOpen] = useState(false);
   const [personSelectorType, setPersonSelectorType] = useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'sabotage'>('general');
+
+  // Sign / re-sign / waive are delegated to the shared quick-actions hook.
+  const quick = usePlayerQuickActions();
 
   const handlePlayerClick = (player: NBAPlayer) => {
     setSelectedPlayerForActions(player);
@@ -59,6 +63,12 @@ export const PlayersView: React.FC = () => {
 
     if (actionType === 'view_ratings') {
       setViewingRatingsPlayer(selectedPlayerForActions);
+      setSelectedPlayerForActions(null);
+      return;
+    }
+
+    // Sign / re-sign / waive → delegated to the shared hook.
+    if (quick.handle(selectedPlayerForActions, actionType)) {
       setSelectedPlayerForActions(null);
       return;
     }
@@ -127,6 +137,8 @@ export const PlayersView: React.FC = () => {
           onHeal={() => { healPlayer(selectedPlayerForActions.internalId); setSelectedPlayerForActions(null); }}
         />
       )}
+
+      {quick.portals}
 
       {selectedPlayerContact && !personSelectorOpen && (
         <ContactModal 

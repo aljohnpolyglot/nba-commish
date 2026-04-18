@@ -8,7 +8,7 @@ import { NewsGenerator } from '../../../services/news/NewsGenerator';
 import { SettingsManager } from '../../../services/SettingsManager';
 
 export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
-    const { playerId, teamId, playerName, teamName } = action.payload;
+    const { playerId, teamId, playerName, teamName, salary, years: negotiatedYears, option, twoWay: signedAsTwoWay } = action.payload;
     const player = stateWithSim.players.find(p => p.internalId === playerId);
     const team = stateWithSim.teams.find(t => t.id === teamId);
     
@@ -92,15 +92,27 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
             } as any);
         }
 
-        // Minimum contract in BBGM units (thousands) = $1,300,000
-        const MIN_CONTRACT_AMOUNT = 1300;
+        // Contract terms — honor negotiated salary/years when provided,
+        // otherwise fall back to min contract.
         const MIN_CONTRACT_USD = 1_300_000;
         const signYear = stateWithSim.leagueStats?.year ?? 2026;
-        const minContractYears = [{
-            season: `${signYear - 1}-${String(signYear).slice(-2)}`,
-            guaranteed: MIN_CONTRACT_USD,
-            option: '',
-        }];
+        const baseSalaryUSD = typeof salary === 'number' && salary > 0 ? salary : MIN_CONTRACT_USD;
+        const totalYears = typeof negotiatedYears === 'number' && negotiatedYears > 0 ? negotiatedYears : 1;
+        const hasOption = option === 'PLAYER' || option === 'TEAM';
+        const totalSeasons = hasOption ? totalYears + 1 : totalYears;
+        // BBGM stores contract.amount in thousands of USD; also use the final guaranteed year as exp.
+        const contractAmountThousands = Math.round(baseSalaryUSD / 1_000);
+        const expYear = signYear + totalSeasons - 1;
+        const negotiatedContractYears = Array.from({ length: totalSeasons }).map((_, i) => {
+            const seasonYear = signYear + i;
+            const escalated = Math.round(baseSalaryUSD * Math.pow(1.05, i));
+            const isOptionYear = hasOption && i === totalSeasons - 1;
+            return {
+                season: `${seasonYear - 1}-${String(seasonYear).slice(-2)}`,
+                guaranteed: escalated,
+                option: isOptionYear ? (option === 'PLAYER' ? 'player' : 'team') : '',
+            };
+        });
 
         const returnContext = previousLeague && ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(previousLeague)
             ? ` ${playerName} is returning to the NBA after playing in the ${previousLeague}.`
@@ -134,11 +146,16 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                         tid: teamId,
                         status: 'Active',
                         contract: {
-                            amount: MIN_CONTRACT_AMOUNT,
-                            exp: signYear + 1,
+                            amount: contractAmountThousands,
+                            exp: expYear,
                             rookie: false
                         },
-                        contractYears: minContractYears,
+                        contractYears: negotiatedContractYears,
+                        // Explicitly set/clear twoWay per the signing decision —
+                        // otherwise a player who was previously on a two-way deal
+                        // keeps the flag via `...p`, so even a GUARANTEED re-signing
+                        // ships as a two-way contract.
+                        twoWay: !!signedAsTwoWay,
                     }
                     : p
             );
@@ -151,11 +168,16 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                         tid: teamId,
                         status: 'Active',
                         contract: {
-                            amount: MIN_CONTRACT_AMOUNT,
-                            exp: signYear + 1,
+                            amount: contractAmountThousands,
+                            exp: expYear,
                             rookie: false
                         },
-                        contractYears: minContractYears,
+                        contractYears: negotiatedContractYears,
+                        // Explicitly set/clear twoWay per the signing decision —
+                        // otherwise a player who was previously on a two-way deal
+                        // keeps the flag via `...p`, so even a GUARANTEED re-signing
+                        // ships as a two-way contract.
+                        twoWay: !!signedAsTwoWay,
                     }
                     : p
             );
@@ -277,33 +299,23 @@ export const handleDrugTestPerson = async (stateWithSim: GameState, action: User
     return result;
 };
 
-export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
+export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAction, _simResults: any[], _recentDMs: any[]) => {
     const { contacts } = action.payload;
     if (!contacts || contacts.length === 0) return { isProcessing: false };
 
     const player = contacts[0];
-    const team = stateWithSim.teams.find(t => t.name === player.organization);
+    // Resolve the player's current team by the player record, not the stale contact.organization string.
+    const playerRecord = stateWithSim.players.find((p: any) => p.internalId === (player.id || player.internalId));
+    const team = playerRecord ? stateWithSim.teams.find(t => t.id === playerRecord.tid) : undefined;
     const teamName = team?.name || player.organization || 'their team';
 
-    const outcomeText = `The NBA has officially waived ${player.name} from ${teamName}. They are now a free agent.`;
-    const storySeed = `${player.name} has just been waived by ${teamName}. Fans, GMs and media react to the sudden roster move.`;
-
-    const result = await advanceDay(stateWithSim, {
-        type: 'WAIVE_PLAYER',
-        payload: { outcomeText, contacts }
-    } as any, [storySeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
-
-    // Update player state: move to free agent
-    result.players = (result.players || stateWithSim.players).map((p: any) =>
+    // Waiving is a roster action — apply it immediately without ticking the sim clock.
+    const players = stateWithSim.players.map((p: any) =>
         p.internalId === (player.id || player.internalId)
             ? { ...p, tid: -1, status: 'Free Agent' }
             : p
     );
 
-    result.statChanges = result.statChanges || {};
-    result.statChanges.playerApproval = (result.statChanges.playerApproval || 0) - 2;
-
-    // Always add a League News item for the waive (fires even when LLM is off)
     const waiveNewsItem = {
         id: `waive-news-${Date.now()}`,
         headline: `${player.name} Waived`,
@@ -313,9 +325,13 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
         image: team?.logoUrl,
         newsType: 'daily' as const,
     };
-    result.newNews = [waiveNewsItem, ...(result.newNews || [])];
 
-    return result;
+    return {
+        players,
+        newNews: [waiveNewsItem],
+        statChanges: { playerApproval: -2 },
+        isProcessing: false,
+    };
 };
 
 export const handleFirePersonnel = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {

@@ -358,6 +358,30 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
                         setBiannualEnabled={rulesState.setBiannualEnabled}
                         biannualAmount={rulesState.biannualAmount}
                         setBiannualAmount={rulesState.setBiannualAmount}
+                        roomMlePercentage={rulesState.roomMlePercentage}
+                        setRoomMlePercentage={rulesState.setRoomMlePercentage}
+                        nonTaxpayerMlePercentage={rulesState.nonTaxpayerMlePercentage}
+                        setNonTaxpayerMlePercentage={rulesState.setNonTaxpayerMlePercentage}
+                        taxpayerMlePercentage={rulesState.taxpayerMlePercentage}
+                        setTaxpayerMlePercentage={rulesState.setTaxpayerMlePercentage}
+                        biannualPercentage={rulesState.biannualPercentage}
+                        setBiannualPercentage={rulesState.setBiannualPercentage}
+                        tradeDeadlineMonth={rulesState.tradeDeadlineMonth}
+                        setTradeDeadlineMonth={rulesState.setTradeDeadlineMonth}
+                        tradeDeadlineOrdinal={rulesState.tradeDeadlineOrdinal}
+                        setTradeDeadlineOrdinal={rulesState.setTradeDeadlineOrdinal}
+                        tradeDeadlineDayOfWeek={rulesState.tradeDeadlineDayOfWeek}
+                        setTradeDeadlineDayOfWeek={rulesState.setTradeDeadlineDayOfWeek}
+                        faStartMonth={rulesState.faStartMonth}
+                        setFaStartMonth={rulesState.setFaStartMonth}
+                        faStartDay={rulesState.faStartDay}
+                        setFaStartDay={rulesState.setFaStartDay}
+                        faMoratoriumDays={rulesState.faMoratoriumDays}
+                        setFaMoratoriumDays={rulesState.setFaMoratoriumDays}
+                        regularSeasonFAEnabled={rulesState.regularSeasonFAEnabled}
+                        setRegularSeasonFAEnabled={rulesState.setRegularSeasonFAEnabled}
+                        postDeadlineMultiYearContracts={rulesState.postDeadlineMultiYearContracts}
+                        setPostDeadlineMultiYearContracts={rulesState.setPostDeadlineMultiYearContracts}
                     />
                 )}
             </motion.div>

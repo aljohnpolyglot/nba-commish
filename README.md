@@ -180,4 +180,44 @@ Non-obvious facts. Read before touching these areas.
 
 ---
 
-*Last updated: 2026-04-17 (session 23)*
+## Session 25 additions (2026-04-18)
+
+### Generated draft classes — infinite sim
+- `src/services/genDraftPlayers.ts` — `generateDraftClass`, `generateDraftClassForGame(year, count, rng, nameData, currentSimYear?)`, `sandboxToNBAPlayer(p)`. Realistic path mix (70% College / 10% Europe / 6% G-League / 6% Endesa / 4% NBL / 4% B-League). `currentSimYear` param rewinds age + ratings for far-future classes so a 2029 prospect synthesized in 2026 starts as a 16yo raw HS kid, not a 19yo draft-ready stud.
+- `src/services/draftClassFiller.ts` — `ensureDraftClasses(players, currentYear)` tops any thin year up to 100 prospects. Runs at `seasonRollover` only; init is a no-op because `DraftScoutingView` fetches its gist directly. Filter uses only `tid === -2` (not status) — prevents double-fill on classes that already have BBGM-imported prospects.
+- `src/sportData.ts` — frequency tables for country + college pools (ZenGM format).
+- `src/genplayersconstants.ts` — sandbox types (`Player`, `Ratings`, `NameData`, `Position`, `MoodTrait`), NBA/Euroleague/Endesa/NBL/B-League team maps, race-freq table by nationality.
+- `src/data/nameDataFetcher.ts` — one-shot ZenGM names fetch, localStorage cache (`nba-commish:namedata-v2`), offline fallback. Validates schema before caching so malformed payloads don't poison future loads.
+- **Nerf:** prospects get `×0.80` on skill attrs + OVR at the `sandboxToNBAPlayer` adapter. Potential derived from `potEstimator(nerfedOvr, age)` — same formula `PlayerRatingsModal` uses. No hand-tuned pot multiplier.
+
+### Faces (facesjs)
+- `src/components/shared/MyFace.tsx` — ZenGM-pattern wrapper. 2:3 aspect, `ignoreDisplayErrors`, optional team colors + jersey overrides.
+- `generateFace` reject-loop drops non-basketball accessories (`hat*`, `eye-black`) on roll.
+- `PlayerPortrait.tsx` renders face ONLY when `player.face` has real feature slots (body + head). Stale stubs fall through to initials; existing NBA/external players without descriptors stay on the standard portrait pipeline.
+- `DraftScoutingView.tsx` dicebear fallback → facesjs path. (Small + big avatar both.)
+
+### Signing / Contracts
+- `SigningModal` end-to-end: GM-only preflight ("Testing Free Agency"), commissioner auto-accept + override buttons, 2-decimal salary + hold-ramp chevrons, MLE row in Finances + "Sign with MLE" button, cap-violation final gate, roster-slot awareness (standard vs two-way), external-league buyout slider with FIBA cap + Mother Team Interest bar that responds to your contribution.
+- External-league contracts synthesized at init for Euroleague/PBA/B-League/G-League/Endesa/CBA/NBL players missing `contract` from the gist. Drives FA expiry + transaction feed.
+- `EXTERNAL_SALARY_SCALE` in `constants.ts` now also caps NBA offer at `~3× overseas peak` — PBA stars don't command $5M NBA deals anymore.
+- `getContractLimits` respects all EconomyContractsSection toggles (`minContractType`/`maxContractType` modes, supermax, Bird Rights).
+- MLE / Biannual now percentage-based in EconomyTab — scales with cap automatically.
+
+### Trade Proposals
+- `usePlayerQuickActions` hook — unifies player-row clicks across all views. Renders PlayerActionsModal + routes view_bio / view_ratings / sign_player / resign_player / waive into a single stack. Views just do `quick.openFor(player)` + `{quick.portals}`. Replaced the copy-pasted pattern in NBACentral, PlayersView, FreeAgentsView, PlayerRatingsView, PlayerStatsView, PlayerBiosView.
+- `src/services/trade/inboundProposalGenerator.ts` — scans every team vs. user's trading block, builds 1/2/3-for-1/2/3 combos with ±15% TV parity + salary legality. Fires auto on `state.date` change so proposals refresh daily while simming. GM-only view; commissioner hides the Trade Proposals tab entirely.
+
+### GM mode
+- Welcome post + news + email tailored in `initialization.ts`: `"{Team} Hires {GM Name} as General Manager"` instead of "Commissioner X on the job".
+- **User's team hoists to front of the TeamOffice grid with a team-color glow + "Your Team" badge** (`TeamOffice/pages/Home.tsx`).
+- TradingBlock page edit-gated: GM read-only on non-own teams, commissioner edits any team.
+- Upcoming FA tab defaults to user's team; Available FA defaults to NBA pool.
+- Waive action dispatches directly (no next-day sim tick).
+
+### Misc
+- `PlayerRatingsView`, `PlayerStatsView`, `PlayerBiosView`, `DraftScoutingView` dicebear fallbacks cleaned up.
+- `maxYear` in DraftScoutingView now caps at the furthest year with real prospects in state (no more navigating into empty years).
+
+---
+
+*Last updated: 2026-04-18 (session 25)*

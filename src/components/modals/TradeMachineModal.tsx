@@ -6,6 +6,19 @@ import { NBAPlayer, NBATeam, DraftPick } from '../../types';
 import { TradeSummaryModal } from './TradeSummaryModal';
 import { TeamDropdown } from '../shared/TeamDropdown';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
+import { calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV, getPotColor } from '../../services/trade/tradeValueEngine';
+import { getCapThresholds, getTeamCapProfile } from '../../utils/salaryUtils';
+
+// OVR text color matching TradeFinder's ovrText helper — keeps the number coloring
+// consistent between TradeMachineModal and the OfferCard stack.
+const ovrTextColor = (v: number): string => {
+  if (v >= 95) return 'text-violet-300';
+  if (v >= 90) return 'text-blue-300';
+  if (v >= 85) return 'text-emerald-300';
+  if (v >= 78) return 'text-amber-300';
+  if (v >= 72) return 'text-slate-300';
+  return 'text-red-400';
+};
 
 interface TradeMachineModalProps {
   onClose: () => void;
@@ -32,8 +45,29 @@ const OutgoingPill = ({ player, onRemove }: { player: NBAPlayer, onRemove: () =>
   </div>
 );
 
+// Pick pill with the ORIGINAL owner's logo so it's visible who the pick came from.
+const OutgoingPickPill = ({ pick, teams, onRemove }: { pick: DraftPick, teams: NBATeam[], onRemove: () => void }) => {
+  const origTeam = teams.find(t => t.id === pick.originalTid);
+  return (
+    <div className="flex items-center gap-2 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-full pl-1 pr-2 py-1 transition-colors shadow-sm">
+      <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 p-0.5 flex items-center justify-center">
+        {origTeam?.logoUrl
+          ? <img src={origTeam.logoUrl} alt={origTeam.abbrev} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+          : <span className="text-[8px] font-black text-indigo-300">{origTeam?.abbrev?.slice(0, 3) ?? 'PK'}</span>
+        }
+      </div>
+      <span className="text-xs font-bold text-indigo-200 whitespace-nowrap">
+        {pick.season} {pick.round === 1 ? '1st' : '2nd'}{origTeam ? ` · ${origTeam.abbrev}` : ''}
+      </span>
+      <button onClick={onRemove} className="w-4 h-4 rounded-full bg-indigo-500/40 hover:bg-rose-500 flex items-center justify-center text-white transition-colors">
+        <X size={10} />
+      </button>
+    </div>
+  );
+};
+
 // HELPER: PlayerRow component
-const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabled, currentSeason }: {
+const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabled, currentSeason, isSuggested }: {
   player: NBAPlayer & { isIncoming?: boolean };
   isSelected: boolean;
   onToggle: () => void;
@@ -41,6 +75,8 @@ const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabl
   teams: NBATeam[];
   disabled: boolean;
   currentSeason?: number;
+  /** AI's counter-offer suggestion — renders amber highlight to nudge the user toward adding this player. */
+  isSuggested?: boolean;
 }) => {
   const team = teams.find(t => t.id === player.tid);
   // Use current season stats if player has played (gp > 0), otherwise fall back to last season
@@ -53,18 +89,23 @@ const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabl
   const rpg = gp > 0 ? ((seasonStats!.trb ?? 0) / gp).toFixed(1) : '—';
   const apg = gp > 0 ? ((seasonStats!.ast ?? 0) / gp).toFixed(1) : '—';
 
+  const ovr = calcOvr2K(player);
+  const pot = calcPot2K(player, currentSeason ?? new Date().getFullYear());
+
   return (
     <div
       onClick={() => !disabled && onToggle()}
       className={`group relative flex items-center p-3 border-b border-slate-700/30 transition-all duration-200
                   ${disabled ? 'opacity-40 cursor-not-allowed grayscale-[0.5]' : 'cursor-pointer'}
                   hover:bg-slate-800/50
-                  ${isSelected ? 'bg-blue-600/10 border-l-4 border-l-blue-500' : ''}`}
+                  ${isSelected ? 'bg-blue-600/10 border-l-4 border-l-blue-500' : ''}
+                  ${player.isIncoming ? 'bg-emerald-600/10 border-l-4 border-l-emerald-500' : ''}
+                  ${isSuggested && !isSelected && !player.isIncoming ? 'bg-amber-500/10 border-l-4 border-l-amber-500 ring-1 ring-amber-500/30' : ''}`}
     >
+      {/* Portrait — no OVR badge; stats column carries OVR/POT instead */}
       <PlayerPortrait
         imgUrl={player.imgURL}
         teamLogoUrl={team?.logoUrl}
-        overallRating={player.overallRating}
         isIncoming={player.isIncoming}
         size={48}
       />
@@ -80,8 +121,12 @@ const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabl
           </div>
       </div>
 
-      {/* Contract & Logo */}
-      <div className="flex items-center gap-4">
+      {/* OVR / POT stack + Contract */}
+      <div className="flex items-center gap-3">
+          <div className="flex flex-col items-center leading-tight tabular-nums">
+              <span className={`text-base font-black ${ovrTextColor(ovr)}`}>{ovr}</span>
+              <span className={`text-xs font-bold ${getPotColor(pot)}`}>{pot}</span>
+          </div>
           <div className="text-right">
               <div className="text-sm font-black text-white">{formatContract(player.contract?.amount || 0)}</div>
               <div className="text-[10px] font-bold text-slate-500">{player.contract?.exp} YRS LEFT</div>
@@ -119,7 +164,11 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   );
   
   const [showSummaryModal, setShowSummaryModal] = useState(false);
-  const [tradeResponse, setTradeResponse] = useState<{ accepted: boolean; gmName: string; reason: string } | null>(null);
+  const [tradeResponse, setTradeResponse] = useState<{ accepted: boolean; gmName: string; reason: string; suggestion?: string } | null>(null);
+  // AI's suggested additions (user-side assets) that would make the rejected trade work.
+  // Persisted after Go Back so the TradeMachine highlights them in amber for the user.
+  const [suggestedPlayerIds, setSuggestedPlayerIds] = useState<Set<string>>(new Set());
+  const [suggestedPickIds, setSuggestedPickIds] = useState<Set<number>>(new Set());
   const [activeTabA, setActiveTabA] = useState<'roster' | 'picks'>('roster');
   const [activeTabB, setActiveTabB] = useState<'roster' | 'picks'>('roster');
   const [openDropdown, setOpenDropdown] = useState<'A' | 'B' | null>(null);
@@ -185,17 +234,38 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   const teamASalary = useMemo(() => teamAPlayers.reduce((sum, p) => sum + (p.contract?.amount || 0), 0), [teamAPlayers]);
   const teamBSalary = useMemo(() => teamBPlayers.reduce((sum, p) => sum + (p.contract?.amount || 0), 0), [teamBPlayers]);
 
+  // Cap space per team (thousands, matches contract.amount units). Lets a picks-only
+  // side absorb an incoming salary up to its available cap room — the real-NBA
+  // exception that makes dump deals to rebuilders legal. Matches TradeFinder's
+  // `capSpaceK` feed so the eligibility badge there lines up with this gate.
+  const capSpaceAK = useMemo(() => {
+    if (!teamA) return 0;
+    const thresholds = getCapThresholds(state.leagueStats);
+    return getTeamCapProfile(state.players, teamA.id, (teamA as any).wins ?? 0, (teamA as any).losses ?? 0, thresholds).capSpaceUSD / 1000;
+  }, [teamA, state.players, state.leagueStats]);
+  const capSpaceBK = useMemo(() => {
+    if (!teamB) return 0;
+    const thresholds = getCapThresholds(state.leagueStats);
+    return getTeamCapProfile(state.players, teamB.id, (teamB as any).wins ?? 0, (teamB as any).losses ?? 0, thresholds).capSpaceUSD / 1000;
+  }, [teamB, state.players, state.leagueStats]);
+
   const salaryMismatchInfo = useMemo(() => {
     // Picks-for-picks: no salary to check
     if (teamAPlayers.length === 0 && teamBPlayers.length === 0) return null;
-    // Picks-for-player: always a mismatch — you can't acquire salary by sending only picks
-    // (real NBA rule: picks-only side can only absorb salary up to their cap room,
-    // but we simplify: if one side sends no players and receives a player, flag it)
+    // Picks-for-player: picks-only side must have enough cap room to absorb
+    // the incoming salary (NBA cap-absorption rule). Rebuilders with space can
+    // take on a small contract for picks; over-cap teams still get blocked.
     if (teamAPlayers.length === 0 && teamBPlayers.length > 0) {
-      return { message: `${teamA?.abbrev || 'Team A'} cannot receive players while sending only picks.`, team: 'A' as const };
+      if (teamBSalary > capSpaceAK + 100) {
+        return { message: `${teamA?.abbrev || 'Team A'} needs ${((teamBSalary - capSpaceAK) / 1000).toFixed(1)}M more cap space to absorb this salary.`, team: 'A' as const };
+      }
+      return null;
     }
     if (teamBPlayers.length === 0 && teamAPlayers.length > 0) {
-      return { message: `${teamB?.abbrev || 'Team B'} cannot receive players while sending only picks.`, team: 'B' as const };
+      if (teamASalary > capSpaceBK + 100) {
+        return { message: `${teamB?.abbrev || 'Team B'} needs ${((teamASalary - capSpaceBK) / 1000).toFixed(1)}M more cap space to absorb this salary.`, team: 'B' as const };
+      }
+      return null;
     }
     // Both sides have players — apply standard 125% salary matching rule
     // Contracts stored in thousands of dollars; $100K buffer = 100 units
@@ -204,7 +274,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
     if (teamBSalary > maxA) return { message: `${teamA?.abbrev || 'Team A'} receiving too much salary.`, team: 'A' as const };
     if (teamASalary > maxB) return { message: `${teamB?.abbrev || 'Team B'} receiving too much salary.`, team: 'B' as const };
     return null;
-  }, [teamASalary, teamBSalary, teamA, teamB, teamAPlayers, teamBPlayers]);
+  }, [teamASalary, teamBSalary, teamA, teamB, teamAPlayers, teamBPlayers, capSpaceAK, capSpaceBK]);
 
   const handleConfirm = () => {
     if (teamAId !== null && teamBId !== null) setShowSummaryModal(true);
@@ -216,7 +286,6 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
     // GM Mode: evaluate whether the other team accepts
     if (isGM && !force) {
       const currentYear = state.leagueStats?.year ?? 2026;
-      const { calcPlayerTV, calcPickTV } = require('../../services/trade/tradeValueEngine');
       const otherTeam = state.teams.find(t => t.id === teamBId);
       const otherGMName = otherTeam ? `${otherTeam.name} GM` : 'Their GM';
 
@@ -231,11 +300,61 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
       const accepted = netValue >= -5;
       const reason = accepted
         ? netValue > 10 ? 'This is a great deal for us. Done!' : 'Fair trade. We can work with this.'
-        : netValue > -15 ? `We\'d need a bit more to make this work. You\'re about ${Math.abs(Math.round(netValue))} points short.`
+        : netValue > -15 ? `We\'d need a bit more to make this work.`
         : 'No way. This isn\'t even close to fair value for what we\'re giving up.';
 
-      setTradeResponse({ accepted, gmName: otherGMName, reason });
-      if (!accepted) return; // Don't execute if rejected
+      // On rejection, suggest 1-3 user-side additions that would close the gap.
+      // Greedy: pick the asset whose TV is closest to the remaining shortfall, repeat.
+      let suggestion: string | undefined;
+      const nextSuggestedPlayers = new Set<string>();
+      const nextSuggestedPicks = new Set<number>();
+      if (!accepted) {
+        const gap = Math.abs(netValue) + 5; // add 5 TV buffer so deal clears -5 threshold
+        const userRoster = state.players.filter(p =>
+          p.tid === teamAId && !teamAPlayers.some(x => x.internalId === p.internalId)
+        );
+        const userPicks = state.draftPicks.filter(pk =>
+          pk.tid === teamAId && !teamAPicks.some(x => x.dpid === pk.dpid)
+        );
+        type Candidate = { kind: 'player' | 'pick'; id: string | number; name: string; tv: number };
+        const candidates: Candidate[] = [
+          ...userRoster.map<Candidate>(p => ({ kind: 'player', id: p.internalId, name: p.name, tv: calcPlayerTV(p, 'neutral' as any, currentYear) })),
+          ...userPicks.map<Candidate>(pk => ({ kind: 'pick', id: pk.dpid, name: `${pk.season} ${pk.round === 1 ? '1st' : '2nd'} Rd`, tv: calcPickTV(pk.round, 15, 30, Math.max(1, pk.season - currentYear)) })),
+        ].filter(c => c.tv > 0);
+
+        const picked: Candidate[] = [];
+        let remaining = gap;
+        for (let i = 0; i < 3 && remaining > 3; i++) {
+          const chosen = candidates
+            .filter(c => !picked.some(p => p.id === c.id))
+            .sort((a, b) => Math.abs(a.tv - remaining) - Math.abs(b.tv - remaining))[0];
+          if (!chosen) break;
+          picked.push(chosen);
+          remaining -= chosen.tv;
+        }
+
+        if (picked.length > 0) {
+          const names = picked.map(p => p.name);
+          const formatted = names.length === 1
+            ? names[0]
+            : names.length === 2
+              ? `${names[0]} and ${names[1]}`
+              : `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+          suggestion = `We'd work with this if you threw in ${formatted} on top.`;
+          for (const c of picked) {
+            if (c.kind === 'player') nextSuggestedPlayers.add(c.id as string);
+            else nextSuggestedPicks.add(c.id as number);
+          }
+        }
+      }
+
+      setTradeResponse({ accepted, gmName: otherGMName, reason, suggestion });
+      setSuggestedPlayerIds(nextSuggestedPlayers);
+      setSuggestedPickIds(nextSuggestedPicks);
+      // Close the summary modal behind the response overlay so there's one clean step.
+      setShowSummaryModal(false);
+      if (!accepted) return; // Don't execute if rejected — user can Go Back or End Negotiation
+      return; // Acceptance still requires user to click Finalize in the response overlay
     }
 
     setShowSummaryModal(false);
@@ -257,8 +376,8 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
 
         {/* ACTION BAR — sticky on mobile, absolute on desktop */}
         <div className="sticky top-0 lg:fixed lg:bottom-6 lg:top-auto z-50 flex gap-2 sm:gap-4 bg-[#161616] p-2 rounded-2xl border border-slate-700 shadow-2xl mb-3 lg:mb-0 w-full max-w-xs sm:max-w-sm lg:max-w-none lg:w-auto lg:left-1/2 lg:-translate-x-1/2">
-            <button onClick={handleConfirm} disabled={!canClickAssets || (teamAPlayers.length === 0 && teamBPlayers.length === 0 && teamAPicks.length === 0 && teamBPicks.length === 0)} className="flex-1 lg:flex-none px-4 sm:px-8 py-2.5 sm:py-3 rounded-xl font-black text-xs uppercase bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-600/20">
-                Validate Deal
+            <button onClick={handleConfirm} disabled={!canClickAssets || teamAId === teamBId || teamAId == null || teamBId == null || (teamAPlayers.length === 0 && teamBPlayers.length === 0 && teamAPicks.length === 0 && teamBPicks.length === 0)} className="flex-1 lg:flex-none px-4 sm:px-8 py-2.5 sm:py-3 rounded-xl font-black text-xs uppercase bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-600/20">
+                {teamAId === teamBId ? 'Same Team — Invalid' : 'Validate Deal'}
             </button>
             <button onClick={onClose} className="flex-1 lg:flex-none px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-black text-xs uppercase bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all">Close</button>
         </div>
@@ -295,10 +414,13 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                     </div>
                     <ChevronUp size={14} className="opacity-30" />
                 </div>
-                {teamAPlayers.length > 0 && (
+                {(teamAPlayers.length > 0 || teamAPicks.length > 0) && (
                     <div className="px-4 pb-4 flex flex-wrap gap-2">
                         {teamAPlayers.map(p => (
                             <OutgoingPill key={p.internalId} player={p} onRemove={() => setTeamAPlayers(teamAPlayers.filter(x => x.internalId !== p.internalId))} />
+                        ))}
+                        {teamAPicks.map(pk => (
+                            <OutgoingPickPill key={pk.dpid} pick={pk} teams={state.teams} onRemove={() => setTeamAPicks(teamAPicks.filter(x => x.dpid !== pk.dpid))} />
                         ))}
                     </div>
                 )}
@@ -321,7 +443,19 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                             key={player.internalId}
                             player={player}
                             isSelected={teamAPlayers.some(x => x.internalId === player.internalId)}
-                            onToggle={() => setTeamAPlayers([...teamAPlayers, player])}
+                            isSuggested={suggestedPlayerIds.has(player.internalId)}
+                            onToggle={() => {
+                              // Incoming (from team B) → clicking UNDOES the inclusion on team B's side.
+                              // Native + selected → remove from this team's outgoing.
+                              // Native + unselected → add to this team's outgoing.
+                              if ((player as any).isIncoming) {
+                                setTeamBPlayers(teamBPlayers.filter(x => x.internalId !== player.internalId));
+                              } else if (teamAPlayers.some(x => x.internalId === player.internalId)) {
+                                setTeamAPlayers(teamAPlayers.filter(x => x.internalId !== player.internalId));
+                              } else {
+                                setTeamAPlayers([...teamAPlayers, player]);
+                              }
+                            }}
                             formatContract={formatContract}
                             teams={state.teams}
                             disabled={!canClickAssets}
@@ -332,13 +466,18 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                     <div className="p-4 space-y-2">
                         {teamAPicksAvailable.map(pick => {
                             const isSelected = teamAPicks.some(p => p.dpid === pick.dpid);
+                            const isSuggested = suggestedPickIds.has(pick.dpid);
                             const origTeam = state.teams.find(t => t.id === pick.originalTid);
                             return (
-                                <button 
+                                <button
                                     key={pick.dpid}
                                     disabled={!canClickAssets}
                                     onClick={() => isSelected ? setTeamAPicks(teamAPicks.filter(p => p.dpid !== pick.dpid)) : setTeamAPicks([...teamAPicks, pick])}
-                                    className={`w-full flex items-center gap-4 p-3 rounded-xl border-2 transition-all ${isSelected ? 'bg-blue-600/10 border-blue-500/50' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'}`}
+                                    className={`w-full flex items-center gap-4 p-3 rounded-xl border-2 transition-all ${
+                                      isSelected ? 'bg-blue-600/10 border-blue-500/50'
+                                        : isSuggested ? 'bg-amber-500/10 border-amber-500/50 ring-1 ring-amber-500/30'
+                                        : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
+                                    }`}
                                 >
                                     <div className="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center p-2 shadow-inner flex-shrink-0">
                                         <img src={origTeam?.logoUrl} alt="" className="w-full h-full object-contain" />
@@ -385,10 +524,13 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                     </div>
                     <ChevronUp size={14} className="opacity-30" />
                 </div>
-                {teamBPlayers.length > 0 && (
+                {(teamBPlayers.length > 0 || teamBPicks.length > 0) && (
                     <div className="px-4 pb-4 flex flex-wrap gap-2">
                         {teamBPlayers.map(p => (
                             <OutgoingPill key={p.internalId} player={p} onRemove={() => setTeamBPlayers(teamBPlayers.filter(x => x.internalId !== p.internalId))} />
+                        ))}
+                        {teamBPicks.map(pk => (
+                            <OutgoingPickPill key={pk.dpid} pick={pk} teams={state.teams} onRemove={() => setTeamBPicks(teamBPicks.filter(x => x.dpid !== pk.dpid))} />
                         ))}
                     </div>
                 )}
@@ -411,7 +553,15 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                             key={player.internalId}
                             player={player}
                             isSelected={teamBPlayers.some(x => x.internalId === player.internalId)}
-                            onToggle={() => setTeamBPlayers([...teamBPlayers, player])}
+                            onToggle={() => {
+                              if ((player as any).isIncoming) {
+                                setTeamAPlayers(teamAPlayers.filter(x => x.internalId !== player.internalId));
+                              } else if (teamBPlayers.some(x => x.internalId === player.internalId)) {
+                                setTeamBPlayers(teamBPlayers.filter(x => x.internalId !== player.internalId));
+                              } else {
+                                setTeamBPlayers([...teamBPlayers, player]);
+                              }
+                            }}
                             formatContract={formatContract}
                             teams={state.teams}
                             disabled={!canClickAssets}
@@ -447,36 +597,83 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
           </div>
         </div>
 
-        {/* GM Mode: Trade Response Overlay */}
-        {tradeResponse && (
-          <div className="fixed inset-0 z-[80] bg-black/90 flex items-center justify-center p-4">
-            <div className={`max-w-md w-full rounded-2xl border-2 p-8 text-center space-y-4 ${
-              tradeResponse.accepted ? 'border-emerald-500 bg-emerald-500/10' : 'border-red-500 bg-red-500/10'
-            }`}>
-              <div className={`text-5xl font-black italic uppercase ${tradeResponse.accepted ? 'text-emerald-400' : 'text-red-400'}`}>
-                {tradeResponse.accepted ? 'ACCEPTED' : 'REJECTED'}
-              </div>
-              <div className="text-sm font-bold text-white/70">{tradeResponse.gmName}</div>
-              <p className="text-sm text-slate-300 leading-relaxed">"{tradeResponse.reason}"</p>
-              <div className="flex gap-3 justify-center pt-4">
-                <button
-                  onClick={() => setTradeResponse(null)}
-                  className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase rounded-xl"
-                >
-                  {tradeResponse.accepted ? 'Back' : 'Adjust Offer'}
-                </button>
-                {tradeResponse.accepted && (
-                  <button
-                    onClick={() => handleExecuteTrade(true)}
-                    className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase rounded-xl"
-                  >
-                    Finalize Trade
-                  </button>
-                )}
-              </div>
+        {/* GM Mode: Trade Response — signing-modal-style card with team logo eyebrow,
+            big status headline, GM quote, and Go Back / End Negotiation / Finalize actions. */}
+        {tradeResponse && (() => {
+          const otherTeam = state.teams.find(t => t.id === teamBId);
+          const accentRose = 'border-rose-500/30 text-rose-400';
+          const accentEm = 'border-emerald-500/30 text-emerald-400';
+          const borderCls = tradeResponse.accepted ? 'border-emerald-500/30' : 'border-rose-500/30';
+          const headlineCls = tradeResponse.accepted ? 'text-emerald-400' : 'text-rose-400';
+          const eyebrowCls = tradeResponse.accepted ? 'text-emerald-300' : 'text-rose-300';
+          return (
+            <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                className={`relative w-full max-w-md bg-[#0a0a0a] border ${borderCls} shadow-2xl rounded flex flex-col items-center text-center overflow-hidden`}
+              >
+                <div className="w-full h-48 bg-[#050505] relative flex items-end justify-center pt-8 border-b border-white/5">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-20 pointer-events-none" />
+                  {otherTeam?.logoUrl
+                    ? <img src={otherTeam.logoUrl} className="h-32 object-contain z-10" alt={otherTeam.name} referrerPolicy="no-referrer" />
+                    : <div className="h-24 w-24 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-xs font-black text-slate-400 z-10">{otherTeam?.abbrev ?? 'AI'}</div>
+                  }
+                </div>
+                <div className="p-8 w-full flex flex-col items-center relative z-20">
+                  <p className={`text-[10px] font-black uppercase tracking-[0.4em] mb-2 ${eyebrowCls}`}>
+                    {otherTeam?.region} {otherTeam?.name} Front Office
+                  </p>
+                  <h2 className={`text-2xl font-black italic uppercase tracking-wider mb-1 ${headlineCls}`}>
+                    {tradeResponse.accepted ? 'Noice doing business.' : 'No Deal'}
+                  </h2>
+                  <p className="text-[11px] font-bold text-white/50 mb-4">{tradeResponse.gmName}</p>
+                  <p className="text-white/80 italic mb-3 leading-relaxed text-sm">
+                    "{tradeResponse.reason}"
+                  </p>
+                  {/* AI's counter-suggestion — the specific assets that would close the gap.
+                      These same ids are highlighted amber when user clicks Go Back. */}
+                  {!tradeResponse.accepted && tradeResponse.suggestion && (
+                    <p className="text-amber-300 italic text-sm mb-3 leading-relaxed bg-amber-500/5 border border-amber-500/20 rounded px-3 py-2">
+                      "{tradeResponse.suggestion}"
+                    </p>
+                  )}
+                  {!tradeResponse.accepted && (
+                    <p className="text-white/50 text-xs mb-6 leading-relaxed">
+                      Rework the offer, add future picks, or come back later when the market shifts.
+                    </p>
+                  )}
+                  {tradeResponse.accepted && <div className="mb-5" />}
+                  <div className="flex flex-col gap-2 w-full">
+                    {tradeResponse.accepted ? (
+                      <button
+                        onClick={() => handleExecuteTrade(true)}
+                        className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-widest text-xs transition-colors rounded-sm"
+                      >
+                        Finalize Trade
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => setTradeResponse(null)}
+                          className="w-full py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black uppercase tracking-widest text-xs transition-colors rounded-sm"
+                        >
+                          Go Back — Tweak Offer
+                        </button>
+                        <button
+                          onClick={() => { setTradeResponse(null); onClose(); }}
+                          className="w-full py-3 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 text-rose-300 font-black uppercase tracking-widest text-[10px] transition-colors rounded-sm"
+                        >
+                          End Negotiation
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {teamA && teamB && showSummaryModal && (
             <TradeSummaryModal

@@ -85,6 +85,16 @@ export function GeneralManager({ teamId }: GeneralManagerProps) {
     gmStats = gmRatings.find(r => r.name?.toLowerCase() === gmName?.toLowerCase());
   }
 
+  // GM mode own-team: user IS the GM. Their name replaces the historical GM's name + portrait.
+  const isGM = state.gameMode === 'gm';
+  const isOwnTeam = isGM && teamId === state.userTeamId;
+  if (isOwnTeam && state.commissionerName) {
+    gmName = state.commissionerName;
+    gmPortrait = `https://ui-avatars.com/api/?name=${encodeURIComponent(state.commissionerName)}&background=${(teamColor ?? '#1a1a2e').replace('#','')}&color=fff&size=256&bold=true`;
+    // Clear historical stats overlay — the user's profile is their own, not the previous GM's.
+    gmStats = null;
+  }
+
   if (!gmName) {
     if (loadingRatings) {
       return <div className="text-[#8b949e] font-bold uppercase tracking-widest animate-pulse">Loading GM Data...</div>;

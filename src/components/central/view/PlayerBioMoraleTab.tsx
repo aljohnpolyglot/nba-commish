@@ -29,7 +29,54 @@ function approx2K(rawOvr: number): number {
   return Math.min(99, Math.round(0.88 * rawOvr + 31));
 }
 
-function getContractThoughts(
+export type ResignIntent = 'ready_to_extend' | 'testing_market' | 'farewell' | 'open' | 'not_expiring';
+
+/**
+ * Mirrors the logic of getContractThoughts so the re-sign flow can decide up-front
+ * whether the player will entertain an extension or wants to hit free agency.
+ */
+export function classifyResignIntent(
+  player: NBAPlayer,
+  traits: MoodTrait[],
+  moodScore: number,
+  currentYear: number,
+  teamWinPct: number,
+): ResignIntent {
+  const yearsLeft = Math.max(0, (player.contract?.exp ?? currentYear) - currentYear);
+  const isExpiring = yearsLeft <= 0;
+  const isFarewell = !!(player as any).farewellTour;
+  if (isFarewell) return 'farewell';
+  const contractYears = (player as any).contractYears as Array<{ option?: string }> | undefined;
+  const finalOpt = contractYears?.[contractYears.length - 1]?.option;
+  const traitsAny = traits as any[];
+  const isWinner = traitsAny.includes('COMPETITOR') || traitsAny.includes('WINNER');
+  const isLoyal = traitsAny.includes('LOYAL') || traitsAny.includes('LOYALTY');
+  const isMercenary = traitsAny.includes('MERCENARY') || traitsAny.includes('$');
+  const ovr2K = Math.min(99, Math.round(0.88 * (player.overallRating ?? 60) + 31));
+  // Player option: star-tier on an underpaid option = likely opt-out (testing). Loyal + happy will opt in.
+  if (finalOpt === 'player' && yearsLeft <= 1) {
+    if (isLoyal && moodScore >= 3) return 'ready_to_extend';
+    if (isMercenary || ovr2K >= 88) return 'testing_market';
+    if (moodScore <= -3) return 'testing_market';
+    return 'open';
+  }
+  // Team option: the team decides. Player has no real say; treat as undecided → 'open' unless mood is awful.
+  if (finalOpt === 'team' && yearsLeft <= 1) {
+    if (moodScore <= -4) return 'testing_market';
+    return 'open';
+  }
+  if (!isExpiring) return 'not_expiring';
+  // Loyal + healthy mood = wants to extend right away.
+  if (isLoyal && moodScore >= 4) return 'ready_to_extend';
+  // Mercenary, low mood, or a competitor stuck on a bad team → testing the market.
+  if (isMercenary) return 'testing_market';
+  if (isWinner && teamWinPct < 0.42) return 'testing_market';
+  if (moodScore <= -3) return 'testing_market';
+  if (moodScore >= 5) return 'ready_to_extend';
+  return 'open';
+}
+
+export function getContractThoughts(
   player: NBAPlayer,
   traits: MoodTrait[],
   moodScore: number,
@@ -42,6 +89,40 @@ function getContractThoughts(
   const isExpiring = yearsLeft <= 0;
   const oneFinalYear = yearsLeft === 1;
   const isFarewell = !!(player as any).farewellTour;
+  const isCurrentlyFA = player.tid === -1 || player.status === 'Free Agent';
+
+  // Already on the market — speak from the FA's point of view, not pre-expiry.
+  if (isCurrentlyFA && !isFarewell) {
+    const hadNBACareer = (player.stats ?? []).some((s: any) => !s.playoffs && (s.gp ?? 0) > 0 && (s.tid ?? -1) >= 0);
+    if (age < 22) return `I'm ready to prove I belong. A two-way slot, a camp invite — whatever it takes. Give me the chance and I'll show you what I can do.`;
+    if (traits.includes('COMPETITOR')) return `I'm a free agent right now. I'm not looking for the biggest paycheck — I want to win. Put me on a contender and I'll fit in wherever you need me.`;
+    if (traits.includes('MERCENARY')) return `I'm testing the waters. My price is my price — I know what I bring to a roster. Serious offers only.`;
+    if (traits.includes('LOYAL') && hadNBACareer) return `It's strange being a free agent after everything I've built. I'm just waiting for the right situation — somewhere I can settle in again.`;
+    if (age >= 34) return `I'm still hungry and I feel great. If a contender needs a veteran voice, I'm ready. Otherwise I'll let the market tell me what's next.`;
+    return `I'm a free agent. Keeping my options open — a good locker room, real minutes, a clear role. That's what I'm listening for.`;
+  }
+
+  // External-league players — speak from where they actually play.
+  const externalStatuses = new Set(['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
+  if (externalStatuses.has(player.status ?? '')) {
+    const hadNBACareer = (player.stats ?? []).some((s: any) => !s.playoffs && (s.gp ?? 0) > 0 && (s.tid ?? -1) >= 0);
+    const status = player.status ?? 'overseas';
+    // FAME players want the lights — they're always angling for the NBA regardless of where they play now.
+    if ((traits as any[]).includes('FAME') || (traits as any[]).includes('DIVA')) {
+      return `I belong in the NBA. The ${status} is a stop, not a destination. Whoever comes for me first, I'm ready — bags packed.`;
+    }
+    if (status === 'G-League') {
+      if (traits.includes('COMPETITOR')) return `I'm in the G-League grinding every night. The call-up will come — I'm making sure I'm ready when it does.`;
+      return `I'm taking the G-League seriously. Every rep, every film session. The NBA door is still open.`;
+    }
+    if (hadNBACareer) {
+      if (age >= 32) return `I had my run in the NBA. Playing in the ${status} now is good basketball, good life. If the phone rings again I'll listen, but I'm not chasing it.`;
+      return `I've been in the NBA before and I want to get back. The ${status} is keeping my game sharp — I'm ready whenever a team takes a look.`;
+    }
+    if (age < 24) return `I'm focused on my game in the ${status}. The NBA is the dream — if they call, I'm on the next flight. Until then, I'm putting in the work.`;
+    if (age >= 30) return `I'm happy where I am. Playing in the ${status} means something to me and to the people back home. I'm not sweating NBA interest.`;
+    return `I'm doing my thing in the ${status}. If an NBA team comes knocking with a real offer, sure, but I'm not begging for it either.`;
+  }
 
   // Farewell tour — override all contract thoughts
   if (isFarewell) {
@@ -92,8 +173,70 @@ function getContractThoughts(
     return `Honestly, I'm taking it one year at a time. I've thought about hanging it up, but there's still something left in the tank. A championship would be the perfect sendoff.`;
   }
 
+  // Option years — read contractYears final entry for player/team option flag.
+  // Even if exp > currentYear, the final year being a player/team option makes them a flight risk.
+  const contractYears = (player as any).contractYears as Array<{ option?: string }> | undefined;
+  const finalOpt = contractYears?.[contractYears.length - 1]?.option;
+  const ovrIsUnderMarket = ovr2K >= 88;  // stars on a middling option year usually opt out / decline
+  if (finalOpt === 'player' && yearsLeft <= 1) {
+    if (traits.includes('LOYAL') && moodScore >= 3) {
+      return `I've got a player option — and I'm picking it up. I like it here, no need to test the market.`;
+    }
+    if (traits.includes('MERCENARY') || ovrIsUnderMarket) {
+      return `My player option is there, but I'm almost certainly opting out. My value on the open market is higher than that number.`;
+    }
+    if (moodScore <= -3) {
+      return `I've got a player option, and honestly? I'm leaning toward opting out. Need a fresh situation.`;
+    }
+    return `Player option is on the table. I haven't decided — depends on what the market looks like come July.`;
+  }
+  if (finalOpt === 'team' && yearsLeft <= 1) {
+    if (traits.includes('LOYAL')) {
+      return `My team holds the option. I want them to pick it up — I've built something here. But it's out of my hands.`;
+    }
+    if (traits.includes('MERCENARY')) {
+      return `It's a team option year. If they don't exercise, no problem — I'll get my number somewhere else.`;
+    }
+    if (ovrIsUnderMarket) {
+      return `Team option year. I'd be surprised if they didn't pick it up — I think I've earned it.`;
+    }
+    return `My team has the option this year. Whatever they decide, I'll be ready to play.`;
+  }
+
   // Expiring contract
   if (isExpiring) {
+    // Combinatorial multi-trait voice — only when 2+ motivations are in play,
+    // otherwise fall through to the single-trait + mood-score paths below
+    // which give more nuanced replies.
+    const traitsAny = traits as any[];
+    const isWinner = traitsAny.includes('COMPETITOR') || traitsAny.includes('WINNER');
+    const isLoyalFA = traitsAny.includes('LOYAL') || traitsAny.includes('LOYALTY');
+    const isMercenary = traitsAny.includes('MERCENARY') || traitsAny.includes('$');
+    const isFame = traitsAny.includes('FAME') || traitsAny.includes('DIVA');
+    const motivationCount = [isWinner, isLoyalFA, isMercenary, isFame].filter(Boolean).length;
+
+    if (motivationCount >= 2) {
+      const championships = ((player as any).awards ?? []).filter((a: any) => a.type === 'Champion').length;
+      const parts: string[] = [];
+      if (isWinner) {
+        if (championships === 0) parts.push(`I'm competing for a ring. Whatever situation maximizes my title chances, that's where I want to be.`);
+        else if (championships === 1) parts.push(`I've got the championship experience, and now I'm looking for the best opportunity to build on that and get another one.`);
+        else parts.push(`I've got a couple rings, but I'm not done — time for ring ${championships + 1}.`);
+      }
+      if (isLoyalFA)   parts.push(`I've built something here, and I'm very likely to re-sign with this team, but let's see what the market has to offer.`);
+      if (isMercenary) parts.push(`I'm looking for the best financial package out there. My value is clear and I expect to be compensated accordingly.`);
+      if (isFame)      parts.push(`I'm looking for a big market situation where I can be the face of the brand and play under the bright lights.`);
+
+      let result = parts[0];
+      for (let i = 1; i < parts.length; i++) {
+        const nextPart = parts[i].charAt(0).toLowerCase() + parts[i].slice(1);
+        if (i === 1) result += ` That being said, ${nextPart}`;
+        else if (i === 2) result += ` And on top of that, ${nextPart}`;
+        else result += ` Also, ${nextPart}`;
+      }
+      return result;
+    }
+
     if (traits.includes('LOYAL') && moodScore >= 4) {
       return `I've built something here, and I'm not ready to walk away from it. I want to work out a new deal and finish what we started.`;
     }
@@ -318,12 +461,25 @@ export const PlayerBioMoraleTab: React.FC<PlayerBioMoraleTabProps> = ({ player }
       {/* ── Contract thoughts ──────────────────────────────────────────────── */}
       <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5">
         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Contract Thoughts</p>
-        {player.contract?.exp && (
-          <p className="text-[9px] text-slate-600 mb-3">
-            {player.contract.exp <= currentYear ? 'Expiring' : `${player.contract.exp - currentYear}yr left`}
-            {' · '}Exp. {player.contract.exp - 1}–{String(player.contract.exp).slice(-2)}
-          </p>
-        )}
+        {(() => {
+          const isFA = player.tid === -1 || player.status === 'Free Agent';
+          const isExternal = ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'WNBA'].includes(player.status ?? '');
+          const exp = player.contract?.exp;
+          if (isFA) {
+            return <p className="text-[9px] text-rose-400 mb-3">Contract Expired · Unrestricted Free Agent</p>;
+          }
+          if (isExternal) {
+            return <p className="text-[9px] text-sky-400 mb-3">Plays in {player.status}</p>;
+          }
+          if (exp) {
+            const yearsLeft = exp - currentYear;
+            if (yearsLeft <= 0) {
+              return <p className="text-[9px] text-amber-400 mb-3">Expiring · Exp. {exp - 1}–{String(exp).slice(-2)}</p>;
+            }
+            return <p className="text-[9px] text-slate-600 mb-3">{yearsLeft}yr left · Exp. {exp - 1}–{String(exp).slice(-2)}</p>;
+          }
+          return null;
+        })()}
         <p className="text-sm text-slate-200 leading-relaxed italic">
           "{contractThoughts}"
         </p>

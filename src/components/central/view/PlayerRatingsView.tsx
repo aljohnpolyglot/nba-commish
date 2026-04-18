@@ -5,8 +5,9 @@ import { useGame } from '../../../store/GameContext';
 import { NBAPlayer } from '../../../types';
 import { calculateK2, K2_CATS, K2Data } from '../../../services/simulation/convert2kAttributes';
 import { convertTo2KRating } from '../../../utils/helpers';
-import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
+import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import { applyLeagueDisplayScale } from '../../../hooks/useLeagueScaledRatings';
+import { getRealDurability, applyDurabilityToK2 } from '../../../utils/durabilityUtils';
 
 // Category summary config
 const CAT_CONFIG = [
@@ -16,6 +17,7 @@ const CAT_CONFIG = [
   { key: 'PL' as const, label: 'PLY', full: 'Playmaking' },
   { key: 'DF' as const, label: 'DEF', full: 'Defense' },
   { key: 'RB' as const, label: 'REB', full: 'Rebounding' },
+  { key: 'MI' as const, label: 'MSC', full: 'Misc' },
 ] as const;
 
 type CatKey = typeof CAT_CONFIG[number]['key'];
@@ -23,21 +25,23 @@ type CatKey = typeof CAT_CONFIG[number]['key'];
 // Sub-attribute abbreviations matching K2_CATS sub order
 const SUB_ABBREVS: Record<CatKey, string[]> = {
   OS: ['CLO', 'MID', '3PT', 'FT', 'SIQ', 'OCN'],
-  AT: ['SPD', 'AGI', 'STR', 'VRT', 'STA', 'HST', 'DUR'],
+  AT: ['SPD', 'AGI', 'STR', 'VRT', 'STA', 'HST', 'TGH'],
   IS: ['LAY', 'SDK', 'DDK', 'PHK', 'PFD', 'PCT', 'DRW', 'HND'],
   PL: ['PAS', 'BHD', 'SWB', 'PIQ', 'PVS'],
   DF: ['IDF', 'PDF', 'STL', 'BLK', 'HIQ', 'PPR', 'DCN'],
   RB: ['ORB', 'DRB'],
+  MI: ['DUR'],
 };
 
 // Sub-attribute full names matching K2_CATS sub order
 const SUB_FULL: Record<CatKey, string[]> = {
   OS: ['Close Shot', 'Mid-Range', 'Three-Point', 'Free Throw', 'Shot IQ', 'Off. Consistency'],
-  AT: ['Speed', 'Agility', 'Strength', 'Vertical', 'Stamina', 'Hustle', 'Durability'],
+  AT: ['Speed', 'Agility', 'Strength', 'Vertical', 'Stamina', 'Hustle', 'Toughness'],
   IS: ['Layup', 'Standing Dunk', 'Driving Dunk', 'Post Hook', 'Post Fade', 'Post Control', 'Draw Foul', 'Hands'],
   PL: ['Pass Accuracy', 'Ball Handle', 'Speed w/ Ball', 'Pass IQ', 'Pass Vision'],
   DF: ['Interior Def.', 'Perimeter Def.', 'Steal', 'Block', 'Help Def. IQ', 'Pass Perception', 'Def. Consistency'],
   RB: ['Off. Rebound', 'Def. Rebound'],
+  MI: ['Durability'],
 };
 
 const CAT_COLORS: Record<CatKey, string> = {
@@ -47,9 +51,10 @@ const CAT_COLORS: Record<CatKey, string> = {
   PL: '#3b82f6',
   DF: '#8b5cf6',
   RB: '#eab308',
+  MI: '#06b6d4', // cyan
 };
 
-type SortField = 'name' | 'age' | 'ovr' | 'pot' | CatKey | string; // string covers detail sub keys like 'OS.0'
+type SortField = 'name' | 'age' | 'ovr' | 'pot' | CatKey | string; // string covers detail sub keys like 'OS.0' or 'MI.0'
 
 interface RowData {
   player: NBAPlayer;
@@ -57,7 +62,7 @@ interface RowData {
   ovr: number;
   pot: number;
   k2: K2Data;
-  OS: number; AT: number; IS: number; PL: number; DF: number; RB: number;
+  OS: number; AT: number; IS: number; PL: number; DF: number; RB: number; MI: number;
 }
 
 function getRatingColor(val: number): string {
@@ -86,12 +91,13 @@ function getSubVal(row: RowData, key: string): number {
 
 export const PlayerRatingsView: React.FC = () => {
   const { state } = useGame();
+  // One hook owns the whole name-click → actions → bio / ratings / sign / waive stack.
+  const quick = usePlayerQuickActions();
 
   const [teamFilter, setTeamFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState<SortField>('ovr');
   const [sortAsc, setSortAsc] = useState(false);
-  const [selectedPlayer, setSelectedPlayer] = useState<NBAPlayer | null>(null);
   const [detailMode, setDetailMode] = useState(false);
   const [page, setPage] = useState(0);
   const [showColFilters, setShowColFilters] = useState(false);
@@ -120,12 +126,15 @@ export const PlayerRatingsView: React.FC = () => {
         // Apply league-strength nerf for display (mirrors sim getScaledRating multipliers)
         const r = applyLeagueDisplayScale(player.status, rawR);
         const age = (player as any).born?.year ? currentYear - (player as any).born.year : player.age || 0;
-        const k2 = calculateK2(r as any, {
+        const rawK2 = calculateK2(r as any, {
           pos: player.pos,
           heightIn: player.hgt,
           weightLbs: player.weight,
           age,
         });
+        // Patch MI.sub[0] with injury-history durability so it agrees with the bio.
+        const realDur = getRealDurability(player);
+        const k2 = applyDurabilityToK2(rawK2, realDur);
         const ovr = convertTo2KRating(player.overallRating ?? 60, r.hgt, r.tp);
         // POT: BBGM potEstimator (age+ovr), clamped to never be below current OVR, then K2 scale
         const rawBbgmOvr = player.overallRating ?? 60;
@@ -143,6 +152,7 @@ export const PlayerRatingsView: React.FC = () => {
           PL: k2.PL.ovr,
           DF: k2.DF.ovr,
           RB: k2.RB.ovr,
+          MI: k2.MI.ovr,
         };
       });
   }, [state.players, season]); // currentYear is stable within a session
@@ -167,7 +177,7 @@ export const PlayerRatingsView: React.FC = () => {
           else if (key === 'age') val = row.age;
           else if (key === 'ovr') val = row.ovr;
           else if (key === 'pot') val = row.pot;
-          else if (['OS','AT','IS','PL','DF','RB'].includes(key)) val = (row as any)[key];
+          else if (['OS','AT','IS','PL','DF','RB','MI'].includes(key)) val = (row as any)[key];
           else if (key.includes('.')) val = getSubVal(row, key);
           if (!evaluateFilter(String(val), flt)) return false;
         }
@@ -185,7 +195,7 @@ export const PlayerRatingsView: React.FC = () => {
       else if (sortField === 'age') cmp = a.age - b.age;
       else if (sortField === 'ovr') cmp = a.ovr - b.ovr;
       else if (sortField === 'pot') cmp = a.pot - b.pot;
-      else if (['OS', 'AT', 'IS', 'PL', 'DF', 'RB'].includes(sortField)) {
+      else if (['OS', 'AT', 'IS', 'PL', 'DF', 'RB', 'MI'].includes(sortField)) {
         cmp = (a as any)[sortField] - (b as any)[sortField];
       } else if (sortField.includes('.')) {
         cmp = getSubVal(a, sortField) - getSubVal(b, sortField);
@@ -212,7 +222,8 @@ export const PlayerRatingsView: React.FC = () => {
 
   const nbaTeams = state.teams.filter(t => t.id >= 0).sort((a, b) => a.name.localeCompare(b.name));
 
-  // Summary columns — pos/age shown below name, not separate columns
+  // Summary columns — pos/age shown below name, not separate columns.
+  // MI (Misc) category's only sub is Durability — shows up as its own column here.
   const summaryColumns: { key: SortField; label: string; title?: string; sticky?: boolean }[] = [
     { key: 'name', label: 'Name', sticky: true },
     { key: 'age',  label: 'AGE' },
@@ -222,6 +233,7 @@ export const PlayerRatingsView: React.FC = () => {
   ];
 
   // Detail columns: name sticky, then AGE + OVR, then all subs grouped by category
+  // (including MI → Durability as the last category).
   const detailColumns: { key: SortField; label: string; title?: string; catKey?: CatKey; sticky?: boolean }[] = [
     { key: 'name', label: 'Name', sticky: true },
     { key: 'age',  label: 'AGE' },
@@ -236,6 +248,9 @@ export const PlayerRatingsView: React.FC = () => {
   }
 
   const columns = detailMode ? detailColumns : summaryColumns;
+
+  // PlayerBioView takes over the whole view when active.
+  if (quick.fullPageView) return quick.fullPageView;
 
   return (
     <div className="h-full overflow-hidden flex flex-col p-4 md:p-8">
@@ -408,7 +423,7 @@ export const PlayerRatingsView: React.FC = () => {
               return (
                 <tr
                   key={row.player.internalId}
-                  onClick={() => setSelectedPlayer(row.player)}
+                  onClick={() => quick.openFor(row.player)}
                   className={`border-b border-slate-800/50 cursor-pointer transition-colors hover:bg-slate-800/60 ${
                     idx % 2 === 0 ? 'bg-slate-900/30' : 'bg-slate-900/10'
                   }`}
@@ -513,14 +528,7 @@ export const PlayerRatingsView: React.FC = () => {
         </div>
       )}
 
-      {/* Player Ratings Modal */}
-      {selectedPlayer && (
-        <PlayerRatingsModal
-          player={selectedPlayer}
-          season={season}
-          onClose={() => setSelectedPlayer(null)}
-        />
-      )}
+      {quick.portals}
     </div>
   );
 };

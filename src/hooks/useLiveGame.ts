@@ -197,7 +197,11 @@ export function useLiveGame(
               stl: stat.stl, blk: stat.blk,
               tov: stat.tov, pf: stat.pf,
               pts: stat.pts, pm: stat.pm ?? 0,
-              sec: stat.sec ?? Math.round(stat.min * 60),
+              // stat.sec from StatGenerator is the FRACTIONAL-seconds component
+              // (0-59), not total seconds — using it directly collapses the MIN
+              // column to "0:XX" at final buzzer. Total seconds derive from
+              // stat.min, which already encodes full-minutes-played.
+              sec: Math.round((stat.min ?? 0) * 60),
             };
           }
         });

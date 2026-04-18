@@ -4,16 +4,14 @@ import { AllStarDunkContestSim } from './AllStarDunkContestSim';
 import { AllStarThreePointContestSim } from './AllStarThreePointContestSim';
 import { AllStarSelectionService } from './AllStarSelectionService';
 import { simulateGames } from '../simulationService';
+import { resolveSeasonDate } from '../../utils/dateUtils';
 
+/**
+ * All-Star Sunday — 3rd Sunday of February of the given season year.
+ * Uses resolveSeasonDate so the weekend always lands on real weekdays.
+ */
 export function getAllStarSunday(year: number): Date {
-  // Use UTC to avoid timezone-dependent date shifts
-  const feb1 = new Date(Date.UTC(year, 1, 1));
-  const dayOfWeek = feb1.getUTCDay(); // 0=Sun
-  const firstSunday = new Date(feb1);
-  firstSunday.setUTCDate(1 + ((7 - dayOfWeek) % 7));
-  const thirdSunday = new Date(firstSunday);
-  thirdSunday.setUTCDate(firstSunday.getUTCDate() + 14);
-  return thirdSunday;
+  return resolveSeasonDate(year, 2, 3, 'Sun', 0);
 }
 
 const toNoonUTC = (d: Date): string => {
@@ -43,26 +41,29 @@ export function getAllStarWeekendDates(year: number): {
   regularResumes: Date;
 } {
   const allStarSunday = getAllStarSunday(year);
-  const friday = new Date(allStarSunday);
-  friday.setUTCDate(allStarSunday.getUTCDate() - 2);
-  const saturday = new Date(allStarSunday);
-  saturday.setUTCDate(allStarSunday.getUTCDate() - 1);
-  // breakStart = Thursday (day before Rising Stars) so Feb 12 is also blacked out
-  // and games are redistributed away from the day before All-Star break.
-  const breakStart = new Date(allStarSunday);
-  breakStart.setUTCDate(allStarSunday.getUTCDate() - 3); // Thu (one day before Friday Rising Stars)
-  const breakEnd = new Date(allStarSunday);
-  breakEnd.setUTCDate(allStarSunday.getUTCDate() + 1);
-  const regularResumes = new Date(allStarSunday);
-  regularResumes.setUTCDate(allStarSunday.getUTCDate() + 2);
-  const votingStart = new Date(year - 1, 11, 17);
-  const votingEnd = new Date(year, 0, 14);
-  const startersAnnounced = new Date(year, 0, 22);
-  const reservesAnnounced = new Date(year, 0, 29);
-  const risingStarsAnnounced = new Date(year, 1, 1);
-  const celebrityAnnounced = new Date(year, 0, 29);
-  const dunkContestAnnounced = new Date(year, 1, 5);
-  const threePointAnnounced = new Date(year, 1, 8);
+  // Derive the weekend days by offsetting from Sunday — all guaranteed to be real weekdays.
+  const shift = (base: Date, days: number) => {
+    const d = new Date(base);
+    d.setUTCDate(base.getUTCDate() + days);
+    return d;
+  };
+  const friday = shift(allStarSunday, -2);
+  const saturday = shift(allStarSunday, -1);
+  const breakStart = shift(allStarSunday, -3); // Thu — blackout starts
+  const breakEnd = shift(allStarSunday, 1);    // Mon
+  const regularResumes = shift(allStarSunday, 2); // Tue
+  // Announcement dates anchored to All-Star Sunday so they always land on the
+  // intended weekday regardless of which calendar day Sunday falls on.
+  // NBA pattern: starters announced on a Thu, reserves on the following Thu, etc.
+  const startersAnnounced   = shift(allStarSunday, -25); // Thu, 3.5 wks before
+  const reservesAnnounced   = shift(allStarSunday, -18); // Thu, 2.5 wks before
+  const celebrityAnnounced  = shift(allStarSunday, -18); // Thu, 2.5 wks before
+  const risingStarsAnnounced = shift(allStarSunday, -11); // Thu, 1.5 wks before
+  const dunkContestAnnounced = shift(allStarSunday, -10); // Fri, week before
+  const threePointAnnounced  = shift(allStarSunday, -9);  // Sat, week before
+  // Voting window — starts mid-December (prior year), ends Thu 4+ weeks before weekend.
+  const votingStart = resolveSeasonDate(year, 12, 3, 'Mon', -1); // 3rd Mon of Dec prior yr
+  const votingEnd = shift(startersAnnounced, -7); // Thu 1 wk before starters reveal
   
   return {
     votingStart,

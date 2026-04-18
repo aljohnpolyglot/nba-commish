@@ -314,7 +314,7 @@ export interface WaiverResult {
  * @param month - current simulation month (1-12). Pass undefined to always enforce regular-season limit.
  */
 export function autoTrimOversizedRosters(state: GameState, month?: number): WaiverResult[] {
-  const userTeamId = state.teams[0]?.id;
+  const userTeamId = (state as any).userTeamId ?? state.teams[0]?.id;
   const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
   const maxTrainingCamp = state.leagueStats.maxTrainingCampRoster ?? 21;
 
@@ -401,8 +401,9 @@ export function runAIMidSeasonExtensions(state: GameState): ExtensionResult[] {
   const currentYear = state.leagueStats.year;
   const results: ExtensionResult[] = [];
 
-  // Only AI teams (not the user's first team, which is conventionally teams[0])
-  const userTeamId = state.teams[0]?.id;
+  // Only AI teams — in GM mode skip the user's managed team, otherwise fall
+  // back to teams[0] (commissioner mode has no roster gate to honor).
+  const userTeamId = (state as any).userTeamId ?? state.teams[0]?.id;
 
   // Players expiring at end of this season, on AI teams, not already extended
   const expiringPlayers = state.players.filter(p => {
@@ -503,7 +504,7 @@ export function runAISeasonEndExtensions(state: GameState): ExtensionResult[] {
 
   const currentYear = state.leagueStats.year;
   const results: ExtensionResult[] = [];
-  const userTeamId = state.teams[0]?.id;
+  const userTeamId = (state as any).userTeamId ?? state.teams[0]?.id;
 
   const expiringPlayers = state.players.filter(p => {
     if (!p.contract) return false;

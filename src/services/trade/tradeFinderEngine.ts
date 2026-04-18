@@ -9,7 +9,8 @@
 import type { NBAPlayer, NBATeam, DraftPick } from '../../types';
 import {
   calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV,
-  isUntouchable, type TeamMode,
+  isUntouchable, isYoungContenderCore, isOnTradingBlock, isSalaryLegal, type TeamMode,
+  type TVContext,
 } from './tradeValueEngine';
 
 const EXTERNAL = new Set(['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'Draft Prospect', 'Prospect']);
@@ -18,7 +19,7 @@ const EXTERNAL = new Set(['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', '
 
 export interface TradeOfferItem {
   id: string;
-  type: 'player' | 'pick';
+  type: 'player' | 'pick' | 'absorb';
   label: string;
   val: number;
   player?: NBAPlayer;
@@ -31,6 +32,9 @@ export interface TradeOffer {
   tid: number;
   items: TradeOfferItem[];
   totalVal: number;
+  /** 'match' = closest-value player swap (default); 'dump' = low-value vet + pick hoard;
+   *  'absorb' = cap-space team takes the contract for future flexibility (no return). */
+  variant?: 'match' | 'dump' | 'absorb';
 }
 
 export interface FindOffersInput {
@@ -56,6 +60,22 @@ export interface FindOffersInput {
   teamOutlooks: Map<number, { role: string }>;
   /** Optional: only generate offers from specific teams */
   targetTids?: number[];
+  /** Optional: in-season PER context (league avg + regular-season flag). When
+   * present, TV is marginally adjusted by each player's current-season PER. */
+  tvContext?: TVContext;
+  /** Optional: per-team cap space in thousands (negative = over cap). Enables the
+   * 'absorb' salary-dump variant when a team has enough room to take the outgoing
+   * contract without matching salary back. */
+  capSpaces?: Map<number, number>;
+  /** Optional GM-mode trade difficulty 0-100 (50 = default).
+   *  Applied as a TV bias on the target `gap`: higher difficulty = AI returns less. */
+  tradeDifficulty?: number;
+  /** When set, untouchable / young-core filters are SKIPPED for this team's roster.
+   *  Used in reverse-mode-star-chasing: AI demands user's core for an elite target. */
+  bypassUntouchablesForTid?: number;
+  /** When true, the reverse-mode loyalty-lifer block is bypassed — user has
+   *  overridden the owner's "don't trade our lifer" warning. */
+  allowLifers?: boolean;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -75,13 +95,44 @@ function roleToMode(role: string): TeamMode {
 export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
   const {
     fromTid, offerValue, usedIds: basketIds, players, teams, draftPicks,
-    currentYear, minTradableSeason, powerRanks, teamOutlooks, targetTids,
+    currentYear, minTradableSeason, powerRanks, teamOutlooks, targetTids, tvContext, capSpaces,
+    tradeDifficulty, bypassUntouchablesForTid, allowLifers,
   } = input;
+
+  // Difficulty → TV bias on the gap target. Asymmetric so 50 maps to the
+  // current "+10 fleece" default the user is already tuned to.
+  // d=0 → -60 (AI favors user by 60 TV), d=50 → +10 (current), d=100 → +60 (AI demands +60)
+  const difficultyBias = (() => {
+    if (tradeDifficulty === undefined) return 0;
+    const d = Math.max(0, Math.min(100, tradeDifficulty));
+    return d <= 50 ? (d / 50) * 70 - 60 : 10 + (d - 50);
+  })();
+
+  // Loyalty-lifer block — ONLY applies in reverse mode (targetTids set, meaning
+  // user is asking an AI team to give up one of their lifers). If the Warriors
+  // GM wants to trade Curry in NORMAL mode, that's their choice — don't block. //lol
+  // Uses MAX(direct field, stats count) because the live counter can lag behind
+  // career history early in a game.
+  if (targetTids !== undefined && !allowLifers) {
+    for (const p of players) {
+      if (!basketIds.has(p.internalId)) continue;
+      const directYrs = (p as any).yearsWithTeam ?? 0;
+      const statYrs = p.stats
+        ? p.stats.filter((s: any) => s.tid === p.tid && !s.playoffs && (s.gp ?? 0) > 0).length
+        : 0;
+      if (Math.max(directYrs, statYrs) >= 10) return [];
+    }
+  }
 
   const offers: TradeOffer[] = [];
   const candidateTeams = targetTids
     ? teams.filter(t => targetTids.includes(t.id))
     : teams.filter(t => t.id !== fromTid);
+
+  // Outgoing salary (thousands) from the offering basket — used for NBA 125% salary match.
+  const outgoingSalary = players
+    .filter(p => basketIds.has(p.internalId))
+    .reduce((s, p) => s + (p.contract?.amount ?? 0), 0);
 
   for (const team of candidateTeams) {
     if (team.id === fromTid) continue;
@@ -92,20 +143,89 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
 
     const usedIds = new Set(basketIds);
     const returnItems: TradeOfferItem[] = [];
-    let gap = offerValue;
+    // difficultyBias shrinks the target gap when AI is tough (they return less for same offer)
+    // and expands it when AI is generous (they return more). Floor at 10 so AI always offers something.
+    // expectedReturn is used in the final ratio check so the threshold respects difficulty
+    // (previously ratio compared against offerValue, causing false rejections on low-TV targets).
+    const expectedReturn = Math.max(10, offerValue - difficultyBias);
+    let gap = expectedReturn;
 
     // Get their roster sorted by OVR, excluding external/prospects
     const theirRoster = players
       .filter(p => p.tid === team.id && !EXTERNAL.has(p.status ?? '') && p.tid !== -2)
       .sort((a, b) => b.overallRating - a.overallRating);
 
-    // ── Player matching (up to 5 players — real NBA trades can be big) ──
-    const MAX_PLAYERS = 5;
+    // ── Player matching — fewer players on star trades, picks fill the rest ──
+    // Star targets (≥130 TV) mirror real NBA deals: 1 matching vet + pick pile.
+    // With the flatter TV curve, 87/87 Bam-tier players land ~140 TV and get the
+    // star package. Mid (100-129) allows 3 players; small (<100) up to 5.
+    const isStarTarget = offerValue >= 130;
+    const MAX_PLAYERS = isStarTarget ? 2 : offerValue >= 100 ? 3 : 5;
+
+    // Star-offer exception: when the basket is ≥140 TV, the opposing team will
+    // part with their LOWEST-TV untouchable (one per offer). Hard guards so a
+    // team's FRANCHISE piece (Ant for Minny: 90/94) never comes out — only true
+    // rotation-tier untouchables (loyalty vets, 82 OVR contend-locks) unlock.
+    // For monster offers (>170 TV), the SECOND-lowest qualifying untouchable unlocks too.
+    // FRANCHISE-FACE PROTECTION: if a team has only ONE untouchable overall, that player
+    // is their face — never unlock even if they squeak past the ovr/pot guards.
+    const unlockedUntouchableIds = new Set<string>();
+    if (offerValue >= 140) {
+      const allUntouchables = theirRoster.filter(p => isUntouchable(p, theirMode, currentYear));
+      const franchiseFaceProtected = allUntouchables.length <= 1;
+      if (!franchiseFaceProtected) {
+        const qualifying = allUntouchables
+          // Loyalty floor: 10+ year lifers are ABSOLUTELY untradeable, no unlock ever.
+          // Saves Curry/Draymond/Duncan-types regardless of how wild the offer gets //lol
+          .filter(p => {
+            const directYrs = (p as any).yearsWithTeam ?? 0;
+            const statYrs = p.stats
+              ? p.stats.filter((s: any) => s.tid === p.tid && !s.playoffs && (s.gp ?? 0) > 0).length
+              : 0;
+            return Math.max(directYrs, statYrs) < 10;
+          })
+          .map(p => ({ p, tv: calcPlayerTV(p, theirMode, currentYear, tvContext), ovr: calcOvr2K(p), pot: calcPot2K(p, currentYear) }))
+          .filter(x =>
+               x.tv > 0
+            && x.tv <= offerValue * 0.5
+            && x.ovr < 85
+            && x.pot < 90
+          )
+          .sort((a, b) => a.tv - b.tv);
+        if (qualifying[0]) unlockedUntouchableIds.add(qualifying[0].p.internalId);
+        if (offerValue > 170 && qualifying[1]) unlockedUntouchableIds.add(qualifying[1].p.internalId);
+      }
+    }
+
+    // Seed the return with each unlocked untouchable (1 for ≥150 TV, up to 2 for >180 TV)
+    // so the build pattern reads: (1) unlocked untouchables → (2) fillers → (3) pick sweeteners.
+    for (const unlockedId of unlockedUntouchableIds) {
+      const ut = theirRoster.find(p => p.internalId === unlockedId);
+      if (!ut) continue;
+      const utTV = calcPlayerTV(ut, theirMode, currentYear, tvContext);
+      returnItems.push({
+        id: ut.internalId,
+        type: 'player',
+        label: ut.name,
+        val: utTV,
+        player: ut,
+        ovr: calcOvr2K(ut),
+        pot: calcPot2K(ut, currentYear),
+      });
+      usedIds.add(ut.internalId);
+      gap -= utTV;
+    }
+
     for (let round = 0; round < MAX_PLAYERS && gap > (round === 0 ? 0 : 8); round++) {
       const maxGapMult = round === 0 ? 1.8 : round === 1 ? 1.5 : 1.3;
+      // Star chase in reverse mode: shopping an elite target waives the user's
+      // own untouchable/young-core protections. Be careful what you wish for.
+      const bypassUT = bypassUntouchablesForTid === team.id;
       const candidate = theirRoster
-        .filter(p => !usedIds.has(p.internalId) && !isUntouchable(p, theirMode, currentYear))
-        .map(p => ({ ...p, tv: calcPlayerTV(p, theirMode, currentYear) }))
+        .filter(p => !usedIds.has(p.internalId)
+                  && (bypassUT || unlockedUntouchableIds.has(p.internalId) || !isUntouchable(p, theirMode, currentYear))
+                  && (bypassUT || !isYoungContenderCore(p, theirRoster, theirMode, currentYear)))
+        .map(p => ({ ...p, tv: calcPlayerTV(p, theirMode, currentYear, tvContext) }))
         .filter(p => p.tv > 0 && p.tv <= gap * maxGapMult)
         .sort((a, b) => Math.abs(a.tv - gap) - Math.abs(b.tv - gap))[0];
 
@@ -124,17 +244,21 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
       gap -= candidate.tv;
     }
 
-    // ── Pick sweeteners (up to 4 picks) ──────────────────────────────────
+    // ── Pick sweeteners — contenders spam picks to match star value ──────
     const theirPicks = draftPicks
       .filter(pk => pk.tid === team.id && pk.season >= minTradableSeason && !usedIds.has(String(pk.dpid)))
       .sort((a, b) => a.season - b.season);
 
-    let picksAdded = 0;
+    const isContender = theirMode === 'contend';
+    const overshootMargin = isContender ? 30 : 14;
+    // No hard pick cap — real NBA blockbusters stack 5+ firsts. Loop exits naturally
+    // when gap closes, picks run out, or the next pick would overshoot. Safety net
+    // only prevents pathological infinite loops.
     let safety = 0;
-    while (gap > 2 && picksAdded < 4 && safety++ < 8 && theirPicks.length > 0) {
+    while (gap > 2 && safety++ < 40 && theirPicks.length > 0) {
       const pk = theirPicks.shift()!;
       const pv = calcPickTV(pk.round, theirRank, teams.length, Math.max(1, pk.season - currentYear));
-      if (pv > gap + 14) break;
+      if (pv > gap + overshootMargin) break;
       returnItems.push({
         id: String(pk.dpid),
         type: 'pick',
@@ -144,19 +268,126 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
       });
       usedIds.add(String(pk.dpid));
       gap -= pv;
-      picksAdded++;
     }
 
     if (returnItems.length === 0) continue;
 
     // ── Ratio threshold — reject lopsided deals ──────────────────────────
+    // Compare against expectedReturn (difficulty-adjusted target), not raw offerValue,
+    // so high difficulty doesn't create impossible rejections on small-TV trades.
     const returnVal = returnItems.reduce((s, i) => s + i.val, 0);
-    const ratio = Math.max(offerValue, returnVal) / Math.max(1, Math.min(offerValue, returnVal));
-    const totalVal = Math.max(offerValue, returnVal);
+    const ratio = Math.max(expectedReturn, returnVal) / Math.max(1, Math.min(expectedReturn, returnVal));
+    const totalVal = Math.max(expectedReturn, returnVal);
     const ratioThreshold = totalVal >= 200 ? 1.15 : totalVal >= 100 ? 1.35 : 1.45;
     if (ratio > ratioThreshold) continue;
 
-    offers.push({ tid: team.id, items: returnItems, totalVal: returnVal });
+    offers.push({ tid: team.id, items: returnItems, totalVal: returnVal, variant: 'match' });
+
+    // ── Salary-dump variant — contenders chasing 50-149 TV targets ──────
+    // Pulls filler players from the Trading Block (isOnTradingBlock) and stacks
+    // AS MANY as needed to satisfy the NBA 125% salary rule. Then picks close
+    // the remaining TV gap. If contracts can't legally add up, skip this variant.
+    // 150+ TV targets use the star package (match variant) instead.
+    if (isContender && offerValue >= 50 && offerValue < 150 && outgoingSalary > 0) {
+      const dumpItems: TradeOfferItem[] = [];
+      const dumpUsedIds = new Set(basketIds);
+      let dumpGap = offerValue;
+      let incomingSalary = 0;
+
+      const dumpBypassUT = bypassUntouchablesForTid === team.id;
+      const blockCandidates = theirRoster
+        .filter(p => !dumpUsedIds.has(p.internalId)
+                  && (dumpBypassUT || !isUntouchable(p, theirMode, currentYear))
+                  && (dumpBypassUT || !isYoungContenderCore(p, theirRoster, theirMode, currentYear))
+                  && (dumpBypassUT || isOnTradingBlock(p, theirMode, currentYear)))
+        .map(p => ({ ...p, tv: calcPlayerTV(p, theirMode, currentYear, tvContext), sal: p.contract?.amount ?? 0 }))
+        .filter(p => p.tv > 0 && p.sal > 0)
+        // Higher-salary players first — match outgoing salary faster with fewer bodies.
+        .sort((a, b) => b.sal - a.sal);
+
+      // Pack MINIMUM players to hit salary-legal, then stop — picks close the TV gap.
+      // Without this stop, the loop was packing 4+ players because the salary-over
+      // check only broke when gap was also <30, causing contender roster drains.
+      const MAX_DUMP_PLAYERS = 8;
+      for (const cand of blockCandidates) {
+        if (dumpItems.length >= MAX_DUMP_PLAYERS) break;
+        // As soon as at least one player is in and salary clears the 125% rule, stop.
+        if (dumpItems.length > 0 && isSalaryLegal(outgoingSalary, incomingSalary)) break;
+
+        dumpItems.push({
+          id: cand.internalId,
+          type: 'player',
+          label: cand.name,
+          val: cand.tv,
+          player: cand,
+          ovr: calcOvr2K(cand),
+          pot: calcPot2K(cand, currentYear),
+        });
+        dumpUsedIds.add(cand.internalId);
+        dumpGap -= cand.tv;
+        incomingSalary += cand.sal;
+      }
+
+      // Hard requirement: salary must be legal or the whole deal is illegal under CBA.
+      const salaryLegal = dumpItems.length > 0 && isSalaryLegal(outgoingSalary, incomingSalary);
+
+      if (salaryLegal) {
+        // Pile picks to close the remaining TV gap.
+        const dumpPicks = draftPicks
+          .filter(pk => pk.tid === team.id && pk.season >= minTradableSeason && !dumpUsedIds.has(String(pk.dpid)))
+          .sort((a, b) => a.season - b.season);
+
+        let dumpPicksAdded = 0;
+        let dumpSafety = 0;
+        // No hard pick cap — keep stacking until gap closes or overshoot.
+        while (dumpGap > 3 && dumpSafety++ < 40 && dumpPicks.length > 0) {
+          const pk = dumpPicks.shift()!;
+          const pv = calcPickTV(pk.round, theirRank, teams.length, Math.max(1, pk.season - currentYear));
+          if (pv > dumpGap + 25) break;
+          dumpItems.push({
+            id: String(pk.dpid),
+            type: 'pick',
+            label: `${pk.season} ${pk.round === 1 ? '1st' : '2nd'} Round`,
+            val: pv,
+            pick: pk,
+          });
+          dumpUsedIds.add(String(pk.dpid));
+          dumpGap -= pv;
+          dumpPicksAdded++;
+        }
+
+        const dumpReturnVal = dumpItems.reduce((s, i) => s + i.val, 0);
+        const dumpRatio = Math.max(expectedReturn, dumpReturnVal) / Math.max(1, Math.min(expectedReturn, dumpReturnVal));
+        const dumpTotalVal = Math.max(expectedReturn, dumpReturnVal);
+        const dumpRatioThreshold = dumpTotalVal >= 100 ? 1.35 : 1.45;
+        if (dumpRatio <= dumpRatioThreshold) {
+          offers.push({ tid: team.id, items: dumpItems, totalVal: dumpReturnVal, variant: 'dump' });
+        }
+      }
+    }
+
+    // ── Absorb variant — cap-space team takes the contract, returns nothing ──
+    // Real-NBA analog: Spurs/Pistons/Jazz absorbing bloated deals via cap space
+    // in exchange for future flexibility. One-sided legal in isSalaryLegal.
+    // Trigger: user is sending a salaried player, target team's cap space covers
+    // the full outgoing salary, and target team isn't untouchable-contending.
+    const teamCapSpace = capSpaces?.get(team.id) ?? -Infinity;
+    const canAbsorb = outgoingSalary > 0
+      && teamCapSpace >= outgoingSalary
+      && theirMode !== 'contend'; // contenders don't take on dead money for nothing
+    if (canAbsorb) {
+      offers.push({
+        tid: team.id,
+        variant: 'absorb',
+        items: [{
+          id: `absorb-${team.id}`,
+          type: 'absorb',
+          label: 'Salary Dump',
+          val: 0,
+        }],
+        totalVal: 0,
+      });
+    }
   }
 
   return offers.sort((a, b) => b.totalVal - a.totalVal);
@@ -177,8 +408,9 @@ export function generateAITradeProposal(input: {
   minTradableSeason: number;
   powerRanks: Map<number, number>;
   teamOutlooks: Map<number, { role: string }>;
+  tvContext?: TVContext;
 }): { buyerGives: TradeOfferItem[]; sellerGives: TradeOfferItem[] } | null {
-  const { buyerTid, sellerTid, players, teams, draftPicks, currentYear, minTradableSeason, powerRanks, teamOutlooks } = input;
+  const { buyerTid, sellerTid, players, teams, draftPicks, currentYear, minTradableSeason, powerRanks, teamOutlooks, tvContext } = input;
 
   const sellerOutlook = teamOutlooks.get(sellerTid) ?? { role: 'neutral' };
   const buyerOutlook = teamOutlooks.get(buyerTid) ?? { role: 'neutral' };
@@ -188,12 +420,12 @@ export function generateAITradeProposal(input: {
   // Find a target player on the seller's team (non-untouchable, best TV)
   const sellerRoster = players
     .filter(p => p.tid === sellerTid && !EXTERNAL.has(p.status ?? ''))
-    .sort((a, b) => calcPlayerTV(b, sellerMode, currentYear) - calcPlayerTV(a, sellerMode, currentYear));
+    .sort((a, b) => calcPlayerTV(b, sellerMode, currentYear, tvContext) - calcPlayerTV(a, sellerMode, currentYear, tvContext));
 
   const target = sellerRoster.find(p => !isUntouchable(p, sellerMode, currentYear));
   if (!target) return null;
 
-  const targetTV = calcPlayerTV(target, sellerMode, currentYear);
+  const targetTV = calcPlayerTV(target, sellerMode, currentYear, tvContext);
   if (targetTV <= 0) return null;
 
   // Generate what the buyer needs to offer to match
@@ -209,6 +441,7 @@ export function generateAITradeProposal(input: {
     powerRanks,
     teamOutlooks,
     targetTids: [buyerTid],
+    tvContext,
   });
 
   if (counterOffers.length === 0) return null;

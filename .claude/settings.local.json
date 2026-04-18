@@ -64,7 +64,8 @@
       "Bash(ls AI_AND_ECONOMY_PLAN.md README.md)",
       "Bash(ls *.md)",
       "Bash(find src/components/central/view/TeamOffice -type f -exec wc -c {} \\\\;)",
-      "Bash(sort -k2)"
+      "Bash(sort -k2)",
+      "Bash(awk 'NR>=226 && /^};?$|^export const/ {print NR\": \"$0}' /c/Users/user-MSI/Downloads/nba-commish/src/services/rosterService.ts)"
     ]
   }
 }

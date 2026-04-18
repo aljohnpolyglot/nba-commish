@@ -1,9 +1,26 @@
-import React from 'react';
+/**
+ * TradeSummaryModal — revamped to reuse OfferCard visuals from the Trade Proposals
+ * flow. Two side-by-side OfferCards show each team's outgoing assets with the
+ * same portrait/OVR/POT/salary layout used everywhere else.
+ */
+
+import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ArrowLeftRight, DollarSign, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+import { X, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { NBAPlayer, DraftPick, NBATeam } from '../../types';
 import { useGame } from '../../store/GameContext';
 import { normalizeDate } from '../../utils/helpers';
+import { getTradeDeadlineDate, toISODateString } from '../../utils/dateUtils';
+import {
+  calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV,
+  type TeamMode,
+} from '../../services/trade/tradeValueEngine';
+import {
+  getTradeOutlook, effectiveRecord, getCapThresholds,
+  getTeamPayrollUSD, getTeamCapProfile, topNAvgK2,
+  type TradeOutlook,
+} from '../../utils/salaryUtils';
+import { OfferCard, type FoundOffer, type TradeItem } from '../central/view/TradeFinderView';
 
 interface TradeSummaryModalProps {
   isOpen: boolean;
@@ -23,9 +40,43 @@ interface TradeSummaryModalProps {
   salaryMismatchInfo: { message: string; team: 'A' | 'B' } | null;
 }
 
-const formatContract = (amount: number) => {
-  return `$${(amount / 1000).toFixed(1)}M`;
-};
+function roleToMode(role: string): TeamMode {
+  if (role === 'heavy_buyer' || role === 'buyer') return 'contend';
+  if (role === 'rebuilding') return 'presti';
+  return 'rebuild';
+}
+
+function buildItems(
+  players: NBAPlayer[],
+  picks: DraftPick[],
+  teamMode: TeamMode,
+  currentYear: number,
+  teams: NBATeam[],
+): TradeItem[] {
+  const items: TradeItem[] = [];
+  for (const p of players) {
+    items.push({
+      id: p.internalId,
+      type: 'player',
+      label: p.name,
+      val: calcPlayerTV(p, teamMode, currentYear),
+      player: p,
+      ovr: calcOvr2K(p),
+      pot: calcPot2K(p, currentYear),
+    });
+  }
+  for (const pk of picks) {
+    const owner = teams.find(t => t.id === pk.originalTid);
+    items.push({
+      id: String(pk.dpid),
+      type: 'pick',
+      label: `${pk.season} ${pk.round === 1 ? '1st' : '2nd'} Round${owner ? ` (via ${owner.abbrev})` : ''}`,
+      val: calcPickTV(pk.round, 15, teams.length, Math.max(1, pk.season - currentYear)),
+      pick: pk,
+    });
+  }
+  return items;
+}
 
 export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
   isOpen,
@@ -38,17 +89,48 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
   if (!isOpen) return null;
 
   const { state } = useGame();
-  const { teamA, teamB, teamAPlayers, teamBPlayers, teamAPicks, teamBPicks, teamASentSalary, teamBSentSalary } = tradeDetails;
+  const { teamA, teamB, teamAPlayers, teamBPlayers, teamAPicks, teamBPicks } = tradeDetails;
 
-  const getPickDescription = (pick: DraftPick) => {
-    const originalTeam = state.teams.find(t => t.id === pick.originalTid);
-    return `${pick.season} ${pick.round === 1 ? '1st' : '2nd'} Rd (via ${originalTeam?.abbrev || '?'})`;
+  const currentYear = state.leagueStats?.year ?? 2026;
+  const isGM = state.gameMode === 'gm';
+  const tradeIsValid = !salaryMismatchInfo;
+  const seasonYear = currentYear;
+  const tradeDeadline = toISODateString(getTradeDeadlineDate(seasonYear, state.leagueStats));
+  const isPastDeadline = normalizeDate(state.date) > tradeDeadline;
+
+  const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
+
+  // Compute outlook + mode + cap for each team for the OfferCard headers.
+  const buildOutlook = (team: NBATeam): TradeOutlook => {
+    const payroll = getTeamPayrollUSD(state.players, team.id);
+    const rec = effectiveRecord(team, currentYear);
+    const confTeams = state.teams.filter(t => t.conference === team.conference).map(t => ({
+      t, rec: effectiveRecord(t, currentYear),
+    })).sort((a, b) => (b.rec.wins - b.rec.losses) - (a.rec.wins - a.rec.losses));
+    const leader = confTeams[0];
+    const lw = leader?.rec.wins ?? 0;
+    const ll = leader?.rec.losses ?? 0;
+    const idx = confTeams.findIndex(c => c.t.id === team.id);
+    const confRank = idx >= 0 ? idx + 1 : 15;
+    const gb = Math.max(0, ((lw - rec.wins) + (rec.losses - ll)) / 2);
+    const expiring = state.players.filter(p => p.tid === team.id && (p.contract?.exp ?? 0) <= currentYear).length;
+    const starAvg = topNAvgK2(state.players, team.id, 3);
+    return getTradeOutlook(payroll, rec.wins, rec.losses, expiring, thresholds, confRank, gb, starAvg);
   };
 
-  const tradeIsValid = !salaryMismatchInfo;
-  const isPicksOnly = teamAPlayers.length === 0 || teamBPlayers.length === 0;
-  const tradeDeadline = `${state.leagueStats?.year ?? 2026}-02-15`;
-  const isPastDeadline = normalizeDate(state.date) > tradeDeadline;
+  const teamAOutlook = buildOutlook(teamA);
+  const teamBOutlook = buildOutlook(teamB);
+  const teamAMode = roleToMode(teamAOutlook.role);
+  const teamBMode = roleToMode(teamBOutlook.role);
+
+  const teamACapK = getTeamCapProfile(state.players, teamA.id, (teamA as any).wins ?? 0, (teamA as any).losses ?? 0, thresholds).capSpaceUSD / 1000;
+  const teamBCapK = getTeamCapProfile(state.players, teamB.id, (teamB as any).wins ?? 0, (teamB as any).losses ?? 0, thresholds).capSpaceUSD / 1000;
+
+  const teamAItems = buildItems(teamAPlayers, teamAPicks, teamAMode, currentYear, state.teams);
+  const teamBItems = buildItems(teamBPlayers, teamBPicks, teamBMode, currentYear, state.teams);
+
+  const teamAOffer: FoundOffer = { tid: teamA.id, items: teamAItems, outlook: teamAOutlook, variant: 'match' };
+  const teamBOffer: FoundOffer = { tid: teamB.id, items: teamBItems, outlook: teamBOutlook, variant: 'match' };
 
   return (
     <AnimatePresence>
@@ -62,139 +144,101 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
           initial={{ scale: 0.95, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.95, y: 20 }}
-          className="bg-[#1e1e1e] border border-slate-700 rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+          className="bg-[#0f172a] border border-slate-700 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col"
         >
           {/* Header */}
-          <div className="p-4 border-b border-slate-700/50 bg-[#161616] flex items-center justify-between">
-            <h3 className="text-xl font-bold text-white">Trade Summary</h3>
-            <button onClick={onClose} className="p-2 hover:bg-slate-700 rounded-md text-slate-400 hover:text-white transition-colors">
-              <X size={20} />
+          <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between rounded-t-2xl">
+            <h3 className="text-lg font-black text-white uppercase tracking-tight">Trade Summary</h3>
+            <button onClick={onClose} className="p-1.5 hover:bg-slate-700 rounded-md text-slate-400 hover:text-white transition-colors">
+              <X size={18} />
             </button>
           </div>
 
           {/* Past Trade Deadline Banner */}
           {isPastDeadline && (
-            <div className="px-4 py-2 border-b bg-amber-500/10 border-amber-500/20 text-amber-400 flex items-center gap-2">
+            <div className="px-4 py-2 border-b border-amber-500/20 bg-amber-500/10 text-amber-400 flex items-center gap-2">
               <Clock size={14} />
-              <span className="text-xs font-bold uppercase tracking-wide">Past Trade Deadline (Feb 15)</span>
+              <span className="text-xs font-bold uppercase tracking-wide">Past Trade Deadline ({tradeDeadline})</span>
             </div>
           )}
 
           {/* Trade Status Banner */}
           <div className={`px-4 py-3 border-b ${
             tradeIsValid
-              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
-              : 'bg-rose-500/10 border-rose-500/20 text-rose-500'
+              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+              : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
           }`}>
             <div className="flex items-center gap-3">
-              {tradeIsValid ? (
-                <CheckCircle2 size={18} />
-              ) : (
-                <AlertCircle size={18} />
-              )}
+              {tradeIsValid ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
               <div>
-                <div className="text-sm font-bold">
-                  {isPicksOnly
-                    ? 'Picks-Only Trade — Always Valid'
-                    : tradeIsValid
-                      ? isPastDeadline ? 'Salaries Match — Past Deadline' : 'Trade Valid'
-                      : isPastDeadline ? 'Past Deadline + Salary Mismatch' : 'Salary Mismatch'
-                  }
+                <div className="text-sm font-black">
+                  {tradeIsValid
+                    ? isPastDeadline ? 'Salaries Match — Past Deadline' : 'Trade Valid'
+                    : isPastDeadline ? 'Past Deadline + Salary Mismatch' : 'Salary Mismatch'}
                 </div>
                 {salaryMismatchInfo?.message && (
-                  <div className="text-xs mt-0.5">
-                    {salaryMismatchInfo.message}
-                  </div>
+                  <div className="text-xs mt-0.5 opacity-80">{salaryMismatchInfo.message}</div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Trade Details */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
-            {/* Team A Outgoing / Team B Incoming */}
-            <div className="bg-[#161616] p-4 rounded-md border border-slate-700/50">
-              <div className="text-sm font-bold text-white mb-2 flex items-center gap-2">
-                <ArrowLeftRight size={16} className="text-slate-400" />
-                <span>{teamA.abbrev} sends to {teamB.abbrev}</span>
-              </div>
-              <div className="space-y-1 text-sm">
-                {teamAPlayers.length > 0 && (
-                  <div>
-                    <span className="text-slate-400">Players: </span>
-                    <span className="text-white">{teamAPlayers.map(p => p.name).join(', ')}</span>
-                  </div>
-                )}
-                {teamAPicks.length > 0 && (
-                  <div>
-                    <span className="text-slate-400">Picks: </span>
-                    <span className="text-white">{teamAPicks.map(getPickDescription).join(', ')}</span>
-                  </div>
-                )}
-                {teamAPlayers.length > 0 && (
-                  <div className="flex items-center gap-1 text-slate-400 text-xs">
-                    <DollarSign size={12} />
-                    <span>Salary: <strong className="text-white">{formatContract(teamASentSalary)}</strong></span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Team B Outgoing / Team A Incoming */}
-            <div className="bg-[#161616] p-4 rounded-md border border-slate-700/50">
-              <div className="text-sm font-bold text-white mb-2 flex items-center gap-2">
-                <ArrowLeftRight size={16} className="text-slate-400" />
-                <span>{teamB.abbrev} sends to {teamA.abbrev}</span>
-              </div>
-              <div className="space-y-1 text-sm">
-                {teamBPlayers.length > 0 && (
-                  <div>
-                    <span className="text-slate-400">Players: </span>
-                    <span className="text-white">{teamBPlayers.map(p => p.name).join(', ')}</span>
-                  </div>
-                )}
-                {teamBPicks.length > 0 && (
-                  <div>
-                    <span className="text-slate-400">Picks: </span>
-                    <span className="text-white">{teamBPicks.map(getPickDescription).join(', ')}</span>
-                  </div>
-                )}
-                {teamBPlayers.length > 0 && (
-                  <div className="flex items-center gap-1 text-slate-400 text-xs">
-                    <DollarSign size={12} />
-                    <span>Salary: <strong className="text-white">{formatContract(teamBSentSalary)}</strong></span>
-                  </div>
-                )}
-              </div>
+          {/* Two-card body — reuses OfferCard visual language */}
+          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <OfferCard
+                offer={teamAOffer}
+                myItems={teamBItems}
+                team={teamA}
+                teams={state.teams}
+                currentYear={currentYear}
+                dateStr={state.date ?? ''}
+                capSpaceK={teamACapK}
+                hideActions
+                onManage={() => {}}
+              />
+              <OfferCard
+                offer={teamBOffer}
+                myItems={teamAItems}
+                team={teamB}
+                teams={state.teams}
+                currentYear={currentYear}
+                dateStr={state.date ?? ''}
+                capSpaceK={teamBCapK}
+                hideActions
+                onManage={() => {}}
+              />
             </div>
           </div>
 
-          {/* Footer Buttons */}
-          <div className="p-4 border-t border-slate-700/50 bg-[#161616] space-y-2">
+          {/* Footer buttons */}
+          <div className="p-4 border-t border-slate-800 bg-slate-900/50 rounded-b-2xl">
             {isPastDeadline && (
-              <p className="text-amber-400/70 text-xs text-center">
+              <p className="text-amber-400/70 text-xs text-center mb-2">
                 {tradeIsValid
                   ? 'Trade deadline has passed. Proceeding requires commissioner override.'
                   : 'Trade deadline has passed and salaries don\'t match. Force trade to override both.'}
               </p>
             )}
-            <div className="flex justify-end gap-3">
-              <button onClick={onClose} className="px-5 py-2 rounded-md font-bold text-xs uppercase bg-slate-700 hover:bg-slate-600 text-white transition-colors">
+            <div className="flex justify-end gap-2">
+              <button onClick={onClose} className="px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest bg-slate-800 hover:bg-slate-700 text-white transition-colors">
                 Go Back
               </button>
               {tradeIsValid ? (
                 <button
                   onClick={onConfirmTrade}
-                  className={`px-5 py-2 rounded-md font-bold text-xs uppercase text-white transition-colors ${
-                    isPastDeadline
-                      ? 'bg-amber-600 hover:bg-amber-500'
-                      : 'bg-emerald-600 hover:bg-emerald-500'
+                  className={`px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest text-white transition-colors ${
+                    isPastDeadline ? 'bg-amber-600 hover:bg-amber-500' : 'bg-emerald-600 hover:bg-emerald-500'
                   }`}
                 >
                   {isPastDeadline ? 'Override Deadline & Confirm' : 'Confirm Trade'}
                 </button>
+              ) : isGM ? (
+                <span className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-rose-500/10 border border-rose-500/30 text-rose-300">
+                  Fix Salary to Proceed
+                </span>
               ) : (
-                <button onClick={onForceTrade} className="px-5 py-2 rounded-md font-bold text-xs uppercase bg-rose-600 hover:bg-rose-500 text-white transition-colors">
+                <button onClick={onForceTrade} className="px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest bg-rose-600 hover:bg-rose-500 text-white transition-colors">
                   {isPastDeadline ? 'Force Trade (Override All)' : 'Force Trade'}
                 </button>
               )}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star, Trophy, Zap } from 'lucide-react';
 import { normalizeDate, getPlayerHeadshot, getTeamLogo, extractTeamId, convertTo2KRating } from '../../utils/helpers';
+import { getPlayerImage } from '../central/view/bioCache';
 
 interface AllStarRosterProps {
   allStar: any;
@@ -57,7 +58,7 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, on
               style={{ borderColor: `${teamColor}40` }}
             >
               <img
-                src={fullPlayer?.imgURL || getPlayerHeadshot(p.playerId, p.nbaId)}
+                src={(fullPlayer && getPlayerImage(fullPlayer)) || getPlayerHeadshot(p.playerId, p.nbaId)}
                 className="w-full h-full object-cover"
                 alt={p.playerName}
                 referrerPolicy="no-referrer"
@@ -251,7 +252,7 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, on
                   <div key={p.playerId} className="flex items-center gap-4 px-4 py-3 border-b border-slate-800 last:border-0">
                     <div className="flex items-center gap-2 flex-1">
                       <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-800 opacity-50">
-                        <img src={state.players?.find((pl: any) => pl.internalId === p.playerId)?.imgURL || `https://cdn.nba.com/headshots/nba/latest/1040x760/${p.nbaId || p.playerId}.png`} className="w-full h-full object-cover" alt={p.playerName} referrerPolicy="no-referrer" onError={(e) => { const img = e.target as HTMLImageElement; if (!img.dataset.triedCdn) { img.dataset.triedCdn = '1'; img.src = `https://cdn.nba.com/headshots/nba/latest/1040x760/${p.nbaId || p.playerId}.png`; } else { img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.playerName)}&background=1e293b&color=94a3b8&size=100`; } }} />
+                        <img src={(() => { const pl = state.players?.find((x: any) => x.internalId === p.playerId); return (pl && getPlayerImage(pl)) || `https://cdn.nba.com/headshots/nba/latest/1040x760/${p.nbaId || p.playerId}.png`; })()} className="w-full h-full object-cover" alt={p.playerName} referrerPolicy="no-referrer" onError={(e) => { const img = e.target as HTMLImageElement; if (!img.dataset.triedCdn) { img.dataset.triedCdn = '1'; img.src = `https://cdn.nba.com/headshots/nba/latest/1040x760/${p.nbaId || p.playerId}.png`; } else { img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.playerName)}&background=1e293b&color=94a3b8&size=100`; } }} />
                       </div>
                       <div>
                         <span className="text-sm font-bold text-slate-500 line-through">{p.playerName}</span>
@@ -263,7 +264,7 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, on
                         <span className="text-slate-700 text-xs">→</span>
                         <div className="flex items-center gap-2 flex-1">
                           <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-800">
-                            <img src={state.players?.find((pl: any) => pl.internalId === replacement.playerId)?.imgURL || `https://cdn.nba.com/headshots/nba/latest/1040x760/${replacement.nbaId || replacement.playerId}.png`} className="w-full h-full object-cover" alt={replacement.playerName} referrerPolicy="no-referrer" onError={(e) => { const img = e.target as HTMLImageElement; if (!img.dataset.triedCdn) { img.dataset.triedCdn = '1'; img.src = `https://cdn.nba.com/headshots/nba/latest/1040x760/${replacement.nbaId || replacement.playerId}.png`; } else { img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(replacement.playerName)}&background=1e293b&color=94a3b8&size=100`; } }} />
+                            <img src={(() => { const pl = state.players?.find((x: any) => x.internalId === replacement.playerId); return (pl && getPlayerImage(pl)) || `https://cdn.nba.com/headshots/nba/latest/1040x760/${replacement.nbaId || replacement.playerId}.png`; })()} className="w-full h-full object-cover" alt={replacement.playerName} referrerPolicy="no-referrer" onError={(e) => { const img = e.target as HTMLImageElement; if (!img.dataset.triedCdn) { img.dataset.triedCdn = '1'; img.src = `https://cdn.nba.com/headshots/nba/latest/1040x760/${replacement.nbaId || replacement.playerId}.png`; } else { img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(replacement.playerName)}&background=1e293b&color=94a3b8&size=100`; } }} />
                           </div>
                           <div>
                             <span className="text-sm font-bold text-white">{replacement.playerName}</span>
@@ -278,7 +279,7 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, on
               {replacements.filter((r: any) => !dnps.find((d: any) => d.playerId === r.injuredPlayerId)).map((r: any) => (
                 <div key={r.playerId} className="flex items-center gap-2 px-4 py-3 border-b border-slate-800 last:border-0">
                   <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-800">
-                    <img src={state.players?.find((pl: any) => pl.internalId === r.playerId)?.imgURL || `https://cdn.nba.com/headshots/nba/latest/1040x760/${r.nbaId || r.playerId}.png`} className="w-full h-full object-cover" alt={r.playerName} referrerPolicy="no-referrer" onError={(e) => { const img = e.target as HTMLImageElement; if (!img.dataset.triedCdn) { img.dataset.triedCdn = '1'; img.src = `https://cdn.nba.com/headshots/nba/latest/1040x760/${r.nbaId || r.playerId}.png`; } else { img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(r.playerName)}&background=1e293b&color=94a3b8&size=100`; } }} />
+                    <img src={(() => { const pl = state.players?.find((x: any) => x.internalId === r.playerId); return (pl && getPlayerImage(pl)) || `https://cdn.nba.com/headshots/nba/latest/1040x760/${r.nbaId || r.playerId}.png`; })()} className="w-full h-full object-cover" alt={r.playerName} referrerPolicy="no-referrer" onError={(e) => { const img = e.target as HTMLImageElement; if (!img.dataset.triedCdn) { img.dataset.triedCdn = '1'; img.src = `https://cdn.nba.com/headshots/nba/latest/1040x760/${r.nbaId || r.playerId}.png`; } else { img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(r.playerName)}&background=1e293b&color=94a3b8&size=100`; } }} />
                   </div>
                   <span className="text-sm font-bold text-white">{r.playerName}</span>
                   <span className="text-[8px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.5 rounded">REPLACEMENT</span>

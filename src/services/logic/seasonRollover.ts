@@ -21,6 +21,7 @@ import { runRetirementChecks, runFarewellTourChecks, RetireeRecord, FarewellReco
 import { generateFuturePicks, pruneExpiredPicks } from '../draft/DraftPickGenerator';
 import { computeContractOffer } from '../../utils/salaryUtils';
 import { SettingsManager } from '../SettingsManager';
+import { ensureDraftClasses } from '../draftClassFiller';
 
 /** Fired when the sim has just crossed into a new offseason (Oct 1, new year).
  *  Returns the rolled-over GameState patch. Does NOT mutate input. */
@@ -253,6 +254,15 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   // end of the NEXT season and mark them as farewell tour.
   const { players: playersWithFarewells, newFarewells } = runFarewellTourChecks(playersAfterRetire, currentYear);
 
+  // ── 3d. Top up future draft classes ──────────────────────────────────────
+  // Each rollover pushes the horizon one year further. Top up so the player
+  // always has 4 populated classes ahead (currentYear+1 through +4 at this point,
+  // since nextYear is now the "current" season).
+  const fillResult = ensureDraftClasses(playersWithFarewells, nextYear);
+  const playersWithDraftClasses = fillResult.additions.length > 0
+    ? [...playersWithFarewells, ...fillResult.additions]
+    : playersWithFarewells;
+
   // ── 3b. Draft pick bookkeeping ───────────────────────────────────────────
   const windowSize = state.leagueStats.tradableDraftPickSeasons ?? 4;
   const nbaNBATeams = (state.teams ?? []).filter((t: any) => t.tid >= 0 && t.tid < 100);
@@ -400,27 +410,40 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
 
   // ── Reset team W-L for new season ───────────────────────────────────────────
   // Archive completed season record to team.seasons[], then zero out wins/losses.
+  // Emits both {wins, losses} AND {won, lost} so BBGM-style consumers and sim-style
+  // consumers all read correctly without per-site fallback logic.
   const teamsReset = state.teams.map(t => {
+    const existingSeasons: any[] = (t as any).seasons ?? [];
+    const existingRecord = existingSeasons.find((s: any) => Number(s.season) === currentYear);
+    // Preserve any playoffRoundsWon already stamped by lazySimRunner's bracket-complete hook.
+    const existingPlayoffRoundsWon = existingRecord?.playoffRoundsWon;
     const seasonRecord = {
+      // Carry forward any other fields BBGM may have seeded (imgURLSmall, etc.)
+      ...(existingRecord ?? {}),
       season: currentYear,
       wins: t.wins,
       losses: t.losses,
-      playoffRoundsWon: (t as any).seasons?.find((s: any) => Number(s.season) === currentYear)?.playoffRoundsWon ?? 0,
+      won: t.wins,
+      lost: t.losses,
+      playoffRoundsWon: existingPlayoffRoundsWon ?? 0,
     };
-    const existingSeasons: any[] = (t as any).seasons ?? [];
-    // Don't duplicate if already archived (idempotent)
-    const alreadyArchived = existingSeasons.some((s: any) => Number(s.season) === currentYear);
+    // Replace the stale pre-seeded entry if one exists; otherwise append.
+    // BBGM imports pre-seed a current-year entry with 0-0 that would shadow the
+    // real record if we kept it; always overwrite on rollover.
+    const nextSeasons = existingRecord
+      ? existingSeasons.map((s: any) => Number(s.season) === currentYear ? seasonRecord : s)
+      : [...existingSeasons, seasonRecord];
     return {
       ...t,
       wins: 0,
       losses: 0,
       streak: { type: 'W' as const, count: 0 },  // reset streak so "rock bottom" news doesn't fire
-      seasons: alreadyArchived ? existingSeasons : [...existingSeasons, seasonRecord],
+      seasons: nextSeasons,
     };
   });
 
   return {
-    players: playersWithFarewells,
+    players: playersWithDraftClasses,
     teams: teamsReset,
     draftPicks: updatedPicks,
     bets: prunedBets,

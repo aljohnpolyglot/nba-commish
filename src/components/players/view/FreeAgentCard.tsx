@@ -29,11 +29,18 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
 
   const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '');
   const nonNBATeam = !isNBA ? nonNBATeams.find(t => t.tid === player.tid && t.league === player.status) : null;
-  const teamLogo = nonNBATeam?.imgURL || null;
-  const leagueLogo = player.status ? LEAGUE_LOGOS[player.status] || null : null;
+  // NBA team for on-roster players (upcoming FAs).
+  const nbaTeam = isNBA && (player.tid ?? -1) >= 0
+    ? state.teams.find(t => t.id === player.tid) ?? null
+    : null;
+  const teamLogo = nbaTeam?.logoUrl || nonNBATeam?.imgURL || null;
+  const leagueLogo = !nbaTeam && player.status ? LEAGUE_LOGOS[player.status] || null : null;
 
   let orgLabel = 'Free Agent';
-  if (nonNBATeam) {
+  if (nbaTeam) {
+    // BBGM's NBATeam.name already contains the full "Los Angeles Lakers" form — don't double-prefix region.
+    orgLabel = nbaTeam.name;
+  } else if (nonNBATeam) {
     // BBGM stores region + name separately — combine them for full team name
     orgLabel = nonNBATeam.region
       ? `${nonNBATeam.region} ${nonNBATeam.name}`.trim()
@@ -41,6 +48,15 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
   } else if (['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) {
     orgLabel = player.status!;
   }
+
+  // Option chip from contractYears final entry (player / team option).
+  const contractYears = (player as any).contractYears as Array<{ option?: string }> | undefined;
+  const finalOpt = contractYears?.[contractYears.length - 1]?.option ?? '';
+  const optionChip = finalOpt === 'player'
+    ? { label: 'Player Option', color: 'text-sky-400 bg-sky-500/10 border-sky-500/30' }
+    : finalOpt === 'team'
+      ? { label: 'Team Option', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' }
+      : null;
 
   const isInjured = player.injury && player.injury.type !== 'Healthy' && player.injury.gamesRemaining > 0;
   const isSuspended = player.suspension && player.suspension.gamesRemaining > 0;
@@ -91,10 +107,15 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">{player.pos}</span>
               <span className="text-[10px] text-slate-600">•</span>
               <span className="text-[10px] font-bold text-slate-500">{age}y</span>
+              {optionChip && (
+                <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${optionChip.color}`}>
+                  {optionChip.label}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-1.5 mt-1">
               {countryCode && (

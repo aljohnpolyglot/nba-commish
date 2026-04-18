@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Settings2, Zap, Cpu, Layers, Gamepad2, Bot, Database, HardDrive, Crown, User } from 'lucide-react';
+import { X, Settings2, Zap, Cpu, Layers, Gamepad2, Bot, Database, HardDrive, Crown, User, ArrowLeftRight } from 'lucide-react';
 import { clearImageCache } from '../../services/imageCache';
 import { SettingsManager, GameSettings } from '../../services/SettingsManager';
 import { useGame } from '../../store/GameContext';
@@ -10,7 +10,7 @@ const GAME_MODE_OPTIONS = [
   { value: 3 as const, label: '🧠 Best',     description: 'Full narrative, max detail.' },
 ];
 
-type Tab = 'ai' | 'gameplay' | 'performance';
+type Tab = 'ai' | 'gameplay' | 'performance' | 'gm';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -40,6 +40,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'ai',          label: 'AI',          icon: <Bot size={14} /> },
     { id: 'gameplay',    label: 'Gameplay',     icon: <Gamepad2 size={14} /> },
+    ...(isGM ? [{ id: 'gm' as const, label: 'GM Mode', icon: <User size={14} /> }] : []),
     { id: 'performance', label: 'Performance',  icon: <Zap size={14} /> },
   ];
 
@@ -286,9 +287,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                             : 'Active'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    How aggressively AI teams trade. 0 = no trades. 50 = default cadence (7d/3d/daily near deadline). 100 = maximum activity.
-                  </p>
                   <input
                     type="range" min="0" max="100" step="10"
                     value={settings.aiTradeFrequency ?? 50}
@@ -326,6 +324,42 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 <div className="flex justify-between text-[10px] text-slate-500 font-medium uppercase tracking-wider">
                   <span>1 season</span>
                   <span>5 seasons</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── GM Mode ────────────────────────────────────────────────── */}
+          {activeTab === 'gm' && isGM && (
+            <>
+              {/* Trade Difficulty */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-bold text-white flex items-center gap-2">
+                    <ArrowLeftRight size={16} className="text-rose-400" />
+                    Trade Difficulty
+                  </label>
+                  <span className="text-xs font-mono text-rose-400 bg-rose-500/10 px-2 py-1 rounded">
+                    {(() => {
+                      const d = settings.tradeDifficulty ?? 50;
+                      if (d <= 15) return 'Easy';
+                      if (d <= 40) return 'Generous';
+                      if (d <= 60) return 'Default';
+                      if (d <= 85) return 'Tough';
+                      return 'Brutal';
+                    })()}
+                  </span>
+                </div>
+                <input
+                  type="range" min="0" max="100" step="5"
+                  value={settings.tradeDifficulty ?? 50}
+                  onChange={e => setSettings({ ...settings, tradeDifficulty: parseInt(e.target.value) })}
+                  className="w-full accent-rose-500"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500 font-medium uppercase tracking-wider">
+                  <span>Easy</span>
+                  <span>Default</span>
+                  <span>Brutal</span>
                 </div>
               </div>
             </>

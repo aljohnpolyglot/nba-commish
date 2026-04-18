@@ -60,6 +60,35 @@ function parseTrade(text: string): ParsedTrade | null {
   // Strip leading "TRADE: " prefix if present
   const body = text.replace(/^TRADE:\s*/i, '').trim();
 
+  // Format 4: executive-trade narrative
+  // "A trade has been finalized between the TEAM_A and TEAM_B. ASSETS_A have been
+  //  moved to the ABBREV_B, while ASSETS_B have been sent to the ABBREV_A."
+  const f4 = body.match(/^A trade has been finalized between the (.+?)\s+and\s+(.+?)\.\s+(.+?)\s+have been moved to the \S+?,\s+while\s+(.+?)\s+have been sent to the \S+?\.?$/i);
+  if (f4) {
+    const teamAName = f4[1].trim();
+    const teamBName = f4[2].trim();
+    const sentFromA = f4[3].trim(); // A → B
+    const sentFromB = f4[4].trim(); // B → A
+    return {
+      teamAName,
+      teamBName,
+      aReceived: splitPlayersPicks(sentFromB),
+      bReceived: splitPlayersPicks(sentFromA),
+    };
+  }
+
+  // Format 5: fallback executive-trade narrative (LLM empty-response variant)
+  // "TEAM_A and TEAM_B complete a trade. ABBREV_B receive: ASSETS_A. ABBREV_A receive: ASSETS_B."
+  const f5 = body.match(/^(.+?)\s+and\s+(.+?)\s+complete a trade\.\s+\S+\s+receive:\s+(.+?)\.\s+\S+\s+receive:\s+(.+?)\.?$/i);
+  if (f5) {
+    return {
+      teamAName: f5[1].trim(),
+      teamBName: f5[2].trim(),
+      aReceived: splitPlayersPicks(f5[4].trim()),
+      bReceived: splitPlayersPicks(f5[3].trim()),
+    };
+  }
+
   // Format 3: "Team A and Team B exchange picks."
   const f3 = body.match(/^(.+?)\s+and\s+(.+?)\s+exchange picks/i);
   if (f3) {
@@ -428,7 +457,11 @@ export const TradeDetailView: React.FC<Props> = ({ entry, legs, onBack }) => {
               </div>
               <div>
                 <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-wide">
-                  {isMultiTeam ? `${allLegs.length}-Team Trade` : 'Trade Details'}
+                  {isMultiTeam
+                    ? `${allLegs.length}-Team Trade`
+                    : teamA && teamB
+                      ? `${teamA.abbrev} ↔ ${teamB.abbrev} Trade Details`
+                      : 'Trade Details'}
                 </h2>
                 {seasonLabel && (
                   <span className="text-[11px] text-slate-500 font-medium">{seasonLabel}</span>
