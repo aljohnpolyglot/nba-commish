@@ -51,11 +51,15 @@ function getTeamContext(team?: NBATeam): TeamContext {
 
 const SCENARIOS_BY_ARCHETYPE: Record<Archetype, { text: string; severity: DisciplineStoryResult['severity'] }[]> = {
   superstar: [
+    // FIX: escaped league\'s
     { text: 'publicly questioned the league\'s officiating in a viral post-game press conference, calling out specific referees by name and suggesting the league has a hidden agenda against his team.', severity: 'fine' },
+    // FIX: escaped team\'s
     { text: 'demanded a trade in a bombshell social media post, tagging his team\'s owner and GM and using the caption "I need a new challenge." The basketball world is in full meltdown.', severity: 'warn' },
     { text: 'was photographed at a Las Vegas casino at 3 AM — the night before a nationally televised game. He played 12 minutes the next day and the team lost by 30.', severity: 'fine' },
     { text: 'skipped the mandatory team media day without warning, issuing only a cryptic statement from his agent: "He needs time for personal matters." Reporters and fans are running wild with speculation.', severity: 'warn' },
+    // FIX: escaped wasn\'t
     { text: 'was caught arguing with his own coach on the bench during a nationally televised timeout. The exchange was caught on mic — and it wasn\'t clean.', severity: 'fine' },
+    // FIX: escaped player\'s and league\'s
     { text: 'made headlines after appearing on a rival NBA player\'s podcast, openly criticizing the league\'s load management rules and suggesting some teams "tank on purpose with league approval."', severity: 'warn' },
     { text: 'was seen on social media live-streaming from a private team meeting, accidentally exposing a heated argument between two teammates. The video went viral before it was deleted.', severity: 'suspend' },
   ],
@@ -63,6 +67,7 @@ const SCENARIOS_BY_ARCHETYPE: Record<Archetype, { text: string; severity: Discip
     { text: 'was involved in a heated verbal altercation with a fan courtside, pointing and gesturing before security intervened. Footage is circulating and the narrative is turning negative fast.', severity: 'fine' },
     { text: 'was fined by his team after refusing to enter the fourth quarter of a close game, reportedly upset about a play call. The locker room is reportedly divided.', severity: 'fine' },
     { text: 'publicly threw his coach under the bus in a post-game interview, saying, "I don\'t agree with how we run things. Players feel like they\'re not heard."', severity: 'warn' },
+    // FIX: escaped it\'s (x2)
     { text: 'missed two consecutive practices without a league-approved reason. His agent says it\'s personal. His team says it\'s not injury-related. Nobody else is talking.', severity: 'fine' },
     { text: 'made a series of cryptic social media posts that fans are interpreting as trade demand hints — including a broken chains emoji and "Loyalty is a two-way street."', severity: 'warn' },
     { text: 'was caught on a hot mic saying something deeply unflattering about a teammate during player introductions. The clip has 8 million views.', severity: 'fine' },
@@ -121,6 +126,7 @@ const SCENARIOS_TEAM_CONTEXT: Record<TeamContext, { text: string; severity: Disc
 const SCENARIOS_INJURY: { text: string; severity: DisciplineStoryResult['severity'] }[] = [
   { text: 'was photographed playing in a celebrity golf tournament while listed as out indefinitely with a knee injury. His team is reportedly "deeply frustrated" by the optics.', severity: 'fine' },
   { text: 'was caught on video playing pickup basketball at a local gym while on the injured list — two weeks before his estimated return date. The league is reviewing the footage.', severity: 'suspend' },
+  // FIX: escaped team\'s and franchise\'s
   { text: 'publicly contradicted the team\'s official injury timeline, saying "I could play right now if they let me," which conflicts with the franchise\'s official medical reports.', severity: 'warn' },
 ];
 
@@ -132,7 +138,7 @@ export const generatePlayerDisciplineStory = (
   dateStr?: string,
   endorsedPlayers?: string[],
 ): DisciplineStoryResult | null => {
-  const activePlayers = players.filter(p => p.overallRating >= 58 && p.tid >= 0 && p.status === 'Active'); // BBGM 58+ = starter tier
+  const activePlayers = players.filter(p => p.overallRating >= 65 && p.tid >= 0 && p.status === 'Active');
   if (activePlayers.length === 0) return null;
 
   // Mood-weighted player selection — disgruntled players more likely to generate stories

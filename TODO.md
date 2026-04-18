@@ -15,8 +15,6 @@ Three blockers before these compile:
 5. Also extend with `generateProspect(..., 'Europe' | 'NBL' | 'G-League' | 'Endesa' | 'B-League')` to repopulate external-league rosters each rollover once existing players age out.
 
 
-- **Trade contract salaries roll over too late — CONFIRMED BUG.** Contract amounts flip to the new season's number only at preseason / regular-season tip-off, not at June 30. Real NBA: July 1 = new league year, all trades after that use the new salary. Our `shouldFireRollover` fires on June 30, so the date gate is right, but `syncedContractAmount` either (a) isn't applied uniformly to every active-contract player, or (b) the trade handler reads `player.contract.amount` before rollover state has persisted. Example: Capela/Randle trade on July 19, 2025 used 2024-25 numbers ($27.6M / $22.3M) instead of 2025-26 ($28.9M / $6.7M). Fix next session — either force the contract-sync write-through into the rollover patch before any July trade can execute, or pull salary from `contractYears[{season}]` in the trade handler instead of `contract.amount`.
-
 ---
 
 ## ACTIVE — Verify on New Save
@@ -62,9 +60,6 @@ Partially done in session 25: `EconomyTab` now has Transaction Calendar (trade d
 ### Finals MVP formula — DONE (session 25 fix)
 Was picking the single-highest-`gameScore` game across ALL playoff rounds → Chet's one outlier beat Shai's full-Finals dominance. Now: aggregates Finals-only (round 4 via `finalsSeries.gameIds`), averages pts+reb+ast+stl+blk−tov, adds TS% delta vs league avg (×8), min-3-GP eligibility, minutes load bonus, avgPts tiebreaker. Files: `lazySimRunner.ts` lines ~509-600.
 
-### Inflation editor in Game Settings modal
-Add Min/Max/Avg/StdDev % inputs to `SettingsModal.tsx`. Values already in leagueStats.
-
 ### Start Date timeline: reverted to 1 season, manual date for multi-season
 
 
@@ -73,12 +68,6 @@ Add Min/Max/Avg/StdDev % inputs to `SettingsModal.tsx`. Values already in league
 
 ## FEATURES — Next Priority
 
-
-
-### SEMIFINALS MVP!!!
-we can now fetch mvp on finals. wwhy not also do semifinalsmvp visible in awards section..iti s already visible as well in wards like 
-Semifinals MVP
-2021-22.. i nstephecnurry trophy case anyways.. so add semifinalsmvp.. it is begin read anyways alread yby legague history view deatailed so why not?
 
 ### GM Mode (see `GM_MODE_README.md`)
 Phase 1: mode toggle + sidebar gating + player action filtering + settings toggle

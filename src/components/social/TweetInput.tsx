@@ -1,109 +1,109 @@
 import React, { useState } from 'react';
-import { Image as ImageIcon, X } from 'lucide-react';
-import { useGame } from '../../store/GameContext';
-import { SocialPost } from '../../types';
+import { Image, X } from 'lucide-react';
+import { useSocialGame } from '../../store/SocialGameContext';
 
 export const TweetInput = () => {
-  const { state, addPost } = useGame();
+const { state, addPost } = useSocialGame();
   const [content, setContent] = useState('');
-  const [image, setImage] = useState('');
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  const userProfile = state.userProfile;
-  const commName = state.commissionerName || 'Commissioner';
-  const name = userProfile?.name || commName;
-  const handle = userProfile?.handle || ('@' + commName.toLowerCase().replace(/\s+/g, ''));
-  const avatarUrl = userProfile?.avatarUrl;
 
   const handlePost = () => {
     if (!content.trim() && !image) return;
-    const newPost: SocialPost = {
+
+    const newPost = {
+        source: 'TwitterX' as const,
       id: `post-${Date.now()}`,
-      author: name,
-      handle,
-      avatarUrl,
+      author: state.userProfile.name,
+      handle: state.userProfile.handle,
+      avatarUrl: state.userProfile.avatarUrl,
       date: new Date().toISOString(),
-      content,
-      source: 'TwitterX' as const,
+      content: content,
       mediaUrl: image || undefined,
       likes: 0,
       retweets: 0,
+      // TODO: Claude code - Comment calculator based on likes/retweets algorithm with variance
+      // e.g., replies = Math.floor((likes * 0.1) + (retweets * 0.2) + (Math.random() * 10))
       replies: [],
       replyCount: 0,
       isLiked: false,
       isRetweeted: false,
-      isNew: true,
+      isNew: true
     };
+
     addPost(newPost);
     setContent('');
     setImage('');
   };
 
+  const [image, setImage] = useState('');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => setImage(reader.result as string);
-    reader.readAsDataURL(file);
-    e.target.value = '';
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
-    <div className="border-b border-zinc-700 p-4 space-y-4">
-      <div className="flex gap-4">
-        <div className="w-10 h-10 rounded-full bg-zinc-800 flex-shrink-0 overflow-hidden">
-          {avatarUrl ? (
-            <img src={avatarUrl} alt={name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+    <div className="px-4 py-3 border-b border-[#2f3336] flex space-x-3">
+      <div className="flex-shrink-0">
+        <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-white font-bold overflow-hidden">
+          {state.userProfile.avatarUrl ? (
+            <img src={state.userProfile.avatarUrl} alt="" className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-white font-bold text-lg">
-              {name[0]?.toUpperCase() || '?'}
-            </div>
+            state.userProfile.name[0]
           )}
         </div>
-        <div className="flex-1">
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="What's happening!"
-            className="w-full bg-transparent text-xl text-white placeholder-zinc-500 outline-none resize-none"
-            rows={3}
-          />
-          {image && (
-            <div className="relative mt-2 rounded-xl overflow-hidden">
-              <img src={image} alt="upload preview" className="max-h-60 rounded-xl object-cover w-full" />
-              <button
-                onClick={() => setImage('')}
-                className="absolute top-2 right-2 bg-black/60 rounded-full p-1 hover:bg-black/80"
-              >
-                <X size={16} className="text-white" />
-              </button>
-            </div>
-          )}
-          <div className="flex items-center justify-between mt-4">
-            <div className="flex gap-2 text-sky-500">
-              <button onClick={() => fileInputRef.current?.click()}>
-                <ImageIcon size={20} className="cursor-pointer hover:opacity-80" />
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-            </div>
-            <button
-              onClick={handlePost}
-              disabled={!content.trim() && !image}
-              className="bg-sky-500 text-white font-bold py-2 px-6 rounded-full hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed"
+      </div>
+      <div className="flex-1">
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="What is happening?!"
+          className="w-full bg-transparent border-none text-white text-xl placeholder-zinc-500 focus:ring-0 resize-none min-h-[50px] outline-none"
+        />
+
+        {image && (
+          <div className="mt-2 relative rounded-2xl overflow-hidden border border-zinc-800">
+            <img src={image} alt="Preview" className="w-full h-auto max-h-[400px] object-cover" />
+            <button 
+              onClick={() => setImage('')}
+              className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
             >
-              Post
+              <X size={18} />
             </button>
           </div>
+        )}
+        
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-800">
+          <div className="flex items-center space-x-1 text-sky-500">
+            <input 
+              type="file" 
+              accept="image/*" 
+              className="hidden" 
+              ref={fileInputRef}
+              onChange={handleFileChange}
+            />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 rounded-full hover:bg-sky-500/10 transition-colors"
+            >
+              <Image size={20} />
+            </button>
+          </div>
+          <button 
+            onClick={handlePost}
+            disabled={!content.trim() && !image}
+            className="bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white font-bold px-4 py-1.5 rounded-full transition-colors"
+          >
+            Post
+          </button>
         </div>
       </div>
     </div>
   );
 };
-
-export default TweetInput;
