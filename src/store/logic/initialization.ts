@@ -178,12 +178,15 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     // last season's salary until the Jun 30 2026 rollover. Mirrors the LOAD_GAME
     // sync in GameContext so fresh-start and load-save behave identically.
     const initSeasonStr = `${startYear - 1}-${String(startYear).slice(-2)}`;
+    const SANE_GUARANTEED_USD_INIT = 250_000_000;
+    const SANE_AMOUNT_THOUSANDS_INIT = 250_000;
     for (let i = 0; i < players.length; i++) {
         const p: any = players[i];
         if (!p.contract || !Array.isArray(p.contractYears)) continue;
         const entry = p.contractYears.find((cy: any) => cy.season === initSeasonStr);
-        if (!entry || entry.guaranteed <= 0) continue;
+        if (!entry || entry.guaranteed <= 0 || entry.guaranteed > SANE_GUARANTEED_USD_INIT) continue;
         const synced = Math.round(entry.guaranteed / 1000);
+        if (synced <= 0 || synced > SANE_AMOUNT_THOUSANDS_INIT) continue;
         if (synced === p.contract.amount) continue;
         players[i] = { ...p, contract: { ...p.contract, amount: synced } };
     }

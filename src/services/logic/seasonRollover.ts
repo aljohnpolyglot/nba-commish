@@ -110,11 +110,19 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   // contractYears[] stores real per-season salaries from the gist; contract.amount is in BBGM
   // thousands. Without this sync, trade/cap logic uses the salary from the initial load year.
   const nextSeasonStr = `${nextYear - 1}-${String(nextYear).slice(-2)}`;
+  // Upper bound: no real NBA salary exceeds $250M/year — guard against a corrupt
+  // contractYears entry (e.g. guaranteed stored in the wrong unit) cascading
+  // into contract.amount during rollover. Mirrors the LOAD_GAME repair.
+  const SANE_GUARANTEED_USD = 250_000_000;
+  const SANE_AMOUNT_THOUSANDS = 250_000;
   const syncedContractAmount = (p: NBAPlayer): number | undefined => {
     const cy = (p as any).contractYears as Array<{ season: string; guaranteed: number }> | undefined;
     if (!cy) return undefined;
     const entry = cy.find(e => e.season === nextSeasonStr);
-    return entry && entry.guaranteed > 0 ? Math.round(entry.guaranteed / 1000) : undefined;
+    if (!entry || entry.guaranteed <= 0 || entry.guaranteed > SANE_GUARANTEED_USD) return undefined;
+    const synced = Math.round(entry.guaranteed / 1000);
+    if (synced <= 0 || synced > SANE_AMOUNT_THOUSANDS) return undefined;
+    return synced;
   };
 
   const expiredIds = new Set<string>();

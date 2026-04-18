@@ -246,17 +246,60 @@ const actions = useGameActions(setState, () => stateRef.current);
       const currentSeasonYear: number = loaded.leagueStats?.year ?? new Date().getFullYear();
       const currentSeasonStr = `${currentSeasonYear - 1}-${String(currentSeasonYear).slice(-2)}`;
 
+      // Contract.amount is stored in BBGM thousands — even the richest max
+      // contract tops out near 80,000 (= $80M). Anything above 250,000 (= $250M)
+      // is garbage. The user reported Season-2 payrolls in the trillions per
+      // team, which means some flow leaked a USD or inflated value into the
+      // thousands slot. We don't know the upstream source yet, but we can
+      // repair the save on LOAD_GAME: prefer contractYears[currentSeason]
+      // (the source of truth), fall back to the closest season with a sane
+      // guaranteed value, else clamp to a plausible max.
+      const SANE_CONTRACT_CAP_THOUSANDS = 250_000; // $250M
+      const SANE_GUARANTEED_CAP_USD     = 250_000_000; // $250M
+
+      const recoverAmountFromContractYears = (p: any): number | undefined => {
+        const cy = p.contractYears as Array<{ season: string; guaranteed: number }> | undefined;
+        if (!Array.isArray(cy) || cy.length === 0) return undefined;
+        // Exact current-season match first.
+        const exact = cy.find(e => e.season === currentSeasonStr);
+        const candidates: number[] = [];
+        if (exact && exact.guaranteed > 0 && exact.guaranteed <= SANE_GUARANTEED_CAP_USD) {
+          candidates.push(Math.round(exact.guaranteed / 1000));
+        }
+        // Any other season entry whose USD value looks sane (back-up path if the
+        // exact-season entry itself is corrupt — grab the first reasonable one).
+        for (const e of cy) {
+          if (e === exact) continue;
+          if (e.guaranteed > 0 && e.guaranteed <= SANE_GUARANTEED_CAP_USD) {
+            candidates.push(Math.round(e.guaranteed / 1000));
+          }
+        }
+        return candidates.find(v => v > 0 && v <= SANE_CONTRACT_CAP_THOUSANDS);
+      };
+
       const migratedPlayers = (loaded.players as any[] | undefined)?.map(p => {
         let updated = isBadPortrait(p) ? { ...p, imgURL: undefined } : p;
-        // Sync contract.amount to current season from contractYears[] if available
+        // Sync contract.amount to current season from contractYears[] if available.
+        // Guard against corrupt guaranteed values — only apply the sync if the
+        // result falls in a sane range.
         if (updated.contract && Array.isArray(updated.contractYears)) {
           const entry = updated.contractYears.find((cy: any) => cy.season === currentSeasonStr);
-          if (entry && entry.guaranteed > 0) {
+          if (entry && entry.guaranteed > 0 && entry.guaranteed <= SANE_GUARANTEED_CAP_USD) {
             const syncedAmount = Math.round(entry.guaranteed / 1000);
-            if (syncedAmount !== updated.contract.amount) {
+            if (syncedAmount > 0 && syncedAmount <= SANE_CONTRACT_CAP_THOUSANDS && syncedAmount !== updated.contract.amount) {
               updated = { ...updated, contract: { ...updated.contract, amount: syncedAmount } };
             }
           }
+        }
+        // Repair corrupt contract.amount — see comment above. Kicks in when a
+        // prior session left the value in USD-like units, producing $16.7T
+        // payrolls. Try contractYears first; if no sane source, fall back to
+        // the league min ($1.3M = 1300 thousand).
+        const amt = updated.contract?.amount;
+        if (updated.contract && typeof amt === 'number' && (amt > SANE_CONTRACT_CAP_THOUSANDS || amt < 0 || !Number.isFinite(amt))) {
+          const recovered = recoverAmountFromContractYears(updated) ?? 1300;
+          console.warn(`[LOAD_GAME] Repaired corrupt contract.amount for ${updated.name}: ${amt} → ${recovered}`);
+          updated = { ...updated, contract: { ...updated.contract, amount: recovered } };
         }
         // First-season two-way detection: BBGM data doesn't set twoWay:true, but two-way players
         // have ~$625K salary (< $800K threshold for grace). Mark them so roster-trim excludes them.
