@@ -549,11 +549,19 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     );
   }
 
-  // Mother-team buyout refusal — the overseas club controls release. Matches the retention-bar logic
-  // so what the user sees in Offer Strength / Retention maps 1:1 with what Submit produces.
+  // Mother-team buyout refusal — the overseas club controls release. Total
+  // payment = team contribution (FIBA-capped) + player out-of-pocket from
+  // signing bonus. In real NBA buyouts, the club sees the FULL sum, so
+  // acceptance is driven by the combined total, not the team portion alone.
+  // The FIBA cap limits what the team can chip in, but the player filling the
+  // remainder is normal — the old check was refusing buyouts that were
+  // actually fully funded.
+  const totalBuyoutPaidUSD = buyout.applicable
+    ? teamBuyoutContribUSD + Math.max(0, buyout.estimatedBuyoutUSD - teamBuyoutContribUSD)
+    : 0;
   const motherTeamWillRelease = !buyout.applicable || (() => {
     const ratio = buyout.estimatedBuyoutUSD > 0
-      ? teamBuyoutContribUSD / buyout.estimatedBuyoutUSD
+      ? totalBuyoutPaidUSD / buyout.estimatedBuyoutUSD
       : 1;
     // Same floor as the bar — 50% minimum; high-retention clubs require full ask.
     return ratio >= Math.max(0.5, competingInterest / 100);
@@ -589,7 +597,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
               Buyout Refused
             </h2>
             <p className="text-white/80 italic mb-8 leading-relaxed text-sm">
-              "Nah. We're not giving you {player.name} for {formatSalaryM(teamBuyoutContribUSD)}. We're asking {formatSalaryM(buyout.estimatedBuyoutUSD)} and we mean it. Come back when you're serious."
+              "Nah. We're not giving you {player.name} for {formatSalaryM(totalBuyoutPaidUSD)}. We're asking {formatSalaryM(buyout.estimatedBuyoutUSD)} and we mean it. Come back when you're serious."
             </p>
             <div className="flex flex-col gap-2 w-full">
               <button
@@ -933,8 +941,10 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                     // High-retention clubs (Barça, Real Madrid) effectively need you to meet full ask.
                     const neededRatio = Math.max(0.5, competingInterest / 100);
                     const neededUSD = buyout.estimatedBuyoutUSD * neededRatio;
+                    // Use total (team + player out-of-pocket) so the strength
+                    // bar tracks the same number the mother club judges.
                     const release = neededUSD > 0
-                      ? Math.min(100, Math.round((teamBuyoutContribUSD / neededUSD) * 100))
+                      ? Math.min(100, Math.round((totalBuyoutPaidUSD / neededUSD) * 100))
                       : 100;
                     const color = release >= 100 ? '#22c55e' : release >= 60 ? '#f59e0b' : '#f43f5e';
                     const note = release >= 100
