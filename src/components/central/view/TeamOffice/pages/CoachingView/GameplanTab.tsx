@@ -211,7 +211,20 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
   const remaining = targetMinutes - totalMinutes;
 
   const setMins = (id: string, v: number) => {
-    setMinuteOverrides(prev => ({ ...prev, [id]: Math.max(0, Math.min(48, v)) }));
+    setMinuteOverrides(prev => {
+      const clamped = Math.max(0, Math.min(48, v));
+      const current = prev[id] ?? 0;
+      // Cap increase at the remaining headroom when team is already at 240
+      if (clamped > current) {
+        const othersTotal = Object.entries(prev).reduce(
+          (s, [k, n]) => (k === id ? s : s + n),
+          0,
+        );
+        const maxAllowed = Math.max(current, targetMinutes - othersTotal);
+        return { ...prev, [id]: Math.min(clamped, maxAllowed) };
+      }
+      return { ...prev, [id]: clamped };
+    });
   };
 
   if (!team) {
@@ -302,8 +315,8 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
                       k2 >= 90 ? 'text-blue-300' : k2 >= 85 ? 'text-emerald-300' : k2 >= 78 ? 'text-amber-300' : 'text-slate-400'
                     }`}>{k2} OVR</span>
                     <span className="text-[10px] text-slate-500">·</span>
-                    <span className="text-[10px] font-mono text-slate-300">
-                      {minuteOverrides[p.internalId] ?? 0}m
+                    <span className="text-[10px] font-mono text-slate-300 tabular-nums">
+                      {minuteOverrides[p.internalId] ?? 0}
                     </span>
                   </div>
                 </div>
@@ -366,7 +379,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
                   className="w-full accent-amber-500"
                 />
                 <span className="text-xs font-mono text-slate-200 text-right tabular-nums">
-                  {mins}m
+                  {mins}
                 </span>
               </div>
             );
