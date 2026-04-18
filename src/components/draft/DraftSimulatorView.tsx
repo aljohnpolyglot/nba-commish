@@ -6,7 +6,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Clock, Play, Pause, CheckCircle, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Clock, Play, Pause, CheckCircle, ChevronLeft, ChevronRight, Calendar, FastForward } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { convertTo2KRating, normalizeDate } from '../../utils/helpers';
 import { getPlayerImage } from '../central/view/bioCache';
@@ -414,6 +414,32 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   const nextTeam = draftOrder[currentPick];
   const isDraftComplete = currentPick > draftOrder.length;
 
+  // GM mode: the user manages one specific franchise. Other teams' picks are
+  // off-limits to avoid sabotage (e.g. wasting another team's #3 on a R2 body).
+  const isGM = state.gameMode === 'gm';
+  const userTeamId = state.userTeamId;
+  const isUserOnClock = isGM && userTeamId != null && teamOnClock?.id === userTeamId;
+  // 1-indexed pick slots owned by the user. Uses draftOrder (not state.draftPicks)
+  // to stay aligned with the slot sequence the UI iterates — in-draft pick trades
+  // aren't modeled here, so this is the user's natural slot list.
+  const userPickSlots = useMemo(() => {
+    if (!isGM || userTeamId == null) return [] as number[];
+    return draftOrder
+      .map((t: any, i: number) => (t?.id === userTeamId ? i + 1 : -1))
+      .filter((n: number) => n > 0);
+  }, [isGM, userTeamId, draftOrder]);
+  const userRemainingPicks = useMemo(
+    () => userPickSlots.filter(p => p >= currentPick),
+    [userPickSlots, currentPick],
+  );
+  const nextUserPick = userRemainingPicks[0] ?? null;
+  const userHasMorePicks = nextUserPick != null;
+
+  // simTarget stops the auto-sim loop when currentPick reaches this value. Set
+  // by "Sim to Next Pick" / "Sim to End" so GM-mode runs hands-off until control
+  // returns to the user's slot.
+  const [simTarget, setSimTarget] = useState<number | null>(null);
+
   const draftPlayer = useCallback((player: any, auto = false) => {
     setHasStarted(true);
     if (auto) {
@@ -428,13 +454,20 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   // Auto-sim loop
   useEffect(() => {
     if (!isSimulating || isDraftComplete || modalPlayer) return;
+    // Stop auto-sim when we reach the configured target pick (Sim to Next Pick
+    // / Sim to End). Using >= so we stop BEFORE making the user's pick for them.
+    if (simTarget != null && currentPick >= simTarget) {
+      setIsSimulating(false);
+      setSimTarget(null);
+      return;
+    }
     const speedMs: Record<string, number> = { fastest: 200, normal: 800, slow: 1500, slower: 3000, dramatic: 5000 };
     const timer = setTimeout(() => {
       const top = available[0];
       if (top) draftPlayer(top, true);
     }, speedMs[simSpeed] ?? 800);
     return () => clearTimeout(timer);
-  }, [isSimulating, currentPick, available, simSpeed, isDraftComplete, modalPlayer, draftPlayer]);
+  }, [isSimulating, currentPick, available, simSpeed, isDraftComplete, modalPlayer, draftPlayer, simTarget]);
 
   const confirmPick = () => {
     if (modalMode === 'scouting' || modalMode === 'review') {
@@ -599,10 +632,50 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
             )}
 
             {/* Controls */}
-            <div className="flex justify-end mt-4 gap-3 items-center">
+            <div className="flex justify-end mt-4 gap-3 items-center flex-wrap">
+              {/* GM-mode fast-forward: skip to my next pick, or finish the draft
+                  if I have no picks left. Hidden in commissioner mode — the
+                  commissioner drafts for every team so the per-pick buttons
+                  are enough. */}
+              {isGM && !isDraftComplete && !isUserOnClock && userHasMorePicks && (
+                <button
+                  onClick={() => {
+                    setSimTarget(nextUserPick);
+                    setIsSimulating(true);
+                    setHasStarted(true);
+                  }}
+                  className="h-8 px-3 text-xs font-black uppercase rounded-sm bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1.5 transition-colors"
+                >
+                  <FastForward size={11} /> Sim to My Pick ({nextUserPick})
+                </button>
+              )}
+              {isGM && !isDraftComplete && !userHasMorePicks && (
+                <button
+                  onClick={() => {
+                    setSimTarget(draftOrder.length + 1);
+                    setIsSimulating(true);
+                    setHasStarted(true);
+                  }}
+                  className="h-8 px-3 text-xs font-black uppercase rounded-sm bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 transition-colors"
+                >
+                  <FastForward size={11} /> Sim to End
+                </button>
+              )}
               <div className="flex items-center gap-1 bg-black/40 p-1 rounded-md border border-[#333]">
                 <button
-                  onClick={() => { setIsSimulating(v => !v); setHasStarted(true); }}
+                  onClick={() => {
+                    if (isSimulating) {
+                      setIsSimulating(false);
+                      setSimTarget(null);
+                    } else {
+                      // Plain Auto Sim runs open-ended (no target). In GM mode
+                      // keep this available too — lets the user hand control to
+                      // the sim for the whole draft if they want.
+                      setSimTarget(null);
+                      setIsSimulating(true);
+                      setHasStarted(true);
+                    }
+                  }}
                   disabled={isDraftComplete}
                   className={`h-8 px-3 text-xs font-black uppercase rounded-sm transition-all flex items-center gap-1.5 ${
                     isSimulating ? 'text-indigo-400 bg-indigo-500/10' : 'text-white/50 hover:text-white'
@@ -687,14 +760,19 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
                       </div>
                     </div>
 
-                    {/* Draft button */}
-                    <button
-                      onClick={e => { e.stopPropagation(); draftPlayer(player); }}
-                      disabled={isDraftComplete}
-                      className="ml-3 bg-indigo-800 hover:bg-indigo-600 text-white font-black text-[10px] h-6 px-4 rounded-sm transition-colors uppercase disabled:opacity-30"
-                    >
-                      Draft
-                    </button>
+                    {/* Draft button — hidden in GM mode when it's not our pick
+                        so the user can't spike another team's slot with a bad
+                        prospect. Commissioner mode drafts for every team so
+                        the button stays available. */}
+                    {(!isGM || isUserOnClock) && (
+                      <button
+                        onClick={e => { e.stopPropagation(); draftPlayer(player); }}
+                        disabled={isDraftComplete}
+                        className="ml-3 bg-indigo-800 hover:bg-indigo-600 text-white font-black text-[10px] h-6 px-4 rounded-sm transition-colors uppercase disabled:opacity-30"
+                      >
+                        Draft
+                      </button>
+                    )}
                   </div>
                 ))
               )}

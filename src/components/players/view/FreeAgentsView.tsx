@@ -10,6 +10,7 @@ import { PersonSelectorModal } from '../../modals/PersonSelectorModal';
 import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
 import ContactModal from '../../ContactModal';
 import { getCountryFromLoc } from '../../../utils/helpers';
+import { getCapThresholds, getTeamCapProfile, getMLEAvailability, getTeamPayrollUSD } from '../../../utils/salaryUtils';
 import type { NBAPlayer } from '../../../types';
 
 const MARKET_POOLS = [
@@ -97,8 +98,8 @@ export const FreeAgentsView: React.FC = () => {
   const sourcePool = viewMode === 'upcoming' ? upcomingFAs : freeAgents;
 
   // GM-mode roster-slot counter — tells the user at a glance how many standard
-  // vs two-way seats remain on their team so they know which contract type is
-  // actually available before opening negotiation.
+  // vs two-way seats remain on their team, plus cap space and MLE headroom so
+  // they can decide where to slot a signing without opening negotiation first.
   const userRosterSlots = useMemo(() => {
     if (!isGM || state.userTeamId == null) return null;
     const roster = state.players.filter(p => p.tid === state.userTeamId);
@@ -106,6 +107,15 @@ export const FreeAgentsView: React.FC = () => {
     const standardCount = roster.length - twoWayCount;
     const maxStandard = state.leagueStats?.maxStandardPlayersPerTeam ?? 15;
     const maxTwoWay = state.leagueStats?.maxTwoWayPlayersPerTeam ?? 3;
+    const thresholds = getCapThresholds(state.leagueStats as any);
+    const userTeam = state.teams.find(t => t.id === state.userTeamId);
+    const profile = getTeamCapProfile(
+      state.players, state.userTeamId,
+      (userTeam as any)?.wins ?? 0, (userTeam as any)?.losses ?? 0,
+      thresholds,
+    );
+    const payroll = getTeamPayrollUSD(state.players, state.userTeamId);
+    const mle = getMLEAvailability(state.userTeamId, payroll, 0, thresholds, state.leagueStats as any);
     return {
       standardCount,
       twoWayCount,
@@ -113,8 +123,11 @@ export const FreeAgentsView: React.FC = () => {
       maxTwoWay,
       standardLeft: Math.max(0, maxStandard - standardCount),
       twoWayLeft: Math.max(0, maxTwoWay - twoWayCount),
+      capSpaceUSD: profile.capSpaceUSD as number,
+      mleAvailable: (mle?.available as number) ?? 0,
+      mleType: (mle?.type as string | null) ?? null,
     };
-  }, [isGM, state.userTeamId, state.players, state.leagueStats]);
+  }, [isGM, state.userTeamId, state.players, state.leagueStats, state.teams]);
 
   // All unique countries from the current pool (available OR upcoming)
   const allCountries = useMemo(() => {
@@ -396,6 +409,28 @@ export const FreeAgentsView: React.FC = () => {
                       : 'bg-violet-500/10 border-violet-500/30 text-violet-300'
                   }`}>
                     Two-Way {userRosterSlots.twoWayCount}/{userRosterSlots.maxTwoWay}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                    userRosterSlots.capSpaceUSD >= 0
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                      : 'bg-slate-700/30 border-slate-600/40 text-slate-400'
+                  }`}>
+                    {userRosterSlots.capSpaceUSD >= 0
+                      ? `Cap Space $${(userRosterSlots.capSpaceUSD / 1_000_000).toFixed(1)}M`
+                      : `Over Cap -$${(Math.abs(userRosterSlots.capSpaceUSD) / 1_000_000).toFixed(1)}M`}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                    userRosterSlots.mleAvailable > 0
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                      : 'bg-slate-700/30 border-slate-600/40 text-slate-500'
+                  }`}>
+                    MLE {userRosterSlots.mleAvailable > 0
+                      ? `$${(userRosterSlots.mleAvailable / 1_000_000).toFixed(1)}M`
+                      : 'N/A'}
                   </span>
                 </div>
               </>
