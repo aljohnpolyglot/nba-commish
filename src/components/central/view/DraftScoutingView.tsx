@@ -5,6 +5,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, Search, Target } from 'lucide-r
 import { motion, AnimatePresence } from 'motion/react';
 import { convertTo2KRating } from '../../../utils/helpers';
 import { findTopComparisons } from '../../../utils/playerComparisons';
+import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
 
 const GIST_BASE = "https://gist.githubusercontent.com/aljohnpolyglot/bb8c80155c6c225cf1be9428892c6329/raw/";
 
@@ -338,12 +339,40 @@ export const DraftScoutingView: React.FC = () => {
                 </span>
               </div>
               
-              <img 
-                src={p.imgURL || p.gistData?.headshot || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}`} 
-                alt={p.name} 
-                className="w-12 h-12 rounded-full border-2 border-slate-800 bg-slate-950 object-cover object-top flex-shrink-0"
-                referrerPolicy="no-referrer"
-              />
+              {(() => {
+                // Synthesised prospects carry a facesjs `face` descriptor — render
+                // that via MyFace instead of falling back to a dicebear avataaar,
+                // which visually clashes with BBGM's cartoon style everywhere else
+                // in the app. Real-photo prospects (gist silos / NBA imgURL) still
+                // use the <img> path.
+                const realImg = p.imgURL || p.gistData?.headshot;
+                const face = (p as any).face;
+                if (realImg) {
+                  return (
+                    <img
+                      src={realImg}
+                      alt={p.name}
+                      className="w-12 h-12 rounded-full border-2 border-slate-800 bg-slate-950 object-cover object-top flex-shrink-0"
+                      referrerPolicy="no-referrer"
+                    />
+                  );
+                }
+                if (isRealFaceConfig(face)) {
+                  return (
+                    <div className="w-12 h-12 rounded-full border-2 border-slate-800 bg-slate-950 overflow-hidden flex-shrink-0 relative">
+                      <div className="absolute left-1/2 top-1/2" style={{ width: 12 * 0.85 * 4, height: 12 * 1.275 * 4, transform: 'translate(-50%, -50%)' }}>
+                        <MyFace face={face} style={{ width: '100%', height: '100%' }} />
+                      </div>
+                    </div>
+                  );
+                }
+                const initials = p.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+                return (
+                  <div className="w-12 h-12 rounded-full border-2 border-slate-800 bg-slate-800 flex items-center justify-center text-sm font-black text-slate-300 flex-shrink-0">
+                    {initials}
+                  </div>
+                );
+              })()}
 
               <div className="flex-1 min-w-0">
                 <div className="text-lg font-bold text-white truncate">{p.name}</div>
@@ -404,12 +433,35 @@ export const DraftScoutingView: React.FC = () => {
                     {/* Left Column: Image & Physicals */}
                     <div className="space-y-4">
                       <div className="h-48 bg-slate-900 rounded-lg flex items-end justify-center overflow-hidden relative border border-slate-800">
-                        <img 
-                          src={p.gistData?.silo || p.imgURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}`} 
-                          className="h-full w-full object-contain object-bottom" 
-                          alt={p.name}
-                          referrerPolicy="no-referrer"
-                        />
+                        {(() => {
+                          const realImg = p.gistData?.silo || p.imgURL;
+                          const face = (p as any).face;
+                          if (realImg) {
+                            return (
+                              <img
+                                src={realImg}
+                                className="h-full w-full object-contain object-bottom"
+                                alt={p.name}
+                                referrerPolicy="no-referrer"
+                              />
+                            );
+                          }
+                          if (isRealFaceConfig(face)) {
+                            return (
+                              <div className="h-full w-full flex items-center justify-center">
+                                <div style={{ width: '80%', height: '100%' }}>
+                                  <MyFace face={face} style={{ width: '100%', height: '100%' }} />
+                                </div>
+                              </div>
+                            );
+                          }
+                          const initials = p.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+                          return (
+                            <div className="h-full w-full flex items-center justify-center text-5xl font-black text-slate-600">
+                              {initials}
+                            </div>
+                          );
+                        })()}
                         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
                       </div>
                       
