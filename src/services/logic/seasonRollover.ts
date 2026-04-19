@@ -19,7 +19,7 @@ import { GameState, NBAPlayer } from '../../types';
 import { applyCapInflation } from '../../utils/finance/inflationUtils';
 import { runRetirementChecks, runFarewellTourChecks, RetireeRecord, FarewellRecord } from '../playerDevelopment/retirementChecker';
 import { runHOFChecks, HOFInduction } from '../playerDevelopment/hofChecker';
-import { generateFuturePicks, pruneExpiredPicks } from '../draft/DraftPickGenerator';
+import { generateFuturePicks, pruneExpiredPicks, DEFAULT_TRADABLE_PICK_SEASONS } from '../draft/DraftPickGenerator';
 import { computeContractOffer } from '../../utils/salaryUtils';
 import { SettingsManager } from '../SettingsManager';
 import { ensureDraftClasses } from '../draftClassFiller';
@@ -279,7 +279,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     : playersAfterHOF;
 
   // ── 3b. Draft pick bookkeeping ───────────────────────────────────────────
-  const windowSize = state.leagueStats.tradableDraftPickSeasons ?? 4;
+  const windowSize = state.leagueStats.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS;
   const nbaNBATeams = (state.teams ?? []).filter((t: any) => t.tid >= 0 && t.tid < 100);
   // Prune stale picks THEN generate new window for the new season
   const prunedPicks = pruneExpiredPicks(state.draftPicks ?? [], currentYear);

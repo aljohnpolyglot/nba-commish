@@ -67,7 +67,16 @@ export const processTurn = async (
     }
 
     // 2. Determine days to simulate
+    // Sim-tick actions (ADVANCE_DAY, SIMULATE_TO_DATE) always advance.
+    // Transaction/player actions respect `advanceDayOnTransaction`, and in GM mode
+    // are forced to 0 regardless of the setting so GM play stays clean.
+    const isSimTick = action.type === 'ADVANCE_DAY' || action.type === 'SIMULATE_TO_DATE';
+    const isGM = state.gameMode === 'gm';
+    const advanceOnTx = SettingsManager.getSettings().advanceDayOnTransaction;
     let daysToSimulate = 1;
+    if (!isSimTick && (isGM || !advanceOnTx)) {
+        daysToSimulate = 0;
+    }
     if (action.type === 'SIMULATE_TO_DATE') {
         const targetDateNorm = normalizeDate(action.payload.targetDate);
         const currentDateNorm = normalizeDate(stateForSim.date);
@@ -827,7 +836,7 @@ export const processTurn = async (
         })() } as any],
         isProcessing: false,
         isWatchingGame: false,
-      lastOutcome: result.outcomeText || result.narrative,
+      lastOutcome: isGM ? undefined : (result.outcomeText || result.narrative),
         lastConsequence: finalConsequence,
         pendingHypnosis: [],
         pendingNarratives: [],

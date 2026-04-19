@@ -8,6 +8,7 @@ import {
 } from '../../../services/simulation/convert2kAttributes';
 import { applyLeagueDisplayScale } from '../../../hooks/useLeagueScaledRatings';
 import { convertTo2KRating } from '../../../utils/helpers';
+import { getDisplayPotential } from '../../../utils/playerRatings';
 import { getRealDurability, applyDurabilityToK2 } from '../../../utils/durabilityUtils';
 import type { NBAPlayer } from '../../../types';
 
@@ -183,10 +184,8 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
   const delta = overall2k - prevSeasonOvr;
   const deltaColor = delta > 0 ? '#22c55e' : delta < 0 ? '#f43f5e' : '#64748b';
 
-  const playerAge = (player as any).born?.year ? currentYear - (player as any).born.year : player.age ?? 25;
-  const rawBbgmOvr = player.overallRating ?? 60;
-  const potBbgm = playerAge >= 29 ? rawBbgmOvr : Math.max(rawBbgmOvr, Math.round(72.31428908571982 + (-2.33062761 * playerAge) + (0.83308748 * rawBbgmOvr)));
-  const pot = convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), currentRating?.hgt ?? 50, currentRating?.tp ?? 50);
+  // Canonical POT — same as PlayerRatingsView / everywhere else.
+  const pot = getDisplayPotential(player, currentYear);
   const potColor = pot >= 90 ? '#3b82f6' : pot >= 80 ? '#22c55e' : pot >= 70 ? '#eab308' : '#94a3b8';
 
   const radarValues = k2 ? getRadarValues(k2, overall2k) : Array(7).fill(60);

@@ -179,28 +179,92 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
 //
 // teamPowerRank: 1 = best (→ late pick ~8 TV), totalTeams = worst (→ lottery ~28 TV)
 // yearsFromNow: 1 = next draft, 2 = +2, 3+ = flat/stale
+//
+// opts.classStrength (0.75–1.30, default 1.0): scales the final value based on
+//   how loaded the prospect class for this pick's year looks. Computed by
+//   draftClassStrength.ts from top-14 prospect POT averages.
+// opts.actualSlot (1-14, optional): when the draft lottery has run for this
+//   pick's year AND the owning team is in the lottery, this is the KNOWN slot.
+//   Overrides the power-rank projection (collapses uncertainty on draft day).
 
-export function calcPickTV(round: number, teamPowerRank: number, totalTeams: number, yearsFromNow: number): number {
+export interface PickTVOpts {
+  classStrength?: number;
+  actualSlot?: number;
+}
+
+export function calcPickTV(
+  round: number,
+  teamPowerRank: number,
+  totalTeams: number,
+  yearsFromNow: number,
+  opts?: PickTVOpts,
+): number {
+  const classStrength = opts?.classStrength ?? 1.0;
+
   if (round === 2) {
     // 2nd rounders: small exponential curve (pick #31 ≈ 6TV, pick #60 ≈ 1TV)
     // teamPowerRank inversely maps to slot: worst team picks ~31, best ~60
     const rankPct2 = totalTeams > 1 ? (teamPowerRank - 1) / (totalTeams - 1) : 0.5; // 0=best, 1=worst
     const slot2 = Math.round(31 + rankPct2 * 29); // 31 (lottery team) → 60 (contender)
     const base2 = Math.max(1, Math.round(6 * Math.exp(-0.05 * (slot2 - 31))));
-    if (yearsFromNow <= 1) return base2;
-    return Math.max(1, Math.round(base2 * 0.6));
+    // 2nd rounders only half-absorb class strength — talent density beyond #30 is low.
+    const class2 = 1.0 + (classStrength - 1.0) * 0.5;
+    if (yearsFromNow <= 1) return Math.max(1, Math.round(base2 * class2));
+    return Math.max(1, Math.round(base2 * class2 * 0.6));
   }
 
   // 1st round: exponential decay — slot 1 ≈ 50TV, slot 5 ≈ 32TV, slot 15 ≈ 16TV, slot 30 ≈ 8TV
-  // Invert rank: worst team (rank = totalTeams) → earliest pick (slot 1)
-  const rankPct = totalTeams > 1 ? (teamPowerRank - 1) / (totalTeams - 1) : 0.5; // 0=best, 1=worst
-  const estimatedSlot = Math.round(1 + (1 - rankPct) * 29); // 1 (worst team) → 30 (best team)
+  // If lottery has run and we know the actual slot, use it directly — otherwise
+  // project from team power rank (worst team → earliest pick).
+  let estimatedSlot: number;
+  if (typeof opts?.actualSlot === 'number' && opts.actualSlot >= 1 && opts.actualSlot <= 30) {
+    estimatedSlot = opts.actualSlot;
+  } else {
+    const rankPct = totalTeams > 1 ? (teamPowerRank - 1) / (totalTeams - 1) : 0.5; // 0=best, 1=worst
+    estimatedSlot = Math.round(1 + (1 - rankPct) * 29); // 1 (worst team) → 30 (best team)
+  }
   const nextYearBase = Math.round(50 * Math.exp(-0.065 * (estimatedSlot - 1)));
 
-  if (yearsFromNow <= 1) return nextYearBase;
+  let value: number;
+  if (yearsFromNow <= 1) value = nextYearBase;
   // 2yr out: elite picks retain more value; don't collapse to flat 11
-  if (yearsFromNow === 2) return Math.max(11, Math.round(nextYearBase * 0.60));
-  return 11; // 3+ years: everyone flat, too uncertain
+  else if (yearsFromNow === 2) value = Math.max(11, Math.round(nextYearBase * 0.60));
+  else value = 11; // 3+ years: everyone flat, too uncertain
+
+  return Math.max(1, Math.round(value * classStrength));
+}
+
+// ── getPickTV: context-aware convenience wrapper ─────────────────────────────
+//
+// Prefer this over raw calcPickTV at trade call sites. Handles:
+//   - power rank lookup (falls back to mid-league if team unknown)
+//   - class strength lookup (falls back to 1.0 for far-future years)
+//   - lottery slot lookup (only applies for current-year round-1 picks)
+//   - yearsFromNow clamp (≥1 so same-year picks don't get yearsFromNow=0)
+
+export interface PickValueContext {
+  currentYear: number;
+  totalTeams: number;
+  /** tid → power rank (1=best). Missing teams get mid-league fallback. */
+  powerRanks: Map<number, number>;
+  /** season → class strength multiplier (0.75-1.30). Optional. */
+  classStrengthByYear?: Map<number, number>;
+  /** tid → actual lottery slot (1-14) for currentYear draft. Optional. */
+  lotterySlotByTid?: Map<number, number>;
+}
+
+export function getPickTV(
+  pick: { round: number; season: number; tid: number },
+  ctx: PickValueContext,
+): number {
+  const yearsFromNow = Math.max(1, pick.season - ctx.currentYear);
+  const rank = ctx.powerRanks.get(pick.tid) ?? Math.ceil(ctx.totalTeams / 2);
+  const classStrength = ctx.classStrengthByYear?.get(pick.season) ?? 1.0;
+  // Lottery slot applies ONLY for current-year round-1 picks whose owner is in the lottery.
+  const actualSlot = pick.round === 1 && pick.season === ctx.currentYear
+    ? ctx.lotterySlotByTid?.get(pick.tid)
+    : undefined;
+  return calcPickTV(pick.round, rank, ctx.totalTeams, yearsFromNow, { classStrength, actualSlot });
 }
 
 // ── Team mode ─────────────────────────────────────────────────────────────────
@@ -297,6 +361,10 @@ export function autoBalance(
   teamPowerRanks: Map<number, number>, // tid → rank (1=best)
   totalTeams: number,
   currentYear: number,
+  pickValueInputs?: {
+    classStrengthByYear?: Map<number, number>;
+    lotterySlotByTid?: Map<number, number>;
+  },
 ): AutoBalanceResult {
   const valA = basketA.reduce((s, i) => s + i.val, 0);
   const valB = basketB.reduce((s, i) => s + i.val, 0);
@@ -332,12 +400,28 @@ export function autoBalance(
   const availPicks = (teamPicks.tid === targetTid ? teamPicks.picks : [])
     .filter(pk => !usedIds.has(String(pk.dpid)));
 
+  const classStrengthByYear = pickValueInputs?.classStrengthByYear;
+  const lotterySlotByTid = pickValueInputs?.lotterySlotByTid;
+  const pickOpts = (pk: DraftPick) => ({
+    classStrength: classStrengthByYear?.get(pk.season) ?? 1.0,
+    actualSlot: pk.round === 1 && pk.season === currentYear
+      ? lotterySlotByTid?.get(pk.originalTid)
+      : undefined,
+  });
+
+  // Pick value follows ORIGINAL owner's record, not the current holder's.
+  const fallbackRank = teamPowerRanks.get(targetTid) ?? Math.ceil(totalTeams / 2);
+  const rankForPick = (originalTid: number) =>
+    teamPowerRanks.get(originalTid) ?? fallbackRank;
+
   let picksAdded = 0;
   let safety = 0;
   while (gap > 2 && safety++ < 10 && picksAdded < 4) {
-    const yearsFromNow = Math.max(1, (availPicks[0]?.season ?? currentYear + 1) - currentYear);
-    const rank = teamPowerRanks.get(targetTid) ?? Math.ceil(totalTeams / 2);
-    const pickVal = calcPickTV(1, rank, totalTeams, yearsFromNow);
+    const nextPick = availPicks[0];
+    const yearsFromNow = Math.max(1, (nextPick?.season ?? currentYear + 1) - currentYear);
+    const peekRank = nextPick ? rankForPick(nextPick.originalTid) : fallbackRank;
+    const peekOpts = nextPick ? pickOpts(nextPick) : undefined;
+    const pickVal = calcPickTV(1, peekRank, totalTeams, yearsFromNow, peekOpts);
     if (pickVal > gap + 12) break;
 
     const pick = availPicks.shift();
@@ -346,14 +430,15 @@ export function autoBalance(
       targetBasket.push({ id: `genpick-${safety}`, type: 'pick', label: `${currentYear + 1} 1st Round`, val: Math.min(gap, 11) });
       gap -= Math.min(gap, 11);
     } else {
+      const val = calcPickTV(pick.round, rankForPick(pick.originalTid), totalTeams, pick.season - currentYear, pickOpts(pick));
       targetBasket.push({
         id: String(pick.dpid),
         type: 'pick',
         label: `${pick.season} ${pick.round === 1 ? '1st' : '2nd'} Round`,
-        val: calcPickTV(pick.round, rank, totalTeams, pick.season - currentYear),
+        val,
         pick,
       });
-      gap -= calcPickTV(pick.round, rank, totalTeams, pick.season - currentYear);
+      gap -= val;
     }
     picksAdded++;
   }

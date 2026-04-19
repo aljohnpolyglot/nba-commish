@@ -13,6 +13,19 @@ import {
   cleanName, computeLiveTotals, mergeCareerLeaders, mergeAverageLeaders, STAT_MAP, parseStatVal,
 } from '../../../data/franchiseService';
 import { getTeamMascot } from '../../../utils/helpers';
+import type { Tab } from '../../../types';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cross-view handoff: LeagueHistoryView calls requestTeamHistoryFor(tid, from)
+// then navigates to 'Team History'. We consume the pending tid once on mount.
+// `from` tells us where to route the back button (default: team list).
+// ─────────────────────────────────────────────────────────────────────────────
+let _pendingTeamHistoryTid: number | null = null;
+let _pendingOrigin: Tab | null = null;
+export function requestTeamHistoryFor(tid: number, from?: Tab) {
+  _pendingTeamHistoryTid = tid;
+  _pendingOrigin = from ?? null;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Color utilities
@@ -57,9 +70,22 @@ function avatarFallback(name: string): string {
 // Main component
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const TeamHistoryView: React.FC = () => {
+interface TeamHistoryViewProps {
+  onViewChange?: (view: Tab) => void;
+}
+
+export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }) => {
   const { state } = useGame();
-  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(() => {
+    const t = _pendingTeamHistoryTid;
+    _pendingTeamHistoryTid = null;
+    return t;
+  });
+  const [originView, setOriginView] = useState<Tab | null>(() => {
+    const o = _pendingOrigin;
+    _pendingOrigin = null;
+    return o;
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'records' | 'leaders' | 'history'>('overview');
   const [recordType, setRecordType] = useState<'regular' | 'playoff'>('regular');
@@ -361,11 +387,20 @@ export const TeamHistoryView: React.FC = () => {
         <div className="absolute inset-0 opacity-10" style={{ background: `radial-gradient(ellipse at top right, ${accent}, transparent 70%)` }} />
         <div className="relative max-w-6xl mx-auto px-6 pt-6 pb-8">
           <button
-            onClick={() => setSelectedTeamId(null)}
+            onClick={() => {
+              if (originView && onViewChange) {
+                const dest = originView;
+                setOriginView(null);
+                setSelectedTeamId(null);
+                onViewChange(dest);
+                return;
+              }
+              setSelectedTeamId(null);
+            }}
             className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-zinc-200 transition-colors mb-6"
           >
             <ArrowLeft className="w-3.5 h-3.5" style={{ color: accent }} />
-            All Teams
+            {originView === 'League History' ? 'Back to League History' : 'All Teams'}
           </button>
           <div className="flex items-center gap-5">
             {selectedTeam.logoUrl ? (

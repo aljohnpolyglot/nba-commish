@@ -20,7 +20,8 @@ export function generateStatsForTeam(
   overridePlayers?: Player[],
   otCount: number = 0,
   oppDefProfile?: { overallDef: number; interiorDef: number; perimeterDef: number; steal: number; block: number; passPerception: number },
-  knobs: SimulatorKnobs = KNOBS_DEFAULT
+  knobs: SimulatorKnobs = KNOBS_DEFAULT,
+  scoringBiases?: Map<string, { ptsMult: number; effMult: number }>
 ): PlayerGameStats[] {
   // ── Apply pace multiplier to scoring target ────────────────────────────────
   const adjustedScore = Math.round(totalScore * knobs.paceMultiplier);
@@ -166,10 +167,13 @@ export function generateStatsForTeam(
 
   // ── Points Distribution ────────────────────────────────────────────────
   let teamBonusBucket = 0;
-  const initialTargets = rotation.map((_, i) => {
+  const initialTargets = rotation.map((p, i) => {
     const share    = scoringPotentials[i] / totalScoringPotential;
     // GamePlan ptsMult shifts tonight's distribution (bench eruption, 2nd-option takeover, etc.)
-    let rawTarget  = adjustedScore * share * gamePlan.ptsMult[i];
+    // User's Scoring Options override (Coaching → Preferences) applies via scoringBiases:
+    // promoted players get +pts, demoted −pts, by slot-distance delta.
+    const userPtsBias = scoringBiases?.get(p.internalId)?.ptsMult ?? 1;
+    let rawTarget  = adjustedScore * share * gamePlan.ptsMult[i] * userPtsBias;
     if (rawTarget > 27) {
       const excess      = rawTarget - 27;
       const shavedPoints = excess * 0.60;
@@ -379,8 +383,12 @@ if (tpComposite >= 20 && tpComposite <= 60) {
       ? Math.max(0.55, 1.0 - (threePa - naturalVol) * 0.018)
       : 1.0;
 
+    // User's Scoring Options override: demoted players shoot slightly more efficient,
+    // promoted players slightly less (pushed past their comfort usage). Applied to
+    // both 3PT and 2PT effective percentages so it shows up as FG% swing.
+    const userEffBias = scoringBiases?.get(p.internalId)?.effMult ?? 1;
     const threePctEffective = Math.max(0.04,
-      threePctBase * nightProfile.efficiencyMult * gamePlan.effMult[i] * perimPenalty * knobs.efficiencyMultiplier * volDecay
+      threePctBase * nightProfile.efficiencyMult * gamePlan.effMult[i] * userEffBias * perimPenalty * knobs.efficiencyMultiplier * volDecay
     );
 
     // Calculate 2PT efficiency
@@ -392,7 +400,7 @@ if (tpComposite >= 20 && tpComposite <= 60) {
     // Rim runners (isIn) are mechanically consistent — lower variance.
     // Perimeter players' midrange is shot-creation dependent — wider swings.
     const pct2Sigma = isIn ? 0.10 : 0.20;
-    const pct2 = Math.max(0.28, Math.min(0.72, pct2Raw * nightProfile.efficiencyMult * gamePlan.effMult[i] * knobs.efficiencyMultiplier * getVariance(1.0, pct2Sigma)));
+    const pct2 = Math.max(0.28, Math.min(0.72, pct2Raw * nightProfile.efficiencyMult * gamePlan.effMult[i] * userEffBias * knobs.efficiencyMultiplier * (knobs.interiorEffMult ?? 1.0) * getVariance(1.0, pct2Sigma)));
 
     // Calculate makes — wider variance (0.28 σ) allows real cold/hot nights:
     // Giannis 3/3 at 21% base: round(0.63 × N(1,0.28)) → 0 or 1 depending on roll.
@@ -431,6 +439,7 @@ if (tpComposite >= 20 && tpComposite <= 60) {
     // Rule-change knobs (commissioner settings → shot location shift)
     wAtRim   *= (knobs.rimRateMult   ?? 1.0);
     wLowPost *= (knobs.lowPostRateMult ?? 1.0);
+    wMidRange *= (knobs.midRangeRateMult ?? 1.0);
 
     const wTotal = wAtRim + wLowPost + wMidRange;
 

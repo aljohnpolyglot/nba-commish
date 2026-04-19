@@ -101,6 +101,16 @@ export interface SimulatorKnobs {
    *  Set via rule: offensiveThreeSecondEnabled=false → 1.35 */
   lowPostRateMult: number;
 
+  /** Multiplier on the mid-range attempt weight in shot-location distribution.
+   *  1.0 = NBA default. Used when shot-distribution sliders push midrange up/down
+   *  without shifting the other two 2PT buckets. */
+  midRangeRateMult?: number;
+
+  /** Multiplier on this team's 2PT (interior) efficiency. <1.0 means the defender
+   *  is stacking help at the rim/post, so your paint FG% drops. Set by the
+   *  opponent's Help Defense slider. 1.0 = neutral. */
+  interiorEffMult?: number;
+
   /** Multiplier on the available-blocks pool passed to generateCoordinatedStats.
    *  1.0 = NBA default. >1.0 = more blocks (e.g. goaltending disabled → defenders
    *  can freely swat shots at/past the rim). 0 = blocks completely removed.

@@ -175,7 +175,7 @@ export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, 
               </div>
               <p className="text-xs text-slate-400 leading-relaxed">
                 {assistantGM
-                  ? 'Your team will be fully managed by the AI while you\'re away — re-signings, free agency, waivers, trades, two-way promotions, and extensions. The AI acts in your franchise\'s best interest.'
+                  ? 'Your Assistant GM will run the franchise while you\'re away — re-signings, free agency, waivers, trades, two-way promotions, and extensions. We\'ll keep the lights on until you\'re back.'
                   : 'Your team will be frozen. No signings, no trades, no waivings. Contracts that expire will not be renewed — you may return to an empty roster.'}
               </p>
               {!assistantGM && daysSkipped > 100 && (

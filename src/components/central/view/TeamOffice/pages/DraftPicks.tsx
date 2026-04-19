@@ -10,8 +10,15 @@ interface DraftPicksProps {
 export function DraftPicks({ teamId }: DraftPicksProps) {
   const { state } = useGame();
   const team = state.teams.find(t => t.id === teamId);
-  const picks = (state.draftPicks || []).filter(p => p.tid === teamId);
   const currentYear = state.leagueStats?.year || 2026;
+  const draftComplete = Boolean((state as any).draftComplete);
+  // After this year's draft runs, the current-year pick is consumed. Hide it
+  // so it doesn't linger as a ghost entry until rollover runs on Jun 30.
+  const picks = (state.draftPicks || []).filter(p => {
+    if (p.tid !== teamId) return false;
+    if (draftComplete && p.season === currentYear) return false;
+    return true;
+  });
 
   if (!team) {
     return <div className="text-red-400 font-bold uppercase tracking-widest">Team not found</div>;

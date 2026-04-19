@@ -5,32 +5,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useGame } from '../../../../../store/GameContext';
 import { calculateK2 } from './lib/k2Engine';
-import { convertTo2KRating } from '../../../../../utils/helpers';
 import { calculateCoachSliders } from './lib/coachSliders';
 import { getSystemProficiency } from '../../../../../utils/coachSliders';
 import { fetchCoachData, getAllCoaches, fetchCoachExtendedData } from './lib/staffService';
 import type { CoachData } from './lib/staffService';
 import type { NBAPlayer, K2Result, PlayerK2 } from '../../../../../types';
 import CoachingView from './CoachingView/CoachingView';
+import { getDisplayOverall } from '../../../../../utils/playerRatings';
 
 interface CoachingPageProps {
   teamId: number;
-}
-
-function calculateOverallFromRating(rating: any): number {
-  if (!rating) return 50;
-  const { hgt, stre, spd, jmp, endu, ins, dnk, ft, fg, tp, oiq, diq, drb, pss, reb } = rating;
-  const scoringStats = [ins, dnk, ft, fg, tp].sort((a: number, b: number) => b - a);
-  const topScoring = (scoringStats[0] + scoringStats[1] + scoringStats[2]) / 3;
-  const avgScoring = (ins + dnk + ft + fg + tp) / 5;
-  const scoring = topScoring * 0.7 + avgScoring * 0.3;
-  const physicals = (hgt * 1.5 + stre + spd * 1.2 + jmp + endu * 1.3) / 6;
-  const playmaking = (drb * 0.9 + pss * 0.9 + oiq * 1.2) / 3;
-  const defense = (diq * 1.2 + reb * 0.9 + hgt * 0.9) / 3;
-  let rawOvr = scoring * 0.35 + playmaking * 0.25 + defense * 0.2 + physicals * 0.2;
-  if (rawOvr > 80) rawOvr = 80 + (rawOvr - 80) * 1.4;
-  else if (rawOvr < 60) rawOvr = rawOvr * 0.95;
-  return Math.max(40, Math.min(99, Math.round(rawOvr)));
 }
 
 export function CoachingPage({ teamId }: CoachingPageProps) {
@@ -69,15 +53,15 @@ export function CoachingPage({ teamId }: CoachingPageProps) {
             age: p.born?.year ? currentYear - p.born.year : (p.age || 26),
           });
 
-          const bbgmOvr = calculateOverallFromRating(r);
-          const eliteSkill = Math.max(r.tp || 0, r.ins || 0, r.spd || 0, r.jmp || 0, r.stre || 0, r.dnk || 0, r.drb || 0, r.pss || 0);
-          const rating2K = convertTo2KRating(bbgmOvr, r.hgt, eliteSkill);
+          // Canonical display OVR — unified with NBA Central / PlayerRatingsView.
+          // Legacy fields `bbgmOvr`/`rating2K` both point to the same value.
+          const displayOvr = getDisplayOverall(p);
 
           return {
             ...p,
             k2: { OS: k2.OS.sub, AT: k2.AT.sub, IS: k2.IS.sub, PL: k2.PL.sub, DF: k2.DF.sub, RB: k2.RB.sub } as K2Result,
-            rating2K,
-            bbgmOvr,
+            rating2K: displayOvr,
+            bbgmOvr: displayOvr,
             currentRating: r,
           } as PlayerK2;
         })

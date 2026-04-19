@@ -10,7 +10,7 @@ import { markLightningStrikes, resolveLightningStrikes } from '../../../services
 import { markFatherTimeInjections, resolveFatherTimeInjections, applyMiddleClassBoosts } from '../../../services/playerDevelopment/washedAlgorithm';
 import { markBustLottery, resolveBustLottery } from '../../../services/playerDevelopment/bustLottery';
 import { generateAIDayTradeProposals, executeAITrade } from '../../../services/AITradeHandler';
-import { runAIFreeAgencyRound, runAIMidSeasonExtensions, runAISeasonEndExtensions, autoTrimOversizedRosters } from '../../../services/AIFreeAgentHandler';
+import { runAIFreeAgencyRound, runAIMidSeasonExtensions, runAISeasonEndExtensions, autoTrimOversizedRosters, autoPromoteTwoWayExcess } from '../../../services/AIFreeAgentHandler';
 import { routeUnsignedPlayers } from '../../../services/externalSigningRouter';
 import { formatExternalSalary } from '../../../constants';
 import { applySeasonRollover, shouldFireRollover } from '../../../services/logic/seasonRollover';
@@ -368,6 +368,10 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
                                 // Preserve current-season contract.amount — only exp advances.
                                 contract: { ...p.contract, exp: ext.newExp },
                                 contractYears: [...existingThroughCurrent, ...extContractYears],
+                                // An extension is a standard deal by definition — clear any
+                                // lingering two-way flag so the player counts against the 15-man
+                                // roster and future promotions don't pick them up again.
+                                twoWay: false,
                             };
                         }
                         if (declinedIds.has(p.internalId)) {
@@ -547,60 +551,26 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
         const isFreeAgencySeason = (simMonth >= 7 && simMonth <= 9) || simMonth >= 10 || simMonth <= 2;
         const isRegularSeason = (simMonth >= 10 && simMonth <= 12) || (simMonth >= 1 && simMonth <= 4);
 
-        // G-League auto-assignment: every 7 days during regular season
-        // Players with 0 GP on teams that have played 15+ games get assigned to G-League
+        // G-League auto-assignment used to run every 7 days and stash every 0-GP
+        // standard player — that compounded into IND's 36-man roster by mid-Feb
+        // because the trim excluded gLeagueAssigned from the 15-man count. In the
+        // real NBA, G-League assignment is mostly a two-way mechanic; standard
+        // players who don't play just sit on the bench or get waived. Since this
+        // sim doesn't simulate G-League games, we removed the auto-demotion
+        // entirely — over-roster teams are now handled by autoTrimOversizedRosters,
+        // which waives excess standard players straight to the FA pool.
+        //
+        // Legacy cleanup: any player still flagged gLeagueAssigned=true from a
+        // previous save gets the flag cleared here so they re-enter the normal
+        // roster count (and the trim will cut them if the team is over 15).
         if (isRegularSeason && stateWithSim.day % 7 === 0) {
-            const currentYear = stateWithSim.leagueStats.year;
-            const userTeamId = (stateWithSim as any).userTeamId ?? stateWithSim.teams[0]?.id;
-            // Build a set of playerIds who appeared in any sim result this batch
-            // (p.stats[] isn't updated until postProcessor, so we count from allSimResults)
-            const playersWithGPThisBatch = new Set<string>();
-            for (const r of allSimResults) {
-                for (const s of [...(r.homeStats ?? []), ...(r.awayStats ?? [])]) {
-                    if (s.playerId && s.min > 0) playersWithGPThisBatch.add(s.playerId);
-                }
-            }
-            const glAssigned: string[] = [];
-            const glReturned: string[] = [];
-            const glUpdatedPlayers = stateWithSim.players.map(p => {
-                if (p.tid === userTeamId || p.tid < 0 || p.tid >= 100) return p;
-                if ((p as any).twoWay || (p as any).injury?.gamesRemaining > 0) return p;
-                // Never G-League assign quality players — only fringe/end-of-bench guys
-                const _r = (p as any).ratings?.[(p as any).ratings?.length - 1];
-                const _k2 = 0.88 * (p.overallRating ?? 60) + 31 + ((_r?.hgt ?? 50) > 70 ? 2 : 0);
-                if (_k2 >= 78) return p;
-                const teamGP = (stateWithSim.teams.find(t => t.id === p.tid)?.wins ?? 0) +
-                               (stateWithSim.teams.find(t => t.id === p.tid)?.losses ?? 0);
-                // Grace period: don't G-League assign players who just joined via trade/signing
-                // yearsWithTeam=0 means they're new to the team; wait until team has 14+ GP
-                if ((p as any).yearsWithTeam === 0 && teamGP < 14) return p;
-                // Check both stored stats AND this batch's sim results for GP
-                const storedGP = ((p.stats ?? []) as any[]).find(
-                    (s: any) => s.season === currentYear && !s.playoffs
-                )?.gp ?? 0;
-                const hasPlayedThisBatch = playersWithGPThisBatch.has(p.internalId);
-                const playerGP = storedGP + (hasPlayedThisBatch ? 1 : 0);
-                // If team has played 15+ games and this player has 0 GP → G-League
-                if (teamGP >= 15 && playerGP === 0 && !(p as any).gLeagueAssigned) {
-                    glAssigned.push(p.name);
-                    return { ...p, gLeagueAssigned: true, gLeagueParentTid: p.tid };
-                }
-                // If player now has GP and was G-League assigned → return to active roster
-                if ((p as any).gLeagueAssigned && playerGP > 0) {
-                    glReturned.push(p.name);
-                    return { ...p, gLeagueAssigned: false };
-                }
-                return p;
-            });
-            if (glAssigned.length > 0 || glReturned.length > 0) {
+            const stillFlagged = stateWithSim.players.some(p => (p as any).gLeagueAssigned);
+            if (stillFlagged) {
                 stateWithSim = {
                     ...stateWithSim,
-                    players: glUpdatedPlayers,
-                    history: [
-                        ...(stateWithSim.history ?? []),
-                        ...glAssigned.map(name => ({ text: `${name} assigned to G-League affiliate`, date: stateWithSim.date, type: 'G-League Assignment' })),
-                        ...glReturned.map(name => ({ text: `${name} recalled from G-League`, date: stateWithSim.date, type: 'G-League Callup' })),
-                    ],
+                    players: stateWithSim.players.map(p =>
+                        (p as any).gLeagueAssigned ? { ...p, gLeagueAssigned: false } : p
+                    ),
                 };
             }
         }
@@ -618,33 +588,84 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
             return count < minRosterSetting;
         });
         if (isFreeAgencySeason && (stateWithSim.day % faFrequency === 0 || anyTeamUnderMinRoster)) {
-            // Trim teams that exceeded the roster limit (e.g. due to trades or draft)
+            // Step 1: Two-way → standard promotion (first line of defense).
+            // If a team has <15 standard AND >3 two-way, promote the best excess
+            // two-ways to 1-year min standard deals so they open a 2W slot and
+            // fill a standard seat without waiving anyone. Runs BEFORE trim.
+            const promotions = autoPromoteTwoWayExcess(stateWithSim, simMonth);
+            if (promotions.length > 0) {
+                const promotionMap = new Map(promotions.map(pr => [pr.playerId, pr] as const));
+                const firstYear = stateWithSim.leagueStats?.year ?? 2026;
+                stateWithSim = {
+                    ...stateWithSim,
+                    players: stateWithSim.players.map(p => {
+                        const pr = promotionMap.get(p.internalId);
+                        if (!pr) return p;
+                        // Fresh 1-year standard contract at market value. Old contract
+                        // is discarded — mirrors real NBA (waived/released → new signing).
+                        const newContract = {
+                            amount: Math.round(pr.newSalaryUSD / 1_000), // BBGM thousands
+                            exp: pr.contractExp,
+                            hasPlayerOption: false,
+                        };
+                        const historicalYears = ((p as any).contractYears ?? []).filter((cy: any) => {
+                            const yr = parseInt(cy.season.split('-')[0], 10) + 1;
+                            return yr < firstYear;
+                        });
+                        const newContractYears = [{
+                            season: `${firstYear - 1}-${String(firstYear).slice(-2)}`,
+                            guaranteed: pr.newSalaryUSD,
+                            option: '',
+                        }];
+                        return {
+                            ...p,
+                            twoWay: false,
+                            contract: newContract,
+                            contractYears: [...historicalYears, ...newContractYears],
+                        } as any;
+                    }),
+                    history: [
+                        ...(stateWithSim.history ?? []),
+                        ...promotions.map(pr => ({
+                            text: `${pr.playerName} has been promoted from two-way to a standard contract by the ${pr.teamName}: $${(pr.newSalaryUSD / 1_000_000).toFixed(1)}M/1yr`,
+                            date: stateWithSim.date,
+                            type: 'Signing',
+                        })),
+                    ],
+                };
+                console.log(`[TwoWayPromotion] Applied ${promotions.length} promotions`);
+            }
+
+            // Step 2: Trim teams still over the roster limit (e.g. trade overflow)
             // Pass simMonth so the trimmer uses the training camp limit during Jul–Sep
             console.log(`[RosterTrim] Calling autoTrimOversizedRosters: simMonth=${simMonth}, date=${stateWithSim.date}, day=${stateWithSim.day}`);
             const waivers = autoTrimOversizedRosters(stateWithSim, simMonth);
             console.log(`[RosterTrim] Month=${simMonth}, trimmed=${waivers.length} players`);
             if (waivers.length > 0) {
-                const waiverIds = new Set(waivers.map(w => w.playerId));
-                // October+ = regular season roster cut: release training camp players to FA pool
-                // July–Sep = preseason period: assign to G-League affiliate (stays on roster count)
-                const isTrainingCampCut = simMonth >= 10;
+                const waiverInfo = new Map(waivers.map(w => [w.playerId, w] as const));
+                // Every cut is a straight waive to the FA pool. Preseason camp
+                // cuts used to get stashed in G-League, but (1) this sim doesn't
+                // simulate G-League games and (2) the stash piled up into 30+
+                // man rosters because the flag hid them from the roster count.
+                // Two-way cuts also clear the twoWay flag so they don't keep a
+                // 2W cap slot on the way out.
                 stateWithSim = {
                     ...stateWithSim,
                     players: stateWithSim.players.map(p => {
-                        if (!waiverIds.has(p.internalId)) return p;
-                        if (isTrainingCampCut) {
-                            // Released from training camp — becomes free agent
-                            return { ...p, tid: -1, status: 'FreeAgent' as const, gLeagueAssigned: false } as unknown as Player;
+                        const w = waiverInfo.get(p.internalId);
+                        if (!w) return p;
+                        if (w.reason === 'twoWayExcess') {
+                            return { ...p, tid: -1, status: 'FreeAgent' as const, twoWay: false, gLeagueAssigned: false } as unknown as Player;
                         }
-                        // Preseason overflow — send to G-League affiliate
-                        return { ...p, gLeagueAssigned: true };
+                        return { ...p, tid: -1, status: 'FreeAgent' as const, gLeagueAssigned: false } as unknown as Player;
                     }),
                     history: [
                         ...(stateWithSim.history ?? []),
-                        ...waivers.map(w => isTrainingCampCut
-                            ? { text: `${w.playerName} released from training camp by the ${w.teamName}`, date: stateWithSim.date, type: 'Training Camp Release' }
-                            : { text: `${w.playerName} assigned to G-League affiliate by the ${w.teamName}`, date: stateWithSim.date, type: 'G-League Assignment' }
-                        ),
+                        ...waivers.map(w => ({
+                            text: `${w.playerName} waived by the ${w.teamName}`,
+                            date: stateWithSim.date,
+                            type: 'Waiver',
+                        })),
                     ],
                 };
             }
@@ -708,8 +729,9 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
                     const eDate = new Date(faBaseDate);
                     eDate.setDate(eDate.getDate() - dayOff);
                     const dateStr = eDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                    const twoWayTag = (s as any).twoWay ? ' (two-way)' : '';
                     return {
-                        text: `${s.playerName} signs with the ${s.teamName}: $${totalStr}M/${s.contractYears ?? 1}yr${optTag}`,
+                        text: `${s.playerName} signs with the ${s.teamName}: $${totalStr}M/${s.contractYears ?? 1}yr${optTag}${twoWayTag}`,
                         date: dateStr,
                         type: 'Signing',
                     };

@@ -11,6 +11,7 @@ import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
 import ContactModal from '../../ContactModal';
 import { getCountryFromLoc } from '../../../utils/helpers';
 import { getCapThresholds, getTeamCapProfile, getMLEAvailability, getTeamPayrollUSD } from '../../../utils/salaryUtils';
+import { calcPot2K } from '../../../services/trade/tradeValueEngine';
 import type { NBAPlayer } from '../../../types';
 
 const MARKET_POOLS = [
@@ -35,7 +36,7 @@ export const FreeAgentsView: React.FC = () => {
   // GM defaults to NBA pool (they mostly care about NBA FAs); commissioner sees the whole market.
   const [selectedPool, setSelectedPool] = useState<string>(isGM ? 'nba' : 'all');
   const [selectedPosition, setSelectedPosition] = useState('All');
-  const [sortBy, setSortBy] = useState<'ovr' | 'age' | 'name'>('ovr');
+  const [sortBy, setSortBy] = useState<'ovr' | 'pot' | 'age' | 'name'>('ovr');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const [selectedCountry, setSelectedCountry] = useState('All');
@@ -208,6 +209,8 @@ export const FreeAgentsView: React.FC = () => {
 
       if (sortBy === 'ovr') {
         comparison = (a.overallRating || 0) - (b.overallRating || 0);
+      } else if (sortBy === 'pot') {
+        comparison = calcPot2K(a, currentYear) - calcPot2K(b, currentYear);
       } else if (sortBy === 'age') {
         const ageA = a.born?.year ? currentYear - a.born.year : a.age || 0;
         const ageB = b.born?.year ? currentYear - b.born.year : b.age || 0;
@@ -340,23 +343,25 @@ export const FreeAgentsView: React.FC = () => {
       <div className="p-4 sm:p-8 space-y-4 sm:space-y-8">
         {/* Header */}
         <div className="space-y-3 sm:space-y-4">
+          {/* Title row — icon + title/desc. Toggle drops below on mobile so the
+              title doesn't get squeezed into three-line wrap. */}
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="w-10 h-10 sm:w-16 sm:h-16 bg-rose-600/20 rounded-xl sm:rounded-2xl flex items-center justify-center border border-rose-500/30 flex-shrink-0">
               <UserX size={20} className="text-rose-400 sm:hidden" />
               <UserX size={32} className="text-rose-400 hidden sm:block" />
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-3xl font-black text-white uppercase tracking-tight">
+              <h1 className="text-lg sm:text-3xl font-black text-white uppercase tracking-tight leading-tight">
                 {viewMode === 'upcoming' ? 'Upcoming Free Agents' : 'Free Agent Market'}
               </h1>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1 font-medium">
+              <p className="hidden sm:block text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1 font-medium">
                 {viewMode === 'upcoming'
                   ? 'Players on the last year of their deal — re-sign before they hit the market.'
                   : 'Browse and interact with available players.'}
               </p>
             </div>
-            {/* ── Upper-right view toggle ────────────────────────────── */}
-            <div className="ml-auto flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 shrink-0">
+            {/* Desktop-only upper-right view toggle */}
+            <div className="hidden sm:flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 shrink-0">
               <button
                 onClick={() => setViewMode('available')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
@@ -378,7 +383,29 @@ export const FreeAgentsView: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm">
+          {/* Mobile-only toggle — full-width segmented row below title */}
+          <div className="sm:hidden flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1">
+            <button
+              onClick={() => setViewMode('available')}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                viewMode === 'available' ? 'bg-rose-600 text-white shadow' : 'text-slate-500'
+              }`}
+            >
+              <Users size={12} />
+              Available
+            </button>
+            <button
+              onClick={() => setViewMode('upcoming')}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                viewMode === 'upcoming' ? 'bg-amber-600 text-white shadow' : 'text-slate-500'
+              }`}
+            >
+              <Hourglass size={12} />
+              Upcoming
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:gap-6 text-[11px] sm:text-sm">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
               <span className="text-slate-400 font-medium">{nbaFreeAgents} NBA Free Agents</span>
@@ -451,23 +478,30 @@ export const FreeAgentsView: React.FC = () => {
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              {MARKET_POOLS.map(pool => (
-                <button
-                  key={pool.id}
-                  onClick={() => { setSelectedPool(pool.id); setSelectedTeamId(null); setSelectedCountry('All'); }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-tight transition-all border ${
-                    selectedPool === pool.id
-                      ? (viewMode === 'upcoming' ? 'bg-amber-600 text-white border-amber-500 shadow-lg shadow-amber-500/20' : 'bg-rose-600 text-white border-rose-500 shadow-lg shadow-rose-500/20')
-                      : 'bg-slate-900 text-slate-500 border-slate-800 hover:border-slate-700'
-                  }`}
-                >
-                  <pool.icon size={14} />
-                  {pool.label}
-                </button>
-              ))}
+          <div className="space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+            {/* Pool selector — horizontal scroll on mobile so 9 options don't wrap
+                into a 3x3 grid; flex-wrap on desktop. */}
+            <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto sm:overflow-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              <div className="flex sm:flex-wrap items-center gap-2 min-w-max sm:min-w-0">
+                {MARKET_POOLS.map(pool => (
+                  <button
+                    key={pool.id}
+                    onClick={() => { setSelectedPool(pool.id); setSelectedTeamId(null); setSelectedCountry('All'); }}
+                    className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-bold uppercase tracking-tight transition-all border whitespace-nowrap ${
+                      selectedPool === pool.id
+                        ? (viewMode === 'upcoming' ? 'bg-amber-600 text-white border-amber-500 shadow-lg shadow-amber-500/20' : 'bg-rose-600 text-white border-rose-500 shadow-lg shadow-rose-500/20')
+                        : 'bg-slate-900 text-slate-500 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <pool.icon size={14} />
+                    {pool.label}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* Secondary filters — grid on mobile for aligned layout, wrap on desktop */}
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3 sm:contents">
 
             <select
               value={selectedPosition}
@@ -557,20 +591,22 @@ export const FreeAgentsView: React.FC = () => {
                 )}
               </AnimatePresence>
             </div>
+            </div>
 
-            <div className="flex items-center gap-2 ml-auto">
-              {(['ovr', 'age', 'name'] as const).map((s) => (
+            {/* Sort bar — own row on mobile, pushed right on desktop */}
+            <div className="flex items-center justify-between sm:justify-end gap-1 sm:gap-2 sm:ml-auto overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {(['ovr', 'pot', 'age', 'name'] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => {
                     if (sortBy === s) setSortOrder(o => o === 'asc' ? 'desc' : 'asc');
                     else { setSortBy(s); setSortOrder(s === 'name' ? 'asc' : 'desc'); }
                   }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-tight transition-all ${
+                  className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-bold uppercase tracking-tight transition-all whitespace-nowrap ${
                     sortBy === s ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-900'
                   }`}
                 >
-                  {s === 'ovr' ? 'Overall' : s === 'age' ? 'Age' : 'A-Z'}
+                  {s === 'ovr' ? 'Overall' : s === 'pot' ? 'Potential' : s === 'age' ? 'Age' : 'A-Z'}
                   {sortBy === s && <ArrowUpDown size={12} />}
                 </button>
               ))}

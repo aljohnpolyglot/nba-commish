@@ -4,6 +4,7 @@ import { Trophy, MapPin } from 'lucide-react';
 import { fetchAllStarHistory, AllStarHistoryEntry } from '../../data/allStarHistoryFetcher';
 import { matchTeamByWikiName, generateAbbrev } from '../../data/brefFetcher';
 import { getAllStarSunday } from '../../services/allStar/AllStarWeekendOrchestrator';
+import { usePlayerQuickActions } from '../../hooks/usePlayerQuickActions';
 
 /**
  * All-Star history table — mirrors LeagueHistoryView layout.
@@ -13,7 +14,7 @@ import { getAllStarSunday } from '../../services/allStar/AllStarWeekendOrchestra
  *   - leagueStats.allStarHosts for future-assigned hosts
  */
 
-const MvpCell = ({ mvp, teams, players }: { mvp: any; teams: any[]; players: any[] }) => {
+const MvpCell = ({ mvp, teams, players, onOpenPlayer }: { mvp: any; teams: any[]; players: any[]; onOpenPlayer: (p: any) => void }) => {
   if (!mvp) {
     return <span className="italic text-xs text-slate-700">—</span>;
   }
@@ -22,9 +23,12 @@ const MvpCell = ({ mvp, teams, players }: { mvp: any; teams: any[]; players: any
   const imgURL = player?.imgURL ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(mvp.name)}&background=1e293b&color=94a3b8`;
   const teamLogoUrl = matchedTeam?.logoUrl;
   const teamAbbrev = matchedTeam?.abbrev ?? (mvp.team ? generateAbbrev(mvp.team) : '');
+  const clickable = !!player;
 
   return (
-    <div className="flex items-center gap-2">
+    <div
+      onClick={clickable ? () => onOpenPlayer(player) : undefined}
+      className={`flex items-center gap-2 ${clickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}>
       <div className="relative w-7 h-7 rounded-full bg-slate-800 overflow-hidden border border-slate-700 shrink-0">
         <img
           src={imgURL}
@@ -85,6 +89,7 @@ interface AllStarHistoryViewProps {
 export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose }) => {
   const { state } = useGame();
   const [history, setHistory] = useState<AllStarHistoryEntry[] | null>(null);
+  const quick = usePlayerQuickActions();
 
   useEffect(() => {
     fetchAllStarHistory().then(setHistory);
@@ -190,6 +195,8 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
     return Array.from(rowMap.values()).sort((a, b) => b.year - a.year);
   }, [history, state.teams, state.players, state.boxScores, state.allStar, state.leagueStats, state.date]);
 
+  if (quick.fullPageView) return quick.fullPageView;
+
   return (
     <div className="h-full overflow-hidden p-4 md:p-8 flex flex-col">
       <div className="max-w-7xl mx-auto w-full h-full flex flex-col">
@@ -266,7 +273,7 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
                       )}
                     </td>
                     <td className="p-3 whitespace-nowrap">
-                      <MvpCell mvp={row.mvps[0]} teams={state.teams} players={state.players} />
+                      <MvpCell mvp={row.mvps[0]} teams={state.teams} players={state.players} onOpenPlayer={quick.openFor} />
                     </td>
                     <td className="p-3 whitespace-nowrap">
                       <HostCell host={row.host} teams={state.teams} />
@@ -278,6 +285,7 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
           </div>
         </div>
       </div>
+      {quick.portals}
     </div>
   );
 };

@@ -63,6 +63,12 @@ export interface InboundProposalInput {
   teamOutlooks: Map<number, { role: string }>;
   /** When the proposal is dated — usually state.date */
   proposedDate: string;
+  /** Optional dynamic pick-value inputs (see draftClassStrength.ts). */
+  classStrengthByYear?: Map<number, number>;
+  lotterySlotByTid?: Map<number, number>;
+  /** Optional tid → power rank (1=best). If present, pick TV projects off
+   *  the original owner's rank instead of a hardcoded mid-league 15. */
+  powerRanks?: Map<number, number>;
 }
 
 /** Shape of a generated proposal (before id/status are assigned by caller). */
@@ -82,8 +88,17 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
   const {
     userTid, userGMName, blockPlayerIds, blockPickIds,
     players, teams, draftPicks, currentYear, minTradableSeason,
-    teamOutlooks, proposedDate,
+    teamOutlooks, proposedDate, classStrengthByYear, lotterySlotByTid, powerRanks,
   } = input;
+
+  const pickRankFor = (originalTid: number) =>
+    powerRanks?.get(originalTid) ?? 15;
+  const pickOpts = (pk: DraftPick) => ({
+    classStrength: classStrengthByYear?.get(pk.season) ?? 1.0,
+    actualSlot: pk.round === 1 && pk.season === currentYear
+      ? lotterySlotByTid?.get(pk.originalTid)
+      : undefined,
+  });
 
   // ── Resolve user's block assets ────────────────────────────────────────────
   const userMode: TeamMode = roleToMode(teamOutlooks.get(userTid)?.role ?? 'neutral');
@@ -95,7 +110,7 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
   const userPlayerTVs = new Map(userBlockPlayers.map(p => [p.internalId, calcPlayerTV(p, userMode, currentYear)]));
   const userPickTVs = new Map(userBlockPicks.map(dp => [
     dp.dpid,
-    calcPickTV(dp.round, 15, teams.length, Math.max(1, dp.season - currentYear)),
+    calcPickTV(dp.round, pickRankFor(dp.originalTid), teams.length, Math.max(1, dp.season - currentYear), pickOpts(dp)),
   ]));
 
   const proposals: RawProposal[] = [];
@@ -121,7 +136,7 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
       .filter(dp => dp.tid === team.id && dp.season >= minTradableSeason)
       .map(dp => ({
         pick: dp,
-        tv: calcPickTV(dp.round, 15, teams.length, Math.max(1, dp.season - currentYear)),
+        tv: calcPickTV(dp.round, pickRankFor(dp.originalTid), teams.length, Math.max(1, dp.season - currentYear), pickOpts(dp)),
       }))
       .filter(r => r.tv > 5)
       .sort((a, b) => b.tv - a.tv)

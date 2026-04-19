@@ -21,6 +21,9 @@ import {
   type TradeOutlook,
 } from '../../utils/salaryUtils';
 import { OfferCard, type FoundOffer, type TradeItem } from '../central/view/TradeFinderView';
+import { buildClassStrengthMap, buildLotterySlotMap } from '../../services/draft/draftClassStrength';
+import { getMaxTradableSeason } from '../../services/draft/DraftPickGenerator';
+import { teamPowerRanks } from '../../services/trade/tradeFinderEngine';
 
 interface TradeSummaryModalProps {
   isOpen: boolean;
@@ -52,6 +55,9 @@ function buildItems(
   teamMode: TeamMode,
   currentYear: number,
   teams: NBATeam[],
+  classStrengthByYear: Map<number, number>,
+  lotterySlotByTid: Map<number, number>,
+  powerRanks: Map<number, number>,
 ): TradeItem[] {
   const items: TradeItem[] = [];
   for (const p of players) {
@@ -67,11 +73,18 @@ function buildItems(
   }
   for (const pk of picks) {
     const owner = teams.find(t => t.id === pk.originalTid);
+    const classStrength = classStrengthByYear.get(pk.season) ?? 1.0;
+    const actualSlot = pk.round === 1 && pk.season === currentYear
+      ? lotterySlotByTid.get(pk.originalTid)
+      : undefined;
+    // Use the original owner's rank — pick value reflects THEIR slot,
+    // regardless of who currently holds it.
+    const rank = powerRanks.get(pk.originalTid) ?? 15;
     items.push({
       id: String(pk.dpid),
       type: 'pick',
       label: `${pk.season} ${pk.round === 1 ? '1st' : '2nd'} Round${owner ? ` (via ${owner.abbrev})` : ''}`,
-      val: calcPickTV(pk.round, 15, teams.length, Math.max(1, pk.season - currentYear)),
+      val: calcPickTV(pk.round, rank, teams.length, Math.max(1, pk.season - currentYear), { classStrength, actualSlot }),
       pick: pk,
     });
   }
@@ -126,8 +139,21 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
   const teamACapK = getTeamCapProfile(state.players, teamA.id, (teamA as any).wins ?? 0, (teamA as any).losses ?? 0, thresholds).capSpaceUSD / 1000;
   const teamBCapK = getTeamCapProfile(state.players, teamB.id, (teamB as any).wins ?? 0, (teamB as any).losses ?? 0, thresholds).capSpaceUSD / 1000;
 
-  const teamAItems = buildItems(teamAPlayers, teamAPicks, teamAMode, currentYear, state.teams);
-  const teamBItems = buildItems(teamBPlayers, teamBPicks, teamBMode, currentYear, state.teams);
+  const classStrengthByYear = useMemo(
+    () => buildClassStrengthMap(state.players, currentYear, currentYear, getMaxTradableSeason(state)),
+    [state.players, currentYear, state.leagueStats?.tradableDraftPickSeasons],
+  );
+  const lotterySlotByTid = useMemo(
+    () => buildLotterySlotMap((state as any).draftLotteryResult),
+    [(state as any).draftLotteryResult],
+  );
+  const powerRanks = useMemo(
+    () => teamPowerRanks(state.teams, currentYear),
+    [state.teams, currentYear],
+  );
+
+  const teamAItems = buildItems(teamAPlayers, teamAPicks, teamAMode, currentYear, state.teams, classStrengthByYear, lotterySlotByTid, powerRanks);
+  const teamBItems = buildItems(teamBPlayers, teamBPicks, teamBMode, currentYear, state.teams, classStrengthByYear, lotterySlotByTid, powerRanks);
 
   const teamAOffer: FoundOffer = { tid: teamA.id, items: teamAItems, outlook: teamAOutlook, variant: 'match' };
   const teamBOffer: FoundOffer = { tid: teamB.id, items: teamBItems, outlook: teamBOutlook, variant: 'match' };
@@ -138,13 +164,13 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4 font-sans"
+        className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-2 sm:p-4 font-sans"
       >
         <motion.div
           initial={{ scale: 0.95, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.95, y: 20 }}
-          className="bg-[#0f172a] border border-slate-700 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col"
+          className="bg-[#0f172a] border border-slate-700 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] sm:max-h-[92vh] flex flex-col"
         >
           {/* Header */}
           <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between rounded-t-2xl">

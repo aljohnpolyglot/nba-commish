@@ -5,12 +5,15 @@ import { LeagueHistoryDetailView } from './LeagueHistoryDetailView';
 import { useBRefSeasonsBatch, getAllCachedSeasons, matchTeamByWikiName, generateAbbrev } from '../../../data/brefFetcher';
 import type { BRefSeasonData } from '../../../data/brefFetcher';
 import { fetchCoachData, getCoachPhoto } from '../../../data/photos/coaches';
+import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
+import { requestTeamHistoryFor } from './TeamHistoryView';
+import type { Tab } from '../../../types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mini award cell for table rows
 // ─────────────────────────────────────────────────────────────────────────────
 
-const AwardCell = ({ award, isCurrent }: { award: any; isCurrent?: boolean }) => {
+const AwardCell = ({ award, isCurrent, onClick }: { award: any; isCurrent?: boolean; onClick?: () => void }) => {
   if (!award) {
     return (
       <span className={`italic text-xs ${isCurrent ? 'text-slate-500' : 'text-slate-700'}`}>
@@ -19,8 +22,11 @@ const AwardCell = ({ award, isCurrent }: { award: any; isCurrent?: boolean }) =>
     );
   }
 
+  const clickable = !!onClick;
   return (
-    <div className="flex items-center gap-2">
+    <div
+      onClick={clickable ? (e) => { e.stopPropagation(); onClick!(); } : undefined}
+      className={`flex items-center gap-2 ${clickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}>
       <div className="relative w-7 h-7 rounded-full bg-slate-800 overflow-hidden border border-slate-700 shrink-0">
         <img
           src={award.imgURL}
@@ -63,11 +69,22 @@ const AwardCell = ({ award, isCurrent }: { award: any; isCurrent?: boolean }) =>
 // Main view
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const LeagueHistoryView: React.FC = () => {
+interface LeagueHistoryViewProps {
+  onViewChange?: (view: Tab) => void;
+}
+
+export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChange }) => {
   const { state, dispatchAction } = useGame();
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [coachPhotosReady, setCoachPhotosReady] = useState(false);
   useEffect(() => { fetchCoachData().then(() => setCoachPhotosReady(true)); }, []);
+  const quick = usePlayerQuickActions();
+
+  const gotoTeamHistory = (tid: number) => {
+    if (!onViewChange) return;
+    requestTeamHistoryFor(tid, 'League History' as Tab);
+    onViewChange('Team History' as Tab);
+  };
 
   // ── Safety Net: Inject historical awards for saved games ──────────────────
   useEffect(() => {
@@ -130,6 +147,7 @@ export const LeagueHistoryView: React.FC = () => {
         id: player?.internalId ?? a.name,
         imgURL: player?.imgURL ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(a.name)}&background=1e293b&color=94a3b8`,
         teamLogoUrl: team?.logoUrl,
+        player,
       };
     };
 
@@ -145,6 +163,7 @@ export const LeagueHistoryView: React.FC = () => {
         id: player?.internalId ?? a.name,
         imgURL: player?.imgURL ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(a.name)}&background=1e293b&color=94a3b8`,
         teamLogoUrl: team?.logoUrl,
+        player,
       };
     };
 
@@ -346,9 +365,15 @@ export const LeagueHistoryView: React.FC = () => {
     });
   }, [state.teams, state.players, state.historicalAwards, currentSeason, brefMap, coachPhotosReady]);
 
+  if (quick.fullPageView) return quick.fullPageView;
+
   if (selectedSeason !== null) {
     return <LeagueHistoryDetailView season={selectedSeason} onBack={() => setSelectedSeason(null)} />;
   }
+
+  const openAward = (award: any) => {
+    if (award?.player) quick.openFor(award.player);
+  };
 
   return (
     <div className="h-full overflow-hidden p-4 md:p-8 flex flex-col">
@@ -386,17 +411,19 @@ export const LeagueHistoryView: React.FC = () => {
                 {historyData.map(row => (
                   <tr
                     key={row.season}
-                    onClick={() => setSelectedSeason(row.season)}
-                    className={`cursor-pointer transition-colors group ${
+                    className={`transition-colors group ${
                       row.isCurrent
                         ? 'bg-blue-950/20 hover:bg-blue-900/20'
                         : 'hover:bg-slate-800/30'
                     }`}
                   >
-                    {/* Season year */}
-                    <td className="p-3 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <span className="font-black text-white text-sm">
+                    {/* Season year — clickable → detailed season view */}
+                    <td
+                      className="p-3 whitespace-nowrap cursor-pointer"
+                      onClick={() => setSelectedSeason(row.season)}
+                    >
+                      <div className="flex items-center gap-2 hover:text-sky-300 transition-colors">
+                        <span className="font-black text-white text-sm group-hover:text-sky-300">
                           {row.season - 1}–{String(row.season).slice(-2)}
                         </span>
                         {row.isCurrent && (
@@ -407,10 +434,13 @@ export const LeagueHistoryView: React.FC = () => {
                       </div>
                     </td>
 
-                    {/* Champion */}
+                    {/* Champion — clickable → Team History */}
                     <td className="p-3 whitespace-nowrap">
                       {row.champ ? (
-                        <div className="flex items-center gap-2">
+                        <div
+                          onClick={() => gotoTeamHistory(row.champ.id)}
+                          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                        >
                           {row.champ.logoUrl && (
                             <img src={row.champ.logoUrl} alt={row.champ.abbrev} className="w-5 h-5 object-contain" referrerPolicy="no-referrer" />
                           )}
@@ -429,10 +459,13 @@ export const LeagueHistoryView: React.FC = () => {
                       )}
                     </td>
 
-                    {/* Runner Up */}
+                    {/* Runner Up — clickable → Team History */}
                     <td className="p-3 whitespace-nowrap">
                       {row.runnerUp ? (
-                        <div className="flex items-center gap-2">
+                        <div
+                          onClick={() => gotoTeamHistory(row.runnerUp.id)}
+                          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                        >
                           {row.runnerUp.logoUrl && (
                             <img src={row.runnerUp.logoUrl} alt={row.runnerUp.abbrev} className="w-4 h-4 object-contain opacity-70" referrerPolicy="no-referrer" />
                           )}
@@ -451,14 +484,18 @@ export const LeagueHistoryView: React.FC = () => {
                       )}
                     </td>
 
-                    <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.finalsMvp} isCurrent={row.isCurrent} /></td>
-                    <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.mvp}       isCurrent={row.isCurrent} /></td>
-                    <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.dpoy}      isCurrent={row.isCurrent} /></td>
+                    <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.finalsMvp} isCurrent={row.isCurrent} onClick={row.awards.finalsMvp?.player ? () => openAward(row.awards.finalsMvp) : undefined} /></td>
+                    <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.mvp}       isCurrent={row.isCurrent} onClick={row.awards.mvp?.player       ? () => openAward(row.awards.mvp)       : undefined} /></td>
+                    <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.dpoy}      isCurrent={row.isCurrent} onClick={row.awards.dpoy?.player      ? () => openAward(row.awards.dpoy)      : undefined} /></td>
+                    {/* COY stays non-clickable — coach pages are a future feature */}
                     <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.coy}       isCurrent={row.isCurrent} /></td>
-                    <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.smoy}      isCurrent={row.isCurrent} /></td>
-                    <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.mip}       isCurrent={row.isCurrent} /></td>
-                    <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.roy}       isCurrent={row.isCurrent} /></td>
-                    <td className="p-3">
+                    <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.smoy}      isCurrent={row.isCurrent} onClick={row.awards.smoy?.player      ? () => openAward(row.awards.smoy)      : undefined} /></td>
+                    <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.mip}       isCurrent={row.isCurrent} onClick={row.awards.mip?.player       ? () => openAward(row.awards.mip)       : undefined} /></td>
+                    <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.roy}       isCurrent={row.isCurrent} onClick={row.awards.roy?.player       ? () => openAward(row.awards.roy)       : undefined} /></td>
+                    <td
+                      className="p-3 cursor-pointer"
+                      onClick={() => setSelectedSeason(row.season)}
+                    >
                       <ChevronRight size={14} className="text-slate-600 group-hover:text-slate-400 transition-colors" />
                     </td>
                   </tr>
@@ -468,6 +505,7 @@ export const LeagueHistoryView: React.FC = () => {
           </div>
         </div>
       </div>
+      {quick.portals}
     </div>
   );
 };

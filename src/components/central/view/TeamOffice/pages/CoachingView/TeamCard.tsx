@@ -1,4 +1,5 @@
 import { K2Result, PlayerK2, CoachSliders } from '../types';
+import { getDisplayOverall } from '../../../../../../utils/playerRatings';
 
 interface TeamCardProps {
   teamName: string;
@@ -91,7 +92,7 @@ export default function TeamCard({ teamName, bestSystem, avgK2, sortedProfs, top
           {top12.map((p, i) => (
             <div key={i} className="relative group flex justify-between text-xs text-[#e6edf3] p-1 hover:bg-[#21262d] rounded cursor-pointer transition-colors">
               <span>{p.name || `${(p as any).firstName || ''} ${(p as any).lastName || ''}`.trim()} ({p.pos})</span>
-              <span className="font-bold text-[#58a6ff]">{p.bbgmOvr} / {p.rating2K}</span>
+              <span className="font-bold text-[#58a6ff]">{getDisplayOverall(p)}</span>
               
               {/* Tooltip */}
               <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-72 bg-[#0d1117] border border-[#30363d] rounded-lg p-3 z-50 shadow-2xl">

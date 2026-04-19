@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Save, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Save, Check, ChevronLeft, ChevronRight, AlertTriangle, Lock, Unlock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Team, PlayerK2 } from '../types';
 import { getCoachPhoto, getCoachBio, getNBA2KCoach, getTeamStaff, getCoachContract } from '../lib/staffService';
@@ -10,6 +10,11 @@ import { StarterService } from '../lib/starterService';
 import { systemDescriptions } from '../lib/systemDescriptions';
 import { PlayerPortrait } from './PlayerPortrait';
 import { GameplanTab } from './GameplanTab';
+import { IdealRotationTab } from './IdealRotationTab';
+import { getMinutesDiff } from '../../../../../../store/gameplanStore';
+import { getScoringOptions, saveScoringOptions } from '../../../../../../store/scoringOptionsStore';
+import { getLockedStrategy, lockStrategy, unlockStrategy } from '../../../../../../store/coachStrategyLockStore';
+import { getDisplayOverall } from '../../../../../../utils/playerRatings';
 
 interface CoachingViewProps {
   team: any; // The processed team object from App.tsx
@@ -106,12 +111,31 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
   // it increases their shot diet or pts target, but reduces efficiency.
   // Note that these options still don't change overall team strength, 
   // just the tendencies and shot distribution.
-  const [activeTab, setActiveTab] = useState<'GAMEPLAN' | 'SYSTEM' | 'COACHING' | 'PREFERENCES' | 'STAFF'>('GAMEPLAN');
+  const [activeTab, setActiveTab] = useState<'GAMEPLAN' | 'IDEAL' | 'SYSTEM' | 'COACHING' | 'PREFERENCES' | 'STAFF'>('GAMEPLAN');
   const [starters, setStarters] = useState<any[]>([]);
   const [isMobile, setIsMobile] = useState(false);
   const [selectedSystem, setSelectedSystem] = useState(team.bestSystem);
   const [isSaving, setIsSaving] = useState(false);
   const [showSavedFeedback, setShowSavedFeedback] = useState(false);
+
+  // Guard against leaving the Gameplan tab while minutes don't sum to 240.
+  // When triggered, the next-tab target is stashed so the modal's "Leave anyway"
+  // button can proceed — otherwise users would have to remember what they were
+  // going to open.
+  const [pendingTab, setPendingTab] = useState<typeof activeTab | null>(null);
+  const [pendingMinutesDiff, setPendingMinutesDiff] = useState(0);
+
+  const requestTabChange = (next: typeof activeTab) => {
+    if (activeTab === 'GAMEPLAN' && next !== 'GAMEPLAN') {
+      const diff = getMinutesDiff(Number(team.tid));
+      if (diff !== 0) {
+        setPendingMinutesDiff(diff);
+        setPendingTab(next);
+        return;
+      }
+    }
+    setActiveTab(next);
+  };
 
   const usageSortedPlayers = useMemo(() => {
     if (!team || !team.roster) return [];
@@ -120,42 +144,111 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
         if (!p.ratings || !p.ratings[0]) return 0;
         const r = p.ratings[0];
         const usageScore = (r.ins * 0.23 + r.dnk * 0.15 + r.fg * 0.15 + r.tp * 0.15 + r.spd * 0.08 + r.hgt * 0.08 + r.drb * 0.08 + r.oiq * 0.08);
-        const overall = p.rating2K || p.bbgmOvr || r.ovr || 50;
+        // Canonical OVR — matches PlayerRatingsView / NBA Central.
+        const overall = getDisplayOverall(p);
         return (usageScore * 0.5) + (overall * 0.5);
       };
       return getUsage(b) - getUsage(a);
     });
   }, [team]);
 
-  const [scoringOptions, setScoringOptions] = useState([0, 1, 2]);
+  // Scoring options store internalIds (not indices) so edits survive roster
+  // re-sorts, trades, and aren't dependent on baseline order. The store
+  // scopes by saveId to prevent leaks between saves; see scoringOptionsStore.
+  const baselineIds: string[] = useMemo(
+    () => usageSortedPlayers.slice(0, 3).map((p: any) => String(p.internalId ?? p.pid)),
+    [usageSortedPlayers]
+  );
+  const [scoringOptionIds, setScoringOptionIds] = useState<string[]>(baselineIds);
+
+  // Strategy lock — snapshot of coachSliders that survives roster changes until
+  // the user unlocks. Effective sliders fall back to live team.coachSliders
+  // when no lock is set.
+  const [lockTick, setLockTick] = useState(0);
+  const lockedStrategy = useMemo(
+    () => getLockedStrategy(Number(team.tid)),
+    [team.tid, lockTick]
+  );
+  const effectiveSliders = lockedStrategy?.sliders ?? team.coachSliders;
+  const toggleStrategyLock = () => {
+    if (lockedStrategy) {
+      unlockStrategy(Number(team.tid));
+    } else {
+      lockStrategy(Number(team.tid), team.coachSliders);
+    }
+    setLockTick(t => t + 1);
+  };
+  const updateLockedSlider = (key: string, value: number) => {
+    // Only applies when locked — editing an unlocked slider is a no-op since
+    // the underlying value is auto-computed from the roster.
+    if (!lockedStrategy) return;
+    lockStrategy(Number(team.tid), { ...lockedStrategy.sliders, [key]: value });
+    setLockTick(t => t + 1);
+  };
 
   useEffect(() => {
-    setScoringOptions([0, 1, 2]);
-  }, [team.tid]);
+    // Unlocked → coach's auto-pick wins. Display top-3 baseline, never touch
+    // the stored overrides so a future re-lock still has the user's saved picks.
+    if (!lockedStrategy) {
+      setScoringOptionIds(baselineIds);
+      return;
+    }
+
+    // Locked → reconcile saved options against current roster. Any id not on
+    // the team anymore (traded/cut/retired) is replaced with the next baseline
+    // player not already selected. Runs on lock, team switch, or roster change.
+    const rosterIds = new Set(usageSortedPlayers.map((p: any) => String(p.internalId ?? p.pid)));
+    const saved = getScoringOptions(Number(team.tid));
+    const source = saved && saved.optionIds.length === 3 ? saved.optionIds : baselineIds;
+    const picked = new Set<string>();
+    const backfillPool = baselineIds.filter(id => !source.includes(id));
+    const reconciled = source.map(id => {
+      if (rosterIds.has(id) && !picked.has(id)) {
+        picked.add(id);
+        return id;
+      }
+      while (backfillPool.length) {
+        const next = backfillPool.shift()!;
+        if (!picked.has(next) && rosterIds.has(next)) {
+          picked.add(next);
+          return next;
+        }
+      }
+      return id;
+    });
+
+    setScoringOptionIds(reconciled);
+
+    const changed = !saved || saved.optionIds.some((v, i) => v !== reconciled[i]);
+    if (changed && reconciled.length === 3) {
+      saveScoringOptions(Number(team.tid), reconciled);
+    }
+  }, [team.tid, baselineIds.join('|'), lockedStrategy]);
 
   const handleOptionChange = (optionIndex: number, direction: number) => {
-    setScoringOptions(prev => {
-      const newOptions = [...prev];
-      const maxIdx = usageSortedPlayers.length - 1;
-      if (maxIdx < 0) return prev;
-      
-      let newIdx = newOptions[optionIndex];
+    setScoringOptionIds(prev => {
+      if (usageSortedPlayers.length === 0) return prev;
+      const ids = usageSortedPlayers.map((p: any) => String(p.internalId ?? p.pid));
+      const currentId = prev[optionIndex];
+      let cursor = ids.indexOf(currentId);
+      if (cursor < 0) cursor = optionIndex; // fallback if stored ID vanished
+
+      const maxAttempts = ids.length;
       let attempts = 0;
-      
+      let nextId = currentId;
       do {
-        newIdx += direction;
-        if (newIdx < 0) newIdx = maxIdx;
-        if (newIdx > maxIdx) newIdx = 0;
+        cursor = (cursor + direction + ids.length) % ids.length;
+        nextId = ids[cursor];
         attempts++;
       } while (
-        newOptions.some((opt, idx) => idx !== optionIndex && opt === newIdx) && 
-        attempts <= maxIdx + 1
+        attempts <= maxAttempts &&
+        prev.some((other, idx) => idx !== optionIndex && other === nextId)
       );
-      
-      newOptions[optionIndex] = newIdx;
-      // Auto-save when editing scoring options
-      console.log('Auto-saving scoring options:', newOptions);
-      return newOptions;
+
+      const next = [...prev];
+      next[optionIndex] = nextId;
+      saveScoringOptions(Number(team.tid), next);
+      return next;
     });
   };
 
@@ -409,31 +502,38 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
         <div className="flex border-b border-gray-700 mb-4 overflow-x-auto whitespace-nowrap scrollbar-hide">
           <button
             className={`px-4 md:px-6 py-2 font-bold uppercase text-xs md:text-sm flex-shrink-0 ${activeTab === 'GAMEPLAN' ? 'text-white border-b-2 border-white' : 'text-gray-500 hover:text-gray-300'}`}
-            onClick={() => setActiveTab('GAMEPLAN')}
+            onClick={() => requestTabChange('GAMEPLAN')}
           >
             Gameplan
           </button>
           <button
+            className={`px-4 md:px-6 py-2 font-bold uppercase text-xs md:text-sm flex-shrink-0 ${activeTab === 'IDEAL' ? 'text-white border-b-2 border-white' : 'text-gray-500 hover:text-gray-300'}`}
+            onClick={() => requestTabChange('IDEAL')}
+            title="Full-strength rotation — the one you'll actually tweak. The game-day rotation derives from this minus injuries."
+          >
+            Ideal
+          </button>
+          <button
             className={`px-4 md:px-6 py-2 font-bold uppercase text-xs md:text-sm flex-shrink-0 ${activeTab === 'SYSTEM' ? 'text-white border-b-2 border-white' : 'text-gray-500 hover:text-gray-300'}`}
-            onClick={() => setActiveTab('SYSTEM')}
+            onClick={() => requestTabChange('SYSTEM')}
           >
             System
           </button>
           <button 
             className={`px-4 md:px-6 py-2 font-bold uppercase text-xs md:text-sm flex-shrink-0 ${activeTab === 'COACHING' ? 'text-white border-b-2 border-white' : 'text-gray-500 hover:text-gray-300'}`}
-            onClick={() => setActiveTab('COACHING')}
+            onClick={() => requestTabChange('COACHING')}
           >
             Strategy
           </button>
           <button 
             className={`px-4 md:px-6 py-2 font-bold uppercase text-xs md:text-sm flex-shrink-0 ${activeTab === 'PREFERENCES' ? 'text-white border-b-2 border-white' : 'text-gray-500 hover:text-gray-300'}`}
-            onClick={() => setActiveTab('PREFERENCES')}
+            onClick={() => requestTabChange('PREFERENCES')}
           >
             Preferences
           </button>
           <button 
             className={`px-4 md:px-6 py-2 font-bold uppercase text-xs md:text-sm flex-shrink-0 ${activeTab === 'STAFF' ? 'text-white border-b-2 border-white' : 'text-gray-500 hover:text-gray-300'}`}
-            onClick={() => setActiveTab('STAFF')}
+            onClick={() => requestTabChange('STAFF')}
           >
             Staff
           </button>
@@ -441,6 +541,9 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
 
         {/* Tab Content */}
         <div className="flex-grow bg-[#222] rounded-lg border border-gray-700 p-3 md:p-4">
+          {activeTab === 'IDEAL' && (
+            <IdealRotationTab teamId={Number(team.tid)} />
+          )}
           {activeTab === 'GAMEPLAN' && (
             <GameplanTab teamId={Number(team.tid)} />
           )}
@@ -483,7 +586,7 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
                             <PlayerPortrait
                               imgUrl={starter.imgURL || `https://ui-avatars.com/api/?name=${starter.firstName}+${starter.lastName}&background=random`}
                               teamLogoUrl={team.imgURL}
-                              overallRating={starter.bbgmOvr}
+                              overallRating={starter.overallRating}
                               ratings={starter.ratings}
                               size={isMobile ? 44 : 56}
                             />
@@ -538,9 +641,21 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
 
           {activeTab === 'COACHING' && (
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 scrollbar-hide">
-              {/* Note: These sliders are currently read-only in the UI. 
-                  Once moved, they would affect the simulator knobs for this team. */}
-              <h4 className="font-bold text-yellow-500 uppercase text-[10px] md:text-sm mb-2">Tactics</h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-bold text-yellow-500 uppercase text-[10px] md:text-sm">Tactics</h4>
+                <button
+                  onClick={toggleStrategyLock}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] md:text-xs font-bold uppercase transition-colors ${
+                    lockedStrategy
+                      ? 'bg-yellow-500 text-black hover:bg-yellow-400'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700'
+                  }`}
+                  title={lockedStrategy ? 'Strategy locked — roster changes won\'t shift sliders' : 'Lock strategy against roster/injury changes'}
+                >
+                  {lockedStrategy ? <Lock size={12} /> : <Unlock size={12} />}
+                  {lockedStrategy ? 'Locked' : 'Lock'}
+                </button>
+              </div>
               {[
                 { label: 'Tempo', key: 'tempo' },
                 { label: 'Defensive Pressure', key: 'defensivePressure' },
@@ -551,13 +666,19 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
                 { label: 'Early Offense', key: 'earlyOffense' },
                 { label: 'Double Team', key: 'doubleTeam' },
                 { label: 'Zone Usage Frequency', key: 'zoneUsage' },
-                { label: 'Bench Depth', key: 'benchDepth' },
               ].map((slider, idx) => (
                 <div key={slider.key} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 ${idx % 2 === 1 ? 'bg-[#1a1a1a] p-2 rounded' : 'p-2'}`}>
                   <span className="text-xs md:text-sm font-bold">{slider.label}</span>
                   <div className="flex items-center gap-4 w-full sm:w-1/2">
-                    <span className="text-yellow-500 font-bold w-8 text-right text-xs md:text-sm">{team.coachSliders[slider.key]}</span>
-                    <input type="range" min="0" max="100" value={team.coachSliders[slider.key]} readOnly className="w-full accent-yellow-500" />
+                    <span className="text-yellow-500 font-bold w-8 text-right text-xs md:text-sm">{effectiveSliders[slider.key]}</span>
+                    <input
+                      type="range" min="0" max="100"
+                      value={effectiveSliders[slider.key]}
+                      readOnly={!lockedStrategy}
+                      disabled={!lockedStrategy}
+                      onChange={(e) => updateLockedSlider(slider.key, Number(e.target.value))}
+                      className={`w-full accent-yellow-500 ${lockedStrategy ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
+                    />
                   </div>
                 </div>
               ))}
@@ -569,13 +690,20 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
                 { label: 'Shot Medium', key: 'shotMedium' },
                 { label: 'Shot 3PT', key: 'shot3pt' },
                 { label: 'Attack Basket', key: 'attackBasket' },
-                { label: 'Post Players', key: 'postPlayers' },
+                { label: 'Post Plays', key: 'postPlayers' },
               ].map((slider, idx) => (
                 <div key={slider.key} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 ${idx % 2 === 1 ? 'bg-[#1a1a1a] p-2 rounded' : 'p-2'}`}>
                   <span className="text-xs md:text-sm font-bold">{slider.label}</span>
                   <div className="flex items-center gap-4 w-full sm:w-1/2">
-                    <span className="text-yellow-500 font-bold w-8 text-right text-xs md:text-sm">{team.coachSliders[slider.key]}</span>
-                    <input type="range" min="0" max="100" value={team.coachSliders[slider.key]} readOnly className="w-full accent-yellow-500" />
+                    <span className="text-yellow-500 font-bold w-8 text-right text-xs md:text-sm">{effectiveSliders[slider.key]}</span>
+                    <input
+                      type="range" min="0" max="100"
+                      value={effectiveSliders[slider.key]}
+                      readOnly={!lockedStrategy}
+                      disabled={!lockedStrategy}
+                      onChange={(e) => updateLockedSlider(slider.key, Number(e.target.value))}
+                      className={`w-full accent-yellow-500 ${lockedStrategy ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
+                    />
                   </div>
                 </div>
               ))}
@@ -584,20 +712,46 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
 
           {activeTab === 'PREFERENCES' && (
             <div className="space-y-4">
+              <div className="flex items-center justify-end mb-2">
+                <button
+                  onClick={toggleStrategyLock}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] md:text-xs font-bold uppercase transition-colors ${
+                    lockedStrategy
+                      ? 'bg-yellow-500 text-black hover:bg-yellow-400'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700'
+                  }`}
+                  title={lockedStrategy ? 'Strategy locked — roster changes won\'t shift sliders' : 'Lock strategy against roster/injury changes'}
+                >
+                  {lockedStrategy ? <Lock size={12} /> : <Unlock size={12} />}
+                  {lockedStrategy ? 'Locked' : 'Lock'}
+                </button>
+              </div>
               <div className="mb-6">
                 <h4 className="font-bold text-yellow-500 uppercase text-[10px] md:text-sm mb-2">Scoring Options</h4>
                 {['FIRST OPTION', 'SECOND OPTION', 'THIRD OPTION'].map((label, idx) => {
-                  const playerIdx = scoringOptions[idx];
-                  const player = usageSortedPlayers[playerIdx];
+                  const id = scoringOptionIds[idx];
+                  const player = usageSortedPlayers.find(
+                    (p: any) => String(p.internalId ?? p.pid) === id
+                  );
                   return (
                     <div key={label} className="flex justify-between items-center bg-[#1a1a1a] p-2 rounded mb-2 border border-gray-800">
                       <span className="text-xs md:text-sm font-bold w-32">{label}</span>
                       <div className="flex items-center gap-3">
-                        <button onClick={() => handleOptionChange(idx, -1)} className="text-gray-400 hover:text-white transition-colors p-1"><ChevronLeft size={16} /></button>
+                        <button
+                          onClick={() => handleOptionChange(idx, -1)}
+                          disabled={!lockedStrategy}
+                          className={`transition-colors p-1 ${lockedStrategy ? 'text-gray-400 hover:text-white' : 'text-gray-700 cursor-not-allowed'}`}
+                          title={lockedStrategy ? 'Previous option' : 'Lock strategy to edit scoring options'}
+                        ><ChevronLeft size={16} /></button>
                         <span className="text-yellow-500 font-bold text-sm w-40 text-center truncate">
                           {player ? formatName(player.name || `${player.firstName} ${player.lastName}`) : '-'}
                         </span>
-                        <button onClick={() => handleOptionChange(idx, 1)} className="text-gray-400 hover:text-white transition-colors p-1"><ChevronRight size={16} /></button>
+                        <button
+                          onClick={() => handleOptionChange(idx, 1)}
+                          disabled={!lockedStrategy}
+                          className={`transition-colors p-1 ${lockedStrategy ? 'text-gray-400 hover:text-white' : 'text-gray-700 cursor-not-allowed'}`}
+                          title={lockedStrategy ? 'Next option' : 'Lock strategy to edit scoring options'}
+                        ><ChevronRight size={16} /></button>
                       </div>
                     </div>
                   );
@@ -615,8 +769,15 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
                 <div key={slider.key} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 ${idx % 2 === 1 ? 'bg-[#1a1a1a] p-2 rounded' : 'p-2'}`}>
                   <span className="text-xs md:text-sm font-bold">{slider.label}</span>
                   <div className="flex items-center gap-4 w-full sm:w-1/2">
-                    <span className="text-yellow-500 font-bold w-8 text-right text-xs md:text-sm">{team.coachSliders[slider.key]}</span>
-                    <input type="range" min="0" max="100" value={team.coachSliders[slider.key]} readOnly className="w-full accent-yellow-500" />
+                    <span className="text-yellow-500 font-bold w-8 text-right text-xs md:text-sm">{effectiveSliders[slider.key]}</span>
+                    <input
+                      type="range" min="0" max="100"
+                      value={effectiveSliders[slider.key]}
+                      readOnly={!lockedStrategy}
+                      disabled={!lockedStrategy}
+                      onChange={(e) => updateLockedSlider(slider.key, Number(e.target.value))}
+                      className={`w-full accent-yellow-500 ${lockedStrategy ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
+                    />
                   </div>
                 </div>
               ))}
@@ -662,6 +823,55 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
           )}
         </div>
       </div>
+
+      {/* Unbalanced-minutes guard — stops the user from leaving GAMEPLAN with a
+          broken rotation. Shows the signed diff, offers two escape hatches:
+          "Keep editing" (stay) and "Leave anyway" (go through to pendingTab). */}
+      {pendingTab && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#1a1a1a] border border-amber-500/40 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <div className="font-black uppercase tracking-widest text-amber-300 text-sm">
+                  Rotation Not Finished
+                </div>
+                <div className="text-[11px] text-slate-400 mt-0.5">
+                  Gameplan minutes don't total 240.
+                </div>
+              </div>
+            </div>
+            <div className="text-sm text-slate-300 mb-5 leading-relaxed">
+              Your rotation is currently{' '}
+              <span className={`font-black ${pendingMinutesDiff > 0 ? 'text-amber-300' : 'text-rose-300'}`}>
+                {pendingMinutesDiff > 0 ? `${pendingMinutesDiff} min under` : `${Math.abs(pendingMinutesDiff)} min over`}
+              </span>{' '}
+              the 48-minute team budget. Finish distributing minutes before switching tabs so next game's rotation isn't broken.
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 justify-end">
+              <button
+                onClick={() => { setPendingTab(null); setPendingMinutesDiff(0); }}
+                className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-xs tracking-widest"
+              >
+                Keep Editing
+              </button>
+              <button
+                onClick={() => {
+                  const next = pendingTab;
+                  setPendingTab(null);
+                  setPendingMinutesDiff(0);
+                  if (next) setActiveTab(next);
+                }}
+                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-black uppercase text-xs tracking-widest"
+              >
+                Leave Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,11 +4,12 @@
  */
 
 import { useState, useEffect } from 'react';
-import { calculateK2, getSystemProficiency, convertTo2KRating, calculateOverallFromRating } from './lib/k2Engine';
+import { calculateK2, getSystemProficiency } from './lib/k2Engine';
 import { calculateCoachSliders } from './lib/coachSliders';
 import { Player, Team, PlayerK2 } from './types';
 import CoachingView from './components/CoachingView';
 import { getStaffData, fetchCoachData, getAllCoaches, CoachData } from './lib/staffService';
+import { getDisplayOverall } from '../../../../../utils/playerRatings';
 
 export default function App() {
   const [teams, setTeams] = useState<any[]>([]);
@@ -43,16 +44,15 @@ export default function App() {
         if (p.tid < 0) return;
         const r = p.ratings[p.ratings.length - 1];
         const k2 = calculateK2(r, { pos: p.pos, heightIn: p.hgt, weightLbs: p.weight, age: 2026 - p.born.year });
-        
-        // Calculate BBGM overall using the provided logic
-        const bbgmOvr = calculateOverallFromRating(r);
-        
-        // Calculate 2K Overall using the original 2K calculator
-        const eliteSkill = Math.max(r.tp, r.ins, r.spd, r.jmp, r.stre, r.dnk, r.drb, r.pss);
-        const rating2K = convertTo2KRating(bbgmOvr, r.hgt, eliteSkill);
+
+        // Canonical display OVR — same source of truth as PlayerRatingsView,
+        // NBA Central, and Team Office starter cards. Legacy field names
+        // `bbgmOvr`/`rating2K` kept so downstream sorts/tooltips still work,
+        // but both now point to the unified display value.
+        const displayOvr = getDisplayOverall(p);
 
         if (!teamRosters[p.tid]) teamRosters[p.tid] = [];
-        teamRosters[p.tid].push({ ...p, k2, rating2K, bbgmOvr, currentRating: r });
+        teamRosters[p.tid].push({ ...p, k2, rating2K: displayOvr, bbgmOvr: displayOvr, currentRating: r });
       });
 
       // Fetch staff data

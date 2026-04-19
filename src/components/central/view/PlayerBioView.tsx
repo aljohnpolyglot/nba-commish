@@ -14,6 +14,7 @@ import { PlayerBioTransactionsTab } from './PlayerBioTransactionsTab';
 import { TradeDetailView } from './TradeDetailView';
 import { PlayerBioInjuriesTab } from './PlayerBioInjuriesTab';
 import { PlayerBioMoraleTab } from './PlayerBioMoraleTab';
+import { PlayerBioFamilyTreeTab } from './PlayerBioFamilyTreeTab';
 
 interface PlayerBioViewProps {
   player: NBAPlayer;
@@ -116,7 +117,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
     setPortraitSrc(getPlayerImage(player) || "");
     setFetchDone(false);
   }, [player.internalId]);
-  const [activeTab, setActiveTab] = useState<'Overview' | 'Historical Data' | 'Game Log' | 'Awards' | 'Ratings' | 'Salaries' | 'Transactions' | 'Injuries' | 'Morale'>('Historical Data');
+  const [activeTab, setActiveTab] = useState<'Overview' | 'Historical Data' | 'Game Log' | 'Awards' | 'Ratings' | 'Salaries' | 'Transactions' | 'Injuries' | 'Morale' | 'Family Tree'>('Historical Data');
   const [selectedTrade, setSelectedTrade] = useState<{ text: string; date: string; legs?: { text: string; date: string }[] } | null>(null);
   const team = useMemo(() => {
     const isNBA = !["WNBA","Euroleague","PBA","B-League","G-League","Endesa","China CBA","NBL Australia","Draft Prospect","Prospect"].includes(player.status || "");
@@ -348,6 +349,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
             { id: 'Injuries',        label: 'Injuries' },
             { id: 'Morale',          label: 'Morale' },
             { id: 'Awards',          label: 'Awards' },
+            ...((player.relatives && player.relatives.length > 0) ? [{ id: 'Family Tree', label: 'Family Tree' }] : []),
           ]}
           active={activeTab}
           onChange={id => setActiveTab(id as typeof activeTab)}
@@ -398,6 +400,10 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
 
         {activeTab === 'Awards' && (
           <AwardsView awards={player.awards || []} teamColor={teamColor} />
+        )}
+
+        {activeTab === 'Family Tree' && (
+          <PlayerBioFamilyTreeTab player={player} teamColor={teamColor} />
         )}
 
       </div>

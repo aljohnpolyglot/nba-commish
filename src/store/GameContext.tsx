@@ -9,6 +9,10 @@ import { SettingsManager } from '../services/SettingsManager';
 import { initImageCache } from '../services/imageCache';
 import { normalizeDate } from '../utils/helpers';
 import { setActiveSaveId } from './gameplanStore';
+import { setActiveSaveId as setTradingBlockSaveId } from './tradingBlockStore';
+import { setActiveSaveId as setScoringOptionsSaveId } from './scoringOptionsStore';
+import { setActiveSaveId as setCoachStrategySaveId } from './coachStrategyLockStore';
+import { setActiveSaveId as setIdealRotationSaveId } from './idealRotationStore';
 
 interface GameContextType {
   state: GameState;
@@ -53,6 +57,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     setActiveSaveId(state.saveId);
+    setTradingBlockSaveId(state.saveId);
+    setScoringOptionsSaveId(state.saveId);
+    setCoachStrategySaveId(state.saveId);
+    setIdealRotationSaveId(state.saveId);
   }, [state.saveId]);
 
   // Set default view for GM mode when game first loads

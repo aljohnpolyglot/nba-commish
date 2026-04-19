@@ -19,6 +19,7 @@ const MODAL_ACTION_IDS = [
   'view_ratings',
   'sign_player',
   'resign_player',
+  'sign_guaranteed',
   'contact',
   'bribe',
   'fine',

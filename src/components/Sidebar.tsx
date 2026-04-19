@@ -70,7 +70,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, isO
             </div>
             <div className="flex flex-col">
               <span className="text-xs font-bold text-white">{state.commissionerName}</span>
-              <span className="text-[10px] text-slate-500 uppercase tracking-wider">Commissioner</span>
+              <span className="text-[10px] text-slate-500 uppercase tracking-wider">
+                {state.gameMode === 'gm' ? 'General Manager' : 'Commissioner'}
+              </span>
             </div>
           </div>
           <button 

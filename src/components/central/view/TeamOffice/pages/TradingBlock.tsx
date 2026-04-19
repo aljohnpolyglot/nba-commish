@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
@@ -6,7 +6,12 @@ import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
 import { PlayerSelectorGrid, type PlayerSelectorItem } from '../../../../shared/PlayerSelectorGrid';
 import { calcOvr2K, calcPot2K, calcPlayerTV, computeLeagueAvg, getPotColor, isYoungContenderCore, type TeamMode } from '../../../../../services/trade/tradeValueEngine';
 import { generateInboundProposalsForUser } from '../../../../../services/trade/inboundProposalGenerator';
+import { getMinTradableSeason, getTradablePicks, getMaxTradableSeason } from '../../../../../services/draft/DraftPickGenerator';
+import { buildClassStrengthMap, buildLotterySlotMap } from '../../../../../services/draft/draftClassStrength';
+import { teamPowerRanks } from '../../../../../services/trade/tradeFinderEngine';
 import { getTradeOutlook, effectiveRecord, getCapThresholds, getTeamPayrollUSD, topNAvgK2 } from '../../../../../utils/salaryUtils';
+import { getTradingBlock, saveTradingBlock } from '../../../../../store/tradingBlockStore';
+import { getFamilyOnRoster } from '../../../../../utils/familyTies';
 import { NBAPlayer, NBATeam } from '../../../../../types';
 import { PlayerBioView } from '../../PlayerBioView';
 
@@ -106,7 +111,17 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
         return r.ovr >= 85 || (age < 24 && r.pot >= 88);
       }
     });
-    return new Set(candidates.slice(0, MAX_SLOTS).map(r => r.player.internalId));
+    const coreIds = new Set(candidates.slice(0, MAX_SLOTS).map(r => r.player.internalId));
+    // Family-ties protection: if a star is untouchable, so are their siblings on this roster
+    // (Thanasis/Alex Antetokounmpo shouldn't appear as trade fodder while Giannis is protected).
+    for (const r of rosterWithTV) {
+      if (coreIds.has(r.player.internalId)) {
+        for (const rel of getFamilyOnRoster(r.player, rosterPlayers)) {
+          coreIds.add(rel.internalId);
+        }
+      }
+    }
+    return coreIds;
   }, [rosterWithTV, teamMode, currentYear]);
 
   const defaultBlockIds = useMemo(() => {
@@ -131,11 +146,89 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
     return new Set(candidates.slice(0, MAX_SLOTS).map(r => r.player.internalId));
   }, [rosterWithTV, defaultUntouchableIds, teamMode, currentYear]);
 
-  const [untouchableIds, setUntouchableIds] = useState<Set<string>>(() => defaultUntouchableIds);
-  const [blockIds, setBlockIds] = useState<Set<string>>(() => defaultBlockIds);
-  const [targetIds, setTargetIds] = useState<Set<string>>(new Set());
+  // Hydrate from store on first render: if the team has saved selections, use those
+  // (filtered to ids that still point at valid players/picks on this team). Otherwise
+  // fall back to the smart defaults. A traded-away player's id silently drops off.
+  const initialHydrate = useMemo(() => {
+    const saved = getTradingBlock(teamId);
+    if (!saved) return null;
+    const onTeamIds = new Set(teamPlayers.map(p => p.internalId));
+    const otherIds = new Set(allActive.filter(p => p.tid !== teamId).map(p => p.internalId));
+    const validPickIds = new Set((draftPicks ?? []).filter(p => p.tid === teamId).map(p => p.dpid));
+    return {
+      untouchable: new Set(saved.untouchableIds.filter(id => onTeamIds.has(id))),
+      block: new Set(saved.blockIds.filter(id => onTeamIds.has(id))),
+      target: new Set(saved.targetIds.filter(id => otherIds.has(id))),
+      picks: new Set(saved.blockPickIds.filter(id => validPickIds.has(id))),
+    };
+    // Run once per team/save — roster diffs after a trade are reconciled by the
+    // sync effect below, not by re-hydrating from localStorage.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId]);
+
+  const [untouchableIds, setUntouchableIds] = useState<Set<string>>(
+    () => initialHydrate?.untouchable ?? defaultUntouchableIds,
+  );
+  const [blockIds, setBlockIds] = useState<Set<string>>(
+    () => initialHydrate?.block ?? defaultBlockIds,
+  );
+  const [targetIds, setTargetIds] = useState<Set<string>>(
+    () => initialHydrate?.target ?? new Set(),
+  );
   // Pick IDs (dpid) that contending teams are willing to trade — hydrated from their draftPicks inventory.
-  const [blockPickIds, setBlockPickIds] = useState<Set<number>>(new Set());
+  const [blockPickIds, setBlockPickIds] = useState<Set<number>>(
+    () => initialHydrate?.picks ?? new Set(),
+  );
+
+  // Reconcile selections against the current roster whenever players or picks
+  // change — after a trade, traded-away players silently fall off each list
+  // (and targeted players acquired by the user move into Untouchables territory
+  //  for the next session — but we just drop them from Targets here).
+  const lastSyncKey = useRef('');
+  useEffect(() => {
+    const rosterKey = teamPlayers.map(p => p.internalId).sort().join('|');
+    const pickKey = (draftPicks ?? []).filter(p => p.tid === teamId).map(p => p.dpid).sort().join('|');
+    const key = `${rosterKey}::${pickKey}`;
+    if (key === lastSyncKey.current) return;
+    lastSyncKey.current = key;
+
+    const onTeamIds = new Set(teamPlayers.map(p => p.internalId));
+    const otherIds = new Set(allActive.filter(p => p.tid !== teamId).map(p => p.internalId));
+    const validPickIds = new Set((draftPicks ?? []).filter(p => p.tid === teamId).map(p => p.dpid));
+
+    setUntouchableIds(prev => {
+      const next = new Set<string>();
+      for (const id of prev) if (onTeamIds.has(id)) next.add(id);
+      return next.size === prev.size ? prev : next;
+    });
+    setBlockIds(prev => {
+      const next = new Set<string>();
+      for (const id of prev) if (onTeamIds.has(id)) next.add(id);
+      return next.size === prev.size ? prev : next;
+    });
+    setTargetIds(prev => {
+      const next = new Set<string>();
+      for (const id of prev) if (otherIds.has(id)) next.add(id);
+      return next.size === prev.size ? prev : next;
+    });
+    setBlockPickIds(prev => {
+      const next = new Set<number>();
+      for (const id of prev) if (validPickIds.has(id)) next.add(id);
+      return next.size === prev.size ? prev : next;
+    });
+  }, [teamId, teamPlayers, allActive, draftPicks]);
+
+  // Autosave to tradingBlockStore on every selection change.
+  useEffect(() => {
+    if (!canEdit) return;
+    saveTradingBlock(teamId, {
+      untouchableIds: Array.from(untouchableIds),
+      blockIds: Array.from(blockIds),
+      targetIds: Array.from(targetIds),
+      blockPickIds: Array.from(blockPickIds),
+    });
+  }, [teamId, canEdit, untouchableIds, blockIds, targetIds, blockPickIds]);
+
   const [editingColumn, setEditingColumn] = useState<'untouchable' | 'block' | 'targets' | null>(null);
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
 
@@ -310,7 +403,10 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
       if (state.date && state.date > deadline) return;
     } catch { /* fall through if util unavailable */ }
     const outlookMap = buildOutlookMap();
-    const minTradableSeason = (state as any).draftComplete ? currentYear + 1 : currentYear;
+    const minTradableSeason = getMinTradableSeason(state);
+    const classStrengthByYear = buildClassStrengthMap(players, currentYear, currentYear, getMaxTradableSeason(state));
+    const lotterySlotByTid = buildLotterySlotMap((state as any).draftLotteryResult);
+    const powerRanks = teamPowerRanks(teams, currentYear);
     const proposals = generateInboundProposalsForUser({
       userTid: teamId,
       userGMName: `${team?.name ?? 'Team'} GM`,
@@ -318,11 +414,14 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
       blockPickIds: Array.from(blockPickIds),
       players,
       teams,
-      draftPicks: draftPicks ?? [],
+      draftPicks: getTradablePicks(state),
       currentYear,
       minTradableSeason,
       teamOutlooks: outlookMap,
       proposedDate: state.date ?? '',
+      classStrengthByYear,
+      lotterySlotByTid,
+      powerRanks,
     });
     // Replace this team's inbound-pending slot; leave other teams / resolved proposals alone.
     const existing = (state.tradeProposals ?? []).filter(p => p.receivingTeamId !== teamId || p.status !== 'pending');

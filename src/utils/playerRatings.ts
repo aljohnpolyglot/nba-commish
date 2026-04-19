@@ -53,6 +53,80 @@ export const calculatePlayerOverall = (player: NBAGMPlayer): number => {
     const latestRating = player.ratings[player.ratings.length - 1];
     return calculateOverallFromRating(latestRating);
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CANONICAL DISPLAY RATINGS — single source of truth
+// ─────────────────────────────────────────────────────────────────────────────
+// Every view (NBA Central, Player Ratings, Team Office, modals, etc.) should
+// import from here instead of recomputing inline. Matches PlayerRatingsView's
+// formula exactly: live `player.overallRating` + current-season rating for
+// height/three-point shape, BBGM potEstimator for potential with age.
+
+/**
+ * Resolve the rating row for a given season. Falls back to the most recent
+ * entry when the season isn't tracked (e.g. retired players, historical sims).
+ */
+const pickRating = (player: any, season?: number): any => {
+    const rs = player?.ratings;
+    if (!rs || rs.length === 0) return null;
+    if (season != null) {
+        const found = rs.find((r: any) => r.season === season);
+        if (found) return found;
+    }
+    return rs[rs.length - 1];
+};
+
+/**
+ * Compute the age field the way every view does it:
+ *   currentYear - born.year, falling back to player.age, then a safe default.
+ */
+export const getDisplayAge = (player: any, currentYear: number): number => {
+    if (player?.born?.year) return currentYear - player.born.year;
+    if (typeof player?.age === 'number') return player.age;
+    return 27;
+};
+
+/**
+ * Canonical 2K-scale OVR for display. Mirrors PlayerRatingsView:138.
+ * Uses live `player.overallRating` (not stale precomputed `bbgmOvr`/`rating2K`)
+ * and current-season rating for hgt/tp shape. Falls back to `r.ovr` from the
+ * rating row when the top-level field is missing — matters for raw BBGM JSON
+ * loads (e.g. CoachingViewMain) where `overallRating` isn't hydrated.
+ */
+export const getDisplayOverall = (player: any, season?: number): number => {
+    const r = pickRating(player, season);
+    const hgt = r?.hgt ?? 50;
+    const tp  = r?.tp  ?? 50;
+    const bbgmOvr = player?.overallRating ?? r?.ovr ?? 60;
+    return convertTo2KRating(bbgmOvr, hgt, tp);
+};
+
+/**
+ * BBGM potEstimator for DISPLAY — mirrors PlayerRatingsView:141 exactly.
+ * Players 29+: POT = current OVR (no more growth). Younger: regression formula,
+ * floored at current OVR so POT is never *below* present rating, then clamped
+ * to [40, 99]. Distinct from `genDraftPlayers.potEstimator` which has no floor
+ * since prospects don't have a "current" OVR yet.
+ */
+export const estimatePotentialBbgm = (ovrBbgm: number, age: number): number => {
+    if (age >= 29) return ovrBbgm;
+    const regression = Math.round(72.31428908571982 + (-2.33062761 * age) + (0.83308748 * ovrBbgm));
+    return Math.min(99, Math.max(40, Math.max(ovrBbgm, regression)));
+};
+
+/**
+ * Canonical 2K-scale POT for display. Mirrors PlayerRatingsView:141-142.
+ * Falls back to `r.ovr` when `player.overallRating` is missing (raw BBGM JSON).
+ */
+export const getDisplayPotential = (player: any, currentYear: number, season?: number): number => {
+    const r   = pickRating(player, season);
+    const hgt = r?.hgt ?? 50;
+    const tp  = r?.tp  ?? 50;
+    const age = getDisplayAge(player, currentYear);
+    const bbgmOvr = player?.overallRating ?? r?.ovr ?? 60;
+    const potBbgm = estimatePotentialBbgm(bbgmOvr, age);
+    return convertTo2KRating(potBbgm, hgt, tp);
+};
 const teamStrengthCache = new Map<string, number>();
 
 export const clearTeamStrengthCache = () => teamStrengthCache.clear();

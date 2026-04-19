@@ -13,6 +13,13 @@
 export interface Gameplan {
   /** internalIds of the 5 starters, in position order (PG→SG→SF→PF→C). */
   starterIds: string[];
+  /**
+   * Optional explicit bench ordering. When present, the Gameplan tab renders
+   * bench rows in this order rather than the rotation engine's default. IDs
+   * absent from the roster are filtered out on read. Optional for backwards
+   * compatibility with older saves.
+   */
+  benchOrder?: string[];
   /** internalId → minutes per game (user override). */
   minuteOverrides: Record<string, number>;
 }
@@ -79,4 +86,17 @@ export function clearGameplan(teamId: number) {
   hydrate();
   cache.delete(teamId);
   persist();
+}
+
+/**
+ * Signed delta between the configured minutes total and the 240-min team budget.
+ * Positive → under-allocated (need to add minutes); negative → over-allocated.
+ * Returns 0 when no plan exists (nothing to fix).
+ */
+export function getMinutesDiff(teamId: number): number {
+  hydrate();
+  const plan = cache.get(teamId);
+  if (!plan) return 0;
+  const total = Object.values(plan.minuteOverrides).reduce((a, b) => a + b, 0);
+  return 240 - total;
 }

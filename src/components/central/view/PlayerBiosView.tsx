@@ -3,6 +3,7 @@ import { useGame } from '../../../store/GameContext';
 import { NBAPlayer } from '../../../types';
 import { ChevronDown, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { formatHeight, getCountryFromLoc, convertTo2KRating } from '../../../utils/helpers';
+import { getDisplayOverall, getDisplayPotential } from '../../../utils/playerRatings';
 import { ensureNonNBAFetched, getNonNBAGistData } from './nonNBACache';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 
@@ -57,12 +58,10 @@ export const PlayerBiosView: React.FC = () => {
         return true;
       })
       .map(p => {
-        const lastRating = p.ratings?.[p.ratings.length - 1];
-        const rawOvr = p.overallRating || lastRating?.ovr || 0;
-        const displayOvr = convertTo2KRating(rawOvr, lastRating?.hgt ?? 50, lastRating?.tp);
+        // Canonical — same helpers as PlayerRatingsView / Team Office / etc.
+        const displayOvr = getDisplayOverall(p);
+        const displayPot = getDisplayPotential(p, simYear);
         const playerAge = p.born?.year ? simYear - p.born.year : (typeof p.age === 'number' ? p.age : 25);
-        const potBbgm = playerAge >= 29 ? rawOvr : Math.max(rawOvr, Math.round(72.31428908571982 + (-2.33062761 * playerAge) + (0.83308748 * rawOvr)));
-        const displayPot = convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), lastRating?.hgt ?? 50, lastRating?.tp);
 
         // For external leagues, augment with gist data (loaded async)
         const isExternal = ['B-League', 'PBA', 'Euroleague', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'WNBA'].includes(p.status || '');

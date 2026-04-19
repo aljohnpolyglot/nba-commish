@@ -28,9 +28,11 @@ interface SignFreeAgentModalProps {
   initialPlayer?: NBAPlayer;
   /** When set, skip team picker entirely (used for re-signings — team is the player's current team). */
   initialTeam?: NBATeam;
+  /** Force the SigningModal's initial contract-type tab (e.g. 'GUARANTEED' for the 2W → Guaranteed promotion flow). */
+  forceContractType?: 'GUARANTEED' | 'TWO_WAY';
 }
 
-export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose, onConfirm, initialPlayer, initialTeam }) => {
+export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose, onConfirm, initialPlayer, initialTeam, forceContractType }) => {
   const { state } = useGame();
   const isGM = state.gameMode === 'gm';
   const userTeam = useMemo(
@@ -119,6 +121,7 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
         leagueStats={state.leagueStats}
         autoAccept={!isGM}
         preflightMessage={preflightMessage}
+        initialContractType={forceContractType}
         onClose={onClose}
         onSign={({ salary, years, option, twoWay, mleType }) => {
           onConfirm({

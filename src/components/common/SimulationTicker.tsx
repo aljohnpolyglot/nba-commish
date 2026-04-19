@@ -34,7 +34,6 @@ interface Player {
 interface Props {
   allSimResults: GameResult[];
   teams: Team[];
-  prevTeams?: Team[];
   players: Player[];
   actionType?: string;
   actionPayload?: any;
@@ -89,7 +88,7 @@ const itemVariants = {
 };
 
 export const SimulationTicker: React.FC<Props> = ({
-  allSimResults, teams, prevTeams, players, actionType, actionPayload
+  allSimResults, teams, players, actionType, actionPayload
 }) => {
   const hasGames = allSimResults && allSimResults.length > 0;
   const groups = hasGames ? groupByDate(allSimResults) : [];
@@ -97,7 +96,6 @@ export const SimulationTicker: React.FC<Props> = ({
   type Item =
     | { type: 'dateHeader'; label: string }
     | { type: 'game'; result: GameResult }
-    | { type: 'standings' }
     | { type: 'final' };
 
   const items: Item[] = [];
@@ -105,7 +103,6 @@ export const SimulationTicker: React.FC<Props> = ({
     items.push({ type: 'dateHeader', label: formatDate(g.date) });
     for (const r of g.results) items.push({ type: 'game', result: r });
   }
-  if (prevTeams && prevTeams.length > 0 && hasGames) items.push({ type: 'standings' });
   items.push({ type: 'final' });
 
   const [shownCount, setShownCount] = useState(0);
@@ -128,7 +125,6 @@ export const SimulationTicker: React.FC<Props> = ({
       setShownCount(idx);
       if (idx < items.length) {
         const delay = items[idx]?.type === 'dateHeader' ? 200 :
-                      items[idx]?.type === 'standings' ? 400 :
                       items[idx]?.type === 'final' ? 600 : 700;
         setTimeout(showNext, delay);
       }
@@ -139,36 +135,6 @@ export const SimulationTicker: React.FC<Props> = ({
   }, []);
 
   const visibleItems = items.slice(0, shownCount);
-
-  // Standings movement — skip preseason games
-  const regularResults = allSimResults.filter(r => !r.isPreseason);
-  const movedTeamIds = hasGames && prevTeams
-    ? [...new Set(regularResults.flatMap(r => [r.homeTeamId, r.awayTeamId]))]
-    : [];
-  const standingsRows = movedTeamIds.map(tid => {
-    const prev = prevTeams?.find(t => t.id === tid);
-    const curr = teams.find(t => t.id === tid);
-    if (!prev || !curr) return null;
-    const wDiff = (curr.wins ?? 0) - (prev.wins ?? 0);
-    const lDiff = (curr.losses ?? 0) - (prev.losses ?? 0);
-    return { team: curr, wDiff, lDiff };
-  }).filter(Boolean) as { team: Team; wDiff: number; lDiff: number }[];
-
-  const eastRows = standingsRows.filter(r => r.team.conference === 'East');
-  const westRows = standingsRows.filter(r => r.team.conference === 'West');
-  const hasEast = eastRows.length > 0;
-  const hasWest = westRows.length > 0;
-  const showBothConferences = hasEast && hasWest;
-
-  const [activeConference, setActiveConference] = useState<'East' | 'West'>('East');
-
-  useEffect(() => {
-    if (!showBothConferences) return;
-    const t = setInterval(() => {
-      setActiveConference(prev => prev === 'East' ? 'West' : 'East');
-    }, 3000);
-    return () => clearInterval(t);
-  }, [showBothConferences]);
 
   return (
     <div className="flex flex-col gap-3 w-full pb-4">
@@ -274,76 +240,6 @@ export const SimulationTicker: React.FC<Props> = ({
                     )}
                   </div>
                 )}
-              </motion.div>
-            );
-          }
-
-          if (item.type === 'standings' && standingsRows.length > 0) {
-            const displayRows = showBothConferences
-              ? (activeConference === 'East' ? eastRows : westRows)
-              : standingsRows;
-            const conferenceLabel = showBothConferences
-              ? activeConference
-              : hasEast ? 'East' : hasWest ? 'West' : '';
-
-            return (
-              <motion.div key="standings" variants={itemVariants} initial="hidden" animate="visible"
-                className="bg-slate-800/40 border border-slate-700/30 rounded-2xl overflow-hidden mt-2">
-                <div className="px-4 py-2 border-b border-slate-700/30 flex items-center justify-between">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-                    Standings Movement
-                  </span>
-                  {showBothConferences && (
-                    <div className="flex gap-2">
-                      {(['East', 'West'] as const).map(conf => (
-                        <button
-                          key={conf}
-                          onClick={() => setActiveConference(conf)}
-                          className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full transition-all
-                            ${activeConference === conf
-                              ? 'bg-indigo-500/20 text-indigo-400'
-                              : 'text-slate-600 hover:text-slate-400'}`}
-                        >
-                          {conf}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={conferenceLabel}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.3 }}
-                    className="divide-y divide-slate-700/20"
-                  >
-                    {conferenceLabel && (
-                      <div className="px-4 py-1.5">
-                        <span className={`text-[9px] font-black uppercase tracking-widest
-                          ${conferenceLabel === 'East' ? 'text-sky-500' : 'text-amber-500'}`}>
-                          {conferenceLabel}ern Conference
-                        </span>
-                      </div>
-                    )}
-                    {displayRows.map(({ team, wDiff, lDiff }) => (
-                      <div key={team.id} className="flex items-center gap-3 px-4 py-2">
-                        {team.logoUrl && (
-                          <img src={team.logoUrl} alt={team.abbrev}
-                               className="w-6 h-6 object-contain"
-                               referrerPolicy="no-referrer" />
-                        )}
-                        <span className="text-white text-xs font-bold flex-1">{team.name}</span>
-                        <span className="text-slate-400 text-xs font-mono">{team.wins}-{team.losses}</span>
-                        <span className={`text-xs font-black ml-2 w-12 text-right
-                          ${wDiff > 0 ? 'text-emerald-400' : lDiff > 0 ? 'text-rose-400' : 'text-slate-500'}`}>
-                          {wDiff > 0 ? `↑ +${wDiff}W` : lDiff > 0 ? `↓ +${lDiff}L` : '—'}
-                        </span>
-                      </div>
-                    ))}
-                  </motion.div>
-                </AnimatePresence>
               </motion.div>
             );
           }

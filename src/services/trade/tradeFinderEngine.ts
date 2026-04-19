@@ -12,6 +12,7 @@ import {
   isUntouchable, isYoungContenderCore, isOnTradingBlock, isSalaryLegal, type TeamMode,
   type TVContext,
 } from './tradeValueEngine';
+import { effectiveRecord } from '../../utils/salaryUtils';
 
 const EXTERNAL = new Set(['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'Draft Prospect', 'Prospect']);
 
@@ -76,14 +77,41 @@ export interface FindOffersInput {
   /** When true, the reverse-mode loyalty-lifer block is bypassed — user has
    *  overridden the owner's "don't trade our lifer" warning. */
   allowLifers?: boolean;
+  /** Optional: season → class-strength multiplier (0.75-1.30). Scales pick TV
+   *  based on upcoming draft class quality. See draftClassStrength.ts. */
+  classStrengthByYear?: Map<number, number>;
+  /** Optional: tid → actual lottery slot (1-14) for currentYear draft. When
+   *  present, current-year R1 picks get priced off the KNOWN slot instead of
+   *  power-rank projection — critical for June draft-day trades. */
+  lotterySlotByTid?: Map<number, number>;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function roleToMode(role: string): TeamMode {
+export function roleToMode(role: string): TeamMode {
   if (role === 'heavy_buyer' || role === 'buyer') return 'contend';
   if (role === 'rebuilding') return 'presti';
   return 'rebuild';
+}
+
+/**
+ * Power-rank teams (1 = best) using effectiveRecord so offseason 0-0 falls back
+ * to last season. In-season leans on win pct; offseason on roster strength.
+ * Used by BOTH TradeFinderView and TradeMachineModal so pick values line up.
+ */
+export function teamPowerRanks(teams: NBATeam[], currentYear: number): Map<number, number> {
+  const sorted = [...teams].sort((a, b) => {
+    const recA = effectiveRecord(a, currentYear);
+    const recB = effectiveRecord(b, currentYear);
+    const wpA = (recA.wins + recA.losses) > 0 ? recA.wins / (recA.wins + recA.losses) : 0.5;
+    const wpB = (recB.wins + recB.losses) > 0 ? recB.wins / (recB.wins + recB.losses) : 0.5;
+    const scoreA = wpA * 0.6 + ((a as any).strength ?? 50) / 100 * 0.4;
+    const scoreB = wpB * 0.6 + ((b as any).strength ?? 50) / 100 * 0.4;
+    return scoreB - scoreA;
+  });
+  const map = new Map<number, number>();
+  sorted.forEach((t, i) => map.set(t.id, i + 1));
+  return map;
 }
 
 // ── Core Engine ──────────────────────────────────────────────────────────────
@@ -97,7 +125,18 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     fromTid, offerValue, usedIds: basketIds, players, teams, draftPicks,
     currentYear, minTradableSeason, powerRanks, teamOutlooks, targetTids, tvContext, capSpaces,
     tradeDifficulty, bypassUntouchablesForTid, allowLifers,
+    classStrengthByYear, lotterySlotByTid,
   } = input;
+
+  // Resolve a pick's classStrength + actualSlot once. Current-year R1 picks
+  // get their real lottery slot if the lottery has run; everything else falls
+  // back to power-rank projection inside calcPickTV.
+  const pickOpts = (pk: DraftPick) => ({
+    classStrength: classStrengthByYear?.get(pk.season) ?? 1.0,
+    actualSlot: pk.round === 1 && pk.season === currentYear
+      ? lotterySlotByTid?.get(pk.tid)
+      : undefined,
+  });
 
   // Difficulty → TV bias on the gap target. Asymmetric so 50 maps to the
   // current "+10 fleece" default the user is already tuned to.
@@ -257,7 +296,11 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     let safety = 0;
     while (gap > 2 && safety++ < 40 && theirPicks.length > 0) {
       const pk = theirPicks.shift()!;
-      const pv = calcPickTV(pk.round, theirRank, teams.length, Math.max(1, pk.season - currentYear));
+      // Pick value follows the ORIGINAL owner's record (whose slot this pick
+      // represents), not the current holder's. OKC holding LAC's 1st stays
+      // valued at LAC's lottery curve even though OKC is a contender.
+      const pickRank = powerRanks.get(pk.originalTid) ?? theirRank;
+      const pv = calcPickTV(pk.round, pickRank, teams.length, Math.max(1, pk.season - currentYear), pickOpts(pk));
       if (pv > gap + overshootMargin) break;
       returnItems.push({
         id: String(pk.dpid),
@@ -342,7 +385,8 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
         // No hard pick cap — keep stacking until gap closes or overshoot.
         while (dumpGap > 3 && dumpSafety++ < 40 && dumpPicks.length > 0) {
           const pk = dumpPicks.shift()!;
-          const pv = calcPickTV(pk.round, theirRank, teams.length, Math.max(1, pk.season - currentYear));
+          const pickRank = powerRanks.get(pk.originalTid) ?? theirRank;
+          const pv = calcPickTV(pk.round, pickRank, teams.length, Math.max(1, pk.season - currentYear), pickOpts(pk));
           if (pv > dumpGap + 25) break;
           dumpItems.push({
             id: String(pk.dpid),
@@ -409,8 +453,10 @@ export function generateAITradeProposal(input: {
   powerRanks: Map<number, number>;
   teamOutlooks: Map<number, { role: string }>;
   tvContext?: TVContext;
+  classStrengthByYear?: Map<number, number>;
+  lotterySlotByTid?: Map<number, number>;
 }): { buyerGives: TradeOfferItem[]; sellerGives: TradeOfferItem[] } | null {
-  const { buyerTid, sellerTid, players, teams, draftPicks, currentYear, minTradableSeason, powerRanks, teamOutlooks, tvContext } = input;
+  const { buyerTid, sellerTid, players, teams, draftPicks, currentYear, minTradableSeason, powerRanks, teamOutlooks, tvContext, classStrengthByYear, lotterySlotByTid } = input;
 
   const sellerOutlook = teamOutlooks.get(sellerTid) ?? { role: 'neutral' };
   const buyerOutlook = teamOutlooks.get(buyerTid) ?? { role: 'neutral' };
@@ -442,6 +488,8 @@ export function generateAITradeProposal(input: {
     teamOutlooks,
     targetTids: [buyerTid],
     tvContext,
+    classStrengthByYear,
+    lotterySlotByTid,
   });
 
   if (counterOffers.length === 0) return null;
@@ -459,4 +507,126 @@ export function generateAITradeProposal(input: {
       pot: calcPot2K(target, currentYear),
     }],
   };
+}
+
+// ── Acceptance evaluator ─────────────────────────────────────────────────────
+//
+// Single source of truth for "does the AI team accept this trade?". Used by
+// TradeMachineModal.handleExecuteTrade and mirrors generateCounterOffers' gate
+// so a deal the Finder would produce is also one the Machine will accept.
+
+export interface EvaluateAcceptanceInput {
+  /** Team initiating the trade (user in GM mode). */
+  fromTid: number;
+  /** Team evaluating acceptance (AI in GM mode). */
+  toTid: number;
+  /** What fromTid is sending. */
+  fromItems: Array<{ type: 'player' | 'pick' | 'absorb'; player?: NBAPlayer; pick?: DraftPick }>;
+  /** What toTid is sending. */
+  toItems: Array<{ type: 'player' | 'pick' | 'absorb'; player?: NBAPlayer; pick?: DraftPick }>;
+  teams: NBATeam[];
+  currentYear: number;
+  powerRanks: Map<number, number>;
+  teamOutlooks: Map<number, { role: string }>;
+  tvContext?: TVContext;
+  /** GM-mode 0-100 (50 = default "+10 fleece"). */
+  tradeDifficulty?: number;
+  /** Optional dynamic pick-value inputs (see draftClassStrength.ts). */
+  classStrengthByYear?: Map<number, number>;
+  lotterySlotByTid?: Map<number, number>;
+}
+
+export interface AcceptanceResult {
+  accepted: boolean;
+  /** TV of fromItems in fromTid's mode — what user is sending. */
+  offerValue: number;
+  /** TV of toItems in toTid's mode — what AI is sending. */
+  returnVal: number;
+  /** offerValue − difficultyBias; what AI expects to give. */
+  expectedReturn: number;
+  /** Positive if AI considers itself overpaying (must add more from user side). */
+  shortfall: number;
+  /** Engine ratio: max/min of expectedReturn vs returnVal. */
+  ratio: number;
+  ratioThreshold: number;
+  /** Flavor text for the UI response card. */
+  reason: string;
+}
+
+function tvOfItem(
+  item: { type: string; player?: NBAPlayer; pick?: DraftPick },
+  receiverMode: TeamMode,
+  teams: NBATeam[],
+  currentYear: number,
+  powerRanks: Map<number, number>,
+  tvContext?: TVContext,
+  classStrengthByYear?: Map<number, number>,
+  lotterySlotByTid?: Map<number, number>,
+): number {
+  if (item.type === 'player' && item.player) {
+    return calcPlayerTV(item.player, receiverMode, currentYear, tvContext);
+  }
+  if (item.type === 'pick' && item.pick) {
+    // Use originatingTid rank — pick value reflects where the pick will land,
+    // which tracks the original team's record, not the current holder.
+    const pickRank = powerRanks.get(item.pick.originalTid) ?? Math.ceil(teams.length / 2);
+    const classStrength = classStrengthByYear?.get(item.pick.season) ?? 1.0;
+    // Actual lottery slot keys off the ORIGINAL owner (the team whose record
+    // determined the slot), not the current holder.
+    const actualSlot = item.pick.round === 1 && item.pick.season === currentYear
+      ? lotterySlotByTid?.get(item.pick.originalTid)
+      : undefined;
+    return calcPickTV(item.pick.round, pickRank, teams.length, Math.max(1, item.pick.season - currentYear), { classStrength, actualSlot });
+  }
+  return 0;
+}
+
+export function evaluateTradeAcceptance(input: EvaluateAcceptanceInput): AcceptanceResult {
+  const {
+    fromTid, toTid, fromItems, toItems, teams, currentYear,
+    powerRanks, teamOutlooks, tvContext, tradeDifficulty,
+    classStrengthByYear, lotterySlotByTid,
+  } = input;
+
+  const fromMode = roleToMode(teamOutlooks.get(fromTid)?.role ?? 'neutral');
+  const toMode = roleToMode(teamOutlooks.get(toTid)?.role ?? 'neutral');
+
+  // Match engine asymmetry: each side's outgoing assets valued in THEIR mode —
+  // a contender values their pick the way a contender would, etc.
+  const offerValue = fromItems.reduce((s, i) => s + tvOfItem(i, fromMode, teams, currentYear, powerRanks, tvContext, classStrengthByYear, lotterySlotByTid), 0);
+  const returnVal = toItems.reduce((s, i) => s + tvOfItem(i, toMode, teams, currentYear, powerRanks, tvContext, classStrengthByYear, lotterySlotByTid), 0);
+
+  // Same asymmetric difficulty curve as generateCounterOffers.
+  const difficultyBias = (() => {
+    if (tradeDifficulty === undefined) return 0;
+    const d = Math.max(0, Math.min(100, tradeDifficulty));
+    return d <= 50 ? (d / 50) * 70 - 60 : 10 + (d - 50);
+  })();
+
+  const expectedReturn = Math.max(10, offerValue - difficultyBias);
+  const totalVal = Math.max(expectedReturn, returnVal);
+  const ratioThreshold = totalVal >= 200 ? 1.15 : totalVal >= 100 ? 1.35 : 1.45;
+  const minSide = Math.max(1, Math.min(expectedReturn, returnVal));
+  const ratio = totalVal / minSide;
+
+  // returnVal === 0 → no acceptance unless offerValue is also 0 (picks-for-picks edge).
+  const accepted = returnVal > 0 && ratio <= ratioThreshold;
+  const shortfall = Math.max(0, expectedReturn - returnVal);
+  const netToAI = offerValue - returnVal; // positive = AI gets more than gives
+
+  let reason: string;
+  if (accepted) {
+    reason = netToAI > 15
+      ? 'This is a great deal for us. Done!'
+      : 'Fair trade. We can work with this.';
+  } else if (returnVal > expectedReturn) {
+    // AI is being asked to give up too much for what's coming back.
+    reason = "We can't part with that much for what you're sending.";
+  } else {
+    reason = shortfall > 30
+      ? "No way. This isn't even close to fair value for what we're giving up."
+      : "We'd need a bit more to make this work.";
+  }
+
+  return { accepted, offerValue, returnVal, expectedReturn, shortfall, ratio, ratioThreshold, reason };
 }

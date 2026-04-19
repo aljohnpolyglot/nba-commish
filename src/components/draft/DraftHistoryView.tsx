@@ -8,6 +8,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { convertTo2KRating } from '../../utils/helpers';
+import { estimatePotentialBbgm } from '../../utils/playerRatings';
 import { getPlayerImage } from '../central/view/bioCache';
 import { ensureNonNBAFetched, getNonNBAGistData } from '../central/view/nonNBACache';
 import { PlayerBioView } from '../central/view/PlayerBioView';
@@ -30,11 +31,9 @@ const BIO_LEAGUE_MAP: Record<string, string> = {
   'NBL Australia': 'NBL Australia',
 };
 
-// POT estimator (BBGM formula) — must match PlayerBiosView exactly
-const estimatePot = (rawOvr: number, hgt: number, tp: number | undefined, age: number): number => {
-  const potBbgm = age >= 29 ? rawOvr : Math.max(rawOvr, Math.round(72.31428908571982 + (-2.33062761 * age) + (0.83308748 * rawOvr)));
-  return convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), hgt, tp);
-};
+// POT estimator — delegates to the canonical helper so every view agrees.
+const estimatePot = (rawOvr: number, hgt: number, tp: number | undefined, age: number): number =>
+  convertTo2KRating(estimatePotentialBbgm(rawOvr, age), hgt, tp);
 
 export const DraftHistoryView: React.FC = () => {
   const { state } = useGame();

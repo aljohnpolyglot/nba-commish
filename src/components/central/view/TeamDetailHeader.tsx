@@ -3,6 +3,7 @@ import { ArrowLeft, Plane } from 'lucide-react';
 // Added NBAPlayer and calculateTeamStrength import
 import { NBATeam, Game, NBAPlayer } from '../../../types';
 import { calculateTeamStrength } from '../../../utils/playerRatings';
+import { useGame } from '../../../store/GameContext';
 
 interface TeamDetailHeaderProps {
   team: NBATeam;
@@ -22,6 +23,8 @@ export const TeamDetailHeader: React.FC<TeamDetailHeaderProps> = ({
   onVisit,
   onTeamClick
 }) => {
+  const { state } = useGame();
+  const isGM = state.gameMode === 'gm';
   return (
     <div className="p-4 md:p-10 border-b border-slate-800 bg-slate-900/50 flex flex-col md:flex-row items-start md:items-center justify-between backdrop-blur-md gap-4">
       <div className="flex items-center gap-4 md:gap-6">
@@ -47,11 +50,12 @@ export const TeamDetailHeader: React.FC<TeamDetailHeaderProps> = ({
       </div>
       
       <div className="flex items-center gap-4 self-end md:self-auto">
-          <button 
+          {!isGM && (
+          <button
             onClick={() => onVisit(team)}
             className={`group flex items-center gap-3 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
-                gameToday 
-                  ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-500/20 hover:shadow-amber-500/40' 
+                gameToday
+                  ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-500/20 hover:shadow-amber-500/40'
                   : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20 hover:shadow-indigo-500/40'
             }`}
           >
@@ -59,7 +63,7 @@ export const TeamDetailHeader: React.FC<TeamDetailHeaderProps> = ({
             {gameToday ? (
               <span>
                 Watch vs{' '}
-                <span 
+                <span
                   onClick={(e) => {
                     e.stopPropagation();
                     if (onTeamClick && opponent) onTeamClick(opponent.id);
@@ -71,6 +75,7 @@ export const TeamDetailHeader: React.FC<TeamDetailHeaderProps> = ({
               </span>
             ) : 'Visit Team (Off Day)'}
           </button>
+          )}
         <div className="bg-slate-950 border border-slate-800 px-4 md:px-6 py-2 md:py-3 rounded-2xl flex flex-col items-end">
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Strength</span>
            

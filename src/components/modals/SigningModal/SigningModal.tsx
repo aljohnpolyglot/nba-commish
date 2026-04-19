@@ -9,6 +9,7 @@ import {
   formatSalaryM, formatSalaryMPrecise, computeContractOffer, getCapThresholds, getTeamPayrollUSD, getContractLimits, getMLEAvailability, computeExternalBuyout,
 } from '../../../utils/salaryUtils';
 import { extractNbaId, hdPortrait, normalizeDate, convertTo2KRating } from '../../../utils/helpers';
+import { getDisplayPotential } from '../../../utils/playerRatings';
 import { getFreeAgencyStartDate } from '../../../utils/dateUtils';
 import { getPlayerImage } from '../../central/view/bioCache';
 import { loadPlayerRenders, getPlayerRender } from '../../../utils/playerRenders';
@@ -25,6 +26,8 @@ interface SigningModalProps {
   autoAccept?: boolean;
   /** When set, renders the player-voiced message screen up-front (reusing the response screen UI) instead of the negotiation panel. */
   preflightMessage?: { title: string; body: string; tone?: 'neutral' | 'positive' };
+  /** Force the initial contract-type tab. Used by the 2W → Guaranteed promotion flow so the modal opens on GUARANTEED instead of defaulting to TWO_WAY for young candidates. Roster-full forcing still wins. */
+  initialContractType?: 'GUARANTEED' | 'TWO_WAY';
   onClose: () => void;
   onSign: (contract: { salary: number; years: number; option: 'NONE' | 'PLAYER' | 'TEAM'; twoWay: boolean; mleType: 'room' | 'non_taxpayer' | 'taxpayer' | null }) => void;
 }
@@ -114,7 +117,7 @@ function useHoldable(callback: () => void, disabled: boolean) {
   };
 }
 
-const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, autoAccept = false, preflightMessage, onClose, onSign }) => {
+const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, autoAccept = false, preflightMessage, initialContractType, onClose, onSign }) => {
   const { state } = useGame();
 
   const [activeTab,    setActiveTab]    = useState<TabType>('NEGOTIATION');
@@ -149,7 +152,12 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     const standardCount  = onTeam.length - twoWayCount;
     const standardFull   = standardCount >= maxStandard;
     const twoWayFull     = twoWayCount >= maxTwoWay;
-    const totalFull      = onTeam.length >= maxTotal || (standardFull && twoWayFull);
+    // Only the "both buckets full" state should block signings entirely. A raw
+    // onTeam.length >= maxTotal check misfires when 2W has overflowed (e.g. 14/15
+    // standard + 4/3 two-way = 18 total) — in that case a guaranteed signing is
+    // still legal because a standard slot is open; the 2W excess gets flushed by
+    // autoTrimOversizedRosters on the next cycle.
+    const totalFull      = standardFull && twoWayFull;
     return { maxStandard, maxTwoWay, maxTotal, standardCount, twoWayCount, standardFull, twoWayFull, totalFull };
   }, [state.players, team.id, leagueStats]);
   // Re-sign = staying on the current team → Bird Rights unlock supermax / longer deals.
@@ -292,12 +300,15 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     // Honor roster slot availability first — if standard is full, we must default to TWO_WAY, and vice versa.
     const forcedTwoWay = roster.standardFull && !roster.twoWayFull;
     const forcedGuaranteed = roster.twoWayFull && !roster.standardFull;
-    if (isTwoWayCandidate || forcedTwoWay) {
-      setContractType(forcedGuaranteed ? 'GUARANTEED' : 'TWO_WAY');
-    } else {
-      setContractType('GUARANTEED');
-    }
-    if (isTwoWayCandidate || forcedTwoWay) {
+    // Resolution order: roster-full forcing > caller override (initialContractType, e.g. 2W→Guaranteed promotion) > age-based candidate default.
+    let chosenType: ContractType;
+    if (forcedGuaranteed) chosenType = 'GUARANTEED';
+    else if (forcedTwoWay) chosenType = 'TWO_WAY';
+    else if (initialContractType) chosenType = initialContractType;
+    else if (isTwoWayCandidate) chosenType = 'TWO_WAY';
+    else chosenType = 'GUARANTEED';
+    setContractType(chosenType);
+    if (chosenType === 'TWO_WAY') {
       setSalary(twoWaySalaryUSD);
       setYears(2);
       setOption('NONE');
@@ -306,7 +317,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
       setYears(initialOffer.years);
       setOption(initialOffer.hasPlayerOption ? 'PLAYER' : 'NONE');
     }
-  }, [player.internalId, isTwoWayCandidate, twoWaySalaryUSD, initialOffer, limits.minSalaryUSD, limits.maxSalaryUSD, roster.standardFull, roster.twoWayFull]);
+  }, [player.internalId, isTwoWayCandidate, twoWaySalaryUSD, initialOffer, limits.minSalaryUSD, limits.maxSalaryUSD, roster.standardFull, roster.twoWayFull, initialContractType]);
 
   // User-driven contractType toggle — rebuild salary/years/option for the chosen type.
   // Skips the first run so we don't clobber the init effect above.
@@ -838,16 +849,11 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                     return { label: 'Rating', value: ovr2K, accent: '#e21d37' };
                   })(),
                   (() => {
-                    // Match PlayerRatingsModal — regress-to-mean model, not raw .potential field.
-                    const lastR = (player as any).ratings?.[(player as any).ratings?.length - 1];
-                    const hgt = lastR?.hgt ?? 50;
-                    const tp  = lastR?.tp;
+                    // Canonical POT — single source of truth across all views.
                     const ageNow = realAge > 0 ? realAge : (player.age ?? 25);
-                    const rawOvr = player.overallRating ?? 60;
-                    const potBbgm = ageNow >= 29
-                      ? rawOvr
-                      : Math.max(rawOvr, Math.round(72.31428908571982 + (-2.33062761 * ageNow) + (0.83308748 * rawOvr)));
-                    const pot2K = convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), hgt, tp);
+                    const yearProxy = new Date().getFullYear() - ageNow + ((player as any).born?.year ? 0 : ageNow);
+                    const currentYear = (player as any).born?.year ? ((player as any).born.year + ageNow) : yearProxy;
+                    const pot2K = getDisplayPotential(player, currentYear);
                     return { label: 'Potential', value: pot2K, accent: null as string | null };
                   })(),
                 ].map(({ label, value, accent }) => (
@@ -1008,33 +1014,21 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                       <div>
                         <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 mb-2">Contract Type</p>
                         <div className="flex border border-white/5 rounded-sm p-1 bg-black/60 gap-1">
-                          {(['GUARANTEED', 'TWO_WAY'] as ContractType[]).map(type => {
-                            const slotFull = type === 'GUARANTEED' ? roster.standardFull : roster.twoWayFull;
-                            return (
+                          {(['GUARANTEED', 'TWO_WAY'] as ContractType[])
+                            .filter(type => type === 'GUARANTEED' ? !roster.standardFull : !roster.twoWayFull)
+                            .map(type => (
                               <button
                                 key={type}
-                                onClick={() => {
-                                  if (slotFull) {
-                                    setToast(type === 'GUARANTEED'
-                                      ? `Standard roster full (${roster.standardCount}/${roster.maxStandard}) — only two-way deals available. Waive someone first.`
-                                      : `Two-way roster full (${roster.twoWayCount}/${roster.maxTwoWay}) — only standard deals available.`);
-                                    return;
-                                  }
-                                  setContractType(type);
-                                }}
+                                onClick={() => setContractType(type)}
                                 className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-sm transition-all ${
                                   contractType === type
                                     ? 'bg-[#e21d37] text-white shadow-lg'
-                                    : slotFull
-                                      ? 'text-white/20 cursor-not-allowed'
-                                      : 'text-white/30 hover:text-white/60 hover:bg-white/5'
+                                    : 'text-white/30 hover:text-white/60 hover:bg-white/5'
                                 }`}
                               >
                                 {type.replace('_', ' ')}
-                                {slotFull && <span className="ml-1 text-[8px] opacity-60">(full)</span>}
                               </button>
-                            );
-                          })}
+                            ))}
                         </div>
                       </div>
 

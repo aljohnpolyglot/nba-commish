@@ -21,8 +21,10 @@ import {
 import { getTradeOutlook, effectiveRecord, getCapThresholds, getTeamPayrollUSD, getTeamCapProfile, topNAvgK2, type TradeOutlook } from '../../../utils/salaryUtils';
 import { computeMoodScore } from '../../../utils/mood/moodScore';
 import type { NBAPlayer, DraftPick, NBATeam } from '../../../types';
-import { generateCounterOffers } from '../../../services/trade/tradeFinderEngine';
+import { generateCounterOffers, teamPowerRanks } from '../../../services/trade/tradeFinderEngine';
 import { SettingsManager } from '../../../services/SettingsManager';
+import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks } from '../../../services/draft/DraftPickGenerator';
+import { buildClassStrengthMap, buildLotterySlotMap } from '../../../services/draft/draftClassStrength';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -56,24 +58,6 @@ interface ManageTradeState {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const formatSalaryM = (n: number) => `$${(n / 1000).toFixed(1)}M`;
-
-// Uses effectiveRecord so offseason pick values reflect last season's W-L, not 0-0.
-// In-season (gp ≥ 10): 60% win-pct + 40% roster strength.
-// Offseason (gp < 10): falls back to last-season W-L via effectiveRecord.
-function teamPowerRanks(teams: NBATeam[], currentYear: number): Map<number, number> {
-  const sorted = [...teams].sort((a, b) => {
-    const recA = effectiveRecord(a, currentYear);
-    const recB = effectiveRecord(b, currentYear);
-    const wpA = (recA.wins + recA.losses) > 0 ? recA.wins / (recA.wins + recA.losses) : 0.5;
-    const wpB = (recB.wins + recB.losses) > 0 ? recB.wins / (recB.wins + recB.losses) : 0.5;
-    const scoreA = wpA * 0.6 + ((a as any).strength ?? 50) / 100 * 0.4;
-    const scoreB = wpB * 0.6 + ((b as any).strength ?? 50) / 100 * 0.4;
-    return scoreB - scoreA;
-  });
-  const map = new Map<number, number>();
-  sorted.forEach((t, i) => map.set(t.id, i + 1));
-  return map;
-}
 
 function playerIndicators(player: NBAPlayer, team: NBATeam | undefined, dateStr: string): React.ReactNode {
   const { score } = computeMoodScore(player, team, dateStr);
@@ -220,9 +204,10 @@ const OfferItemRow: React.FC<{
   item: TradeItem;
   teams: NBATeam[];
   dateStr: string;
+  currentYear: number;
   /** 'ask' = render inside the rose "For your" panel (subtle color variant). */
   tone?: 'normal' | 'ask';
-}> = ({ item, teams, dateStr, tone = 'normal' }) => {
+}> = ({ item, teams, dateStr, currentYear, tone = 'normal' }) => {
   const bg = tone === 'ask' ? 'bg-rose-900/20' : 'bg-slate-800/40';
   return (
     <div className={`flex items-center gap-2 ${bg} rounded-xl px-2.5 py-1.5`}>
@@ -244,14 +229,23 @@ const OfferItemRow: React.FC<{
               {item.player.name}
               {playerIndicators(item.player, teams.find(t => t.id === item.player!.tid), dateStr)}
             </div>
-            <div className="text-[10px] text-slate-500">{item.player.pos}</div>
+            <div className="text-[10px] text-slate-500">
+              {item.player.pos}
+              {(() => {
+                const age = item.player.born?.year ? currentYear - item.player.born.year : item.player.age;
+                return age ? <span> · {age}Y</span> : null;
+              })()}
+            </div>
           </div>
           <div className="flex flex-col items-end flex-shrink-0">
             <div className={`text-xs font-black tabular-nums ${ovrText(item.ovr ?? 70)}`}>{item.ovr ?? '—'}</div>
             <div className={`text-[10px] font-bold tabular-nums ${getPotColor(item.pot ?? 70)}`}>{item.pot ?? '—'}</div>
           </div>
-          <div className="text-[10px] text-slate-500 tabular-nums w-12 text-right flex-shrink-0">
-            {formatSalaryM(item.player.contract?.amount ?? 0)}
+          <div className="flex flex-col items-end flex-shrink-0 tabular-nums w-14">
+            <div className="text-[11px] font-black text-white">{formatSalaryM(item.player.contract?.amount ?? 0)}</div>
+            {item.player.contract?.exp && (
+              <div className="text-[10px] text-slate-500">{item.player.contract.exp}</div>
+            )}
           </div>
         </>
       ) : item.type === 'pick' && item.pick ? (
@@ -328,7 +322,7 @@ export const OfferCard: React.FC<{
           {team?.logoUrl && <img src={team.logoUrl} alt="" className="w-full h-full object-contain" referrerPolicy="no-referrer" />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-black text-white truncate">{team?.region} {team?.name}</div>
+          <div className="text-xs font-black text-white truncate">{team?.name}</div>
           <div className="text-[10px] text-slate-500">{(team as any)?.wins ?? 0}–{(team as any)?.losses ?? 0}</div>
         </div>
         <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg flex-shrink-0 ${outlook.bgColor} ${outlook.color}`}>
@@ -345,7 +339,7 @@ export const OfferCard: React.FC<{
             </span>
           </div>
           {myItems.map(item => (
-            <OfferItemRow key={item.id} item={item} teams={teams} dateStr={dateStr} tone="ask" />
+            <OfferItemRow key={item.id} item={item} teams={teams} dateStr={dateStr} currentYear={currentYear} tone="ask" />
           ))}
         </div>
       )}
@@ -359,7 +353,7 @@ export const OfferCard: React.FC<{
           </span>
         </div>
         {offer.items.map(item => (
-          <OfferItemRow key={item.id} item={item} teams={teams} dateStr={dateStr} />
+          <OfferItemRow key={item.id} item={item} teams={teams} dateStr={dateStr} currentYear={currentYear} />
         ))}
       </div>
 
@@ -429,6 +423,15 @@ export const TradeFinderView: React.FC = () => {
   const [manageTrade, setManageTrade] = useState<ManageTradeState | null>(null);
 
   const powerRanks = useMemo(() => teamPowerRanks(teams, currentYear), [teams, currentYear]);
+  // Dynamic pick valuation — class strength + post-lottery actual slot.
+  const classStrengthByYear = useMemo(
+    () => buildClassStrengthMap(players, currentYear, currentYear, getMaxTradableSeason(state)),
+    [players, currentYear, state.leagueStats?.tradableDraftPickSeasons],
+  );
+  const lotterySlotByTid = useMemo(
+    () => buildLotterySlotMap((state as any).draftLotteryResult),
+    [(state as any).draftLotteryResult],
+  );
   const leagueAvg = useMemo(() => computeLeagueAvg(players, teams), [players, teams]);
   const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
 
@@ -520,11 +523,11 @@ export const TradeFinderView: React.FC = () => {
     teamRoster.filter(p => p.name.toLowerCase().includes(search.toLowerCase())),
   [teamRoster, search]);
 
-  // Filter out picks for drafts that already happened
-  const minTradableSeason = (state as any).draftComplete ? currentYear + 1 : currentYear;
+  const minTradableSeason = getMinTradableSeason(state);
+  const tradablePicks = useMemo(() => getTradablePicks(state), [draftPicks, state.leagueStats?.year, state.leagueStats?.tradableDraftPickSeasons, (state as any).draftComplete]);
   const teamPicksList = useMemo(() =>
-    draftPicks.filter(pk => pk.tid === selectedTid && pk.season >= minTradableSeason).sort((a, b) => a.season - b.season || a.round - b.round),
-  [draftPicks, selectedTid, minTradableSeason]);
+    tradablePicks.filter(pk => pk.tid === selectedTid).sort((a, b) => a.season - b.season || a.round - b.round),
+  [tradablePicks, selectedTid]);
 
   const filteredPicks = useMemo(() =>
     teamPicksList.filter(pk => {
@@ -571,11 +574,15 @@ export const TradeFinderView: React.FC = () => {
     const key = String(pick.dpid);
     if (basketIds.has(key)) return removeItem(key);
     const rank = powerRanks.get(pick.originalTid) ?? Math.ceil(teams.length / 2);
+    const classStrength = classStrengthByYear.get(pick.season) ?? 1.0;
+    const actualSlot = pick.round === 1 && pick.season === currentYear
+      ? lotterySlotByTid.get(pick.originalTid)
+      : undefined;
     setBasket(b => [...b, {
       id: key,
       type: 'pick',
       label: `${pick.season} ${pick.round === 1 ? '1st' : '2nd'} Round`,
-      val: calcPickTV(pick.round, rank, teams.length, Math.max(1, pick.season - currentYear)),
+      val: calcPickTV(pick.round, rank, teams.length, Math.max(1, pick.season - currentYear), { classStrength, actualSlot }),
       pick,
     }]);
     setFoundOffers(null);
@@ -635,13 +642,15 @@ export const TradeFinderView: React.FC = () => {
         usedIds: new Set(basket.map(i => i.id)),
         players,
         teams,
-        draftPicks,
+        draftPicks: tradablePicks,
         currentYear,
         minTradableSeason,
         powerRanks,
         teamOutlooks: teamOutlooks as any,
         tvContext,
         capSpaces,
+        classStrengthByYear,
+        lotterySlotByTid,
         targetTids: isReverseMode ? [state.userTeamId!] : undefined,
         tradeDifficulty: isGM ? (SettingsManager.getSettings().tradeDifficulty ?? 50) : undefined,
         // Star chase: if user is reverse-shopping a ≥150 TV target, their own untouchables

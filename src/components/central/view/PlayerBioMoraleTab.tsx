@@ -515,6 +515,7 @@ export const PlayerBioMoraleTab: React.FC<PlayerBioMoraleTabProps> = ({ player }
             { label: 'Role',          val: components.roleStability },
             { label: 'Market Size',   val: components.marketSize },
             { label: 'Commish Rel.',  val: components.commishRelationship },
+            { label: 'Family',        val: components.familyTies },
           ].map(({ label, val }) => (
             <div key={label} className="flex items-center justify-between">
               <span className="text-slate-500">{label}</span>
@@ -628,7 +629,6 @@ export const PlayerBioMoraleTab: React.FC<PlayerBioMoraleTabProps> = ({ player }
               </div>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[11px] font-bold" style={{ color: rColor }}>{resignLabel(resign.score)}</span>
-                <span className="text-[10px] text-slate-600">Base 50 · Σ {resign.factors.reduce((a, f) => a + f.delta, 0) >= 0 ? '+' : ''}{resign.factors.reduce((a, f) => a + f.delta, 0)}</span>
               </div>
 
               {resign.factors.length > 0 ? (

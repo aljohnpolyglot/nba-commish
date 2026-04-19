@@ -1,13 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import { Star, Calendar, LayoutGrid, BarChart2, DollarSign, ArrowRightLeft, Stethoscope } from 'lucide-react';
+import { Star, Calendar, LayoutGrid, BarChart2, DollarSign, ArrowRightLeft, Stethoscope, TrendingUp } from 'lucide-react';
 import { InjuriesView } from './InjuriesView';
+import { RosterProgressionView } from './RosterProgressionView';
 import { NBATeam, Game, NBAPlayer } from '../../../types';
 import { convertTo2KRating, normalizeDate } from '../../../utils/helpers';
 import { PlayerCard } from './PlayerCard';
 import { GameBar } from './GameBar';
 import { TeamDetailHeader } from './TeamDetailHeader';
 import { TeamStatsCards } from './TeamStatsCards';
-import { ContractTimeline } from './TeamFinancesViewDetailed';
+import { ContractTimeline } from '../../shared/ContractTimeline';
 import { TeamTransactionsTab } from './TransactionsView';
 import { PlayerStatsView } from './PlayerStatsView';
 interface TeamDetailViewProps {
@@ -27,7 +28,7 @@ interface TeamDetailViewProps {
 export const TeamDetailView: React.FC<TeamDetailViewProps> = ({
   team, players, allTeams, schedule, currentDate, onBack, onContact, onViewBio, onVisit, onGameClick, onTeamClick
 }) => {
-  const [activeTab, setActiveTab] = useState<'roster' | 'stats' | 'contracts' | 'transactions' | 'injuries'>('roster');
+  const [activeTab, setActiveTab] = useState<'roster' | 'stats' | 'contracts' | 'transactions' | 'injuries' | 'progression'>('roster');
 
   const teamPlayers = useMemo(() => {
     return players
@@ -155,7 +156,7 @@ const currentSeason = useMemo(() => {
             <div className="flex items-center gap-4">
               <h3 className="text-lg md:text-xl font-black text-white flex items-center gap-2 md:gap-3 uppercase tracking-tight">
                 <Star size={18} className="text-indigo-500" />
-                {activeTab === 'roster' ? 'Active Roster' : activeTab === 'stats' ? 'Player Stats' : activeTab === 'contracts' ? 'Contracts' : activeTab === 'injuries' ? 'Injury Report' : 'Transactions'}
+                {activeTab === 'roster' ? 'Active Roster' : activeTab === 'stats' ? 'Player Stats' : activeTab === 'contracts' ? 'Contracts' : activeTab === 'injuries' ? 'Injury Report' : activeTab === 'progression' ? 'Roster Progression' : 'Transactions'}
               </h3>
               
               <div className="flex bg-slate-900/80 border border-slate-800 p-1 rounded-xl">
@@ -214,6 +215,17 @@ const currentSeason = useMemo(() => {
                   <Stethoscope size={12} />
                   Injuries
                 </button>
+                <button
+                  onClick={() => setActiveTab('progression')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    activeTab === 'progression'
+                      ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                      : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  <TrendingUp size={12} />
+                  Progression
+                </button>
               </div>
             </div>
             <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Season 2025-26</span>
@@ -221,6 +233,8 @@ const currentSeason = useMemo(() => {
           
           {activeTab === 'injuries' ? (
             <InjuriesView filteredTeamId={team.id} embedded />
+          ) : activeTab === 'progression' ? (
+            <RosterProgressionView players={teamPlayers} />
           ) : activeTab === 'contracts' ? (
             <ContractTimeline teamId={team.id} />
           ) : activeTab === 'transactions' ? (

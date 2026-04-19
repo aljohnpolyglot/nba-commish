@@ -6,8 +6,12 @@ import { NBAPlayer, NBATeam, DraftPick } from '../../types';
 import { TradeSummaryModal } from './TradeSummaryModal';
 import { TeamDropdown } from '../shared/TeamDropdown';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
-import { calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV, getPotColor } from '../../services/trade/tradeValueEngine';
-import { getCapThresholds, getTeamCapProfile } from '../../utils/salaryUtils';
+import { calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV, getPotColor, computeLeaguePerAvg, type TeamMode } from '../../services/trade/tradeValueEngine';
+import { getCapThresholds, getTeamCapProfile, getTeamPayrollUSD, getTradeOutlook, effectiveRecord, topNAvgK2, type TradeOutlook } from '../../utils/salaryUtils';
+import { evaluateTradeAcceptance, teamPowerRanks, roleToMode } from '../../services/trade/tradeFinderEngine';
+import { SettingsManager } from '../../services/SettingsManager';
+import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks } from '../../services/draft/DraftPickGenerator';
+import { buildClassStrengthMap, buildLotterySlotMap } from '../../services/draft/draftClassStrength';
 
 // OVR text color matching TradeFinder's ovrText helper — keeps the number coloring
 // consistent between TradeMachineModal and the OfferCard stack.
@@ -213,11 +217,11 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
     .sort((a, b) => (b.contract?.amount || 0) - (a.contract?.amount || 0)),
   [state.players, teamBId]);
 
-  const tradablePickCutoff = (state.leagueStats.year ?? new Date().getFullYear()) + (state.leagueStats.tradableDraftPickSeasons ?? 7);
-  // Filter out picks for drafts that already happened (current year if draftComplete, all past years always)
-  const minTradableSeason = (state as any).draftComplete ? (state.leagueStats.year ?? 2026) + 1 : (state.leagueStats.year ?? 2026);
-  const teamAPicksAvailable = useMemo(() => state.draftPicks.filter(p => p.tid === teamAId && p.season >= minTradableSeason && p.season <= tradablePickCutoff), [state.draftPicks, teamAId, minTradableSeason, tradablePickCutoff]);
-  const teamBPicksAvailable = useMemo(() => state.draftPicks.filter(p => p.tid === teamBId && p.season >= minTradableSeason && p.season <= tradablePickCutoff), [state.draftPicks, teamBId, minTradableSeason, tradablePickCutoff]);
+  const tradablePickCutoff = getMaxTradableSeason(state);
+  const minTradableSeason = getMinTradableSeason(state);
+  const tradablePicks = useMemo(() => getTradablePicks(state), [state.draftPicks, state.leagueStats?.year, state.leagueStats?.tradableDraftPickSeasons, (state as any).draftComplete]);
+  const teamAPicksAvailable = useMemo(() => tradablePicks.filter(p => p.tid === teamAId), [tradablePicks, teamAId]);
+  const teamBPicksAvailable = useMemo(() => tradablePicks.filter(p => p.tid === teamBId), [tradablePicks, teamBId]);
 
   const displayTeamARoster = useMemo(() => {
     const incoming = teamBPlayers.map(p => ({ ...p, isIncoming: true }));
@@ -234,20 +238,73 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   const teamASalary = useMemo(() => teamAPlayers.reduce((sum, p) => sum + (p.contract?.amount || 0), 0), [teamAPlayers]);
   const teamBSalary = useMemo(() => teamBPlayers.reduce((sum, p) => sum + (p.contract?.amount || 0), 0), [teamBPlayers]);
 
+  const thresholds = useMemo(() => getCapThresholds(state.leagueStats), [state.leagueStats]);
+
   // Cap space per team (thousands, matches contract.amount units). Lets a picks-only
   // side absorb an incoming salary up to its available cap room — the real-NBA
   // exception that makes dump deals to rebuilders legal. Matches TradeFinder's
   // `capSpaceK` feed so the eligibility badge there lines up with this gate.
   const capSpaceAK = useMemo(() => {
     if (!teamA) return 0;
-    const thresholds = getCapThresholds(state.leagueStats);
     return getTeamCapProfile(state.players, teamA.id, (teamA as any).wins ?? 0, (teamA as any).losses ?? 0, thresholds).capSpaceUSD / 1000;
-  }, [teamA, state.players, state.leagueStats]);
+  }, [teamA, state.players, thresholds]);
   const capSpaceBK = useMemo(() => {
     if (!teamB) return 0;
-    const thresholds = getCapThresholds(state.leagueStats);
     return getTeamCapProfile(state.players, teamB.id, (teamB as any).wins ?? 0, (teamB as any).losses ?? 0, thresholds).capSpaceUSD / 1000;
-  }, [teamB, state.players, state.leagueStats]);
+  }, [teamB, state.players, thresholds]);
+
+  // ── Trade engine context (mirrors TradeFinderView) ─────────────────────────
+  // Shared acceptance uses these; keep the inputs identical to Finder's so a
+  // deal the Finder would return is also one the Machine will accept.
+  const currentYearForEval = state.leagueStats?.year ?? new Date().getFullYear();
+  const powerRanksMap = useMemo(() => teamPowerRanks(state.teams, currentYearForEval), [state.teams, currentYearForEval]);
+  // Dynamic pick valuation inputs — rebuilt when prospect pool or lottery changes.
+  const classStrengthByYear = useMemo(
+    () => buildClassStrengthMap(state.players, currentYearForEval, currentYearForEval, tradablePickCutoff),
+    [state.players, currentYearForEval, tradablePickCutoff],
+  );
+  const lotterySlotByTid = useMemo(
+    () => buildLotterySlotMap((state as any).draftLotteryResult),
+    [(state as any).draftLotteryResult],
+  );
+  const tvContext = useMemo(() => {
+    const d = state.date ? new Date(state.date) : new Date();
+    const month = d.getMonth() + 1;
+    const isRegularSeason = (month >= 10 && month <= 12) || (month >= 1 && month <= 4);
+    if (!isRegularSeason) return undefined;
+    return { leaguePerAvg: computeLeaguePerAvg(state.players, currentYearForEval), isRegularSeason: true };
+  }, [state.players, currentYearForEval, state.date]);
+  const confStandings = useMemo(() => {
+    const map = new Map<number, { confRank: number; gbFromLeader: number }>();
+    for (const conf of ['East', 'West']) {
+      const confTeams = state.teams.filter(t => t.conference === conf)
+        .map(t => ({ t, rec: effectiveRecord(t, currentYearForEval) }))
+        .sort((a, b) => (b.rec.wins - b.rec.losses) - (a.rec.wins - a.rec.losses));
+      const leader = confTeams[0];
+      const lw = leader?.rec.wins ?? 0;
+      const ll = leader?.rec.losses ?? 0;
+      confTeams.forEach(({ t, rec }, i) => {
+        const gb = Math.max(0, ((lw - rec.wins) + (rec.losses - ll)) / 2);
+        map.set(t.id, { confRank: i + 1, gbFromLeader: gb });
+      });
+    }
+    return map;
+  }, [state.teams, currentYearForEval]);
+  const teamOutlooks = useMemo(() => {
+    const map = new Map<number, TradeOutlook>();
+    state.teams.forEach(t => {
+      const payroll = getTeamPayrollUSD(state.players, t.id);
+      const standings = confStandings.get(t.id);
+      const expiring = state.players.filter(p => p.tid === t.id && (p.contract?.exp ?? 0) <= currentYearForEval).length;
+      const rec = effectiveRecord(t, currentYearForEval);
+      const starAvg = topNAvgK2(state.players, t.id, 3);
+      map.set(t.id, getTradeOutlook(
+        payroll, rec.wins, rec.losses, expiring, thresholds,
+        standings?.confRank, standings?.gbFromLeader, starAvg,
+      ));
+    });
+    return map;
+  }, [state.teams, state.players, thresholds, confStandings, currentYearForEval]);
 
   const salaryMismatchInfo = useMemo(() => {
     // Picks-for-picks: no salary to check
@@ -285,31 +342,45 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
 
     // GM Mode: evaluate whether the other team accepts
     if (isGM && !force) {
-      const currentYear = state.leagueStats?.year ?? 2026;
+      const currentYear = currentYearForEval;
       const otherTeam = state.teams.find(t => t.id === teamBId);
       const otherGMName = otherTeam ? `${otherTeam.name} GM` : 'Their GM';
 
-      // Calculate trade value for Team B (receiving team A's players/picks, giving their own)
-      const teamBReceivesTV = teamAPlayers.reduce((sum, p) => sum + calcPlayerTV(p, 'neutral', currentYear), 0)
-        + teamAPicks.reduce((sum, pk) => sum + calcPickTV(pk.round, 15, 30, Math.max(1, pk.season - currentYear)), 0);
-      const teamBGivesTV = teamBPlayers.reduce((sum, p) => sum + calcPlayerTV(p, 'neutral', currentYear), 0)
-        + teamBPicks.reduce((sum, pk) => sum + calcPickTV(pk.round, 15, 30, Math.max(1, pk.season - currentYear)), 0);
+      // Single source of truth — same evaluator the Trade Finder uses to gate
+      // offers, so a deal Finder would surface is also one Machine will accept.
+      const tradeDifficulty = SettingsManager.getSettings().tradeDifficulty ?? 50;
+      const result = evaluateTradeAcceptance({
+        fromTid: teamAId,
+        toTid: teamBId,
+        fromItems: [
+          ...teamAPlayers.map(p => ({ type: 'player' as const, player: p })),
+          ...teamAPicks.map(pk => ({ type: 'pick' as const, pick: pk })),
+        ],
+        toItems: [
+          ...teamBPlayers.map(p => ({ type: 'player' as const, player: p })),
+          ...teamBPicks.map(pk => ({ type: 'pick' as const, pick: pk })),
+        ],
+        teams: state.teams,
+        currentYear,
+        powerRanks: powerRanksMap,
+        teamOutlooks,
+        tvContext,
+        tradeDifficulty,
+        classStrengthByYear,
+        lotterySlotByTid,
+      });
 
-      const netValue = teamBReceivesTV - teamBGivesTV;
-      // Accept if they receive more value than they give (threshold: -5 allows slight overpay)
-      const accepted = netValue >= -5;
-      const reason = accepted
-        ? netValue > 10 ? 'This is a great deal for us. Done!' : 'Fair trade. We can work with this.'
-        : netValue > -15 ? `We\'d need a bit more to make this work.`
-        : 'No way. This isn\'t even close to fair value for what we\'re giving up.';
+      const { accepted, reason, shortfall } = result;
 
       // On rejection, suggest 1-3 user-side additions that would close the gap.
       // Greedy: pick the asset whose TV is closest to the remaining shortfall, repeat.
+      // Values user-side assets in fromTid's role mode — same frame as offerValue.
       let suggestion: string | undefined;
       const nextSuggestedPlayers = new Set<string>();
       const nextSuggestedPicks = new Set<number>();
       if (!accepted) {
-        const gap = Math.abs(netValue) + 5; // add 5 TV buffer so deal clears -5 threshold
+        const fromMode: TeamMode = roleToMode(teamOutlooks.get(teamAId)?.role ?? 'neutral');
+        const gap = shortfall + 5; // small buffer so the next eval clears the ratio threshold
         const userRoster = state.players.filter(p =>
           p.tid === teamAId && !teamAPlayers.some(x => x.internalId === p.internalId)
         );
@@ -318,8 +389,8 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
         );
         type Candidate = { kind: 'player' | 'pick'; id: string | number; name: string; tv: number };
         const candidates: Candidate[] = [
-          ...userRoster.map<Candidate>(p => ({ kind: 'player', id: p.internalId, name: p.name, tv: calcPlayerTV(p, 'neutral' as any, currentYear) })),
-          ...userPicks.map<Candidate>(pk => ({ kind: 'pick', id: pk.dpid, name: `${pk.season} ${pk.round === 1 ? '1st' : '2nd'} Rd`, tv: calcPickTV(pk.round, 15, 30, Math.max(1, pk.season - currentYear)) })),
+          ...userRoster.map<Candidate>(p => ({ kind: 'player', id: p.internalId, name: p.name, tv: calcPlayerTV(p, fromMode, currentYear, tvContext) })),
+          ...userPicks.map<Candidate>(pk => ({ kind: 'pick', id: pk.dpid, name: `${pk.season} ${pk.round === 1 ? '1st' : '2nd'} Rd`, tv: calcPickTV(pk.round, powerRanksMap.get(pk.originalTid) ?? Math.ceil(state.teams.length / 2), state.teams.length, Math.max(1, pk.season - currentYear), { classStrength: classStrengthByYear.get(pk.season) ?? 1.0, actualSlot: pk.round === 1 && pk.season === currentYear ? lotterySlotByTid.get(pk.originalTid) : undefined }) })),
         ].filter(c => c.tv > 0);
 
         const picked: Candidate[] = [];
@@ -372,10 +443,10 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
 
   return (
     <AnimatePresence>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/95 z-[60] flex flex-col items-center justify-start lg:justify-center p-3 sm:p-4 font-sans backdrop-blur-md overflow-y-auto">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/95 z-[60] flex flex-col items-center justify-start lg:justify-center p-3 sm:p-4 pb-24 lg:pb-4 font-sans backdrop-blur-md overflow-y-auto">
 
-        {/* ACTION BAR — sticky on mobile, absolute on desktop */}
-        <div className="sticky top-0 lg:fixed lg:bottom-6 lg:top-auto z-50 flex gap-2 sm:gap-4 bg-[#161616] p-2 rounded-2xl border border-slate-700 shadow-2xl mb-3 lg:mb-0 w-full max-w-xs sm:max-w-sm lg:max-w-none lg:w-auto lg:left-1/2 lg:-translate-x-1/2">
+        {/* ACTION BAR — fixed at bottom on both mobile and desktop so it's always reachable */}
+        <div className="fixed bottom-3 left-1/2 -translate-x-1/2 lg:bottom-6 z-50 flex gap-2 sm:gap-4 bg-[#161616] p-2 rounded-2xl border border-slate-700 shadow-2xl w-[calc(100%-1.5rem)] max-w-xs sm:max-w-sm lg:max-w-none lg:w-auto">
             <button onClick={handleConfirm} disabled={!canClickAssets || teamAId === teamBId || teamAId == null || teamBId == null || (teamAPlayers.length === 0 && teamBPlayers.length === 0 && teamAPicks.length === 0 && teamBPicks.length === 0)} className="flex-1 lg:flex-none px-4 sm:px-8 py-2.5 sm:py-3 rounded-xl font-black text-xs uppercase bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-600/20">
                 {teamAId === teamBId ? 'Same Team — Invalid' : 'Validate Deal'}
             </button>

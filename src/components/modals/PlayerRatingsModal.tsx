@@ -13,6 +13,7 @@ import {
   RADAR_AXES,
 } from '../../services/simulation/convert2kAttributes';
 import { convertTo2KRating } from '../../utils/helpers';
+import { getDisplayPotential } from '../../utils/playerRatings';
 import { getPlayerRealK2 } from '../../data/NBA2kRatings';
 import { useLeagueScaledRatings, LEAGUE_DISPLAY_MULTIPLIERS, applyLeagueDisplayScale } from '../../hooks/useLeagueScaledRatings';
 import { getRealDurability, applyDurabilityToK2 } from '../../utils/durabilityUtils';
@@ -390,9 +391,8 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
 
   const simYear = state.leagueStats?.year ?? new Date().getFullYear();
   const playerAge = (player as any).born?.year ? simYear - (player as any).born.year : (player.age ?? 25);
-  const rawBbgmOvr = player.overallRating ?? 60;
-  const potBbgm = playerAge >= 29 ? rawBbgmOvr : Math.max(rawBbgmOvr, Math.round(72.31428908571982 + (-2.33062761 * playerAge) + (0.83308748 * rawBbgmOvr)));
-  const potK2 = convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), localRatings.hgt, localRatings.tp);
+  // Canonical POT — single source of truth across all views.
+  const potK2 = getDisplayPotential(player, simYear);
   const ovrColor = getRatingColor(overall2k);
 
   return (

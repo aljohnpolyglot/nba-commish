@@ -1,6 +1,7 @@
 import { NBAPlayer, NBATeam } from '../../types';
 import { MoodTrait, MoodComponents } from './moodTypes';
 import { effectiveRecord } from '../salaryUtils';
+import { getFamilyOnRoster } from '../familyTies';
 
 // ── Normalize BBGM letter codes → full MoodTrait names ────────────────────────
 // BBGM stores traits as single-char letters: "F"=DIVA, "L"=LOYAL, "$"=MERCENARY, "W"=COMPETITOR
@@ -126,6 +127,15 @@ export function computeMoodScore(
   const isStar = player.overallRating >= 65; // BBGM 65+ = All-Star caliber (70+ = superstar)
   const roleDelta = isStarter ? 2 : isStar ? -3 : 0;
 
+  // ── Family ties ────────────────────────────────────────────────────────────
+  // +1 per relative on the same team (cap 3). Playing next to a brother is a
+  // real morale anchor — the BBGM roster carries the `relatives` list per player.
+  let familyDelta = 0;
+  if (teamPlayers && teamPlayers.length > 0) {
+    const familyCount = getFamilyOnRoster(player, teamPlayers).length;
+    familyDelta = Math.min(3, familyCount);
+  }
+
   // ── Seeded noise ───────────────────────────────────────────────────────────
   let dateSeed = 0;
   for (let i = 0; i < dateStr.length; i++) dateSeed += dateStr.charCodeAt(i);
@@ -187,6 +197,7 @@ export function computeMoodScore(
     commishRelationship: clamp(relDelta, -3, 3),
     roleStability: clamp(role, -3, 2),
     marketSize: clamp(marketDelta, -3, 6),
+    familyTies: clamp(familyDelta, 0, 3),
     noise: clamp(noiseDelta, -1, 1),
   };
 

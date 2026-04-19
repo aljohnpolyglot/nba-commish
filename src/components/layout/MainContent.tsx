@@ -226,11 +226,11 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
     case 'Player Ratings':
       return <PlayerRatingsView />;
     case 'League History':
-      return <LeagueHistoryView />;
+      return <LeagueHistoryView onViewChange={onViewChange} />;
     case 'Player Bios':
       return <PlayerBiosView />;
     case 'Team History':
-      return <TeamHistoryView />;
+      return <TeamHistoryView onViewChange={onViewChange} />;
     case 'Power Rankings':
       return <PowerRankingsView />;
     case 'Team Office':

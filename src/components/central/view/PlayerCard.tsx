@@ -40,9 +40,17 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionCl
     statusText = 'OUT - SUSPENDED';
   }
 
+  const isTwoWay = !!(player as any).twoWay;
+  const contractBorder = isTwoWay
+    ? 'border-purple-500/40 hover:border-purple-500/70'
+    : 'border-[#facc15]/25 hover:border-[#facc15]/60';
+  const contractGlow = isTwoWay
+    ? 'bg-purple-500/5 group-hover:bg-purple-500/10'
+    : 'bg-[#facc15]/[0.04] group-hover:bg-[#facc15]/10';
+
   return (
-    <div className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] p-6 hover:border-indigo-500/30 transition-all duration-300 group relative overflow-hidden">
-      <div className="absolute -right-4 -top-4 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-all duration-500"></div>
+    <div className={`bg-slate-900/40 border rounded-[2.5rem] p-6 transition-all duration-300 group relative overflow-hidden ${contractBorder}`}>
+      <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full blur-2xl transition-all duration-500 ${contractGlow}`}></div>
       
       <div className="flex items-center gap-6 relative z-10">
         <div className="relative">
@@ -74,6 +82,11 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionCl
             <span className="bg-slate-500/10 text-slate-400 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
               {simYear - (player.born?.year || 2000)} YRS
             </span>
+            {isTwoWay && (
+              <span className="bg-purple-500/15 text-purple-300 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
+                2W
+              </span>
+            )}
           </div>
         </div>
       </div>

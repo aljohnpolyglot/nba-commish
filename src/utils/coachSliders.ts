@@ -236,11 +236,14 @@ export function getSystemProficiency(
   const help = k2.DF[4], defIQ = k2.DF[5], dcon = k2.DF[6], hgt = k2.DF[0];
   const oreb = k2.RB[0], dreb = k2.RB[1];
 
+  // Re-centered around 50 so star renderer (which maps score 50→0★, 100→5★) gets a
+  // real signal. K2 subs are on a 25-99 scale and cluster together for NBA rosters,
+  // so the score is built from two deltas: fit (pos−neg) and roster talent (pos−60).
   const calc = (pos: number[], neg: number[]): number => {
     const posAvg = pos.reduce((a, b) => a + b, 0) / pos.length;
     const negAvg = neg.reduce((a, b) => a + b, 0) / neg.length;
-    const score = posAvg * 1.2 - negAvg * 0.5;
-    return Math.max(0, Math.min(100, Math.round(score * 1.1)));
+    const score = 50 + (posAvg - negAvg) * 1.5 + (posAvg - 60) * 0.8;
+    return Math.max(0, Math.min(100, Math.round(score)));
   };
 
   const runAndGunBonus = leadPlayerRatings && leadPlayerRatings.pss > 65 && leadPlayerRatings.spd > 70 && leadPlayerRatings.hgt <= 60 && tempo > 75 && highIQCount >= 5 ? 20 : 0;

@@ -14,7 +14,8 @@ export function generateCoordinatedStats(
   season: number = 2025,
   otCount: number = 0,
   team2KDef?: { steal: number; passPerception: number; block: number; interiorDef: number },
-  opp2KDef?: { passPerception: number }
+  opp2KDef?: { passPerception: number },
+  orbRateMult: number = 1.0
 ): PlayerGameStats[] {
   const stats    = teamStats.map(s => ({ ...s }));
   const rotation = stats.map(s =>
@@ -52,8 +53,10 @@ export function generateCoordinatedStats(
   );
 
   // ── Offensive Rebounds
+  // orbRateMult (from Coaching → Crash Offensive Glass) scales the 20%
+  // baseline ORB rate. High crash = more guys on the glass, bigger ORB pool.
   distributePie(
-    Math.round(ownMisses * 0.20),
+    Math.round(ownMisses * 0.20 * orbRateMult),
     (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 1.0 + rHelper(p, 'jmp') * 0.5) * minFrac(p) * (getNight(p)?._nightOrbMult ?? 1),
     'orb', 2.0, rotation, stats, 0.22
   );

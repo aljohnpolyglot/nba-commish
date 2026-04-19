@@ -302,8 +302,8 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
               {renderTeamPreview(homeTeam, homeStarters, homeOvr, true)}
             </div>
 
-            {/* Rig Panel */}
-            {!isCelebrity && !isAllStar && !isRisingStars && !isIntrasquad && (
+            {/* Rig Panel — commissioner-only */}
+            {state.gameMode !== 'gm' && !isCelebrity && !isAllStar && !isRisingStars && !isIntrasquad && (
               <div className="px-6 md:px-12 pb-6">
                 {!showRigPanel ? (
                   <button

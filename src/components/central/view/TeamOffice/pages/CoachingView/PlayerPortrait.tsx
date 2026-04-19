@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ArrowLeftRight } from 'lucide-react';
-import { convertTo2KRating } from '../lib/k2Engine';
+import { getDisplayOverall } from '../../../../../../utils/playerRatings';
 
 export interface PlayerPortraitProps {
   imgUrl?: string;
@@ -68,11 +68,12 @@ export const PlayerPortrait: React.FC<PlayerPortraitProps> = ({
         </div>
       )}
 
-      {/* OVR badge — bottom-right */}
+      {/* OVR badge — bottom-right. Canonical: getDisplayOverall reads
+          overallRating + current rating row, matches PlayerRatingsView exactly. */}
       {overallRating !== undefined && (
         <div className="absolute -bottom-1 -right-1 bg-slate-950 border-2 border-slate-800 rounded-lg px-1.5 py-0.5 shadow-lg z-10">
           <span className="text-[9px] font-black text-white italic">
-            {ovrLabel ?? convertTo2KRating(overallRating ?? 0, ratings?.[ratings.length - 1]?.hgt ?? 50, ratings?.[ratings.length - 1]?.tp)}
+            {ovrLabel ?? getDisplayOverall({ overallRating, ratings })}
           </span>
         </div>
       )}

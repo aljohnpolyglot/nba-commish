@@ -33,10 +33,12 @@ export function usePlayerQuickActions() {
   const [bioPlayer, setBioPlayer] = useState<NBAPlayer | null>(null);
   const [signingPlayer, setSigningPlayer] = useState<NBAPlayer | null>(null);
   const [resignTeamId, setResignTeamId] = useState<number | null>(null);
+  const [forceContractType, setForceContractType] = useState<'GUARANTEED' | 'TWO_WAY' | undefined>(undefined);
 
   const closeSigning = () => {
     setSigningPlayer(null);
     setResignTeamId(null);
+    setForceContractType(undefined);
   };
 
   /** Open the PlayerActionsModal for a given player — call this from any row onClick. */
@@ -47,11 +49,21 @@ export function usePlayerQuickActions() {
     if (actionType === 'sign_player') {
       setSigningPlayer(player);
       setResignTeamId(null);
+      setForceContractType(undefined);
       return true;
     }
     if (actionType === 'resign_player') {
       setSigningPlayer(player);
       setResignTeamId(player.tid ?? null);
+      setForceContractType(undefined);
+      return true;
+    }
+    if (actionType === 'sign_guaranteed') {
+      // 2W → standard promotion: reuse the SigningModal (team locked to current team, GUARANTEED tab forced).
+      // SIGN_FREE_AGENT pushes a 'Signing' history entry via gameLogic.ts, so TransactionsView picks it up automatically.
+      setSigningPlayer(player);
+      setResignTeamId(player.tid ?? null);
+      setForceContractType('GUARANTEED');
       return true;
     }
     if (actionType === 'waive') {
@@ -109,6 +121,7 @@ export function usePlayerQuickActions() {
         <SignFreeAgentModal
           initialPlayer={signingPlayer}
           initialTeam={resignTeamId != null ? state.teams.find(t => t.id === resignTeamId) ?? undefined : undefined}
+          forceContractType={forceContractType}
           onClose={closeSigning}
           onConfirm={async (payload) => {
             closeSigning();

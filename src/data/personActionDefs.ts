@@ -25,6 +25,10 @@ export interface PersonEligibility {
   /** Only show for players on a roster whose contract expires at or before the current season. */
   requireExpiringContract?: boolean;
 
+  /** Only show for two-way contract players currently on an NBA roster (for the
+   *  Sign-Guaranteed conversion action). GM mode restricts to the user's own team. */
+  requireTwoWay?: boolean;
+
   /** Skip players that are already in the HOF. */
   excludeHOF?: boolean;
 
@@ -99,6 +103,15 @@ export function isPlayerEligible(
     const exp = player.contract?.exp;
     const year = context?.currentYear ?? new Date().getUTCFullYear();
     return typeof exp === 'number' && exp <= year;
+  }
+
+  if (eligibility.requireTwoWay) {
+    const isTwoWay = !!(player as any).twoWay;
+    const onTeam = (player.tid ?? -1) >= 0;
+    if (!isTwoWay || !onTeam) return false;
+    // GM mode: only own team. Commissioner (userTeamId == null): any team.
+    if (context?.userTeamId != null && player.tid !== context.userTeamId) return false;
+    return true;
   }
 
   if (eligibility.requireActiveNBA) {
@@ -379,6 +392,17 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
     hover: 'hover:bg-amber-600',
     eligibility: {
       requireExpiringContract: true,
+    },
+  },
+  {
+    id: 'sign_guaranteed',
+    title: 'Sign (Guaranteed)',
+    description: 'Convert this two-way contract to a standard guaranteed deal at market value.',
+    icon: PenTool,
+    color: 'bg-emerald-500',
+    hover: 'hover:bg-emerald-600',
+    eligibility: {
+      requireTwoWay: true,
     },
   },
 ];

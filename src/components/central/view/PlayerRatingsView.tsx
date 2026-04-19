@@ -5,6 +5,7 @@ import { useGame } from '../../../store/GameContext';
 import { NBAPlayer } from '../../../types';
 import { calculateK2, K2_CATS, K2Data } from '../../../services/simulation/convert2kAttributes';
 import { convertTo2KRating } from '../../../utils/helpers';
+import { getDisplayOverall, getDisplayPotential } from '../../../utils/playerRatings';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import { applyLeagueDisplayScale } from '../../../hooks/useLeagueScaledRatings';
 import { getRealDurability, applyDurabilityToK2 } from '../../../utils/durabilityUtils';
@@ -135,11 +136,10 @@ export const PlayerRatingsView: React.FC = () => {
         // Patch MI.sub[0] with injury-history durability so it agrees with the bio.
         const realDur = getRealDurability(player);
         const k2 = applyDurabilityToK2(rawK2, realDur);
-        const ovr = convertTo2KRating(player.overallRating ?? 60, r.hgt, r.tp);
-        // POT: BBGM potEstimator (age+ovr), clamped to never be below current OVR, then K2 scale
-        const rawBbgmOvr = player.overallRating ?? 60;
-        const potBbgm = age >= 29 ? rawBbgmOvr : Math.max(rawBbgmOvr, Math.round(72.31428908571982 + (-2.33062761 * age) + (0.83308748 * rawBbgmOvr)));
-        const pot = convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), r.hgt, r.tp);
+        // Canonical single-source-of-truth helpers — same functions every
+        // other view uses (NBA Central, Team Office, modals, drafts).
+        const ovr = getDisplayOverall(player, season);
+        const pot = getDisplayPotential(player, currentYear, season);
         return {
           player,
           age,

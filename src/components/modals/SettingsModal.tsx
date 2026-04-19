@@ -186,9 +186,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 <button
                   onClick={() => {
                     const newMode = isGM ? 'commissioner' : 'gm';
+                    // Preserve userTeamId across switches so flipping GM → Commissioner → GM lands you back on your franchise
+                    // instead of the alphabetically-first team. Mode-aware consumers (AI handlers, helpers) gate on gameMode,
+                    // so leaving userTeamId set during commissioner mode is safe.
+                    const nextUserTeamId = newMode === 'gm'
+                      ? (state.userTeamId ?? state.teams[0]?.id)
+                      : state.userTeamId;
                     dispatchAction({ type: 'UPDATE_STATE', payload: {
                       gameMode: newMode,
-                      userTeamId: newMode === 'gm' ? (state.userTeamId ?? state.teams[0]?.id) : undefined,
+                      userTeamId: nextUserTeamId,
                     }} as any);
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
@@ -201,28 +207,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </button>
               </div>
 
-              {/* Advance Day on Transaction */}
-              <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
-                <div className="space-y-1">
-                  <label className="text-sm font-bold text-white flex items-center gap-2">
-                    <Gamepad2 size={16} className={settings.advanceDayOnTransaction ? 'text-amber-400' : 'text-slate-500'} />
-                    Advance Day on Transactions
-                  </label>
-                  <p className="text-xs text-slate-400">
-                    Signing or trading advances the sim day. Turn off for instant transactions.
-                  </p>
+              {/* Advance Day on Transaction — Commissioner only. In GM mode transactions are always instant. */}
+              {!isGM && (
+                <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                  <div className="space-y-1">
+                    <label className="text-sm font-bold text-white flex items-center gap-2">
+                      <Gamepad2 size={16} className={settings.advanceDayOnTransaction ? 'text-amber-400' : 'text-slate-500'} />
+                      Advance Day on Transactions
+                    </label>
+                    <p className="text-xs text-slate-400">
+                      Signing or trading advances the sim day. Turn off for instant transactions.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSettings({ ...settings, advanceDayOnTransaction: !settings.advanceDayOnTransaction })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      settings.advanceDayOnTransaction ? 'bg-amber-500' : 'bg-slate-600'
+                    }`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      settings.advanceDayOnTransaction ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setSettings({ ...settings, advanceDayOnTransaction: !settings.advanceDayOnTransaction })}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    settings.advanceDayOnTransaction ? 'bg-amber-500' : 'bg-slate-600'
-                  }`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    settings.advanceDayOnTransaction ? 'translate-x-6' : 'translate-x-1'
-                  }`} />
-                </button>
-              </div>
+              )}
 
               {/* Allow AI Trades */}
               <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">

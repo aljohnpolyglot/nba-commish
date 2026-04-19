@@ -711,6 +711,8 @@ export interface NBAPlayer {
   farewellTour?: boolean;
   /** False when the player was signed after the March 1 playoff eligibility deadline. Cleared at rollover. Cosmetic — AI stops signing before this date automatically. */
   playoffEligible?: boolean;
+  /** Family ties (from BBGM roster). Used for trading-block protection + mood bonus when a relative is on the same team. */
+  relatives?: Array<{ type: 'brother' | 'father' | 'son' | string; pid: number; name: string }>;
 }
 
 export interface K2Result {

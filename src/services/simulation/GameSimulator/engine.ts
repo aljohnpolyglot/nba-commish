@@ -15,6 +15,182 @@ import { Defense2KService } from '../../Defense2KService';
 import { SimulatorKnobs, KNOBS_DEFAULT, KNOBS_PRESEASON, KNOBS_ALL_STAR, KNOBS_RISING_STARS, KNOBS_CELEBRITY, KNOBS_BLEAGUE, KNOBS_EUROLEAGUE, KNOBS_PBA, getKnobs } from '../SimulatorKnobs';
 import { HighlightGenerator } from '../HighlightGenerator';
 import { getInjuries, getRandomInjury } from '../../injuryService';
+import { getScoringOptions, getScoringOptionBiases, getCoachingPenalty } from '../../../store/scoringOptionsStore';
+import { getLockedStrategy } from '../../../store/coachStrategyLockStore';
+
+/**
+ * Top-8 pace factor from roster traits. Mirrors the tempo/fastBreak/earlyOffense
+ * formula in coachSliders.ts:60-64 (without league normalization) and blends
+ * them into one scalar. Returns a multiplier near 1.0:
+ *  - All-run team (Warriors-ish)  → ~1.06
+ *  - Balanced roster              → ~1.00
+ *  - Grind-it-out (post-heavy)    → ~0.94
+ * Applied to the shared paceRoll in _simulateGameOnce so the visible score
+ * and per-player stat volume both move together.
+ */
+function computePaceFactor(roster: Player[]): number {
+  if (!roster.length) return 1.0;
+  const sorted = [...roster].sort((a: any, b: any) =>
+    (b.rating2K || b.bbgmOvr || 50) - (a.rating2K || a.bbgmOvr || 50)
+  ).slice(0, 8);
+  const avg = (key: string) =>
+    sorted.reduce((s: number, p: any) => s + (p.ratings?.[0]?.[key] ?? 50), 0) / sorted.length;
+  const spd = avg('spd'), pss = avg('pss'), oiq = avg('oiq'), reb = avg('reb');
+  const tempo       = spd * 0.3 + pss * 0.2 + oiq * 0.5;
+  const fastBreak   = tempo * 0.6 + spd * 0.4 - reb * 0.3;
+  const earlyOff    = tempo * 0.4 + fastBreak * 0.4 + reb * 0.2;
+  const combined    = tempo * 0.5 + earlyOff * 0.3 + fastBreak * 0.2;
+  // Map ~35–75 → 0.93–1.07, clamped to keep extreme rosters sane.
+  return Math.max(0.90, Math.min(1.10, 1.0 + (combined - 55) / 280));
+}
+
+/**
+ * Shot-distribution mults derived from the Coach Sliders. When the user has
+ * locked strategy, use the snapshot; otherwise compute fresh from roster so
+ * the sim still reflects whatever the UI would show right now.
+ *
+ * The four main sliders (shotInside/Close/Medium/3PT) always sum to 100, so
+ * 25 each = baseline 1.0×. Attack Basket and Post Plays are subtle biases
+ * (25 = neutral, 0 = suppress, 100 = crank) layered on top of rim/lowPost.
+ */
+function computeShotMults(
+  teamId: number,
+  roster: Player[]
+): { rimRateMult: number; lowPostRateMult: number; midRangeRateMult: number; threePointRateMult: number } {
+  const locked = getLockedStrategy(teamId);
+
+  // Raw slider-like values, either from lock or derived from roster.
+  let inside: number, close: number, medium: number, three: number, attack: number, post: number;
+
+  if (locked) {
+    ({ shotInside: inside, shotClose: close, shotMedium: medium, shot3pt: three,
+       attackBasket: attack, postPlayers: post } = locked.sliders);
+  } else {
+    // Lightweight inline derivation — mirror coachSliders.ts shot formulas enough
+    // to respect roster identity without pulling in league normalization.
+    const sorted = [...roster].sort((a: any, b: any) =>
+      (b.rating2K || b.bbgmOvr || 50) - (a.rating2K || a.bbgmOvr || 50)
+    ).slice(0, 8);
+    if (!sorted.length) {
+      return { rimRateMult: 1, lowPostRateMult: 1, midRangeRateMult: 1, threePointRateMult: 1 };
+    }
+    const avg = (key: string) =>
+      sorted.reduce((s: number, p: any) => s + (p.ratings?.[0]?.[key] ?? 50), 0) / sorted.length;
+    const hgt = avg('hgt'), stre = avg('stre'), dnk = avg('dnk'), ins = avg('ins');
+    const fg = avg('fg'), tp = avg('tp');
+    const rawInside = hgt * 0.4 + dnk * 0.4 + stre * 0.2;
+    const rawClose  = hgt * 0.3 + ins * 0.5 + stre * 0.2;
+    const rawMedium = fg * 0.7 + hgt * 0.3;
+    const raw3pt    = tp * 1.0;
+    const rawTotal  = rawInside + rawClose + rawMedium + raw3pt || 1;
+    inside = (rawInside / rawTotal) * 100;
+    close  = (rawClose  / rawTotal) * 100;
+    medium = (rawMedium / rawTotal) * 100;
+    three  = (raw3pt    / rawTotal) * 100;
+    attack = Math.min(80, Math.max(10, dnk * 0.5 + stre * 0.3));
+    post   = Math.min(50, Math.max(1, ins * 0.4 - tp * 0.2));
+  }
+
+  const main = (inside + close + medium + three) || 100;
+  const norm = (v: number) => (v / main) * 4; // 25% → 1.0×
+
+  // Attack Basket / Post Plays are gentler biases (center 25 = 1.0×).
+  const attackBias = 1 + (attack - 25) / 150;
+  const postBias   = 1 + (post   - 25) / 150;
+
+  return {
+    rimRateMult:        Math.max(0.3, norm(inside) * attackBias),
+    lowPostRateMult:    Math.max(0.3, norm(close)  * postBias),
+    midRangeRateMult:   Math.max(0.3, norm(medium)),
+    threePointRateMult: Math.max(0.3, norm(three)),
+  };
+}
+
+/**
+ * Resolve a team's defense/coaching sliders. Locked strategy wins; otherwise
+ * derive lightweight values from roster traits. Zone / Double Team default
+ * low because those are coaching *choices*, not talent signals.
+ */
+function getDefenseSliders(teamId: number, roster: Player[]): {
+  defensivePressure: number; helpDefense: number; zoneUsage: number;
+  doubleTeam: number; runPlays: number; crashOffensiveGlass: number;
+} {
+  const locked = getLockedStrategy(teamId);
+  if (locked) {
+    return {
+      defensivePressure:   locked.sliders.defensivePressure,
+      helpDefense:         locked.sliders.helpDefense,
+      zoneUsage:           locked.sliders.zoneUsage,
+      doubleTeam:          locked.sliders.doubleTeam,
+      runPlays:            locked.sliders.runPlays,
+      crashOffensiveGlass: locked.sliders.crashOffensiveGlass,
+    };
+  }
+  if (!roster.length) {
+    return { defensivePressure: 50, helpDefense: 50, zoneUsage: 2, doubleTeam: 2, runPlays: 100, crashOffensiveGlass: 50 };
+  }
+  const sorted = [...roster].sort((a: any, b: any) =>
+    (b.rating2K || b.bbgmOvr || 50) - (a.rating2K || a.bbgmOvr || 50)
+  ).slice(0, 8);
+  const avg = (key: string) =>
+    sorted.reduce((s: number, p: any) => s + (p.ratings?.[0]?.[key] ?? 50), 0) / sorted.length;
+  const spd = avg('spd'), diq = avg('diq'), hgt = avg('hgt');
+  const reb = avg('reb'), stre = avg('stre');
+  return {
+    defensivePressure:   Math.min(90, Math.max(20, spd * 0.4 + diq * 0.6)),
+    helpDefense:         Math.min(90, Math.max(20, diq * 0.6 + hgt * 0.4)),
+    zoneUsage:           2,
+    doubleTeam:          2,
+    runPlays:            100, // default: coach has a system
+    crashOffensiveGlass: Math.min(90, Math.max(20, reb * 0.7 + stre * 0.3)),
+  };
+}
+
+/**
+ * The opponent's defensive sliders → knob modifiers applied to YOUR stat gen.
+ * Returns unit-multipliers (1.0 = neutral). Caller compounds these into
+ * existing knobs rather than replacing them.
+ */
+function defensiveStackOnOpponent(d: ReturnType<typeof getDefenseSliders>): {
+  tovMult: number; ftRateMult: number; interiorEffMult: number;
+  rimRateMult: number; threePointRateMult: number;
+} {
+  const pressureN = (d.defensivePressure - 50) / 50;   // −1..+1
+  const helpN     = (d.helpDefense       - 50) / 50;
+  const zoneN     = d.zoneUsage / 100;                 // 0..1
+  return {
+    // Defensive Pressure: opp turns it over more, but also fouls you more
+    tovMult:            1 + pressureN * 0.15,
+    ftRateMult:         1 + pressureN * 0.10,
+    // Help Defense: opp paint FG% ↓
+    interiorEffMult:    1 - helpN * 0.08,
+    // Zone Usage: opp rim attempts ↓
+    rimRateMult:        1 - zoneN * 0.15,
+    // Help + Zone both push opp to kick it out → more 3PA
+    threePointRateMult: (1 + helpN * 0.10) * (1 + zoneN * 0.12),
+  };
+}
+
+/**
+ * Roster → internalIds sorted by usage*overall (same formula as CoachingView:137).
+ * Feeds getScoringOptionBiases so user overrides are measured against the team's
+ * "natural" top scorers, not the sim's rotation order.
+ */
+function buildBaselineOrder(roster: Player[]): string[] {
+  return [...roster]
+    .sort((a: any, b: any) => {
+      const getUsage = (p: any) => {
+        if (!p.ratings || !p.ratings[0]) return 0;
+        const r = p.ratings[0];
+        const usage = r.ins * 0.23 + r.dnk * 0.15 + r.fg * 0.15 + r.tp * 0.15
+                    + r.spd * 0.08 + r.hgt * 0.08 + r.drb * 0.08 + r.oiq * 0.08;
+        const ovr = p.rating2K || p.bbgmOvr || r.ovr || 50;
+        return usage * 0.5 + ovr * 0.5;
+      };
+      return getUsage(b) - getUsage(a);
+    })
+    .map((p: any) => String(p.internalId ?? p.pid));
+}
 /**
  * Maps a team's final score to a shot-efficiency multiplier.
  * High-scoring games reflect hot shooting; low-scoring games are grind nights.
@@ -96,8 +272,25 @@ export class GameSimulator {
     awayKnobs: SimulatorKnobs = KNOBS_DEFAULT,
   ): GameResult {
 
-    const homeStrength = calculateTeamStrength(homeTeam.id, players, homeOverridePlayers);
-    const awayStrength = calculateTeamStrength(awayTeam.id, players, awayOverridePlayers);
+    const baseHomeStrength = calculateTeamStrength(homeTeam.id, players, homeOverridePlayers);
+    const baseAwayStrength = calculateTeamStrength(awayTeam.id, players, awayOverridePlayers);
+
+    // Coaching penalty — picking the wrong 1st/2nd/3rd option actually hurts W/L,
+    // not just stat distribution. Skip for exhibition/override rosters.
+    const homeCoachPenalty = homeOverridePlayers
+      ? 0
+      : getCoachingPenalty(
+          buildBaselineOrder(homeOverridePlayers ?? players.filter(p => p.tid === homeTeam.id)),
+          getScoringOptions(homeTeam.id)
+        );
+    const awayCoachPenalty = awayOverridePlayers
+      ? 0
+      : getCoachingPenalty(
+          buildBaselineOrder(awayOverridePlayers ?? players.filter(p => p.tid === awayTeam.id)),
+          getScoringOptions(awayTeam.id)
+        );
+    const homeStrength = baseHomeStrength - homeCoachPenalty;
+    const awayStrength = baseAwayStrength - awayCoachPenalty;
 
     const HOME_COURT  = 3;
     const strengthDiff = (homeStrength - awayStrength) + HOME_COURT;
@@ -175,9 +368,22 @@ export class GameSimulator {
     const homeDefAura = (home2KDef.overallDef - 70) * 0.005;
     const awayDefAura = (away2KDef.overallDef - 70) * 0.005;
 
-    const paceRoll    = 0.96 + Math.random() * 0.20;   // 0.90–1.10, mean 1.00
-    const homeEffRoll = (0.88 + Math.random() * 0.24) - awayDefAura;
-    const awayEffRoll = (0.88 + Math.random() * 0.24) - homeDefAura;
+    // Tempo / Early Offense / Fast Break: both teams pull the game toward their
+    // preferred pace. Actual pace ≈ average of the two rosters' pace factors.
+    // Run-and-gun vs run-and-gun → 130-128 shootouts; two grinders → 95-93.
+    const homePaceFactor = homeOverridePlayers ? 1.0 : computePaceFactor(homePlayers);
+    const awayPaceFactor = awayOverridePlayers ? 1.0 : computePaceFactor(awayPlayers);
+    const sharedPaceFactor = (homePaceFactor + awayPaceFactor) / 2;
+
+    const paceRoll    = (0.96 + Math.random() * 0.20) * sharedPaceFactor;   // 0.90–1.10 × pace bias
+    // Crash Offensive Glass: crashing hard → fewer bodies back on D → opponent
+    // gets more transition points. Neutral = 50 → no effect. 100 → +3% to opp.
+    const homeCrashPre = homeOverridePlayers ? 50 : getDefenseSliders(homeTeam.id, homePlayers).crashOffensiveGlass;
+    const awayCrashPre = awayOverridePlayers ? 50 : getDefenseSliders(awayTeam.id, awayPlayers).crashOffensiveGlass;
+    const awayTransitionBonus = 1 + ((homeCrashPre - 50) / 50) * 0.03;
+    const homeTransitionBonus = 1 + ((awayCrashPre - 50) / 50) * 0.03;
+    const homeEffRoll = ((0.88 + Math.random() * 0.24) - awayDefAura) * homeTransitionBonus;
+    const awayEffRoll = ((0.88 + Math.random() * 0.24) - homeDefAura) * awayTransitionBonus;
 
     finalHomeScore = Math.max(75, Math.round(finalHomeScore * paceRoll * homeEffRoll));
     finalAwayScore = Math.max(70, Math.round(finalAwayScore * paceRoll * awayEffRoll));
@@ -211,11 +417,101 @@ export class GameSimulator {
     const homeKnobsEff = { ...homeKnobs, efficiencyMultiplier: (homeKnobs.efficiencyMultiplier ?? 1.0) * homeEffMult };
     const awayKnobsEff = { ...awayKnobs, efficiencyMultiplier: (awayKnobs.efficiencyMultiplier ?? 1.0) * awayEffMult };
 
+    // Baseline order (usage*ovr) for each team — reused by biases, double team,
+    // and coaching penalty. Empty for exhibitions.
+    const homeBaselineOrder = homeOverridePlayers ? [] : buildBaselineOrder(homePlayers);
+    const awayBaselineOrder = awayOverridePlayers ? [] : buildBaselineOrder(awayPlayers);
+
+    // Scoring Options biases (Coaching → Preferences). Skip for exhibition games
+    // (overridePlayers set) since synthetic rosters don't have user overrides.
+    let homeBiases = homeOverridePlayers
+      ? undefined
+      : getScoringOptionBiases(homeBaselineOrder, getScoringOptions(homeTeam.id));
+    let awayBiases = awayOverridePlayers
+      ? undefined
+      : getScoringOptionBiases(awayBaselineOrder, getScoringOptions(awayTeam.id));
+
+    // Defense sliders — each team's defense projects onto the OPPONENT'S knobs.
+    // Skip for exhibitions (synthetic rosters use default knobs).
+    const homeDef = homeOverridePlayers ? null : getDefenseSliders(homeTeam.id, homePlayers);
+    const awayDef = awayOverridePlayers ? null : getDefenseSliders(awayTeam.id, awayPlayers);
+
+    // Run Plays dilutes scoring biases toward neutral. Low RP = more freelance
+    // so user overrides matter less; RP=100 = full scripted effect.
+    const diluteBiases = (biases: Map<string, { ptsMult: number; effMult: number }> | undefined, runPlays: number) => {
+      if (!biases) return;
+      const strength = Math.max(0, Math.min(1, runPlays / 100));
+      biases.forEach((v, k) => {
+        biases.set(k, {
+          ptsMult: 1 + (v.ptsMult - 1) * strength,
+          effMult: 1 + (v.effMult - 1) * strength,
+        });
+      });
+    };
+    if (homeDef) diluteBiases(homeBiases, homeDef.runPlays);
+    if (awayDef) diluteBiases(awayBiases, awayDef.runPlays);
+
+    // Double Team — opponent's DT slider debuffs YOUR #1 baseline scorer.
+    // Injected into biases Map (creating it if user hasn't set scoring options).
+    const applyDoubleTeam = (
+      biases: Map<string, { ptsMult: number; effMult: number }> | undefined,
+      baseline: string[],
+      oppDoubleTeam: number
+    ) => {
+      if (!biases || !baseline[0] || oppDoubleTeam < 5) return biases;
+      const dt = oppDoubleTeam / 100;
+      const existing = biases.get(baseline[0]) ?? { ptsMult: 1, effMult: 1 };
+      biases.set(baseline[0], {
+        ptsMult: existing.ptsMult * (1 - dt * 0.15),
+        effMult: existing.effMult * (1 - dt * 0.08),
+      });
+      return biases;
+    };
+    if (awayDef && !homeOverridePlayers) {
+      homeBiases = homeBiases ?? new Map();
+      applyDoubleTeam(homeBiases, homeBaselineOrder, awayDef.doubleTeam);
+    }
+    if (homeDef && !awayOverridePlayers) {
+      awayBiases = awayBiases ?? new Map();
+      applyDoubleTeam(awayBiases, awayBaselineOrder, homeDef.doubleTeam);
+    }
+
+    // Shot Distribution sliders (Coaching → Strategy) → per-team shot mix. Skip
+    // for exhibition games — synthetic rosters use default knobs.
+    const homeShotMults = homeOverridePlayers ? null : computeShotMults(homeTeam.id, homePlayers);
+    const awayShotMults = awayOverridePlayers ? null : computeShotMults(awayTeam.id, awayPlayers);
+
+    // Defensive stack — what the opponent's defense projects onto your knobs.
+    const homeOpponentStack = awayDef ? defensiveStackOnOpponent(awayDef) : null;
+    const awayOpponentStack = homeDef ? defensiveStackOnOpponent(homeDef) : null;
+
+    // Compose final per-team knobs: base × shotMults × opponent-defense.
+    // rimRate and threePointRate are multiplicative stacks; interiorEffMult
+    // drops in fresh; tovMult/ftRateMult compound with the base value.
+    const homeKnobsFinal: SimulatorKnobs = {
+      ...homeKnobsEff,
+      ...(homeShotMults ?? {}),
+      tovMult:            (homeKnobsEff.tovMult    ?? 1) * (homeOpponentStack?.tovMult    ?? 1),
+      ftRateMult:         (homeKnobsEff.ftRateMult ?? 1) * (homeOpponentStack?.ftRateMult ?? 1),
+      interiorEffMult:    homeOpponentStack?.interiorEffMult ?? 1,
+      rimRateMult:        (homeShotMults?.rimRateMult        ?? 1) * (homeOpponentStack?.rimRateMult        ?? 1),
+      threePointRateMult: (homeShotMults?.threePointRateMult ?? homeKnobsEff.threePointRateMult ?? 1) * (homeOpponentStack?.threePointRateMult ?? 1),
+    };
+    const awayKnobsFinal: SimulatorKnobs = {
+      ...awayKnobsEff,
+      ...(awayShotMults ?? {}),
+      tovMult:            (awayKnobsEff.tovMult    ?? 1) * (awayOpponentStack?.tovMult    ?? 1),
+      ftRateMult:         (awayKnobsEff.ftRateMult ?? 1) * (awayOpponentStack?.ftRateMult ?? 1),
+      interiorEffMult:    awayOpponentStack?.interiorEffMult ?? 1,
+      rimRateMult:        (awayShotMults?.rimRateMult        ?? 1) * (awayOpponentStack?.rimRateMult        ?? 1),
+      threePointRateMult: (awayShotMults?.threePointRateMult ?? awayKnobsEff.threePointRateMult ?? 1) * (awayOpponentStack?.threePointRateMult ?? 1),
+    };
+
     const homeInitial = StatGenerator.generateStatsForTeam(
-      homeTeam, players, finalHomeScore, homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, homeOverridePlayers, otCount, away2KDef, homeKnobsEff
+      homeTeam, players, finalHomeScore, homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, homeOverridePlayers, otCount, away2KDef, homeKnobsFinal, homeBiases
     );
     const awayInitial = StatGenerator.generateStatsForTeam(
-      awayTeam, players, finalAwayScore, !homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, awayOverridePlayers, otCount, home2KDef, awayKnobsEff
+      awayTeam, players, finalAwayScore, !homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, awayOverridePlayers, otCount, home2KDef, awayKnobsFinal, awayBiases
     );
 
     const homeMisses = homeInitial.reduce(
@@ -240,6 +536,11 @@ export class GameSimulator {
     const homeBlkMult = homeKnobs.blockRateMult ?? 1.0;
     const awayBlkMult = awayKnobs.blockRateMult ?? 1.0;
 
+    // Crash Offensive Glass → ORB pool multiplier per team. 50 = neutral.
+    // 100 → +35% ORB (Dennis Rodman-mode); 0 → −30% ORB (everyone sprints back).
+    const homeOrbMult = 1 + ((homeCrashPre - 50) / 50) * 0.35;
+    const awayOrbMult = 1 + ((awayCrashPre - 50) / 50) * 0.35;
+
     const homeStats = StatGenerator.generateCoordinatedStats(
       homeInitial,
       homeTeam,
@@ -251,7 +552,8 @@ export class GameSimulator {
       2026,
       otCount,
       home2KDef,  // home team's defensive ratings (sizes their steal/block pools)
-      away2KDef   // away team's pass perception (shrinks home's assist pool)
+      away2KDef,  // away team's pass perception (shrinks home's assist pool)
+      homeOrbMult
     );
     const awayStats = StatGenerator.generateCoordinatedStats(
       awayInitial,
@@ -264,7 +566,8 @@ export class GameSimulator {
       2026,
       otCount,
       away2KDef,  // away team's defensive ratings
-      home2KDef   // home team's pass perception
+      home2KDef,  // home team's pass perception
+      awayOrbMult
     );
     // Reconcile player pts to match the final team score.
     // nightProfile boosts individuals asymmetrically (EXPLOSION 1.5× on one player) so the

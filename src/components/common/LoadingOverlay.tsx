@@ -5,16 +5,19 @@ import { SimulationTicker } from './SimulationTicker';
 interface Props {
   simResults?: any[];
   teams?: any[];
-  prevTeams?: any[];
   players?: any[];
   actionType?: string;
   actionPayload?: any;
+  gameMode?: 'commissioner' | 'gm';
+  showDismiss?: boolean;
+  onDismiss?: () => void;
 }
 
 export const LoadingOverlay: React.FC<Props> = ({
-  simResults, teams, prevTeams, players, actionType, actionPayload
+  simResults, teams, players, actionType, actionPayload, gameMode, showDismiss, onDismiss
 }) => {
   const hasTicker = simResults && simResults.length > 0;
+  const isGM = gameMode === 'gm';
 
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[200] flex flex-col items-center justify-center p-4">
@@ -31,7 +34,7 @@ export const LoadingOverlay: React.FC<Props> = ({
             {/* Fixed header */}
             <div className="px-6 pt-5 pb-3 border-b border-slate-800/50 shrink-0">
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">
-                🏀 Simulating...
+                {showDismiss ? '🏀 Game Results' : '🏀 Simulating...'}
               </p>
             </div>
             {/* Scrollable ticker */}
@@ -39,12 +42,21 @@ export const LoadingOverlay: React.FC<Props> = ({
               <SimulationTicker
                 allSimResults={simResults!}
                 teams={teams || []}
-                prevTeams={prevTeams}
                 players={players || []}
                 actionType={actionType}
                 actionPayload={actionPayload}
               />
             </div>
+            {showDismiss && (
+              <div className="px-6 py-4 border-t border-slate-800/50 shrink-0 bg-slate-900/80">
+                <button
+                  onClick={onDismiss}
+                  className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm uppercase tracking-wider transition-colors"
+                >
+                  Continue
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -54,10 +66,10 @@ export const LoadingOverlay: React.FC<Props> = ({
             </div>
             <div className="flex flex-col items-center gap-2">
               <h3 className="text-xl font-black text-white tracking-tight uppercase">
-                Processing Executive Order
+                {isGM ? 'Processing Transaction' : 'Processing Executive Order'}
               </h3>
               <p className="text-slate-400 text-sm font-medium animate-pulse">
-                Consulting with the league office...
+                {isGM ? 'Updating roster...' : 'Consulting with the league office...'}
               </p>
             </div>
           </>

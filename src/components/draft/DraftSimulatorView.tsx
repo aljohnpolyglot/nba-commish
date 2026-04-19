@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Clock, Play, Pause, CheckCircle, ChevronLeft, ChevronRight, Calendar, FastForward } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { convertTo2KRating, normalizeDate } from '../../utils/helpers';
+import { estimatePotentialBbgm } from '../../utils/playerRatings';
 import { getPlayerImage } from '../central/view/bioCache';
 import { ensureNonNBAFetched, getNonNBAGistData } from '../central/view/nonNBACache';
 import { PlayerBioView } from '../central/view/PlayerBioView';
@@ -540,12 +541,10 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
 
   const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
 
-  // POT estimator (BBGM formula) — matches PlayerBiosView / PlayerBioRatingsTab / tradeValueEngine
-  const estimatePot = (rawOvr: number, hgt: number, tp: number | undefined, age: number): number => {
-    if (age >= 29) return convertTo2KRating(rawOvr, hgt, tp);
-    const potBbgm = Math.max(rawOvr, Math.round(72.31428908571982 + (-2.33062761 * age) + (0.83308748 * rawOvr)));
-    return convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), hgt, tp);
-  };
+  // POT estimator — delegates to the canonical BBGM potEstimator so draft view,
+  // player views, and modals all produce the same POT for the same inputs.
+  const estimatePot = (rawOvr: number, hgt: number, tp: number | undefined, age: number): number =>
+    convertTo2KRating(estimatePotentialBbgm(rawOvr, age), hgt, tp);
 
   // All available draft years — NBA roster players (primary) + bio-gist data for external leagues
   const nbaTids = useMemo(() => new Set(state.teams.map(t => t.id)), [state.teams]);
@@ -922,10 +921,17 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
       return p;
     });
 
+    // The picks for this season have been consumed — drop them from the global
+    // draftPicks inventory so Trade Machine / Trade Finder / Team Office /
+    // AI trade engine all stop showing them. Rollover's future-pick generator
+    // will produce the new rolling window (currentYear+1 … +windowSize) on Jun 30.
+    const draftPicksAfter = (state.draftPicks ?? []).filter(p => p.season !== season);
+
     dispatch({
       type: 'UPDATE_STATE',
       payload: {
         players: finalPlayers,
+        draftPicks: draftPicksAfter,
         draftComplete: true,
         activeDraftPicks: undefined, // clear in-progress picks — draft is done
       },

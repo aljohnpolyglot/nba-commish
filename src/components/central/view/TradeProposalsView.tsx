@@ -14,6 +14,9 @@ import { ArrowLeftRight, RefreshCw, Clock, CheckCircle, XCircle, Hourglass } fro
 import { motion } from 'motion/react';
 import type { TradeProposal, NBATeam, NBAPlayer, DraftPick } from '../../../types';
 import { OfferCard, type FoundOffer, type TradeItem } from './TradeFinderView';
+import { buildClassStrengthMap, buildLotterySlotMap } from '../../../services/draft/draftClassStrength';
+import { getMaxTradableSeason } from '../../../services/draft/DraftPickGenerator';
+import { teamPowerRanks } from '../../../services/trade/tradeFinderEngine';
 import { TradeMachineModal } from '../../modals/TradeMachineModal';
 import {
   calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV,
@@ -51,6 +54,9 @@ function buildOfferFromProposal(
   outlook: TradeOutlook,
   theirMode: TeamMode,
   tvContext: TVContext | undefined,
+  classStrengthByYear: Map<number, number>,
+  lotterySlotByTid: Map<number, number>,
+  powerRanks: Map<number, number>,
 ): FoundOffer {
   const items: TradeItem[] = [];
 
@@ -72,11 +78,17 @@ function buildOfferFromProposal(
     const pk = draftPicks.find(x => x.dpid === dpid);
     if (!pk) continue;
     const owner = teams.find(t => t.id === pk.originalTid);
+    const classStrength = classStrengthByYear.get(pk.season) ?? 1.0;
+    const actualSlot = pk.round === 1 && pk.season === currentYear
+      ? lotterySlotByTid.get(pk.originalTid)
+      : undefined;
+    // Pick value reflects the original owner's record, not the current holder's.
+    const rank = powerRanks.get(pk.originalTid) ?? 15;
     items.push({
       id: String(pk.dpid),
       type: 'pick',
       label: `${pk.season} ${pk.round === 1 ? '1st' : '2nd'} Round${owner ? ` (via ${owner.abbrev})` : ''}`,
-      val: calcPickTV(pk.round, 15, teams.length, Math.max(1, pk.season - currentYear)),
+      val: calcPickTV(pk.round, rank, teams.length, Math.max(1, pk.season - currentYear), { classStrength, actualSlot }),
       pick: pk,
     });
   }
@@ -145,6 +157,32 @@ export const TradeProposalsView: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.date]);
 
+  // Auto-purge stale proposals whose roster no longer matches the trade.
+  // After a player in an offered/requested slot is traded (or cut), the proposal
+  // becomes impossible — drop it so the user doesn't see a ghost offer.
+  useEffect(() => {
+    const proposals = state.tradeProposals ?? [];
+    if (proposals.length === 0) return;
+    const byId = new Map(players.map(p => [p.internalId, p]));
+    const stale = proposals.filter(pr => {
+      if (pr.status !== 'pending') return false;
+      for (const pid of pr.playersOffered) {
+        const pl = byId.get(pid);
+        if (!pl || pl.tid !== pr.proposingTeamId || pl.status !== 'Active') return true;
+      }
+      for (const pid of pr.playersRequested) {
+        const pl = byId.get(pid);
+        if (!pl || pl.tid !== pr.receivingTeamId || pl.status !== 'Active') return true;
+      }
+      return false;
+    });
+    if (stale.length === 0) return;
+    const staleIds = new Set(stale.map(p => p.id));
+    const kept = proposals.filter(p => !staleIds.has(p.id));
+    dispatchAction({ type: 'UPDATE_STATE', payload: { tradeProposals: kept } } as any);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [players]);
+
   // PER context for in-season TV adjustments inside the card helper.
   const tvContext: TVContext | undefined = useMemo(() => {
     const d = state.date ? new Date(state.date) : null;
@@ -153,6 +191,20 @@ export const TradeProposalsView: React.FC = () => {
     if (!isRegularSeason) return undefined;
     return { leaguePerAvg: computeLeaguePerAvg(players, currentYear), isRegularSeason: true };
   }, [players, currentYear, state.date]);
+
+  // Dynamic pick valuation inputs.
+  const classStrengthByYear = useMemo(
+    () => buildClassStrengthMap(players, currentYear, currentYear, getMaxTradableSeason(state)),
+    [players, currentYear, state.leagueStats?.tradableDraftPickSeasons],
+  );
+  const lotterySlotByTid = useMemo(
+    () => buildLotterySlotMap((state as any).draftLotteryResult),
+    [(state as any).draftLotteryResult],
+  );
+  const powerRanks = useMemo(
+    () => teamPowerRanks(teams, currentYear),
+    [teams, currentYear],
+  );
 
   // Conference standings for outlook computation (same approach as TradeFinderView).
   const confStandings = useMemo(() => {
@@ -281,6 +333,7 @@ export const TradeProposalsView: React.FC = () => {
               const offer = buildOfferFromProposal(
                 proposal, players, draftPicks, teams, currentYear,
                 theirOutlook, theirMode, tvContext,
+                classStrengthByYear, lotterySlotByTid, powerRanks,
               );
               const myItems = buildMyItemsFromProposal(proposal, players, draftPicks, currentYear);
               const team = teams.find(t => t.id === proposal.proposingTeamId);
