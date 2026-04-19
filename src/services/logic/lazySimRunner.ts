@@ -1,4 +1,4 @@
-import { GameState, LazySimProgress, HistoricalStatPoint } from '../../types';
+import { GameState, LazySimProgress, HistoricalStatPoint, GameResult } from '../../types';
 import { runSimulation } from '../../store/logic/turn/simulationHandler';
 import { processSimulationResults } from '../../store/logic/turn/postProcessor';
 import { calculateNewStats } from '../../store/logic/turn/statUpdater';
@@ -119,34 +119,148 @@ function generatePlayoffSeriesNews(
   newPlayoffs: GameState['playoffs'],
   teams: GameState['teams'],
   date: string,
-  season: number
+  season: number,
+  allSimResults: GameResult[] = [],
+  players: GameState['players'] = [],
+  historicalAwards: GameState['historicalAwards'] = []
 ): import('../../types').NewsItem[] {
   if (!newPlayoffs || !prevPlayoffs) return [];
   const news: import('../../types').NewsItem[] = [];
 
+  const winsNeededFor7 = 4; // always best-of-7
+
   for (const series of newPlayoffs.series) {
     const prev = prevPlayoffs.series.find(s => s.id === series.id);
-    if (!prev || prev.status === 'complete' || series.status !== 'complete') continue;
+    if (!prev || prev.status === 'complete') continue;
 
-    const winner = teams.find(t => t.id === series.winnerId);
-    const loser  = teams.find(t => t.id === (series.winnerId === series.higherSeedTid ? series.lowerSeedTid : series.higherSeedTid));
-    if (!winner || !loser) continue;
+    const higherTeam = teams.find(t => t.id === series.higherSeedTid);
+    const lowerTeam  = teams.find(t => t.id === series.lowerSeedTid);
+    if (!higherTeam || !lowerTeam) continue;
 
-    const totalGames = series.higherSeedWins + series.lowerSeedWins;
-    const isChampionship = series.round === 4;
+    const newHW = series.higherSeedWins;
+    const newLW = series.lowerSeedWins;
+    const prevHW = prev.higherSeedWins;
+    const prevLW = prev.lowerSeedWins;
 
-    if (!isChampionship) {
-      const winItem = NewsGenerator.generate('playoff_series_win', date, {
-        teamName: winner.name, teamCity: winner.region ?? winner.name,
-        opponentName: loser.name, gamesCount: totalGames,
-      }, winner.logoUrl);
-      if (winItem) news.push(winItem);
+    if (series.status === 'complete') {
+      // Series just ended this batch
+      const winner = teams.find(t => t.id === series.winnerId);
+      const loser  = teams.find(t => t.id === (series.winnerId === series.higherSeedTid ? series.lowerSeedTid : series.higherSeedTid));
+      if (!winner || !loser) continue;
 
-      const elimItem = NewsGenerator.generate('playoff_elimination', date, {
-        teamName: loser.name, teamCity: loser.region ?? loser.name,
-        opponentName: winner.name, gamesCount: totalGames,
-      }, loser.logoUrl);
-      if (elimItem) news.push(elimItem);
+      const totalGames = newHW + newLW;
+      const isChampionship = series.round === 4;
+
+      if (!isChampionship) {
+        // Find the top performer from the winner's side in this batch for portrait enrichment
+        const winnerResults = allSimResults.filter(r => r.homeTeamId === winner.id || r.awayTeamId === winner.id);
+        const winnerTopStat = winnerResults
+          .flatMap(r => r.homeTeamId === winner.id ? r.homeStats : r.awayStats)
+          .sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0))[0];
+        const winnerTopPlayer = winnerTopStat ? players.find(p => p.internalId === winnerTopStat.playerId) : undefined;
+
+        // Pick template based on round: R1=playoff_series_win, R2=playoff_advance_r2, R3=playoff_finals_bound
+        const winCategory = series.round === 3 ? 'playoff_finals_bound'
+          : series.round === 2 ? 'playoff_advance_r2'
+          : 'playoff_series_win';
+
+        const winItem = NewsGenerator.generate(winCategory, date, {
+          teamName: winner.name, teamCity: winner.region ?? winner.name,
+          opponentName: loser.name, gamesCount: totalGames,
+        }, undefined); // no static image — allow Imagn enrichment
+        if (winItem) {
+          if (winnerTopPlayer?.imgURL) winItem.playerPortraitUrl = winnerTopPlayer.imgURL;
+
+          // For Conference Finals winner heading to NBA Finals, enrich headline with historical context
+          if (series.round === 3) {
+            const awards = historicalAwards ?? [];
+            const priorFinals = awards.filter(
+              (a: any) => (a.type === 'Champion' || a.type === 'Runner Up') &&
+              Number(a.tid) === winner.id && Number(a.season) < season
+            );
+            const lastFinalsYear = priorFinals.map((a: any) => Number(a.season)).sort((a, b) => b - a)[0];
+            const consecutiveFinals = lastFinalsYear === season - 1
+              && awards.some((a: any) => (a.type === 'Champion' || a.type === 'Runner Up') && Number(a.tid) === winner.id && Number(a.season) === season - 2);
+            const fmt = (yr: number) => `${yr - 1}–${String(yr).slice(-2)}`;
+
+            if (consecutiveFinals) {
+              winItem.headline = `${winner.name} Return to the NBA Finals for the Third Consecutive Year`;
+            } else if (lastFinalsYear === season - 1) {
+              winItem.headline = `${winner.name} Are Back — Return to the NBA Finals`;
+            } else if (!lastFinalsYear) {
+              winItem.headline = `FIRST FINALS IN FRANCHISE HISTORY! ${winner.name} Are Going to the NBA Finals`;
+            } else {
+              winItem.headline = `${winner.name} Head to NBA Finals for First Time Since ${fmt(lastFinalsYear)}`;
+            }
+          }
+
+          news.push(winItem);
+        }
+
+        const elimItem = NewsGenerator.generate('playoff_elimination', date, {
+          teamName: loser.name, teamCity: loser.region ?? loser.name,
+          opponentName: winner.name, gamesCount: totalGames,
+        }, undefined);
+        if (elimItem) {
+          if (winnerTopPlayer?.imgURL) elimItem.playerPortraitUrl = winnerTopPlayer.imgURL;
+          news.push(elimItem);
+        }
+      }
+      continue;
+    }
+
+    // Series still in progress — detect mid-series narrative beats
+    if (newHW === prevHW && newLW === prevLW) continue; // no games played this batch
+
+    // Determine who gained wins this batch
+    const hGained = newHW - prevHW;
+    const lGained = newLW - prevLW;
+
+    // Forces Game 7: series now 3-3 (wasn't before)
+    if (newHW === winsNeededFor7 - 1 && newLW === winsNeededFor7 - 1 &&
+        !(prevHW === winsNeededFor7 - 1 && prevLW === winsNeededFor7 - 1)) {
+      // Who just tied it?
+      const cameBack = lGained > hGained ? lowerTeam : higherTeam;
+      const opponent = cameBack === lowerTeam ? higherTeam : lowerTeam;
+      const item = NewsGenerator.generate('series_forces_game7', date, {
+        teamName: cameBack.name, opponentName: opponent.name, year: season,
+      }, cameBack.logoUrl);
+      if (item) news.push(item);
+      continue;
+    }
+
+    // Keeps alive: team was on elimination brink (opponent had 3 wins) and won
+    const prevHigherOnBrink = prevHW === winsNeededFor7 - 1 && prevLW < winsNeededFor7 - 1;
+    const prevLowerOnBrink  = prevLW === winsNeededFor7 - 1 && prevHW < winsNeededFor7 - 1;
+
+    if (prevHigherOnBrink && lGained > 0) {
+      // Lower seed kept alive
+      const item = NewsGenerator.generate('series_alive', date, {
+        teamName: lowerTeam.name, opponentName: higherTeam.name, year: season,
+      }, lowerTeam.logoUrl);
+      if (item) news.push(item);
+      continue;
+    }
+    if (prevLowerOnBrink && hGained > 0) {
+      // Higher seed kept alive
+      const item = NewsGenerator.generate('series_alive', date, {
+        teamName: higherTeam.name, opponentName: lowerTeam.name, year: season,
+      }, higherTeam.logoUrl);
+      if (item) news.push(item);
+      continue;
+    }
+
+    // Comeback: series was uneven, now tied (but not 3-3 — handled above)
+    const wasUneven = prevHW !== prevLW;
+    const nowTied   = newHW === newLW;
+    if (wasUneven && nowTied && newHW < winsNeededFor7 - 1) {
+      const cameBack = prevHW < prevLW ? higherTeam : lowerTeam;
+      const opponent = cameBack === higherTeam ? lowerTeam : higherTeam;
+      const item = NewsGenerator.generate('series_comeback', date, {
+        teamName: cameBack.name, opponentName: opponent.name,
+        wins: String(newHW), year: season,
+      }, cameBack.logoUrl);
+      if (item) news.push(item);
     }
   }
 
@@ -160,12 +274,38 @@ function generatePlayoffSeriesNews(
     const totalGames = finalsSeries ? finalsSeries.higherSeedWins + finalsSeries.lowerSeedWins : 0;
 
     if (champTeam) {
+      // Count prior championships for this team (sim awards only — Wikipedia not available here)
+      const priorTitles = (historicalAwards ?? []).filter(
+        (a: any) => a.type === 'Champion' && Number(a.tid) === champTeam.id && Number(a.season) < season
+      ).length;
+      const totalTitles = priorTitles + 1;
+      const wonLastYear = (historicalAwards ?? []).some(
+        (a: any) => a.type === 'Champion' && Number(a.tid) === champTeam.id && Number(a.season) === season - 1
+      );
+      const wonTwoYearsAgo = (historicalAwards ?? []).some(
+        (a: any) => a.type === 'Champion' && Number(a.tid) === champTeam.id && Number(a.season) === season - 2
+      );
+      const isThreePeat = wonLastYear && wonTwoYearsAgo;
+      const isRepeat = wonLastYear && !wonTwoYearsAgo;
+      const ordinal = (n: number) => n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`;
+
       const champItem = NewsGenerator.generate('nba_champion', date, {
         teamName: champTeam.name, teamCity: champTeam.region ?? champTeam.name,
         opponentName: loserTeam?.name ?? 'their opponent',
         year: season, gamesCount: totalGames,
       }, champTeam.logoUrl);
-      if (champItem) news.push(champItem);
+      if (champItem) {
+        if (isThreePeat) {
+          champItem.headline = `THREE-PEAT! ${champTeam.name} Are the ${season} NBA Champions`;
+        } else if (isRepeat) {
+          champItem.headline = `BACK-TO-BACK! ${champTeam.name} Repeat as ${season} NBA Champions`;
+        } else if (priorTitles === 0) {
+          champItem.headline = `FIRST IN FRANCHISE HISTORY! ${champTeam.name} Are the ${season} NBA Champions`;
+        } else {
+          champItem.headline = `${ordinal(totalTitles)} Title! ${champTeam.name} Capture the ${season} NBA Championship`;
+        }
+        news.push(champItem);
+      }
 
       // Determine Finals MVP: highest-scoring player on champ team in Finals
       // (approximate from player.stats playoff data — use the Finals winner's top performer)
@@ -498,7 +638,10 @@ export const runLazySim = async (
         stateWithSim.playoffs,
         stateWithSim.teams,
         stateWithSim.date,
-        state.leagueStats.year
+        state.leagueStats.year,
+        allSimResults,
+        updatedPlayers,
+        stateWithSim.historicalAwards
       );
 
       // Store championship in historicalAwards (Finals MVP determined by top playoff scorer on champ team)
@@ -568,7 +711,10 @@ export const runLazySim = async (
         // + (usage bonus: games started / total games) * 3
         // Min 3 games played to qualify (NBA-style eligibility).
         const finalsGameIds = new Set<number>(finalsSeries?.gameIds ?? []);
-        const finalsResults = allSimResults.filter(r => finalsGameIds.has(r.gameId));
+        // Combine current-batch results with prior box scores so every Finals game is captured,
+        // even when earlier games were processed in a different lazy-sim batch.
+        const priorFinalsResults = ((state.boxScores ?? []) as GameResult[]).filter(r => finalsGameIds.has(r.gameId));
+        const finalsResults = [...priorFinalsResults, ...allSimResults.filter(r => finalsGameIds.has(r.gameId))];
         if (finalsResults.length > 0 && finalsSeries) {
           // Collect per-player Finals stat bags for the champ team
           type Bag = {

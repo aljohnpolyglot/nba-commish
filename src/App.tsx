@@ -178,18 +178,29 @@ function GameLayout() {
             <LazySimLoadingScreen progress={state.lazySimProgress} />
           </div>
         )}
-        {(state.isProcessing || tickerAwaitingDismiss) && !state.isWatchingGame && !state.lazySimProgress && (
-          <LoadingOverlay
-            simResults={state.tickerSimResults || state.lastSimResults}
-            teams={state.teams}
-            players={state.players}
-            actionType={state.lastActionType}
-            actionPayload={state.lastActionPayload}
-            gameMode={state.gameMode}
-            showDismiss={tickerAwaitingDismiss}
-            onDismiss={() => setTickerAwaitingDismiss(false)}
-          />
-        )}
+        {(() => {
+          if (state.isWatchingGame || state.lazySimProgress) return null;
+          if (!state.isProcessing && !tickerAwaitingDismiss) return null;
+          const hasTicker =
+            (state.tickerSimResults && state.tickerSimResults.length > 0) ||
+            (state.lastSimResults && state.lastSimResults.length > 0) ||
+            tickerAwaitingDismiss;
+          // GM mode: only show when there's actual ticker content (sim results to review).
+          // Bare "Processing Transaction" is retired — transactions are instant by default.
+          if (state.gameMode === 'gm' && !hasTicker) return null;
+          return (
+            <LoadingOverlay
+              simResults={state.tickerSimResults || state.lastSimResults}
+              teams={state.teams}
+              players={state.players}
+              actionType={state.lastActionType}
+              actionPayload={state.lastActionPayload}
+              gameMode={state.gameMode}
+              showDismiss={tickerAwaitingDismiss}
+              onDismiss={() => setTickerAwaitingDismiss(false)}
+            />
+          );
+        })()}
         {state.isClubbing && <ClubEffect />}
         {state.lastOutcome && state.gameMode !== 'gm' && <OutcomeView />}
       </main>

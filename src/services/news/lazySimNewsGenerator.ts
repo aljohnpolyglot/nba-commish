@@ -82,7 +82,34 @@ export const generateLazySimNews = (
     return !!(g?.isPlayoff || g?.isPlayIn);
   };
 
-  // Helper: get series context string for a playoff game result
+  // Helper: get series context string for a playoff game result.
+  // Tracks per-game incremental series wins keyed by gameId so that batched games
+  // each show their own in-game series score, not the final post-batch score.
+  // Running wins per series ID → carries forward as we process games in order.
+  const runningSeriesWins = new Map<string, { hW: number; lW: number }>();
+  // gameId → wins AFTER this game
+  const winsAfterGame = new Map<number, { hW: number; lW: number; seriesId: string }>();
+  for (const r of allSimResults) {
+    if (!schedule || !playoffs) break;
+    const sg = schedule.find(g => g.gid === r.gameId);
+    if (!sg?.playoffSeriesId) continue;
+    const series = playoffs.series.find(s => s.id === sg.playoffSeriesId);
+    if (!series) continue;
+    const sid = sg.playoffSeriesId;
+    if (!runningSeriesWins.has(sid)) {
+      // Seed: start from 0 for this batch (pre-batch wins not tracked here,
+      // but gameNum = hW+lW will be relative to batch start — acceptable)
+      runningSeriesWins.set(sid, { hW: 0, lW: 0 });
+    }
+    const cur = runningSeriesWins.get(sid)!;
+    const homeIsHigher = r.homeTeamId === series.higherSeedTid;
+    const homeWon = r.homeScore > r.awayScore;
+    if ((homeWon && homeIsHigher) || (!homeWon && !homeIsHigher)) cur.hW++;
+    else cur.lW++;
+    runningSeriesWins.set(sid, { ...cur });
+    winsAfterGame.set(r.gameId, { hW: cur.hW, lW: cur.lW, seriesId: sid });
+  }
+
   const getSeriesContext = (r: GameResult): string | null => {
     if (!playoffs || !schedule) return null;
     const g = schedule.find(sg => sg.gid === r.gameId);
@@ -91,9 +118,17 @@ export const generateLazySimNews = (
     if (!series) return null;
     const higher = teams.find(t => t.id === series.higherSeedTid);
     const lower = teams.find(t => t.id === series.lowerSeedTid);
-    const gameNum = (g as any).playoffGameNumber || (series.higherSeedWins + series.lowerSeedWins);
-    const hW = series.higherSeedWins;
-    const lW = series.lowerSeedWins;
+
+    // Use per-game wins (relative to batch start); fall back to final series state
+    const perGame = winsAfterGame.get(r.gameId);
+    // Offset by pre-batch wins (final state minus batch contributions for this series)
+    const batchHW = runningSeriesWins.get(g.playoffSeriesId)?.hW ?? 0;
+    const batchLW = runningSeriesWins.get(g.playoffSeriesId)?.lW ?? 0;
+    const preHW = series.higherSeedWins - batchHW;
+    const preLW = series.lowerSeedWins - batchLW;
+    const hW = perGame ? preHW + perGame.hW : series.higherSeedWins;
+    const lW = perGame ? preLW + perGame.lW : series.lowerSeedWins;
+    const gameNum = hW + lW;
     const winsNeeded = Math.ceil(series.gamesNeeded / 2);
     if (hW >= winsNeeded || lW >= winsNeeded) {
       const winner = hW >= winsNeeded ? higher : lower;
@@ -141,25 +176,38 @@ export const generateLazySimNews = (
             const lastName = top.stat.name.split(' ').pop() ?? top.stat.name;
             const pts = top.stat.pts, reb = top.stat.reb, ast = top.stat.ast;
             const seriesCtx = topGame ? getSeriesContext(topGame) : null;
-            const playInGame = topGame && schedule?.find(sg => sg.gid === topGame.gameId)?.isPlayIn;
+            const topGameSched = topGame && schedule?.find(sg => sg.gid === topGame.gameId);
+            const playInGame = topGameSched?.isPlayIn;
+            const topSeries = topGameSched?.playoffSeriesId
+              ? playoffs?.series.find(s => s.id === topGameSched.playoffSeriesId)
+              : undefined;
+            const seriesRound = topSeries?.round ?? 0;
+            const roundLabel = seriesRound === 4 ? 'NBA Finals'
+              : seriesRound === 3 ? 'Conference Finals'
+              : seriesRound === 2 ? 'Conference Semifinals'
+              : playInGame ? 'Play-In Tournament' : 'First Round';
             const playInCtx = playInGame ? 'Play-In Tournament' : null;
             const contextLabel = seriesCtx ?? playInCtx;
             const isElimination = seriesCtx?.includes('advance') ?? false;
+            // Determine if top performer's team actually won this game
+            const topTeamWon = topGame
+              ? (topGame.homeTeamId === top.teamId ? topGame.homeScore > topGame.awayScore : topGame.awayScore > topGame.homeScore)
+              : true;
             const playoffTitles = contextLabel
-              ? [
-                  ...(isElimination ? [
-                    `${top.stat.name} Carries ${team.name} · ${contextLabel}`,
-                    `${lastName} Leads the Way: ${pts} PTS, ${reb} REB, ${ast} AST · ${contextLabel}`,
-                  ] : [
-                    `${top.stat.name} Drops ${pts} PTS · ${contextLabel}`,
-                    `${lastName} Takes Over: ${pts} PTS, ${reb} REB, ${ast} AST · ${contextLabel}`,
-                  ]),
-                  `Postseason Spotlight: ${top.stat.name} Puts ${team.name} on His Back`,
-                ]
+              ? (isElimination && topTeamWon ? [
+                  `${top.stat.name} Carries ${team.name} · ${contextLabel}`,
+                  `${lastName} Leads the Way: ${pts}/${reb}/${ast} · ${contextLabel}`,
+                ] : isElimination && !topTeamWon ? [
+                  `${lastName} Pours in ${pts} in Vain — ${contextLabel}`,
+                  `${top.stat.name} Shines in Defeat: ${pts} PTS · ${contextLabel}`,
+                ] : [
+                  `${top.stat.name} Drops ${pts} PTS · ${contextLabel}`,
+                  `${lastName} Takes Over: ${pts}/${reb}/${ast} · ${contextLabel}`,
+                  `${lastName} Erupts for ${pts} in the ${roundLabel}`,
+                ])
               : [
-                  `Playoff Standout: ${top.stat.name} Leads ${team.name} with ${pts} PTS`,
-                  `${lastName} Cannot Be Stopped — ${pts} PTS in Playoff Action`,
-                  `${top.stat.name} Steps Up in the Postseason: ${pts}/${reb}/${ast}`,
+                  `${lastName} Erupts for ${pts} in ${roundLabel} Action`,
+                  `${top.stat.name}: ${pts}/${reb}/${ast} in the ${roundLabel}`,
                 ];
             item.headline = playoffTitles[Math.floor(Math.random() * playoffTitles.length)];
           }
@@ -169,45 +217,46 @@ export const generateLazySimNews = (
     }
   }
 
-  // ── 2. WIN / LOSE STREAKS — team logos stay as `image` (no Imagn needed) ──
-  // During playoffs, only show streak news for active playoff teams (not eliminated/non-playoff teams)
-  const STREAK_THRESHOLDS = [5, 7, 10, 14];
-  for (const team of teams) {
-    if (!team.streak) continue;
-    const { type, count } = team.streak;
-    if (!STREAK_THRESHOLDS.includes(count)) continue;
-    // Suppress streaks for non-playoff teams when playoffs are underway
-    if (isPlayoffs && playoffTeamIds.size > 0 && !playoffTeamIds.has(team.id)) continue;
+  // ── 2. WIN / LOSE STREAKS — regular season only ──
+  // Streak news is only meaningful during the regular season. Suppress entirely during
+  // playoffs and offseason (stale regular-season streaks don't belong in those phases).
+  if (!isPlayoffs && !isPreseason) {
+    const teamsWithGamesThisBatch = new Set(allSimResults.flatMap(r => [r.homeTeamId, r.awayTeamId].filter(Boolean)));
+    const STREAK_THRESHOLDS = [5, 7, 10, 14];
+    for (const team of teams) {
+      if (!team.streak) continue;
+      if (!teamsWithGamesThisBatch.has(team.id)) continue;
+      const { type, count } = team.streak;
+      if (!STREAK_THRESHOLDS.includes(count)) continue;
 
-    if (type === 'W') {
-      const category = count >= 8 ? 'long_win_streak' : 'win_streak';
-      const item = NewsGenerator.generate(category, currentDate, {
-        teamName: team.name,
-        streakCount: count,
-      }, team.logoUrl);
-      if (item) news.push(item);
-    } else {
-      // During playoffs, suppress regular loss streak news (non-playoff teams aren't playing)
-      if (isPlayoffs) continue;
-      const item = NewsGenerator.generate('lose_streak', currentDate, {
-        teamName: team.name,
-        streakCount: count,
-      }, team.logoUrl);
-      if (item) news.push(item);
+      if (type === 'W') {
+        const category = count >= 8 ? 'long_win_streak' : 'win_streak';
+        const item = NewsGenerator.generate(category, currentDate, {
+          teamName: team.name,
+          streakCount: count,
+        }, team.logoUrl);
+        if (item) news.push(item);
+      } else {
+        const item = NewsGenerator.generate('lose_streak', currentDate, {
+          teamName: team.name,
+          streakCount: count,
+        }, team.logoUrl);
+        if (item) news.push(item);
+      }
     }
-  }
 
-  // ── 2b. STREAK SNAPPED — detect win streaks (5+) that just ended ──
-  if (prevTeams) {
-    for (const prevTeam of prevTeams) {
-      if (!prevTeam.streak || prevTeam.streak.type !== 'W' || prevTeam.streak.count < 5) continue;
-      const currTeam = teams.find(t => t.id === prevTeam.id);
-      if (!currTeam?.streak || currTeam.streak.type !== 'L') continue;
-      const item = NewsGenerator.generate('streak_snapped', currentDate, {
-        teamName: currTeam.name,
-        streakCount: prevTeam.streak.count,
-      }, currTeam.logoUrl);
-      if (item) news.push(item);
+    // ── 2b. STREAK SNAPPED — detect win streaks (5+) that just ended ──
+    if (prevTeams) {
+      for (const prevTeam of prevTeams) {
+        if (!prevTeam.streak || prevTeam.streak.type !== 'W' || prevTeam.streak.count < 5) continue;
+        const currTeam = teams.find(t => t.id === prevTeam.id);
+        if (!currTeam?.streak || currTeam.streak.type !== 'L') continue;
+        const item = NewsGenerator.generate('streak_snapped', currentDate, {
+          teamName: currTeam.name,
+          streakCount: prevTeam.streak.count,
+        }, currTeam.logoUrl);
+        if (item) news.push(item);
+      }
     }
   }
 
@@ -230,74 +279,98 @@ export const generateLazySimNews = (
         const player = players.find(p => p.internalId === stat.playerId);
         if (!player) continue;
 
-        if (stat.pts >= 40 && Math.random() < 0.8) {
-          const item = withPortrait(NewsGenerator.generate(isPreseason ? 'preseason_performance' : 'monster_performance', game.date, {
-            playerName: stat.name,
-            teamName:     team.name,
-            opponentName: opp.name,
-            statValue: stat.pts,
-            statType: 'PTS',
-          }), player.imgURL);
-          if (item) {
-            item.gameId = game.gameId; item.homeTeamId = game.homeTeamId; item.awayTeamId = game.awayTeamId;
-            news.push(item);
+        // Suppress regular-season performance templates during playoffs —
+        // batch recap and series news cover these with proper postseason framing.
+        if (!isPlayoffs) {
+          if (stat.pts >= 40 && Math.random() < 0.8) {
+            const item = withPortrait(NewsGenerator.generate(isPreseason ? 'preseason_performance' : 'monster_performance', game.date, {
+              playerName: stat.name,
+              teamName:     team.name,
+              opponentName: opp.name,
+              statValue: stat.pts,
+              statType: 'PTS',
+            }), player.imgURL);
+            if (item) {
+              item.gameId = game.gameId; item.homeTeamId = game.homeTeamId; item.awayTeamId = game.awayTeamId;
+              news.push(item);
+            }
+            continue;
           }
-          continue;
-        }
 
-        // Standard triple-double (10/10/10) — 60% chance to report
-        if (stat.pts >= 10 && stat.reb >= 10 && stat.ast >= 10 && Math.random() < 0.6) {
-          const item = withPortrait(NewsGenerator.generate('triple_double', game.date, {
-            playerName: stat.name,
-            teamName:   team.name,
-            pts: stat.pts,
-            reb: stat.reb,
-            ast: stat.ast,
-          }), player.imgURL);
-          if (item) {
-            item.gameId = game.gameId; item.homeTeamId = game.homeTeamId; item.awayTeamId = game.awayTeamId;
-            news.push(item);
+          // Standard triple-double (10/10/10) — 60% chance to report
+          if (stat.pts >= 10 && stat.reb >= 10 && stat.ast >= 10 && Math.random() < 0.6) {
+            const item = withPortrait(NewsGenerator.generate('triple_double', game.date, {
+              playerName: stat.name,
+              teamName:   team.name,
+              pts: stat.pts,
+              reb: stat.reb,
+              ast: stat.ast,
+            }), player.imgURL);
+            if (item) {
+              item.gameId = game.gameId; item.homeTeamId = game.homeTeamId; item.awayTeamId = game.awayTeamId;
+              news.push(item);
+            }
           }
         }
       }
     }
   }
 
-  // ── 3b. GAME RESULTS — sample 1-2 notable games per batch ───────────────────
+  // ── 3b. GAME RESULTS — playoffs: 1 per active series; regular season: 2 per batch ──
   if (!isPreseason && allSimResults.length > 0) {
-    // During playoffs: prefer playoff games; during regular season: any game
     const eligibleGames = allSimResults.filter(g => {
       const ht = teams.find(t => t.id === g.homeTeamId);
       const at = teams.find(t => t.id === g.awayTeamId);
       return ht && at && ht !== at;
     });
 
-    // Sort: playoff games first (closer scores preferred within each group)
-    const sorted = eligibleGames.sort((a, b) => {
-      const aIsPlayoff = isPlayoffResult(a) ? 1 : 0;
-      const bIsPlayoff = isPlayoffResult(b) ? 1 : 0;
-      if (aIsPlayoff !== bIsPlayoff) return bIsPlayoff - aIsPlayoff;
-      const aDiff = Math.abs(a.homeScore - a.awayScore);
-      const bDiff = Math.abs(b.homeScore - b.awayScore);
-      return aDiff - bDiff; // closer games first
-    });
-    const picked = sorted.slice(0, isPlayoffs ? 3 : 2);
+    let gamesToReport: typeof eligibleGames;
 
-    for (const game of picked) {
-      if (!isPlayoffs && Math.random() > 0.5) continue; // Regular season: 50% skip
+    if (isPlayoffs) {
+      // During playoffs: pick the best (closest score) game per series so every active series gets covered
+      const bySeriesId = new Map<string, typeof eligibleGames[0]>();
+      for (const g of eligibleGames) {
+        if (!isPlayoffResult(g)) continue;
+        const schedGame = schedule?.find(sg => sg.gid === g.gameId);
+        const seriesId = schedGame?.playoffSeriesId ?? `${g.homeTeamId}-${g.awayTeamId}`;
+        const diff = Math.abs(g.homeScore - g.awayScore);
+        const prev = bySeriesId.get(seriesId);
+        // Keep the closest game per series; if no playoff series id, keep one per team-pair
+        if (!prev || diff < Math.abs(prev.homeScore - prev.awayScore)) {
+          bySeriesId.set(seriesId, g);
+        }
+      }
+      gamesToReport = Array.from(bySeriesId.values());
+    } else {
+      // Regular season: pick up to 2 notable games (50% chance each)
+      gamesToReport = eligibleGames
+        .sort((a, b) => Math.abs(a.homeScore - a.awayScore) - Math.abs(b.homeScore - b.awayScore))
+        .slice(0, 2)
+        .filter(() => Math.random() > 0.5);
+    }
+
+    for (const game of gamesToReport) {
       const homeTeam = teams.find(t => t.id === game.homeTeamId)!;
       const awayTeam = teams.find(t => t.id === game.awayTeamId)!;
+      if (!homeTeam || !awayTeam) continue;
       const homeWon = game.homeScore > game.awayScore;
       const winner = homeWon ? homeTeam : awayTeam;
       const loser = homeWon ? awayTeam : homeTeam;
       const winnerScore = homeWon ? game.homeScore : game.awayScore;
       const loserScore = homeWon ? game.awayScore : game.homeScore;
+
+      // Prefer the winner's top performer so headline framing is accurate
+      const winnerStats = homeWon ? game.homeStats : game.awayStats;
       const allStats = [...game.homeStats, ...game.awayStats].sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0));
-      const topStat = allStats[0];
+      const winnerTopStat = winnerStats.sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0))[0];
+      const topStat = winnerTopStat ?? allStats[0];
+      const topPlayer = topStat ? players.find(p => p.internalId === topStat.playerId) : undefined;
+
       const gameIsPlayoff = isPlayoffResult(game);
       const seriesCtx = gameIsPlayoff ? getSeriesContext(game) : null;
 
-      // For playoff games, inject series context into the headline directly
+      // Pass team logo as image (static, no enrichment) and player portrait as
+      // playerPortraitUrl (triggers Imagn enrichment fallback in NewsFeed)
       let item = NewsGenerator.generate('game_result', game.date, {
         winnerName: winner.name,
         loserName: loser.name,
@@ -305,22 +378,44 @@ export const generateLazySimNews = (
         loserScore,
         winnerRecord: seriesCtx ?? `${winner.wins}-${winner.losses}`,
         loserRecord: `${loser.wins}-${loser.losses}`,
-        gameType: gameIsPlayoff ? 'playoff' : (isPreseason ? 'preseason' : 'regular season'),
+        gameType: gameIsPlayoff ? 'playoff' : 'regular season',
         topPerformer: topStat?.name ?? 'The leading scorer',
         topPts: topStat?.pts ?? 0,
-      }, winner.logoUrl);
+      }, undefined); // no static image — let Imagn enrichment run
+      if (item && topPlayer?.imgURL) item.playerPortraitUrl = topPlayer.imgURL;
 
       // Rewrite headline for playoff games to feel like postseason
       if (item && gameIsPlayoff && seriesCtx && topStat) {
         const lastName = topStat.name.split(' ').pop() ?? topStat.name;
-        const playoffHeadlines = [
-          `${topStat.name} Drops ${topStat.pts} as ${winner.name} Take ${seriesCtx}`,
-          `${winner.name} Win ${seriesCtx} — ${lastName} Leads with ${topStat.pts} PTS`,
-          `${lastName} Erupts for ${topStat.pts} to Push ${winner.name}: ${seriesCtx}`,
-          `Playoffs: ${winner.name} Hold Off ${loser.name} ${winnerScore}-${loserScore} · ${seriesCtx}`,
-        ];
-        const idx = Math.floor(Math.random() * playoffHeadlines.length);
-        item.headline = playoffHeadlines[idx];
+        const clinched = seriesCtx.includes('advance');
+        const tied = seriesCtx.includes('tied');
+        const winnerLeading = !clinched && (seriesCtx.includes(`${winner.name} leads`) || seriesCtx.includes(`${winner.name} one win away`));
+        const winnerTrailing = !clinched && !tied && !winnerLeading;
+
+        let playoffHeadlines: string[];
+        if (clinched) {
+          playoffHeadlines = [
+            `${topStat.name} Drops ${topStat.pts} as ${winner.name} Close Out ${loser.name}`,
+            `${winner.name} Clinch — ${lastName} Seals It with ${topStat.pts} PTS · ${seriesCtx}`,
+            `Series Over: ${lastName} Leads ${winner.name} Past ${loser.name} · ${seriesCtx}`,
+            `Playoffs: ${winner.name} Eliminate ${loser.name} ${winnerScore}-${loserScore} · ${seriesCtx}`,
+          ];
+        } else if (winnerTrailing) {
+          playoffHeadlines = [
+            `${topStat.name} Drops ${topStat.pts} to Keep ${winner.name} Alive · ${seriesCtx}`,
+            `${winner.name} Stay Alive — ${lastName} Pours in ${topStat.pts} PTS · ${seriesCtx}`,
+            `${lastName} Keeps ${winner.name} in It with ${topStat.pts} PTS · ${seriesCtx}`,
+            `Playoffs: ${winner.name} Hold Off ${loser.name} ${winnerScore}-${loserScore} · ${seriesCtx}`,
+          ];
+        } else {
+          playoffHeadlines = [
+            `${topStat.name} Drops ${topStat.pts} as ${winner.name} Take ${seriesCtx}`,
+            `${winner.name} Win ${seriesCtx} — ${lastName} Leads with ${topStat.pts} PTS`,
+            `${lastName} Erupts for ${topStat.pts} to Push ${winner.name}: ${seriesCtx}`,
+            `Playoffs: ${winner.name} Hold Off ${loser.name} ${winnerScore}-${loserScore} · ${seriesCtx}`,
+          ];
+        }
+        item.headline = playoffHeadlines[Math.floor(Math.random() * playoffHeadlines.length)];
       }
 
       if (item) {
@@ -424,7 +519,7 @@ export const generateLazySimNews = (
               const lastName2 = s2.name.split(' ').pop() ?? s2.name;
               const duoPlayoffHeadlines = [
                 `${s1.name} and ${s2.name} Power ${team.name} · ${duoCtx}`,
-                `Postseason Duo: ${lastName1} & ${lastName2} Combine for ${s1.pts + s2.pts} in Playoff Win`,
+                `Postseason Duo: ${lastName1} & ${lastName2} Combine for ${s1.pts + s2.pts} · ${duoCtx}`,
                 `${lastName1}/${lastName2} Show Up When It Matters · ${duoCtx}`,
               ];
               item.headline = duoPlayoffHeadlines[Math.floor(Math.random() * duoPlayoffHeadlines.length)];
@@ -560,7 +655,17 @@ export const generateLazySimNews = (
     if (!newlyInjuredIds.has(player.internalId)) continue;
     if (!player.injury || player.injury.gamesRemaining <= 0) continue;
 
-    const stableId = `news-injury-${player.internalId}-${player.injury.type.replace(/\s+/g, '-').toLowerCase()}`;
+    // During playoffs, only report injuries for players with meaningful playing time (MPG > 20)
+    if (isPlayoffs) {
+      const playoffStat = player.stats?.find((s: any) => s.playoffs === true && s.season === seasonYear);
+      const gp = playoffStat?.gp ?? 0;
+      const totalMin = playoffStat?.min ?? 0;
+      const playoffMpg = gp > 0 ? totalMin / gp : 0;
+      if (playoffMpg < 20) continue;
+    }
+
+    // Stable ID format must match the pre-seed format in lazySimRunner: `${internalId}-${injuryType}`
+    const stableId = `${player.internalId}-${player.injury.type}`;
     if (reportedInjuries.has(stableId)) continue;
 
     const team = teams.find(t => t.id === player.tid);
@@ -568,14 +673,58 @@ export const generateLazySimNews = (
 
     reportedInjuries.add(stableId);
     const injDate = injuryGameDate.get(player.internalId) || currentDate;
-    const item = withPortrait(NewsGenerator.generate('major_injury', injDate, {
-      playerName: player.name,
-      teamName: team.name,
-      injuryType: player.injury.type,
-      duration: gamesToTime(player.injury.gamesRemaining),
-    }), player.imgURL);
+    const newsId = `news-injury-${stableId.replace(/\s+/g, '-').toLowerCase()}`;
+
+    let item;
+    if (isPlayoffs && playoffs) {
+      const playerSeries = playoffs.series.find(s =>
+        s.status !== 'complete' &&
+        (s.higherSeedTid === player.tid || s.lowerSeedTid === player.tid)
+      );
+      const opponentTeam = playerSeries
+        ? teams.find(t => t.id === (playerSeries.higherSeedTid === player.tid ? playerSeries.lowerSeedTid : playerSeries.higherSeedTid))
+        : undefined;
+      const gamesLeft = player.injury.gamesRemaining;
+      const maxSeriesGames = playerSeries?.gamesNeeded ?? 7;
+      const currentGamesInSeries = playerSeries ? playerSeries.higherSeedWins + playerSeries.lowerSeedWins : 0;
+      const gamesRemainingInSeries = maxSeriesGames - currentGamesInSeries;
+      const returnGameNumber = currentGamesInSeries + gamesLeft + 1;
+
+      // Out for playoffs: injury exceeds the whole series (or no active series found)
+      // Out for series: would miss more games than the series has left, OR >=4 games
+      // Out for game(s): will return within this series (returnGame must be ≤ maxSeriesGames)
+      const outForPlayoffs = !playerSeries || gamesLeft >= maxSeriesGames;
+      const outForSeries = !outForPlayoffs && (gamesLeft >= gamesRemainingInSeries || returnGameNumber > maxSeriesGames);
+
+      if (outForPlayoffs) {
+        item = withPortrait(NewsGenerator.generate('playoff_injury_out', injDate, {
+          playerName: player.name, teamName: team.name, injuryType: player.injury.type,
+          opponentName: opponentTeam?.name ?? 'their opponent',
+        }), player.imgURL);
+      } else if (outForSeries) {
+        item = withPortrait(NewsGenerator.generate('playoff_injury_series', injDate, {
+          playerName: player.name, teamName: team.name, injuryType: player.injury.type,
+          opponentName: opponentTeam?.name ?? 'their opponent',
+        }), player.imgURL);
+      } else {
+        item = withPortrait(NewsGenerator.generate('playoff_injury_game', injDate, {
+          playerName: player.name, teamName: team.name, injuryType: player.injury.type,
+          opponentName: opponentTeam?.name ?? 'their opponent',
+          gamesCount: gamesLeft,
+          gameNumber: returnGameNumber,
+        }), player.imgURL);
+      }
+    } else {
+      item = withPortrait(NewsGenerator.generate('major_injury', injDate, {
+        playerName: player.name,
+        teamName: team.name,
+        injuryType: player.injury.type,
+        duration: gamesToTime(player.injury.gamesRemaining),
+      }), player.imgURL);
+    }
+
     if (item) {
-      item.id = stableId; // stable ID prevents re-generation across batches
+      item.id = newsId; // stable ID prevents re-generation across batches
       news.push(item);
     }
   }

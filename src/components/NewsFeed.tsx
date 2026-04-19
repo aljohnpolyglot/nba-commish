@@ -213,8 +213,12 @@ export const NewsFeed: React.FC = () => {
     });
   }, [allArticles, selectedTeam, selectedType, showBookmarksOnly, searchQuery, bookmarks]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredArticles.length / ARTICLES_PER_PAGE));
-  const paginatedArticles = filteredArticles.slice(
+  // When the hero section is visible (no filters), exclude the first 9 articles it already shows
+  const heroSectionVisible = !searchQuery && !showBookmarksOnly && filteredArticles.length > 0;
+  const latestNewsArticles = heroSectionVisible ? filteredArticles.slice(9) : filteredArticles;
+
+  const totalPages = Math.max(1, Math.ceil(latestNewsArticles.length / ARTICLES_PER_PAGE));
+  const paginatedArticles = latestNewsArticles.slice(
     (currentPage - 1) * ARTICLES_PER_PAGE,
     currentPage * ARTICLES_PER_PAGE
   );
@@ -319,7 +323,7 @@ export const NewsFeed: React.FC = () => {
   const relatedArticles = filteredArticles.slice(1, 4);
   const heroBelowArticles = filteredArticles.slice(4, 9);
 
-  const showHeroSection = !searchQuery && !showBookmarksOnly && filteredArticles.length > 0;
+  const showHeroSection = heroSectionVisible;
 
   return (
     <div className="min-h-full bg-gray-50 font-sans text-gray-900 flex flex-col">

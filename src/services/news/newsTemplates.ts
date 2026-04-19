@@ -7,6 +7,9 @@ export type NewsCategory =
   | 'preseason_performance'
   | 'triple_double'
   | 'major_injury'
+  | 'playoff_injury_out'
+  | 'playoff_injury_series'
+  | 'playoff_injury_game'
   | 'trade_rumor'
   | 'trade_confirmed'
   | 'signing_confirmed'
@@ -19,7 +22,12 @@ export type NewsCategory =
   | 'all_star_winner'
   | 'all_star_mvp'
   | 'playoff_series_win'
+  | 'playoff_advance_r2'
+  | 'playoff_finals_bound'
   | 'playoff_elimination'
+  | 'series_alive'
+  | 'series_comeback'
+  | 'series_forces_game7'
   | 'nba_champion'
   | 'finals_mvp'
   | 'award_mvp'
@@ -141,6 +149,51 @@ export const NEWS_TEMPLATES: NewsTemplate[] = [
       'Heartbreaking news out of the {teamName} facility. Star player {playerName} suffered a {injuryType} and will be sidelined for {duration}.',
       'Just as they were finding their rhythm, the {teamName} lose {playerName} to a {injuryType}. They will be without him for {duration}.',
       'A collective gasp echoed through the arena as {playerName} went down. Tests today confirmed a {injuryType}, shelving them for {duration}.',
+    ],
+  },
+  {
+    category: 'playoff_injury_out',
+    headlines: [
+      'Playoffs Over for {playerName} — {teamName} Must Adjust',
+      'Crushing Blow: {playerName} Out for the Remainder of the Playoffs',
+      '{teamName} Lose {playerName} for Playoffs — {injuryType} Confirmed',
+      'Season Ends Early: {playerName} Will Not Return This Postseason',
+    ],
+    contents: [
+      '{playerName} is done for the playoffs. A {injuryType} suffered in the series against {opponentName} ends his postseason run. A devastating blow to {teamName}\'s championship hopes.',
+      'The news is as bad as feared. {playerName} has been ruled out for the remainder of the playoffs with a {injuryType}. {teamName} will need to find answers without their key piece.',
+      '{teamName} confirmed the worst: {playerName} will not play again this postseason. The {injuryType} requires time, and time is something the playoffs do not allow.',
+      'A defining moment in this playoff run — and not the kind anyone wanted. {playerName} is out for the playoffs after suffering a {injuryType}.',
+    ],
+  },
+  {
+    category: 'playoff_injury_series',
+    headlines: [
+      'Out for the Series: {playerName} Will Not Return Against {opponentName}',
+      '{playerName} Ruled Out for the Rest of This Series — {injuryType}',
+      '{teamName} Shorthanded: {playerName} Done for the Series',
+      'Injury Blow: {playerName} Cannot Continue Against {opponentName}',
+    ],
+    contents: [
+      '{playerName} will not return in this series. A {injuryType} has sidelined him for the remainder of the matchup against {opponentName}, leaving {teamName} to adjust on the fly.',
+      'The {teamName} will have to close out the series without {playerName}. The {injuryType} rules him out for the duration of the {opponentName} series.',
+      'Gut punch for {teamName}. {playerName} — their key contributor — is out for the series against {opponentName} after suffering a {injuryType}.',
+      '{opponentName} gets a significant break as {playerName} is ruled out for the rest of this series. {teamName} insists they have enough depth to respond.',
+    ],
+  },
+  {
+    category: 'playoff_injury_game',
+    headlines: [
+      '{playerName} Questionable for Game {gameNumber} vs. {opponentName} — {injuryType}',
+      '{playerName} Listed Day-to-Day — Status Uncertain for Game {gameNumber}',
+      '{teamName} Monitoring {playerName} Ahead of Game {gameNumber}',
+      'Injury Report: {playerName} Day-to-Day with {injuryType}',
+    ],
+    contents: [
+      '{playerName} is listed as questionable for Game {gameNumber} against {opponentName} with a {injuryType}. The team will re-evaluate closer to tip-off.',
+      '{playerName} is day-to-day with a {injuryType}. {teamName} has not ruled him out for Game {gameNumber} — a decision will be made closer to game time.',
+      '{teamName} list {playerName} as day-to-day. He could play through the {injuryType} at reduced minutes, with a final call before Game {gameNumber}.',
+      'No timetable given for {playerName} and his {injuryType}. He is being monitored by the {teamName} training staff ahead of Game {gameNumber}.',
     ],
   },
   {
@@ -297,15 +350,45 @@ export const NEWS_TEMPLATES: NewsTemplate[] = [
     category: 'playoff_series_win',
     headlines: [
       'Advance! {teamName} Eliminate {opponentName} in {gamesCount} Games',
-      '{teamName} Move On: Series Win Over {opponentName}',
-      '{teamName} Are Playoff Bound — Dispatch {opponentName} in {gamesCount}',
-      'Next Round: {teamName} Take Down {opponentName} to Advance',
+      '{teamName} Move On — Take Down {opponentName} in {gamesCount}',
+      '{teamName} Punch Their Ticket to the Second Round',
+      'Next Round: {teamName} Dispatch {opponentName} in {gamesCount}',
     ],
     contents: [
-      'The {teamName} are moving on. A dominant {gamesCount}-game series win over the {opponentName} punches their ticket to the next round of the playoffs.',
+      'The {teamName} are moving on. A {gamesCount}-game series win over the {opponentName} sends them to the Second Round of the playoffs.',
       'Resilient and relentless, the {teamName} closed out the {opponentName} in {gamesCount} games. The locker room celebration started before the final horn stopped echoing.',
-      'It wasn\'t always pretty, but the {teamName} are into the next round after eliminating {opponentName} in Game {gamesCount}. The road continues.',
-      'The {opponentName} put up a fight, but the {teamName} were simply too much. A series win in {gamesCount} games keeps their championship dreams alive.',
+      'It wasn\'t always pretty, but the {teamName} are into the Second Round after eliminating {opponentName} in Game {gamesCount}. The road continues.',
+      'The {opponentName} put up a fight, but the {teamName} were simply too much. A series win in {gamesCount} games and they advance.',
+    ],
+  },
+  {
+    category: 'playoff_advance_r2',
+    headlines: [
+      'Conference Finals Bound! {teamName} Oust {opponentName} in {gamesCount}',
+      '{teamName} Are Headed to the Conference Finals',
+      'Conference Finals: {teamName} Dispatch {opponentName} in {gamesCount} Games',
+      '{teamName} Advance — Conference Finals Await After {gamesCount}-Game Series',
+    ],
+    contents: [
+      'The {teamName} are Conference Finals bound. A {gamesCount}-game series victory over the {opponentName} books their spot in the final four.',
+      'The {teamName} got through the {opponentName} in {gamesCount} games. The Conference Finals are next, and the competition only gets tougher from here.',
+      'Championship contender. The {teamName} punched their Conference Finals ticket after eliminating the {opponentName} in a {gamesCount}-game series.',
+      '{teamName} keep climbing. They took down {opponentName} in {gamesCount} games and now set their sights on the Conference Finals.',
+    ],
+  },
+  {
+    category: 'playoff_finals_bound',
+    headlines: [
+      'HEADING TO THE NBA FINALS! {teamName} Eliminate {opponentName}',
+      '{teamName} Are Going to the NBA Finals',
+      'FINALS BOUND: {teamName} Take Down {opponentName} in {gamesCount}',
+      '{teamName} Punch Their NBA Finals Ticket — Eliminate {opponentName} in {gamesCount}',
+    ],
+    contents: [
+      'They\'re going to the NBA Finals. The {teamName} survived a brutal Conference Finals, eliminating the {opponentName} in {gamesCount} games. The Larry O\'Brien Trophy is one series away.',
+      'THE {teamName} ARE GOING TO THE NBA FINALS. After {gamesCount} games against the {opponentName}, they punched their ticket to the biggest stage in basketball.',
+      'The {teamName} are the latest team to earn a trip to the NBA Finals — and they had to go through the {opponentName} to get there. Championship or bust in {gamesCount} games.',
+      'Conference Champions. The {teamName} shut out the {opponentName}\'s season and booked a Finals berth in {gamesCount} games. Now the real work begins.',
     ],
   },
   {
@@ -321,6 +404,51 @@ export const NEWS_TEMPLATES: NewsTemplate[] = [
       'A gut-wrenching ending for {teamCity}. The {teamName} are eliminated, their season done after {gamesCount} games against the {opponentName}. The locker room was silent.',
       'It ends here. The {teamName}, once one of the favorites, bow out in {gamesCount} games to the {opponentName}. Tough exit for a squad with high expectations.',
       'Fans in {teamCity} are left wondering what could have been. The {teamName}\'s playoff run ends at the hands of the {opponentName} after {gamesCount} games.',
+    ],
+  },
+  {
+    category: 'series_alive',
+    headlines: [
+      'Still Alive! {teamName} Stave Off Elimination',
+      '{teamName} Survive — Season Continues',
+      'Not Done Yet: {teamName} Force Another Game Against {opponentName}',
+      'Fight Night: {teamName} Refuse to Let Season End',
+    ],
+    contents: [
+      "Nobody counted them out more than they did themselves. {teamName} won when they had to, keeping their {year} playoff run alive one more game against {opponentName}.",
+      "The season is not over. {teamName} delivered a statement win, forcing {opponentName} to close them out in the next game. The pressure now flips.",
+      "Down but not out. {teamName} staved off elimination with a crucial win over {opponentName}. Series continues.",
+      "{teamName} showed the heart of a champion tonight. Facing elimination, they responded with a gutsy victory to stay alive in the series against {opponentName}.",
+    ],
+  },
+  {
+    category: 'series_comeback',
+    headlines: [
+      'Comeback Alert! {teamName} Even the Series',
+      'Momentum Shift: {teamName} Tie It Up at {wins}-{wins}',
+      '{teamName} Back in It — Series Now Tied {wins}-{wins}',
+      'The Tide Has Turned: {teamName} Level the Series',
+    ],
+    contents: [
+      "The {teamName} were counted out, but not anymore. They have evened the series at {wins}-{wins} and the complexion of this matchup has completely changed.",
+      "Nobody believed in {teamName} — except {teamName}. A resilient win ties the series at {wins} apiece and sends this one to a deciding stretch.",
+      "Massive swing in the series. {teamName} claw back to even the score at {wins}-{wins}. {opponentName} has to feel the momentum draining away.",
+      "This series is very much alive. {teamName} answered every punch from {opponentName} to tie it up at {wins}-{wins}.",
+    ],
+  },
+  {
+    category: 'series_forces_game7',
+    headlines: [
+      'IT GOES TO GAME 7! {teamName} Force the Deciding Game',
+      'Game 7 Is Happening — {teamName} Refuse to Fold',
+      '{teamName} Push It to the Limit: Series Tied 3-3',
+      'We Need a Game 7! {teamName} Even the Series Against {opponentName}',
+    ],
+    contents: [
+      "The best outcome in basketball: a Game 7. {teamName} forced the decisive game after a must-win victory over {opponentName}. Winner-take-all is on the horizon.",
+      "Winner take all. {teamName} were supposed to be finished, but they refused to accept elimination. Now a do-or-die Game 7 awaits against {opponentName}.",
+      "Everyone gets what they wanted. {teamName} have forced a Game 7 against {opponentName} with a performance that will be remembered regardless of how this series ends.",
+      "{teamName} came back from the brink to force Game 7 against {opponentName}. This is what the playoffs are about.",
     ],
   },
   {

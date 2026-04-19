@@ -17,6 +17,15 @@ Currently everyone waits the same 3 seasons regardless of first-ballot vs regula
 
 - **Dead money / ghost contracts (Luol Deng rule)** — waived-player stretch across multiple years.
 
+- **Play-through injuries — full system wire-up** — `playThroughInjuries` knob currently defaults to `0` everywhere so all injured players sit out regardless. Full system already exists in `playThroughInjuriesFactor.ts` + `minutesRestrictionFactor`:
+  - Level 1 (1–3 games): ~28 min, -2.5% perf → "Questionable / Day-to-Day"
+  - Level 2 (4–7 games): ~24 min, -5% perf → minutes restriction
+  - Level 3 (8–14 games): ~19 min, -7.5% perf → heavily monitored
+  - Level 4 (15+ games): ~14 min, -10% perf → gutting it out
+  - **Playoffs**: set knob to `4` (all severity levels can play through) — grit/playoff toughness
+  - **Regular season**: set knob to `2` (only mild/moderate injuries play through, rest guys out)
+  - Makes `playoff_injury_game` "Questionable/Day-to-Day" news framing accurate.
+
 ---
 
 ## SEPARATE DEVELOPMENTS

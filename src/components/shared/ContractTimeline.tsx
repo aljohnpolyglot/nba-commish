@@ -27,6 +27,12 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
     [state.players, teamId]
   );
 
+  const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? 15;
+  const maxTwoWay = state.leagueStats.maxTwoWayPlayersPerTeam ?? 3;
+  const twoWayCount = teamPlayers.filter(p => !!(p as any).twoWay).length;
+  const standardCount = teamPlayers.length - twoWayCount;
+  const mleCount = teamPlayers.filter(p => !!(p as any).mleSignedVia).length;
+
   return (
     <div className="overflow-x-auto custom-scrollbar p-3 sm:p-6">
       <table className="w-full text-sm text-left whitespace-nowrap border-separate border-spacing-y-2">
@@ -128,9 +134,18 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
         </tbody>
       </table>
       <div className="mt-6 flex items-center gap-6 text-xs text-slate-400 flex-wrap">
-        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-[#facc15] rounded-sm" /><span>Guaranteed</span></div>
-        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-cyan-500/20 border border-cyan-500/30 rounded-sm" /><span className="text-cyan-300">MLE</span></div>
-        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-purple-500/20 border border-purple-500/30 rounded-sm" /><span className="text-purple-300">Two-Way</span></div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-[#facc15] rounded-sm" />
+          <span>Guaranteed <span className="text-slate-300 font-mono">{standardCount}/{maxStandard}</span></span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-cyan-500/20 border border-cyan-500/30 rounded-sm" />
+          <span className="text-cyan-300">MLE <span className="font-mono">{mleCount}</span></span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-purple-500/20 border border-purple-500/30 rounded-sm" />
+          <span className="text-purple-300">Two-Way <span className="font-mono">{twoWayCount}/{maxTwoWay}</span></span>
+        </div>
         <div className="flex items-center gap-2 border border-slate-500 border-dashed px-2 py-0.5 rounded"><span>Player option</span></div>
         <div className="flex items-center gap-2 border border-[#38bdf8] border-dashed px-2 py-0.5 rounded text-[#38bdf8]"><span>Team option</span></div>
         <div className="flex items-center gap-2"><span className="text-slate-600 font-bold">FA</span><span>Free agent</span></div>
