@@ -14,7 +14,7 @@
  * stick through roster churn".
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Lock, Unlock, Sparkles } from 'lucide-react';
+import { Pencil, RotateCcw, Sparkles } from 'lucide-react';
 import { useGame } from '../../../../../../store/GameContext';
 import { PlayerPortrait } from '../../../../../shared/PlayerPortrait';
 import { StarterService } from '../../../../../../services/simulation/StarterService';
@@ -208,19 +208,30 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
     if (locked) {
       clearIdealRotation(teamId);
     } else {
-      // Snapshot current effective plan as the locked baseline.
-      saveIdealRotation(teamId, { starterIds: starters, minutes, locked: true });
+      // Snapshot current effective plan as the custom baseline — persist in
+      // PG→SG→SF→PF→C slot order so the saved starterIds stop relying on a
+      // render-time fixup.
+      const ordered = StarterService.sortByPositionSlot(
+        starters.map(id => playersById.get(id)).filter((p): p is NBAPlayer => !!p),
+        season,
+      ).map(p => p.internalId);
+      saveIdealRotation(teamId, { starterIds: ordered, minutes, locked: true });
     }
     setTick(t => t + 1);
   };
 
   const resetToAuto = () => {
     if (!canEdit) return;
-    // Re-lock with a fresh service-derived baseline (same engine as live sim,
-    // injuries stripped).
+    // Re-seed with a fresh service-derived baseline (same engine as live sim,
+    // injuries stripped). Sort into slot order so saved starterIds reflect
+    // PG→SG→SF→PF→C without leaning on the render-time fixup.
     const baseline = computeBaselineFromService(team, state.players, roster, season, standingsCtx);
+    const orderedIds = StarterService.sortByPositionSlot(
+      baseline.starterIds.map(id => state.players.find(p => p.internalId === id)).filter((p): p is NBAPlayer => !!p),
+      season,
+    ).map(p => p.internalId);
     saveIdealRotation(teamId, {
-      starterIds: baseline.starterIds,
+      starterIds: orderedIds,
       minutes: baseline.minutes,
       locked: true,
     });
@@ -281,8 +292,8 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
           </div>
           <div className="text-xs text-slate-400 mt-0.5">
             {locked
-              ? 'Locked — sliders persist, roster changes auto-redistribute minutes.'
-              : 'Unlocked — auto-derives from roster. Lock to customize.'}
+              ? 'Custom plan — sliders persist, roster changes auto-redistribute.'
+              : 'Auto baseline — derived from roster. Customize to edit.'}
           </div>
         </div>
         <div className="flex items-center gap-2 text-xs">
@@ -292,23 +303,23 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
                 <button
                   onClick={resetToAuto}
                   className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-sky-500/50 px-2 py-1 rounded font-black uppercase tracking-widest text-[10px] text-slate-300 hover:text-sky-300 transition-colors"
-                  title="Reset to baseline (top-of-roster by rating)"
+                  title="Re-seed the custom plan from the auto baseline"
                 >
                   <Sparkles className="w-3 h-3" />
-                  Auto
+                  Reseed Auto
                 </button>
               )}
               <button
                 onClick={toggleLock}
                 className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-black uppercase transition-colors ${
                   locked
-                    ? 'bg-sky-500 text-black hover:bg-sky-400'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                    ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                    : 'bg-sky-500 text-black hover:bg-sky-400'
                 }`}
-                title={locked ? 'Unlocking reverts to auto-derived baseline' : 'Lock your current plan against roster/injury changes'}
+                title={locked ? 'Clear the custom plan and go back to the auto baseline' : 'Start a custom plan you can edit'}
               >
-                {locked ? <Unlock size={12} /> : <Lock size={12} />}
-                {locked ? 'Unlock' : 'Lock'}
+                {locked ? <RotateCcw size={12} /> : <Pencil size={12} />}
+                {locked ? 'Use Auto' : 'Customize'}
               </button>
             </>
           )}
@@ -392,7 +403,7 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
                     disabled={!writable}
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => setMins(p.internalId, Number(e.target.value))}
-                    className={`w-full accent-sky-500 ${writable ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
+                    className={`w-full ${writable ? 'accent-sky-500 cursor-pointer' : 'accent-slate-500 cursor-not-allowed opacity-60'}`}
                   />
                   <span className="text-[11px] font-mono text-slate-300 tabular-nums shrink-0 text-right">{mins}</span>
                 </div>
