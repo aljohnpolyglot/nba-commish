@@ -130,8 +130,9 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
           const yr = state.leagueStats?.year ?? 2026;
           const currentNorm = normalizeDate(state.date ?? '');
           const oct1 = `${yr - 1}-10-01`;
-          const isAfterOct1 = currentNorm >= oct1;
-          return (!state.seasonPreviewDismissed && (state.seasonHistory ?? []).length > 0 && isAfterOct1)
+          const oct25 = `${yr - 1}-10-25`; // opening night — preview badge expires after games start
+          const isPreseason = currentNorm >= oct1 && currentNorm < oct25;
+          return (!state.seasonPreviewDismissed && (state.seasonHistory ?? []).length > 0 && isPreseason)
             ? [{ id: 'Season Preview' as Tab, label: 'Season Preview', icon: Sparkles, badge: '!' as string }]
             : [];
         })(),

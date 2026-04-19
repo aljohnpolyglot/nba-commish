@@ -266,8 +266,8 @@ export const SeasonPreviewView: React.FC<SeasonPreviewViewProps> = ({ onViewChan
                   <span className="w-7 shrink-0" />
                   <span className="flex-1">Team</span>
                   <span className="w-14 shrink-0 text-right">O/U</span>
-                  <span className="hidden md:block w-20 shrink-0 text-right">Title Odds</span>
-                  <span className="hidden md:block w-16 shrink-0 text-right pr-1">Tier</span>
+                  <span className="hidden sm:block w-20 shrink-0 text-right">Title Odds</span>
+                  <span className="w-14 shrink-0 text-right pr-1">Tier</span>
                 </div>
 
                 {(() => {
@@ -318,12 +318,12 @@ export const SeasonPreviewView: React.FC<SeasonPreviewViewProps> = ({ onViewChan
                             </div>
 
                             {/* Championship odds */}
-                            <span className={`hidden md:block text-xs font-black tabular-nums w-20 text-right shrink-0 ${oddsColor}`}>
+                            <span className={`hidden sm:block text-xs font-black tabular-nums w-20 text-right shrink-0 ${oddsColor}`}>
                               {odds}
                             </span>
 
                             {/* Tier badge */}
-                            <span className={`hidden md:inline text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 w-16 text-center ${tier.bg} ${tier.color}`}>
+                            <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 w-14 text-center ${tier.bg} ${tier.color}`}>
                               {tier.label}
                             </span>
                           </motion.div>

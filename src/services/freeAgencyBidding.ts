@@ -126,7 +126,11 @@ export function generateAIBids(
 ): FreeAgentBid[] {
   const bids: FreeAgentBid[] = [];
   const currentYear = state.leagueStats?.year ?? 2026;
-  const userTeamId = (state as any).userTeamId;
+  // Only exclude the user's team from AI bidding in GM mode. In commissioner
+  // mode there's no "user team" — userTeamId may still be set as the last-managed
+  // franchise from a mode switch, but excluding it would silently freeze that
+  // franchise out of FA. Sentinel -999 matches AITradeHandler/AIFreeAgentHandler.
+  const userTeamId = state.gameMode === 'gm' ? ((state as any).userTeamId ?? -999) : -999;
   const cap = state.leagueStats?.salaryCap ?? 154_600_000;
   const minSalary = (state.leagueStats as any)?.minContractStaticAmount ?? 1_200_000;
 

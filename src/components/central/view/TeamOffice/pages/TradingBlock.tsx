@@ -104,8 +104,8 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
         // Contending: K2 82+ are core rotation pieces
         return r.ovr >= 82;
       } else if (teamMode === 'presti' || teamMode === 'rebuild') {
-        // Rebuilding: young (< 25) + high potential (POT 86+)
-        return age < 25 && r.pot >= 86;
+        // Rebuilding: young (< 25) + high potential (POT 85+)
+        return age < 25 && r.pot >= 85;
       } else {
         // Neutral: stars (K2 85+) or young high-potential
         return r.ovr >= 85 || (age < 24 && r.pot >= 88);

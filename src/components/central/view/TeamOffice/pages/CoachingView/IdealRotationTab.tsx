@@ -182,7 +182,14 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
   const starterSet = new Set(starters);
   const benchPlayers = roster.filter(p => !starterSet.has(p.internalId))
     .sort((a, b) => (minutes[b.internalId] ?? 0) - (minutes[a.internalId] ?? 0));
-  const starterPlayers = starters.map(id => playersById.get(id)).filter((p): p is NBAPlayer => !!p);
+  // Render starters in PG→SG→SF→PF→C slot order. Unlocked (Auto) or partially
+  // reconciled lineups get resorted; locked-and-intact saves are untouched so
+  // a user's explicit drag order survives remount.
+  const rawStarterPlayers = starters.map(id => playersById.get(id)).filter((p): p is NBAPlayer => !!p);
+  const needsResort = !locked || !saved || saved.starterIds.some(id => !rosterIds.includes(id));
+  const starterPlayers = needsResort
+    ? StarterService.sortByPositionSlot(rawStarterPlayers, season)
+    : rawStarterPlayers;
 
   const totalMinutes = Object.values(minutes).reduce((a, b) => a + b, 0);
   const remaining = TARGET_MINUTES - totalMinutes;
@@ -300,8 +307,8 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
                 }`}
                 title={locked ? 'Unlocking reverts to auto-derived baseline' : 'Lock your current plan against roster/injury changes'}
               >
-                {locked ? <Lock size={12} /> : <Unlock size={12} />}
-                {locked ? 'Locked' : 'Lock'}
+                {locked ? <Unlock size={12} /> : <Lock size={12} />}
+                {locked ? 'Unlock' : 'Lock'}
               </button>
             </>
           )}
@@ -379,7 +386,7 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
                     min={0}
                     // Physical travel cap at remaining team-budget headroom so
                     // the user can't drag past the 240-min total.
-                    max={Math.max(mins, Math.min(48, mins + Math.max(0, remaining)))}
+                    max={48}
                     value={mins}
                     readOnly={!writable}
                     disabled={!writable}

@@ -24,7 +24,15 @@ export const processSimulationResults = (
             res.injuries.forEach((injury: any) => {
                 updatedPlayers = updatedPlayers.map(p => {
                     if (p.internalId !== injury.playerId) return p;
-                    const updated = { ...p, injury: { type: injury.injuryType, gamesRemaining: injury.gamesRemaining } };
+                    const updated = {
+                        ...p,
+                        injury: {
+                            type: injury.injuryType,
+                            gamesRemaining: injury.gamesRemaining,
+                            ...(injury.startDate ? { startDate: injury.startDate } : {}),
+                            ...(injury.origin    ? { origin:    injury.origin    } : {}),
+                        },
+                    };
                     // Apply permanent stat changes for major injuries (e.g. ACL, Achilles).
                     // statChanges is only present on major injuries (>= 15 games).
                     if (injury.statChanges) {

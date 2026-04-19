@@ -14,6 +14,7 @@ import { generateAITradeProposal } from './trade/tradeFinderEngine';
 import { SettingsManager } from './SettingsManager';
 import { getMinTradableSeason, getTradablePicks, getMaxTradableSeason } from './draft/DraftPickGenerator';
 import { buildClassStrengthMap, buildLotterySlotMap } from './draft/draftClassStrength';
+import { getGMAttributes, getGMName, tradeInitiateProb, pickHoardResistance } from './staff/gmAttributes';
 
 // ── §2d: Pick values ──────────────────────────────────────────────────────────
 
@@ -34,19 +35,6 @@ function sideTV(players: NBAPlayer[], picks: DraftPick[], mode: TeamMode, curren
 
 // ── §2e: Proposal loop ────────────────────────────────────────────────────────
 
-/** Look up the real GM name for a team from state.staff, falling back to a generic label. */
-function getGMName(state: GameState, teamId: number): string {
-  const team = state.teams.find(t => t.id === teamId);
-  if (!team) return 'AI GM';
-  const teamName = team.name.toLowerCase();
-  const teamCity = (team.region ?? team.name).toLowerCase();
-  const gms: any[] = (state as any).staff?.gms ?? [];
-  const gm = gms.find(g => {
-    const pos = (g.position ?? g.team ?? '').toLowerCase();
-    return pos.includes(teamName) || pos.includes(teamCity) || pos.includes(team.abbrev?.toLowerCase() ?? '');
-  });
-  return gm?.name ?? `${team.name} GM`;
-}
 
 /** Players traded within the last 60 days — not eligible to be traded again. */
 function recentlyTradedPlayerIds(state: GameState): Set<string> {
@@ -167,9 +155,18 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
   const classStrengthByYear = buildClassStrengthMap(state.players, currentYear, currentYear, getMaxTradableSeason(state));
   const lotterySlotByTid = buildLotterySlotMap((state as any).draftLotteryResult);
 
+  // Sort buyers by GM trade_aggression (desc) so aggressive GMs get first crack
+  // at today's proposal slots; passive GMs rarely initiate.
+  const buyerTeamsByAgg = [...buyerTeams]
+    .map(t => ({ team: t, agg: getGMAttributes(state, t.id).trade_aggression }))
+    .sort((a, b) => b.agg - a.agg);
+
   let count = 0;
-  for (const buyerTeam of buyerTeams) {
+  for (const { team: buyerTeam, agg: buyerAgg } of buyerTeamsByAgg) {
     if (count >= 2) break; // max 2 proposals per day
+
+    // Aggression gate: low-aggression GMs skip their turn probabilistically
+    if (Math.random() > tradeInitiateProb(buyerAgg)) continue;
 
     for (const sellerTeam of sellerTeams) {
       if (sellerTeam.id === buyerTeam.id) continue;
@@ -204,6 +201,18 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
       // but guard anyway against empty baskets sneaking through).
       if (playersOffered.length + picksOffered.length === 0) continue;
       if (playersRequested.length + picksRequested.length === 0) continue;
+
+      // scouting_focus: pick-hoarders are reluctant to ship picks out. Each outgoing
+      // pick rolls against the buyer's hoard resistance; if any rolls fail, the GM
+      // walks away from a deal that bleeds draft capital.
+      const buyerHoard = pickHoardResistance(getGMAttributes(state, buyerTeam.id).scouting_focus);
+      if (buyerHoard > 0 && picksOffered.length > 0) {
+        let vetoed = false;
+        for (let i = 0; i < picksOffered.length; i++) {
+          if (Math.random() < buyerHoard) { vetoed = true; break; }
+        }
+        if (vetoed) continue;
+      }
 
       // CBA 125% salary rule — when both sides send players the engine's match
       // variant doesn't pre-filter salary, so enforce it here before accepting.
@@ -263,10 +272,17 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
       return payroll * 1000 < (thresholds.salaryCap ?? 136_000_000) * 0.85; // >15% below cap
     });
 
-    for (const sellerTeam of sellerTeams) {
+    // Same aggression-sort as the main loop so the most active GMs dump first.
+    const sellerTeamsByAgg = [...sellerTeams]
+      .map(t => ({ team: t, agg: getGMAttributes(state, t.id).trade_aggression }))
+      .sort((a, b) => b.agg - a.agg);
+
+    for (const { team: sellerTeam, agg: sellerAgg } of sellerTeamsByAgg) {
       if (count >= 2) break;
       // Never dump from youth-rebuild teams — they're building around young talent
       if (isBuildingAroundYouth(sellerTeam)) continue;
+      // Low-aggression GMs are reluctant to initiate salary dumps
+      if (Math.random() > tradeInitiateProb(sellerAgg)) continue;
 
       const sellerRoster = state.players.filter(p => p.tid === sellerTeam.id);
 
@@ -294,6 +310,11 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
         pk.tid === sellerTeam.id && pk.round === 2
       );
       if (sellerPicks.length === 0) continue; // no picks to attach = no dump deal
+
+      // scouting_focus: pick-hoarding sellers refuse to include the sweetener,
+      // which kills the dump (no sweetener = absorber has no reason to take it on).
+      const sellerHoard = pickHoardResistance(getGMAttributes(state, sellerTeam.id).scouting_focus);
+      if (sellerHoard > 0 && Math.random() < sellerHoard) continue;
 
       const dumpPick = sellerPicks[0];
       const dumpSalary = dumpCandidate.contract?.amount ?? 0;

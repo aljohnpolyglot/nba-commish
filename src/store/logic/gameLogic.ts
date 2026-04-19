@@ -834,7 +834,7 @@ export const processTurn = async (
         })() } as any],
         isProcessing: false,
         isWatchingGame: false,
-      lastOutcome: isGM ? undefined : (result.outcomeText || result.narrative),
+      lastOutcome: state.gameMode === 'gm' ? undefined : (result.outcomeText || result.narrative),
         lastConsequence: finalConsequence,
         pendingHypnosis: [],
         pendingNarratives: [],

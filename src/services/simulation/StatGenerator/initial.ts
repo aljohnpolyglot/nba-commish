@@ -33,6 +33,7 @@ export function generateStatsForTeam(
     team, players, lead, season, overridePlayers,
     knobs.conferenceRank, knobs.gbFromLeader, knobs.gamesRemaining,
     knobs.rotationDepthOverride,
+    knobs.playThroughInjuries ?? 0,
   );
 
   let rotation = rotResult.players;

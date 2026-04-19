@@ -35,23 +35,53 @@ export const handleExecutiveTrade = async (stateWithSim: GameState, action: User
     const assetsA = joinAssets(playersA, picksA);
     const assetsB = joinAssets(playersB, picksB);
 
-    const tradeSeed = `BREAKING TRADE: The ${teamA?.name} and ${teamB?.name} have completed a trade. ` +
-        `${teamB?.name} receive: ${assetsA}. ${teamA?.name} receive: ${assetsB}. ` +
-        `Generate immediate reactions — insider tweets breaking the trade, fan reactions, ` +
-        `analysts debating the winners and losers, and at least one post from @ShamsCharania or @wojespn.`;
+    const isCommishForced = !!action.payload.commissionerForced;
+    const tradeSeed = isCommishForced
+        ? `COMMISSIONER-FORCED TRADE: ${stateWithSim.commissionerName} has overridden cap rules to push through a deal between the ${teamA?.name} and ${teamB?.name}. ` +
+          `${teamB?.name} receive: ${assetsA}. ${teamA?.name} receive: ${assetsB}. ` +
+          `This is controversial — owners are furious, players feel like pawns, the union is making noise. ` +
+          `Generate shocked insider tweets (@ShamsCharania, @wojespn), outraged owner/player reactions, and analysts questioning the commissioner's power.`
+        : `BREAKING TRADE: The ${teamA?.name} and ${teamB?.name} have completed a trade. ` +
+          `${teamB?.name} receive: ${assetsA}. ${teamA?.name} receive: ${assetsB}. ` +
+          `Generate immediate reactions — insider tweets breaking the trade, fan reactions, ` +
+          `analysts debating the winners and losers, and at least one post from @ShamsCharania or @wojespn.`;
 
     const result = await advanceDay(stateWithSim, {
         type: 'EXECUTIVE_TRADE',
         payload: {
             teamAId: action.payload.teamAId,
             teamBId: action.payload.teamBId,
-            outcomeText: `A trade has been finalized between the ${teamA?.name} and ${teamB?.name}. ${assetsA} have been moved to the ${teamB?.abbrev}, while ${assetsB} have been sent to the ${teamA?.abbrev}.`,
+            commissionerForced: isCommishForced,
+            outcomeText: isCommishForced
+                ? `Commissioner ${stateWithSim.commissionerName} has forced a trade between the ${teamA?.name} and ${teamB?.name}, overriding league cap rules. ${assetsA} are headed to ${teamB?.abbrev}; ${assetsB} to ${teamA?.abbrev}. The move is already drawing backlash.`
+                : `A trade has been finalized between the ${teamA?.name} and ${teamB?.name}. ${assetsA} have been moved to the ${teamB?.abbrev}, while ${assetsB} have been sent to the ${teamA?.abbrev}.`,
         }
     } as any, [tradeSeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
 
     // Ensure outcomeText is always rich (LLM may return empty string when it fails)
     if (!result.outcomeText) {
-        result.outcomeText = `${teamA?.name} and ${teamB?.name} complete a trade. ${teamB?.abbrev} receive: ${assetsA}. ${teamA?.abbrev} receive: ${assetsB}.`;
+        result.outcomeText = isCommishForced
+            ? `${stateWithSim.commissionerName} forces a trade — ${teamA?.abbrev} and ${teamB?.abbrev} swap assets under commissioner override. Backlash expected.`
+            : `${teamA?.name} and ${teamB?.name} complete a trade. ${teamB?.abbrev} receive: ${assetsA}. ${teamA?.abbrev} receive: ${assetsB}.`;
+    }
+
+    // Commissioner-forced trades carry morale/approval hits — magnitude scales with the
+    // biggest star moved. Mirrors outcomeDecider's FORCE_TRADE case.
+    if (isCommishForced) {
+        const maxOVR = Math.max(
+            ...stateWithSim.players.filter(p => action.payload.teamAPlayers.includes(p.internalId) || action.payload.teamBPlayers.includes(p.internalId)).map(p => p.overallRating ?? 0),
+            0
+        );
+        const isSuperstar = maxOVR >= 68;
+        result.consequence = result.consequence || {};
+        result.consequence.statChanges = result.consequence.statChanges || {};
+        const sc = result.consequence.statChanges;
+        sc.morale = sc.morale || { fans: 0, players: 0, owners: 0 };
+        const moraleHit = isSuperstar ? -10 : -4;
+        sc.morale.players = (sc.morale.players || 0) + moraleHit;
+        sc.morale.owners = (sc.morale.owners || 0) + moraleHit;
+        sc.playerApproval = (sc.playerApproval || 0) + (isSuperstar ? -5 : -2);
+        sc.viewership = (sc.viewership || 0) + 3; // controversy = eyeballs
     }
 
     // Auto Charania trade post — injected directly into result.newSocialPosts

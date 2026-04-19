@@ -173,14 +173,18 @@ function generatePlayoffSeriesNews(
 
           // For Conference Finals winner heading to NBA Finals, enrich headline with historical context
           if (series.round === 3) {
-            const awards = historicalAwards ?? [];
-            const priorFinals = awards.filter(
-              (a: any) => (a.type === 'Champion' || a.type === 'Runner Up') &&
-              Number(a.tid) === winner.id && Number(a.season) < season
-            );
-            const lastFinalsYear = priorFinals.map((a: any) => Number(a.season)).sort((a, b) => b - a)[0];
-            const consecutiveFinals = lastFinalsYear === season - 1
-              && awards.some((a: any) => (a.type === 'Champion' || a.type === 'Runner Up') && Number(a.tid) === winner.id && Number(a.season) === season - 2);
+            // Combine flat historicalAwards (sim format) with team.seasons (real-world BBGM history)
+            const finalsSeasonYears = new Set([
+              ...(historicalAwards ?? [])
+                .filter((a: any) => (a.type === 'Champion' || a.type === 'Runner Up') && Number(a.tid) === winner.id)
+                .map((a: any) => Number(a.season)),
+              ...(winner.seasons ?? [])
+                .filter((s: any) => s.playoffRoundsWon === 4 || s.playoffRoundsWon === 3)
+                .map((s: any) => Number(s.season)),
+            ]);
+            const priorFinals = [...finalsSeasonYears].filter(yr => yr < season).sort((a, b) => b - a);
+            const lastFinalsYear = priorFinals[0];
+            const consecutiveFinals = lastFinalsYear === season - 1 && finalsSeasonYears.has(season - 2);
             const fmt = (yr: number) => `${yr - 1}–${String(yr).slice(-2)}`;
 
             if (consecutiveFinals) {
@@ -274,17 +278,21 @@ function generatePlayoffSeriesNews(
     const totalGames = finalsSeries ? finalsSeries.higherSeedWins + finalsSeries.lowerSeedWins : 0;
 
     if (champTeam) {
-      // Count prior championships for this team (sim awards only — Wikipedia not available here)
-      const priorTitles = (historicalAwards ?? []).filter(
-        (a: any) => a.type === 'Champion' && Number(a.tid) === champTeam.id && Number(a.season) < season
-      ).length;
+      // Count prior championships: check both historicalAwards (flat sim format) AND team.seasons
+      // (which has real-world BBGM history via playoffRoundsWon===4). team.seasons is always
+      // populated from the roster JSON and works for both new and existing saved games.
+      const champSeasonYears = new Set([
+        ...(historicalAwards ?? [])
+          .filter((a: any) => a.type === 'Champion' && Number(a.tid) === champTeam.id)
+          .map((a: any) => Number(a.season)),
+        ...(champTeam.seasons ?? [])
+          .filter((s: any) => s.playoffRoundsWon === 4)
+          .map((s: any) => Number(s.season)),
+      ]);
+      const priorTitles = [...champSeasonYears].filter(yr => yr < season).length;
       const totalTitles = priorTitles + 1;
-      const wonLastYear = (historicalAwards ?? []).some(
-        (a: any) => a.type === 'Champion' && Number(a.tid) === champTeam.id && Number(a.season) === season - 1
-      );
-      const wonTwoYearsAgo = (historicalAwards ?? []).some(
-        (a: any) => a.type === 'Champion' && Number(a.tid) === champTeam.id && Number(a.season) === season - 2
-      );
+      const wonLastYear = champSeasonYears.has(season - 1);
+      const wonTwoYearsAgo = champSeasonYears.has(season - 2);
       const isThreePeat = wonLastYear && wonTwoYearsAgo;
       const isRepeat = wonLastYear && !wonTwoYearsAgo;
       const ordinal = (n: number) => n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`;

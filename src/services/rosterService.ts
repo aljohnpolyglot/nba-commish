@@ -2,6 +2,24 @@ import { ROSTER_URL, EXTRA_RETIRED_PLAYERS_URL, CONTRACTS_URL } from '../constan
 import type { NBAGMRosterData, NBAPlayer as Player, NBATeam as Team, DraftPick, NBAGMPlayer, GamePhase } from '../types';
 import JSONParserText from '../utils/JSONParserText';
 import { calculatePlayerOverallForYear, calculateTeamStrength } from '../utils/playerRatings';
+import { isDevastatingInjury } from './simulation/InjurySystem';
+
+/**
+ * Stamp a best-effort startDate on pre-existing (roster-fetch) injuries so the
+ * Injuries UI can distinguish "came out of the last season on IR" from "tweaked
+ * an ankle in preseason camp" — even before any live games have been played.
+ * Devastating injuries (ACL/Achilles/etc.) → "Last Season". Everything else →
+ * "Summer 2025". No `origin` = the UI treats these as non-game (practice).
+ */
+function stampInitialInjury(injury: Player['injury'] | undefined): Player['injury'] {
+  if (!injury) return { type: 'Healthy', gamesRemaining: 0 };
+  if ((injury.gamesRemaining ?? 0) <= 0) return injury;
+  if (injury.startDate) return injury; // already stamped
+  return {
+    ...injury,
+    startDate: isDevastatingInjury(injury.type) ? 'Last Season' : 'Summer 2025',
+  };
+}
 
 /**
  * Normalize BBGM stat field names to the game's NBAGMStat field names.
@@ -400,7 +418,7 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                                 ...p,
                                 name: playerName,
                                 contract: p.contract || { amount: 0, exp: startYear - 1 },
-                                injury: p.injury || { type: 'Healthy', gamesRemaining: 0 },
+                                injury: stampInitialInjury(p.injury),
                                 tid: isProspect ? -1 : (isRetired ? -3 : teamInfo.tid),
                                 // STEP 4: Stable ID based on name + birth year (not tid, which changes on trades)
                                 // nba-DevinBooker-1996  euro-LukaKrajnc-2001
@@ -485,8 +503,20 @@ export const getHistoricalAwards = async (): Promise<any[]> => {
     try {
         const response = await fetch(ROSTER_URL);
         const data = await response.json();
-        // BBGM stores history in the 'awards' property
-        return data.awards || [];
+        // BBGM awards are season-objects: {season, champion:{tid,name}, ...}
+        // Normalize to flat {type, tid, season, name} so lazySimRunner filters work
+        const raw: any[] = data.awards || [];
+        return raw.flatMap((a: any) => {
+            const items: any[] = [];
+            if (a.champion?.tid !== undefined) {
+                items.push({ season: a.season, type: 'Champion', name: a.champion.name ?? '', tid: a.champion.tid });
+            }
+            // Derive runner-up from runnerUp field if present (BBGM doesn't always include it)
+            if (a.runnerUp?.tid !== undefined) {
+                items.push({ season: a.season, type: 'Runner Up', name: a.runnerUp.name ?? '', tid: a.runnerUp.tid });
+            }
+            return items;
+        });
     } catch (err) {
         console.warn("RosterService: Failed to fetch historical awards:", err);
         return [];

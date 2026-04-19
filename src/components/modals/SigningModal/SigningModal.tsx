@@ -30,6 +30,11 @@ interface SigningModalProps {
   initialContractType?: 'GUARANTEED' | 'TWO_WAY';
   onClose: () => void;
   onSign: (contract: { salary: number; years: number; option: 'NONE' | 'PLAYER' | 'TEAM'; twoWay: boolean; mleType: 'room' | 'non_taxpayer' | 'taxpayer' | null }) => void;
+  /** Optional bidding-war path. When provided AND a market is live or likely
+   *  for this player (GM mode during FA period for notable FAs), Submit posts
+   *  a competing user bid instead of finalizing the signing. The bid is
+   *  resolved 3-5 days later by `faMarketTicker` alongside AI offers. */
+  onSubmitBid?: (bid: { salary: number; years: number; option: 'NONE' | 'PLAYER' | 'TEAM' }) => void;
 }
 
 const formatPos = (pos = '') => {
@@ -117,7 +122,7 @@ function useHoldable(callback: () => void, disabled: boolean) {
   };
 }
 
-const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, autoAccept = false, preflightMessage, initialContractType, onClose, onSign }) => {
+const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, autoAccept = false, preflightMessage, initialContractType, onClose, onSign, onSubmitBid }) => {
   const { state } = useGame();
 
   const [activeTab,    setActiveTab]    = useState<TabType>('NEGOTIATION');
@@ -126,6 +131,9 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   const [years,        setYears]        = useState(1);
   const [option,       setOption]       = useState<'NONE' | 'PLAYER' | 'TEAM'>('NONE');
   const [showResponse, setShowResponse] = useState(false);
+  // Bid-submission confirmation: after Submit Offer, show terms + decision window
+  // in a dedicated screen before the user dismisses. Better than a silent close.
+  const [bidSubmitted, setBidSubmitted] = useState<null | { salary: number; years: number; option: 'NONE' | 'PLAYER' | 'TEAM'; decisionDaysOut: number }>(null);
   // Commissioner can override the preflight ("Testing Free Agency") and enter negotiation anyway.
   const [preflightOverridden, setPreflightOverridden] = useState(false);
   // Transient toast for contractType collisions with roster caps.
@@ -270,7 +278,16 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     return classifyResignIntent(player, traitsNorm, score, leagueStats?.year ?? 2026, winPct);
   }, [player, team, state.date, state.players, leagueStats?.year]);
 
-  // Offers tab is only meaningful during peak FA (first 2 weeks after market opens).
+  // Offers tab surfaces whenever a live market exists for this player. Drops
+  // the old 2-week peak-FA gate so the tab stays honest — bidding wars that
+  // spill into mid-July or later are still visible. Falls back to peak-FA
+  // detection only when no market has been opened yet (e.g. first sim day
+  // before the ticker fires) so the tab still appears during the expected
+  // bidding-war window for FAs who'll get a market shortly.
+  const hasActiveMarket = useMemo(
+    () => !!state.faBidding?.markets?.some(m => m.playerId === player.internalId && !m.resolved),
+    [state.faBidding?.markets, player.internalId],
+  );
   const isPeakFA = useMemo(() => {
     const dateStr = normalizeDate(state.date ?? '');
     if (!dateStr) return false;
@@ -280,15 +297,24 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     const current = new Date(dateStr);
     return current >= faStart && current < peakEnd;
   }, [state.date, leagueStats]);
+  // Bidding mode: user's submit competes in the market instead of signing.
+  // Only activates when the caller provided `onSubmitBid`, we're in GM mode,
+  // not auto-accepting (commissioner skips the grace), the player is a true
+  // free agent, and there's either an active market or we're in peak FA
+  // (where a market is likely to spin up today). Re-signings stay instant.
+  const isResignFromOwnTeam = player.tid === team.id;
+  const isBiddingMode = !!onSubmitBid && !autoAccept && !isResignFromOwnTeam && player.tid < 0 && state.gameMode === 'gm';
+  const shouldSubmitBid = isBiddingMode && (hasActiveMarket || isPeakFA);
+  const showOffersTab = hasActiveMarket || isPeakFA;
 
   const tabs = useMemo(
-    () => (isPeakFA ? ALL_TABS : ALL_TABS.filter(t => t.id !== 'OFFERS')),
-    [isPeakFA],
+    () => (showOffersTab ? ALL_TABS : ALL_TABS.filter(t => t.id !== 'OFFERS')),
+    [showOffersTab],
   );
 
   useEffect(() => {
-    if (!isPeakFA && activeTab === 'OFFERS') setActiveTab('NEGOTIATION');
-  }, [isPeakFA, activeTab]);
+    if (!showOffersTab && activeTab === 'OFFERS') setActiveTab('NEGOTIATION');
+  }, [showOffersTab, activeTab]);
 
   // One-shot initializer per player — otherwise isTwoWayCandidate keeps forcing TWO_WAY
   // back on after the user picks GUARANTEED (minAllowed / maxAllowed depend on contractType,
@@ -592,6 +618,56 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     // Same floor as the bar — 50% minimum; high-retention clubs require full ask.
     return ratio >= Math.max(0.5, competingInterest / 100);
   })();
+
+  if (bidSubmitted) {
+    const annualM = Math.round(bidSubmitted.salary / 100_000) / 10;
+    const totalM = Math.round(annualM * bidSubmitted.years);
+    const optTag = bidSubmitted.option === 'PLAYER'
+      ? ' with a player option'
+      : bidSubmitted.option === 'TEAM'
+        ? ' with a team option'
+        : '';
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          className="relative w-full max-w-md bg-[#0a0a0a] border border-[#FDB927]/30 shadow-2xl rounded flex flex-col items-center text-center overflow-hidden"
+        >
+          <div className="w-full h-48 bg-[#050505] relative flex items-end justify-center pt-8 border-b border-white/5">
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-20 pointer-events-none" />
+            {initialSrc ? (
+              <img src={initialSrc} className="h-full object-contain drop-shadow-2xl z-10" alt={player.name} referrerPolicy="no-referrer" />
+            ) : (
+              <div className="h-full w-32 rounded-full bg-slate-800 flex items-center justify-center text-4xl font-black text-slate-600 z-10">
+                {(player.name ?? '??').split(' ').map(w => w[0]).join('')}
+              </div>
+            )}
+          </div>
+          <div className="p-8 w-full flex flex-col items-center relative z-20">
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#FDB927] mb-2">Bid Submitted</p>
+            <h2 className="text-2xl font-black italic uppercase tracking-wider mb-4 text-white">
+              Offer on the Table
+            </h2>
+            <p className="text-white/80 italic mb-6 leading-relaxed text-sm">
+              You've offered {player.name} <span className="text-[#FDB927] font-bold">${totalM}M / {bidSubmitted.years}yr</span>{optTag}. {bidSubmitted.decisionDaysOut === 1
+                ? 'He decides tomorrow.'
+                : `He'll decide in ${bidSubmitted.decisionDaysOut} days after weighing competing offers.`}
+            </p>
+            <p className="text-[10px] text-white/40 mb-6 leading-relaxed">
+              Resubmit anytime to adjust your terms — only your most recent bid stands.
+            </p>
+            <button
+              onClick={() => { setBidSubmitted(null); onClose(); }}
+              className="w-full py-4 bg-[#FDB927]/20 border border-[#FDB927]/50 hover:bg-[#FDB927]/40 text-[#FDB927] font-black uppercase tracking-widest text-xs transition-colors rounded-sm"
+            >
+              Done
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (showResponse && !motherTeamWillRelease) {
     // Mother TEAM (not league) — look up the external club that actually owns the player's rights.
@@ -1314,7 +1390,48 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                     <p className="text-[9px] text-white/30 uppercase tracking-widest mb-7">
                       Competing offers from opposing front offices
                     </p>
-                    <p className="text-[11px] text-white/40 italic">No competing bids on record.</p>
+                    {(() => {
+                      const market = state.faBidding?.markets?.find(m => m.playerId === player.internalId && !m.resolved);
+                      const activeBids = market?.bids?.filter(b => b.status === 'active' && !b.isUserBid) ?? [];
+                      if (!market || activeBids.length === 0) {
+                        return <p className="text-[11px] text-white/40 italic">No competing bids on record.</p>;
+                      }
+                      const decisionDaysOut = Math.max(0, market.decidesOnDay - (state.day ?? 0));
+                      const sortedBids = [...activeBids].sort((a, b) => b.salaryUSD - a.salaryUSD);
+                      return (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between pb-3 border-b border-white/5">
+                            <div className="text-[9px] uppercase tracking-widest text-white/50">Decision window</div>
+                            <div className="text-[11px] font-bold text-[#FDB927]">
+                              {decisionDaysOut === 0 ? 'Decides today' : `${decisionDaysOut} day${decisionDaysOut === 1 ? '' : 's'} remaining`}
+                            </div>
+                          </div>
+                          {sortedBids.map((bid, idx) => {
+                            const totalM = Math.round((bid.salaryUSD * bid.years) / 100_000) / 10;
+                            const annualM = Math.round(bid.salaryUSD / 100_000) / 10;
+                            return (
+                              <div key={bid.id} className="flex items-center justify-between gap-4 px-3 py-2.5 bg-white/[0.03] rounded-sm border border-white/5">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  {bid.teamLogoUrl && (
+                                    <img src={bid.teamLogoUrl} alt="" className="w-7 h-7 object-contain shrink-0" />
+                                  )}
+                                  <div className="min-w-0">
+                                    <div className="text-[11px] font-black text-white/90 truncate">{bid.teamName}</div>
+                                    <div className="text-[9px] uppercase tracking-widest text-white/40">
+                                      {bid.option === 'PLAYER' ? 'Player option' : bid.option === 'TEAM' ? 'Team option' : `${bid.years}-year deal`}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <div className="text-[13px] font-black text-[#FDB927]">${totalM}M</div>
+                                  <div className="text-[9px] uppercase tracking-widest text-white/40">${annualM}M / {bid.years}yr{idx === 0 ? ' · leading' : ''}</div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
@@ -1337,6 +1454,13 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                       disabled={!mleCanCover}
                       onClick={() => {
                         if (!mleCanCover) return;
+                        if (shouldSubmitBid && onSubmitBid) {
+                          onSubmitBid({ salary, years, option });
+                          const marketForPlayer = state.faBidding?.markets?.find(m => m.playerId === player.internalId && !m.resolved);
+                          const decisionDaysOut = Math.max(1, (marketForPlayer?.decidesOnDay ?? (state.day ?? 0) + 4) - (state.day ?? 0));
+                          setBidSubmitted({ salary, years, option, decisionDaysOut });
+                          return;
+                        }
                         if (autoAccept) onSign({ salary, years, option } as any);
                         else setShowResponse(true);
                       }}
@@ -1362,6 +1486,13 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                       setShowCapWarning(true);
                       return;
                     }
+                    if (shouldSubmitBid && onSubmitBid) {
+                      onSubmitBid({ salary, years, option });
+                      const marketForPlayer = state.faBidding?.markets?.find(m => m.playerId === player.internalId && !m.resolved);
+                      const decisionDaysOut = Math.max(1, (marketForPlayer?.decidesOnDay ?? (state.day ?? 0) + 4) - (state.day ?? 0));
+                      setBidSubmitted({ salary, years, option, decisionDaysOut });
+                      return;
+                    }
                     if (autoAccept) {
                       onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', mleType: (contractType === 'TWO_WAY' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) });
                     } else {
@@ -1370,7 +1501,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                   }}
                   className="px-10 py-3 bg-[#e21d37] rounded-sm text-[10px] font-black italic uppercase tracking-widest text-white hover:scale-[1.02] transition-all"
                 >
-                  {autoAccept ? 'Finalize Deal' : 'Submit'}
+                  {shouldSubmitBid ? 'Submit Offer' : (autoAccept ? 'Finalize Deal' : 'Submit')}
                 </button>
               </div>
             </div>

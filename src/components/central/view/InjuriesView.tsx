@@ -1,13 +1,14 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { NBAPlayer, Contact } from '../../../types';
+import { NBAPlayer, Contact, Game } from '../../../types';
 import { PlayerActionsModal } from './PlayerActionsModal';
 import { PlayerBioView } from './PlayerBioView';
 import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
 import ContactModal from '../../ContactModal';
 import { PersonSelectorModal } from '../../modals/PersonSelectorModal';
+import { BoxScoreModal } from '../../modals/BoxScoreModal';
 import { format, addDays } from 'date-fns';
-import { getOwnTeamId } from '../../../utils/helpers';
+import { getOwnTeamId, normalizeDate } from '../../../utils/helpers';
 
 interface InjuriesViewProps {
   filteredTeamId?: number;  // pre-filter to a single team (used in TeamDetailView)
@@ -24,6 +25,44 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
   const [selectedPlayerContact, setSelectedPlayerContact] = React.useState<Contact | null>(null);
   const [personSelectorOpen, setPersonSelectorOpen] = React.useState(false);
   const [personSelectorType, setPersonSelectorType] = React.useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'sabotage' | 'waive'>('general');
+  const [boxScoreGame, setBoxScoreGame] = React.useState<Game | null>(null);
+
+  // Whitelist the two real date formats the sim produces. Labels like "Summer 2025"
+  // are partially parseable in some browsers (V8 rejects but WebKit returns Jan 1,
+  // 2025), so a pure `isNaN` check isn't enough.
+  //   ISO:   "2025-10-27" (optionally with time suffix)
+  //   en-US: "Oct 27, 2025"
+  const isParseableInjuryDate = (s: string) =>
+    /^\d{4}-\d{2}-\d{2}/.test(s) || /^[A-Za-z]{3,}\s+\d{1,2},\s+\d{4}/.test(s);
+
+  // Locate the scheduled (played) game that caused a specific player's injury.
+  // Only in-game injuries (origin set, parseable date) are eligible. Lookup via the
+  // opponent abbrev parsed from origin so the click survives trades since the injury
+  // (player.tid no longer necessarily matches the original team). Dates are
+  // normalized to YYYY-MM-DD on both sides — state.date uses en-US locale, while
+  // schedule dates use ISO toString, so raw === never matches.
+  const findInjuryGame = (player: NBAPlayer): Game | null => {
+    const startDate = player.injury?.startDate;
+    const origin    = player.injury?.origin;
+    if (!startDate || !origin) return null;
+    if (!isParseableInjuryDate(startDate)) return null;
+    const d = new Date(startDate);
+    if (isNaN(d.getTime())) return null;
+    const normStart = normalizeDate(startDate);
+    const oppMatch  = origin.match(/(?:vs|@)\s+([A-Z0-9]+)/i);
+    const oppAbbrev = oppMatch?.[1]?.toUpperCase();
+    const sameDate  = state.schedule.filter(sg => sg.played && normalizeDate(sg.date) === normStart);
+    if (sameDate.length === 0) return null;
+    if (oppAbbrev) {
+      for (const g of sameDate) {
+        const home = state.teams.find(t => t.id === g.homeTid);
+        const away = state.teams.find(t => t.id === g.awayTid);
+        if ((home as any)?.abbrev?.toUpperCase() === oppAbbrev
+         || (away as any)?.abbrev?.toUpperCase() === oppAbbrev) return g;
+      }
+    }
+    return sameDate.find(g => g.homeTid === player.tid || g.awayTid === player.tid) ?? null;
+  };
 
   const getContactFromPlayer = (player: NBAPlayer): Contact => {
     const playerTeam = state.teams.find(t => t.id === player.tid);
@@ -135,6 +174,17 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
     return format(returnDate, 'd MMM');
   };
 
+  const formatOccurred = (injury: NBAPlayer['injury']) => {
+    if (!injury?.startDate) return '—';
+    // Backfill labels ("Last Season", "Summer 2025") render verbatim — some browsers
+    // would parse "Summer 2025" as Jan 1 2025, so we whitelist the real formats.
+    if (!isParseableInjuryDate(injury.startDate)) return injury.startDate;
+    const d = new Date(injury.startDate);
+    if (isNaN(d.getTime())) return injury.startDate;
+    const dateStr = format(d, 'd MMM');
+    return injury.origin ? `${dateStr} ${injury.origin}` : dateStr;
+  };
+
   const injuryComments = useMemo(() => {
     const comments = new Map<string, string>();
     const reporters = ['Shams Charania of ESPN', 'Adrian Wojnarowski of ESPN', 'Chris Haynes of NBA TV', 'Marc Stein', 'local beat writers'];
@@ -153,22 +203,26 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
       const dateStr = format(new Date(state.date), 'd MMM');
 
       const nextGame = state.schedule.find(g => !g.played && (g.homeTid === team.id || g.awayTid === team.id));
-      let opponent = 'their next opponent';
-      let day = 'upcoming';
+      let nextGameClause: string | null = null; // e.g. "Friday's game against the Rockets"
       if (nextGame) {
-        const oppTid = nextGame.homeTid === team.id ? nextGame.awayTid : nextGame.homeTid;
+        const oppTid  = nextGame.homeTid === team.id ? nextGame.awayTid : nextGame.homeTid;
         const oppTeam = state.teams.find(t => t.id === oppTid);
-        if (oppTeam) opponent = `the ${oppTeam.name}`;
-        try { day = format(new Date(nextGame.date), 'EEEE'); } catch {}
+        let day = 'the next';
+        try { day = `${format(new Date(nextGame.date), 'EEEE')}'s`; } catch {}
+        nextGameClause = oppTeam
+          ? `${day} game against the ${oppTeam.name}`
+          : `${day} game`;
       }
 
       let comment = '';
       if (gamesOut <= 3) {
+        // No next game on the books (All-Star break, offseason) → drop the opponent clause entirely.
+        const clause = nextGameClause ?? 'the next game';
         const templates = [
-          `${dateStr}: ${lastName} (${injuryType}) has been ruled out for ${day}'s game against ${opponent}.`,
-          `${dateStr}: ${lastName} (${injuryType}) is out for ${day}'s game against ${opponent}, ${reporter} reports.`,
-          `${dateStr}: ${lastName} (${injuryType}) is questionable for ${day}'s game against ${opponent}.`,
-          `${dateStr}: ${lastName} is listed as probable for ${day}'s game against ${opponent} due to ${injuryType} soreness.`
+          `${dateStr}: ${lastName} (${injuryType}) has been ruled out for ${clause}.`,
+          `${dateStr}: ${lastName} (${injuryType}) is out for ${clause}, ${reporter} reports.`,
+          `${dateStr}: ${lastName} (${injuryType}) is questionable for ${clause}.`,
+          `${dateStr}: ${lastName} is listed as probable for ${clause} due to ${injuryType} soreness.`
         ];
         comment = templates[seed % templates.length];
       } else if (gamesOut <= 15) {
@@ -237,6 +291,23 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
           preSelectedContact={selectedPlayerContact || undefined}
         />
       )}
+      {boxScoreGame && (() => {
+        const bsResult = state.boxScores.find((b: any) => b.gameId === boxScoreGame.gid);
+        const homeTeam = state.teams.find(t => t.id === boxScoreGame.homeTid);
+        const awayTeam = state.teams.find(t => t.id === boxScoreGame.awayTid);
+        if (!homeTeam || !awayTeam) return null;
+        return (
+          <BoxScoreModal
+            game={boxScoreGame}
+            result={bsResult}
+            homeTeam={homeTeam}
+            awayTeam={awayTeam}
+            players={state.players}
+            onClose={() => setBoxScoreGame(null)}
+            onPlayerClick={() => setBoxScoreGame(null)}
+          />
+        );
+      })()}
       <div className={embedded ? 'h-full overflow-y-auto' : 'max-w-6xl mx-auto h-full overflow-y-auto custom-scrollbar'}>
         {!embedded && (
           <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -292,6 +363,7 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
                         <tr>
                           <th className="px-6 py-3 font-semibold w-48">NAME</th>
                           <th className="px-6 py-3 font-semibold w-16">POS</th>
+                          <th className="px-6 py-3 font-semibold w-36 whitespace-nowrap">OCCURRED</th>
                           <th className="px-6 py-3 font-semibold w-40 whitespace-nowrap">EST. RETURN DATE</th>
                           <th className="px-6 py-3 font-semibold w-32">STATUS</th>
                           <th className="px-6 py-3 font-semibold">COMMENT</th>
@@ -312,6 +384,21 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
                               </td>
                               <td className="px-6 py-4 text-slate-400 font-medium">
                                 {player.pos}
+                              </td>
+                              <td className="px-6 py-4 text-slate-300 whitespace-nowrap font-mono text-xs">
+                                {(() => {
+                                  const g = findInjuryGame(player);
+                                  const text = formatOccurred(player.injury);
+                                  if (!g) return text;
+                                  return (
+                                    <span
+                                      className="cursor-pointer text-indigo-400 hover:text-indigo-300 hover:underline"
+                                      onClick={() => setBoxScoreGame(g)}
+                                    >
+                                      {text}
+                                    </span>
+                                  );
+                                })()}
                               </td>
                               <td className="px-6 py-4 text-slate-300 whitespace-nowrap">
                                 {getEstReturnDate(player.injury.gamesRemaining)}

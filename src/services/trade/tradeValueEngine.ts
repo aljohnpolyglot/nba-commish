@@ -30,7 +30,7 @@ export function isUntouchable(player: NBAPlayer, mode: TeamMode, currentYear: nu
   if (Math.max(directYrs, statYrs) >= 10) return true;
 
   if (mode === 'contend') return ovr >= 82;             // core rotation pieces
-  if (mode === 'rebuild' || mode === 'presti') return age < 25 && pot >= 86;  // young + high ceiling
+  if (mode === 'rebuild' || mode === 'presti') return age < 25 && pot >= 85;  // young + high ceiling
   return ovr >= 85 || (age < 24 && pot >= 88);          // neutral: stars or elite prospects
 }
 

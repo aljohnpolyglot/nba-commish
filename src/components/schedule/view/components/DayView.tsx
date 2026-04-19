@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Play, MonitorPlay, FastForward, Globe, Ticket, Star } from 'lucide-react';
 import { Game, NBATeam, NBAPlayer, NonNBATeam } from '../../../../types';
-import { normalizeDate, getTeamForGame } from '../../../../utils/helpers';
+import { normalizeDate, getTeamForGame, getOwnTeamId } from '../../../../utils/helpers';
 import { AllStarDayView } from './AllStarDayView';
 import { AllStarGameCard } from './AllStarGameCard';
 
@@ -61,6 +61,7 @@ export const DayView: React.FC<DayViewProps> = ({
   const stateDateNorm = normalizeDate(state.date);
   const selectedDateNorm = normalizeDate(selectedDate);
   const isActuallyToday = selectedDateNorm === stateDateNorm;
+  const ownTid = getOwnTeamId(state);
 
   const [year, month, day] = selectedDateNorm.split('-').map(Number);
   const isRisingStarsDay = month === 2 && day === 13;
@@ -74,9 +75,9 @@ export const DayView: React.FC<DayViewProps> = ({
   const isDraftLotteryDay = month === 5 && day === 14;  // mid-May, during playoffs
   const isNBADraftDay = month === 6 && day === 25;       // late June, post-playoffs
 
-  // Season Preview — shows on Aug 14 (schedule release day) until dismissed
-  const isScheduleReleaseDay = month === 8 && day === 14;
-  const showSeasonPreviewCard = isScheduleReleaseDay && !state?.seasonPreviewDismissed && !!state?.seasonHistory?.length;
+  // Season Preview — shows throughout October (training camp → opening night) until dismissed
+  const isPreseasonMonth = month === 10;
+  const showSeasonPreviewCard = isPreseasonMonth && !state?.seasonPreviewDismissed && !!state?.seasonHistory?.length;
 
   // Non-playoff teams sorted by worst record (for lottery odds display)
   const lotteryTeams = useMemo(() => {
@@ -438,8 +439,16 @@ export const DayView: React.FC<DayViewProps> = ({
                   ? state.playoffs?.playInGames.find((p: any) => p.id === game.playoffSeriesId)
                   : null;
 
+                const isUserGame = ownTid !== null && (game.homeTid === ownTid || game.awayTid === ownTid);
+                const userIsHome = isUserGame && game.homeTid === ownTid;
+                const userIsAway = isUserGame && game.awayTid === ownTid;
+
                 return (
-                  <div key={game.gid} className={`bg-[#111] border rounded-2xl p-4 transition-all hover:border-white/10 ${game.isPlayoff || game.isPlayIn ? 'border-indigo-500/20' : isIntlPreseason ? 'border-emerald-500/20' : 'border-white/5'}`}>
+                  <div key={game.gid} className={`border rounded-2xl p-4 transition-all ${
+                    isUserGame
+                      ? 'bg-indigo-950/40 border-indigo-500/50 ring-1 ring-indigo-500/30 shadow-lg shadow-indigo-500/10'
+                      : `bg-[#111] hover:border-white/10 ${game.isPlayoff || game.isPlayIn ? 'border-indigo-500/20' : isIntlPreseason ? 'border-emerald-500/20' : 'border-white/5'}`
+                  }`}>
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
                         <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
@@ -449,6 +458,11 @@ export const DayView: React.FC<DayViewProps> = ({
                             return bs.otCount && bs.otCount > 1 ? `Final ${bs.otCount}OT` : 'Final OT';
                           })() : 'Scheduled'}
                         </div>
+                        {isUserGame && (
+                          <span className="text-[8px] font-black uppercase tracking-widest bg-indigo-500/25 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/40">
+                            {userIsHome ? 'Home Game' : 'Road Game'}
+                          </span>
+                        )}
                         {isIntlPreseason && (
                           <Globe size={14} className="text-emerald-500" />
                         )}
@@ -482,8 +496,8 @@ export const DayView: React.FC<DayViewProps> = ({
                           </div>
                         )}
                         <div className="text-center">
-                          <div className="text-sm font-black text-white">{awayLabel}</div>
-                          <div className="text-[10px] text-slate-500 font-bold">{awayName}</div>
+                          <div className={`text-sm font-black ${userIsAway ? 'text-indigo-300' : 'text-white'}`}>{awayLabel}</div>
+                          <div className={`text-[10px] font-bold ${userIsAway ? 'text-indigo-400/80' : 'text-slate-500'}`}>{awayName}</div>
                         </div>
                         {game.played && (
                           <div className={`text-2xl font-black ${game.awayScore > game.homeScore ? 'text-white' : 'text-slate-700'}`}>
@@ -514,8 +528,8 @@ export const DayView: React.FC<DayViewProps> = ({
                           </div>
                         )}
                         <div className="text-center">
-                          <div className="text-sm font-black text-white">{homeLabel}</div>
-                          <div className="text-[10px] text-slate-500 font-bold">{homeName}</div>
+                          <div className={`text-sm font-black ${userIsHome ? 'text-indigo-300' : 'text-white'}`}>{homeLabel}</div>
+                          <div className={`text-[10px] font-bold ${userIsHome ? 'text-indigo-400/80' : 'text-slate-500'}`}>{homeName}</div>
                         </div>
                         {game.played && (
                           <div className={`text-2xl font-black ${game.homeScore > game.awayScore ? 'text-white' : 'text-slate-700'}`}>

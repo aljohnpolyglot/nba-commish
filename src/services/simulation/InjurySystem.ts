@@ -16,6 +16,10 @@ export interface PlayerInjuryEvent {
   /** Permanent rating deltas to apply to the player's current-season ratings object.
    *  Only present for major injuries (see MAJOR_INJURY_STAT_CHANGES). */
   statChanges?: Partial<Record<string, number>>;
+  /** ISO date this injury was logged. Engine stamps this before results are dispatched. */
+  startDate?: string;
+  /** Origin label — "vs HOU" / "@OKC". Absent when non-game (checkInjuries bench roll). */
+  origin?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -104,13 +108,18 @@ const MAJOR_INJURY_GAMES_THRESHOLD = 15;
  * of the current year (and a handful of games at the start of next season, which
  * mirrors real ACL / Achilles recovery timelines).
  */
-const SEASON_ENDING_INJURIES = new Set([
+export const SEASON_ENDING_INJURIES = new Set([
   'Torn ACL',
   'Torn Achilles',
   'Torn Patellar Tendon',
   'Tibial Fracture',
   'Hip Fracture',
 ]);
+
+/** True when the given injury type is considered devastating / long-term / career-altering. */
+export function isDevastatingInjury(type: string): boolean {
+  return SEASON_ENDING_INJURIES.has(type);
+}
 const SEASON_ENDING_MIN_GAMES = 82;
 
 export function enforceSeasonEndingMinimum(type: string, games: number): number {
@@ -332,7 +341,10 @@ export class InjurySystem {
     awayTeam: NBATeam,
   ): PlayerInjuryEvent[] {
     const events: PlayerInjuryEvent[] = [];
-    const BASE_INJURY_RATE = 0.015;
+    // Base rate covers bench/off-court "random" nags (practice, travel, soreness).
+    // Was 0.015 — flooded the injuries list with non-game injuries every sim.
+    // 0.004 keeps the league injured-share realistic without spamming unrelated players.
+    const BASE_INJURY_RATE = 0.004;
 
     for (const player of players) {
       if (player.injury && player.injury.gamesRemaining > 0) continue;

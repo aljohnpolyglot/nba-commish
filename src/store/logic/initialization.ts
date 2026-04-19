@@ -341,7 +341,27 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         news: initialNews,
         socialFeed: initialSocial,
         historicalStats: [initialHistoricalPoint],
-         historicalAwards: historicalAwardsData, 
+         historicalAwards: (() => {
+            // Seed from team.seasons (playoffRoundsWon===4 = champion) — authoritative source for real-world history
+            const fromSeasons: any[] = [];
+            for (const team of teams as any[]) {
+                for (const s of team.seasons ?? []) {
+                    if (s.playoffRoundsWon === 4) {
+                        fromSeasons.push({ season: s.season, type: 'Champion', name: team.name, tid: team.id });
+                    } else if (s.playoffRoundsWon === 3) {
+                        fromSeasons.push({ season: s.season, type: 'Runner Up', name: team.name, tid: team.id });
+                    }
+                }
+            }
+            // Merge with any BBGM awards data (dedup by season+tid+type)
+            const key = (a: any) => `${a.season}-${a.tid}-${a.type}`;
+            const seen = new Set(fromSeasons.map(key));
+            const merged = [...fromSeasons];
+            for (const a of historicalAwardsData) {
+                if (!seen.has(key(a))) merged.push(a);
+            }
+            return merged;
+        })(),
         followedHandles: ['nba', 'wojespn', 'ShamsCharania', 'statmuse'],
         history: [{ text: `${commissionerName} took office as the new NBA Commissioner.`, date: startDateFormatted || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), type: 'League Event' } as any],
         

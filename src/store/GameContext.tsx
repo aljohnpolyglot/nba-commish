@@ -341,6 +341,63 @@ const actions = useGameActions(setState, () => stateRef.current);
       return;
     }
 
+    if (action.type === 'SUBMIT_FA_BID') {
+      // User enters the competitive FA market instead of signing instantly.
+      // Creates a market if none exists, replaces any prior user bid on the
+      // same player (only one active user bid at a time), and lets the daily
+      // market ticker resolve at decidesOnDay. Does NOT mutate the player —
+      // resolution is the only path that applies the contract.
+      const { playerId, playerName, teamId, teamName, teamLogoUrl, salaryUSD, years, option } = action.payload as {
+        playerId: string;
+        playerName: string;
+        teamId: number;
+        teamName: string;
+        teamLogoUrl?: string;
+        salaryUSD: number;
+        years: number;
+        option: 'NONE' | 'PLAYER' | 'TEAM';
+      };
+      setState(prev => {
+        const currentDay = prev.day ?? 0;
+        const markets = prev.faBidding?.markets ? [...prev.faBidding.markets] : [];
+        const newUserBid = {
+          id: `user-bid-${playerId}-${teamId}-${Date.now()}`,
+          playerId,
+          teamId,
+          teamName,
+          teamLogoUrl,
+          salaryUSD,
+          years,
+          option,
+          isUserBid: true,
+          submittedDay: currentDay,
+          // Stay active until the market's decision day; if market doesn't exist
+          // yet we'll seed a 4-day window.
+          expiresDay: currentDay + 4,
+          status: 'active' as const,
+        };
+        const existingIdx = markets.findIndex(m => m.playerId === playerId && !m.resolved);
+        if (existingIdx >= 0) {
+          const existing = markets[existingIdx];
+          const withoutPrior = existing.bids.filter(b => !b.isUserBid);
+          markets[existingIdx] = {
+            ...existing,
+            bids: [...withoutPrior, { ...newUserBid, expiresDay: existing.decidesOnDay }],
+          };
+        } else {
+          markets.push({
+            playerId,
+            playerName,
+            bids: [newUserBid],
+            decidesOnDay: currentDay + 4,
+            resolved: false,
+          });
+        }
+        return { ...prev, faBidding: { markets } };
+      });
+      return;
+    }
+
     // ── Social-only actions — pure state patches, never run the simulation ──
     if (action.type === 'CACHE_PROFILE') {
       const { handle, profile } = (action as any).payload;
@@ -643,6 +700,22 @@ const actions = useGameActions(setState, () => stateRef.current);
           batchSize: diffDays > 30 ? 7 : 1,
           stopBefore,
         });
+        // Overlay mode: pre-seed lazySimProgress immediately so the LazySim full-screen
+        // takes over before any flash of the generic "Processing Executive Order" modal.
+        // The first real onProgress callback will overwrite this placeholder within a tick.
+        if (simMode === 'overlay') {
+          setState(prev => ({
+            ...prev,
+            lazySimProgress: {
+              currentDate: currentNorm,
+              targetDate: targetNorm,
+              daysComplete: 0,
+              daysTotal: diffDays,
+              currentPhase: 'Warming up simulation...',
+              percentComplete: 0,
+            },
+          }));
+        }
         const result = await runLazySim(
           stateRef.current,
           action.payload.targetDate,
@@ -668,8 +741,15 @@ const actions = useGameActions(setState, () => stateRef.current);
             ...result.state,
             lazySimProgress: undefined,
             isProcessing: false,
-            // Silent mode: surface lastSimResults so game results modal shows
-            lastSimResults: result.lastSimResults.length > 0 ? result.lastSimResults : prev.lastSimResults,
+            // Silent mode (short sims): surface lastSimResults so game ticker modal shows.
+            // Overlay mode (long sims >30d): the full-screen progress screen already narrated
+            // the sim — skip the post-sim ticker so we don't stack two overlays.
+            lastSimResults:
+              simMode === 'overlay'
+                ? []
+                : result.lastSimResults.length > 0
+                  ? result.lastSimResults
+                  : prev.lastSimResults,
           };
         });
         return;
@@ -749,10 +829,11 @@ const actions = useGameActions(setState, () => stateRef.current);
       }
     } catch (error) {
       console.error("Failed to process action:", error);
-      setState(prev => ({ 
-        ...prev, 
-        isProcessing: false, 
-        lastOutcome: "An error occurred while processing your action. The simulation glitched." 
+      setState(prev => ({
+        ...prev,
+        isProcessing: false,
+        lazySimProgress: undefined,
+        lastOutcome: "An error occurred while processing your action. The simulation glitched."
       }));
     }
   };

@@ -45,10 +45,10 @@ export const preProcessAction = async (state: GameState, action: UserAction): Pr
     } else if (action.type === 'EXECUTIVE_TRADE') {
         const tradeResult = executeExecutiveTrade(action.payload, state.players, state.teams, state.draftPicks);
         executiveTradeTransaction = tradeResult.transaction;
-        
+
         let p = [...state.players];
         let d = [...state.draftPicks];
-        
+
         Object.entries(tradeResult.transaction.teams).forEach(([sourceTidStr, assets]) => {
             const teamAssets = assets as { playersSent: Player[], picksSent: DraftPick[] };
             const destTidStr = Object.keys(tradeResult.transaction.teams).find(id => id !== sourceTidStr);

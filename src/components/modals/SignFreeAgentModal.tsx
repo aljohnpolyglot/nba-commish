@@ -33,7 +33,7 @@ interface SignFreeAgentModalProps {
 }
 
 export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose, onConfirm, initialPlayer, initialTeam, forceContractType }) => {
-  const { state } = useGame();
+  const { state, dispatchAction } = useGame();
   const isGM = state.gameMode === 'gm';
   const userTeam = useMemo(
     () => (isGM && state.userTeamId != null ? state.teams.find(t => t.id === state.userTeamId) ?? null : null),
@@ -135,6 +135,24 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
             twoWay,
             mleType,
           });
+        }}
+        onSubmitBid={({ salary, years, option }) => {
+          // Bidding-war path — post a competing offer into state.faBidding.markets
+          // instead of signing right away. The ticker resolves it alongside AI bids
+          // 3-5 days later. No tid/contract mutation happens here.
+          dispatchAction({
+            type: 'SUBMIT_FA_BID',
+            payload: {
+              playerId: selectedPlayer.internalId,
+              playerName: selectedPlayer.name,
+              teamId: selectedTeam.id,
+              teamName: selectedTeam.name,
+              teamLogoUrl: (selectedTeam as any).logoUrl,
+              salaryUSD: salary,
+              years,
+              option,
+            },
+          } as any);
         }}
       />
     );

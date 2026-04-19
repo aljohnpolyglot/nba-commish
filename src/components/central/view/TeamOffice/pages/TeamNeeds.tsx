@@ -67,6 +67,46 @@ export function TeamNeeds({ teamId }: TeamNeedsProps) {
     return sums;
   }, [allActive]);
 
+  // Slot affinity — matches the lineup-sort logic in StarterService.sortByPositionSlot.
+  // A player's "fit" at each slot blends their pos tag with their height rating, so
+  // external-league rosters (pos tagged 'G'/'F'/'C' or missing entirely) still slot
+  // cleanly. Prior bug: strict `p.pos === 'PG'` meant any team with only 'G'-tagged
+  // guards showed "Urgent Need" at PG despite having real point guards.
+  const slotAffinity = (p: NBAPlayer, slot: 'PG' | 'SG' | 'SF' | 'PF' | 'C'): number => {
+    const pos = (p.pos ?? '').toUpperCase();
+    const r = p.ratings?.[p.ratings.length - 1];
+    const hgt = (r as any)?.hgt ?? 50;
+    // Position-tag affinity table. Each slot awards a tag-match bonus; specific
+    // tags always beat generic ones (PG tag > G tag > SG tag for PG slot).
+    const TAG_MAP: Record<string, Record<string, number>> = {
+      PG: { PG: 100, G: 70, SG: 50, GF: 15, SF: 5,  F: 0,   PF: 0,  FC: 0,  C: 0 },
+      SG: { SG: 100, G: 70, GF: 60, PG: 50, SF: 35, F: 15,  PF: 0,  FC: 0,  C: 0 },
+      SF: { SF: 100, F: 70, GF: 60, PF: 40, SG: 30, FC: 20, G: 5,   PG: 0,  C: 10 },
+      PF: { PF: 100, F: 70, FC: 65, C: 45,  SF: 30, GF: 5,  SG: 0,  G: 0,   PG: 0 },
+      C:  { C: 100,  FC: 75, PF: 45, F: 15, SF: 0,  PF: 45, GF: 0,  SG: 0,  G: 0, PG: 0 },
+    };
+    const tagScore = TAG_MAP[slot][pos] ?? 0;
+    // Height-rating target per slot (matches StarterService's big/guard splits).
+    const HGT_TARGET: Record<string, number> = { PG: 40, SG: 48, SF: 56, PF: 65, C: 75 };
+    const hgtDist = Math.abs(hgt - HGT_TARGET[slot]);
+    const hgtScore = Math.max(0, 40 - hgtDist); // closer to target = higher
+    return tagScore + hgtScore;
+  };
+
+  // Top-2 by slot affinity, averaged OVR. Affinity threshold filters out "anyone
+  // could theoretically slot here" noise — a player needs a real fit to count as
+  // positional depth. Fallback to the best available if no one clears the bar.
+  const getPosTopAvg = (roster: NBAPlayer[], slot: 'PG' | 'SG' | 'SF' | 'PF' | 'C'): number => {
+    const ranked = roster
+      .map(p => ({ p, fit: slotAffinity(p, slot) }))
+      .sort((a, b) => b.fit - a.fit);
+    const viable = ranked.filter(e => e.fit >= 40).slice(0, 2);
+    const pool = viable.length > 0 ? viable : ranked.slice(0, 1);
+    if (pool.length === 0) return 40;
+    const sum = pool.reduce((a, e) => a + (e.p.overallRating ?? 50), 0);
+    return sum / pool.length;
+  };
+
   // League-wide positional averages
   const leaguePosAverages = useMemo(() => {
     const teamIds = [...new Set(allActive.map(p => p.tid))];
@@ -76,18 +116,11 @@ export function TeamNeeds({ teamId }: TeamNeedsProps) {
 
     teamIds.forEach(tid => {
       const roster = allActive.filter(p => p.tid === tid);
-      const getPosTop2Avg = (pos: string) => {
-        const posPlayers = roster.filter(p => p.pos === pos).sort((a, b) => b.overallRating - a.overallRating).slice(0, 2);
-        if (posPlayers.length === 0) return 40;
-        if (posPlayers.length === 1) return posPlayers[0].overallRating;
-        return (posPlayers[0].overallRating + posPlayers[1].overallRating) / 2;
-      };
-
-      totalPG += getPosTop2Avg('PG');
-      totalSG += getPosTop2Avg('SG');
-      totalSF += getPosTop2Avg('SF');
-      totalPF += getPosTop2Avg('PF');
-      totalC += getPosTop2Avg('C');
+      totalPG += getPosTopAvg(roster, 'PG');
+      totalSG += getPosTopAvg(roster, 'SG');
+      totalSF += getPosTopAvg(roster, 'SF');
+      totalPF += getPosTopAvg(roster, 'PF');
+      totalC += getPosTopAvg(roster, 'C');
     });
 
     const n = teamIds.length;

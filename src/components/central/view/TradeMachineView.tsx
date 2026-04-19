@@ -20,7 +20,8 @@ export const TradeMachineView: React.FC<TradeMachineViewProps> = ({ onViewChange
     teamAPlayers: string[],
     teamBPlayers: string[],
     teamAPicks: number[],
-    teamBPicks: number[]
+    teamBPicks: number[],
+    commissionerForced?: boolean
   }) => {
     dispatchAction({ type: 'EXECUTIVE_TRADE', payload } as any);
     onViewChange('NBA Central');

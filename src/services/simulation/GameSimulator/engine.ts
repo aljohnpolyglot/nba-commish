@@ -709,6 +709,20 @@ export class GameSimulator {
     // Record DNP reasons at time of simulation so historical views stay accurate
     const playedHomeIds = new Set(homeStatsFinal.map(s => s.playerId));
     const playedAwayIds = new Set(awayStatsFinal.map(s => s.playerId));
+
+    // Stamp checkInjuries results with startDate + origin. Every game-day injury gets
+    // an opponent label based on the player's team — even bench guys, so the UI shows
+    // "Nov 5 vs LAC" consistently. Pre-existing roster injuries remain the only ones
+    // without an origin (they get "Last Season"/"Summer 2025" at init).
+    const homeAbbrev = (homeTeam as any).abbrev;
+    const awayAbbrev = (awayTeam as any).abbrev;
+    for (const inj of injuries) {
+      if (inj.startDate) continue; // already stamped by mid-game path
+      inj.startDate = date;
+      const isHome = inj.teamId === homeTeam.id;
+      const oppAbbrev = isHome ? awayAbbrev : homeAbbrev;
+      if (oppAbbrev) inj.origin = `${isHome ? 'vs' : '@'} ${oppAbbrev}`;
+    }
     const playerDNPs: Record<string, string> = {};
     for (const p of homePlayers) {
       if (!playedHomeIds.has(p.internalId) && p.status === 'Active') {
@@ -725,13 +739,26 @@ export class GameSimulator {
       }
     }
 
+    // ── Players who suited up already hurt (play-through injuries) ──────────
+    // Snapshot the pre-existing injury for anyone who actually logged minutes.
+    // BoxScoreModal renders these with an orange indicator ("playing hurt").
+    const playersPlayingHurt: Record<string, string> = {};
+    const playedAllStats = [...homeStatsFinal, ...awayStatsFinal];
+    for (const stat of playedAllStats) {
+      const src = availablePlayers.find(p => p.internalId === stat.playerId);
+      const g = src?.injury?.gamesRemaining ?? 0;
+      if (g > 0 && src?.injury?.type) {
+        playersPlayingHurt[stat.playerId] = src.injury.type;
+      }
+    }
+
     // ── Mid-game injuries — any player can roll, low-minute players much more likely ──
     // Low minutes (< 15) = clearly left early → 20% chance it's real
     // Short night (15-25) = possible early exit → 7% chance
     // Full game (25-35) = contact/twist late → 2% chance
     // Iron man (35+) → 0.6% chance
     const injuryDefs = getInjuries();
-    const playerInGameInjuries: Record<string, string> = {};
+    const playerInGameInjuries: Record<string, { type: string; quarter: number }> = {};
     // Detect international preseason: one side is a non-NBA team (tid ≥ 100).
     // `game` is not in scope here — derive from homeTeam/awayTeam ids that were passed in.
     const isIntlPreseason = homeTeam.id >= 100 || awayTeam.id >= 100;
@@ -763,16 +790,25 @@ export class GameSimulator {
         const gameMult = Math.max(0.70, baseMult + severityAdj);
         const gamesRemaining = enforceSeasonEndingMinimum(drawn.name, Math.max(1, Math.round(drawn.games * gameMult)));
 
+        // Origin label — mid-game injury → prefix by side. Home team vs opponent, away team @ opponent.
+        const isHome = player.tid === homeTeam.id;
+        const oppAbbrev = isHome ? (awayTeam as any).abbrev : (homeTeam as any).abbrev;
+        const origin = oppAbbrev ? `${isHome ? 'vs' : '@'} ${oppAbbrev}` : undefined;
         injuries.push({
           playerId:       player.internalId,
           playerName:     player.name,
           teamId:         player.tid,
           injuryType:     drawn.name,
           gamesRemaining,
+          startDate:      date,
+          origin,
         });
         // Only flag "left early" if the injury actually costs the player games.
+        // Use stat.min (total minutes played) to approximate the quarter they exited:
+        // 0–12 → Q1, 12–24 → Q2, 24–36 → Q3, 36+ → Q4 (OT clamps to 4).
         if (gamesRemaining > 0) {
-          playerInGameInjuries[player.internalId] = drawn.name;
+          const quarter = Math.max(1, Math.min(4, Math.ceil(Math.max(1, stat.min) / 12)));
+          playerInGameInjuries[player.internalId] = { type: drawn.name, quarter };
         }
       }
     }
@@ -816,6 +852,7 @@ export class GameSimulator {
       gameWinner,
       playerDNPs,
       playerInGameInjuries,
+      playersPlayingHurt,
       fight,
       highlights,
       // Snapshot records at tip-off (before this game's result is applied)
@@ -1168,11 +1205,14 @@ export class GameSimulator {
             // being treated as "eliminated" (82 reg-season games done → gamesRemaining=0, gb>0
             // → standingsProfile returns 12-deep exhibition-style rotation). All remaining
             // playoff teams are still competing — use tight, star-heavy playoff rotation.
-            homeKnobs = { ...leagueBaseKnobs, ...homeCtx, gbFromLeader: 0, gamesRemaining: 7, isPlayoffs: true };
-            awayKnobs = { ...leagueBaseKnobs, ...awayCtx, gbFromLeader: 0, gamesRemaining: 7, isPlayoffs: true };
+            // playThroughInjuries=4: every severity level gutting it out (playoff toughness).
+            homeKnobs = { ...leagueBaseKnobs, ...homeCtx, gbFromLeader: 0, gamesRemaining: 7, isPlayoffs: true, playThroughInjuries: 4 };
+            awayKnobs = { ...leagueBaseKnobs, ...awayCtx, gbFromLeader: 0, gamesRemaining: 7, isPlayoffs: true, playThroughInjuries: 4 };
           } else {
-            homeKnobs = { ...leagueBaseKnobs, ...homeCtx };
-            awayKnobs = { ...leagueBaseKnobs, ...awayCtx };
+            // Regular season: level 2 — only mild/moderate injuries play through (minutes-restricted);
+            // significant/major injuries still sit. Matches "Questionable / Day-to-Day" news framing.
+            homeKnobs = { ...leagueBaseKnobs, ...homeCtx, playThroughInjuries: 2 };
+            awayKnobs = { ...leagueBaseKnobs, ...awayCtx, playThroughInjuries: 2 };
           }
         }
 

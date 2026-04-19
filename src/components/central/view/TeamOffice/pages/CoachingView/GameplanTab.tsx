@@ -159,26 +159,41 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
 
     const savedStarters = (saved?.starterIds ?? []).filter(id => onTeamIds.has(id));
     const projected = team
-      ? StarterService.getProjectedStarters(team, state.players)
+      ? StarterService.getProjectedStarters(team, state.players, currentYear)
           .slice(0, 5)
           .map(p => p.internalId)
       : [];
 
     let nextStarters: string[];
+    let hadToFill = false;
     if (savedStarters.length > 0) {
       nextStarters = [...savedStarters];
+      hadToFill = savedStarters.length < 5;
     } else if (idealActive && ideal) {
       // Derive daily starters from Ideal: keep healthy ideal starters, fill
       // vacated slots from projected order (also health-filtered).
       nextStarters = ideal.starterIds.filter(id => healthyIds.has(id));
+      hadToFill = nextStarters.length < 5;
     } else {
       nextStarters = [];
+      hadToFill = true;
     }
     for (const pid of projected) {
       if (nextStarters.length >= 5) break;
       if (!nextStarters.includes(pid)) nextStarters.push(pid);
     }
-    const finalStarters = nextStarters.slice(0, 5);
+    let finalStarters = nextStarters.slice(0, 5);
+    // If we had to fill from the projected fallback (after a trade or injury
+    // broke the saved lineup), re-sort by position so the PG slot actually
+    // holds a point guard, C slot a center, etc. A fully-intact saved order
+    // is preserved — that's the user's explicit drag arrangement.
+    if (hadToFill) {
+      const starterPlayers = finalStarters
+        .map(id => state.players.find(p => p.internalId === id))
+        .filter((p): p is NBAPlayer => !!p);
+      finalStarters = StarterService.sortByPositionSlot(starterPlayers, currentYear)
+        .map(p => p.internalId);
+    }
     setStarterOrder(finalStarters);
 
     // Seed bench order: saved order first (filtered to on-team, non-starter),
@@ -207,7 +222,8 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     rotation.forEach((p, i) => {
       const prior = saved?.minuteOverrides?.[p.internalId];
       const fromIdeal = idealDerived?.[p.internalId];
-      seed[p.internalId] = prior ?? fromIdeal ?? Math.round(baseMinutes[i] ?? 0);
+      const raw = prior ?? fromIdeal ?? Math.round(baseMinutes[i] ?? 0);
+      seed[p.internalId] = Math.max(0, Math.min(48, raw));
     });
     setMinuteOverrides(seed);
   }, [rotation, baseMinutes, team, state.players, teamId]);
@@ -547,6 +563,11 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     } else {
       starters = projected;
     }
+    // Auto always emits a position-ordered lineup regardless of source.
+    const starterPlayers = starters
+      .map(id => state.players.find(p => p.internalId === id))
+      .filter((p): p is NBAPlayer => !!p);
+    starters = StarterService.sortByPositionSlot(starterPlayers, currentYear).map(p => p.internalId);
     setStarterOrder(starters);
 
     const starterSet = new Set(starters);
@@ -557,7 +578,8 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
       ? reconcileIdealMinutes(ideal.minutes, rotation.map(p => p.internalId))
       : null;
     rotation.forEach((p, i) => {
-      seed[p.internalId] = idealDerived?.[p.internalId] ?? Math.round(baseMinutes[i] ?? 0);
+      const raw = idealDerived?.[p.internalId] ?? Math.round(baseMinutes[i] ?? 0);
+      seed[p.internalId] = Math.max(0, Math.min(48, raw));
     });
     setMinuteOverrides(seed);
     setSelectedId(null);
@@ -791,7 +813,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
                     min={0}
                     // Cap the thumb's travel at remaining headroom so the user
                     // physically can't drag past the 240-min team budget.
-                    max={Math.max(mins, Math.min(48, mins + Math.max(0, remaining)))}
+                    max={48}
                     step={1}
                     value={mins}
                     onChange={e => setMins(p.internalId, +e.target.value)}
@@ -813,7 +835,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
                   <input
                     type="range"
                     min={0}
-                    max={Math.max(mins, Math.min(48, mins + Math.max(0, remaining)))}
+                    max={48}
                     step={1}
                     value={mins}
                     onChange={e => setMins(p.internalId, +e.target.value)}

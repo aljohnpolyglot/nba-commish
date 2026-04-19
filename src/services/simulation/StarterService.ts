@@ -82,7 +82,80 @@ export class StarterService {
         if (worstStarter) lineup.splice(lineup.indexOf(worstStarter), 1, bestBig);
       }
     }
+    // IMPORTANT: return in OVR order, NOT slot order.
+    // MinutesPlayedService.allocateMinutes assumes rotation[0] is the star and
+    // assigns it the star-MPG target (~36 min), with slots 1-4 stepping down.
+    // If we position-sort here, a role-player PG at slot 0 would swallow the
+    // star minutes while the actual star (e.g., a C) gets demoted to slot 4's
+    // step-down minutes. Display-layer sorting (GameplanTab/IdealRotationTab
+    // call sortByPositionSlot at render time) keeps the UI showing PG→SG→...→C
+    // while the minutes math stays anchored to OVR.
     return lineup.slice(0, 5);
+  }
+
+  /**
+   * Reorder 5 players into PG→SG→SF→PF→C slot order.
+   *
+   * Strategy:
+   *   1. If every player has a specific pos (PG/SG/SF/PF/C), greedy-assign to
+   *      slots by a slot-preference score; ties broken by hgt rating.
+   *   2. If positions are ambiguous ('G'/'F'/'GF'/'FC'/empty) or only a subset
+   *      have specific tags, fall back to: highest pss rating = PG, then the
+   *      remaining four sorted by hgt rating ASCENDING (shortest = SG, tallest
+   *      = C). Critical: uses the hgt RATING (0-100 attribute), not the bio
+   *      inches — external-league players often have a good hgt attribute but
+   *      no proper pos tag from the scrape.
+   */
+  static sortByPositionSlot(players: Player[], season: number = 2025): Player[] {
+    if (players.length === 0) return players;
+
+    const SLOT_MAP: Record<string, number> = {
+      PG: 0, G: 0.5, SG: 1, GF: 1.5, SF: 2, F: 2.5, PF: 3, FC: 3.5, C: 4,
+    };
+    const SPECIFIC = new Set(['PG', 'SG', 'SF', 'PF', 'C']);
+
+    const hgt = (p: Player) => this.getScaledRating(p, 'hgt', season);
+    const pss = (p: Player) => this.getScaledRating(p, 'pss', season);
+
+    const allSpecific = players.every(p => SPECIFIC.has(p.pos ?? ''));
+    if (allSpecific) {
+      return [...players].sort((a, b) => {
+        const sa = SLOT_MAP[a.pos ?? 'F'] ?? 2.5;
+        const sb = SLOT_MAP[b.pos ?? 'F'] ?? 2.5;
+        if (sa !== sb) return sa - sb;
+        return hgt(a) - hgt(b); // shorter slots first within the same pos tie
+      });
+    }
+
+    // Fallback — roster scrape didn't give clean positions (or some players
+    // are generic 'G'/'F'/'C'). Pick PG with a tiered preference so guard-tagged
+    // players always beat forward-tagged ones (prior bug: Tatum 'SF' stole PG
+    // from Pritchard 'G' because of marginal pss edge).
+    const sorted = [...players];
+    const posOf = (p: Player) => (p.pos ?? '').toUpperCase();
+    const isFrontcourt = (p: Player) => {
+      const pos = posOf(p);
+      return pos.includes('F') || pos.includes('C');
+    };
+    // Strict tag-priority: PG first, then G, then SG. Only if none of those
+    // exist do we fall back to height/passing heuristics. Prior bug: Tatum
+    // ('SF') stole PG from Pritchard ('G') via marginal pss edge.
+    const pickByTag = (tag: string) => sorted.filter(p => posOf(p) === tag);
+    let pgPool = pickByTag('PG');
+    if (pgPool.length === 0) pgPool = pickByTag('G');
+    if (pgPool.length === 0) pgPool = pickByTag('SG');
+    if (pgPool.length === 0) {
+      pgPool = sorted.filter(p => hgt(p) <= 60 && !isFrontcourt(p));
+    }
+    if (pgPool.length === 0) {
+      pgPool = [...sorted].sort((a, b) => hgt(a) - hgt(b)).slice(0, 1);
+    }
+    let pg = pgPool[0];
+    for (const p of pgPool) {
+      if (pss(p) > pss(pg)) pg = p;
+    }
+    const rest = sorted.filter(p => p !== pg).sort((a, b) => hgt(a) - hgt(b));
+    return [pg, ...rest];
   }
 
   static getRotation(team: Team, players: Player[], lead: number = 0, season: number = 2025, overridePlayers?: Player[], modern: boolean = true): Player[] {

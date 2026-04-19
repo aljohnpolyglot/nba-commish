@@ -26,7 +26,7 @@ const ovrTextColor = (v: number): string => {
 
 interface TradeMachineModalProps {
   onClose: () => void;
-  onConfirm: (payload: { teamAId: number, teamBId: number, teamAPlayers: string[], teamBPlayers: string[], teamAPicks: number[], teamBPicks: number[] }) => void;
+  onConfirm: (payload: { teamAId: number, teamBId: number, teamAPlayers: string[], teamBPlayers: string[], teamAPicks: number[], teamBPicks: number[], commissionerForced?: boolean }) => void;
   // Optional pre-load state (from Trade Finder "Manage Trade")
   initialTeamAId?: number;
   initialTeamBId?: number;
@@ -430,12 +430,16 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
 
     setShowSummaryModal(false);
     setTradeResponse(null);
+    // Commissioner clicking "Force Trade" (salary mismatch / past deadline override) — tag the
+    // payload so the action handler injects controversy seeds + morale/viewership hits.
+    const commissionerForced = !isGM && force;
     onConfirm({
       teamAId, teamBId,
       teamAPlayers: teamAPlayers.map(p => p.internalId),
       teamBPlayers: teamBPlayers.map(p => p.internalId),
       teamAPicks: teamAPicks.map(p => p.dpid),
-      teamBPicks: teamBPicks.map(p => p.dpid)
+      teamBPicks: teamBPicks.map(p => p.dpid),
+      ...(commissionerForced ? { commissionerForced: true } : {})
     });
   };
 

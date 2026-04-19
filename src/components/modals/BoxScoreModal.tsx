@@ -311,11 +311,32 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                   >
                     {s.name}
                   </button>
-                  {result?.playerInGameInjuries?.[s.playerId] && (
-                    <span className="ml-2 text-[10px] font-bold text-orange-400/80 uppercase tracking-wide whitespace-nowrap">
-                      ✦ Left early ({result.playerInGameInjuries[s.playerId]})
-                    </span>
-                  )}
+                  {(() => {
+                    const exit = result?.playerInGameInjuries?.[s.playerId];
+                    if (exit) {
+                      const q = exit.quarter > 4 ? 'OT' : `Q${exit.quarter}`;
+                      return (
+                        <span
+                          title={`Left in ${q} — ${exit.type}`}
+                          className="ml-1.5 inline-block text-[9px] font-black text-red-500 cursor-help align-middle"
+                        >
+                          ✚
+                        </span>
+                      );
+                    }
+                    const hurt = result?.playersPlayingHurt?.[s.playerId];
+                    if (hurt) {
+                      return (
+                        <span
+                          title={`Playing hurt — ${hurt}`}
+                          className="ml-1.5 inline-block text-[9px] font-black text-orange-500 cursor-help align-middle"
+                        >
+                          ✚
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
                 </td>
                 <td className="px-2 py-3 font-mono text-slate-400">{getPlayerPos(s.playerId)}</td>
                 <td className="px-2 py-3 text-right font-mono">{Math.floor(s.min)}:{Math.floor((s.min % 1) * 60).toString().padStart(2, '0')}</td>

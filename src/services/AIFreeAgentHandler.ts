@@ -6,7 +6,7 @@
  */
 
 import type { GameState, NBAPlayer, NBATeam } from '../types';
-import { getCapThresholds, getTeamCapProfile, computeContractOffer, getMLEAvailability, effectiveRecord } from '../utils/salaryUtils';
+import { getCapThresholds, getTeamCapProfile, computeContractOffer, getMLEAvailability, effectiveRecord, getContractLimits } from '../utils/salaryUtils';
 import type { MleType } from '../utils/salaryUtils';
 import { convertTo2KRating } from '../utils/helpers';
 import { SettingsManager } from './SettingsManager';
@@ -14,6 +14,7 @@ import { computeMoodScore } from '../utils/mood/moodScore';
 import type { MoodTrait } from '../utils/mood/moodTypes';
 import { calcPot2K } from './trade/tradeValueEngine';
 import { isAssistantGMActive } from './assistantGMFlag';
+import { getGMAttributes, clampSpendOffer, workEthicSignProb } from './staff/gmAttributes';
 
 const DEFAULT_MAX_ROSTER = 15;
 
@@ -61,9 +62,14 @@ function getBestFit(
     thresholds,
   );
 
+  const gmSpending = getGMAttributes(state, team.id).spending;
   return freeAgents
     .filter(p => {
-      const offer = computeContractOffer(p, state.leagueStats as any);
+      const baseOffer = computeContractOffer(p, state.leagueStats as any);
+      const limits = getContractLimits(p, state.leagueStats as any);
+      // Never push AI offers over the player's max contract. Cap-space headroom
+      // isn't a hard ceiling here — MLE still lets teams offer above cap.
+      const offer = { ...baseOffer, salaryUSD: clampSpendOffer(baseOffer.salaryUSD, gmSpending, limits.maxSalaryUSD) };
 
       // Build an effective leagueStats that merges any MLE already spent this round
       const localEntry = localMleUsed.get(team.id);
@@ -123,7 +129,16 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   // franchise" remembered across mode switches, and we don't want that team frozen out of the AI loop.
   const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive()) ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
 
-  let pool = state.players.filter(p => p.tid < 0 && p.status === 'Free Agent');
+  // Players with an active FA bidding market are reserved by `faMarketTicker` —
+  // the round must not poach them on a non-resolution day.
+  const marketPendingIds = new Set<string>(
+    (state.faBidding?.markets ?? [])
+      .filter(m => !m.resolved)
+      .map(m => m.playerId),
+  );
+  let pool = state.players
+    .filter(p => p.tid < 0 && p.status === 'Free Agent')
+    .filter(p => !marketPendingIds.has(p.internalId));
   if (pool.length === 0) return [];
 
   const sortedAITeams = [...state.teams]
@@ -169,10 +184,18 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
     const rosterSize = state.players.filter(p => p.tid === team.id && !(p as any).twoWay).length;
     if (rosterSize >= maxStandard) continue;
 
+    // work_ethic: lazy GMs sometimes skip a round of non-mandatory signings
+    const teamAttrs = getGMAttributes(state, team.id);
+    if (Math.random() > workEthicSignProb(teamAttrs.work_ethic)) continue;
+
     const best = getBestFit(team, pool, state, localMleUsed);
     if (!best) continue;
 
-    const offer = computeContractOffer(best, state.leagueStats as any);
+    // spending: GM's personal multiplier on the market offer (overpay vs lowball),
+    // clamped against the player's max contract so overpay never breaks league rules.
+    const baseOffer = computeContractOffer(best, state.leagueStats as any);
+    const bestLimits = getContractLimits(best, state.leagueStats as any);
+    const offer = { ...baseOffer, salaryUSD: clampSpendOffer(baseOffer.salaryUSD, teamAttrs.spending, bestLimits.maxSalaryUSD) };
 
     // Determine if this is a cap-space signing or MLE signing
     const profile = getTeamCapProfile(
@@ -608,12 +631,18 @@ export function runAIMidSeasonExtensions(state: GameState): ExtensionResult[] {
     const accepted = roll > 0 && (Math.abs(roll) - Math.floor(Math.abs(roll))) < basePct;
 
     // ── Contract offer (uses full formula from §6c) ──────────────────────
-    const extensionOffer = computeContractOffer(
+    const baseExtensionOffer = computeContractOffer(
       player,
       state.leagueStats as any,
       traits,
       score,
     );
+    // spending: GM personality scales the extension offer up or down, clamped at max contract
+    const extLimits = getContractLimits(player, state.leagueStats as any);
+    const extensionOffer = {
+      ...baseExtensionOffer,
+      salaryUSD: clampSpendOffer(baseExtensionOffer.salaryUSD, getGMAttributes(state, player.tid).spending, extLimits.maxSalaryUSD),
+    };
     const offerUSD = extensionOffer.salaryUSD;
     const extensionYears = extensionOffer.years;
 
@@ -702,7 +731,12 @@ export function runAISeasonEndExtensions(state: GameState): ExtensionResult[] {
     const roll = Math.abs((Math.sin(seed) * 10000) % 1);
     const accepted = roll < basePct;
 
-    const extensionOffer = computeContractOffer(player, state.leagueStats as any, traits, score);
+    const baseExtensionOffer = computeContractOffer(player, state.leagueStats as any, traits, score);
+    const seLimits = getContractLimits(player, state.leagueStats as any);
+    const extensionOffer = {
+      ...baseExtensionOffer,
+      salaryUSD: clampSpendOffer(baseExtensionOffer.salaryUSD, getGMAttributes(state, player.tid).spending, seLimits.maxSalaryUSD),
+    };
 
     results.push({
       playerId: player.internalId,

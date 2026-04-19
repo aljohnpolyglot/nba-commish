@@ -24,6 +24,7 @@ import { convertTo2KRating } from '../../utils/helpers';
 import { R } from './StatGenerator/helpers';
 import { StarterService } from './StarterService';
 import { getPlayerInjuryProfile } from '../../data/playerInjuryData';
+import { injurySeverityLevel } from './playThroughInjuriesFactor';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -204,10 +205,21 @@ export class MinutesPlayedService {
     gbFromLeader: number = 0,
     gamesRemaining: number = 41,
     depthOverride?: number,
+    playThroughInjuries: number = 0,
   ): RotationResult {
     const roster  = overridePlayers ?? players.filter(p => p.tid === team.id);
     const healthy = roster.filter(p => !p.injury || p.injury.gamesRemaining <= 0);
-    let pool      = healthy.length >= 5 ? healthy : roster.slice(0, Math.max(5, roster.length));
+    // Play-through: include injured players whose severity bucket is at or below
+    // the knob. Regular season (pti=2) pulls in day-to-day (1) and moderate (2)
+    // nags; playoffs (pti=4) pull in everyone short of long-term shelved.
+    const playable = playThroughInjuries > 0
+      ? roster.filter(p => {
+          const g = p.injury?.gamesRemaining ?? 0;
+          if (g <= 0) return true;
+          return injurySeverityLevel(g) <= playThroughInjuries;
+        })
+      : healthy;
+    let pool      = playable.length >= 5 ? playable : roster.slice(0, Math.max(5, roster.length));
 
     // Next-man-up: if short-handed (< 8 healthy bodies), pull the next available player
     // from the team's own roster — least-injured first (day-to-day before long-term).
@@ -231,9 +243,12 @@ export class MinutesPlayedService {
     );
     // depthOverride (e.g. rotationDepthOverride=12 for All-Star) bypasses the
     // standings-based depth so that all selected players actually get into the rotation.
+    // Floor raised from 8 to 9 so regular-season Ideal/Gameplan plans show a realistic
+    // 9-man rotation instead of playoff-tight 8. Playoff games already tighten naturally
+    // via the blowout/age pipeline; 9 is still plausible for deeper playoff teams.
     const depth = depthOverride
       ? Math.min(depthOverride, pool.length)
-      : Math.max(8, Math.min(13, finalDepth));
+      : Math.max(9, Math.min(13, finalDepth));
 
     // ── Ordered rotation — StarterService for role-aware starters + bench ───
     // StarterService.getRotation returns [5 starters, N bench] sorted by role fit
@@ -267,8 +282,9 @@ export class MinutesPlayedService {
     gbFromLeader: number = 0,
     gamesRemaining: number = 41,
     depthOverride?: number,
+    playThroughInjuries: number = 0,
   ): Player[] {
-    return this.getRotation(team, players, lead, season, overridePlayers, conferenceRank, gbFromLeader, gamesRemaining, depthOverride).players;
+    return this.getRotation(team, players, lead, season, overridePlayers, conferenceRank, gbFromLeader, gamesRemaining, depthOverride, playThroughInjuries).players;
   }
 
   // ── B: HOW MANY MINUTES ───────────────────────────────────────────────────
@@ -315,7 +331,13 @@ export class MinutesPlayedService {
           const slotDrop = i * 2;
           baseMins = Math.max(20, starMpgTarget - slotDrop) + (Math.random() - 0.5) * 2;
         } else if (i === 0 && starMpgTarget !== undefined) {
-          baseMins = starMpgTarget + (Math.random() - 0.5) * 2; // ±1 min wobble
+          // Cap reg-season star MPG at 36 — real NBA averages (LeBron ~35, Luka
+          // ~37, Giannis ~33, Jokic ~34). Playoffs can ride the full target for
+          // the short-rotation effect. Without this clamp the Ideal's drift-
+          // absorber tops the star off to 41-42 which looked fake.
+          const regCap = 36;
+          const effectiveTarget = isPlayoffs ? starMpgTarget : Math.min(regCap, starMpgTarget);
+          baseMins = effectiveTarget + (Math.random() - 0.5) * 2; // ±1 min wobble
         } else {
           // Each subsequent starter slot steps down relative to the star's load.
           // Slot 1: ~star+1, Slot 2: ~star-3, Slot 3: ~star-7, Slot 4: ~star-12
@@ -344,9 +366,10 @@ export class MinutesPlayedService {
       }
 
       // Scale up for OT: a player who'd play 37 min in regulation plays ~44 min in 2OT.
-      // Hard cap with jitter: ~40-42 min regular season, ~44-46 min playoffs.
-      // Jitter prevents robotic "42:00" exactly — produces natural values like 41:17, 42:28.
-      const MAX_BASE = isPlayoffs ? 44 : 40;
+      // Hard cap with jitter: ~38-40 min regular season, ~44-46 min playoffs.
+      // Jitter prevents robotic "40:00" exactly — produces natural values like 38:17, 39:28.
+      // Reg-season lowered from 40→38 to keep stars under 40 MPG (real-world norm).
+      const MAX_BASE = isPlayoffs ? 44 : 38;
       const MAX_JITTER = 2; // ±0-2 min randomness
       const maxMinutes = (MAX_BASE + Math.random() * MAX_JITTER) * otMultiplier;
       const scaledMins = Math.max(1, baseMins) * otMultiplier;

@@ -6,7 +6,7 @@ import { PlayerSelectorGrid, type PlayerSelectorItem } from '../../../../shared/
 import { StarterService } from '../../../../../services/simulation/StarterService';
 import { convertTo2KRating } from '../../../../../utils/helpers';
 import { NBAPlayer } from '../../../../../types';
-import { calcPlayerTV, calcOvr2K, type TeamMode } from '../../../../../services/trade/tradeValueEngine';
+import { calcPlayerTV, calcOvr2K, isUntouchable, type TeamMode } from '../../../../../services/trade/tradeValueEngine';
 import { getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2 } from '../../../../../utils/salaryUtils';
 
 interface TeamIntelProps {
@@ -108,8 +108,9 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
       k2: calcOvr2K(p),
     })).sort((a, b) => b.tv - a.tv);
 
-    // Untouchables: top-2 players with K2 >= 85 and TV >= 30
-    const untouchList = rosterTV.filter(r => r.k2 >= 85 && r.tv >= 30).slice(0, 2);
+    // Untouchables: shared rule w/ AI/TradingBlock — contend K2≥82, rebuild/presti age<25 & POT≥85,
+    // plus 10-yr loyalty and young-contender core. Cap at 3 to match UI limit.
+    const untouchList = rosterTV.filter(r => isUntouchable(r.player, mode, currentYear)).slice(0, 3);
 
     // Trading block: players the team would be willing to move
     // Rebuilding: dump high-salary vets; Contending: dump low-OVR expirings

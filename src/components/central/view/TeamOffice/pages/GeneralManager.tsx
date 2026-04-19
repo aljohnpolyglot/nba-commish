@@ -114,18 +114,23 @@ export function GeneralManager({ teamId }: GeneralManagerProps) {
     if (startYearMatch) yearsWithTeam = (state.leagueStats?.year || 2026) - parseInt(startYearMatch[1], 10);
   }
 
-  // NOTE FOR MAIN GAME INTEGRATION:
-  // Attribute Logic (AI Frequency) - Scale: 50-100 (Floor is 50 to avoid perception of "bad" at 0)
-  //
-  // Trade Aggression: 80+ = spam trade offers; 50-60 = rarely initiates
-  // Scouting Focus: High (70+) = values picks > 75 OVR players; Low = values "win now" players
-  // Work Ethic: High (70+) = constant roster churn; Low = stable roster
-  // Spending: Above 75 = overpays 10-20%; 50-60 = lowballs
+  // NOTE FOR MAIN GAME INTEGRATION (scale 50-100, floor 50):
+  // Trade Aggression — frequency of trade initiation. [LIVE: AITradeHandler]
+  // Scouting Focus  — pick-hoarding vs trading picks for proven young players. [NOT YET WIRED]
+  // Work Ethic      — roster-churn appetite. [NOT YET WIRED]
+  // Spending        — FA overpay vs value-hunting. [NOT YET WIRED]
   const attributes = gmStats?.attributes || {
     trade_aggression: 65,
     scouting_focus: 60,
     work_ethic: 55,
     spending: 60,
+  };
+
+  const attributeTooltips = {
+    trade_aggression: 'How often this GM initiates trades.',
+    scouting_focus: 'Preference for hoarding draft picks versus trading them for proven young players.',
+    work_ethic: 'Appetite for constant roster churn versus keeping the same group together.',
+    spending: 'Willingness to overpay in free agency versus hunting for value.',
   };
 
   return (
@@ -170,10 +175,10 @@ export function GeneralManager({ teamId }: GeneralManagerProps) {
           <h2 className="text-xl font-black uppercase tracking-widest text-[#e6edf3] border-b border-[#30363d] pb-4">GM Attributes</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <AttributeBar label="Trade Aggression" value={attributes.trade_aggression} />
-            <AttributeBar label="Scouting Focus" value={attributes.scouting_focus} />
-            <AttributeBar label="Work Ethic" value={attributes.work_ethic} />
-            <AttributeBar label="Spending" value={attributes.spending} />
+            <AttributeBar label="Trade Aggression" value={attributes.trade_aggression} tooltip={attributeTooltips.trade_aggression} />
+            <AttributeBar label="Scouting Focus" value={attributes.scouting_focus} tooltip={attributeTooltips.scouting_focus} />
+            <AttributeBar label="Work Ethic" value={attributes.work_ethic} tooltip={attributeTooltips.work_ethic} />
+            <AttributeBar label="Spending" value={attributes.spending} tooltip={attributeTooltips.spending} />
           </div>
         </div>
       </div>
@@ -181,7 +186,7 @@ export function GeneralManager({ teamId }: GeneralManagerProps) {
   );
 }
 
-function AttributeBar({ label, value }: { label: string; value: number }) {
+function AttributeBar({ label, value, tooltip }: { label: string; value: number; tooltip?: string }) {
   const getColor = (val: number) => {
     if (val >= 90) return 'bg-emerald-500';
     if (val >= 80) return 'bg-[#FDB927]';
@@ -190,7 +195,7 @@ function AttributeBar({ label, value }: { label: string; value: number }) {
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 group relative cursor-help">
       <div className="flex justify-between items-end">
         <span className="text-xs font-bold uppercase tracking-widest text-[#8b949e]">{label}</span>
         <span className="text-lg font-black text-[#e6edf3]">{value}</span>
@@ -201,6 +206,11 @@ function AttributeBar({ label, value }: { label: string; value: number }) {
           style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
         />
       </div>
+      {tooltip && (
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-64 bg-[#0d1117] border border-[#30363d] rounded p-2 z-50 shadow-2xl text-[10px] text-white text-center leading-snug">
+          {tooltip}
+        </div>
+      )}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { markFatherTimeInjections, resolveFatherTimeInjections, applyMiddleClass
 import { markBustLottery, resolveBustLottery } from '../../../services/playerDevelopment/bustLottery';
 import { generateAIDayTradeProposals, executeAITrade } from '../../../services/AITradeHandler';
 import { runAIFreeAgencyRound, runAIMidSeasonExtensions, runAISeasonEndExtensions, autoTrimOversizedRosters, autoPromoteTwoWayExcess } from '../../../services/AIFreeAgentHandler';
+import { tickFAMarkets } from '../../../services/faMarketTicker';
 import { routeUnsignedPlayers } from '../../../services/externalSigningRouter';
 import { formatExternalSalary } from '../../../constants';
 import { applySeasonRollover, shouldFireRollover } from '../../../services/logic/seasonRollover';
@@ -587,6 +588,46 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
             const count = stateWithSim.players.filter(p => p.tid === t.id && !(p as any).twoWay).length;
             return count < minRosterSetting;
         });
+        // ── FA bidding market tick (daily during FA season) ──────────────────
+        // Resolves expired markets first, then opens new ones for notable FAs.
+        // Runs every sim day during FA so decidesOnDay hits land on the right day
+        // even when the main signing round isn't firing (e.g. a `faFrequency===2`
+        // day with no forced signings). The existing round is a distinct pipeline
+        // for lower-tier FAs and roster-minimum fills.
+        if (isFreeAgencySeason) {
+            const tick = tickFAMarkets(stateWithSim);
+            const hasMarketChanges =
+                tick.playerMutations.size > 0 ||
+                tick.historyEntries.length > 0 ||
+                tick.newsItems.length > 0 ||
+                tick.socialPosts.length > 0 ||
+                tick.updatedMarkets.length !== (stateWithSim.faBidding?.markets?.length ?? 0);
+            if (hasMarketChanges) {
+                stateWithSim = {
+                    ...stateWithSim,
+                    players: tick.playerMutations.size > 0
+                        ? stateWithSim.players.map(p => {
+                            const mut = tick.playerMutations.get(p.internalId);
+                            return mut ? ({ ...p, ...mut } as Player) : p;
+                        })
+                        : stateWithSim.players,
+                    history: tick.historyEntries.length > 0
+                        ? [...(stateWithSim.history ?? []), ...tick.historyEntries] as any
+                        : stateWithSim.history,
+                    news: tick.newsItems.length > 0
+                        ? [...tick.newsItems, ...(stateWithSim.news ?? [])] as any
+                        : stateWithSim.news,
+                    socialFeed: tick.socialPosts.length > 0
+                        ? [...tick.socialPosts, ...(stateWithSim.socialFeed ?? [])] as any
+                        : stateWithSim.socialFeed,
+                    faBidding: { markets: tick.updatedMarkets as any },
+                };
+                if (tick.signedPlayerIds.size > 0) {
+                    console.log(`[FAMarketTick] Resolved ${tick.signedPlayerIds.size} market signings on ${stateWithSim.date}`);
+                }
+            }
+        }
+
         if (isFreeAgencySeason && (stateWithSim.day % faFrequency === 0 || anyTeamUnderMinRoster)) {
             // Step 1: Two-way → standard promotion (first line of defense).
             // If a team has <15 standard AND >3 two-way, promote the best excess

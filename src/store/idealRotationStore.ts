@@ -99,30 +99,61 @@ export function reconcileIdealMinutes(
   stored: Record<string, number>,
   currentRosterIds: string[]
 ): Record<string, number> {
+  const PER_PLAYER_CAP = 48;
   const rosterSet = new Set(currentRosterIds);
   const survivors: Record<string, number> = {};
   let orphanedMinutes = 0;
   for (const [id, mins] of Object.entries(stored)) {
-    if (rosterSet.has(id)) survivors[id] = mins;
-    else orphanedMinutes += mins;
+    // Clamp stored values too — a pre-existing save could have been written
+    // with a buggy redistribution that pushed someone over 48.
+    const clamped = Math.max(0, Math.min(PER_PLAYER_CAP, mins));
+    if (rosterSet.has(id)) survivors[id] = clamped;
+    else orphanedMinutes += clamped;
   }
   if (orphanedMinutes > 0) {
-    const survivorTotal = Object.values(survivors).reduce((a, b) => a + b, 0);
-    if (survivorTotal > 0) {
-      // Redistribute proportionally to existing share — starters absorb more.
-      for (const id of Object.keys(survivors)) {
-        const share = survivors[id] / survivorTotal;
-        survivors[id] = Math.round(survivors[id] + orphanedMinutes * share);
+    // Proportionally redistribute orphaned minutes, but respect the per-player
+    // 48-min cap. Any overflow from capped players spills to survivors that
+    // still have headroom, in repeated passes.
+    const allocate = () => {
+      const eligible = Object.keys(survivors).filter(id => survivors[id] < PER_PLAYER_CAP);
+      if (eligible.length === 0) return 0;
+      const eligibleTotal = eligible.reduce((a, id) => a + survivors[id], 0);
+      let absorbed = 0;
+      if (eligibleTotal > 0) {
+        for (const id of eligible) {
+          const share = survivors[id] / eligibleTotal;
+          const want = orphanedMinutes * share;
+          const room = PER_PLAYER_CAP - survivors[id];
+          const add = Math.min(want, room);
+          survivors[id] = Math.round(survivors[id] + add);
+          absorbed += add;
+        }
+      } else {
+        // No survivor has minutes — split evenly across the eligible pool.
+        const per = orphanedMinutes / eligible.length;
+        for (const id of eligible) {
+          const room = PER_PLAYER_CAP - survivors[id];
+          const add = Math.min(per, room);
+          survivors[id] = Math.round(survivors[id] + add);
+          absorbed += add;
+        }
       }
-    } else if (currentRosterIds.length > 0) {
-      // No survivors had minutes — split evenly across current roster.
-      const per = Math.round(orphanedMinutes / currentRosterIds.length);
-      for (const id of currentRosterIds) survivors[id] = (survivors[id] ?? 0) + per;
+      return absorbed;
+    };
+    // Iterate until the orphaned pool is absorbed or no headroom remains.
+    let guard = 5;
+    while (orphanedMinutes > 0.5 && guard-- > 0) {
+      const taken = allocate();
+      if (taken <= 0) break;
+      orphanedMinutes -= taken;
     }
+    // Any leftover (everyone hit 48) is simply dropped — UI will show the
+    // team under 240 and the Auto-Distribute button can reshape it.
   }
   // Ensure every current roster id has a key (even if 0) so UI can render.
   for (const id of currentRosterIds) {
     if (!(id in survivors)) survivors[id] = 0;
+    else survivors[id] = Math.max(0, Math.min(PER_PLAYER_CAP, survivors[id]));
   }
   return survivors;
 }

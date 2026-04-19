@@ -188,9 +188,13 @@ function GameLayout() {
           // GM mode: only show when there's actual ticker content (sim results to review).
           // Bare "Processing Transaction" is retired — transactions are instant by default.
           if (state.gameMode === 'gm' && !hasTicker) return null;
+          const activeSimResults =
+            state.tickerSimResults && state.tickerSimResults.length > 0
+              ? state.tickerSimResults
+              : state.lastSimResults;
           return (
             <LoadingOverlay
-              simResults={state.tickerSimResults || state.lastSimResults}
+              simResults={activeSimResults}
               teams={state.teams}
               players={state.players}
               actionType={state.lastActionType}
