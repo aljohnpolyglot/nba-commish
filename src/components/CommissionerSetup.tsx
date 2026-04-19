@@ -21,6 +21,7 @@ interface CommissionerSetupProps {
     jumpRequired: boolean;
     gameMode?: 'commissioner' | 'gm';
     userTeamId?: number;
+    assistantGM?: boolean;
   }) => void;
   onBack: () => void;
 }
@@ -65,7 +66,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, o
     setStep(gameMode === 'gm' ? 'franchise' : 'timeline');
   };
 
-  const handleStart = (overrideDate?: string) => {
+  const handleStart = (overrideDate?: string, assistantGM?: boolean) => {
     // Always reset to Fast mode when starting a new game
     SettingsManager.updateSettings({ llmPerformance: 1 });
     const nameCase = name.trim()
@@ -81,6 +82,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, o
       jumpRequired: date > SIM_START_DATE,
       gameMode,
       userTeamId: gameMode === 'gm' ? userTeamId : undefined,
+      assistantGM: gameMode === 'gm' ? (assistantGM ?? false) : false,
     });
   };
 
@@ -222,7 +224,8 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, o
     return (
       <JumpReviewScreen
         chosenDate={chosenDate}
-        onContinue={() => handleStart()}
+        gameMode={gameMode}
+        onContinue={(assistantGM) => handleStart(undefined, assistantGM)}
         onBack={() => setStep('timeline')}
       />
     );
@@ -336,7 +339,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, o
               disabled={!name.trim()}
               className="w-full group relative flex items-center justify-center gap-3 py-4 px-6 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-bold rounded-2xl transition-all duration-200 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 disabled:shadow-none overflow-hidden"
             >
-              <span className="relative z-10">Choose Start Date</span>
+              <span className="relative z-10">{gameMode === 'gm' ? 'Choose Team' : 'Choose Start Date'}</span>
               <ArrowRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
               <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </button>
@@ -344,7 +347,9 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, o
         </div>
 
         <p className="mt-10 text-center text-xs text-slate-600 font-medium max-w-md mx-auto">
-          By taking office, you agree to handle all league crises, scandals, and draft lotteries with "integrity".
+          {gameMode === 'gm'
+            ? 'By signing the contract, you agree to deliver wins, stay under the cap, and absorb every loss as if it were "growth".'
+            : 'By taking office, you agree to handle all league crises, scandals, and draft lotteries with "integrity".'}
         </p>
       </motion.div>
     </div>

@@ -6,12 +6,14 @@
  */
 
 import type { GameState, NBAPlayer, NBATeam } from '../types';
-import { getCapThresholds, getTeamCapProfile, computeContractOffer, getMLEAvailability } from '../utils/salaryUtils';
+import { getCapThresholds, getTeamCapProfile, computeContractOffer, getMLEAvailability, effectiveRecord } from '../utils/salaryUtils';
 import type { MleType } from '../utils/salaryUtils';
 import { convertTo2KRating } from '../utils/helpers';
 import { SettingsManager } from './SettingsManager';
 import { computeMoodScore } from '../utils/mood/moodScore';
 import type { MoodTrait } from '../utils/mood/moodTypes';
+import { calcPot2K } from './trade/tradeValueEngine';
+import { isAssistantGMActive } from './assistantGMFlag';
 
 const DEFAULT_MAX_ROSTER = 15;
 
@@ -116,8 +118,10 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   if (!SettingsManager.getSettings().allowAIFreeAgency) return [];
 
   const results: SigningResult[] = [];
-  // In GM mode, exclude user's team from AI signings; in commissioner mode, exclude team[0] (convention)
-  const userTeamId = (state as any).userTeamId ?? state.teams[0]?.id;
+  // In GM mode, exclude the user's team from AI signings. In commissioner mode every team is AI-controlled,
+  // so use a sentinel id that can't match any real team — userTeamId may still be set as the "last managed
+  // franchise" remembered across mode switches, and we don't want that team frozen out of the AI loop.
+  const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive()) ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
 
   let pool = state.players.filter(p => p.tid < 0 && p.status === 'Free Agent');
   if (pool.length === 0) return [];
@@ -301,6 +305,9 @@ export interface WaiverResult {
   teamId: number;
   playerName: string;
   teamName: string;
+  /** Distinguishes standard-roster overflow from two-way overflow so the sim can
+   *  apply the right post-waiver status (FA vs. G-League stash). */
+  reason?: 'standardExcess' | 'twoWayExcess';
 }
 
 /**
@@ -308,44 +315,183 @@ export interface WaiverResult {
  * During the offseason/preseason (July–September, month 7–9), teams may carry up to
  * maxTrainingCampRoster (default 21) players — mimicking NBA training camp rules.
  * Once the regular season starts (October+), the limit drops to maxStandard (15).
- * Two-way contract players (twoWay: true) never count against the standard limit.
+ * Two-way contract players (twoWay: true) don't count against the standard 15, but
+ * have their own cap (maxTwoWayPlayersPerTeam, default 3) which is enforced here too.
+ * G-League assigned players DO count against the standard cap (they're on standard
+ * contracts — NBA rule) and are trimmed first since they're already inactive.
  * User's team is never touched.
  *
  * @param month - current simulation month (1-12). Pass undefined to always enforce regular-season limit.
  */
 export function autoTrimOversizedRosters(state: GameState, month?: number): WaiverResult[] {
-  const userTeamId = (state as any).userTeamId ?? state.teams[0]?.id;
+  const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive()) ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
   const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
   const maxTrainingCamp = state.leagueStats.maxTrainingCampRoster ?? 21;
+  const maxTwoWay = state.leagueStats.maxTwoWayPlayersPerTeam ?? 3;
 
   // During July–September (offseason / training camp), allow the expanded limit.
   // October onwards = regular season, enforce the standard 15-man cap.
   const isPreseasonPeriod = month !== undefined && month >= 7 && month <= 9;
   const effectiveLimit = isPreseasonPeriod ? maxTrainingCamp : maxStandard;
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
 
   const results: WaiverResult[] = [];
 
   for (const team of state.teams) {
     if (team.id === userTeamId) continue;
-    // Two-way and G-League assigned players don't count against the standard roster cap
-    const roster = state.players.filter(p => p.tid === team.id && !(p as any).twoWay && !(p as any).gLeagueAssigned);
-    if (roster.length <= effectiveLimit) continue;
-    const excess = roster.length - effectiveLimit;
-    // G-League assigned players are last resort — trim non-GL lowest OVR first
-    const nonGL = roster.filter(p => !(p as any).gLeagueAssigned)
-      .sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0));
-    const glPlayers = roster.filter(p => !!(p as any).gLeagueAssigned)
-      .sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0));
-    const trimPool = [...nonGL, ...glPlayers];
-    const teamWaivers: WaiverResult[] = [];
-    for (let i = 0; i < excess && i < trimPool.length; i++) {
-      const p = trimPool[i];
-      teamWaivers.push({ playerId: p.internalId, teamId: team.id, playerName: p.name, teamName: team.name });
+    // Standard roster = every non-two-way player on the team, including G-League
+    // assignees. They still occupy a 15-man slot per NBA rules, and not counting
+    // them here is how IND ended up carrying 33 players mid-season (trade flurry
+    // + weekly 0-GP GL demotions piling up with no cut-down).
+    const roster = state.players.filter(p => p.tid === team.id && !(p as any).twoWay);
+
+    // ── Standard roster overflow ─────────────────────────────────────────────
+    if (roster.length > effectiveLimit) {
+      const excess = roster.length - effectiveLimit;
+
+      // Rebuilders and young contenders (avg age <27) trim by lowest POT so washed
+      // vets go first and high-ceiling prospects stay. Mirrors the untouchable/young-
+      // core protection in tradeValueEngine (isYoungContenderCore).
+      const { wins: ew, losses: el } = effectiveRecord(team, currentYear);
+      const gp = ew + el;
+      const winPct = gp > 0 ? ew / gp : 0.5;
+      const isRebuilding = gp > 0 && winPct < 0.42;
+      const isContender = gp > 0 && winPct >= 0.55;
+      const avgAge = roster.length > 0
+        ? roster.reduce((s, p) => s + ((p.born?.year ? currentYear - p.born.year : (p.age ?? 27))), 0) / roster.length
+        : 27;
+      const sortByPot = isRebuilding || (isContender && avgAge < 27);
+      const sortFn = sortByPot
+        ? (a: NBAPlayer, b: NBAPlayer) => calcPot2K(a, currentYear) - calcPot2K(b, currentYear)
+        : (a: NBAPlayer, b: NBAPlayer) => (a.overallRating ?? 0) - (b.overallRating ?? 0);
+
+      // G-League stashed players get trimmed first — they're already marked as
+      // not seeing the floor, so waiving them over active players is the right
+      // priority order. Within each bucket, sort by POT/OVR (lowest first).
+      const glPlayers = roster.filter(p => !!(p as any).gLeagueAssigned).sort(sortFn);
+      const nonGL = roster.filter(p => !(p as any).gLeagueAssigned).sort(sortFn);
+      const trimPool = [...glPlayers, ...nonGL];
+      const teamWaivers: WaiverResult[] = [];
+      for (let i = 0; i < excess && i < trimPool.length; i++) {
+        const p = trimPool[i];
+        teamWaivers.push({ playerId: p.internalId, teamId: team.id, playerName: p.name, teamName: team.name, reason: 'standardExcess' });
+      }
+      if (teamWaivers.length > 0) {
+        console.log(`[RosterTrim] Month=${month}, team=${team.name}, roster=${roster.length} (gl=${glPlayers.length}), limit=${effectiveLimit}, sortBy=${sortByPot ? 'POT' : 'OVR'}, trimmed=${teamWaivers.length}: ${teamWaivers.map(w => w.playerName).join(', ')}`);
+      }
+      results.push(...teamWaivers);
     }
-    if (teamWaivers.length > 0) {
-      console.log(`[RosterTrim] Month=${month}, team=${team.name}, roster=${roster.length}, limit=${effectiveLimit}, trimmed=${teamWaivers.length} players: ${teamWaivers.map(w => w.playerName).join(', ')}`);
+
+    // ── Two-way overflow ─────────────────────────────────────────────────────
+    // Enforce the 2W cap (default 3). Excess usually comes from trades that
+    // import a 2W player while the receiving team is already at 3, or from
+    // legacy saves. Waive the lowest-OVR 2Ws to bring them back to the cap.
+    const twoWayRoster = state.players.filter(p => p.tid === team.id && !!(p as any).twoWay);
+    if (twoWayRoster.length > maxTwoWay) {
+      const excess2W = twoWayRoster.length - maxTwoWay;
+      const sorted2W = [...twoWayRoster].sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0));
+      const teamTwoWayWaivers: WaiverResult[] = [];
+      for (let i = 0; i < excess2W && i < sorted2W.length; i++) {
+        const p = sorted2W[i];
+        teamTwoWayWaivers.push({ playerId: p.internalId, teamId: team.id, playerName: p.name, teamName: team.name, reason: 'twoWayExcess' });
+      }
+      if (teamTwoWayWaivers.length > 0) {
+        console.log(`[RosterTrim-2W] Month=${month}, team=${team.name}, twoWay=${twoWayRoster.length}, cap=${maxTwoWay}, trimmed=${teamTwoWayWaivers.length}: ${teamTwoWayWaivers.map(w => w.playerName).join(', ')}`);
+      }
+      results.push(...teamTwoWayWaivers);
     }
-    results.push(...teamWaivers);
+  }
+
+  return results;
+}
+
+// ── Two-way → Standard promotion (first line of defense for 2W > 3) ─────────
+// When a team has fewer than 15 standard players AND more than 3 two-way, AND
+// enough cap room, promote the highest-rated excess two-way to a 1-year min deal.
+// Runs BEFORE autoTrimOversizedRosters so it can rescue talent that would
+// otherwise be waived. Mirrors real-NBA behavior: teams convert two-ways to
+// standard contracts during the season to open two-way slots and to lock in
+// breakout prospects before rivals poach them.
+
+export interface PromotionResult {
+  playerId: string;
+  teamId: number;
+  playerName: string;
+  teamName: string;
+  newSalaryUSD: number;   // full-USD annual salary on the new standard deal
+  contractExp: number;    // ending season year of the new deal
+}
+
+export function autoPromoteTwoWayExcess(state: GameState, month?: number): PromotionResult[] {
+  const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive()) ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
+  const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
+  const maxTwoWay = 3;
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+
+  // During Jul–Sep training-camp window the standard-limit expansion doesn't matter
+  // for promotion since preseason trim is separate. We still use the regular limit.
+  const isPreseasonPeriod = month !== undefined && month >= 7 && month <= 9;
+  if (isPreseasonPeriod) return []; // let normal FA/trim handle training camp
+
+  const thresholds = getCapThresholds(state.leagueStats);
+
+  const results: PromotionResult[] = [];
+
+  for (const team of state.teams) {
+    if (team.id === userTeamId) continue;
+
+    const teamPlayers = state.players.filter(p => p.tid === team.id);
+    const standard = teamPlayers.filter(p => !(p as any).twoWay && !(p as any).gLeagueAssigned);
+    const twoWay   = teamPlayers.filter(p => !!(p as any).twoWay);
+
+    if (standard.length >= maxStandard) continue;
+    if (twoWay.length <= maxTwoWay) continue;
+
+    const slotsOpen = maxStandard - standard.length;
+    const excess2W  = twoWay.length - maxTwoWay;
+    let toPromote   = Math.min(slotsOpen, excess2W);
+    if (toPromote <= 0) continue;
+
+    const payrollUSD = teamPlayers.reduce((s, p) => s + (((p.contract?.amount as number) || 0) * 1_000), 0);
+
+    // Pick highest-OVR two-ways (they've earned the standard deal)
+    const candidates = [...twoWay].sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
+
+    let projectedPayroll = payrollUSD;
+
+    for (const p of candidates) {
+      if (toPromote <= 0) break;
+
+      // Fresh market-value 1-year standard deal. Old contract is discarded —
+      // mirrors real NBA flow: waived/released → signs new standard deal.
+      const offer = computeContractOffer(p, state.leagueStats, [], 0);
+      const newSalaryUSD = offer.salaryUSD;
+      const currentSalaryUSD = ((p.contract?.amount as number) || 0) * 1_000;
+      const netIncrease = Math.max(0, newSalaryUSD - currentSalaryUSD);
+
+      // Hard-cap: skip if the bump would push team over the 2nd apron.
+      if (projectedPayroll + netIncrease > thresholds.secondApron) break;
+
+      results.push({
+        playerId: p.internalId,
+        teamId: team.id,
+        playerName: p.name,
+        teamName: team.name,
+        newSalaryUSD,
+        contractExp: currentYear,
+      });
+      projectedPayroll += netIncrease;
+      toPromote--;
+    }
+  }
+
+  if (results.length > 0) {
+    const byTeam: Record<string, string[]> = {};
+    for (const r of results) {
+      if (!byTeam[r.teamName]) byTeam[r.teamName] = [];
+      byTeam[r.teamName].push(r.playerName);
+    }
+    console.log(`[TwoWayPromotion] Month=${month}, promoted ${results.length} players: ${Object.entries(byTeam).map(([t, ns]) => `${t}(${ns.join(', ')})`).join('; ')}`);
   }
 
   return results;
@@ -401,9 +547,9 @@ export function runAIMidSeasonExtensions(state: GameState): ExtensionResult[] {
   const currentYear = state.leagueStats.year;
   const results: ExtensionResult[] = [];
 
-  // Only AI teams — in GM mode skip the user's managed team, otherwise fall
-  // back to teams[0] (commissioner mode has no roster gate to honor).
-  const userTeamId = (state as any).userTeamId ?? state.teams[0]?.id;
+  // Only AI teams — in GM mode skip the user's managed team. In commissioner mode every team is AI,
+  // so use a sentinel id that can't match any real franchise.
+  const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive()) ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
 
   // Players expiring at end of this season, on AI teams, not already extended
   const expiringPlayers = state.players.filter(p => {
@@ -504,7 +650,7 @@ export function runAISeasonEndExtensions(state: GameState): ExtensionResult[] {
 
   const currentYear = state.leagueStats.year;
   const results: ExtensionResult[] = [];
-  const userTeamId = (state as any).userTeamId ?? state.teams[0]?.id;
+  const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive()) ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
 
   const expiringPlayers = state.players.filter(p => {
     if (!p.contract) return false;

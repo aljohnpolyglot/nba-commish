@@ -38,6 +38,7 @@ import { applySeasonRollover, shouldFireRollover } from './seasonRollover';
 import { autoResolveAllStarHosts } from '../allStar/hostAutoResolver';
 import { PlayoffSeries, HistoricalAward, SeasonHistoryEntry } from '../../types';
 import { DEFAULT_MEDIA_RIGHTS, attachBroadcastersToGames } from '../../utils/broadcastingUtils';
+import { setAssistantGMActive } from '../assistantGMFlag';
 
 interface AutoResolveEvent {
   date: string;
@@ -223,6 +224,10 @@ export interface LazySimOptions {
    *  and decide whether to watch/sim those games manually.
    *  Default false — target day is simmed (needed for Sim Round / Sim Playoffs). */
   stopBefore?: boolean;
+  /** If true, AI handles the user's team for all transactions during this lazy sim
+   *  (re-signings, FA signings, waivings, trades, extensions, two-way promotions).
+   *  Clears automatically when the sim completes. Default false. */
+  assistantGM?: boolean;
 }
 
 export interface LazySimResult {
@@ -241,6 +246,9 @@ export const runLazySim = async (
   const defaultBatch = mode === 'silent' ? 1 : 7;
   const BATCH_SIZE = options?.batchSize ?? defaultBatch;
   const stopBefore = options?.stopBefore ?? false;
+  const assistantGM = options?.assistantGM ?? false;
+
+  setAssistantGMActive(assistantGM);
 
   const targetNorm = normalizeDate(targetDateStr);
   const startNorm = normalizeDate(initialState.date);
@@ -890,6 +898,7 @@ export const runLazySim = async (
       }
     }
   } finally {
+    setAssistantGMActive(false);
     window.removeEventListener('beforeunload', restoreOnUnload);
     SettingsManager.saveSettings(originalSettings);
   }

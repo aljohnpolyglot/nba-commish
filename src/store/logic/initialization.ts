@@ -21,6 +21,7 @@ interface StartGamePayload {
     onProgress?: (progress: LazySimProgress) => void;
     gameMode?: 'commissioner' | 'gm';
     userTeamId?: number;
+    assistantGM?: boolean;
 }
 
 export const handleStartGame = async (payload: StartGamePayload): Promise<Partial<GameState>> => {
@@ -372,7 +373,8 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         const lazyResult = await runLazySim(
             fullInitialState,
             payload.startDate,
-            payload.onProgress
+            payload.onProgress,
+            { assistantGM: payload.assistantGM ?? false }
         );
 
         return {

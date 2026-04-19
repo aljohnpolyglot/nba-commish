@@ -8,9 +8,12 @@
 import type { GameState, NBAPlayer, NBATeam, DraftPick, TradeProposal } from '../types';
 import { getCapThresholds, getTradeOutlook, effectiveRecord, topNAvgK2, getTeamCapProfile } from '../utils/salaryUtils';
 import { calcOvr2K, calcPlayerTV, isUntouchable, isSalaryLegal } from './trade/tradeValueEngine';
+import { isAssistantGMActive } from './assistantGMFlag';
 import type { TeamMode } from './trade/tradeValueEngine';
 import { generateAITradeProposal } from './trade/tradeFinderEngine';
 import { SettingsManager } from './SettingsManager';
+import { getMinTradableSeason, getTradablePicks, getMaxTradableSeason } from './draft/DraftPickGenerator';
+import { buildClassStrengthMap, buildLotterySlotMap } from './draft/draftClassStrength';
 
 // ── §2d: Pick values ──────────────────────────────────────────────────────────
 
@@ -72,7 +75,9 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
 
   const proposals: TradeProposal[] = [];
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
-  const userTeamId = (state as any).userTeamId ?? state.teams[0]?.id;
+  // In GM mode, exclude the user's team from AI trade proposals. In commissioner mode every team is AI,
+  // and userTeamId may still be the remembered "last managed" franchise across mode switches.
+  const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive()) ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
   const thresholds = getCapThresholds(state.leagueStats as any);
 
   // Compute conference standings so getTradeOutlook can use confRank + GB
@@ -138,11 +143,6 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
   const teamMode = (t: NBATeam): TeamMode =>
     ['buyer', 'heavy_buyer'].includes(getOutlook(t).role) ? 'contend' : 'rebuild';
 
-  // Precompute normalized month string (used in pick eligibility checks)
-  const normDate = state.date ? (() => {
-    try { const d = new Date(state.date); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; } catch { return `${currentYear}-01`; }
-  })() : `${currentYear}-01`;
-
   // ── Main proposal loop: delegate to tradeFinderEngine ─────────────────────
   // Share the exact matching logic TradeFinderView uses so AI-AI proposals get
   // the same variety (star+pick packages, 2-for-1 returns, absorb/dump variants,
@@ -162,11 +162,10 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
   // re-proposes a player who just moved.
   const enginePlayers = state.players.filter(p => !recentlyTraded.has(p.internalId));
 
-  const [, normMonthStr] = normDate.split('-');
-  const normMonth = parseInt(normMonthStr, 10);
-  // After March 1 the current draft has happened — picks for currentYear are
-  // no longer tradable. Matches TradeMachineModal's minTradableSeason gate.
-  const minTradableSeason = normMonth >= 3 ? currentYear + 1 : currentYear;
+  const minTradableSeason = getMinTradableSeason(state);
+  const tradablePicks = getTradablePicks(state);
+  const classStrengthByYear = buildClassStrengthMap(state.players, currentYear, currentYear, getMaxTradableSeason(state));
+  const lotterySlotByTid = buildLotterySlotMap((state as any).draftLotteryResult);
 
   let count = 0;
   for (const buyerTeam of buyerTeams) {
@@ -179,11 +178,13 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
         sellerTid: sellerTeam.id,
         players: enginePlayers,
         teams: teamsList,
-        draftPicks: state.draftPicks ?? [],
+        draftPicks: tradablePicks,
         currentYear,
         minTradableSeason,
         powerRanks,
         teamOutlooks: teamOutlooksMap,
+        classStrengthByYear,
+        lotterySlotByTid,
       });
       if (!proposal) continue;
 
@@ -289,9 +290,8 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
       if (!absorber) continue;
 
       // Seller attaches a 2nd-round pick to sweeten the dump
-      const sellerPicks = (state.draftPicks ?? []).filter(pk =>
-        pk.tid === sellerTeam.id && pk.round === 2 &&
-        !(pk.season <= currentYear && parseInt(normDate.split('-')[1] || '1', 10) >= 3)
+      const sellerPicks = tradablePicks.filter(pk =>
+        pk.tid === sellerTeam.id && pk.round === 2
       );
       if (sellerPicks.length === 0) continue; // no picks to attach = no dump deal
 

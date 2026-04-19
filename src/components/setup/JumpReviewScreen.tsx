@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 interface JumpReviewScreenProps {
   chosenDate: string;
-  onContinue: () => void;
+  gameMode?: 'commissioner' | 'gm';
+  onContinue: (assistantGM: boolean) => void;
   onBack: () => void;
 }
 
@@ -66,7 +67,8 @@ const formatDate = (iso: string) => {
   return `${months[m - 1]} ${d}, ${y}`;
 };
 
-export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, onContinue, onBack }) => {
+export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, gameMode, onContinue, onBack }) => {
+  const [assistantGM, setAssistantGM] = useState(true);
   const daysSkipped = daysBetween('2025-08-06', chosenDate);
   const estSeconds = Math.max(1, Math.ceil(daysSkipped / 25));
   const estGames = Math.round(daysSkipped * 1.2);
@@ -152,6 +154,48 @@ export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, 
 
         </div>
 
+        {/* Assistant GM toggle — GM mode only */}
+        {gameMode === 'gm' && (
+          <div
+            className={`mb-6 rounded-2xl border p-4 flex items-start gap-4 cursor-pointer transition-all ${
+              assistantGM
+                ? 'border-emerald-500/50 bg-emerald-500/5'
+                : 'border-slate-700 bg-slate-900/40 hover:border-slate-600'
+            }`}
+            onClick={() => setAssistantGM(v => !v)}
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-black text-white">Assistant GM</span>
+                {assistantGM && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded">
+                    ON
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                {assistantGM
+                  ? 'Your team will be fully managed by the AI while you\'re away — re-signings, free agency, waivers, trades, two-way promotions, and extensions. The AI acts in your franchise\'s best interest.'
+                  : 'Your team will be frozen. No signings, no trades, no waivings. Contracts that expire will not be renewed — you may return to an empty roster.'}
+              </p>
+              {!assistantGM && daysSkipped > 100 && (
+                <p className="text-xs text-amber-400 font-bold mt-1">
+                  ⚠️ Long jump with no Assistant GM — expired contracts won't be renewed.
+                </p>
+              )}
+            </div>
+            <div className="shrink-0 mt-0.5">
+              <div
+                className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${assistantGM ? 'bg-emerald-600' : 'bg-slate-700'}`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${assistantGM ? 'translate-x-5' : 'translate-x-0'}`}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Bottom bar */}
         <div className="flex items-center justify-between gap-4 px-2">
           <button
@@ -170,7 +214,7 @@ export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, 
           </div>
 
           <button
-            onClick={onContinue}
+            onClick={() => onContinue(gameMode === 'gm' ? assistantGM : false)}
             className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-black rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-indigo-500/20"
           >
             Let's Go →
