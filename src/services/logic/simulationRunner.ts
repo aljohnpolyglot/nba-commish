@@ -4,7 +4,7 @@ import { simulateGames } from '../simulationService';
 import { getAllStarWeekendDates } from '../allStar/AllStarWeekendOrchestrator';
 import { computeClinchStatus } from '../../utils/standingsUtils';
 
-export const simulateDayGames = (state: GameState, watchedGameResult?: any, riggedForTid?: number): { teams: NBATeam[], schedule: Game[], results: any[], headToHead?: HeadToHead } => {
+export const simulateDayGames = async (state: GameState, watchedGameResult?: any, riggedForTid?: number, onGame?: (result: any) => void): Promise<{ teams: NBATeam[], schedule: Game[], results: any[], headToHead?: HeadToHead }> => {
     const dates = getAllStarWeekendDates(state.leagueStats.year);
 
     // Timezone-safe All-Star break check using normalized YYYY-MM-DD strings
@@ -49,7 +49,7 @@ export const simulateDayGames = (state: GameState, watchedGameResult?: any, rigg
     });
 
     // Pass player approval to simulation to affect performance
-    const simResult = simulateGames(
+    const simResult = await simulateGames(
         state.teams,
         state.players,
         gamesToSimulate,
@@ -75,7 +75,8 @@ export const simulateDayGames = (state: GameState, watchedGameResult?: any, rigg
             goaltendingEnabled:            state.leagueStats.goaltendingEnabled,
             chargingEnabled:               state.leagueStats.chargingEnabled,
             noDribbleRule:                 state.leagueStats.noDribbleRule,
-        }
+        },
+        onGame
     );
 
     // Compute clinch/elimination status after standings update

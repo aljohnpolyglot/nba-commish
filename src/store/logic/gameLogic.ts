@@ -27,7 +27,8 @@ export { handleStartGame, handleAnnounceChange };
 export const processTurn = async (
   state: GameState,
   action: UserAction,
-  onSimComplete?: (simResults: any[]) => void
+  onSimComplete?: (simResults: any[]) => void,
+  onGame?: (result: any) => void
 ) => {
     let executiveTradeTransactionRef = { current: null };
 
@@ -104,7 +105,7 @@ export const processTurn = async (
     if (action.type === 'ADVANCE_DAY' || action.type === 'SIMULATE_TO_DATE') {
         console.log(`[PROCESS_TURN] ▶️ action=${action.type}, stateForSim.date=${stateForSim.date}, simStartNorm=${simStartNorm}, daysToSimulate=${daysToSimulate}`);
     }
-    let { stateWithSim, allSimResults } = runSimulation(stateForSim, daysToSimulate, action);
+    let { stateWithSim, allSimResults } = await runSimulation(stateForSim, daysToSimulate, action, onGame);
     if (action.type === 'ADVANCE_DAY' || action.type === 'SIMULATE_TO_DATE') {
         console.log(`[PROCESS_TURN] ✅ runSimulation returned state.date=${stateWithSim.date}, simResults=${allSimResults.length}`);
     }
@@ -841,7 +842,7 @@ export const processTurn = async (
         })() } as any],
         isProcessing: false,
         isWatchingGame: false,
-      lastOutcome: state.gameMode === 'gm' ? undefined : (result.outcomeText || result.narrative),
+      lastOutcome: state.gameMode === 'gm' ? null : (result.outcomeText || result.narrative),
         lastConsequence: finalConsequence,
         pendingHypnosis: [],
         pendingNarratives: [],

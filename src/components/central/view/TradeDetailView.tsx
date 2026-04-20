@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRightLeft, Calendar, AlertCircle } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
 import { NBAPlayer } from '../../../types';
 import { PlayerBioView } from './PlayerBioView';
-import { calcOvr2K, calcPot2K } from '../../../services/trade/tradeValueEngine';
+import { calcOvr2K, calcPot2K, getPotColor } from '../../../services/trade/tradeValueEngine';
 import { convertTo2KRating } from '../../../utils/helpers';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -221,6 +221,7 @@ const PlayerReceivedCard: React.FC<PlayerCardProps> = ({ player, currentYear, tr
   const historicalOvr = getHistoricalOvr2K(player, tradeDateMs);
   const historicalPot = getHistoricalPot2K(player, tradeDateMs, tradeYear);
   const currentOvr = calcOvr2K(player);
+  const currentPot = calcPot2K(player, currentYear);
   const ovrChanged = Math.abs(currentOvr - historicalOvr) >= 1;
   const ageAtTrade = player.born?.year ? tradeYear - player.born.year : (player.age ?? 0);
   const salary = player.contract?.amount ?? 0;
@@ -279,19 +280,15 @@ const PlayerReceivedCard: React.FC<PlayerCardProps> = ({ player, currentYear, tr
           )}
         </div>
         {ovrChanged && (
-          <div className="text-[10px] text-slate-600 mt-0.5">
-            now: <span className={ovrColor(currentOvr)}>{currentOvr}</span>
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-600 mt-0.5">
+            <span>now:</span>
+            <span className={ovrColor(currentOvr)}>{currentOvr}</span>
+            <span className="text-slate-700">·</span>
+            <span className={getPotColor(currentPot)}>{currentPot}</span>
           </div>
         )}
       </div>
 
-      {/* K2 badge — historical */}
-      <div className="shrink-0 flex flex-col items-center gap-0.5">
-        <div className={`w-10 h-10 rounded-lg border flex items-center justify-center font-black text-sm ${ovrBgColor(historicalOvr)}`}>
-          {historicalOvr}
-        </div>
-        <span className="text-[8px] text-slate-600 uppercase tracking-wide">then</span>
-      </div>
     </div>
   );
 };

@@ -23,7 +23,7 @@ const updateHeadToHead = (
     return h2h;
 };
 
-export const simulateGames = (
+export const simulateGames = async (
     teams: NBATeam[],
     players: NBAPlayer[],
     gamesToSimulate: Game[],
@@ -49,8 +49,9 @@ export const simulateGames = (
         goaltendingEnabled?: boolean;
         chargingEnabled?: boolean;
         noDribbleRule?: boolean;
-    }
-): { updatedTeams: NBATeam[], results: GameResult[], headToHead?: HeadToHead } => {
+    },
+    onGame?: (result: GameResult) => void
+): Promise<{ updatedTeams: NBATeam[], results: GameResult[], headToHead?: HeadToHead }> => {
     const updatedTeams = [...teams].map(t => ({ ...t }));
     const allResults: GameResult[] = [];
 
@@ -60,7 +61,7 @@ export const simulateGames = (
         return g.gid !== watchedGameResult.gameId;
     });
 
-    const dayResults = GameSimulator.simulateDay(
+    const dayResults = await GameSimulator.simulateDay(
         updatedTeams,
         players,
         gamesToActuallySimulate,
@@ -71,7 +72,8 @@ export const simulateGames = (
         awayOverridePlayers,
         riggedForTid,
         clubDebuffs,
-        leagueStats
+        leagueStats,
+        onGame
     );
     allResults.push(...dayResults);
 

@@ -83,6 +83,8 @@ interface FullDraftTableProps {
 }
 
 const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, draftOrder, onReview, currentPick, userTeamId, isGM }) => {
+  const { state: _ftState } = useGame();
+  const leagueYear = _ftState.leagueStats?.year ?? 2026;
   const [teamFilter, setTeamFilter] = useState<string>('ALL');
 
   // Build sorted alphabetical team list from draft order (deduplicated)
@@ -183,7 +185,7 @@ const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, draftOrder, on
                     <>
                       <p className="font-black text-white text-base truncate uppercase tracking-tight">{player.name}</p>
                       <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
-                        {player.pos} · {player.displayOvr} · {player.displayPot} POT
+                        {player.pos} · {player.born?.year ? leagueYear - player.born.year : (player.age ?? '?')}y · {player.displayOvr} · {player.displayPot} POT
                         {player.college && ` · ${player.college}`}
                       </div>
                     </>
@@ -1162,6 +1164,8 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
                       <p className="font-black text-white text-base leading-tight truncate">{player.name}</p>
                       <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1 flex-wrap">
                         <span>{player.pos}</span>
+                        <span className="w-1 h-1 bg-white/20 rounded-full" />
+                        <span>{(player as any).born?.year ? leagueYear - (player as any).born.year : ((player as any).age ?? '?')}y</span>
                         <span className="w-1 h-1 bg-white/20 rounded-full" />
                         <span className="text-indigo-300">OVR {player.displayOvr}</span>
                         <span className="w-1 h-1 bg-white/20 rounded-full" />

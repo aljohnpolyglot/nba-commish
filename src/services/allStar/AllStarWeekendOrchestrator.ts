@@ -344,7 +344,7 @@ export class AllStarWeekendOrchestrator {
       logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/Western_Conference_%28NBA%29_logo.svg/200px-Western_Conference_%28NBA%29_logo.svg.png'
     };
 
-    const { results } = simulateGames(
+    const { results } = await simulateGames(
       [fakeTeam1, fakeTeam2] as any,
       [...sophs.map(p => ({ ...p, tid: -3 })), ...rookies.map(p => ({ ...p, tid: -4 }))] as any,
       [game],
@@ -434,7 +434,7 @@ export class AllStarWeekendOrchestrator {
       ...westPlayers.map(p => ({ ...p, tid: -2 })),
     ];
 
-    const { results } = simulateGames(
+    const { results } = await simulateGames(
       [fakeEastTeam, fakeWestTeam] as any,
       allStarPlayers as any,
       [game],

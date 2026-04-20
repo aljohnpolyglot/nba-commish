@@ -35,7 +35,7 @@ export class AllStarCelebrityGameSim {
 
     if (allRated || state.leagueStats.celebrityRosterAutoSelected) {
       // ALL picks are from rated pool — use GameSim
-      return this.simulateCelebrityWithGameSim(rosterNames, ratedMap, state);
+      return await this.simulateCelebrityWithGameSim(rosterNames, ratedMap, state);
     } else if (!llmEnabled) {
       // LLM off — fill unrated personas with rock-bottom attributes and use GameSim
       const fallbackRatedMap = new Map(ratedMap);
@@ -50,18 +50,18 @@ export class AllStarCelebrityGameSim {
           } as RatedCelebrity);
         }
       }
-      return this.simulateCelebrityWithGameSim(rosterNames, fallbackRatedMap, state);
+      return await this.simulateCelebrityWithGameSim(rosterNames, fallbackRatedMap, state);
     } else {
       // Some picks from 1000+ CSV — use LLM
       return this.simulateCelebrityWithLLM(rosterNames, state);
     }
   }
 
-  static simulateCelebrityWithGameSim(
+  static async simulateCelebrityWithGameSim(
     rosterNames: string[],
     ratedMap: Map<string, RatedCelebrity>,
     state: GameState
-  ): GameResult {
+  ): Promise<GameResult> {
     // Split into two teams of 10
     const team1Names = rosterNames.slice(0, 10);
     const team2Names = rosterNames.slice(10, 20);
@@ -129,7 +129,7 @@ export class AllStarCelebrityGameSim {
       isCelebrityGame: true,
     };
 
-    const simResult = simulateGames(
+    const simResult = await simulateGames(
       [fakeTeam1, fakeTeam2] as any,
       [...team1Players, ...team2Players] as any,
       [fakeGame] as any,

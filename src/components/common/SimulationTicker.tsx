@@ -37,6 +37,9 @@ interface Props {
   players: Player[];
   actionType?: string;
   actionPayload?: any;
+  /** True while sim is still streaming — hides Continue-adjacent copy */
+  isStreaming?: boolean;
+  gameMode?: 'commissioner' | 'gm';
 }
 
 function getTeam(teams: Team[], id: number) {
@@ -84,11 +87,14 @@ function formatDate(dateStr: string) {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 24, scale: 0.97 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: 'easeOut' } },
+  visible: (i: number) => ({
+    opacity: 1, y: 0, scale: 1,
+    transition: { duration: 0.35, ease: 'easeOut', delay: i * 0.3 },
+  }),
 };
 
 export const SimulationTicker: React.FC<Props> = ({
-  allSimResults, teams, players, actionType, actionPayload
+  allSimResults, teams, players, actionType, actionPayload, isStreaming, gameMode
 }) => {
   const hasGames = allSimResults && allSimResults.length > 0;
   const groups = hasGames ? groupByDate(allSimResults) : [];
@@ -105,36 +111,16 @@ export const SimulationTicker: React.FC<Props> = ({
   }
   items.push({ type: 'final' });
 
-  const [shownCount, setShownCount] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // With real per-game streaming, games arrive one at a time via tickerSimResults appends.
+  // AnimatePresence handles the entry animation for each new item — no staged reveal needed.
+  // We just always show all items; new entries slide in naturally.
+  const visibleItems = items;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [shownCount]);
-
-  useEffect(() => {
-    if (!hasGames) {
-      const t = setTimeout(() => setShownCount(items.length), 800);
-      return () => clearTimeout(t);
-    }
-    let cancelled = false;
-    let idx = 0;
-    const showNext = () => {
-      if (cancelled) return;
-      idx++;
-      setShownCount(idx);
-      if (idx < items.length) {
-        const delay = items[idx]?.type === 'dateHeader' ? 200 :
-                      items[idx]?.type === 'final' ? 600 : 700;
-        setTimeout(showNext, delay);
-      }
-    };
-    setTimeout(showNext, 300);
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const visibleItems = items.slice(0, shownCount);
+  }, [items.length]);
 
   return (
     <div className="flex flex-col gap-3 w-full pb-4">
@@ -168,7 +154,7 @@ export const SimulationTicker: React.FC<Props> = ({
       <AnimatePresence initial={false}>
         {visibleItems.map((item, idx) => {
           if (item.type === 'dateHeader') return (
-            <motion.div key={`dh-${idx}`} variants={itemVariants} initial="hidden" animate="visible"
+            <motion.div key={`dh-${idx}`} custom={idx} variants={itemVariants} initial="hidden" animate="visible"
               className="flex items-center gap-3 mt-2">
               <div className="h-px flex-1 bg-slate-700/50" />
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{item.label}</span>
@@ -187,7 +173,7 @@ export const SimulationTicker: React.FC<Props> = ({
             const loserBest = homeWon ? awayBest : homeBest;
 
             return (
-              <motion.div key={`g-${idx}`} variants={itemVariants} initial="hidden" animate="visible"
+              <motion.div key={`g-${idx}`} custom={idx} variants={itemVariants} initial="hidden" animate="visible"
                 className="bg-slate-800/60 border border-slate-700/50 rounded-2xl overflow-hidden">
                 {/* Score row */}
                 <div className="flex items-center justify-between px-3 py-3 gap-1">
@@ -244,15 +230,23 @@ export const SimulationTicker: React.FC<Props> = ({
             );
           }
 
-          if (item.type === 'final') return (
-            <motion.div key="final" variants={itemVariants} initial="hidden" animate="visible"
-              className="flex flex-col items-center gap-2 py-4">
-              <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }} className="text-2xl">🏀</motion.div>
-              <motion.p animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.8, repeat: Infinity }} className="text-slate-400 text-sm font-medium">
-                Generating league reactions...
-              </motion.p>
-            </motion.div>
-          );
+          if (item.type === 'final') {
+            // In GM mode or when sim is done, no "Generating league reactions" copy
+            const hideReactions = gameMode === 'gm' || !isStreaming;
+            return (
+              <motion.div key="final" custom={idx} variants={itemVariants} initial="hidden" animate="visible"
+                className="flex flex-col items-center gap-2 py-4">
+                {!hideReactions && (
+                  <>
+                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }} className="text-2xl">🏀</motion.div>
+                    <motion.p animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.8, repeat: Infinity }} className="text-slate-400 text-sm font-medium">
+                      Generating league reactions...
+                    </motion.p>
+                  </>
+                )}
+              </motion.div>
+            );
+          }
 
           return null;
         })}

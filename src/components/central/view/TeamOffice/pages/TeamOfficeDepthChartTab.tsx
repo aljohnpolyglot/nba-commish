@@ -19,7 +19,19 @@ interface Props {
 }
 
 const STARTER_POS_ORDER = ['PG', 'SG', 'SF', 'PF', 'C'] as const;
-const BENCH_LABELS = ['6TH', '7TH', '8TH', '9TH', '10TH'] as const;
+
+// Normalize BBGM depth-context tags (G/GF/F/FC) into the standard 5 positions
+// the depth chart displays. Matches the slot vocabulary used by GamePlan /
+// IdealRotation hardcoded labels.
+function normalizePos(p: NBAPlayer): string {
+  const pos = (p.pos || '').toUpperCase();
+  if (pos === 'PG' || pos === 'SG' || pos === 'SF' || pos === 'PF' || pos === 'C') return pos;
+  if (pos === 'G') return 'PG';
+  if (pos === 'GF') return 'SG';
+  if (pos === 'F') return 'SF';
+  if (pos === 'FC') return 'C';
+  return 'SF';
+}
 
 function isInjured(p: NBAPlayer): boolean {
   return !!p.injury && (p.injury.gamesRemaining ?? 0) > 0;
@@ -30,8 +42,8 @@ export function TeamOfficeDepthChartTab({ teamId }: Props) {
   const team = state.teams.find(t => t.id === teamId);
   const season = state.leagueStats?.year ?? 2026;
 
-  const { starters, bench, reserves, injured } = useMemo(() => {
-    if (!team) return { starters: [] as NBAPlayer[], bench: [] as NBAPlayer[], reserves: [] as NBAPlayer[], injured: [] as NBAPlayer[] };
+  const { starters, bench, thirdUnit, reserves, injured } = useMemo(() => {
+    if (!team) return { starters: [] as NBAPlayer[], bench: [] as NBAPlayer[], thirdUnit: [] as NBAPlayer[], reserves: [] as NBAPlayer[], injured: [] as NBAPlayer[] };
 
     const roster = state.players.filter(p => p.tid === teamId && p.status === 'Active');
     const healthy = roster.filter(p => !isInjured(p));
@@ -42,15 +54,22 @@ export function TeamOfficeDepthChartTab({ teamId }: Props) {
     const starterList = StarterService.sortByPositionSlot(rawStarters, season);
     const starterIds = new Set(starterList.map(p => p.internalId));
 
-    const remaining = healthy
+    const nonStarters = healthy
       .filter(p => !starterIds.has(p.internalId))
       .sort((a, b) => getDisplayOverall(b) - getDisplayOverall(a));
 
-    // First 5 off the bench = second unit, rest = deep bench.
-    const benchList = remaining.slice(0, 5);
-    const reserveList = remaining.slice(5);
+    // Second unit: top 5 healthy bench by OVR, slotted PG→C.
+    const benchPool = nonStarters.slice(0, 5);
+    const benchList = StarterService.sortByPositionSlot(benchPool, season);
 
-    return { starters: starterList, bench: benchList, reserves: reserveList, injured: injuredList };
+    // Deep-bench handling flips on roster depth:
+    //   - ≥14 healthy → "Third Unit": positionally slotted PG→C (5 cards)
+    //   - <14 healthy → plain "Reserves": OVR-sorted dump, raw pos labels
+    const deepPool = nonStarters.slice(5);
+    const thirdUnitList = healthy.length >= 14 ? StarterService.sortByPositionSlot(deepPool, season) : [];
+    const reserveList = healthy.length < 14 ? deepPool : [];
+
+    return { starters: starterList, bench: benchList, thirdUnit: thirdUnitList, reserves: reserveList, injured: injuredList };
   }, [team, state.players, teamId, season]);
 
   if (!team) {
@@ -80,7 +99,7 @@ export function TeamOfficeDepthChartTab({ teamId }: Props) {
         </div>
       </section>
 
-      {/* Second unit */}
+      {/* Second Unit — hardcoded PG→C slots, same as Starting Five */}
       <section className="bg-black/40 border border-slate-800 rounded-lg p-3 sm:p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Second Unit</div>
@@ -90,20 +109,51 @@ export function TeamOfficeDepthChartTab({ teamId }: Props) {
           <div className="text-slate-500 text-xs">No bench players available.</div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
-            {bench.map((p, i) => (
-              <DepthChartCard key={p.internalId} player={p} slotLabel={BENCH_LABELS[i] ?? `${i + 6}TH`} season={season} accent="emerald" />
-            ))}
+            {STARTER_POS_ORDER.map((pos, i) => {
+              const p = bench[i];
+              if (!p) {
+                return (
+                  <div key={pos} className="aspect-[3/4] border-2 border-dashed border-slate-700 rounded-lg flex items-center justify-center text-slate-600 text-xs uppercase">
+                    {pos}
+                  </div>
+                );
+              }
+              return <DepthChartCard key={p.internalId} player={p} slotLabel={pos} season={season} accent="emerald" />;
+            })}
           </div>
         )}
       </section>
 
-      {/* Deep bench */}
+      {/* Third Unit — same 5-slot grid, only on rosters with 14+ healthy */}
+      {thirdUnit.length > 0 && (
+        <section className="bg-black/40 border border-slate-800 rounded-lg p-3 sm:p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Third Unit</div>
+            <div className="text-[9px] text-slate-500 uppercase tracking-widest">Deep Bench</div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
+            {STARTER_POS_ORDER.map((pos, i) => {
+              const p = thirdUnit[i];
+              if (!p) {
+                return (
+                  <div key={pos} className="aspect-[3/4] border-2 border-dashed border-slate-700 rounded-lg flex items-center justify-center text-slate-600 text-xs uppercase">
+                    {pos}
+                  </div>
+                );
+              }
+              return <DepthChartCard key={p.internalId} player={p} slotLabel={pos} season={season} accent="amber" />;
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Reserves — fallback for thin rosters (<14 healthy), OVR-sorted dump */}
       {reserves.length > 0 && (
         <section className="bg-black/40 border border-slate-800 rounded-lg p-3 sm:p-4">
           <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Reserves</div>
           <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-3">
             {reserves.map(p => (
-              <DepthChartCard key={p.internalId} player={p} slotLabel={p.pos ?? 'F'} season={season} accent="slate" />
+              <DepthChartCard key={p.internalId} player={p} slotLabel={normalizePos(p)} season={season} accent="slate" />
             ))}
           </div>
         </section>
@@ -115,7 +165,7 @@ export function TeamOfficeDepthChartTab({ teamId }: Props) {
           <div className="text-[10px] font-bold uppercase tracking-widest text-rose-400 mb-3">Injured / Unavailable</div>
           <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-3">
             {injured.map(p => (
-              <DepthChartCard key={p.internalId} player={p} slotLabel={p.pos ?? 'F'} season={season} accent="rose" />
+              <DepthChartCard key={p.internalId} player={p} slotLabel={normalizePos(p)} season={season} accent="rose" />
             ))}
           </div>
         </section>
@@ -126,13 +176,14 @@ export function TeamOfficeDepthChartTab({ teamId }: Props) {
 
 // ── DepthChartCard ────────────────────────────────────────────────────────────
 
-type Accent = 'sky' | 'emerald' | 'slate' | 'rose';
+type Accent = 'sky' | 'emerald' | 'amber' | 'slate' | 'rose';
 
 const ACCENT_STYLES: Record<Accent, { badge: string; border: string }> = {
-  sky:     { badge: 'text-sky-300 bg-sky-500/15',     border: 'border-slate-700' },
+  sky:     { badge: 'text-sky-300 bg-sky-500/15',         border: 'border-slate-700' },
   emerald: { badge: 'text-emerald-300 bg-emerald-500/15', border: 'border-slate-700' },
-  slate:   { badge: 'text-slate-300 bg-slate-700/40',  border: 'border-slate-800' },
-  rose:    { badge: 'text-rose-300 bg-rose-500/15',    border: 'border-rose-900/60' },
+  amber:   { badge: 'text-amber-300 bg-amber-500/15',     border: 'border-slate-700' },
+  slate:   { badge: 'text-slate-300 bg-slate-700/40',     border: 'border-slate-800' },
+  rose:    { badge: 'text-rose-300 bg-rose-500/15',       border: 'border-rose-900/60' },
 };
 
 function DepthChartCard({
@@ -147,17 +198,12 @@ function DepthChartCard({
   accent: Accent;
 }) {
   void season;
-  const ovr = getDisplayOverall(player);
-  const pos = player.pos ?? 'F';
   const styles = ACCENT_STYLES[accent];
 
   return (
     <div className={`relative bg-gradient-to-b from-slate-800/70 to-slate-900/90 rounded-lg p-2 border ${styles.border} flex flex-col items-center gap-1`}>
       <div className={`absolute top-1 left-1 text-[9px] font-black px-1.5 py-0.5 rounded z-10 ${styles.badge}`}>
         {slotLabel}
-      </div>
-      <div className="absolute top-1 right-1 text-[9px] font-black text-slate-300 bg-black/60 px-1.5 py-0.5 rounded z-10">
-        {ovr}
       </div>
       <PlayerPortrait
         imgUrl={player.imgURL}
@@ -169,7 +215,6 @@ function DepthChartCard({
       <div className="text-[11px] font-bold text-white text-center line-clamp-1 w-full mt-1">
         {player.name}
       </div>
-      <div className="text-[9px] text-slate-500 uppercase tracking-widest">{pos}</div>
     </div>
   );
 }

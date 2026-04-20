@@ -1009,7 +1009,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
               ))}
             </div>
 
-            <div className="flex-1 lg:overflow-y-auto p-8 xl:p-10 pb-28 space-y-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="flex-1 overflow-y-auto p-5 sm:p-8 xl:p-10 pb-28 space-y-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {activeTab === 'NEGOTIATION' && (
                 <div className="space-y-8">
 

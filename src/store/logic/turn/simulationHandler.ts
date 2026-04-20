@@ -101,7 +101,7 @@ function applyPlayoffLogic(stateWithSim: GameState, dayResults: any[], numGamesP
     return { ...stateWithSim, playoffs, schedule };
 }
 
-export const runSimulation = (state: GameState, daysToSimulate: number, action?: any) => {
+export const runSimulation = async (state: GameState, daysToSimulate: number, action?: any, onGame?: (result: any) => void) => {
     let stateWithSim = { ...state };
 
     // Clear cache at start of simulation batch
@@ -135,7 +135,7 @@ export const runSimulation = (state: GameState, daysToSimulate: number, action?:
         stateWithSim = applyPlayoffLogic(stateWithSim, [], numGamesPerRound);
 
         const watchedResult = i === 0 ? action?.payload?.watchedGameResult : undefined;
-        const simPatch = simulateDayGames(stateWithSim, watchedResult, effectiveRiggedForTid);
+        const simPatch = await simulateDayGames(stateWithSim, watchedResult, effectiveRiggedForTid, onGame);
 
         stateWithSim = {
             ...stateWithSim,

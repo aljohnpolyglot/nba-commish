@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useRef, useEffect, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import { GameState, UserAction, Tab, Bet, BetLeg } from '../types';
 import { processTurn, handleStartGame, handleAnnounceChange } from './logic/gameLogic';
 import { useGameActions } from './useGameActions';
@@ -690,7 +691,6 @@ const actions = useGameActions(setState, () => stateRef.current);
           stateDay: stateRef.current.day,
         });
         const genId = ++generationIdRef.current;
-        const { runLazySim } = await import('../services/logic/lazySimRunner');
         // Short sims (≤30 days, e.g. playoff round) use silent mode to avoid
         // the full-screen lazy-sim overlay that looks like the jumpstart screen.
         const simMode = diffDays > 30 ? 'overlay' : 'silent';
@@ -700,11 +700,11 @@ const actions = useGameActions(setState, () => stateRef.current);
           batchSize: diffDays > 30 ? 7 : 1,
           stopBefore,
         });
-        // Overlay mode: pre-seed lazySimProgress immediately so the LazySim full-screen
-        // takes over before any flash of the generic "Processing Executive Order" modal.
-        // The first real onProgress callback will overwrite this placeholder within a tick.
+        // Overlay mode: pre-seed lazySimProgress BEFORE the dynamic import so the
+        // full-screen progress ring renders immediately — no "Processing Executive
+        // Order" flash while the chunk loads.
         if (simMode === 'overlay') {
-          setState(prev => ({
+          flushSync(() => setState(prev => ({
             ...prev,
             lazySimProgress: {
               currentDate: currentNorm,
@@ -714,15 +714,31 @@ const actions = useGameActions(setState, () => stateRef.current);
               currentPhase: 'Warming up simulation...',
               percentComplete: 0,
             },
-          }));
+          })));
         }
+        const { runLazySim } = await import('../services/logic/lazySimRunner');
         const result = await runLazySim(
           stateRef.current,
           action.payload.targetDate,
           (progress: any) => {
             setState(prev => ({ ...prev, lazySimProgress: progress }));
           },
-          { mode: simMode, batchSize: diffDays > 30 ? 7 : 1, stopBefore }
+          {
+            mode: simMode,
+            batchSize: diffDays > 30 ? 7 : 1,
+            stopBefore,
+            // Silent mode (short sims ≤30d): stream each game into the ticker in real-time.
+            // flushSync bypasses React 18 auto-batching so each game card appears immediately.
+            onGame: simMode === 'silent' ? (gameResult) => {
+              console.log('[TICKER_STREAM] game arrived', gameResult.homeTeamId, 'vs', gameResult.awayTeamId);
+              flushSync(() => {
+                setState(prev => ({
+                  ...prev,
+                  tickerSimResults: [...(prev.tickerSimResults ?? []), gameResult],
+                }));
+              });
+            } : undefined,
+          }
         );
         console.log('[SIM_TO_DATE] ✅ runLazySim returned', {
           endStateDate: result.state.date,
@@ -754,9 +770,25 @@ const actions = useGameActions(setState, () => stateRef.current);
         });
         return;
       } else {
-        newStatePatch = await processTurn(stateRef.current, action, (simResults) => {
-          setState(prev => ({ ...prev, tickerSimResults: simResults }));
-        });
+        newStatePatch = await processTurn(
+          stateRef.current,
+          action,
+          (simResults) => {
+            // onSimComplete: replace the whole batch (legacy path, fires at end)
+            setState(prev => ({ ...prev, tickerSimResults: simResults }));
+          },
+          (gameResult) => {
+            // flushSync forces React to render immediately after each game — bypasses
+            // React 18 auto-batching so the ticker updates in real-time per game.
+            console.log('[TICKER_STREAM] game arrived', gameResult.homeTeamId, 'vs', gameResult.awayTeamId);
+            flushSync(() => {
+              setState(prev => ({
+                ...prev,
+                tickerSimResults: [...(prev.tickerSimResults ?? []), gameResult],
+              }));
+            });
+          }
+        );
       }
 
       // Phase 1 (immediate — show modal)
@@ -765,7 +797,7 @@ const actions = useGameActions(setState, () => stateRef.current);
         ...newStatePatch,
         stats: newStatePatch.stats || prev.stats,
         leagueStats: newStatePatch.leagueStats || prev.leagueStats,
-        lastOutcome: newStatePatch.lastOutcome || prev.lastOutcome,
+        lastOutcome: newStatePatch.lastOutcome !== undefined ? newStatePatch.lastOutcome : prev.lastOutcome,
         lastConsequence: newStatePatch.lastConsequence || prev.lastConsequence,
         date: newStatePatch.date || prev.date,
         day: newStatePatch.day || prev.day,

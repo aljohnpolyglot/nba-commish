@@ -317,8 +317,8 @@ export const TransactionsView: React.FC = () => {
             </div>
           </div>
 
-          {/* Filters Row */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+          {/* Filters Row — horizontal scroll on mobile, wrap on desktop */}
+          <div className="-mx-4 px-4 sm:mx-0 sm:px-0 flex items-center gap-2 sm:gap-4 overflow-x-auto no-scrollbar sm:flex-wrap sm:overflow-x-visible">
             <FilterSelect label="League" value={filterLeague} onChange={v => { setFilterLeague(v as LeagueFilter); setFilterTeam(''); }}>
               <option value="nba">NBA</option>
               <option value="all">All Leagues</option>
@@ -359,7 +359,7 @@ export const TransactionsView: React.FC = () => {
             {(filterLeague !== 'nba' || filterType || filterTeam || filterMonth || searchQuery) && (
               <button
                 onClick={() => { setFilterLeague('nba'); setFilterType(''); setFilterTeam(''); setFilterMonth(''); setSearchQuery(''); }}
-                className="mt-5 text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+                className="mt-5 text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors shrink-0 whitespace-nowrap pr-4 sm:pr-0"
               >
                 Clear all filters
               </button>
@@ -710,7 +710,7 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
       </div>
 
       {/* List */}
-      <div className="max-w-4xl mx-auto space-y-3">
+      <div className="w-full overflow-x-hidden max-w-4xl mx-auto space-y-3">
         {displayItems.length > 0 ? displayItems.map((item, index) => {
           if (item.kind === 'multi') {
             const legTeams = item.legs.flatMap(leg => {
@@ -768,11 +768,11 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
               onClick={isTrade ? () => setSelectedTrade({ text: entry.text, date: entry.date }) : undefined}
             >
               {teamColor && <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ backgroundColor: teamColor }} />}
-              <div className="flex gap-3 p-4 pl-5">
+              <div className="flex gap-3 p-3 sm:p-4 pl-4 sm:pl-5">
                 <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm ${style.bg} ${style.color}`}>
                   {style.icon}
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 overflow-hidden">
                   <div className="flex items-center justify-between mb-0.5">
                     <div className="flex items-center gap-2">
                       <span className={`text-[9px] font-black uppercase tracking-wider ${style.color}`}>{style.label}</span>
@@ -780,7 +780,7 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
                     </div>
                     <span className="text-slate-600 text-[10px] flex items-center gap-1 shrink-0"><Calendar size={10} />{entry.date}</span>
                   </div>
-                  <p className="text-slate-300 text-xs leading-relaxed">{entry.text}</p>
+                  <p className="text-slate-300 text-xs leading-relaxed break-words">{entry.text}</p>
                 </div>
                 {(playerImg || teamLogo) && (
                   <div className="flex items-center gap-1.5 shrink-0 ml-1">
@@ -813,13 +813,13 @@ const FilterSelect: React.FC<{
   onChange: (v: string) => void;
   children: React.ReactNode;
 }> = ({ label, value, onChange, children }) => (
-  <div className="flex flex-col gap-1.5">
+  <div className="flex flex-col gap-1.5 shrink-0">
     <label className="text-[10px] uppercase tracking-wider font-bold text-slate-500 ml-1">{label}</label>
     <div className="relative group">
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="appearance-none bg-slate-800 border border-slate-700 rounded-lg py-2 pl-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 min-w-[160px] cursor-pointer hover:bg-slate-750 transition-colors"
+        className="appearance-none bg-slate-800 border border-slate-700 rounded-lg py-2 pl-3 sm:pl-4 pr-9 sm:pr-10 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 min-w-[140px] sm:min-w-[160px] cursor-pointer hover:bg-slate-750 transition-colors"
       >
         {children}
       </select>

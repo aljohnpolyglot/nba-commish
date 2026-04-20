@@ -45,6 +45,8 @@ export const LoadingOverlay: React.FC<Props> = ({
                 players={players || []}
                 actionType={actionType}
                 actionPayload={actionPayload}
+                isStreaming={!showDismiss}
+                gameMode={gameMode}
               />
             </div>
             {showDismiss && (

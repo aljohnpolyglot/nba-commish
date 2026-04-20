@@ -169,7 +169,7 @@ export const TwitterLayout = () => {
   const [searchTab, setSearchTab] = useState<'top' | 'latest' | 'people' | 'media'>('top');
 
   return (
-    <div className="h-screen overflow-hidden bg-black text-[#e7e9ea] flex justify-center relative overflow-x-clip">
+    <div className="h-full overflow-hidden bg-black text-[#e7e9ea] flex justify-center relative overflow-x-clip">
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div 
@@ -191,7 +191,7 @@ export const TwitterLayout = () => {
         </div>
 
         {/* Main Content */}
-        <main className="flex-1 max-w-[600px] border-x border-[#2f3336] h-screen overflow-y-auto no-scrollbar w-full">
+        <main className="flex-1 max-w-[600px] border-x border-[#2f3336] h-full overflow-y-auto no-scrollbar w-full">
           {view.type === 'feed' ? (
             <>
               <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-[#2f3336]">
@@ -283,7 +283,7 @@ export const TwitterLayout = () => {
                   <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#1d9bf0]" />
                 </div>
               ) : (
-                <div className="flex flex-col">
+                <div className="flex flex-col pb-20 sm:pb-0">
                   {searchQuery && searchTab === 'people' ? (
                     // People Tab: Show users matching the query
                     <div className="flex flex-col">

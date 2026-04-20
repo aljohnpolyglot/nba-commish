@@ -897,7 +897,7 @@ export class GameSimulator {
     return ctx;
   }
 
-  static simulateDay(
+  static async simulateDay(
     teams: Team[],
     players: Player[],
     gamesToSimulate: Game[],
@@ -931,8 +931,9 @@ export class GameSimulator {
       courtLength?: number;
       baselineLength?: number;
       keyWidth?: number;
-    }
-  ): GameResult[] {
+    },
+    onGame?: (result: GameResult) => void
+  ): Promise<GameResult[]> {
     const results: GameResult[] = [];
 
     // Build standings context once for the whole day
@@ -1221,14 +1222,20 @@ export class GameSimulator {
         const gameRig = riggedForTid !== undefined &&
           (home.id === riggedForTid || away.id === riggedForTid)
           ? riggedForTid : undefined;
-        results.push(
-          this.simulateGame(home, away, players, game.gid, date, playerApproval, homeOverride, awayOverride, game.isAllStar, game.isRisingStars, gameRig, homeKnobs, awayKnobs)
-        );
+        const gameResult = this.simulateGame(home, away, players, game.gid, date, playerApproval, homeOverride, awayOverride, game.isAllStar, game.isRisingStars, gameRig, homeKnobs, awayKnobs);
+        results.push(gameResult);
         if (clubDebuffs && clubDebuffs.size > 0) clearClubDebuffs();
 
         // Reset per-game overrides so they don't carry into the next iteration
         homeOverride = homeOverridePlayers;
         awayOverride = awayOverridePlayers;
+
+        // Per-game streaming: fire callback + yield to the event loop so React
+        // can paint the ticker between games instead of freezing the whole batch.
+        if (onGame) {
+          onGame(gameResult);
+          await new Promise(r => setTimeout(r, 0));
+        }
       }
     }
 

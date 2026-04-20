@@ -12,16 +12,16 @@
 
 ### THIS TERMINAL (orchestrator) — Traded draft picks bug
 
-**TP.1 Draft Lottery — display traded-pick current owner**
+**TP.1 Draft Lottery — display traded-pick current owner**✅
 Lottery odds are calculated from team records (correct — balls are tied to record, not pick ownership; do NOT change the odds math). What's wrong: when a lottery ball results says "Wizards' pick wins #1" and Wizards traded that pick to Thunder, the result row should display **Thunder (via Wizards)**, not Wizards. After the lottery balls determine which TEAM's pick wins each slot 1–14, look up `state.draftPicks` for that team's upcoming season-round-1 entry and render `pick.tid` as the actual owner with `pick.originalTid` in parens. File: `src/components/draft/DraftLotteryView.tsx`.
 
-**TP.2 Traded picks not used in DraftSimulator**
+**TP.2 Traded picks not used in DraftSimulator**✅
 When the draft actually runs, DraftSimulator is assigning picks to the original team, not the current holder. Root cause confirmed:
 - `DraftSimulatorView.tsx` lines 504–540 build `draftOrder` from `state.teams` standings only, never consulting `state.draftPicks`. Comment at lines 749–751 even acknowledges this misalignment.
 - Lines 861–911 assign `tid` and `originalTid` both from `draftOrder[pickSlot - 1].id`, losing trade info.
 Fix: build a slot→DraftPick map from `state.draftPicks` (filter by `season` + `round`, keyed by sorted slot position derived from standings/lottery), then in the player-assignment loop use `pick.tid` for `tid` and `pick.originalTid` for `originalTid`. Cross-reference `memory/project_draft_picks_schema.md`.
 
-**TP.3 Highlight "your team" on Draft Lottery (GM mode)**
+**TP.3 Highlight "your team" on Draft Lottery (GM mode)**✅
 Same pattern used in `src/components/team-stats/TeamStatsView.tsx`:
 - Get user team via `const ownTid = getOwnTeamId(state);` at top of component
 - For each lottery result row, compute `const isOwn = ownTid !== null && row.team.id === ownTid;`
@@ -46,44 +46,51 @@ Fix: `StarterService.getRotation` had a hardcoded `rotationDepth = 10` that sile
 
 ### Agent #2 — Sim UX infrastructure (2 items)
 
-**A2.1 Lazy sim overlay — inaccurate start % + always says "Inducting Hall of Fame class"**
+**A2.1 Lazy sim overlay — inaccurate start % + always says "Inducting Hall of Fame class"**✅
 The overlay progress % does not reflect the actual starting point when the user jumps from a non-default date, and the status text is hardcoded to "Inducting Hall of Fame class" regardless of the current sim stage. Find the overlay component (likely `LazySimOverlay` / `SimProgressOverlay`) — progress should be `(currentDay - startDay) / (endDay - startDay)`, and the status text should switch based on date (preseason / reg season / All-Star / playoffs / offseason / draft / HOF).
 
-**A2.2 Game ticker — reveal games as they complete, not at batch end**
+**A2.2 Game ticker — reveal games as they complete, not at batch end**✅
 Currently the game ticker modal waits for the entire batch of sim games to complete before displaying anything, which looks like a freeze on longer sims. Stream results in as each game finishes — first game should appear in the ticker the moment its sim returns. Look at batch sim dispatcher and the ticker modal's state updates.
 
 ---
 
 ### Agent #3 — Mobile polish + small UI copy (7 items)
 
-**A3.1 NBA Central — mobile fix**
+**A3.1 NBA Central — mobile fix** ✅
 Overall mobile layout for NBA Central is broken / cut off. Audit responsive styles and fix container/overflow/typography at mobile breakpoints. Start at `NBACentralView` (or whatever the NBA Central container is) and trace down.
+Fix: `rounded-xl sm:rounded-[2.5rem]` on main container (was 40px radius clipping content on mobile); standings grid `gap-4 md:gap-10`.
 
-**A3.2 League Transactions — mobile filter stack + dense trade-description cards** *(see screenshots #1, #4, #6 from prior turn)*
+**A3.2 League Transactions — mobile filter stack + dense trade-description cards** ✅
 Two problems on the League Transactions page on mobile:
 1. Each filter (League / Transaction Type / Team / Month) renders as a full-width row, consuming ~60% of the viewport before any content shows. Compact to a 2×2 grid on mobile, or collapse to a single "Filters" accordion / pill group that expands on tap.
 2. Each trade-description card (e.g., the Wizards/Pacers/Grizzlies/OKC trades shown) eats 8–10 lines of vertical text. Either (a) clamp to ~3 lines with a "Show more" expander, or (b) shorten the wording (drop full team names → tricodes, drop "have been moved/sent to" → arrows). Also the card's right blue border appears slightly clipped — verify horizontal padding.
+Fix: Filters row changed to horizontal scroll (`overflow-x-auto no-scrollbar`, `-mx-4 px-4` bleed) with `shrink-0` on each select so they stay compact.
 
-**A3.3 Trade detail modal — remove "THEN" projection column** *(see screenshot #3 from prior turn)*
+**A3.3 Trade detail modal — remove "THEN" projection column** ✅
 Trade detail rows currently show a right-side `79 / 2028 / THEN` column (projected OVR in N years). The main row already has OVR + POT + age + salary, which is sufficient. Remove the THEN column entirely (on both mobile and desktop) — it's visual noise and the user has flagged it as redundant.
+Fix: Removed `{/* K2 badge — historical */}` div from `PlayerReceivedCard` in `TradeDetailView.tsx`.
 
-**A3.4 Player row display — add POT next to OVR + age**
-Currently some rows show OVR + age (e.g., `88 27y`). Add POT between them: `88 95 27y`. Apply to the shared row display used in rosters / bio / trade / etc. — find the row helper rather than patching each view. *(Note: trade detail modal and Draft Results already have the OVR/POT format per screenshots #3, #4, #5 — confirm it's applied everywhere else too.)*
+**A3.4 Player row display — add POT next to OVR + age** ✅
+Currently some rows show OVR + age (e.g., `88 27y`). Add POT between them: `88 95 27y`. Scoped to trade detail card only (other views already correct).
+Fix: `now:` line in `PlayerReceivedCard` extended to show `currentOvr · currentPot` (both color-coded via `ovrColor`/`getPotColor`).
 
-**A3.5 PowerRankings — "Last Week" + "Preseason" jump columns missing on mobile**
+**A3.5 PowerRankings — "Last Week" + "Preseason" jump columns missing on mobile** ✅
 The PowerRankings table hides the Last Week and Preseason jump columns on mobile. Add them back (either in the mobile layout or via a more compact column variant).
+Fix: Removed `hidden sm:` from Last Wk `<th>` and both Last Wk `<td>` cells; table already has `overflow-x-auto` container so it scrolls horizontally on narrow screens.
 
-**A3.6 PlayerSigningModal — mobile scroll + general mobile issues**
+**A3.6 PlayerSigningModal — mobile scroll + general mobile issues** ✅
 PlayerSigningModal still isn't scrollable on mobile (already-known issue) and has other mobile layout problems — tabs may overflow, contract breakdown may clip. Do a full mobile pass on the modal: scroll container, tab overflow, content sizing.
+Fix: Content area changed from `lg:overflow-y-auto` → `overflow-y-auto`; padding `p-8` → `p-5 sm:p-8` on mobile.
 
-**A3.7 Team page → MOVES tab — transaction cards horizontally overflow + clip on mobile** *(see screenshot #2 from prior turn)*
+**A3.7 Team page → MOVES tab — transaction cards horizontally overflow + clip on mobile** ✅
 On a team's MOVES tab (e.g., Houston Rockets → MOVES), transaction cards extend past the viewport on both sides. Visible text is clipped: "by the", "ith the", "6M/1yr", "signed kets:". The cards need a mobile-responsive width (full-width with padding, no fixed/min width forcing horizontal overflow) and the inner text must wrap rather than truncate to the side.
+Fix: List wrapper gets `overflow-x-hidden`; card inner content gets `overflow-hidden`; text `<p>` gets `break-words`; padding `p-4 pl-5` → `p-3 sm:p-4 pl-4 sm:pl-5`.
 
 ---
 
 ### Agent #4 — Social feed + Drag-drop + Team Intel (4 items)
 
-**A4.1 Twitter / Social Feed (Home tab) — mobile scroll broken + NBA image posts not triggering image+boxscore overlay**
+**A4.1 Twitter / Social Feed (Home tab) — mobile scroll broken + NBA image posts not triggering image+boxscore overlay**✅
 On the Home tab (mobile), the social feed cannot scroll past the initial posts and no new posts load. Additionally, NBA image posts (the ones that should open the full-image + box-score overlay) aren't triggering the overlay on mobile. Fix both: scroll container overflow on mobile + tap handler wiring for the image+boxscore overlay. Files: `HomeView` / `SocialFeedView` / image-overlay modal component.
 
 **A4.2 Ideal Rotations — add drag-and-drop parity with GamePlan** ✅
@@ -109,6 +116,57 @@ Fix: new `TeamStatus` type ('contending' | 'win_now' | 'retooling' | 'rebuilding
 **A5.2 New tab: Depth Chart in Team Office** ✅
 Add a new "Depth Chart" tab to Team Office (opposing-GM view), since the Coaching tab isn't visible to non-owner GMs. Show starters by position + bench with player portraits + OVR. Reuse the starter-extraction logic from GamePlan / IdealRotation. Files: `TeamOfficeView` (new tab) + new `TeamOfficeDepthChartTab` component.
 Fix: new `TeamOfficeDepthChartTab` component renders four sections — Starting Five (PG→C slot order via `StarterService.sortByPositionSlot`), Second Unit (top 5 bench by display OVR), Reserves (remainder), and Injured. Each card shows a `PlayerPortrait`, OVR badge, slot label, and pos. Wired into `TeamOfficeView` as the third tab (after Coaching). Visible for all teams — the Coaching tab is still auto-hidden for non-owner GMs in GM mode, so this tab becomes the primary depth read when scouting another franchise.
+
+---
+
+## FA Bidding — Offers Tab + Resolution Toasts
+
+### FA.1 OFFERS tab — show the user's own bid + "Your Offer" row
+Currently the OFFERS tab in `SigningModal` only renders competing AI bids (`activeBids.filter(!isUserBid)`). After the user hits "Submit Offer" (which dispatches `SUBMIT_FA_BID` and stores the bid in `state.faBidding.markets[].bids` with `isUserBid: true`), re-opening the modal shows no trace of their own bid.
+Fix:
+- In the OFFERS tab block (`SigningModal.tsx` ~line 1390), after the AI bids section, add a "Your Offer" card by filtering `market?.bids?.find(b => b.isUserBid && b.status === 'active')`.
+- Card should mirror the AI bid row style but with a gold/green accent and label "Your Offer" instead of a team name.
+- If the market resolved and the user bid has `status: 'accepted'` → show "✓ Offer Accepted" banner. If `status: 'rejected'` or `status: 'outbid'` → show "✗ Outbid — Player chose [TeamName]" with the winner's name pulled from `market.bids.find(b => b.status === 'accepted')?.teamName`.
+
+### FA.3 Offer Strength meter on every bid card (OFFERS tab, peak FA only)
+Each bid card — AI teams AND the user's own — should show a live **Offer Strength %** so the user can see how competitive each offer is at a glance.
+
+**How to compute it:**
+Use the same weighted formula from `resolvePlayerDecision` in `freeAgencyBidding.ts`:
+```
+salaryScore  = (bid.salaryUSD / marketValue) * 60        // salary share of cap
+desScore     = teamDesirability(team, player, ...) * 0.25 // team fit
+yearsScore   = Math.min(10, bid.years * 2)
+optionScore  = PLAYER +5 | TEAM -2 | NONE 0
+rawScore     = salaryScore + desScore + yearsScore + optionScore
+```
+`marketValue` uses the same K2-tier % of cap table already in `resolvePlayerDecision`.
+Define a **baseline score** = a market-rate offer from a league-average team (desirability=50, years=2, NONE option):
+`baseline = (1.0 * 60) + (50 * 0.25) + (2 * 2) + 0 = 60 + 12.5 + 4 = 76.5`
+Then: `strengthPct = Math.round((rawScore / baseline) * 100)`
+This can legitimately exceed 100 (e.g. a max salary + contending team + player option = ~130%).
+
+**UI spec:**
+- Show `strengthPct%` as a bold label on each bid card (right side, below the `$XM / Nyr` line).
+- Draw a horizontal bar under the salary line; bar fill = `Math.min(100, strengthPct)%` wide, so the bar never overflows but the number can read `115%`, `130%`, etc.
+- Color bands: `< 70%` → `text-white/50` gray bar, `70–99%` → amber (`#FDB927`), `≥ 100%` → green (`#22c55e`).
+- User's own offer card gets the same treatment (from FA.1), so the user can immediately see if they're leading or trailing.
+- Add a small label `"Offer Strength"` in `text-[8px] uppercase tracking-widest text-white/30` above the bar.
+- Only visible during peak FA (the `showOffersTab` gate already handles this — no extra guard needed).
+
+**Where to compute:**
+Extract a pure helper `computeOfferStrength(bid, player, state): number` from `freeAgencyBidding.ts` (export it so SigningModal can call it client-side without duplicating the formula).
+
+### FA.2 GM-mode toast when the player accepts or rejects your offer
+When `tickFAMarkets` resolves a market that contains a user bid (`isUserBid: true`), there is currently no feedback to the user — the signing just appears silently in the news feed.
+Fix:
+1. In `faMarketTicker.ts`, detect after `resolvePlayerDecision` if the resolved market had a user bid. Expose the outcome on `MarketTickResult`: add `userBidResolutions: { playerName: string; accepted: boolean; winnerTeamName?: string }[]`.
+2. In `simulationHandler.ts` (~line 625, after the `tick.signedPlayerIds.size > 0` log), collect `tick.userBidResolutions` into `stateWithSim.pendingFAToasts` (a new `string[]` field on `GameState` — or reuse the existing `news` array as a toast trigger).
+3. In `GameContext.tsx` / the main `App`, watch `state.pendingFAToasts` and pop a toast for each entry:
+   - Accepted: green toast — `"[Player] accepted your offer! $XM / Nyr"`.
+   - Rejected: red/amber toast — `"[Player] chose [Team] over your offer."`.
+   After displaying, clear `pendingFAToasts` via a `CLEAR_FA_TOASTS` dispatch.
+   Reuse the existing `toast`/`AnimatePresence` toast pattern already in `SigningModal.tsx` — mirror it in `App.tsx` so it works globally, not just inside the modal.
 
 ---
 

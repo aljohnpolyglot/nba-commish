@@ -11,7 +11,7 @@ import {
   TrendingUp, TrendingDown, Minus,
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
-import { normalizeDate } from '../../utils/helpers';
+import { normalizeDate, getOwnTeamId } from '../../utils/helpers';
 
 // ─── Fanspo CSS (injected once) ──────────────────────────────────────────────
 const FANSPO_CSS = `
@@ -235,6 +235,24 @@ export const DraftLotteryView = () => {
   const { state, dispatchAction } = useGame();
   const season = state.leagueStats?.year ?? new Date(state.date).getFullYear();
   const activePreset = LOTTERY_PRESETS[state.leagueStats?.draftType ?? 'nba2019'] ?? DEFAULT_PRESET;
+  const ownTid = getOwnTeamId(state);
+
+  // Resolve the CURRENT owner of a given original team's upcoming R1 pick.
+  // Lottery balls are tied to record, so the "winning" team on the ball is the
+  // originator. If that pick was traded, render the new owner with "via X".
+  const resolveOwner = useCallback((originalTid: number) => {
+    const draftPicks: any[] = (state as any).draftPicks ?? [];
+    const original = state.teams.find(t => t.id === originalTid);
+    const pick = draftPicks.find(
+      (p: any) => p.season === season && p.round === 1 && p.originalTid === originalTid,
+    );
+    if (!pick || pick.tid === originalTid || !original) {
+      return { tid: originalTid, traded: false, owner: original, original };
+    }
+    const newOwner = state.teams.find(t => t.id === pick.tid);
+    if (!newOwner) return { tid: originalTid, traded: false, owner: original, original };
+    return { tid: newOwner.id, traded: true, owner: newOwner, original };
+  }, [state.teams, (state as any).draftPicks, season]);
 
   // ─── Date gating ──────────────────────────────────────────────────────────
   const today = state.date ? normalizeDate(state.date) : '';
@@ -491,6 +509,11 @@ export const DraftLotteryView = () => {
                           <AnimatePresence>
                             {currentTable.map(row => {
                               const { currentPick, team, isRevealed, change } = row;
+                              const { owner, original, traded, tid: currentOwnerTid } = resolveOwner(team.tid);
+                              const displayLogo = owner?.logoUrl ?? team.logoUrl;
+                              const displayCity = owner?.region ?? owner?.name ?? team.city;
+                              const displayFallback = (owner?.abbrev ?? team.city?.slice(0, 3) ?? '').toUpperCase();
+                              const isOwn = ownTid !== null && currentOwnerTid === ownTid;
                               return (
                                 <motion.tr
                                   layout
@@ -499,28 +522,44 @@ export const DraftLotteryView = () => {
                                   animate={{ opacity: 1 }}
                                   exit={{ opacity: 0 }}
                                   transition={{ duration: 0.5 }}
-                                  className={`transition-colors duration-500 ${currentPick === revealIndex + 1 && revealIndex < numTeams ? 'bg-white/5' : ''}`}
+                                  className={`transition-colors duration-500 ${
+                                    isOwn
+                                      ? 'bg-indigo-500/10 hover:bg-indigo-500/15 ring-1 ring-inset ring-indigo-500/40'
+                                      : currentPick === revealIndex + 1 && revealIndex < numTeams
+                                        ? 'bg-white/5'
+                                        : ''
+                                  }`}
                                 >
                                   <th>
                                     <div className="flex items-center gap-4">
                                       <span className="font-bold text-white/40 w-4">{currentPick}</span>
-                                      {team.logoUrl ? (
+                                      {displayLogo ? (
                                         <img
-                                          src={team.logoUrl}
+                                          src={displayLogo}
                                           alt=""
                                           className="tss-uqamws-teamLogo"
                                           referrerPolicy="no-referrer"
                                         />
                                       ) : (
                                         <div className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] font-black text-white/40">
-                                          {team.city?.slice(0, 3).toUpperCase()}
+                                          {displayFallback}
                                         </div>
                                       )}
                                       <div className="tss-dlwf6o-teamName">
-                                        <p className="font-bold">
-                                          {team.city}
+                                        <p className="font-bold flex items-center gap-2 flex-wrap">
+                                          <span>{displayCity}</span>
+                                          {traded && original && (
+                                            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                                              via {original.abbrev}
+                                            </span>
+                                          )}
+                                          {isOwn && (
+                                            <span className="text-[9px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/40">
+                                              You
+                                            </span>
+                                          )}
                                           {isRevealed && change !== 0 && (
-                                            <span className={`ml-3 ${change > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                            <span className={`ml-1 ${change > 0 ? 'text-green-400' : 'text-red-400'}`}>
                                               {change > 0 ? `+${change}` : change}
                                             </span>
                                           )}

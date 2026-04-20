@@ -70,7 +70,11 @@
       "Bash(git checkout *)",
       "Bash(git revert *)",
       "Bash(python -c \"import sys,json; d=json.loads\\(sys.stdin.read\\(\\)+'}'*0\\) if False else None\")",
-      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); teams=d['teams']; lal=[t for t in teams if t.get\\('abbrev'\\)=='LAL'][0]; print\\('top-level keys:', list\\(lal.keys\\(\\)\\)\\); print\\('top-level pop:', lal.get\\('pop'\\)\\); s=[x for x in lal['seasons'] if x.get\\('season'\\)==2025]; print\\('season 2025 keys:', list\\(s[0].keys\\(\\)\\) if s else None\\); print\\('season 2025 pop:', s[0].get\\('pop'\\) if s else None\\)\")"
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); teams=d['teams']; lal=[t for t in teams if t.get\\('abbrev'\\)=='LAL'][0]; print\\('top-level keys:', list\\(lal.keys\\(\\)\\)\\); print\\('top-level pop:', lal.get\\('pop'\\)\\); s=[x for x in lal['seasons'] if x.get\\('season'\\)==2025]; print\\('season 2025 keys:', list\\(s[0].keys\\(\\)\\) if s else None\\); print\\('season 2025 pop:', s[0].get\\('pop'\\) if s else None\\)\")",
+      "Bash(git stash *)",
+      "Bash(git reset *)",
+      "Bash(git restore *)",
+      "Bash(git --no-pager diff src/components/central/view/TeamOffice/pages/TeamIntel.tsx)"
     ]
   }
 }

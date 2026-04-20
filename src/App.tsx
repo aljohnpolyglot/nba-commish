@@ -170,7 +170,9 @@ function GameLayout() {
           <div className="w-8" /> {/* Spacer for visual balance */}
         </div>
 
-        <MainContent currentView={currentView} onViewChange={setCurrentView} />
+        <div className="flex-1 min-h-0">
+          <MainContent currentView={currentView} onViewChange={setCurrentView} />
+        </div>
 
         {/* Lazy sim progress overlay — takes priority over generic LoadingOverlay */}
         {state.lazySimProgress && (
@@ -206,7 +208,7 @@ function GameLayout() {
           );
         })()}
         {state.isClubbing && <ClubEffect />}
-        {state.lastOutcome && state.gameMode !== 'gm' && <OutcomeView />}
+        {state.lastOutcome && state.gameMode !== 'gm' && !state.isProcessing && !tickerAwaitingDismiss && <OutcomeView />}
       </main>
     </div>
   );

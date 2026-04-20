@@ -376,6 +376,9 @@ export interface LazySimOptions {
    *  (re-signings, FA signings, waivings, trades, extensions, two-way promotions).
    *  Clears automatically when the sim completes. Default false. */
   assistantGM?: boolean;
+  /** Called after each individual game result during silent-mode short sims.
+   *  Use with flushSync in GameContext to stream results to the ticker in real-time. */
+  onGame?: (result: any) => void;
 }
 
 export interface LazySimResult {
@@ -485,6 +488,9 @@ export const runLazySim = async (
     while (true) {
       iterNum++;
       const currentNorm = normalizeDate(state.date);
+      // Phase defaults to the date-stage label each iteration so event-specific
+      // strings (e.g. "Inducting HOF Class...") don't persist across later batches.
+      currentPhase = getPhaseLabel(currentNorm, state.leagueStats.year);
       console.log(`[LAZY_SIM] 🔁 iter ${iterNum} — currentNorm=${currentNorm}, targetNorm=${targetNorm}, state.day=${state.day}, stopBefore=${stopBefore}`);
       // stopBefore=true: break AT target (don't sim target day's games — land on target with games unplayed).
       // stopBefore=false: break only when past target (sim target day's games — default, needed for Sim Round / Sim Playoffs).
@@ -518,6 +524,13 @@ export const runLazySim = async (
         }
       }
 
+      // After all events fired, restore phase to the calendar-stage label.
+      // Without this reset, the last event's phase text (e.g. "Inducting Hall of Fame
+      // Class...") persists through the entire next simulation batch — visible to the
+      // user even when the sim is in, say, the middle of the regular season.
+      currentPhase = getPhaseLabel(currentNorm, seasonYear);
+      report();
+
       // Season rollover — fires once when date crosses June 30 of the current season year.
       // Must run in the lazy sim loop (not just simulationHandler) so that contracts expire,
       // the year advances, and schedule_generation fires for the new season.
@@ -548,7 +561,7 @@ export const runLazySim = async (
         break;
       }
 
-      const { stateWithSim, allSimResults, perDayResults } = runSimulation(state, batchDays, undefined);
+      const { stateWithSim, allSimResults, perDayResults } = await runSimulation(state, batchDays, undefined, options?.onGame);
       console.log(`[LAZY_SIM] 🎮 iter ${iterNum} — after runSimulation: state.date=${stateWithSim.date}, simResults=${allSimResults.length}, perDayResults=${perDayResults.length}`);
       lastBatchSimResults = allSimResults; // track for silent mode return
 

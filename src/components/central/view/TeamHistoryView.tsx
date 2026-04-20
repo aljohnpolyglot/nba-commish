@@ -13,6 +13,7 @@ import {
   cleanName, computeLiveTotals, mergeCareerLeaders, mergeAverageLeaders, STAT_MAP, parseStatVal,
 } from '../../../data/franchiseService';
 import { getTeamMascot } from '../../../utils/helpers';
+import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import type { Tab } from '../../../types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -26,6 +27,8 @@ export function requestTeamHistoryFor(tid: number, from?: Tab) {
   _pendingTeamHistoryTid = tid;
   _pendingOrigin = from ?? null;
 }
+
+const NBA_HUB_ID = -9999;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Color utilities
@@ -103,9 +106,15 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
   // Portrait map from missing-portraits gist: name.toLowerCase() → portrait URL
   const [portraitMap, setPortraitMap] = useState<Map<string, string>>(new Map());
 
-  const selectedTeam = selectedTeamId != null
-    ? state.teams.find(t => t.id === selectedTeamId) ?? null
-    : null;
+  const NBA_HUB_TEAM: any = {
+    id: NBA_HUB_ID, name: 'Association', region: 'National Basketball', abbrev: 'NBA',
+    colors: ['#1D428A', '#C8102E'], conference: 'League',
+    logoUrl: 'https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg',
+  };
+  const selectedTeam = selectedTeamId === NBA_HUB_ID
+    ? NBA_HUB_TEAM
+    : (selectedTeamId != null ? state.teams.find(t => t.id === selectedTeamId) ?? null : null);
+  const isNBAHub = selectedTeamId === NBA_HUB_ID;
 
   // ── Live career totals for active sim players ─────────────────────────────
   const liveTotals = useMemo(() => {
@@ -156,38 +165,78 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
     Promise.all([fetchRegularRecords(), fetchPlayoffRecords(), fetchCareerLeaders(), fetchAverageLeaders()])
       .then(([reg, play, career, avg]) => {
         if (cancelled) return;
-        setRegularRecords(filterToTeam(reg, selectedTeam));
-        setPlayoffRecords(filterToTeam(play, selectedTeam));
-        setCareerLeaders(filterToTeam(career, selectedTeam));
-        setAverageLeaders(filterToTeam(avg, selectedTeam).filter(l => parseInt(l.GP || '0') >= 100));
+        if (selectedTeamId === NBA_HUB_ID) {
+          setRegularRecords(reg);
+          setPlayoffRecords(play);
+          setCareerLeaders(career);
+          setAverageLeaders(avg.filter((l: any) => parseInt(l.GP || '0') >= 100));
+        } else {
+          setRegularRecords(filterToTeam(reg, selectedTeam));
+          setPlayoffRecords(filterToTeam(play, selectedTeam));
+          setCareerLeaders(filterToTeam(career, selectedTeam));
+          setAverageLeaders(filterToTeam(avg, selectedTeam).filter(l => parseInt(l.GP || '0') >= 100));
+        }
       })
       .catch(e => { if (!cancelled) setExternalError(String(e)); })
       .finally(() => { if (!cancelled) setExternalLoading(false); });
     return () => { cancelled = true; };
   }, [selectedTeamId]);
 
-  // ── Top 30 players by career P+A+R (gist leaders + live sim) ────────────
+  // ── Top players scoring ───────────────────────────────────────────────────
   const topPlayers = useMemo(() => {
     if (!selectedTeam) return [];
-    // Build name → { pts, reb, ast } from mergedCareer (includes gist historical + live)
-    // Use getStatValue() so we handle whichever column name the gist actually uses
+
+    // scorePlayer: pass tid=null for full career (NBA Hub), tid=number to scope to one team
+    const scorePlayer = (p: any, tid: number | null): number => {
+      // Seasons this player spent on the target team (or all seasons if tid=null)
+      const teamSeasons: Set<number> | null = tid !== null
+        ? new Set((p.stats ?? []).filter((s: any) => s.tid === tid).map((s: any) => s.season))
+        : null;
+      const inScope = (season: number) => teamSeasons === null || teamSeasons.has(season);
+
+      const aw = (p.awards ?? []).filter((a: any) => inScope(a.season));
+      const mvp     = aw.filter((a: any) => a.type === 'Most Valuable Player').length;
+      const fmvp    = aw.filter((a: any) => a.type === 'Finals MVP').length;
+      const al1     = aw.filter((a: any) => a.type === 'All-NBA First Team').length;
+      const al2     = aw.filter((a: any) => a.type === 'All-NBA Second Team').length;
+      const al3     = aw.filter((a: any) => a.type === 'All-NBA Third Team').length;
+      const ad1     = aw.filter((a: any) => a.type === 'All-Defensive First Team').length;
+      const ad2     = aw.filter((a: any) => a.type === 'All-Defensive Second Team').length;
+      const allStar = aw.filter((a: any) => a.type === 'All-Star').length;
+      const champ   = aw.filter((a: any) => a.type === 'NBA Champion').length;
+      const regSt   = (p.stats ?? []).filter((s: any) => !s.playoffs && (tid === null || s.tid === tid));
+      const playSt  = (p.stats ?? []).filter((s: any) => !!s.playoffs && (tid === null || s.tid === tid));
+      const regWS   = regSt.reduce( (sum: number, s: any) => sum + (s.ows ?? 0) + (s.dws ?? 0) + (s.ewa ?? 0), 0);
+      const playWS  = playSt.reduce((sum: number, s: any) => sum + (s.ows ?? 0) + (s.dws ?? 0) + (s.ewa ?? 0), 0);
+      return mvp * 6 + fmvp * 6 + al1 * 2 + al2 + al3 * 0.25
+        + (ad1 + ad2) * 0.15 + allStar * 0.1 + champ
+        + (playWS / 2) * 0.1 + (regWS / 2) * 0.075;
+    };
+
+    if (isNBAHub) {
+      return state.players
+        .map(p => ({ name: p.name, score: scorePlayer(p, null), imgURL: p.imgURL, hof: p.hof ?? false }))
+        .filter(e => e.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 100);
+    }
+
+    // ── Franchise view: score each player scoped to seasons on this team ─────
+    const tid = selectedTeam.id;
     const parMap = new Map<string, { pts: number; reb: number; ast: number }>();
     for (const row of mergedCareer) {
       const name = cleanName(row.NAME);
       if (!parMap.has(name)) parMap.set(name, { pts: 0, reb: 0, ast: 0 });
       const entry = parMap.get(name)!;
       const cat = row.Category ?? row.Career_Leader_Category;
-      // mergeCareerLeaders normalises the stat into _val; fall back to getStatValue for safety
       const val = (row._val ?? 0) || parseStatVal(getStatValue(row, cat));
       if (cat === 'Points')   entry.pts = Math.max(entry.pts, val);
       if (cat === 'Rebounds') entry.reb = Math.max(entry.reb, val);
       if (cat === 'Assists')  entry.ast = Math.max(entry.ast, val);
     }
-    // Live sim players: only AUGMENT existing gist legends (don't add players not in any leader list)
-    // This keeps current roster fillers out of the franchise top 30
     for (const live of liveTotals) {
       const name = live.NAME;
-      if (!parMap.has(name)) continue;
+      if (!parMap.has(name)) parMap.set(name, { pts: 0, reb: 0, ast: 0 });
       const entry = parMap.get(name)!;
       entry.pts = Math.max(entry.pts, parseFloat(live.PTS ?? '0') || 0);
       entry.reb = Math.max(entry.reb, parseFloat(live.REB ?? '0') || 0);
@@ -195,14 +244,16 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
     }
     return Array.from(parMap.entries())
       .map(([name, { pts, reb, ast }]) => {
-        const score = pts + reb + ast;
         const statePlayer = state.players.find(p => p.name?.toLowerCase() === name.toLowerCase());
+        // Sim player: score only stats/awards from seasons on this team
+        // Historical legend (gist-only): fall back to scaled P+R+A for this franchise
+        const score = statePlayer ? scorePlayer(statePlayer, tid) : (pts + reb + ast) * 0.001;
         return { name, score, imgURL: statePlayer?.imgURL, hof: statePlayer?.hof ?? false };
       })
       .filter(e => e.score > 0)
       .sort((a, b) => b.score - a.score)
       .slice(0, 30);
-  }, [mergedCareer, liveTotals, state.players, selectedTeamId]);
+  }, [mergedCareer, liveTotals, state.players, selectedTeamId, isNBAHub]);
 
   // ── Season history (from historicalAwards + team.seasons + wiki) ──────────
   const seasonHistory = useMemo(() => {
@@ -316,9 +367,13 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
     );
   }, [state.teams, searchTerm]);
 
+  const quick = usePlayerQuickActions();
+
   // ─────────────────────────────────────────────────────────────────────────
   // Team list view
   // ─────────────────────────────────────────────────────────────────────────
+
+  if (quick.fullPageView) return quick.fullPageView;
 
   if (!selectedTeam) {
     return (
@@ -340,6 +395,25 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
               />
             </div>
           </div>
+          {/* NBA Hub featured card */}
+          <motion.button
+            whileHover={{ y: -3, scale: 1.005 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => { setSelectedTeamId(NBA_HUB_ID); setActiveTab('overview'); setExpandedLeaders({}); setExpandedRecords({}); }}
+            className="w-full mb-6 bg-gradient-to-r from-[#1D428A]/20 to-[#C8102E]/20 border border-[#1D428A]/40 rounded-2xl p-5 text-left overflow-hidden relative group"
+          >
+            <div className="flex items-center gap-4">
+              <img src="https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg" alt="NBA" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
+              <div>
+                <div className="text-xs font-black uppercase tracking-tight">
+                  <span className="text-zinc-400">National Basketball </span>
+                  <span className="text-[#C8102E]">Association</span>
+                </div>
+                <div className="text-[10px] text-zinc-500 font-mono uppercase mt-0.5">League-Wide Records & All-Time Leaders</div>
+              </div>
+              <ChevronRight className="ml-auto w-4 h-4 text-[#1D428A] opacity-60 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </motion.button>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {filteredTeams.map(team => {
               const ac = getBestAccentColor(team.colors, team.name);
@@ -370,6 +444,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
           </div>
         </div>
       </div>
+      {quick.portals}
     );
   }
 
@@ -431,11 +506,11 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
       <div className="sticky top-0 z-20 bg-[#09090b]/90 backdrop-blur border-b border-zinc-800/50 overflow-x-auto">
         <div className="max-w-6xl mx-auto px-6 flex gap-6 min-w-max">
           {([
-            { id: 'overview', label: 'Overview', icon: LayoutGrid },
-            { id: 'records', label: 'Records', icon: Trophy },
-            { id: 'leaders', label: 'Leaders', icon: Award },
-            { id: 'history', label: 'Season History', icon: History },
-          ] as const).map(tab => (
+            { id: 'overview' as const, label: 'Overview', icon: LayoutGrid },
+            { id: 'records' as const, label: 'Records', icon: Trophy },
+            { id: 'leaders' as const, label: 'Leaders', icon: Award },
+            ...(!isNBAHub ? [{ id: 'history' as const, label: 'Season History', icon: History }] : []),
+          ]).map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -491,43 +566,47 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
               <section>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest" style={{ color: accent }}>
-                    <Users className="w-4 h-4" /> All-Time Top Players
+                    <Users className="w-4 h-4" /> {isNBAHub ? 'All-Time Top 100 Players' : 'All-Time Top Players'}
                   </h2>
-                  <span className="text-[10px] text-zinc-600 font-mono uppercase">Career P+R+A</span>
+                  <span className="text-[10px] text-zinc-600 font-mono uppercase">MVP · Finals MVP · All-NBA · Win Shares</span>
                 </div>
                 {topPlayers.length === 0 ? (
                   <p className="text-zinc-600 text-sm italic">No player stats found for this franchise.</p>
                 ) : (
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4">
-                    {topPlayers.map(({ name, imgURL, hof }, idx) => (
-                      <motion.div
-                        key={name}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: idx * 0.015 }}
-                        className="group flex flex-col items-center text-center"
-                      >
-                        <div className="relative mb-2">
-                          <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-zinc-800 group-hover:border-[var(--ta)] transition-colors">
-                            <img
-                              src={imgURL || findPlayerImg(name)}
-                              alt={name}
-                              className="w-full h-full object-cover object-top grayscale group-hover:grayscale-0 transition-all"
-                              referrerPolicy="no-referrer"
-                            />
-                          </div>
-                          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-zinc-950 border border-zinc-800 flex items-center justify-center text-[8px] font-black" style={{ color: accent }}>
-                            {idx + 1}
-                          </div>
-                          {hof && (
-                            <div className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-rose-600 flex items-center justify-center">
-                              <Star className="w-2.5 h-2.5 text-white" fill="white" />
+                    {topPlayers.map(({ name, imgURL, hof }, idx) => {
+                      const statePlayer = state.players.find(p => p.name?.toLowerCase() === name.toLowerCase());
+                      return (
+                        <motion.div
+                          key={name}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: idx * 0.015 }}
+                          onClick={() => statePlayer && quick.openFor(statePlayer)}
+                          className={`group flex flex-col items-center text-center ${statePlayer ? 'cursor-pointer' : ''}`}
+                        >
+                          <div className="relative mb-2">
+                            <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-zinc-800 group-hover:border-[var(--ta)] transition-colors">
+                              <img
+                                src={imgURL || findPlayerImg(name)}
+                                alt={name}
+                                className="w-full h-full object-cover object-top grayscale group-hover:grayscale-0 transition-all"
+                                referrerPolicy="no-referrer"
+                              />
                             </div>
-                          )}
-                        </div>
-                        <p className="text-[10px] font-bold text-zinc-200 leading-tight line-clamp-2">{name}</p>
-                      </motion.div>
-                    ))}
+                            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-zinc-950 border border-zinc-800 flex items-center justify-center text-[8px] font-black" style={{ color: accent }}>
+                              {idx + 1}
+                            </div>
+                            {hof && (
+                              <div className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-rose-600 flex items-center justify-center">
+                                <Star className="w-2.5 h-2.5 text-white" fill="white" />
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-[10px] font-bold text-zinc-200 leading-tight line-clamp-2 group-hover:text-[var(--ta)] transition-colors">{name}</p>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 )}
               </section>
@@ -538,7 +617,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
           {activeTab === 'records' && (
             <motion.div key="records" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-black uppercase tracking-widest">Franchise Records</h2>
+                <h2 className="text-lg font-black uppercase tracking-widest">{isNBAHub ? 'League Records' : 'Franchise Records'}</h2>
                 <div className="flex p-1 bg-zinc-900 border border-zinc-800 rounded-lg">
                   {(['regular', 'playoff'] as const).map(type => (
                     <button
@@ -609,7 +688,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
           {activeTab === 'leaders' && (
             <motion.div key="leaders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-black uppercase tracking-widest">Career Leaders</h2>
+                <h2 className="text-lg font-black uppercase tracking-widest">{isNBAHub ? 'All-Time Leaders' : 'Career Leaders'}</h2>
                 <div className="flex p-1 bg-zinc-900 border border-zinc-800 rounded-lg">
                   {(['totals', 'averages'] as const).map(sub => (
                     <button
@@ -793,6 +872,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
 
         </AnimatePresence>
       </div>
+      {quick.portals}
     </div>
   );
 };

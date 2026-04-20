@@ -138,10 +138,6 @@ const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onImageClick, onC
 
           {post.mediaUrl && post.mediaUrl !== avatarSrc && (() => {
             const d = post.data as any;
-            const tplId = d?.templateId || '';
-            if (tplId.startsWith('nba_')) {
-              console.log(`[SocialPostCard] @NBA post rendering: templateId="${tplId}" mediaUrl="${post.mediaUrl?.slice(0,80)}" needsCanvas=${needsCanvasEditor(post)} hasHomeTeam=${!!d?.homeTeam} hasAwayTeam=${!!d?.awayTeam}`);
-            }
             if (needsCanvasEditor(post) && d?.homeTeam && d?.awayTeam) {
               const photo = {
                 id: 0, setId: 0, headLine: '', caption: '', captionClean: '',
@@ -228,4 +224,17 @@ const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onImageClick, onC
   );
 };
 
-export default SocialPostCard;
+// Memoize: LazyPhotoCard rebuilds `post` (spread) every enrichment tick, which
+// otherwise cascades into ImagnPhotoEditor re-renders and stalls scroll on mobile.
+export default React.memo(SocialPostCard, (prev, next) => (
+  prev.post.id === next.post.id &&
+  prev.post.mediaUrl === next.post.mediaUrl &&
+  prev.post.likes === next.post.likes &&
+  prev.post.retweets === next.post.retweets &&
+  prev.post.replyCount === next.post.replyCount &&
+  prev.post.isLiked === next.post.isLiked &&
+  prev.post.isRetweeted === next.post.isRetweeted &&
+  prev.onClick === next.onClick &&
+  prev.onImageClick === next.onImageClick &&
+  prev.onProfileClick === next.onProfileClick
+));

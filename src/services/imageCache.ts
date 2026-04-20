@@ -88,6 +88,9 @@ async function downloadAndCache(
       return;
     }
 
+    // NBA CDN blocks CORS fetch() — img tags still work fine so skip caching for those
+    if (url.includes('ak-static.cms.nba.com') || url.includes('cdn.nba.com')) return;
+
     // Download
     const res = await fetch(url, { mode: 'cors' });
     if (!res.ok) return;

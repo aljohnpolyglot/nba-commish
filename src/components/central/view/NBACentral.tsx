@@ -275,7 +275,7 @@ export const NBACentral: React.FC = () => {
           }}
         />
       ) : (
-        <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-300 overflow-hidden rounded-[2.5rem] border border-slate-800 shadow-2xl animate-in fade-in duration-500">
+        <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-300 overflow-hidden rounded-xl sm:rounded-[2.5rem] border border-slate-800 shadow-2xl animate-in fade-in duration-500">
           <NBACentralHeader 
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
@@ -320,7 +320,7 @@ export const NBACentral: React.FC = () => {
               onWatch={handleWatchGame}
               onTeamClick={setSelectedTeamId}
           />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-10">
                   <StandingsTable 
                     teams={eastTeams} 
                     conference="East" 
