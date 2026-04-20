@@ -158,7 +158,7 @@ export class StarterService {
     return [pg, ...rest];
   }
 
-  static getRotation(team: Team, players: Player[], lead: number = 0, season: number = 2025, overridePlayers?: Player[], modern: boolean = true): Player[] {
+  static getRotation(team: Team, players: Player[], lead: number = 0, season: number = 2025, overridePlayers?: Player[], modern: boolean = true, depthOverride?: number): Player[] {
     const teamPlayers = overridePlayers || players.filter(
       p => p.tid === team.id && p.status === 'Active' && (!p.injury || p.injury.gamesRemaining <= 0)
     );
@@ -191,10 +191,15 @@ export class StarterService {
 
     benchLineup.push(...notInBench());
 
+    // Caller-supplied depth (e.g. MinutesPlayedService passing the full depth after
+    // rotationDepthOverride=12 for All-Star) takes priority over the legacy blowout
+    // scale. Without this, an ASG with 12 roster spots collapses to a 10-man rotation
+    // because rotationDepth is hardcoded to 10 before the blowout adjustments kick in.
     let rotationDepth = 10;
     if      (lead > 25) rotationDepth = 13;
     else if (lead > 15) rotationDepth = 12;
     else if (lead > 8)  rotationDepth = 11;
+    if (depthOverride !== undefined && depthOverride > 0) rotationDepth = depthOverride;
 
     return [
       ...finalStarters,

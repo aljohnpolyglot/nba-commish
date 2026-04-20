@@ -12,11 +12,23 @@
 
 ### THIS TERMINAL (orchestrator) — Traded draft picks bug
 
-**TP.1 Traded picks not being read by Draft Lottery**
-When teams trade their future first-round picks, the Draft Lottery UI still shows the original team owning those picks. Verify that `DraftLotteryView` (or wherever the lottery simulation runs) uses `pick.tid` (current owner) vs `pick.originalTid` correctly, and that the pick list sourced for the lottery includes traded picks.
+**TP.1 Draft Lottery — display traded-pick current owner**
+Lottery odds are calculated from team records (correct — balls are tied to record, not pick ownership; do NOT change the odds math). What's wrong: when a lottery ball results says "Wizards' pick wins #1" and Wizards traded that pick to Thunder, the result row should display **Thunder (via Wizards)**, not Wizards. After the lottery balls determine which TEAM's pick wins each slot 1–14, look up `state.draftPicks` for that team's upcoming season-round-1 entry and render `pick.tid` as the actual owner with `pick.originalTid` in parens. File: `src/components/draft/DraftLotteryView.tsx`.
 
 **TP.2 Traded picks not used in DraftSimulator**
-When the draft actually runs, DraftSimulator is assigning picks to the original team, not the current holder. Check that DraftSimulator reads `pick.tid` for pick ownership and that the draft ordering/assignment respects traded picks. Cross-reference with `memory/project_draft_picks_schema.md` (DraftPick schema: dpid / tid / originalTid / season / round).
+When the draft actually runs, DraftSimulator is assigning picks to the original team, not the current holder. Root cause confirmed:
+- `DraftSimulatorView.tsx` lines 504–540 build `draftOrder` from `state.teams` standings only, never consulting `state.draftPicks`. Comment at lines 749–751 even acknowledges this misalignment.
+- Lines 861–911 assign `tid` and `originalTid` both from `draftOrder[pickSlot - 1].id`, losing trade info.
+Fix: build a slot→DraftPick map from `state.draftPicks` (filter by `season` + `round`, keyed by sorted slot position derived from standings/lottery), then in the player-assignment loop use `pick.tid` for `tid` and `pick.originalTid` for `originalTid`. Cross-reference `memory/project_draft_picks_schema.md`.
+
+**TP.3 Highlight "your team" on Draft Lottery (GM mode)**
+Same pattern used in `src/components/team-stats/TeamStatsView.tsx`:
+- Get user team via `const ownTid = getOwnTeamId(state);` at top of component
+- For each lottery result row, compute `const isOwn = ownTid !== null && row.team.id === ownTid;`
+- Apply `bg-indigo-500/10 hover:bg-indigo-500/15` row tint when `isOwn`
+- Sticky/lead cell uses `bg-indigo-950/60` instead of default `bg-slate-950`
+- Append a "You" pill: `<span className="text-[8px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-1 py-0.5 rounded border border-indigo-500/40">You</span>`
+After TP.1 lands, the "your team" check should compare against `pick.tid` (current owner), so a user who acquired another team's pick via trade still gets the highlight on the slot they actually own.
 
 ---
 
@@ -26,8 +38,9 @@ When the draft actually runs, DraftSimulator is assigning picks to the original 
 Clicking the confirm/finalize button in the trade review/confirm modal is firing the simulate-day handler and opening the game ticker. Likely an event bubbling issue or a shared action handler. Look at `TradeReviewModal` / `TradeConfirmModal` / `TradeHub` — make sure the confirm click does ONLY the trade execution, no `simDay` / `advanceDay` side-effect. Stop propagation, separate handlers.
 Fix: `processTurn` in `gameLogic.ts` now treats EXECUTIVE_TRADE / FORCE_TRADE as instant — `daysToSimulate=0`, `daysToAdvance=0`, `day` stays at `state.day`. No `runSimulation` games, no `onSimComplete` callback, `lastSimResults`/`tickerSimResults` stay empty, and the GM-mode LoadingOverlay gate (`if (gameMode==='gm' && !hasTicker) return null`) keeps the ticker closed.
 
-**A1.2 All-Star Weekend rotation only plays 10 players**
+**A1.2 All-Star Weekend rotation only plays 10 players** ✅
 The ASG rotation pipeline is treating it like a regular-season game (10-man rotation). Real ASG uses all 12 roster spots with even-ish minutes. Route ASG through an event-specific rotation generator that includes all 12.
+Fix: `StarterService.getRotation` had a hardcoded `rotationDepth = 10` that silently clipped the bench list before `MinutesPlayedService` sliced to its computed depth — so `KNOBS_ALL_STAR.rotationDepthOverride = 12` never made it past the starter-service cap. Added a `depthOverride` parameter to `StarterService.getRotation` and threaded the MinutesPlayedService-computed `depth` through. All-Star (12) and Rising Stars (10) now land with the correct rotation size; regular-season games still get the standings-driven depth from MinutesPlayedService.
 
 ---
 

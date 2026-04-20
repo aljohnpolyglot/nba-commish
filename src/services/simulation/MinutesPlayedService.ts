@@ -252,8 +252,9 @@ export class MinutesPlayedService {
 
     // ── Ordered rotation — StarterService for role-aware starters + bench ───
     // StarterService.getRotation returns [5 starters, N bench] sorted by role fit
-    // then OVR.  We slice to the depth we've calculated above.
-    const roleOrdered = StarterService.getRotation(team, players, lead, season, pool);
+    // then OVR. Pass `depth` through so the bench fill honors the full rotation
+    // (All-Star override=12 was getting clipped to StarterService's legacy 10-cap).
+    const roleOrdered = StarterService.getRotation(team, players, lead, season, pool, true, depth);
 
     const finalRotation = roleOrdered.slice(0, depth);
     console.debug(
