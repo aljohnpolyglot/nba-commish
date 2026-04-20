@@ -567,6 +567,12 @@ export interface HeadToHead {
   regularSeason: Record<number, Record<number, HeadToHeadRecord>>;
 }
 
+/** Manual team-status override set by the user in GM mode.
+ *  When present and `gameMode === 'gm'` and `team.id === userTeamId`,
+ *  readers (trade gates, narratives, AI handlers) use this instead of the
+ *  auto-computed outlook. */
+export type TeamStatus = 'contending' | 'win_now' | 'retooling' | 'rebuilding';
+
 export interface NBATeam {
   id: number;
   name: string;
@@ -585,6 +591,7 @@ export interface NBATeam {
   logoUrl?: string;
   colors?: string[];
   streak?: { type: 'W' | 'L'; count: number };
+  manualTeamStatus?: TeamStatus;
   seasons?: Array<{
     season: number;
     won: number;

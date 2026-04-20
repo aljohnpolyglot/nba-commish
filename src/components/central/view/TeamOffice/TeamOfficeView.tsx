@@ -10,12 +10,14 @@ import { GeneralManager } from './pages/GeneralManager';
 import { DraftPicks } from './pages/DraftPicks';
 import { CoachingPage } from './pages/CoachingPage';
 import { DraftScouting } from './pages/DraftScouting';
+import { TeamOfficeDepthChartTab } from './pages/TeamOfficeDepthChartTab';
 
-type OfficeTab = 'home' | 'gm' | 'coaching' | 'intel' | 'needs' | 'trading' | 'picks' | 'scouting';
+type OfficeTab = 'home' | 'gm' | 'coaching' | 'depth' | 'intel' | 'needs' | 'trading' | 'picks' | 'scouting';
 
 const TABS: { id: OfficeTab; label: string }[] = [
   { id: 'gm', label: 'General Manager' },
   { id: 'coaching', label: 'Coaching' },
+  { id: 'depth', label: 'Depth Chart' },
   { id: 'intel', label: 'Team Intel' },
   { id: 'needs', label: 'Team Needs' },
   { id: 'trading', label: 'Trade Hub' },
@@ -50,6 +52,7 @@ export function TeamOfficeView() {
     switch (activeTab) {
       case 'gm': return <GeneralManager teamId={currentTeam.id} />;
       case 'coaching': return <CoachingPage teamId={currentTeam.id} />;
+      case 'depth': return <TeamOfficeDepthChartTab teamId={currentTeam.id} />;
       case 'intel': return <TeamIntel teamId={currentTeam.id} />;
       case 'needs': return <TeamNeeds teamId={currentTeam.id} />;
       case 'trading': return <TradingBlock teamId={currentTeam.id} />;

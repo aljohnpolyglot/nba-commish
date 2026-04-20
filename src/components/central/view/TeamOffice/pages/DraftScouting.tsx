@@ -14,7 +14,7 @@ import React, { useMemo } from 'react';
 import { useGame } from '../../../../../store/GameContext';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
 import { calcOvr2K, calcPot2K, type TeamMode } from '../../../../../services/trade/tradeValueEngine';
-import { getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2 } from '../../../../../utils/salaryUtils';
+import { getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2, resolveManualOutlook } from '../../../../../utils/salaryUtils';
 import { cn } from '../../../../../lib/utils';
 
 interface DraftScoutingProps {
@@ -50,6 +50,12 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
   // Team mode (contend vs rebuild) — determines how we weight OVR vs POT
   const teamMode: TeamMode = useMemo(() => {
     if (!team) return 'rebuild';
+    const manual = resolveManualOutlook(team, state.gameMode, state.userTeamId);
+    if (manual) {
+      if (manual.role === 'heavy_buyer' || manual.role === 'buyer') return 'contend';
+      if (manual.role === 'rebuilding') return 'presti';
+      return 'rebuild';
+    }
     const payroll = state.players.filter(p => p.tid === teamId).reduce((s, p) => s + ((p.contract?.amount ?? 0) * 1_000), 0);
     const rec = effectiveRecord(team, currentYear);
     const confTeams = state.teams.filter(t => t.conference === team.conference)
@@ -66,7 +72,7 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
     if (outlook.role === 'heavy_buyer' || outlook.role === 'buyer') return 'contend';
     if (outlook.role === 'rebuilding') return 'presti';
     return 'rebuild';
-  }, [team, state.players, state.teams, teamId, currentYear, thresholds]);
+  }, [team, state.players, state.teams, teamId, currentYear, thresholds, state.gameMode, state.userTeamId]);
 
   // Team needs — weakest positions
   const teamNeeds = useMemo(() => {

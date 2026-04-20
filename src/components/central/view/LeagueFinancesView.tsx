@@ -7,7 +7,7 @@ import {
 import {
   getCapThresholds, getCapStatus, formatSalaryM, contractToUSD,
   getTradeOutlook, effectiveRecord, topNAvgK2, CapThresholds,
-  getMLEAvailability,
+  getMLEAvailability, resolveManualOutlook, type TradeOutlook,
 } from '../../../utils/salaryUtils';
 import {
   estimateAttendance, formatAttendance, formatRevM, ARENA_HARD_CAP,
@@ -29,6 +29,7 @@ interface TeamEnriched {
   hasInjuredStar: boolean;
   mleAvailable: number;
   mleType: string; // 'Room' | 'Tax' | 'NT' | '—'
+  manualOutlook?: TradeOutlook; // GM-mode manual override, if set
 }
 
 const ROSTER_MAX = 15;
@@ -87,8 +88,8 @@ const CapRow: React.FC<{
 }> = ({ d, thresholds, maxPayroll, rank, isOwn, onClick }) => {
   const { team, payroll, expiringCount, effectiveWins, effectiveLosses, mleAvailable, mleType } = d;
   const status      = getCapStatus(payroll, thresholds);
-  const baseOutlook = getTradeOutlook(payroll, effectiveWins, effectiveLosses, expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2);
-  const outlook     = d.hasInjuredStar
+  const baseOutlook = d.manualOutlook ?? getTradeOutlook(payroll, effectiveWins, effectiveLosses, expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2);
+  const outlook     = d.hasInjuredStar && !d.manualOutlook
     ? { ...baseOutlook, label: 'Injured Star', color: 'text-amber-300', bgColor: 'bg-amber-500/10' }
     : baseOutlook;
   const capSpace = thresholds.salaryCap - payroll;
@@ -254,8 +255,8 @@ const TradeCard: React.FC<{
   d: TeamEnriched; thresholds: CapThresholds; isOwn: boolean; onClick: () => void;
 }> = ({ d, thresholds, isOwn, onClick }) => {
   const { team, payroll, expiringCount, effectiveWins, effectiveLosses } = d;
-  const baseOutlook = getTradeOutlook(payroll, effectiveWins, effectiveLosses, expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2);
-  const outlook = d.hasInjuredStar
+  const baseOutlook = d.manualOutlook ?? getTradeOutlook(payroll, effectiveWins, effectiveLosses, expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2);
+  const outlook = d.hasInjuredStar && !d.manualOutlook
     ? { ...baseOutlook, label: 'Injured Star', color: 'text-amber-300', bgColor: 'bg-amber-500/10' }
     : baseOutlook;
   const capSpace = thresholds.salaryCap - payroll;
@@ -357,8 +358,9 @@ export const LeagueFinancesView: React.FC = () => {
     const mle = getMLEAvailability(team.id, payroll, 0, thresholds, state.leagueStats);
     const mleAvailable = mle.type && !mle.blocked ? mle.available : 0;
     const mleType = mle.type === 'room' ? 'Room' : mle.type === 'taxpayer' ? 'Tax' : mle.type ? 'NT' : '—';
-    return { team, payroll, expiringCount, standardCount, twoWayCount, confRank, gbFromLeader, effectiveWins, effectiveLosses, topThreeAvgK2, hasInjuredStar, mleAvailable, mleType };
-  }), [state.teams, state.players, seasonYear, confStandings, thresholds, state.leagueStats]);
+    const manualOutlook = resolveManualOutlook(team, state.gameMode, state.userTeamId);
+    return { team, payroll, expiringCount, standardCount, twoWayCount, confRank, gbFromLeader, effectiveWins, effectiveLosses, topThreeAvgK2, hasInjuredStar, mleAvailable, mleType, manualOutlook };
+  }), [state.teams, state.players, seasonYear, confStandings, thresholds, state.leagueStats, state.gameMode, state.userTeamId]);
 
   const maxPayroll = useMemo(
     () => Math.max(...teamData.map(d => d.payroll), thresholds.secondApron * 1.05),
@@ -384,8 +386,8 @@ export const LeagueFinancesView: React.FC = () => {
       diff = sa - sb;
     }
     else if (capSort === 'strategy') {
-      const ra = ROLE_RANK[getTradeOutlook(a.payroll, a.effectiveWins, a.effectiveLosses, a.expiringCount, thresholds, a.confRank, a.gbFromLeader, a.topThreeAvgK2).role] ?? 2;
-      const rb = ROLE_RANK[getTradeOutlook(b.payroll, b.effectiveWins, b.effectiveLosses, b.expiringCount, thresholds, b.confRank, b.gbFromLeader, b.topThreeAvgK2).role] ?? 2;
+      const ra = ROLE_RANK[(a.manualOutlook ?? getTradeOutlook(a.payroll, a.effectiveWins, a.effectiveLosses, a.expiringCount, thresholds, a.confRank, a.gbFromLeader, a.topThreeAvgK2)).role] ?? 2;
+      const rb = ROLE_RANK[(b.manualOutlook ?? getTradeOutlook(b.payroll, b.effectiveWins, b.effectiveLosses, b.expiringCount, thresholds, b.confRank, b.gbFromLeader, b.topThreeAvgK2)).role] ?? 2;
       diff = rb - ra;
     }
     else diff = a.team.name.localeCompare(b.team.name);
@@ -413,7 +415,7 @@ export const LeagueFinancesView: React.FC = () => {
   const buyers = useMemo(() =>
     teamData
       .filter(d => {
-        const r = getTradeOutlook(d.payroll, d.effectiveWins, d.effectiveLosses, d.expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2).role;
+        const r = (d.manualOutlook ?? getTradeOutlook(d.payroll, d.effectiveWins, d.effectiveLosses, d.expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2)).role;
         return r === 'buyer' || r === 'heavy_buyer';
       })
       .sort((a, b) => a.confRank - b.confRank)
@@ -422,7 +424,7 @@ export const LeagueFinancesView: React.FC = () => {
   const sellers = useMemo(() =>
     teamData
       .filter(d => {
-        const r = getTradeOutlook(d.payroll, d.effectiveWins, d.effectiveLosses, d.expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2).role;
+        const r = (d.manualOutlook ?? getTradeOutlook(d.payroll, d.effectiveWins, d.effectiveLosses, d.expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2)).role;
         return r === 'seller' || r === 'rebuilding';
       })
       .sort((a, b) => b.confRank - a.confRank)
@@ -430,7 +432,7 @@ export const LeagueFinancesView: React.FC = () => {
 
   const neutrals = useMemo(() =>
     teamData.filter(d => {
-      const r = getTradeOutlook(d.payroll, d.effectiveWins, d.effectiveLosses, d.expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2).role;
+      const r = (d.manualOutlook ?? getTradeOutlook(d.payroll, d.effectiveWins, d.effectiveLosses, d.expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2)).role;
       return r === 'neutral';
     })
   , [teamData, thresholds]);

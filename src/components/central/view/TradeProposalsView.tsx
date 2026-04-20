@@ -25,7 +25,7 @@ import {
 } from '../../../services/trade/tradeValueEngine';
 import {
   getTradeOutlook, effectiveRecord, getCapThresholds,
-  getTeamPayrollUSD, getTeamCapProfile, topNAvgK2,
+  getTeamPayrollUSD, getTeamCapProfile, topNAvgK2, resolveManualOutlook,
   type TradeOutlook,
 } from '../../../utils/salaryUtils';
 
@@ -227,6 +227,8 @@ export const TradeProposalsView: React.FC = () => {
   const teamOutlooks = useMemo(() => {
     const map = new Map<number, TradeOutlook>();
     teams.forEach(t => {
+      const manual = resolveManualOutlook(t, state.gameMode, userTid);
+      if (manual) { map.set(t.id, manual); return; }
       const payroll = getTeamPayrollUSD(players, t.id);
       const standings = confStandings.get(t.id);
       const expiring = players.filter(p => p.tid === t.id && (p.contract?.exp ?? 0) <= currentYear).length;
@@ -235,7 +237,7 @@ export const TradeProposalsView: React.FC = () => {
       map.set(t.id, getTradeOutlook(payroll, rec.wins, rec.losses, expiring, thresholds, standings?.confRank, standings?.gbFromLeader, starAvg));
     });
     return map;
-  }, [teams, players, thresholds, confStandings, currentYear]);
+  }, [teams, players, thresholds, confStandings, currentYear, state.gameMode, userTid]);
 
   const capSpaces = useMemo(() => {
     const map = new Map<number, number>();

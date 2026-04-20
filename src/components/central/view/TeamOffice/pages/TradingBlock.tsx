@@ -9,7 +9,7 @@ import { generateInboundProposalsForUser } from '../../../../../services/trade/i
 import { getMinTradableSeason, getTradablePicks, getMaxTradableSeason } from '../../../../../services/draft/DraftPickGenerator';
 import { buildClassStrengthMap, buildLotterySlotMap } from '../../../../../services/draft/draftClassStrength';
 import { teamPowerRanks } from '../../../../../services/trade/tradeFinderEngine';
-import { getTradeOutlook, effectiveRecord, getCapThresholds, getTeamPayrollUSD, topNAvgK2 } from '../../../../../utils/salaryUtils';
+import { getTradeOutlook, effectiveRecord, getCapThresholds, getTeamPayrollUSD, topNAvgK2, resolveManualOutlook } from '../../../../../utils/salaryUtils';
 import { getTradingBlock, saveTradingBlock } from '../../../../../store/tradingBlockStore';
 import { getFamilyOnRoster } from '../../../../../utils/familyTies';
 import { NBAPlayer, NBATeam } from '../../../../../types';
@@ -42,6 +42,12 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
   // Determine team mode using real trade outlook
   const teamMode: TeamMode = useMemo(() => {
     if (!team) return 'rebuild';
+    const manual = resolveManualOutlook(team, state.gameMode, state.userTeamId);
+    if (manual) {
+      if (manual.role === 'heavy_buyer' || manual.role === 'buyer') return 'contend';
+      if (manual.role === 'rebuilding') return 'presti';
+      return 'rebuild';
+    }
     const payroll = getTeamPayrollUSD(players, teamId);
     const rec = effectiveRecord(team, currentYear);
     const confTeams = teams.filter(t => t.conference === team.conference).map(t => ({
@@ -59,7 +65,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
     if (outlook.role === 'heavy_buyer' || outlook.role === 'buyer') return 'contend';
     if (outlook.role === 'rebuilding') return 'presti';
     return 'rebuild';
-  }, [team, players, teams, teamId, currentYear, thresholds]);
+  }, [team, players, teams, teamId, currentYear, thresholds, state.gameMode, state.userTeamId]);
 
   if (teamPlayers.length === 0) {
     return <div className="text-red-400 font-bold uppercase tracking-widest">Team not found</div>;
@@ -305,11 +311,11 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
 
   // Selector items
   const ownRosterItems: PlayerSelectorItem[] = useMemo(() =>
-    rosterWithTV.map(r => ({ player: r.player, score: r.ovr, subtitle: `${r.ovr} OVR · TV ${r.tv}` })),
+    rosterWithTV.map(r => ({ player: r.player, score: r.ovr, subtitle: `${r.ovr} · ${r.pot} · ${playerAge(r.player)}y` })),
   [rosterWithTV]);
 
   const leagueItems: PlayerSelectorItem[] = useMemo(() =>
-    otherWithTV.map(r => ({ player: r.player, score: r.ovr, subtitle: `${r.ovr} OVR` })),
+    otherWithTV.map(r => ({ player: r.player, score: r.ovr, subtitle: `${r.ovr} · ${r.pot} · ${playerAge(r.player)}y` })),
   [otherWithTV]);
 
   const toggle = (list: 'untouchable' | 'block' | 'targets', id: string) => {
@@ -383,7 +389,8 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
       const payroll = getTeamPayrollUSD(players, t.id);
       const expiring = players.filter(p => p.tid === t.id && (p.contract?.exp ?? 0) <= currentYear).length;
       const starAvg = topNAvgK2(players, t.id, 3);
-      const outlook = getTradeOutlook(payroll, rec.wins, rec.losses, expiring, thresholds, confRank, gb, starAvg);
+      const manual = resolveManualOutlook(t, state.gameMode, state.userTeamId);
+      const outlook = manual ?? getTradeOutlook(payroll, rec.wins, rec.losses, expiring, thresholds, confRank, gb, starAvg);
       map.set(t.id, { role: outlook.role });
     }
     void ranks;

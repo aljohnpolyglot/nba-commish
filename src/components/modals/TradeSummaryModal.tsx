@@ -17,7 +17,7 @@ import {
 } from '../../services/trade/tradeValueEngine';
 import {
   getTradeOutlook, effectiveRecord, getCapThresholds,
-  getTeamPayrollUSD, getTeamCapProfile, topNAvgK2,
+  getTeamPayrollUSD, getTeamCapProfile, topNAvgK2, resolveManualOutlook,
   type TradeOutlook,
 } from '../../utils/salaryUtils';
 import { OfferCard, type FoundOffer, type TradeItem } from '../central/view/TradeFinderView';
@@ -115,6 +115,8 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
 
   // Compute outlook + mode + cap for each team for the OfferCard headers.
   const buildOutlook = (team: NBATeam): TradeOutlook => {
+    const manual = resolveManualOutlook(team, state.gameMode, state.userTeamId);
+    if (manual) return manual;
     const payroll = getTeamPayrollUSD(state.players, team.id);
     const rec = effectiveRecord(team, currentYear);
     const confTeams = state.teams.filter(t => t.conference === team.conference).map(t => ({

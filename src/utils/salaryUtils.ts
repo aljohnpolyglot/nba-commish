@@ -1,4 +1,4 @@
-import { NBAPlayer, NBATeam } from '../types';
+import { NBAPlayer, NBATeam, TeamStatus } from '../types';
 import { convertTo2KRating } from './helpers';
 import { EXTERNAL_SALARY_SCALE } from '../constants';
 
@@ -112,6 +112,41 @@ export interface TradeOutlook {
   bgColor: string; // tailwind bg
   dot: string;     // hex dot colour
   reason: string;
+}
+
+// Outlook shapes produced when the user manually pins their team's status in GM mode.
+const MANUAL_STATUS_OUTLOOK: Record<TeamStatus, TradeOutlook> = {
+  contending: { role: 'heavy_buyer', label: 'Contending', color: 'text-emerald-300', bgColor: 'bg-emerald-500/20', dot: '#6ee7b7', reason: 'Manual' },
+  win_now:    { role: 'buyer',       label: 'Win-Now',    color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', dot: '#34d399', reason: 'Manual' },
+  retooling:  { role: 'seller',      label: 'Retooling',  color: 'text-amber-400',   bgColor: 'bg-amber-500/20',   dot: '#fbbf24', reason: 'Manual' },
+  rebuilding: { role: 'rebuilding',  label: 'Rebuilding', color: 'text-purple-400',  bgColor: 'bg-purple-500/20',  dot: '#c084fc', reason: 'Manual' },
+};
+
+export const MANUAL_STATUS_LABEL: Record<TeamStatus, string> = {
+  contending: 'Contending',
+  win_now: 'Win-Now',
+  retooling: 'Retooling',
+  rebuilding: 'Rebuilding',
+};
+
+export function manualStatusOutlook(status: TeamStatus): TradeOutlook {
+  return MANUAL_STATUS_OUTLOOK[status];
+}
+
+/**
+ * Return the manual-override outlook for a team if (and only if) the user has
+ * pinned one in GM mode for their own team. Otherwise returns undefined so
+ * callers fall back to the auto-computed outlook.
+ */
+export function resolveManualOutlook(
+  team: Pick<NBATeam, 'id' | 'manualTeamStatus'>,
+  gameMode: string | undefined,
+  userTeamId: number | undefined | null,
+): TradeOutlook | undefined {
+  if (gameMode !== 'gm') return undefined;
+  if (userTeamId == null || team.id !== userTeamId) return undefined;
+  if (!team.manualTeamStatus) return undefined;
+  return MANUAL_STATUS_OUTLOOK[team.manualTeamStatus];
 }
 
 /**

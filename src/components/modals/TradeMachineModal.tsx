@@ -7,7 +7,7 @@ import { TradeSummaryModal } from './TradeSummaryModal';
 import { TeamDropdown } from '../shared/TeamDropdown';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
 import { calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV, getPotColor, computeLeaguePerAvg, type TeamMode } from '../../services/trade/tradeValueEngine';
-import { getCapThresholds, getTeamCapProfile, getTeamPayrollUSD, getTradeOutlook, effectiveRecord, topNAvgK2, type TradeOutlook } from '../../utils/salaryUtils';
+import { getCapThresholds, getTeamCapProfile, getTeamPayrollUSD, getTradeOutlook, effectiveRecord, topNAvgK2, resolveManualOutlook, type TradeOutlook } from '../../utils/salaryUtils';
 import { evaluateTradeAcceptance, teamPowerRanks, roleToMode } from '../../services/trade/tradeFinderEngine';
 import { SettingsManager } from '../../services/SettingsManager';
 import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks } from '../../services/draft/DraftPickGenerator';
@@ -293,6 +293,8 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   const teamOutlooks = useMemo(() => {
     const map = new Map<number, TradeOutlook>();
     state.teams.forEach(t => {
+      const manual = resolveManualOutlook(t, state.gameMode, state.userTeamId);
+      if (manual) { map.set(t.id, manual); return; }
       const payroll = getTeamPayrollUSD(state.players, t.id);
       const standings = confStandings.get(t.id);
       const expiring = state.players.filter(p => p.tid === t.id && (p.contract?.exp ?? 0) <= currentYearForEval).length;
@@ -304,7 +306,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
       ));
     });
     return map;
-  }, [state.teams, state.players, thresholds, confStandings, currentYearForEval]);
+  }, [state.teams, state.players, thresholds, confStandings, currentYearForEval, state.gameMode, state.userTeamId]);
 
   const salaryMismatchInfo = useMemo(() => {
     // Picks-for-picks: no salary to check

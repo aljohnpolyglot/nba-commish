@@ -14,7 +14,7 @@ import { getPlayerImage } from '../central/view/bioCache';
 import { ensureNonNBAFetched, getNonNBAGistData } from '../central/view/nonNBACache';
 import { PlayerBioView } from '../central/view/PlayerBioView';
 import { calcOvr2K, calcPot2K, type TeamMode } from '../../services/trade/tradeValueEngine';
-import { getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2 } from '../../utils/salaryUtils';
+import { getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2, resolveManualOutlook } from '../../utils/salaryUtils';
 import type { NBAPlayer } from '../../types';
 
 // Parse "2015 Round 2, Pick 5, Philadelphia Sixers" → { year, round, pick, team }
@@ -183,7 +183,7 @@ const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, draftOrder, on
                     <>
                       <p className="font-black text-white text-base truncate uppercase tracking-tight">{player.name}</p>
                       <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
-                        {player.pos} · OVR {player.displayOvr}
+                        {player.pos} · {player.displayOvr} · {player.displayPot} POT
                         {player.college && ` · ${player.college}`}
                       </div>
                     </>
@@ -194,7 +194,7 @@ const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, draftOrder, on
                       }`}>
                         {team?.name ?? '—'}
                       </p>
-                      <div className="text-[10px] font-bold uppercase tracking-widest">
+                      <div className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 flex-wrap">
                         {isCurrent ? (
                           <span className="text-indigo-300 flex items-center gap-1.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
@@ -204,6 +204,11 @@ const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, draftOrder, on
                           <span className="text-amber-300/90">Your Pick</span>
                         ) : (
                           <span className="text-white/25">Awaiting Pick</span>
+                        )}
+                        {(team as any)?._traded && (
+                          <span className="text-white/35 normal-case">
+                            via {(team as any)._originalAbbrev ?? (team as any)._originalName ?? '???'}
+                          </span>
                         )}
                       </div>
                     </>
@@ -376,6 +381,12 @@ const CompactAdvisorBoardPanel: React.FC<CompactAdvisorBoardProps> = ({ teamId, 
 
   const teamMode: TeamMode = useMemo(() => {
     if (!team) return 'rebuild';
+    const manual = resolveManualOutlook(team, state.gameMode, state.userTeamId);
+    if (manual) {
+      if (manual.role === 'heavy_buyer' || manual.role === 'buyer') return 'contend';
+      if (manual.role === 'rebuilding') return 'presti';
+      return 'rebuild';
+    }
     const payroll = state.players.filter(p => p.tid === teamId)
       .reduce((s, p) => s + ((p.contract?.amount ?? 0) * 1_000), 0);
     const rec = effectiveRecord(team, currentYear);
@@ -394,7 +405,7 @@ const CompactAdvisorBoardPanel: React.FC<CompactAdvisorBoardProps> = ({ teamId, 
     if (outlook.role === 'heavy_buyer' || outlook.role === 'buyer') return 'contend';
     if (outlook.role === 'rebuilding') return 'presti';
     return 'rebuild';
-  }, [team, state.players, state.teams, teamId, currentYear, thresholds]);
+  }, [team, state.players, state.teams, teamId, currentYear, thresholds, state.gameMode, state.userTeamId]);
 
   const weakPositions = useMemo(() => {
     const roster = state.players.filter(p => p.tid === teamId && p.status === 'Active');
@@ -501,9 +512,14 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   // Build 60-pick draft order:
   // R1: picks 1-14 from lottery results (if available), picks 15-30 from playoff teams worst→best.
   // R2: same team order as R1.
+  // After determining the SOURCE order (who EARNED each slot via record/lottery),
+  // each slot is re-mapped to its CURRENT owner via state.draftPicks so traded
+  // picks display + assign to the team that actually holds them.
   const draftOrder = useMemo(() => {
     const lotteryResults: any[] = state.draftLotteryResult ?? [];
     const lotteryTids = new Set(lotteryResults.map((r: any) => r.team?.tid ?? r.tid));
+    const draftSeason: number = state.leagueStats?.year ?? 2026;
+    const draftPicks: any[] = (state as any).draftPicks ?? [];
 
     // Sort all 30 teams by win pct
     const allSorted = [...state.teams]
@@ -514,7 +530,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         return wa - wb;
       });
 
-    let r1Order: any[];
+    let r1SourceOrder: any[];
     if (lotteryResults.length >= 14) {
       // Picks 1-14: use lottery result order
       const lotteryPicks = [...lotteryResults]
@@ -527,17 +543,35 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         .filter(t => !lotteryTids.has(t.id))
         .reverse(); // best record gets last pick (#30)
 
-      r1Order = [...lotteryPicks, ...playoffTeams];
+      r1SourceOrder = [...lotteryPicks, ...playoffTeams];
     } else {
       // No lottery result yet — fall back to standings order
-      r1Order = allSorted;
+      r1SourceOrder = allSorted;
     }
 
-    return [
-      ...r1Order,
-      ...r1Order.map(t => ({ ...t, _r2: true })),
-    ] as any[];
-  }, [state.teams, state.draftLotteryResult]);
+    // Resolve current owner for each slot. _originalTid/_originalAbbrev/_originalName
+    // stay attached so player assignment can persist origin in draft metadata
+    // and the slot card can render a "via X" sub-label without an extra lookup.
+    const resolveOwner = (round: number, originalTeam: any) => {
+      const pick = draftPicks.find(p => p.season === draftSeason && p.round === round && p.originalTid === originalTeam.id);
+      const baseMeta = {
+        _originalTid: originalTeam.id,
+        _originalAbbrev: originalTeam.abbrev,
+        _originalName: originalTeam.name,
+      };
+      if (!pick || pick.tid === originalTeam.id) {
+        return { ...originalTeam, ...baseMeta, _traded: false };
+      }
+      const newOwner = state.teams.find(t => t.id === pick.tid);
+      if (!newOwner) return { ...originalTeam, ...baseMeta, _traded: false };
+      return { ...newOwner, ...baseMeta, _traded: true };
+    };
+
+    const r1Order = r1SourceOrder.map(t => resolveOwner(1, t));
+    const r2Order = r1SourceOrder.map(t => ({ ...resolveOwner(2, t), _r2: true }));
+
+    return [...r1Order, ...r2Order] as any[];
+  }, [state.teams, state.draftLotteryResult, (state as any).draftPicks, state.leagueStats?.year]);
 
   const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
 
@@ -894,7 +928,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         ...p,
         tid: team.id,
         status: 'Active' as const,
-        draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: team.id },
+        draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: team._originalTid ?? team.id },
         contract: {
           // BBGM convention: amount in thousands of dollars
           amount: Math.round(salaryAmtUSD / 1_000),

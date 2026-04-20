@@ -6,7 +6,7 @@
  */
 
 import type { GameState, NBAPlayer, NBATeam, DraftPick, TradeProposal } from '../types';
-import { getCapThresholds, getTradeOutlook, effectiveRecord, topNAvgK2, getTeamCapProfile } from '../utils/salaryUtils';
+import { getCapThresholds, getTradeOutlook, effectiveRecord, topNAvgK2, getTeamCapProfile, resolveManualOutlook } from '../utils/salaryUtils';
 import { calcOvr2K, calcPlayerTV, isUntouchable, isSalaryLegal } from './trade/tradeValueEngine';
 import { isAssistantGMActive } from './assistantGMFlag';
 import type { TeamMode } from './trade/tradeValueEngine';
@@ -84,6 +84,8 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
   }
 
   const getOutlook = (t: NBATeam) => {
+    const manual = resolveManualOutlook(t, state.gameMode, (state as any).userTeamId);
+    if (manual) return manual;
     const standings = confStandings.get(t.id);
     const rec = effectiveRecord(t, currentYear);
     const starAvg = topNAvgK2(state.players, t.id, 3);

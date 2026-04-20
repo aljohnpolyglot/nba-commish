@@ -1,9 +1,10 @@
 import React from 'react';
 import { ArrowLeft, Plane } from 'lucide-react';
 // Added NBAPlayer and calculateTeamStrength import
-import { NBATeam, Game, NBAPlayer } from '../../../types';
+import { NBATeam, Game, NBAPlayer, TeamStatus } from '../../../types';
 import { calculateTeamStrength } from '../../../utils/playerRatings';
 import { useGame } from '../../../store/GameContext';
+import { MANUAL_STATUS_LABEL } from '../../../utils/salaryUtils';
 
 interface TeamDetailHeaderProps {
   team: NBATeam;
@@ -14,6 +15,9 @@ interface TeamDetailHeaderProps {
   onVisit: (team: NBATeam) => void;
   onTeamClick?: (teamId: number) => void;
 }
+
+const STATUS_OPTIONS: TeamStatus[] = ['contending', 'win_now', 'retooling', 'rebuilding'];
+
 export const TeamDetailHeader: React.FC<TeamDetailHeaderProps> = ({
   team,
   players, // Add this line here
@@ -23,8 +27,18 @@ export const TeamDetailHeader: React.FC<TeamDetailHeaderProps> = ({
   onVisit,
   onTeamClick
 }) => {
-  const { state } = useGame();
+  const { state, dispatchAction } = useGame();
   const isGM = state.gameMode === 'gm';
+  const isOwnTeam = isGM && state.userTeamId === team.id;
+
+  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const v = e.target.value as TeamStatus | '';
+    const next: TeamStatus | undefined = v === '' ? undefined : v;
+    const nextTeams = state.teams.map(t =>
+      t.id === team.id ? { ...t, manualTeamStatus: next } : t
+    );
+    dispatchAction({ type: 'UPDATE_STATE', payload: { teams: nextTeams } });
+  };
   return (
     <div className="p-4 md:p-10 border-b border-slate-800 bg-slate-900/50 flex flex-col md:flex-row items-start md:items-center justify-between backdrop-blur-md gap-4">
       <div className="flex items-center gap-4 md:gap-6">
@@ -76,9 +90,25 @@ export const TeamDetailHeader: React.FC<TeamDetailHeaderProps> = ({
             ) : 'Visit Team (Off Day)'}
           </button>
           )}
+        {isOwnTeam && (
+          <div className="bg-slate-950 border border-slate-800 px-4 md:px-6 py-2 md:py-3 rounded-2xl flex flex-col items-end">
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Status</span>
+            <select
+              value={team.manualTeamStatus ?? ''}
+              onChange={handleStatusChange}
+              className="bg-slate-900 border border-slate-700 text-[10px] md:text-xs font-black uppercase tracking-wider text-indigo-300 rounded-lg px-2 py-1 hover:border-indigo-500 focus:border-indigo-400 focus:outline-none cursor-pointer"
+              title="Manually set your team's direction. Overrides the auto-computed outlook (narratives, AI trade logic, proposals)."
+            >
+              <option value="">Auto</option>
+              {STATUS_OPTIONS.map(s => (
+                <option key={s} value={s}>{MANUAL_STATUS_LABEL[s]}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="bg-slate-950 border border-slate-800 px-4 md:px-6 py-2 md:py-3 rounded-2xl flex flex-col items-end">
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Strength</span>
-           
+
             <span className="text-lg md:text-xl font-black text-indigo-400 tracking-tighter">
                 {calculateTeamStrength(team.id, players)}
             </span>

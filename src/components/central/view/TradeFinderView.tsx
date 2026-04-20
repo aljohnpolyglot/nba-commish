@@ -18,7 +18,7 @@ import {
   computeLeagueAvg, computeLeaguePerAvg, getPotColor, isSalaryLegal, isUntouchable,
   type TeamMode, type TVContext,
 } from '../../../services/trade/tradeValueEngine';
-import { getTradeOutlook, effectiveRecord, getCapThresholds, getTeamPayrollUSD, getTeamCapProfile, topNAvgK2, type TradeOutlook } from '../../../utils/salaryUtils';
+import { getTradeOutlook, effectiveRecord, getCapThresholds, getTeamPayrollUSD, getTeamCapProfile, topNAvgK2, resolveManualOutlook, type TradeOutlook } from '../../../utils/salaryUtils';
 import { computeMoodScore } from '../../../utils/mood/moodScore';
 import type { NBAPlayer, DraftPick, NBATeam } from '../../../types';
 import { generateCounterOffers, teamPowerRanks } from '../../../services/trade/tradeFinderEngine';
@@ -478,6 +478,8 @@ export const TradeFinderView: React.FC = () => {
   const teamOutlooks = useMemo(() => {
     const map = new Map<number, TradeOutlook>();
     teams.forEach(t => {
+      const manual = resolveManualOutlook(t, state.gameMode, state.userTeamId);
+      if (manual) { map.set(t.id, manual); return; }
       const payroll = getTeamPayrollUSD(players, t.id);
       const standings = confStandings.get(t.id);
       const expiring = players.filter(p => p.tid === t.id && (p.contract?.exp ?? 0) <= currentYear).length;
@@ -495,7 +497,7 @@ export const TradeFinderView: React.FC = () => {
       ));
     });
     return map;
-  }, [teams, players, thresholds, confStandings, currentYear]);
+  }, [teams, players, thresholds, confStandings, currentYear, state.gameMode, state.userTeamId]);
 
   // Map TradeRole → TeamMode for TV calculation
   const roleToMode = (role: string): TeamMode => {
