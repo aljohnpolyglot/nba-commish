@@ -68,11 +68,14 @@ export const processTurn = async (
 
     // 2. Determine days to simulate
     // Sim-tick actions (ADVANCE_DAY, SIMULATE_TO_DATE) always advance.
-    // Transaction/player actions respect `advanceDayOnTransaction` (default off = instant).
+    // Trades are ALWAYS instant — clicking Finalize Deal must not fire a day sim or
+    // open the game ticker, regardless of advanceDayOnTransaction. Other transactions
+    // respect the setting (default off = instant).
     const isSimTick = action.type === 'ADVANCE_DAY' || action.type === 'SIMULATE_TO_DATE';
+    const isInstantTrade = action.type === 'EXECUTIVE_TRADE' || action.type === 'FORCE_TRADE';
     const advanceOnTx = SettingsManager.getSettings().advanceDayOnTransaction;
     let daysToSimulate = 1;
-    if (!isSimTick && !advanceOnTx) {
+    if (isInstantTrade || (!isSimTick && !advanceOnTx)) {
         daysToSimulate = 0;
     }
     if (action.type === 'SIMULATE_TO_DATE') {
@@ -236,7 +239,11 @@ export const processTurn = async (
     console.log('[GameLogic] uniqueNewPosts:', uniqueNewPosts?.length);
 
     // 8. Handle Financials (Paychecks)
-    const daysToAdvance = (result.day || (stateWithSim.day + 1)) - state.day;
+    // Instant trades (EXECUTIVE_TRADE / FORCE_TRADE) stay on the current day — executing
+    // a trade should not silently roll the calendar forward.
+    const daysToAdvance = isInstantTrade
+        ? 0
+        : (result.day || (stateWithSim.day + 1)) - state.day;
     // Timezone-safe: normalise state.date to YYYY-MM-DD, advance via UTC methods
     const currentNormForDate = normalizeDate(state.date);
     const finalDateObj = new Date(`${currentNormForDate}T00:00:00Z`);
@@ -783,7 +790,7 @@ export const processTurn = async (
     }
 
     return {
-        day: result.day || (stateWithSim.day + 1),
+        day: isInstantTrade ? state.day : (result.day || (stateWithSim.day + 1)),
         date: dateString,
         stats: newStats,
         leagueStats: newLeagueStats,
