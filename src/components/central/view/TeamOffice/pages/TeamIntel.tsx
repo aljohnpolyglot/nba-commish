@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
@@ -7,7 +7,8 @@ import { StarterService } from '../../../../../services/simulation/StarterServic
 import { convertTo2KRating } from '../../../../../utils/helpers';
 import { NBAPlayer } from '../../../../../types';
 import { calcPlayerTV, calcOvr2K, isUntouchable, type TeamMode } from '../../../../../services/trade/tradeValueEngine';
-import { getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2 } from '../../../../../utils/salaryUtils';
+import { getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2, resolveManualOutlook } from '../../../../../utils/salaryUtils';
+import { getTradingBlock, saveTradingBlock } from '../../../../../store/tradingBlockStore';
 
 interface TeamIntelProps {
   teamId: number;
@@ -32,20 +33,19 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
     return <div className="text-red-400 font-bold uppercase tracking-widest">Team not found</div>;
   }
 
-  // Use StarterService for projected starters (returns best 5 in a natural lineup)
-  const starters = StarterService.getProjectedStarters(team, state.players);
-
-  // Sort starters: G → G → F → F → C
-  const posOrder: Record<string, number> = { PG: 0, G: 1, SG: 2, GF: 3, SF: 4, F: 5, PF: 6, FC: 7, C: 8 };
-  const sortedStarters = [...starters.slice(0, 5)].sort(
-    (a, b) => (posOrder[a.pos || 'F'] ?? 5) - (posOrder[b.pos || 'F'] ?? 5)
-  );
+  // Reuse StarterService — same path GamePlan / IdealRotation / Depth Chart take.
+  // sortByPositionSlot does the depth-aware ordering; the player's own `pos`
+  // carries the auto-rename (e.g., a Wagner-style swingman tagged 'GF' shows
+  // as GF, not SF) so the lineup labels match GamePlan exactly.
+  const currentSeason = state.leagueStats?.year ?? 2026;
+  const projected = StarterService.getProjectedStarters(team, state.players, currentSeason);
+  const sortedStarters = StarterService.sortByPositionSlot(projected.slice(0, 5), currentSeason);
 
   const lineup: { player: NBAPlayer; lineupPos: string }[] = [];
   const usedIds = new Set<string>();
 
   sortedStarters.forEach((p) => {
-    lineup.push({ player: p, lineupPos: p.pos || 'F' });
+    lineup.push({ player: p, lineupPos: (p.pos || 'F').toUpperCase() });
     usedIds.add(p.internalId);
   });
 
@@ -91,7 +91,8 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
     const gb = Math.max(0, ((leader?.rec.wins ?? 0) - rec.wins + rec.losses - (leader?.rec.losses ?? 0)) / 2);
     const expCount = players.filter(p => (p.contract?.exp ?? 0) <= currentYear).length;
     const starAvg = topNAvgK2(state.players, teamId, 3);
-    const outlook = getTradeOutlook(payroll, rec.wins, rec.losses, expCount, thresholds, confRank, gb, starAvg);
+    const manual = resolveManualOutlook(team!, state.gameMode, state.userTeamId);
+    const outlook = manual ?? getTradeOutlook(payroll, rec.wins, rec.losses, expCount, thresholds, confRank, gb, starAvg);
 
     // Derive mode
     let mode: TeamMode = 'rebuild';
@@ -151,7 +152,7 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
       targets: weakPos,
       needPositions: weakPos,
     };
-  }, [players, state.teams, state.players, teamId, currentYear, thresholds, team]);
+  }, [players, state.teams, state.players, teamId, currentYear, thresholds, team, state.gameMode, state.userTeamId]);
 
   // Expiring contracts
   const expiring = [...players]
@@ -163,14 +164,65 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
   const isOwnTeam = isGM && teamId === state.userTeamId;
   const [editingList, setEditingList] = useState<'untouchable' | 'block' | 'targets' | null>(null);
 
-  // User-editable untouchable + trading block IDs (persisted on state if available)
-  const [untouchableIds, setUntouchableIds] = useState<Set<string>>(() =>
-    new Set(untouchables.map(r => r.player.internalId))
+  // Hydrate from tradingBlockStore so the narrative reflects what the user
+  // actually marked in the Trading Block UI (and stays in sync with AI/trade
+  // engines that read the same store). Falls back to the heuristic defaults
+  // computed above when the team has no saved entry yet.
+  const rosterIdSet = useMemo(() => new Set(players.map(p => p.internalId)), [players]);
+  const otherIdSet = useMemo(
+    () => new Set(state.players.filter(p => p.tid >= 0 && p.tid !== teamId && p.status === 'Active').map(p => p.internalId)),
+    [state.players, teamId],
   );
-  const [blockIds, setBlockIds] = useState<Set<string>>(() =>
-    new Set(tradingBlock.map(r => r.player.internalId))
+  const initialFromStore = useMemo(() => {
+    const saved = getTradingBlock(teamId);
+    if (!saved) return null;
+    return {
+      untouchable: new Set(saved.untouchableIds.filter(id => rosterIdSet.has(id))),
+      block: new Set(saved.blockIds.filter(id => rosterIdSet.has(id))),
+      target: new Set(saved.targetIds.filter(id => otherIdSet.has(id))),
+    };
+    // Re-hydrate when teamId changes; mid-render roster diffs are pruned by the sync effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId]);
+
+  const [untouchableIds, setUntouchableIds] = useState<Set<string>>(
+    () => initialFromStore?.untouchable ?? new Set(untouchables.map(r => r.player.internalId)),
   );
-  const [targetIds, setTargetIds] = useState<Set<string>>(new Set());
+  const [blockIds, setBlockIds] = useState<Set<string>>(
+    () => initialFromStore?.block ?? new Set(tradingBlock.map(r => r.player.internalId)),
+  );
+  const [targetIds, setTargetIds] = useState<Set<string>>(
+    () => initialFromStore?.target ?? new Set(),
+  );
+
+  // Drop ids that no longer point at valid roster slots (player was traded/cut).
+  useEffect(() => {
+    setUntouchableIds(prev => {
+      const next = new Set([...prev].filter(id => rosterIdSet.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+    setBlockIds(prev => {
+      const next = new Set([...prev].filter(id => rosterIdSet.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+    setTargetIds(prev => {
+      const next = new Set([...prev].filter(id => otherIdSet.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [rosterIdSet, otherIdSet]);
+
+  // Persist edits to the same store the Trading Block UI + AI consume so the
+  // narrative, the column UI, and trade engines stay aligned.
+  useEffect(() => {
+    if (!isOwnTeam) return;
+    const existing = getTradingBlock(teamId);
+    saveTradingBlock(teamId, {
+      untouchableIds: Array.from(untouchableIds),
+      blockIds: Array.from(blockIds),
+      targetIds: Array.from(targetIds),
+      blockPickIds: existing?.blockPickIds ?? [],
+    });
+  }, [isOwnTeam, teamId, untouchableIds, blockIds, targetIds]);
 
   // Build items for selectors
   const ownRosterItems: PlayerSelectorItem[] = useMemo(() =>
@@ -191,17 +243,35 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
       })),
   [state.players, teamId]);
 
+  // Untouchable and block are mutually exclusive — adding to one removes
+  // from the other so the narrative + Trading Block UI never disagree.
   const toggleUntouchable = (id: string) => {
     setUntouchableIds(prev => {
       const n = new Set(prev);
-      if (n.has(id)) n.delete(id); else if (n.size < 3) n.add(id);
+      if (n.has(id)) { n.delete(id); return n; }
+      if (n.size >= 3) return prev;
+      n.add(id);
+      return n;
+    });
+    setBlockIds(prev => {
+      if (!prev.has(id)) return prev;
+      const n = new Set(prev);
+      n.delete(id);
       return n;
     });
   };
   const toggleBlock = (id: string) => {
     setBlockIds(prev => {
       const n = new Set(prev);
-      if (n.has(id)) n.delete(id); else if (n.size < 5) n.add(id);
+      if (n.has(id)) { n.delete(id); return n; }
+      if (n.size >= 5) return prev;
+      n.add(id);
+      return n;
+    });
+    setUntouchableIds(prev => {
+      if (!prev.has(id)) return prev;
+      const n = new Set(prev);
+      n.delete(id);
       return n;
     });
   };
@@ -323,15 +393,16 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
               </p>
             </div>
 
-            {/* Trading Block */}
+            {/* Trading Block — drives off the same blockIds the Trading Block
+                UI persists, with anyone marked untouchable filtered out so the
+                narrative never lists an off-limits player as movable. */}
             <div className="flex gap-3">
               <div className="w-1.5 h-1.5 rounded-full bg-[#8b949e] mt-2 shrink-0" />
               <div className="flex-1">
                 <p>
                   {(() => {
-                    const blockPlayers = isOwnTeam
-                      ? players.filter(p => blockIds.has(p.internalId))
-                      : tradingBlock.map(r => r.player);
+                    const blockPlayers = players
+                      .filter(p => blockIds.has(p.internalId) && !untouchableIds.has(p.internalId));
                     if (blockPlayers.length > 0) return (
                       <>
                         {isOwnTeam ? 'Your trading block: ' : status === 'CONTENDING' ? 'Players this team is willing to move: ' : 'Players potentially available via trade: '}
@@ -349,15 +420,13 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
               </div>
             </div>
 
-            {/* Untouchables */}
+            {/* Untouchables — single source of truth via untouchableIds. */}
             <div className="flex gap-3">
               <div className="w-1.5 h-1.5 rounded-full bg-[#8b949e] mt-2 shrink-0" />
               <div className="flex-1">
                 <p>
                   {(() => {
-                    const untouchPlayers = isOwnTeam
-                      ? players.filter(p => untouchableIds.has(p.internalId))
-                      : untouchables.map(r => r.player);
+                    const untouchPlayers = players.filter(p => untouchableIds.has(p.internalId));
                     if (untouchPlayers.length > 0) return (
                       <>
                         Untouchables:{' '}

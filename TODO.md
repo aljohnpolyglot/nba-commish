@@ -89,21 +89,25 @@ On the Home tab (mobile), the social feed cannot scroll past the initial posts a
 **A4.2 Ideal Rotations — add drag-and-drop parity with GamePlan**
 Ideal Rotations view currently uses click-to-swap (or similar non-drag UI). GamePlan has drag-and-drop slot assignment — bring IdealRotation to 1:1 parity. Reuse GamePlan's drag handlers / dnd kit wiring. Files: `IdealRotationView` + reuse from `GamePlanView`.
 
-**A4.3 Team Intel narratives must match trading block + untouchables flags**
+**A4.3 Team Intel narratives must match trading block + untouchables flags** ✅
 Team Intel's written narratives ("could look to move X") sometimes reference players that aren't actually on the trading block OR list untouchables as movable. The narrative generator must read the same flags the gameplan/trading-block UI writes. Files: `TeamIntelView` narrative section + wherever `tradingBlock` / `untouchables` are persisted.
+Fix: TeamIntel now hydrates own-team `untouchableIds` / `blockIds` / `targetIds` from `tradingBlockStore` and persists changes back via `saveTradingBlock`, so the narrative + the Trading Block UI + AI all read from the same source. Block narrative filters out anyone marked untouchable. `toggleUntouchable` and `toggleBlock` are now mutually exclusive — adding to one removes from the other.
 
-**A4.4 Team Intel lineup — auto-rename positions like GamePlan (PosNameOVR format)**
+**A4.4 Team Intel lineup — auto-rename positions like GamePlan (PosNameOVR format)** ✅
 Team Intel lineup currently shows raw position labels (PG/SG/SF/PF/C). GamePlan and System Proficiency auto-rename based on depth context (e.g., "GF", "F", "6TH" for bench). Apply the same rename helper to the Team Intel lineup display. Target format: `PosName OVR` row, e.g. `GF F. Wagner 88`, `GF A. Black 80`, `PF P. Banchero 92`, `C B. Adebayo 86`, `C W. Carter Jr. 79`, `6TH T. da Silva 79`.
+Fix: TeamIntel now routes through `StarterService.sortByPositionSlot` (same path GamePlan / IdealRotation / DepthChart use) and labels each starter with `(p.pos || 'F').toUpperCase()`, so the BBGM-tagged depth-context positions surface (Wagner-style swingmen show as `GF`, twin towers as `C C`, etc.). 6th man label preserved.
 
 ---
 
 ### Agent #5 — Team Office / Team page UI (2 items)
 
-**A5.1 Team status dropdown (GM mode manual override)**
+**A5.1 Team status dropdown (GM mode manual override)** ✅
 Right now "Rebuilding / Retooling / Contending / Win-Now" status on the Team view is inferred automatically from record+age. In GM mode, expose a dropdown so the user can manually set their team's status. UI narratives, trade-outlook gates, and AI handlers that currently read the computed status should respect the manual override when `gameMode === 'gm'`. Add a `manualTeamStatus?: TeamStatus` field on the user team and fall back to computed when unset.
+Fix: new `TeamStatus` type ('contending' | 'win_now' | 'retooling' | 'rebuilding'), `manualTeamStatus?` field on `NBATeam`, and `resolveManualOutlook(team, gameMode, userTeamId)` helper in `salaryUtils.ts` that returns the override TradeOutlook only when `gameMode === 'gm'` AND `team.id === userTeamId`. Dropdown wired in `TeamDetailHeader` (own team only) that dispatches `UPDATE_STATE` with the updated `teams` array. All readers wrapped to short-circuit to the override: `AITradeHandler` (AI trade buyer/seller classification), `TradeFinderView` / `TradeProposalsView` / `TradeMachineModal` / `TradeSummaryModal` / `LeagueFinancesView` (outlook maps), `TeamIntel` / `TradingBlock` / `DraftScouting` / `DraftSimulatorView` (team mode derivation). `inboundProposalGenerator` and `tradeFinderEngine` receive the already-adjusted map from callers, so they respect the override transitively.
 
-**A5.2 New tab: Depth Chart in Team Office**
+**A5.2 New tab: Depth Chart in Team Office** ✅
 Add a new "Depth Chart" tab to Team Office (opposing-GM view), since the Coaching tab isn't visible to non-owner GMs. Show starters by position + bench with player portraits + OVR. Reuse the starter-extraction logic from GamePlan / IdealRotation. Files: `TeamOfficeView` (new tab) + new `TeamOfficeDepthChartTab` component.
+Fix: new `TeamOfficeDepthChartTab` component renders four sections — Starting Five (PG→C slot order via `StarterService.sortByPositionSlot`), Second Unit (top 5 bench by display OVR), Reserves (remainder), and Injured. Each card shows a `PlayerPortrait`, OVR badge, slot label, and pos. Wired into `TeamOfficeView` as the third tab (after Coaching). Visible for all teams — the Coaching tab is still auto-hidden for non-owner GMs in GM mode, so this tab becomes the primary depth read when scouting another franchise.
 
 ---
 
