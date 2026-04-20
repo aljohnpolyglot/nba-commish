@@ -5,9 +5,9 @@ import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
 import { PlayerSelectorGrid, type PlayerSelectorItem } from '../../../../shared/PlayerSelectorGrid';
 import { StarterService } from '../../../../../services/simulation/StarterService';
 import { convertTo2KRating } from '../../../../../utils/helpers';
-import { NBAPlayer } from '../../../../../types';
+import { NBAPlayer, TeamStatus } from '../../../../../types';
 import { calcPlayerTV, calcOvr2K, isUntouchable, type TeamMode } from '../../../../../services/trade/tradeValueEngine';
-import { getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2, resolveManualOutlook } from '../../../../../utils/salaryUtils';
+import { getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2, resolveManualOutlook, MANUAL_STATUS_LABEL } from '../../../../../utils/salaryUtils';
 import { getTradingBlock, saveTradingBlock } from '../../../../../store/tradingBlockStore';
 
 interface TeamIntelProps {
@@ -22,7 +22,7 @@ function getK2Ovr(p: NBAPlayer): number {
 }
 
 export function TeamIntel({ teamId }: TeamIntelProps) {
-  const { state } = useGame();
+  const { state, dispatchAction } = useGame();
   const team = state.teams.find(t => t.id === teamId);
   const players = (state.players || []).filter(p => p.tid === teamId && p.status === 'Active');
   const allPlayers = (state.players || []).filter(p => p.tid >= 0 && p.status === 'Active');
@@ -375,7 +375,28 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
         <div className="flex-1 flex flex-col">
           <div className="p-4 border-b border-[#30363d] flex justify-between items-center bg-black/20">
             <h3 className="font-bold text-[#8b949e] uppercase tracking-wider text-sm">Team Status</h3>
-            <div className="font-black text-lg tracking-widest uppercase">{status}</div>
+            {isOwnTeam ? (
+              <select
+                value={team.manualTeamStatus ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value as TeamStatus | '';
+                  const next: TeamStatus | undefined = v === '' ? undefined : v;
+                  const nextTeams = state.teams.map(t =>
+                    t.id === team.id ? { ...t, manualTeamStatus: next } : t
+                  );
+                  dispatchAction({ type: 'UPDATE_STATE', payload: { teams: nextTeams } });
+                }}
+                className="bg-[#0d1117] border border-[#30363d] rounded-md px-2 py-1 font-black text-xs tracking-widest uppercase text-[#FDB927] hover:border-[#FDB927] focus:border-[#FDB927] focus:outline-none cursor-pointer"
+                title="Pin your team's direction. Overrides the auto-computed outlook — narratives, AI trade logic, and trade proposals will all use this value."
+              >
+                <option value="">Auto ({status})</option>
+                {(['contending', 'win_now', 'retooling', 'rebuilding'] as TeamStatus[]).map(s => (
+                  <option key={s} value={s}>{MANUAL_STATUS_LABEL[s]}</option>
+                ))}
+              </select>
+            ) : (
+              <div className="font-black text-lg tracking-widest uppercase">{status}</div>
+            )}
           </div>
 
           <div className="p-8 space-y-6 text-sm text-[#e6edf3]/90 leading-relaxed">
