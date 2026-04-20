@@ -86,8 +86,9 @@ On a team's MOVES tab (e.g., Houston Rockets → MOVES), transaction cards exten
 **A4.1 Twitter / Social Feed (Home tab) — mobile scroll broken + NBA image posts not triggering image+boxscore overlay**
 On the Home tab (mobile), the social feed cannot scroll past the initial posts and no new posts load. Additionally, NBA image posts (the ones that should open the full-image + box-score overlay) aren't triggering the overlay on mobile. Fix both: scroll container overflow on mobile + tap handler wiring for the image+boxscore overlay. Files: `HomeView` / `SocialFeedView` / image-overlay modal component.
 
-**A4.2 Ideal Rotations — add drag-and-drop parity with GamePlan**
+**A4.2 Ideal Rotations — add drag-and-drop parity with GamePlan** ✅
 Ideal Rotations view currently uses click-to-swap (or similar non-drag UI). GamePlan has drag-and-drop slot assignment — bring IdealRotation to 1:1 parity. Reuse GamePlan's drag handlers / dnd kit wiring. Files: `IdealRotationView` + reuse from `GamePlanView`.
+Fix: IdealRotationTab now uses the same pointer-event drag/tap-to-swap machinery as GameplanTab (inline, not extracted). starter↔starter swaps reorder the five; bench→starter promotes and demotes the displaced starter; starter→bench mirrors. UI mirrors GameplanTab — `data-player-id`, GripVertical handles, drag transform, ring-on-select, dedicated mobile slider row, identical class structure (sky color theme preserved as IdealRotation's identity).
 
 **A4.3 Team Intel narratives must match trading block + untouchables flags** ✅
 Team Intel's written narratives ("could look to move X") sometimes reference players that aren't actually on the trading block OR list untouchables as movable. The narrative generator must read the same flags the gameplan/trading-block UI writes. Files: `TeamIntelView` narrative section + wherever `tradingBlock` / `untouchables` are persisted.

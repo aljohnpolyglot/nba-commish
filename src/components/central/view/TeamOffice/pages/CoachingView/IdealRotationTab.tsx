@@ -14,7 +14,7 @@
  * stick through roster churn".
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pencil, RotateCcw, Sparkles } from 'lucide-react';
+import { GripVertical, Pencil, RotateCcw, Sparkles } from 'lucide-react';
 import { useGame } from '../../../../../../store/GameContext';
 import { PlayerPortrait } from '../../../../../shared/PlayerPortrait';
 import { StarterService } from '../../../../../../services/simulation/StarterService';
@@ -256,27 +256,134 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
     persistEdit(starters, { ...minutes, [id]: clamped });
   };
 
-  const promoteToStarter = (id: string) => {
-    if (!writable || starters.includes(id)) return;
-    // Swap into the lowest-minute starter slot by default.
-    const weakestIdx = starters
-      .map((sid, i) => ({ i, m: minutes[sid] ?? 0 }))
-      .sort((a, b) => a.m - b.m)[0]?.i ?? 4;
-    const nextStarters = [...starters];
-    nextStarters[weakestIdx] = id;
-    persistEdit(nextStarters, minutes);
+  // ── Drag-drop / tap-to-swap (parity with GameplanTab) ──────────────────
+  // starter↔starter reorders the five; bench↔starter promotes one and demotes
+  // the displaced starter into the bench; bench↔bench is a no-op here because
+  // IdealRotation doesn't persist bench order (it's sorted by minutes).
+  const performSwap = (src: string, target: string) => {
+    if (!writable || src === target) return;
+    const srcInStart = starters.indexOf(src);
+    const tgtInStart = starters.indexOf(target);
+    const benchIds = benchPlayers.map(p => p.internalId);
+    const srcInBench = benchIds.indexOf(src);
+    const tgtInBench = benchIds.indexOf(target);
+
+    if (srcInStart >= 0 && tgtInStart >= 0) {
+      const next = [...starters];
+      [next[srcInStart], next[tgtInStart]] = [next[tgtInStart], next[srcInStart]];
+      persistEdit(next, minutes);
+      return;
+    }
+    if (srcInBench >= 0 && tgtInStart >= 0) {
+      const next = [...starters];
+      next[tgtInStart] = src;
+      persistEdit(next, minutes);
+      return;
+    }
+    if (srcInStart >= 0 && tgtInBench >= 0) {
+      const next = [...starters];
+      next[srcInStart] = target;
+      persistEdit(next, minutes);
+      return;
+    }
   };
 
-  const demoteStarter = (id: string) => {
+  const DRAG_THRESHOLD = 8;
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [drag, setDrag] = useState<null | {
+    id: string;
+    source: 'starter' | 'rotation';
+    startX: number;
+    startY: number;
+    dx: number;
+    dy: number;
+    active: boolean;
+  }>(null);
+  const dragRef = useRef(drag);
+  useEffect(() => { dragRef.current = drag; }, [drag]);
+  const performSwapRef = useRef(performSwap);
+  performSwapRef.current = performSwap;
+  const suppressNextClick = useRef(false);
+
+  const handleTap = (id: string) => {
     if (!writable) return;
-    const idx = starters.indexOf(id);
-    if (idx < 0) return;
-    // Replace with the highest-minute bench player.
-    const replacement = benchPlayers[0]?.internalId;
-    if (!replacement) return;
-    const nextStarters = [...starters];
-    nextStarters[idx] = replacement;
-    persistEdit(nextStarters, minutes);
+    if (selectedId === null) { setSelectedId(id); return; }
+    if (selectedId === id) { setSelectedId(null); return; }
+    performSwap(selectedId, id);
+    setSelectedId(null);
+  };
+  const handleTapRef = useRef(handleTap);
+  handleTapRef.current = handleTap;
+
+  const onCardPointerDown = (id: string, source: 'starter' | 'rotation') =>
+    (e: React.PointerEvent) => {
+      if (!writable) return;
+      if (e.button !== undefined && e.button !== 0) return;
+      const target = e.target as HTMLElement;
+      // Don't hijack touches that land on the slider.
+      if (target.closest('input, button, [data-no-drag]')) return;
+      setDrag({ id, source, startX: e.clientX, startY: e.clientY, dx: 0, dy: 0, active: false });
+    };
+
+  useEffect(() => {
+    if (!drag) return;
+    const handleMove = (e: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const dx = e.clientX - d.startX;
+      const dy = e.clientY - d.startY;
+      const active = d.active || Math.hypot(dx, dy) > DRAG_THRESHOLD;
+      setDrag({ ...d, dx, dy, active });
+      if (active) e.preventDefault();
+    };
+    const finish = (e: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) { setDrag(null); return; }
+      if (!d.active) {
+        suppressNextClick.current = true;
+        handleTapRef.current(d.id);
+        setDrag(null);
+        window.setTimeout(() => { suppressNextClick.current = false; }, 500);
+        return;
+      }
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const dropTarget = (el as HTMLElement | null)?.closest?.('[data-player-id]') as HTMLElement | null;
+      const targetId = dropTarget?.getAttribute('data-player-id');
+      if (targetId && targetId !== d.id) {
+        suppressNextClick.current = true;
+        performSwapRef.current(d.id, targetId);
+      } else {
+        suppressNextClick.current = true;
+      }
+      setDrag(null);
+      window.setTimeout(() => { suppressNextClick.current = false; }, 500);
+    };
+    const cancel = () => { setDrag(null); };
+    window.addEventListener('pointermove', handleMove, { passive: false });
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', cancel);
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', cancel);
+    };
+  }, [drag?.id]);
+
+  const dragStyle = (id: string, source: 'starter' | 'rotation'): React.CSSProperties | undefined => {
+    if (!drag || drag.id !== id || drag.source !== source || !drag.active) return undefined;
+    return {
+      transform: `translate3d(${drag.dx}px, ${drag.dy}px, 0) scale(1.06)`,
+      zIndex: 50,
+      opacity: 0.92,
+      boxShadow: '0 12px 32px rgba(0,0,0,0.55)',
+      transition: 'none',
+      pointerEvents: 'none',
+    };
+  };
+
+  const onCardClick = (id: string) => {
+    if (suppressNextClick.current) { suppressNextClick.current = false; return; }
+    if (!drag) handleTap(id);
   };
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -292,7 +399,7 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
           </div>
           <div className="text-xs text-slate-400 mt-0.5">
             {locked
-              ? 'Custom plan — sliders persist, roster changes auto-redistribute.'
+              ? 'Custom plan — drag or tap-to-swap players, slide to set minutes, autosaves.'
               : 'Auto baseline — derived from roster. Customize to edit.'}
           </div>
         </div>
@@ -329,6 +436,18 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
         </div>
       </div>
 
+      {selectedId && (
+        <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs bg-sky-500/10 border border-sky-500/30 text-sky-200">
+          <span>Tap another player to swap · tap the same one again to cancel.</span>
+          <button
+            onClick={() => setSelectedId(null)}
+            className="ml-auto shrink-0 bg-black/30 hover:bg-black/50 border border-white/10 px-2 py-0.5 rounded font-black uppercase tracking-widest text-[10px]"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
       {/* Starters */}
       <div className="bg-black/40 border border-slate-800 rounded-lg p-3">
         <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
@@ -342,14 +461,29 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
                 {pos}
               </div>
             );
+            const isSelected = selectedId === p.internalId;
             return (
               <div
                 key={p.internalId}
-                onClick={() => writable && demoteStarter(p.internalId)}
-                className={`relative bg-gradient-to-b from-slate-800/80 to-slate-900/90 rounded-lg p-2 border border-slate-700 ${writable ? 'cursor-pointer hover:border-sky-500' : 'cursor-default'}`}
-                title={writable ? 'Click to demote to bench' : ''}
+                data-player-id={p.internalId}
+                onClick={() => onCardClick(p.internalId)}
+                onPointerDown={onCardPointerDown(p.internalId, 'starter')}
+                style={dragStyle(p.internalId, 'starter')}
+                className={`relative bg-gradient-to-b from-slate-800/80 to-slate-900/90 rounded-lg p-2 border touch-none select-none transition-colors group ${
+                  writable ? 'cursor-pointer active:cursor-grabbing' : 'cursor-default'
+                } ${
+                  isSelected
+                    ? 'border-sky-400 ring-2 ring-sky-400/50'
+                    : `border-slate-700 ${writable ? 'hover:border-sky-500' : ''}`
+                }`}
+                title={writable ? 'Drag onto a bench player to swap, or tap two cards in sequence' : ''}
               >
                 <div className="absolute top-1 left-1 text-[9px] font-black text-sky-400 bg-black/60 px-1.5 py-0.5 rounded z-10">{pos}</div>
+                {writable && (
+                  <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <GripVertical className="w-3 h-3 text-slate-400" />
+                  </div>
+                )}
                 <div className="flex flex-col items-center gap-1 mt-2">
                   <PlayerPortrait imgUrl={p.imgURL} playerName={p.name} size={72} overallRating={p.overallRating} />
                   <div className="text-[11px] font-bold text-white text-center line-clamp-1 w-full">{p.name}</div>
@@ -365,7 +499,7 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
         <div className="flex items-center justify-between mb-2">
           <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Rotation</div>
           <div className="text-[10px] text-slate-500">
-            {writable ? 'Click bench player to promote · slider sets minutes' : 'Locked plan shown read-only'}
+            {writable ? 'Drag row into starters above · slider sets minutes' : 'Locked plan shown read-only'}
           </div>
         </div>
         <div className="flex flex-col gap-1">
@@ -374,38 +508,75 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
             const ovr = getDisplayOverall(p);
             const mins = minutes[p.internalId] ?? 0;
             const isStarter = idx < 5;
+            const isSelected = selectedId === p.internalId;
             const ovrColor = ovr >= 90 ? 'text-blue-300' : ovr >= 85 ? 'text-emerald-300' : ovr >= 78 ? 'text-amber-300' : 'text-slate-400';
+            const age = p.born?.year ? currentYear - p.born.year : (p as any).age;
             return (
               <div
                 key={p.internalId}
-                onClick={() => writable && !isStarter && promoteToStarter(p.internalId)}
-                className={`rounded transition-colors px-2 py-1.5 ${
-                  isStarter
-                    ? 'bg-sky-500/10 border-l-2 border-sky-500'
-                    : `bg-white/5 border-l-2 border-transparent ${writable ? 'cursor-pointer hover:bg-white/10' : ''}`
+                data-player-id={p.internalId}
+                onClick={() => onCardClick(p.internalId)}
+                onPointerDown={onCardPointerDown(p.internalId, 'rotation')}
+                style={dragStyle(p.internalId, 'rotation')}
+                className={`rounded transition-colors px-2 py-1.5 touch-none select-none ${
+                  writable ? 'cursor-pointer active:cursor-grabbing' : ''
+                } ${
+                  isSelected
+                    ? 'bg-sky-500/25 ring-2 ring-sky-400/60 border-l-2 border-sky-400'
+                    : isStarter
+                    ? `bg-sky-500/10 border-l-2 border-sky-500 ${writable ? 'hover:bg-sky-500/15' : ''}`
+                    : `bg-white/5 border-l-2 border-transparent ${writable ? 'hover:bg-white/10' : ''}`
                 }`}
               >
-                <div className="sm:grid sm:grid-cols-[40px_1fr_40px_1fr_40px] sm:gap-2 sm:items-center flex items-center gap-2">
+                {/* Desktop: single row. Mobile: stacks top (identity) + bottom (slider). */}
+                <div className="sm:grid sm:grid-cols-[20px_40px_1fr_40px_1fr_40px] sm:gap-2 sm:items-center flex items-center gap-2">
+                  <GripVertical className="w-3 h-3 text-slate-500 shrink-0" />
                   <PlayerPortrait imgUrl={p.imgURL} playerName={p.name} size={36} overallRating={p.overallRating} />
                   <div className="flex flex-col min-w-0 flex-1">
                     <span className="text-xs font-bold text-white truncate">{p.name}</span>
-                    <span className="text-[10px] text-slate-400">{p.pos}</span>
+                    <span className="text-[10px] text-slate-400">
+                      {p.pos}{age ? ` | ${age}y` : ''}
+                    </span>
                   </div>
                   <span className={`text-center text-xs font-black tabular-nums shrink-0 ${ovrColor}`}>{ovr}</span>
+                  {/* Desktop slider — inline. Stop propagation so dragging it doesn't fire tap-to-swap. */}
                   <input
                     type="range"
                     min={0}
-                    // Physical travel cap at remaining team-budget headroom so
-                    // the user can't drag past the 240-min total.
                     max={48}
+                    step={1}
                     value={mins}
                     readOnly={!writable}
                     disabled={!writable}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => setMins(p.internalId, Number(e.target.value))}
-                    className={`w-full ${writable ? 'accent-sky-500 cursor-pointer' : 'accent-slate-500 cursor-not-allowed opacity-60'}`}
+                    onChange={e => setMins(p.internalId, +e.target.value)}
+                    onClick={e => e.stopPropagation()}
+                    onPointerDown={e => e.stopPropagation()}
+                    className={`hidden sm:block w-full touch-pan-x ${writable ? 'accent-sky-500 cursor-pointer' : 'accent-slate-500 cursor-not-allowed opacity-60'}`}
                   />
-                  <span className="text-[11px] font-mono text-slate-300 tabular-nums shrink-0 text-right">{mins}</span>
+                  <span className="hidden sm:block text-xs font-mono text-slate-200 text-right tabular-nums">
+                    {mins}
+                  </span>
+                </div>
+                {/* Mobile slider — own line, full width. */}
+                <div
+                  className="flex sm:hidden items-center gap-2 mt-1.5 pl-[28px] touch-pan-x"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <input
+                    type="range"
+                    min={0}
+                    max={48}
+                    step={1}
+                    value={mins}
+                    readOnly={!writable}
+                    disabled={!writable}
+                    onChange={e => setMins(p.internalId, +e.target.value)}
+                    onPointerDown={e => e.stopPropagation()}
+                    className={`flex-1 touch-pan-x ${writable ? 'accent-sky-500' : 'accent-slate-500 cursor-not-allowed opacity-60'}`}
+                  />
+                  <span className="text-xs font-mono text-slate-200 text-right tabular-nums w-9">
+                    {mins}
+                  </span>
                 </div>
               </div>
             );
