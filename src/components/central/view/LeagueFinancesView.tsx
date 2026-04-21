@@ -28,6 +28,8 @@ interface TeamEnriched {
   topThreeAvgK2: number;
   hasInjuredStar: boolean;
   mleAvailable: number;
+  mleUsed: number;
+  mleLimit: number;
   mleType: string; // 'Room' | 'Tax' | 'NT' | '—'
   manualOutlook?: TradeOutlook; // GM-mode manual override, if set
 }
@@ -158,6 +160,9 @@ const CapRow: React.FC<{
           <>
             <div className="text-[10px] font-bold text-cyan-400 tabular-nums">{formatSalaryM(mleAvailable)}</div>
             <div className="text-[8px] text-slate-500">{mleType} MLE</div>
+            {d.mleUsed > 0 && (
+              <div className="text-[8px] text-amber-400/70 tabular-nums">{formatSalaryM(d.mleUsed)} used</div>
+            )}
           </>
         ) : (
           <div className="text-[10px] text-slate-600">—</div>
@@ -357,9 +362,11 @@ export const LeagueFinancesView: React.FC = () => {
     const hasInjuredStar = !!topPlayer && (topPlayer.injury?.gamesRemaining ?? 0) >= 30;
     const mle = getMLEAvailability(team.id, payroll, 0, thresholds, state.leagueStats);
     const mleAvailable = mle.type && !mle.blocked ? mle.available : 0;
+    const mleUsed      = mle.type && !mle.blocked ? (mle.used ?? 0) : 0;
+    const mleLimit     = mle.type && !mle.blocked ? (mle.limit ?? 0) : 0;
     const mleType = mle.type === 'room' ? 'Room' : mle.type === 'taxpayer' ? 'Tax' : mle.type ? 'NT' : '—';
     const manualOutlook = resolveManualOutlook(team, state.gameMode, state.userTeamId);
-    return { team, payroll, expiringCount, standardCount, twoWayCount, confRank, gbFromLeader, effectiveWins, effectiveLosses, topThreeAvgK2, hasInjuredStar, mleAvailable, mleType, manualOutlook };
+    return { team, payroll, expiringCount, standardCount, twoWayCount, confRank, gbFromLeader, effectiveWins, effectiveLosses, topThreeAvgK2, hasInjuredStar, mleAvailable, mleUsed, mleLimit, mleType, manualOutlook };
   }), [state.teams, state.players, seasonYear, confStandings, thresholds, state.leagueStats, state.gameMode, state.userTeamId]);
 
   const maxPayroll = useMemo(

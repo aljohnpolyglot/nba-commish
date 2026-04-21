@@ -10,7 +10,7 @@ import { markLightningStrikes, resolveLightningStrikes } from '../../../services
 import { markFatherTimeInjections, resolveFatherTimeInjections, applyMiddleClassBoosts } from '../../../services/playerDevelopment/washedAlgorithm';
 import { markBustLottery, resolveBustLottery } from '../../../services/playerDevelopment/bustLottery';
 import { generateAIDayTradeProposals, executeAITrade } from '../../../services/AITradeHandler';
-import { runAIFreeAgencyRound, runAIMidSeasonExtensions, runAISeasonEndExtensions, autoTrimOversizedRosters, autoPromoteTwoWayExcess } from '../../../services/AIFreeAgentHandler';
+import { runAIFreeAgencyRound, runAIMidSeasonExtensions, runAISeasonEndExtensions, autoTrimOversizedRosters, autoPromoteTwoWayExcess, runAIMleUpgradeSwaps } from '../../../services/AIFreeAgentHandler';
 import { tickFAMarkets } from '../../../services/faMarketTicker';
 import { routeUnsignedPlayers } from '../../../services/externalSigningRouter';
 import { formatExternalSalary } from '../../../constants';
@@ -134,14 +134,109 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
         // so that injected play-in/playoff games are in the schedule when simulateDayGames runs.
         stateWithSim = applyPlayoffLogic(stateWithSim, [], numGamesPerRound);
 
+        const simDateNorm = normalizeDate(stateWithSim.date);
+        const [, simMonth, simDayNum] = simDateNorm.split('-').map(Number);
+
         const watchedResult = i === 0 ? action?.payload?.watchedGameResult : undefined;
+
+        // Snapshot user team's pre-sim elimination status
+        const preSimUserTeam = stateWithSim.gameMode === 'gm' && stateWithSim.userTeamId !== undefined
+            ? stateWithSim.teams.find(t => t.id === stateWithSim.userTeamId)
+            : undefined;
+
         const simPatch = await simulateDayGames(stateWithSim, watchedResult, effectiveRiggedForTid, onGame);
+
+        const postSimUserTeam = preSimUserTeam
+            ? simPatch.teams.find(t => t.id === stateWithSim.userTeamId)
+            : undefined;
+        const justEliminated = preSimUserTeam?.clinchedPlayoffs !== 'o' && postSimUserTeam?.clinchedPlayoffs === 'o';
+
+        // Collect injury toasts for user team (accumulates across multi-day sim)
+        const newInjToasts = (stateWithSim.gameMode === 'gm' && stateWithSim.userTeamId !== undefined)
+            ? simPatch.results
+                .flatMap((r: any) => r.injuries ?? [])
+                .filter((inj: any) => inj.teamId === stateWithSim.userTeamId && inj.injuryType !== 'Load Management')
+                .map((inj: any) => {
+                    const player = stateWithSim.players.find(p => p.name === inj.playerName);
+                    const team = stateWithSim.teams.find(t => t.id === inj.teamId);
+                    return {
+                        playerName: inj.playerName,
+                        injuryType: inj.injuryType,
+                        gamesRemaining: inj.gamesRemaining,
+                        pos: (player as any)?.pos ?? '',
+                        teamName: team?.name ?? '',
+                    };
+                })
+            : [];
+
+        // Push coach message for star player injuries (>10 games out)
+        if (newInjToasts.length > 0) {
+            for (const inj of newInjToasts) {
+                if (inj.gamesRemaining > 10) {
+                    const player = stateWithSim.players.find(p => p.name === inj.playerName);
+                    const isAllStar = (player as any)?.allStar;
+                    const starTag = isAllStar ? ' one of our guys' : '';
+                    const msg = `Tough break—lost ${inj.playerName} for ${inj.gamesRemaining} games (${inj.injuryType}). We might need to hit the market to fill that gap.`;
+                    stateWithSim = pushCoachMessage(stateWithSim, msg);
+                }
+            }
+        }
+
+        // Collect feat toasts: own-team GmSc > 30, league-wide GmSc > 50 (trigger only — rendered as narrative card)
+        const newFeatToasts: { playerName: string; teamName: string; oppName: string; homeScore: number; awayScore: number; isHome: boolean; won: boolean; pts: number; reb: number; ast: number; isOwnTeam: boolean }[] = [];
+        const userTid = stateWithSim.userTeamId;
+        for (const r of simPatch.results) {
+            if (r.isAllStar || r.isRisingStars) continue;
+            const homeTeam = stateWithSim.teams.find(t => t.id === r.homeTeamId);
+            const awayTeam = stateWithSim.teams.find(t => t.id === r.awayTeamId);
+            const homeWon = (r.homeScore ?? 0) > (r.awayScore ?? 0);
+            const sides: { stats: any[]; teamId: number; isHome: boolean; teamName: string; oppName: string; won: boolean }[] = [
+                { stats: r.homeStats ?? [], teamId: r.homeTeamId, isHome: true,  teamName: homeTeam?.name ?? '', oppName: awayTeam?.name ?? '', won: homeWon },
+                { stats: r.awayStats ?? [], teamId: r.awayTeamId, isHome: false, teamName: awayTeam?.name ?? '', oppName: homeTeam?.name ?? '', won: !homeWon },
+            ];
+            for (const { stats, teamId, isHome, teamName, oppName, won } of sides) {
+                const isOwnTeamSide = stateWithSim.gameMode === 'gm' && teamId === userTid;
+                for (const stat of stats) {
+                    const gmSc = stat.gameScore ?? 0;
+                    const passes = (isOwnTeamSide && gmSc > 30) || (!isOwnTeamSide && gmSc > 50);
+                    if (!passes) continue;
+                    const pts = stat.pts ?? 0;
+                    const reb = stat.reb ?? stat.trb ?? ((stat.orb ?? 0) + (stat.drb ?? 0));
+                    const ast = stat.ast ?? 0;
+                    newFeatToasts.push({
+                        playerName: stat.name, teamName, oppName,
+                        homeScore: r.homeScore ?? 0, awayScore: r.awayScore ?? 0,
+                        isHome, won, pts, reb, ast,
+                        isOwnTeam: isOwnTeamSide,
+                    });
+                }
+            }
+        }
+
+        // Check roster compliance: if still over 15 during regular season, send coach message
+        if (stateWithSim.gameMode === 'gm' && stateWithSim.userTeamId !== undefined) {
+            const isRegularSeason = (simMonth === 10 && simDayNum >= 24) || (simMonth >= 11) || (simMonth <= 3);
+            if (isRegularSeason) {
+                const maxStd = stateWithSim.leagueStats?.maxStandardPlayersPerTeam ?? 15;
+                const userRoster = stateWithSim.players.filter(p =>
+                    p.tid === stateWithSim.userTeamId && !(p as any).twoWay && p.status === 'Active'
+                );
+                if (userRoster.length > maxStd) {
+                    const excess = userRoster.length - maxStd;
+                    const msg = `Boss, we're still over 15 standard players (${userRoster.length} total). We can't sim the regular season like this—need to cut ${excess} player(s).`;
+                    stateWithSim = pushCoachMessage(stateWithSim, msg);
+                }
+            }
+        }
 
         stateWithSim = {
             ...stateWithSim,
             teams: simPatch.teams,
             schedule: simPatch.schedule,
-            ...(simPatch.headToHead ? { headToHead: simPatch.headToHead } : {})
+            ...(simPatch.headToHead ? { headToHead: simPatch.headToHead } : {}),
+            ...(justEliminated ? { pendingElimToast: true } : {}),
+            ...(newInjToasts.length > 0 ? { pendingInjuryToasts: [...(stateWithSim.pendingInjuryToasts ?? []), ...newInjToasts] } : {}),
+            ...(newFeatToasts.length > 0 ? { pendingFeatToasts: [...(stateWithSim.pendingFeatToasts ?? []), ...newFeatToasts] } : {}),
         };
 
         allSimResults.push(...simPatch.results);
@@ -546,8 +641,6 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
         //   August:     every 4 days  (role players / vets min)
         //   September:  every 7 days  (camp invites, stragglers)
         //   Oct–Feb:    every 14 days (occasional vet-minimum / waiver wire pickups)
-        const simDateNorm = normalizeDate(stateWithSim.date);
-        const [, simMonth, simDayNum] = simDateNorm.split('-').map(Number);
         // Summer FA: July–Sep; In-season FA: Oct–Feb (month ≥10 or month ≤2); stop at March 1
         const isFreeAgencySeason = (simMonth >= 7 && simMonth <= 9) || simMonth >= 10 || simMonth <= 2;
         const isRegularSeason = (simMonth >= 10 && simMonth <= 12) || (simMonth >= 1 && simMonth <= 4);
@@ -621,6 +714,12 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         ? [...tick.socialPosts, ...(stateWithSim.socialFeed ?? [])] as any
                         : stateWithSim.socialFeed,
                     faBidding: { markets: tick.updatedMarkets as any },
+                    ...(tick.userBidResolutions.length > 0 ? {
+                        pendingFAToasts: [
+                            ...(stateWithSim.pendingFAToasts ?? []),
+                            ...tick.userBidResolutions,
+                        ],
+                    } : {}),
                 };
                 if (tick.signedPlayerIds.size > 0) {
                     console.log(`[FAMarketTick] Resolved ${tick.signedPlayerIds.size} market signings on ${stateWithSim.date}`);
@@ -678,9 +777,9 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
             }
 
             // Step 2: Trim teams still over the roster limit (e.g. trade overflow)
-            // Pass simMonth so the trimmer uses the training camp limit during Jul–Sep
+            // Pass simMonth+simDayNum so the trimmer uses the training camp limit during Jul–Oct 21
             console.log(`[RosterTrim] Calling autoTrimOversizedRosters: simMonth=${simMonth}, date=${stateWithSim.date}, day=${stateWithSim.day}`);
-            const waivers = autoTrimOversizedRosters(stateWithSim, simMonth);
+            const waivers = autoTrimOversizedRosters(stateWithSim, simMonth, simDayNum);
             console.log(`[RosterTrim] Month=${simMonth}, trimmed=${waivers.length} players`);
             if (waivers.length > 0) {
                 const waiverInfo = new Map(waivers.map(w => [w.playerId, w] as const));
@@ -698,18 +797,85 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         if (w.reason === 'twoWayExcess') {
                             return { ...p, tid: -1, status: 'FreeAgent' as const, twoWay: false, gLeagueAssigned: false } as unknown as Player;
                         }
-                        return { ...p, tid: -1, status: 'FreeAgent' as const, gLeagueAssigned: false } as unknown as Player;
+                        return { ...p, tid: -1, status: 'FreeAgent' as const, gLeagueAssigned: false, nonGuaranteed: false } as unknown as Player;
                     }),
                     history: [
                         ...(stateWithSim.history ?? []),
                         ...waivers.map(w => ({
-                            text: `${w.playerName} waived by the ${w.teamName}`,
+                            text: w.wasNonGuaranteed
+                                ? `${w.playerName} released from training camp by the ${w.teamName}`
+                                : `${w.playerName} waived by the ${w.teamName}`,
                             date: stateWithSim.date,
-                            type: 'Waiver',
+                            type: w.wasNonGuaranteed ? 'Training Camp Release' : 'Waiver',
                         })),
                     ],
                 };
             }
+            // Jan 10: auto-guarantee all non-guaranteed contracts still on a roster
+            if (simMonth === 1 && simDayNum === 10) {
+                const ngToGuarantee = stateWithSim.players.filter(
+                    p => !!(p as any).nonGuaranteed && p.tid != null && p.tid >= 0
+                );
+                if (ngToGuarantee.length > 0) {
+                    stateWithSim = {
+                        ...stateWithSim,
+                        players: stateWithSim.players.map(p =>
+                            (p as any).nonGuaranteed && p.tid != null && p.tid >= 0
+                                ? { ...p, nonGuaranteed: undefined }
+                                : p
+                        ),
+                        history: [
+                            ...(stateWithSim.history ?? []),
+                            ...ngToGuarantee.map(p => ({
+                                text: `${p.name}'s contract guaranteed by the ${stateWithSim.teams.find(t => t.id === p.tid)?.name ?? 'team'} (January 10 deadline)`,
+                                date: stateWithSim.date,
+                                type: 'NG Guaranteed',
+                            })),
+                        ],
+                    };
+
+                    // GM mode: push coach message confirming guarantees
+                    const userTeamNGs = ngToGuarantee.filter(p => p.tid === stateWithSim.userTeamId);
+                    if (userTeamNGs.length > 0) {
+                        const playerList = userTeamNGs.map(p => p.name).join(', ');
+                        const coachMsg = `Boss, just a heads up—${playerList} just became guaranteed on the Jan 10 deadline. Now locked in for the rest of the season.`;
+                        stateWithSim = pushCoachMessage(stateWithSim, coachMsg);
+                    }
+                }
+            }
+
+            // Trade deadline approaching (Feb 6 — 3 days before would be Feb 3)
+            if (simMonth === 2 && simDayNum === 3) {
+                stateWithSim = pushCoachMessage(stateWithSim, `Boss, trade deadline is in 3 days. This is our last window—let me know if you want to make any moves.`);
+            }
+
+            // Last week of regular season (Mar 30 — Apr 6): playoff lock-in reminder
+            if ((simMonth === 3 && simDayNum >= 30) || (simMonth === 4 && simDayNum <= 6)) {
+                // Check if we haven't already sent this message
+                const hasPrevPlayoffMsg = (stateWithSim.chats || []).some(c =>
+                    c.messages.some(m => m.text.includes('lock in our playoff'))
+                );
+                if (!hasPrevPlayoffMsg) {
+                    const twoWayCount = stateWithSim.players.filter(p =>
+                        p.tid === stateWithSim.userTeamId && (p as any).twoWay && p.status === 'Active'
+                    ).length;
+                    const ngCount = stateWithSim.players.filter(p =>
+                        p.tid === stateWithSim.userTeamId && (p as any).nonGuaranteed && p.status === 'Active'
+                    ).length;
+
+                    let msg = `Boss, we need to finalize our playoff roster. `;
+                    if (ngCount > 0) {
+                        msg += `We've got ${ngCount} non-guaranteed player(s) who should be locked in before postseason. `;
+                    }
+                    if (twoWayCount > 0) {
+                        msg += `Also, our two-way guys can't play in the playoffs—we should convert or release them before game 1.`;
+                    } else if (ngCount === 0) {
+                        msg += `Let's make sure we're ready for the playoffs.`;
+                    }
+                    stateWithSim = pushCoachMessage(stateWithSim, msg);
+                }
+            }
+
             const signings = runAIFreeAgencyRound(stateWithSim);
             if (signings.length > 0) {
                 stateWithSim = {
@@ -749,8 +915,9 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             contract: newContract,
                             contractYears: [...historicalYears, ...newContractYears],
                             playoffEligible: isAfterMarchDeadline ? false : undefined,
-                            // Preserve two-way flag from Pass 3 signing — these players don't count against the 15-man roster
+                            // Preserve two-way / non-guaranteed flags from AI signing passes
                             ...((signing as any).twoWay ? { twoWay: true } : {}),
+                            ...((signing as any).nonGuaranteed ? { nonGuaranteed: true } : {}),
                             // Track MLE signing type so TeamFinancesView can color MLE contract cells
                             ...(signing.mleTypeUsed ? { mleSignedVia: signing.mleTypeUsed } : {}),
                         };
@@ -771,8 +938,9 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                     eDate.setDate(eDate.getDate() - dayOff);
                     const dateStr = eDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                     const twoWayTag = (s as any).twoWay ? ' (two-way)' : '';
+                    const ngTag = (s as any).nonGuaranteed ? ' (non-guaranteed)' : '';
                     return {
-                        text: `${s.playerName} signs with the ${s.teamName}: $${totalStr}M/${s.contractYears ?? 1}yr${optTag}${twoWayTag}`,
+                        text: `${s.playerName} signs with the ${s.teamName}: $${totalStr}M/${s.contractYears ?? 1}yr${optTag}${twoWayTag}${ngTag}`,
                         date: dateStr,
                         type: 'Signing',
                     };
@@ -860,8 +1028,124 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         : (stateWithSim.socialFeed ?? []),
                 };
             }
+
+            // MLE upgrade swaps: over-cap teams sign a better FA via MLE and waive their weakest guaranteed player (once/month per team, seeded day)
+            const mleSwaps = runAIMleUpgradeSwaps(stateWithSim, simMonth, simDayNum);
+            if (mleSwaps.length > 0) {
+                const swapDate = new Date(stateWithSim.date);
+                const swapDateStr = swapDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                let updatedPlayers = [...stateWithSim.players];
+                const swapHistory: any[] = [];
+                let swapMleUsage = { ...((stateWithSim.leagueStats as any).mleUsage ?? {}) };
+
+                for (const swap of mleSwaps) {
+                    const { sign: s, waive: w } = swap;
+                    // Apply signing
+                    updatedPlayers = updatedPlayers.map(p => {
+                        if (p.internalId !== s.playerId) return p;
+                        const firstYear = stateWithSim.leagueStats?.year ?? 2026;
+                        const newContractYears = Array.from({ length: s.contractYears }, (_, i) => ({
+                            season: `${firstYear + i - 1}-${String(firstYear + i).slice(-2)}`,
+                            guaranteed: Math.round(s.salaryUSD * Math.pow(1.05, i)),
+                            option: (i === s.contractYears - 1 && s.hasPlayerOption) ? 'Player' : '',
+                        }));
+                        const historicalYears = ((p as any).contractYears ?? []).filter((cy: any) => {
+                            const yr = parseInt(cy.season.split('-')[0], 10) + 1;
+                            return yr < firstYear;
+                        });
+                        return {
+                            ...p,
+                            tid: s.teamId,
+                            status: 'Active' as const,
+                            contract: { amount: Math.round(s.salaryUSD / 1_000), exp: s.contractExp, hasPlayerOption: s.hasPlayerOption },
+                            contractYears: [...historicalYears, ...newContractYears],
+                            mleSignedVia: s.mleTypeUsed,
+                        };
+                    });
+                    // Apply waiver (release to FA)
+                    updatedPlayers = updatedPlayers.map(p => {
+                        if (p.internalId !== w.playerId) return p;
+                        return { ...p, tid: -1, status: 'Free Agent' as const };
+                    });
+                    // History entries
+                    const annualM = Math.round(s.salaryUSD / 100_000) / 10;
+                    const totalM = Math.round(annualM * (s.contractYears ?? 1));
+                    swapHistory.push(
+                        { text: `${s.playerName} signs with the ${s.teamName}: $${totalM}M/${s.contractYears ?? 1}yr (MLE)`, date: swapDateStr, type: 'Signing' },
+                        { text: `${w.playerName} waived by the ${w.teamName}`, date: swapDateStr, type: 'Waive' },
+                    );
+                    // Track MLE usage
+                    const prev = swapMleUsage[s.teamId];
+                    swapMleUsage[s.teamId] = { type: s.mleTypeUsed, usedUSD: (prev?.usedUSD ?? 0) + (s.mleAmountUSD ?? s.salaryUSD) };
+                }
+                stateWithSim = {
+                    ...stateWithSim,
+                    players: updatedPlayers,
+                    history: [...(stateWithSim.history ?? []), ...swapHistory],
+                    leagueStats: { ...stateWithSim.leagueStats, mleUsage: swapMleUsage },
+                };
+            }
         }
     }
 
     return { stateWithSim, allSimResults, lastDaySimResults, perDayResults };
 };
+
+/**
+ * Push a templated coach message to the user's chat list (GM mode only).
+ * Creates or updates a chat with the team's head coach.
+ */
+function pushCoachMessage(state: GameState, messageText: string): GameState {
+  if (state.gameMode !== 'gm' || !state.userTeamId) return state;
+
+  const userTeam = state.teams.find(t => t.id === state.userTeamId);
+  const coach = state.staff?.coaches.find(c => c.team === userTeam?.name);
+
+  if (!coach) return state;
+
+  const newChats = [...(state.chats || [])];
+  let chatIndex = newChats.findIndex(
+    c => c.participants.includes('commissioner') && c.participants.includes(coach.name)
+  );
+
+  const gameDate = new Date(state.date);
+  const timestamp = gameDate.toISOString();
+
+  const coachMessage = {
+    id: `msg-${Date.now()}`,
+    senderId: coach.name,
+    senderName: coach.name,
+    text: messageText,
+    timestamp,
+    read: false,
+    seen: false,
+    type: 'text' as const,
+  };
+
+  if (chatIndex === -1) {
+    // Create new chat
+    const newChat = {
+      id: `chat-coach-${state.date}`,
+      participants: ['commissioner', coach.name],
+      participantDetails: [
+        { id: 'commissioner', name: state.commissionerName, role: 'Commissioner' },
+        { id: coach.name, name: coach.name, role: 'Coach', avatarUrl: coach.playerPortraitUrl },
+      ],
+      messages: [coachMessage],
+      lastMessage: coachMessage,
+      unreadCount: 1,
+      isTyping: false,
+    };
+    newChats.unshift(newChat);
+  } else {
+    // Add to existing chat
+    const chat = { ...newChats[chatIndex] };
+    chat.messages = [...chat.messages, coachMessage];
+    chat.lastMessage = coachMessage;
+    chat.unreadCount = (chat.unreadCount ?? 0) + 1;
+    newChats.splice(chatIndex, 1);
+    newChats.unshift(chat);
+  }
+
+  return { ...state, chats: newChats };
+}

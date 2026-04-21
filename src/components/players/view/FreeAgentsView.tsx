@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Search, ArrowUpDown, User, Globe, Trophy, Briefcase, UserX, ChevronDown, Hourglass, Users } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Search, ArrowUpDown, User, Globe, Trophy, Briefcase, UserX, ChevronDown, Hourglass, Users, PlayCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useGame } from '../../../store/GameContext';
 import { FreeAgentCard } from './FreeAgentCard';
@@ -12,6 +12,7 @@ import ContactModal from '../../ContactModal';
 import { getCountryFromLoc } from '../../../utils/helpers';
 import { getCapThresholds, getTeamCapProfile, getMLEAvailability, getTeamPayrollUSD } from '../../../utils/salaryUtils';
 import { calcPot2K } from '../../../services/trade/tradeValueEngine';
+import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
 import type { NBAPlayer } from '../../../types';
 
 const MARKET_POOLS = [
@@ -57,8 +58,19 @@ export const FreeAgentsView: React.FC = () => {
   const [personSelectorType, setPersonSelectorType] = useState<'contact' | 'bribe' | 'dinner' | 'movie' | 'suspension' | 'waive' | 'sabotage' | 'general'>('general');
   const [preSelectedContact, setPreSelectedContact] = useState<any>(null);
   const [contactModalPerson, setContactModalPerson] = useState<any>(null);
+  const [page, setPage] = useState(1);
+  const loaderRef = useRef<HTMLDivElement>(null);
+  const PAGE_SIZE = 20;
 
   const seasonYear = state.leagueStats?.year ?? new Date(state.date || Date.now()).getFullYear();
+  const simMonth = state.date ? parseInt(state.date.split('-')[1], 10) : 0;
+  const isFreeAgencySeason = (simMonth >= 7 && simMonth <= 9) || simMonth >= 10 || simMonth <= 2;
+
+  // Roster compliance gate — shared hook enforces the check across all sim paths.
+  const rosterGate = useRosterComplianceGate();
+  const handleSimDayClick = () => {
+    rosterGate.attempt(() => dispatchAction({ type: 'ADVANCE_DAY' as any, payload: {} }));
+  };
 
   const freeAgents = useMemo(() => {
     return state.players.filter(p => {
@@ -105,6 +117,7 @@ export const FreeAgentsView: React.FC = () => {
     if (!isGM || state.userTeamId == null) return null;
     const roster = state.players.filter(p => p.tid === state.userTeamId);
     const twoWayCount = roster.filter(p => (p as any).twoWay).length;
+    const ngCount = roster.filter(p => !!(p as any).nonGuaranteed && !(p as any).twoWay).length;
     const standardCount = roster.length - twoWayCount;
     const maxStandard = state.leagueStats?.maxStandardPlayersPerTeam ?? 15;
     const maxTwoWay = state.leagueStats?.maxTwoWayPlayersPerTeam ?? 3;
@@ -120,6 +133,7 @@ export const FreeAgentsView: React.FC = () => {
     return {
       standardCount,
       twoWayCount,
+      ngCount,
       maxStandard,
       maxTwoWay,
       standardLeft: Math.max(0, maxStandard - standardCount),
@@ -225,6 +239,23 @@ export const FreeAgentsView: React.FC = () => {
     return filtered;
   }, [sourcePool, viewMode, searchTerm, selectedPool, selectedPosition, sortBy, sortOrder, selectedCountry, selectedTeamId, upcomingTeamFilter, state.leagueStats?.year]);
 
+  // Reset page when any filter changes
+  useEffect(() => { setPage(1); }, [searchTerm, selectedPool, selectedPosition, sortBy, sortOrder, selectedCountry, selectedTeamId, upcomingTeamFilter, viewMode]);
+
+  const visiblePlayers = filteredPlayers.slice(0, page * PAGE_SIZE);
+
+  // Infinite scroll — fire when sentinel enters viewport (pre-trigger 200px early)
+  useEffect(() => {
+    const el = loaderRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      entries => { if (entries[0].isIntersecting) setPage(p => p + 1); },
+      { threshold: 0, rootMargin: '0px 0px 200px 0px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [visiblePlayers.length, filteredPlayers.length]);
+
   const getContactFromPlayer = (player: NBAPlayer) => {
     const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '');
     const playerTeam = isNBA ? state.teams.find(t => t.id === player.tid) : null;
@@ -258,7 +289,7 @@ export const FreeAgentsView: React.FC = () => {
       return;
     }
 
-    // Sign / re-sign / waive → delegated to the shared hook.
+    // Sign / re-sign / waive / view_fa_offers → delegated to the shared hook.
     if (quick.handle(selectedActionPlayer, actionType)) {
       setSelectedActionPlayer(null);
       return;
@@ -339,7 +370,7 @@ export const FreeAgentsView: React.FC = () => {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-950 rounded-[2.5rem] border border-slate-800 shadow-2xl">
+    <div className="h-full overflow-y-auto custom-scrollbar bg-slate-950 rounded-[2.5rem] border border-slate-800 shadow-2xl">
       <div className="p-4 sm:p-8 space-y-4 sm:space-y-8">
         {/* Header */}
         <div className="space-y-3 sm:space-y-4">
@@ -360,26 +391,38 @@ export const FreeAgentsView: React.FC = () => {
                   : 'Browse and interact with available players.'}
               </p>
             </div>
-            {/* Desktop-only upper-right view toggle */}
-            <div className="hidden sm:flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 shrink-0">
-              <button
-                onClick={() => setViewMode('available')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                  viewMode === 'available' ? 'bg-rose-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'
-                }`}
-              >
-                <Users size={12} />
-                Available
-              </button>
-              <button
-                onClick={() => setViewMode('upcoming')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                  viewMode === 'upcoming' ? 'bg-amber-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'
-                }`}
-              >
-                <Hourglass size={12} />
-                Upcoming
-              </button>
+            {/* Desktop-only upper-right controls */}
+            <div className="hidden sm:flex items-center gap-3 shrink-0">
+              <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1">
+                <button
+                  onClick={() => setViewMode('available')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    viewMode === 'available' ? 'bg-rose-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  <Users size={12} />
+                  Available
+                </button>
+                <button
+                  onClick={() => setViewMode('upcoming')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    viewMode === 'upcoming' ? 'bg-amber-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  <Hourglass size={12} />
+                  Upcoming
+                </button>
+              </div>
+              {isFreeAgencySeason && (
+                <button
+                  onClick={handleSimDayClick}
+                  disabled={state.isProcessing}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 disabled:opacity-50 text-white transition-all shadow-lg"
+                >
+                  <PlayCircle size={14} />
+                  Sim Day
+                </button>
+              )}
             </div>
           </div>
 
@@ -404,6 +447,18 @@ export const FreeAgentsView: React.FC = () => {
               Upcoming
             </button>
           </div>
+
+          {/* Sim Day button — mobile header */}
+          {isFreeAgencySeason && (
+            <button
+              onClick={handleSimDayClick}
+              disabled={state.isProcessing}
+              className="sm:hidden w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-black uppercase tracking-widest bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 disabled:opacity-50 text-white transition-all shadow-lg"
+            >
+              <PlayCircle size={16} />
+              Simulate Day
+            </button>
+          )}
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:gap-6 text-[11px] sm:text-sm">
             <div className="flex items-center gap-2">
@@ -438,6 +493,13 @@ export const FreeAgentsView: React.FC = () => {
                     Two-Way {userRosterSlots.twoWayCount}/{userRosterSlots.maxTwoWay}
                   </span>
                 </div>
+                {userRosterSlots.ngCount > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border bg-amber-500/10 border-amber-500/30 text-amber-300">
+                      NG {userRosterSlots.ngCount}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
                     userRosterSlots.capSpaceUSD >= 0
@@ -624,16 +686,22 @@ export const FreeAgentsView: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-            {filteredPlayers.map(player => (
-              <FreeAgentCard
-                key={player.internalId}
-                player={player}
-                nonNBATeams={state.nonNBATeams}
-                onClick={handleActionClick}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+              {visiblePlayers.map(player => (
+                <FreeAgentCard
+                  key={player.internalId}
+                  player={player}
+                  nonNBATeams={state.nonNBATeams}
+                  onClick={handleActionClick}
+                  onViewOffers={p => quick.handle(p, 'view_fa_offers')}
+                />
+              ))}
+            </div>
+            {visiblePlayers.length < filteredPlayers.length && (
+              <div ref={loaderRef} className="h-16" />
+            )}
+          </>
         )}
       </div>
 
@@ -682,6 +750,8 @@ export const FreeAgentsView: React.FC = () => {
           onClose={() => setViewingRatingsPlayer(null)}
         />
       )}
+
+      {rosterGate.modal}
 
       {personSelectorOpen && preSelectedContact && (
         <PersonSelectorModal

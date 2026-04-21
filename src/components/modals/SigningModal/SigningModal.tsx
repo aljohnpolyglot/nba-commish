@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import type { NBAPlayer, NBATeam } from '../../../types';
 import {
-  formatSalaryM, formatSalaryMPrecise, computeContractOffer, getCapThresholds, getTeamPayrollUSD, getContractLimits, getMLEAvailability, computeExternalBuyout,
+  formatSalaryM, formatSalaryMPrecise, computeContractOffer, getCapThresholds, getTeamPayrollUSD, getContractLimits, getMLEAvailability, computeExternalBuyout, contractToUSD,
 } from '../../../utils/salaryUtils';
 import { extractNbaId, hdPortrait, normalizeDate, convertTo2KRating } from '../../../utils/helpers';
 import { getDisplayPotential } from '../../../utils/playerRatings';
@@ -17,6 +17,8 @@ import { PlayerBioMoraleTab, classifyResignIntent } from '../../central/view/Pla
 import { PlayerBioContractTab } from '../../central/view/PlayerBioContractTab';
 import { computeMoodScore, normalizeMoodTraits } from '../../../utils/mood/moodScore';
 import { useGame } from '../../../store/GameContext';
+import { computeOfferStrength } from '../../../services/freeAgencyBidding';
+import { getGMAttributes, clampSpendOffer, spendingOfferMultiplier } from '../../../services/staff/gmAttributes';
 
 interface SigningModalProps {
   player: NBAPlayer;
@@ -29,7 +31,7 @@ interface SigningModalProps {
   /** Force the initial contract-type tab. Used by the 2W → Guaranteed promotion flow so the modal opens on GUARANTEED instead of defaulting to TWO_WAY for young candidates. Roster-full forcing still wins. */
   initialContractType?: 'GUARANTEED' | 'TWO_WAY';
   onClose: () => void;
-  onSign: (contract: { salary: number; years: number; option: 'NONE' | 'PLAYER' | 'TEAM'; twoWay: boolean; mleType: 'room' | 'non_taxpayer' | 'taxpayer' | null }) => void;
+  onSign: (contract: { salary: number; years: number; option: 'NONE' | 'PLAYER' | 'TEAM'; twoWay: boolean; nonGuaranteed: boolean; mleType: 'room' | 'non_taxpayer' | 'taxpayer' | null }) => void;
   /** Optional bidding-war path. When provided AND a market is live or likely
    *  for this player (GM mode during FA period for notable FAs), Submit posts
    *  a competing user bid instead of finalizing the signing. The bid is
@@ -51,7 +53,7 @@ const formatPos = (pos = '') => {
 };
 
 type TabType = 'NEGOTIATION' | 'MORALE' | 'CONTRACT' | 'FINANCES' | 'OFFERS';
-type ContractType = 'GUARANTEED' | 'TWO_WAY';
+type ContractType = 'GUARANTEED' | 'TWO_WAY' | 'NON_GUARANTEED';
 
 const ALL_TABS: { id: TabType; label: string; icon: React.ElementType }[] = [
   { id: 'NEGOTIATION', label: 'Negotiation', icon: DollarSign },
@@ -125,6 +127,10 @@ function useHoldable(callback: () => void, disabled: boolean) {
 const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, autoAccept = false, preflightMessage, initialContractType, onClose, onSign, onSubmitBid }) => {
   const { state } = useGame();
 
+  // GM mode: user IS the GM for their own team — spending attribute shapes the opening offer.
+  const isOwnTeamGM = state.gameMode === 'gm' && team.id === (state as any).userTeamId;
+  const gmSpending = isOwnTeamGM ? getGMAttributes(state, team.id).spending : 75; // 75 → neutral 1.0× multiplier
+
   const [activeTab,    setActiveTab]    = useState<TabType>('NEGOTIATION');
   const [contractType, setContractType] = useState<ContractType>('GUARANTEED');
   const [salary,       setSalary]       = useState(0);
@@ -150,24 +156,40 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
 
   const thresholds  = useMemo(() => getCapThresholds(leagueStats), [leagueStats]);
   const teamPayroll = useMemo(() => getTeamPayrollUSD(state.players, team.id), [state.players, team.id]);
-  // Roster-slot accounting from EconomyTab settings — honor the commissioner's chosen limits.
+
+  // Roster-slot accounting. Training camp rule: 21 TOTAL (standard + NG + two-way all share one pool).
+  // Regular season: 15 standard (guaranteed + NG) + 3 two-way are separate buckets.
   const roster = useMemo(() => {
+    const d = state.date ? new Date(state.date) : new Date();
+    const mo = d.getMonth() + 1;
+    const dy = d.getDate();
+    const isTrainingCamp = (mo >= 7 && mo <= 9) || (mo === 10 && dy <= 21);
+    const onTeam = state.players.filter(p => p.tid === team.id);
+    const twoWayCount   = onTeam.filter(p => (p as any).twoWay).length;
+    const standardCount = onTeam.length - twoWayCount;
+
+    if (isTrainingCamp) {
+      const campLimit = leagueStats?.maxTrainingCampRoster ?? 21;
+      const totalFull = onTeam.length >= campLimit;
+      return {
+        maxStandard: campLimit, maxTwoWay: campLimit, maxTotal: campLimit,
+        standardCount, twoWayCount,
+        standardFull: totalFull, twoWayFull: totalFull, totalFull,
+      };
+    }
+
+    // Regular season: separate buckets
     const maxStandard = leagueStats?.maxStandardPlayersPerTeam ?? 15;
     const maxTwoWay   = leagueStats?.maxTwoWayPlayersPerTeam   ?? 3;
-    const maxTotal    = leagueStats?.maxPlayersPerTeam         ?? (maxStandard + maxTwoWay);
-    const onTeam = state.players.filter(p => p.tid === team.id);
-    const twoWayCount    = onTeam.filter(p => (p as any).twoWay).length;
-    const standardCount  = onTeam.length - twoWayCount;
-    const standardFull   = standardCount >= maxStandard;
-    const twoWayFull     = twoWayCount >= maxTwoWay;
-    // Only the "both buckets full" state should block signings entirely. A raw
-    // onTeam.length >= maxTotal check misfires when 2W has overflowed (e.g. 14/15
-    // standard + 4/3 two-way = 18 total) — in that case a guaranteed signing is
-    // still legal because a standard slot is open; the 2W excess gets flushed by
-    // autoTrimOversizedRosters on the next cycle.
-    const totalFull      = standardFull && twoWayFull;
-    return { maxStandard, maxTwoWay, maxTotal, standardCount, twoWayCount, standardFull, twoWayFull, totalFull };
-  }, [state.players, team.id, leagueStats]);
+    const standardFull = standardCount >= maxStandard;
+    const twoWayFull   = twoWayCount   >= maxTwoWay;
+    return {
+      maxStandard, maxTwoWay, maxTotal: maxStandard + maxTwoWay,
+      standardCount, twoWayCount,
+      standardFull, twoWayFull,
+      totalFull: standardFull && twoWayFull,
+    };
+  }, [state.players, team.id, leagueStats, state.date]);
   // Re-sign = staying on the current team → Bird Rights unlock supermax / longer deals.
   const isResign = player.tid === team.id;
   const playerForLimits = useMemo(
@@ -184,6 +206,16 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
 
   // NBA two-way = 50% of the first-year minimum. Derived from EconomyTab settings so commissioners can tune it.
   const twoWaySalaryUSD = useMemo(() => Math.round(limits.minSalaryUSD * 0.5), [limits.minSalaryUSD]);
+
+  // Training camp window: Jul 1 – Oct 21. NG option only shown when standard slots ≥ 15 and in this window.
+  const isTrainingCampPeriod = useMemo(() => {
+    if (!(leagueStats?.nonGuaranteedContractsEnabled ?? true)) return false;
+    const d = state.date ? new Date(state.date) : null;
+    if (!d || isNaN(d.getTime())) return false;
+    const mo = d.getMonth() + 1;
+    const dy = d.getDate();
+    return (mo >= 7 && mo <= 9) || (mo === 10 && dy <= 21);
+  }, [state.date, leagueStats?.nonGuaranteedContractsEnabled]);
 
   // Real age (from born.year when available — player.age goes stale).
   const seasonYear = leagueStats?.year ?? new Date().getUTCFullYear();
@@ -208,7 +240,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   }, [realAge, player.internalId]);
 
   const minAllowed = contractType === 'TWO_WAY' ? twoWaySalaryUSD : limits.minSalaryUSD;
-  const maxAllowed = contractType === 'TWO_WAY' ? twoWaySalaryUSD : limits.maxSalaryUSD;
+  const maxAllowed = contractType === 'TWO_WAY' ? twoWaySalaryUSD : contractType === 'NON_GUARANTEED' ? limits.minSalaryUSD * 3 : limits.maxSalaryUSD;
 
   // Power ranking — rank teams by win% (1 = best). Falls back to strength for preseason ties.
   const powerRanking = useMemo(() => {
@@ -339,11 +371,16 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
       setYears(2);
       setOption('NONE');
     } else {
-      setSalary(Math.min(limits.maxSalaryUSD, Math.max(limits.minSalaryUSD, initialOffer.salaryUSD)));
+      // In GM mode for the user's own team, seed the opening bid from the GM's spending tendency.
+      // spending=50 → 0.85× (lowball), spending=75 → 1.00× (market), spending=95 → 1.12× (overpay).
+      const seeded = isOwnTeamGM
+        ? clampSpendOffer(initialOffer.salaryUSD, gmSpending, limits.maxSalaryUSD)
+        : initialOffer.salaryUSD;
+      setSalary(Math.min(limits.maxSalaryUSD, Math.max(limits.minSalaryUSD, seeded)));
       setYears(initialOffer.years);
       setOption(initialOffer.hasPlayerOption ? 'PLAYER' : 'NONE');
     }
-  }, [player.internalId, isTwoWayCandidate, twoWaySalaryUSD, initialOffer, limits.minSalaryUSD, limits.maxSalaryUSD, roster.standardFull, roster.twoWayFull, initialContractType]);
+  }, [player.internalId, isTwoWayCandidate, twoWaySalaryUSD, initialOffer, limits.minSalaryUSD, limits.maxSalaryUSD, roster.standardFull, roster.twoWayFull, initialContractType, isOwnTeamGM, gmSpending]);
 
   // User-driven contractType toggle — rebuild salary/years/option for the chosen type.
   // Skips the first run so we don't clobber the init effect above.
@@ -354,8 +391,16 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
       setSalary(twoWaySalaryUSD);
       setYears(y => (y > 2 ? 2 : y));
       setOption('NONE');
+    } else if (contractType === 'NON_GUARANTEED') {
+      const discounted = Math.max(limits.minSalaryUSD, Math.min(limits.minSalaryUSD * 3, Math.round(initialOffer.salaryUSD * 0.60)));
+      setSalary(discounted);
+      setYears(1);
+      setOption('NONE');
     } else {
-      setSalary(Math.min(limits.maxSalaryUSD, Math.max(limits.minSalaryUSD, initialOffer.salaryUSD)));
+      const seeded = isOwnTeamGM
+        ? clampSpendOffer(initialOffer.salaryUSD, gmSpending, limits.maxSalaryUSD)
+        : initialOffer.salaryUSD;
+      setSalary(Math.min(limits.maxSalaryUSD, Math.max(limits.minSalaryUSD, seeded)));
       setYears(initialOffer.years);
       setOption(initialOffer.hasPlayerOption ? 'PLAYER' : 'NONE');
     }
@@ -434,12 +479,29 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
 
   const yearsTable = useMemo(() => {
     const total = option !== 'NONE' ? years + 1 : years;
-    return Array.from({ length: total }).map((_, i) => ({
-      year:    leagueStats.year + i,
-      salary:  salary * Math.pow(1.05, i),
-      capRoom: thresholds.salaryCap - (teamPayroll + salary * Math.pow(1.05, i)),
-    }));
-  }, [salary, years, option, thresholds, teamPayroll, leagueStats.year]);
+    // Resign: new contract starts next season (current deal expires end of this year).
+    // New FA signing: starts this season.
+    const baseYear = leagueStats.year + (isResign ? 1 : 0);
+    return Array.from({ length: total }).map((_, i) => {
+      const targetYear = baseYear + i;
+      // Sum committed payroll for this future year: only players whose contracts haven't expired,
+      // excluding the resigning player (their old deal will be replaced by the new one).
+      const committed = state.players
+        .filter(p =>
+          p.tid === team.id &&
+          !(p as any).twoWay &&
+          (p.contract?.exp ?? baseYear) >= targetYear &&
+          !(isResign && p.internalId === player.internalId)
+        )
+        .reduce((sum, p) => sum + contractToUSD(p.contract?.amount || 0), 0);
+      const newSalary = salary * Math.pow(1.05, i);
+      return {
+        year:    targetYear,
+        salary:  newSalary,
+        capRoom: thresholds.salaryCap - (committed + newSalary),
+      };
+    });
+  }, [salary, years, option, thresholds, leagueStats.year, state.players, team.id, isResign, player.internalId]);
 
   const formattedYears = option !== 'NONE' ? `${years}+1` : String(years);
   const interestColor  = interest < 40 ? '#f43f5e' : interest < 70 ? '#f59e0b' : '#22c55e';
@@ -450,7 +512,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   const incSalaryProps = useHoldable(() => setSalary(v => Math.min(maxAllowed, v + SALARY_STEP)), contractType === 'TWO_WAY' || salary >= maxAllowed);
 
   const decYearsProps = useHoldable(() => setYears(v => Math.max(1, v - 1)), false);
-  const incYearsProps = useHoldable(() => setYears(v => Math.min(contractType === 'TWO_WAY' ? 2 : 5, v + 1)), false);
+  const incYearsProps = useHoldable(() => setYears(v => Math.min(contractType === 'TWO_WAY' ? 2 : contractType === 'NON_GUARANTEED' ? 1 : 5, v + 1)), false);
 
   const decOptionProps = useHoldable(() => setOption(v => v === 'NONE' ? 'TEAM' : v === 'PLAYER' ? 'NONE' : 'PLAYER'), contractType === 'TWO_WAY');
   const incOptionProps = useHoldable(() => setOption(v => v === 'NONE' ? 'PLAYER' : v === 'PLAYER' ? 'TEAM' : 'NONE'), contractType === 'TWO_WAY');
@@ -494,7 +556,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
               </button>
               {autoAccept && (
                 <button
-                  onClick={() => { setShowCapWarning(false); onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', mleType: (contractType === 'TWO_WAY' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) }); }}
+                  onClick={() => { setShowCapWarning(false); onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', nonGuaranteed: contractType === 'NON_GUARANTEED', mleType: (contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) }); }}
                   className="w-full py-3 bg-[#e21d37]/20 border border-[#e21d37]/50 hover:bg-[#e21d37]/40 text-[#e21d37] font-black uppercase tracking-widest text-[10px] transition-colors rounded-sm"
                   title="Cap rules don't apply — you're the Commissioner."
                 >
@@ -508,8 +570,23 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     );
   }
 
-  // Roster-full preflight — if every standard + two-way slot is full, the only path is to waive someone first.
+  // Roster-full preflight — during free agency, allow signing with cap space (they can trade/waive to adjust).
+  // Only hard-block if BOTH rosters are full AND it's NOT free agency season (or they have no cap space at all).
+  const isFreeAgencySeason = useMemo(() => {
+    const d = state.date ? new Date(state.date) : new Date();
+    const mo = d.getMonth() + 1;
+    return (mo >= 7 && mo <= 9) || mo >= 10 || mo <= 2;
+  }, [state.date]);
+
+  // Auto-allow roster-full block during FA with cap space (they can adjust roster via trade/waive)
+  useEffect(() => {
+    if (roster.totalFull && !rosterFullOverridden && isFreeAgencySeason && teamPayroll < thresholds.salaryCap) {
+      setRosterFullOverridden(true);
+    }
+  }, [roster.totalFull, rosterFullOverridden, isFreeAgencySeason, teamPayroll, thresholds.salaryCap]);
+
   if (roster.totalFull && !rosterFullOverridden) {
+
     return (
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md">
         <motion.div
@@ -710,7 +787,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
               </button>
               {autoAccept && (
                 <button
-                  onClick={() => onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', mleType: (contractType === 'TWO_WAY' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) })}
+                  onClick={() => onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', nonGuaranteed: contractType === 'NON_GUARANTEED', mleType: (contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) })}
                   className="w-full py-3 bg-[#e21d37]/20 border border-[#e21d37]/50 hover:bg-[#e21d37]/40 text-[#e21d37] font-black uppercase tracking-widest text-[10px] transition-colors rounded-sm"
                   title="The overseas club's refusal doesn't matter — you're the Commissioner."
                 >
@@ -788,7 +865,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
             <div className="flex flex-col gap-2 w-full">
               {isAccepted ? (
                 <button
-                  onClick={() => onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', mleType: (contractType === 'TWO_WAY' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) })}
+                  onClick={() => onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', nonGuaranteed: contractType === 'NON_GUARANTEED', mleType: (contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) })}
                   className="w-full py-4 bg-green-600/20 border border-green-500/50 hover:bg-green-600/40 hover:border-green-500 text-green-400 font-black uppercase tracking-widest text-xs transition-colors rounded-sm"
                 >
                   Finalize Deal
@@ -803,7 +880,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                   </button>
                   {autoAccept && (
                     <button
-                      onClick={() => onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', mleType: (contractType === 'TWO_WAY' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) })}
+                      onClick={() => onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', nonGuaranteed: contractType === 'NON_GUARANTEED', mleType: (contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) })}
                       className="w-full py-3 bg-[#e21d37]/20 border border-[#e21d37]/50 hover:bg-[#e21d37]/40 text-[#e21d37] font-black uppercase tracking-widest text-[10px] transition-colors rounded-sm"
                       title="Their rejection doesn't matter — you're the Commissioner."
                     >
@@ -1038,6 +1115,25 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                     </p>
                   </div>
 
+                  {/* GM spending style badge — only shown in GM mode for the user's own team */}
+                  {isOwnTeamGM && (() => {
+                    const mult = spendingOfferMultiplier(gmSpending);
+                    const label = gmSpending >= 80 ? 'High Spender' : gmSpending >= 60 ? 'Balanced' : 'Value Hunter';
+                    const color = gmSpending >= 80 ? '#f59e0b' : gmSpending >= 60 ? '#8b949e' : '#38bdf8';
+                    const pctText = mult >= 1 ? `+${Math.round((mult - 1) * 100)}%` : `-${Math.round((1 - mult) * 100)}%`;
+                    return (
+                      <div className="flex items-center gap-3 px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-sm">
+                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                        <p className="text-[9px] font-black uppercase tracking-widest" style={{ color }}>
+                          GM Style: {label}
+                        </p>
+                        <p className="text-[9px] text-white/30 ml-auto">
+                          Opening offer {pctText} vs market · Spending {gmSpending}
+                        </p>
+                      </div>
+                    );
+                  })()}
+
                   {/* Mother-team release likelihood — moves live as you slide the buyout contribution.
                       Higher retention pull = more money needed before the club lets go. */}
                   {buyout.applicable && (() => {
@@ -1090,19 +1186,25 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                       <div>
                         <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 mb-2">Contract Type</p>
                         <div className="flex border border-white/5 rounded-sm p-1 bg-black/60 gap-1">
-                          {(['GUARANTEED', 'TWO_WAY'] as ContractType[])
-                            .filter(type => type === 'GUARANTEED' ? !roster.standardFull : !roster.twoWayFull)
+                          {(['GUARANTEED', 'TWO_WAY', 'NON_GUARANTEED'] as ContractType[])
+                            .filter(type =>
+                              type === 'GUARANTEED' ? !roster.standardFull :
+                              type === 'TWO_WAY' ? !roster.twoWayFull :
+                              isTrainingCampPeriod && roster.standardCount >= 15
+                            )
                             .map(type => (
                               <button
                                 key={type}
                                 onClick={() => setContractType(type)}
                                 className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-sm transition-all ${
                                   contractType === type
-                                    ? 'bg-[#e21d37] text-white shadow-lg'
+                                    ? type === 'NON_GUARANTEED'
+                                      ? 'bg-amber-600 text-white shadow-lg'
+                                      : 'bg-[#e21d37] text-white shadow-lg'
                                     : 'text-white/30 hover:text-white/60 hover:bg-white/5'
                                 }`}
                               >
-                                {type.replace('_', ' ')}
+                                {type === 'NON_GUARANTEED' ? 'NG' : type.replace('_', ' ')}
                               </button>
                             ))}
                         </div>
@@ -1392,43 +1494,117 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                     </p>
                     {(() => {
                       const market = state.faBidding?.markets?.find(m => m.playerId === player.internalId && !m.resolved);
+                      const resolvedMarket = !market ? state.faBidding?.markets?.find(m => m.playerId === player.internalId && m.resolved) : null;
+                      const activeMarket = market ?? resolvedMarket;
                       const activeBids = market?.bids?.filter(b => b.status === 'active' && !b.isUserBid) ?? [];
-                      if (!market || activeBids.length === 0) {
-                        return <p className="text-[11px] text-white/40 italic">No competing bids on record.</p>;
-                      }
-                      const decisionDaysOut = Math.max(0, market.decidesOnDay - (state.day ?? 0));
-                      const sortedBids = [...activeBids].sort((a, b) => b.salaryUSD - a.salaryUSD);
-                      return (
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between pb-3 border-b border-white/5">
-                            <div className="text-[9px] uppercase tracking-widest text-white/50">Decision window</div>
-                            <div className="text-[11px] font-bold text-[#FDB927]">
-                              {decisionDaysOut === 0 ? 'Decides today' : `${decisionDaysOut} day${decisionDaysOut === 1 ? '' : 's'} remaining`}
+                      const userBid = activeMarket?.bids?.find(b => b.isUserBid);
+                      const userBidActive = userBid?.status === 'active';
+                      const userBidAccepted = userBid?.status === 'accepted';
+                      const userBidRejected = userBid && !userBidActive && !userBidAccepted;
+                      const acceptedByOther = resolvedMarket?.bids?.find(b => b.status === 'accepted' && !b.isUserBid);
+
+                      // Compute raw scores for all bids then normalize to leader=100
+                      const allBidsForStrength = [
+                        ...(market?.bids?.filter(b => b.status === 'active') ?? []),
+                        ...(resolvedMarket?.bids?.filter(b => b.status === 'accepted' || b.isUserBid) ?? []),
+                      ];
+                      const rawScores = new Map(allBidsForStrength.map(b => [b.id, computeOfferStrength(b, player, state)]));
+                      const maxRaw = Math.max(...rawScores.values(), 1);
+                      const normalizedPct = (bid: any) => Math.round((rawScores.get(bid.id) ?? 0) / maxRaw * 100);
+
+                      const renderStrengthBar = (bid: any) => {
+                        const pct = normalizedPct(bid);
+                        const color = pct >= 95 ? '#22c55e' : pct >= 70 ? '#FDB927' : 'rgba(255,255,255,0.2)';
+                        const textColor = pct >= 95 ? 'text-emerald-400' : pct >= 70 ? 'text-[#FDB927]' : 'text-white/40';
+                        return (
+                          <div className="mt-1.5">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <div className="text-[8px] uppercase tracking-widest text-white/30">Offer Strength</div>
+                              <div className={`text-[9px] font-black ${textColor}`}>{pct}%</div>
+                            </div>
+                            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
                             </div>
                           </div>
-                          {sortedBids.map((bid, idx) => {
-                            const totalM = Math.round((bid.salaryUSD * bid.years) / 100_000) / 10;
-                            const annualM = Math.round(bid.salaryUSD / 100_000) / 10;
-                            return (
-                              <div key={bid.id} className="flex items-center justify-between gap-4 px-3 py-2.5 bg-white/[0.03] rounded-sm border border-white/5">
-                                <div className="flex items-center gap-3 min-w-0">
-                                  {bid.teamLogoUrl && (
-                                    <img src={bid.teamLogoUrl} alt="" className="w-7 h-7 object-contain shrink-0" />
-                                  )}
-                                  <div className="min-w-0">
-                                    <div className="text-[11px] font-black text-white/90 truncate">{bid.teamName}</div>
-                                    <div className="text-[9px] uppercase tracking-widest text-white/40">
-                                      {bid.option === 'PLAYER' ? 'Player option' : bid.option === 'TEAM' ? 'Team option' : `${bid.years}-year deal`}
-                                    </div>
+                        );
+                      };
+
+                      const renderBidCard = (bid: any, idx: number, isUser = false) => {
+                        const totalM = Math.round((bid.salaryUSD * bid.years) / 100_000) / 10;
+                        const annualM = Math.round(bid.salaryUSD / 100_000) / 10;
+                        const borderClass = isUser ? 'border-indigo-500/30' : 'border-white/5';
+                        const bgClass = isUser ? 'bg-indigo-500/5' : 'bg-white/[0.03]';
+                        return (
+                          <div key={bid.id} className={`px-3 py-2.5 ${bgClass} rounded-sm border ${borderClass}`}>
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-3 min-w-0">
+                                {isUser ? (
+                                  <div className="w-7 h-7 rounded-full bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center shrink-0 text-[9px] font-black text-indigo-300">YOU</div>
+                                ) : bid.teamLogoUrl ? (
+                                  <img src={bid.teamLogoUrl} alt="" className="w-7 h-7 object-contain shrink-0" />
+                                ) : null}
+                                <div className="min-w-0">
+                                  <div className={`text-[11px] font-black truncate ${isUser ? 'text-indigo-300' : 'text-white/90'}`}>
+                                    {isUser ? 'Your Offer' : bid.teamName}
+                                  </div>
+                                  <div className="text-[9px] uppercase tracking-widest text-white/40">
+                                    {bid.option === 'PLAYER' ? 'Player option' : bid.option === 'TEAM' ? 'Team option' : `${bid.years}-year deal`}
                                   </div>
                                 </div>
-                                <div className="text-right shrink-0">
-                                  <div className="text-[13px] font-black text-[#FDB927]">${totalM}M</div>
-                                  <div className="text-[9px] uppercase tracking-widest text-white/40">${annualM}M / {bid.years}yr{idx === 0 ? ' · leading' : ''}</div>
-                                </div>
                               </div>
-                            );
-                          })}
+                              <div className="text-right shrink-0">
+                                <div className="text-[13px] font-black text-[#FDB927]">${totalM}M</div>
+                                <div className="text-[9px] uppercase tracking-widest text-white/40">${annualM}M / {bid.years}yr{!isUser && idx === 0 ? ' · leading' : ''}</div>
+                              </div>
+                            </div>
+                            {renderStrengthBar(bid)}
+                          </div>
+                        );
+                      };
+
+                      if (!activeMarket && !userBid) {
+                        return <p className="text-[11px] text-white/40 italic">No competing bids on record.</p>;
+                      }
+
+                      const decisionDaysOut = market ? Math.max(0, market.decidesOnDay - (state.day ?? 0)) : 0;
+                      const sortedBids = [...activeBids].sort((a, b) => b.salaryUSD - a.salaryUSD);
+
+                      return (
+                        <div className="space-y-4">
+                          {market && (
+                            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+                              <div className="text-[9px] uppercase tracking-widest text-white/50">Decision window</div>
+                              <div className="text-[11px] font-bold text-[#FDB927]">
+                                {decisionDaysOut === 0 ? 'Decides today' : `${decisionDaysOut} day${decisionDaysOut === 1 ? '' : 's'} remaining`}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* User bid outcome banners */}
+                          {userBidAccepted && (
+                            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-sm">
+                              <span className="text-emerald-400 text-sm font-black">✓</span>
+                              <span className="text-[11px] font-black text-emerald-300 uppercase tracking-widest">Offer Accepted</span>
+                            </div>
+                          )}
+                          {userBidRejected && (
+                            <div className="flex items-center gap-2 px-3 py-2 bg-rose-500/10 border border-rose-500/30 rounded-sm">
+                              <span className="text-rose-400 text-sm font-black">✗</span>
+                              <span className="text-[11px] font-black text-rose-300 uppercase tracking-widest">
+                                Outbid{acceptedByOther ? ` — Player chose ${acceptedByOther.teamName}` : ''}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Your own bid */}
+                          {userBid && renderBidCard(userBid, -1, true)}
+
+                          {/* AI bids */}
+                          {sortedBids.map((bid, idx) => renderBidCard(bid, idx))}
+
+                          {activeBids.length === 0 && !userBid && (
+                            <p className="text-[11px] text-white/40 italic">No competing bids on record.</p>
+                          )}
                         </div>
                       );
                     })()}
@@ -1494,7 +1670,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                       return;
                     }
                     if (autoAccept) {
-                      onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', mleType: (contractType === 'TWO_WAY' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) });
+                      onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', nonGuaranteed: contractType === 'NON_GUARANTEED', mleType: (contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) });
                     } else {
                       setShowResponse(true);
                     }
