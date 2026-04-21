@@ -116,6 +116,8 @@ export interface SigningResult {
   mleAmountUSD?: number;
   /** True when this is a non-guaranteed training camp deal (slots 16–21). */
   nonGuaranteed?: boolean;
+  /** 'Supermax' | 'Rose Rule' | 'Two-Way' — shown in transaction log. */
+  contractLabel?: string;
 }
 
 /**
@@ -649,6 +651,8 @@ export interface ExtensionResult {
   newYears: number;       // number of seasons
   hasPlayerOption: boolean;
   declined: boolean;
+  /** 'Supermax' | 'Rose Rule' | 'Rookie Ext' — shown in transaction log. */
+  contractLabel?: string;
 }
 
 /** @deprecated Use computeContractOffer() from salaryUtils instead. */
@@ -772,6 +776,10 @@ export function runAIMidSeasonExtensions(state: GameState): ExtensionResult[] {
       newYears: extensionYears,
       hasPlayerOption: extensionOffer.hasPlayerOption,
       declined: !accepted,
+      contractLabel: extLimits.isSupermaxEligible ? 'Supermax'
+        : (extLimits.isRookieExtEligible && extLimits.rookieRoseQualified) ? 'Rose Rule'
+        : extLimits.isRookieExtEligible ? 'Rookie Ext'
+        : undefined,
     });
   }
 
@@ -864,6 +872,10 @@ export function runAISeasonEndExtensions(state: GameState): ExtensionResult[] {
       newYears: extensionOffer.years,
       hasPlayerOption: extensionOffer.hasPlayerOption,
       declined: !accepted,
+      contractLabel: seLimits.isSupermaxEligible ? 'Supermax'
+        : (seLimits.isRookieExtEligible && seLimits.rookieRoseQualified) ? 'Rose Rule'
+        : seLimits.isRookieExtEligible ? 'Rookie Ext'
+        : undefined,
     });
   }
 

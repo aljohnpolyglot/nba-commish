@@ -491,7 +491,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                     entryDate.setDate(entryDate.getDate() - dayOffset);
                     const dateStr = entryDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                     return {
-                        text: `${e.playerName} has re-signed with the ${e.teamName}: $${totalM}M/${e.newYears ?? 1}yr${optTag}`,
+                        text: `${e.playerName} has re-signed with the ${e.teamName}: $${totalM}M/${e.newYears ?? 1}yr${optTag}${e.contractLabel ? ` (${e.contractLabel})` : ''}`,
                         date: dateStr,
                         type: 'Signing',
                     };
@@ -578,7 +578,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 const eeHistoryEntries = endExts.filter(e => !e.declined).map(e => {
                     const totalM = Math.round(e.newAmount * (e.newYears ?? 1));
                     const optTag = e.hasPlayerOption ? ' (player option)' : '';
-                    return { text: `${e.playerName} re-signs with ${e.teamName} before free agency: $${totalM}M/${e.newYears ?? 1}yr${optTag}`, date: stateWithSim.date, type: 'Signing' };
+                    return { text: `${e.playerName} re-signs with ${e.teamName} before free agency: $${totalM}M/${e.newYears ?? 1}yr${optTag}${e.contractLabel ? ` (${e.contractLabel})` : ''}`, date: stateWithSim.date, type: 'Signing' };
                 });
                 if (eeHistoryEntries.length > 0) {
                     stateWithSim = { ...stateWithSim, history: [...(stateWithSim.history ?? []), ...eeHistoryEntries] };
