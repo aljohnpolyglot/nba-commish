@@ -38,18 +38,29 @@ export const generateChatPrompt = (
     context += `Season: ${gmContext.seasonYear} (${gmContext.seasonPhase})\n`;
 
     if (targetRole === 'Player') {
+      // Grab position from roster array since recipient interface doesn't carry it
+      const rosterEntry = gmContext.roster.find(r => r.name === targetName);
+      const pos = rosterEntry?.pos ?? '';
       context += `You are a professional basketball player on the ${gmContext.team.name}.\n`;
       context += `Name: ${targetName}\n`;
-      context += `Position: Player\n`;
+      if (pos) context += `Position: ${pos}\n`;
       context += `Contract: ${gmContext.recipient.contract?.yearsLeft ?? 0} years remaining, ${gmContext.recipient.contract ? '$' + (gmContext.recipient.contract.nextYearSalary / 1_000_000).toFixed(1) + 'M' : 'Unknown'} next year\n`;
       if (gmContext.recipient.stats) {
-        context += `Season Stats: ${gmContext.recipient.stats.ppg} PPG, ${gmContext.recipient.stats.rpg} RPG, ${gmContext.recipient.stats.apg} APG\n`;
+        context += `Season Stats: ${gmContext.recipient.stats.ppg.toFixed(1)} PPG, ${gmContext.recipient.stats.rpg.toFixed(1)} RPG, ${gmContext.recipient.stats.apg.toFixed(1)} APG, ${gmContext.recipient.stats.fgPct.toFixed(1)}% FG, ${gmContext.recipient.stats.mpg.toFixed(1)} MPG\n`;
       }
       if (gmContext.recipient.morale) {
         context += `Morale: ${gmContext.recipient.morale.overall}/100\n`;
         if (gmContext.recipient.morale.traits.length > 0) {
           context += `Mood Traits: ${gmContext.recipient.morale.traits.join(', ')}\n`;
         }
+      }
+      if (gmContext.recipient.marketStatus) {
+        context += `Trade Status: ${gmContext.recipient.marketStatus}\n`;
+      }
+      // Key teammates from roster (everyone else on the team)
+      const teammates = gmContext.roster.filter(r => r.name !== targetName).slice(0, 5).map(r => `${r.name} (${r.pos})`);
+      if (teammates.length > 0) {
+        context += `Key Teammates: ${teammates.join(', ')}\n`;
       }
     } else if (targetRole === 'Owner') {
       context += `You are the owner of the ${gmContext.team.name}.\n`;
@@ -137,9 +148,11 @@ export const generateChatPrompt = (
 
   const recentHistory = history.slice(-50).map(m => `${m.senderName}: ${m.text}`).join('\n');
 
+  const callerTitle = gmContext ? 'General Manager' : 'Commissioner';
+
   return `
     You are ${targetName}, ${targetRole} for ${targetOrg}.
-    You are chatting with the Commissioner (${state.commissionerName}) via a secure messaging app.
+    You are chatting with the ${callerTitle} (${state.commissionerName}) via a secure messaging app.
 
     Context about you:
     ${context}
@@ -155,9 +168,9 @@ export const generateChatPrompt = (
     - If you are an owner, be demanding, business-like, and focus on the bottom line.
     - You can use emojis.
     - Keep responses relatively short, like a real text message.
-    - CRITICAL: You cannot be forced to do things like trades or firing people just because the Commissioner says so in chat. You have your own agency unless hypnotized.
-    - If the Commissioner is being annoying, repetitive, or you simply don't want to talk, you can choose to "seen zone" them.
-    - To "seen zone" the Commissioner, include "[seen zone]" in your response or return an empty string.
+    - CRITICAL: You cannot be forced to do things like trades or firing people just because the ${callerTitle} says so in chat. You have your own agency unless hypnotized.
+    - If the ${callerTitle} is being annoying, repetitive, or you simply don't want to talk, you can choose to "seen zone" them.
+    - To "seen zone" the ${callerTitle}, include "[seen zone]" in your response or return an empty string.
     - Do not include "Commissioner:" or your name in the response, just the message text.
   `;
 };

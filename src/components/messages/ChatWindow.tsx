@@ -145,20 +145,18 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
               org = 'Free Agent';
           }
       } else {
-          // Try staff
-          // We need to search all staff
-          const allStaff = [
-              ...(state.staff?.owners || []),
-              ...(state.staff?.gms || []),
-              ...(state.staff?.coaches || []),
-              ...(state.staff?.leagueOffice || [])
-          ];
-          const staff = allStaff.find(s => s.name === draftContactId);
+          // Try staff — check each array so we can assign the correct role
+          const staffOwner = state.staff?.owners.find(s => s.name === draftContactId);
+          const staffCoach = state.staff?.coaches.find(s => s.name === draftContactId);
+          const staffGM = state.staff?.gms.find(s => s.name === draftContactId);
+          const staffLeague = state.staff?.leagueOffice?.find(s => s.name === draftContactId);
+          const staff = staffOwner || staffCoach || staffGM || staffLeague;
+          const staffRole = staffOwner ? 'Owner' : staffCoach ? 'Coach' : staffGM ? 'GM' : 'Staff';
           if (staff) {
               participant = {
                   id: staff.name,
                   name: staff.name,
-                  role: staff.jobTitle || 'Staff',
+                  role: staffRole,
                   avatarUrl: generatedAvatar || staff.playerPortraitUrl
               };
               if (staff.team) {
