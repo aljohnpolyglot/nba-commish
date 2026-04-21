@@ -196,8 +196,16 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     () => (isResign ? { ...player, hasBirdRights: true } as NBAPlayer : player),
     [player, isResign],
   );
-  const initialOffer = useMemo(() => computeContractOffer(playerForLimits, leagueStats), [playerForLimits, leagueStats]);
   const limits = useMemo(() => getContractLimits(playerForLimits, leagueStats), [playerForLimits, leagueStats]);
+  const initialOffer = useMemo(() => {
+    const base = computeContractOffer(playerForLimits, leagueStats);
+    // Supermax or Rose Rule resign: pin to full ceiling so interest meter treats
+    // anything below as a below-market offer rather than a windfall bonus.
+    if (isResign && (limits.isSupermaxEligible || (limits.isRookieExtEligible && limits.rookieRoseQualified))) {
+      return { ...base, salaryUSD: limits.maxSalaryUSD };
+    }
+    return base;
+  }, [playerForLimits, leagueStats, isResign, limits.isSupermaxEligible, limits.isRookieExtEligible, limits.rookieRoseQualified, limits.maxSalaryUSD]);
   // MLE reflects the hypothetical first-year salary of this very offer so the status updates live as the user slides.
   const mle = useMemo(
     () => getMLEAvailability(team.id, teamPayroll, salary, thresholds, leagueStats),

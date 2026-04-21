@@ -305,6 +305,7 @@ export interface LeagueStats {
 
   // Economy - Teams
   twoWayContractsEnabled?: boolean;
+  nonGuaranteedContractsEnabled?: boolean;
   minPlayersPerTeam?: number;
   maxPlayersPerTeam?: number;
   maxStandardPlayersPerTeam?: number;
@@ -318,6 +319,10 @@ export interface LeagueStats {
   maxContractStaticPercentage?: number;
   supermaxEnabled?: boolean;
   supermaxPercentage?: number;
+  supermaxMinYears?: number;
+  rookieExtEnabled?: boolean;
+  rookieExtPct?: number;
+  rookieExtRosePct?: number;
   birdRightsEnabled?: boolean;
   minContractLength?: number;
   maxContractLengthStandard?: number;
@@ -695,6 +700,8 @@ export interface NBAPlayer {
   gLeagueAssigned?: boolean;
   /** True when player is on a two-way contract (doesn't count against 15-man standard roster; earns ~$625K; ineligible for playoffs unless converted). */
   twoWay?: boolean;
+  /** True when player is on a non-guaranteed training camp deal. Cut before Oct 22 = free; surviving past Jan 10 auto-guarantees the contract. */
+  nonGuaranteed?: boolean;
   /** True when player qualifies for a designated veteran (super-max) extension with their current team. Recomputed every rollover. */
   superMaxEligible?: boolean;
   diedYear?: number;
@@ -1075,7 +1082,7 @@ export interface GameState {
   lastOutcome: string | null;
   lastConsequence: ConsequenceDto | null;
   lastSimResults?: any[];
-  tickerSimResults?: any[];
+  simCurrentDate?: string;
   prevTeams?: NBATeam[];
   lastActionType?: string;
   lastActionPayload?: any;
@@ -1129,6 +1136,15 @@ historicalAwards: HistoricalAward[];
   // ── Game Mode ─────────────────────────────────────────────────────────────
   gameMode?: 'commissioner' | 'gm';  // default: 'commissioner'
   userTeamId?: number;                // set in GM mode — the team the user manages
+
+  pendingFAToasts?: { playerName: string; accepted: boolean; winnerTeamName?: string; annualM: number; years: number }[];
+  pendingElimToast?: boolean;
+  pendingInjuryToasts?: { playerName: string; injuryType: string; gamesRemaining: number; pos?: string; teamName?: string }[];
+  pendingFeatToasts?: { playerName: string; teamName: string; oppName: string; homeScore: number; awayScore: number; isHome: boolean; won: boolean; pts: number; reb: number; ast: number; isOwnTeam: boolean }[];
+  pendingRecoveryToasts?: { playerName: string; teamName: string; pos: string }[];
+  pendingAwardToasts?: { playerName: string; teamName: string; teamAbbrev: string; awardLabel: string }[];
+  pendingPlayoffsToasts?: { teamName: string; body: string }[];
+  pendingOptionToasts?: { playerName: string; teamName: string; pos: string; decision: 'player-in' | 'player-out' | 'team-exercised' | 'team-declined'; amountM?: number }[];
 
   // ── FA Bidding (GM Mode) ──────────────────────────────────────────────────
   faBidding?: {

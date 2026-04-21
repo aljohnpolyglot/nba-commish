@@ -418,7 +418,37 @@ type ContractLeagueStats = Pick<
   | 'maxContractLengthStandard'
   | 'supermaxEnabled'
   | 'supermaxPercentage'
+  | 'supermaxMinYears'
+  | 'rookieExtEnabled'
+  | 'rookieExtPct'
+  | 'rookieExtRosePct'
 >;
+
+/**
+ * True if the player meets supermax award criteria for the given service tier.
+ * - 10+ years: automatic (no awards needed).
+ * - minYears–9 years: All-NBA in the immediately preceding season, OR All-NBA in 2 of the
+ *   previous 3 seasons, OR MVP/DPOY in the previous 3 seasons.
+ * - Below minYears: not eligible.
+ */
+export function isSupermaxAwardQualified(
+  awards: Array<{ season: number; type: string }>,
+  currentSeason: number,
+  yearsOfService: number,
+  minYears: number,
+): boolean {
+  if (yearsOfService >= 10) return true;
+  if (yearsOfService < minYears) return false;
+  // MVP or DPOY in last 3 seasons
+  if (awards.some(a => a.season >= currentSeason - 2 && /mvp|defensive player|dpoy/i.test(a.type))) return true;
+  // All-NBA in immediately preceding season
+  if (awards.some(a => a.season === currentSeason && /all.nba/i.test(a.type))) return true;
+  // All-NBA in 2 of the previous 3 seasons
+  const allNbaSeasons = new Set(
+    awards.filter(a => a.season >= currentSeason - 2 && /all.nba/i.test(a.type)).map(a => a.season),
+  );
+  return allNbaSeasons.size >= 2;
+}
 
 /**
  * Compute a full contract offer for a player using the spec from §6c.
@@ -448,32 +478,40 @@ export function computeContractOffer(
     : 0;
   const svcIdx = Math.min(yearsOfService, 10);
 
+  // Awards + current season — needed for both supermax and rookie ext checks.
+  const playerAwards: Array<{ season: number; type: string }> = (player as any).awards ?? [];
+  const playerCurrentSeason = (player as any).stats?.reduce((m: number, s: any) => Math.max(m, s.season ?? 0), 0) ?? 0;
+
   // ── Supermax eligibility ─────────────────────────────────────────────────
-  // Qualifies if: supermaxEnabled AND player.superMaxEligible (precomputed at rollover).
-  // Fallback: compute live for the first season before rollover has run.
-  // Supermax is ONLY available when re-signing with own team (Bird Rights required).
   const supermaxEnabled = leagueStats.supermaxEnabled ?? true;
   const supermaxPct = (leagueStats.supermaxPercentage ?? 35) / 100;
+  const supermaxMinYrs = leagueStats.supermaxMinYears ?? 8;
   let isSupermaxEligible: boolean;
   if ((player as any).superMaxEligible !== undefined) {
-    // Use precomputed flag (set at rollover, includes Bird Rights check)
     isSupermaxEligible = supermaxEnabled && !!(player as any).superMaxEligible;
   } else {
-    // First-season fallback: compute from awards + service, require hasBirdRights
-    const awards: Array<{ season: number; type: string }> = (player as any).awards ?? [];
-    const currentSeason = (player as any).stats?.reduce((m: number, s: any) => Math.max(m, s.season ?? 0), 0) ?? 0;
-    const recentAwards = awards.filter(a => a.season >= currentSeason - 2);
-    const hasSupermaxAward = recentAwards.some(a =>
-      /all.nba|mvp|defensive player|dpoy/i.test(a.type),
-    );
     const hasBirdRights = (player as any).hasBirdRights ?? false;
-    isSupermaxEligible = supermaxEnabled && hasBirdRights && (yearsOfService >= 8 || hasSupermaxAward);
+    isSupermaxEligible = supermaxEnabled && hasBirdRights &&
+      isSupermaxAwardQualified(playerAwards, playerCurrentSeason, yearsOfService, supermaxMinYrs);
   }
+
+  // ── Rookie extension (Derrick Rose Rule) ────────────────────────────────
+  // Only available from own team (hasBirdRights). 25% standard, 30% with Rose Rule awards.
+  const hasBirdRightsForRookieExt = (player as any).hasBirdRights ?? false;
+  const rookieExtEnabled = leagueStats.rookieExtEnabled ?? true;
+  const rookieExtPct    = (leagueStats.rookieExtPct    ?? 25) / 100;
+  const rookieExtRosePct = (leagueStats.rookieExtRosePct ?? 30) / 100;
+  const inRookieExtWindow = hasBirdRightsForRookieExt && yearsOfService >= 3 && yearsOfService <= 4;
+  const rookieRoseQualified = inRookieExtWindow &&
+    isSupermaxAwardQualified(playerAwards, playerCurrentSeason, yearsOfService, 3);
 
   // ── Max contract ────────────────────────────────────────────────────────
   let maxContractUSD: number;
   if (isSupermaxEligible) {
     maxContractUSD = capM * supermaxPct * 1_000_000;
+  } else if (rookieExtEnabled && inRookieExtWindow) {
+    const pct = rookieRoseQualified ? rookieExtRosePct : rookieExtPct;
+    maxContractUSD = capM * pct * 1_000_000;
   } else if ((leagueStats.maxContractType ?? 'service_tiered') === 'service_tiered') {
     maxContractUSD = (capM * MAX_CONTRACT_PCT[svcIdx]) * 1_000_000;
   } else {
@@ -511,8 +549,12 @@ export function computeContractOffer(
   else                  tier = 'Charity';
 
   // ── Base salary ─────────────────────────────────────────────────────────
+  // Supermax and Rose Rule players command their full ceiling — the market price
+  // IS the designated max, not a scaled fraction of it.
   const normalised = Math.max(0, score - 68) / (99 - 68);
-  let salaryUSD = Math.max(minSalaryUSD, maxContractUSD * Math.pow(normalised, 1.6));
+  let salaryUSD = (isSupermaxEligible || rookieRoseQualified)
+    ? maxContractUSD
+    : Math.max(minSalaryUSD, maxContractUSD * Math.pow(normalised, 1.6));
 
   // ── Mood modifier ───────────────────────────────────────────────────────
   if (moodTraits.includes('LOYAL')) {
@@ -659,6 +701,8 @@ export interface ContractLimits {
   maxSalaryUSD: number;
   maxPct: number;
   isSupermaxEligible: boolean;
+  isRookieExtEligible: boolean;
+  rookieRoseQualified: boolean;
 }
 
 export function getContractLimits(
@@ -675,36 +719,44 @@ export function getContractLimits(
 
   const supermaxEnabled = leagueStats.supermaxEnabled ?? true;
   const supermaxPct = (leagueStats.supermaxPercentage ?? 35) / 100;
-  // Always compute fresh eligibility — the precomputed superMaxEligible flag is
-  // a snapshot taken at last rollover and can miss awards earned mid-season
-  // (All-NBA / MVP / DPOY). Union the cached flag with the fresh computation
-  // so a player who qualified via 8+ years service OR recent awards is caught.
+  const supermaxMinYrs = leagueStats.supermaxMinYears ?? 8;
+  // Always compute fresh eligibility — union cached flag with live check so mid-season
+  // awards (All-NBA / MVP / DPOY) are caught without waiting for next rollover.
   const awards: Array<{ season: number; type: string }> = (player as any).awards ?? [];
   const currentSeason = (player as any).stats?.reduce((m: number, s: any) => Math.max(m, s.season ?? 0), 0) ?? 0;
-  const recentAwards = awards.filter(a => a.season >= currentSeason - 2);
-  const hasSupermaxAward = recentAwards.some(a => /all.nba|mvp|defensive player|dpoy/i.test(a.type));
   const hasBirdRightsForSupermax = (player as any).hasBirdRights ?? false;
   const cachedSupermax = (player as any).superMaxEligible === true;
-  const freshSupermax = hasBirdRightsForSupermax && (yearsOfService >= 8 || hasSupermaxAward);
+  const freshSupermax = hasBirdRightsForSupermax &&
+    isSupermaxAwardQualified(awards, currentSeason, yearsOfService, supermaxMinYrs);
   const isSupermaxEligible = supermaxEnabled && (cachedSupermax || freshSupermax);
 
+  // ── Rookie extension (Derrick Rose Rule) ────────────────────────────────
+  // Own-team only (hasBirdRights). 25% standard, 30% with Rose Rule awards.
+  const rookieExtEnabled  = leagueStats.rookieExtEnabled  ?? true;
+  const rookieExtPct      = (leagueStats.rookieExtPct     ?? 25) / 100;
+  const rookieExtRosePct  = (leagueStats.rookieExtRosePct ?? 30) / 100;
+  const inRookieExtWindow = hasBirdRightsForSupermax && yearsOfService >= 3 && yearsOfService <= 4;
+  const rookieRoseQualified = inRookieExtWindow &&
+    isSupermaxAwardQualified(awards, currentSeason, yearsOfService, 3);
+  const isRookieExtEligible = rookieExtEnabled && inRookieExtWindow;
+
   // ── Max salary ─────────────────────────────────────────────────────────────
-  // Reads EconomyContractsSection: maxContractType ('none' | 'static' | 'service_tiered'),
-  // maxContractStaticPercentage, supermaxEnabled, supermaxPercentage, birdRightsEnabled.
   const maxType = (leagueStats as any).maxContractType ?? 'service_tiered';
   let maxPct: number;
   let maxSalaryUSD: number;
   if (maxType === 'none') {
     maxPct = 1;
-    maxSalaryUSD = salaryCapUSD * 10; // effectively uncapped
+    maxSalaryUSD = salaryCapUSD * 10;
   } else if (isSupermaxEligible) {
     maxPct = supermaxPct;
     maxSalaryUSD = capM * supermaxPct * 1_000_000;
+  } else if (isRookieExtEligible) {
+    maxPct = rookieRoseQualified ? rookieExtRosePct : rookieExtPct;
+    maxSalaryUSD = capM * maxPct * 1_000_000;
   } else if (maxType === 'service_tiered') {
     maxPct = MAX_CONTRACT_PCT[svcIdx];
     maxSalaryUSD = capM * maxPct * 1_000_000;
   } else {
-    // static
     maxPct = ((leagueStats as any).maxContractStaticPercentage ?? 25) / 100;
     maxSalaryUSD = capM * maxPct * 1_000_000;
   }
@@ -728,5 +780,5 @@ export function getContractLimits(
     minSalaryUSD = (baseM / BASE_CAP_M) * capM * floorAdj * 1_000_000;
   }
 
-  return { minSalaryUSD, maxSalaryUSD, maxPct, isSupermaxEligible };
+  return { minSalaryUSD, maxSalaryUSD, maxPct, isSupermaxEligible, isRookieExtEligible, rookieRoseQualified };
 }

@@ -174,9 +174,77 @@ export const EconomyContractsSection = ({
                                 onChange={(e) => props.setSupermaxPercentage(parseInt(e.target.value))}
                                 className="w-full accent-indigo-500"
                             />
-                            <p className="text-[9px] text-slate-500 italic mt-1">
-                                Eligible via MVP, DPOY, or All-NBA honors.
-                            </p>
+                            <div className="flex flex-col gap-2 mt-3">
+                                <div className="flex items-center">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Min Years of Service</span>
+                                    <InfoTooltip text="Minimum seasons played to qualify for a supermax via awards. Players with 10+ years qualify automatically regardless of awards." />
+                                </div>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="9"
+                                    value={props.supermaxMinYears}
+                                    onChange={(e) => props.setSupermaxMinYears(Math.min(9, Math.max(1, parseInt(e.target.value) || 8)))}
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-xl text-white text-sm py-2 px-3 focus:outline-none focus:border-indigo-500"
+                                />
+                                <p className="text-[9px] text-slate-500 italic">
+                                    Eligible via MVP/DPOY (last 3 seasons) or All-NBA in preceding season or 2 of last 3. 10+ years: automatic.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Rookie Extensions (Derrick Rose Rule) */}
+            {props.maxContractType !== 'none' && (
+                <div className="pt-6 border-t border-slate-800/50 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                            <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Rookie Extensions</h3>
+                            <InfoTooltip text="Designated Rookie Scale Extensions (Rose Rule). Players finishing their 3rd–4th season can sign 5-year extensions at 25% of cap, or 30% if they earned All-NBA, MVP, or DPOY." />
+                        </div>
+                        <button
+                            onClick={() => props.setRookieExtEnabled(!props.rookieExtEnabled)}
+                            className={`w-8 h-4 rounded-full transition-all duration-200 relative ${props.rookieExtEnabled ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                        >
+                            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform duration-200 ${props.rookieExtEnabled ? 'left-4.5' : 'left-0.5'}`} />
+                        </button>
+                    </div>
+
+                    {props.rookieExtEnabled && (
+                        <div className="space-y-4">
+                            <div className="flex flex-col gap-2">
+                                <div className="flex justify-between items-center text-[10px] text-slate-400">
+                                    <span>Standard Max: {props.rookieExtPct}%</span>
+                                    <span className="font-bold text-emerald-400">${((props.salaryCap * props.rookieExtPct / 100) / 1_000_000).toFixed(3)}M</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="20"
+                                    max="40"
+                                    value={props.rookieExtPct}
+                                    onChange={(e) => props.setRookieExtPct(parseInt(e.target.value))}
+                                    className="w-full accent-indigo-500"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <div className="flex justify-between items-center text-[10px] text-slate-400">
+                                    <span>Rose Rule (All-NBA/MVP/DPOY): {props.rookieExtRosePct}%</span>
+                                    <span className="font-bold text-emerald-400">${((props.salaryCap * props.rookieExtRosePct / 100) / 1_000_000).toFixed(3)}M</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="20"
+                                    max="45"
+                                    value={props.rookieExtRosePct}
+                                    onChange={(e) => props.setRookieExtRosePct(Math.max(props.rookieExtPct, parseInt(e.target.value)))}
+                                    className="w-full accent-indigo-500"
+                                />
+                                <p className="text-[9px] text-slate-500 italic">
+                                    All-NBA in preceding season or 2 of last 3 · DPOY same · MVP once in last 3 seasons.
+                                </p>
+                            </div>
                         </div>
                     )}
                 </div>

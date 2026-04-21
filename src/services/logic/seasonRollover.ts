@@ -20,7 +20,7 @@ import { applyCapInflation } from '../../utils/finance/inflationUtils';
 import { runRetirementChecks, runFarewellTourChecks, RetireeRecord, FarewellRecord } from '../playerDevelopment/retirementChecker';
 import { runHOFChecks, HOFInduction } from '../playerDevelopment/hofChecker';
 import { generateFuturePicks, pruneExpiredPicks, DEFAULT_TRADABLE_PICK_SEASONS } from '../draft/DraftPickGenerator';
-import { computeContractOffer } from '../../utils/salaryUtils';
+import { computeContractOffer, isSupermaxAwardQualified } from '../../utils/salaryUtils';
 import { SettingsManager } from '../SettingsManager';
 import { ensureDraftClasses } from '../draftClassFiller';
 
@@ -39,6 +39,11 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   const playerOptInIds  = new Set<string>();
   const playerOptionNews: string[] = [];
   const playerOptionHistory: Array<{ text: string; date: string; type: string }> = [];
+
+  // GM-mode toast collector — player/team option decisions for the user's roster only
+  const isGM = state.gameMode === 'gm';
+  const userTid = isGM ? state.userTeamId : undefined;
+  const pendingOptionToasts: Array<{ playerName: string; teamName: string; pos: string; decision: 'player-in' | 'player-out' | 'team-exercised' | 'team-declined'; amountM?: number }> = [];
 
   // Player options: gist labels option on the season it APPLIES TO.
   // "2025-26 Player Option" → parsed exp = 2026.
@@ -63,12 +68,24 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       // ensures these still appear in the new season's transaction view.
       const optionDateStr = `Jun 29, ${currentYear}`;
       playerOptionHistory.push({ text, date: optionDateStr, type: 'Signing' });
+      if (isGM && p.tid === userTid) {
+        pendingOptionToasts.push({
+          playerName: p.name, teamName: team?.name ?? '', pos: (p as any).pos ?? '',
+          decision: 'player-in', amountM: +(currentAmountUSD / 1_000_000).toFixed(1),
+        });
+      }
     } else {
       playerOptOutIds.add(p.internalId);
       const text = `${p.name} has declined his player option${team ? ` with the ${team.name}` : ''}, becoming a free agent.`;
       playerOptionNews.push(text);
       const optionDateStr = `Jun 29, ${currentYear}`;
       playerOptionHistory.push({ text, date: optionDateStr, type: 'Signing' });
+      if (isGM && p.tid === userTid) {
+        pendingOptionToasts.push({
+          playerName: p.name, teamName: team?.name ?? '', pos: (p as any).pos ?? '',
+          decision: 'player-out',
+        });
+      }
     }
   }
 
@@ -96,11 +113,23 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       teamOptionNews.push(
         `${team?.name ?? 'A team'} has exercised their team option on ${p.name}.`,
       );
+      if (isGM && p.tid === userTid) {
+        pendingOptionToasts.push({
+          playerName: p.name, teamName: team?.name ?? '', pos: (p as any).pos ?? '',
+          decision: 'team-exercised',
+        });
+      }
     } else {
       teamOptionDeclinedIds.add(p.internalId);
       teamOptionNews.push(
         `${team?.name ?? 'A team'} has declined their team option on ${p.name}, making him a restricted free agent.`,
       );
+      if (isGM && p.tid === userTid) {
+        pendingOptionToasts.push({
+          playerName: p.name, teamName: team?.name ?? '', pos: (p as any).pos ?? '',
+          decision: 'team-declined',
+        });
+      }
     }
   }
 
@@ -201,14 +230,13 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
         ? true
         : (p as any).hasBirdRights ?? false;
 
-    // Super-max eligibility: Bird Rights + (8+ years service OR recent All-NBA/MVP/DPOY)
+    // Super-max eligibility: Bird Rights + award/service criteria
     const supermaxEnabled = state.leagueStats.supermaxEnabled ?? true;
+    const supermaxMinYrs = (state.leagueStats as any).supermaxMinYears ?? 8;
     const yearsOfService = ((p as any).stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
     const awards: Array<{ season: number; type: string }> = (p as any).awards ?? [];
-    const hasSupermaxAward = awards.some(a =>
-      a.season >= currentYear - 2 && /all.nba|mvp|defensive player|dpoy/i.test(a.type),
-    );
-    const superMaxEligible = supermaxEnabled && hasBirdRights && (yearsOfService >= 8 || hasSupermaxAward);
+    const superMaxEligible = supermaxEnabled && hasBirdRights &&
+      isSupermaxAwardQualified(awards, currentYear, yearsOfService, supermaxMinYrs);
 
     const nextAmt = syncedContractAmount(p);
     return {
@@ -534,6 +562,9 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     draftComplete: undefined,      // reset so draft can run for new year
     news: [...hofNewsItems, ...farewellNewsItems, ...teamOptionNewsItems, ...playerOptionNewsItems, ...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
     history: [...(state.history ?? []), ...playerOptionHistory, ...teamOptionHistoryEntries, ...retirementHistoryEntries, ...farewellHistoryEntries, ...hofHistoryEntries],
+    ...(pendingOptionToasts.length > 0
+      ? { pendingOptionToasts: [...(state.pendingOptionToasts ?? []), ...pendingOptionToasts] }
+      : {}),
   };
 }
 

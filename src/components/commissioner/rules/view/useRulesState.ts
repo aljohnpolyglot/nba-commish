@@ -176,6 +176,7 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
 
   // Economy - Teams
   const [twoWayContractsEnabled, setTwoWayContractsEnabled] = useState(leagueStats.twoWayContractsEnabled ?? true);
+  const [nonGuaranteedContractsEnabled, setNonGuaranteedContractsEnabled] = useState(leagueStats.nonGuaranteedContractsEnabled ?? true);
   const [minPlayersPerTeam, setMinPlayersPerTeam] = useState(leagueStats.minPlayersPerTeam ?? 14);
   const [maxPlayersPerTeam, setMaxPlayersPerTeam] = useState(leagueStats.maxPlayersPerTeam ?? 17);
   const [maxStandardPlayersPerTeam, setMaxStandardPlayersPerTeam] = useState(leagueStats.maxStandardPlayersPerTeam ?? 15);
@@ -189,6 +190,10 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
   const [maxContractStaticPercentage, setMaxContractStaticPercentage] = useState(leagueStats.maxContractStaticPercentage ?? 30);
   const [supermaxEnabled, setSupermaxEnabled] = useState(leagueStats.supermaxEnabled ?? true);
   const [supermaxPercentage, setSupermaxPercentage] = useState(leagueStats.supermaxPercentage ?? 35);
+  const [supermaxMinYears, setSupermaxMinYears] = useState(leagueStats.supermaxMinYears ?? 8);
+  const [rookieExtEnabled, setRookieExtEnabled] = useState(leagueStats.rookieExtEnabled ?? true);
+  const [rookieExtPct, setRookieExtPct] = useState(leagueStats.rookieExtPct ?? 25);
+  const [rookieExtRosePct, setRookieExtRosePct] = useState(leagueStats.rookieExtRosePct ?? 30);
   const [birdRightsEnabled, setBirdRightsEnabled] = useState(leagueStats.birdRightsEnabled ?? true);
   const [minContractLength, setMinContractLength] = useState(leagueStats.minContractLength ?? 1);
   const [maxContractLengthStandard, setMaxContractLengthStandard] = useState(leagueStats.maxContractLengthStandard ?? 4);
@@ -367,6 +372,7 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
         firstApronPercentage !== (leagueStats.firstApronPercentage ?? 126.7) ||
         secondApronPercentage !== (leagueStats.secondApronPercentage ?? 134.4) ||
         twoWayContractsEnabled !== (leagueStats.twoWayContractsEnabled ?? true) ||
+        nonGuaranteedContractsEnabled !== (leagueStats.nonGuaranteedContractsEnabled ?? true) ||
         minPlayersPerTeam !== (leagueStats.minPlayersPerTeam ?? 14) ||
         maxPlayersPerTeam !== (leagueStats.maxPlayersPerTeam ?? 17) ||
         maxStandardPlayersPerTeam !== (leagueStats.maxStandardPlayersPerTeam ?? 15) ||
@@ -378,6 +384,10 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
         maxContractStaticPercentage !== (leagueStats.maxContractStaticPercentage ?? 30) ||
         supermaxEnabled !== (leagueStats.supermaxEnabled ?? true) ||
         supermaxPercentage !== (leagueStats.supermaxPercentage ?? 35) ||
+        supermaxMinYears !== (leagueStats.supermaxMinYears ?? 8) ||
+        rookieExtEnabled !== (leagueStats.rookieExtEnabled ?? true) ||
+        rookieExtPct !== (leagueStats.rookieExtPct ?? 25) ||
+        rookieExtRosePct !== (leagueStats.rookieExtRosePct ?? 30) ||
         birdRightsEnabled !== (leagueStats.birdRightsEnabled ?? true) ||
         minContractLength !== (leagueStats.minContractLength ?? 1) ||
         maxContractLengthStandard !== (leagueStats.maxContractLengthStandard ?? 4) ||
@@ -531,6 +541,7 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
         if (firstApronPercentage !== (leagueStats.firstApronPercentage ?? 126.7)) changes.push(`First Apron set to ${firstApronPercentage}% of cap`);
         if (secondApronPercentage !== (leagueStats.secondApronPercentage ?? 134.4)) changes.push(`Second Apron set to ${secondApronPercentage}% of cap`);
         if (twoWayContractsEnabled !== (leagueStats.twoWayContractsEnabled ?? true)) changes.push(`Two-Way Contracts ${twoWayContractsEnabled ? 'enabled' : 'disabled'}`);
+        if (nonGuaranteedContractsEnabled !== (leagueStats.nonGuaranteedContractsEnabled ?? true)) changes.push(`Non-Guaranteed Contracts ${nonGuaranteedContractsEnabled ? 'enabled' : 'disabled'}`);
         if (minPlayersPerTeam !== (leagueStats.minPlayersPerTeam ?? 14)) changes.push(`Minimum Players Per Team set to ${minPlayersPerTeam}`);
         if (maxPlayersPerTeam !== (leagueStats.maxPlayersPerTeam ?? 15)) changes.push(`Max Players Per Team set to ${maxPlayersPerTeam}`);
         if (maxStandardPlayersPerTeam !== (leagueStats.maxStandardPlayersPerTeam ?? 15)) changes.push(`Max Standard Players Per Team set to ${maxStandardPlayersPerTeam}`);
@@ -542,6 +553,10 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
         if (maxContractStaticPercentage !== (leagueStats.maxContractStaticPercentage ?? 25)) changes.push(`Maximum Contract Percentage set to ${maxContractStaticPercentage}%`);
         if (supermaxEnabled !== (leagueStats.supermaxEnabled ?? true)) changes.push(`Supermax Contracts ${supermaxEnabled ? 'enabled' : 'disabled'}`);
         if (supermaxPercentage !== (leagueStats.supermaxPercentage ?? 35)) changes.push(`Supermax Percentage set to ${supermaxPercentage}%`);
+        if (supermaxMinYears !== (leagueStats.supermaxMinYears ?? 8)) changes.push(`Supermax Min Years of Service set to ${supermaxMinYears}`);
+        if (rookieExtEnabled !== (leagueStats.rookieExtEnabled ?? true)) changes.push(`Rookie Extensions ${rookieExtEnabled ? 'enabled' : 'disabled'}`);
+        if (rookieExtPct !== (leagueStats.rookieExtPct ?? 25)) changes.push(`Rookie Ext Standard % set to ${rookieExtPct}%`);
+        if (rookieExtRosePct !== (leagueStats.rookieExtRosePct ?? 30)) changes.push(`Rookie Ext Rose Rule % set to ${rookieExtRosePct}%`);
         if (birdRightsEnabled !== (leagueStats.birdRightsEnabled ?? true)) changes.push(`Bird Rights ${birdRightsEnabled ? 'enabled' : 'disabled'}`);
         if (minContractLength !== (leagueStats.minContractLength ?? 1)) changes.push(`Minimum Contract Length set to ${minContractLength} years`);
         if (maxContractLengthStandard !== (leagueStats.maxContractLengthStandard ?? 4)) changes.push(`Max Contract Length (Standard) set to ${maxContractLengthStandard} years`);
@@ -695,6 +710,7 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
             firstApronPercentage,
             secondApronPercentage,
             twoWayContractsEnabled,
+            nonGuaranteedContractsEnabled,
             minPlayersPerTeam,
             maxPlayersPerTeam,
             maxStandardPlayersPerTeam,
@@ -706,6 +722,10 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
             maxContractStaticPercentage,
             supermaxEnabled,
             supermaxPercentage,
+            supermaxMinYears,
+            rookieExtEnabled,
+            rookieExtPct,
+            rookieExtRosePct,
             birdRightsEnabled,
             minContractLength,
             maxContractLengthStandard,
@@ -917,6 +937,7 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
     setFirstApronPercentage(leagueStats.firstApronPercentage ?? 126.7);
     setSecondApronPercentage(leagueStats.secondApronPercentage ?? 134.4);
     setTwoWayContractsEnabled(leagueStats.twoWayContractsEnabled ?? true);
+    setNonGuaranteedContractsEnabled(leagueStats.nonGuaranteedContractsEnabled ?? true);
     setMinPlayersPerTeam(leagueStats.minPlayersPerTeam ?? 14);
     setMaxPlayersPerTeam(leagueStats.maxPlayersPerTeam ?? 17);
     setMaxStandardPlayersPerTeam(leagueStats.maxStandardPlayersPerTeam ?? 15);
@@ -928,6 +949,10 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
     setMaxContractStaticPercentage(leagueStats.maxContractStaticPercentage ?? 30);
     setSupermaxEnabled(leagueStats.supermaxEnabled ?? true);
     setSupermaxPercentage(leagueStats.supermaxPercentage ?? 35);
+    setSupermaxMinYears(leagueStats.supermaxMinYears ?? 8);
+    setRookieExtEnabled(leagueStats.rookieExtEnabled ?? true);
+    setRookieExtPct(leagueStats.rookieExtPct ?? 25);
+    setRookieExtRosePct(leagueStats.rookieExtRosePct ?? 30);
     setBirdRightsEnabled(leagueStats.birdRightsEnabled ?? true);
     setMinContractLength(leagueStats.minContractLength ?? 1);
     setMaxContractLengthStandard(leagueStats.maxContractLengthStandard ?? 4);
@@ -1219,6 +1244,7 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
     firstApronPercentage, setFirstApronPercentage,
     secondApronPercentage, setSecondApronPercentage,
     twoWayContractsEnabled, setTwoWayContractsEnabled,
+    nonGuaranteedContractsEnabled, setNonGuaranteedContractsEnabled,
     minPlayersPerTeam, setMinPlayersPerTeam,
     maxPlayersPerTeam, setMaxPlayersPerTeam,
     maxStandardPlayersPerTeam, setMaxStandardPlayersPerTeam,
@@ -1230,6 +1256,10 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
     maxContractStaticPercentage, setMaxContractStaticPercentage,
     supermaxEnabled, setSupermaxEnabled,
     supermaxPercentage, setSupermaxPercentage,
+    supermaxMinYears, setSupermaxMinYears,
+    rookieExtEnabled, setRookieExtEnabled,
+    rookieExtPct, setRookieExtPct,
+    rookieExtRosePct, setRookieExtRosePct,
     birdRightsEnabled, setBirdRightsEnabled,
     minContractLength, setMinContractLength,
     maxContractLengthStandard, setMaxContractLengthStandard,
