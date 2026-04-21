@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { contractToUSD, formatSalaryM } from '../../../utils/salaryUtils';
+import { contractToUSD, formatSalaryM, getContractLimits } from '../../../utils/salaryUtils';
 import { formatExternalSalary } from '../../../constants';
 import type { NBAPlayer } from '../../../types';
 
@@ -136,6 +136,10 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
 
   const hasBirdRights = !!(player as any).hasBirdRights;
   const superMaxEligible = !!(player as any).superMaxEligible;
+  const { isRookieExtEligible, rookieRoseQualified } = useMemo(
+    () => getContractLimits(player, state.leagueStats),
+    [player, state.leagueStats],
+  );
 
   if (allRows.length === 0) {
     return (
@@ -148,7 +152,7 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
   return (
     <div className="p-4 md:p-8 space-y-4">
       {/* Contract status badges */}
-      {(isTwoWay || isNonGuaranteed || hasBirdRights || superMaxEligible) && (
+      {(isTwoWay || isNonGuaranteed || hasBirdRights || superMaxEligible || isRookieExtEligible) && (
         <div className="flex flex-wrap gap-2 mb-2">
           {isTwoWay && (
             <span className="text-[10px] font-black uppercase tracking-widest text-purple-300 bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full">
@@ -168,6 +172,11 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
           {superMaxEligible && (
             <span className="text-[10px] font-black uppercase tracking-widest text-amber-300 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
               Super Max Eligible
+            </span>
+          )}
+          {isRookieExtEligible && !superMaxEligible && (
+            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-full">
+              {rookieRoseQualified ? 'Rookie Ext · Rose Rule' : 'Rookie Ext Eligible'}
             </span>
           )}
         </div>

@@ -1303,7 +1303,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                           .filter((a: any) => /all.nba|mvp|defensive player|dpoy/i.test(a.type ?? ''))
                           .map((a: any) => a.type);
                         return (
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-3 gap-3">
                             <div>
                               <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 mb-2">Bird Rights</p>
                               <div className={`flex items-center justify-center h-12 bg-white/[0.04] border rounded-sm ${hasBird ? 'border-emerald-500/40' : 'border-white/10'}`}>
@@ -1323,6 +1323,21 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                                 >
                                   {limits.isSupermaxEligible
                                     ? (svc >= 8 ? `${svc}yr svc` : (notableAwards[0] ?? 'Eligible'))
+                                    : 'Not Eligible'}
+                                </span>
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 mb-2">Rookie Ext</p>
+                              <div className={`flex items-center justify-center h-12 bg-white/[0.04] border rounded-sm ${limits.isRookieExtEligible ? 'border-indigo-500/50' : 'border-white/10'}`}>
+                                <span
+                                  className={`text-[10px] font-black italic uppercase text-center leading-tight px-1 ${limits.isRookieExtEligible ? 'text-indigo-300' : 'text-white/40'}`}
+                                  title={limits.isRookieExtEligible
+                                    ? (limits.rookieRoseQualified ? 'Rose Rule — 30% max ext' : 'Standard rookie ext — 25% max')
+                                    : 'Needs Bird Rights + 3–4 yrs service'}
+                                >
+                                  {limits.isRookieExtEligible
+                                    ? (limits.rookieRoseQualified ? 'Rose Rule' : 'Eligible')
                                     : 'Not Eligible'}
                                 </span>
                               </div>
