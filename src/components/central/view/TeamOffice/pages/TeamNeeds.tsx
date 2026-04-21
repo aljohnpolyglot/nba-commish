@@ -83,7 +83,7 @@ export function TeamNeeds({ teamId }: TeamNeedsProps) {
       SG: { SG: 100, G: 70, GF: 60, PG: 50, SF: 35, F: 15,  PF: 0,  FC: 0,  C: 0 },
       SF: { SF: 100, F: 70, GF: 60, PF: 40, SG: 30, FC: 20, G: 5,   PG: 0,  C: 10 },
       PF: { PF: 100, F: 70, FC: 65, C: 45,  SF: 30, GF: 5,  SG: 0,  G: 0,   PG: 0 },
-      C:  { C: 100,  FC: 75, PF: 45, F: 15, SF: 0,  PF: 45, GF: 0,  SG: 0,  G: 0, PG: 0 },
+      C:  { C: 100,  FC: 75, PF: 45, F: 15, SF: 0,  GF: 0,  SG: 0,  G: 0, PG: 0 },
     };
     const tagScore = TAG_MAP[slot][pos] ?? 0;
     // Height-rating target per slot (matches StarterService's big/guard splits).
