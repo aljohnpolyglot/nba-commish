@@ -470,7 +470,6 @@ export const runLazySim = async (
   let currentPhase = 'Starting...';
 
   const report = (override?: Partial<LazySimProgress>) => {
-    if (mode === 'silent') return; // silent mode: no UI updates
     const currentNorm = normalizeDate(state.date);
     onProgress?.({
       currentDate: currentNorm,

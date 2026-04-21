@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Play, MonitorPlay, FastForward, Globe, Ticket, Star } from 'lucide-react';
 import { Game, NBATeam, NBAPlayer, NonNBATeam } from '../../../../types';
 import { normalizeDate, getTeamForGame, getOwnTeamId } from '../../../../utils/helpers';
+import { getDraftLotteryDate, getDraftDate, toISODateString } from '../../../../utils/dateUtils';
 import { AllStarDayView } from './AllStarDayView';
 import { AllStarGameCard } from './AllStarGameCard';
 
@@ -71,9 +72,14 @@ export const DayView: React.FC<DayViewProps> = ({
 
   const isAllStarWeekend = isRisingStarsDay || isSaturdayEventsDay || isAllStarGameDay || isCelebrityGameDay;
 
-  // Draft calendar events — fixed dates relative to the season year
-  const isDraftLotteryDay = month === 5 && day === 14;  // mid-May, during playoffs
-  const isNBADraftDay = month === 6 && day === 25;       // late June, post-playoffs
+  // Draft calendar events — derived from leagueStats so dates update when scheduler changes
+  const ls = state?.leagueStats;
+  const seasonYear: number = ls?.year ?? year;
+  const draftLotteryDateStr = toISODateString(getDraftLotteryDate(seasonYear, ls));
+  const draftDateStr        = toISODateString(getDraftDate(seasonYear, ls));
+  const draftDateStr2       = toISODateString(new Date(getDraftDate(seasonYear, ls).getTime() + 86_400_000));
+  const isDraftLotteryDay   = selectedDateNorm === draftLotteryDateStr;
+  const isNBADraftDay       = selectedDateNorm === draftDateStr || selectedDateNorm === draftDateStr2;
 
   // Season Preview — shows throughout October (training camp → opening night) until dismissed
   const isPreseasonMonth = month === 10;

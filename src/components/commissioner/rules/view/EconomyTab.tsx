@@ -34,6 +34,8 @@ interface EconomyTabProps {
     setSecondApronPercentage: (val: number) => void;
     twoWayContractsEnabled: boolean;
     setTwoWayContractsEnabled: (val: boolean) => void;
+    nonGuaranteedContractsEnabled: boolean;
+    setNonGuaranteedContractsEnabled: (val: boolean) => void;
     minPlayersPerTeam: number;
     setMinPlayersPerTeam: (val: number) => void;
     maxPlayersPerTeam: number;

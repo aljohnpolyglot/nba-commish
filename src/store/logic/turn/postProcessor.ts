@@ -316,6 +316,8 @@ export const processSimulationResults = (
         teamGamesPlayed.set(res.awayTeamId, (teamGamesPlayed.get(res.awayTeamId) || 0) + 1);
     });
 
+    const recoveries: { playerName: string; teamName: string; pos: string; tid: number }[] = [];
+
     updatedPlayers = updatedPlayers.map(p => {
         let updated = { ...p };
         let changed = false;
@@ -324,7 +326,10 @@ export const processSimulationResults = (
         if (gamesPlayed > 0) {
             if (p.injury && p.injury.gamesRemaining > 0) {
                 updated.injury = { ...p.injury, gamesRemaining: Math.max(0, p.injury.gamesRemaining - gamesPlayed) };
-                if (updated.injury.gamesRemaining === 0) delete updated.injury;
+                if (updated.injury.gamesRemaining === 0) {
+                    delete updated.injury;
+                    recoveries.push({ playerName: p.name, teamName: '', pos: (p as any).pos ?? '', tid: p.tid });
+                }
                 changed = true;
             }
 
@@ -338,5 +343,5 @@ export const processSimulationResults = (
         return changed ? updated : p;
     });
 
-    return { updatedPlayers, updatedDraftPicks };
+    return { updatedPlayers, updatedDraftPicks, recoveries };
 };

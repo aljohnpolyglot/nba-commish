@@ -43,6 +43,8 @@ export interface MarketTickResult {
   /** Player ids that have an ACTIVE (unresolved) market — callers should skip these
    *  in `runAIFreeAgencyRound` so the regular round doesn't poach them. */
   pendingPlayerIds: Set<string>;
+  /** Markets that resolved this tick and had a user bid — used to pop GM-mode toasts. */
+  userBidResolutions: { playerName: string; accepted: boolean; winnerTeamName?: string; annualM: number; years: number }[];
 }
 
 /**
@@ -59,6 +61,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
   const historyEntries: HistoryEntry[] = [];
   const newsItems: any[] = [];
   const socialPosts: any[] = [];
+  const userBidResolutions: MarketTickResult['userBidResolutions'] = [];
 
   // ── 1. Resolve any markets whose decision day has arrived ──────────────────
   for (let i = 0; i < workingMarkets.length; i++) {
@@ -118,6 +121,18 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     const totalM = Math.round(annualM * winner.years);
     const optTag = winner.option === 'PLAYER' ? ' (player option)' : winner.option === 'TEAM' ? ' (team option)' : '';
     const userWon = !!winner.isUserBid;
+    // Check if the resolved market had a user bid — generate a GM toast.
+    const hadUserBid = m.bids.some(b => b.isUserBid);
+    if (hadUserBid) {
+      const winnerTeam = state.teams.find(t => t.id === winner.teamId);
+      userBidResolutions.push({
+        playerName: player.name,
+        accepted: userWon,
+        winnerTeamName: userWon ? undefined : (winnerTeam?.name ?? winner.teamName),
+        annualM: annualM,
+        years: winner.years,
+      });
+    }
     historyEntries.push({
       text: `${player.name} signs with the ${team.name}: $${totalM}M/${winner.years}yr${optTag}`,
       date: state.date,
@@ -174,6 +189,43 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     }
   }
 
+  // ── 1b. Withdraw bids from teams that exhausted cap this tick ────────────────
+  // When a team signs a max contract, their remaining offers on other players
+  // must be killed so they can't phantom-commit beyond their cap.
+  if (playerMutations.size > 0) {
+    const capUSD = state.leagueStats?.salaryCap ?? 154_600_000;
+    const luxTax = (state.leagueStats as any)?.luxuryPayroll ?? capUSD * 1.18;
+    const mleUSD = Math.round(capUSD * 0.085);
+
+    // Sum up salary newly committed this tick per team (amount stored in thousands)
+    const newlyCommitted = new Map<number, number>();
+    for (const mutation of playerMutations.values()) {
+      const tid = mutation.tid;
+      const amountK = mutation.contract?.amount;
+      if (tid != null && tid >= 0 && amountK != null) {
+        newlyCommitted.set(tid, (newlyCommitted.get(tid) ?? 0) + amountK * 1_000);
+      }
+    }
+
+    for (const market of workingMarkets) {
+      if (market.resolved) continue;
+      market.bids = market.bids.map(bid => {
+        if (bid.status !== 'active' || bid.isUserBid) return bid;
+        const extra = newlyCommitted.get(bid.teamId) ?? 0;
+        if (extra === 0) return bid; // team didn't sign anyone this tick
+
+        const teamPayroll = state.players
+          .filter(p => p.tid === bid.teamId && !(p as any).twoWay)
+          .reduce((sum, p) => sum + ((p.contract?.amount ?? 0) * 1_000), 0);
+        const effectivePayroll = teamPayroll + extra;
+        const capSpace = capUSD - effectivePayroll;
+        const canUseMLE = effectivePayroll < luxTax && bid.salaryUSD <= mleUSD;
+        if (capSpace >= bid.salaryUSD || canUseMLE) return bid;
+        return { ...bid, status: 'withdrawn' as const };
+      });
+    }
+  }
+
   // ── 2. Collect ids currently tied up in active markets (seed for de-dup) ───
   const activeMarketIds = new Set<string>();
   for (const m of workingMarkets) {
@@ -226,5 +278,6 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     newsItems,
     socialPosts,
     pendingPlayerIds,
+    userBidResolutions,
   };
 }

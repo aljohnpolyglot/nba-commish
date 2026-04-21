@@ -1,9 +1,9 @@
 import { generateContentWithRetry, ThinkingLevel } from "../utils/api";
 import { GameState, SocialPost, ChatMessage } from "../../../types";
 import { getRelevantHistory } from "../../../utils/helpers";
-import { 
-  SYSTEM_PROMPT, 
-  generateDirectMessagePrompt, 
+import {
+  SYSTEM_PROMPT,
+  generateDirectMessagePrompt,
   generateSocialThreadPrompt,
   generateLeagueContext,
   generateChatPrompt
@@ -11,6 +11,7 @@ import {
 import { OUTCOME_SCHEMA, SOCIAL_THREAD_SCHEMA } from "../../schemas";
 import { fetchAvatarData, getAvatarByHandle, getAvatarByName } from "../../avatarService";
 import { SettingsManager } from "../../SettingsManager";
+import { buildGMChatContext, GMChatContext } from "../../aiChat";
 
 function cleanLLMJson(raw: string): string {
   return raw
@@ -29,19 +30,73 @@ export async function sendChatMessage(
   targetRole: string,
   targetOrg: string,
   history: ChatMessage[],
-  isHypnotized: boolean = false
+  isHypnotized: boolean = false,
+  recipientId?: string
 ): Promise<string> {
+  // GM mode: check if recipient is in allowlist (owner/coach/own-team player)
+  if (state.gameMode === 'gm' && recipientId) {
+    const isAllowlisted = isGMModeChatAllowlisted(state, recipientId, targetRole);
+
+    if (!isAllowlisted) {
+      return getTemplatedGMReply(targetRole, targetName);
+    }
+
+    // Allowlisted: build rich context for LLM
+    try {
+      const gmContext = buildGMChatContext(state, recipientId);
+      const prompt = generateChatPrompt(targetName, targetRole, targetOrg, history, state, isHypnotized, gmContext);
+
+      let contents: any = prompt;
+
+      const lastMessage = history[history.length - 1];
+      if (lastMessage && lastMessage.imageUrl) {
+        try {
+          const base64Data = lastMessage.imageUrl.split(',')[1];
+          const mimeType = lastMessage.imageUrl.split(';')[0].split(':')[1];
+
+          contents = {
+            parts: [
+              { text: prompt },
+              {
+                inlineData: {
+                  data: base64Data,
+                  mimeType: mimeType
+                }
+              }
+            ]
+          };
+        } catch (e) {
+          console.error("Failed to parse image data", e);
+        }
+      }
+
+      const response = await generateContentWithRetry({
+        model: SettingsManager.getModelForTask('interaction'),
+        contents: contents,
+        config: {
+          systemInstruction: "You are a realistic NBA personality chatting with the Commissioner. Be concise and conversational. Use the provided game context to give informed, specific replies.",
+        },
+      }, 2, 800, true);
+
+      return response.text || "";
+    } catch (error) {
+      console.error("Error generating GM chat response:", error);
+      return "";
+    }
+  }
+
+  // Commissioner mode: original flow
   const prompt = generateChatPrompt(targetName, targetRole, targetOrg, history, state, isHypnotized);
 
   let contents: any = prompt;
-  
+
   // Check if the last message has an image
   const lastMessage = history[history.length - 1];
   if (lastMessage && lastMessage.imageUrl) {
     try {
       const base64Data = lastMessage.imageUrl.split(',')[1];
       const mimeType = lastMessage.imageUrl.split(';')[0].split(':')[1];
-      
+
       contents = {
         parts: [
           { text: prompt },
@@ -72,6 +127,51 @@ export async function sendChatMessage(
     console.error("Error generating chat response:", error);
     return "";
   }
+}
+
+function isGMModeChatAllowlisted(state: GameState, recipientId: string, role: string): boolean {
+  // Owner is always allowlisted
+  if (role === 'Owner') return true;
+
+  // Coach of user's team is allowlisted
+  if (role === 'Coach') {
+    const userTeam = state.teams.find(t => t.id === state.userTeamId);
+    if (!userTeam) return false;
+    const coach = state.staff?.coaches.find(c => c.name === recipientId && c.team === userTeam.name);
+    return !!coach;
+  }
+
+  // Own-team player is allowlisted
+  if (role === 'Player') {
+    const player = state.players.find(p => p.internalId === recipientId);
+    return !!(player && player.tid === state.userTeamId && player.status === 'Active');
+  }
+
+  // All others (GMs, agents, refs, etc.) are not allowlisted
+  return false;
+}
+
+function getTemplatedGMReply(role: string, name: string): string {
+  const templates: { [key: string]: string[] } = {
+    'GM': [
+      `Sorry, can't engage on this one right now.`,
+      `Might chat about this later.`,
+      `Not sure we have much to discuss right now.`,
+    ],
+    'Referee': [
+      `Message received.`,
+      `Thanks for reaching out.`,
+      `Got it.`,
+    ],
+    'Default': [
+      `Thanks for the message.`,
+      `I appreciate that.`,
+      `Thanks.`,
+    ]
+  };
+
+  const candidates = templates[role] || templates['Default'];
+  return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 export async function sendDirectMessage(

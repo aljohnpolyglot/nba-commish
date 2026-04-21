@@ -255,6 +255,12 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
       gap -= utTV;
     }
 
+    const isContender = theirMode === 'contend';
+    const avgAge = theirRoster.length > 0
+      ? theirRoster.reduce((s, p) => s + (p.age ?? 25), 0) / theirRoster.length
+      : 30;
+    const isYoungContender = isContender && avgAge < 27;
+
     for (let round = 0; round < MAX_PLAYERS && gap > (round === 0 ? 0 : 8); round++) {
       const maxGapMult = round === 0 ? 1.8 : round === 1 ? 1.5 : 1.3;
       // Star chase in reverse mode: shopping an elite target waives the user's
@@ -266,7 +272,13 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
                   && (bypassUT || !isYoungContenderCore(p, theirRoster, theirMode, currentYear)))
         .map(p => ({ ...p, tv: calcPlayerTV(p, theirMode, currentYear, tvContext) }))
         .filter(p => p.tv > 0 && p.tv <= gap * maxGapMult)
-        .sort((a, b) => Math.abs(a.tv - gap) - Math.abs(b.tv - gap))[0];
+        .sort((a, b) => {
+          const tvDiff = Math.abs(a.tv - gap) - Math.abs(b.tv - gap);
+          // Young contenders prefer older/expendable players to protect their core —
+          // among similarly-valued candidates, pick the veteran first.
+          if (isYoungContender && Math.abs(tvDiff) < 20) return (b.age ?? 25) - (a.age ?? 25);
+          return tvDiff;
+        })[0];
 
       if (!candidate) break;
 
@@ -288,13 +300,13 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
       .filter(pk => pk.tid === team.id && pk.season >= minTradableSeason && !usedIds.has(String(pk.dpid)))
       .sort((a, b) => a.season - b.season);
 
-    const isContender = theirMode === 'contend';
     const overshootMargin = isContender ? 30 : 14;
-    // No hard pick cap — real NBA blockbusters stack 5+ firsts. Loop exits naturally
-    // when gap closes, picks run out, or the next pick would overshoot. Safety net
-    // only prevents pathological infinite loops.
+    // Young contenders (avg roster age < 27) protect their future — cap picks at 2.
+    // Older all-in contenders go unrestricted since they're mortgaging the future anyway.
+    // Rebuilders have no cap: trading vets for a pick haul is exactly their strategy.
+    const pickCap = isYoungContender ? 2 : 40;
     let safety = 0;
-    while (gap > 2 && safety++ < 40 && theirPicks.length > 0) {
+    while (gap > 2 && safety++ < pickCap && theirPicks.length > 0) {
       const pk = theirPicks.shift()!;
       // Pick value follows the ORIGINAL owner's record (whose slot this pick
       // represents), not the current holder's. OKC holding LAC's 1st stays

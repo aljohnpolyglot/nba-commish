@@ -117,6 +117,7 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
 
   // Economy - Teams
   twoWayContractsEnabled: true,
+  nonGuaranteedContractsEnabled: true,
   minPlayersPerTeam: 14,
   maxPlayersPerTeam: 17,
   maxStandardPlayersPerTeam: 15,

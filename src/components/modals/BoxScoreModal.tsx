@@ -385,7 +385,9 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                     {result?.playerDNPs?.[p.internalId] ??
                       ((p.injury?.gamesRemaining ?? 0) > 0
                         ? `DNP — Injury (${p.injury!.type})`
-                        : "DNP — Coach's Decision")}
+                        : ((game.isPlayoff || game.isPlayIn) && (p as any).twoWay
+                          ? 'DNP — Two Way'
+                          : "DNP — Coach's Decision"))}
                   </td>
                 </tr>
               ))}

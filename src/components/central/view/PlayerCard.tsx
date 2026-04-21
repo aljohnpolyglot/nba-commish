@@ -41,11 +41,16 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionCl
   }
 
   const isTwoWay = !!(player as any).twoWay;
+  const isNonGuaranteed = !!(player as any).nonGuaranteed;
   const contractBorder = isTwoWay
     ? 'border-purple-500/40 hover:border-purple-500/70'
+    : isNonGuaranteed
+    ? 'border-amber-500/40 hover:border-amber-500/70'
     : 'border-[#facc15]/25 hover:border-[#facc15]/60';
   const contractGlow = isTwoWay
     ? 'bg-purple-500/5 group-hover:bg-purple-500/10'
+    : isNonGuaranteed
+    ? 'bg-amber-500/5 group-hover:bg-amber-500/10'
     : 'bg-[#facc15]/[0.04] group-hover:bg-[#facc15]/10';
 
   return (
@@ -85,6 +90,11 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionCl
             {isTwoWay && (
               <span className="bg-purple-500/15 text-purple-300 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
                 2W
+              </span>
+            )}
+            {isNonGuaranteed && !isTwoWay && (
+              <span className="bg-amber-500/15 text-amber-300 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
+                NG
               </span>
             )}
           </div>

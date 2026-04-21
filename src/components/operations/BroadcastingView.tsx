@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useGame } from '../../store/GameContext';
+import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -238,6 +239,7 @@ type View = 'roster' | 'phases' | 'weekly' | 'leaguepass' | 'dashboard';
 
 export const BroadcastingView: React.FC = () => {
   const { state, dispatchAction } = useGame();
+  const rosterGate = useRosterComplianceGate();
 
   const isLocked        = state.leagueStats.mediaRights?.isLocked === true;
   // Lock broadcasting edits on June 30 of each season year (day before FA opens July 1).
@@ -493,13 +495,13 @@ export const BroadcastingView: React.FC = () => {
           : '',
       ].filter(Boolean).join(' ');
 
-      dispatchAction({
+      rosterGate.attempt(() => dispatchAction({
         type: 'ADVANCE_DAY',
         payload: {
           outcomeText: dealOutcome,
           isSpecificEvent: true,
         },
-      });
+      }));
     }
   };
 
@@ -1049,6 +1051,7 @@ export const BroadcastingView: React.FC = () => {
           <span className="text-[10px] font-black text-white tracking-widest">REV CAP</span>
         </div>
       </footer>
+      {rosterGate.modal}
     </div>
   );
 };

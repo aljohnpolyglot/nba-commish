@@ -11,7 +11,7 @@ interface NewChatModalProps {
   onSelect: (contact: any) => void;
 }
 
-type FilterType = 'All' | 'NBA' | 'Euroleague' | 'PBA' | 'B-League' | 'G-League' | 'Endesa' | 'WNBA' | 'China CBA' | 'NBL Australia' | 'Draft Prospect' | 'Owner' | 'GM' | 'Coach' | 'Retired' | 'Referee';
+type FilterType = 'All' | 'Players' | 'Owner' | 'GM' | 'Coach' | 'Retired' | 'Referee';
 
 export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect }) => {
   const { state } = useGame();
@@ -24,14 +24,23 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
 
   const contacts = useMemo(() => {
     const allContacts: any[] = [];
-    
+
+    // In GM mode, only show owner + head coach + own-team players
+    const isGMMode = state.gameMode === 'gm';
+    const userTeamId = state.userTeamId;
+
     // Players
     state.players.forEach(p => {
         // Exclude deceased players
         if (p.diedYear) return;
 
+        // In GM mode, only show own-team active players
+        if (isGMMode && (p.tid !== userTeamId || p.status !== 'Active')) {
+          return;
+        }
+
         let org = p.status || 'Free Agent';
-        let league = 'NBA'; // Default
+        let league: FilterType = isGMMode ? 'Players' : 'NBA'; // Default
         let role = '';
 
         if (p.status === 'Retired' || p.tid === -3) {
@@ -39,22 +48,21 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
             org = 'Retired';
             role = p.hof ? 'Retired • Hall of Famer' : 'Retired • Retired Player';
         } else if (p.status === 'WNBA' || p.tid === -100) {
-            league = 'WNBA';
+            if (!isGMMode) league = 'WNBA' as FilterType;
             const team = state.nonNBATeams.find(t => t.league === 'WNBA' && t.tid === p.tid);
             if (team) org = team.name;
         } else if (p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect') {
-            league = 'Draft Prospect';
+            if (!isGMMode) league = 'Draft Prospect' as FilterType;
             org = 'Draft Prospect';
         } else if (['PBA', 'Euroleague', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '')) {
-            league = p.status as FilterType;
+            if (!isGMMode) league = p.status as FilterType;
             const team = state.nonNBATeams.find(t => t.league === p.status && t.tid === p.tid);
             if (team) org = team.name;
         }
 
         const team = state.teams.find(t => t.id === p.tid);
-        if (team && !['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'WNBA', 'China CBA', 'NBL Australia', 'Draft Prospect'].includes(league)) {
+        if (team) {
             org = team.name;
-            league = 'NBA';
         }
 
         const rating2k = convertTo2KRating(p.overallRating || 0, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp);
@@ -75,37 +83,51 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
     // Staff
     if (state.staff) {
         state.staff.owners.forEach(o => {
+          // In GM mode, only show owner of user's team
+          if (isGMMode && o.team !== state.teams.find(t => t.id === userTeamId)?.name) {
+            return;
+          }
           const team = state.teams.find(t => t.name === o.team);
           allContacts.push({ id: o.name, name: o.name, role: `Owner • ${o.team}`, org: o.team, league: 'Owner', avatarUrl: o.playerPortraitUrl, ovr: 0, teamLogoUrl: team?.logoUrl });
         });
-        state.staff.gms.forEach(g => {
-          const team = state.teams.find(t => t.name === g.team);
-          allContacts.push({ id: g.name, name: g.name, role: `GM • ${g.team}`, org: g.team, league: 'GM', avatarUrl: g.playerPortraitUrl, ovr: 0, teamLogoUrl: team?.logoUrl });
-        });
         state.staff.coaches.forEach(c => {
+          // In GM mode, only show head coach of user's team
+          if (isGMMode && c.team !== state.teams.find(t => t.id === userTeamId)?.name) {
+            return;
+          }
           const team = state.teams.find(t => t.name === c.team);
           allContacts.push({ id: c.name, name: c.name, role: `Coach • ${c.team}`, org: c.team, league: 'Coach', avatarUrl: c.playerPortraitUrl, ovr: 0, teamLogoUrl: team?.logoUrl });
         });
+
+        // In Commissioner mode, also show GMs and other staff
+        if (!isGMMode) {
+          state.staff.gms.forEach(g => {
+            const team = state.teams.find(t => t.name === g.team);
+            allContacts.push({ id: g.name, name: g.name, role: `GM • ${g.team}`, org: g.team, league: 'GM', avatarUrl: g.playerPortraitUrl, ovr: 0, teamLogoUrl: team?.logoUrl });
+          });
+        }
     }
 
-    // Referees
-    getAllReferees().forEach(ref => {
-      allContacts.push({
-        id: `ref-${ref.id}`,
-        name: ref.name,
-        role: `NBA Official • #${ref.id}`,
-        org: 'NBA Officials',
-        league: 'Referee',
-        avatarUrl: getRefereePhoto(ref.name),
-        ovr: 0,
-        teamLogoUrl: undefined
+    // Referees (only in Commissioner mode)
+    if (!isGMMode) {
+      getAllReferees().forEach(ref => {
+        allContacts.push({
+          id: `ref-${ref.id}`,
+          name: ref.name,
+          role: `NBA Official • #${ref.id}`,
+          org: 'NBA Officials',
+          league: 'Referee',
+          avatarUrl: getRefereePhoto(ref.name),
+          ovr: 0,
+          teamLogoUrl: undefined
+        });
       });
-    });
+    }
 
     return allContacts.sort((a, b) => {
-        const isStaffA = ['Owner', 'GM', 'Coach', 'Referee'].includes(a.league);
-        const isStaffB = ['Owner', 'GM', 'Coach', 'Referee'].includes(b.league);
-        
+        const isStaffA = ['Owner', 'Coach', 'Referee'].includes(a.league);
+        const isStaffB = ['Owner', 'Coach', 'Referee'].includes(b.league);
+
         if (isStaffA && isStaffB) {
             // Both are staff, sort alphabetically by team (org)
             return (a.org || '').localeCompare(b.org || '');
@@ -117,7 +139,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
             return isStaffA ? 1 : -1;
         }
     });
-  }, [state.players, state.staff, state.teams, state.nonNBATeams]);
+  }, [state.players, state.staff, state.teams, state.nonNBATeams, state.gameMode, state.userTeamId]);
 
   const filteredContacts = contacts.filter(c => {
     const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -159,13 +181,16 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-            {(['All', 'NBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'WNBA', 'China CBA', 'NBL Australia', 'Draft Prospect', 'Owner', 'GM', 'Coach', 'Retired', 'Referee'] as FilterType[]).map((filter) => (
+            {(state.gameMode === 'gm'
+              ? (['All', 'Players', 'Owner', 'Coach'] as FilterType[])
+              : (['All', 'NBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'WNBA', 'China CBA', 'NBL Australia', 'Draft Prospect', 'Owner', 'GM', 'Coach', 'Retired', 'Referee'] as FilterType[])
+            ).map((filter) => (
                 <button
                     key={filter}
                     onClick={() => setActiveFilter(filter)}
                     className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                        activeFilter === filter 
-                        ? 'bg-indigo-600 text-white' 
+                        activeFilter === filter
+                        ? 'bg-indigo-600 text-white'
                         : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
                     }`}
                 >

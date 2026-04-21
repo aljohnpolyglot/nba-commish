@@ -47,6 +47,7 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
     (player as any).contractYears ?? [];
 
   const isTwoWay = !!(player as any).twoWay;
+  const isNonGuaranteed = !!(player as any).nonGuaranteed;
 
   // ── Build all rows ──────────────────────────────────────────────────────────
   const allRows = useMemo(() => {
@@ -70,12 +71,13 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
           cy.option === 'Team'   ? 'Team Option' :
           isTwoWay               ? 'Two-Way' : null;
 
+        const currentYearRow = yr === currentYear;
         return {
           season: yr,
           teamName,
           salaryUSD: cy.guaranteed,
           isFuture: isFutureRow,
-          option: optionLabel,
+          option: currentYearRow && isNonGuaranteed && !optionLabel ? 'Non-Guaranteed' : optionLabel,
         };
       });
     }
@@ -113,12 +115,14 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
         const hasPlayerOpt = isFinalYear && !!player.contract.hasPlayerOption;
         const hasTeamOpt = !!(player.contract as any).hasTeamOption &&
           yr === ((player.contract as any).teamOptionExp ?? -1) + 1;
+        const isCurrentRow = yr === currentYear;
         futureRows.push({
           season: yr,
           teamName: currentTeamName,
           salaryUSD: isTwoWay ? 625_000 : annualRaise(baseUSD, yearsFromNow),
           isFuture: yearsFromNow > 0,
           option: isTwoWay ? 'Two-Way'
+            : (isCurrentRow && isNonGuaranteed) ? 'Non-Guaranteed'
             : hasPlayerOpt ? 'Player Option'
             : hasTeamOpt   ? 'Team Option'
             : (player.contract.rookie && yr === currentYear ? 'Rookie' : null),
@@ -127,7 +131,7 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
     }
 
     return [...pastRows, ...futureRows];
-  }, [contractYears, player, currentYear, currentTeamName, tidBySeason, teamNameMap, isTwoWay]);
+  }, [contractYears, player, currentYear, currentTeamName, tidBySeason, teamNameMap, isTwoWay, isNonGuaranteed]);
   const careerTotal = allRows.reduce((sum, r) => sum + r.salaryUSD, 0);
 
   const hasBirdRights = !!(player as any).hasBirdRights;
@@ -144,11 +148,16 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
   return (
     <div className="p-4 md:p-8 space-y-4">
       {/* Contract status badges */}
-      {(isTwoWay || hasBirdRights || superMaxEligible) && (
+      {(isTwoWay || isNonGuaranteed || hasBirdRights || superMaxEligible) && (
         <div className="flex flex-wrap gap-2 mb-2">
           {isTwoWay && (
             <span className="text-[10px] font-black uppercase tracking-widest text-purple-300 bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full">
               Two-Way Contract
+            </span>
+          )}
+          {isNonGuaranteed && !isTwoWay && (
+            <span className="text-[10px] font-black uppercase tracking-widest text-amber-300 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
+              Non-Guaranteed · Guarantees Jan 10
             </span>
           )}
           {hasBirdRights && !isTwoWay && (
@@ -207,6 +216,9 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
                   )}
                   {row.option === 'Two-Way' && (
                     <span className="text-[9px] font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full">Two-Way</span>
+                  )}
+                  {row.option === 'Non-Guaranteed' && (
+                    <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">Non-Guar.</span>
                   )}
                 </td>
               </tr>

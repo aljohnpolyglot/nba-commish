@@ -1279,6 +1279,8 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
                   <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1 flex-wrap">
                     <span>{player.pos}</span>
                     <span className="w-1 h-1 bg-white/20 rounded-full" />
+                    <span>{(player as any).born?.year ? leagueYear - (player as any).born.year : ((player as any).age ?? '?')}y</span>
+                    <span className="w-1 h-1 bg-white/20 rounded-full" />
                     <span className="text-indigo-300">OVR {player.displayOvr}</span>
                     <span className="w-1 h-1 bg-white/20 rounded-full" />
                     <span className="text-emerald-400/70">POT {player.displayPot}</span>

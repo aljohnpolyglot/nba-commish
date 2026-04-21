@@ -130,7 +130,7 @@ export function GeneralManager({ teamId }: GeneralManagerProps) {
     trade_aggression: 'How often this GM initiates trades.',
     scouting_focus: 'Preference for hoarding draft picks versus trading them for proven young players.',
     work_ethic: 'Appetite for constant roster churn versus keeping the same group together.',
-    spending: 'Willingness to overpay in free agency versus hunting for value.',
+    spending: 'Sets the opening offer in free agency — high-spending GMs start above market; value hunters start lean.',
   };
 
   return (

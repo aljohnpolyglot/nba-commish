@@ -1,6 +1,6 @@
 import React from 'react';
 import { NBAPlayer } from '../../../types';
-import { X, HeartPulse } from 'lucide-react';
+import { X, HeartPulse, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getPlayerImage } from './bioCache';
 import { PERSON_ACTION_DEFS, isPlayerEligible } from '../../../data/personActionDefs';
@@ -44,6 +44,12 @@ export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, 
     .filter((def): def is NonNullable<typeof def> => !!def)
     .filter(def => isPlayerEligible(player, def.eligibility, { currentYear, userTeamId }))
     .filter(def => !isGM || !GM_HIDDEN_ACTIONS.has(def.id));
+
+  const faMarket = state.faBidding?.markets?.find(
+    m => m.playerId === player.internalId && !m.resolved
+  );
+  const activeBidCount = faMarket?.bids?.filter(b => b.status === 'active').length ?? 0;
+  const hasOffers = activeBidCount > 0;
 
   return (
     <AnimatePresence>
@@ -92,6 +98,20 @@ export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, 
                 <div>
                   <h4 className="text-sm font-bold text-emerald-400 uppercase tracking-wider">Heal Player</h4>
                   <p className="text-xs text-slate-500 mt-0.5">Clear this player's injury immediately</p>
+                </div>
+              </button>
+            )}
+            {hasOffers && (
+              <button
+                onClick={() => onActionSelect('view_fa_offers')}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-all text-left group"
+              >
+                <div className="p-3 rounded-xl bg-amber-500/20 text-amber-400">
+                  <TrendingUp size={20} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-amber-300 uppercase tracking-wider">View Offers</h4>
+                  <p className="text-xs text-slate-500 mt-0.5">{activeBidCount} competing bid{activeBidCount > 1 ? 's' : ''} on the market</p>
                 </div>
               </button>
             )}

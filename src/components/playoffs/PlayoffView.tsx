@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Trophy, FastForward, Play, ChevronLeft, ChevronRight } from 'lucide-react';
-import { AnimatePresence } from 'motion/react';
+import React, { useState, useMemo } from 'react';
+import { Trophy, FastForward, Play, ChevronLeft, ChevronRight, Target, AlertTriangle } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useGame } from '../../store/GameContext';
 import { HistoricalPlayoffBracket } from './HistoricalPlayoffBracket';
 import { Game } from '../../types';
@@ -9,9 +9,11 @@ import { WatchGamePreviewModal } from '../modals/WatchGamePreviewModal';
 import { normalizeDate, getTeamForGame, getPlayersForExhibitionTeam } from '../../utils/helpers';
 import { BracketLayout } from './bracket/BracketLayout';
 import { SeriesDetailPanel } from './detail/SeriesDetailPanel';
+import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
 
 export const PlayoffView: React.FC = () => {
   const { state, dispatchAction } = useGame();
+  const rosterGate = useRosterComplianceGate();
   const playoffs = state.playoffs;
   const year = state.leagueStats.year;
 
@@ -29,6 +31,46 @@ export const PlayoffView: React.FC = () => {
 
   // ─── Derived ──────────────────────────────────────────────────────────────
   const roundLabel = ['', 'First Round', 'Second Round', 'Conf. Finals', 'NBA Finals'];
+
+  const isGMMode = state.gameMode === 'gm';
+  const userTeamId = (state as any).userTeamId as number | undefined;
+  const userTeam = userTeamId != null ? state.teams.find(t => t.id === userTeamId) : undefined;
+  const userNickname = userTeam?.abbrev ?? '';
+
+  const myNextPlayoffGame = useMemo(() => {
+    if (!isGMMode || !userTeamId) return null;
+    const candidates = state.schedule.filter(
+      g => (g.homeTid === userTeamId || g.awayTid === userTeamId) && !g.played && (g.isPlayoff || g.isPlayIn)
+    );
+    if (!candidates.length) return null;
+    return candidates.reduce((a, b) => a.date <= b.date ? a : b);
+  }, [isGMMode, userTeamId, state.schedule]);
+
+  // ─── Draft lottery warning ─────────────────────────────────────────────────
+  const lotteryDate = `${year}-05-14`;
+  const [showLotteryWarning, setShowLotteryWarning] = useState(false);
+  const [pendingSimFn, setPendingSimFn] = useState<(() => void) | null>(null);
+
+  const addDays = (dateStr: string, n = 1): string => {
+    const d = new Date(`${normalizeDate(dateStr)}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+
+  const needsLotteryWarning = (targetDate: string): boolean => {
+    if ((state as any).draftLotteryResult) return false;
+    const current = normalizeDate(state.date);
+    return current < lotteryDate && targetDate >= lotteryDate;
+  };
+
+  const withLotteryGuard = (targetDate: string, fn: () => void) => {
+    if (needsLotteryWarning(targetDate)) {
+      setPendingSimFn(() => fn);
+      setShowLotteryWarning(true);
+    } else {
+      fn();
+    }
+  };
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
@@ -59,27 +101,28 @@ export const PlayoffView: React.FC = () => {
     setPrecomputedResult(null);
 
     await dispatchAction({ type: 'RECORD_WATCHED_GAME' as any, payload: { gameId, result } });
-    await dispatchAction({
+    rosterGate.attempt(() => dispatchAction({
       type: 'ADVANCE_DAY',
       payload: {
         ...(currentRig !== undefined ? { riggedForTid: currentRig } : {}),
         watchedGameResult: result,
       },
-    } as any);
+    } as any));
   };
 
   const handleSimDay = () => {
-    dispatchAction({ type: 'ADVANCE_DAY' } as any);
+    const tomorrow = addDays(state.date);
+    withLotteryGuard(tomorrow, () => rosterGate.attempt(() => dispatchAction({ type: 'ADVANCE_DAY' } as any)));
   };
 
   const handleSimulateRound = () => {
     if (!playoffs) return;
 
     if (!playoffs.playInComplete) {
-      // Can't filter by known teams — loser game teams are TBD until 7v8/9v10 resolve.
-      // Sim to fixed end date so all three play-in games complete and Round 1 injects.
       const PLAYIN_END = `${year}-04-20`;
-      dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: PLAYIN_END } } as any);
+      withLotteryGuard(PLAYIN_END, () =>
+        rosterGate.attempt(() => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: PLAYIN_END } } as any))
+      );
       return;
     }
 
@@ -91,7 +134,9 @@ export const PlayoffView: React.FC = () => {
     const games = state.schedule.filter(g => gameIds.has(g.gid) && !g.played);
     if (games.length === 0) return;
     const lastDate = games.reduce((d, g) => g.date > d ? g.date : d, games[0].date);
-    dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: lastDate } } as any);
+    withLotteryGuard(lastDate, () =>
+      rosterGate.attempt(() => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: lastDate } } as any))
+    );
   };
 
   const handleSimGame = () => {
@@ -106,16 +151,29 @@ export const PlayoffView: React.FC = () => {
         g => g.playoffSeriesId === selectedSeriesId && !g.played
       );
       if (!nextGame) return;
-      dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: nextGame.date } } as any);
+      withLotteryGuard(nextGame.date, () =>
+        rosterGate.attempt(() => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: nextGame.date } } as any))
+      );
     } else if (playIn?.gameId) {
       const game = state.schedule.find(g => g.gid === playIn.gameId && !g.played);
       if (!game) return;
-      dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: game.date } } as any);
+      withLotteryGuard(game.date, () =>
+        rosterGate.attempt(() => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: game.date } } as any))
+      );
     }
   };
 
   const handleSimPlayoffs = () => {
-    dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: `${year}-06-30` } } as any);
+    withLotteryGuard(`${year}-06-30`, () =>
+      rosterGate.attempt(() => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: `${year}-06-30` } } as any))
+    );
+  };
+
+  const handleSimToMyNextGame = () => {
+    if (!myNextPlayoffGame) return;
+    withLotteryGuard(myNextPlayoffGame.date, () =>
+      rosterGate.attempt(() => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: myNextPlayoffGame.date, stopBefore: true } } as any))
+    );
   };
 
   // ─── Full-screen game simulator ──────────────────────────────────────────
@@ -134,7 +192,7 @@ export const PlayoffView: React.FC = () => {
               const gameId = watchingGame!.gid;
               setWatchingGame(null); setRiggedForTid(undefined); setPrecomputedResult(null);
               await dispatchAction({ type: 'RECORD_WATCHED_GAME' as any, payload: { gameId, result } });
-              await dispatchAction({ type: 'ADVANCE_DAY', payload: { watchedGameResult: result } } as any);
+              rosterGate.attempt(() => dispatchAction({ type: 'ADVANCE_DAY', payload: { watchedGameResult: result } } as any));
           }}
           onComplete={executeWatchGame}
           otherGamesToday={state.schedule.filter(g =>
@@ -195,6 +253,16 @@ export const PlayoffView: React.FC = () => {
           {/* Sim buttons — only for current season */}
           {!isHistorical && (
             <>
+              {isGMMode && myNextPlayoffGame && (
+                <button
+                  onClick={handleSimToMyNextGame}
+                  disabled={state.isProcessing}
+                  className="px-4 py-2 bg-emerald-600/25 hover:bg-emerald-600/45 border border-emerald-500/40 text-emerald-300 text-xs font-black rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Target size={14} />
+                  Sim Next {userNickname} Game
+                </button>
+              )}
               <button
                 onClick={handleSimDay}
                 disabled={state.isProcessing}
@@ -315,6 +383,72 @@ export const PlayoffView: React.FC = () => {
         />
       )}
 
+      {/* ── Draft Lottery Warning ─────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showLotteryWarning && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-md bg-[#0a0a0a] border border-amber-500/40 shadow-2xl rounded flex flex-col items-center text-center overflow-hidden"
+            >
+              <div className="w-full bg-gradient-to-b from-amber-600/20 to-transparent p-8">
+                <div className="flex justify-center mb-3">
+                  <AlertTriangle size={32} className="text-amber-400" />
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-300 mb-2">Heads Up</p>
+                <h2 className="text-2xl font-black italic uppercase tracking-wider text-amber-400">
+                  Draft Lottery Ahead
+                </h2>
+              </div>
+              <div className="px-8 pb-8 w-full flex flex-col items-center">
+                <p className="text-white/80 italic mb-4 leading-relaxed text-sm">
+                  This simulation will pass through the NBA Draft Lottery (May 14). It will run automatically in the background — you won't get a chance to trade picks before positions are locked in.
+                </p>
+                <p className="text-[10px] text-white/40 mb-6 leading-relaxed">
+                  Stop before the lottery if you want to review pick values and make moves first. Otherwise, the results will auto-resolve and show up in the Draft tab.
+                </p>
+                <div className="flex flex-col gap-2 w-full">
+                  <button
+                    onClick={() => {
+                      setShowLotteryWarning(false);
+                      setPendingSimFn(null);
+                      rosterGate.attempt(() => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: lotteryDate, stopBefore: true } } as any));
+                    }}
+                    className="w-full py-4 bg-amber-600/20 border border-amber-500/40 hover:bg-amber-600/40 text-amber-300 font-black uppercase tracking-widest text-xs transition-colors rounded-sm"
+                  >
+                    Stop Before Lottery
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowLotteryWarning(false);
+                      const fn = pendingSimFn;
+                      setPendingSimFn(null);
+                      fn?.();
+                    }}
+                    className="w-full py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black uppercase tracking-widest text-xs transition-colors rounded-sm"
+                  >
+                    Continue Simulation
+                  </button>
+                  <button
+                    onClick={() => { setShowLotteryWarning(false); setPendingSimFn(null); }}
+                    className="w-full py-3 bg-transparent border border-white/5 hover:bg-white/5 text-white/40 font-black uppercase tracking-widest text-[10px] transition-colors rounded-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Watch game preview modal ──────────────────────────────────────── */}
       <AnimatePresence>
         {pendingWatchGame && (
@@ -329,10 +463,10 @@ export const PlayoffView: React.FC = () => {
             onConfirm={async (rig?: number, watchLive?: boolean) => {
               if (watchLive === false) {
                 setPendingWatchGame(null);
-                await dispatchAction({
+                rosterGate.attempt(() => dispatchAction({
                   type: 'ADVANCE_DAY' as any,
                   payload: { ...(rig !== undefined ? { riggedForTid: rig } : {}) },
-                });
+                }));
               } else {
                 setRiggedForTid(rig);
                 // Always pre-compute before opening the live game screen so onClose and onComplete
@@ -357,6 +491,7 @@ export const PlayoffView: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {rosterGate.modal}
     </div>
   );
 };

@@ -1209,6 +1209,9 @@ export class GameSimulator {
             // playThroughInjuries=4: every severity level gutting it out (playoff toughness).
             homeKnobs = { ...leagueBaseKnobs, ...homeCtx, gbFromLeader: 0, gamesRemaining: 7, isPlayoffs: true, playThroughInjuries: 4 };
             awayKnobs = { ...leagueBaseKnobs, ...awayCtx, gbFromLeader: 0, gamesRemaining: 7, isPlayoffs: true, playThroughInjuries: 4 };
+            // Two-way contracts are ineligible for playoff/play-in games.
+            homeOverride = (homeOverride ?? players.filter(p => p.tid === home.id)).filter(p => !(p as any).twoWay);
+            awayOverride = (awayOverride ?? players.filter(p => p.tid === away.id)).filter(p => !(p as any).twoWay);
           } else {
             // Regular season: level 2 — only mild/moderate injuries play through (minutes-restricted);
             // significant/major injuries still sit. Matches "Questionable / Day-to-Day" news framing.

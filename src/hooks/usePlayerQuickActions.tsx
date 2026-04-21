@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { AlertTriangle, X } from 'lucide-react';
 import { useGame } from '../store/GameContext';
 import { SignFreeAgentModal } from '../components/modals/SignFreeAgentModal';
 import { PlayerActionsModal } from '../components/central/view/PlayerActionsModal';
 import { PlayerRatingsModal } from '../components/modals/PlayerRatingsModal';
 import { PlayerBioView } from '../components/central/view/PlayerBioView';
+import { FAOffersModal } from '../components/modals/FAOffersModal';
 import type { NBAPlayer } from '../types';
 
 /**
@@ -34,6 +37,8 @@ export function usePlayerQuickActions() {
   const [signingPlayer, setSigningPlayer] = useState<NBAPlayer | null>(null);
   const [resignTeamId, setResignTeamId] = useState<number | null>(null);
   const [forceContractType, setForceContractType] = useState<'GUARANTEED' | 'TWO_WAY' | undefined>(undefined);
+  const [offersPlayer, setOffersPlayer] = useState<NBAPlayer | null>(null);
+  const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
 
   const closeSigning = () => {
     setSigningPlayer(null);
@@ -66,7 +71,31 @@ export function usePlayerQuickActions() {
       setForceContractType('GUARANTEED');
       return true;
     }
+    if (actionType === 'view_fa_offers') {
+      setOffersPlayer(player);
+      return true;
+    }
     if (actionType === 'waive') {
+      // League-minimum roster guard: a waive that drops the team below
+      // leagueStats.minPlayersPerTeam is blocked. Two-way contracts don't
+      // count toward the standard-roster floor (same convention the AI
+      // handler and trim logic use).
+      const tid = player.tid;
+      if (tid != null && tid >= 0) {
+        const minRoster = state.leagueStats?.minPlayersPerTeam ?? 14;
+        const standardCount = state.players.filter(p =>
+          p.tid === tid && !(p as any).twoWay && p.status === 'Active'
+        ).length;
+        const isStandardPlayer = !(player as any).twoWay;
+        const afterWaive = standardCount - (isStandardPlayer ? 1 : 0);
+        if (isStandardPlayer && afterWaive < minRoster) {
+          const teamName = state.teams.find(t => t.id === tid)?.name ?? 'This team';
+          setBlockedMessage(
+            `${teamName} is at the minimum roster size (${minRoster}). Waiving ${player.name} would drop the roster to ${afterWaive} — sign another player first.`
+          );
+          return true;
+        }
+      }
       dispatchAction({
         type: 'WAIVE_PLAYER',
         payload: {
@@ -117,6 +146,12 @@ export function usePlayerQuickActions() {
           onClose={() => setRatingsPlayer(null)}
         />
       )}
+      {offersPlayer && (
+        <FAOffersModal
+          player={offersPlayer}
+          onClose={() => setOffersPlayer(null)}
+        />
+      )}
       {signingPlayer && (
         <SignFreeAgentModal
           initialPlayer={signingPlayer}
@@ -129,6 +164,44 @@ export function usePlayerQuickActions() {
           }}
         />
       )}
+      <AnimatePresence>
+        {blockedMessage && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 md:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/90 backdrop-blur-md"
+              onClick={() => setBlockedMessage(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-[#0f0f0f] border border-rose-500/30 rounded-[24px] w-full max-w-md shadow-2xl overflow-hidden"
+            >
+              <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-rose-500/[0.05]">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-400" />
+                  <h3 className="text-sm font-black text-white uppercase tracking-tight">Action Blocked</h3>
+                </div>
+                <button onClick={() => setBlockedMessage(null)} className="text-slate-500 hover:text-white">
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="p-5">
+                <p className="text-sm text-slate-300 leading-relaxed">{blockedMessage}</p>
+                <button
+                  onClick={() => setBlockedMessage(null)}
+                  className="mt-4 w-full px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold uppercase tracking-widest text-xs transition-colors"
+                >
+                  Got it
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </>
   );
 

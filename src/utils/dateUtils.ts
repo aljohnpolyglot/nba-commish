@@ -68,6 +68,17 @@ type TxnCalendar = {
   faMoratoriumDays?: number;
   regularSeasonFAEnabled?: boolean;
   postDeadlineMultiYearContracts?: boolean;
+  // Future configurable event dates (defaults used when absent)
+  draftLotteryMonth?: number;
+  draftLotteryDay?: number;
+  draftMonth?: number;
+  draftDay?: number;
+  combineStartMonth?: number;
+  combineStartDay?: number;
+  combineEndMonth?: number;
+  combineEndDay?: number;
+  trainingCampMonth?: number;
+  trainingCampDay?: number;
 };
 
 /**
@@ -146,4 +157,46 @@ export function canSignMultiYear(current: Date | string, seasonYear: number, sta
   if (isInFreeAgencyWindow(current, seasonYear, stats)) return true;
   if (!isPastTradeDeadline(current, seasonYear, stats)) return true;
   return stats?.postDeadlineMultiYearContracts ?? true;
+}
+
+// ─── Non-transaction event dates ─────────────────────────────────────────────
+// Defaults match lazySimRunner hardcoded dates. When leagueStats grows support
+// for configurable event scheduling these will read from stats automatically.
+
+/** Draft Lottery: May 14 by default. */
+export function getDraftLotteryDate(seasonYear: number, stats?: TxnCalendar): Date {
+  const m = stats?.draftLotteryMonth ?? 5;
+  const d = stats?.draftLotteryDay ?? 14;
+  return new Date(Date.UTC(seasonYear, m - 1, d));
+}
+
+/** NBA Draft: Jun 25 by default. */
+export function getDraftDate(seasonYear: number, stats?: TxnCalendar): Date {
+  const m = stats?.draftMonth ?? 6;
+  const d = stats?.draftDay ?? 25;
+  return new Date(Date.UTC(seasonYear, m - 1, d));
+}
+
+/** Draft Combine window start: May 19 by default. */
+export function getDraftCombineStartDate(seasonYear: number, stats?: TxnCalendar): Date {
+  const m = stats?.combineStartMonth ?? 5;
+  const d = stats?.combineStartDay ?? 19;
+  return new Date(Date.UTC(seasonYear, m - 1, d));
+}
+
+/** Draft Combine window end: May 23 by default. */
+export function getDraftCombineEndDate(seasonYear: number, stats?: TxnCalendar): Date {
+  const m = stats?.combineEndMonth ?? 5;
+  const d = stats?.combineEndDay ?? 23;
+  return new Date(Date.UTC(seasonYear, m - 1, d));
+}
+
+/**
+ * Training Camp open: Oct 1 of the pre-season calendar year.
+ * e.g. seasonYear=2026 → 2025-10-01
+ */
+export function getTrainingCampDate(seasonYear: number, stats?: TxnCalendar): Date {
+  const m = stats?.trainingCampMonth ?? 10;
+  const d = stats?.trainingCampDay ?? 1;
+  return new Date(Date.UTC(seasonYear - 1, m - 1, d));
 }

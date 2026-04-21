@@ -456,7 +456,7 @@ const actions = useGameActions(setState, () => stateRef.current);
       lastActionType: action.type,
       lastActionPayload: action.payload,
       lastSimResults: [],
-      tickerSimResults: [],
+      simCurrentDate: undefined,
       prevTeams: prev.teams,
     }));
 
@@ -578,7 +578,7 @@ const actions = useGameActions(setState, () => stateRef.current);
 
         // 2. Get LLM response asynchronously
         try {
-          const responseText = await sendChatMessage(stateRef.current, targetName, targetRole, targetOrg, chat.messages, isHypnotized);
+          const responseText = await sendChatMessage(stateRef.current, targetName, targetRole, targetOrg, chat.messages, isHypnotized, targetId);
 
           // If hypnotized, add to pending hypnosis to be processed next day
           if (isHypnotized) {
@@ -721,21 +721,30 @@ const actions = useGameActions(setState, () => stateRef.current);
           stateRef.current,
           action.payload.targetDate,
           (progress: any) => {
-            setState(prev => ({ ...prev, lazySimProgress: progress }));
+            if (simMode === 'overlay') {
+              setState(prev => ({ ...prev, lazySimProgress: progress }));
+            } else {
+              // Silent mode fallback: keep the date current on no-games days.
+              // On game days, onGame takes over with finer-grained per-game updates.
+              setState(prev =>
+                prev.simCurrentDate === progress.currentDate ? prev : { ...prev, simCurrentDate: progress.currentDate }
+              );
+            }
           },
           {
             mode: simMode,
             batchSize: diffDays > 30 ? 7 : 1,
             stopBefore,
-            // Silent mode (short sims ≤30d): stream each game into the ticker in real-time.
-            // flushSync bypasses React 18 auto-batching so each game card appears immediately.
-            onGame: simMode === 'silent' ? (gameResult) => {
-              console.log('[TICKER_STREAM] game arrived', gameResult.homeTeamId, 'vs', gameResult.awayTeamId);
+            // Silent mode: fire per-game so simCurrentDate "dances" with games as they
+            // finish. flushSync defeats React 18 batching so each game's date paints
+            // before the next game's sync sim call. Normalize to YYYY-MM-DD to stay
+            // in lockstep with the progress-callback format.
+            onGame: simMode === 'silent' ? (gameResult: any) => {
+              const raw = gameResult?.date;
+              if (!raw) return;
+              const d = normalizeDate(raw);
               flushSync(() => {
-                setState(prev => ({
-                  ...prev,
-                  tickerSimResults: [...(prev.tickerSimResults ?? []), gameResult],
-                }));
+                setState(prev => (prev.simCurrentDate === d ? prev : { ...prev, simCurrentDate: d }));
               });
             } : undefined,
           }
@@ -756,16 +765,9 @@ const actions = useGameActions(setState, () => stateRef.current);
             ...prev,
             ...result.state,
             lazySimProgress: undefined,
+            simCurrentDate: undefined,
             isProcessing: false,
-            // Silent mode (short sims): surface lastSimResults so game ticker modal shows.
-            // Overlay mode (long sims >30d): the full-screen progress screen already narrated
-            // the sim — skip the post-sim ticker so we don't stack two overlays.
-            lastSimResults:
-              simMode === 'overlay'
-                ? []
-                : result.lastSimResults.length > 0
-                  ? result.lastSimResults
-                  : prev.lastSimResults,
+            lastSimResults: result.lastSimResults.length > 0 ? result.lastSimResults : prev.lastSimResults,
           };
         });
         return;
@@ -773,21 +775,8 @@ const actions = useGameActions(setState, () => stateRef.current);
         newStatePatch = await processTurn(
           stateRef.current,
           action,
-          (simResults) => {
-            // onSimComplete: replace the whole batch (legacy path, fires at end)
-            setState(prev => ({ ...prev, tickerSimResults: simResults }));
-          },
-          (gameResult) => {
-            // flushSync forces React to render immediately after each game — bypasses
-            // React 18 auto-batching so the ticker updates in real-time per game.
-            console.log('[TICKER_STREAM] game arrived', gameResult.homeTeamId, 'vs', gameResult.awayTeamId);
-            flushSync(() => {
-              setState(prev => ({
-                ...prev,
-                tickerSimResults: [...(prev.tickerSimResults ?? []), gameResult],
-              }));
-            });
-          }
+          undefined,
+          undefined,
         );
       }
 

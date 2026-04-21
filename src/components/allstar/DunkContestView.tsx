@@ -3,7 +3,7 @@ import { Zap, Trophy, Star } from 'lucide-react';
 import { format } from 'date-fns';
 import { useGame } from '../../store/GameContext';
 import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
-import { getPlayerHeadshot, extractNbaId } from '../../utils/helpers';
+import { getPlayerImage } from '../central/view/bioCache';
 import { calcDunkOdds } from '../../utils/allStarOdds';
 import { DUNK_MOVES } from '../../services/allStar/dunkMoves';
 
@@ -65,21 +65,27 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
               const odds = calcDunkOdds(fullContestants, player);
               const isFavorite = !odds.startsWith('+');
 
-              const nbaId = player.nbaId || extractNbaId(player.imgURL || "", player.name);
+              const portraitSrc = getPlayerImage(player);
 
               return (
                 <div key={contestant.internalId || contestant.playerId}
                   className="bg-zinc-900 border border-white/10 rounded-2xl p-4 flex flex-col items-center text-center">
-                  
+
                   {/* Portrait */}
                   <div className="w-20 h-20 rounded-full overflow-hidden bg-zinc-800 mb-3 border-2 border-white/10">
-                    <img
-                      src={getPlayerHeadshot(player.internalId || player.playerId, nbaId)}
-                      alt={player.name}
-                      className="w-full h-full object-cover object-top"
-                      onError={e => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name.split(' ').map((n: string)=>n[0]).join(''))}&background=27272a&color=fff&size=160`; }}
-                      referrerPolicy="no-referrer"
-                    />
+                    {portraitSrc ? (
+                      <img
+                        src={portraitSrc}
+                        alt={player.name}
+                        className="w-full h-full object-cover object-top"
+                        onError={e => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name.split(' ').map((n: string)=>n[0]).join(''))}&background=27272a&color=fff&size=160`; }}
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-zinc-500 font-black text-lg">
+                        {player.name.split(' ').map((n: string) => n[0]).join('')}
+                      </div>
+                    )}
                   </div>
 
                   {/* Name */}
@@ -141,18 +147,24 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                 </div>
               );
             }
-            const winnerNbaId = winner.nbaId || extractNbaId(winner.imgURL || "", winner.name);
+            const winnerPortrait = getPlayerImage(winner);
             return (
               <div className="flex flex-col items-center text-center mb-10">
                 <div className="relative mb-4">
                   <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-yellow-500 shadow-[0_0_40px_rgba(234,179,8,0.3)]">
-                    <img
-                      src={getPlayerHeadshot(winner.internalId, winnerNbaId)}
-                      alt={winner.name}
-                      className="w-full h-full object-cover object-top"
-                      onError={e => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(winner.name.split(' ').map((n: string)=>n[0]).join(''))}&background=27272a&color=fff&size=224`; }}
-                      referrerPolicy="no-referrer"
-                    />
+                    {winnerPortrait ? (
+                      <img
+                        src={winnerPortrait}
+                        alt={winner.name}
+                        className="w-full h-full object-cover object-top"
+                        onError={e => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(winner.name.split(' ').map((n: string)=>n[0]).join(''))}&background=27272a&color=fff&size=224`; }}
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-400 font-black text-2xl">
+                        {winner.name.split(' ').map((n: string) => n[0]).join('')}
+                      </div>
+                    )}
                   </div>
                   <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-yellow-500 text-black text-[9px] font-black px-3 py-0.5 rounded-full whitespace-nowrap">
                     CHAMPION
@@ -218,12 +230,18 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-3">
-                                <img
-                                  src={player?.imgURL}
-                                  className="w-8 h-8 rounded-full object-cover object-top bg-zinc-800"
-                                  onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                  alt=""
-                                />
+                                {player && getPlayerImage(player) ? (
+                                  <img
+                                    src={getPlayerImage(player)}
+                                    className="w-8 h-8 rounded-full object-cover object-top bg-zinc-800"
+                                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                    alt=""
+                                  />
+                                ) : (
+                                  <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] font-black text-zinc-500">
+                                    {player?.name?.split(' ').map((n: string) => n[0]).join('') ?? '?'}
+                                  </div>
+                                )}
                                 <div className="text-left">
                                   <p className={`text-sm font-bold ${isWinner ? 'text-yellow-400' : 'text-white'}`}>
                                     {r1.playerName}

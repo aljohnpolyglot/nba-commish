@@ -25,11 +25,24 @@ export const EconomyTeamsSection = ({ props }: { props: any }) => {
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Allow Two-Way Contracts</span>
                         <InfoTooltip text="Contracts that allow players to play for both the NBA team and their G League affiliate." />
                     </div>
-                    <button 
-                        onClick={() => props.setTwoWayContractsEnabled(!props.twoWayContractsEnabled)} 
+                    <button
+                        onClick={() => props.setTwoWayContractsEnabled(!props.twoWayContractsEnabled)}
                         className={`w-8 h-4 rounded-full transition-all duration-200 relative ${props.twoWayContractsEnabled ? 'bg-indigo-500' : 'bg-slate-700'}`}
                     >
                         <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform duration-200 ${props.twoWayContractsEnabled ? 'left-4.5' : 'left-0.5'}`} />
+                    </button>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Allow Non-Guaranteed Contracts</span>
+                        <InfoTooltip text="Training camp deals (slots 16–21) that can be cut for free before Oct 22. Survivors are fully guaranteed on Jan 10." />
+                    </div>
+                    <button
+                        onClick={() => props.setNonGuaranteedContractsEnabled(!(props.nonGuaranteedContractsEnabled ?? true))}
+                        className={`w-8 h-4 rounded-full transition-all duration-200 relative ${(props.nonGuaranteedContractsEnabled ?? true) ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                    >
+                        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform duration-200 ${(props.nonGuaranteedContractsEnabled ?? true) ? 'left-4.5' : 'left-0.5'}`} />
                     </button>
                 </div>
 

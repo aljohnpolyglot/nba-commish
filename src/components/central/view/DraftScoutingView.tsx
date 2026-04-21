@@ -124,8 +124,8 @@ export const DraftScoutingView: React.FC = () => {
       if (!seen) { lo = hi = dy; seen = true; }
       else { if (dy < lo) lo = dy; if (dy > hi) hi = dy; }
     }
-    if (!seen) return { minYear: floor, maxYear: floor };
-    return { minYear: lo, maxYear: hi };
+    if (!seen) return { minYear: floor, maxYear: floor + 4 };
+    return { minYear: lo, maxYear: Math.max(hi, floor + 4) };
   }, [state.players, baseYear, state.draftComplete]);
   const draftYear = selectedYear;
 

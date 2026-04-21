@@ -155,7 +155,23 @@ export const processTurn = async (
     const executiveTradeTransactionFinal = executiveTradeTransactionRef.current;
     
     // 5. Post-process simulation results (injuries, stats)
-    let { updatedPlayers, updatedDraftPicks } = processSimulationResults(allSimResults, result.players || stateWithSim.players, result.draftPicks || stateWithSim.draftPicks, stateWithSim.schedule, stateWithSim.leagueStats?.year);
+    let { updatedPlayers, updatedDraftPicks, recoveries } = processSimulationResults(allSimResults, result.players || stateWithSim.players, result.draftPicks || stateWithSim.draftPicks, stateWithSim.schedule, stateWithSim.leagueStats?.year);
+
+    // Queue recovery toasts (GM mode, user team only — league-wide would be spammy)
+    if (recoveries && recoveries.length > 0 && stateWithSim.gameMode === 'gm' && stateWithSim.userTeamId !== undefined) {
+        const userRecoveries = recoveries
+            .filter(r => r.tid === stateWithSim.userTeamId)
+            .map(r => {
+                const team = stateWithSim.teams.find(t => t.id === r.tid);
+                return { playerName: r.playerName, teamName: team?.name ?? '', pos: r.pos };
+            });
+        if (userRecoveries.length > 0) {
+            stateWithSim = {
+                ...stateWithSim,
+                pendingRecoveryToasts: [...(stateWithSim.pendingRecoveryToasts ?? []), ...userRecoveries],
+            };
+        }
+    }
 
     // Lazily assign mood traits to any player who doesn't have them yet
     updatedPlayers = updatedPlayers.map(p =>
@@ -882,11 +898,55 @@ export const processTurn = async (
                 dpoy: seasonAward('DPOY')?.name,
                 dpoyPid: seasonAward('DPOY')?.pid as string | undefined,
               };
+
+              // Award toasts — one per award the season produced. The series matters here:
+              // MVP/Finals MVP/DPOY/ROY fire whenever the winner is present in historicalAwards.
+              const AWARD_LABELS: Record<string, string> = {
+                'MVP':         'Most Valuable Player award',
+                'Finals MVP':  'Finals MVP award',
+                'Semifinals MVP': 'Semifinals MVP award',
+                'DPOY':        'Defensive Player of the Year award',
+                'ROY':         'Rookie of the Year award',
+                'SMOY':        'Sixth Man of the Year award',
+                'MIP':         'Most Improved Player award',
+                'COY':         'Coach of the Year award',
+                'All-NBA First Team':  'First Team All-League',
+                'All-NBA Second Team': 'Second Team All-League',
+                'All-NBA Third Team':  'Third Team All-League',
+              };
+              const pendingAwardToasts = awards
+                .filter((a: any) => a.season === yr && AWARD_LABELS[a.type])
+                .map((a: any) => {
+                  const team = stateWithSim.teams.find(t => t.id === a.tid);
+                  return {
+                    playerName: a.name ?? 'Unknown',
+                    teamName: team?.name ?? '',
+                    teamAbbrev: team?.abbrev ?? '',
+                    awardLabel: AWARD_LABELS[a.type],
+                  };
+                });
+
+              // Championship playoffs toast — one line summary of the finals
+              const champWins = finalsSeries
+                ? (finalsSeries.higherSeedTid === champTid ? finalsSeries.higherSeedWins : finalsSeries.lowerSeedWins)
+                : 4;
+              const loserWins = finalsSeries
+                ? (finalsSeries.higherSeedTid === champTid ? finalsSeries.lowerSeedWins : finalsSeries.higherSeedWins)
+                : 0;
+              const pendingPlayoffsToasts = champTeam && loserTeam
+                ? [{
+                    teamName: champTeam.region ?? champTeam.name ?? '',
+                    body: `The ${champTeam.name} defeated the ${loserTeam.name} in the finals, ${champWins}-${loserWins}.`,
+                  }]
+                : [];
+
               return {
                 seasonHistory: [
                   ...(state.seasonHistory ?? []).filter(e => e.year !== yr),
                   entry,
                 ],
+                pendingAwardToasts,
+                pendingPlayoffsToasts,
               };
             })()
           : {}),
@@ -898,5 +958,11 @@ export const processTurn = async (
         bets: prunedBets,
         draftLotteryResult: autoDraftLotteryResult ?? state.draftLotteryResult,
         draftComplete: autoDraftComplete ?? state.draftComplete,
+        pendingElimToast: stateWithSim.pendingElimToast,
+        pendingInjuryToasts: stateWithSim.pendingInjuryToasts,
+        pendingFeatToasts: stateWithSim.pendingFeatToasts,
+        pendingRecoveryToasts: stateWithSim.pendingRecoveryToasts,
+        pendingOptionToasts: stateWithSim.pendingOptionToasts,
+        simCurrentDate: undefined,
     };
 };

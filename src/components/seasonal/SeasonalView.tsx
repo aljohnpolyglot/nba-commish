@@ -17,6 +17,7 @@ import { ThreePointContestModal } from './modals/ThreePointContestModal';
 import { AllStarHostPickerModal } from './AllStarHostPickerModal';
 import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
 import { SettingsManager } from '../../services/SettingsManager';
+import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
 import { NBAPlayer } from '../../types';
 
 // ─── Deadline helpers ─────────────────────────────────────────────────────────
@@ -127,6 +128,7 @@ const SeasonalCard: React.FC<SeasonalCardProps> = ({
 
 const SeasonalView: React.FC = () => {
   const { state, dispatchAction } = useGame();
+  const rosterGate = useRosterComplianceGate();
   const [processing, setProcessing] = useState(false);
 
   // Modal visibility state
@@ -154,7 +156,11 @@ const SeasonalView: React.FC = () => {
   const exec = async (type: string, payload?: any) => {
     setProcessing(true);
     await new Promise(r => setTimeout(r, SettingsManager.getDelay(600)));
-    await dispatchAction({ type: type as any, payload });
+    if (type === 'ADVANCE_DAY') {
+      rosterGate.attempt(() => dispatchAction({ type: type as any, payload }));
+    } else {
+      await dispatchAction({ type: type as any, payload });
+    }
     setProcessing(false);
   };
 
@@ -483,6 +489,7 @@ const SeasonalView: React.FC = () => {
           onConfirm={handleAllStarHosts}
         />
       )}
+      {rosterGate.modal}
     </div>
   );
 };

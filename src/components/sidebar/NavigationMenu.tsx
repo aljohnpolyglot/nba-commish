@@ -151,8 +151,8 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
       items: [
         ...(!isGM ? [
           { id: 'Inbox' as Tab,        label: 'Inbox',        icon: Inbox,          badge: fmt(unreadCount) },
-          { id: 'Messages' as Tab,     label: 'Messages',     icon: MessageSquare,  badge: fmt(unreadMessagesCount) },
         ] : []),
+        { id: 'Messages' as Tab,     label: 'Messages',     icon: MessageSquare,  badge: fmt(unreadMessagesCount) },
         { id: 'Social Feed' as Tab,  label: 'Social Feed',  icon: Activity,       badge: fmt(socialCount) },
         { id: 'League News' as Tab,  label: 'League News',  icon: Newspaper,      badge: fmt(newsCount) },
       ],

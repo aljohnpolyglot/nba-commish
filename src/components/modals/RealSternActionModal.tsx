@@ -4,6 +4,7 @@ import { X, Gift, UserPlus, DollarSign, Trash2, MapPin, Building, AlertTriangle 
 import { useGame } from '../../store/GameContext';
 import { OwnedAsset } from '../central/view/realsternTypes';
 import { PersonSelectorModal } from './PersonSelectorModal';
+import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
 import { Contact } from '../../types';
 
 const IMAGE_FALLBACK = 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800';
@@ -23,6 +24,7 @@ export const RealSternActionModal: React.FC<RealSternActionModalProps> = ({
   asset, onClose, onSell, onAbandon, onGiftComplete, onInviteComplete
 }) => {
   const { dispatchAction } = useGame();
+  const rosterGate = useRosterComplianceGate();
   const [innerView, setInnerView] = useState<InnerView>('menu');
   const [isProcessing, setIsProcessing] = useState(false);
   const [inviteReason, setInviteReason] = useState('');
@@ -36,13 +38,13 @@ export const RealSternActionModal: React.FC<RealSternActionModalProps> = ({
     setIsProcessing(true);
     onClose();
     onGiftComplete();
-    await dispatchAction({
+    rosterGate.attempt(() => dispatchAction({
       type: 'ADVANCE_DAY',
       payload: {
         outcomeText: `Commissioner gifted "${asset.title}" (valued at $${asset.price.toLocaleString()}) to ${recipientName}.`,
         isSpecificEvent: true,
       },
-    } as any);
+    } as any));
     setIsProcessing(false);
   };
 
@@ -53,13 +55,13 @@ export const RealSternActionModal: React.FC<RealSternActionModalProps> = ({
     setIsProcessing(true);
     onClose();
     onInviteComplete();
-    await dispatchAction({
+    rosterGate.attempt(() => dispatchAction({
       type: 'ADVANCE_DAY',
       payload: {
         outcomeText: `Commissioner hosted ${guestName} at ${asset.title}${reasonNote}.`,
         isSpecificEvent: true,
       },
-    } as any);
+    } as any));
     setIsProcessing(false);
   };
 
@@ -217,6 +219,7 @@ export const RealSternActionModal: React.FC<RealSternActionModalProps> = ({
           </div>
         </motion.div>
       </>
+      {rosterGate.modal}
     </AnimatePresence>
   );
 };

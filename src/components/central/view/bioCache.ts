@@ -2,6 +2,7 @@ import type { NBAPlayer } from '../../../types';
 import { extractNbaId, hdPortrait } from '../../../utils/helpers';
 import { getCachedImageUrl } from '../../../services/imageCache';
 import { SettingsManager } from '../../../services/SettingsManager';
+import { getPhotoBySlug } from '../../../data/realPlayerDataFetcher';
 
 const CACHE_VER  = "nba_v21";
 
@@ -49,6 +50,11 @@ export function getPlayerImage(player: NBAPlayer): string | undefined {
   }
   // External league players: no CDN fallback — show initials instead of passport-style headshot.
   if (EXTERNAL_STATUSES.has(player.status ?? '')) return undefined;
+  // player-photos.json by srID (Basketball-Reference slug) — covers historical / retired players.
+  if (player.srID) {
+    const fromPhotos = getPhotoBySlug(player.srID);
+    if (fromPhotos) return fromPhotos;
+  }
   // NBA players without a BBGM portrait: try the official NBA CDN.
   const nbaId = extractNbaId('', player.name);
   if (nbaId) {

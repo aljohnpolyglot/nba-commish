@@ -283,6 +283,68 @@ export const generateSchedule = (
   // Sort by date
   games.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+  // ── Post-process: fix H/A streaks (enforce ≤4 consecutive home or away) ───
+  {
+    const MAX_CONSEC = 4;
+    const teamGameSeq = new Map<number, number[]>();
+    games.forEach((g, idx) => {
+      if ((g as any).isPreseason) return;
+      if (!teamGameSeq.has(g.homeTid)) teamGameSeq.set(g.homeTid, []);
+      if (!teamGameSeq.has(g.awayTid)) teamGameSeq.set(g.awayTid, []);
+      teamGameSeq.get(g.homeTid)!.push(idx);
+      teamGameSeq.get(g.awayTid)!.push(idx);
+    });
+
+    // Count games where consecutive same-type exceeds MAX_CONSEC for a team
+    const countViolations = (tid: number): number => {
+      let v = 0, consec = 0, lastHome: boolean | null = null;
+      for (const idx of teamGameSeq.get(tid) ?? []) {
+        const isHome = games[idx].homeTid === tid;
+        if (isHome === lastHome) { consec++; if (consec > MAX_CONSEC) v++; }
+        else { consec = 1; lastHome = isHome; }
+      }
+      return v;
+    };
+
+    // Greedy swap passes: swap H/A on violating games only when it reduces total violations
+    for (let pass = 0; pass < 30; pass++) {
+      let anyFixed = false;
+      for (const [tid, idxs] of teamGameSeq) {
+        let consec = 0, lastHome: boolean | null = null;
+        for (const gameIdx of idxs) {
+          const g = games[gameIdx];
+          const isHome = g.homeTid === tid;
+          if (isHome === lastHome) {
+            consec++;
+            if (consec > MAX_CONSEC) {
+              const otherTid = isHome ? g.awayTid : g.homeTid;
+              const before = countViolations(tid) + countViolations(otherTid);
+              [g.homeTid, g.awayTid] = [g.awayTid, g.homeTid];
+              if (countViolations(tid) + countViolations(otherTid) < before) {
+                anyFixed = true;
+                break; // restart this team's scan on next pass
+              }
+              [g.homeTid, g.awayTid] = [g.awayTid, g.homeTid]; // revert if no improvement
+            }
+          } else { consec = 1; lastHome = isHome; }
+        }
+      }
+      if (!anyFixed) break;
+    }
+
+    // Log worst remaining streak
+    let maxStreak = 0;
+    for (const [tid, idxs] of teamGameSeq) {
+      let consec = 0, lastHome: boolean | null = null;
+      for (const idx of idxs) {
+        const isHome = games[idx].homeTid === tid;
+        if (isHome === lastHome) { consec++; maxStreak = Math.max(maxStreak, consec); }
+        else { consec = 1; lastHome = isHome; }
+      }
+    }
+    console.log(`[Scheduler] Max H/A streak after fix: ${maxStreak} (target ≤${MAX_CONSEC})`);
+  }
+
   // ── Schedule summary log ────────────────────────────────────────────────────
   const preseasonScrimmages = games.filter(g => (g as any).isExhibition).length;
   const preseasonGames      = games.filter(g => (g as any).isPreseason && !(g as any).isExhibition).length;

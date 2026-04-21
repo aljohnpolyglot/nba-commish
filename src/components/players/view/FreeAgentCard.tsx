@@ -17,9 +17,10 @@ interface FreeAgentCardProps {
   player: NBAPlayer;
   nonNBATeams?: NonNBATeam[];
   onClick: (player: NBAPlayer) => void;
+  onViewOffers?: (player: NBAPlayer) => void;
 }
 
-export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeams = [], onClick }) => {
+export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeams = [], onClick, onViewOffers }) => {
   const { state } = useGame();
   const simYear = state.leagueStats?.year ?? new Date().getFullYear();
   const age = player.born?.year ? simYear - player.born.year : player.age || 0;
@@ -61,6 +62,11 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
   const isInjured = player.injury && player.injury.type !== 'Healthy' && player.injury.gamesRemaining > 0;
   const isSuspended = player.suspension && player.suspension.gamesRemaining > 0;
   const isAvailable = !isInjured && !isSuspended;
+
+  const activeBidCount = (() => {
+    const market = state.faBidding?.markets?.find(m => m.playerId === player.internalId && !m.resolved);
+    return market?.bids?.filter(b => b.status === 'active' && !b.isUserBid).length ?? 0;
+  })();
 
   return (
     <motion.div
@@ -151,6 +157,16 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
           )}
         </div>
       </div>
+      {activeBidCount > 0 && onViewOffers && (
+        <div className="px-4 pb-3 -mt-1">
+          <button
+            onClick={e => { e.stopPropagation(); onViewOffers(player); }}
+            className="w-full text-[9px] font-black uppercase tracking-widest py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors"
+          >
+            {activeBidCount} Competing Offer{activeBidCount > 1 ? 's' : ''}
+          </button>
+        </div>
+      )}
       {/* Accent Glow */}
       <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 blur-3xl rounded-full -mr-12 -mt-12 group-hover:bg-indigo-500/10 transition-all" />
     </motion.div>

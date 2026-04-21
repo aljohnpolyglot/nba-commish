@@ -18,12 +18,14 @@ import { TeamService } from '../../../services/data/TeamService';
 import { DailyGamesBar } from './DailyGamesBar';
 import { ConfirmationModal } from '../../modals/ConfirmationModal';
 import { NBACentralHeader } from './NBACentralHeader';
+import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
 import { GameSimulatorScreen } from '../../shared/GameSimulatorScreen';
 import { WatchGamePreviewModal } from '../../modals/WatchGamePreviewModal';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
 
 export const NBACentral: React.FC = () => {
   const { state, dispatchAction, selectedTeamId, setSelectedTeamId, healPlayer } = useGame();
+  const rosterGate = useRosterComplianceGate();
   const [searchTerm, setSearchTerm] = useState('');
   
   // Modals State
@@ -414,10 +416,10 @@ export const NBACentral: React.FC = () => {
                   if (watchLive === false) {
                       // Just simulate — dispatch ADVANCE_DAY with riggedForTid
                       setPendingGameToWatch(null);
-                      await dispatchAction({
+                      rosterGate.attempt(() => dispatchAction({
                           type: 'ADVANCE_DAY' as any,
                           payload: { riggedForTid: rig }
-                      });
+                      }));
                   } else {
                       // Mirror ScheduleView: pre-sim + RECORD + ADVANCE_DAY before opening viewer.
                       // "Leave Game" is then a pure close — no re-simulation on exit.
@@ -431,10 +433,10 @@ export const NBACentral: React.FC = () => {
                           undefined, undefined, undefined, undefined, rig
                       );
                       await dispatchAction({ type: 'RECORD_WATCHED_GAME' as any, payload: { gameId: game.gid, result: preResult } });
-                      await dispatchAction({
+                      rosterGate.attempt(() => dispatchAction({
                           type: 'ADVANCE_DAY' as any,
                           payload: { watchedGameResult: preResult, isWatchingGame: true, ...(rig !== undefined ? { riggedForTid: rig } : {}) }
-                      });
+                      }));
                       setPrecomputedResult(preResult);
                       setRiggedForTid(rig);
                       setGameToWatch(game);
@@ -449,6 +451,18 @@ export const NBACentral: React.FC = () => {
           // For intl preseason games the away/home team may be a nonNBA team (tid >= 100).
           // Fall back to a minimal team stub so BoxScoreModal never crashes on .name.
           const resolveTeam = (tid: number) => {
+              if (tid < 0) {
+                const exhibNames: Record<number, { name: string; abbrev: string; logoUrl: string }> = {
+                  [-1]: { name: 'Eastern All-Stars', abbrev: 'EST', logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/1/16/Eastern_Conference_%28NBA%29_logo.svg/200px-Eastern_Conference_%28NBA%29_logo.svg.png' },
+                  [-2]: { name: 'Western All-Stars', abbrev: 'WST', logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/Western_Conference_%28NBA%29_logo.svg/200px-Western_Conference_%28NBA%29_logo.svg.png' },
+                  [-3]: { name: 'Team USA', abbrev: 'USA', logoUrl: 'https://upload.wikimedia.org/wikipedia/en/9/96/Rising_Stars_Challenge_logo.jpeg' },
+                  [-4]: { name: 'Team World', abbrev: 'WLD', logoUrl: 'https://upload.wikimedia.org/wikipedia/en/9/96/Rising_Stars_Challenge_logo.jpeg' },
+                  [-5]: { name: 'Team Shannon', abbrev: 'SHA', logoUrl: '' },
+                  [-6]: { name: 'Team Stephen A', abbrev: 'SAS', logoUrl: '' },
+                };
+                const info = exhibNames[tid] ?? { name: 'Exhibition', abbrev: 'EXH', logoUrl: '' };
+                return { id: tid, name: info.name, abbrev: info.abbrev, logoUrl: info.logoUrl, conference: 'All-Star', wins: 0, losses: 0 } as any;
+              }
               const nba = state.teams.find(t => t.id === tid);
               if (nba) return nba;
               const nonNBA = (state.nonNBATeams ?? []).find((t: any) => t.tid === tid);
@@ -486,6 +500,7 @@ export const NBACentral: React.FC = () => {
           onClose={() => setViewingRatingsPlayer(null)}
         />
       )}
+      {rosterGate.modal}
     </>
   );
 };

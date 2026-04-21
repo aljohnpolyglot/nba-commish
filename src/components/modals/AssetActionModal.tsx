@@ -4,6 +4,7 @@ import { X, Send } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { Product } from '../central/view/commishStoreassets';
 import { PersonSelectorModal } from './PersonSelectorModal';
+import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
 import { Contact } from '../../types';
 
 interface AssetEntry {
@@ -23,6 +24,7 @@ type InnerView = 'menu' | 'gift_select' | 'deploy_input';
 
 export const AssetActionModal: React.FC<AssetActionModalProps> = ({ asset, onClose, onRemoveAsset }) => {
   const { dispatchAction } = useGame();
+  const rosterGate = useRosterComplianceGate();
 
   const [qty, setQty] = useState(1);
   const [innerView, setInnerView] = useState<InnerView>('menu');
@@ -53,12 +55,12 @@ export const AssetActionModal: React.FC<AssetActionModalProps> = ({ asset, onClo
     setIsProcessing(true);
     onRemoveAsset(asset, qty);
     onClose();
-    await dispatchAction({
+    rosterGate.attempt(() => dispatchAction({
       type: 'ADVANCE_DAY',
       payload: {
         outcomeText: `Commissioner gifted ${qty}x "${asset.product.title}" (valued at $${(unitPrice * qty).toLocaleString()}) to ${recipientName} as a personal gesture.`,
       },
-    } as any);
+    } as any));
     setIsProcessing(false);
   };
 
@@ -68,12 +70,12 @@ export const AssetActionModal: React.FC<AssetActionModalProps> = ({ asset, onClo
     setIsProcessing(true);
     onRemoveAsset(asset, qty);
     onClose();
-    await dispatchAction({
+    rosterGate.attempt(() => dispatchAction({
       type: 'ADVANCE_DAY',
       payload: {
         outcomeText: `Commissioner deployed ${qty}x "${asset.product.title}": ${deployText.trim()}`,
       },
-    } as any);
+    } as any));
     setIsProcessing(false);
   };
 
@@ -247,6 +249,7 @@ export const AssetActionModal: React.FC<AssetActionModalProps> = ({ asset, onClo
           </div>
         </motion.div>
       </>
+      {rosterGate.modal}
     </AnimatePresence>
   );
 };

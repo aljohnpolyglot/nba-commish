@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { ArrowRightLeft, Calendar, Info, Search, Filter, UserCheck, UserX, AlertTriangle, Users, ChevronLeft, ChevronRight, Sunset, TrendingDown, TrendingUp, Trophy } from 'lucide-react';
+import { ArrowRightLeft, Calendar, Info, Search, Filter, UserCheck, UserX, AlertTriangle, Users, ChevronLeft, ChevronRight, Sunset, TrendingDown, TrendingUp, Trophy, CheckCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { NBAPlayer } from '../../../types';
 import { PlayerBioView } from './PlayerBioView';
@@ -35,6 +35,7 @@ function detectType(text: string, type?: string) {
   if (type === 'G-League Assignment' || t.includes('assigned to g-league'))  return 'G-League Assignment';
   if (type === 'G-League Callup'     || t.includes('recalled from g-league')) return 'G-League Callup';
   if (type === 'Draft'       || t.includes('overall pick of the'))     return 'Draft';
+  if (type === 'NG Guaranteed' || (t.includes('guaranteed by') && t.includes('january 10'))) return 'NG Guaranteed';
   if (type === 'Retirement'  || t.includes('has retired') || t.includes('announced his retirement') || t.includes('announced retirement')) return 'Retirement';
   if (type === 'Trade'       || t.includes('trade'))                   return 'Trade';
   if (type === 'Signing'     || t.includes('signed') || t.includes('re-signed') || t.includes('signs with')) return 'Signing';
@@ -55,6 +56,7 @@ const TYPE_STYLE: Record<string, { color: string; bg: string; icon: React.ReactN
   'G-League Assignment':    { color: 'text-orange-400',  bg: 'bg-orange-500/10',   icon: <TrendingDown size={18}/>,   label: 'G-League' },
   'G-League Callup':        { color: 'text-sky-400',     bg: 'bg-sky-500/10',      icon: <TrendingUp size={18}/>,     label: 'Callup' },
   'Training Camp Release':  { color: 'text-amber-400',   bg: 'bg-amber-500/10',    icon: <UserX size={18}/>,          label: 'TC Release' },
+  'NG Guaranteed':      { color: 'text-emerald-400', bg: 'bg-emerald-500/10',  icon: <CheckCircle size={18}/>,    label: 'Guaranteed' },
   'League Event':       { color: 'text-slate-400',   bg: 'bg-slate-800',       icon: <Info size={18}/>,           label: 'League Event' },
 };
 

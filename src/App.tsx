@@ -2,14 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GameProvider, useGame } from './store/GameContext';
 import { Sidebar } from './components/Sidebar';
 import { OutcomeView } from './components/OutcomeView';
-import { LoadingOverlay } from './components/common/LoadingOverlay';
+import { SimDateDisplay } from './components/common/SimDateDisplay';
 import { CommissionerSetup } from './components/CommissionerSetup';
 import { MainContent } from './components/layout/MainContent';
 import { MainMenu } from './components/MainMenu';
 import { ClubEffect } from './components/effects/ClubEffect';
+import { ToastNotifier } from './components/shared/ToastNotifier';
 import { LazySimLoadingScreen } from './components/setup/LazySimLoadingScreen';
-import { Tab } from './types';
-import { Menu, ArrowRight } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { SaveManager } from './services/SaveManager';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { fetchStatmuseData } from './data/social/statmuseImages';
@@ -19,28 +19,12 @@ import { fetchNBAMemes } from './services/social/nbaMemesFetcher';
 import { fetchInjuryData } from './services/injuryService';
 import { fetchPlayerInjuryData } from './data/playerInjuryData';
 import { prewarmRoster } from './services/rosterService';
-import { SettingsManager } from './services/SettingsManager';
 
 function GameLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
   const { state, dispatchAction, currentView, setCurrentView } = useGame();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Game-results modal dismissal: when LLM is off, isProcessing flips false so fast
-  // the ticker never animates. Keep the overlay mounted past the sim until the user
-  // clicks Continue — only for LLM-off runs with actual game results to show.
-  const [tickerAwaitingDismiss, setTickerAwaitingDismiss] = useState(false);
-  const prevIsProcessingRef = useRef(state.isProcessing);
-  useEffect(() => {
-    const was = prevIsProcessingRef.current;
-    prevIsProcessingRef.current = state.isProcessing;
-    if (was && !state.isProcessing) {
-      const llmOff = !SettingsManager.getSettings().enableLLM;
-      const hasResults = (state.lastSimResults?.length ?? 0) > 0;
-      if (llmOff && hasResults) setTickerAwaitingDismiss(true);
-    }
-  }, [state.isProcessing, state.lastSimResults]);
 
   useEffect(() => {
     fetchStatmuseData();
@@ -174,41 +158,16 @@ function GameLayout() {
           <MainContent currentView={currentView} onViewChange={setCurrentView} />
         </div>
 
-        {/* Lazy sim progress overlay — takes priority over generic LoadingOverlay */}
+        {/* Long-sim progress overlay (>30 days) */}
         {state.lazySimProgress && (
           <div className="fixed inset-0 z-[9999] bg-slate-950/95 flex items-center justify-center">
             <LazySimLoadingScreen progress={state.lazySimProgress} />
           </div>
         )}
-        {(() => {
-          if (state.isWatchingGame || state.lazySimProgress) return null;
-          if (!state.isProcessing && !tickerAwaitingDismiss) return null;
-          const hasTicker =
-            (state.tickerSimResults && state.tickerSimResults.length > 0) ||
-            (state.lastSimResults && state.lastSimResults.length > 0) ||
-            tickerAwaitingDismiss;
-          // GM mode: only show when there's actual ticker content (sim results to review).
-          // Bare "Processing Transaction" is retired — transactions are instant by default.
-          if (state.gameMode === 'gm' && !hasTicker) return null;
-          const activeSimResults =
-            state.tickerSimResults && state.tickerSimResults.length > 0
-              ? state.tickerSimResults
-              : state.lastSimResults;
-          return (
-            <LoadingOverlay
-              simResults={activeSimResults}
-              teams={state.teams}
-              players={state.players}
-              actionType={state.lastActionType}
-              actionPayload={state.lastActionPayload}
-              gameMode={state.gameMode}
-              showDismiss={tickerAwaitingDismiss}
-              onDismiss={() => setTickerAwaitingDismiss(false)}
-            />
-          );
-        })()}
+        {!state.isWatchingGame && !state.lazySimProgress && <SimDateDisplay />}
         {state.isClubbing && <ClubEffect />}
-        {state.lastOutcome && state.gameMode !== 'gm' && !state.isProcessing && !tickerAwaitingDismiss && <OutcomeView />}
+        <ToastNotifier />
+        {state.lastOutcome && state.gameMode !== 'gm' && !state.isProcessing && <OutcomeView />}
       </main>
     </div>
   );

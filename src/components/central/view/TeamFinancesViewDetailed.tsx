@@ -23,6 +23,9 @@ export const TeamFinancesViewDetailed: React.FC = () => {
     () => state.players.filter(p => p.tid === teamId && !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '')),
     [state.players, teamId]
   );
+  const twoWayPlayers = useMemo(() => teamPlayers.filter(p => !!(p as any).twoWay), [teamPlayers]);
+  const ngPlayers = useMemo(() => teamPlayers.filter(p => !!(p as any).nonGuaranteed), [teamPlayers]);
+  const standardPlayers = useMemo(() => teamPlayers.filter(p => !(p as any).twoWay && !(p as any).nonGuaranteed), [teamPlayers]);
 
   const payroll = useMemo(() => getTeamPayrollUSD(state.players, teamId), [state.players, teamId]);
 
@@ -32,7 +35,7 @@ export const TeamFinancesViewDetailed: React.FC = () => {
 
   const positionData = useMemo(() => {
     const groups = { Guards: 0, Forwards: 0, Centers: 0 };
-    teamPlayers.forEach(p => {
+    standardPlayers.forEach(p => {
       const usd = contractToUSD(p.contract?.amount || 0);
       const pos = p.pos || '';
       if (pos.includes('G')) groups.Guards += usd;
@@ -47,10 +50,10 @@ export const TeamFinancesViewDetailed: React.FC = () => {
   }, [teamPlayers]);
 
   const playerPieData = useMemo(() =>
-    [...teamPlayers]
+    [...standardPlayers]
       .sort((a, b) => (b.contract?.amount || 0) - (a.contract?.amount || 0))
       .map(p => ({ name: p.name, value: contractToUSD(p.contract?.amount || 0), pos: p.pos })),
-    [teamPlayers]
+    [standardPlayers]
   );
 
   const highEarners = useMemo(() => playerPieData.filter(p => p.value >= 8_000_000), [playerPieData]);
@@ -127,6 +130,11 @@ export const TeamFinancesViewDetailed: React.FC = () => {
               </h3>
               <div className="flex flex-col items-center justify-center mb-4 sm:mb-8">
                 <p className="text-3xl sm:text-5xl font-bold text-white tracking-tight">{formatSalaryM(payroll)}</p>
+                {ngPlayers.length > 0 && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    Full (w/ NG): <span className="text-amber-400 font-bold">{formatSalaryM(payroll + ngPlayers.reduce((s, p) => s + contractToUSD(p.contract?.amount || 0), 0))}</span>
+                  </p>
+                )}
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm flex-wrap gap-2">
                 <ApronStatus space={firstApronSpace} label="1st Apron" />
@@ -297,6 +305,54 @@ export const TeamFinancesViewDetailed: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Two-Way + Non-Guaranteed rosters */}
+          {(twoWayPlayers.length > 0 || ngPlayers.length > 0) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {twoWayPlayers.length > 0 && (
+                <div className="bg-[#232730] rounded-xl p-4 border border-slate-800/50">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-sky-400 inline-block" />
+                    Two-Way Contracts
+                    <span className="text-slate-600 font-normal normal-case tracking-normal">(cap-exempt)</span>
+                  </h3>
+                  <div className="space-y-2">
+                    {twoWayPlayers.map(p => (
+                      <div key={p.internalId} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-black text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/20">2W</span>
+                          <span className="text-sm text-slate-300">{p.name}</span>
+                          <span className="text-[10px] text-slate-500">{p.pos}</span>
+                        </div>
+                        <span className="text-sm font-bold text-slate-400">{formatSalaryM(contractToUSD(p.contract?.amount || 0))}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {ngPlayers.length > 0 && (
+                <div className="bg-[#232730] rounded-xl p-4 border border-amber-500/20">
+                  <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+                    Non-Guaranteed
+                    <span className="text-slate-600 font-normal normal-case tracking-normal">(guarantee by Jan 10 or cut)</span>
+                  </h3>
+                  <div className="space-y-2">
+                    {ngPlayers.map(p => (
+                      <div key={p.internalId} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-black text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">NG</span>
+                          <span className="text-sm text-slate-300">{p.name}</span>
+                          <span className="text-[10px] text-slate-500">{p.pos}</span>
+                        </div>
+                        <span className="text-sm font-bold text-amber-300">{formatSalaryM(contractToUSD(p.contract?.amount || 0))}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
       </div>

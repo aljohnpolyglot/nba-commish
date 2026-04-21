@@ -30,6 +30,7 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
   const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? 15;
   const maxTwoWay = state.leagueStats.maxTwoWayPlayersPerTeam ?? 3;
   const twoWayCount = teamPlayers.filter(p => !!(p as any).twoWay).length;
+  const ngCount = teamPlayers.filter(p => !!(p as any).nonGuaranteed).length;
   const standardCount = teamPlayers.length - twoWayCount;
   const mleCount = teamPlayers.filter(p => !!(p as any).mleSignedVia).length;
 
@@ -49,6 +50,7 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
         <tbody>
           {[...teamPlayers].sort((a, b) => (b.contract?.amount || 0) - (a.contract?.amount || 0)).map(player => {
             const isTwoWayPlayer = !!(player as any).twoWay;
+            const isNGPlayer = !!(player as any).nonGuaranteed;
             const baseUSD = isTwoWayPlayer ? 625_000 : contractToUSD(player.contract?.amount || 0);
             const expYear = player.contract?.exp || currentYear;
             const yearsLeft = expYear - currentYear + 1;
@@ -79,8 +81,9 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
               return annualRaise(baseUSD, n);
             };
 
-            const optType = (n: number): 'player' | 'team' | 'twoway' | null => {
+            const optType = (n: number): 'player' | 'team' | 'twoway' | 'ng' | null => {
               if (isTwoWayPlayer) return 'twoway';
+              if (isNGPlayer && n === 0) return 'ng';
               const y = currentYear + n;
               const cy = cyByYear.get(y);
               if (cy?.option === 'Player') return 'player';
@@ -95,6 +98,7 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
             const getCellStyle = (n: number) => {
               const opt = optType(n);
               if (opt === 'twoway') return 'bg-purple-500/20 text-purple-300 font-bold text-center py-1.5 rounded border border-purple-500/30';
+              if (opt === 'ng')     return 'bg-amber-500/15 text-amber-300 font-bold text-center py-1.5 rounded border border-amber-500/40 border-dashed';
               if (opt === 'player') return 'bg-[#facc15]/10 text-[#facc15] font-bold text-center py-1.5 rounded border border-[#facc15] border-dashed';
               if (opt === 'team')   return 'bg-[#38bdf8]/10 text-[#38bdf8] font-bold text-center py-1.5 rounded border border-[#38bdf8] border-dashed';
               return 'bg-[#facc15] text-slate-900 font-bold text-center py-1.5 rounded';
@@ -112,15 +116,18 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
                   className={`py-1 pl-2 border-l-[3px] rounded-l-md ${
                     isTwoWayPlayer
                       ? 'border-purple-500/70 bg-purple-500/[0.04]'
+                      : isNGPlayer
+                      ? 'border-amber-500/70 bg-amber-500/[0.04]'
                       : 'border-[#facc15]/60 bg-[#facc15]/[0.03]'
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className={`font-bold ${isTwoWayPlayer ? 'text-purple-300' : 'text-slate-200'}`}>
+                    <span className={`font-bold ${isTwoWayPlayer ? 'text-purple-300' : isNGPlayer ? 'text-amber-200' : 'text-slate-200'}`}>
                       {player.name.split(' ')[0][0]}. {player.name.split(' ').slice(1).join(' ')}
                     </span>
                     {(() => { const k2 = convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length-1]?.hgt ?? 50, player.ratings?.[player.ratings.length-1]?.tp); return <span className={`text-xs ${k2 >= 85 ? 'text-emerald-400' : k2 >= 75 ? 'text-slate-300' : 'text-slate-500'}`}>{k2}</span>; })()}
                     {isTwoWayPlayer && <span className="text-[8px] font-black text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded-full uppercase tracking-widest">2W</span>}
+                    {isNGPlayer && !isTwoWayPlayer && <span className="text-[8px] font-black text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full uppercase tracking-widest">NG</span>}
                   </div>
                 </td>
                 <td className="py-1 px-1">{cell(0)}</td>
@@ -146,6 +153,12 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
           <div className="w-3 h-3 bg-purple-500/20 border border-purple-500/30 rounded-sm" />
           <span className="text-purple-300">Two-Way <span className="font-mono">{twoWayCount}/{maxTwoWay}</span></span>
         </div>
+        {ngCount > 0 && (
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-amber-500/15 border border-amber-500/40 border-dashed rounded-sm" />
+            <span className="text-amber-300">Non-Guaranteed <span className="font-mono">{ngCount}</span></span>
+          </div>
+        )}
         <div className="flex items-center gap-2 border border-slate-500 border-dashed px-2 py-0.5 rounded"><span>Player option</span></div>
         <div className="flex items-center gap-2 border border-[#38bdf8] border-dashed px-2 py-0.5 rounded text-[#38bdf8]"><span>Team option</span></div>
         <div className="flex items-center gap-2"><span className="text-slate-600 font-bold">FA</span><span>Free agent</span></div>

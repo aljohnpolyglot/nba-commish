@@ -30,6 +30,10 @@ interface PlayerBioViewProps {
 import { memCache, isCacheValid, fetchWithDedup, prefetchPlayerBio, getPlayerImage, getNonNBABioData } from './bioCache';
 import { ensureNonNBAFetched, getNonNBAGistData } from './nonNBACache';
 import { extractNbaId, hdPortrait } from '../../../utils/helpers';
+import {
+  ensurePhotosLoaded, getPhotoBySlug,
+  ensureBiosLoaded, getBioBySlug, fmtHeight,
+} from '../../../data/realPlayerDataFetcher';
 
 // Request queue — max 1 concurrent fetch to avoid AllOrigins rate limits
 const MAX_CONCURRENT = 1;
@@ -265,6 +269,54 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
         } catch (_) {}
         if (isMounted) { setIsSyncing(false); setFetchDone(true); }
         return;
+      }
+
+      // ── 1b. Portrait upgrade: player-photos.json by srID (non-blocking) ────
+      // Kick off photo preload in background; if portrait is still empty once
+      // it resolves, update it immediately without showing a spinner.
+      if (player.srID) {
+        ensurePhotosLoaded().then(() => {
+          if (!isMounted) return;
+          const photoUrl = getPhotoBySlug(player.srID!);
+          if (photoUrl) {
+            setPortraitSrc(prev => prev || photoUrl);
+          }
+        });
+      }
+
+      // ── 1c. ZenGM bio enrichment for retired/historical NBA players ────────
+      // Fires only when srID is present and the player is retired (or has missing
+      // bio fields). The 17 MB JSON is fetched once and cached in module memory.
+      const needsZenGM = player.srID && (
+        player.status === 'Retired' ||
+        !player.born?.loc ||
+        player.hgt == null ||
+        player.weight == null
+      );
+      if (needsZenGM) {
+        // Don't block the NBA.com path — run in background, update bio when done.
+        ensureBiosLoaded().then(() => {
+          if (!isMounted) return;
+          const zen = getBioBySlug(player.srID!);
+          if (!zen) return;
+          setBioData((prev: any) => {
+            if (!prev) return prev;
+            const patch: Record<string, any> = {};
+            // Only fill fields that are still showing "Unknown" / "None"
+            if (zen.height && prev.h === 'Unknown') patch.h = fmtHeight(zen.height);
+            if (zen.weight && prev.w === 'Unknown') patch.w = `${zen.weight}lb`;
+            if (zen.country && (prev.c === 'Unknown' || !prev.c)) patch.c = zen.country;
+            if (zen.college && (prev.s === 'None' || !prev.s)) patch.s = zen.college;
+            if (zen.bornYear && prev.b === String(bY)) patch.b = String(zen.bornYear);
+            if (zen.draftYear && prev.d === 'Undrafted') {
+              const rd = zen.draftRound ? ` R${zen.draftRound}` : '';
+              const pk = zen.draftPick  ? ` P${zen.draftPick}` : '';
+              patch.d = `${zen.draftYear}${rd}${pk}`;
+              patch.e = `${Math.max(0, curYear - zen.draftYear)} Years`;
+            }
+            return Object.keys(patch).length ? { ...prev, ...patch } : prev;
+          });
+        });
       }
 
       // ── 2. Extract NBA ID ────────────────────────────────────────────────

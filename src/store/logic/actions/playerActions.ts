@@ -8,7 +8,7 @@ import { NewsGenerator } from '../../../services/news/NewsGenerator';
 import { SettingsManager } from '../../../services/SettingsManager';
 
 export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
-    const { playerId, teamId, playerName, teamName, salary, years: negotiatedYears, option, twoWay: signedAsTwoWay, mleType: signedMleType } = action.payload;
+    const { playerId, teamId, playerName, teamName, salary, years: negotiatedYears, option, twoWay: signedAsTwoWay, nonGuaranteed: signedAsNG, mleType: signedMleType } = action.payload;
     const player = stateWithSim.players.find(p => p.internalId === playerId);
     const team = stateWithSim.teams.find(t => t.id === teamId);
     
@@ -169,6 +169,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                         // keeps the flag via `...p`, so even a GUARANTEED re-signing
                         // ships as a two-way contract.
                         twoWay: !!signedAsTwoWay,
+                        nonGuaranteed: !!signedAsNG,
                         // Stamp MLE source so TeamFinancesView can color the
                         // contract cell and leagueStats.mleUsage below accounts
                         // for the draw.
@@ -195,6 +196,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                         // keeps the flag via `...p`, so even a GUARANTEED re-signing
                         // ships as a two-way contract.
                         twoWay: !!signedAsTwoWay,
+                        nonGuaranteed: !!signedAsNG,
                         // Stamp MLE source so TeamFinancesView can color the
                         // contract cell and leagueStats.mleUsage below accounts
                         // for the draw.

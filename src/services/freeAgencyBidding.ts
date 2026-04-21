@@ -14,6 +14,7 @@
 
 import type { NBAPlayer, NBATeam, GameState } from '../types';
 import { convertTo2KRating } from '../utils/helpers';
+import { getGMAttributes, clampSpendOffer } from './staff/gmAttributes';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -138,25 +139,32 @@ export function generateAIBids(
   const lastRating = (player as any).ratings?.[(player as any).ratings?.length - 1];
   const k2 = convertTo2KRating(player.overallRating ?? 60, lastRating?.hgt ?? 50);
 
-  // Only teams with cap space or MLE bid
+  const luxuryTax = (state.leagueStats as any)?.luxuryPayroll ?? cap * 1.18;
+  // MLE value: ~8.5% of cap (matches getMLEAvailability rough ceiling)
+  const mleUSD = Math.round(cap * 0.085);
+
+  // Only teams with cap space or MLE eligibility
   const eligibleTeams = state.teams
     .filter(t => t.id !== userTeamId) // exclude user's team
-    .filter(t => {
+    .map(t => {
       const payroll = state.players
         .filter(p => p.tid === t.id && !(p as any).twoWay)
         .reduce((sum, p) => sum + ((p.contract?.amount ?? 0) * 1_000), 0);
-      return payroll < cap * 1.2; // can be over cap if using MLE
+      return { team: t, payroll, desirability: teamDesirability(t, player, state.players, currentYear) };
     })
-    .map(t => ({
-      team: t,
-      desirability: teamDesirability(t, player, state.players, currentYear),
-    }))
+    .filter(({ payroll }) => {
+      const capSpace = cap - payroll;
+      // Must have at least min salary worth of room, or be MLE-eligible (under tax)
+      return capSpace >= minSalary || payroll < luxuryTax;
+    })
     .sort((a, b) => b.desirability - a.desirability);
 
-  // Top N interested teams bid
-  const bidders = eligibleTeams.slice(0, maxBids);
+  // Take extra candidates in case some get filtered out by per-offer cap check
+  const bidders = eligibleTeams.slice(0, maxBids * 2);
 
-  for (const { team, desirability } of bidders) {
+  for (const { team, desirability, payroll } of bidders) {
+    if (bids.length >= maxBids) break;
+
     // Salary based on K2 tier + some randomness
     let pct: number;
     if (k2 >= 95) pct = 0.28 + Math.random() * 0.05;
@@ -170,7 +178,26 @@ export function generateAIBids(
     // Desperate/contending teams bid higher
     if (desirability > 70) pct *= 1.1;
 
-    const salaryUSD = Math.max(minSalary, Math.round(cap * pct));
+    const capSpace = cap - payroll;
+    let salaryUSD = Math.max(minSalary, Math.round(cap * pct));
+
+    // Each team's GM spending attribute (50–100) scales the bid: low spenders lowball, high spenders overpay.
+    const teamSpending = getGMAttributes(state, team.id).spending;
+    salaryUSD = clampSpendOffer(salaryUSD, teamSpending, Math.round(cap * 0.35));
+    salaryUSD = Math.max(minSalary, salaryUSD);
+
+    // Cap-space enforcement: only bid what the team can actually commit
+    if (capSpace >= salaryUSD) {
+      // Full room — bid stands as computed
+    } else if (payroll < luxuryTax && salaryUSD <= mleUSD) {
+      // Over cap but under tax — MLE bid is valid as-is
+    } else if (capSpace >= minSalary) {
+      // Partial room — clamp bid to available cap space
+      salaryUSD = capSpace;
+    } else {
+      // Can't afford even the minimum — skip this team
+      continue;
+    }
     const years = k2 >= 85 ? (2 + Math.floor(Math.random() * 3)) : k2 >= 75 ? (1 + Math.floor(Math.random() * 3)) : (1 + Math.floor(Math.random() * 2));
     const option: FreeAgentBid['option'] = k2 >= 88 && years >= 3 ? 'PLAYER' : 'NONE';
 
@@ -239,4 +266,36 @@ export function resolvePlayerDecision(
   });
 
   return { ...market, bids: updatedBids, resolved: true };
+}
+
+/**
+ * Compute how competitive a bid is (0-130+%).
+ * Uses the same weighted formula as resolvePlayerDecision.
+ * baseline = market-rate offer from an average team (des=50, 2yr, NONE) = 76.5
+ */
+export function computeOfferStrength(
+  bid: FreeAgentBid,
+  player: NBAPlayer,
+  state: GameState,
+): number {
+  const cap = state.leagueStats?.salaryCap ?? 154_600_000;
+  const currentYear = state.leagueStats?.year ?? 2026;
+  const lastRating = (player as any).ratings?.[(player as any).ratings?.length - 1];
+  const k2 = convertTo2KRating(player.overallRating ?? 60, lastRating?.hgt ?? 50);
+
+  let pct: number;
+  if (k2 >= 95) pct = 0.30; else if (k2 >= 90) pct = 0.22; else if (k2 >= 85) pct = 0.15;
+  else if (k2 >= 80) pct = 0.10; else if (k2 >= 75) pct = 0.06; else pct = 0.02;
+  const marketValue = Math.round(cap * pct);
+
+  const team = state.teams.find(t => t.id === bid.teamId);
+  const des = team ? teamDesirability(team, player, state.players, currentYear) : 50;
+
+  const salaryScore = (bid.salaryUSD / Math.max(1, marketValue)) * 60;
+  const desScore = des * 0.25;
+  const yearsScore = Math.min(10, bid.years * 2);
+  const optionScore = bid.option === 'PLAYER' ? 5 : bid.option === 'TEAM' ? -2 : 0;
+  const raw = salaryScore + desScore + yearsScore + optionScore;
+  const baseline = 76.5; // market-rate, avg team, 2yr, NONE
+  return Math.round((raw / baseline) * 100);
 }
