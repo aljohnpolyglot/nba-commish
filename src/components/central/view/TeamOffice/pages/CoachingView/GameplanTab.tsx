@@ -24,6 +24,7 @@ import {
   clearGameplan,
   type Gameplan,
 } from '../../../../../../store/gameplanStore';
+import { pushToast } from '../../../../../shared/ToastNotifier';
 import {
   getIdealRotation,
   reconcileIdealMinutes,
@@ -69,12 +70,20 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
   const canEdit = isCommissioner || teamId === state.userTeamId;
   const isOwnTeam = canEdit; // kept as an alias so existing markup still reads naturally
 
+  const isPlayoffSeason = useMemo(() => {
+    if (!state.date) return false;
+    const m = new Date(state.date).getMonth() + 1;
+    return m >= 4 && m <= 6;
+  }, [state.date]);
+
   // ── Rotation computation (live, uses MinutesPlayedService) ─────────────────
-  const { rotation, baseMinutes, injuredPlayers, benchPool } = useMemo(() => {
-    if (!team) return { rotation: [], baseMinutes: [], injuredPlayers: [], benchPool: [] };
+  const { rotation, baseMinutes, injuredPlayers, benchPool, twoWayIneligible } = useMemo(() => {
+    if (!team) return { rotation: [], baseMinutes: [], injuredPlayers: [], benchPool: [], twoWayIneligible: [] };
 
     const roster = state.players.filter(p => p.tid === teamId && p.status === 'Active');
-    const injured = roster.filter(isInjured);
+    const twoWayIneligible = isPlayoffSeason ? roster.filter(p => (p as any).twoWay) : [];
+    const eligibleRoster = isPlayoffSeason ? roster.filter(p => !(p as any).twoWay) : roster;
+    const injured = eligibleRoster.filter(isInjured);
 
     const rec = effectiveRecord(team, currentYear);
     const confTeams = state.teams
@@ -112,17 +121,18 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     );
 
     const inRotationIds = new Set(rot.players.map(p => p.internalId));
-    const bench = roster.filter(
+    const bench = eligibleRoster.filter(
       p => !inRotationIds.has(p.internalId) && !isInjured(p),
     );
 
     return {
-      rotation: rot.players,
+      rotation: rot.players.filter(p => !(p as any).twoWay || !isPlayoffSeason),
       baseMinutes: minutes,
       injuredPlayers: injured,
       benchPool: bench,
+      twoWayIneligible,
     };
-  }, [team, state.players, state.teams, teamId, currentYear]);
+  }, [team, state.players, state.teams, teamId, currentYear, isPlayoffSeason]);
 
   // ── Editable local state (seeded from saved gameplan or computed defaults) ─
   const [starterOrder, setStarterOrder] = useState<string[]>([]);
@@ -528,6 +538,27 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     });
   };
 
+  // Show a toast (debounced) when the plan drifts off 240 — avoids spamming during slider drags.
+  useEffect(() => {
+    if (!canEdit || remaining === 0) return;
+    const timer = setTimeout(() => pushToast({ type: 'rotation-budget', delta: remaining }), 1500);
+    return () => clearTimeout(timer);
+  }, [remaining, canEdit]);
+
+  const noScrollOnFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    const scrollables: Array<{ el: Element; top: number }> = [];
+    let el: Element | null = e.target;
+    while (el) {
+      if (el.scrollHeight > el.clientHeight) scrollables.push({ el, top: el.scrollTop });
+      el = el.parentElement;
+    }
+    const winY = window.scrollY;
+    requestAnimationFrame(() => {
+      scrollables.forEach(({ el, top }) => { (el as HTMLElement).scrollTop = top; });
+      window.scrollTo(window.scrollX, winY);
+    });
+  };
+
   if (!team) {
     return <div className="text-red-400 font-bold uppercase tracking-widest">Team not found</div>;
   }
@@ -581,7 +612,25 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
       const raw = idealDerived?.[p.internalId] ?? Math.round(baseMinutes[i] ?? 0);
       seed[p.internalId] = Math.max(0, Math.min(48, raw));
     });
-    setMinuteOverrides(seed);
+    // Normalize to exactly 240 — rounding and injured-player drops can leave a 1–3 min gap.
+    const seedTotal = Object.values(seed).reduce((a, b) => a + b, 0);
+    if (seedTotal > 0 && seedTotal !== targetMinutes) {
+      const scale = targetMinutes / seedTotal;
+      const normalized: Record<string, number> = Object.fromEntries(
+        Object.entries(seed).map(([k, v]) => [k, Math.max(0, Math.min(48, Math.round(v * scale)))]),
+      );
+      let diff = targetMinutes - Object.values(normalized).reduce((a, b) => a + b, 0);
+      const order = Object.entries(normalized).sort((a, b) => b[1] - a[1]).map(([k]) => k);
+      for (let i = 0; diff !== 0 && i < order.length * 2; i++) {
+        const k = order[i % order.length];
+        const step = diff > 0 ? 1 : -1;
+        const n = normalized[k] + step;
+        if (n >= 0 && n <= 48) { normalized[k] = n; diff -= step; }
+      }
+      setMinuteOverrides(normalized);
+    } else {
+      setMinuteOverrides(seed);
+    }
     setSelectedId(null);
   };
 
@@ -638,14 +687,26 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
         </div>
         <div className="flex items-center gap-2 text-xs">
           {canEdit && (
-            <button
-              onClick={resetToAuto}
-              className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-amber-500/50 px-2 py-1 rounded font-black uppercase tracking-widest text-[10px] text-slate-300 hover:text-amber-300 transition-colors"
-              title="Reset to coach's auto-computed rotation (clears all your overrides)"
-            >
-              <Sparkles className="w-3 h-3" />
-              Auto
-            </button>
+            <>
+              {remaining !== 0 && (
+                <button
+                  onClick={autoDistribute}
+                  className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 border border-amber-700/50 hover:border-amber-500 px-2 py-1 rounded font-black uppercase tracking-widest text-[10px] text-amber-300 hover:text-amber-200 transition-colors"
+                  title="Scale all minutes to hit exactly 240"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  Distribute
+                </button>
+              )}
+              <button
+                onClick={resetToAuto}
+                className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-amber-500/50 px-2 py-1 rounded font-black uppercase tracking-widest text-[10px] text-slate-300 hover:text-amber-300 transition-colors"
+                title="Reset to coach's auto-computed rotation (clears all your overrides)"
+              >
+                <Sparkles className="w-3 h-3" />
+                Auto
+              </button>
+            </>
           )}
           <div className={`font-mono ${remaining === 0 ? 'text-emerald-400' : Math.abs(remaining) <= 5 ? 'text-amber-300' : 'text-rose-400'}`}>
             {totalMinutes} / {targetMinutes} min
@@ -653,30 +714,6 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Autosaved" />
         </div>
       </div>
-
-      {/* Unbalanced-minutes warning — visible whenever the plan doesn't sum to 240.
-          Auto-distribute button scales existing allocations to hit exactly 240. */}
-      {canEdit && remaining !== 0 && (
-        <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${
-          remaining > 0
-            ? 'bg-amber-500/10 border border-amber-500/30 text-amber-200'
-            : 'bg-rose-500/10 border border-rose-500/30 text-rose-200'
-        }`}>
-          <AlertTriangle className="w-4 h-4 shrink-0" />
-          <span className="flex-1">
-            {remaining > 0
-              ? <>Rotation under budget by <b>{remaining} min</b> — starters will get thin minutes next game.</>
-              : <>Rotation over budget by <b>{Math.abs(remaining)} min</b> — the sim will scale back minutes to fit 48-min quarters.</>}
-          </span>
-          <button
-            onClick={autoDistribute}
-            className="shrink-0 flex items-center gap-1.5 bg-black/30 hover:bg-black/50 border border-white/10 px-2.5 py-1 rounded font-black uppercase tracking-widest text-[10px]"
-          >
-            <Sparkles className="w-3 h-3" />
-            Auto-Distribute
-          </button>
-        </div>
-      )}
 
       {selectedId && (
         <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs bg-amber-500/10 border border-amber-500/30 text-amber-200">
@@ -791,34 +828,31 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
                 }`}
               >
                 {/* Desktop: single row. Mobile: stacks top (identity) + bottom (slider). */}
-                <div className="sm:grid sm:grid-cols-[20px_40px_1fr_40px_1fr_40px] sm:gap-2 sm:items-center flex items-center gap-2">
+                <div className="sm:grid sm:grid-cols-[20px_40px_1fr_1fr_40px] sm:gap-2 sm:items-center flex items-center gap-2">
                   <GripVertical className="w-3 h-3 text-slate-500 shrink-0" />
                   <PlayerPortrait
                     imgUrl={p.imgURL}
                     playerName={p.name}
                     size={36}
-                    overallRating={p.overallRating}
                   />
                   <div className="flex flex-col min-w-0 flex-1">
                     <span className="text-xs font-bold text-white truncate">{p.name}</span>
                     <span className="text-[10px] text-slate-400">
-                      {p.pos}{p.born?.year ? ` | ${currentYear - p.born.year}y` : (p.age ? ` | ${p.age}y` : '')}
+                      <span className={k2Color}>{k2}</span>{` ${p.pos}`}{p.born?.year ? ` | ${currentYear - p.born.year}y` : (p.age ? ` | ${p.age}y` : '')}
                     </span>
                   </div>
-                  <span className={`text-center text-xs font-black tabular-nums shrink-0 ${k2Color}`}>{k2}</span>
                   {/* Desktop slider — inline. Stop propagation so dragging it doesn't fire tap-to-swap.
                       touch-pan-x re-enables horizontal scrubbing inside the `touch-none` row. */}
                   <input
                     type="range"
                     min={0}
-                    // Cap the thumb's travel at remaining headroom so the user
-                    // physically can't drag past the 240-min team budget.
                     max={48}
                     step={1}
                     value={mins}
                     onChange={e => setMins(p.internalId, +e.target.value)}
                     onClick={e => e.stopPropagation()}
                     onPointerDown={e => e.stopPropagation()}
+                    onFocus={noScrollOnFocus}
                     className="hidden sm:block w-full accent-amber-500 touch-pan-x"
                   />
                   <span className="hidden sm:block text-xs font-mono text-slate-200 text-right tabular-nums">
@@ -840,6 +874,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
                     value={mins}
                     onChange={e => setMins(p.internalId, +e.target.value)}
                     onPointerDown={e => e.stopPropagation()}
+                    onFocus={noScrollOnFocus}
                     className="flex-1 accent-amber-500 touch-pan-x"
                   />
                   <span className="text-xs font-mono text-slate-200 text-right tabular-nums w-9">
@@ -851,6 +886,50 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
           })}
         </div>
       </div>
+
+      {/* Two-Way Ineligible (Playoffs) */}
+      {isPlayoffSeason && twoWayIneligible.length > 0 && (
+        <div className="bg-slate-900/40 border border-slate-700/40 rounded-lg p-3 opacity-60">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              Ineligible — Two-Way Contract
+            </div>
+            <div className="text-[10px] text-slate-500 ml-auto">
+              Two-way players cannot participate in playoff games
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            {twoWayIneligible.map(p => {
+              const k2 = getK2(p);
+              return (
+                <div
+                  key={p.internalId}
+                  className="grid grid-cols-[40px_1fr_40px_1fr] gap-2 items-center px-2 py-1.5 rounded bg-slate-800/20"
+                >
+                  <div className="grayscale opacity-50">
+                    <PlayerPortrait
+                      imgUrl={p.imgURL}
+                      playerName={p.name}
+                      size={36}
+                      overallRating={p.overallRating}
+                    />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-bold text-slate-500 truncate">{p.name}</span>
+                    <span className="text-[10px] text-sky-500/70 font-bold">TWO WAY</span>
+                  </div>
+                  <span className="text-center text-xs font-black tabular-nums text-slate-600">
+                    {k2}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-mono text-right">
+                    DNP — PLAYOFFS
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Injuries */}
       {injuredPlayers.length > 0 && (

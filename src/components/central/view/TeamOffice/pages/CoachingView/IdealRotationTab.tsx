@@ -106,9 +106,23 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
   const isCommissioner = state.gameMode !== 'gm';
   const canEdit = isCommissioner || teamId === state.userTeamId;
 
-  const roster = useMemo(
+  const isPlayoffSeason = useMemo(() => {
+    if (!state.date) return false;
+    const m = new Date(state.date).getMonth() + 1;
+    return m >= 4 && m <= 6;
+  }, [state.date]);
+
+  const allRoster = useMemo(
     () => state.players.filter(p => p.tid === teamId && p.status === 'Active'),
     [state.players, teamId],
+  );
+  const twoWayIneligible = useMemo(
+    () => isPlayoffSeason ? allRoster.filter(p => (p as any).twoWay) : [],
+    [allRoster, isPlayoffSeason],
+  );
+  const roster = useMemo(
+    () => isPlayoffSeason ? allRoster.filter(p => !(p as any).twoWay) : allRoster,
+    [allRoster, isPlayoffSeason],
   );
   const rosterIds = useMemo(() => roster.map(p => p.internalId), [roster]);
   const rosterIdKey = rosterIds.join('|');
@@ -290,6 +304,7 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
 
   const DRAG_THRESHOLD = 8;
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [draggingSlider, setDraggingSlider] = useState<{ id: string; value: number } | null>(null);
   const [drag, setDrag] = useState<null | {
     id: string;
     source: 'starter' | 'rotation';
@@ -384,6 +399,20 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
   const onCardClick = (id: string) => {
     if (suppressNextClick.current) { suppressNextClick.current = false; return; }
     if (!drag) handleTap(id);
+  };
+
+  const noScrollOnFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    const scrollables: Array<{ el: Element; top: number }> = [];
+    let el: Element | null = e.target;
+    while (el) {
+      if (el.scrollHeight > el.clientHeight) scrollables.push({ el, top: el.scrollTop });
+      el = el.parentElement;
+    }
+    const winY = window.scrollY;
+    requestAnimationFrame(() => {
+      scrollables.forEach(({ el, top }) => { (el as HTMLElement).scrollTop = top; });
+      window.scrollTo(window.scrollX, winY);
+    });
   };
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -494,6 +523,44 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
         </div>
       </div>
 
+      {/* Two-Way Ineligible (Playoffs) */}
+      {isPlayoffSeason && twoWayIneligible.length > 0 && (
+        <div className="bg-slate-900/40 border border-slate-700/40 rounded-lg p-3 opacity-60">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              Ineligible — Two-Way Contract
+            </div>
+            <div className="text-[10px] text-slate-500 ml-auto">
+              Two-way players cannot participate in playoff games
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            {twoWayIneligible.map(p => {
+              const ovr = getDisplayOverall(p);
+              const age = p.born?.year ? currentYear - p.born.year : (p as any).age;
+              return (
+                <div
+                  key={p.internalId}
+                  className="sm:grid sm:grid-cols-[20px_40px_1fr_40px] gap-2 items-center px-2 py-1.5 rounded bg-slate-800/20 flex"
+                >
+                  <GripVertical className="w-3 h-3 text-slate-700 shrink-0" />
+                  <div className="grayscale opacity-50">
+                    <PlayerPortrait imgUrl={p.imgURL} playerName={p.name} size={36} overallRating={p.overallRating} />
+                  </div>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-xs font-bold text-slate-500 truncate">{p.name}</span>
+                    <span className="text-[10px] text-sky-500/70 font-bold">
+                      TWO WAY{age ? ` | ${age}y` : ''}
+                    </span>
+                  </div>
+                  <span className="text-center text-xs font-black tabular-nums text-slate-600">{ovr}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Rotation — minute sliders, includes injured (ideal is injury-agnostic) */}
       <div className="bg-black/40 border border-slate-800 rounded-lg p-3">
         <div className="flex items-center justify-between mb-2">
@@ -506,7 +573,8 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
           {[...starterPlayers, ...benchPlayers].map((p, idx) => {
             if (!p) return null;
             const ovr = getDisplayOverall(p);
-            const mins = minutes[p.internalId] ?? 0;
+            const storedMins = minutes[p.internalId] ?? 0;
+            const displayMins = draggingSlider?.id === p.internalId ? draggingSlider.value : storedMins;
             const isStarter = idx < 5;
             const isSelected = selectedId === p.internalId;
             const ovrColor = ovr >= 90 ? 'text-blue-300' : ovr >= 85 ? 'text-emerald-300' : ovr >= 78 ? 'text-amber-300' : 'text-slate-400';
@@ -529,32 +597,38 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
                 }`}
               >
                 {/* Desktop: single row. Mobile: stacks top (identity) + bottom (slider). */}
-                <div className="sm:grid sm:grid-cols-[20px_40px_1fr_40px_1fr_40px] sm:gap-2 sm:items-center flex items-center gap-2">
+                <div className="sm:grid sm:grid-cols-[20px_40px_1fr_1fr_40px] sm:gap-2 sm:items-center flex items-center gap-2">
                   <GripVertical className="w-3 h-3 text-slate-500 shrink-0" />
-                  <PlayerPortrait imgUrl={p.imgURL} playerName={p.name} size={36} overallRating={p.overallRating} />
+                  <PlayerPortrait imgUrl={p.imgURL} playerName={p.name} size={36} />
                   <div className="flex flex-col min-w-0 flex-1">
                     <span className="text-xs font-bold text-white truncate">{p.name}</span>
                     <span className="text-[10px] text-slate-400">
-                      {p.pos}{age ? ` | ${age}y` : ''}
+                      <span className={ovrColor}>{ovr}</span>{` ${p.pos}`}{age ? ` | ${age}y` : ''}
                     </span>
                   </div>
-                  <span className={`text-center text-xs font-black tabular-nums shrink-0 ${ovrColor}`}>{ovr}</span>
                   {/* Desktop slider — inline. Stop propagation so dragging it doesn't fire tap-to-swap. */}
                   <input
                     type="range"
                     min={0}
                     max={48}
                     step={1}
-                    value={mins}
+                    value={displayMins}
                     readOnly={!writable}
                     disabled={!writable}
-                    onChange={e => setMins(p.internalId, +e.target.value)}
+                    onChange={e => writable && setDraggingSlider({ id: p.internalId, value: +e.target.value })}
+                    onPointerUp={() => {
+                      if (writable && draggingSlider?.id === p.internalId) {
+                        setMins(p.internalId, draggingSlider.value);
+                        setDraggingSlider(null);
+                      }
+                    }}
                     onClick={e => e.stopPropagation()}
                     onPointerDown={e => e.stopPropagation()}
+                    onFocus={noScrollOnFocus}
                     className={`hidden sm:block w-full touch-pan-x ${writable ? 'accent-sky-500 cursor-pointer' : 'accent-slate-500 cursor-not-allowed opacity-60'}`}
                   />
                   <span className="hidden sm:block text-xs font-mono text-slate-200 text-right tabular-nums">
-                    {mins}
+                    {displayMins}
                   </span>
                 </div>
                 {/* Mobile slider — own line, full width. */}
@@ -567,15 +641,22 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
                     min={0}
                     max={48}
                     step={1}
-                    value={mins}
+                    value={displayMins}
                     readOnly={!writable}
                     disabled={!writable}
-                    onChange={e => setMins(p.internalId, +e.target.value)}
+                    onChange={e => writable && setDraggingSlider({ id: p.internalId, value: +e.target.value })}
+                    onPointerUp={() => {
+                      if (writable && draggingSlider?.id === p.internalId) {
+                        setMins(p.internalId, draggingSlider.value);
+                        setDraggingSlider(null);
+                      }
+                    }}
                     onPointerDown={e => e.stopPropagation()}
+                    onFocus={noScrollOnFocus}
                     className={`flex-1 touch-pan-x ${writable ? 'accent-sky-500' : 'accent-slate-500 cursor-not-allowed opacity-60'}`}
                   />
                   <span className="text-xs font-mono text-slate-200 text-right tabular-nums w-9">
-                    {mins}
+                    {displayMins}
                   </span>
                 </div>
               </div>
