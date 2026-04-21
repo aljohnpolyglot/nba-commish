@@ -341,6 +341,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
   // ── Franchise records processing ──────────────────────────────────────────
   const processedRecords = useMemo(() => {
     const source = recordType === 'regular' ? regularRecords : playoffRecords;
+    const isPlayoff = recordType === 'playoff';
     // Filter out records from the 2025-26 real-life NBA season (Oct 2025 – Jun 2026)
     // since our simulation starts in 2025 and those real records conflict with simulated data.
     const filtered = source.filter(rec => {
@@ -355,19 +356,47 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
       } catch { /* keep if unparseable */ }
       return true;
     });
+
+    // Merge sim single-game franchise records without overwriting gist data.
+    // For each category, insert the sim record and re-sort so the highest value always wins.
+    const simRecs = (state.simFranchiseRecords ?? []).filter((rec: any) => {
+      if (rec.isPlayoff !== isPlayoff) return false;
+      if (isNBAHub) return true; // show all teams' records in NBA hub
+      return rec.tid === selectedTeam?.id;
+    });
+
+    const all = [...filtered, ...simRecs];
+
     const grouped: Record<string, any[]> = {};
-    filtered.forEach(rec => {
+    all.forEach(rec => {
       const cat = rec.SearchCategory;
       if (!grouped[cat]) grouped[cat] = [];
       grouped[cat].push(rec);
     });
+
+    // Re-sort each category so the highest value is first; deduplicate by player name
+    for (const cat of Object.keys(grouped)) {
+      grouped[cat].sort((a, b) => {
+        const av = parseStatVal(getStatValue(a, cat));
+        const bv = parseStatVal(getStatValue(b, cat));
+        return bv - av;
+      });
+      const seen = new Set<string>();
+      grouped[cat] = grouped[cat].filter(rec => {
+        const n = cleanName(rec.NAME ?? '').toLowerCase();
+        if (seen.has(n)) return false;
+        seen.add(n);
+        return true;
+      });
+    }
+
     return Object.entries(grouped)
       .sort(([a], [b]) => {
         const ia = CATEGORY_ORDER.indexOf(a), ib = CATEGORY_ORDER.indexOf(b);
         return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
       })
       .map(([, recs]) => recs);
-  }, [regularRecords, playoffRecords, recordType]);
+  }, [regularRecords, playoffRecords, recordType, state.simFranchiseRecords, selectedTeamId, isNBAHub]);
 
   // ── Filtered teams for list ────────────────────────────────────────────────
   const filteredTeams = useMemo(() => {

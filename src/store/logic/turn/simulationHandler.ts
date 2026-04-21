@@ -213,6 +213,62 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
             }
         }
 
+        // Track single-game franchise records from sim (per team, per category)
+        {
+            const statDefs = [
+                { cat: 'Points',               key: 'PTS',  get: (s: any) => s.pts ?? 0 },
+                { cat: 'Rebounds',             key: 'REB',  get: (s: any) => s.reb ?? s.trb ?? ((s.orb ?? 0) + (s.drb ?? 0)) },
+                { cat: 'Assists',              key: 'AST',  get: (s: any) => s.ast ?? 0 },
+                { cat: 'Steals',               key: 'STL',  get: (s: any) => s.stl ?? 0 },
+                { cat: 'Blocks',               key: 'BLK',  get: (s: any) => s.blk ?? 0 },
+                { cat: 'Three-Pointers Made',  key: '3PM',  get: (s: any) => s.threePm ?? 0 },
+                { cat: 'Field Goals Made',     key: 'FGM',  get: (s: any) => s.fgm ?? 0 },
+                { cat: 'Free Throws Made',     key: 'FTM',  get: (s: any) => s.ftm ?? 0 },
+                { cat: 'Turnovers',            key: 'TOV',  get: (s: any) => s.tov ?? 0 },
+                { cat: 'Offensive Rebounds',   key: 'OREB', get: (s: any) => s.orb ?? 0 },
+                { cat: 'Defensive Rebounds',   key: 'DREB', get: (s: any) => s.drb ?? 0 },
+            ];
+            const updatedSimRecords: any[] = [...(stateWithSim.simFranchiseRecords ?? [])];
+            for (const r of simPatch.results) {
+                if ((r.homeTeamId ?? 0) < 0 || (r.awayTeamId ?? 0) < 0) continue;
+                const schedGame = stateWithSim.schedule?.find((g: any) => g.gid === r.gameId);
+                const isPlayoff = schedGame?.isPlayoff === true;
+                const gameDate: string = r.date ?? stateWithSim.date ?? '';
+                const rSides = [
+                    { stats: r.homeStats ?? [], teamId: r.homeTeamId, oppId: r.awayTeamId },
+                    { stats: r.awayStats ?? [], teamId: r.awayTeamId, oppId: r.homeTeamId },
+                ];
+                for (const { stats, teamId, oppId } of rSides) {
+                    const team = stateWithSim.teams.find((t: any) => t.id === teamId);
+                    const opp = stateWithSim.teams.find((t: any) => t.id === oppId);
+                    if (!team) continue;
+                    for (const stat of stats) {
+                        for (const { cat, key, get } of statDefs) {
+                            const val = get(stat);
+                            if (val <= 0) continue;
+                            const idx = updatedSimRecords.findIndex(
+                                (rec: any) => rec.tid === teamId && rec.category === cat && rec.isPlayoff === isPlayoff,
+                            );
+                            if (idx === -1 || val > updatedSimRecords[idx].value) {
+                                const rec: any = {
+                                    tid: teamId, category: cat, isPlayoff, value: val,
+                                    NAME: stat.name ?? '', DATE: gameDate,
+                                    OPP: opp?.abbrev ?? '', TM: team.abbrev ?? '',
+                                    SearchCategory: cat, [key]: String(val),
+                                };
+                                if (idx === -1) updatedSimRecords.push(rec);
+                                else updatedSimRecords[idx] = rec;
+                            }
+                        }
+                    }
+                }
+            }
+            if (updatedSimRecords.length !== (stateWithSim.simFranchiseRecords ?? []).length ||
+                updatedSimRecords.some((r, i) => r !== (stateWithSim.simFranchiseRecords ?? [])[i])) {
+                stateWithSim = { ...stateWithSim, simFranchiseRecords: updatedSimRecords };
+            }
+        }
+
         // Check roster compliance: if still over 15 during regular season, send coach message
         if (stateWithSim.gameMode === 'gm' && stateWithSim.userTeamId !== undefined) {
             const isRegularSeason = (simMonth === 10 && simDayNum >= 24) || (simMonth >= 11) || (simMonth <= 3);

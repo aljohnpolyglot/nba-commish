@@ -1145,6 +1145,12 @@ historicalAwards: HistoricalAward[];
   pendingAwardToasts?: { playerName: string; teamName: string; teamAbbrev: string; awardLabel: string }[];
   pendingPlayoffsToasts?: { teamName: string; body: string }[];
   pendingOptionToasts?: { playerName: string; teamName: string; pos: string; decision: 'player-in' | 'player-out' | 'team-exercised' | 'team-declined'; amountM?: number }[];
+  // Single-game franchise records set during sim — merged into TeamHistoryView Records tab
+  simFranchiseRecords?: Array<{
+    tid: number; category: string; isPlayoff: boolean;
+    NAME: string; value: number; DATE: string; OPP: string; TM: string;
+    SearchCategory: string; [key: string]: any;
+  }>;
 
   // ── FA Bidding (GM Mode) ──────────────────────────────────────────────────
   faBidding?: {
