@@ -12,6 +12,9 @@ import {
   filterToTeam, getStatValue, CATEGORY_ORDER, CATEGORY_ORDER_AVG,
   cleanName, computeLiveTotals, mergeCareerLeaders, mergeAverageLeaders, STAT_MAP, parseStatVal,
 } from '../../../data/franchiseService';
+import {
+  ensurePhotosLoaded, getPhotoBySlug, getPhotoByName,
+} from '../../../data/realPlayerDataFetcher';
 import { getTeamMascot } from '../../../utils/helpers';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import type { Tab } from '../../../types';
@@ -133,18 +136,27 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
   // ── Player photo helper ───────────────────────────────────────────────────
   const findPlayerImg = (name: string): string => {
     const key = name?.toLowerCase().trim();
-    // 1. Live sim player has their own photo
+    // 1. Live sim player — prefer imgURL, then player-photos.json by srID
     const p = state.players.find(pl => pl.name?.toLowerCase() === key);
     if (p?.imgURL) return p.imgURL;
-    // 2. Missing-portraits gist (legends from historical data)
+    if (p?.srID) {
+      const fromPhotos = getPhotoBySlug(p.srID);
+      if (fromPhotos) return fromPhotos;
+    }
+    // 2. Missing-portraits gist (user-curated legends list)
     const fromGist = portraitMap.get(key);
     if (fromGist) return fromGist;
-    // 3. Generic avatar fallback
+    // 3. player-photos.json via ZenGM name→srID map (available once a bio was opened)
+    const fromZenGM = getPhotoByName(name);
+    if (fromZenGM) return fromZenGM;
+    // 4. Generic avatar fallback
     return avatarFallback(name);
   };
 
-  // ── Fetch missing-portraits gist once on mount ────────────────────────────
+  // ── Fetch missing-portraits gist + preload player-photos.json on mount ────
   useEffect(() => {
+    // player-photos.json is small — warm it up so findPlayerImg can use it immediately
+    ensurePhotosLoaded();
     fetchMissingPortraits()
       .then(portraits => {
         const map = new Map<string, string>();
@@ -377,6 +389,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
 
   if (!selectedTeam) {
     return (
+      <>
       <div className="h-full overflow-y-auto custom-scrollbar bg-[#09090b] text-zinc-100">
         <div className="max-w-6xl mx-auto p-6 md:p-10">
           <div className="mb-10">
@@ -445,6 +458,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
         </div>
       </div>
       {quick.portals}
+      </>
     );
   }
 
