@@ -481,7 +481,9 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
           if (!stats.length) continue;
           const agg = stats.length > 1 ? aggregateStats(stats) : stats[0];
           if (agg.gp < 1) continue;
-          const t = state.teams.find(t2 => t2.id === agg.tid);
+          // For current season, use player's current tid. For historical seasons, use agg.tid.
+          const displayTid = yr === state.leagueStats.year ? player.tid : agg.tid;
+          const t = state.teams.find(t2 => t2.id === displayTid);
           const rowTeam = t?.abbrev ?? currentTeamAbbrev;
           if (teamFilter !== 'all' && rowTeam !== teamFilter) continue;
           result.push(toRow(player, agg, statType, yr, rowTeam, age));
@@ -491,7 +493,9 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
         if (!stats.length) continue;
         const agg = stats.length > 1 ? aggregateStats(stats) : stats[0];
         if (agg.gp < 1) continue;
-        const t = state.teams.find(t2 => t2.id === agg.tid);
+        // For current season, use player's current tid. For historical seasons, use agg.tid since player may have moved.
+        const displayTid = season === state.leagueStats.year ? player.tid : agg.tid;
+        const t = state.teams.find(t2 => t2.id === displayTid);
         const rowTeam = t?.abbrev ?? currentTeamAbbrev;
         if (teamFilter !== 'all' && rowTeam !== teamFilter) continue;
         result.push(toRow(player, agg, statType, season as number, rowTeam, age));
