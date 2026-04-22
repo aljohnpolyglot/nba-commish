@@ -47,7 +47,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const faMoratoriumEndStr  = toISODateString(getFreeAgencyMoratoriumEndDate(seasonYear, ls));
   const draftLotteryStr     = toISODateString(getDraftLotteryDate(seasonYear, ls));
   const draftDayStr         = toISODateString(getDraftDate(seasonYear, ls));
-  const draftDayStr2        = toISODateString(new Date(getDraftDate(seasonYear, ls).getTime() + 86_400_000)); // day after = sim-execution day
   const combineStartStr     = toISODateString(getDraftCombineStartDate(seasonYear, ls));
   const combineEndStr       = toISODateString(getDraftCombineEndDate(seasonYear, ls));
   const trainingCampStr     = toISODateString(getTrainingCampDate(seasonYear, ls));
@@ -164,7 +163,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               const isTradeDeadline  = dateNorm === tradeDeadlineStr;
               const isDraftLottery   = dateNorm === draftLotteryStr;
               const inCombineWindow  = dateNorm >= combineStartStr && dateNorm <= combineEndStr;
-              const isDraft          = dateNorm === draftDayStr || dateNorm === draftDayStr2;
+              const isDraft          = dateNorm === draftDayStr;
               const isFAMoratorium   = dateNorm === faStartStr;
               const isFAOpen         = dateNorm === faMoratoriumEndStr;
               const isTrainingCamp   = dateNorm === trainingCampStr;
