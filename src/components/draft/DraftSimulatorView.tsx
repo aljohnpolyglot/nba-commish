@@ -803,16 +803,73 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   // returns to the user's slot.
   const [simTarget, setSimTarget] = useState<number | null>(null);
 
+  // Build the drafted-player fields for a given pick slot. Mirrors finalizeDraft logic.
+  const buildDraftedPlayerUpdate = useCallback((player: any, pickSlot: number) => {
+    const ls = state.leagueStats ?? {};
+    const season: number = (ls as any).year ?? 2026;
+    const team = draftOrder[pickSlot - 1];
+    if (!team) return null;
+
+    const round = pickSlot <= 30 ? 1 : 2;
+    const pickInRound = pickSlot <= 30 ? pickSlot : pickSlot - 30;
+    const rookieScaleType = (ls as any).rookieScaleType ?? 'dynamic';
+    const capM: number = (ls as any).salaryCap ?? 154.6;
+    const maxPct: number = (ls as any).rookieMaxContractPercentage ?? 9;
+    const staticAmtUSD = ((ls as any).rookieStaticAmount ?? 3) * 1_000_000;
+    const scaleAppliesTo = (ls as any).rookieScaleAppliesTo ?? 'first_round';
+    const guaranteedYrs: number = (ls as any).rookieContractLength ?? 2;
+    const teamOptEnabled: boolean = (ls as any).rookieTeamOptionsEnabled ?? true;
+    const teamOptYears: number = (ls as any).rookieTeamOptionYears ?? 2;
+    const restrictedFA: boolean = (ls as any).rookieRestrictedFreeAgentEligibility ?? true;
+    const minSalaryUSD = ((ls as any).minContract ?? 1.273) * 1_000_000;
+
+    let salaryAmtUSD: number;
+    if (rookieScaleType === 'none') salaryAmtUSD = minSalaryUSD;
+    else if (rookieScaleType === 'static') salaryAmtUSD = staticAmtUSD;
+    else {
+      const useScale = round === 1 || scaleAppliesTo === 'both_rounds';
+      salaryAmtUSD = useScale ? getRookieContractAmount(pickSlot, capM, maxPct, minSalaryUSD) : minSalaryUSD;
+    }
+
+    const baseYrs = round === 1 ? guaranteedYrs : 2;
+    const optionYrs = (round === 1 && teamOptEnabled) ? teamOptYears : 0;
+    const totalYrs = baseYrs + optionYrs;
+
+    return {
+      tid: team.id as number,
+      status: 'Active' as const,
+      draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: (team as any)._originalTid ?? team.id },
+      contract: {
+        amount: Math.round(salaryAmtUSD / 1_000),
+        exp: season + totalYrs - 1,
+        ...(optionYrs > 0 && { hasTeamOption: true, teamOptionExp: season + baseYrs }),
+        ...(round === 1 && restrictedFA && { restrictedFA: true }),
+        rookie: true,
+      },
+    };
+  }, [state.leagueStats, draftOrder]);
+
+  // Immediately commit a single pick to game state — no roster gate.
+  const commitPickToState = useCallback((pickSlot: number, player: any) => {
+    const update = buildDraftedPlayerUpdate(player, pickSlot);
+    if (!update) return;
+    const updatedPlayers = state.players.map((p: any) =>
+      p.internalId === player.internalId ? { ...p, ...update } : p
+    );
+    dispatch({ type: 'UPDATE_STATE', payload: { players: updatedPlayers } } as any);
+  }, [state.players, buildDraftedPlayerUpdate, dispatch]);
+
   const draftPlayer = useCallback((player: any, auto = false) => {
     setHasStarted(true);
     if (auto) {
       setDrafted(prev => ({ ...prev, [currentPick]: player }));
+      commitPickToState(currentPick, player);
       setCurrentPick(prev => prev + 1);
     } else {
       setModalPlayer(player);
       setModalMode('draft');
     }
-  }, [currentPick]);
+  }, [currentPick, commitPickToState]);
 
   // Instant sim — process every pick from currentPick up to (but not including) targetPick
   // synchronously in a single state update. Used by "Sim to My Pick" / "Sim to End" so the
@@ -828,15 +885,30 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     let poolIdx = 0;
 
     let pickNum = currentPick;
+    const freshPicks: Array<{ slot: number; player: any }> = [];
     while (pickNum < targetPick && poolIdx < pool.length) {
       const top = pool[poolIdx++];
       newPicks[pickNum] = top;
+      freshPicks.push({ slot: pickNum, player: top });
       pickNum++;
     }
 
     setDrafted(newPicks);
     setCurrentPick(pickNum);
-  }, [drafted, allProspects, currentPick]);
+
+    // Batch-commit all new picks to game state immediately — no roster gate
+    if (freshPicks.length > 0) {
+      let updatedPlayers = [...state.players];
+      for (const { slot, player } of freshPicks) {
+        const update = buildDraftedPlayerUpdate(player, slot);
+        if (!update) continue;
+        updatedPlayers = updatedPlayers.map((p: any) =>
+          p.internalId === player.internalId ? { ...p, ...update } : p
+        );
+      }
+      dispatch({ type: 'UPDATE_STATE', payload: { players: updatedPlayers } } as any);
+    }
+  }, [drafted, allProspects, currentPick, state.players, buildDraftedPlayerUpdate, dispatch]);
 
   // Auto-sim loop
   useEffect(() => {
@@ -863,6 +935,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     }
     if (modalPlayer) {
       setDrafted(prev => ({ ...prev, [currentPick]: modalPlayer }));
+      commitPickToState(currentPick, modalPlayer);
       setCurrentPick(prev => prev + 1);
       setModalPlayer(null);
     }
