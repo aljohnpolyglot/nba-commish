@@ -866,19 +866,20 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
       const baseYrs   = round === 1 ? guaranteedYrs : 2;
       const optionYrs = (round === 1 && teamOptEnabled) ? teamOptYears : 0;
       const totalYrs  = baseYrs + optionYrs;
+      const r2NonGuaranteed = round === 2 && ((state.leagueStats as any)?.r2ContractsNonGuaranteed ?? true);
       return {
         ...p,
         tid: team.id,
         status: 'Active' as const,
+        ...(r2NonGuaranteed && { nonGuaranteed: true }),
         draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: team.id },
         contract: {
           amount: salaryAmount / 1_000,
           exp: season + totalYrs - 1,
           salaryDetails: [{ season, amount: salaryAmount }],
-          // Team option and RFA metadata (mirrors finalizeDraft in DraftSimulatorView)
           ...(optionYrs > 0 && {
             hasTeamOption: true,
-            teamOptionExp: season + baseYrs, // option kicks in after guaranteed years (decision summer before this season)
+            teamOptionExp: season + baseYrs,
           }),
           ...(round === 1 && restrictedFA && { restrictedFA: true }),
           rookie: true,

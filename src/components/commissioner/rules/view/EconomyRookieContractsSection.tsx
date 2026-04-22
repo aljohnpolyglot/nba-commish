@@ -152,11 +152,24 @@ export const EconomyRookieContractsSection = ({
 
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-800/50">
                 <div className="flex items-center">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Non-Guaranteed R2 Contracts</span>
+                    <InfoTooltip text="2nd round rookies sign non-guaranteed deals. Teams can waive them for free before Oct 22. Players who survive to Jan 10 are automatically guaranteed." />
+                </div>
+                <button
+                    onClick={() => props.setR2ContractsNonGuaranteed(!(props.r2ContractsNonGuaranteed ?? true))}
+                    className={`w-8 h-4 rounded-full transition-all duration-200 relative ${(props.r2ContractsNonGuaranteed ?? true) ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                >
+                    <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform duration-200 ${(props.r2ContractsNonGuaranteed ?? true) ? 'left-4.5' : 'left-0.5'}`} />
+                </button>
+            </div>
+
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-800/50">
+                <div className="flex items-center">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Rookie Contract Cap Exception</span>
                     <InfoTooltip text="Allows teams to sign their first-round draft picks even if they are over the salary cap." />
                 </div>
-                <button 
-                    onClick={() => props.setRookieContractCapException(!props.rookieContractCapException)} 
+                <button
+                    onClick={() => props.setRookieContractCapException(!props.rookieContractCapException)}
                     className={`w-8 h-4 rounded-full transition-all duration-200 relative ${props.rookieContractCapException ? 'bg-indigo-500' : 'bg-slate-700'}`}
                 >
                     <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform duration-200 ${props.rookieContractCapException ? 'left-4.5' : 'left-0.5'}`} />

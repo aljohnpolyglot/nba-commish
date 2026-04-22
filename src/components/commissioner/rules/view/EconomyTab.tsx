@@ -88,6 +88,8 @@ interface EconomyTabProps {
     setRookieRestrictedFreeAgentEligibility: (val: boolean) => void;
     rookieContractCapException: boolean;
     setRookieContractCapException: (val: boolean) => void;
+    r2ContractsNonGuaranteed: boolean;
+    setR2ContractsNonGuaranteed: (val: boolean) => void;
     inflationEnabled: boolean;
     setInflationEnabled: (val: boolean) => void;
     inflationMin: number;

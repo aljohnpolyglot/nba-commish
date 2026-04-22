@@ -244,6 +244,7 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
   const [rookieTeamOptionYears, setRookieTeamOptionYears] = useState(leagueStats.rookieTeamOptionYears ?? 2);
   const [rookieRestrictedFreeAgentEligibility, setRookieRestrictedFreeAgentEligibility] = useState(leagueStats.rookieRestrictedFreeAgentEligibility ?? true);
   const [rookieContractCapException, setRookieContractCapException] = useState(leagueStats.rookieContractCapException ?? true);
+  const [r2ContractsNonGuaranteed, setR2ContractsNonGuaranteed] = useState(leagueStats.r2ContractsNonGuaranteed ?? true);
 
   // Honors
   const [allNbaTeams, setAllNbaTeams] = useState(leagueStats.allNbaTeams ?? 3);
@@ -423,6 +424,7 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
         rookieTeamOptionYears !== (leagueStats.rookieTeamOptionYears ?? 2) ||
         rookieRestrictedFreeAgentEligibility !== (leagueStats.rookieRestrictedFreeAgentEligibility ?? true) ||
         rookieContractCapException !== (leagueStats.rookieContractCapException ?? true) ||
+        r2ContractsNonGuaranteed !== (leagueStats.r2ContractsNonGuaranteed ?? true) ||
         allNbaTeams !== (leagueStats.allNbaTeams ?? 3) ||
         allNbaPlayersPerTeam !== (leagueStats.allNbaPlayersPerTeam ?? 5) ||
         allDefenseTeams !== (leagueStats.allDefenseTeams ?? 2) ||
@@ -572,6 +574,7 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
         if (rookieTeamOptionYears !== (leagueStats.rookieTeamOptionYears ?? 2)) changes.push(`Rookie Team Option Years set to ${rookieTeamOptionYears}`);
         if (rookieRestrictedFreeAgentEligibility !== (leagueStats.rookieRestrictedFreeAgentEligibility ?? true)) changes.push(`Rookie Restricted Free Agent Eligibility ${rookieRestrictedFreeAgentEligibility ? 'enabled' : 'disabled'}`);
         if (rookieContractCapException !== (leagueStats.rookieContractCapException ?? true)) changes.push(`Rookie Contract Cap Exception ${rookieContractCapException ? 'enabled' : 'disabled'}`);
+        if (r2ContractsNonGuaranteed !== (leagueStats.r2ContractsNonGuaranteed ?? true)) changes.push(`Non-Guaranteed R2 Contracts ${r2ContractsNonGuaranteed ? 'enabled' : 'disabled'}`);
 
         const penalty = ruleChangeService.checkRapidChangePenalty(changes);
 
@@ -765,6 +768,7 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
             rookieTeamOptionYears,
             rookieRestrictedFreeAgentEligibility,
             rookieContractCapException,
+            r2ContractsNonGuaranteed,
             allNbaTeams,
             allNbaPlayersPerTeam,
             allDefenseTeams,
@@ -988,6 +992,7 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
     setRookieTeamOptionYears(leagueStats.rookieTeamOptionYears ?? 2);
     setRookieRestrictedFreeAgentEligibility(leagueStats.rookieRestrictedFreeAgentEligibility ?? true);
     setRookieContractCapException(leagueStats.rookieContractCapException ?? true);
+    setR2ContractsNonGuaranteed(leagueStats.r2ContractsNonGuaranteed ?? true);
     setAllNbaTeams(leagueStats.allNbaTeams ?? 3);
     setAllNbaPlayersPerTeam(leagueStats.allNbaPlayersPerTeam ?? 5);
     setAllDefenseTeams(leagueStats.allDefenseTeams ?? 2);
@@ -1299,6 +1304,7 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
     rookieTeamOptionYears, setRookieTeamOptionYears,
     rookieRestrictedFreeAgentEligibility, setRookieRestrictedFreeAgentEligibility,
     rookieContractCapException, setRookieContractCapException,
+    r2ContractsNonGuaranteed, setR2ContractsNonGuaranteed,
     allNbaTeams, setAllNbaTeams,
     allNbaPlayersPerTeam, setAllNbaPlayersPerTeam,
     allDefenseTeams, setAllDefenseTeams,

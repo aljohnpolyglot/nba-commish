@@ -306,6 +306,7 @@ export interface LeagueStats {
   // Economy - Teams
   twoWayContractsEnabled?: boolean;
   nonGuaranteedContractsEnabled?: boolean;
+  r2ContractsNonGuaranteed?: boolean;
   minPlayersPerTeam?: number;
   maxPlayersPerTeam?: number;
   maxStandardPlayersPerTeam?: number;

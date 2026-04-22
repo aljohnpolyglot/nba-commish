@@ -90,9 +90,12 @@ function computeDraftPickFields(pickSlot: number, team: any, ls: any) {
   const baseYrs = round === 1 ? guaranteedYrs : 2;
   const optionYrs = (round === 1 && teamOptEnabled) ? teamOptYears : 0;
 
+  const r2NonGuaranteed = round === 2 && ((ls as any)?.r2ContractsNonGuaranteed ?? true);
+
   return {
     tid: team.id as number,
     status: 'Active' as const,
+    ...(r2NonGuaranteed && { nonGuaranteed: true }),
     draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: (team as any)._originalTid ?? team.id },
     contract: {
       amount: Math.round(salaryAmtUSD / 1_000),
