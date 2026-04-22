@@ -257,6 +257,48 @@ function toRow(
   };
 }
 
+// Emit one row per team a player accumulated stats with in a single season.
+// When ≥2 teams, also prepend a combined nTM row (only in all-teams view).
+function historicalTeamRows(
+  stats: NBAGMStat[],
+  player: NBAPlayer,
+  teams: { id: number; abbrev: string }[],
+  statType: StatType,
+  seasonLabel: number | 'career',
+  age: number,
+  teamFilter: string,
+): ComputedRow[] {
+  const byTid = new Map<number, NBAGMStat[]>();
+  for (const s of stats) {
+    if (!byTid.has(s.tid)) byTid.set(s.tid, []);
+    byTid.get(s.tid)!.push(s);
+  }
+
+  if (byTid.size <= 1) {
+    const agg = stats.length > 1 ? aggregateStats(stats) : stats[0];
+    if (agg.gp < 1) return [];
+    const t = teams.find(t2 => t2.id === agg.tid);
+    const rowTeam = t?.abbrev ?? (agg.tid < 0 ? 'FA' : '?');
+    if (teamFilter !== 'all' && rowTeam !== teamFilter) return [];
+    return [toRow(player, agg, statType, seasonLabel, rowTeam, age)];
+  }
+
+  const result: ComputedRow[] = [];
+  if (teamFilter === 'all') {
+    const agg = aggregateStats(stats);
+    if (agg.gp >= 1) result.push(toRow(player, agg, statType, seasonLabel, `${byTid.size}TM`, age));
+  }
+  for (const [tid, tidStats] of byTid) {
+    const agg = tidStats.length > 1 ? aggregateStats(tidStats) : tidStats[0];
+    if (agg.gp < 1) continue;
+    const t = teams.find(t2 => t2.id === tid);
+    const rowTeam = t?.abbrev ?? (tid < 0 ? 'FA' : '?');
+    if (teamFilter !== 'all' && rowTeam !== teamFilter) continue;
+    result.push(toRow(player, agg, statType, seasonLabel, rowTeam, age));
+  }
+  return result;
+}
+
 // ─── Column definitions ─────────────────────────────────────────────────────
 
 const BASIC_COLS: { key: SortField; label: string; dim?: boolean }[] = [
@@ -466,7 +508,6 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
       if (season === 'career') {
         const stats = getPhaseStats(player, null);
         if (!stats.length) {
-          // No local stats — try bref row if we have one cached
           const cached = brefRows.get(player.internalId);
           if (cached) result.push(cached);
           continue;
@@ -479,26 +520,26 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
         for (const yr of allSeasonYears) {
           const stats = getPhaseStats(player, yr);
           if (!stats.length) continue;
-          const agg = stats.length > 1 ? aggregateStats(stats) : stats[0];
-          if (agg.gp < 1) continue;
-          // For current season, use player's current tid. For historical seasons, use agg.tid.
-          const displayTid = yr === state.leagueStats.year ? player.tid : agg.tid;
-          const t = state.teams.find(t2 => t2.id === displayTid);
-          const rowTeam = t?.abbrev ?? currentTeamAbbrev;
-          if (teamFilter !== 'all' && rowTeam !== teamFilter) continue;
-          result.push(toRow(player, agg, statType, yr, rowTeam, age));
+          if (yr === state.leagueStats.year) {
+            const agg = stats.length > 1 ? aggregateStats(stats) : stats[0];
+            if (agg.gp < 1) continue;
+            if (teamFilter !== 'all' && currentTeamAbbrev !== teamFilter) continue;
+            result.push(toRow(player, agg, statType, yr, currentTeamAbbrev, age));
+          } else {
+            result.push(...historicalTeamRows(stats, player, state.teams, statType, yr, age, teamFilter));
+          }
         }
       } else {
         const stats = getPhaseStats(player, season as number);
         if (!stats.length) continue;
-        const agg = stats.length > 1 ? aggregateStats(stats) : stats[0];
-        if (agg.gp < 1) continue;
-        // For current season, use player's current tid. For historical seasons, use agg.tid since player may have moved.
-        const displayTid = season === state.leagueStats.year ? player.tid : agg.tid;
-        const t = state.teams.find(t2 => t2.id === displayTid);
-        const rowTeam = t?.abbrev ?? currentTeamAbbrev;
-        if (teamFilter !== 'all' && rowTeam !== teamFilter) continue;
-        result.push(toRow(player, agg, statType, season as number, rowTeam, age));
+        if (season === state.leagueStats.year) {
+          const agg = stats.length > 1 ? aggregateStats(stats) : stats[0];
+          if (agg.gp < 1) continue;
+          if (teamFilter !== 'all' && currentTeamAbbrev !== teamFilter) continue;
+          result.push(toRow(player, agg, statType, season as number, currentTeamAbbrev, age));
+        } else {
+          result.push(...historicalTeamRows(stats, player, state.teams, statType, season as number, age, teamFilter));
+        }
       }
     }
     return result;
