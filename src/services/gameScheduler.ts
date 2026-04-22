@@ -58,41 +58,47 @@ export const generateSchedule = (
       scheduledDates[dateStr].add(t2);
   };
 
-  // BUG 4 FIX: Preseason Games (Oct 1 to Oct 15)
-  // Iterate pairs so each game counts for both teams simultaneously.
-  // Target: 4 preseason games per team → schedule (teams.length * 2) total games.
+  // Preseason Games (Oct 1 to Oct 15): exactly 4 games per team via round-robin pairing.
+  // Build 4 rounds of pairs so every team is guaranteed to appear exactly 4 times.
   const preseasonStart = new Date(`${prevYr}-10-01T00:00:00Z`);
   const preseasonLength = 15;
-  const preseasonTarget = (teams.length * 4) / 2; // each game covers 2 teams
-  let preseasonScheduled = 0;
-  let preseasonAttempts = 0;
-  const shuffled = [...teams].sort(() => Math.random() - 0.5);
+  const gamesPerTeam = 4;
 
-  while (preseasonScheduled < preseasonTarget && preseasonAttempts < preseasonTarget * 20) {
-      preseasonAttempts++;
-      const idx1 = Math.floor(Math.random() * shuffled.length);
-      let idx2 = Math.floor(Math.random() * shuffled.length);
-      if (idx2 === idx1) continue;
-      const t1 = shuffled[idx1];
-      const t2 = shuffled[idx2];
+  const preseasonPairs: [NBATeam, NBATeam][] = [];
+  const preseasonCount = new Map<number, number>(teams.map(t => [t.id, 0]));
+  for (let round = 0; round < gamesPerTeam; round++) {
+    const pool = [...teams]
+      .filter(t => (preseasonCount.get(t.id) ?? 0) < gamesPerTeam)
+      .sort(() => Math.random() - 0.5);
+    for (let i = 0; i + 1 < pool.length; i += 2) {
+      preseasonPairs.push([pool[i], pool[i + 1]]);
+      preseasonCount.set(pool[i].id, (preseasonCount.get(pool[i].id) ?? 0) + 1);
+      preseasonCount.set(pool[i + 1].id, (preseasonCount.get(pool[i + 1].id) ?? 0) + 1);
+    }
+  }
+
+  for (const [t1, t2] of preseasonPairs) {
+    for (let attempt = 0; attempt < 30; attempt++) {
       const randomDay = Math.floor(Math.random() * preseasonLength);
       const gameDate = new Date(preseasonStart);
       gameDate.setUTCDate(preseasonStart.getUTCDate() + randomDay);
       const dateStr = gameDate.toISOString().split('T')[0];
       if (isTeamFree(dateStr, t1.id, t2.id)) {
-          markScheduled(dateStr, t1.id, t2.id);
-          games.push({
-              gid: gameId++,
-              homeTid: Math.random() > 0.5 ? t1.id : t2.id,
-              awayTid: Math.random() > 0.5 ? t2.id : t1.id,
-              homeScore: 0,
-              awayScore: 0,
-              played: false,
-              date: gameDate.toISOString(),
-              isPreseason: true
-          } as any);
-          preseasonScheduled++;
+        markScheduled(dateStr, t1.id, t2.id);
+        const t1Home = Math.random() > 0.5;
+        games.push({
+          gid: gameId++,
+          homeTid: t1Home ? t1.id : t2.id,
+          awayTid: t1Home ? t2.id : t1.id,
+          homeScore: 0,
+          awayScore: 0,
+          played: false,
+          date: gameDate.toISOString(),
+          isPreseason: true
+        } as any);
+        break;
       }
+    }
   }
 
   // Intra-squad scrimmages: 1 per team in early preseason (Oct 1-7), marked exhibition so stats/standings never count

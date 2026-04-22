@@ -479,7 +479,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
       {/* ── Player Selector Modal ──────────────────────────────────── */}
       {editingColumn && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl sm:rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[85vh]">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl sm:rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[92dvh] sm:max-h-[85vh]">
             <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between shrink-0">
               <h3 className="text-sm sm:text-lg font-black text-white uppercase tracking-widest">
                 {editingColumn === 'untouchable' ? 'Untouchables (Max 10)' : editingColumn === 'block' ? 'Trading Block (Max 10)' : 'Target List (Max 10)'}

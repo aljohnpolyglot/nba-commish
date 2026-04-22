@@ -394,7 +394,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
             fullInitialState,
             payload.startDate,
             payload.onProgress,
-            { assistantGM: payload.assistantGM ?? false }
+            { assistantGM: payload.assistantGM ?? false, stopBefore: true }
         );
 
         return {

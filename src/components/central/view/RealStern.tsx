@@ -28,6 +28,7 @@ import { INITIAL_ASSETS, US_STATES } from './realsternData';
 import { useGame } from '../../../store/GameContext';
 import { RealSternActionModal } from '../../modals/RealSternActionModal';
 import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
+import { useDraftEventGate } from '../../../hooks/useDraftEventGate';
 
 const IMAGE_FALLBACK = 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800';
 
@@ -60,6 +61,7 @@ const formatWealth = (millions: number) => {
 export default function RealStern() {
   const { state, dispatchAction } = useGame();
   const rosterGate = useRosterComplianceGate();
+  const draftGate = useDraftEventGate();
   const wealth = state.stats.personalWealth * 1_000_000;
 
   const inventory = (state.realEstateInventory ?? []) as OwnedAsset[];
@@ -198,13 +200,13 @@ export default function RealStern() {
     const recipientName = contacts.map(c => c.name).join(', ');
     setInventory(prev => prev.filter(a => a.instanceId !== asset.instanceId));
     setGiftModalAsset(null);
-    rosterGate.attempt(() => dispatchAction({
+    rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({
       type: 'ADVANCE_DAY',
       payload: {
         outcomeText: `Commissioner gifted "${asset.title}" (valued at $${asset.price.toLocaleString()}) to ${recipientName} as a personal gesture.`,
         isSpecificEvent: true,
       },
-    } as any));
+    } as any)));
     showNotification(`${asset.title} gifted to ${recipientName}. They will remember this.`);
   };
 
@@ -213,13 +215,13 @@ export default function RealStern() {
     const guestName = contacts.map(c => c.name).join(', ');
     setInviteModalAsset(null);
     const reasonNote = reason?.trim() ? ` — ${reason.trim()}` : ' for an exclusive private meeting';
-    rosterGate.attempt(() => dispatchAction({
+    rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({
       type: 'ADVANCE_DAY',
       payload: {
         outcomeText: `Commissioner hosted ${guestName} at ${asset.title}${reasonNote}.`,
         isSpecificEvent: true,
       },
-    } as any));
+    } as any)));
     showNotification(`Invitation sent to ${guestName} for ${asset.title}.`);
   };
 
@@ -573,6 +575,7 @@ export default function RealStern() {
         </p>
       </footer>
       {rosterGate.modal}
+      {draftGate.modal}
     </div>
   );
 }

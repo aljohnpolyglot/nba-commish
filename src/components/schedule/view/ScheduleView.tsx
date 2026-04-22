@@ -13,6 +13,7 @@ import { BoxScoreModal } from '../../modals/BoxScoreModal';
 import { WatchGamePreviewModal } from '../../modals/WatchGamePreviewModal';
 import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
 import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
+import { useDraftEventGate } from '../../../hooks/useDraftEventGate';
 
 // Sub-components
 import { AllStarDayView } from './components/AllStarDayView';
@@ -83,23 +84,29 @@ export const ScheduleView: React.FC = () => {
 
   // Roster compliance gate — shared hook covers every sim advancement path.
   const rosterGate = useRosterComplianceGate();
+  const draftGate = useDraftEventGate({
+    onNavigateToDraftLottery: () => setCurrentView('Draft Lottery' as Tab),
+    onNavigateToDraft: () => setCurrentView('Draft Board' as Tab),
+  });
 
   const simulateDay = async () => {
-    rosterGate.attempt(() => dispatchAction({ type: 'ADVANCE_DAY' }));
+    rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({ type: 'ADVANCE_DAY' })));
   };
 
   const simulateToDate = async (targetDateStr: string) => {
     // stopBefore: land ON the selected date with that day's games still unplayed,
     // so the user can choose to watch or sim them manually.
     rosterGate.attempt(() =>
-      dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: targetDateStr, stopBefore: true } } as any)
+      draftGate.attempt(() =>
+        dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: targetDateStr, stopBefore: true } } as any)
+      )
     );
   };
 
   const simulateSeason = async () => {
     // Season sim — include the last day's games (we want the season complete).
     const lastGame = [...state.schedule].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-    rosterGate.attempt(() => {
+    rosterGate.attempt(() => draftGate.attempt(() => {
       if (lastGame) {
         return dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: lastGame.date } } as any);
       }
@@ -107,7 +114,7 @@ export const ScheduleView: React.FC = () => {
       const farDate = new Date(`${stateDateNorm}T00:00:00Z`);
       farDate.setUTCDate(farDate.getUTCDate() + 180);
       return dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: farDate.toISOString() } } as any);
-    });
+    }));
   };
 
   const formatDateDisplay = (dateStr: string) => {
@@ -251,13 +258,13 @@ export const ScheduleView: React.FC = () => {
     // Advance the day — exhibition games (All-Star weekend) skip this
     const isExhibition = watchingGame.homeTid < 0;
     if (!isExhibition) {
-      rosterGate.attempt(() => dispatchAction({
+      rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({
         type: 'ADVANCE_DAY',
         payload: {
           watchedGameResult: result,
           ...(currentRig !== undefined ? { riggedForTid: currentRig } : {}),
         }
-      } as any));
+      } as any)));
     }
   };
 
@@ -476,7 +483,7 @@ export const ScheduleView: React.FC = () => {
               onClose={() => setPendingWatchGame(null)}
               onConfirm={async (rig, watchLive) => {
                 if (watchLive === false) {
-                  rosterGate.attempt(() => dispatchAction({ type: 'ADVANCE_DAY', payload: rig !== undefined ? { riggedForTid: rig } : undefined } as any));
+                  rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({ type: 'ADVANCE_DAY', payload: rig !== undefined ? { riggedForTid: rig } : undefined } as any)));
                   setPendingWatchGame(null);
                 } else {
                   // Pre-simulate the game and record the result BEFORE opening the watch screen.
@@ -497,10 +504,10 @@ export const ScheduleView: React.FC = () => {
                   console.log(`[WatchGame] pre-sim done — home=${simResult.homeScore} away=${simResult.awayScore} gid=${simResult.gameId}`);
                   await dispatchAction({ type: 'RECORD_WATCHED_GAME' as any, payload: { gameId: game.gid, result: simResult } });
                   if (!isExhibition) {
-                    rosterGate.attempt(() => dispatchAction({
+                    rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({
                       type: 'ADVANCE_DAY',
                       payload: { watchedGameResult: simResult, isWatchingGame: true, ...(rig !== undefined ? { riggedForTid: rig } : {}) },
-                    } as any));
+                    } as any)));
                   }
                   setPrecomputedWatchResult(simResult);
                   setRiggedForTid(rig);
@@ -601,6 +608,7 @@ export const ScheduleView: React.FC = () => {
       )}
 
       {rosterGate.modal}
+      {draftGate.modal}
 
       {/* --- Confirmation Modal --- */}
       <AnimatePresence>

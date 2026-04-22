@@ -141,7 +141,8 @@ export const DayView: React.FC<DayViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col p-4 md:p-6 bg-[#0a0a0a]">
+    <div className="h-[100dvh] lg:h-[85vh] overflow-hidden flex flex-col bg-[#0a0a0a]">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 flex flex-col min-h-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       <div className="w-full">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
           <div className="flex items-center gap-4">
@@ -599,6 +600,9 @@ export const DayView: React.FC<DayViewProps> = ({
             ) : null}
           </div>
         )}
+
+        <div className="h-8 bg-gradient-to-b from-transparent to-black/10 mt-4"></div>
+      </div>
       </div>
     </div>
   );

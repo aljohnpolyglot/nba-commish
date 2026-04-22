@@ -540,11 +540,10 @@ export const FreeAgentsView: React.FC = () => {
             />
           </div>
 
-          <div className="space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
-            {/* Pool selector — horizontal scroll on mobile so 9 options don't wrap
-                into a 3x3 grid; flex-wrap on desktop. */}
-            <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto sm:overflow-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              <div className="flex sm:flex-wrap items-center gap-2 min-w-max sm:min-w-0">
+          <div className="space-y-3">
+            {/* Row 1: League chips — scrolls horizontally, standalone row */}
+            <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              <div className="flex items-center gap-2 min-w-max">
                 {MARKET_POOLS.map(pool => (
                   <button
                     key={pool.id}
@@ -562,101 +561,8 @@ export const FreeAgentsView: React.FC = () => {
               </div>
             </div>
 
-            {/* Secondary filters — grid on mobile for aligned layout, wrap on desktop */}
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3 sm:contents">
-
-            <select
-              value={selectedPosition}
-              onChange={(e) => setSelectedPosition(e.target.value)}
-              className="bg-slate-900 border border-slate-800 text-slate-300 text-xs py-2 px-3 rounded-xl focus:outline-none focus:border-rose-500 transition-colors font-bold uppercase tracking-tight"
-            >
-              {POSITIONS.map(pos => (
-                <option key={pos} value={pos}>{pos === 'All' ? 'All Positions' : pos}</option>
-              ))}
-            </select>
-
-            {/* Upcoming-mode NBA-team dropdown — your team, then ALL PLAYERS, then A-Z.
-                Only shown when filtering the NBA pool; non-NBA leagues use the selectedTeamId dropdown below. */}
-            {viewMode === 'upcoming' && (selectedPool === 'all' || selectedPool === 'nba') && (() => {
-              const userTid = isGM ? state.userTeamId ?? null : null;
-              const userTeam = userTid != null ? state.teams.find(t => t.id === userTid) : null;
-              const sortedTeams = [...state.teams].sort((a, b) => a.name.localeCompare(b.name));
-              return (
-                <select
-                  value={upcomingTeamFilter === 'all' ? 'all' : String(upcomingTeamFilter)}
-                  onChange={e => setUpcomingTeamFilter(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-                  className="bg-slate-900 border border-slate-800 text-slate-300 text-xs py-2 px-3 rounded-xl focus:outline-none focus:border-amber-500 transition-colors font-bold uppercase tracking-tight max-w-[220px]"
-                >
-                  {userTeam && (
-                    <option value={String(userTeam.id)}>Your Team — {userTeam.name}</option>
-                  )}
-                  <option value="all">All Players</option>
-                  {sortedTeams.filter(t => t.id !== userTid).map(t => (
-                    <option key={t.id} value={String(t.id)}>{t.name}</option>
-                  ))}
-                </select>
-              );
-            })()}
-
-            {/* Team dropdown — visible when a non-NBA league is selected (both modes) */}
-            {leagueTeams.length > 0 && (
-              <select
-                value={selectedTeamId ?? ''}
-                onChange={(e) => setSelectedTeamId(e.target.value ? parseInt(e.target.value) : null)}
-                className="bg-slate-900 border border-slate-800 text-slate-300 text-xs py-2 px-3 rounded-xl focus:outline-none focus:border-rose-500 transition-colors font-bold uppercase tracking-tight max-w-[200px]"
-              >
-                <option value="">All Teams</option>
-                {leagueTeams.map(t => {
-                  const fullName = t.region ? `${t.region} ${t.name}`.trim() : t.name;
-                  return <option key={t.tid} value={t.tid}>{fullName}</option>;
-                })}
-              </select>
-            )}
-
-            {/* Country dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
-                className="flex items-center gap-2 bg-slate-900 border border-slate-800 text-slate-300 text-xs py-2 px-3 rounded-xl focus:outline-none focus:border-rose-500 transition-colors font-bold uppercase tracking-tight min-w-[130px] justify-between"
-              >
-                <span className="truncate">{selectedCountry === 'All' ? 'All Countries' : selectedCountry}</span>
-                <ChevronDown size={12} className={`transition-transform flex-shrink-0 ${isCountryDropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {isCountryDropdownOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setIsCountryDropdownOpen(false)} />
-                    <motion.div
-                      initial={{ opacity: 0, y: -8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      className="absolute z-50 mt-2 left-0 w-48 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar"
-                    >
-                      <button
-                        onClick={() => { setSelectedCountry('All'); setIsCountryDropdownOpen(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-xs hover:bg-slate-800 transition-colors ${selectedCountry === 'All' ? 'bg-rose-500/10 text-rose-400' : 'text-slate-300'}`}
-                      >
-                        All Countries
-                      </button>
-                      {allCountries.map(c => (
-                        <button
-                          key={c}
-                          onClick={() => { setSelectedCountry(c); setIsCountryDropdownOpen(false); }}
-                          className={`w-full text-left px-4 py-2.5 text-xs hover:bg-slate-800 transition-colors ${selectedCountry === c ? 'bg-rose-500/10 text-rose-400' : 'text-slate-300'}`}
-                        >
-                          {c}
-                        </button>
-                      ))}
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
-            </div>
-
-            {/* Sort bar — own row on mobile, pushed right on desktop */}
-            <div className="flex items-center justify-between sm:justify-end gap-1 sm:gap-2 sm:ml-auto overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            {/* Row 2: Sort buttons + Position + Country + conditional team dropdowns */}
+            <div className="flex flex-wrap items-center gap-2">
               {(['ovr', 'pot', 'age', 'name'] as const).map((s) => (
                 <button
                   key={s}
@@ -672,6 +578,95 @@ export const FreeAgentsView: React.FC = () => {
                   {sortBy === s && <ArrowUpDown size={12} />}
                 </button>
               ))}
+
+              <div className="w-px h-5 bg-slate-700 mx-0.5" />
+
+              <select
+                value={selectedPosition}
+                onChange={(e) => setSelectedPosition(e.target.value)}
+                className="bg-slate-900 border border-slate-800 text-slate-300 text-xs py-2 px-3 rounded-xl focus:outline-none focus:border-rose-500 transition-colors font-bold uppercase tracking-tight"
+              >
+                {POSITIONS.map(pos => (
+                  <option key={pos} value={pos}>{pos === 'All' ? 'All Positions' : pos}</option>
+                ))}
+              </select>
+
+              {/* Country dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                  className="flex items-center gap-2 bg-slate-900 border border-slate-800 text-slate-300 text-xs py-2 px-3 rounded-xl focus:outline-none focus:border-rose-500 transition-colors font-bold uppercase tracking-tight min-w-[130px] justify-between"
+                >
+                  <span className="truncate">{selectedCountry === 'All' ? 'All Countries' : selectedCountry}</span>
+                  <ChevronDown size={12} className={`transition-transform flex-shrink-0 ${isCountryDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+                <AnimatePresence>
+                  {isCountryDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsCountryDropdownOpen(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        className="absolute z-50 mt-2 left-0 w-48 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar"
+                      >
+                        <button
+                          onClick={() => { setSelectedCountry('All'); setIsCountryDropdownOpen(false); }}
+                          className={`w-full text-left px-4 py-2.5 text-xs hover:bg-slate-800 transition-colors ${selectedCountry === 'All' ? 'bg-rose-500/10 text-rose-400' : 'text-slate-300'}`}
+                        >
+                          All Countries
+                        </button>
+                        {allCountries.map(c => (
+                          <button
+                            key={c}
+                            onClick={() => { setSelectedCountry(c); setIsCountryDropdownOpen(false); }}
+                            className={`w-full text-left px-4 py-2.5 text-xs hover:bg-slate-800 transition-colors ${selectedCountry === c ? 'bg-rose-500/10 text-rose-400' : 'text-slate-300'}`}
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Upcoming-mode NBA-team dropdown */}
+              {viewMode === 'upcoming' && (selectedPool === 'all' || selectedPool === 'nba') && (() => {
+                const userTid = isGM ? state.userTeamId ?? null : null;
+                const userTeam = userTid != null ? state.teams.find(t => t.id === userTid) : null;
+                const sortedTeams = [...state.teams].sort((a, b) => a.name.localeCompare(b.name));
+                return (
+                  <select
+                    value={upcomingTeamFilter === 'all' ? 'all' : String(upcomingTeamFilter)}
+                    onChange={e => setUpcomingTeamFilter(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
+                    className="bg-slate-900 border border-slate-800 text-slate-300 text-xs py-2 px-3 rounded-xl focus:outline-none focus:border-amber-500 transition-colors font-bold uppercase tracking-tight max-w-[220px]"
+                  >
+                    {userTeam && (
+                      <option value={String(userTeam.id)}>Your Team — {userTeam.name}</option>
+                    )}
+                    <option value="all">All Players</option>
+                    {sortedTeams.filter(t => t.id !== userTid).map(t => (
+                      <option key={t.id} value={String(t.id)}>{t.name}</option>
+                    ))}
+                  </select>
+                );
+              })()}
+
+              {/* Team dropdown — visible when a non-NBA league is selected */}
+              {leagueTeams.length > 0 && (
+                <select
+                  value={selectedTeamId ?? ''}
+                  onChange={(e) => setSelectedTeamId(e.target.value ? parseInt(e.target.value) : null)}
+                  className="bg-slate-900 border border-slate-800 text-slate-300 text-xs py-2 px-3 rounded-xl focus:outline-none focus:border-rose-500 transition-colors font-bold uppercase tracking-tight max-w-[200px]"
+                >
+                  <option value="">All Teams</option>
+                  {leagueTeams.map(t => {
+                    const fullName = t.region ? `${t.region} ${t.name}`.trim() : t.name;
+                    return <option key={t.tid} value={t.tid}>{fullName}</option>;
+                  })}
+                </select>
+              )}
             </div>
           </div>
         </div>

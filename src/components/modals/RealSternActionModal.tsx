@@ -5,6 +5,7 @@ import { useGame } from '../../store/GameContext';
 import { OwnedAsset } from '../central/view/realsternTypes';
 import { PersonSelectorModal } from './PersonSelectorModal';
 import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
+import { useDraftEventGate } from '../../hooks/useDraftEventGate';
 import { Contact } from '../../types';
 
 const IMAGE_FALLBACK = 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800';
@@ -25,6 +26,7 @@ export const RealSternActionModal: React.FC<RealSternActionModalProps> = ({
 }) => {
   const { dispatchAction } = useGame();
   const rosterGate = useRosterComplianceGate();
+  const draftGate = useDraftEventGate();
   const [innerView, setInnerView] = useState<InnerView>('menu');
   const [isProcessing, setIsProcessing] = useState(false);
   const [inviteReason, setInviteReason] = useState('');
@@ -38,13 +40,13 @@ export const RealSternActionModal: React.FC<RealSternActionModalProps> = ({
     setIsProcessing(true);
     onClose();
     onGiftComplete();
-    rosterGate.attempt(() => dispatchAction({
+    rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({
       type: 'ADVANCE_DAY',
       payload: {
         outcomeText: `Commissioner gifted "${asset.title}" (valued at $${asset.price.toLocaleString()}) to ${recipientName}.`,
         isSpecificEvent: true,
       },
-    } as any));
+    } as any)));
     setIsProcessing(false);
   };
 
@@ -55,13 +57,13 @@ export const RealSternActionModal: React.FC<RealSternActionModalProps> = ({
     setIsProcessing(true);
     onClose();
     onInviteComplete();
-    rosterGate.attempt(() => dispatchAction({
+    rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({
       type: 'ADVANCE_DAY',
       payload: {
         outcomeText: `Commissioner hosted ${guestName} at ${asset.title}${reasonNote}.`,
         isSpecificEvent: true,
       },
-    } as any));
+    } as any)));
     setIsProcessing(false);
   };
 
@@ -220,6 +222,7 @@ export const RealSternActionModal: React.FC<RealSternActionModalProps> = ({
         </motion.div>
       </>
       {rosterGate.modal}
+      {draftGate.modal}
     </AnimatePresence>
   );
 };

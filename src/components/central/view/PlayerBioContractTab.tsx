@@ -53,6 +53,7 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
   const allRows = useMemo(() => {
     // ── Path A: Real contract data from gist ───────────────────────────────
     if (contractYears.length > 0) {
+      let lastKnownTeamName = currentTeamName;
       return contractYears.map(cy => {
         // "2025-26" → season year 2026 (matches game's leagueStats.year convention)
         const yr = parseInt(cy.season.split('-')[0], 10) + 1;
@@ -63,8 +64,11 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
           teamName = currentTeamName;
         } else {
           const tid = tidBySeason.get(yr);
-          teamName = tid != null ? (teamNameMap.get(tid) ?? 'Unknown') : 'Unknown';
+          // Fall back to last known team when no stat entry exists for that season
+          // (e.g. a team-option year where the player was cut/became FA mid-contract)
+          teamName = tid != null ? (teamNameMap.get(tid) ?? lastKnownTeamName) : lastKnownTeamName;
         }
+        lastKnownTeamName = teamName;
 
         const optionLabel =
           cy.option === 'Player' ? 'Player Option' :

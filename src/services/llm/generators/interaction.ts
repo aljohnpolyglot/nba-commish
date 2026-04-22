@@ -70,11 +70,12 @@ export async function sendChatMessage(
         }
       }
 
+      const gmName = state.commissionerName || 'the GM';
       const response = await generateContentWithRetry({
         model: SettingsManager.getModelForTask('interaction'),
         contents: contents,
         config: {
-          systemInstruction: "You are a realistic NBA personality chatting with the Commissioner. Be concise and conversational. Use the provided game context to give informed, specific replies.",
+          systemInstruction: `You are a realistic NBA personality chatting with ${gmName}, the team's General Manager. Be concise and conversational. Use the provided game context to give informed, specific replies.`,
         },
       }, 2, 800, true);
 
@@ -134,10 +135,12 @@ function isGMModeChatAllowlisted(state: GameState, recipientId: string, role: st
   if (role === 'Owner') return true;
 
   // Coach of user's team is allowlisted
+  // recipientId may be "coach-Name" (from selector) or just "Name" (from sim-initiated chat)
   if (role === 'Coach') {
     const userTeam = state.teams.find(t => t.id === state.userTeamId);
     if (!userTeam) return false;
-    const coach = state.staff?.coaches.find(c => c.name === recipientId && c.team === userTeam.name);
+    const nameKey = recipientId.replace(/^coach-/, '');
+    const coach = state.staff?.coaches.find(c => c.name === nameKey && c.team === userTeam.name);
     return !!coach;
   }
 

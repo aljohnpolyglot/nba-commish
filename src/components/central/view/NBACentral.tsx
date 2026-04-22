@@ -19,6 +19,7 @@ import { DailyGamesBar } from './DailyGamesBar';
 import { ConfirmationModal } from '../../modals/ConfirmationModal';
 import { NBACentralHeader } from './NBACentralHeader';
 import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
+import { useDraftEventGate } from '../../../hooks/useDraftEventGate';
 import { GameSimulatorScreen } from '../../shared/GameSimulatorScreen';
 import { WatchGamePreviewModal } from '../../modals/WatchGamePreviewModal';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
@@ -26,6 +27,7 @@ import { BoxScoreModal } from '../../modals/BoxScoreModal';
 export const NBACentral: React.FC = () => {
   const { state, dispatchAction, selectedTeamId, setSelectedTeamId, healPlayer } = useGame();
   const rosterGate = useRosterComplianceGate();
+  const draftGate = useDraftEventGate();
   const [searchTerm, setSearchTerm] = useState('');
   
   // Modals State
@@ -416,10 +418,10 @@ export const NBACentral: React.FC = () => {
                   if (watchLive === false) {
                       // Just simulate — dispatch ADVANCE_DAY with riggedForTid
                       setPendingGameToWatch(null);
-                      rosterGate.attempt(() => dispatchAction({
+                      rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({
                           type: 'ADVANCE_DAY' as any,
                           payload: { riggedForTid: rig }
-                      }));
+                      })));
                   } else {
                       // Mirror ScheduleView: pre-sim + RECORD + ADVANCE_DAY before opening viewer.
                       // "Leave Game" is then a pure close — no re-simulation on exit.
@@ -433,10 +435,10 @@ export const NBACentral: React.FC = () => {
                           undefined, undefined, undefined, undefined, rig
                       );
                       await dispatchAction({ type: 'RECORD_WATCHED_GAME' as any, payload: { gameId: game.gid, result: preResult } });
-                      rosterGate.attempt(() => dispatchAction({
+                      rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({
                           type: 'ADVANCE_DAY' as any,
                           payload: { watchedGameResult: preResult, isWatchingGame: true, ...(rig !== undefined ? { riggedForTid: rig } : {}) }
-                      }));
+                      })));
                       setPrecomputedResult(preResult);
                       setRiggedForTid(rig);
                       setGameToWatch(game);
@@ -501,6 +503,7 @@ export const NBACentral: React.FC = () => {
         />
       )}
       {rosterGate.modal}
+      {draftGate.modal}
     </>
   );
 };

@@ -159,12 +159,12 @@ const currentSeason = useMemo(() => {
                 {activeTab === 'roster' ? 'Active Roster' : activeTab === 'stats' ? 'Player Stats' : activeTab === 'contracts' ? 'Contracts' : activeTab === 'injuries' ? 'Injury Report' : activeTab === 'progression' ? 'Roster Progression' : 'Transactions'}
               </h3>
               
-              <div className="flex bg-slate-900/80 border border-slate-800 p-1 rounded-xl">
-                <button 
+              <div className="flex bg-slate-900/80 border border-slate-800 p-1 rounded-xl overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <button
                   onClick={() => setActiveTab('roster')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                    activeTab === 'roster' 
-                      ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' 
+                  className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    activeTab === 'roster'
+                      ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
                       : 'text-slate-500 hover:text-slate-300'
                   }`}
                 >
@@ -173,7 +173,7 @@ const currentSeason = useMemo(() => {
                 </button>
                 <button
                   onClick={() => setActiveTab('stats')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
                     activeTab === 'stats'
                       ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
                       : 'text-slate-500 hover:text-slate-300'
@@ -184,7 +184,7 @@ const currentSeason = useMemo(() => {
                 </button>
                 <button
                   onClick={() => setActiveTab('contracts')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
                     activeTab === 'contracts'
                       ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
                       : 'text-slate-500 hover:text-slate-300'
@@ -195,7 +195,7 @@ const currentSeason = useMemo(() => {
                 </button>
                 <button
                   onClick={() => setActiveTab('transactions')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
                     activeTab === 'transactions'
                       ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
                       : 'text-slate-500 hover:text-slate-300'
@@ -206,7 +206,7 @@ const currentSeason = useMemo(() => {
                 </button>
                 <button
                   onClick={() => setActiveTab('injuries')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
                     activeTab === 'injuries'
                       ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
                       : 'text-slate-500 hover:text-slate-300'
@@ -217,7 +217,7 @@ const currentSeason = useMemo(() => {
                 </button>
                 <button
                   onClick={() => setActiveTab('progression')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
                     activeTab === 'progression'
                       ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
                       : 'text-slate-500 hover:text-slate-300'

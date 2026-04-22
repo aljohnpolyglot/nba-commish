@@ -291,15 +291,6 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
   // synthetic click that would run onClick a second time — which would immediately
   // deselect what we just selected. This flag swallows that duplicate click.
   const suppressNextClick = useRef(false);
-  // Rolling debug log — last 6 tap/swap events, rendered in a small panel at the
-  // top of the tab so the user can confirm on their phone that taps are firing
-  // (native HTML5 drag events don't dispatch from mobile touch, so there's no
-  // drag log to show — tap is the only path on mobile).
-  const [debugLog, setDebugLog] = useState<string[]>([]);
-  const pushDebug = (line: string) => {
-    const stamp = new Date().toISOString().slice(11, 19);
-    setDebugLog(prev => [`${stamp} ${line}`, ...prev].slice(0, 6));
-  };
   const performSwap = (src: string, target: string) => {
     if (!canEdit || src === target) return;
     const srcInStart = starterOrder.indexOf(src);
@@ -317,7 +308,6 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
         [next[srcInStart], next[tgtInStart]] = [next[tgtInStart], next[srcInStart]];
         return next;
       });
-      pushDebug(`SWAP starter[${srcInStart}] ↔ starter[${tgtInStart}]`);
       return;
     }
     // Case 2: bench ↔ bench — reorder the bench.
@@ -325,7 +315,6 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
       const next = [...benchIds];
       [next[srcInBench], next[tgtInBench]] = [next[tgtInBench], next[srcInBench]];
       setBenchOrder(next);
-      pushDebug(`SWAP bench[${srcInBench}] ↔ bench[${tgtInBench}]`);
       return;
     }
     // Case 3: bench → starter — promote bench player, demote displaced starter
@@ -340,7 +329,6 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
       const nextBench = [...benchIds];
       nextBench[srcInBench] = displaced;
       setBenchOrder(nextBench);
-      pushDebug(`PROMOTE bench[${srcInBench}] → starter[${tgtInStart}]`);
       return;
     }
     // Case 4: starter → bench — mirror of case 3.
@@ -354,27 +342,19 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
       const nextBench = [...benchIds];
       nextBench[tgtInBench] = src;
       setBenchOrder(nextBench);
-      pushDebug(`DEMOTE starter[${srcInStart}] → bench[${tgtInBench}]`);
       return;
     }
-    pushDebug(`SWAP no-op (src=${srcInStart}/${srcInBench}, tgt=${tgtInStart}/${tgtInBench})`);
   };
   const handleTap = (id: string) => {
-    if (!canEdit) {
-      pushDebug(`TAP blocked (read-only) id=${id.slice(-6)}`);
-      return;
-    }
+    if (!canEdit) return;
     if (selectedId === null) {
       setSelectedId(id);
-      pushDebug(`SELECT id=${id.slice(-6)}`);
       return;
     }
     if (selectedId === id) {
       setSelectedId(null);
-      pushDebug(`DESELECT id=${id.slice(-6)}`);
       return;
     }
-    pushDebug(`TAP-SWAP ${selectedId.slice(-6)} → ${id.slice(-6)}`);
     performSwap(selectedId, id);
     setSelectedId(null);
   };
@@ -388,17 +368,11 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
   // crucially, this sidesteps the browser's native HTML5-drag auto-scroll on
   // PC (which was making the page lurch whenever the user clicked a card).
   const onCardPointerDown = (id: string, source: 'starter' | 'rotation') => (e: React.PointerEvent) => {
-    if (!canEdit) {
-      pushDebug(`POINTERDOWN BLOCKED (canEdit=false, mode=${state.gameMode}) id=${id.slice(-6)}`);
-      return;
-    }
-    // Only react to primary button / primary touch — no right-click drags.
+    if (!canEdit) return;
     if (e.button !== undefined && e.button !== 0) return;
-    // Don't hijack touches that land on the minute slider or any form control.
     const target = e.target as HTMLElement;
     if (target.closest('input, button, [data-no-drag]')) return;
     setDrag({ id, source, startX: e.clientX, startY: e.clientY, dx: 0, dy: 0, active: false });
-    pushDebug(`POINTERDOWN id=${id.slice(-6)}`);
   };
 
   useEffect(() => {
@@ -435,11 +409,9 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
       const dropTarget = (el as HTMLElement | null)?.closest?.('[data-player-id]') as HTMLElement | null;
       const targetId = dropTarget?.getAttribute('data-player-id');
       if (targetId && targetId !== d.id) {
-        pushDebug(`DRAG-DROP ${d.id.slice(-6)} → ${targetId.slice(-6)}`);
         suppressNextClick.current = true;
         performSwapRef.current(d.id, targetId);
       } else {
-        pushDebug(`DRAG-DROP missed (${d.id.slice(-6)})`);
         suppressNextClick.current = true;
       }
       setDrag(null);
@@ -525,7 +497,6 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     setMinuteOverrides(prev => {
       const clamped = Math.max(0, Math.min(48, v));
       const current = prev[id] ?? 0;
-      // Cap increase at the remaining headroom when team is already at 240
       if (clamped > current) {
         const othersTotal = Object.entries(prev).reduce(
           (s, [k, n]) => (k === id ? s : s + n),
@@ -726,6 +697,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
           </button>
         </div>
       )}
+
 
       {/* Starting Five */}
       <div className="bg-black/40 border border-slate-800 rounded-lg p-3">

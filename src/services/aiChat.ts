@@ -241,13 +241,15 @@ export function buildGMChatContext(
 
   // ─────── RECIPIENT DATA ────────────────────────────────────────
   const recipient = state.players.find(p => p.internalId === recipientId);
+  // Strip selector prefixes (e.g. "coach-Name" → "Name") for staff lookup
+  const nameKey = recipientId.replace(/^(?:coach|owner|gm)-/, '');
   const recipientStaff = recipient
     ? null
     : [
         ...(state.staff?.owners || []),
         ...(state.staff?.gms || []),
         ...(state.staff?.coaches || []),
-      ].find(s => s.name === recipientId);
+      ].find(s => s.name === nameKey || s.name === recipientId);
 
   let recipientData: GMChatContext['recipient'] = {
     role: 'player',

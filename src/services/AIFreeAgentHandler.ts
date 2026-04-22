@@ -141,7 +141,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
       .map(m => m.playerId),
   );
   let pool = state.players
-    .filter(p => p.tid < 0 && p.status === 'Free Agent')
+    .filter(p => p.tid < 0 && p.status === 'Free Agent' && !((p as any).draft?.year >= state.leagueStats.year))
     .filter(p => !marketPendingIds.has(p.internalId));
   if (pool.length === 0) return [];
 
@@ -909,7 +909,9 @@ export function runAIMleUpgradeSwaps(
   const minSalaryUSD = ((state.leagueStats as any).minContractStaticAmount ?? 1.2) * 1_000_000;
 
   const freeAgents = state.players.filter(p =>
-    (p.tid === -1 || p.status === 'Free Agent') && p.status !== 'Retired' && !p.hof
+    p.status === 'Free Agent' &&
+    !((p as any).draft?.year >= currentYear) &&
+    !p.hof
   );
 
   const results: MleSwapResult[] = [];

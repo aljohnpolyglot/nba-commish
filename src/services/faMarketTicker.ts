@@ -234,7 +234,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
 
   // ── 3. Open new markets for notable FAs without one ────────────────────────
   const unsignedTopFAs = state.players
-    .filter(p => p.tid < 0 && p.status === 'Free Agent')
+    .filter(p => p.tid < 0 && p.status === 'Free Agent' && !((p as any).draft?.year >= currentYear))
     .filter(p => !activeMarketIds.has(p.internalId))
     // Don't reopen a market for someone whose market just resolved this tick.
     .filter(p => !workingMarkets.some(m => m.playerId === p.internalId && m.resolved))

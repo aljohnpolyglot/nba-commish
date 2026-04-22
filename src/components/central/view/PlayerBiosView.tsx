@@ -21,6 +21,8 @@ export const PlayerBiosView: React.FC = () => {
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'displayOvr', direction: 'desc' });
   const [showColFilters, setShowColFilters] = useState(false);
   const [colFilters, setColFilters] = useState<Record<string, string>>({});
+  const [hideWomen, setHideWomen] = useState(false);
+  const [hideRetired, setHideRetired] = useState(false);
   // Bump this when gist data finishes loading so enriched re-runs
   const [gistVersion, setGistVersion] = useState(0);
 
@@ -129,12 +131,14 @@ export const PlayerBiosView: React.FC = () => {
       if (isProspect && !showingProspects) return false;
       if (!isProspect && showingProspects) return false;
       if (!showingProspects && league !== 'All' && p.playerLeague !== league) return false;
+      if (!showingProspects && hideWomen && p.playerLeague === 'WNBA') return false;
+      if (!showingProspects && hideRetired && p.playerLeague === 'Retired') return false;
       if (searchTerm && !p.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       if (!showingProspects && teamFilter && String(p.tid) !== teamFilter) return false;
       if (!showingProspects && position && p.pos !== position) return false;
       return true;
     });
-  }, [enriched, league, searchTerm, teamFilter, position]);
+  }, [enriched, league, searchTerm, teamFilter, position, hideWomen, hideRetired]);
 
   const allColleges = useMemo(() => [...new Set(filteredBase.map(p => p.college).filter(Boolean))].sort() as string[], [filteredBase]);
   const allCountries = useMemo(() => [...new Set(filteredBase.map(p => p.extractedCountry).filter(Boolean))].sort() as string[], [filteredBase]);
@@ -147,6 +151,8 @@ export const PlayerBiosView: React.FC = () => {
       if (isProspect && !showingProspects) return false;
       if (!isProspect && showingProspects) return false;
       if (!showingProspects && league !== 'All' && p.playerLeague !== league) return false;
+      if (!showingProspects && hideWomen && p.playerLeague === 'WNBA') return false;
+      if (!showingProspects && hideRetired && p.playerLeague === 'Retired') return false;
       if (searchTerm && !p.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       if (!showingProspects && teamFilter && String(p.tid) !== teamFilter) return false;
       if (!showingProspects && position && p.pos !== position) return false;
@@ -174,7 +180,7 @@ export const PlayerBiosView: React.FC = () => {
     });
 
     return r;
-  }, [enriched, league, searchTerm, teamFilter, position, college, country, sortConfig, colFilters]);
+  }, [enriched, league, searchTerm, teamFilter, position, college, country, sortConfig, colFilters, hideWomen, hideRetired]);
 
   const PER_PAGE = 50;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
@@ -278,6 +284,14 @@ export const PlayerBiosView: React.FC = () => {
           </select>
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
         </div>
+        <button onClick={() => { setHideWomen(v => !v); setPage(1); }}
+          className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all ${hideWomen ? 'bg-pink-600/30 border-pink-500/50 text-pink-300' : 'bg-slate-800 border-slate-700/60 text-slate-400 hover:text-white'}`}>
+          {hideWomen ? 'W Hidden' : 'Hide W'}
+        </button>
+        <button onClick={() => { setHideRetired(v => !v); setPage(1); }}
+          className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all ${hideRetired ? 'bg-slate-600/50 border-slate-500/50 text-slate-300' : 'bg-slate-800 border-slate-700/60 text-slate-400 hover:text-white'}`}>
+          {hideRetired ? 'Ret Hidden' : 'Hide Ret'}
+        </button>
         {/* Pagination inline */}
         <div className="ml-auto flex items-center gap-2 text-xs text-slate-400">
           <span>{filtered.length} players</span>

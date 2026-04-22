@@ -526,7 +526,7 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
       {/* ── Player Selector Modal ──────────────────────────────────────── */}
       {editingList && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 z-50" onClick={() => setEditingList(null)}>
-          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl sm:rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[85vh]" onClick={e => e.stopPropagation()}>
+          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl sm:rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[92dvh] sm:max-h-[85vh]" onClick={e => e.stopPropagation()}>
             <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between shrink-0">
               <h3 className="text-sm sm:text-lg font-black text-white uppercase tracking-widest">
                 {editingList === 'untouchable' ? 'Untouchables' : editingList === 'block' ? 'Trading Block' : 'Target List'}

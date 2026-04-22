@@ -909,7 +909,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-start lg:items-center justify-center bg-black/95 backdrop-blur-md pointer-events-none overflow-y-auto lg:overflow-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+      className="fixed inset-0 z-50 flex items-start lg:items-center justify-center bg-black/95 backdrop-blur-md pointer-events-none overflow-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
     >
       {/* Toast — transient notifications for roster/cap collisions */}
       <AnimatePresence>
@@ -927,7 +927,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
       <motion.div
         initial={{ scale: 0.97, y: 12 }}
         animate={{ scale: 1, y: 0 }}
-        className="relative w-full max-w-[1400px] m-0 lg:m-8 bg-[#0a0a0a] lg:border lg:border-white/5 lg:rounded-sm overflow-hidden flex flex-col shadow-[0_0_120px_rgba(0,0,0,0.9)] pointer-events-auto min-h-screen lg:min-h-0 lg:h-[85vh] lg:max-h-[900px]"
+        className="relative w-full max-w-[1400px] m-0 lg:m-8 bg-[#0a0a0a] lg:border lg:border-white/5 lg:rounded-sm overflow-hidden flex flex-col shadow-[0_0_120px_rgba(0,0,0,0.9)] pointer-events-auto h-[100dvh] lg:h-[85vh] lg:max-h-[900px]"
       >
         <div className="flex items-center justify-between px-8 py-4 bg-gradient-to-r from-[#e21d37] to-[#7a0018] shrink-0">
           <div className="flex items-center gap-4">
@@ -946,7 +946,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
           </button>
         </div>
 
-        <div className="flex-1 flex flex-col lg:flex-row overflow-visible lg:overflow-hidden min-h-0">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
 
           <div className="w-full lg:w-[38%] xl:w-[35%] shrink-0 relative flex flex-col border-b lg:border-b-0 lg:border-r border-white/5 bg-[#090909]">
 
@@ -1402,7 +1402,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                             <div>
                               <p className="text-[8px] font-bold text-white/20 uppercase">Season {i + 1}</p>
                               <p className="text-xs font-black italic text-white/60">
-                                {row.year}–{String(row.year + 1).slice(-2)}
+                                {row.year - 1}–{String(row.year).slice(-2)}
                               </p>
                             </div>
                             <div className="text-center">

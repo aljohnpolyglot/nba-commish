@@ -236,6 +236,8 @@ function applyContractOverrides(players: Player[], contractsData: ContractsJSON,
         exp: expYear,
         hasPlayerOption: hasPlayerOption || undefined,
         hasTeamOption:   hasTeamOption   || undefined,
+        // teamOptionExp must match expYear so seasonRollover's teamOptExp !== nextYear guard fires
+        teamOptionExp:   hasTeamOption ? expYear : undefined,
       },
     };
   });
@@ -351,8 +353,8 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
 
                         const processedPlayers: Player[] = mergedPlayersRaw
                         .filter(p => {
-                            // Don't filter out players if they are future prospects
-                            const isProspect = p.draft && p.draft.year > startYear;
+                            // Don't filter out players if they are future prospects (>= catches current-year draft class)
+                            const isProspect = p.draft && p.draft.year >= startYear && p.tid < 0;
                             if (isProspect) return true;
                             
                             // Don't filter out Hall of Famers (tid: -3)
@@ -388,7 +390,7 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
 
                             // If no ratings, but it's a prospect, give them a default rating or calculate from latest
                             if (!p.ratings || p.ratings.length === 0) {
-                                if (p.draft && p.draft.year > startYear) {
+                                if (p.draft && p.draft.year >= startYear && p.tid < 0) {
                                     // Keep them as a prospect
                                 } else if (p.tid === -3) {
                                     // Keep HOF even without ratings (though they usually have them)
@@ -398,7 +400,8 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                             }
 
                             const teamInfo = findTeamInfoForSeason(p, startYear, startPhase);
-                            const isProspect = p.draft && p.draft.year > startYear;
+                            // teamInfo.tid < 0 guards against already-drafted BBGM players being demoted to prospect
+                            const isProspect = p.draft && p.draft.year >= startYear && teamInfo.tid < 0;
                             const isRetired = p.tid === -3 || (p.retiredYear && p.retiredYear < startYear);
                             
                             // Extract jersey number from latest stats entry

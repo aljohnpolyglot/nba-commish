@@ -8,10 +8,12 @@ import { useActionModals } from '../hooks/useActionModals';
 import { ActionModalsRenderer } from './ActionModalsRenderer';
 import { SettingsManager } from '../../../services/SettingsManager';
 import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
+import { useDraftEventGate } from '../../../hooks/useDraftEventGate';
 
 const ActionsView: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const rosterGate = useRosterComplianceGate();
+  const draftGate = useDraftEventGate();
   const [processingAction, setProcessingAction] = useState<string | null>(null);
   const modals = useActionModals();
   
@@ -38,13 +40,13 @@ const ActionsView: React.FC = () => {
             }
         });
     } else if (actionType === 'PUBLIC_ANNOUNCEMENT') {
-        rosterGate.attempt(() => dispatchAction({
+        rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({
             type: 'ADVANCE_DAY',
             payload: {
                 outcomeText: `Commissioner made a public announcement: "${payload.message}"`,
                 isSpecificEvent: true
             }
-        }));
+        })));
     } else if (['EXECUTIVE_TRADE', 'SIGN_FREE_AGENT', 'TRAVEL', 'EXPANSION_DRAFT', 'CELEBRITY_ROSTER', 'GLOBAL_GAMES', 'GIVE_MONEY', 'BRIBE_PERSON', 'FINE_PERSON', 'VISIT_NON_NBA_TEAM', 'TRANSFER_FUNDS', 'SET_CHRISTMAS_GAMES', 'SABOTAGE_PLAYER', 'SUSPEND_PLAYER', 'GO_TO_CLUB', 'ENDORSE_HOF', 'ADD_PRESEASON_INTERNATIONAL', 'INVITE_DINNER', 'DRUG_TEST_PERSON', 'LEAK_SCANDAL', 'WAIVE_PLAYER', 'FIRE_PERSONNEL'].includes(actionType)) {
         await dispatchAction({
             type: actionType as any,
@@ -254,6 +256,7 @@ const ActionsView: React.FC = () => {
         executeConfirmedAction={executeConfirmedAction}
       />
       {rosterGate.modal}
+      {draftGate.modal}
     </div>
   );
 };

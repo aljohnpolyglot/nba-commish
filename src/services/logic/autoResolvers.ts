@@ -1,4 +1,4 @@
-import { GameState, NonNBATeam, NewsItem } from '../../types';
+import { GameState, NonNBATeam, NewsItem, DraftPick } from '../../types';
 import { generateSchedule } from '../gameScheduler';
 import { AwardService } from './AwardService';
 import { NewsGenerator } from '../news/NewsGenerator';
@@ -809,7 +809,27 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     r1Order = allSortedByRecord;
   }
 
-  const draftOrder = [...r1Order, ...r1Order];
+  // Resolve traded picks: if a team traded away their pick, assign the slot to the new owner.
+  const currentSeasonPicks = ((state.draftPicks ?? []) as DraftPick[]).filter(dp => dp.season === season);
+  const r1TradedMap = new Map<number, number>(); // originalTid → currentOwnerTid (round 1)
+  const r2TradedMap = new Map<number, number>(); // originalTid → currentOwnerTid (round 2)
+  for (const dp of currentSeasonPicks) {
+    if (dp.tid !== dp.originalTid) {
+      if (dp.round === 1) r1TradedMap.set(dp.originalTid, dp.tid);
+      else if (dp.round === 2) r2TradedMap.set(dp.originalTid, dp.tid);
+    }
+  }
+  const resolvePickOwner = (team: typeof state.teams[0], round: number) => {
+    const currentOwnerTid = (round === 1 ? r1TradedMap : r2TradedMap).get(team.id);
+    if (currentOwnerTid !== undefined) {
+      return state.teams.find(t => t.id === currentOwnerTid) ?? team;
+    }
+    return team;
+  };
+  const draftOrder = [
+    ...r1Order.map(team => resolvePickOwner(team, 1)),
+    ...r1Order.map(team => resolvePickOwner(team, 2)),
+  ];
 
   // Available prospects for THIS season's draft class only (filter out future classes)
   const prospects = state.players

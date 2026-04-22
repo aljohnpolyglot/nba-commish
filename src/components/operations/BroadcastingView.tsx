@@ -7,6 +7,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useGame } from '../../store/GameContext';
 import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
+import { useDraftEventGate } from '../../hooks/useDraftEventGate';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -240,6 +241,7 @@ type View = 'roster' | 'phases' | 'weekly' | 'leaguepass' | 'dashboard';
 export const BroadcastingView: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const rosterGate = useRosterComplianceGate();
+  const draftGate = useDraftEventGate();
 
   const isLocked        = state.leagueStats.mediaRights?.isLocked === true;
   // Lock broadcasting edits on June 30 of each season year (day before FA opens July 1).
@@ -495,13 +497,13 @@ export const BroadcastingView: React.FC = () => {
           : '',
       ].filter(Boolean).join(' ');
 
-      rosterGate.attempt(() => dispatchAction({
+      rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({
         type: 'ADVANCE_DAY',
         payload: {
           outcomeText: dealOutcome,
           isSpecificEvent: true,
         },
-      }));
+      })));
     }
   };
 
@@ -1052,6 +1054,7 @@ export const BroadcastingView: React.FC = () => {
         </div>
       </footer>
       {rosterGate.modal}
+      {draftGate.modal}
     </div>
   );
 };
