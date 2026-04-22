@@ -6,6 +6,7 @@ import { generatePaychecks } from './financialService';
 import { SocialEngine } from '../social/SocialEngine';
 import { SettingsManager } from '../SettingsManager';
 import { normalizeDate, calculateSocialEngagement } from '../../utils/helpers';
+import { getDraftDate, getDraftLotteryDate, toISODateString } from '../../utils/dateUtils';
 import { buildShamsPost } from '../social/templates/charania';
 import { findShamsPhoto } from '../social/charaniaphotos';
 import { generateLazySimNews } from '../news/lazySimNewsGenerator';
@@ -64,8 +65,10 @@ const autoBroadcastingDefault = (state: GameState): Partial<GameState> => {
 /** Builds milestone events dynamically from the current season year.
  *  y  = season end year (e.g. 2026 for the 2025-26 season)
  *  y1 = previous calendar year (e.g. 2025) — preseason / early-season events */
-export const buildAutoResolveEvents = (y: number): AutoResolveEvent[] => {
+export const buildAutoResolveEvents = (y: number, leagueStats?: any): AutoResolveEvent[] => {
   const y1 = y - 1;
+  const draftLotteryDateStr = toISODateString(getDraftLotteryDate(y, leagueStats));
+  const draftDateStr        = toISODateString(getDraftDate(y, leagueStats));
   // HOF ceremony falls on the first Saturday of September (real-life Naismith)
   const hofCeremony = getHOFCeremonyDateString(y1);
   return [
@@ -90,8 +93,8 @@ export const buildAutoResolveEvents = (y: number): AutoResolveEvent[] => {
     { date: `${y}-05-07`,  key: 'award_allnba',           resolver: autoAnnounceAllNBA,              phase: 'Announcing All-NBA Teams...' },
     { date: `${y}-05-21`,  key: 'award_mvp',              resolver: autoAnnounceMVP,                 phase: 'Announcing MVP...' },
     // Draft events
-    { date: `${y}-05-14`,  key: 'draft_lottery',          resolver: autoRunLottery,                  phase: 'Running Draft Lottery...' },
-    { date: `${y}-06-25`,  key: 'draft_execute',          resolver: autoRunDraft,                    phase: 'Executing NBA Draft...' },
+    { date: draftLotteryDateStr, key: 'draft_lottery', resolver: autoRunLottery, phase: 'Running Draft Lottery...' },
+    { date: draftDateStr,        key: 'draft_execute', resolver: autoRunDraft,   phase: 'Executing NBA Draft...' },
   ];
 };
 
@@ -443,7 +446,7 @@ export const runLazySim = async (
       (g: any) => !g.isPreseason && !g.isPlayoff && !g.isPlayIn
     );
     if (!hasRegularSeason) {
-      for (const event of buildAutoResolveEvents(eagerSeasonYear)) {
+      for (const event of buildAutoResolveEvents(eagerSeasonYear, state.leagueStats)) {
         if (!eagerKeys.includes(event.key)) continue;
         if (event.date >= targetNorm) continue; // target is before this event
         const compositeKey = `${eagerSeasonYear}:${event.key}`;
@@ -502,7 +505,7 @@ export const runLazySim = async (
       // Fire any auto-resolvers whose date has been reached.
       // Events are keyed by `${seasonYear}:${key}` so they re-fire after season rollover.
       const seasonYear = state.leagueStats.year;
-      for (const event of buildAutoResolveEvents(seasonYear)) {
+      for (const event of buildAutoResolveEvents(seasonYear, state.leagueStats)) {
         const compositeKey = `${seasonYear}:${event.key}`;
         if (!firedEvents.has(compositeKey) && event.date <= currentNorm) {
           currentPhase = event.phase;
@@ -1049,7 +1052,7 @@ export const runLazySim = async (
 
     // Fire any remaining events that should have fired before target but were missed
     const finalSeasonYear = state.leagueStats.year;
-    for (const event of buildAutoResolveEvents(finalSeasonYear)) {
+    for (const event of buildAutoResolveEvents(finalSeasonYear, state.leagueStats)) {
       const compositeKey = `${finalSeasonYear}:${event.key}`;
       if (!firedEvents.has(compositeKey) && event.date < targetNorm) {
         try {

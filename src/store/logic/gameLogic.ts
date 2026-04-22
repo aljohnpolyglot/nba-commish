@@ -21,6 +21,7 @@ import { handleCommunication } from './turn/communicationHandler';
 import { SettingsManager } from '../../services/SettingsManager';
 import { resolveBets } from '../../services/logic/betResolver';
 import { buildAutoResolveEvents } from '../../services/logic/lazySimRunner';
+import { getDraftDate, getDraftLotteryDate } from '../../utils/dateUtils';
 
 export { handleStartGame, handleAnnounceChange };
 
@@ -50,7 +51,7 @@ export const processTurn = async (
             const eagerKeys = ['broadcasting_default', 'global_games', 'intl_preseason', 'schedule_generation'];
             const seasonYear = stateForSim.leagueStats.year;
             const firedEager = new Set<string>();
-            for (const event of buildAutoResolveEvents(seasonYear)) {
+            for (const event of buildAutoResolveEvents(seasonYear, stateForSim.leagueStats)) {
                 if (!eagerKeys.includes(event.key)) continue;
                 if (event.date >= targetNorm) continue;
                 if (firedEager.has(event.key)) continue;
@@ -118,7 +119,7 @@ export const processTurn = async (
         const seasonYear = stateWithSim.leagueStats.year;
         // Accumulate fired keys per season so re-runs across rollovers stay correct
         const firedKeys = new Set<string>();
-        for (const event of buildAutoResolveEvents(seasonYear)) {
+        for (const event of buildAutoResolveEvents(seasonYear, stateWithSim.leagueStats)) {
             const compositeKey = `${seasonYear}:${event.key}`;
             // Fire if the event date falls on the current day or within this sim window
             if (event.date >= simStartNorm && event.date <= simEndNorm && !firedKeys.has(compositeKey)) {
@@ -752,7 +753,7 @@ export const processTurn = async (
     let autoDraftLotteryResult = state.draftLotteryResult;
     let autoDraftComplete = state.draftComplete;
 
-    if (wasDateReached(new Date(`${draftYear}-05-14T00:00:00Z`)) && !autoDraftLotteryResult) {
+    if (wasDateReached(getDraftLotteryDate(draftYear, state.leagueStats)) && !autoDraftLotteryResult) {
         try {
             const { autoRunLottery } = await import('../../services/logic/autoResolvers');
             const patch = autoRunLottery({ ...state, players: updatedPlayers } as any);
@@ -789,7 +790,7 @@ export const processTurn = async (
         } catch (e) { console.warn('[GameLogic] autoInductHOFClass failed:', e); }
     }
 
-    if (wasDateReached(new Date(`${draftYear}-06-25T00:00:00Z`)) && !autoDraftComplete) {
+    if (wasDateReached(getDraftDate(draftYear, state.leagueStats)) && !autoDraftComplete) {
         try {
             const { autoRunDraft } = await import('../../services/logic/autoResolvers');
             const patch = autoRunDraft({ ...state, players: updatedPlayers, draftLotteryResult: autoDraftLotteryResult } as any);
