@@ -61,6 +61,49 @@ const getRookieContractAmount = (
   return Math.max(minSalary, Math.round(pick1USD * ratio));
 };
 
+// Pure function: build tid/status/draft/contract fields for one drafted player.
+// Used by both immediate per-pick commits and finalizeDraft.
+function computeDraftPickFields(pickSlot: number, team: any, ls: any) {
+  if (!team) return null;
+  const season: number = (ls as any).year ?? 2026;
+  const round = pickSlot <= 30 ? 1 : 2;
+  const pickInRound = pickSlot <= 30 ? pickSlot : pickSlot - 30;
+  const rookieScaleType = (ls as any).rookieScaleType ?? 'dynamic';
+  const capM: number = (ls as any).salaryCap ?? 154.6;
+  const maxPct: number = (ls as any).rookieMaxContractPercentage ?? 9;
+  const staticAmtUSD = ((ls as any).rookieStaticAmount ?? 3) * 1_000_000;
+  const scaleAppliesTo = (ls as any).rookieScaleAppliesTo ?? 'first_round';
+  const guaranteedYrs: number = (ls as any).rookieContractLength ?? 2;
+  const teamOptEnabled: boolean = (ls as any).rookieTeamOptionsEnabled ?? true;
+  const teamOptYears: number = (ls as any).rookieTeamOptionYears ?? 2;
+  const restrictedFA: boolean = (ls as any).rookieRestrictedFreeAgentEligibility ?? true;
+  const minSalaryUSD = ((ls as any).minContract ?? 1.273) * 1_000_000;
+
+  let salaryAmtUSD: number;
+  if (rookieScaleType === 'none') salaryAmtUSD = minSalaryUSD;
+  else if (rookieScaleType === 'static') salaryAmtUSD = staticAmtUSD;
+  else {
+    const useScale = round === 1 || scaleAppliesTo === 'both_rounds';
+    salaryAmtUSD = useScale ? getRookieContractAmount(pickSlot, capM, maxPct, minSalaryUSD) : minSalaryUSD;
+  }
+
+  const baseYrs = round === 1 ? guaranteedYrs : 2;
+  const optionYrs = (round === 1 && teamOptEnabled) ? teamOptYears : 0;
+
+  return {
+    tid: team.id as number,
+    status: 'Active' as const,
+    draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: (team as any)._originalTid ?? team.id },
+    contract: {
+      amount: Math.round(salaryAmtUSD / 1_000),
+      exp: season + baseYrs + optionYrs - 1,
+      ...(optionYrs > 0 && { hasTeamOption: true, teamOptionExp: season + baseYrs }),
+      ...(round === 1 && restrictedFA && { restrictedFA: true }),
+      rookie: true,
+    },
+  };
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const getOrdinalSuffix = (n: number) => {
@@ -803,51 +846,9 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   // returns to the user's slot.
   const [simTarget, setSimTarget] = useState<number | null>(null);
 
-  // Build the drafted-player fields for a given pick slot. Mirrors finalizeDraft logic.
-  const buildDraftedPlayerUpdate = useCallback((player: any, pickSlot: number) => {
-    const ls = state.leagueStats ?? {};
-    const season: number = (ls as any).year ?? 2026;
-    const team = draftOrder[pickSlot - 1];
-    if (!team) return null;
-
-    const round = pickSlot <= 30 ? 1 : 2;
-    const pickInRound = pickSlot <= 30 ? pickSlot : pickSlot - 30;
-    const rookieScaleType = (ls as any).rookieScaleType ?? 'dynamic';
-    const capM: number = (ls as any).salaryCap ?? 154.6;
-    const maxPct: number = (ls as any).rookieMaxContractPercentage ?? 9;
-    const staticAmtUSD = ((ls as any).rookieStaticAmount ?? 3) * 1_000_000;
-    const scaleAppliesTo = (ls as any).rookieScaleAppliesTo ?? 'first_round';
-    const guaranteedYrs: number = (ls as any).rookieContractLength ?? 2;
-    const teamOptEnabled: boolean = (ls as any).rookieTeamOptionsEnabled ?? true;
-    const teamOptYears: number = (ls as any).rookieTeamOptionYears ?? 2;
-    const restrictedFA: boolean = (ls as any).rookieRestrictedFreeAgentEligibility ?? true;
-    const minSalaryUSD = ((ls as any).minContract ?? 1.273) * 1_000_000;
-
-    let salaryAmtUSD: number;
-    if (rookieScaleType === 'none') salaryAmtUSD = minSalaryUSD;
-    else if (rookieScaleType === 'static') salaryAmtUSD = staticAmtUSD;
-    else {
-      const useScale = round === 1 || scaleAppliesTo === 'both_rounds';
-      salaryAmtUSD = useScale ? getRookieContractAmount(pickSlot, capM, maxPct, minSalaryUSD) : minSalaryUSD;
-    }
-
-    const baseYrs = round === 1 ? guaranteedYrs : 2;
-    const optionYrs = (round === 1 && teamOptEnabled) ? teamOptYears : 0;
-    const totalYrs = baseYrs + optionYrs;
-
-    return {
-      tid: team.id as number,
-      status: 'Active' as const,
-      draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: (team as any)._originalTid ?? team.id },
-      contract: {
-        amount: Math.round(salaryAmtUSD / 1_000),
-        exp: season + totalYrs - 1,
-        ...(optionYrs > 0 && { hasTeamOption: true, teamOptionExp: season + baseYrs }),
-        ...(round === 1 && restrictedFA && { restrictedFA: true }),
-        rookie: true,
-      },
-    };
-  }, [state.leagueStats, draftOrder]);
+  const buildDraftedPlayerUpdate = useCallback((player: any, pickSlot: number) =>
+    computeDraftPickFields(pickSlot, draftOrder[pickSlot - 1], state.leagueStats),
+  [draftOrder, state.leagueStats]);
 
   // Immediately commit a single pick to game state — no roster gate.
   const commitPickToState = useCallback((pickSlot: number, player: any) => {
@@ -896,16 +897,16 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     setDrafted(newPicks);
     setCurrentPick(pickNum);
 
-    // Batch-commit all new picks to game state immediately — no roster gate
+    // Batch-commit all new picks in one pass — no roster gate
     if (freshPicks.length > 0) {
-      let updatedPlayers = [...state.players];
+      const updateMap = new Map<string, object>();
       for (const { slot, player } of freshPicks) {
         const update = buildDraftedPlayerUpdate(player, slot);
-        if (!update) continue;
-        updatedPlayers = updatedPlayers.map((p: any) =>
-          p.internalId === player.internalId ? { ...p, ...update } : p
-        );
+        if (update) updateMap.set(player.internalId, update);
       }
+      const updatedPlayers = state.players.map((p: any) =>
+        updateMap.has(p.internalId) ? { ...p, ...updateMap.get(p.internalId) } : p
+      );
       dispatch({ type: 'UPDATE_STATE', payload: { players: updatedPlayers } } as any);
     }
   }, [drafted, allProspects, currentPick, state.players, buildDraftedPlayerUpdate, dispatch]);
@@ -954,69 +955,12 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     const ls = state.leagueStats ?? {};
     const season: number = (ls as any).year ?? 2026;
 
-    // ── Commissioner rookie contract settings ──────────────────────────────
-    const rookieScaleType: string   = (ls as any).rookieScaleType ?? 'dynamic';
-    const capM: number              = (ls as any).salaryCap ?? 154.6;
-    const maxPct: number            = (ls as any).rookieMaxContractPercentage ?? 9;
-    const staticAmtUSD: number      = ((ls as any).rookieStaticAmount ?? 3) * 1_000_000;
-    const scaleAppliesTo: string    = (ls as any).rookieScaleAppliesTo ?? 'first_round';
-    const guaranteedYrs: number     = (ls as any).rookieContractLength ?? 2;
-    const teamOptEnabled: boolean   = (ls as any).rookieTeamOptionsEnabled ?? true;
-    const teamOptYears: number      = (ls as any).rookieTeamOptionYears ?? 2;
-    const restrictedFA: boolean     = (ls as any).rookieRestrictedFreeAgentEligibility ?? true;
-    // Min salary floor in USD (contract.amount in thousands → multiply back)
-    const minSalaryUSD: number      = ((ls as any).minContract ?? 1.273) * 1_000_000;
-
     const updatedPlayers = state.players.map(p => {
       const pickEntry = Object.entries(drafted).find(([, pl]: [string, any]) => pl.internalId === p.internalId);
       if (!pickEntry) return p;
-
       const pickSlot = parseInt(pickEntry[0]);
-      const team = draftOrder[pickSlot - 1];
-      if (!team) return p;
-
-      const round = pickSlot <= 30 ? 1 : 2;
-      const pickInRound = pickSlot <= 30 ? pickSlot : pickSlot - 30;
-
-      // ── Salary ────────────────────────────────────────────────────────────
-      let salaryAmtUSD: number;
-      if (rookieScaleType === 'none') {
-        salaryAmtUSD = minSalaryUSD;
-      } else if (rookieScaleType === 'static') {
-        salaryAmtUSD = staticAmtUSD;
-      } else {
-        // dynamic: slot-based scale; R2 only gets it if setting is 'both_rounds'
-        const useScale = round === 1 || scaleAppliesTo === 'both_rounds';
-        salaryAmtUSD = useScale
-          ? getRookieContractAmount(pickSlot, capM, maxPct, minSalaryUSD)
-          : minSalaryUSD;
-      }
-
-      // ── Contract length ───────────────────────────────────────────────────
-      // R1: guaranteed years from setting + team option years (if enabled)
-      // R2: always 2yr guaranteed, no team options
-      const baseYrs     = round === 1 ? guaranteedYrs : 2;
-      const optionYrs   = (round === 1 && teamOptEnabled) ? teamOptYears : 0;
-      const totalYrs    = baseYrs + optionYrs;
-
-      return {
-        ...p,
-        tid: team.id,
-        status: 'Active' as const,
-        draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: team._originalTid ?? team.id },
-        contract: {
-          // BBGM convention: amount in thousands of dollars
-          amount: Math.round(salaryAmtUSD / 1_000),
-          exp: season + totalYrs - 1,
-          // Team option and RFA metadata (used by seasonRollover + trade logic)
-          ...(optionYrs > 0 && {
-            hasTeamOption: true,
-            teamOptionExp: season + baseYrs, // option kicks in after guaranteed years (decision summer before this season)
-          }),
-          ...(round === 1 && restrictedFA && { restrictedFA: true }),
-          rookie: true,
-        },
-      };
+      const fields = computeDraftPickFields(pickSlot, draftOrder[pickSlot - 1], ls);
+      return fields ? { ...p, ...fields } : p;
     });
 
     // Undrafted current-year prospects → free agents (future classes stay as prospects)
