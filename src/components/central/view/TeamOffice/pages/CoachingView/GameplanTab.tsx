@@ -232,10 +232,30 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     rotation.forEach((p, i) => {
       const prior = saved?.minuteOverrides?.[p.internalId];
       const fromIdeal = idealDerived?.[p.internalId];
-      const raw = prior ?? fromIdeal ?? Math.round(baseMinutes[i] ?? 0);
+      // fromIdeal=0 (DNP in Ideal) must fall through to baseMinutes; ?? doesn't skip 0.
+      const raw = prior ?? (fromIdeal || undefined) ?? Math.round(baseMinutes[i] ?? 0);
       seed[p.internalId] = Math.max(0, Math.min(48, raw));
     });
-    setMinuteOverrides(seed);
+    // Normalize to exactly 240 — saved minuteOverrides from before a trade/signing can
+    // sum to 241+ because ghost entries were dropped but rounding wasn't corrected.
+    const seedTotal = Object.values(seed).reduce((a, b) => a + b, 0);
+    if (seedTotal > 0 && seedTotal !== 240) {
+      const scale = 240 / seedTotal;
+      const normalized: Record<string, number> = Object.fromEntries(
+        Object.entries(seed).map(([k, v]) => [k, Math.max(0, Math.min(48, Math.round(v * scale)))]),
+      );
+      let diff = 240 - Object.values(normalized).reduce((a, b) => a + b, 0);
+      const order = Object.entries(normalized).sort((a, b) => b[1] - a[1]).map(([k]) => k);
+      for (let i = 0; diff !== 0 && i < order.length * 2; i++) {
+        const k = order[i % order.length];
+        const step = diff > 0 ? 1 : -1;
+        const n = normalized[k] + step;
+        if (n >= 0 && n <= 48) { normalized[k] = n; diff -= step; }
+      }
+      setMinuteOverrides(normalized);
+    } else {
+      setMinuteOverrides(seed);
+    }
   }, [rotation, baseMinutes, team, state.players, teamId]);
 
   // ── Autosave to gameplanStore whenever the GM/commissioner edits something ─
@@ -250,7 +270,10 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     const plan: Gameplan = {
       starterIds: starterOrder,
       benchOrder,
-      minuteOverrides,
+      // Strip 0s — a saved 0 persists via prior?? and locks recovering players benched.
+      minuteOverrides: Object.fromEntries(
+        Object.entries(minuteOverrides).filter(([, v]) => v > 0),
+      ),
     };
     saveGameplan(teamId, plan);
   }, [starterOrder, benchOrder, minuteOverrides, canEdit, teamId]);

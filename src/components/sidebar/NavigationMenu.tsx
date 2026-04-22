@@ -43,7 +43,9 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
   const faEnd = `${seasonYear}-10-01`; // dead period ends at training camp
   const openingNight = toISODateString(getOpeningNightDate(seasonYear));
 
-  const isPastTradeDeadline = isGM && currentDateNorm > tradeDeadline && currentDateNorm < faStart;
+  // Trades reopen once the NBA Finals end (bracketComplete) — covers draft day, offseason, etc.
+  const finalsOver = !!(state.playoffs?.bracketComplete);
+  const isPastTradeDeadline = isGM && !finalsOver && currentDateNorm > tradeDeadline && currentDateNorm < faStart;
   const isFreeAgencyPeriod = currentDateNorm >= faStart && currentDateNorm < faEnd;
   // Year-round regular-season FA: between opening night and next FA start
   const regularSeasonFAEnabled = state.leagueStats?.regularSeasonFAEnabled ?? true;

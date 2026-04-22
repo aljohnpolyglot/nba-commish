@@ -593,7 +593,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     }
   }, [roster.totalFull, rosterFullOverridden, isFreeAgencySeason, teamPayroll, thresholds.salaryCap]);
 
-  if (roster.totalFull && !rosterFullOverridden) {
+  if (roster.totalFull && !rosterFullOverridden && !isResign) {
 
     return (
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md">
