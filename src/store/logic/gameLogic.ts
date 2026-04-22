@@ -789,7 +789,7 @@ export const processTurn = async (
         } catch (e) { console.warn('[GameLogic] autoInductHOFClass failed:', e); }
     }
 
-    if (wasDateReached(new Date(`${draftYear}-06-26T00:00:00Z`)) && !autoDraftComplete) {
+    if (wasDateReached(new Date(`${draftYear}-06-25T00:00:00Z`)) && !autoDraftComplete) {
         try {
             const { autoRunDraft } = await import('../../services/logic/autoResolvers');
             const patch = autoRunDraft({ ...state, players: updatedPlayers, draftLotteryResult: autoDraftLotteryResult } as any);

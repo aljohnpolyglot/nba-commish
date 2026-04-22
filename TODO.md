@@ -27,11 +27,13 @@
 
 - ✅ **DayView mobile layout** (`DayView.tsx`) — Outer div changed from `flex-1` to `min-h-full`. `flex-1` was constraining the container to the parent's leftover height and clipping the overflow; `min-h-full` lets the game grid grow naturally and the parent `overflow-y-auto` wrapper in ScheduleView handles the scroll.
 
+- ✅ **Resign blocked when roster full** (`SigningModal.tsx:596`) — The roster-full preflight was blocking re-signings even though they don't add roster slots (player is already on team). Changed condition from `if (roster.totalFull && !rosterFullOverridden)` to `if (roster.totalFull && !rosterFullOverridden && !isResign)` so re-signings always go through.
+
 ---
 
 ## BUGS — Active / High Priority
 
-- **Double draft dates on calendar** — ✅ FIXED. Calendar was marking both the draft date and the following day (internal sim-execution date) as draft events, causing duplicate DRAFT labels on consecutive days. Removed `draftDayStr2` logic from CalendarView.
+- **Double draft dates on calendar** — ✅ FIXED. `getDraftDate()` returned Jun 25 but both `lazySimRunner.ts` and `gameLogic.ts` hardcoded Jun 26 as the execution date, so `draftDayStr2` was added as a band-aid to mark both days visually. Removed `draftDayStr2` from CalendarView and aligned sim execution to Jun 25 in both lazySimRunner and gameLogic.
 
 - **Gameplan rotation minutes drift off 240 after major transactions** — After a trade or signing that changes the active roster, the saved gameplan's `minuteOverrides` can total 241+ (rounding from the old player set survives into the new one). The seeding effect re-seeds from the saved plan without re-normalizing, so the total stays off. Reproduce: trade away a rotation player mid-season, open Gameplan tab — total shows 241. Fix: normalize the seeded total to 240 in the seeding `useEffect`, same way `resetToAuto` does.
 

@@ -91,7 +91,7 @@ export const buildAutoResolveEvents = (y: number): AutoResolveEvent[] => {
     { date: `${y}-05-21`,  key: 'award_mvp',              resolver: autoAnnounceMVP,                 phase: 'Announcing MVP...' },
     // Draft events
     { date: `${y}-05-14`,  key: 'draft_lottery',          resolver: autoRunLottery,                  phase: 'Running Draft Lottery...' },
-    { date: `${y}-06-26`,  key: 'draft_execute',          resolver: autoRunDraft,                    phase: 'Executing NBA Draft...' },
+    { date: `${y}-06-25`,  key: 'draft_execute',          resolver: autoRunDraft,                    phase: 'Executing NBA Draft...' },
   ];
 };
 
