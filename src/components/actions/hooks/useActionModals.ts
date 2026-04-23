@@ -27,7 +27,8 @@ export const useActionModals = () => {
   const [christmasModalOpen, setChristmasModalOpen] = useState(false);
   const [globalGamesModalOpen, setGlobalGamesModalOpen] = useState(false);
   const [preseasonInternationalModalOpen, setPreseasonInternationalModalOpen] = useState(false);
-  
+  const [rigLotteryModalOpen, setRigLotteryModalOpen] = useState(false);
+
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [confirmActionType, setConfirmActionType] = useState<string | null>(null);
   const [confirmActionDetails, setConfirmActionDetails] = useState<{title: string, desc: string} | null>(null);
@@ -74,6 +75,7 @@ export const useActionModals = () => {
     christmasModalOpen, setChristmasModalOpen,
     globalGamesModalOpen, setGlobalGamesModalOpen,
     preseasonInternationalModalOpen, setPreseasonInternationalModalOpen,
+    rigLotteryModalOpen, setRigLotteryModalOpen,
     confirmModalOpen, setConfirmModalOpen,
     confirmActionType, setConfirmActionType,
     confirmActionDetails, setConfirmActionDetails,

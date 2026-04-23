@@ -30,7 +30,7 @@ export interface FillResult {
  * Returns ONLY the newly-synthesized prospects (caller pushes them into state.players).
  * If every class is already full, additions is empty.
  */
-export function ensureDraftClasses(players: NBAPlayer[], currentYear: number): FillResult {
+export function ensureDraftClasses(players: NBAPlayer[], currentYear: number, eligibilityRule?: string): FillResult {
   const nameData = getNameData();
   // Count ANY prospect pool entry — `tid === -2` is canonical for "not yet drafted"
   // per the project README. Status varies ('Prospect', 'Draft Prospect') so don't
@@ -51,8 +51,8 @@ export function ensureDraftClasses(players: NBAPlayer[], currentYear: number): F
     const have = counts[year] ?? 0;
     const need = TARGET_CLASS_SIZE - have;
     if (need <= 0) continue;
-    // Pass currentYear so prospects synthesized for future classes are aged-down appropriately.
-    const fresh = generateDraftClassForGame(year, need, Math.random, nameData, currentYear);
+    // Pass currentYear so prospects for future classes are aged-down appropriately.
+    const fresh = generateDraftClassForGame(year, need, Math.random, nameData, currentYear, eligibilityRule);
     // Stamp each prospect with a deterministic id prefix so they don't collide with BBGM ids.
     for (let i = 0; i < fresh.length; i++) {
       (fresh[i] as any).internalId = `gen-${year}-${Date.now().toString(36)}-${i}`;

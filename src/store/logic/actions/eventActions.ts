@@ -2,6 +2,7 @@ import { GameState, UserAction } from '../../../types';
 import { calculateOutcome } from '../../../services/logic/outcomeDecider';
 import { advanceDay } from '../../../services/llm/llm';
 import { convertTo2KRating } from '../../../utils/helpers';
+import { LOTTERY_PRESETS, DEFAULT_DRAFT_TYPE, computeTopKOdds } from '../../../lib/lotteryPresets';
 
 export const handleInvitePerformance = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const outcome = calculateOutcome('INVITE_PERFORMANCE', action.payload, stateWithSim);
@@ -121,10 +122,64 @@ export const handleGlobalGames = async (stateWithSim: GameState, action: UserAct
 
 export const handleRigLottery = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const outcome = calculateOutcome('RIG_LOTTERY', action.payload, stateWithSim);
-    const result = await advanceDay(stateWithSim, action, [], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
+    const { riggedTid } = action.payload ?? {};
+    const riggedTeamName = riggedTid != null
+        ? stateWithSim.teams.find(t => t.id === riggedTid)?.name ?? 'Unknown'
+        : 'Unknown';
+
+    const result = await advanceDay(stateWithSim, {
+        type: 'RIG_LOTTERY',
+        payload: {
+            outcomeText: `Quiet whispers have begun circulating in league circles about the integrity of the ${stateWithSim.leagueStats.year} Draft Lottery. Nothing confirmed. Nothing traceable.`,
+        },
+    } as any, [], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
+
+    // Covert action — suppress any emails/DMs that could tip off teams
+    result.newEmails = [];
+    result.newDMs = [];
     result.statChanges = result.statChanges || {};
     result.statChanges.publicApproval = (result.statChanges.publicApproval || 0) + (outcome.publicApproval || 0);
     result.statChanges.ownerApproval = (result.statChanges.ownerApproval || 0) + (outcome.ownerApproval || 0);
+
+    if (riggedTid != null) {
+        const preset = LOTTERY_PRESETS[stateWithSim.leagueStats?.draftType ?? DEFAULT_DRAFT_TYPE] ?? LOTTERY_PRESETS[DEFAULT_DRAFT_TYPE];
+        const poolSize = Math.min(14, preset.chances.length);
+        const sorted = [...stateWithSim.teams]
+            .filter(t => t.id > 0)
+            .sort((a, b) => (a.wins / Math.max(1, a.wins + a.losses)) - (b.wins / Math.max(1, b.wins + b.losses)))
+            .slice(0, poolSize);
+
+        const lotteryTeams = sorted.map((t, i) => {
+            const chance = preset.chances[i] ?? 0;
+            const gp = t.wins + t.losses;
+            return {
+                id: String(t.id),
+                tid: t.id,
+                name: t.name,
+                city: (t as any).region ?? t.name,
+                logoUrl: (t as any).logoUrl ?? '',
+                record: `${t.wins}-${t.losses}`,
+                winPct: gp > 0 ? (t.wins / gp).toFixed(3) : '.000',
+                odds1st: parseFloat(((chance / preset.total) * 100).toFixed(1)),
+                oddsTopN: parseFloat((computeTopKOdds(preset.chances, i, preset.numToPick) * 100).toFixed(1)),
+                color: (t as any).colors?.[0] ?? '#333333',
+                originalSeed: i + 1,
+            };
+        });
+
+        const riggedTeam = lotteryTeams.find(t => t.tid === riggedTid);
+        if (riggedTeam) {
+            const rest = lotteryTeams
+                .filter(t => t.tid !== riggedTid)
+                .sort((a, b) => a.originalSeed - b.originalSeed);
+            const draftLotteryResult = [
+                { pick: 1, team: riggedTeam, change: riggedTeam.originalSeed - 1 },
+                ...rest.map((t, idx) => ({ pick: idx + 2, team: t, change: t.originalSeed - (idx + 2) })),
+            ];
+            (result as any).draftLotteryResult = draftLotteryResult;
+        }
+    }
+
     return result;
 };
 

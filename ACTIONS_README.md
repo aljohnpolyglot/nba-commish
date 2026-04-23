@@ -150,7 +150,7 @@ Discreetly deliver a financial incentive to a player, coach, official, or media 
 Anonymously surface damaging personal or professional information about a target. Fed through trusted media intermediaries, the story takes on a life of its own. Hijacks the news cycle, redirects heat away from the league, and can permanently damage an enemy's reputation.
 
 **RIG_LOTTERY**
-Manipulate the NBA Draft Lottery outcome to deliver the #1 pick to the team of your choosing. The "random" ping-pong balls have a way of landing exactly where you want them. If this ever leaks, your legacy burns. Only available when league uses lottery format.
+Manipulate the NBA Draft Lottery outcome to deliver the #1 pick to the team of your choosing. Opens a minified lottery table showing all pool teams with their exact top-pick odds — select one team, confirm, and the result is written permanently to state. The Draft Lottery watch view will show it as already finalized; `autoRunLottery` (May 14) skips if a result is already set. Disabled after the lottery has already run. A "Rig Lottery" button also appears directly in the Draft Lottery view (commissioner mode only, pre-draw only). If this ever leaks, your legacy burns.
 
 ---
 

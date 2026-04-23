@@ -299,6 +299,12 @@ function progressPlayer(player: NBAPlayer, currentYear: number, date: string): N
 
       rating[attr] = Math.min(99, Math.max(20, rating[attr] + delta));
     }
+
+    // Sync rating.ovr so potMod sees the real gap as attrs grow.
+    // Generated prospects enter with a frozen nerfed value (e.g. 29) — without this
+    // potMod is always 1.0 and they grow unconstrained past their pot ceiling.
+    const ovrSum = ALL_ATTRS.reduce((s, a) => s + (rating[a] ?? 0), 0);
+    rating.ovr = Math.round(ovrSum / ALL_ATTRS.length);
   }
 
   // Rebuild ratings array

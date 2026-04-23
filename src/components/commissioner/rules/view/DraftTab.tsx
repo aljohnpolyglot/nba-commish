@@ -15,7 +15,7 @@ export const DraftTab: React.FC<DraftTabProps> = ({
     draftType,
     setDraftType,
     eligibilityRule,
-    setEligibilityRule
+    setEligibilityRule,
 }) => {
     return (
         <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-sm space-y-8">

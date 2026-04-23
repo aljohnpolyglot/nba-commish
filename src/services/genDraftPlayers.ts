@@ -75,6 +75,41 @@ type AgeProfile = {
   baseMultiplier: number; // overall multiplier for non-generational stats
 };
 
+// Historically-accurate draft age distributions per eligibility era (College path).
+// Each entry is [age, weight]. The slider shifts the whole table by an integer offset.
+// Sources: Wikipedia draft tables, CBS Sports class-year breakdowns.
+const ERA_COLLEGE_DISTRIBUTIONS: Record<string, Array<[number, number]>> = {
+  // 2006-present: bimodal — freshmen (19) as lottery darlings, seniors (22) dominating volume.
+  // Roughly: 4% age-18 waivers, 20% freshmen, 15% sophs, 20% juniors, 34% seniors, 7% super-seniors.
+  one_and_done: [[18, 4],  [19, 20], [20, 15], [21, 20], [22, 34], [23, 7]],
+  // 1975-2005: HS seniors (17-18) eligible; peaked at ~15% of all picks ca. 2003-05.
+  // College distribution shifts younger — juniors/sophs more common than senior-heavy pre-2006.
+  prep_to_pro:  [[17, 3],  [18, 12], [19, 18], [20, 18], [21, 22], [22, 22], [23, 5]],
+  // 1971-1975: hardship exemption was selective/financial — mostly seniors still, some juniors.
+  hardship:     [[19, 5],  [20, 15], [21, 25], [22, 40], [23, 15]],
+  // Pre-1971: strict four-year college rule — almost entirely 22-year-old seniors.
+  pre_1970s:    [[21, 5],  [22, 75], [23, 18], [24, 2]],
+};
+
+// Weighted mean age of each era's distribution (used to compute slider offset = 0).
+const ERA_DEFAULT_MEANS: Record<string, number> = {
+  one_and_done: 21, // bimodal 19+22 → weighted mean ~21
+  prep_to_pro:  20,
+  hardship:     22,
+  pre_1970s:    22,
+};
+
+function sampleEraAge(eligibilityRule: string, offset: number, rng: () => number): number {
+  const dist = ERA_COLLEGE_DISTRIBUTIONS[eligibilityRule] ?? ERA_COLLEGE_DISTRIBUTIONS.one_and_done;
+  const total = dist.reduce((s, [, w]) => s + w, 0);
+  let r = rng() * total;
+  for (const [age, weight] of dist) {
+    r -= weight;
+    if (r <= 0) return Math.max(17, Math.min(26, age + offset));
+  }
+  return Math.max(17, Math.min(26, dist[dist.length - 1][0] + offset));
+}
+
 const AGE_PROFILES: Record<number, AgeProfile> = {
   18: { noiseStd: 14, potBonus: 18, potVariance: 20, rawnessMod: 0.75, baseMultiplier: 0.70 },
   19: { noiseStd: 12, potBonus: 12, potVariance: 16, rawnessMod: 0.82, baseMultiplier: 0.72 },
@@ -188,36 +223,31 @@ function getArchetypeSelection(pos: string): string {
   return 'All-Around Wing';
 }
 
-export function generateDraftClass(year: number, count: number, rng: () => number, nameData: NameData, path: Player['path'] = 'College', currentSimYear?: number): Player[] {
+export function generateDraftClass(year: number, count: number, rng: () => number, nameData: NameData, path: Player['path'] = 'College', currentSimYear?: number, eligibilityRule?: string): Player[] {
   const prospects: Player[] = [];
   for (let i = 0; i < count; i++) {
-    prospects.push(generateProspect(year, rng, nameData, path, currentSimYear));
+    prospects.push(generateProspect(year, rng, nameData, path, currentSimYear, eligibilityRule));
   }
   return prospects;
 }
 
-function generateProspect(year: number, rng: () => number, nameData: NameData, path: Player['path'], currentSimYear?: number): Player {
-  // Determine realistic age distribution (modifying user's stats of ~60% seniors -> ~40% to bump sophomores/juniors)
-  // `draftAge` is the age the prospect will be AT the draft (classic distribution).
-  // `age` is their CURRENT age (at the sim's current season) — that's what drives ratings
-  // so prospects synthesized 3 years out don't get draft-level skills right now.
-  const ageRoll = rng();
-  let draftAge: number;
+function generateProspect(year: number, rng: () => number, nameData: NameData, path: Player['path'], currentSimYear?: number, eligibilityRule?: string): Player {
+  // `draftAge` is the age the prospect will be AT the draft.
+  // `age` is their CURRENT age (at the sim's current season) — drives ratings so prospects
+  // synthesized for future classes don't arrive at draft-level skills too early.
+  //
+  // College: sample from the era's historically-accurate bucket distribution.
+  // International: normal distribution centered 1 year below the era's default mean.
+  const rule = eligibilityRule ?? 'one_and_done';
+  const eraDefault = ERA_DEFAULT_MEANS[rule] ?? 21;
 
+  let draftAge: number;
   if (path === 'College') {
-    if (ageRoll < 0.04) draftAge = 18;      // Early Freshmen (4%)
-    else if (ageRoll < 0.24) draftAge = 19; // Freshmen (20%)
-    else if (ageRoll < 0.39) draftAge = 20; // Sophomores (15%)
-    else if (ageRoll < 0.59) draftAge = 21; // Juniors (20%)
-    else if (ageRoll < 0.93) draftAge = 22; // Seniors (34%)
-    else draftAge = 23;                     // Super Seniors (7%)
+    draftAge = sampleEraAge(rule, 0, rng);
   } else {
-    // International / OTE / G-League
-    if (ageRoll < 0.30) draftAge = 18;
-    else if (ageRoll < 0.65) draftAge = 19;
-    else if (ageRoll < 0.80) draftAge = 20;
-    else if (ageRoll < 0.90) draftAge = 21;
-    else draftAge = 22;
+    const intlCenter = Math.max(17, eraDefault - 1);
+    const rawAge = Math.round(randomNormal(intlCenter, 1.2)());
+    draftAge = Math.max(17, Math.min(26, rawAge));
   }
 
   // Rewind to current age if this class is more than one year out.
@@ -575,13 +605,13 @@ export function generateDraftClassForGame(
   rng: () => number,
   nameData: NameData,
   currentSimYear?: number,   // sim's current year — lets us age-down prospects for future classes
+  eligibilityRule?: string,  // selects the era age distribution shape
 ): NBAPlayer[] {
   // Build the class per-prospect so each pick rolls a realistic path mix.
   const prospects: Player[] = [];
   for (let i = 0; i < count; i++) {
     const path = samplePath(rng);
-    // Delegate to the original generator — handles country affinity, race, archetype, etc.
-    const single = generateDraftClass(year, 1, rng, nameData, path, currentSimYear);
+    const single = generateDraftClass(year, 1, rng, nameData, path, currentSimYear, eligibilityRule);
     if (single[0]) prospects.push(single[0]);
   }
   return prospects.map(sandboxToNBAPlayer);

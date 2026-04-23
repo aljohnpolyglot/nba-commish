@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { normalizeDate, getOwnTeamId } from '../../utils/helpers';
+import { LOTTERY_PRESETS, DEFAULT_DRAFT_TYPE, computeTopKOdds } from '../../lib/lotteryPresets';
+import { RigLotteryModal } from '../modals/RigLotteryModal';
 
 // ─── Fanspo CSS (injected once) ──────────────────────────────────────────────
 const FANSPO_CSS = `
@@ -144,20 +146,6 @@ if (typeof document !== 'undefined' && !document.getElementById('fanspo-draft-cs
   document.head.appendChild(s);
 }
 
-// ─── Lottery presets (mirrors League Settings draftType options) ───────────────
-const LOTTERY_PRESETS: Record<string, { chances: number[]; numToPick: number; total: number; label: string }> = {
-  nba2019:  { chances: [140,140,140,125,105,90,75,60,45,30,20,15,10,5],                                    numToPick: 4, total: 1000, label: 'NBA 2019-present' },
-  nba1994:  { chances: [250,199,156,119,88,63,43,28,17,11,8,7,6,5],                                        numToPick: 3, total: 1000, label: 'NBA 1994-2018' },
-  nba1990:  { chances: [11,10,9,8,7,6,5,4,3,2,1],                                                          numToPick: 3, total: 66,   label: 'NBA 1990-1993' },
-  nba1987:  { chances: [1,1,1,1,1,1,1],                                                                     numToPick: 3, total: 7,    label: 'NBA 1987-1989' },
-  nba1985:  { chances: [1,1,1,1,1,1,1],                                                                     numToPick: 7, total: 7,    label: 'NBA 1985-1986' },
-  nba1966:  { chances: [1,1,0,0,0,0,0],                                                                     numToPick: 2, total: 2,    label: 'NBA 1966-1984' },
-  nhl2021:  { chances: [185,135,115,95,85,75,65,60,50,35,30,25,20,15,5,5],                                 numToPick: 2, total: 1000, label: 'NHL 2021-present' },
-  nhl2017:  { chances: [185,135,115,95,85,75,65,60,50,35,30,25,20,15,10],                                  numToPick: 3, total: 1000, label: 'NHL 2017-2020' },
-  mlb2022:  { chances: [1650,1650,1650,1325,1000,750,550,390,270,180,140,110,90,76,62,48,36,23],           numToPick: 6, total: 10000,label: 'MLB 2022-present' },
-};
-const DEFAULT_PRESET = LOTTERY_PRESETS['nba2019'];
-
 // ─── Lottery runner (mirrors /lib/lottery.ts) ─────────────────────────────────
 interface LotteryTeam {
   id: string;
@@ -167,7 +155,7 @@ interface LotteryTeam {
   record: string;
   winPct: string;
   odds1st: number;
-  oddsTop4: number;
+  oddsTopN: number;
   color: string;
   originalSeed: number;
   tid: number;
@@ -234,7 +222,7 @@ const LotteryBall = ({ number, state: bs, team }: BallProps) => (
 export const DraftLotteryView = () => {
   const { state, dispatchAction } = useGame();
   const season = state.leagueStats?.year ?? new Date(state.date).getFullYear();
-  const activePreset = LOTTERY_PRESETS[state.leagueStats?.draftType ?? 'nba2019'] ?? DEFAULT_PRESET;
+  const activePreset = LOTTERY_PRESETS[state.leagueStats?.draftType ?? DEFAULT_DRAFT_TYPE] ?? LOTTERY_PRESETS[DEFAULT_DRAFT_TYPE];
   const ownTid = getOwnTeamId(state);
 
   // Resolve the CURRENT owner of a given original team's upcoming R1 pick.
@@ -259,6 +247,9 @@ export const DraftLotteryView = () => {
   const lotteryDate = `${season}-05-14`;
   const isLotteryTime = today >= lotteryDate;
 
+  const isCommissioner = state.gameMode !== 'gm';
+  const [rigLotteryOpen, setRigLotteryOpen] = useState(false);
+
   // Draft Board is now a separate nav view — no appMode toggle needed here
   const [speed, setSpeed] = useState('normal');
   const [showHistory, setShowHistory] = useState(false);
@@ -272,8 +263,9 @@ export const DraftLotteryView = () => {
   // 0 = fully revealed (restored), numTeams+1 = idle (no results yet)
   const [revealIndex, setRevealIndex] = useState<number>(() => hasSaved ? 0 : 15);
 
-  // Build lottery teams from worst 14 in state
+  // Build lottery teams — capped by preset pool size, not a hard 14
   const activeTeams: LotteryTeam[] = useMemo(() => {
+    const poolSize = Math.min(14, activePreset.chances.length);
     const sorted = [...state.teams]
       .filter(t => t.id > 0)
       .sort((a, b) => {
@@ -281,12 +273,12 @@ export const DraftLotteryView = () => {
         const wb = b.wins / Math.max(1, b.wins + b.losses);
         return wa - wb;
       })
-      .slice(0, 14);
+      .slice(0, poolSize);
 
     return sorted.map((t, i) => {
       const chance = activePreset.chances[i] ?? 0;
       const odds1st = parseFloat(((chance / activePreset.total) * 100).toFixed(1));
-      const oddsTop4 = parseFloat((odds1st * activePreset.numToPick).toFixed(1));
+      const oddsTopN = parseFloat((computeTopKOdds(activePreset.chances, i, activePreset.numToPick) * 100).toFixed(1));
       const gp = t.wins + t.losses;
       const winPct = gp > 0 ? (t.wins / gp).toFixed(3) : '.000';
       return {
@@ -298,12 +290,12 @@ export const DraftLotteryView = () => {
         record: `${t.wins}-${t.losses}`,
         winPct,
         odds1st,
-        oddsTop4,
+        oddsTopN,
         color: t.colors?.[0] ?? '#333333',
         originalSeed: i + 1,
       };
     });
-  }, [state.teams]);
+  }, [state.teams, activePreset]);
 
   const numTeams = activeTeams.length;
 
@@ -414,6 +406,15 @@ export const DraftLotteryView = () => {
                   <div className="h-9 bg-transparent border border-[#333] text-xs font-bold text-white/40 px-3 rounded-md flex items-center">
                     {activePreset.label}
                   </div>
+                  {/* Commissioner rig button — only before lottery runs */}
+                  {isCommissioner && !savedResults && (
+                    <button
+                      onClick={() => setRigLotteryOpen(true)}
+                      className="h-9 bg-violet-600/20 border border-violet-500/40 hover:bg-violet-600/30 text-violet-300 text-xs font-bold px-3 rounded-md transition-colors"
+                    >
+                      Rig Lottery
+                    </button>
+                  )}
                 </div>
                 <label className="flex items-center gap-3 cursor-pointer">
                   <span className="text-xs font-bold text-white/60 uppercase">
@@ -444,7 +445,7 @@ export const DraftLotteryView = () => {
                   <section className="bg-[#030303] py-8">
                     <div className="text-center mb-6">
                       <p className="text-[10px] text-white/40 uppercase tracking-widest">
-                        {season} NBA Draft Lottery · NBA 2019 Rules · Top 4 picks drawn
+                        {season} NBA Draft Lottery · {activePreset.label} · Top {activePreset.numToPick} pick{activePreset.numToPick !== 1 ? 's' : ''} drawn
                       </p>
                     </div>
 
@@ -500,7 +501,7 @@ export const DraftLotteryView = () => {
                             <th className="text-left">PICK &nbsp;&nbsp;&nbsp;&nbsp; TEAM</th>
                             <th>RECORD</th>
                             <th>PCT</th>
-                            <th>TOP 4</th>
+                            <th>TOP {activePreset.numToPick}</th>
                             <th>1ST</th>
                             <th className="text-right">ODDS</th>
                           </tr>
@@ -569,7 +570,7 @@ export const DraftLotteryView = () => {
                                   </th>
                                   <td className="text-center font-mono text-white/60">{team.record}</td>
                                   <td className="text-center font-mono text-white/60">{team.winPct}</td>
-                                  <td className="text-center font-mono text-white/60">{team.oddsTop4}%</td>
+                                  <td className="text-center font-mono text-white/60">{team.oddsTopN}%</td>
                                   <td className="text-center font-mono text-white/60">{team.odds1st}%</td>
                                   <td className="text-right">
                                     <button className="text-white/20 hover:text-white p-1">
@@ -628,6 +629,16 @@ export const DraftLotteryView = () => {
           </div>
         </main>
       </div>
+
+      {rigLotteryOpen && (
+        <RigLotteryModal
+          onClose={() => setRigLotteryOpen(false)}
+          onConfirm={(riggedTid) => {
+            setRigLotteryOpen(false);
+            dispatchAction({ type: 'RIG_LOTTERY' as any, payload: { riggedTid } });
+          }}
+        />
+      )}
     </div>
   );
 };

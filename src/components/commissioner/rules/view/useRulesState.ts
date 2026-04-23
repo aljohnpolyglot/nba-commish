@@ -21,7 +21,7 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
   const [playoffFormat, setPlayoffFormat] = useState<(number | string)[]>([...leagueStats.numGamesPlayoffSeries]);
   const [draftType, setDraftType] = useState(leagueStats.draftType);
   const [eligibilityRule, setEligibilityRule] = useState(leagueStats.draftEligibilityRule ?? 'one_and_done');
-  const [minAgeRequirement, setMinAgeRequirement] = useState<number | string>(leagueStats.minAgeRequirement ?? 19);
+const [minAgeRequirement, setMinAgeRequirement] = useState<number | string>(leagueStats.minAgeRequirement ?? 19);
   const [minGamesRequirement, setMinGamesRequirement] = useState<number | string>(leagueStats.minGamesRequirement ?? 65);
   const [gamesPerSeason, setGamesPerSeason] = useState(leagueStats.gamesPerSeason ?? 82);
   const [divisionGames, setDivisionGames] = useState(leagueStats.divisionGames ?? 16);
@@ -472,7 +472,7 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
         if (JSON.stringify(cleanedFormat) !== JSON.stringify(leagueStats.numGamesPlayoffSeries)) changes.push(`Playoff series format changed to ${cleanedFormat.join('-')}`);
         if (draftType !== leagueStats.draftType) changes.push(`Draft format changed to ${draftType}`);
         if (eligibilityRule !== (leagueStats.draftEligibilityRule ?? 'one_and_done')) changes.push(`Draft eligibility rule changed to ${eligibilityRule}`);
-        if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minimum age requirement set to ${cleanedMinAge}`);
+if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minimum age requirement set to ${cleanedMinAge}`);
         if (cleanedMinGames !== (leagueStats.minGamesRequirement ?? 65)) changes.push(`Minimum games for awards set to ${cleanedMinGames}`);
         if (allStarFormat !== (leagueStats.allStarFormat ?? 'usa_vs_world')) changes.push(`All-Star Game format changed to ${allStarFormat}`);
         if (allStarTeams !== (leagueStats.allStarTeams ?? 3)) changes.push(`All-Star teams changed to ${allStarTeams}`);

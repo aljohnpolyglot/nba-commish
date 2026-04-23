@@ -2,6 +2,7 @@ import { GameState, NonNBATeam, NewsItem, DraftPick } from '../../types';
 import { generateSchedule } from '../gameScheduler';
 import { AwardService } from './AwardService';
 import { NewsGenerator } from '../news/NewsGenerator';
+import { LOTTERY_PRESETS } from '../../lib/lotteryPresets';
 
 // ── Schedule Generation (Aug 14) ──────────────────────────────────────────
 export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
@@ -689,19 +690,6 @@ const _getRookieAmount = (slot: number): number => {
   return Math.round((1_800_000 - r2Frac * 530_000) / 1000) * 1000;
 };
 
-// ── Draft Lottery presets (mirrors DraftLotteryView LOTTERY_PRESETS) ──────
-const _LOTTERY_PRESETS: Record<string, { chances: number[]; numToPick: number; total: number }> = {
-  nba2019: { chances: [140,140,140,125,105,90,75,60,45,30,20,15,10,5], numToPick: 4, total: 1000 },
-  nba1994: { chances: [250,199,156,119,88,63,43,28,17,11,8,7,6,5], numToPick: 3, total: 1000 },
-  nba1990: { chances: [11,10,9,8,7,6,5,4,3,2,1], numToPick: 3, total: 66 },
-  nba1987: { chances: [36,30,25,20,15,10,8,7,6,5,4,3,2,1], numToPick: 7, total: 172 },
-  nba1985: { chances: [1,1,1,1,1,1,1], numToPick: 1, total: 7 },
-  nba1966: { chances: [1,1], numToPick: 1, total: 2 },
-  nhl2021: { chances: [185,135,115,95,85,75,65,60,50,35,30,25,20,5], numToPick: 2, total: 985 },
-  nhl2017: { chances: [185,135,115,95,85,75,65,60,50,35,30,25,20,5], numToPick: 3, total: 985 },
-  mlb2022: { chances: [165,165,165,130,110,100,90,76,65,50,40,30,10,4], numToPick: 6, total: 1200 },
-};
-
 function _runWeightedLottery<T extends { originalSeed: number }>(
   teams: T[],
   chances: number[],
@@ -740,12 +728,12 @@ function _runWeightedLottery<T extends { originalSeed: number }>(
 export const autoRunLottery = (state: GameState): Partial<GameState> => {
   if ((state as any).draftLotteryResult) return {}; // already run
 
-  const preset = _LOTTERY_PRESETS[state.leagueStats?.draftType ?? 'nba2019'] ?? _LOTTERY_PRESETS.nba2019;
+  const preset = LOTTERY_PRESETS[state.leagueStats?.draftType ?? 'nba2019'] ?? LOTTERY_PRESETS.nba2019;
 
   const sorted = [...state.teams]
     .filter(t => t.id > 0)
     .sort((a, b) => (a.wins / Math.max(1, a.wins + a.losses)) - (b.wins / Math.max(1, b.wins + b.losses)))
-    .slice(0, 14);
+    .slice(0, Math.min(14, preset.chances.length));
 
   const lotteryTeams = sorted.map((t, i) => {
     const chance = preset.chances[i] ?? 0;

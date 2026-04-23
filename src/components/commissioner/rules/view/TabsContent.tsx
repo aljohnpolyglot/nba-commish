@@ -53,7 +53,7 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
                 )}
 
                 {activeTab === 'Draft' && (
-                    <DraftTab 
+                    <DraftTab
                         draftType={rulesState.draftType}
                         setDraftType={rulesState.setDraftType}
                         eligibilityRule={rulesState.eligibilityRule}

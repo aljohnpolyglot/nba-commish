@@ -15,6 +15,7 @@ import type { MoodTrait } from '../utils/mood/moodTypes';
 import { calcPot2K } from './trade/tradeValueEngine';
 import { isAssistantGMActive } from './assistantGMFlag';
 import { getGMAttributes, clampSpendOffer, workEthicSignProb } from './staff/gmAttributes';
+import { hasFamilyOnRoster } from '../utils/familyTies';
 
 const DEFAULT_MAX_ROSTER = 15;
 
@@ -481,10 +482,12 @@ export function autoTrimOversizedRosters(state: GameState, month?: number, day?:
           : (a: NBAPlayer, b: NBAPlayer) => (a.overallRating ?? 0) - (b.overallRating ?? 0);
 
         // Cut priority: NG first (free), then G-League stash, then 2W lowest OVR, then standard
-        const ngPlayers  = allPlayers.filter(p => !!(p as any).nonGuaranteed).sort(sortFn);
-        const glPlayers  = allPlayers.filter(p => !(p as any).nonGuaranteed && !!(p as any).gLeagueAssigned).sort(sortFn);
-        const twPlayers  = allPlayers.filter(p => !(p as any).nonGuaranteed && !(p as any).gLeagueAssigned && !!(p as any).twoWay).sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0));
-        const stdPlayers = allPlayers.filter(p => !(p as any).nonGuaranteed && !(p as any).gLeagueAssigned && !(p as any).twoWay).sort(sortFn);
+        // Players with a relative on this roster are untouchable (nepotism protection).
+        const canCut = (p: NBAPlayer) => !hasFamilyOnRoster(p, allPlayers);
+        const ngPlayers  = allPlayers.filter(p => canCut(p) && !!(p as any).nonGuaranteed).sort(sortFn);
+        const glPlayers  = allPlayers.filter(p => canCut(p) && !(p as any).nonGuaranteed && !!(p as any).gLeagueAssigned).sort(sortFn);
+        const twPlayers  = allPlayers.filter(p => canCut(p) && !(p as any).nonGuaranteed && !(p as any).gLeagueAssigned && !!(p as any).twoWay).sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0));
+        const stdPlayers = allPlayers.filter(p => canCut(p) && !(p as any).nonGuaranteed && !(p as any).gLeagueAssigned && !(p as any).twoWay).sort(sortFn);
         const trimPool = [...ngPlayers, ...glPlayers, ...twPlayers, ...stdPlayers];
         const teamWaivers: WaiverResult[] = [];
         for (let i = 0; i < excess && i < trimPool.length; i++) {
@@ -510,9 +513,11 @@ export function autoTrimOversizedRosters(state: GameState, month?: number, day?:
           ? (a: NBAPlayer, b: NBAPlayer) => calcPot2K(a, currentYear) - calcPot2K(b, currentYear)
           : (a: NBAPlayer, b: NBAPlayer) => (a.overallRating ?? 0) - (b.overallRating ?? 0);
 
-        const ngRoster = roster.filter(p => !!(p as any).nonGuaranteed).sort(sortFn);
-        const glPlayers = roster.filter(p => !(p as any).nonGuaranteed && !!(p as any).gLeagueAssigned).sort(sortFn);
-        const nonGL = roster.filter(p => !(p as any).nonGuaranteed && !(p as any).gLeagueAssigned).sort(sortFn);
+        // Players with a relative on this roster are untouchable (nepotism protection).
+        const canCut = (p: NBAPlayer) => !hasFamilyOnRoster(p, roster);
+        const ngRoster = roster.filter(p => canCut(p) && !!(p as any).nonGuaranteed).sort(sortFn);
+        const glPlayers = roster.filter(p => canCut(p) && !(p as any).nonGuaranteed && !!(p as any).gLeagueAssigned).sort(sortFn);
+        const nonGL = roster.filter(p => canCut(p) && !(p as any).nonGuaranteed && !(p as any).gLeagueAssigned).sort(sortFn);
         const trimPool = [...ngRoster, ...glPlayers, ...nonGL];
         const teamWaivers: WaiverResult[] = [];
         for (let i = 0; i < excess && i < trimPool.length; i++) {
@@ -529,7 +534,10 @@ export function autoTrimOversizedRosters(state: GameState, month?: number, day?:
       const twoWayRoster = state.players.filter(p => p.tid === team.id && !!(p as any).twoWay);
       if (twoWayRoster.length > maxTwoWay) {
         const excess2W = twoWayRoster.length - maxTwoWay;
-        const sorted2W = [...twoWayRoster].sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0));
+        const fullRosterForFamilyCheck = state.players.filter(p => p.tid === team.id);
+        const sorted2W = [...twoWayRoster]
+          .filter(p => !hasFamilyOnRoster(p, fullRosterForFamilyCheck))
+          .sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0));
         const teamTwoWayWaivers: WaiverResult[] = [];
         for (let i = 0; i < excess2W && i < sorted2W.length; i++) {
           const p = sorted2W[i];
@@ -948,7 +956,9 @@ export function runAIMleUpgradeSwaps(
       ? calcPot2K(p, currentYear)
       : (p.overallRating ?? 0);
 
-    const weakest = [...guaranteedRoster].sort((a, b) => sortScore(a) - sortScore(b))[0];
+    const weakest = [...guaranteedRoster]
+      .filter(p => !hasFamilyOnRoster(p, guaranteedRoster))
+      .sort((a, b) => sortScore(a) - sortScore(b))[0];
     if (!weakest) continue;
     const weakestScore = sortScore(weakest);
 

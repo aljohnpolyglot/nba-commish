@@ -12,6 +12,7 @@ import { extractNbaId, hdPortrait, normalizeDate, convertTo2KRating } from '../.
 import { getDisplayPotential } from '../../../utils/playerRatings';
 import { getFreeAgencyStartDate } from '../../../utils/dateUtils';
 import { getPlayerImage } from '../../central/view/bioCache';
+import { getNonNBAGistData } from '../../central/view/nonNBACache';
 import { loadPlayerRenders, getPlayerRender } from '../../../utils/playerRenders';
 import { PlayerBioMoraleTab, classifyResignIntent } from '../../central/view/PlayerBioMoraleTab';
 import { PlayerBioContractTab } from '../../central/view/PlayerBioContractTab';
@@ -1046,10 +1047,16 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                     return typeof h === 'number' && h > 0 ? `${Math.floor(h / 12)}'${h % 12}"` : '—';
                   })() },
                 { label: 'Wt',   value: (() => {
-                    // Match PlayerBiosView pattern — weight can be a number OR a "195lb" string.
                     const raw = (player as any).weight;
                     const num = typeof raw === 'number' ? raw : typeof raw === 'string' ? parseInt(raw, 10) : 0;
-                    return num > 0 ? `${num}lb` : '—';
+                    if (num > 0) return `${num}lb`;
+                    const isExternal = ['B-League','PBA','Euroleague','G-League','Endesa','China CBA','NBL Australia','WNBA'].includes(player.status || '');
+                    if (isExternal) {
+                      const gist = getNonNBAGistData(player.status!, player.name);
+                      const gw = gist?.w ? parseInt(gist.w, 10) : 0;
+                      if (gw > 0) return `${gw}lb`;
+                    }
+                    return '—';
                   })() },
                 { label: 'Exp',  value: (() => {
                     const draftYear = player.draft?.year;
@@ -1636,11 +1643,11 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
               )}
             </div>
 
-            <div className="px-8 xl:px-10 py-6 bg-black/50 border-t border-white/5 flex items-center justify-end shrink-0">
-              <div className="flex gap-3">
+            <div className="px-4 sm:px-8 xl:px-10 py-3 sm:py-6 bg-black/50 border-t border-white/5 flex items-center justify-end shrink-0">
+              <div className="flex gap-2 sm:gap-3 flex-wrap justify-end">
                 <button
                   onClick={onClose}
-                  className="px-8 py-3 bg-white/5 border border-white/10 rounded-sm text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-all"
+                  className="px-3 sm:px-8 py-2 sm:py-3 bg-white/5 border border-white/10 rounded-sm text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-all"
                 >
                   Withdraw
                 </button>
@@ -1666,13 +1673,13 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                       title={mleCanCover
                         ? `Uses ${mleLabel} — ${formatSalaryM(mle.available)} available`
                         : `Salary exceeds ${mleLabel} limit (${formatSalaryM(mle.available)} available)`}
-                      className={`px-6 py-3 rounded-sm text-[10px] font-black italic uppercase tracking-widest transition-all ${
+                      className={`px-3 sm:px-6 py-2 sm:py-3 rounded-sm text-[9px] sm:text-[10px] font-black italic uppercase tracking-widest transition-all ${
                         mleCanCover
                           ? 'bg-blue-600 text-white hover:scale-[1.02]'
                           : 'bg-blue-900/30 text-blue-300/30 cursor-not-allowed'
                       }`}
                     >
-                      Sign with {mleLabel}
+                      Sign w/ {mleLabel}
                     </button>
                   );
                 })()}
@@ -1698,7 +1705,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                       setShowResponse(true);
                     }
                   }}
-                  className="px-10 py-3 bg-[#e21d37] rounded-sm text-[10px] font-black italic uppercase tracking-widest text-white hover:scale-[1.02] transition-all"
+                  className="px-5 sm:px-10 py-2 sm:py-3 bg-[#e21d37] rounded-sm text-[9px] sm:text-[10px] font-black italic uppercase tracking-widest text-white hover:scale-[1.02] transition-all"
                 >
                   {shouldSubmitBid ? 'Submit Offer' : (autoAccept ? 'Finalize Deal' : 'Submit')}
                 </button>

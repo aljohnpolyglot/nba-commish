@@ -45,6 +45,27 @@
 
 ---
 
+## KNOWLEDGE GAPS — Lottery System (don't fix yet)
+
+These are known limitations introduced alongside the `src/lib/lotteryPresets.ts` single-source-of-truth refactor. Documented here so future work has context.
+
+### ~~DraftLotteryView always renders 14 teams regardless of preset~~ ✅ FIXED
+`activeTeams` now slices to `Math.min(14, activePreset.chances.length)` so nba1966 shows 2 balls, nba1985/1987/1990 show 7–11, etc. `activePreset` added to useMemo deps.
+
+### ~~autoRunLottery slices to 14 regardless of preset~~ ✅ FIXED
+`autoResolvers.ts:autoRunLottery` now uses `Math.min(14, preset.chances.length)` matching the view fix.
+
+### ~~Subtitle and column header hardcoded to "NBA 2019 Rules · Top 4 picks drawn"~~ ✅ FIXED
+Both now use `activePreset.label` and `activePreset.numToPick` dynamically.
+
+### ~~oddsTop4 naive multiplication~~ ✅ FIXED
+Replaced with `computeTopKOdds()` in `src/lib/lotteryPresets.ts` — exact Plackett-Luce recursive formula, memoised on (available-set, k). nba2019 worst team now correctly shows ~52% top-4 odds instead of inflated 56%.
+
+### DraftPicks.tsx picks have no lottery-odds context
+`src/components/central/view/TeamOffice/pages/DraftPicks.tsx` shows pick inventory (round + season) but has no awareness of what lottery system is in use. A 1st-round pick under nba1966 (coin flip) has very different implied value than under nba2019 (smoothed odds). No pick-value estimate is shown anywhere.
+
+---
+
 ## FEATURES — Backlog (low priority)
 
 ### Draft Scouting sidebar — mock-team projections + POT-weighted comparisons

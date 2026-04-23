@@ -83,6 +83,7 @@ const ActionsView: React.FC = () => {
     setChristmasModalOpen: modals.setChristmasModalOpen,
     setGlobalGamesModalOpen: modals.setGlobalGamesModalOpen,
     setPreseasonInternationalModalOpen: modals.setPreseasonInternationalModalOpen,
+    setRigLotteryModalOpen: modals.setRigLotteryModalOpen,
     confirmAction: modals.openConfirmation
   });
 

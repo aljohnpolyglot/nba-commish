@@ -14,6 +14,7 @@ import { TransferFundsModal } from '../../modals/TransferFundsModal';
 import { ChristmasGamesModal } from '../../modals/ChristmasGamesModal';
 import { GlobalGamesModal } from '../../modals/GlobalGamesModal';
 import { PreseasonInternationalModal } from '../../modals/PreseasonInternationalModal';
+import { RigLotteryModal } from '../../modals/RigLotteryModal';
 import ContactModal from '../../ContactModal';
 
 interface ActionModalsRendererProps {
@@ -296,6 +297,16 @@ export const ActionModalsRenderer: React.FC<ActionModalsRendererProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {modals.rigLotteryModalOpen && (
+        <RigLotteryModal
+          onClose={() => modals.setRigLotteryModalOpen(false)}
+          onConfirm={(riggedTid) => {
+            modals.setRigLotteryModalOpen(false);
+            handleAction('RIG_LOTTERY', { riggedTid });
+          }}
+        />
+      )}
     </>
   );
 };

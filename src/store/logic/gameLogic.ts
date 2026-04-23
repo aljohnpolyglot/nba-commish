@@ -957,7 +957,7 @@ export const processTurn = async (
         prevTeams: state.teams,
         daysSimulated: daysToSimulate,
         bets: prunedBets,
-        draftLotteryResult: autoDraftLotteryResult ?? state.draftLotteryResult,
+        draftLotteryResult: (result as any).draftLotteryResult ?? autoDraftLotteryResult ?? state.draftLotteryResult,
         draftComplete: autoDraftComplete ?? state.draftComplete,
         pendingElimToast: stateWithSim.pendingElimToast,
         pendingInjuryToasts: stateWithSim.pendingInjuryToasts,

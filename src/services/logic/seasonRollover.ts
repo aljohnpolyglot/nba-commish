@@ -301,7 +301,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   // Each rollover pushes the horizon one year further. Top up so the player
   // always has 4 populated classes ahead (currentYear+1 through +4 at this point,
   // since nextYear is now the "current" season).
-  const fillResult = ensureDraftClasses(playersAfterHOF, nextYear);
+  const fillResult = ensureDraftClasses(playersAfterHOF, nextYear, state.leagueStats.draftEligibilityRule);
   const playersWithDraftClasses = fillResult.additions.length > 0
     ? [...playersAfterHOF, ...fillResult.additions]
     : playersAfterHOF;

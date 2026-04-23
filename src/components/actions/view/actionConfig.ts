@@ -36,6 +36,7 @@ export const getActionsConfig = (state: GameState, callbacks: {
     setChristmasModalOpen: (open: boolean) => void;
     setGlobalGamesModalOpen: (open: boolean) => void;
     setPreseasonInternationalModalOpen: (open: boolean) => void;
+    setRigLotteryModalOpen: (open: boolean) => void;
     confirmAction: (type: string, title: string, desc: string) => void;
 }): ActionsConfig => ({
     executive: [
@@ -273,8 +274,8 @@ export const getActionsConfig = (state: GameState, callbacks: {
         benefit: "+Owner Approval (Beneficiary) / Total Draft Control",
         icon: Dna,
         color: "violet",
-        disabled: state.leagueStats.draftType !== 'lottery',
-        onClick: () => callbacks.confirmAction('RIG_LOTTERY', 'Rig Draft Lottery', 'Are you absolutely sure you want to rig the draft lottery? This is a massive risk to your legacy.')
+        disabled: !!(state as any).draftLotteryResult,
+        onClick: () => callbacks.setRigLotteryModalOpen(true)
       }
     ]
 });

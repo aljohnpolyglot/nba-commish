@@ -40,8 +40,10 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, on
       const teamColor = team?.colors?.[0] || '#64748b';
       const fullPlayer = state.players?.find((pl: any) => pl.internalId === p.playerId);
       const rating = convertTo2KRating(fullPlayer?.overallRating || p.ovr || 60, fullPlayer?.ratings?.[fullPlayer.ratings.length - 1]?.hgt ?? 50, fullPlayer?.ratings?.[fullPlayer.ratings.length - 1]?.tp);
+      const currentSeason = state.leagueStats?.year;
       const pastAllStars = fullPlayer?.awards?.filter((a: any) => a.type === 'All-Star').length ?? 0;
-      const allStarCount = pastAllStars + 1; // +1 for this season
+      const alreadyAwarded = fullPlayer?.awards?.some((a: any) => a.type === 'All-Star' && a.season === currentSeason);
+      const allStarCount = alreadyAwarded ? pastAllStars : pastAllStars + 1;
 
       return (
         <div

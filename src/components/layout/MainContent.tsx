@@ -65,7 +65,11 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
     case 'Messages':
       return <MessagesView />;
     case 'Schedule':
-      return <ScheduleView />;
+      return (
+        <div className="h-full overflow-hidden flex flex-col">
+          <ScheduleView />
+        </div>
+      );
     case 'Social Feed':
       return <TwitterLayout />;
     case 'League News':
@@ -116,9 +120,21 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
         </div>
       );
     case 'Actions':
-      return <ActionsView />;
+      return (
+        <div className="h-full overflow-hidden flex flex-col">
+          <div className="px-4 md:px-10 pt-4 md:pt-8 pb-4 shrink-0">
+            <h2 className="text-3xl font-black text-white uppercase tracking-tight">Actions</h2>
+            <p className="text-slate-500 font-medium text-sm">Commissioner tools and decisions</p>
+          </div>
+          <ActionsView />
+        </div>
+      );
     case 'Seasonal':
-      return <SeasonalView />;
+      return (
+        <div className="h-full overflow-hidden flex flex-col">
+          <SeasonalView />
+        </div>
+      );
     case 'Personal':
       return <PersonalView />;
     case 'League Office':
