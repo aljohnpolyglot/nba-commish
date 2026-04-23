@@ -108,6 +108,7 @@ const PlayerRow: React.FC<{
       {/* Portrait — no overallRating prop so ribbon is suppressed */}
       <PlayerPortrait
         imgUrl={player.imgURL}
+        face={(player as any).face}
         size={36}
         playerName={player.name}
       />
@@ -223,7 +224,7 @@ const OfferItemRow: React.FC<{
         </>
       ) : item.type === 'player' && item.player ? (
         <>
-          <PlayerPortrait imgUrl={item.player.imgURL} size={28} playerName={item.player.name} />
+          <PlayerPortrait imgUrl={item.player.imgURL} face={(item.player as any).face} size={28} playerName={item.player.name} />
           <div className="flex-1 min-w-0">
             <div className="text-xs font-bold text-white truncate flex items-center gap-1">
               {item.player.name}
@@ -865,7 +866,12 @@ export const TradeFinderView: React.FC = () => {
                 {basket.map(item => (
                   <div key={item.id} className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-full px-2 py-1 text-xs font-bold text-white">
                     {item.type === 'player' && item.player && (
-                      <img src={item.player.imgURL} alt="" className="w-4 h-4 rounded-full object-cover bg-slate-700" referrerPolicy="no-referrer" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      <PlayerPortrait
+                        imgUrl={item.player.imgURL}
+                        face={(item.player as any).face}
+                        playerName={item.player.name}
+                        size={16}
+                      />
                     )}
                     <span className="truncate max-w-[110px] text-[11px]">{item.label}</span>
                     <button onClick={() => removeItem(item.id)} className="w-3.5 h-3.5 bg-slate-600 hover:bg-rose-500 rounded-full flex items-center justify-center transition-colors flex-shrink-0">

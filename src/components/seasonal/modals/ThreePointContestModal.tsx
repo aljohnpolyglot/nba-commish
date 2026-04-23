@@ -101,7 +101,7 @@ export const ThreePointContestModal: React.FC<ThreePointContestModalProps> = ({ 
               return (
                 <div key={p.internalId} className="flex flex-col items-center gap-2 relative group">
                   <div className="relative">
-                    <PlayerPortrait imgUrl={p.imgURL} teamLogoUrl={team?.logoUrl} overallRating={p.overallRating} size={80} />
+                    <PlayerPortrait imgUrl={p.imgURL} face={(p as any).face} playerName={p.name} teamLogoUrl={team?.logoUrl} overallRating={p.overallRating} size={80} />
                     <button
                       onClick={() => { toggle(p.internalId); setStep(2); }}
                       className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
@@ -176,7 +176,7 @@ export const ThreePointContestModal: React.FC<ThreePointContestModalProps> = ({ 
                 }`}
               >
                 <div className="relative">
-                  <PlayerPortrait imgUrl={x.player.imgURL} teamLogoUrl={team?.logoUrl} overallRating={x.player.overallRating} size={72} />
+                  <PlayerPortrait imgUrl={x.player.imgURL} face={(x.player as any).face} playerName={x.player.name} teamLogoUrl={team?.logoUrl} overallRating={x.player.overallRating} size={72} />
                   {isSelected && (
                     <div className="absolute -top-1 -right-1 w-5 h-5 bg-sky-500 rounded-full flex items-center justify-center">
                       <span className="text-white text-[10px] font-black">✓</span>

@@ -39,7 +39,12 @@ interface TradeMachineModalProps {
 // HELPER: The "Eyebrow" Pill for outgoing players
 const OutgoingPill = ({ player, onRemove }: { player: NBAPlayer, onRemove: () => void }) => (
   <div className="flex items-center gap-2 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-full pl-1 pr-2 py-1 transition-colors shadow-sm">
-    {player.imgURL ? <img src={player.imgURL} alt={player.name} className="w-6 h-6 rounded-full object-cover bg-slate-800" referrerPolicy="no-referrer" onError={e => { e.currentTarget.style.display = 'none'; }} /> : <span className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[9px] font-black text-slate-400">{player.name[0]}</span>}
+    <PlayerPortrait
+      imgUrl={player.imgURL}
+      face={(player as any).face}
+      playerName={player.name}
+      size={24}
+    />
     <span className="text-xs font-bold text-white whitespace-nowrap">
       {player.name.charAt(0)}. {player.name.split(' ').slice(1).join(' ')}
     </span>
@@ -109,9 +114,11 @@ const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabl
       {/* Portrait — no OVR badge; stats column carries OVR/POT instead */}
       <PlayerPortrait
         imgUrl={player.imgURL}
+        face={(player as any).face}
         teamLogoUrl={team?.logoUrl}
         isIncoming={player.isIncoming}
         size={48}
+        playerName={player.name}
       />
 
       {/* Player Info */}

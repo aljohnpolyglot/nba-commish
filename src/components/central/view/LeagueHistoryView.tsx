@@ -8,6 +8,10 @@ import { fetchCoachData, getCoachPhoto } from '../../../data/photos/coaches';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import { requestTeamHistoryFor } from './TeamHistoryView';
 import type { Tab } from '../../../types';
+import { PlayerPortrait } from '../../shared/PlayerPortrait';
+
+const resolvePortraitUrl = (player: any, name: string) =>
+  player?.imgURL || ((player as any)?.face ? undefined : `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e293b&color=94a3b8`);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mini award cell for table rows
@@ -27,29 +31,13 @@ const AwardCell = ({ award, isCurrent, onClick }: { award: any; isCurrent?: bool
     <div
       onClick={clickable ? (e) => { e.stopPropagation(); onClick!(); } : undefined}
       className={`flex items-center gap-2 ${clickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}>
-      <div className="relative w-7 h-7 rounded-full bg-slate-800 overflow-hidden border border-slate-700 shrink-0">
-        <img
-          src={award.imgURL}
-          alt={award.name}
-          className="w-full h-full object-cover"
-          referrerPolicy="no-referrer"
-          onError={(e) => {
-            const img = e.target as HTMLImageElement;
-            if (award.teamLogoUrl && img.src !== award.teamLogoUrl) { img.src = award.teamLogoUrl; img.className = 'w-full h-full object-contain p-1'; }
-            else img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(award.name)}&background=1e293b&color=e2e8f0&size=64&bold=true`;
-          }}
-        />
-        {award.teamLogoUrl && (
-          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-slate-900 rounded-full flex items-center justify-center border border-slate-700">
-            <img
-              src={award.teamLogoUrl}
-              alt={award.team}
-              className="w-2.5 h-2.5 object-contain"
-              referrerPolicy="no-referrer"
-            />
-          </div>
-        )}
-      </div>
+      <PlayerPortrait
+        imgUrl={award.imgURL}
+        face={award.face}
+        playerName={award.name}
+        teamLogoUrl={award.teamLogoUrl}
+        size={28}
+      />
       <div className="flex flex-col leading-tight">
         <div className="flex items-center gap-1">
           <span className="font-semibold text-white text-xs">{award.name}</span>
@@ -145,7 +133,8 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
         name: a.name,
         team: team?.abbrev ?? 'FA',
         id: player?.internalId ?? a.name,
-        imgURL: player?.imgURL ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(a.name)}&background=1e293b&color=94a3b8`,
+        imgURL: resolvePortraitUrl(player, a.name),
+        face: (player as any)?.face,
         teamLogoUrl: team?.logoUrl,
         player,
       };
@@ -161,7 +150,8 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
         name: a.name,
         team: team?.abbrev ?? (a.team ? generateAbbrev(a.team) : ''),
         id: player?.internalId ?? a.name,
-        imgURL: player?.imgURL ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(a.name)}&background=1e293b&color=94a3b8`,
+        imgURL: resolvePortraitUrl(player, a.name),
+        face: (player as any)?.face,
         teamLogoUrl: team?.logoUrl,
         player,
       };

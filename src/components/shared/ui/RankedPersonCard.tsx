@@ -3,11 +3,14 @@ import { motion } from 'motion/react';
 import { ChevronRight } from 'lucide-react';
 import { StatPills, StatPill } from './StatPills';
 import { OddsBadge } from './OddsBadge';
+import { PlayerPortrait } from '../PlayerPortrait';
 
 interface RankedPersonCardProps {
   rank: number;
   /** Portrait image URL */
   portraitUrl?: string;
+  /** facesjs face descriptor for generated prospects */
+  face?: any;
   name: string;
   /** Secondary line: position, team, record, etc. */
   subtitle?: string;
@@ -68,6 +71,7 @@ const ACCENT_RANK: Record<NonNullable<RankedPersonCardProps['accentColor']>, str
 export const RankedPersonCard: React.FC<RankedPersonCardProps> = ({
   rank,
   portraitUrl,
+  face,
   name,
   subtitle,
   badge,
@@ -97,29 +101,13 @@ export const RankedPersonCard: React.FC<RankedPersonCardProps> = ({
       </div>
 
       {/* Portrait */}
-      <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 shrink-0">
-        {portraitUrl ? (
-          <img
-            src={portraitUrl}
-            alt={name}
-            className="w-full h-full object-cover object-top"
-            referrerPolicy="no-referrer"
-            onError={(e) => {
-              const img = e.target as HTMLImageElement;
-              if (teamLogoUrl && img.src !== teamLogoUrl) { img.src = teamLogoUrl; img.className = 'w-full h-full object-contain p-2'; }
-              else { img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e293b&color=e2e8f0&size=128&bold=true`; img.className = 'w-full h-full object-cover'; }
-            }}
-          />
-        ) : teamLogoUrl ? (
-          <img src={teamLogoUrl} alt="" className="w-10 h-10 m-3 object-contain" referrerPolicy="no-referrer" />
-        ) : null}
-        {/* Team logo badge in corner */}
-        {teamLogoUrl && portraitUrl && (
-          <div className="absolute bottom-0 right-0 w-6 h-6 bg-white rounded-tl-lg p-1">
-            <img src={teamLogoUrl} alt="" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-          </div>
-        )}
-      </div>
+      <PlayerPortrait
+        imgUrl={portraitUrl}
+        face={face}
+        playerName={name}
+        teamLogoUrl={teamLogoUrl}
+        size={64}
+      />
 
       {/* Name + subtitle + stats */}
       <div className="flex-1 min-w-0">

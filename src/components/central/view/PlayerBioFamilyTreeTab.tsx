@@ -64,7 +64,7 @@ const RelativeNode: React.FC<NodeProps> = ({ entry, teamColor, size, onClick }) 
       <div className="flex items-center gap-3">
         <div className="rounded-full overflow-hidden border flex-shrink-0" style={{ borderColor, width: portraitSize, height: portraitSize }}>
           {entry.match ? (
-            <PlayerPortrait imgUrl={entry.match.imgURL} playerName={entry.match.name} size={portraitSize} />
+            <PlayerPortrait imgUrl={entry.match.imgURL} face={(entry.match as any).face} playerName={entry.match.name} size={portraitSize} />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500">
               <Users size={18} />
@@ -237,7 +237,7 @@ export const PlayerBioFamilyTreeTab: React.FC<PlayerBioFamilyTreeTabProps> = ({
             style={{ borderColor: teamColor, boxShadow: `0 0 32px ${teamColor}55` }}
           >
             <div className="w-28 h-28 rounded-full overflow-hidden border-2 mb-3" style={{ borderColor: teamColor }}>
-              <PlayerPortrait imgUrl={player.imgURL} playerName={player.name} size={112} />
+              <PlayerPortrait imgUrl={player.imgURL} face={(player as any).face} playerName={player.name} size={112} />
             </div>
             <div className="font-bold text-base text-center">{player.name}</div>
             <div className="text-[10px] text-slate-400 uppercase tracking-widest mt-1 flex items-center gap-1">

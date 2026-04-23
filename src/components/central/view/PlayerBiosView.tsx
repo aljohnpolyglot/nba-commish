@@ -5,6 +5,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { formatHeight, getCountryFromLoc, convertTo2KRating } from '../../../utils/helpers';
 import { getDisplayOverall, getDisplayPotential } from '../../../utils/playerRatings';
 import { ensureNonNBAFetched, getNonNBAGistData } from './nonNBACache';
+import { PlayerPortrait } from '../../shared/PlayerPortrait';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 
 export const PlayerBiosView: React.FC = () => {
@@ -340,9 +341,12 @@ export const PlayerBiosView: React.FC = () => {
                 className="border-b border-slate-800/30 hover:bg-slate-800/30 cursor-pointer transition-colors">
                 <td className="py-2.5 px-3 pl-4 sticky left-0 z-10 whitespace-nowrap" style={{ backgroundColor: STICKY_BG }}>
                   <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-slate-700 overflow-hidden shrink-0">
-                      {p.imgURL ? <img src={p.imgURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="w-full h-full flex items-center justify-center text-[10px] font-black text-slate-400">{p.name[0]}</span>}
-                    </div>
+                    <PlayerPortrait
+                      imgUrl={p.imgURL}
+                      face={(p as any).face}
+                      playerName={p.name}
+                      size={28}
+                    />
                     <span className="text-sm font-bold text-indigo-400">{p.name}</span>
                     {p.hof && <span className="text-[9px] font-black text-amber-400 bg-amber-400/10 px-1 rounded">HOF</span>}
                   </div>

@@ -320,6 +320,25 @@ const actions = useGameActions(setState, () => stateRef.current);
         if (!updated.twoWay && updated.tid >= 0 && (updated.contract?.amount ?? 0) > 0 && (updated.contract?.amount ?? 9999) < 800) {
           updated = { ...updated, twoWay: true };
         }
+        // Repair off-by-one teamOptionExp for sim-generated draft picks.
+        // Old formula: teamOptionExp = draftYear + guaranteedYrs  → fires 1 yr too early.
+        // Correct:     teamOptionExp = draftYear + guaranteedYrs + 1 (after all guaranteed years).
+        // exp had the same -1 error: old = draftYear + totalYrs - 1, correct = draftYear + totalYrs.
+        // Only applies when hasTeamOption is still set (option not yet exercised/declined).
+        if (updated.contract?.hasTeamOption && updated.draft?.year) {
+          const draftYear: number = Number(updated.draft.year);
+          const guaranteedYrs: number = loaded.leagueStats?.rookieContractLength ?? 2;
+          if (updated.contract.teamOptionExp === draftYear + guaranteedYrs) {
+            updated = {
+              ...updated,
+              contract: {
+                ...updated.contract,
+                teamOptionExp: draftYear + guaranteedYrs + 1,
+                exp: (updated.contract.exp ?? 0) + 1,
+              },
+            };
+          }
+        }
         return updated;
       }) ?? loaded.players;
 

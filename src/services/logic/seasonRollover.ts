@@ -20,7 +20,9 @@ import { applyCapInflation } from '../../utils/finance/inflationUtils';
 import { runRetirementChecks, runFarewellTourChecks, RetireeRecord, FarewellRecord } from '../playerDevelopment/retirementChecker';
 import { runHOFChecks, HOFInduction } from '../playerDevelopment/hofChecker';
 import { generateFuturePicks, pruneExpiredPicks, DEFAULT_TRADABLE_PICK_SEASONS } from '../draft/DraftPickGenerator';
-import { computeContractOffer, isSupermaxAwardQualified } from '../../utils/salaryUtils';
+import { computeContractOffer, getContractLimits, isSupermaxAwardQualified } from '../../utils/salaryUtils';
+import { computeMoodScore } from '../../utils/mood/moodScore';
+import type { MoodTrait } from '../../utils/mood/moodTypes';
 import { SettingsManager } from '../SettingsManager';
 import { ensureDraftClasses } from '../draftClassFiller';
 
@@ -133,6 +135,111 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     }
   }
 
+  // ── 0c. Rookie extension coupled with team option exercise ───────────────
+  // In real NBA, exercising a rookie option and negotiating the Rose Rule/rookie
+  // extension are one bundled summer conversation, not two separate events. The
+  // mid-season extension window (Oct–Feb) uses a single deterministic roll per
+  // (player, year) — if a franchise cornerstone happens to land in the 15–20%
+  // decline bucket, they silently hit FA with no retry. Firing an extension offer
+  // here, alongside the option exercise, gives young MVP/All-NBA players a
+  // proper negotiation window with high acceptance before the lossy mid-season
+  // path can fail them.
+  interface OptionExtension {
+    newExp: number;
+    newYears: number;
+    annualUSD: number;
+    hasPlayerOption: boolean;
+    label: string;
+    contractYears: Array<{ season: string; guaranteed: number; option: string }>;
+    amountThousands: number;
+  }
+  const optionExtensions = new Map<string, OptionExtension>();
+  const optionExtHistory: Array<{ text: string; date: string; type: string }> = [];
+
+  for (const p of state.players) {
+    if (!teamOptionExercisedIds.has(p.internalId)) continue;
+    // Team options only sit on years 3–4 of rookie-scale contracts, so the only
+    // eligibility branch that can fire here is the rookie extension window (YOS 3–4).
+    const yos = ((p as any).stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
+    if (yos < 3 || yos > 4) continue;
+
+    const team = state.teams.find(t => t.id === p.tid);
+    if (!team) continue;
+
+    const playerForExt = { ...p, hasBirdRights: true } as NBAPlayer;
+    const limits = getContractLimits(playerForExt, state.leagueStats as any);
+    if (!limits.isRookieExtEligible && !limits.isSupermaxEligible) continue;
+
+    const traits: MoodTrait[] = (p as any).moodTraits ?? [];
+    const teamPlayers = state.players.filter(pp => pp.tid === p.tid);
+    const { score: moodScore } = computeMoodScore(p, team, state.date, false, false, false, teamPlayers, currentYear);
+    const offer = computeContractOffer(playerForExt, state.leagueStats as any, traits, moodScore);
+
+    // Bundled summer negotiation — high acceptance floor. Foundational young
+    // players (MVP/All-NBA in last 3 yrs) almost never bolt at this stage IRL.
+    const recentAwards: Array<{ season: number; type: string }> = (p as any).awards ?? [];
+    const hasFoundationalAward = recentAwards.some(a =>
+      a.season >= currentYear - 2 && /mvp|all.nba/i.test(a.type));
+    const isFoundational = hasFoundationalAward;
+    const wins = (team as any).wins ?? 0;
+    const losses = (team as any).losses ?? 0;
+    const winPct = (wins + losses) > 0 ? wins / (wins + losses) : 0.5;
+
+    let basePct: number;
+    if (traits.includes('LOYAL'))      basePct = 0.97;
+    else if (isFoundational)           basePct = 0.95;
+    else if (moodScore >= 2)           basePct = 0.90;
+    else if (moodScore >= -2)          basePct = 0.78;
+    else                               basePct = 0.50;
+    if (traits.includes('COMPETITOR') && winPct < 0.40 && (p.overallRating ?? 0) >= 60) {
+      basePct = Math.min(basePct, 0.45);
+    }
+
+    // Deterministic roll, distinct multiplier from mid-season so players who
+    // got unlucky on one roll aren't auto-unlucky on the other.
+    let seed = 0;
+    for (let i = 0; i < p.internalId.length; i++) seed += p.internalId.charCodeAt(i);
+    seed += currentYear * 97;
+    const roll = Math.abs((Math.sin(seed) * 10000) % 1);
+    if (roll >= basePct) continue; // declined — mid-season window is the fallback
+
+    // Extension kicks in the season AFTER the existing deal ends.
+    // contract.exp is the last covered season year (e.g. 2027 → 2026-27 season).
+    const extBaseYear = (p.contract?.exp ?? currentYear) + 1;
+    const extYears = offer.years;
+    const annualUSD = offer.salaryUSD;
+    const extContractYears = Array.from({ length: extYears }, (_, i) => {
+      const yr = extBaseYear + i;
+      return {
+        season: `${yr - 1}-${String(yr).slice(-2)}`,
+        guaranteed: Math.round(annualUSD * Math.pow(1.05, i)),
+        option: (i === extYears - 1 && offer.hasPlayerOption) ? 'Player' : '',
+      };
+    });
+
+    const label = limits.isSupermaxEligible ? 'Supermax'
+      : limits.rookieRoseQualified ? 'Rose Rule'
+      : 'Rookie Ext';
+
+    optionExtensions.set(p.internalId, {
+      newExp: extBaseYear + extYears - 1,
+      newYears: extYears,
+      annualUSD,
+      hasPlayerOption: offer.hasPlayerOption,
+      label,
+      contractYears: extContractYears,
+      amountThousands: Math.round(annualUSD / 1_000),
+    });
+
+    const totalM = Math.round((annualUSD / 1_000_000) * extYears);
+    const optTag = offer.hasPlayerOption ? ' (player option)' : '';
+    optionExtHistory.push({
+      text: `${p.name} has signed a rookie extension with the ${team.name}: $${totalM}M/${extYears}yr${optTag} (${label})`,
+      date: `Jun 30, ${currentYear}`,
+      type: 'Signing',
+    });
+  }
+
   // ── 1. Contract expiry ──────────────────────────────────────────────────
   // Players whose contract ends at or before the just-completed season become FAs.
   // We track yearsWithTeam by inspecting the existing field or incrementing by 1.
@@ -195,13 +302,58 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       } as any;
     }
 
-    // Team option exercised → strip hasTeamOption flag, contract stays until contract.exp
+    // Team option exercised → strip hasTeamOption flag, contract stays until contract.exp.
+    // Also compute Bird Rights + supermax eligibility (previously only the "still
+    // under contract" branch set these, so option-exercised players had stale flags
+    // until the following rollover). If a rookie extension was signed in §0c,
+    // fold its contractYears + new exp into the returned player.
     if (teamOptionExercisedIds.has(p.internalId)) {
       const nextAmt = syncedContractAmount(p);
+      const yrsWithTeam = ((p as any).yearsWithTeam ?? 0) + 1;
+      const hasBirdRights =
+        (state.leagueStats.birdRightsEnabled ?? true) && yrsWithTeam >= 3
+          ? true
+          : (p as any).hasBirdRights ?? false;
+      const supermaxEnabled = state.leagueStats.supermaxEnabled ?? true;
+      const supermaxMinYrs = (state.leagueStats as any).supermaxMinYears ?? 8;
+      const yearsOfService = ((p as any).stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
+      const awards: Array<{ season: number; type: string }> = (p as any).awards ?? [];
+      const superMaxEligible = supermaxEnabled && hasBirdRights &&
+        isSupermaxAwardQualified(awards, currentYear, yearsOfService, supermaxMinYrs);
+
+      const ext = optionExtensions.get(p.internalId);
+      if (ext) {
+        // Preserve existing contractYears through the current (option-exercised) deal;
+        // extension writes new entries for exp+1 onward.
+        const keepExistingThrough = (p.contract?.exp ?? currentYear);
+        const existingThroughCurrent = ((p as any).contractYears ?? []).filter((cy: any) => {
+          const yr = parseInt(cy.season.split('-')[0], 10) + 1;
+          return yr <= keepExistingThrough;
+        });
+        return {
+          ...p,
+          age: newAge,
+          yearsWithTeam: yrsWithTeam,
+          hasBirdRights,
+          superMaxEligible,
+          midSeasonExtensionDeclined: undefined,
+          contract: {
+            ...p.contract,
+            hasTeamOption: false,
+            teamOptionExp: undefined,
+            exp: ext.newExp,
+            ...(nextAmt ? { amount: nextAmt } : {}),
+          },
+          contractYears: [...existingThroughCurrent, ...ext.contractYears],
+        } as any;
+      }
+
       return {
         ...p,
         age: newAge,
-        yearsWithTeam: ((p as any).yearsWithTeam ?? 0) + 1,
+        yearsWithTeam: yrsWithTeam,
+        hasBirdRights,
+        superMaxEligible,
         midSeasonExtensionDeclined: undefined,
         contract: { ...p.contract, hasTeamOption: false, teamOptionExp: undefined, ...(nextAmt ? { amount: nextAmt } : {}) },
       } as any;
@@ -455,6 +607,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     `${expiredIds.size} contracts expired | ` +
     `${teamOptionExercisedIds.size} team opts exercised | ` +
     `${teamOptionDeclinedIds.size} team opts declined | ` +
+    `${optionExtensions.size} rookie extensions signed | ` +
     `${newRetirees.length} retirements | ${newFarewells.length} farewell tours | ` +
     `${newInductees.length} HOF inductions | ` +
     `${updatedPicks.length} total draft picks`
@@ -561,7 +714,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     seasonPreviewDismissed: true,  // stays hidden through FA; shown when preseason starts (Oct 1)
     draftComplete: undefined,      // reset so draft can run for new year
     news: [...hofNewsItems, ...farewellNewsItems, ...teamOptionNewsItems, ...playerOptionNewsItems, ...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
-    history: [...(state.history ?? []), ...playerOptionHistory, ...teamOptionHistoryEntries, ...retirementHistoryEntries, ...farewellHistoryEntries, ...hofHistoryEntries],
+    history: [...(state.history ?? []), ...playerOptionHistory, ...teamOptionHistoryEntries, ...optionExtHistory, ...retirementHistoryEntries, ...farewellHistoryEntries, ...hofHistoryEntries],
     ...(pendingOptionToasts.length > 0
       ? { pendingOptionToasts: [...(state.pendingOptionToasts ?? []), ...pendingOptionToasts] }
       : {}),

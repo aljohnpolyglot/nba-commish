@@ -207,6 +207,7 @@ function DepthChartCard({
       </div>
       <PlayerPortrait
         imgUrl={player.imgURL}
+        face={(player as any).face}
         playerName={player.name}
         size={64}
         overallRating={player.overallRating}

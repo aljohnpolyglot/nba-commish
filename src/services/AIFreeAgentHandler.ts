@@ -53,6 +53,10 @@ function getBestFit(
   state: GameState,
   /** Local MLE already spent this round (teamId → usedUSD). Avoids double-spending within a round. */
   localMleUsed: Map<number, { type: MleType; usedUSD: number }>,
+  /** Total USD this team has already committed in earlier same-round signings.
+   *  Without this, every getBestFit call sees the same pre-round cap snapshot
+   *  and a cap-rich team could "afford" the same star slot N times. */
+  roundSpentUSD = 0,
 ): NBAPlayer | null {
   const thresholds = getCapThresholds(state.leagueStats as any);
   const profile = getTeamCapProfile(
@@ -62,6 +66,8 @@ function getBestFit(
     (team as any).losses ?? 0,
     thresholds,
   );
+  const effectiveCapSpace = Math.max(0, profile.capSpaceUSD - roundSpentUSD);
+  const effectivePayroll  = profile.payrollUSD + roundSpentUSD;
 
   const gmSpending = getGMAttributes(state, team.id).spending;
   return freeAgents
@@ -86,13 +92,13 @@ function getBestFit(
 
       const mleAvail = getMLEAvailability(
         team.id,
-        profile.payrollUSD,
+        effectivePayroll,
         offer.salaryUSD,
         thresholds,
         effectiveLeagueStats as any,
       );
 
-      const canAffordViaCap = offer.salaryUSD <= profile.capSpaceUSD + 2_000_000;
+      const canAffordViaCap = offer.salaryUSD <= effectiveCapSpace + 2_000_000;
       const canAffordViaMle = !mleAvail.blocked && offer.salaryUSD <= mleAvail.available;
       if (!canAffordViaCap && !canAffordViaMle) return false;
       if (playerMoodForTeam(p, team, state) < 1) return false;
@@ -194,184 +200,96 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   };
 
   // ── Pass 1: Normal signings (cap space + MLE for best available) ──────
+  // Cap-rich teams keep signing best-fit FAs until they exhaust cap+MLE or
+  // the roster is full. Without this fill loop, a team with $130M cap space
+  // would sign exactly ONE star and leave the rest of their cap dormant —
+  // Pass 4 (which sorts by salary asc) would then sweep them up with $1M
+  // fillers and the team ends up at 15/15 with $4M avg salary instead of
+  // a real rotation. (Symptom: GSW $67M / 15 players in season 5 audit.)
   for (const team of sortedAITeams) {
-    const rosterSize = state.players.filter(p => p.tid === team.id && !(p as any).twoWay).length;
-    if (rosterSize >= maxStandard) continue;
+    const rosterSizeStart = state.players.filter(p => p.tid === team.id && !(p as any).twoWay).length;
+    if (rosterSizeStart >= maxStandard) continue;
 
-    // work_ethic: lazy GMs sometimes skip a round of non-mandatory signings
+    // work_ethic: lazy GMs sometimes skip a round of non-mandatory signings.
+    // Fires ONCE per team per round (gates the whole fill loop, not each signing).
     const teamAttrs = getGMAttributes(state, team.id);
     if (Math.random() > workEthicSignProb(teamAttrs.work_ethic)) continue;
 
-    const best = getBestFit(team, pool, state, localMleUsed);
-    if (!best) continue;
+    let signedThisIteration = true;
+    while (signedThisIteration) {
+      signedThisIteration = false;
 
-    // spending: GM's personal multiplier on the market offer (overpay vs lowball),
-    // clamped against the player's max contract so overpay never breaks league rules.
-    const baseOffer = computeContractOffer(best, state.leagueStats as any);
-    const bestLimits = getContractLimits(best, state.leagueStats as any);
-    const offer = { ...baseOffer, salaryUSD: clampSpendOffer(baseOffer.salaryUSD, teamAttrs.spending, bestLimits.maxSalaryUSD) };
+      // Recompute roster + roundSpent each iteration
+      const rosterSize = state.players.filter(p => p.tid === team.id && !(p as any).twoWay).length
+                       + results.filter(r => r.teamId === team.id && !(r as any).twoWay).length;
+      if (rosterSize >= maxStandard) break;
 
-    // Determine if this is a cap-space signing or MLE signing
-    const profile = getTeamCapProfile(
-      state.players, team.id,
-      (team as any).wins ?? 0, (team as any).losses ?? 0, thresholds,
-    );
-    const isViaCap = offer.salaryUSD <= profile.capSpaceUSD;
-    let mleTypeUsed: MleType = null;
-    let mleAmountUSD = 0;
+      const roundSpentUSD = results
+        .filter(r => r.teamId === team.id)
+        .reduce((s, r) => s + r.salaryUSD, 0);
 
-    if (!isViaCap) {
-      // Signing is via MLE — figure out which type and record it locally
-      const localEntry = localMleUsed.get(team.id);
-      const effectiveLS = localEntry
-        ? { ...state.leagueStats, mleUsage: { ...(state.leagueStats as any).mleUsage, [team.id]: localEntry } }
-        : state.leagueStats;
-      const mleAvail = getMLEAvailability(team.id, profile.payrollUSD, offer.salaryUSD, thresholds, effectiveLS as any);
-      if (!mleAvail.blocked && mleAvail.type) {
-        mleTypeUsed = mleAvail.type;
-        mleAmountUSD = offer.salaryUSD;
-        // Update local tracker so subsequent signings by this team see reduced MLE
-        const prevUsed = localEntry?.usedUSD ?? 0;
-        localMleUsed.set(team.id, { type: mleAvail.type, usedUSD: prevUsed + offer.salaryUSD });
-      }
-    }
+      const best = getBestFit(team, pool, state, localMleUsed, roundSpentUSD);
+      if (!best) break;
 
-    signPlayer(best, team, offer, mleTypeUsed, mleAmountUSD);
-  }
+      // spending: GM's personal multiplier on the market offer (overpay vs lowball),
+      // clamped against the player's max contract so overpay never breaks league rules.
+      const baseOffer = computeContractOffer(best, state.leagueStats as any);
+      const bestLimits = getContractLimits(best, state.leagueStats as any);
+      const offer = { ...baseOffer, salaryUSD: clampSpendOffer(baseOffer.salaryUSD, teamAttrs.spending, bestLimits.maxSalaryUSD) };
 
-  // ── Pass 2: Minimum-roster enforcement ────────────────────────────────
-  // Teams with < 15 regular-contract players MUST sign someone, even on a
-  // minimum contract.  Over-cap teams use the MLE; if MLE is exhausted,
-  // minimum-salary FAs can always be signed (league rule).
-  //
-  // User-team bail-out: normally the user handles their own signings, but if
-  // retirement/waiving drops their roster below leagueStats.minPlayersPerTeam,
-  // the AI backfills to that minimum (not to 15) so the sim can proceed even
-  // when the user is inattentive. Real NBA rule — a team *must* carry 14.
-  const minRoster = state.leagueStats?.minPlayersPerTeam ?? 14;
-  const userTeamUnderMin = userTeamId >= 0 && (() => {
-    const userTeam = state.teams.find(t => t.id === userTeamId);
-    if (!userTeam) return false;
-    const count = state.players.filter(p => p.tid === userTeamId && !(p as any).twoWay).length;
-    return count < minRoster;
-  })();
-  const pass2Teams = userTeamUnderMin
-    ? [...sortedAITeams, state.teams.find(t => t.id === userTeamId)!].filter(Boolean)
-    : sortedAITeams;
+      // Determine if this signing fits via cap (after subtracting in-flight spend) or MLE
+      const profile = getTeamCapProfile(
+        state.players, team.id,
+        (team as any).wins ?? 0, (team as any).losses ?? 0, thresholds,
+      );
+      const effectiveCapSpace = profile.capSpaceUSD - roundSpentUSD;
+      const effectivePayroll  = profile.payrollUSD  + roundSpentUSD;
+      const isViaCap = offer.salaryUSD <= effectiveCapSpace;
+      let mleTypeUsed: MleType = null;
+      let mleAmountUSD = 0;
 
-  for (const team of pass2Teams) {
-    const isUserFill = team.id === userTeamId;
-    // For user team in lazy-GM bail-out, fill only up to minRoster (not maxStandard).
-    const fillTarget = isUserFill ? minRoster : maxStandard;
-    // Count standard roster INCLUDING players we just signed in Pass 1
-    const alreadySigned = results.filter(r => r.teamId === team.id && !(r as any).twoWay).length;
-    const rosterSize = state.players.filter(p => p.tid === team.id && !(p as any).twoWay).length + alreadySigned;
-    if (rosterSize >= fillTarget) continue;
-
-    const profile = getTeamCapProfile(
-      state.players, team.id,
-      (team as any).wins ?? 0, (team as any).losses ?? 0, thresholds,
-    );
-
-    // Try MLE first for the best available player
-    const localEntry = localMleUsed.get(team.id);
-    const effectiveLS = localEntry
-      ? { ...state.leagueStats, mleUsage: { ...(state.leagueStats as any).mleUsage, [team.id]: localEntry } }
-      : state.leagueStats;
-
-    // Find cheapest viable FA (sorted by salary ascending, then OVR descending)
-    const candidates = pool
-      .map(p => ({ player: p, offer: computeContractOffer(p, state.leagueStats as any) }))
-      .sort((a, b) => a.offer.salaryUSD - b.offer.salaryUSD || (b.player.overallRating ?? 0) - (a.player.overallRating ?? 0));
-
-    let signed = false;
-    for (const { player, offer } of candidates) {
-      // Can we afford via cap space?
-      if (offer.salaryUSD <= profile.capSpaceUSD + 2_000_000) {
-        signPlayer(player, team, offer);
-        signed = true;
-        break;
+      if (!isViaCap) {
+        // Signing is via MLE — figure out which type and record it locally
+        const localEntry = localMleUsed.get(team.id);
+        const effectiveLS = localEntry
+          ? { ...state.leagueStats, mleUsage: { ...(state.leagueStats as any).mleUsage, [team.id]: localEntry } }
+          : state.leagueStats;
+        const mleAvail = getMLEAvailability(team.id, effectivePayroll, offer.salaryUSD, thresholds, effectiveLS as any);
+        if (!mleAvail.blocked && mleAvail.type) {
+          mleTypeUsed = mleAvail.type;
+          mleAmountUSD = offer.salaryUSD;
+          const prevUsed = localEntry?.usedUSD ?? 0;
+          localMleUsed.set(team.id, { type: mleAvail.type, usedUSD: prevUsed + offer.salaryUSD });
+        }
       }
 
-      // Can we afford via MLE?
-      const mleAvail = getMLEAvailability(team.id, profile.payrollUSD, offer.salaryUSD, thresholds, effectiveLS as any);
-      if (!mleAvail.blocked && mleAvail.type && offer.salaryUSD <= mleAvail.available) {
-        const prevUsed = localEntry?.usedUSD ?? 0;
-        localMleUsed.set(team.id, { type: mleAvail.type, usedUSD: prevUsed + offer.salaryUSD });
-        signPlayer(player, team, offer, mleAvail.type, offer.salaryUSD);
-        signed = true;
-        break;
-      }
-    }
-
-    // Last resort: sign the cheapest FA on a minimum deal regardless of cap
-    // (NBA teams below 15 players are required to fill roster spots)
-    if (!signed && candidates.length > 0) {
-      const cheapest = candidates[0];
-      signPlayer(cheapest.player, team, cheapest.offer);
+      signPlayer(best, team, offer, mleTypeUsed, mleAmountUSD);
+      signedThisIteration = true;
     }
   }
 
-  // ── Pass 1b: Non-guaranteed training camp signings (slots 16–21) ────────
-  // Only during the preseason window (Jul–Oct 21) when teams have room above
-  // the 15-man regular-season limit but below the 21-man camp max.
+  // ── Preseason window check (used by Two-way + NG passes) ──────────────
+  // Lifted to the top so both pre-fill passes can gate on it without duplicating logic.
   const ngEnabled = (state.leagueStats as any).nonGuaranteedContractsEnabled ?? true;
   const maxCampRoster = state.leagueStats.maxTrainingCampRoster ?? 21;
-  const [simDateYear, simDateMonth, simDateDay] = (() => {
-    const parts = state.date ? state.date.split(/[\s,]+/) : [];
-    // state.date is "MMM D, YYYY" — parse month index from the leagueStats
-    const mo = state.date ? new Date(state.date).getMonth() + 1 : 0;
-    const dy = state.date ? new Date(state.date).getDate() : 0;
-    return [0, mo, dy];
-  })();
+  const simDateMonth = state.date ? new Date(state.date).getMonth() + 1 : 0;
+  const simDateDay   = state.date ? new Date(state.date).getDate() : 0;
   const isPreseasonWindow = ngEnabled && (
     (simDateMonth >= 7 && simDateMonth <= 9) ||
     (simDateMonth === 10 && simDateDay <= 21)
   );
 
-  if (isPreseasonWindow) {
-    const NG_OVR_CAP = 60; // fringe prospects / camp bodies
-    const minSalaryUSD = ((state.leagueStats as any).minContractStaticAmount ?? 1.2) * 1_000_000;
-
-    for (const team of sortedAITeams) {
-      // Training camp limit is TOTAL (standard + NG + two-way all share the 21 pool)
-      const existingAll = state.players.filter(p => p.tid === team.id).length;
-      const signedAll = results.filter(r => r.teamId === team.id).length;
-      const totalCamp = existingAll + signedAll;
-      if (totalCamp >= maxCampRoster) continue;
-
-      const ngSlots = maxCampRoster - totalCamp;
-      const ngCandidates = pool
-        .filter(p => (p.overallRating ?? 99) <= NG_OVR_CAP)
-        .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
-
-      let filled = 0;
-      for (const candidate of ngCandidates) {
-        if (filled >= ngSlots) break;
-        // NG salary = 60% of market rate, floored at min, capped at 3× min.
-        // Players accept a discount in exchange for a roster spot they can earn.
-        const marketOffer = computeContractOffer(candidate, state.leagueStats as any);
-        const ngSalaryUSD = Math.max(minSalaryUSD, Math.min(minSalaryUSD * 3, Math.round(marketOffer.salaryUSD * 0.60)));
-        signPlayer(
-          candidate,
-          team,
-          { salaryUSD: ngSalaryUSD, years: 1, hasPlayerOption: false },
-          null,
-          0,
-          false,
-          true,
-        );
-        filled++;
-      }
-    }
-  }
-
-  // ── Pass 3: Two-way contract signings ─────────────────────────────────
-  // Teams with 15 regular players but fewer than maxTwoWayPlayersPerTeam
-  // two-way players should sign low-OVR FAs on two-way deals.
+  // ── Pass 2: Two-way contract signings ────────────────────────────────
+  // RUNS BEFORE roster-fill so the OVR-≤60 fringe FAs aren't vacuumed up by
+  // the salary-ASC sort in Pass 4. Two-way slots are a separate roster pool
+  // (don't compete with the 15) so reserving 3 fringe FAs per team here
+  // doesn't hurt Pass 4's ability to fill standard rosters.
   const maxTwoWay = state.leagueStats.maxTwoWayPlayersPerTeam ?? 3;
   const twoWayEnabled = (state.leagueStats as any).twoWayContractsEnabled ?? true;
-  const TWO_WAY_OVR_CAP = 52; // raw BBGM OVR — fringe rotation / end-of-bench players
+  // Raw BBGM OVR cap. After multi-season progression the FA pool drifts upward,
+  // and a 52 ceiling leaves the two-way pool empty by season ~3 (league-wide 0/3 2W).
+  // 60 still tops out below "rotation-grade" while keeping a viable post-progression pool.
+  const TWO_WAY_OVR_CAP = 60;
   const TWO_WAY_SALARY_USD = 625_000;
 
   if (twoWayEnabled && maxTwoWay > 0) {
@@ -408,6 +326,295 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
           true,
         );
         filled++;
+      }
+    }
+  }
+
+  // ── Pass 3: Non-guaranteed training camp signings (slots 16–21) ──────
+  // Preseason-only (Jul 1 – Oct 21). Runs before Pass 4 for the same reason
+  // as Pass 2 — Pass 4 sorts by salary ASC and would consume NG candidates.
+  if (isPreseasonWindow) {
+    const NG_OVR_CAP = 60; // fringe prospects / camp bodies
+    const minSalaryUSDPreseason = ((state.leagueStats as any).minContractStaticAmount ?? 1.2) * 1_000_000;
+
+    for (const team of sortedAITeams) {
+      // Training camp limit is TOTAL (standard + NG + two-way all share the 21 pool)
+      const existingAll = state.players.filter(p => p.tid === team.id).length;
+      const signedAll = results.filter(r => r.teamId === team.id).length;
+      const totalCamp = existingAll + signedAll;
+      if (totalCamp >= maxCampRoster) continue;
+
+      const ngSlots = maxCampRoster - totalCamp;
+      const ngCandidates = pool
+        .filter(p => (p.overallRating ?? 99) <= NG_OVR_CAP)
+        .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
+
+      let filled = 0;
+      for (const candidate of ngCandidates) {
+        if (filled >= ngSlots) break;
+        // NG salary = 60% of market rate, floored at min, capped at 3× min.
+        // Players accept a discount in exchange for a roster spot they can earn.
+        const marketOffer = computeContractOffer(candidate, state.leagueStats as any);
+        const ngSalaryUSD = Math.max(minSalaryUSDPreseason, Math.min(minSalaryUSDPreseason * 3, Math.round(marketOffer.salaryUSD * 0.60)));
+        signPlayer(
+          candidate,
+          team,
+          { salaryUSD: ngSalaryUSD, years: 1, hasPlayerOption: false },
+          null,
+          0,
+          false,
+          true,
+        );
+        filled++;
+      }
+    }
+  }
+
+  // ── Pass 4: Minimum-roster enforcement ────────────────────────────────
+  // Teams with < 15 regular-contract players MUST sign someone, even on a
+  // minimum contract.  Over-cap teams use the MLE; if MLE is exhausted,
+  // minimum-salary FAs can always be signed (league rule).
+  //
+  // User-team bail-out: normally the user handles their own signings, but if
+  // retirement/waiving drops their roster below leagueStats.minPlayersPerTeam,
+  // the AI backfills to that minimum (not to 15) so the sim can proceed even
+  // when the user is inattentive. Real NBA rule — a team *must* carry 14.
+  const minRoster = state.leagueStats?.minPlayersPerTeam ?? 14;
+  const userTeamUnderMin = userTeamId >= 0 && (() => {
+    const userTeam = state.teams.find(t => t.id === userTeamId);
+    if (!userTeam) return false;
+    const count = state.players.filter(p => p.tid === userTeamId && !(p as any).twoWay).length;
+    return count < minRoster;
+  })();
+  const pass4Teams = userTeamUnderMin
+    ? [...sortedAITeams, state.teams.find(t => t.id === userTeamId)!].filter(Boolean)
+    : sortedAITeams;
+
+  // ── Pass 4 diagnostic logging ────────────────────────────────────────
+  // Toggle via window.__DEBUG_PASS4 = true in DevTools, or set env flag for tests.
+  // Output is structured per-team so we can see exactly why fills fail
+  // (cap-blocked, MLE-blocked, pool-empty, signed-N).
+  const pass4Debug = typeof window !== 'undefined' && (window as any).__DEBUG_PASS4 === true;
+  const pass4Diag: Array<{
+    team: string;
+    startRoster: number;
+    endRoster: number;
+    fillTarget: number;
+    signedThisPass: number;
+    iterations: number;
+    poolSizeStart: number;
+    poolSizeEnd: number;
+    capRejects: number;       // candidates skipped because cap+2M overflow
+    mleRejects: number;       // candidates skipped because MLE exhausted/blocked
+    forcedMinDeal: boolean;   // last-resort min-deal fired
+    stopReason: string;
+  }> = [];
+
+  for (const team of pass4Teams) {
+    const isUserFill = team.id === userTeamId;
+    // For user team in lazy-GM bail-out, fill only up to minRoster (not maxStandard).
+    const fillTarget = isUserFill ? minRoster : maxStandard;
+    // Count standard roster INCLUDING players we just signed in earlier passes
+    const alreadySigned = () => results.filter(r => r.teamId === team.id && !(r as any).twoWay).length;
+    const computeRosterSize = () =>
+      state.players.filter(p => p.tid === team.id && !(p as any).twoWay).length + alreadySigned();
+    let rosterSize = computeRosterSize();
+    const startRoster = rosterSize;
+    const startSignedCount = alreadySigned();
+    const poolSizeStart = pool.length;
+    let iterations = 0;
+    let capRejects = 0;
+    let mleRejects = 0;
+    let stopReason = 'reached fill target';
+    if (rosterSize >= fillTarget) continue;
+
+    // Inner fill loop — keep signing affordable players until at fillTarget or pool empty.
+    // Profile + MLE state change with every signing, so re-fetch each iteration.
+    let signedThisIteration = true;
+    while (rosterSize < fillTarget && pool.length > 0 && signedThisIteration) {
+      signedThisIteration = false;
+      iterations++;
+
+      const profile = getTeamCapProfile(
+        state.players, team.id,
+        (team as any).wins ?? 0, (team as any).losses ?? 0, thresholds,
+      );
+
+      const localEntry = localMleUsed.get(team.id);
+      const effectiveLS = localEntry
+        ? { ...state.leagueStats, mleUsage: { ...(state.leagueStats as any).mleUsage, [team.id]: localEntry } }
+        : state.leagueStats;
+
+      // Re-build candidates from current pool (shrinks after each sign).
+      // Sort: best OVR first, tiebreak by lowest salary. Earlier this was salary ASC
+      // which caused cap-rich teams to sign 15 minimum-tier scrubs before ever
+      // looking at the K2 80+ stars they could actually afford. Pass 1 already
+      // signs the absolute top of the pool via best-fit; Pass 4 mops up with the
+      // best-OVR FA who fits cap, then falls through to min-exception for fringe.
+      const candidates = pool
+        .map(p => ({ player: p, offer: computeContractOffer(p, state.leagueStats as any) }))
+        .sort((a, b) => (b.player.overallRating ?? 0) - (a.player.overallRating ?? 0) || a.offer.salaryUSD - b.offer.salaryUSD);
+
+      // Pass 1 signed by team-payroll burn; here we re-check cap+MLE per candidate.
+      // Note: payroll snapshot in `profile` is from BEFORE this round, so reduce
+      // capSpace by what this team has signed so far this round.
+      const roundSpentUSD = results
+        .filter(r => r.teamId === team.id)
+        .reduce((s, r) => s + r.salaryUSD, 0);
+      const effectiveCapSpace = profile.capSpaceUSD - roundSpentUSD;
+      const effectivePayroll  = profile.payrollUSD  + roundSpentUSD;
+
+      for (const { player, offer } of candidates) {
+        // Can we afford via cap space?
+        if (offer.salaryUSD <= effectiveCapSpace + 2_000_000) {
+          signPlayer(player, team, offer);
+          signedThisIteration = true;
+          rosterSize = computeRosterSize();
+          break;
+        }
+        capRejects++;
+
+        // Can we afford via MLE?
+        const mleAvail = getMLEAvailability(team.id, effectivePayroll, offer.salaryUSD, thresholds, effectiveLS as any);
+        if (!mleAvail.blocked && mleAvail.type && offer.salaryUSD <= mleAvail.available) {
+          const prevUsed = localEntry?.usedUSD ?? 0;
+          localMleUsed.set(team.id, { type: mleAvail.type, usedUSD: prevUsed + offer.salaryUSD });
+          signPlayer(player, team, offer, mleAvail.type, offer.salaryUSD);
+          signedThisIteration = true;
+          rosterSize = computeRosterSize();
+          break;
+        }
+        mleRejects++;
+      }
+
+      // Inner-loop fallback: NBA minimum exception (unlimited, no cap penalty).
+      // If cap+MLE both blocked every candidate this iteration, sign the lowest-OVR
+      // available player at minContract. Player accepts the discount in exchange
+      // for a roster spot — real-NBA fringe-FA dynamic. Without this, over-cap
+      // teams could only sign 1 player per FA round (last-resort), so a team that
+      // lost 5+ to retirement/trades could never catch up before the season ends.
+      if (!signedThisIteration && pool.length > 0 && rosterSize < fillTarget) {
+        const minSalaryUSD = ((state.leagueStats as any).minContractStaticAmount ?? 1.2) * 1_000_000;
+        const minDealCandidate = pool
+          .slice()
+          .sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0))[0]; // weakest first — they're the ones who'd accept min
+        if (minDealCandidate) {
+          signPlayer(
+            minDealCandidate,
+            team,
+            { salaryUSD: minSalaryUSD, years: 1, hasPlayerOption: false },
+          );
+          signedThisIteration = true;
+          rosterSize = computeRosterSize();
+        }
+      }
+      // Note: signedAtMin tracking is per-iteration only; counts via signedThisPass below.
+    }
+
+    // Decide stop reason for diagnostics
+    if (rosterSize >= fillTarget) stopReason = 'reached fill target';
+    else if (pool.length === 0) stopReason = 'pool exhausted';
+    else if (!signedThisIteration) stopReason = 'no affordable candidate (all cap+MLE+min blocked — pool empty?)';
+
+    // Old "last resort 1× min-deal" block removed — the inner-loop minimum-exception
+    // fallback above now handles this case for every iteration, not just once.
+    const forcedMinDeal = false;
+
+    if (pass4Debug) {
+      pass4Diag.push({
+        team: team.name,
+        startRoster,
+        endRoster: rosterSize,
+        fillTarget,
+        signedThisPass: alreadySigned() - startSignedCount,
+        iterations,
+        poolSizeStart,
+        poolSizeEnd: pool.length,
+        capRejects,
+        mleRejects,
+        forcedMinDeal,
+        stopReason,
+      });
+    }
+  }
+
+  // Emit diagnostic table after all teams processed
+  if (pass4Debug && pass4Diag.length > 0) {
+    const underFilled = pass4Diag.filter(d => d.endRoster < d.fillTarget);
+    console.log(`[Pass4] ${state.date} — ${pass4Diag.length} teams processed, ${underFilled.length} still below fillTarget after pass`);
+    console.table(pass4Diag);
+    if (underFilled.length > 0) {
+      console.log('[Pass4] Teams still under target after Pass 4:', underFilled.map(d =>
+        `${d.team} ${d.endRoster}/${d.fillTarget} (${d.stopReason})`).join(' · '));
+    }
+  }
+
+  // ── Pass 5: Minimum-payroll floor enforcement ─────────────────────────
+  // Teams below the salary floor (leagueStats.minimumPayrollPercentage % of cap,
+  // default 90%) must keep signing until they clear it or run out of roster space.
+  // NOTE: this pass only helps teams with OPEN roster slots. Teams already at 15/15
+  // with cheap rosters need shortfall distribution at season-end (separate function).
+  // Offer is priced at max(minSalary, floorGap / openSlots) so each signing closes
+  // the gap proportionally rather than forcing a dozen minimum deals.  The per-player
+  // ceiling is getContractLimits().maxSalaryUSD so we never manufacture a supermax.
+  if ((state.leagueStats as any).minimumPayrollEnabled !== false) {
+    const minSalaryUSD = ((state.leagueStats as any).minContractStaticAmount ?? 1.2) * 1_000_000;
+
+    for (const team of sortedAITeams) {
+      // Re-compute current roster + what we've signed this round
+      const existingStd = state.players.filter(p => p.tid === team.id && !(p as any).twoWay).length;
+      const signedStd   = results.filter(r => r.teamId === team.id && !(r as any).twoWay).length;
+      let rosterSize    = existingStd + signedStd;
+      if (rosterSize >= maxStandard) continue;
+
+      // Re-compute payroll including round signings
+      const profile = getTeamCapProfile(
+        state.players, team.id,
+        (team as any).wins ?? 0, (team as any).losses ?? 0, thresholds,
+      );
+      const roundSpentUSD = results
+        .filter(r => r.teamId === team.id)
+        .reduce((s, r) => s + r.salaryUSD, 0);
+      let effectivePayroll = profile.payrollUSD + roundSpentUSD;
+      if (effectivePayroll >= thresholds.minPayroll) continue;
+
+      let continueLoop = true;
+      while (
+        effectivePayroll < thresholds.minPayroll &&
+        rosterSize < maxStandard &&
+        pool.length > 0 &&
+        continueLoop
+      ) {
+        continueLoop = false;
+
+        const openSlots   = maxStandard - rosterSize;
+        const floorGap    = thresholds.minPayroll - effectivePayroll;
+        // Proportional offer: spread the remaining gap over all open slots.
+        // Clamped to [minSalary, player's maxSalary] so it never goes negative
+        // and never manufactures a supermax.
+        const targetPerSlot = Math.max(minSalaryUSD, Math.round(floorGap / openSlots));
+
+        // Cheapest available FA whose salary ≤ targetPerSlot (we want to spend
+        // exactly what's needed, not blow past the floor in one signing)
+        const candidate = pool
+          .map(p => {
+            const limits = getContractLimits(p, state.leagueStats as any);
+            const baseOffer = computeContractOffer(p, state.leagueStats as any);
+            const salaryUSD = Math.min(
+              limits.maxSalaryUSD,
+              Math.max(minSalaryUSD, Math.min(targetPerSlot, baseOffer.salaryUSD)),
+            );
+            return { player: p, offer: { ...baseOffer, salaryUSD }, limits };
+          })
+          .filter(({ offer }) => offer.salaryUSD >= minSalaryUSD)
+          .sort((a, b) => b.offer.salaryUSD - a.offer.salaryUSD)[0]; // highest within budget first
+
+        if (!candidate) break;
+
+        signPlayer(candidate.player, team, candidate.offer);
+        continueLoop = true;
+        rosterSize++;
+        effectivePayroll += candidate.offer.salaryUSD;
       }
     }
   }
@@ -759,14 +966,18 @@ export function runAIMidSeasonExtensions(state: GameState): ExtensionResult[] {
     const accepted = roll > 0 && (Math.abs(roll) - Math.floor(Math.abs(roll))) < basePct;
 
     // ── Contract offer (uses full formula from §6c) ──────────────────────
+    // Force hasBirdRights:true — extensions are always own-team re-signings.
+    // The rollover sets hasBirdRights at Jun 30, but extensions fire before it,
+    // so a 3rd-year player's flag is still false from last rollover.
+    const playerForExt = { ...player, hasBirdRights: true } as typeof player;
     const baseExtensionOffer = computeContractOffer(
-      player,
+      playerForExt,
       state.leagueStats as any,
       traits,
       score,
     );
     // spending: GM personality scales the extension offer up or down, clamped at max contract
-    const extLimits = getContractLimits(player, state.leagueStats as any);
+    const extLimits = getContractLimits(playerForExt, state.leagueStats as any);
     const extensionOffer = {
       ...baseExtensionOffer,
       salaryUSD: clampSpendOffer(baseExtensionOffer.salaryUSD, getGMAttributes(state, player.tid).spending, extLimits.maxSalaryUSD),
@@ -863,8 +1074,9 @@ export function runAISeasonEndExtensions(state: GameState): ExtensionResult[] {
     const roll = Math.abs((Math.sin(seed) * 10000) % 1);
     const accepted = roll < basePct;
 
-    const baseExtensionOffer = computeContractOffer(player, state.leagueStats as any, traits, score);
-    const seLimits = getContractLimits(player, state.leagueStats as any);
+    const playerForSEExt = { ...player, hasBirdRights: true } as typeof player;
+    const baseExtensionOffer = computeContractOffer(playerForSEExt, state.leagueStats as any, traits, score);
+    const seLimits = getContractLimits(playerForSEExt, state.leagueStats as any);
     const extensionOffer = {
       ...baseExtensionOffer,
       salaryUSD: clampSpendOffer(baseExtensionOffer.salaryUSD, getGMAttributes(state, player.tid).spending, seLimits.maxSalaryUSD),

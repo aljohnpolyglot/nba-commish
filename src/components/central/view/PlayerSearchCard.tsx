@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { NBAPlayer, NBATeam, NonNBATeam } from '../../../types';
 import { getCountryCode } from '../../../utils/helpers';
 import { getPlayerImage } from './bioCache';
+import { PlayerPortrait } from '../../shared/PlayerPortrait';
 
 interface PlayerSearchCardProps {
   player: NBAPlayer & { displayOvr: number; calculatedAge: number; extractedCountry: string };
@@ -16,7 +17,7 @@ export const PlayerSearchCard: React.FC<PlayerSearchCardProps> = ({ player, team
   const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '');
   const team = isNBA ? teams.find(t => t.id === player.tid) : null;
   const nonNBATeam = !isNBA ? nonNBATeams.find(t => t.tid === player.tid && t.league === player.status) : null;
-  
+
   let teamName = 'Free Agent';
   if (player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect') {
     teamName = 'Draft Prospect';
@@ -50,12 +51,12 @@ export const PlayerSearchCard: React.FC<PlayerSearchCardProps> = ({ player, team
       )}
       <div className="flex items-center gap-4 relative z-10">
         <div className="relative">
-          <div className={`w-16 h-16 rounded-2xl bg-slate-800 overflow-hidden border ${isAvailable ? 'border-slate-700' : 'border-rose-500/50'}`}>
-            <img 
-              src={getPlayerImage(player) || `https://picsum.photos/seed/${player.name}/100/100`} 
-              alt={player.name}
-              className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${!isAvailable ? 'grayscale-[0.5]' : ''}`}
-              referrerPolicy="no-referrer"
+          <div className={`transition-all duration-500 group-hover:scale-110 ${!isAvailable ? 'grayscale-[0.5]' : ''}`}>
+            <PlayerPortrait
+              imgUrl={getPlayerImage(player)}
+              face={(player as any).face}
+              playerName={player.name}
+              size={64}
             />
           </div>
           <div className="absolute -top-2 -right-2 w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center border-2 border-slate-900 shadow-xl">
@@ -75,7 +76,7 @@ export const PlayerSearchCard: React.FC<PlayerSearchCardProps> = ({ player, team
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">{player.pos}</span>
             <span className="text-[10px] text-slate-600">•</span>
             {team && onTeamClick ? (
-              <button 
+              <button
                 onClick={(e) => { e.stopPropagation(); onTeamClick(team.id); }}
                 className="text-[10px] font-bold text-slate-500 truncate hover:text-indigo-400 transition-colors"
               >
@@ -92,7 +93,7 @@ export const PlayerSearchCard: React.FC<PlayerSearchCardProps> = ({ player, team
             <span className="text-[10px] text-slate-700">|</span>
             <span className="text-[10px] font-medium text-slate-600 truncate flex items-center gap-1">
               {getCountryCode(player.extractedCountry) && (
-                <img 
+                <img
                   src={`https://flagcdn.com/w20/${getCountryCode(player.extractedCountry)}.png`}
                   alt=""
                   className="w-3 h-2 object-cover rounded-[1px]"
@@ -103,7 +104,6 @@ export const PlayerSearchCard: React.FC<PlayerSearchCardProps> = ({ player, team
           </div>
         </div>
       </div>
-      {/* Background Accent */}
       <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 blur-3xl rounded-full -mr-12 -mt-12 group-hover:bg-indigo-500/10 transition-all" />
     </motion.div>
   );

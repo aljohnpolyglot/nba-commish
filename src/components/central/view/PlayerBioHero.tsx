@@ -1,5 +1,6 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
+import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
 
 interface PlayerBioHeroProps {
   bioData: any;
@@ -12,6 +13,8 @@ interface PlayerBioHeroProps {
   isSyncing: boolean;
   fetchDone: boolean;
   isHoF?: boolean;
+  /** facesjs face descriptor — shown when no real portrait URL is available */
+  face?: any;
 }
 
 /**
@@ -36,12 +39,13 @@ export const PlayerBioHero: React.FC<PlayerBioHeroProps> = ({
   isSyncing,
   fetchDone,
   isHoF,
+  face,
 }) => {
   return (
   <>
     {/* ── Hero Banner ── */}
     <div
-      className="relative h-auto min-h-[350px] flex flex-col md:flex-row items-center md:items-end px-[5%] overflow-hidden pt-16 pb-4 md:pb-0 md:pt-0 md:h-[350px]"
+      className="relative h-auto min-h-[350px] overflow-hidden pt-16 pb-4 md:h-[350px] md:px-[5%] md:pt-0 md:pb-0"
       style={{ backgroundColor: teamColor }}
     >
       {teamLogo && (
@@ -65,34 +69,47 @@ export const PlayerBioHero: React.FC<PlayerBioHeroProps> = ({
         </div>
       )}
 
-      <div className="relative z-20 mt-8 md:mt-0 md:ml-10 flex flex-col items-center self-end">
-        <img
-          key={portraitSrc}
-          src={portraitSrc}
-          alt={bioData.n}
-          className="h-48 md:h-[340px] drop-shadow-[10px_0_20px_rgba(0,0,0,0.5)] object-contain object-bottom"
-          referrerPolicy="no-referrer"
-          onError={e => { e.currentTarget.style.display = 'none'; }}
-        />
-        {isHoF && (
-          <div className="absolute -bottom-2 -right-2 md:-right-4 w-10 h-10 md:w-14 md:h-14 bg-white rounded-full flex items-center justify-center shadow-xl border-2 border-white/30 z-30" title="Basketball Hall of Fame">
-            <img src={HOF_LOGO} alt="Hall of Fame" className="w-8 h-8 md:w-11 md:h-11 object-contain" referrerPolicy="no-referrer" />
+      <div className="relative z-20 flex h-full flex-col justify-end">
+        <div className="flex flex-col items-center gap-5 px-[5%] md:h-full md:flex-row md:items-end md:gap-8 md:px-0 md:pl-36">
+          <div className="relative flex flex-col items-center shrink-0">
+            {portraitSrc ? (
+              <img
+                key={portraitSrc}
+                src={portraitSrc}
+                alt={bioData.n}
+                className="h-48 md:h-[340px] drop-shadow-[10px_0_20px_rgba(0,0,0,0.5)] object-contain object-bottom"
+                referrerPolicy="no-referrer"
+                onError={e => { e.currentTarget.style.display = 'none'; }}
+              />
+            ) : isRealFaceConfig(face) ? (
+              <div className="h-48 md:h-[340px] flex items-end justify-center drop-shadow-[10px_0_20px_rgba(0,0,0,0.5)]">
+                <div style={{ width: 'min(240px, 58vw)', height: '100%' }}>
+                  <MyFace face={face} style={{ width: '100%', height: '100%' }} />
+                </div>
+              </div>
+            ) : null}
+            {isHoF && (
+              <div className="absolute -bottom-2 -right-2 md:-right-4 w-10 h-10 md:w-14 md:h-14 bg-white rounded-full flex items-center justify-center shadow-xl border-2 border-white/30 z-30" title="Basketball Hall of Fame">
+                <img src={HOF_LOGO} alt="Hall of Fame" className="w-8 h-8 md:w-11 md:h-11 object-contain" referrerPolicy="no-referrer" />
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      <div className="z-20 text-center md:text-left mb-6 md:mb-12 md:ml-10 flex-1">
-        <p className="m-0 uppercase text-sm font-medium tracking-widest text-white/90">{bioData.m}</p>
-        <h1 className="m-0 mt-1 text-2xl sm:text-3xl md:text-[64px] leading-[0.95] uppercase font-black tracking-tight text-white break-words w-full">
-          {bioData.n.split(' ').map((part: string, i: number) => (
-            <React.Fragment key={i}>{part}<br /></React.Fragment>
-          ))}
-        </h1>
-      </div>
-      <div className="hidden md:flex z-20 mb-12 mr-4">
-        <button className="px-6 py-2 rounded-full border border-white text-white font-medium hover:bg-white/10 transition-colors flex items-center gap-2">
-          <span>☆</span> FOLLOW
-        </button>
+          <div className="text-center md:text-left md:mb-12 flex-1 min-w-0">
+            <p className="m-0 uppercase text-sm font-medium tracking-widest text-white/90">{bioData.m}</p>
+            <h1 className="m-0 mt-1 text-2xl sm:text-3xl md:text-[64px] leading-[0.95] uppercase font-black tracking-tight text-white break-words w-full">
+              {bioData.n.split(' ').map((part: string, i: number) => (
+                <React.Fragment key={i}>{part}<br /></React.Fragment>
+              ))}
+            </h1>
+          </div>
+
+          <div className="hidden md:flex mb-12 mr-4 shrink-0">
+            <button className="px-6 py-2 rounded-full border border-white text-white font-medium hover:bg-white/10 transition-colors flex items-center gap-2">
+              <span>☆</span> FOLLOW
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 

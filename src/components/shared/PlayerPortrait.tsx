@@ -28,8 +28,8 @@ export interface PlayerPortraitProps {
  *  - OVR rating badge (bottom-right)
  *  - optional incoming-trade arrow badge (bottom-left)
  *
- * Used in TradeMachineModal PlayerRow and anywhere else a
- * portrait-with-badges treatment is needed.
+ * Canonical player headshot / facesjs renderer.
+ * Use this instead of duplicating img/MyFace/initials fallback logic in view files.
  */
 export const PlayerPortrait: React.FC<PlayerPortraitProps> = ({
   imgUrl,

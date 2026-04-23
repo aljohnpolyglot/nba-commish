@@ -514,7 +514,7 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
                   </div>
                 )}
                 <div className="flex flex-col items-center gap-1 mt-2">
-                  <PlayerPortrait imgUrl={p.imgURL} playerName={p.name} size={72} overallRating={p.overallRating} />
+                  <PlayerPortrait imgUrl={p.imgURL} face={(p as any).face} playerName={p.name} size={72} overallRating={p.overallRating} />
                   <div className="text-[11px] font-bold text-white text-center line-clamp-1 w-full">{p.name}</div>
                 </div>
               </div>
@@ -545,7 +545,7 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
                 >
                   <GripVertical className="w-3 h-3 text-slate-700 shrink-0" />
                   <div className="grayscale opacity-50">
-                    <PlayerPortrait imgUrl={p.imgURL} playerName={p.name} size={36} overallRating={p.overallRating} />
+                    <PlayerPortrait imgUrl={p.imgURL} face={(p as any).face} playerName={p.name} size={36} overallRating={p.overallRating} />
                   </div>
                   <div className="flex flex-col min-w-0 flex-1">
                     <span className="text-xs font-bold text-slate-500 truncate">{p.name}</span>
@@ -599,7 +599,7 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
                 {/* Desktop: single row. Mobile: stacks top (identity) + bottom (slider). */}
                 <div className="sm:grid sm:grid-cols-[20px_40px_1fr_1fr_40px] sm:gap-2 sm:items-center flex items-center gap-2">
                   <GripVertical className="w-3 h-3 text-slate-500 shrink-0" />
-                  <PlayerPortrait imgUrl={p.imgURL} playerName={p.name} size={36} />
+                  <PlayerPortrait imgUrl={p.imgURL} face={(p as any).face} playerName={p.name} size={36} />
                   <div className="flex flex-col min-w-0 flex-1">
                     <span className="text-xs font-bold text-white truncate">{p.name}</span>
                     <span className="text-[10px] text-slate-400">

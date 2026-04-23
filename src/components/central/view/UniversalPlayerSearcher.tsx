@@ -2,9 +2,10 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Filter, X, ChevronDown, User, Globe, GraduationCap, Trophy, ArrowUpDown, LayoutGrid, ListFilter, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { NBAPlayer, NBATeam, NonNBATeam } from '../../../types';
-import { convertTo2KRating, getCountryFromLoc, getCountryCode } from '../../../utils/helpers';
+import { getCountryFromLoc, getCountryCode } from '../../../utils/helpers';
 import { PlayerSearchCard } from './PlayerSearchCard';
 import { useGame } from '../../../store/GameContext';
+import { getDisplayOverall } from '../../../utils/playerRatings';
 
 interface UniversalPlayerSearcherProps {
   players: NBAPlayer[];
@@ -84,14 +85,13 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
       const country = getCountryFromLoc(p.born?.loc);
       const calculatedAge = p.born?.year ? (simYear - p.born.year) : (p.age || 0);
       
-      const rawOvr = p.overallRating || (p.ratings?.[0]?.ovr || 0);
-      const displayOvr = convertTo2KRating(rawOvr, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp);
+      const displayOvr = getDisplayOverall(p);
 
       return {
         ...p,
         extractedCountry: country,
         calculatedAge,
-        displayOvr
+        displayOvr,
       };
     });
   }, [players, state.leagueStats?.year]);

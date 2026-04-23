@@ -349,7 +349,7 @@ export const processTurn = async (
         finalScheduledEvents.push(...result.newScheduledEvents);
     }
 
-    const boxScoresWithDate = allSimResults.map(r => ({ ...r, date: r.date || state.date }));
+    const boxScoresWithDate = allSimResults.map(r => ({ ...r, date: r.date || state.date, season: state.leagueStats.year }));
 
     // All-Star Logic
     let allStarPatch = state.allStar;
@@ -612,10 +612,10 @@ export const processTurn = async (
         if (weekendUpdate.schedule) finalSchedule = weekendUpdate.schedule;
         if (weekendUpdate.boxScores) {
             // Use gameId-based dedup — never overwrite existing box scores
-            const existingIds = new Set(
-                [...(state.boxScores || []), ...boxScoresWithDate].map(bs => bs.gameId)
+            const existingKeys = new Set(
+                [...(state.boxScores || []), ...boxScoresWithDate].map(bs => `${bs.season ?? 0}-${bs.gameId}`)
             );
-            const newBoxScores = weekendUpdate.boxScores.filter(bs => !existingIds.has(bs.gameId));
+            const newBoxScores = weekendUpdate.boxScores.filter(bs => !existingKeys.has(`${bs.season ?? 0}-${bs.gameId}`));
             boxScoresWithDate.push(...newBoxScores);
         }
     }
@@ -824,8 +824,8 @@ export const processTurn = async (
         christmasGames: result.christmasGames || state.christmasGames,
         globalGames: result.globalGames || state.globalGames,
         boxScores: (() => {
-            const existingIds = new Set((state.boxScores || []).map(b => b.gameId));
-            const deduped = boxScoresWithDate.filter(b => !existingIds.has(b.gameId));
+            const existingKeys = new Set((state.boxScores || []).map(b => `${b.season ?? 0}-${b.gameId}`));
+            const deduped = boxScoresWithDate.filter(b => !existingKeys.has(`${b.season ?? 0}-${b.gameId}`));
             return [...(state.boxScores || []), ...deduped];
         })(),
         history: [...(stateWithSim.history ?? state.history), { text: result.outcomeText || '', date: dateString, commissioner: true, type: (() => {

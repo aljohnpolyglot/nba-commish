@@ -121,6 +121,8 @@ export const PlayerSelectorGrid: React.FC<PlayerSelectorGridProps> = ({
               <div className="relative">
                 <PlayerPortrait
                   imgUrl={x.player.imgURL}
+                  face={(x.player as any).face}
+                  playerName={x.player.name}
                   teamLogoUrl={team?.logoUrl}
                   overallRating={x.player.overallRating}
                   size={56}

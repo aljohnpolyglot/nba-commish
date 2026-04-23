@@ -7,6 +7,9 @@
 import React from 'react';
 import { Face } from 'facesjs/react';
 
+const BASKETBALL_JERSEY_IDS = new Set(['jersey', 'jersey2', 'jersey3', 'jersey4', 'jersey5']);
+const ALLOWED_ACCESSORY_IDS = new Set(['none', 'headband', 'headband-high']);
+
 export interface MyFaceProps {
   /** facesjs descriptor object. */
   face: any;
@@ -27,7 +30,15 @@ export const isRealFaceConfig = (face: any): boolean =>
 export const MyFace: React.FC<MyFaceProps> = ({ face, colors, jersey, lazy, style }) => {
   const overrides: Record<string, any> = {};
   if (colors) overrides.teamColors = colors;
-  if (jersey) overrides.jersey = { id: jersey };
+
+  const currentJerseyId = face?.jersey?.id;
+  const safeJerseyId = jersey ?? (BASKETBALL_JERSEY_IDS.has(currentJerseyId) ? currentJerseyId : 'jersey');
+  overrides.jersey = { id: safeJerseyId };
+
+  const currentAccessoryId = face?.accessories?.id;
+  if (!ALLOWED_ACCESSORY_IDS.has(currentAccessoryId)) {
+    overrides.accessories = { id: 'none' };
+  }
 
   return (
     <Face

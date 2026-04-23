@@ -1,19 +1,18 @@
 import { randomNormal } from 'd3-random';
 import { generate as generateFaceRaw } from 'facesjs';
-// Basketball-only face generation — matches ZenGM's reject-loop pattern:
-// (1) don't pass a made-up `jersey: { id: 'basketball' }` override (not a real feature id),
-// (2) reject any generated face that rolled a baseball hat or football eye-black.
+// Basketball-only face generation:
+// facesjs ships jerseys/accessories for multiple sports/holiday themes, so
+// constrain generated prospects to basketball jerseys and basketball-plausible
+// accessories only.
+const BASKETBALL_JERSEY_IDS = ['jersey', 'jersey2', 'jersey3', 'jersey4', 'jersey5'] as const;
+const BASKETBALL_ACCESSORY_IDS = ['none', 'headband', 'headband-high'] as const;
 const generateFace = (opts?: { race?: string; gender?: 'male' | 'female' }): any => {
-  let face = generateFaceRaw(undefined, opts as any);
-  let attempts = 0;
-  while (
-    attempts < 10 &&
-    face?.accessories?.id &&
-    (String(face.accessories.id).startsWith('hat') || face.accessories.id === 'eye-black')
-  ) {
-    face = generateFaceRaw(undefined, opts as any);
-    attempts++;
-  }
+  const jerseyId = BASKETBALL_JERSEY_IDS[Math.floor(Math.random() * BASKETBALL_JERSEY_IDS.length)];
+  const accessoryId = BASKETBALL_ACCESSORY_IDS[Math.floor(Math.random() * BASKETBALL_ACCESSORY_IDS.length)];
+  const face = generateFaceRaw({
+    jersey: { id: jerseyId },
+    accessories: { id: accessoryId },
+  }, opts as any);
   return face;
 };
 
@@ -475,7 +474,7 @@ function generateProspect(year: number, rng: () => number, nameData: NameData, p
     nationality,
     race,
     face,
-    draft: { year: year + 1, round: 0, pick: 0, tid: -1 },
+    draft: { year: year, round: 0, pick: 0, tid: -1 },
     ratings: [ratings as Ratings],
     path,
     drivingDunk,
@@ -502,34 +501,15 @@ export async function generatePlayer(nameData: NameData, options: { year: number
 // a generated prospect into a draft-eligible NBAPlayer that can be merged into state.players.
 import type { NBAPlayer } from '../types';
 
-// Generated prospects otherwise overpower the real player pool once they enter the league.
-// Scale skill attrs down 20% at adapter time; height + season are untouched (physics don't change).
-// Potential is NOT hand-tuned here — it's derived from nerfed OVR + age via the same
-// potEstimator the rest of the game uses (see PlayerRatingsModal), so the math stays consistent.
-const PROSPECT_NERF = 0.80;
-const NERF_SKIP = new Set(['season', 'hgt', 'pot']); // pot recomputed from OVR + age
-
-function nerfRatings(ratings: Ratings[]): Ratings[] {
-  return ratings.map(r => {
-    const out: any = { ...r };
-    for (const key of Object.keys(out)) {
-      if (NERF_SKIP.has(key)) continue;
-      if (typeof out[key] !== 'number') continue;
-      out[key] = Math.max(0, Math.min(99, Math.round(out[key] * PROSPECT_NERF)));
-    }
-    return out as Ratings;
-  });
-}
-
 export function sandboxToNBAPlayer(p: Player): NBAPlayer {
-  const nerfedRatings = nerfRatings(p.ratings ?? []);
-  const lastR = nerfedRatings[nerfedRatings.length - 1];
-  const nerfedOvr = Math.round((p.overallRating ?? lastR?.ovr ?? 45) * PROSPECT_NERF);
+  const rawRatings = p.ratings ?? [];
+  const lastR = rawRatings[rawRatings.length - 1];
+  const baseOvr = p.overallRating ?? lastR?.ovr ?? 45;
   // Use the game's canonical potential formula — same one PlayerRatingsModal + retirementChecker call.
-  const derivedPot = Math.min(99, Math.max(40, Math.round(potEstimator(nerfedOvr, p.age))));
-  // Also patch `pot` inside each ratings row so downstream progression sees consistent numbers.
-  const finalRatings = nerfedRatings.map((r, i) =>
-    i === nerfedRatings.length - 1 ? { ...r, pot: derivedPot } : r,
+  const derivedPot = Math.min(99, Math.max(40, Math.round(potEstimator(baseOvr, p.age))));
+  // Patch `pot` inside the last ratings row so downstream progression sees consistent numbers.
+  const finalRatings = rawRatings.map((r, i) =>
+    i === rawRatings.length - 1 ? { ...r, pot: derivedPot } : r,
   );
   return {
     internalId: p.id,
@@ -553,7 +533,7 @@ export function sandboxToNBAPlayer(p: Player): NBAPlayer {
       originalTid: p.draft.tid ?? -1,
     },
     ratings: finalRatings as any,
-    overallRating: nerfedOvr,
+    overallRating: baseOvr,
     potential: derivedPot,
     moodTraits: p.traits as any,
     // Expose the extra generated attrs so downstream systems (progression, clutch, fight) can read them.

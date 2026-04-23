@@ -11,6 +11,7 @@ import { useGame } from '../../store/GameContext';
 import { convertTo2KRating, normalizeDate } from '../../utils/helpers';
 import { estimatePotentialBbgm } from '../../utils/playerRatings';
 import { getPlayerImage } from '../central/view/bioCache';
+import { MyFace, isRealFaceConfig } from '../shared/MyFace';
 import { ensureNonNBAFetched, getNonNBAGistData } from '../central/view/nonNBACache';
 import { PlayerBioView } from '../central/view/PlayerBioView';
 import { calcOvr2K, calcPot2K, type TeamMode } from '../../services/trade/tradeValueEngine';
@@ -99,8 +100,8 @@ function computeDraftPickFields(pickSlot: number, team: any, ls: any) {
     draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: (team as any)._originalTid ?? team.id },
     contract: {
       amount: Math.round(salaryAmtUSD / 1_000),
-      exp: season + baseYrs + optionYrs - 1,
-      ...(optionYrs > 0 && { hasTeamOption: true, teamOptionExp: season + baseYrs }),
+      exp: season + baseYrs + optionYrs,
+      ...(optionYrs > 0 && { hasTeamOption: true, teamOptionExp: season + baseYrs + 1 }),
       ...(round === 1 && restrictedFA && { restrictedFA: true }),
       rookie: true,
     },
@@ -207,13 +208,13 @@ const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, draftOrder, on
                 {/* Player photo or placeholder */}
                 <div className="w-20 bg-[#111] relative shrink-0 overflow-hidden">
                   {player ? (
-                    (() => { const img = getPlayerImage(player as any); return img ? (
-                      <img src={img} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-2xl font-black text-indigo-900">
-                        {player.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-                      </div>
-                    ); })()
+                    (() => {
+                      const img = getPlayerImage(player as any);
+                      const face = (player as any).face;
+                      if (img) return <img src={img} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />;
+                      if (isRealFaceConfig(face)) return <div className="relative w-full h-full"><div className="absolute left-1/2 top-1/2" style={{ width: '85%', height: '127.5%', transform: 'translate(-50%, -50%)' }}><MyFace face={face} style={{ width: '100%', height: '100%' }} /></div></div>;
+                      return <div className="w-full h-full flex items-center justify-center text-2xl font-black text-indigo-900">{player.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</div>;
+                    })()
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       {isCurrent ? (
@@ -1170,13 +1171,13 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
 
                     {/* Photo */}
                     <div className="w-10 h-10 rounded-full bg-black/40 mr-3 shrink-0 border border-zinc-800 overflow-hidden">
-                      {(() => { const img = getPlayerImage(player as any); return img ? (
-                        <img src={img} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-zinc-500">
-                          {player.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-                        </div>
-                      ); })()}
+                      {(() => {
+                        const img = getPlayerImage(player as any);
+                        const face = (player as any).face;
+                        if (img) return <img src={img} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />;
+                        if (isRealFaceConfig(face)) return <div className="relative w-full h-full"><div className="absolute left-1/2 top-1/2" style={{ width: '85%', height: '127.5%', transform: 'translate(-50%, -50%)' }}><MyFace face={face} style={{ width: '100%', height: '100%' }} /></div></div>;
+                        return <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-zinc-500">{player.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</div>;
+                      })()}
                     </div>
 
                     {/* Info */}
@@ -1286,13 +1287,13 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
               >
                 <div className="w-8 h-8 bg-black/40 rounded-sm font-black text-base text-white/30 mr-3 shrink-0 flex items-center justify-center">{i + 1}</div>
                 <div className="w-9 h-9 rounded-full bg-black/40 mr-3 shrink-0 border border-zinc-800 overflow-hidden">
-                  {(() => { const img = getPlayerImage(player as any); return img ? (
-                    <img src={img} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-zinc-500">
-                      {player.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-                    </div>
-                  ); })()}
+                  {(() => {
+                    const img = getPlayerImage(player as any);
+                    const face = (player as any).face;
+                    if (img) return <img src={img} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />;
+                    if (isRealFaceConfig(face)) return <div className="relative w-full h-full"><div className="absolute left-1/2 top-1/2" style={{ width: '85%', height: '127.5%', transform: 'translate(-50%, -50%)' }}><MyFace face={face} style={{ width: '100%', height: '100%' }} /></div></div>;
+                    return <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-zinc-500">{player.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</div>;
+                  })()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-black text-white text-sm leading-tight truncate">{player.name}</p>

@@ -971,7 +971,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
               )}
             </div>
 
-            <div className="relative z-50 flex-1 flex items-end justify-center overflow-visible min-h-[300px] lg:min-h-[400px]">
+            <div className="relative z-50 flex-1 flex items-end justify-center overflow-visible min-h-[220px] sm:min-h-[280px] lg:min-h-[400px]">
               <AnimatePresence mode="wait">
                 <motion.img
                   key={primarySrc ?? 'fallback'}
@@ -994,8 +994,8 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                   referrerPolicy="no-referrer"
                   className={
                     fullBodyRender
-                      ? "absolute inset-0 w-full h-full object-cover object-top drop-shadow-[0_0_80px_rgba(226,29,55,0.15)] select-none pointer-events-none"
-                      : "absolute inset-x-0 bottom-0 w-full h-full object-contain object-bottom drop-shadow-[0_0_80px_rgba(226,29,55,0.15)] select-none pointer-events-none scale-[1.05]"
+                      ? "absolute inset-x-[10%] sm:inset-x-[6%] lg:inset-0 bottom-0 w-[80%] sm:w-[88%] lg:w-full h-full object-contain lg:object-cover object-top drop-shadow-[0_0_80px_rgba(226,29,55,0.15)] select-none pointer-events-none"
+                      : "absolute inset-x-[10%] sm:inset-x-[6%] lg:inset-x-0 bottom-0 w-[80%] sm:w-[88%] lg:w-full h-[88%] sm:h-full object-contain object-bottom drop-shadow-[0_0_80px_rgba(226,29,55,0.15)] select-none pointer-events-none scale-100 sm:scale-[1.02] lg:scale-[1.05]"
                   }
                   style={fullBodyRender ? undefined : { transformOrigin: 'bottom center' }}
                 />
@@ -1038,7 +1038,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
               </div>
             </div>
 
-            <div className="relative z-20 bg-[#050505] px-6 py-5 border-t border-white/5 grid grid-cols-3 md:grid-cols-6 gap-3">
+            <div className="relative z-20 bg-[#050505] px-4 sm:px-6 py-4 sm:py-5 border-t border-white/5 flex md:grid md:grid-cols-6 gap-3 overflow-x-auto md:overflow-visible whitespace-nowrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {[
                 { label: 'Pos',  value: formatPos(player.pos) },
                 { label: 'Age',  value: realAge > 0 ? realAge : (player.age ?? '—') },
@@ -1070,7 +1070,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                     return lastUSD > 0 ? formatSalaryM(lastUSD) : 'N/A';
                   })() },
               ].map(({ label, value }) => (
-                <div key={label}>
+                <div key={label} className="min-w-[72px] shrink-0 md:min-w-0">
                   <p className="text-[8px] font-black uppercase tracking-[0.25em] text-white/40 mb-1">{label}</p>
                   <p className="text-sm font-black italic uppercase text-white truncate">{value}</p>
                 </div>
@@ -1643,11 +1643,11 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
               )}
             </div>
 
-            <div className="px-4 sm:px-8 xl:px-10 py-3 sm:py-6 bg-black/50 border-t border-white/5 flex items-center justify-end shrink-0">
-              <div className="flex gap-2 sm:gap-3 flex-wrap justify-end">
+            <div className="sticky bottom-0 z-40 px-3 sm:px-8 xl:px-10 py-3 sm:py-6 bg-black/80 backdrop-blur-xl border-t border-white/10 flex items-center justify-end shrink-0 shadow-[0_-18px_40px_rgba(0,0,0,0.45)]">
+              <div className="flex w-full sm:w-auto gap-2 sm:gap-3 flex-nowrap justify-end">
                 <button
                   onClick={onClose}
-                  className="px-3 sm:px-8 py-2 sm:py-3 bg-white/5 border border-white/10 rounded-sm text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-all"
+                  className="flex-1 sm:flex-none px-3 sm:px-8 py-2.5 sm:py-3 bg-white/5 border border-white/10 rounded-sm text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-all"
                 >
                   Withdraw
                 </button>
@@ -1673,7 +1673,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                       title={mleCanCover
                         ? `Uses ${mleLabel} — ${formatSalaryM(mle.available)} available`
                         : `Salary exceeds ${mleLabel} limit (${formatSalaryM(mle.available)} available)`}
-                      className={`px-3 sm:px-6 py-2 sm:py-3 rounded-sm text-[9px] sm:text-[10px] font-black italic uppercase tracking-widest transition-all ${
+                      className={`flex-1 sm:flex-none px-3 sm:px-6 py-2.5 sm:py-3 rounded-sm text-[9px] sm:text-[10px] font-black italic uppercase tracking-widest transition-all ${
                         mleCanCover
                           ? 'bg-blue-600 text-white hover:scale-[1.02]'
                           : 'bg-blue-900/30 text-blue-300/30 cursor-not-allowed'
@@ -1705,7 +1705,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                       setShowResponse(true);
                     }
                   }}
-                  className="px-5 sm:px-10 py-2 sm:py-3 bg-[#e21d37] rounded-sm text-[9px] sm:text-[10px] font-black italic uppercase tracking-widest text-white hover:scale-[1.02] transition-all"
+                  className="flex-1 sm:flex-none px-5 sm:px-10 py-2.5 sm:py-3 bg-[#e21d37] rounded-sm text-[9px] sm:text-[10px] font-black italic uppercase tracking-widest text-white hover:scale-[1.02] transition-all"
                 >
                   {shouldSubmitBid ? 'Submit Offer' : (autoAccept ? 'Finalize Deal' : 'Submit')}
                 </button>

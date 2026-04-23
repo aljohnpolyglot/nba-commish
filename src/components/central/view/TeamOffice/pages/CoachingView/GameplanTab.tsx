@@ -772,6 +772,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
                 <div className="flex flex-col items-center gap-1 mt-2">
                   <PlayerPortrait
                     imgUrl={p.imgURL}
+                    face={(p as any).face}
                     playerName={p.name}
                     size={72}
                     overallRating={p.overallRating}
@@ -827,6 +828,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
                   <GripVertical className="w-3 h-3 text-slate-500 shrink-0" />
                   <PlayerPortrait
                     imgUrl={p.imgURL}
+                    face={(p as any).face}
                     playerName={p.name}
                     size={36}
                   />
@@ -904,6 +906,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
                   <div className="grayscale opacity-50">
                     <PlayerPortrait
                       imgUrl={p.imgURL}
+                      face={(p as any).face}
                       playerName={p.name}
                       size={36}
                       overallRating={p.overallRating}
@@ -950,6 +953,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
                   <div className="grayscale">
                     <PlayerPortrait
                       imgUrl={p.imgURL}
+                      face={(p as any).face}
                       playerName={p.name}
                       size={36}
                       overallRating={p.overallRating}

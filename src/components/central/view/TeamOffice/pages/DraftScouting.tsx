@@ -228,7 +228,7 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
                 )}>
                   {i + 1}
                 </span>
-                <PlayerPortrait imgUrl={p.player.imgURL} playerName={p.player.name} size={36} />
+                <PlayerPortrait imgUrl={p.player.imgURL} face={(p.player as any).face} playerName={p.player.name} size={36} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-white truncate">{p.player.name}</span>

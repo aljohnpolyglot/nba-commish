@@ -40,7 +40,7 @@ const calculateOverallFromRating = (rating: any): number => {
     // THE SUPERSTAR BOOST: If a player is elite (rawOvr > 80), push them higher
     // This is how 2K gets those 94-98 ratings.
     if (rawOvr > 80) {
-        rawOvr = 80 + (rawOvr - 80) * 1.4;
+        rawOvr = 80 + (rawOvr - 80) * 1.2;
     } else if (rawOvr < 60) {
         rawOvr = rawOvr * 0.95; // Keeps role players in the 60s-70s
     }

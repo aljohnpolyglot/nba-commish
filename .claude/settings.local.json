@@ -75,7 +75,12 @@
       "Bash(git reset *)",
       "Bash(git restore *)",
       "Bash(git --no-pager diff src/components/central/view/TeamOffice/pages/TeamIntel.tsx)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(git hash-object *)",
+      "WebSearch",
+      "WebFetch(domain:en.wikipedia.org)",
+      "WebFetch(domain:www.cbssports.com)",
+      "Bash(Grep -n \"draft\")"
     ]
   }
 }

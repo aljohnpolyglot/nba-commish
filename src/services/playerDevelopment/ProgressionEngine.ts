@@ -46,6 +46,12 @@ function isNBAActive(p: NBAPlayer): boolean {
       && s !== 'Draft Prospect' && s !== 'Prospect' && s !== 'Retired';
 }
 
+function getPlayerAge(player: NBAPlayer, currentYear: number): number {
+  return player.born?.year
+    ? (currentYear - player.born.year)
+    : (typeof player.age === 'number' && player.age > 0 ? player.age : 25);
+}
+
 // ─── Seeded RNG ────────────────────────────────────────────────────────────────
 
 function seededHash(seed: string): number {
@@ -243,10 +249,16 @@ function progressPlayer(player: NBAPlayer, currentYear: number, date: string): N
   const rating: any = { ...player.ratings[ratingIdx] };
 
   // Prefer born.year calculation — player.age can be stale/wrong from BBGM load
-  const age = player.born?.year ? (currentYear - player.born.year) : (typeof player.age === 'number' && player.age > 0 ? player.age : 25);
+  const age = getPlayerAge(player, currentYear);
   const pid = player.internalId ?? player.name;
   const isOverseasPlayer = !!LEAGUE_DISPLAY_MULTIPLIERS[player.status ?? ''];
   const pos = player.pos ?? 'F';
+
+  // Freeze all development for stashable under-19 players until they age into
+  // draft-eligible progression territory.
+  if (age < 19) {
+    return player;
+  }
 
   const pot: number = rating.pot ?? 70;
 
@@ -398,7 +410,8 @@ export function applySeasonalBreakouts(
     const hitRate = nba ? 1.0 : 0.43;
 
     // Prefer born.year calculation — player.age can be stale/wrong from BBGM load
-    const age = player.born?.year ? (currentYear - player.born.year) : (typeof player.age === 'number' && player.age > 0 ? player.age : 25);
+    const age = getPlayerAge(player, currentYear);
+    if (age < 19) return player;
     const pid = player.internalId ?? player.name;
     const pSeed = `${pid}-${saveSeed}`;
     const ratingIdx = (() => {

@@ -10,6 +10,7 @@ import { useGame } from '../../store/GameContext';
 import { convertTo2KRating } from '../../utils/helpers';
 import { estimatePotentialBbgm } from '../../utils/playerRatings';
 import { getPlayerImage } from '../central/view/bioCache';
+import { MyFace, isRealFaceConfig } from '../shared/MyFace';
 import { ensureNonNBAFetched, getNonNBAGistData } from '../central/view/nonNBACache';
 import { PlayerBioView } from '../central/view/PlayerBioView';
 import type { NBAPlayer } from '../../types';
@@ -195,14 +196,13 @@ export const DraftHistoryView: React.FC = () => {
                   <span className="text-base font-black text-white">{String(player._slot).padStart(2, '0')}</span>
                 </div>
                 <div className="w-16 bg-[#111] relative shrink-0 overflow-hidden">
-                  {(() => { const img = getPlayerImage(player); return img ? (
-                    <img src={img} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer"
-                      onError={e => { e.currentTarget.style.display = 'none'; }} />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-lg font-black text-indigo-900">
-                      {player.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-                    </div>
-                  ); })()}
+                  {(() => {
+                    const img = getPlayerImage(player);
+                    const face = (player as any).face;
+                    if (img) return <img src={img} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" onError={e => { e.currentTarget.style.display = 'none'; }} />;
+                    if (isRealFaceConfig(face)) return <div className="relative w-full h-full"><div className="absolute left-1/2 top-1/2" style={{ width: '85%', height: '127.5%', transform: 'translate(-50%, -50%)' }}><MyFace face={face} style={{ width: '100%', height: '100%' }} /></div></div>;
+                    return <div className="w-full h-full flex items-center justify-center text-lg font-black text-indigo-900">{player.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</div>;
+                  })()}
                 </div>
                 <div className="flex-1 p-2 flex flex-col justify-center min-w-0">
                   <div className="flex items-center gap-1.5 min-w-0">

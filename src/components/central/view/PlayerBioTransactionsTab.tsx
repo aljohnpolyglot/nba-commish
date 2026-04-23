@@ -1,23 +1,27 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { ArrowRightLeft, Calendar, Info, UserCheck, UserX, AlertTriangle, Users, Sunset } from 'lucide-react';
+import { ArrowRightLeft, Calendar, Info, UserCheck, UserX, AlertTriangle, Users, Sunset, Trophy, CheckCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { NBAPlayer } from '../../../types';
 
 // ─── Types & helpers ──────────────────────────────────────────────────────────
 
 const TYPE_STYLE: Record<string, { color: string; bg: string; icon: React.ReactNode; label: string }> = {
+  Draft:          { color: 'text-violet-400',  bg: 'bg-violet-500/10',  icon: <Trophy size={18}/>,         label: 'Draft' },
   Trade:          { color: 'text-blue-400',    bg: 'bg-blue-500/10',    icon: <ArrowRightLeft size={18}/>, label: 'Trade' },
   Signing:        { color: 'text-emerald-400', bg: 'bg-emerald-500/10', icon: <UserCheck size={18}/>,      label: 'Signing' },
   Waive:          { color: 'text-amber-400',   bg: 'bg-amber-500/10',   icon: <UserX size={18}/>,          label: 'Waiver' },
   Suspension:     { color: 'text-rose-400',    bg: 'bg-rose-500/10',    icon: <AlertTriangle size={18}/>,  label: 'Suspension' },
   Personnel:      { color: 'text-purple-400',  bg: 'bg-purple-500/10',  icon: <Users size={18}/>,          label: 'Personnel' },
   Retirement:     { color: 'text-amber-300',   bg: 'bg-amber-500/10',   icon: <Sunset size={18}/>,         label: 'Retirement' },
+  'NG Guaranteed':{ color: 'text-emerald-400', bg: 'bg-emerald-500/10', icon: <CheckCircle size={18}/>,    label: 'Guaranteed' },
   'League Event': { color: 'text-slate-400',   bg: 'bg-slate-800',      icon: <Info size={18}/>,           label: 'League Event' },
 };
 
 function detectType(text: string, type?: string): string {
   const t = text.toLowerCase();
+  if (type === 'Draft'       || t.includes('overall pick of the') || t.includes('went undrafted in the')) return 'Draft';
+  if (type === 'NG Guaranteed' || (t.includes('guaranteed by') && t.includes('january 10'))) return 'NG Guaranteed';
   if (type === 'Retirement'  || t.includes('has retired') || t.includes('announced his retirement')) return 'Retirement';
   if (type === 'Trade'       || t.includes('trade'))   return 'Trade';
   if (type === 'Signing'     || t.includes('signed') || t.includes('re-signed') || t.includes('signs with')) return 'Signing';

@@ -4,6 +4,7 @@ import { NBAPlayer, NBATeam } from '../../../types';
 import { convertTo2KRating } from '../../../utils/helpers';
 import { getPlayerImage } from './bioCache';
 import { useGame } from '../../../store/GameContext';
+import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
 
 interface PlayerCardProps {
   player: NBAPlayer;
@@ -60,12 +61,18 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionCl
       <div className="flex items-center gap-6 relative z-10">
         <div className="relative">
           {imageSrc ? (
-            <img 
-              src={imageSrc} 
-              alt={player.name} 
-              className="w-20 h-20 rounded-[2rem] object-cover bg-slate-800 border-2 border-slate-700 group-hover:scale-105 transition-transform duration-300 shadow-xl" 
+            <img
+              src={imageSrc}
+              alt={player.name}
+              className="w-20 h-20 rounded-[2rem] object-cover bg-slate-800 border-2 border-slate-700 group-hover:scale-105 transition-transform duration-300 shadow-xl"
               referrerPolicy="no-referrer"
             />
+          ) : isRealFaceConfig((player as any).face) ? (
+            <div className="w-20 h-20 rounded-[2rem] bg-slate-800 border-2 border-slate-700 overflow-hidden shadow-xl group-hover:scale-105 transition-transform duration-300 relative">
+              <div className="absolute left-1/2 top-1/2" style={{ width: 68, height: 102, transform: 'translate(-50%, -50%)' }}>
+                <MyFace face={(player as any).face} style={{ width: '100%', height: '100%' }} />
+              </div>
+            </div>
           ) : (
              <div className="w-20 h-20 rounded-[2rem] bg-slate-800 border-2 border-slate-700 flex items-center justify-center shadow-xl group-hover:scale-105 transition-transform duration-300">
                 <span className="text-xl font-bold text-slate-500">{player.name.charAt(0)}</span>

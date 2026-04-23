@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { BookOpen, Calendar, Gift, Utensils, Plane, Music, Star, Zap, AlertTriangle, Gavel, TrendingUp, Search, ArrowRightLeft, UserCheck, UserX, Users } from 'lucide-react';
+import { BookOpen, Calendar, Gift, Utensils, Plane, Music, Star, Zap, AlertTriangle, Gavel, TrendingUp, Search, ArrowRightLeft, UserCheck, UserX, Users, UserPlus, FileCheck } from 'lucide-react';
 import { motion } from 'motion/react';
 import { HistoryEntry } from '../../../types';
 
@@ -40,6 +40,8 @@ function detectEventKind(text: string, type?: string): {
   if (ty === 'waive') return { icon: <UserX size={16} />, label: 'Waiver', color: 'text-amber-400', bg: 'bg-amber-500/10' };
   if (ty === 'suspension') return { icon: <AlertTriangle size={16} />, label: 'Suspension', color: 'text-rose-400', bg: 'bg-rose-500/10' };
   if (ty === 'personnel') return { icon: <Users size={16} />, label: 'Personnel', color: 'text-purple-400', bg: 'bg-purple-500/10' };
+  if (ty === 'draft') return { icon: <UserPlus size={16} />, label: 'Draft', color: 'text-indigo-400', bg: 'bg-indigo-500/10' };
+  if (ty === 'ng guaranteed') return { icon: <FileCheck size={16} />, label: 'Guarantee', color: 'text-teal-400', bg: 'bg-teal-500/10' };
   // ── Text-based detection below (only reached when type field is absent/generic) ──
   // NOTE: never text-match for "suspended" in diary — suspensions are type-tagged above.
   // This prevents injury text that contains "sidelined" from being mislabeled Suspension.

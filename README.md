@@ -17,7 +17,7 @@ npm run dev
 | Mode | You Control | Status |
 |------|------------|--------|
 | **Commissioner** | Entire league — rules, suspensions, trades, economy, narrative | Live |
-| **GM** | One team — roster, trades, free agency, draft | Planned |
+| **GM** | One team — roster, trades, free agency, draft, extensions | Live |
 
 See: [`COMMISSIONER_MODE_README.md`](./COMMISSIONER_MODE_README.md) | [`GM_MODE_README.md`](./GM_MODE_README.md)
 
@@ -228,4 +228,13 @@ Non-obvious facts. Read before touching these areas.
 
 ---
 
-*Last updated: 2026-04-18 (session 25)*
+## Session 26 additions (2026-04-23)
+
+### Team-option → rookie extension coupling
+- `src/services/logic/seasonRollover.ts` — new §0c pass fires right after the team option exercise loop. For every option-exercised player in the rookie-ext window (YOS 3-4), computes an offer via `computeContractOffer({ ...p, hasBirdRights: true })` and runs a deterministic acceptance roll with a high floor: `basePct = 0.90` baseline, `0.95` for foundational (MVP or All-NBA in last 3 yrs), `0.97` for LOYAL trait. Uses `currentYear * 97` as the seed multiplier (distinct from mid-season's `* 31`) so unlucky rolls don't cascade across both pipelines. Accepted extensions write `contractYears[]` entries starting at `contract.exp + 1` with 5% annual raises and preserve the existing team-option-year contract year. Labels surface as `Rose Rule` / `Rookie Ext` / `Supermax` in the history log, dated `Jun 30, {currentYear}`.
+- Patched the `teamOptionExercisedIds` branch in the main player-map to compute `hasBirdRights` and `superMaxEligible` — previously these were stale until the next rollover because only the "still under contract" branch set them.
+- Motivated by the Wembanyama case: 4-year MVP/All-NBA Spurs run, mid-season extension fired Oct 2026, rolled the 20% decline bucket on a deterministic seed, silent fail (declines don't write to history), hit FA Jul 2027, signed LAC. The coupled extension gives franchise cornerstones a proper bundled-summer negotiation window with high acceptance before the lossy mid-season path can fail them.
+
+---
+
+*Last updated: 2026-04-23 (session 26)*

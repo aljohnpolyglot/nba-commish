@@ -4,6 +4,7 @@ import { NBAPlayer, NonNBATeam } from '../../../types';
 import { convertTo2KRating, getCountryFromLoc, getCountryCode } from '../../../utils/helpers';
 import { getPlayerImage } from '../../central/view/bioCache';
 import { useGame } from '../../../store/GameContext';
+import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
 
 const LEAGUE_LOGOS: Record<string, string> = {
   PBA: 'https://upload.wikimedia.org/wikipedia/en/thumb/9/93/Philippine_Basketball_Association_logo.svg/200px-Philippine_Basketball_Association_logo.svg.png',
@@ -82,19 +83,14 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
       <div className="p-4">
         <div className="flex items-center gap-4 relative z-10">
           <div className="relative flex-shrink-0">
-            <div className={`w-16 h-16 rounded-2xl bg-slate-800 overflow-hidden border ${isAvailable ? 'border-slate-700' : 'border-rose-500/50'} flex items-center justify-center`}>
-              {getPlayerImage(player) ? (
-                <img
-                  src={getPlayerImage(player)}
-                  alt={player.name}
-                  loading="lazy"
-                  className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${!isAvailable ? 'grayscale-[0.5]' : ''}`}
-                  referrerPolicy="no-referrer"
-                  onError={e => { e.currentTarget.style.display = 'none'; }}
-                />
-              ) : (
-                <span className="text-xl font-black text-slate-500">{player.name[0]}</span>
-              )}
+            <div className={`w-16 h-16 rounded-2xl bg-slate-800 overflow-hidden border ${isAvailable ? 'border-slate-700' : 'border-rose-500/50'} flex items-center justify-center relative`}>
+              {(() => {
+                const img = getPlayerImage(player);
+                const face = (player as any).face;
+                if (img) return <img src={img} alt={player.name} loading="lazy" className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${!isAvailable ? 'grayscale-[0.5]' : ''}`} referrerPolicy="no-referrer" onError={e => { e.currentTarget.style.display = 'none'; }} />;
+                if (isRealFaceConfig(face)) return <div className="absolute left-1/2 top-1/2 w-[136%] h-[136%]" style={{ transform: 'translate(-50%, -50%)' }}><MyFace face={face} style={{ width: '100%', height: '100%' }} /></div>;
+                return <span className="text-xl font-black text-slate-500">{player.name[0]}</span>;
+              })()}
             </div>
             {/* OVR Badge — matches PlayerCard.tsx style */}
             <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-slate-950 rounded-full flex items-center justify-center border-2 border-slate-800">

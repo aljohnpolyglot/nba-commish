@@ -177,7 +177,7 @@ export const EconomyContractsSection = ({
                             <div className="flex flex-col gap-2 mt-3">
                                 <div className="flex items-center">
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Min Years of Service</span>
-                                    <InfoTooltip text="Minimum seasons played to qualify for a supermax via awards. Players with 10+ years qualify automatically regardless of awards." />
+                                    <InfoTooltip text="Minimum seasons played to be eligible for a supermax. Award criteria still apply at every service tier — there is no automatic qualification." />
                                 </div>
                                 <input
                                     type="number"
@@ -188,7 +188,7 @@ export const EconomyContractsSection = ({
                                     className="w-full bg-slate-950 border border-slate-700 rounded-xl text-white text-sm py-2 px-3 focus:outline-none focus:border-indigo-500"
                                 />
                                 <p className="text-[9px] text-slate-500 italic">
-                                    Eligible via MVP/DPOY (last 3 seasons) or All-NBA in preceding season or 2 of last 3. 10+ years: automatic.
+                                    Eligible via MVP/DPOY (last 3 seasons) or All-NBA in preceding season or 2 of last 3. Awards required at every tier.
                                 </p>
                             </div>
                         </div>

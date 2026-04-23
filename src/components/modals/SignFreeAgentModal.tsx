@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { NBAPlayer, NBATeam } from '../../types';
 import { convertTo2KRating } from '../../utils/helpers';
 import { getPlayerImage } from '../central/view/bioCache';
+import { MyFace, isRealFaceConfig } from '../shared/MyFace';
 import SigningModal from './SigningModal';
 import { classifyResignIntent } from '../central/view/PlayerBioMoraleTab';
 import { computeMoodScore, normalizeMoodTraits } from '../../utils/mood/moodScore';
@@ -227,7 +228,13 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
                                     : 'bg-slate-900/50 border-slate-800 hover:bg-slate-800 hover:border-slate-700'
                             }`}
                         >
-                            <img src={getPlayerImage(player)} alt={player.name} className="w-10 h-10 rounded-full object-cover bg-slate-800" referrerPolicy="no-referrer" />
+                            {(() => {
+                              const img = getPlayerImage(player);
+                              const face = (player as any).face;
+                              if (img) return <img src={img} alt={player.name} className="w-10 h-10 rounded-full object-cover bg-slate-800 flex-shrink-0" referrerPolicy="no-referrer" />;
+                              if (isRealFaceConfig(face)) return <div className="w-10 h-10 rounded-full bg-slate-800 overflow-hidden flex-shrink-0 relative"><div className="absolute left-1/2 top-1/2" style={{ width: '85%', height: '127.5%', transform: 'translate(-50%, -50%)' }}><MyFace face={face} style={{ width: '100%', height: '100%' }} /></div></div>;
+                              return <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center flex-shrink-0"><span className="text-sm font-bold text-slate-400">{player.name.charAt(0)}</span></div>;
+                            })()}
                             <div className="flex-1 min-w-0">
                                 <div className="text-sm font-bold truncate text-white">{player.name}</div>
                                 <div className="text-xs text-slate-500">

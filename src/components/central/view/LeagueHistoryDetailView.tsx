@@ -8,6 +8,10 @@ import type { BRefSeasonData } from '../../../data/brefFetcher';
 import { fetchCoachData, getCoachPhoto } from '../../../data/photos/coaches';
 import { PlayerBioView } from './PlayerBioView';
 import type { NBAPlayer } from '../../../types';
+import { PlayerPortrait } from '../../shared/PlayerPortrait';
+
+const resolvePortraitUrl = (player: any, name: string) =>
+  player?.imgURL || ((player as any)?.face ? undefined : `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e293b&color=94a3b8`);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -67,9 +71,9 @@ const AwardWinner: React.FC<{ label: string; award: any; isCurrent: boolean; win
       <RankedPersonCard
         rank={winCount}
         portraitUrl={award.imgURL}
+        face={award.face}
         name={award.name}
         subtitle={award.team}
-        teamLogoUrl={award.teamLogoUrl}
         stats={award.statLine ? [
           { label: 'PPG', val: award.statLine.split(' / ')[0] ?? '' },
           { label: 'RPG', val: award.statLine.split(' / ')[1] ?? '' },
@@ -98,9 +102,9 @@ const COYWinner: React.FC<{ award: any; isCurrent: boolean; winCount?: number }>
       <RankedPersonCard
         rank={winCount}
         portraitUrl={award.imgURL}
+        face={award.face}
         name={award.name}
         subtitle={award.team}
-        teamLogoUrl={award.teamLogoUrl}
         accentColor="amber"
         animDelay={0}
       />
@@ -142,15 +146,13 @@ const AllTeamSection: React.FC<{
                     onClick={() => onPlayerClick && onPlayerClick(p)}
                   >
                     <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-slate-800 border border-slate-700 shrink-0">
-                      <img
-                        src={p.imgURL ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=1e293b&color=94a3b8`}
-                        alt={p.name} className="w-full h-full object-cover object-top"
-                        referrerPolicy="no-referrer" />
-                      {p.teamLogoUrl && (
-                        <div className="absolute bottom-0 right-0 w-4 h-4 bg-white rounded-tl-lg flex items-center justify-center">
-                          <img src={p.teamLogoUrl} alt="" className="w-3.5 h-3.5 object-contain" referrerPolicy="no-referrer" />
-                        </div>
-                      )}
+                      <PlayerPortrait
+                        imgUrl={p.imgURL}
+                        face={p.face}
+                        playerName={p.name}
+                        teamLogoUrl={p.teamLogoUrl}
+                        size={40}
+                      />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-bold text-white truncate">{p.name}</div>
@@ -227,7 +229,8 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
       : '';
     return {
       name: a.name, team: team?.abbrev ?? 'FA',
-      imgURL: player?.imgURL ?? avatarFallback(a.name),
+      imgURL: resolvePortraitUrl(player, a.name),
+      face: (player as any)?.face,
       teamLogoUrl: team?.logoUrl, statLine,
     };
   };
@@ -259,7 +262,8 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
     const teamDisplay = team?.abbrev ?? (a.team ? generateAbbrev(a.team) : '');
     return {
       name: a.name, team: teamDisplay,
-      imgURL: player?.imgURL ?? avatarFallback(a.name),
+      imgURL: resolvePortraitUrl(player, a.name),
+      face: (player as any)?.face,
       teamLogoUrl: team?.logoUrl,
       statLine: agg && agg.gp > 0
         ? `${fmt(getStatValue(agg, 'PTS'))} / ${fmt(getStatValue(agg, 'REB'))} / ${fmt(getStatValue(agg, 'AST'))}`
@@ -355,9 +359,10 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
       return {
         name: a.name,
         team: team?.abbrev ?? 'FA',
-        imgURL: player?.imgURL ?? avatarFallback(a.name),
-        teamLogoUrl: team?.logoUrl,
-        playerRef: player ?? null,
+          imgURL: resolvePortraitUrl(player, a.name),
+          face: (player as any)?.face,
+          teamLogoUrl: team?.logoUrl,
+          playerRef: player ?? null,
       };
     });
   };
@@ -655,13 +660,14 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
                     {awards.finalsMvp && (
                       <div
                         className="flex items-center gap-2 mt-2 bg-slate-800/60 rounded-lg px-2.5 py-1.5 w-fit cursor-pointer hover:bg-slate-700/60 transition-colors"
-                        onClick={() => handlePlayerClick(getAwardEntry('finalsMvp', 'Finals MVP'))}
+                          onClick={() => handlePlayerClick(getAwardEntry('finalsMvp', 'Finals MVP'))}
                       >
-                        <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-700 shrink-0">
-                          <img src={awards.finalsMvp.imgURL ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(awards.finalsMvp.name)}&background=1e293b&color=fff`}
-                            alt={awards.finalsMvp.name} className="w-full h-full object-cover object-top"
-                            referrerPolicy="no-referrer" />
-                        </div>
+                        <PlayerPortrait
+                          imgUrl={awards.finalsMvp.imgURL}
+                          face={awards.finalsMvp.face}
+                          playerName={awards.finalsMvp.name}
+                          size={32}
+                        />
                         <div>
                           <div className="text-[9px] text-amber-500 uppercase font-black tracking-wider">Finals MVP</div>
                           <div className="text-sm font-bold text-white">{awards.finalsMvp.name}</div>
@@ -805,7 +811,8 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
                 const team = state.teams.find(st => st.abbrev === p.team || st.name?.endsWith(p.team));
                 return {
                   name: p.name, team: p.team,
-                  imgURL: player?.imgURL ?? avatarFallback(p.name),
+                  imgURL: resolvePortraitUrl(player, p.name),
+                  face: (player as any)?.face,
                   teamLogoUrl: team?.logoUrl,
                 };
               }),
@@ -885,9 +892,9 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
                   key={i}
                   rank={i + 1}
                   portraitUrl={m.imgURL}
+                  face={m.face}
                   name={m.name}
                   subtitle={`${m.team}${m.statLine ? ` · ${m.statLine}` : ''}`}
-                  teamLogoUrl={m.teamLogoUrl}
                   accentColor="indigo"
                   animDelay={i * 0.04}
                   onClick={() => {
@@ -927,11 +934,12 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
                             className="flex items-center gap-2 bg-slate-900/60 rounded-lg px-2.5 py-1.5 border border-slate-800 cursor-pointer hover:border-slate-600 hover:bg-slate-800/60 transition-colors"
                             onClick={() => p ? setViewingPlayer(p as NBAPlayer) : setNotFoundName(r.playerName)}
                           >
-                            <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-slate-800 shrink-0">
-                              <img src={p?.imgURL ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(r.playerName)}&background=1e293b&color=fff`}
-                                alt={r.playerName} className="w-full h-full object-cover object-top"
-                                referrerPolicy="no-referrer" />
-                            </div>
+                            <PlayerPortrait
+                              imgUrl={p?.imgURL}
+                              face={(p as any)?.face}
+                              playerName={r.playerName}
+                              size={32}
+                            />
                             <div className="flex-1 min-w-0">
                               <div className="text-xs font-bold text-white truncate">{r.playerName}</div>
                               <div className="text-[10px] text-slate-500">{r.teamAbbrev}</div>
@@ -981,10 +989,10 @@ const LeaderColumnWithSeason: React.FC<{
         key={e.player.internalId}
         rank={i + 1}
         portraitUrl={e.player.imgURL}
+        face={(e.player as any)?.face}
         name={e.player.name}
         subtitle={`${e.team?.abbrev ?? '—'} · ${fmt(e.value)} ${unit}`}
-        teamLogoUrl={e.team?.logoUrl}
-        accentColor="indigo"
+          accentColor="indigo"
         animDelay={i * 0.04}
         onClick={onPlayerClick ? () => onPlayerClick(e.player) : undefined}
       />

@@ -194,7 +194,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
           : (player.draft?.year
             ? (player.draft.round && player.draft.pick
               ? `${player.draft.year} R${player.draft.round} P${player.draft.pick}`
-              : `${player.draft.year} Draft`)
+              : `Undrafted (${player.draft.year})`)
             : "Undrafted"),
         e: `${curYear - dY} Years`,
         stats: (() => {
@@ -386,6 +386,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
           isSyncing={isSyncing}
           fetchDone={fetchDone}
           isHoF={!!player.hof}
+          face={(player as any).face}
         />
 
         {/* ── TABS ── */}

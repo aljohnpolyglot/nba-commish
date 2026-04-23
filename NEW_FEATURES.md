@@ -4,6 +4,40 @@ A chronological log of features added across development sessions.
 
 ---
 
+## Milestone — Apr 23, 2026: Past BBGM on feature surface
+
+Snapshot of what's shipped vs. what BBGM ships:
+
+**Contract system** — supermax eligibility, Rose Rule rookie extensions, Bird Rights, MLE (non-taxpayer / taxpayer / room / bi-annual), team options, player options, two-way contracts, non-guaranteed training camp deals, external-league buyouts with FIBA cap. BBGM has a simpler flat contract model.
+
+**Multi-league ecosystem** — NBA + WNBA + Euroleague + PBA + B-League + G-League + Endesa + China CBA + NBL Australia, all with their own rosters, ratings, bios, preseason schedules, and economy tiers. BBGM is single-league.
+
+**Mood & drama** — 7 traits (DIVA / LOYAL / MERCENARY / COMPETITOR / VOLATILE / AMBASSADOR / DRAMA_MAGNET / FAME), mood score -10 to +10, drama probability weighting, fight generator with severity tiers, family ties / nepotism system.
+
+**Media surface** — Shams Charania posts, NBA Central, Legion Hoops, Hoop Central, NBA Official in-season social feed, daily vs. weekly news split, Events (Commissioner's Diary) separate from Transactions, staggered award announcements Apr-May, Season Preview, live Award Races projections.
+
+**All-Star Weekend** — Dunk Contest + 3PT Contest with 2K-style dunk/vertical ratings, Celebrity Game, Rising Stars, All-Star Rig Voting, replacement flow, history browser, configurable host city with 10-season cooldown.
+
+**Draft & scouting** — Draft Combine, DraftScouting big board (70% value + 30% fit), infinite simulated draft classes via `genDraftPlayers.ts`, multiple historical lottery presets (1966-2019) with exact Plackett-Luce odds, lottery UI with ball reveal animation.
+
+**Economy** — phase-weighted season revenue, `EXTERNAL_SALARY_SCALE` caps, broadcasting cap inflation, media rights deals, transaction calendar (trade deadline / FA start / moratorium) fully commissioner-editable, minimum payroll + luxury tax + apron hierarchy.
+
+**Trade systems** — Trade Finder (all 29 teams scanned), Trade Machine with salary eyebrow + pick sweeteners + 3rd player gap-fill, AI-AI trade execution with GM personalities (trade_aggression / scouting_focus), dynamic ratio thresholds by TV, pick protection.
+
+**UX** — IndexedDB portrait cache (5-concurrent auto-download on load), BBGM → CDN → initials fallback chain, facesjs for generated players, responsive mobile refactors across 15+ views, GM mode vs. Commissioner mode with differentiated UI.
+
+BBGM's strength is its deep sim engine and 20-year polish. This game now matches the sim depth and exceeds it on UX, multi-league scope, media immersion, and contract sophistication. The remaining multi-season cap/FA bugs (documented in TODO.md) are the last structural items before the sim is genuinely beyond BBGM on every axis.
+
+Session-by-session work below.
+
+---
+
+## Session 26 (Apr 23, 2026)
+
+- **Team-option → extension coupling** (`seasonRollover.ts`) — New §0c pass fires alongside team option exercise: bundled summer negotiation with basePct floor of 0.90 (0.95 for MVP/All-NBA in last 3 yrs, 0.97 for LOYAL trait), distinct deterministic seed (`currentYear * 97`) from mid-season ext so unlucky rolls don't cascade. Writes Jun 30 history entries like "X has signed a rookie extension with the Y: $ZM/Nyr (Rose Rule)". Also patched the `teamOptionExercisedIds` branch in the player map to compute `hasBirdRights` and `superMaxEligible` — previously these were stale until the next rollover because only the "still under contract" branch set them. Motivated by Wembanyama case: 4-year MVP/All-NBA run with SAS, mid-season ext fired Oct 2026 and rolled the 20% decline bucket, silent fail, hit FA Jul 2027, signed LAC. Coupled extension gives franchise cornerstones a proper negotiation window with high acceptance before the lossy mid-season path can fail them.
+
+---
+
 ## Session 25 (Apr 18, 2026)
 
 - **Generated draft classes (infinite sim)** -- `genDraftPlayers.ts`, `draftClassFiller.ts`, `sportData.ts`, `genplayersconstants.ts`, `nameDataFetcher.ts`. `ensureDraftClasses` tops thin years to 100 prospects at rollover. Path mix 70% College / 10% Europe / 6% G-League / 6% Endesa / 4% NBL / 4% B-League. `currentSimYear` rewinds age+ratings for far-future classes. ×0.80 skill nerf + `potEstimator`-derived POT.

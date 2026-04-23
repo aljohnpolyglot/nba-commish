@@ -5,6 +5,8 @@ import { NBAPlayer } from '../../../types';
 import { PlayerBioView } from './PlayerBioView';
 import { calcOvr2K, calcPot2K, getPotColor } from '../../../services/trade/tradeValueEngine';
 import { convertTo2KRating } from '../../../utils/helpers';
+import { cn } from '../../../lib/utils';
+import { PlayerPortrait } from '../../shared/PlayerPortrait';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -236,19 +238,12 @@ const PlayerReceivedCard: React.FC<PlayerCardProps> = ({ player, currentYear, tr
     >
       {/* Portrait */}
       <div className="relative shrink-0">
-        {player.imgURL ? (
-          <img
-            src={player.imgURL}
-            alt={player.name}
-            className="w-12 h-12 rounded-full object-cover border-2 border-slate-600"
-            referrerPolicy="no-referrer"
-            onError={e => { e.currentTarget.style.display = 'none'; }}
-          />
-        ) : (
-          <div className="w-12 h-12 rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center text-slate-400 text-xs font-bold">
-            {player.name.charAt(0)}
-          </div>
-        )}
+        <PlayerPortrait
+          imgUrl={player.imgURL}
+          face={(player as any).face}
+          playerName={player.name}
+          size={48}
+        />
         {injured && (
           <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-slate-900" title="Injured" />
         )}
@@ -295,22 +290,73 @@ const PlayerReceivedCard: React.FC<PlayerCardProps> = ({ player, currentYear, tr
 
 interface PickRowProps {
   pickStr: string;
+  receivingTeamAbbrev?: string;
 }
 
-const PickRow: React.FC<PickRowProps> = ({ pickStr }) => {
-  const isR1 = /1st\s*Rd/i.test(pickStr) || /R1/i.test(pickStr) || /round\s*1/i.test(pickStr);
+const PickRow: React.FC<PickRowProps> = ({ pickStr, receivingTeamAbbrev }) => {
+  const { state } = useGame();
+
+  const seasonMatch = pickStr.match(/(\d{4})/);
+  const season = seasonMatch ? parseInt(seasonMatch[1], 10) : null;
+  const isR1 = /1st\s*Rd/i.test(pickStr) || /\bR1\b/i.test(pickStr) || /round\s*1/i.test(pickStr);
+  const isR2 = /2nd\s*Rd/i.test(pickStr) || /\bR2\b/i.test(pickStr) || /round\s*2/i.test(pickStr);
+  const hasRound = isR1 || isR2;
+  const origMatch = pickStr.match(/\(([A-Z]{2,4})\)/);
+  const origAbbrev = origMatch ? origMatch[1] : null;
+  const origTeam = origAbbrev ? state.teams.find(t => t.abbrev === origAbbrev) : null;
+  const isOwnPick = !!receivingTeamAbbrev && !!origAbbrev && origAbbrev === receivingTeamAbbrev;
+
+  // Fallback for unparseable entries like "(picks exchanged)"
+  if (!season && !hasRound) {
+    return (
+      <div className="flex items-center gap-4 p-3 rounded-xl border-2 bg-slate-900/50 border-slate-800">
+        <span className="text-sm text-slate-300 font-medium">{pickStr}</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-slate-800/40 border border-slate-700/40">
-      <span
-        className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
-          isR1
-            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-            : 'bg-slate-700/60 text-slate-300 border border-slate-600/40'
-        }`}
-      >
-        {isR1 ? 'R1' : 'R2'}
-      </span>
-      <span className="text-sm text-slate-300 font-medium">{pickStr}</span>
+    <div
+      className={cn(
+        "flex items-center gap-4 p-3 rounded-xl border-2 transition-all",
+        isOwnPick
+          ? "bg-slate-900/50 border-slate-800"
+          : "bg-blue-600/10 border-blue-500/50"
+      )}
+    >
+      {/* Original team logo */}
+      <div className="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center p-2 shadow-inner flex-shrink-0">
+        {origTeam?.logoUrl ? (
+          <img src={origTeam.logoUrl} alt="" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+        ) : (
+          <span className="text-[9px] font-black text-slate-400">{origAbbrev ?? '?'}</span>
+        )}
+      </div>
+
+      {/* Pick info */}
+      <div className="flex-1 text-left min-w-0">
+        <div className="text-sm font-black text-white uppercase tracking-tight">
+          {season ?? ''} {isR1 ? '1ST' : '2ND'} ROUND
+        </div>
+        {!isOwnPick && origTeam && (
+          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+            Via {origTeam.region} {origTeam.name}
+          </div>
+        )}
+      </div>
+
+      {/* Round badge */}
+      <div className={cn(
+        "text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0",
+        isR1 ? "bg-indigo-900/50 text-indigo-300" : "bg-slate-800 text-slate-500"
+      )}>
+        {isR1 ? '1st' : '2nd'}
+      </div>
+
+      {/* Acquired badge */}
+      {!isOwnPick && (
+        <div className="w-3 h-3 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)] flex-shrink-0" />
+      )}
     </div>
   );
 };
@@ -693,7 +739,7 @@ const TeamColumn: React.FC<TeamColumnProps> = ({
 
             {/* Pick rows */}
             {received.pickStrs.map((pick, i) => (
-              <PickRow key={i} pickStr={pick} />
+              <PickRow key={i} pickStr={pick} receivingTeamAbbrev={(team as any)?.abbrev} />
             ))}
           </>
         )}

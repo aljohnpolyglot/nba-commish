@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { getPlayerImage } from './bioCache';
 import { PERSON_ACTION_DEFS, isPlayerEligible } from '../../../data/personActionDefs';
 import { useGame } from '../../../store/GameContext';
+import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
 
 interface PlayerActionsModalProps {
   player: NBAPlayer;
@@ -67,14 +68,14 @@ export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, 
         >
           <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-slate-800 overflow-hidden border border-slate-700">
-                {getPlayerImage(player) ? (
-                  <img src={getPlayerImage(player)} alt={player.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold">
-                    {player.name.charAt(0)}
-                  </div>
-                )}
+              <div className="w-10 h-10 rounded-full bg-slate-800 overflow-hidden border border-slate-700 relative">
+                {(() => {
+                  const img = getPlayerImage(player);
+                  const face = (player as any).face;
+                  if (img) return <img src={img} alt={player.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />;
+                  if (isRealFaceConfig(face)) return <div className="absolute left-1/2 top-1/2" style={{ width: '85%', height: '127.5%', transform: 'translate(-50%, -50%)' }}><MyFace face={face} style={{ width: '100%', height: '100%' }} /></div>;
+                  return <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold">{player.name.charAt(0)}</div>;
+                })()}
               </div>
               <div>
                 <h3 className="text-lg font-black uppercase tracking-tight text-white leading-none">{player.name}</h3>

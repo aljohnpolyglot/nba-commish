@@ -80,7 +80,7 @@ export const AllStarReplacementModal: React.FC<AllStarReplacementModalProps> = (
           </button>
           {pickerEntry && (
             <div className={`flex items-center gap-4 mb-4 p-3 rounded-2xl border ${isAddingReplacement ? 'bg-rose-500/10 border-rose-500/20' : 'bg-sky-500/10 border-sky-500/20'}`}>
-              <PlayerPortrait imgUrl={pickerPlayer?.imgURL} teamLogoUrl={pickerTeam?.logoUrl} overallRating={pickerPlayer?.overallRating} size={44} />
+              <PlayerPortrait imgUrl={pickerPlayer?.imgURL} face={(pickerPlayer as any)?.face} playerName={pickerPlayer?.name} teamLogoUrl={pickerTeam?.logoUrl} overallRating={pickerPlayer?.overallRating} size={44} />
               <div>
                 <p className={`text-[9px] font-black uppercase tracking-widest mb-0.5 ${isAddingReplacement ? 'text-rose-400' : 'text-sky-400'}`}>
                   {isAddingReplacement ? '⚡ Injured — Select Replacement' : 'Swapping Out'}
@@ -119,7 +119,7 @@ export const AllStarReplacementModal: React.FC<AllStarReplacementModalProps> = (
                   }}
                   className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-slate-800 bg-slate-900/50 hover:border-sky-500/50 hover:bg-sky-500/10 transition-all text-center"
                 >
-                  <PlayerPortrait imgUrl={c.imgURL} teamLogoUrl={team?.logoUrl} overallRating={c.overallRating} size={64} />
+                  <PlayerPortrait imgUrl={c.imgURL} face={(c as any).face} playerName={c.name} teamLogoUrl={team?.logoUrl} overallRating={c.overallRating} size={64} />
                   <p className="font-bold text-white text-[11px] leading-tight line-clamp-2">{c.name}</p>
                   <p className="text-[9px] text-slate-500">{c.pos} · {team?.abbrev ?? '—'}</p>
                   {stats && (
@@ -154,7 +154,7 @@ export const AllStarReplacementModal: React.FC<AllStarReplacementModalProps> = (
       <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${
         isInjured ? 'bg-rose-500/5 border-rose-500/20' : 'bg-slate-950/50 border-slate-800'
       }`}>
-        <PlayerPortrait imgUrl={p?.imgURL} teamLogoUrl={team?.logoUrl} overallRating={p?.overallRating} size={40} />
+        <PlayerPortrait imgUrl={p?.imgURL} face={(p as any)?.face} playerName={p?.name} teamLogoUrl={team?.logoUrl} overallRating={p?.overallRating} size={40} />
         <div className="flex flex-col items-start flex-1">
           <div className="flex items-center gap-1.5">
             <span className="font-bold text-sm text-white">{r.playerName}</span>

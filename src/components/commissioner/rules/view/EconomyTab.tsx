@@ -58,6 +58,14 @@ interface EconomyTabProps {
     setSupermaxEnabled: (val: boolean) => void;
     supermaxPercentage: number;
     setSupermaxPercentage: (val: number) => void;
+    supermaxMinYears: number;
+    setSupermaxMinYears: (val: number) => void;
+    rookieExtEnabled: boolean;
+    setRookieExtEnabled: (val: boolean) => void;
+    rookieExtPct: number;
+    setRookieExtPct: (val: number) => void;
+    rookieExtRosePct: number;
+    setRookieExtRosePct: (val: number) => void;
     birdRightsEnabled: boolean;
     setBirdRightsEnabled: (val: boolean) => void;
     minContractLength: number;

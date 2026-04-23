@@ -13,6 +13,7 @@ interface SeriesDetailPanelProps {
   schedule: Game[];
   players: NBAPlayer[];
   boxScores: GameResult[];
+  currentSeason: number;
   stateDate: string;
   selectedGameIdx: number;
   onGameIdxChange: (idx: number) => void;
@@ -38,6 +39,7 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
   schedule,
   players,
   boxScores,
+  currentSeason,
   stateDate,
   selectedGameIdx,
   onGameIdxChange,
@@ -49,6 +51,9 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
   isProcessing,
 }) => {
   const [boxScoreTarget, setBoxScoreTarget] = useState<{ game: Game; result: GameResult } | null>(null);
+
+  const findBoxScore = (gid: number) =>
+    boxScores.find(b => b.gameId === gid && (!b.season || b.season === currentSeason));
 
   // Resolve series or play-in game
   const series = playoffs.series.find(s => s.id === seriesId) ?? null;
@@ -184,13 +189,14 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
               series={(series ?? playIn)!}
               schedule={schedule}
               boxScores={boxScores}
+              currentSeason={currentSeason}
               teams={teams}
               selectedIdx={selectedGameIdx}
               onSelect={(idx) => {
                 onGameIdxChange(idx);
                 const g = seriesGames[idx];
                 if (g) {
-                  const r = boxScores.find(b => b.gameId === g.gid);
+                  const r = findBoxScore(g.gid);
                   if (r) setBoxScoreTarget({ game: g, result: r });
                 }
               }}
@@ -213,7 +219,7 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
             onViewStats={() => {
               const lastPlayed = [...seriesGames].reverse().find(g => g.played);
               if (lastPlayed) {
-                const r = boxScores.find(b => b.gameId === lastPlayed.gid);
+                const r = findBoxScore(lastPlayed.gid);
                 if (r) setBoxScoreTarget({ game: lastPlayed, result: r });
               }
             }}

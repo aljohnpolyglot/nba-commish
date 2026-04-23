@@ -86,7 +86,7 @@ export const RosterComplianceModal: React.FC<RosterComplianceModalProps> = ({
                       const isNG = !!(p as any).nonGuaranteed;
                       return (
                         <div key={p.internalId} className="flex items-center gap-3 px-4 py-2">
-                          <PlayerPortrait imgUrl={p.imgURL} playerName={p.name} size={32} overallRating={p.overallRating} />
+                          <PlayerPortrait imgUrl={p.imgURL} face={(p as any).face} playerName={p.name} size={32} overallRating={p.overallRating} />
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-bold text-white truncate">{p.name}</div>
                             <div className="text-[10px] text-slate-400 flex items-center gap-1.5">

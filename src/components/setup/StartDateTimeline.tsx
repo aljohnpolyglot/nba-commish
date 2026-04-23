@@ -1,6 +1,9 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { KEY_DATES, TIMELINE_MIN, TIMELINE_MAX, TIMELINE_DISPLAY_END, ZONE_COLORS, ZONE_LABELS, DateZone, KeyDate } from './keyDates';
 
+// Calendar date-input allows jumping up to 10 seasons ahead; the horizontal track stays 1-season only.
+const INPUT_MAX = '2035-09-30';
+
 interface StartDateTimelineProps {
   onSelect: (date: string) => void;
   onBack: () => void;
@@ -24,7 +27,7 @@ const formatDate = (iso: string) => {
 
 const clampDate = (date: string) => {
   if (date < TIMELINE_MIN) return TIMELINE_MIN;
-  if (date > TIMELINE_MAX) return TIMELINE_MAX;
+  if (date > INPUT_MAX) return INPUT_MAX;
   return date;
 };
 
@@ -313,7 +316,7 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
               type="date"
               value={selectedDate}
               min={TIMELINE_MIN}
-              max="2029-06-29"
+              max={INPUT_MAX}
               onChange={e => applyDate(e.target.value)}
               className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm font-mono focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none"
             />

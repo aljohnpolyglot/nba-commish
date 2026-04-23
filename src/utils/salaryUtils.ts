@@ -425,11 +425,16 @@ type ContractLeagueStats = Pick<
 >;
 
 /**
- * True if the player meets supermax award criteria for the given service tier.
- * - 10+ years: automatic (no awards needed).
- * - minYears–9 years: All-NBA in the immediately preceding season, OR All-NBA in 2 of the
- *   previous 3 seasons, OR MVP/DPOY in the previous 3 seasons.
- * - Below minYears: not eligible.
+ * True if the player meets supermax award criteria.
+ * Real NBA CBA: the Designated Veteran Player Extension (a.k.a. supermax) requires
+ * BOTH the service threshold AND the award criteria — there is no "10+ YOS auto-qualify"
+ * shortcut. A 10-year vet without recent MVP/DPOY/All-NBA recognition signs at the
+ * regular service-tiered max (35% of cap from the 10+ YOS tier), not the supermax 35%.
+ *
+ * Criteria (must satisfy ≥ minYears AND one of):
+ *   - MVP or DPOY in the previous 3 seasons
+ *   - All-NBA in the immediately preceding season
+ *   - All-NBA in 2 of the previous 3 seasons
  */
 export function isSupermaxAwardQualified(
   awards: Array<{ season: number; type: string }>,
@@ -437,7 +442,6 @@ export function isSupermaxAwardQualified(
   yearsOfService: number,
   minYears: number,
 ): boolean {
-  if (yearsOfService >= 10) return true;
   if (yearsOfService < minYears) return false;
   // MVP or DPOY in last 3 seasons
   if (awards.some(a => a.season >= currentSeason - 2 && /mvp|defensive player|dpoy/i.test(a.type))) return true;
@@ -537,7 +541,10 @@ export function computeContractOffer(
   const hgtAttr = lastRating?.hgt ?? 50;
   const ovr = convertTo2KRating(bbgmOvr, hgtAttr);
   const pot = convertTo2KRating(bbgmPot, hgtAttr);
-  const score = ovr * 0.5 + pot * 0.5;
+  // Older players have less upside — weight POT less as age rises.
+  const age = (player as any).age ?? 27;
+  const potWeight = age < 24 ? 0.65 : age < 28 ? 0.50 : age < 32 ? 0.35 : 0.20;
+  const score = ovr * (1 - potWeight) + pot * potWeight;
 
   // ── Tier ────────────────────────────────────────────────────────────────
   let tier: ContractTier;
@@ -552,9 +559,13 @@ export function computeContractOffer(
   // Supermax and Rose Rule players command their full ceiling — the market price
   // IS the designated max, not a scaled fraction of it.
   const normalised = Math.max(0, score - 68) / (99 - 68);
+  // Exponent 1.3 (was 1.6) — 1.6 was too punitive on the K2 70-90 mid-tier band.
+  // Real NBA: K2 76 rotation player gets ~$15M; with ^1.6 the formula gave $7M.
+  // With ^1.3: K2 88 = 56% of max, K2 80 = 30%, K2 76 = 18% — closer to real-NBA
+  // mid-tier deals while preserving the curve shape (stars still get most of cap).
   let salaryUSD = (isSupermaxEligible || rookieRoseQualified)
     ? maxContractUSD
-    : Math.max(minSalaryUSD, maxContractUSD * Math.pow(normalised, 1.6));
+    : Math.max(minSalaryUSD, maxContractUSD * Math.pow(normalised, 1.3));
 
   // ── Mood modifier ───────────────────────────────────────────────────────
   if (moodTraits.includes('LOYAL')) {

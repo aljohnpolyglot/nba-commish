@@ -416,9 +416,11 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
               <div className="flex items-center gap-3 min-w-0">
                 <PlayerPortrait
                   imgUrl={player.imgURL}
-                  teamLogoUrl={team?.logoURL}
+                  face={(player as any).face}
+                  teamLogoUrl={team?.logoUrl}
                   overallRating={player.overallRating}
                   ratings={player.ratings}
+                  playerName={player.name}
                   size={56}
                 />
                 <div className="min-w-0">

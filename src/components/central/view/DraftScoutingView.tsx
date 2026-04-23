@@ -5,6 +5,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, Search, Target } from 'lucide-r
 import { motion, AnimatePresence } from 'motion/react';
 import { convertTo2KRating } from '../../../utils/helpers';
 import { findTopComparisons } from '../../../utils/playerComparisons';
+import { getDisplayAge } from '../../../utils/playerRatings';
 import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
 
 const GIST_BASE = "https://gist.githubusercontent.com/aljohnpolyglot/bb8c80155c6c225cf1be9428892c6329/raw/";
@@ -72,6 +73,7 @@ interface EnhancedProspect extends NBAPlayer {
   comparisons?: string;
   displayOvr: number;
   displayPot: number;
+  derivedAge: number;
 }
 
 // Helper to normalize names for better matching
@@ -186,10 +188,10 @@ export const DraftScoutingView: React.FC = () => {
       const tp  = lastRating?.tp;
       const displayOvr = convertTo2KRating(rawOvr, hgt, tp);
       // POT: same formula as PlayerBiosView / tradeValueEngine
-      const age = (p as any).born?.year ? currentYear - (p as any).born.year : ((p as any).age ?? 20);
+      const age = getDisplayAge(p, currentYear);
       const potBbgm = age >= 29 ? rawOvr : Math.max(rawOvr, Math.round(72.314 + (-2.331 * age) + (0.833 * rawOvr)));
       const displayPot = convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), hgt, tp);
-      return { ...p, displayOvr, displayPot, rawOvr, potBbgm };
+      return { ...p, displayOvr, displayPot, rawOvr, potBbgm, derivedAge: age };
     });
 
     // Sort by overall rating to determine initial consensus rank
@@ -408,10 +410,10 @@ export const DraftScoutingView: React.FC = () => {
                   <span className="text-slate-300 font-semibold">{p.pos}</span>
                   <span className="mx-1.5 text-slate-600">·</span>
                   <span>{p.gistData?.college || (p as any).college || 'International'}</span>
-                  {p.age && (
+                  {typeof p.derivedAge === 'number' && (
                     <>
                       <span className="mx-1.5 text-slate-600">|</span>
-                      <span>{p.age} y.o</span>
+                      <span>{p.derivedAge} y.o</span>
                     </>
                   )}
                 </div>
@@ -500,7 +502,7 @@ export const DraftScoutingView: React.FC = () => {
                         </div>
                         <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 text-center">
                           <small className="block text-[10px] text-slate-500 uppercase tracking-wider mb-1">Age</small>
-                          <b className="text-white font-medium">{p.age || '19'}</b>
+                          <b className="text-white font-medium">{p.derivedAge}</b>
                         </div>
                       </div>
                     </div>

@@ -157,6 +157,7 @@ export interface GameResult {
   }[];
   fight?: FightResult;
   highlights?: import('./services/simulation/types').GameHighlight[];
+  season?: number;
 }
 
 export interface TransactionDto {

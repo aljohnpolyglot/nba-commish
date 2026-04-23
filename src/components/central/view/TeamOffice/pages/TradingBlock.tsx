@@ -711,6 +711,7 @@ function PlayerCard({ item, teamLogoUrl, onClick, onRemove }: { item: TVItem; te
       <PlayerPortrait
         playerName={player.name}
         imgUrl={player.imgURL}
+        face={(player as any).face}
         teamLogoUrl={teamLogoUrl}
         size={40}
       />

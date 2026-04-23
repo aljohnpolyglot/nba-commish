@@ -844,6 +844,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
   }
 
   // Apply picks to players
+  const undraftedNames: string[] = [];
   const updatedPlayers = state.players.map(p => {
     for (const [slot, { player, team }] of pickMap.entries()) {
       if (player.internalId !== p.internalId) continue;
@@ -863,11 +864,11 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
         draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: team.id },
         contract: {
           amount: salaryAmount / 1_000,
-          exp: season + totalYrs - 1,
+          exp: season + totalYrs,
           salaryDetails: [{ season, amount: salaryAmount }],
           ...(optionYrs > 0 && {
             hasTeamOption: true,
-            teamOptionExp: season + baseYrs,
+            teamOptionExp: season + baseYrs + 1,
           }),
           ...(round === 1 && restrictedFA && { restrictedFA: true }),
           rookie: true,
@@ -878,7 +879,13 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     const draftYear = (p as any).draft?.year;
     const isCurrentClass = !draftYear || Number(draftYear) === season;
     if (isCurrentClass && (p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect') && !assignedIds.has(p.internalId)) {
-      return { ...p, tid: -1 as const, status: 'Free Agent' as const };
+      undraftedNames.push(p.name);
+      return {
+        ...p,
+        tid: -1 as const,
+        status: 'Free Agent' as const,
+        draft: { round: 0, pick: 0, year: season, tid: -1, originalTid: -1 },
+      };
     }
     return p;
   });
@@ -893,6 +900,13 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
   for (const [slot, { player, team }] of pickMap.entries()) {
     draftHistoryEntries.push({
       text: `The ${team.name} select ${player.name} as the ${_ordinal(slot)} overall pick of the ${season} NBA Draft.`,
+      date: state.date,
+      type: 'Draft',
+    });
+  }
+  for (const name of undraftedNames) {
+    draftHistoryEntries.push({
+      text: `${name} went undrafted in the ${season} NBA Draft.`,
       date: state.date,
       type: 'Draft',
     });

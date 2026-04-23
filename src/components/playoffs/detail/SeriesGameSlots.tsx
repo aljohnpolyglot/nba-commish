@@ -6,6 +6,7 @@ interface SeriesGameSlotsProps {
   series: PlayoffSeries | PlayInGame;
   schedule: Game[];
   boxScores: GameResult[];
+  currentSeason: number;
   teams: NBATeam[];
   selectedIdx: number;
   onSelect: (idx: number) => void;
@@ -20,6 +21,7 @@ export const SeriesGameSlots: React.FC<SeriesGameSlotsProps> = ({
   series,
   schedule,
   boxScores,
+  currentSeason,
   teams,
   selectedIdx,
   onSelect,
@@ -52,7 +54,7 @@ export const SeriesGameSlots: React.FC<SeriesGameSlotsProps> = ({
   return (
     <div className="flex gap-1 overflow-x-auto pb-1">
       {slots.map((game, idx) => {
-        const result = game ? boxScores.find(b => b.gameId === game.gid) : null;
+        const result = game ? (boxScores.find(b => b.gameId === game.gid && (!b.season || b.season === currentSeason)) ?? null) : null;
         const isPlayed = game?.played ?? false;
         const isToday = game ? normalizeDate(game.date) === normalizeDate(stateDate) : false;
         const isSelected = idx === selectedIdx;

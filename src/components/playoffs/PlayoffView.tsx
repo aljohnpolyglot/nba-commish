@@ -371,6 +371,7 @@ export const PlayoffView: React.FC = () => {
           schedule={state.schedule}
           players={state.players}
           boxScores={state.boxScores ?? []}
+          currentSeason={year}
           stateDate={state.date}
           selectedGameIdx={selectedGameIdx}
           onGameIdxChange={setSelectedGameIdx}

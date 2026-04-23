@@ -355,7 +355,7 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
               return (
                 <div key={i} className="grid grid-cols-[40px_40px_1fr_40px] gap-2 items-center px-2 py-2 bg-white/5 rounded hover:bg-white/10 transition-colors cursor-pointer group">
                   <span className="text-[#8b949e] font-bold text-xs">{lineupPos}</span>
-                  <PlayerPortrait playerName={p.name} imgUrl={p.imgURL} size={32} />
+                  <PlayerPortrait playerName={p.name} imgUrl={p.imgURL} face={(p as any).face} size={32} />
                   <span className="font-semibold text-sm truncate group-hover:text-[#FDB927] transition-colors">
                     {p.name.charAt(0)}. {p.name.split(' ').slice(1).join(' ')}
                   </span>

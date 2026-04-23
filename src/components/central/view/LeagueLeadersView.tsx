@@ -5,6 +5,7 @@ import { PlayerBioView } from './PlayerBioView';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { StatCategory, getStatValue } from '../../../utils/statUtils';
 import { getOwnTeamId } from '../../../utils/helpers';
+import { PlayerPortrait } from '../../shared/PlayerPortrait';
 
 export const LeagueLeadersView: React.FC = () => {
   const { state, navigateToTeam, setCurrentView, setPendingStatSort } = useGame();
@@ -210,13 +211,12 @@ export const LeagueLeadersView: React.FC = () => {
                   <td className="px-4 py-3 text-slate-500">{index + 1}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      {item.player.imgURL ? (
-                        <img src={item.player.imgURL} alt={item.player.name} className="w-8 h-8 rounded-full object-cover bg-slate-800" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-indigo-900/50 flex items-center justify-center text-indigo-400 font-bold text-xs">
-                          {item.player.name.charAt(0)}
-                        </div>
-                      )}
+                      <PlayerPortrait
+                        imgUrl={item.player.imgURL}
+                        face={(item.player as any).face}
+                        playerName={item.player.name}
+                        size={32}
+                      />
                       <div className="flex items-baseline gap-2">
                         <span 
                           className="font-medium text-indigo-400 cursor-pointer hover:text-indigo-300 hover:underline"
