@@ -4,7 +4,7 @@ import { EconomyFinancesSection } from './EconomyFinancesSection';
 import { EconomyTeamsSection } from './EconomyTeamsSection';
 import { EconomyContractsSection } from './EconomyContractsSection';
 import { EconomyRookieContractsSection } from './EconomyRookieContractsSection';
-import { Ticket, Calendar, Lock } from 'lucide-react';
+import { Ticket, Calendar, Lock, Coins, HeartPulse, ShieldCheck } from 'lucide-react';
 import { getTradeDeadlineDate, getFreeAgencyStartDate, getFreeAgencyMoratoriumEndDate, toISODateString } from '../../../../utils/dateUtils';
 import { useGame } from '../../../../store/GameContext';
 
@@ -146,6 +146,16 @@ interface EconomyTabProps {
     setRegularSeasonFAEnabled: (val: boolean) => void;
     postDeadlineMultiYearContracts: boolean;
     setPostDeadlineMultiYearContracts: (val: boolean) => void;
+    tradeExceptionsEnabled: boolean;
+    setTradeExceptionsEnabled: (val: boolean) => void;
+    disabledPlayerExceptionEnabled: boolean;
+    setDisabledPlayerExceptionEnabled: (val: boolean) => void;
+    rfaMatchingEnabled: boolean;
+    setRfaMatchingEnabled: (val: boolean) => void;
+    rfaMatchWindowDays: number;
+    setRfaMatchWindowDays: (val: number) => void;
+    rfaAutoDeclineOver2ndApron: boolean;
+    setRfaAutoDeclineOver2ndApron: (val: boolean) => void;
 }
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -240,6 +250,111 @@ export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
                                 Teams can trade picks up to {props.tradableDraftPickSeasons} year{props.tradableDraftPickSeasons !== 1 ? 's' : ''} in the future. NBA default is 7.
                             </p>
                         </div>
+                    </div>
+
+                    {/* Trade Exceptions — TPE / DPE */}
+                    <div className="bg-slate-800/40 p-6 rounded-3xl border border-slate-800/50 space-y-4">
+                        <div className="flex items-center gap-2">
+                            <Coins size={16} className="text-emerald-400" />
+                            <h2 className="text-lg font-black text-white uppercase tracking-tight">Trade Exceptions</h2>
+                        </div>
+
+                        {/* TPE — active */}
+                        <label className="flex items-center justify-between cursor-pointer">
+                            <div className="flex flex-col">
+                                <span className="text-[11px] font-bold text-white">Trade Player Exceptions (TPE)</span>
+                                <span className="text-[9px] text-slate-500">Over-cap teams that send out more salary than they receive bank a 1-year "coupon" to absorb a single contract.</span>
+                            </div>
+                            <div className={`relative w-10 h-5 rounded-full transition-colors ${props.tradeExceptionsEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+                                <input
+                                    type="checkbox"
+                                    checked={props.tradeExceptionsEnabled}
+                                    onChange={e => props.setTradeExceptionsEnabled(e.target.checked)}
+                                    className="sr-only"
+                                />
+                                <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${props.tradeExceptionsEnabled ? 'translate-x-5' : ''}`} />
+                            </div>
+                        </label>
+
+                        {/* DPE — placeholder */}
+                        <label className="flex items-center justify-between cursor-pointer pt-3 border-t border-slate-800/60 opacity-60">
+                            <div className="flex flex-col">
+                                <span className="text-[11px] font-bold text-white flex items-center gap-1.5">
+                                    <HeartPulse size={11} className="text-rose-400" />
+                                    Disabled Player Exception (DPE)
+                                    <span className="text-[8px] font-black uppercase tracking-wider bg-slate-700/60 text-slate-300 px-1 py-0.5 rounded">Coming soon</span>
+                                </span>
+                                <span className="text-[9px] text-slate-500">Replace a player who's out for the season. Apply by Jan 15, expires Mar 10. Not yet active.</span>
+                            </div>
+                            <div className={`relative w-10 h-5 rounded-full transition-colors ${props.disabledPlayerExceptionEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+                                <input
+                                    type="checkbox"
+                                    checked={props.disabledPlayerExceptionEnabled}
+                                    onChange={e => props.setDisabledPlayerExceptionEnabled(e.target.checked)}
+                                    className="sr-only"
+                                />
+                                <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${props.disabledPlayerExceptionEnabled ? 'translate-x-5' : ''}`} />
+                            </div>
+                        </label>
+                    </div>
+
+                    {/* Restricted Free Agent matching */}
+                    <div className="bg-slate-800/40 p-6 rounded-3xl border border-slate-800/50 space-y-4">
+                        <div className="flex items-center gap-2">
+                            <ShieldCheck size={16} className="text-indigo-400" />
+                            <h2 className="text-lg font-black text-white uppercase tracking-tight">Restricted Free Agency</h2>
+                        </div>
+
+                        {/* Master toggle */}
+                        <label className="flex items-center justify-between cursor-pointer">
+                            <div className="flex flex-col">
+                                <span className="text-[11px] font-bold text-white">RFA Matching</span>
+                                <span className="text-[9px] text-slate-500">Original team can match outside offer sheets to retain a restricted free agent.</span>
+                            </div>
+                            <div className={`relative w-10 h-5 rounded-full transition-colors ${props.rfaMatchingEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+                                <input
+                                    type="checkbox"
+                                    checked={props.rfaMatchingEnabled}
+                                    onChange={e => props.setRfaMatchingEnabled(e.target.checked)}
+                                    className="sr-only"
+                                />
+                                <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${props.rfaMatchingEnabled ? 'translate-x-5' : ''}`} />
+                            </div>
+                        </label>
+
+                        {/* Match window */}
+                        <div className={`space-y-2 pt-3 border-t border-slate-800/60 ${props.rfaMatchingEnabled ? '' : 'opacity-50 pointer-events-none'}`}>
+                            <div className="flex items-center justify-between text-[10px] text-slate-400">
+                                <span className="font-bold uppercase tracking-wider">Match Window</span>
+                                <span className="font-black text-indigo-400">{props.rfaMatchWindowDays} day{props.rfaMatchWindowDays !== 1 ? 's' : ''}</span>
+                            </div>
+                            <input
+                                type="range" min={1} max={7} step={1}
+                                value={props.rfaMatchWindowDays}
+                                onChange={e => props.setRfaMatchWindowDays(parseInt(e.target.value))}
+                                className="w-full accent-indigo-500"
+                            />
+                            <p className="text-[9px] text-slate-500 italic">
+                                Days the original team has to match an offer sheet. NBA default: 2.
+                            </p>
+                        </div>
+
+                        {/* Auto-decline over 2nd apron */}
+                        <label className={`flex items-center justify-between cursor-pointer pt-3 border-t border-slate-800/60 ${props.rfaMatchingEnabled ? '' : 'opacity-50 pointer-events-none'}`}>
+                            <div className="flex flex-col">
+                                <span className="text-[11px] font-bold text-white">Auto-Decline Over 2nd Apron</span>
+                                <span className="text-[9px] text-slate-500">Skip matching offers that would push the team over the 2nd apron.</span>
+                            </div>
+                            <div className={`relative w-10 h-5 rounded-full transition-colors ${props.rfaAutoDeclineOver2ndApron ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+                                <input
+                                    type="checkbox"
+                                    checked={props.rfaAutoDeclineOver2ndApron}
+                                    onChange={e => props.setRfaAutoDeclineOver2ndApron(e.target.checked)}
+                                    className="sr-only"
+                                />
+                                <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${props.rfaAutoDeclineOver2ndApron ? 'translate-x-5' : ''}`} />
+                            </div>
+                        </label>
                     </div>
 
                     {/* Transaction Calendar — Trade Deadline + FA Window */}

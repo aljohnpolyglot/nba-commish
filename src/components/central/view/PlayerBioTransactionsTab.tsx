@@ -14,6 +14,7 @@ const TYPE_STYLE: Record<string, { color: string; bg: string; icon: React.ReactN
   Suspension:     { color: 'text-rose-400',    bg: 'bg-rose-500/10',    icon: <AlertTriangle size={18}/>,  label: 'Suspension' },
   Personnel:      { color: 'text-purple-400',  bg: 'bg-purple-500/10',  icon: <Users size={18}/>,          label: 'Personnel' },
   Retirement:     { color: 'text-amber-300',   bg: 'bg-amber-500/10',   icon: <Sunset size={18}/>,         label: 'Retirement' },
+  'Jersey Retirement': { color: 'text-yellow-300', bg: 'bg-yellow-500/10', icon: <Trophy size={18}/>,      label: 'Jersey Retirement' },
   'NG Guaranteed':{ color: 'text-emerald-400', bg: 'bg-emerald-500/10', icon: <CheckCircle size={18}/>,    label: 'Guaranteed' },
   'League Event': { color: 'text-slate-400',   bg: 'bg-slate-800',      icon: <Info size={18}/>,           label: 'League Event' },
 };
@@ -22,6 +23,7 @@ function detectType(text: string, type?: string): string {
   const t = text.toLowerCase();
   if (type === 'Draft'       || t.includes('overall pick of the') || t.includes('went undrafted in the')) return 'Draft';
   if (type === 'NG Guaranteed' || (t.includes('guaranteed by') && t.includes('january 10'))) return 'NG Guaranteed';
+  if (type === 'Jersey Retirement' || t.includes('retired #') || t.includes('retired jersey')) return 'Jersey Retirement';
   if (type === 'Retirement'  || t.includes('has retired') || t.includes('announced his retirement')) return 'Retirement';
   if (type === 'Trade'       || t.includes('trade'))   return 'Trade';
   if (type === 'Signing'     || t.includes('signed') || t.includes('re-signed') || t.includes('signs with')) return 'Signing';
@@ -46,9 +48,14 @@ export const PlayerBioTransactionsTab: React.FC<PlayerBioTransactionsTabProps> =
     return m;
   }, [state.players]);
 
-  // Filter history to entries mentioning this player, enrich with team + portrait
+  // Filter history to entries mentioning this player, enrich with team + portrait.
+  // Prefer structured playerIds attribution (set at emission time) so two players
+  // with the same name don't cross-contaminate each other's bios. Fall back to
+  // substring-on-name matching for legacy entries and events that never carried
+  // ids (e.g. team-option news, some league events).
   const playerTransactions = useMemo(() => {
     const name = player.name.toLowerCase();
+    const pid = player.internalId;
     return [...(state.history || [])]
       .sort((a, b) => {
         const da = typeof a === 'string' ? state.date : (a as any).date || state.date;
@@ -57,11 +64,16 @@ export const PlayerBioTransactionsTab: React.FC<PlayerBioTransactionsTabProps> =
       })
       .map(raw => {
         const entry = typeof raw === 'string'
-          ? { text: raw, date: state.date, type: undefined }
-          : raw as { text: string; date: string; type?: string };
+          ? { text: raw, date: state.date, type: undefined, playerIds: undefined as string[] | undefined }
+          : raw as { text: string; date: string; type?: string; playerIds?: string[] };
         return entry;
       })
-      .filter(entry => (entry.text || '').toLowerCase().includes(name))
+      .filter(entry => {
+        if (entry.playerIds && entry.playerIds.length > 0) {
+          return entry.playerIds.includes(pid);
+        }
+        return (entry.text || '').toLowerCase().includes(name);
+      })
       .map(entry => {
         const text = entry.text || '';
         const kind = detectType(text, entry.type);

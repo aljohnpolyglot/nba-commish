@@ -6,7 +6,7 @@
  */
 
 import type { GameState, NBAPlayer, NBATeam } from '../types';
-import { getCapThresholds, getTeamCapProfile, computeContractOffer, getMLEAvailability, effectiveRecord, getContractLimits } from '../utils/salaryUtils';
+import { getCapThresholds, getTeamCapProfile, computeContractOffer, getMLEAvailability, effectiveRecord, getContractLimits, hasBirdRights as resolveBirdRights } from '../utils/salaryUtils';
 import type { MleType } from '../utils/salaryUtils';
 import { convertTo2KRating } from '../utils/helpers';
 import { SettingsManager } from './SettingsManager';
@@ -16,8 +16,126 @@ import { calcPot2K } from './trade/tradeValueEngine';
 import { isAssistantGMActive } from './assistantGMFlag';
 import { getGMAttributes, clampSpendOffer, workEthicSignProb } from './staff/gmAttributes';
 import { hasFamilyOnRoster } from '../utils/familyTies';
+import { canSignMultiYear, isPastTradeDeadline } from '../utils/dateUtils';
+import { resolveTeamStrategyProfile, type TeamStrategyProfile } from '../utils/teamStrategy';
 
 const DEFAULT_MAX_ROSTER = 15;
+
+// ── Mid-season offer clamp ──────────────────────────────────────────────────
+//
+// Cameron Johnson ($42M/3yr Oct 26) and Landry Shamet ($52M/3yr Nov 22) both
+// got mid-season Pass-1 deals because faMarketTicker's K2 ≥ 92 floor sent them
+// to runAIFreeAgencyRound, where computeContractOffer returns full 3-4yr deals
+// year-round. This helper applies the same date gates (length cap + salary
+// decay) to any signing path inside this file, mirroring the faMarketTicker
+// + freeAgencyBidding logic so the two pipelines stay in lockstep.
+
+interface DateClampedOffer {
+  salaryUSD: number;
+  years: number;
+  hasPlayerOption: boolean;
+}
+
+function clampOfferForDate(
+  offer: { salaryUSD: number; years: number; hasPlayerOption: boolean },
+  stateDate: string | undefined,
+  currentYear: number,
+  leagueStats: any,
+): DateClampedOffer {
+  if (!stateDate) return offer;
+  const dt = new Date(stateDate);
+  if (isNaN(dt.getTime())) return offer;
+  const m = dt.getMonth() + 1;
+  const day = dt.getDate();
+  const isOffseason = (m >= 7 && m <= 9) || (m === 10 && day <= 21);
+  if (isOffseason) return offer; // pre-Oct 21 — full FA terms
+
+  // Length cap: post-deadline + setting OFF → 1yr. Otherwise post-Oct 21 → 2yr.
+  const allowMultiYear = canSignMultiYear(stateDate, currentYear, leagueStats);
+  const postDeadline = isPastTradeDeadline(stateDate, currentYear, leagueStats);
+  const yearsCap = (postDeadline && !allowMultiYear) ? 1 : 2;
+  const finalYears = Math.min(offer.years, yearsCap);
+
+  // Salary decay: matches generateAIBids — late-Oct/Nov/Dec ×0.55, Jan ×0.35, Feb-Jun ×0.20.
+  let decay = 1.0;
+  if (m === 2 || m === 3 || m === 4 || m === 5 || m === 6) decay = 0.20;
+  else if (m === 1) decay = 0.35;
+  else if (m === 11 || m === 12 || (m === 10 && day >= 22)) decay = 0.55;
+  // Floor at min salary so decay can't push offer below the league min.
+  const minSalaryUSD = ((leagueStats?.minContractStaticAmount ?? 1.273) as number) * 1_000_000;
+  const finalSalary = Math.max(minSalaryUSD, Math.round(offer.salaryUSD * decay));
+
+  return { salaryUSD: finalSalary, years: finalYears, hasPlayerOption: offer.hasPlayerOption };
+}
+
+// ── LOYAL prior-team gate ─────────────────────────────────────────────────────
+
+/** Returns the NBA tid (0–29) the player last played for, or -1 if none. */
+function getLoyalPriorTid(player: NBAPlayer): number {
+  // Prefer explicit transactions (most recent non-FA tid in 0-29 range)
+  const txns: Array<{ season: number; tid: number }> = (player as any).transactions ?? [];
+  if (txns.length > 0) {
+    const nbaT = [...txns]
+      .sort((a, b) => b.season - a.season)
+      .find(t => t.tid >= 0 && t.tid <= 29);
+    if (nbaT) return nbaT.tid;
+  }
+  // Fall back to most recent stats season with gp > 0 on an NBA team
+  const stats: Array<{ season?: number; tid?: number; gp?: number; playoffs?: boolean }> = (player as any).stats ?? [];
+  const nbaStats = stats
+    .filter(s => !s.playoffs && (s.gp ?? 0) > 0 && (s.tid ?? -1) >= 0 && (s.tid ?? -1) <= 29)
+    .sort((a, b) => (b.season ?? 0) - (a.season ?? 0));
+  return nbaStats.length > 0 ? (nbaStats[0].tid ?? -1) : -1;
+}
+
+/**
+ * Returns true if this player's LOYAL trait should block signing with `teamId`.
+ * Gate: LOYAL trait + age 30+ + 3+ years of service + prior NBA team exists + teamId ≠ prior team.
+ */
+function isLoyalBlocked(player: NBAPlayer, teamId: number, currentYear: number): boolean {
+  const traits: string[] = (player as any).moodTraits ?? [];
+  if (!traits.includes('LOYAL')) return false;
+  if ((player as any).status === 'Retired') return false;
+  if ((player as any).diedYear) return false;
+
+  const age = player.born?.year ? currentYear - player.born.year : (player.age ?? 0);
+  if (age < 30) return false;
+
+  const yearsOfService = ((player as any).stats ?? [])
+    .filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
+  if (yearsOfService < 3) return false;
+
+  const priorTid = getLoyalPriorTid(player);
+  if (priorTid < 0) return false; // no prior NBA team — gate doesn't apply
+
+  return teamId !== priorTid;
+}
+
+// ── RFA matching (mirrors faMarketTicker offer-sheet flow) ──────────────────
+
+/** Canonical RFA flag with a rookie+R1 fallback for real-player imports that
+ *  never get contract.restrictedFA stamped (only in-sim drafted players do). */
+function isPlayerRFA(player: NBAPlayer): boolean {
+  const c = (player as any).contract;
+  if (c?.isRestrictedFA || c?.restrictedFA) return true;
+  return !!(c?.rookie && (player as any).draft?.round === 1);
+}
+
+/** Deterministic match-probability roll. Same K2 tiers as faMarketTicker:
+ *  K2 ≥ 85 → 85%, K2 ≥ 80 → 70%, else 55%. Seed includes year so a re-run
+ *  of the same round produces the same outcome but next year is fresh. */
+function rollPriorTeamMatch(player: NBAPlayer, currentYear: number): boolean {
+  const rating = player.ratings?.[player.ratings.length - 1];
+  const k2 = convertTo2KRating(player.overallRating ?? rating?.ovr ?? 50, rating?.hgt ?? 50, rating?.tp ?? 50);
+  const matchPct = k2 >= 85 ? 0.85 : k2 >= 80 ? 0.70 : 0.55;
+  let h = 0;
+  const seed = `rfa_match_round_${player.internalId}_${currentYear}`;
+  for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) | 0;
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) | 0;
+  const roll = ((h ^ (h >>> 16)) >>> 0) / 0xffffffff;
+  return roll < matchPct;
+}
 
 // ── §3a: Player mood for team ─────────────────────────────────────────────────
 
@@ -45,12 +163,79 @@ function playerMoodForTeam(player: NBAPlayer, team: NBATeam, state: GameState): 
   return Math.max(0, Math.min(2, mood));
 }
 
+function getK2Ovr(player: NBAPlayer): number {
+  const rating = player.ratings?.[player.ratings.length - 1];
+  return convertTo2KRating(player.overallRating ?? rating?.ovr ?? 50, rating?.hgt ?? 50, rating?.tp ?? 50);
+}
+
+function playerAge(player: NBAPlayer, currentYear: number): number {
+  return player.born?.year ? currentYear - player.born.year : (player.age ?? 27);
+}
+
+function sharesPosition(a?: string, b?: string): boolean {
+  const left = (a ?? '').toUpperCase();
+  const right = (b ?? '').toUpperCase();
+  if (!left || !right) return false;
+  if (left === right) return true;
+  return left.split('').some(ch => right.includes(ch));
+}
+
+function positionNeedScore(teamPlayers: NBAPlayer[], candidate: NBAPlayer): number {
+  const strongerAtPos = teamPlayers.filter(player =>
+    sharesPosition(player.pos, candidate.pos) &&
+    (player.overallRating ?? 0) >= (candidate.overallRating ?? 0)
+  ).length;
+  if (strongerAtPos === 0) return 2.5;
+  if (strongerAtPos === 1) return 1.5;
+  if (strongerAtPos === 2) return 0.5;
+  if (strongerAtPos === 3) return -0.5;
+  return -1.5;
+}
+
+function scoreFreeAgentFit(args: {
+  player: NBAPlayer;
+  team: NBATeam;
+  state: GameState;
+  strategy: TeamStrategyProfile;
+  offer: { salaryUSD: number; years: number; hasPlayerOption: boolean };
+  effectiveCapSpace: number;
+  mood: number;
+}): number {
+  const { player, team, state, strategy, offer, effectiveCapSpace, mood } = args;
+  const currentYear = state.leagueStats.year;
+  const teamPlayers = state.players.filter(p => p.tid === team.id);
+  const k2 = getK2Ovr(player);
+  const pot = calcPot2K(player, currentYear);
+  const age = playerAge(player, currentYear);
+  const need = positionNeedScore(teamPlayers, player);
+  const agePenalty = Math.max(0, age - strategy.preferredFreeAgentMaxAge) * 3.5 * strategy.agePenaltyWeight;
+  const lengthPenalty = Math.max(0, offer.years - strategy.preferredContractYears) * 7 * strategy.capFlexWeight;
+  const overCapPenalty = effectiveCapSpace > 0
+    ? Math.max(0, offer.salaryUSD - effectiveCapSpace) / 1_000_000 * 1.75 * strategy.capFlexWeight
+    : 0;
+  const youthBonus = age <= 25 ? 6 * strategy.futureTalentWeight : 0;
+  const veteranBonus = age >= 29 ? 4 * strategy.currentTalentWeight : 0;
+
+  return (
+    k2 * strategy.currentTalentWeight +
+    pot * strategy.futureTalentWeight * 0.7 +
+    need * 8 * strategy.fitWeight +
+    mood * 18 * strategy.freeAgentAggression +
+    youthBonus +
+    veteranBonus -
+    agePenalty -
+    lengthPenalty -
+    overCapPenalty
+  );
+}
+
 // ── §3b: Best FA fit ──────────────────────────────────────────────────────────
 
 function getBestFit(
   team: NBATeam,
   freeAgents: NBAPlayer[],
   state: GameState,
+  strategy: TeamStrategyProfile,
   /** Local MLE already spent this round (teamId → usedUSD). Avoids double-spending within a round. */
   localMleUsed: Map<number, { type: MleType; usedUSD: number }>,
   /** Total USD this team has already committed in earlier same-round signings.
@@ -101,10 +286,39 @@ function getBestFit(
       const canAffordViaCap = offer.salaryUSD <= effectiveCapSpace + 2_000_000;
       const canAffordViaMle = !mleAvail.blocked && offer.salaryUSD <= mleAvail.available;
       if (!canAffordViaCap && !canAffordViaMle) return false;
-      if (playerMoodForTeam(p, team, state) < 1) return false;
+      const age = playerAge(p, state.leagueStats.year);
+      const k2 = getK2Ovr(p);
+      if (strategy.key === 'cap_clearing' && offer.years > 1) return false;
+      if ((strategy.key === 'rebuilding' || strategy.key === 'development') && age >= 29 && offer.years > 1) return false;
+      if (!strategy.initiateBuyTrades && age >= 31 && offer.years > strategy.preferredContractYears) return false;
+      if (strategy.initiateBuyTrades && k2 < 72 && offer.years > 1) return false;
+      if (playerMoodForTeam(p, team, state) < 0.85) return false;
+      if (isLoyalBlocked(p, team.id, state.leagueStats.year)) return false;
       return true;
     })
-    .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0))[0] ?? null;
+    .sort((a, b) => {
+      const aOffer = clampOfferForDate(computeContractOffer(a, state.leagueStats as any), state.date, state.leagueStats.year, state.leagueStats);
+      const bOffer = clampOfferForDate(computeContractOffer(b, state.leagueStats as any), state.date, state.leagueStats.year, state.leagueStats);
+      const aScore = scoreFreeAgentFit({
+        player: a,
+        team,
+        state,
+        strategy,
+        offer: aOffer,
+        effectiveCapSpace,
+        mood: playerMoodForTeam(a, team, state),
+      });
+      const bScore = scoreFreeAgentFit({
+        player: b,
+        team,
+        state,
+        strategy,
+        offer: bOffer,
+        effectiveCapSpace,
+        mood: playerMoodForTeam(b, team, state),
+      });
+      return bScore - aScore || (b.overallRating ?? 0) - (a.overallRating ?? 0);
+    })[0] ?? null;
 }
 
 // ── §3c: Main signing round ───────────────────────────────────────────────────
@@ -125,6 +339,11 @@ export interface SigningResult {
   nonGuaranteed?: boolean;
   /** 'Supermax' | 'Rose Rule' | 'Two-Way' — shown in transaction log. */
   contractLabel?: string;
+  /** RFA offer-sheet outcome: signing was rerouted to the prior team via match. */
+  matchedOfferSheet?: boolean;
+  /** Team that originally extended the offer sheet (set when matchedOfferSheet=true). */
+  offerSheetSigningTid?: number;
+  offerSheetSigningTeamName?: string;
 }
 
 /**
@@ -152,9 +371,29 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
     .filter(p => !marketPendingIds.has(p.internalId));
   if (pool.length === 0) return [];
 
+  const strategyByTeam = new Map<number, TeamStrategyProfile>();
+  const getStrategy = (team: NBATeam) => {
+    const cached = strategyByTeam.get(team.id);
+    if (cached) return cached;
+    const next = resolveTeamStrategyProfile({
+      team,
+      players: state.players,
+      teams: state.teams,
+      leagueStats: state.leagueStats,
+      currentYear: state.leagueStats.year,
+      gameMode: state.gameMode,
+      userTeamId: (state as any).userTeamId,
+    });
+    strategyByTeam.set(team.id, next);
+    return next;
+  };
+
   const sortedAITeams = [...state.teams]
     .filter(t => t.id !== userTeamId)
-    .sort((a, b) => ((b as any).wins ?? 0) - ((a as any).wins ?? 0));
+    .sort((a, b) =>
+      getStrategy(b).freeAgentAggression - getStrategy(a).freeAgentAggression ||
+      (((b as any).wins ?? 0) - ((a as any).wins ?? 0))
+    );
 
   // Training camp period: Jul 1 – Oct 21 (when maxTrainingCampRoster applies)
   const month = state.date ? parseInt(state.date.split('-')[1], 10) : new Date().getMonth() + 1;
@@ -174,6 +413,8 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   const currentYear = state.leagueStats.year;
 
   // Helper: record a signing into results + remove from pool
+  const rfaEnabled = (state.leagueStats as any).rfaMatchingEnabled ?? true;
+
   const signPlayer = (
     player: NBAPlayer,
     team: NBATeam,
@@ -183,11 +424,37 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
     twoWay = false,
     nonGuaranteed = false,
   ) => {
+    // RFA matching: if the signing team isn't the prior team and the player is
+    // an RFA, give the prior team a shot at matching the offer (Bird Rights
+    // cover the cap, so no cap recheck — only roster space gates the match).
+    // Two-way deals opt out: 2W contracts don't trigger RFA matching in the NBA.
+    let finalTeam = team;
+    let matchedOfferSheet = false;
+    let offerSheetSigningTid: number | undefined;
+    let offerSheetSigningTeamName: string | undefined;
+    if (rfaEnabled && !twoWay && isPlayerRFA(player)) {
+      const priorTid = getLoyalPriorTid(player);
+      if (priorTid >= 0 && priorTid !== team.id) {
+        const priorTeam = state.teams.find(t => t.id === priorTid);
+        if (priorTeam) {
+          const priorRoster =
+            state.players.filter(p => p.tid === priorTid && !(p as any).twoWay).length +
+            results.filter(r => r.teamId === priorTid && !(r as any).twoWay).length;
+          if (priorRoster < maxStandard && rollPriorTeamMatch(player, currentYear)) {
+            finalTeam = priorTeam;
+            matchedOfferSheet = true;
+            offerSheetSigningTid = team.id;
+            offerSheetSigningTeamName = team.name;
+          }
+        }
+      }
+    }
+
     results.push({
       playerId: player.internalId,
-      teamId: team.id,
+      teamId: finalTeam.id,
       playerName: player.name,
-      teamName: team.name,
+      teamName: finalTeam.name,
       salaryUSD: offer.salaryUSD,
       contractYears: offer.years,
       contractExp: currentYear + offer.years - 1,
@@ -195,6 +462,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
       ...(mleTypeUsed ? { mleTypeUsed, mleAmountUSD } : {}),
       ...(twoWay ? { twoWay: true } as any : {}),
       ...(nonGuaranteed ? { nonGuaranteed: true } : {}),
+      ...(matchedOfferSheet ? { matchedOfferSheet, offerSheetSigningTid, offerSheetSigningTeamName } : {}),
     });
     pool = pool.filter(p => p.internalId !== player.internalId);
   };
@@ -214,6 +482,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
     // Fires ONCE per team per round (gates the whole fill loop, not each signing).
     const teamAttrs = getGMAttributes(state, team.id);
     if (Math.random() > workEthicSignProb(teamAttrs.work_ethic)) continue;
+    const strategy = getStrategy(team);
 
     let signedThisIteration = true;
     while (signedThisIteration) {
@@ -228,12 +497,16 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
         .filter(r => r.teamId === team.id)
         .reduce((s, r) => s + r.salaryUSD, 0);
 
-      const best = getBestFit(team, pool, state, localMleUsed, roundSpentUSD);
+      const best = getBestFit(team, pool, state, strategy, localMleUsed, roundSpentUSD);
       if (!best) break;
 
       // spending: GM's personal multiplier on the market offer (overpay vs lowball),
       // clamped against the player's max contract so overpay never breaks league rules.
-      const baseOffer = computeContractOffer(best, state.leagueStats as any);
+      // Date-clamp first so post-Oct-21 length/salary cuts apply BEFORE the spending
+      // overlay — Cameron Johnson Oct 26 $42M/3yr regression had a 3yr deal slip
+      // through Pass 1 because the date gate only lived in faMarketTicker.
+      const baseOfferRaw = computeContractOffer(best, state.leagueStats as any);
+      const baseOffer = clampOfferForDate(baseOfferRaw, state.date, currentYear, state.leagueStats);
       const bestLimits = getContractLimits(best, state.leagueStats as any);
       const offer = { ...baseOffer, salaryUSD: clampSpendOffer(baseOffer.salaryUSD, teamAttrs.spending, bestLimits.maxSalaryUSD) };
 
@@ -309,9 +582,29 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
 
       const slotsAvailable = maxTwoWay - currentTwoWay;
 
-      // Pool: low-OVR FAs only
+      // Pool: low-OVR FAs only — AND must be a young/unproven prospect.
+      // Real NBA: 2W contracts are almost exclusively for sub-25 players or
+      // ≤2-YOS guys (G-League call-ups, undrafted rookies). Without this gate
+      // aging vets like Christian Wood / Terry Rozier whose OVR decayed below
+      // the cap get swept into 2W slots — unrealistic, and starves the
+      // legitimate young 2W pool. Vets fall through to Pass 4 min-deal.
+      // Age is the hard ceiling — YOS≤2 backstop covers undrafted rookies past
+      // 24, but age≥30 always blocks regardless of YOS (covers real-player
+      // imports whose stats[] may lack gp counts and would falsely pass YOS).
       const twoWayCandidates = pool
         .filter(p => (p.overallRating ?? 99) <= TWO_WAY_OVR_CAP)
+        .filter(p => {
+          const age = p.born?.year ? currentYear - p.born.year : (p.age ?? 99);
+          if (age >= 30) return false;     // hard vet ceiling
+          if (age <= 24) return true;
+          const yosFromStats = ((p as any).stats ?? [])
+            .filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
+          const draftYr = (p as any).draft?.year;
+          const yosFromDraft = (draftYr && currentYear > draftYr) ? currentYear - draftYr : 0;
+          const yos = Math.max(yosFromStats, yosFromDraft);
+          return yos <= 2;
+        })
+        .filter(p => !isLoyalBlocked(p, team.id, currentYear))
         .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0)); // best of the fringe first
 
       let filled = 0;
@@ -347,6 +640,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
       const ngSlots = maxCampRoster - totalCamp;
       const ngCandidates = pool
         .filter(p => (p.overallRating ?? 99) <= NG_OVR_CAP)
+        .filter(p => !isLoyalBlocked(p, team.id, currentYear))
         .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
 
       let filled = 0;
@@ -452,7 +746,14 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
       // signs the absolute top of the pool via best-fit; Pass 4 mops up with the
       // best-OVR FA who fits cap, then falls through to min-exception for fringe.
       const candidates = pool
-        .map(p => ({ player: p, offer: computeContractOffer(p, state.leagueStats as any) }))
+        .filter(p => !isLoyalBlocked(p, team.id, currentYear))
+        .map(p => ({
+          player: p,
+          offer: clampOfferForDate(
+            computeContractOffer(p, state.leagueStats as any),
+            state.date, currentYear, state.leagueStats,
+          ),
+        }))
         .sort((a, b) => (b.player.overallRating ?? 0) - (a.player.overallRating ?? 0) || a.offer.salaryUSD - b.offer.salaryUSD);
 
       // Pass 1 signed by team-payroll burn; here we re-check cap+MLE per candidate.
@@ -496,7 +797,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
       if (!signedThisIteration && pool.length > 0 && rosterSize < fillTarget) {
         const minSalaryUSD = ((state.leagueStats as any).minContractStaticAmount ?? 1.2) * 1_000_000;
         const minDealCandidate = pool
-          .slice()
+          .filter(p => !isLoyalBlocked(p, team.id, currentYear))
           .sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0))[0]; // weakest first — they're the ones who'd accept min
         if (minDealCandidate) {
           signPlayer(
@@ -597,9 +898,11 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
         // Cheapest available FA whose salary ≤ targetPerSlot (we want to spend
         // exactly what's needed, not blow past the floor in one signing)
         const candidate = pool
+          .filter(p => !isLoyalBlocked(p, team.id, currentYear))
           .map(p => {
             const limits = getContractLimits(p, state.leagueStats as any);
-            const baseOffer = computeContractOffer(p, state.leagueStats as any);
+            const baseOfferRaw = computeContractOffer(p, state.leagueStats as any);
+            const baseOffer = clampOfferForDate(baseOfferRaw, state.date, currentYear, state.leagueStats);
             const salaryUSD = Math.min(
               limits.maxSalaryUSD,
               Math.max(minSalaryUSD, Math.min(targetPerSlot, baseOffer.salaryUSD)),
@@ -818,10 +1121,14 @@ export function autoPromoteTwoWayExcess(state: GameState, month?: number): Promo
     for (const p of candidates) {
       if (toPromote <= 0) break;
 
-      // Fresh market-value 1-year standard deal. Old contract is discarded —
-      // mirrors real NBA flow: waived/released → signs new standard deal.
+      // Fresh 1-year standard deal. Real NBA 2W→standard promotions are min /
+      // pro-rated min — Tyreke Key's $10.8M promotion was the regression. Cap
+      // at 2× league min (~$2.5M) so role-player promotions stay realistic;
+      // genuine breakouts can still get a real standard deal next FA window.
       const offer = computeContractOffer(p, state.leagueStats, [], 0);
-      const newSalaryUSD = offer.salaryUSD;
+      const minSalaryUSD = ((state.leagueStats as any).minContractStaticAmount ?? 1.273) * 1_000_000;
+      const promotionCapUSD = minSalaryUSD * 2;
+      const newSalaryUSD = Math.min(offer.salaryUSD, promotionCapUSD);
       const currentSalaryUSD = ((p.contract?.amount as number) || 0) * 1_000;
       const netIncrease = Math.max(0, newSalaryUSD - currentSalaryUSD);
 
@@ -909,7 +1216,10 @@ export function runAIMidSeasonExtensions(state: GameState): ExtensionResult[] {
   // so use a sentinel id that can't match any real franchise.
   const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive()) ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
 
-  // Players expiring at end of this season, on AI teams, not already extended
+  // Players expiring at end of this season, on AI teams, not already extended.
+  // yearsWithTeam ≥ 1 gates out players who just signed mid-season — extending
+  // a player days after a fresh waiver-and-resign chain produces duplicate
+  // "re-signed" labels in the same offseason (Aaron Bradshaw case).
   const expiringPlayers = state.players.filter(p => {
     if (!p.contract) return false;
     if (p.contract.exp !== currentYear) return false;
@@ -917,6 +1227,7 @@ export function runAIMidSeasonExtensions(state: GameState): ExtensionResult[] {
     if (p.tid === userTeamId) return false;            // user handles their own
     if ((p as any).status === 'Retired') return false;
     if ((p as any).midSeasonExtensionDeclined) return false; // already declined this season
+    if (((p as any).yearsWithTeam ?? 0) < 1) return false;   // signed too recently to extend
     return true;
   });
 
@@ -1031,6 +1342,7 @@ export function runAISeasonEndExtensions(state: GameState): ExtensionResult[] {
     if (p.tid === userTeamId) return false;
     if ((p as any).status === 'Retired') return false;
     if ((p as any).midSeasonExtensionDeclined) return false; // already said no once this season
+    if (((p as any).yearsWithTeam ?? 0) < 1) return false;    // see runAIMidSeasonExtensions — same gate
     // BBGM 47 = K2 ~72 (rotation-level per salary tiers in salaryUtils.ts)
     if ((p.overallRating ?? 0) < 47) return false;           // only rotation-level and above (BBGM 47+)
     return true;
@@ -1108,6 +1420,132 @@ export function runAISeasonEndExtensions(state: GameState): ExtensionResult[] {
 // guaranteed player by OVR (contending) or POT (rebuilding). If found: sign via
 // MLE, waive the weakest. Capped at 1 swap per team per trigger.
 
+// ── Pass 0: Bird Rights re-sign (fires Jul 1, before tickFAMarkets) ──────────
+//
+// Real NBA: Bird Rights teams get a "first look" window on their expiring stars
+// before the open market opens. Without this, expiring stars who declined a
+// mid-season extension (one bad seeded roll) fall straight into the FA market —
+// where their incumbent team often can't bid (over-cap, no Bird Rights gate
+// in legacy generateAIBids). Result: Finals contenders lose their own players
+// for nothing. This pass gives priorTid a guaranteed re-sign attempt at +10%
+// premium with 85% acceptance rate. Mid-season extension flag gets cleared.
+
+function birdRightsSeed(playerId: string, year: number): number {
+  let h = 0;
+  const seed = `bird_rights_${playerId}_${year}`;
+  for (let i = 0; i < seed.length; i++) {
+    h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
+  }
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) | 0;
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) | 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 0xffffffff;
+}
+
+function getPriorNbaTid(player: NBAPlayer): number {
+  const txns: Array<{ season: number; tid: number }> = (player as any).transactions ?? [];
+  if (txns.length > 0) {
+    const t = [...txns].sort((a, b) => b.season - a.season).find(x => x.tid >= 0 && x.tid <= 29);
+    if (t) return t.tid;
+  }
+  const stats: Array<{ season?: number; tid?: number; gp?: number; playoffs?: boolean }> = (player as any).stats ?? [];
+  const s = stats.filter(x => !x.playoffs && (x.gp ?? 0) > 0 && (x.tid ?? -1) >= 0 && (x.tid ?? -1) <= 29)
+    .sort((a, b) => (b.season ?? 0) - (a.season ?? 0))[0];
+  return s ? (s.tid ?? -1) : -1;
+}
+
+export interface BirdRightsResignResult {
+  playerId: string;
+  playerName: string;
+  teamId: number;
+  teamName: string;
+  salaryUSD: number;
+  years: number;
+  hasPlayerOption: boolean;
+  isSupermax: boolean;
+}
+
+/**
+ * Pass 0 Bird Rights re-sign. Fires once on Jul 1 right after rollover.
+ * Returns mutations + history entries for resigned players. Caller must apply.
+ */
+export function runAIBirdRightsResigns(state: GameState): BirdRightsResignResult[] {
+  if (!SettingsManager.getSettings().allowAIFreeAgency) return [];
+  const currentYear = state.leagueStats.year;
+  const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive())
+    ? ((state as any).userTeamId ?? -999) : -999;
+  const thresholds = getCapThresholds(state.leagueStats as any);
+  const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
+  const results: BirdRightsResignResult[] = [];
+  // Track per-team re-signs so a single team doesn't blow its roster on one pass
+  const signedByTeam = new Map<number, number>();
+
+  // Eligible: FAs with hasBirdRights, K2 >= 75, prior NBA team known.
+  const candidates = state.players
+    .filter(p => p.tid === -1 && p.status === 'Free Agent')
+    .filter(p => resolveBirdRights(p))
+    .filter(p => !((p as any).draft?.year >= currentYear));
+
+  for (const player of candidates) {
+    const priorTid = getPriorNbaTid(player);
+    if (priorTid < 0) continue;
+    if (priorTid === userTeamId) continue; // user handles their own
+    const priorTeam = state.teams.find(t => t.id === priorTid);
+    if (!priorTeam) continue;
+
+    // K2 >= 75 — only meaningful re-signs. Min-vet / fringe go to open market.
+    const lastR = (player as any).ratings?.[(player as any).ratings?.length - 1];
+    const k2 = convertTo2KRating(player.overallRating ?? 60, lastR?.hgt ?? 50, lastR?.tp ?? 50);
+    if (k2 < 75) continue;
+
+    // Roster check — can't re-sign over the standard cap (15-man).
+    const existingStandard = state.players.filter(p => p.tid === priorTid && !(p as any).twoWay).length;
+    const signedThisPass = signedByTeam.get(priorTid) ?? 0;
+    if (existingStandard + signedThisPass >= maxStandard) continue;
+
+    // Cap-of-cap check — second-apron teams skip (real-NBA cap death; they'd lose
+    // the player to a tax penalty rather than re-sign). Lux-tax teams still bid.
+    const payroll = state.players
+      .filter(p => p.tid === priorTid && !(p as any).twoWay)
+      .reduce((s, p) => s + ((p.contract?.amount ?? 0) * 1_000), 0);
+    if (thresholds.secondApron && payroll >= thresholds.secondApron) continue;
+
+    // Bird Rights premium: +10% over computed market value.
+    const baseOffer = computeContractOffer(player, state.leagueStats as any);
+    const limits = getContractLimits(player, state.leagueStats as any);
+    const premiumSalary = Math.min(
+      Math.round(baseOffer.salaryUSD * 1.10),
+      Math.round(limits.maxSalaryUSD),
+    );
+
+    // Mood gate — very unhappy stars (< -2) decline; LOYAL always re-signs.
+    const traits: MoodTrait[] = (player as any).moodTraits ?? [];
+    const teamPlayers = state.players.filter(p => p.tid === priorTid);
+    const { score: moodScore } = computeMoodScore(player, priorTeam, state.date, false, false, false, teamPlayers);
+    if (moodScore < -2 && !traits.includes('LOYAL')) continue;
+
+    // Acceptance: LOYAL → 0.95, MERCENARY → 0.65 (chases money), default → 0.85.
+    const basePct = traits.includes('LOYAL') ? 0.95
+                  : traits.includes('MERCENARY') ? 0.65
+                  : 0.85;
+    const roll = birdRightsSeed(player.internalId, currentYear);
+    if (roll >= basePct) continue;
+
+    results.push({
+      playerId: player.internalId,
+      playerName: player.name,
+      teamId: priorTid,
+      teamName: priorTeam.name,
+      salaryUSD: premiumSalary,
+      years: baseOffer.years,
+      hasPlayerOption: baseOffer.hasPlayerOption,
+      isSupermax: !!(player as any).superMaxEligible,
+    });
+    signedByTeam.set(priorTid, signedThisPass + 1);
+  }
+
+  return results;
+}
+
 export interface MleSwapResult {
   sign: SigningResult;
   waive: WaiverResult;
@@ -1138,6 +1576,16 @@ export function runAIMleUpgradeSwaps(
 
   for (const team of state.teams) {
     if (team.id === userTeamId) continue;
+    const strategy = resolveTeamStrategyProfile({
+      team,
+      players: state.players,
+      teams: state.teams,
+      leagueStats: state.leagueStats,
+      currentYear,
+      gameMode: state.gameMode,
+      userTeamId: (state as any).userTeamId,
+    });
+    if (!strategy.initiateBuyTrades) continue;
 
     // Each team fires on its own seeded day (1-28) to spread swaps across the month
     const seed = (team.id * 7 + simMonth * 13) % 28;
@@ -1159,12 +1607,8 @@ export function runAIMleUpgradeSwaps(
     );
     if (guaranteedRoster.length < maxStandard) continue; // open slot — no swap needed
 
-    // Contending teams sort by OVR, rebuilding by POT
-    const { wins: ew, losses: el } = effectiveRecord(team, currentYear);
-    const gp = ew + el;
-    const winPct = gp > 0 ? ew / gp : 0.5;
-    const isRebuilding = winPct < 0.42;
-    const sortScore = (p: NBAPlayer) => isRebuilding
+    // Buyers sort by current impact, development teams by upside.
+    const sortScore = (p: NBAPlayer) => (strategy.key === 'rebuilding' || strategy.key === 'development')
       ? calcPot2K(p, currentYear)
       : (p.overallRating ?? 0);
 
@@ -1174,12 +1618,17 @@ export function runAIMleUpgradeSwaps(
     if (!weakest) continue;
     const weakestScore = sortScore(weakest);
 
-    // Best FA whose salary ≤ MLE available and who beats the weakest player
+    // Best FA whose salary ≤ MLE available and who beats the weakest player.
+    // MLE swaps fire mid-season (over-cap teams upgrading bench) — date-clamp
+    // applies the same length cap + decay as Pass 1. Was the path responsible
+    // for Cameron Johnson Oct 26 $42M/3yr regression.
     const gmSpending = getGMAttributes(state, team.id).spending;
     const candidate = freeAgents
       .filter(p => {
+        if (isLoyalBlocked(p, team.id, currentYear)) return false;
         const limits  = getContractLimits(p, state.leagueStats as any);
-        const offer   = computeContractOffer(p, state.leagueStats as any);
+        const rawOffer = computeContractOffer(p, state.leagueStats as any);
+        const offer   = clampOfferForDate(rawOffer, state.date, currentYear, state.leagueStats);
         const salary  = clampSpendOffer(offer.salaryUSD, gmSpending, limits.maxSalaryUSD);
         return salary <= mle.available && sortScore(p) > weakestScore;
       })
@@ -1187,9 +1636,10 @@ export function runAIMleUpgradeSwaps(
 
     if (!candidate) continue;
 
-    const baseOffer  = computeContractOffer(candidate, state.leagueStats as any);
-    const limits     = getContractLimits(candidate, state.leagueStats as any);
-    const salaryUSD  = Math.min(mle.available, clampSpendOffer(baseOffer.salaryUSD, gmSpending, limits.maxSalaryUSD));
+    const baseOfferRaw = computeContractOffer(candidate, state.leagueStats as any);
+    const baseOffer    = clampOfferForDate(baseOfferRaw, state.date, currentYear, state.leagueStats);
+    const limits       = getContractLimits(candidate, state.leagueStats as any);
+    const salaryUSD    = Math.min(mle.available, clampSpendOffer(baseOffer.salaryUSD, gmSpending, limits.maxSalaryUSD));
 
     results.push({
       sign: {

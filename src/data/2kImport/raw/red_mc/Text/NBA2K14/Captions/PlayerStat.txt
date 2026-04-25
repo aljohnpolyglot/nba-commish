@@ -1,0 +1,45 @@
+General:3;Stats:18;Awards:10
+TeamID1;Team Started At;Defines a team, the player started the season at
+TeamID2;Team Finished At;Defines a team, the player finished the season at (set to -1, if it's the same team, where he started the season)
+#
+Year;Year;Year, the stats record belongs to.
+PlusMinus;Plus/Minus Stat;+/- stat of the player, which measures his overall impact on the team's play
+#
+GamesP;Games Played;Total number of games, the player took place in throughout the season
+GamesS;Games Started;Total number of games, the player took place in as a starter during the season
+Minutes;Minutes;Defines total number of minutes, the player spent on the court throughout the season
+#
+Points;Points;Total points, scored by the player during the season
+#
+DRebs;Defensive Rebounds;Total number of defensive rebounds, grabbed by the player during the season
+ORebs;Offensive Rebounds;Total number of offensive rebounds, grabbed by the player during the season
+#
+Assists;Assists;Defines the number of assists, made by the player throughout the season
+Steals;Steals;Total number of steals, made by the player during the season
+Blocks;Blocks;Total number of blocks, performed by the player during the season
+#
+TOs;Turnovers;The number of turnovers, the player made throughout the season
+Fouls;Fouls;Defines how many times the player fouled on his opponents during the season
+#
+FGMade;FG Made;Total number of field goals, made by the player during the season
+FGAtt;FG Attempted;Total number of field goals, attempted by the player during the season
+#
+TPTMade;3PT Made;Total number of 3-Pointers, made by the player during the season
+TPTAtt;3PT Attempted;Total number of 3-Pointers, attempted by the player during the season
+#
+FTMade;FT Made;Total number of free throws, made by the player during the season
+FTAtt;FT Attempted;Total number of free throws, attempted by the player during the season
+IsNBAChamp;Is NBA Champion;Defines, if the player won the NBA Championship that year
+IsMVP;Is MVP;Defines, if the player was voted as MVP that year. Note: Invisible on Player Profile Screen - edit Awards tab instead
+#
+IsRookOfY;Is Rookie Of The Year;Defines, if the player was voted to be Rookie Of The Year that season. Note: Invisible on Player Profile Screen - edit Awards tab instead
+#
+Is6thMan;Is 6th Man Of The Year;Defines, if the player was selected as the 6th Man Of The Year that season. Note: Invisible on Player Profile Screen - edit Awards tab instead
+IsDefPlOfY;Is Def. Player Of The Year;Defines, if the player won Defensive Player Of The Year award that season. Note: Invisible on Player Profile Screen - edit Awards tab instead
+IsMostImpr;Is Most Improved Player;Defines, if the player was voted to be The Most Improved guy that year. Note: Invisible on Player Profile Screen - edit Awards tab instead
+#
+AllNBATeam;All-NBA Team;Was selected to one of the All-NBA Teams that year (1st, 2nd, 3rd). Zero means "wasn't".
+AllDefTeam;NBA All-Defensive Team;Was selected to one of the NBA All-Defensive Teams that year (1st, 2nd, 3rd). Zero means "wasn't".
+AllRookieT;NBA All-Rookie Team;Was selected to one of the NBA All-Rookie Teams that year (1st, 2nd, 3rd). Zero means "wasn't".
+#
+IsAllStar;Is All-Star;Defines, if the player was selected to take part in All-Star Game that season.

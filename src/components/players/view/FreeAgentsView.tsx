@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, ArrowUpDown, User, Globe, Trophy, Briefcase, UserX, ChevronDown, Hourglass, Users, PlayCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useGame } from '../../../store/GameContext';
+import { matchCheat, triggerCheat } from '../../../utils/debugCheats';
 import { FreeAgentCard } from './FreeAgentCard';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import { PlayerActionsModal } from '../../central/view/PlayerActionsModal';
@@ -536,6 +537,14 @@ export const FreeAgentsView: React.FC = () => {
               placeholder="Search free agents by name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={async (e) => {
+                if (e.key !== 'Enter') return;
+                const code = matchCheat(searchTerm);
+                if (!code) return;
+                e.preventDefault();
+                setSearchTerm('');
+                await triggerCheat(code, { state, dispatchAction, healPlayer });
+              }}
               className="w-full bg-slate-900 border border-slate-800 text-white pl-12 pr-4 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-rose-500/50 transition-all font-medium"
             />
           </div>

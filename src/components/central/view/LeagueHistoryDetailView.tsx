@@ -908,63 +908,160 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
         )}
 
         {/* ── All-Stars ─────────────────────────────────────────────────────── */}
-        {allStarRoster?.length ? (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Star size={13} className="text-amber-400 fill-amber-400" />
-              <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">
-                All-Stars ({allStarRoster.length})
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-6">
-              {['East', 'West'].map(conf => {
-                const roster = allStarRoster.filter((r: any) =>
-                  r.conference === conf || r.conference === `${conf}ern` || r.conference?.startsWith(conf));
-                if (!roster.length) return null;
-                return (
-                  <div key={conf}>
-                    <div className={`text-xs font-black uppercase tracking-wide mb-2 ${conf === 'East' ? 'text-blue-400' : 'text-red-400'}`}>
-                      {conf}
+        {allStarRoster?.length ? (() => {
+          const EAST_LOGO = 'https://static.wikia.nocookie.net/logopedia/images/8/89/Eastern_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191748';
+          const WEST_LOGO = 'https://static.wikia.nocookie.net/logopedia/images/0/06/Western_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191726';
+
+          // Snapshot of player data as of this season
+          const snap = (r: any) => {
+            const p = state.players.find((pl: any) => pl.internalId === r.playerId);
+            const stats = p?.stats?.filter((s: any) => Number(s.season) === Number(season) && !s.playoffs && (s.tid ?? -1) >= 0) ?? [];
+            const tid = stats.length ? stats.reduce((pr: any, cu: any) => pr.gp >= cu.gp ? pr : cu).tid : p?.tid;
+            const team = state.teams.find((t: any) => t.id === tid) ?? state.teams.find((t: any) => t.abbrev === r.teamAbbrev);
+            const snapOvr = p?.ratings?.find((rt: any) => Number(rt.season) === Number(season))?.ovr ?? p?.overallRating;
+            const snapRatings = p?.ratings?.filter((rt: any) => Number(rt.season) === Number(season));
+            return {
+              p,
+              team,
+              teamColor: team?.colors?.[0] ?? '#64748b',
+              snapOvr,
+              snapRatings,
+              pos: (p as any)?.pos ?? '—',
+              cnt: awardCounts.countAllStar(r.playerName),
+            };
+          };
+
+          const renderConf = (conf: string, logo: string) => {
+            const roster = allStarRoster.filter((r: any) =>
+              r.conference === conf || r.conference === `${conf}ern` || r.conference?.startsWith(conf));
+            if (!roster.length) return null;
+            const starters = roster.filter((r: any) => r.isStarter);
+            const reserves = roster.filter((r: any) => !r.isStarter);
+            const isEast = conf === 'East';
+            const confText   = isEast ? 'text-blue-400'      : 'text-red-400';
+            const confBorder = isEast ? 'border-blue-500/20' : 'border-red-500/20';
+            const confFrom   = isEast ? 'from-blue-950/20'   : 'from-red-950/20';
+            return (
+              <div key={conf} className={`rounded-2xl border ${confBorder} bg-gradient-to-b ${confFrom} via-slate-900/80 to-slate-900 overflow-hidden`}>
+                {/* Header */}
+                <div className={`flex items-center gap-3 px-4 py-3 border-b ${confBorder}`}>
+                  <img src={logo} className="w-6 h-6 object-contain" alt={conf} />
+                  <span className={`text-sm font-black uppercase tracking-wider ${confText}`}>
+                    {isEast ? 'Eastern' : 'Western'} Conference
+                  </span>
+                  <span className="ml-auto text-[10px] font-black text-slate-600 bg-slate-800 px-2 py-0.5 rounded-full">
+                    {roster.length}
+                  </span>
+                </div>
+
+                {/* Starters */}
+                {starters.length > 0 && (
+                  <div className="p-4">
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <Star size={9} className="text-amber-400 fill-amber-400" />
+                      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400/70">Starters</span>
                     </div>
-                    <div className="space-y-1.5">
-                      {roster.map((r: any) => {
-                        const p = state.players.find((pl: any) => pl.internalId === r.playerId);
+                    <div className="grid grid-cols-5 gap-2">
+                      {starters.map((r: any) => {
+                        const { p, team, teamColor, snapOvr, snapRatings, pos, cnt } = snap(r);
                         return (
-                          <div key={r.playerId}
-                            className="flex items-center gap-2 bg-slate-900/60 rounded-lg px-2.5 py-1.5 border border-slate-800 cursor-pointer hover:border-slate-600 hover:bg-slate-800/60 transition-colors"
+                          <div
+                            key={r.playerId}
+                            className="relative flex flex-col items-center gap-1.5 p-3 pt-4 rounded-2xl border cursor-pointer"
+                            style={{ borderColor: `${teamColor}55`, background: `linear-gradient(160deg, ${teamColor}18 0%, rgba(15,23,42,0.9) 55%)` }}
                             onClick={() => p ? setViewingPlayer(p as NBAPlayer) : setNotFoundName(r.playerName)}
                           >
-                            <PlayerPortrait
-                              imgUrl={p?.imgURL}
-                              face={(p as any)?.face}
-                              playerName={r.playerName}
-                              size={32}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs font-bold text-white truncate">{r.playerName}</div>
-                              <div className="text-[10px] text-slate-500">{r.teamAbbrev}</div>
+                            <div className="absolute top-0 left-4 right-4 h-px rounded-full" style={{ background: `linear-gradient(90deg, transparent, ${teamColor}90, transparent)` }} />
+                            <div className="absolute top-2 right-2 flex items-center gap-0.5 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 rounded-full">
+                              <Star size={7} className="text-amber-400 fill-amber-400" />
+                              <span className="text-[7px] font-black text-amber-400 uppercase tracking-wide">Starter</span>
                             </div>
-                            {r.isStarter && (
-                              <Star size={10} className="text-amber-400 fill-amber-400 shrink-0" />
-                            )}
-                            {(() => {
-                              const cnt = awardCounts.countAllStar(r.playerName);
-                              return (
-                                <span className="text-[9px] font-black text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-full shrink-0">
-                                  {cnt}×
-                                </span>
-                              );
-                            })()}
+                            <div className="mt-1">
+                              <PlayerPortrait
+                                imgUrl={resolvePortraitUrl(p, r.playerName)}
+                                face={(p as any)?.face}
+                                playerName={r.playerName}
+                                teamLogoUrl={team?.logoUrl}
+                                overallRating={snapOvr}
+                                ratings={snapRatings}
+                                size={56}
+                              />
+                            </div>
+                            <div className="text-center w-full mt-0.5">
+                              <div className="text-[11px] font-black text-white leading-tight truncate px-1">{r.playerName}</div>
+                              <div className="text-[9px] text-slate-500 uppercase font-bold mt-0.5">{pos}</div>
+                            </div>
+                            <div className="flex items-center gap-0.5 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-full">
+                              <Star size={7} className="text-amber-400 fill-amber-400" />
+                              <span className="text-[9px] font-black text-amber-400">{cnt}×</span>
+                            </div>
                           </div>
                         );
                       })}
                     </div>
                   </div>
-                );
-              })}
+                )}
+
+                {/* Reserves */}
+                {reserves.length > 0 && (
+                  <div className={starters.length > 0 ? 'border-t border-slate-800/60' : ''}>
+                    {starters.length > 0 && (
+                      <div className="px-4 py-2.5 border-b border-slate-800/40">
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Reserves</span>
+                      </div>
+                    )}
+                    <div className="p-3 space-y-1.5">
+                      {reserves.map((r: any) => {
+                        const { p, team, snapOvr, snapRatings, pos, cnt } = snap(r);
+                        return (
+                          <div
+                            key={r.playerId}
+                            className="flex items-center gap-2 bg-slate-900/60 rounded-lg px-2.5 py-1.5 border border-slate-800 cursor-pointer hover:border-slate-600 hover:bg-slate-800/60 transition-colors"
+                            onClick={() => p ? setViewingPlayer(p as NBAPlayer) : setNotFoundName(r.playerName)}
+                          >
+                            <PlayerPortrait
+                              imgUrl={resolvePortraitUrl(p, r.playerName)}
+                              face={(p as any)?.face}
+                              playerName={r.playerName}
+                              teamLogoUrl={team?.logoUrl}
+                              overallRating={snapOvr}
+                              ratings={snapRatings}
+                              size={36}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-bold text-white truncate">{r.playerName}</div>
+                              <div className="text-[10px] text-slate-500 uppercase font-bold">
+                                {pos !== '—' ? `${pos} · ` : ''}{r.teamAbbrev}
+                              </div>
+                            </div>
+                            <span className="text-[9px] font-black text-amber-400/80 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded-full shrink-0">
+                              {cnt}×
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          };
+
+          return (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Star size={13} className="text-amber-400 fill-amber-400" />
+                <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                  All-Stars ({allStarRoster.length})
+                </span>
+              </div>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                {renderConf('East', EAST_LOGO)}
+                {renderConf('West', WEST_LOGO)}
+              </div>
             </div>
-          </div>
-        ) : null}
+          );
+        })() : null}
 
       </div>
     </div>

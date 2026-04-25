@@ -376,19 +376,19 @@ export const ScheduleView: React.FC = () => {
 
       </AnimatePresence>
 
-      {watchingDunkContest && (
+      {watchingDunkContest && !state.allStar?.dunkContest?.complete && (
         <div className="fixed inset-0 z-[100] bg-black">
           <DunkContest
             contestants={(state.allStar?.dunkContestContestants ?? [])
               .map((c: any) => state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c)
               .filter(Boolean)}
             onClose={() => setWatchingDunkContest(false)}
-            onComplete={state.allStar?.dunkContest?.complete ? undefined : handleDunkComplete}
+            onComplete={handleDunkComplete}
           />
         </div>
       )}
 
-      {watchingThreePoint && (() => {
+      {watchingThreePoint && !state.allStar?.threePointContest?.complete && (() => {
         const threeContestants = (state.allStar?.threePointContestants ?? []).map((c: any) => {
           const player = state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c;
           const team = state.teams.find((t: any) => t.id === player.tid);
@@ -399,7 +399,7 @@ export const ScheduleView: React.FC = () => {
             <ThreePointContest
               contestants={threeContestants}
               onClose={() => setWatchingThreePoint(false)}
-              onComplete={state.allStar?.threePointContest?.complete ? undefined : handleThreeComplete}
+              onComplete={handleThreeComplete}
             />
           </div>
         );

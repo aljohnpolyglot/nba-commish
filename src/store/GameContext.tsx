@@ -14,6 +14,7 @@ import { setActiveSaveId as setTradingBlockSaveId } from './tradingBlockStore';
 import { setActiveSaveId as setScoringOptionsSaveId } from './scoringOptionsStore';
 import { setActiveSaveId as setCoachStrategySaveId } from './coachStrategyLockStore';
 import { setActiveSaveId as setIdealRotationSaveId } from './idealRotationStore';
+import { enforceExternalMinRoster, repairGeneratedExternalPlayer } from '../services/externalLeagueSustainer';
 
 interface GameContextType {
   state: GameState;
@@ -293,6 +294,7 @@ const actions = useGameActions(setState, () => stateRef.current);
 
       const migratedPlayers = (loaded.players as any[] | undefined)?.map(p => {
         let updated = isBadPortrait(p) ? { ...p, imgURL: undefined } : p;
+        updated = repairGeneratedExternalPlayer(updated as any, currentSeasonYear) as any;
         // Sync contract.amount to current season from contractYears[] if available.
         // Guard against corrupt guaranteed values — only apply the sync if the
         // result falls in a sane range.
@@ -320,6 +322,14 @@ const actions = useGameActions(setState, () => stateRef.current);
         if (!updated.twoWay && updated.tid >= 0 && (updated.contract?.amount ?? 0) > 0 && (updated.contract?.amount ?? 9999) < 800) {
           updated = { ...updated, twoWay: true };
         }
+        // FA purgatory repair: `simulationHandler.autoTrimOversizedRosters` used to
+        // write `status: 'FreeAgent'` (no space) — the canonical FA status is
+        // `'Free Agent'` (with space) per types.ts and every FA signing filter.
+        // Trim-released players became invisible to Pass 1/2/3/4/5 and got stuck
+        // as FAs forever. Fixed upstream 2026-04-24; normalize existing saves here.
+        if ((updated as any).status === 'FreeAgent') {
+          updated = { ...updated, status: 'Free Agent' };
+        }
         // Repair off-by-one teamOptionExp for sim-generated draft picks.
         // Old formula: teamOptionExp = draftYear + guaranteedYrs  → fires 1 yr too early.
         // Correct:     teamOptionExp = draftYear + guaranteedYrs + 1 (after all guaranteed years).
@@ -339,14 +349,97 @@ const actions = useGameActions(setState, () => stateRef.current);
             };
           }
         }
+        // Backfill contractYears[] for already-drafted rookies. Prior to the draft-
+        // pick fix, computeDraftPickFields never seeded per-season rows, so Path A
+        // in PlayerBioContractTab had nothing to render and Path B's currentYear..exp
+        // loop silently dropped past rookie seasons. Synthesize from draft.year +
+        // contract.exp + contract.amount so salary history shows every rookie year.
+        if (
+          updated.contract?.rookie &&
+          updated.draft?.year &&
+          updated.contract?.exp &&
+          (!Array.isArray(updated.contractYears) || updated.contractYears.length === 0)
+        ) {
+          const draftYear: number = Number(updated.draft.year);
+          const expYear: number = Number(updated.contract.exp);
+          // exp is the last season's leagueStats year (= end year). First season
+          // is "draftYear-(draftYear+1)" whose leagueStats year = draftYear + 1.
+          // totalYrs = exp - (draftYear + 1) + 1 = exp - draftYear.
+          const totalYrs = expYear - draftYear;
+          if (totalYrs > 0 && totalYrs <= 6) {
+            const baseUSD = (updated.contract.amount ?? 0) * 1000;
+            if (baseUSD > 0) {
+              const teamOptExp: number | undefined = updated.contract.teamOptionExp;
+              // Option years sit at the tail of the deal. When hasTeamOption is
+              // still set, teamOptionExp marks the FIRST option year (leagueStats
+              // year convention). Post-exercise, the flag is cleared — we don't
+              // know which years were options, so fall back to no option labels
+              // (salaries still render; option annotation lost is acceptable).
+              const firstOptionYr = updated.contract.hasTeamOption && teamOptExp ? teamOptExp : undefined;
+              const backfilled = Array.from({ length: totalYrs }, (_, i) => {
+                const yr = draftYear + i;
+                const leagueYr = yr + 1; // "2026-27" row represents leagueStats.year = 2027
+                return {
+                  season: `${yr}-${String(yr + 1).slice(-2)}`,
+                  guaranteed: Math.round(baseUSD * Math.pow(1.05, i)),
+                  option: firstOptionYr != null && leagueYr >= firstOptionYr ? 'Team' : '',
+                };
+              });
+              updated = { ...updated, contractYears: backfilled };
+            }
+          }
+        }
+        // Backfill contractYears[] for active NBA players who slipped through without
+        // gist coverage (e.g. SGA — name mismatch, not in gist). Without this,
+        // Path B in PlayerBioContractTab renders currentYear→exp, which shrinks
+        // to 1 row by the final contract season. Seeds from contract.amount (BBGM
+        // thousands) + 5% escalator to match the rosterService.ts fallback.
+        if (
+          updated.tid >= 0 && updated.tid < 100 &&
+          updated.contract?.amount &&
+          updated.contract?.exp &&
+          (!Array.isArray((updated as any).contractYears) || (updated as any).contractYears.length === 0) &&
+          !updated.contract.rookie // rookies handled by the block above
+        ) {
+          const amt: number = updated.contract.amount;
+          const exp: number = updated.contract.exp;
+          if (amt > 0 && exp >= currentSeasonYear) {
+            const salaryUSD = amt * 1_000;
+            const backfilled = Array.from({ length: exp - currentSeasonYear + 1 }, (_, i) => {
+              const yr = currentSeasonYear + i;
+              return {
+                season: `${yr - 1}-${String(yr).slice(-2)}`,
+                guaranteed: Math.round(salaryUSD * Math.pow(1.05, i)),
+                option: '',
+              };
+            });
+            updated = { ...updated, contractYears: backfilled } as any;
+          }
+        }
+        // Age-bloat cleanup: retired players that aged past plausible lifespan in
+        // saves predating Fix 13 (mortalityChecker). One-shot retroactive fix.
+        if ((updated as any).status === 'Retired' && !(updated as any).diedYear) {
+          const currentAge = currentSeasonYear - ((updated as any).born?.year ?? 2000);
+          if (currentAge > 95) {
+            const assumedDeathAge = Math.max(85, currentAge - 8);
+            updated = { ...updated, diedYear: ((updated as any).born?.year ?? 2000) + assumedDeathAge } as any;
+          }
+        }
         return updated;
       }) ?? loaded.players;
 
-      const finalPlayers = migratedPlayers ?? loaded.players;
+      const loadedPlayers = migratedPlayers ?? loaded.players;
+      const { additions: externalRosterRepairs } = enforceExternalMinRoster({
+        ...loaded,
+        players: loadedPlayers,
+      } as any, currentSeasonYear);
+      const finalPlayers = externalRosterRepairs.length > 0
+        ? [...loadedPlayers, ...externalRosterRepairs]
+        : loadedPlayers;
       setState({
         ...initialState,
         ...loaded,
-        ...(migratedPlayers ? { players: migratedPlayers } : {}),
+        players: finalPlayers,
         isProcessing: false
       });
 
@@ -414,6 +507,93 @@ const actions = useGameActions(setState, () => stateRef.current);
           });
         }
         return { ...prev, faBidding: { markets } };
+      });
+      return;
+    }
+
+    // ── RFA matching offer-sheet actions ────────────────────────────────────
+    // User-owned RFA gets a winning offer from another team → market goes into
+    // pending-match state. User has to MATCH (apply contract to user's team) or
+    // DECLINE (let signing team have him). Both trigger the next ticker pass to
+    // resolve and emit transactions/news.
+    if (action.type === 'MATCH_RFA_OFFER' || action.type === 'DECLINE_RFA_OFFER') {
+      const { playerId } = (action as any).payload as { playerId: string };
+      const decision = action.type === 'MATCH_RFA_OFFER' ? 'match' : 'decline';
+      setState(prev => {
+        const markets = (prev.faBidding?.markets ?? []).slice();
+        const idx = markets.findIndex(m => m.playerId === playerId && m.pendingMatch);
+        if (idx < 0) return prev;
+        const m = markets[idx];
+        const userTid = (prev as any).userTeamId ?? -999;
+        // Force the AI tick to pick up this user's decision: flip the prior tid
+        // off the user's team if they declined (so the tick auto-declines next
+        // pass), or leave it set to userTid + bypass the user-skip via pre-applied
+        // mutation below if they matched.
+        if (decision === 'match') {
+          // Apply the match here directly — flip winning bid's teamId to userTid.
+          const offerBid = m.bids.find(b => b.id === m.pendingMatchOfferBidId);
+          if (!offerBid) return prev;
+          const player = prev.players.find(p => p.internalId === playerId);
+          if (!player) return prev;
+          const team = prev.teams.find(t => t.id === userTid);
+          if (!team) return prev;
+          const finalYears = offerBid.years;
+          const currentYear = prev.leagueStats?.year ?? new Date().getFullYear();
+          const newContract = {
+            amount: Math.round(offerBid.salaryUSD / 1_000),
+            exp: currentYear + finalYears - 1,
+            hasPlayerOption: offerBid.option === 'PLAYER',
+          };
+          const newContractYears = Array.from({ length: finalYears }, (_, i) => {
+            const yr = currentYear + i;
+            return {
+              season: `${yr - 1}-${String(yr).slice(-2)}`,
+              guaranteed: Math.round(offerBid.salaryUSD * Math.pow(1.05, i)),
+              option: i === finalYears - 1 && offerBid.option === 'PLAYER' ? 'Player'
+                    : i === finalYears - 1 && offerBid.option === 'TEAM' ? 'Team' : '',
+            };
+          });
+          const histYears = ((player as any).contractYears ?? []).filter((cy: any) => {
+            const yr = parseInt(cy.season.split('-')[0], 10) + 1;
+            return yr < currentYear;
+          });
+          const updatedPlayers = prev.players.map(p =>
+            p.internalId === playerId
+              ? {
+                  ...p,
+                  tid: userTid,
+                  status: 'Active' as const,
+                  contract: newContract,
+                  contractYears: [...histYears, ...newContractYears],
+                } as any
+              : p,
+          );
+          markets[idx] = { ...m, resolved: true, pendingMatch: false, matchedByPriorTeam: true };
+          const annualM = Math.round(offerBid.salaryUSD / 100_000) / 10;
+          const totalM = Math.round(annualM * finalYears);
+          const signingTeam = prev.teams.find(t => t.id === offerBid.teamId);
+          const histEntry = {
+            text: `${team.name} matched ${signingTeam?.name ?? 'opposing'} offer sheet on ${player.name}: $${totalM}M/${finalYears}yr.`,
+            date: prev.date,
+            type: 'Signing',
+            playerIds: [player.internalId],
+          };
+          return {
+            ...prev,
+            players: updatedPlayers,
+            faBidding: { markets },
+            history: [...((prev as any).history ?? []), histEntry] as any,
+          } as any;
+        } else {
+          // Decline — clear pendingMatchPriorTid so the next tick treats it as
+          // an expired window and resolves to the signing team.
+          markets[idx] = {
+            ...m,
+            pendingMatchExpiresDay: (prev.day ?? 0) - 1,  // immediate expiry
+            pendingMatchPriorTid: -1,                     // unset prior to short-circuit user check
+          };
+          return { ...prev, faBidding: { markets } };
+        }
       });
       return;
     }
@@ -960,5 +1140,3 @@ export const useGame = () => {
   if (!context) throw new Error('useGame must be used within a GameProvider');
   return context;
 };
-
-

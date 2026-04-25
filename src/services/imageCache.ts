@@ -1,9 +1,6 @@
 /**
  * ImageCache — IndexedDB-backed blob cache for player portrait images.
- *
- * Downloads all player portrait URLs in the background on game load,
- * stores them as blobs in IndexedDB, and returns blob URLs for instant
- * offline rendering.
+ * v2: quota-aware (skip at >80%, evict LRU 20% at >95%) + LRU tracking.
  */
 
 import type { NBAPlayer } from '../types';
@@ -12,17 +9,19 @@ import { extractNbaId, hdPortrait } from '../utils/helpers';
 // ── IndexedDB helpers ────────────────────────────────────────────────────────
 
 const DB_NAME = 'nba_commish_image_cache';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // bumped: adds LRU store
 const STORE_NAME = 'images';
+const LRU_STORE = 'lru';
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
+      if (!db.objectStoreNames.contains(STORE_NAME))
         db.createObjectStore(STORE_NAME);
-      }
+      if (!db.objectStoreNames.contains(LRU_STORE))
+        db.createObjectStore(LRU_STORE);
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -31,8 +30,7 @@ function openDB(): Promise<IDBDatabase> {
 
 function idbGet(db: IDBDatabase, key: string): Promise<Blob | undefined> {
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const req = tx.objectStore(STORE_NAME).get(key);
+    const req = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key);
     req.onsuccess = () => resolve(req.result as Blob | undefined);
     req.onerror = () => reject(req.error);
   });
@@ -47,73 +45,139 @@ function idbPut(db: IDBDatabase, key: string, value: Blob): Promise<void> {
   });
 }
 
-function idbClear(db: IDBDatabase): Promise<void> {
+function idbDelete(db: IDBDatabase, key: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).clear();
+    tx.objectStore(STORE_NAME).delete(key);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
 }
 
+function idbClear(db: IDBDatabase): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([STORE_NAME, LRU_STORE], 'readwrite');
+    tx.objectStore(STORE_NAME).clear();
+    tx.objectStore(LRU_STORE).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// ── LRU helpers ──────────────────────────────────────────────────────────────
+
+interface LRUEntry { lastAccessed: number }
+
+function lruUpdate(db: IDBDatabase, key: string): Promise<void> {
+  return new Promise((resolve) => {
+    const tx = db.transaction(LRU_STORE, 'readwrite');
+    tx.objectStore(LRU_STORE).put({ lastAccessed: Date.now() }, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => resolve(); // non-fatal
+  });
+}
+
+function lruDelete(db: IDBDatabase, key: string): Promise<void> {
+  return new Promise((resolve) => {
+    const tx = db.transaction(LRU_STORE, 'readwrite');
+    tx.objectStore(LRU_STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => resolve();
+  });
+}
+
+function lruGetAll(db: IDBDatabase): Promise<{ key: string; lastAccessed: number }[]> {
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(LRU_STORE, 'readonly').objectStore(LRU_STORE).openCursor();
+    const result: { key: string; lastAccessed: number }[] = [];
+    req.onsuccess = () => {
+      const cursor = req.result;
+      if (cursor) {
+        result.push({ key: cursor.key as string, lastAccessed: (cursor.value as LRUEntry).lastAccessed });
+        cursor.continue();
+      } else {
+        resolve(result);
+      }
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function evictLRU(db: IDBDatabase, fraction: number): Promise<void> {
+  try {
+    const entries = await lruGetAll(db);
+    if (entries.length === 0) return;
+    const toEvict = Math.max(1, Math.ceil(entries.length * fraction));
+    entries.sort((a, b) => a.lastAccessed - b.lastAccessed);
+    const victims = entries.slice(0, toEvict);
+    for (const v of victims) {
+      await idbDelete(db, v.key);
+      await lruDelete(db, v.key);
+      const blobUrl = blobUrlMap.get(v.key);
+      if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrlMap.delete(v.key); }
+    }
+    console.log(`[ImageCache] Evicted ${victims.length} cached portraits (LRU).`);
+  } catch {
+    // non-fatal
+  }
+}
+
+// ── Quota check ──────────────────────────────────────────────────────────────
+
+async function shouldSkipCaching(db: IDBDatabase): Promise<boolean> {
+  if (!navigator.storage?.estimate) return false;
+  try {
+    const { usage = 0, quota = 1 } = await navigator.storage.estimate();
+    const ratio = usage / quota;
+    if (ratio > 0.95) await evictLRU(db, 0.2);
+    if (ratio > 0.80) return true; // too full — skip caching
+  } catch { /* estimate unavailable */ }
+  return false;
+}
+
 // ── In-memory blob URL map ───────────────────────────────────────────────────
 
-/** Maps original image URL -> blob: URL for instant access */
 const blobUrlMap = new Map<string, string>();
-
-/** Whether an init is currently running (prevents duplicate runs) */
 let initRunning = false;
 
 // ── Rate-limited downloader ──────────────────────────────────────────────────
 
 const MAX_CONCURRENT = 5;
-const DELAY_MS = 50; // small delay between starting each download
+const DELAY_MS = 50;
 
-function sleep(ms: number): Promise<void> {
-  return new Promise(r => setTimeout(r, ms));
-}
+function sleep(ms: number): Promise<void> { return new Promise(r => setTimeout(r, ms)); }
 
-async function downloadAndCache(
-  db: IDBDatabase,
-  url: string,
-): Promise<void> {
+async function downloadAndCache(db: IDBDatabase, url: string): Promise<void> {
   try {
-    // Already in memory
     if (blobUrlMap.has(url)) return;
 
-    // Already in IndexedDB — just hydrate the memory map
     const existing = await idbGet(db, url);
     if (existing) {
       blobUrlMap.set(url, URL.createObjectURL(existing));
+      await lruUpdate(db, url);
       return;
     }
 
-    // NBA CDN blocks CORS fetch() — img tags still work fine so skip caching for those
     if (url.includes('ak-static.cms.nba.com') || url.includes('cdn.nba.com')) return;
 
-    // Download
+    // Quota check before download — skip if storage too full
+    if (await shouldSkipCaching(db)) return;
+
     const res = await fetch(url, { mode: 'cors' });
     if (!res.ok) return;
     const blob = await res.blob();
     if (blob.size === 0) return;
 
-    // Store in IDB
     await idbPut(db, url, blob);
-
-    // Create blob URL
+    await lruUpdate(db, url);
     blobUrlMap.set(url, URL.createObjectURL(blob));
   } catch {
-    // Silently skip failures — image will just load from network as usual
+    // Silently skip failures — image loads from network
   }
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-/**
- * Initialise the image cache for all players. Downloads portraits in the
- * background with rate limiting. Safe to call multiple times — duplicate
- * calls are ignored while one is already running.
- */
 export async function initImageCache(players: NBAPlayer[]): Promise<void> {
   if (initRunning) return;
   initRunning = true;
@@ -121,7 +185,6 @@ export async function initImageCache(players: NBAPlayer[]): Promise<void> {
   try {
     const db = await openDB();
 
-    // Collect unique image URLs — computed inline to avoid circular dep with bioCache
     const urls = new Set<string>();
     for (const p of players) {
       if (p.imgURL && p.imgURL.trim() !== '' && !p.imgURL.includes('head-par-defaut')) {
@@ -132,7 +195,6 @@ export async function initImageCache(players: NBAPlayer[]): Promise<void> {
       }
     }
 
-    // Download with concurrency limit
     const urlArray = Array.from(urls);
     let idx = 0;
 
@@ -144,11 +206,8 @@ export async function initImageCache(players: NBAPlayer[]): Promise<void> {
       }
     }
 
-    // Spawn workers
     const workers: Promise<void>[] = [];
-    for (let i = 0; i < MAX_CONCURRENT; i++) {
-      workers.push(worker());
-    }
+    for (let i = 0; i < MAX_CONCURRENT; i++) workers.push(worker());
     await Promise.all(workers);
 
     db.close();
@@ -160,25 +219,14 @@ export async function initImageCache(players: NBAPlayer[]): Promise<void> {
   }
 }
 
-/**
- * Returns a blob: URL for the given image URL if it exists in cache,
- * otherwise returns null (caller should fall back to the original URL).
- */
 export function getCachedImageUrl(url: string): string | null {
   return blobUrlMap.get(url) ?? null;
 }
 
-/**
- * Clears all cached images from IndexedDB and revokes blob URLs.
- */
 export async function clearImageCache(): Promise<void> {
   try {
-    // Revoke all blob URLs to free memory
-    for (const blobUrl of blobUrlMap.values()) {
-      URL.revokeObjectURL(blobUrl);
-    }
+    for (const blobUrl of blobUrlMap.values()) URL.revokeObjectURL(blobUrl);
     blobUrlMap.clear();
-
     const db = await openDB();
     await idbClear(db);
     db.close();

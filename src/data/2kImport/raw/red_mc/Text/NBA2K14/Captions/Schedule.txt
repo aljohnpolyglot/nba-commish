@@ -1,0 +1,11 @@
+General:8
+Year;Year;Year of the scheduled match. Note, that it is NOT possible to set the value below 2000 due to game limitations.
+Month;Month;Month of the year of the scheduled match.
+Day;Day;Day of the month of the scheduled match.
+#
+Hour;Hour;Hour of the day, when the match begins.
+Minute;Minute;Minute of the hour, when the match begins.
+Order;Order;If several matches take place at the same time, this is used by the game to define the order, which to handle the matches in. So, matches with lower values will be handled (simulated) first.
+#
+HTeam;Home Team;Match Home Team
+ATeam;Away Team;Match Away Team

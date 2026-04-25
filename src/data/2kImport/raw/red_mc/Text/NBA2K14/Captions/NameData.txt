@@ -1,0 +1,8 @@
+General:5
+Name;Name;
+#
+AudioID1;Audio ID 1;Audio 1 used in-game for the associated name
+AudioID2;Audio ID 2;Audio 2 used in-game for the associated name
+#
+GenNation;Generator - Nationality;Used by Generator. It uses names and colleges with the same GenNation value together.
+SomeParam;Some Parameter;Some Parameter

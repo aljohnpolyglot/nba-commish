@@ -1,5 +1,6 @@
 import { GameState, UserAction, NBAPlayer as Player, DraftPick } from '../../../types';
 import { executeForcedTrade, executeExecutiveTrade } from '../../../services/tradeService';
+import { generateTPEsFromTrade } from '../../../utils/tradeExceptionUtils';
 
 export const preProcessAction = async (state: GameState, action: UserAction): Promise<{ stateForSim: GameState, executiveTradeTransaction?: any }> => {
     let stateForSim = state;
@@ -62,7 +63,14 @@ export const preProcessAction = async (state: GameState, action: UserAction): Pr
                 });
             }
         });
-        stateForSim = { ...state, players: p, draftPicks: d };
+        // Generate TPEs for over-cap teams that sent more salary than they received.
+        // Skip when commissioner force-overrides cap rules — those are extra-legal anyway.
+        const tpeEnabled = state.leagueStats?.tradeExceptionsEnabled !== false;
+        const isForced = !!action.payload?.commissionerForced;
+        const teams = (tpeEnabled && !isForced)
+            ? generateTPEsFromTrade(tradeResult.transaction, state.teams, state.players, state.leagueStats, state.date)
+            : state.teams;
+        stateForSim = { ...state, players: p, draftPicks: d, teams };
     } else if (action.type === 'FORCE_TRADE') {
         const tradeResult = await executeForcedTrade(action.payload, state.players, state.teams, state.draftPicks);
         if (tradeResult.transaction) {

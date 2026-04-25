@@ -15,6 +15,8 @@
 import type { NBAPlayer, NBATeam, GameState } from '../types';
 import { convertTo2KRating } from '../utils/helpers';
 import { getGMAttributes, clampSpendOffer } from './staff/gmAttributes';
+import { SettingsManager } from './SettingsManager';
+import { hasBirdRights as resolveBirdRights, computeContractOffer } from '../utils/salaryUtils';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,6 +41,27 @@ export interface FreeAgentMarket {
   bids: FreeAgentBid[];
   decidesOnDay: number;     // the day the player makes their choice
   resolved: boolean;
+  // ── RFA matching offer-sheet support ────────────────────────────────────
+  /** Set when the resolved-winning team is NOT the player's prior team AND
+   *  the player is a Restricted Free Agent. Suspends final mutation until the
+   *  prior team decides match-or-decline. */
+  pendingMatch?: boolean;
+  /** Sim day by which the prior team must decide. Auto-decline at expiry. */
+  pendingMatchExpiresDay?: number;
+  /** The team that holds match rights (the player's prior NBA team). */
+  pendingMatchPriorTid?: number;
+  /** The bid that won the offer-sheet vote — the terms the prior team would match. */
+  pendingMatchOfferBidId?: string;
+  /** Set true once the prior team matches; the resolved signing flips to priorTid. */
+  matchedByPriorTeam?: boolean;
+}
+
+export interface BidTeamHistory {
+  seasonsWithTeam: number;
+  championshipsWithTeam: number;
+  continuityBonus: number;
+  titleBonus: number;
+  totalBonus: number;
 }
 
 // ── Bid Generation ───────────────────────────────────────────────────────────
@@ -76,6 +99,62 @@ export function teamDesirability(
   score += Math.max(-5, 10 - betterPlayers * 2); // fewer stars above = more appealing
 
   return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function getTeamChampionshipSeasons(teamId: number, state: GameState): Set<number> {
+  const seasons = new Set<number>();
+
+  for (const award of state.historicalAwards ?? []) {
+    if (award.type === 'Champion' && Number(award.tid) === teamId) {
+      seasons.add(Number(award.season));
+    }
+  }
+
+  const team = state.teams.find(t => t.id === teamId);
+  for (const season of team?.seasons ?? []) {
+    if ((season.playoffRoundsWon ?? 0) >= 4) seasons.add(Number(season.season));
+  }
+
+  return seasons;
+}
+
+export function getBidTeamHistory(
+  bid: Pick<FreeAgentBid, 'teamId'>,
+  player: NBAPlayer,
+  state: GameState,
+): BidTeamHistory {
+  const seasonsOnTeam = new Set<number>();
+  for (const stat of player.stats ?? []) {
+    if ((stat as any).playoffs) continue;
+    if ((stat.tid ?? -1) !== bid.teamId) continue;
+    if ((stat.gp ?? 0) <= 0) continue;
+    if (typeof stat.season === 'number') seasonsOnTeam.add(stat.season);
+  }
+
+  let seasonsWithTeam = seasonsOnTeam.size;
+  if (bid.teamId === player.tid) {
+    seasonsWithTeam = Math.max(seasonsWithTeam, Number((player as any).yearsWithTeam ?? 0));
+  }
+
+  const championshipSeasons = getTeamChampionshipSeasons(bid.teamId, state);
+  let championshipsWithTeam = 0;
+  seasonsOnTeam.forEach(season => {
+    if (championshipSeasons.has(season)) championshipsWithTeam += 1;
+  });
+
+  let continuityBonus = Math.min(10, seasonsWithTeam * 1.5);
+  if (bid.teamId === player.tid && seasonsWithTeam > 0) {
+    continuityBonus += 6;
+  }
+  const titleBonus = Math.min(18, championshipsWithTeam * 6);
+
+  return {
+    seasonsWithTeam,
+    championshipsWithTeam,
+    continuityBonus,
+    titleBonus,
+    totalBonus: continuityBonus + titleBonus,
+  };
 }
 
 /**
@@ -143,26 +222,57 @@ export function generateAIBids(
   // MLE value: ~8.5% of cap (matches getMLEAvailability rough ceiling)
   const mleUSD = Math.round(cap * 0.085);
 
-  // Only teams with cap space or MLE eligibility
+  // Bird Rights — prior NBA team can re-sign over the cap regardless of payroll.
+  // Without this, Finals contenders (over-tax) can't bid on their own expiring
+  // stars (Jalen Duren on DET case). Real NBA: Bird Rights is the override.
+  const priorTid = (() => {
+    const txns: Array<{ season: number; tid: number }> = (player as any).transactions ?? [];
+    if (txns.length > 0) {
+      const t = [...txns].sort((a, b) => b.season - a.season).find(x => x.tid >= 0 && x.tid <= 29);
+      if (t) return t.tid;
+    }
+    const stats: Array<{ season?: number; tid?: number; gp?: number; playoffs?: boolean }> = (player as any).stats ?? [];
+    const s = stats.filter(x => !x.playoffs && (x.gp ?? 0) > 0 && (x.tid ?? -1) >= 0 && (x.tid ?? -1) <= 29)
+      .sort((a, b) => (b.season ?? 0) - (a.season ?? 0))[0];
+    return s ? (s.tid ?? -1) : -1;
+  })();
+  const playerHasBirdRights = resolveBirdRights(player) && priorTid >= 0;
+
+  // Eligibility: cap space OR MLE-eligible OR Bird Rights with prior team.
   const eligibleTeams = state.teams
     .filter(t => t.id !== userTeamId) // exclude user's team
     .map(t => {
       const payroll = state.players
         .filter(p => p.tid === t.id && !(p as any).twoWay)
         .reduce((sum, p) => sum + ((p.contract?.amount ?? 0) * 1_000), 0);
-      return { team: t, payroll, desirability: teamDesirability(t, player, state.players, currentYear) };
+      const isBirdHolder = playerHasBirdRights && t.id === priorTid;
+      return {
+        team: t,
+        payroll,
+        desirability: teamDesirability(t, player, state.players, currentYear),
+        isBirdHolder,
+      };
     })
-    .filter(({ payroll }) => {
+    .filter(({ payroll, isBirdHolder }) => {
+      if (isBirdHolder) return true; // Bird Rights override — prior team always bids
       const capSpace = cap - payroll;
-      // Must have at least min salary worth of room, or be MLE-eligible (under tax)
       return capSpace >= minSalary || payroll < luxuryTax;
     })
-    .sort((a, b) => b.desirability - a.desirability);
+    // Bird Rights team gets priority slot via desirability boost so they don't
+    // get squeezed out when the candidate slice fills up with cap-rich rivals.
+    .sort((a, b) => {
+      if (a.isBirdHolder && !b.isBirdHolder) return -1;
+      if (!a.isBirdHolder && b.isBirdHolder) return 1;
+      return b.desirability - a.desirability;
+    });
 
-  // Take extra candidates in case some get filtered out by per-offer cap check
-  const bidders = eligibleTeams.slice(0, maxBids * 2);
+  // Take 3× max candidates so the cap-affordability filter has something to chew
+  // through. Without the wider pool every star ended up with the same 3-team
+  // bidding market because only ~3 teams in a multi-season league have real
+  // cap room — desirability sort then locks it in.
+  const bidders = eligibleTeams.slice(0, Math.max(maxBids * 3, 12));
 
-  for (const { team, desirability, payroll } of bidders) {
+  for (const { team, desirability, payroll, isBirdHolder } of bidders) {
     if (bids.length >= maxBids) break;
 
     // Salary based on K2 tier + some randomness
@@ -177,6 +287,28 @@ export function generateAIBids(
 
     // Desperate/contending teams bid higher
     if (desirability > 70) pct *= 1.1;
+    // Bird Rights teams over-pay to retain — incumbents fight harder for their
+    // own stars (Mavs / Lakers re-sign at max all the time). +15% on top of base.
+    if (isBirdHolder) pct *= 1.15;
+
+    // Mid-season decay — real NBA: post-camp signings are min/NG, December
+    // contracts are clearance-rack pricing, by trade deadline it's all 10-day.
+    // Without this, faMarketTicker hands out $100M+ deals in November.
+    const dStr = state.date;
+    if (dStr) {
+      const dt = new Date(dStr);
+      if (!isNaN(dt.getTime())) {
+        const m = dt.getMonth() + 1;
+        const day = dt.getDate();
+        const isFebOrLater = m === 2 || m === 3 || m === 4 || m === 5 || m === 6;
+        const isJan = m === 1;
+        const isNovDec = m === 11 || m === 12;
+        const isLateOct = m === 10 && day >= 22;
+        if (isFebOrLater) pct *= 0.20;        // trade deadline+ — fringe-only money
+        else if (isJan) pct *= 0.35;           // mid-season — heavy discount
+        else if (isNovDec || isLateOct) pct *= 0.55; // post-camp — moderate discount
+      }
+    }
 
     const capSpace = cap - payroll;
     let salaryUSD = Math.max(minSalary, Math.round(cap * pct));
@@ -186,8 +318,24 @@ export function generateAIBids(
     salaryUSD = clampSpendOffer(salaryUSD, teamSpending, Math.round(cap * 0.35));
     salaryUSD = Math.max(minSalary, salaryUSD);
 
-    // Cap-space enforcement: only bid what the team can actually commit
-    if (capSpace >= salaryUSD) {
+    // Bird Rights stars — incumbents max out for their own. Real NBA: LAL/MAVS/etc.
+    // offer max contract to retain LeBron/Doncic-tier players. The pct + spending
+    // clamp above can lowball incumbents (low-spending GM attribute swallowing the
+    // +15% premium); for K2 ≥ 85 with Bird Rights, force at least the player's
+    // computed market value as a floor so incumbents don't lose their stars on a
+    // cheaper bid than the open-market team is offering.
+    if (isBirdHolder && k2 >= 85) {
+      const marketOffer = computeContractOffer(player, state.leagueStats as any);
+      const incumbentFloor = Math.round(marketOffer.salaryUSD * 1.05); // 5% over market value
+      salaryUSD = Math.max(salaryUSD, incumbentFloor);
+    }
+
+    // Cap-space enforcement: only bid what the team can actually commit.
+    // Bird Rights override: prior team can sign over the cap up to the player's
+    // max contract — the only way over-tax contenders re-sign their own stars.
+    if (isBirdHolder) {
+      // Bird Rights — bid stands as computed (clamped earlier vs. cap × 0.35)
+    } else if (capSpace >= salaryUSD) {
       // Full room — bid stands as computed
     } else if (payroll < luxuryTax && salaryUSD <= mleUSD) {
       // Over cap but under tax — MLE bid is valid as-is
@@ -247,14 +395,16 @@ export function resolvePlayerDecision(
   const scored = activeBids.map(bid => {
     const team = state.teams.find(t => t.id === bid.teamId);
     const desirability = team ? teamDesirability(team, player, state.players, currentYear) : 50;
+    const history = getBidTeamHistory(bid, player, state);
 
     // Weighted score: salary 60% + desirability 25% + years 10% + option 5%
     const salaryScore = (bid.salaryUSD / Math.max(1, marketValue)) * 60;
     const desScore = desirability * 0.25;
     const yearsScore = Math.min(10, bid.years * 2);
     const optionScore = bid.option === 'PLAYER' ? 5 : bid.option === 'TEAM' ? -2 : 0;
+    const historyScore = history.totalBonus;
 
-    return { bid, score: salaryScore + desScore + yearsScore + optionScore };
+    return { bid, score: salaryScore + desScore + yearsScore + optionScore + historyScore };
   }).sort((a, b) => b.score - a.score);
 
   // Winner is the highest-scored bid
@@ -290,12 +440,15 @@ export function computeOfferStrength(
 
   const team = state.teams.find(t => t.id === bid.teamId);
   const des = team ? teamDesirability(team, player, state.players, currentYear) : 50;
+  const history = getBidTeamHistory(bid, player, state);
 
   const salaryScore = (bid.salaryUSD / Math.max(1, marketValue)) * 60;
   const desScore = des * 0.25;
   const yearsScore = Math.min(10, bid.years * 2);
   const optionScore = bid.option === 'PLAYER' ? 5 : bid.option === 'TEAM' ? -2 : 0;
-  const raw = salaryScore + desScore + yearsScore + optionScore;
+  const raw = salaryScore + desScore + yearsScore + optionScore + history.totalBonus;
   const baseline = 76.5; // market-rate, avg team, 2yr, NONE
-  return Math.round((raw / baseline) * 100);
+  const { signingDifficulty = 50 } = SettingsManager.getSettings();
+  const diffMult = 1.5 - signingDifficulty / 100; // 0→1.5x easy, 50→1.0x default, 100→0.5x brutal
+  return Math.round((raw / baseline) * 100 * diffMult);
 }

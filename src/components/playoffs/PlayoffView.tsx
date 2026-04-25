@@ -211,11 +211,11 @@ export const PlayoffView: React.FC = () => {
     <div className="h-full flex flex-col bg-[#0a0a0a] text-white overflow-hidden">
 
       {/* Header */}
-      <div className="px-6 py-4 border-b border-white/10 shrink-0 flex items-center justify-between">
+      <div className="px-4 sm:px-6 py-4 border-b border-white/10 shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <Trophy size={22} className="text-yellow-400" />
           <div>
-            <h2 className="text-2xl font-black uppercase tracking-tight">
+            <h2 className="text-lg sm:text-2xl font-black uppercase tracking-tight">
               NBA Playoffs {viewYear - 1}–{String(viewYear).slice(-2)}
             </h2>
             <p className="text-slate-500 text-xs">
@@ -228,7 +228,7 @@ export const PlayoffView: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Year chevron — always visible */}
           <div className="flex items-center gap-0 bg-white/5 border border-white/10 rounded-xl p-1">
             <button
@@ -257,10 +257,10 @@ export const PlayoffView: React.FC = () => {
                 <button
                   onClick={handleSimToMyNextGame}
                   disabled={state.isProcessing}
-                  className="px-4 py-2 bg-emerald-600/25 hover:bg-emerald-600/45 border border-emerald-500/40 text-emerald-300 text-xs font-black rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+                  className="px-2 sm:px-4 py-2 bg-emerald-600/25 hover:bg-emerald-600/45 border border-emerald-500/40 text-emerald-300 text-xs font-black rounded-xl transition-all flex items-center gap-2 disabled:opacity-50 whitespace-nowrap"
                 >
                   <Target size={14} />
-                  Sim Next {userNickname} Game
+                  <span className="hidden sm:inline">Sim Next {userNickname} Game</span>
                 </button>
               )}
               <button
@@ -269,16 +269,16 @@ export const PlayoffView: React.FC = () => {
                 className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-black rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
               >
                 <Play size={14} />
-                Sim Day
+                <span className="hidden sm:inline">Sim Day</span>
               </button>
               {playoffs && !playoffs.bracketComplete && (
                 <button
                   onClick={handleSimulateRound}
                   disabled={state.isProcessing}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+                  className="px-2 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl transition-all flex items-center gap-2 disabled:opacity-50 whitespace-nowrap"
                 >
                   <FastForward size={14} />
-                  {playoffs.playInComplete ? `Sim ${roundLabel[playoffs.currentRound] ?? 'Round'}` : 'Sim Play-In'}
+                  <span className="hidden sm:inline">{playoffs.playInComplete ? `Sim ${roundLabel[playoffs.currentRound] ?? 'Round'}` : 'Sim Play-In'}</span>
                 </button>
               )}
             </>

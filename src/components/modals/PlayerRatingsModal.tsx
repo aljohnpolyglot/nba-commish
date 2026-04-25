@@ -261,6 +261,7 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
     const attrKeys = ['stre','spd','jmp','endu','ins','dnk','ft','fg','tp','oiq','diq','drb','pss','reb'];
     const history = (player.ratings ?? [])
       .filter((r: any) => r.season != null)
+      .filter((r: any) => !player.retiredYear || r.season <= player.retiredYear)
       .sort((a: any, b: any) => a.season - b.season)
       .map((r: any) => {
         const baseOvr = (r.ovr && r.ovr > 0 && r.ovr <= 100)
@@ -268,12 +269,12 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
           : Math.round(attrKeys.reduce((s: number, k: string) => s + (r[k] ?? 50), 0) / attrKeys.length);
         return { season: `'${String(r.season).slice(-2)}`, ovr: convertTo2KRating(baseOvr, r.hgt ?? 50, r.tp) };
       });
-    // Force last point to actual live OVR so endpoint always matches the badge
-    if (history.length > 0) {
+    // Force last point to actual live OVR so endpoint always matches the badge (skip for retired players)
+    if (!player.retiredYear && history.length > 0) {
       history[history.length - 1] = { ...history[history.length - 1], ovr: convertTo2KRating(player.overallRating ?? 60, currentRatings.hgt, currentRatings.tp) };
     }
     return history;
-  }, [player.ratings, player.overallRating, currentRatings.hgt, currentRatings.tp]);
+  }, [player.ratings, player.overallRating, player.retiredYear, currentRatings.hgt, currentRatings.tp]);
   const team = state.teams.find(t => t.id === player.tid)
     ?? (state.nonNBATeams ?? []).find((t: any) => t.tid === player.tid);
 
@@ -714,13 +715,19 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
                   {viewTab === 'Progression' && (() => {
                     // 1Y: use weekly ovrTimeline snapshots — convert with same formula as header badge
                     const MON_ABB = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                    const weeklyData = (player.ovrTimeline ?? []).map((s: { date: string; ovr: number }) => {
-                      const [, mm, dd] = s.date.split('-');
-                      return {
-                        season: `${MON_ABB[parseInt(mm)]} ${parseInt(dd)}`,
-                        ovr: convertTo2KRating(s.ovr, currentRatings.hgt ?? 50, currentRatings.tp ?? 50),
-                      };
-                    });
+                    const weeklyData = (player.ovrTimeline ?? [])
+                      .filter((s: { date: string; ovr: number }) => {
+                        if (!player.retiredYear) return true;
+                        const dateYear = parseInt(s.date.split('-')[0]);
+                        return dateYear <= player.retiredYear;
+                      })
+                      .map((s: { date: string; ovr: number }) => {
+                        const [, mm, dd] = s.date.split('-');
+                        return {
+                          season: `${MON_ABB[parseInt(mm)]} ${parseInt(dd)}`,
+                          ovr: convertTo2KRating(s.ovr, currentRatings.hgt ?? 50, currentRatings.tp ?? 50),
+                        };
+                      });
                     const rawChartData = progressPeriod === 'Career' ? ratingHistory
                       : progressPeriod === '3Y' ? ratingHistory.slice(-3)
                       : weeklyData.length > 0 ? weeklyData : ratingHistory.slice(-1);

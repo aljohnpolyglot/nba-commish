@@ -36,9 +36,11 @@ function detectType(text: string, type?: string) {
   if (type === 'G-League Callup'     || t.includes('recalled from g-league')) return 'G-League Callup';
   if (type === 'Draft'       || t.includes('overall pick of the'))     return 'Draft';
   if (type === 'NG Guaranteed' || (t.includes('guaranteed by') && t.includes('january 10'))) return 'NG Guaranteed';
+  if (type === 'Jersey Retirement' || t.includes('retired #') || t.includes('retired jersey')) return 'Jersey Retirement';
   if (type === 'Retirement'  || t.includes('has retired') || t.includes('announced his retirement') || t.includes('announced retirement')) return 'Retirement';
   if (type === 'Trade'       || t.includes('trade'))                   return 'Trade';
-  if (type === 'Signing'     || t.includes('signed') || t.includes('re-signed') || t.includes('signs with')) return 'Signing';
+  if (type === 'Re-signing'  || t.includes('re-signed'))               return 'Re-signing';
+  if (type === 'Signing'     || t.includes('signed') || t.includes('signs with')) return 'Signing';
   if (type === 'Waive'       || t.includes('waived'))                  return 'Waive';
   if (type === 'Suspension'  || t.includes('suspended'))               return 'Suspension';
   if (type === 'Personnel'   || t.includes('fired') || t.includes('hired')) return 'Personnel';
@@ -49,10 +51,12 @@ const TYPE_STYLE: Record<string, { color: string; bg: string; icon: React.ReactN
   Draft:                { color: 'text-violet-400',   bg: 'bg-violet-500/10',   icon: <Trophy size={18}/>,         label: 'Draft' },
   Trade:                { color: 'text-blue-400',    bg: 'bg-blue-500/10',     icon: <ArrowRightLeft size={18}/>, label: 'Trade' },
   Signing:              { color: 'text-emerald-400', bg: 'bg-emerald-500/10',  icon: <UserCheck size={18}/>,      label: 'Signing' },
+  'Re-signing':         { color: 'text-teal-400',    bg: 'bg-teal-500/10',     icon: <UserCheck size={18}/>,      label: 'Re-signing' },
   Waive:                { color: 'text-amber-400',   bg: 'bg-amber-500/10',    icon: <UserX size={18}/>,          label: 'Waiver' },
   Suspension:           { color: 'text-rose-400',    bg: 'bg-rose-500/10',     icon: <AlertTriangle size={18}/>,  label: 'Suspension' },
   Personnel:            { color: 'text-purple-400',  bg: 'bg-purple-500/10',   icon: <Users size={18}/>,          label: 'Personnel' },
   Retirement:           { color: 'text-amber-300',   bg: 'bg-amber-500/10',    icon: <Sunset size={18}/>,         label: 'Retirement' },
+  'Jersey Retirement':  { color: 'text-yellow-300',  bg: 'bg-yellow-500/10',   icon: <Trophy size={18}/>,         label: 'Jersey Retirement' },
   'G-League Assignment':    { color: 'text-orange-400',  bg: 'bg-orange-500/10',   icon: <TrendingDown size={18}/>,   label: 'G-League' },
   'G-League Callup':        { color: 'text-sky-400',     bg: 'bg-sky-500/10',      icon: <TrendingUp size={18}/>,     label: 'Callup' },
   'Training Camp Release':  { color: 'text-amber-400',   bg: 'bg-amber-500/10',    icon: <UserX size={18}/>,          label: 'TC Release' },
@@ -193,6 +197,8 @@ export const TransactionsView: React.FC = () => {
         if (!text.toLowerCase().includes('trade')) return false;
       } else if (filterType === 'Retirement') {
         if (entry.kind !== 'Retirement') return false;
+      } else if (filterType === 'Jersey Retirement') {
+        if (entry.kind !== 'Jersey Retirement') return false;
       } else if (entry.kind !== filterType) {
         return false;
       }
@@ -340,6 +346,7 @@ export const TransactionsView: React.FC = () => {
               <option value="Waive">Waive</option>
               <option value="AwardOnWaivers">Claimed off Waivers</option>
               <option value="Retirement">Retirement</option>
+              <option value="Jersey Retirement">Jersey Retirement</option>
               <option value="G-League Assignment">G-League Assignment</option>
               <option value="G-League Callup">G-League Callup</option>
               <option value="Training Camp Release">Training Camp Release</option>
@@ -628,6 +635,7 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
         else if (filterType === 'Signing') { const tl = text.toLowerCase(); if (!tl.includes('signed') && !tl.includes('re-signed') && !tl.includes('signs with')) return false; }
         else if (filterType === 'Trade') { if (!text.toLowerCase().includes('trade')) return false; }
         else if (filterType === 'Retirement') { if (entry.kind !== 'Retirement') return false; }
+        else if (filterType === 'Jersey Retirement') { if (entry.kind !== 'Jersey Retirement') return false; }
         else if (entry.kind !== filterType) return false;
       }
       return true;
@@ -697,6 +705,7 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
           <option value="Trade">Trade</option>
           <option value="Waive">Waive</option>
           <option value="Retirement">Retirement</option>
+          <option value="Jersey Retirement">Jersey Retirement</option>
         </select>
         {/* Search */}
         <div className="relative flex-1 min-w-[160px]">

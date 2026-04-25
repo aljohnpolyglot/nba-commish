@@ -27,11 +27,10 @@ interface PlayerBioViewProps {
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { memCache, isCacheValid, fetchWithDedup, prefetchPlayerBio, getPlayerImage, getNonNBABioData } from './bioCache';
+import { memCache, isCacheValid, fetchWithDedup, prefetchPlayerBio, getNonNBABioData } from './bioCache';
 import { ensureNonNBAFetched, getNonNBAGistData } from './nonNBACache';
 import { extractNbaId, hdPortrait } from '../../../utils/helpers';
 import {
-  ensurePhotosLoaded, getPhotoBySlug,
   ensureBiosLoaded, getBioBySlug, fmtHeight,
 } from '../../../data/realPlayerDataFetcher';
 
@@ -114,11 +113,15 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
   const [bioData,     setBioData]    = useState<any>(null);
   const [isSyncing, setIsSyncing] = useState(() => !!extractNbaId(player.imgURL || "", player.name));
   const [fetchDone, setFetchDone] = useState(false);
-  const [portraitSrc, setPortraitSrc] = useState<string>(() => getPlayerImage(player) || "");
+  const [portraitSrc, setPortraitSrc] = useState<string>(() => {
+    const u = player.imgURL?.trim();
+    return (u && !u.includes('head-par-defaut')) ? u : "";
+  });
 
   // Reset portrait when player changes (e.g. navigating between players without unmount)
   useEffect(() => {
-    setPortraitSrc(getPlayerImage(player) || "");
+    const u = player.imgURL?.trim();
+    setPortraitSrc((u && !u.includes('head-par-defaut')) ? u : "");
     setFetchDone(false);
   }, [player.internalId]);
   const [activeTab, setActiveTab] = useState<'Overview' | 'Historical Data' | 'Game Log' | 'Awards' | 'Ratings' | 'Salaries' | 'Transactions' | 'Injuries' | 'Morale' | 'Family Tree'>('Historical Data');
@@ -180,6 +183,8 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
         || "None";
       // For prospects, show college as team label
       const teamLabel = isProspect ? (collegeName !== "None" ? collegeName : "Draft Prospect") : (teamFullName || "Free Agent");
+      const diedYear: number | undefined = (player as any).diedYear;
+      const ageYear = diedYear ? Math.min(curYear, diedYear) : curYear;
       const baseData = {
         n: player.name,
         m: `${teamLabel} | #${player.jerseyNumber || "—"} | ${player.pos}`,
@@ -187,7 +192,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
         w: player.weight ? `${player.weight}lb` : "Unknown",
         c: player.born?.loc || "Unknown",
         s: collegeName,
-        a: `${curYear - bY} years`,
+        a: diedYear ? `${ageYear - bY} († ${diedYear})` : `${ageYear - bY} years`,
         b: `${bY}`,
         d: isProspect
           ? (player.draft?.year ? `Draft Eligible: ${player.draft.year}` : 'Draft Prospect')
@@ -196,7 +201,15 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
               ? `${player.draft.year} R${player.draft.round} P${player.draft.pick}`
               : `Undrafted (${player.draft.year})`)
             : "Undrafted"),
-        e: `${curYear - dY} Years`,
+        e: (() => {
+          // Experience = NBA seasons with at least 1 game played, not
+          // calendar years since draft. Essengue (0 career GP) was showing
+          // "5 Years" despite never touching the floor.
+          const played = (player.stats ?? []).filter(
+            (s: any) => !s.playoffs && (s.gp ?? 0) > 0
+          ).length;
+          return `${played} Year${played === 1 ? '' : 's'}`;
+        })(),
         stats: (() => {
           if (ss) {
             const g = ss.gp || 1;
@@ -271,20 +284,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
         return;
       }
 
-      // ── 1b. Portrait upgrade: player-photos.json by srID (non-blocking) ────
-      // Kick off photo preload in background; if portrait is still empty once
-      // it resolves, update it immediately without showing a spinner.
-      if (player.srID) {
-        ensurePhotosLoaded().then(() => {
-          if (!isMounted) return;
-          const photoUrl = getPhotoBySlug(player.srID!);
-          if (photoUrl) {
-            setPortraitSrc(prev => prev || photoUrl);
-          }
-        });
-      }
-
-      // ── 1c. ZenGM bio enrichment for retired/historical NBA players ────────
+      // ── 1b. ZenGM bio enrichment for retired/historical NBA players ────────
       // Fires only when srID is present and the player is retired (or has missing
       // bio fields). The 17 MB JSON is fetched once and cached in module memory.
       const needsZenGM = player.srID && (
@@ -319,7 +319,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
         });
       }
 
-      // ── 2. Extract NBA ID ────────────────────────────────────────────────
+      // ── 2. Extract NBA ID (for bio text only — not for portrait) ────────────
       const nbaId = extractNbaId(player.imgURL || "", player.name);
       console.log(`%c[Scout Intel] imgURL="${player.imgURL}" → nbaId=${nbaId}`, "color:#94a3b8");
 
@@ -328,19 +328,25 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
         return;
       }
 
-      // Don't eagerly switch to CDN — keep BBGM portrait until we confirm
-      // the CDN has a better one (returned in payload.imgHD below).
-      // CDN URLs rely on NBA player IDs which can mismatch for non-current players.
-
-      // ── 3. Fetch (deduped — returns instantly from cache if available) ───
+      // ── 3. Fetch bio text (deduped — returns instantly from cache if available) ───
       setIsSyncing(true);
       try {
     const payload = await fetchWithDedup(nbaId, state.leagueStats?.year);
         if (isMounted) {
-          setBioData((prev: any) => ({ ...prev, ...payload }));
-          // Only upgrade to CDN HD portrait if the player has no BBGM imgURL.
-          // BBGM portraits are the canonical source-of-truth and should not be replaced.
-          if (payload.imgHD && !player.imgURL) setPortraitSrc(payload.imgHD);
+          // Cache enriches bio text, portrait URL, country, school, and formatted birthdate.
+          // Game-state fields are always pinned — cache must never overwrite live data.
+          setBioData((prev: any) => ({
+            ...prev,
+            ...payload,
+            n: baseData.n,
+            m: baseData.m,
+            stats: baseData.stats,
+            h: baseData.h,
+            w: baseData.w,
+            a: baseData.a,
+            d: baseData.d,
+            e: baseData.e,
+          }));
           console.log(`%c[Scout Intel] Bio applied for ${player.name}`, "color:#10b981;font-weight:bold");
         }
       } catch (err: any) {

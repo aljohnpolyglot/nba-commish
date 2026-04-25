@@ -1,0 +1,23 @@
+General:22
+Rating0;Rating 0;Rating 0
+Rating1;Rating 1;Rating 1
+Rating2;Rating 2;Rating 2
+Rating3;Rating 3;Rating 3
+Rating4;Rating 4;Rating 4
+Rating5;Rating 5;Rating 5
+Rating6;Rating 6;Rating 6
+Rating7;Rating 7;Rating 7
+Rating8;Rating 8;Rating 8
+Rating9;Rating 9;Rating 9
+Rating10;Rating 10;Rating 10
+Rating11;Rating 11;Rating 11
+Rating12;Rating 12;Rating 12
+Rating13;Rating 13;Rating 13
+Rating14;Rating 14;Rating 14
+Rating15;Rating 15;Rating 15
+Rating16;Rating 16;Rating 16
+Rating17;Rating 17;Rating 17
+Rating18;Rating 18;Rating 18
+Rating19;Rating 19;Rating 19
+Rating20;Rating 20;Rating 20
+Rating21;Rating 21;Rating 21

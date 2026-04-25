@@ -124,7 +124,11 @@ export const getDisplayPotential = (player: any, currentYear: number, season?: n
     const tp  = r?.tp  ?? 50;
     const age = getDisplayAge(player, currentYear);
     const bbgmOvr = player?.overallRating ?? r?.ovr ?? 60;
-    const potBbgm = estimatePotentialBbgm(bbgmOvr, age);
+    // Prefer stored rating.pot (updated by seasonRollover drift) so busted/stalled players
+    // show a declining ceiling instead of the formula's perpetually-optimistic estimate.
+    const storedPot: number | undefined = r?.pot;
+    const rawPotBbgm = (storedPot != null && storedPot > 0) ? storedPot : estimatePotentialBbgm(bbgmOvr, age);
+    const potBbgm = Math.max(bbgmOvr, rawPotBbgm); // UI: ceiling never shown below current OVR
     return convertTo2KRating(potBbgm, hgt, tp);
 };
 const teamStrengthCache = new Map<string, number>();

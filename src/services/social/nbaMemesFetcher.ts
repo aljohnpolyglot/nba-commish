@@ -1,7 +1,4 @@
-// NBA Memes Fetcher
-// Fetches real @NBAMemes tweets from GitHub at app startup (same pattern as statmuseImages.ts).
-// Memes fire independently of game context — nonsensically into the feed.
-// Frequency: ~2x/week during season, high activity (~70% per day) in offseason.
+import { fetchWithCache } from '../utils/fetchWithCache';
 
 const NBA_MEMES_URL =
     'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbamemestweets';
@@ -21,15 +18,10 @@ let usedMemeIds = new Set<string>();
 let lastMemeDate = '';
 
 export const fetchNBAMemes = async () => {
-    console.log('[NBAmemes] Fetching NBA memes pool...');
-    try {
-        const res = await fetch(NBA_MEMES_URL);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: NBAmemeEntry[] = await res.json();
+    const data = await fetchWithCache<NBAmemeEntry[]>('nba-memes', NBA_MEMES_URL);
+    if (data) {
         NBA_MEMES_POOL = data.filter(m => !!m.image);
         console.log(`[NBAmemes] Loaded ${NBA_MEMES_POOL.length} memes.`);
-    } catch (err) {
-        console.warn('[NBAmemes] Failed to load:', err);
     }
 };
 

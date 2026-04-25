@@ -1,0 +1,65 @@
+General:2;Head:14;Mouth:9;Ears:4;Nose:12;Eyes:10
+HParam1;Head Param 1;Head Parameter 1
+HParam2;Head Param 2;Head Parameter 2
+HdBrwHght;Brow Height;Head - Brow - Height
+HdBrwWdth;Brow Width;Head - Brow - Width
+HdBrwSlpd;Brow Sloped;Head - Brow - Sloped
+#
+HdNkThck;Neck Thickness;Head - Neck - Thickness
+HdNkFat;Neck Fat;Head - Neck - Fat
+#
+HdChnLen;Chin Length;Head - Chin - Length
+HdChnWdth;Chin Width;Head - Chin - Width
+HdChnProt;Chin Protrusion;Head - Chin - Protrusion
+#
+HdJawSqr;Jaw Squareness;Head - Jaw - Squareness
+HdJawWdth;Jaw Width;Head - Jaw - Width
+#
+HdChkHght;Cheek Height;Head - Cheek - Height
+HdChkWdth;Cheek Width;Head - Cheek - Width
+HdChkFull;Cheek Fullness;Head - Cheek - Fullness
+#
+HdDefinit;Head Definition;Head - Definition
+MtULCurve;Upper Lip Curve;Mouth - Upper lip - Curve
+MtULThick;Upper Lip Thickness;Mouth - Upper lip - Thickness
+MtULProtr;Upper Lip Protrusion;Mouth - Upper lip - Protrusion
+#
+MtLLCurve;Lower Lip Curve;Mouth - Lower lip - Curve
+MtLLThick;Lower Lip Thickness;Mouth - Lower lip - Thickness
+MtLLProtr;Lower Lip Protrusion;Mouth - Lower lip - Protrusion
+#
+MtSzHght;Mouth Height;Mouth - Mouth Size - Height
+MtSzWdth;Mouth Width;Mouth - Mouth Size - Width
+#
+MtCrvCorn;Mouth Corners;Mouth - Curvature - Corners
+ErHeight;Ears Height;Ears - Ears - Height
+ErWidth;Ears Width;Ears - Ears - Width
+ErEarLobe;Ear Lobe;Ears - Ears - Ear Lobe
+ErTilt;Ears Tilt;Ears - Ears - Tilt
+NsNsHght;Nose Height;Nose - Nose - Height
+NsNsWdth;Nose Width;Nose - Nose - Width
+NsNsProtr;Nose Protrusion;Nose - Nose - Protrusion
+#
+NsBnBridge;Nose Bone Bridge;Nose - Bone - Bridge
+NsBnDefin;Nose Bone Definition;Nose - Bone - Definition
+NsBnWdth;Nose Bone Width;Nose - Bone - Width
+#
+NsTipHght;Nose Tip Height;Nose - Tip - Height
+NsTipWdth;Nose Tip Width;Nose - Tip - Width
+NsTipTip;Nose Tip;Nose - Tip - Tip
+NsTipBnd;Nose Tip Bend;Nose - Tip - Bend
+#
+NsNtHght;Nostrils Height;Nose - Nostrils - Height
+NsNtWdth;Nostrils Width;Nose - Nostrils - Width
+EsFrmOpen;Eyes Openess;Eyes - Form - Openness
+EsFrmSpac;Eyes Spacing;Eyes - Form - Spacing
+EsFrmLwEl;Form - Lower Eyelid;Eyes - Form - Lower eyelid
+EsFrmUpEl;Form - Upper Eyelid;Eyes - Form - Upper eyelid
+#
+EsPlcHght;Eyes Height;Eyes - Placement - Height
+EsPlcWdth;Eyes Width;Eyes - Placement - Width
+EsPlcRot;Eyes Rotation;Eyes - Placement - Rotation
+EsPlcProt;Eyes Protrusion;Eyes - Placement - Protrusion
+#
+EsShpOtEl;Outer Eyelid Shape;Eyes - Shape - Outer eyelid
+EsShpInEl;Inner Eyelid Shape;Eyes - Shape - Inner eyelid

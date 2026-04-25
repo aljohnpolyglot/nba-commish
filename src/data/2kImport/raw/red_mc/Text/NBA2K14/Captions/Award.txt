@@ -1,0 +1,19 @@
+General:13
+Team_Name;Team Name;Name of the team the player winning the award played for
+Team_City;Team City;City of the team the player winning the award played for
+#
+Op_Team_Name;Opponent Team Name;Name of the team the player winning the award played against. Only used for Finals MVP award
+Op_Team_City;Opponent Team City;City of the team the player winning the award played against. Only used for Finals MVP award
+#
+Person_LName;Award taker Last Name;Award winning (or Finals MVP) player's (coach'es) last name
+Person_FName;Award taker First Name;Award winning (or Finals MVP) player's (coach'es) first name
+#
+Year;Year;Year
+AType;Award Type;Award Type
+#
+TeamGID;Team GID;Defines team logo to be shown near the award description. Corresponds with GID field of Teams tab
+OpTeamGID;Opponent Team GID;Defines opponent team logo to be shown near the award description. Corresponds with GID field of Teams tab
+Pl_ASA_ID;Player ASA ID;Assigns the award to a specific player, based on his ASA_ID (the award will be listed on the player's Player Card)
+#
+Value;Value;Multipurpose field. Meanings: For NBA Finals - number of games, won by the Champion during the finals | For League Leaders - the appropriate stats value | For All-NBA Teams - position, the player takes on the team: 1 - Guard, 2 - Forward, 3 - Center
+Value2;Value2;Number of games, won by the opposing team during NBA Finals

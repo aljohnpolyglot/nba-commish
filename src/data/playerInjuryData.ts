@@ -17,6 +17,7 @@
  */
 
 import { getRawTeams } from './NBA2kRatings';
+import { fetchWithCache } from '../services/utils/fetchWithCache';
 
 const PLAYER_INJURY_URL =
   'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbainjuriesdata';
@@ -97,15 +98,11 @@ export function normalizeBodyPart(raw: string): string | null {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const fetchPlayerInjuryData = async (): Promise<void> => {
-  console.log('[PlayerInjuryData] Fetching career injury profiles...');
-  try {
-    const res = await fetch(PLAYER_INJURY_URL);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    _raw = await res.json();
+  const data = await fetchWithCache<PlayerInjuryEntry[]>('player-injury-data', PLAYER_INJURY_URL);
+  if (data) {
+    _raw = data;
     _buildProfileMap();
     console.log(`[PlayerInjuryData] Loaded ${_profileMap.size} player profiles.`);
-  } catch (err) {
-    console.warn('[PlayerInjuryData] Failed to fetch:', err);
   }
 };
 

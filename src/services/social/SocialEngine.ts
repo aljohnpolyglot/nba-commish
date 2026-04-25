@@ -44,10 +44,13 @@ export class SocialEngine {
     playoffs?: PlayoffBracket | null,
     schedule?: Game[]
   ): Promise<SocialPost[]> {
+    console.log(`[SocialEngine] ENTER generateDailyPosts — games=${gameResults.length}, players=${players.length}, date=${date}`);
     const posts: SocialPost[] = [];
     const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
+    console.log(`[SocialEngine] before await fetchAvatarData`);
     const avatars = await fetchAvatarData();
-    
+    console.log(`[SocialEngine] after fetchAvatarData — avatars=${avatars?.length ?? 0}`);
+
     const multiplier = daysToSimulate <= 1 ? 1.0 : Math.max(0.05, 1.0 / daysToSimulate);
 
     for (const result of gameResults) {
@@ -119,6 +122,8 @@ export class SocialEngine {
         } // end !isPlayoffGame
     }
 
+    console.log(`[SocialEngine] after for-loop — posts=${posts.length}, playoffs=${!!playoffs}, schedule=${!!schedule}`);
+
     // Playoff-specific social posts — fire when series context is available
     if (playoffs && schedule) {
       const avatars = await fetchAvatarData();
@@ -126,6 +131,7 @@ export class SocialEngine {
       posts.push(...playoffPosts);
     }
 
+    console.log(`[SocialEngine] RETURN — total posts=${posts.length}`);
     return posts;
   }
 

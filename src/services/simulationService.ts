@@ -92,6 +92,8 @@ export const simulateGames = async (
         if (game?.isPreseason) return;
         // Playoff and play-in results don't affect regular season standings
         if (game?.isPlayoff || game?.isPlayIn) return;
+        // Cup SF/Final: box score kept but W/L skipped
+        if ((game as any)?.excludeFromRecord) return;
         if (res.homeTeamId < 0 || res.awayTeamId < 0) return;
 
         const home = updatedTeams.find(t => t.id === res.homeTeamId);

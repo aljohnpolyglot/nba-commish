@@ -2,6 +2,12 @@ import { NBATeam, NBAPlayer } from '../types';
 import JSONParserText from '../utils/JSONParserText';
 import { calculateTeamStrength } from '../utils/playerRatings';
 
+function extractJerseyNumber(player: { jerseyNumber?: string | number; stats?: Array<{ jerseyNumber?: string | number }> }): string | undefined {
+    const latestStats = player.stats && player.stats.length > 0 ? player.stats[player.stats.length - 1] : undefined;
+    const raw = latestStats?.jerseyNumber ?? player.jerseyNumber;
+    return raw === undefined || raw === null || raw === '' ? undefined : String(raw);
+}
+
 export const fetchAndParseBBGMData = async () => {
     try {
         const response = await fetch('https://raw.githubusercontent.com/alexnoob/BasketBall-GM-Rosters/master/2025-26.NBA.Roster.json');
@@ -54,14 +60,29 @@ export const fetchAndParseBBGMData = async () => {
                 else if (p.tid === -2) status = 'Prospect';
                 else if (p.tid < -2) status = 'Retired';
 
-                // Extract jersey number from latest stats entry
-                let jerseyNumber = undefined;
-                if (p.stats && p.stats.length > 0) {
-                    const latestStats = p.stats[p.stats.length - 1];
-                    if (latestStats.jerseyNumber) {
-                        jerseyNumber = String(latestStats.jerseyNumber);
-                    }
-                }
+                const jerseyNumber = extractJerseyNumber(p);
+
+                // Map BBGM award types to internal format
+                const BBGM_AWARD_MAP: Record<string, string> = {
+                  mvp:            'Most Valuable Player',
+                  dpoy:           'Defensive Player of the Year',
+                  roy:            'Rookie of the Year',
+                  smoy:           'Sixth Man of the Year',
+                  mip:            'Most Improved Player',
+                  champion:       'NBA Champion',
+                  finals_mvp:     'Finals MVP',
+                  allstar:        'All-Star',
+                  // some BBGM exports use these casings
+                  MVP:            'Most Valuable Player',
+                  DPOY:           'Defensive Player of the Year',
+                  ROY:            'Rookie of the Year',
+                  SMOY:           'Sixth Man of the Year',
+                  MIP:            'Most Improved Player',
+                };
+                const awards = (p.awards ?? []).map((a: any) => ({
+                  season: a.season,
+                  type: BBGM_AWARD_MAP[a.type] ?? a.type,
+                }));
 
                 return {
                     internalId: `bbgm-${fullName.replace(/\s+/g, '')}-${p.pid ?? p.tid ?? '0'}`,
@@ -73,7 +94,8 @@ export const fetchAndParseBBGMData = async () => {
                     imgURL: p.imgURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`,
                     injury: p.injury || { type: 'Healthy', gamesRemaining: 0 },
                     status: status,
-                    jerseyNumber
+                    jerseyNumber,
+                    awards: awards.length > 0 ? awards : undefined,
                 };
             });
 

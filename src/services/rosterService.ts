@@ -1,5 +1,6 @@
 import { ROSTER_URL, EXTRA_RETIRED_PLAYERS_URL, CONTRACTS_URL } from '../constants';
 import type { NBAGMRosterData, NBAPlayer as Player, NBATeam as Team, DraftPick, NBAGMPlayer, GamePhase } from '../types';
+import { normalizeTeamJerseyNumbers, pickJerseyNumber } from '../utils/jerseyUtils';
 import JSONParserText from '../utils/JSONParserText';
 import { calculatePlayerOverallForYear, calculateTeamStrength } from '../utils/playerRatings';
 import { isDevastatingInjury } from './simulation/InjurySystem';
@@ -19,6 +20,12 @@ function stampInitialInjury(injury: Player['injury'] | undefined): Player['injur
     ...injury,
     startDate: isDevastatingInjury(injury.type) ? 'Last Season' : 'Summer 2025',
   };
+}
+
+function extractJerseyNumber(player: { jerseyNumber?: string | number; stats?: Array<{ jerseyNumber?: string | number }> }): string | undefined {
+  const latestStats = player.stats && player.stats.length > 0 ? player.stats[player.stats.length - 1] : undefined;
+  const raw = latestStats?.jerseyNumber ?? player.jerseyNumber;
+  return raw === undefined || raw === null || raw === '' ? undefined : String(raw);
 }
 
 /**
@@ -189,7 +196,26 @@ function applyContractOverrides(players: Player[], contractsData: ContractsJSON,
   return players.map(player => {
     const key = normalizeContractName(player.name);
     const entries = contractMap.get(key);
-    if (!entries || entries.length === 0) return player;
+    if (!entries || entries.length === 0) {
+      // No gist match — seed contractYears from contract.amount so the Salaries tab
+      // never truncates as the sim advances. Without this, Path B in PlayerBioContractTab
+      // renders currentYear→exp, which shrinks to 1 row by the final season.
+      const amt = (player as any).contract?.amount;
+      const exp = (player as any).contract?.exp;
+      if (amt && exp && amt > 0 && exp >= startYear) {
+        const salaryUSD = amt * 1_000;
+        const fallbackYears = Array.from({ length: exp - startYear + 1 }, (_, i) => {
+          const yr = startYear + i;
+          return {
+            season: `${yr - 1}-${String(yr).slice(-2)}`,
+            guaranteed: Math.round(salaryUSD * Math.pow(1.05, i)),
+            option: '',
+          };
+        });
+        return { ...player, contractYears: fallbackYears } as any;
+      }
+      return player;
+    }
 
     // Store ALL contract years for PlayerBioContractTab display (real per-season amounts).
     // If an option year has blank salary (guaranteed===0), estimate from prior year + ~5% escalator.
@@ -345,7 +371,12 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                                 if (name.toLowerCase().includes('booker')) {
                                     console.log(`✅ DEBUG: MERGING ${name} (tid: ${p.tid}) into roster!`);
                                 }
-                                mergedPlayersRaw.push(p);
+                                // Extra retired gist stats have tid values off by -1 (NBA team tids).
+                                // Add +1 to correct: ATL=-1→0, BOS=0→1, etc. External leagues (>=1000) untouched.
+                                const correctedStats = Array.isArray(p.stats)
+                                    ? p.stats.map((s: any) => (typeof s.tid === 'number' && s.tid >= -1 && s.tid < 100) ? { ...s, tid: s.tid + 1 } : s)
+                                    : p.stats;
+                                mergedPlayersRaw.push(correctedStats === p.stats ? p : { ...p, stats: correctedStats });
                                 mergedCount++;
                             }
                         });
@@ -404,14 +435,7 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                             const isProspect = p.draft && p.draft.year >= startYear && teamInfo.tid < 0;
                             const isRetired = p.tid === -3 || (p.retiredYear && p.retiredYear < startYear);
                             
-                            // Extract jersey number from latest stats entry
-                            let jerseyNumber = undefined;
-                            if (p.stats && p.stats.length > 0) {
-                                const latestStats = p.stats[p.stats.length - 1];
-                                if (latestStats.jerseyNumber) {
-                                    jerseyNumber = String(latestStats.jerseyNumber);
-                                }
-                            }
+                            const jerseyNumber = extractJerseyNumber(p);
 
                             // Detect two-way contracts at initialization — BBGM stores two-way salary as 625 (thousands = $625K)
                             // Use < 800 threshold for grace (some may be slightly above exact 625)
@@ -488,8 +512,43 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                         
                         const contractsData: ContractsJSON = await contractsPromise;
                         const finalPlayers = applyContractOverrides(processedPlayers, contractsData, startYear);
-                        console.log(`RosterService: Successfully processed ${finalPlayers.length} players and ${processedTeams.length} teams for the ${startYear} season.`);
-                        resolve({ players: finalPlayers, teams: processedTeams, teamNameMap, availableYears, draftPicks });
+
+                        // Fill missing jersey numbers (BBGM prospects have no stats yet → extractJerseyNumber → undefined)
+                        const retiredByTid = new Map<number, Set<string>>();
+                        for (const team of processedTeams) {
+                            const nums = new Set<string>();
+                            for (const j of (team as any).retiredJerseyNumbers ?? []) {
+                                if (j.number != null) nums.add(String(j.number));
+                            }
+                            retiredByTid.set(team.id, nums);
+                        }
+                        const takenByTid = new Map<number, Set<string>>();
+                        for (const p of finalPlayers) {
+                            if ((p as any).tid >= 0 && (p as any).jerseyNumber) {
+                                const tid: number = (p as any).tid;
+                                if (!takenByTid.has(tid)) takenByTid.set(tid, new Set());
+                                takenByTid.get(tid)!.add(String((p as any).jerseyNumber));
+                            }
+                        }
+                        const readyPlayers = finalPlayers.map((p: any) => {
+                            if (p.jerseyNumber) return p;
+                            const tid: number = p.tid ?? -1;
+                            const retired = tid >= 0 ? (retiredByTid.get(tid) ?? new Set<string>()) : new Set<string>();
+                            const taken  = tid >= 0 ? (takenByTid.get(tid)  ?? new Set<string>()) : new Set<string>();
+                            const num = pickJerseyNumber(new Set([...retired, ...taken]));
+                            if (tid >= 0) {
+                                if (!takenByTid.has(tid)) takenByTid.set(tid, new Set());
+                                takenByTid.get(tid)!.add(num);
+                            }
+                            return { ...p, jerseyNumber: num };
+                        });
+
+                        const normalizedPlayers = normalizeTeamJerseyNumbers(readyPlayers as any, processedTeams as any, startYear, {
+                          leagueStartYear: startYear,
+                        });
+
+                        console.log(`RosterService: Successfully processed ${normalizedPlayers.length} players and ${processedTeams.length} teams for the ${startYear} season.`);
+                        resolve({ players: normalizedPlayers, teams: processedTeams, teamNameMap, availableYears, draftPicks });
                     } else {
                        parser.write(decoder.decode(value, { stream: true }));
                        push();

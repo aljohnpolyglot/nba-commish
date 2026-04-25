@@ -161,6 +161,10 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   // Economy - Draft Picks
   tradableDraftPickSeasons: 7,
 
+  // Economy - Exceptions (TPE / DPE)
+  tradeExceptionsEnabled: true,
+  disabledPlayerExceptionEnabled: false,
+
   // Transaction calendar defaults (resolver-based — NBA accurate)
   tradeDeadlineMonth: 2,
   tradeDeadlineOrdinal: 1,
@@ -486,4 +490,149 @@ export const NATIONALITY_LEAGUE_BIAS: Record<string, string> = {
   Lithuania:   'Euroleague',
   Israel:      'Euroleague',
   Russia:      'Euroleague',
+};
+
+// ── T1 — GENERATOR CAPS ──────────────────────────────────────────────────────
+
+/** BBGM OVR ceiling per draft path (non-College paths cap generated prospects). */
+export const PATH_OVR_CAP: Record<string, number> = {
+  Europe:      68, // Euroleague
+  Endesa:      65,
+  NBL:         62, // NBL Australia
+  'B-League':  58,
+  'G-League':  55,
+  // College / default = no cap (NBA-bound prospects uncapped at generation)
+};
+
+/** Bio height ceiling in inches per league (applied after nationality multiplier). */
+export const LEAGUE_HEIGHT_CEILING: Record<string, number> = {
+  PBA:             85, // 7'1"  (Sotto / Slaughter tier max)
+  'B-League':      84, // 7'0"
+  Endesa:          86, // 7'2"
+  'China CBA':     87, // 7'3"
+  'NBL Australia': 86, // 7'2"
+  Euroleague:      87, // 7'3"  (Edey is the outlier max)
+  'G-League':      86, // 7'2"
+  NBA:             88, // 7'4"  (Wemby is the outlier)
+};
+
+/** Draft path → league name (for height ceiling lookup in genDraftPlayers.ts). */
+export const PATH_TO_LEAGUE: Record<string, string> = {
+  Europe:      'Euroleague',
+  Endesa:      'Endesa',
+  NBL:         'NBL Australia',
+  'B-League':  'B-League',
+  'G-League':  'G-League',
+  College:     'NBA',
+};
+
+/** Nationality → height scale factor, applied after base height, before league cap. */
+export const COUNTRY_HEIGHT_MULT: Record<string, number> = {
+  Philippines:   0.95,
+  Japan:         0.95,
+  'South Korea': 0.96,
+  China:         0.98,
+  Taiwan:        0.95,
+  'Hong Kong':   0.95,
+  Vietnam:       0.93,
+  Thailand:      0.93,
+  Indonesia:     0.93,
+};
+
+/** BBGM raw OVR cap for youth (age < 19) external-league players. K2 ~64. */
+export const YOUTH_EXTERNAL_OVR_CAP = 37;
+
+/** BBGM raw OVR cap for undrafted players (no round assigned). K2 ~80. */
+export const UNDRAFTED_OVR_CAP = 56;
+
+// ── T2 — NATIONALITY / CLUB AFFINITY ─────────────────────────────────────────
+
+export type LeagueWeightEntry = { league: string; weight: number };
+
+/**
+ * Weighted multi-league routing for nationalities that spread across several leagues.
+ * When present, resolveNationalityLeague() uses this instead of NATIONALITY_LEAGUE_BIAS.
+ */
+export const NATIONALITY_LEAGUE_WEIGHTS: Record<string, LeagueWeightEntry[]> = {
+  // USA → G-League is the primary path; only ~15% reach Euroleague (Mike James tier)
+  USA: [
+    { league: 'G-League',   weight: 0.60 },
+    { league: 'Euroleague', weight: 0.15 },
+    { league: 'Endesa',     weight: 0.08 },
+    { league: 'B-League',   weight: 0.07 },
+    { league: 'China CBA',  weight: 0.06 },
+    { league: 'PBA',        weight: 0.04 },
+  ],
+  Canada: [
+    { league: 'G-League',   weight: 0.65 },
+    { league: 'Euroleague', weight: 0.20 },
+    { league: 'NBL Australia', weight: 0.10 },
+    { league: 'China CBA',  weight: 0.05 },
+  ],
+};
+
+/** tid → primary nationality for club-affinity weighting (Fix 10). */
+export const CLUB_NATIONALITY_MAP: Record<number, string> = {
+  // Euroleague
+  1000: 'Greece',     // AEK Athens
+  1001: 'Germany',    // Alba Berlin
+  1002: 'Turkey',     // Anadolu Efes Istanbul
+  1003: 'France',     // AS Monaco
+  1004: 'Spain',      // Baskonia Vitoria-Gasteiz
+  1005: 'Serbia',     // Crvena Zvezda Belgrade
+  1006: 'Russia',     // CSKA Moscow
+  1007: 'Spain',      // Dreamland Gran Canaria
+  1008: 'UAE',        // Dubai
+  1009: 'Italy',      // EA7 Emporio Armani Milan
+  1010: 'Spain',      // FC Barcelona
+  1011: 'Germany',    // FC Bayern Munich
+  1012: 'Turkey',     // Fenerbahce Istanbul
+  1013: 'Israel',     // Hapoel Tel Aviv
+  1014: 'France',     // LDLC ASVEL
+  1015: 'Israel',     // Maccabi Playtika Tel Aviv
+  1016: 'Greece',     // Olympiacos Piraeus
+  1017: 'Greece',     // Panathinaikos Athens
+  1018: 'France',     // Paris
+  1019: 'Serbia',     // Partizan Belgrade
+  1020: 'Spain',      // Real Madrid
+  1022: 'Montenegro', // Podgorica Buducnost
+  1031: 'France',     // Limoges CSP
+  1038: 'France',     // Nanterre 92
+  1041: 'Lithuania',  // Vilnius Rytas
+  1043: 'Slovenia',   // Ljubljana Olimpija
+  1061: 'Greece',     // Thessaloniki Aris
+  1070: 'Greece',     // Athens AEK
+  1081: 'Greece',     // Thessaloniki PAOK
+  // Endesa (all Spain)
+  5000: 'Spain', 5001: 'Spain', 5002: 'Spain', 5003: 'Spain', 5004: 'Spain',
+  5005: 'Spain', 5006: 'Spain', 5007: 'Spain', 5008: 'Spain', 5009: 'Spain',
+  5010: 'Spain', 5011: 'Spain', 5012: 'Spain', 5013: 'Spain', 5014: 'Spain',
+  5015: 'Spain', 5016: 'Spain', 5017: 'Spain', 5018: 'Spain',
+  // B-League (all Japan)
+  4000: 'Japan', 4001: 'Japan', 4002: 'Japan', 4003: 'Japan', 4004: 'Japan',
+  4005: 'Japan', 4006: 'Japan', 4007: 'Japan', 4008: 'Japan', 4009: 'Japan',
+  4010: 'Japan', 4011: 'Japan', 4012: 'Japan', 4013: 'Japan', 4014: 'Japan',
+  4015: 'Japan', 4016: 'Japan', 4017: 'Japan', 4018: 'Japan', 4019: 'Japan',
+  4020: 'Japan', 4021: 'Japan', 4022: 'Japan', 4023: 'Japan', 4024: 'Japan',
+  4025: 'Japan', 4026: 'Japan',
+  // NBL Australia (8005 = NZ Breakers)
+  8000: 'Australia', 8001: 'Australia', 8002: 'Australia', 8003: 'Australia',
+  8004: 'Australia', 8005: 'New Zealand', 8006: 'Australia', 8007: 'Australia',
+  8008: 'Australia', 8009: 'Australia',
+};
+
+// ── T3 — PROGRESSION / TRANSITION ─────────────────────────────────────────────
+// OVR ceiling per external league (BBGM raw scale, ~40–99 range).
+// Used by ProgressionEngine (Fix 8) to cap adult progression and by
+// externalSigningRouter (Fix 18) to reclamp OVR on NBA → external transitions.
+// Mirrors externalLeagueSustainer's private LEAGUE_OVR_CAP — intentional copy
+// to avoid cross-service circular imports.
+export const EXTERNAL_LEAGUE_OVR_CAP: Record<string, number> = {
+  Euroleague:      58,
+  Endesa:          55,
+  'NBL Australia': 52,
+  'China CBA':     50,
+  'B-League':      48,
+  PBA:             46,
+  'G-League':      45,
 };

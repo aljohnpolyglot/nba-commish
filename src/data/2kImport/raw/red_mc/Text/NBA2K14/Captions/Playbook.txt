@@ -1,0 +1,59 @@
+General:5;Plays:50
+Name;Name;Playbook's name
+#
+__Name;Name Replacer;Set to zero to use the value, stored in Name, as Playbook's Name. Otherwise the actual name is grabbed from the *current_language*.IFF file, using the value as a string ID.
+#
+ID2;ID2;The other ID. Keep it unique for each playbook. Better keep it equal to ID.
+IsSpecial;Is Special;Defines whether the playbook is special or not. Special Playbooks can't be assigned to coaches
+#
+SomePar;Some Parameter;Some Parameter
+Play1;Play 1;
+Play2;Play 2;
+Play3;Play 3;
+Play4;Play 4;
+Play5;Play 5;
+Play6;Play 6;
+Play7;Play 7;
+Play8;Play 8;
+Play9;Play 9;
+Play10;Play 10;
+Play11;Play 11;
+Play12;Play 12;
+Play13;Play 13;
+Play14;Play 14;
+Play15;Play 15;
+Play16;Play 16;
+Play17;Play 17;
+Play18;Play 18;
+Play19;Play 19;
+Play20;Play 20;
+Play21;Play 21;
+Play22;Play 22;
+Play23;Play 23;
+Play24;Play 24;
+Play25;Play 25;
+Play26;Play 26;
+Play27;Play 27;
+Play28;Play 28;
+Play29;Play 29;
+Play30;Play 30;
+Play31;Play 31;
+Play32;Play 32;
+Play33;Play 33;
+Play34;Play 34;
+Play35;Play 35;
+Play36;Play 36;
+Play37;Play 37;
+Play38;Play 38;
+Play39;Play 39;
+Play40;Play 40;
+Play41;Play 41;
+Play42;Play 42;
+Play43;Play 43;
+Play44;Play 44;
+Play45;Play 45;
+Play46;Play 46;
+Play47;Play 47;
+Play48;Play 48;
+Play49;Play 49;
+Play50;Play 50;

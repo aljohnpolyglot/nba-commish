@@ -1,0 +1,6 @@
+032			2012(?) All-Star Court
+033			2013 Houstin All-Star Court
+550			Jordan Brand Arena (No Arena, just floor)
+611			Rucker Park (Model3D voids floor ID)
+733			NBA 2K Arena (No arena, just floor)
+735			Summer Circuit Arena

@@ -134,6 +134,7 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
     // Only include seasons NOT already in ovrHistory (ovrHistory is more accurate for sim years)
     const ratingsEntries = (player.ratings ?? [])
       .filter((r: any) => r.season != null && !ovrHistSeasons.has(r.season))
+      .filter((r: any) => !player.retiredYear || r.season <= player.retiredYear)
       .sort((a: any, b: any) => a.season - b.season)
       .map((r: any) => {
         const baseOvr = (r.ovr && r.ovr > 0 && r.ovr <= 100)
@@ -144,6 +145,7 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
 
     // Step 2: Sim-generated seasons from ovrHistory[] (snapshotted at each rollover)
     const ovrEntries = ovrHist
+      .filter((h: any) => !player.retiredYear || h.season <= player.retiredYear)
       .sort((a: any, b: any) => a.season - b.season)
       .map((h: any) => ({ season: h.season as number, label: `'${String(h.season).slice(-2)}`, ovr: convertTo2KRating(h.ovr, _h, _t) }));
 
@@ -152,13 +154,15 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
     const seen = new Set<number>();
     const deduped = merged.filter(e => { if (seen.has(e.season)) return false; seen.add(e.season); return true; });
 
-    // Step 4: Append current season if not yet snapshotted
-    const lastSeason = deduped[deduped.length - 1]?.season;
-    if (lastSeason !== currentYear) {
-      deduped.push({ season: currentYear, label: `'${String(currentYear).slice(-2)}`, ovr: overall2k });
-    } else {
-      // Update last entry to current live OVR
-      deduped[deduped.length - 1] = { ...deduped[deduped.length - 1], ovr: overall2k };
+    // Step 4: Append current season if not yet snapshotted (skip for retired players)
+    if (!player.retiredYear) {
+      const lastSeason = deduped[deduped.length - 1]?.season;
+      if (lastSeason !== currentYear) {
+        deduped.push({ season: currentYear, label: `'${String(currentYear).slice(-2)}`, ovr: overall2k });
+      } else {
+        // Update last entry to current live OVR
+        deduped[deduped.length - 1] = { ...deduped[deduped.length - 1], ovr: overall2k };
+      }
     }
 
     return deduped.map(e => ({ season: e.label, ovr: e.ovr }));
@@ -166,10 +170,16 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
 
   const _hgt = currentRating?.hgt ?? 50;
   const _tp  = currentRating?.tp  ?? 50;
-  const weeklyData = (player.ovrTimeline ?? []).map((s: { date: string; ovr: number }) => {
-    const [, mm, dd] = s.date.split('-');
-    return { season: `${MON[parseInt(mm)]} ${parseInt(dd)}`, ovr: convertTo2KRating(s.ovr, _hgt, _tp) };
-  });
+  const weeklyData = (player.ovrTimeline ?? [])
+    .filter((s: { date: string; ovr: number }) => {
+      if (!player.retiredYear) return true;
+      const dateYear = parseInt(s.date.split('-')[0]);
+      return dateYear <= player.retiredYear;
+    })
+    .map((s: { date: string; ovr: number }) => {
+      const [, mm, dd] = s.date.split('-');
+      return { season: `${MON[parseInt(mm)]} ${parseInt(dd)}`, ovr: convertTo2KRating(s.ovr, _hgt, _tp) };
+    });
 
   const rawChartData = period === 'Career' ? ratingHistory
     : period === '3Y' ? ratingHistory.slice(-3)

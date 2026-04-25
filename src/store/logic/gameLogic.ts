@@ -5,6 +5,9 @@ import { normalizeDate, extractNbaId, extractTeamId, convertTo2KRating } from '.
 import { genMoodTraits } from '../../utils/mood';
 import { executeForcedTrade } from '../../services/tradeService';
 import { generateSchedule } from '../../services/gameScheduler';
+import { drawCupGroups } from '../../services/nbaCup/drawGroups';
+import { injectCupGroupGames } from '../../services/nbaCup/scheduleInjector';
+import { NBACupState } from '../../types';
 import { handleStartGame } from './initialization';
 import { handleAnnounceChange } from './announcements';
 import { processAction } from './actionProcessor';
@@ -75,9 +78,11 @@ export const processTurn = async (
     // respect the setting (default off = instant).
     const isSimTick = action.type === 'ADVANCE_DAY' || action.type === 'SIMULATE_TO_DATE';
     const isInstantTrade = action.type === 'EXECUTIVE_TRADE' || action.type === 'FORCE_TRADE';
+    // Signings are also instant — advancing the day skips scheduled games and can blow past the trade deadline.
+    const isInstantAction = isInstantTrade || action.type === 'SIGN_FREE_AGENT' || action.type === 'EXERCISE_TEAM_OPTION' || action.type === 'DECLINE_TEAM_OPTION';
     const advanceOnTx = SettingsManager.getSettings().advanceDayOnTransaction;
     let daysToSimulate = 1;
-    if (isInstantTrade || (!isSimTick && !advanceOnTx)) {
+    if (isInstantAction || (!isSimTick && !advanceOnTx)) {
         daysToSimulate = 0;
     }
     if (action.type === 'SIMULATE_TO_DATE') {
@@ -259,7 +264,7 @@ export const processTurn = async (
     // 8. Handle Financials (Paychecks)
     // Instant trades (EXECUTIVE_TRADE / FORCE_TRADE) stay on the current day — executing
     // a trade should not silently roll the calendar forward.
-    const daysToAdvance = isInstantTrade
+    const daysToAdvance = isInstantAction
         ? 0
         : (result.day || (stateWithSim.day + 1)) - state.day;
     // Timezone-safe: normalise state.date to YYYY-MM-DD, advance via UTC methods
@@ -316,7 +321,15 @@ export const processTurn = async (
         console.log(`[Schedule] GENERATING on Aug14 — christmas=${(result.christmasGames || state.christmasGames)?.length ?? 0} global=${(result.globalGames || state.globalGames)?.length ?? 0}`);
         // Preserve any intl preseason games added before Aug 14
         const intlPreseasonGames = finalSchedule.filter(g => (g as any).isPreseason && (g.homeTid >= 100 || g.awayTid >= 100));
-        finalSchedule = generateSchedule(state.teams, result.christmasGames || state.christmasGames, result.globalGames || state.globalGames, state.leagueStats.numGamesDiv ?? null, state.leagueStats.numGamesConf ?? null, state.leagueStats.mediaRights, scheduleYear);
+        let _cupGroups = (state.leagueStats.inSeasonTournament !== false) ? (state.nbaCup?.groups ?? []) : [];
+        let _inlineCupPatch: NBACupState | undefined;
+        if (state.leagueStats.inSeasonTournament !== false && _cupGroups.length === 0) {
+            const prevStandings = state.teams.map(t => ({ tid: t.id, wins: t.wins, losses: t.losses }));
+            _cupGroups = drawCupGroups(state.teams, prevStandings, state.saveId ?? 'default', scheduleYear);
+            _inlineCupPatch = { year: scheduleYear, status: 'group', groups: _cupGroups, wildcards: { East: null, West: null }, knockout: [] };
+        }
+        finalSchedule = generateSchedule(state.teams, result.christmasGames || state.christmasGames, result.globalGames || state.globalGames, state.leagueStats.numGamesDiv ?? null, state.leagueStats.numGamesConf ?? null, state.leagueStats.mediaRights, scheduleYear, _cupGroups.length > 0 ? _cupGroups : undefined, state.saveId);
+        if (_inlineCupPatch) { stateWithSim = { ...stateWithSim, nbaCup: _inlineCupPatch }; }
         if (intlPreseasonGames.length > 0) {
             // Re-gid to avoid collisions with schedule gids (which start from 0)
             const maxGid = Math.max(0, ...finalSchedule.map(g => g.gid));
@@ -324,6 +337,36 @@ export const processTurn = async (
             finalSchedule = [...finalSchedule, ...renumbered].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         }
         console.log(`[Schedule] Generated: ${finalSchedule.length} total games (${intlPreseasonGames.length} intl preseason preserved)`);
+    }
+
+    // ── Self-heal: schedule already exists but Cup games never got tagged ────
+    // Catches saves that generated their schedule before the Cup-injection fix
+    // (e.g., the first NBA Cup ship had a saveId guard bug). Idempotent.
+    if (
+      hasRegularSeasonGames &&
+      state.leagueStats.inSeasonTournament !== false &&
+      stateWithSim.nbaCup?.groups?.length &&
+      !finalSchedule.some(g => (g as any).isNBACup)
+    ) {
+        console.log('[Schedule] Self-heal: regular season exists but no Cup games tagged → injecting now');
+        const scheduledDates: Record<string, Set<number>> = {};
+        for (const g of finalSchedule as any[]) {
+            const ds = String(g.date).split('T')[0];
+            if (!scheduledDates[ds]) scheduledDates[ds] = new Set<number>();
+            scheduledDates[ds].add(g.homeTid); scheduledDates[ds].add(g.awayTid);
+        }
+        const maxGid = Math.max(0, ...finalSchedule.map(g => g.gid));
+        const result = injectCupGroupGames(
+            [], maxGid + 1, stateWithSim.nbaCup.groups,
+            state.saveId || 'default', scheduleYear - 1, scheduledDates,
+            { excludeFromRecord: true },  // retro-injected: don't inflate the 82-game RS
+        );
+        if (result.games.length > 0) {
+            console.log(`[Schedule] Self-heal injected ${result.games.length} Cup games`);
+            finalSchedule = [...finalSchedule, ...result.games].sort(
+                (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+            );
+        }
     }
 
     if (action.type === 'ADD_PRESEASON_INTERNATIONAL') {
@@ -808,7 +851,7 @@ export const processTurn = async (
     }
 
     return {
-        day: isInstantTrade ? state.day : (result.day || (stateWithSim.day + 1)),
+        day: isInstantAction ? state.day : (result.day || (stateWithSim.day + 1)),
         date: dateString,
         stats: newStats,
         leagueStats: newLeagueStats,
@@ -834,6 +877,8 @@ export const processTurn = async (
                 case 'FORCE_TRADE': return 'Trade';
                 case 'SIGN_FREE_AGENT': return 'Signing';
                 case 'WAIVE_PLAYER': return 'Waive';
+                case 'EXERCISE_TEAM_OPTION': return 'Re-signing';
+                case 'DECLINE_TEAM_OPTION': return 'Waive';
                 case 'SUSPEND_PLAYER': return 'Suspension';
                 case 'FIRE_PERSONNEL': return 'Personnel';
                 case 'SIMULATE_TO_DATE': return 'Simulation';

@@ -19,6 +19,7 @@ import { BoxScoreModal } from '../modals/BoxScoreModal';
 import { DunkContest, ThreePointContest, mapPlayerToContestant } from './allstarevents';
 import { getTeamForGame, getPlayersForExhibitionTeam, normalizeDate } from '../../utils/helpers';
 import { AllStarHistoryView } from './AllStarHistoryView';
+import { PlayerBioView } from '../central/view/PlayerBioView';
 import { History } from 'lucide-react';
 import { fetchAllStarHistory, getCachedAllStarHistory } from '../../data/allStarHistoryFetcher';
 
@@ -35,6 +36,7 @@ export const AllStarView: React.FC = () => {
   const [watchingDunkContest, setWatchingDunkContest] = useState(false);
   const [watchingThreePoint, setWatchingThreePoint] = useState(false);
   const [showingHistory, setShowingHistory] = useState(false);
+  const [viewingPlayer, setViewingPlayer] = useState<any | null>(null);
   const [historyVersion, setHistoryVersion] = useState(0);
   useEffect(() => { fetchAllStarHistory().then(() => setHistoryVersion(v => v + 1)); }, []);
   
@@ -206,6 +208,14 @@ export const AllStarView: React.FC = () => {
     );
   }
 
+  if (viewingPlayer) {
+    return (
+      <div className="h-full flex flex-col bg-slate-950 text-slate-200">
+        <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />
+      </div>
+    );
+  }
+
   // Host for current season — prefer leagueStats.allStarHosts, fall back to the
   // history gist (covers real seasons that haven't been seeded into leagueStats).
   const currentHost = (state.leagueStats?.allStarHosts ?? []).find((h: any) => h.year === state.leagueStats.year);
@@ -303,11 +313,12 @@ export const AllStarView: React.FC = () => {
           <AllStarVotes allStar={allStar} />
         )}
         {activeTab === 'roster' && (
-          <AllStarRoster 
-            allStar={allStar} 
+          <AllStarRoster
+            allStar={allStar}
             state={state}
             onWatchGame={handleWatchGame}
             onViewBoxScore={setSelectedBoxScoreGame}
+            onPlayerClick={setViewingPlayer}
           />
         )}
         {activeTab === 'rising-stars' && (
@@ -398,7 +409,7 @@ export const AllStarView: React.FC = () => {
       </AnimatePresence>
 
       <AnimatePresence>
-        {watchingDunkContest && (() => {
+        {watchingDunkContest && !allStar?.dunkContest?.complete && (() => {
           const dunkPlayers = (allStar?.dunkContestContestants ?? [])
             .map((c: any) => state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c)
             .filter(Boolean);
@@ -407,7 +418,7 @@ export const AllStarView: React.FC = () => {
               <DunkContest
                 contestants={dunkPlayers}
                 onClose={() => setWatchingDunkContest(false)}
-                onComplete={allStar?.dunkContest?.complete ? undefined : handleDunkComplete}
+                onComplete={handleDunkComplete}
               />
             </div>
           );
@@ -415,7 +426,7 @@ export const AllStarView: React.FC = () => {
       </AnimatePresence>
 
       <AnimatePresence>
-        {watchingThreePoint && (() => {
+        {watchingThreePoint && !allStar?.threePointContest?.complete && (() => {
           const threeContestants = (allStar?.threePointContestants ?? []).map((c: any) => {
             const player = state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c;
             const team = state.teams.find((t: any) => t.id === player.tid);
@@ -426,7 +437,7 @@ export const AllStarView: React.FC = () => {
               <ThreePointContest
                 contestants={threeContestants}
                 onClose={() => setWatchingThreePoint(false)}
-                onComplete={allStar?.threePointContest?.complete ? undefined : handleThreeComplete}
+                onComplete={handleThreeComplete}
               />
             </div>
           );

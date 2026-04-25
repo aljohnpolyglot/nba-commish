@@ -22,6 +22,48 @@ export interface Game {
   broadcaster?: string;      // broadcaster ID (e.g. 'espn', 'amazon')
   broadcasterName?: string;  // display name (e.g. 'ESPN/ABC')
   tipoffTime?: string;       // e.g. '7:30 PM ET'
+  isNBACup?: boolean;
+  nbaCupRound?: 'group' | 'QF' | 'SF' | 'Final';
+  nbaCupGroupId?: 'East-A' | 'East-B' | 'East-C' | 'West-A' | 'West-B' | 'West-C';
+  excludeFromRecord?: boolean; // SF/Final — box scores kept but team W/L skipped
+}
+
+export interface NBACupGroup {
+  id: 'East-A' | 'East-B' | 'East-C' | 'West-A' | 'West-B' | 'West-C';
+  conference: 'East' | 'West';
+  teamIds: number[];
+  standings: Array<{
+    tid: number;
+    w: number; l: number;
+    pf: number; pa: number; pd: number;
+    gp: number;
+  }>;
+}
+
+export interface NBACupKnockoutGame {
+  round: 'QF' | 'SF' | 'Final';
+  seed1: number;
+  seed2: number;
+  tid1: number;
+  tid2: number;
+  gameId?: number;
+  winnerTid?: number;
+  countsTowardRecord: boolean;
+}
+
+export interface NBACupState {
+  year: number;
+  status: 'group' | 'knockout' | 'complete';
+  groups: NBACupGroup[];
+  wildcards: { East: number | null; West: number | null };
+  knockout: NBACupKnockoutGame[];
+  championTid?: number;
+  runnerUpTid?: number;
+  mvpPlayerId?: string;
+  allTournamentTeam?: Array<{ playerId: string; tid: number; pos: string; isMvp: boolean }>;
+  prizePool?: {
+    perPlayerByFinish: { winner: number; runnerUp: number; semi: number; quarter: number };
+  };
 }
 
 export interface PlayoffSeries {
@@ -210,6 +252,7 @@ export interface LeagueStats {
   numGamesPlayoffSeries: number[];
   playIn: boolean;
   inSeasonTournament: boolean;
+  cupPrizePoolEnabled?: boolean;
   minAgeRequirement: number;
   rules: Rule[];
   morale: Morale;
@@ -367,6 +410,13 @@ export interface LeagueStats {
 
   // Economy - Draft Picks
   tradableDraftPickSeasons?: number; // how many future seasons of picks can be traded, e.g. 4
+
+  // Economy - Exceptions (TPE / DPE)
+  /** Master toggle for Trade Player Exceptions (TPEs). When off, unbalanced
+   * over-cap trades fail the 125% rule like before. NBA default: true. */
+  tradeExceptionsEnabled?: boolean;
+  /** Disabled Player Exception — placeholder for future implementation. NBA default: true (off here until wired). */
+  disabledPlayerExceptionEnabled?: boolean;
 
   // Economy - Transaction Calendar (dates resolved via dateUtils.resolveSeasonDate)
   /** Trade deadline month (1-12). NBA default: 2 (February) */
@@ -529,6 +579,14 @@ export interface HistoryEntry {
   type?: string;
   /** True when the entry was created by a commissioner action (not AI sim logic). */
   commissioner?: boolean;
+  /**
+   * Internal IDs of every player this entry refers to. Used by
+   * PlayerBioTransactionsTab to attribute events to the right player when
+   * multiple players share a name (generated draft prospects vs. BBGM
+   * imports). If absent, the tab falls back to substring-on-name matching,
+   * which is how the Kenny Woodard / Essengue mis-attribution happens.
+   */
+  playerIds?: string[];
 }
 
 export interface NewsItem {
@@ -580,6 +638,29 @@ export interface HeadToHead {
  *  auto-computed outlook. */
 export type TeamStatus = 'contending' | 'win_now' | 'retooling' | 'rebuilding';
 
+export interface RetiredJerseyRecord {
+  number: string;
+  text: string;
+  pid?: string | number;
+  playerId?: string;
+  seasonRetired: number;
+  teamId: number;
+  reason: 'franchise_icon' | 'championship_core' | 'hof_legend' | 'loyal_star' | 'honorary';
+  tier: 'automatic' | 'fast_track' | 'standard' | 'late_honor';
+}
+
+/** Trade Player Exception (TPE) — generated when a team sends out more salary
+ * than it receives. Acts as a one-year "coupon" that lets an over-cap team
+ * absorb a single player's contract without matching salary. */
+export interface TradeException {
+  id: string;
+  amountUSD: number;            // size of the exception in dollars
+  createdDate: string;          // ISO date — basis for expiry
+  expiresDate: string;          // ISO date — createdDate + 365d
+  sourcePlayerName?: string;    // outgoing player that generated this TPE
+  sourceLeagueYear: number;     // league year this TPE was created (for 2nd-apron gate)
+}
+
 export interface NBATeam {
   id: number;
   name: string;
@@ -605,6 +686,8 @@ export interface NBATeam {
     lost: number;
     playoffRoundsWon: number;
   }>;
+  retiredJerseyNumbers?: RetiredJerseyRecord[];
+  tradeExceptions?: TradeException[];
 }
 
 export interface NBAGMStat {
@@ -1120,6 +1203,8 @@ historicalAwards: HistoricalAward[];
   endorsedPlayers: string[];
   allStar?: AllStarState;
   playoffs?: PlayoffBracket;
+  nbaCup?: NBACupState;
+  nbaCupHistory?: Record<number, NBACupState>;
   pendingClubDebuff?: { playerId: string; playerName: string; severity: 'heavy' | 'moderate' | 'mild'; clubName: string }[];
   headToHead?: HeadToHead;
   lazySimProgress?: LazySimProgress;
@@ -1269,7 +1354,7 @@ export interface UserAction {
 
 export type Conference = 'East' | 'West';
 export type GamePhase = 'Preseason' | 'Opening Week' | 'Regular Season (Early)' | 'Regular Season (Mid)' | 'All-Star Break' | 'Trade Deadline' | 'Regular Season (Late)' | 'Play-In Tournament' | 'Playoffs (Round 1)' | 'Playoffs (Round 2)' | 'Conference Finals' | 'NBA Finals' | 'Offseason' | 'Draft' | 'Draft Lottery' | 'Free Agency' | 'Schedule Planning' | 'Schedule Release' | 'Training Camp';
-export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'League History' | 'Player Bios' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History' | 'Team Office' | 'Hall of Fame';
+export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'NBA Cup' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'League History' | 'Player Bios' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History' | 'Team Office' | 'Hall of Fame';
 
 // ─── AI Trade / Free Agency ───────────────────────────────────────────────────
 export interface TradeProposal {

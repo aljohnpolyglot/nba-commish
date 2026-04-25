@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { cn } from '../../../../lib/utils';
 import { useGame } from '../../../../store/GameContext';
+import { PlayerBioView } from '../PlayerBioView';
+import { NBAPlayer } from '../../../../types';
 import { Home } from './pages/Home';
 import { TradingBlock } from './pages/TradingBlock';
 import { TeamNeeds } from './pages/TeamNeeds';
 import { TeamIntel } from './pages/TeamIntel';
-import { GeneralManager } from './pages/GeneralManager';
+import { TeamOfficeRosterView } from './pages/TeamOfficeRosterView';
 import { DraftPicks } from './pages/DraftPicks';
 import { CoachingPage } from './pages/CoachingPage';
 import { DraftScouting } from './pages/DraftScouting';
@@ -31,6 +33,7 @@ export function TeamOfficeView() {
   // GM mode: default to user's team but can still browse other teams
   const [currentTeamId, setCurrentTeamId] = useState<number | null>(isGM && state.userTeamId != null ? state.userTeamId : null);
   const [activeTab, setActiveTab] = useState<OfficeTab>(isGM && state.userTeamId != null ? 'gm' : 'home');
+  const [selectedPlayer, setSelectedPlayer] = useState<NBAPlayer | null>(null);
 
   const currentTeam = currentTeamId != null ? state.teams.find(t => t.id === currentTeamId) : null;
   const teamColor = currentTeam?.colors?.[0] || '#150d1a';
@@ -46,14 +49,17 @@ export function TeamOfficeView() {
   };
 
   const renderPage = () => {
+    if (selectedPlayer) {
+      return <PlayerBioView player={selectedPlayer} onBack={() => setSelectedPlayer(null)} />;
+    }
     if (!currentTeam) {
       return <Home onSelectTeam={handleSelectTeam} />;
     }
     switch (activeTab) {
-      case 'gm': return <GeneralManager teamId={currentTeam.id} />;
+      case 'gm': return <TeamOfficeRosterView teamId={currentTeam.id} />;
       case 'coaching': return <CoachingPage teamId={currentTeam.id} />;
       case 'depth': return <TeamOfficeDepthChartTab teamId={currentTeam.id} />;
-      case 'intel': return <TeamIntel teamId={currentTeam.id} />;
+      case 'intel': return <TeamIntel teamId={currentTeam.id} onPlayerClick={setSelectedPlayer} />;
       case 'needs': return <TeamNeeds teamId={currentTeam.id} />;
       case 'trading': return <TradingBlock teamId={currentTeam.id} />;
       case 'picks': return <DraftPicks teamId={currentTeam.id} />;

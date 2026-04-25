@@ -1,287 +1,316 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { NBAPlayer } from '../../../types';
-import { ChevronDown, ChevronLeft, ChevronRight, Search, Target } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import type { NBAPlayer } from '../../../types';
+import { ChevronLeft, ChevronRight, Search, Target } from 'lucide-react';
 import { convertTo2KRating } from '../../../utils/helpers';
-import { findTopComparisons } from '../../../utils/playerComparisons';
-import { getDisplayAge } from '../../../utils/playerRatings';
-import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
+import { getDisplayAge, estimatePotentialBbgm } from '../../../utils/playerRatings';
+import { PlayerPortrait } from '../../shared/PlayerPortrait';
+import { DraftScoutingModal } from '../../draft/DraftScoutingModal';
+import { PlayerBioView } from './PlayerBioView';
+import { buildMockDraft } from '../../../services/draftAdvisor';
+import { getCapThresholds } from '../../../utils/salaryUtils';
+import {
+  ensureDraftScouting,
+  getCachedDraftScouting,
+  matchProspectToGist,
+  type GistProspect,
+} from '../../../services/draftScoutingGist';
+import {
+  getClassPercentiles,
+  getClassAverages,
+  computeSkillScores,
+  SKILL_AXES,
+  type ClassPercentileMaps,
+  type SkillAxis,
+} from '../../../services/scoutingReport';
 
-const GIST_BASE = "https://gist.githubusercontent.com/aljohnpolyglot/bb8c80155c6c225cf1be9428892c6329/raw/";
+// ── Re-export for backward compat (initialization.ts used to import from here) ──
+// We extracted the gist logic; keep the symbol exported so any older callers
+// continue to resolve.
+export { prefetchDraftScouting } from '../../../services/draftScoutingGist';
 
-// Module-level cache of scouting gist data keyed by draft year. Lets us prefetch
-// the current class at game init and skip the loading spinner when the user
-// opens Draft Scouting. `null` means the fetch already failed for that year
-// (don't retry on every open).
-const gistCache = new Map<number, GistProspect[] | null>();
-
-async function fetchDraftClassScouting(year: number): Promise<GistProspect[] | null> {
-  try {
-    const res = await fetch(`${GIST_BASE}${year}classScouting`);
-    const text = await res.text();
-    const jsonStart = text.indexOf('[');
-    if (jsonStart === -1) throw new Error('Invalid Gist format');
-    return JSON.parse(text.substring(jsonStart));
-  } catch (e) {
-    console.error(`Failed to fetch scouting data for ${year}:`, e);
-    return null;
-  }
-}
-
-/** Prefetch and cache the scouting gist for a draft year. Safe to fire-and-forget
- *  from initialization — subsequent DraftScoutingView opens will see the cache. */
-export function prefetchDraftScouting(year: number): Promise<void> {
-  if (gistCache.has(year)) return Promise.resolve();
-  return fetchDraftClassScouting(year).then(data => {
-    gistCache.set(year, data);
-  });
-}
-
-interface GistProspect {
-  id: string;
-  rank: string;
-  name: string;
-  position?: string;
-  college?: string;
-  headshot?: string;
-  silo?: string;
-  height?: string;
-  age?: string;
-  stats?: {
-    pts?: number;
-    reb?: number;
-    ast?: number;
-    fg?: string;
-  };
-  externalRanks?: {
-    noCeilings?: string;
-    espn?: string;
-  };
-  comparisons?: string;
-  scoutingReport?: string;
-}
-
-interface EnhancedProspect extends NBAPlayer {
-  gistData?: GistProspect;
-  scoutRanks: {
-    espn: number;
-    noCeilings: number;
-    consensus: number;
-  };
-  scoutingReport?: string;
-  comparisons?: string;
+interface MockProspect extends NBAPlayer {
   displayOvr: number;
   displayPot: number;
   derivedAge: number;
+  consensusRank: number;
+  espnRank?: number;
+  noCeilingsRank?: number;
+  gistMatch?: GistProspect | null;
 }
 
-// Helper to normalize names for better matching
-const normalizeName = (name: string) => {
-  return name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // remove accents
-    .replace(/[^a-z0-9]/g, ""); // remove spaces, punctuation, suffixes
+const POS_FILTERS = ['All', 'Guard', 'Forward', 'Center'] as const;
+type PosFilter = typeof POS_FILTERS[number];
+
+const matchesPosFilter = (p: NBAPlayer, f: PosFilter): boolean => {
+  if (f === 'All') return true;
+  const pos = p.pos ?? '';
+  if (f === 'Guard') return pos.includes('G');
+  if (f === 'Forward') return pos.includes('F') && !pos.includes('FC');
+  if (f === 'Center') return pos.includes('C');
+  return true;
 };
 
 export const DraftScoutingView: React.FC = () => {
   const { state } = useGame();
-  const [gistData, setGistData] = useState<GistProspect[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [sortType, setSortType] = useState<'rank' | 'name'>('rank');
-  const [posFilter, setPosFilter] = useState('All');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
 
   const baseYear = state.leagueStats?.year ?? 2026;
-  // Default to current draft class (roll forward after draft completes)
   const defaultDraftYear = state.draftComplete ? baseYear + 1 : baseYear;
   const [selectedYear, setSelectedYear] = useState(defaultDraftYear);
+  const [posFilter, setPosFilter] = useState<PosFilter>('All');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [scoutingPlayer, setScoutingPlayer] = useState<MockProspect | null>(null);
+  const [viewingBioPlayer, setViewingBioPlayer] = useState<NBAPlayer | null>(null);
+  const [skillFilter, setSkillFilter] = useState<SkillAxis | null>(null);
+  const [gistData, setGistData] = useState<GistProspect[] | null>(getCachedDraftScouting(selectedYear) ?? null);
+  const [error, setError] = useState<string | null>(null);
+
   // Browse range:
-  //   minYear = lowest draft.year with a tid=-2 prospect still in state (or
-  //     baseYear if none — prevents the left chevron from pointing into empty
-  //     past classes that have already been drafted/removed).
-  //   maxYear = max of (highest tid=-2 draft.year in state, baseYear + 4).
-  //     Future classes only get seeded by ensureDraftClasses at rollover, so
-  //     on a fresh game start only the current class exists. We still want the
-  //     right chevron to let the user look ahead to years the scouting gist
-  //     covers — 4-year horizon matches draftClassFiller's HORIZON_YEARS.
+  //   minYear = lowest tid=-2 draft.year still in state (or current floor when class is drafted out)
+  //   maxYear = max(highest tid=-2 draft.year, floor + 4)
   const { minYear, maxYear } = useMemo(() => {
-    // Floor: if the current season's draft is already done, the earliest browsable year is
-    // next season — the current class's prospects are no longer tid=-2 in state.
-    // Ceiling: only let the user navigate to classes that are actually seeded in state
-    // (rookie classes get generated at game init / season rollover). Previously we extended
-    // the horizon 4 years past the floor regardless, which produced "class not generated yet"
-    // dead ends.
     const floor = state.draftComplete ? baseYear + 1 : baseYear;
-    let lo = floor;
-    let hi = floor;
-    let seen = false;
+    let lo = floor, hi = floor, seen = false;
     for (const p of state.players) {
       if (p.tid !== -2) continue;
       const dy = (p as any).draft?.year;
-      if (typeof dy !== 'number') continue;
-      if (dy < floor) continue; // skip already-drafted classes
+      if (typeof dy !== 'number' || dy < floor) continue;
       if (!seen) { lo = hi = dy; seen = true; }
       else { if (dy < lo) lo = dy; if (dy > hi) hi = dy; }
     }
     if (!seen) return { minYear: floor, maxYear: floor + 4 };
     return { minYear: lo, maxYear: Math.max(hi, floor + 4) };
   }, [state.players, baseYear, state.draftComplete]);
-  const draftYear = selectedYear;
 
+  const draftYear = selectedYear;
+  const currentLeagueYear = state.leagueStats?.year ?? new Date().getFullYear();
+
+  // Lazy gist fetch per draft year
   useEffect(() => {
     setError(null);
-    // Cache hit — set synchronously, no spinner
-    if (gistCache.has(draftYear)) {
-      const cached = gistCache.get(draftYear);
-      if (cached) setGistData(cached);
-      else {
-        setGistData([]);
-        setError(`Scout reports unavailable for the ${draftYear} class. Showing prospects from game data.`);
-      }
+    const cached = getCachedDraftScouting(draftYear);
+    if (cached !== undefined) {
+      setGistData(cached);
+      if (!cached) setError(`Scout reports unavailable for the ${draftYear} class. Showing prospects from game data.`);
       return;
     }
-    // Cache miss — kick off a fetch in the background, populate when it lands
-    setGistData([]);
+    setGistData(null);
     let cancelled = false;
-    fetchDraftClassScouting(draftYear).then(data => {
-      gistCache.set(draftYear, data);
+    ensureDraftScouting(draftYear).then(data => {
       if (cancelled) return;
-      if (data) setGistData(data);
-      else setError(`Scout reports unavailable for the ${draftYear} class. Showing prospects from game data.`);
+      setGistData(data);
+      if (!data) setError(`Scout reports unavailable for the ${draftYear} class. Showing prospects from game data.`);
     });
     return () => { cancelled = true; };
   }, [draftYear]);
 
-  // Future classes are only seeded at season rollover, so state may legitimately have
-  // zero tid=-2 prospects for a year the user can scroll to. Tracking this lets us
-  // show a "class not yet generated" message instead of the filter-miss empty state.
-  const hasRawProspects = useMemo(
-    () => state.players.some(p =>
+  // Raw prospects for the selected year — converted to display OVR/POT (K2 scale)
+  const prospects = useMemo<MockProspect[]>(() => {
+    const raw = state.players.filter(p =>
       (p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect') &&
-      (p as any).draft?.year === draftYear
-    ),
-    [state.players, draftYear]
-  );
-
-  const prospects = useMemo(() => {
-    // Only show prospects from the active draft class (tid === -2 + correct draft.year)
-    const draftProspects = state.players.filter(p =>
-      (p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect') &&
-      (p as any).draft?.year === draftYear
+      (p as any).draft?.year === draftYear,
     );
-    const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
-    const activePlayers = state.players.filter(p =>
-      p.tid >= 0 && p.tid < 100 &&
-      p.status !== 'Draft Prospect' &&
-      p.status !== 'Prospect' &&
-      ((p as any).draft?.year ?? 0) < currentYear
-    );
-
-    // Calculate displayOvr + displayPot (K2 scale) for each prospect
-    const prospectsWithOvr = draftProspects.map(p => {
-      const lastRating = p.ratings?.[p.ratings.length - 1];
-      const rawOvr = p.overallRating || (lastRating?.ovr || 0);
-      const hgt = lastRating?.hgt ?? 50;
-      const tp  = lastRating?.tp;
+    if (raw.length === 0) return [];
+    const enriched = raw.map(p => {
+      const last = p.ratings?.[p.ratings.length - 1];
+      const rawOvr = p.overallRating || (last?.ovr ?? 0);
+      const hgt = last?.hgt ?? 50;
+      const tp = last?.tp;
       const displayOvr = convertTo2KRating(rawOvr, hgt, tp);
-      // POT: same formula as PlayerBiosView / tradeValueEngine
-      const age = getDisplayAge(p, currentYear);
-      const potBbgm = age >= 29 ? rawOvr : Math.max(rawOvr, Math.round(72.314 + (-2.331 * age) + (0.833 * rawOvr)));
+      const age = getDisplayAge(p, currentLeagueYear);
+      const storedPot = last?.pot;
+      const rawPot = (storedPot != null && storedPot > 0)
+        ? storedPot
+        : (age >= 29 ? rawOvr : Math.max(rawOvr, estimatePotentialBbgm(rawOvr, age)));
+      const potBbgm = Math.max(rawOvr, rawPot);
       const displayPot = convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), hgt, tp);
-      return { ...p, displayOvr, displayPot, rawOvr, potBbgm, derivedAge: age };
-    });
+      return {
+        ...p,
+        displayOvr,
+        displayPot,
+        derivedAge: age,
+      } as MockProspect;
+    }).sort((a, b) => b.displayOvr - a.displayOvr);
 
-    // Sort by overall rating to determine initial consensus rank
-    const sortedByOverall = prospectsWithOvr.sort((a, b) => b.displayOvr - a.displayOvr);
-
-    // When gist is loaded, only show gist-matched players (scoped to this year's class).
-    // When gist failed (error), show all tid=-2 as fallback — gistMatch will be null for all.
-    const gistLoaded = gistData.length > 0;
-    const withGistMatch = sortedByOverall.map(player => {
-      if (!gistLoaded) return { player, gistMatch: null as GistProspect | null };
-      const normalizedPlayerName = normalizeName(player.name);
-      const gistMatch = gistData.find(g => {
-        const normalizedGistName = normalizeName(g.name);
-        return normalizedGistName === normalizedPlayerName ||
-               normalizedGistName.includes(normalizedPlayerName) ||
-               normalizedPlayerName.includes(normalizedGistName);
-      });
-      return { player, gistMatch: gistMatch ?? null };
-    });
-    // Filter to gist-matched when gist is available; otherwise show everything
-    const candidateProspects = gistLoaded
-      ? withGistMatch.filter(item => item.gistMatch !== null)
-      : withGistMatch;
-
-    const enhanced = candidateProspects.map(({ player, gistMatch }, index) => {
-      const consensusRank = index + 1;
-
-      const seed = player.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const random = (offset: number) => {
+    // Consensus rank = sort order. ESPN/NoCeilings come from gist when available;
+    // a stable seeded offset is used as the fallback for prospects not in the gist
+    // so the rank chips don't disappear off the deep board.
+    return enriched.map((p, i) => {
+      const gistMatch = matchProspectToGist(p, gistData);
+      const seed = p.name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+      const rand = (offset: number) => {
         const x = Math.sin(seed + offset) * 10000;
         return x - Math.floor(x);
       };
-
-      const espnRank = Math.max(1, Math.round(consensusRank + (random(1) * 10 - 5)));
-      const noCeilingsRank = Math.max(1, Math.round(consensusRank + (random(2) * 14 - 7)));
-
-      // REAL-TIME PRO COMPARISONS — prospect projected to POT ceiling vs NBA players at current ratings.
-      // BBGM's stored rating.pot is often ~= rating.ovr for freshly-generated prospects, which
-      // collapses projectPlayer's pot/ovr ratio to 1 and silently compares them at their current
-      // attributes. Override pot with the displayed potBbgm so the scaling matches the UI's POT.
-      const potBbgm = (player as any).potBbgm ?? player.ratings?.[player.ratings.length - 1]?.pot ?? 0;
-      const patchedRatings = player.ratings?.length
-        ? [
-            ...player.ratings.slice(0, -1),
-            { ...player.ratings[player.ratings.length - 1], pot: potBbgm },
-          ]
-        : player.ratings;
-      const projectedPlayer = { ...player, ratings: patchedRatings } as NBAPlayer;
-      const topMatches = findTopComparisons(projectedPlayer, activePlayers, false);
-      const comparisonNames = topMatches.slice(0, 3).map(m => m.comparison.name).join(', ');
-
+      const espnRank = gistMatch?.externalRanks?.espn
+        ? parseInt(gistMatch.externalRanks.espn, 10) || undefined
+        : Math.max(1, Math.round(i + 1 + (rand(1) * 10 - 5)));
+      const noCeilingsRank = gistMatch?.externalRanks?.noCeilings
+        ? parseInt(gistMatch.externalRanks.noCeilings, 10) || undefined
+        : Math.max(1, Math.round(i + 1 + (rand(2) * 14 - 7)));
       return {
-        ...player,
-        gistData: gistMatch ?? undefined,
-        scoutRanks: {
-          consensus: consensusRank,
-          espn: espnRank,
-          noCeilings: noCeilingsRank,
-        },
-        scoutingReport: gistMatch?.scoutingReport || "Highly touted prospect with significant upside. Scouts are impressed by his physical tools and basketball IQ. Expected to be a high-impact player at the next level.",
-        comparisons: comparisonNames || gistMatch?.comparisons || "TBD"
-      } as EnhancedProspect;
+        ...p,
+        consensusRank: i + 1,
+        espnRank,
+        noCeilingsRank,
+        gistMatch,
+      };
     });
+  }, [state.players, draftYear, currentLeagueYear, gistData]);
 
-    return enhanced;
-  }, [state.players, gistData]);
+  // Active NBA players — the comparison pool for findTopComparisons in the modal.
+  const activePlayers = useMemo(() =>
+    state.players.filter(p =>
+      p.tid >= 0 && p.tid < 100 &&
+      p.status !== 'Draft Prospect' &&
+      p.status !== 'Prospect' &&
+      ((p as any).draft?.year ?? 0) < currentLeagueYear,
+    ),
+  [state.players, currentLeagueYear]);
 
-  const filteredAndSorted = useMemo(() => {
-    let filtered = prospects;
-    
-    if (posFilter !== 'All') {
-      filtered = filtered.filter(p => {
-        if (posFilter === 'Guard') return p.pos?.includes('G');
-        if (posFilter === 'Forward') return p.pos?.includes('F');
-        if (posFilter === 'Center') return p.pos?.includes('C');
-        if (posFilter === 'PF') return p.pos?.includes('PF');
-        return true;
+  // Class percentile maps + averages — modal data, computed once per class.
+  const classAverages = useMemo(() => getClassAverages(prospects), [prospects]);
+  const percentilesByPos = useMemo(() => {
+    const m = new Map<string, ClassPercentileMaps>();
+    m.set('Guard', getClassPercentiles(prospects, 'Guard'));
+    m.set('Forward', getClassPercentiles(prospects, 'Forward'));
+    m.set('Center', getClassPercentiles(prospects, 'Center'));
+    m.set('Class', getClassPercentiles(prospects, 'Class'));
+    return m;
+  }, [prospects]);
+
+  // Build the projected draft order (mirrors DraftSimulatorView's logic).
+  const draftOrder = useMemo(() => {
+    if (draftYear !== currentLeagueYear) {
+      // Future class — fall back to current standings as a generic order
+      return [...state.teams]
+        .filter(t => t.id >= 0 && t.id < 100)
+        .sort((a, b) => {
+          const wa = a.wins / Math.max(1, a.wins + a.losses);
+          const wb = b.wins / Math.max(1, b.wins + b.losses);
+          return wa - wb;
+        })
+        .flatMap(t => [t, t]); // R1 + R2 same order
+    }
+    const lotteryResults: any[] = state.draftLotteryResult ?? [];
+    const lotteryTids = new Set(lotteryResults.map((r: any) => r.team?.tid ?? r.tid));
+    const draftPicks: any[] = (state as any).draftPicks ?? [];
+    const allSorted = [...state.teams]
+      .filter(t => t.id >= 0 && t.id < 100)
+      .sort((a, b) => {
+        const wa = a.wins / Math.max(1, a.wins + a.losses);
+        const wb = b.wins / Math.max(1, b.wins + b.losses);
+        return wa - wb;
       });
+    let r1Source: any[];
+    if (lotteryResults.length >= 14) {
+      const lotteryPicks = [...lotteryResults]
+        .sort((a, b) => a.pickNumber - b.pickNumber)
+        .map((r: any) => state.teams.find(t => t.id === (r.team?.tid ?? r.tid)))
+        .filter(Boolean);
+      const playoffTeams = allSorted.filter(t => !lotteryTids.has(t.id)).reverse();
+      r1Source = [...lotteryPicks, ...playoffTeams];
+    } else {
+      r1Source = allSorted;
     }
+    const resolveOwner = (round: number, originalTeam: any) => {
+      const pick = draftPicks.find(p => p.season === draftYear && p.round === round && p.originalTid === originalTeam.id);
+      const meta = {
+        _originalTid: originalTeam.id,
+        _originalAbbrev: originalTeam.abbrev,
+        _originalName: originalTeam.name,
+      };
+      if (!pick || pick.tid === originalTeam.id) return { ...originalTeam, ...meta, _traded: false };
+      const newOwner = state.teams.find(t => t.id === pick.tid);
+      if (!newOwner) return { ...originalTeam, ...meta, _traded: false };
+      return { ...newOwner, ...meta, _traded: true };
+    };
+    const r1 = r1Source.map(t => resolveOwner(1, t));
+    const r2 = r1Source.map(t => ({ ...resolveOwner(2, t), _r2: true }));
+    return [...r1, ...r2];
+  }, [state.teams, state.draftLotteryResult, (state as any).draftPicks, draftYear, currentLeagueYear]);
 
-    if (searchTerm) {
-      const lowerSearch = searchTerm.toLowerCase();
-      filtered = filtered.filter(p => p.name.toLowerCase().includes(lowerSearch));
-    }
+  // Stable hashes prevent the mock-draft useMemo from rebuilding when unrelated
+  // player state shifts (e.g. an extension on a non-prospect updates state.players).
+  const prospectsHash = useMemo(
+    () => prospects.map(p => `${p.internalId}:${p.displayOvr}:${p.displayPot}`).join('|'),
+    [prospects],
+  );
+  const teamsHash = useMemo(
+    () => state.teams.map(t => `${t.id}:${t.wins}:${t.losses}`).join('|'),
+    [state.teams],
+  );
+  const draftOrderHash = useMemo(
+    () => draftOrder.map((t: any) => `${t?.id}:${t?._traded ? 'T' : 'O'}`).join('|'),
+    [draftOrder],
+  );
 
-    return [...filtered].sort((a, b) => {
-      if (sortType === 'name') return a.name.localeCompare(b.name);
-      return a.scoutRanks.consensus - b.scoutRanks.consensus;
+  const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
+
+  // The mock-draft simulation. Cached on viewYear + stable input hashes.
+  const mockDraft = useMemo(() => {
+    if (prospects.length === 0 || draftOrder.length === 0) return [];
+    return buildMockDraft({
+      prospects,
+      draftOrder,
+      allTeams: state.teams,
+      allPlayers: state.players,
+      leagueStats: state.leagueStats,
+      thresholds,
+      gameMode: state.gameMode,
+      userTeamId: state.userTeamId ?? null,
+      currentYear: currentLeagueYear,
     });
-  }, [prospects, posFilter, sortType, searchTerm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftYear, prospectsHash, teamsHash, draftOrderHash]);
+
+  // Top-33% set for the active skill filter — recomputed only when the skill
+  // changes or the prospect pool refreshes (year change).
+  const skillTopSet = useMemo(() => {
+    if (!skillFilter) return null;
+    const scored = prospects.map(p => ({
+      id: p.internalId,
+      score: computeSkillScores(p)[skillFilter],
+    }));
+    scored.sort((a, b) => b.score - a.score);
+    const cut = Math.max(1, Math.ceil(scored.length / 3));
+    return new Set(scored.slice(0, cut).map(s => s.id));
+  }, [skillFilter, prospects]);
+
+  // Highlight predicate — search + pos + skill filters intersect. When none
+  // are active, every slot is "matched" so dimming never kicks in.
+  const isFilterActive = !!searchTerm || posFilter !== 'All' || !!skillFilter;
+  const matchesHighlight = (p: NBAPlayer | null): boolean => {
+    if (!p) return false;
+    if (!isFilterActive) return true;
+    if (posFilter !== 'All' && !matchesPosFilter(p, posFilter)) return false;
+    if (searchTerm && !p.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    if (skillTopSet && !skillTopSet.has(p.internalId)) return false;
+    return true;
+  };
+
+  const hasRawProspects = prospects.length > 0;
+
+  // Undrafted prospects — those in the class but not in the mock draft
+  const draftedIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const slot of mockDraft) {
+      if (slot.prospect?.internalId) {
+        ids.add(slot.prospect.internalId);
+      }
+    }
+    return ids;
+  }, [mockDraft]);
+
+  const undraftedProspects = useMemo(() =>
+    prospects.filter(p => !draftedIds.has(p.internalId)),
+    [prospects, draftedIds],
+  );
+
+  // Comp-card click in the scouting modal jumps to that player's bio view.
+  if (viewingBioPlayer) {
+    return <PlayerBioView player={viewingBioPlayer} onBack={() => setViewingBioPlayer(null)} />;
+  }
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-200 overflow-hidden">
@@ -293,24 +322,21 @@ export const DraftScoutingView: React.FC = () => {
               <Target className="w-6 h-6 text-indigo-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-white uppercase tracking-tight">Draft Scouting</h1>
-              <p className="text-sm text-slate-400">Big Board & Prospect Analysis</p>
+              <h1 className="text-2xl font-black text-white uppercase tracking-tight">Mock Draft</h1>
+              <p className="text-sm text-slate-400">Projected pick by pick — click any slot for a full scouting report</p>
             </div>
           </div>
-          {/* Year chevron picker */}
           <div className="flex items-center gap-1 bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2">
             <button
-              onClick={() => { setSelectedYear(y => Math.max(minYear, y - 1)); setExpandedId(null); }}
+              onClick={() => setSelectedYear(y => Math.max(minYear, y - 1))}
               disabled={selectedYear <= minYear}
               className="p-0.5 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
             >
               <ChevronLeft size={16} />
             </button>
-            <span className="text-sm font-black text-white px-2 min-w-[52px] text-center">
-              {draftYear}
-            </span>
+            <span className="text-sm font-black text-white px-2 min-w-[52px] text-center">{draftYear}</span>
             <button
-              onClick={() => { setSelectedYear(y => Math.min(maxYear, y + 1)); setExpandedId(null); }}
+              onClick={() => setSelectedYear(y => Math.min(maxYear, y + 1))}
               disabled={selectedYear >= maxYear}
               className="p-0.5 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
             >
@@ -319,247 +345,246 @@ export const DraftScoutingView: React.FC = () => {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input
               type="text"
-              placeholder="Search prospects..."
+              placeholder="Highlight prospects by name…"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors text-sm"
             />
           </div>
-          <div className="flex gap-2">
-            <select
-              value={posFilter}
-              onChange={(e) => setPosFilter(e.target.value)}
-              className="bg-slate-900 border border-slate-800 text-white px-4 py-2 rounded-lg focus:outline-none focus:border-indigo-500 transition-colors text-sm"
-            >
-              <option value="All">All Positions</option>
-              <option value="Guard">Guards</option>
-              <option value="Forward">Forwards</option>
-              <option value="Center">Centers</option>
-            </select>
-            <select
-              value={sortType}
-              onChange={(e) => setSortType(e.target.value as 'rank' | 'name')}
-              className="bg-slate-900 border border-slate-800 text-white px-4 py-2 rounded-lg focus:outline-none focus:border-indigo-500 transition-colors text-sm"
-            >
-              <option value="rank">Sort by Rank</option>
-              <option value="name">Sort by Name</option>
-            </select>
+          <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+            {POS_FILTERS.map(f => (
+              <button
+                key={f}
+                onClick={() => setPosFilter(f)}
+                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${
+                  posFilter === f ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
           </div>
         </div>
-      </div>
 
-      {/* Main List */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 custom-scrollbar">
-        {filteredAndSorted.map((p) => (
-          <div 
-            key={p.internalId}
-            className={`bg-slate-900 rounded-xl border transition-all cursor-pointer overflow-hidden ${expandedId === p.internalId ? 'border-indigo-500/50 shadow-lg shadow-indigo-500/10' : 'border-slate-800 hover:border-slate-700'}`}
-            onClick={() => setExpandedId(expandedId === p.internalId ? null : p.internalId)}
-          >
-            <div className="flex items-center p-4 gap-4">
-              <div className="w-12 flex-shrink-0 flex flex-col items-center justify-center">
-                <span className={`text-2xl font-black ${p.scoutRanks.consensus <= 3 ? 'text-yellow-400' : 'text-slate-300'}`}>
-                  #{p.scoutRanks.consensus}
-                </span>
-              </div>
-              
-              {(() => {
-                // Synthesised prospects carry a facesjs `face` descriptor — render
-                // that via MyFace instead of falling back to a dicebear avataaar,
-                // which visually clashes with BBGM's cartoon style everywhere else
-                // in the app. Real-photo prospects (gist silos / NBA imgURL) still
-                // use the <img> path.
-                const realImg = p.imgURL || p.gistData?.headshot;
-                const face = (p as any).face;
-                if (realImg) {
-                  return (
-                    <img
-                      src={realImg}
-                      alt={p.name}
-                      className="w-12 h-12 rounded-full border-2 border-slate-800 bg-slate-950 object-cover object-top flex-shrink-0"
-                      referrerPolicy="no-referrer"
-                    />
-                  );
-                }
-                if (isRealFaceConfig(face)) {
-                  return (
-                    <div className="w-12 h-12 rounded-full border-2 border-slate-800 bg-slate-950 overflow-hidden flex-shrink-0 relative">
-                      <div className="absolute left-1/2 top-1/2" style={{ width: 12 * 0.85 * 4, height: 12 * 1.275 * 4, transform: 'translate(-50%, -50%)' }}>
-                        <MyFace face={face} style={{ width: '100%', height: '100%' }} />
-                      </div>
-                    </div>
-                  );
-                }
-                const initials = p.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
-                return (
-                  <div className="w-12 h-12 rounded-full border-2 border-slate-800 bg-slate-800 flex items-center justify-center text-sm font-black text-slate-300 flex-shrink-0">
-                    {initials}
-                  </div>
-                );
-              })()}
+        {/* Skill highlight chips — top 33% in the chosen skill glow, rest dim */}
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 mr-1">Highlight skill</span>
+          {SKILL_AXES.map(skill => (
+            <button
+              key={skill}
+              onClick={() => setSkillFilter(s => (s === skill ? null : skill))}
+              className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-md border transition-all ${
+                skillFilter === skill
+                  ? 'bg-amber-500/20 border-amber-500/60 text-amber-300'
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+              }`}
+            >
+              {skill}
+            </button>
+          ))}
+          {skillFilter && (
+            <button
+              onClick={() => setSkillFilter(null)}
+              className="px-2 py-1 text-[10px] font-bold text-slate-500 hover:text-white transition-colors"
+            >
+              clear
+            </button>
+          )}
+        </div>
 
-              <div className="flex-1 min-w-0">
-                <div className="text-lg font-bold text-white truncate">{p.name}</div>
-                <div className="text-sm text-slate-400 truncate">
-                  <span className="text-slate-300 font-semibold">{p.pos}</span>
-                  <span className="mx-1.5 text-slate-600">·</span>
-                  <span>{p.gistData?.college || (p as any).college || 'International'}</span>
-                  {typeof p.derivedAge === 'number' && (
-                    <>
-                      <span className="mx-1.5 text-slate-600">|</span>
-                      <span>{p.derivedAge} y.o</span>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Stats — real when gist available, N/A otherwise (NCAA/external sims coming) */}
-              <div className="hidden sm:flex gap-6 flex-shrink-0 mr-4">
-                <div className="text-center">
-                  <b className="block text-lg font-bold text-white">{p.gistData?.stats?.pts ?? '—'}</b>
-                  <small className="text-[10px] text-slate-500 font-semibold tracking-wider uppercase">PTS</small>
-                </div>
-                <div className="text-center">
-                  <b className="block text-lg font-bold text-white">{p.gistData?.stats?.reb ?? '—'}</b>
-                  <small className="text-[10px] text-slate-500 font-semibold tracking-wider uppercase">REB</small>
-                </div>
-                <div className="text-center">
-                  <b className="block text-lg font-bold text-white">{p.gistData?.stats?.ast ?? '—'}</b>
-                  <small className="text-[10px] text-slate-500 font-semibold tracking-wider uppercase">AST</small>
-                </div>
-              </div>
-
-              {/* OVR / POT badges */}
-              <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                <div className="flex items-center gap-1">
-                  <span className="text-[9px] font-bold text-slate-500 uppercase">OVR</span>
-                  <span className={`text-sm font-black ${(p as any).displayOvr >= 85 ? 'text-emerald-400' : (p as any).displayOvr >= 75 ? 'text-slate-200' : 'text-slate-400'}`}>{(p as any).displayOvr}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-[9px] font-bold text-slate-500 uppercase">POT</span>
-                  <span className={`text-sm font-black ${(p as any).displayPot >= 90 ? 'text-yellow-400' : (p as any).displayPot >= 85 ? 'text-emerald-400' : (p as any).displayPot >= 78 ? 'text-indigo-400' : 'text-slate-400'}`}>{(p as any).displayPot}</span>
-                </div>
-              </div>
-
-              <ChevronDown className={`w-5 h-5 flex-shrink-0 text-slate-500 transition-transform duration-200 ${expandedId === p.internalId ? 'rotate-180 text-indigo-400' : ''}`} />
-            </div>
-
-            <AnimatePresence>
-              {expandedId === p.internalId && (
-                <motion.div 
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="border-t border-slate-800 bg-slate-950/50"
-                >
-                  <div className="p-6 grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
-                    {/* Left Column: Image & Physicals */}
-                    <div className="space-y-4">
-                      <div className="h-48 bg-slate-900 rounded-lg flex items-end justify-center overflow-hidden relative border border-slate-800">
-                        {(() => {
-                          const realImg = p.gistData?.silo || p.imgURL;
-                          const face = (p as any).face;
-                          if (realImg) {
-                            return (
-                              <img
-                                src={realImg}
-                                className="h-full w-full object-contain object-bottom"
-                                alt={p.name}
-                                referrerPolicy="no-referrer"
-                              />
-                            );
-                          }
-                          if (isRealFaceConfig(face)) {
-                            return (
-                              <div className="h-full w-full flex items-center justify-center">
-                                <div style={{ width: '80%', height: '100%' }}>
-                                  <MyFace face={face} style={{ width: '100%', height: '100%' }} />
-                                </div>
-                              </div>
-                            );
-                          }
-                          const initials = p.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
-                          return (
-                            <div className="h-full w-full flex items-center justify-center text-5xl font-black text-slate-600">
-                              {initials}
-                            </div>
-                          );
-                        })()}
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 text-center">
-                          <small className="block text-[10px] text-slate-500 uppercase tracking-wider mb-1">Height</small>
-                          <b className="text-white font-medium">{p.gistData?.height || `${Math.floor((p.hgt || 72) / 12)}'${(p.hgt || 72) % 12}"`}</b>
-                        </div>
-                        <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 text-center">
-                          <small className="block text-[10px] text-slate-500 uppercase tracking-wider mb-1">Age</small>
-                          <b className="text-white font-medium">{p.derivedAge}</b>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right Column: Stats & Scouting */}
-                    <div className="space-y-6">
-                      {/* Big Board Ranks */}
-                      <div>
-                        <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Big Board Rankings</h4>
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg text-center">
-                            <span className="block text-[10px] text-slate-500 uppercase tracking-wider mb-1">Consensus</span>
-                            <b className="text-xl text-white font-bold">#{p.scoutRanks.consensus}</b>
-                          </div>
-                          <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg text-center">
-                            <span className="block text-[10px] text-slate-500 uppercase tracking-wider mb-1">ESPN</span>
-                            <b className="text-xl text-white font-bold">#{p.scoutRanks.espn}</b>
-                          </div>
-                          <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg text-center">
-                            <span className="block text-[10px] text-slate-500 uppercase tracking-wider mb-1">No Ceilings</span>
-                            <b className="text-xl text-white font-bold">#{p.scoutRanks.noCeilings}</b>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Scouting Report */}
-                      <div>
-                        <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Scouting Report</h4>
-                        <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
-                          <div className="text-sm font-medium text-indigo-400 mb-3 pb-3 border-b border-slate-800">
-                            Pro Comparisons: <span className="text-white">{p.comparisons}</span>
-                          </div>
-                          <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
-                            {p.scoutingReport}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        ))}
-        {filteredAndSorted.length === 0 && (
-          hasRawProspects ? (
-            <div className="text-center p-12 text-slate-400">
-              No prospects found matching your filters.
-            </div>
-          ) : (
-            <div className="text-center p-12 text-slate-400 space-y-2">
-              <p className="text-base font-bold text-white">The {draftYear} draft class hasn't been generated yet.</p>
-              <p className="text-sm">Rookie classes are seeded at the start of each season — check back after the league rolls over into {draftYear}.</p>
-            </div>
-          )
+        {error && (
+          <p className="text-[11px] font-medium text-amber-500/80 mt-3">{error}</p>
         )}
       </div>
+
+      {/* Mock draft body */}
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
+        {!hasRawProspects ? (
+          <div className="text-center p-12 text-slate-400 space-y-2">
+            <p className="text-base font-bold text-white">The {draftYear} draft class hasn't been generated yet.</p>
+            <p className="text-sm">Rookie classes are seeded at the start of each season — check back after the league rolls over into {draftYear}.</p>
+          </div>
+        ) : mockDraft.length === 0 && undraftedProspects.length === 0 ? (
+          <div className="text-center p-12 text-slate-400">
+            <p className="text-sm">Draft order isn't available for the {draftYear} class yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {/* Drafted prospects */}
+            {mockDraft.length > 0 && (
+              <div>
+                <h2 className="text-sm font-black text-slate-300 uppercase tracking-widest mb-3 px-1">Projected Picks</h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {mockDraft.map(slot => {
+                    const p = slot.prospect as MockProspect | null;
+                    const team = slot.team;
+                    const matched = matchesHighlight(p);
+                    const dim = isFilterActive && !matched;
+                    return (
+                      <button
+                        key={slot.pick}
+                        onClick={() => p && setScoutingPlayer(p)}
+                        disabled={!p}
+                        className={`group bg-[#1A1A1A] border border-[#333] rounded-sm flex h-20 overflow-hidden transition-all text-left ${
+                          p ? 'cursor-pointer hover:border-indigo-600' : 'cursor-default'
+                        } ${dim ? 'opacity-25' : 'opacity-100'} ${matched && isFilterActive && p ? 'border-amber-500/70 shadow-[0_0_14px_rgba(245,158,11,0.25)]' : ''}`}
+                      >
+                        {/* Pick # */}
+                        <div className="w-11 flex items-center justify-center shrink-0 bg-indigo-900/60">
+                          <span className="text-xl font-black text-white">{String(slot.pick).padStart(2, '0')}</span>
+                        </div>
+
+                        {/* Photo */}
+                        <div className="w-20 bg-[#111] relative shrink-0 flex items-center justify-center">
+                          {p ? (
+                            <PlayerPortrait
+                              imgUrl={p.imgURL || p.gistMatch?.headshot}
+                              face={(p as any).face}
+                              playerName={p.name}
+                              size={56}
+                            />
+                          ) : (
+                            <span className="text-white/15 text-2xl font-black">—</span>
+                          )}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 p-3 flex flex-col justify-center min-w-0">
+                          {p ? (
+                            <>
+                              <p className="font-black text-white text-base truncate uppercase tracking-tight">{p.name}</p>
+                              <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex flex-wrap items-center gap-1">
+                                <span>{p.pos}</span>
+                                <span className="text-white/20">·</span>
+                                <span>{p.derivedAge}y</span>
+                                <span className="text-white/20">·</span>
+                                <span className="text-indigo-300">OVR {p.displayOvr}</span>
+                                <span className="text-white/20">·</span>
+                                <span className="text-emerald-400/70">POT {p.displayPot}</span>
+                                {((p as any).college || p.gistMatch?.college) && (
+                                  <>
+                                    <span className="text-white/20">·</span>
+                                    <span className="truncate">{(p as any).college || p.gistMatch?.college}</span>
+                                  </>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <p className="font-black text-white/40 text-sm uppercase tracking-tight">Best Player Available</p>
+                          )}
+                        </div>
+
+                        {/* Team logo + abbrev */}
+                        <div className="w-20 flex items-center justify-center shrink-0 border-l border-[#333] bg-black/20 group-hover:bg-black/40 transition-colors flex-col py-1">
+                          {team?.logoUrl ? (
+                            <img src={team.logoUrl} alt="" className="w-9 h-9 object-contain" referrerPolicy="no-referrer" />
+                          ) : (
+                            <span className="text-[10px] font-black text-white/30">{team?.abbrev}</span>
+                          )}
+                          <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">
+                            {team?.abbrev}
+                            {(team as any)?._traded && '*'}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Undrafted prospects */}
+            {undraftedProspects.length > 0 && (
+              <div>
+                <h2 className="text-sm font-black text-slate-300 uppercase tracking-widest mb-3 px-1">Undrafted</h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {undraftedProspects.map(p => {
+                    const matched = matchesHighlight(p);
+                    const dim = isFilterActive && !matched;
+                    return (
+                      <button
+                        key={p.internalId}
+                        onClick={() => setScoutingPlayer(p)}
+                        className={`group bg-[#1A1A1A] border border-[#333] rounded-sm flex h-20 overflow-hidden transition-all text-left cursor-pointer hover:border-slate-500 ${
+                          dim ? 'opacity-25' : 'opacity-100'
+                        } ${matched && isFilterActive ? 'border-amber-500/70 shadow-[0_0_14px_rgba(245,158,11,0.25)]' : ''}`}
+                      >
+                        {/* Rank placeholder */}
+                        <div className="w-11 flex items-center justify-center shrink-0 bg-slate-800/40">
+                          <span className="text-xs font-bold text-slate-400">—</span>
+                        </div>
+
+                        {/* Photo */}
+                        <div className="w-20 bg-[#111] relative shrink-0 flex items-center justify-center">
+                          <PlayerPortrait
+                            imgUrl={p.imgURL || p.gistMatch?.headshot}
+                            face={(p as any).face}
+                            playerName={p.name}
+                            size={56}
+                          />
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 p-3 flex flex-col justify-center min-w-0">
+                          <p className="font-black text-white text-base truncate uppercase tracking-tight">{p.name}</p>
+                          <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex flex-wrap items-center gap-1">
+                            <span>{p.pos}</span>
+                            <span className="text-white/20">·</span>
+                            <span>{p.derivedAge}y</span>
+                            <span className="text-white/20">·</span>
+                            <span className="text-indigo-300">OVR {p.displayOvr}</span>
+                            <span className="text-white/20">·</span>
+                            <span className="text-emerald-400/70">POT {p.displayPot}</span>
+                            {((p as any).college || p.gistMatch?.college) && (
+                              <>
+                                <span className="text-white/20">·</span>
+                                <span className="truncate">{(p as any).college || p.gistMatch?.college}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* FA label */}
+                        <div className="w-20 flex items-center justify-center shrink-0 border-l border-[#333] bg-black/20 group-hover:bg-black/40 transition-colors flex-col py-1">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">FA</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Shared scouting modal */}
+      <DraftScoutingModal
+        player={scoutingPlayer}
+        onClose={() => setScoutingPlayer(null)}
+        classProspects={prospects}
+        activePlayers={activePlayers}
+        percentilesByPos={percentilesByPos}
+        classAverages={classAverages}
+        draftYear={draftYear}
+        gistData={scoutingPlayer?.gistMatch ?? null}
+        ranks={scoutingPlayer ? {
+          consensus: scoutingPlayer.consensusRank,
+          espn: scoutingPlayer.espnRank,
+          noCeilings: scoutingPlayer.noCeilingsRank,
+        } : undefined}
+        teamLogoUrl={(() => {
+          if (!scoutingPlayer) return undefined;
+          const slot = mockDraft.find(s => s.prospect?.internalId === scoutingPlayer.internalId);
+          return (slot?.team as any)?.logoUrl;
+        })()}
+        onViewPlayerBio={(p) => setViewingBioPlayer(p)}
+      />
     </div>
   );
 };

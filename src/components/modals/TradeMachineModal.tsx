@@ -8,6 +8,7 @@ import { TeamDropdown } from '../shared/TeamDropdown';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
 import { calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV, getPotColor, computeLeaguePerAvg, type TeamMode } from '../../services/trade/tradeValueEngine';
 import { getCapThresholds, getTeamCapProfile, getTeamPayrollUSD, getTradeOutlook, effectiveRecord, topNAvgK2, resolveManualOutlook, type TradeOutlook } from '../../utils/salaryUtils';
+import { isSalaryLegalWithTPE, getTotalActiveTPE } from '../../utils/tradeExceptionUtils';
 import { evaluateTradeAcceptance, teamPowerRanks, roleToMode } from '../../services/trade/tradeFinderEngine';
 import { SettingsManager } from '../../services/SettingsManager';
 import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks } from '../../services/draft/DraftPickGenerator';
@@ -333,14 +334,19 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
       }
       return null;
     }
-    // Both sides have players — apply standard 125% salary matching rule
-    // Contracts stored in thousands of dollars; $100K buffer = 100 units
-    const maxA = teamASalary * 1.25 + 100;
-    const maxB = teamBSalary * 1.25 + 100;
-    if (teamBSalary > maxA) return { message: `${teamA?.abbrev || 'Team A'} receiving too much salary.`, team: 'A' as const };
-    if (teamASalary > maxB) return { message: `${teamB?.abbrev || 'Team B'} receiving too much salary.`, team: 'B' as const };
+    // Both sides have players — apply standard 125% salary matching rule, with
+    // TPE-absorption fallback when over-cap teams have a Trade Exception large
+    // enough to swallow the surplus from the other side.
+    const tpeEnabled = state.leagueStats?.tradeExceptionsEnabled !== false;
+    const tpeAUSD = teamA && tpeEnabled ? getTotalActiveTPE(teamA, state.date) : 0;
+    const tpeBUSD = teamB && tpeEnabled ? getTotalActiveTPE(teamB, state.date) : 0;
+    const check = isSalaryLegalWithTPE(teamASalary, teamBSalary, tpeAUSD, tpeBUSD, tpeEnabled);
+    if (!check.ok) {
+      const overReceiver = teamBSalary > teamASalary ? 'A' : 'B';
+      return { message: `${(overReceiver === 'A' ? teamA : teamB)?.abbrev || `Team ${overReceiver}`} receiving too much salary.`, team: overReceiver as 'A' | 'B' };
+    }
     return null;
-  }, [teamASalary, teamBSalary, teamA, teamB, teamAPlayers, teamBPlayers, capSpaceAK, capSpaceBK]);
+  }, [teamASalary, teamBSalary, teamA, teamB, teamAPlayers, teamBPlayers, capSpaceAK, capSpaceBK, state.leagueStats, state.date]);
 
   const handleConfirm = () => {
     if (teamAId !== null && teamBId !== null) setShowSummaryModal(true);

@@ -20,6 +20,7 @@ import {
   getTeamPayrollUSD, getTeamCapProfile, topNAvgK2, resolveManualOutlook,
   type TradeOutlook,
 } from '../../utils/salaryUtils';
+import { tradeRoleToTeamMode } from '../../utils/teamStrategy';
 import { OfferCard, type FoundOffer, type TradeItem } from '../central/view/TradeFinderView';
 import { buildClassStrengthMap, buildLotterySlotMap } from '../../services/draft/draftClassStrength';
 import { getMaxTradableSeason } from '../../services/draft/DraftPickGenerator';
@@ -44,9 +45,7 @@ interface TradeSummaryModalProps {
 }
 
 function roleToMode(role: string): TeamMode {
-  if (role === 'heavy_buyer' || role === 'buyer') return 'contend';
-  if (role === 'rebuilding') return 'presti';
-  return 'rebuild';
+  return tradeRoleToTeamMode(role);
 }
 
 function buildItems(

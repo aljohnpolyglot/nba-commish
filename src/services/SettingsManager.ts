@@ -16,8 +16,13 @@ export interface GameSettings {
   /** GM-mode trade difficulty 0-100. 50 = default (AI fleeces by ~10 TV).
    *  0 = AI gives user +60 TV favor; 100 = AI demands +60 TV over their return. */
   tradeDifficulty: number; // default 50
+  /** GM-mode signing difficulty 0-100. 50 = default (offer strength ×1.0).
+   *  0 = easy (×1.5); 100 = brutal (×0.5). Applied to computeOfferStrength return. */
+  signingDifficulty: number; // default 50
   /** Career Win Shares required for Hall of Fame induction. Commissioner-only. Default 50 (real NBA benchmark is ~100). */
   hofWSThreshold: number; // default 50
+  /** Show the Executive Outcome panel after each simulated day. Only relevant when LLM is on. */
+  showExecutiveOutcome: boolean; // default true
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -32,7 +37,9 @@ const DEFAULT_SETTINGS: GameSettings = {
   enableImageCache: true,
   advanceDayOnTransaction: false,
   tradeDifficulty: 50,
+  signingDifficulty: 50,
   hofWSThreshold: 50,
+  showExecutiveOutcome: true,
 };
 
 export class SettingsManager {

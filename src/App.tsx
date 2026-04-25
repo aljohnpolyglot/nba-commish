@@ -8,6 +8,7 @@ import { MainContent } from './components/layout/MainContent';
 import { MainMenu } from './components/MainMenu';
 import { ClubEffect } from './components/effects/ClubEffect';
 import { ToastNotifier } from './components/shared/ToastNotifier';
+import { PlayButton } from './components/shared/PlayButton';
 import { LazySimLoadingScreen } from './components/setup/LazySimLoadingScreen';
 import { Menu } from 'lucide-react';
 import { SaveManager } from './services/SaveManager';
@@ -142,16 +143,20 @@ function GameLayout() {
       />
       
       <main className="flex-1 flex flex-col relative overflow-hidden">
-        {/* Mobile Header */}
-        <div className="md:hidden p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between shrink-0">
-          <button 
-            onClick={() => setIsSidebarOpen(true)} 
-            className="p-2 -ml-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+        {/* Mobile Header: hamburger + Play button */}
+        <div className="md:hidden px-3 py-2 bg-slate-900 border-b border-slate-800 flex items-center gap-3 shrink-0">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 -ml-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors shrink-0"
           >
-            <Menu size={24} />
+            <Menu size={20} />
           </button>
-          <span className="text-white font-bold text-lg tracking-tight">BasketCommissionerSim</span>
-          <div className="w-8" /> {/* Spacer for visual balance */}
+          <PlayButton setCurrentView={setCurrentView} />
+        </div>
+
+        {/* Desktop Play bar */}
+        <div className="hidden md:flex px-4 py-2 bg-slate-900/50 border-b border-slate-800/60 items-center shrink-0">
+          <PlayButton setCurrentView={setCurrentView} />
         </div>
 
         <div className="flex-1 min-h-0">

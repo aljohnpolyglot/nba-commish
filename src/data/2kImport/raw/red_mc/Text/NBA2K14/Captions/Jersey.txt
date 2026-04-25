@@ -1,0 +1,51 @@
+Graphics:3;Name:2;Parameters:12;Colors:6;CAT Colors:14
+Texture;Texture;This field stands for jersey texture file name
+Logo;Logo;This field stands for jersey logo file name
+#
+GID;Graphics ID;Jersey’s Graphics ID. All jerseys with the same GID form one jersey set, which is used by teams with the same GID value
+Name;Name;Jersey Name. Other values from *language*.IFF are also possible.
+CATTmplNm;CAT Template Name;Name, used for CAT jerseys' templates on Create-A-Team screen. Other values from *language*.IFF are also possible.
+ID2;ID2;The other ID. Should be unique for each item.
+#
+JType_c;Jersey Type (constant);Defines jersey slot constant type
+JType;Jersey Type (active);Current jersey type. It differs from the constant type for CAT jerseys
+JType2;Jersey Type 2;Jersey Type 2
+#
+CAT_Usage;CAT Usage;Determines, if the jersey is a CAT one, CAT template or not.
+#
+ShortsStl;Shorts Style;Defines, which style (length) of shorts is worn along with the jersey
+JModel;Jersey Model;Defines, whether the jersey is tight or baggy, and what collar type it has. NOTE: you can use TIGHT jerseys ONLY with THE SHORTEST shorts (ShortsStl = 2), as the game will crash otherwise
+#
+IsAway;Is Away;Defines, whether the jersey is Home or Away
+#
+ShrtsNumV;Number On Shorts;Enables or disables numbers, shown on shorts
+#
+SocksCol;Socks Color;Defines color of the socks
+#
+UseCusClrs;Use Custom Colors;Swaps the set of colors, used by the jersey
+CusClrs4Nm;Use Cus. Colors 4 Numbers;If enabled, then jersey numbers color is controlled by the alternative (CAT) color set
+TColor0;Team Color 0;Primary Color for shoes
+TColor1;Team Color 1;Team Color 1, used for gear (accessories) and shoes
+TColor2;Team Color 2;Team Color 2, used for gear (accessories) and shoes
+TColor3;Headband Color;Headband Color
+TColor4;Team Color 4;Team Color 4
+TColor5;Team Color 5;Team Color 5
+JColor1;Jersey Color 1;Jersey Color 1
+JColor2;Jersey Color 2;Jersey Color 2
+JColor3;Jersey Color 3;Jersey Color 3
+#
+LColor1;Logo Color 1;Logo Color 1
+LColor2;Logo Color 2;Logo Color 2
+LColor3;Logo Color 3;Logo Color 3
+#
+NameColor;Name Color;
+#
+FrNumCol1;Front Number Color 1;Front Number Color 1
+FrNumCol2;Front Number Color 2;Front Number Color 2
+#
+BkNumCol1;Back Number Color 1;Back Number Color 1
+BkNumCol2;Back Number Color 2;Back Number Color 2
+#
+ShsColor1;Shoes Dominant Color;Shoes Dominant Color
+ShsColor2;Shoes Trim Color 1;Shoes Trim Color 1
+ShsColor3;Shoes Trim Color 2;Shoes Trim Color 2

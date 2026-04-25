@@ -7,11 +7,15 @@ import { StarterService } from '../../../../../services/simulation/StarterServic
 import { convertTo2KRating } from '../../../../../utils/helpers';
 import { NBAPlayer, TeamStatus } from '../../../../../types';
 import { calcPlayerTV, calcOvr2K, isUntouchable, type TeamMode } from '../../../../../services/trade/tradeValueEngine';
-import { getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2, resolveManualOutlook, MANUAL_STATUS_LABEL } from '../../../../../utils/salaryUtils';
+import { MANUAL_STATUS_LABEL } from '../../../../../utils/salaryUtils';
 import { getTradingBlock, saveTradingBlock } from '../../../../../store/tradingBlockStore';
+import { TeamIntelFreeAgency } from './TeamIntelFreeAgency';
+import { TeamIntelExpiring } from './TeamIntelExpiring';
+import { resolveTeamStrategyProfile } from '../../../../../utils/teamStrategy';
 
 interface TeamIntelProps {
   teamId: number;
+  onPlayerClick?: (player: NBAPlayer) => void;
 }
 
 /** Get K2 (2K-style) overall for a player */
@@ -21,11 +25,10 @@ function getK2Ovr(p: NBAPlayer): number {
   return convertTo2KRating(p.overallRating, r.hgt ?? 50, r.tp ?? 50);
 }
 
-export function TeamIntel({ teamId }: TeamIntelProps) {
+export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   const { state, dispatchAction } = useGame();
   const team = state.teams.find(t => t.id === teamId);
   const players = (state.players || []).filter(p => p.tid === teamId && p.status === 'Active');
-  const allPlayers = (state.players || []).filter(p => p.tid >= 0 && p.status === 'Active');
   const teamColor = team?.colors?.[0] || '#552583';
   const teamName = team ? `${team.region} ${team.name}` : '';
 
@@ -63,44 +66,20 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
     ? `-$${Math.abs(capSpace / 1000).toFixed(1)}M`
     : `$${(capSpace / 1000).toFixed(1)}M`;
 
-  // Status — compare team's top-8 K2 average to league average
-  const teamTop8K2 = sortedByK2.slice(0, 8);
-  const avgK2 = teamTop8K2.length > 0
-    ? teamTop8K2.reduce((a, p) => a + getK2Ovr(p), 0) / teamTop8K2.length
-    : 0;
-
-  const allTeamIds = [...new Set(allPlayers.map(p => p.tid))];
-  const leagueAvgK2 = allTeamIds.reduce((sum, tid) => {
-    const roster = allPlayers.filter(p => p.tid === tid).sort((a, b) => getK2Ovr(b) - getK2Ovr(a)).slice(0, 8);
-    return sum + (roster.reduce((s, p) => s + getK2Ovr(p), 0) / Math.max(1, roster.length));
-  }, 0) / Math.max(1, allTeamIds.length);
-
-  // ── Real trade outlook using salaryUtils ──────────────────────────────────
   const currentYear = state.leagueStats?.year || 2026;
-  const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
 
-  const { status, teamMode, tradingBlock, untouchables, targets, needPositions } = useMemo(() => {
-    const payroll = players.reduce((s, p) => s + ((p.contract?.amount ?? 0) * 1_000), 0);
-    const rec = effectiveRecord(team!, currentYear);
-    const confTeams = state.teams.filter(t => t.conference === team!.conference).map(t => ({
-      t, rec: effectiveRecord(t, currentYear),
-    })).sort((a, b) => (b.rec.wins - b.rec.losses) - (a.rec.wins - a.rec.losses));
-    const leader = confTeams[0];
-    const idx = confTeams.findIndex(c => c.t.id === teamId);
-    const confRank = idx >= 0 ? idx + 1 : 15;
-    const gb = Math.max(0, ((leader?.rec.wins ?? 0) - rec.wins + rec.losses - (leader?.rec.losses ?? 0)) / 2);
-    const expCount = players.filter(p => (p.contract?.exp ?? 0) <= currentYear).length;
-    const starAvg = topNAvgK2(state.players, teamId, 3);
-    const manual = resolveManualOutlook(team!, state.gameMode, state.userTeamId);
-    const outlook = manual ?? getTradeOutlook(payroll, rec.wins, rec.losses, expCount, thresholds, confRank, gb, starAvg);
-
-    // Derive mode
-    let mode: TeamMode = 'rebuild';
-    let statusLabel = 'REBUILDING';
-    if (outlook.role === 'heavy_buyer' || outlook.role === 'buyer') { mode = 'contend'; statusLabel = 'CONTENDING'; }
-    else if (outlook.role === 'seller') { mode = 'rebuild'; statusLabel = 'SELLING'; }
-    else if (outlook.role === 'rebuilding') { mode = 'presti'; statusLabel = 'REBUILDING'; }
-    else { mode = 'rebuild'; statusLabel = 'BUYING'; }
+  const { status, strategyKey, tradingBlock, untouchables, targets } = useMemo(() => {
+    const strategy = resolveTeamStrategyProfile({
+      team,
+      players: state.players,
+      teams: state.teams,
+      leagueStats: state.leagueStats,
+      currentYear,
+      gameMode: state.gameMode,
+      userTeamId: state.userTeamId,
+    });
+    const mode: TeamMode = strategy.teamMode;
+    const statusLabel = strategy.label.toUpperCase();
 
     // Trade value for each player
     const rosterTV = players.map(p => ({
@@ -114,17 +93,27 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
     const untouchList = rosterTV.filter(r => isUntouchable(r.player, mode, currentYear)).slice(0, 3);
 
     // Trading block: players the team would be willing to move
-    // Rebuilding: dump high-salary vets; Contending: dump low-OVR expirings
+    // Keep this aligned with the shared strategy profile so the narrative
+    // reflects how the AI will actually treat the roster.
     let blockList: typeof rosterTV = [];
-    if (mode === 'contend') {
-      // Contenders trade away low-value expirings
+    if (strategy.key === 'contending' || strategy.key === 'win_now' || strategy.key === 'play_in_push') {
       blockList = rosterTV.filter(r => r.k2 < 80 && (r.player.contract?.exp ?? currentYear + 5) <= currentYear + 1).slice(0, 3);
-    } else if (mode === 'presti') {
-      // Rebuilders: trade anyone not young + high potential
+    } else if (strategy.key === 'retooling') {
+      const age = (p: NBAPlayer) => p.born?.year ? currentYear - p.born.year : 27;
+      blockList = rosterTV.filter(r =>
+        age(r.player) >= 28 &&
+        (r.player.contract?.exp ?? currentYear + 5) <= currentYear + 2 &&
+        r.k2 >= 74
+      ).slice(0, 4);
+    } else if (strategy.key === 'cap_clearing') {
+      blockList = [...rosterTV]
+        .sort((a, b) => (b.player.contract?.amount ?? 0) - (a.player.contract?.amount ?? 0))
+        .filter(r => (r.player.contract?.amount ?? 0) > 9000)
+        .slice(0, 4);
+    } else if (strategy.key === 'rebuilding' || strategy.key === 'development' || mode === 'presti') {
       const age = (p: NBAPlayer) => p.born?.year ? currentYear - p.born.year : 27;
       blockList = rosterTV.filter(r => age(r.player) >= 28 && r.k2 >= 75).slice(0, 4);
     } else {
-      // Sellers: anyone with salary > $10M and K2 < 85
       blockList = rosterTV.filter(r => (r.player.contract?.amount ?? 0) > 10000 && r.k2 < 85).slice(0, 3);
     }
     // Don't put untouchables on the block
@@ -146,13 +135,12 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
 
     return {
       status: statusLabel,
-      teamMode: mode,
+      strategyKey: strategy.key,
       tradingBlock: blockList,
       untouchables: untouchList,
       targets: weakPos,
-      needPositions: weakPos,
     };
-  }, [players, state.teams, state.players, teamId, currentYear, thresholds, team, state.gameMode, state.userTeamId]);
+  }, [players, state.teams, state.players, teamId, currentYear, team, state.gameMode, state.userTeamId, state.leagueStats]);
 
   // Expiring contracts
   const expiring = [...players]
@@ -163,6 +151,9 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
   const isGM = state.gameMode === 'gm';
   const isOwnTeam = isGM && teamId === state.userTeamId;
   const [editingList, setEditingList] = useState<'untouchable' | 'block' | 'targets' | null>(null);
+  // ── Sub-tab pill: Trades (existing) | Free Agency (new) ─────────────────
+  // Both views share the team banner; only the body switches. Persists per-mount.
+  const [intelTab, setIntelTab] = useState<'trades' | 'fa' | 'expiring'>('trades');
 
   // Hydrate from tradingBlockStore so the narrative reflects what the user
   // actually marked in the Trading Block UI (and stays in sync with AI/trade
@@ -284,6 +275,7 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
   };
 
   return (
+    <>
     <div className="h-full flex flex-col relative z-10">
       {/* Top Banner */}
       <div
@@ -335,8 +327,40 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
         </div>
       </div>
 
+      {/* Sub-tab pill — Trades (existing intel) vs Free Agency (new scouting tab) */}
+      <div className="flex border-x border-[#30363d] bg-[#0d1117]">
+        {([
+          { key: 'trades'   as const, label: 'Trades' },
+          { key: 'fa'       as const, label: 'Free Agency' },
+          { key: 'expiring' as const, label: 'Expiring' },
+        ]).map(t => (
+          <button
+            key={t.key}
+            onClick={() => setIntelTab(t.key)}
+            className={cn(
+              'flex-1 px-4 py-2.5 text-xs font-black uppercase tracking-widest transition-colors border-b-2',
+              intelTab === t.key
+                ? 'text-[#FDB927] border-[#FDB927] bg-[#FDB927]/5'
+                : 'text-slate-400 border-transparent hover:text-slate-200 hover:bg-white/5',
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {intelTab === 'expiring' ? (
+        <div className="flex-1 border border-[#30363d] border-t-0 rounded-b-lg p-3 bg-[#161b22]/80 backdrop-blur-md min-h-0 overflow-hidden">
+          <TeamIntelExpiring teamId={teamId} onPlayerClick={onPlayerClick} />
+        </div>
+      ) : intelTab === 'fa' ? (
+        <div className="flex-1 border border-[#30363d] border-t-0 rounded-b-lg p-3 bg-[#161b22]/80 backdrop-blur-md min-h-0 overflow-hidden">
+          <TeamIntelFreeAgency teamId={teamId} onPlayerClick={onPlayerClick} />
+        </div>
+      ) : (
+      <>
       {/* Content Split */}
-      <div className="flex-1 flex flex-col lg:flex-row border border-[#30363d] rounded-b-lg overflow-hidden bg-[#161b22]/80 backdrop-blur-md">
+      <div className="flex-1 flex flex-col lg:flex-row border border-[#30363d] border-t-0 rounded-b-lg overflow-hidden bg-[#161b22]/80 backdrop-blur-md">
 
         {/* Left: Lineup */}
         <div className="w-full lg:w-[350px] border-b lg:border-b-0 lg:border-r border-[#30363d] bg-black/40 flex flex-col shrink-0">
@@ -353,7 +377,7 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
             {lineup.map(({ player: p, lineupPos }, i) => {
               const k2 = getK2Ovr(p);
               return (
-                <div key={i} className="grid grid-cols-[40px_40px_1fr_40px] gap-2 items-center px-2 py-2 bg-white/5 rounded hover:bg-white/10 transition-colors cursor-pointer group">
+                <div key={i} onClick={() => onPlayerClick?.(p)} className="grid grid-cols-[40px_40px_1fr_40px] gap-2 items-center px-2 py-2 bg-white/5 rounded hover:bg-white/10 transition-colors cursor-pointer group">
                   <span className="text-[#8b949e] font-bold text-xs">{lineupPos}</span>
                   <PlayerPortrait playerName={p.name} imgUrl={p.imgURL} face={(p as any).face} size={32} />
                   <span className="font-semibold text-sm truncate group-hover:text-[#FDB927] transition-colors">
@@ -405,12 +429,18 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
               <div className="w-1.5 h-1.5 rounded-full bg-[#8b949e] mt-2 shrink-0" />
               <p>
                 {status === 'REBUILDING'
-                  ? `The ${team.name} are clearly in rebuild mode and will likely be looking to dump players for picks.`
-                  : status === 'SELLING'
-                  ? `The ${team.name} are looking to shed salary and acquire young talent or draft capital.`
-                  : status === 'BUYING'
-                  ? `We might be able to get draft picks from this team, as they think they are a few pieces away from having a championship team.`
-                  : `This team is in win-now mode and will be looking for veteran pieces to push them over the top.`}
+                  ? `The ${team.name} are focused on the long view and will prioritize picks, prospects, and flexibility over short-term wins.`
+                  : strategyKey === 'development'
+                  ? `The ${team.name} are developing a younger core and will be cautious about moves that block prospects or burn future assets.`
+                  : strategyKey === 'cap_clearing'
+                  ? `The ${team.name} are looking to clean up the books and move money off the roster while preserving their core pieces.`
+                  : strategyKey === 'retooling'
+                  ? `The ${team.name} are trying to reshape the roster around their main pieces rather than tearing everything down.`
+                  : strategyKey === 'play_in_push'
+                  ? `The ${team.name} are chasing immediate help, but they should still be price-sensitive on bigger moves.`
+                  : strategyKey === 'win_now'
+                  ? `The ${team.name} are in win-now mode and will be looking for veterans who fit the rotation right away.`
+                  : `The ${team.name} are operating like a contender and will be shopping for upgrades that raise the playoff ceiling.`}
               </p>
             </div>
 
@@ -426,10 +456,10 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
                       .filter(p => blockIds.has(p.internalId) && !untouchableIds.has(p.internalId));
                     if (blockPlayers.length > 0) return (
                       <>
-                        {isOwnTeam ? 'Your trading block: ' : status === 'CONTENDING' ? 'Players this team is willing to move: ' : 'Players potentially available via trade: '}
+                        {isOwnTeam ? 'Your trading block: ' : strategyKey === 'contending' || strategyKey === 'win_now' || strategyKey === 'play_in_push' ? 'Moveable depth pieces: ' : 'Players potentially available via trade: '}
                         {blockPlayers.map((p, i) => (
                           <span key={i}>
-                            <span className="text-[#FDB927] font-medium">{p.name}</span> ({p.pos}, {getK2Ovr(p)} OVR)
+                            <span onClick={() => onPlayerClick?.(p)} className="text-[#FDB927] font-medium cursor-pointer hover:underline">{p.name}</span> ({p.pos}, {getK2Ovr(p)} OVR)
                             {i < blockPlayers.length - 1 ? ', ' : ''}
                           </span>
                         ))}
@@ -453,7 +483,7 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
                         Untouchables:{' '}
                         {untouchPlayers.map((p, i) => (
                           <span key={i}>
-                            <span className="text-[#FDB927] font-bold">{p.name}</span> ({getK2Ovr(p)} OVR)
+                            <span onClick={() => onPlayerClick?.(p)} className="text-[#FDB927] font-bold cursor-pointer hover:underline">{p.name}</span> ({getK2Ovr(p)} OVR)
                             {i < untouchPlayers.length - 1 ? ', ' : ''}
                           </span>
                         ))}
@@ -481,7 +511,7 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
                             const tTeam = state.teams.find(t => t.id === p.tid);
                             return (
                               <span key={i}>
-                                <span className="text-[#FDB927] font-medium">{p.name}</span> ({tTeam?.abbrev}, {getK2Ovr(p)} OVR)
+                                <span onClick={() => onPlayerClick?.(p)} className="text-[#FDB927] font-medium cursor-pointer hover:underline">{p.name}</span> ({tTeam?.abbrev}, {getK2Ovr(p)} OVR)
                                 {i < targetPlayers.length - 1 ? ', ' : ''}
                               </span>
                             );
@@ -490,8 +520,10 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
                       );
                     }
                     if (targets.length > 0) {
-                      return status === 'CONTENDING'
+                      return strategyKey === 'contending' || strategyKey === 'win_now' || strategyKey === 'play_in_push'
                         ? `The ${team!.name} are looking to acquire depth at ${targets.join(' and ')} to solidify their playoff rotation.`
+                        : strategyKey === 'retooling' || strategyKey === 'cap_clearing'
+                        ? `The ${team!.name} could move veterans or contracts while targeting better balance at ${targets.join(' and ')}.`
                         : `The ${team!.name} could use an upgrade at the ${targets.join(' and ')} position${targets.length > 1 ? 's' : ''}.`;
                     }
                     return `There currently doesn't appear to be any targets for this team.`;
@@ -510,7 +542,7 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
                     const k2 = getK2Ovr(p);
                     return (
                       <span key={i}>
-                        <span className="text-[#FDB927] font-medium cursor-pointer hover:underline">{p.name}</span> ({p.pos}, {k2}, ${((p.contract?.amount || 0) / 1000).toFixed(1)}M)
+                        <span onClick={() => onPlayerClick?.(p)} className="text-[#FDB927] font-medium cursor-pointer hover:underline">{p.name}</span> ({p.pos}, {k2}, ${((p.contract?.amount || 0) / 1000).toFixed(1)}M)
                         {i < Math.min(expiring.length, 3) - 1 ? ', ' : ''}
                       </span>
                     );
@@ -522,6 +554,8 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
           </div>
         </div>
       </div>
+      </>
+      )}
 
       {/* ── Player Selector Modal ──────────────────────────────────────── */}
       {editingList && (
@@ -553,5 +587,6 @@ export function TeamIntel({ teamId }: TeamIntelProps) {
         </div>
       )}
     </div>
+    </>
   );
 }

@@ -1,0 +1,9 @@
+General:6
+RegSWins;Regular Season Wins;
+RegSLosses;Regular Season Losses;
+#
+POWins;PlayOff Wins;
+POLosses;PlayOff Losses;
+#
+WonPOs;Won PlayOffs;Determines, if the coach won the PlayOffs that year
+IsCoachOfYr;Is Coach Of The Year;Determines, if the coach was selected as the Coach Of The Year that season

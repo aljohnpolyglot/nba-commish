@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { SaveManager, SaveMetadata } from '../services/SaveManager';
-import { Play, Upload, Download, Trash2, FolderOpen, Plus } from 'lucide-react';
+import { Play, Upload, Download, Trash2, FolderOpen, Plus, Settings2 } from 'lucide-react';
 import { useGame } from '../store/GameContext';
+import { SettingsModal } from './modals/SettingsModal';
 
 interface MainMenuProps {
   onStartNew: () => void;
@@ -12,10 +13,9 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave }) =>
   const [saves, setSaves] = useState<SaveMetadata[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
-  useEffect(() => {
-    loadMetadata();
-  }, []);
+  useEffect(() => { loadMetadata(); }, []);
 
   const loadMetadata = async () => {
     try {
@@ -62,8 +62,8 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave }) =>
       try {
         await SaveManager.importSave(file);
         await loadMetadata();
-      } catch (err) {
-        setError('Failed to import save. Invalid format.');
+      } catch (err: any) {
+        setError(err?.message ?? 'Failed to import save.');
       } finally {
         setIsLoading(false);
       }
@@ -72,6 +72,17 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave }) =>
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-slate-200">
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      {/* Settings button — top right */}
+      <button
+        onClick={() => setSettingsOpen(true)}
+        className="fixed top-4 right-4 p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-600 text-slate-500 hover:text-white transition-all"
+        title="Settings"
+      >
+        <Settings2 size={18} />
+      </button>
+
       <div className="max-w-4xl w-full">
         <div className="text-center mb-12">
           <img
@@ -120,8 +131,9 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave }) =>
                   <p className="text-slate-400 text-sm">Load a save file from your device</p>
                 </div>
               </div>
-              <input type="file" accept=".json" className="hidden" onChange={handleImport} />
+              <input type="file" accept=".json,.gz" className="hidden" onChange={handleImport} />
             </label>
+
           </div>
 
           {/* Load Game */}

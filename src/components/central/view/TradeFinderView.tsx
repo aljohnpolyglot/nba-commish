@@ -25,6 +25,7 @@ import { generateCounterOffers, teamPowerRanks } from '../../../services/trade/t
 import { SettingsManager } from '../../../services/SettingsManager';
 import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks } from '../../../services/draft/DraftPickGenerator';
 import { buildClassStrengthMap, buildLotterySlotMap } from '../../../services/draft/draftClassStrength';
+import { tradeRoleToTeamMode } from '../../../utils/teamStrategy';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -502,9 +503,7 @@ export const TradeFinderView: React.FC = () => {
 
   // Map TradeRole → TeamMode for TV calculation
   const roleToMode = (role: string): TeamMode => {
-    if (role === 'heavy_buyer' || role === 'buyer') return 'contend';
-    if (role === 'rebuilding') return 'presti';
-    return 'rebuild';
+    return tradeRoleToTeamMode(role);
   };
 
   const selectedTeam = teams.find(t => t.id === selectedTid);

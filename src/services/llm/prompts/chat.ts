@@ -1,5 +1,37 @@
-import { GameState, ChatMessage, NBAPlayer } from "../../../types";
+import { GameState, ChatMessage, NBAPlayer, PlayoffBracket } from "../../../types";
 import { GMChatContext } from "../../../services/aiChat";
+
+const getTeamName = (id: number, state: GameState) =>
+  state.teams.find(t => t.id === id)?.name ?? `Team ${id}`;
+
+const buildPlayoffSummary = (tid: number, state: GameState): string[] => {
+  const playoffs: PlayoffBracket | undefined = (state as any).playoffs;
+  if (!playoffs) return [];
+  const lines: string[] = [];
+  for (const pg of playoffs.playInGames ?? []) {
+    if (pg.played && (pg.team1Tid === tid || pg.team2Tid === tid)) {
+      const opp = getTeamName(pg.team1Tid === tid ? pg.team2Tid : pg.team1Tid, state);
+      lines.push(`Play-In (${pg.gameType}): ${pg.winnerId === tid ? 'Won' : 'Lost'} vs. ${opp}`);
+    }
+  }
+  for (const s of playoffs.series ?? []) {
+    const isHome = s.higherSeedTid === tid;
+    const isAway = s.lowerSeedTid === tid;
+    if (!isHome && !isAway) continue;
+    const oppTid = isHome ? s.lowerSeedTid : s.higherSeedTid;
+    const myW = isHome ? s.higherSeedWins : s.lowerSeedWins;
+    const theirW = isHome ? s.lowerSeedWins : s.higherSeedWins;
+    const rLabel = s.round === 1 ? 'R1' : s.round === 2 ? 'R2' : s.round === 3 ? 'Conf Finals' : 'Finals';
+    if (s.status === 'complete') {
+      lines.push(`${rLabel}: ${s.winnerId === tid ? 'Beat' : 'Lost to'} ${getTeamName(oppTid, state)} ${myW}-${theirW}`);
+    } else if (s.status === 'active') {
+      const leading = myW > theirW ? 'leading' : myW < theirW ? 'trailing' : 'tied';
+      lines.push(`${rLabel} (active): vs. ${getTeamName(oppTid, state)} — ${myW}-${theirW} ${leading}`);
+    }
+  }
+  if (playoffs.champion != null) lines.push(`NBA Champion: ${getTeamName(playoffs.champion, state)}`);
+  return lines;
+};
 
 const getTeam = (player: NBAPlayer, state: GameState) => {
     if (player.status === 'PBA') return state.nonNBATeams.find(t => t.league === 'PBA' && t.tid === player.tid);
@@ -87,6 +119,22 @@ export const generateChatPrompt = (
       context += `Recent Results: ${gmContext.recentResults.slice(0, 3).map(r => `${r.opponent} (${r.score}) - ${r.win ? 'W' : 'L'}`).join(', ')}\n`;
     }
 
+    // Playoff / play-in context
+    const pc = gmContext.playoffContext;
+    if (pc.playInResult) context += `Play-In: ${pc.playInResult}\n`;
+    if (pc.inPlayoffs && !pc.eliminated && pc.opponent) {
+      context += `Current Playoff Series (R${pc.currentRound}): vs. ${pc.opponent} — Series: ${pc.seriesRecord}\n`;
+    }
+    if (pc.eliminated) context += `Playoff Status: ELIMINATED\n`;
+    if (pc.pastRounds.length > 0) context += `Playoff History This Season: ${pc.pastRounds.join(', ')}\n`;
+    if (pc.champion) context += `NBA Champion: ${pc.champion}\n`;
+
+    // Recipient awards
+    if (gmContext.recipientAwards.length > 0) {
+      const awardsStr = gmContext.recipientAwards.slice(-8).map(a => `${a.type} (${a.season})`).join(', ');
+      context += `${targetName}'s Awards: ${awardsStr}\n`;
+    }
+
     // Include full roster context for richer LLM awareness
     if (gmContext.roster && gmContext.roster.length > 0) {
       context += `\nFull Roster (sorted by overall rating):\n`;
@@ -117,6 +165,16 @@ export const generateChatPrompt = (
         context += `Key Teammates: ${teammates.join(', ')}\n`;
         context += `Your morale is ${state.leagueStats.morale.players}/100.\n`;
 
+        if (player.awards && player.awards.length > 0) {
+          const awardsStr = player.awards.slice(-8).map((a: { season: number; type: string }) => `${a.type} (${a.season})`).join(', ');
+          context += `Your Awards: ${awardsStr}\n`;
+        }
+
+        if (player.tid != null && player.tid >= 0) {
+          const playoffLines = buildPlayoffSummary(player.tid, state);
+          if (playoffLines.length > 0) context += `Your Team's Playoff Run: ${playoffLines.join(' | ')}\n`;
+        }
+
         // Language Rules
         if (player.status === 'PBA') {
           context += `LANGUAGE RULE: You are a Filipino player in the PBA. You speak primarily English. You MAY mix some Tagalog slang (Taglish) into your responses naturally, but you MUST remain understandable to an English speaker. If the user asks for English, strictly use English. Avoid excessive slang like 'lodi', 'pare', 'astig' unless it fits the context perfectly.\n`;
@@ -129,6 +187,8 @@ export const generateChatPrompt = (
       context += `You are the owner of the ${targetOrg}.\n`;
       if (team) {
         context += `Your team has ${team.wins} wins and ${team.losses} losses.\n`;
+        const playoffLines = buildPlayoffSummary(team.id, state);
+        if (playoffLines.length > 0) context += `Playoff Run: ${playoffLines.join(' | ')}\n`;
       }
       context += `Your morale is ${state.leagueStats.morale.owners}/100.\n`;
     } else if (targetRole === 'GM') {
@@ -136,12 +196,16 @@ export const generateChatPrompt = (
       context += `You are the GM of the ${targetOrg}.\n`;
       if (team) {
         context += `Your team has ${team.wins} wins and ${team.losses} losses.\n`;
+        const playoffLines = buildPlayoffSummary(team.id, state);
+        if (playoffLines.length > 0) context += `Playoff Run: ${playoffLines.join(' | ')}\n`;
       }
     } else if (targetRole === 'Coach') {
       const team = state.teams.find(t => t.name === targetOrg);
       context += `You are the Head Coach of the ${targetOrg}.\n`;
       if (team) {
         context += `Your team has ${team.wins} wins and ${team.losses} losses.\n`;
+        const playoffLines = buildPlayoffSummary(team.id, state);
+        if (playoffLines.length > 0) context += `Playoff Run: ${playoffLines.join(' | ')}\n`;
       }
     }
   }

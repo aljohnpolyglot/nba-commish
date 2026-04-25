@@ -3,6 +3,7 @@ import {
   LEAGUE_MULTIPLIERS,
   calculateLeagueOverall,
 } from './logic/leagueOvr';
+import { estimatePotentialBbgm } from '../utils/playerRatings';
 
 /** Returns true if the URL is ProBallers' "no photo" placeholder. Treat as missing. */
 function isDefaultProballers(url: string | undefined): boolean {
@@ -14,6 +15,12 @@ function resolveImgURL(itemUrl: string | undefined, bioImage?: string): string |
   const ratingsPng = itemUrl && itemUrl.trim() !== '' && !isDefaultProballers(itemUrl) ? itemUrl : undefined;
   const bioImg = bioImage && bioImage.trim() !== '' && !isDefaultProballers(bioImage) ? bioImage : undefined;
   return ratingsPng ?? bioImg;
+}
+
+function extractJerseyNumber(player: { jerseyNumber?: string | number; stats?: Array<{ jerseyNumber?: string | number }> }): string | undefined {
+  const latestStats = player.stats && player.stats.length > 0 ? player.stats[player.stats.length - 1] : undefined;
+  const raw = latestStats?.jerseyNumber ?? player.jerseyNumber;
+  return raw === undefined || raw === null || raw === '' ? undefined : String(raw);
 }
 
 // Attributes that are physical/skill-ceiling and must never be scaled.
@@ -154,7 +161,7 @@ export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], t
                 injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
                 status: 'Euroleague',
                 hof: false,
-                jerseyNumber: item.stats?.length > 0 ? String(item.stats[item.stats.length - 1].jerseyNumber || '') : undefined,
+                jerseyNumber: extractJerseyNumber(item),
             };
             players.push(player);
         });
@@ -241,11 +248,19 @@ export const fetchPBARoster = async (): Promise<{ players: NBAPlayer[], teams: N
                         // attrs are auto-generated without meaningful per-player variance.
                         // Diversity will improve once the hand-crafted 2026 PBA roster lands.
                         const scaledRatings = scaleRatings(item.ratings || [], LEAGUE_MULTIPLIERS['PBA'], 0.85);
+                        const pbaOvr = computeLeagueOvr(item.ratings?.[0], 'PBA');
+                        if (scaledRatings[0]) {
+                          // Universal age-aware estimator (29+ → pot=ovr, younger → growth headroom)
+                          // clamped to PBA's BBGM ovr ceiling (46). Top young prospects land
+                          // around 2K display 70-71, veterans show pot=ovr — matches PBA reality.
+                          const pbaAge = (new Date().getFullYear()) - (item.born?.year ?? 1995);
+                          scaledRatings[0].pot = Math.min(46, estimatePotentialBbgm(pbaOvr, pbaAge));
+                        }
                      const player: NBAPlayer = {
                         internalId: `pba-${item.tid}-${playerName.replace(/\s+/g, '')}-${item.born?.year || '0'}`,
                         tid: item.tid !== undefined ? item.tid + 2000 : -1, // Offset PBA by 2000
                         name: playerName,
-                        overallRating: computeLeagueOvr(item.ratings?.[0], 'PBA'),
+                        overallRating: pbaOvr,
                         ratings: scaledRatings,
                         stats: item.stats || [],
                         imgURL: resolveImgURL(item.imgURL),
@@ -259,7 +274,7 @@ export const fetchPBARoster = async (): Promise<{ players: NBAPlayer[], teams: N
                         injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
                         status: 'PBA',
                         hof: false,
-                        jerseyNumber: item.stats && item.stats.length > 0 ? String(item.stats[item.stats.length - 1].jerseyNumber || '') : undefined
+                        jerseyNumber: extractJerseyNumber(item)
                     };
                     players.push(player);
                 } else {
@@ -347,7 +362,7 @@ export const fetchWNBARoster = async (): Promise<{ players: NBAPlayer[], teams: 
                 injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
                 status: 'WNBA',
                 hof: false,
-                jerseyNumber: item.stats?.length > 0 ? String(item.stats[item.stats.length - 1].jerseyNumber || '') : undefined,
+                jerseyNumber: extractJerseyNumber(item),
             };
             players.push(player);
         });
@@ -439,7 +454,7 @@ export const fetchBLeagueRoster = async (): Promise<{ players: NBAPlayer[], team
                         injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
                         status: 'B-League',
                         hof: false,
-                        jerseyNumber: item.stats && item.stats.length > 0 ? String(item.stats[item.stats.length - 1].jerseyNumber || '') : undefined
+                        jerseyNumber: extractJerseyNumber(item)
                     };
                     players.push(player);
                 }
@@ -536,7 +551,7 @@ export const fetchGLeagueRoster = async (): Promise<{ players: NBAPlayer[], team
                 status: 'G-League',
                 twoWayCandidate: isTwoWay || undefined,
                 hof: false,
-                jerseyNumber: item.stats?.length > 0 ? String(item.stats[item.stats.length - 1].jerseyNumber || '') : undefined,
+                jerseyNumber: extractJerseyNumber(item),
             };
             players.push(player);
         });
@@ -634,7 +649,7 @@ export const fetchEndesaRoster = async (): Promise<{ players: NBAPlayer[], teams
                 injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
                 status: 'Endesa',
                 hof: false,
-                jerseyNumber: item.stats?.length > 0 ? String(item.stats[item.stats.length - 1].jerseyNumber || '') : undefined,
+                jerseyNumber: extractJerseyNumber(item),
             };
             players.push(player);
         });
@@ -693,11 +708,18 @@ export const fetchChinaCBARoster = async (): Promise<{ players: NBAPlayer[], tea
 
             const bio = bioMap.get(playerName.toLowerCase());
             const scaledRatings = scaleRatings(item.ratings || [], LEAGUE_MULTIPLIERS['China CBA']);
+            const cbaOvr = computeLeagueOvr(item.ratings?.[0], 'China CBA');
+            if (scaledRatings[0]) {
+              // ChinaCBA gets slightly more headroom than PBA (raw 46 → display ~71)
+              // — CBA does occasionally produce NBA-caliber players (Yao, Wang Zhizhi).
+              const cbaAge = (new Date().getFullYear()) - (item.born?.year ?? 1995);
+              scaledRatings[0].pot = Math.min(46, estimatePotentialBbgm(cbaOvr, cbaAge));
+            }
             const player: NBAPlayer = {
                 internalId: `chinacba-${item.tid}-${playerName.replace(/\s+/g, '')}-${item.born?.year || '0'}`,
                 tid: item.tid !== undefined ? item.tid + 7000 : -1,
                 name: playerName,
-                overallRating: computeLeagueOvr(item.ratings?.[0], 'China CBA'),
+                overallRating: cbaOvr,
                 ratings: scaledRatings,
                 stats: item.stats || [],
                 imgURL: resolveImgURL(item.imgURL, bio?.image),
@@ -710,7 +732,7 @@ export const fetchChinaCBARoster = async (): Promise<{ players: NBAPlayer[], tea
                 injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
                 status: 'China CBA',
                 hof: false,
-                jerseyNumber: item.stats?.length > 0 ? String(item.stats[item.stats.length - 1].jerseyNumber || '') : undefined,
+                jerseyNumber: extractJerseyNumber(item),
             };
             players.push(player);
         });
@@ -786,7 +808,7 @@ export const fetchNBLAustraliaRoster = async (): Promise<{ players: NBAPlayer[],
                 injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
                 status: 'NBL Australia',
                 hof: false,
-                jerseyNumber: item.stats?.length > 0 ? String(item.stats[item.stats.length - 1].jerseyNumber || '') : undefined,
+                jerseyNumber: extractJerseyNumber(item),
             };
             players.push(player);
         });

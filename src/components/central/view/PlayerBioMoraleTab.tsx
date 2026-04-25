@@ -216,7 +216,7 @@ export function getContractThoughts(
     const motivationCount = [isWinner, isLoyalFA, isMercenary, isFame].filter(Boolean).length;
 
     if (motivationCount >= 2) {
-      const championships = ((player as any).awards ?? []).filter((a: any) => a.type === 'Champion').length;
+      const championships = ((player as any).awards ?? []).filter((a: any) => a.type === 'Champion' || a.type === 'NBA Champion').length;
       const parts: string[] = [];
       if (isWinner) {
         if (championships === 0) parts.push(`I'm competing for a ring. Whatever situation maximizes my title chances, that's where I want to be.`);
@@ -429,6 +429,186 @@ function moraleLabel(val: number): string {
   return 'Disgruntled';
 }
 
+// ─── Award helpers — handles both in-game and BBGM/ZenGM external award strings ──
+
+// Exact-match only — avoids 'Finals MVP' / 'Semifinals MVP' colliding with 'MVP'
+function countAwards(awards: Array<{ type: string }>, ...types: string[]): number {
+  return awards.filter(a => types.includes(a.type)).length;
+}
+// Substring-match for award families like 'All-NBA * Team' / 'All-League * Team'
+function countAwardsContaining(awards: Array<{ type: string }>, ...substrings: string[]): number {
+  return awards.filter(a => substrings.some(s => a.type?.includes(s))).length;
+}
+
+// ─── Retired career summary ───────────────────────────────────────────────────
+
+function retiredSummaryText(
+  player: NBAPlayer,
+  traits: MoodTrait[],
+  currentYear: number,
+): string {
+  const firstName = player.name.split(' ')[0];
+  const awards: Array<{ type: string }> = (player as any).awards ?? [];
+  const rings = countAwards(awards, 'Won Championship', 'Champion', 'NBA Champion');
+  const mvps = countAwards(awards, 'Most Valuable Player', 'MVP');
+  const finalsMvps = countAwards(awards, 'Finals MVP');
+  const allNBA = countAwardsContaining(awards, 'All-NBA', 'All-League');
+  const allStar = countAwards(awards, 'All-Star');
+  const dpoy = countAwards(awards, 'Defensive Player of the Year', 'DPOY');
+  const isElite = mvps > 0 || rings >= 2 || allNBA >= 5 || allStar >= 10;
+  const traitsAny = traits as string[];
+
+  const fmvpStr = finalsMvps > 0 ? ` (${finalsMvps}× Finals MVP)` : '';
+  // Career résumé line — reusable in multiple paths
+  const resumeLine = [
+    rings > 0 && `${rings}× Champion`,
+    finalsMvps > 0 && `${finalsMvps}× Finals MVP`,
+    mvps > 0 && `${mvps}× MVP`,
+    allStar > 0 && `${allStar}× All-Star`,
+    allNBA > 0 && `${allNBA}× All-League`,
+    dpoy > 0 && `${dpoy}× DPOY`,
+  ].filter(Boolean).join(' · ');
+  const isGOAT = rings >= 3 && (mvps >= 3 || allNBA >= 12 || allStar >= 18);
+  const isDynasty = rings >= 3 && !isGOAT;
+  const isDecoratedNoRing = rings === 0 && (mvps >= 2 || allNBA >= 8 || allStar >= 12);
+
+  // Franchise loyalty detection — one team for 10+ seasons
+  const nbaSeasonsByTeam = ((player.stats ?? []) as any[])
+    .filter(s => !s.playoffs && (s.gp ?? 0) > 0 && s.tid >= 0);
+  const teamSeasonCounts = new Map<number, number>();
+  for (const s of nbaSeasonsByTeam) {
+    teamSeasonCounts.set(s.tid, (teamSeasonCounts.get(s.tid) ?? 0) + 1);
+  }
+  const distinctTeams = teamSeasonCounts.size;
+  const maxSeasonsOneTeam = Math.max(0, ...teamSeasonCounts.values());
+  const isFranchiseLegend = distinctTeams === 1 && maxSeasonsOneTeam >= 10 && rings > 0;
+  const isLongServantOneTeam = distinctTeams <= 2 && maxSeasonsOneTeam >= 10;
+
+  if (traitsAny.includes('COMPETITOR')) {
+    if (isGOAT) {
+      if (isFranchiseLegend) {
+        return `${resumeLine}. ${firstName} never left. One city, one jersey, ${maxSeasonsOneTeam} seasons — and ${rings} championship${rings > 1 ? 's' : ''} to show for it. That's the rarest kind of greatness: loyalty and dominance in the same career.`;
+      }
+      return `${resumeLine}. There's a short list of players the game has ever seen at this level — ${firstName} is on it. A career defined by winning, willed into existence by someone who simply refused to lose.`;
+    }
+    if (rings === 0) {
+      if (isDecoratedNoRing) {
+        return `${resumeLine}. ${firstName} built one of the most decorated résumés of the era — and the ring never came. That single absence will fuel debate forever. But watching it? Nobody questioned the greatness.`;
+      }
+      if (isElite) {
+        return `${firstName} competed every night. The ring didn't come, but the résumé — ${resumeLine} — makes it impossible to dismiss the career.`;
+      }
+      return `${firstName} chased the ring until the body said stop. It never came — but nobody who watched would question the effort.`;
+    }
+    if (isDynasty) {
+      if (isFranchiseLegend) {
+        return `${resumeLine}. ${rings} championships, ${maxSeasonsOneTeam} seasons, one team. ${firstName} built a dynasty from the inside — never looked for a shortcut, never chased a ring elsewhere. That's a different kind of winner.`;
+      }
+      return `${rings} championships${fmvpStr}. ${firstName} didn't just win — dominated eras. The kind of competitor whose presence in a locker room changes what a franchise believes is possible.`;
+    }
+    if (rings === 1) {
+      if (isFranchiseLegend) {
+        return `${resumeLine}. ${maxSeasonsOneTeam} seasons, one team, one championship${fmvpStr}. ${firstName} gave everything to one city and got the ultimate reward. The fans never had to wonder where the heart was.`;
+      }
+      return `${firstName} chased the ultimate prize and got it${fmvpStr}. One ring. The pursuit made the résumé — ${resumeLine} — but the title is what lasts.`;
+    }
+    return `${rings} championships${fmvpStr}. ${firstName} built a legacy on winning — the kind of competitor franchise owners spend decades praying for.`;
+  }
+
+  if (traitsAny.includes('LOYAL')) {
+    if (isFranchiseLegend || isLongServantOneTeam) {
+      return rings > 0
+        ? `${resumeLine}. ${maxSeasonsOneTeam} seasons, one team. ${firstName} never entertained leaving — and the franchise rewarded that loyalty with ${rings === 1 ? 'a championship' : `${rings} championships`}${fmvpStr}. The rarest story in modern basketball.`
+        : `${firstName} gave ${maxSeasonsOneTeam} seasons to one city and never asked for a way out. No ring — but a fanbase that will talk about this career long after the arena lights go off.`;
+    }
+    return rings > 0
+      ? `${firstName} was a steady, loyal presence wherever the journey took them — and it ended with ${rings === 1 ? 'a championship' : `${rings} championships`}${fmvpStr}. Earned every step of it.`
+      : `${firstName} was a steady presence — teams knew what they were getting and fans always got their money's worth. Loyalty shaped every chapter of this career.`;
+  }
+
+  if (traitsAny.includes('MERCENARY')) {
+    if (rings > 0) return `${firstName} got paid AND got a ring${fmvpStr}. Chased the biggest contracts, cashed every check, walked away a champion. The market was never wrong about this one.`;
+    if (resumeLine) return `${firstName} was a top earner and a legitimate star — ${resumeLine}. The ring never came, but this was a career built to be compensated, and it was.`;
+    return `${firstName} earned every dollar. Moved when the market said move, signed where the money was, left with no regrets.`;
+  }
+
+  if (traitsAny.includes('FAME') || traitsAny.includes('DIVA')) {
+    return rings > 0
+      ? `${firstName} was built for the brightest lights — and ${ringStr}${fmvpStr} only added to the legend. Every camera in the arena was always on the right player.`
+      : allStar > 0
+      ? `${firstName} was box-office basketball — ${allStar}× All-Star, every highlight reel, every big-market marquee. The kind of player who put cities on his back and sold jerseys in countries that don't have a team.`
+      : `${firstName} thrived in the spotlight. Big markets, bright lights — made the most of every moment in front of the cameras.`;
+  }
+
+  if (traitsAny.includes('AMBASSADOR')) {
+    return rings > 0
+      ? `${firstName} was the rarest kind of pro — respected by opponents, loved by teammates, never in the headlines for the wrong reasons. ${ringStr}${fmvpStr}. The legacy is spotless.`
+      : `${firstName} carried the game with class. Never a headline for the wrong reasons — the kind of locker room presence coaches dream about. A reputation that outlasts any trophy.`;
+  }
+
+  if (traitsAny.includes('DRAMA_MAGNET')) {
+    return rings > 0
+      ? `It was never boring with ${firstName} — but at the end of it all, ${ringStr}${fmvpStr} sits on the mantle. Whatever drama it took to get there, it worked.`
+      : `${firstName} kept every city, reporter, and rival on their toes. Drama followed everywhere, the ring didn't — but no career generated more column inches.`;
+  }
+
+  // Fallback — lead with the hardware if it exists
+  if (resumeLine) return `${firstName}'s career speaks for itself — ${resumeLine}. A résumé that'll echo in conversation for decades.`;
+  return `${firstName}'s career is in the books. A reliable pro who made rosters better, gave everything on the floor, and left on honest terms.`;
+}
+
+const RetiredCareerSummary: React.FC<{ player: NBAPlayer; traits: MoodTrait[]; currentYear: number }> = ({ player, traits, currentYear }) => {
+  const awards: Array<{ type: string }> = (player as any).awards ?? [];
+  const rings = countAwards(awards, 'Won Championship', 'Champion', 'NBA Champion');
+  const mvps = countAwards(awards, 'Most Valuable Player', 'MVP');
+  const finalsMvps = countAwards(awards, 'Finals MVP');
+  const dpoy = countAwards(awards, 'Defensive Player of the Year', 'DPOY');
+  const allNBA = countAwardsContaining(awards, 'All-NBA', 'All-League');
+  const allStar = countAwards(awards, 'All-Star');
+  const text = retiredSummaryText(player, traits, currentYear);
+
+  return (
+    <div>
+      {/* Award pills */}
+      {(rings > 0 || mvps > 0 || finalsMvps > 0 || allNBA > 0 || dpoy > 0 || allStar > 0) && (
+        <div className="flex flex-wrap gap-1.5 mb-3 mt-1">
+          {rings > 0 && (
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-yellow-500/15 border border-yellow-500/30 text-yellow-400">
+              {rings}× Champion
+            </span>
+          )}
+          {mvps > 0 && (
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-400">
+              {mvps}× MVP
+            </span>
+          )}
+          {finalsMvps > 0 && (
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400">
+              {finalsMvps}× Finals MVP
+            </span>
+          )}
+          {allNBA > 0 && (
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-400">
+              {allNBA}× All-League
+            </span>
+          )}
+          {allStar > 0 && (
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-400">
+              {allStar}× All-Star
+            </span>
+          )}
+          {dpoy > 0 && (
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+              {dpoy}× DPOY
+            </span>
+          )}
+        </div>
+      )}
+      <p className="text-sm text-slate-200 leading-relaxed italic">"{text}"</p>
+    </div>
+  );
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const PlayerBioMoraleTab: React.FC<PlayerBioMoraleTabProps> = ({ player }) => {
@@ -469,9 +649,9 @@ export const PlayerBioMoraleTab: React.FC<PlayerBioMoraleTabProps> = ({ player }
 
   const isFarewellTour = !!(player as any).farewellTour;
 
-  // Retirement risk — only relevant for players 34+ who are NOT already farewell flagged
+  // Retirement risk — only relevant for active players 34+ who are NOT already farewell flagged or retired
   const retirementRisk = useMemo(() => {
-    if (isFarewellTour) return null; // farewell section takes over
+    if (isFarewellTour || player.status === 'Retired') return null;
     const age = player.born?.year ? currentYear - player.born.year : (player.age ?? 0);
     if (age < 34) return null;
     const prob = retireProb(age, player.overallRating ?? 60);
@@ -584,72 +764,79 @@ export const PlayerBioMoraleTab: React.FC<PlayerBioMoraleTabProps> = ({ player }
         </div>
       )}
 
-      {/* ── Contract thoughts ──────────────────────────────────────────────── */}
-      <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5">
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Contract Thoughts</p>
-        {(() => {
-          const isFA = player.tid === -1 || player.status === 'Free Agent';
-          const isExternal = ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'WNBA'].includes(player.status ?? '');
-          const exp = player.contract?.exp;
-          if (isFA) {
-            return <p className="text-[9px] text-rose-400 mb-3">Contract Expired · Unrestricted Free Agent</p>;
-          }
-          if (isExternal) {
-            return <p className="text-[9px] text-sky-400 mb-3">Plays in {player.status}</p>;
-          }
-          if (exp) {
-            const yearsLeft = exp - currentYear;
-            if (yearsLeft <= 0) {
-              return <p className="text-[9px] text-amber-400 mb-3">Expiring · Exp. {exp - 1}–{String(exp).slice(-2)}</p>;
+      {/* ── Contract thoughts or Retirement message ────────────────────────── */}
+      {player.status !== 'Retired' ? (
+        <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Contract Thoughts</p>
+          {(() => {
+            const isFA = player.tid === -1 || player.status === 'Free Agent';
+            const isExternal = ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'WNBA'].includes(player.status ?? '');
+            const exp = player.contract?.exp;
+            if (isFA) {
+              return <p className="text-[9px] text-rose-400 mb-3">Contract Expired · Unrestricted Free Agent</p>;
             }
-            return <p className="text-[9px] text-slate-600 mb-3">{yearsLeft}yr left · Exp. {exp - 1}–{String(exp).slice(-2)}</p>;
-          }
-          return null;
-        })()}
-        <p className="text-sm text-slate-200 leading-relaxed italic">
-          "{contractThoughts}"
-        </p>
+            if (isExternal) {
+              return <p className="text-[9px] text-sky-400 mb-3">Plays in {player.status}</p>;
+            }
+            if (exp) {
+              const yearsLeft = exp - currentYear;
+              if (yearsLeft <= 0) {
+                return <p className="text-[9px] text-amber-400 mb-3">Expiring · Exp. {exp - 1}–{String(exp).slice(-2)}</p>;
+              }
+              return <p className="text-[9px] text-slate-600 mb-3">{yearsLeft}yr left · Exp. {exp - 1}–{String(exp).slice(-2)}</p>;
+            }
+            return null;
+          })()}
+          <p className="text-sm text-slate-200 leading-relaxed italic">
+            "{contractThoughts}"
+          </p>
 
-        {resign && (() => {
-          const rColor = resignColor(resign.score);
-          return (
-            <div className="mt-5 pt-4 border-t border-slate-700/50">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Re-sign Probability</span>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-xl font-black" style={{ color: rColor }}>{resign.score}</span>
-                  <span className="text-[10px] text-slate-500">%</span>
+          {resign && (() => {
+            const rColor = resignColor(resign.score);
+            return (
+              <div className="mt-5 pt-4 border-t border-slate-700/50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Re-sign Probability</span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xl font-black" style={{ color: rColor }}>{resign.score}</span>
+                    <span className="text-[10px] text-slate-500">%</span>
+                  </div>
                 </div>
-              </div>
-              <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden mb-2">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${resign.score}%`, backgroundColor: rColor }}
-                />
-              </div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-bold" style={{ color: rColor }}>{resignLabel(resign.score)}</span>
-              </div>
+                <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden mb-2">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${resign.score}%`, backgroundColor: rColor }}
+                  />
+                </div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[11px] font-bold" style={{ color: rColor }}>{resignLabel(resign.score)}</span>
+                </div>
 
-              {resign.factors.length > 0 ? (
-                <div className="grid grid-cols-1 gap-y-1 text-[10px]">
-                  <p className="text-[9px] font-black uppercase tracking-wider text-slate-500 mb-0.5">Influences</p>
-                  {resign.factors.map(f => (
-                    <div key={f.label} className="flex items-center justify-between">
-                      <span className="text-slate-400">{f.label}</span>
-                      <span className={`font-black tabular-nums ${f.delta > 0 ? 'text-emerald-400' : f.delta < 0 ? 'text-rose-400' : 'text-slate-500'}`}>
-                        {f.delta > 0 ? '+' : ''}{f.delta}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[10px] text-slate-600 italic">No strong factors either way — purely neutral.</p>
-              )}
-            </div>
-          );
-        })()}
-      </div>
+                {resign.factors.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-y-1 text-[10px]">
+                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-500 mb-0.5">Influences</p>
+                    {resign.factors.map(f => (
+                      <div key={f.label} className="flex items-center justify-between">
+                        <span className="text-slate-400">{f.label}</span>
+                        <span className={`font-black tabular-nums ${f.delta > 0 ? 'text-emerald-400' : f.delta < 0 ? 'text-rose-400' : 'text-slate-500'}`}>
+                          {f.delta > 0 ? '+' : ''}{f.delta}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-600 italic">No strong factors either way — purely neutral.</p>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      ) : (
+        <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Career Summary</p>
+          <RetiredCareerSummary player={player} traits={traits} currentYear={currentYear} />
+        </div>
+      )}
 
       {/* ── Farewell Tour banner ───────────────────────────────────────────── */}
       {isFarewellTour && (

@@ -14,6 +14,7 @@ import type { NBAPlayer, NBATeam, DraftPick, TradeProposal } from '../../types';
 import {
   calcOvr2K, calcPlayerTV, calcPickTV, isUntouchable, type TeamMode,
 } from './tradeValueEngine';
+import { tradeRoleToTeamMode } from '../../utils/teamStrategy';
 
 const EXTERNAL = new Set(['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'Draft Prospect', 'Prospect']);
 
@@ -23,9 +24,7 @@ const MAX_PROPOSALS_PER_TEAM = 2;    // keep the inbox readable
 const MAX_TOTAL_PROPOSALS = 20;      // overall cap
 
 function roleToMode(role: string): TeamMode {
-  if (role === 'heavy_buyer' || role === 'buyer') return 'contend';
-  if (role === 'rebuilding') return 'presti';
-  return 'rebuild';
+  return tradeRoleToTeamMode(role);
 }
 
 /** Salary parity for same-team out/in — 125% cap rule approximation. */

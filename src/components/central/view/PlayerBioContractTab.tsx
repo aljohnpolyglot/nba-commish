@@ -42,6 +42,13 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
     return m;
   }, [player.stats]);
 
+  // NonNBA tid → league name (for Lg column)
+  const nonNBALeagueByTid = useMemo(() => {
+    const m = new Map<number, string>();
+    (state.nonNBATeams ?? []).forEach((t: any) => m.set(t.tid, t.league));
+    return m;
+  }, [state.nonNBATeams]);
+
   // Real per-season contract data from nbacontractsdata gist (stored by applyContractOverrides)
   const contractYears: Array<{ season: string; guaranteed: number; option: string }> =
     (player as any).contractYears ?? [];
@@ -54,42 +61,61 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
     // ── Path A: Real contract data from gist ───────────────────────────────
     if (contractYears.length > 0) {
       let lastKnownTeamName = currentTeamName;
-      return contractYears.map(cy => {
+      let lastKnownTid = player.tid;
+      // Drop past-season rows that have $0 guaranteed and no option flag — these are
+      // 10-day / training-camp / two-way blips the gist preserves but that render as
+      // confusing "—" rows in Career Earnings. Keep current/future rows regardless so
+      // an unsigned current year still shows up.
+      const visibleYears = contractYears.filter(cy => {
+        const yr = parseInt(cy.season.split('-')[0], 10) + 1;
+        if (yr >= currentYear) return true;
+        if ((cy.guaranteed ?? 0) > 0) return true;
+        const opt = (cy.option ?? '').toLowerCase();
+        return opt === 'team' || opt === 'player';
+      });
+      return visibleYears.map(cy => {
         // "2025-26" → season year 2026 (matches game's leagueStats.year convention)
         const yr = parseInt(cy.season.split('-')[0], 10) + 1;
         const isFutureRow = yr > currentYear;
 
         let teamName: string;
+        let rowTid: number;
         if (yr >= currentYear) {
           teamName = currentTeamName;
+          rowTid = player.tid;
         } else {
           const tid = tidBySeason.get(yr);
           // Fall back to last known team when no stat entry exists for that season
           // (e.g. a team-option year where the player was cut/became FA mid-contract)
           teamName = tid != null ? (teamNameMap.get(tid) ?? lastKnownTeamName) : lastKnownTeamName;
+          rowTid = tid ?? lastKnownTid;
         }
         lastKnownTeamName = teamName;
+        lastKnownTid = rowTid;
 
         const optionLabel =
           cy.option === 'Player' ? 'Player Option' :
           cy.option === 'Team'   ? 'Team Option' :
-          isTwoWay               ? 'Two-Way' : null;
+          isTwoWay               ? 'Two-Way' :
+          (player.contract?.rookie && yr === currentYear) ? 'Rookie' : null;
 
         const currentYearRow = yr === currentYear;
         return {
           season: yr,
           teamName,
+          tid: rowTid,
           salaryUSD: cy.guaranteed,
           isFuture: isFutureRow,
           option: currentYearRow && isNonGuaranteed && !optionLabel ? 'Non-Guaranteed' : optionLabel,
         };
       });
+      return [...preGistRows, ...gistRows];
     }
 
     // ── Path B: BBGM salaries (past) + annualRaise escalator (future) ─────
     // Past rows from BBGM salaries[]
     const bbgmSalaries: Array<{ season: number; amount: number }> = (player as any).salaries ?? [];
-    const pastRows: Array<{ season: number; teamName: string; salaryUSD: number; isFuture: boolean; option: string | null }> = [];
+    const pastRows: Array<{ season: number; teamName: string; tid: number; salaryUSD: number; isFuture: boolean; option: string | null }> = [];
 
     if (bbgmSalaries.length > 0) {
       bbgmSalaries
@@ -101,6 +127,7 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
           pastRows.push({
             season: sal.season,
             teamName: tid >= 0 ? (teamNameMap.get(tid) ?? 'Unknown') : 'Free Agent',
+            tid,
             salaryUSD: contractToUSD(sal.amount),
             isFuture: false,
             option: null,
@@ -123,6 +150,7 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
         futureRows.push({
           season: yr,
           teamName: currentTeamName,
+          tid: player.tid,
           salaryUSD: isTwoWay ? 625_000 : annualRaise(baseUSD, yearsFromNow),
           isFuture: yearsFromNow > 0,
           option: isTwoWay ? 'Two-Way'
@@ -208,11 +236,11 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
                   {row.season - 1}–{String(row.season).slice(-2)}
                 </td>
                 <td className="py-2 text-left text-slate-200 font-medium">{row.teamName}</td>
-                <td className="py-2 text-center text-slate-400">{player.status && !['Active', 'Free Agent'].includes(player.status) ? player.status : 'NBA'}</td>
+                <td className="py-2 text-center text-slate-400">{nonNBALeagueByTid.get(row.tid) ?? 'NBA'}</td>
                 <td className="py-2 text-right font-mono font-bold text-slate-100">
                   {row.salaryUSD > 0
-                    ? (player.status && !['Active', 'Free Agent'].includes(player.status)
-                        ? formatExternalSalary(row.salaryUSD, player.status)
+                    ? (nonNBALeagueByTid.has(row.tid)
+                        ? formatExternalSalary(row.salaryUSD, nonNBALeagueByTid.get(row.tid)!)
                         : formatSalaryM(row.salaryUSD))
                     : <span className="text-slate-600">—</span>
                   }

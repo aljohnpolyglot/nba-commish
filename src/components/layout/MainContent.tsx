@@ -1,5 +1,6 @@
 import React from 'react';
 import { normalizeDate } from '../../utils/helpers';
+import { getDraftDate, toISODateString } from '../../utils/dateUtils';
 import { useGame } from '../../store/GameContext';
 import { Inbox } from '../Inbox';
 import { MessagesView } from '../MessagesView';
@@ -21,6 +22,7 @@ import { TradeMachineView } from '../central/view/TradeMachineView';
 import { TradeProposalsView } from '../central/view/TradeProposalsView';
 import { TeamStatsView } from '../team-stats/TeamStatsView';
 import { AllStarView } from '../allstar/AllStarView';
+import NBACupView from '../central/view/NBACupView';
 import { PlayoffView } from '../playoffs/PlayoffView';
 import { LeagueOfficeView } from '../league-office/LeagueOfficeView';
 import { LeagueLeadersView } from '../central/view/LeagueLeadersView';
@@ -86,6 +88,12 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       return <AwardRacesView />;
     case 'All-Star':
       return <AllStarView />;
+    case 'NBA Cup':
+      return (
+        <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          <NBACupView />
+        </div>
+      );
     case 'Playoffs':
       return <PlayoffView />;
     case 'NBA Central':
@@ -205,7 +213,7 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       // Otherwise → show draft history (past draft classes)
       const _ls = state?.leagueStats ?? {} as any;
       const _yr = (_ls as any).year ?? 2026;
-      const _draftDate = `${_yr}-06-25`;
+      const _draftDate = toISODateString(getDraftDate(_yr, _ls));
       const _today = state?.date ? normalizeDate(state.date) : '';
       const _isDraftDay = _today >= _draftDate && _today <= `${_yr}-06-30`;
       const _isDraftDone = !!(state as any)?.draftComplete;

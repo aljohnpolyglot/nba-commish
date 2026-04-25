@@ -1,0 +1,58 @@
+Names:2;Bio:6;Skills:5;Contract:4;Playbook:25;Total Sim Control:6
+Last_Name;Last Name;This field indicates staff member's Last Name
+First_Name;First Name;This field indicates staff member's First Name
+SType;Staff Type;Stands for the type of the staff member
+#
+Experience;Experience;How many years the coach has been in the NBA.
+#
+PortrID;Portrait ID;Staff member’s portrait is defined by this ID value
+CF_ID;CyberFace ID;Staff member’s in-match face is defined by this ID value
+#
+Height;Height;Represents staff member’s height;H
+#
+AudioID;Audio ID;Audio stories, told by commentators about the staff member during matches
+SOffense;Offense;Offensive Skill (used by coaches)
+SDefense;Defense;Defensive Skill (used by coaches)
+STeacher;Teacher;Teaching Skill (used by coaches)
+#
+SSct_Trn;Scout / Trainer;Scouting skill for scouts and Medical skill for Trainers
+#
+SPotential;Potential;Potential of the staff member
+CStatus;Status;Contract Status
+#
+CTeamGID;Team (GID);Defines the team, responsible for the staff member's contract, by its GID. Set to -1, so no team will be responsible for his contract anymore; set to -2, so the staff member will become UNavailable for hiring. In general, this is NOT the team, which the staff member works for, BUT the team, which pays him.
+#
+CYears;Years;Number of staff member’s contract years
+CSalary;Salary;Salary
+PlaybookID;Playbook ID;ID of the default Playbook, used by the coach
+#
+POffTempo;Offensive Tempo;How quickly the team will move the ball around
+POnBlDefP;On-Ball Defensive Pressure;Sets how quickly the team will move on the defensive side of the ball
+POfBlDefP;Off-Ball Defensive Pressure;Sets how quickly the team will move on the defensive side of the ball
+PHelpDef;Help Defense;Sets how often players will help out others on defense
+PFastBrk;Fast Break;Sets how quickly the team will carry the ball up the court
+PCrashGls;Crash Offensive Glass;Sets how aggressively the team will rebound
+PRunPlays;Run Plays;Sets how often the team will run set plays
+PErlyOff;Early Offense;Sets how often the team will run early offense plays
+PDblTeams;Double Teams;Sets how often the team will employ double teams on defense
+PZoneUsg;Zone Usage;Sets how often the team will use a zone defense
+PBnchDpth;Bench Depth;Sets how many minutes the bench will play in an average game
+PLnUpPerf;LineUp Perfomance Factor;Sets how much perfomance affects minutes played in a game
+PTkInsSht;Take Inside Shots;Sets how often the team will take shots under the hoop
+PTkClsSht;Take Close Shots;Sets how often the team will take shots near the hoop
+PTkMidSht;Take Mid-Range Shots;Sets how often the team will take shots mid-range
+PTk3PTSht;Take 3PT Shots;Sets how often the team will take shots from beyond the 3-Point line
+PAttBskt;Attack The Basket;Sets how often the team will drive to the hoop
+PLkPostPl;Look For Post Players;Sets how often the team will pass the ball to players under the basket
+PThrwAOs;Throw Alley-Oops;Sets how often the team will pass to the hoop for a player to dunk
+PSizeSpd;Size - Speed;Determines which types of players will be favored
+PAthlSkill;Athleticism vs. Skill;Profile - Athleticism vs. Skill
+POffDef;Offense vs. Defense;Profile - Offense vs. Defense
+PGrdsFrwds;Guards vs. Forwards;Profile - Guards vs. Forwards
+PInsOuts;Inside vs. Outside;Profile - Inside vs. Outside
+TOShotSel;Shot Selection;Total Sim Control - Offense - Shot Selection
+TOFocus;Offensive Focus;Total Sim Control - Offense - Offensive Focus
+TORebound;Offensive Rebounding;Total Sim Control - Offense - Offensive Rebounding
+TDPressure;Defensive Pressure;Total Sim Control - Defense - Defensive Pressure
+TDStyle;Defensive Style;Total Sim Control - Defense - Defensive Style
+TDRebound;Defensive Rebounding;Total Sim Control - Defense - Defensive Rebounding

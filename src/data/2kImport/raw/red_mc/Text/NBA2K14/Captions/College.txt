@@ -1,0 +1,13 @@
+Names:2;Parameters:7
+Name;Name;College Name
+#
+__Name;Name Replacer;Set to zero to use the value, stored in Name, as College's Name. Otherwise the actual name is grabbed from the *current_language*.IFF file, using the value as a string ID.
+CollegeID;College ID;The other ID. Should be unique for all the colleges.
+IsRegular;Is Regular;Determines, if the college is regular or not. Not regular colleges are not used by the in-game player Generator and can't be assigned via Create-A-Player menu.
+#
+TerrID1;Territory ID 1;Determines a territory, the college situates at. This also affects audio, used by the college.
+TerrID2;Territory ID 2;Determines a territory, the college situates at.
+#
+GenProbab;Generator - Probability;Colleges with bigger value are more likely to be used by the generator. Maybe this defines the probability of at least 1 player in the Draft Class being from the college.
+GenNation;Generator - Nationality;Used by the Generator to define the graduates' nationality. The Generator adjusts newly generated players' names accordingly. Not Used means, the College is not used by the Generator and is also invisible on Create-A-Player screen.
+GenApTweak;Generator - Appearance Tweak;Used by the Generator. Determines, if players, generated with this college, will have extra appearance tweaks (according to their home region). For example, this is used to make players with Asian colleges have mostly Asian appearance, etc.

@@ -1,0 +1,122 @@
+logo300				50s-60s Legends
+logo301				70s-East Legends
+logo302				70s-West Legends
+logo303				80s-East Legends
+logo304				80s-West Legends
+logo305				90s-East Legends
+logo306				90s-West Legends
+logo500				NBA 2K13 Logo
+logo501				2K Sports Logo
+logo502				Visual Concepts
+logo503				International All-Stars
+logo504				Rookies
+logo505				Sophomore
+logo506				Superstars
+logo509				Old Knicks Logo
+logo510				Retro 76ers Logo
+logo511				Supersonics Logo (S)
+logo512				2K China Logo
+logo513				2K Sphere Logo
+logo515				Celebrity Team Logo
+logo516				Dream Team Logo
+logo517				Team USA Logo
+logo520				2000 Draft Class Logo
+logo521				2001 Draft Class Logo
+logo522				2002 Draft Class Logo
+logo523				2003 Draft Class Logo
+logo524				2004 Draft Class Logo
+logo525				2005 Draft Class Logo
+logo526				2006 Draft Class Logo
+logo527				2007 Draft Class Logo
+logo550				Jordan- Jumpman Logo
+logo600				Home Logo
+logo601				Away Logo
+logo602				Rookie Showcase Logo
+logo603				NBA '09 Logo (White BG)
+logo604				The Elites Logo
+logo605				Rookie Stars Logo
+logo610				All Net Logo
+logo611				Ankle Breakers Logo
+logo612				Buckets Logo
+logo613				Clutch Boyz Logo
+logo614				Droppin' Dimes Logo
+logo615				Lights Out Logo
+logo616				Mad Handles Logo
+logo617				Boats Show Logo
+logo618				The Ringers Logo
+logo619				The Ballerz Logo
+logo800				CAT Power Plant (?) Logo
+logo801				CAT Train Logo
+logo802				CAT Lightning Logo
+logo803				CAT Snake Logo
+logo804				CAT Erasers Logo
+logo805				CAT Hawks Logo
+logo806				CAT Galaxy Logo
+logo807					CAT ....I don't even know Logo
+logo808				CAT Panther Logo
+logo809				CAT Mirage Logo
+logo810					CAT A-Hoop Logo
+logo811				Rhythm Logo
+logo998				NBA Logo
+logo999				Free Agent Logo
+
+
+logo_2k_square			HQ 2K Logo
+logo_adidas_square		Adidas Logo
+logo_all_star			All Star New Orleans Logo
+logo_all_star_generic		All Star Generic
+logo_all_star_wm		All Star (Jersey Logo?)
+logo_bbva			Offical Bank of NBA Logo
+logo_converse_square		Converse Logo
+logo_footlocker			Footlocker Ref Logo
+logo_gatorade			Gatorade G w/ Lightning Bolt
+logo_jordan			HQ Jumpman
+logo_jordan_square		HQ Jumpman w/ Jordan Text
+logo_nba_finals			The Finals text
+logo_nba_finals_white		The Finals text white
+logo_nba_playoffs		Playoffs court logo
+logo_nba_playoffs_white		Playoffs court logo white
+logo_nbdl			D League Logo
+logo_nike			Nike text w/ Swoosh Logo
+logo_nike_swoosh_square		Nike Swoosh
+logo_reebok_square		Reebok text
+logo_spalding_square		Spalding True to the Game	
+logo_sprite			Sprite Logo
+logo_statefarm			State Farm Text
+logo_under_armour_square	UA Logo			
+
+
+Text Based Logos
+logo000_wm			Sixers Text Logo
+logo001_wm			Bucks Text Logo
+logo002_wm			Wizards Text Logo
+logo003_wm			Bulls Text Logo
+logo004_wm			Old Cavs Text Logo
+logo005_wm			Celtics Text Logo
+logo006_wm			Clippers Text Logo
+logo007_wm			Eastern Text Logo
+logo008_wm			Grizzlies Text Logo
+logo009_wm			Hawks Text Logo
+logo010_wm			Heat Text Logo
+logo011_wm			Pelicans Text Logo
+logo012_wm			Jazz Text Logo	
+logo013_wm			Kings Text Logo
+logo014_wm			Knicks Text Logo
+logo015_wm			Lakers Text Logo
+logo016_wm			Magic Text Logo
+logo017_wm			Mavericks Text Logo
+logo018_wm			Nets Text Logo
+logo019_wm			Nuggets Text Logo
+logo020_wm			Pacers Text Logo
+logo021_wm			Pistons Text Logo
+logo022_wm			Raptors Text Logo
+logo023_wm			Rockets Text Logo
+logo024_wm			Thunder Text Logo
+logo025_wm			Spurs Text Logo
+logo026_wm			Suns Text Logo
+logo027_wm			Timberwolves Text Logo			
+logo028_wm			Trailblazers Text Logo
+logo029_wm			Warriors Text Logo
+logo030_wm			Western Text Logo
+logo031_wm			Bobcats Text Logo
+

@@ -1,8 +1,14 @@
-import { GameState, NonNBATeam, NewsItem, DraftPick } from '../../types';
+import { GameState, NonNBATeam, NewsItem, DraftPick, NBACupState } from '../../types';
+import { computeRookieSalaryUSD } from '../../utils/rookieContractUtils';
+import { normalizeTeamJerseyNumbers, pickJerseyNumber } from '../../utils/jerseyUtils';
 import { generateSchedule } from '../gameScheduler';
+import { drawCupGroups } from '../nbaCup/drawGroups';
+import { injectCupGroupGames } from '../nbaCup/scheduleInjector';
 import { AwardService } from './AwardService';
 import { NewsGenerator } from '../news/NewsGenerator';
 import { LOTTERY_PRESETS } from '../../lib/lotteryPresets';
+import { returnUndraftedToHomeLeague } from '../externalLeagueSustainer';
+import { UNDRAFTED_OVR_CAP } from '../../constants';
 
 // ── Schedule Generation (Aug 14) ──────────────────────────────────────────
 export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
@@ -15,12 +21,56 @@ export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
     g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn
          && g.date >= seasonStart && g.date <= seasonEnd
   );
-  if (hasRegularSeason) return {}; // already generated, skip
+  if (hasRegularSeason) {
+    // Schedule already generated, but check if Cup games are missing — can happen
+    // if the schedule was generated under an older codepath that didn't pass
+    // cupGroups. Self-heal by retro-injecting Cup games into the existing schedule.
+    if (state.leagueStats.inSeasonTournament !== false && state.nbaCup?.groups?.length) {
+      const hasCupGames = state.schedule.some(g => (g as any).isNBACup);
+      if (!hasCupGames) {
+        console.log('[autoGenerateSchedule] Self-heal: schedule exists but no Cup games tagged → injecting now');
+        const scheduledDates: Record<string, Set<number>> = {};
+        for (const g of state.schedule as any[]) {
+          const ds = String(g.date).split('T')[0];
+          if (!scheduledDates[ds]) scheduledDates[ds] = new Set<number>();
+          scheduledDates[ds].add(g.homeTid); scheduledDates[ds].add(g.awayTid);
+        }
+        const maxGid = Math.max(0, ...state.schedule.map(g => g.gid));
+        // Retro-injected cup games: mark excludeFromRecord so the existing 82-game
+        // RS schedule isn't inflated. (Fresh-save path keeps default false because
+        // gameScheduler subtracts the conflicting RS game via preScheduledPairs.)
+        const result = injectCupGroupGames([], maxGid + 1, state.nbaCup.groups, state.saveId || 'default', year - 1, scheduledDates, { excludeFromRecord: true });
+        if (result.games.length > 0) {
+          const merged = [...state.schedule, ...result.games].sort(
+            (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+          );
+          return { schedule: merged };
+        }
+      }
+    }
+    return {};
+  }
   // Strip any old-season games that are no longer relevant
   const intlPreseasonGames = state.schedule.filter(
     g => (g as any).isPreseason && (g.homeTid >= 100 || g.awayTid >= 100)
          && g.date >= seasonStart
   );
+  // First-season fallback: nbaCup is only seeded at year-end rollover, so brand
+  // new saves have no groups yet. Draw them inline here so Cup games make it
+  // into the very first schedule.
+  let nbaCupPatch: NBACupState | undefined;
+  let cupGroups = (state.leagueStats.inSeasonTournament !== false) ? (state.nbaCup?.groups ?? []) : [];
+  if (state.leagueStats.inSeasonTournament !== false && cupGroups.length === 0) {
+    const prevStandings = state.teams.map(t => ({ tid: t.id, wins: t.wins, losses: t.losses }));
+    cupGroups = drawCupGroups(state.teams, prevStandings, state.saveId ?? 'default', state.leagueStats.year);
+    nbaCupPatch = {
+      year: state.leagueStats.year,
+      status: 'group',
+      groups: cupGroups,
+      wildcards: { East: null, West: null },
+      knockout: [],
+    };
+  }
   let schedule = generateSchedule(
     state.teams,
     state.christmasGames,
@@ -28,7 +78,9 @@ export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
     state.leagueStats.numGamesDiv ?? null,
     state.leagueStats.numGamesConf ?? null,
     state.leagueStats.mediaRights,
-    state.leagueStats.year
+    state.leagueStats.year,
+    cupGroups.length > 0 ? cupGroups : undefined,
+    state.saveId,
   );
   if (intlPreseasonGames.length > 0) {
     // Re-gid intl games to start after the freshly generated schedule's max gid
@@ -39,7 +91,7 @@ export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
   }
-  return { schedule };
+  return nbaCupPatch ? { schedule, nbaCup: nbaCupPatch } : { schedule };
 };
 
 // ── International Preseason Auto-Schedule (Aug 13) ────────────────────────
@@ -48,9 +100,12 @@ export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
 // top 5 teams by strength; non-NBA opponents are chosen from the top 5 in each
 // league ranked by their players' average overall rating.
 export const autoScheduleIntlPreseason = (state: GameState): Partial<GameState> => {
-  // Skip if commissioner already scheduled intl preseason games
+  const y1 = state.leagueStats.year - 1;
+  const seasonStart = `${y1}-10-01`;
+  // Skip if commissioner already scheduled intl preseason games THIS season
   const existingIntl = state.schedule.filter(
     g => (g as any).isPreseason && (g.homeTid >= 100 || g.awayTid >= 100)
+       && g.date >= seasonStart
   );
   if (existingIntl.length > 0) return {};
 
@@ -111,13 +166,13 @@ export const autoScheduleIntlPreseason = (state: GameState): Partial<GameState> 
 
   // Schedule: 2 Euroleague, 2 B-League, 1 PBA, 1 China CBA, 1 NBL Australia (all within Oct 1–15 preseason window)
   const plan: [NonNBATeam['league'], string][] = [
-    ['Euroleague',   '2025-10-02'],
-    ['B-League',     '2025-10-04'],
-    ['Euroleague',   '2025-10-07'],
-    ['China CBA',     '2025-10-09'],
-    ['B-League',     '2025-10-11'],
-    ['NBL Australia', '2025-10-13'],
-    ['PBA',          '2025-10-15'],
+    ['Euroleague',    `${y1}-10-02`],
+    ['B-League',      `${y1}-10-04`],
+    ['Euroleague',    `${y1}-10-07`],
+    ['China CBA',     `${y1}-10-09`],
+    ['B-League',      `${y1}-10-11`],
+    ['NBL Australia', `${y1}-10-13`],
+    ['PBA',           `${y1}-10-15`],
   ];
 
   const newGames: any[] = [];
@@ -136,7 +191,9 @@ export const autoScheduleIntlPreseason = (state: GameState): Partial<GameState> 
 };
 
 // ── Christmas Games ────────────────────────────────────────────────────────
+// Fires Aug 12 (before Aug 14 schedule generation). Guard: skip if commissioner already set them.
 export const autoPickChristmasGames = (state: GameState): Partial<GameState> => {
+  if (state.christmasGames && state.christmasGames.length > 0) return {};
   const east = [...state.teams]
     .filter(t => t.conference === 'East')
     .sort((a, b) => (b.strength ?? 0) - (a.strength ?? 0))
@@ -155,14 +212,31 @@ export const autoPickChristmasGames = (state: GameState): Partial<GameState> => 
 };
 
 // ── Global Games ───────────────────────────────────────────────────────────
+// Fires Aug 13 (before Aug 14 schedule generation). Auto-picks 3 international
+// regular-season games if the commissioner hasn't configured any.
 export const autoPickGlobalGames = (state: GameState): Partial<GameState> => {
-  // Don't overwrite games the commissioner already configured
   if (state.globalGames && state.globalGames.length > 0) return {};
-  return { globalGames: [] };
+  const y = state.leagueStats.year;
+  const y1 = y - 1;
+
+  // Pick 3 top-strength teams, no repeats
+  const sorted = [...state.teams].sort((a, b) => (b.strength ?? 0) - (a.strength ?? 0));
+  const [t1, t2, t3, t4, t5, t6] = sorted;
+  if (!t1 || !t2) return { globalGames: [] };
+
+  const globalGames = [
+    { homeTid: t1.id, awayTid: t2.id, date: `${y1}-11-08T00:00:00Z`, city: 'London',      country: 'UK' },
+    { homeTid: t3?.id ?? t1.id, awayTid: t4?.id ?? t2.id, date: `${y1}-11-15T00:00:00Z`, city: 'Paris',       country: 'France' },
+    { homeTid: t5?.id ?? t1.id, awayTid: t6?.id ?? t2.id, date: `${y1}-11-22T00:00:00Z`, city: 'Mexico City', country: 'Mexico' },
+  ];
+
+  return { globalGames };
 };
 
 // ── All-Star Voting ────────────────────────────────────────────────────────
 export const autoSimVotes = async (state: GameState): Promise<Partial<GameState>> => {
+  // Skip if votes already exist — preserves commissioner's rigged ghost votes.
+  if ((state.allStar?.votes?.length ?? 0) > 0) return {};
   try {
     const { getAllStarWeekendDates } = await import('../allStar/AllStarWeekendOrchestrator');
     const { AllStarSelectionService } = await import('../allStar/AllStarSelectionService');
@@ -196,6 +270,7 @@ export const autoSimVotes = async (state: GameState): Promise<Partial<GameState>
 
 // ── All-Star Starters ──────────────────────────────────────────────────────
 export const autoAnnounceStarters = async (state: GameState): Promise<Partial<GameState>> => {
+  if (state.allStar?.startersAnnounced) return {};
   try {
     const { AllStarSelectionService } = await import('../allStar/AllStarSelectionService');
     const starters = AllStarSelectionService.selectStarters(
@@ -217,6 +292,9 @@ export const autoAnnounceStarters = async (state: GameState): Promise<Partial<Ga
 
 // ── All-Star Reserves + Rising Stars + Celebrity ───────────────────────────
 export const autoAnnounceReserves = async (state: GameState): Promise<Partial<GameState>> => {
+  // Skip if already announced — commissioner-added injury replacements live on
+  // state.allStar.roster, and re-running this would duplicate reserves on top.
+  if (state.allStar?.reservesAnnounced) return {};
   try {
     const { AllStarSelectionService } = await import('../allStar/AllStarSelectionService');
     const reserves = AllStarSelectionService.selectReserves(
@@ -298,6 +376,8 @@ export const autoAnnounceReserves = async (state: GameState): Promise<Partial<Ga
 
 // ── Dunk Contest Contestants ───────────────────────────────────────────────
 export const autoSelectDunkContestants = async (state: GameState): Promise<Partial<GameState>> => {
+  // Respect commissioner's manual pick (DunkContestModal flips dunkContestAnnounced).
+  if (state.allStar?.dunkContestAnnounced) return {};
   try {
     const { AllStarDunkContestSim } = await import('../allStar/AllStarDunkContestSim');
     const contestants = AllStarDunkContestSim.selectContestants(state.players);
@@ -316,6 +396,8 @@ export const autoSelectDunkContestants = async (state: GameState): Promise<Parti
 
 // ── 3-Point Contest Contestants ────────────────────────────────────────────
 export const autoSelectThreePointContestants = async (state: GameState): Promise<Partial<GameState>> => {
+  // Respect commissioner's manual pick (ThreePointContestModal flips threePointAnnounced).
+  if (state.allStar?.threePointAnnounced) return {};
   try {
     const { AllStarThreePointContestSim } = await import('../allStar/AllStarThreePointContestSim');
     const contestants = AllStarThreePointContestSim.selectContestants(
@@ -335,8 +417,51 @@ export const autoSelectThreePointContestants = async (state: GameState): Promise
   }
 };
 
+// Writes dunk/3pt/ASG MVP awards to player.awards from existing allStar state.
+// Idempotent — skips awards already present for the season.
+function backfillAllStarAwards(state: GameState): Partial<GameState> {
+  const allStarData = state.allStar as any;
+  const year = state.leagueStats.year;
+
+  const entries: Array<{ internalId?: string; name?: string; awardType: string }> = [];
+  if (allStarData?.dunkContest?.winnerId || allStarData?.dunkContest?.winnerName)
+    entries.push({ internalId: allStarData.dunkContest.winnerId, name: allStarData.dunkContest.winnerName, awardType: 'Slam Dunk Contest Winner' });
+  if (allStarData?.threePointContest?.winnerId || allStarData?.threePointContest?.winnerName)
+    entries.push({ internalId: allStarData.threePointContest.winnerId, name: allStarData.threePointContest.winnerName, awardType: 'Three-Point Contest Winner' });
+  if (allStarData?.gameMvp?.name)
+    entries.push({ name: allStarData.gameMvp.name, awardType: 'All-Star Game MVP' });
+
+  if (entries.length === 0) return {};
+
+  // Check if all awards already exist to avoid a needless players array rebuild
+  const allPresent = entries.every(e =>
+    state.players.some(p =>
+      ((e.internalId && p.internalId === e.internalId) ||
+       (!e.internalId && e.name && p.name?.toLowerCase() === e.name.toLowerCase())) &&
+      (p.awards ?? []).some(a => a.type === e.awardType && a.season === year)
+    )
+  );
+  if (allPresent) return {};
+
+  const updatedPlayers = state.players.map(p => {
+    const entry = entries.find(e =>
+      (e.internalId && p.internalId === e.internalId) ||
+      (!e.internalId && e.name && p.name?.toLowerCase() === e.name.toLowerCase())
+    );
+    if (!entry) return p;
+    if ((p.awards ?? []).some(a => a.type === entry.awardType && a.season === year)) return p;
+    return { ...p, awards: [...(p.awards ?? []), { type: entry.awardType, season: year }] };
+  });
+  return { players: updatedPlayers };
+}
+
 // ── All-Star Weekend (full sim) ────────────────────────────────────────────
 export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<GameState>> => {
+  // If already simmed, skip re-simulation but still backfill any missing awards
+  // (e.g. saves from before the award-writing code was added).
+  if ((state.allStar as any)?.weekendComplete) {
+    return backfillAllStarAwards(state);
+  }
   try {
     const { AllStarWeekendOrchestrator, getAllStarWeekendDates } = await import('../allStar/AllStarWeekendOrchestrator');
 
@@ -420,6 +545,29 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
     // Carry forward the updated roster with injury replacements applied
     if (patch.allStar) {
       patch.allStar = { ...(patch.allStar as any), roster: stateForSim.allStar?.roster ?? (patch.allStar as any).roster };
+    }
+
+    // Write contest + ASG MVP awards to player records
+    const year = state.leagueStats.year;
+    const allStarData = patch.allStar as any;
+    const awardEntries: Array<{ internalId?: string; name?: string; awardType: string }> = [];
+    if (allStarData?.dunkContest?.winnerId)
+      awardEntries.push({ internalId: allStarData.dunkContest.winnerId, name: allStarData.dunkContest.winnerName, awardType: 'Slam Dunk Contest Winner' });
+    if (allStarData?.threePointContest?.winnerId)
+      awardEntries.push({ internalId: allStarData.threePointContest.winnerId, name: allStarData.threePointContest.winnerName, awardType: 'Three-Point Contest Winner' });
+    if (allStarData?.gameMvp?.name)
+      awardEntries.push({ name: allStarData.gameMvp.name, awardType: 'All-Star Game MVP' });
+
+    if (awardEntries.length > 0) {
+      patch.players = state.players.map(p => {
+        const entry = awardEntries.find(e =>
+          (e.internalId && p.internalId === e.internalId) ||
+          (!e.internalId && e.name && p.name?.toLowerCase() === e.name.toLowerCase())
+        );
+        if (!entry) return p;
+        if (p.awards?.some(a => a.type === entry.awardType && a.season === year)) return p;
+        return { ...p, awards: [...(p.awards ?? []), { type: entry.awardType, season: year }] };
+      });
     }
 
     return patch;
@@ -679,16 +827,6 @@ export const autoInductHOFClass = async (state: GameState): Promise<Partial<Game
 };
 
 // ── Rookie contract scale (mirrors DraftSimulatorView) ────────────────────
-const _rookieScale = [
-  10.1, 9.5, 9.0, 8.5, 7.9, 7.4, 6.9, 6.5, 6.1, 5.7,
-  5.4, 5.1, 4.8, 4.5, 4.3, 4.1, 3.9, 3.7, 3.6, 3.4,
-  3.3, 3.2, 3.1, 3.0, 2.9, 2.8, 2.7, 2.6, 2.5, 2.4,
-];
-const _getRookieAmount = (slot: number): number => {
-  if (slot <= 30) return (_rookieScale[slot - 1] ?? 2.4) * 1_000_000;
-  const r2Frac = (slot - 31) / 29;
-  return Math.round((1_800_000 - r2Frac * 530_000) / 1000) * 1000;
-};
 
 function _runWeightedLottery<T extends { originalSeed: number }>(
   teams: T[],
@@ -765,12 +903,10 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
   if ((state as any).draftComplete) return {}; // commissioner already ran the draft
 
   const season = state.leagueStats?.year ?? 2026;
-  const rookieScaleType = state.leagueStats?.rookieScaleType ?? 'dynamic';
   const guaranteedYrs = state.leagueStats?.rookieContractLength ?? 2;
   const teamOptEnabled: boolean = (state.leagueStats as any)?.rookieTeamOptionsEnabled ?? true;
   const teamOptYears: number = (state.leagueStats as any)?.rookieTeamOptionYears ?? 2;
   const restrictedFA: boolean = (state.leagueStats as any)?.rookieRestrictedFreeAgentEligibility ?? true;
-  const staticRookieAmt = ((state.leagueStats as any)?.rookieScaleStaticAmount ?? 3) * 1_000_000;
 
   const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
 
@@ -843,23 +979,65 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     pickMap.set(slot, { player: best, team });
   }
 
+  // Pre-compute jersey number assignments for all drafted players so same-team
+  // conflicts within a single draft run are caught (e.g. picks 3 and 28 both go to same team).
+  const teamRetiredNums = new Map<number, Set<string>>();
+  const teamTakenNums = new Map<number, Set<string>>();
+  for (const t of state.teams) {
+    const retired = new Set<string>(
+      ((t as any).retiredJerseyNumbers ?? []).map((j: any) => String(j.number))
+    );
+    teamRetiredNums.set(t.id, retired);
+  }
+  // Seed taken map with existing roster jersey numbers (before draft)
+  for (const p of state.players) {
+    if (p.tid >= 0 && p.jerseyNumber) {
+      if (!teamTakenNums.has(p.tid)) teamTakenNums.set(p.tid, new Set());
+      teamTakenNums.get(p.tid)!.add(String(p.jerseyNumber));
+    }
+  }
+  // Pre-assign jersey numbers for each drafted player
+  const draftJerseyAssignments = new Map<string, string>(); // internalId → jerseyNumber
+  for (const [, { player, team }] of pickMap.entries()) {
+    const retired = teamRetiredNums.get(team.id) ?? new Set<string>();
+    const taken   = teamTakenNums.get(team.id)   ?? new Set<string>();
+    const excluded = new Set([...retired, ...taken]);
+    let num = player.jerseyNumber ? String(player.jerseyNumber) : '';
+    if (!num || retired.has(num)) num = pickJerseyNumber(excluded);
+    draftJerseyAssignments.set(player.internalId, num);
+    if (!teamTakenNums.has(team.id)) teamTakenNums.set(team.id, new Set());
+    teamTakenNums.get(team.id)!.add(num);
+  }
+
   // Apply picks to players
-  const undraftedNames: string[] = [];
+  const undrafted: Array<{ name: string; id: string }> = [];
   const updatedPlayers = state.players.map(p => {
     for (const [slot, { player, team }] of pickMap.entries()) {
       if (player.internalId !== p.internalId) continue;
       const round = slot <= 30 ? 1 : 2;
       const pickInRound = slot <= 30 ? slot : slot - 30;
-      const salaryAmount = rookieScaleType === 'static' ? staticRookieAmt : _getRookieAmount(slot);
+      const salaryAmount = computeRookieSalaryUSD(slot, state.leagueStats);
       // R1: guaranteed years + team option years; R2: always 2yr, no team options
       const baseYrs   = round === 1 ? guaranteedYrs : 2;
       const optionYrs = (round === 1 && teamOptEnabled) ? teamOptYears : 0;
       const totalYrs  = baseYrs + optionYrs;
       const r2NonGuaranteed = round === 2 && ((state.leagueStats as any)?.r2ContractsNonGuaranteed ?? true);
+      // Seed per-season salary rows — see computeDraftPickFields in
+      // DraftSimulatorView for rationale. Without this, PlayerBioContractTab's
+      // Path B fallback drops rookie years before currentYear.
+      const contractYears = Array.from({ length: totalYrs }, (_, i) => {
+        const yr = season + i;
+        return {
+          season: `${yr}-${String(yr + 1).slice(-2)}`,
+          guaranteed: Math.round(salaryAmount * Math.pow(1.05, i)),
+          option: i >= baseYrs ? 'Team' : '',
+        };
+      });
       return {
         ...p,
         tid: team.id,
         status: 'Active' as const,
+        jerseyNumber: draftJerseyAssignments.get(p.internalId) ?? p.jerseyNumber,
         ...(r2NonGuaranteed && { nonGuaranteed: true }),
         draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: team.id },
         contract: {
@@ -873,15 +1051,19 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
           ...(round === 1 && restrictedFA && { restrictedFA: true }),
           rookie: true,
         },
+        contractYears,
       };
     }
     // Undrafted current-year prospects → free agents (future classes stay as prospects)
     const draftYear = (p as any).draft?.year;
     const isCurrentClass = !draftYear || Number(draftYear) === season;
     if (isCurrentClass && (p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect') && !assignedIds.has(p.internalId)) {
-      undraftedNames.push(p.name);
+      undrafted.push({ name: p.name, id: p.internalId });
+      // Fix 7: undrafted players cap at K2 80 (BBGM 56) — nobody K2 99 goes undrafted
+      const clampedOvr = Math.min(p.overallRating ?? 99, UNDRAFTED_OVR_CAP);
       return {
         ...p,
+        overallRating: clampedOvr,
         tid: -1 as const,
         status: 'Free Agent' as const,
         draft: { round: 0, pick: 0, year: season, tid: -1, originalTid: -1 },
@@ -896,19 +1078,21 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     const v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
   };
-  const draftHistoryEntries: Array<{ text: string; date: string; type: string }> = [];
+  const draftHistoryEntries: Array<{ text: string; date: string; type: string; playerIds: string[] }> = [];
   for (const [slot, { player, team }] of pickMap.entries()) {
     draftHistoryEntries.push({
       text: `The ${team.name} select ${player.name} as the ${_ordinal(slot)} overall pick of the ${season} NBA Draft.`,
       date: state.date,
       type: 'Draft',
+      playerIds: [player.internalId],
     });
   }
-  for (const name of undraftedNames) {
+  for (const u of undrafted) {
     draftHistoryEntries.push({
-      text: `${name} went undrafted in the ${season} NBA Draft.`,
+      text: `${u.name} went undrafted in the ${season} NBA Draft.`,
       date: state.date,
       type: 'Draft',
+      playerIds: [u.id],
     });
   }
 
@@ -920,15 +1104,33 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
   const maxTwoWay = state.leagueStats?.maxTwoWayPlayersPerTeam ?? 2;
   const twoWayEnabled = state.leagueStats?.twoWayContractsEnabled ?? true;
 
-  let twoWayPlayers = [...updatedPlayers];
+  const draftedTeamIds = new Set(Array.from(pickMap.values()).map(({ team }) => team.id));
+  let twoWayPlayers = normalizeTeamJerseyNumbers(updatedPlayers, state.teams, season, {
+    history: state.history,
+    targetTeamIds: draftedTeamIds,
+  });
 
   if (twoWayEnabled && maxTwoWay > 0) {
     // Pool: low-OVR FAs only (fringe/bubble candidates, NOT established NBA players).
     // Ben Simmons (OVR 50+) should NOT be on a two-way — only true fringe players.
     // K2 < 72 threshold ensures established players sign regular contracts instead.
     const TWO_WAY_OVR_CAP = 45; // raw BBGM OVR cap — roughly K2 ~70
+    // Age/YOS gate matches AIFreeAgentHandler Pass 2 — vets (age ≥ 30, or 25-29
+    // with > 2 YOS) shouldn't end up on $0.6M two-ways. Real-player imports may
+    // have stats[] entries without gp counts, so use draft.year as a YOS backup.
     const twoWayPool = twoWayPlayers
       .filter(p => p.tid === -1 && p.status === 'Free Agent' && (p.overallRating ?? 99) <= TWO_WAY_OVR_CAP)
+      .filter(p => {
+        const age = p.born?.year ? season - p.born.year : (p.age ?? 99);
+        if (age >= 30) return false;
+        if (age <= 24) return true;
+        const yosFromStats = ((p as any).stats ?? [])
+          .filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
+        const draftYr = (p as any).draft?.year;
+        const yosFromDraft = (draftYr && season > draftYr) ? season - draftYr : 0;
+        const yos = Math.max(yosFromStats, yosFromDraft);
+        return yos <= 2;
+      })
       .sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0));
 
     const twoWayAssignments = new Map<string, number>(); // internalId → teamId
@@ -950,7 +1152,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
       }
     }
 
-    const twoWayHistoryEntries: Array<{ text: string; date: string; type: string }> = [];
+    const twoWayHistoryEntries: Array<{ text: string; date: string; type: string; playerIds: string[] }> = [];
     if (twoWayAssignments.size > 0) {
       twoWayPlayers = twoWayPlayers.map(p => {
         const teamId = twoWayAssignments.get(p.internalId);
@@ -962,6 +1164,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
           text: `${p.name} signed a two-way contract with the ${teamName}.`,
           date: state.date ?? `Jul 1, ${season}`,
           type: 'Signing',
+          playerIds: [p.internalId],
         });
         return {
           ...p,
@@ -974,10 +1177,29 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     }
     if (twoWayHistoryEntries.length > 0) {
       const existingHistory: any[] = (state.history as any[]) ?? [];
-      return { players: twoWayPlayers, draftComplete: true, history: [...existingHistory, ...draftHistoryEntries, ...twoWayHistoryEntries] } as any;
+      return {
+        players: normalizeTeamJerseyNumbers(twoWayPlayers, state.teams, season, {
+          history: state.history,
+          targetTeamIds: draftedTeamIds,
+        }),
+        draftComplete: true,
+        history: [...existingHistory, ...draftHistoryEntries, ...twoWayHistoryEntries],
+      } as any;
     }
   }
 
+  // Route undrafted international prospects back to their home league before
+  // the Jul 1 FA window opens. US/Canada players stay as NBA FAs.
+  const { players: playersAfterReturn, historyEntries: returnHistory } =
+    returnUndraftedToHomeLeague(twoWayPlayers, season, state as any);
+
   const existingHistory: any[] = (state.history as any[]) ?? [];
-  return { players: twoWayPlayers, draftComplete: true, history: [...existingHistory, ...draftHistoryEntries] } as any;
+  return {
+    players: normalizeTeamJerseyNumbers(playersAfterReturn, state.teams, season, {
+      history: state.history,
+      targetTeamIds: draftedTeamIds,
+    }),
+    draftComplete: true,
+    history: [...existingHistory, ...draftHistoryEntries, ...returnHistory],
+  } as any;
 };

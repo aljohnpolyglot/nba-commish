@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
@@ -29,6 +29,22 @@ export function GeneralManager({ teamId }: GeneralManagerProps) {
   const staff = state.staff;
   const teamColor = team?.colors?.[0] || '#552583';
   const teamName = team ? `${team.region} ${team.name}` : '';
+  const teamPlayers = useMemo(
+    () => (state.players ?? []).filter(p => p.tid === teamId && p.status === 'Active'),
+    [state.players, teamId],
+  );
+  const rosterCounts = useMemo(() => {
+    const twoWayCount = teamPlayers.filter(p => !!(p as any).twoWay).length;
+    const nonGuaranteedCount = teamPlayers.filter(p => !!(p as any).nonGuaranteed).length;
+    const standardCount = teamPlayers.length - twoWayCount;
+    const guaranteedCount = Math.max(0, standardCount - nonGuaranteedCount);
+    return {
+      total: teamPlayers.length,
+      guaranteedCount,
+      twoWayCount,
+      nonGuaranteedCount,
+    };
+  }, [teamPlayers]);
 
   const [gmRatings, setGmRatings] = useState<any[]>([]);
   const [loadingRatings, setLoadingRatings] = useState(false);
@@ -174,6 +190,36 @@ export function GeneralManager({ teamId }: GeneralManagerProps) {
         <div className="w-full max-w-2xl mx-auto flex flex-col gap-8">
           <h2 className="text-xl font-black uppercase tracking-widest text-[#e6edf3] border-b border-[#30363d] pb-4">GM Attributes</h2>
 
+          <div className="rounded-xl border border-[#30363d] bg-slate-900/60 p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div>
+                <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Roster Snapshot</div>
+                <div className="text-sm font-bold text-slate-200">{rosterCounts.total} players active</div>
+              </div>
+              <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Contract Mix</div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <RosterCount
+                label="Guaranteed"
+                value={rosterCounts.guaranteedCount}
+                max={15}
+                tone={rosterCounts.guaranteedCount >= 15 ? 'emerald' : rosterCounts.guaranteedCount < 13 ? 'amber' : 'slate'}
+              />
+              <RosterCount
+                label="Two-Way"
+                value={rosterCounts.twoWayCount}
+                max={3}
+                tone={rosterCounts.twoWayCount >= 3 ? 'cyan' : 'slate'}
+              />
+              <RosterCount
+                label="Non-Guaranteed"
+                value={rosterCounts.nonGuaranteedCount}
+                max={Math.max(rosterCounts.nonGuaranteedCount, 1)}
+                tone={rosterCounts.nonGuaranteedCount > 0 ? 'amber' : 'slate'}
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <AttributeBar label="Trade Aggression" value={attributes.trade_aggression} tooltip={attributeTooltips.trade_aggression} />
             <AttributeBar label="Scouting Focus" value={attributes.scouting_focus} tooltip={attributeTooltips.scouting_focus} />
@@ -181,6 +227,42 @@ export function GeneralManager({ teamId }: GeneralManagerProps) {
             <AttributeBar label="Spending" value={attributes.spending} tooltip={attributeTooltips.spending} />
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function RosterCount({
+  label,
+  value,
+  max,
+  tone,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  tone: 'emerald' | 'cyan' | 'amber' | 'slate';
+}) {
+  const toneStyles = {
+    emerald: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20',
+    cyan: 'text-cyan-300 bg-cyan-500/10 border-cyan-500/20',
+    amber: 'text-amber-300 bg-amber-500/10 border-amber-500/20',
+    slate: 'text-slate-300 bg-white/5 border-white/10',
+  }[tone];
+
+  return (
+    <div className={`rounded-lg border p-3 ${toneStyles}`}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[9px] font-black uppercase tracking-widest opacity-70">{label}</div>
+        <div className="text-[10px] font-bold tabular-nums opacity-70">
+          {value}/{max}
+        </div>
+      </div>
+      <div className="mt-2 h-1.5 bg-black/20 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full bg-current"
+          style={{ width: `${Math.min(100, (value / Math.max(1, max)) * 100)}%` }}
+        />
       </div>
     </div>
   );

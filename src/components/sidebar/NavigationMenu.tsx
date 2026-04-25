@@ -139,12 +139,14 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
             : [];
         })(),
         { id: 'All-Star' as Tab,       label: 'All-Star',          icon: Star },
+        { id: 'NBA Cup' as Tab,        label: 'NBA Cup',            icon: Trophy },
         { id: 'Playoffs' as Tab,       label: 'Playoffs',           icon: Trophy, badge: playoffBadge },
       ],
     }] : [{
       label: 'Season',
       items: [
         { id: 'All-Star' as Tab,  label: 'All-Star',  icon: Star },
+        { id: 'NBA Cup' as Tab,   label: 'NBA Cup',   icon: Trophy },
         { id: 'Playoffs' as Tab,  label: 'Playoffs',  icon: Trophy, badge: playoffBadge },
       ],
     }]),

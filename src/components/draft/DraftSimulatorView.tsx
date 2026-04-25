@@ -5,10 +5,11 @@
  */
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { Clock, Play, Pause, CheckCircle, ChevronLeft, ChevronRight, Calendar, FastForward } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { convertTo2KRating, normalizeDate } from '../../utils/helpers';
+import { getDraftDate, toISODateString } from '../../utils/dateUtils';
 import { estimatePotentialBbgm } from '../../utils/playerRatings';
 import { getPlayerImage } from '../central/view/bioCache';
 import { MyFace, isRealFaceConfig } from '../shared/MyFace';
@@ -16,7 +17,19 @@ import { ensureNonNBAFetched, getNonNBAGistData } from '../central/view/nonNBACa
 import { PlayerBioView } from '../central/view/PlayerBioView';
 import { calcOvr2K, calcPot2K, type TeamMode } from '../../services/trade/tradeValueEngine';
 import { getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2, resolveManualOutlook } from '../../utils/salaryUtils';
+import { normalizeTeamJerseyNumbers, pickJerseyNumber } from '../../utils/jerseyUtils';
 import type { NBAPlayer } from '../../types';
+import { computeRookieSalaryUSD } from '../../utils/rookieContractUtils';
+import { DraftScoutingModal } from './DraftScoutingModal';
+import {
+  getClassPercentiles,
+  getClassAverages,
+  computeSkillScores,
+  SKILL_AXES,
+  type ClassPercentileMaps,
+  type SkillAxis,
+} from '../../services/scoutingReport';
+import { getCachedDraftScouting, ensureDraftScouting, matchProspectToGist, type GistProspect } from '../../services/draftScoutingGist';
 
 // Parse "2015 Round 2, Pick 5, Philadelphia Sixers" → { year, round, pick, team }
 function parseBioDraftStr(s: string | undefined): { year: number; round: number; pick: number; team: string } | null {
@@ -35,33 +48,6 @@ const BIO_LEAGUE_MAP: Record<string, string> = {
   'NBL Australia': 'NBL Australia',
 };
 
-// Shape ratios for the 30-pick rookie scale (pick 1 = 1.0, pick 30 ≈ 0.238).
-// Multiplicative 5.42% step-down per slot, as described in EconomyRookieContractsSection.
-const R1_SHAPE: number[] = Array.from({ length: 30 }, (_, i) => Math.pow(1 - 0.0542, i));
-
-/**
- * Compute rookie contract salary in USD for a given pick slot.
- * @param pickSlot   1-60
- * @param capM       Current salary cap in millions (e.g. 154.6)
- * @param maxPct     Commissioner's rookieMaxContractPercentage (e.g. 9 = 9% of cap)
- * @param minSalary  Minimum salary in USD (floor for all picks)
- */
-const getRookieContractAmount = (
-  pickSlot: number,
-  capM: number,
-  maxPct: number,
-  minSalary: number,
-): number => {
-  const pick1USD = (capM * maxPct / 100) * 1_000_000;
-  if (pickSlot <= 30) {
-    const ratio = R1_SHAPE[pickSlot - 1] ?? R1_SHAPE[29];
-    return Math.max(minSalary, Math.round(pick1USD * ratio));
-  }
-  // Round 2 (continues the same shape from slot 31 onward)
-  const ratio = R1_SHAPE[29] * Math.pow(1 - 0.0542, pickSlot - 30);
-  return Math.max(minSalary, Math.round(pick1USD * ratio));
-};
-
 // Pure function: build tid/status/draft/contract fields for one drafted player.
 // Used by both immediate per-pick commits and finalizeDraft.
 function computeDraftPickFields(pickSlot: number, team: any, ls: any) {
@@ -69,29 +55,32 @@ function computeDraftPickFields(pickSlot: number, team: any, ls: any) {
   const season: number = (ls as any).year ?? 2026;
   const round = pickSlot <= 30 ? 1 : 2;
   const pickInRound = pickSlot <= 30 ? pickSlot : pickSlot - 30;
-  const rookieScaleType = (ls as any).rookieScaleType ?? 'dynamic';
-  const capM: number = (ls as any).salaryCap ?? 154.6;
-  const maxPct: number = (ls as any).rookieMaxContractPercentage ?? 9;
-  const staticAmtUSD = ((ls as any).rookieStaticAmount ?? 3) * 1_000_000;
-  const scaleAppliesTo = (ls as any).rookieScaleAppliesTo ?? 'first_round';
   const guaranteedYrs: number = (ls as any).rookieContractLength ?? 2;
   const teamOptEnabled: boolean = (ls as any).rookieTeamOptionsEnabled ?? true;
   const teamOptYears: number = (ls as any).rookieTeamOptionYears ?? 2;
   const restrictedFA: boolean = (ls as any).rookieRestrictedFreeAgentEligibility ?? true;
-  const minSalaryUSD = ((ls as any).minContract ?? 1.273) * 1_000_000;
 
-  let salaryAmtUSD: number;
-  if (rookieScaleType === 'none') salaryAmtUSD = minSalaryUSD;
-  else if (rookieScaleType === 'static') salaryAmtUSD = staticAmtUSD;
-  else {
-    const useScale = round === 1 || scaleAppliesTo === 'both_rounds';
-    salaryAmtUSD = useScale ? getRookieContractAmount(pickSlot, capM, maxPct, minSalaryUSD) : minSalaryUSD;
-  }
+  const salaryAmtUSD = computeRookieSalaryUSD(pickSlot, ls);
 
   const baseYrs = round === 1 ? guaranteedYrs : 2;
   const optionYrs = (round === 1 && teamOptEnabled) ? teamOptYears : 0;
 
   const r2NonGuaranteed = round === 2 && ((ls as any)?.r2ContractsNonGuaranteed ?? true);
+
+  // Seed per-season salary rows so PlayerBioContractTab can render every rookie
+  // year including the base years that precede the current season. Without this,
+  // `contractYears` is empty → Path B rendering loops from currentYear forward,
+  // silently dropping prior rookie seasons. 5% annual escalator mirrors
+  // annualRaise() in PlayerBioContractTab / ContractTimeline.
+  const totalYrs = baseYrs + optionYrs;
+  const contractYears = Array.from({ length: totalYrs }, (_, i) => {
+    const yr = season + i;
+    return {
+      season: `${yr}-${String(yr + 1).slice(-2)}`,
+      guaranteed: Math.round(salaryAmtUSD * Math.pow(1.05, i)),
+      option: i >= baseYrs ? 'Team' : '',
+    };
+  });
 
   return {
     tid: team.id as number,
@@ -105,6 +94,7 @@ function computeDraftPickFields(pickSlot: number, team: any, ls: any) {
       ...(round === 1 && restrictedFA && { restrictedFA: true }),
       rookie: true,
     },
+    contractYears,
   };
 }
 
@@ -123,7 +113,7 @@ const POSITIONS = ['ALL', 'PG', 'SG', 'SF', 'PF', 'C'];
 interface FullDraftTableProps {
   drafted: Record<number, any>;
   draftOrder: any[];
-  onReview: (player: any, pick: number) => void;
+  onReview: (player: any) => void;
   currentPick: number;
   userTeamId: number | null;
   isGM: boolean;
@@ -187,7 +177,7 @@ const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, draftOrder, on
             return (
               <div
                 key={pick}
-                onClick={() => player && onReview(player, pick)}
+                onClick={() => player && onReview(player)}
                 className={`bg-[#1A1A1A] border rounded-sm flex h-20 overflow-hidden transition-all group ${
                   player ? 'cursor-pointer hover:border-indigo-600' : 'cursor-default'
                 } ${
@@ -572,7 +562,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
 
     // Sort all 30 teams by win pct
     const allSorted = [...state.teams]
-      .filter(t => t.id > 0)
+      .filter(t => t.id >= 0 && t.id < 100)
       .sort((a, b) => {
         const wa = a.wins / Math.max(1, a.wins + a.losses);
         const wb = b.wins / Math.max(1, b.wins + b.losses);
@@ -714,7 +704,9 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         const rawOvr = lastRatings.ovr ?? p.overallRating ?? 0;
         const age = p.age ?? 26;
         const displayOvr = convertTo2KRating(rawOvr, hgt, tp);
-        const displayPot = estimatePot(rawOvr, hgt, tp, age); // current age POT
+        const storedPotBbgm: number | undefined = lastRatings.pot;
+        const potBbgm = Math.max(rawOvr, (storedPotBbgm != null && storedPotBbgm > 0) ? storedPotBbgm : estimatePotentialBbgm(rawOvr, age));
+        const displayPot = convertTo2KRating(potBbgm, hgt, tp);
         return {
           ...p,
           _slot: slot,
@@ -728,7 +720,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
 
   // ─── Date gating ──────────────────────────────────────────────────────────
   const leagueYear = state.leagueStats?.year ?? 2026;
-  const draftDate = `${leagueYear}-06-25`;
+  const draftDate = toISODateString(getDraftDate(leagueYear, state.leagueStats));
   const today = normalizeDate(state.date);
   const isDraftTime = today >= draftDate;
   // draftComplete is stored as a top-level state field via UPDATE_STATE dispatch
@@ -754,7 +746,9 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         const rawOvr = p.overallRating || lastRatings.ovr || 0;
         const age = p.age ?? 20;
         const displayOvr = convertTo2KRating(rawOvr, hgt, tp);
-        const displayPot = estimatePot(rawOvr, hgt, tp, age);
+        const storedPotBbgm2: number | undefined = lastRatings.pot;
+        const potBbgm2 = Math.max(rawOvr, (storedPotBbgm2 != null && storedPotBbgm2 > 0) ? storedPotBbgm2 : estimatePotentialBbgm(rawOvr, age));
+        const displayPot = convertTo2KRating(potBbgm2, hgt, tp);
         const gp = (p.stats ?? []).reduce((s: number, r: any) => s + (r.gp ?? 0), 0);
         const pts = (p.stats ?? []).reduce((s: number, r: any) => s + (r.pts ?? 0), 0);
         const trb = (p.stats ?? []).reduce((s: number, r: any) => s + (r.trb ?? (r.orb ?? 0) + (r.drb ?? 0)), 0);
@@ -774,6 +768,39 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
 
   const [viewingBioPlayer, setViewingBioPlayer] = useState<NBAPlayer | null>(null);
 
+  // Lazy-load the scouting gist for this draft year so the modal can show
+  // ESPN/NoCeilings ranks, college stats, and silos without bouncing through
+  // DraftScoutingView first.
+  useEffect(() => {
+    let cancelled = false;
+    ensureDraftScouting(leagueYear).then(data => {
+      if (!cancelled) setGistByYear(data);
+    });
+    return () => { cancelled = true; };
+  }, [leagueYear]);
+
+  // Active NBA roster players — the comparison pool for findTopComparisons.
+  const activePlayers = useMemo(() =>
+    state.players.filter(p =>
+      p.tid >= 0 && p.tid < 100 &&
+      p.status !== 'Draft Prospect' &&
+      p.status !== 'Prospect' &&
+      ((p as any).draft?.year ?? 0) < leagueYear
+    ),
+  [state.players, leagueYear]);
+
+  // Class baselines + position-relative percentiles. Computed once per draft
+  // year (via allProspects ref) and passed into the modal so reopening is O(1).
+  const classAverages = useMemo(() => getClassAverages(allProspects), [allProspects]);
+  const percentilesByPos = useMemo(() => {
+    const m = new Map<string, ClassPercentileMaps>();
+    m.set('Guard', getClassPercentiles(allProspects, 'Guard'));
+    m.set('Forward', getClassPercentiles(allProspects, 'Forward'));
+    m.set('Center', getClassPercentiles(allProspects, 'Center'));
+    m.set('Class', getClassPercentiles(allProspects, 'Class'));
+    return m;
+  }, [allProspects]);
+
   // Restore in-progress draft from game state so switching views doesn't lose picks
   const savedDraftPicks: Record<number, any> = (state as any).activeDraftPicks ?? {};
   const savedPickCount = Object.keys(savedDraftPicks).length;
@@ -782,13 +809,12 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   );
   const [drafted, setDrafted] = useState<Record<number, any>>(() => savedDraftPicks);
   const [posFilter, setPosFilter] = useState('ALL');
-  const [sortBy, setSortBy] = useState<'ovr' | 'pot'>('ovr');
+  const [sortBy, setSortBy] = useState<'ovr' | 'pot' | SkillAxis>('ovr');
   const [isSimulating, setIsSimulating] = useState(false);
   const [simSpeed, setSimSpeed] = useState('normal');
   const [hasStarted, setHasStarted] = useState<boolean>(() => savedPickCount > 0);
-  const [modalPlayer, setModalPlayer] = useState<any>(null);
-  const [modalMode, setModalMode] = useState<'draft' | 'scouting' | 'review'>('draft');
-  const [reviewPick, setReviewPick] = useState<number | null>(null);
+  const [scoutingPlayer, setScoutingPlayer] = useState<any>(null);
+  const [gistByYear, setGistByYear] = useState<GistProspect[] | null>(getCachedDraftScouting(leagueYear) ?? null);
 
   // Persist each pick to game state immediately so view switches never lose progress
   useEffect(() => {
@@ -806,7 +832,14 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     if (sortBy === 'pot') {
       return [...pool].sort((a, b) => (b.displayPot ?? 0) - (a.displayPot ?? 0));
     }
-    return pool; // allProspects is pre-sorted by displayOvr desc
+    if (sortBy === 'ovr') {
+      return pool; // allProspects is pre-sorted by displayOvr desc
+    }
+    // Skill sort — re-sort by the chosen skill score (highest first)
+    return [...pool].sort((a, b) =>
+      computeSkillScores(b as NBAPlayer)[sortBy as SkillAxis] -
+      computeSkillScores(a as NBAPlayer)[sortBy as SkillAxis]
+    );
   }, [allProspects, draftedSet, sortBy]);
 
   const rankById = useMemo(() => {
@@ -858,22 +891,39 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   const commitPickToState = useCallback((pickSlot: number, player: any) => {
     const update = buildDraftedPlayerUpdate(player, pickSlot);
     if (!update) return;
-    const updatedPlayers = state.players.map((p: any) =>
-      p.internalId === player.internalId ? { ...p, ...update } : p
+    const team = draftOrder[pickSlot - 1];
+    const retired = new Set<string>(
+      ((team as any)?.retiredJerseyNumbers ?? []).map((j: any) => String(j.number))
     );
-    dispatch({ type: 'UPDATE_STATE', payload: { players: updatedPlayers } } as any);
-  }, [state.players, buildDraftedPlayerUpdate, dispatch]);
+    const taken = new Set<string>(
+      state.players
+        .filter((p: any) => p.tid === team?.id && p.jerseyNumber && p.internalId !== player.internalId)
+        .map((p: any) => String(p.jerseyNumber))
+    );
+    const excluded = new Set([...retired, ...taken]);
+    const existingNum = player.jerseyNumber ? String(player.jerseyNumber) : '';
+    const jerseyNumber = (!existingNum || retired.has(existingNum))
+      ? pickJerseyNumber(excluded)
+      : existingNum;
+    const updatedPlayers = state.players.map((p: any) =>
+      p.internalId === player.internalId ? { ...p, ...update, jerseyNumber } : p
+    );
+    dispatch({
+      type: 'UPDATE_STATE',
+      payload: {
+        players: normalizeTeamJerseyNumbers(updatedPlayers as any, state.teams as any, leagueYear, {
+          history: state.history,
+          targetTeamIds: team?.id != null ? [team.id] : [],
+        }),
+      },
+    } as any);
+  }, [state.players, buildDraftedPlayerUpdate, dispatch, draftOrder]);
 
-  const draftPlayer = useCallback((player: any, auto = false) => {
+  const draftPlayer = useCallback((player: any) => {
     setHasStarted(true);
-    if (auto) {
-      setDrafted(prev => ({ ...prev, [currentPick]: player }));
-      commitPickToState(currentPick, player);
-      setCurrentPick(prev => prev + 1);
-    } else {
-      setModalPlayer(player);
-      setModalMode('draft');
-    }
+    setDrafted(prev => ({ ...prev, [currentPick]: player }));
+    commitPickToState(currentPick, player);
+    setCurrentPick(prev => prev + 1);
   }, [currentPick, commitPickToState]);
 
   // Instant sim — process every pick from currentPick up to (but not including) targetPick
@@ -903,21 +953,57 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
 
     // Batch-commit all new picks in one pass — no roster gate
     if (freshPicks.length > 0) {
+      // Track retired + taken jersey numbers per team to avoid conflicts within the batch
+      const batchRetiredByTeam = new Map<number, Set<string>>();
+      const batchTakenByTeam = new Map<number, Set<string>>();
+      for (const t of state.teams as any[]) {
+        batchRetiredByTeam.set(t.id, new Set(
+          (t.retiredJerseyNumbers ?? []).map((j: any) => String(j.number))
+        ));
+      }
+      for (const p of state.players as any[]) {
+        if (p.tid >= 0 && p.jerseyNumber) {
+          if (!batchTakenByTeam.has(p.tid)) batchTakenByTeam.set(p.tid, new Set());
+          batchTakenByTeam.get(p.tid)!.add(String(p.jerseyNumber));
+        }
+      }
+
       const updateMap = new Map<string, object>();
       for (const { slot, player } of freshPicks) {
         const update = buildDraftedPlayerUpdate(player, slot);
-        if (update) updateMap.set(player.internalId, update);
+        if (!update) continue;
+        const team = draftOrder[slot - 1];
+        const retired = batchRetiredByTeam.get(team?.id) ?? new Set<string>();
+        const taken   = batchTakenByTeam.get(team?.id)   ?? new Set<string>();
+        const excluded = new Set([...retired, ...taken]);
+        const existing = player.jerseyNumber ? String(player.jerseyNumber) : '';
+        const jerseyNumber = (!existing || retired.has(existing))
+          ? pickJerseyNumber(excluded)
+          : existing;
+        if (team?.id != null) {
+          if (!batchTakenByTeam.has(team.id)) batchTakenByTeam.set(team.id, new Set());
+          batchTakenByTeam.get(team.id)!.add(jerseyNumber);
+        }
+        updateMap.set(player.internalId, { ...update, jerseyNumber });
       }
       const updatedPlayers = state.players.map((p: any) =>
         updateMap.has(p.internalId) ? { ...p, ...updateMap.get(p.internalId) } : p
       );
-      dispatch({ type: 'UPDATE_STATE', payload: { players: updatedPlayers } } as any);
+      dispatch({
+        type: 'UPDATE_STATE',
+        payload: {
+          players: normalizeTeamJerseyNumbers(updatedPlayers as any, state.teams as any, leagueYear, {
+            history: state.history,
+            targetTeamIds: freshPicks.map(p => draftOrder[p.slot - 1]?.id).filter((id): id is number => id != null),
+          }),
+        },
+      } as any);
     }
-  }, [drafted, allProspects, currentPick, state.players, buildDraftedPlayerUpdate, dispatch]);
+  }, [drafted, allProspects, currentPick, state.players, state.teams, buildDraftedPlayerUpdate, dispatch, draftOrder]);
 
   // Auto-sim loop
   useEffect(() => {
-    if (!isSimulating || isDraftComplete || modalPlayer) return;
+    if (!isSimulating || isDraftComplete || scoutingPlayer) return;
     // Stop auto-sim when we reach the configured target pick (Sim to Next Pick
     // / Sim to End). Using >= so we stop BEFORE making the user's pick for them.
     if (simTarget != null && currentPick >= simTarget) {
@@ -928,23 +1014,20 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     const speedMs: Record<string, number> = { fastest: 200, normal: 800, slow: 1500, slower: 3000, dramatic: 5000 };
     const timer = setTimeout(() => {
       const top = available[0];
-      if (top) draftPlayer(top, true);
+      if (top) draftPlayer(top);
     }, speedMs[simSpeed] ?? 800);
     return () => clearTimeout(timer);
-  }, [isSimulating, currentPick, available, simSpeed, isDraftComplete, modalPlayer, draftPlayer, simTarget]);
+  }, [isSimulating, currentPick, available, simSpeed, isDraftComplete, scoutingPlayer, draftPlayer, simTarget]);
 
-  const confirmPick = () => {
-    if (modalMode === 'scouting' || modalMode === 'review') {
-      setModalPlayer(null);
-      return;
-    }
-    if (modalPlayer) {
-      setDrafted(prev => ({ ...prev, [currentPick]: modalPlayer }));
-      commitPickToState(currentPick, modalPlayer);
-      setCurrentPick(prev => prev + 1);
-      setModalPlayer(null);
-    }
-  };
+  const onConfirmPickForScouting = useCallback(() => {
+    if (!scoutingPlayer) return;
+    const pick = currentPick;
+    setHasStarted(true);
+    setDrafted(prev => ({ ...prev, [pick]: scoutingPlayer }));
+    commitPickToState(pick, scoutingPlayer);
+    setCurrentPick(pick + 1);
+    setScoutingPlayer(null);
+  }, [scoutingPlayer, currentPick, commitPickToState]);
 
   // Auto-commit picks to game state when draft completes — no manual button needed
   const [draftFinalized, setDraftFinalized] = useState(false);
@@ -1137,7 +1220,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
                     </button>
                   ))}
                 </div>
-                {/* Sort toggle — drives the rank ordering shown in the list */}
+                {/* Sort toggle — OVR/POT toggle + skill picker drive the rank ordering */}
                 <div className="flex bg-black/40 rounded-md p-0.5 border border-[#333]">
                   {(['ovr', 'pot'] as const).map(key => (
                     <button
@@ -1151,6 +1234,21 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
                     </button>
                   ))}
                 </div>
+                {/* Skill sort — selecting a skill re-sorts by that skill score */}
+                <select
+                  value={SKILL_AXES.includes(sortBy as SkillAxis) ? sortBy : ''}
+                  onChange={e => {
+                    if (e.target.value) setSortBy(e.target.value as SkillAxis);
+                  }}
+                  className={`bg-black/40 border border-[#333] text-[10px] font-black uppercase tracking-wider rounded-md px-2 py-1.5 cursor-pointer focus:outline-none focus:border-emerald-500 ${
+                    SKILL_AXES.includes(sortBy as SkillAxis) ? 'text-emerald-400 border-emerald-700' : 'text-white/40'
+                  }`}
+                >
+                  <option value="">Sort by skill…</option>
+                  {SKILL_AXES.map(skill => (
+                    <option key={skill} value={skill}>{skill}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -1161,7 +1259,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
                 available.map((player) => (
                   <div
                     key={player.internalId}
-                    onClick={() => { setModalPlayer(player); setModalMode('scouting'); }}
+                    onClick={() => setScoutingPlayer(player)}
                     className="flex items-center p-2.5 border-b border-[#333] hover:bg-white/5 transition-colors cursor-pointer group"
                   >
                     {/* Rank — whole-class rank from the sorted pool, not the filtered index */}
@@ -1206,7 +1304,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
                         the button stays available. */}
                     {(!isGM || isUserOnClock) && (
                       <button
-                        onClick={e => { e.stopPropagation(); draftPlayer(player); }}
+                        onClick={e => { e.stopPropagation(); setScoutingPlayer(player); }}
                         disabled={isDraftComplete}
                         className="ml-3 bg-indigo-800 hover:bg-indigo-600 text-white font-black text-[10px] h-6 px-4 rounded-sm transition-colors uppercase disabled:opacity-30"
                       >
@@ -1276,7 +1374,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         <div className="bg-[#1A1A1A] rounded-sm border border-[#333] overflow-hidden">
           <div className="p-3 border-b border-[#333]">
             <span className="font-black text-white text-sm">Top Prospects by OVR — {leagueYear} Draft Class</span>
-            <p className="text-[10px] text-white/30 font-medium mt-0.5">Available for drafting on June 25, {leagueYear}. Ratings may improve before draft day.</p>
+            <p className="text-[10px] text-white/30 font-medium mt-0.5">Available for drafting on {getDraftDate(leagueYear, state.leagueStats).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'long', day: 'numeric', year: 'numeric' })}. Ratings may improve before draft day.</p>
           </div>
           <div>
             {allProspects.map((player, i) => (
@@ -1314,109 +1412,32 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         </div>
       )}
 
-      {/* PICK MODAL */}
-      <AnimatePresence>
-        {modalPlayer && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="bg-[#1A1A1A] border border-[#333] rounded-md shadow-2xl w-full max-w-lg overflow-hidden"
-            >
-              {/* Modal header */}
-              <div className="p-4 border-b border-indigo-800 flex justify-between items-center bg-black/40">
-                <div className="flex items-center gap-3">
-                  {teamOnClock?.logoUrl && (
-                    <img src={teamOnClock.logoUrl} alt="" className="w-7 h-7 object-contain" referrerPolicy="no-referrer" />
-                  )}
-                  <h3 className="text-lg font-black text-white uppercase tracking-tight">
-                    {modalMode === 'draft' ? 'Confirm Pick' : modalMode === 'scouting' ? 'Scouting Report' : `Pick #${reviewPick}`}
-                  </h3>
-                </div>
-                <span className="text-[10px] font-black text-white/30 uppercase">{state.leagueStats?.year} NBA Draft</span>
-              </div>
-
-              {/* Modal body */}
-              <div className="p-6 flex gap-6 items-start">
-                {/* Player photo */}
-                <div className="w-24 h-24 rounded-full bg-black/40 border-2 border-[#333] overflow-hidden shrink-0">
-                  {modalPlayer.imgURL ? (
-                    <img src={modalPlayer.imgURL} alt={modalPlayer.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-2xl font-black text-indigo-300">
-                      {modalPlayer.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-                    </div>
-                  )}
-                </div>
-
-                {/* Player info */}
-                <div className="flex-1 min-w-0">
-                  {modalMode !== 'scouting' && (
-                    <div className="inline-block bg-indigo-600 text-white text-[10px] font-black px-2 py-0.5 rounded-sm mb-1 uppercase">
-                      Pick #{modalMode === 'draft' ? currentPick : reviewPick}
-                    </div>
-                  )}
-                  <h4 className="text-2xl font-black text-white tracking-tight truncate">{modalPlayer.name}</h4>
-                  <div className="flex flex-wrap gap-2 text-[11px] text-white/50 font-bold uppercase mt-1">
-                    <span>{modalPlayer.pos}</span>
-                    <span>·</span>
-                    <span className="text-indigo-300">OVR {modalPlayer.displayOvr}</span>
-                    <span>·</span>
-                    <span className="text-emerald-400">POT {modalPlayer.displayPot}</span>
-                    {modalPlayer.college && <><span>·</span><span>{modalPlayer.college}</span></>}
-                  </div>
-                  <div className="grid grid-cols-3 gap-3 mt-4 bg-black/20 p-3 rounded-sm border border-[#333]">
-                    {[
-                      { label: 'PPG', value: modalPlayer.ppg },
-                      { label: 'RPG', value: modalPlayer.rpg },
-                      { label: 'APG', value: modalPlayer.apg },
-                    ].map(stat => (
-                      <div key={stat.label} className="text-center">
-                        <div className="text-[9px] text-white/30 uppercase font-black">{stat.label}</div>
-                        <div className="text-base font-black text-white">{stat.value}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Modal footer */}
-              <div className="p-3 bg-[#111] border-t border-[#333] flex justify-end gap-2">
-                <button
-                  onClick={() => setModalPlayer(null)}
-                  className="text-white/40 hover:text-white border border-zinc-700 font-black uppercase text-[10px] h-8 px-5 rounded-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmPick}
-                  className="bg-indigo-700 hover:bg-indigo-600 text-white font-black uppercase text-[10px] h-8 px-6 rounded-sm transition-colors"
-                >
-                  {modalMode === 'draft' ? 'Confirm Pick' : 'Close'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* FULL DRAFT TABLE — all 60 slots render as empty placeholders from the start, like a real draft board */}
       {isDraftTime && !isDraftDone && draftOrder.length > 0 && (
         <FullDraftTable
           drafted={drafted}
           draftOrder={draftOrder}
-          onReview={(player, pick) => { setModalPlayer(player); setReviewPick(pick); setModalMode('review'); }}
+          onReview={(player) => setScoutingPlayer(player)}
           currentPick={currentPick}
           userTeamId={userTeamId ?? null}
           isGM={isGM}
         />
       )}
+
+      {/* SCOUTING MODAL — opened from row clicks and Draft button; shows Confirm Pick footer when user is on clock */}
+      <DraftScoutingModal
+        player={scoutingPlayer}
+        onClose={() => setScoutingPlayer(null)}
+        classProspects={allProspects as unknown as NBAPlayer[]}
+        activePlayers={activePlayers}
+        percentilesByPos={percentilesByPos}
+        classAverages={classAverages}
+        draftYear={leagueYear}
+        gistData={scoutingPlayer && gistByYear ? matchProspectToGist(scoutingPlayer, gistByYear) : null}
+        onViewPlayerBio={(p) => { setScoutingPlayer(null); setViewingBioPlayer(p); }}
+        onConfirmPick={(!isGM || isUserOnClock) && !isDraftComplete ? onConfirmPickForScouting : undefined}
+        pickLabel={`Pick #${currentPick}`}
+      />
     </div>
   );
 };

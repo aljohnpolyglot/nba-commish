@@ -24,6 +24,7 @@ export const PlayerBiosView: React.FC = () => {
   const [colFilters, setColFilters] = useState<Record<string, string>>({});
   const [hideWomen, setHideWomen] = useState(false);
   const [hideRetired, setHideRetired] = useState(false);
+  const [hideDeceased, setHideDeceased] = useState(true);
   // Bump this when gist data finishes loading so enriched re-runs
   const [gistVersion, setGistVersion] = useState(0);
 
@@ -64,7 +65,10 @@ export const PlayerBiosView: React.FC = () => {
         // Canonical — same helpers as PlayerRatingsView / Team Office / etc.
         const displayOvr = getDisplayOverall(p);
         const displayPot = getDisplayPotential(p, simYear);
-        const playerAge = p.born?.year ? simYear - p.born.year : (typeof p.age === 'number' ? p.age : 25);
+        const isDeceased = !!(p as any).diedYear;
+        // Cap effective year at diedYear so deceased players show age-at-death, not current sim age
+        const ageYear = isDeceased ? Math.min(simYear, (p as any).diedYear) : simYear;
+        const playerAge = p.born?.year ? ageYear - p.born.year : (typeof p.age === 'number' ? p.age : 25);
 
         // For external leagues, augment with gist data (loaded async)
         const isExternal = ['B-League', 'PBA', 'Euroleague', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'WNBA'].includes(p.status || '');
@@ -118,7 +122,8 @@ export const PlayerBiosView: React.FC = () => {
           // Display as "R-P" (e.g. "1-15", "2-1"), sort as 1-60 (R2P1 = 31)
           pickNum: draftRound && draftPick ? (draftRound === 1 ? draftPick : 30 + draftPick) : null,
           pickStr: draftRound && draftPick ? `${draftRound}-${draftPick}` : '—',
-          age: p.born?.year ? simYear - p.born.year : '—',
+          age: p.born?.year ? ageYear - p.born.year : '—',
+          isDeceased,
         };
       });
   // gistVersion in deps triggers re-run when gist data arrives
@@ -134,12 +139,13 @@ export const PlayerBiosView: React.FC = () => {
       if (!showingProspects && league !== 'All' && p.playerLeague !== league) return false;
       if (!showingProspects && hideWomen && p.playerLeague === 'WNBA') return false;
       if (!showingProspects && hideRetired && p.playerLeague === 'Retired') return false;
+      if (!showingProspects && hideDeceased && (p as any).isDeceased) return false;
       if (searchTerm && !p.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       if (!showingProspects && teamFilter && String(p.tid) !== teamFilter) return false;
       if (!showingProspects && position && p.pos !== position) return false;
       return true;
     });
-  }, [enriched, league, searchTerm, teamFilter, position, hideWomen, hideRetired]);
+  }, [enriched, league, searchTerm, teamFilter, position, hideWomen, hideRetired, hideDeceased]);
 
   const allColleges = useMemo(() => [...new Set(filteredBase.map(p => p.college).filter(Boolean))].sort() as string[], [filteredBase]);
   const allCountries = useMemo(() => [...new Set(filteredBase.map(p => p.extractedCountry).filter(Boolean))].sort() as string[], [filteredBase]);
@@ -154,6 +160,7 @@ export const PlayerBiosView: React.FC = () => {
       if (!showingProspects && league !== 'All' && p.playerLeague !== league) return false;
       if (!showingProspects && hideWomen && p.playerLeague === 'WNBA') return false;
       if (!showingProspects && hideRetired && p.playerLeague === 'Retired') return false;
+      if (!showingProspects && hideDeceased && (p as any).isDeceased) return false;
       if (searchTerm && !p.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       if (!showingProspects && teamFilter && String(p.tid) !== teamFilter) return false;
       if (!showingProspects && position && p.pos !== position) return false;
@@ -181,7 +188,7 @@ export const PlayerBiosView: React.FC = () => {
     });
 
     return r;
-  }, [enriched, league, searchTerm, teamFilter, position, college, country, sortConfig, colFilters, hideWomen, hideRetired]);
+  }, [enriched, league, searchTerm, teamFilter, position, college, country, sortConfig, colFilters, hideWomen, hideRetired, hideDeceased]);
 
   const PER_PAGE = 50;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
@@ -293,6 +300,10 @@ export const PlayerBiosView: React.FC = () => {
           className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all ${hideRetired ? 'bg-slate-600/50 border-slate-500/50 text-slate-300' : 'bg-slate-800 border-slate-700/60 text-slate-400 hover:text-white'}`}>
           {hideRetired ? 'Ret Hidden' : 'Hide Ret'}
         </button>
+        <button onClick={() => { setHideDeceased(v => !v); setPage(1); }}
+          className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all ${hideDeceased ? 'bg-slate-600/50 border-slate-500/50 text-slate-300' : 'bg-slate-800 border-slate-700/60 text-slate-400 hover:text-white'}`}>
+          {hideDeceased ? '† Hidden' : 'Show †'}
+        </button>
         {/* Pagination inline */}
         <div className="ml-auto flex items-center gap-2 text-xs text-slate-400">
           <span>{filtered.length} players</span>
@@ -348,6 +359,7 @@ export const PlayerBiosView: React.FC = () => {
                       size={28}
                     />
                     <span className="text-sm font-bold text-indigo-400">{p.name}</span>
+                    {(p as any).isDeceased && <span className="text-[10px] text-slate-500" title={`Died ${(p as any).diedYear}`}>†</span>}
                     {p.hof && <span className="text-[9px] font-black text-amber-400 bg-amber-400/10 px-1 rounded">HOF</span>}
                   </div>
                 </td>

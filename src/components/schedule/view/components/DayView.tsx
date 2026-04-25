@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Play, MonitorPlay, FastForward, Globe, Ticket, Star } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, MonitorPlay, FastForward, Globe, Ticket, Star, Trophy } from 'lucide-react';
 import { Game, NBATeam, NBAPlayer, NonNBATeam } from '../../../../types';
 import { normalizeDate, getTeamForGame, getOwnTeamId } from '../../../../utils/helpers';
-import { getDraftLotteryDate, getDraftDate, toISODateString } from '../../../../utils/dateUtils';
+import { getDraftLotteryDate, getDraftDate, getAllStarGameDate, toISODateString } from '../../../../utils/dateUtils';
 import { AllStarDayView } from './AllStarDayView';
 import { AllStarGameCard } from './AllStarGameCard';
 
@@ -65,21 +65,24 @@ export const DayView: React.FC<DayViewProps> = ({
   const ownTid = getOwnTeamId(state);
 
   const [year, month, day] = selectedDateNorm.split('-').map(Number);
-  const isRisingStarsDay = month === 2 && day === 13;
-  const isSaturdayEventsDay = month === 2 && day === 14;
-  const isAllStarGameDay = month === 2 && day === 15;
-  const isCelebrityGameDay = month === 2 && day === 13;
+  const ls = state?.leagueStats;
+  const seasonYear: number = ls?.year ?? year;
+  const allStarGameDate   = getAllStarGameDate(seasonYear, ls);
+  const allStarGameStr    = toISODateString(allStarGameDate);
+  const allStarSatStr     = toISODateString(new Date(allStarGameDate.getTime() - 1 * 86_400_000));
+  const allStarFriStr     = toISODateString(new Date(allStarGameDate.getTime() - 2 * 86_400_000));
+  const isRisingStarsDay    = selectedDateNorm === allStarFriStr;
+  const isSaturdayEventsDay = selectedDateNorm === allStarSatStr;
+  const isAllStarGameDay    = selectedDateNorm === allStarGameStr;
+  const isCelebrityGameDay  = selectedDateNorm === allStarFriStr;
 
   const isAllStarWeekend = isRisingStarsDay || isSaturdayEventsDay || isAllStarGameDay || isCelebrityGameDay;
 
   // Draft calendar events — derived from leagueStats so dates update when scheduler changes
-  const ls = state?.leagueStats;
-  const seasonYear: number = ls?.year ?? year;
   const draftLotteryDateStr = toISODateString(getDraftLotteryDate(seasonYear, ls));
   const draftDateStr        = toISODateString(getDraftDate(seasonYear, ls));
-  const draftDateStr2       = toISODateString(new Date(getDraftDate(seasonYear, ls).getTime() + 86_400_000));
   const isDraftLotteryDay   = selectedDateNorm === draftLotteryDateStr;
-  const isNBADraftDay       = selectedDateNorm === draftDateStr || selectedDateNorm === draftDateStr2;
+  const isNBADraftDay       = selectedDateNorm === draftDateStr;
 
   // Season Preview — shows throughout October (training camp → opening night) until dismissed
   const isPreseasonMonth = month === 10;
@@ -454,16 +457,25 @@ export const DayView: React.FC<DayViewProps> = ({
                   <div key={game.gid} className={`border rounded-2xl p-4 transition-all ${
                     isUserGame
                       ? 'bg-indigo-950/40 border-indigo-500/50 ring-1 ring-indigo-500/30 shadow-lg shadow-indigo-500/10'
-                      : `bg-[#111] hover:border-white/10 ${game.isPlayoff || game.isPlayIn ? 'border-indigo-500/20' : isIntlPreseason ? 'border-emerald-500/20' : 'border-white/5'}`
+                      : `bg-[#111] hover:border-white/10 ${game.isPlayoff || game.isPlayIn ? 'border-indigo-500/20' : (game as any).isNBACup ? 'border-amber-500/30' : isIntlPreseason ? 'border-emerald-500/20' : 'border-white/5'}`
                   }`}>
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
                         <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                          {isIntraSquad ? 'Scrimmage' : isIntlPreseason ? (game.played ? 'Intl Preseason · Final' : `Intl Preseason${(game as any).city ? ` · ${(game as any).city}` : ''}`) : game.played ? (() => {
-                            const bs = boxScores?.find(b => b.gameId === game.gid);
-                            if (!bs?.isOT) return 'Final';
-                            return bs.otCount && bs.otCount > 1 ? `Final ${bs.otCount}OT` : 'Final OT';
-                          })() : 'Scheduled'}
+                          {isIntraSquad ? 'Scrimmage'
+                            : (game as any).isNBACup ? (
+                                (game as any).nbaCupRound === 'Final' ? `Cup Final · Las Vegas${game.played ? ' · Final' : ''}`
+                                : (game as any).nbaCupRound === 'SF'  ? `Cup Semifinal · Las Vegas${game.played ? ' · Final' : ''}`
+                                : (game as any).nbaCupRound === 'QF'  ? `Cup Quarterfinal${game.played ? ' · Final' : ''}`
+                                :                                       `Cup Night · Group ${(game as any).nbaCupGroupId ?? ''}${game.played ? ' · Final' : ''}`
+                              )
+                            : isIntlPreseason ? (game.played ? 'Intl Preseason · Final' : `Intl Preseason${(game as any).city ? ` · ${(game as any).city}` : ''}`)
+                            : game.played ? (() => {
+                                const bs = boxScores?.find(b => b.gameId === game.gid);
+                                if (!bs?.isOT) return 'Final';
+                                return bs.otCount && bs.otCount > 1 ? `Final ${bs.otCount}OT` : 'Final OT';
+                              })()
+                            : 'Scheduled'}
                         </div>
                         {isUserGame && (
                           <span className="text-[8px] font-black uppercase tracking-widest bg-indigo-500/25 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/40">
@@ -480,6 +492,12 @@ export const DayView: React.FC<DayViewProps> = ({
                             alt="Playoffs"
                             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                           />
+                        )}
+                        {(game as any).isNBACup && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30">
+                            <Trophy size={10} className="text-amber-400" />
+                            <span className="text-[8px] font-black uppercase tracking-widest text-amber-300">NBA Cup</span>
+                          </span>
                         )}
                       </div>
                       {game.played && (

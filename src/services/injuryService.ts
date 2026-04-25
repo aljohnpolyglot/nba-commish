@@ -10,24 +10,18 @@
  */
 
 import type { InjuryDefinition } from '../types';
+import { fetchWithCache } from './utils/fetchWithCache';
 
 const INJURY_DATA_URL =
   'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbainjurieslist';
 
 let _cache: InjuryDefinition[] = [];
-let _fetched = false;
 
 export const fetchInjuryData = async (): Promise<void> => {
-  console.log('[InjuryService] Fetching injury definitions...');
-  try {
-    const res = await fetch(INJURY_DATA_URL);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    _cache = await res.json();
-    _fetched = true;
+  const data = await fetchWithCache<InjuryDefinition[]>('injury-definitions', INJURY_DATA_URL);
+  if (data) {
+    _cache = data;
     console.log(`[InjuryService] Loaded ${_cache.length} injury definitions.`);
-  } catch (err) {
-    console.warn('[InjuryService] Failed to fetch injury list:', err);
-    _fetched = true; // mark done so callers don't hang; _cache stays []
   }
 };
 

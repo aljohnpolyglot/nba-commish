@@ -2,6 +2,297 @@
 
 Historical bug fixes, session notes, and architecture discoveries.
 
+## Session 27 (Apr 25, 2026) — Prompt I rewrite: FA pipeline realism pass
+
+### Hotfix 27h — RFA matching offer-sheet mechanic
+
+User flagged the missing real-NBA Restricted Free Agent matching window — Ayton-Suns-Pacers flow, where prior team can match an offer sheet within a 48-hour window to retain the player.
+
+**Resolution flow** (`faMarketTicker.ts`):
+1. When a market resolves with a non-prior team winning AND `player.isRestrictedFA === true` AND `rfaMatchingEnabled` setting is on → market enters pending-match state instead of finalizing
+2. New schema fields on `FreeAgentMarket`: `pendingMatch`, `pendingMatchExpiresDay`, `pendingMatchPriorTid`, `pendingMatchOfferBidId`, `matchedByPriorTeam`
+3. New section `1a. RFA pending-match resolution` runs each tick; AI prior teams decide via seeded random + budget gate; user prior teams skip (handled by reducer)
+4. Window expiry (default 2 days) → auto-decline → signing team gets the player
+5. Match acceptance pct: K2 ≥ 85 → 0.85, K2 80-84 → 0.70, K2 70-79 → 0.55. 2nd-apron teams auto-decline (when `rfaAutoDeclineOver2ndApron` setting on).
+6. **History entries fire as a chain** — first the offer sheet ("X signs offer sheet with Y — prior team has 2 days to match") then either the match override ("Y matched X's offer sheet") or the move-on ("X signs with signing team — prior team declined to match")
+
+**User UX** (`ToastNotifier.tsx` + `GameContext.tsx`):
+- New toast type `'rfa-offer-received'` — fuchsia theme, FileSignature icon, **inline Match/Decline buttons**, 12s persistence
+- New `MATCH_RFA_OFFER` / `DECLINE_RFA_OFFER` reducers — apply contract directly (Match) or short-circuit pending state (Decline)
+- Outcome toasts: `'rfa-matched'` (emerald) / `'rfa-not-matched'` (rose) — fired when user is signing OR prior team
+- New state fields drained by ToastNotifier: `pendingRFAOfferSheets[]` + `pendingRFAMatchResolutions[]`
+
+**EconomyTab settings** (deferred to next pass) — three settings still need wiring on the rules screen:
+- `rfaMatchingEnabled` (default `true`)
+- `rfaMatchWindowDays` (default `2`)
+- `rfaAutoDeclineOver2ndApron` (default `true`)
+
+Currently respect inline defaults in code; commissioner can't yet toggle them. Will land in the next bundle alongside the parallel signing-difficulty agent's settings work to keep useRulesState clean.
+
+### Hotfix 27g — Bird Rights re-sign Pass 0
+
+Real NBA: prior team gets a Jul 1 first-look on expiring stars before the open market opens. Without this, expiring stars who declined a mid-season extension (one bad seeded roll → `midSeasonExtensionDeclined: true` blocks season-end retry) fall straight into the FA market — where their incumbent team often can't bid (over-cap, lux-tax). Result: Finals contenders lose their own players for nothing (Jalen Duren on DET case).
+
+**Fix** (new `runAIBirdRightsResigns()` in `AIFreeAgentHandler.ts`, wired in `simulationHandler.ts` rollover branch):
+- Fires once on Jul 1 right after `applySeasonRollover` returns, before any FA market opens
+- Eligible: FAs with `hasBirdRights: true`, K2 ≥ 75, prior NBA team known, mood ≥ -2 (or LOYAL trait), prior team not over 2nd apron, has open roster slot
+- Offers `computeContractOffer × 1.10` (Bird Rights premium) up to player's max contract
+- Acceptance: 95% LOYAL, 65% MERCENARY, 85% default — seeded `bird_rights_${playerId}_${year}` for replay determinism
+- Clears `midSeasonExtensionDeclined` flag — fresh slate
+- Emits history entry: "X re-signs with the Y via Bird Rights: $XM/Yyr (player option) (Supermax)"
+
+After this, Duren-tier expiring stars get a guaranteed first-look at +10% premium. The 15% of stars who still hit FA represent legitimate departures (LOYAL trait absent + mood drop / MERCENARY chasing money / 2nd-apron team) — Myles Turner pattern, realistic but rare.
+
+### Hotfix 27f — Bird Rights re-sign in the bid pool
+
+User flagged: Jalen Duren (K2 90, age 23) hit FA after DET made the 2025-26 Finals. DET didn't show up in his bid pool. Cause: `generateAIBids` filtered teams by `capSpace >= minSalary || payroll < luxuryTax`. Finals contenders run hot payrolls (DET over-tax) → filtered out → no bid. But real NBA: Bird Rights lets the prior team sign their own player over the cap regardless of payroll. The whole reason teams re-sign their stars instead of losing them.
+
+**Fix** (`freeAgencyBidding.ts:206-232, 268-272, 282-296`):
+- Compute `priorTid` for the player (most-recent NBA tid via transactions or stats with gp > 0)
+- `playerHasBirdRights = (player.hasBirdRights === true) && priorTid >= 0`
+- Eligibility filter now whitelists the Bird Rights holder unconditionally
+- Sort puts the Bird Rights team at the top of the candidate slice so they don't get squeezed out
+- Cap-affordability gate inside the bid loop allows the Bird Rights team to bid up to player's max contract
+- Bid pct gets +15% multiplier for the Bird Rights team — incumbents over-pay to retain (Mavs/Lakers max-deal pattern)
+
+After this DET will show up in Duren's bid pool with an inflated offer that reflects them having his Bird Rights — closer to the real-NBA "over-cap re-sign your own stars" dynamic.
+
+### Hotfix 27e — wider bid pool for stars (post-PR1 polish)
+
+User saw every star post-Jul 1 2026 rollover getting the same 3-team market: BKN/LAL/LAC offering, repeated bid amounts, no real war. Cause: `generateAIBids` slice took `maxBids * 2 = 6` candidates and locked the same 3 cap-rich teams every time. After multi-season sim only ~3 teams have real cap room; desirability tiebreak put the same trio at the top for every market.
+
+**Fix #1** (`faMarketTicker.ts:362-368`): `maxBids` now tier-based. K2 ≥ 88 → 5 bids, K2 80-87 → 4, else → 3. Stars get a real bidding war (Reaves / Harden / LeBron tier should attract 5 suitors, not 3).
+
+**Fix #2** (`freeAgencyBidding.ts:227`): bidder candidate pool widened from `maxBids × 2` to `max(maxBids × 3, 12)`. With more candidates feeding the affordability filter, mid-cap teams that get filtered for star bids can still surface for K2 80-84 mid-tier markets. No more "every K2 ≥ 80 player has the same 3 bidders."
+
+### Hotfix 27d — Bidding-war refactor PR1 + Free Agency scouting tab
+
+User green-lit the bidding-war refactor. Shipping PR1 (threshold drop + cap-threshold cleanup + offseason burst window) plus a new GM-mode Free Agency scouting tab.
+
+**PR1: Lower market threshold to K2 ≥ 70** (`faMarketTicker.ts:24-39, 271-280, 357-365`)
+- `MARKET_K2_THRESHOLD = 80 → 70` so K2 70-79 mid-tier rotation FAs see multi-team bidding instead of going silently through `runAIFreeAgencyRound`.
+- `MAX_NEW_MARKETS_PER_DAY = 6 → 8` baseline. New `MAX_NEW_MARKETS_BURST = 30` for Jul 1-3 (offseason FA flood — without burst, K2 70 threshold would leave 100+ FAs sitting until late July).
+- `MAX_MARKETS_RESOLVING_PER_DAY` bumped 10 → 20 to handle the extra throughput.
+- Replaced hardcoded `luxTax = cap × 1.18, mleUSD = cap × 0.085` with `getCapThresholds()` + `getMLEAvailability()` so commissioner-tuned cap settings (lux pct, MLE pct) are respected.
+
+**Free Agency scouting tab** (new `TeamIntelFreeAgency.tsx`, wired in `TeamIntel.tsx`)
+- Sub-tab pill at top of TeamIntel switches between Trades (existing) and Free Agency (new). Shared team banner, conditional body.
+- Cap Ticker: cap room, MLE available, total shortlist commit, projected room after winning all shortlist bids — color-coded amber when commit > available.
+- My Shortlist: up to 15 starred FAs persisted on `tradingBlockStore.faShortlistIds[]`. Per-row portrait, K2 OVR, asking price (`computeContractOffer`), trait badge (LOYAL/MERCENARY/COMPETITOR). Amber-pill Edit button opens existing `PlayerSelectorGrid` modal.
+- Live Bid Tracker: every active market involving a shortlisted FA OR where the user has bid. Color-thread: amber when user is leading, red when outbid, slate when no bid. Stage indicator ("Resolves in 3d" / "Resolves today"). Top bid + user bid side-by-side with team abbrev.
+- Top FAs scouting drawer: sortable read-only table with tier filter chips (All / 90+ / 80-89 / 70-79 / Under 25). Star toggle adds/removes from shortlist.
+
+**Persistence**: `TradingBlockEntry.faShortlistIds` is optional — old saves load without migration; new shortlists save back to the same per-saveId localStorage entry as trade targets/untouchables.
+
+**What's deferred to later PRs**:
+- PR2: parallel bid collection with 3-round escalation window
+- PR3: resolution formula upgrade (`legacyMult`, `championshipMult`, `moodMult`, Bird-Rights tiebreak before RNG)
+- PR4: gut sequential pipeline (Pass 1 → Bird Rights re-sign only)
+- PR6: LOAD_GAME save migration
+
+### Hotfix 27c — autoResolvers post-draft 2W sneak path
+
+User's TWOWAYAGE audit showed 13 vets on 2W contracts (age 25-29, YOS 3+) post 27a/27b. Pass 2 in `runAIFreeAgencyRound` was correctly rejecting them, but `autoResolvers.ts:996-1003` runs a *separate* post-draft 2W auto-assignment every Jul 1 that gated only on OVR ≤ 45 — the sneak path.
+
+**Fix** (`autoResolvers.ts:996-1018`): mirrored the AIFreeAgentHandler Pass 2 age/YOS gate. Plus added a `draft.year` YOS backup (`max(yosFromStats, yosFromDraft)`) so real-player gist imports whose `stats[]` lack `gp` counts still register as veterans. Same backup wired into Pass 2 (`AIFreeAgentHandler.ts:367-376`) and the TWOWAYAGE cheat (`debugCheats.ts:563-572`) so all three use identical logic.
+
+After this, no signing path can land an age ≥ 30 player on a 2W deal, and 25-29 players require YOS ≤ 2 by either stats OR draft-year reckoning.
+
+### Hotfix 27b — date clamp plumbed into runAIFreeAgencyRound
+
+User sim'd 2 more years post-27a, surfaced 2 more mid-season offenders:
+```
+Oct 26, 2027 — Cameron Johnson → BOS $42M/3yr (MLE)
+Nov 22, 2027 — Landry Shamet  → HOU $52M/3yr (PO)
+```
+Root cause: Session 27's mid-season cooldown lived only in `faMarketTicker.ts` + `freeAgencyBidding.ts`. Players with K2 < 92 don't open markets post-Oct 21 (they're below the late-season threshold) — so they fall to `runAIFreeAgencyRound` Pass 1 / Pass 4 / Pass 5 + `runAIMleUpgradeSwaps`, where `computeContractOffer` returns full 3-4yr deals year-round with NO date awareness.
+
+**Fix** (`AIFreeAgentHandler.ts:13, 22-69`): added a `clampOfferForDate` helper at the file boundary that applies the same date gates as `faMarketTicker` + `generateAIBids`:
+- **Length cap**: post-Oct 21 → 2yr; post-deadline + `postDeadlineMultiYearContracts: false` → 1yr.
+- **Salary decay**: late-Oct/Nov/Dec ×0.55, Jan ×0.35, Feb-Jun ×0.20. Floored at league min.
+- Returns offer unchanged in offseason (Jul 1–Oct 21).
+
+Wired into 4 sites:
+- Pass 1 best-fit signing path (`:331`)
+- Pass 4 mid-tier candidate map (`:570`)
+- Pass 5 floor-enforcement candidate map (`:724`)
+- `runAIMleUpgradeSwaps` candidate filter + final offer (`:1316, 1325`)
+
+Both pipelines (markets + sequential round) now honor identical mid-season gates. Forward-only — existing mid-season contracts remain on the books until they expire.
+
+### Hotfix 27a — post-sim regressions (same day)
+
+User sim'd forward and surfaced 4 regressions Session 27 didn't catch:
+
+- **Years cap leaked through pre-cutoff markets** (`faMarketTicker.ts:103-115, 158`) — `maxYearsThisTick` only fired at market *open*. A market opened Sep 30 with 3yr bids resolving Nov 5 (Quentin Grimes $96M/3yr) honored the original 3yr. Added `resolutionMaxYears` clamp at resolution time using the same date gate. Also propagated `finalYears` to history text, news content, Shams post, contract years array (option flag was tied to `winner.years - 1` but should be `finalYears - 1` to land on the actual last year).
+- **Same-player double-sign** (`simulationHandler.ts:1046-1055`) — Gary Harris signs CHA + MIA same day Oct 12. `runAIFreeAgencyRound` returned a results array; `state.players.map(...find(...))` only applied the first, but `signings.map(...)` over history wrote both. Added `seenSignIds` dedup at the simulationHandler boundary so multi-pass collisions can't double-emit.
+- **2W promotion at $10.8M** (`AIFreeAgentHandler.ts:881-892`) — `autoPromoteTwoWayExcess` paid full `computeContractOffer` market value on promotions. Real NBA 2W→standard is min / pro-rated min. Capped at `2× minSalaryUSD` (~$2.5M). Genuine breakouts can still earn a real standard deal next FA window.
+- **2W age gate weak against real-player imports** (`AIFreeAgentHandler.ts:357-377`) — gist-fetched real players (e.g., Jarrett Culver age 28, 8 YOS) have `stats[]` entries without `gp` counts, so the YOS check returned 0 and the vet passed through. Added a hard `age ≥ 30 → reject` ceiling regardless of YOS. Age <25 still auto-passes; 25-29 still requires YOS ≤ 2.
+
+
+
+Original Prompt I (Bird Rights re-sign Pass 0, rookie-ext retry, waive-to-sign) became largely moot once Prompt M shipped — stars no longer sit unsigned with a realistic talent pool. Re-scoped against a user-provided 2029-30 transaction log audit. 4 fixes + 3 new debug cheats.
+
+**Audit findings (transactions that didn't make sense):**
+- Tre Jones → TOR **$123M/4yr Feb 8, 2030**, Diabate → HOU **$108M/4yr Dec 18**, Jakucionis → WAS **$111M/4yr Dec 2** — mid-season mega contracts from `faMarketTicker` opening K2 ≥ 80 markets all season
+- 80+ two-way signings stamped same day (Jun 27, 2030) — markets converge
+- Mathurin / Rozier / Christian Wood / Bol Bol on $0.6M two-ways — vets sweeping into 2W slots gated only by OVR
+- Aaron Bradshaw "re-signed" CLE $31M, then "re-signed" WAS 2W $0.6M, then "re-signed" WAS $24M same offseason — extension fired immediately after fresh waiver-and-resign chain
+- Dylan Cardwell $106M/4yr (NOT a bug — real Auburn/SAC player at K2 86 coming off breakout starter year, fair-market deal that aged poorly: realistic Tobias Harris pattern)
+
+**Fix #1 — Mid-season market cooldown** (`src/services/faMarketTicker.ts:25-50, 282-340`)
+- New `LATE_SEASON_K2_THRESHOLD = 92` + `MAX_MARKETS_RESOLVING_PER_DAY = 10` constants
+- New `isPostPreseason(stateDate)` helper — true after Oct 21
+- Market open gate: post-preseason only K2 ≥ 92 stars open new markets (rest sit until next offseason or sign min/NG via Pass 4)
+- Mid-season `years` capped at 2 — no 4yr December contracts
+- Resolution stagger: when more than 10 markets resolve within next 3 days, push new market `decidesOnDay` further out
+
+**Fix #2 — Mid-season bid decay** (`src/services/freeAgencyBidding.ts:241-262`)
+- `generateAIBids` salary pct multiplier by date:
+  - Late Oct (22+) / Nov / Dec: ×0.55
+  - Jan: ×0.35
+  - Feb-Jun: ×0.20 (trade deadline+ — fringe-only money)
+- Already-open markets that resolve mid-season honor the discount via this path — `tickFAMarkets` regenerates bids if needed; existing bids stand at their original pct (acceptable: those already committed to the player when offers were generated)
+
+**Fix #3 — Two-way age/YOS gate** (`src/services/AIFreeAgentHandler.ts:357-372`)
+- Pass 2 candidates must satisfy `age ≤ 24` OR `yearsOfService ≤ 2`
+- Aging vets fall through to Pass 4 min-deal path (real $1.27M minimum, not $0.6M two-way)
+- OVR cap (≤ 60 BBGM) unchanged
+
+**Fix #4 — Extension `yearsWithTeam ≥ 1` gate** (`src/services/AIFreeAgentHandler.ts:973-986, 1091-1102`)
+- Both `runAIMidSeasonExtensions` and `runAISeasonEndExtensions` require player has been with team at least 1 year
+- Eliminates duplicate "re-signed" labels in same offseason — a player picked up from waivers in November can no longer get an extension days later
+- Bird Rights flag is already cleared on waiver via 3 paths (`simulationHandler.ts` waiver block, `playerActions.ts:handleWaivePlayer`, `simulationHandler.ts` autoTrim waiver block) — verified during audit
+
+**Debug cheats** (`src/utils/debugCheats.ts`)
+- **MIDSEASON** — flags any `signs with` or `has re-signed` history entry > $10M annual dated Nov 1+
+- **TWOWAYAGE** — 2W age distribution buckets (≤21 / 22-24 / 25-27 / 28-30 / 31+) + flags vets (age ≥ 25 AND YOS ≥ 3) on 2W deals — should always be 0 post-fix
+- **RESIGNS** — groups "has re-signed" entries by playerName + offseason year; flags any player with ≥2 entries in same offseason
+
+**LOAD_GAME migration**: NONE. Forward-only. Existing 2W vet contracts remain until they expire; existing mid-season mega contracts stay on the books. Verifying via `MIDSEASON` after a future season's FA cycle should show no new offenders.
+
+**DevTools verification**:
+```
+> // After 1 full season post-Prompt-I:
+> [check via cheats] MIDSEASON   → 0 new $10M+ deals dated Nov 1+
+> [check via cheats] TWOWAYAGE   → "Vets on 2W" table empty
+> [check via cheats] RESIGNS     → "Players with ≥2 re-signed" empty
+```
+
+---
+
+## Session 26 (Apr 24, 2026) — Prompt J: External-league ecosystem sustainer
+
+**New file: `src/services/externalLeagueSustainer.ts`**
+
+Fixes foreign leagues shrinking to <6 players/team over 5-year sims (B-League lost ~40% of population), retirement never firing for external players, and undrafted internationals bloating the NBA FA pool.
+
+**Fix #1 — External retirement (standalone, replaces bridge in `retirementChecker.ts`)**
+- `retireExternalLeaguePlayers(players, year, stateDate)` — extracts the per-league curves (G-League aggressive/35+, PBA lenient/44+, pro leagues moderate/42+) from the inline bridge that lived in `retirementChecker.ts`
+- Emits `historyEntries` with `playerIds` per retiree: `"${name} retired from the ${league} after ${gp} career games."`
+- Same `seededRandom('retire_ext_${internalId}_${year}')` seed — fully deterministic replay
+- `retirementChecker.ts`: inline external branch removed; comment points to new helper. NBA/FA path unchanged.
+
+**Fix #2 — Minimum 12 per external team (safety net)**
+- `enforceExternalMinRoster(state, year)` — journeymen fill (age 26-30), runs last in rollover after all other flows, also wired at initial load point
+- Caps at 15, targets 12. OVR skewed toward lower-mid (70% bottom half, 30% top half of league range)
+
+**Fix #3 — Two-track repopulation**
+- `repopulateExternalLeagues(state, retirees, year, nextYear)` — outflow tracking: retirees per league + 19y auto-declarers (born.year === year-18, matching NATIONALITY_LEAGUE_BIAS)
+- Track A (Euroleague/Endesa/NBL Australia/B-League/G-League): spawn 15-18yo at youth-club teams (FC Barcelona, Chiba Jets, etc.)
+- Track B (PBA/China CBA): spawn 22-26yo adult-direct; nationality overridden to Philippines/China
+- OVR caps: Euroleague ≤68 … G-League ≤55 (BBGM raw). Youth POT cap = ovrCap+8, adult = ovrCap+4
+
+**Fix #3b — Undrafted-returns-home**
+- `returnUndraftedToHomeLeague(players, draftYear, state)` — runs after `autoRunDraft` in `autoResolvers.ts`
+- Finds `tid=-1, status=FA, draft.year=draftYear, round=0` players with non-US/Canada `born.loc`
+- Routes via `NATIONALITY_LEAGUE_BIAS` to least-rostered team in home league
+- Entry-level salary (scale.minPct × 1.5 of salaryCap), 1-year contract
+- History entries: `"${name} returned to the ${league} after going undrafted in the ${year} NBA Draft."`
+
+**Integration**
+- `seasonRollover.ts`: imports + calls `retireExternalLeaguePlayers` → `runRetirementChecks` → `repopulateExternalLeagues` → `enforceExternalMinRoster`; ext retire history merged into returned `history[]`
+- `autoResolvers.ts`: `returnUndraftedToHomeLeague` called after two-way assignment, before return
+
+**DevTools verification** (paste after 1-season rollover):
+```js
+const leagues = ['Euroleague','Endesa','China CBA','NBL Australia','PBA','B-League','G-League'];
+leagues.forEach(lg => {
+  const players = state.players.filter(p => p.status === lg);
+  const teams = state.nonNBATeams.filter(t => t.league === lg);
+  const under = teams.filter(t => state.players.filter(p => p.tid === t.tid).length < 12);
+  console.log(lg, '| players:', players.length, '| teams <12:', under.length);
+});
+```
+Target: zero teams below 12 per league.
+
+---
+
+## Session 26 (Apr 24, 2026) — Prompt K: fetch resilience + storage quota
+
+**Fix #1 — Robust gist fetch (retry + 24h IDB cache)**
+- New `src/services/utils/fetchWithCache.ts`: 4-attempt exponential backoff (0/500ms/1s/2s), 24h TTL, separate `gist-cache` IDB DB, stale-cache fallback on total failure.
+- All 7 optional fetchers migrated: `fetchAvatarData`, `fetchPlayerInjuryData`, `loadRatings` (NBA2k), `fetchStatmuseData`, `fetchNBAMemes`, `fetchCharaniaPhotos`, `fetchInjuryData`. Intermittent CORS/network failures no longer degrade app state on reload — stale gist data serves until fresh fetch succeeds.
+
+**Fix #2 — Quota-aware imageCache + LRU eviction**
+- `imageCache.ts` bumped to DB v2 with new `lru` object store tracking `lastAccessed` per cached URL.
+- Before downloading/caching a blob: `navigator.storage.estimate()` gate — skip caching at >80% quota usage; at >95% evict oldest 20% of portrait cache (by LRU) and still skip the new blob. Blob URLs in `blobUrlMap` revoked on eviction.
+- IDB hits now update LRU so recently-accessed portraits survive eviction longer.
+
+**Fix #3 — Non-blocking init** (already in place)
+- All 7 optional fetches in `App.tsx` were already fire-and-forget; `state.isDataLoaded` is gated by the reducer, not by optional asset loads. No App.tsx changes needed.
+
+**Fix #4 — QuotaExceededError UX**
+- `SaveManager.saveGame()` wraps `set(id, state)` in try-catch. On `QuotaExceededError` (name or code 22): `window.confirm()` asks user to clear portrait cache; if confirmed, deletes `nba_commish_image_cache` DB and retries the save. Private `_deleteImageCacheDB()` helper does the deletion without importing imageCache.ts (avoids circular deps).
+
+## Session 25 (Apr 24, 2026) — Multi-season economy sweep + delegated agents
+
+Shipped 11 bugs across Opus inline work and Sonnet delegation (Prompts A–H). Full 5-year-sim audit drove discovery.
+
+**Playoff / draft scheduling**
+
+- **2029 Finals stranded at Game 7** — `PlayoffAdvancer.ts` June 10 Finals-start cap clamped backward even when the cap was already behind the feeders' last game, placing games on dates lazy-sim had already passed. Now only clamps when `juneMaxStart > laterEnd`.
+- **Draft duplicated + hardcoded date** — lazy sim fired `draft_execute` before `runSimulation`, which then ran `applySeasonRollover` Jun 30 and reset `draftComplete: undefined`; next iteration saw rolled-over year and re-fired. Fix: `lazySimRunner.ts:559` clamps `batchDays` to land exactly on the earliest unfired event date. Also `dateUtils.getDraftDate()` rewritten to compute **last Thursday of Finals-ending month** (June default; shifts +1 month per extra playoff round). Explicit `stats.draftMonth/draftDay` overrides respected. Call sites wired: `lazySimRunner`, `gameLogic`, `autoResolvers`, `seasonRollover`, `DraftSimulatorView`, `MainContent`.
+- **Draft card rendering on two days** — one-day fix in `DraftSimulatorView` + ADVANCE_DAY `autoDraftComplete` gate verified idempotent across both paths.
+
+**External leagues / FA purgatory**
+
+- **External-league contracts never expire** — `seasonRollover.ts:280` EXTERNAL_LEAGUES short-circuit returned `{...p, age+1}` unconditionally, so Barcelona 1-year deals with `exp=2026` stayed "current" in 2030+. Split the branch: retired/no-contract/FA still short-circuit; WNBA explicit age-only (separate pipeline, no NBA leak); men's external leagues with `contract.exp <= currentYear` flip to `tid:-1, status:'Free Agent', twoWay:undefined, nonGuaranteed:false, gLeagueAssigned:false, hasPlayerOption:false` so `routeUnsignedPlayers` (Oct 1) and `runAIFreeAgencyRound` can re-route.
+- **FA purgatory ('FreeAgent' typo)** — `simulationHandler.autoTrimOversizedRosters` wrote `status: 'FreeAgent'` (no space); every FA signing filter compares `status === 'Free Agent'`. Trim-released players invisible to Pass 1–5 forever. Also surfaced as "Lg: FreeAgent" literal in PlayerBioContractTab salary view. Fix: all three waive paths (`handleWaivePlayer`, auto-trim, MLE-swap waive) write canonical `'Free Agent'` + clear team-tied flags (`twoWay`, `nonGuaranteed`, `gLeagueAssigned`, `mleSignedVia`, `hasBirdRights`, `superMaxEligible`, `yearsWithTeam`). Contract.amount kept so salary history still renders. LOAD_GAME migration in `GameContext.tsx` normalizes existing saves.
+- **K2 85+ internationals never signed by NBA teams** — flip-then-route-back cycle: contract expires → becomes FA → `routeUnsignedPlayers` ranks 31+ in highTier → `pickDestination(OVR 99 → Euroleague)` → fresh 2-year contract → repeat. Fix: one-line `externalSigningRouter.ts:152` — `if (k2Ovr >= 85) return p;`. Side-effect: K2 70–84 players have less competition for the 30 protection slots, mid-range overseas talent also stays signable.
+- **Under-19 international progression + no draft declaration** — `progressPlayer:259` already froze sub-19 generic progression; added external-league short-circuit in `applyDailyProgression` for clarity. `seasonRollover.ts` men's-external branch now auto-declares players turning 19 as `tid: -2, status: 'Draft Prospect', draft.year: nextYear, contract: undefined, contractYears: []`. Ricky-Rubio-pattern: young foreign prospects no longer progress past K2 85 in Hokkaido forever.
+- **Nationality → home-league bias** — `pickDestination` now applies 70/30 weighted override using existing `NATIONALITY_LEAGUE_BIAS` (constants.ts:474–489). Japanese K2 72 player: 70% B-League, 30% G-League (was 100% G-League). Deterministic via `seededRandom(seed+3)`. Preserves K2 ≥ 85 early-return and wash-out skip.
+
+**Retirement**
+
+- **Late-career vets stuck as FA instead of retiring** — Lowry (46, K2 57), Tucker (47), Lopez (44), Gibson (46), Green (45) cluster. Retirement didn't fire because `ACTIVE_STATUSES = {'Active','Free Agent','Prospect'}` missed the legacy `'FreeAgent'` typo. Fix: added `'FreeAgent'` alias + hard force-retire gate in `retirementChecker.ts` for `tid === -1 AND age >= 40 AND 0 GP in last 2 seasons` with proper retiree record + transaction log.
+- **LOYAL badge ignored in FA** — Curry signed LAC $91M/4yr after GSW contract ended, played one fringe age-40 season, retired. `AIFreeAgentHandler.ts` got `getLoyalPriorTid` + `isLoyalBlocked` helpers (age 30+, LOYAL trait, 3+ YOS; prior team derived from `transactions[]` → `stats[]` fallback, no `prevTid` field exists). Gate applied to all 5 passes + `runAIMleUpgradeSwaps`. `faMarketTicker` skips markets for LOYAL players whose prior team isn't bidding; closes rival-only markets as unsigned. Oct 1 block in `simulationHandler` graceful-retires any LOYAL FA still unsigned with `"has retired rather than sign with another team — a career [Team Name]."`
+
+**Contracts / bio display**
+
+- **Rookie salary years missing from PlayerBioView** — Yovel Levy (2029 R1 P16), Sadiq White (2028 R1 P6) cases. Root cause was draft-time seeding, NOT team-option rebuild. Both `computeDraftPickFields` (`DraftSimulatorView`) and `autoRunDraft` (`autoResolvers.ts`, lazy-sim path) wrote `contract` but never `contractYears[]`. Nothing in `src/` ever writes BBGM's `player.salaries[]`. PlayerBioContractTab Path B looped `currentYear..exp`, dropping every rookie year before "now". Fix: both draft paths seed per-season `contractYears[]` with 5% escalator + `option: 'Team'` on option years. LOAD_GAME backfill in `GameContext.tsx` synthesizes `contractYears[]` for already-drafted rookies (`contract.rookie && !contractYears`) using `draft.year`, `contract.exp`, `contract.amount`, `contract.teamOptionExp`.
+- **Kenny Woodard / Essengue pre-draft transactions** — undrafted prospect had transactions predating his own draft, simultaneous NG+two-way on draft day, Jan 10 guarantee against the wrong team. Root cause was NOT internalId collision, NOT Jan 10 attribution — it was **name-substring filtering** in `PlayerBioTransactionsTab.tsx:51-64`. `HistoryEntry` stored `{text, date, type}` with no player reference; filter matched `player.name.toLowerCase()` substring. When two Kenny Woodards existed (generated draft class + imported), both bios showed both players' transactions interleaved. Fix: added `playerIds?: string[]` to `HistoryEntry` (`types.ts:526`); filter prefers `playerIds.includes(internalId)`, falls back to text match only for legacy entries. Populated `playerIds` at every emission site: Jan 10 guarantee, trim waivers, AI FA signings, 2W promotions, external routing, MLE swap sign/waive, player options, rookie extensions, retirements, farewells, HOF inductions, draft picks, undrafted, FA market resolutions, trades. Forward-only — legacy entries on existing saves still text-match.
+- **PlayerBioView cache merge overwrites game-state fields** — `setBioData({...prev, ...payload})` let bioCache clobber `n/m/stats/h/w/a/d/e` (identity, meta, stats, physical, experience). Fix: pin those fields from `baseData` after the merge. Cache still enriches `bio/imgHD/b/c/s` (narrative, portrait, formatted birthdate, country, school).
+
+**Schedule**
+
+- **Preseason international games missing season +1** — `autoResolvers.autoScheduleIntlPreseason` hardcoded `2025-10-02..15` and the "already scheduled" guard had no season scope, so prior-year entries blocked every subsequent rollover. Fix: dates now `${y1}-10-xx` where `y1 = leagueStats.year - 1`; guard scoped to `g.date >= ${y1}-10-01`.
+
+**Waive / roster state**
+
+- **Waive paths leave stale team-tied flags** — `handleWaivePlayer`, `autoTrimOversizedRosters`, MLE-swap waive all now strip `twoWay`, `nonGuaranteed`, `gLeagueAssigned`, `mleSignedVia`, `hasBirdRights`, `superMaxEligible`, `yearsWithTeam` on release. `contract.amount` + `contractYears[]` kept for salary-history rendering.
+
+**Architecture notes (Session 25)**
+
+- **Canonical status string is `'Free Agent'` with a space** (per `types.ts:699`). Any path writing `'FreeAgent'` (no space) creates invisible FAs. Grep before adding new waive/FA paths.
+- **WNBA must not leak into the NBA FA pool.** The rollover expiry flip excludes `status === 'WNBA'` explicitly — women's-league players stay age-only, need a separate WNBA FA pipeline (still open TODO).
+- **`routeUnsignedPlayers` (Oct 1) routes NBA FAs back to foreign leagues if they clear K2 55.** For elite talent this creates an infinite flip-back loop. The `k2Ovr >= 85` guard breaks it, but any future router changes need to preserve that early-return.
+- **History entries need `playerIds` attribution.** PlayerBioTransactionsTab's text-substring filter is now a fallback only — every new emission site must populate `playerIds: [internalId]`. Pre-migration saves will keep the name-collision bug on old entries; accept forward-only resolution.
+- **`pickDestination` is deterministic via `seededRandom(seed+offset)`.** Never introduce `Math.random()` there — it'd desync replays across saves.
+- **Last Thursday of Finals-ending month is flexible.** `getDraftDate` derives month from `numGamesPlayoffSeries.length` (+1 month per extra round). Related Jun 30 assumptions still exist in `constants.ts:381`, `seasonRollover.ts:731` (`shouldFireRollover`), `DraftPickGenerator` comment — revisit when rollover date goes dynamic.
+
+---
+
 ## Session 23 (Apr 17, 2026)
 
 **Retirement** — `legendMult` (0.30 for 15+ All-Stars) now applied to ALL OVR tiers. Previously calculated but never used. LeBron/Curry survival rate dramatically improved.

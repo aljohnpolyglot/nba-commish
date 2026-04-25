@@ -6,6 +6,7 @@ import { calculateSocialEngagement } from '../../../utils/helpers';
 import { buildShamsSigningPost } from '../../../services/social/templates/charania';
 import { NewsGenerator } from '../../../services/news/NewsGenerator';
 import { SettingsManager } from '../../../services/SettingsManager';
+import { normalizeTeamJerseyNumbers } from '../../../utils/jerseyUtils';
 
 export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const { playerId, teamId, playerName, teamName, salary, years: negotiatedYears, option, twoWay: signedAsTwoWay, nonGuaranteed: signedAsNG, mleType: signedMleType } = action.payload;
@@ -95,7 +96,11 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
         // Contract terms — honor negotiated salary/years when provided,
         // otherwise fall back to min contract.
         const MIN_CONTRACT_USD = 1_300_000;
-        const signYear = stateWithSim.leagueStats?.year ?? 2026;
+        const leagueYear = stateWithSim.leagueStats?.year ?? 2026;
+        const existingPlayerForMerge: any = stateWithSim.players.find(p => p.internalId === playerId);
+        // Re-signs (player already on this team) start next season; fresh FA signings start current season.
+        const isResignAction = existingPlayerForMerge?.tid === teamId;
+        const signYear = isResignAction ? leagueYear + 1 : leagueYear;
         const baseSalaryUSD = typeof salary === 'number' && salary > 0 ? salary : MIN_CONTRACT_USD;
         const totalYears = typeof negotiatedYears === 'number' && negotiatedYears > 0 ? negotiatedYears : 1;
         const hasOption = option === 'PLAYER' || option === 'TEAM';
@@ -117,7 +122,6 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
         // PlayerBioContractTab keeps showing the player's existing salary history
         // after a re-sign. Filter out any entries for seasons the new deal covers
         // so the new terms win.
-        const existingPlayerForMerge: any = stateWithSim.players.find(p => p.internalId === playerId);
         const priorContractYears: Array<{ season: string; guaranteed: number; option?: string }> =
           Array.isArray(existingPlayerForMerge?.contractYears) ? existingPlayerForMerge.contractYears : [];
         const newSeasonSet = new Set(negotiatedContractYears.map(cy => cy.season));
@@ -133,7 +137,8 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                 ? ` ${playerName} was previously with the ${previousTeamName}.`
                 : '';
 
-        const signingOutcomeText = `The ${teamName} have officially signed ${playerName}.${returnContext} The deal is confirmed, sources say.`;
+        const verb = isResignAction ? 're-signed' : 'signed';
+        const signingOutcomeText = `The ${teamName} ${verb} ${playerName}.${returnContext}`;
 
         const signingSeed = `BREAKING SIGNING: The ${teamName} have signed ${playerName}.${returnContext} ` +
             `REQUIRED: @ShamsCharania MUST break this in a detailed tweet — name the team, the player, any context (returning from abroad, veteran presence, etc.), and what he brings. ` +
@@ -239,6 +244,10 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
         result.consequence.statChanges = result.consequence.statChanges || {};
         result.consequence.statChanges.revenue = (result.consequence.statChanges.revenue || 0) + (outcome.revenue || 0);
         result.consequence.statChanges.viewership = (result.consequence.statChanges.viewership || 0) + (outcome.viewership || 0);
+        result.players = normalizeTeamJerseyNumbers((result.players || stateWithSim.players) as any, stateWithSim.teams as any, stateWithSim.leagueStats?.year ?? 2026, {
+            history: stateWithSim.history,
+            targetTeamIds: [teamId],
+        }) as any;
         
         return result;
     }
@@ -352,9 +361,22 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
     const teamName = team?.name || player.organization || 'their team';
 
     // Waiving is a roster action — apply it immediately without ticking the sim clock.
+    // Keep contract.amount / contractYears intact so PlayerBioView salary history still renders.
+    // Clear team-tied flags so the FA pipeline treats them as a clean free agent.
     const players = stateWithSim.players.map((p: any) =>
         p.internalId === (player.id || player.internalId)
-            ? { ...p, tid: -1, status: 'Free Agent' }
+            ? {
+                ...p,
+                tid: -1,
+                status: 'Free Agent',
+                twoWay: undefined,
+                nonGuaranteed: false,
+                gLeagueAssigned: false,
+                mleSignedVia: undefined,
+                hasBirdRights: false,
+                superMaxEligible: false,
+                yearsWithTeam: 0,
+            }
             : p
     );
 
@@ -372,6 +394,68 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
         players,
         newNews: [waiveNewsItem],
         statChanges: { playerApproval: -2 },
+        isProcessing: false,
+    };
+};
+
+export const handleExerciseTeamOption = async (stateWithSim: GameState, action: UserAction) => {
+    const { playerId } = action.payload;
+    const player = stateWithSim.players.find((p: any) => p.internalId === playerId) as any;
+    if (!player) return { isProcessing: false };
+    const team = stateWithSim.teams.find(t => t.id === player.tid);
+
+    const players = stateWithSim.players.map((p: any) =>
+        p.internalId === playerId
+            ? {
+                ...p,
+                contract: { ...p.contract, hasTeamOption: false, teamOptionExp: undefined },
+                contractYears: Array.isArray(p.contractYears)
+                    ? p.contractYears.map((cy: any, i: number) =>
+                        i === p.contractYears.length - 1 && (cy.option ?? '').toLowerCase().includes('team')
+                            ? { ...cy, option: '' }
+                            : cy
+                    )
+                    : p.contractYears,
+            }
+            : p
+    );
+
+    return {
+        players,
+        outcomeText: `The ${team?.name ?? 'team'} exercised their team option on ${player.name}.`,
+        isProcessing: false,
+    };
+};
+
+export const handleDeclineTeamOption = async (stateWithSim: GameState, action: UserAction) => {
+    const { playerId } = action.payload;
+    const player = stateWithSim.players.find((p: any) => p.internalId === playerId) as any;
+    if (!player) return { isProcessing: false };
+    const team = stateWithSim.teams.find(t => t.id === player.tid);
+
+    const priorContractYears = Array.isArray(player.contractYears) ? player.contractYears : [];
+    const trimmedContractYears = priorContractYears.slice(0, -1);
+    const newExp = Math.max((player.contract?.exp ?? 0) - 1, (stateWithSim.leagueStats?.year ?? 2026) - 1);
+
+    const players = stateWithSim.players.map((p: any) =>
+        p.internalId === playerId
+            ? {
+                ...p,
+                tid: -1,
+                status: 'Free Agent',
+                contract: { ...p.contract, exp: newExp, hasTeamOption: false, teamOptionExp: undefined },
+                contractYears: trimmedContractYears,
+                twoWay: undefined,
+                nonGuaranteed: false,
+                hasBirdRights: false,
+                yearsWithTeam: 0,
+            }
+            : p
+    );
+
+    return {
+        players,
+        outcomeText: `The ${team?.name ?? 'team'} declined their team option on ${player.name}. ${player.name} is now a free agent.`,
         isProcessing: false,
     };
 };

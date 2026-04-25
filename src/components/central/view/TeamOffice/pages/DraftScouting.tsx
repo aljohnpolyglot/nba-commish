@@ -10,12 +10,26 @@
  * Reuses: calcOvr2K, calcPot2K from tradeValueEngine, team needs from salaryUtils
  */
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useGame } from '../../../../../store/GameContext';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
 import { calcOvr2K, calcPot2K, type TeamMode } from '../../../../../services/trade/tradeValueEngine';
 import { getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2, resolveManualOutlook } from '../../../../../utils/salaryUtils';
 import { cn } from '../../../../../lib/utils';
+import { DraftScoutingModal } from '../../../../draft/DraftScoutingModal';
+import { PlayerBioView } from '../../PlayerBioView';
+import {
+  getClassPercentiles,
+  getClassAverages,
+  type ClassPercentileMaps,
+} from '../../../../../services/scoutingReport';
+import {
+  ensureDraftScouting,
+  getCachedDraftScouting,
+  matchProspectToGist,
+  type GistProspect,
+} from '../../../../../services/draftScoutingGist';
+import type { NBAPlayer } from '../../../../../types';
 
 interface DraftScoutingProps {
   teamId: number;
@@ -46,6 +60,19 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
   const currentYear = state.leagueStats?.year ?? 2026;
   const nextDraftYear = currentYear; // draft happens in the current leagueStats.year
   const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
+
+  // Modal + bio-view state
+  const [scoutingPlayer, setScoutingPlayer] = useState<NBAPlayer | null>(null);
+  const [viewingBioPlayer, setViewingBioPlayer] = useState<NBAPlayer | null>(null);
+  const [gistByYear, setGistByYear] = useState<GistProspect[] | null>(getCachedDraftScouting(nextDraftYear) ?? null);
+
+  useEffect(() => {
+    let cancelled = false;
+    ensureDraftScouting(nextDraftYear).then(data => {
+      if (!cancelled) setGistByYear(data);
+    });
+    return () => { cancelled = true; };
+  }, [nextDraftYear]);
 
   // Team mode (contend vs rebuild) — determines how we weight OVR vs POT
   const teamMode: TeamMode = useMemo(() => {
@@ -137,6 +164,34 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
   const projection = team ? projectPickRange(team.wins, team.losses, state.teams.length) : 'mid-first';
   const projInfo = PROJECTION_LABELS[projection];
 
+  // Modal data plumbing — same shape DraftScoutingView/DraftSimulatorView pass.
+  const classProspects = useMemo(
+    () => prospects.map(p => p.player) as NBAPlayer[],
+    [prospects],
+  );
+  const activePlayers = useMemo(() =>
+    state.players.filter(p =>
+      p.tid >= 0 && p.tid < 100 &&
+      p.status !== 'Draft Prospect' &&
+      p.status !== 'Prospect' &&
+      ((p as any).draft?.year ?? 0) < currentYear,
+    ),
+  [state.players, currentYear]);
+  const classAverages = useMemo(() => getClassAverages(classProspects), [classProspects]);
+  const percentilesByPos = useMemo(() => {
+    const m = new Map<string, ClassPercentileMaps>();
+    m.set('Guard', getClassPercentiles(classProspects, 'Guard'));
+    m.set('Forward', getClassPercentiles(classProspects, 'Forward'));
+    m.set('Center', getClassPercentiles(classProspects, 'Center'));
+    m.set('Class', getClassPercentiles(classProspects, 'Class'));
+    return m;
+  }, [classProspects]);
+
+  // Comp-card click navigates to player bio
+  if (viewingBioPlayer) {
+    return <PlayerBioView player={viewingBioPlayer} onBack={() => setViewingBioPlayer(null)} />;
+  }
+
   if (!team) return <div className="text-red-400 font-bold">Team not found</div>;
 
   const draftComplete = !!(state as any).draftComplete;
@@ -218,10 +273,14 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
         ) : (
           <div className="space-y-1.5">
             {prospects.slice(0, 15).map((p, i) => (
-              <div key={p.player.internalId} className={cn(
-                'flex items-center gap-3 p-2.5 rounded border transition-colors',
-                i < 5 ? 'bg-[#161b22]/80 border-[#30363d] hover:border-[#FDB927]' : 'bg-[#161b22]/40 border-transparent hover:border-[#30363d]'
-              )}>
+              <button
+                key={p.player.internalId}
+                type="button"
+                onClick={() => setScoutingPlayer(p.player as NBAPlayer)}
+                className={cn(
+                  'w-full text-left flex items-center gap-3 p-2.5 rounded border transition-colors cursor-pointer',
+                  i < 5 ? 'bg-[#161b22]/80 border-[#30363d] hover:border-[#FDB927]' : 'bg-[#161b22]/40 border-transparent hover:border-[#30363d]'
+                )}>
                 <span className={cn(
                   'w-7 text-center text-sm font-black tabular-nums',
                   i < 5 ? 'text-[#FDB927]' : i < 10 ? 'text-slate-400' : 'text-slate-600'
@@ -250,11 +309,24 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
                     )}>{p.pot}</div>
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
       </div>
+
+      {/* Shared scouting modal */}
+      <DraftScoutingModal
+        player={scoutingPlayer}
+        onClose={() => setScoutingPlayer(null)}
+        classProspects={classProspects}
+        activePlayers={activePlayers}
+        percentilesByPos={percentilesByPos}
+        classAverages={classAverages}
+        draftYear={nextDraftYear}
+        gistData={scoutingPlayer && gistByYear ? matchProspectToGist(scoutingPlayer, gistByYear) : null}
+        onViewPlayerBio={(p) => setViewingBioPlayer(p)}
+      />
     </div>
   );
 }

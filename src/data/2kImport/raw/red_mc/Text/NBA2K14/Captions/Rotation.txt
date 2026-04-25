@@ -1,0 +1,15 @@
+General:13
+TeamID;Team ID;Overrides Roster of the Team with this ID and makes it unmanageable via the game
+#
+PG;Point Guard;
+SG;Shooting Guard;
+SF;Small Forward;
+PF;Power Forward;
+C;Center;
+S6;6th Player;
+S7;7th Player;
+S8;8th Player;
+S9;9th Player;
+S10;10th Player;
+S11;11th Player;
+S12;12th Player;

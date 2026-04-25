@@ -1,0 +1,44 @@
+General:43
+ASA_ID;ASA ID;SHould correspond with ASA ID of the player, which has this set of boosts assigned
+SShtLoP;Shot Low Post;Boosts the ability to shoot from the post.
+ShtCls;Shot Close;Boosts the ability to shoot from close-range
+ShtMed;Shot Medium;Boosts the ability to shoot from mid-range
+Sht3PT;Shot 3-Pointers;Boosts the ability to shoot from 3PT-range
+ShtFT;Shot Free Throw;Boosts the ability to shoot free throws
+Dunk;Dunk;Affects dunk success, ability to dunk in traffic, and alley-oop dunks
+StdDunk;Standing Dunk;Boosts the ability to perform standing dunks
+LayUp;LayUp;Boosts the ability to make draving layups, contact layups, and alley-oop layups
+LayUpStnd;Standing LayUp;Boosts the ability to make layups from a stand
+LayUpSpin;Spin LayUp;Boosts the ability to make spin layups
+LayUpEuro;Euro step LayUp;Boosts the ability to make euro step layups
+LayUpHop;Hop step LayUp;Boosts the ability to make hop step layups
+Runner;Runner;Boosts the ability to make runners and floaters
+StpThru;Step Through;Boosts the ability to finish step through shots
+ShtInT;Shoot In Traffic;Boosts the ability to shoot while in traffic
+PstFdaway;Post Fadeaway;Boosts the ability to make fadeaway roll shots from the post
+PstHook;Post Hook;Boosts the ability to make hook shots from the post
+ShtOfD;Shoot Off-Dribble;Boosts the ability to perform shots off the dribble
+BallHndl;Ball Handling;Boosts the ability to perform dribble moves
+OffHDrib;Off Hand Dribble;Boosts the ability to perform dribble moves with the non-dominant hand
+BallSec;Ball Security;Boosts the ability to secure the ball while dribbling
+Pass;Pass;Boosts the ability to throw accurate passes
+Block;Block;Boosts the ability to block shots
+Steal;Steal;Boosts the ability to steal the ball
+Hands;Hands;Boosts the ability to catch the ball
+OnBallD;On-Ball Defense;Boosts the ability to guard and react when defending the ballhandler
+OReb;Offense Rebound;Boosts the ability to grab offensive rebounds
+DReb;Defense Rebound;Boosts the ability to grab defensive rebounds
+OLowPost;Offensive Low Post;Boosts the ability to perform moves while in the post
+DLowPost;Defense Low Post;Boosts the ability to defend in the post
+OAwar;Offensive Awareness;Boosts the ability to react on loose balls and double teams
+DAwar;Defensive Awareness;Help defense ability when picking up the ballhandler
+Consis;Consistency;Boosts the ability to keep a shooting streak or get out of a shooting slump
+Stamina;Stamina;Affects the player's fatigue level while on the court
+Speed;Speed;Affects how fast the player can run at full sprint
+Quick;Quickness;Agility while moving around the court
+Strength;Strength;Determines how successful the player will be when backing down in the post
+Vertical;Vertical;This is the player's leaping ability on dunks, rebounds, blocks and jump balls
+Hustle;Hustle;Boosts the ability to dive for loose balls
+Durab;Durability;Boosts the ability to avoid injuries
+POT;Potential;Affects the player's overall development and progression
+Emotion;Emotion;Affects the type of reaction to referee calls

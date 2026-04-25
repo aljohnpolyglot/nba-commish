@@ -33,14 +33,16 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
     const logs: any[] = [];
 
     const firstGameForTeam = new Map<number, number>();
+    const lastGameForTeam = new Map<number, number>();
     state.boxScores.forEach(game => {
       const isHome = game.homeStats.some((p: any) => p.playerId === player.internalId);
       const isAway = game.awayStats.some((p: any) => p.playerId === player.internalId);
       if (isHome || isAway) {
         const tid = isHome ? game.homeTeamId : game.awayTeamId;
         const ms = (() => { try { return new Date(game.date).getTime(); } catch { return 0; } })();
-        if (ms > 0 && (!firstGameForTeam.has(tid) || ms < firstGameForTeam.get(tid)!)) {
-          firstGameForTeam.set(tid, ms);
+        if (ms > 0) {
+          if (!firstGameForTeam.has(tid) || ms < firstGameForTeam.get(tid)!) firstGameForTeam.set(tid, ms);
+          if (!lastGameForTeam.has(tid) || ms > lastGameForTeam.get(tid)!) lastGameForTeam.set(tid, ms);
         }
       }
     });
@@ -64,6 +66,10 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
           const isPlayoff = !!(schedGame?.isPlayoff) || !!(game as any).isPlayoff;
           const isPlayIn = !!(schedGame?.isPlayIn) || !!(game as any).isPlayIn;
           const isAllStarGame = !!(schedGame?.isAllStar) || !!(game as any).isAllStar;
+          const isNBACup = !!(schedGame as any)?.isNBACup;
+          const cupRound = (schedGame as any)?.nbaCupRound as ('group' | 'QF' | 'SF' | 'Final' | undefined);
+          // Real NBA: only the Cup Final is excluded from regular-season record + stats.
+          const isCupFinal = isNBACup && cupRound === 'Final';
           // Preseason: before Opening Night of the game's OWN season (not current season)
           // This prevents previous-season playoff games from being mislabeled as preseason.
           const gameDate = new Date(game.date);
@@ -87,7 +93,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
           const ftp  = fta  > 0 ? (ftm  / fta ).toFixed(3).replace(/^0+/, '') : '.000';
 
           logs.push({
-            date: game.date, isPreseason, isPlayoff, isPlayIn, isAllStar: isAllStarGame, isDNP: false,
+            date: game.date, isPreseason, isPlayoff, isPlayIn, isAllStar: isAllStarGame, isNBACup, cupRound, isCupFinal, isDNP: false,
             gameId: game.gameId, teamId, oppTeamId: oppId,
             teamAbbrev: isAllStarGame ? 'ASG' : (team?.abbrev || 'UNK'),
             isAway: !isHome,
@@ -110,7 +116,12 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
         const gameMsDNP = (() => { try { return new Date(game.date).getTime(); } catch { return 0; } })();
         // Only skip pre-join DNPs for mid-season acquisitions (traded/signed players).
         // Players on the team from the start of the season should show all DNPs (injuries, suspensions).
-        const joinMs = firstGameForTeam.get(player.tid) ?? 0;
+        // If the player has no stats for their current team (just traded, hasn't played yet),
+        // use the most recent game date for any previous team as the approximate acquisition date.
+        let joinMs = firstGameForTeam.get(player.tid) ?? 0;
+        if (joinMs === 0) {
+          lastGameForTeam.forEach((ms, tid) => { if (tid !== player.tid && ms > joinMs) joinMs = ms; });
+        }
         const dnpGameDate = new Date(game.date);
         const dnpSeasonYr = dnpGameDate.getMonth() < 9 ? dnpGameDate.getFullYear() : dnpGameDate.getFullYear() + 1;
         const seasonStartMs = openingNightCache(dnpSeasonYr);
@@ -124,6 +135,9 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
         const dnpIsPlayoff = !!(schedGame?.isPlayoff) || !!(game as any).isPlayoff;
         const dnpIsPlayIn = !!(schedGame?.isPlayIn) || !!(game as any).isPlayIn;
         const dnpIsAllStar = !!(schedGame?.isAllStar) || !!(game as any).isAllStar;
+        const dnpIsNBACup = !!(schedGame as any)?.isNBACup;
+        const dnpCupRound = (schedGame as any)?.nbaCupRound as ('group' | 'QF' | 'SF' | 'Final' | undefined);
+        const dnpIsCupFinal = dnpIsNBACup && dnpCupRound === 'Final';
         const dnpDate = new Date(game.date);
         const dnpMonth = dnpDate.getMonth();
         const dnpSeasonYear = dnpMonth < 9 ? dnpDate.getFullYear() : dnpDate.getFullYear() + 1;
@@ -134,7 +148,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
         const isWin = isHomeTeam ? game.homeScore > game.awayScore : game.awayScore > game.homeScore;
         const score = isHomeTeam ? `${game.homeScore}-${game.awayScore}` : `${game.awayScore}-${game.homeScore}`;
         logs.push({
-          date: game.date, isPreseason, isPlayoff: dnpIsPlayoff, isPlayIn: dnpIsPlayIn, isDNP: true, gameId: game.gameId,
+          date: game.date, isPreseason, isPlayoff: dnpIsPlayoff, isPlayIn: dnpIsPlayIn, isNBACup: dnpIsNBACup, cupRound: dnpCupRound, isCupFinal: dnpIsCupFinal, isDNP: true, gameId: game.gameId,
           teamId: player.tid, oppTeamId: oppId,
           dnpReason: game.playerDNPs?.[player.internalId] ??
             ((player.injury?.gamesRemaining ?? 0) > 0
@@ -154,12 +168,13 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
     });
 
     const reversed = logs.reverse();
-    // Regular season games get numbered ranks; playoff/preseason/DNP get null
-    const rsTotal = reversed.filter(l => !l.isPreseason && !l.isPlayoff && !l.isPlayIn && !l.isDNP).length;
+    // Regular season games get numbered ranks; playoff/preseason/DNP/Cup-Final get null
+    // (Cup group/QF/SF count as RS — only the Final is excluded.)
+    const rsTotal = reversed.filter(l => !l.isPreseason && !l.isPlayoff && !l.isPlayIn && !l.isDNP && !l.isCupFinal).length;
     let rsRank = rsTotal;
     return reversed.map(l => ({
       ...l,
-      rank: (l.isPreseason || l.isPlayoff || l.isPlayIn || l.isDNP) ? null : rsRank--,
+      rank: (l.isPreseason || l.isPlayoff || l.isPlayIn || l.isDNP || l.isCupFinal) ? null : rsRank--,
     }));
   }, [state.boxScores, state.schedule, player.internalId, player.tid, player.injury, state.teams, openingNightCache]);
 
@@ -325,6 +340,8 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
                         {log.isAllStar ? <span title="All-Star Game">⭐</span>
                           : log.isPlayoff ? <span className="text-[10px] font-bold text-indigo-400">PLF</span>
                           : log.isPlayIn ? <span className="text-[10px] font-bold text-sky-400">PI</span>
+                          : log.isCupFinal ? <span className="text-[10px] font-bold text-amber-400" title="NBA Cup Final — does not count toward regular-season record">CUP F</span>
+                          : log.isNBACup ? <span className="text-[10px] font-bold text-amber-300/80" title={`NBA Cup ${log.cupRound}`}>{log.cupRound === 'QF' ? 'CUP QF' : log.cupRound === 'SF' ? 'CUP SF' : log.rank}</span>
                           : log.rank !== null ? log.rank
                           : <span className="text-[10px] font-bold text-amber-500/70">PRE</span>}
                       </td>

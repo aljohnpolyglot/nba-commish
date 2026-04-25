@@ -15,22 +15,28 @@
  * that on Aug 14 when it detects no regular-season games exist.
  */
 
-import { GameState, NBAPlayer } from '../../types';
+import { GameState, NBAPlayer, NBACupState } from '../../types';
 import { applyCapInflation } from '../../utils/finance/inflationUtils';
-import { runRetirementChecks, runFarewellTourChecks, RetireeRecord, FarewellRecord } from '../playerDevelopment/retirementChecker';
-import { runHOFChecks, HOFInduction } from '../playerDevelopment/hofChecker';
+import { drawCupGroups } from '../nbaCup/drawGroups';
+import { sweepExpiredTPEs } from '../../utils/tradeExceptionUtils';
+import { runRetirementChecks, runFarewellTourChecks, runMortalityChecks, RetireeRecord, FarewellRecord, MortalityRecord } from '../playerDevelopment/retirementChecker';
+import { runHOFChecks, HOFInduction, getHOFCeremonyDate } from '../playerDevelopment/hofChecker';
+import { runJerseyRetirementChecks, JerseyRetirementRecord, deriveLeagueStartYearFromHistory } from '../playerDevelopment/jerseyRetirementChecker';
 import { generateFuturePicks, pruneExpiredPicks, DEFAULT_TRADABLE_PICK_SEASONS } from '../draft/DraftPickGenerator';
 import { computeContractOffer, getContractLimits, isSupermaxAwardQualified } from '../../utils/salaryUtils';
 import { computeMoodScore } from '../../utils/mood/moodScore';
 import type { MoodTrait } from '../../utils/mood/moodTypes';
 import { SettingsManager } from '../SettingsManager';
 import { ensureDraftClasses } from '../draftClassFiller';
+import { potEstimator } from '../genDraftPlayers';
+import { retireExternalLeaguePlayers, repopulateExternalLeagues, enforceExternalMinRoster } from '../externalLeagueSustainer';
 
 /** Fired when the sim has just crossed into a new offseason (Oct 1, new year).
  *  Returns the rolled-over GameState patch. Does NOT mutate input. */
 export function applySeasonRollover(state: GameState): Partial<GameState> {
   const currentYear = state.leagueStats.year;
   const nextYear    = currentYear + 1;
+  const leagueStartYear = deriveLeagueStartYearFromHistory(state.history, currentYear);
 
   // ── 0. Player options ───────────────────────────────────────────────────
   // Players with a player option on their expiring contract decide before rollover:
@@ -40,7 +46,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   const playerOptOutIds = new Set<string>();
   const playerOptInIds  = new Set<string>();
   const playerOptionNews: string[] = [];
-  const playerOptionHistory: Array<{ text: string; date: string; type: string }> = [];
+  const playerOptionHistory: Array<{ text: string; date: string; type: string; playerIds?: string[] }> = [];
 
   // GM-mode toast collector — player/team option decisions for the user's roster only
   const isGM = state.gameMode === 'gm';
@@ -69,7 +75,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       // Jun 29 — options happen BEFORE free agency (Jul 1+). getSeasonYear boundary at Jun 28+
       // ensures these still appear in the new season's transaction view.
       const optionDateStr = `Jun 29, ${currentYear}`;
-      playerOptionHistory.push({ text, date: optionDateStr, type: 'Signing' });
+      playerOptionHistory.push({ text, date: optionDateStr, type: 'Signing', playerIds: [p.internalId] });
       if (isGM && p.tid === userTid) {
         pendingOptionToasts.push({
           playerName: p.name, teamName: team?.name ?? '', pos: (p as any).pos ?? '',
@@ -81,7 +87,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       const text = `${p.name} has declined his player option${team ? ` with the ${team.name}` : ''}, becoming a free agent.`;
       playerOptionNews.push(text);
       const optionDateStr = `Jun 29, ${currentYear}`;
-      playerOptionHistory.push({ text, date: optionDateStr, type: 'Signing' });
+      playerOptionHistory.push({ text, date: optionDateStr, type: 'Signing', playerIds: [p.internalId] });
       if (isGM && p.tid === userTid) {
         pendingOptionToasts.push({
           playerName: p.name, teamName: team?.name ?? '', pos: (p as any).pos ?? '',
@@ -154,7 +160,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     amountThousands: number;
   }
   const optionExtensions = new Map<string, OptionExtension>();
-  const optionExtHistory: Array<{ text: string; date: string; type: string }> = [];
+  const optionExtHistory: Array<{ text: string; date: string; type: string; playerIds?: string[] }> = [];
 
   for (const p of state.players) {
     if (!teamOptionExercisedIds.has(p.internalId)) continue;
@@ -237,6 +243,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       text: `${p.name} has signed a rookie extension with the ${team.name}: $${totalM}M/${extYears}yr${optTag} (${label})`,
       date: `Jun 30, ${currentYear}`,
       type: 'Signing',
+      playerIds: [p.internalId],
     });
   }
 
@@ -273,14 +280,135 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       }
     }
 
+    // ── POT drift (BBGM-style dynamic potential) ───────────────────────────
+    // Stored POT is a snapshot of "where scouts think this player is headed
+    // given current OVR + age." Recompute yearly so stalled players see their
+    // POT nerf down (visible bust) and breakouts see it climb. Progression
+    // engine reads rating.pot, so next season's growth ceiling moves too.
+    // Skip retired, deceased, unborn prospects.
+    if (
+      p.tid !== -2 &&
+      !(p as any).diedYear &&
+      (p as any).status !== 'Retired' &&
+      p.ratings &&
+      p.ratings.length > 0 &&
+      typeof p.age === 'number'
+    ) {
+      const ratingsArr = p.ratings as any[];
+      const cyIdx = ratingsArr.findIndex(r => r?.season === currentYear);
+      const idx = cyIdx !== -1 ? cyIdx : ratingsArr.length - 1;
+      const lastR = ratingsArr[idx];
+      const currentOvr = lastR?.ovr ?? p.overallRating ?? 60;
+      const priorPot = lastR?.pot ?? currentOvr;
+      const age = p.age;
+      const targetPot = potEstimator(currentOvr, age);
+      const blend = age <= 22 ? 0.25 : age <= 27 ? 0.40 : 0.60;
+      const blended = Math.round(priorPot + (targetPot - priorPot) * blend);
+      const maxDelta = 3;
+      const clampedByStep = Math.max(priorPot - maxDelta, Math.min(priorPot + maxDelta, blended));
+      // Allow pot to sit up to 5 BBGM below OVR so potMod returns -0.2 for
+      // established players — without this, pot ratchets up forever with OVR
+      // and every player looks like a budding star with room to grow.
+      const newPot = Math.min(99, Math.max(currentOvr - 5, clampedByStep));
+      if (newPot !== priorPot) {
+        const newRatings = ratingsArr.map((r, i) => i === idx ? { ...r, pot: newPot } : r);
+        p = { ...p, ratings: newRatings } as NBAPlayer;
+      }
+    }
+
     // Everyone ages (retired, external, FA, contracted) except deceased players and unborn prospects
     if ((p as any).diedYear) return p;                   // deceased — do not age
     if (p.tid === -2) return p;                          // future draft prospect — birth year is source of truth
 
     const EXTERNAL_LEAGUES = ['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'];
-    // tid >= 100: non-NBA team roster slot (WNBA ≥3000, Euroleague ≥1000, etc.) — never convert to NBA FA
-    if ((p as any).status === 'Retired' || EXTERNAL_LEAGUES.includes((p as any).status ?? '') || p.tid >= 100 || !p.contract || p.tid < 0) {
-      // Retired / external league / unsigned — age but freeze roster (no contract changes, no FA conversion)
+
+    // Retired / unsigned (already FA) / no contract — age only, no contract changes
+    if ((p as any).status === 'Retired' || !p.contract || p.tid < 0) {
+      return typeof p.age === 'number' ? { ...p, age: p.age + 1 } as NBAPlayer : p;
+    }
+
+    // WNBA is a separate women's league — never flip WNBA players into the
+    // NBA FA pool. Age only, keep status. (Their expiry is a separate TODO;
+    // needs a WNBA-specific FA pipeline, not this one.)
+    if ((p as any).status === 'WNBA') {
+      return typeof p.age === 'number' ? { ...p, age: p.age + 1 } as NBAPlayer : p;
+    }
+
+    // Men's external leagues (foreign pro leagues OR tid >= 100 non-NBA slots,
+    // excluding WNBA handled above). Prior code short-circuited ALL external
+    // players forever, so Barcelona / B-League / Euroleague contracts with
+    // contract.exp=2026 stayed "current" in 2030+ and never flowed back to the
+    // NBA FA pool. Evidence: Yuma Kajiwara K2 99 rotting in Shiga Lakes, Sayon
+    // Keita K2 95 frozen at FCB. Fix: if their contract is expired, flip to
+    // NBA FA so routeUnsignedPlayers (Oct 1) and runAIFreeAgencyRound can
+    // re-route them. Router already weights by OVR, so Euroleague-caliber
+    // guys tend to re-land in Euroleague — no home-country bias needed.
+    if (EXTERNAL_LEAGUES.includes((p as any).status ?? '') || p.tid >= 100) {
+      const bumpedAge = typeof p.age === 'number' ? p.age + 1 : p.age;
+
+      // Auto-declare-for-draft: foreign men's-league prospects turning 19 this
+      // rollover declare for the upcoming NBA draft. ProgressionEngine freezes
+      // their ratings at <19 so they arrive fresh, not inflated by Euroleague
+      // MVP runs. WNBA already short-circuited above.
+      const isMensExternal = (p as any).status !== 'WNBA' &&
+        (EXTERNAL_LEAGUES.includes((p as any).status ?? '') || p.tid >= 100);
+      if (isMensExternal && typeof bumpedAge === 'number' && bumpedAge === 19) {
+        // Draft eligibility year: the NBA draft fires late June, so a Jun 30
+        // rollover lands AFTER the current year's draft — declare for next year.
+        const declareYear = nextYear;
+        return {
+          ...p,
+          age: bumpedAge,
+          tid: -2,
+          status: 'Draft Prospect' as const,
+          yearsWithTeam: 0,
+          twoWay: undefined,
+          nonGuaranteed: false,
+          gLeagueAssigned: false,
+          contract: undefined,
+          contractYears: [],
+          draft: { ...(p as any).draft, year: declareYear },
+        } as any;
+      }
+
+      const contractExpired = (p.contract?.exp ?? 0) <= currentYear;
+      if (contractExpired) {
+        // Previously flipped every external expiring contract to NBA FA, so
+        // PBA/CBA/Euroleague players vanished from their home league at 24-26
+        // and rotted in the NBA FA pool until force-retirement at 43. That's
+        // why the oldest PBA player was always ~36.
+        //
+        // Only NBA-caliber external players (K2 ≥ 70, BBGM ~44+) test the NBA
+        // market. Everyone else auto-resigns with their home club for another
+        // 1-2 years so the age pyramid fills naturally.
+        const ovrForFlip = p.overallRating ?? 0;
+        const NBA_MARKET_BBGM_THRESHOLD = 44; // K2 ~70 (K2 = 0.88*BBGM + 31)
+        if (ovrForFlip >= NBA_MARKET_BBGM_THRESHOLD) {
+          expiredIds.add(p.internalId);
+          return {
+            ...p,
+            age: bumpedAge,
+            tid: -1,
+            status: 'Free Agent' as const,
+            yearsWithTeam: 0,
+            twoWay: undefined,
+            nonGuaranteed: false,
+            gLeagueAssigned: false,
+            midSeasonExtensionDeclined: undefined,
+            contract: { ...p.contract, hasPlayerOption: false },
+          } as any;
+        }
+        // Auto-resign at home: 1-2yr extension, small salary bump tied to OVR.
+        const newExp = currentYear + (ovrForFlip >= 40 ? 2 : 1);
+        const bumpedAmt = Math.max(p.contract?.amount ?? 0, 1);
+        return {
+          ...p,
+          age: bumpedAge,
+          contract: { ...p.contract, exp: newExp, amount: bumpedAmt, hasPlayerOption: false },
+          yearsWithTeam: ((p as any).yearsWithTeam ?? 0) + 1,
+        } as any;
+      }
+      // Contract still active — age only, keep external status
       return typeof p.age === 'number' ? { ...p, age: p.age + 1 } as NBAPlayer : p;
     }
 
@@ -403,7 +531,10 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   let newLuxuryPayroll = ls.luxuryPayroll ?? Math.round(newSalaryCap * (ls.luxuryTaxThresholdPercentage ?? 121.5) / 100);
   let newFirstApron   = ls.firstApronPercentage  != null ? Math.round(newSalaryCap * ls.firstApronPercentage  / 100) : undefined;
   let newSecondApron  = ls.secondApronPercentage != null ? Math.round(newSalaryCap * ls.secondApronPercentage / 100) : undefined;
-  let newMinContract  = ls.minContractStaticAmount ?? 1_272_870;
+  // `minContractStaticAmount` is stored in MILLIONS (e.g. 1.273 = $1.273M).
+  // Line 517 multiplies by 1_000_000 to get USD before passing to applyCapInflation.
+  // The old fallback 1_272_870 treated-as-millions would be $1.27T — fix per CLAUDE.md.
+  let newMinContract  = ls.minContractStaticAmount ?? 1.273;
   let inflationPctApplied = 0;
 
   if (ls.inflationEnabled ?? true) {
@@ -435,8 +566,14 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
 
   // ── 3. Retirement checks ─────────────────────────────────────────────────
   // Run AFTER age increments (updatedPlayers already has age+1).
-  // We pass `currentYear` (the season that just ended) as the retirement year stamp.
-  const { players: playersAfterRetire, newRetirees } = runRetirementChecks(updatedPlayers, currentYear);
+  // External leagues retire first (league-specific curves); NBA/FA path follows.
+  const {
+    players: playersAfterExtRetire,
+    retirees: extRetirees,
+    historyEntries: extRetireHistory,
+  } = retireExternalLeaguePlayers(updatedPlayers, currentYear, state.date ?? `Jun 30, ${currentYear}`);
+
+  const { players: playersAfterRetire, newRetirees } = runRetirementChecks(playersAfterExtRetire, currentYear);
 
   // ── 3c. Farewell tour flags for the UPCOMING season ──────────────────────
   // After retirees are removed, identify players who will likely retire at the
@@ -444,23 +581,57 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   const { players: playersWithFarewells, newFarewells } = runFarewellTourChecks(playersAfterRetire, currentYear);
 
   // ── 3c2. Hall of Fame inductions ─────────────────────────────────────────
-  // Players retired ≥ HOF_WAIT_YEARS (3) seasons who clear the Win Shares
-  // threshold get inducted this offseason. Threshold is commissioner-configurable.
+  // Hall-worthy retirees are inducted on a tiered timeline:
+  // first-ballot (5 years), regular multi-ballot (7 years), borderline (15 years).
+  // Threshold is commissioner-configurable.
   const hofThreshold = SettingsManager.getSettings().hofWSThreshold ?? 50;
   const { players: playersAfterHOF, newInductees } = runHOFChecks(playersWithFarewells, currentYear, hofThreshold);
+
+  // ── 3c3. Franchise jersey retirements ───────────────────────────────────
+  // TODO: When League News and Transactions split into separate surfaces, move
+  // these ceremonial league-history items out of TransactionsView.
+  const { teams: teamsAfterJerseyRetirements, newRetirements: newJerseyRetirements } =
+    runJerseyRetirementChecks(playersAfterHOF, state.teams, currentYear, { leagueStartYear });
+
+  // ── 3c4. Retired-player mortality ────────────────────────────────────────
+  const { players: playersAfterMortality, deaths } = runMortalityChecks(playersAfterHOF, currentYear);
 
   // ── 3d. Top up future draft classes ──────────────────────────────────────
   // Each rollover pushes the horizon one year further. Top up so the player
   // always has 4 populated classes ahead (currentYear+1 through +4 at this point,
   // since nextYear is now the "current" season).
-  const fillResult = ensureDraftClasses(playersAfterHOF, nextYear, state.leagueStats.draftEligibilityRule);
+  const fillResult = ensureDraftClasses(playersAfterMortality, nextYear, state.leagueStats.draftEligibilityRule);
   const playersWithDraftClasses = fillResult.additions.length > 0
-    ? [...playersAfterHOF, ...fillResult.additions]
-    : playersAfterHOF;
+    ? [...playersAfterMortality, ...fillResult.additions]
+    : playersAfterMortality;
+
+  // ── 3e. External-league repopulation ─────────────────────────────────────
+  // Two-track: youth (15-18yo) for Euroleague/Endesa/NBL/BLeague/GLeague;
+  // adult-direct (22-26yo) for PBA/ChinaCBA. Matches 1:1 outflow from retirements
+  // + 19y auto-declares that happened in the age-increment step above.
+  const { additions: extRepopPlayers } = repopulateExternalLeagues(
+    { ...state, players: playersWithDraftClasses } as any,
+    extRetirees,
+    currentYear,
+    nextYear,
+  );
+
+  // ── 3f. External min-roster safety net ───────────────────────────────────
+  // After all the above, any external team still below 12 gets journeyman fills.
+  const postRepopPlayers = extRepopPlayers.length > 0
+    ? [...playersWithDraftClasses, ...extRepopPlayers]
+    : playersWithDraftClasses;
+  const { additions: safetyPlayers } = enforceExternalMinRoster(
+    { ...state, players: postRepopPlayers } as any,
+    nextYear,
+  );
+  const playersFinalized = safetyPlayers.length > 0
+    ? [...postRepopPlayers, ...safetyPlayers]
+    : postRepopPlayers;
 
   // ── 3b. Draft pick bookkeeping ───────────────────────────────────────────
   const windowSize = state.leagueStats.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS;
-  const nbaNBATeams = (state.teams ?? []).filter((t: any) => t.tid >= 0 && t.tid < 100);
+  const nbaNBATeams = (state.teams ?? []).filter((t: any) => t.id >= 0 && t.id < 100);
   // Prune stale picks THEN generate new window for the new season
   const prunedPicks = pruneExpiredPicks(state.draftPicks ?? [], currentYear);
   const updatedPicks = generateFuturePicks(prunedPicks, nbaNBATeams as any, nextYear, windowSize);
@@ -545,6 +716,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       text: `${r.name} has retired at age ${r.age}.${accoladeStr}${pgStr} over ${r.careerGP} career games.`,
       date: state.date,
       type: 'Retirement' as const,
+      playerIds: [r.playerId],
     };
   });
 
@@ -573,21 +745,29 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     text: `${r.name} (age ${r.age}) is entering what is expected to be his final season.`,
     date: state.date,
     type: 'Retirement' as const,
+    playerIds: [r.playerId],
   }));
 
   // ── Hall of Fame induction news items ─────────────────────────────────────
   const hofNewsItems = newInductees.map((h: HOFInduction, i: number) => {
+    const ceremonyDate = getHOFCeremonyDate(h.inductionYear).toLocaleDateString('en-US', {
+      timeZone: 'UTC',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
     const accolades: string[] = [];
     if (h.mvps > 0) accolades.push(`${h.mvps}× MVP`);
     if (h.allStarAppearances > 0) accolades.push(`${h.allStarAppearances}× All-Star`);
     if (h.championships > 0) accolades.push(`${h.championships}× Champion`);
     const accoladeStr = accolades.length > 0 ? ` — ${accolades.join(', ')}` : '';
     const ballotStr = h.firstBallot ? ' (First-Ballot)' : '';
+    const tierStr = h.firstBallot ? '' : ` (${h.tier === 'borderline' ? 'Borderline' : 'Multi-Ballot'})`;
     return {
       id: `hof-${h.playerId}-${Date.now()}-${i}`,
-      headline: `${h.name} Inducted Into Hall of Fame${ballotStr}`,
-      content: `${h.name} has been inducted into the Naismith Memorial Basketball Hall of Fame${ballotStr}. Career: ${h.careerWS.toFixed(1)} Win Shares${accoladeStr}.`,
-      date: state.date,
+      headline: `${h.name} Inducted Into Hall of Fame${ballotStr || tierStr}`,
+      content: `${h.name} has been inducted into the Naismith Memorial Basketball Hall of Fame${ballotStr || tierStr}. Career: ${h.careerWS.toFixed(1)} Win Shares${accoladeStr}.`,
+      date: ceremonyDate,
       type: 'player' as const,
       isNew: true,
       read: false,
@@ -595,10 +775,62 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   });
 
   // ── Hall of Fame history entries ──────────────────────────────────────────
-  const hofHistoryEntries = newInductees.map((h: HOFInduction) => ({
-    text: `${h.name} inducted into the Hall of Fame (Class of ${h.inductionYear})${h.firstBallot ? ' — First-Ballot' : ''}.`,
+  const hofHistoryEntries = newInductees.map((h: HOFInduction) => {
+    const ceremonyDate = getHOFCeremonyDate(h.inductionYear).toLocaleDateString('en-US', {
+      timeZone: 'UTC',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    return {
+      text: `${h.name} inducted into the Hall of Fame (Class of ${h.inductionYear})${h.firstBallot ? ' — First-Ballot' : h.tier === 'borderline' ? ' — Borderline' : ' — Multi-Ballot'}.`,
+      date: ceremonyDate,
+      type: 'Retirement' as const,
+      playerIds: [h.playerId],
+    };
+  });
+
+  // ── Jersey retirement news + history entries ─────────────────────────────
+  const jerseyRetirementNewsItems = newJerseyRetirements.map((j: JerseyRetirementRecord, i: number) => {
+    const accoladeBits: string[] = [];
+    if (j.allStarAppearances > 0) accoladeBits.push(`${j.allStarAppearances}× All-Star`);
+    if (j.championships > 0) accoladeBits.push(`${j.championships}× Champion`);
+    const accoladeStr = accoladeBits.length > 0 ? ` The honor follows a franchise tenure that included ${accoladeBits.join(', ')}.` : '';
+    return {
+      id: `jersey-retire-${j.playerId}-${j.teamId}-${Date.now()}-${i}`,
+      headline: `${j.teamName} Retire #${j.number} for ${j.name}`,
+      content: `${j.teamName} have retired #${j.number} in honor of ${j.name}, recognizing ${j.seasonsWithTeam} seasons and ${j.gamesWithTeam} games with the franchise.${accoladeStr}`,
+      date: state.date,
+      type: 'transaction' as any,
+      category: 'Transaction',
+      isNew: true,
+      read: false,
+    };
+  });
+
+  const jerseyRetirementHistoryEntries = newJerseyRetirements.map((j: JerseyRetirementRecord) => ({
+    text: `${j.teamName} retired #${j.number} in honor of ${j.name}.`,
+    date: state.date,
+    type: 'Jersey Retirement',
+    playerIds: [j.playerId],
+  }));
+
+  // ── Mortality news + history entries ─────────────────────────────────────
+  const mortalityNewsItems = deaths.map((d: MortalityRecord, i: number) => ({
+    id: `death-${d.playerId}-${Date.now()}-${i}`,
+    headline: `Former NBA Player ${d.name} Passes Away at Age ${d.age}`,
+    content: `${d.name}, who played in the NBA, passed away at the age of ${d.age}.`,
+    date: state.date,
+    type: 'player' as const,
+    isNew: true,
+    read: false,
+  }));
+
+  const mortalityHistoryEntries = deaths.map((d: MortalityRecord) => ({
+    text: `${d.name} died at age ${d.age}.`,
     date: state.date,
     type: 'Retirement' as const,
+    playerIds: [d.playerId],
   }));
 
   console.log(
@@ -609,7 +841,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     `${teamOptionDeclinedIds.size} team opts declined | ` +
     `${optionExtensions.size} rookie extensions signed | ` +
     `${newRetirees.length} retirements | ${newFarewells.length} farewell tours | ` +
-    `${newInductees.length} HOF inductions | ` +
+    `${newInductees.length} HOF inductions | ${newJerseyRetirements.length} jersey retirements | ${deaths.length} deaths | ` +
     `${updatedPicks.length} total draft picks`
   );
 
@@ -635,7 +867,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   // Archive completed season record to team.seasons[], then zero out wins/losses.
   // Emits both {wins, losses} AND {won, lost} so BBGM-style consumers and sim-style
   // consumers all read correctly without per-site fallback logic.
-  const teamsReset = state.teams.map(t => {
+  const teamsReset = teamsAfterJerseyRetirements.map(t => {
     const existingSeasons: any[] = (t as any).seasons ?? [];
     const existingRecord = existingSeasons.find((s: any) => Number(s.season) === currentYear);
     // Preserve any playoffRoundsWon already stamped by lazySimRunner's bracket-complete hook.
@@ -665,15 +897,42 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     };
   });
 
+  // TPE shelf life is 1 year — most rollover-time exceptions have already aged out,
+  // but this catches any lingering deadline-period TPEs.
+  const teamsWithSweptTPEs = sweepExpiredTPEs(teamsReset, state.date);
+
+  // ── NBA Cup archive + redraw ─────────────────────────────────────────────
+  // Archive the current cup (even if somehow not complete — defensive), then
+  // draw new groups for next year using this season's final standings.
+  let nbaCupPatch: { nbaCup?: NBACupState; nbaCupHistory?: Record<number, NBACupState> } = {};
+  if (state.leagueStats.inSeasonTournament !== false) {
+    const prevStandings = state.teams.map(t => ({ tid: t.id, wins: t.wins, losses: t.losses }));
+    const newGroups = drawCupGroups(state.teams, prevStandings, state.saveId ?? 'default', nextYear);
+    const newCup: NBACupState = {
+      year: nextYear,
+      status: 'group',
+      groups: newGroups,
+      wildcards: { East: null, West: null },
+      knockout: [],
+    };
+    nbaCupPatch = {
+      nbaCup: newCup,
+      nbaCupHistory: {
+        ...(state.nbaCupHistory ?? {}),
+        ...(state.nbaCup ? { [currentYear]: state.nbaCup } : {}),
+      },
+    };
+  }
+
   return {
-    players: playersWithDraftClasses,
-    teams: teamsReset,
+    players: playersFinalized,
+    teams: teamsWithSweptTPEs,
     draftPicks: updatedPicks,
     bets: prunedBets,
     boxScores: prunedBoxScores,
     schedule: [],          // clear old season schedule so autoGenerateSchedule runs fresh
     christmasGames: [],
-    globalGames: state.globalGames ?? [],
+    globalGames: [],
     ...({
       // Archive completed playoff bracket so HistoricalPlayoffBracket can show sim-generated seasons
       historicalPlayoffs: {
@@ -681,6 +940,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
         ...(state.playoffs ? { [currentYear]: state.playoffs } : {}),
       },
     } as any),
+    ...nbaCupPatch,
     playoffs: undefined,
     allStar: undefined,
     draftLotteryResult: undefined,
@@ -713,8 +973,8 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     retirementAnnouncements: newRetirees,
     seasonPreviewDismissed: true,  // stays hidden through FA; shown when preseason starts (Oct 1)
     draftComplete: undefined,      // reset so draft can run for new year
-    news: [...hofNewsItems, ...farewellNewsItems, ...teamOptionNewsItems, ...playerOptionNewsItems, ...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
-    history: [...(state.history ?? []), ...playerOptionHistory, ...teamOptionHistoryEntries, ...optionExtHistory, ...retirementHistoryEntries, ...farewellHistoryEntries, ...hofHistoryEntries],
+    news: [...jerseyRetirementNewsItems, ...hofNewsItems, ...mortalityNewsItems, ...farewellNewsItems, ...teamOptionNewsItems, ...playerOptionNewsItems, ...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
+    history: [...(state.history ?? []), ...playerOptionHistory, ...teamOptionHistoryEntries, ...optionExtHistory, ...retirementHistoryEntries, ...farewellHistoryEntries, ...hofHistoryEntries, ...jerseyRetirementHistoryEntries, ...mortalityHistoryEntries, ...extRetireHistory],
     ...(pendingOptionToasts.length > 0
       ? { pendingOptionToasts: [...(state.pendingOptionToasts ?? []), ...pendingOptionToasts] }
       : {}),

@@ -1,0 +1,35 @@
+General:5;Stats:6;Awards:14
+Last_Name;Last Name;Hall of Fame player's last name
+First_Name;First Name;Hall of Fame player's first name
+#
+PortrID;Portrait ID;ID of a portrait, assigned to the Famer. If no portrait art with the assigned value is found in the portraits storage (portraits.iff file of the main game folder), a blank portrait is used.
+#
+Position;Primary Position;Player's primary court position
+#
+YearRet;Year Retired;Year, when the person retired from the NBA
+Points;Points;Total Career Points
+Rebounds;Rebounds;Total Career Rebounds
+Assists;Assists;Total Career Assists
+Steals;Steals;Total Career Steals
+Blocks;Blocks;Total Career Blocks
+Games;Games;Total Games Played Throughout the career
+NBAChamp;NBA Champion;Number of NBA Championships
+#
+NBA_MVP;NBA MVP;Number of NBA MVP career titles
+NBA_FnMVP;NBA Finals MVP;Number of NBA Finals MVP titles
+#
+AllStarNum;All-Star Appearances;Amount of NBA All-Star Game appearances
+#
+DefPlayer;NBA Defensive Player Of The Year;Number of NBA Defensive Player Of The Year titles
+SixthMan;NBA Sixth Man Of The Year;Number of NBA Sixth Man Of The Year titles
+#
+RookieOfY;Was Rookie Of The Year;Defines, if the player took Rookie Of The Year award on his rookie year
+Rookie1stT;Was In All-Rookie 1st Team;Defines, if the player was included into All-Rooke First Team on his rookie year
+Rookie2ndT;Was In All-Rookie 2nd Team;Defines, if the player was included into All-Rooke Second Team on his rookie year
+#
+AllNBA1stT;All-NBA 1st Team;How many times the player was selected for the All-NBA First Team
+AllNBA2ndT;All-NBA 2nd Team;How many times the player was selected for the All-NBA Second Team
+AllNBA3rdT;All-NBA 3rd Team;How many times the player was selected for the All-NBA Third Team
+#
+AllDef1stT;All-Defensive 1st Team;How many times the player was selected for the All-Defensive First Team
+AllDef2ndT;All-Defensive 2nd Team;How many times the player was selected for the All-Defensive Second Team

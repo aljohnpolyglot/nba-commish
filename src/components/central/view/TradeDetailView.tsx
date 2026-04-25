@@ -139,10 +139,9 @@ function parseTrade(text: string): ParsedTrade | null {
       ? extraPicksRaw.split(',').map(s => s.trim()).filter(Boolean)
       : [];
 
-    const bReceived: TradeSide = {
-      playerNames: sentRaw.split(',').map(s => s.trim()).filter(Boolean),
-      pickStrs: extraPicks,
-    };
+    const bReceived = splitPlayersPicks(sentRaw);
+    // extraPicks from "Team B + pick1, pick2" syntax are additional picks BKN receives
+    bReceived.pickStrs.push(...extraPicks);
 
     return {
       teamAName,

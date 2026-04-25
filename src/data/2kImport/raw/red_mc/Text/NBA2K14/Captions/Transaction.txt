@@ -1,0 +1,116 @@
+Date:6;Item 1:6;Item 2:6;Item 3:6;Item 4:6;Item 5:6;Item 6:6;Item 7:6;Item 8:6;Item 9:6;Item 10:6;Item 11:6;Item 12:6
+Year;Year;Year
+Month;Month;Month
+Day;Day;Day
+#
+Hour;Hour;Hour
+Minute;Minute;Minute
+Order;Order;If several transactions take place at the same time, this defines their order.
+I1_FrmTm;From Team (GID);Defines the team, which sold the 1st item, by its GID.
+I1_ToTm;To Team (GID);Defines the team, which bought the 1st item, by its GID.
+#
+I1_ItmT;Item Type;Defines the type of the item
+#
+I1_Plyr;Player (ASA_ID);If the item is a player, then this field is used to identify him by his ASA_ID
+#
+I1_DPRnd;Draft Pick Round;If the item is a draft pick, then this field indicates draft round
+I1_DPTm;Draft Pick Team (GID);If the item is a draft pick, then this field contains the GID of its original holder team.
+I2_FrmTm;From Team (GID);Defines the team, which sold the 1st item, by its GID.
+I2_ToTm;To Team (GID);Defines the team, which bought the 1st item, by its GID.
+#
+I2_ItmT;Item Type;Defines the type of the item
+#
+I2_Plyr;Player (ASA_ID);If the item is a player, then this field is used to identify him by his ASA_ID
+#
+I2_DPRnd;Draft Pick Round;If the item is a draft pick, then this field indicates draft round
+I2_DPTm;Draft Pick Team (GID);If the item is a draft pick, then this field contains the GID of its original holder team.
+I3_FrmTm;From Team (GID);Defines the team, which sold the 1st item, by its GID.
+I3_ToTm;To Team (GID);Defines the team, which bought the 1st item, by its GID.
+#
+I3_ItmT;Item Type;Defines the type of the item
+#
+I3_Plyr;Player (ASA_ID);If the item is a player, then this field is used to identify him by his ASA_ID
+#
+I3_DPRnd;Draft Pick Round;If the item is a draft pick, then this field indicates draft round
+I3_DPTm;Draft Pick Team (GID);If the item is a draft pick, then this field contains the GID of its original holder team.
+I4_FrmTm;From Team (GID);Defines the team, which sold the 1st item, by its GID.
+I4_ToTm;To Team (GID);Defines the team, which bought the 1st item, by its GID.
+#
+I4_ItmT;Item Type;Defines the type of the item
+#
+I4_Plyr;Player (ASA_ID);If the item is a player, then this field is used to identify him by his ASA_ID
+#
+I4_DPRnd;Draft Pick Round;If the item is a draft pick, then this field indicates draft round
+I4_DPTm;Draft Pick Team (GID);If the item is a draft pick, then this field contains the GID of its original holder team.
+I5_FrmTm;From Team (GID);Defines the team, which sold the 1st item, by its GID.
+I5_ToTm;To Team (GID);Defines the team, which bought the 1st item, by its GID.
+#
+I5_ItmT;Item Type;Defines the type of the item
+#
+I5_Plyr;Player (ASA_ID);If the item is a player, then this field is used to identify him by his ASA_ID
+#
+I5_DPRnd;Draft Pick Round;If the item is a draft pick, then this field indicates draft round
+I5_DPTm;Draft Pick Team (GID);If the item is a draft pick, then this field contains the GID of its original holder team.
+I6_FrmTm;From Team (GID);Defines the team, which sold the 1st item, by its GID.
+I6_ToTm;To Team (GID);Defines the team, which bought the 1st item, by its GID.
+#
+I6_ItmT;Item Type;Defines the type of the item
+#
+I6_Plyr;Player (ASA_ID);If the item is a player, then this field is used to identify him by his ASA_ID
+#
+I6_DPRnd;Draft Pick Round;If the item is a draft pick, then this field indicates draft round
+I6_DPTm;Draft Pick Team (GID);If the item is a draft pick, then this field contains the GID of its original holder team.
+I7_FrmTm;From Team (GID);Defines the team, which sold the 1st item, by its GID.
+I7_ToTm;To Team (GID);Defines the team, which bought the 1st item, by its GID.
+#
+I7_ItmT;Item Type;Defines the type of the item
+#
+I7_Plyr;Player (ASA_ID);If the item is a player, then this field is used to identify him by his ASA_ID
+#
+I7_DPRnd;Draft Pick Round;If the item is a draft pick, then this field indicates draft round
+I7_DPTm;Draft Pick Team (GID);If the item is a draft pick, then this field contains the GID of its original holder team.
+I8_FrmTm;From Team (GID);Defines the team, which sold the 1st item, by its GID.
+I8_ToTm;To Team (GID);Defines the team, which bought the 1st item, by its GID.
+#
+I8_ItmT;Item Type;Defines the type of the item
+#
+I8_Plyr;Player (ASA_ID);If the item is a player, then this field is used to identify him by his ASA_ID
+#
+I8_DPRnd;Draft Pick Round;If the item is a draft pick, then this field indicates draft round
+I8_DPTm;Draft Pick Team (GID);If the item is a draft pick, then this field contains the GID of its original holder team.
+I9_FrmTm;From Team (GID);Defines the team, which sold the 1st item, by its GID.
+I9_ToTm;To Team (GID);Defines the team, which bought the 1st item, by its GID.
+#
+I9_ItmT;Item Type;Defines the type of the item
+#
+I9_Plyr;Player (ASA_ID);If the item is a player, then this field is used to identify him by his ASA_ID
+#
+I9_DPRnd;Draft Pick Round;If the item is a draft pick, then this field indicates draft round
+I9_DPTm;Draft Pick Team (GID);If the item is a draft pick, then this field contains the GID of its original holder team.
+I10_FrmTm;From Team (GID);Defines the team, which sold the 1st item, by its GID.
+I10_ToTm;To Team (GID);Defines the team, which bought the 1st item, by its GID.
+#
+I10_ItmT;Item Type;Defines the type of the item
+#
+I10_Plyr;Player (ASA_ID);If the item is a player, then this field is used to identify him by his ASA_ID
+#
+I10_DPRnd;Draft Pick Round;If the item is a draft pick, then this field indicates draft round
+I10_DPTm;Draft Pick Team (GID);If the item is a draft pick, then this field contains the GID of its original holder team.
+I11_FrmTm;From Team (GID);Defines the team, which sold the 1st item, by its GID.
+I11_ToTm;To Team (GID);Defines the team, which bought the 1st item, by its GID.
+#
+I11_ItmT;Item Type;Defines the type of the item
+#
+I11_Plyr;Player (ASA_ID);If the item is a player, then this field is used to identify him by his ASA_ID
+#
+I11_DPRnd;Draft Pick Round;If the item is a draft pick, then this field indicates draft round
+I11_DPTm;Draft Pick Team (GID);If the item is a draft pick, then this field contains the GID of its original holder team.
+I12_FrmTm;From Team (GID);Defines the team, which sold the 1st item, by its GID.
+I12_ToTm;To Team (GID);Defines the team, which bought the 1st item, by its GID.
+#
+I12_ItmT;Item Type;Defines the type of the item
+#
+I12_Plyr;Player (ASA_ID);If the item is a player, then this field is used to identify him by his ASA_ID
+#
+I12_DPRnd;Draft Pick Round;If the item is a draft pick, then this field indicates draft round
+I12_DPTm;Draft Pick Team (GID);If the item is a draft pick, then this field contains the GID of its original holder team.

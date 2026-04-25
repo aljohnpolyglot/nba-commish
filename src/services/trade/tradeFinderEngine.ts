@@ -13,6 +13,7 @@ import {
   type TVContext,
 } from './tradeValueEngine';
 import { effectiveRecord } from '../../utils/salaryUtils';
+import { tradeRoleToTeamMode } from '../../utils/teamStrategy';
 
 const EXTERNAL = new Set(['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'Draft Prospect', 'Prospect']);
 
@@ -89,9 +90,7 @@ export interface FindOffersInput {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 export function roleToMode(role: string): TeamMode {
-  if (role === 'heavy_buyer' || role === 'buyer') return 'contend';
-  if (role === 'rebuilding') return 'presti';
-  return 'rebuild';
+  return tradeRoleToTeamMode(role);
 }
 
 /**
@@ -300,11 +299,14 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
       .filter(pk => pk.tid === team.id && pk.season >= minTradableSeason && !usedIds.has(String(pk.dpid)))
       .sort((a, b) => a.season - b.season);
 
-    const overshootMargin = isContender ? 30 : 14;
-    // Young contenders (avg roster age < 27) protect their future — cap picks at 2.
-    // Older all-in contenders go unrestricted since they're mortgaging the future anyway.
-    // Rebuilders have no cap: trading vets for a pick haul is exactly their strategy.
-    const pickCap = isYoungContender ? 2 : 40;
+    // Rebuild teams have high-value lottery picks (40-50 TV) — 14 was too tight,
+    // causing the loop to break after only 2 picks on a 20 TV residual.
+    const overshootMargin = isContender ? 35 : 30;
+    // Young contenders (avg age < 27) cap picks at 2 ONLY on small residual gaps —
+    // stops them from dumping 5 picks for a filler. When gap ≥ 40 (star-chase
+    // territory), they go unrestricted like all-in contenders
+    // so they can still stack picks to equalize big TV shortfalls.
+    const pickCap = isYoungContender && gap < 40 ? 2 : 40;
     let safety = 0;
     while (gap > 2 && safety++ < pickCap && theirPicks.length > 0) {
       const pk = theirPicks.shift()!;
@@ -333,7 +335,10 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     const returnVal = returnItems.reduce((s, i) => s + i.val, 0);
     const ratio = Math.max(expectedReturn, returnVal) / Math.max(1, Math.min(expectedReturn, returnVal));
     const totalVal = Math.max(expectedReturn, returnVal);
-    const ratioThreshold = totalVal >= 200 ? 1.15 : totalVal >= 100 ? 1.35 : 1.45;
+    // Franchise-tier targets (300+ TV) need looser tolerance — picks from contenders
+    // are only worth ~8-12 TV each, so stacking can't perfectly close a 150 TV gap.
+    // Real NBA hauls for 99/99-tier players are routinely "lopsided" by analytics.
+    const ratioThreshold = totalVal >= 300 ? 1.30 : totalVal >= 200 ? 1.35 : totalVal >= 100 ? 1.40 : 1.45;
     if (ratio > ratioThreshold) continue;
 
     offers.push({ tid: team.id, items: returnItems, totalVal: returnVal, variant: 'match' });
@@ -399,7 +404,7 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
           const pk = dumpPicks.shift()!;
           const pickRank = powerRanks.get(pk.originalTid) ?? theirRank;
           const pv = calcPickTV(pk.round, pickRank, teams.length, Math.max(1, pk.season - currentYear), pickOpts(pk));
-          if (pv > dumpGap + 25) break;
+          if (pv > dumpGap + 35) break;
           dumpItems.push({
             id: String(pk.dpid),
             type: 'pick',
@@ -415,7 +420,7 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
         const dumpReturnVal = dumpItems.reduce((s, i) => s + i.val, 0);
         const dumpRatio = Math.max(expectedReturn, dumpReturnVal) / Math.max(1, Math.min(expectedReturn, dumpReturnVal));
         const dumpTotalVal = Math.max(expectedReturn, dumpReturnVal);
-        const dumpRatioThreshold = dumpTotalVal >= 100 ? 1.35 : 1.45;
+        const dumpRatioThreshold = dumpTotalVal >= 200 ? 1.35 : dumpTotalVal >= 100 ? 1.40 : 1.45;
         if (dumpRatio <= dumpRatioThreshold) {
           offers.push({ tid: team.id, items: dumpItems, totalVal: dumpReturnVal, variant: 'dump' });
         }
@@ -617,7 +622,9 @@ export function evaluateTradeAcceptance(input: EvaluateAcceptanceInput): Accepta
 
   const expectedReturn = Math.max(10, offerValue - difficultyBias);
   const totalVal = Math.max(expectedReturn, returnVal);
-  const ratioThreshold = totalVal >= 200 ? 1.15 : totalVal >= 100 ? 1.35 : 1.45;
+  // Mirrors generateCounterOffers: relaxed for franchise-tier targets where
+  // picks can't close the TV gap perfectly.
+  const ratioThreshold = totalVal >= 300 ? 1.30 : totalVal >= 200 ? 1.35 : totalVal >= 100 ? 1.40 : 1.45;
   const minSide = Math.max(1, Math.min(expectedReturn, returnVal));
   const ratio = totalVal / minSide;
 

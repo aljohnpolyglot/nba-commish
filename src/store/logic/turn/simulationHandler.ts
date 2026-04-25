@@ -1,5 +1,10 @@
 import { GameState, NBATeam, NBAPlayer as Player, Game } from '../../../types';
 import { simulateDayGames } from '../../../services/logic/simulationRunner';
+import { applyCupResult } from '../../../services/nbaCup/updateCupStandings';
+import { resolveCupGroupStage, advanceKnockoutBracket } from '../../../services/nbaCup/resolveGroupStage';
+import { buildKnockoutGames } from '../../../services/nbaCup/scheduleInjector';
+import { computeCupAwards, applyPrizePool, applyCupAwardsToPlayers } from '../../../services/nbaCup/awards';
+import { injectCupGroupGames } from '../../../services/nbaCup/scheduleInjector';
 import { calculateTeamStrength, clearTeamStrengthCache } from '../../../utils/playerRatings';
 import { normalizeDate, convertTo2KRating, calculateSocialEngagement } from '../../../utils/helpers';
 import { getTradeDeadlineDate, toISODateString } from '../../../utils/dateUtils';
@@ -10,7 +15,7 @@ import { markLightningStrikes, resolveLightningStrikes } from '../../../services
 import { markFatherTimeInjections, resolveFatherTimeInjections, applyMiddleClassBoosts } from '../../../services/playerDevelopment/washedAlgorithm';
 import { markBustLottery, resolveBustLottery } from '../../../services/playerDevelopment/bustLottery';
 import { generateAIDayTradeProposals, executeAITrade } from '../../../services/AITradeHandler';
-import { runAIFreeAgencyRound, runAIMidSeasonExtensions, runAISeasonEndExtensions, autoTrimOversizedRosters, autoPromoteTwoWayExcess, runAIMleUpgradeSwaps } from '../../../services/AIFreeAgentHandler';
+import { runAIFreeAgencyRound, runAIMidSeasonExtensions, runAISeasonEndExtensions, autoTrimOversizedRosters, autoPromoteTwoWayExcess, runAIMleUpgradeSwaps, runAIBirdRightsResigns } from '../../../services/AIFreeAgentHandler';
 import { tickFAMarkets } from '../../../services/faMarketTicker';
 import { routeUnsignedPlayers } from '../../../services/externalSigningRouter';
 import { formatExternalSalary } from '../../../constants';
@@ -19,12 +24,25 @@ import { SettingsManager } from '../../../services/SettingsManager';
 import { markTrainingCampShuffle, resolveTrainingCampChanges } from '../../../services/playerDevelopment/trainingCampShuffle';
 import { buildShamsTransactionPost } from '../../../services/social/templates/charania';
 import { findShamsPhoto } from '../../../services/social/charaniaphotos';
+import { normalizeTeamJerseyNumbers } from '../../../utils/jerseyUtils';
 
 const updateTeamStrengths = (teams: NBATeam[], players: Player[]): NBATeam[] => {
     return teams.map(team => ({
         ...team,
         strength: calculateTeamStrength(team.id, players)
     }));
+};
+
+const normalizeReservedJerseys = (state: GameState, teamIds: Iterable<number>): GameState => {
+    const ids = Array.from(new Set(Array.from(teamIds).filter((id): id is number => id >= 0)));
+    if (ids.length === 0) return state;
+    return {
+        ...state,
+        players: normalizeTeamJerseyNumbers(state.players as any, state.teams as any, state.leagueStats?.year ?? 2026, {
+            history: state.history,
+            targetTeamIds: ids,
+        }) as any,
+    };
 };
 
 /** Bracket generation + play-in/round injection, mirroring gameLogic.ts playoff block. */
@@ -103,6 +121,22 @@ function applyPlayoffLogic(stateWithSim: GameState, dayResults: any[], numGamesP
 
 export const runSimulation = async (state: GameState, daysToSimulate: number, action?: any, onGame?: (result: any) => void) => {
     let stateWithSim = { ...state };
+
+    // Forward-healing normalize: pre-migration saves (or any save that bypassed
+    // LOAD_GAME) can carry the 'FreeAgent' (no-space) legacy typo on hundreds of
+    // players, making them invisible to every FA signing filter (which compares
+    // against 'Free Agent' with a space). One-pass O(n) rewrite per sim batch.
+    let hadFreeAgentTypo = false;
+    stateWithSim.players = stateWithSim.players.map(p => {
+        if ((p as any).status === 'FreeAgent') {
+            hadFreeAgentTypo = true;
+            return { ...p, status: 'Free Agent' as const };
+        }
+        return p;
+    });
+    if (hadFreeAgentTypo) {
+        console.log(`[Sim] Normalized 'FreeAgent' → 'Free Agent' on stale player records.`);
+    }
 
     // Clear cache at start of simulation batch
     clearTeamStrengthCache();
@@ -285,6 +319,107 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
             }
         }
 
+        // ── Self-heal: catch saves where Cup groups exist but no Cup games tagged ─
+        // Fires once per sim tick, idempotent. Recovers any save that missed the
+        // Cup-injection codepath at schedule generation time.
+        if (
+          stateWithSim.leagueStats.inSeasonTournament !== false &&
+          stateWithSim.nbaCup?.groups?.length &&
+          !simPatch.schedule.some(g => (g as any).isNBACup)
+        ) {
+          const scheduledDates: Record<string, Set<number>> = {};
+          for (const g of simPatch.schedule as any[]) {
+            const ds = String(g.date).split('T')[0];
+            if (!scheduledDates[ds]) scheduledDates[ds] = new Set<number>();
+            scheduledDates[ds].add(g.homeTid); scheduledDates[ds].add(g.awayTid);
+          }
+          const maxGid = Math.max(0, ...simPatch.schedule.map(g => g.gid));
+          const prevYr = stateWithSim.leagueStats.year - 1;
+          const result = injectCupGroupGames(
+            [], maxGid + 1, stateWithSim.nbaCup.groups,
+            stateWithSim.saveId || 'default', prevYr, scheduledDates,
+            { excludeFromRecord: true },  // retro-injected: don't inflate the 82-game RS
+          );
+          if (result.games.length > 0) {
+            console.log(`[simulationHandler] Self-heal: injected ${result.games.length} Cup games`);
+            simPatch.schedule = [...simPatch.schedule, ...result.games].sort(
+              (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+            );
+          }
+        }
+
+        // ── NBA Cup standings + phase transitions ────────────────────────────
+        if (stateWithSim.leagueStats.inSeasonTournament !== false && stateWithSim.nbaCup && simPatch.results.length > 0) {
+            let cup = stateWithSim.nbaCup;
+            let schedule = simPatch.schedule;
+
+            for (const res of simPatch.results) {
+                const game = schedule.find(g => g.gid === res.gameId);
+                if (!game?.isNBACup) continue;
+                const updated = applyCupResult(cup, game, res);
+                if (updated) cup = updated;
+            }
+
+            // Check group stage completion
+            if (cup.status === 'group') {
+                const totalGroupGames = cup.groups.length * 10; // C(5,2)=10 per group
+                const playedGroupGames = schedule.filter(g => g.isNBACup && g.nbaCupRound === 'group' && g.played).length;
+                if (playedGroupGames >= totalGroupGames) {
+                    cup = resolveCupGroupStage(cup, schedule, stateWithSim.saveId ?? 'default', stateWithSim.teams);
+                    // Inject QF games into schedule
+                    const maxGid = Math.max(0, ...schedule.map(g => g.gid));
+                    const prevYr = stateWithSim.leagueStats.year - 1;
+                    const newGames = buildKnockoutGames(cup.knockout, maxGid, prevYr);
+                    schedule = [...schedule, ...newGames].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                    // Sync gameIds back into knockout entries
+                    for (const ng of newGames) {
+                        const ko = cup.knockout.find(k => k.round === ng.nbaCupRound && k.gameId === undefined && ng.homeTid === k.tid1);
+                        if (ko) ko.gameId = ng.gid;
+                    }
+                }
+            }
+
+            // After QFs, advance bracket (fill SF/Final tids)
+            if (cup.status === 'knockout') {
+                cup = advanceKnockoutBracket(cup);
+                // If new SF/Final slots just got teams, inject those games
+                const newKOGames: Game[] = [];
+                // Compute a running maxGid across the loop — each call to
+                // buildKnockoutGames re-derives gid from `existingMaxGid + 1`,
+                // so without bumping the running max each iteration we'd hand
+                // the same gid to every injected SF/Final game. That was the
+                // root cause of "Final: OKC vs OKC" — two SFs got the same
+                // gid, applyKnockoutResult set both winnerTids to the same
+                // team, and the Final inherited that team on both sides.
+                let runningMaxGid = Math.max(0, ...schedule.map(g => g.gid));
+                const prevYr = stateWithSim.leagueStats.year - 1;
+                for (const ko of cup.knockout) {
+                    if (ko.tid1 >= 0 && ko.tid2 >= 0 && !ko.gameId) {
+                        const injected = buildKnockoutGames([ko], runningMaxGid, prevYr);
+                        if (injected[0]) {
+                            newKOGames.push(...injected);
+                            ko.gameId = injected[0].gid;
+                            runningMaxGid = injected[0].gid;
+                        }
+                    }
+                }
+                if (newKOGames.length > 0) {
+                    schedule = [...schedule, ...newKOGames].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                }
+            }
+
+            // Final completed — compute awards + write them to player.awards
+            let cupPlayersPatch: Player[] | null = null;
+            if (cup.status === 'complete' && !cup.mvpPlayerId) {
+                cup = computeCupAwards(cup, schedule, stateWithSim.boxScores ?? [], stateWithSim.players);
+                cup = applyPrizePool(cup, stateWithSim.leagueStats.cupPrizePoolEnabled !== false);
+                cupPlayersPatch = applyCupAwardsToPlayers(cup, stateWithSim.players);
+            }
+
+            stateWithSim = { ...stateWithSim, nbaCup: cup, schedule, ...(cupPlayersPatch ? { players: cupPlayersPatch } : {}) };
+            simPatch.schedule = schedule;
+        }
+
         stateWithSim = {
             ...stateWithSim,
             teams: simPatch.teams,
@@ -352,6 +487,85 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 stateWithSim = { ...stateWithSim, seasonPreviewDismissed: false };
             }
 
+            // ── LOYAL graceful retirement (end of training camp window) ──────────
+            // LOYAL players 30+ with 3+ YOS who reached Oct 1 unsigned (prior team
+            // didn't re-sign them) retire rather than join another franchise.
+            {
+                const retireYear = stateWithSim.leagueStats.year;
+                const loyalRetirees: Player[] = [];
+                const loyalRetiredPlayers = stateWithSim.players.map(p => {
+                    if (p.tid >= 0) return p;
+                    if ((p as any).status !== 'Free Agent') return p;
+                    if ((p as any).diedYear) return p;
+                    const traits: string[] = (p as any).moodTraits ?? [];
+                    if (!traits.includes('LOYAL')) return p;
+                    const age = p.born?.year ? retireYear - p.born.year : (p.age ?? 0);
+                    if (age < 30) return p;
+                    const yearsOfService = ((p as any).stats ?? [])
+                        .filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
+                    if (yearsOfService < 3) return p;
+                    // Determine prior team name for the retirement message
+                    const txns: Array<{ season: number; tid: number }> = (p as any).transactions ?? [];
+                    const priorTidFromTxn = txns.length > 0
+                        ? [...txns].sort((a, b) => b.season - a.season).find(t => t.tid >= 0 && t.tid <= 29)?.tid ?? -1
+                        : -1;
+                    const statsTid = ((p as any).stats ?? [])
+                        .filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0 && (s.tid ?? -1) >= 0 && (s.tid ?? -1) <= 29)
+                        .sort((a: any, b: any) => (b.season ?? 0) - (a.season ?? 0))[0]?.tid ?? -1;
+                    const priorTid = priorTidFromTxn >= 0 ? priorTidFromTxn : statsTid;
+                    if (priorTid < 0) return p; // no prior NBA team — not eligible for this gate
+                    loyalRetirees.push(p);
+                    return {
+                        ...p,
+                        status: 'Retired' as const,
+                        tid: -1,
+                        retiredYear: retireYear,
+                        contract: undefined,
+                    } as any;
+                });
+                if (loyalRetirees.length > 0) {
+                    stateWithSim = { ...stateWithSim, players: loyalRetiredPlayers };
+                    const loyalRetireHistory = loyalRetirees.map(p => {
+                        const txns2: Array<{ season: number; tid: number }> = (p as any).transactions ?? [];
+                        const priorTid2 = txns2.length > 0
+                            ? [...txns2].sort((a, b) => b.season - a.season).find(t => t.tid >= 0 && t.tid <= 29)?.tid ?? -1
+                            : ((p as any).stats ?? [])
+                                .filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0 && (s.tid ?? -1) >= 0 && (s.tid ?? -1) <= 29)
+                                .sort((a: any, b: any) => (b.season ?? 0) - (a.season ?? 0))[0]?.tid ?? -1;
+                        const priorTeamName2 = stateWithSim.teams.find(t => t.id === priorTid2)?.name ?? 'their former team';
+                        return {
+                            text: `${p.name} has retired rather than sign with another team — a career ${priorTeamName2}.`,
+                            date: stateWithSim.date,
+                            type: 'Retirement',
+                            playerIds: [p.internalId],
+                        };
+                    });
+                    const loyalRetireNews = loyalRetirees.slice(0, 3).map((p, i) => {
+                        const txns3: Array<{ season: number; tid: number }> = (p as any).transactions ?? [];
+                        const priorTid3 = txns3.length > 0
+                            ? [...txns3].sort((a, b) => b.season - a.season).find(t => t.tid >= 0 && t.tid <= 29)?.tid ?? -1
+                            : ((p as any).stats ?? [])
+                                .filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0 && (s.tid ?? -1) >= 0 && (s.tid ?? -1) <= 29)
+                                .sort((a: any, b: any) => (b.season ?? 0) - (a.season ?? 0))[0]?.tid ?? -1;
+                        const priorTeamName3 = stateWithSim.teams.find(t => t.id === priorTid3)?.name ?? 'their former team';
+                        return {
+                            id: `loyal-retire-${p.internalId}-${Date.now()}-${i}`,
+                            headline: `${p.name} Retires a ${priorTeamName3}`,
+                            content: `${p.name} has announced retirement rather than sign with another franchise. A loyal servant to the ${priorTeamName3}.`,
+                            date: stateWithSim.date,
+                            type: 'roster' as const,
+                            isNew: true,
+                            read: false,
+                        };
+                    });
+                    stateWithSim = {
+                        ...stateWithSim,
+                        news: [...loyalRetireNews, ...(stateWithSim.news ?? [])].slice(0, 200),
+                        history: [...(stateWithSim.history ?? []), ...loyalRetireHistory],
+                    };
+                }
+            }
+
             // ── External league routing (end of summer FA window) ─────────────────
             // Any remaining unsigned NBA-caliber FAs are routed to Euroleague/G-League/PBA.
             const { results: routedResults, players: routedPlayers } = routeUnsignedPlayers(stateWithSim);
@@ -378,6 +592,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         date: stateWithSim.date,
                         type: 'Signing',
                         league: r.league,
+                        playerIds: [r.playerId],
                     };
                 });
                 stateWithSim = {
@@ -688,6 +903,70 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
             stateWithSim = { ...stateWithSim, ...rolloverPatch };
             // Re-compute strengths after roster changes from contract expiry
             stateWithSim.teams = updateTeamStrengths(stateWithSim.teams, stateWithSim.players);
+
+            // ── Pass 0: Bird Rights re-sign window ────────────────────────────
+            // Real-NBA: prior team gets a Jul 1 first-look on their expiring stars
+            // BEFORE the open market. Without this, a single bad mid-season-extension
+            // roll dumps them straight into FA, where over-cap incumbents (Finals
+            // contenders) can't bid. Result: Duren leaves DET right after the Finals.
+            // This pass gives Bird Rights teams a guaranteed re-sign attempt at +10%
+            // premium with 85% acceptance (95% LOYAL, 65% MERCENARY). Mood < -2 declines.
+            const birdResigns = runAIBirdRightsResigns(stateWithSim);
+            if (birdResigns.length > 0) {
+                const firstYear = stateWithSim.leagueStats?.year ?? 2026;
+                const birdResignMap = new Map(birdResigns.map(r => [r.playerId, r] as const));
+                stateWithSim = {
+                    ...stateWithSim,
+                    players: stateWithSim.players.map(p => {
+                        const r = birdResignMap.get(p.internalId);
+                        if (!r) return p;
+                        const newContract = {
+                            amount: Math.round(r.salaryUSD / 1_000),
+                            exp: firstYear + r.years - 1,
+                            hasPlayerOption: r.hasPlayerOption,
+                        };
+                        const newContractYears = Array.from({ length: r.years }, (_, i) => {
+                            const yr = firstYear + i;
+                            return {
+                                season: `${yr - 1}-${String(yr).slice(-2)}`,
+                                guaranteed: Math.round(r.salaryUSD * Math.pow(1.05, i)),
+                                option: (i === r.years - 1 && r.hasPlayerOption) ? 'Player' : '',
+                            };
+                        });
+                        const histYears = ((p as any).contractYears ?? []).filter((cy: any) => {
+                            const yr = parseInt(cy.season.split('-')[0], 10) + 1;
+                            return yr < firstYear;
+                        });
+                        return {
+                            ...p,
+                            tid: r.teamId,
+                            status: 'Active' as const,
+                            contract: newContract,
+                            contractYears: [...histYears, ...newContractYears],
+                            yearsWithTeam: 1,                       // re-sign — fresh tenure on new deal
+                            hasBirdRights: false,                   // consumed by re-sign
+                            midSeasonExtensionDeclined: undefined,  // clear for next season
+                        };
+                    }),
+                };
+                // History entries (one per re-sign) — landing on the rollover date.
+                const birdHistory = birdResigns.map(r => {
+                    const totalM = Math.round((r.salaryUSD / 1_000_000) * r.years);
+                    const optTag = r.hasPlayerOption ? ' (player option)' : '';
+                    const supTag = r.isSupermax ? ' (Supermax)' : '';
+                    return {
+                        text: `${r.playerName} re-signs with the ${r.teamName} via Bird Rights: $${totalM}M/${r.years}yr${optTag}${supTag}`,
+                        date: stateWithSim.date,
+                        type: 'Signing',
+                        playerIds: [r.playerId],
+                    };
+                });
+                stateWithSim = {
+                    ...stateWithSim,
+                    history: [...(stateWithSim.history ?? []), ...birdHistory] as any,
+                };
+                console.log(`[BirdRights] Pass 0 resigned ${birdResigns.length} players via Bird Rights premium.`);
+            }
         }
 
         // AI free agency — FA pool stays open July 1 → Feb 28 (March 1 = playoff eligibility deadline).
@@ -776,9 +1055,29 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             ...tick.userBidResolutions,
                         ],
                     } : {}),
+                    // RFA offer-sheet inbox for the user (Match/Decline toast)
+                    ...((tick as any).rfaOfferSheets?.length > 0 ? {
+                        pendingRFAOfferSheets: [
+                            ...((stateWithSim as any).pendingRFAOfferSheets ?? []),
+                            ...(tick as any).rfaOfferSheets,
+                        ],
+                    } : {}),
+                    // RFA match resolution outcomes — pop result toasts when user is involved
+                    ...((tick as any).rfaMatchResolutions?.filter((r: any) => r.userInvolved).length > 0 ? {
+                        pendingRFAMatchResolutions: [
+                            ...((stateWithSim as any).pendingRFAMatchResolutions ?? []),
+                            ...(tick as any).rfaMatchResolutions.filter((r: any) => r.userInvolved),
+                        ],
+                    } : {}),
                 };
                 if (tick.signedPlayerIds.size > 0) {
                     console.log(`[FAMarketTick] Resolved ${tick.signedPlayerIds.size} market signings on ${stateWithSim.date}`);
+                }
+                if (tick.signedPlayerIds.size > 0 || tick.playerMutations.size > 0) {
+                    const affectedTeamIds = Array.from(tick.playerMutations.values())
+                        .map((mut: any) => Number(mut?.tid))
+                        .filter((tid: number) => tid >= 0);
+                    stateWithSim = normalizeReservedJerseys(stateWithSim, affectedTeamIds);
                 }
             }
         }
@@ -826,6 +1125,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             text: `${pr.playerName} has been promoted from two-way to a standard contract by the ${pr.teamName}: $${(pr.newSalaryUSD / 1_000_000).toFixed(1)}M/1yr`,
                             date: stateWithSim.date,
                             type: 'Signing',
+                            playerIds: [pr.playerId],
                         })),
                     ],
                 };
@@ -850,10 +1150,22 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                     players: stateWithSim.players.map(p => {
                         const w = waiverInfo.get(p.internalId);
                         if (!w) return p;
-                        if (w.reason === 'twoWayExcess') {
-                            return { ...p, tid: -1, status: 'FreeAgent' as const, twoWay: false, gLeagueAssigned: false } as unknown as Player;
-                        }
-                        return { ...p, tid: -1, status: 'FreeAgent' as const, gLeagueAssigned: false, nonGuaranteed: false } as unknown as Player;
+                        // Canonical FA status is 'Free Agent' (with space) — the signing
+                        // filters in AIFreeAgentHandler / faMarketTicker compare against it.
+                        // Writing 'FreeAgent' here made trimmed players invisible to the FA pool.
+                        const base = {
+                            ...p,
+                            tid: -1,
+                            status: 'Free Agent' as const,
+                            twoWay: undefined,
+                            nonGuaranteed: false,
+                            gLeagueAssigned: false,
+                            mleSignedVia: undefined,
+                            hasBirdRights: false,
+                            superMaxEligible: false,
+                            yearsWithTeam: 0,
+                        };
+                        return base as unknown as Player;
                     }),
                     history: [
                         ...(stateWithSim.history ?? []),
@@ -863,6 +1175,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                                 : `${w.playerName} waived by the ${w.teamName}`,
                             date: stateWithSim.date,
                             type: w.wasNonGuaranteed ? 'Training Camp Release' : 'Waiver',
+                            playerIds: [w.playerId],
                         })),
                     ],
                 };
@@ -886,6 +1199,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                                 text: `${p.name}'s contract guaranteed by the ${stateWithSim.teams.find(t => t.id === p.tid)?.name ?? 'team'} (January 10 deadline)`,
                                 date: stateWithSim.date,
                                 type: 'NG Guaranteed',
+                                playerIds: [p.internalId],
                             })),
                         ],
                     };
@@ -932,7 +1246,18 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 }
             }
 
-            const signings = runAIFreeAgencyRound(stateWithSim);
+            const rawSignings = runAIFreeAgencyRound(stateWithSim);
+            // Dedup by playerId — defensive guard against multi-pass collisions
+            // (e.g., Pass 1 best-fit + Pass 5 floor both signing the same FA in
+            // one round). Without this, history logs both signings even though
+            // only the first mutation actually lands on the player. Caused the
+            // "Gary Harris signs CHA + MIA same day Oct 12" double-sign bug.
+            const seenSignIds = new Set<string>();
+            const signings = rawSignings.filter(s => {
+                if (seenSignIds.has(s.playerId)) return false;
+                seenSignIds.add(s.playerId);
+                return true;
+            });
             if (signings.length > 0) {
                 stateWithSim = {
                     ...stateWithSim,
@@ -999,6 +1324,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         text: `${s.playerName} signs with the ${s.teamName}: $${totalStr}M/${s.contractYears ?? 1}yr${optTag}${twoWayTag}${ngTag}`,
                         date: dateStr,
                         type: 'Signing',
+                        playerIds: [s.playerId],
                     };
                 });
                 // Generate news items for all signings
@@ -1083,6 +1409,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         ? [...shamsFATransactions, ...(stateWithSim.socialFeed ?? [])].slice(0, 500)
                         : (stateWithSim.socialFeed ?? []),
                 };
+                stateWithSim = normalizeReservedJerseys(stateWithSim, signings.map(s => s.teamId));
             }
 
             // MLE upgrade swaps: over-cap teams sign a better FA via MLE and waive their weakest guaranteed player (once/month per team, seeded day)
@@ -1118,17 +1445,29 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             mleSignedVia: s.mleTypeUsed,
                         };
                     });
-                    // Apply waiver (release to FA)
+                    // Apply waiver (release to FA). Keep contract.amount for salary-history
+                    // display; clear team-tied flags so FA pipeline treats them as clean.
                     updatedPlayers = updatedPlayers.map(p => {
                         if (p.internalId !== w.playerId) return p;
-                        return { ...p, tid: -1, status: 'Free Agent' as const };
+                        return {
+                            ...p,
+                            tid: -1,
+                            status: 'Free Agent' as const,
+                            twoWay: undefined,
+                            nonGuaranteed: false,
+                            gLeagueAssigned: false,
+                            mleSignedVia: undefined,
+                            hasBirdRights: false,
+                            superMaxEligible: false,
+                            yearsWithTeam: 0,
+                        };
                     });
                     // History entries
                     const annualM = Math.round(s.salaryUSD / 100_000) / 10;
                     const totalM = Math.round(annualM * (s.contractYears ?? 1));
                     swapHistory.push(
-                        { text: `${s.playerName} signs with the ${s.teamName}: $${totalM}M/${s.contractYears ?? 1}yr (MLE)`, date: swapDateStr, type: 'Signing' },
-                        { text: `${w.playerName} waived by the ${w.teamName}`, date: swapDateStr, type: 'Waive' },
+                        { text: `${s.playerName} signs with the ${s.teamName}: $${totalM}M/${s.contractYears ?? 1}yr (MLE)`, date: swapDateStr, type: 'Signing', playerIds: [s.playerId] },
+                        { text: `${w.playerName} waived by the ${w.teamName}`, date: swapDateStr, type: 'Waive', playerIds: [w.playerId] },
                     );
                     // Track MLE usage
                     const prev = swapMleUsage[s.teamId];
@@ -1140,6 +1479,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                     history: [...(stateWithSim.history ?? []), ...swapHistory],
                     leagueStats: { ...stateWithSim.leagueStats, mleUsage: swapMleUsage },
                 };
+                stateWithSim = normalizeReservedJerseys(stateWithSim, mleSwaps.map(s => s.sign.teamId));
             }
         }
     }

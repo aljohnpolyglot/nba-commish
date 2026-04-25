@@ -6,13 +6,15 @@ import {
 } from 'lucide-react';
 import {
   getCapThresholds, getCapStatus, formatSalaryM, contractToUSD,
-  getTradeOutlook, effectiveRecord, topNAvgK2, CapThresholds,
-  getMLEAvailability, resolveManualOutlook, type TradeOutlook,
+  effectiveRecord, CapThresholds,
+  getMLEAvailability,
 } from '../../../utils/salaryUtils';
 import {
   estimateAttendance, formatAttendance, formatRevM, ARENA_HARD_CAP,
 } from '../../../utils/attendanceUtils';
 import { getOwnTeamId } from '../../../utils/helpers';
+import { resolveTeamStrategyProfile, type TeamStrategyProfile } from '../../../utils/teamStrategy';
+import { getActiveTPEs, getTotalActiveTPE } from '../../../utils/tradeExceptionUtils';
 
 // ─── types ────────────────────────────────────────────────────────────────
 interface TeamEnriched {
@@ -25,13 +27,14 @@ interface TeamEnriched {
   gbFromLeader: number;
   effectiveWins: number;
   effectiveLosses: number;
-  topThreeAvgK2: number;
   hasInjuredStar: boolean;
   mleAvailable: number;
   mleUsed: number;
   mleLimit: number;
   mleType: string; // 'Room' | 'Tax' | 'NT' | '—'
-  manualOutlook?: TradeOutlook; // GM-mode manual override, if set
+  tpeTotalUSD: number;
+  tpeCount: number;
+  strategy: TeamStrategyProfile;
 }
 
 const ROSTER_MAX = 15;
@@ -67,9 +70,9 @@ const AttendanceBar: React.FC<{ fill: number }> = ({ fill }) => {
 };
 
 // ─── shared grid templates (header & rows use the SAME string) ────────────
-// cols: rank | team | W-L | strategy | status | bar | payroll | MLE | exp | roster | ext
+// cols: rank | team | W-L | strategy | status | bar | payroll | MLE | TPE | exp | roster | ext
 const CAP_GRID =
-  'grid grid-cols-[20px_minmax(140px,1.4fr)_52px_92px_80px_minmax(140px,2fr)_minmax(96px,104px)_64px_44px_72px_14px] gap-3 items-center';
+  'grid grid-cols-[20px_minmax(140px,1.4fr)_52px_92px_80px_minmax(140px,2fr)_minmax(96px,104px)_64px_72px_44px_72px_14px] gap-3 items-center';
 
 // cols: rank | team | W-L | capacity | bar | avg att | $/tkt | revenue | ext
 const ATT_GRID =
@@ -90,10 +93,9 @@ const CapRow: React.FC<{
 }> = ({ d, thresholds, maxPayroll, rank, isOwn, onClick }) => {
   const { team, payroll, expiringCount, effectiveWins, effectiveLosses, mleAvailable, mleType } = d;
   const status      = getCapStatus(payroll, thresholds);
-  const baseOutlook = d.manualOutlook ?? getTradeOutlook(payroll, effectiveWins, effectiveLosses, expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2);
-  const outlook     = d.hasInjuredStar && !d.manualOutlook
-    ? { ...baseOutlook, label: 'Injured Star', color: 'text-amber-300', bgColor: 'bg-amber-500/10' }
-    : baseOutlook;
+  const outlook = d.hasInjuredStar && !d.strategy.manualStatus
+    ? { ...d.strategy.outlook, label: 'Injured Star', color: 'text-amber-300', bgColor: 'bg-amber-500/10' }
+    : d.strategy.outlook;
   const capSpace = thresholds.salaryCap - payroll;
   const taxOver  = payroll - thresholds.luxuryTax;
 
@@ -163,6 +165,18 @@ const CapRow: React.FC<{
             {d.mleUsed > 0 && (
               <div className="text-[8px] text-amber-400/70 tabular-nums">{formatSalaryM(d.mleUsed)} used</div>
             )}
+          </>
+        ) : (
+          <div className="text-[10px] text-slate-600">—</div>
+        )}
+      </div>
+
+      {/* TPE — Trade Player Exception(s) */}
+      <div className="text-right">
+        {d.tpeTotalUSD > 0 ? (
+          <>
+            <div className="text-[10px] font-bold text-emerald-400 tabular-nums">{formatSalaryM(d.tpeTotalUSD)}</div>
+            <div className="text-[8px] text-slate-500">{d.tpeCount} active</div>
           </>
         ) : (
           <div className="text-[10px] text-slate-600">—</div>
@@ -260,10 +274,9 @@ const TradeCard: React.FC<{
   d: TeamEnriched; thresholds: CapThresholds; isOwn: boolean; onClick: () => void;
 }> = ({ d, thresholds, isOwn, onClick }) => {
   const { team, payroll, expiringCount, effectiveWins, effectiveLosses } = d;
-  const baseOutlook = d.manualOutlook ?? getTradeOutlook(payroll, effectiveWins, effectiveLosses, expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2);
-  const outlook = d.hasInjuredStar && !d.manualOutlook
-    ? { ...baseOutlook, label: 'Injured Star', color: 'text-amber-300', bgColor: 'bg-amber-500/10' }
-    : baseOutlook;
+  const outlook = d.hasInjuredStar && !d.strategy.manualStatus
+    ? { ...d.strategy.outlook, label: 'Injured Star', color: 'text-amber-300', bgColor: 'bg-amber-500/10' }
+    : d.strategy.outlook;
   const capSpace = thresholds.salaryCap - payroll;
   const taxOver  = payroll - thresholds.luxuryTax;
 
@@ -305,7 +318,7 @@ const TradeCard: React.FC<{
 
 // ─── Main view ───────────────────────────────────────────────────────────
 type TabKey = 'cap' | 'trade' | 'attendance';
-type CapSortKey = 'name' | 'wins' | 'strategy' | 'status' | 'payroll' | 'mle' | 'expiring' | 'roster';
+type CapSortKey = 'name' | 'wins' | 'strategy' | 'status' | 'payroll' | 'mle' | 'tpe' | 'expiring' | 'roster';
 type AttSortKey = 'name' | 'wins' | 'capacity' | 'fill' | 'attendance' | 'ticket' | 'revenue';
 
 export const LeagueFinancesView: React.FC = () => {
@@ -357,7 +370,6 @@ export const LeagueFinancesView: React.FC = () => {
     const standardCount = players.length - twoWayCount;
     const { confRank = 15, gbFromLeader = 0 } = confStandings[team.id] ?? {};
     const { wins: effectiveWins, losses: effectiveLosses } = effectiveRecord(team, seasonYear);
-    const topThreeAvgK2 = topNAvgK2(state.players, team.id, 3);
     const topPlayer = [...players].sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0))[0];
     const hasInjuredStar = !!topPlayer && (topPlayer.injury?.gamesRemaining ?? 0) >= 30;
     const mle = getMLEAvailability(team.id, payroll, 0, thresholds, state.leagueStats);
@@ -365,9 +377,19 @@ export const LeagueFinancesView: React.FC = () => {
     const mleUsed      = mle.type && !mle.blocked ? (mle.used ?? 0) : 0;
     const mleLimit     = mle.type && !mle.blocked ? (mle.limit ?? 0) : 0;
     const mleType = mle.type === 'room' ? 'Room' : mle.type === 'taxpayer' ? 'Tax' : mle.type ? 'NT' : '—';
-    const manualOutlook = resolveManualOutlook(team, state.gameMode, state.userTeamId);
-    return { team, payroll, expiringCount, standardCount, twoWayCount, confRank, gbFromLeader, effectiveWins, effectiveLosses, topThreeAvgK2, hasInjuredStar, mleAvailable, mleUsed, mleLimit, mleType, manualOutlook };
-  }), [state.teams, state.players, seasonYear, confStandings, thresholds, state.leagueStats, state.gameMode, state.userTeamId]);
+    const tpeTotalUSD = getTotalActiveTPE(team, state.date);
+    const tpeCount = getActiveTPEs(team, state.date).length;
+    const strategy = resolveTeamStrategyProfile({
+      team,
+      players: state.players,
+      teams: state.teams,
+      leagueStats: state.leagueStats,
+      currentYear: seasonYear,
+      gameMode: state.gameMode,
+      userTeamId: state.userTeamId,
+    });
+    return { team, payroll, expiringCount, standardCount, twoWayCount, confRank, gbFromLeader, effectiveWins, effectiveLosses, hasInjuredStar, mleAvailable, mleUsed, mleLimit, mleType, tpeTotalUSD, tpeCount, strategy };
+  }), [state.teams, state.players, seasonYear, confStandings, thresholds, state.leagueStats, state.gameMode, state.userTeamId, state.date]);
 
   const maxPayroll = useMemo(
     () => Math.max(...teamData.map(d => d.payroll), thresholds.secondApron * 1.05),
@@ -385,6 +407,7 @@ export const LeagueFinancesView: React.FC = () => {
     if (capSort === 'payroll')       diff = a.payroll - b.payroll;
     else if (capSort === 'wins')     diff = a.effectiveWins - b.effectiveWins;
     else if (capSort === 'mle')      diff = a.mleAvailable - b.mleAvailable;
+    else if (capSort === 'tpe')      diff = a.tpeTotalUSD - b.tpeTotalUSD;
     else if (capSort === 'expiring') diff = a.expiringCount - b.expiringCount;
     else if (capSort === 'roster')   diff = (a.standardCount * 10 + a.twoWayCount) - (b.standardCount * 10 + b.twoWayCount);
     else if (capSort === 'status') {
@@ -393,8 +416,8 @@ export const LeagueFinancesView: React.FC = () => {
       diff = sa - sb;
     }
     else if (capSort === 'strategy') {
-      const ra = ROLE_RANK[(a.manualOutlook ?? getTradeOutlook(a.payroll, a.effectiveWins, a.effectiveLosses, a.expiringCount, thresholds, a.confRank, a.gbFromLeader, a.topThreeAvgK2)).role] ?? 2;
-      const rb = ROLE_RANK[(b.manualOutlook ?? getTradeOutlook(b.payroll, b.effectiveWins, b.effectiveLosses, b.expiringCount, thresholds, b.confRank, b.gbFromLeader, b.topThreeAvgK2)).role] ?? 2;
+      const ra = ROLE_RANK[a.strategy.tradeRole] ?? 2;
+      const rb = ROLE_RANK[b.strategy.tradeRole] ?? 2;
       diff = rb - ra;
     }
     else diff = a.team.name.localeCompare(b.team.name);
@@ -421,28 +444,19 @@ export const LeagueFinancesView: React.FC = () => {
   // trade board groups
   const buyers = useMemo(() =>
     teamData
-      .filter(d => {
-        const r = (d.manualOutlook ?? getTradeOutlook(d.payroll, d.effectiveWins, d.effectiveLosses, d.expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2)).role;
-        return r === 'buyer' || r === 'heavy_buyer';
-      })
+      .filter(d => d.strategy.initiateBuyTrades)
       .sort((a, b) => a.confRank - b.confRank)
-  , [teamData, thresholds]);
+  , [teamData]);
 
   const sellers = useMemo(() =>
     teamData
-      .filter(d => {
-        const r = (d.manualOutlook ?? getTradeOutlook(d.payroll, d.effectiveWins, d.effectiveLosses, d.expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2)).role;
-        return r === 'seller' || r === 'rebuilding';
-      })
+      .filter(d => d.strategy.initiateSellTrades)
       .sort((a, b) => b.confRank - a.confRank)
-  , [teamData, thresholds]);
+  , [teamData]);
 
   const neutrals = useMemo(() =>
-    teamData.filter(d => {
-      const r = (d.manualOutlook ?? getTradeOutlook(d.payroll, d.effectiveWins, d.effectiveLosses, d.expiringCount, thresholds, d.confRank, d.gbFromLeader, d.topThreeAvgK2)).role;
-      return r === 'neutral';
-    })
-  , [teamData, thresholds]);
+    teamData.filter(d => !d.strategy.initiateBuyTrades && !d.strategy.initiateSellTrades)
+  , [teamData]);
 
   // attendance totals
   const attTotals = useMemo(() => {
@@ -560,7 +574,7 @@ export const LeagueFinancesView: React.FC = () => {
       {/* ── CAP OVERVIEW ── */}
       {tab === 'cap' && (
         <div className="flex-1 overflow-auto custom-scrollbar">
-          <div className="min-w-[964px]">
+          <div className="min-w-[1048px]">
             <div className={`${CAP_GRID} sticky top-0 z-10 border-b border-slate-800/40 bg-[#161616] px-4 py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest`}>
               <span className="text-right">#</span>
               <CapH col="name"     label="Team" />
@@ -570,6 +584,7 @@ export const LeagueFinancesView: React.FC = () => {
               <span className="px-1">Payroll vs. Cap</span>
               <CapH col="payroll"  label="Payroll"  align="right" />
               <CapH col="mle"      label="MLE"      align="right" />
+              <CapH col="tpe"      label="TPE"      align="right" />
               <CapH col="expiring" label="Exp"      align="right" />
               <CapH col="roster"   label="Roster"   align="right" />
               <span />

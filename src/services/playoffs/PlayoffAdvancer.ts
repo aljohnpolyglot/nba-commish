@@ -123,10 +123,14 @@ export class PlayoffAdvancer {
       const nextStart = new Date(laterEnd);
       nextStart.setDate(nextStart.getDate() + 3);
 
-      // Finals cap: start by June 10 so Game 7 lands no later than ~June 22
+      // Finals cap: start by June 10 so Game 7 lands no later than ~June 22.
+      // Only clamp backward when the cap is still ahead of the feeders' last game — otherwise
+      // we'd place Finals games on dates the lazy sim has already advanced past, stranding them.
       if (pair.round === 4) {
         const juneMaxStart = new Date(`${b.season}-06-10T00:00:00Z`);
-        if (nextStart > juneMaxStart) nextStart.setTime(juneMaxStart.getTime());
+        if (nextStart > juneMaxStart && juneMaxStart > laterEnd) {
+          nextStart.setTime(juneMaxStart.getTime());
+        }
       }
 
       const curMaxGid = Math.max(maxGid, ...newGames.map(g => g.gid), 0);

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import type { NBAPlayer, NBATeam } from '../../../types';
 import {
-  formatSalaryM, formatSalaryMPrecise, computeContractOffer, getCapThresholds, getTeamPayrollUSD, getContractLimits, getMLEAvailability, computeExternalBuyout, contractToUSD,
+  formatSalaryM, formatSalaryMPrecise, computeContractOffer, getCapThresholds, getTeamPayrollUSD, getContractLimits, getMLEAvailability, computeExternalBuyout, contractToUSD, hasBirdRights,
 } from '../../../utils/salaryUtils';
 import { extractNbaId, hdPortrait, normalizeDate, convertTo2KRating } from '../../../utils/helpers';
 import { getDisplayPotential } from '../../../utils/playerRatings';
@@ -193,9 +193,21 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   }, [state.players, team.id, leagueStats, state.date]);
   // Re-sign = staying on the current team → Bird Rights unlock supermax / longer deals.
   const isResign = player.tid === team.id;
+  // FA-with-Bird-Rights = the team holds Bird Rights from the player's prior tenure.
+  // Real-NBA: Bird Rights survive a contract expiry — DET re-signing Duren after his
+  // contract expired still gets the over-cap override. Detect by reading the prior
+  // NBA tid from stats (≥ 3 consecutive recent seasons with the same team).
+  const priorNbaTid = useMemo(() => {
+    const stats: Array<{ season?: number; tid?: number; gp?: number; playoffs?: boolean }> = (player as any).stats ?? [];
+    const sorted = stats
+      .filter(s => !s.playoffs && (s.gp ?? 0) > 0 && (s.tid ?? -1) >= 0 && (s.tid ?? -1) <= 29)
+      .sort((a, b) => (b.season ?? 0) - (a.season ?? 0));
+    return sorted[0]?.tid ?? -1;
+  }, [player]);
+  const teamHoldsBirdRights = !isResign && priorNbaTid === team.id && hasBirdRights(player);
   const playerForLimits = useMemo(
-    () => (isResign ? { ...player, hasBirdRights: true } as NBAPlayer : player),
-    [player, isResign],
+    () => (isResign || teamHoldsBirdRights ? { ...player, hasBirdRights: true } as NBAPlayer : player),
+    [player, isResign, teamHoldsBirdRights],
   );
   const limits = useMemo(() => getContractLimits(playerForLimits, leagueStats), [playerForLimits, leagueStats]);
   const initialOffer = useMemo(() => {
@@ -526,6 +538,21 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   const decOptionProps = useHoldable(() => setOption(v => v === 'NONE' ? 'TEAM' : v === 'PLAYER' ? 'NONE' : 'PLAYER'), contractType === 'TWO_WAY');
   const incOptionProps = useHoldable(() => setOption(v => v === 'NONE' ? 'PLAYER' : v === 'PLAYER' ? 'TEAM' : 'NONE'), contractType === 'TWO_WAY');
 
+  // Roster-full preflight — during free agency, allow signing with cap space (they can trade/waive to adjust).
+  // Only hard-block if BOTH rosters are full AND it's NOT free agency season (or they have no cap space at all).
+  const isFreeAgencySeason = useMemo(() => {
+    const d = state.date ? new Date(state.date) : new Date();
+    const mo = d.getMonth() + 1;
+    return (mo >= 7 && mo <= 9) || mo >= 10 || mo <= 2;
+  }, [state.date]);
+
+  // Auto-allow roster-full block during FA with cap space (they can adjust roster via trade/waive)
+  useEffect(() => {
+    if (roster.totalFull && !rosterFullOverridden && isFreeAgencySeason && teamPayroll < thresholds.salaryCap) {
+      setRosterFullOverridden(true);
+    }
+  }, [roster.totalFull, rosterFullOverridden, isFreeAgencySeason, teamPayroll, thresholds.salaryCap]);
+
   // Cap-blown warning — final gate before player response when the signing would illegally exceed the cap.
   if (showCapWarning) {
     const projectedPayroll = teamPayroll + salary;
@@ -578,21 +605,6 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
       </div>
     );
   }
-
-  // Roster-full preflight — during free agency, allow signing with cap space (they can trade/waive to adjust).
-  // Only hard-block if BOTH rosters are full AND it's NOT free agency season (or they have no cap space at all).
-  const isFreeAgencySeason = useMemo(() => {
-    const d = state.date ? new Date(state.date) : new Date();
-    const mo = d.getMonth() + 1;
-    return (mo >= 7 && mo <= 9) || mo >= 10 || mo <= 2;
-  }, [state.date]);
-
-  // Auto-allow roster-full block during FA with cap space (they can adjust roster via trade/waive)
-  useEffect(() => {
-    if (roster.totalFull && !rosterFullOverridden && isFreeAgencySeason && teamPayroll < thresholds.salaryCap) {
-      setRosterFullOverridden(true);
-    }
-  }, [roster.totalFull, rosterFullOverridden, isFreeAgencySeason, teamPayroll, thresholds.salaryCap]);
 
   if (roster.totalFull && !rosterFullOverridden && !isResign) {
 
@@ -1303,7 +1315,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                           surface what the contract limits logic derived so the user
                           knows whether max / supermax / extra years are unlocked. */}
                       {(() => {
-                        const hasBird = isResign || !!(player as any).hasBirdRights;
+                        const hasBird = isResign || teamHoldsBirdRights || !!(player as any).hasBirdRights;
                         const svc = ((player as any).stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
                         const recent = ((player as any).awards ?? []).filter((a: any) => a.season && a.season >= (leagueStats?.year ?? 2026) - 3);
                         const notableAwards = recent

@@ -11,9 +11,10 @@ export interface HOFInductee {
 interface HOFSectionProps {
   year: number;
   inductees: HOFInductee[];
+  onPlayerClick?: (player: NBAPlayer) => void;
 }
 
-const HOFSection: React.FC<HOFSectionProps> = ({ year, inductees }) => {
+const HOFSection: React.FC<HOFSectionProps> = ({ year, inductees, onPlayerClick }) => {
   return (
     <section className="relative mb-24 last:mb-0">
       {/* Year Header */}
@@ -30,7 +31,7 @@ const HOFSection: React.FC<HOFSectionProps> = ({ year, inductees }) => {
       {/* Cards grid */}
       <div className="grid gap-6 lg:grid-cols-2">
         {inductees.map(i => (
-          <HOFCard key={i.player.internalId} inductee={i} />
+          <HOFCard key={i.player.internalId} inductee={i} onClick={() => onPlayerClick?.(i.player)} />
         ))}
       </div>
     </section>

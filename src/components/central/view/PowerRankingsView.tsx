@@ -179,7 +179,10 @@ export const PowerRankingsView: React.FC = () => {
                   {!seasonNotStarted && <th className="px-3 md:px-4 py-3 md:py-4 font-bold text-center w-10 md:w-14">▲▼</th>}
                   {!seasonNotStarted && <th className="px-3 md:px-6 py-3 md:py-4 font-bold text-center w-16 md:w-20">Streak</th>}
                   {!seasonNotStarted && <th className="px-3 md:px-6 py-3 md:py-4 font-bold text-center w-16 md:w-20">Diff</th>}
-                  <th className="hidden lg:table-cell px-4 md:px-6 py-4 font-bold text-center w-20">Avg Age</th>
+                  <th className="px-2 md:px-6 py-3 md:py-4 font-bold text-center w-14 md:w-20">
+                    <span className="md:hidden">Age</span>
+                    <span className="hidden md:inline">Avg Age</span>
+                  </th>
                   {!seasonNotStarted && <th className="px-3 md:px-6 py-3 md:py-4 font-bold w-32 md:w-48">Last 10</th>}
                 </tr>
               </thead>
@@ -262,8 +265,8 @@ export const PowerRankingsView: React.FC = () => {
                       </span>
                     </td>
                     )}
-                    <td className="hidden lg:table-cell px-4 md:px-6 py-4 text-center">
-                      <span className="text-slate-300 font-bold text-sm">{row.avgAge}</span>
+                    <td className="px-2 md:px-6 py-3 md:py-4 text-center">
+                      <span className="text-slate-300 font-bold text-xs md:text-sm">{row.avgAge}</span>
                     </td>
                     {!seasonNotStarted && (
                     <td className="px-3 md:px-6 py-3 md:py-4">

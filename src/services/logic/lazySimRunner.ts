@@ -73,11 +73,11 @@ export const buildAutoResolveEvents = (y: number, leagueStats?: any): AutoResolv
   const hofCeremony = getHOFCeremonyDateString(y1);
   return [
     { date: `${y1}-08-06`, key: 'broadcasting_default',   resolver: autoBroadcastingDefault,         phase: 'Setting Broadcasting Deal...' },
+    { date: `${y1}-08-12`, key: 'christmas_games',        resolver: autoPickChristmasGames,          phase: 'Setting Christmas Games...' },
     { date: `${y1}-08-13`, key: 'global_games',           resolver: autoPickGlobalGames,             phase: 'Finalizing Global Schedule...' },
     { date: `${y1}-08-13`, key: 'intl_preseason',         resolver: autoScheduleIntlPreseason,       phase: 'Scheduling International Preseason...' },
     { date: `${y1}-08-14`, key: 'schedule_generation',    resolver: autoGenerateSchedule,            phase: 'Generating Schedule...' },
     { date: hofCeremony,   key: 'hof_induction',          resolver: autoInductHOFClass,              phase: 'Inducting Hall of Fame Class...' },
-    { date: `${y1}-12-24`, key: 'christmas_games',        resolver: autoPickChristmasGames,          phase: 'Setting Christmas Games...' },
     { date: `${y}-01-14`,  key: 'allstar_votes',          resolver: autoSimVotes,                    phase: 'Simulating All-Star Voting...' },
     { date: `${y}-01-22`,  key: 'allstar_starters',       resolver: autoAnnounceStarters,            phase: 'Announcing All-Star Starters...' },
     { date: `${y}-01-29`,  key: 'allstar_reserves',       resolver: autoAnnounceReserves,            phase: 'Announcing Reserves + Rising Stars...' },
@@ -556,8 +556,22 @@ export const runLazySim = async (
       const remaining = daysBetween(currentNorm, targetNorm);
       const effectiveBatch = nearRollover ? 1 : BATCH_SIZE;
       // remaining=0 when currentNorm==targetNorm — still need 1 iteration to sim today's games
-      const batchDays = Math.max(1, Math.min(effectiveBatch, remaining));
-      console.log(`[LAZY_SIM] 📊 iter ${iterNum} — remaining=${remaining}, batchDays=${batchDays}, nearRollover=${nearRollover}`);
+      let batchDays = Math.max(1, Math.min(effectiveBatch, remaining));
+
+      // Clamp: never overshoot the next unfired scheduled event for this season.
+      // Without this, a 7-day batch can skip past e.g. the draft date (Jun 25), and
+      // by the next iteration season rollover has already flipped the year — causing
+      // the event to never fire in-year, or worse, to double-fire via the post-sim
+      // gameLogic path once state.draftComplete gets reset by rollover mid-batch.
+      const nextEventDate = buildAutoResolveEvents(state.leagueStats.year, state.leagueStats)
+        .filter(e => !firedEvents.has(`${state.leagueStats.year}:${e.key}`) && e.date > currentNorm)
+        .map(e => e.date)
+        .sort()[0];
+      if (nextEventDate) {
+        const daysToEvent = daysBetween(currentNorm, nextEventDate);
+        if (daysToEvent > 0 && daysToEvent < batchDays) batchDays = daysToEvent;
+      }
+      console.log(`[LAZY_SIM] 📊 iter ${iterNum} — remaining=${remaining}, batchDays=${batchDays}, nearRollover=${nearRollover}, nextEvent=${nextEventDate ?? 'none'}`);
       if (remaining < 0) {
         console.log(`[LAZY_SIM] 🛑 iter ${iterNum} — remaining < 0, breaking`);
         break;
@@ -566,6 +580,7 @@ export const runLazySim = async (
       const { stateWithSim, allSimResults, perDayResults } = await runSimulation(state, batchDays, undefined, options?.onGame);
       console.log(`[LAZY_SIM] 🎮 iter ${iterNum} — after runSimulation: state.date=${stateWithSim.date}, simResults=${allSimResults.length}, perDayResults=${perDayResults.length}`);
       lastBatchSimResults = allSimResults; // track for silent mode return
+      console.log(`[LAZY_SIM] ✓ 581 post-runSim — iter ${iterNum}`);
 
       // Accumulate player season stats — normally called in processTurn, bypassed here
       const { updatedPlayers, updatedDraftPicks } = processSimulationResults(
@@ -575,6 +590,7 @@ export const runLazySim = async (
         stateWithSim.schedule,
         stateWithSim.leagueStats?.year
       );
+      console.log(`[LAZY_SIM] ✓ 591 post-processSimulationResults — iter ${iterNum}, updatedPlayers=${updatedPlayers.length}`);
 
       // Calculate per-day stats (approvals, viewership, funds) and build history points
       // This mirrors what gameLogic.ts does for normal turns so graphs stay continuous
@@ -605,11 +621,15 @@ export const runLazySim = async (
         });
       }
 
+      console.log(`[LAZY_SIM] ✓ 620 post-perDayLoop — iter ${iterNum}, histPoints=${newHistoricalPoints.length}`);
+
       // Generate social posts for the batch — player reactions, media posts, Shams injuries
       const nbaPlayers = updatedPlayers.filter(p => !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || ''));
       const socialEngine = new SocialEngine();
       const batchDateString = stateWithSim.date;
+      console.log(`[LAZY_SIM] ✓ 625 pre-socialEngine — iter ${iterNum}, nbaPlayers=${nbaPlayers.length}`);
       const enginePosts = await socialEngine.generateDailyPosts(allSimResults, nbaPlayers, stateWithSim.teams, batchDateString, batchDays, stateWithSim.playoffs, stateWithSim.schedule);
+      console.log(`[LAZY_SIM] ✓ 626 post-socialEngine — iter ${iterNum}, posts=${enginePosts.length}`);
 
       // Shams injury posts — supplement engine with explicit injury coverage
       const shamsInjuryPosts: any[] = [];
@@ -640,6 +660,7 @@ export const runLazySim = async (
         }
       }
       const allBatchPosts = [...enginePosts, ...shamsInjuryPosts];
+      console.log(`[LAZY_SIM] ✓ 662 post-shams — iter ${iterNum}, totalPosts=${allBatchPosts.length}`);
 
       // Generate narrative news for this batch (streaks, big games, injuries, drama)
       const batchNews = generateLazySimNews(
@@ -654,6 +675,7 @@ export const runLazySim = async (
         stateWithSim.schedule,
         stateWithSim.leagueStats?.year ?? 2026
       );
+      console.log(`[LAZY_SIM] ✓ 676 post-lazySimNews — iter ${iterNum}, news=${batchNews?.length ?? 0}`);
 
       // Playoff series news — detect series completions & championship this batch
       const playoffSeriesNews = generatePlayoffSeriesNews(
@@ -666,6 +688,7 @@ export const runLazySim = async (
         updatedPlayers,
         stateWithSim.historicalAwards
       );
+      console.log(`[LAZY_SIM] ✓ 690 post-playoffSeriesNews — iter ${iterNum}, news=${playoffSeriesNews?.length ?? 0}`);
 
       // Store championship in historicalAwards (Finals MVP determined by top playoff scorer on champ team)
       let champHistoricalAwards: HistoricalAward[] = [];

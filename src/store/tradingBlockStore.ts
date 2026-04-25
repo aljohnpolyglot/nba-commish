@@ -14,6 +14,9 @@ export interface TradingBlockEntry {
   blockIds: string[];
   targetIds: string[];
   blockPickIds: number[];
+  /** Free-agent scouting shortlist — separate from trade targets so the FA
+   *  scouting tab and the trade machine maintain distinct intent lists. */
+  faShortlistIds?: string[];
 }
 
 const STORAGE_PREFIX = 'nba-commish-tradingblocks::';

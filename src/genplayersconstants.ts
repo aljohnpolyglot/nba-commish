@@ -4,24 +4,27 @@ export const NAMES_URL = 'https://raw.githubusercontent.com/zengm-games/zengm/re
 export const ROSTER_URL = 'https://raw.githubusercontent.com/alexnoob/BasketBall-GM-Rosters/master/2025-26.NBA.Roster.json';
 
 export const EUROLEAGUE_TEAMS: Record<string, { name: string; country: string }> = {
-  "1000": { name: "Madrid Real", country: "Spain" },
-  "1002": { name: "Barcelona FC", country: "Spain" },
-  "1007": { name: "Istanbul Anadolu Efes", country: "Turkey" },
-  "1003": { name: "Istanbul Fenerbahce", country: "Turkey" },
-  "1001": { name: "Piraeus Olympiacos", country: "Greece" },
-  "1010": { name: "Athens Panathinaikos", country: "Greece" },
-  "1005": { name: "Kaunas Zalgiris", country: "Lithuania" },
-  "1008": { name: "Milano Olimpia", country: "Italy" },
-  "1014": { name: "Belgrade Crvena Zvezda", country: "Serbia" },
-  "1013": { name: "Belgrade Partizan", country: "Serbia" },
-  "1018": { name: "Moscow CSKA", country: "Russia" },
-  "1015": { name: "Bologna Virtus", country: "Italy" },
-  "1006": { name: "Vitoria-Gasteiz Baskonia", country: "Spain" },
-  "1017": { name: "Valencia Basket", country: "Spain" },
-  "1012": { name: "Monaco AS", country: "France" },
-  "1011": { name: "Villeurbanne ASVEL", country: "France" },
-  "1016": { name: "Berlin Alba", country: "Germany" },
-  "1009": { name: "Munich FC Bayern", country: "Germany" },
+  "1000": { name: "AEK Athens", country: "Greece" },
+  "1001": { name: "Alba Berlin", country: "Germany" },
+  "1002": { name: "Anadolu Efes", country: "Turkey" },
+  "1003": { name: "AS Monaco", country: "France" },
+  "1004": { name: "Baskonia", country: "Spain" },
+  "1005": { name: "Crvena Zvezda", country: "Serbia" },
+  "1006": { name: "Moscow CSKA", country: "Russia" },
+  "1007": { name: "Dreamland Gran Canaria", country: "Spain" },
+  "1008": { name: "Dubai", country: "UAE" },
+  "1009": { name: "EA7 Emporio Armani Milan", country: "Italy" },
+  "1010": { name: "FC Barcelona", country: "Spain" },
+  "1011": { name: "FC Bayern Munich", country: "Germany" },
+  "1012": { name: "Fenerbahce", country: "Turkey" },
+  "1013": { name: "Hapoel Tel Aviv", country: "Israel" },
+  "1014": { name: "LDLC ASVEL", country: "France" },
+  "1015": { name: "Maccabi Tel Aviv", country: "Israel" },
+  "1016": { name: "Olympiacos", country: "Greece" },
+  "1017": { name: "Panathinaikos", country: "Greece" },
+  "1018": { name: "Paris", country: "France" },
+  "1019": { name: "Partizan", country: "Serbia" },
+  "1020": { name: "Real Madrid", country: "Spain" },
   "1041": { name: "Vilnius Rytas", country: "Lithuania" },
   "1022": { name: "Podgorica Buducnost", country: "Montenegro" },
   "1043": { name: "Ljubljana Olimpija", country: "Slovenia" },
@@ -239,12 +242,17 @@ export interface Ratings {
   reb: number;
   ovr: number;
   pot: number;
+  /** Hidden development-trajectory multiplier applied to annual base change.
+   *  Seeded once at generation. ~0.55–0.80 for bust-risk hyped prospects,
+   *  ~1.15–1.40 for hidden gems, ~0.90–1.10 for normal. Missing → treat as 1.0. */
+  devSpeed?: number;
 }
 
 export interface Player {
   id: string;
   firstName: string;
   lastName: string;
+  jerseyNumber: string;
   pos: Position;
   age: number;
   born: {

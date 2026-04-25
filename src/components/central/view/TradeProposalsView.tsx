@@ -28,6 +28,7 @@ import {
   getTeamPayrollUSD, getTeamCapProfile, topNAvgK2, resolveManualOutlook,
   type TradeOutlook,
 } from '../../../utils/salaryUtils';
+import { tradeRoleToTeamMode } from '../../../utils/teamStrategy';
 
 // ── Status tab pill ──────────────────────────────────────────────────────────
 
@@ -38,9 +39,7 @@ const STATUS_META = {
 } as const;
 
 function roleToMode(role: string): TeamMode {
-  if (role === 'heavy_buyer' || role === 'buyer') return 'contend';
-  if (role === 'rebuilding') return 'presti';
-  return 'rebuild';
+  return tradeRoleToTeamMode(role);
 }
 
 // ── Proposal → FoundOffer adapter ────────────────────────────────────────────

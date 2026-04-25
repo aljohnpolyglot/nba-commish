@@ -8,6 +8,7 @@ import { fetchEuroleagueRoster, fetchWNBARoster, fetchPBARoster, fetchBLeagueRos
 import { EXTERNAL_SALARY_SCALE } from '../../constants';
 import { convertTo2KRating } from '../../utils/helpers';
 import { loadNameData } from '../../data/nameDataFetcher';
+import { enforceExternalMinRoster } from '../../services/externalLeagueSustainer';
 
 import { calculateSocialEngagement } from '../../utils/helpers';
 import { generateFuturePicks } from '../../services/draft/DraftPickGenerator';
@@ -26,6 +27,7 @@ interface StartGamePayload {
 
 export const handleStartGame = async (payload: StartGamePayload): Promise<Partial<GameState>> => {
     const { name: commissionerName } = payload;
+    const SHADOWED_ENDESA_TEAM_TIDS = new Set([5006, 5012]); // FC Barcelona, Real Madrid — use Euroleague club only
     // Kick off name-data fetch early — it runs in parallel with roster loads and
     // is done by the time we need to synthesize the first draft-class top-up.
     const nameDataPromise = loadNameData();
@@ -93,8 +95,15 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         .filter(p => !existingNbaNames.has(normName(p.name)))
         .map(p => ({ ...p, status: 'G-League' as const }));
 
+    const filteredEndesaTeams = endesaTeams
+        .filter(t => !SHADOWED_ENDESA_TEAM_TIDS.has(t.tid));
+
     const uniqueEndesaPlayers = endesaPlayers
-        .filter(p => !existingNbaNames.has(normName(p.name)) && !euroNames.has(normName(p.name)))
+        .filter(p =>
+            !SHADOWED_ENDESA_TEAM_TIDS.has(p.tid) &&
+            !existingNbaNames.has(normName(p.name)) &&
+            !euroNames.has(normName(p.name))
+        )
         .map(p => ({ ...p, status: 'Endesa' as const }));
 
     const uniquePBAPlayers = pbaPlayers
@@ -192,17 +201,30 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         players[i] = { ...p, contract: { ...p.contract, amount: synced } };
     }
 
+    const initialNonNBATeams = [...euroTeams, ...pbaTeams, ...wnbaTeams, ...bleagueTeams, ...filteredEndesaTeams, ...gleagueTeams, ...chinaTeams, ...nblAusTeams];
+    const { additions: initialExternalFillers } = enforceExternalMinRoster({
+        players,
+        nonNBATeams: initialNonNBATeams,
+        leagueStats: {
+            ...INITIAL_LEAGUE_STATS,
+            mediaRights: DEFAULT_MEDIA_RIGHTS,
+        } as any,
+    } as any, startYear);
+    const allPlayers = initialExternalFillers.length > 0
+        ? [...players, ...initialExternalFillers]
+        : players;
+
     // Draft-class top-up runs at rollover only. Prefetch the current-year
     // scouting gist in the background so DraftScoutingView renders instantly on
     // first open instead of showing a "Loading Draft Board..." spinner. Errors
     // are tolerated — DraftScoutingView still has its own lazy fetch path.
-    import('../../components/central/view/DraftScoutingView')
+    import('../../services/draftScoutingGist')
       .then(m => m.prefetchDraftScouting(INITIAL_LEAGUE_STATS.year))
       .catch(() => {});
     // Name data is still warmed in the background so rollover has it ready.
     nameDataPromise.catch(() => {}); // fire-and-forget; errors tolerable
 
-    if (players.some(p => p.name.toLowerCase() === 'devin booker')) {
+    if (allPlayers.some(p => p.name.toLowerCase() === 'devin booker')) {
         console.log("🏀 DEV1N B00K3R 1S L0AD3D! 🏀");
     }
 
@@ -219,7 +241,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     // Generate Initial Content via AI (based on Aug 6 — the simulation start point)
     let initialContent: any = { newEmails: [], newNews: [], newSocialPosts: [] };
     if (!payload.skipLLM) {
-        initialContent = await generateInitialContent(startDateFormatted, commissionerName, players, teams, emptyStaff);
+        initialContent = await generateInitialContent(startDateFormatted, commissionerName, allPlayers, teams, emptyStaff);
     } else {
         // Mode-aware welcome content: GM hires get a team-specific "X hired by Y as General Manager" post.
         const isGM = payload.gameMode === 'gm';
@@ -313,10 +335,11 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     console.log(`PBA: ${pbaPlayers.length} players, ${pbaTeams.length} teams`);
     console.log(`B-League: ${bleaguePlayers.length} players, ${bleagueTeams.length} teams`);
     console.log(`G-League: ${gleaguePlayers.length} players, ${gleagueTeams.length} teams`);
-    console.log(`Endesa: ${endesaPlayers.length} players, ${endesaTeams.length} teams`);
+    console.log(`Endesa: ${uniqueEndesaPlayers.length} players, ${filteredEndesaTeams.length} teams`);
     console.log(`China CBA: ${chinaPlayers.length} players, ${chinaTeams.length} teams`);
     console.log(`NBL Australia: ${nblAusPlayers.length} players, ${nblAusTeams.length} teams`);
-    console.log(`Total Players: ${players.length}`);
+    console.log(`Generated External Fillers: ${initialExternalFillers.length}`);
+    console.log(`Total Players: ${allPlayers.length}`);
     console.log("====================================");
 
     // All-Star Initialization (none needed at Aug 12 — voting hasn't started)
@@ -324,7 +347,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
 
     // Extend draft pick window to cover all tradable future seasons from day 1.
     // BBGM data only includes current + next year; generateFuturePicks adds the rest.
-    const nbaNBATeams = teams.filter((t: any) => t.id > 0 && t.id < 100);
+    const nbaNBATeams = teams.filter((t: any) => t.id >= 0 && t.id < 100);
     const initYear = INITIAL_LEAGUE_STATS.year;
     const initWindowSize = INITIAL_LEAGUE_STATS.tradableDraftPickSeasons ?? 7;
     const initialDraftPicks = generateFuturePicks(draftPicks, nbaNBATeams as any, initYear, initWindowSize);
@@ -332,8 +355,8 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     const statePatch: Partial<GameState> = {
         commissionerName,
         teams,
-        nonNBATeams: [...euroTeams, ...pbaTeams, ...wnbaTeams, ...bleagueTeams, ...endesaTeams, ...gleagueTeams, ...chinaTeams, ...nblAusTeams],
-        players,
+        nonNBATeams: [...euroTeams, ...pbaTeams, ...wnbaTeams, ...bleagueTeams, ...filteredEndesaTeams, ...gleagueTeams, ...chinaTeams, ...nblAusTeams],
+        players: allPlayers,
         draftPicks: initialDraftPicks,
         staff: null,
         schedule,

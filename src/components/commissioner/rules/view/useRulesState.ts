@@ -224,6 +224,15 @@ const [minAgeRequirement, setMinAgeRequirement] = useState<number | string>(leag
   // Economy - Draft Picks
   const [tradableDraftPickSeasons, setTradableDraftPickSeasons] = useState(leagueStats.tradableDraftPickSeasons ?? 7);
 
+  // Economy - Exceptions (TPE / DPE)
+  const [tradeExceptionsEnabled, setTradeExceptionsEnabled] = useState(leagueStats.tradeExceptionsEnabled ?? true);
+  const [disabledPlayerExceptionEnabled, setDisabledPlayerExceptionEnabled] = useState(leagueStats.disabledPlayerExceptionEnabled ?? false);
+
+  // Economy - Restricted Free Agent matching
+  const [rfaMatchingEnabled, setRfaMatchingEnabled] = useState((leagueStats as any).rfaMatchingEnabled ?? true);
+  const [rfaMatchWindowDays, setRfaMatchWindowDays] = useState((leagueStats as any).rfaMatchWindowDays ?? 2);
+  const [rfaAutoDeclineOver2ndApron, setRfaAutoDeclineOver2ndApron] = useState((leagueStats as any).rfaAutoDeclineOver2ndApron ?? true);
+
   // Economy - Transaction Calendar (trade deadline + FA window)
   const [tradeDeadlineMonth, setTradeDeadlineMonth] = useState(leagueStats.tradeDeadlineMonth ?? 2);
   const [tradeDeadlineOrdinal, setTradeDeadlineOrdinal] = useState(leagueStats.tradeDeadlineOrdinal ?? 1);
@@ -407,6 +416,11 @@ const [minAgeRequirement, setMinAgeRequirement] = useState<number | string>(leag
         biannualEnabled !== (leagueStats.biannualEnabled ?? true) ||
         biannualAmount !== (leagueStats.biannualAmount ?? 4_767_000) ||
         tradableDraftPickSeasons !== (leagueStats.tradableDraftPickSeasons ?? 7) ||
+        tradeExceptionsEnabled !== (leagueStats.tradeExceptionsEnabled ?? true) ||
+        disabledPlayerExceptionEnabled !== (leagueStats.disabledPlayerExceptionEnabled ?? false) ||
+        rfaMatchingEnabled !== ((leagueStats as any).rfaMatchingEnabled ?? true) ||
+        rfaMatchWindowDays !== ((leagueStats as any).rfaMatchWindowDays ?? 2) ||
+        rfaAutoDeclineOver2ndApron !== ((leagueStats as any).rfaAutoDeclineOver2ndApron ?? true) ||
         tradeDeadlineMonth !== (leagueStats.tradeDeadlineMonth ?? 2) ||
         tradeDeadlineOrdinal !== (leagueStats.tradeDeadlineOrdinal ?? 1) ||
         tradeDeadlineDayOfWeek !== (leagueStats.tradeDeadlineDayOfWeek ?? 'Thu') ||
@@ -751,6 +765,11 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
             taxpayerMlePercentage,
             biannualPercentage,
             tradableDraftPickSeasons,
+            tradeExceptionsEnabled,
+            disabledPlayerExceptionEnabled,
+            rfaMatchingEnabled,
+            rfaMatchWindowDays,
+            rfaAutoDeclineOver2ndApron,
             tradeDeadlineMonth,
             tradeDeadlineOrdinal,
             tradeDeadlineDayOfWeek,
@@ -975,6 +994,11 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
     setBiannualEnabled(leagueStats.biannualEnabled ?? true);
     setBiannualAmount(leagueStats.biannualAmount ?? 4_767_000);
     setTradableDraftPickSeasons(leagueStats.tradableDraftPickSeasons ?? 7);
+    setTradeExceptionsEnabled(leagueStats.tradeExceptionsEnabled ?? true);
+    setDisabledPlayerExceptionEnabled(leagueStats.disabledPlayerExceptionEnabled ?? false);
+    setRfaMatchingEnabled((leagueStats as any).rfaMatchingEnabled ?? true);
+    setRfaMatchWindowDays((leagueStats as any).rfaMatchWindowDays ?? 2);
+    setRfaAutoDeclineOver2ndApron((leagueStats as any).rfaAutoDeclineOver2ndApron ?? true);
     setTradeDeadlineMonth(leagueStats.tradeDeadlineMonth ?? 2);
     setTradeDeadlineOrdinal(leagueStats.tradeDeadlineOrdinal ?? 1);
     setTradeDeadlineDayOfWeek(leagueStats.tradeDeadlineDayOfWeek ?? 'Thu');
@@ -1287,6 +1311,11 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
     taxpayerMlePercentage, setTaxpayerMlePercentage,
     biannualPercentage, setBiannualPercentage,
     tradableDraftPickSeasons, setTradableDraftPickSeasons,
+    tradeExceptionsEnabled, setTradeExceptionsEnabled,
+    disabledPlayerExceptionEnabled, setDisabledPlayerExceptionEnabled,
+    rfaMatchingEnabled, setRfaMatchingEnabled,
+    rfaMatchWindowDays, setRfaMatchWindowDays,
+    rfaAutoDeclineOver2ndApron, setRfaAutoDeclineOver2ndApron,
     tradeDeadlineMonth, setTradeDeadlineMonth,
     tradeDeadlineOrdinal, setTradeDeadlineOrdinal,
     tradeDeadlineDayOfWeek, setTradeDeadlineDayOfWeek,

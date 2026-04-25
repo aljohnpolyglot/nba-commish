@@ -1,6 +1,4 @@
-// Charania Photo Helper
-// Fetches real Shams tweet photos from GitHub at app startup (same pattern as statmuseImages.ts).
-// Used to attach contextual images to Shams injury posts in socialHandler.ts.
+import { fetchWithCache } from '../utils/fetchWithCache';
 
 const CHARANIA_PHOTOS_URL =
     'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/shamstweetsphotos';
@@ -17,16 +15,10 @@ export interface CharaniaPhotoEntry {
 export let CHARANIA_PHOTOS: CharaniaPhotoEntry[] = [];
 
 export const fetchCharaniaPhotos = async () => {
-    console.log('[CharaniaPhotos] Fetching Shams tweet photos...');
-    try {
-        const res = await fetch(CHARANIA_PHOTOS_URL);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: CharaniaPhotoEntry[] = await res.json();
-        // Only keep entries that have an actual photo (exclude video thumbnails)
+    const data = await fetchWithCache<CharaniaPhotoEntry[]>('charania-photos', CHARANIA_PHOTOS_URL);
+    if (data) {
         CHARANIA_PHOTOS = data.filter(e => !!e.image_url && !e.image_url.includes('amplify_video_thumb'));
         console.log(`[CharaniaPhotos] Loaded ${CHARANIA_PHOTOS.length} photos.`);
-    } catch (err) {
-        console.warn('[CharaniaPhotos] Failed to load:', err);
     }
 };
 

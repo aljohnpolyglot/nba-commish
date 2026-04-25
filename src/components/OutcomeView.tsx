@@ -2,12 +2,15 @@ import React from 'react';
 import { useGame } from '../store/GameContext';
 import { X, TrendingUp, TrendingDown, Sparkles, DollarSign, Users, Trophy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { SettingsManager } from '../services/SettingsManager';
 
 export const OutcomeView: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const { lastOutcome, lastConsequence } = state;
 
+  const settings = SettingsManager.getSettings();
   if (!lastOutcome) return null;
+  if (!settings.enableLLM || !(settings.showExecutiveOutcome ?? true)) return null;
 
   const handleClose = () => {
     dispatchAction({ type: 'CLEAR_OUTCOME' });

@@ -1,0 +1,27 @@
+Names:4;Appearance:4;Parameters:7;Location:4
+FullName;Full Name;Defines arena’s full name. It is shown at match startups and in most other situations
+ShortName;Short Name;Defines arena’s short name. It is used, when selecting an Arena in Match Options -> Select Arena
+#
+__FullName;Full Name Replacer;Set to zero to use the value, stored in FullName, as Arena's Full Name. Otherwise the actual arena's full name is grabbed from the *current_language*.IFF file, using the value as a string ID.
+__ShrtName;Short Name Replacer;Set to zero to use the value, stored in ShortName, as Arena's Short Name. Otherwise the actual arena's short name is grabbed from the *current_language*.IFF file, using the value as a string ID.
+Model3D;3D Model;A name of an IFF-file, where the arena’s 3D Model and some other parameters are stored
+FloorName;Floor Name;An IFF-file name, where the floor, used by the arena, is stored
+LED;LED;This field stands for the arena’s LED file
+Ads;Advertisments;This field defines an IFF file, where the arena's adverts are stored
+AType;Arena Type;Defines Arena Type
+#
+AudioID;Audio ID;Arena's Audio ID
+#
+Shadows;Shadows;Shadows, used by the arena.
+HCParamsID;Hard-Coded Params;The ID, used to define a set of hard-coded parameters, applied to the Arena (mainly used in Blactop mode). The set includes parameters such as lightning mode, crowd size, ect. Use 604 for the Rucker Day set or 611 for the Rucker Night set, other values are probably generic.
+#
+InitCrtSds;Initial Court Sides;Defines the team, which starts the game on the left side of the court (on Broadcast camera). Also affects home and away teams' bench positions.
+PracMenCam;Practice Mode Menu Cameras;Controls, which set of cameras is used, when Practice Mode menu is open.
+#
+Capacity;Capacity;Arena’s capacity. Purposes of this value are not known, but setting it to 0 will give you empty stands, other values have no effect
+City;City;This field stands for the city, the arena is located in
+CityAbbr;City Abbreviation;This field stands for the city abbreviation, the arena is located in
+#
+SomeName;Some Name;This field stands for some arena’s name. All arenas have an empty name here, except for LAC and LAL.
+#
+StAbbr;State Abbreviation;This field stands for the state abbreviation, the arena is located in

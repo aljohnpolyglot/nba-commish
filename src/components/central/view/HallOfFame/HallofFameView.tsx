@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Search, Crown, Hourglass } from 'lucide-react';
 import { useGame } from '../../../../store/GameContext';
 import { SettingsManager } from '../../../../services/SettingsManager';
-import { careerWinShares, upcomingHOFCandidates, HOF_WAIT_YEARS, getHOFCeremonyDateString } from '../../../../services/playerDevelopment/hofChecker';
+import { careerWinShares, upcomingHOFCandidates, HOF_FIRST_BALLOT_WAIT_YEARS, HOF_BORDERLINE_WAIT_YEARS, getHOFCeremonyDateString } from '../../../../services/playerDevelopment/hofChecker';
 import { fetchHOFData, ProcessedHOFPlayer } from '../../../../data/HOFData';
 import type { NBAPlayer } from '../../../../types';
 import HOFSection, { HOFInductee } from './components/HOFSection';
+import { PlayerBioView } from '../PlayerBioView';
 
 const normalize = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
 
@@ -37,6 +38,7 @@ export default function HallofFameView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [externalInductees, setExternalInductees] = useState<ProcessedHOFPlayer[]>([]);
   const [externalLoading, setExternalLoading] = useState(true);
+  const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
 
   const currentYear = state.leagueStats?.year ?? 2026;
   const hofThreshold = SettingsManager.getSettings().hofWSThreshold ?? 50;
@@ -109,6 +111,10 @@ export default function HallofFameView() {
     return upcomingHOFCandidates(state.players ?? [], currentYear, hofThreshold).slice(0, 8);
   }, [state.players, currentYear, hofThreshold]);
 
+  if (viewingPlayer) {
+    return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
+  }
+
   return (
     <div className="h-full overflow-y-auto bg-regal-black text-regal-paper selection:bg-regal-gold selection:text-regal-black" style={{ scrollbarWidth: 'thin' }}>
       {/* Hero — cinematic basketball background */}
@@ -168,12 +174,12 @@ export default function HallofFameView() {
               <Hourglass className="text-regal-gold" size={20} />
               <div>
                 <h2 className="font-display text-xl font-bold text-regal-paper">Awaiting Induction</h2>
-                <p className="text-[11px] uppercase tracking-wider text-zinc-500">Retired greats inside the {HOF_WAIT_YEARS}-season waiting period</p>
+                <p className="text-[11px] uppercase tracking-wider text-zinc-500">First ballot opens after {HOF_FIRST_BALLOT_WAIT_YEARS} seasons retired; late-ballot cases can run as long as {HOF_BORDERLINE_WAIT_YEARS}</p>
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {upcoming.map(c => (
-                <div key={c.player.internalId} className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
+                <div key={c.player.internalId} onClick={() => setViewingPlayer(c.player)} className="cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 transition-all hover:border-regal-gold/50 hover:bg-zinc-900">
                   <div className="flex items-center gap-3">
                     {c.player.imgURL ? (
                       <img src={c.player.imgURL} alt={c.player.name} className="h-10 w-10 rounded-full object-cover object-top" referrerPolicy="no-referrer" />
@@ -184,11 +190,20 @@ export default function HallofFameView() {
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-bold text-regal-paper">{c.player.name}</div>
-                      {c.firstBallot && (
-                        <div className="mt-0.5">
-                          <span className="rounded bg-regal-gold/20 px-1.5 text-[9px] font-bold uppercase tracking-wider text-regal-gold">1st Ballot</span>
-                        </div>
-                      )}
+                      <div className="mt-0.5 flex flex-wrap gap-1">
+                        <span className={`rounded px-1.5 text-[9px] font-bold uppercase tracking-wider ${
+                          c.tier === 'first_ballot'
+                            ? 'bg-regal-gold/20 text-regal-gold'
+                            : c.tier === 'borderline'
+                              ? 'bg-rose-500/15 text-rose-300'
+                              : 'bg-sky-500/15 text-sky-300'
+                        }`}>
+                          {c.tierLabel}
+                        </span>
+                        <span className="rounded bg-zinc-800 px-1.5 text-[9px] font-bold uppercase tracking-wider text-zinc-300">
+                          {c.yearsUntilEligible === 0 ? 'Eligible Now' : `${c.yearsUntilEligible}y Left`}
+                        </span>
+                      </div>
                     </div>
                     <div className="text-right">
                       <div className="text-[9px] uppercase tracking-wider text-zinc-600">Class of</div>
@@ -213,7 +228,12 @@ export default function HallofFameView() {
           <AnimatePresence mode="popLayout">
             {groupedByYear.length > 0 ? (
               groupedByYear.map(group => (
-                <HOFSection key={group.year} year={group.year} inductees={group.players} />
+                <HOFSection
+                  key={group.year}
+                  year={group.year}
+                  inductees={group.players}
+                  onPlayerClick={setViewingPlayer}
+                />
               ))
             ) : (
               <motion.div

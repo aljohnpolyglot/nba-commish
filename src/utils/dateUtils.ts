@@ -79,6 +79,9 @@ type TxnCalendar = {
   combineEndDay?: number;
   trainingCampMonth?: number;
   trainingCampDay?: number;
+  allStarMonth?: number;
+  allStarOrdinal?: number;
+  allStarDayOfWeek?: DayAbbr;
 };
 
 /**
@@ -170,11 +173,19 @@ export function getDraftLotteryDate(seasonYear: number, stats?: TxnCalendar): Da
   return new Date(Date.UTC(seasonYear, m - 1, d));
 }
 
-/** NBA Draft: Jun 25 by default. */
+/** NBA Draft: last Thursday of the month the Finals end in (NBA convention).
+ *  - 4 playoff rounds (default) → June
+ *  - Each extra round at LeagueSettings pushes the draft one month later
+ *  - Explicit stats.draftMonth/draftDay overrides the computed date entirely. */
 export function getDraftDate(seasonYear: number, stats?: TxnCalendar): Date {
-  const m = stats?.draftMonth ?? 6;
-  const d = stats?.draftDay ?? 25;
-  return new Date(Date.UTC(seasonYear, m - 1, d));
+  if (stats?.draftMonth != null && stats?.draftDay != null) {
+    return new Date(Date.UTC(seasonYear, stats.draftMonth - 1, stats.draftDay));
+  }
+  const numRounds = (stats as any)?.numGamesPlayoffSeries?.length ?? 4;
+  const monthIdx = 5 + Math.max(0, numRounds - 4); // 5 = June
+  const lastDayOfMonth = new Date(Date.UTC(seasonYear, monthIdx + 1, 0));
+  const offsetFromThursday = (lastDayOfMonth.getUTCDay() - 4 + 7) % 7;
+  return new Date(Date.UTC(seasonYear, monthIdx, lastDayOfMonth.getUTCDate() - offsetFromThursday));
 }
 
 /** Draft Combine window start: May 19 by default. */
@@ -199,4 +210,22 @@ export function getTrainingCampDate(seasonYear: number, stats?: TxnCalendar): Da
   const m = stats?.trainingCampMonth ?? 10;
   const d = stats?.trainingCampDay ?? 1;
   return new Date(Date.UTC(seasonYear - 1, m - 1, d));
+}
+
+/**
+ * All-Star Game: 3rd Sunday of February in the current season year.
+ * e.g. seasonYear=2026 → 3rd Sunday of Feb 2026
+ */
+export function getAllStarGameDate(seasonYear: number, stats?: TxnCalendar): Date {
+  const month   = stats?.allStarMonth   ?? 2;
+  const ordinal = stats?.allStarOrdinal ?? 3;
+  const day     = (stats?.allStarDayOfWeek ?? 'Sun') as DayAbbr;
+  return resolveSeasonDate(seasonYear, month, ordinal, day, 0);
+}
+
+/**
+ * Rising Stars / All-Star weekend start: 2 days before the All-Star Game (Friday).
+ */
+export function getAllStarWeekendStartDate(seasonYear: number, stats?: TxnCalendar): Date {
+  return new Date(getAllStarGameDate(seasonYear, stats).getTime() - 2 * 86_400_000);
 }

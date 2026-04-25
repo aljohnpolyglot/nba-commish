@@ -267,7 +267,7 @@ export const DraftLotteryView = () => {
   const activeTeams: LotteryTeam[] = useMemo(() => {
     const poolSize = Math.min(14, activePreset.chances.length);
     const sorted = [...state.teams]
-      .filter(t => t.id > 0)
+      .filter(t => t.id >= 0 && t.id < 100)
       .sort((a, b) => {
         const wa = a.wins / Math.max(1, a.wins + a.losses);
         const wb = b.wins / Math.max(1, b.wins + b.losses);

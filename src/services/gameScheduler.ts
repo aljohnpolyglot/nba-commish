@@ -1,6 +1,7 @@
-import { NBATeam, Game, MediaRights } from '../types';
+import { NBATeam, Game, MediaRights, NBACupGroup } from '../types';
 import { getAllStarWeekendDates } from './allStar/AllStarWeekendOrchestrator';
 import { attachBroadcastersToGames } from '../utils/broadcastingUtils';
+import { injectCupGroupGames } from './nbaCup/scheduleInjector';
 
 export const generateSchedule = (
   teams: NBATeam[],
@@ -10,6 +11,8 @@ export const generateSchedule = (
   conferenceGames?: number | null,
   mediaRights?: MediaRights | null,
   seasonYear?: number,
+  cupGroups?: NBACupGroup[],
+  saveId?: string,
 ): Game[] => {
   const games: Game[] = [];
   let gameId = 0; // gid 90000-90001 reserved for All-Star games
@@ -164,6 +167,16 @@ export const generateSchedule = (
               country: game.country
           });
       }
+  }
+
+  // Inject Cup group-stage games (Nov 4 – Dec 2 Tue/Fri Cup Nights).
+  // injectCupGroupGames mutates the passed `games` array in place AND returns
+  // the same reference — DO NOT reassign games via length=0 + push(...result.games),
+  // that wipes everything because result.games is the same array reference.
+  // Just keep the returned gameId and continue.
+  if (cupGroups && cupGroups.length > 0) {
+    const result = injectCupGroupGames(games, gameId, cupGroups, saveId || 'default', prevYr, scheduledDates);
+    gameId = result.gameId;
   }
 
   // BUG 5 FIX: Track pairs that already have a pre-scheduled game (Christmas/global)

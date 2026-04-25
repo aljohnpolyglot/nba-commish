@@ -151,6 +151,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               const hasFinals     = games.some((g: Game) => g.isPlayoff && finalsGameIds.has(g.gid));
               const hasPreseason  = games.some((g: Game) => g.isPreseason && !g.isExhibition);
               const hasExhibition = games.some((g: Game) => g.isExhibition);
+              const hasCupFinal   = games.some((g: Game) => (g as any).isNBACup && (g as any).nbaCupRound === 'Final');
+              const hasCupKO      = games.some((g: Game) => (g as any).isNBACup && ((g as any).nbaCupRound === 'QF' || (g as any).nbaCupRound === 'SF'));
+              const hasCupGroup   = games.some((g: Game) => (g as any).isNBACup && (g as any).nbaCupRound === 'group');
 
               // Fixed calendar windows
               const calMonth1 = month + 1;
@@ -308,8 +311,32 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     </div>
                   )}
 
+                  {/* Cup Final tile — golden Trophy */}
+                  {!isAllStarWeekend && !hasRichGM && !hasFinals && !showPlayoff && !showPlayIn && hasCupFinal && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-0.5">
+                      <Trophy size={22} className="md:w-7 md:h-7 text-amber-300/80" strokeWidth={1.5} fill="currentColor" />
+                      <span className="hidden md:block text-[7px] font-black uppercase tracking-widest text-amber-300/80">Cup Final</span>
+                    </div>
+                  )}
+
+                  {/* Cup KO tile (QF/SF) */}
+                  {!isAllStarWeekend && !hasRichGM && !hasFinals && !showPlayoff && !showPlayIn && !hasCupFinal && hasCupKO && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-0.5">
+                      <Trophy size={20} className="md:w-6 md:h-6 text-orange-300/70" strokeWidth={1.5} />
+                      <span className="hidden md:block text-[7px] font-black uppercase tracking-widest text-orange-300/70">Cup KO</span>
+                    </div>
+                  )}
+
+                  {/* Cup Night tile (group stage) */}
+                  {!isAllStarWeekend && !hasRichGM && !hasFinals && !showPlayoff && !showPlayIn && !hasCupFinal && !hasCupKO && hasCupGroup && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-0.5">
+                      <span className="text-[16px] md:text-[20px] opacity-50">🏆</span>
+                      <span className="hidden md:block text-[7px] font-black uppercase tracking-widest text-orange-300/70">Cup Night</span>
+                    </div>
+                  )}
+
                   {/* Trade Deadline tile */}
-                  {!isAllStarWeekend && !hasRichGM && !showPlayoff && !showPlayIn && isTradeDeadline && (
+                  {!isAllStarWeekend && !hasRichGM && !showPlayoff && !showPlayIn && !hasCupFinal && !hasCupKO && !hasCupGroup && isTradeDeadline && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-0.5">
                       <Clock size={20} className="md:w-6 md:h-6 text-orange-300/75" strokeWidth={1.5} />
                       <span className="hidden md:block text-[7px] font-black uppercase tracking-widest text-orange-300/70">Deadline</span>
@@ -437,6 +464,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       {!isUserFinals && (userGame.isPlayoff || userGame.isPlayIn) && (
                         <span className="absolute top-1 right-1 md:right-auto md:left-1 text-[7px] font-black uppercase tracking-widest text-amber-300">
                           {userGame.isPlayIn ? 'P-IN' : `PO${userGame.playoffGameNumber ? ` G${userGame.playoffGameNumber}` : ''}`}
+                        </span>
+                      )}
+                      {(userGame as any).isNBACup && (
+                        <span className="absolute top-1 right-1 md:right-auto md:left-1 text-[7px] font-black uppercase tracking-widest text-amber-300 inline-flex items-center gap-0.5">
+                          <Trophy size={9} className="md:w-2.5 md:h-2.5" />
+                          {(userGame as any).nbaCupRound === 'Final' ? 'CUP F'
+                            : (userGame as any).nbaCupRound === 'SF' ? 'CUP SF'
+                            : (userGame as any).nbaCupRound === 'QF' ? 'CUP QF'
+                            : 'CUP'}
                         </span>
                       )}
                       {isUserPreseason && (

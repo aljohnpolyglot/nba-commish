@@ -8,7 +8,7 @@ import { computeMoodScore, dramaProbability, moodToStoryType } from '../../utils
 import * as StoryGenerators from '../../services/storyGenerators';
 import { handleTransferFunds, handleGiveMoney, handleFinePerson, handleBribePerson, handleAdjustFinancials } from './actions/financeActions';
 import { handleExecutiveTrade, handleForceTrade } from './actions/tradeActions';
-import { handleSignFreeAgent, handleSuspendPlayer, handleSabotagePlayer, handleDrugTestPerson, handleWaivePlayer, handleFirePersonnel } from './actions/playerActions';
+import { handleSignFreeAgent, handleSuspendPlayer, handleSabotagePlayer, handleDrugTestPerson, handleWaivePlayer, handleFirePersonnel, handleExerciseTeamOption, handleDeclineTeamOption } from './actions/playerActions';
 import { handleInvitePerformance, handleGlobalGames, handleRigLottery, handleHypnotize, handleHypnoticBroadcast, handleVisitNonNbaTeam, handleTravel, handleInviteDinner } from './actions/eventActions';
 import { handleGoToClub } from './actions/clubActions';
 import { handleEndorseHof } from './actions/hofActions';
@@ -103,6 +103,10 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
         result = await handleDrugTestPerson(stateWithSim, action, simResults, recentDMs);
     } else if (action.type === 'WAIVE_PLAYER') {
         result = await handleWaivePlayer(stateWithSim, action, simResults, recentDMs);
+    } else if (action.type === 'EXERCISE_TEAM_OPTION') {
+        result = await handleExerciseTeamOption(stateWithSim, action);
+    } else if (action.type === 'DECLINE_TEAM_OPTION') {
+        result = await handleDeclineTeamOption(stateWithSim, action);
     } else if (action.type === 'FIRE_PERSONNEL') {
         result = await handleFirePersonnel(stateWithSim, action, simResults, recentDMs);
     } else if (action.type === 'SABOTAGE_PLAYER') {

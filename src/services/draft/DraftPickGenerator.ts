@@ -39,12 +39,14 @@ export function generateFuturePicks(
   newCurrentYear: number,
   windowSize: number = 4,
 ): DraftPick[] {
-  const nbaTids = teams.filter(t => t.tid >= 0 && t.tid < 100).map(t => t.tid);
+  const nbaTids = teams.filter(t => (t as any).id >= 0 && (t as any).id < 100).map(t => (t as any).id as number);
 
-  // Build a Set of (tid, season, round) tuples that already exist
+  // Build a Set of (originalTid, season, round) tuples that already exist.
+  // Must key on originalTid — if a pick was traded, p.tid is the new owner but
+  // the pick for that original slot is already covered.
   const existingSet = new Set<string>();
   for (const p of existingPicks) {
-    existingSet.add(`${p.tid}_${p.season}_${p.round}`);
+    existingSet.add(`${p.originalTid}_${p.season}_${p.round}`);
   }
 
   const newPicks: DraftPick[] = [];

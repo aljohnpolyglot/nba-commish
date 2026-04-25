@@ -10,7 +10,7 @@ import { getOwnTeamId } from '../../../utils/helpers';
 // ─── Types ─────────────────────────────────────────────────────────────────
 
 type StatType = 'perGame' | 'per36' | 'totals' | 'advanced' | 'shotLocations';
-type Phase    = 'regular' | 'playoffs' | 'combined';
+type Phase    = 'regular' | 'playoffs' | 'combined' | 'cup';
 type SeasonMode = number | 'career' | 'all';
 
 type SortField =
@@ -473,6 +473,61 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
     else setTeamFilter(sortedTeams[idx + 1].abbrev);
   }, [teamFilter, sortedTeams]);
 
+  // ── NBA Cup per-player stats (current season only — boxScores reset on rollover) ─
+  // Builds Map<playerId, NBAGMStat> by aggregating box-score lines from games
+  // tagged isNBACup in state.schedule. Cup stats are NOT separately stored on
+  // player.stats (group/QF/SF count toward RS, Final is excluded entirely), so
+  // we derive on demand for the Cup filter.
+  const cupStatsByPlayer = useMemo((): Map<string, NBAGMStat> => {
+    const cupGids = new Set<number>();
+    for (const g of state.schedule) {
+      if ((g as any).isNBACup) cupGids.add(g.gid);
+    }
+    const out = new Map<string, NBAGMStat>();
+    if (cupGids.size === 0) return out;
+    const ensure = (pid: string, tid: number): NBAGMStat => {
+      let s = out.get(pid);
+      if (!s) {
+        s = { season: state.leagueStats.year, tid, gp: 0, gs: 0, min: 0,
+          fg: 0, fga: 0, fgp: 0, tp: 0, tpa: 0, tpp: 0, ft: 0, fta: 0, ftp: 0,
+          orb: 0, drb: 0, trb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0,
+          per: 0, pm: 0 } as NBAGMStat;
+        out.set(pid, s);
+      }
+      return s;
+    };
+    for (const box of state.boxScores) {
+      if (!cupGids.has((box as any).gameId)) continue;
+      const sides: Array<{ tid: number; lines: any[] }> = [
+        { tid: (box as any).homeTeamId, lines: (box as any).homeStats ?? [] },
+        { tid: (box as any).awayTeamId, lines: (box as any).awayStats ?? [] },
+      ];
+      for (const { tid, lines } of sides) {
+        for (const ln of lines) {
+          if (!ln?.playerId) continue;
+          const s = ensure(ln.playerId, tid);
+          s.gp += 1;
+          s.gs += (ln.gs ?? 0) > 0 ? 1 : 0;
+          s.min += ln.min ?? 0;
+          s.fg += ln.fgm ?? 0; s.fga += ln.fga ?? 0;
+          s.tp += ln.threePm ?? 0; s.tpa += ln.threePa ?? 0;
+          s.ft += ln.ftm ?? 0; s.fta += ln.fta ?? 0;
+          s.orb += ln.orb ?? 0; s.drb += ln.drb ?? 0;
+          s.trb += ln.reb ?? ((ln.orb ?? 0) + (ln.drb ?? 0));
+          s.ast += ln.ast ?? 0; s.stl += ln.stl ?? 0; s.blk += ln.blk ?? 0;
+          s.tov += ln.tov ?? 0; s.pf += ln.pf ?? 0; s.pts += ln.pts ?? 0;
+          s.pm = (s.pm ?? 0) + (ln.pm ?? 0);
+        }
+      }
+    }
+    for (const s of out.values()) {
+      s.fgp = safePct(s.fg, s.fga);
+      s.tpp = safePct(s.tp, s.tpa);
+      s.ftp = safePct(s.ft, s.fta);
+    }
+    return out;
+  }, [state.schedule, state.boxScores, state.leagueStats.year]);
+
   // ── Core row computation ───────────────────────────────────────────────
   const rows = useMemo((): ComputedRow[] => {
     const result: ComputedRow[] = [];
@@ -482,6 +537,12 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
       const filtered = targetSeason !== null
         ? allStats.filter(s => s.season === targetSeason)
         : [...allStats];
+      if (phase === 'cup') {
+        // Cup stats only exist for the current season (box scores prune on rollover).
+        if (targetSeason !== null && targetSeason !== state.leagueStats.year) return [];
+        const cup = cupStatsByPlayer.get(player.internalId);
+        return cup ? [cup] : [];
+      }
       if (phase === 'regular')  return filtered.filter(s => !s.playoffs);
       if (phase === 'playoffs') return filtered.filter(s =>  s.playoffs);
       const reg  = filtered.filter(s => !s.playoffs);
@@ -806,6 +867,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
             <option value="regular">Reg Season</option>
             <option value="playoffs">Playoffs</option>
             <option value="combined">Combined</option>
+            <option value="cup">NBA Cup</option>
           </select>
 
           {/* Per page */}
@@ -862,7 +924,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
           {typeof season === 'number' && <><span className="ml-3">⭐</span> All-Star</>}
           {brefRows.size > 0 && <span className="ml-3 text-slate-600">† bref career</span>}
         </span>
-        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{seasonLabel} · {statType === 'perGame' ? 'Per Game' : statType === 'per36' ? 'Per 36 Min' : statType === 'totals' ? 'Totals' : statType === 'shotLocations' ? 'Shot Locations & Feats' : 'Advanced'} · {phase === 'regular' ? 'Reg Season' : phase === 'playoffs' ? 'Playoffs' : 'Combined'}</span>
+        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{seasonLabel} · {statType === 'perGame' ? 'Per Game' : statType === 'per36' ? 'Per 36 Min' : statType === 'totals' ? 'Totals' : statType === 'shotLocations' ? 'Shot Locations & Feats' : 'Advanced'} · {phase === 'regular' ? 'Reg Season' : phase === 'playoffs' ? 'Playoffs' : phase === 'cup' ? 'NBA Cup' : 'Combined'}</span>
       </div>
 
       {/* ── Table ────────────────────────────────────────────────────── */}

@@ -93,20 +93,17 @@ export const LeagueEvent: React.FC = () => {
   const [searchQuery, setSearchQuery] = React.useState('');
 
   const events = useMemo(() => {
-    const TRANSACTION_TYPES = new Set(['trade', 'signing', 'waive', 'suspension', 'personnel', 'g-league assignment', 'g-league callup', 'training camp release']);
+    const isDiaryOwned = (entry: HistoryEntry) => {
+      if ((entry as any).commissioner) return true;
+      const text = entry.text.toLowerCase();
+      return text.includes('took office as the new nba commissioner');
+    };
+
     return [...(state.history || [])]
       .reverse()
       .map(raw => resolveEntry(raw, state.date))
       .filter((entry): entry is HistoryEntry => entry != null && entry.text.trim().length > 0)
-      .filter(entry => {
-        const ty = (entry.type || '').toLowerCase();
-        // Transaction types: only show if commissioner-initiated
-        if (TRANSACTION_TYPES.has(ty)) return !!(entry as any).commissioner;
-        // For plain League Events, exclude AI-generated roster-move text
-        const isRosterMove = /\b(signed?|waived?|traded?|fired?|hired?)\b/i.test(entry.text);
-        if (isRosterMove && !(entry as any).commissioner) return false;
-        return true;
-      })
+      .filter(isDiaryOwned)
       .filter(entry => {
         if (!searchQuery) return true;
         return entry.text.toLowerCase().includes(searchQuery.toLowerCase());

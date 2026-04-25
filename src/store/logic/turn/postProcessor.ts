@@ -76,7 +76,8 @@ export const processSimulationResults = (
 
             const stats = [...(p.stats || [])];
             const currentSeason = currentSeasonYear;
-            let seasonStatIndex = stats.findIndex(s => s.season === currentSeason && !s.playoffs);
+            // Match tid too so traded players get separate rows per team (BBRef-style split)
+            let seasonStatIndex = stats.findIndex(s => s.season === currentSeason && !s.playoffs && s.tid === p.tid);
             
             let seasonStat: any;
             if (seasonStatIndex === -1) {
@@ -200,7 +201,8 @@ export const processSimulationResults = (
 
             const stats = [...(p.stats || [])];
             const currentSeason = currentSeasonYear;
-            let statIndex = stats.findIndex(s => s.season === currentSeason && s.playoffs === true);
+            // Match tid too so traded players get separate playoff rows per team
+            let statIndex = stats.findIndex(s => s.season === currentSeason && s.playoffs === true && s.tid === p.tid);
 
             let seasonStat: any;
             if (statIndex === -1) {

@@ -105,6 +105,19 @@ export interface GMChatContext {
     text: string;
     timestamp: string;
   }>;
+
+  playoffContext: {
+    inPlayoffs: boolean;
+    eliminated: boolean;
+    currentRound: number | null;
+    seriesRecord: string | null; // e.g. "2-1 (leading)" or "1-3 (trailing)"
+    opponent: string | null;
+    playInResult: string | null; // e.g. "Won 7v8 game vs. Bulls to make playoffs"
+    pastRounds: string[]; // e.g. ["Beat Knicks 4-2 (R1)", "Beat Bucks 4-3 (R2)"]
+    champion: string | null; // team name of champion if bracket complete
+  };
+
+  recipientAwards: Array<{ season: number; type: string }>;
 }
 
 /**
@@ -160,9 +173,9 @@ export function buildGMChatContext(
       // Get season stats
       const ss = p.stats?.find(s => s.season === seasonYear && !s.playoffs);
       const ppg = ss ? ((ss.pts || 0) / Math.max(1, ss.gp || 1)).toFixed(1) : '0.0';
-      const rpg = ss ? (((ss.trb || ss.reb || 0) / Math.max(1, ss.gp || 1))).toFixed(1) : '0.0';
+      const rpg = ss ? ((ss.trb || 0) / Math.max(1, ss.gp || 1)).toFixed(1) : '0.0';
       const apg = ss ? ((ss.ast || 0) / Math.max(1, ss.gp || 1)).toFixed(1) : '0.0';
-      const fgPct = ss ? (((ss.fgm || 0) / Math.max(1, ss.fga || 1)) * 100).toFixed(1) : '0.0';
+      const fgPct = ss ? (((ss.fg || 0) / Math.max(1, ss.fga || 1)) * 100).toFixed(1) : '0.0';
 
       // Salary
       const salary = `$${((p.contract?.amount ?? 0) / 1000).toFixed(1)}M`;
@@ -267,10 +280,10 @@ export function buildGMChatContext(
     const round1 = (n: number) => Math.round(n * 10) / 10;
     recipientData.stats = {
       ppg: ss ? round1((ss.pts || 0) / gp) : 0,
-      rpg: ss ? round1((ss.trb || ss.reb || 0) / gp) : 0,
+      rpg: ss ? round1((ss.trb || 0) / gp) : 0,
       apg: ss ? round1((ss.ast || 0) / gp) : 0,
-      mpg: ss ? round1((ss.mp || 0) / gp) : 0,
-      fgPct: ss ? round1(((ss.fgm || 0) / Math.max(1, ss.fga || 1)) * 100) : 0,
+      mpg: ss ? round1((ss.min || 0) / gp) : 0,
+      fgPct: ss ? round1(((ss.fg || 0) / Math.max(1, ss.fga || 1)) * 100) : 0,
     };
 
     // Contract
@@ -293,7 +306,8 @@ export function buildGMChatContext(
     if (untouchableIds.has(recipient.internalId)) recipientData.marketStatus = 'untouchable';
     else if (blockIds.has(recipient.internalId)) recipientData.marketStatus = 'available';
   } else if (recipientStaff) {
-    recipientData.role = recipientStaff.role === 'owner' ? 'owner' : recipientStaff.role === 'coach' ? 'coach' : 'player';
+    const staffRole = (recipientStaff as any).role as string | undefined;
+    recipientData.role = staffRole === 'owner' ? 'owner' : staffRole === 'coach' ? 'coach' : 'player';
     recipientData.name = recipientStaff.name;
   }
 
@@ -303,12 +317,16 @@ export function buildGMChatContext(
 
   // ─────── RECENT ACTIVITY ───────────────────────────────────────
   const recentMoves = (state.history ?? [])
+    .filter((h): h is import('../types').HistoryEntry => typeof h !== 'string')
     .slice(-15)
-    .map(h => ({
-      type: (h.type as any) === 'Signing' ? 'sign' : (h.type as any) === 'Trade' ? 'trade' : 'waive' as const,
-      date: h.date ?? state.date,
-      summary: h.text ?? '',
-    }));
+    .map(h => {
+      const t = h.type === 'Signing' ? 'sign' : h.type === 'Trade' ? 'trade' : 'waive';
+      return {
+        type: t as 'sign' | 'trade' | 'waive',
+        date: h.date ?? state.date,
+        summary: h.text ?? '',
+      };
+    });
 
   const recentInjuries = (state.pendingInjuryToasts ?? []).slice(-5).map(inj => ({
     player: inj.playerName,
@@ -334,6 +352,82 @@ export function buildGMChatContext(
       };
     });
 
+  // ─────── PLAYOFF / PLAY-IN CONTEXT ─────────────────────────────
+  const playoffs = state.playoffs;
+  let playoffContext: GMChatContext['playoffContext'] = {
+    inPlayoffs: false,
+    eliminated: false,
+    currentRound: null,
+    seriesRecord: null,
+    opponent: null,
+    playInResult: null,
+    pastRounds: [],
+    champion: null,
+  };
+
+  if (playoffs) {
+    const tid = state.userTeamId!;
+    const teamName = (id: number) => state.teams.find(t => t.id === id)?.name ?? `Team ${id}`;
+
+    // Check play-in results
+    const playInGames = playoffs.playInGames ?? [];
+    for (const pg of playInGames) {
+      if (pg.played && (pg.team1Tid === tid || pg.team2Tid === tid)) {
+        const opponentTid = pg.team1Tid === tid ? pg.team2Tid : pg.team1Tid;
+        const won = pg.winnerId === tid;
+        playoffContext.playInResult = `${won ? 'Won' : 'Lost'} play-in ${pg.gameType} game vs. ${teamName(opponentTid)}`;
+      }
+    }
+
+    // Scan series to find past wins, current series, and elimination
+    const pastRounds: string[] = [];
+    let inPlayoffs = false;
+    let eliminated = false;
+    let currentRound: number | null = null;
+    let seriesRecord: string | null = null;
+    let opponent: string | null = null;
+
+    for (const s of playoffs.series) {
+      const isHome = s.higherSeedTid === tid;
+      const isAway = s.lowerSeedTid === tid;
+      if (!isHome && !isAway) continue;
+
+      inPlayoffs = true;
+      const opponentTid = isHome ? s.lowerSeedTid : s.higherSeedTid;
+      const myWins = isHome ? s.higherSeedWins : s.lowerSeedWins;
+      const theirWins = isHome ? s.lowerSeedWins : s.higherSeedWins;
+      const roundLabel = s.round === 1 ? 'R1' : s.round === 2 ? 'R2' : s.round === 3 ? 'Conference Finals' : 'Finals';
+
+      if (s.status === 'complete') {
+        if (s.winnerId === tid) {
+          pastRounds.push(`Beat ${teamName(opponentTid)} ${myWins}-${theirWins} (${roundLabel})`);
+        } else {
+          eliminated = true;
+          pastRounds.push(`Lost to ${teamName(opponentTid)} ${myWins}-${theirWins} (${roundLabel})`);
+        }
+      } else if (s.status === 'active') {
+        currentRound = s.round;
+        opponent = teamName(opponentTid);
+        const leading = myWins > theirWins ? 'leading' : myWins < theirWins ? 'trailing' : 'tied';
+        seriesRecord = `${myWins}-${theirWins} (${leading})`;
+      }
+    }
+
+    playoffContext = {
+      inPlayoffs: inPlayoffs || !!playoffContext.playInResult,
+      eliminated,
+      currentRound,
+      seriesRecord,
+      opponent,
+      playInResult: playoffContext.playInResult,
+      pastRounds,
+      champion: playoffs.champion != null ? teamName(playoffs.champion) : null,
+    };
+  }
+
+  // ─────── RECIPIENT AWARDS ───────────────────────────────────────
+  const recipientAwards: Array<{ season: number; type: string }> = recipient?.awards ?? [];
+
   // ─────── CHAT HISTORY ──────────────────────────────────────────
   const recentMessages = state.chats
     .find(c => c.participants.includes(recipientId))
@@ -355,10 +449,10 @@ export function buildGMChatContext(
       name: userTeam.name,
       wins: userTeam.wins ?? 0,
       losses: userTeam.losses ?? 0,
-      confRank: userTeam.confRank ?? 0,
-      divRank: userTeam.divRank ?? 0,
-      seed: userTeam.seed ?? null,
-      streak: userTeam.streak ?? 'N/A',
+      confRank: (userTeam as any).confRank ?? 0,
+      divRank: (userTeam as any).divRank ?? 0,
+      seed: (userTeam as any).seed ?? null,
+      streak: userTeam.streak ? `${userTeam.streak.count}${userTeam.streak.type}` : 'N/A',
     },
 
     payroll: {
@@ -396,5 +490,8 @@ export function buildGMChatContext(
     recipient: recipientData,
 
     recentMessages,
+
+    playoffContext,
+    recipientAwards,
   };
 }

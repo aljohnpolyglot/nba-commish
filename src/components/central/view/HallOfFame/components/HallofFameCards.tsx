@@ -2,12 +2,14 @@ import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Trophy, Star, MapPin } from 'lucide-react';
 import type { HOFInductee } from './HOFSection';
+import { HOF_FIRST_BALLOT_WAIT_YEARS, HOF_BORDERLINE_WAIT_YEARS } from '../../../../../services/playerDevelopment/hofChecker';
 
 interface HOFCardProps {
   inductee: HOFInductee;
+  onClick?: (inductee: HOFInductee) => void;
 }
 
-const HOFCard: React.FC<HOFCardProps> = ({ inductee }) => {
+const HOFCard: React.FC<HOFCardProps> = ({ inductee, onClick }) => {
   const { player, inductionYear } = inductee;
   const awards = player.awards ?? [];
 
@@ -18,7 +20,8 @@ const HOFCard: React.FC<HOFCardProps> = ({ inductee }) => {
   const dpoys = awards.filter(a => a.type === 'Defensive Player of the Year').length;
   const allDefense = awards.filter(a => a.type.includes('All-Defensive')).length;
   const finalsMVPs = awards.filter(a => a.type === 'Finals MVP').length;
-  const firstBallot = player.retiredYear ? inductionYear === player.retiredYear + 3 : false;
+  const firstBallot = player.retiredYear ? inductionYear === player.retiredYear + HOF_FIRST_BALLOT_WAIT_YEARS : false;
+  const borderline = player.retiredYear ? inductionYear >= player.retiredYear + HOF_BORDERLINE_WAIT_YEARS : false;
 
   // Group awards for hover reveal
   const groupedAwards = useMemo(() => {
@@ -62,7 +65,16 @@ const HOFCard: React.FC<HOFCardProps> = ({ inductee }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4 }}
-      className="group relative overflow-hidden rounded-xl border border-yellow-500/20 bg-gradient-to-br from-slate-900/80 to-slate-950/80 p-4 transition-all duration-500 hover:border-yellow-500/50 md:p-6"
+      role="button"
+      tabIndex={0}
+      onClick={() => onClick?.(inductee)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.(inductee);
+        }
+      }}
+      className="group relative overflow-hidden rounded-xl border border-yellow-500/20 bg-gradient-to-br from-slate-900/80 to-slate-950/80 p-4 transition-all duration-500 hover:border-yellow-500/50 focus:outline-none focus:ring-2 focus:ring-yellow-400/60 md:p-6"
     >
       <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-yellow-500/5 blur-3xl transition-all group-hover:bg-yellow-500/10" />
 
@@ -93,6 +105,11 @@ const HOFCard: React.FC<HOFCardProps> = ({ inductee }) => {
                 1st Ballot
               </span>
             )}
+            {!firstBallot && borderline && (
+              <span className="rounded bg-rose-300 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-black md:text-[10px]">
+                Borderline
+              </span>
+            )}
           </div>
         </div>
 
@@ -113,6 +130,9 @@ const HOFCard: React.FC<HOFCardProps> = ({ inductee }) => {
               <div className="flex shrink-0 flex-col items-end">
                 <span className="font-serif text-[8px] italic text-yellow-500/60 md:text-sm">Inducted</span>
                 <span className="font-display text-base font-bold text-yellow-400 md:text-2xl">{inductionYear}</span>
+                <span className="mt-1 text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500 md:text-[10px]">
+                  View Bio
+                </span>
               </div>
             </div>
 

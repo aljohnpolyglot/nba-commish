@@ -31,12 +31,13 @@ import { calculatePlayerOverallForYear } from '../../utils/playerRatings';
 import { applyLeagueDisplayScale, LEAGUE_DISPLAY_MULTIPLIERS } from '../../hooks/useLeagueScaledRatings';
 import { calculateLeagueOverall } from '../logic/leagueOvr';
 import { convertTo2KRating, normalizeDate } from '../../utils/helpers';
+import { EXTERNAL_LEAGUE_OVR_CAP } from '../../constants';
 
 // External league players have pre-scaled attrs at fetch time.
 // calculatePlayerOverallForYear on scaled attrs floors at Math.max(40,...) → display 66.
 // Use calculateLeagueOverall (calcRawOvr, no floor, no extra mult) for their OVR instead.
 const EXTERNAL_LEAGUE_STATUSES = new Set([
-  'G-League', 'PBA', 'Euroleague', 'B-League', 'Endesa',
+  'G-League', 'PBA', 'Euroleague', 'B-League', 'Endesa', 'China CBA', 'NBL Australia',
 ]);
 
 /** NBA-active: on an NBA roster (not FA, not overseas, not WNBA/retired/prospect) */
@@ -92,21 +93,21 @@ function seededUniform(seed: string, lo: number, hi: number): number {
 function calcBaseChange(age: number, seed: string, pot: number = 70): number {
   let val: number;
 
-  // Calibrated upward for young players — Cooper Flagg at 19 should visibly grow each season.
-  // BBGM shows young high-pot players gaining +5-15 OVR/yr; our shared-base model needs a
-  // stronger starting value to drive meaningful attr accumulation across all 14 attrs.
-  if      (age <= 18) val = 6;
-  else if (age <= 20) val = 5;
-  else if (age <= 21) val = 4;
-  else if (age <= 22) val = 3; // bust still possible: 3+(-4)+careerOffset(-2) = -3 annualBase
-  else if (age <= 25) val = 2;
-  else if (age <= 27) val = 1;
-  else if (age <= 29) val = -1;
-  else if (age <= 31) val = -2;
-  else if (age <= 34) val = -3;
-  else if (age <= 40) val = -4;
-  else if (age <= 43) val = -5;
-  else                val = -6;
+  // Reduced ~40% from prior values — old rates produced K2 +17/5yr for avg players,
+  // turning every K2 79 rookie into a K2 96 star. Real NBA growth is +1-2 K2/yr peak.
+  if      (age <= 18) val = 2.5;
+  else if (age <= 20) val = 2.0;
+  else if (age <= 21) val = 1.3;
+  else if (age <= 22) val = 1.0;
+  else if (age <= 25) val = 0.7;
+  else if (age <= 27) val = 0.4;
+  else if (age <= 29) val = -0.8;
+  else if (age <= 31) val = -1.5;
+  else if (age <= 34) val = -2.5;
+  else if (age <= 37) val = -3.0;
+  else if (age <= 40) val = -3.3;
+  else if (age <= 43) val = -3.8;
+  else                val = -4.8;
 
   // Wine-aging: elite veterans resist the decline curve
   if (age >= 32 && val < 0) {
@@ -114,14 +115,15 @@ function calcBaseChange(age: number, seed: string, pot: number = 70): number {
     val *= agingMult;
   }
 
-  // Gaussian noise — young players get high variance (busts + breakouts)
+  // Gaussian noise — noise ceiling halved; old +20 ceiling let a single lucky season
+  // spike any 23yo by +20 BBGM producing K2 97 players after one year in the league.
   const u1 = Math.max(1e-10, seededRand(seed + 'bm1'));
   const u2 = seededRand(seed + 'bm2');
   const gauss = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
 
-  if      (age <= 23) val += Math.max(-4, Math.min(20, gauss * 5));
-  else if (age <= 25) val += Math.max(-4, Math.min(10, gauss * 5));
-  else                val += Math.max(-2, Math.min(4,  gauss * 3));
+  if      (age <= 23) val += Math.max(-3, Math.min(8, gauss * 3));
+  else if (age <= 25) val += Math.max(-3, Math.min(5, gauss * 3));
+  else                val += Math.max(-2, Math.min(3, gauss * 2));
 
   return val;
 }
@@ -136,31 +138,35 @@ type AttrFormula = {
   changeLimits: (age: number) => [number, number];
 };
 
-// Shooting formula: reverses decline after 27 (players can still develop shooting late)
+// Shooting formula: slows decline after 27, but tapers off for very old players
 const shootingFormula: AttrFormula = {
   ageModifier: (age) => {
     if (age <= 27) return 0;
     if (age <= 29) return 0.5;
     if (age <= 31) return 1.5;
-    return 2;
+    if (age <= 36) return 2.0;
+    if (age <= 39) return 1.2;  // still helps but no longer offsets base entirely
+    return 0.7;                 // 40+ — minimal late-career shooting bump
   },
-  changeLimits: () => [-3, 13],
+  changeLimits: () => [-3, 7],
 };
 
 // IQ formula: extra boost for young (huge upside), reverses decline late
 const iqFormula: AttrFormula = {
   ageModifier: (age) => {
-    if (age <= 21) return 4;
-    if (age <= 23) return 3;
+    if (age <= 21) return 2;    // was 4 — combined with base was inflating IQ too fast
+    if (age <= 23) return 1.5;  // was 3
     if (age <= 27) return 0;
     if (age <= 29) return 0.5;
     if (age <= 31) return 1.5;
-    return 2;
+    if (age <= 36) return 2.0;
+    if (age <= 39) return 1.2;
+    return 0.7;
   },
   changeLimits: (age) => {
-    if (age >= 24) return [-3, 9];
-    // Young players: huge IQ upside — [-3, 32] at 19, tapers to [-3, 12] at 23
-    return [-3, 7 + 5 * (24 - age)];
+    if (age >= 24) return [-3, 7];
+    // Capped at 14 (was 7+5*(24-age) = 32 at age 19 — allowed single-year +32 IQ gains)
+    return [-3, Math.min(14, 3 + 2 * (24 - age))];
   },
 };
 
@@ -173,9 +179,9 @@ const ATTR_FORMULAS: Record<string, AttrFormula> = {
     ageModifier: (age) => {
       if (age <= 27) return 0;
       if (age <= 30) return -2;
-      if (age <= 35) return -3;
-      if (age <= 40) return -4;
-      return -8;
+      if (age <= 35) return -2.5;
+      if (age <= 40) return -3;
+      return -6;
     },
     // Young players can genuinely develop athleticism — BBGM shows +4-8 spd for age 18-22
     changeLimits: (age) => age <= 22 ? [-12, 8] : age <= 26 ? [-12, 4] : [-12, 2],
@@ -183,23 +189,23 @@ const ATTR_FORMULAS: Record<string, AttrFormula> = {
   jmp: {
     ageModifier: (age) => {
       if (age <= 26) return 0;
-      if (age <= 30) return -3;
-      if (age <= 35) return -4;
-      if (age <= 40) return -5;
-      return -10;
+      if (age <= 30) return -2.5;
+      if (age <= 35) return -3;
+      if (age <= 40) return -4;
+      return -8;
     },
     changeLimits: (age) => age <= 22 ? [-12, 8] : age <= 26 ? [-12, 4] : [-12, 2],
   },
   endu: {
     ageModifier: (age, seed?: string) => {
-      // Young players: random endurance boost (some work harder in the gym)
-      if (age <= 23) return seededUniform((seed ?? '') + 'endu', 0, 9);
+      // Young players: random endurance boost (capped at 5, was 9)
+      if (age <= 23) return seededUniform((seed ?? '') + 'endu', 0, 5);
       if (age <= 30) return 0;
-      if (age <= 35) return -2;
-      if (age <= 40) return -4;
-      return -8;
+      if (age <= 35) return -1.5;
+      if (age <= 40) return -3;
+      return -6;
     },
-    changeLimits: () => [-11, 19],
+    changeLimits: () => [-11, 10],  // was 19
   },
   dnk: {
     ageModifier: (age) => {
@@ -232,7 +238,7 @@ function devCapMultiplier(_pos: string, _rating: any, _attr: string): number {
 
 function potMod(currentOvr: number, pot: number): number {
   const gap = pot - currentOvr;
-  if (gap <= 0) return -0.2;
+  if (gap <= 0) return -0.5;
   if (gap >= 15) return 1.0;
   return Math.sqrt(gap / 15);
 }
@@ -267,9 +273,42 @@ function progressPlayer(player: NBAPlayer, currentYear: number, date: string): N
   // others already declining. Range [-2, +2] annual units → visible OVR divergence over a season.
   const careerOffset = seededUniform(pid + 'career', -2.0, 2.0);
 
+  // MVP count — computed once and reused for both base dampening and per-attr softening.
+  // Awards are stored as 'Most Valuable Player' (via PLAYER_AWARD_TYPE_MAP in autoResolvers).
+  // Cap at 4; beyond that the math is already very forgiving.
+  const mvpCount = Math.min(4, ((player as any).awards ?? []).filter(
+    (a: any) => a.type === 'Most Valuable Player' || a.type === 'MVP',
+  ).length);
+
   // Annual base change for this player this season (deterministic per pid+year)
   // Divide by 365 for daily application. pot passed for wine-aging modifier.
-  const rawBase = calcBaseChange(age, pid + currentYear, pot);
+  // devSpeed is the hidden per-player trajectory scalar set at draft generation
+  // (0.55–0.80 under-developer / 0.90–1.10 normal / 1.15–1.40 hidden gem). Only
+  // tilts positive growth — decline years (negative base) shouldn't be softened
+  // for slow developers.
+  const devSpeed: number = rating.devSpeed ?? 1.0;
+  let baseRaw = calcBaseChange(age, pid + currentYear, pot);
+
+  // MVP aging resistance — only kicks in at 38+, where the real cliff starts.
+  // Curry/LeBron types get a modest dampen; still decline, just slower.
+  if (baseRaw < 0 && mvpCount > 0 && age >= 38) {
+    const mvpBaseMult = mvpCount >= 4 ? 0.68 : mvpCount >= 3 ? 0.75 : mvpCount >= 2 ? 0.82 : 0.90;
+    baseRaw *= mvpBaseMult;
+  }
+
+  // MVP regression lottery — 20% per ticket, max 2, only at 38+.
+  // Rare plateau season for elite late-career players.
+  if (baseRaw < 0 && mvpCount > 0 && age >= 38) {
+    const lotteryTickets = Math.min(2, mvpCount);
+    for (let i = 0; i < lotteryTickets; i++) {
+      if (seededUniform(pid + currentYear + 'mvp' + i, 0, 1) < 0.20) {
+        baseRaw = 0;
+        break;
+      }
+    }
+  }
+
+  const rawBase = baseRaw > 0 ? baseRaw * devSpeed : baseRaw;
   // Only apply the offset when the base isn't already large (don't double-boost elite youth)
   const annualBase = rawBase + (Math.abs(rawBase) < 4 ? careerOffset : careerOffset * 0.3);
   const dailyBase = annualBase / 365;
@@ -288,9 +327,15 @@ function progressPlayer(player: NBAPlayer, currentYear: number, date: string): N
       if (!formula) continue;
 
       // ageModifier for endu needs the seed
-      const mod = attr === 'endu'
+      let mod = attr === 'endu'
         ? (ATTR_FORMULAS.endu.ageModifier as any)(age, pid + currentYear + 'endu')
         : formula.ageModifier(age);
+
+      // MVP veterans 38+ retain attribute quality slightly better.
+      if (mod < 0 && mvpCount > 0 && age >= 38) {
+        const mvpAttrMult = mvpCount >= 4 ? 0.72 : mvpCount >= 3 ? 0.80 : mvpCount >= 2 ? 0.87 : 0.93;
+        mod *= mvpAttrMult;
+      }
 
       const annualCombined = annualBase + mod;
       const dailyCombined  = annualCombined / 365;
@@ -333,6 +378,22 @@ function progressPlayer(player: NBAPlayer, currentYear: number, date: string): N
     updatedPlayer.overallRating = calculatePlayerOverallForYear(updatedPlayer, currentYear);
   }
 
+  // Fix 8: cap adult external-league progression at the league's OVR ceiling.
+  // Prevents NBA-boosted returners (e.g. high-OVR cut player returning to B-League)
+  // from staying above the realistic ceiling for their league each tick.
+  // Youth (<19) is already frozen upstream in applyDailyProgression; no double-gate needed.
+  if (EXTERNAL_LEAGUE_STATUSES.has(player.status ?? '')) {
+    const ovrCap = EXTERNAL_LEAGUE_OVR_CAP[player.status!];
+    if (ovrCap !== undefined && updatedPlayer.overallRating > ovrCap) {
+      updatedPlayer.overallRating = ovrCap;
+      // Sync stored rating.ovr so potMod reads the correct gap on next tick.
+      const cappedRating = { ...rating, ovr: ovrCap };
+      updatedPlayer.ratings = player.ratings.map((r: any, i: number) =>
+        i === ratingIdx ? cappedRating : r,
+      );
+    }
+  }
+
   // Weekly OVR snapshot — record every Sunday so the 1Y chart has ~52 data points
   // Store raw BBGM float so sub-1pt weekly trends are visible in the chart
   try {
@@ -360,11 +421,24 @@ export function applyDailyProgression(
 ): NBAPlayer[] {
   if (isPlayoffs) return players;
 
+  // Young international prospects (age < 19 in foreign men's leagues) freeze
+  // their ratings — they haven't entered the NBA draft yet. Without this gate
+  // they progress past K2 85 in Hokkaido / FCB / etc. before ever declaring,
+  // creating a generation of foreign-born talent that never reaches the league.
+  // Age 19+ triggers auto-declare-for-draft in seasonRollover.
+  const EXTERNAL_MENS_LEAGUES = new Set([
+    'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia',
+  ]);
+
   return players.map(player => {
     if (!player.ratings || player.ratings.length === 0) return player;
     if ((player as any).diedYear) return player;
     if (player.status === 'Retired') return player;
     if (player.tid === -2) return player; // future draft prospect — ratings frozen until drafted
+    const age = (player as any).age;
+    if (typeof age === 'number' && age < 19 && EXTERNAL_MENS_LEAGUES.has((player as any).status ?? '')) {
+      return player;
+    }
     try {
       return progressPlayer(player, currentYear, date);
     } catch (_) {

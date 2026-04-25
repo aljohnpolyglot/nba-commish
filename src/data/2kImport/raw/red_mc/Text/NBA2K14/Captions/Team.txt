@@ -1,0 +1,185 @@
+Names:9;Parameters:12;Relatives:4;Status:4;Roster:21;Situationals:35;Staff:7;Stats:24;History:5;Records:20;Total Sim Control && Settings:13
+#Situationals;Starter:5;Bench:5;Tall:5;Quick:5;Defense:5;3-Point:5;Free Throw:5
+#Stats;Seasonal Stats:4;Streaks:20
+Name;Name;This field indicates team's Name
+City;City;This field indicates team's City
+CityUnique;City Unique;Stands for the team's alternative City name. A unique value should be set for each team.
+Abbr;Abbreviation;Team's Name abbreviation
+Nickname;Nickname;This field indicates team's Nickname
+#
+__Name;Team Name Replacer;Set to zero to use the value, stored in Name, as Team's Name. Otherwise the actual team's name is grabbed from the *current_language*.IFF file, using the value as a string ID.
+__City;Team City Replacer;Set to zero to use the value, stored in City, as Team's City. Otherwise the actual team's city is grabbed from the *current_language*.IFF file, using the value as a string ID.
+__CityUnq;Unique City Replacer;Set to zero to use the value, stored in CityUnique, as Team's Unique City. Otherwise the actual team's unique city is grabbed from the *current_language*.IFF file, using the value as a string ID.
+__TeamAbbr;Team Abbreviation Replacer;Set to zero to use the value, stored in Abbr, as Team's abbreviation. Otherwise the actual team's abbreviation is grabbed from the *current_language*.IFF file, using the value as a string ID.
+TType;Team Type;Defines Team Type
+IsSpecial;Is Special;Teams, used in special game modes, have this field set to True
+#
+Division;Division;Defines the division the team belongs to
+#
+Year;Year;Defines the season, the team originally played in. Used for historical teams
+#
+Logo;Logo;This field contains the name of the Logo file used by the team
+GID;Graphics ID;Team's Graphics ID. This stands for the set of uniforms, used by the team, and also defines team IFF file, which contains cheer-leaders, supporters, etc.
+#
+Color1;Team Color 1;Team main color. It is used in different menus and as a scoreboard color during mathces, as well as on home arena jumbotrones.
+Color2;Team Color 2;Team secondary color. It is used in some menus and also on home arena jumbotrones.
+#
+AudioID;Audio ID;Audio, used for this team in-game. -1 = no associated audio. Note, that this doesn't control some presentation audio.
+SomeID1;Some ID 1;Some unknown ID
+SomeID2;Some ID 2;Some unknown ID
+#
+ArenaID;Arena ID;Default arena for the team
+Rival1;Rival 1;Defines one of team's rivals
+Rival2;Rival 2;Defines one of team's rivals
+Rival3;Rival 3;Defines one of team's rivals
+RivalPO;Play-Off Rival;Defines, which team was the team's last opponent in Play-Offs
+TeamSal;Team Salary;The summary of all team players' salaries. Note, that this value auto-recalculates after each trade/contract signing. Always equals to 0 for ROS files.
+#
+AttndReg;Regular Matches Attendance;Defines, how much the team is supported during regular mathces. The value affects, how many spectators visit team's matches. Has major effect on home games and somewhat effect on away games. Effective values range from 0.3 to 1.0
+AttndEx;Extra Matches Attendance;Defines, how much the team is supported during special mathces (vs. rivals or during play-offs). The value affects, how many spectators visit team's matches. Has major effect on home games and somewhat effect on away games.
+#
+Chemistry;Chemistry;Team chemistry value
+PlNum;Number Of Players;Number of players on Team's rotation.!!!!!!IMPORTANT!!!!!!Change this value, if you wish to change the actual number of players.!!!Remember, that setting -1 for Subs' and Reserves' IDs will lead to game crash, if this value is not adjusted accordingly.;R
+#
+Ros_PG;Point Guard;Stands for team's starting Point Guard.
+Ros_SG;Shooting Guard;Stands for team's starting Shooting Guard.
+Ros_SF;Small Forward;Stands for team's starting Small Forward.
+Ros_PF;Power Forward;Stands for team's starting Power Forward.
+Ros_C;Center;Stands for team's starting Center.
+#
+Ros_S6;6th Player;Stands for team's 6th player (substitution player #1).
+Ros_S7;7th Player;Stands for team's 7th player (substitution player #2).
+Ros_S8;8th Player;Stands for team's 8th player (substitution player #3).
+Ros_S9;9th Player;Stands for team's 9th player (substitution player #4).
+Ros_S10;10th Player;Stands for team's 10th player (substitution player #5).
+Ros_S11;11th Player;Stands for team's 11th player (substitution player #6).
+Ros_S12;12th Player;Stands for team's 12th player (substitution player #7).
+#
+Ros_R13;1st Reserve Player;Stands for team's 13th player (first reserve player)
+Ros_R14;2nd Reserve Player;Stands for team's 14th player (second reserve player)
+Ros_R15;3rd Reserve Player;Stands for team's 15th player (third reserve player)
+Ros_R16;4th Reserve Player;Stands for team's 16th player (fourth reserve player)
+Ros_R17;5th Reserve Player;Stands for team's 17th player (fifth reserve player)
+Ros_R18;6th Reserve Player;Stands for team's 18th player (sixth reserve player)
+Ros_R19;7th Reserve Player;Stands for team's 19th player (seventh reserve player)
+Ros_R20;8th Reserve Player;Stands for team's 20th player (eighth reserve player)
+Sit_Strt_PG;Point Guard;Situationals - Starter - PG
+Sit_Strt_SG;Shooting Guard;Situationals - Starter - SG
+Sit_Strt_SF;Small Forward;Situationals - Starter - SF
+Sit_Strt_PF;Power Forward;Situationals - Starter - PF
+Sit_Strt_C;Center;Situationals - Starter - C
+Sit_Bnch_PG;Point Guard;Situationals - Bench - PG
+Sit_Bnch_SG;Shooting Guard;Situationals - Bench - SG
+Sit_Bnch_SF;Small Forward;Situationals - Bench - SF
+Sit_Bnch_PF;Power Forward;Situationals - Bench - PF
+Sit_Bnch_C;Center;Situationals - Bench - C
+Sit_Tall_PG;Point Guard;Situationals - Tall - PG
+Sit_Tall_SG;Shooting Guard;Situationals - Tall - SG
+Sit_Tall_SF;Small Forward;Situationals - Tall - SF
+Sit_Tall_PF;Power Forward;Situationals - Tall - PF
+Sit_Tall_C;Center;Situationals - Tall - C
+Sit_Quck_PG;Point Guard;Situationals - Quick - PG
+Sit_Quck_SG;Shooting Guard;Situationals - Quick - SG
+Sit_Quck_SF;Small Forward;Situationals - Quick - SF
+Sit_Quck_PF;Power Forward;Situationals - Quick - PF
+Sit_Quck_C;Center;Situationals - Quick - C
+Sit_Dfns_PG;Point Guard;Situationals - Defense - PG
+Sit_Dfns_SG;Shooting Guard;Situationals - Defense - SG
+Sit_Dfns_SF;Small Forward;Situationals - Defense - SF
+Sit_Dfns_PF;Power Forward;Situationals - Defense - PF
+Sit_Dfns_C;Center;Situationals - Defense - C
+Sit_3PT_PG;Point Guard;Situationals - 3-Point - PG
+Sit_3PT_SG;Shooting Guard;Situationals - 3-Point - SG
+Sit_3PT_SF;Small Forward;Situationals - 3-Point - SF
+Sit_3PT_PF;Power Forward;Situationals - 3-Point - PF
+Sit_3PT_C;Center;Situationals - 3-Point - C
+Sit_FT_PG;Point Guard;Situationals - Free Throw - PG
+Sit_FT_SG;Shooting Guard;Situationals - Free Throw - SG
+Sit_FT_SF;Small Forward;Situationals - Free Throw - SF
+Sit_FT_PF;Power Forward;Situationals - Free Throw - PF
+Sit_FT_C;Center;Situationals - Free Throw - C
+Staff_HC;Head Coach;Staff - Head Coach
+Staff_AC;Assistant Coach;Staff - Assistant Coach
+#
+Staff_SPr2;Prospect Scout 1;Staff - Prospect Scout 1
+Staff_SPr3;Prospect Scout 2;Staff - Prospect Scout 2
+Staff_SPr1;Prospect Scout 3;Staff - Prospect Scout 3
+#
+Staff_Trn;Trainer;Staff - Trainer
+Staff_SNBA;NBA Scout;Staff - NBA Scout
+StatCurS;Current Season;Team's Current Regular Season Stats
+StatCurP;Current Playoffs;Team's Current Playoffs Stats
+#
+StatPrevS;Previous Season;Team's Previous Regular Season Stats
+StatPrevP;Previous Playoffs;Team's Previous Year Playoffs Stats
+CurStreak;Current Streak;Current Streak
+#
+CurHStr;Home Streak;Current Home Streak
+CurAStr;Away Streak;Current Away Streak
+#
+PrevStr;Previous Streak;Previous Streak
+#
+WAhAtHalf;Wins Ahead At Half;Number of games won, when the team was originally ahead at half time.
+LAhAtHalf;Losses Ahead At Half;Number of games lost, when the team was originally ahead at half time.
+#
+WBhAtHalf;Wins Behind At Half;Number of games won, when the team was originally behind at half time.
+LBhAtHalf;Losses Behind At Half;Number of games lost, when the team was originally behind at half time.
+#
+WAhAft3rd;Wins Ahead After 3rd;Number of games won, when the team was originally ahead after 3rd quater.
+LAhAft3rd;Losses Ahead After 3rd;Number of games lost, when the team was originally ahead after 3rd quater.
+#
+WBhAft3rd;Wins Behind After 3rd;Number of games won, when the team was originally behind after 3rd quater.
+LBhAft3rd;Losses Behind After 3rd;Number of games lost, when the team was originally behind after 3rd quater.
+#
+WAg500plus;Wins Against .500+ Teams;Number of wins against teams with .500 or a better record
+LAg500plus;Losses Against .500+ Teams;Number of losses against teams with .500 or a better record
+#
+WBetterFG;Wins With Better FG%;Number of wins with better FG percentage
+LBetterFG;Losses With Better FG%;Number of losses with better FG percentage
+#
+WMoreRebs;Wins With More Rebounds;Number of wins with more rebounds
+LMoreRebs;Losses With More Rebounds;Number of losses with more rebounds
+#
+WFewerTOs;Wins With Fewer TOs;Number of wins with fewer turnovers
+LFewerTOs;Losses With Fewer TOs;Number of losses with fewer turnovers
+H_DivTtls;Division Titles;Total amount of Division Titles, won by the team (best regular season record among native Division)
+#
+H_POAps;Playoff Appearances;Number of seasons, when the team took part in the Play-Offs
+H_LastPOAp;Last PO Appearance;The year, when the team took part in the Play-Offs for the last time
+#
+H_ConfTtls;Conference Titles;Total amount of Conference Titles, won by the team (got to the Finals during Play-Offs)
+H_NBAChmps;NBA Championships;How many times the team has won the NBA Championship
+Record0;Record 0;
+Record1;Record 1;
+Record2;Record 2;
+Record3;Record 3;
+Record4;Record 4;
+Record5;Record 5;
+Record6;Record 6;
+Record7;Record 7;
+Record8;Record 8;
+Record9;Record 9;
+Record10;Record 10;
+Record11;Record 11;
+Record12;Record 12;
+Record13;Record 13;
+Record14;Record 14;
+Record15;Record 15;
+Record16;Record 16;
+Record17;Record 17;
+Record18;Record 18;
+Record19;Record 19;
+TSC_1ScrO;1st Scoring Option;Total Sim Control - 1st Scoring Option. It refers to the ID of Players tab.
+TSC_2ScrO;2nd Scoring Option;Total Sim Control - 2nd Scoring Option. It refers to the ID of Players tab.
+TSC_3ScrO;3rd Scoring Option;Total Sim Control - 3rd Scoring Option. It refers to the ID of Players tab.
+#
+AA_LinMan;Auto Lineup Management;Lets the CPU manage user team's lineup.
+AA_SimStr;Auto Simulation Strategy;Lets the CPU choose strategies for simulating games
+AA_PrpSct;Auto Prospect Scouting;Lets the CPU decide, how to scout prospects
+AA_PlrTrd;Auto Player Trading;Lets the CPU trade players of the user's team
+AA_PlrRls;Auto Player Roles;Lets the CPU assign different roles to players
+AA_StfCtr;Auto Staff Contracts;Lets the CPU manage staff contracts
+AA_PlrCtr;Auto Player Contracts;Lets the CPU manage player contracts
+AA_PreDrW;Auto Pre-Draft Workouts;Lets the CPU plan all the pre-draft workouts
+AA_Draft;Auto NBA Draft;Lets the CPU pick players for the user's team during NBA Drafts
+AA_TrnCmp;Auto Training Camps;Lets the CPU schedule training camps for the user-controlled team

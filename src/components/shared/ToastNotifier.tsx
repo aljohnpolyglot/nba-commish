@@ -15,7 +15,13 @@ type ToastItem =
   | { type: 'award'; playerName: string; teamName: string; teamAbbrev: string; awardLabel: string }
   | { type: 'playoffs'; teamName: string; body: string }
   | { type: 'option'; playerName: string; teamName: string; pos: string; decision: 'player-in' | 'player-out' | 'team-exercised' | 'team-declined'; amountM?: number }
-  | { type: 'rotation-budget'; delta: number };
+  | { type: 'rotation-budget'; delta: number }
+  // ── RFA matching offer-sheet ───────────────────────────────────────────
+  // 'rfa-offer-received' shown to the user when their RFA has a winning offer
+  // sheet from another team — has Match/Decline action buttons + 12s duration.
+  | { type: 'rfa-offer-received'; playerId: string; playerName: string; signingTeamName: string; annualM: number; years: number; expiresInDays: number }
+  | { type: 'rfa-matched'; playerName: string; priorTeamName: string; signingTeamName: string }
+  | { type: 'rfa-not-matched'; playerName: string; signingTeamName: string };
 
 // ── Imperative push API (usable outside React tree) ─────────────────────────
 let _enqueue: ((item: ToastItem) => void) | null = null;
@@ -33,6 +39,10 @@ const TOAST_DURATION: Record<ToastItem['type'], number> = {
   'playoffs': 7000,
   'option': 6000,
   'rotation-budget': 5000,
+  // RFA decision toast persists 12s — user needs time to choose Match/Decline
+  'rfa-offer-received': 12000,
+  'rfa-matched': 6000,
+  'rfa-not-matched': 6000,
 };
 
 // ── Color theme per toast type (accent = border/icon/label tint) ────────────
@@ -49,6 +59,9 @@ const ACCENT: Record<ToastItem['type'], Accent> = {
   'playoffs':        { bg: 'bg-violet-950/90',  border: 'border-violet-500/50',  label: 'text-violet-300',  icon: 'text-violet-400'  },
   'option':          { bg: 'bg-sky-950/90',     border: 'border-sky-500/50',     label: 'text-sky-300',     icon: 'text-sky-400'     },
   'rotation-budget': { bg: 'bg-amber-950/90',   border: 'border-amber-500/50',   label: 'text-amber-300',   icon: 'text-amber-400'   },
+  'rfa-offer-received': { bg: 'bg-fuchsia-950/95', border: 'border-fuchsia-500/60', label: 'text-fuchsia-300', icon: 'text-fuchsia-400' },
+  'rfa-matched':     { bg: 'bg-emerald-950/90', border: 'border-emerald-500/50', label: 'text-emerald-300', icon: 'text-emerald-400' },
+  'rfa-not-matched': { bg: 'bg-rose-950/90',    border: 'border-rose-500/50',    label: 'text-rose-300',    icon: 'text-rose-400'    },
 };
 
 export const ToastNotifier: React.FC = () => {
@@ -74,6 +87,37 @@ export const ToastNotifier: React.FC = () => {
     setQueue(q => [...q, ...items]);
     dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingFAToasts: [] } });
   }, [state.pendingFAToasts]);
+
+  // Drain pendingRFAOfferSheets — Match/Decline interactive toasts.
+  // The toast itself dispatches MATCH_RFA_OFFER / DECLINE_RFA_OFFER on click.
+  useEffect(() => {
+    const pending = (state as any).pendingRFAOfferSheets as Array<{ playerId: string; playerName: string; signingTeamName: string; annualM: number; years: number; expiresInDays: number }> | undefined;
+    if (!pending || pending.length === 0) return;
+    const items: ToastItem[] = pending.map(p => ({
+      type: 'rfa-offer-received',
+      playerId: p.playerId,
+      playerName: p.playerName,
+      signingTeamName: p.signingTeamName,
+      annualM: p.annualM,
+      years: p.years,
+      expiresInDays: p.expiresInDays,
+    }));
+    setQueue(q => [...q, ...items]);
+    dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingRFAOfferSheets: [] } });
+  }, [(state as any).pendingRFAOfferSheets]);
+
+  // Drain pendingRFAMatchResolutions — outcome toasts (matched / not-matched).
+  useEffect(() => {
+    const pending = (state as any).pendingRFAMatchResolutions as Array<{ playerName: string; priorTeamName: string; signingTeamName: string; matched: boolean }> | undefined;
+    if (!pending || pending.length === 0) return;
+    const items: ToastItem[] = pending.map(p =>
+      p.matched
+        ? { type: 'rfa-matched', playerName: p.playerName, priorTeamName: p.priorTeamName, signingTeamName: p.signingTeamName }
+        : { type: 'rfa-not-matched', playerName: p.playerName, signingTeamName: p.signingTeamName },
+    );
+    setQueue(q => [...q, ...items]);
+    dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingRFAMatchResolutions: [] } });
+  }, [(state as any).pendingRFAMatchResolutions]);
 
   // Drain pendingElimToast
   useEffect(() => {
@@ -354,10 +398,79 @@ const ToastContent: React.FC<{ item: ToastItem }> = ({ item }) => {
     );
   }
 
+  if (item.type === 'rfa-offer-received') {
+    return <RFAOfferToast item={item} />;
+  }
+
+  if (item.type === 'rfa-matched') {
+    return (
+      <Card type={item.type} icon={CheckCircle} header={item.playerName} label="Matched">
+        <span className="text-emerald-300 font-bold">{item.priorTeamName}</span> matched your offer sheet — {item.playerName} stays put.
+      </Card>
+    );
+  }
+
+  if (item.type === 'rfa-not-matched') {
+    return (
+      <Card type={item.type} icon={CheckCircle} header={item.playerName} label="Signed">
+        Offer sheet not matched — {item.playerName} signs with the <span className="text-rose-300 font-bold">{item.signingTeamName}</span>.
+      </Card>
+    );
+  }
+
   // playoffs
   return (
     <Card type={item.type} icon={Trophy} header={item.teamName} label="Playoffs">
       {item.body}
     </Card>
+  );
+};
+
+// ── RFA offer-sheet decision toast (interactive) ───────────────────────────
+// Standalone subcomponent because it needs useGame() for dispatch — Card is purely visual.
+const RFAOfferToast: React.FC<{ item: Extract<ToastItem, { type: 'rfa-offer-received' }> }> = ({ item }) => {
+  const { dispatchAction } = useGame();
+  const a = ACCENT['rfa-offer-received'];
+  const [decided, setDecided] = useState(false);
+  const handle = (decision: 'match' | 'decline') => {
+    if (decided) return;
+    setDecided(true);
+    dispatchAction({
+      type: decision === 'match' ? 'MATCH_RFA_OFFER' : 'DECLINE_RFA_OFFER',
+      payload: { playerId: item.playerId },
+    } as any);
+  };
+  return (
+    <div className={`min-w-[340px] max-w-[460px] rounded-xl border shadow-2xl backdrop-blur-md ${a.bg} ${a.border} overflow-hidden`} onClick={(e) => e.stopPropagation()}>
+      <div className={`flex items-center gap-2 px-4 py-1.5 border-b ${a.border} bg-black/30`}>
+        <FileSignature className={`w-3.5 h-3.5 ${a.icon} shrink-0`} />
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/80">{item.playerName}</span>
+        <span className={`ml-auto text-[9px] font-bold uppercase tracking-widest ${a.label}`}>RFA Offer Sheet</span>
+      </div>
+      <div className="px-4 py-2.5 text-[13px] leading-snug text-white/90 font-medium">
+        <div className="mb-2">
+          <span className="text-rose-300 font-bold">{item.signingTeamName}</span> offered{' '}
+          <span className="text-[#FDB927] font-bold tabular-nums">${item.annualM}M/{item.years}yr</span>.
+          <div className="text-[11px] text-white/60 mt-0.5">{item.expiresInDays}-day window — match to retain via Bird Rights, or decline and they walk.</div>
+        </div>
+        <div className="flex gap-2 mt-2">
+          <button
+            onClick={() => handle('match')}
+            disabled={decided}
+            className="flex-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-900 disabled:opacity-50 text-white font-black text-[11px] uppercase tracking-widest rounded-lg"
+          >
+            Match
+          </button>
+          <button
+            onClick={() => handle('decline')}
+            disabled={decided}
+            className="flex-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 disabled:bg-rose-900 disabled:opacity-50 text-white font-black text-[11px] uppercase tracking-widest rounded-lg"
+          >
+            Decline
+          </button>
+        </div>
+        {decided && <div className="text-[10px] text-white/60 text-center mt-2">Decision submitted.</div>}
+      </div>
+    </div>
   );
 };

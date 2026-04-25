@@ -1,0 +1,31 @@
+General:5;Shooting:6;Other:8;Opponents:3
+Wins;Wins;Total number of games, the team won during the season
+Losses;Losses;Total number of games, the team lost during the season
+#
+Mins;Minutes;Total minutes, played by the team during the season
+#
+PtsFor;Points For;Points, scored by the team
+PtsAg;Points Against;Points, scored by the team's opponents during the season games
+FGMade;FG Made;Total number of field goals, made by the team during the season
+FGAtt;FG Attempted;Total number of field goals, attempted by the team during the season
+#
+TPTMade;3PT Made;Total number of 3-Pointers, made by the team during the season
+TPTAtt;3PT Attempted;Total number of 3-Pointers, attempted by the team during the season
+#
+FTMade;FT Made;Total number of free throws, made by the team during the season
+FTAtt;FT Attempted;Total number of free throws, attempted by the team during the season
+DRebs;Defensive Rebounds;Total number of defensive rebounds, grabbed by the team during the season
+ORebs;Offensive Rebounds;Total number of offensive rebounds, grabbed by the team during the season
+#
+Steals;Steals;Total number of steals, made by the team during the season
+Blocks;Blocks;Total number of blocks, performed by the team during the season
+Assists;Assists;Defines the number of assists, made by the team throughout the season
+#
+Fouls;Fouls;Fouls;Fouls;Defines how many times the team fouled on his opponents during the season
+TOs;Turnovers;The number of turnovers, the team made throughout the season
+#
+FBPoints;Fast Break Points;Fast Break Points, scored by the team
+Op_FGM;Opponents FG Made;Amount of FGs, made by the opponent teams
+Op_FGA;Opponents FG Attempted;Amount of FGs, attempted by the opponent teams
+#
+Op_TOs;Opponents Turnovers;Amount of turnovers, made by the opponent teams

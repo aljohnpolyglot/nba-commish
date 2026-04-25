@@ -1,0 +1,12 @@
+General:8
+Last_Name;Last Name;Player's (recordsman's) last name
+First_Name;First Name;Player's (recordsman's) first name
+#
+RecType;Category;Record Category
+RecSType;Stat;Stat Type
+#
+Value;Value;Record value
+#
+Day;Day;Record’s day
+Month;Month;Record’s month
+Year;Year;Record’s year

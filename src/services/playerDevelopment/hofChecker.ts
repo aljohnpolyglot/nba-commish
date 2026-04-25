@@ -3,18 +3,22 @@
  *
  * Hall of Fame induction logic — called at season rollover AFTER retirement checks.
  *
- * Philosophy (mirrors real Naismith Hall of Fame):
- *  - 3-year waiting period between retirement and earliest induction ("first ballot")
+ * Philosophy (real-world inspired classification):
+ *  - First-ballot means the first year a retiree is eligible, after a five-season wait
+ *  - Regular inductees take multiple ballots after first eligibility
+ *  - Borderline inductees wait much longer before getting the final nod
  *  - Primary gate is career Win Shares (configurable threshold, default 50)
- *  - Accolade shortcuts: 2+ MVPs, 2+ Finals MVPs, or 3+ rings with ≥5 All-Stars auto-induct
- *  - After the waiting period, if WS + All-Star threshold is cleared → induction
- *  - Older unlucky candidates keep rolling forward each year until inducted or abandoned
+ *  - Accolade shortcuts still fast-track the strongest resumes into the first-ballot tier
  */
 
 import type { NBAPlayer } from '../../types';
 import { resolveSeasonDate, toISODateString } from '../../utils/dateUtils';
 
-export const HOF_WAIT_YEARS = 3; // years between retirement and first-ballot eligibility
+export type HOFTier = 'first_ballot' | 'regular' | 'borderline';
+
+export const HOF_FIRST_BALLOT_WAIT_YEARS = 5;
+export const HOF_REGULAR_WAIT_YEARS = 7;
+export const HOF_BORDERLINE_WAIT_YEARS = 15;
 
 /**
  * Real-world Naismith HOF enshrinement ceremony falls on the first Saturday of
@@ -40,6 +44,15 @@ export interface HOFInduction {
   allStarAppearances: number;
   championships: number;
   mvps: number;
+  firstBallot: boolean;
+  tier: HOFTier;
+}
+
+export interface HOFTierInfo {
+  tier: HOFTier;
+  label: string;
+  waitYears: number;
+  eligibleYear: number;
   firstBallot: boolean;
 }
 
@@ -122,6 +135,56 @@ export function isFirstBallot(player: NBAPlayer, wsThreshold: number): boolean {
   return false;
 }
 
+function isBorderlineWorthy(player: NBAPlayer, wsThreshold: number): boolean {
+  const ws = careerWinShares(player);
+  const allStars = countAward(player, 'All-Star');
+  const mvps = countAward(player, 'Most Valuable Player');
+  const fmvps = countAward(player, 'Finals MVP');
+  const champs = countAward(player, 'Won Championship') + countAward(player, 'Champion');
+  const dpoys = countAward(player, 'Defensive Player of the Year');
+
+  if (isFirstBallot(player, wsThreshold)) return false;
+  if (mvps >= 1 || fmvps >= 1) return false;
+  if (champs >= 2 && allStars >= 5) return false;
+  if (dpoys >= 2 && allStars >= 5) return false;
+  if (ws >= wsThreshold) return false;
+
+  return ws >= wsThreshold * 0.8 && allStars >= 8;
+}
+
+export function getHOFTierInfo(player: NBAPlayer, wsThreshold: number): HOFTierInfo | null {
+  if (!isHOFWorthy(player, wsThreshold)) return null;
+  if (!player.retiredYear) return null;
+
+  if (isFirstBallot(player, wsThreshold)) {
+    return {
+      tier: 'first_ballot',
+      label: 'First Ballot',
+      waitYears: HOF_FIRST_BALLOT_WAIT_YEARS,
+      eligibleYear: player.retiredYear + HOF_FIRST_BALLOT_WAIT_YEARS,
+      firstBallot: true,
+    };
+  }
+
+  if (isBorderlineWorthy(player, wsThreshold)) {
+    return {
+      tier: 'borderline',
+      label: 'Borderline',
+      waitYears: HOF_BORDERLINE_WAIT_YEARS,
+      eligibleYear: player.retiredYear + HOF_BORDERLINE_WAIT_YEARS,
+      firstBallot: false,
+    };
+  }
+
+  return {
+    tier: 'regular',
+    label: 'Regular',
+    waitYears: HOF_REGULAR_WAIT_YEARS,
+    eligibleYear: player.retiredYear + HOF_REGULAR_WAIT_YEARS,
+    firstBallot: false,
+  };
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 /**
  * Induct eligible retired players at season rollover.
@@ -130,7 +193,7 @@ export function isFirstBallot(player: NBAPlayer, wsThreshold: number): boolean {
  * Rules:
  *  - Skip players already inducted (hof === true).
  *  - Must be retired (status === 'Retired') with a known retiredYear.
- *  - Must have waited HOF_WAIT_YEARS seasons (retiredYear + 3 ≤ year).
+ *  - Must have waited the tier-specific number of post-retirement seasons.
  *  - Must pass isHOFWorthy() with the configured threshold.
  *
  * @param players      Post-retirement player list (retirees already tagged with retiredYear)
@@ -147,17 +210,15 @@ export function runHOFChecks(
   const updated = players.map(p => {
     if (p.hof) return p; // already inducted
     if ((p as any).status !== 'Retired') return p;
-    const retiredYear = p.retiredYear;
-    if (!retiredYear) return p;
-    if (year < retiredYear + HOF_WAIT_YEARS) return p;
-    if (!isHOFWorthy(p, wsThreshold)) return p;
+    const tierInfo = getHOFTierInfo(p, wsThreshold);
+    if (!tierInfo) return p;
+    if (year < tierInfo.eligibleYear) return p;
 
     const ws = careerWinShares(p);
     const allStars = countAward(p, 'All-Star');
     const mvps = countAward(p, 'Most Valuable Player');
     const champs = countAward(p, 'Won Championship') + countAward(p, 'Champion');
     const age = p.born?.year ? (year - p.born.year) : 0;
-    const firstBallot = year === retiredYear + HOF_WAIT_YEARS && isFirstBallot(p, wsThreshold);
 
     newInductees.push({
       playerId:           p.internalId,
@@ -168,11 +229,12 @@ export function runHOFChecks(
       allStarAppearances: allStars,
       championships:      champs,
       mvps,
-      firstBallot,
+      firstBallot: tierInfo.firstBallot,
+      tier: tierInfo.tier,
     });
 
     console.log(
-      `[HOF] ${p.name} inducted (class of ${year}) — WS ${ws.toFixed(1)}, ${allStars}× All-Star, ${champs}× Champion${firstBallot ? ' [FIRST BALLOT]' : ''}`
+      `[HOF] ${p.name} inducted (class of ${year}) — ${tierInfo.label}, WS ${ws.toFixed(1)}, ${allStars}× All-Star, ${champs}× Champion${tierInfo.firstBallot ? ' [FIRST BALLOT]' : ''}`
     );
 
     return {
@@ -198,22 +260,24 @@ export function upcomingHOFCandidates(
   players: NBAPlayer[],
   currentYear: number,
   wsThreshold: number,
-): Array<{ player: NBAPlayer; yearsUntilEligible: number; eligibleYear: number; careerWS: number; firstBallot: boolean }> {
-  const out: Array<{ player: NBAPlayer; yearsUntilEligible: number; eligibleYear: number; careerWS: number; firstBallot: boolean }> = [];
+): Array<{ player: NBAPlayer; yearsUntilEligible: number; eligibleYear: number; careerWS: number; firstBallot: boolean; tier: HOFTier; tierLabel: string; waitYears: number }> {
+  const out: Array<{ player: NBAPlayer; yearsUntilEligible: number; eligibleYear: number; careerWS: number; firstBallot: boolean; tier: HOFTier; tierLabel: string; waitYears: number }> = [];
   for (const p of players) {
     if (p.hof) continue;
     if ((p as any).status !== 'Retired') continue;
-    if (!p.retiredYear) continue;
-    if (!isHOFWorthy(p, wsThreshold)) continue;
-    const eligibleYear = p.retiredYear + HOF_WAIT_YEARS;
-    const yearsUntil = eligibleYear - currentYear;
+    const tierInfo = getHOFTierInfo(p, wsThreshold);
+    if (!tierInfo) continue;
+    const yearsUntil = tierInfo.eligibleYear - currentYear;
     if (yearsUntil < 0) continue; // overdue — will be caught at next rollover
     out.push({
       player: p,
       yearsUntilEligible: yearsUntil,
-      eligibleYear,
+      eligibleYear: tierInfo.eligibleYear,
       careerWS: careerWinShares(p),
-      firstBallot: isFirstBallot(p, wsThreshold),
+      firstBallot: tierInfo.firstBallot,
+      tier: tierInfo.tier,
+      tierLabel: tierInfo.label,
+      waitYears: tierInfo.waitYears,
     });
   }
   return out.sort((a, b) => b.careerWS - a.careerWS);

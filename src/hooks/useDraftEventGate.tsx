@@ -30,9 +30,8 @@ export function useDraftEventGate(options: DraftEventGateOptions = {}) {
     }
 
     // Draft: all teams participate
-    const draftStr  = toISODateString(getDraftDate(seasonYear, ls));
-    const draftStr2 = toISODateString(new Date(getDraftDate(seasonYear, ls).getTime() + 86_400_000));
-    if ((todayStr === draftStr || todayStr === draftStr2) && !state.draftComplete) {
+    const draftStr = toISODateString(getDraftDate(seasonYear, ls));
+    if (todayStr === draftStr && !state.draftComplete) {
       return 'draft';
     }
 

@@ -446,9 +446,16 @@ export class AllStarWeekendOrchestrator {
     const result = results[0];
     if (!result) return {};
 
-    const updatedSchedule = state.schedule.map(g => 
+    const updatedSchedule = state.schedule.map(g =>
       g.gid === 90001 ? { ...g, played: true, homeScore: result.homeScore, awayScore: result.awayScore } : g
     );
+
+    const allStarStats = [
+      ...(result.homeStats || []).map((s: any) => ({ ...s, team: 'East' })),
+      ...(result.awayStats || []).map((s: any) => ({ ...s, team: 'West' })),
+    ];
+    const mvpStats = allStarStats.sort((a: any, b: any) => (b.pts || 0) - (a.pts || 0))[0];
+    const gameMvp = mvpStats ? { name: mvpStats.name, team: mvpStats.team } : undefined;
 
     return {
       schedule: updatedSchedule,
@@ -459,6 +466,7 @@ export class AllStarWeekendOrchestrator {
       allStar: {
         ...allStar,
         allStarGameId: 90001,
+        ...(gameMvp ? { gameMvp } : {}),
       }
     };
   }

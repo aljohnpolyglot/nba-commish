@@ -496,6 +496,15 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
   // ─────────────────────────────────────────────────────────────────────────
 
   const retiredJerseys: any[] = (selectedTeam as any).retiredJerseyNumbers ?? [];
+  const jerseyReasonLabel = (j: any): string | null => {
+    const reason = j.reason ?? j.tier;
+    if (reason === 'franchise_icon' || reason === 'automatic') return 'Franchise Icon';
+    if (reason === 'championship_core' || reason === 'fast_track') return 'Title Core';
+    if (reason === 'hof_legend') return 'HOF Legend';
+    if (reason === 'loyal_star' || reason === 'standard') return 'Loyal Star';
+    if (reason === 'honorary' || reason === 'late_honor') return 'Honorary';
+    return null;
+  };
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar bg-[#09090b] text-zinc-100" style={{ '--ta': accent } as any}>
@@ -598,6 +607,9 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
                         </span>
                         {j.seasonRetired && (
                           <span className="text-[9px] text-zinc-600 font-mono mt-0.5">{j.seasonRetired}</span>
+                        )}
+                        {jerseyReasonLabel(j) && (
+                          <span className="text-[8px] text-zinc-500 font-black uppercase tracking-wider mt-1">{jerseyReasonLabel(j)}</span>
                         )}
                       </motion.div>
                     ))}

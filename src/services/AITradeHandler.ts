@@ -6,15 +6,17 @@
  */
 
 import type { GameState, NBAPlayer, NBATeam, DraftPick, TradeProposal } from '../types';
-import { getCapThresholds, getTradeOutlook, effectiveRecord, topNAvgK2, getTeamCapProfile, resolveManualOutlook } from '../utils/salaryUtils';
-import { calcOvr2K, calcPlayerTV, isUntouchable, isSalaryLegal } from './trade/tradeValueEngine';
+import { getCapThresholds, effectiveRecord, getTeamCapProfile } from '../utils/salaryUtils';
+import { calcOvr2K, calcPlayerTV, isUntouchable } from './trade/tradeValueEngine';
 import { isAssistantGMActive } from './assistantGMFlag';
 import type { TeamMode } from './trade/tradeValueEngine';
 import { generateAITradeProposal } from './trade/tradeFinderEngine';
+import { resolveTeamStrategyProfile } from '../utils/teamStrategy';
 import { SettingsManager } from './SettingsManager';
 import { getMinTradableSeason, getTradablePicks, getMaxTradableSeason } from './draft/DraftPickGenerator';
 import { buildClassStrengthMap, buildLotterySlotMap } from './draft/draftClassStrength';
 import { getGMAttributes, getGMName, tradeInitiateProb, pickHoardResistance } from './staff/gmAttributes';
+import { generateTPEsFromTrade, isSalaryLegalWithTPE, getTotalActiveTPE } from '../utils/tradeExceptionUtils';
 
 // ── §2d: Pick values ──────────────────────────────────────────────────────────
 
@@ -68,7 +70,7 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
   const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive()) ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
   const thresholds = getCapThresholds(state.leagueStats as any);
 
-  // Compute conference standings so getTradeOutlook can use confRank + GB
+  // Effective standings still matter for auto strategy resolution.
   // effectiveRecord falls back to last season when < 10 games played (offseason/preseason)
   const eastTeams = state.teams.filter(t => t.conference === 'East').map(t => ({ t, rec: effectiveRecord(t, currentYear) })).sort((a, b) => (b.rec.wins - b.rec.losses) - (a.rec.wins - a.rec.losses));
   const westTeams = state.teams.filter(t => t.conference === 'West').map(t => ({ t, rec: effectiveRecord(t, currentYear) })).sort((a, b) => (b.rec.wins - b.rec.losses) - (a.rec.wins - a.rec.losses));
@@ -83,22 +85,21 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
     });
   }
 
-  const getOutlook = (t: NBATeam) => {
-    const manual = resolveManualOutlook(t, state.gameMode, (state as any).userTeamId);
-    if (manual) return manual;
-    const standings = confStandings.get(t.id);
-    const rec = effectiveRecord(t, currentYear);
-    const starAvg = topNAvgK2(state.players, t.id, 3);
-    return getTradeOutlook(
-      state.players.filter(p => p.tid === t.id).reduce((s, p) => s + ((p.contract?.amount ?? 0) * 1_000_000), 0),
-      rec.wins,
-      rec.losses,
-      state.players.filter(p => p.tid === t.id && ((p.contract?.exp ?? 0) <= currentYear)).length,
-      thresholds,
-      standings?.confRank,
-      standings?.gbFromLeader,
-      starAvg,
-    );
+  const strategyByTeam = new Map<number, ReturnType<typeof resolveTeamStrategyProfile>>();
+  const getStrategy = (team: NBATeam) => {
+    const cached = strategyByTeam.get(team.id);
+    if (cached) return cached;
+    const next = resolveTeamStrategyProfile({
+      team,
+      players: state.players,
+      teams: state.teams,
+      leagueStats: state.leagueStats,
+      currentYear,
+      gameMode: state.gameMode,
+      userTeamId: (state as any).userTeamId,
+    });
+    strategyByTeam.set(team.id, next);
+    return next;
   };
 
   // Franchise-timeline anchor: teams whose best player is ≤ 25 and not in playoffs
@@ -108,8 +109,10 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
     return p.overallRating ?? lastRating?.ovr ?? 60;
   };
   const isBuildingAroundYouth = (t: NBATeam): boolean => {
+    const strategy = getStrategy(t);
     const standings = confStandings.get(t.id);
     if (!standings || standings.confRank <= 6) return false; // playoff teams always OK
+    if (strategy.key === 'development' || strategy.key === 'rebuilding') return true;
     const roster = state.players.filter(p => p.tid === t.id);
     const starPlayer = roster.sort((a, b) => getOvr(b) - getOvr(a))[0];
     if (!starPlayer) return false;
@@ -119,19 +122,20 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
 
   const buyerTeams = state.teams.filter(t =>
     t.id !== userTeamId &&
-    ['buyer', 'heavy_buyer'].includes(getOutlook(t).role) &&
+    getStrategy(t).initiateBuyTrades &&
     !isBuildingAroundYouth(t)
   );
-  const sellerTeams = state.teams.filter(t => t.id !== userTeamId && !['buyer', 'heavy_buyer'].includes(getOutlook(t).role));
+  const sellerTeams = state.teams.filter(t =>
+    t.id !== userTeamId &&
+    (getStrategy(t).initiateSellTrades || !getStrategy(t).initiateBuyTrades)
+  );
 
   if (buyerTeams.length === 0 || sellerTeams.length === 0) return [];
 
   const recentlyTraded = recentlyTradedPlayerIds(state);
+  const reservedTeams = new Set<number>();
+  const reservedAssetIds = new Set<string>();
   const getRawK2 = (p: NBAPlayer) => calcOvr2K(p);
-
-  /** TV mode for a team: buyers contend, sellers rebuild */
-  const teamMode = (t: NBATeam): TeamMode =>
-    ['buyer', 'heavy_buyer'].includes(getOutlook(t).role) ? 'contend' : 'rebuild';
 
   // ── Main proposal loop: delegate to tradeFinderEngine ─────────────────────
   // Share the exact matching logic TradeFinderView uses so AI-AI proposals get
@@ -146,7 +150,7 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
     .forEach(({ t }, i) => powerRanks.set(t.id, i + 1));
 
   const teamOutlooksMap = new Map<number, { role: string }>();
-  for (const t of teamsList) teamOutlooksMap.set(t.id, { role: getOutlook(t).role });
+  for (const t of teamsList) teamOutlooksMap.set(t.id, { role: getStrategy(t).outlook.role });
 
   // Pre-filter recently-traded players from the engine's view so it never
   // re-proposes a player who just moved.
@@ -166,12 +170,14 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
   let count = 0;
   for (const { team: buyerTeam, agg: buyerAgg } of buyerTeamsByAgg) {
     if (count >= 2) break; // max 2 proposals per day
+    if (reservedTeams.has(buyerTeam.id)) continue;
 
     // Aggression gate: low-aggression GMs skip their turn probabilistically
     if (Math.random() > tradeInitiateProb(buyerAgg)) continue;
 
     for (const sellerTeam of sellerTeams) {
       if (sellerTeam.id === buyerTeam.id) continue;
+      if (reservedTeams.has(sellerTeam.id)) continue;
       const proposal = generateAITradeProposal({
         buyerTid: buyerTeam.id,
         sellerTid: sellerTeam.id,
@@ -203,6 +209,13 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
       // but guard anyway against empty baskets sneaking through).
       if (playersOffered.length + picksOffered.length === 0) continue;
       if (playersRequested.length + picksRequested.length === 0) continue;
+      const proposalAssetIds = [
+        ...playersOffered,
+        ...playersRequested,
+        ...picksOffered.map(String),
+        ...picksRequested.map(String),
+      ];
+      if (proposalAssetIds.some(id => reservedAssetIds.has(id))) continue;
 
       // scouting_focus: pick-hoarders are reluctant to ship picks out. Each outgoing
       // pick rolls against the buyer's hoard resistance; if any rolls fail, the GM
@@ -227,7 +240,15 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
         .filter(it => it.type === 'player')
         .reduce((s, it) => s + (it.player?.contract?.amount ?? 0), 0);
       const bothHavePlayers = buyerSalary > 0 && sellerSalary > 0;
-      if (bothHavePlayers && !isSalaryLegal(buyerSalary, sellerSalary)) continue;
+      if (bothHavePlayers) {
+        // TPE-aware: if straight 125% fails, see if either side's largest TPE
+        // can absorb the surplus. Buyer/seller args go in as (A=buyer, B=seller).
+        const tpeEnabled = state.leagueStats?.tradeExceptionsEnabled !== false;
+        const tpeBuyerUSD = tpeEnabled ? getTotalActiveTPE(buyerTeam, state.date) : 0;
+        const tpeSellerUSD = tpeEnabled ? getTotalActiveTPE(sellerTeam, state.date) : 0;
+        const check = isSalaryLegalWithTPE(buyerSalary, sellerSalary, tpeBuyerUSD, tpeSellerUSD, tpeEnabled);
+        if (!check.ok) continue;
+      }
       // Picks-only receiving side needs cap room to absorb the incoming salary
       // (same rule TradeMachineModal enforces for user trades).
       if (!bothHavePlayers && (buyerSalary + sellerSalary) > 0) {
@@ -257,6 +278,9 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
         status: 'accepted',
         isAIvsAI: true,
       });
+      reservedTeams.add(buyerTeam.id);
+      reservedTeams.add(sellerTeam.id);
+      proposalAssetIds.forEach(id => reservedAssetIds.add(id));
       count++;
       break;
     }
@@ -276,11 +300,13 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
 
     // Same aggression-sort as the main loop so the most active GMs dump first.
     const sellerTeamsByAgg = [...sellerTeams]
+      .filter(t => getStrategy(t).initiateSalaryDumps)
       .map(t => ({ team: t, agg: getGMAttributes(state, t.id).trade_aggression }))
       .sort((a, b) => b.agg - a.agg);
 
     for (const { team: sellerTeam, agg: sellerAgg } of sellerTeamsByAgg) {
       if (count >= 2) break;
+      if (reservedTeams.has(sellerTeam.id)) continue;
       // Never dump from youth-rebuild teams — they're building around young talent
       if (isBuildingAroundYouth(sellerTeam)) continue;
       // Low-aggression GMs are reluctant to initiate salary dumps
@@ -290,8 +316,7 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
 
       // Find the worst-value expiring contract on this team (dump candidate)
       // Use isUntouchable to protect key players, then filter for expiring salary
-      const dumpSellerMode: TeamMode = getOutlook(sellerTeam).role === 'rebuilding' ? 'presti'
-        : ['buyer', 'heavy_buyer'].includes(getOutlook(sellerTeam).role) ? 'contend' : 'rebuild';
+      const dumpSellerMode: TeamMode = getStrategy(sellerTeam).teamMode;
       const dumpCandidate = sellerRoster
         .filter(p => {
           if (recentlyTraded.has(p.internalId)) return false;
@@ -304,7 +329,7 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
       if (!dumpCandidate) continue;
 
       // Find a cap-space team willing to absorb it (gets nothing but cap flexibility)
-      const absorber = capSpaceTeams.find(t => t.id !== sellerTeam.id);
+      const absorber = capSpaceTeams.find(t => t.id !== sellerTeam.id && !reservedTeams.has(t.id));
       if (!absorber) continue;
 
       // Seller attaches a 2nd-round pick to sweeten the dump
@@ -319,6 +344,7 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
       if (sellerHoard > 0 && Math.random() < sellerHoard) continue;
 
       const dumpPick = sellerPicks[0];
+      if (reservedAssetIds.has(dumpCandidate.internalId) || reservedAssetIds.has(String(dumpPick.dpid))) continue;
       const dumpSalary = dumpCandidate.contract?.amount ?? 0;
       const absorberPayroll = state.players
         .filter(p => p.tid === absorber.id)
@@ -340,6 +366,10 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
         status: 'accepted',
         isAIvsAI: true,
       });
+      reservedTeams.add(sellerTeam.id);
+      reservedTeams.add(absorber.id);
+      reservedAssetIds.add(dumpCandidate.internalId);
+      reservedAssetIds.add(String(dumpPick.dpid));
       count++;
     }
   }
@@ -367,6 +397,87 @@ export function processAITradeProposals(
 
 // ── §2f: Execute AI-vs-AI trade ───────────────────────────────────────────────
 
+function validateAITradeExecution(
+  proposal: TradeProposal,
+  state: GameState,
+): { ok: true } | { ok: false; reason: string } {
+  const {
+    proposingTeamId,
+    receivingTeamId,
+    playersOffered,
+    playersRequested,
+    picksOffered,
+    picksRequested,
+  } = proposal;
+
+  const dupPlayer = playersOffered.some(id => playersRequested.includes(id));
+  const dupPick = picksOffered.some(id => picksRequested.includes(id));
+  if (dupPlayer || dupPick) {
+    return { ok: false, reason: 'AI trade failed revalidation: duplicate asset listed on both sides.' };
+  }
+
+  const offeredPlayers = state.players.filter(p => playersOffered.includes(p.internalId));
+  const requestedPlayers = state.players.filter(p => playersRequested.includes(p.internalId));
+  const offeredPicksState = state.draftPicks.filter(pk => picksOffered.includes(pk.dpid));
+  const requestedPicksState = state.draftPicks.filter(pk => picksRequested.includes(pk.dpid));
+
+  if (
+    offeredPlayers.length !== playersOffered.length ||
+    requestedPlayers.length !== playersRequested.length ||
+    offeredPicksState.length !== picksOffered.length ||
+    requestedPicksState.length !== picksRequested.length
+  ) {
+    return { ok: false, reason: 'AI trade failed revalidation: one or more assets no longer exist.' };
+  }
+
+  if (offeredPlayers.some(p => p.tid !== proposingTeamId) || offeredPicksState.some(pk => pk.tid !== proposingTeamId)) {
+    return { ok: false, reason: 'AI trade failed revalidation: proposing team no longer owns all outgoing assets.' };
+  }
+  if (requestedPlayers.some(p => p.tid !== receivingTeamId) || requestedPicksState.some(pk => pk.tid !== receivingTeamId)) {
+    return { ok: false, reason: 'AI trade failed revalidation: receiving team no longer owns all outgoing assets.' };
+  }
+
+  if (playersOffered.length + picksOffered.length === 0 || playersRequested.length + picksRequested.length === 0) {
+    return { ok: false, reason: 'AI trade failed revalidation: empty asset basket.' };
+  }
+
+  const proposerSalary = offeredPlayers.reduce((sum, p) => sum + (p.contract?.amount ?? 0), 0);
+  const receiverSalary = requestedPlayers.reduce((sum, p) => sum + (p.contract?.amount ?? 0), 0);
+  const bothHavePlayers = proposerSalary > 0 && receiverSalary > 0;
+
+  if (bothHavePlayers) {
+    const tpeEnabled = state.leagueStats?.tradeExceptionsEnabled !== false;
+    const proposingTeam = state.teams.find(t => t.id === proposingTeamId);
+    const receivingTeamObj = state.teams.find(t => t.id === receivingTeamId);
+    const tpePropUSD = tpeEnabled && proposingTeam ? getTotalActiveTPE(proposingTeam, state.date) : 0;
+    const tpeRecvUSD = tpeEnabled && receivingTeamObj ? getTotalActiveTPE(receivingTeamObj, state.date) : 0;
+    const check = isSalaryLegalWithTPE(proposerSalary, receiverSalary, tpePropUSD, tpeRecvUSD, tpeEnabled);
+    if (!check.ok) {
+      return { ok: false, reason: 'AI trade failed revalidation: salary match is no longer legal.' };
+    }
+  }
+
+  if (!bothHavePlayers && (proposerSalary + receiverSalary) > 0) {
+    const thresholds = getCapThresholds(state.leagueStats as any);
+    const absorberTid = proposerSalary === 0 ? proposingTeamId : receivingTeamId;
+    const absorberTeam = state.teams.find(t => t.id === absorberTid);
+    const incomingSalary = proposerSalary === 0 ? receiverSalary : proposerSalary;
+    if (!absorberTeam) {
+      return { ok: false, reason: 'AI trade failed revalidation: absorbing team is missing.' };
+    }
+    const capK = getTeamCapProfile(
+      state.players, absorberTid,
+      (absorberTeam as any).wins ?? 0, (absorberTeam as any).losses ?? 0,
+      thresholds,
+    ).capSpaceUSD / 1000;
+    if (incomingSalary > capK + 100) {
+      return { ok: false, reason: 'AI trade failed revalidation: absorbing team lacks cap room.' };
+    }
+  }
+
+  return { ok: true };
+}
+
 export function executeAITrade(proposal: TradeProposal, state: GameState): Partial<GameState> {
   const {
     proposingTeamId, receivingTeamId,
@@ -378,6 +489,17 @@ export function executeAITrade(proposal: TradeProposal, state: GameState): Parti
   const receivingTeam = state.teams.find(t => t.id === receivingTeamId);
 
   if (!proposingTeam || !receivingTeam) return {};
+
+  const validation = validateAITradeExecution(proposal, state);
+  if (validation.ok === false) {
+    return {
+      tradeProposals: (state.tradeProposals ?? []).map(p =>
+        p.id === proposal.id
+          ? { ...p, status: 'rejected' as const, tradeText: validation.reason }
+          : p
+      ),
+    };
+  }
 
   // Move players
   const updatedPlayers = state.players.map(p => {
@@ -435,10 +557,26 @@ export function executeAITrade(proposal: TradeProposal, state: GameState): Parti
     playerIds: [...playersOffered, ...playersRequested],
   };
 
+  // Generate TPEs (over-cap senders only).
+  const tpeEnabled = state.leagueStats?.tradeExceptionsEnabled !== false;
+  let updatedTeams = state.teams;
+  if (tpeEnabled) {
+    const sentByProp = state.players.filter(p => playersOffered.includes(p.internalId));
+    const sentByRecv = state.players.filter(p => playersRequested.includes(p.internalId));
+    const txnForTPE = {
+      teams: {
+        [proposingTeamId]: { playersSent: sentByProp, picksSent: [] as DraftPick[] },
+        [receivingTeamId]: { playersSent: sentByRecv, picksSent: [] as DraftPick[] },
+      },
+    };
+    updatedTeams = generateTPEsFromTrade(txnForTPE, state.teams, state.players, state.leagueStats, state.date);
+  }
+
   return {
     players: updatedPlayers,
     draftPicks: updatedPicks,
-    history: [...(state.history ?? []), historyEntry as any],
+    teams: updatedTeams,
+    history: [...(state.history ?? []), historyEntry],
     tradeProposals: (state.tradeProposals ?? []).map(p =>
       p.id === proposal.id ? { ...p, status: 'executed' as const } : p
     ),

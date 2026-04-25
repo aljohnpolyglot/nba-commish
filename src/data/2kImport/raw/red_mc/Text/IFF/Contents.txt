@@ -1,0 +1,5 @@
+General:4
+Name;Name;File Name.
+FileID;File ID;ID of the file. Generated from the file name. The game uses files according to their IDs.
+Type;Data Type;The type of data, stored in the file.
+Size;Size;File Size.

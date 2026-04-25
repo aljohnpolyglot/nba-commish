@@ -174,13 +174,43 @@ export function topNAvgK2(players: NBAPlayer[], teamId: number, n = 3): number {
   return sum / top.length;
 }
 
+/** Bird Rights resolver with stats-based fallback.
+ *  The `hasBirdRights` flag is set by seasonRollover when yearsWithTeam ≥ 3.
+ *  Real-player gist imports often lack the flag (e.g. Duren on DET 4 yrs but
+ *  the rollover never seeded it because his contract preserved through the
+ *  expiring-FA branch which doesn't compute Bird). Derive from stats:
+ *  ≥ 3 consecutive recent seasons with the same NBA tid. */
+export function hasBirdRights(player: NBAPlayer): boolean {
+  if ((player as any).hasBirdRights === true) return true;
+  const stats: Array<{ season?: number; tid?: number; gp?: number; playoffs?: boolean }> = (player as any).stats ?? [];
+  const sorted = stats
+    .filter(s => !s.playoffs && (s.gp ?? 0) > 0 && (s.tid ?? -1) >= 0 && (s.tid ?? -1) <= 29)
+    .sort((a, b) => (b.season ?? 0) - (a.season ?? 0));
+  if (sorted.length < 3) return false;
+  const lastTid = sorted[0].tid;
+  let consecutive = 0;
+  for (const s of sorted) {
+    if (s.tid === lastTid) consecutive++;
+    else break;
+  }
+  return consecutive >= 3;
+}
+
+/** League-average of each team's top-N avg K2 — relative benchmark for strategy labels. */
+export function leagueAvgTopNK2(players: NBAPlayer[], teams: { id: number }[], n = 3): number {
+  if (teams.length === 0) return 0;
+  const sum = teams.reduce((s, t) => s + topNAvgK2(players, t.id, n), 0);
+  return sum / teams.length;
+}
+
 /**
  * Classifies a team's trade/FA outlook using cap position AND standings context.
  *
- * @param confRank       - 1–15 rank within conference (undefined = ignore standings)
- * @param gbFromLeader   - Games Behind the conference leader (undefined = ignore)
- * @param topThreeAvgK2  - Avg K2 OVR of team's top-3 players. ≥ 88 forces Contending
- *                         regardless of record (covers dual-star teams in rebuild seasons).
+ * @param confRank         - 1–15 rank within conference (undefined = ignore standings)
+ * @param gbFromLeader     - Games Behind the conference leader (undefined = ignore)
+ * @param topThreeAvgK2    - Avg K2 OVR of team's top-3 players
+ * @param leagueTopAvgK2   - League avg of each team's top-3 K2. When provided, uses
+ *                           talentDelta-based relative classify instead of absolute ≥88 gate.
  */
 export const getTradeOutlook = (
   payrollUSD: number,
@@ -191,14 +221,34 @@ export const getTradeOutlook = (
   confRank?: number,
   gbFromLeader?: number,
   topThreeAvgK2?: number,
+  leagueTopAvgK2?: number,
 ): TradeOutlook => {
   const gp = wins + losses || 1;
   const winPct = wins / gp;
   const capSpace = thresholds.salaryCap - payrollUSD;
   const isOverTax = payrollUSD >= thresholds.luxuryTax;
 
+  // Relative classify — uses talentDelta to avoid absolute-K2 inflation bias
+  if (topThreeAvgK2 !== undefined && leagueTopAvgK2 !== undefined) {
+    const talentDelta = topThreeAvgK2 - leagueTopAvgK2;
+    if (winPct < 0.35)
+      return { role: 'rebuilding', label: 'Rebuilding', color: 'text-purple-400', bgColor: 'bg-purple-500/20', dot: '#c084fc', reason: '' };
+    if (winPct < 0.42)
+      return talentDelta >= 3
+        ? { role: 'seller', label: 'Underperforming', color: 'text-orange-400', bgColor: 'bg-orange-500/20', dot: '#fb923c', reason: '' }
+        : { role: 'neutral', label: 'Mid', color: 'text-slate-400', bgColor: 'bg-slate-700/40', dot: '#94a3b8', reason: '' };
+    if (winPct >= 0.55)
+      return talentDelta >= 2
+        ? { role: 'heavy_buyer', label: 'Contending', color: 'text-emerald-300', bgColor: 'bg-emerald-500/20', dot: '#6ee7b7', reason: '' }
+        : { role: 'buyer', label: 'Overachieving', color: 'text-sky-400', bgColor: 'bg-sky-500/20', dot: '#38bdf8', reason: '' };
+    // winPct 0.42–0.54: playoff bubble
+    if (payrollUSD >= thresholds.secondApron)
+      return { role: 'seller', label: 'Retooling', color: 'text-amber-400', bgColor: 'bg-amber-500/20', dot: '#fbbf24', reason: '' };
+    return { role: 'neutral', label: 'Mid', color: 'text-slate-400', bgColor: 'bg-slate-700/40', dot: '#94a3b8', reason: '' };
+  }
+
   // Star-power override: if the top-3 players avg K2 ≥ 88, always Contending
-  // (covers LeBron+AD, Jokic+Murray, etc. even when in a rebuilding season)
+  // (AI trade gate — absolute threshold kept for callers without league benchmark)
   if (topThreeAvgK2 !== undefined && topThreeAvgK2 >= 88) {
     return { role: 'heavy_buyer', label: 'Contending', color: 'text-emerald-300', bgColor: 'bg-emerald-500/20', dot: '#6ee7b7', reason: '' };
   }

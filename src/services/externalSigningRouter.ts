@@ -17,8 +17,8 @@
  */
 
 import type { GameState, NBAPlayer } from '../types';
-import { convertTo2KRating } from '../utils/helpers';
-import { EXTERNAL_SALARY_SCALE } from '../constants';
+import { convertTo2KRating, getCountryFromLoc } from '../utils/helpers';
+import { EXTERNAL_SALARY_SCALE, NATIONALITY_LEAGUE_BIAS, EXTERNAL_LEAGUE_OVR_CAP } from '../constants';
 
 export interface ExternalRoutingResult {
   playerId: string;
@@ -50,6 +50,7 @@ function pickDestination(
   age: number,
   nonNBATeams: GameState['nonNBATeams'],
   playerSeed: number,
+  born?: { loc?: string },
 ): { league: ExternalRoutingResult['league']; tid: number; teamName: string } | null {
   let targetLeague: ExternalRoutingResult['league'];
 
@@ -74,6 +75,14 @@ function pickDestination(
     if (rng < 0.35) targetLeague = 'B-League';
     else if (rng < 0.70) targetLeague = 'PBA';
     else targetLeague = 'China CBA';
+  }
+
+  // Nationality home-league preference: 70% → home league, 30% → OVR-tier result.
+  // US/Canada players have no entry in NATIONALITY_LEAGUE_BIAS, so they fall through.
+  const country = getCountryFromLoc(born?.loc);
+  const homeLeague = NATIONALITY_LEAGUE_BIAS[country] as ExternalRoutingResult['league'] | undefined;
+  if (homeLeague && homeLeague !== targetLeague) {
+    if (seededRandom(playerSeed + 3) < 0.70) targetLeague = homeLeague;
   }
 
   const leagueTeams = nonNBATeams.filter(t => t.league === targetLeague);
@@ -151,6 +160,8 @@ export function routeUnsignedPlayers(
     const k2Ovr = convertTo2KRating(p.overallRating ?? 0, hgtAttr);
     // Skip absolute wash-outs (K2 < 55) — let them stay as unsigned FAs
     if (k2Ovr < 55) return p;
+    // NBA-starter caliber (K2 ≥ 85 ≈ BBGM OVR 61) — never route overseas
+    if (k2Ovr >= 85) return p;
     // Skip protected FAs — they must remain available as NBA signings
     if (protectedIds.has(p.internalId)) return p;
 
@@ -160,7 +171,7 @@ export function routeUnsignedPlayers(
     let playerSeed = 0;
     for (let ci = 0; ci < p.internalId.length; ci++) playerSeed += p.internalId.charCodeAt(ci);
 
-    const dest = pickDestination(k2Ovr, playerAge, state.nonNBATeams ?? [], playerSeed);
+    const dest = pickDestination(k2Ovr, playerAge, state.nonNBATeams ?? [], playerSeed, (p as any).born);
     if (!dest) return p;
 
     // Generate contract with salary based on EXTERNAL_SALARY_SCALE
@@ -182,14 +193,47 @@ export function routeUnsignedPlayers(
       salaryUSD,
     });
 
+    // Fix 18: clamp OVR to destination league ceiling so NBA-boosted ratings
+    // don't carry over (e.g. K2 88 player cut to PBA stays at PBA cap, not K2 88).
+    const destOvrCap = EXTERNAL_LEAGUE_OVR_CAP[dest.league];
+    const clampedOvr = destOvrCap !== undefined
+      ? Math.min(p.overallRating ?? 60, destOvrCap)
+      : (p.overallRating ?? 60);
+
+    // Clamp the most recent ratings entry's ovr so potMod stays calibrated next season.
+    const rawRatings = (p as any).ratings as any[] | undefined;
+    const clampedRatings = rawRatings && destOvrCap !== undefined
+      ? rawRatings.map((r: any, i: number) =>
+          i === rawRatings.length - 1 && (r.ovr ?? 0) > destOvrCap
+            ? { ...r, ovr: destOvrCap }
+            : r,
+        )
+      : rawRatings;
+
+    // Fix 17: build a clean single-year contractYears entry at the destination
+    // league's salary — strips old NBA contractYears that would show inflated
+    // values in the player bio contract tab (e.g. Yuto Imanishi ¥622M B-League).
+    const currentYear = state.leagueStats?.year ?? 2026;
+    const seasonLabel = `${currentYear - 1}-${String(currentYear).slice(-2)}`;
+
     return {
       ...p,
       tid: dest.tid,
       status: dest.league as NBAPlayer['status'],
+      overallRating: clampedOvr,
+      ...(clampedRatings ? { ratings: clampedRatings } : {}),
+      twoWay: undefined,
       contract: {
         amount: Math.round(salaryUSD / 1_000), // BBGM convention: thousands
         exp: contractExp,
+        hasPlayerOption: false,
+        hasTeamOption: false,
       },
+      contractYears: [{
+        season: seasonLabel,
+        guaranteed: salaryUSD,
+        option: '',
+      }],
     };
   });
 

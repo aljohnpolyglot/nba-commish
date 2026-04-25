@@ -1,0 +1,6 @@
+General:4
+HomeT_ID;Home Team;Home Team
+AwayT_ID;Away Team;Away Team
+#
+HTWins;Home Team Wins;Number Of Home Team Victories
+ATWins;Away Team Wins;Number Of Away Team Victories

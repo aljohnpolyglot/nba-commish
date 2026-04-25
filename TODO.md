@@ -9,10 +9,9 @@
 ---
 
 ## BUGS — Open
-
-- **EconomyTab settings UI for RFA + signing-difficulty** — RFA matching shipped with hardcoded defaults (matching ON, 2-day window, auto-decline 2nd apron ON). Three `leagueStats` settings need UI rows on EconomyTab: `rfaMatchingEnabled`, `rfaMatchWindowDays`, `rfaAutoDeclineOver2ndApron`. Held off to coordinate with the parallel signing-difficulty agent's `useRulesState` changes — wire both in same pass.
-
 - **Audit vs UI FA count mismatch** — `audit-economy-deep.js` strict filter (`p.status === 'Free Agent'`) misses the 833 `'FreeAgent'` legacy-typo players. Forward-healing fix in `simulationHandler.runSimulation` normalizes on next sim tick. LOAD_GAME migration normalizes on next load. Diagnostic snippet at `scripts/audit-fa-status.js`.
+
+- **PBA players have inflated POT** — `getDisplayPotential` prefers `ratings[0].pot` (line 130 `playerRatings.ts`) over the formula, but PBA players imported from the gist carry raw BBGM-export `pot` values (70s–90s) that were never capped. Root cause: `fetchPBARoster` (`externalRosterService.ts:249`) calls `scaleRatings` which skips `pot` (it's in `ATTR_SKIP`), so the inflated gist value passes through unchanged. Fix: after `scaleRatings`, clamp `scaledRatings[0].pot` to `Math.min(50, ovrBbgm + 4)` (matches `spawnExternalPlayer` potCap logic for adult PBA: `ovrCap 46 + 4`). Same fix needed for China CBA if it has the same issue.
 
 ---
 
