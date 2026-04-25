@@ -570,6 +570,25 @@ export interface AcceptanceResult {
   reason: string;
 }
 
+/**
+ * Contract toxicity in TV units — how much the receiver demands as compensation
+ * for absorbing this contract beyond fair-market value. Drives the "smart enough
+ * to ask for more picks on bad contracts" behavior.
+ *
+ * Fair annual = piecewise USD/M by K2 OVR. Overpay × years left × 0.5 → TV units.
+ * Example: $50M/3yr on a 78 OVR (fair ≈ $24M) → (50−24)×3×0.5 ≈ 39 TV demanded.
+ */
+function contractToxicity(player: NBAPlayer, currentYear: number): number {
+  const c = player.contract;
+  if (!c?.amount || !c.exp) return 0;
+  const annualM = c.amount / 1000;
+  const yrsLeft = Math.max(1, c.exp - currentYear + 1);
+  const k2 = calcOvr2K(player);
+  const fairM = k2 >= 90 ? 50 : k2 >= 85 ? 40 : k2 >= 80 ? 30 : k2 >= 75 ? 22 : k2 >= 70 ? 12 : k2 >= 65 ? 6 : k2 >= 60 ? 3 : 1.5;
+  const overpayPerYr = Math.max(0, annualM - fairM);
+  return overpayPerYr * yrsLeft * 0.5;
+}
+
 function tvOfItem(
   item: { type: string; player?: NBAPlayer; pick?: DraftPick },
   receiverMode: TeamMode,
@@ -620,27 +639,44 @@ export function evaluateTradeAcceptance(input: EvaluateAcceptanceInput): Accepta
     return d <= 50 ? (d / 50) * 70 - 60 : 10 + (d - 50);
   })();
 
-  const expectedReturn = Math.max(10, offerValue - difficultyBias);
-  const totalVal = Math.max(expectedReturn, returnVal);
+  // Contract toxicity: receiver demands picks as compensation for absorbing
+  // overpaid deals. fromAbsorb = liability AI is taking on (lowers expectedReturn);
+  // toAbsorb = liability user takes on (raises expectedReturn — AI willing to give
+  // less since they're already off-loading a bad contract).
+  const fromAbsorb = fromItems.reduce((s, i) =>
+    i.type === 'player' && i.player ? s + contractToxicity(i.player, currentYear) : s, 0);
+  const toAbsorb = toItems.reduce((s, i) =>
+    i.type === 'player' && i.player ? s + contractToxicity(i.player, currentYear) : s, 0);
+
+  // expectedReturn can go negative when toxic contracts dominate the offer —
+  // that's the "you need to attach more picks" demand.
+  const expectedReturn = (offerValue - difficultyBias) - fromAbsorb + toAbsorb;
+  const totalVal = Math.max(Math.max(10, expectedReturn), returnVal);
   // Mirrors generateCounterOffers: relaxed for franchise-tier targets where
   // picks can't close the TV gap perfectly.
   const ratioThreshold = totalVal >= 300 ? 1.30 : totalVal >= 200 ? 1.35 : totalVal >= 100 ? 1.40 : 1.45;
-  const minSide = Math.max(1, Math.min(expectedReturn, returnVal));
-  const ratio = totalVal / minSide;
 
-  // returnVal === 0 → no acceptance unless offerValue is also 0 (picks-for-picks edge).
-  const accepted = returnVal > 0 && ratio <= ratioThreshold;
-  const shortfall = Math.max(0, expectedReturn - returnVal);
-  const netToAI = offerValue - returnVal; // positive = AI gets more than gives
+  // Asymmetric gate: AI only refuses when THEY would be overpaying relative to
+  // expectedReturn (which already accounts for toxic-contract absorption demand).
+  // Cap legality + roster space are enforced upstream by salaryViolation.
+  const aiOverpaying = returnVal > expectedReturn;
+  const ratio = aiOverpaying ? returnVal / Math.max(1, expectedReturn) : 1;
+  const accepted = !aiOverpaying || ratio <= ratioThreshold;
+  // Shortfall = how much MORE value user must add to clear AI's bar.
+  const shortfall = Math.max(0, returnVal - expectedReturn);
+  const netToAI = offerValue - returnVal - fromAbsorb + toAbsorb; // post-toxicity
 
   let reason: string;
   if (accepted) {
     reason = netToAI > 15
       ? 'This is a great deal for us. Done!'
       : 'Fair trade. We can work with this.';
-  } else if (returnVal > expectedReturn) {
-    // AI is being asked to give up too much for what's coming back.
-    reason = "We can't part with that much for what you're sending.";
+  } else if (fromAbsorb > 20 && returnVal === 0) {
+    // Pure dump of a toxic contract — AI wants compensation, not just the body.
+    reason = "That contract's a tough pill. Sweeten it with another pick or two and we'll talk.";
+  } else if (fromAbsorb > 20) {
+    // Toxic contract included but with some return — still need more.
+    reason = "Bad money on that deal — we'd need more draft compensation to take it on.";
   } else {
     reason = shortfall > 30
       ? "No way. This isn't even close to fair value for what we're giving up."
