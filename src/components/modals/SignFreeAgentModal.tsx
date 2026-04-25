@@ -19,6 +19,7 @@ interface SigningDetails {
   years: number;
   option: 'NONE' | 'PLAYER' | 'TEAM';
   twoWay: boolean;
+  nonGuaranteed: boolean;
   mleType: 'room' | 'non_taxpayer' | 'taxpayer' | null;
 }
 
@@ -124,7 +125,7 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
         preflightMessage={preflightMessage}
         initialContractType={forceContractType}
         onClose={onClose}
-        onSign={({ salary, years, option, twoWay, mleType }) => {
+        onSign={({ salary, years, option, twoWay, nonGuaranteed, mleType }) => {
           onConfirm({
             playerId: selectedPlayer.internalId,
             teamId: selectedTeam.id,
@@ -134,6 +135,7 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
             years,
             option,
             twoWay,
+            nonGuaranteed,
             mleType,
           });
         }}

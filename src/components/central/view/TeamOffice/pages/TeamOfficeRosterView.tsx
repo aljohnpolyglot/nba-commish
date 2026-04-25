@@ -275,13 +275,55 @@ export function TeamOfficeRosterView({ teamId }: Props) {
     ? Math.min(5, rows.filter(r => !r.isInjured).length)
     : 0;
 
+  // Starter IDs for rotation + gameplan highlight
+  const starterIds = useMemo((): Set<string> => {
+    if ((sortMode === 'rotation' || sortMode === 'gameplan') && team) {
+      const healthy = teamPlayers.filter(p => p.status === 'Active' && !((p as any).injury?.gamesRemaining > 0));
+      const starters = StarterService.getProjectedStarters(team, state.players, currentYear, healthy);
+      return new Set(starters.map(p => p.internalId));
+    }
+    return new Set();
+  }, [sortMode, team, teamPlayers, state.players, currentYear]);
+
   if (quick.fullPageView) return quick.fullPageView;
 
   return (
     <>
+      {/* Mobile-only GM strip */}
+      <div className="md:hidden flex items-center gap-3 mb-2 rounded-lg border border-[#30363d] bg-slate-900/60 px-3 py-2">
+        <div className="w-9 h-9 rounded-full border border-white/10 overflow-hidden bg-slate-800/50 shrink-0">
+          <PlayerPortrait playerName={gmName || 'GM'} imgUrl={gmPortrait} size={36} />
+        </div>
+        <div className="min-w-0">
+          <div className="text-xs font-black text-slate-100 truncate">{gmName || 'Unknown GM'}</div>
+          <div className="text-[9px] font-bold uppercase tracking-widest text-amber-400">
+            {isOwnTeam ? 'You · GM' : 'General Manager'}
+          </div>
+        </div>
+        <div className="flex gap-3 ml-auto shrink-0 text-center">
+          <div>
+            <div className="text-[8px] uppercase tracking-widest text-slate-500">W</div>
+            <div className="text-sm font-black text-slate-200">{team?.wins ?? 0}</div>
+          </div>
+          <div>
+            <div className="text-[8px] uppercase tracking-widest text-slate-500">L</div>
+            <div className="text-sm font-black text-slate-200">{team?.losses ?? 0}</div>
+          </div>
+        </div>
+        <select
+          value={sortMode}
+          onChange={e => setSortMode(e.target.value as SortMode)}
+          className="ml-2 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-200 outline-none cursor-pointer shrink-0"
+        >
+          <option value="rating">OVR</option>
+          <option value="rotation">Rotation</option>
+          <option value="gameplan">PER</option>
+        </select>
+      </div>
+
       <div className="h-full flex gap-4 min-h-0">
-        {/* GM Sidebar — LEFT */}
-        <aside className="w-[210px] shrink-0 flex flex-col gap-3">
+        {/* GM Sidebar — LEFT (desktop only) */}
+        <aside className="hidden md:flex w-[210px] shrink-0 flex-col gap-3">
           {/* GM card */}
           <div
             className="rounded-lg p-3 border border-[#30363d] relative overflow-hidden shrink-0"
@@ -403,6 +445,8 @@ export function TeamOfficeRosterView({ teamId }: Props) {
                   const showBenchDivider = sortMode === 'rotation' && idx === rotationStarterCount && rotationStarterCount > 0;
                   // Injury divider in rotation mode
                   const showInjuredDivider = sortMode === 'rotation' && r.isInjured && !rows[idx - 1]?.isInjured;
+                  // Starter highlight for rotation + gameplan
+                  const isStarter = starterIds.has(p.internalId);
 
                   return (
                     <React.Fragment key={p.internalId}>
@@ -433,6 +477,8 @@ export function TeamOfficeRosterView({ teamId }: Props) {
                           'border-t border-slate-800/60 cursor-pointer transition-colors',
                           r.isInjured
                             ? 'opacity-50 hover:opacity-70'
+                            : isStarter && !r.isTwoWay && !r.isNonGuaranteed
+                            ? 'bg-amber-500/10 hover:bg-amber-500/20 border-l-2 border-l-amber-400'
                             : r.isTwoWay
                             ? 'bg-violet-500/10 hover:bg-violet-500/20 border-l-2 border-l-violet-500'
                             : r.isNonGuaranteed
@@ -449,6 +495,9 @@ export function TeamOfficeRosterView({ teamId }: Props) {
                           <div className="flex items-center gap-1.5">
                             <PlayerPortrait playerName={p.name} imgUrl={p.imgURL} face={(p as any).face} size={24} />
                             <span className="font-semibold truncate max-w-[90px] text-slate-100">{p.name}</span>
+                            {isStarter && (sortMode === 'rotation' || sortMode === 'gameplan') && (
+                              <span className="text-[7px] font-black uppercase px-1 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/40 shrink-0">S</span>
+                            )}
                             {r.isInjured && (
                               <span
                                 title={`Out — ${r.injuryType}`}

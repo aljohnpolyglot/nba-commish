@@ -315,7 +315,9 @@ export const processTurn = async (
     // and consumed here. No mid-season regenerations.
     let finalSchedule = stateWithSim.schedule;
     const normalizedFinalDate = normalizeDate(dateString);
-    const hasRegularSeasonGames = finalSchedule.some(g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn);
+    // Exclude isNBACup so a Cup-only schedule (e.g. self-heal injected groups
+    // after rollover before Aug 14) doesn't masquerade as a generated season.
+    const hasRegularSeasonGames = finalSchedule.some(g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn && !(g as any).isNBACup);
     const scheduleYear = state.leagueStats?.year ?? 2026;
     if (!hasRegularSeasonGames && normalizedFinalDate >= `${scheduleYear - 1}-08-14`) {
         console.log(`[Schedule] GENERATING on Aug14 — christmas=${(result.christmasGames || state.christmasGames)?.length ?? 0} global=${(result.globalGames || state.globalGames)?.length ?? 0}`);

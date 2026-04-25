@@ -137,8 +137,21 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                 ? ` ${playerName} was previously with the ${previousTeamName}.`
                 : '';
 
-        const verb = isResignAction ? 're-signed' : 'signed';
-        const signingOutcomeText = `The ${teamName} ${verb} ${playerName}.${returnContext}`;
+        // Match AI signing/re-signing template so the transaction log + news
+        // get full contract details (salary, years, option, contract type).
+        const annualM = Math.round(baseSalaryUSD / 100_000) / 10;
+        const totalRaw = annualM * totalYears;
+        const totalStr = totalRaw < 1 ? totalRaw.toFixed(1) : Math.round(totalRaw).toString();
+        const optTag = option === 'PLAYER' ? ' (player option)' : option === 'TEAM' ? ' (team option)' : '';
+        const twoWayTag = signedAsTwoWay ? ' (two-way)' : '';
+        const ngTag = signedAsNG ? ' (non-guaranteed)' : '';
+        const mleTag = signedMleType && !signedAsTwoWay && !signedAsNG
+            ? (signedMleType === 'taxpayer' ? ' (taxpayer MLE)' : signedMleType === 'room' ? ' (room MLE)' : ' (MLE)')
+            : '';
+        const contractDetails = `: $${totalStr}M/${totalYears}yr${optTag}${twoWayTag}${ngTag}${mleTag}`;
+        const signingOutcomeText = isResignAction
+            ? `${playerName} re-signs with ${teamName}${contractDetails}`
+            : `${playerName} signs with the ${teamName}${contractDetails}${returnContext}`;
 
         const signingSeed = `BREAKING SIGNING: The ${teamName} have signed ${playerName}.${returnContext} ` +
             `REQUIRED: @ShamsCharania MUST break this in a detailed tweet — name the team, the player, any context (returning from abroad, veteran presence, etc.), and what he brings. ` +
@@ -230,12 +243,19 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
             };
         }
 
-        // Auto news item for the signing (fires regardless of LLM)
+        // Auto news item for the signing (fires regardless of LLM). Override
+        // the generic template so the headline + content carry the full
+        // contract details — matches the AI-signing news style.
         const signingNewsItem = NewsGenerator.generate('signing_confirmed', stateWithSim.date, {
             playerName: player.name,
             teamName: team.name,
         }, team.logoUrl);
-        if (signingNewsItem) newNews.unshift(signingNewsItem);
+        if (signingNewsItem) {
+            const verbHeadline = isResignAction ? 'Re-Signs With' : 'Signs With';
+            (signingNewsItem as any).headline = `${player.name} ${verbHeadline} ${team.name} — $${totalStr}M/${totalYears}yr${optTag}${twoWayTag}${ngTag}${mleTag}`;
+            (signingNewsItem as any).content = `${signingOutcomeText}. The ${totalYears}-year deal carries an annual value of $${annualM.toFixed(1)}M${optTag ? `, with a${optTag.startsWith(' (player') ? ' player' : ' team'} option in the final year` : ''}.`;
+            newNews.unshift(signingNewsItem);
+        }
 
         result.newEmails = [...newEmails, ...(result.newEmails || [])];
         result.newNews = [...newNews, ...(result.newNews || [])];
@@ -456,6 +476,75 @@ export const handleDeclineTeamOption = async (stateWithSim: GameState, action: U
     return {
         players,
         outcomeText: `The ${team?.name ?? 'team'} declined their team option on ${player.name}. ${player.name} is now a free agent.`,
+        isProcessing: false,
+    };
+};
+
+/**
+ * Convert a non-guaranteed contract on the fly.
+ *  - to:'GUARANTEED' just clears the `nonGuaranteed` flag (existing salary stays).
+ *  - to:'TWO_WAY' collapses the deal to a 1-year, $625K two-way (real-NBA scale).
+ * Mirrors the AI Jan 10 auto-guarantee path but lets the user pull the trigger
+ * any time before the deadline.
+ */
+export const handleConvertContractType = async (stateWithSim: GameState, action: UserAction) => {
+    const { playerId, to } = action.payload as { playerId: string; to: 'GUARANTEED' | 'TWO_WAY' };
+    const player = stateWithSim.players.find((p: any) => p.internalId === playerId) as any;
+    if (!player || !(player as any).nonGuaranteed) return { isProcessing: false };
+    const team = stateWithSim.teams.find(t => t.id === player.tid);
+    const teamName = team?.name ?? 'team';
+
+    let players: any[];
+    let outcomeText: string;
+    if (to === 'GUARANTEED') {
+        players = stateWithSim.players.map((p: any) =>
+            p.internalId === playerId
+                ? { ...p, nonGuaranteed: undefined }
+                : p
+        );
+        outcomeText = `${player.name}'s contract was guaranteed by the ${teamName}.`;
+    } else {
+        // Two-way scale: $625K, 1 year. Replace current-season contractYears entry,
+        // preserve any historical (pre-current-season) salary rows.
+        const TWO_WAY_THOUSANDS = 625;
+        const TWO_WAY_USD = 625_000;
+        const leagueYear = stateWithSim.leagueStats?.year ?? new Date().getUTCFullYear();
+        const seasonLabel = `${leagueYear - 1}-${String(leagueYear).slice(-2)}`;
+        const priorYears: Array<{ season: string; guaranteed: number; option?: string }> =
+            Array.isArray(player.contractYears) ? player.contractYears : [];
+        const historical = priorYears.filter(cy => {
+            const yr = parseInt(cy.season.split('-')[0], 10) + 1;
+            return yr < leagueYear;
+        });
+        const newContractYears = [
+            ...historical,
+            { season: seasonLabel, guaranteed: TWO_WAY_USD, option: '' },
+        ];
+        players = stateWithSim.players.map((p: any) =>
+            p.internalId === playerId
+                ? {
+                    ...p,
+                    nonGuaranteed: undefined,
+                    twoWay: true,
+                    contract: { ...(p.contract ?? {}), amount: TWO_WAY_THOUSANDS, exp: leagueYear },
+                    contractYears: newContractYears,
+                }
+                : p
+        );
+        outcomeText = `${player.name} was converted to a two-way contract by the ${teamName}.`;
+    }
+
+    const historyEntry = {
+        text: outcomeText,
+        date: stateWithSim.date,
+        type: to === 'GUARANTEED' ? 'NG Guaranteed' : 'NG → Two-Way',
+        playerIds: [playerId],
+    };
+
+    return {
+        players,
+        history: [...(stateWithSim.history ?? []), historyEntry],
+        outcomeText,
         isProcessing: false,
     };
 };

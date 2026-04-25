@@ -17,8 +17,12 @@ export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
   const year = state.leagueStats.year;
   const seasonStart = `${year - 1}-10-01`;
   const seasonEnd   = `${year}-06-30`;
+  // Exclude isNBACup — Cup games can land in the schedule via self-heal paths
+  // after rollover (before Aug 14). Without this exclusion, a Cup-only schedule
+  // trips the "already generated" branch and preseason/regular-season never get
+  // laid down for the new year.
   const hasRegularSeason = state.schedule.some(
-    g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn
+    g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn && !(g as any).isNBACup
          && g.date >= seasonStart && g.date <= seasonEnd
   );
   if (hasRegularSeason) {
@@ -1183,6 +1187,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
           targetTeamIds: draftedTeamIds,
         }),
         draftComplete: true,
+        draftPicks: (state.draftPicks ?? []).filter(p => p.season !== season),
         history: [...existingHistory, ...draftHistoryEntries, ...twoWayHistoryEntries],
       } as any;
     }
@@ -1200,6 +1205,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
       targetTeamIds: draftedTeamIds,
     }),
     draftComplete: true,
+    draftPicks: (state.draftPicks ?? []).filter(p => p.season !== season),
     history: [...existingHistory, ...draftHistoryEntries, ...returnHistory],
   } as any;
 };

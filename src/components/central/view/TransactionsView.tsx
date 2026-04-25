@@ -67,6 +67,25 @@ const TYPE_STYLE: Record<string, { color: string; bg: string; icon: React.ReactN
 const EXTERNAL_LEAGUES = ['Euroleague', 'G-League', 'PBA', 'B-League', 'Endesa', 'China CBA', 'NBL Australia'] as const;
 type LeagueFilter = 'nba' | 'all' | typeof EXTERNAL_LEAGUES[number];
 
+// Match consecutive capitalized words like "LeBron James", "DeMar DeRozan", "J.J. Redick".
+// Used to extract player-name candidates from history text without scanning every player.
+const NAME_TOKEN_RE = /[A-Z][a-zA-Z'.\-]+(?: [A-Z][a-zA-Z'.\-]+)+/g;
+function findPlayerInText<P extends { name: string }>(text: string, playerByName: Map<string, P>): P | null {
+  const matches = text.match(NAME_TOKEN_RE);
+  if (!matches) return null;
+  for (const m of matches) {
+    const p = playerByName.get(m.toLowerCase());
+    if (p) return p;
+  }
+  return null;
+}
+function findTeamInText<T extends { name: string; abbrev: string }>(text: string, teams: T[]): T | null {
+  for (const t of teams) {
+    if (text.includes(t.name) || text.includes(t.abbrev)) return t;
+  }
+  return null;
+}
+
 // Module-level display item types shared by TransactionsView and TeamTransactionsTab
 type EnrichedEntry = { text: string; date: string; type?: string; kind: string; player: any; team: any; [key: string]: any };
 type SingleItem  = { kind: 'single'; entry: EnrichedEntry };
@@ -133,22 +152,11 @@ export const TransactionsView: React.FC = () => {
 
       const text = entry.text || '';
       const kind = detectType(text, entry.type);
-
-      // Find the first team mentioned in the text
-      let team: typeof state.teams[0] | null = null;
-      for (const t of state.teams) {
-        if (text.includes(t.name) || text.includes(t.abbrev)) { team = t; break; }
-      }
-
-      // Find the first player mentioned in the text
-      let player: typeof state.players[0] | null = null;
-      for (const p of state.players) {
-        if (text.includes(p.name)) { player = p; break; }
-      }
-
+      const team = findTeamInText(text, state.teams);
+      const player = findPlayerInText(text, playerByName);
       return { ...entry, kind, team, player };
     });
-  }, [state.history, state.date, state.teams, state.players]);
+  }, [state.history, state.date, state.teams, playerByName]);
 
   // Cascade: team options depend on selected league
   const availableTeamsForFilter = React.useMemo(() => {
@@ -222,6 +230,14 @@ export const TransactionsView: React.FC = () => {
   const displayItems = useMemo((): DisplayItem[] => {
     const result: DisplayItem[] = [];
     const used = new Set<number>();
+    // Cache name-token sets per trade text to avoid rescans
+    const tokensFor = (text: string): Set<string> => {
+      const m = text.match(NAME_TOKEN_RE);
+      const s = new Set<string>();
+      if (m) for (const t of m) if (t.length >= 5) s.add(t);
+      return s;
+    };
+    const tokenCache = new Map<number, Set<string>>();
 
     for (let i = 0; i < filteredHistory.length; i++) {
       if (used.has(i)) continue;
@@ -234,17 +250,17 @@ export const TransactionsView: React.FC = () => {
       }
 
       // Find other trades on the same date that share a player name with this one
-      const textA = a.text || '';
+      let tokensA = tokenCache.get(i);
+      if (!tokensA) { tokensA = tokensFor(a.text || ''); tokenCache.set(i, tokensA); }
       const group: number[] = [i];
       for (let j = i + 1; j < filteredHistory.length; j++) {
         if (used.has(j)) continue;
         const b = filteredHistory[j];
         if (b.kind !== 'Trade' || b.date !== a.date) continue;
-        const textB = b.text || '';
-        // Shared player = same player name (≥5 chars) appears in both texts
-        const shared = state.players.some(p =>
-          p.name.length >= 5 && textA.includes(p.name) && textB.includes(p.name)
-        );
+        let tokensB = tokenCache.get(j);
+        if (!tokensB) { tokensB = tokensFor(b.text || ''); tokenCache.set(j, tokensB); }
+        let shared = false;
+        for (const tk of tokensA) { if (tokensB.has(tk)) { shared = true; break; } }
         if (shared) group.push(j);
       }
 
@@ -257,8 +273,7 @@ export const TransactionsView: React.FC = () => {
       }
     }
     return result;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredHistory, state.players]);
+  }, [filteredHistory]);
 
   if (selectedTrade) {
     return <TradeDetailView entry={selectedTrade} legs={selectedTrade.legs} onBack={() => setSelectedTrade(null)} />;
@@ -591,6 +606,12 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
   // Sync year when season advances
   React.useEffect(() => { setSelectedYear(state.leagueStats?.year ?? 2026); }, [state.leagueStats?.year]);
 
+  const playerByName = useMemo(() => {
+    const map = new Map<string, typeof state.players[0]>();
+    state.players.forEach(p => map.set(p.name.toLowerCase(), p));
+    return map;
+  }, [state.players]);
+
   const enrichedHistory = useMemo(() => {
     return [...(state.history || [])].sort((a, b) => {
       const da = typeof a === 'string' ? state.date : (a as any).date || state.date;
@@ -602,13 +623,11 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
         : raw as { text: string; date: string; type?: string };
       const text  = entry.text || '';
       const kind  = detectType(text, entry.type);
-      let player: typeof state.players[0] | null = null;
-      for (const p of state.players) { if (text.includes(p.name)) { player = p; break; } }
-      let teamRef: typeof state.teams[0] | null = null;
-      for (const t of state.teams) { if (text.includes(t.name) || text.includes(t.abbrev)) { teamRef = t; break; } }
+      const player = findPlayerInText(text, playerByName);
+      const teamRef = findTeamInText(text, state.teams);
       return { ...entry, kind, player, team: teamRef };
     });
-  }, [state.history, state.date, state.players, state.teams]);
+  }, [state.history, state.date, playerByName, state.teams]);
 
   const availableYears = useMemo(() => {
     const s = new Set<number>();
@@ -645,18 +664,28 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
   const displayItems = useMemo((): DisplayItem[] => {
     const result: DisplayItem[] = [];
     const used = new Set<number>();
+    const tokensFor = (text: string): Set<string> => {
+      const m = text.match(NAME_TOKEN_RE);
+      const s = new Set<string>();
+      if (m) for (const t of m) if (t.length >= 5) s.add(t);
+      return s;
+    };
+    const tokenCache = new Map<number, Set<string>>();
     for (let i = 0; i < filteredHistory.length; i++) {
       if (used.has(i)) continue;
       const a = filteredHistory[i];
       if (a.kind !== 'Trade') { result.push({ kind: 'single', entry: a }); used.add(i); continue; }
-      const textA = a.text || '';
+      let tokensA = tokenCache.get(i);
+      if (!tokensA) { tokensA = tokensFor(a.text || ''); tokenCache.set(i, tokensA); }
       const group: number[] = [i];
       for (let j = i + 1; j < filteredHistory.length; j++) {
         if (used.has(j)) continue;
         const b = filteredHistory[j];
         if (b.kind !== 'Trade' || b.date !== a.date) continue;
-        const textB = b.text || '';
-        const shared = state.players.some(p => p.name.length >= 5 && textA.includes(p.name) && textB.includes(p.name));
+        let tokensB = tokenCache.get(j);
+        if (!tokensB) { tokensB = tokensFor(b.text || ''); tokenCache.set(j, tokensB); }
+        let shared = false;
+        for (const tk of tokensA) { if (tokensB.has(tk)) { shared = true; break; } }
         if (shared) group.push(j);
       }
       if (group.length >= 2) {
@@ -668,7 +697,7 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
       }
     }
     return result;
-  }, [filteredHistory, state.players]);
+  }, [filteredHistory]);
 
   if (selectedTrade) return <TradeDetailView entry={selectedTrade} legs={selectedTrade.legs} onBack={() => setSelectedTrade(null)} />;
   if (viewingPlayer)  return <PlayerBioView  player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;

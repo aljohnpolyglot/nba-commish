@@ -2,7 +2,7 @@ import { GameState, NBATeam, NBAPlayer as Player, Game } from '../../../types';
 import { simulateDayGames } from '../../../services/logic/simulationRunner';
 import { applyCupResult } from '../../../services/nbaCup/updateCupStandings';
 import { resolveCupGroupStage, advanceKnockoutBracket } from '../../../services/nbaCup/resolveGroupStage';
-import { buildKnockoutGames } from '../../../services/nbaCup/scheduleInjector';
+import { buildKnockoutGames, trimAndPairReplacements } from '../../../services/nbaCup/scheduleInjector';
 import { computeCupAwards, applyPrizePool, applyCupAwardsToPlayers } from '../../../services/nbaCup/awards';
 import { injectCupGroupGames } from '../../../services/nbaCup/scheduleInjector';
 import { calculateTeamStrength, clearTeamStrengthCache } from '../../../utils/playerRatings';
@@ -322,7 +322,16 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
         // ── Self-heal: catch saves where Cup groups exist but no Cup games tagged ─
         // Fires once per sim tick, idempotent. Recovers any save that missed the
         // Cup-injection codepath at schedule generation time.
+        // Precondition: only self-heal when a real RS schedule already exists.
+        // Without this, after Y2 rollover (schedule=[], nbaCup.groups reseeded)
+        // we'd inject Cup games into the empty schedule, which then trips the
+        // Aug-14 generator's "regular season already exists" guard and the new
+        // season never gets a real schedule.
+        const hasRegularSeasonGamesSelfHeal = simPatch.schedule.some(
+          g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn && !(g as any).isNBACup
+        );
         if (
+          hasRegularSeasonGamesSelfHeal &&
           stateWithSim.leagueStats.inSeasonTournament !== false &&
           stateWithSim.nbaCup?.groups?.length &&
           !simPatch.schedule.some(g => (g as any).isNBACup)
@@ -376,6 +385,16 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         const ko = cup.knockout.find(k => k.round === ng.nbaCupRound && k.gameId === undefined && ng.homeTid === k.tid1);
                         if (ko) ko.gameId = ng.gid;
                     }
+                    // Trim 1 RS game per QF team + add replacement games for orphaned
+                    // opponents so every team still finishes with 82 RS-counted games.
+                    const qfTeams = cup.knockout
+                        .filter(k => k.round === 'QF' && k.tid1 >= 0 && k.tid2 >= 0)
+                        .flatMap(k => [k.tid1, k.tid2]);
+                    if (qfTeams.length > 0) {
+                        const nextGid = Math.max(0, ...schedule.map(g => g.gid)) + 1;
+                        const r = trimAndPairReplacements(schedule, qfTeams, `${prevYr}-12-09`, nextGid);
+                        schedule = r.schedule;
+                    }
                 }
             }
 
@@ -405,6 +424,16 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 }
                 if (newKOGames.length > 0) {
                     schedule = [...schedule, ...newKOGames].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                    // Trim 1 RS game per SF team only when SF games were the ones
+                    // just injected (Final doesn't count → no trim, no replacement).
+                    const sfJustInjected = newKOGames
+                        .filter((g: any) => g.nbaCupRound === 'SF')
+                        .flatMap((g: any) => [g.homeTid, g.awayTid]);
+                    if (sfJustInjected.length > 0) {
+                        const nextGid = Math.max(0, ...schedule.map(g => g.gid)) + 1;
+                        const r = trimAndPairReplacements(schedule, sfJustInjected, `${prevYr}-12-13`, nextGid);
+                        schedule = r.schedule;
+                    }
                 }
             }
 
@@ -1180,6 +1209,42 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                     ],
                 };
             }
+            // AI early NG → Guaranteed conversion: once per AI team during the
+            // regular season, lock in any NG keepers (BBGM OVR ≥ 50, ~K2 70+) so
+            // rotation guys aren't gambled on the Jan 10 deadline. The Pass-4
+            // trim still cuts low-OVR NGs at Oct 22; this just promotes the
+            // ones the team clearly wants. GM's own team is excluded — user
+            // controls those via the Convert action.
+            if ((simMonth === 10 && simDayNum >= 22) || simMonth === 11 || simMonth === 12 || (simMonth === 1 && simDayNum < 10)) {
+                const userTid = stateWithSim.gameMode === 'gm' ? stateWithSim.userTeamId ?? -999 : -999;
+                const ngKeepers = stateWithSim.players.filter(p =>
+                    !!(p as any).nonGuaranteed
+                    && p.tid != null && p.tid >= 0
+                    && p.tid !== userTid
+                    && (p.overallRating ?? 0) >= 50
+                );
+                if (ngKeepers.length > 0) {
+                    const keeperIds = new Set(ngKeepers.map(p => p.internalId));
+                    stateWithSim = {
+                        ...stateWithSim,
+                        players: stateWithSim.players.map(p =>
+                            keeperIds.has(p.internalId)
+                                ? { ...p, nonGuaranteed: undefined }
+                                : p
+                        ),
+                        history: [
+                            ...(stateWithSim.history ?? []),
+                            ...ngKeepers.map(p => ({
+                                text: `${p.name}'s contract guaranteed early by the ${stateWithSim.teams.find(t => t.id === p.tid)?.name ?? 'team'}`,
+                                date: stateWithSim.date,
+                                type: 'NG Guaranteed',
+                                playerIds: [p.internalId],
+                            })),
+                        ],
+                    };
+                }
+            }
+
             // Jan 10: auto-guarantee all non-guaranteed contracts still on a roster
             if (simMonth === 1 && simDayNum === 10) {
                 const ngToGuarantee = stateWithSim.players.filter(

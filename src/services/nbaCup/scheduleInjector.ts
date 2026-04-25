@@ -137,6 +137,103 @@ export function injectCupGroupGames(
 }
 
 /**
+ * Real-NBA replacement-game logic: when a KO round is added, each advancing team
+ * must drop one regular-season game (so totals stay at 82). Their dropped-game
+ * opponents become "orphans"; we pair orphans and reschedule them as replacement
+ * games near the KO round date so non-advancers also keep their 82-game count.
+ *
+ * Mutates and returns a new schedule.
+ */
+export function trimAndPairReplacements(
+  schedule: Game[],
+  koTeams: number[],
+  replacementDate: string,            // 'YYYY-MM-DD'
+  startGid: number,
+): { schedule: Game[]; nextGid: number } {
+  let updated = [...schedule];
+  let nextGid = startGid;
+
+  // Track which KO teams have already had their RS slot trimmed (avoid double-trim
+  // when a KO_A vs KO_B game is the one we remove).
+  const trimmed = new Set<number>();
+  const orphans: { tid: number; date: string }[] = [];
+
+  for (const tid of koTeams) {
+    if (trimmed.has(tid)) continue;
+    // Latest unplayed plain RS game involving tid (latest so we don't trim
+    // anything that's already been played — KO scheduling fires post-groups).
+    let idx = -1;
+    for (let i = updated.length - 1; i >= 0; i--) {
+      const g: any = updated[i];
+      if (g.played) continue;
+      if (g.isPreseason || g.isPlayoff || g.isPlayIn || g.isNBACup || g.isExhibition) continue;
+      if (g.homeTid !== tid && g.awayTid !== tid) continue;
+      idx = i;
+      break;
+    }
+    if (idx < 0) continue;
+    const removed: any = updated[idx];
+    const opponent = removed.homeTid === tid ? removed.awayTid : removed.homeTid;
+    updated.splice(idx, 1);
+    trimmed.add(tid);
+    if (koTeams.includes(opponent)) {
+      // Both sides advancing — both balanced by this single trim, no orphan.
+      trimmed.add(opponent);
+    } else {
+      orphans.push({ tid: opponent, date: String(removed.date).split('T')[0] });
+    }
+  }
+
+  // Pair orphans into replacement games. Place on replacementDate when both
+  // orphans are free that night; otherwise use either orphan's original-trim
+  // date (they had a slot freed there anyway).
+  const dateBusy = (dateStr: string, t1: number, t2: number): boolean => {
+    return updated.some((g: any) => {
+      const ds = String(g.date).split('T')[0];
+      if (ds !== dateStr) return false;
+      return g.homeTid === t1 || g.awayTid === t1 || g.homeTid === t2 || g.awayTid === t2;
+    });
+  };
+
+  // Greedy pairing — earliest orphan with next compatible orphan
+  const replacements: Game[] = [];
+  const used = new Set<number>();
+  for (let i = 0; i < orphans.length; i++) {
+    if (used.has(i)) continue;
+    for (let j = i + 1; j < orphans.length; j++) {
+      if (used.has(j)) continue;
+      if (orphans[i].tid === orphans[j].tid) continue;
+      const candidates = [replacementDate, orphans[i].date, orphans[j].date];
+      const slot = candidates.find(d => !dateBusy(d, orphans[i].tid, orphans[j].tid));
+      if (!slot) continue;
+      const homeFirst = Math.random() > 0.5;
+      replacements.push({
+        gid: nextGid++,
+        homeTid: homeFirst ? orphans[i].tid : orphans[j].tid,
+        awayTid: homeFirst ? orphans[j].tid : orphans[i].tid,
+        homeScore: 0,
+        awayScore: 0,
+        played: false,
+        date: new Date(`${slot}T20:00:00Z`).toISOString(),
+        isCupReplacement: true,
+      } as any);
+      used.add(i);
+      used.add(j);
+      break;
+    }
+  }
+
+  if (replacements.length > 0) {
+    updated = [...updated, ...replacements].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
+  }
+
+  console.log(`[trimAndPairReplacements] trimmed=${trimmed.size}, orphans=${orphans.length}, replacements=${replacements.length}`);
+  return { schedule: updated, nextGid };
+}
+
+/**
  * Injects QF/SF/Final knockout games after group stage resolves.
  * Returns the new games to append to state.schedule.
  */

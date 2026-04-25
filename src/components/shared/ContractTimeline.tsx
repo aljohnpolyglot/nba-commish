@@ -69,6 +69,14 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
             const lastNonZeroYear = lastNonZeroEntry?.[0] ?? currentYear;
             const lastNonZeroUSD  = lastNonZeroEntry?.[1]?.guaranteed ?? baseUSD;
 
+            // First leagueStats year where the deal pays. For a rookie drafted
+            // during leagueStats.year=2026, contractYears starts at "2026-27"
+            // (leagueStats year 2027) — so the current-year column must render
+            // empty rather than fall through to the annualRaise fallback.
+            const firstCyYear = cyByYear.size > 0
+              ? Math.min(...[...cyByYear.keys()])
+              : null;
+
             const yr = (n: number): number => {
               if (isTwoWayPlayer) return 625_000;
               const y = currentYear + n;
@@ -106,9 +114,14 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
 
             const faCell    = <div className="text-slate-600 text-xs text-center py-1.5">FA</div>;
             const emptyCell = <div className="text-slate-800 text-xs text-center py-1.5">—</div>;
-            const cell = (n: number) => yearsLeft > n
-              ? <div className={getCellStyle(n)}>{formatSalaryM(yr(n))}</div>
-              : (yearsLeft === n ? faCell : emptyCell);
+            const cell = (n: number) => {
+              // Pre-contract column for rookies (drafted but first paid season is
+              // currentYear+1). Leave blank — they're not on the books yet.
+              if (firstCyYear !== null && currentYear + n < firstCyYear) return emptyCell;
+              return yearsLeft > n
+                ? <div className={getCellStyle(n)}>{formatSalaryM(yr(n))}</div>
+                : (yearsLeft === n ? faCell : emptyCell);
+            };
 
             return (
               <tr key={player.internalId}>

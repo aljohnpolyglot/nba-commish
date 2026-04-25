@@ -1208,6 +1208,8 @@ historicalAwards: HistoricalAward[];
   pendingClubDebuff?: { playerId: string; playerName: string; severity: 'heavy' | 'moderate' | 'mild'; clubName: string }[];
   headToHead?: HeadToHead;
   lazySimProgress?: LazySimProgress;
+  /** Transient handoff for the "Trade Player" quick-action: TradeFinderView reads this on mount, applies it, then clears. */
+  tradeFinderPreselect?: { tid: number; playerId: string };
   tradeProposals?: TradeProposal[];
   bets: Bet[];
   realEstateInventory?: OwnedRealEstateAsset[];

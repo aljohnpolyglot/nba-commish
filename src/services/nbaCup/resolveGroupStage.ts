@@ -143,7 +143,8 @@ export function resolveCupGroupStage(
     { round: 'QF', seed1: 2, seed2: 3, tid1: eastSeeded[1], tid2: eastSeeded[2] ?? -1, countsTowardRecord: true },
     { round: 'QF', seed1: 1, seed2: 4, tid1: westSeeded[0], tid2: westSeeded[3] ?? -1, countsTowardRecord: true },
     { round: 'QF', seed1: 2, seed2: 3, tid1: westSeeded[1], tid2: westSeeded[2] ?? -1, countsTowardRecord: true },
-    // SF counts toward RS record/stats; only the Final is excluded (real NBA rule).
+    // Real NBA rule: group play, QF, and SF all count toward regular-season
+    // record. Only the Championship game is excluded.
     { round: 'SF', seed1: 1, seed2: 2, tid1: -1, tid2: -1, countsTowardRecord: true },
     { round: 'SF', seed1: 1, seed2: 2, tid1: -1, tid2: -1, countsTowardRecord: true },
     { round: 'Final', seed1: 1, seed2: 2, tid1: -1, tid2: -1, countsTowardRecord: false },

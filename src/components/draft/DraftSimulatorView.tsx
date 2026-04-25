@@ -908,6 +908,14 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     const updatedPlayers = state.players.map((p: any) =>
       p.internalId === player.internalId ? { ...p, ...update, jerseyNumber } : p
     );
+    // Remove the consumed pick from inventory immediately so Trade Machine /
+    // Trade Finder / AI engine can't reuse a slot that's already been drafted.
+    const draftSeason: number = state.leagueStats?.year ?? leagueYear;
+    const round = pickSlot <= 30 ? 1 : 2;
+    const originalTid = (team as any)?._originalTid ?? team?.id;
+    const draftPicksAfter = (state.draftPicks ?? []).filter(
+      (dp: any) => !(dp.season === draftSeason && dp.round === round && dp.originalTid === originalTid)
+    );
     dispatch({
       type: 'UPDATE_STATE',
       payload: {
@@ -915,9 +923,10 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
           history: state.history,
           targetTeamIds: team?.id != null ? [team.id] : [],
         }),
+        draftPicks: draftPicksAfter,
       },
     } as any);
-  }, [state.players, buildDraftedPlayerUpdate, dispatch, draftOrder]);
+  }, [state.players, state.draftPicks, state.leagueStats?.year, buildDraftedPlayerUpdate, dispatch, draftOrder, leagueYear]);
 
   const draftPlayer = useCallback((player: any) => {
     setHasStarted(true);
@@ -989,6 +998,19 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
       const updatedPlayers = state.players.map((p: any) =>
         updateMap.has(p.internalId) ? { ...p, ...updateMap.get(p.internalId) } : p
       );
+      // Strip every consumed pick in this batch from inventory.
+      const draftSeason: number = state.leagueStats?.year ?? leagueYear;
+      const consumedKeys = new Set(
+        freshPicks.map(({ slot }) => {
+          const t = draftOrder[slot - 1];
+          const round = slot <= 30 ? 1 : 2;
+          const originalTid = (t as any)?._originalTid ?? t?.id;
+          return `${draftSeason}|${round}|${originalTid}`;
+        })
+      );
+      const draftPicksAfter = (state.draftPicks ?? []).filter(
+        (dp: any) => !consumedKeys.has(`${dp.season}|${dp.round}|${dp.originalTid}`)
+      );
       dispatch({
         type: 'UPDATE_STATE',
         payload: {
@@ -996,10 +1018,11 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
             history: state.history,
             targetTeamIds: freshPicks.map(p => draftOrder[p.slot - 1]?.id).filter((id): id is number => id != null),
           }),
+          draftPicks: draftPicksAfter,
         },
       } as any);
     }
-  }, [drafted, allProspects, currentPick, state.players, state.teams, buildDraftedPlayerUpdate, dispatch, draftOrder]);
+  }, [drafted, allProspects, currentPick, state.players, state.teams, state.draftPicks, state.leagueStats?.year, buildDraftedPlayerUpdate, dispatch, draftOrder, leagueYear]);
 
   // Auto-sim loop
   useEffect(() => {

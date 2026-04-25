@@ -593,6 +593,31 @@ export const TradeFinderView: React.FC = () => {
   const removeItem = (id: string) => { setBasket(b => b.filter(i => i.id !== id)); setFoundOffers(null); };
   const clearBasket = () => { setBasket([]); setFoundOffers(null); };
 
+  // Preselect handoff — PlayerActionsModal's "Trade Player" action drops a
+  // { tid, playerId } slot in state, then routes the user here. Apply it once
+  // (switch to that team, push the player into the basket), then clear the
+  // slot so revisiting the view doesn't re-fire.
+  React.useEffect(() => {
+    const pre = (state as any).tradeFinderPreselect as { tid: number; playerId: string } | undefined;
+    if (!pre) return;
+    const player = players.find(p => p.internalId === pre.playerId && p.tid === pre.tid);
+    if (player) {
+      setSelectedTid(pre.tid);
+      setBasket([{
+        id: player.internalId,
+        type: 'player',
+        label: player.name,
+        val: calcPlayerTV(player, roleToMode(teamOutlooks.get(pre.tid)?.role ?? 'neutral'), currentYear, tvContext),
+        player,
+        ovr: calcOvr2K(player),
+        pot: calcPot2K(player, currentYear),
+      }]);
+      setFoundOffers(null);
+    }
+    dispatchAction({ type: 'UPDATE_STATE', payload: { tradeFinderPreselect: undefined } } as any);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(state as any).tradeFinderPreselect]);
+
   // ── Enhanced Find Offers ──────────────────────────────────────────────────
 
   // Reverse mode: user is shopping another team's roster for a target. Engine

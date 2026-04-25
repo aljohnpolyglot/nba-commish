@@ -29,7 +29,7 @@ import type { NBAPlayer } from '../types';
  *   </>);
  */
 export function usePlayerQuickActions() {
-  const { state, dispatchAction, healPlayer } = useGame();
+  const { state, dispatchAction, healPlayer, setCurrentView } = useGame();
 
   const [actionsPlayer, setActionsPlayer] = useState<NBAPlayer | null>(null);
   const [ratingsPlayer, setRatingsPlayer] = useState<NBAPlayer | null>(null);
@@ -73,6 +73,36 @@ export function usePlayerQuickActions() {
     }
     if (actionType === 'view_fa_offers') {
       setOffersPlayer(player);
+      return true;
+    }
+    if (actionType === 'convert_to_guaranteed') {
+      // NG → Guaranteed: open SigningModal forced GUARANTEED so the user
+      // negotiates new terms. Same plumbing as the 2W → Guaranteed flow.
+      setSigningPlayer(player);
+      setResignTeamId(player.tid ?? null);
+      setForceContractType('GUARANTEED');
+      return true;
+    }
+    if (actionType === 'trade_player') {
+      // Hand off to TradeFinderView via a transient state slot. The view reads
+      // this on mount, sets selectedTid + drops the player into the basket,
+      // then clears the slot so the next visit doesn't repeat.
+      if (player.tid != null && player.tid >= 0) {
+        dispatchAction({
+          type: 'UPDATE_STATE',
+          payload: {
+            tradeFinderPreselect: { tid: player.tid, playerId: player.internalId },
+          },
+        } as any);
+        setCurrentView('Trade Finder' as any);
+      }
+      return true;
+    }
+    if (actionType === 'convert_to_twoway') {
+      // NG → Two-Way: open SigningModal forced TWO_WAY ($625K/1yr scale).
+      setSigningPlayer(player);
+      setResignTeamId(player.tid ?? null);
+      setForceContractType('TWO_WAY');
       return true;
     }
     if (actionType === 'waive') {

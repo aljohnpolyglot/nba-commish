@@ -1,4 +1,4 @@
-import { type LucideIcon, MessageSquare, HandCoins, Gavel, Utensils, Film, Eye, PenTool, AlertTriangle, Zap, UserX, Ban, Syringe, Trophy, Music, BarChart2 } from 'lucide-react';
+import { type LucideIcon, MessageSquare, HandCoins, Gavel, Utensils, Film, Eye, PenTool, AlertTriangle, Zap, UserX, Ban, Syringe, Trophy, Music, BarChart2, ArrowLeftRight } from 'lucide-react';
 import { NBAPlayer } from '../types';
 
 // ─── Personnel type ───────────────────────────────────────────────────────────
@@ -19,6 +19,10 @@ export interface PersonEligibility {
   /** Only show for players actively on an NBA roster (tid >= 0, status === 'Active'). */
   requireActiveNBA?: boolean;
 
+  /** When set, in GM mode the player must be on the user's own team. Commissioner
+   *  mode (userTeamId == null) sees every team. Pairs with requireActiveNBA. */
+  restrictUserTeamInGM?: boolean;
+
   /** Only show if player is off-roster (free agent or international). */
   requireFreeAgentOrInternational?: boolean;
 
@@ -28,6 +32,15 @@ export interface PersonEligibility {
   /** Only show for two-way contract players currently on an NBA roster (for the
    *  Sign-Guaranteed conversion action). GM mode restricts to the user's own team. */
   requireTwoWay?: boolean;
+
+  /** Only show for non-guaranteed (training-camp) contract players currently on
+   *  an NBA roster. Used by the NG → Guaranteed / NG → Two-Way conversion actions.
+   *  GM mode restricts to the user's own team. */
+  requireNonGuaranteed?: boolean;
+
+  /** When set together with requireNonGuaranteed, additionally enforce real-NBA
+   *  two-way eligibility (age ≤ 24 OR ≤ 2 years of service). */
+  requireTwoWayEligibility?: boolean;
 
   /** Skip players that are already in the HOF. */
   excludeHOF?: boolean;
@@ -114,8 +127,28 @@ export function isPlayerEligible(
     return true;
   }
 
+  if (eligibility.requireNonGuaranteed) {
+    const isNG = !!(player as any).nonGuaranteed;
+    const onTeam = (player.tid ?? -1) >= 0;
+    if (!isNG || !onTeam) return false;
+    if (context?.userTeamId != null && player.tid !== context.userTeamId) return false;
+    if (eligibility.requireTwoWayEligibility) {
+      const currentYear = context?.currentYear ?? new Date().getUTCFullYear();
+      const age = (player as any).born?.year ? currentYear - (player as any).born.year : (player.age ?? 99);
+      if (age >= 30) return false;
+      if (age > 24) {
+        const yos = ((player as any).stats ?? [])
+          .filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
+        if (yos > 2) return false;
+      }
+    }
+    return true;
+  }
+
   if (eligibility.requireActiveNBA) {
-    return player.status === 'Active' && (player.tid ?? -1) >= 0;
+    if (player.status !== 'Active' || (player.tid ?? -1) < 0) return false;
+    if (eligibility.restrictUserTeamInGM && context?.userTeamId != null && player.tid !== context.userTeamId) return false;
+    return true;
   }
 
   if (eligibility.requireFreeAgentOrInternational) {
@@ -403,6 +436,41 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
     hover: 'hover:bg-emerald-600',
     eligibility: {
       requireTwoWay: true,
+    },
+  },
+  {
+    id: 'convert_to_guaranteed',
+    title: 'Guarantee Contract',
+    description: 'Lock in this non-guaranteed deal early — current salary stays, protection added.',
+    icon: PenTool,
+    color: 'bg-emerald-500',
+    hover: 'hover:bg-emerald-600',
+    eligibility: {
+      requireNonGuaranteed: true,
+    },
+  },
+  {
+    id: 'trade_player',
+    title: 'Trade Player',
+    description: 'Open Trade Finder with this player pre-selected as an outgoing asset.',
+    icon: ArrowLeftRight,
+    color: 'bg-indigo-500',
+    hover: 'hover:bg-indigo-600',
+    eligibility: {
+      requireActiveNBA: true,
+      restrictUserTeamInGM: true,
+    },
+  },
+  {
+    id: 'convert_to_twoway',
+    title: 'Convert to Two-Way',
+    description: 'Move this non-guaranteed deal to a 1-year two-way at $625K (age ≤ 24 or ≤ 2 YOS).',
+    icon: PenTool,
+    color: 'bg-sky-500',
+    hover: 'hover:bg-sky-600',
+    eligibility: {
+      requireNonGuaranteed: true,
+      requireTwoWayEligibility: true,
     },
   },
 ];

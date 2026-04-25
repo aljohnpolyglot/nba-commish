@@ -583,7 +583,7 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
         if (rookieStaticAmount !== (leagueStats.rookieStaticAmount ?? 5.0)) changes.push(`Rookie Static Amount set to $${rookieStaticAmount}M`);
         if (rookieMaxContractPercentage !== (leagueStats.rookieMaxContractPercentage ?? 9)) changes.push(`Rookie Max Contract Percentage set to ${rookieMaxContractPercentage}%`);
         if (rookieScaleAppliesTo !== (leagueStats.rookieScaleAppliesTo ?? 'first_round')) changes.push(`Rookie Scale Applies To changed to ${rookieScaleAppliesTo}`);
-        if (rookieContractLength !== (leagueStats.rookieContractLength ?? 4)) changes.push(`Rookie Contract Length set to ${rookieContractLength} years`);
+        if (rookieContractLength !== (leagueStats.rookieContractLength ?? 2)) changes.push(`Rookie Contract Length set to ${rookieContractLength} years`);
         if (rookieTeamOptionsEnabled !== (leagueStats.rookieTeamOptionsEnabled ?? true)) changes.push(`Rookie Team Options ${rookieTeamOptionsEnabled ? 'enabled' : 'disabled'}`);
         if (rookieTeamOptionYears !== (leagueStats.rookieTeamOptionYears ?? 2)) changes.push(`Rookie Team Option Years set to ${rookieTeamOptionYears}`);
         if (rookieRestrictedFreeAgentEligibility !== (leagueStats.rookieRestrictedFreeAgentEligibility ?? true)) changes.push(`Rookie Restricted Free Agent Eligibility ${rookieRestrictedFreeAgentEligibility ? 'enabled' : 'disabled'}`);

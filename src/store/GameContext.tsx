@@ -16,6 +16,7 @@ import { setActiveSaveId as setCoachStrategySaveId } from './coachStrategyLockSt
 import { setActiveSaveId as setIdealRotationSaveId } from './idealRotationStore';
 import { enforceExternalMinRoster, repairGeneratedExternalPlayer } from '../services/externalLeagueSustainer';
 import { applyCupAwardsToPlayers } from '../services/nbaCup/awards';
+import { computeRookieSalaryUSD } from '../utils/rookieContractUtils';
 
 interface GameContextType {
   state: GameState;
@@ -307,6 +308,46 @@ const actions = useGameActions(setState, () => stateRef.current);
               updated = { ...updated, contract: { ...updated.contract, amount: syncedAmount } };
             }
           }
+        }
+        // Rookie contract heal: prior to the rookieContractUtils unit fix,
+        // computeRookieSalaryUSD treated salaryCap (USD) as millions, inflating
+        // every drafted rookie contract by ~1,000,000×. Saves with that
+        // damage have garbage contract.amount AND garbage contractYears.
+        // Recompute both from pickSlot when we can identify the rookie.
+        if (
+          updated.contract?.rookie &&
+          updated.draft?.round && updated.draft?.pick &&
+          updated.draft?.year &&
+          typeof updated.contract.amount === 'number' &&
+          updated.contract.amount > SANE_CONTRACT_CAP_THOUSANDS
+        ) {
+          const round: number = Number(updated.draft.round);
+          const pickInRound: number = Number(updated.draft.pick);
+          const pickSlot = (round - 1) * 30 + pickInRound;
+          const fixedUSD = computeRookieSalaryUSD(pickSlot, loaded.leagueStats);
+          const fixedAmount = Math.round(fixedUSD / 1000);
+          const draftYear: number = Number(updated.draft.year);
+          const expYear: number = Number(updated.contract.exp ?? 0);
+          const totalYrs = expYear > draftYear && expYear - draftYear <= 6 ? expYear - draftYear : null;
+          const teamOptExp = updated.contract.teamOptionExp;
+          const firstOptionYr = updated.contract.hasTeamOption && teamOptExp ? Number(teamOptExp) : undefined;
+          const rebuiltCY = totalYrs
+            ? Array.from({ length: totalYrs }, (_, i) => {
+                const yr = draftYear + i;
+                const leagueYr = yr + 1;
+                return {
+                  season: `${yr}-${String(yr + 1).slice(-2)}`,
+                  guaranteed: Math.round(fixedUSD * Math.pow(1.05, i)),
+                  option: firstOptionYr != null && leagueYr >= firstOptionYr ? 'Team' : '',
+                };
+              })
+            : updated.contractYears;
+          console.warn(`[LOAD_GAME] Repaired inflated rookie contract for ${updated.name}: ${updated.contract.amount} → ${fixedAmount}`);
+          updated = {
+            ...updated,
+            contract: { ...updated.contract, amount: fixedAmount },
+            ...(rebuiltCY ? { contractYears: rebuiltCY } : {}),
+          };
         }
         // Repair corrupt contract.amount — see comment above. Kicks in when a
         // prior session left the value in USD-like units, producing $16.7T

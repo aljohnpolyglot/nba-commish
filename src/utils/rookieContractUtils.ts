@@ -36,9 +36,13 @@ export function computeRookieSalaryUSD(pickSlot: number, ls: any): number {
   const useScale = round === 1 || scaleAppliesTo === 'both_rounds';
   if (!useScale) return minSalaryUSD;
 
-  const capM: number = ls?.salaryCap ?? 154.6;
+  // salaryCap is stored as raw USD (e.g. 154_647_000) in INITIAL_LEAGUE_STATS
+  // and persisted that way through inflation. Older saves / tests may use
+  // millions (154.6) — normalise either form to USD before scaling.
+  const rawCap: number = ls?.salaryCap ?? 154_647_000;
+  const capUSD = rawCap > 1_000_000 ? rawCap : rawCap * 1_000_000;
   const maxPct: number = ls?.rookieMaxContractPercentage ?? 9;
-  const pick1USD = (capM * maxPct / 100) * 1_000_000;
+  const pick1USD = capUSD * maxPct / 100;
   const ratio =
     pickSlot <= 30
       ? (R1_SHAPE[pickSlot - 1] ?? R1_SHAPE[29])
