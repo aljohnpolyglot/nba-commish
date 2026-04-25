@@ -10,19 +10,9 @@
 
 ## BUGS — Open
 
-- **AI trade evaluator overpays / accepts pick-bombs** — observed in 2025-26 sim:
-  - **Sep 30, 2025**: LAL sends Hachimura + Vanderbilt + Kennard + **4 picks** (2026 1st, 2027 1st, 2027 2nd, 2028 1st) to LAC for **Kawhi Leonard** alone (34yo, K2 87, $50M/yr expiring 2031). Aspirational — paying 4 picks for an aging high-salary star is the real-NBA "win-now trap". Probably defensible per the value engine but should warn contender GMs OR cap pick count.
-  - **Dec 9, 2025**: LAL sends Smart + Kleber + **4 picks** (2028 2nd, 2029 1st+2nd, 2030 1st) to ATL for **Corey Kispert** alone. Kispert is a fringe rotation guy (K2 ~75) — 4 picks + 2 vets for him is wildly lopsided. Smoking gun for AI trade engine.
-  - Pattern: AI receiving team accepts any +TV bundle regardless of asset mix, AND the sending team's `findOffers` doesn't cap picks-per-trade. Both teams in both trades are AI-controlled — no human vetoed.
-  - Investigate: `tradeFinderEngine.ts` `calcPickTV` vs `calcPlayerTV` weighting, `findOffers` pick-sweetener cap, hard cap of 2 picks max per trade unless gap >= massive threshold, AI seller acceptance threshold (probably accepts any +TV regardless of asset type), `getTradeOutlook` for the sending team's mode awareness.
-
-- **Real-player contract history truncated** — gist-fetched real players (e.g., SGA — career earnings $58.9M shown only for 2030-31, no transactions on record). Real-life contract history isn't seeded into `contractYears[]` from the gist data, so PlayerBio Salaries tab shows only the current season. Investigate: `realPlayerDataFetcher.ts` + bbgmParser flow, decide whether to seed historical `contractYears` from the gist `salaries` array on initial player creation.
-
 - **EconomyTab settings UI for RFA + signing-difficulty** — RFA matching shipped with hardcoded defaults (matching ON, 2-day window, auto-decline 2nd apron ON). Three `leagueStats` settings need UI rows on EconomyTab: `rfaMatchingEnabled`, `rfaMatchWindowDays`, `rfaAutoDeclineOver2ndApron`. Held off to coordinate with the parallel signing-difficulty agent's `useRulesState` changes — wire both in same pass.
 
 - **Audit vs UI FA count mismatch** — `audit-economy-deep.js` strict filter (`p.status === 'Free Agent'`) misses the 833 `'FreeAgent'` legacy-typo players. Forward-healing fix in `simulationHandler.runSimulation` normalizes on next sim tick. LOAD_GAME migration normalizes on next load. Diagnostic snippet at `scripts/audit-fa-status.js`.
-
-- **Retired players with `tid: -1`** — 17-21 retirees stuck in FA pool sentinel instead of dedicated retired-tid. Cosmetic — FA pipeline filters by `status === 'Free Agent'` so they don't actually leak into bidding, but TWOWAYAGE / FAPOOL audits show them. Cleanup: backfill `tid: -100` (or whatever sentinel) in LOAD_GAME for `status === 'Retired'` players.
 
 ---
 
