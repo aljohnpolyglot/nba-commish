@@ -36,11 +36,6 @@ Revisit when rollover date becomes dynamic:
 
 ## FEATURES — Backlog (low priority)
 
-### Draft Scouting sidebar — mock-team projections + POT-weighted comparisons
-DraftScouting tab has 70/30 value/fit scoring. Remaining:
-1. Show projected team at each slot (mock draft)
-2. Weight POT for young players in player comparisons, not just current OVR
-
 ### Dual-affiliation academy prospects (Luka-Real-Madrid model)
 Pre-assign `draft.year` at generation for youth academy players so they're simultaneously at their youth club AND in a future draft class. Real Luka Doncic at 16 was playing Real Madrid senior AND everyone knew he was declaring 2018 — sim could model that.
 
