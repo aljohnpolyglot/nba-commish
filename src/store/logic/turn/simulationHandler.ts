@@ -1174,8 +1174,56 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 // man rosters because the flag hid them from the roster count.
                 // Two-way cuts also clear the twoWay flag so they don't keep a
                 // 2W cap slot on the way out.
+                // Dead money: AI-driven waives of GUARANTEED contracts must obey the
+                // same rules as user waives. NG / two-way trims = free release. Build
+                // per-team dead money entries so cap math stays honest after AI cuts.
+                const lsForDeadMoney = stateWithSim.leagueStats as any;
+                const deadMoneyEnabled = lsForDeadMoney.deadMoneyEnabled ?? true;
+                const currentSeasonYear: number = lsForDeadMoney.year ?? new Date(stateWithSim.date ?? Date.now()).getUTCFullYear();
+                const teamDeadMoneyAdds = new Map<number, import('../../../types').DeadMoneyEntry[]>();
+                if (deadMoneyEnabled) {
+                    waivers.forEach(w => {
+                        if (w.wasNonGuaranteed) return;
+                        const playerRecord: any = stateWithSim.players.find(p => p.internalId === w.playerId);
+                        if (!playerRecord || (playerRecord as any).twoWay) return;
+                        const cy: Array<{ season: string; guaranteed: number; option?: string }> =
+                            Array.isArray(playerRecord.contractYears) ? playerRecord.contractYears : [];
+                        const remaining = cy
+                            .filter(y => {
+                                const yr = parseInt(y.season.split('-')[0], 10) + 1;
+                                return yr >= currentSeasonYear && y.option !== 'team' && y.option !== 'player';
+                            })
+                            .map(y => ({ season: y.season, amountUSD: y.guaranteed }));
+                        if (remaining.length === 0 && playerRecord.contract?.amount) {
+                            const exp = playerRecord.contract.exp ?? currentSeasonYear;
+                            const amountUSD = (playerRecord.contract.amount || 0) * 1_000;
+                            for (let yr = currentSeasonYear; yr <= exp; yr++) {
+                                remaining.push({ season: `${yr - 1}-${String(yr).slice(-2)}`, amountUSD });
+                            }
+                        }
+                        if (remaining.length === 0) return;
+                        const entry: import('../../../types').DeadMoneyEntry = {
+                            playerId: w.playerId,
+                            playerName: w.playerName,
+                            remainingByYear: remaining,
+                            stretched: false,  // AI never elects stretch (conservative default)
+                            waivedDate: stateWithSim.date ?? '',
+                            originalExpYear: playerRecord.contract?.exp ?? currentSeasonYear,
+                        };
+                        const existing = teamDeadMoneyAdds.get(w.teamId) ?? [];
+                        existing.push(entry);
+                        teamDeadMoneyAdds.set(w.teamId, existing);
+                    });
+                }
                 stateWithSim = {
                     ...stateWithSim,
+                    teams: teamDeadMoneyAdds.size > 0
+                        ? stateWithSim.teams.map(t => {
+                            const adds = teamDeadMoneyAdds.get(t.id);
+                            if (!adds) return t;
+                            return { ...t, deadMoney: [...(t.deadMoney ?? []), ...adds] };
+                        })
+                        : stateWithSim.teams,
                     players: stateWithSim.players.map(p => {
                         const w = waiverInfo.get(p.internalId);
                         if (!w) return p;

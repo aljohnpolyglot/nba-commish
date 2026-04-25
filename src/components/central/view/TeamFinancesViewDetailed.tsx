@@ -27,7 +27,15 @@ export const TeamFinancesViewDetailed: React.FC = () => {
   const ngPlayers = useMemo(() => teamPlayers.filter(p => !!(p as any).nonGuaranteed), [teamPlayers]);
   const standardPlayers = useMemo(() => teamPlayers.filter(p => !(p as any).twoWay && !(p as any).nonGuaranteed), [teamPlayers]);
 
-  const payroll = useMemo(() => getTeamPayrollUSD(state.players, teamId), [state.players, teamId]);
+  const payroll = useMemo(() => getTeamPayrollUSD(state.players, teamId, selectedTeam, currentYear), [state.players, teamId, selectedTeam, currentYear]);
+  const deadMoneyEntries = useMemo(() => selectedTeam?.deadMoney ?? [], [selectedTeam]);
+  const deadMoneyThisSeason = useMemo(
+    () => deadMoneyEntries.reduce((sum, e) => {
+      const yr = e.remainingByYear.find(y => parseInt(y.season.split('-')[0], 10) + 1 === currentYear);
+      return sum + (yr?.amountUSD ?? 0);
+    }, 0),
+    [deadMoneyEntries, currentYear],
+  );
 
   const capSpace = salaryCap - payroll;
   const firstApronSpace = firstApron - payroll;
@@ -306,8 +314,8 @@ export const TeamFinancesViewDetailed: React.FC = () => {
             </div>
           </div>
 
-          {/* Two-Way + Non-Guaranteed rosters */}
-          {(twoWayPlayers.length > 0 || ngPlayers.length > 0) && (
+          {/* Two-Way + Non-Guaranteed + Dead Money panels */}
+          {(twoWayPlayers.length > 0 || ngPlayers.length > 0 || deadMoneyEntries.length > 0) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {twoWayPlayers.length > 0 && (
                 <div className="bg-[#232730] rounded-xl p-4 border border-slate-800/50">
@@ -348,6 +356,41 @@ export const TeamFinancesViewDetailed: React.FC = () => {
                         <span className="text-sm font-bold text-amber-300">{formatSalaryM(contractToUSD(p.contract?.amount || 0))}</span>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+              {deadMoneyEntries.length > 0 && (
+                <div className="bg-[#1a1d24] rounded-xl p-4 border border-slate-700/50">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-slate-500 inline-block" />
+                    Dead Money
+                    <span className="text-slate-600 font-normal normal-case tracking-normal">
+                      (waived contracts — still on cap · ${(deadMoneyThisSeason / 1_000_000).toFixed(1)}M this season)
+                    </span>
+                  </h3>
+                  <div className="space-y-2">
+                    {deadMoneyEntries.map(entry => {
+                      const yr = entry.remainingByYear.find(y => parseInt(y.season.split('-')[0], 10) + 1 === currentYear);
+                      const total = entry.remainingByYear.reduce((s, y) => s + y.amountUSD, 0);
+                      const lastYear = entry.remainingByYear[entry.remainingByYear.length - 1];
+                      return (
+                        <div key={entry.playerId} className="flex items-center justify-between opacity-60">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-black text-slate-500 bg-slate-700/40 px-1.5 py-0.5 rounded border border-slate-700">
+                              {entry.stretched ? 'STRETCH' : 'DEAD'}
+                            </span>
+                            <span className="text-sm text-slate-400 line-through">{entry.playerName}</span>
+                            <span className="text-[10px] text-slate-600">
+                              waived {entry.waivedDate} · thru {lastYear?.season ?? '?'}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-bold text-slate-400">{formatSalaryM(yr?.amountUSD ?? 0)}</div>
+                            <div className="text-[9px] text-slate-600">${(total / 1_000_000).toFixed(1)}M total</div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

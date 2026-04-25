@@ -303,7 +303,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
     state.teams.forEach(t => {
       const manual = resolveManualOutlook(t, state.gameMode, state.userTeamId);
       if (manual) { map.set(t.id, manual); return; }
-      const payroll = getTeamPayrollUSD(state.players, t.id);
+      const payroll = getTeamPayrollUSD(state.players, t.id, t, currentYearForEval);
       const standings = confStandings.get(t.id);
       const expiring = state.players.filter(p => p.tid === t.id && (p.contract?.exp ?? 0) <= currentYearForEval).length;
       const rec = effectiveRecord(t, currentYearForEval);

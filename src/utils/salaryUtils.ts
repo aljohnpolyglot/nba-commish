@@ -1,4 +1,4 @@
-import { NBAPlayer, NBATeam, TeamStatus } from '../types';
+import { NBAPlayer, NBATeam, TeamStatus, DeadMoneyEntry } from '../types';
 import { convertTo2KRating } from './helpers';
 import { EXTERNAL_SALARY_SCALE } from '../constants';
 
@@ -6,12 +6,61 @@ import { EXTERNAL_SALARY_SCALE } from '../constants';
  *  Multiply by 1000 to get actual USD. */
 export const contractToUSD = (amount: number): number => amount * 1000;
 
+/** Convert a contractYears season label like "2025-26" → calendar year of season end (2026).
+ *  Matches the convention used by simulationHandler / seasonRollover. */
+export const seasonLabelToYear = (label: string): number => parseInt(label.split('-')[0], 10) + 1;
+
+/** Sum dead money owed by `team` for the season ending in `seasonYear`. */
+export const getTeamDeadMoneyForSeason = (team: NBATeam | undefined, seasonYear: number): number => {
+  if (!team?.deadMoney?.length) return 0;
+  return team.deadMoney.reduce((sum, entry) => {
+    const hit = entry.remainingByYear.find(y => seasonLabelToYear(y.season) === seasonYear);
+    return sum + (hit?.amountUSD ?? 0);
+  }, 0);
+};
+
+/** Build a stretched payment schedule. NBA formula: spread total over (2 × remaining years + 1) seasons.
+ *  Returns the new remainingByYear; preserves the FIRST season as the start. */
+export const buildStretchedSchedule = (
+  remainingByYear: DeadMoneyEntry['remainingByYear'],
+  multiplier = 2,
+): DeadMoneyEntry['remainingByYear'] => {
+  if (!remainingByYear.length) return [];
+  const totalUSD = remainingByYear.reduce((s, y) => s + y.amountUSD, 0);
+  const remainingYears = remainingByYear.length;
+  const stretchYears = remainingYears * multiplier + 1;
+  const perYear = Math.round(totalUSD / stretchYears);
+  const startYear = seasonLabelToYear(remainingByYear[0].season);
+  return Array.from({ length: stretchYears }).map((_, i) => {
+    const yr = startYear + i;
+    return { season: `${yr - 1}-${String(yr).slice(-2)}`, amountUSD: perYear };
+  });
+};
+
 /** Sum all player contracts for a team, returning USD dollars.
- *  Two-way players ($625K each) are excluded from cap payroll — they don't count against the salary cap. */
-export const getTeamPayrollUSD = (players: NBAPlayer[], teamId: number): number =>
-  players
+ *  Two-way players ($625K each) are excluded from cap payroll — they don't count against the salary cap.
+ *  When `team` is provided, dead-money charges for the current season are added so cap math
+ *  reflects waived guaranteed contracts. `seasonYear` defaults to the latest contractYears year on the roster. */
+export const getTeamPayrollUSD = (
+  players: NBAPlayer[],
+  teamId: number,
+  team?: NBATeam,
+  seasonYear?: number,
+): number => {
+  const livePayroll = players
     .filter(p => p.tid === teamId && !(p as any).twoWay)
     .reduce((sum, p) => sum + contractToUSD(p.contract?.amount || 0), 0);
+  if (!team?.deadMoney?.length) return livePayroll;
+  const yr = seasonYear ?? (() => {
+    let max = new Date().getUTCFullYear();
+    players.forEach(p => {
+      const exp = p.contract?.exp;
+      if (typeof exp === 'number' && exp > max) max = exp;
+    });
+    return max;
+  })();
+  return livePayroll + getTeamDeadMoneyForSeason(team, yr);
+};
 
 /** Format dollar amount as "$X.XM" */
 export const formatSalaryM = (dollars: number): string =>
@@ -116,17 +165,23 @@ export interface TradeOutlook {
 
 // Outlook shapes produced when the user manually pins their team's status in GM mode.
 const MANUAL_STATUS_OUTLOOK: Record<TeamStatus, TradeOutlook> = {
-  contending: { role: 'heavy_buyer', label: 'Contending', color: 'text-emerald-300', bgColor: 'bg-emerald-500/20', dot: '#6ee7b7', reason: 'Manual' },
-  win_now:    { role: 'buyer',       label: 'Win-Now',    color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', dot: '#34d399', reason: 'Manual' },
-  retooling:  { role: 'seller',      label: 'Retooling',  color: 'text-amber-400',   bgColor: 'bg-amber-500/20',   dot: '#fbbf24', reason: 'Manual' },
-  rebuilding: { role: 'rebuilding',  label: 'Rebuilding', color: 'text-purple-400',  bgColor: 'bg-purple-500/20',  dot: '#c084fc', reason: 'Manual' },
+  contending:   { role: 'heavy_buyer', label: 'Contending',   color: 'text-emerald-300', bgColor: 'bg-emerald-500/20', dot: '#6ee7b7', reason: 'Manual' },
+  win_now:      { role: 'buyer',       label: 'Win-Now',      color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', dot: '#34d399', reason: 'Manual' },
+  play_in_push: { role: 'buyer',       label: 'Play-In Push', color: 'text-sky-300',     bgColor: 'bg-sky-500/15',     dot: '#7dd3fc', reason: 'Manual' },
+  retooling:    { role: 'seller',      label: 'Retooling',    color: 'text-amber-400',   bgColor: 'bg-amber-500/20',   dot: '#fbbf24', reason: 'Manual' },
+  cap_clearing: { role: 'seller',      label: 'Cap Clearing', color: 'text-orange-300',  bgColor: 'bg-orange-500/20',  dot: '#fdba74', reason: 'Manual' },
+  rebuilding:   { role: 'rebuilding',  label: 'Rebuilding',   color: 'text-purple-400',  bgColor: 'bg-purple-500/20',  dot: '#c084fc', reason: 'Manual' },
+  development:  { role: 'rebuilding',  label: 'Development',  color: 'text-fuchsia-300', bgColor: 'bg-fuchsia-500/15', dot: '#f0abfc', reason: 'Manual' },
 };
 
 export const MANUAL_STATUS_LABEL: Record<TeamStatus, string> = {
   contending: 'Contending',
   win_now: 'Win-Now',
+  play_in_push: 'Play-In Push',
   retooling: 'Retooling',
+  cap_clearing: 'Cap Clearing',
   rebuilding: 'Rebuilding',
+  development: 'Development',
 };
 
 export function manualStatusOutlook(status: TeamStatus): TradeOutlook {
@@ -311,9 +366,11 @@ export const getTeamCapProfile = (
   teamId: number,
   wins: number,
   losses: number,
-  thresholds: CapThresholds
+  thresholds: CapThresholds,
+  team?: NBATeam,
+  seasonYear?: number,
 ): TeamCapProfile => {
-  const payrollUSD = getTeamPayrollUSD(players, teamId);
+  const payrollUSD = getTeamPayrollUSD(players, teamId, team, seasonYear);
   const status = getCapStatus(payrollUSD, thresholds);
   const capSpaceUSD = thresholds.salaryCap - payrollUSD;
   const winPct = (wins + losses) > 0 ? wins / (wins + losses) : 0;

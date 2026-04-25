@@ -113,6 +113,9 @@ export function isPlayerEligible(
     if (!onTeam) return false;
     // In GM mode, only surface re-sign for players on the user's own team.
     if (context?.userTeamId != null && player.tid !== context.userTeamId) return false;
+    // NG-contract players use "Guarantee Contract" (instant flip) instead — hiding
+    // Re-sign avoids two redundant entry points with different semantics.
+    if ((player as any).nonGuaranteed) return false;
     const exp = player.contract?.exp;
     const year = context?.currentYear ?? new Date().getUTCFullYear();
     return typeof exp === 'number' && exp <= year;
@@ -338,6 +341,8 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
     eligibility: {
       playerStatuses: ACTIVE_NBA_ONLY,
       requireActiveNBA: true,
+      // GM mode = only your own roster. Commissioner mode = any team.
+      restrictUserTeamInGM: true,
     },
   },
   {

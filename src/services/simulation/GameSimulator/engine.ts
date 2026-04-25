@@ -17,6 +17,7 @@ import { HighlightGenerator } from '../HighlightGenerator';
 import { getInjuries, getRandomInjury } from '../../injuryService';
 import { getScoringOptions, getScoringOptionBiases, getCoachingPenalty } from '../../../store/scoringOptionsStore';
 import { getLockedStrategy } from '../../../store/coachStrategyLockStore';
+import { getSystemFitPenalty, getSystemKnobMods } from '../../../store/coachSystemStore';
 
 /**
  * Top-8 pace factor from roster traits. Mirrors the tempo/fastBreak/earlyOffense
@@ -289,8 +290,13 @@ export class GameSimulator {
           buildBaselineOrder(awayOverridePlayers ?? players.filter(p => p.tid === awayTeam.id)),
           getScoringOptions(awayTeam.id)
         );
-    const homeStrength = baseHomeStrength - homeCoachPenalty;
-    const awayStrength = baseAwayStrength - awayCoachPenalty;
+    // System-fit penalty — wrong system reduces team strength + shooting efficiency.
+    // Skip for exhibition/override rosters (same guard as coach penalty above).
+    const homeSysFit = homeOverridePlayers ? null : getSystemFitPenalty(homeTeam.id);
+    const awaySysFit = awayOverridePlayers ? null : getSystemFitPenalty(awayTeam.id);
+
+    const homeStrength = baseHomeStrength - homeCoachPenalty - (homeSysFit?.strengthPenalty ?? 0);
+    const awayStrength = baseAwayStrength - awayCoachPenalty - (awaySysFit?.strengthPenalty ?? 0);
 
     const HOME_COURT  = 3;
     const strengthDiff = (homeStrength - awayStrength) + HOME_COURT;
@@ -414,8 +420,8 @@ export class GameSimulator {
     // so stat lines match the scoreboard energy. League avg preserved over many games.
     const homeEffMult = getEfficiencyMultFromScore(finalHomeScore);
     const awayEffMult = getEfficiencyMultFromScore(finalAwayScore);
-    const homeKnobsEff = { ...homeKnobs, efficiencyMultiplier: (homeKnobs.efficiencyMultiplier ?? 1.0) * homeEffMult };
-    const awayKnobsEff = { ...awayKnobs, efficiencyMultiplier: (awayKnobs.efficiencyMultiplier ?? 1.0) * awayEffMult };
+    const homeKnobsEff = { ...homeKnobs, efficiencyMultiplier: (homeKnobs.efficiencyMultiplier ?? 1.0) * homeEffMult * (homeSysFit?.efficiencyMult ?? 1.0) };
+    const awayKnobsEff = { ...awayKnobs, efficiencyMultiplier: (awayKnobs.efficiencyMultiplier ?? 1.0) * awayEffMult * (awaySysFit?.efficiencyMult ?? 1.0) };
 
     // Baseline order (usage*ovr) for each team — reused by biases, double team,
     // and coaching penalty. Empty for exhibitions.
@@ -476,6 +482,35 @@ export class GameSimulator {
       applyDoubleTeam(awayBiases, awayBaselineOrder, homeDef.doubleTeam);
     }
 
+    // System-specific knob mods — pace/shot/efficiency bonuses for running
+    // the right system. Also handles the Heliocentric star ptsMult injection
+    // into the biases map so the #1 option reaches prime-usage scoring volume.
+    // Skip for exhibition/override rosters.
+    const homeSysMods = homeOverridePlayers ? null : getSystemKnobMods(homeTeam.id);
+    const awaySysMods = awayOverridePlayers ? null : getSystemKnobMods(awayTeam.id);
+
+    const applyHelioStarBoost = (
+      biases: Map<string, { ptsMult: number; effMult: number }> | undefined,
+      baseline: string[],
+      mods: ReturnType<typeof getSystemKnobMods> | null
+    ) => {
+      if (!mods || mods.helioStarPtsMod === 1 || !baseline[0]) return;
+      const existing = biases?.get(baseline[0]) ?? { ptsMult: 1, effMult: 1 };
+      if (!biases) return;
+      biases.set(baseline[0], {
+        ptsMult: existing.ptsMult * mods.helioStarPtsMod,
+        effMult:  existing.effMult  * mods.helioStarEffMod,
+      });
+    };
+    if (!homeOverridePlayers) {
+      homeBiases = homeBiases ?? new Map();
+      applyHelioStarBoost(homeBiases, homeBaselineOrder, homeSysMods);
+    }
+    if (!awayOverridePlayers) {
+      awayBiases = awayBiases ?? new Map();
+      applyHelioStarBoost(awayBiases, awayBaselineOrder, awaySysMods);
+    }
+
     // Shot Distribution sliders (Coaching → Strategy) → per-team shot mix. Skip
     // for exhibition games — synthetic rosters use default knobs.
     const homeShotMults = homeOverridePlayers ? null : computeShotMults(homeTeam.id, homePlayers);
@@ -491,20 +526,28 @@ export class GameSimulator {
     const homeKnobsFinal: SimulatorKnobs = {
       ...homeKnobsEff,
       ...(homeShotMults ?? {}),
+      paceMultiplier:     (homeKnobsEff.paceMultiplier     ?? 1) * (homeSysMods?.paceBonus     ?? 1),
+      efficiencyMultiplier:(homeKnobsEff.efficiencyMultiplier ?? 1) * (homeSysMods?.efficiencyMod ?? 1),
       tovMult:            (homeKnobsEff.tovMult    ?? 1) * (homeOpponentStack?.tovMult    ?? 1),
       ftRateMult:         (homeKnobsEff.ftRateMult ?? 1) * (homeOpponentStack?.ftRateMult ?? 1),
       interiorEffMult:    homeOpponentStack?.interiorEffMult ?? 1,
-      rimRateMult:        (homeShotMults?.rimRateMult        ?? 1) * (homeOpponentStack?.rimRateMult        ?? 1),
-      threePointRateMult: (homeShotMults?.threePointRateMult ?? homeKnobsEff.threePointRateMult ?? 1) * (homeOpponentStack?.threePointRateMult ?? 1),
+      rimRateMult:        (homeShotMults?.rimRateMult        ?? 1) * (homeOpponentStack?.rimRateMult        ?? 1) * (homeSysMods?.rimMod        ?? 1),
+      lowPostRateMult:    (homeShotMults?.lowPostRateMult    ?? 1) * (homeSysMods?.lowPostMod   ?? 1),
+      midRangeRateMult:   (homeShotMults?.midRangeRateMult  ?? 1) * (homeSysMods?.midRangeMod  ?? 1),
+      threePointRateMult: (homeShotMults?.threePointRateMult ?? homeKnobsEff.threePointRateMult ?? 1) * (homeOpponentStack?.threePointRateMult ?? 1) * (homeSysMods?.threePointMod ?? 1),
     };
     const awayKnobsFinal: SimulatorKnobs = {
       ...awayKnobsEff,
       ...(awayShotMults ?? {}),
+      paceMultiplier:     (awayKnobsEff.paceMultiplier     ?? 1) * (awaySysMods?.paceBonus     ?? 1),
+      efficiencyMultiplier:(awayKnobsEff.efficiencyMultiplier ?? 1) * (awaySysMods?.efficiencyMod ?? 1),
       tovMult:            (awayKnobsEff.tovMult    ?? 1) * (awayOpponentStack?.tovMult    ?? 1),
       ftRateMult:         (awayKnobsEff.ftRateMult ?? 1) * (awayOpponentStack?.ftRateMult ?? 1),
       interiorEffMult:    awayOpponentStack?.interiorEffMult ?? 1,
-      rimRateMult:        (awayShotMults?.rimRateMult        ?? 1) * (awayOpponentStack?.rimRateMult        ?? 1),
-      threePointRateMult: (awayShotMults?.threePointRateMult ?? awayKnobsEff.threePointRateMult ?? 1) * (awayOpponentStack?.threePointRateMult ?? 1),
+      rimRateMult:        (awayShotMults?.rimRateMult        ?? 1) * (awayOpponentStack?.rimRateMult        ?? 1) * (awaySysMods?.rimMod        ?? 1),
+      lowPostRateMult:    (awayShotMults?.lowPostRateMult    ?? 1) * (awaySysMods?.lowPostMod   ?? 1),
+      midRangeRateMult:   (awayShotMults?.midRangeRateMult  ?? 1) * (awaySysMods?.midRangeMod  ?? 1),
+      threePointRateMult: (awayShotMults?.threePointRateMult ?? awayKnobsEff.threePointRateMult ?? 1) * (awayOpponentStack?.threePointRateMult ?? 1) * (awaySysMods?.threePointMod ?? 1),
     };
 
     const homeInitial = StatGenerator.generateStatsForTeam(

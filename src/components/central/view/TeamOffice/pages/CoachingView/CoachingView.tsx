@@ -14,6 +14,7 @@ import { IdealRotationTab } from './IdealRotationTab';
 import { getMinutesDiff } from '../../../../../../store/gameplanStore';
 import { getScoringOptions, saveScoringOptions } from '../../../../../../store/scoringOptionsStore';
 import { getLockedStrategy, lockStrategy, unlockStrategy } from '../../../../../../store/coachStrategyLockStore';
+import { getCoachSystem } from '../../../../../../store/coachSystemStore';
 import { getDisplayOverall } from '../../../../../../utils/playerRatings';
 
 interface CoachingViewProps {
@@ -114,7 +115,9 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
   const [activeTab, setActiveTab] = useState<'GAMEPLAN' | 'IDEAL' | 'SYSTEM' | 'COACHING' | 'PREFERENCES' | 'STAFF'>('GAMEPLAN');
   const [starters, setStarters] = useState<any[]>([]);
   const [isMobile, setIsMobile] = useState(false);
-  const [selectedSystem, setSelectedSystem] = useState(team.bestSystem);
+  const [selectedSystem, setSelectedSystem] = useState(
+    () => getCoachSystem(Number(team.tid))?.selectedSystem ?? team.bestSystem
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [showSavedFeedback, setShowSavedFeedback] = useState(false);
 
@@ -271,8 +274,8 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
   }, []);
 
   useEffect(() => {
-    setSelectedSystem(team.bestSystem);
-  }, [team.bestSystem]);
+    setSelectedSystem(getCoachSystem(Number(team.tid))?.selectedSystem ?? team.bestSystem);
+  }, [team.tid, team.bestSystem]);
 
   useEffect(() => {
     // We need to get the starters for this team.
@@ -486,11 +489,16 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
           
           <div className="mb-4">
             <div className="text-xs text-gray-400 uppercase">Active System:</div>
-            <div className="text-yellow-500 font-bold text-lg">{toTitleCase(team.bestSystem)}</div>
+            <div className={`font-bold text-lg ${selectedSystem !== team.bestSystem ? 'text-amber-400' : 'text-yellow-500'}`}>
+              {toTitleCase(selectedSystem)}
+            </div>
+            {selectedSystem !== team.bestSystem && (
+              <div className="text-[10px] text-amber-500 mt-0.5">Not best fit — affects performance</div>
+            )}
           </div>
-          
+
           <div>
-            <div className="text-xs text-gray-400 uppercase">Coach's Preferred System:</div>
+            <div className="text-xs text-gray-400 uppercase">Best Fit System:</div>
             <div className="text-yellow-500 font-bold text-lg">{toTitleCase(team.bestSystem)}</div>
           </div>
         </div>

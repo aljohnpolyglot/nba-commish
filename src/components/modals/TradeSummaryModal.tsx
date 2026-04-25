@@ -4,7 +4,7 @@
  * same portrait/OVR/POT/salary layout used everywhere else.
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { NBAPlayer, DraftPick, NBATeam } from '../../types';
@@ -98,6 +98,8 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
   tradeDetails,
   salaryMismatchInfo,
 }) => {
+  const [submitting, setSubmitting] = useState(false);
+  useEffect(() => { if (!isOpen) setSubmitting(false); }, [isOpen]);
   if (!isOpen) return null;
 
   const { state } = useGame();
@@ -116,7 +118,7 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
   const buildOutlook = (team: NBATeam): TradeOutlook => {
     const manual = resolveManualOutlook(team, state.gameMode, state.userTeamId);
     if (manual) return manual;
-    const payroll = getTeamPayrollUSD(state.players, team.id);
+    const payroll = getTeamPayrollUSD(state.players, team.id, team, currentYear);
     const rec = effectiveRecord(team, currentYear);
     const confTeams = state.teams.filter(t => t.conference === team.conference).map(t => ({
       t, rec: effectiveRecord(t, currentYear),
@@ -253,10 +255,11 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
               </button>
               {tradeIsValid ? (
                 <button
-                  onClick={onConfirmTrade}
+                  onClick={() => { if (submitting) return; setSubmitting(true); onConfirmTrade(); }}
+                  disabled={submitting}
                   className={`px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest text-white transition-colors ${
                     isPastDeadline ? 'bg-amber-600 hover:bg-amber-500' : 'bg-emerald-600 hover:bg-emerald-500'
-                  }`}
+                  } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {isPastDeadline ? 'Override Deadline & Confirm' : 'Confirm Trade'}
                 </button>
@@ -265,7 +268,11 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
                   Fix Salary to Proceed
                 </span>
               ) : (
-                <button onClick={onForceTrade} className="px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest bg-rose-600 hover:bg-rose-500 text-white transition-colors">
+                <button
+                  onClick={() => { if (submitting) return; setSubmitting(true); onForceTrade(); }}
+                  disabled={submitting}
+                  className={`px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest bg-rose-600 hover:bg-rose-500 text-white transition-colors ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
                   {isPastDeadline ? 'Force Trade (Override All)' : 'Force Trade'}
                 </button>
               )}

@@ -14,6 +14,7 @@ import { setActiveSaveId as setTradingBlockSaveId } from './tradingBlockStore';
 import { setActiveSaveId as setScoringOptionsSaveId } from './scoringOptionsStore';
 import { setActiveSaveId as setCoachStrategySaveId } from './coachStrategyLockStore';
 import { setActiveSaveId as setIdealRotationSaveId } from './idealRotationStore';
+import { setActiveSaveId as setCoachSystemSaveId } from './coachSystemStore';
 import { enforceExternalMinRoster, repairGeneratedExternalPlayer } from '../services/externalLeagueSustainer';
 import { applyCupAwardsToPlayers } from '../services/nbaCup/awards';
 import { computeRookieSalaryUSD } from '../utils/rookieContractUtils';
@@ -65,6 +66,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     setScoringOptionsSaveId(state.saveId);
     setCoachStrategySaveId(state.saveId);
     setIdealRotationSaveId(state.saveId);
+    setCoachSystemSaveId(state.saveId);
   }, [state.saveId]);
 
   // Set default view for GM mode when game first loads

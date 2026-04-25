@@ -300,3 +300,17 @@ export function getSystemProficiency(
     "Twin Towers": Math.min(100, calc([lowpost, hgt, stre, block, postIQ], [three, spd, lat]) + twinTowersBonus),
   };
 }
+
+/**
+ * Given the currently selected system name and the team's full sorted
+ * proficiency list, returns the raw scores needed for getSystemFitPenalty.
+ */
+export function computeSystemFit(
+  selectedSystem: string,
+  sortedProfs: [string, number][],
+): { selectedProfScore: number; bestProfScore: number } {
+  const bestProfScore = sortedProfs[0]?.[1] ?? 50;
+  const entry = sortedProfs.find(([name]) => name === selectedSystem);
+  const selectedProfScore = entry?.[1] ?? bestProfScore;
+  return { selectedProfScore, bestProfScore };
+}

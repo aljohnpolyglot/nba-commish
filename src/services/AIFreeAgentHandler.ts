@@ -629,6 +629,20 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   if (isPreseasonWindow) {
     const NG_OVR_CAP = 60; // fringe prospects / camp bodies
     const minSalaryUSDPreseason = ((state.leagueStats as any).minContractStaticAmount ?? 1.2) * 1_000_000;
+    // Anchor NG tiers to a % of the season's salary cap so they inflate
+    // automatically as the cap grows year-to-year (matches the rest of
+    // EconomyTab which uses cap percentages — MLE, max contract, apron, etc).
+    // Reference: NBA $1.27M min ≈ 0.9% of $140M cap; $4M ≈ 2.85%.
+    const seasonCap = (thresholds as any).salaryCap ?? 140_000_000;
+    const NG_CAP_PCT_BY_OVR: Array<{ maxOvr: number; pct: number }> = [
+      { maxOvr: 50, pct: 0.009 },
+      { maxOvr: 55, pct: 0.011 },
+      { maxOvr: 60, pct: 0.014 },
+      { maxOvr: 65, pct: 0.019 },
+      { maxOvr: 70, pct: 0.024 },
+      { maxOvr: 75, pct: 0.029 },
+      { maxOvr: 99, pct: 0.034 },
+    ];
 
     for (const team of sortedAITeams) {
       // Training camp limit is TOTAL (standard + NG + two-way all share the 21 pool)
@@ -646,10 +660,24 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
       let filled = 0;
       for (const candidate of ngCandidates) {
         if (filled >= ngSlots) break;
-        // NG salary = 60% of market rate, floored at min, capped at 3× min.
-        // Players accept a discount in exchange for a roster spot they can earn.
-        const marketOffer = computeContractOffer(candidate, state.leagueStats as any);
-        const ngSalaryUSD = Math.max(minSalaryUSDPreseason, Math.min(minSalaryUSDPreseason * 3, Math.round(marketOffer.salaryUSD * 0.60)));
+        // NG salary tiered by % of salary cap so deals scale with cap inflation
+        // (consistent with MLE/max/apron in EconomyTab). Floor at min contract,
+        // ceiling at the top NG tier. Pre-fix every NG landed at ~$4M because
+        // market×0.60 always exceeded the 3×min ceiling.
+        const ovr = candidate.overallRating ?? 50;
+        const tierPct = (NG_CAP_PCT_BY_OVR.find(t => ovr <= t.maxOvr) ?? NG_CAP_PCT_BY_OVR[NG_CAP_PCT_BY_OVR.length - 1]).pct;
+        // Stable jitter from internalId so same call yields same salary, but
+        // different players at the same OVR don't print the identical number.
+        let seed = 0;
+        const id = candidate.internalId ?? '';
+        for (let i = 0; i < id.length; i++) seed = (seed * 31 + id.charCodeAt(i)) | 0;
+        const jitter = 0.90 + ((Math.abs(seed) % 200) / 1000); // 0.90 – 1.10
+        const target = seasonCap * tierPct * jitter;
+        const ngCeiling = seasonCap * NG_CAP_PCT_BY_OVR[NG_CAP_PCT_BY_OVR.length - 1].pct * 1.10;
+        const ngSalaryUSD = Math.max(
+          minSalaryUSDPreseason,
+          Math.min(ngCeiling, Math.round(target / 25_000) * 25_000),
+        );
         signPlayer(
           candidate,
           team,

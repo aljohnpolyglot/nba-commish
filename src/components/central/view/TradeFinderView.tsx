@@ -25,7 +25,7 @@ import { generateCounterOffers, teamPowerRanks } from '../../../services/trade/t
 import { SettingsManager } from '../../../services/SettingsManager';
 import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks } from '../../../services/draft/DraftPickGenerator';
 import { buildClassStrengthMap, buildLotterySlotMap } from '../../../services/draft/draftClassStrength';
-import { tradeRoleToTeamMode } from '../../../utils/teamStrategy';
+import { tradeRoleToTeamMode, resolveTeamStrategyProfile } from '../../../utils/teamStrategy';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -44,6 +44,7 @@ export interface FoundOffer {
   tid: number;
   items: TradeItem[];
   outlook: TradeOutlook;
+  strategyLabel?: string;
   variant?: 'match' | 'dump' | 'absorb';
 }
 
@@ -305,6 +306,7 @@ export const OfferCard: React.FC<{
   const bothHavePlayers = myItems.some(i => i.type === 'player') && offer.items.some(i => i.type === 'player');
   const salaryOk = !bothHavePlayers || isSalaryLegal(mySalary, theirSalary);
   const { outlook } = offer;
+  const badgeLabel = offer.strategyLabel ?? outlook.label;
   const isAbsorb = offer.variant === 'absorb';
   // Cap space display — positive = "Xm avail", negative = "Xm over"
   const capLabel = capSpaceK === undefined ? null
@@ -328,7 +330,7 @@ export const OfferCard: React.FC<{
           <div className="text-[10px] text-slate-500">{(team as any)?.wins ?? 0}–{(team as any)?.losses ?? 0}</div>
         </div>
         <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg flex-shrink-0 ${outlook.bgColor} ${outlook.color}`}>
-          {outlook.label}
+          {badgeLabel}
         </span>
       </div>
 
@@ -482,7 +484,7 @@ export const TradeFinderView: React.FC = () => {
     teams.forEach(t => {
       const manual = resolveManualOutlook(t, state.gameMode, state.userTeamId);
       if (manual) { map.set(t.id, manual); return; }
-      const payroll = getTeamPayrollUSD(players, t.id);
+      const payroll = getTeamPayrollUSD(players, t.id, t, currentYear);
       const standings = confStandings.get(t.id);
       const expiring = players.filter(p => p.tid === t.id && (p.contract?.exp ?? 0) <= currentYear).length;
       const rec = effectiveRecord(t, currentYear);
@@ -500,6 +502,24 @@ export const TradeFinderView: React.FC = () => {
     });
     return map;
   }, [teams, players, thresholds, confStandings, currentYear, state.gameMode, state.userTeamId]);
+
+  // Per-team strategy label (Contending / Win-Now / Retooling / Cap Clearing / Development / etc.)
+  const teamStrategies = useMemo(() => {
+    const map = new Map<number, string>();
+    teams.forEach(t => {
+      const profile = resolveTeamStrategyProfile({
+        team: t,
+        players,
+        teams,
+        leagueStats: state.leagueStats,
+        currentYear,
+        gameMode: state.gameMode,
+        userTeamId: state.userTeamId,
+      });
+      map.set(t.id, profile.label);
+    });
+    return map;
+  }, [teams, players, state.leagueStats, currentYear, state.gameMode, state.userTeamId]);
 
   // Map TradeRole → TeamMode for TV calculation
   const roleToMode = (role: string): TeamMode => {
@@ -691,6 +711,7 @@ export const TradeFinderView: React.FC = () => {
         tid: o.tid,
         items: o.items as TradeItem[],
         outlook: teamOutlooks.get(o.tid) ?? { role: 'neutral', label: 'Neutral', color: 'text-slate-400', bgColor: 'bg-slate-700/40', dot: '#94a3b8', reason: '' },
+        strategyLabel: teamStrategies.get(o.tid),
         variant: o.variant,
       }));
 

@@ -255,8 +255,11 @@ function inferStrategyKey(args: {
 
   if (manualStatus === 'contending') return 'contending';
   if (manualStatus === 'win_now') return 'win_now';
+  if (manualStatus === 'play_in_push') return 'play_in_push';
   if (manualStatus === 'retooling') return 'retooling';
+  if (manualStatus === 'cap_clearing') return 'cap_clearing';
   if (manualStatus === 'rebuilding') return 'rebuilding';
+  if (manualStatus === 'development') return 'development';
 
   const avgAge = roster.length > 0
     ? roster.reduce((sum, player) => sum + ageOf(player, currentYear), 0) / roster.length

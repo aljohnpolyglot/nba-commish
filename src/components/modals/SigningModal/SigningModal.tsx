@@ -156,7 +156,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   const [rosterFullOverridden, setRosterFullOverridden] = useState(false);
 
   const thresholds  = useMemo(() => getCapThresholds(leagueStats), [leagueStats]);
-  const teamPayroll = useMemo(() => getTeamPayrollUSD(state.players, team.id), [state.players, team.id]);
+  const teamPayroll = useMemo(() => getTeamPayrollUSD(state.players, team.id, team, state.leagueStats?.year), [state.players, team, state.leagueStats?.year]);
 
   // Roster-slot accounting. Training camp rule: 21 TOTAL (standard + NG + two-way all share one pool).
   // Regular season: 15 standard (guaranteed + NG) + 3 two-way are separate buckets.
@@ -377,13 +377,16 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     if (initedForPlayerRef.current === player.internalId) return;
     initedForPlayerRef.current = player.internalId;
     // Honor roster slot availability first — if standard is full, we must default to TWO_WAY, and vice versa.
-    const forcedTwoWay = roster.standardFull && !roster.twoWayFull;
-    const forcedGuaranteed = roster.twoWayFull && !roster.standardFull;
-    // Resolution order: roster-full forcing > caller override (initialContractType, e.g. 2W→Guaranteed promotion) > age-based candidate default.
+    // Bird Rights re-signs bypass roster-full forcing — they aren't taking a new slot.
+    const hasBirdBypass = isResign || teamHoldsBirdRights;
+    const forcedTwoWay = !hasBirdBypass && roster.standardFull && !roster.twoWayFull;
+    const forcedGuaranteed = !hasBirdBypass && roster.twoWayFull && !roster.standardFull;
+    // Resolution order: roster-full forcing > caller override (initialContractType, e.g. 2W→Guaranteed promotion) > Bird Rights re-sign default to GUARANTEED > age-based candidate default.
     let chosenType: ContractType;
     if (forcedGuaranteed) chosenType = 'GUARANTEED';
     else if (forcedTwoWay) chosenType = 'TWO_WAY';
     else if (initialContractType) chosenType = initialContractType;
+    else if (hasBirdBypass) chosenType = 'GUARANTEED';
     else if (isTwoWayCandidate) chosenType = 'TWO_WAY';
     else chosenType = 'GUARANTEED';
     setContractType(chosenType);
@@ -606,7 +609,11 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     );
   }
 
-  if (roster.totalFull && !rosterFullOverridden && !isResign) {
+  // Bird Rights bypass: re-signing your own player (currently rostered OR your
+  // FA with Bird Rights) does not require an open roster slot — the player was
+  // already counted on this team. Without this carve-out, a 21-man training-camp
+  // roster blocks every Bird Rights re-sign even though the player IS the slot.
+  if (roster.totalFull && !rosterFullOverridden && !isResign && !teamHoldsBirdRights) {
 
     return (
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md">
@@ -622,7 +629,16 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
           <div className="p-8 w-full flex flex-col items-center relative z-20">
             <h2 className="text-2xl font-black italic uppercase tracking-wider mb-4 text-rose-400">Roster Full</h2>
             <p className="text-white/80 italic mb-2 leading-relaxed text-sm">
-              The {team.name} have {roster.standardCount}/{roster.maxStandard} standard and {roster.twoWayCount}/{roster.maxTwoWay} two-way players — every slot is filled.
+              {(() => {
+                const d = state.date ? new Date(state.date) : new Date();
+                const mo = d.getMonth() + 1;
+                const dy = d.getDate();
+                const isCamp = (mo >= 7 && mo <= 9) || (mo === 10 && dy <= 21);
+                const total = roster.standardCount + roster.twoWayCount;
+                return isCamp
+                  ? <>The {team.name} have {total}/{roster.maxStandard} players in their training-camp pool ({roster.standardCount} standard + {roster.twoWayCount} two-way) — every slot is filled.</>
+                  : <>The {team.name} have {roster.standardCount}/{roster.maxStandard} standard and {roster.twoWayCount}/{roster.maxTwoWay} two-way players — every slot is filled.</>;
+              })()}
             </p>
             <p className="text-white/60 text-xs mb-8">Waive a player first to clear a roster spot, then come back to sign {player.name}.</p>
             <div className="flex flex-col gap-2 w-full">
@@ -948,7 +964,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
               Offer Contract
             </span>
             <span className="text-[9px] font-bold uppercase tracking-widest text-white/40 border-l border-white/20 pl-4">
-              {team.region} {team.name}
+              {team.name}
             </span>
           </div>
           <button
@@ -1215,8 +1231,10 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                         <div className="flex border border-white/5 rounded-sm p-1 bg-black/60 gap-1">
                           {(['GUARANTEED', 'TWO_WAY', 'NON_GUARANTEED'] as ContractType[])
                             .filter(type =>
-                              type === 'GUARANTEED' ? !roster.standardFull :
-                              type === 'TWO_WAY' ? !roster.twoWayFull :
+                              // Bird Rights re-signs (own player or FA with prior-tenure rights)
+                              // bypass roster-full filtering — the player IS the slot.
+                              type === 'GUARANTEED' ? (!roster.standardFull || isResign || teamHoldsBirdRights) :
+                              type === 'TWO_WAY' ? (!roster.twoWayFull || isResign || teamHoldsBirdRights) :
                               isTrainingCampPeriod && roster.standardCount >= 15
                             )
                             .map(type => (
@@ -1699,7 +1717,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                   onClick={() => {
                     // Final cap check — only for GUARANTEED signings that aren't covered by Bird Rights or an MLE.
                     const projectedPayroll = teamPayroll + salary;
-                    const blownCap = contractType !== 'TWO_WAY' && !isResign && projectedPayroll > thresholds.salaryCap && (mle.blocked || salary > mle.available);
+                    const blownCap = contractType !== 'TWO_WAY' && !isResign && !teamHoldsBirdRights && projectedPayroll > thresholds.salaryCap && (mle.blocked || salary > mle.available);
                     if (blownCap) {
                       setShowCapWarning(true);
                       return;

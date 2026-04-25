@@ -34,6 +34,9 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
   const standardCount = teamPlayers.length - twoWayCount;
   const mleCount = teamPlayers.filter(p => !!(p as any).mleSignedVia).length;
 
+  const team = state.teams.find(t => t.id === teamId);
+  const deadMoneyEntries = team?.deadMoney ?? [];
+
   return (
     <div className="overflow-x-auto custom-scrollbar p-3 sm:p-6">
       <table className="w-full text-sm text-left whitespace-nowrap border-separate border-spacing-y-2">
@@ -151,6 +154,39 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
               </tr>
             );
           })}
+          {/* Dead-money rows for waived guaranteed contracts. Greyed out, line-through name. */}
+          {deadMoneyEntries.map(entry => {
+            const yearMap = new Map<number, number>();
+            entry.remainingByYear.forEach(y => {
+              yearMap.set(parseInt(y.season.split('-')[0], 10) + 1, y.amountUSD);
+            });
+            const cell = (n: number) => {
+              const amt = yearMap.get(currentYear + n);
+              if (amt && amt > 0) {
+                return <div className="bg-slate-700/30 text-slate-400 line-through font-bold text-center py-1.5 rounded border border-slate-700/40 border-dashed">{formatSalaryM(amt)}</div>;
+              }
+              return <div className="text-slate-800 text-xs text-center py-1.5">—</div>;
+            };
+            return (
+              <tr key={`dead-${entry.playerId}`} className="opacity-70">
+                <td className="py-1 pl-2 border-l-[3px] rounded-l-md border-slate-700 bg-slate-700/[0.05]">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-500 line-through">
+                      {entry.playerName.split(' ')[0][0]}. {entry.playerName.split(' ').slice(1).join(' ')}
+                    </span>
+                    <span className="text-[8px] font-black text-slate-500 bg-slate-700/40 px-1.5 py-0.5 rounded-full uppercase tracking-widest">
+                      {entry.stretched ? 'STRETCH' : 'DEAD'}
+                    </span>
+                  </div>
+                </td>
+                <td className="py-1 px-1">{cell(0)}</td>
+                <td className="py-1 px-1">{cell(1)}</td>
+                <td className="py-1 px-1">{cell(2)}</td>
+                <td className="py-1 px-1">{cell(3)}</td>
+                <td className="py-1 px-1">{cell(4)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       <div className="mt-6 flex items-center gap-6 text-xs text-slate-400 flex-wrap">
@@ -170,6 +206,12 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-amber-500/15 border border-amber-500/40 border-dashed rounded-sm" />
             <span className="text-amber-300">Non-Guaranteed <span className="font-mono">{ngCount}</span></span>
+          </div>
+        )}
+        {deadMoneyEntries.length > 0 && (
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-slate-700/30 border border-slate-700/40 border-dashed rounded-sm" />
+            <span className="text-slate-400">Dead Money <span className="font-mono">{deadMoneyEntries.length}</span></span>
           </div>
         )}
         <div className="flex items-center gap-2 border border-slate-500 border-dashed px-2 py-0.5 rounded"><span>Player option</span></div>

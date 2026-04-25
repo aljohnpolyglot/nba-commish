@@ -120,7 +120,16 @@ export const FreeAgentsView: React.FC = () => {
     const twoWayCount = roster.filter(p => (p as any).twoWay).length;
     const ngCount = roster.filter(p => !!(p as any).nonGuaranteed && !(p as any).twoWay).length;
     const standardCount = roster.length - twoWayCount;
-    const maxStandard = state.leagueStats?.maxStandardPlayersPerTeam ?? 15;
+    // Training camp (Jul 1 – Oct 21): standard cap expands to 21 (shared pool).
+    // Otherwise regular-season 15-man cap. Without this, mid-camp display reads
+    // "18/15" and looks 3 over even though the team is fine.
+    const d = state.date ? new Date(state.date) : new Date();
+    const mo = d.getMonth() + 1;
+    const dy = d.getDate();
+    const isTrainingCamp = (mo >= 7 && mo <= 9) || (mo === 10 && dy <= 21);
+    const maxStandard = isTrainingCamp
+      ? (state.leagueStats?.maxTrainingCampRoster ?? 21)
+      : (state.leagueStats?.maxStandardPlayersPerTeam ?? 15);
     const maxTwoWay = state.leagueStats?.maxTwoWayPlayersPerTeam ?? 3;
     const thresholds = getCapThresholds(state.leagueStats as any);
     const userTeam = state.teams.find(t => t.id === state.userTeamId);
@@ -129,21 +138,30 @@ export const FreeAgentsView: React.FC = () => {
       (userTeam as any)?.wins ?? 0, (userTeam as any)?.losses ?? 0,
       thresholds,
     );
-    const payroll = getTeamPayrollUSD(state.players, state.userTeamId);
+    const payroll = getTeamPayrollUSD(state.players, state.userTeamId, userTeam, state.leagueStats?.year);
     const mle = getMLEAvailability(state.userTeamId, payroll, 0, thresholds, state.leagueStats as any);
+    // Split "standard" into true guaranteed vs NG so the badges mirror the
+    // Team Office breakdown ("6/15 guaranteed · 3/3 two-way · 12 non-guaranteed")
+    // instead of a single "Standard 18/21" that hides the NG count inside it.
+    const guaranteedCount = standardCount - ngCount;
+    const maxGuaranteed = state.leagueStats?.maxStandardPlayersPerTeam ?? 15;
     return {
       standardCount,
       twoWayCount,
       ngCount,
+      guaranteedCount,
+      maxGuaranteed,
       maxStandard,
       maxTwoWay,
+      isTrainingCamp,
+      totalCount: roster.length,
       standardLeft: Math.max(0, maxStandard - standardCount),
       twoWayLeft: Math.max(0, maxTwoWay - twoWayCount),
       capSpaceUSD: profile.capSpaceUSD as number,
       mleAvailable: (mle?.available as number) ?? 0,
       mleType: (mle?.type as string | null) ?? null,
     };
-  }, [isGM, state.userTeamId, state.players, state.leagueStats, state.teams]);
+  }, [isGM, state.userTeamId, state.players, state.leagueStats, state.teams, state.date]);
 
   // All unique countries from the current pool (available OR upcoming)
   const allCountries = useMemo(() => {
@@ -476,13 +494,24 @@ export const FreeAgentsView: React.FC = () => {
             </div>
             {userRosterSlots && (
               <>
+                {userRosterSlots.isTrainingCamp && (
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                      userRosterSlots.totalCount >= userRosterSlots.maxStandard
+                        ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                        : 'bg-sky-500/10 border-sky-500/30 text-sky-300'
+                    }`}>
+                      Camp {userRosterSlots.totalCount}/{userRosterSlots.maxStandard}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
-                    userRosterSlots.standardLeft === 0
+                    userRosterSlots.guaranteedCount >= userRosterSlots.maxGuaranteed
                       ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
-                      : 'bg-sky-500/10 border-sky-500/30 text-sky-300'
+                      : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
                   }`}>
-                    Guaranteed {userRosterSlots.standardCount}/{userRosterSlots.maxStandard}
+                    Guaranteed {userRosterSlots.guaranteedCount}/{userRosterSlots.maxGuaranteed}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -497,7 +526,7 @@ export const FreeAgentsView: React.FC = () => {
                 {userRosterSlots.ngCount > 0 && (
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border bg-amber-500/10 border-amber-500/30 text-amber-300">
-                      NG {userRosterSlots.ngCount}
+                      {userRosterSlots.ngCount} Non-Guaranteed
                     </span>
                   </div>
                 )}

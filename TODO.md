@@ -86,6 +86,27 @@ Rk	Team		Opp	Result	GS	+/-
 2	Oct 27, 2025	MIA	@	BKN	W, 121-84	*	27:58	6	15	.400	1	9	.111	5	6	.833	.433	4	4	1.000	1	3	4	4	0	0	2	2	17	10.5	+24
 1	Oct 25, 2025	MIA	@	GSW	W, 114-113	*	30:48	8	24	.333	2	10	.200	6	14	.429	.375	2	3	.667	1	1	2	3	0	0	2	2	20	6.3	+6
 ## BUGS — Open
+
+### Session 28 (2026-04-26) — Re-sign UX bugs
+
+- ✅ **Roster-full blocks Bird Rights re-sign of own FA** — Pistons at 18/21 + 3/21 (training-camp cap = 21 total) couldn't re-sign Jalen Duren after his contract expired (tid=-1). Gate at `SigningModal.tsx:609` only bypassed for `isResign` (player.tid === team.id), missed `teamHoldsBirdRights`. Fixed by adding `&& !teamHoldsBirdRights` to the gate condition.
+
+- ✅ **NG → Guaranteed conversion sims a day** — `convert_to_guaranteed` quick action opened SigningModal which dispatched `SIGN_FREE_AGENT` → `advanceDay()`. In-place flag flip should be instant. Same bug for `convert_to_twoway`. Fixed: both quick actions now dispatch `CONVERT_CONTRACT_TYPE` directly (existing handler in `playerActions.ts:490` is a no-day-tick state patch). Trade-off: user can no longer renegotiate years/salary as part of the conversion — if that flow is needed, add a separate "extend" action.
+
+### Audit findings — critical UX/sim bugs (Session 28 audit, queued)
+
+- **FIRE_PERSONNEL / SABOTAGE_PLAYER unconditional advanceDay** (`playerActions.ts:560, 608`) — both tick the sim even when LLM disabled / no narrative. Consider gating on `enableLLM`.
+- **SIGN_FREE_AGENT no-op day burn for unknown statuses** (`playerActions.ts:19`) — if player isn't Active/FA/external, handler still calls `advanceDay()` without mutating state. Should short-circuit.
+- **EXECUTIVE_TRADE always advanceDay** (`tradeActions.ts:49`) — Commissioner trades during dead periods (off-season editing) shouldn't tick the sim.
+- **WAIVE_PLAYER clobbers superMaxEligible** (`playerActions.ts:397`) — re-signed waived player permanently loses supermax flag. Let salary utils recompute instead.
+- **TradeSummaryModal Confirm has no debounce** (`TradeSummaryModal.tsx:256`) — double-click can fire two EXECUTIVE_TRADE dispatches.
+- **CONVERT_CONTRACT_TYPE 2W downgrade doesn't refresh capHolds** (`playerActions.ts:523`) — payroll/cap-hold accounting goes stale after the flag flip.
+- **HYPNOTIZE / HYPNOTIC_BROADCAST always advanceDay** (`eventActions.ts:190, 209`) — even with LLM off (no narrative).
+- **TWO_WAY signing blocked by `roster.totalFull` in regular season** (`SigningModal.tsx:609`) — gate collapses standard + 2W buckets; should carve out 2W when only standard slots are full.
+- **CAP_WARNING gate uses stale `isResign`** (`SigningModal.tsx:1702`) — doesn't re-check `teamHoldsBirdRights` at submit time, so a Bird Rights signing with a non-rostered player triggers cap warning.
+
+---
+
 - **Audit vs UI FA count mismatch** — `audit-economy-deep.js` strict filter (`p.status === 'Free Agent'`) misses the 833 `'FreeAgent'` legacy-typo players. Forward-healing fix in `simulationHandler.runSimulation` normalizes on next sim tick. LOAD_GAME migration normalizes on next load. Diagnostic snippet at `scripts/audit-fa-status.js`.
 
 - **PBA players have inflated POT** — `getDisplayPotential` prefers `ratings[0].pot` (line 130 `playerRatings.ts`) over the formula, but PBA players imported from the gist carry raw BBGM-export `pot` values (70s–90s) that were never capped. Root cause: `fetchPBARoster` (`externalRosterService.ts:249`) calls `scaleRatings` which skips `pot` (it's in `ATTR_SKIP`), so the inflated gist value passes through unchanged. Fix: after `scaleRatings`, clamp `scaledRatings[0].pot` to `Math.min(50, ovrBbgm + 4)` (matches `spawnExternalPlayer` potCap logic for adult PBA: `ovrCap 46 + 4`). Same fix needed for China CBA if it has the same issue.

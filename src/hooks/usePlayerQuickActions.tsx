@@ -7,6 +7,7 @@ import { PlayerActionsModal } from '../components/central/view/PlayerActionsModa
 import { PlayerRatingsModal } from '../components/modals/PlayerRatingsModal';
 import { PlayerBioView } from '../components/central/view/PlayerBioView';
 import { FAOffersModal } from '../components/modals/FAOffersModal';
+import { WaiveConfirmModal } from '../components/modals/WaiveConfirmModal';
 import type { NBAPlayer } from '../types';
 
 /**
@@ -38,6 +39,7 @@ export function usePlayerQuickActions() {
   const [resignTeamId, setResignTeamId] = useState<number | null>(null);
   const [forceContractType, setForceContractType] = useState<'GUARANTEED' | 'TWO_WAY' | undefined>(undefined);
   const [offersPlayer, setOffersPlayer] = useState<NBAPlayer | null>(null);
+  const [waivePlayer, setWaivePlayer] = useState<NBAPlayer | null>(null);
   const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
 
   const closeSigning = () => {
@@ -76,11 +78,13 @@ export function usePlayerQuickActions() {
       return true;
     }
     if (actionType === 'convert_to_guaranteed') {
-      // NG → Guaranteed: open SigningModal forced GUARANTEED so the user
-      // negotiates new terms. Same plumbing as the 2W → Guaranteed flow.
-      setSigningPlayer(player);
-      setResignTeamId(player.tid ?? null);
-      setForceContractType('GUARANTEED');
+      // NG → Guaranteed is an in-place flag flip — don't run it through
+      // SIGN_FREE_AGENT (which calls advanceDay and sims a day). Existing
+      // salary/years stay; team just commits to the deal.
+      dispatchAction({
+        type: 'CONVERT_CONTRACT_TYPE',
+        payload: { playerId: player.internalId, to: 'GUARANTEED' },
+      } as any);
       return true;
     }
     if (actionType === 'trade_player') {
@@ -99,10 +103,12 @@ export function usePlayerQuickActions() {
       return true;
     }
     if (actionType === 'convert_to_twoway') {
-      // NG → Two-Way: open SigningModal forced TWO_WAY ($625K/1yr scale).
-      setSigningPlayer(player);
-      setResignTeamId(player.tid ?? null);
-      setForceContractType('TWO_WAY');
+      // NG → Two-Way: in-place downgrade ($625K/1yr scale). Direct dispatch —
+      // no SigningModal, no day sim.
+      dispatchAction({
+        type: 'CONVERT_CONTRACT_TYPE',
+        payload: { playerId: player.internalId, to: 'TWO_WAY' },
+      } as any);
       return true;
     }
     if (actionType === 'waive') {
@@ -126,14 +132,9 @@ export function usePlayerQuickActions() {
           return true;
         }
       }
-      dispatchAction({
-        type: 'WAIVE_PLAYER',
-        payload: {
-          targetId: player.internalId,
-          targetName: player.name,
-          contacts: [{ id: player.internalId, name: player.name, type: 'player' }],
-        },
-      });
+      // Open the dead-money preview modal so user sees cap impact / stretch option
+      // before pulling the trigger. The modal dispatches WAIVE_PLAYER on confirm.
+      setWaivePlayer(player);
       return true;
     }
     return false;
@@ -180,6 +181,27 @@ export function usePlayerQuickActions() {
         <FAOffersModal
           player={offersPlayer}
           onClose={() => setOffersPlayer(null)}
+        />
+      )}
+      {waivePlayer && (
+        <WaiveConfirmModal
+          player={waivePlayer}
+          team={state.teams.find(t => t.id === waivePlayer.tid)}
+          state={state}
+          onClose={() => setWaivePlayer(null)}
+          onConfirm={({ stretch }) => {
+            const p = waivePlayer;
+            setWaivePlayer(null);
+            dispatchAction({
+              type: 'WAIVE_PLAYER',
+              payload: {
+                targetId: p.internalId,
+                targetName: p.name,
+                contacts: [{ id: p.internalId, name: p.name, type: 'player' }],
+                stretch,
+              },
+            });
+          }}
         />
       )}
       {signingPlayer && (

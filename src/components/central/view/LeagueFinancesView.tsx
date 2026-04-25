@@ -7,7 +7,7 @@ import {
 import {
   getCapThresholds, getCapStatus, formatSalaryM, contractToUSD,
   effectiveRecord, CapThresholds,
-  getMLEAvailability,
+  getMLEAvailability, getTeamPayrollUSD,
 } from '../../../utils/salaryUtils';
 import {
   estimateAttendance, formatAttendance, formatRevM, ARENA_HARD_CAP,
@@ -95,7 +95,7 @@ const CapRow: React.FC<{
   const status      = getCapStatus(payroll, thresholds);
   const outlook = d.hasInjuredStar && !d.strategy.manualStatus
     ? { ...d.strategy.outlook, label: 'Injured Star', color: 'text-amber-300', bgColor: 'bg-amber-500/10' }
-    : d.strategy.outlook;
+    : { ...d.strategy.outlook, label: d.strategy.label };
   const capSpace = thresholds.salaryCap - payroll;
   const taxOver  = payroll - thresholds.luxuryTax;
 
@@ -276,7 +276,7 @@ const TradeCard: React.FC<{
   const { team, payroll, expiringCount, effectiveWins, effectiveLosses } = d;
   const outlook = d.hasInjuredStar && !d.strategy.manualStatus
     ? { ...d.strategy.outlook, label: 'Injured Star', color: 'text-amber-300', bgColor: 'bg-amber-500/10' }
-    : d.strategy.outlook;
+    : { ...d.strategy.outlook, label: d.strategy.label };
   const capSpace = thresholds.salaryCap - payroll;
   const taxOver  = payroll - thresholds.luxuryTax;
 
@@ -364,7 +364,8 @@ export const LeagueFinancesView: React.FC = () => {
       p.tid === team.id &&
       !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '')
     );
-    const payroll       = players.reduce((s, p) => s + contractToUSD(p.contract?.amount || 0), 0);
+    // Use the canonical payroll util so dead money from waived contracts is included.
+    const payroll       = getTeamPayrollUSD(state.players, team.id, team, seasonYear);
     const expiringCount = players.filter(p => (p.contract?.exp ?? 0) <= seasonYear).length;
     const twoWayCount   = players.filter(p => p.twoWay === true).length;
     const standardCount = players.length - twoWayCount;

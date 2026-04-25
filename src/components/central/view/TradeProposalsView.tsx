@@ -228,7 +228,7 @@ export const TradeProposalsView: React.FC = () => {
     teams.forEach(t => {
       const manual = resolveManualOutlook(t, state.gameMode, userTid);
       if (manual) { map.set(t.id, manual); return; }
-      const payroll = getTeamPayrollUSD(players, t.id);
+      const payroll = getTeamPayrollUSD(players, t.id, t, currentYear);
       const standings = confStandings.get(t.id);
       const expiring = players.filter(p => p.tid === t.id && (p.contract?.exp ?? 0) <= currentYear).length;
       const rec = effectiveRecord(t, currentYear);

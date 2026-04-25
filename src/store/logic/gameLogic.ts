@@ -862,7 +862,7 @@ export const processTurn = async (
         chats: updatedChats,
         news: [...uniqueNewNews, ...(stateWithSim.news ?? state.news)],
         socialFeed: [...uniqueNewPosts, ...state.socialFeed].slice(0, 500),
-        teams: stateWithSim.teams,
+        teams: result.teams || stateWithSim.teams,
         schedule: finalSchedule,
         players: updatedPlayers,
         draftPicks: updatedDraftPicks,

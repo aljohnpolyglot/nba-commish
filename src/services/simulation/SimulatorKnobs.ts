@@ -390,3 +390,69 @@ export const KNOBS_FIBA_QUARTERS: SimulatorKnobs = {
 export function getKnobs(overrides?: Partial<SimulatorKnobs>): SimulatorKnobs {
   return { ...KNOBS_DEFAULT, ...overrides };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SYSTEM KNOB MODS
+// Per-coaching-system multipliers applied on top of the roster-derived knobs
+// when a team is running that system.  All fields are multiplicative (1.0 = no
+// change).  helioStarPtsMod / helioStarEffMod are applied directly to the #1
+// scoring-option bias map entry, not to team-wide knobs.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface SystemKnobMods {
+  paceBonus:        number;  // ×paceMultiplier
+  efficiencyMod:    number;  // ×efficiencyMultiplier
+  threePointMod:    number;  // ×threePointRateMult
+  rimMod:           number;  // ×rimRateMult
+  lowPostMod:       number;  // ×lowPostRateMult
+  midRangeMod:      number;  // ×midRangeRateMult
+  helioStarPtsMod:  number;  // extra ptsMult for #1 scoring option (Heliocentric only)
+  helioStarEffMod:  number;  // extra effMult for #1 scoring option (Heliocentric only)
+}
+
+const NEUTRAL_MODS: SystemKnobMods = {
+  paceBonus: 1, efficiencyMod: 1, threePointMod: 1,
+  rimMod: 1, lowPostMod: 1, midRangeMod: 1,
+  helioStarPtsMod: 1, helioStarEffMod: 1,
+};
+
+const SYSTEM_MODS: Record<string, SystemKnobMods> = {
+  // ── Iso / Star-driven ────────────────────────────────────────────────────
+  'Heliocentric':     { ...NEUTRAL_MODS, paceBonus: 0.93, efficiencyMod: 0.95, helioStarPtsMod: 1.28, helioStarEffMod: 0.91 },
+
+  // ── Fast-break / Up-tempo ────────────────────────────────────────────────
+  'Run and Gun':      { ...NEUTRAL_MODS, paceBonus: 1.10, efficiencyMod: 0.96, threePointMod: 1.14 },
+  '7 Seconds':        { ...NEUTRAL_MODS, paceBonus: 1.08, efficiencyMod: 0.97, threePointMod: 1.10 },
+  'Point-Five':       { ...NEUTRAL_MODS, paceBonus: 1.10, efficiencyMod: 0.96, threePointMod: 1.08 },
+  'Early Offense':    { ...NEUTRAL_MODS, paceBonus: 1.06, rimMod: 1.06 },
+
+  // ── Spacing / Perimeter ──────────────────────────────────────────────────
+  'Pace and Space':   { ...NEUTRAL_MODS, paceBonus: 1.05, threePointMod: 1.12 },
+  'Five-Out Drive':   { ...NEUTRAL_MODS, threePointMod: 1.10, rimMod: 1.08 },
+  'Five-Out Slasher': { ...NEUTRAL_MODS, rimMod: 1.12, threePointMod: 1.08 },
+  'Gravity Motion':   { ...NEUTRAL_MODS, paceBonus: 1.02, threePointMod: 1.15 },
+  'Perimeter Centric':{ ...NEUTRAL_MODS, threePointMod: 1.12, midRangeMod: 1.08 },
+  'Dribble Drive':    { ...NEUTRAL_MODS, paceBonus: 1.03, rimMod: 1.15 },
+
+  // ── Post / Interior ──────────────────────────────────────────────────────
+  'Post Hub':         { ...NEUTRAL_MODS, paceBonus: 0.96, lowPostMod: 1.15, rimMod: 1.10 },
+  'Post Anchor':      { ...NEUTRAL_MODS, paceBonus: 0.95, lowPostMod: 1.12, rimMod: 1.12 },
+  'Post Centric':     { ...NEUTRAL_MODS, paceBonus: 0.94, lowPostMod: 1.18, rimMod: 1.08 },
+  'Twin Towers':      { ...NEUTRAL_MODS, paceBonus: 0.95, lowPostMod: 1.20, rimMod: 1.15, threePointMod: 0.80 },
+
+  // ── Motion / Team-play ───────────────────────────────────────────────────
+  'The Wheel':        { ...NEUTRAL_MODS, paceBonus: 1.05, threePointMod: 1.05, midRangeMod: 1.05 },
+  'Triangle':         { ...NEUTRAL_MODS, paceBonus: 0.95, midRangeMod: 1.12 },
+  'P&R Mastery':      { ...NEUTRAL_MODS, paceBonus: 1.02, rimMod: 1.10 },
+
+  // ── Defensive / Slow ────────────────────────────────────────────────────
+  'Grit and Grind':   { ...NEUTRAL_MODS, paceBonus: 0.88, efficiencyMod: 0.96, rimMod: 1.05 },
+  'Defense':          { ...NEUTRAL_MODS, paceBonus: 0.92, efficiencyMod: 0.94 },
+
+  // ── Balanced ─────────────────────────────────────────────────────────────
+  'Balanced':         { ...NEUTRAL_MODS },
+};
+
+export function getSystemMods(systemName: string): SystemKnobMods {
+  return SYSTEM_MODS[systemName] ?? NEUTRAL_MODS;
+}

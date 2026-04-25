@@ -228,6 +228,14 @@ const [minAgeRequirement, setMinAgeRequirement] = useState<number | string>(leag
   const [tradeExceptionsEnabled, setTradeExceptionsEnabled] = useState(leagueStats.tradeExceptionsEnabled ?? true);
   const [disabledPlayerExceptionEnabled, setDisabledPlayerExceptionEnabled] = useState(leagueStats.disabledPlayerExceptionEnabled ?? false);
 
+  // Economy - Dead Money / Waivers
+  const [deadMoneyEnabled, setDeadMoneyEnabled] = useState((leagueStats as any).deadMoneyEnabled ?? true);
+  const [ngGuaranteeDeadlineMonth, setNgGuaranteeDeadlineMonth] = useState((leagueStats as any).ngGuaranteeDeadlineMonth ?? 1);
+  const [ngGuaranteeDeadlineDay, setNgGuaranteeDeadlineDay] = useState((leagueStats as any).ngGuaranteeDeadlineDay ?? 10);
+  const [stretchProvisionEnabled, setStretchProvisionEnabled] = useState((leagueStats as any).stretchProvisionEnabled ?? true);
+  const [stretchProvisionMultiplier, setStretchProvisionMultiplier] = useState((leagueStats as any).stretchProvisionMultiplier ?? 2);
+  const [stretchedDeadMoneyCapPct, setStretchedDeadMoneyCapPct] = useState((leagueStats as any).stretchedDeadMoneyCapPct ?? 15);
+
   // Economy - Restricted Free Agent matching
   const [rfaMatchingEnabled, setRfaMatchingEnabled] = useState((leagueStats as any).rfaMatchingEnabled ?? true);
   const [rfaMatchWindowDays, setRfaMatchWindowDays] = useState((leagueStats as any).rfaMatchWindowDays ?? 2);
@@ -421,6 +429,12 @@ const [minAgeRequirement, setMinAgeRequirement] = useState<number | string>(leag
         rfaMatchingEnabled !== ((leagueStats as any).rfaMatchingEnabled ?? true) ||
         rfaMatchWindowDays !== ((leagueStats as any).rfaMatchWindowDays ?? 2) ||
         rfaAutoDeclineOver2ndApron !== ((leagueStats as any).rfaAutoDeclineOver2ndApron ?? true) ||
+        deadMoneyEnabled !== ((leagueStats as any).deadMoneyEnabled ?? true) ||
+        ngGuaranteeDeadlineMonth !== ((leagueStats as any).ngGuaranteeDeadlineMonth ?? 1) ||
+        ngGuaranteeDeadlineDay !== ((leagueStats as any).ngGuaranteeDeadlineDay ?? 10) ||
+        stretchProvisionEnabled !== ((leagueStats as any).stretchProvisionEnabled ?? true) ||
+        stretchProvisionMultiplier !== ((leagueStats as any).stretchProvisionMultiplier ?? 2) ||
+        stretchedDeadMoneyCapPct !== ((leagueStats as any).stretchedDeadMoneyCapPct ?? 15) ||
         tradeDeadlineMonth !== (leagueStats.tradeDeadlineMonth ?? 2) ||
         tradeDeadlineOrdinal !== (leagueStats.tradeDeadlineOrdinal ?? 1) ||
         tradeDeadlineDayOfWeek !== (leagueStats.tradeDeadlineDayOfWeek ?? 'Thu') ||
@@ -770,6 +784,12 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
             rfaMatchingEnabled,
             rfaMatchWindowDays,
             rfaAutoDeclineOver2ndApron,
+            deadMoneyEnabled,
+            ngGuaranteeDeadlineMonth,
+            ngGuaranteeDeadlineDay,
+            stretchProvisionEnabled,
+            stretchProvisionMultiplier,
+            stretchedDeadMoneyCapPct,
             tradeDeadlineMonth,
             tradeDeadlineOrdinal,
             tradeDeadlineDayOfWeek,
@@ -999,6 +1019,12 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
     setRfaMatchingEnabled((leagueStats as any).rfaMatchingEnabled ?? true);
     setRfaMatchWindowDays((leagueStats as any).rfaMatchWindowDays ?? 2);
     setRfaAutoDeclineOver2ndApron((leagueStats as any).rfaAutoDeclineOver2ndApron ?? true);
+    setDeadMoneyEnabled((leagueStats as any).deadMoneyEnabled ?? true);
+    setNgGuaranteeDeadlineMonth((leagueStats as any).ngGuaranteeDeadlineMonth ?? 1);
+    setNgGuaranteeDeadlineDay((leagueStats as any).ngGuaranteeDeadlineDay ?? 10);
+    setStretchProvisionEnabled((leagueStats as any).stretchProvisionEnabled ?? true);
+    setStretchProvisionMultiplier((leagueStats as any).stretchProvisionMultiplier ?? 2);
+    setStretchedDeadMoneyCapPct((leagueStats as any).stretchedDeadMoneyCapPct ?? 15);
     setTradeDeadlineMonth(leagueStats.tradeDeadlineMonth ?? 2);
     setTradeDeadlineOrdinal(leagueStats.tradeDeadlineOrdinal ?? 1);
     setTradeDeadlineDayOfWeek(leagueStats.tradeDeadlineDayOfWeek ?? 'Thu');
@@ -1316,6 +1342,12 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
     rfaMatchingEnabled, setRfaMatchingEnabled,
     rfaMatchWindowDays, setRfaMatchWindowDays,
     rfaAutoDeclineOver2ndApron, setRfaAutoDeclineOver2ndApron,
+    deadMoneyEnabled, setDeadMoneyEnabled,
+    ngGuaranteeDeadlineMonth, setNgGuaranteeDeadlineMonth,
+    ngGuaranteeDeadlineDay, setNgGuaranteeDeadlineDay,
+    stretchProvisionEnabled, setStretchProvisionEnabled,
+    stretchProvisionMultiplier, setStretchProvisionMultiplier,
+    stretchedDeadMoneyCapPct, setStretchedDeadMoneyCapPct,
     tradeDeadlineMonth, setTradeDeadlineMonth,
     tradeDeadlineOrdinal, setTradeDeadlineOrdinal,
     tradeDeadlineDayOfWeek, setTradeDeadlineDayOfWeek,

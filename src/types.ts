@@ -408,6 +408,19 @@ export interface LeagueStats {
   /** Per-team MLE usage tracker; resets each season via rollover. key = teamId */
   mleUsage?: Record<number, { type: 'room' | 'non_taxpayer' | 'taxpayer'; usedUSD: number }>;
 
+  // Economy - Dead Money / Waivers
+  /** Master toggle — when off, waiving costs nothing (legacy/casual mode). */
+  deadMoneyEnabled?: boolean;
+  /** NG contracts auto-guarantee on this date — waiving before is free. NBA: Jan 10. */
+  ngGuaranteeDeadlineMonth?: number; // 1-12, default 1
+  ngGuaranteeDeadlineDay?: number;   // 1-31, default 10
+  /** Allow stretch provision (2N+1 spread) at waive time. */
+  stretchProvisionEnabled?: boolean;
+  /** Spread denominator multiplier — NBA = 2 (so 2N+1 years). */
+  stretchProvisionMultiplier?: number;
+  /** Hard cap on stretched dead money carried at once, as % of salary cap. NBA: 15%. */
+  stretchedDeadMoneyCapPct?: number;
+
   // Economy - Draft Picks
   tradableDraftPickSeasons?: number; // how many future seasons of picks can be traded, e.g. 4
 
@@ -636,7 +649,14 @@ export interface HeadToHead {
  *  When present and `gameMode === 'gm'` and `team.id === userTeamId`,
  *  readers (trade gates, narratives, AI handlers) use this instead of the
  *  auto-computed outlook. */
-export type TeamStatus = 'contending' | 'win_now' | 'retooling' | 'rebuilding';
+export type TeamStatus =
+  | 'contending'
+  | 'win_now'
+  | 'play_in_push'
+  | 'retooling'
+  | 'cap_clearing'
+  | 'rebuilding'
+  | 'development';
 
 export interface RetiredJerseyRecord {
   number: string;
@@ -688,6 +708,18 @@ export interface NBATeam {
   }>;
   retiredJerseyNumbers?: RetiredJerseyRecord[];
   tradeExceptions?: TradeException[];
+  /** Dead money owed for waived guaranteed contracts. Survives until originalExpYear. */
+  deadMoney?: DeadMoneyEntry[];
+}
+
+/** A waived guaranteed contract — team still owes the money against the cap. */
+export interface DeadMoneyEntry {
+  playerId: string;             // for grey-row payroll display + dedup
+  playerName: string;
+  remainingByYear: { season: string; amountUSD: number }[]; // future cap hits
+  stretched: boolean;
+  waivedDate: string;           // ISO yyyy-mm-dd
+  originalExpYear: number;      // for prune cutoff
 }
 
 export interface NBAGMStat {

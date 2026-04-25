@@ -414,7 +414,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
                 title="Pin your team's direction. Overrides the auto-computed outlook — narratives, AI trade logic, and trade proposals will all use this value."
               >
                 <option value="">Auto ({status})</option>
-                {(['contending', 'win_now', 'retooling', 'rebuilding'] as TeamStatus[]).map(s => (
+                {(['contending', 'win_now', 'play_in_push', 'retooling', 'cap_clearing', 'rebuilding', 'development'] as TeamStatus[]).map(s => (
                   <option key={s} value={s}>{MANUAL_STATUS_LABEL[s]}</option>
                 ))}
               </select>

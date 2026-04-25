@@ -253,14 +253,19 @@ export function generateStatsForTeam(
     const maxFtRate = tp > 85 ? 0.14 : 0.40;
     baseFtRate = Math.min(baseFtRate, maxFtRate) * knobs.ftRateMult;
 
-    // Score-correlation: high-scoring team nights mean efficient shooting → fewer attempts needed.
-    // Divide fgaMult by efficiencyMultiplier (range 0.90–1.12 from getEfficiencyMultFromScore).
-    // 154-pt game (effMult=1.12): BRICKFEST 1.60→1.43, TORCH 0.88→0.79.
-    // 90-pt game (effMult=0.90): BRICKFEST 1.60→1.78, NORMAL 1.0→1.11.
-    const effScore = Math.max(0.82, Math.min(1.22, knobs.efficiencyMultiplier ?? 1.0));
-    // effScore only affects FG% — NOT FGA count. High-scoring games = hot shooting, not fewer shots.
-    // FGA stays driven by ptsTarget and nightProfile.fgaMult alone.
-    const estimatedFga = (ptsTarget / 1.1) * nightProfile.fgaMult;
+    // Volume-sticky FGA — anchor to BASELINE pts (pre-night-modifier) so a brickfest
+    // doesn't shrink shot volume. Real NBA: a 12-pt cold game = ~20 FGA at 20% FG,
+    // not 11 FGA at 36% FG. By dividing finalPts by ptsTargetMult we recover the
+    // pre-night anchor (the share-derived baseline this player was supposed to score),
+    // then fgaMult acts as a true volume modifier (~1.0 baseline, >1 chucker, <1 deferring).
+    const ptm = Math.max(0.05, nightProfile.ptsTargetMult);
+    const baselinePts = ptsTarget / ptm;
+    // Minutes-scaled FGA floor — kills the "Brunson 2-of-6 brickfest" pathology.
+    // Even a star's worst real cold game is ~4-of-20 over 35 mins (~0.57 FGA/min).
+    // Floor at 0.40 FGA/min: starter 35 mins → 14 FGA min, bench 15 mins → 6 FGA.
+    // Defer/passive archetypes still allowed (fgaMult < 0.85 partially overrides).
+    const fgaFloor = Math.floor(playerMinutes[i] * 0.40 * Math.max(0.65, nightProfile.fgaMult));
+    const estimatedFga = Math.max(fgaFloor, (baselinePts / 1.1) * nightProfile.fgaMult);
     // Cap ftaBase at 34 pts equivalent — prevents explosion nights from producing 20 FTA.
     // ftAggression scales FTA with the night profile: Torch/Explosion nights draw more fouls,
     // Brickfest/Passive nights draw fewer.
@@ -425,7 +430,10 @@ if (tpComposite >= 20 && tpComposite <= 60) {
     }
 
     const maxTwoPa = Math.max(twoPm, Math.round(estimatedFga) - threePa);
-    const twoPa = Math.max(twoPm, Math.min(maxTwoPa, Math.round(twoPm / Math.max(0.44, pct2))));
+    // Floor lowered 0.44 → 0.30 so cold-night low pct2 actually drives more 2PA volume
+    // (Brunson 4/20 brickfest pattern). At pct2 ≥ 0.44 the floor never activated; below it,
+    // the old 0.44 cap was throttling volume. Real cold-game FG% lives in the 0.25–0.40 range.
+    const twoPa = Math.max(twoPm, Math.min(maxTwoPa, Math.round(twoPm / Math.max(0.30, pct2))));
 
     // Shot Locations
     let wAtRim    = Math.max(0.1, hgt * 2.0 + stre * 0.3 + dnk * 0.3 + oiq * 0.2);

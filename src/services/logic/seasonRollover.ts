@@ -867,7 +867,26 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   // Archive completed season record to team.seasons[], then zero out wins/losses.
   // Emits both {wins, losses} AND {won, lost} so BBGM-style consumers and sim-style
   // consumers all read correctly without per-site fallback logic.
-  const teamsReset = teamsAfterJerseyRetirements.map(t => {
+  // ── Dead money rollover ─────────────────────────────────────────────────
+  // Each season-end, drop already-paid year entries from every team's deadMoney
+  // schedule. Entries whose remainingByYear is exhausted are removed entirely.
+  // The schedule is locked at waive time — no recalculation, just consumption.
+  const teamsAfterDeadMoneyPrune = teamsAfterJerseyRetirements.map(t => {
+    if (!t.deadMoney?.length) return t;
+    const nextDeadMoney = t.deadMoney
+      .map(entry => ({
+        ...entry,
+        // Strip any year that has already passed (season ended ≤ currentYear).
+        remainingByYear: entry.remainingByYear.filter(y => {
+          const yr = parseInt(y.season.split('-')[0], 10) + 1;
+          return yr > currentYear;
+        }),
+      }))
+      .filter(entry => entry.remainingByYear.length > 0);
+    return { ...t, deadMoney: nextDeadMoney };
+  });
+
+  const teamsReset = teamsAfterDeadMoneyPrune.map(t => {
     const existingSeasons: any[] = (t as any).seasons ?? [];
     const existingRecord = existingSeasons.find((s: any) => Number(s.season) === currentYear);
     // Preserve any playoffRoundsWon already stamped by lazySimRunner's bracket-complete hook.

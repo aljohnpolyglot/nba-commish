@@ -12,6 +12,8 @@ import type { CoachData } from './lib/staffService';
 import type { NBAPlayer, K2Result, PlayerK2 } from '../../../../../types';
 import CoachingView from './CoachingView/CoachingView';
 import { getDisplayOverall } from '../../../../../utils/playerRatings';
+import { saveCoachSystem, getCoachSystem } from '../../../../../store/coachSystemStore';
+import { computeSystemFit } from '../../../../../utils/coachSliders';
 
 interface CoachingPageProps {
   teamId: number;
@@ -128,6 +130,20 @@ export function CoachingPage({ teamId }: CoachingPageProps) {
     return { processedTeams: processed, staffData: state.staff };
   }, [state.players, state.teams, currentYear, state.staff]);
 
+  // Re-sync proficiency scores whenever the roster changes (trades, cuts, FA signings).
+  // Only re-saves teams that the user already has a stored system for, so the
+  // penalty/bonus reflects the current roster without the user needing to reopen CoachingView.
+  useEffect(() => {
+    for (const t of processedTeams) {
+      const stored = getCoachSystem(Number(t.tid));
+      if (!stored) continue;
+      const { selectedProfScore, bestProfScore } = computeSystemFit(stored.selectedSystem, t.sortedProfs);
+      if (selectedProfScore !== stored.selectedProfScore || bestProfScore !== stored.bestProfScore) {
+        saveCoachSystem(Number(t.tid), stored.selectedSystem, selectedProfScore, bestProfScore);
+      }
+    }
+  }, [processedTeams]);
+
   const selectedTeam = processedTeams.find(t => t.tid === String(teamId));
 
   if (!team) {
@@ -136,12 +152,19 @@ export function CoachingPage({ teamId }: CoachingPageProps) {
 
   if (!selectedTeam) return null;
 
+  const handleSaveSystem = (teamIdStr: string, systemName: string) => {
+    const t = processedTeams.find(pt => pt.tid === teamIdStr);
+    if (!t) return;
+    const { selectedProfScore, bestProfScore } = computeSystemFit(systemName, t.sortedProfs);
+    saveCoachSystem(Number(teamIdStr), systemName, selectedProfScore, bestProfScore);
+  };
+
   return (
     <CoachingView
       team={selectedTeam}
       allCoaches={allCoaches}
       staffData={staffData}
-      onSaveSystem={() => {}}
+      onSaveSystem={handleSaveSystem}
     />
   );
 }

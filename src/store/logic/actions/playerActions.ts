@@ -7,6 +7,7 @@ import { buildShamsSigningPost } from '../../../services/social/templates/charan
 import { NewsGenerator } from '../../../services/news/NewsGenerator';
 import { SettingsManager } from '../../../services/SettingsManager';
 import { normalizeTeamJerseyNumbers } from '../../../utils/jerseyUtils';
+import { buildStretchedSchedule, seasonLabelToYear } from '../../../utils/salaryUtils';
 
 export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const { playerId, teamId, playerName, teamName, salary, years: negotiatedYears, option, twoWay: signedAsTwoWay, nonGuaranteed: signedAsNG, mleType: signedMleType } = action.payload;
@@ -16,7 +17,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
     if (!player || !team) return { isProcessing: false };
 
     if (player.status !== 'Active' && player.status !== 'Free Agent' && !['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) {
-        return await advanceDay(stateWithSim, action, [], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
+        return { isProcessing: false };
     } else {
         const gmPlayer = player as any;
         const previousTeamId = gmPlayer?.transactions && gmPlayer.transactions.length > 0 
@@ -371,18 +372,76 @@ export const handleDrugTestPerson = async (stateWithSim: GameState, action: User
 };
 
 export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAction, _simResults: any[], _recentDMs: any[]) => {
-    const { contacts } = action.payload;
+    const { contacts, stretch } = action.payload as { contacts: any[]; stretch?: boolean };
     if (!contacts || contacts.length === 0) return { isProcessing: false };
 
     const player = contacts[0];
-    // Resolve the player's current team by the player record, not the stale contact.organization string.
-    const playerRecord = stateWithSim.players.find((p: any) => p.internalId === (player.id || player.internalId));
+    const playerRecord = stateWithSim.players.find((p: any) => p.internalId === (player.id || player.internalId)) as any;
     const team = playerRecord ? stateWithSim.teams.find(t => t.id === playerRecord.tid) : undefined;
     const teamName = team?.name || player.organization || 'their team';
 
-    // Waiving is a roster action — apply it immediately without ticking the sim clock.
-    // Keep contract.amount / contractYears intact so PlayerBioView salary history still renders.
-    // Clear team-tied flags so the FA pipeline treats them as a clean free agent.
+    // ─── Dead money calculation ───────────────────────────────────────────
+    // Compute remaining guaranteed obligation from contractYears. NG contracts
+    // before the auto-guarantee deadline = free release. Otherwise stretch is
+    // optional (spreads over 2N+1 years, configurable). Two-way contracts
+    // never produce dead money — $625K is min-day-rate paid only for days on
+    // roster, real-NBA convention.
+    const ls = stateWithSim.leagueStats as any;
+    const deadMoneyEnabled = ls.deadMoneyEnabled ?? true;
+    const wasNG = !!playerRecord?.nonGuaranteed;
+    const wasTwoWay = !!playerRecord?.twoWay;
+    const currentSeasonYear: number = ls.year ?? new Date(stateWithSim.date ?? Date.now()).getUTCFullYear();
+    const guaranteeMonth = ls.ngGuaranteeDeadlineMonth ?? 1;
+    const guaranteeDay = ls.ngGuaranteeDeadlineDay ?? 10;
+    const today = stateWithSim.date ? new Date(stateWithSim.date) : new Date();
+    const ngDeadline = new Date(currentSeasonYear, guaranteeMonth - 1, guaranteeDay);
+    const ngFreeRelease = wasNG && today < ngDeadline;
+
+    let updatedTeams = stateWithSim.teams;
+    let deadMoneyAdded: import('../../../types').DeadMoneyEntry | null = null;
+
+    if (deadMoneyEnabled && !wasTwoWay && !ngFreeRelease && playerRecord && team) {
+        const allContractYears: Array<{ season: string; guaranteed: number; option?: string }> =
+            Array.isArray(playerRecord.contractYears) ? playerRecord.contractYears : [];
+        // Only future obligations — past seasons are already paid out.
+        const remaining = allContractYears
+            .filter(cy => {
+                const yr = parseInt(cy.season.split('-')[0], 10) + 1;
+                return yr >= currentSeasonYear && cy.option !== 'team' && cy.option !== 'player';
+            })
+            .map(cy => ({ season: cy.season, amountUSD: cy.guaranteed }));
+        if (remaining.length === 0 && playerRecord.contract?.amount) {
+            // Fallback: legacy player without contractYears — use flat contract.amount × years to exp.
+            const exp = playerRecord.contract.exp ?? currentSeasonYear;
+            const amountUSD = (playerRecord.contract.amount || 0) * 1_000;
+            for (let yr = currentSeasonYear; yr <= exp; yr++) {
+                remaining.push({ season: `${yr - 1}-${String(yr).slice(-2)}`, amountUSD });
+            }
+        }
+        if (remaining.length > 0) {
+            const stretchEnabled = ls.stretchProvisionEnabled ?? true;
+            const wantStretch = !!stretch && stretchEnabled;
+            const stretchMult = ls.stretchProvisionMultiplier ?? 2;
+            const finalSchedule = wantStretch
+                ? buildStretchedSchedule(remaining, stretchMult)
+                : remaining;
+            deadMoneyAdded = {
+                playerId: playerRecord.internalId,
+                playerName: playerRecord.name,
+                remainingByYear: finalSchedule,
+                stretched: wantStretch,
+                waivedDate: stateWithSim.date ?? today.toISOString().slice(0, 10),
+                originalExpYear: playerRecord.contract?.exp ?? currentSeasonYear,
+            };
+            updatedTeams = stateWithSim.teams.map(t =>
+                t.id === team.id
+                    ? { ...t, deadMoney: [...(t.deadMoney ?? []), deadMoneyAdded!] }
+                    : t,
+            );
+        }
+    }
+
+    // ─── Player record update ─────────────────────────────────────────────
     const players = stateWithSim.players.map((p: any) =>
         p.internalId === (player.id || player.internalId)
             ? {
@@ -394,25 +453,56 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
                 gLeagueAssigned: false,
                 mleSignedVia: undefined,
                 hasBirdRights: false,
-                superMaxEligible: false,
                 yearsWithTeam: 0,
             }
             : p
     );
 
+    const deadMoneyThisSeason = deadMoneyAdded
+        ? (deadMoneyAdded.remainingByYear.find(y => seasonLabelToYear(y.season) === currentSeasonYear)?.amountUSD ?? 0)
+        : 0;
+    const totalDead = deadMoneyAdded?.remainingByYear.reduce((s, y) => s + y.amountUSD, 0) ?? 0;
+
+    // Verb choice mirrors how the move would actually be reported:
+    // - Two-way release / NG pre-deadline release: "released" (no dead money)
+    // - Guaranteed waive: "waived" (with or without stretch — that detail lives in finances UI, not the headline)
+    const releaseVerb = (wasTwoWay || ngFreeRelease) ? 'released' : 'waived';
+    const releaseSuffix = wasTwoWay
+        ? ' from his two-way contract'
+        : ngFreeRelease
+            ? ' (non-guaranteed)'
+            : '';
+
+    // News card stays detailed — finance fans want the dollar context.
+    const stretchTag = deadMoneyAdded?.stretched
+        ? ` Payment stretched over ${deadMoneyAdded.remainingByYear.length} seasons (~$${(deadMoneyThisSeason / 1_000_000).toFixed(1)}M/yr).`
+        : '';
+    const newsDeadTag = totalDead > 0
+        ? ` Dead money: $${(totalDead / 1_000_000).toFixed(1)}M total ($${(deadMoneyThisSeason / 1_000_000).toFixed(1)}M this season).${stretchTag}`
+        : ngFreeRelease
+            ? ' Contract was non-guaranteed — no dead money.'
+            : '';
+
     const waiveNewsItem = {
         id: `waive-news-${Date.now()}`,
-        headline: `${player.name} Waived`,
-        content: `The Commissioner has officially waived ${player.name} from ${teamName}. ${player.name} is now a free agent and eligible to sign with any team.`,
+        headline: `${player.name} ${releaseVerb === 'waived' ? 'Waived' : 'Released'}`,
+        content: `${teamName} have ${releaseVerb} ${player.name}${releaseSuffix}.${newsDeadTag} ${player.name} is now a free agent.`,
         date: stateWithSim.date,
         isNew: true,
         image: team?.logoUrl,
         newsType: 'daily' as const,
     };
 
+    // History entry text — gameLogic.ts:876 picks this up and stamps type 'Waive'.
+    // NBA.com style: short and clean. No salary numbers in the transactions feed —
+    // those belong on the team finances page.
+    const outcomeText = `${player.name} ${releaseVerb} by the ${teamName}${releaseSuffix}.`;
+
     return {
         players,
+        teams: updatedTeams,
         newNews: [waiveNewsItem],
+        outcomeText,
         statChanges: { playerApproval: -2 },
         isProcessing: false,
     };

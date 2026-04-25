@@ -4,7 +4,7 @@ import { EconomyFinancesSection } from './EconomyFinancesSection';
 import { EconomyTeamsSection } from './EconomyTeamsSection';
 import { EconomyContractsSection } from './EconomyContractsSection';
 import { EconomyRookieContractsSection } from './EconomyRookieContractsSection';
-import { Ticket, Calendar, Lock, Coins, HeartPulse, ShieldCheck } from 'lucide-react';
+import { Ticket, Calendar, Lock, Coins, HeartPulse, ShieldCheck, Skull } from 'lucide-react';
 import { getTradeDeadlineDate, getFreeAgencyStartDate, getFreeAgencyMoratoriumEndDate, toISODateString } from '../../../../utils/dateUtils';
 import { useGame } from '../../../../store/GameContext';
 
@@ -156,6 +156,18 @@ interface EconomyTabProps {
     setRfaMatchWindowDays: (val: number) => void;
     rfaAutoDeclineOver2ndApron: boolean;
     setRfaAutoDeclineOver2ndApron: (val: boolean) => void;
+    deadMoneyEnabled: boolean;
+    setDeadMoneyEnabled: (val: boolean) => void;
+    ngGuaranteeDeadlineMonth: number;
+    setNgGuaranteeDeadlineMonth: (val: number) => void;
+    ngGuaranteeDeadlineDay: number;
+    setNgGuaranteeDeadlineDay: (val: number) => void;
+    stretchProvisionEnabled: boolean;
+    setStretchProvisionEnabled: (val: boolean) => void;
+    stretchProvisionMultiplier: number;
+    setStretchProvisionMultiplier: (val: number) => void;
+    stretchedDeadMoneyCapPct: number;
+    setStretchedDeadMoneyCapPct: (val: number) => void;
 }
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -296,6 +308,75 @@ export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
                                 <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${props.disabledPlayerExceptionEnabled ? 'translate-x-5' : ''}`} />
                             </div>
                         </label>
+                    </div>
+
+                    {/* Dead Money / Waivers */}
+                    <div className="bg-slate-800/40 p-6 rounded-3xl border border-slate-800/50 space-y-4">
+                        <div className="flex items-center gap-2">
+                            <Skull size={16} className="text-slate-400" />
+                            <h2 className="text-lg font-black text-white uppercase tracking-tight">Dead Money & Waivers</h2>
+                        </div>
+
+                        <label className="flex items-center justify-between cursor-pointer">
+                            <div className="flex flex-col">
+                                <span className="text-[11px] font-bold text-white">Dead Money Enabled</span>
+                                <span className="text-[9px] text-slate-500">Waiving a guaranteed contract keeps the salary on the cap. Off = free roster delete.</span>
+                            </div>
+                            <div className={`relative w-10 h-5 rounded-full transition-colors ${props.deadMoneyEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+                                <input type="checkbox" checked={props.deadMoneyEnabled} onChange={e => props.setDeadMoneyEnabled(e.target.checked)} className="sr-only" />
+                                <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${props.deadMoneyEnabled ? 'translate-x-5' : ''}`} />
+                            </div>
+                        </label>
+
+                        <div className={`space-y-2 pt-3 border-t border-slate-800/60 ${props.deadMoneyEnabled ? '' : 'opacity-50 pointer-events-none'}`}>
+                            <div className="flex items-center justify-between text-[10px] text-slate-400">
+                                <span className="font-bold uppercase tracking-wider">NG Guarantee Deadline</span>
+                                <span className="font-black text-amber-400">{MONTH_NAMES[props.ngGuaranteeDeadlineMonth - 1]} {props.ngGuaranteeDeadlineDay}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <select value={props.ngGuaranteeDeadlineMonth} onChange={e => props.setNgGuaranteeDeadlineMonth(parseInt(e.target.value))}
+                                    className="bg-slate-900/60 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-white">
+                                    {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                                </select>
+                                <input type="number" min={1} max={31} value={props.ngGuaranteeDeadlineDay}
+                                    onChange={e => props.setNgGuaranteeDeadlineDay(Math.max(1, Math.min(31, parseInt(e.target.value) || 1)))}
+                                    className="bg-slate-900/60 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-white" />
+                            </div>
+                            <p className="text-[9px] text-slate-500 italic">Waive an NG before this date = free release. After = full guaranteed dead money. NBA: Jan 10.</p>
+                        </div>
+
+                        <label className={`flex items-center justify-between cursor-pointer pt-3 border-t border-slate-800/60 ${props.deadMoneyEnabled ? '' : 'opacity-50 pointer-events-none'}`}>
+                            <div className="flex flex-col">
+                                <span className="text-[11px] font-bold text-white">Stretch Provision</span>
+                                <span className="text-[9px] text-slate-500">Spread dead money over (multiplier × N) + 1 future seasons. Lowers annual hit, extends obligation.</span>
+                            </div>
+                            <div className={`relative w-10 h-5 rounded-full transition-colors ${props.stretchProvisionEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+                                <input type="checkbox" checked={props.stretchProvisionEnabled} onChange={e => props.setStretchProvisionEnabled(e.target.checked)} className="sr-only" />
+                                <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${props.stretchProvisionEnabled ? 'translate-x-5' : ''}`} />
+                            </div>
+                        </label>
+
+                        <div className={`space-y-2 pt-3 border-t border-slate-800/60 ${props.deadMoneyEnabled && props.stretchProvisionEnabled ? '' : 'opacity-50 pointer-events-none'}`}>
+                            <div className="flex items-center justify-between text-[10px] text-slate-400">
+                                <span className="font-bold uppercase tracking-wider">Stretch Multiplier</span>
+                                <span className="font-black text-amber-400">{props.stretchProvisionMultiplier}× + 1 yr</span>
+                            </div>
+                            <input type="range" min={1} max={4} step={1} value={props.stretchProvisionMultiplier}
+                                onChange={e => props.setStretchProvisionMultiplier(parseInt(e.target.value))}
+                                className="w-full accent-amber-500" />
+                            <p className="text-[9px] text-slate-500 italic">NBA = 2 (so 2N+1 years). Higher = more spread, longer tail.</p>
+                        </div>
+
+                        <div className={`space-y-2 ${props.deadMoneyEnabled && props.stretchProvisionEnabled ? '' : 'opacity-50 pointer-events-none'}`}>
+                            <div className="flex items-center justify-between text-[10px] text-slate-400">
+                                <span className="font-bold uppercase tracking-wider">Stretched-Dead-Money Cap</span>
+                                <span className="font-black text-rose-400">{props.stretchedDeadMoneyCapPct}% of salary cap</span>
+                            </div>
+                            <input type="range" min={5} max={30} step={1} value={props.stretchedDeadMoneyCapPct}
+                                onChange={e => props.setStretchedDeadMoneyCapPct(parseInt(e.target.value))}
+                                className="w-full accent-rose-500" />
+                            <p className="text-[9px] text-slate-500 italic">Total stretched dead money on the books may not exceed this. NBA: 15%.</p>
+                        </div>
                     </div>
 
                     {/* Restricted Free Agent matching */}

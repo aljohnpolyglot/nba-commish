@@ -4,7 +4,7 @@ import { activeClubDebuffs } from './helpers';
 export interface NightProfile {
   ptsTargetMult: number;   // Scoring volume (rollS)
   efficiencyMult: number;  // Shooting % (rollS)
-  fgaMult: number;         // FGA attempt volume independent of pts/efficiency (1.0 = normal, >1 = more jacking)
+  fgaMult: number;         // Volume modifier — 1.0 = baseline shots, >1 chucker archetype, <1 deferring archetype. FGA anchors on BASELINE pts (pre-night-mult) so cold nights keep normal shot diet.
   shotDietShift: number;   // 3PA tendency (rollS)
   assistMult: number;      // Passing vision (rollV) — high = more assists
   ballControlMult: number; // TOV safety (rollV) — high = fewer TOs (SAME roll as assistMult, inversely applied)
@@ -178,11 +178,11 @@ function computeNightProfile(
     const isStarScorer = (ins > 60 || fg > 60 || tp > 20 || oiq > 70);
     const floor = isStarScorer ? 0.45 : 0.25; // Stars don't drop to 9 points
     const pts = (floor + Math.random() * 0.25);
-    const eff = (0.55 + Math.random() * 0.15);
+    const eff = (0.45 + Math.random() * 0.15);
     return {
       ptsTargetMult:  pts,
       efficiencyMult: eff,
-      fgaMult:        1.15,
+      fgaMult:        1.00,
       shotDietShift,
       assistMult:      0.3 + Math.random() * 0.4,
       ballControlMult: 0.4 + Math.random() * 0.3,
@@ -205,7 +205,7 @@ function computeNightProfile(
     return {
       ptsTargetMult:  pts,
       efficiencyMult: eff,
-      fgaMult:        0.88,
+      fgaMult:        0.95,
       shotDietShift,
       assistMult:      1.0 + Math.random() * 0.6,
       ballControlMult: 1.0 + Math.random() * 0.6,
@@ -262,7 +262,7 @@ function computeNightProfile(
     return {
       ptsTargetMult:  isSuccess ? 1.25 : 0.90,
       efficiencyMult: isSuccess ? 1.35 : 0.75,
-      fgaMult:        isSuccess ? 0.88 : 1.20,
+      fgaMult:        isSuccess ? 0.95 : 1.05,
       shotDietShift:  isSuccess ? shift : (shift * 0.5),
       assistMult:      1.0,
       ballControlMult: 1.0,
@@ -346,10 +346,10 @@ function computeNightProfile(
   if (useShooterRoller && lightningRoll >= 0.068) {
     const shooterLuck = Math.random();
 
-    // TIER 1: BRICKFEST (13%) — low volume, low efficiency
+    // TIER 1: BRICKFEST (13%) — sticky volume (~20 FGA), abysmal efficiency (~22% FG)
     if (shooterLuck < 0.13) {
       return {
-        ptsTargetMult:  0.45, efficiencyMult: 0.65, fgaMult: 1.60, shotDietShift: -0.20,
+        ptsTargetMult:  0.45, efficiencyMult: 0.55, fgaMult: 1.05, shotDietShift: -0.20,
         assistMult:      0.8 + rollV * 0.2,
         ballControlMult: 0.7 + rollV * 0.2,
         orbMult:         1.0 + rollH * 0.4,
@@ -360,10 +360,10 @@ function computeNightProfile(
       };
     }
 
-    // TIER 2: COLD (17%) — lower volume, struggling
+    // TIER 2: COLD (17%) — sticky volume, struggling efficiency (~32% FG)
     if (shooterLuck < 0.30) {
       return {
-        ptsTargetMult:  0.75, efficiencyMult: 0.82, fgaMult: 1.20, shotDietShift: -0.10,
+        ptsTargetMult:  0.75, efficiencyMult: 0.75, fgaMult: 1.00, shotDietShift: -0.10,
         assistMult:      0.9 + rollV * 0.25,
         ballControlMult: 1.0 + rollV * 0.25,
         orbMult:         1.0 + rollH * 0.4,
@@ -374,10 +374,10 @@ function computeNightProfile(
       };
     }
 
-    // TIER 3: OFF-NIGHT (8%) — lid on the rim, 5-for-18, normal volume bad efficiency
+    // TIER 3: OFF-NIGHT (8%) — lid on the rim, 8-for-22, normal volume bad efficiency
     if (shooterLuck < 0.38) {
       return {
-        ptsTargetMult:  0.95, efficiencyMult: 0.72, fgaMult: 1.40, shotDietShift: 0,
+        ptsTargetMult:  0.95, efficiencyMult: 0.65, fgaMult: 1.05, shotDietShift: 0,
         assistMult:      1.0 + rollV * 0.3,
         ballControlMult: 0.8 + rollV * 0.2,
         orbMult:         1.0 + rollH * 0.4,
@@ -391,7 +391,7 @@ function computeNightProfile(
     // TIER 4: DESPERATE CHUCKER (7%) — hunting shots to break slump, 7-for-26
     if (shooterLuck < 0.45) {
       return {
-        ptsTargetMult:  0.80, efficiencyMult: 0.65, fgaMult: 1.45, shotDietShift: 0.15,
+        ptsTargetMult:  0.80, efficiencyMult: 0.58, fgaMult: 1.20, shotDietShift: 0.15,
         assistMult:      0.7 + rollV * 0.2,
         ballControlMult: 0.6 + rollV * 0.2,
         orbMult:         0.9 + rollH * 0.3,
@@ -407,7 +407,7 @@ function computeNightProfile(
     // TIER 6: HOT (12%) — high efficiency night
     if (shooterLuck >= 0.80 && shooterLuck < 0.92) {
       return {
-        ptsTargetMult:  1.25, efficiencyMult: 1.18, fgaMult: 0.90, shotDietShift: 0.10,
+        ptsTargetMult:  1.25, efficiencyMult: 1.18, fgaMult: 0.95, shotDietShift: 0.10,
         assistMult:      1.1 + rollV * 0.25,
         ballControlMult: 1.0 + rollV * 0.25,
         orbMult:         1.0 + rollH * 0.4,
@@ -421,7 +421,7 @@ function computeNightProfile(
     // TIER 7: TORCH (8%) — everything falling, 30-35 pt territory (was too OP at 1.38×1.35=1.86x)
     if (shooterLuck >= 0.92) {
       return {
-        ptsTargetMult:  1.22, efficiencyMult: 1.18, fgaMult: 0.92, shotDietShift: 0.12,
+        ptsTargetMult:  1.22, efficiencyMult: 1.18, fgaMult: 0.95, shotDietShift: 0.12,
         assistMult:      1.2 + rollV * 0.2,
         ballControlMult: 1.3 + rollV * 0.2,
         orbMult:         1.0 + rollH * 0.4,
@@ -455,7 +455,7 @@ function computeNightProfile(
     // CHUCKER (25%) — 6-for-22 night, volume steady but nothing falling
     if (microwaveLuck < 0.25) {
       return {
-        ptsTargetMult:  0.85, efficiencyMult: 0.72, fgaMult: 1.35, shotDietShift: 0.08,
+        ptsTargetMult:  0.85, efficiencyMult: 0.65, fgaMult: 1.10, shotDietShift: 0.08,
         assistMult:      0.8 + rollV * 0.2,
         ballControlMult: 0.7 + rollV * 0.2,
         orbMult:         0.9 + rollH * 0.3,
@@ -469,7 +469,7 @@ function computeNightProfile(
     // ALL-STAR (25%) — same volume, everything a swish, people calling for him to start
     if (microwaveLuck >= 0.75) {
       return {
-        ptsTargetMult:  1.25, efficiencyMult: 1.28, fgaMult: 0.90, shotDietShift: 0.10,
+        ptsTargetMult:  1.25, efficiencyMult: 1.28, fgaMult: 0.95, shotDietShift: 0.10,
         assistMult:      1.2 + rollV * 0.2,
         ballControlMult: 1.2 + rollV * 0.2,
         orbMult:         1.1 + rollH * 0.3,
@@ -520,8 +520,9 @@ function computeNightProfile(
 
   const ftAggression = Math.max(0.5, Math.min(1.6, 1.0 + rollS * 0.40));
   const ftSkill = Math.max(0.80, Math.min(1.15, 1.0 + rollS * 0.10));
-  // fgaMult inversely tracks ptsTargetMult: bad pts night → jack more shots, good night → fewer needed.
-  const fgaMult = Math.max(0.72, Math.min(1.35, 1.0 - (ptsTargetMult - 1.0) * 0.35));
+  // Volume is sticky — players keep their normal shot diet regardless of how it's falling.
+  // Tiny dampener so torch nights don't blow up scoring averages.
+  const fgaMult = Math.max(0.90, Math.min(1.10, 1.0 - (ptsTargetMult - 1.0) * 0.10));
   return { ptsTargetMult, efficiencyMult, fgaMult, shotDietShift, assistMult, ballControlMult, orbMult, drbMult, stlMult, blkMult, ftAggression, ftSkill };
 }
 

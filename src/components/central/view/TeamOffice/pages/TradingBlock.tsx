@@ -48,7 +48,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
       if (manual.role === 'rebuilding') return 'presti';
       return 'rebuild';
     }
-    const payroll = getTeamPayrollUSD(players, teamId);
+    const payroll = getTeamPayrollUSD(players, teamId, team, currentYear);
     const rec = effectiveRecord(team, currentYear);
     const confTeams = teams.filter(t => t.conference === team.conference).map(t => ({
       t, rec: effectiveRecord(t, currentYear),
@@ -386,7 +386,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
       const confRank = idx >= 0 ? idx + 1 : 15;
       const rec = effectiveRecord(t, currentYear);
       const gb = Math.max(0, ((lw - rec.wins) + (rec.losses - ll)) / 2);
-      const payroll = getTeamPayrollUSD(players, t.id);
+      const payroll = getTeamPayrollUSD(players, t.id, t, currentYear);
       const expiring = players.filter(p => p.tid === t.id && (p.contract?.exp ?? 0) <= currentYear).length;
       const starAvg = topNAvgK2(players, t.id, 3);
       const manual = resolveManualOutlook(t, state.gameMode, state.userTeamId);
