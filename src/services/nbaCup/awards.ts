@@ -53,7 +53,7 @@ function buildKOPerf(
     }
   }
 
-  return Array.from(acc.entries()).map(([pid, v]) => {
+  return Array.from(acc.entries()).filter(([, v]) => v.koGp > 0).map(([pid, v]) => {
     const avg = (n: number) => v.gp > 0 ? n / v.gp : 0;
     const isChampion = v.tid === cup.championTid;
     // Weight KO games heavier — 4 group games vs 1-3 KO games means KO impact would
@@ -98,8 +98,10 @@ export function computeCupAwards(
   const perf = buildKOPerf(cup, schedule, boxScores, players);
   if (perf.length === 0) return cup;
 
-  // MVP: top performer overall (break ties with seeded RNG)
-  const top10 = perf.slice(0, 10);
+  // MVP: must be from the winning team
+  const champPerf = perf.filter(p => p.tid === cup.championTid);
+  const mvpPool = champPerf.length > 0 ? champPerf : perf;
+  const top10 = mvpPool.slice(0, 10);
   let mvpEntry = top10[0];
   for (let i = 1; i < top10.length; i++) {
     if (top10[i].score === mvpEntry.score) {
