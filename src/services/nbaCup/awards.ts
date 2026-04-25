@@ -35,7 +35,7 @@ function buildKOPerf(
     const isKO = koGids.has(box.gameId);
     const allStats = [...(box.homeStats ?? []), ...(box.awayStats ?? [])];
     for (const s of allStats) {
-      const pid = s.playerId;
+      const pid = s.playerId != null ? String(s.playerId) : undefined;
       if (!pid) continue;
       const prev = acc.get(pid) ?? { pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, gp: 0, koGp: 0, tid: 0, pos: '' };
       const player = players.find(p => p.internalId === pid);
@@ -163,8 +163,8 @@ export function computeCupAwards(
 export function applyCupAwardsToPlayers(cup: NBACupState, players: NBAPlayer[]): NBAPlayer[] {
   if (!cup.mvpPlayerId && !cup.allTournamentTeam?.length && cup.championTid == null) return players;
 
-  const allTeamIds = new Set((cup.allTournamentTeam ?? []).map(e => e.playerId));
-  const mvpId = cup.mvpPlayerId;
+  const allTeamIds = new Set((cup.allTournamentTeam ?? []).map(e => String(e.playerId)));
+  const mvpId = cup.mvpPlayerId ? String(cup.mvpPlayerId) : undefined;
   const champTid = cup.championTid;
   const season = cup.year;
 
@@ -173,10 +173,10 @@ export function applyCupAwardsToPlayers(cup: NBACupState, players: NBAPlayer[]):
 
   return players.map(p => {
     const additions: Array<{ season: number; type: string }> = [];
-    if (mvpId && p.internalId === mvpId && !has(p, 'NBA Cup MVP')) {
+    if (mvpId && String(p.internalId) === mvpId && !has(p, 'NBA Cup MVP')) {
       additions.push({ season, type: 'NBA Cup MVP' });
     }
-    if (allTeamIds.has(p.internalId) && !has(p, 'NBA Cup All-Tournament Team')) {
+    if (allTeamIds.has(String(p.internalId)) && !has(p, 'NBA Cup All-Tournament Team')) {
       additions.push({ season, type: 'NBA Cup All-Tournament Team' });
     }
     if (champTid != null && p.tid === champTid && !has(p, 'NBA Cup Champion')) {

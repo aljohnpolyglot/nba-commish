@@ -206,14 +206,18 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
   const { data: bref, loading: brefLoading } = useBRefSeason(!isCurrent ? season : null);
 
   // Player lookup: string pid = internalId (autoResolver), then name fallback
+  const stripAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
   const findPlayer = (a: any) => {
     if (!a) return undefined;
     if (a.pid && typeof a.pid === 'string') {
-      const byId = state.players.find((p: any) => p.internalId === a.pid);
+      const byId = state.players.find((p: any) => String(p.internalId) === a.pid);
       if (byId) return byId;
     }
+    const nameLower = a.name?.toLowerCase?.() ?? '';
+    const nameStripped = stripAccents(nameLower);
     return state.players.find((p: any) => p.name === a.name)
-      ?? state.players.find((p: any) => p.name?.toLowerCase() === a.name?.toLowerCase?.());
+      ?? state.players.find((p: any) => p.name?.toLowerCase() === nameLower)
+      ?? state.players.find((p: any) => stripAccents(p.name?.toLowerCase() ?? '') === nameStripped);
   };
 
   const avatarFallback = (name: string) =>
@@ -914,7 +918,7 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
 
           // Snapshot of player data as of this season
           const snap = (r: any) => {
-            const p = state.players.find((pl: any) => pl.internalId === r.playerId);
+            const p = state.players.find((pl: any) => String(pl.internalId) === String(r.playerId));
             const stats = p?.stats?.filter((s: any) => Number(s.season) === Number(season) && !s.playoffs && (s.tid ?? -1) >= 0) ?? [];
             const tid = stats.length ? stats.reduce((pr: any, cu: any) => pr.gp >= cu.gp ? pr : cu).tid : p?.tid;
             const team = state.teams.find((t: any) => t.id === tid) ?? state.teams.find((t: any) => t.abbrev === r.teamAbbrev);

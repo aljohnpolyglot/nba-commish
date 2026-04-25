@@ -15,6 +15,7 @@ import { setActiveSaveId as setScoringOptionsSaveId } from './scoringOptionsStor
 import { setActiveSaveId as setCoachStrategySaveId } from './coachStrategyLockStore';
 import { setActiveSaveId as setIdealRotationSaveId } from './idealRotationStore';
 import { enforceExternalMinRoster, repairGeneratedExternalPlayer } from '../services/externalLeagueSustainer';
+import { applyCupAwardsToPlayers } from '../services/nbaCup/awards';
 
 interface GameContextType {
   state: GameState;
@@ -436,10 +437,23 @@ const actions = useGameActions(setState, () => stateRef.current);
       const finalPlayers = externalRosterRepairs.length > 0
         ? [...loadedPlayers, ...externalRosterRepairs]
         : loadedPlayers;
+
+      // Backfill Cup awards from all historical cups + current cup.
+      // Needed because the ID-mismatch bug (numeric internalId) meant real players
+      // like Jokic/Doncic/Sengun never received their awards at cup completion.
+      const allHistoricalCups = Object.values((loaded.nbaCupHistory ?? {}) as Record<string, any>);
+      if (loaded.nbaCup?.mvpPlayerId) allHistoricalCups.push(loaded.nbaCup);
+      const backfilledPlayers = allHistoricalCups.reduce(
+        (players: any[], cup: any) => cup?.mvpPlayerId || cup?.allTournamentTeam?.length || cup?.championTid != null
+          ? applyCupAwardsToPlayers(cup, players)
+          : players,
+        finalPlayers,
+      );
+
       setState({
         ...initialState,
         ...loaded,
-        players: finalPlayers,
+        players: backfilledPlayers,
         isProcessing: false
       });
 

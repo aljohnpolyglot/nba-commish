@@ -115,14 +115,18 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
     // ── Player lookup — handles BOTH pid formats ──────────────────────────────
     // AutoResolver pid = internalId (string "nba-Name-tid")
     // BBGM pid = integer player ID (no relation to internalId)
+    const stripAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
     const findPlayer = (a: any) => {
       if (!a) return undefined;
       if (a.pid && typeof a.pid === 'string') {
-        const byId = state.players.find(p => p.internalId === a.pid);
+        const byId = state.players.find(p => String(p.internalId) === a.pid);
         if (byId) return byId;
       }
+      const nameLower = a.name?.toLowerCase?.() ?? '';
+      const nameStripped = stripAccents(nameLower);
       return state.players.find(p => p.name === a.name)
-        ?? state.players.find(p => p.name?.toLowerCase() === a.name?.toLowerCase?.());
+        ?? state.players.find(p => p.name?.toLowerCase() === nameLower)
+        ?? state.players.find(p => stripAccents(p.name?.toLowerCase() ?? '') === nameStripped);
     };
 
     const makeAwardObj = (a: any) => {
