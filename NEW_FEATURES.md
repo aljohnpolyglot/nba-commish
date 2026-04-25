@@ -4,6 +4,145 @@ A chronological log of features added across development sessions.
 
 ---
 
+## Prompt L — Bidding-war refactor remaining phases (QUEUED)
+
+**Status:** PR1 shipped (Session 27), design doc complete. PR2–PR4 + PR6 pending user approval of 8 Open Questions in [`docs/bidding-war-refactor.md`](./docs/bidding-war-refactor.md).
+
+**PR2 — Escalation rounds** 
+- 3-round parallel bid window (Days 1–2 / 3–4 / 5), sealed re-bids (Round 2/3 teams commit to floors from Round 1)
+- Tier-based round count: K2 ≥ 88 → 3 rounds, K2 80-87 → 2 rounds, K2 70-79 → 1 round
+- Shams tweet templates for escalation updates (per-tier gating, off by default)
+
+**PR3 — Resolution formula upgrade**
+- Highest $ × `legacyMult` (super-vet multiplier) × `championshipMult` (recent champion bonus) × `moodMult` (trait-driven preference)
+- Bird Rights tiebreak (prior-team gets +15% final-offer floor) before RNG
+- LOYAL trait override: any prior-team bid wins regardless of $ amount
+
+**PR4 — Gut sequential pipeline**
+- Pass 1 → Bird Rights re-sign only (Jul 1, `runAIBirdRightsResigns`)
+- Pass 4 candidate filter restricted to K2 < 70 OR (market-unsigned AND date >= Aug 1)
+- All K2 ≥ 70 FAs route through `faMarketTicker` exclusively
+- Remaining passes (2, 3, 5) unchanged
+
+**PR6 — LOAD_GAME save migration**
+- Backfill new `FreeAgentMarket` schema fields for existing save markets
+- Backfill `pendingMatch` state for any in-progress RFA markets from prior versions
+
+---
+
+## Backlog idea — Apron-tier cap mechanics (Football Manager-tier depth)
+
+**Status:** intentionally NOT shipped. Sim is currently fast and approachable; full apron rules would push it toward Football Manager territory (deep but slower, more gates, more "you can't do that" friction). File for a hypothetical future "Hardcore Mode" toggle.
+
+Real NBA 2024+ CBA introduced staircase cap penalties — luxury tax → 1st apron → 2nd apron — each adding stricter restrictions. Currently we model the dollar thresholds but not the *behavioral consequences*.
+
+Symptom that motivated this entry: LAL retained LeBron + Reaves + Mark Williams in the same offseason post-Bird-Rights Pass 0 → roster steamroll. Real NBA: 2nd-apron teams literally can't aggregate contracts in trades, can't sign waived players to MLE, can't include cash, etc. Those frictions ARE what stops super-team stacking.
+
+If we ever build the hardcore mode, the cleanest scope:
+
+**Cap thresholds (already modeled):** salary cap → luxury tax → 1st apron → 2nd apron
+
+**1st apron team restrictions:**
+- Can't acquire players via sign-and-trade (receiver side)
+- MLE capped to taxpayer MLE (~$5M instead of $14M)
+- Can't take back more salary than sent in trades (currently can up to 125%)
+- Bird Rights premium tapers from +15% to +5% (so re-signs are still possible but less aggressive)
+
+**2nd apron team restrictions (the real teeth):**
+- Can't aggregate contracts in trades — only 1-for-1 swaps
+- 1st-rd picks 7 yrs out frozen (can't trade them)
+- Can't include cash in trades
+- Bird Rights premium → 0% (no incumbent over-pay)
+- MLE eliminated entirely
+- Picks freeze if 2 of 4 future seasons end above 2nd apron → pick moves to back of round
+
+**Per-team Bird Rights cap (separate but related):**
+- First 2 retentions per offseason → full +15% premium
+- 3rd retention → +5% premium  
+- 4th+ retention → 0% premium (the "you can't keep everyone" reality check)
+
+**UI surface:**
+- Cap ticker shows current tier with color thread (green / yellow / orange / red)
+- Trade Machine + SigningModal disable affected actions when over 2nd apron with explanatory tooltip
+- New Settings toggle: "Hardcore Cap Rules (NBA 2024 CBA)" — default OFF
+
+Why deferred: this is a 200-300 line implementation across `salaryUtils`, `tradeFinderEngine`, `freeAgencyBidding`, `runAIBirdRightsResigns`, plus matching UI gates and tooltips everywhere. Pays off only for users who want NBA-realism over fluid gameplay. Most casual users want to build their super-team without the league preventing it.
+
+The current "Lakers re-sign all their stars" outcome is closer to NBA 2010s than NBA 2024 — defensible as design (super-team narratives sell) until a "Realism" mode toggle exists.
+
+---
+
+## Backlog idea — "Off-Books" tab (Kawhi-Aspiration cap-circumvention play)
+
+Hidden tab next to **Team Offers** in `SigningModal`. GM-mode only. Surfaces a covert salary-cap-circumvention mechanic — modeled directly on the real Kawhi Leonard / Aspiration / Ballmer scandal.
+
+```
+Real-world inspiration:
+  Apr 2024 — Aspiration (green fintech, Ballmer-invested) signs Kawhi
+  to a 4yr/$28M endorsement deal via "KL2 Aspire LLC"
+  Allegations: no-show job, Ballmer paying Kawhi outside cap rules
+  Sep 2025 — NBA opens investigation
+  Apr 2026 — Kawhi: "not stressing, I'll be in the clear"
+  diabolical af
+```
+
+**Mechanic:**
+- A new "Off-Books" tab appears on the SigningModal for over-cap teams that have **already maxed Bird Rights / MLE** but still want to sweeten an offer
+- Slider: **"Endorsement supplement"** $0–$30M total over the contract length
+- Funnels through a fake LLC in the player profile (`offBooksDeals[]: { llcName, totalUSD, donorEntity, signedYear }`) — visible only in commissioner dev tools and player's "Suspicious Activity" subtab in PlayerBio
+- The supplement adds **+15-30% offer strength** (slider scales) without showing on the cap sheet, but writes a hidden flag on `state.investigations[]`
+
+**Risk system:**
+- Each off-books deal has a `whistleBlowProb` (per-season seeded RNG, 8-15% based on amount + GM Trade Aggression attribute)
+- If triggered: NBA Investigation opens → news cycle ("League looks into [Team] / [Player] endorsement deal — sources say"), Shams posts, ESPN PH headlines, the works
+- Investigation outcomes (resolved over 2-3 sim months):
+  - **Clear** (40%): "Investigation finds no wrongdoing" — flavor news only
+  - **Reprimand** (30%): owner fined $5M, draft pick docked (one 2nd-rd lost)
+  - **Sanctions** (25%): $25M fine, 1st-rd pick stripped, GM suspended 30 days
+  - **Voided + suspended** (5%): contract voided, player becomes FA, team loses 1st-rd + suspended GM 50 games
+
+**UI surfaces:**
+- New "Investigations" subtab in `EventsView` (Commissioner's Diary) — shows ongoing probes with timeline
+- Shams template lib gets a "investigation" type with quote variants
+- PlayerBio gains a tiny shield icon next to portrait when an active off-books deal exists (commissioner-visible only)
+
+**Settings (EconomyTab toggle):**
+- `capCircumventionEnabled: boolean` (default OFF — opt-in for spicy commissioners)
+- `whistleBlowMultiplier: 0.5x–2.0x` for tuning risk
+
+**Why it's worth building:**
+- BBGM doesn't model owner skullduggery at all
+- Real NBA has *exactly this happening right now* (per the Kawhi case) — and we have the news/Shams/Events infrastructure to surface it dramatically
+- Creates a tradeoff for over-the-cap contender GMs: take the legal route and lose your guy to a cap-rich rival, or risk it for the bag and pray the league doesn't find out
+- Generates the kind of story arcs ("Aspiration probe enters month 4, owner Ballmer testifies before commissioner Silver") that elevate the sim from "manage roster" to "run a basketball drama"
+
+Long-term hook: tie into the **Owner** layer (which is currently flat) — different owner archetypes have different `riskTolerance` (Ballmer = high, small-market = low). Owner pressures GM for off-books deals when the team is contending but capped out.
+
+---
+
+## Backlog idea — Contract Thoughts (FA bidding-period flavor)
+
+During the bidding window, surface a short first-person quote on each FA's bio header — varies by status + traits + age:
+
+```
+Contract Expired · Unrestricted Free Agent
+"I'm a free agent. Keeping my options open — a good locker room,
+real minutes, a clear role. That's what I'm listening for."
+```
+
+Variations by trait + tier:
+- **LOYAL veteran**: "I've been a {City} guy my whole career. Hard to picture wearing anything else."
+- **MERCENARY star**: "I bet on myself. Whoever brings the bag and the role, that's who I'm signing with."
+- **COMPETITOR mid-career**: "I want to win. Show me a real path to a ring and we can talk."
+- **RFA (offer sheet pending)**: "Y'all know how this works — they've got 48 hours."
+- **Aging vet**: "Last contract probably. I want to play meaningful basketball for the team that wants me."
+
+Source from a small templated lib (mirror existing Shams/Woj template pattern in `src/services/social/templates/`). Surface in PlayerBio header during FA window only.
+
+Cheap dynamic-narrative win — no game-logic impact, pure flavor.
+
+---
+
 ## Milestone — Apr 23, 2026: Past BBGM on feature surface
 
 Snapshot of what's shipped vs. what BBGM ships:
@@ -318,6 +457,13 @@ Session-by-session work below.
 - **DraftClassGenerator for 2029+ seasons** — procedurally generate draft classes beyond loaded gist data
 - **GM Mode** — see `GM_MODE_README.md` for full implementation plan
 - **External league currency display** — show Euroleague salaries in EUR (€), CBA in CNY (¥), PBA in PHP (₱), B-League in JPY (¥), NBL in AUD (A$). Store in USD internally, convert at display time with static exchange rates in constants.ts
+- **Dual-affiliation academy prospects (Luka-Real-Madrid model)** — architectural upgrade over BBGM's college-as-metadata model. Pre-assign `draft.year` at generation for academy youth so they're simultaneously at their youth club (`tid = clubTid`, `status = 'Euroleague' / 'B-League' / etc.`) AND tagged for a future draft class. Real Luka was playing Real Madrid senior at 16 while everyone knew he was declaring 2018 — sim can model that. Replaces the Prompt C age-19 status-flip mechanism with a pre-committed draft year. DraftScouting surfaces prospects 1-4 years out with club attached ("Alejandro Garcia — Real Madrid Youth → declares 2032"). Enables scouting-budget expansion (commit to follow a prospect years ahead for better intel). BBGM can't do this because it treats college as string metadata only — this sim's first-class `nonNBATeams` makes youth-club-as-playable-team possible.
+- **Scouting staff & spending** — `getFuzzedOvr` is already implemented (dead code) and `rating.pot` now drifts via seasonRollover, so the infrastructure is ready. Scouting budget unlocks tighter fuzz ranges: low budget shows opponents as "75 | 82" when reality is "75 | 75" (at-ceiling bust); high budget reveals the gap, letting you distinguish a genuine breakout candidate from a stalled player. Visible bust signal already works (OVR|POT converge over seasons, never shown below OVR in UI); scouting spend determines how early and accurately the GM sees it for non-owned players.
+- **FA pool debug dashboard** (FreeAgentsView header) — OVR tier counters: K2 >90 / >85 / >80 / >75 / total, each updating live as filters change. League column on each FA row showing their current league (NBA FA, G-League, Euroleague, etc.). Bottom summary strip per external team: "FC Barcelona — Spain ×5, France ×2, USA ×1" showing nationality breakdown of that club's roster. Same panel for all external leagues. Pure debug/transparency tool — great for catching routing inflation and nationality drift at a glance.
+
+- **Progression / Regression sliders in Settings** — Commissioner-only sliders to globally tune player development speed and aging decline. Two independent dials: Progression (young player growth rate, default 1.0x) and Regression (35+ aging curve harshness, default 1.0x). Multiplies the existing `calcBaseChange` per-age values. Lets commissioners run high-development "everyone develops" leagues or 90s-style "cliff at 33" leagues without code edits. Reuses existing `inflationEditor` pattern in SettingsModal.
+
+- **Coaching / Training Dev staff (paid feature)** — GM-mode staff hire system tied directly to the progression/regression engine. Spend cap-room or owner budget on player-development coaches: each tier provides a multiplier to your team's young players' progression rate (Progression Coach: +5% to +25%) and slows aging decline for vets (Athletic Trainer: -5% to -20% regression). Modeled after real NBA Player Development departments (e.g. Sam Cassell-tier developer hires). Reuses the `getFuzzedOvr` scouting-staff infrastructure. Integration point: ProgressionEngine reads `team.staffMultipliers.progression` and `team.staffMultipliers.regression` per player. Free agency competition between teams for elite dev coaches creates strategic depth.
 
 ---
 
