@@ -26,42 +26,11 @@
 
 ---
 
-## DELEGATION PROPS — Order matters
+## Prompt L — Bidding-war refactor (QUEUED)
 
-**Order: save → M (ecosystem, SHIPPED S26) → I (FA pipeline, SHIPPED S27) → L (bidding-war refactor, PR1+RFA+UI shipped S27, PR2-PR4 + PR6 still queued)**
+**Status:** Design doc complete with all 8 Open Questions answered. PR1 (K2 ≥ 70 threshold + cap cleanup) shipped in Session 27. Remaining PR2–PR4 + PR6 queued pending user final approval.
 
-Prompt L remaining:
-- **PR2** — escalation rounds (Round 1/2/3 parallel bid window, sealed re-bids)
-- **PR3** — resolution formula upgrade (`legacyMult`, `championshipMult`, `moodMult`, Bird-Rights tiebreak before RNG)
-- **PR4** — gut sequential pipeline (Pass 1 → Bird-Rights re-sign only, Pass 4 candidate filter restricted to K2 < 70 || market-unsigned)
-- **PR6** — LOAD_GAME save migration for new schema
-
-Design doc with all 8 Open Questions resolved at [`docs/bidding-war-refactor.md`](./docs/bidding-war-refactor.md).
-
----
-
-<details>
-<summary><strong>Prompt L — Bidding war refactor (DESIGN DOC SHIPPED — see `docs/bidding-war-refactor.md`)</strong></summary>
-
-**Status:** design delivered. Review below. Implementation blocked on user answering the 8 Open Questions.
-
-**Doc location:** [`docs/bidding-war-refactor.md`](./docs/bidding-war-refactor.md)
-
-**My quick calls on the Open Questions (for user discussion, not final):**
-
-1. **Stagger vs flood Jul 1** → stagger across Jul 1–3. Narrative reason (biggest stars Jul 1, role players Jul 2–3) + performance reason (avoid 300-market tick burst). Low downside.
-2. **Escalation rounds** → 3. Extra round is meaningful for mid-market dynamics; 2 rounds can feel thin when user's bidding against sophisticated AI.
-3. **Tie-break sans Bird Rights** → seeded random. Desirability secondary feels arbitrary; random with fixed seed is honest and replayable.
-4. **Retract vs escalate-only** → escalate-only in Round 2/3 (teams commit to their Round 1 floor). Bids can still be invalidated by the daily cap-recheck (edge case #7), which covers the salary-dump-mid-market scenario without giving teams a "nah take it back" button.
-5. **Shortlist auto-queue default** → ON for new saves, with a Settings toggle. Power users flip off; new GMs benefit from the handholding.
-6. **Shortlist size cap** → 15. Roughly matches a team's offseason realistic target list.
-7. **Escalation visibility to AI** → sealed. Team B re-evaluates based on market value delta, not visible Round-1 Team-A bid. Closer to real NBA info asymmetry + prevents exploits.
-8. **Shams escalation tweets** → off by default, per-tier setting (can enable for K2 ≥ 90 only). Default-off because 300 markets × 3 escalation rounds = feed spam.
-
-**Implementation order (when green-lit):** PR1 → PR2 → PR3 → PR4 → PR5 → PR6.  
-Ship one at a time, resim between each, confirm no regression in FA pool metrics.
-
-**Blocked until:** user approval of Open Questions 1–8. See [`docs/bidding-war-refactor.md`](./docs/bidding-war-refactor.md) for full design doc.
+**Full design doc:** [`docs/bidding-war-refactor.md`](./docs/bidding-war-refactor.md) (§1-8: current state, proposed architecture, data structures, resolution formula, edge cases, UX, tradeoffs, migration plan + resolved Open Questions)
 
 ---
 
