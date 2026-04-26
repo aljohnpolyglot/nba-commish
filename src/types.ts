@@ -259,6 +259,8 @@ export interface LeagueStats {
   year: number;
   draftType: string;
   allStarEnding?: string;
+  allStarBreakStart?: string; // YYYY-MM-DD — first day of regular-season blackout
+  allStarBreakEnd?: string;   // YYYY-MM-DD — last day of blackout (inclusive)
   minGamesRequirement?: number;
   awards?: Rule[];
   trophies?: Rule[];

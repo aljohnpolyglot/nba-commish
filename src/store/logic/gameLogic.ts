@@ -619,6 +619,15 @@ export const processTurn = async (
             allStarPatch?.roster ?? [],
             state.leagueStats
         );
+        const win = AllStarWeekendOrchestrator.getBreakWindowStrings(state.leagueStats.year);
+        stateWithSim = {
+            ...stateWithSim,
+            leagueStats: {
+                ...stateWithSim.leagueStats,
+                allStarBreakStart: win.breakStart,
+                allStarBreakEnd: win.breakEnd,
+            },
+        };
         allStarPatch = {
             ...(allStarPatch || {}),
             gamesInjected: true,

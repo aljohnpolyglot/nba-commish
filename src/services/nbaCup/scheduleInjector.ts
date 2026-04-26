@@ -152,41 +152,68 @@ export function trimAndPairReplacements(
 ): { schedule: Game[]; nextGid: number } {
   let updated = [...schedule];
   let nextGid = startGid;
+  const koSet = new Set(koTeams);
 
-  // Track which KO teams have already had their RS slot trimmed (avoid double-trim
-  // when a KO_A vs KO_B game is the one we remove).
-  const trimmed = new Set<number>();
-  const orphans: { tid: number; date: string }[] = [];
+  // Per-team accounting. trimCount = how many RS games were removed from this
+  // team's schedule. Each KO team must end with trimCount === 1 net of replacements;
+  // every other team must end with trimCount === 0 net of replacements.
+  const trimCount = new Map<number, number>();
+  const trimDates = new Map<number, string[]>();
+  const bump = (tid: number, dateStr: string) => {
+    trimCount.set(tid, (trimCount.get(tid) ?? 0) + 1);
+    const arr = trimDates.get(tid) ?? [];
+    arr.push(dateStr);
+    trimDates.set(tid, arr);
+  };
+
+  // For each KO team that hasn't yet had a RS game trimmed, find one to drop.
+  // Prefer trimming a KO-vs-KO game (both teams settled with one removal) so
+  // we don't over-burden any non-KO opponent with multiple lost slots.
+  const isPlainRS = (g: any) =>
+    !g.played && !g.isPreseason && !g.isPlayoff && !g.isPlayIn && !g.isNBACup && !g.isExhibition;
 
   for (const tid of koTeams) {
-    if (trimmed.has(tid)) continue;
-    // Latest unplayed plain RS game involving tid (latest so we don't trim
-    // anything that's already been played — KO scheduling fires post-groups).
+    if ((trimCount.get(tid) ?? 0) >= 1) continue;
+
+    // Pass A: prefer KO-vs-KO trim (settles both teams in one shot).
     let idx = -1;
     for (let i = updated.length - 1; i >= 0; i--) {
       const g: any = updated[i];
-      if (g.played) continue;
-      if (g.isPreseason || g.isPlayoff || g.isPlayIn || g.isNBACup || g.isExhibition) continue;
+      if (!isPlainRS(g)) continue;
       if (g.homeTid !== tid && g.awayTid !== tid) continue;
-      idx = i;
-      break;
+      const opp = g.homeTid === tid ? g.awayTid : g.homeTid;
+      if (koSet.has(opp) && (trimCount.get(opp) ?? 0) < 1) { idx = i; break; }
+    }
+    // Pass B: any latest unplayed RS game involving this team.
+    if (idx < 0) {
+      for (let i = updated.length - 1; i >= 0; i--) {
+        const g: any = updated[i];
+        if (!isPlainRS(g)) continue;
+        if (g.homeTid !== tid && g.awayTid !== tid) continue;
+        idx = i;
+        break;
+      }
     }
     if (idx < 0) continue;
     const removed: any = updated[idx];
-    const opponent = removed.homeTid === tid ? removed.awayTid : removed.homeTid;
+    const opp = removed.homeTid === tid ? removed.awayTid : removed.homeTid;
+    const dateStr = String(removed.date).split('T')[0];
     updated.splice(idx, 1);
-    trimmed.add(tid);
-    if (koTeams.includes(opponent)) {
-      // Both sides advancing — both balanced by this single trim, no orphan.
-      trimmed.add(opponent);
-    } else {
-      orphans.push({ tid: opponent, date: String(removed.date).split('T')[0] });
+    bump(tid, dateStr);
+    bump(opp, dateStr);
+  }
+
+  // Build the owed-replacement list. KO teams owe (trimCount-1); everyone else owes trimCount.
+  const owed: { tid: number; date: string }[] = [];
+  for (const [tid, count] of trimCount.entries()) {
+    const target = koSet.has(tid) ? 1 : 0;
+    const need = count - target;
+    const dates = trimDates.get(tid) ?? [];
+    for (let k = 0; k < need; k++) {
+      owed.push({ tid, date: dates[k] ?? replacementDate });
     }
   }
 
-  // Pair orphans into replacement games. Place on replacementDate when both
-  // orphans are free that night; otherwise use either orphan's original-trim
-  // date (they had a slot freed there anyway).
   const dateBusy = (dateStr: string, t1: number, t2: number): boolean => {
     return updated.some((g: any) => {
       const ds = String(g.date).split('T')[0];
@@ -195,22 +222,33 @@ export function trimAndPairReplacements(
     });
   };
 
-  // Greedy pairing — earliest orphan with next compatible orphan
+  const replacementMs = new Date(`${replacementDate}T00:00:00Z`).getTime();
+  const dayOffset = (n: number): string => {
+    const d = new Date(replacementMs + n * 86400000);
+    return d.toISOString().split('T')[0];
+  };
+  // Wider fallback: ±21 days around replacementDate, ordered by closeness.
+  const fallbackDates: string[] = [];
+  for (let n = 0; n <= 21; n++) {
+    if (n === 0) fallbackDates.push(replacementDate);
+    else { fallbackDates.push(dayOffset(-n)); fallbackDates.push(dayOffset(n)); }
+  }
+
   const replacements: Game[] = [];
   const used = new Set<number>();
-  for (let i = 0; i < orphans.length; i++) {
+  for (let i = 0; i < owed.length; i++) {
     if (used.has(i)) continue;
-    for (let j = i + 1; j < orphans.length; j++) {
+    for (let j = i + 1; j < owed.length; j++) {
       if (used.has(j)) continue;
-      if (orphans[i].tid === orphans[j].tid) continue;
-      const candidates = [replacementDate, orphans[i].date, orphans[j].date];
-      const slot = candidates.find(d => !dateBusy(d, orphans[i].tid, orphans[j].tid));
+      if (owed[i].tid === owed[j].tid) continue;
+      const candidates = [replacementDate, owed[i].date, owed[j].date, ...fallbackDates];
+      const slot = candidates.find(d => !dateBusy(d, owed[i].tid, owed[j].tid));
       if (!slot) continue;
       const homeFirst = Math.random() > 0.5;
       replacements.push({
         gid: nextGid++,
-        homeTid: homeFirst ? orphans[i].tid : orphans[j].tid,
-        awayTid: homeFirst ? orphans[j].tid : orphans[i].tid,
+        homeTid: homeFirst ? owed[i].tid : owed[j].tid,
+        awayTid: homeFirst ? owed[j].tid : owed[i].tid,
         homeScore: 0,
         awayScore: 0,
         played: false,
@@ -229,7 +267,9 @@ export function trimAndPairReplacements(
     );
   }
 
-  console.log(`[trimAndPairReplacements] trimmed=${trimmed.size}, orphans=${orphans.length}, replacements=${replacements.length}`);
+  const totalTrims = [...trimCount.values()].reduce((a, b) => a + b, 0) / 2;
+  const unmatched = owed.length - used.size;
+  console.log(`[trimAndPairReplacements] trims=${totalTrims}, owed=${owed.length}, replacements=${replacements.length}${unmatched > 0 ? ` ⚠ unmatched=${unmatched}` : ''}`);
   return { schedule: updated, nextGid };
 }
 

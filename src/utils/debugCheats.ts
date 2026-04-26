@@ -62,6 +62,7 @@ export const CHEAT_CODES = {
   CUPDEBUG: 'NBA Cup state dump — groups, scheduled cup games, played count, knockout bracket, awards',
   CUPSIM: 'Sim-jump to Dec 17 to play out the entire Cup window (group stage → knockouts → awards)',
   CUPINJECT: 'Retroactively inject Cup group games into a save where groups exist but no Cup games were scheduled (recovers broken pre-fix saves)',
+  SCHEDAUDIT: 'Schedule integrity audit — orphaned games, per-team GP vs 82, All-Star blackout casualties, asymmetric W/L',
   FIXPOT: 'Clamp inflated POT on PBA (→50) and ChinaCBA (→54) players in the current save',
 } as const;
 
@@ -1126,6 +1127,124 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
       return {
         title: 'Cup sim dispatched',
         body: `Sim → ${targetDate}. ${dayDiff > 90 ? 'May need 2-3 reruns due to per-call sim cap. ' : ''}Re-run CUPDEBUG when done.`,
+        ok: true,
+      };
+    }
+
+    case 'SCHEDAUDIT': {
+      const sched = state.schedule ?? [];
+      const teams = state.teams ?? [];
+      const today = state.date;
+      const todayMs = new Date(today).getTime();
+      const tname = (tid: number) => {
+        const t = teams.find(x => x.id === tid) as any;
+        return t ? (t.abbrev ?? t.name) : `tid${tid}`;
+      };
+
+      console.group(`🗓 Schedule Audit — ${today}`);
+
+      // Type breakdown
+      const types: Record<string, { played: number; unplayed: number }> = {};
+      for (const g of sched as any[]) {
+        const k = g.isAllStar ? 'allstar'
+          : g.isRisingStars ? 'rising'
+          : g.isPlayIn ? 'playin'
+          : g.isPlayoff ? 'playoff'
+          : g.isNBACup ? `cup_${g.nbaCupRound ?? '?'}`
+          : g.isPreseason ? 'preseason'
+          : 'reg';
+        if (!types[k]) types[k] = { played: 0, unplayed: 0 };
+        types[k][g.played ? 'played' : 'unplayed']++;
+      }
+      console.log('Game type breakdown:');
+      console.table(types);
+
+      // Orphans: past + unplayed regular-season-style games
+      const orphans = (sched as any[]).filter(g =>
+        !g.played
+        && !g.isAllStar && !g.isRisingStars
+        && !g.isPlayoff && !g.isPlayIn
+        && new Date(g.date).getTime() < todayMs
+      );
+      console.log(`\nOrphaned past games: ${orphans.length}`);
+      if (orphans.length) {
+        console.table(orphans.slice(0, 30).map(g => ({
+          gid: g.gid, date: String(g.date).split('T')[0],
+          home: tname(g.homeTid ?? g.homeTeamId),
+          away: tname(g.awayTid ?? g.awayTeamId),
+          isCup: !!g.isNBACup, cupRound: g.nbaCupRound ?? '',
+          isPre: !!g.isPreseason,
+        })));
+      }
+
+      // All-Star blackout window check
+      const ls: any = state.leagueStats ?? {};
+      const breakStart = ls.allStarBreakStart ?? ls.allStarStart;
+      const breakEnd   = ls.allStarBreakEnd   ?? ls.allStarEnd;
+      console.log(`\nAll-Star window: ${breakStart ?? '?'} → ${breakEnd ?? '?'}`);
+      if (breakStart && breakEnd) {
+        const s = new Date(breakStart).getTime();
+        const e = new Date(breakEnd).getTime();
+        const inBreak = (sched as any[]).filter(g => {
+          const t = new Date(g.date).getTime();
+          return t >= s && t <= e
+            && !g.isAllStar && !g.isRisingStars
+            && !g.isPlayoff && !g.isPlayIn;
+        });
+        console.log(`  Reg-season games inside blackout: ${inBreak.length}`);
+        if (inBreak.length) {
+          console.table(inBreak.map(g => ({
+            gid: g.gid, date: String(g.date).split('T')[0], played: g.played,
+            home: tname(g.homeTid ?? g.homeTeamId),
+            away: tname(g.awayTid ?? g.awayTeamId),
+          })));
+        }
+      }
+
+      // Per-team GP — count only games that should affect 82-game record
+      // (regular season + Cup group; exclude Cup KO unless final, exclude playoffs/playin/preseason/allstar)
+      const gp: Record<number, { abbr: string; w: number; l: number; sched: number; played: number; pastUnplayed: number }> = {};
+      for (const t of teams as any[]) {
+        gp[t.id] = { abbr: t.abbrev ?? t.name, w: t.wins ?? 0, l: t.losses ?? 0, sched: 0, played: 0, pastUnplayed: 0 };
+      }
+      for (const g of sched as any[]) {
+        if (g.isAllStar || g.isRisingStars || g.isPlayoff || g.isPlayIn || g.isPreseason) continue;
+        // Cup KO games: only count if countsTowardRecord === true (the championship game)
+        if (g.isNBACup && g.nbaCupRound && g.nbaCupRound !== 'group' && g.countsTowardRecord !== true) continue;
+        const homeTid = g.homeTid ?? g.homeTeamId;
+        const awayTid = g.awayTid ?? g.awayTeamId;
+        for (const tid of [homeTid, awayTid]) {
+          if (!gp[tid]) continue;
+          gp[tid].sched++;
+          if (g.played) gp[tid].played++;
+          else if (new Date(g.date).getTime() < todayMs) gp[tid].pastUnplayed++;
+        }
+      }
+
+      const rows = Object.values(gp).map(r => ({
+        team: r.abbr, WL: r.w + r.l, sched: r.sched, played: r.played,
+        pastUnplayed: r.pastUnplayed, delta82: (r.w + r.l) - 82,
+      })).sort((a, b) => Math.abs(b.delta82) - Math.abs(a.delta82) || a.team.localeCompare(b.team));
+      console.log('\nPer-team regular-season GP (sorted by |delta vs 82|):');
+      console.table(rows);
+
+      const totalWL = rows.reduce((a, r) => a + r.WL, 0);
+      const expected = (teams.filter((t: any) => t.id >= 0 && t.id < 100).length) * 82;
+      console.log(`\nLeague total W+L = ${totalWL}  (expected ${expected})`);
+      console.log(`Missing team-results: ${expected - totalWL}  (= ${(expected - totalWL) / 2} missing games)`);
+
+      const inconsistent = rows.filter(r => r.played !== r.WL);
+      if (inconsistent.length) {
+        console.log('\n⚠ Teams where played-count ≠ W+L (asymmetric stat write):');
+        console.table(inconsistent);
+      }
+
+      console.groupEnd();
+      const short = rows.filter(r => r.delta82 < 0).map(r => r.team);
+      const long  = rows.filter(r => r.delta82 > 0).map(r => r.team);
+      return {
+        title: 'Schedule audit',
+        body: `Missing ${(expected - totalWL) / 2} games. Short: ${short.join(',') || '—'} · Long: ${long.join(',') || '—'} · Orphans: ${orphans.length}`,
         ok: true,
       };
     }

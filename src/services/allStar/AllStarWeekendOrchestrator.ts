@@ -87,6 +87,17 @@ export function getAllStarWeekendDates(year: number): {
 export const ALL_STAR_DATES = getAllStarWeekendDates(2026);
 
 export class AllStarWeekendOrchestrator {
+  /** Convenience: returns the YYYY-MM-DD bracket of the regular-season blackout window. */
+  static getBreakWindowStrings(year: number): { breakStart: string; breakEnd: string; regularResumes: string } {
+    const dates = getAllStarWeekendDates(year);
+    const ymd = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+    return {
+      breakStart: ymd(dates.breakStart),
+      breakEnd: ymd(dates.breakEnd),
+      regularResumes: ymd(dates.regularResumes),
+    };
+  }
+
   static injectAllStarGames(schedule: any[], teams: any[], year: number, roster: any[], leagueStats: any) {
     const dates = getAllStarWeekendDates(year);
     

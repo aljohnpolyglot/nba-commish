@@ -533,9 +533,15 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
         stateForSim.allStar?.roster ?? [],
         stateForSim.leagueStats
       );
+      const win = AllStarWeekendOrchestrator.getBreakWindowStrings(stateForSim.leagueStats.year);
       stateForSim = {
         ...stateForSim,
         schedule: newSchedule,
+        leagueStats: {
+          ...stateForSim.leagueStats,
+          allStarBreakStart: win.breakStart,
+          allStarBreakEnd: win.breakEnd,
+        },
         allStar: { ...(stateForSim.allStar as any), gamesInjected: true },
       };
     }

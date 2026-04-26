@@ -13,9 +13,40 @@
 
 - ✅ **KO games inflated advancers' RS records** — QF/SF games were appended on top of a full 82-game schedule, so advancers ended at 83-84 RS-counted games. Fixed via `trimAndPairReplacements` in `scheduleInjector.ts`: when QF/SF games are injected, each KO team has 1 future unplayed RS game trimmed; orphaned non-KO opponents are paired into replacement games on the KO night (or the trim's original date if conflicting). Final still uses `countsTowardRecord: false` and triggers no trim. Wired in `simulationHandler.ts` after each `buildKnockoutGames` call.
 
+- ✅ **Schedule integrity — missing reg-season games + asymmetric W/L (Session 28 audit, 2026-04-26)** — `SCHEDAUDIT` cheat run on Y2 save dated `2027-02-24` revealed three issues; all fixed:
+  - **`trimAndPairReplacements` per-team accounting rewrite** (`scheduleInjector.ts`). Old logic only marked KO teams as "trimmed once" and assumed every removal produced ≤1 orphan; in practice, multiple KO teams' latest unplayed RS could share the same opponent → that opponent lost N games but was paired only once (or zero times if `dateBusy` blocked all candidate dates). Replaced with per-team trim-count + owed-replacement bookkeeping: KO teams target net −1; everyone else targets net 0. Pairing now expands fallback dates to ±21 days around `replacementDate`. Also added Pass A that prefers KO-vs-KO trims (settles two KO teams in one removal, no orphans created). Logs `unmatched=N` when pairing still fails.
+  - **All-Star events polluting reg-season filter.** Dunk contest (`gid=90003`, home=−7/away=−7) and 3-Point contest (`gid=90004`, −8/−8) used self-vs-self placeholder ids and lacked an `isAllStar`-style flag, so the audit script counted them as orphaned reg-season games. Audit script (`scripts/audit-schedule.js`) now filters via shared `isExhibitionLike` helper covering `isAllStar/isRisingStars/isCelebrityGame/isDunkContest/isThreePointContest/isExhibition` + any negative-tid sentinel team.
+  - **`allStarBreakStart`/`allStarBreakEnd` now populated.** Both `injectAllStarGames` call sites (`gameLogic.ts:614`, `autoResolvers.ts:528`) now write the YYYY-MM-DD blackout window onto `state.leagueStats` via new `AllStarWeekendOrchestrator.getBreakWindowStrings(year)` helper. `LeagueStats` type extended with the two fields. The actual blackout filter in `simulationRunner.ts:14` was already using `getAllStarWeekendDates` directly (so the runtime filter was firing; only the audit field was unset).
+
 ---
 ### LOGIC
 
+**✅ Session 28 (2026-04-26) — Volume-sticky FGA rebuild (v3)**
+
+Original problem: hot nights compressed FGA below baseline; cold nights compressed FGA below baseline. Real NBA pattern is the opposite — efficiency swings, volume stays sticky.
+
+Fixed in 2 files:
+- `StatGenerator/initial.ts:263` — FGA now anchors to **baseline pts** (`ptsTarget / ptsTargetMult`), not nightly pts. Decouples volume from the night's scoring.
+- `StatGenerator/initial.ts:428` — pct2 floor lowered `0.44 → 0.30`, so cold-night low pct2 actually drives 2PA upward (Brunson 4/20 brick now reachable).
+- `StatGenerator/initial.ts:263` — added `fgaFloor = floor(minutes × 0.40 × max(0.65, fgaMult))` to kill the "Brunson 2/6 starter brickfest" pathology while preserving deferring archetypes.
+- `StatGenerator/nightProfile.ts` — cold-tier `efficiencyMult` lowered to engage the new floor: BRICKFEST 0.65→0.55, COLD 0.82→0.75, OFF-NIGHT 0.72→0.65, DESPERATE CHUCKER 0.65→0.58, Microwave CHUCKER 0.72→0.65, DISASTER 0.55-0.70 → 0.45-0.60.
+- `nightProfile.ts` — `fgaMult` redocumented as a true volume modifier (1.0 = baseline, >1 chucker, <1 deferring).
+
+Verified against real game logs (Brunson, Reaves, bruiser bigs): cold high-volume bricks ✅, hot efficient torches ✅, EXPLOSION 47-pt nights ✅, rim-only bigs preserve efficiency via existing `isRimOnly` path ✅.
+
+**⚠️ Known v3 gaps (not yet addressed):**
+
+- **60+ pt outliers unreachable.** EXPLOSION ceiling caps at `1.15 + ovr/100 × 0.80` ≈ 1.91× for OVR 95. Sengun 63 / Herro 60 / Maxey 55 (high-volume hot games) won't reproduce. Would need a separate "VOLUME EXPLOSION" archetype gated on `ins`/`stre`/`tp>85` etc. — different from current efficiency-driven hot tiers.
+
+- **Pure 3PT specialist nights (0 2PA).** Reaves Jan 19 POR `6/10 all 3s` and similar games — no archetype produces "100% 3PT shot diet." Current `shotDietShift` maxes at +0.20. Minor — these are <1% of games.
+
+- **fgaFloor over-volumes ultra-quiet blowout games.** Reaves Nov 11 `1/2, 22 min, +17 blowout` — current floor (~9 FGA) prevents this. Could add blowout-aware floor reduction (`lead > 15 && winning → halve floor`) but requires plumbing `lead`/`isWinner` into the FGA floor block. Tradeoff vs the 2/6 brickfest fix.
+
+- **Reduce floor coefficient 0.40 → 0.30?** Would allow 6-7 FGA bench cameos while still floor=10.5 at 35 min (still kills Brunson 2/6). Pragmatic middle ground. Pending user call.
+
+---
+
+**Original observation (kept for context — Session 28 prompt):**
 
 On hot nights... they shoudl be more efficeint ! not jacking a lot of shots and still maintainnig efficeicny.. reverse is true when bad nights.. they dont take less shots. just normal shot diet in less efficeicny!!!!!.
 50-PT GAMES
