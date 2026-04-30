@@ -25,6 +25,7 @@ import {
   getClassPercentiles,
   getClassAverages,
   computeSkillScores,
+  batchComparisonsDeduped,
   SKILL_AXES,
   type ClassPercentileMaps,
   type SkillAxis,
@@ -471,7 +472,7 @@ const CompactAdvisorBoardPanel: React.FC<CompactAdvisorBoardProps> = ({ teamId, 
       .filter(p => p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect')
       .filter(p => {
         const draftYear = (p as any).draft?.year;
-        return !draftYear || Number(draftYear) === currentYear;
+        return draftYear == null || Number(draftYear) === currentYear;
       })
       .map(p => {
         const ovr = calcOvr2K(p);
@@ -734,9 +735,10 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         const isProspect = p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect';
         if (!isProspect) return false;
         if (EXTERNAL_STATUSES.has(p.status ?? '')) return false;
-        // Only current year's draft class (or prospects without a year set)
+        // Only current year's draft class (or prospects with no year set).
+        // Treat draftYear=0 (BBGM historical players) same as a mismatched year.
         const draftYear = (p as any).draft?.year;
-        if (draftYear && Number(draftYear) !== leagueYear) return false;
+        if (draftYear != null && Number(draftYear) !== leagueYear) return false;
         return true;
       })
       .map(p => {
@@ -800,6 +802,12 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     m.set('Class', getClassPercentiles(allProspects, 'Class'));
     return m;
   }, [allProspects]);
+
+  // Batch comps: computed once per class, deduped so no player dominates.
+  const batchComps = useMemo(
+    () => batchComparisonsDeduped(allProspects as unknown as NBAPlayer[], activePlayers),
+    [allProspects, activePlayers],
+  );
 
   // Restore in-progress draft from game state so switching views doesn't lose picks
   const savedDraftPicks: Record<number, any> = (state as any).activeDraftPicks ?? {};
@@ -1015,6 +1023,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
       const draftPicksAfter = (state.draftPicks ?? []).filter(
         (dp: any) => !consumedKeys.has(`${dp.season}|${dp.round}|${dp.originalTid}`)
       );
+      const allPicksDone = targetPick > draftOrder.length;
       dispatch({
         type: 'UPDATE_STATE',
         payload: {
@@ -1026,6 +1035,10 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
           // Persist in-progress picks atomically with the player updates so
           // autoRunDraft (fires on day-advance past draft date) can honor them.
           activeDraftPicks: newPicks,
+          // Set eagerly so stateRef.current.draftComplete is true before any
+          // ADVANCE_DAY fires — prevents autoRunDraft re-running when the user
+          // clicks Sim Day immediately after Sim to End.
+          ...(allPicksDone ? { draftComplete: true } : {}),
         },
       } as any);
     }
@@ -1465,8 +1478,9 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         draftYear={leagueYear}
         gistData={scoutingPlayer && gistByYear ? matchProspectToGist(scoutingPlayer, gistByYear) : null}
         onViewPlayerBio={(p) => { setScoutingPlayer(null); setViewingBioPlayer(p); }}
-        onConfirmPick={(!isGM || isUserOnClock) && !isDraftComplete ? onConfirmPickForScouting : undefined}
+        onConfirmPick={(!isGM || isUserOnClock) && !isDraftComplete && !Object.values(drafted).some((p: any) => p?.internalId === scoutingPlayer?.internalId) ? onConfirmPickForScouting : undefined}
         pickLabel={`Pick #${currentPick}`}
+        preComputedComps={scoutingPlayer ? batchComps.get((scoutingPlayer as NBAPlayer).internalId) : undefined}
       />
     </div>
   );

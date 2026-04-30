@@ -292,13 +292,13 @@ export class MinutesPlayedService {
 
   /**
    * Allocate playing time for every player in the rotation.
-   * Minutes sum to (48 + otCount×5) × 5 after clamping.
+   * Minutes sum to (regulation length + overtime length) × 5 after clamping.
    *
    * @param rotation  Ordered array from getRotation() / getRotationPlayers().
    *                  Slots 0-4 are starters; 5+ are bench by depth.
    * @param season    Season year for rating lookups.
    * @param lead      Score differential for blowout detection.
-   * @param otCount   Number of OT periods (adds 5 min per period).
+   * @param otCount   Number of OT periods.
    * @param starMpgTarget Optional star MPG target from RotationResult — when
    *                      provided, nudges slot-0 minutes toward this value.
    */
@@ -310,10 +310,11 @@ export class MinutesPlayedService {
     starMpgTarget?: number,
     isPlayoffs: boolean = false,
     quarterLength: number = 12,
+    overtimeDuration: number = 5,
   ): MinuteAllocation {
     const isBlowout    = Math.abs(lead) > 15;
     const isBigBlowout = Math.abs(lead) > 25;
-    const gameLengthMin = quarterLength * 4 + otCount * 5;
+    const gameLengthMin = quarterLength * 4 + otCount * overtimeDuration;
     const otMultiplier  = gameLengthMin / (quarterLength * 4);  // 1.0 reg → grows with each OT
 
     // Youth/development mode: lottery teams (starMpgTarget ≤ 31) spread minutes

@@ -10,9 +10,14 @@ import { ClubEffect } from './components/effects/ClubEffect';
 import { ToastNotifier } from './components/shared/ToastNotifier';
 import { PlayButton } from './components/shared/PlayButton';
 import { LazySimLoadingScreen } from './components/setup/LazySimLoadingScreen';
-import { Menu } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { SaveManager } from './services/SaveManager';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+
+// Lazy load mini-games
+const TheThroneView = React.lazy(() => import('./throne/components/TheThroneGame'));
+const DunkContestView = React.lazy(() => import('./minigames/dunk/DunkContestMiniGame'));
+const ThreePointContestView = React.lazy(() => import('./minigames/threepoint/ThreePointContestMiniGame'));
 import { fetchStatmuseData } from './data/social/statmuseImages';
 import { fetchAvatarData } from './data/avatars';
 import { fetchCharaniaPhotos } from './services/social/charaniaphotos';
@@ -24,6 +29,7 @@ import { prewarmRoster } from './services/rosterService';
 function GameLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
+  const [activeMiniGame, setActiveMiniGame] = useState<'throne' | 'dunk' | '3point' | null>(null);
   const { state, dispatchAction, currentView, setCurrentView } = useGame();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -127,10 +133,40 @@ function GameLayout() {
       />;
     }
 
-    return <MainMenu
-      onStartNew={() => { prewarmRoster(); setShowSetup(true); }}
-      onLoadSave={(loadedState) => dispatchAction({ type: 'LOAD_GAME', payload: loadedState })}
-    />;
+    const miniGameNames: Record<string, string> = { throne: 'The Throne', dunk: 'Dunk Contest', '3point': '3-Point Contest' };
+    const miniGameComponents: Record<string, React.ReactNode> = {
+      throne: <TheThroneView />,
+      dunk: <DunkContestView />,
+      '3point': <ThreePointContestView />,
+    };
+
+    return (
+      <>
+        {activeMiniGame && miniGameComponents[activeMiniGame] && (
+          <div className="fixed inset-0 z-[9999] w-full h-full bg-[#050505] overflow-y-auto">
+            <React.Suspense fallback={<div className="w-full h-full bg-slate-950 flex items-center justify-center text-white">Loading {miniGameNames[activeMiniGame]}...</div>}>
+              <div className="relative w-full min-h-full">
+                {miniGameComponents[activeMiniGame]}
+                <button
+                  onClick={() => setActiveMiniGame(null)}
+                  className="fixed top-4 right-4 z-[10000] p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"
+                  title={`Exit ${miniGameNames[activeMiniGame]}`}
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </React.Suspense>
+          </div>
+        )}
+        {!activeMiniGame && (
+          <MainMenu
+            onStartNew={() => { prewarmRoster(); setShowSetup(true); }}
+            onLoadSave={(loadedState) => dispatchAction({ type: 'LOAD_GAME', payload: loadedState })}
+            onPlayMiniGame={(game) => setActiveMiniGame(game)}
+          />
+        )}
+      </>
+    );
   }
 
   return (

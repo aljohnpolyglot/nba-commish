@@ -9,6 +9,7 @@ import { NewsGenerator } from '../news/NewsGenerator';
 import { LOTTERY_PRESETS } from '../../lib/lotteryPresets';
 import { returnUndraftedToHomeLeague } from '../externalLeagueSustainer';
 import { UNDRAFTED_OVR_CAP } from '../../constants';
+import { getRolloverDate, toISODateString } from '../../utils/dateUtils';
 
 // ── Schedule Generation (Aug 14) ──────────────────────────────────────────
 export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
@@ -16,7 +17,7 @@ export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
   // blocking regeneration after a season rollover.
   const year = state.leagueStats.year;
   const seasonStart = `${year - 1}-10-01`;
-  const seasonEnd   = `${year}-06-30`;
+  const seasonEnd   = toISODateString(getRolloverDate(year, state.leagueStats as any, state.schedule as any));
   // Exclude isNBACup — Cup games can land in the schedule via self-heal paths
   // after rollover (before Aug 14). Without this exclusion, a Cup-only schedule
   // trips the "already generated" branch and preseason/regular-season never get
@@ -1015,6 +1016,9 @@ export const autoRunLottery = (state: GameState): Partial<GameState> => {
  *  Commissioner-run drafts take precedence (skips if draftComplete is already true). */
 export const autoRunDraft = (state: GameState): Partial<GameState> => {
   if ((state as any).draftComplete) return {}; // commissioner already ran the draft
+  // Finals must finish before the draft runs — if draft day lands before Game 7, defer.
+  // Return the sentinel so lazySimRunner retries this event next iteration.
+  if (state.playoffs && !state.playoffs.bracketComplete) return { _deferred: true } as any;
 
   const season = state.leagueStats?.year ?? 2026;
   const guaranteedYrs = state.leagueStats?.rookieContractLength ?? 2;
@@ -1076,7 +1080,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
       if (!isProspect) return false;
       if (EXTERNAL_STATUSES.has(p.status ?? '')) return false;
       const draftYear = (p as any).draft?.year;
-      if (draftYear && Number(draftYear) !== season) return false;
+      if (draftYear != null && Number(draftYear) !== season) return false;
       return true;
     })
     .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0));

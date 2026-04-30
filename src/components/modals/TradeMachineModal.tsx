@@ -14,6 +14,8 @@ import { SettingsManager } from '../../services/SettingsManager';
 import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks } from '../../services/draft/DraftPickGenerator';
 import { buildClassStrengthMap, buildFullDraftSlotMap, formatPickLabel } from '../../services/draft/draftClassStrength';
 import { validateStepienRule, wouldStepienViolateForTid } from '../../services/trade/stepienRule';
+import { isInPostDeadlinePreFAWindow, getFreeAgencyStartDate } from '../../utils/dateUtils';
+import { isWalkingExpiring, isRecentlySignedLocked } from '../../services/trade/tradeValueEngine';
 
 // OVR text color matching TradeFinder's ovrText helper — keeps the number coloring
 // consistent between TradeMachineModal and the OfferCard stack.
@@ -40,7 +42,7 @@ interface TradeMachineModalProps {
 
 // HELPER: The "Eyebrow" Pill for outgoing players
 const OutgoingPill = ({ player, onRemove }: { player: NBAPlayer, onRemove: () => void }) => (
-  <div className="flex items-center gap-2 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-full pl-1 pr-2 py-1 transition-colors shadow-sm">
+  <div className="flex items-center gap-2 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-full pl-1 pr-2 py-1 transition-colors shadow-sm flex-shrink-0">
     <PlayerPortrait
       imgUrl={player.imgURL}
       face={(player as any).face}
@@ -61,7 +63,7 @@ const OutgoingPickPill = ({ pick, teams, onRemove, currentYear, lotterySlotByTid
   const origTeam = teams.find(t => t.id === pick.originalTid);
   const label = formatPickLabel(pick, currentYear, lotterySlotByTid, true);
   return (
-    <div className="flex items-center gap-2 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-full pl-1 pr-2 py-1 transition-colors shadow-sm">
+    <div className="flex items-center gap-2 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-full pl-1 pr-2 py-1 transition-colors shadow-sm flex-shrink-0">
       <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 p-0.5 flex items-center justify-center">
         {origTeam?.logoUrl
           ? <img src={origTeam.logoUrl} alt={origTeam.abbrev} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
@@ -242,6 +244,18 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
 
   const stepienOnGlobal = state.leagueStats?.stepienRuleEnabled !== false;
   const tradablePickSeasons = state.leagueStats?.tradableDraftPickSeasons ?? 7;
+  const postDeadlinePreFA = useMemo(
+    () => isInPostDeadlinePreFAWindow(state.date ?? '', state.leagueStats?.year ?? new Date().getFullYear(), state.leagueStats as any),
+    [state.date, state.leagueStats],
+  );
+  const rslMs = useMemo(() => {
+    const yr = state.leagueStats?.year ?? new Date().getFullYear();
+    return {
+      faStart: getFreeAgencyStartDate(yr - 1, state.leagueStats as any).getTime(),
+      nextFaStart: getFreeAgencyStartDate(yr, state.leagueStats as any).getTime(),
+      current: new Date(state.date ?? '').getTime(),
+    };
+  }, [state.date, state.leagueStats]);
   const stepienBlockedA = useMemo(() => {
     if (!stepienOnGlobal || !teamA) return new Set<number>();
     const blocked = new Set<number>();
@@ -542,13 +556,15 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                     <ChevronUp size={14} className="opacity-30" />
                 </div>
                 {(teamAPlayers.length > 0 || teamAPicks.length > 0) && (
-                    <div className="px-4 pb-4 flex flex-wrap gap-2">
-                        {teamAPlayers.map(p => (
-                            <OutgoingPill key={p.internalId} player={p} onRemove={() => setTeamAPlayers(teamAPlayers.filter(x => x.internalId !== p.internalId))} />
-                        ))}
-                        {teamAPicks.map(pk => (
-                            <OutgoingPickPill key={pk.dpid} pick={pk} teams={state.teams} currentYear={currentYearForEval} lotterySlotByTid={lotterySlotByTid} onRemove={() => setTeamAPicks(teamAPicks.filter(x => x.dpid !== pk.dpid))} />
-                        ))}
+                    <div className="px-4 pb-4 overflow-x-auto custom-scrollbar">
+                        <div className="flex gap-2 min-w-min">
+                            {teamAPlayers.map(p => (
+                                <OutgoingPill key={p.internalId} player={p} onRemove={() => setTeamAPlayers(teamAPlayers.filter(x => x.internalId !== p.internalId))} />
+                            ))}
+                            {teamAPicks.map(pk => (
+                                <OutgoingPickPill key={pk.dpid} pick={pk} teams={state.teams} currentYear={currentYearForEval} lotterySlotByTid={lotterySlotByTid} onRemove={() => setTeamAPicks(teamAPicks.filter(x => x.dpid !== pk.dpid))} />
+                            ))}
+                        </div>
                     </div>
                 )}
                 {teamAId !== null && (
@@ -580,11 +596,16 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
 
             <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#1a1a1a]">
                 {activeTabA === 'roster' ? (
-                    displayTeamARoster.map(player => (
+                    displayTeamARoster.map(player => {
+                      const isSel = teamAPlayers.some(x => x.internalId === player.internalId);
+                      const walking = !isSel && !(player as any).isIncoming
+                        && (isWalkingExpiring(player, state.leagueStats?.year ?? new Date().getFullYear(), postDeadlinePreFA)
+                          || isRecentlySignedLocked(player, rslMs.faStart, rslMs.nextFaStart, rslMs.current));
+                      return (
                         <PlayerRow
                             key={player.internalId}
                             player={player}
-                            isSelected={teamAPlayers.some(x => x.internalId === player.internalId)}
+                            isSelected={isSel}
                             isSuggested={suggestedPlayerIds.has(player.internalId)}
                             onToggle={() => {
                               // Incoming (from team B) → clicking UNDOES the inclusion on team B's side.
@@ -600,46 +621,45 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                             }}
                             formatContract={formatContract}
                             teams={state.teams}
-                            disabled={!canClickAssets}
+                            disabled={!canClickAssets || walking}
                             currentSeason={state.leagueStats.year}
                         />
-                    ))
+                      );
+                    })
                 ) : (
-                    <div className="overflow-x-auto overflow-y-hidden custom-scrollbar">
-                        <div className="p-4 flex gap-2 min-w-min">
-                            {teamAPicksAvailable.map(pick => {
-                                const isSelected = teamAPicks.some(p => p.dpid === pick.dpid);
-                                const isSuggested = suggestedPickIds.has(pick.dpid);
-                                const origTeam = state.teams.find(t => t.id === pick.originalTid);
-                                const stepienBlocks = !isSelected && stepienBlockedA.has(pick.dpid);
-                                const disabled = !canClickAssets || stepienBlocks;
-                                return (
-                                    <button
-                                        key={pick.dpid}
-                                        disabled={disabled}
-                                        title={stepienBlocks ? 'Stepien Rule — would leave this team with no 1st in two straight future drafts.' : undefined}
-                                        onClick={() => isSelected ? setTeamAPicks(teamAPicks.filter(p => p.dpid !== pick.dpid)) : setTeamAPicks([...teamAPicks, pick])}
-                                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all whitespace-nowrap flex-shrink-0 ${
-                                          stepienBlocks ? 'bg-slate-950/60 border-slate-800/60 opacity-40 grayscale cursor-not-allowed'
-                                            : isSelected ? 'bg-blue-600/10 border-blue-500/50'
-                                            : isSuggested ? 'bg-amber-500/10 border-amber-500/50 ring-1 ring-amber-500/30'
-                                            : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
-                                        }`}
-                                    >
-                                        <div className="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center p-2 shadow-inner">
-                                            <img src={origTeam?.logoUrl} alt="" className="w-full h-full object-contain" />
+                    <div className="p-4 space-y-2">
+                        {teamAPicksAvailable.map(pick => {
+                            const isSelected = teamAPicks.some(p => p.dpid === pick.dpid);
+                            const isSuggested = suggestedPickIds.has(pick.dpid);
+                            const origTeam = state.teams.find(t => t.id === pick.originalTid);
+                            const stepienBlocks = !isSelected && stepienBlockedA.has(pick.dpid);
+                            const disabled = !canClickAssets || stepienBlocks;
+                            return (
+                                <button
+                                    key={pick.dpid}
+                                    disabled={disabled}
+                                    title={stepienBlocks ? 'Stepien Rule — would leave this team with no 1st in two straight future drafts.' : undefined}
+                                    onClick={() => isSelected ? setTeamAPicks(teamAPicks.filter(p => p.dpid !== pick.dpid)) : setTeamAPicks([...teamAPicks, pick])}
+                                    className={`w-full flex items-center gap-4 p-3 rounded-xl border-2 transition-all ${
+                                      stepienBlocks ? 'bg-slate-950/60 border-slate-800/60 opacity-40 grayscale cursor-not-allowed'
+                                        : isSelected ? 'bg-blue-600/10 border-blue-500/50'
+                                        : isSuggested ? 'bg-amber-500/10 border-amber-500/50 ring-1 ring-amber-500/30'
+                                        : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
+                                    }`}
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center p-2 shadow-inner flex-shrink-0">
+                                        <img src={origTeam?.logoUrl} alt="" className="w-full h-full object-contain" />
+                                    </div>
+                                    <div className="flex-1 text-left min-w-0">
+                                        <div className="text-sm font-black text-white uppercase tracking-tight">{formatPickLabel(pick, currentYearForEval, lotterySlotByTid, false).toUpperCase()}</div>
+                                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                          {stepienBlocks ? <span className="text-rose-400">Stepien Rule</span> : <>Via {origTeam?.name}</>}
                                         </div>
-                                        <div className="text-center">
-                                            <div className="text-xs font-black text-white uppercase tracking-tight">{formatPickLabel(pick, currentYearForEval, lotterySlotByTid, false).toUpperCase()}</div>
-                                            <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">
-                                              {stepienBlocks ? <span className="text-rose-400">Stepien</span> : <>{origTeam?.abbrev}</>}
-                                            </div>
-                                        </div>
-                                        {isSelected && <div className="w-2 h-2 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" />}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                                    </div>
+                                    {isSelected && <div className="w-3 h-3 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" />}
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
             </div>
@@ -675,13 +695,15 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                     <ChevronUp size={14} className="opacity-30" />
                 </div>
                 {(teamBPlayers.length > 0 || teamBPicks.length > 0) && (
-                    <div className="px-4 pb-4 flex flex-wrap gap-2">
-                        {teamBPlayers.map(p => (
-                            <OutgoingPill key={p.internalId} player={p} onRemove={() => setTeamBPlayers(teamBPlayers.filter(x => x.internalId !== p.internalId))} />
-                        ))}
-                        {teamBPicks.map(pk => (
-                            <OutgoingPickPill key={pk.dpid} pick={pk} teams={state.teams} currentYear={currentYearForEval} lotterySlotByTid={lotterySlotByTid} onRemove={() => setTeamBPicks(teamBPicks.filter(x => x.dpid !== pk.dpid))} />
-                        ))}
+                    <div className="px-4 pb-4 overflow-x-auto custom-scrollbar">
+                        <div className="flex gap-2 min-w-min">
+                            {teamBPlayers.map(p => (
+                                <OutgoingPill key={p.internalId} player={p} onRemove={() => setTeamBPlayers(teamBPlayers.filter(x => x.internalId !== p.internalId))} />
+                            ))}
+                            {teamBPicks.map(pk => (
+                                <OutgoingPickPill key={pk.dpid} pick={pk} teams={state.teams} currentYear={currentYearForEval} lotterySlotByTid={lotterySlotByTid} onRemove={() => setTeamBPicks(teamBPicks.filter(x => x.dpid !== pk.dpid))} />
+                            ))}
+                        </div>
                     </div>
                 )}
                 {teamBId !== null && (
@@ -713,11 +735,16 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
 
             <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#1a1a1a]">
                 {activeTabB === 'roster' ? (
-                    displayTeamBRoster.map(player => (
+                    displayTeamBRoster.map(player => {
+                      const isSel = teamBPlayers.some(x => x.internalId === player.internalId);
+                      const walking = !isSel && !(player as any).isIncoming
+                        && (isWalkingExpiring(player, state.leagueStats?.year ?? new Date().getFullYear(), postDeadlinePreFA)
+                          || isRecentlySignedLocked(player, rslMs.faStart, rslMs.nextFaStart, rslMs.current));
+                      return (
                         <PlayerRow
                             key={player.internalId}
                             player={player}
-                            isSelected={teamBPlayers.some(x => x.internalId === player.internalId)}
+                            isSelected={isSel}
                             onToggle={() => {
                               if ((player as any).isIncoming) {
                                 setTeamAPlayers(teamAPlayers.filter(x => x.internalId !== player.internalId));
@@ -729,44 +756,43 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                             }}
                             formatContract={formatContract}
                             teams={state.teams}
-                            disabled={!canClickAssets}
+                            disabled={!canClickAssets || walking}
                             currentSeason={state.leagueStats.year}
                         />
-                    ))
+                      );
+                    })
                 ) : (
-                    <div className="overflow-x-auto overflow-y-hidden custom-scrollbar">
-                        <div className="p-4 flex gap-2 min-w-min">
-                            {teamBPicksAvailable.map(pick => {
-                                const isSelected = teamBPicks.some(p => p.dpid === pick.dpid);
-                                const origTeam = state.teams.find(t => t.id === pick.originalTid);
-                                const stepienBlocks = !isSelected && stepienBlockedB.has(pick.dpid);
-                                const disabled = !canClickAssets || stepienBlocks;
-                                return (
-                                    <button
-                                        key={pick.dpid}
-                                        disabled={disabled}
-                                        title={stepienBlocks ? 'Stepien Rule — would leave this team with no 1st in two straight future drafts.' : undefined}
-                                        onClick={() => isSelected ? setTeamBPicks(teamBPicks.filter(p => p.dpid !== pick.dpid)) : setTeamBPicks([...teamBPicks, pick])}
-                                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all whitespace-nowrap flex-shrink-0 ${
-                                          stepienBlocks ? 'bg-slate-950/60 border-slate-800/60 opacity-40 grayscale cursor-not-allowed'
-                                            : isSelected ? 'bg-blue-600/10 border-blue-500/50'
-                                            : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
-                                        }`}
-                                    >
-                                        <div className="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center p-2 shadow-inner">
-                                            <img src={origTeam?.logoUrl} alt="" className="w-full h-full object-contain" />
+                    <div className="p-4 space-y-2">
+                        {teamBPicksAvailable.map(pick => {
+                            const isSelected = teamBPicks.some(p => p.dpid === pick.dpid);
+                            const origTeam = state.teams.find(t => t.id === pick.originalTid);
+                            const stepienBlocks = !isSelected && stepienBlockedB.has(pick.dpid);
+                            const disabled = !canClickAssets || stepienBlocks;
+                            return (
+                                <button
+                                    key={pick.dpid}
+                                    disabled={disabled}
+                                    title={stepienBlocks ? 'Stepien Rule — would leave this team with no 1st in two straight future drafts.' : undefined}
+                                    onClick={() => isSelected ? setTeamBPicks(teamBPicks.filter(p => p.dpid !== pick.dpid)) : setTeamBPicks([...teamBPicks, pick])}
+                                    className={`w-full flex items-center gap-4 p-3 rounded-xl border-2 transition-all ${
+                                      stepienBlocks ? 'bg-slate-950/60 border-slate-800/60 opacity-40 grayscale cursor-not-allowed'
+                                        : isSelected ? 'bg-blue-600/10 border-blue-500/50'
+                                        : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
+                                    }`}
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center p-2 shadow-inner flex-shrink-0">
+                                        <img src={origTeam?.logoUrl} alt="" className="w-full h-full object-contain" />
+                                    </div>
+                                    <div className="flex-1 text-left min-w-0">
+                                        <div className="text-sm font-black text-white uppercase tracking-tight">{formatPickLabel(pick, currentYearForEval, lotterySlotByTid, false).toUpperCase()}</div>
+                                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                          {stepienBlocks ? <span className="text-rose-400">Stepien Rule</span> : <>Via {origTeam?.name}</>}
                                         </div>
-                                        <div className="text-center">
-                                            <div className="text-xs font-black text-white uppercase tracking-tight">{formatPickLabel(pick, currentYearForEval, lotterySlotByTid, false).toUpperCase()}</div>
-                                            <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">
-                                              {stepienBlocks ? <span className="text-rose-400">Stepien</span> : <>{origTeam?.abbrev}</>}
-                                            </div>
-                                        </div>
-                                        {isSelected && <div className="w-2 h-2 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" />}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                                    </div>
+                                    {isSelected && <div className="w-3 h-3 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" />}
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
             </div>

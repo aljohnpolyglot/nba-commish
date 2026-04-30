@@ -10,7 +10,7 @@ import {
 import { useGame } from '../../store/GameContext';
 import { Tab } from '../../types';
 import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
-import { getTradeDeadlineDate, getFreeAgencyStartDate, getOpeningNightDate, toISODateString } from '../../utils/dateUtils';
+import { getTradeDeadlineDate, getCurrentOffseasonFAStart, getOpeningNightDate, getDraftDate, toISODateString } from '../../utils/dateUtils';
 
 interface NavigationMenuProps {
   currentView: Tab;
@@ -39,13 +39,17 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
   const currentDateNorm = normalizeDate(state.date ?? '');
   const seasonYear = state.leagueStats?.year ?? 2026;
   const tradeDeadline = toISODateString(getTradeDeadlineDate(seasonYear, state.leagueStats));
-  const faStart = toISODateString(getFreeAgencyStartDate(seasonYear, state.leagueStats));
-  const faEnd = `${seasonYear}-10-01`; // dead period ends at training camp
+  const faStartDate = getCurrentOffseasonFAStart(`${currentDateNorm}T00:00:00Z`, state.leagueStats);
+  const faStart = toISODateString(faStartDate);
+  const faEnd = `${faStartDate.getUTCFullYear()}-10-01`; // dead period ends at training camp
   const openingNight = toISODateString(getOpeningNightDate(seasonYear));
 
-  // Trades reopen once the NBA Finals end (bracketComplete) — covers draft day, offseason, etc.
+  // Trades reopen once the NBA Finals end (bracketComplete) OR once it's draft day —
+  // dynamic draft dates can fall before Game 7, and draft-night trades are real.
   const finalsOver = !!(state.playoffs?.bracketComplete);
-  const isPastTradeDeadline = isGM && !finalsOver && currentDateNorm > tradeDeadline && currentDateNorm < faStart;
+  const draftDate = toISODateString(getDraftDate(seasonYear, state.leagueStats));
+  const isDraftDayOrLater = currentDateNorm >= draftDate;
+  const isPastTradeDeadline = isGM && !finalsOver && !isDraftDayOrLater && currentDateNorm > tradeDeadline && currentDateNorm < faStart;
   const isFreeAgencyPeriod = currentDateNorm >= faStart && currentDateNorm < faEnd;
   // Year-round regular-season FA: between opening night and next FA start
   const regularSeasonFAEnabled = state.leagueStats?.regularSeasonFAEnabled ?? true;

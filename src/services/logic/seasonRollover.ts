@@ -31,6 +31,7 @@ import { ensureDraftClasses } from '../draftClassFiller';
 import { potEstimator } from '../genDraftPlayers';
 import { retireExternalLeaguePlayers, repopulateExternalLeagues, enforceExternalMinRoster } from '../externalLeagueSustainer';
 import { runExternalFreeAgency } from '../externalFreeAgency';
+import { getRolloverDate, toISODateString } from '../../utils/dateUtils';
 
 /** Fired when the sim has just crossed into a new offseason (Oct 1, new year).
  *  Returns the rolled-over GameState patch. Does NOT mutate input. */
@@ -1021,7 +1022,6 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
  *  after firing, leagueStats.year becomes nextYear so this won't re-fire. */
 export function shouldFireRollover(state: GameState, dateNorm: string): boolean {
   const year = state.leagueStats.year;
-  // The season runs Oct (year-1) → June (year). Rollover on June 30 of `year`.
-  const rolloverDate = `${year}-06-30`;
+  const rolloverDate = toISODateString(getRolloverDate(year, state.leagueStats as any, state.schedule as any));
   return dateNorm >= rolloverDate;
 }

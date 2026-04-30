@@ -46,6 +46,8 @@ export interface DraftScoutingModalProps {
   ranks?: { espn?: number; noCeilings?: number; consensus?: number };
   /** Team logo if the prospect has been mock-drafted to a team. */
   teamLogoUrl?: string;
+  /** Pre-computed (deduped) comparisons — skips live recompute when provided. */
+  preComputedComps?: ReturnType<typeof getComparisonsWithSimilarity>;
   /** Optional handler — clicking a pro-comparison card jumps to that player's bio. */
   onViewPlayerBio?: (player: NBAPlayer) => void;
   /** When provided, a "Confirm Pick" footer bar is shown (draft simulator). */
@@ -159,7 +161,7 @@ function HybridRadarChart({
 export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
   player, onClose, classProspects, activePlayers, percentilesByPos,
   classAverages, draftYear, gistData, ranks, teamLogoUrl, onViewPlayerBio,
-  onConfirmPick, pickLabel,
+  onConfirmPick, pickLabel, preComputedComps,
 }) => {
   const [tab, setTab] = useState<Tab>('overview');
 
@@ -179,9 +181,10 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
   }, [player, draftYear]);
 
   const comparisons = useMemo(() => {
+    if (preComputedComps) return preComputedComps;
     if (!player) return [];
     return getComparisonsWithSimilarity(player, activePlayers, 3);
-  }, [player, activePlayers]);
+  }, [player, activePlayers, preComputedComps]);
 
   const cohort = player ? scoutPosBucket(player.pos) : 'Class';
   const cohortMaps = percentilesByPos.get(cohort);

@@ -168,14 +168,23 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
     });
 
     const reversed = logs.reverse();
-    // Regular season games get numbered ranks; playoff/preseason/DNP/Cup-Final get null
-    // (Cup group/QF/SF count as RS — only the Final is excluded.)
-    const rsTotal = reversed.filter(l => !l.isPreseason && !l.isPlayoff && !l.isPlayIn && !l.isDNP && !l.isCupFinal).length;
-    let rsRank = rsTotal;
-    return reversed.map(l => ({
-      ...l,
-      rank: (l.isPreseason || l.isPlayoff || l.isPlayIn || l.isDNP || l.isCupFinal) ? null : rsRank--,
-    }));
+    // Number RS games 1…N within each season independently (most-recent-first ordering).
+    const seasonRSTotals = new Map<number, number>();
+    reversed.forEach(l => {
+      if (l.isPreseason || l.isPlayoff || l.isPlayIn || l.isDNP || l.isCupFinal) return;
+      const d = new Date(l.date); const yr = d.getFullYear();
+      const sy = d.getMonth() < 9 ? yr : yr + 1;
+      seasonRSTotals.set(sy, (seasonRSTotals.get(sy) ?? 0) + 1);
+    });
+    const seasonRSCounters = new Map(seasonRSTotals);
+    return reversed.map(l => {
+      if (l.isPreseason || l.isPlayoff || l.isPlayIn || l.isDNP || l.isCupFinal) return { ...l, rank: null };
+      const d = new Date(l.date); const yr = d.getFullYear();
+      const sy = d.getMonth() < 9 ? yr : yr + 1;
+      const rank = seasonRSCounters.get(sy)!;
+      seasonRSCounters.set(sy, rank - 1);
+      return { ...l, rank };
+    });
   }, [state.boxScores, state.schedule, player.internalId, player.tid, player.injury, state.teams, openingNightCache]);
 
   const gameLogSeasons = useMemo(() => {

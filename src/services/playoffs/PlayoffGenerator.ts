@@ -6,7 +6,8 @@ export class PlayoffGenerator {
   static generateBracket(
     teams: NBATeam[],
     season: number,
-    numGamesPerRound: number[] = [7, 7, 7, 7]
+    numGamesPerRound: number[] = [7, 7, 7, 7],
+    playInEnabled = true
   ): PlayoffBracket {
     const east = [...teams]
       .filter(t => t.conference === 'East')
@@ -17,6 +18,23 @@ export class PlayoffGenerator {
 
     const eastTop6 = east.slice(0, 6).map(t => t.id);
     const westTop6 = west.slice(0, 6).map(t => t.id);
+
+    if (!playInEnabled) {
+      const east8 = east.slice(0, 8).map(t => t.id);
+      const west8 = west.slice(0, 8).map(t => t.id);
+      return {
+        season,
+        eastTop6,
+        westTop6,
+        playInGames: [],
+        playInComplete: true,
+        series: this.buildRound1(east8, west8, numGamesPerRound[0] ?? 7),
+        currentRound: 1,
+        gamesInjected: true,
+        round1Injected: false,
+        bracketComplete: false,
+      };
+    }
 
     const playInGames: PlayInGame[] = [];
     for (const conf of ['East', 'West'] as const) {
@@ -184,17 +202,8 @@ export class PlayoffGenerator {
     let seriesOffset = 0;
     for (const s of series) {
       const maxGames = s.gamesNeeded;
-      // 2-2-1-1-1 home/away: higher seed home for games 1,2,5,7; lower for 3,4,6
-      const homePattern = [
-        s.higherSeedTid, s.higherSeedTid,
-        s.lowerSeedTid, s.lowerSeedTid,
-        s.higherSeedTid, s.lowerSeedTid, s.higherSeedTid
-      ];
-      const awayPattern = [
-        s.lowerSeedTid, s.lowerSeedTid,
-        s.higherSeedTid, s.higherSeedTid,
-        s.lowerSeedTid, s.higherSeedTid, s.lowerSeedTid
-      ];
+      const isHigherSeedHome = (gameIndex: number) =>
+        gameIndex < 2 || (gameIndex >= 4 && gameIndex % 2 === 0);
 
       const seriesStart = new Date(startDate);
       // Slight stagger: alternate series start 1 day apart to spread the schedule
@@ -207,8 +216,8 @@ export class PlayoffGenerator {
       for (let g = 0; g < maxGames; g++) {
         newGames.push({
           gid,
-          homeTid: homePattern[g],
-          awayTid: awayPattern[g],
+          homeTid: isHigherSeedHome(g) ? s.higherSeedTid : s.lowerSeedTid,
+          awayTid: isHigherSeedHome(g) ? s.lowerSeedTid : s.higherSeedTid,
           homeScore: 0,
           awayScore: 0,
           played: false,

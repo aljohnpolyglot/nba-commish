@@ -6,7 +6,7 @@ import { generatePaychecks } from './financialService';
 import { SocialEngine } from '../social/SocialEngine';
 import { SettingsManager } from '../SettingsManager';
 import { normalizeDate, calculateSocialEngagement } from '../../utils/helpers';
-import { getDraftDate, getDraftLotteryDate, toISODateString } from '../../utils/dateUtils';
+import { getDraftDate, getDraftLotteryDate, getRolloverDate, toISODateString } from '../../utils/dateUtils';
 import { buildShamsPost } from '../social/templates/charania';
 import { findShamsPhoto } from '../social/charaniaphotos';
 import { generateLazySimNews } from '../news/lazySimNewsGenerator';
@@ -512,6 +512,7 @@ export const runLazySim = async (
           report();
           try {
             const patch = await event.resolver(state);
+            if ((patch as any)?._deferred) continue; // resolver asked to retry next iteration
             if (patch && Object.keys(patch).length > 0) {
               state = { ...state, ...patch };
             }
@@ -533,7 +534,7 @@ export const runLazySim = async (
       currentPhase = getPhaseLabel(currentNorm, seasonYear);
       report();
 
-      // Season rollover — fires once when date crosses June 30 of the current season year.
+      // Season rollover — fires once when date crosses the computed rollover date.
       // Must run in the lazy sim loop (not just simulationHandler) so that contracts expire,
       // the year advances, and schedule_generation fires for the new season.
       if (shouldFireRollover(state, currentNorm)) {
@@ -550,9 +551,10 @@ export const runLazySim = async (
       }
 
       // Determine batch size (don't overshoot target)
-      // Use batch=1 near Jun 30 to ensure rollover fires BEFORE any July games sim
-      const rolloverDate = `${state.leagueStats.year}-06-30`;
-      const nearRollover = currentNorm >= `${state.leagueStats.year}-06-25` && currentNorm < rolloverDate;
+      // Use batch=1 near rollover so the league flips before any next-season games sim.
+      const rolloverDate = toISODateString(getRolloverDate(state.leagueStats.year, state.leagueStats as any, state.schedule as any));
+      const nearRolloverStart = toISODateString(new Date(getRolloverDate(state.leagueStats.year, state.leagueStats as any, state.schedule as any).getTime() - 5 * 86_400_000));
+      const nearRollover = currentNorm >= nearRolloverStart && currentNorm < rolloverDate;
       const remaining = daysBetween(currentNorm, targetNorm);
       const effectiveBatch = nearRollover ? 1 : BATCH_SIZE;
       // remaining=0 when currentNorm==targetNorm — still need 1 iteration to sim today's games

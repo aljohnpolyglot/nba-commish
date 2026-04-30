@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, Dices, RefreshCw, Save, Shuffle, UserPlus } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
@@ -24,6 +24,7 @@ import {
   getArchetypeMatches,
   heightToRating,
 } from '../../../services/playerCreator';
+import { detectPositionFromRatings, positionBucket } from '../../../utils/positionUtils';
 
 type CreatorPhase = 'identity' | 'build' | 'ratings' | 'contract' | 'position' | 'review';
 
@@ -129,12 +130,17 @@ function weightedPick(obj: Record<string, number> | undefined, fallback: string)
 }
 
 function normalizeNameCountry(country: string): string {
+  // Only fix formatting mismatches — ZenGM names.json has 124 countries directly,
+  // so never reroute a real country to a proxy here.
   const aliases: Record<string, string> = {
     'United States': 'USA',
     'U.S.A.': 'USA',
     'United-Kingdom': 'United Kingdom',
-    'Czech Republic': 'Czech_Republic',
+    'Czech Republic': 'Czech Republic', // ZenGM uses space, not underscore
     'Democratic Republic of the Congo': 'Congo',
+    'DR Congo': 'Congo',
+    'Serbia-Montenegro': 'Serbia',
+    'Yugoslavia': 'Serbia',
   };
   return aliases[country] ?? country;
 }
@@ -204,13 +210,6 @@ function ratingColor(value: number): string {
   if (value >= 70) return 'text-amber-400';
   if (value >= 55) return 'text-orange-400';
   return 'text-rose-400';
-}
-
-function detectPositionFromArchetype(archetype: string): string {
-  for (const [pos, archetypes] of Object.entries(ARCHETYPES_BY_POSITION)) {
-    if (archetypes.includes(archetype)) return pos;
-  }
-  return 'SF';
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -309,8 +308,23 @@ export const PlayerCreatorView: React.FC = () => {
     weightLbs: form.weightLbs,
     age: form.age,
   }), [effectiveRatings, form.pos, form.heightIn, form.weightLbs, form.age]);
-  const archetypeMatches = useMemo(() => getArchetypeMatches(effectiveRatings, 4), [effectiveRatings]);
+  const detectedPos = useMemo(
+    () => detectPositionFromRatings(effectiveRatings),
+    [effectiveRatings],
+  );
+  const archetypeMatches = useMemo(() => {
+    const bucket = positionBucket(detectedPos);
+    const validArchetypes = new Set(ARCHETYPES_BY_POSITION[bucket] ?? []);
+    const all = getArchetypeMatches(effectiveRatings, 20);
+    const filtered = all.filter(m => validArchetypes.has(m.name)).slice(0, 4);
+    return filtered.length ? filtered : all.slice(0, 4);
+  }, [effectiveRatings, detectedPos]);
   const topMatch = archetypeMatches[0]?.name ?? form.archetype;
+
+  // Keep form.pos in sync with the regression — user can override in Phase 5.
+  useEffect(() => {
+    setForm(prev => ({ ...prev, pos: detectedPos }));
+  }, [detectedPos]);
 
   const teamName = useMemo(() => {
     if (form.assignment === 'freeAgent') return 'Free Agent';
@@ -787,10 +801,10 @@ export const PlayerCreatorView: React.FC = () => {
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className="text-base font-black text-white">{topMatch}</span>
                     <span className="text-slate-500">→</span>
-                    <span className="text-sky-300 font-black text-lg">{detectPositionFromArchetype(topMatch)}</span>
+                    <span className="text-sky-300 font-black text-lg">{detectedPos}</span>
                     <button
                       type="button"
-                      onClick={() => set('pos', detectPositionFromArchetype(topMatch))}
+                      onClick={() => set('pos', detectedPos)}
                       className="px-3 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 text-[10px] font-black uppercase tracking-widest"
                     >
                       Use This
@@ -812,7 +826,7 @@ export const PlayerCreatorView: React.FC = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="rounded-2xl bg-slate-950/60 border border-slate-800 p-3"><p className="text-[9px] text-slate-500 uppercase font-black">Name</p><p className="text-sm font-black text-white">{form.firstName} {form.lastName}</p></div>
                   <div className="rounded-2xl bg-slate-950/60 border border-slate-800 p-3"><p className="text-[9px] text-slate-500 uppercase font-black">Team</p><p className="text-sm font-black text-white">{teamName}</p></div>
-                  <div className="rounded-2xl bg-slate-950/60 border border-slate-800 p-3"><p className="text-[9px] text-slate-500 uppercase font-black">Build</p><p className="text-sm font-black text-white">{form.pos} {formatInches(form.heightIn)} / WS {formatInches(form.wingspanIn)}</p></div>
+                  <div className="rounded-2xl bg-slate-950/60 border border-slate-800 p-3"><p className="text-[9px] text-slate-500 uppercase font-black">Build</p><p className="text-sm font-black text-white">{form.pos} · {formatInches(form.heightIn)}</p></div>
                   <div className="rounded-2xl bg-slate-950/60 border border-slate-800 p-3"><p className="text-[9px] text-slate-500 uppercase font-black">Auto Type</p><p className="text-sm font-black text-white">{topMatch}</p></div>
                 </div>
                 <button type="button" onClick={handleCreate} className="w-full px-5 py-3 rounded-2xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2">
@@ -858,7 +872,7 @@ export const PlayerCreatorView: React.FC = () => {
                 <input ref={photoInputRef} type="file" accept="image/*" capture="user" onChange={handlePhotoUpload} className="hidden" />
                 <div className="min-w-0 flex-1">
                   <h3 className="text-2xl font-black text-white uppercase tracking-tight truncate">{form.firstName} {form.lastName}</h3>
-                  <p className="text-sm text-slate-400">{form.pos} · {formatInches(form.heightIn)} · {form.weightLbs} lbs · WS {formatInches(form.wingspanIn)}</p>
+                  <p className="text-sm text-slate-400">{form.pos} · {formatInches(form.heightIn)} · {form.weightLbs} lbs</p>
                   <p className="text-xs text-sky-300 font-bold">{topMatch} · {teamName}</p>
                 </div>
                 <div className="text-center rounded-3xl border border-sky-400/40 bg-sky-400/10 px-4 py-3">

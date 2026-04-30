@@ -69,18 +69,7 @@ export const simulateDayGames = async (state: GameState, watchedGameResult?: any
         state.headToHead,
         state.leagueStats.otl,
         state.leagueStats.year,
-        {
-            quarterLength:                 state.leagueStats.quarterLength,
-            shotClockValue:                state.leagueStats.shotClockValue,
-            shotClockEnabled:              state.leagueStats.shotClockEnabled,
-            threePointLineEnabled:         state.leagueStats.threePointLineEnabled,
-            defensiveThreeSecondEnabled:   state.leagueStats.defensiveThreeSecondEnabled,
-            offensiveThreeSecondEnabled:   state.leagueStats.offensiveThreeSecondEnabled,
-            handcheckingEnabled:           state.leagueStats.handcheckingEnabled,
-            goaltendingEnabled:            state.leagueStats.goaltendingEnabled,
-            chargingEnabled:               state.leagueStats.chargingEnabled,
-            noDribbleRule:                 state.leagueStats.noDribbleRule,
-        },
+        state.leagueStats,
         onGame
     );
 

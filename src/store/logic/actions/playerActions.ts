@@ -107,8 +107,17 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
         const hasOption = option === 'PLAYER' || option === 'TEAM';
         const totalSeasons = hasOption ? totalYears + 1 : totalYears;
         // BBGM stores contract.amount in thousands of USD; also use the final guaranteed year as exp.
-        const contractAmountThousands = Math.round(baseSalaryUSD / 1_000);
+        const newDealAmountThousands = Math.round(baseSalaryUSD / 1_000);
         const expYear = signYear + totalSeasons - 1;
+        // Re-signs start NEXT season — keep the existing current-season salary in
+        // contract.amount so trade engines (CBA matching, TV) don't price the
+        // player off a deal he isn't earning yet. Falls through to the new amount
+        // when the player has no live current-year salary (offseason FA-status
+        // re-sign, fresh signing, etc.).
+        const existingAmountThousands = Number(existingPlayerForMerge?.contract?.amount) || 0;
+        const contractAmountThousands = isResignAction && existingAmountThousands > 0
+            ? existingAmountThousands
+            : newDealAmountThousands;
         const negotiatedContractYears = Array.from({ length: totalSeasons }).map((_, i) => {
             const seasonYear = signYear + i;
             const escalated = Math.round(baseSalaryUSD * Math.pow(1.05, i));
@@ -415,12 +424,18 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
         const remaining = allContractYears
             .filter(cy => {
                 const yr = parseInt(cy.season.split('-')[0], 10) + 1;
-                return yr >= currentSeasonYear && cy.option !== 'team' && cy.option !== 'player';
+                const option = String(cy.option ?? '').toLowerCase();
+                return yr >= currentSeasonYear && option !== 'team' && option !== 'player';
             })
             // Drop sub-floor years — NG/partial-guaranteed tails shouldn't generate dead money.
             .filter(cy => (cy.guaranteed ?? 0) >= DEAD_MONEY_FLOOR_USD)
             .map(cy => ({ season: cy.season, amountUSD: cy.guaranteed }));
-        if (remaining.length === 0 && playerRecord.contract?.amount) {
+        const signedAt = playerRecord.signedDate ? new Date(playerRecord.signedDate).getTime() : NaN;
+        const waivedAt = stateWithSim.date ? new Date(stateWithSim.date).getTime() : NaN;
+        const freshSignedMissingYears = Number.isFinite(signedAt) && Number.isFinite(waivedAt)
+            && (waivedAt - signedAt) >= 0
+            && (waivedAt - signedAt) / 86_400_000 < 120;
+        if (remaining.length === 0 && playerRecord.contract?.amount && !freshSignedMissingYears) {
             // Fallback: legacy player without contractYears — use flat contract.amount × years to exp.
             const exp = playerRecord.contract.exp ?? currentSeasonYear;
             const amountUSD = (playerRecord.contract.amount || 0) * 1_000;
@@ -443,7 +458,7 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
                 playerName: playerRecord.name,
                 remainingByYear: finalSchedule,
                 stretched: wantStretch,
-                waivedDate: stateWithSim.date ?? today.toISOString().slice(0, 10),
+                waivedDate: stateWithSim.date ?? new Date().toISOString().slice(0, 10),
                 originalExpYear: playerRecord.contract?.exp ?? currentSeasonYear,
             };
             updatedTeams = stateWithSim.teams.map(t =>

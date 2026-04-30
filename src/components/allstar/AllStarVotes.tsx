@@ -6,9 +6,10 @@ import { getPlayerImage } from '../central/view/bioCache';
 
 interface AllStarVotesProps {
   allStar: any;
+  ownTid?: number | null;
 }
 
-export const AllStarVotes: React.FC<AllStarVotesProps> = ({ allStar }) => {
+export const AllStarVotes: React.FC<AllStarVotesProps> = ({ allStar, ownTid }) => {
   const { state } = useGame();
   const teams = state.teams;
 
@@ -41,9 +42,15 @@ export const AllStarVotes: React.FC<AllStarVotesProps> = ({ allStar }) => {
           const team = teams.find(t => t.abbrev === v.teamAbbrev);
           const teamId = v.teamNbaId || (team ? extractTeamId(team.logoUrl, v.teamAbbrev) : null) || 1610612737;
           const teamColor = team?.colors?.[0] || '#64748b';
+          const fullPlayer = state.players?.find((p: any) => p.internalId === v.playerId);
+          const isOwn = ownTid !== null && ownTid !== undefined && fullPlayer?.tid === ownTid;
 
           return (
-            <div key={v.playerId} className="flex items-center gap-3 group">
+            <div key={v.playerId} className={`flex items-center gap-3 group px-2.5 py-1.5 rounded-lg transition-colors ${
+              isOwn
+                ? 'bg-indigo-500/10 border border-indigo-500/30'
+                : 'border border-transparent'
+            }`}>
               <span className="text-[10px] text-slate-500 w-4 text-right font-mono shrink-0">
                 {i + 1}
               </span>

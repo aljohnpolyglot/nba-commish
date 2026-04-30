@@ -2,6 +2,124 @@
 
 Historical bug fixes, session notes, and architecture discoveries.
 
+## Session 39 (Apr 30, 2026) — Commissioner settings to simulator wiring audit
+
+**Commissioner game-rule settings now reach the daily simulator** — `simulationRunner.ts` now passes the full `leagueStats` object through `simulationService.ts` into `GameSimulator.simulateDay` instead of a small hand-picked subset. This unblocks existing engine reads for timing violations, court geometry, foul toggles, overtime, and scoring/court settings.
+
+**Simulator rule knobs expanded** — `GameSimulator/engine.ts` maps low-risk commissioner settings into existing stat-generation knobs:
+- Shot clock enabled/value/offensive-rebound reset, backcourt/inbound/back-to-basket timers, 3-second rules, illegal zone, out of bounds, kicked ball, traveling, double-dribble, and backcourt violations now affect pace, turnovers, post/rim mix, and 3PA mix.
+- 3PT line enabled/distance, FT distance, rim height, ball weight, court length/width/key width, goaltending, and basket interference now affect shot mix, 3PT accuracy, FT accuracy, efficiency, blocks, pace, and turnovers.
+- Foul-out limit, team foul penalty, handchecking, charging, illegal screens, clear path, loose-ball, and over-the-back toggles now feed foul/FT/turnover/rim-rate multipliers.
+- Standard overtime enabled/duration/max-overtimes now affects OT scoring and player-minute budgets via `SimulatorKnobs`, `StatGenerator/initial.ts`, `StatGenerator/coordinated.ts`, and `MinutesPlayedService.ts`.
+
+**Commissioner settings save path fixed** — `useRulesState.ts`, `FormatTab.tsx`, and `TabsContent.tsx` now wire `customScheduleEnabled`, `gamesPerSeason`, `divisionGames`, and `conferenceGames` through dirty-checking, save payloads, reset, returned rules state, and the Format tab UI. This intentionally stops short of rewriting schedule generation because the current scheduler interprets division/conference counts differently from the UI labels.
+
+**Rule comments corrected** — stale `TODO(sim)` notes in the Game Rules UI were updated so wired settings no longer claim to be flavor-only. Still stored-only by design in this pass: target-score game format, non-4-quarter games, alternate OT formats/tiebreakers, 4PT/heave/custom point-value stat schema, possession ceremony/pattern, multiball, max players on court, substitution caps, and event-level ejection/card handling.
+
+**Verification:** `npm run build` passes. `npm run lint` still fails on pre-existing repo-wide TypeScript debt outside this pass, including action-type union mismatches, All-Star minigame exported types, TeamOffice K2 typing, social context methods, TheThrone test imports, and `RotationService` duplicate/export path issues.
+
+## Session 38 (Apr 30, 2026) — FA year convention, global sim gates, dynamic rollover, playoff toggle hardening
+
+**FA calendar convention completed** — chose Option A from the TODO handoff. `getFreeAgencyStartDate(seasonYear)` stays a raw calendar-year helper; current-date UI/gating code now uses `getCurrentOffseasonFAStart(currentDate)` / `getCurrentOffseasonFAMoratoriumEnd(currentDate)` from `utils/dateUtils.ts`. Updated `NavigationMenu.tsx`, `TradeSummaryModal.tsx`, `SigningModal.tsx`, `EconomyTab.tsx`, `CalendarView.tsx`, and `PlayButton.tsx` so year-2+ July free agency no longer points one year into the future. Captured the rule in `memory/project_fa_year_convention_bug.md`.
+
+**PlayButton phase + global gates fixed** — `shared/PlayButton.tsx` no longer short-circuits post-rollover July/Sep saves into preseason before checking FA. The free-agency menu now targets this season's camp/opening night without `+1` workarounds, hides play-in jumps when play-in is disabled, and wraps every global sim action in both `useRosterComplianceGate` and `useDraftEventGate`.
+
+**Dead-money fallback hardened** — `store/logic/actions/playerActions.ts`, `store/logic/turn/simulationHandler.ts`, and `services/AIFreeAgentHandler.ts` now lowercase option markers before filtering guarantees and skip the legacy flat `contract.amount × years` fallback for freshly signed players whose `contractYears` are missing. This prevents the Huerter-style `$18M dead money from a $5M deal` path while preserving legacy-player fallbacks.
+
+**Dynamic rollover date** — added `getRolloverDate(seasonYear, stats, schedule)` in `utils/dateUtils.ts`. `seasonRollover.ts`, `lazySimRunner.ts`, `PlayoffView.tsx`, `MainContent.tsx`, and `autoResolvers.ts` now use the computed date instead of assuming Jun 30, sliding rollover later when custom playoff schedules run past the default end date.
+
+**Commissioner toggle audit fixes landed:**
+
+| Area | Status |
+|---|---|
+| `playIn` | `PlayoffGenerator.generateBracket` accepts `playInEnabled`; `gameLogic.ts` and `simulationHandler.ts` pass `leagueStats.playIn !== false`; disabled play-in now builds Round 1 directly and the calendar/header stop advertising play-in. |
+| `numGamesPlayoffSeries` | Round 1 prebuild and later injections keep the configured game count; playoff home/away generation no longer falls off the old 7-game pattern for bo9/bo15-style values. |
+| Rollover after long playoffs | Rollover and draft-board windows now follow the last scheduled playoff/play-in date + buffer. |
+| Two-way limits | AI two-way promotion/trim paths honor `twoWayContractsEnabled === false` and `maxTwoWayPlayersPerTeam`. |
+| Draft event gate | Existing Session 37 gate remains global and now composes with the roster gate. |
+| Economy / FA toggles | The FA/moratorium/current-date surfaces now read the current offseason instead of stale `leagueStats.year`; post-deadline multi-year gating uses the same convention. |
+| Broad economy-pipeline simplification | Deferred beyond the targeted dead-money repair; no new broad refactor was needed for this pass. |
+
+**Files touched in Session 38:** `utils/dateUtils.ts`; `components/shared/PlayButton.tsx`; `components/sidebar/NavigationMenu.tsx`; `components/modals/TradeSummaryModal.tsx`; `components/modals/SigningModal/SigningModal.tsx`; `components/commissioner/rules/view/EconomyTab.tsx`; `components/schedule/view/components/CalendarView.tsx`; `services/logic/seasonRollover.ts`; `services/logic/lazySimRunner.ts`; `components/playoffs/PlayoffView.tsx`; `components/layout/MainContent.tsx`; `services/logic/autoResolvers.ts`; `services/playoffs/PlayoffGenerator.ts`; `services/playoffs/PlayoffAdvancer.ts`; `store/logic/turn/simulationHandler.ts`; `store/logic/gameLogic.ts`; `services/AIFreeAgentHandler.ts`; `store/logic/actions/playerActions.ts`; `TODO.md`; `memory/project_fa_year_convention_bug.md`.
+
+**Verification:** `npm run build` passes. `npm run lint` still fails on pre-existing TypeScript debt outside this handoff, including Actions action-type unions, All-Star minigame exported types, TheThrone missing imports/casing, social context methods, and existing GameContext/action-union mismatches.
+
+## Session 37 (Apr 30, 2026) — Minutes-weighted team strength + global lottery gate + nav polish + FA window calendar fix
+
+**Minutes-weighted team strength** — `calculateTeamStrengthWithMinutes` (`utils/playerRatings.ts`) reads `gameplanStore.minuteOverrides` so benching a star and overplaying bums actually tanks W/L (each player contributes `rating × (mins/240)` capped at 20%; star bonus scaled by `Math.min(1, starMins/30)`). Wired into `GameSimulator.engine.ts → _simulateGameOnce` via `resolveStrength` helper that falls back to OVR-based when no Gameplan exists. Tank-by-rotation now genuine; iron-man strat rewards.
+
+**Global lottery / draft gate** — `useDraftEventGate` was previously hooked only into `ScheduleView`'s local advance buttons, so any sim from the header `PlayButton` blew past lottery day silently. Wired the gate into `shared/PlayButton.tsx` so every entry point now pops the Watch / Auto-sim / Dismiss modal. Renamed `View Lottery` / `View draft lottery` / `View draft` → `Watch Lottery` / `Watch lottery` / `Watch draft` everywhere for consistency with the existing `Watch Draft` CTA.
+
+**PlayButton menu additions:**
+- `'Through preseason'` in **free-agency phase** — skips past camp + every preseason game and lands on opening night.
+- `'Through regular season'` in **regular-season phase** — uses `simThrough(lastRegSeasonStr)` from `state.schedule`, drift-free in years 2+ (independent of the play-in-day fallback which can legitimately be +3 days later per real NBA calendar).
+- `'Until training camp'` in **preseason phase** when no preseason games are scheduled yet (Jul–Sep dead window) — was falling back to bare `One day` / `To opening night` because `findFirstPreseasonDate` returned null pre-`schedule_generation`.
+
+**FA window calendar-year fix (partial fix for year-2 root bug)** — `dateUtils.ts isInFreeAgencyWindow` and `isInMoratorium` are now calendar-year-based (use `current.getUTCFullYear()`); the `seasonYear` arg is kept for API compat but ignored. Restores `tickFAMarkets` / `canSignMultiYear` / RFA matching in year 2+ saves where `ls.year` advances post-rollover and `getFreeAgencyStartDate(ls.year)` was returning Jul 1 of the WRONG year. Broader audit completed in Session 38; see `memory/project_fa_year_convention_bug.md` for the final convention.
+
+## Session 36 (Apr 30, 2026) — Codex one-shot economy cleanup + CBA/Apron P0+P1 + Rising Stars 4-team tournament + All-Star polish
+
+Big day. Two CRITICAL hotfixes (LAC superteam self-destruction + FT compensation runaway), a full CBA/Apron P0+P1 audit, the Rising Stars multi-format overhaul (4-team tournament, USA-vs-World, randoms), and All-Star cosmetic polish — all shipped same day under the no-stop-until-done flag.
+
+**CRITICAL #1 — LAC superteam self-destruction (FIVE-FRONT FIX):**
+1. Aggregate Pass-1 payroll ceiling in `AIFreeAgentHandler.ts runAIFreeAgencyRound` — hard refuse at 2nd apron × 1.5; K2<88 refuse at × 1.25.
+2. Tiered force-cut fallback in `autoTrimOversizedRosters` (preseason + regular season) — Bird-Rights / rookie / recently-signed protected even from the forced fallback.
+3. Apron-bucket sanity check in `runAIBirdRightsResigns` — in-pass spend now accumulated, hard ceiling at 2nd apron × 1.25 with combined existing+pass payroll.
+4. Strategy-aware governor in Pass 1 (`cap_clearing` / `rebuilding` / `development` won't sign non-young-core unless cheap, mirrors extension/Bird-Rights gates).
+5. `freeAgencyBidding.ts generateAIBids` blocks bids (incl. RFA offer sheets) when team is over 2nd apron without Bird Rights, hard cap at 2nd apron × 1.5 even with Bird Rights.
+
+**CRITICAL #2 — FT compensation runaway (FOUR-FRONT FIX):**
+1. Per-player FTA now anchored to `estimatedFga` (not `ptsTarget`) in `StatGenerator/initial.ts` — fixes the root cause of the Edwards 17-FTA-on-3-FGA pathology. Star-night `ptsTarget` inflation can no longer multiply through `baseFtRate × ftaMult × ftAggression` to balloon FTA while collapsing `fgPts = ptsTarget − ftm`.
+2. `reconcileToScore` (in `GameSimulator/engine.ts`) computes team FG% + FTA/FGA up front; if FG% < 0.44 or FTA/FGA ≥ 0.45, the FT pump is suppressed entirely and Pass 2 (FGM-based fill) handles the deficit. Brick games score via more makes, not 39 FTs.
+3. Hard caps: per-player FTA ≤ 2.0 × estimatedFga (safety net in initial.ts); team FTA/FGA ≤ 0.45 enforced inside `reconcileToScore` via per-iteration headroom check.
+4. `Fouls: NaN` fixed via NaN guards: `coordinated.ts` falls back to `oppFTA=18` when non-finite; per-player `s.pf` final round wrapped in `Number.isFinite` check; per-player `fta` also NaN-guarded.
+5. League-average aggregates untouched — no globals, league multipliers, or season-target constants modified. Build green.
+
+**CBA / Apron Rules Audit P0 + P1 (`EconomyTab.tsx` + `tradeFinderEngine.ts` + `TradeMachineModal.tsx` + `salaryUtils.ts` + `AITradeHandler.ts` + `useRulesState.ts`):**
+1. Apron-tiered salary-matching ratios (125% / 110% / 100%) — `tradeMatchingRatioUnder` / `Over1st` / `Over2nd` settings; trade validator keys off post-trade cap state of each side via new `getApronBucketAfterTrade` helper.
+2. MLE tier gating (Room / NT / Tax / None) by team apron position — `getMLEAvailability` now branches on payroll vs aprons.
+3. Cash-in-trade gating — 2nd-apron senders blocked from positive `cashSent`.
+4. No salary aggregation over 2nd apron — must be 1-out-1-in or per-incoming-matched.
+5. Sign-and-trade acquisition gate — receiving via S&T hard-caps acquirer at 1st apron.
+6. Pick-freeze 7 years out — 7th-year 1st becomes un-tradeable while over 2nd.
+7. TPE provenance gating — 2nd-apron teams can't use prior-year / aggregation / S&T TPEs.
+
+EconomyTab UI restructured: Aprons split into its own card; Apron-Tied Restrictions card grouping #1/#2/#4/#6. P2 polish (#10–#12) deferred. `apronsEnabled` master toggle still respected.
+
+**Rising Stars Multi-Format Overhaul (PR 5):** Five formats now selectable in commissioner UI — `rookies_vs_sophomores` (classic), `usa_vs_world`, `4team_tournament` (2022+ NBA — 3 legend-coached NBA teams + G League, SFs→40, Final→25), `random_4team`, `random_2team`. Per-RS `quarterLength` slider (1–12 min, bypassed by Mirror League Rules) + `risingStarsEliminationEndings` toggle. New types in `types.ts` (`risingStarsBracket`, `risingStarsMvp`); `AllStarSelectionService.ts` gains `get4TeamRisingStarsRoster` + `getRandomRisingStarsRoster`; `AllStarWeekendOrchestrator.ts` gains `simulateRisingStarsBracket` + `scaleToTarget`; UI changes in `RisingStarsSection.tsx`, `AllStarTab.tsx`, `AllStarDayView.tsx` (tournament bracket cards), `AllStarHistoryView.tsx` (RS MVP column). GIDs reserved: 91001/91002 (SFs static), 91099 (Final dynamic).
+
+**All-Star cosmetic polish:**
+- `AllStarHistoryView` multi-game support — bracket recap (RR records) + badge.
+- Calendar tile event-count badge — "{N} games" pill on All-Star Sunday for multi-game formats.
+- Multi-game bracket cards — per-matchup team logos + W-L records.
+
+**Codex one-shot economy cleanup (additional fixes baked into Session 36):** 60-day guaranteed-signing grace; MLE swaps respect grace; trim force-cut fallback unblocks 19/15 deadlock; salary-dump 3-pick compensation cap; `faMarketTicker` K2 70-74 → NG camp invites; FA bidding 90-day cooldown mirror; `inferStrategyKey` no-record fallback moved BEFORE buyer/seller branches (the keystone — strategy now correctly resolves to `'rebuilding'` for BKN-class teams in summer FA so all Session 34 rebuilder gates actually fire).
+
+## Session 35 (Apr 30, 2026) — `inferStrategyKey` offseason fallback
+
+Roster-quality-based rebuild inference when `wins + losses < 5` (no record yet) — fixes BKN-class teams misclassified `'neutral'` in summer FA so the Session 34 rebuilder gates can actually fire. Without this, top-3 K2 < 78 and 3+ rookies on roster wasn't enough signal because the fallback path defaulted everyone to neutral.
+
+## Session 34 (Apr 30, 2026) — Rebuilder discipline + canCut star protection + cooldown + stretch threshold
+
+Comprehensive AI-GM rebuilder discipline pass:
+- Extension / Bird-Rights / Pass 1 refuse non-young-core (age > 25 OR K2 < 78) for `rebuilding` / `development` / `cap_clearing` teams.
+- `canCut` star protection — OVR ≥ 75 never cut (fixes Coby White $12.9M waive bug; player was a viable rotation piece auto-trimmed under deadlock).
+- Recent-waiver cooldown 30 → 90 days — kills the waive → re-sign-at-5×-salary cycle.
+- Stretch threshold 4% → 6% of cap — no more 5-yr stretches on small contracts that compound dead money for years.
+- `runAIMleUpgradeSwaps` protections aligned with the same gates.
+
+## Session 33 (Apr 30, 2026) — `canCut` rookie / pre-camp / Bird-Rights protections + Pass 3 NG fill 21→18
+
+`canCut` adds rookie / pre-camp-OVR / Bird-Rights-resign protections (BKN $44M Konan/Traore/Powell/Saraf rookie-cut snowball solved). Pass 3 NG fill target 21 → 18 so camp ends with NBA-realistic depth, not 21-man bloat that forces panic-trim on Oct 21.
+
+## Session 32 (Apr 30, 2026) — Mid-season date clamp + dead-money projection penalty in trade evaluator
+
+Date clamp tightened in `AIFreeAgentHandler.ts` mid-season offer logic: mid-tier post-Oct 21 → 1yr only; Jan-onwards → 1yr regardless of K2 (prevents LAL signing a 35-yo to 4yr in Feb). Trade evaluator (`tradeFinderEngine.ts evaluateTradeAcceptance`) now penalizes deals that force > $25M projected dead money via post-trade trim — kills UTA-Markkanen $36M, MIN-Naz Reid $43M, LAC-Kawhi $26M absorption snowballs. Huerter $18M-from-$5M dead-money bug logged to TODO for further trace (still unresolved as of Session 37).
+
+## Session 31 (Apr 30, 2026) — AI-GM financial discipline: Pass 1 hard cap + gates + camp invite tiers + TX cheat fix
+
+`runAIFreeAgencyRound` Pass 1 always caps at 15 standard players (not 16). New per-signing gates: marginal-upgrade (refuse if signed player wouldn't enter top-9 by K2), position-saturation (refuse if team already has 3+ at this position with comparable K2), length-aversion (cap years at 2 for K2 ≤ 75). `isCampInvite` widened to cap-relative tiers: K2 < 78 with salary ≤ 5% of cap, K2 < 72 with salary ≤ 7%, K2 < 65 with salary ≤ 9%. TX cheat tid-1 waiver fix — debug-cheat waivers were being attributed to fake team -1 instead of the originating team.
+
 ## Session 30 (Apr 28, 2026) — All-Star Weekend overhaul
 
 Made the **All-Star Game Format** + **Number of Teams** rules in commissioner settings actually drive the simulation. Previously orchestrator only knew East-vs-West (2 teams).

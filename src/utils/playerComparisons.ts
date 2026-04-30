@@ -13,7 +13,14 @@ export const COMPARISON_ATTRIBUTES = [
   'hgt', 'stre', 'spd', 'jmp', 'endu', 'ins', 'dnk', 'ft', 'fg', 'tp', 'oiq', 'diq', 'drb', 'pss', 'reb'
 ] as const;
 
-// Helper to get normalized attributes from a player
+// 0=PG … 4=C. Used to penalise cross-position comps (guard ≠ big).
+const POS_BUCKET: Record<string, number> = {
+  PG: 0, SG: 1, G: 1, GF: 2, SF: 2, F: 2, PF: 3, FC: 3, C: 4,
+};
+function posBucket(pos: string | undefined): number {
+  return POS_BUCKET[(pos ?? '').toUpperCase()] ?? 2;
+}
+
 function getPlayerAttributes(p: NBAPlayer): Record<string, number> {
   const rating = p.ratings?.[p.ratings.length - 1] || {};
   return {
@@ -38,8 +45,6 @@ function getPlayerAttributes(p: NBAPlayer): Record<string, number> {
 }
 
 function getVector(p: Record<string, number>): number[] {
-  // Weight height extremely heavily (15x), and dribbling, defensive IQ, 
-  // strength, and passing heavily (5x) to make them huge factors in the cosine similarity.
   return COMPARISON_ATTRIBUTES.map(attr => {
     const val = p[attr] || 0;
     if (attr === 'hgt') return val * 15;
@@ -87,11 +92,12 @@ export function findTopComparisons(
   const targetAttrs = getPlayerAttributes(target);
   const projectedTarget = projectPlayer(targetAttrs);
   const pVec = getVector(projectedTarget);
+  const targetBucket = posBucket(target.pos);
 
   const results: ComparisonResult[] = [];
 
   for (const p of allPlayers) {
-    if (p.internalId === target.internalId) continue; // Skip self
+    if (p.internalId === target.internalId) continue;
 
     const compAttrs = getPlayerAttributes(p);
     const resolvedComp = projectComparisons ? projectPlayer(compAttrs) : compAttrs;
@@ -105,27 +111,38 @@ export function findTopComparisons(
     COMPARISON_ATTRIBUTES.forEach(attr => {
       const diff = projectedTarget[attr] - resolvedComp[attr];
       differences[attr] = diff;
-      
       const absDiff = Math.abs(diff);
 
-      // Bonus for being very close in height
       if (attr === 'hgt' && absDiff <= 3) {
-        totalBonus += (3 - absDiff) * 0.005; // e.g., 0 diff = +0.015, 1 diff = +0.010, 2 diff = +0.005
+        totalBonus += (3 - absDiff) * 0.005;
       }
 
-      // Calculate penalty for huge deviations
       if (absDiff > 10) {
-        // For every point over 10 difference, penalize the similarity score
-        // Height, dribbling, defensive IQ, strength, and passing differences are penalized more heavily
         let penaltyMultiplier = 0.001;
-        if (attr === 'hgt') penaltyMultiplier = 0.008; // 8x penalty for height
+        if (attr === 'hgt') penaltyMultiplier = 0.008;
         else if (attr === 'drb' || attr === 'diq' || attr === 'stre' || attr === 'pss') penaltyMultiplier = 0.003;
-        
         totalDifferencePenalty += (absDiff - 10) * penaltyMultiplier;
       }
     });
 
-    // Apply the penalty and bonus, ensuring similarity stays between 0 and 1
+    // OVR-level proximity: cosine similarity is scale-invariant, so without this an
+    // 85-OVR star matches an 80-POT prospect just because attribute *ratios* look similar.
+    const targetPeak = Math.max(targetAttrs.ovr, targetAttrs.pot);
+    const compPeak = projectComparisons ? Math.max(compAttrs.ovr, compAttrs.pot) : compAttrs.ovr;
+    const ovrGap = compPeak - targetPeak;
+    if (ovrGap > 5) {
+      totalDifferencePenalty += (ovrGap - 5) * 0.02;
+    } else if (ovrGap < -10) {
+      totalDifferencePenalty += (Math.abs(ovrGap) - 10) * 0.01;
+    }
+
+    // Position distance: guards ≠ bigs. A balanced PF like Siakam shouldn't dominate
+    // comps for SGs just because cosine similarity ignores positional context.
+    const posDist = Math.abs(posBucket(p.pos) - targetBucket);
+    if (posDist === 2) totalDifferencePenalty += 0.12;
+    else if (posDist === 3) totalDifferencePenalty += 0.20;
+    else if (posDist >= 4) totalDifferencePenalty += 0.28;
+
     sim = Math.min(1, Math.max(0, sim - totalDifferencePenalty + totalBonus));
 
     results.push({
@@ -138,6 +155,5 @@ export function findTopComparisons(
     });
   }
 
-  // Sort by similarity descending and take top 10
   return results.sort((a, b) => b.similarity - a.similarity).slice(0, 10);
 }

@@ -4,7 +4,7 @@ import { Game, NBATeam } from '../../../../types';
 import { normalizeDate, getOwnTeamId } from '../../../../utils/helpers';
 import { getAllStarWeekendDates } from '../../../../services/allStar/AllStarWeekendOrchestrator';
 import {
-  getTradeDeadlineDate, getFreeAgencyStartDate, getFreeAgencyMoratoriumEndDate,
+  getTradeDeadlineDate, getCurrentOffseasonFAStart, getCurrentOffseasonFAMoratoriumEnd,
   getDraftLotteryDate, getDraftDate, getDraftCombineStartDate, getDraftCombineEndDate,
   getTrainingCampDate, toISODateString,
 } from '../../../../utils/dateUtils';
@@ -43,8 +43,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   // ── Key season dates (all derived from leagueStats with configurable defaults) ─
   const ls = state.leagueStats;
   const tradeDeadlineStr    = toISODateString(getTradeDeadlineDate(seasonYear, ls));
-  const faStartStr          = toISODateString(getFreeAgencyStartDate(seasonYear, ls));
-  const faMoratoriumEndStr  = toISODateString(getFreeAgencyMoratoriumEndDate(seasonYear, ls));
+  const currentDateForFA    = state.date ? new Date(state.date) : new Date();
+  const faStartStr          = toISODateString(getCurrentOffseasonFAStart(currentDateForFA, ls));
+  const faMoratoriumEndStr  = toISODateString(getCurrentOffseasonFAMoratoriumEnd(currentDateForFA, ls));
   const draftLotteryStr     = toISODateString(getDraftLotteryDate(seasonYear, ls));
   const draftDayStr         = toISODateString(getDraftDate(seasonYear, ls));
   const combineStartStr     = toISODateString(getDraftCombineStartDate(seasonYear, ls));
@@ -160,7 +161,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               const calMonth1 = month + 1;
               const inPlayInWindow   = (calMonth1 === 4 && day >= 15 && day <= 18);
               const inPlayoffWindow  = (calMonth1 === 4 && day >= 19) || calMonth1 === 5 || (calMonth1 === 6 && day <= 22);
-              const showPlayIn  = hasPlayIn  || inPlayInWindow;
+              const showPlayIn  = ls?.playIn !== false && (hasPlayIn || inPlayInWindow);
               const showPlayoff = hasPlayoff || inPlayoffWindow;
 
               // Key event dates

@@ -452,8 +452,11 @@ export const DraftLotteryView = () => {
                     <div className="fanspo-ball-container max-w-4xl mx-auto">
                       {Array.from({ length: numTeams }, (_, i) => {
                         const n = i + 1;
+                        const resultTeam = getBallTeam(n);
+                        const resolved = resultTeam ? resolveOwner(resultTeam.tid) : null;
+                        const displayTeam = resolved?.owner ? { ...resultTeam, ...resolved.owner, logoUrl: resolved.owner.logoUrl ?? resultTeam?.logoUrl } : resultTeam;
                         return (
-                          <LotteryBall key={n} number={n} state={getBallState(n)} team={getBallTeam(n)} />
+                          <LotteryBall key={n} number={n} state={getBallState(n)} team={displayTeam} />
                         );
                       })}
                     </div>

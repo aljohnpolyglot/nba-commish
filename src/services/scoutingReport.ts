@@ -677,6 +677,51 @@ export function getComparisonsWithSimilarity(
   }));
 }
 
+/**
+ * Compute comps for every prospect at once, then deduplicate so no NBA player
+ * appears more than `maxPerRank` times at a given rank slot (1st / 2nd / 3rd).
+ * Pass prospects in priority order — earlier entries win the best available comp.
+ * Returns a Map<internalId, ComparisonWithSim[]>.
+ */
+export function batchComparisonsDeduped(
+  prospects: NBAPlayer[],
+  activePlayers: NBAPlayer[],
+  topN = 3,
+  maxPerRank = 3,
+): Map<string, ComparisonWithSim[]> {
+  // Fetch raw top-(topN × 4) comps per prospect — enough alternatives for dedup
+  const rawComps = new Map<string, ComparisonWithSim[]>();
+  for (const p of prospects) {
+    rawComps.set(p.internalId, getComparisonsWithSimilarity(p, activePlayers, topN * 4));
+  }
+
+  // Greedy assignment: for each rank slot independently, cap each comp at maxPerRank
+  const rankCounts: Map<string, number>[] = Array.from({ length: topN }, () => new Map());
+  const result = new Map<string, ComparisonWithSim[]>();
+
+  for (const prospect of prospects) {
+    const raw = rawComps.get(prospect.internalId) ?? [];
+    const assigned: ComparisonWithSim[] = [];
+
+    for (let rank = 0; rank < topN; rank++) {
+      for (const comp of raw) {
+        const cid = comp.comparison.internalId;
+        if (assigned.some(a => a.comparison.internalId === cid)) continue; // no duplicates within a prospect
+        const used = rankCounts[rank].get(cid) ?? 0;
+        if (used < maxPerRank) {
+          assigned.push(comp);
+          rankCounts[rank].set(cid, used + 1);
+          break;
+        }
+      }
+    }
+
+    result.set(prospect.internalId, assigned);
+  }
+
+  return result;
+}
+
 // ── Class percentiles (per position cohort) ────────────────────────────────
 
 export type PositionBucket = 'Guard' | 'Forward' | 'Center' | 'Class';

@@ -29,6 +29,8 @@ export const FormatTab: React.FC<FormatTabProps> = ({
     updatePlayoffFormat,
     minGamesRequirement,
     setMinGamesRequirement,
+    customScheduleEnabled,
+    setCustomScheduleEnabled,
     gamesPerSeason,
     setGamesPerSeason,
     divisionGames,
@@ -95,14 +97,22 @@ export const FormatTab: React.FC<FormatTabProps> = ({
             <div className="p-6 bg-slate-800/40 rounded-2xl border border-slate-800/50 space-y-4">
                 <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-200 uppercase tracking-widest">Schedule</span>
+                    <button
+                        type="button"
+                        onClick={() => setCustomScheduleEnabled(!customScheduleEnabled)}
+                        className={`text-xs font-black px-4 py-2 rounded-xl transition-all ${customScheduleEnabled ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-slate-800 text-slate-500'}`}
+                    >
+                        {customScheduleEnabled ? 'CUSTOM' : 'STANDARD'}
+                    </button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${customScheduleEnabled ? '' : 'opacity-50'}`}>
                     <div className="flex flex-col gap-2">
                         <span className="text-[10px] text-slate-500 font-bold uppercase">Games Per Season</span>
                         <input 
                             type="number" 
                             value={gamesPerSeason} 
                             onChange={(e) => setGamesPerSeason(parseInt(e.target.value, 10))}
+                            disabled={!customScheduleEnabled}
                             className="w-full bg-slate-950 border border-slate-700 rounded-xl text-center text-white font-mono text-lg py-3 focus:outline-none focus:border-indigo-500"
                             min="1"
                             max="162"
@@ -114,6 +124,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
                             type="number" 
                             value={divisionGames} 
                             onChange={(e) => setDivisionGames(parseInt(e.target.value, 10))}
+                            disabled={!customScheduleEnabled}
                             className="w-full bg-slate-950 border border-slate-700 rounded-xl text-center text-white font-mono text-lg py-3 focus:outline-none focus:border-indigo-500"
                             min="0"
                             max={gamesPerSeason}
@@ -125,6 +136,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
                             type="number" 
                             value={conferenceGames} 
                             onChange={(e) => setConferenceGames(parseInt(e.target.value, 10))}
+                            disabled={!customScheduleEnabled}
                             className="w-full bg-slate-950 border border-slate-700 rounded-xl text-center text-white font-mono text-lg py-3 focus:outline-none focus:border-indigo-500"
                             min="0"
                             max={gamesPerSeason}

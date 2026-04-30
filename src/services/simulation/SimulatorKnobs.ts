@@ -39,6 +39,9 @@ export interface SimulatorKnobs {
    *  1.4 = All-Star (everyone gunning 3s); 0.4 = Celebrity (rarely tries) */
   threePointRateMult: number;
 
+  /** Multiplies per-player 3PT make probability. Used for line-distance rules. */
+  threePointEfficiencyMult?: number;
+
   // ── Free Throws ───────────────────────────────────────────────────────────
   /** Multiplies the foul-drawing / FT rate.
    *  0.4 = All-Star (refs let them play); 2.0 = bruiser-ball rule change */
@@ -86,6 +89,16 @@ export interface SimulatorKnobs {
   /** Quarter length in minutes.  12 = NBA, 10 = FIBA.
    *  Affects the total minutes budget passed to allocateMinutes. */
   quarterLength: number;
+
+  /** Overtime length in minutes. 5 = NBA. Affects OT score and minutes budget. */
+  overtimeDuration?: number;
+
+  /** Whether games can enter overtime. */
+  overtimeEnabled?: boolean;
+
+  /** Optional hard cap on overtime periods. */
+  maxOvertimesEnabled?: boolean;
+  maxOvertimes?: number;
 
   /** Shot clock in seconds. Drives paceMultiplier — 24/shotClockSeconds.
    *  24 = NBA default (1.0×), 12 = 2.0× pace, 14 = ~1.7× pace. */
@@ -156,6 +169,7 @@ export const KNOBS_DEFAULT: SimulatorKnobs = {
   efficiencyMultiplier: 1.0,
   threePointAvailable:  true,
   threePointRateMult:   1.0,
+  threePointEfficiencyMult: 1.0,
   ftRateMult:           1.0,
   flatMinutes:          false,
   ratingFloor:          0,
@@ -163,6 +177,10 @@ export const KNOBS_DEFAULT: SimulatorKnobs = {
   gbFromLeader:         0,
   gamesRemaining:       41,
   quarterLength:        12,
+  overtimeDuration:     5,
+  overtimeEnabled:      true,
+  maxOvertimesEnabled:  false,
+  maxOvertimes:         0,
   shotClockSeconds:     24,
   rimRateMult:          1.0,
   lowPostRateMult:      1.0,

@@ -10,9 +10,10 @@ import { DUNK_MOVES } from '../../services/allStar/dunkMoves';
 interface DunkContestViewProps {
   allStar: any;
   players: any[];
+  ownTid?: number | null;
 }
 
-export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, players }) => {
+export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, players, ownTid }) => {
   const { state } = useGame();
   const teams = state.teams;
   const dates = getAllStarWeekendDates(state.leagueStats.year);
@@ -57,6 +58,7 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
               if (!player || !player.name) return null;
 
               const wins = player.awards?.filter((a: any) => a.type === 'Slam Dunk Contest Winner').length ?? 0;
+              const isOwn = ownTid !== null && ownTid !== undefined && player?.tid === ownTid;
 
               // Vegas odds — relative to field using same composite as sim (dnk/jmp/spd)
               const fullContestants = dunkContestContestants
@@ -69,7 +71,11 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
 
               return (
                 <div key={contestant.internalId || contestant.playerId}
-                  className="bg-zinc-900 border border-white/10 rounded-2xl p-4 flex flex-col items-center text-center">
+                  className={`rounded-2xl p-4 flex flex-col items-center text-center border ${
+                    isOwn
+                      ? 'bg-indigo-500/10 border-indigo-500/40'
+                      : 'bg-zinc-900 border-white/10'
+                  }`}>
 
                   {/* Portrait */}
                   <div className="w-20 h-20 rounded-full overflow-hidden bg-zinc-800 mb-3 border-2 border-white/10">

@@ -56,10 +56,10 @@ export const GameStructureSection: React.FC<GameStructureSectionProps> = ({
                 <Clock size={16} className="text-indigo-400" />
                 <h5 className="text-sm font-bold text-slate-200 uppercase tracking-widest">Game Structure</h5>
             </div>
-            {/* Wired to sim: quarterLength ✅  |  Not yet wired: numQuarters, gameFormat, overtime settings, possessionPattern, startOfPossessionMethod */}
+            {/* Wired to sim: quarterLength, overtime enabled/duration/max OT. Stored only: target-score formats, possession ceremony/pattern, numQuarters. */}
             <div className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {/* TODO(sim): gameFormat (timed vs target_score) not wired — engine always uses timed */}
+                    {/* Stored only until the engine supports target-score game flow. */}
                     <div className="flex flex-col gap-2">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Game Format</span>
                         <select 
@@ -91,9 +91,9 @@ export const GameStructureSection: React.FC<GameStructureSectionProps> = ({
                     {gameFormat === 'timed' ? (
                         <>
                             <div className="space-y-4">
-                                {/* quarterLength ✅ wired to sim via SimulatorKnobs.quarterLength */}
+                                {/* quarterLength feeds simulator score and minutes budgets. */}
                                 <RuleInput id="quarterLength" value={quarterLength} onChange={setQuarterLength} />
-                                {/* TODO(sim): numQuarters not wired — engine hardcodes 4 quarters */}
+                                {/* Stored only: engine currently simulates 4 quarters. */}
                                 <RuleInput id="numQuarters" value={numQuarters} onChange={setNumQuarters} />
                                 <div className="flex flex-col gap-2">
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quarter Possession Pattern</span>
@@ -108,7 +108,7 @@ export const GameStructureSection: React.FC<GameStructureSectionProps> = ({
                                     </select>
                                 </div>
                             </div>
-                            {/* TODO(sim): all overtime settings stored but engine uses its own OT logic */}
+                            {/* Standard OT enabled/duration/max periods feed simulator score and minutes budgets. */}
                             <div className="space-y-4">
                                 <RuleToggle id="overtimeEnabled" value={overtimeEnabled} onChange={setOvertimeEnabled} />
                                 {overtimeEnabled && (

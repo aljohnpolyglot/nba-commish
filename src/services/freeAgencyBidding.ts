@@ -223,6 +223,11 @@ export function generateAIBids(
   const luxuryTax = (state.leagueStats as any)?.luxuryPayroll ?? cap * 1.18;
   // MLE value: ~8.5% of cap (matches getMLEAvailability rough ceiling)
   const mleUSD = Math.round(cap * 0.085);
+  // 2nd-apron derived ceiling — used as an absolute brake so teams already $80M+
+  // over the apron can't fire fresh offer sheets (RFA poaching path). Defaults
+  // mirror getCapThresholds() so a missing leagueStats override still gates.
+  const secondApronUSD = cap * (((state.leagueStats as any)?.secondApronPercentage ?? 134.4) / 100);
+  const apronHardCeilingUSD = secondApronUSD * 1.5;
 
   // Bird Rights — prior NBA team can re-sign over the cap regardless of payroll.
   // Without this, Finals contenders (over-tax) can't bid on their own expiring
@@ -267,7 +272,15 @@ export function generateAIBids(
     })
     .filter(({ team, payroll, isBirdHolder }) => {
       if (isRecentlyWaivedByTeam(team.id)) return false;
+      // Aggregate apron ceiling — even Bird-Rights bids stop firing once a team
+      // is $80M+ over 2nd apron. Real LAC-2026 pathology: $343M payroll, still
+      // bidding on RFA offer sheets and stacking re-signs because per-bid gates
+      // never aggregated. Hard ceiling at 2nd apron + 50%.
+      if (payroll >= apronHardCeilingUSD) return false;
       if (isBirdHolder) return true; // Bird Rights override — prior team always bids
+      // Non-Bird-Rights teams over the 2nd apron can't realistically poach via
+      // RFA offer sheet either (over-cap, no MLE headroom, no salary-match path).
+      if (payroll >= secondApronUSD) return false;
       const capSpace = cap - payroll;
       return capSpace >= minSalary || payroll < luxuryTax;
     })

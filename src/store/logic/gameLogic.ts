@@ -91,13 +91,12 @@ export const processTurn = async (
         const targetDate = new Date(`${targetDateNorm}T00:00:00Z`);
         const currentDate = new Date(`${currentDateNorm}T00:00:00Z`);
         const diffTime = targetDate.getTime() - currentDate.getTime();
-        // Math.round to avoid DST/string-parse fractional-day drift.
-        // diffDays-1: each loop iteration advances one day and sims that day's games,
-        // so we want diffDays-1 iterations to stop ON targetDate with its games unplayed.
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-        // BUG 3 FIX: use diffDays directly; each iteration sims AND advances date,
-        // so diffDays iterations lands exactly on targetDate with its games simulated.
-        daysToSimulate = Math.max(1, diffDays);
+        const stopBefore = action.payload?.stopBefore === true;
+        // Legacy fallback only; GameContext routes SIMULATE_TO_DATE through lazySim.
+        // runSimulation simulates the current date on iteration 0, so stopBefore
+        // lands on the target with that day's games unplayed.
+        daysToSimulate = stopBefore ? Math.max(0, diffDays) : Math.max(1, diffDays + 1);
 
         const settings = SettingsManager.getSettings();
         const maxSimDays = (!settings.enableLLM)
@@ -701,7 +700,8 @@ export const processTurn = async (
         playoffsPatch = PlayoffGenerator.generateBracket(
             stateWithSim.teams,
             state.leagueStats.year,
-            numGamesPerRound
+            numGamesPerRound,
+            state.leagueStats.playIn !== false,
         );
     }
 
@@ -725,12 +725,12 @@ export const processTurn = async (
     // Only run here if simulationHandler did NOT handle it (stateWithSim.playoffs is still
     // the same reference as state.playoffs — i.e., the bracket was just generated above in step 1).
     const simHandledPlayoffs = stateWithSim.playoffs != null && stateWithSim.playoffs !== state.playoffs;
-    if (!simHandledPlayoffs && playoffsPatch && allSimResults.length > 0) {
+    if (!simHandledPlayoffs && playoffsPatch && (allSimResults.length > 0 || (playoffsPatch.playInComplete && !playoffsPatch.round1Injected))) {
         const playoffResults = allSimResults.filter(r => {
             const game = finalSchedule.find(g => g.gid === r.gameId);
             return game && (game.isPlayoff || game.isPlayIn);
         });
-        if (playoffResults.length > 0) {
+        if (playoffResults.length > 0 || (playoffsPatch.playInComplete && !playoffsPatch.round1Injected)) {
             const numGamesPerRound = state.leagueStats.numGamesPlayoffSeries ?? [7, 7, 7, 7];
             const { bracket: newBracket, newGames } = PlayoffAdvancer.advance(
                 playoffsPatch,

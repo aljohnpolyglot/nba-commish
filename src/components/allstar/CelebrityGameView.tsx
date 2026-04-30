@@ -5,11 +5,12 @@ import { normalizeDate } from '../../utils/helpers';
 interface CelebrityGameViewProps {
   allStar: any;
   state: any;
+  ownTid?: number | null;
   onWatchGame?: (game: any) => void;
   onViewBoxScore?: (game: any) => void;
 }
 
-export const CelebrityGameView: React.FC<CelebrityGameViewProps> = ({ allStar, state, onWatchGame, onViewBoxScore }) => {
+export const CelebrityGameView: React.FC<CelebrityGameViewProps> = ({ allStar, state, ownTid, onWatchGame, onViewBoxScore }) => {
   const isAutoSelected = state.leagueStats.celebrityRosterAutoSelected;
   const roster = allStar?.celebrityRoster || state.leagueStats.celebrityRoster || [];
 

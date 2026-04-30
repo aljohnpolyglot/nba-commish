@@ -63,7 +63,13 @@ function splitPlayersPicks(raw: string): TradeSide {
     // the leading "a "/"an " article so the pick token reads cleanly.
     const tok = rawTok.replace(/^(?:a|an)\s+/i, '').trim();
     const isCash = /\$/.test(tok) && /cash/i.test(tok);
-    const isPick = /\b\d{4}\b/.test(tok) && /(1st|2nd|round|\bR[12]\b)/i.test(tok);
+    // Pick formats from formatPickLabel cover short ("1st Rd (SAS)") — no year —
+    // and long ("2026 1st Round (SAS)") forms. Detect the round signature directly
+    // rather than requiring a year, otherwise short-form picks get classified as players.
+    const isPick =
+      /\b(1st|2nd)\s+(Rd|Round)\b/i.test(tok) ||
+      /\bRound\s*[12]\b/i.test(tok) ||
+      /\bR[12]\b/i.test(tok);
     if (isCash) {
       cashStrs.push(tok);
     } else if (isPick) {
@@ -656,18 +662,10 @@ export const TradeDetailView: React.FC<Props> = ({ entry, legs, onBack }) => {
     }
   })();
 
-  // Wider container for 3+ team trades so columns stay readable
+  // 2-team trade keeps a centered max-w container; 3+ teams use a wider container
+  // since the column strip scrolls horizontally inside it for any extra teams.
   const containerWidth = teamSlots.length >= 3 ? 'max-w-6xl' : 'max-w-4xl';
-  // Grid template: 2 teams keep the centered arrow divider; 3+ teams use equal columns.
-  // Tailwind JIT can't see interpolated class names — use a static lookup so classes are emitted.
-  const multiTeamCols: Record<number, string> = {
-    2: 'lg:grid-cols-2',
-    3: 'lg:grid-cols-3',
-    4: 'lg:grid-cols-4',
-  };
-  const gridClass = teamSlots.length === 2
-    ? 'grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-4 items-start'
-    : `grid grid-cols-1 sm:grid-cols-2 ${multiTeamCols[Math.min(teamSlots.length, 4)] ?? 'lg:grid-cols-4'} gap-4 items-start`;
+  const gridClass = 'grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-4 items-start';
 
   const verdictBadge = showAnalysis && teamSlots.length === 2 ? (
     <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${
@@ -738,30 +736,56 @@ export const TradeDetailView: React.FC<Props> = ({ entry, legs, onBack }) => {
             ))}
           </div>
 
-          {/* N-column team layout */}
-          <div className={gridClass}>
-            {teamSlots.map((slot, i) => (
-              <React.Fragment key={i}>
-                <TeamColumn
-                  teamName={slot.name}
-                  record={slot.record}
-                  team={slot.team}
-                  received={slot.received}
-                  players={slot.players}
-                  tradeDateMs={tradeDateMs}
-                  tradeYear={tradeYear}
-                  currentYear={currentYear}
-                  teams={state.teams}
-                  onPlayerClick={setViewingPlayer}
-                />
-                {teamSlots.length === 2 && i === 0 && (
-                  <div className="hidden sm:flex flex-col items-center justify-center pt-10 gap-2">
-                    <ArrowRightLeft size={22} className="text-blue-400 opacity-60" />
+          {/* N-column team layout — 2-team uses centered grid w/ arrow divider;
+              3+ teams use a horizontally scrollable flex strip so 3/4/5/N columns
+              never overflow the page. Each column gets a min width so cards
+              stay readable. */}
+          {teamSlots.length === 2 ? (
+            <div className={gridClass}>
+              {teamSlots.map((slot, i) => (
+                <React.Fragment key={i}>
+                  <TeamColumn
+                    teamName={slot.name}
+                    record={slot.record}
+                    team={slot.team}
+                    received={slot.received}
+                    players={slot.players}
+                    tradeDateMs={tradeDateMs}
+                    tradeYear={tradeYear}
+                    currentYear={currentYear}
+                    teams={state.teams}
+                    onPlayerClick={setViewingPlayer}
+                  />
+                  {i === 0 && (
+                    <div className="hidden sm:flex flex-col items-center justify-center pt-10 gap-2">
+                      <ArrowRightLeft size={22} className="text-blue-400 opacity-60" />
+                    </div>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          ) : (
+            <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 overflow-x-auto custom-scrollbar pb-2">
+              <div className="flex gap-4 items-start min-w-min">
+                {teamSlots.map((slot, i) => (
+                  <div key={i} className="w-[320px] sm:w-[360px] shrink-0">
+                    <TeamColumn
+                      teamName={slot.name}
+                      record={slot.record}
+                      team={slot.team}
+                      received={slot.received}
+                      players={slot.players}
+                      tradeDateMs={tradeDateMs}
+                      tradeYear={tradeYear}
+                      currentYear={currentYear}
+                      teams={state.teams}
+                      onPlayerClick={setViewingPlayer}
+                    />
                   </div>
-                )}
-              </React.Fragment>
-            ))}
-          </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Trend charts */}
           <TradeTrendCharts

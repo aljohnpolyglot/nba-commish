@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { SaveManager, SaveMetadata } from '../services/SaveManager';
-import { Play, Upload, Download, Trash2, FolderOpen, Plus, Settings2 } from 'lucide-react';
+import { Play, Upload, Download, Trash2, FolderOpen, Plus, Settings2, Trophy, Zap } from 'lucide-react';
 import { useGame } from '../store/GameContext';
 import { SettingsModal } from './modals/SettingsModal';
 
 interface MainMenuProps {
   onStartNew: () => void;
   onLoadSave: (state: any) => void;
+  onPlayMiniGame?: (game: 'throne' | 'dunk' | '3point') => void;
 }
 
-export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave }) => {
+export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave, onPlayMiniGame }) => {
   const [saves, setSaves] = useState<SaveMetadata[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -133,6 +134,48 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave }) =>
               </div>
               <input type="file" accept=".json,.gz" className="hidden" onChange={handleImport} />
             </label>
+
+            <div className="pt-4 border-t border-slate-800">
+              <h3 className="text-lg font-bold text-white mb-3">Mini Games</h3>
+              <button
+                onClick={() => onPlayMiniGame?.('throne')}
+                className="w-full flex items-center justify-between p-4 bg-yellow-600/20 border border-yellow-600/30 hover:border-yellow-500 hover:bg-yellow-600/30 rounded-xl transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <Trophy size={20} className="text-yellow-500" />
+                  <div className="text-left">
+                    <h4 className="font-bold text-white text-sm">The Throne</h4>
+                    <p className="text-yellow-200/70 text-xs">1v1 tournament</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => onPlayMiniGame?.('dunk')}
+                className="w-full flex items-center justify-between p-4 bg-slate-900/50 border border-slate-800 hover:border-yellow-600/50 hover:bg-slate-800 rounded-xl transition-all group mt-2"
+              >
+                <div className="flex items-center gap-3">
+                  <Zap size={20} className="text-yellow-600 group-hover:text-yellow-400" />
+                  <div className="text-left">
+                    <h4 className="font-bold text-white text-sm">Dunk Contest</h4>
+                    <p className="text-slate-400 text-xs">Pick your contestants</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => onPlayMiniGame?.('3point')}
+                className="w-full flex items-center justify-between p-4 bg-slate-900/50 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-800 rounded-xl transition-all group mt-2"
+              >
+                <div className="flex items-center gap-3">
+                  <Zap size={20} className="text-indigo-500 group-hover:text-indigo-400" />
+                  <div className="text-left">
+                    <h4 className="font-bold text-white text-sm">3-Point Contest</h4>
+                    <p className="text-slate-400 text-xs">Pick your shooters</p>
+                  </div>
+                </div>
+              </button>
+            </div>
 
           </div>
 

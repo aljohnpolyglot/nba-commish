@@ -1,8 +1,9 @@
-import { NBATeam as Team, NBAPlayer as Player, Game } from '../../../types';
+import { NBATeam as Team, NBAPlayer as Player, Game, LeagueStats } from '../../../types';
 import { StatGenerator } from '../StatGenerator';
 import { GameResult } from '../types';
 import { InjurySystem, enforceSeasonEndingMinimum } from '../InjurySystem';
-import { calculateTeamStrength } from '../../../utils/playerRatings';
+import { calculateTeamStrength, calculateTeamStrengthWithMinutes } from '../../../utils/playerRatings';
+import { getGameplan } from '../../../store/gameplanStore';
 import { calcTeamRatings, expectedTeamScore } from '../teamratinghelper';
 import { normalRandom } from '../utils';
 import { simulateQuarters } from './quarters';
@@ -215,15 +216,19 @@ export class GameSimulator {
 
   private static simulateOTPeriod(
     isDecisive: boolean,
-    strengthDiff: number
+    strengthDiff: number,
+    overtimeDuration: number = 5
   ): { homePts: number; awayPts: number } {
+    const durationScale = Math.max(0.2, overtimeDuration / 5);
+    const scoringScale = Math.sqrt(durationScale);
+
     if (!isDecisive) {
-      const basePts = Math.max(6, Math.round(normalRandom(11.5, 2.0)));
+      const basePts = Math.max(2, Math.round(normalRandom(11.5 * durationScale, 2.0 * scoringScale)));
       return { homePts: basePts, awayPts: basePts };
     }
 
-    const winnerPts  = Math.max(6,  Math.round(normalRandom(13.0, 2.5)));
-    const otMargin   = Math.max(1,  Math.round(Math.abs(normalRandom(3.5, 2.0))));
+    const winnerPts  = Math.max(2,  Math.round(normalRandom(13.0 * durationScale, 2.5 * scoringScale)));
+    const otMargin   = Math.max(1,  Math.round(Math.abs(normalRandom(3.5 * scoringScale, 2.0))));
     const loserPts   = Math.max(0,  winnerPts - otMargin);
 
     const homeWinsOT = Math.random() < (0.50 + strengthDiff * 0.008);
@@ -274,8 +279,21 @@ export class GameSimulator {
     awayKnobs: SimulatorKnobs = KNOBS_DEFAULT,
   ): GameResult {
 
-    const baseHomeStrength = calculateTeamStrength(homeTeam.id, players, homeOverridePlayers);
-    const baseAwayStrength = calculateTeamStrength(awayTeam.id, players, awayOverridePlayers);
+    // Use minutes-weighted strength when a Gameplan exists. Benching your star
+    // and playing bums shifts each player's contribution by their minute share
+    // → W/L impact. Tank jobs work, ironman star strats reward, flat 24/24/24/...
+    // is sub-optimal because the star's contribution drops below ideal.
+    const resolveStrength = (tid: number, override?: Player[]) => {
+      if (override) return calculateTeamStrength(tid, players, override);
+      const plan = getGameplan(tid);
+      if (plan && Object.keys(plan.minuteOverrides).length > 0) {
+        const roster = players.filter(p => p.tid === tid && (!p.injury || p.injury.gamesRemaining <= 0));
+        return calculateTeamStrengthWithMinutes(roster, plan.minuteOverrides);
+      }
+      return calculateTeamStrength(tid, players);
+    };
+    const baseHomeStrength = resolveStrength(homeTeam.id, homeOverridePlayers);
+    const baseAwayStrength = resolveStrength(awayTeam.id, awayOverridePlayers);
 
     // Coaching penalty — picking the wrong 1st/2nd/3rd option actually hurts W/L,
     // not just stat distribution. Skip for exhibition/override rosters.
@@ -339,11 +357,22 @@ export class GameSimulator {
     let finalHomeScore: number;
     let finalAwayScore: number;
 
-    const otChance = baseLead <= 4 ? 0.38 : baseLead <= 8 ? 0.06 : 0;
+    const overtimeDuration = Math.max(1, ((homeKnobs.overtimeDuration ?? 5) + (awayKnobs.overtimeDuration ?? 5)) / 2);
+    const overtimeEnabled = (homeKnobs.overtimeEnabled ?? true) && (awayKnobs.overtimeEnabled ?? true);
+    const enabledOtCaps = [homeKnobs, awayKnobs]
+      .filter(k => k.maxOvertimesEnabled)
+      .map(k => Math.max(0, Math.floor(k.maxOvertimes ?? 0)));
+    const maxOvertimes = enabledOtCaps.length > 0
+      ? Math.min(...enabledOtCaps)
+      : Number.POSITIVE_INFINITY;
+    const otChance = overtimeEnabled && maxOvertimes !== 0
+      ? baseLead <= 4 ? 0.38 : baseLead <= 8 ? 0.06 : 0
+      : 0;
 
     if (otChance > 0 && Math.random() < otChance) {
       isOT    = true;
-      otCount = Math.random() < 0.07 ? 3 : Math.random() < 0.22 ? 2 : 1;
+      const rolledOtCount = Math.random() < 0.07 ? 3 : Math.random() < 0.22 ? 2 : 1;
+      otCount = Math.min(rolledOtCount, maxOvertimes);
 
       const regTie  = loserScore;
       let homeOtPts = 0;
@@ -351,7 +380,7 @@ export class GameSimulator {
 
       for (let ot = 1; ot <= otCount; ot++) {
         const isDecisive = ot === otCount;
-        const { homePts, awayPts } = this.simulateOTPeriod(isDecisive, strengthDiff);
+        const { homePts, awayPts } = this.simulateOTPeriod(isDecisive, strengthDiff, overtimeDuration);
         homeOtPts += homePts;
         awayOtPts += awayPts;
       }
@@ -542,10 +571,10 @@ export class GameSimulator {
       tovMult:            (homeKnobsEff.tovMult    ?? 1) * (homeOpponentStack?.tovMult    ?? 1),
       ftRateMult:         (homeKnobsEff.ftRateMult ?? 1) * (homeOpponentStack?.ftRateMult ?? 1),
       interiorEffMult:    homeOpponentStack?.interiorEffMult ?? 1,
-      rimRateMult:        (homeShotMults?.rimRateMult        ?? 1) * (homeOpponentStack?.rimRateMult        ?? 1) * (homeSysMods?.rimMod        ?? 1),
-      lowPostRateMult:    (homeShotMults?.lowPostRateMult    ?? 1) * (homeSysMods?.lowPostMod   ?? 1),
-      midRangeRateMult:   (homeShotMults?.midRangeRateMult  ?? 1) * (homeSysMods?.midRangeMod  ?? 1),
-      threePointRateMult: (homeShotMults?.threePointRateMult ?? homeKnobsEff.threePointRateMult ?? 1) * (homeOpponentStack?.threePointRateMult ?? 1) * (homeSysMods?.threePointMod ?? 1),
+      rimRateMult:        (homeKnobsEff.rimRateMult        ?? 1) * (homeShotMults?.rimRateMult        ?? 1) * (homeOpponentStack?.rimRateMult        ?? 1) * (homeSysMods?.rimMod        ?? 1),
+      lowPostRateMult:    (homeKnobsEff.lowPostRateMult    ?? 1) * (homeShotMults?.lowPostRateMult    ?? 1) * (homeSysMods?.lowPostMod   ?? 1),
+      midRangeRateMult:   (homeKnobsEff.midRangeRateMult   ?? 1) * (homeShotMults?.midRangeRateMult  ?? 1) * (homeSysMods?.midRangeMod  ?? 1),
+      threePointRateMult: (homeKnobsEff.threePointRateMult ?? 1) * (homeShotMults?.threePointRateMult ?? 1) * (homeOpponentStack?.threePointRateMult ?? 1) * (homeSysMods?.threePointMod ?? 1),
     };
     const awayKnobsFinal: SimulatorKnobs = {
       ...awayKnobsEff,
@@ -555,10 +584,10 @@ export class GameSimulator {
       tovMult:            (awayKnobsEff.tovMult    ?? 1) * (awayOpponentStack?.tovMult    ?? 1),
       ftRateMult:         (awayKnobsEff.ftRateMult ?? 1) * (awayOpponentStack?.ftRateMult ?? 1),
       interiorEffMult:    awayOpponentStack?.interiorEffMult ?? 1,
-      rimRateMult:        (awayShotMults?.rimRateMult        ?? 1) * (awayOpponentStack?.rimRateMult        ?? 1) * (awaySysMods?.rimMod        ?? 1),
-      lowPostRateMult:    (awayShotMults?.lowPostRateMult    ?? 1) * (awaySysMods?.lowPostMod   ?? 1),
-      midRangeRateMult:   (awayShotMults?.midRangeRateMult  ?? 1) * (awaySysMods?.midRangeMod  ?? 1),
-      threePointRateMult: (awayShotMults?.threePointRateMult ?? awayKnobsEff.threePointRateMult ?? 1) * (awayOpponentStack?.threePointRateMult ?? 1) * (awaySysMods?.threePointMod ?? 1),
+      rimRateMult:        (awayKnobsEff.rimRateMult        ?? 1) * (awayShotMults?.rimRateMult        ?? 1) * (awayOpponentStack?.rimRateMult        ?? 1) * (awaySysMods?.rimMod        ?? 1),
+      lowPostRateMult:    (awayKnobsEff.lowPostRateMult    ?? 1) * (awayShotMults?.lowPostRateMult    ?? 1) * (awaySysMods?.lowPostMod   ?? 1),
+      midRangeRateMult:   (awayKnobsEff.midRangeRateMult   ?? 1) * (awayShotMults?.midRangeRateMult  ?? 1) * (awaySysMods?.midRangeMod  ?? 1),
+      threePointRateMult: (awayKnobsEff.threePointRateMult ?? 1) * (awayShotMults?.threePointRateMult ?? 1) * (awayOpponentStack?.threePointRateMult ?? 1) * (awaySysMods?.threePointMod ?? 1),
     };
 
     const homeInitial = StatGenerator.generateStatsForTeam(
@@ -587,8 +616,8 @@ export class GameSimulator {
     const homeFTA = homeInitial.reduce((sum, p) => sum + p.fta, 0);
     const awayFTA = awayInitial.reduce((sum, p) => sum + p.fta, 0);
 
-    const homeBlkMult = homeKnobs.blockRateMult ?? 1.0;
-    const awayBlkMult = awayKnobs.blockRateMult ?? 1.0;
+    const homeBlkMult = homeKnobsFinal.blockRateMult ?? 1.0;
+    const awayBlkMult = awayKnobsFinal.blockRateMult ?? 1.0;
 
     // Crash Offensive Glass → ORB pool multiplier per team. 50 = neutral.
     // 100 → +35% ORB (Dennis Rodman-mode); 0 → −30% ORB (everyone sprints back).
@@ -608,7 +637,8 @@ export class GameSimulator {
       home2KDef,  // home team's defensive ratings (sizes their steal/block pools)
       away2KDef,  // away team's pass perception (shrinks home's assist pool)
       homeOrbMult,
-      homeKnobs.quarterLength ?? 12
+      homeKnobsFinal.quarterLength ?? 12,
+      homeKnobsFinal.overtimeDuration ?? 5
     );
     const awayStats = StatGenerator.generateCoordinatedStats(
       awayInitial,
@@ -623,7 +653,8 @@ export class GameSimulator {
       away2KDef,  // away team's defensive ratings
       home2KDef,  // home team's pass perception
       awayOrbMult,
-      awayKnobs.quarterLength ?? 12
+      awayKnobsFinal.quarterLength ?? 12,
+      awayKnobsFinal.overtimeDuration ?? 5
     );
     // Reconcile player pts to match the final team score.
     // nightProfile boosts individuals asymmetrically (EXPLOSION 1.5× on one player) so the
@@ -634,15 +665,36 @@ export class GameSimulator {
     const reconcileToScore = (stats: any[], target: number) => {
       let delta = target - stats.reduce((s: number, p: any) => s + (p.pts || 0), 0);
       if (delta === 0) return;
+
+      // Brick-fest gate: if the team is shooting cold (FG% < 44%) or already FT-heavy
+      // (team FTA/FGA >= 0.45), suppress the FT pump entirely. Real NBA: cold games score
+      // 95-100, they don't get padded by 39 FTs. Pump-by-FGM (Pass 2) keeps the scoreboard
+      // honest by adding makes instead of trips.
+      const teamFga = stats.reduce((s: number, p: any) => s + (p.fga || 0), 0);
+      const teamFgm = stats.reduce((s: number, p: any) => s + (p.fgm || 0), 0);
+      const teamFta0 = stats.reduce((s: number, p: any) => s + (p.fta || 0), 0);
+      const teamFgPct = teamFga > 0 ? teamFgm / teamFga : 1;
+      const teamFtaFga0 = teamFga > 0 ? teamFta0 / teamFga : 0;
+      const ftPumpAllowed = teamFgPct >= 0.44 && teamFtaFga0 < 0.45;
+      const teamFtaCeil = Math.max(0, Math.round(teamFga * 0.45));
+
       const sorted = delta < 0
         ? [...stats].sort((a: any, b: any) => a.pts - b.pts)   // remove from low scorers first
         : [...stats].sort((a: any, b: any) => b.pts - a.pts);  // add to top scorers first
-      // Pass 1: adjust via FTM (capped at 4 per player to preserve star lines)
+      // Pass 1: adjust via FTM (capped at 4 per player to preserve star lines).
+      // When delta > 0 (need more pts), only pump FT if the brick-fest gate allows it
+      // AND the team-level 0.45 FTA/FGA ceiling hasn't been hit yet.
+      let teamFtaRunning = teamFta0;
       for (const s of sorted) {
         if (delta === 0) break;
         if (delta > 0) {
-          const add = Math.min(delta, 4);
+          if (!ftPumpAllowed) continue;                     // skip FT add on cold/FT-saturated teams
+          const headroom = Math.max(0, teamFtaCeil - teamFtaRunning);
+          if (headroom <= 0) break;                         // team FTA/FGA cap reached
+          const add = Math.min(delta, 4, headroom);
+          if (add <= 0) continue;
           s.ftm += add; s.fta = Math.max(s.fta, s.ftm); s.pts += add; delta -= add;
+          teamFtaRunning += add;
         } else {
           const remove = Math.min(-delta, Math.min(4, Math.max(0, s.ftm)));
           if (remove > 0) { s.ftm -= remove; s.pts -= remove; delta += remove; }
@@ -964,30 +1016,7 @@ export class GameSimulator {
     awayOverridePlayers?: Player[],
     riggedForTid?: number,
     clubDebuffs?: Map<string, 'heavy' | 'moderate' | 'mild'>,
-    leagueStats?: {
-      quarterLength?: number;
-      shotClockValue?: number;
-      shotClockEnabled?: boolean;
-      shotClockResetOffensiveRebound?: boolean;
-      threePointLineEnabled?: boolean;
-      defensiveThreeSecondEnabled?: boolean;
-      offensiveThreeSecondEnabled?: boolean;
-      handcheckingEnabled?: boolean;
-      goaltendingEnabled?: boolean;
-      chargingEnabled?: boolean;
-      noDribbleRule?: boolean;
-      backcourtTimerEnabled?: boolean;
-      backToBasketTimerEnabled?: boolean;
-      illegalZoneDefenseEnabled?: boolean;
-      travelingEnabled?: boolean;
-      doubleDribbleEnabled?: boolean;
-      backcourtViolationEnabled?: boolean;
-      freeThrowDistance?: number;
-      rimHeight?: number;
-      courtLength?: number;
-      baselineLength?: number;
-      keyWidth?: number;
-    },
+    leagueStats?: Partial<LeagueStats>,
     onGame?: (result: GameResult) => void
   ): Promise<GameResult[]> {
     const results: GameResult[] = [];
@@ -1037,8 +1066,12 @@ export class GameSimulator {
 
     // ── New Phase 1A rules ────────────────────────────────────────────────────
 
-    // Off-reb doesn't reset shot clock → less urgency, fewer possessions
-    const noSCResetPace = (leagueStats?.shotClockResetOffensiveRebound === false) ? 0.88 : 1.0;
+    // Offensive rebound reset value changes the urgency after extra possessions.
+    // 14s is NBA default; shorter resets speed the game up, longer resets slow it down.
+    const offRebReset = leagueStats?.shotClockResetOffensiveRebound ?? 14;
+    const offRebResetPace = shotClockOn
+      ? Math.max(0.75, Math.min(1.25, 14 / Math.max(6, offRebReset)))
+      : 1.0;
 
     // No backcourt timer → slower game, fewer forced TOs
     const backcourtTimerOn = leagueStats?.backcourtTimerEnabled ?? true;
@@ -1088,17 +1121,62 @@ export class GameSimulator {
     const keyLowPost = Math.pow(16 / Math.max(10, keyW), 0.5);
     const keyRimMult = Math.pow(16 / Math.max(10, keyW), 0.3);
 
+    // Line/court equipment changes map into existing shot and efficiency knobs.
+    const threePointDistance = leagueStats?.threePointLineDistance ?? 23.75;
+    const threeDistanceRate = threeOn
+      ? Math.max(0.55, Math.min(1.35, Math.pow(23.75 / Math.max(10, threePointDistance), 0.85)))
+      : 0;
+    const threeDistanceEff = threeOn
+      ? Math.max(0.70, Math.min(1.20, Math.pow(23.75 / Math.max(10, threePointDistance), 0.45)))
+      : 1.0;
+    const ballWeight = leagueStats?.ballWeight ?? 1.4;
+    const ballWeightEff = Math.max(0.85, Math.min(1.08, Math.pow(1.4 / Math.max(0.8, ballWeight), 0.25)));
+    const ballWeightTov = Math.max(0.90, Math.min(1.18, Math.pow(Math.max(0.8, ballWeight) / 1.4, 0.5)));
+
+    // Non-shot-clock violation toggles are represented as turnover and pace pressure.
+    const inboundTimerOn = leagueStats?.inboundTimerEnabled ?? true;
+    const inboundTimerValue = leagueStats?.inboundTimerValue ?? 5;
+    const inboundTovMult = inboundTimerOn ? Math.max(0.90, Math.min(1.25, 5 / Math.max(2, inboundTimerValue))) : 0.92;
+    const outOfBoundsOn = leagueStats?.outOfBoundsEnabled ?? true;
+    const outOfBoundsTov = outOfBoundsOn ? 1.0 : 0.88;
+    const kickedBallOn = leagueStats?.kickedBallEnabled ?? true;
+    const kickedBallPace = kickedBallOn ? 1.0 : 1.03;
+    const kickedBallTov = kickedBallOn ? 1.0 : 0.96;
+    const basketInterferenceOn = leagueStats?.basketInterferenceEnabled ?? true;
+    const basketInterferenceBlock = basketInterferenceOn ? 1.0 : 1.12;
+    const basketInterferenceEff = basketInterferenceOn ? 1.0 : 0.98;
+
+    // Foul rules feed the existing FTA/foul and illegal-screen turnover models.
+    const teamFoulPenalty = leagueStats?.teamFoulPenalty ?? 5;
+    const penaltyFtMult = Math.max(0.75, Math.min(1.35, 5 / Math.max(1, teamFoulPenalty)));
+    const foulOutLimit = leagueStats?.foulOutLimit ?? 6;
+    const foulOutPhysicality = Math.max(0.85, Math.min(1.18, foulOutLimit / 6));
+    const illegalScreenOn = leagueStats?.illegalScreenEnabled ?? true;
+    const screenTovMult = illegalScreenOn ? 1.0 : 0.94;
+    const clearPathOn = leagueStats?.clearPathFoulEnabled ?? true;
+    const clearPathFtMult = clearPathOn ? 1.0 : 0.97;
+    const looseBallOn = leagueStats?.looseBallFoulEnabled ?? true;
+    const looseBallFtMult = looseBallOn ? 1.0 : 0.96;
+    const overBackOn = leagueStats?.overTheBackFoulEnabled ?? true;
+    const overBackFtMult = overBackOn ? 1.0 : 0.97;
+    tovMult *= inboundTovMult * outOfBoundsTov * kickedBallTov * screenTovMult * ballWeightTov;
+
     const leagueBaseKnobs = getKnobs({
       quarterLength:       leagueStats?.quarterLength ?? 12,
+      overtimeDuration:    leagueStats?.overtimeDuration ?? 5,
+      overtimeEnabled:     leagueStats?.overtimeEnabled ?? true,
+      maxOvertimesEnabled: leagueStats?.maxOvertimesEnabled ?? false,
+      maxOvertimes:        leagueStats?.maxOvertimes ?? 0,
       shotClockSeconds:    shotClock,
       threePointAvailable: threeOn,
-      threePointRateMult:  threeOn ? (1.0 * threeBumpD * noDribble3PMult * zone3PMult) : 0,
-      paceMultiplier:      shotClockPace * noDribblePaceMult * noSCResetPace * backcourtPace * courtLenPace * baselinePace,
-      efficiencyMultiplier: goaltendEffMult * rimHeightEffMult,
+      threePointRateMult:  threeOn ? (1.0 * threeBumpD * noDribble3PMult * zone3PMult * threeDistanceRate) : 0,
+      threePointEfficiencyMult: threeDistanceEff,
+      paceMultiplier:      shotClockPace * noDribblePaceMult * offRebResetPace * backcourtPace * courtLenPace * baselinePace * kickedBallPace,
+      efficiencyMultiplier: goaltendEffMult * rimHeightEffMult * ballWeightEff * basketInterferenceEff,
       rimRateMult:         rimMult * rimBumpO * chargingRimBump * noDribbleRimMult * zoneRimMult * manRimBump * keyRimMult,
       lowPostRateMult:     lowPostMult * backToBasketLowPost * keyLowPost,
-      ftRateMult:          handcheckFtMult,
-      blockRateMult:       blockMult,
+      ftRateMult:          handcheckFtMult * penaltyFtMult * foulOutPhysicality * clearPathFtMult * looseBallFtMult * overBackFtMult,
+      blockRateMult:       blockMult * basketInterferenceBlock,
       tovMult,
       ftEfficiencyMult,
     });

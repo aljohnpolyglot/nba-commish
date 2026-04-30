@@ -181,13 +181,68 @@ export const calculateTeamStrength = (teamId: number, players: Player[], overrid
     finalStrength = (finalStrength - 85) * 1.6 + 85; // Stretch the scale for realism
     
     const result = Math.max(50, Math.min(99, Math.round(finalStrength)));
-    
+
     if (cacheKey) {
         teamStrengthCache.set(cacheKey, result);
     }
-    
+
     return result;
 };
+
+/**
+ * Minutes-weighted team strength. Each player's contribution = their 2K rating ×
+ * (their minutes / 240). Bench your star to 8 mpg and they only contribute 3% to
+ * team rating; play bums 40 mpg and the bum gets 17%. Star compounding bonus is
+ * also scaled by the actual star's minute share — full at 30+ mpg, zero at 0.
+ */
+export function calculateTeamStrengthWithMinutes(
+  players: Player[],
+  minutes: Record<string, number>,
+): number {
+  const active = players.filter(p => (minutes[p.internalId] ?? 0) > 0);
+  if (active.length === 0) return 40;
+
+  // Per-player 2K with debuffs
+  const k2: Array<{ id: string; rating: number; mins: number }> = active.map(p => {
+    const r = p.ratings?.[p.ratings.length - 1];
+    const base = convertTo2KRating(p.overallRating, r?.hgt ?? 50, r?.tp);
+    const severity = activeClubDebuffs.get(String(p.internalId));
+    const rating = severity ? Math.max(40, base - STRENGTH_DEBUFF_AMOUNTS[severity]) : base;
+    return { id: p.internalId, rating, mins: minutes[p.internalId] ?? 0 };
+  });
+
+  // Pure minutes-weighted average. Cap per-player share at 20% (≈48/240) so a
+  // single iron-man can't fully define team strength.
+  const totalMins = k2.reduce((s, x) => s + x.mins, 0) || 1;
+  let baseStrength = 0;
+  for (const x of k2) {
+    const share = Math.min(0.20, x.mins / totalMins);
+    baseStrength += x.rating * share;
+  }
+  // Renormalize after capping so the weights still sum to ~1
+  const totalShare = k2.reduce((s, x) => s + Math.min(0.20, x.mins / totalMins), 0) || 1;
+  baseStrength = baseStrength / totalShare;
+
+  // Star compounding bonus — your best PLAYER (not best minutes), scaled by
+  // their minute share so benching them kills the bonus too.
+  const byRating = [...k2].sort((a, b) => b.rating - a.rating);
+  const best   = byRating[0]?.rating ?? 70;
+  const second = byRating[1]?.rating ?? 70;
+
+  let starAdjustment = 0;
+  if (best >= 94)      starAdjustment += 4;
+  else if (best >= 90) starAdjustment += 2;
+  else if (best <= 85) starAdjustment -= 5;            // missing-star penalty stands regardless
+  if (best >= 89 && second >= 86) starAdjustment += 2.5;
+
+  if (starAdjustment > 0 && byRating[0]) {
+    starAdjustment *= Math.min(1, byRating[0].mins / 30);
+  }
+
+  let finalStrength = baseStrength + starAdjustment;
+  finalStrength = (finalStrength - 85) * 1.6 + 85;
+  return Math.max(50, Math.min(99, Math.round(finalStrength)));
+}
 
 export interface ProcessedStats {
     gp: number;

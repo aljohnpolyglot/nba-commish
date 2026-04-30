@@ -20,6 +20,7 @@ import {
   getClassPercentiles,
   getClassAverages,
   computeSkillScores,
+  batchComparisonsDeduped,
   SKILL_AXES,
   type ClassPercentileMaps,
   type SkillAxis,
@@ -179,6 +180,13 @@ export const DraftScoutingView: React.FC = () => {
     m.set('Class', getClassPercentiles(prospects, 'Class'));
     return m;
   }, [prospects]);
+
+  // Batch comps: computed once per class so the modal just reads from the map.
+  // Prospects are already sorted by consensusRank, so priority order is correct.
+  const batchComps = useMemo(
+    () => batchComparisonsDeduped(prospects, activePlayers),
+    [prospects, activePlayers],
+  );
 
   // Build the projected draft order (mirrors DraftSimulatorView's logic).
   const draftOrder = useMemo(() => {
@@ -584,6 +592,7 @@ export const DraftScoutingView: React.FC = () => {
           return (slot?.team as any)?.logoUrl;
         })()}
         onViewPlayerBio={(p) => setViewingBioPlayer(p)}
+        preComputedComps={scoutingPlayer ? batchComps.get(scoutingPlayer.internalId) : undefined}
       />
     </div>
   );

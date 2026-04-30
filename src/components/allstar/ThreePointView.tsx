@@ -33,9 +33,10 @@ function getShooterStats(player: NBAPlayer, currentSeason: number) {
 interface ThreePointViewProps {
   allStar: any;
   players: any[];
+  ownTid?: number | null;
 }
 
-export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players }) => {
+export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players, ownTid }) => {
   const { state } = useGame();
   const teams = state.teams;
   const currentYear = state.leagueStats.year;
@@ -78,12 +79,17 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
             const teamId = p.teamNbaId || (team ? extractTeamId(team.logoUrl, team.abbrev) : null) || 1610612737;
             const teamColor = team?.colors?.[0] || '#6366f1';
             const nbaId = p.nbaId || extractNbaId(p.imgURL || "", p.name);
-            
+            const isOwn = ownTid !== null && ownTid !== undefined && p?.tid === ownTid;
+
             const stats = getShooterStats(p, currentYear);
             const contestOdds = calcThreePointOdds(contestants.map((c: any) => players.find(pl => pl.internalId === (c.internalId || c.playerId)) || c), p);
 
             return (
-              <div key={p.internalId} className="bg-[#0d1117] border border-slate-800 hover:border-slate-700 rounded-xl p-4 flex flex-col items-center gap-2 transition-colors shadow-xl">
+              <div key={p.internalId} className={`rounded-xl p-4 flex flex-col items-center gap-2 transition-colors shadow-xl border ${
+                isOwn
+                  ? 'bg-indigo-500/10 border-indigo-500/40'
+                  : 'bg-[#0d1117] border-slate-800 hover:border-slate-700'
+              }`}>
                 <div className="relative mx-auto mb-2 w-20 h-20">
                   <div 
                     className="w-20 h-20 rounded-full overflow-hidden bg-slate-800 border-2"

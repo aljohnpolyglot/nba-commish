@@ -5,7 +5,7 @@ import { EconomyTeamsSection } from './EconomyTeamsSection';
 import { EconomyContractsSection } from './EconomyContractsSection';
 import { EconomyRookieContractsSection } from './EconomyRookieContractsSection';
 import { Ticket, Calendar, Lock, Coins, HeartPulse, ShieldCheck, Skull } from 'lucide-react';
-import { getTradeDeadlineDate, getFreeAgencyStartDate, getFreeAgencyMoratoriumEndDate, toISODateString } from '../../../../utils/dateUtils';
+import { getTradeDeadlineDate, getCurrentOffseasonFAStart, getCurrentOffseasonFAMoratoriumEnd, toISODateString } from '../../../../utils/dateUtils';
 import { useGame } from '../../../../store/GameContext';
 
 interface EconomyTabProps {
@@ -300,6 +300,7 @@ const ApronRulesCard = ({ props }: { props: EconomyTabProps }) => (
 export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
     const { state } = useGame();
     const seasonYear = state.leagueStats?.year ?? new Date().getFullYear();
+    const currentDate = state.date ? new Date(state.date) : new Date();
     const [showTaxRates, setShowTaxRates] = useState(false);
     const [isMinContractModalOpen, setIsMinContractModalOpen] = useState(false);
     const [isMaxContractModalOpen, setIsMaxContractModalOpen] = useState(false);
@@ -315,8 +316,8 @@ export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
         faMoratoriumDays: props.faMoratoriumDays,
     };
     const resolvedTradeDeadline = toISODateString(getTradeDeadlineDate(seasonYear, previewStats));
-    const resolvedFAStart = toISODateString(getFreeAgencyStartDate(seasonYear, previewStats));
-    const resolvedMoratoriumEnd = toISODateString(getFreeAgencyMoratoriumEndDate(seasonYear, previewStats));
+    const resolvedFAStart = toISODateString(getCurrentOffseasonFAStart(currentDate, previewStats));
+    const resolvedMoratoriumEnd = toISODateString(getCurrentOffseasonFAMoratoriumEnd(currentDate, previewStats));
 
     return (
         <div className="space-y-12">

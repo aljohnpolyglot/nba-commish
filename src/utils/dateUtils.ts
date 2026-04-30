@@ -84,6 +84,12 @@ type TxnCalendar = {
   allStarDayOfWeek?: DayAbbr;
 };
 
+type ScheduleDateLike = {
+  date?: string;
+  isPlayoff?: boolean;
+  isPlayIn?: boolean;
+};
+
 /**
  * NBA trade deadline — Thursday of the first full week of February
  * (first Thursday whose entire Mon-Sun week falls in February).
@@ -107,6 +113,23 @@ export function getFreeAgencyStartDate(seasonYear: number, stats?: TxnCalendar):
   return new Date(Date.UTC(seasonYear, month - 1, day));
 }
 
+/** Free agency start for the calendar year that contains `current`.
+ *  Used during the post-rollover summer, when `leagueStats.year` already points
+ *  at the upcoming season but the active FA window is still in the current
+ *  calendar year. */
+export function getCurrentOffseasonFAStart(current: Date | string, stats?: TxnCalendar): Date {
+  const c = toDate(current);
+  const month = stats?.faStartMonth ?? 7;
+  const day = stats?.faStartDay ?? 1;
+  return new Date(Date.UTC(c.getUTCFullYear(), month - 1, day));
+}
+
+export function getCurrentOffseasonFAMoratoriumEnd(current: Date | string, stats?: TxnCalendar): Date {
+  const start = getCurrentOffseasonFAStart(current, stats);
+  const days = stats?.faMoratoriumDays ?? 6;
+  return new Date(start.getTime() + days * 86_400_000);
+}
+
 /** Moratorium end = faStart + faMoratoriumDays (exclusive). */
 export function getFreeAgencyMoratoriumEndDate(seasonYear: number, stats?: TxnCalendar): Date {
   const start = getFreeAgencyStartDate(seasonYear, stats);
@@ -122,18 +145,25 @@ export function isPastTradeDeadline(current: Date | string, seasonYear: number, 
   return toDate(current) > getTradeDeadlineDate(seasonYear, stats);
 }
 
-/** FA window = faStart (inclusive) → Oct 1 same year (exclusive). */
-export function isInFreeAgencyWindow(current: Date | string, seasonYear: number, stats?: TxnCalendar): boolean {
+/** FA window = faStart (inclusive) → Oct 1 same year (exclusive).
+ *  Calendar-year based (uses current date's UTC year) so it survives season
+ *  rollovers — `ls.year` advances to the upcoming season on Jun 30, but the
+ *  FA we're actually in still lives in the calendar year of `current`. The
+ *  `seasonYear` arg is kept for backwards compatibility but ignored. */
+export function isInFreeAgencyWindow(current: Date | string, _seasonYear: number, stats?: TxnCalendar): boolean {
   const c = toDate(current);
-  const start = getFreeAgencyStartDate(seasonYear, stats);
-  const end = new Date(Date.UTC(seasonYear, 9, 1)); // Oct 1 — end of dead period before camp
+  const start = getCurrentOffseasonFAStart(c, stats);
+  const end = new Date(Date.UTC(c.getUTCFullYear(), 9, 1));
   return c >= start && c < end;
 }
 
-/** Moratorium = faStart → faStart + moratoriumDays (signings locked, negotiations only). */
-export function isInMoratorium(current: Date | string, seasonYear: number, stats?: TxnCalendar): boolean {
+/** Moratorium = faStart → faStart + moratoriumDays (signings locked, negotiations only).
+ *  Calendar-year based — see `isInFreeAgencyWindow` for rationale. */
+export function isInMoratorium(current: Date | string, _seasonYear: number, stats?: TxnCalendar): boolean {
   const c = toDate(current);
-  return c >= getFreeAgencyStartDate(seasonYear, stats) && c < getFreeAgencyMoratoriumEndDate(seasonYear, stats);
+  const start = getCurrentOffseasonFAStart(c, stats);
+  const end = getCurrentOffseasonFAMoratoriumEnd(c, stats);
+  return c >= start && c < end;
 }
 
 /**
@@ -148,6 +178,18 @@ export function isRegularSeasonSigningOpen(current: Date | string, seasonYear: n
   const openingNight = getOpeningNightDate(seasonYear);
   const nextFAStart = getFreeAgencyStartDate(seasonYear, stats);
   return c >= openingNight && c < nextFAStart;
+}
+
+/**
+ * Post-deadline pre-FA dead zone: between trade deadline (exclusive) and FA start (exclusive).
+ * In real NBA this is Feb (post-deadline) → Jun 30 (FA opens Jul 1). Trades are technically
+ * legal here (June draft-day deals) but expiring contracts are walking — they have zero
+ * tradable value because the acquirer loses them to FA in days. Used to grey out expiring
+ * chips in trade UIs and skip them in AI-AI trade construction.
+ */
+export function isInPostDeadlinePreFAWindow(current: Date | string, seasonYear: number, stats?: TxnCalendar): boolean {
+  const c = toDate(current);
+  return c > getTradeDeadlineDate(seasonYear, stats) && c < getCurrentOffseasonFAStart(c, stats);
 }
 
 /**
@@ -228,4 +270,22 @@ export function getAllStarGameDate(seasonYear: number, stats?: TxnCalendar): Dat
  */
 export function getAllStarWeekendStartDate(seasonYear: number, stats?: TxnCalendar): Date {
   return new Date(getAllStarGameDate(seasonYear, stats).getTime() - 2 * 86_400_000);
+}
+
+/** Season rollover defaults to Jun 30, but slides later when scheduled
+ *  playoff/play-in games run into July under custom playoff lengths. */
+export function getRolloverDate(
+  seasonYear: number,
+  _stats?: TxnCalendar,
+  schedule?: ScheduleDateLike[],
+): Date {
+  const defaultRollover = new Date(Date.UTC(seasonYear, 5, 30));
+  const playoffDates = (schedule ?? [])
+    .filter(g => (g.isPlayoff || g.isPlayIn) && g.date)
+    .map(g => new Date(g.date as string))
+    .filter(d => !isNaN(d.getTime()) && d.getUTCFullYear() === seasonYear);
+  if (playoffDates.length === 0) return defaultRollover;
+  const lastPlayoffMs = Math.max(...playoffDates.map(d => d.getTime()));
+  const slid = new Date(lastPlayoffMs + 7 * 86_400_000);
+  return slid > defaultRollover ? slid : defaultRollover;
 }

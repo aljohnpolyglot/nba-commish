@@ -7,11 +7,13 @@ import { PlayerBioView } from '../central/view/PlayerBioView';
 import { NBAPlayer } from '../../types';
 import { fetchCoachData, getCoachPhoto } from '../../data/photos/coaches';
 import { RankedPersonCard, StatPills } from '../shared/ui';
+import { getOwnTeamId } from '../../utils/helpers';
 
 type AwardTab = 'mvp' | 'dpoy' | 'roty' | 'smoy' | 'mip' | 'coy' | 'allNBA';
 
 export const AwardRacesView: React.FC = () => {
   const { state } = useGame();
+  const ownTid = getOwnTeamId(state);
   const [selectedAward, setSelectedAward] = useState<AwardTab>('mvp');
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
   const [coachPhotosLoaded, setCoachPhotosLoaded] = useState(false);
@@ -69,14 +71,20 @@ export const AwardRacesView: React.FC = () => {
             {ti === 0 ? '1st Team' : ti === 1 ? '2nd Team' : '3rd Team'}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {team.map((spot, si) => (
+            {team.map((spot, si) => {
+              const isOwn = ownTid !== null && spot.player.tid === ownTid;
+              return (
               <motion.div
                 key={spot.player.internalId}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: (ti * 5 + si) * 0.04 }}
                 onClick={() => setViewingPlayer(spot.player)}
-                className="group flex items-center gap-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/40 rounded-xl p-3 cursor-pointer transition-all"
+                className={`group flex items-center gap-3 border rounded-xl p-3 cursor-pointer transition-all ${
+                  isOwn
+                    ? 'bg-indigo-500/10 hover:bg-indigo-500/15 border-indigo-500/40 hover:border-indigo-500/60'
+                    : 'bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-indigo-500/40'
+                }`}
               >
                 <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-slate-800 border border-slate-700 shrink-0">
                   <img
@@ -103,7 +111,8 @@ export const AwardRacesView: React.FC = () => {
                   size="xs"
                 />
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ))}
@@ -249,26 +258,33 @@ export const AwardRacesView: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <AnimatePresence mode="wait">
-                {(races[selectedAward] as AwardCandidate[]).map((candidate, index) => (
-                  <RankedPersonCard
+                {(races[selectedAward] as AwardCandidate[]).map((candidate, index) => {
+                  const isOwn = ownTid !== null && candidate.player.tid === ownTid;
+                  return (
+                  <div
                     key={candidate.player.internalId}
-                    rank={index + 1}
-                    portraitUrl={candidate.player.imgURL || `https://picsum.photos/seed/${candidate.player.name}/200/200`}
-                    name={candidate.player.name}
-                    badge={candidate.player.pos}
-                    subtitle={`${candidate.team.name} · ${candidate.team.wins}-${candidate.team.losses}`}
-                    teamLogoUrl={candidate.team.logoUrl}
-                    stats={[
-                      { label: 'PTS', val: (candidate.stats.pts / candidate.stats.gp).toFixed(1) },
-                      { label: 'REB', val: ((candidate.stats.trb || (candidate.stats as any).reb || (candidate.stats.orb || 0) + (candidate.stats.drb || 0)) / candidate.stats.gp).toFixed(1) },
-                      { label: 'AST', val: (candidate.stats.ast / candidate.stats.gp).toFixed(1) },
-                    ]}
-                    odds={candidate.odds}
-                    accentColor="indigo"
-                    animDelay={index * 0.05}
-                    onClick={() => setViewingPlayer(candidate.player)}
-                  />
-                ))}
+                    className={isOwn ? 'ring-2 ring-indigo-500/50 rounded-xl' : ''}
+                  >
+                    <RankedPersonCard
+                      rank={index + 1}
+                      portraitUrl={candidate.player.imgURL || `https://picsum.photos/seed/${candidate.player.name}/200/200`}
+                      name={candidate.player.name}
+                      badge={candidate.player.pos}
+                      subtitle={`${candidate.team.name} · ${candidate.team.wins}-${candidate.team.losses}`}
+                      teamLogoUrl={candidate.team.logoUrl}
+                      stats={[
+                        { label: 'PTS', val: (candidate.stats.pts / candidate.stats.gp).toFixed(1) },
+                        { label: 'REB', val: ((candidate.stats.trb || (candidate.stats as any).reb || (candidate.stats.orb || 0) + (candidate.stats.drb || 0)) / candidate.stats.gp).toFixed(1) },
+                        { label: 'AST', val: (candidate.stats.ast / candidate.stats.gp).toFixed(1) },
+                      ]}
+                      odds={candidate.odds}
+                      accentColor="indigo"
+                      animDelay={index * 0.05}
+                      onClick={() => setViewingPlayer(candidate.player)}
+                    />
+                  </div>
+                  );
+                })}
               </AnimatePresence>
             </div>
           )}

@@ -87,9 +87,12 @@ export class PlayoffAdvancer {
     if (b.playInComplete && !b.round1Injected) {
       const east8 = this.getFinal8Seeds(b, 'East');
       const west8 = this.getFinal8Seeds(b, 'West');
-      if (east8.length === 8 && west8.length === 8) {
-        const r1Series = PlayoffGenerator.buildRound1(east8, west8, numGamesPerRound[0] ?? 7);
-        b.series = [...b.series, ...r1Series];
+      const existingR1 = b.series.filter(s => s.round === 1);
+      if ((east8.length === 8 && west8.length === 8) || existingR1.length > 0) {
+        const r1Series = existingR1.length > 0
+          ? existingR1
+          : PlayoffGenerator.buildRound1(east8, west8, numGamesPerRound[0] ?? 7);
+        if (existingR1.length === 0) b.series = [...b.series, ...r1Series];
         const startDate = new Date(`${b.season}-04-22T00:00:00Z`);
         const curMaxGid = Math.max(maxGid, ...newGames.map(g => g.gid), 0);
         const injected = PlayoffGenerator.injectSeriesGames(r1Series, startDate, curMaxGid);
@@ -264,4 +267,3 @@ export class PlayoffAdvancer {
     return new Date(Math.max(...dates));
   }
 }
-

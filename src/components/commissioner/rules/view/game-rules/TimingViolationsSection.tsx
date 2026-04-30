@@ -57,17 +57,16 @@ export const TimingViolationsSection: React.FC<TimingViolationsSectionProps> = (
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                 <div className="space-y-2">
-                    {/* shotClockEnabled toggle not checked by engine — shotClockValue ✅ wired to SimulatorKnobs.shotClockSeconds */}
+                    {/* shotClockEnabled/value/reset feed simulator pace and shot-clock pressure. */}
                     <RuleToggle id="shotClockEnabled" value={shotClockEnabled} onChange={setShotClockEnabled} />
                     {shotClockEnabled && (
                         <div className="space-y-2 pl-4 border-l border-slate-800/50">
                             <RuleInput id="shotClockValue" value={shotClockValue} onChange={setShotClockValue} />
-                            {/* TODO(sim): shotClockResetOffensiveRebound not wired to engine */}
                             <RuleInput id="shotClockResetOffensiveRebound" value={shotClockResetOffensiveRebound} onChange={setShotClockResetOffensiveRebound} />
                         </div>
                     )}
                 </div>
-                {/* TODO(sim): backcourt / 3-second / inbound / back-to-basket timers — not wired to engine */}
+                {/* Timer and 3-second toggles feed simulator pace, turnover, post, rim, and 3PA knobs. */}
                 <div className="space-y-2">
                     <RuleToggle id="backcourtTimerEnabled" value={backcourtTimerEnabled} onChange={setBackcourtTimerEnabled} />
                     {backcourtTimerEnabled && <RuleInput id="backcourtTimerValue" value={backcourtTimerValue} onChange={setBackcourtTimerValue} />}
@@ -88,7 +87,7 @@ export const TimingViolationsSection: React.FC<TimingViolationsSectionProps> = (
                     <RuleToggle id="backToBasketTimerEnabled" value={backToBasketTimerEnabled} onChange={setBackToBasketTimerEnabled} />
                     {backToBasketTimerEnabled && <RuleInput id="backToBasketTimerValue" value={backToBasketTimerValue} onChange={setBackToBasketTimerValue} />}
                 </div>
-                {/* TODO(sim): illegalZoneDefenseEnabled not wired — no zone defense modelling in engine */}
+                {/* illegalZoneDefenseEnabled changes man/zone shot mix in the simulator. */}
                 <div className="space-y-2">
                     <RuleToggle id="illegalZoneDefenseEnabled" value={illegalZoneDefenseEnabled} onChange={setIllegalZoneDefenseEnabled} />
                 </div>

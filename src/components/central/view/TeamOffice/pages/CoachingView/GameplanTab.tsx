@@ -167,7 +167,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
         .map(p => p.internalId),
     );
 
-    const savedStarters = (saved?.starterIds ?? []).filter(id => onTeamIds.has(id));
+    const savedStarters = (saved?.starterIds ?? []).filter(id => onTeamIds.has(id) && healthyIds.has(id));
     const projected = team
       ? StarterService.getProjectedStarters(team, state.players, currentYear)
           .slice(0, 5)

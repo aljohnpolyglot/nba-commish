@@ -59,7 +59,8 @@ export function generateStatsForTeam(
 
   // ── Minute allocation ──────────────────────────────────────────────────────
   let playerMinutes: number[];
-  const totalMinuteBudget = (knobs.quarterLength * 4 + otCount * 5) * 5;
+  const overtimeDuration = knobs.overtimeDuration ?? 5;
+  const totalMinuteBudget = (knobs.quarterLength * 4 + otCount * overtimeDuration) * 5;
 
   if (knobs.flatMinutes) {
     // Rating-weighted flat distribution: athletes play more, personalities play less.
@@ -81,7 +82,7 @@ export function generateStatsForTeam(
   } else {
     const mpgTarget = knobs.starMpgOverride ?? rotResult.starMpgTarget;
     const { minutes } = MinutesPlayedService.allocateMinutes(
-      rotation, season, lead, otCount, mpgTarget, !!knobs.isPlayoffs, knobs.quarterLength
+      rotation, season, lead, otCount, mpgTarget, !!knobs.isPlayoffs, knobs.quarterLength, overtimeDuration
     );
     playerMinutes = minutes;
 
@@ -124,8 +125,8 @@ export function generateStatsForTeam(
   // Short-handed teams (< 9 players): tighter cap so role players don't marathon 48 min
   // when the star and 2 others draw high minutesMult. E.g. 8 players → max ~41 min each.
   const perPlayerMax = rotation.length < 9
-    ? Math.min(42 + otCount * 5, Math.floor((totalMinuteBudget / rotation.length) * 1.35))
-    : 48 + otCount * 5;
+    ? Math.min(42 + otCount * overtimeDuration, Math.floor((totalMinuteBudget / rotation.length) * 1.35))
+    : 48 + otCount * overtimeDuration;
   for (let iter = 0; iter < 4; iter++) {
     if (!playerMinutes.some(m => m > perPlayerMax + 0.01)) break;
     playerMinutes = playerMinutes.map(m => Math.min(perPlayerMax, m));
@@ -266,11 +267,14 @@ export function generateStatsForTeam(
     // Defer/passive archetypes still allowed (fgaMult < 0.85 partially overrides).
     const fgaFloor = Math.floor(playerMinutes[i] * 0.40 * Math.max(0.65, nightProfile.fgaMult));
     const estimatedFga = Math.max(fgaFloor, (baselinePts / 1.1) * nightProfile.fgaMult);
-    // Cap ftaBase at 34 pts equivalent — prevents explosion nights from producing 20 FTA.
-    // ftAggression scales FTA with the night profile: Torch/Explosion nights draw more fouls,
-    // Brickfest/Passive nights draw fewer.
-    const ftaBase = Math.min(ptsTarget, 34) / 1.20;
-    let fta = Math.round(ftaBase * baseFtRate * nightProfile.ftAggression * gamePlan.ftaMult[i] * getVariance(1.0, 0.18));
+    // Anchor fta to estimatedFga (shot volume), NOT ptsTarget. Real NBA: FT trips are
+    // per-attempt — every shot has some ~baseFtRate chance of drawing a foul. Anchoring
+    // to ptsTarget let star-night pts inflation multiply through baseFtRate × ftaMult ×
+    // ftAggression and produced 17-FTA-on-3-FGA outliers (Edwards line) when fgPts =
+    // ptsTarget − ftm collapsed. ftAggression / ftaMult still scale the night profile.
+    const ftaMultRaw = Number.isFinite(gamePlan.ftaMult[i]) ? gamePlan.ftaMult[i] : 1.0;
+    const ftAgg = Number.isFinite(nightProfile.ftAggression) ? nightProfile.ftAggression : 1.0;
+    let fta = Math.round(estimatedFga * baseFtRate * ftAgg * ftaMultRaw * getVariance(1.0, 0.18));
 
     // Floor: every active scorer draws at least some contact
     fta = Math.max(Math.round(ptsTarget * 0.04), fta);
@@ -278,6 +282,12 @@ export function generateStatsForTeam(
     // Tight wobble: -1 to +1
     if (fta > 1) fta += Math.floor(Math.random() * 3) - 1;
     fta = Math.max(0, fta);
+
+    // Hard per-player cap FTA/FGA ≤ 2.0 — even an outlier whistle-bait night maxes here
+    // (real NBA ceiling for an Embiid/Giannis trip-fest ≈ 2.0 FT per FG). Plus a NaN guard.
+    const ftaCeil = Math.max(2, Math.round(estimatedFga * 2.0));
+    fta = Math.min(fta, ftaCeil);
+    if (!Number.isFinite(fta)) fta = 0;
 
     // TRUE BELL CURVE FT%: An 80% shooter should occasionally shoot 60% or 100% in a single game.
     // ftSkill nudges % up on hot nights (Torch: +12%) and down on cold nights (Brickfest: -18%).
@@ -394,7 +404,7 @@ if (tpComposite >= 20 && tpComposite <= 60) {
     // both 3PT and 2PT effective percentages so it shows up as FG% swing.
     const userEffBias = scoringBiases?.get(p.internalId)?.effMult ?? 1;
     const threePctEffective = Math.max(0.04,
-      threePctBase * nightProfile.efficiencyMult * gamePlan.effMult[i] * userEffBias * perimPenalty * knobs.efficiencyMultiplier * volDecay
+      threePctBase * nightProfile.efficiencyMult * gamePlan.effMult[i] * userEffBias * perimPenalty * knobs.efficiencyMultiplier * (knobs.threePointEfficiencyMult ?? 1.0) * volDecay
     );
 
     // Calculate 2PT efficiency

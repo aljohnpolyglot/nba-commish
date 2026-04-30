@@ -13,12 +13,13 @@ const WORLD_LOGO = ALL_STAR_ASSETS.worldLogo;
 interface AllStarRosterProps {
   allStar: any;
   state: any;
+  ownTid?: number | null;
   onWatchGame?: (game: any) => void;
   onViewBoxScore?: (game: any) => void;
   onPlayerClick?: (player: any) => void;
 }
 
-export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, onWatchGame, onViewBoxScore, onPlayerClick }) => {
+export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, ownTid, onWatchGame, onViewBoxScore, onPlayerClick }) => {
   const teams = state.teams;
   const playerById = React.useMemo(
     () => new Map<string, any>((state.players ?? []).map((p: any) => [p.internalId, p])),
@@ -74,12 +75,17 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, on
   // ── Starter hero card ────────────────────────────────────────────────────────
   const StarterCard = ({ p }: { p: any }) => {
     const { team, teamColor, fullPlayer, imgUrl, allStarCount, flag } = buildPlayerData(p);
+    const isOwn = ownTid !== null && ownTid !== undefined && fullPlayer?.tid === ownTid;
     return (
       <div
-        className="relative flex flex-col items-center gap-1.5 p-3 pt-4 rounded-2xl border cursor-pointer"
+        className={`relative flex flex-col items-center gap-1.5 p-3 pt-4 rounded-2xl border cursor-pointer ring-2 ${
+          isOwn ? 'ring-indigo-500/50 ring-offset-2 ring-offset-slate-950' : 'ring-transparent'
+        }`}
         style={{
-          borderColor: `${teamColor}55`,
-          background: `linear-gradient(160deg, ${teamColor}18 0%, rgba(15,23,42,0.9) 55%)`,
+          borderColor: isOwn ? '#6366f1' : `${teamColor}55`,
+          background: isOwn
+            ? 'linear-gradient(160deg, rgb(79,70,229,0.15) 0%, rgba(15,23,42,0.9) 55%)'
+            : `linear-gradient(160deg, ${teamColor}18 0%, rgba(15,23,42,0.9) 55%)`,
         }}
         onClick={() => onPlayerClick?.(fullPlayer ?? { name: p.playerName, internalId: p.playerId })}
       >
@@ -140,9 +146,14 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, on
   // ── Reserve list row ─────────────────────────────────────────────────────────
   const ReserveRow = ({ p }: { p: any }) => {
     const { team, fullPlayer, imgUrl, allStarCount, flag } = buildPlayerData(p);
+    const isOwn = ownTid !== null && ownTid !== undefined && fullPlayer?.tid === ownTid;
     return (
       <div
-        className="flex items-center gap-3 px-3 py-2.5 border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30 transition-colors cursor-pointer"
+        className={`flex items-center gap-3 px-3 py-2.5 border-b border-slate-800/60 last:border-0 transition-colors cursor-pointer ${
+          isOwn
+            ? 'bg-indigo-500/10 hover:bg-indigo-500/15'
+            : 'hover:bg-slate-800/30'
+        }`}
         onClick={() => onPlayerClick?.(fullPlayer ?? { name: p.playerName, internalId: p.playerId })}
       >
         <PlayerPortrait
@@ -267,11 +278,60 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, on
     return { bucket, accent, label, players };
   });
 
+  const isBracketTournament = bracket?.games?.length > 1;
+  const playedBracketGames = bracket?.games
+    ?.filter((g: any) => g.played)
+    .sort((a: any, b: any) => {
+      if (a.round === b.round) return a.gid - b.gid;
+      return a.round === 'final' ? 1 : -1;
+    }) ?? [];
+
   return (
     <div className="space-y-8">
 
       {/* ── Game result or Watch prompt ───────────────────────────────────── */}
-      {boxScore ? (
+      {isBracketTournament && playedBracketGames.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {playedBracketGames.map((g: any) => {
+            const homeT = bracket.teams?.find((t: any) => t.tid === g.homeTid);
+            const awayT = bracket.teams?.find((t: any) => t.tid === g.awayTid);
+            const isFinal = g.round === 'final';
+            const sched = state.schedule?.find((s: any) => s.gid === g.gid);
+            return (
+              <div key={g.gid} className={`bg-slate-900 rounded-2xl border ${isFinal ? 'border-amber-500/40' : 'border-slate-800'} p-5`}>
+                <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-3 ${isFinal ? 'text-amber-400' : 'text-sky-400'}`}>
+                  {isFinal ? 'Championship · Final' : 'Semifinal'} · First to {g.targetScore ?? (isFinal ? 25 : 40)}
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1 text-center">
+                    <div className={`text-3xl font-black mb-1 ${g.homeScore >= g.awayScore ? 'text-white' : 'text-slate-600'}`}>{g.homeScore}</div>
+                    <div className="text-[10px] text-sky-400 font-black uppercase tracking-widest leading-tight">{homeT?.name ?? homeFinalName}</div>
+                    {homeT?.coachName && <div className="text-[8px] text-slate-500 mt-0.5">Coach {homeT.coachName.split(' ').pop()}</div>}
+                  </div>
+                  <div className="text-lg font-black text-slate-700 italic">VS</div>
+                  <div className="flex-1 text-center">
+                    <div className={`text-3xl font-black mb-1 ${g.awayScore > g.homeScore ? 'text-white' : 'text-slate-600'}`}>{g.awayScore}</div>
+                    <div className="text-[10px] text-emerald-400 font-black uppercase tracking-widest leading-tight">{awayT?.name ?? awayFinalName}</div>
+                    {awayT?.coachName && <div className="text-[8px] text-slate-500 mt-0.5">Coach {awayT.coachName.split(' ').pop()}</div>}
+                  </div>
+                </div>
+                {g.mvpName && (
+                  <div className="mt-3 text-center text-[10px] text-amber-400 font-black uppercase tracking-wide">
+                    MVP: {g.mvpName} · {g.mvpPts} pts
+                  </div>
+                )}
+                {sched && (
+                  <div className="flex justify-center mt-3">
+                    <button onClick={() => onViewBoxScore?.(sched)} className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-all">
+                      View Box Score
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : boxScore ? (
         <div className="bg-slate-900 rounded-2xl border border-slate-800 p-8 text-center">
           <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6">
             Sunday Night · Final Score
@@ -340,8 +400,8 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, on
         </div>
       )}
 
-      {/* ── Bracket per-round MVPs (multi-game formats only) ────────────── */}
-      {bracket && bracket.games?.filter((g: any) => g.played && g.mvpName).length > 1 && (
+      {/* ── Bracket per-round MVPs (multi-game formats only, classic single-game only) ── */}
+      {!isBracketTournament && bracket && bracket.games?.filter((g: any) => g.played && g.mvpName).length > 1 && (
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Trophy size={12} className="text-amber-400" />

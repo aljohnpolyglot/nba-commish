@@ -256,7 +256,7 @@ export const DayView: React.FC<DayViewProps> = ({
                       onClick={onNavigateToDraftLottery}
                       className="px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-black text-[10px] uppercase tracking-widest transition-all"
                     >
-                      View Lottery
+                      Watch Lottery
                     </button>
                   )}
                 </div>

@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useGame } from '../../store/GameContext';
 import { Star, Zap, Target, Trophy, Users } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
+import { getOwnTeamId } from '../../utils/helpers';
 
 import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
 import { ALL_STAR_ASSETS } from '../../services/allStar/AllStarSelectionService';
@@ -27,6 +28,7 @@ type AllStarTab = 'overview' | 'votes' | 'roster' | 'rising-stars' | 'celebrity'
 
 export const AllStarView: React.FC = () => {
   const { state, dispatchAction } = useGame();
+  const ownTid = getOwnTeamId(state);
   const allStar = state.allStar;
   const [activeTab, setActiveTab] = useState<AllStarTab>('overview');
   const [watchingGame, setWatchingGame] = useState<any | null>(null);
@@ -310,40 +312,44 @@ export const AllStarView: React.FC = () => {
           />
         )}
         {activeTab === 'votes' && (
-          <AllStarVotes allStar={allStar} />
+          <AllStarVotes allStar={allStar} ownTid={ownTid} />
         )}
         {activeTab === 'roster' && (
           <AllStarRoster
             allStar={allStar}
             state={state}
+            ownTid={ownTid}
             onWatchGame={handleWatchGame}
             onViewBoxScore={setSelectedBoxScoreGame}
             onPlayerClick={setViewingPlayer}
           />
         )}
         {activeTab === 'rising-stars' && (
-          <RisingStarsView 
-            allStar={allStar} 
-            onWatchGame={handleWatchGame} 
+          <RisingStarsView
+            allStar={allStar}
+            ownTid={ownTid}
+            onWatchGame={handleWatchGame}
             onViewBoxScore={setSelectedBoxScoreGame}
           />
         )}
         {activeTab === 'celebrity' && (
-          <CelebrityGameView 
-            allStar={allStar} 
-            state={state} 
-            onWatchGame={handleWatchGame} 
+          <CelebrityGameView
+            allStar={allStar}
+            state={state}
+            ownTid={ownTid}
+            onWatchGame={handleWatchGame}
             onViewBoxScore={setSelectedBoxScoreGame}
           />
         )}
         {activeTab === 'dunk' && (
-          <DunkContestView 
-            allStar={allStar} 
-            players={state.players} 
+          <DunkContestView
+            allStar={allStar}
+            players={state.players}
+            ownTid={ownTid}
           />
         )}
         {activeTab === 'three-point' && (
-          <ThreePointView allStar={allStar} players={state.players} />
+          <ThreePointView allStar={allStar} players={state.players} ownTid={ownTid} />
         )}
       </div>
 

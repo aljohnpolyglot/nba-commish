@@ -41,9 +41,9 @@ export const PersonnelSubsSection: React.FC<PersonnelSubsSectionProps> = ({
                         </div>
                     )}
                 </div>
-                {/* noDribbleRule ✅ wired: enabled → 0.72× pace, 0.65× rimRateMult, 1.4× threePointRateMult */}
+                {/* noDribbleRule feeds simulator pace, rim, and 3PA knobs. */}
                 <RuleToggle id="noDribbleRule" value={noDribbleRule} onChange={setNoDribbleRule} />
-                {/* TODO(sim): multiballEnabled / maxPlayersOnCourt / substitutionLimit — flavor only, not wired */}
+                {/* Multiball, max players, and substitution caps are stored only until lineup/possession infra supports them. */}
                 <div className="space-y-2">
                     <RuleToggle id="multiballEnabled" value={multiballEnabled} onChange={setMultiballEnabled} />
                     {multiballEnabled && <RuleInput id="multiballCount" value={multiballCount} onChange={setMultiballCount} />}

@@ -128,6 +128,21 @@ body {
   animation: shimmer 1.5s infinite;
 }
 
+@keyframes scan {
+  0%   { top: -8%; }
+  100% { top: 108%; }
+}
+
+@keyframes score-flash {
+  0%   { color: #eab308; text-shadow: 0 0 24px rgba(234,179,8,0.8); transform: scale(1.15); }
+  60%  { color: #ffffff; text-shadow: 0 0 12px rgba(234,179,8,0.3); transform: scale(1.05); }
+  100% { color: #ffffff; text-shadow: none; transform: scale(1); }
+}
+
+.score-flash {
+  animation: score-flash 0.5s ease-out forwards;
+}
+
 /* ── View transition timing ─────────────────────────────────────────── */
 ::view-transition-group(*),
 ::view-transition-old(*),

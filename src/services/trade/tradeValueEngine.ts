@@ -57,9 +57,53 @@ export function isYoungContenderCore(
   return (sumAge / teamRoster.length) < 27;
 }
 
+/**
+ * Walking-expiring guard — returns true when a player is on a contract that ends
+ * THIS season (exp <= currentYear) AND we're past the trade deadline. In that
+ * window the player will hit FA before the next season starts, so the acquirer
+ * gets nothing tradable in return — same reason real NBA front offices stop
+ * shopping expirings after the deadline. Pass `isPostDeadlinePreFA` from the caller
+ * (component or AI handler computes this from the league calendar).
+ */
+export function isWalkingExpiring(
+  player: NBAPlayer,
+  currentYear: number,
+  isPostDeadlinePreFA: boolean,
+): boolean {
+  if (!isPostDeadlinePreFA) return false;
+  const exp = player.contract?.exp ?? currentYear + 5;
+  return exp <= currentYear;
+}
+
+/**
+ * Returns true if a player was signed this league year (on or after the current
+ * season's FA start) and the lock hasn't expired yet (< next FA start).
+ * Covers both offseason re-signings AND mid-season extensions/new deals.
+ */
+export function isRecentlySignedLocked(
+  player: NBAPlayer,
+  faStartMs: number,     // getFreeAgencyStartDate(currentYear).getTime()
+  nextFaStartMs: number, // getFreeAgencyStartDate(currentYear + 1).getTime()
+  currentDateMs: number,
+): boolean {
+  if (currentDateMs >= nextFaStartMs) return false;
+  const signedDate = (player as any).signedDate as string | undefined;
+  if (!signedDate) return false;
+  const signedMs = new Date(signedDate).getTime();
+  return isFinite(signedMs) && signedMs >= faStartMs;
+}
+
 /** Check if a player is on the trading block (AI is willing to trade). */
-export function isOnTradingBlock(player: NBAPlayer, mode: TeamMode, currentYear: number): boolean {
+export function isOnTradingBlock(
+  player: NBAPlayer,
+  mode: TeamMode,
+  currentYear: number,
+  isPostDeadlinePreFA: boolean = false,
+): boolean {
   if (isUntouchable(player, mode, currentYear)) return false;
+  // Walking expirings come off the block — nobody's acquiring a player who'll
+  // be a free agent in days. Caller decides if we're in the dead window.
+  if (isWalkingExpiring(player, currentYear, isPostDeadlinePreFA)) return false;
   const ovr = calcOvr2K(player);
   const age = player.born?.year ? currentYear - player.born.year : (player.age ?? 27);
 

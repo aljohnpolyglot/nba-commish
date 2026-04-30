@@ -7,6 +7,7 @@ import { Game } from '../../types';
 import { GameSimulatorScreen } from '../shared/GameSimulatorScreen';
 import { WatchGamePreviewModal } from '../modals/WatchGamePreviewModal';
 import { normalizeDate, getTeamForGame, getPlayersForExhibitionTeam } from '../../utils/helpers';
+import { getRolloverDate, toISODateString } from '../../utils/dateUtils';
 import { BracketLayout } from './bracket/BracketLayout';
 import { SeriesDetailPanel } from './detail/SeriesDetailPanel';
 import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
@@ -164,8 +165,9 @@ export const PlayoffView: React.FC = () => {
   };
 
   const handleSimPlayoffs = () => {
-    withLotteryGuard(`${year}-06-30`, () =>
-      rosterGate.attempt(() => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: `${year}-06-30` } } as any))
+    const rolloverDate = toISODateString(getRolloverDate(year, state.leagueStats as any, state.schedule as any));
+    withLotteryGuard(rolloverDate, () =>
+      rosterGate.attempt(() => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: rolloverDate } } as any))
     );
   };
 

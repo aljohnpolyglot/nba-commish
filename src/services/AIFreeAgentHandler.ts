@@ -582,6 +582,38 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
       const bestLimits = getContractLimits(best, state.leagueStats as any);
       const offer = { ...baseOffer, salaryUSD: clampSpendOffer(baseOffer.salaryUSD, teamAttrs.spending, bestLimits.maxSalaryUSD) };
 
+      // ── Aggregate apron ceiling — guard against LAC-2026 superteam runaway.
+      // Per-signing gates pass individually but the cumulative burn balloons
+      // 30+ M past 2nd apron with no aggregate brake. Compute projected payroll
+      // (existing roster + everything signed this round + this offer) and gate
+      // by 2nd apron multiplier. Hard ceiling at +50% refuses ALL signings;
+      // tightening band at +25% refuses non-stars (K2 < 88).
+      {
+        const projProfile = getTeamCapProfileFromState(state, team.id, thresholds);
+        const projRoundSpend = results.filter(r => r.teamId === team.id).reduce((s, r) => s + r.salaryUSD, 0);
+        const projectedPayroll = projProfile.payrollUSD + projRoundSpend + offer.salaryUSD;
+        if (thresholds.secondApron > 0) {
+          const k2HardGate = getK2Ovr(best);
+          if (projectedPayroll > thresholds.secondApron * 1.5) break;
+          if (projectedPayroll > thresholds.secondApron * 1.25 && k2HardGate < 88) break;
+        }
+      }
+
+      // Strategy-aware spending governor: cap_clearing / rebuilding / development
+      // teams must not be signing $50M stars in FA. Mirrors the gates already
+      // applied to extensions (~line 1500) and Bird-Rights re-signs (~line 1819).
+      // Without this Pass 1 happily ignores the team's own labeled strategy and
+      // dumps payroll on non-young-core, exactly the LAC-2026 'Cap Clearing'
+      // pathology where the strategy label was pure cosmetic.
+      {
+        const playerAgeNow = best.born?.year ? currentYear - best.born.year : (best.age ?? 27);
+        const k2Now = getK2Ovr(best);
+        const minSalaryUSDStrategy = ((state.leagueStats as any).minContractStaticAmount ?? 1.2) * 1_000_000;
+        const isCheapEnough = offer.salaryUSD <= minSalaryUSDStrategy * 2;
+        if (!isCheapEnough && (strategy.key === 'rebuilding' || strategy.key === 'development' || strategy.key === 'cap_clearing')
+            && (playerAgeNow > 25 || k2Now < 78)) break;
+      }
+
       // Financial discipline: at 13+/15, multi-year mid-money to fringe K2 → stop and let Pass 3 fill.
       {
         const stdRosterCount = state.players.filter(p => p.tid === team.id && !(p as any).twoWay).length
@@ -762,17 +794,12 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   }
 
   // ── Pass 4: Minimum-roster enforcement ────────────────────────────────
-  // Teams below 15 must sign via cap → MLE → minimum exception. User team backfilled to minRoster only.
-  const minRoster = state.leagueStats?.minPlayersPerTeam ?? 14;
-  const userTeamUnderMin = userTeamId >= 0 && (() => {
-    const userTeam = state.teams.find(t => t.id === userTeamId);
-    if (!userTeam) return false;
-    const count = state.players.filter(p => p.tid === userTeamId && !(p as any).twoWay).length;
-    return count < minRoster;
-  })();
-  const pass4Teams = userTeamUnderMin
-    ? [...sortedAITeams, state.teams.find(t => t.id === userTeamId)!].filter(Boolean)
-    : sortedAITeams;
+  // Teams below 15 must sign via cap → MLE → minimum exception. User team
+  // is NEVER auto-filled in GM mode — the user controls every signing on
+  // their roster, even if it leaves them below the league minimum. The
+  // userTeamId sentinel (-999) in commissioner mode means every real team
+  // is eligible here.
+  const pass4Teams = sortedAITeams;
 
   // ── Pass 4 diagnostic logging ────────────────────────────────────────
   // Toggle via window.__DEBUG_PASS4 = true in DevTools, or set env flag for tests.
@@ -795,9 +822,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   }> = [];
 
   for (const team of pass4Teams) {
-    const isUserFill = team.id === userTeamId;
-    // For user team in lazy-GM bail-out, fill only up to minRoster (not maxStandard).
-    const fillTarget = isUserFill ? minRoster : maxStandard;
+    const fillTarget = maxStandard;
     // Count standard roster INCLUDING players we just signed in earlier passes
     const alreadySigned = () => results.filter(r => r.teamId === team.id && !(r as any).twoWay).length;
     const computeRosterSize = () =>
@@ -1053,9 +1078,10 @@ export interface WaiverResult {
 function getRemainingYearsGuaranteed(p: NBAPlayer, currentYear: number): number {
   const cy = (p as any).contractYears as Array<{ season: string; option?: string }> | undefined;
   if (Array.isArray(cy) && cy.length > 0) {
-    return cy.filter(y =>
-      seasonLabelToYear(y.season) >= currentYear && y.option !== 'team' && y.option !== 'player'
-    ).length;
+    return cy.filter(y => {
+      const option = String(y.option ?? '').toLowerCase();
+      return seasonLabelToYear(y.season) >= currentYear && option !== 'team' && option !== 'player';
+    }).length;
   }
   const exp = (p as any).contract?.exp ?? currentYear;
   return Math.max(0, exp - currentYear + 1);
@@ -1066,9 +1092,10 @@ function getRemainingGuaranteedUSD(p: NBAPlayer, currentYear: number): number {
   const cy = (p as any).contractYears as Array<{ season: string; guaranteed: number; option?: string }> | undefined;
   if (Array.isArray(cy) && cy.length > 0) {
     return cy
-      .filter(y =>
-        seasonLabelToYear(y.season) >= currentYear && y.option !== 'team' && y.option !== 'player'
-      )
+      .filter(y => {
+        const option = String(y.option ?? '').toLowerCase();
+        return seasonLabelToYear(y.season) >= currentYear && option !== 'team' && option !== 'player';
+      })
       .reduce((s, y) => s + (y.guaranteed || 0), 0);
   }
   // Fallback: project contract.amount flat through expiry. amount is BBGM thousands.
@@ -1208,9 +1235,38 @@ export function autoTrimOversizedRosters(state: GameState, month?: number, day?:
           pushWaiver(trimPool[i]);
         }
         if (teamWaivers.length < excess) {
-          const forcedPool = allPlayers
+          // Tiered forced fallback. canCut returned a too-small pool (everyone
+          // protected), but the LAC-2026 bug showed Bird-Rights re-signs and
+          // rookies still got force-cut because the original fallback used
+          // `allPlayers` filtered only by selection. Three tiers in priority:
+          //   1. relax buyout/star-protection but KEEP rookie + Bird Rights + recent-signing
+          //   2. relax everything except Bird Rights + recent-signing (so $13M
+          //      Bogdanovic re-sign survives even when trim is desperate)
+          //   3. last resort — fully unfiltered (matches old behavior)
+          const isProtectedTier1 = (p: NBAPlayer) => {
+            if ((p as any).birdRightsResignedThisYear === currentYear) return true;
+            if (isRecentlySigned(p) && !(p as any).nonGuaranteed) return true;
+            const draftYr = (p as any).draft?.year;
+            if (typeof draftYr === 'number' && currentYear - draftYr <= 2) return true;
+            return false;
+          };
+          const isProtectedTier2 = (p: NBAPlayer) => {
+            if ((p as any).birdRightsResignedThisYear === currentYear) return true;
+            if (isRecentlySigned(p) && !(p as any).nonGuaranteed) return true;
+            return false;
+          };
+          const tier1 = allPlayers
+            .filter(p => !selectedIds.has(p.internalId) && !isProtectedTier1(p))
+            .sort(sortFn);
+          const tier2 = allPlayers
+            .filter(p => !selectedIds.has(p.internalId) && !isProtectedTier2(p))
+            .sort(sortFn);
+          const tier3 = allPlayers
             .filter(p => !selectedIds.has(p.internalId))
             .sort(sortFn);
+          const forcedPool = [...tier1];
+          for (const p of tier2) if (!forcedPool.find(q => q.internalId === p.internalId)) forcedPool.push(p);
+          for (const p of tier3) if (!forcedPool.find(q => q.internalId === p.internalId)) forcedPool.push(p);
           for (let i = 0; teamWaivers.length < excess && i < forcedPool.length; i++) {
             pushWaiver(forcedPool[i], true);
           }
@@ -1291,9 +1347,32 @@ export function autoTrimOversizedRosters(state: GameState, month?: number, day?:
           pushWaiver(trimPool[i]);
         }
         if (teamWaivers.length < excess) {
-          const forcedPool = roster
+          // Tiered forced fallback (see preseason branch comment) — preserves
+          // Bird-Rights re-signs through the trim's last-resort cut order.
+          const isProtectedTier1 = (p: NBAPlayer) => {
+            if ((p as any).birdRightsResignedThisYear === currentYear) return true;
+            if (isRecentlySigned(p) && !(p as any).nonGuaranteed) return true;
+            const draftYr = (p as any).draft?.year;
+            if (typeof draftYr === 'number' && currentYear - draftYr <= 2) return true;
+            return false;
+          };
+          const isProtectedTier2 = (p: NBAPlayer) => {
+            if ((p as any).birdRightsResignedThisYear === currentYear) return true;
+            if (isRecentlySigned(p) && !(p as any).nonGuaranteed) return true;
+            return false;
+          };
+          const tier1 = roster
+            .filter(p => !selectedIds.has(p.internalId) && !isProtectedTier1(p))
+            .sort(sortFn);
+          const tier2 = roster
+            .filter(p => !selectedIds.has(p.internalId) && !isProtectedTier2(p))
+            .sort(sortFn);
+          const tier3 = roster
             .filter(p => !selectedIds.has(p.internalId))
             .sort(sortFn);
+          const forcedPool = [...tier1];
+          for (const p of tier2) if (!forcedPool.find(q => q.internalId === p.internalId)) forcedPool.push(p);
+          for (const p of tier3) if (!forcedPool.find(q => q.internalId === p.internalId)) forcedPool.push(p);
           for (let i = 0; teamWaivers.length < excess && i < forcedPool.length; i++) {
             pushWaiver(forcedPool[i], true);
           }
@@ -1349,7 +1428,9 @@ export interface PromotionResult {
 export function autoPromoteTwoWayExcess(state: GameState, month?: number): PromotionResult[] {
   const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive()) ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
   const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
-  const maxTwoWay = 3;
+  const maxTwoWay = (state.leagueStats as any).twoWayContractsEnabled === false
+    ? 0
+    : (state.leagueStats.maxTwoWayPlayersPerTeam ?? 3);
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
 
   // During Jul–Sep training-camp window the standard-limit expansion doesn't matter
@@ -1778,6 +1859,11 @@ export function runAIBirdRightsResigns(state: GameState): BirdRightsResignResult
   const results: BirdRightsResignResult[] = [];
   // Track per-team re-signs so a single team doesn't blow its roster on one pass
   const signedByTeam = new Map<number, number>();
+  // Track in-pass spend per team so the apron gate accumulates across loop
+  // iterations — Bird-Rights resolves one player at a time, and without this
+  // the LAC-style cascade ($57M Kawhi + $13M Bogey + $47M DJJ all on the same
+  // day) checks each premium offer against a stale pre-pass payroll snapshot.
+  const spentByTeamUSD = new Map<number, number>();
 
   // Eligible: FAs with hasBirdRights, K2 >= 75, prior NBA team known.
   const candidates = state.players
@@ -1803,9 +1889,11 @@ export function runAIBirdRightsResigns(state: GameState): BirdRightsResignResult
     if (existingStandard + signedThisPass >= maxStandard) continue;
 
     // 2nd-apron teams skip — they'd take the tax penalty over re-signing. Lux-tax teams still bid.
-    const payroll = state.players
+    const payrollBase = state.players
       .filter(p => p.tid === priorTid && !(p as any).twoWay)
       .reduce((s, p) => s + contractToUSD(p.contract?.amount ?? 0), 0);
+    const inPassSpend = spentByTeamUSD.get(priorTid) ?? 0;
+    const payroll = payrollBase + inPassSpend;
     if (thresholds.secondApron && payroll >= thresholds.secondApron) continue;
 
     // Rebuilder discipline: tankers don't Bird-Rights-resign mid-tier vets.
@@ -1834,6 +1922,13 @@ export function runAIBirdRightsResigns(state: GameState): BirdRightsResignResult
       Math.round(limits.maxSalaryUSD),
     );
 
+    // Aggregate apron sanity: even with Bird Rights, a team already $80M+ over
+    // the 2nd apron with 12+ standard players has no business stacking another
+    // $30M+ deal on top — that's the LAC-2026 pathology. Hard ceiling at
+    // 2nd apron + 25% (combined existing + this pass).
+    if (thresholds.secondApron > 0
+        && payroll + premiumSalary > thresholds.secondApron * 1.25) continue;
+
     // Mood gate — very unhappy stars (< -2) decline; LOYAL always re-signs.
     const traits: MoodTrait[] = (player as any).moodTraits ?? [];
     const teamPlayers = state.players.filter(p => p.tid === priorTid);
@@ -1858,6 +1953,7 @@ export function runAIBirdRightsResigns(state: GameState): BirdRightsResignResult
       isSupermax: !!(player as any).superMaxEligible,
     });
     signedByTeam.set(priorTid, signedThisPass + 1);
+    spentByTeamUSD.set(priorTid, inPassSpend + premiumSalary);
   }
 
   return results;

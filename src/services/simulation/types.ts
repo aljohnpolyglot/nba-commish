@@ -101,6 +101,11 @@ export interface GameResult {
     away: number[];
   };
   date: string;
+  // W-L records at tip-off, before this game's result is applied.
+  homeWins?: number;
+  homeLosses?: number;
+  awayWins?: number;
+  awayLosses?: number;
   injuries?: {
     playerId: string;
     playerName: string;

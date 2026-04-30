@@ -84,25 +84,23 @@ export const ScoringCourtSection: React.FC<ScoringCourtSectionProps> = ({
                     <RuleToggle id="threePointLineEnabled" value={threePointLineEnabled} onChange={setThreePointLineEnabled} />
                     {threePointLineEnabled && <RuleInput id="threePointLineDistance" value={threePointLineDistance} onChange={setThreePointLineDistance} />}
                 </div>
-                {/* TODO(sim): 4PT line stored but sim doesn't generate 4PT attempts yet */}
+                {/* Stored only until the stat schema supports 4PT attempts. */}
                 <div className="space-y-2">
                     <RuleToggle id="fourPointLine" value={fourPointLine} onChange={setFourPointLine} />
                     {fourPointLine && <RuleInput id="fourPointLineDistance" value={fourPointLineDistance} onChange={setFourPointLineDistance} />}
                 </div>
-                {/* TODO(sim): dunkValue / midrangeValue not wired — sim uses fixed point values */}
+                {/* Stored only: the sim still uses fixed 2PT/3PT point values. */}
                 <RuleInput id="dunkValue" value={dunkValue} onChange={setDunkValue} />
                 <RuleInput id="midrangeValue" value={midrangeValue} onChange={setMidrangeValue} />
-                {/* TODO(sim): heave rule and half-court shot value not wired to engine */}
+                {/* Stored only until heave/half-court attempts exist in stat generation. */}
                 <RuleToggle id="heaveRuleEnabled" value={heaveRuleEnabled} onChange={setHeaveRuleEnabled} />
                 <RuleInput id="halfCourtShotValue" value={halfCourtShotValue} onChange={setHalfCourtShotValue} />
-                {/* TODO(sim): physical court dimensions / FT distance / rim height — flavor only */}
+                {/* FT distance, rim height, ball weight, and court dimensions feed simulator stat knobs. */}
                 <RuleInput id="freeThrowDistance" value={freeThrowDistance} onChange={setFreeThrowDistance} />
                 <RuleInput id="rimHeight" value={rimHeight} onChange={setRimHeight} />
                 <RuleInput id="ballWeight" value={ballWeight} onChange={setBallWeight} />
             </div>
-            {/* goaltendingEnabled ✅ wired: disabled → 1.6× blockRateMult + 0.93× efficiencyMultiplier (defenders swat freely at rim) */}
-            {/* TODO(sim): travelingEnabled / doubleDribbleEnabled / basketInterferenceEnabled / kickedBallEnabled — flavor only, not wired */}
-            {/* TODO(sim): court geometry (courtLength, baselineLength, keyWidth) — flavor only, not wired to engine */}
+            {/* Violations and geometry map into turnover, pace, efficiency, block, and shot-location knobs. */}
             <div className="pt-4 border-t border-slate-800/50 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                 <RuleInput id="courtLength" value={courtLength} onChange={setCourtLength} />
                 <RuleInput id="baselineLength" value={baselineLength} onChange={setBaselineLength} />

@@ -10,7 +10,7 @@ import {
 } from '../../../utils/salaryUtils';
 import { extractNbaId, hdPortrait, normalizeDate, convertTo2KRating } from '../../../utils/helpers';
 import { getDisplayPotential } from '../../../utils/playerRatings';
-import { getFreeAgencyStartDate } from '../../../utils/dateUtils';
+import { getCurrentOffseasonFAStart } from '../../../utils/dateUtils';
 import { getPlayerImage } from '../../central/view/bioCache';
 import { getNonNBAGistData } from '../../central/view/nonNBACache';
 import { loadPlayerRenders, getPlayerRender } from '../../../utils/playerRenders';
@@ -344,10 +344,9 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   const isPeakFA = useMemo(() => {
     const dateStr = normalizeDate(state.date ?? '');
     if (!dateStr) return false;
-    const seasonYear = leagueStats?.year ?? new Date().getUTCFullYear();
-    const faStart = getFreeAgencyStartDate(seasonYear, leagueStats);
+    const faStart = getCurrentOffseasonFAStart(`${dateStr}T00:00:00Z`, leagueStats);
     const peakEnd = new Date(faStart.getTime() + PEAK_FA_DAYS * 86_400_000);
-    const current = new Date(dateStr);
+    const current = new Date(`${dateStr}T00:00:00Z`);
     return current >= faStart && current < peakEnd;
   }, [state.date, leagueStats]);
   // Bidding mode: user's submit competes in the market instead of signing.

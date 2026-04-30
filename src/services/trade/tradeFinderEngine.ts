@@ -10,7 +10,7 @@ import type { NBAPlayer, NBATeam, DraftPick, LeagueStats } from '../../types';
 import {
   calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV,
   calcCashTV, CASH_TRADE_CAP_USD,
-  isUntouchable, isYoungContenderCore, isOnTradingBlock, isSalaryLegal, type TeamMode,
+  isUntouchable, isYoungContenderCore, isOnTradingBlock, isSalaryLegal, isWalkingExpiring, isRecentlySignedLocked, type TeamMode,
   type TVContext,
 } from './tradeValueEngine';
 import { effectiveRecord, seasonLabelToYear, contractToUSD } from '../../utils/salaryUtils';
@@ -96,6 +96,14 @@ export interface FindOffersInput {
   stepienEnabled?: boolean;
   /** Trade window (years) used by the Stepien check. Mirrors leagueStats.tradableDraftPickSeasons (default 7). */
   tradablePickWindow?: number;
+  /** True when current date is between trade deadline (exclusive) and FA start
+   *  (exclusive). In that window expiring contracts are walking — they have no
+   *  trade value and should be filtered out of all candidate pools. */
+  isPostDeadlinePreFA?: boolean;
+  /** Pre-computed timestamps for the recently-signed lock check. When provided,
+   *  players signed this league year are filtered from all candidate pools —
+   *  same mechanic as walking expirings but for freshly inked deals. */
+  recentlySignedLockMs?: { faStart: number; nextFaStart: number; current: number };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -137,7 +145,16 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     tradeDifficulty, bypassUntouchablesForTid, allowLifers,
     classStrengthByYear, lotterySlotByTid,
     stepienEnabled = false, tradablePickWindow = 7,
+    isPostDeadlinePreFA = false,
+    recentlySignedLockMs,
   } = input;
+
+  // Post-deadline pre-FA: expiring contracts are walking → filter from every
+  // candidate pool so they don't end up in either side's basket.
+  const isWalking = (p: NBAPlayer) => isWalkingExpiring(p, currentYear, isPostDeadlinePreFA);
+  const isLocked = recentlySignedLockMs
+    ? (p: NBAPlayer) => isRecentlySignedLocked(p, recentlySignedLockMs.faStart, recentlySignedLockMs.nextFaStart, recentlySignedLockMs.current)
+    : (_p: NBAPlayer) => false;
 
   // Stepien-aware filter: would shipping `candidate` leave `tid` without a 1st
   // in two straight future drafts, given the picks ALREADY chosen from this team?
@@ -209,9 +226,10 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     const expectedReturn = Math.max(10, offerValue - difficultyBias);
     let gap = expectedReturn;
 
-    // Get their roster sorted by OVR, excluding external/prospects
+    // Get their roster sorted by OVR, excluding external/prospects.
+    // Walking expirings and recently-signed players are dropped from candidate pools.
     const theirRoster = players
-      .filter(p => p.tid === team.id && !EXTERNAL.has(p.status ?? '') && p.tid !== -2)
+      .filter(p => p.tid === team.id && !EXTERNAL.has(p.status ?? '') && p.tid !== -2 && !isWalking(p) && !isLocked(p))
       .sort((a, b) => b.overallRating - a.overallRating);
 
     // Picks-only basket — skip player matching entirely. Returns are pick-piles
@@ -552,17 +570,22 @@ export function generateAITradeProposal(input: {
   lotterySlotByTid?: Map<number, number>;
   stepienEnabled?: boolean;
   tradablePickWindow?: number;
+  isPostDeadlinePreFA?: boolean;
+  recentlySignedLockMs?: { faStart: number; nextFaStart: number; current: number };
 }): { buyerGives: TradeOfferItem[]; sellerGives: TradeOfferItem[] } | null {
-  const { buyerTid, sellerTid, players, teams, draftPicks, currentYear, minTradableSeason, powerRanks, teamOutlooks, tvContext, classStrengthByYear, lotterySlotByTid, stepienEnabled, tradablePickWindow } = input;
+  const { buyerTid, sellerTid, players, teams, draftPicks, currentYear, minTradableSeason, powerRanks, teamOutlooks, tvContext, classStrengthByYear, lotterySlotByTid, stepienEnabled, tradablePickWindow, isPostDeadlinePreFA, recentlySignedLockMs } = input;
 
   const sellerOutlook = teamOutlooks.get(sellerTid) ?? { role: 'neutral' };
   const buyerOutlook = teamOutlooks.get(buyerTid) ?? { role: 'neutral' };
   const sellerMode = roleToMode(sellerOutlook.role);
   const buyerMode = roleToMode(buyerOutlook.role);
 
-  // Find a target player on the seller's team (non-untouchable, best TV)
+  // Find a target player on the seller's team (non-untouchable, best TV).
+  // Walking expirings and recently-signed players are excluded from proposals.
   const sellerRoster = players
-    .filter(p => p.tid === sellerTid && !EXTERNAL.has(p.status ?? ''))
+    .filter(p => p.tid === sellerTid && !EXTERNAL.has(p.status ?? '')
+              && !isWalkingExpiring(p, currentYear, isPostDeadlinePreFA ?? false)
+              && !(recentlySignedLockMs && isRecentlySignedLocked(p, recentlySignedLockMs.faStart, recentlySignedLockMs.nextFaStart, recentlySignedLockMs.current)))
     .sort((a, b) => calcPlayerTV(b, sellerMode, currentYear, tvContext) - calcPlayerTV(a, sellerMode, currentYear, tvContext));
 
   const target = sellerRoster.find(p => !isUntouchable(p, sellerMode, currentYear));
@@ -589,6 +612,7 @@ export function generateAITradeProposal(input: {
     lotterySlotByTid,
     stepienEnabled,
     tradablePickWindow,
+    isPostDeadlinePreFA,
   });
 
   if (counterOffers.length === 0) return null;

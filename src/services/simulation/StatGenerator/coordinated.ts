@@ -16,7 +16,8 @@ export function generateCoordinatedStats(
   team2KDef?: { steal: number; passPerception: number; block: number; interiorDef: number },
   opp2KDef?: { passPerception: number },
   orbRateMult: number = 1.0,
-  quarterLength: number = 12
+  quarterLength: number = 12,
+  overtimeDuration: number = 5
 ): PlayerGameStats[] {
   const stats    = teamStats.map(s => ({ ...s }));
   const rotation = stats.map(s =>
@@ -117,7 +118,11 @@ export function generateCoordinatedStats(
 
   // ── PF — Coordinated with Opponent FTA
   // Macro: Changed multiplier from 0.85 to 1.05. This adds the missing ~3 team fouls.
-  const pfPool = Math.round(oppFTA * 0.96);
+  // NaN guard: opponent FTA is summed upstream from per-player ftas; if any leg of that
+  // chain produced NaN/Infinity the team Fouls field rendered as "NaN". Fall back to
+  // league-avg 18 instead of letting the NaN propagate through pfPool → share → s.pf.
+  const safeOppFTA = Number.isFinite(oppFTA) ? Math.max(0, oppFTA) : 18;
+  const pfPool = Math.round(safeOppFTA * 0.96);
   const pfFactors = rotation.map(p =>
     Math.pow(
       Math.max(0.1,
@@ -132,16 +137,15 @@ export function generateCoordinatedStats(
   const pfSum = pfFactors.reduce((a, b) => a + b, 0) || 1;
   stats.forEach((s, i) => {
     const share = pfFactors[i] / pfSum;
-    s.pf = Math.min(6, Math.max(0, Math.round(
-      pfPool * share * getVariance(1.0, 0.12)
-    )));
+    const raw = Math.round(pfPool * share * getVariance(1.0, 0.12));
+    s.pf = Math.min(6, Math.max(0, Number.isFinite(raw) ? raw : 0));
   });
 
   // ── Minute redistribution — foul-plagued players lose time, redistributed proportionally
   // 5 players × 4 quarters × QL minutes (regular = 240; All-Star 3-min QL = 60).
-  // OT periods add 5 minutes each → 25 player-minutes per OT.
+  // OT periods add the configured OT duration for each player-minute slot.
   const regulationMinutes = quarterLength * 4 * 5;
-  const totalTarget = regulationMinutes + otCount * 25;
+  const totalTarget = regulationMinutes + otCount * overtimeDuration * 5;
   let stolenMins = 0;
   stats.forEach(s => {
     if (s.pf >= 6 && s.min > 28) {
@@ -159,7 +163,7 @@ export function generateCoordinatedStats(
     stats.forEach(s => {
       s.min += Math.round(stolenMins * (s.min / totalMins));
     });
-    // Fix rounding drift — clamp to exact target (240 reg, 265/290/315 for OT)
+    // Fix rounding drift — clamp to exact configured target.
     const diff = totalTarget - stats.reduce((sum, s) => sum + s.min, 0);
     if (diff !== 0) {
       const top = stats.reduce((a, b) => a.min > b.min ? a : b);
@@ -168,7 +172,7 @@ export function generateCoordinatedStats(
   }
 
   // ── Hard cap: no player can exceed total game length + sync sec field
-  const maxMins = quarterLength * 4 + otCount * 5;
+  const maxMins = quarterLength * 4 + otCount * overtimeDuration;
   stats.forEach(s => {
     s.min = Math.min(maxMins, Math.max(0, s.min));
     s.sec = Math.floor((s.min % 1) * 60);

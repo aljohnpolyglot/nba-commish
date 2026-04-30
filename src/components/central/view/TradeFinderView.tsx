@@ -27,6 +27,8 @@ import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks } from '..
 import { buildClassStrengthMap, buildLotterySlotMap, buildFullDraftSlotMap, formatPickLabel } from '../../../services/draft/draftClassStrength';
 import { tradeRoleToTeamMode, resolveTeamStrategyProfile } from '../../../utils/teamStrategy';
 import { wouldStepienViolateForTid } from '../../../services/trade/stepienRule';
+import { isInPostDeadlinePreFAWindow, getFreeAgencyStartDate } from '../../../utils/dateUtils';
+import { isWalkingExpiring, isRecentlySignedLocked } from '../../../services/trade/tradeValueEngine';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -95,18 +97,26 @@ const PlayerRow: React.FC<{
   team?: NBATeam;
   dateStr: string;
   currentYear: number;
-}> = ({ player, selected, onToggle, team, dateStr, currentYear }) => {
+  walkingExpiring?: boolean;
+  recentlySigned?: boolean;
+}> = ({ player, selected, onToggle, team, dateStr, currentYear, walkingExpiring, recentlySigned }) => {
   const ovr = calcOvr2K(player);
   const pot = calcPot2K(player, currentYear);
   const potColor = getPotColor(pot);
   const salary = player.contract?.amount ?? 0;
   const exp = player.contract?.exp ?? currentYear;
+  const blocked = (!!walkingExpiring || !!recentlySigned) && !selected;
+  const blockTitle = recentlySigned
+    ? 'Recently signed — untradable until next league year.'
+    : 'Walking expiring — past trade deadline, this player will be a free agent before any acquirer can use them.';
 
   return (
     <div
-      onClick={onToggle}
-      className={`flex items-center gap-2 px-3 py-2 cursor-pointer border-b border-slate-800/50 transition-all duration-150
-        ${selected ? 'bg-indigo-600/20 border-l-4 border-l-indigo-500' : 'hover:bg-slate-800/50'}`}
+      onClick={blocked ? undefined : onToggle}
+      title={blocked ? blockTitle : undefined}
+      className={`flex items-center gap-2 px-3 py-2 border-b border-slate-800/50 transition-all duration-150
+        ${blocked ? 'opacity-40 grayscale cursor-not-allowed pointer-events-none'
+          : 'cursor-pointer ' + (selected ? 'bg-indigo-600/20 border-l-4 border-l-indigo-500' : 'hover:bg-slate-800/50')}`}
     >
       {/* Portrait — no overallRating prop so ribbon is suppressed */}
       <PlayerPortrait
@@ -317,11 +327,18 @@ export const OfferCard: React.FC<{
   const { outlook } = offer;
   const badgeLabel = offer.strategyLabel ?? outlook.label;
   const isAbsorb = offer.variant === 'absorb';
-  // Cap space display — positive = "Xm avail", negative = "Xm over"
-  const capLabel = capSpaceK === undefined ? null
-    : capSpaceK >= 0
-      ? `$${(capSpaceK / 1000).toFixed(1)}M avail`
-      : `-$${(-capSpaceK / 1000).toFixed(1)}M over`;
+  // When both sides have players, show the trade-matching delta (outgoing×1.25 − incoming).
+  // Positive = room under the ratio; negative = over the limit. This is trade-specific.
+  // When only one side has players, fall back to raw cap space so the absorb context is clear.
+  const matchDeltaK = bothHavePlayers ? mySalary * 1.25 - theirSalary : null;
+  const capLabel = matchDeltaK !== null
+    ? matchDeltaK >= 0
+      ? `+$${(matchDeltaK / 1000).toFixed(1)}M room`
+      : `-$${(-matchDeltaK / 1000).toFixed(1)}M over limit`
+    : capSpaceK === undefined ? null
+      : capSpaceK >= 0
+        ? `$${(capSpaceK / 1000).toFixed(1)}M avail`
+        : `-$${(-capSpaceK / 1000).toFixed(1)}M over`;
 
   return (
     <motion.div
@@ -386,7 +403,9 @@ export const OfferCard: React.FC<{
           ) : null}
           {capLabel && (
             <span className={`text-[9px] font-bold px-2 py-1 rounded-lg tabular-nums ${
-              (capSpaceK ?? 0) >= 0 ? 'bg-sky-900/40 text-sky-300' : 'bg-rose-900/40 text-rose-300'
+              matchDeltaK !== null
+                ? matchDeltaK >= 0 ? 'bg-emerald-900/40 text-emerald-400' : 'bg-rose-900/40 text-rose-300'
+                : (capSpaceK ?? 0) >= 0 ? 'bg-sky-900/40 text-sky-300' : 'bg-rose-900/40 text-rose-300'
             }`}>
               {capLabel}
             </span>
@@ -715,6 +734,12 @@ export const TradeFinderView: React.FC = () => {
         allowLifers,
         stepienEnabled: state.leagueStats?.stepienRuleEnabled !== false,
         tradablePickWindow: state.leagueStats?.tradableDraftPickSeasons ?? 7,
+        isPostDeadlinePreFA: isInPostDeadlinePreFAWindow(state.date, currentYear, state.leagueStats as any),
+        recentlySignedLockMs: {
+          faStart: getFreeAgencyStartDate(currentYear - 1, state.leagueStats as any).getTime(),
+          nextFaStart: getFreeAgencyStartDate(currentYear, state.leagueStats as any).getTime(),
+          current: new Date(state.date ?? '').getTime(),
+        },
       });
 
       // Map engine results to UI format
@@ -866,17 +891,25 @@ export const TradeFinderView: React.FC = () => {
           {/* Scrollable player / pick list */}
           <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
             {activeTab === 'roster' ? (
-              filteredRoster.map(p => (
-                <PlayerRow
-                  key={p.internalId}
-                  player={p}
-                  selected={basketIds.has(p.internalId)}
-                  onToggle={() => addPlayer(p)}
-                  team={selectedTeam}
-                  dateStr={state.date ?? ''}
-                  currentYear={currentYear}
-                />
-              ))
+              (() => {
+                const postDeadlinePreFA = isInPostDeadlinePreFAWindow(state.date ?? '', currentYear, state.leagueStats as any);
+                const rslFaStart = getFreeAgencyStartDate(currentYear - 1, state.leagueStats as any).getTime();
+                const rslNextFaStart = getFreeAgencyStartDate(currentYear, state.leagueStats as any).getTime();
+                const rslCurrent = new Date(state.date ?? '').getTime();
+                return filteredRoster.map(p => (
+                  <PlayerRow
+                    key={p.internalId}
+                    player={p}
+                    selected={basketIds.has(p.internalId)}
+                    onToggle={() => addPlayer(p)}
+                    team={selectedTeam}
+                    dateStr={state.date ?? ''}
+                    currentYear={currentYear}
+                    walkingExpiring={isWalkingExpiring(p, currentYear, postDeadlinePreFA)}
+                    recentlySigned={isRecentlySignedLocked(p, rslFaStart, rslNextFaStart, rslCurrent)}
+                  />
+                ));
+              })()
             ) : (
               filteredPicks.map(pk => {
                 const orig = teams.find(t => t.id === pk.originalTid);

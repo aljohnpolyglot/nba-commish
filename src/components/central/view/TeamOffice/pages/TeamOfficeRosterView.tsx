@@ -152,7 +152,10 @@ export function TeamOfficeRosterView({ teamId }: Props) {
     };
   }, [teamPlayers]);
 
-  const [sortMode, setSortMode] = useState<SortMode>('rating');
+  const [sortMode, setSortMode] = useState<SortMode>(
+    () => (localStorage.getItem('rosterSortMode') as SortMode | null) ?? 'rating',
+  );
+  const handleSortMode = (m: SortMode) => { setSortMode(m); localStorage.setItem('rosterSortMode', m); };
   const [sort, setSort] = useState<{ col: SortCol; dir: 'asc' | 'desc' }>({ col: 'k2', dir: 'desc' });
 
   const handleSort = (col: SortCol) => {
@@ -312,7 +315,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
         </div>
         <select
           value={sortMode}
-          onChange={e => setSortMode(e.target.value as SortMode)}
+          onChange={e => handleSortMode(e.target.value as SortMode)}
           className="ml-2 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-200 outline-none cursor-pointer shrink-0"
         >
           <option value="rating">OVR</option>
@@ -367,7 +370,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
               <div className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Sort View</div>
               <select
                 value={sortMode}
-                onChange={e => setSortMode(e.target.value as SortMode)}
+                onChange={e => handleSortMode(e.target.value as SortMode)}
                 className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-[10px] font-bold text-slate-200 outline-none cursor-pointer"
               >
                 <option value="rating">↕ By Rating (OVR)</option>

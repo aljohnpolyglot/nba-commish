@@ -1,6 +1,6 @@
 import React from 'react';
 import { normalizeDate } from '../../utils/helpers';
-import { getDraftDate, toISODateString } from '../../utils/dateUtils';
+import { getDraftDate, getRolloverDate, toISODateString } from '../../utils/dateUtils';
 import { useGame } from '../../store/GameContext';
 import { Inbox } from '../Inbox';
 import { MessagesView } from '../MessagesView';
@@ -216,8 +216,9 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       const _ls = state?.leagueStats ?? {} as any;
       const _yr = (_ls as any).year ?? 2026;
       const _draftDate = toISODateString(getDraftDate(_yr, _ls));
+      const _rolloverDate = toISODateString(getRolloverDate(_yr, _ls, state?.schedule as any));
       const _today = state?.date ? normalizeDate(state.date) : '';
-      const _isDraftDay = _today >= _draftDate && _today <= `${_yr}-06-30`;
+      const _isDraftDay = _today >= _draftDate && _today <= _rolloverDate;
       const _isDraftDone = !!(state as any)?.draftComplete;
       const showSimulator = _isDraftDay && !_isDraftDone;
       return (

@@ -7,7 +7,7 @@
 
 import type { GameState, NBAPlayer, NBATeam, DraftPick, TradeProposal } from '../types';
 import { getCapThresholds, effectiveRecord } from '../utils/salaryUtils';
-import { calcOvr2K, calcPlayerTV, isUntouchable } from './trade/tradeValueEngine';
+import { calcOvr2K, calcPlayerTV, isUntouchable, isRecentlySignedLocked } from './trade/tradeValueEngine';
 import { isAssistantGMActive } from './assistantGMFlag';
 import type { TeamMode } from './trade/tradeValueEngine';
 import { generateAITradeProposal, generatePickOnlyProposal } from './trade/tradeFinderEngine';
@@ -19,6 +19,7 @@ import { buildClassStrengthMap, buildFullDraftSlotMap, formatPickLabel } from '.
 import { getGMAttributes, getGMName, tradeInitiateProb, pickHoardResistance } from './staff/gmAttributes';
 import { generateTPEsFromTrade } from '../utils/tradeExceptionUtils';
 import { validateStepienRule } from './trade/stepienRule';
+import { isInPostDeadlinePreFAWindow, getFreeAgencyStartDate } from '../utils/dateUtils';
 import { validateCBATradeRules } from '../utils/cbaTradeRules';
 
 // ── §2d: Pick values ──────────────────────────────────────────────────────────
@@ -74,6 +75,12 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
   const thresholds = getCapThresholds(state.leagueStats as any);
   const stepienOn = state.leagueStats?.stepienRuleEnabled !== false;
   const tradablePickWindow = state.leagueStats?.tradableDraftPickSeasons ?? 7;
+  const isPostDeadlinePreFA = isInPostDeadlinePreFAWindow(state.date, currentYear, state.leagueStats as any);
+  const recentlySignedLockMs = {
+    faStart: getFreeAgencyStartDate(currentYear - 1, state.leagueStats as any).getTime(),
+    nextFaStart: getFreeAgencyStartDate(currentYear, state.leagueStats as any).getTime(),
+    current: new Date(state.date ?? Date.now()).getTime(),
+  };
   const allDraftPicks = state.draftPicks ?? [];
   const stepienOk = (tidA: number, tidB: number, dpidsFromA: number[], dpidsFromB: number[]): boolean => {
     if (!stepienOn) return true;
@@ -205,6 +212,8 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
         lotterySlotByTid,
         stepienEnabled: stepienOn,
         tradablePickWindow,
+        isPostDeadlinePreFA,
+        recentlySignedLockMs,
       });
       if (!proposal) continue;
 
@@ -310,12 +319,15 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
       const sellerRoster = state.players.filter(p => p.tid === sellerTeam.id);
 
       // Find the worst-value expiring contract on this team (dump candidate)
-      // Use isUntouchable to protect key players, then filter for expiring salary
+      // Use isUntouchable to protect key players, then filter for expiring salary.
+      // Walking expirings (post-deadline pre-FA) are useless to absorb — skip.
       const dumpSellerMode: TeamMode = getStrategy(sellerTeam).teamMode;
       const dumpCandidate = sellerRoster
         .filter(p => {
           if (recentlyTraded.has(p.internalId)) return false;
           if (isUntouchable(p, dumpSellerMode, currentYear)) return false;
+          if (isPostDeadlinePreFA && (p.contract?.exp ?? currentYear + 5) <= currentYear) return false;
+          if (isRecentlySignedLocked(p, recentlySignedLockMs.faStart, recentlySignedLockMs.nextFaStart, recentlySignedLockMs.current)) return false;
           const exp = p.contract?.exp ?? (currentYear + 2);
           return exp <= currentYear + 1 && (p.contract?.amount ?? 0) > 10_000;
         })

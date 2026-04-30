@@ -58,7 +58,12 @@ function applyPlayoffLogic(stateWithSim: GameState, dayResults: any[], numGamesP
 
     // 1. Generate bracket on April 13 of the current season year
     if (!playoffs && dateNorm >= playoffStartDateStr) {
-        playoffs = PlayoffGenerator.generateBracket(stateWithSim.teams, stateWithSim.leagueStats.year, numGamesPerRound);
+        playoffs = PlayoffGenerator.generateBracket(
+            stateWithSim.teams,
+            stateWithSim.leagueStats.year,
+            numGamesPerRound,
+            stateWithSim.leagueStats.playIn !== false,
+        );
     }
 
     // 2. Inject play-in games into schedule
@@ -71,12 +76,12 @@ function applyPlayoffLogic(stateWithSim: GameState, dayResults: any[], numGamesP
     }
 
     // 3. Advance bracket from today's play-in/playoff results
-    if (playoffs && dayResults.length > 0) {
+    if (playoffs && (dayResults.length > 0 || (playoffs.playInComplete && !playoffs.round1Injected))) {
         const playoffResults = dayResults.filter(r => {
             const g = schedule.find(sg => sg.gid === r.gameId);
             return g && (g.isPlayoff || g.isPlayIn);
         });
-        if (playoffResults.length > 0) {
+        if (playoffResults.length > 0 || (playoffs.playInComplete && !playoffs.round1Injected)) {
             const { bracket: newBracket, newGames } = PlayoffAdvancer.advance(playoffs, playoffResults, schedule, numGamesPerRound);
             playoffs = newBracket;
             if (newGames.length > 0) {
@@ -1240,14 +1245,20 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         const cy: Array<{ season: string; guaranteed: number; option?: string }> =
                             Array.isArray(playerRecord.contractYears) ? playerRecord.contractYears : [];
                         const remaining = cy
-                            .filter(y =>
-                                seasonLabelToYear(y.season) >= currentSeasonYear && y.option !== 'team' && y.option !== 'player'
-                            )
+                            .filter(y => {
+                                const option = String(y.option ?? '').toLowerCase();
+                                return seasonLabelToYear(y.season) >= currentSeasonYear && option !== 'team' && option !== 'player';
+                            })
                             // Drop sub-floor entries — NG contracts (guaranteed:0) and partial-
                             // guaranteed tail years shouldn't generate dead money slots.
                             .filter(y => (y.guaranteed ?? 0) >= DEAD_MONEY_FLOOR_USD)
                             .map(y => ({ season: y.season, amountUSD: y.guaranteed }));
-                        if (remaining.length === 0 && playerRecord.contract?.amount) {
+                        const signedAt = playerRecord.signedDate ? new Date(playerRecord.signedDate).getTime() : NaN;
+                        const waivedAt = stateWithSim.date ? new Date(stateWithSim.date).getTime() : NaN;
+                        const freshSignedMissingYears = Number.isFinite(signedAt) && Number.isFinite(waivedAt)
+                            && (waivedAt - signedAt) >= 0
+                            && (waivedAt - signedAt) / 86_400_000 < 120;
+                        if (remaining.length === 0 && playerRecord.contract?.amount && !freshSignedMissingYears) {
                             const exp = playerRecord.contract.exp ?? currentSeasonYear;
                             const amountUSD = (playerRecord.contract.amount || 0) * 1_000;
                             if (amountUSD >= DEAD_MONEY_FLOOR_USD) {

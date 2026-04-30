@@ -1,4 +1,4 @@
-import { NBATeam, NBAPlayer, Game, HeadToHead } from '../types';
+import { NBATeam, NBAPlayer, Game, HeadToHead, LeagueStats } from '../types';
 import { GameSimulator } from './simulation/GameSimulator';
 import { GameResult } from './simulation/StatGenerator';
 
@@ -38,18 +38,7 @@ export const simulateGames = async (
     currentHeadToHead?: HeadToHead,
     otlEnabled?: boolean,
     season?: number,
-    leagueStats?: {
-        quarterLength?: number;
-        shotClockValue?: number;
-        shotClockEnabled?: boolean;
-        threePointLineEnabled?: boolean;
-        defensiveThreeSecondEnabled?: boolean;
-        offensiveThreeSecondEnabled?: boolean;
-        handcheckingEnabled?: boolean;
-        goaltendingEnabled?: boolean;
-        chargingEnabled?: boolean;
-        noDribbleRule?: boolean;
-    },
+    leagueStats?: Partial<LeagueStats>,
     onGame?: (result: GameResult) => void
 ): Promise<{ updatedTeams: NBATeam[], results: GameResult[], headToHead?: HeadToHead }> => {
     const updatedTeams = [...teams].map(t => ({ ...t }));

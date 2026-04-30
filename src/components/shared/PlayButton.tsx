@@ -4,10 +4,12 @@ import { useGame } from '../../store/GameContext';
 import { normalizeDate } from '../../utils/helpers';
 import {
   getTradeDeadlineDate, getDraftLotteryDate, getDraftDate,
-  getFreeAgencyStartDate, getOpeningNightDate, getTrainingCampDate,
+  getCurrentOffseasonFAStart, getOpeningNightDate, getTrainingCampDate,
   getAllStarWeekendStartDate, toISODateString,
 } from '../../utils/dateUtils';
 import { Tab } from '../../types';
+import { useDraftEventGate } from '../../hooks/useDraftEventGate';
+import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
 
 type SimPhase =
   | 'preseason'
@@ -47,11 +49,14 @@ function getSimPhase(state: any): SimPhase {
   const openingNight = getOpeningNightDate(seasonYear);
   const draftLotteryDate = getDraftLotteryDate(seasonYear, ls);
   const draftDate = getDraftDate(seasonYear, ls);
-  const faStartDate = getFreeAgencyStartDate(seasonYear, ls);
-  const nextOpeningNight = getOpeningNightDate(seasonYear + 1);
 
-  if (curDate < openingNight) return 'preseason';
-  if (curDate >= faStartDate && curDate < nextOpeningNight) return 'free-agency';
+  if (curDate < openingNight) {
+    const trainingCamp = getTrainingCampDate(seasonYear, ls);
+    const offseasonFAStart = getCurrentOffseasonFAStart(curDate, ls);
+    if (curDate >= trainingCamp) return 'preseason';
+    if (curDate >= offseasonFAStart) return 'free-agency';
+    return 'after-draft';
+  }
   if (curDate > draftDate) return 'after-draft';
   // On draft day: if the user has already run the draft via DraftSimulatorView,
   // flip immediately to 'after-draft' so they get the FA chain instead of the
@@ -150,22 +155,39 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
   const phase = getSimPhase(state);
   const phaseLabel = getPhaseLabel(phase, seasonYear, calYear);
 
+  // Lottery / draft gate — pops the Watch/Auto-sim modal when advancing INTO
+  // either event from anywhere in the app (PlayButton is global, so this is the
+  // only entry point that catches header-driven advances).
+  const draftGate = useDraftEventGate({
+    onNavigateToDraftLottery: () => setCurrentView('Draft Lottery' as Tab),
+    onNavigateToDraft:        () => setCurrentView('Draft Board'   as Tab),
+  });
+  const rosterGate = useRosterComplianceGate();
+
+  const guardedSim = useCallback((fn: () => void | Promise<void>) => {
+    rosterGate.attempt(() => draftGate.attempt(fn));
+  }, [draftGate, rosterGate]);
+
   const simDay = useCallback(() => {
     setOpen(false);
-    dispatchAction({ type: 'ADVANCE_DAY' });
-  }, [dispatchAction]);
+    guardedSim(() => dispatchAction({ type: 'ADVANCE_DAY' }));
+  }, [dispatchAction, guardedSim]);
 
   // stopBefore:true — advance TO that date, leaving its games unplayed (for "until X starts")
   const simToDate = useCallback((date: string) => {
     setOpen(false);
-    dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: date, stopBefore: true } } as any);
-  }, [dispatchAction]);
+    guardedSim(() =>
+      dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: date, stopBefore: true } } as any),
+    );
+  }, [dispatchAction, guardedSim]);
 
   // no stopBefore — play through that date's games (for "until end of X")
   const simThrough = useCallback((date: string) => {
     setOpen(false);
-    dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: date } } as any);
-  }, [dispatchAction]);
+    guardedSim(() =>
+      dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: date } } as any),
+    );
+  }, [dispatchAction, guardedSim]);
 
   const navigate = useCallback((view: Tab) => {
     setOpen(false);
@@ -176,13 +198,12 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
     const tdStr              = toISODateString(getTradeDeadlineDate(seasonYear, ls));
     const draftLotteryStr    = toISODateString(getDraftLotteryDate(seasonYear, ls));
     const draftStr           = toISODateString(getDraftDate(seasonYear, ls));
-    const faStartStr         = toISODateString(getFreeAgencyStartDate(seasonYear, ls));
+    const faStartStr         = toISODateString(getCurrentOffseasonFAStart(`${norm}T00:00:00Z`, ls));
     const openingNightStr    = toISODateString(getOpeningNightDate(seasonYear));
     // Land Thursday (1 day before Rising Stars Friday) so the user sees All-Star
     // weekend BEFORE any of its events trigger.
     const allStarStr         = toISODateString(addDaysToDate(getAllStarWeekendStartDate(seasonYear, ls), -1));
-    // Training camp for the NEXT season (e.g. free agency 2026 → camp Oct 2026 = season 2027)
-    const preseasonStr       = toISODateString(getTrainingCampDate(seasonYear + 1, ls));
+    const preseasonStr       = toISODateString(getTrainingCampDate(seasonYear, ls));
     // Last scheduled playoff game from state.schedule — Finals Game 7 if all-7
     // games are pre-scheduled, otherwise whatever's left. Falls back to the day
     // before the draft if the bracket hasn't been generated yet.
@@ -191,14 +212,21 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
     switch (phase) {
       case 'preseason': {
         const opts: PlayOption[] = [{ label: 'One day', action: simDay }];
-        const firstPreseason = findFirstPreseasonDate(state);
-        const lastPreseason  = findLastPreseasonDate(state);
-        // If we haven't reached the first preseason game yet, offer to land on it
+        const firstPreseason   = findFirstPreseasonDate(state);
+        const lastPreseason    = findLastPreseasonDate(state);
+        // ls.year is the upcoming season post-rollover, so getTrainingCampDate(seasonYear)
+        // points to THIS year's camp opening (Oct 1) — not next year's.
+        const trainingCampStr  = toISODateString(getTrainingCampDate(seasonYear, ls));
+        // Pre-camp dead window: Jul–Sep, schedule_generation hasn't fired so no preseason
+        // games are in state yet. Offer a camp-opening jump so the user isn't stuck on
+        // "One day" / "To opening night" with nothing in between.
+        if (norm < trainingCampStr) {
+          opts.push({ label: 'Until training camp', action: () => simToDate(trainingCampStr) });
+        }
         if (firstPreseason && firstPreseason > norm) {
           opts.push({ label: 'Until preseason games', action: () => simToDate(firstPreseason) });
         }
-        // Play through every remaining preseason game (last preseason game day,
-        // games inclusive). Falls back gracefully if no preseason games exist.
+        // Play through every remaining preseason game (last preseason game day, inclusive).
         if (lastPreseason && lastPreseason >= norm) {
           opts.push({ label: 'Through preseason', action: () => simThrough(lastPreseason) });
         }
@@ -220,13 +248,19 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
         if (norm < allStarStr) {
           opts.push({ label: 'Until All-Star events', action: () => simToDate(allStarStr) });
         }
+        // Through regular season — plays through the actual last RS game day, no drift.
+        // Independent of "Until play-in" because the real NBA gap (~3 days) means play-in
+        // can land later than the user expects when they want to end RS cleanly.
+        const lastRegSeasonStr = findLastRegSeasonDate(state);
+        if (lastRegSeasonStr && lastRegSeasonStr >= norm) {
+          opts.push({ label: 'Through regular season', action: () => simThrough(lastRegSeasonStr) });
+        }
         // Play-in: prefer scheduled play-in games; otherwise fall back to the day
         // AFTER the last regular-season game (real schedule rolls straight from
         // regular season into play-in). Always shown in regular season so the user
         // can skip to it before the bracket has been generated.
-        const playInScheduled  = findFirstPlayInDate(state);
-        const lastRegSeasonStr = findLastRegSeasonDate(state);
-        const playInTarget     = playInScheduled ?? (lastRegSeasonStr ? addDays(lastRegSeasonStr, 1) : null);
+        const playInScheduled  = ls?.playIn !== false ? findFirstPlayInDate(state) : null;
+        const playInTarget     = ls?.playIn !== false ? (playInScheduled ?? (lastRegSeasonStr ? addDays(lastRegSeasonStr, 1) : null)) : null;
         if (playInTarget && playInTarget > norm) {
           opts.push({ label: 'Until play-in', action: () => simToDate(playInTarget) });
         }
@@ -280,15 +314,15 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
 
       case 'draft-lottery':
         return [
-          { label: 'One day',            action: simDay },
-          { label: 'View draft lottery', action: () => navigate('Draft Lottery' as Tab) },
-          { label: 'Until draft',        action: () => simToDate(draftStr) },
+          { label: 'One day',       action: simDay },
+          { label: 'Watch lottery', action: () => navigate('Draft Lottery' as Tab) },
+          { label: 'Until draft',   action: () => simToDate(draftStr) },
         ];
 
       case 'draft':
         return [
-          { label: 'One day',    action: simDay },
-          { label: 'View draft', action: () => navigate('Draft Board' as Tab) },
+          { label: 'One day',     action: simDay },
+          { label: 'Watch draft', action: () => navigate('Draft Board' as Tab) },
         ];
 
       case 'after-draft':
@@ -297,12 +331,18 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
           { label: 'Until free agency', action: () => simToDate(faStartStr) },
         ];
 
-      case 'free-agency':
-        return [
+      case 'free-agency': {
+        const opts: PlayOption[] = [
           { label: 'One day',         action: simDay },
           { label: 'One week',        action: () => simToDate(addDays(norm, 7)) },
           { label: 'Until preseason', action: () => simToDate(preseasonStr) },
         ];
+        const nextSeasonOpening = toISODateString(getOpeningNightDate(seasonYear));
+        if (nextSeasonOpening > norm) {
+          opts.push({ label: 'Through preseason', action: () => simToDate(nextSeasonOpening) });
+        }
+        return opts;
+      }
 
       default:
         return [{ label: 'One day', action: simDay }];
@@ -384,6 +424,9 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
           {state.isProcessing ? 'Simulating…' : 'Idle'}
         </span>
       </div>
+
+      {draftGate.modal}
+      {rosterGate.modal}
     </div>
   );
 };
