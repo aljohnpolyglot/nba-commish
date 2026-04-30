@@ -54,8 +54,10 @@ async function deepAudit(saveId, focusAbbrevs) {
   console.log(`\n══════════ DEEP ECONOMY AUDIT — ${state.date} ══════════\n`);
 
   // ── A) Free agent pool ───────────────────────────────────────────────
+  // Accept legacy 'FreeAgent' (no space) typo — normalized on next sim tick / LOAD_GAME,
+  // but stale saves still carry it on hundreds of records.
   const freeAgents = players.filter(p =>
-    p.tid < 0 && p.status === 'Free Agent' && !((p.draft?.year || 0) >= ls.year)
+    p.tid < 0 && (p.status === 'Free Agent' || p.status === 'FreeAgent') && !((p.draft?.year || 0) >= ls.year)
   );
   const buckets = { '85+': 0, '75-84': 0, '65-74': 0, '55-64': 0, '<55': 0 };
   freeAgents.forEach(p => {

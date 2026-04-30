@@ -39,8 +39,15 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
   onViewBoxScore,
   state
 }) => {
-  const allStarGame = state.schedule.find((g: Game) => g.isAllStar);
-  const risingStarsGame = state.schedule.find((g: Game) => g.isRisingStars);
+  const allStarGames = state.schedule.filter((g: Game) => g.isAllStar);
+  const allStarGame = allStarGames[0];
+  const bracket = allStar?.bracket;
+  const risingStarsBracket = allStar?.risingStarsBracket;
+  const rsIsTournament = !!risingStarsBracket;
+  const risingStarsGames: Game[] = rsIsTournament
+    ? state.schedule.filter((g: Game) => (g as any).isRisingStars)
+    : [];
+  const risingStarsGame = rsIsTournament ? null : state.schedule.find((g: Game) => g.isRisingStars);
   const celebrityGame = state.schedule.find((g: Game) => (g as any).isCelebrityGame);
 
   const stateDateNorm = normalizeDate(state.date);
@@ -83,7 +90,79 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
 
       <div className="space-y-6">
         {/* ── RISING STARS (Friday) ── */}
-        {isRisingStarsDay && (
+        {isRisingStarsDay && rsIsTournament && risingStarsBracket && (() => {
+          const mvp = allStar?.risingStarsMvp;
+          return (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] font-black text-sky-400 uppercase tracking-[0.2em]">Rising Stars Challenge · Tournament</div>
+                <button
+                  onClick={() => onViewRosters('rising-stars')}
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all"
+                >
+                  View Rosters
+                </button>
+              </div>
+              {risingStarsBracket.games.map((g: any) => {
+                const bs = state.boxScores?.find((b: any) => b.gameId === g.gid);
+                const homeT = risingStarsBracket.teams?.find((t: any) => t.tid === g.homeTid);
+                const awayT = risingStarsBracket.teams?.find((t: any) => t.tid === g.awayTid);
+                const isFinal = g.round === 'final';
+                const schedGame = risingStarsGames.find((sg: any) => sg.gid === g.gid);
+                return (
+                  <div key={g.gid} className={`bg-gradient-to-br from-blue-900/40 to-indigo-900/40 border ${isFinal ? 'border-sky-400/40' : 'border-blue-500/20'} rounded-2xl p-5`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${isFinal ? 'text-sky-300' : 'text-blue-400'}`}>
+                        {isFinal ? 'Final' : 'Semifinal'} · First to {g.targetScore}
+                      </span>
+                      {isFinal && mvp && g.played && (
+                        <span className="text-[9px] font-black text-amber-400 uppercase tracking-wide">
+                          MVP: {mvp.name} {mvp.pts}pts
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-6">
+                      <div className="flex-1 text-center">
+                        <div className={`text-3xl font-black mb-0.5 ${bs ? (bs.homeScore >= bs.awayScore ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
+                          {bs ? bs.homeScore : '—'}
+                        </div>
+                        <div className="text-[9px] text-sky-400 font-black uppercase tracking-widest leading-tight">
+                          {homeT?.name ?? 'TBD'}
+                        </div>
+                        {homeT?.coachName && <div className="text-[8px] text-slate-500 mt-0.5">Coach {homeT.coachName.split(' ').pop()}</div>}
+                      </div>
+                      <div className="text-lg font-black text-slate-700 italic">VS</div>
+                      <div className="flex-1 text-center">
+                        <div className={`text-3xl font-black mb-0.5 ${bs ? (bs.awayScore > bs.homeScore ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
+                          {bs ? bs.awayScore : '—'}
+                        </div>
+                        <div className="text-[9px] text-emerald-400 font-black uppercase tracking-widest leading-tight">
+                          {awayT?.name ?? 'TBD'}
+                        </div>
+                        {awayT?.coachName && <div className="text-[8px] text-slate-500 mt-0.5">Coach {awayT.coachName.split(' ').pop()}</div>}
+                      </div>
+                    </div>
+                    {(bs || (isActuallyToday && schedGame && !schedGame.played)) && (
+                      <div className="flex gap-2 justify-center mt-3">
+                        {bs ? (
+                          <button onClick={() => schedGame && onViewBoxScore(schedGame)} className="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg font-bold text-[10px] transition-all flex items-center gap-1">
+                            <Trophy size={10} /> Box Score
+                          </button>
+                        ) : (
+                          <button onClick={() => onWatchGame(schedGame!)} className="px-3 py-1.5 bg-sky-500 hover:bg-sky-400 text-black rounded-lg font-bold text-[10px] transition-all flex items-center gap-1">
+                            <Play size={10} fill="currentColor" /> Watch
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
+        {isRisingStarsDay && !rsIsTournament && (
           risingStarsBoxScore ? (
             // POST-GAME: score card with box score button
             <div className="bg-gradient-to-br from-blue-900/40 to-indigo-900/40 border border-blue-500/20 rounded-2xl p-6">
@@ -335,8 +414,59 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
           </div>
         )}
 
-        {/* ── ALL-STAR GAME (Sunday) ── */}
-        {isAllStarGameDay && (
+        {/* ── ALL-STAR BRACKET GAMES (Sunday) ── multi-card iterator for round-robin / knockout */}
+        {isAllStarGameDay && allStarGames.length > 1 && allStarGames.map((g: any) => {
+          const bs = state.boxScores?.find((b: any) => b.gameId === g.gid);
+          const homeT = bracket?.teams?.find((t: any) => t.tid === g.homeTid);
+          const awayT = bracket?.teams?.find((t: any) => t.tid === g.awayTid);
+          const homeName = homeT?.name ?? (g.homeTid === -1 ? 'East' : 'TBD');
+          const awayName = awayT?.name ?? (g.awayTid === -2 ? 'West' : 'TBD');
+          const isFinal = !!g.isAllStarChampionship;
+          return (
+            <div key={g.gid} className={`bg-gradient-to-br from-slate-900 to-black border ${isFinal ? 'border-amber-500/30' : 'border-slate-500/20'} rounded-2xl p-6`}>
+              <div className={`text-[10px] font-black ${isFinal ? 'text-amber-400' : 'text-slate-400'} uppercase tracking-[0.2em] mb-3`}>
+                {isFinal ? 'All-Star Championship' : 'All-Star Round Robin'} {bs ? '· Final' : ''}
+              </div>
+              <div className="flex items-center justify-between gap-8">
+                <div className="flex-1 text-center">
+                  {homeT?.logoUrl && (
+                    <img src={homeT.logoUrl} className="w-10 h-10 mx-auto mb-2 object-contain" alt={homeName} referrerPolicy="no-referrer" />
+                  )}
+                  <div className={`text-3xl font-black mb-1 ${bs ? (bs.homeScore > bs.awayScore ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
+                    {bs ? bs.homeScore : '—'}
+                  </div>
+                  <div className="text-[10px] text-slate-300 font-black uppercase tracking-widest">{homeName}</div>
+                  {homeT && <div className="text-[9px] text-slate-500 mt-0.5">{homeT.wins}-{homeT.losses}</div>}
+                </div>
+                <div className="text-xl font-black text-slate-800 italic">VS</div>
+                <div className="flex-1 text-center">
+                  {awayT?.logoUrl && (
+                    <img src={awayT.logoUrl} className="w-10 h-10 mx-auto mb-2 object-contain" alt={awayName} referrerPolicy="no-referrer" />
+                  )}
+                  <div className={`text-3xl font-black mb-1 ${bs ? (bs.awayScore > bs.homeScore ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
+                    {bs ? bs.awayScore : '—'}
+                  </div>
+                  <div className="text-[10px] text-slate-300 font-black uppercase tracking-widest">{awayName}</div>
+                  {awayT && <div className="text-[9px] text-slate-500 mt-0.5">{awayT.wins}-{awayT.losses}</div>}
+                </div>
+              </div>
+              <div className="flex gap-3 justify-center mt-4">
+                {bs ? (
+                  <button onClick={() => onViewBoxScore(g)} className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-bold text-xs transition-all flex items-center gap-1.5">
+                    <Trophy size={12} />Box Score
+                  </button>
+                ) : isActuallyToday && !g.played ? (
+                  <button onClick={() => onWatchGame(g)} className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black rounded-lg font-bold text-xs transition-all flex items-center gap-1.5">
+                    <Play size={12} fill="currentColor" />Watch
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* ── ALL-STAR GAME (Sunday) — classic single-game card path ── */}
+        {isAllStarGameDay && allStarGames.length <= 1 && (
           allStarBoxScore ? (
             // POST-GAME: final score with box score
             <div className="bg-gradient-to-br from-slate-900 to-black border border-white/10 rounded-2xl p-8">

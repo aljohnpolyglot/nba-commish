@@ -128,8 +128,17 @@ export function markTrainingCampShuffle(
       attrs.push({ attr, delta });
     }
 
+    // Snapshot the player's OVR going INTO camp so the autoTrim guillotine
+    // doesn't cut a freshly-signed OVR 65 player who randomly regressed to OVR
+    // 58 due to camp RNG. The trim's canCut reads preCampOverallRating and uses
+    // the higher of pre/post-camp values for cut decisions. Cleared next year
+    // when the player is re-marked.
     const boost: PendingCampBoost = { bucket, dueDate, attrs };
-    return { ...p, pendingCampBoost: boost } as any;
+    return {
+      ...p,
+      pendingCampBoost: boost,
+      preCampOverallRating: p.overallRating,
+    } as any;
   });
 
   const marked = updatedPlayers.filter((p: any) => p.pendingCampBoost).length;

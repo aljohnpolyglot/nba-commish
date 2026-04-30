@@ -13,7 +13,8 @@ import { convertTo2KRating } from './helpers';
 import { estimatePotentialBbgm } from './playerRatings';
 import { deriveLeagueStartYearFromHistory, explainJerseyRetirementCandidates } from '../services/playerDevelopment/jerseyRetirementChecker';
 import { resolveTeamStrategyProfile } from './teamStrategy';
-import { calcPlayerTV } from '../services/trade/tradeValueEngine';
+import { calcPlayerTV, calcPickTV, calcOvr2K } from '../services/trade/tradeValueEngine';
+import { effectiveRecord, getCapThresholds, getTeamPayrollUSD, getTeamDeadMoneyForSeason } from './salaryUtils';
 
 export interface CheatContext {
   state: GameState;
@@ -64,6 +65,12 @@ export const CHEAT_CODES = {
   CUPINJECT: 'Retroactively inject Cup group games into a save where groups exist but no Cup games were scheduled (recovers broken pre-fix saves)',
   SCHEDAUDIT: 'Schedule integrity audit — orphaned games, per-team GP vs 82, All-Star blackout casualties, asymmetric W/L',
   FIXPOT: 'Clamp inflated POT on PBA (→50) and ChinaCBA (→54) players in the current save',
+  APRON: 'List teams over the 2nd apron with cap status, live payroll, and dead-money load',
+  DEADAUDIT: 'Per-team dead-money ranking (current-season hit + total remaining + entry count)',
+  CLEARDEAD: 'Wipe ALL dead money on the user\'s team — emergency unstuck for snowballed saves',
+  CLEARDEADALL: 'Wipe dead money on every AI team (preserves user team) — full league reset',
+  RECENCY: 'List players signed in the last 30 days (verifies signedDate stamping + trim recency guard)',
+  TX: 'Dump recent transactions (signings/waivers/trades/training-camp releases) + per-team dead-money entries — saves copy-pasting TransactionsView',
 } as const;
 
 export type CheatCode = keyof typeof CHEAT_CODES;
@@ -922,8 +929,26 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
 
       const teamById = new Map(nbaTeams.map(t => [t.id, t]));
       const playerById = new Map(state.players.map(p => [p.internalId, p]));
+      const pickById = new Map((state.draftPicks ?? []).map((pk: any) => [pk.dpid, pk]));
       const executed = ((state as any).tradeProposals ?? []).filter((tp: any) => tp.status === 'executed');
 
+      // Power ranks for pick valuation — same effectiveRecord ordering tradeFinderEngine uses.
+      const powerRanks = new Map<number, number>();
+      [...nbaTeams]
+        .map(t => ({ t, rec: effectiveRecord(t, currentYear) }))
+        .sort((a, b) => (b.rec.wins - b.rec.losses) - (a.rec.wins - a.rec.losses))
+        .forEach(({ t }, i) => powerRanks.set(t.id, i + 1));
+
+      const fmtAge = (p: any): number => p.age ?? (p.born?.year ? currentYear - p.born.year : 25);
+      const tvOfPlayer = (p: any, mode: any) => Math.round(calcPlayerTV(p, mode, currentYear));
+      const tvOfPick = (pk: any) => {
+        const rank = powerRanks.get(pk.originalTid) ?? Math.ceil(nbaTeams.length / 2);
+        return Math.round(calcPickTV(pk.round, rank, nbaTeams.length, Math.max(1, pk.season - currentYear)));
+      };
+
+      // Per-asset breakdown — one row per asset, valued in BOTH sides' modes so
+      // mode asymmetry (rebuilder paying contender prices for an aging vet) jumps out.
+      const assetRows: any[] = [];
       const tradeRows = executed.map((tp: any) => {
         const propTeam = teamById.get(tp.proposingTeamId);
         const recvTeam = teamById.get(tp.receivingTeamId);
@@ -931,13 +956,89 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
         const recvStrat = stratById.get(tp.receivingTeamId);
         const propMode = propStrat?.teamMode ?? 'rebuild';
         const recvMode = recvStrat?.teamMode ?? 'rebuild';
+        const fromAbbrev = (propTeam as any)?.abbrev ?? `tid${tp.proposingTeamId}`;
+        const toAbbrev = (recvTeam as any)?.abbrev ?? `tid${tp.receivingTeamId}`;
 
         const offered = (tp.playersOffered ?? []).map((id: string) => playerById.get(id)).filter(Boolean) as any[];
         const requested = (tp.playersRequested ?? []).map((id: string) => playerById.get(id)).filter(Boolean) as any[];
+        const offeredPicks = (tp.picksOffered ?? []).map((id: number) => pickById.get(id)).filter(Boolean) as any[];
+        const requestedPicks = (tp.picksRequested ?? []).map((id: number) => pickById.get(id)).filter(Boolean) as any[];
 
-        // TV from each side's CURRENT teamMode (trade-time mode not preserved in state).
-        const sentTV = offered.reduce((s, p) => s + calcPlayerTV(p, propMode, currentYear), 0);
-        const recvTV = requested.reduce((s, p) => s + calcPlayerTV(p, recvMode, currentYear), 0);
+        const tradeId = `${tp.proposedDate} ${fromAbbrev}↔${toAbbrev}`;
+
+        // Players going FROM proposer TO receiver — receiver evaluates in recvMode (asking price);
+        // proposer is parting with them in propMode (sunk cost). Show both.
+        for (const p of offered) {
+          assetRows.push({
+            trade: tradeId,
+            side: `${fromAbbrev}→${toAbbrev}`,
+            asset: p.name,
+            kind: 'player',
+            age: fmtAge(p),
+            ovr: Math.round(calcOvr2K(p)),
+            salaryM: Number(((p.contract?.amount ?? 0) / 1000).toFixed(1)),
+            exp: p.contract?.exp ?? '—',
+            tvSenderMode: tvOfPlayer(p, propMode),
+            tvReceiverMode: tvOfPlayer(p, recvMode),
+            senderMode: propMode,
+            receiverMode: recvMode,
+          });
+        }
+        for (const pk of offeredPicks) {
+          const v = tvOfPick(pk);
+          assetRows.push({
+            trade: tradeId,
+            side: `${fromAbbrev}→${toAbbrev}`,
+            asset: `R${pk.round} ${pk.season} (orig ${(teamById.get(pk.originalTid) as any)?.abbrev ?? pk.originalTid})`,
+            kind: 'pick',
+            age: '—', ovr: '—', salaryM: '—', exp: '—',
+            tvSenderMode: v,
+            tvReceiverMode: v,
+            senderMode: propMode,
+            receiverMode: recvMode,
+          });
+        }
+        for (const p of requested) {
+          assetRows.push({
+            trade: tradeId,
+            side: `${toAbbrev}→${fromAbbrev}`,
+            asset: p.name,
+            kind: 'player',
+            age: fmtAge(p),
+            ovr: Math.round(calcOvr2K(p)),
+            salaryM: Number(((p.contract?.amount ?? 0) / 1000).toFixed(1)),
+            exp: p.contract?.exp ?? '—',
+            tvSenderMode: tvOfPlayer(p, recvMode),
+            tvReceiverMode: tvOfPlayer(p, propMode),
+            senderMode: recvMode,
+            receiverMode: propMode,
+          });
+        }
+        for (const pk of requestedPicks) {
+          const v = tvOfPick(pk);
+          assetRows.push({
+            trade: tradeId,
+            side: `${toAbbrev}→${fromAbbrev}`,
+            asset: `R${pk.round} ${pk.season} (orig ${(teamById.get(pk.originalTid) as any)?.abbrev ?? pk.originalTid})`,
+            kind: 'pick',
+            age: '—', ovr: '—', salaryM: '—', exp: '—',
+            tvSenderMode: v,
+            tvReceiverMode: v,
+            senderMode: recvMode,
+            receiverMode: propMode,
+          });
+        }
+
+        // Aggregate TVs from EACH side's own mode (the perspective they use to accept).
+        const sentTV = offered.reduce((s, p) => s + calcPlayerTV(p, propMode, currentYear), 0)
+                     + offeredPicks.reduce((s, pk) => s + tvOfPick(pk), 0);
+        const recvTV = requested.reduce((s, p) => s + calcPlayerTV(p, recvMode, currentYear), 0)
+                     + requestedPicks.reduce((s, pk) => s + tvOfPick(pk), 0);
+        // Cross-mode aggregate — what the opposing side THINKS they're getting.
+        const sentTVrecvMode = offered.reduce((s, p) => s + calcPlayerTV(p, recvMode, currentYear), 0)
+                             + offeredPicks.reduce((s, pk) => s + tvOfPick(pk), 0);
+        const recvTVpropMode = requested.reduce((s, p) => s + calcPlayerTV(p, propMode, currentYear), 0)
+                             + requestedPicks.reduce((s, pk) => s + tvOfPick(pk), 0);
 
         const fmtAssets = (players: any[], pickCount: number) => {
           const names = players.map(p => p.name).join(', ');
@@ -947,15 +1048,20 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
 
         return {
           date: tp.proposedDate,
-          from: (propTeam as any)?.abbrev ?? `tid${tp.proposingTeamId}`,
+          from: fromAbbrev,
           fromKey: propStrat?.key ?? '?',
-          to: (recvTeam as any)?.abbrev ?? `tid${tp.receivingTeamId}`,
+          fromMode: propMode,
+          to: toAbbrev,
           toKey: recvStrat?.key ?? '?',
-          sent: fmtAssets(offered, (tp.picksOffered ?? []).length),
-          received: fmtAssets(requested, (tp.picksRequested ?? []).length),
+          toMode: recvMode,
+          sent: fmtAssets(offered, offeredPicks.length),
+          received: fmtAssets(requested, requestedPicks.length),
           sentTV: Math.round(sentTV),
           recvTV: Math.round(recvTV),
           delta: Math.round(recvTV - sentTV),
+          // What the opposite side priced these baskets at — gap reveals mode asymmetry.
+          sentTVxMode: Math.round(sentTVrecvMode),
+          recvTVxMode: Math.round(recvTVpropMode),
           aiVsAi: tp.isAIvsAI ? '✓' : '',
         };
       }).sort((a: any, b: any) => (a.date < b.date ? -1 : 1));
@@ -966,7 +1072,14 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
       console.table(stratRows);
       if (tradeRows.length > 0) {
         console.log('Executed trades — TVs from each side\'s current teamMode (trade-time mode not preserved):');
+        console.log('  sentTV/recvTV  = each side priced in OWN mode (the lens they used to accept)');
+        console.log('  sentTVxMode   = sender\'s basket priced in RECEIVER\'s mode (what receiver thought they were paying for)');
+        console.log('  recvTVxMode   = receiver\'s basket priced in SENDER\'s mode (what sender thought they were getting)');
         console.table(tradeRows);
+        console.log('Per-asset breakdown — every player/pick valued in BOTH sides\' modes:');
+        console.log('  tvSenderMode  = TV using donor team\'s mode  |  tvReceiverMode = TV using acquirer team\'s mode');
+        console.log('  Big gaps (e.g. aging vet 80 in contend mode → 30 in rebuild mode) flag the asymmetry that lets bad trades slip through.');
+        console.table(assetRows);
       } else {
         console.log('No executed trades in this save yet.');
       }
@@ -1209,8 +1322,10 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
       }
       for (const g of sched as any[]) {
         if (g.isAllStar || g.isRisingStars || g.isPlayoff || g.isPlayIn || g.isPreseason) continue;
-        // Cup KO games: only count if countsTowardRecord === true (the championship game)
-        if (g.isNBACup && g.nbaCupRound && g.nbaCupRound !== 'group' && g.countsTowardRecord !== true) continue;
+        // Mirror simulationService: W/L is written iff !excludeFromRecord.
+        // (countsTowardRecord lives on the KO entry, not the Game — relying on
+        // it here gave false-positive "short" reports for QF/SF cup games.)
+        if (g.excludeFromRecord) continue;
         const homeTid = g.homeTid ?? g.homeTeamId;
         const awayTid = g.awayTid ?? g.awayTeamId;
         for (const tid of [homeTid, awayTid]) {
@@ -1277,6 +1392,216 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
       await dispatchAction({ type: 'LOAD_GAME', payload: patchedState } as any);
       console.log(`✅ FIXPOT: clamped pot on ${patched} external players`);
       return { title: 'FIXPOT done', body: `${patched} players patched. Save to persist.`, ok: true };
+    }
+
+    case 'APRON': {
+      const thresholds = getCapThresholds(state.leagueStats as any);
+      const yr = state.leagueStats?.year ?? new Date().getFullYear();
+      const rows = state.teams
+        .filter(t => t.id >= 0 && t.id < 100)
+        .map(t => {
+          const live = state.players
+            .filter(p => p.tid === t.id && !(p as any).twoWay)
+            .reduce((s, p) => s + (p.contract?.amount || 0) * 1000, 0);
+          const dead = getTeamDeadMoneyForSeason(t, yr);
+          const total = live + dead;
+          return { t, live, dead, total, overApron2: total - thresholds.secondApron };
+        })
+        .sort((a, b) => b.total - a.total);
+      console.log('%c═══ APRON AUDIT ═══', 'color:#f43f5e;font-weight:bold');
+      console.log(`Cap=${fmt(thresholds.salaryCap)} Tax=${fmt(thresholds.luxuryTax)} 1st=${fmt(thresholds.firstApron)} 2nd=${fmt(thresholds.secondApron)}`);
+      console.table(rows.map(r => ({
+        team: r.t.abbrev,
+        total: fmt(r.total),
+        live: fmt(r.live),
+        dead: fmt(r.dead),
+        deadPct: r.total > 0 ? `${((r.dead / r.total) * 100).toFixed(0)}%` : '0%',
+        vs2ndApron: r.overApron2 > 0 ? `+${fmt(r.overApron2)}` : fmt(r.overApron2),
+      })));
+      const offenders = rows.filter(r => r.overApron2 > 0).length;
+      return { title: 'APRON', body: `${offenders} team(s) over 2nd apron. See console for full table.`, ok: true };
+    }
+
+    case 'DEADAUDIT': {
+      const yr = state.leagueStats?.year ?? new Date().getFullYear();
+      const rows = state.teams
+        .filter(t => t.id >= 0 && t.id < 100)
+        .map(t => {
+          const entries = (t.deadMoney ?? []).length;
+          const thisSeason = getTeamDeadMoneyForSeason(t, yr);
+          const totalRemaining = (t.deadMoney ?? []).reduce(
+            (s, e) => s + e.remainingByYear.reduce((ss, y) => ss + y.amountUSD, 0),
+            0,
+          );
+          return { t, entries, thisSeason, totalRemaining };
+        })
+        .filter(r => r.entries > 0)
+        .sort((a, b) => b.thisSeason - a.thisSeason);
+      console.log('%c═══ DEAD MONEY AUDIT ═══', 'color:#fb923c;font-weight:bold');
+      console.table(rows.map(r => ({
+        team: r.t.abbrev,
+        entries: r.entries,
+        thisSeason: fmt(r.thisSeason),
+        totalRemaining: fmt(r.totalRemaining),
+      })));
+      const total = rows.reduce((s, r) => s + r.thisSeason, 0);
+      return { title: 'DEADAUDIT', body: `${rows.length} teams carrying dead money. League total this season: ${fmt(total)}.`, ok: true };
+    }
+
+    case 'CLEARDEAD': {
+      const userTid = (state as any).userTeamId;
+      if (userTid == null || userTid < 0) {
+        return { title: 'CLEARDEAD', body: 'No user team — use CLEARDEADALL or load a save first.', ok: false };
+      }
+      const userTeam = state.teams.find(t => t.id === userTid);
+      if (!userTeam || !(userTeam.deadMoney?.length)) {
+        return { title: 'CLEARDEAD', body: `${userTeam?.abbrev ?? 'User team'} has no dead money.`, ok: true };
+      }
+      const yr = state.leagueStats?.year ?? new Date().getFullYear();
+      const wiped = getTeamDeadMoneyForSeason(userTeam, yr);
+      const updatedTeams = state.teams.map(t => t.id === userTid ? { ...t, deadMoney: [] } : t);
+      const patched = { ...state, teams: updatedTeams } as any;
+      await dispatchAction({ type: 'LOAD_GAME', payload: patched } as any);
+      console.log(`✅ CLEARDEAD: wiped ${userTeam.deadMoney.length} dead-money entries on ${userTeam.abbrev} (${fmt(wiped)} this season)`);
+      return { title: 'CLEARDEAD done', body: `Wiped ${userTeam.deadMoney.length} entries (${fmt(wiped)} this season) on ${userTeam.abbrev}. Save to persist.`, ok: true };
+    }
+
+    case 'RECENCY': {
+      const stateDateMs = state.date ? new Date(state.date).getTime() : Date.now();
+      const ONE_DAY = 1000 * 60 * 60 * 24;
+      const recent = state.players
+        .filter(p => {
+          const sd = (p as any).signedDate;
+          if (!sd) return false;
+          const days = (stateDateMs - new Date(sd).getTime()) / ONE_DAY;
+          return days >= 0 && days < 30;
+        })
+        .map(p => {
+          const sd = (p as any).signedDate;
+          const days = Math.floor((stateDateMs - new Date(sd).getTime()) / ONE_DAY);
+          const team = state.teams.find(t => t.id === p.tid);
+          const annualUSD = (p.contract?.amount ?? 0) * 1000;
+          const flag = (p as any).twoWay ? '2W' : (p as any).nonGuaranteed ? 'NG' : 'STD';
+          return {
+            player: p.name,
+            team: team?.abbrev ?? '?',
+            ovr: p.overallRating ?? 0,
+            type: flag,
+            annual: fmt(annualUSD),
+            signed: sd,
+            daysAgo: days,
+          };
+        })
+        .sort((a, b) => a.daysAgo - b.daysAgo);
+      console.log('%c═══ RECENT SIGNINGS (≤ 30 days) ═══', 'color:#22d3ee;font-weight:bold');
+      if (recent.length === 0) {
+        console.log('No recently-signed players found. Either no signings in last 30 days, or signedDate not yet stamped on this save.');
+        return { title: 'RECENCY', body: 'No recent signings found. Sim a few days post-fix to populate.', ok: true };
+      }
+      console.table(recent);
+      const guarded = recent.filter(r => r.type === 'STD').length;
+      return { title: 'RECENCY', body: `${recent.length} recent signings; ${guarded} guaranteed (protected from trim).`, ok: true };
+    }
+
+    case 'TX': {
+      const TX_TYPES = new Set([
+        'Signing', 'Waiver', 'Trade', 'Training Camp Release',
+        'NG Guaranteed', 'Re-sign', 'Released', 'Drafted', 'Retired',
+        'Two-way Signing', 'Two-way Conversion', 'Promotion',
+      ]);
+      const teamByTid = new Map(state.teams.map(t => [t.id, t.abbrev] as const));
+      const teamByName = new Map(state.teams.map(t => [t.name.toLowerCase(), t.abbrev] as const));
+      const playerByTid = new Map<string, number>();
+      state.players.forEach(p => playerByTid.set(p.internalId, p.tid));
+      // Waiver/release entries strand the player at tid -1 by the time TX runs,
+      // so playerByTid mis-attributes them as "tid-1". Prefer the explicit tid
+      // stamped on the history record (forward-fix); fall back to parsing the
+      // team name out of "...by the {Team Name}" for pre-fix records.
+      const teamFromText = (text: string): string | undefined => {
+        const m = /by the (.+?)$/.exec(text.trim());
+        if (!m) return undefined;
+        return teamByName.get(m[1].toLowerCase());
+      };
+      const history = (state.history ?? []) as any[];
+      const txs = history
+        .map((h, idx) => {
+          if (typeof h === 'string') return null;
+          if (!h || typeof h !== 'object') return null;
+          if (h.type && !TX_TYPES.has(h.type)) return null;
+          const pid = h.playerIds?.[0];
+          const explicitTid: number | undefined = typeof h.tid === 'number' ? h.tid : undefined;
+          const tidFromPlayer = pid != null ? playerByTid.get(pid) : undefined;
+          const tid = explicitTid ?? tidFromPlayer;
+          // tid -1 = current FA = mis-attribution for waiver entries; resolve via text.
+          const teamFromTid = (tid != null && tid >= 0) ? teamByTid.get(tid) : undefined;
+          const teamLabel = teamFromTid ?? teamFromText(h.text ?? '') ?? (tid != null ? `tid${tid}` : '—');
+          return {
+            idx,
+            date: h.date ?? '',
+            type: h.type ?? '?',
+            team: teamLabel,
+            text: h.text ?? '',
+            commish: h.commissioner ? '✓' : '',
+          };
+        })
+        .filter(Boolean) as Array<Record<string, any>>;
+      const recent = txs.slice(-200).reverse();
+      console.log(`%c═══ TRANSACTIONS (last ${recent.length} of ${txs.length}) ═══`, 'color:#a3e635;font-weight:bold');
+      console.table(recent.map(({ idx, ...rest }) => rest));
+
+      const yr = state.leagueStats?.year ?? new Date().getFullYear();
+      const deadRows: Array<Record<string, any>> = [];
+      state.teams
+        .filter(t => t.id >= 0 && t.id < 100)
+        .forEach(t => {
+          (t.deadMoney ?? []).forEach(e => {
+            const totalRemaining = e.remainingByYear.reduce((s, y) => s + y.amountUSD, 0);
+            const thisYrEntry = e.remainingByYear.find(y => parseInt(y.season.split('-')[0], 10) + 1 === yr);
+            deadRows.push({
+              team: t.abbrev,
+              player: e.playerName,
+              waivedDate: e.waivedDate,
+              stretched: e.stretched ? '✓' : '',
+              thisYr: fmt(thisYrEntry?.amountUSD ?? 0),
+              remaining: fmt(totalRemaining),
+              years: e.remainingByYear.length,
+              expOrig: e.originalExpYear,
+            });
+          });
+        });
+      deadRows.sort((a, b) => (b.waivedDate < a.waivedDate ? -1 : 1));
+      console.log(`%c═══ DEAD MONEY ENTRIES (${deadRows.length} across all teams) ═══`, 'color:#fb923c;font-weight:bold');
+      if (deadRows.length === 0) {
+        console.log('No dead-money entries on any team. Clean save!');
+      } else {
+        console.table(deadRows);
+      }
+
+      return {
+        title: 'TX',
+        body: `Logged ${recent.length} recent transactions + ${deadRows.length} dead-money entries to console.`,
+        ok: true,
+      };
+    }
+
+    case 'CLEARDEADALL': {
+      const userTid = (state as any).userTeamId;
+      let teamsCleared = 0;
+      let entriesCleared = 0;
+      const updatedTeams = state.teams.map(t => {
+        if (t.id === userTid) return t;
+        if (!(t.deadMoney?.length)) return t;
+        teamsCleared++;
+        entriesCleared += t.deadMoney.length;
+        return { ...t, deadMoney: [] };
+      });
+      if (teamsCleared === 0) {
+        return { title: 'CLEARDEADALL', body: 'No AI teams have dead money.', ok: true };
+      }
+      const patched = { ...state, teams: updatedTeams } as any;
+      await dispatchAction({ type: 'LOAD_GAME', payload: patched } as any);
+      console.log(`✅ CLEARDEADALL: wiped ${entriesCleared} entries across ${teamsCleared} AI teams`);
+      return { title: 'CLEARDEADALL done', body: `Wiped ${entriesCleared} entries across ${teamsCleared} AI teams. User team preserved. Save to persist.`, ok: true };
     }
 
     default:

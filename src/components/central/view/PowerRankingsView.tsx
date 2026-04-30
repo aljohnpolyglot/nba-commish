@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { NBATeam, Game } from '../../../types';
-import { getOwnTeamId } from '../../../utils/helpers';
+import { getOwnTeamId, getSeasonPhase } from '../../../utils/helpers';
 
 export const PowerRankingsView: React.FC = () => {
   const { state, navigateToTeam } = useGame();
@@ -153,15 +153,18 @@ export const PowerRankingsView: React.FC = () => {
     });
   }, [state.teams, state.players, state.schedule, state.leagueStats.year, state.date]);
 
-  const totalGP = state.teams.reduce((sum, t) => sum + (t.wins ?? 0) + (t.losses ?? 0), 0);
-  const seasonNotStarted = totalGP === 0;
+  const seasonPhase = getSeasonPhase(state);
+  const seasonNotStarted = seasonPhase === 'preseason';
 
   return (
     <div className="h-full flex flex-col bg-[#0f172a] text-slate-200 overflow-hidden">
       <div className="p-4 md:p-6 border-b border-slate-800 shrink-0">
         <h2 className="text-xl md:text-3xl font-black text-white uppercase tracking-tight">Power Rankings</h2>
         <p className="text-slate-400 text-xs md:text-sm font-medium mt-1">
-          {seasonNotStarted ? 'Preseason projections based on roster strength' : 'Updated weekly based on performance, strength, and momentum'}
+          {seasonPhase === 'preseason' ? 'Preseason projections based on roster strength'
+            : seasonPhase === 'offseason' ? `${state.leagueStats.year - 1}–${String(state.leagueStats.year).slice(-2)} final standings — new season starts Oct 24`
+            : seasonPhase === 'playoffs' ? 'Final regular-season standings — playoffs in progress'
+            : 'Updated weekly based on performance, strength, and momentum'}
         </p>
       </div>
 

@@ -81,7 +81,7 @@ export function generateStatsForTeam(
   } else {
     const mpgTarget = knobs.starMpgOverride ?? rotResult.starMpgTarget;
     const { minutes } = MinutesPlayedService.allocateMinutes(
-      rotation, season, lead, otCount, mpgTarget, !!knobs.isPlayoffs
+      rotation, season, lead, otCount, mpgTarget, !!knobs.isPlayoffs, knobs.quarterLength
     );
     playerMinutes = minutes;
 

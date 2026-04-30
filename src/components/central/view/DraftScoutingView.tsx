@@ -8,6 +8,7 @@ import { PlayerPortrait } from '../../shared/PlayerPortrait';
 import { DraftScoutingModal } from '../../draft/DraftScoutingModal';
 import { PlayerBioView } from './PlayerBioView';
 import { buildMockDraft } from '../../../services/draftAdvisor';
+import { buildFullDraftSlotMap } from '../../../services/draft/draftClassStrength';
 import { getCapThresholds } from '../../../utils/salaryUtils';
 import {
   ensureDraftScouting,
@@ -192,24 +193,23 @@ export const DraftScoutingView: React.FC = () => {
         })
         .flatMap(t => [t, t]); // R1 + R2 same order
     }
-    const lotteryResults: any[] = state.draftLotteryResult ?? [];
-    const lotteryTids = new Set(lotteryResults.map((r: any) => r.team?.tid ?? r.tid));
     const draftPicks: any[] = (state as any).draftPicks ?? [];
-    const allSorted = [...state.teams]
-      .filter(t => t.id >= 0 && t.id < 100)
-      .sort((a, b) => {
-        const wa = a.wins / Math.max(1, a.wins + a.losses);
-        const wb = b.wins / Math.max(1, b.wins + b.losses);
-        return wa - wb;
-      });
+    const eligibleTeams = state.teams.filter(t => t.id >= 0 && t.id < 100);
+    const allSorted = [...eligibleTeams].sort((a, b) => {
+      const wa = a.wins / Math.max(1, a.wins + a.losses);
+      const wb = b.wins / Math.max(1, b.wins + b.losses);
+      return wa - wb;
+    });
+    // Use the shared slot resolver — covers partial lottery arrays AND extends
+    // through non-lottery teams (#15-30). Empty map → lottery hasn't fired.
+    const slotMap = buildFullDraftSlotMap(state.draftLotteryResult as any, state.teams);
     let r1Source: any[];
-    if (lotteryResults.length >= 14) {
-      const lotteryPicks = [...lotteryResults]
-        .sort((a, b) => a.pickNumber - b.pickNumber)
-        .map((r: any) => state.teams.find(t => t.id === (r.team?.tid ?? r.tid)))
-        .filter(Boolean);
-      const playoffTeams = allSorted.filter(t => !lotteryTids.has(t.id)).reverse();
-      r1Source = [...lotteryPicks, ...playoffTeams];
+    if (slotMap.size > 0) {
+      const ordered = eligibleTeams
+        .filter(t => slotMap.has(t.id))
+        .sort((a, b) => (slotMap.get(a.id)! - slotMap.get(b.id)!));
+      const missing = allSorted.filter(t => !slotMap.has(t.id));
+      r1Source = [...ordered, ...missing];
     } else {
       r1Source = allSorted;
     }
@@ -479,17 +479,17 @@ export const DraftScoutingView: React.FC = () => {
                           )}
                         </div>
 
-                        {/* Team logo + abbrev */}
-                        <div className="w-20 flex items-center justify-center shrink-0 border-l border-[#333] bg-black/20 group-hover:bg-black/40 transition-colors flex-col py-1">
+                        {/* Team logo + abbrev — shows current owner; "via ORIG" when traded */}
+                        <div className="w-20 flex items-center justify-center shrink-0 border-l border-[#333] bg-black/20 group-hover:bg-black/40 transition-colors flex-col gap-0.5 py-1">
                           {team?.logoUrl ? (
-                            <img src={team.logoUrl} alt="" className="w-9 h-9 object-contain" referrerPolicy="no-referrer" />
+                            <img src={team.logoUrl} alt="" className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
                           ) : (
                             <span className="text-[10px] font-black text-white/30">{team?.abbrev}</span>
                           )}
-                          <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">
-                            {team?.abbrev}
-                            {(team as any)?._traded && '*'}
-                          </span>
+                          <span className="text-[8px] font-black text-white/50 uppercase tracking-widest">{team?.abbrev}</span>
+                          {(team as any)?._traded && (
+                            <span className="text-[7px] font-bold text-indigo-400/70 uppercase tracking-wider">via {(team as any)._originalAbbrev}</span>
+                          )}
                         </div>
                       </button>
                     );

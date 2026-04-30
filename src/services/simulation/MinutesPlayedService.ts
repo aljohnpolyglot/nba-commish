@@ -309,11 +309,12 @@ export class MinutesPlayedService {
     otCount: number = 0,
     starMpgTarget?: number,
     isPlayoffs: boolean = false,
+    quarterLength: number = 12,
   ): MinuteAllocation {
     const isBlowout    = Math.abs(lead) > 15;
     const isBigBlowout = Math.abs(lead) > 25;
-    const gameLengthMin = 48 + otCount * 5;
-    const otMultiplier  = gameLengthMin / 48;  // 1.0 reg, ~1.10 1OT, ~1.21 2OT
+    const gameLengthMin = quarterLength * 4 + otCount * 5;
+    const otMultiplier  = gameLengthMin / (quarterLength * 4);  // 1.0 reg → grows with each OT
 
     // Youth/development mode: lottery teams (starMpgTarget ≤ 31) spread minutes
     // across the full rotation instead of piling 35+ min on every starter.

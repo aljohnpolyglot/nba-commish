@@ -6,7 +6,7 @@ import { evaluateFilter } from '../../utils/filterUtils';
 import { getOwnTeamId } from '../../utils/helpers';
 
 type StatType = 'team' | 'opponent' | 'shotLocations' | 'oppShotLocations' | 'advanced';
-type Phase = 'regular' | 'playoffs' | 'all';
+type Phase = 'regular' | 'playoffs' | 'cup' | 'combined';
 
 interface TeamStatRow {
   team: NBATeam;
@@ -66,6 +66,14 @@ export const TeamStatsView: React.FC = () => {
   const [season,   setSeason]       = useState<number | 'all'>(state.leagueStats.year);
   useEffect(() => { setSeason(state.leagueStats.year); }, [state.leagueStats.year]);
   const [phase,    setPhase]        = useState<Phase>('regular');
+  const scheduleGidFlags = useMemo(() => {
+    const po = new Set<number>(); const cup = new Set<number>();
+    (state.schedule as any[]).forEach(g => {
+      if (g.isPlayoff || g.isPlayIn) po.add(g.gid);
+      if (g.isNBACup) cup.add(g.gid);
+    });
+    return { po, cup };
+  }, [state.schedule]);
   const [sortField, setSortField]   = useState<string>('pts');
   const [sortOrder, setSortOrder]   = useState<'asc' | 'desc'>('desc');
   const [searchTerm, setSearchTerm] = useState('');
@@ -166,9 +174,12 @@ export const TeamStatsView: React.FC = () => {
     (state.boxScores as any[]).forEach(game => {
       if (game.isAllStar || game.isRisingStars || game.isCelebrityGame || game.isPreseason) return;
       if (season !== 'all' && game.date && seasonYearFromDate(game.date) !== season) return;
-      const isPO = !!(game.isPlayoff || game.isPlayIn);
-      if (phase === 'regular' && isPO) return;
+      const gid: number = game.gameId ?? game.gid;
+      const isPO = scheduleGidFlags.po.has(gid) || !!(game.isPlayoff || game.isPlayIn);
+      const isCup = scheduleGidFlags.cup.has(gid) || !!game.isNBACup;
+      if (phase === 'regular' && (isPO || isCup)) return;
       if (phase === 'playoffs' && !isPO) return;
+      if (phase === 'cup' && !isCup) return;
 
       const home = acc.get(game.homeTeamId);
       const away = acc.get(game.awayTeamId);
@@ -258,7 +269,7 @@ export const TeamStatsView: React.FC = () => {
         tovPct, orbPct, ftFga, dEfgPct, dTovPct, drbPct, dFtFga,
       };
     });
-  }, [state.teams, state.boxScores, season, phase, playerAgeMap]);
+  }, [state.teams, state.boxScores, season, phase, playerAgeMap, scheduleGidFlags]);
 
   const sortedStats = useMemo(() => {
     const filtered = teamStats.filter(row => {
@@ -589,7 +600,8 @@ export const TeamStatsView: React.FC = () => {
           >
             <option value="regular">Reg Season</option>
             <option value="playoffs">Playoffs</option>
-            <option value="all">Combined</option>
+            <option value="cup">NBA Cup</option>
+            <option value="combined">Combined</option>
           </select>
 
           {/* Desktop search */}
@@ -618,7 +630,7 @@ export const TeamStatsView: React.FC = () => {
       {/* ── Season label ── */}
       <div className="shrink-0 px-3 sm:px-4 py-1 border-b border-slate-800/40 flex items-center justify-end">
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-          {seasonLabel} · {statType === 'team' ? 'Team' : statType === 'opponent' ? 'Opponent' : statType === 'shotLocations' ? 'Shot Locations & Feats' : statType === 'oppShotLocations' ? 'Opp. Shot Locations' : 'Advanced'} · {phase === 'regular' ? 'Reg Season' : phase === 'playoffs' ? 'Playoffs' : 'Combined'}
+          {seasonLabel} · {statType === 'team' ? 'Team' : statType === 'opponent' ? 'Opponent' : statType === 'shotLocations' ? 'Shot Locations & Feats' : statType === 'oppShotLocations' ? 'Opp. Shot Locations' : 'Advanced'} · {phase === 'regular' ? 'Reg Season' : phase === 'playoffs' ? 'Playoffs' : phase === 'cup' ? 'NBA Cup' : 'Combined'}
         </span>
       </div>
 

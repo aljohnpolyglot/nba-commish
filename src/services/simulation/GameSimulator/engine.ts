@@ -18,6 +18,7 @@ import { getInjuries, getRandomInjury } from '../../injuryService';
 import { getScoringOptions, getScoringOptionBiases, getCoachingPenalty } from '../../../store/scoringOptionsStore';
 import { getLockedStrategy } from '../../../store/coachStrategyLockStore';
 import { getSystemFitPenalty, getSystemKnobMods } from '../../../store/coachSystemStore';
+import { getExhibitionQL } from '../../allStar/AllStarWeekendOrchestrator';
 
 /**
  * Top-8 pace factor from roster traits. Mirrors the tempo/fastBreak/earlyOffense
@@ -314,8 +315,15 @@ export class GameSimulator {
     const homeExpected = expectedTeamScore(homeRatings.offRating, awayRatings.defRating, homeRatings.pace);
     const awayExpected = expectedTeamScore(awayRatings.offRating, homeRatings.defRating, awayRatings.pace);
 
-    const homeRegScore = Math.max(85, Math.round(normalRandom(homeExpected, 8)));
-    const awayRegScore = Math.max(80, Math.round(normalRandom(awayExpected, 8)));
+    // Score floors scale by game length — All-Star 3-min quarters (12 min total) need
+    // ~22-pt floors, not the 85/80 designed for full-length 48-min NBA games.
+    const homeQL = homeKnobs.quarterLength ?? 12;
+    const awayQL = awayKnobs.quarterLength ?? 12;
+    const lengthScale = ((homeQL + awayQL) / 2 * 4) / 48; // 1.0 for regulation, 0.25 for 3-min All-Star
+    const homeMinFloor = Math.max(20, Math.round(85 * lengthScale));
+    const awayMinFloor = Math.max(18, Math.round(80 * lengthScale));
+    const homeRegScore = Math.max(homeMinFloor, Math.round(normalRandom(homeExpected * lengthScale, 8 * lengthScale)));
+    const awayRegScore = Math.max(awayMinFloor, Math.round(normalRandom(awayExpected * lengthScale, 8 * lengthScale)));
 
     let winnerScore = Math.max(homeRegScore, awayRegScore);
     let loserScore  = Math.min(homeRegScore, awayRegScore);
@@ -391,16 +399,19 @@ export class GameSimulator {
     const homeEffRoll = ((0.88 + Math.random() * 0.24) - awayDefAura) * homeTransitionBonus;
     const awayEffRoll = ((0.88 + Math.random() * 0.24) - homeDefAura) * awayTransitionBonus;
 
-    finalHomeScore = Math.max(75, Math.round(finalHomeScore * paceRoll * homeEffRoll));
-    finalAwayScore = Math.max(70, Math.round(finalAwayScore * paceRoll * awayEffRoll));
+    // Same length scale applied below — 3-min quarters can't have a 75-pt floor.
+    const homePostFloor = Math.max(18, Math.round(75 * lengthScale));
+    const awayPostFloor = Math.max(16, Math.round(70 * lengthScale));
+    finalHomeScore = Math.max(homePostFloor, Math.round(finalHomeScore * paceRoll * homeEffRoll));
+    finalAwayScore = Math.max(awayPostFloor, Math.round(finalAwayScore * paceRoll * awayEffRoll));
 
     // Exhibition score boost — applied BEFORE stat generation so player totals
     // match the scoreboard.  paceMultiplier in knobs is kept at 1.0 for All-Star
     // to avoid double-counting.
     const homeExhibMult = homeKnobs.exhibitionScoreMult ?? 1.0;
     const awayExhibMult = awayKnobs.exhibitionScoreMult ?? 1.0;
-    if (homeExhibMult !== 1.0) finalHomeScore = Math.max(75, Math.round(finalHomeScore * homeExhibMult));
-    if (awayExhibMult !== 1.0) finalAwayScore = Math.max(70, Math.round(finalAwayScore * awayExhibMult));
+    if (homeExhibMult !== 1.0) finalHomeScore = Math.max(homePostFloor, Math.round(finalHomeScore * homeExhibMult));
+    if (awayExhibMult !== 1.0) finalAwayScore = Math.max(awayPostFloor, Math.round(finalAwayScore * awayExhibMult));
 
     if (finalHomeScore === finalAwayScore) {
       if (Math.random() < 0.5) finalHomeScore += 1;
@@ -596,7 +607,8 @@ export class GameSimulator {
       otCount,
       home2KDef,  // home team's defensive ratings (sizes their steal/block pools)
       away2KDef,  // away team's pass perception (shrinks home's assist pool)
-      homeOrbMult
+      homeOrbMult,
+      homeKnobs.quarterLength ?? 12
     );
     const awayStats = StatGenerator.generateCoordinatedStats(
       awayInitial,
@@ -610,7 +622,8 @@ export class GameSimulator {
       otCount,
       away2KDef,  // away team's defensive ratings
       home2KDef,  // home team's pass perception
-      awayOrbMult
+      awayOrbMult,
+      awayKnobs.quarterLength ?? 12
     );
     // Reconcile player pts to match the final team score.
     // nightProfile boosts individuals asymmetrically (EXPLOSION 1.5× on one player) so the
@@ -1216,12 +1229,16 @@ export class GameSimulator {
         let homeKnobs: SimulatorKnobs;
         let awayKnobs: SimulatorKnobs;
 
+        // Exhibition QL routes through getExhibitionQL which respects the per-event
+        // mirror flag + event-specific quarterLength field. Reading bare
+        // leagueStats.quarterLength here forced 12-min All-Star quarters (192-170
+        // finals) regardless of allStarQuarterLength / allStarMirrorLeagueRules.
         if (game.isCelebrityGame) {
-          homeKnobs = awayKnobs = KNOBS_CELEBRITY;
+          homeKnobs = awayKnobs = { ...KNOBS_CELEBRITY, quarterLength: getExhibitionQL(leagueStats ?? {}, 'celebrity') };
         } else if (game.isRisingStars) {
-          homeKnobs = awayKnobs = KNOBS_RISING_STARS;
+          homeKnobs = awayKnobs = { ...KNOBS_RISING_STARS, quarterLength: getExhibitionQL(leagueStats ?? {}, 'risingStars') };
         } else if (game.isAllStar) {
-          homeKnobs = awayKnobs = KNOBS_ALL_STAR;
+          homeKnobs = awayKnobs = { ...KNOBS_ALL_STAR, quarterLength: getExhibitionQL(leagueStats ?? {}, 'allStar') };
         } else if ((game as any).isPreseason && (game.homeTid >= 100 || game.awayTid >= 100)) {
           // International preseason: league-specific knobs for the intl team, NBA preseason for the NBA team.
           // Previously both teams used the same intl knobs — this meant the NBA team also played at

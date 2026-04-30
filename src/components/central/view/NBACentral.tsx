@@ -11,7 +11,7 @@ import { PlayerBioView } from './PlayerBioView';
 import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
 import type { NBAPlayer, Contact, Game } from '../../../types';
 import { TeamDetailView } from './TeamDetailView';
-import { normalizeDate } from '../../../utils/helpers';
+import { normalizeDate, getSeasonPhase } from '../../../utils/helpers';
 import { GameSimulator } from '../../../services/simulation/GameSimulator';
 import { PlayerService } from '../../../services/data/PlayerService';
 import { TeamService } from '../../../services/data/TeamService';
@@ -67,15 +67,9 @@ export const NBACentral: React.FC = () => {
 
   const selectedTeam = selectedTeamId !== null ? teamService.getTeamById(selectedTeamId) : undefined;
   
-  const isScheduleRevealed = useMemo(() => {
-    const date = new Date(state.date);
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    // Season opener is Oct 24. Schedule visible from Opening Night.
-    if (month === 10) return day >= 24;
-    if (month > 10 || month < 7) return true;
-    return false;
-  }, [state.date]);
+  const seasonPhase = useMemo(() => getSeasonPhase(state), [state.schedule, state.date, state.teams]);
+  // Banner only during true preseason (before Oct 24, no prior history). Offseason hides it.
+  const isScheduleRevealed = seasonPhase !== 'preseason';
 
   const todayGames = useMemo(() => {
     if (!isScheduleRevealed) return [];
@@ -325,17 +319,19 @@ export const NBACentral: React.FC = () => {
               onTeamClick={setSelectedTeamId}
           />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-10">
-                  <StandingsTable 
-                    teams={eastTeams} 
-                    conference="East" 
+                  <StandingsTable
+                    teams={eastTeams}
+                    conference="East"
                     onSelectTeam={setSelectedTeamId}
                     selectedTeamId={selectedTeamId}
+                    phase={seasonPhase}
                   />
-                  <StandingsTable 
-                    teams={westTeams} 
-                    conference="West" 
+                  <StandingsTable
+                    teams={westTeams}
+                    conference="West"
                     onSelectTeam={setSelectedTeamId}
                     selectedTeamId={selectedTeamId}
+                    phase={seasonPhase}
                   />
                 </div>
               </>

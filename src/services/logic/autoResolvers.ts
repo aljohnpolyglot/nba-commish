@@ -22,7 +22,7 @@ export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
   // trips the "already generated" branch and preseason/regular-season never get
   // laid down for the new year.
   const hasRegularSeason = state.schedule.some(
-    g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn && !(g as any).isNBACup
+    g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn && !(g as any).isNBACup && !(g as any).isCupTBD
          && g.date >= seasonStart && g.date <= seasonEnd
   );
   if (hasRegularSeason) {
@@ -276,10 +276,17 @@ export const autoSimVotes = async (state: GameState): Promise<Partial<GameState>
 export const autoAnnounceStarters = async (state: GameState): Promise<Partial<GameState>> => {
   if (state.allStar?.startersAnnounced) return {};
   try {
-    const { AllStarSelectionService } = await import('../allStar/AllStarSelectionService');
-    const starters = AllStarSelectionService.selectStarters(
+    const { AllStarSelectionService, bucketRoster } = await import('../allStar/AllStarSelectionService');
+    let starters = AllStarSelectionService.selectStarters(
       state.allStar?.votes ?? [],
       state.players
+    );
+    starters = bucketRoster(
+      starters,
+      state.players,
+      state.allStar?.votes ?? [],
+      state.leagueStats.allStarFormat,
+      state.leagueStats.allStarTeams
     );
     return {
       allStar: {
@@ -300,14 +307,23 @@ export const autoAnnounceReserves = async (state: GameState): Promise<Partial<Ga
   // state.allStar.roster, and re-running this would duplicate reserves on top.
   if (state.allStar?.reservesAnnounced) return {};
   try {
-    const { AllStarSelectionService } = await import('../allStar/AllStarSelectionService');
-    const reserves = AllStarSelectionService.selectReserves(
+    const { AllStarSelectionService, bucketRoster } = await import('../allStar/AllStarSelectionService');
+    let reserves = AllStarSelectionService.selectReserves(
       state.players,
       state.teams,
       state.leagueStats.year,
       state.allStar?.roster ?? []
     );
-    const fullRoster = [...(state.allStar?.roster ?? []), ...reserves];
+    // Bucket the full 24-man pool together so captains_draft / usa_vs_world
+    // re-balance starters + reserves uniformly.
+    let fullRoster = [...(state.allStar?.roster ?? []), ...reserves];
+    fullRoster = bucketRoster(
+      fullRoster,
+      state.players,
+      state.allStar?.votes ?? [],
+      state.leagueStats.allStarFormat,
+      state.leagueStats.allStarTeams
+    );
 
     // Write All-Star selection to player.awards (idempotent: skip if already present)
     const season = state.leagueStats.year;
@@ -384,7 +400,8 @@ export const autoSelectDunkContestants = async (state: GameState): Promise<Parti
   if (state.allStar?.dunkContestAnnounced) return {};
   try {
     const { AllStarDunkContestSim } = await import('../allStar/AllStarDunkContestSim');
-    const contestants = AllStarDunkContestSim.selectContestants(state.players);
+    const num = state.leagueStats.allStarDunkContestPlayers ?? 4;
+    const contestants = AllStarDunkContestSim.selectContestants(state.players, num);
     return {
       allStar: {
         ...(state.allStar as any),
@@ -404,9 +421,11 @@ export const autoSelectThreePointContestants = async (state: GameState): Promise
   if (state.allStar?.threePointAnnounced) return {};
   try {
     const { AllStarThreePointContestSim } = await import('../allStar/AllStarThreePointContestSim');
+    const num = state.leagueStats.allStarThreePointContestPlayers ?? 8;
     const contestants = AllStarThreePointContestSim.selectContestants(
       state.players,
-      state.leagueStats.year
+      state.leagueStats.year,
+      num
     );
     return {
       allStar: {
@@ -487,16 +506,36 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
         rosterSpot.isInjuredDNP = true;
         rosterChanged = true;
 
-        // Find a replacement from the same conference who isn't already in the roster
+        // Find a replacement that fits the injured player's bucket.
+        //  - east_vs_west / blacks_vs_whites → match team conference (classic East/West)
+        //  - captains_draft                  → best available (East/West buckets are arbitrary captain assignments)
+        //  - usa_vs_world: USA1/USA2         → prefer USA-born candidate
+        //  - usa_vs_world: WORLD/WORLD1/2    → prefer non-USA-born candidate
         const rosterIds = new Set(updatedRoster.map(r => r.playerId));
         const conf = rosterSpot.conference;
-        const candidate = [...stateForSim.players]
-          .filter(p =>
-            !rosterIds.has(p.internalId) &&
-            (!p.injury || p.injury.gamesRemaining <= 0) &&
-            stateForSim.teams.find(t => t.id === p.tid)?.conference === conf
-          )
-          .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0))[0];
+        const format = stateForSim.leagueStats?.allStarFormat ?? 'east_vs_west';
+        const { getCountryFromLoc } = await import('../../utils/helpers');
+        const bucketMatch = (p: any): boolean => {
+          if (format === 'captains_draft') return true; // captain teams are arbitrary
+          if (conf === 'East' || conf === 'West') {
+            return stateForSim.teams.find(t => t.id === p.tid)?.conference === conf;
+          }
+          const country = getCountryFromLoc(p.born?.loc);
+          const isUsa = country === 'United States';
+          if (conf === 'USA1' || conf === 'USA2') return isUsa;
+          if (conf === 'WORLD' || conf === 'WORLD1' || conf === 'WORLD2') return !isUsa;
+          return true;
+        };
+        const INELIGIBLE_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
+        const eligible = [...stateForSim.players].filter(p =>
+          !rosterIds.has(p.internalId) &&
+          (!p.injury || p.injury.gamesRemaining <= 0) &&
+          !INELIGIBLE_STATUSES.has(p.status ?? '') &&
+          p.tid >= 0  // exclude any external-league sentinel tids too
+        );
+        const preferred = eligible.filter(bucketMatch);
+        const pool = preferred.length > 0 ? preferred : eligible; // fallback: any
+        const candidate = pool.sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0))[0];
 
         if (candidate) {
           const candidateTeam = stateForSim.teams.find(t => t.id === candidate.tid);
@@ -578,6 +617,71 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
         if (p.awards?.some(a => a.type === entry.awardType && a.season === year)) return p;
         return { ...p, awards: [...(p.awards ?? []), { type: entry.awardType, season: year }] };
       });
+    }
+
+    // Per-round news headlines for multi-game brackets (RR / SF / Final).
+    // For 2-team formats, the existing all_star_winner template already covers it,
+    // so we skip per-round generation when only one bracket game played.
+    const newNewsItems: NewsItem[] = [];
+    const bracket = allStarData?.bracket;
+    const playedBracketGames = (bracket?.games ?? []).filter((g: any) => g.played);
+    if (bracket && playedBracketGames.length > 1) {
+      for (const g of playedBracketGames) {
+        const homeT = bracket.teams.find((t: any) => t.tid === g.homeTid);
+        const awayT = bracket.teams.find((t: any) => t.tid === g.awayTid);
+        if (!homeT || !awayT) continue;
+        const homeWon = g.homeScore > g.awayScore;
+        const winnerName = homeWon ? homeT.name : awayT.name;
+        const loserName  = homeWon ? awayT.name : homeT.name;
+        const winnerScore = Math.max(g.homeScore, g.awayScore);
+        const loserScore  = Math.min(g.homeScore, g.awayScore);
+        const roundLabel = g.round === 'final' ? 'Championship' : g.round === 'sf' ? 'Semifinal' : 'Round Robin';
+        const news = NewsGenerator.generate(
+          'all_star_bracket',
+          state.date,
+          {
+            winner: winnerName,
+            loser: loserName,
+            roundLabel,
+            homeScore: winnerScore,
+            awayScore: loserScore,
+            year,
+            mvpName: g.mvpName ?? 'Top scorer',
+            mvpPts: g.mvpPts ?? 0,
+          }
+        );
+        if (news) newNewsItems.push(news);
+      }
+    }
+
+    // Championship MVP headline (works for both bracket and classic formats).
+    if (allStarData?.gameMvp?.name) {
+      const finalGame = playedBracketGames.find((g: any) => g.round === 'final')
+                     ?? playedBracketGames[playedBracketGames.length - 1];
+      const mvpStats = (() => {
+        if (!finalGame) return null;
+        const box = patch.boxScores?.find((b: any) => b.gameId === finalGame.gid);
+        if (!box) return null;
+        const all = [...(box.homeStats ?? []), ...(box.awayStats ?? [])];
+        return all.find((s: any) => s.name === allStarData.gameMvp.name) ?? null;
+      })();
+      const mvpNews = NewsGenerator.generate(
+        'all_star_mvp',
+        state.date,
+        {
+          playerName: allStarData.gameMvp.name,
+          year,
+          pts: mvpStats?.pts ?? 0,
+          reb: mvpStats?.reb ?? 0,
+          ast: mvpStats?.ast ?? 0,
+          teamName: allStarData.gameMvp.team ?? '',
+        }
+      );
+      if (mvpNews) newNewsItems.push(mvpNews);
+    }
+
+    if (newNewsItems.length > 0) {
+      patch.news = [...newNewsItems, ...(state.news ?? [])].slice(0, 200);
     }
 
     return patch;
@@ -981,7 +1085,22 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
   const assignedIds = new Set<string>();
   const pickMap = new Map<number, { player: typeof state.players[0]; team: typeof state.teams[0] }>();
 
+  // Honor any in-progress picks the user made in DraftSimulatorView before
+  // advancing day. Without this, autoRunDraft would assign fresh prospects to
+  // slots the user already filled, double-rostering teams.
+  const activeDraftPicks: Record<number, any> = (state as any).activeDraftPicks ?? {};
+  for (const [slotKey, savedPlayer] of Object.entries(activeDraftPicks)) {
+    const slot = Number(slotKey);
+    const team = draftOrder[slot - 1];
+    if (!team || !savedPlayer?.internalId) continue;
+    // Resolve to the live player record so contract/jersey logic below sees current data.
+    const live = state.players.find(p => p.internalId === savedPlayer.internalId) ?? savedPlayer;
+    pickMap.set(slot, { player: live, team });
+    assignedIds.add(savedPlayer.internalId);
+  }
+
   for (let slot = 1; slot <= draftOrder.length; slot++) {
+    if (pickMap.has(slot)) continue; // user already filled this slot
     const team = draftOrder[slot - 1];
     const best = prospects.find(p => !assignedIds.has(p.internalId));
     if (!best) break;
@@ -1050,6 +1169,11 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
         jerseyNumber: draftJerseyAssignments.get(p.internalId) ?? p.jerseyNumber,
         ...(r2NonGuaranteed && { nonGuaranteed: true }),
         draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: team.id },
+        // Stamp signing date so newly-drafted rookies are protected from trim
+        // recency-cuts during the same offseason. Without this, a 21-man training
+        // camp roster with 3 rookies on top of 21 vets would trim the rookies
+        // alongside the vets in the very tick after the draft fires.
+        signedDate: state.date,
         contract: {
           amount: salaryAmount / 1_000,
           exp: season + totalYrs,

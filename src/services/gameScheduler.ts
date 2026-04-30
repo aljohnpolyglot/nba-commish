@@ -15,11 +15,15 @@ export const generateSchedule = (
   saveId?: string,
 ): Game[] => {
   const games: Game[] = [];
-  let gameId = 0; // gid 90000-90001 reserved for All-Star games
-
   // Derive season dates from seasonYear (e.g. 2026 → Oct 24 2025 – Apr 13 2026)
   const yr = seasonYear ?? 2026;
   const prevYr = yr - 1;
+  // Season-stamped base so gids are unique across years in state.boxScores.
+  // yr=2026 → 100000, yr=2027 → 200000, …  (All-Star specials live at 90000-90004, no collision)
+  // MUST come after `const yr` — reading yr in its TDZ threw ReferenceError and
+  // aborted schedule generation entirely (manifested as empty regular-season
+  // schedules mid-season).
+  let gameId = (yr - 2025) * 100000;
 
   // BUG 7 FIX: use T00:00:00Z to ensure UTC parsing
   const startDate = new Date(`${prevYr}-10-24T00:00:00Z`);
@@ -177,6 +181,38 @@ export const generateSchedule = (
   if (cupGroups && cupGroups.length > 0) {
     const result = injectCupGroupGames(games, gameId, cupGroups, saveId || 'default', prevYr, scheduledDates);
     gameId = result.gameId;
+
+    // Pre-bake one Cup TBD placeholder per team on Dec 9-11 — this is the
+    // 82nd slot. After group stage resolves, it materializes into either a
+    // real QF (8 advancers) or a paired RS game (22 non-advancers). Done
+    // this way so the calendar never shows a phantom-vanishing matchup.
+    const tbdNights = [
+      `${prevYr}-12-09`,
+      `${prevYr}-12-10`,
+      `${prevYr}-12-11`,
+    ];
+    const sortedTeams = [...teams].sort((a, b) => a.id - b.id);
+    sortedTeams.forEach((t, idx) => {
+      // Distribute teams across the 3 nights, but fall through to any night
+      // where the team has no other scheduled game.
+      const preferred = tbdNights[idx % tbdNights.length];
+      const order = [preferred, ...tbdNights.filter(d => d !== preferred)];
+      const dateStr = order.find(d => !(scheduledDates[d]?.has(t.id))) ?? preferred;
+      if (!scheduledDates[dateStr]) scheduledDates[dateStr] = new Set();
+      scheduledDates[dateStr].add(t.id);
+      games.push({
+        gid: gameId++,
+        homeTid: t.id,
+        awayTid: -1,                 // sentinel: opponent unknown until KO/pairing resolves
+        homeScore: 0,
+        awayScore: 0,
+        played: false,
+        date: new Date(`${dateStr}T20:00:00Z`).toISOString(),
+        isCupTBD: true,
+        cupTBDForTid: t.id,
+        excludeFromRecord: true,     // never count toward W/L while still a placeholder
+      } as any);
+    });
   }
 
   // BUG 5 FIX: Track pairs that already have a pre-scheduled game (Christmas/global)
@@ -206,11 +242,18 @@ export const generateSchedule = (
           } else if (sameConf) {
               numGames = conferenceGames ?? 3; // Same conference: 14 × 3 = 42 games/team
           } else {
-              // Cross-conference: use sorted-index parity so each team gets
-              // 10 opponents at 3 games + 5 opponents at 2 games = 40 games/team
+              // Cross-conference: when cupGroups are configured, drop one extra
+              // 2-game pair per team so each team finishes with 81 RS (the 82nd
+              // slot becomes a Dec 9-11 Cup TBD placeholder, materialized into
+              // QF or a paired RS game when the group stage resolves).
+              // Without cupGroups: legacy 82-game distribution.
+              //   With cupGroups: 9 opp × 3 + 6 opp × 2 = 39 cross-conf → 81 total
+              //   Without:        10 opp × 3 + 5 opp × 2 = 40 cross-conf → 82 total
               const ci1 = confIdx.get(t1.id) ?? 0;
               const ci2 = confIdx.get(t2.id) ?? 0;
-              numGames = (ci1 + ci2) % 3 !== 0 ? 3 : 2;
+              const hasCup = !!(cupGroups && cupGroups.length > 0);
+              const dropExtra = hasCup && ((ci1 + ci2) % 15 === 14); // symmetric, disjoint from %3==0
+              numGames = ((ci1 + ci2) % 3 !== 0 && !dropExtra) ? 3 : 2;
           }
 
           // BUG 5 FIX: Subtract any pre-scheduled games (Christmas, global) for this pair
@@ -308,6 +351,7 @@ export const generateSchedule = (
     const teamGameSeq = new Map<number, number[]>();
     games.forEach((g, idx) => {
       if ((g as any).isPreseason) return;
+      if ((g as any).isCupTBD) return;        // placeholder, no real H/A
       if (!teamGameSeq.has(g.homeTid)) teamGameSeq.set(g.homeTid, []);
       if (!teamGameSeq.has(g.awayTid)) teamGameSeq.set(g.awayTid, []);
       teamGameSeq.get(g.homeTid)!.push(idx);
@@ -385,7 +429,7 @@ export const generateSchedule = (
 
   // Per-team game count check (regular season only)
   const teamGameCounts = new Map<number, number>();
-  games.filter(g => !(g as any).isPreseason).forEach(g => {
+  games.filter(g => !(g as any).isPreseason && !(g as any).isCupTBD).forEach(g => {
     teamGameCounts.set(g.homeTid, (teamGameCounts.get(g.homeTid) ?? 0) + 1);
     teamGameCounts.set(g.awayTid, (teamGameCounts.get(g.awayTid) ?? 0) + 1);
   });

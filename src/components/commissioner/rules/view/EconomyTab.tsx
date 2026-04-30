@@ -32,6 +32,22 @@ interface EconomyTabProps {
     setFirstApronPercentage: (val: number) => void;
     secondApronPercentage: number;
     setSecondApronPercentage: (val: number) => void;
+    tradeMatchingRatioUnder: number;
+    setTradeMatchingRatioUnder: (val: number) => void;
+    tradeMatchingRatioOver1st: number;
+    setTradeMatchingRatioOver1st: (val: number) => void;
+    tradeMatchingRatioOver2nd: number;
+    setTradeMatchingRatioOver2nd: (val: number) => void;
+    restrictCashSendOver2ndApron: boolean;
+    setRestrictCashSendOver2ndApron: (val: boolean) => void;
+    restrictAggregationOver2ndApron: boolean;
+    setRestrictAggregationOver2ndApron: (val: boolean) => void;
+    restrictSignAndTradeAcquisitionOver1stApron: boolean;
+    setRestrictSignAndTradeAcquisitionOver1stApron: (val: boolean) => void;
+    freezePickAt2ndApron: boolean;
+    setFreezePickAt2ndApron: (val: boolean) => void;
+    restrictTPEProvenanceOver2ndApron: boolean;
+    setRestrictTPEProvenanceOver2ndApron: (val: boolean) => void;
     twoWayContractsEnabled: boolean;
     setTwoWayContractsEnabled: (val: boolean) => void;
     nonGuaranteedContractsEnabled: boolean;
@@ -110,6 +126,8 @@ interface EconomyTabProps {
     setInflationStdDev: (val: number) => void;
     tradableDraftPickSeasons: number;
     setTradableDraftPickSeasons: (val: number) => void;
+    stepienRuleEnabled: boolean;
+    setStepienRuleEnabled: (val: boolean) => void;
     mleEnabled: boolean;
     setMleEnabled: (val: boolean) => void;
     roomMleAmount: number;
@@ -174,6 +192,111 @@ const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct'
 const DAY_LABELS: Array<'Sun'|'Mon'|'Tue'|'Wed'|'Thu'|'Fri'|'Sat'> = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const ORDINAL_LABELS = ['1st','2nd','3rd','4th','5th'];
 
+const ToggleRow = ({ title, subtitle, checked, onChange }: { title: string; subtitle: string; checked: boolean; onChange: (next: boolean) => void }) => (
+    <label className="flex items-center justify-between gap-4 cursor-pointer pt-3 border-t border-slate-800/60">
+        <div className="flex flex-col">
+            <span className="text-[11px] font-bold text-white">{title}</span>
+            <span className="text-[9px] text-slate-500">{subtitle}</span>
+        </div>
+        <div className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${checked ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+            <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} className="sr-only" />
+            <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${checked ? 'translate-x-5' : ''}`} />
+        </div>
+    </label>
+);
+
+const RatioRow = ({ label, value, onChange, accent }: { label: string; value: number; onChange: (next: number) => void; accent: string }) => (
+    <div className="bg-slate-900/60 rounded-2xl p-4 space-y-2 border border-slate-700/50">
+        <div className="flex items-center justify-between text-[10px] text-slate-400">
+            <span className="font-black uppercase tracking-widest">{label}</span>
+            <span className={`font-black ${accent}`}>{value.toFixed(2)}x outgoing</span>
+        </div>
+        <input
+            type="range"
+            min="1"
+            max="1.5"
+            step="0.01"
+            value={value}
+            onChange={e => onChange(parseFloat(e.target.value))}
+            className="w-full accent-indigo-500"
+        />
+    </div>
+);
+
+const ApronRulesCard = ({ props }: { props: EconomyTabProps }) => (
+    <div className="bg-slate-800/40 p-6 rounded-3xl border border-slate-800/50 space-y-5">
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+                <ShieldCheck size={16} className="text-orange-400" />
+                <h2 className="text-lg font-black text-white uppercase tracking-tight">Aprons</h2>
+            </div>
+            <button
+                onClick={() => props.setApronsEnabled(!props.apronsEnabled)}
+                className={`w-10 h-5 rounded-full transition-all duration-200 relative ${props.apronsEnabled ? 'bg-indigo-500 shadow-lg shadow-indigo-500/20' : 'bg-slate-700'}`}
+            >
+                <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-transform duration-200 ${props.apronsEnabled ? 'left-6' : 'left-1'}`} />
+            </button>
+        </div>
+
+        <div className={props.apronsEnabled ? 'space-y-4' : 'space-y-4 opacity-50 pointer-events-none'}>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-slate-900/60 rounded-2xl p-3 border border-slate-700/50">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Count</span>
+                    <select
+                        value={props.numberOfAprons}
+                        onChange={e => props.setNumberOfAprons(parseInt(e.target.value))}
+                        className="mt-2 w-full bg-slate-950 border border-slate-700 rounded-xl text-white text-[10px] py-2 px-3 focus:outline-none focus:border-indigo-500 uppercase font-bold"
+                    >
+                        <option value="1">1 Apron</option>
+                        <option value="2">2 Aprons</option>
+                    </select>
+                </div>
+                <div className="bg-slate-900/60 rounded-2xl p-3 border border-slate-700/50">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">1st Apron</span>
+                    <div className="mt-2 text-sm font-black text-orange-300">${((props.salaryCap * props.firstApronPercentage / 100) / 1_000_000).toFixed(2)}M</div>
+                    <input type="range" min={props.luxuryTaxThresholdPercentage} max="250" step="0.1" value={props.firstApronPercentage}
+                        onChange={e => props.setFirstApronPercentage(parseFloat(e.target.value))}
+                        className="mt-2 w-full accent-orange-500" />
+                    <div className="text-[9px] text-slate-500">{props.firstApronPercentage.toFixed(1)}% of cap</div>
+                </div>
+                <div className="bg-slate-900/60 rounded-2xl p-3 border border-slate-700/50">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">2nd Apron</span>
+                    <div className="mt-2 text-sm font-black text-rose-300">${((props.salaryCap * props.secondApronPercentage / 100) / 1_000_000).toFixed(2)}M</div>
+                    <input type="range" min={props.firstApronPercentage} max="300" step="0.1" value={props.secondApronPercentage}
+                        disabled={props.numberOfAprons < 2}
+                        onChange={e => props.setSecondApronPercentage(parseFloat(e.target.value))}
+                        className="mt-2 w-full accent-rose-500 disabled:opacity-40" />
+                    <div className="text-[9px] text-slate-500">{props.numberOfAprons > 1 ? `${props.secondApronPercentage.toFixed(1)}% of cap` : 'Disabled'}</div>
+                </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-800/60 space-y-3">
+                <div>
+                    <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Apron-Tied Restrictions</h3>
+                    <p className="text-[9px] text-slate-500 mt-1">Defaults mirror the 2023 NBA CBA. Toggle off for relaxed simulation saves.</p>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                    <RatioRow label="Below 1st Apron" value={props.tradeMatchingRatioUnder} onChange={props.setTradeMatchingRatioUnder} accent="text-emerald-300" />
+                    <RatioRow label="Over 1st Apron" value={props.tradeMatchingRatioOver1st} onChange={props.setTradeMatchingRatioOver1st} accent="text-orange-300" />
+                    <RatioRow label="Over 2nd Apron" value={props.tradeMatchingRatioOver2nd} onChange={props.setTradeMatchingRatioOver2nd} accent="text-rose-300" />
+                </div>
+                <ToggleRow
+                    title="No Salary Aggregation Over 2nd Apron"
+                    subtitle="Require second-apron teams to match incoming contracts one-for-one."
+                    checked={props.restrictAggregationOver2ndApron}
+                    onChange={props.setRestrictAggregationOver2ndApron}
+                />
+                <ToggleRow
+                    title="Freeze 7th-Year 1st Over 2nd Apron"
+                    subtitle="Block trading the first-round pick seven seasons out while projected over the second apron."
+                    checked={props.freezePickAt2ndApron}
+                    onChange={props.setFreezePickAt2ndApron}
+                />
+            </div>
+        </div>
+    </div>
+);
+
 export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
     const { state } = useGame();
     const seasonYear = state.leagueStats?.year ?? new Date().getFullYear();
@@ -227,6 +350,8 @@ export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
                 <div className="space-y-8">
                     <EconomyFinancesSection props={props} />
 
+                    <ApronRulesCard props={props} />
+
                     <EconomyTeamsSection props={props} />
                 </div>
 
@@ -262,6 +387,23 @@ export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
                                 Teams can trade picks up to {props.tradableDraftPickSeasons} year{props.tradableDraftPickSeasons !== 1 ? 's' : ''} in the future. NBA default is 7.
                             </p>
                         </div>
+
+                        {/* Stepien Rule */}
+                        <label className="flex items-center justify-between cursor-pointer pt-3 border-t border-slate-800/60">
+                            <div className="flex flex-col">
+                                <span className="text-[11px] font-bold text-white">Stepien Rule</span>
+                                <span className="text-[9px] text-slate-500">Block any trade that would leave a team with no 1st-round pick in two consecutive future drafts. Applies to GM and AI proposals.</span>
+                            </div>
+                            <div className={`relative w-10 h-5 rounded-full transition-colors ${props.stepienRuleEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+                                <input
+                                    type="checkbox"
+                                    checked={props.stepienRuleEnabled}
+                                    onChange={e => props.setStepienRuleEnabled(e.target.checked)}
+                                    className="sr-only"
+                                />
+                                <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${props.stepienRuleEnabled ? 'translate-x-5' : ''}`} />
+                            </div>
+                        </label>
                     </div>
 
                     {/* Trade Exceptions — TPE / DPE */}
@@ -287,6 +429,27 @@ export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
                                 <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${props.tradeExceptionsEnabled ? 'translate-x-5' : ''}`} />
                             </div>
                         </label>
+
+                        <ToggleRow
+                            title="2nd Apron Cash Send Ban"
+                            subtitle="Teams projected over the second apron cannot send cash in trades."
+                            checked={props.restrictCashSendOver2ndApron}
+                            onChange={props.setRestrictCashSendOver2ndApron}
+                        />
+
+                        <ToggleRow
+                            title="Sign-and-Trade Acquisition Gate"
+                            subtitle="Teams projected over the first apron cannot acquire a same-day signing."
+                            checked={props.restrictSignAndTradeAcquisitionOver1stApron}
+                            onChange={props.setRestrictSignAndTradeAcquisitionOver1stApron}
+                        />
+
+                        <ToggleRow
+                            title="2nd Apron TPE Provenance Gate"
+                            subtitle="Second-apron teams can only use same-year plain TPEs."
+                            checked={props.restrictTPEProvenanceOver2ndApron}
+                            onChange={props.setRestrictTPEProvenanceOver2ndApron}
+                        />
 
                         {/* DPE — placeholder */}
                         <label className="flex items-center justify-between cursor-pointer pt-3 border-t border-slate-800/60 opacity-60">

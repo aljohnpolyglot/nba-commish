@@ -411,13 +411,50 @@ export const DayView: React.FC<DayViewProps> = ({
                 }
                 
                 if (game.isAllStar || game.isRisingStars || (game as any).isCelebrityGame) {
-                  return <AllStarGameCard 
-                    key={game.gid} 
-                    game={game} 
+                  return <AllStarGameCard
+                    key={game.gid}
+                    game={game}
                     allStar={state.allStar}
                     onViewDetails={() => handleWatchGame(game)}
                     onWatchGame={handleWatchGame}
                   />;
+                }
+
+                if ((game as any).isCupTBD) {
+                  const tid = (game as any).cupTBDForTid ?? game.homeTid;
+                  const team = state.teams.find((t: any) => t.id === tid);
+                  return (
+                    <div key={game.gid} className="border border-amber-500/20 rounded-2xl p-4 bg-[#111] opacity-80">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="text-[10px] font-black text-amber-400/80 uppercase tracking-widest">
+                            Cup KO Window · TBD
+                          </div>
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                            <Trophy size={10} className="text-amber-400/70" />
+                            <span className="text-[8px] font-black uppercase tracking-widest text-amber-300/80">NBA Cup</span>
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-center gap-4 py-2">
+                        {(team as any)?.logoUrl ? (
+                          <img src={(team as any).logoUrl} className="w-10 h-10 object-contain" alt={team?.abbrev} referrerPolicy="no-referrer" />
+                        ) : null}
+                        <div className="text-center">
+                          <div className="text-sm font-black text-white">{team?.abbrev ?? `Team ${tid}`}</div>
+                          <div className="text-[10px] font-bold text-slate-500">{team?.name ?? ''}</div>
+                        </div>
+                        <div className="text-xs font-black text-slate-700 italic">VS</div>
+                        <div className="text-center">
+                          <div className="text-sm font-black text-amber-300/80">TBD</div>
+                          <div className="text-[10px] font-bold text-slate-500">After Group Stage</div>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-center text-[10px] text-slate-500">
+                        Slot resolves when bracket sets — becomes a Cup QF (advancers) or RS game (non-advancers).
+                      </div>
+                    </div>
+                  );
                 }
 
                 const isIntlPreseason = (game as any).isPreseason && (game.homeTid >= 100 || game.awayTid >= 100);

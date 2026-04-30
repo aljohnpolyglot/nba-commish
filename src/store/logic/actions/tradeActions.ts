@@ -5,9 +5,12 @@ import { executeExecutiveTrade } from '../../../services/tradeService';
 import { buildShamsTradePost } from '../../../services/social/templates/charania';
 import { calculateSocialEngagement } from '../../../utils/helpers';
 import { NewsGenerator } from '../../../services/news/NewsGenerator';
+import { buildFullDraftSlotMap, formatPickLabel } from '../../../services/draft/draftClassStrength';
 
 export const handleExecutiveTrade = async (stateWithSim: GameState, action: UserAction, executiveTradeTransactionRef: { current: any }, simResults: any[], recentDMs: any[]) => {
-    const tradeResult = executeExecutiveTrade(action.payload, stateWithSim.players, stateWithSim.teams, stateWithSim.draftPicks);
+    const currentYear = stateWithSim.leagueStats?.year ?? new Date().getFullYear();
+    const lotterySlotByTid = buildFullDraftSlotMap((stateWithSim as any).draftLotteryResult, stateWithSim.teams);
+    const tradeResult = executeExecutiveTrade(action.payload, stateWithSim.players, stateWithSim.teams, stateWithSim.draftPicks, currentYear, lotterySlotByTid);
     executiveTradeTransactionRef.current = tradeResult.transaction;
     const teamA = stateWithSim.teams.find(t => t.id === action.payload.teamAId);
     const teamB = stateWithSim.teams.find(t => t.id === action.payload.teamBId);
@@ -21,19 +24,23 @@ export const handleExecutiveTrade = async (stateWithSim: GameState, action: User
         const pk = stateWithSim.draftPicks.find(p => p.dpid === dpid);
         if (!pk) return 'pick';
         const orig = stateWithSim.teams.find(t => t.id === pk.originalTid);
-        return `${pk.season} ${pk.round === 1 ? '1st' : '2nd'} Rd (${orig?.abbrev ?? '?'})`;
+        return `${formatPickLabel(pk, currentYear, lotterySlotByTid, true)} (${orig?.abbrev ?? '?'})`;
     };
     const picksA = (action.payload.teamAPicks ?? []).map(pickLabel);
     const picksB = (action.payload.teamBPicks ?? []).map(pickLabel);
 
-    const joinAssets = (players: string[], picks: string[]): string => {
-        if (players.length === 0 && picks.length === 0) return 'None';
-        if (picks.length === 0) return players.join(', ');
-        if (players.length === 0) return picks.join(', ');
-        return `${players.join(', ')} + ${picks.join(', ')}`;
+    const cashA: number = action.payload.teamACashUSD ?? 0;
+    const cashB: number = action.payload.teamBCashUSD ?? 0;
+    const fmtCash = (usd: number) => `$${(usd / 1_000_000).toFixed(1)}M cash`;
+    const joinAssets = (players: string[], picks: string[], cashUSD: number): string => {
+        const parts: string[] = [];
+        if (players.length > 0) parts.push(players.join(', '));
+        if (picks.length > 0) parts.push(picks.join(', '));
+        if (cashUSD > 0) parts.push(fmtCash(cashUSD));
+        return parts.length === 0 ? 'None' : parts.join(' + ');
     };
-    const assetsA = joinAssets(playersA, picksA);
-    const assetsB = joinAssets(playersB, picksB);
+    const assetsA = joinAssets(playersA, picksA, cashA);
+    const assetsB = joinAssets(playersB, picksB, cashB);
 
     const isCommishForced = !!action.payload.commissionerForced;
     const tradeSeed = isCommishForced

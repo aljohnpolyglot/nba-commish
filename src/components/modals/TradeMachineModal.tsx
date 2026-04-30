@@ -7,12 +7,13 @@ import { TradeSummaryModal } from './TradeSummaryModal';
 import { TeamDropdown } from '../shared/TeamDropdown';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
 import { calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV, getPotColor, computeLeaguePerAvg, type TeamMode } from '../../services/trade/tradeValueEngine';
-import { getCapThresholds, getTeamCapProfile, getTeamPayrollUSD, getTradeOutlook, effectiveRecord, topNAvgK2, resolveManualOutlook, type TradeOutlook } from '../../utils/salaryUtils';
-import { isSalaryLegalWithTPE, getTotalActiveTPE } from '../../utils/tradeExceptionUtils';
+import { getCapThresholds, getTeamPayrollUSD, getTradeOutlook, effectiveRecord, topNAvgK2, resolveManualOutlook, type TradeOutlook } from '../../utils/salaryUtils';
+import { validateCBATradeRules } from '../../utils/cbaTradeRules';
 import { evaluateTradeAcceptance, teamPowerRanks, roleToMode } from '../../services/trade/tradeFinderEngine';
 import { SettingsManager } from '../../services/SettingsManager';
 import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks } from '../../services/draft/DraftPickGenerator';
-import { buildClassStrengthMap, buildLotterySlotMap } from '../../services/draft/draftClassStrength';
+import { buildClassStrengthMap, buildFullDraftSlotMap, formatPickLabel } from '../../services/draft/draftClassStrength';
+import { validateStepienRule, wouldStepienViolateForTid } from '../../services/trade/stepienRule';
 
 // OVR text color matching TradeFinder's ovrText helper — keeps the number coloring
 // consistent between TradeMachineModal and the OfferCard stack.
@@ -27,7 +28,7 @@ const ovrTextColor = (v: number): string => {
 
 interface TradeMachineModalProps {
   onClose: () => void;
-  onConfirm: (payload: { teamAId: number, teamBId: number, teamAPlayers: string[], teamBPlayers: string[], teamAPicks: number[], teamBPicks: number[], commissionerForced?: boolean }) => void;
+  onConfirm: (payload: { teamAId: number, teamBId: number, teamAPlayers: string[], teamBPlayers: string[], teamAPicks: number[], teamBPicks: number[], teamACashUSD?: number, teamBCashUSD?: number, commissionerForced?: boolean }) => void;
   // Optional pre-load state (from Trade Finder "Manage Trade")
   initialTeamAId?: number;
   initialTeamBId?: number;
@@ -56,8 +57,9 @@ const OutgoingPill = ({ player, onRemove }: { player: NBAPlayer, onRemove: () =>
 );
 
 // Pick pill with the ORIGINAL owner's logo so it's visible who the pick came from.
-const OutgoingPickPill = ({ pick, teams, onRemove }: { pick: DraftPick, teams: NBATeam[], onRemove: () => void }) => {
+const OutgoingPickPill = ({ pick, teams, onRemove, currentYear, lotterySlotByTid }: { pick: DraftPick, teams: NBATeam[], onRemove: () => void, currentYear: number, lotterySlotByTid?: Map<number, number> }) => {
   const origTeam = teams.find(t => t.id === pick.originalTid);
+  const label = formatPickLabel(pick, currentYear, lotterySlotByTid, true);
   return (
     <div className="flex items-center gap-2 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-full pl-1 pr-2 py-1 transition-colors shadow-sm">
       <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 p-0.5 flex items-center justify-center">
@@ -67,7 +69,7 @@ const OutgoingPickPill = ({ pick, teams, onRemove }: { pick: DraftPick, teams: N
         }
       </div>
       <span className="text-xs font-bold text-indigo-200 whitespace-nowrap">
-        {pick.season} {pick.round === 1 ? '1st' : '2nd'}{origTeam ? ` · ${origTeam.abbrev}` : ''}
+        {pick.season} {label}{origTeam ? ` · ${origTeam.abbrev}` : ''}
       </span>
       <button onClick={onRemove} className="w-4 h-4 rounded-full bg-indigo-500/40 hover:bg-rose-500 flex items-center justify-center text-white transition-colors">
         <X size={10} />
@@ -175,6 +177,13 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
     initialTeamBPickDpids ? state.draftPicks.filter(pk => initialTeamBPickDpids.includes(pk.dpid)) : []
   );
   
+  // Cash considerations — NBA cap $7.5M per team per season. Step $250K.
+  const teamACashUsedUSD = ((state.teams.find(t => t.id === teamAId) as any)?.cashUsedInTrades ?? 0);
+  const teamBCashUsedUSD = ((state.teams.find(t => t.id === teamBId) as any)?.cashUsedInTrades ?? 0);
+  const teamACashCapRemaining = Math.max(0, 7_500_000 - teamACashUsedUSD);
+  const teamBCashCapRemaining = Math.max(0, 7_500_000 - teamBCashUsedUSD);
+  const [teamACashUSD, setTeamACashUSD] = useState(0);
+  const [teamBCashUSD, setTeamBCashUSD] = useState(0);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [tradeResponse, setTradeResponse] = useState<{ accepted: boolean; gmName: string; reason: string; suggestion?: string } | null>(null);
   // AI's suggested additions (user-side assets) that would make the rejected trade work.
@@ -231,6 +240,31 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   const teamAPicksAvailable = useMemo(() => tradablePicks.filter(p => p.tid === teamAId), [tradablePicks, teamAId]);
   const teamBPicksAvailable = useMemo(() => tradablePicks.filter(p => p.tid === teamBId), [tradablePicks, teamBId]);
 
+  const stepienOnGlobal = state.leagueStats?.stepienRuleEnabled !== false;
+  const tradablePickSeasons = state.leagueStats?.tradableDraftPickSeasons ?? 7;
+  const stepienBlockedA = useMemo(() => {
+    if (!stepienOnGlobal || !teamA) return new Set<number>();
+    const blocked = new Set<number>();
+    for (const pick of teamAPicksAvailable) {
+      if (teamAPicks.some(p => p.dpid === pick.dpid)) continue;
+      if (wouldStepienViolateForTid(state.draftPicks ?? [], state.leagueStats?.year ?? new Date().getFullYear(), tradablePickSeasons, teamA.id, [...teamAPicks, pick])) {
+        blocked.add(pick.dpid);
+      }
+    }
+    return blocked;
+  }, [stepienOnGlobal, teamA, teamAPicksAvailable, teamAPicks, state.draftPicks, state.leagueStats?.year, tradablePickSeasons]);
+  const stepienBlockedB = useMemo(() => {
+    if (!stepienOnGlobal || !teamB) return new Set<number>();
+    const blocked = new Set<number>();
+    for (const pick of teamBPicksAvailable) {
+      if (teamBPicks.some(p => p.dpid === pick.dpid)) continue;
+      if (wouldStepienViolateForTid(state.draftPicks ?? [], state.leagueStats?.year ?? new Date().getFullYear(), tradablePickSeasons, teamB.id, [...teamBPicks, pick])) {
+        blocked.add(pick.dpid);
+      }
+    }
+    return blocked;
+  }, [stepienOnGlobal, teamB, teamBPicksAvailable, teamBPicks, state.draftPicks, state.leagueStats?.year, tradablePickSeasons]);
+
   const displayTeamARoster = useMemo(() => {
     const incoming = teamBPlayers.map(p => ({ ...p, isIncoming: true }));
     const native = teamARoster.filter(p => !teamAPlayers.some(out => out.internalId === p.internalId));
@@ -248,19 +282,6 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
 
   const thresholds = useMemo(() => getCapThresholds(state.leagueStats), [state.leagueStats]);
 
-  // Cap space per team (thousands, matches contract.amount units). Lets a picks-only
-  // side absorb an incoming salary up to its available cap room — the real-NBA
-  // exception that makes dump deals to rebuilders legal. Matches TradeFinder's
-  // `capSpaceK` feed so the eligibility badge there lines up with this gate.
-  const capSpaceAK = useMemo(() => {
-    if (!teamA) return 0;
-    return getTeamCapProfile(state.players, teamA.id, (teamA as any).wins ?? 0, (teamA as any).losses ?? 0, thresholds).capSpaceUSD / 1000;
-  }, [teamA, state.players, thresholds]);
-  const capSpaceBK = useMemo(() => {
-    if (!teamB) return 0;
-    return getTeamCapProfile(state.players, teamB.id, (teamB as any).wins ?? 0, (teamB as any).losses ?? 0, thresholds).capSpaceUSD / 1000;
-  }, [teamB, state.players, thresholds]);
-
   // ── Trade engine context (mirrors TradeFinderView) ─────────────────────────
   // Shared acceptance uses these; keep the inputs identical to Finder's so a
   // deal the Finder would return is also one the Machine will accept.
@@ -272,8 +293,8 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
     [state.players, currentYearForEval, tradablePickCutoff],
   );
   const lotterySlotByTid = useMemo(
-    () => buildLotterySlotMap((state as any).draftLotteryResult),
-    [(state as any).draftLotteryResult],
+    () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
+    [(state as any).draftLotteryResult, state.teams],
   );
   const tvContext = useMemo(() => {
     const d = state.date ? new Date(state.date) : new Date();
@@ -317,36 +338,43 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   }, [state.teams, state.players, thresholds, confStandings, currentYearForEval, state.gameMode, state.userTeamId]);
 
   const salaryMismatchInfo = useMemo(() => {
-    // Picks-for-picks: no salary to check
-    if (teamAPlayers.length === 0 && teamBPlayers.length === 0) return null;
-    // Picks-for-player: picks-only side must have enough cap room to absorb
-    // the incoming salary (NBA cap-absorption rule). Rebuilders with space can
-    // take on a small contract for picks; over-cap teams still get blocked.
-    if (teamAPlayers.length === 0 && teamBPlayers.length > 0) {
-      if (teamBSalary > capSpaceAK + 100) {
-        return { message: `${teamA?.abbrev || 'Team A'} needs ${((teamBSalary - capSpaceAK) / 1000).toFixed(1)}M more cap space to absorb this salary.`, team: 'A' as const };
-      }
-      return null;
+    if (!teamA || !teamB) return null;
+    const cba = validateCBATradeRules({
+      teamAId: teamA.id,
+      teamBId: teamB.id,
+      teamAPlayers,
+      teamBPlayers,
+      teamAPicks,
+      teamBPicks,
+      teamACashUSD,
+      teamBCashUSD,
+      teams: state.teams,
+      players: state.players,
+      leagueStats: state.leagueStats,
+      currentDate: state.date,
+      currentYear: currentYearForEval,
+    });
+    if (!cba.ok) {
+      return { message: cba.reason ?? 'Trade violates current CBA settings.', team: (cba.offendingSide ?? 'A') as 'A' | 'B' };
     }
-    if (teamBPlayers.length === 0 && teamAPlayers.length > 0) {
-      if (teamASalary > capSpaceBK + 100) {
-        return { message: `${teamB?.abbrev || 'Team B'} needs ${((teamASalary - capSpaceBK) / 1000).toFixed(1)}M more cap space to absorb this salary.`, team: 'B' as const };
+
+    // Stepien Rule — neither team may end up with no 1st in two consecutive future drafts.
+    if (state.leagueStats?.stepienRuleEnabled !== false && teamA && teamB && (teamAPicks.length > 0 || teamBPicks.length > 0)) {
+      const stepien = validateStepienRule(
+        state.draftPicks ?? [],
+        currentYearForEval,
+        state.leagueStats?.tradableDraftPickSeasons ?? 7,
+        teamA.id, teamB.id,
+        teamAPicks, teamBPicks,
+      );
+      if (!stepien.ok) {
+        const offendingSide: 'A' | 'B' = stepien.offendingTid === teamA.id ? 'A' : 'B';
+        const offendingTeam = offendingSide === 'A' ? teamA : teamB;
+        return { message: `Stepien Rule: ${offendingTeam?.abbrev || `Team ${offendingSide}`} would have no 1st in two straight future drafts.`, team: offendingSide };
       }
-      return null;
-    }
-    // Both sides have players — apply standard 125% salary matching rule, with
-    // TPE-absorption fallback when over-cap teams have a Trade Exception large
-    // enough to swallow the surplus from the other side.
-    const tpeEnabled = state.leagueStats?.tradeExceptionsEnabled !== false;
-    const tpeAUSD = teamA && tpeEnabled ? getTotalActiveTPE(teamA, state.date) : 0;
-    const tpeBUSD = teamB && tpeEnabled ? getTotalActiveTPE(teamB, state.date) : 0;
-    const check = isSalaryLegalWithTPE(teamASalary, teamBSalary, tpeAUSD, tpeBUSD, tpeEnabled);
-    if (!check.ok) {
-      const overReceiver = teamBSalary > teamASalary ? 'A' : 'B';
-      return { message: `${(overReceiver === 'A' ? teamA : teamB)?.abbrev || `Team ${overReceiver}`} receiving too much salary.`, team: overReceiver as 'A' | 'B' };
     }
     return null;
-  }, [teamASalary, teamBSalary, teamA, teamB, teamAPlayers, teamBPlayers, capSpaceAK, capSpaceBK, state.leagueStats, state.date]);
+  }, [teamA, teamB, teamAPlayers, teamBPlayers, teamAPicks, teamBPicks, teamACashUSD, teamBCashUSD, state.teams, state.players, state.leagueStats, state.date, state.draftPicks, currentYearForEval]);
 
   const handleConfirm = () => {
     if (teamAId !== null && teamBId !== null) setShowSummaryModal(true);
@@ -383,6 +411,13 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
         tradeDifficulty,
         classStrengthByYear,
         lotterySlotByTid,
+        toTeamRoster: state.players.filter(p => p.tid === teamBId),
+        maxRoster: state.leagueStats?.maxStandardPlayersPerTeam ?? 15,
+        leagueStats: state.leagueStats,
+        currentDate: state.date,
+        allPlayers: state.players,
+        fromCashUSD: teamACashUSD,
+        toCashUSD: teamBCashUSD,
       });
 
       const { accepted, reason, shortfall } = result;
@@ -405,7 +440,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
         type Candidate = { kind: 'player' | 'pick'; id: string | number; name: string; tv: number };
         const candidates: Candidate[] = [
           ...userRoster.map<Candidate>(p => ({ kind: 'player', id: p.internalId, name: p.name, tv: calcPlayerTV(p, fromMode, currentYear, tvContext) })),
-          ...userPicks.map<Candidate>(pk => ({ kind: 'pick', id: pk.dpid, name: `${pk.season} ${pk.round === 1 ? '1st' : '2nd'} Rd`, tv: calcPickTV(pk.round, powerRanksMap.get(pk.originalTid) ?? Math.ceil(state.teams.length / 2), state.teams.length, Math.max(1, pk.season - currentYear), { classStrength: classStrengthByYear.get(pk.season) ?? 1.0, actualSlot: pk.round === 1 && pk.season === currentYear ? lotterySlotByTid.get(pk.originalTid) : undefined }) })),
+          ...userPicks.map<Candidate>(pk => ({ kind: 'pick', id: pk.dpid, name: formatPickLabel(pk, currentYear, lotterySlotByTid, false), tv: calcPickTV(pk.round, powerRanksMap.get(pk.originalTid) ?? Math.ceil(state.teams.length / 2), state.teams.length, Math.max(1, pk.season - currentYear), { classStrength: classStrengthByYear.get(pk.season) ?? 1.0, actualSlot: pk.round === 1 && pk.season === currentYear ? lotterySlotByTid.get(pk.originalTid) : undefined }) })),
         ].filter(c => c.tv > 0);
 
         const picked: Candidate[] = [];
@@ -454,6 +489,8 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
       teamBPlayers: teamBPlayers.map(p => p.internalId),
       teamAPicks: teamAPicks.map(p => p.dpid),
       teamBPicks: teamBPicks.map(p => p.dpid),
+      ...(teamACashUSD > 0 ? { teamACashUSD } : {}),
+      ...(teamBCashUSD > 0 ? { teamBCashUSD } : {}),
       ...(commissionerForced ? { commissionerForced: true } : {})
     });
   };
@@ -466,14 +503,14 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
 
         {/* ACTION BAR — fixed at bottom on both mobile and desktop so it's always reachable */}
         <div className="fixed bottom-3 left-1/2 -translate-x-1/2 lg:bottom-6 z-50 flex gap-2 sm:gap-4 bg-[#161616] p-2 rounded-2xl border border-slate-700 shadow-2xl w-[calc(100%-1.5rem)] max-w-xs sm:max-w-sm lg:max-w-none lg:w-auto">
-            <button onClick={handleConfirm} disabled={!canClickAssets || teamAId === teamBId || teamAId == null || teamBId == null || (teamAPlayers.length === 0 && teamBPlayers.length === 0 && teamAPicks.length === 0 && teamBPicks.length === 0)} className="flex-1 lg:flex-none px-4 sm:px-8 py-2.5 sm:py-3 rounded-xl font-black text-xs uppercase bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-600/20">
+            <button onClick={handleConfirm} disabled={!canClickAssets || teamAId === teamBId || teamAId == null || teamBId == null || (teamAPlayers.length === 0 && teamBPlayers.length === 0 && teamAPicks.length === 0 && teamBPicks.length === 0 && teamACashUSD === 0 && teamBCashUSD === 0)} className="flex-1 lg:flex-none px-4 sm:px-8 py-2.5 sm:py-3 rounded-xl font-black text-xs uppercase bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-600/20">
                 {teamAId === teamBId ? 'Same Team — Invalid' : 'Validate Deal'}
             </button>
             <button onClick={onClose} className="flex-1 lg:flex-none px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-black text-xs uppercase bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all">Close</button>
         </div>
 
         {/* MAIN 2-COLUMN WRAPPER */}
-        <div className="w-full max-w-6xl h-auto lg:h-[80vh] flex flex-col lg:flex-row gap-3 sm:gap-6 pb-4 lg:pb-0">
+        <div className="w-full max-w-6xl h-[calc(100vh-9rem)] lg:h-[80vh] flex flex-col lg:flex-row gap-3 sm:gap-6 pb-4 lg:pb-0">
           
           {/* ======================= TEAM 1 COLUMN ======================= */}
           <div className="flex-1 flex flex-col bg-[#1e1e1e] border border-slate-700/50 rounded-2xl overflow-hidden relative shadow-2xl min-h-[50vh] lg:min-h-0">
@@ -510,9 +547,24 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                             <OutgoingPill key={p.internalId} player={p} onRemove={() => setTeamAPlayers(teamAPlayers.filter(x => x.internalId !== p.internalId))} />
                         ))}
                         {teamAPicks.map(pk => (
-                            <OutgoingPickPill key={pk.dpid} pick={pk} teams={state.teams} onRemove={() => setTeamAPicks(teamAPicks.filter(x => x.dpid !== pk.dpid))} />
+                            <OutgoingPickPill key={pk.dpid} pick={pk} teams={state.teams} currentYear={currentYearForEval} lotterySlotByTid={lotterySlotByTid} onRemove={() => setTeamAPicks(teamAPicks.filter(x => x.dpid !== pk.dpid))} />
                         ))}
                     </div>
+                )}
+                {teamAId !== null && (
+                  <div className="px-4 pb-3 flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    <span>Cash:</span>
+                    <input
+                      type="range" min={0} max={teamACashCapRemaining} step={250_000}
+                      value={Math.min(teamACashUSD, teamACashCapRemaining)}
+                      onChange={e => setTeamACashUSD(parseInt(e.target.value, 10))}
+                      className="flex-1 accent-indigo-500"
+                    />
+                    <span className={`tabular-nums ${teamACashUSD > 0 ? 'text-emerald-300' : 'text-slate-600'}`}>
+                      ${(teamACashUSD / 1_000_000).toFixed(2)}M
+                    </span>
+                    <span className="text-[9px] text-slate-600">cap left ${(teamACashCapRemaining / 1_000_000).toFixed(1)}M</span>
+                  </div>
                 )}
             </div>
 
@@ -553,33 +605,41 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                         />
                     ))
                 ) : (
-                    <div className="p-4 space-y-2">
-                        {teamAPicksAvailable.map(pick => {
-                            const isSelected = teamAPicks.some(p => p.dpid === pick.dpid);
-                            const isSuggested = suggestedPickIds.has(pick.dpid);
-                            const origTeam = state.teams.find(t => t.id === pick.originalTid);
-                            return (
-                                <button
-                                    key={pick.dpid}
-                                    disabled={!canClickAssets}
-                                    onClick={() => isSelected ? setTeamAPicks(teamAPicks.filter(p => p.dpid !== pick.dpid)) : setTeamAPicks([...teamAPicks, pick])}
-                                    className={`w-full flex items-center gap-4 p-3 rounded-xl border-2 transition-all ${
-                                      isSelected ? 'bg-blue-600/10 border-blue-500/50'
-                                        : isSuggested ? 'bg-amber-500/10 border-amber-500/50 ring-1 ring-amber-500/30'
-                                        : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
-                                    }`}
-                                >
-                                    <div className="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center p-2 shadow-inner flex-shrink-0">
-                                        <img src={origTeam?.logoUrl} alt="" className="w-full h-full object-contain" />
-                                    </div>
-                                    <div className="flex-1 text-left min-w-0">
-                                        <div className="text-sm font-black text-white uppercase tracking-tight">{pick.season} {pick.round === 1 ? '1ST' : '2ND'} ROUND</div>
-                                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Via {origTeam?.name}</div>
-                                    </div>
-                                    {isSelected && <div className="w-3 h-3 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" />}
-                                </button>
-                            );
-                        })}
+                    <div className="overflow-x-auto overflow-y-hidden custom-scrollbar">
+                        <div className="p-4 flex gap-2 min-w-min">
+                            {teamAPicksAvailable.map(pick => {
+                                const isSelected = teamAPicks.some(p => p.dpid === pick.dpid);
+                                const isSuggested = suggestedPickIds.has(pick.dpid);
+                                const origTeam = state.teams.find(t => t.id === pick.originalTid);
+                                const stepienBlocks = !isSelected && stepienBlockedA.has(pick.dpid);
+                                const disabled = !canClickAssets || stepienBlocks;
+                                return (
+                                    <button
+                                        key={pick.dpid}
+                                        disabled={disabled}
+                                        title={stepienBlocks ? 'Stepien Rule — would leave this team with no 1st in two straight future drafts.' : undefined}
+                                        onClick={() => isSelected ? setTeamAPicks(teamAPicks.filter(p => p.dpid !== pick.dpid)) : setTeamAPicks([...teamAPicks, pick])}
+                                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all whitespace-nowrap flex-shrink-0 ${
+                                          stepienBlocks ? 'bg-slate-950/60 border-slate-800/60 opacity-40 grayscale cursor-not-allowed'
+                                            : isSelected ? 'bg-blue-600/10 border-blue-500/50'
+                                            : isSuggested ? 'bg-amber-500/10 border-amber-500/50 ring-1 ring-amber-500/30'
+                                            : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
+                                        }`}
+                                    >
+                                        <div className="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center p-2 shadow-inner">
+                                            <img src={origTeam?.logoUrl} alt="" className="w-full h-full object-contain" />
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-xs font-black text-white uppercase tracking-tight">{formatPickLabel(pick, currentYearForEval, lotterySlotByTid, false).toUpperCase()}</div>
+                                            <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+                                              {stepienBlocks ? <span className="text-rose-400">Stepien</span> : <>{origTeam?.abbrev}</>}
+                                            </div>
+                                        </div>
+                                        {isSelected && <div className="w-2 h-2 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" />}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
             </div>
@@ -620,9 +680,24 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                             <OutgoingPill key={p.internalId} player={p} onRemove={() => setTeamBPlayers(teamBPlayers.filter(x => x.internalId !== p.internalId))} />
                         ))}
                         {teamBPicks.map(pk => (
-                            <OutgoingPickPill key={pk.dpid} pick={pk} teams={state.teams} onRemove={() => setTeamBPicks(teamBPicks.filter(x => x.dpid !== pk.dpid))} />
+                            <OutgoingPickPill key={pk.dpid} pick={pk} teams={state.teams} currentYear={currentYearForEval} lotterySlotByTid={lotterySlotByTid} onRemove={() => setTeamBPicks(teamBPicks.filter(x => x.dpid !== pk.dpid))} />
                         ))}
                     </div>
+                )}
+                {teamBId !== null && (
+                  <div className="px-4 pb-3 flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    <span>Cash:</span>
+                    <input
+                      type="range" min={0} max={teamBCashCapRemaining} step={250_000}
+                      value={Math.min(teamBCashUSD, teamBCashCapRemaining)}
+                      onChange={e => setTeamBCashUSD(parseInt(e.target.value, 10))}
+                      className="flex-1 accent-indigo-500"
+                    />
+                    <span className={`tabular-nums ${teamBCashUSD > 0 ? 'text-emerald-300' : 'text-slate-600'}`}>
+                      ${(teamBCashUSD / 1_000_000).toFixed(2)}M
+                    </span>
+                    <span className="text-[9px] text-slate-600">cap left ${(teamBCashCapRemaining / 1_000_000).toFixed(1)}M</span>
+                  </div>
                 )}
             </div>
 
@@ -659,28 +734,39 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                         />
                     ))
                 ) : (
-                    <div className="p-4 space-y-2">
-                        {teamBPicksAvailable.map(pick => {
-                            const isSelected = teamBPicks.some(p => p.dpid === pick.dpid);
-                            const origTeam = state.teams.find(t => t.id === pick.originalTid);
-                            return (
-                                <button 
-                                    key={pick.dpid}
-                                    disabled={!canClickAssets}
-                                    onClick={() => isSelected ? setTeamBPicks(teamBPicks.filter(p => p.dpid !== pick.dpid)) : setTeamBPicks([...teamBPicks, pick])}
-                                    className={`w-full flex items-center gap-4 p-3 rounded-xl border-2 transition-all ${isSelected ? 'bg-blue-600/10 border-blue-500/50' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'}`}
-                                >
-                                    <div className="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center p-2 shadow-inner flex-shrink-0">
-                                        <img src={origTeam?.logoUrl} alt="" className="w-full h-full object-contain" />
-                                    </div>
-                                    <div className="flex-1 text-left min-w-0">
-                                        <div className="text-sm font-black text-white uppercase tracking-tight">{pick.season} {pick.round === 1 ? '1ST' : '2ND'} ROUND</div>
-                                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Via {origTeam?.name}</div>
-                                    </div>
-                                    {isSelected && <div className="w-3 h-3 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" />}
-                                </button>
-                            );
-                        })}
+                    <div className="overflow-x-auto overflow-y-hidden custom-scrollbar">
+                        <div className="p-4 flex gap-2 min-w-min">
+                            {teamBPicksAvailable.map(pick => {
+                                const isSelected = teamBPicks.some(p => p.dpid === pick.dpid);
+                                const origTeam = state.teams.find(t => t.id === pick.originalTid);
+                                const stepienBlocks = !isSelected && stepienBlockedB.has(pick.dpid);
+                                const disabled = !canClickAssets || stepienBlocks;
+                                return (
+                                    <button
+                                        key={pick.dpid}
+                                        disabled={disabled}
+                                        title={stepienBlocks ? 'Stepien Rule — would leave this team with no 1st in two straight future drafts.' : undefined}
+                                        onClick={() => isSelected ? setTeamBPicks(teamBPicks.filter(p => p.dpid !== pick.dpid)) : setTeamBPicks([...teamBPicks, pick])}
+                                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all whitespace-nowrap flex-shrink-0 ${
+                                          stepienBlocks ? 'bg-slate-950/60 border-slate-800/60 opacity-40 grayscale cursor-not-allowed'
+                                            : isSelected ? 'bg-blue-600/10 border-blue-500/50'
+                                            : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
+                                        }`}
+                                    >
+                                        <div className="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center p-2 shadow-inner">
+                                            <img src={origTeam?.logoUrl} alt="" className="w-full h-full object-contain" />
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-xs font-black text-white uppercase tracking-tight">{formatPickLabel(pick, currentYearForEval, lotterySlotByTid, false).toUpperCase()}</div>
+                                            <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+                                              {stepienBlocks ? <span className="text-rose-400">Stepien</span> : <>{origTeam?.abbrev}</>}
+                                            </div>
+                                        </div>
+                                        {isSelected && <div className="w-2 h-2 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" />}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
             </div>
@@ -777,6 +863,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                     teamAPicks, teamBPicks,
                     teamASentSalary: teamASalary,
                     teamBSentSalary: teamBSalary,
+                    teamACashUSD, teamBCashUSD,
                 }}
                 salaryMismatchInfo={salaryMismatchInfo}
             />

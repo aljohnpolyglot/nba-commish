@@ -338,5 +338,12 @@ Constants added in `src/constants.ts` for future external league contract/FA sys
   - Japan → B-League, Philippines → PBA, Australia → NBL, China → ChinaCBA
   - Spain → Endesa, Greece/Turkey/Serbia/France/Germany/Italy/Lithuania/Israel/Russia → Euroleague
 
-### Implementation Plan (Not Yet Built)
-At external league rollover (Jun 30): expire contracts using scaled-down BBGM amounts, run external FA round with re-signing probability + nationality bias. External players whose contracts expire have 90% chance to re-sign same league, 10% to explore. Home country teams get 60% preference within the league.
+### Implementation (Shipped Session 30 — 2026-04-27)
+
+External free agency runs at season rollover via `runExternalFreeAgency` in `src/services/externalFreeAgency.ts`. The rollover map auto-resigns sub-K2-70 players in place (1-2 yr extension) AND tags them in `externalExpiredIds`. The post-map FA pass then rolls the dice per player:
+
+- `roll < 0.90` (`EXTERNAL_RESIGN_PROBABILITY`) → keep auto-resign (no-op)
+- `0.90 ≤ roll < 0.97` → switch teams within same league (weighted by `resolveClubAffinity` × `HOME_COUNTRY_BIAS`)
+- `roll ≥ 0.97` → cross-league move via `resolveNationalityLeague` (men's only — WNBA stays in WNBA)
+
+Each move emits a `'Signing'` history entry visible in Transactions. WNBA contracts no longer short-circuit at rollover (previous L333-335 short-return removed) — they expire and get reshuffled inside WNBA. K2≥70 men's externals still flow to NBA FA pool unchanged. Generated WNBA players use `gender:'female'` through facesjs (`generate(undefined, { gender:'female' })`) — hair/feature pools swap automatically.

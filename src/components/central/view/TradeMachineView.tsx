@@ -21,6 +21,8 @@ export const TradeMachineView: React.FC<TradeMachineViewProps> = ({ onViewChange
     teamBPlayers: string[],
     teamAPicks: number[],
     teamBPicks: number[],
+    teamACashUSD?: number,
+    teamBCashUSD?: number,
     commissionerForced?: boolean
   }) => {
     dispatchAction({ type: 'EXECUTIVE_TRADE', payload } as any);

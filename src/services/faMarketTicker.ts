@@ -56,6 +56,31 @@ function isPostPreseason(stateDate: string | undefined): boolean {
   return true;
 }
 
+function isPreseasonCampWindow(stateDate: string | undefined, leagueStats: any): boolean {
+  if ((leagueStats?.nonGuaranteedContractsEnabled ?? true) === false) return false;
+  if (!stateDate) return false;
+  const d = new Date(stateDate);
+  if (isNaN(d.getTime())) return false;
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  return (m >= 7 && m <= 9) || (m === 10 && day <= 21);
+}
+
+function isCampInviteBid(
+  k2: number,
+  bid: Pick<FreeAgentBid, 'salaryUSD' | 'years'>,
+  state: GameState,
+): boolean {
+  if (!isPreseasonCampWindow(state.date, state.leagueStats as any)) return false;
+  if (bid.years > 1) return false;
+  const cap = getCapThresholds(state.leagueStats as any).salaryCap || 140_000_000;
+  const pct = bid.salaryUSD / cap;
+  if (pct <= 0.050 && k2 < 78) return true;
+  if (pct <= 0.070 && k2 < 72) return true;
+  if (pct <= 0.090 && k2 < 65) return true;
+  return false;
+}
+
 /** RFA-specific prior team lookup — same logic as getLoyalPriorTid but
  *  exported via a stable name for the matching-offer-sheet flow. */
 function getRFAPriorTid(player: NBAPlayer): number {
@@ -228,6 +253,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
         date: state.date,
         type: 'Signing',
         playerIds: [player.internalId],
+        tid: team.id,
       } as any);
       newsItems.push({
         id: `rfa-offer-sheet-${player.internalId}-${state.date}`,
@@ -244,6 +270,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     // Clamp years at resolution time — covers markets opened pre-cutoff that
     // resolve mid-season (Quentin Grimes Nov-5 $96M/3yr regression).
     const finalYears = Math.min(winner.years, resolutionMaxYears);
+    const isNonGuaranteed = !!winner.nonGuaranteed && finalYears === 1;
 
     // Apply the winning bid to the player. Bird Rights reset when signing with a
     // different franchise — yearsWithTeam goes to 0, and season rollover will
@@ -258,12 +285,12 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     const newContractYears = Array.from({ length: finalYears }, (_, idx) => {
       const yr = currentYear + idx;
       const annual = Math.round(winner.salaryUSD * Math.pow(1.05, idx));
-      return {
-        season: `${yr - 1}-${String(yr).slice(-2)}`,
-        guaranteed: annual,
-        option: idx === finalYears - 1 && winner.option === 'PLAYER' ? 'Player'
-              : idx === finalYears - 1 && winner.option === 'TEAM' ? 'Team' : '',
-      };
+        return {
+          season: `${yr - 1}-${String(yr).slice(-2)}`,
+          guaranteed: isNonGuaranteed ? 0 : annual,
+          option: idx === finalYears - 1 && winner.option === 'PLAYER' ? 'Player'
+                : idx === finalYears - 1 && winner.option === 'TEAM' ? 'Team' : '',
+        };
     });
     const historicalYears = ((player as any).contractYears ?? []).filter((cy: any) => {
       const yr = parseInt(cy.season.split('-')[0], 10) + 1;
@@ -275,6 +302,9 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
       status: 'Active' as any,
       contract: newContract,
       contractYears: [...historicalYears, ...newContractYears],
+      // Stamp signing date so trim's recency guard protects this signing.
+      signedDate: state.date,
+      ...(isNonGuaranteed ? { nonGuaranteed: true } : {}),
       ...(joinedNewTeam ? { yearsWithTeam: 0, hasBirdRights: false } : {}),
     } as any;
     playerMutations.set(player.internalId, mutation);
@@ -283,6 +313,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     const annualM = Math.round(winner.salaryUSD / 100_000) / 10;
     const totalM = Math.round(annualM * finalYears);
     const optTag = winner.option === 'PLAYER' ? ' (player option)' : winner.option === 'TEAM' ? ' (team option)' : '';
+    const ngTag = isNonGuaranteed ? ' (non-guaranteed)' : '';
     const userWon = !!winner.isUserBid;
     // Check if the resolved market had a user bid — generate a GM toast.
     const hadUserBid = m.bids.some(b => b.isUserBid);
@@ -297,10 +328,11 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
       });
     }
     historyEntries.push({
-      text: `${player.name} signs with the ${team.name}: $${totalM}M/${finalYears}yr${optTag}`,
+      text: `${player.name} signs with the ${team.name}: $${totalM}M/${finalYears}yr${optTag}${ngTag}`,
       date: state.date,
       type: 'Signing',
       playerIds: [player.internalId],
+      tid: team.id,
     } as any);
 
     // News item — matches the shape the existing FA round produces so the
@@ -311,7 +343,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
       : isMax
         ? `${player.name} Lands Max Deal with ${team.name}`
         : `${player.name} Signs with ${team.name}`;
-    const content = `${player.name} has agreed to a ${finalYears}-year, $${totalM}M deal with the ${team.name}${optTag}. ${isMax ? 'Sources: Shams Charania.' : 'Sources: Adrian Wojnarowski.'}`;
+    const content = `${player.name} has agreed to a ${finalYears}-year, $${totalM}M deal with the ${team.name}${optTag}${ngTag}. ${isMax ? 'Sources: Shams Charania.' : 'Sources: Adrian Wojnarowski.'}`;
     newsItems.push({
       id: `fa-market-signing-${player.internalId}-${state.date}`,
       headline,
@@ -413,6 +445,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     const winningTid = willMatch ? priorTid : offerBid.teamId;
     const winningTeam = willMatch ? priorTeam : signingTeam;
     const finalYearsRFA = Math.min(offerBid.years, resolutionMaxYears);
+    const isNonGuaranteedRFA = !!offerBid.nonGuaranteed && finalYearsRFA === 1;
     const newContract = {
       amount: Math.round(offerBid.salaryUSD / 1_000),
       exp: currentYear + finalYearsRFA - 1,
@@ -423,7 +456,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
       const annual = Math.round(offerBid.salaryUSD * Math.pow(1.05, idx));
       return {
         season: `${yr - 1}-${String(yr).slice(-2)}`,
-        guaranteed: annual,
+        guaranteed: isNonGuaranteedRFA ? 0 : annual,
         option: idx === finalYearsRFA - 1 && offerBid.option === 'PLAYER' ? 'Player'
               : idx === finalYearsRFA - 1 && offerBid.option === 'TEAM' ? 'Team' : '',
       };
@@ -438,6 +471,8 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
       status: 'Active' as any,
       contract: newContract,
       contractYears: [...histYears, ...newContractYears],
+      signedDate: state.date,
+      ...(isNonGuaranteedRFA ? { nonGuaranteed: true } : {}),
       ...(joinedNewTeam ? { yearsWithTeam: 0, hasBirdRights: false } : {}),
     } as any);
     signedPlayerIds.add(player.internalId);
@@ -468,6 +503,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
         date: state.date,
         type: 'Signing',
         playerIds: [player.internalId],
+        tid: priorTeam.id,
       } as any);
       newsItems.push({
         id: `rfa-matched-${player.internalId}-${state.date}`,
@@ -484,6 +520,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
         date: state.date,
         type: 'Signing',
         playerIds: [player.internalId],
+        tid: signingTeam.id,
       } as any);
       newsItems.push({
         id: `rfa-not-matched-${player.internalId}-${state.date}`,
@@ -629,11 +666,19 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     // Clamp every bid to the player's max contract — `generateAIBids` uses tier-
     // based pct of cap, which can inch above max for supermax-tier stars.
     const limits = getContractLimits(player, state.leagueStats as any);
-    let clamped: FreeAgentBid[] = bids.map(b => ({
-      ...b,
-      salaryUSD: Math.min(b.salaryUSD, Math.round(limits.maxSalaryUSD)),
-      years: Math.min(b.years, maxYearsThisTick),
-    }));
+    let clamped: FreeAgentBid[] = bids.map(b => {
+      const salaryUSD = Math.min(b.salaryUSD, Math.round(limits.maxSalaryUSD));
+      // K2 70-74 fringe markets in camp are Exhibit-10/NG territory, not
+      // guaranteed multi-year money. They still get a market, but bids resolve
+      // as one-year camp invites so Oct trims do not create dead money.
+      const years = isPreseasonCampWindow(state.date, state.leagueStats as any) && k2 < 75
+        ? 1
+        : Math.min(b.years, maxYearsThisTick);
+      const nextBid = { ...b, salaryUSD, years };
+      return isCampInviteBid(k2, nextBid, state)
+        ? { ...nextBid, nonGuaranteed: true }
+        : nextBid;
+    });
 
     // LOYAL players only enter a market if their prior team is among the bidders.
     const bidTeamIds = clamped.map(b => b.teamId);

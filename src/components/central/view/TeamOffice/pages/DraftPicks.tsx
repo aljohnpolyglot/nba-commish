@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import { buildFullDraftSlotMap, formatPickLabel } from '../../../../../services/draft/draftClassStrength';
 
 interface DraftPicksProps {
   teamId: number;
@@ -12,6 +13,10 @@ export function DraftPicks({ teamId }: DraftPicksProps) {
   const team = state.teams.find(t => t.id === teamId);
   const currentYear = state.leagueStats?.year || 2026;
   const draftComplete = Boolean((state as any).draftComplete);
+  const lotterySlotByTid = useMemo(
+    () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
+    [(state as any).draftLotteryResult, state.teams],
+  );
   // After this year's draft runs, the current-year pick is consumed. Hide it
   // so it doesn't linger as a ghost entry until rollover runs on Jun 30.
   const picks = (state.draftPicks || []).filter(p => {
@@ -107,7 +112,7 @@ export function DraftPicks({ teamId }: DraftPicksProps) {
                         {/* Pick info */}
                         <div className="flex-1 text-left min-w-0">
                           <div className="text-sm font-black text-white uppercase tracking-tight">
-                            {pick.season} {pick.round === 1 ? '1ST' : '2ND'} ROUND
+                            {formatPickLabel(pick, currentYear, lotterySlotByTid, false).toUpperCase()}
                           </div>
                           {!isOwnPick && (
                             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
@@ -159,7 +164,7 @@ export function DraftPicks({ teamId }: DraftPicksProps) {
                       </div>
                       <div className="flex-1 text-left min-w-0">
                         <div className="text-sm font-black text-white/50 uppercase tracking-tight line-through">
-                          {pick.season} {pick.round === 1 ? '1ST' : '2ND'} ROUND
+                          {formatPickLabel(pick, currentYear, lotterySlotByTid, false).toUpperCase()}
                         </div>
                         <div className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
                           Traded to {ownerTeam?.region} {ownerTeam?.name}

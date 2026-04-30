@@ -33,6 +33,8 @@ export interface FreeAgentBid {
   submittedDay: number;     // state.day when bid was placed
   expiresDay: number;       // bid expires after this day (player decides)
   status: 'active' | 'accepted' | 'rejected' | 'withdrawn' | 'outbid';
+  /** AI camp-invite bid: one-year, zero-guarantee deal that can be released free. */
+  nonGuaranteed?: boolean;
 }
 
 export interface FreeAgentMarket {
@@ -239,6 +241,16 @@ export function generateAIBids(
   const playerHasBirdRights = resolveBirdRights(player) && priorTid >= 0;
 
   // Eligibility: cap space OR MLE-eligible OR Bird Rights with prior team.
+  // 90-day cooldown: a team that just waived this player won't bid again immediately.
+  // Bird-rights team gets a pass since they've committed to keeping the player.
+  const recentlyWaivedBy = (player as any).recentlyWaivedBy as number | undefined;
+  const recentlyWaivedDate = (player as any).recentlyWaivedDate as string | undefined;
+  const isRecentlyWaivedByTeam = (tid: number): boolean => {
+    if (recentlyWaivedBy !== tid || !recentlyWaivedDate || !state.date) return false;
+    const days = (new Date(state.date).getTime() - new Date(recentlyWaivedDate).getTime()) / (1000 * 60 * 60 * 24);
+    return days >= 0 && days < 90;
+  };
+
   const eligibleTeams = state.teams
     .filter(t => t.id !== userTeamId) // exclude user's team
     .map(t => {
@@ -253,7 +265,8 @@ export function generateAIBids(
         isBirdHolder,
       };
     })
-    .filter(({ payroll, isBirdHolder }) => {
+    .filter(({ team, payroll, isBirdHolder }) => {
+      if (isRecentlyWaivedByTeam(team.id)) return false;
       if (isBirdHolder) return true; // Bird Rights override — prior team always bids
       const capSpace = cap - payroll;
       return capSpace >= minSalary || payroll < luxuryTax;

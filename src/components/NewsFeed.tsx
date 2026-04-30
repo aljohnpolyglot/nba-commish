@@ -56,6 +56,7 @@ const CATEGORY_DISPLAY: Record<string, string> = {
   streak_snapped:         'Breaking News',
   all_star_winner:        'Breaking News',
   all_star_mvp:           'Breaking News',
+  all_star_bracket:       'Breaking News',
   playoff_series_win:     'Breaking News',
   playoff_elimination:    'Breaking News',
   nba_champion:           'Breaking News',

@@ -18,6 +18,7 @@ import type { NBAPlayer } from '../../../types';
 import { NBACupYearData, Standing, BracketTeam, WikiYearData } from '../types';
 import { PlayerBioView } from './PlayerBioView';
 import { extractNbaId, hdPortrait } from '../../../utils/helpers';
+import { BoxScoreModal } from '../../modals/BoxScoreModal';
 
 const GIST_URL = 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/nbacupdata';
 
@@ -145,6 +146,7 @@ function cupStateToViewData(
   teams: { id: number; name: string; logoURL?: string }[],
   players?: Array<{ internalId: string; name: string }>,
   schedule?: Array<{ gid: number; homeTid: number; awayTid: number; homeScore?: number; awayScore?: number; played?: boolean }>,
+  boxScores?: Array<{ gameId: number; homeTeamId: number; awayTeamId: number; homeScore: number; awayScore: number }>,
 ): NBACupYearData {
   const teamName = (tid: number) => teams.find(t => t.id === tid)?.name ?? String(tid);
   const playerName = (pid: string) => players?.find(p => p.internalId === pid)?.name ?? pid;
@@ -183,19 +185,26 @@ function cupStateToViewData(
     });
   }
 
-  // Bracket from knockout — pull live scores from the scheduled game when played.
+  // Bracket from knockout — pull live scores from the schedule; fall back to box scores
+  // for past seasons where the schedule has been cleared.
   const bracket: BracketTeam[] = [];
   for (const ko of cup.knockout) {
     const game = ko.gameId != null ? schedule?.find(g => g.gid === ko.gameId) : undefined;
     let score1 = 0, score2 = 0;
     if (game?.played) {
-      // ko.tid1 may be home OR away in the scheduled game — match by tid.
       const tid1IsHome = game.homeTid === ko.tid1;
       score1 = (tid1IsHome ? game.homeScore : game.awayScore) ?? 0;
       score2 = (tid1IsHome ? game.awayScore : game.homeScore) ?? 0;
+    } else if (ko.gameId != null && boxScores) {
+      const bs = boxScores.find(b => b.gameId === ko.gameId);
+      if (bs) {
+        const tid1IsHome = bs.homeTeamId === ko.tid1;
+        score1 = tid1IsHome ? bs.homeScore : bs.awayScore;
+        score2 = tid1IsHome ? bs.awayScore : bs.homeScore;
+      }
     }
-    bracket.push({ seed: String(ko.seed1), team: teamName(ko.tid1), score: score1 });
-    bracket.push({ seed: String(ko.seed2), team: teamName(ko.tid2), score: score2 });
+    bracket.push({ seed: String(ko.seed1), team: teamName(ko.tid1), score: score1, gameId: ko.gameId });
+    bracket.push({ seed: String(ko.seed2), team: teamName(ko.tid2), score: score2, gameId: ko.gameId });
   }
 
   // All-Tournament Team
@@ -535,7 +544,7 @@ function GroupTable({
   );
 }
 
-function MatchCard({ teams: matchTeams, highlighted, size = 'default', delay = 0, liveTeams }: { teams: [BracketTeam, BracketTeam]; highlighted?: boolean; size?: 'default' | 'large'; delay?: number; liveTeams?: { id: number; name: string; logoURL?: string }[] }) {
+function MatchCard({ teams: matchTeams, highlighted, size = 'default', delay = 0, liveTeams, onGameClick }: { teams: [BracketTeam, BracketTeam]; highlighted?: boolean; size?: 'default' | 'large'; delay?: number; liveTeams?: { id: number; name: string; logoURL?: string }[]; onGameClick?: () => void }) {
   const winnerIndex = matchTeams[0].score > matchTeams[1].score ? 0 : 1;
   const isLarge = size === 'large';
   return (
@@ -543,7 +552,8 @@ function MatchCard({ teams: matchTeams, highlighted, size = 'default', delay = 0
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay }}
-      className={`${isLarge ? 'w-64' : 'w-60'} bg-white/[0.03] backdrop-blur-xl border ${highlighted ? 'border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.1)]' : 'border-white/5'} rounded-[24px] overflow-hidden shadow-2xl transition-all hover:bg-white/[0.06] hover:border-white/10`}
+      onClick={onGameClick}
+      className={`${isLarge ? 'w-64' : 'w-60'} bg-white/[0.03] backdrop-blur-xl border ${highlighted ? 'border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.1)]' : 'border-white/5'} rounded-[24px] overflow-hidden shadow-2xl transition-all hover:bg-white/[0.06] hover:border-white/10 ${onGameClick ? 'cursor-pointer' : ''}`}
     >
       {matchTeams.map((t, i) => (
         <div
@@ -569,7 +579,7 @@ function MatchCard({ teams: matchTeams, highlighted, size = 'default', delay = 0
   );
 }
 
-function BracketDisplay({ bracket, liveTeams }: { bracket: BracketTeam[]; liveTeams?: { id: number; name: string; logoURL?: string }[] }) {
+function BracketDisplay({ bracket, liveTeams, onGameClick }: { bracket: BracketTeam[]; liveTeams?: { id: number; name: string; logoURL?: string }[]; onGameClick?: (gameId: number) => void }) {
   if (!bracket || bracket.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-20 text-center">
@@ -596,14 +606,14 @@ function BracketDisplay({ bracket, liveTeams }: { bracket: BracketTeam[]; liveTe
       <div className="min-w-[900px] flex justify-between gap-8 pt-12 pb-8 px-4">
         <div className="flex flex-col justify-between gap-8">
           <div className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] text-center mb-4">Quarterfinals</div>
-          {qf.map((game, i) => <MatchCard key={i} teams={game} delay={i * 0.1} liveTeams={liveTeams} />)}
+          {qf.map((game, i) => <MatchCard key={i} teams={game} delay={i * 0.1} liveTeams={liveTeams} onGameClick={game[0].gameId != null ? () => onGameClick?.(game[0].gameId!) : undefined} />)}
         </div>
         <div className="flex flex-col justify-around py-20 w-8">
           {[1, 2].map(i => <div key={i} className="h-32 border-y border-r border-white/10 rounded-r-xl" />)}
         </div>
         <div className="flex flex-col justify-around py-16">
           <div className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] text-center mb-4">Semifinals</div>
-          {sf.map((game, i) => <MatchCard key={i} teams={game} delay={0.4 + i * 0.1} liveTeams={liveTeams} />)}
+          {sf.map((game, i) => <MatchCard key={i} teams={game} delay={0.4 + i * 0.1} liveTeams={liveTeams} onGameClick={game[0].gameId != null ? () => onGameClick?.(game[0].gameId!) : undefined} />)}
         </div>
         <div className="flex flex-col justify-center py-20 w-8">
           <div className="h-64 border-y border-r border-white/10 rounded-r-xl" />
@@ -617,7 +627,7 @@ function BracketDisplay({ bracket, liveTeams }: { bracket: BracketTeam[]; liveTe
                 <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.3em] whitespace-nowrap italic">NBA Cup Champion</span>
               </div>
             </div>
-            {final.map((game, i) => <MatchCard key={i} teams={game} highlighted size="large" delay={0.7} liveTeams={liveTeams} />)}
+            {final.map((game, i) => <MatchCard key={i} teams={game} highlighted size="large" delay={0.7} liveTeams={liveTeams} onGameClick={game[0].gameId != null ? () => onGameClick?.(game[0].gameId!) : undefined} />)}
           </div>
         </div>
       </div>
@@ -953,6 +963,7 @@ function CupContent({
   schedule,
   view,
   onPlayerClick,
+  onGameClick,
 }: {
   data: NBACupYearData;
   liveCup?: NBACupState;
@@ -962,6 +973,7 @@ function CupContent({
   schedule?: Array<{ gid: number; isNBACup?: boolean }>;
   view: 'groups' | 'bracket';
   onPlayerClick?: (name: string, livePlayer?: any) => void;
+  onGameClick?: (gameId: number) => void;
 }) {
 
   const categorizedGroups = useMemo(() => {
@@ -1024,7 +1036,7 @@ function CupContent({
           </motion.div>
         ) : (
           <motion.div key="bracket" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.05 }} transition={{ duration: 0.3 }}>
-            <BracketDisplay bracket={data.bracket} liveTeams={teams} />
+            <BracketDisplay bracket={data.bracket} liveTeams={teams} onGameClick={onGameClick} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -1041,6 +1053,7 @@ export default function NBACupView() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'groups' | 'bracket'>('groups');
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
+  const [cupBoxScore, setCupBoxScore] = useState<{ game: any; result: any; homeTeam: any; awayTeam: any } | null>(null);
 
   const handlePlayerClick = (name: string, livePlayer?: any) => {
     if (livePlayer?.internalId) {
@@ -1099,14 +1112,34 @@ export default function NBACupView() {
   const currentCup = state.nbaCup ?? null;
   const pastSimCup = (state.nbaCupHistory ?? {})[viewYear] ?? null;
 
+  const handleGameClick = (gameId: number) => {
+    const result = (state.boxScores as any[])?.find((b: any) => b.gameId === gameId);
+    if (!result) return;
+    const schedGame = (state.schedule as any[])?.find((g: any) => g.gid === gameId);
+    const game = schedGame ?? {
+      gid: gameId,
+      homeTid: result.homeTeamId,
+      awayTid: result.awayTeamId,
+      homeScore: result.homeScore,
+      awayScore: result.awayScore,
+      played: true,
+      date: result.date ?? '',
+      isNBACup: true,
+    };
+    const homeTeam = (state.teams as any[]).find((t: any) => t.id === (game.homeTid ?? result.homeTeamId));
+    const awayTeam = (state.teams as any[]).find((t: any) => t.id === (game.awayTid ?? result.awayTeamId));
+    if (!homeTeam || !awayTeam) return;
+    setCupBoxScore({ game, result, homeTeam, awayTeam });
+  };
+
   const liveData = useMemo(
-    () => currentCup && !isHistorical ? cupStateToViewData(currentCup, state.teams, state.players, state.schedule as any) : null,
-    [currentCup, isHistorical, state.teams],
+    () => currentCup && !isHistorical ? cupStateToViewData(currentCup, state.teams, state.players, state.schedule as any, state.boxScores as any) : null,
+    [currentCup, isHistorical, state.teams, state.schedule, state.boxScores],
   );
 
   const pastData = useMemo(
-    () => pastSimCup ? cupStateToViewData(pastSimCup, state.teams, state.players, state.schedule as any) : null,
-    [pastSimCup, state.teams],
+    () => pastSimCup ? cupStateToViewData(pastSimCup, state.teams, state.players, state.schedule as any, state.boxScores as any) : null,
+    [pastSimCup, state.teams, state.schedule, state.boxScores],
   );
 
   const gistYearData = useMemo(
@@ -1208,7 +1241,7 @@ export default function NBACupView() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Mode A: current live sim */}
         {!isHistorical && liveData && (
-          <CupContent data={liveData} liveCup={currentCup ?? undefined} teams={state.teams} players={state.players} boxScores={state.boxScores as any} schedule={state.schedule as any} view={view} onPlayerClick={handlePlayerClick} />
+          <CupContent data={liveData} liveCup={currentCup ?? undefined} teams={state.teams} players={state.players} boxScores={state.boxScores as any} schedule={state.schedule as any} view={view} onPlayerClick={handlePlayerClick} onGameClick={handleGameClick} />
         )}
 
         {/* No cup yet this season */}
@@ -1222,7 +1255,7 @@ export default function NBACupView() {
 
         {/* Mode B: past sim year */}
         {isHistorical && pastData && (
-          <CupContent data={pastData} liveCup={pastSimCup ?? undefined} teams={state.teams} players={state.players} view={view} onPlayerClick={handlePlayerClick} />
+          <CupContent data={pastData} liveCup={pastSimCup ?? undefined} teams={state.teams} players={state.players} boxScores={state.boxScores as any} schedule={state.schedule as any} view={view} onPlayerClick={handlePlayerClick} onGameClick={handleGameClick} />
         )}
 
         {/* Mode C: pre-sim historical (gist) */}
@@ -1249,6 +1282,17 @@ export default function NBACupView() {
           </>
         )}
       </main>
+
+      {cupBoxScore && (
+        <BoxScoreModal
+          game={cupBoxScore.game}
+          result={cupBoxScore.result}
+          homeTeam={cupBoxScore.homeTeam}
+          awayTeam={cupBoxScore.awayTeam}
+          players={state.players as NBAPlayer[]}
+          onClose={() => setCupBoxScore(null)}
+        />
+      )}
     </div>
   );
 }

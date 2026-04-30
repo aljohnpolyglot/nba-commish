@@ -10,19 +10,19 @@ import { X, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { NBAPlayer, DraftPick, NBATeam } from '../../types';
 import { useGame } from '../../store/GameContext';
 import { normalizeDate } from '../../utils/helpers';
-import { getTradeDeadlineDate, toISODateString } from '../../utils/dateUtils';
+import { getTradeDeadlineDate, getFreeAgencyStartDate, toISODateString } from '../../utils/dateUtils';
 import {
   calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV,
   type TeamMode,
 } from '../../services/trade/tradeValueEngine';
 import {
   getTradeOutlook, effectiveRecord, getCapThresholds,
-  getTeamPayrollUSD, getTeamCapProfile, topNAvgK2, resolveManualOutlook,
+  getTeamPayrollUSD, getTeamCapProfileFromState, topNAvgK2, resolveManualOutlook,
   type TradeOutlook,
 } from '../../utils/salaryUtils';
 import { tradeRoleToTeamMode } from '../../utils/teamStrategy';
 import { OfferCard, type FoundOffer, type TradeItem } from '../central/view/TradeFinderView';
-import { buildClassStrengthMap, buildLotterySlotMap } from '../../services/draft/draftClassStrength';
+import { buildClassStrengthMap, buildFullDraftSlotMap, formatPickLabel } from '../../services/draft/draftClassStrength';
 import { getMaxTradableSeason } from '../../services/draft/DraftPickGenerator';
 import { teamPowerRanks } from '../../services/trade/tradeFinderEngine';
 
@@ -40,6 +40,8 @@ interface TradeSummaryModalProps {
     teamBPicks: DraftPick[];
     teamASentSalary: number;
     teamBSentSalary: number;
+    teamACashUSD?: number;
+    teamBCashUSD?: number;
   };
   salaryMismatchInfo: { message: string; team: 'A' | 'B' } | null;
 }
@@ -82,7 +84,7 @@ function buildItems(
     items.push({
       id: String(pk.dpid),
       type: 'pick',
-      label: `${pk.season} ${pk.round === 1 ? '1st' : '2nd'} Round${owner ? ` (via ${owner.abbrev})` : ''}`,
+      label: `${formatPickLabel(pk, currentYear, lotterySlotByTid, false)}${owner ? ` (via ${owner.abbrev})` : ''}`,
       val: calcPickTV(pk.round, rank, teams.length, Math.max(1, pk.season - currentYear), { classStrength, actualSlot }),
       pick: pk,
     });
@@ -110,7 +112,12 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
   const tradeIsValid = !salaryMismatchInfo;
   const seasonYear = currentYear;
   const tradeDeadline = toISODateString(getTradeDeadlineDate(seasonYear, state.leagueStats));
-  const isPastDeadline = normalizeDate(state.date) > tradeDeadline;
+  const faStart = toISODateString(getFreeAgencyStartDate(seasonYear, state.leagueStats));
+  const finalsOver = !!(state.playoffs?.bracketComplete);
+  const currentDateNorm = normalizeDate(state.date);
+  // Deadline window only applies between Feb deadline and July FA start, and once the
+  // Finals end the league is in offseason — trades flow freely until next deadline.
+  const isPastDeadline = !finalsOver && currentDateNorm > tradeDeadline && currentDateNorm < faStart;
 
   const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
 
@@ -139,16 +146,16 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
   const teamAMode = roleToMode(teamAOutlook.role);
   const teamBMode = roleToMode(teamBOutlook.role);
 
-  const teamACapK = getTeamCapProfile(state.players, teamA.id, (teamA as any).wins ?? 0, (teamA as any).losses ?? 0, thresholds).capSpaceUSD / 1000;
-  const teamBCapK = getTeamCapProfile(state.players, teamB.id, (teamB as any).wins ?? 0, (teamB as any).losses ?? 0, thresholds).capSpaceUSD / 1000;
+  const teamACapK = getTeamCapProfileFromState(state, teamA.id, thresholds).capSpaceUSD / 1000;
+  const teamBCapK = getTeamCapProfileFromState(state, teamB.id, thresholds).capSpaceUSD / 1000;
 
   const classStrengthByYear = useMemo(
     () => buildClassStrengthMap(state.players, currentYear, currentYear, getMaxTradableSeason(state)),
     [state.players, currentYear, state.leagueStats?.tradableDraftPickSeasons],
   );
   const lotterySlotByTid = useMemo(
-    () => buildLotterySlotMap((state as any).draftLotteryResult),
-    [(state as any).draftLotteryResult],
+    () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
+    [(state as any).draftLotteryResult, state.teams],
   );
   const powerRanks = useMemo(
     () => teamPowerRanks(state.teams, currentYear),
@@ -211,6 +218,17 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
               </div>
             </div>
           </div>
+
+          {(tradeDetails.teamACashUSD || tradeDetails.teamBCashUSD) ? (
+            <div className="px-4 py-2 border-b border-slate-800 bg-slate-900/30 flex items-center justify-between text-[11px] font-bold tracking-wide">
+              <div className="text-emerald-300">
+                {tradeDetails.teamACashUSD ? `${teamA.abbrev} sends $${(tradeDetails.teamACashUSD / 1_000_000).toFixed(2)}M cash` : null}
+              </div>
+              <div className="text-emerald-300">
+                {tradeDetails.teamBCashUSD ? `${teamB.abbrev} sends $${(tradeDetails.teamBCashUSD / 1_000_000).toFixed(2)}M cash` : null}
+              </div>
+            </div>
+          ) : null}
 
           {/* Two-card body — reuses OfferCard visual language */}
           <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">

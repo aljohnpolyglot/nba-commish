@@ -72,17 +72,21 @@ export function simulateQuarters(
   }
 
   // ── Non-OT: original distribution ────────────────────────────────────────
+  // Per-quarter minimums scale with total so 3-min All-Star games (~30 pts) don't
+  // get clamped to 10/quarter (= 40 sum, way above the actual total).
+  const perQuarterFloor = Math.max(2, Math.round(Math.min(homeTotal, awayTotal) * 0.10));
+  const driftFloor = Math.max(1, Math.round(perQuarterFloor * 0.8));
   const distributeScore = (total: number, isWinner: boolean): number[] => {
     const w = isWinner
       ? [0.24, 0.26, 0.28, 0.22]
       : [0.26, 0.24, 0.22, 0.28];
 
     const raw = w.map(weight =>
-      Math.max(10, Math.round(total * weight * normalRandom(1.0, 0.08)))
+      Math.max(perQuarterFloor, Math.round(total * weight * normalRandom(1.0, 0.08)))
     );
 
     const drift = total - (raw[0] + raw[1] + raw[2] + raw[3]);
-    raw[3] = Math.max(10, raw[3] + drift);
+    raw[3] = Math.max(perQuarterFloor, raw[3] + drift);
 
     return raw;
   };
@@ -91,8 +95,9 @@ export function simulateQuarters(
   const away = distributeScore(awayTotal, !homeWins);
 
   if (lead > 20) {
-    home[3] = Math.max(15, Math.round(home[3] * 0.82));
-    away[3] = Math.max(15, Math.round(away[3] * 0.82));
+    const blowoutFloor = Math.max(2, Math.round(perQuarterFloor * 1.5));
+    home[3] = Math.max(blowoutFloor, Math.round(home[3] * 0.82));
+    away[3] = Math.max(blowoutFloor, Math.round(away[3] * 0.82));
     const homeDrift = homeTotal - home.reduce((a, b) => a + b, 0);
     const awayDrift = awayTotal - away.reduce((a, b) => a + b, 0);
     home[2] += homeDrift;
@@ -102,8 +107,8 @@ export function simulateQuarters(
   // Final drift correction into Q2
   const homeDrift = homeTotal - home.reduce((a, b) => a + b, 0);
   const awayDrift = awayTotal - away.reduce((a, b) => a + b, 0);
-  home[1] = Math.max(8, home[1] + homeDrift);
-  away[1] = Math.max(8, away[1] + awayDrift);
+  home[1] = Math.max(driftFloor, home[1] + homeDrift);
+  away[1] = Math.max(driftFloor, away[1] + awayDrift);
 
   return { home, away };
 }

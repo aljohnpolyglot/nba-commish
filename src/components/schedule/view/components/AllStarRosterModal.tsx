@@ -73,15 +73,97 @@ export const AllStarRosterModal: React.FC<AllStarRosterModalProps> = ({ tab, all
                         custom-scrollbar">
           
           {tab === 'rising-stars' && (() => {
+            // Player card — shared between 2-team and 4-team paths.
+            const renderPlayerCard = (p: any) => {
+              const fullPlayer = state.players.find((np: NBAPlayer) => np.internalId === p.playerId);
+              const rating = fullPlayer
+                ? convertTo2KRating(
+                    fullPlayer.overallRating,
+                    fullPlayer.hgt || 77,
+                    fullPlayer.ratings?.[fullPlayer.ratings.length - 1]?.tp,
+                  )
+                : null;
+              const teamAbbrev = p.teamAbbrev ?? fullPlayer?.tid != null
+                ? state.teams.find((t: any) => t.id === fullPlayer?.tid)?.abbrev
+                : undefined;
+              return (
+                <div key={p.playerId} className="flex items-center gap-3 p-2 rounded-xl bg-slate-900/50">
+                  <img
+                    src={fullPlayer?.imgURL || getPlayerHeadshot(p.playerId, p.nbaId)}
+                    className="w-8 h-8 rounded-full object-cover bg-slate-800"
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      if (!img.dataset.triedCdn) {
+                        img.dataset.triedCdn = '1';
+                        img.src = getPlayerHeadshot(p.playerId, p.nbaId);
+                      } else {
+                        img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.playerName)}&background=0369a1&color=fff`;
+                      }
+                    }}
+                    referrerPolicy="no-referrer"
+                    alt={p.playerName}
+                  />
+                  <div>
+                    <div className="text-sm font-bold text-white">{p.playerName}</div>
+                    <div className="text-xs text-slate-500">
+                      {teamAbbrev || p.teamAbbrev || '—'}{p.position ? ` · ${p.position}` : ''}
+                    </div>
+                  </div>
+                  {rating ? (
+                    <div className={`text-sm font-black font-mono shrink-0 ml-auto ${rating >= 90 ? 'text-amber-400' : rating >= 80 ? 'text-emerald-400' : 'text-slate-400'}`}>
+                      {rating}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            };
+
+            // 4-team tournament path — bracket.teams[i].playerIds is the source of truth.
+            const bracket = allStar?.risingStarsBracket;
+            if (bracket?.teams?.length >= 3) {
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {bracket.teams.map((t: any) => {
+                    const teamPlayers = (t.playerIds ?? [])
+                      .map((id: string) => {
+                        const fp = state.players.find((np: NBAPlayer) => np.internalId === id);
+                        if (!fp) return null;
+                        return {
+                          playerId: fp.internalId,
+                          playerName: fp.name,
+                          teamAbbrev: state.teams.find((tm: any) => tm.id === fp.tid)?.abbrev ?? (fp.status === 'G-League' ? 'GL' : '—'),
+                          position: fp.pos,
+                          nbaId: (fp as any).nbaId,
+                        };
+                      })
+                      .filter(Boolean);
+                    return (
+                      <div key={t.tid}>
+                        <div className="flex flex-col mb-3 pb-2 border-b border-sky-900/30">
+                          <div className="text-xs font-black text-white uppercase tracking-widest">
+                            {t.name}
+                          </div>
+                          <div className="text-[10px] font-bold text-sky-400 uppercase tracking-widest">
+                            {t.coachName ? `Coach ${t.coachName}` : (t.isGLeague ? 'G League' : 'Roster')} · {t.wins ?? 0}-{t.losses ?? 0}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          {teamPlayers.length > 0
+                            ? teamPlayers.map(renderPlayerCard)
+                            : <div className="text-xs text-slate-600 italic px-2">No roster yet — assigned at sim time.</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            }
+
+            // Legacy 2-team path (rookies vs sophomores).
             const roster = allStar?.risingStarsRoster ?? [];
-            const teams = allStar?.risingStarsTeams ?? 
-              ['Team USA', 'Team World'];
-            const rookies = roster.filter(
-              (p: any) => p.isRookie
-            );
-            const sophs = roster.filter(
-              (p: any) => !p.isRookie
-            );
+            const teams = allStar?.risingStarsTeams ?? ['Team USA', 'Team World'];
+            const rookies = roster.filter((p: any) => p.isRookie);
+            const sophs = roster.filter((p: any) => !p.isRookie);
             return (
               <div className="grid grid-cols-2 gap-6">
                 {[
@@ -90,66 +172,10 @@ export const AllStarRosterModal: React.FC<AllStarRosterModalProps> = ({ tab, all
                 ].map(({ label, players, subtitle }) => (
                   <div key={label}>
                     <div className="flex flex-col mb-3 pb-2 border-b border-sky-900/30">
-                      <div className="text-xs font-black text-white uppercase tracking-widest">
-                        {label}
-                      </div>
-                      <div className="text-[10px] font-bold text-sky-400 uppercase tracking-widest">
-                        {subtitle}
-                      </div>
+                      <div className="text-xs font-black text-white uppercase tracking-widest">{label}</div>
+                      <div className="text-[10px] font-bold text-sky-400 uppercase tracking-widest">{subtitle}</div>
                     </div>
-                    <div className="space-y-2">
-                      {players.map((p: any) => {
-                        const fullPlayer = state.players.find(
-                          (np: NBAPlayer) => np.internalId === p.playerId
-                        );
-                        const rating = fullPlayer
-                          ? convertTo2KRating(
-                              fullPlayer.overallRating,
-                              fullPlayer.hgt || 77,
-                              fullPlayer.ratings?.[fullPlayer.ratings.length - 1]?.tp
-                            )
-                          : null;
-                        return (
-                        <div key={p.playerId}
-                             className="flex items-center
-                                        gap-3 p-2
-                                        rounded-xl
-                                        bg-slate-900/50">
-                          <img
-                            src={fullPlayer?.imgURL || getPlayerHeadshot(p.playerId, p.nbaId)}
-                            className="w-8 h-8 rounded-full
-                                       object-cover bg-slate-800"
-                            onError={(e) => {
-                              const img = e.target as HTMLImageElement;
-                              if (!img.dataset.triedCdn) {
-                                img.dataset.triedCdn = '1';
-                                img.src = getPlayerHeadshot(p.playerId, p.nbaId);
-                              } else {
-                                img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.playerName)}&background=0369a1&color=fff`;
-                              }
-                            }}
-                            referrerPolicy="no-referrer"
-                            alt={p.playerName}
-                          />
-                          <div>
-                            <div className="text-sm font-bold
-                                            text-white">
-                              {p.playerName}
-                            </div>
-                            <div className="text-xs
-                                            text-slate-500">
-                              {p.teamAbbrev} · {p.position}
-                            </div>
-                          </div>
-                          {rating ? (
-                            <div className={`text-sm font-black font-mono shrink-0 ml-auto ${rating >= 90 ? 'text-amber-400' : rating >= 80 ? 'text-emerald-400' : 'text-slate-400'}`}>
-                              {rating}
-                            </div>
-                          ) : null}
-                        </div>
-                        );
-                      })}
-                    </div>
+                    <div className="space-y-2">{players.map(renderPlayerCard)}</div>
                   </div>
                 ))}
               </div>

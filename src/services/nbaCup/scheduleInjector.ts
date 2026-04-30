@@ -214,12 +214,18 @@ export function trimAndPairReplacements(
     }
   }
 
+  // Pre-index teams-per-date once; checking conflicts is then O(1) per call.
+  const busyByDate = new Map<string, Set<number>>();
+  for (const g of updated as any[]) {
+    const ds = String(g.date).split('T')[0];
+    let set = busyByDate.get(ds);
+    if (!set) { set = new Set(); busyByDate.set(ds, set); }
+    set.add(g.homeTid);
+    set.add(g.awayTid);
+  }
   const dateBusy = (dateStr: string, t1: number, t2: number): boolean => {
-    return updated.some((g: any) => {
-      const ds = String(g.date).split('T')[0];
-      if (ds !== dateStr) return false;
-      return g.homeTid === t1 || g.awayTid === t1 || g.homeTid === t2 || g.awayTid === t2;
-    });
+    const set = busyByDate.get(dateStr);
+    return !!set && (set.has(t1) || set.has(t2));
   };
 
   const replacementMs = new Date(`${replacementDate}T00:00:00Z`).getTime();
@@ -244,17 +250,24 @@ export function trimAndPairReplacements(
       const candidates = [replacementDate, owed[i].date, owed[j].date, ...fallbackDates];
       const slot = candidates.find(d => !dateBusy(d, owed[i].tid, owed[j].tid));
       if (!slot) continue;
-      const homeFirst = Math.random() > 0.5;
+      const homeFirst = seededRandom(`cup_replacement_ha_${owed[i].tid}_${owed[j].tid}_${slot}`) > 0.5;
+      const homeTid = homeFirst ? owed[i].tid : owed[j].tid;
+      const awayTid = homeFirst ? owed[j].tid : owed[i].tid;
       replacements.push({
         gid: nextGid++,
-        homeTid: homeFirst ? owed[i].tid : owed[j].tid,
-        awayTid: homeFirst ? owed[j].tid : owed[i].tid,
+        homeTid,
+        awayTid,
         homeScore: 0,
         awayScore: 0,
         played: false,
         date: new Date(`${slot}T20:00:00Z`).toISOString(),
         isCupReplacement: true,
       } as any);
+      // Reflect the new game in busyByDate so subsequent owed pairs don't double-book.
+      let set = busyByDate.get(slot);
+      if (!set) { set = new Set(); busyByDate.set(slot, set); }
+      set.add(homeTid);
+      set.add(awayTid);
       used.add(i);
       used.add(j);
       break;
@@ -271,6 +284,130 @@ export function trimAndPairReplacements(
   const unmatched = owed.length - used.size;
   console.log(`[trimAndPairReplacements] trims=${totalTrims}, owed=${owed.length}, replacements=${replacements.length}${unmatched > 0 ? ` ⚠ unmatched=${unmatched}` : ''}`);
   return { schedule: updated, nextGid };
+}
+
+/**
+ * Returns true if any pre-baked Cup TBD placeholders exist in the schedule.
+ * Used by the resolver to choose between the new "TBD materialize" path and
+ * the legacy "trim-and-pair" path (for saves generated before the refactor).
+ */
+export function hasCupTBDPlaceholders(schedule: Game[]): boolean {
+  return (schedule as any[]).some(g => g.isCupTBD);
+}
+
+/**
+ * New-saves resolver path: convert pre-baked Dec 9-11 Cup TBD slots into
+ * either real QF games (for the 8 advancing teams) or paired regular-season
+ * games (for the 22 non-advancing teams). Replaces the post-hoc trim+swap
+ * approach so the calendar never shows a vanishing matchup.
+ */
+export function materializeTBDSlots(
+  schedule: Game[],
+  qfMatchups: Array<{ tid1: number; tid2: number }>,
+  nonKOTeams: number[],
+  prevYr: number,
+  saveId: string,
+  startGid: number,
+): { schedule: Game[]; nextGid: number; qfGameIds: Map<string, number> } {
+  let nextGid = startGid;
+  const qfGameIds = new Map<string, number>();
+  const koSet = new Set(qfMatchups.flatMap(m => [m.tid1, m.tid2]));
+
+  // Index TBD slots by team — each team has exactly one slot (homeTid is the team).
+  const tbdByTeam = new Map<number, Game>();
+  for (const g of schedule as any[]) {
+    if (g.isCupTBD) tbdByTeam.set(g.cupTBDForTid ?? g.homeTid, g);
+  }
+
+  // Strip ALL TBDs first; we'll repopulate with materialized games.
+  let updated = (schedule as any[]).filter(g => !g.isCupTBD) as Game[];
+  const additions: Game[] = [];
+
+  // Single Map<dateStr, Set<tid>> tracks both `updated` and in-flight `additions` for O(1) checks.
+  const busyByDate = new Map<string, Set<number>>();
+  const stampBusy = (dateStr: string, t1: number, t2: number) => {
+    let set = busyByDate.get(dateStr);
+    if (!set) { set = new Set(); busyByDate.set(dateStr, set); }
+    set.add(t1);
+    set.add(t2);
+  };
+  for (const g of updated as any[]) {
+    stampBusy(String(g.date).split('T')[0], g.homeTid, g.awayTid);
+  }
+  const dateBusy = (dateStr: string, t1: number, t2: number): boolean => {
+    const set = busyByDate.get(dateStr);
+    return !!set && (set.has(t1) || set.has(t2));
+  };
+
+  // 1. Materialize QF games on Dec 9 (preferring whichever TBD date is free).
+  const qfPreferred = `${prevYr}-12-09`;
+  const koCandidates = [`${prevYr}-12-09`, `${prevYr}-12-10`, `${prevYr}-12-11`];
+  for (const m of qfMatchups) {
+    const slot = koCandidates.find(d => !dateBusy(d, m.tid1, m.tid2)) ?? qfPreferred;
+    const homeFirst = seededRandom(`cup_qf_ha_${saveId}_${prevYr}_${m.tid1}_${m.tid2}`) > 0.5;
+    const game: Game = {
+      gid: nextGid++,
+      homeTid: homeFirst ? m.tid1 : m.tid2,
+      awayTid: homeFirst ? m.tid2 : m.tid1,
+      homeScore: 0,
+      awayScore: 0,
+      played: false,
+      date: new Date(`${slot}T20:00:00Z`).toISOString(),
+      isNBACup: true,
+      nbaCupRound: 'QF',
+    } as any;
+    additions.push(game);
+    stampBusy(slot, game.homeTid, game.awayTid);
+    const key = `${Math.min(m.tid1, m.tid2)}-${Math.max(m.tid1, m.tid2)}`;
+    qfGameIds.set(key, game.gid);
+  }
+
+  // 2. Pair the 22 non-KO teams deterministically into 11 RS games.
+  const pairOrder = seededShuffle([...nonKOTeams].sort((a, b) => a - b), `cup_tbd_pair_${saveId}_${prevYr}`);
+  const usedSet = new Set<number>();
+  for (let i = 0; i < pairOrder.length; i++) {
+    const tA = pairOrder[i];
+    if (usedSet.has(tA)) continue;
+    for (let j = i + 1; j < pairOrder.length; j++) {
+      const tB = pairOrder[j];
+      if (usedSet.has(tB)) continue;
+      const tbdA = tbdByTeam.get(tA);
+      const tbdB = tbdByTeam.get(tB);
+      const dateA = tbdA ? String(tbdA.date).split('T')[0] : `${prevYr}-12-09`;
+      const dateB = tbdB ? String(tbdB.date).split('T')[0] : `${prevYr}-12-10`;
+      const candidates = [dateA, dateB, ...koCandidates];
+      const slot = candidates.find(d => !dateBusy(d, tA, tB));
+      if (!slot) continue;
+      const homeFirst = seededRandom(`cup_tbd_ha_${saveId}_${prevYr}_${tA}_${tB}`) > 0.5;
+      const homeTid = homeFirst ? tA : tB;
+      const awayTid = homeFirst ? tB : tA;
+      additions.push({
+        gid: nextGid++,
+        homeTid,
+        awayTid,
+        homeScore: 0,
+        awayScore: 0,
+        played: false,
+        date: new Date(`${slot}T20:00:00Z`).toISOString(),
+        isCupReplacement: true,
+      } as any);
+      stampBusy(slot, homeTid, awayTid);
+      usedSet.add(tA);
+      usedSet.add(tB);
+      break;
+    }
+  }
+
+  const unpaired = pairOrder.filter(t => !usedSet.has(t));
+  if (unpaired.length > 0) {
+    console.warn(`[materializeTBDSlots] ⚠ ${unpaired.length} non-KO teams left unpaired:`, unpaired);
+  }
+
+  updated = [...updated, ...additions].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+  );
+  console.log(`[materializeTBDSlots] qf=${qfMatchups.length}, ko_teams=${koSet.size}, paired_rs=${(pairOrder.length - unpaired.length) / 2}, removed_tbds=${tbdByTeam.size}`);
+  return { schedule: updated, nextGid, qfGameIds };
 }
 
 /**

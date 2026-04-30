@@ -17,6 +17,7 @@ export interface BracketTeam {
   seed: string;
   team: string;
   score: number;
+  gameId?: number;
 }
 
 export interface NBACupYearData {

@@ -2,6 +2,7 @@ import { NBAPlayer as Player, NBATeam as Team, DraftPick, GamePhase, Transaction
 import { selectRandom, calculateSocialEngagement } from '../utils/helpers';
 import { PlayerService } from './data/PlayerService';
 import { TeamService } from './data/TeamService';
+import { formatPickLabel } from './draft/draftClassStrength';
 
 export const isTradeAllowed = (phase: GamePhase): boolean => {
   const isPlayoffs = phase.includes('Playoffs') || phase === 'NBA Finals' || phase === 'Conference Finals' || phase === 'Play-In Tournament';
@@ -39,7 +40,7 @@ export const generateTradeOffer = (
   };
 
   if (assetToSend) {
-    description = `${offeringTeam.name} sends ${playerToTrade.name} (${playerToTrade.overallRating} OVR) to ${partnerTeam.name} for ${assetToSend.name} (${assetToSend.overallRating} OVR).`;
+    description = `${offeringTeam.name} sends ${playerToTrade.name} to ${partnerTeam.name} for ${assetToSend.name}.`;
     transaction.teams[partnerTeam.id].playersSent.push(assetToSend);
   } else {
     // Send a pick if no player match
@@ -114,17 +115,21 @@ export const executeForcedTrade = async (
 };
 
 export const executeExecutiveTrade = (
-  payload: { 
-    teamAId: number, 
-    teamBId: number, 
-    teamAPlayers: string[], 
-    teamBPlayers: string[], 
-    teamAPicks: number[], 
-    teamBPicks: number[] 
+  payload: {
+    teamAId: number,
+    teamBId: number,
+    teamAPlayers: string[],
+    teamBPlayers: string[],
+    teamAPicks: number[],
+    teamBPicks: number[],
+    teamACashUSD?: number,
+    teamBCashUSD?: number,
   },
   players: Player[],
   teams: Team[],
-  draftPicks: DraftPick[]
+  draftPicks: DraftPick[],
+  currentYear?: number,
+  lotterySlotByTid?: Map<number, number>,
 ): { transaction: TransactionDto, announcements: SocialPost[] } => {
   const teamService = new TeamService(teams);
   const playerService = new PlayerService(players);
@@ -139,13 +144,16 @@ export const executeExecutiveTrade = (
 
   const transaction: TransactionDto = {
     teams: {
-      [teamA.id]: { playersSent: playersA, picksSent: picksA },
-      [teamB.id]: { playersSent: playersB, picksSent: picksB }
+      [teamA.id]: { playersSent: playersA, picksSent: picksA, cashSentUSD: payload.teamACashUSD || 0 },
+      [teamB.id]: { playersSent: playersB, picksSent: picksB, cashSentUSD: payload.teamBCashUSD || 0 }
     }
   };
 
-  const assetsA = [...playersA.map(p => p.name), ...picksA.map(p => `${p.season} ${p.round === 1 ? '1st' : '2nd'} Rd`)].join(', ');
-  const assetsB = [...playersB.map(p => p.name), ...picksB.map(p => `${p.season} ${p.round === 1 ? '1st' : '2nd'} Rd`)].join(', ');
+  const yr = currentYear ?? new Date().getFullYear();
+  const slots = lotterySlotByTid ?? new Map<number, number>();
+  const pickLabel = (pk: DraftPick) => formatPickLabel(pk, yr, slots, true);
+  const assetsA = [...playersA.map(p => p.name), ...picksA.map(pickLabel)].join(', ');
+  const assetsB = [...playersB.map(p => p.name), ...picksB.map(pickLabel)].join(', ');
 
   // Calculate max rating involved for engagement boost
   const maxRating = Math.max(

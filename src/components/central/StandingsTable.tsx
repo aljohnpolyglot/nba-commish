@@ -8,9 +8,10 @@ interface StandingsTableProps {
     conference: Conference;
     onSelectTeam: (id: number) => void;
     selectedTeamId: number | null;
+    phase?: 'preseason' | 'regular' | 'playoffs' | 'offseason';
 }
 
-const StandingsTable: React.FC<StandingsTableProps> = ({ teams, conference, onSelectTeam, selectedTeamId }) => {
+const StandingsTable: React.FC<StandingsTableProps> = ({ teams, conference, onSelectTeam, selectedTeamId, phase }) => {
     const { state } = useGame();
     const ownTid = getOwnTeamId(state);
 
@@ -19,6 +20,15 @@ const StandingsTable: React.FC<StandingsTableProps> = ({ teams, conference, onSe
         <h4 className="text-md font-semibold text-indigo-400 mb-4 border-b border-zinc-800 pb-2 flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
           {conference}ern Conference
+          {phase && phase !== 'regular' && (
+            <span className={`ml-auto text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+              phase === 'playoffs' ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' :
+              phase === 'offseason' ? 'bg-slate-700/50 text-slate-400 border-slate-600/50' :
+              'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+            }`}>
+              {phase === 'playoffs' ? 'Playoffs' : phase === 'offseason' ? 'Offseason' : 'Preseason'}
+            </span>
+          )}
         </h4>
         <div className="space-y-1">
              <div className="flex items-center justify-between text-[10px] text-zinc-500 font-bold px-2 uppercase tracking-tighter">

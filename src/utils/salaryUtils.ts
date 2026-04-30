@@ -1,4 +1,4 @@
-import { NBAPlayer, NBATeam, TeamStatus, DeadMoneyEntry } from '../types';
+import { NBAPlayer, NBATeam, TeamStatus, DeadMoneyEntry, GameState } from '../types';
 import { convertTo2KRating } from './helpers';
 import { EXTERNAL_SALARY_SCALE } from '../constants';
 
@@ -97,6 +97,8 @@ export const getCapThresholds = (leagueStats: {
   firstApronPercentage?: number;
   secondApronPercentage?: number;
   minimumPayrollPercentage?: number;
+  apronsEnabled?: boolean;
+  numberOfAprons?: number;
 }): CapThresholds => {
   const cap = leagueStats.salaryCap;
   // Prefer percentage-derived value so it auto-scales with cap changes
@@ -113,6 +115,7 @@ export const getCapThresholds = (leagueStats: {
 };
 
 export type CapStatusKey = 'under_cap' | 'over_cap' | 'over_tax' | 'over_first_apron' | 'over_second_apron';
+export type ApronBucket = 'under_cap' | 'over_cap' | 'over_tax' | 'over_1st' | 'over_2nd';
 
 export interface CapStatus {
   key: CapStatusKey;
@@ -128,6 +131,52 @@ export const getCapStatus = (payrollUSD: number, t: CapThresholds): CapStatus =>
   if (payrollUSD >= t.luxuryTax)   return { key: 'over_tax',          label: 'Tax Payer',  color: 'text-yellow-400',  bgColor: 'bg-yellow-500/20',  barColor: '#facc15' };
   if (payrollUSD >= t.salaryCap)   return { key: 'over_cap',          label: 'Over Cap',   color: 'text-blue-400',    bgColor: 'bg-blue-500/20',    barColor: '#60a5fa' };
   return { key: 'under_cap', label: 'Cap Space', color: 'text-emerald-400', bgColor: 'bg-emerald-500/20', barColor: '#34d399' };
+};
+
+export const getApronBucketForPayroll = (
+  payrollUSD: number,
+  thresholds: CapThresholds,
+  leagueStats?: { apronsEnabled?: boolean; numberOfAprons?: number },
+): ApronBucket => {
+  const apronsActive = leagueStats?.apronsEnabled !== false;
+  const apronCount = leagueStats?.numberOfAprons ?? 2;
+  if (apronsActive && apronCount > 1 && payrollUSD >= thresholds.secondApron) return 'over_2nd';
+  if (apronsActive && apronCount > 0 && payrollUSD >= thresholds.firstApron) return 'over_1st';
+  if (payrollUSD >= thresholds.luxuryTax) return 'over_tax';
+  if (payrollUSD >= thresholds.salaryCap) return 'over_cap';
+  return 'under_cap';
+};
+
+export const getApronBucketAfterTrade = (
+  currentPayrollUSD: number,
+  leg: { outgoingSalaryUSD?: number; incomingSalaryUSD?: number },
+  leagueStats: {
+    salaryCap: number;
+    luxuryPayroll: number;
+    luxuryTaxThresholdPercentage?: number;
+    firstApronPercentage?: number;
+    secondApronPercentage?: number;
+    minimumPayrollPercentage?: number;
+    apronsEnabled?: boolean;
+    numberOfAprons?: number;
+  },
+): ApronBucket => {
+  const thresholds = getCapThresholds(leagueStats);
+  const projectedPayroll = currentPayrollUSD - (leg.outgoingSalaryUSD ?? 0) + (leg.incomingSalaryUSD ?? 0);
+  return getApronBucketForPayroll(projectedPayroll, thresholds, leagueStats);
+};
+
+export const getTradeMatchingRatioForBucket = (
+  bucket: ApronBucket,
+  leagueStats: {
+    tradeMatchingRatioUnder?: number;
+    tradeMatchingRatioOver1st?: number;
+    tradeMatchingRatioOver2nd?: number;
+  },
+): number => {
+  if (bucket === 'over_2nd') return leagueStats.tradeMatchingRatioOver2nd ?? 1.00;
+  if (bucket === 'over_1st') return leagueStats.tradeMatchingRatioOver1st ?? 1.10;
+  return leagueStats.tradeMatchingRatioUnder ?? 1.25;
 };
 
 // ─── Effective Record ─────────────────────────────────────────────────────────
@@ -361,6 +410,24 @@ export interface TeamCapProfile {
   isBuyer: boolean;          // has cap space, winning team
 }
 
+/** Single source of truth for "team cap profile from live state".
+ *  Looks up the team object and current season year from `state` so dead money
+ *  is always folded into payroll. Use this instead of getTeamCapProfile when
+ *  you have access to the full GameState — i.e. nearly everywhere. */
+export const getTeamCapProfileFromState = (
+  state: GameState,
+  teamId: number,
+  thresholds?: CapThresholds,
+): TeamCapProfile => {
+  const team = state.teams.find(t => t.id === teamId);
+  const t = thresholds ?? getCapThresholds(state.leagueStats as any);
+  return getTeamCapProfile(
+    state.players, teamId,
+    (team as any)?.wins ?? 0, (team as any)?.losses ?? 0,
+    t, team, state.leagueStats?.year,
+  );
+};
+
 export const getTeamCapProfile = (
   players: NBAPlayer[],
   teamId: number,
@@ -427,6 +494,7 @@ export function getMLEAvailability(
     biannualAmount?: number;
     mleUsage?: Record<number, { type: 'room' | 'non_taxpayer' | 'taxpayer'; usedUSD: number }>;
     apronsEnabled?: boolean;
+    numberOfAprons?: number;
   },
 ): MleAvailability {
   const NONE: MleAvailability = { type: null, limit: 0, used: 0, available: 0, blocked: true };
@@ -447,8 +515,10 @@ export function getMLEAvailability(
   const priorType   = usage?.type   ?? null;
   const priorUsed   = usage?.usedUSD ?? 0;
 
-  const firstApron = thresholds.firstApron;
-  const secondApron = thresholds.secondApron;
+  const apronsActive = leagueStats.apronsEnabled !== false;
+  const apronCount = leagueStats.numberOfAprons ?? 2;
+  const firstApron = apronsActive && apronCount > 0 ? thresholds.firstApron : Number.POSITIVE_INFINITY;
+  const secondApron = apronsActive && apronCount > 1 ? thresholds.secondApron : Number.POSITIVE_INFINITY;
   const projectedPayroll = payrollUSD + signingUSD;
 
   // ── Room MLE ───────────────────────────────────────────────────────────────

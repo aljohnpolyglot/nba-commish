@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { ArrowRightLeft, Calendar, Info, Search, Filter, UserCheck, UserX, AlertTriangle, Users, ChevronLeft, ChevronRight, Sunset, TrendingDown, TrendingUp, Trophy, CheckCircle } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -108,6 +108,9 @@ export const TransactionsView: React.FC = () => {
   }, [state.leagueStats?.year]);
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
   const [selectedTrade, setSelectedTrade] = useState<{ text: string; date: string; legs?: { text: string; date: string }[] } | null>(null);
+  const [page, setPage] = useState(1);
+  const loaderRef = useRef<HTMLDivElement>(null);
+  const PAGE_SIZE = 30;
 
   // Collect all unique season years that have transaction-type entries
   const availableYears = useMemo(() => {
@@ -275,6 +278,23 @@ export const TransactionsView: React.FC = () => {
     return result;
   }, [filteredHistory]);
 
+  const visibleItems = displayItems.slice(0, page * PAGE_SIZE);
+
+  // Reset page on filter changes
+  useEffect(() => { setPage(1); }, [filterLeague, filterType, filterTeam, filterMonth, searchQuery, selectedYear]);
+
+  // Infinite scroll sentinel
+  useEffect(() => {
+    const el = loaderRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      entries => { if (entries[0].isIntersecting) setPage(p => p + 1); },
+      { threshold: 0, rootMargin: '0px 0px 400px 0px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [visibleItems.length, displayItems.length]);
+
   if (selectedTrade) {
     return <TradeDetailView entry={selectedTrade} legs={selectedTrade.legs} onBack={() => setSelectedTrade(null)} />;
   }
@@ -395,8 +415,8 @@ export const TransactionsView: React.FC = () => {
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-3 sm:p-8 custom-scrollbar">
         <div className="max-w-4xl mx-auto space-y-4">
-          {displayItems.length > 0 ? (
-            displayItems.map((item, index) => {
+          {visibleItems.length > 0 ? (
+            visibleItems.map((item, index) => {
               /* ── Multi-team trade block ── */
               if (item.kind === 'multi') {
                 const legTeams = item.legs.flatMap(leg => {
@@ -584,6 +604,9 @@ export const TransactionsView: React.FC = () => {
               <p className="text-sm">Try adjusting your search or filter criteria.</p>
             </div>
           )}
+          {visibleItems.length < displayItems.length && (
+            <div ref={loaderRef} className="h-16" />
+          )}
         </div>
       </div>
     </div>
@@ -603,6 +626,9 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
   const [selectedYear, setSelectedYear] = useState<number>(() => state.leagueStats?.year ?? 2026);
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
   const [selectedTrade, setSelectedTrade] = useState<{ text: string; date: string; legs?: { text: string; date: string }[] } | null>(null);
+  const [page, setPage] = useState(1);
+  const loaderRef = useRef<HTMLDivElement>(null);
+  const PAGE_SIZE = 30;
   // Sync year when season advances
   React.useEffect(() => { setSelectedYear(state.leagueStats?.year ?? 2026); }, [state.leagueStats?.year]);
 
@@ -699,6 +725,21 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
     return result;
   }, [filteredHistory]);
 
+  const visibleItems = displayItems.slice(0, page * PAGE_SIZE);
+
+  useEffect(() => { setPage(1); }, [searchQuery, filterType, selectedYear, team.id]);
+
+  useEffect(() => {
+    const el = loaderRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      entries => { if (entries[0].isIntersecting) setPage(p => p + 1); },
+      { threshold: 0, rootMargin: '0px 0px 400px 0px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [visibleItems.length, displayItems.length]);
+
   if (selectedTrade) return <TradeDetailView entry={selectedTrade} legs={selectedTrade.legs} onBack={() => setSelectedTrade(null)} />;
   if (viewingPlayer)  return <PlayerBioView  player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
 
@@ -751,7 +792,7 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
 
       {/* List */}
       <div className="w-full overflow-x-hidden max-w-4xl mx-auto space-y-3">
-        {displayItems.length > 0 ? displayItems.map((item, index) => {
+        {visibleItems.length > 0 ? visibleItems.map((item, index) => {
           if (item.kind === 'multi') {
             const legTeams = item.legs.flatMap(leg => {
               const logos: { logo: string; name: string }[] = [];
@@ -840,6 +881,9 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
             <ArrowRightLeft size={28} className="mb-3 opacity-40" />
             <p className="text-sm font-medium">No transactions found for {team.name}</p>
           </div>
+        )}
+        {visibleItems.length < displayItems.length && (
+          <div ref={loaderRef} className="h-16" />
         )}
       </div>
     </div>

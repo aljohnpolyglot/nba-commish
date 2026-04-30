@@ -14,6 +14,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useGame } from '../../../../../store/GameContext';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
 import { calcOvr2K, calcPot2K, type TeamMode } from '../../../../../services/trade/tradeValueEngine';
+import { buildFullDraftSlotMap, formatPickLabel } from '../../../../../services/draft/draftClassStrength';
 import { getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2, resolveManualOutlook } from '../../../../../utils/salaryUtils';
 import { cn } from '../../../../../lib/utils';
 import { DraftScoutingModal } from '../../../../draft/DraftScoutingModal';
@@ -59,6 +60,10 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
   const team = state.teams.find(t => t.id === teamId);
   const currentYear = state.leagueStats?.year ?? 2026;
   const nextDraftYear = currentYear; // draft happens in the current leagueStats.year
+  const lotterySlotByTid = useMemo(
+    () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
+    [(state as any).draftLotteryResult, state.teams],
+  );
   const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
 
   // Modal + bio-view state
@@ -221,7 +226,7 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
                     {orig?.logoUrl && <img src={orig.logoUrl} className="w-6 h-6 object-contain" referrerPolicy="no-referrer" />}
                     <div>
                       <span className="text-sm font-bold text-white">
-                        {pk.season} {pk.round === 1 ? '1st' : '2nd'} Round
+                        {formatPickLabel(pk, currentYear, lotterySlotByTid, false)}
                       </span>
                       {!isOwn && <span className="text-xs text-slate-500 ml-2">(via {origTeam?.abbrev})</span>}
                     </div>
@@ -239,7 +244,7 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
                   <div className="flex items-center gap-3">
                     {team.logoUrl && <img src={team.logoUrl} className="w-6 h-6 object-contain opacity-50" referrerPolicy="no-referrer" />}
                     <span className="text-sm text-red-400">
-                      {pk.season} {pk.round === 1 ? '1st' : '2nd'} Round — owed to {owner?.abbrev ?? '???'}
+                      {formatPickLabel(pk, currentYear, lotterySlotByTid, false)} — owed to {owner?.abbrev ?? '???'}
                     </span>
                   </div>
                   <span className="text-xs text-red-500 font-bold">TRADED</span>

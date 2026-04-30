@@ -30,6 +30,7 @@ import { SettingsManager } from '../SettingsManager';
 import { ensureDraftClasses } from '../draftClassFiller';
 import { potEstimator } from '../genDraftPlayers';
 import { retireExternalLeaguePlayers, repopulateExternalLeagues, enforceExternalMinRoster } from '../externalLeagueSustainer';
+import { runExternalFreeAgency } from '../externalFreeAgency';
 
 /** Fired when the sim has just crossed into a new offseason (Oct 1, new year).
  *  Returns the rolled-over GameState patch. Does NOT mutate input. */
@@ -46,7 +47,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   const playerOptOutIds = new Set<string>();
   const playerOptInIds  = new Set<string>();
   const playerOptionNews: string[] = [];
-  const playerOptionHistory: Array<{ text: string; date: string; type: string; playerIds?: string[] }> = [];
+  const playerOptionHistory: Array<{ text: string; date: string; type: string; playerIds?: string[]; tid?: number }> = [];
 
   // GM-mode toast collector — player/team option decisions for the user's roster only
   const isGM = state.gameMode === 'gm';
@@ -75,7 +76,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       // Jun 29 — options happen BEFORE free agency (Jul 1+). getSeasonYear boundary at Jun 28+
       // ensures these still appear in the new season's transaction view.
       const optionDateStr = `Jun 29, ${currentYear}`;
-      playerOptionHistory.push({ text, date: optionDateStr, type: 'Signing', playerIds: [p.internalId] });
+      playerOptionHistory.push({ text, date: optionDateStr, type: 'Signing', playerIds: [p.internalId], tid: p.tid });
       if (isGM && p.tid === userTid) {
         pendingOptionToasts.push({
           playerName: p.name, teamName: team?.name ?? '', pos: (p as any).pos ?? '',
@@ -87,7 +88,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       const text = `${p.name} has declined his player option${team ? ` with the ${team.name}` : ''}, becoming a free agent.`;
       playerOptionNews.push(text);
       const optionDateStr = `Jun 29, ${currentYear}`;
-      playerOptionHistory.push({ text, date: optionDateStr, type: 'Signing', playerIds: [p.internalId] });
+      playerOptionHistory.push({ text, date: optionDateStr, type: 'Signing', playerIds: [p.internalId], tid: p.tid });
       if (isGM && p.tid === userTid) {
         pendingOptionToasts.push({
           playerName: p.name, teamName: team?.name ?? '', pos: (p as any).pos ?? '',
@@ -160,7 +161,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     amountThousands: number;
   }
   const optionExtensions = new Map<string, OptionExtension>();
-  const optionExtHistory: Array<{ text: string; date: string; type: string; playerIds?: string[] }> = [];
+  const optionExtHistory: Array<{ text: string; date: string; type: string; playerIds?: string[]; tid?: number }> = [];
 
   for (const p of state.players) {
     if (!teamOptionExercisedIds.has(p.internalId)) continue;
@@ -244,6 +245,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       date: `Jun 30, ${currentYear}`,
       type: 'Signing',
       playerIds: [p.internalId],
+      tid: team.id,
     });
   }
 
@@ -270,6 +272,9 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   };
 
   const expiredIds = new Set<string>();
+  // External-league contracts that just expired this rollover — passed to
+  // runExternalFreeAgency below so it can reshuffle ~10% to new teams/leagues.
+  const externalExpiredIds = new Set<string>();
   const updatedPlayers: NBAPlayer[] = state.players.map(p => {
     // Snapshot OVR at end of season for career progression chart
     // Stored as ovrHistory: Array<{ season, ovr }> — one entry per completed season
@@ -327,13 +332,6 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       return typeof p.age === 'number' ? { ...p, age: p.age + 1 } as NBAPlayer : p;
     }
 
-    // WNBA is a separate women's league — never flip WNBA players into the
-    // NBA FA pool. Age only, keep status. (Their expiry is a separate TODO;
-    // needs a WNBA-specific FA pipeline, not this one.)
-    if ((p as any).status === 'WNBA') {
-      return typeof p.age === 'number' ? { ...p, age: p.age + 1 } as NBAPlayer : p;
-    }
-
     // Men's external leagues (foreign pro leagues OR tid >= 100 non-NBA slots,
     // excluding WNBA handled above). Prior code short-circuited ALL external
     // players forever, so Barcelona / B-League / Euroleague contracts with
@@ -373,17 +371,15 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
 
       const contractExpired = (p.contract?.exp ?? 0) <= currentYear;
       if (contractExpired) {
-        // Previously flipped every external expiring contract to NBA FA, so
-        // PBA/CBA/Euroleague players vanished from their home league at 24-26
-        // and rotted in the NBA FA pool until force-retirement at 43. That's
-        // why the oldest PBA player was always ~36.
-        //
-        // Only NBA-caliber external players (K2 ≥ 70, BBGM ~44+) test the NBA
-        // market. Everyone else auto-resigns with their home club for another
-        // 1-2 years so the age pyramid fills naturally.
+        // K2 ≥ 70 men's external players test the NBA market. WNBA never flips
+        // (no women's NBA in sim) — they fall through to the auto-resign + the
+        // post-rollover externalFreeAgency pass that may reshuffle them within
+        // WNBA. Sub-K2-70 men auto-resign with home club, then externalFreeAgency
+        // gives ~10% a chance to switch teams or jump leagues.
         const ovrForFlip = p.overallRating ?? 0;
         const NBA_MARKET_BBGM_THRESHOLD = 44; // K2 ~70 (K2 = 0.88*BBGM + 31)
-        if (ovrForFlip >= NBA_MARKET_BBGM_THRESHOLD) {
+        const isWNBA = (p as any).status === 'WNBA';
+        if (!isWNBA && ovrForFlip >= NBA_MARKET_BBGM_THRESHOLD) {
           expiredIds.add(p.internalId);
           return {
             ...p,
@@ -399,6 +395,9 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
           } as any;
         }
         // Auto-resign at home: 1-2yr extension, small salary bump tied to OVR.
+        // Tag this player for the post-rollover externalFreeAgency pass — it may
+        // override the auto-resign by reassigning them to a different team/league.
+        externalExpiredIds.add(p.internalId);
         const newExp = currentYear + (ovrForFlip >= 40 ? 2 : 1);
         const bumpedAmt = Math.max(p.contract?.amount ?? 0, 1);
         return {
@@ -564,14 +563,24 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   // Schedule regen is NOT done here — autoResolvers.ts handles it on Aug 14
   // when it detects no regular-season games exist for the new year.
 
+  // ── 2.5. External free agency (foreign-league movement) ─────────────────
+  // Foreign players whose contracts just expired this rollover were auto-resigned
+  // in place above. This pass gives ~10% a chance to switch teams within their
+  // league or jump leagues entirely (men's only — WNBA stays in WNBA).
+  const { players: playersAfterExtFA, historyEntries: extFAHistory } = runExternalFreeAgency(
+    { ...state, players: updatedPlayers } as any,
+    externalExpiredIds,
+    currentYear,
+  );
+
   // ── 3. Retirement checks ─────────────────────────────────────────────────
-  // Run AFTER age increments (updatedPlayers already has age+1).
+  // Run AFTER age increments (playersAfterExtFA already has age+1 + post-FA tids).
   // External leagues retire first (league-specific curves); NBA/FA path follows.
   const {
     players: playersAfterExtRetire,
     retirees: extRetirees,
     historyEntries: extRetireHistory,
-  } = retireExternalLeaguePlayers(updatedPlayers, currentYear, state.date ?? `Jun 30, ${currentYear}`);
+  } = retireExternalLeaguePlayers(playersAfterExtFA, currentYear, state.date ?? `Jun 30, ${currentYear}`);
 
   const { players: playersAfterRetire, newRetirees } = runRetirementChecks(playersAfterExtRetire, currentYear);
 
@@ -871,7 +880,12 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   // Each season-end, drop already-paid year entries from every team's deadMoney
   // schedule. Entries whose remainingByYear is exhausted are removed entirely.
   // The schedule is locked at waive time — no recalculation, just consumption.
-  const teamsAfterDeadMoneyPrune = teamsAfterJerseyRetirements.map(t => {
+  // Reset per-season cash-in-trade counter (NBA $7.5M cap renews each season).
+  const teamsAfterCashReset = teamsAfterJerseyRetirements.map(t =>
+    t.cashUsedInTrades ? { ...t, cashUsedInTrades: 0 } : t,
+  );
+
+  const teamsAfterDeadMoneyPrune = teamsAfterCashReset.map(t => {
     if (!t.deadMoney?.length) return t;
     const nextDeadMoney = t.deadMoney
       .map(entry => ({
@@ -993,7 +1007,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     seasonPreviewDismissed: true,  // stays hidden through FA; shown when preseason starts (Oct 1)
     draftComplete: undefined,      // reset so draft can run for new year
     news: [...jerseyRetirementNewsItems, ...hofNewsItems, ...mortalityNewsItems, ...farewellNewsItems, ...teamOptionNewsItems, ...playerOptionNewsItems, ...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
-    history: [...(state.history ?? []), ...playerOptionHistory, ...teamOptionHistoryEntries, ...optionExtHistory, ...retirementHistoryEntries, ...farewellHistoryEntries, ...hofHistoryEntries, ...jerseyRetirementHistoryEntries, ...mortalityHistoryEntries, ...extRetireHistory],
+    history: [...(state.history ?? []), ...playerOptionHistory, ...teamOptionHistoryEntries, ...optionExtHistory, ...retirementHistoryEntries, ...farewellHistoryEntries, ...hofHistoryEntries, ...jerseyRetirementHistoryEntries, ...mortalityHistoryEntries, ...extRetireHistory, ...extFAHistory],
     ...(pendingOptionToasts.length > 0
       ? { pendingOptionToasts: [...(state.pendingOptionToasts ?? []), ...pendingOptionToasts] }
       : {}),

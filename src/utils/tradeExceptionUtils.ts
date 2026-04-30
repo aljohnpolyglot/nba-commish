@@ -32,12 +32,26 @@ export const getLargestActiveTPE = (team: NBATeam, currentDate: string): TradeEx
 const isTpeUsableUnderApron = (
   tpe: TradeException,
   payrollUSD: number,
-  leagueStats: { salaryCap: number; luxuryPayroll: number; firstApronPercentage?: number; secondApronPercentage?: number; luxuryTaxThresholdPercentage?: number; year?: number },
+  leagueStats: {
+    salaryCap: number;
+    luxuryPayroll: number;
+    firstApronPercentage?: number;
+    secondApronPercentage?: number;
+    luxuryTaxThresholdPercentage?: number;
+    year?: number;
+    apronsEnabled?: boolean;
+    numberOfAprons?: number;
+    restrictTPEProvenanceOver2ndApron?: boolean;
+  },
 ): boolean => {
+  if (leagueStats.apronsEnabled === false || leagueStats.restrictTPEProvenanceOver2ndApron === false) return true;
+  if ((leagueStats.numberOfAprons ?? 2) < 2) return true;
   const thresholds = getCapThresholds(leagueStats);
   if (payrollUSD < thresholds.secondApron) return true;
   const currentYear = leagueStats.year ?? new Date().getFullYear();
-  return tpe.sourceLeagueYear >= currentYear;
+  const vintage = tpe.vintage ?? tpe.sourceLeagueYear;
+  const source = tpe.source ?? 'plain';
+  return vintage >= currentYear && source === 'plain';
 };
 
 /** Can this team absorb `incomingSalaryUSD` using a single TPE?
@@ -85,6 +99,10 @@ export const generateTPEsFromTrade = (
   const year = leagueStats.year ?? new Date().getFullYear();
   const expiresDate = addDaysISO(currentDate, TPE_TTL_DAYS);
 
+  const tpeSource: TradeException['source'] = (transaction as any).isSignAndTrade
+    ? 'sign-and-trade'
+    : 'plain';
+
   const buildTPEsForTeam = (team: NBATeam, salaryOut: number, salaryIn: number, sentPlayers: NBAPlayer[]): TradeException[] => {
     if (salaryOut <= salaryIn) return [];
     const teamPayroll = players
@@ -107,6 +125,8 @@ export const generateTPEsFromTrade = (
         expiresDate,
         sourcePlayerName: p.name,
         sourceLeagueYear: year,
+        vintage: year,
+        source: sentPlayers.length > 1 ? 'aggregation' : tpeSource,
       });
     }
     return tpes;

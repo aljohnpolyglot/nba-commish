@@ -15,7 +15,8 @@ export function generateCoordinatedStats(
   otCount: number = 0,
   team2KDef?: { steal: number; passPerception: number; block: number; interiorDef: number },
   opp2KDef?: { passPerception: number },
-  orbRateMult: number = 1.0
+  orbRateMult: number = 1.0,
+  quarterLength: number = 12
 ): PlayerGameStats[] {
   const stats    = teamStats.map(s => ({ ...s }));
   const rotation = stats.map(s =>
@@ -137,7 +138,10 @@ export function generateCoordinatedStats(
   });
 
   // ── Minute redistribution — foul-plagued players lose time, redistributed proportionally
-  const totalTarget = 240 + otCount * 25;
+  // 5 players × 4 quarters × QL minutes (regular = 240; All-Star 3-min QL = 60).
+  // OT periods add 5 minutes each → 25 player-minutes per OT.
+  const regulationMinutes = quarterLength * 4 * 5;
+  const totalTarget = regulationMinutes + otCount * 25;
   let stolenMins = 0;
   stats.forEach(s => {
     if (s.pf >= 6 && s.min > 28) {
@@ -164,20 +168,24 @@ export function generateCoordinatedStats(
   }
 
   // ── Hard cap: no player can exceed total game length + sync sec field
-  const maxMins = 48 + otCount * 5;
+  const maxMins = quarterLength * 4 + otCount * 5;
   stats.forEach(s => {
     s.min = Math.min(maxMins, Math.max(0, s.min));
     s.sec = Math.floor((s.min % 1) * 60);
   });
 
   // ── Final minutes enforcer — hard cap above may clip players to maxMins, drifting total ──
-  // Distributes the remainder to the highest-minute player not already at cap.
-  const cappedTotal = stats.reduce((sum, s) => sum + s.min, 0);
-  const cappedDiff  = totalTarget - cappedTotal;
+  // Walk eligible players (highest first), give each as much of the remainder as their cap allows.
+  // Single-shot dump caused 191:03 lines when target was inflated for 3-min All-Star quarters.
+  let cappedDiff = totalTarget - stats.reduce((sum, s) => sum + s.min, 0);
   if (Math.abs(cappedDiff) >= 0.5) {
     const eligible = stats.filter(s => s.min < maxMins).sort((a, b) => b.min - a.min);
-    if (eligible.length > 0) {
-      eligible[0].min = Math.max(0, eligible[0].min + cappedDiff);
+    for (const s of eligible) {
+      if (Math.abs(cappedDiff) < 0.5) break;
+      const room = cappedDiff > 0 ? maxMins - s.min : -s.min;
+      const give = cappedDiff > 0 ? Math.min(cappedDiff, room) : Math.max(cappedDiff, room);
+      s.min += give;
+      cappedDiff -= give;
     }
   }
 

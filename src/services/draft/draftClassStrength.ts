@@ -86,19 +86,75 @@ export function buildClassStrengthMap(
 }
 
 /**
- * Map tid → actual lottery pick number (1-14) for the current draft year.
- * Empty if the lottery hasn't run yet — pre-lottery pricing falls back to
- * power-rank projection inside calcPickTV.
+ * Map tid → actual lottery pick slot (1-14) for the current draft year.
+ * Empty if the lottery hasn't run yet.
  */
 export function buildLotterySlotMap(
-  draftLotteryResult: Array<{ pickNumber: number; team: { tid: number } }> | undefined | null,
+  draftLotteryResult: Array<{ pick?: number; pickNumber?: number; team: { tid: number } }> | undefined | null,
 ): Map<number, number> {
   const map = new Map<number, number>();
   if (!draftLotteryResult) return map;
   for (const r of draftLotteryResult) {
-    if (typeof r?.team?.tid === 'number' && typeof r.pickNumber === 'number') {
-      map.set(r.team.tid, r.pickNumber);
+    const slot = r?.pick ?? r?.pickNumber;
+    if (typeof r?.team?.tid === 'number' && typeof slot === 'number') {
+      map.set(r.team.tid, slot);
     }
   }
   return map;
+}
+
+/**
+ * Build a full tid → draftSlot (1-30) map for the current year once the
+ * lottery has run. Extends lottery slots (#1-14) with standings-order slots
+ * (#15-30) for non-lottery teams. Round 2 uses the same ordering (mirroring
+ * how real-NBA round 2 follows round 1 order). Returns empty map if lottery
+ * hasn't fired yet — all labels fall back to round-generic text.
+ */
+export function buildFullDraftSlotMap(
+  draftLotteryResult: Array<{ pick?: number; pickNumber?: number; team: { tid: number } }> | undefined | null,
+  teams: Array<{ id: number; wins?: number; losses?: number }>,
+): Map<number, number> {
+  const lotteryMap = buildLotterySlotMap(draftLotteryResult);
+  if (lotteryMap.size === 0) return lotteryMap; // lottery hasn't run — nothing to resolve
+  const lotteryTids = new Set(lotteryMap.keys());
+  // Non-lottery teams sorted worst → best record → picks #15 onward
+  const nonLottery = teams
+    .filter(t => t.id > 0 && !lotteryTids.has(t.id))
+    .sort((a, b) => {
+      const wpA = (a.wins ?? 0) / Math.max(1, (a.wins ?? 0) + (a.losses ?? 0));
+      const wpB = (b.wins ?? 0) / Math.max(1, (b.wins ?? 0) + (b.losses ?? 0));
+      return wpA - wpB; // worst first → lowest pick numbers
+    });
+  const fullMap = new Map(lotteryMap);
+  nonLottery.forEach((t, i) => fullMap.set(t.id, lotteryMap.size + 1 + i));
+  return fullMap;
+}
+
+/**
+ * Render a pick label that resolves to "#N Pick" / "#N 2nd" once the full
+ * draft order is known for the pick's season. Falls back to round-only for
+ * future years or when the lottery hasn't fired yet.
+ *
+ *   short=true  → "#4 Pick" / "#4 2nd" / "1st Rd" / "2nd Rd"
+ *   short=false → "2026 #4 Pick" / "2026 #4 2nd Rd" / "2026 1st Round" / "2026 2nd Round"
+ */
+export function formatPickLabel(
+  pick: { season: number; round: number; originalTid: number },
+  currentYear: number,
+  lotterySlotByTid: Map<number, number> | undefined,
+  short = false,
+): string {
+  const yearPart = short ? '' : `${pick.season} `;
+  if (pick.season === currentYear) {
+    const slot = lotterySlotByTid?.get(pick.originalTid);
+    if (slot != null) {
+      return pick.round === 1
+        ? `${yearPart}#${slot} Pick`
+        : `${yearPart}#${slot} 2nd Rd`;
+    }
+  }
+  const roundPart = pick.round === 1
+    ? (short ? '1st Rd' : '1st Round')
+    : (short ? '2nd Rd' : '2nd Round');
+  return `${yearPart}${roundPart}`;
 }

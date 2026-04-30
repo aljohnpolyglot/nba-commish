@@ -2,11 +2,112 @@
 
 Historical bug fixes, session notes, and architecture discoveries.
 
+## Session 30 (Apr 28, 2026) — All-Star Weekend overhaul
+
+Made the **All-Star Game Format** + **Number of Teams** rules in commissioner settings actually drive the simulation. Previously orchestrator only knew East-vs-West (2 teams).
+
+**Format coverage now live:**
+
+| Format | Teams | Real-life analog | Bracket |
+|---|---|---|---|
+| `east_vs_west` | 2 | Classic ASG | 1 game |
+| `captains_draft` | 2 | LeBron vs Giannis era | 1 game (top-2 vote-getters as captains, 2 separate snake drafts: starters → reserves for 5-5 split) |
+| `usa_vs_world` | 2 | USA vs World | 1 game |
+| `usa_vs_world` | 3 | **2026 LA format** | Real tournament order: G1 Stars vs World, G2 Stripes vs Winner, G3 Stripes vs Loser, G4 Championship |
+| `usa_vs_world` | 4 | Extended variant | 4-team knockout (2 SF + Final) |
+| `blacks_vs_whites` | 2 | Satire | 1 game |
+
+**Key files touched:**
+- `src/services/allStar/AllStarSelectionService.ts` — `bucketRoster` dispatcher, `bucketCaptainsDraft`, `bucketUsaWorld`, `snakeDraft`, `applyUsaWorldFormat`
+- `src/services/allStar/AllStarWeekendOrchestrator.ts` — `buildBracketLayout`, `simulateAllStarBracket` (replaces `simulateAllStarGame`), dynamic championship/Game 2-3 injection, bracket team names threaded into box scores, `quarterLength` honors mirror toggle
+- `src/services/logic/autoResolvers.ts` — bucket-aware injury replacement (East/West conf, USA-born for USA1/USA2, non-USA for WORLD*; captains_draft picks best available); WNBA/external status filter; dunk/3PT participant counts wired
+- `src/components/allstar/AllStarRoster.tsx` — dynamic team panels per bucket (East/West, USA1/USA2/WORLD, WORLD1/WORLD2), Captain Crown badge, USA/world flags, captain portrait swap-in for captains_draft team logos + final-score card
+- `src/components/commissioner/rules/view/all-star/AllStarGameSection.tsx` — format ⇄ teams snap-validation, lock banner once `startersAnnounced` (releases at Aug 14 schedule init)
+- `src/components/commissioner/rules/view/useRulesState.ts` — defaults flipped: `allStarMirrorLeagueRules: false`, `allStarQuarterLength: 3` (4×3 = 12 min total, matches 2026 NBA tournament)
+- `src/components/modals/BoxScoreModal.tsx` — All-Star bracket games render single "12:00" column instead of Q1-Q4; bucket-aware logo render (USA flag / globe / E / W)
+- `src/types.ts` — `AllStarState.bracket` typed (teams[], games[], complete, etc.)
+- `src/services/allStar/AllStarDunkContestSim.ts` + `AllStarThreePointContestSim.ts` — `selectContestants(players, num)` accepts count from `leagueStats.allStarDunkContestPlayers` / `allStarThreePointContestPlayers`
+
+**Other fixes shipped same session:**
+- A'ja Wilson (WNBA) no longer eligible as injury replacement (status + tid filter)
+- Captain replacement no longer bucket-locked to arbitrary East/West (best available)
+- Box scores show "USA Stars vs Team World" instead of "Eastern All-Stars vs Exhibition Team"
+- 5-5 starter split in captains_draft (was 4-6 from single OVR snake)
+
+## Session 29 (Apr 27, 2026) — Pick-only trades + cash considerations
+
+Real-NBA pick swaps and cash sweeteners now flow through every layer of the trade pipeline: schema, AI generation, GM Trade Machine UI, summary preview, history log, season-cap reset.
+
+- **Schema** (`types.ts`)
+  - `TradeProposal.cashOfferedUSD` / `cashRequestedUSD` — USD per leg
+  - `NBATeam.cashUsedInTrades` — per-season counter (USD), capped at $7.5M, resets at rollover
+  - `TransactionDto.teams[*].cashSentUSD` — wired through preProcessor for bookkeeping
+- **Engine** (`tradeValueEngine.ts`, `tradeFinderEngine.ts`)
+  - `calcCashTV(usd)` — ~1.5 TV per $1M (full $7.5M ≈ late-2nd-pick tier)
+  - `CASH_TRADE_CAP_USD = 7_500_000`
+  - `generateCounterOffers` — picks-only basket short-circuits player matching and returns pick-pile counter-offers
+  - `generatePickOnlyProposal` — new generator with two variants: (A) contender↔rebuilder pick-delay swap with cash sweetener, (B) 2nd-round dump for cash absorption
+- **AI** (`AITradeHandler.ts`)
+  - New "pick-restructure pass" runs after the salary-dump loop (~60% chance/cycle, capped at 2 total proposals/day) — pairs contender buyers with rebuilder sellers, generates pick-only proposals via the engine
+  - `validateAITradeExecution` allows empty asset baskets when cash compensates the same side; enforces per-team $7.5M cash cap at execution
+  - `executeAITrade` applies cash to senders' `cashUsedInTrades`, includes cash in the trade history line ("Pistons trade 2027 2nd-round pick + $2.0M cash to Nuggets")
+- **GM TradeMachine** (`TradeMachineModal.tsx`)
+  - Cash slider per team (0 → cap remaining, $250K step), live-shows cap remaining
+  - Confirm gate now valid when cash alone is on either side
+  - Payload extended with `teamACashUSD` / `teamBCashUSD` (both typed and threaded through `TradeMachineView` and `ActionModalsRenderer`)
+- **Trade preview** (`TradeSummaryModal.tsx`)
+  - Cash row above the OfferCards summarizes "{ABBR} sends $X.XXM cash"
+- **Execute** (`tradeService.ts`, `preProcessor.ts`)
+  - `executeExecutiveTrade` accepts cash on payload, stamps `cashSentUSD` onto the TransactionDto per team
+  - `preProcessAction` increments `team.cashUsedInTrades` after TPE generation
+- **Narration** (`tradeActions.ts`) — Charania/Woj seeds and history outcomeText reflect cash legs
+- **Rollover** (`seasonRollover.ts`) — `cashUsedInTrades` resets to 0 at season end (NBA's annual cap renewal)
+
+### Deferred (not in this session)
+- Stepien Rule guard (no consecutive future drafts with zero 1sts)
+- "Better-of" / "worse-of" pick-swap rights
+- Pick `protection` field rendering + evaluation
+- Trade Finder "asset class: picks only" filter chip (basket already supports pick-only via existing add-pick affordance)
+- Luxury tax accounting beyond the cap-remaining counter
+
+## Session 28 (Apr 26–27, 2026) — Cup schedule integrity, FGA volume rebuild, Re-sign UX
+
+### NBA Cup schedule integrity
+
+- **Y2 schedule generation broken (only Cup games)** — after Y2 rollover, simulationHandler self-heal injected Cup groups into the empty schedule, then Aug-14 generator's `hasRegularSeasonGames` guard treated Cup games as RS and skipped generation. Fixed: self-heal now requires real RS games to exist; `hasRegularSeasonGames` checks now exclude `isNBACup` in `simulationHandler.ts:325`, `gameLogic.ts:318`, `autoResolvers.ts:20`.
+- **KO games inflated advancers' RS records** — QF/SF games appended on top of a full 82-game schedule → advancers ended at 83-84 RS-counted games. Fixed via `trimAndPairReplacements` in `scheduleInjector.ts`: when QF/SF games are injected, each KO team has 1 future unplayed RS game trimmed; orphaned non-KO opponents are paired into replacement games on the KO night (or trim's original date if conflicting). Final still uses `countsTowardRecord: false` and triggers no trim.
+- **Schedule integrity audit (Y2 save 2027-02-24)** — three issues:
+  - **`trimAndPairReplacements` per-team accounting rewrite** (`scheduleInjector.ts`). Old logic only marked KO teams as "trimmed once" and assumed every removal produced ≤1 orphan; in practice, multiple KO teams' latest unplayed RS could share the same opponent → that opponent lost N games but was paired only once. Replaced with per-team trim-count + owed-replacement bookkeeping: KO teams target net −1; everyone else targets net 0. Pairing now expands fallback dates to ±21 days. Added Pass A that prefers KO-vs-KO trims (settles two KO teams in one removal).
+  - **All-Star events polluting reg-season filter.** Dunk contest (`gid=90003`) and 3-Point contest (`gid=90004`) used self-vs-self placeholder ids and lacked an `isAllStar`-style flag. Audit script (`scripts/audit-schedule.js`) now filters via shared `isExhibitionLike` helper.
+  - **`allStarBreakStart`/`allStarBreakEnd` now populated.** Both `injectAllStarGames` call sites (`gameLogic.ts:614`, `autoResolvers.ts:528`) now write the YYYY-MM-DD blackout window onto `state.leagueStats` via new `AllStarWeekendOrchestrator.getBreakWindowStrings(year)` helper.
+- **Audit false-positive on KO games (Apr 27)** — `SCHEDAUDIT` flagged 8 KO teams as "asymmetric stat write" because it gated on `g.countsTowardRecord !== true`, but `buildKnockoutGames` only writes `excludeFromRecord` onto the Game (countsTowardRecord lives on the KO entry). Switched audit to mirror `simulationService`'s `excludeFromRecord` gate at `debugCheats.ts:1213`.
+
+### Volume-sticky FGA rebuild (v3)
+
+Original problem: hot nights compressed FGA below baseline; cold nights compressed FGA below baseline. Real NBA pattern is the opposite — efficiency swings, volume stays sticky.
+
+- `StatGenerator/initial.ts:263` — FGA now anchors to **baseline pts** (`ptsTarget / ptsTargetMult`), not nightly pts. Decouples volume from the night's scoring.
+- `StatGenerator/initial.ts:428` — pct2 floor lowered `0.44 → 0.30`, so cold-night low pct2 actually drives 2PA upward (Brunson 4/20 brick now reachable).
+- `StatGenerator/initial.ts:263` — added `fgaFloor = floor(minutes × 0.40 × max(0.65, fgaMult))` to kill the "Brunson 2/6 starter brickfest" pathology while preserving deferring archetypes.
+- `StatGenerator/nightProfile.ts` — cold-tier `efficiencyMult` lowered to engage the new floor: BRICKFEST 0.65→0.55, COLD 0.82→0.75, OFF-NIGHT 0.72→0.65, DESPERATE CHUCKER 0.65→0.58, Microwave CHUCKER 0.72→0.65, DISASTER 0.55-0.70 → 0.45-0.60.
+- `nightProfile.ts` — `fgaMult` redocumented as a true volume modifier (1.0 = baseline, >1 chucker, <1 deferring).
+
+Verified against real game logs (Brunson, Reaves, bruiser bigs): cold high-volume bricks ✅, hot efficient torches ✅, EXPLOSION 47-pt nights ✅, rim-only bigs preserve efficiency via existing `isRimOnly` path ✅.
+
+**Known v3 gaps (open):** 60+ pt outliers unreachable (need separate VOLUME EXPLOSION archetype); pure 3PT specialist nights (0 2PA) — `shotDietShift` maxes at +0.20; `fgaFloor` over-volumes ultra-quiet blowout games (Reaves Nov 11 1/2 in 22 min); pending: reduce floor coefficient 0.40 → 0.30 for bench-cameo realism.
+
+### Re-sign UX
+
+- **Roster-full blocks Bird Rights re-sign of own FA** — Pistons at 18/21 + 3/21 (training-camp cap = 21 total) couldn't re-sign Jalen Duren after his contract expired (tid=-1). Gate at `SigningModal.tsx:609` only bypassed for `isResign` (player.tid === team.id), missed `teamHoldsBirdRights`. Fixed by adding `&& !teamHoldsBirdRights` to gate.
+- **NG → Guaranteed conversion sims a day** — `convert_to_guaranteed` quick action opened SigningModal which dispatched `SIGN_FREE_AGENT` → `advanceDay()`. In-place flag flip should be instant. Same bug for `convert_to_twoway`. Fixed: both quick actions now dispatch `CONVERT_CONTRACT_TYPE` directly. Trade-off: user can no longer renegotiate years/salary as part of the conversion.
+
+---
+
 ## Session 27 (Apr 25, 2026) — Prompt I rewrite: FA pipeline realism pass
 
 ### Hotfix 27h — RFA matching offer-sheet mechanic
 
-User flagged the missing real-NBA Restricted Free Agent matching window — Ayton-Suns-Pacers flow, where prior team can match an offer sheet within a 48-hour window to retain the player.
+Adds the RFA 48h match window: prior team can match an offer sheet to retain the player.
 
 **Resolution flow** (`faMarketTicker.ts`):
 1. When a market resolves with a non-prior team winning AND `player.isRestrictedFA === true` AND `rfaMatchingEnabled` setting is on → market enters pending-match state instead of finalizing
@@ -31,7 +132,7 @@ Currently respect inline defaults in code; commissioner can't yet toggle them. W
 
 ### Hotfix 27g — Bird Rights re-sign Pass 0
 
-Real NBA: prior team gets a Jul 1 first-look on expiring stars before the open market opens. Without this, expiring stars who declined a mid-season extension (one bad seeded roll → `midSeasonExtensionDeclined: true` blocks season-end retry) fall straight into the FA market — where their incumbent team often can't bid (over-cap, lux-tax). Result: Finals contenders lose their own players for nothing (Jalen Duren on DET case).
+Jul 1 first-look pass for incumbent teams before open-market FA. Without it, expiring stars whose mid-season extension rolled the decline bucket fell straight into FA where over-tax incumbents couldn't bid → Finals contenders lost their own players.
 
 **Fix** (new `runAIBirdRightsResigns()` in `AIFreeAgentHandler.ts`, wired in `simulationHandler.ts` rollover branch):
 - Fires once on Jul 1 right after `applySeasonRollover` returns, before any FA market opens
@@ -41,11 +142,9 @@ Real NBA: prior team gets a Jul 1 first-look on expiring stars before the open m
 - Clears `midSeasonExtensionDeclined` flag — fresh slate
 - Emits history entry: "X re-signs with the Y via Bird Rights: $XM/Yyr (player option) (Supermax)"
 
-After this, Duren-tier expiring stars get a guaranteed first-look at +10% premium. The 15% of stars who still hit FA represent legitimate departures (LOYAL trait absent + mood drop / MERCENARY chasing money / 2nd-apron team) — Myles Turner pattern, realistic but rare.
-
 ### Hotfix 27f — Bird Rights re-sign in the bid pool
 
-User flagged: Jalen Duren (K2 90, age 23) hit FA after DET made the 2025-26 Finals. DET didn't show up in his bid pool. Cause: `generateAIBids` filtered teams by `capSpace >= minSalary || payroll < luxuryTax`. Finals contenders run hot payrolls (DET over-tax) → filtered out → no bid. But real NBA: Bird Rights lets the prior team sign their own player over the cap regardless of payroll. The whole reason teams re-sign their stars instead of losing them.
+`generateAIBids` filtered teams by `capSpace >= minSalary || payroll < luxuryTax`. Over-tax Finals contenders got filtered out of their own stars' bid pool. Bird Rights lets a prior team sign over the cap regardless of payroll.
 
 **Fix** (`freeAgencyBidding.ts:206-232, 268-272, 282-296`):
 - Compute `priorTid` for the player (most-recent NBA tid via transactions or stats with gp > 0)
@@ -53,21 +152,19 @@ User flagged: Jalen Duren (K2 90, age 23) hit FA after DET made the 2025-26 Fina
 - Eligibility filter now whitelists the Bird Rights holder unconditionally
 - Sort puts the Bird Rights team at the top of the candidate slice so they don't get squeezed out
 - Cap-affordability gate inside the bid loop allows the Bird Rights team to bid up to player's max contract
-- Bid pct gets +15% multiplier for the Bird Rights team — incumbents over-pay to retain (Mavs/Lakers max-deal pattern)
-
-After this DET will show up in Duren's bid pool with an inflated offer that reflects them having his Bird Rights — closer to the real-NBA "over-cap re-sign your own stars" dynamic.
+- Bid pct gets +15% multiplier for the Bird Rights team — incumbents over-pay to retain.
 
 ### Hotfix 27e — wider bid pool for stars (post-PR1 polish)
 
-User saw every star post-Jul 1 2026 rollover getting the same 3-team market: BKN/LAL/LAC offering, repeated bid amounts, no real war. Cause: `generateAIBids` slice took `maxBids * 2 = 6` candidates and locked the same 3 cap-rich teams every time. After multi-season sim only ~3 teams have real cap room; desirability tiebreak put the same trio at the top for every market.
+Post-multi-season sim, only ~3 teams had real cap room and `generateAIBids` slice locked the same trio at the top of every market.
 
-**Fix #1** (`faMarketTicker.ts:362-368`): `maxBids` now tier-based. K2 ≥ 88 → 5 bids, K2 80-87 → 4, else → 3. Stars get a real bidding war (Reaves / Harden / LeBron tier should attract 5 suitors, not 3).
+**Fix #1** (`faMarketTicker.ts:362-368`): `maxBids` tier-based — K2 ≥ 88 → 5, K2 80-87 → 4, else → 3.
 
-**Fix #2** (`freeAgencyBidding.ts:227`): bidder candidate pool widened from `maxBids × 2` to `max(maxBids × 3, 12)`. With more candidates feeding the affordability filter, mid-cap teams that get filtered for star bids can still surface for K2 80-84 mid-tier markets. No more "every K2 ≥ 80 player has the same 3 bidders."
+**Fix #2** (`freeAgencyBidding.ts:227`): bidder candidate pool widened from `maxBids × 2` to `max(maxBids × 3, 12)` so mid-cap teams surface for K2 80-84 markets.
 
 ### Hotfix 27d — Bidding-war refactor PR1 + Free Agency scouting tab
 
-User green-lit the bidding-war refactor. Shipping PR1 (threshold drop + cap-threshold cleanup + offseason burst window) plus a new GM-mode Free Agency scouting tab.
+PR1 of the bidding-war refactor (threshold drop + cap-threshold cleanup + offseason burst window) plus a new GM-mode Free Agency scouting tab.
 
 **PR1: Lower market threshold to K2 ≥ 70** (`faMarketTicker.ts:24-39, 271-280, 357-365`)
 - `MARKET_K2_THRESHOLD = 80 → 70` so K2 70-79 mid-tier rotation FAs see multi-team bidding instead of going silently through `runAIFreeAgencyRound`.
@@ -92,7 +189,7 @@ User green-lit the bidding-war refactor. Shipping PR1 (threshold drop + cap-thre
 
 ### Hotfix 27c — autoResolvers post-draft 2W sneak path
 
-User's TWOWAYAGE audit showed 13 vets on 2W contracts (age 25-29, YOS 3+) post 27a/27b. Pass 2 in `runAIFreeAgencyRound` was correctly rejecting them, but `autoResolvers.ts:996-1003` runs a *separate* post-draft 2W auto-assignment every Jul 1 that gated only on OVR ≤ 45 — the sneak path.
+13 vets (age 25-29, YOS 3+) slipped onto 2W contracts post-27a/27b. Pass 2 in `runAIFreeAgencyRound` was rejecting them, but `autoResolvers.ts:996-1003` runs a *separate* post-draft 2W auto-assignment every Jul 1 gated only on OVR ≤ 45 — the sneak path.
 
 **Fix** (`autoResolvers.ts:996-1018`): mirrored the AIFreeAgentHandler Pass 2 age/YOS gate. Plus added a `draft.year` YOS backup (`max(yosFromStats, yosFromDraft)`) so real-player gist imports whose `stats[]` lack `gp` counts still register as veterans. Same backup wired into Pass 2 (`AIFreeAgentHandler.ts:367-376`) and the TWOWAYAGE cheat (`debugCheats.ts:563-572`) so all three use identical logic.
 
@@ -100,12 +197,7 @@ After this, no signing path can land an age ≥ 30 player on a 2W deal, and 25-2
 
 ### Hotfix 27b — date clamp plumbed into runAIFreeAgencyRound
 
-User sim'd 2 more years post-27a, surfaced 2 more mid-season offenders:
-```
-Oct 26, 2027 — Cameron Johnson → BOS $42M/3yr (MLE)
-Nov 22, 2027 — Landry Shamet  → HOU $52M/3yr (PO)
-```
-Root cause: Session 27's mid-season cooldown lived only in `faMarketTicker.ts` + `freeAgencyBidding.ts`. Players with K2 < 92 don't open markets post-Oct 21 (they're below the late-season threshold) — so they fall to `runAIFreeAgencyRound` Pass 1 / Pass 4 / Pass 5 + `runAIMleUpgradeSwaps`, where `computeContractOffer` returns full 3-4yr deals year-round with NO date awareness.
+Session 27's mid-season cooldown only lived in `faMarketTicker.ts` + `freeAgencyBidding.ts`. K2 < 92 players don't open markets post-Oct 21 → they fell to `runAIFreeAgencyRound` Pass 1/4/5 + `runAIMleUpgradeSwaps` where `computeContractOffer` returned full 3-4yr deals year-round with no date awareness.
 
 **Fix** (`AIFreeAgentHandler.ts:13, 22-69`): added a `clampOfferForDate` helper at the file boundary that applies the same date gates as `faMarketTicker` + `generateAIBids`:
 - **Length cap**: post-Oct 21 → 2yr; post-deadline + `postDeadlineMultiYearContracts: false` → 1yr.
@@ -122,7 +214,7 @@ Both pipelines (markets + sequential round) now honor identical mid-season gates
 
 ### Hotfix 27a — post-sim regressions (same day)
 
-User sim'd forward and surfaced 4 regressions Session 27 didn't catch:
+Four regressions Session 27 didn't catch:
 
 - **Years cap leaked through pre-cutoff markets** (`faMarketTicker.ts:103-115, 158`) — `maxYearsThisTick` only fired at market *open*. A market opened Sep 30 with 3yr bids resolving Nov 5 (Quentin Grimes $96M/3yr) honored the original 3yr. Added `resolutionMaxYears` clamp at resolution time using the same date gate. Also propagated `finalYears` to history text, news content, Shams post, contract years array (option flag was tied to `winner.years - 1` but should be `finalYears - 1` to land on the actual last year).
 - **Same-player double-sign** (`simulationHandler.ts:1046-1055`) — Gary Harris signs CHA + MIA same day Oct 12. `runAIFreeAgencyRound` returned a results array; `state.players.map(...find(...))` only applied the first, but `signings.map(...)` over history wrote both. Added `seenSignIds` dedup at the simulationHandler boundary so multi-pass collisions can't double-emit.
@@ -131,7 +223,7 @@ User sim'd forward and surfaced 4 regressions Session 27 didn't catch:
 
 
 
-Original Prompt I (Bird Rights re-sign Pass 0, rookie-ext retry, waive-to-sign) became largely moot once Prompt M shipped — stars no longer sit unsigned with a realistic talent pool. Re-scoped against a user-provided 2029-30 transaction log audit. 4 fixes + 3 new debug cheats.
+Original Prompt I (Bird Rights re-sign Pass 0, rookie-ext retry, waive-to-sign) became moot once Prompt M shipped. Re-scoped against a 2029-30 transaction log audit: 4 fixes + 3 new debug cheats.
 
 **Audit findings (transactions that didn't make sense):**
 - Tre Jones → TOR **$123M/4yr Feb 8, 2030**, Diabate → HOU **$108M/4yr Dec 18**, Jakucionis → WAS **$111M/4yr Dec 2** — mid-season mega contracts from `faMarketTicker` opening K2 ≥ 80 markets all season
@@ -311,6 +403,8 @@ Shipped 11 bugs across Opus inline work and Sonnet delegation (Prompts A–H). F
 
 **Image caching** — New `imageCache.ts` service: IndexedDB-backed blob cache, auto-downloads all player portraits on game load (5-concurrent, 50ms delay). Toggle in Settings > Performance. Default ON. Clear cache button.
 
+**External League Economy** — overseas signings now write contracts via `EXTERNAL_SALARY_SCALE`. `externalSigningRouter.ts`
+
 **Live Trade Debug UI** — Done via Team Office update (session 22).
 
 ## Session 22 (Apr 17, 2026)
@@ -323,7 +417,7 @@ Shipped 11 bugs across Opus inline work and Sonnet delegation (Prompts A–H). F
 
 **Options** — player/team options check `nextYear` (gist labels option on the season it applies to). `autoRunDraft` sets hasTeamOption/teamOptionExp/restrictedFA.
 
-**Simulation** — unified engine (runLazySim), ADVANCE_DAY `>=`, Finals G7 fix (sim target day), overlay for all sim-to-date.
+**Simulation** — unified engine (runLazySim), ADVANCE_DAY `>=`, Finals G7 fix (sim target day), overlay for all sim-to-date. Simulate-to-date routes >30 day gaps to `runLazySim`, ≤30 to `processTurn`. Auto-switch to results view after draft completes.
 
 **Economy** — MLE 3-pass FA signing, MLE column in Cap Overview, broadcasting cap inflated at rollover, save isolation (unique saveId).
 
@@ -332,6 +426,8 @@ Shipped 11 bugs across Opus inline work and Sonnet delegation (Prompts A–H). F
 **UI** — year chevrons (Standings, League Leaders, Statistical Feats), playoff bracket (BracketLayout everywhere), Award Races offseason, Power Rankings preseason, game log PLF/PI labels, progression dark colors, career OVR snapshot, training camp shuffle, Shams transactions, social feed perf, Season Preview Oct 1.
 
 **Rollover** — team W-L reset, streak reset, July games guard, player options Jul 1 date, bioCache age, vet age gate, two-way OVR cap, double team name, B-League bio gist URL, transaction amounts (sub-$1M), storyGenerator crash, COY case-insensitive, roster trim logging.
+
+**Mood** — `FAME` trait added.
 
 **Plus 146+ items from sessions 8–21.**
 
@@ -527,3 +623,224 @@ Shipped 11 bugs across Opus inline work and Sonnet delegation (Prompts A–H). F
 - **`p.stats.filter(row => row.gp > 0)`** — BBGM always filters zero-GP rows before exposing stats. We should do the same in any stat-aggregation utility to avoid dividing by zero.
 - **Per-season `AwardsAndChamp` layout** — Champion + Finals MVP hero -> Best Record (by conf) -> MVP -> DPOY/SMOY/MIP/ROY -> All-League/All-Defensive/All-Rookie. This is the canonical BBGM history layout; our `LeagueHistoryDetailView` mirrors it.
 - **`groupAwards` for player profiles** — BBGM groups `player.awards[]` by type and counts them ("3x MVP (2022, 2024, 2026)"). Our `PlayerBioView` already does this in a simpler way; formalize when building player profile pages.
+
+---
+
+## Session 26 (Apr 23, 2026)
+
+- **Team-option → extension coupling** (`seasonRollover.ts`) — New §0c pass fires alongside team option exercise: bundled summer negotiation with basePct floor 0.90 (0.95 for MVP/All-NBA in last 3 yrs, 0.97 for LOYAL), distinct seed (`currentYear * 97`) from mid-season ext so unlucky rolls don't cascade. Writes Jun 30 "X has signed a rookie extension with the Y" entries. Also patched `teamOptionExercisedIds` branch in player map to compute `hasBirdRights` / `superMaxEligible` — previously stale until next rollover.
+
+## Session 25 (Apr 18, 2026)
+
+- **Generated draft classes (infinite sim)** -- `genDraftPlayers.ts`, `draftClassFiller.ts`, `sportData.ts`, `genplayersconstants.ts`, `nameDataFetcher.ts`. `ensureDraftClasses` tops thin years to 100 prospects at rollover. Path mix 70% College / 10% Europe / 6% G-League / 6% Endesa / 4% NBL / 4% B-League. `currentSimYear` rewinds age+ratings for far-future classes. ×0.80 skill nerf + `potEstimator`-derived POT.
+- **Faces (facesjs)** -- `MyFace.tsx` ZenGM-pattern wrapper, 2:3 aspect, reject-loop for non-basketball accessories. `PlayerPortrait` renders faces only when descriptor has real body+head slots. `DraftScoutingView` small + big avatars on facesjs path.
+- **SigningModal end-to-end** -- GM preflight ("Testing Free Agency"), commissioner auto-accept + override, 2-decimal salary + hold-ramp chevrons, MLE row + "Sign with MLE", cap-violation final gate, roster-slot awareness (standard vs two-way), external-league buyout slider with FIBA cap + Mother Team Interest bar. External-league contracts synthesized at init for leagues missing gist contracts. `EXTERNAL_SALARY_SCALE` caps NBA offer at ~3x overseas peak.
+- **Trade Proposals (GM)** -- `inboundProposalGenerator.ts` scans every team vs. user's trading block, builds 1/2/3-for-1/2/3 combos with +/-15% TV parity + salary legality. Auto-refreshes on `state.date` change. Hidden for commissioners.
+- **`usePlayerQuickActions` hook** -- unifies player-row clicks (view_bio / view_ratings / sign / resign / waive) across NBACentral, PlayersView, FreeAgentsView, PlayerRatingsView, PlayerStatsView, PlayerBiosView.
+- **Transaction Calendar (commissioner-editable)** -- `EconomyTab` section with trade-deadline month/ordinal/day-of-week, FA start, moratorium slider, year-round FA toggle, post-deadline multi-year toggle. `dateUtils` gained `getTradeDeadlineDate`, `getFreeAgencyStartDate`, `isPastTradeDeadline`, `isInFreeAgencyWindow`, `canSignMultiYear`.
+- **All-Star Weekend refactor** -- `getAllStarSunday` uses `resolveSeasonDate(y, 2, 3, 'Sun', 0)` so Fri/Sat/break offsets always land on real weekdays. Announcement dates anchored as weekly offsets. `LeagueStats.allStarHosts` seeded. `AllStarHostPickerModal` + `hostAutoResolver.ts` (10-season cooldown). New `AllStarHistoryView` (gist 1951+). Portrait fix (BBGM first, CDN only on fallback).
+- **Finals MVP formula** -- Finals-only aggregate (`finalsSeries.gameIds`), avg pts/reb/ast/stl/blk - tov, TS% above league avg x8, min-3-GP eligibility, minutes-load bonus. Was picking single-highest-gameScore across ALL playoff rounds.
+- **Semifinals MVP** -- one per round-3 series completed in the batch, written to `historicalAwards` + `player.awards[]`. Visible in `LeagueHistoryDetailView`.
+- **LeagueHistoryView best records 0-0 fix** -- rollover now overwrites BBGM-preseeded `seasons[]` entry (was kept as stale 0-0 by old `alreadyArchived` check).
+- **GM Mode polish** -- welcome news tailored to "{Team} Hires {GM Name}", user's team hoists to front of TeamOffice grid with team-color glow + "Your Team" badge. TradingBlock edit-gated. Upcoming FA defaults to user team. Waive dispatches directly.
+- **Inflation editor** -- integrated in `SettingsModal` via `InflationEditor` (commissioner only).
+- **Draft Scouting polish** -- `maxYear` caps at furthest real-prospect year. Right chevron expands to `current+4` on fresh games. Dicebear -> facesjs.
+
+## Session 24 (Apr 18, 2026)
+
+- **DraftScouting tab (Team Office)** -- advisor big board (70% value + 30% fit), pick inventory with range projections, team mode awareness. `DraftScouting.tsx`, `TeamOfficeView.tsx`
+- **Game log DNPs for season-start injured** -- `joinedMidSeason` guard lets pre-injured players show DNP rows. `PlayerBioGameLogTab.tsx`
+- **G-League K2 >= 78 guard** -- no more Paul George / star tier assignments to G-League. `simulationHandler.ts`
+- **External salary scale** -- Euroleague capped $5M (was $16M).
+- **Currency display** -- EUR/JPY/PHP/CNY/AUD in transactions + `PlayerBioContractTab`.
+- **PlayerBioContractTab** -- external team names + league column from `player.status`.
+- **PlayerStatsView badges** -- ring + All-Star icons (was "RING"/"AS" text).
+- **GM-mode UI hides** -- edit ratings + heal player hidden in GM mode.
+- **Jumpstart lazy-sim** -- passes `stopBefore: true` so picking Oct 24 lands with opening-night games unplayed.
+
+## Session 21 (Apr 17, 2026)
+
+- **Season rollover in lazy sim** -- `lazySimRunner.ts` now calls `applySeasonRollover` when crossing Jun 30 (root cause of "season 2 unplayable")
+- **Year-scoped schedule guard** -- `autoGenerateSchedule` checks date range, not just game existence. `autoResolvers.ts`
+- **Player option history entries** -- both opt-in and opt-out written to `state.history` with news items. `seasonRollover.ts`
+- **Trade GM name resolution** -- `getGMName()` helper looks up real GM names from `state.staff.gms`. `AITradeHandler.ts`
+- **Commissioner signing contractYears** -- `handleSignFreeAgent` builds proper `contractYears[]`. `playerActions.ts`
+
+## Session 19 (Apr 16, 2026)
+
+- **G-League assignment system** -- auto-assign at 0 GP after 15 team games, recall on GP > 0, orange/sky badges in TransactionsView. `TransactionsView.tsx`, `simulationHandler.ts`
+- **Training camp roster (21-man)** -- `maxTrainingCampRoster` in LeagueStats, preseason uses 21 slots, regular season 15. `EconomyTeamsSection.tsx`, `AIFreeAgentHandler.ts`
+- **Trade salary sync on LOAD_GAME** -- syncs `contract.amount` from `contractYears[]` for current season. `GameContext.tsx`
+
+## Session 17 (Apr 16, 2026)
+
+- **AI pick sweeteners** -- buyers with >4 future 2nd rounders auto-include one; gap-fill adds up to 2 R2s + 1 R1 to close value gaps. `AITradeHandler.ts`
+- **Trade Finder 3rd player slot** -- if gap >40 TV after 2 players, adds a 3rd matching player. `TradeFinderView.tsx`
+- **Dynamic trade ratio threshold** -- >=200TV uses 1.15, >=100TV uses 1.35, else 1.45. `TradeFinderView.tsx`
+- **Contract JSON integration** -- real per-season contract amounts from `nbacontractsdata` gist. `rosterService.ts`, `constants.ts`
+- **Lazy sim pre-Aug14 eager schedule** -- fires broadcasting/global_games/intl_preseason/schedule_generation before first sim batch. `lazySimRunner.ts`
+
+## Session 16 (Apr 16, 2026)
+
+- **Player morale market size buff** -- DIVA/MERCENARY get market delta from `team.pop`; LOYAL tenure bonus. `moodScore.ts`
+- **Top-3 star trade override** -- `topNAvgK2()` helper; teams with avg K2 OVR of top-3 >= 88 always classified as heavy_buyer/Contending. `salaryUtils.ts`
+- **External routing age gate + distribution** -- players 30+ redirect G-League to ChinaCBA/Euroleague; seeded random distribution across leagues. `externalSigningRouter.ts`
+
+## Session 15 (Apr 15, 2026)
+
+- **effectiveRecord() helper** -- falls back to previous season W-L when GP < 10 (offseason/preseason). `salaryUtils.ts`
+- **TransactionsView league filter** -- filter transactions by league
+- **AI trade frequency slider** -- `aiTradeFrequency` setting (default 50) with Settings UI. `SettingsManager.ts`, `SettingsModal.tsx`
+
+## Session 14 (Apr 15, 2026)
+
+- **Trade Finder (full rewrite)** -- connected to `useGame()`, real players/picks/mood, "Find Offers" scans all 29 teams, "Manage Trade" opens TradeMachineModal inline. `src/components/central/view/TradeFinderView.tsx`
+- **Trade Value Engine** -- pure calculation functions: `calcPlayerTV`, `calcPickTV`, `getTeamMode`, `autoBalance`, `isSalaryLegal`. `src/services/trade/tradeValueEngine.ts`
+- **AI-AI trade execution** -- `executeAITrade()` physically moves players/picks between teams, writes history. `AITradeHandler.ts`
+- **TradeMachineModal salary eyebrow** -- live salary validity badge next to each "Outgoing" header
+- **Trade deadline frequency** -- normal: every 7 days, pre-deadline: every 3 days, final week: every day. `simulationHandler.ts`
+- **FreeAgentsView ChinaCBA + NBLAustralia pool buttons**
+
+## Session 13 (Apr 15, 2026)
+
+- **China CBA league** -- mult 0.70, tid+7000, ratings + bio gists. `externalRosterService.ts`
+- **NBL Australia league** -- mult 0.75, tid+8000, ratings + bio gists. `externalRosterService.ts`
+- **WNBA gist update** -- 3 new gists (wnbaratings + wnbabio1 + wnbabio2)
+- **Euroleague multiplier bump** -- 0.780 to 0.980 (final). `leagueOvr/index.ts`
+- **8-league preseason schedule** -- all international teams get preseason games within Oct 1-15 window. `autoResolvers.ts`
+
+## Session 12 (Apr 15, 2026)
+
+- **BBGM/K2 rating scale consistency pass** -- all OVR thresholds across externalSigningRouter, seasonRollover, AIFreeAgentHandler, AITradeHandler, charania.ts corrected to proper scale. README reference table added.
+
+## Session 11 (Apr 15, 2026)
+
+- **Two-way contracts** -- `twoWay?: boolean` on NBAPlayer, auto-assign undrafted FAs to two-way slots, cap exclusion, purple "2W" chip in TeamFinances. `types.ts`, `autoResolvers.ts`, `salaryUtils.ts`
+- **Super max eligibility** -- `superMaxEligible` flag set at rollover based on Bird Rights + service years + recent awards. `seasonRollover.ts`, `salaryUtils.ts`
+- **Contract salary formula** -- `computeContractOffer()` with OVR/POT scoring, service-tiered max, mood modifiers. `salaryUtils.ts`
+- **External signing router** -- routes unsigned FAs to Euroleague/G-League/PBA/B-League by OVR tier. `src/services/externalSigningRouter.ts`
+- **Season-end extensions** -- `runAISeasonEndExtensions` fires every 7 days in May-June. `AIFreeAgentHandler.ts`
+- **Settings modal redesign** -- 3 tabs: AI & Narrative / Gameplay / Performance. Max Box Score Years slider.
+- **Box scores pruning at rollover** -- filters by `maxBoxScoreYears` setting. `seasonRollover.ts`
+- **March 1 playoff eligible flag** -- `playoffEligible?: boolean`, set false for late signings. `simulationHandler.ts`
+- **Draft picks full window at init** -- 2027-2033 picks available in trade machine from day 1. `initialization.ts`
+
+## Session 10 (Apr 14, 2026)
+
+- **Draft pick season filter** -- TradeMachineModal filters picks by `tradablePickCutoff`. `TradeMachineModal.tsx`
+- **DraftScoutingView 404 fallback** -- when gist fails, shows all `tid === -2` prospects sorted by OVR with generated scouting reports. `DraftScoutingView.tsx`
+
+## Session 9 (Apr 13, 2026)
+
+- **`src/utils/dateUtils.ts`** -- `resolveSeasonDate()`, `getSeasonSimStartDate()`, `getOpeningNightDate()` for fully dynamic season dates
+- **Hardcoded date sweep** -- all 2025/2026 literals replaced with `leagueStats.year`-derived expressions across 10+ files
+- **`retirementChecker.ts`** -- probabilistic retirement based on age + OVR viability threshold, seeded. `src/services/playerDevelopment/retirementChecker.ts`
+- **`DraftPickGenerator.ts`** -- `generateFuturePicks()` (idempotent R1+R2), `pruneExpiredPicks()`. `src/services/draft/DraftPickGenerator.ts`
+- **PlayerBiosView mobile** -- unified scrollable table with sticky name column. `PlayerBiosView.tsx`
+- **Resignings in TransactionsView** -- mid-season extensions and offseason FA signings push history entries
+
+## Session 8 (Apr 13, 2026)
+
+- **Contract salary system** -- `computeContractOffer()`: `score = OVR*0.5 + POT*0.5; salary = MAX(min, maxContract*((score-68)/31)^1.6)`. `salaryUtils.ts`
+- **Draft lottery results used for pick order** -- DraftSimulatorView reads `state.draftLotteryResult` for picks 1-14. `DraftSimulatorView.tsx`
+- **Draft + Lottery auto-fire in all sim paths** -- `wasDateReached(May14)` triggers lottery, `wasDateReached(Jun26)` triggers draft in `gameLogic.ts`
+- **Season Preview flow** -- DayView card (Aug 14) + ScheduleView prop + NavigationMenu Seasonal entry
+- **Trade deadline gate** -- AI proposals gated by Feb 15; TradeSummaryModal shows deadline override buttons. `simulationHandler.ts`, `TradeSummaryModal.tsx`
+- **Broadcasting deadline moved to June 30** -- `BroadcastingView.tsx`, `NavigationMenu.tsx`
+- **Sportsbook wager input fix** -- `type="text"` + `inputMode="decimal"` for mobile. `BetSlipPanel.tsx`
+- **Mobile refactors** -- TeamFinancesView, TeamFinancesViewDetailed, RealStern all responsive
+
+## Session 7 (Apr 12, 2026)
+
+- **Awards flow to player.awards** -- All-NBA/Defensive/Rookie, All-Star, Champion all write to `player.awards[]`. `autoResolvers.ts`, `lazySimRunner.ts`
+- **Watch Game from NBA Central** -- pre-sim + RECORD_WATCHED_GAME + ADVANCE_DAY before opening viewer
+- **DNP spoiler fix** -- coach decisions hidden until game simulated. `GameSimulatorScreen.tsx`
+- **PlayerPortrait fallback chain** -- BBGM to NBA HD CDN to initials avatar. `src/components/shared/PlayerPortrait.tsx`
+- **Deterministic player progression** -- `internalId` now deterministic, `careerOffset` per-player developmental fingerprint. `bbgmParser.ts`, `rosterService.ts`, `ProgressionEngine.ts`
+- **PlayoffAdvancer rewrite** -- MATCHUP_PAIRS per-feeder scheduling. `PlayoffAdvancer.ts`
+
+## Apr 11, 2026 -- Ratings & Progression
+
+- **POT (Potential) system** -- BBGM `potEstimator` formula, derived fresh everywhere (not stored). Age < 29: formula-based, age >= 29: POT = OVR. `PlayerRatingsModal`, `PlayerBioView`, `PlayerBiosView`, `PlayerRatingsView`
+- **OVR/POT badge consistency** -- modal + BioView OVR badge both use `convertTo2KRating(player.overallRating, hgt, tp)`
+- **Weekly OVR timeline chart** -- records every Sunday in ProgressionEngine, raw BBGM float, chart converts to K2. Last 56 snapshots (~1yr). `ProgressionEngine.ts`
+- **Column filters** -- `evaluateFilter()` supports `>=`, `<=`, `>`, `<`, `|` (OR), `!` (NOT). Added to PlayerStatsView, PlayerRatingsView, PlayerBiosView
+- **`buildAutoResolveEvents(year)`** -- all milestone dates derived from `leagueStats.year`. `lazySimRunner.ts`
+
+## Apr 10, 2026 -- Draft System & Stats
+
+- **Draft Lottery UI** -- Fanspo CSS ball reveal animation, results table, history section, speed selector, NBA 2019 odds. `src/components/draft/DraftLotteryView.tsx`
+- **Draft Simulator** -- 2-round draft from `state.players` prospects, position filter, auto-sim with speed control, pick modal, full draft table. `src/components/draft/DraftSimulatorView.tsx`
+- **PlayerStatsView BBGM-style rewrite** -- team/season/per-mode/reg-playoff selectors, advanced stats, bref career fetch, HOF highlighting, pagination. `PlayerStatsView.tsx`
+- **Progression tab rework** -- K2 view with collapsible categories + Simple view with career OVR line chart
+- **Missing portraits gist** -- `fetchMissingPortraits()` from `nbamissingportraits5000pts` gist. `franchiseService.ts`
+
+## Apr 8, 2026 -- Playoff Engine & Awards
+
+- **Staggered award announcements** -- 7 individual resolvers: COY (Apr 19), SMOY (Apr 22), MIP (Apr 25), DPOY (Apr 28), ROY (May 2), All-NBA (May 7), MVP (May 21). `autoResolvers.ts`, `lazySimRunner.ts`
+- **Award Races projected/winner labels** -- before announcement: "Projected Winner"; after: "Winner" in amber. `AwardRacesView.tsx`
+- **LeagueHistoryView** -- per-season browser: Champion, Runner Up, Best Records (E/W), COY, MVP, DPOY, SMOY, MIP, ROY, Finals MVP. Both BBGM + flat schemas. `src/components/central/view/LeagueHistoryView.tsx`
+- **LeagueHistoryDetailView** -- single-season drill-in: award cards with portraits, All-NBA/Defensive/Rookie teams, stat leaders, All-Stars, semifinals MVPs, Wikipedia bref data
+- **Playoff series news in lazy sim** -- `generatePlayoffSeriesNews()` detects completed series, championship, Finals MVP. `lazySimRunner.ts`
+- **Playoff social feed** -- NBA Official, NBA Central, Legion Hoops, Hoop Central post templates for playoff/championship games. `SocialEngine.ts`
+- **AwardService 65-game rule** -- hard floor when 82 GP, proportional mid-season, injury exception, commissioner config. `AwardService.ts`
+
+## Mar 2026 -- Foundation Features
+
+### Views & Navigation
+- **PlayerBiosView** -- filterable/sortable table of all players (NBA + intl + retired) with search, dropdowns, column filters, OVR badge coloring, HOF badge. `src/components/central/view/PlayerBiosView.tsx`
+- **TeamHistoryView** -- per-franchise deep-dive: retired jerseys, all-time top players, franchise records, career leaders (gist + live), season history. `src/components/central/view/TeamHistoryView.tsx`
+- **EventsView (Commissioner's Diary)** -- separated from TransactionsView; League Events go here, roster moves stay in Transactions
+- **SeasonalView** -- all seasonal actions (celebrity, christmas, global games, All-Star actions) with deadline banners. `SeasonalView.tsx`
+- **Sidebar restructure** -- Command Center (Schedule+Actions), Seasonal, Events, Commish Store, Legacy (Approvals+Viewership+Finances)
+
+### Sportsbook
+- **Sportsbook redesign** -- 3 tabs: Today's Lines (moneyline + O/U), Player Props (pts/reb/ast for top 4 active per team), My Bets (P&L + win rate). Single/Parlay toggle, auto-replace conflicting legs. `SportsbookView.tsx`
+- **Sportsbook odds** -- O/U props use -110 equivalent (1.909/2.062), moneyline +0.05 juice per side (~4.5-5.5% vig)
+
+### Simulation Engine
+- **Watch Game precomputed playback** -- "Watch Live" pre-sims, dispatches RECORD_WATCHED_GAME + ADVANCE_DAY, then opens pure visual playback. No re-simulation on leave. `ScheduleView.tsx`, `useLiveGame.ts`
+- **Mid-game injuries** -- probability weighted by minutes played (20%/7%/2%/0.6%), stored in `playerInGameInjuries` on `GameResult`, orange "Left early" in BoxScoreModal. `engine.ts`
+- **Win/lose streak news** -- thresholds [5,7,10,14], `long_win_streak` (8+), `streak_snapped` (5+ W then L). `lazySimRunner.ts`, `socialHandler.ts`
+- **Lazy sim paychecks** -- `generatePaychecks` per batch with `lastPayDate` tracking. `lazySimRunner.ts`
+- **Daily/Weekly news split** -- `newsType: 'daily' | 'weekly'` on NewsItem; NewsFeed has Daily/Period Recaps tabs
+
+### Mood & Drama
+- **Mood system (Phase 1)** -- 7 traits (DIVA/LOYAL/MERCENARY/COMPETITOR/VOLATILE/AMBASSADOR/DRAMA_MAGNET), mood score -10 to +10, drama probability weighting. `src/utils/mood/`
+- **FightGenerator** -- base 0.4% per game, boosted by traits + real-player propensity map, severity: scuffle/ejection/brawl. `src/services/FightGenerator.ts`
+
+### All-Star Weekend
+- **All-Star Weekend actions** -- Rig Voting, Dunk/3PT Contestants, Replacement. `SeasonalView.tsx`, `GameContext.tsx`
+- **Dunk/3PT contestant modals** -- all active players with search, portraits, 2K dunk/vertical scores. Always editable
+- **All-Star replacement flow** -- injury detection, conference-matched replacement, DNP/replacement badges. `AllStarReplacementModal.tsx`, `AllStarRoster.tsx`
+- **All-Star game scoring** -- `exhibitionScoreMult: 1.48`, `flatMinutes: true` with 20 avg target. `KNOBS_ALL_STAR`
+
+### Economy & Contracts
+- **`salaryUtils.ts`** -- shared library: `contractToUSD`, `getTeamPayrollUSD`, `formatSalaryM`, `getCapThresholds`, `getCapStatus`. `src/utils/salaryUtils.ts`
+- **LeagueFinancesView** -- league-wide cap dashboard: 30 teams sorted by payroll/cap space, per-team payroll bar with cap/tax/apron markers. `LeagueFinancesView.tsx`
+- **Phase-weighted season revenue** -- Finals days earn ~3-6x more daily revenue than Preseason. `Dashboard.tsx`, `ViewershipService.ts`
+- **Revenue history tracking** -- `LeagueStats.revenueHistory` with AreaChart + 7D/30D/90D/Season filter. `LeagueFinancesView.tsx`
+
+### Player Bio
+- **PlayerBioHero** -- extracted component with portrait priority (BBGM to NBA CDN to initials), HoF badge overlay. `PlayerBioHero.tsx`
+- **Career team for retired players** -- aggregates career GP by tid, shows most-GP team instead of "FREE AGENT". `PlayerBioView.tsx`
+- **TransactionsView year picker** -- left/right chevron year navigation. `TransactionsView.tsx`
+
+### Data Sources
+- **NBA 2K Badges** -- gist-backed badge tiers (HOF/Gold/Silver/Bronze), probability multipliers. `src/data/NBA2kBadges.ts`
+- **NBA 2K Ratings** -- full attribute ratings per team/player for defense weighting and dunk contest. `src/data/NBA2kRatings.ts`
+- **Coach photos** -- dual gist endpoints for headshot URLs and B-Ref slugs. `src/data/photos/coaches.ts`
+
+### Shared Components
+- **TeamDropdown** -- reusable team selector. `src/components/shared/TeamDropdown.tsx`
+- **TabBar** -- shared tab component. `src/components/shared/ui/TabBar.tsx`
+- **SortableTh** -- sortable table header. `src/components/shared/ui/SortableTh.tsx`
+
+---
+
+## Current WIP (in-progress, uncommitted)
+
+- **AI trade: contending teams protect K2 80+ players** — prevent AI sellers from trading franchise cornerstones. `tradeValueEngine.ts` gating.
+- **Career highs tracking** — per-game career highs (PTS, REB, AST, etc.) in `PlayerBioGameLogTab.tsx`.
+
+*Last sync: Apr 30, 2026*

@@ -74,9 +74,10 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   allStarGameEnabled: true,
   allStarFormat: 'usa_vs_world',
   allStarTeams: 3,
-  allStarMirrorLeagueRules: true,
+  // Default OFF — 2026 NBA tournament format uses 4×3=12 min total games, not 4×12 league-mirror.
+  allStarMirrorLeagueRules: false,
   allStarGameFormat: 'timed',
-  allStarQuarterLength: 12,
+  allStarQuarterLength: 3,
   allStarNumQuarters: 4,
   allStarDunkContest: true,
   allStarDunkContestPlayers: 4,
@@ -97,8 +98,9 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   allStarOneOnOneEnabled: false,
   allStarOneOnOneParticipants: 8,
   risingStarsEnabled: true,
-  risingStarsFormat: 'tournament',
+  risingStarsFormat: '4team_tournament',
   risingStarsMirrorLeagueRules: false,
+  risingStarsQuarterLength: 3,
   celebrityGameEnabled: true,
   celebrityGameMirrorLeagueRules: true,
   allStarEnding: 'Normal',
@@ -114,6 +116,14 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   numberOfAprons: 2,
   firstApronPercentage: 126.7,
   secondApronPercentage: 134.4,
+  tradeMatchingRatioUnder: 1.25,
+  tradeMatchingRatioOver1st: 1.10,
+  tradeMatchingRatioOver2nd: 1.00,
+  restrictCashSendOver2ndApron: true,
+  restrictAggregationOver2ndApron: true,
+  restrictSignAndTradeAcquisitionOver1stApron: true,
+  freezePickAt2ndApron: true,
+  restrictTPEProvenanceOver2ndApron: true,
 
   // Economy - Teams
   twoWayContractsEnabled: true,
@@ -444,6 +454,9 @@ export const EXTERNAL_SALARY_SCALE: Record<string, { maxPct: number; minPct: num
   'G-League':       { maxPct: 0.003,  minPct: 0.0003 },  // ~$460K max, ~$46K min
   'China CBA':      { maxPct: 0.019,  minPct: 0.0013 },  // ~$3M max, ~$200K min
   'NBL Australia':  { maxPct: 0.0065, minPct: 0.00065 }, // ~$1M max, ~$100K min
+  // WNBA cap is structurally tied to the NBA cap as ~1.6% (real-world WNBA supermax
+  // ~$250K vs NBA cap ~$154M). Players make $80K-$250K, top stars touch supermax.
+  WNBA:             { maxPct: 0.0016, minPct: 0.0005 },  // ~$250K max, ~$77K min at $154M cap
 };
 
 /** Currency display for external leagues — USD stored internally, converted at display */
@@ -455,6 +468,7 @@ export const EXTERNAL_CURRENCY: Record<string, { symbol: string; code: string; r
   'G-League':      { symbol: '$',  code: 'USD', rate: 1 },
   'China CBA':     { symbol: '¥',  code: 'CNY', rate: 7.24 },
   'NBL Australia': { symbol: 'A$', code: 'AUD', rate: 1.53 },
+  WNBA:            { symbol: '$',  code: 'USD', rate: 1 },
 };
 
 /** Format salary in local currency for an external league */
@@ -514,6 +528,7 @@ export const LEAGUE_HEIGHT_CEILING: Record<string, number> = {
   Euroleague:      87, // 7'3"  (Edey is the outlier max)
   'G-League':      86, // 7'2"
   NBA:             88, // 7'4"  (Wemby is the outlier)
+  WNBA:            80, // 6'8"  (Brittney Griner / Han Xu tier max)
 };
 
 /** Draft path → league name (for height ceiling lookup in genDraftPlayers.ts). */

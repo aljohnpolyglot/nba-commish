@@ -6,7 +6,7 @@ import { generate as generateFaceRaw } from 'facesjs';
 // accessories only.
 const BASKETBALL_JERSEY_IDS = ['jersey', 'jersey2', 'jersey3', 'jersey4', 'jersey5'] as const;
 const BASKETBALL_ACCESSORY_IDS = ['none', 'headband', 'headband-high'] as const;
-const generateFace = (opts?: { race?: string; gender?: 'male' | 'female' }): any => {
+export const generateBasketballFace = (opts?: { race?: string; gender?: 'male' | 'female' }): any => {
   const jerseyId = BASKETBALL_JERSEY_IDS[Math.floor(Math.random() * BASKETBALL_JERSEY_IDS.length)];
   const accessoryId = BASKETBALL_ACCESSORY_IDS[Math.floor(Math.random() * BASKETBALL_ACCESSORY_IDS.length)];
   const face = generateFaceRaw({
@@ -15,6 +15,7 @@ const generateFace = (opts?: { race?: string; gender?: 'male' | 'female' }): any
   }, opts as any);
   return face;
 };
+const generateFace = generateBasketballFace;
 
 import { Player, Position, Ratings, NameData, MoodTrait } from '../genplayersconstants';
 import { COLLEGE_FREQUENCIES, COUNTRY_FREQUENCIES, EUROLEAGUE_TEAMS, ENDESA_TEAMS, NBL_TEAMS, BLEAGUE_TEAMS, getRaceFrequencies } from '../genplayersconstants';
@@ -227,10 +228,10 @@ function getArchetypeSelection(pos: string): string {
   return 'All-Around Wing';
 }
 
-export function generateDraftClass(year: number, count: number, rng: () => number, nameData: NameData, path: Player['path'] = 'College', currentSimYear?: number, eligibilityRule?: string, forcedOvrBand?: OvrBand): Player[] {
+export function generateDraftClass(year: number, count: number, rng: () => number, nameData: NameData, path: Player['path'] = 'College', currentSimYear?: number, eligibilityRule?: string, forcedOvrBand?: OvrBand, gender?: 'male' | 'female'): Player[] {
   const prospects: Player[] = [];
   for (let i = 0; i < count; i++) {
-    prospects.push(generateProspect(year, rng, nameData, path, currentSimYear, eligibilityRule, forcedOvrBand));
+    prospects.push(generateProspect(year, rng, nameData, path, currentSimYear, eligibilityRule, forcedOvrBand, gender));
   }
   return prospects;
 }
@@ -238,7 +239,7 @@ export function generateDraftClass(year: number, count: number, rng: () => numbe
 /** Internal stratified band passed from generateDraftClassForGame. */
 type OvrBand = { min: number; max: number; qualityBias: number; potMin?: number; potMax?: number };
 
-function generateProspect(year: number, rng: () => number, nameData: NameData, path: Player['path'], currentSimYear?: number, eligibilityRule?: string, forcedOvrBand?: OvrBand): Player {
+function generateProspect(year: number, rng: () => number, nameData: NameData, path: Player['path'], currentSimYear?: number, eligibilityRule?: string, forcedOvrBand?: OvrBand, gender?: 'male' | 'female'): Player {
   // `draftAge` is the age the prospect will be AT the draft.
   // `age` is their CURRENT age (at the sim's current season) — drives ratings so prospects
   // synthesized for future classes don't arrive at draft-level skills too early.
@@ -527,7 +528,7 @@ function generateProspect(year: number, rng: () => number, nameData: NameData, p
   // Determine Race
   const raceFreqs = getRaceFrequencies(nationality);
   const race = pickWeighted(raceFreqs) as "black" | "asian" | "brown" | "white";
-  const face = generateFace({ race });
+  const face = generateFace({ race, gender });
   const jerseyNumber = generateJerseyNumber(rng);
 
   return {
@@ -673,6 +674,7 @@ export function generateDraftClassForGame(
   nameData: NameData,
   currentSimYear?: number,   // sim's current year — lets us age-down prospects for future classes
   eligibilityRule?: string,  // selects the era age distribution shape
+  gender?: 'male' | 'female',
 ): NBAPlayer[] {
   const prospects: NBAPlayer[] = [];
 
@@ -681,7 +683,7 @@ export function generateDraftClassForGame(
   if (count < 30) {
     for (let i = 0; i < count; i++) {
       const path = samplePath(rng);
-      const single = generateDraftClass(year, 1, rng, nameData, path, currentSimYear, eligibilityRule);
+      const single = generateDraftClass(year, 1, rng, nameData, path, currentSimYear, eligibilityRule, undefined, gender);
       if (single[0]) prospects.push(sandboxToNBAPlayer(single[0]));
     }
     return prospects;
@@ -701,7 +703,7 @@ export function generateDraftClassForGame(
 
     for (let i = 0; i < bandCount; i++) {
       const path = samplePath(rng);
-      const single = generateDraftClass(year, 1, rng, nameData, path, currentSimYear, eligibilityRule, band);
+      const single = generateDraftClass(year, 1, rng, nameData, path, currentSimYear, eligibilityRule, band, gender);
       if (single[0]) {
         let prospect = sandboxToNBAPlayer(single[0]);
         // potEstimator inflates every tier-2+ pick to K2 99 because it reads the
@@ -709,7 +711,7 @@ export function generateDraftClassForGame(
         if (band.potMin !== undefined && band.potMax !== undefined) {
           const potRange = band.potMax - band.potMin;
           const potBbgm = Math.round(band.potMin + seededRng(`draft_pot_${year}_${filled}_${band.min}`) * potRange);
-          prospect = { ...prospect, potential: potBbgm };
+          prospect = { ...prospect, potential: potBbgm } as any;
           if (prospect.ratings?.length) {
             const lastR = { ...prospect.ratings[prospect.ratings.length - 1], pot: potBbgm };
             prospect.ratings = [...prospect.ratings.slice(0, -1), lastR];
@@ -725,7 +727,7 @@ export function generateDraftClassForGame(
   const fringeCount = count - filled;
   for (let i = 0; i < fringeCount; i++) {
     const path = samplePath(rng);
-    const single = generateDraftClass(year, 1, rng, nameData, path, currentSimYear, eligibilityRule);
+    const single = generateDraftClass(year, 1, rng, nameData, path, currentSimYear, eligibilityRule, undefined, gender);
     if (single[0]) prospects.push(sandboxToNBAPlayer(single[0]));
   }
 

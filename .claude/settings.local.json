@@ -85,7 +85,13 @@
       "Bash(awk NR==31{print \"START_M\"} NR==510{print \"END_M\"} NR==512{print \"START_I\"} NR==729{print \"END_I\"} NR==731{print \"START_L\"} *)",
       "Bash(awk 'NR<31 || NR>=731' TODO.md)",
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d[0].get\\('bracket'\\), indent=2\\)[:2000]\\)\")",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:registry.npmjs.org)",
+      "Bash(git diff *)",
+      "Read(//tmp/**)",
+      "Read(//c/tmp/**)",
+      "Read(//c//**)"
     ]
   }
 }

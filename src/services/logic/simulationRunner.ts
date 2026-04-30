@@ -29,6 +29,11 @@ export const simulateDayGames = async (state: GameState, watchedGameResult?: any
         ? gamesToday.filter(g => g.isAllStar || g.isRisingStars || g.isPlayoff || g.isPlayIn)
         : gamesToday
     ).filter(g => {
+        // Cup TBD placeholders are not real games — they get materialized into
+        // QF/RS games when the group stage resolves. If a TBD slot reaches its
+        // own date without being converted (e.g. group stage didn't finish in
+        // time), skip it silently.
+        if ((g as any).isCupTBD) return false;
         // Skip playoff games whose series is already complete (prevents ghost games 6/7 after early series end)
         if ((g.isPlayoff || g.isPlayIn) && g.playoffSeriesId && state.playoffs) {
             const series = state.playoffs.series.find(s => s.id === g.playoffSeriesId);

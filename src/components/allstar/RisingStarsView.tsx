@@ -11,6 +11,8 @@ interface RisingStarsViewProps {
 
 export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, onWatchGame, onViewBoxScore }) => {
   const { state } = useGame();
+  const bracket = allStar?.risingStarsBracket;
+  const isTournament = !!bracket?.teams?.length;
   const gameId = allStar?.risingStarsGameId;
   const game = state.schedule?.find((g: any) => g.gid === gameId);
   const boxScore = state.boxScores?.find((r: any) => r.gameId === gameId || (r.homeTeamId === -3 && r.awayTeamId === -4));
@@ -19,7 +21,7 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, onWat
   const isToday = game && normalizeDate(game.date) === normalizeDate(state.date);
   const canWatch = isToday && !game.played;
 
-  if (!roster.length) {
+  if (!isTournament && !roster.length) {
     return (
       <div className="text-center py-20">
         <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto mb-4">
@@ -97,6 +99,112 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, onWat
   const HOME_LOGO = 'https://upload.wikimedia.org/wikipedia/en/thumb/1/16/Eastern_Conference_%28NBA%29_logo.svg/200px-Eastern_Conference_%28NBA%29_logo.svg.png';
   const AWAY_LOGO = 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/Western_Conference_%28NBA%29_logo.svg/200px-Western_Conference_%28NBA%29_logo.svg.png';
 
+  // ── Tournament path: 4-team bracket (3 NBA + 1 G League) ─────────────────
+  if (isTournament) {
+    const bracketTeams = bracket.teams as Array<{
+      tid: number; name: string; abbrev: string; coachName?: string;
+      isGLeague?: boolean; wins?: number; losses?: number; pf?: number; pa?: number;
+      playerIds?: string[];
+    }>;
+    // Game cards (SF + Final, in bracket order)
+    const orderedGames = [...(bracket.games ?? [])].sort((a: any, b: any) => {
+      if (a.round === b.round) return a.gid - b.gid;
+      return a.round === 'sf' ? -1 : 1;
+    });
+    return (
+      <div className="space-y-8">
+        {/* Bracket games — each card is one matchup */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {orderedGames.map((g: any) => {
+            const homeT = bracketTeams.find(t => t.tid === g.homeTid);
+            const awayT = bracketTeams.find(t => t.tid === g.awayTid);
+            const isFinal = g.round === 'final';
+            const sched = state.schedule?.find((s: any) => s.gid === g.gid);
+            const canWatchThis = sched && normalizeDate(sched.date) === normalizeDate(state.date) && !sched.played;
+            return (
+              <div key={g.gid} className={`bg-slate-900 rounded-2xl border ${isFinal ? 'border-amber-500/40' : 'border-slate-800'} p-5`}>
+                <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-3 ${isFinal ? 'text-amber-400' : 'text-sky-400'}`}>
+                  {isFinal ? 'Championship · Final' : 'Semifinal'} · First to {g.targetScore ?? (isFinal ? 25 : 40)}
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1 text-center">
+                    <div className={`text-3xl font-black mb-1 ${g.played ? (g.homeScore >= g.awayScore ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
+                      {g.played ? g.homeScore : '—'}
+                    </div>
+                    <div className="text-[10px] text-sky-400 font-black uppercase tracking-widest leading-tight">{homeT?.name ?? 'TBD'}</div>
+                    {homeT?.coachName && <div className="text-[8px] text-slate-500 mt-0.5">Coach {homeT.coachName.split(' ').pop()}</div>}
+                  </div>
+                  <div className="text-lg font-black text-slate-700 italic">VS</div>
+                  <div className="flex-1 text-center">
+                    <div className={`text-3xl font-black mb-1 ${g.played ? (g.awayScore > g.homeScore ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
+                      {g.played ? g.awayScore : '—'}
+                    </div>
+                    <div className="text-[10px] text-emerald-400 font-black uppercase tracking-widest leading-tight">{awayT?.name ?? 'TBD'}</div>
+                    {awayT?.coachName && <div className="text-[8px] text-slate-500 mt-0.5">Coach {awayT.coachName.split(' ').pop()}</div>}
+                  </div>
+                </div>
+                {g.played && g.mvpName && (
+                  <div className="mt-3 text-center text-[10px] text-amber-400 font-black uppercase tracking-wide">
+                    MVP: {g.mvpName} · {g.mvpPts} pts
+                  </div>
+                )}
+                {(g.played || canWatchThis) && (
+                  <div className="flex justify-center mt-3">
+                    {g.played
+                      ? <button onClick={() => sched && onViewBoxScore?.(sched)} className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-all">View Box Score</button>
+                      : canWatchThis && <button onClick={() => onWatchGame?.(sched)} className="px-4 py-1.5 bg-sky-500 hover:bg-sky-400 text-black rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"><Zap size={12} className="fill-current" />Watch Live</button>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* All 4 team rosters */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {bracketTeams.map(t => {
+            const teamPlayers = (t.playerIds ?? [])
+              .map((id: string) => {
+                const fp = state.players?.find((np: any) => np.internalId === id);
+                if (!fp) return null;
+                const teamObj = state.teams.find((tm: any) => tm.id === fp.tid);
+                return {
+                  playerId: fp.internalId,
+                  playerName: fp.name,
+                  teamAbbrev: teamObj?.abbrev ?? (fp.status === 'G-League' ? 'GL' : '—'),
+                  teamNbaId: teamObj?.logoUrl ? extractTeamId(teamObj.logoUrl, teamObj.abbrev) : null,
+                  position: fp.pos,
+                  ovr: fp.overallRating,
+                  imgURL: (fp as any).imgURL,
+                };
+              })
+              .filter(Boolean);
+            return (
+              <div key={t.tid} className="space-y-3">
+                <div className="flex items-center gap-3 px-2">
+                  <h4 className="text-sm font-black text-white uppercase tracking-widest whitespace-nowrap">{t.name}</h4>
+                  <div className="h-px bg-slate-800 flex-1" />
+                  <span className="text-[10px] text-slate-500 font-bold tracking-widest">{t.wins ?? 0}-{t.losses ?? 0}</span>
+                </div>
+                {t.coachName && (
+                  <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider px-2">
+                    Coach {t.coachName}{t.isGLeague ? ' · G League' : ''}
+                  </div>
+                )}
+                <div className="grid grid-cols-1 gap-3">
+                  {teamPlayers.length > 0
+                    ? teamPlayers.map((p: any) => <PlayerCard key={p.playerId} p={p} />)
+                    : <div className="text-xs text-slate-600 italic px-2">Roster assigned at sim time.</div>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Legacy 2-team path (rookies vs sophomores) ───────────────────────────
   return (
     <div className="space-y-8">
       {boxScore ? (
@@ -161,9 +269,9 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, onWat
           <p className="text-slate-400 text-sm">
             Rising Stars Challenge · Rookies vs Sophomores
           </p>
-          
+
           {canWatch && (
-            <button 
+            <button
               onClick={() => onWatchGame?.(game)}
               className="mt-6 px-8 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-2xl font-bold transition-all flex items-center gap-2 mx-auto"
             >

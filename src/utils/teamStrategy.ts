@@ -268,6 +268,17 @@ function inferStrategyKey(args: {
   const starAge = star ? ageOf(star, currentYear) : 27;
   const winPct = (wins + losses) > 0 ? wins / (wins + losses) : 0.5;
   const isOverTax = thresholds ? payrollUSD >= thresholds.luxuryTax : false;
+  const hasRecord = wins + losses >= 5;
+  const topOvr = star?.overallRating ?? 0;
+
+  // Offseason / no-record fallback must run before standings-derived outlook
+  // roles. Otherwise an arbitrary no-record conference rank can label a bad
+  // roster as a buyer and bypass rebuilding FA discipline.
+  if (!hasRecord) {
+    if (topOvr < 60 && avgAge <= 25.5) return 'development';
+    if (topOvr < 60) return 'rebuilding';
+    if (topOvr < 65 && avgAge >= 28) return 'rebuilding';
+  }
 
   if (outlook.role === 'heavy_buyer') {
     return confRank !== undefined && confRank <= 3 ? 'contending' : 'win_now';
@@ -282,6 +293,7 @@ function inferStrategyKey(args: {
     return avgAge <= 25.5 && starAge <= 25 ? 'development' : 'rebuilding';
   }
   if (avgAge <= 25.5 && winPct < 0.5) return 'development';
+
   return 'neutral';
 }
 

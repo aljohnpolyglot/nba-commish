@@ -530,6 +530,14 @@ export const ScheduleView: React.FC = () => {
                 const t = state.nonNBATeams?.find((t: any) => t.tid === tid);
                 return t ? { id: tid, name: t.name, abbrev: t.abbrev, logoUrl: t.imgURL, conference: t.league } as any : getTeamForGame(tid, state.teams);
               }
+              // For fake/exhibition teams (tid < 0), prefer the name stored in the box score
+              // so Rising Stars bracket teams show their real names (Team Melo, G League, etc.)
+              if (tid < 0) {
+                const bs = state.boxScores.find((b: any) => b.gameId === selectedBoxScoreGame.gid);
+                const base = getTeamForGame(tid, state.teams);
+                if (bs?.homeTeamName) return { ...base, name: bs.homeTeamName, abbrev: bs.homeTeamAbbrev ?? base.abbrev };
+                return base;
+              }
               return getTeamForGame(tid, state.teams);
             })()}
             awayTeam={(() => {
@@ -537,6 +545,12 @@ export const ScheduleView: React.FC = () => {
               if (tid >= 100) {
                 const t = state.nonNBATeams?.find((t: any) => t.tid === tid);
                 return t ? { id: tid, name: t.name, abbrev: t.abbrev, logoUrl: t.imgURL, conference: t.league } as any : getTeamForGame(tid, state.teams);
+              }
+              if (tid < 0) {
+                const bs = state.boxScores.find((b: any) => b.gameId === selectedBoxScoreGame.gid);
+                const base = getTeamForGame(tid, state.teams);
+                if (bs?.awayTeamName) return { ...base, name: bs.awayTeamName, abbrev: bs.awayTeamAbbrev ?? base.abbrev };
+                return base;
               }
               return getTeamForGame(tid, state.teams);
             })()}

@@ -3,6 +3,7 @@ import { generateContentWithRetry } from '../llm/utils/api';
 import { fetchRatedCelebrities, RatedCelebrity } from '../../data/celebrities';
 import { simulateGames } from '../simulationService';
 import { SettingsManager } from '../SettingsManager';
+import { getExhibitionQL } from './AllStarWeekendOrchestrator';
 
 export const getCelebrityRosterNames = (state: GameState): string[] => {
   const roster = state.allStar?.celebrityRoster || state.leagueStats.celebrityRoster;
@@ -129,13 +130,17 @@ export class AllStarCelebrityGameSim {
       isCelebrityGame: true,
     };
 
+    const celebQL = getExhibitionQL(state.leagueStats as any, 'celebrity');
     const simResult = await simulateGames(
       [fakeTeam1, fakeTeam2] as any,
       [...team1Players, ...team2Players] as any,
       [fakeGame] as any,
       state.date,
       50,
-      undefined
+      undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined,
+      state.leagueStats.year,
+      { quarterLength: celebQL }
     );
 
     const result = simResult.results[0];

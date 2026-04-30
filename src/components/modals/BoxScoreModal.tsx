@@ -45,20 +45,37 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
   const isIntraSquad = game.homeTid === game.awayTid;
   const awayDisplayName = isIntraSquad ? `${awayTeam.name} B` : awayTeam.name;
   const homeDisplayName = isIntraSquad ? `${homeTeam.name} A` : homeTeam.name;
+  const awayAbbrevLabel = isIntraSquad ? `${awayTeam.abbrev} B` : awayTeam.abbrev;
+  const homeAbbrevLabel = isIntraSquad ? `${homeTeam.abbrev} A` : homeTeam.abbrev;
+
+  // Style + label per "fake-team" archetype for All-Star / Rising Stars / Celebrity placeholders.
+  const FAKE_TEAM_STYLES = {
+    usa:   { cls: 'bg-sky-900/50 border-sky-500/60 text-sky-300',         label: '🇺🇸' },
+    world: { cls: 'bg-emerald-900/50 border-emerald-500/60 text-emerald-300', label: '🌍' },
+    east:  { cls: 'bg-blue-900/50 border-blue-500/60 text-blue-300',      label: 'E'  },
+    west:  { cls: 'bg-amber-900/50 border-amber-500/60 text-amber-300',   label: 'W'  },
+  } as const;
+  const classifyFakeTeam = (team: NBATeam): keyof typeof FAKE_TEAM_STYLES => {
+    const name = (team.name || '').toLowerCase();
+    if (name.includes('usa') || name.includes('stripe') || (name.includes('star') && !name.includes('rising'))) return 'usa';
+    if (name.includes('world')) return 'world';
+    if (team.conference === 'East' || name.includes('eastern')) return 'east';
+    return 'west';
+  };
 
   const renderTeamLogo = (team: NBATeam) => {
+    // Prefer threaded-through logoUrl whenever present.
+    if (team.logoUrl) {
+      const sizeCls = team.id < 0 ? 'w-16 h-16 md:w-24 md:h-24' : 'w-12 h-12 md:w-24 md:h-24';
+      return <img src={team.logoUrl} alt={team.name} className={`${sizeCls} object-contain drop-shadow-2xl group-hover:scale-110 transition-transform`} referrerPolicy="no-referrer" />;
+    }
     if (team.id < 0) {
-      const isEast = team.conference === 'East' || team.name.includes('Eastern');
+      const { cls, label } = FAKE_TEAM_STYLES[classifyFakeTeam(team)];
       return (
-        <div className={`w-16 h-16 md:w-24 md:h-24 rounded-full flex items-center justify-center text-3xl md:text-5xl font-black border-2 group-hover:scale-110 transition-transform ${
-          isEast ? 'bg-blue-900/50 border-blue-500/60 text-blue-300' : 'bg-amber-900/50 border-amber-500/60 text-amber-300'
-        }`}>
-          {isEast ? 'E' : 'W'}
+        <div className={`w-16 h-16 md:w-24 md:h-24 rounded-full flex items-center justify-center text-3xl md:text-5xl font-black border-2 group-hover:scale-110 transition-transform ${cls}`}>
+          {label}
         </div>
       );
-    }
-    if (team.logoUrl) {
-      return <img src={team.logoUrl} alt={team.name} className="w-12 h-12 md:w-24 md:h-24 object-contain drop-shadow-2xl group-hover:scale-110 transition-transform" referrerPolicy="no-referrer" />;
     }
     // Non-NBA team without logo
     return (
@@ -114,20 +131,33 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
 
   const renderQuarterlyScores = () => {
     if (!result || !result.quarterScores) return null;
-    
+
     const { home, away } = result.quarterScores;
     const otCount = result.isOT ? result.otCount : 0;
-    
+
+    const periodHeaders = ['Q1', 'Q2', 'Q3', 'Q4'];
+    const periodCellsFor = (scores: number[]): number[] => scores.slice(0, 4);
+
+    const renderRow = (label: string, scores: number[], total: number, keyPrefix: string) => (
+      <tr>
+        <td className="py-2 text-left font-bold text-slate-300">{label}</td>
+        {periodCellsFor(scores).map((q, i) => (
+          <td key={`${keyPrefix}-q-${i}`} className="py-2 font-mono text-slate-400">{q}</td>
+        ))}
+        {Array.from({ length: otCount }).map((_, i) => (
+          <td key={`${keyPrefix}-ot-${i}`} className="py-2 font-mono text-slate-400">{scores[4 + i] ?? 0}</td>
+        ))}
+        <td className="py-2 font-mono font-bold text-white">{total}</td>
+      </tr>
+    );
+
     return (
       <div className="w-full max-w-2xl mx-auto mt-6 px-4 overflow-x-auto custom-scrollbar">
         <table className="w-full text-xs text-center">
           <thead className="text-[10px] text-slate-500 uppercase tracking-widest border-b border-white/10">
             <tr>
               <th className="py-2 text-left">Team</th>
-              <th className="py-2">Q1</th>
-              <th className="py-2">Q2</th>
-              <th className="py-2">Q3</th>
-              <th className="py-2">Q4</th>
+              {periodHeaders.map(p => <th key={p} className="py-2">{p}</th>)}
               {Array.from({ length: otCount }).map((_, i) => (
                 <th key={`ot-${i}`} className="py-2">OT{i + 1}</th>
               ))}
@@ -135,16 +165,8 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-            <tr>
-              <td className="py-2 text-left font-bold text-slate-300">{isIntraSquad ? `${awayTeam.abbrev} B` : awayTeam.abbrev}</td>
-              {away.map((q, i) => <td key={`away-q-${i}`} className="py-2 font-mono text-slate-400">{q}</td>)}
-              <td className="py-2 font-mono font-bold text-white">{game.awayScore}</td>
-            </tr>
-            <tr>
-              <td className="py-2 text-left font-bold text-slate-300">{isIntraSquad ? `${homeTeam.abbrev} A` : homeTeam.abbrev}</td>
-              {home.map((q, i) => <td key={`home-q-${i}`} className="py-2 font-mono text-slate-400">{q}</td>)}
-              <td className="py-2 font-mono font-bold text-white">{game.homeScore}</td>
-            </tr>
+            {renderRow(awayAbbrevLabel, away, game.awayScore, 'away')}
+            {renderRow(homeAbbrevLabel, home, game.homeScore, 'home')}
           </tbody>
         </table>
       </div>
@@ -183,7 +205,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                   onClick={() => onTeamClick && onTeamClick(awayTeam.id)}
                   className="font-bold text-white hover:text-indigo-400 transition-colors"
                 >
-                  {isIntraSquad ? `${awayTeam.abbrev} B` : awayTeam.abbrev}
+                  {awayAbbrevLabel}
                 </button>
               </td>
               <td className="py-2 font-mono text-slate-300">{awayStats.eFG.toFixed(1)}</td>
@@ -197,7 +219,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                   onClick={() => onTeamClick && onTeamClick(homeTeam.id)}
                   className="font-bold text-white hover:text-indigo-400 transition-colors"
                 >
-                  {isIntraSquad ? `${homeTeam.abbrev} A` : homeTeam.abbrev}
+                  {homeAbbrevLabel}
                 </button>
               </td>
               <td className="py-2 font-mono text-slate-300">{homeStats.eFG.toFixed(1)}</td>
@@ -209,9 +231,9 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
         </table>
 
         <div className="flex justify-between text-xs font-bold tracking-widest text-slate-500 mb-2">
-          <span className="text-white">{isIntraSquad ? `${awayTeam.abbrev} B` : awayTeam.abbrev}</span>
+          <span className="text-white">{awayAbbrevLabel}</span>
           <span>TEAM STATS</span>
-          <span className="text-indigo-400">{isIntraSquad ? `${homeTeam.abbrev} A` : homeTeam.abbrev}</span>
+          <span className="text-indigo-400">{homeAbbrevLabel}</span>
         </div>
         
         <div className="flex flex-col">

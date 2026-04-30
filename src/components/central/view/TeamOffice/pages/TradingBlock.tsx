@@ -7,7 +7,7 @@ import { PlayerSelectorGrid, type PlayerSelectorItem } from '../../../../shared/
 import { calcOvr2K, calcPot2K, calcPlayerTV, computeLeagueAvg, getPotColor, isYoungContenderCore, type TeamMode } from '../../../../../services/trade/tradeValueEngine';
 import { generateInboundProposalsForUser } from '../../../../../services/trade/inboundProposalGenerator';
 import { getMinTradableSeason, getTradablePicks, getMaxTradableSeason } from '../../../../../services/draft/DraftPickGenerator';
-import { buildClassStrengthMap, buildLotterySlotMap } from '../../../../../services/draft/draftClassStrength';
+import { buildClassStrengthMap, buildFullDraftSlotMap, formatPickLabel } from '../../../../../services/draft/draftClassStrength';
 import { teamPowerRanks } from '../../../../../services/trade/tradeFinderEngine';
 import { getTradeOutlook, effectiveRecord, getCapThresholds, getTeamPayrollUSD, topNAvgK2, resolveManualOutlook } from '../../../../../utils/salaryUtils';
 import { getTradingBlock, saveTradingBlock } from '../../../../../store/tradingBlockStore';
@@ -34,6 +34,10 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
   const { state, dispatchAction } = useGame();
   const { players, teams, draftPicks } = state;
   const currentYear = state.leagueStats?.year ?? 2026;
+  const lotterySlotByTid = useMemo(
+    () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
+    [(state as any).draftLotteryResult, state.teams],
+  );
   const allActive = players.filter(p => p.tid >= 0 && !EXTERNAL.includes(p.status ?? '') && p.status !== 'Draft Prospect');
   const teamPlayers = allActive.filter(p => p.tid === teamId);
   const team = teams.find(t => t.id === teamId);
@@ -412,7 +416,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
     const outlookMap = buildOutlookMap();
     const minTradableSeason = getMinTradableSeason(state);
     const classStrengthByYear = buildClassStrengthMap(players, currentYear, currentYear, getMaxTradableSeason(state));
-    const lotterySlotByTid = buildLotterySlotMap((state as any).draftLotteryResult);
+    const lotterySlotByTid = buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams);
     const powerRanks = teamPowerRanks(teams, currentYear);
     const proposals = generateInboundProposalsForUser({
       userTid: teamId,
@@ -469,6 +473,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
           allTeamPicks={teamPicks}
           onOpenPickEditor={canEdit && teamMode === 'contend' ? () => setEditingColumn('block') : undefined}
           currentYear={currentYear} allTeams={teams} blockPickIds={blockPickIds}
+          lotterySlotByTid={lotterySlotByTid}
         />
         <EditableColumn title="Untouchables" items={untouchablesList} teams={teams}
           onAdd={canEdit ? () => setEditingColumn('untouchable') : undefined}
@@ -520,7 +525,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
                             <img src={origTeam.logoUrl} alt="" className="w-6 h-6 object-contain flex-shrink-0" referrerPolicy="no-referrer" />
                           )}
                           <div className="flex-1 min-w-0">
-                            <div className="text-[11px] font-black uppercase">{pick.season} {pick.round === 1 ? '1st' : '2nd'}</div>
+                            <div className="text-[11px] font-black uppercase">{formatPickLabel(pick, currentYear, lotterySlotByTid, false)}</div>
                             {pick.originalTid !== teamId && (
                               <div className="text-[9px] text-slate-500 truncate">via {origTeam?.abbrev}</div>
                             )}
@@ -566,6 +571,7 @@ function EditableColumn({
   currentYear?: number;
   allTeams?: NBATeam[];
   blockPickIds?: Set<number>;
+  lotterySlotByTid?: Map<number, number>;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -599,6 +605,8 @@ function EditableColumn({
                   pick={pick}
                   origTeam={origTeam}
                   onRemove={onRemovePick ? () => onRemovePick(pick.dpid) : undefined}
+                  currentYear={currentYear ?? new Date().getFullYear()}
+                  lotterySlotByTid={lotterySlotByTid ?? new Map()}
                 />
               );
             })}
@@ -743,16 +751,18 @@ function PlayerCard({ item, teamLogoUrl, onClick, onRemove }: { item: TVItem; te
   );
 }
 
-function PickRow({ pick, origTeam, onRemove }: {
+function PickRow({ pick, origTeam, onRemove, currentYear, lotterySlotByTid }: {
   pick: { dpid: number; season: number; round: number; originalTid: number; tid: number };
   origTeam?: NBATeam;
   onRemove?: () => void;
+  currentYear: number;
+  lotterySlotByTid: Map<number, number>;
 }) {
   const { revealed, hide, bind } = useRevealOnPressOrClick();
   return (
     <div {...bind} className="bg-indigo-900/20 border border-indigo-500/30 rounded px-3 py-2 flex items-center gap-2 relative overflow-hidden cursor-pointer select-none">
       {origTeam?.logoUrl && <img src={origTeam.logoUrl} alt="" className="w-5 h-5 object-contain" referrerPolicy="no-referrer" />}
-      <span className="text-[11px] font-black uppercase text-indigo-200">{pick.season} {pick.round === 1 ? '1st' : '2nd'}</span>
+      <span className="text-[11px] font-black uppercase text-indigo-200">{formatPickLabel(pick, currentYear, lotterySlotByTid, false)}</span>
       {pick.originalTid !== pick.tid && (
         <span className="text-[9px] text-slate-500 ml-auto">via {origTeam?.abbrev}</span>
       )}

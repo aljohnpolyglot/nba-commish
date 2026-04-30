@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GameState, CommissionerLogEntry, SocialPost } from '../types';
+import { GameState, CommissionerLogEntry, SocialPost, NBAPlayer } from '../types';
 import { calculatePlayerOverallForYear } from '../utils/playerRatings';
 
 export const useGameActions = (setState: React.Dispatch<React.SetStateAction<GameState>>, getState: () => GameState) => {
@@ -115,6 +115,35 @@ export const useGameActions = (setState: React.Dispatch<React.SetStateAction<Gam
         return { ...updatedPlayer, overallRating: newOvr };
       }),
     }));
+  };
+
+  const createPlayer = (player: NBAPlayer) => {
+    setState(prev => {
+      const team = prev.teams.find(t => t.id === player.tid)
+        ?? (prev.nonNBATeams ?? []).find((t: any) => t.tid === player.tid);
+      const isProspect = player.tid === -2 || player.status === 'Draft Prospect';
+      const isFreeAgent = player.tid === -1 || player.status === 'Free Agent';
+      const isRetired = player.status === 'Retired';
+      const teamName = team
+        ? `${(team as any).region ? `${(team as any).region} ` : ''}${team.name}`.trim()
+        : isProspect ? `the ${player.draft?.year ?? prev.leagueStats?.year ?? ''} draft pool`.trim()
+        : isFreeAgent ? 'free agency'
+        : isRetired ? 'the retired player archive'
+        : 'the league';
+
+      const historyEntry = {
+        text: `${player.name} was created and added to ${teamName}.`,
+        date: prev.date,
+        type: isProspect ? 'Draft' : 'Signing',
+        playerIds: [player.internalId],
+      };
+
+      return {
+        ...prev,
+        players: [player, ...prev.players],
+        history: [...((prev as any).history ?? []), historyEntry] as any,
+      };
+    });
   };
 
   const updateProfile = (profile: Partial<import('../types').UserProfile>) => {
@@ -254,6 +283,7 @@ export const useGameActions = (setState: React.Dispatch<React.SetStateAction<Gam
     unfollowUser,
     markPayslipsRead,
     updatePlayerRatings,
+    createPlayer,
     updateProfile,
     healPlayer,
     addPost,

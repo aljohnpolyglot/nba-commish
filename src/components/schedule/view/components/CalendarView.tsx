@@ -154,6 +154,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               const hasCupFinal   = games.some((g: Game) => (g as any).isNBACup && (g as any).nbaCupRound === 'Final');
               const hasCupKO      = games.some((g: Game) => (g as any).isNBACup && ((g as any).nbaCupRound === 'QF' || (g as any).nbaCupRound === 'SF'));
               const hasCupGroup   = games.some((g: Game) => (g as any).isNBACup && (g as any).nbaCupRound === 'group');
+              const hasCupTBD     = games.some((g: Game) => (g as any).isCupTBD);
 
               // Fixed calendar windows
               const calMonth1 = month + 1;
@@ -173,7 +174,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
               // ── GM-mode: find user team's game for this day ────────────────
               const userGame: Game | undefined = gmTid !== null
-                ? games.find((g: Game) => !isAllStarGame(g) && (g.homeTid === gmTid || g.awayTid === gmTid))
+                ? games.find((g: Game) => !isAllStarGame(g) && !(g as any).isCupTBD && (g.homeTid === gmTid || g.awayTid === gmTid))
                 : undefined;
 
               const isUserScrimmage  = !!userGame && userGame.homeTid === userGame.awayTid;
@@ -290,6 +291,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     </div>
                   )}
 
+                  {/* Multi-game All-Star Sunday: count badge for round-robin/knockout formats */}
+                  {isAllStarWeekend && games.filter(isAllStarGame).length > 1 && (
+                    <span className="absolute bottom-1 left-1 right-1 mx-auto w-fit px-1.5 py-0.5 rounded-full bg-amber-500/90 text-black text-[8px] md:text-[9px] font-black uppercase tracking-widest pointer-events-none">
+                      {games.filter(isAllStarGame).length} games
+                    </span>
+                  )}
+
                   {/* Finals tile: gold Trophy (no official logo) */}
                   {!isAllStarWeekend && !hasRichGM && hasFinals && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -332,6 +340,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-0.5">
                       <span className="text-[16px] md:text-[20px] opacity-50">🏆</span>
                       <span className="hidden md:block text-[7px] font-black uppercase tracking-widest text-orange-300/70">Cup Night</span>
+                    </div>
+                  )}
+
+                  {/* Cup KO Window TBD (Dec 9-11 placeholders, before group resolves) */}
+                  {!isAllStarWeekend && !hasRichGM && !hasFinals && !showPlayoff && !showPlayIn && !hasCupFinal && !hasCupKO && !hasCupGroup && hasCupTBD && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-0.5">
+                      <Trophy size={20} className="md:w-6 md:h-6 text-amber-300/40" strokeWidth={1.5} />
+                      <span className="hidden md:block text-[7px] font-black uppercase tracking-widest text-amber-300/50">Cup TBD</span>
                     </div>
                   )}
 

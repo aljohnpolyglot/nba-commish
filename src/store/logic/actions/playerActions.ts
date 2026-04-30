@@ -115,7 +115,8 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
             const isOptionYear = hasOption && i === totalSeasons - 1;
             return {
                 season: `${seasonYear - 1}-${String(seasonYear).slice(-2)}`,
-                guaranteed: escalated,
+                // NG contracts have zero guaranteed money — waiving them costs nothing.
+                guaranteed: signedAsNG ? 0 : escalated,
                 option: isOptionYear ? (option === 'PLAYER' ? 'player' : 'team') : '',
             };
         });
@@ -183,6 +184,10 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                             rookie: false
                         },
                         contractYears: mergedContractYears,
+                        // Stamp signing date so autoTrimOversizedRosters won't waive
+                        // a guaranteed player soon after signing — breaks the
+                        // sign→cut→stretch dead-money snowball.
+                        signedDate: stateWithSim.date,
                         // Explicitly set/clear twoWay per the signing decision —
                         // otherwise a player who was previously on a two-way deal
                         // keeps the flag via `...p`, so even a GUARANTEED re-signing
@@ -210,6 +215,10 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                             rookie: false
                         },
                         contractYears: mergedContractYears,
+                        // Stamp signing date so autoTrimOversizedRosters won't waive
+                        // a guaranteed player soon after signing — breaks the
+                        // sign→cut→stretch dead-money snowball.
+                        signedDate: stateWithSim.date,
                         // Explicitly set/clear twoWay per the signing decision —
                         // otherwise a player who was previously on a two-way deal
                         // keeps the flag via `...p`, so even a GUARANTEED re-signing
@@ -391,15 +400,14 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
     const wasNG = !!playerRecord?.nonGuaranteed;
     const wasTwoWay = !!playerRecord?.twoWay;
     const currentSeasonYear: number = ls.year ?? new Date(stateWithSim.date ?? Date.now()).getUTCFullYear();
-    const guaranteeMonth = ls.ngGuaranteeDeadlineMonth ?? 1;
-    const guaranteeDay = ls.ngGuaranteeDeadlineDay ?? 10;
-    const today = stateWithSim.date ? new Date(stateWithSim.date) : new Date();
-    const ngDeadline = new Date(currentSeasonYear, guaranteeMonth - 1, guaranteeDay);
-    const ngFreeRelease = wasNG && today < ngDeadline;
+    // If nonGuaranteed flag is still set the Jan-10 auto-guarantee hasn't fired,
+    // meaning the contract was never locked in — release is always free.
+    const ngFreeRelease = wasNG;
 
     let updatedTeams = stateWithSim.teams;
     let deadMoneyAdded: import('../../../types').DeadMoneyEntry | null = null;
 
+    const DEAD_MONEY_FLOOR_USD = 50_000;
     if (deadMoneyEnabled && !wasTwoWay && !ngFreeRelease && playerRecord && team) {
         const allContractYears: Array<{ season: string; guaranteed: number; option?: string }> =
             Array.isArray(playerRecord.contractYears) ? playerRecord.contractYears : [];
@@ -409,16 +417,21 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
                 const yr = parseInt(cy.season.split('-')[0], 10) + 1;
                 return yr >= currentSeasonYear && cy.option !== 'team' && cy.option !== 'player';
             })
+            // Drop sub-floor years — NG/partial-guaranteed tails shouldn't generate dead money.
+            .filter(cy => (cy.guaranteed ?? 0) >= DEAD_MONEY_FLOOR_USD)
             .map(cy => ({ season: cy.season, amountUSD: cy.guaranteed }));
         if (remaining.length === 0 && playerRecord.contract?.amount) {
             // Fallback: legacy player without contractYears — use flat contract.amount × years to exp.
             const exp = playerRecord.contract.exp ?? currentSeasonYear;
             const amountUSD = (playerRecord.contract.amount || 0) * 1_000;
-            for (let yr = currentSeasonYear; yr <= exp; yr++) {
-                remaining.push({ season: `${yr - 1}-${String(yr).slice(-2)}`, amountUSD });
+            if (amountUSD >= DEAD_MONEY_FLOOR_USD) {
+                for (let yr = currentSeasonYear; yr <= exp; yr++) {
+                    remaining.push({ season: `${yr - 1}-${String(yr).slice(-2)}`, amountUSD });
+                }
             }
         }
-        if (remaining.length > 0) {
+        const totalDeadUSD = remaining.reduce((s, y) => s + y.amountUSD, 0);
+        if (remaining.length > 0 && totalDeadUSD >= DEAD_MONEY_FLOOR_USD) {
             const stretchEnabled = ls.stretchProvisionEnabled ?? true;
             const wantStretch = !!stretch && stretchEnabled;
             const stretchMult = ls.stretchProvisionMultiplier ?? 2;
@@ -454,6 +467,9 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
                 mleSignedVia: undefined,
                 hasBirdRights: false,
                 yearsWithTeam: 0,
+                recentlyWaivedBy: team?.id,
+                recentlyWaivedDate: stateWithSim.date,
+                signedDate: undefined,
             }
             : p
     );
@@ -587,9 +603,11 @@ export const handleConvertContractType = async (stateWithSim: GameState, action:
     let players: any[];
     let outcomeText: string;
     if (to === 'GUARANTEED') {
+        // Treat NG → guaranteed as a fresh signing for trim recency purposes —
+        // the guaranteed-contract clock starts now, so the trim grace applies.
         players = stateWithSim.players.map((p: any) =>
             p.internalId === playerId
-                ? { ...p, nonGuaranteed: undefined }
+                ? { ...p, nonGuaranteed: undefined, signedDate: stateWithSim.date }
                 : p
         );
         outcomeText = `${player.name}'s contract was guaranteed by the ${teamName}.`;

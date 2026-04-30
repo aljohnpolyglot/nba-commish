@@ -95,163 +95,12 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
                 )}
 
                 {activeTab === 'All-Star' && (
-                    <AllStarTab 
-                        allStarGameEnabled={rulesState.allStarGameEnabled}
-                        setAllStarGameEnabled={rulesState.setAllStarGameEnabled}
-                        allStarFormat={rulesState.allStarFormat}
-                        setAllStarFormat={rulesState.setAllStarFormat}
-                        allStarTeams={rulesState.allStarTeams}
-                        setAllStarTeams={rulesState.setAllStarTeams}
-                        allStarDunkContest={rulesState.allStarDunkContest}
-                        setAllStarDunkContest={rulesState.setAllStarDunkContest}
-                        allStarDunkContestPlayers={rulesState.allStarDunkContestPlayers}
-                        setAllStarDunkContestPlayers={rulesState.setAllStarDunkContestPlayers}
-                        allStarThreePointContest={rulesState.allStarThreePointContest}
-                        setAllStarThreePointContest={rulesState.setAllStarThreePointContest}
-                        allStarThreePointContestPlayers={rulesState.allStarThreePointContestPlayers}
-                        setAllStarThreePointContestPlayers={rulesState.setAllStarThreePointContestPlayers}
-                        allStarShootingStars={rulesState.allStarShootingStars}
-                        setAllStarShootingStars={rulesState.setAllStarShootingStars}
-                        allStarShootingStarsMode={rulesState.allStarShootingStarsMode}
-                        setAllStarShootingStarsMode={rulesState.setAllStarShootingStarsMode}
-                        allStarShootingStarsTeams={rulesState.allStarShootingStarsTeams}
-                        setAllStarShootingStarsTeams={rulesState.setAllStarShootingStarsTeams}
-                        allStarShootingStarsPlayersPerTeam={rulesState.allStarShootingStarsPlayersPerTeam}
-                        setAllStarShootingStarsPlayersPerTeam={rulesState.setAllStarShootingStarsPlayersPerTeam}
-                        allStarShootingStarsTotalPlayers={rulesState.allStarShootingStarsTotalPlayers}
-                        setAllStarShootingStarsTotalPlayers={rulesState.setAllStarShootingStarsTotalPlayers}
-                        allStarSkillsChallenge={rulesState.allStarSkillsChallenge}
-                        setAllStarSkillsChallenge={rulesState.setAllStarSkillsChallenge}
-                        allStarSkillsChallengeMode={rulesState.allStarSkillsChallengeMode}
-                        setAllStarSkillsChallengeMode={rulesState.setAllStarSkillsChallengeMode}
-                        allStarSkillsChallengeTeams={rulesState.allStarSkillsChallengeTeams}
-                        setAllStarSkillsChallengeTeams={rulesState.setAllStarSkillsChallengeTeams}
-                        allStarSkillsChallengePlayersPerTeam={rulesState.allStarSkillsChallengePlayersPerTeam}
-                        setAllStarSkillsChallengePlayersPerTeam={rulesState.setAllStarSkillsChallengePlayersPerTeam}
-                        allStarSkillsChallengeTotalPlayers={rulesState.allStarSkillsChallengeTotalPlayers}
-                        setAllStarSkillsChallengeTotalPlayers={rulesState.setAllStarSkillsChallengeTotalPlayers}
-                        allStarHorse={rulesState.allStarHorse}
-                        setAllStarHorse={rulesState.setAllStarHorse}
-                        allStarHorseParticipants={rulesState.allStarHorseParticipants}
-                        setAllStarHorseParticipants={rulesState.setAllStarHorseParticipants}
-                        allStarOneOnOneEnabled={rulesState.allStarOneOnOneEnabled}
-                        setAllStarOneOnOneEnabled={rulesState.setAllStarOneOnOneEnabled}
-                        allStarOneOnOneParticipants={rulesState.allStarOneOnOneParticipants}
-                        setAllStarOneOnOneParticipants={rulesState.setAllStarOneOnOneParticipants}
-                        allStarMirrorLeagueRules={rulesState.allStarMirrorLeagueRules}
-                        setAllStarMirrorLeagueRules={rulesState.setAllStarMirrorLeagueRules}
-                        allStarGameFormat={rulesState.allStarGameFormat}
-                        setAllStarGameFormat={rulesState.setAllStarGameFormat}
-                        allStarQuarterLength={rulesState.allStarQuarterLength}
-                        setAllStarQuarterLength={rulesState.setAllStarQuarterLength}
-                        allStarNumQuarters={rulesState.allStarNumQuarters}
-                        setAllStarNumQuarters={rulesState.setAllStarNumQuarters}
-                        allStarOvertimeDuration={rulesState.allStarOvertimeDuration}
-                        setAllStarOvertimeDuration={rulesState.setAllStarOvertimeDuration}
-                        allStarOvertimeTargetPoints={rulesState.allStarOvertimeTargetPoints}
-                        setAllStarOvertimeTargetPoints={rulesState.setAllStarOvertimeTargetPoints}
-                        allStarShootoutRounds={rulesState.allStarShootoutRounds}
-                        setAllStarShootoutRounds={rulesState.setAllStarShootoutRounds}
-                        allStarOvertimeType={rulesState.allStarOvertimeType}
-                        setAllStarOvertimeType={rulesState.setAllStarOvertimeType}
-                        allStarMaxOvertimesEnabled={rulesState.allStarMaxOvertimesEnabled}
-                        setAllStarMaxOvertimesEnabled={rulesState.setAllStarMaxOvertimesEnabled}
-                        allStarMaxOvertimes={rulesState.allStarMaxOvertimes}
-                        setAllStarMaxOvertimes={rulesState.setAllStarMaxOvertimes}
-                        allStarOvertimeTieBreaker={rulesState.allStarOvertimeTieBreaker}
-                        setAllStarOvertimeTieBreaker={rulesState.setAllStarOvertimeTieBreaker}
-                        risingStarsEnabled={rulesState.risingStarsEnabled}
-                        setRisingStarsEnabled={rulesState.setRisingStarsEnabled}
-                        risingStarsFormat={rulesState.risingStarsFormat}
-                        setRisingStarsFormat={rulesState.setRisingStarsFormat}
-                        risingStarsMirrorLeagueRules={rulesState.risingStarsMirrorLeagueRules}
-                        setRisingStarsMirrorLeagueRules={rulesState.setRisingStarsMirrorLeagueRules}
-                        celebrityGameEnabled={rulesState.celebrityGameEnabled}
-                        setCelebrityGameEnabled={rulesState.setCelebrityGameEnabled}
-                        celebrityGameMirrorLeagueRules={rulesState.celebrityGameMirrorLeagueRules}
-                        setCelebrityGameMirrorLeagueRules={rulesState.setCelebrityGameMirrorLeagueRules}
-                    />
+                    <AllStarTab rules={rulesState.rules} setRule={rulesState.setRule} />
                 )}
 
                 {activeTab === 'Game Rules' && (
                     <div className="space-y-8">
-                        <GameRulesSettings
-                            gameFormat={rulesState.gameFormat} setGameFormat={rulesState.setGameFormat}
-                            gameTargetScore={rulesState.gameTargetScore} setGameTargetScore={rulesState.setGameTargetScore}
-                            fourPointLine={rulesState.fourPointLine} setFourPointLine={rulesState.setFourPointLine}
-                            threePointLineEnabled={rulesState.threePointLineEnabled} setThreePointLineEnabled={rulesState.setThreePointLineEnabled}
-                            multiballCount={rulesState.multiballCount} setMultiballCount={rulesState.setMultiballCount}
-                            foulOutLimit={rulesState.foulOutLimit} setFoulOutLimit={rulesState.setFoulOutLimit}
-                            teamFoulPenalty={rulesState.teamFoulPenalty} setTeamFoulPenalty={rulesState.setTeamFoulPenalty}
-                            quarterLength={rulesState.quarterLength} setQuarterLength={rulesState.setQuarterLength}
-                            numQuarters={rulesState.numQuarters} setNumQuarters={rulesState.setNumQuarters}
-                            overtimeDuration={rulesState.overtimeDuration} setOvertimeDuration={rulesState.setOvertimeDuration}
-                            overtimeTargetPoints={rulesState.overtimeTargetPoints} setOvertimeTargetPoints={rulesState.setOvertimeTargetPoints}
-                            shootoutRounds={rulesState.shootoutRounds} setShootoutRounds={rulesState.setShootoutRounds}
-                            overtimeType={rulesState.overtimeType} setOvertimeType={rulesState.setOvertimeType}
-                            maxTimeouts={rulesState.maxTimeouts} setMaxTimeouts={rulesState.setMaxTimeouts}
-                            coachChallenges={rulesState.coachChallenges} setCoachChallenges={rulesState.setCoachChallenges}
-                            maxCoachChallenges={rulesState.maxCoachChallenges} setMaxCoachChallenges={rulesState.setMaxCoachChallenges}
-                            challengeReimbursed={rulesState.challengeReimbursed} setChallengeReimbursed={rulesState.setChallengeReimbursed}
-                            shotClockEnabled={rulesState.shotClockEnabled} setShotClockEnabled={rulesState.setShotClockEnabled}
-                            shotClockValue={rulesState.shotClockValue} setShotClockValue={rulesState.setShotClockValue}
-                            backcourtTimerEnabled={rulesState.backcourtTimerEnabled} setBackcourtTimerEnabled={rulesState.setBackcourtTimerEnabled}
-                            backcourtTimerValue={rulesState.backcourtTimerValue} setBackcourtTimerValue={rulesState.setBackcourtTimerValue}
-                            offensiveThreeSecondEnabled={rulesState.offensiveThreeSecondEnabled} setOffensiveThreeSecondEnabled={rulesState.setOffensiveThreeSecondEnabled}
-                            offensiveThreeSecondValue={rulesState.offensiveThreeSecondValue} setOffensiveThreeSecondValue={rulesState.setOffensiveThreeSecondValue}
-                            defensiveThreeSecondEnabled={rulesState.defensiveThreeSecondEnabled} setDefensiveThreeSecondEnabled={rulesState.setDefensiveThreeSecondEnabled}
-                            defensiveThreeSecondValue={rulesState.defensiveThreeSecondValue} setDefensiveThreeSecondValue={rulesState.setDefensiveThreeSecondValue}
-                            inboundTimerEnabled={rulesState.inboundTimerEnabled} setInboundTimerEnabled={rulesState.setInboundTimerEnabled}
-                            inboundTimerValue={rulesState.inboundTimerValue} setInboundTimerValue={rulesState.setInboundTimerValue}
-                            backToBasketTimerEnabled={rulesState.backToBasketTimerEnabled} setBackToBasketTimerEnabled={rulesState.setBackToBasketTimerEnabled}
-                            backToBasketTimerValue={rulesState.backToBasketTimerValue} setBackToBasketTimerValue={rulesState.setBackToBasketTimerValue}
-                            backcourtViolationEnabled={rulesState.backcourtViolationEnabled} setBackcourtViolationEnabled={rulesState.setBackcourtViolationEnabled}
-                            travelingEnabled={rulesState.travelingEnabled} setTravelingEnabled={rulesState.setTravelingEnabled}
-                            doubleDribbleEnabled={rulesState.doubleDribbleEnabled} setDoubleDribbleEnabled={rulesState.setDoubleDribbleEnabled}
-                            goaltendingEnabled={rulesState.goaltendingEnabled} setGoaltendingEnabled={rulesState.setGoaltendingEnabled}
-                            basketInterferenceEnabled={rulesState.basketInterferenceEnabled} setBasketInterferenceEnabled={rulesState.setBasketInterferenceEnabled}
-                            kickedBallEnabled={rulesState.kickedBallEnabled} setKickedBallEnabled={rulesState.setKickedBallEnabled}
-                            flagrantFoulPenaltyEnabled={rulesState.flagrantFoulPenaltyEnabled} setFlagrantFoulPenaltyEnabled={rulesState.setFlagrantFoulPenaltyEnabled}
-                            clearPathFoulEnabled={rulesState.clearPathFoulEnabled} setClearPathFoulEnabled={rulesState.setClearPathFoulEnabled}
-                            illegalScreenEnabled={rulesState.illegalScreenEnabled} setIllegalScreenEnabled={rulesState.setIllegalScreenEnabled}
-                            overTheBackFoulEnabled={rulesState.overTheBackFoulEnabled} setOverTheBackFoulEnabled={rulesState.setOverTheBackFoulEnabled}
-                            looseBallFoulEnabled={rulesState.looseBallFoulEnabled} setLooseBallFoulEnabled={rulesState.setLooseBallFoulEnabled}
-                            chargingEnabled={rulesState.chargingEnabled} setChargingEnabled={rulesState.setChargingEnabled}
-                            overtimeEnabled={rulesState.overtimeEnabled} setOvertimeEnabled={rulesState.setOvertimeEnabled}
-                            maxOvertimesEnabled={rulesState.maxOvertimesEnabled} setMaxOvertimesEnabled={rulesState.setMaxOvertimesEnabled}
-                            maxOvertimes={rulesState.maxOvertimes} setMaxOvertimes={rulesState.setMaxOvertimes}
-                            overtimeTieBreaker={rulesState.overtimeTieBreaker} setOvertimeTieBreaker={rulesState.setOvertimeTieBreaker}
-                            maxPlayersOnCourt={rulesState.maxPlayersOnCourt} setMaxPlayersOnCourt={rulesState.setMaxPlayersOnCourt}
-                            substitutionLimitEnabled={rulesState.substitutionLimitEnabled} setSubstitutionLimitEnabled={rulesState.setSubstitutionLimitEnabled}
-                            maxSubstitutions={rulesState.maxSubstitutions} setMaxSubstitutions={rulesState.setMaxSubstitutions}
-                            noDribbleRule={rulesState.noDribbleRule} setNoDribbleRule={rulesState.setNoDribbleRule}
-                            multiballEnabled={rulesState.multiballEnabled} setMultiballEnabled={rulesState.setMultiballEnabled}
-                            threePointLineDistance={rulesState.threePointLineDistance} setThreePointLineDistance={rulesState.setThreePointLineDistance}
-                            fourPointLineDistance={rulesState.fourPointLineDistance} setFourPointLineDistance={rulesState.setFourPointLineDistance}
-                            dunkValue={rulesState.dunkValue} setDunkValue={rulesState.setDunkValue}
-                            midrangeValue={rulesState.midrangeValue} setMidrangeValue={rulesState.setMidrangeValue}
-                            heaveRuleEnabled={rulesState.heaveRuleEnabled} setHeaveRuleEnabled={rulesState.setHeaveRuleEnabled}
-                            halfCourtShotValue={rulesState.halfCourtShotValue} setHalfCourtShotValue={rulesState.setHalfCourtShotValue}
-                            clutchTimeoutLimit={rulesState.clutchTimeoutLimit} setClutchTimeoutLimit={rulesState.setClutchTimeoutLimit}
-                            handcheckingEnabled={rulesState.handcheckingEnabled} setHandcheckingEnabled={rulesState.setHandcheckingEnabled}
-                            illegalZoneDefenseEnabled={rulesState.illegalZoneDefenseEnabled} setIllegalZoneDefenseEnabled={rulesState.setIllegalZoneDefenseEnabled}
-                            outOfBoundsEnabled={rulesState.outOfBoundsEnabled} setOutOfBoundsEnabled={rulesState.setOutOfBoundsEnabled}
-                            freeThrowDistance={rulesState.freeThrowDistance} setFreeThrowDistance={rulesState.setFreeThrowDistance}
-                            rimHeight={rulesState.rimHeight} setRimHeight={rulesState.setRimHeight}
-                            ballWeight={rulesState.ballWeight} setBallWeight={rulesState.setBallWeight}
-                            startOfPossessionMethod={rulesState.startOfPossessionMethod} setStartOfPossessionMethod={rulesState.setStartOfPossessionMethod}
-                            possessionPattern={rulesState.possessionPattern} setPossessionPattern={rulesState.setPossessionPattern}
-                            courtLength={rulesState.courtLength} setCourtLength={rulesState.setCourtLength}
-                            baselineLength={rulesState.baselineLength} setBaselineLength={rulesState.setBaselineLength}
-                            keyWidth={rulesState.keyWidth} setKeyWidth={rulesState.setKeyWidth}
-                            cornerThrowInEnabled={rulesState.cornerThrowInEnabled} setCornerThrowInEnabled={rulesState.setCornerThrowInEnabled}
-                            techEjectionLimit={rulesState.techEjectionLimit} setTechEjectionLimit={rulesState.setTechEjectionLimit}
-                            flagrant1EjectionLimit={rulesState.flagrant1EjectionLimit} setFlagrant1EjectionLimit={rulesState.setFlagrant1EjectionLimit}
-                            flagrant2EjectionLimit={rulesState.flagrant2EjectionLimit} setFlagrant2EjectionLimit={rulesState.setFlagrant2EjectionLimit}
-                            fightingInstantEjection={rulesState.fightingInstantEjection} setFightingInstantEjection={rulesState.setFightingInstantEjection}
-                            useYellowRedCards={rulesState.useYellowRedCards} setUseYellowRedCards={rulesState.setUseYellowRedCards}
-                            shotClockResetOffensiveRebound={rulesState.shotClockResetOffensiveRebound} setShotClockResetOffensiveRebound={rulesState.setShotClockResetOffensiveRebound}
-                        />
+                        <GameRulesSettings rules={rulesState.rules} setRule={rulesState.setRule} />
                     </div>
                 )}
 
@@ -280,6 +129,22 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
                         setFirstApronPercentage={rulesState.setFirstApronPercentage}
                         secondApronPercentage={rulesState.secondApronPercentage}
                         setSecondApronPercentage={rulesState.setSecondApronPercentage}
+                        tradeMatchingRatioUnder={rulesState.tradeMatchingRatioUnder}
+                        setTradeMatchingRatioUnder={rulesState.setTradeMatchingRatioUnder}
+                        tradeMatchingRatioOver1st={rulesState.tradeMatchingRatioOver1st}
+                        setTradeMatchingRatioOver1st={rulesState.setTradeMatchingRatioOver1st}
+                        tradeMatchingRatioOver2nd={rulesState.tradeMatchingRatioOver2nd}
+                        setTradeMatchingRatioOver2nd={rulesState.setTradeMatchingRatioOver2nd}
+                        restrictCashSendOver2ndApron={rulesState.restrictCashSendOver2ndApron}
+                        setRestrictCashSendOver2ndApron={rulesState.setRestrictCashSendOver2ndApron}
+                        restrictAggregationOver2ndApron={rulesState.restrictAggregationOver2ndApron}
+                        setRestrictAggregationOver2ndApron={rulesState.setRestrictAggregationOver2ndApron}
+                        restrictSignAndTradeAcquisitionOver1stApron={rulesState.restrictSignAndTradeAcquisitionOver1stApron}
+                        setRestrictSignAndTradeAcquisitionOver1stApron={rulesState.setRestrictSignAndTradeAcquisitionOver1stApron}
+                        freezePickAt2ndApron={rulesState.freezePickAt2ndApron}
+                        setFreezePickAt2ndApron={rulesState.setFreezePickAt2ndApron}
+                        restrictTPEProvenanceOver2ndApron={rulesState.restrictTPEProvenanceOver2ndApron}
+                        setRestrictTPEProvenanceOver2ndApron={rulesState.setRestrictTPEProvenanceOver2ndApron}
                         twoWayContractsEnabled={rulesState.twoWayContractsEnabled}
                         setTwoWayContractsEnabled={rulesState.setTwoWayContractsEnabled}
                         nonGuaranteedContractsEnabled={rulesState.nonGuaranteedContractsEnabled ?? true}
@@ -358,6 +223,8 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
                         setInflationStdDev={rulesState.setInflationStdDev}
                         tradableDraftPickSeasons={rulesState.tradableDraftPickSeasons}
                         setTradableDraftPickSeasons={rulesState.setTradableDraftPickSeasons}
+                        stepienRuleEnabled={rulesState.stepienRuleEnabled}
+                        setStepienRuleEnabled={rulesState.setStepienRuleEnabled}
                         tradeExceptionsEnabled={rulesState.tradeExceptionsEnabled}
                         setTradeExceptionsEnabled={rulesState.setTradeExceptionsEnabled}
                         disabledPlayerExceptionEnabled={rulesState.disabledPlayerExceptionEnabled}

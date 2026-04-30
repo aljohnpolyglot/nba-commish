@@ -11,7 +11,7 @@ import { PersonSelectorModal } from '../../modals/PersonSelectorModal';
 import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
 import ContactModal from '../../ContactModal';
 import { getCountryFromLoc } from '../../../utils/helpers';
-import { getCapThresholds, getTeamCapProfile, getMLEAvailability, getTeamPayrollUSD } from '../../../utils/salaryUtils';
+import { getCapThresholds, getTeamCapProfileFromState, getMLEAvailability, getTeamPayrollUSD } from '../../../utils/salaryUtils';
 import { calcPot2K } from '../../../services/trade/tradeValueEngine';
 import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
 import type { NBAPlayer } from '../../../types';
@@ -133,11 +133,7 @@ export const FreeAgentsView: React.FC = () => {
     const maxTwoWay = state.leagueStats?.maxTwoWayPlayersPerTeam ?? 3;
     const thresholds = getCapThresholds(state.leagueStats as any);
     const userTeam = state.teams.find(t => t.id === state.userTeamId);
-    const profile = getTeamCapProfile(
-      state.players, state.userTeamId,
-      (userTeam as any)?.wins ?? 0, (userTeam as any)?.losses ?? 0,
-      thresholds,
-    );
+    const profile = getTeamCapProfileFromState(state, state.userTeamId, thresholds);
     const payroll = getTeamPayrollUSD(state.players, state.userTeamId, userTeam, state.leagueStats?.year);
     const mle = getMLEAvailability(state.userTeamId, payroll, 0, thresholds, state.leagueStats as any);
     // Split "standard" into true guaranteed vs NG so the badges mirror the

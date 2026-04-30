@@ -43,6 +43,7 @@ interface GameContextType {
   setPendingStatSort: (sort: { type: 'player' | 'team'; field: string; order: 'asc' | 'desc' } | null) => void;
   placeBet: (bet: { type: Bet['type']; wager: number; potentialPayout: number; legs: BetLeg[] }) => void;
   updatePlayerRatings: (playerId: string, season: number, ratings: Record<string, number>) => void;
+  createPlayer: (player: import('../types').NBAPlayer) => void;
   healPlayer: (playerId: string) => void;
 }
 
@@ -296,6 +297,7 @@ const actions = useGameActions(setState, () => stateRef.current);
         return candidates.find(v => v > 0 && v <= SANE_CONTRACT_CAP_THOUSANDS);
       };
 
+      let normalizedFreeAgentTypoCount = 0;
       const migratedPlayers = (loaded.players as any[] | undefined)?.map(p => {
         let updated = isBadPortrait(p) ? { ...p, imgURL: undefined } : p;
         updated = repairGeneratedExternalPlayer(updated as any, currentSeasonYear) as any;
@@ -373,6 +375,7 @@ const actions = useGameActions(setState, () => stateRef.current);
         // as FAs forever. Fixed upstream 2026-04-24; normalize existing saves here.
         if ((updated as any).status === 'FreeAgent') {
           updated = { ...updated, status: 'Free Agent' };
+          normalizedFreeAgentTypoCount++;
         }
         // Repair off-by-one teamOptionExp for sim-generated draft picks.
         // Old formula: teamOptionExp = draftYear + guaranteedYrs  → fires 1 yr too early.
@@ -472,6 +475,10 @@ const actions = useGameActions(setState, () => stateRef.current);
         return updated;
       }) ?? loaded.players;
 
+      if (normalizedFreeAgentTypoCount > 0) {
+        console.log(`[LOAD_GAME] Healed ${normalizedFreeAgentTypoCount} legacy 'FreeAgent' status records → 'Free Agent'.`);
+      }
+
       const loadedPlayers = migratedPlayers ?? loaded.players;
       const { additions: externalRosterRepairs } = enforceExternalMinRoster({
         ...loaded,
@@ -493,10 +500,69 @@ const actions = useGameActions(setState, () => stateRef.current);
         finalPlayers,
       );
 
+      // Legacy exhibition-rules migration. The seeds in constants.ts are now correct,
+      // but saves from before the default flip persist the old values. Three patterns
+      // get rewritten to the modern tournament defaults:
+      //   - allStarMirrorLeagueRules=true  (legacy seed) — keep at the old 4×12=48 min,
+      //     unless QL is explicitly the legacy 12; flip to mirror=false + QL=3.
+      //   - allStarMirrorLeagueRules=false + QL=12 — incoherent (12 IS league mirror).
+      //   - risingStarsFormat='tournament' or 'rookies_vs_sophomores' — invalid /
+      //     legacy; replace with the canonical '4team_tournament'.
+      const ls: any = loaded.leagueStats ?? {};
+      const migratedLeagueStats = { ...ls };
+      let staleRulesMigrated = false;
+      if (ls.allStarMirrorLeagueRules === true && ls.allStarQuarterLength === 12) {
+        migratedLeagueStats.allStarMirrorLeagueRules = false;
+        migratedLeagueStats.allStarQuarterLength = 3;
+        staleRulesMigrated = true;
+      }
+      if (ls.allStarMirrorLeagueRules === false && ls.allStarQuarterLength === 12) {
+        migratedLeagueStats.allStarQuarterLength = 3;
+        staleRulesMigrated = true;
+      }
+      if (ls.risingStarsMirrorLeagueRules === false && ls.risingStarsQuarterLength === 12) {
+        migratedLeagueStats.risingStarsQuarterLength = 3;
+        staleRulesMigrated = true;
+      }
+      if (ls.risingStarsFormat === 'rookies_vs_sophomores' || ls.risingStarsFormat === 'tournament') {
+        migratedLeagueStats.risingStarsFormat = '4team_tournament';
+        staleRulesMigrated = true;
+      }
+      if (staleRulesMigrated) {
+        console.log('[LOAD_GAME] Migrated stale exhibition rules to tournament defaults.');
+      }
+
+      // Strip rounding-noise dead-money entries from existing saves: any year-row
+      // below $50K, plus any entry whose total drops below $50K after the cleanup.
+      // New waivers already filter at write time.
+      const DEAD_MONEY_FLOOR_USD = 50_000;
+      let deadMoneyTrimmed = 0;
+      const teamsWithCleanDeadMoney = (loaded.teams ?? []).map((t: any) => {
+        if (!t.deadMoney || t.deadMoney.length === 0) return t;
+        const cleanedEntries = t.deadMoney
+          .map((e: any) => ({
+            ...e,
+            remainingByYear: (e.remainingByYear ?? []).filter((y: any) => (y.amountUSD ?? 0) >= DEAD_MONEY_FLOOR_USD),
+          }))
+          .filter((e: any) => {
+            if (!e.remainingByYear || e.remainingByYear.length === 0) return false;
+            const total = e.remainingByYear.reduce((s: number, y: any) => s + y.amountUSD, 0);
+            return total >= DEAD_MONEY_FLOOR_USD;
+          });
+        const removed = t.deadMoney.length - cleanedEntries.length;
+        if (removed > 0) deadMoneyTrimmed += removed;
+        return { ...t, deadMoney: cleanedEntries };
+      });
+      if (deadMoneyTrimmed > 0) {
+        console.log(`[LOAD_GAME] Stripped ${deadMoneyTrimmed} zero-amount dead-money entries.`);
+      }
+
       setState({
         ...initialState,
         ...loaded,
+        leagueStats: migratedLeagueStats,
         players: backfilledPlayers,
+        teams: teamsWithCleanDeadMoney as any,
         isProcessing: false
       });
 
@@ -698,6 +764,67 @@ const actions = useGameActions(setState, () => stateRef.current);
           return unique.length > 0 ? { ...prev, socialFeed: [...prev.socialFeed, ...unique] } : prev;
         });
       }
+      return;
+    }
+
+    if (action.type === 'RETIRE_JERSEY_NUMBER') {
+      const {
+        teamId, playerId, number, playerName,
+        seasonsWithTeam, gamesWithTeam, allStarAppearances, championships,
+        tier, reason,
+      } = (action as any).payload as {
+        teamId: number; playerId: string; number: string; playerName: string;
+        seasonsWithTeam: number; gamesWithTeam: number;
+        allStarAppearances: number; championships: number;
+        tier: import('../types').RetiredJerseyRecord['tier'];
+        reason: import('../types').RetiredJerseyRecord['reason'];
+      };
+      setState(prev => {
+        const team = prev.teams.find(t => t.id === teamId);
+        if (!team) return prev;
+        const player = prev.players.find(p => p.internalId === playerId);
+        const existing = ((team as any).retiredJerseyNumbers ?? []) as import('../types').RetiredJerseyRecord[];
+        if (existing.some(j => j.playerId === playerId)) return prev;
+        const newRecord: import('../types').RetiredJerseyRecord = {
+          number, text: playerName,
+          pid: (player as any)?.pid,
+          playerId,
+          seasonRetired: prev.leagueStats?.year ?? new Date(prev.date).getFullYear(),
+          teamId,
+          reason, tier,
+        };
+        const teamDisplayName = [team.region, team.name].filter(Boolean).join(' ');
+        const accoladeBits: string[] = [];
+        if (allStarAppearances > 0) accoladeBits.push(`${allStarAppearances}× All-Star`);
+        if (championships > 0) accoladeBits.push(`${championships}× Champion`);
+        const accoladeStr = accoladeBits.length
+          ? ` The honor follows a franchise tenure that included ${accoladeBits.join(', ')}.`
+          : '';
+        const newsItem: import('../types').NewsItem = {
+          id: `jersey-retire-${playerId}-${teamId}-${Date.now()}`,
+          headline: `${teamDisplayName} Retire #${number} for ${playerName}`,
+          content: `${teamDisplayName} have retired #${number} in honor of ${playerName}, recognizing ${seasonsWithTeam} seasons and ${gamesWithTeam} games with the franchise.${accoladeStr}`,
+          date: prev.date,
+          type: 'transaction' as any,
+          category: 'Transaction',
+          isNew: true,
+          read: false,
+        };
+        const historyEntry: import('../types').HistoryEntry = {
+          text: `${teamDisplayName} retired #${number} in honor of ${playerName}.`,
+          date: prev.date,
+          type: 'Jersey Retirement',
+          playerIds: [playerId],
+        };
+        return {
+          ...prev,
+          teams: prev.teams.map(t =>
+            t.id === teamId ? { ...t, retiredJerseyNumbers: [...existing, newRecord] } : t
+          ),
+          news: [newsItem, ...(prev.news ?? [])],
+          history: [...(prev.history ?? []), historyEntry],
+        };
+      });
       return;
     }
 

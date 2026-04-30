@@ -14,7 +14,7 @@ import { ArrowLeftRight, RefreshCw, Clock, CheckCircle, XCircle, Hourglass } fro
 import { motion } from 'motion/react';
 import type { TradeProposal, NBATeam, NBAPlayer, DraftPick } from '../../../types';
 import { OfferCard, type FoundOffer, type TradeItem } from './TradeFinderView';
-import { buildClassStrengthMap, buildLotterySlotMap } from '../../../services/draft/draftClassStrength';
+import { buildClassStrengthMap, buildFullDraftSlotMap, formatPickLabel } from '../../../services/draft/draftClassStrength';
 import { getMaxTradableSeason } from '../../../services/draft/DraftPickGenerator';
 import { teamPowerRanks } from '../../../services/trade/tradeFinderEngine';
 import { TradeMachineModal } from '../../modals/TradeMachineModal';
@@ -25,7 +25,7 @@ import {
 } from '../../../services/trade/tradeValueEngine';
 import {
   getTradeOutlook, effectiveRecord, getCapThresholds,
-  getTeamPayrollUSD, getTeamCapProfile, topNAvgK2, resolveManualOutlook,
+  getTeamPayrollUSD, getTeamCapProfileFromState, topNAvgK2, resolveManualOutlook,
   type TradeOutlook,
 } from '../../../utils/salaryUtils';
 import { tradeRoleToTeamMode } from '../../../utils/teamStrategy';
@@ -86,7 +86,7 @@ function buildOfferFromProposal(
     items.push({
       id: String(pk.dpid),
       type: 'pick',
-      label: `${pk.season} ${pk.round === 1 ? '1st' : '2nd'} Round${owner ? ` (via ${owner.abbrev})` : ''}`,
+      label: `${formatPickLabel(pk, currentYear, lotterySlotByTid, false)}${owner ? ` (via ${owner.abbrev})` : ''}`,
       val: calcPickTV(pk.round, rank, teams.length, Math.max(1, pk.season - currentYear), { classStrength, actualSlot }),
       pick: pk,
     });
@@ -105,6 +105,7 @@ function buildMyItemsFromProposal(
   players: NBAPlayer[],
   draftPicks: DraftPick[],
   currentYear: number,
+  lotterySlotByTid: Map<number, number>,
 ): TradeItem[] {
   const items: TradeItem[] = [];
   for (const pid of proposal.playersRequested) {
@@ -126,7 +127,7 @@ function buildMyItemsFromProposal(
     items.push({
       id: String(pk.dpid),
       type: 'pick',
-      label: `${pk.season} ${pk.round === 1 ? '1st' : '2nd'} Round`,
+      label: formatPickLabel(pk, currentYear, lotterySlotByTid, false),
       val: 0,
       pick: pk,
     });
@@ -197,8 +198,8 @@ export const TradeProposalsView: React.FC = () => {
     [players, currentYear, state.leagueStats?.tradableDraftPickSeasons],
   );
   const lotterySlotByTid = useMemo(
-    () => buildLotterySlotMap((state as any).draftLotteryResult),
-    [(state as any).draftLotteryResult],
+    () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
+    [(state as any).draftLotteryResult, state.teams],
   );
   const powerRanks = useMemo(
     () => teamPowerRanks(teams, currentYear),
@@ -241,11 +242,11 @@ export const TradeProposalsView: React.FC = () => {
   const capSpaces = useMemo(() => {
     const map = new Map<number, number>();
     teams.forEach(t => {
-      const profile = getTeamCapProfile(players, t.id, (t as any).wins ?? 0, (t as any).losses ?? 0, thresholds);
+      const profile = getTeamCapProfileFromState(state, t.id, thresholds);
       map.set(t.id, profile.capSpaceUSD / 1000);
     });
     return map;
-  }, [teams, players, thresholds]);
+  }, [teams, players, thresholds, state]);
 
   // Only show proposals that target the user's team. Ignore AI-vs-AI historical trades.
   const proposals: TradeProposal[] = useMemo(() =>
@@ -336,7 +337,7 @@ export const TradeProposalsView: React.FC = () => {
                 theirOutlook, theirMode, tvContext,
                 classStrengthByYear, lotterySlotByTid, powerRanks,
               );
-              const myItems = buildMyItemsFromProposal(proposal, players, draftPicks, currentYear);
+              const myItems = buildMyItemsFromProposal(proposal, players, draftPicks, currentYear, lotterySlotByTid);
               const team = teams.find(t => t.id === proposal.proposingTeamId);
               const isPending = proposal.status === 'pending';
 

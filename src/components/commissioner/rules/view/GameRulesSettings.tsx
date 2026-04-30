@@ -1,5 +1,7 @@
 import React from 'react';
 import { Settings2 } from 'lucide-react';
+import type { LeagueStats } from '../../../../types';
+import { ruleValue } from './rulesDefaults';
 import { GameStructureSection } from './game-rules/GameStructureSection';
 import { TimingViolationsSection } from './game-rules/TimingViolationsSection';
 import { ScoringCourtSection } from './game-rules/ScoringCourtSection';
@@ -8,160 +10,29 @@ import { FoulsLimitsSection } from './game-rules/FoulsLimitsSection';
 import { CoachingStrategySection } from './game-rules/CoachingStrategySection';
 
 interface GameRulesSettingsProps {
-    gameFormat: 'timed' | 'target_score';
-    setGameFormat: (val: 'timed' | 'target_score') => void;
-    gameTargetScore: number;
-    setGameTargetScore: (val: number) => void;
-    fourPointLine: boolean;
-    setFourPointLine: (val: boolean) => void;
-    threePointLineEnabled: boolean;
-    setThreePointLineEnabled: (val: boolean) => void;
-    multiballCount: number;
-    setMultiballCount: (val: number) => void;
-    foulOutLimit: number;
-    setFoulOutLimit: (val: number) => void;
-    teamFoulPenalty: number;
-    setTeamFoulPenalty: (val: number) => void;
-    quarterLength: number;
-    setQuarterLength: (val: number) => void;
-    numQuarters: number;
-    setNumQuarters: (val: number) => void;
-    overtimeDuration: number;
-    setOvertimeDuration: (val: number) => void;
-    overtimeTargetPoints: number;
-    setOvertimeTargetPoints: (val: number) => void;
-    shootoutRounds: number;
-    setShootoutRounds: (val: number) => void;
-    overtimeType: string;
-    setOvertimeType: (val: string) => void;
-    maxTimeouts: number;
-    setMaxTimeouts: (val: number) => void;
-    coachChallenges: boolean;
-    setCoachChallenges: (val: boolean) => void;
-    maxCoachChallenges: number;
-    setMaxCoachChallenges: (val: number) => void;
-    challengeReimbursed: boolean;
-    setChallengeReimbursed: (val: boolean) => void;
-    shotClockEnabled: boolean;
-    setShotClockEnabled: (val: boolean) => void;
-    shotClockValue: number;
-    setShotClockValue: (val: number) => void;
-    backcourtTimerEnabled: boolean;
-    setBackcourtTimerEnabled: (val: boolean) => void;
-    backcourtTimerValue: number;
-    setBackcourtTimerValue: (val: number) => void;
-    offensiveThreeSecondEnabled: boolean;
-    setOffensiveThreeSecondEnabled: (val: boolean) => void;
-    offensiveThreeSecondValue: number;
-    setOffensiveThreeSecondValue: (val: number) => void;
-    defensiveThreeSecondEnabled: boolean;
-    setDefensiveThreeSecondEnabled: (val: boolean) => void;
-    defensiveThreeSecondValue: number;
-    setDefensiveThreeSecondValue: (val: number) => void;
-    inboundTimerEnabled: boolean;
-    setInboundTimerEnabled: (val: boolean) => void;
-    inboundTimerValue: number;
-    setInboundTimerValue: (val: number) => void;
-    backToBasketTimerEnabled: boolean;
-    setBackToBasketTimerEnabled: (val: boolean) => void;
-    backToBasketTimerValue: number;
-    setBackToBasketTimerValue: (val: number) => void;
-    backcourtViolationEnabled: boolean;
-    setBackcourtViolationEnabled: (val: boolean) => void;
-    travelingEnabled: boolean;
-    setTravelingEnabled: (val: boolean) => void;
-    doubleDribbleEnabled: boolean;
-    setDoubleDribbleEnabled: (val: boolean) => void;
-    goaltendingEnabled: boolean;
-    setGoaltendingEnabled: (val: boolean) => void;
-    basketInterferenceEnabled: boolean;
-    setBasketInterferenceEnabled: (val: boolean) => void;
-    kickedBallEnabled: boolean;
-    setKickedBallEnabled: (val: boolean) => void;
-    flagrantFoulPenaltyEnabled: boolean;
-    setFlagrantFoulPenaltyEnabled: (val: boolean) => void;
-    clearPathFoulEnabled: boolean;
-    setClearPathFoulEnabled: (val: boolean) => void;
-    illegalScreenEnabled: boolean;
-    setIllegalScreenEnabled: (val: boolean) => void;
-    overTheBackFoulEnabled: boolean;
-    setOverTheBackFoulEnabled: (val: boolean) => void;
-    looseBallFoulEnabled: boolean;
-    setLooseBallFoulEnabled: (val: boolean) => void;
-    chargingEnabled: boolean;
-    setChargingEnabled: (val: boolean) => void;
-    overtimeEnabled: boolean;
-    setOvertimeEnabled: (val: boolean) => void;
-    maxOvertimesEnabled: boolean;
-    setMaxOvertimesEnabled: (val: boolean) => void;
-    maxOvertimes: number;
-    setMaxOvertimes: (val: number) => void;
-    overtimeTieBreaker: string;
-    setOvertimeTieBreaker: (val: string) => void;
-    maxPlayersOnCourt: number;
-    setMaxPlayersOnCourt: (val: number) => void;
-    substitutionLimitEnabled: boolean;
-    setSubstitutionLimitEnabled: (val: boolean) => void;
-    maxSubstitutions: number;
-    setMaxSubstitutions: (val: number) => void;
-    noDribbleRule: boolean;
-    setNoDribbleRule: (val: boolean) => void;
-    multiballEnabled: boolean;
-    setMultiballEnabled: (val: boolean) => void;
-    threePointLineDistance: number;
-    setThreePointLineDistance: (val: number) => void;
-    fourPointLineDistance: number;
-    setFourPointLineDistance: (val: number) => void;
-    dunkValue: number;
-    setDunkValue: (val: number) => void;
-    midrangeValue: number;
-    setMidrangeValue: (val: number) => void;
-    heaveRuleEnabled: boolean;
-    setHeaveRuleEnabled: (val: boolean) => void;
-    halfCourtShotValue: number;
-    setHalfCourtShotValue: (val: number) => void;
-    clutchTimeoutLimit: number;
-    setClutchTimeoutLimit: (val: number) => void;
-    handcheckingEnabled: boolean;
-    setHandcheckingEnabled: (val: boolean) => void;
-    illegalZoneDefenseEnabled: boolean;
-    setIllegalZoneDefenseEnabled: (val: boolean) => void;
-    // New Rules
-    outOfBoundsEnabled: boolean;
-    setOutOfBoundsEnabled: (val: boolean) => void;
-    freeThrowDistance: number;
-    setFreeThrowDistance: (val: number) => void;
-    rimHeight: number;
-    setRimHeight: (val: number) => void;
-    ballWeight: number;
-    setBallWeight: (val: number) => void;
-    startOfPossessionMethod: 'jump_ball' | 'coin_toss' | 'rock_paper_scissors';
-    setStartOfPossessionMethod: (val: 'jump_ball' | 'coin_toss' | 'rock_paper_scissors') => void;
-    possessionPattern: 'nba' | 'alternating';
-    setPossessionPattern: (val: 'nba' | 'alternating') => void;
-    courtLength: number;
-    setCourtLength: (val: number) => void;
-    baselineLength: number;
-    setBaselineLength: (val: number) => void;
-    keyWidth: number;
-    setKeyWidth: (val: number) => void;
-    cornerThrowInEnabled: boolean;
-    setCornerThrowInEnabled: (val: boolean) => void;
-    techEjectionLimit: number;
-    setTechEjectionLimit: (val: number) => void;
-    flagrant1EjectionLimit: number;
-    setFlagrant1EjectionLimit: (val: number) => void;
-    flagrant2EjectionLimit: number;
-    setFlagrant2EjectionLimit: (val: number) => void;
-    fightingInstantEjection: boolean;
-    setFightingInstantEjection: (val: boolean) => void;
-    useYellowRedCards: boolean;
-    setUseYellowRedCards: (val: boolean) => void;
-    shotClockResetOffensiveRebound: number;
-    setShotClockResetOffensiveRebound: (val: number) => void;
+    rules: LeagueStats;
+    setRule: <K extends keyof LeagueStats>(key: K, value: LeagueStats[K]) => void;
 }
 
-export const GameRulesSettings: React.FC<GameRulesSettingsProps> = (props) => {
+/** Bind a leaf-component flat-prop pair (`x`, `setX`) from a single LeagueStats key.
+ *  Eliminates the 162-line props pyramid this file used to declare. */
+function bind<K extends keyof LeagueStats>(
+    rules: LeagueStats,
+    setRule: <Kk extends keyof LeagueStats>(k: Kk, v: LeagueStats[Kk]) => void,
+    key: K,
+) {
+    return {
+        value: ruleValue(rules, key),
+        set: (v: LeagueStats[K]) => setRule(key, v),
+    };
+}
+
+export const GameRulesSettings: React.FC<GameRulesSettingsProps> = ({ rules, setRule }) => {
+    // Pull the per-section flat props from rules/setRule via the typed `bind` helper.
+    // Sub-section components keep their existing flat-prop API; the binding lives here
+    // instead of being threaded through 162 lines of prop interfaces.
+    const b = <K extends keyof LeagueStats>(key: K) => bind(rules, setRule, key);
+
     return (
         <div className="space-y-8">
             <div className="flex items-center gap-3 mb-4">
@@ -173,174 +44,98 @@ export const GameRulesSettings: React.FC<GameRulesSettingsProps> = (props) => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="space-y-6">
-                    <GameStructureSection 
-                        gameFormat={props.gameFormat}
-                        setGameFormat={props.setGameFormat}
-                        gameTargetScore={props.gameTargetScore}
-                        setGameTargetScore={props.setGameTargetScore}
-                        quarterLength={props.quarterLength}
-                        setQuarterLength={props.setQuarterLength}
-                        numQuarters={props.numQuarters}
-                        setNumQuarters={props.setNumQuarters}
-                        overtimeEnabled={props.overtimeEnabled}
-                        setOvertimeEnabled={props.setOvertimeEnabled}
-                        overtimeType={props.overtimeType}
-                        setOvertimeType={props.setOvertimeType}
-                        overtimeDuration={props.overtimeDuration}
-                        setOvertimeDuration={props.setOvertimeDuration}
-                        maxOvertimesEnabled={props.maxOvertimesEnabled}
-                        setMaxOvertimesEnabled={props.setMaxOvertimesEnabled}
-                        maxOvertimes={props.maxOvertimes}
-                        setMaxOvertimes={props.setMaxOvertimes}
-                        overtimeTieBreaker={props.overtimeTieBreaker}
-                        setOvertimeTieBreaker={props.setOvertimeTieBreaker}
-                        overtimeTargetPoints={props.overtimeTargetPoints}
-                        setOvertimeTargetPoints={props.setOvertimeTargetPoints}
-                        shootoutRounds={props.shootoutRounds}
-                        setShootoutRounds={props.setShootoutRounds}
-                        startOfPossessionMethod={props.startOfPossessionMethod}
-                        setStartOfPossessionMethod={props.setStartOfPossessionMethod}
-                        possessionPattern={props.possessionPattern}
-                        setPossessionPattern={props.setPossessionPattern}
+                    <GameStructureSection
+                        gameFormat={b('gameFormat').value as any}                  setGameFormat={b('gameFormat').set as any}
+                        gameTargetScore={b('gameTargetScore').value as number}     setGameTargetScore={b('gameTargetScore').set as any}
+                        quarterLength={b('quarterLength').value as number}         setQuarterLength={b('quarterLength').set as any}
+                        numQuarters={b('numQuarters').value as number}             setNumQuarters={b('numQuarters').set as any}
+                        overtimeEnabled={b('overtimeEnabled').value as boolean}    setOvertimeEnabled={b('overtimeEnabled').set as any}
+                        overtimeType={b('overtimeType').value as string}           setOvertimeType={b('overtimeType').set as any}
+                        overtimeDuration={b('overtimeDuration').value as number}   setOvertimeDuration={b('overtimeDuration').set as any}
+                        maxOvertimesEnabled={b('maxOvertimesEnabled').value as boolean} setMaxOvertimesEnabled={b('maxOvertimesEnabled').set as any}
+                        maxOvertimes={b('maxOvertimes').value as number}           setMaxOvertimes={b('maxOvertimes').set as any}
+                        overtimeTieBreaker={b('overtimeTieBreaker').value as string} setOvertimeTieBreaker={b('overtimeTieBreaker').set as any}
+                        overtimeTargetPoints={b('overtimeTargetPoints').value as number} setOvertimeTargetPoints={b('overtimeTargetPoints').set as any}
+                        shootoutRounds={b('shootoutRounds').value as number}       setShootoutRounds={b('shootoutRounds').set as any}
+                        startOfPossessionMethod={b('startOfPossessionMethod').value as any} setStartOfPossessionMethod={b('startOfPossessionMethod').set as any}
+                        possessionPattern={b('possessionPattern').value as any}    setPossessionPattern={b('possessionPattern').set as any}
                     />
-                    <TimingViolationsSection 
-                        shotClockEnabled={props.shotClockEnabled}
-                        setShotClockEnabled={props.setShotClockEnabled}
-                        shotClockValue={props.shotClockValue}
-                        setShotClockValue={props.setShotClockValue}
-                        backcourtTimerEnabled={props.backcourtTimerEnabled}
-                        setBackcourtTimerEnabled={props.setBackcourtTimerEnabled}
-                        backcourtTimerValue={props.backcourtTimerValue}
-                        setBackcourtTimerValue={props.setBackcourtTimerValue}
-                        offensiveThreeSecondEnabled={props.offensiveThreeSecondEnabled}
-                        setOffensiveThreeSecondEnabled={props.setOffensiveThreeSecondEnabled}
-                        offensiveThreeSecondValue={props.offensiveThreeSecondValue}
-                        setOffensiveThreeSecondValue={props.setOffensiveThreeSecondValue}
-                        defensiveThreeSecondEnabled={props.defensiveThreeSecondEnabled}
-                        setDefensiveThreeSecondEnabled={props.setDefensiveThreeSecondEnabled}
-                        defensiveThreeSecondValue={props.defensiveThreeSecondValue}
-                        setDefensiveThreeSecondValue={props.setDefensiveThreeSecondValue}
-                        inboundTimerEnabled={props.inboundTimerEnabled}
-                        setInboundTimerEnabled={props.setInboundTimerEnabled}
-                        inboundTimerValue={props.inboundTimerValue}
-                        setInboundTimerValue={props.setInboundTimerValue}
-                        backToBasketTimerEnabled={props.backToBasketTimerEnabled}
-                        setBackToBasketTimerEnabled={props.setBackToBasketTimerEnabled}
-                        backToBasketTimerValue={props.backToBasketTimerValue}
-                        setBackToBasketTimerValue={props.setBackToBasketTimerValue}
-                        illegalZoneDefenseEnabled={props.illegalZoneDefenseEnabled}
-                        setIllegalZoneDefenseEnabled={props.setIllegalZoneDefenseEnabled}
-                        shotClockResetOffensiveRebound={props.shotClockResetOffensiveRebound}
-                        setShotClockResetOffensiveRebound={props.setShotClockResetOffensiveRebound}
+                    <TimingViolationsSection
+                        shotClockEnabled={b('shotClockEnabled').value as boolean}              setShotClockEnabled={b('shotClockEnabled').set as any}
+                        shotClockValue={b('shotClockValue').value as number}                    setShotClockValue={b('shotClockValue').set as any}
+                        backcourtTimerEnabled={b('backcourtTimerEnabled').value as boolean}    setBackcourtTimerEnabled={b('backcourtTimerEnabled').set as any}
+                        backcourtTimerValue={b('backcourtTimerValue').value as number}          setBackcourtTimerValue={b('backcourtTimerValue').set as any}
+                        offensiveThreeSecondEnabled={b('offensiveThreeSecondEnabled').value as boolean} setOffensiveThreeSecondEnabled={b('offensiveThreeSecondEnabled').set as any}
+                        offensiveThreeSecondValue={b('offensiveThreeSecondValue').value as number}      setOffensiveThreeSecondValue={b('offensiveThreeSecondValue').set as any}
+                        defensiveThreeSecondEnabled={b('defensiveThreeSecondEnabled').value as boolean} setDefensiveThreeSecondEnabled={b('defensiveThreeSecondEnabled').set as any}
+                        defensiveThreeSecondValue={b('defensiveThreeSecondValue').value as number}      setDefensiveThreeSecondValue={b('defensiveThreeSecondValue').set as any}
+                        inboundTimerEnabled={b('inboundTimerEnabled').value as boolean}        setInboundTimerEnabled={b('inboundTimerEnabled').set as any}
+                        inboundTimerValue={b('inboundTimerValue').value as number}              setInboundTimerValue={b('inboundTimerValue').set as any}
+                        backToBasketTimerEnabled={b('backToBasketTimerEnabled').value as boolean} setBackToBasketTimerEnabled={b('backToBasketTimerEnabled').set as any}
+                        backToBasketTimerValue={b('backToBasketTimerValue').value as number}    setBackToBasketTimerValue={b('backToBasketTimerValue').set as any}
+                        illegalZoneDefenseEnabled={b('illegalZoneDefenseEnabled').value as boolean} setIllegalZoneDefenseEnabled={b('illegalZoneDefenseEnabled').set as any}
+                        shotClockResetOffensiveRebound={b('shotClockResetOffensiveRebound').value as number} setShotClockResetOffensiveRebound={b('shotClockResetOffensiveRebound').set as any}
                     />
                 </div>
 
                 <div className="space-y-6">
-                    <ScoringCourtSection 
-                        threePointLineEnabled={props.threePointLineEnabled}
-                        setThreePointLineEnabled={props.setThreePointLineEnabled}
-                        threePointLineDistance={props.threePointLineDistance}
-                        setThreePointLineDistance={props.setThreePointLineDistance}
-                        fourPointLine={props.fourPointLine}
-                        setFourPointLine={props.setFourPointLine}
-                        fourPointLineDistance={props.fourPointLineDistance}
-                        setFourPointLineDistance={props.setFourPointLineDistance}
-                        dunkValue={props.dunkValue}
-                        setDunkValue={props.setDunkValue}
-                        midrangeValue={props.midrangeValue}
-                        setMidrangeValue={props.setMidrangeValue}
-                        heaveRuleEnabled={props.heaveRuleEnabled}
-                        setHeaveRuleEnabled={props.setHeaveRuleEnabled}
-                        halfCourtShotValue={props.halfCourtShotValue}
-                        setHalfCourtShotValue={props.setHalfCourtShotValue}
-                        backcourtViolationEnabled={props.backcourtViolationEnabled}
-                        setBackcourtViolationEnabled={props.setBackcourtViolationEnabled}
-                        travelingEnabled={props.travelingEnabled}
-                        setTravelingEnabled={props.setTravelingEnabled}
-                        doubleDribbleEnabled={props.doubleDribbleEnabled}
-                        setDoubleDribbleEnabled={props.setDoubleDribbleEnabled}
-                        goaltendingEnabled={props.goaltendingEnabled}
-                        setGoaltendingEnabled={props.setGoaltendingEnabled}
-                        basketInterferenceEnabled={props.basketInterferenceEnabled}
-                        setBasketInterferenceEnabled={props.setBasketInterferenceEnabled}
-                        kickedBallEnabled={props.kickedBallEnabled}
-                        setKickedBallEnabled={props.setKickedBallEnabled}
-                        outOfBoundsEnabled={props.outOfBoundsEnabled}
-                        setOutOfBoundsEnabled={props.setOutOfBoundsEnabled}
-                        freeThrowDistance={props.freeThrowDistance}
-                        setFreeThrowDistance={props.setFreeThrowDistance}
-                        rimHeight={props.rimHeight}
-                        setRimHeight={props.setRimHeight}
-                        ballWeight={props.ballWeight}
-                        setBallWeight={props.setBallWeight}
-                        courtLength={props.courtLength}
-                        setCourtLength={props.setCourtLength}
-                        baselineLength={props.baselineLength}
-                        setBaselineLength={props.setBaselineLength}
-                        keyWidth={props.keyWidth}
-                        setKeyWidth={props.setKeyWidth}
-                        cornerThrowInEnabled={props.cornerThrowInEnabled}
-                        setCornerThrowInEnabled={props.setCornerThrowInEnabled}
+                    <ScoringCourtSection
+                        threePointLineEnabled={b('threePointLineEnabled').value as boolean}    setThreePointLineEnabled={b('threePointLineEnabled').set as any}
+                        threePointLineDistance={b('threePointLineDistance').value as number}   setThreePointLineDistance={b('threePointLineDistance').set as any}
+                        fourPointLine={b('fourPointLine').value as boolean}                    setFourPointLine={b('fourPointLine').set as any}
+                        fourPointLineDistance={b('fourPointLineDistance').value as number}     setFourPointLineDistance={b('fourPointLineDistance').set as any}
+                        dunkValue={b('dunkValue').value as number}                              setDunkValue={b('dunkValue').set as any}
+                        midrangeValue={b('midrangeValue').value as number}                      setMidrangeValue={b('midrangeValue').set as any}
+                        heaveRuleEnabled={b('heaveRuleEnabled').value as boolean}              setHeaveRuleEnabled={b('heaveRuleEnabled').set as any}
+                        halfCourtShotValue={b('halfCourtShotValue').value as number}            setHalfCourtShotValue={b('halfCourtShotValue').set as any}
+                        backcourtViolationEnabled={b('backcourtViolationEnabled').value as boolean} setBackcourtViolationEnabled={b('backcourtViolationEnabled').set as any}
+                        travelingEnabled={b('travelingEnabled').value as boolean}              setTravelingEnabled={b('travelingEnabled').set as any}
+                        doubleDribbleEnabled={b('doubleDribbleEnabled').value as boolean}      setDoubleDribbleEnabled={b('doubleDribbleEnabled').set as any}
+                        goaltendingEnabled={b('goaltendingEnabled').value as boolean}          setGoaltendingEnabled={b('goaltendingEnabled').set as any}
+                        basketInterferenceEnabled={b('basketInterferenceEnabled').value as boolean} setBasketInterferenceEnabled={b('basketInterferenceEnabled').set as any}
+                        kickedBallEnabled={b('kickedBallEnabled').value as boolean}            setKickedBallEnabled={b('kickedBallEnabled').set as any}
+                        outOfBoundsEnabled={b('outOfBoundsEnabled').value as boolean}          setOutOfBoundsEnabled={b('outOfBoundsEnabled').set as any}
+                        freeThrowDistance={b('freeThrowDistance').value as number}              setFreeThrowDistance={b('freeThrowDistance').set as any}
+                        rimHeight={b('rimHeight').value as number}                              setRimHeight={b('rimHeight').set as any}
+                        ballWeight={b('ballWeight').value as number}                            setBallWeight={b('ballWeight').set as any}
+                        courtLength={b('courtLength').value as number}                          setCourtLength={b('courtLength').set as any}
+                        baselineLength={b('baselineLength').value as number}                    setBaselineLength={b('baselineLength').set as any}
+                        keyWidth={b('keyWidth').value as number}                                setKeyWidth={b('keyWidth').set as any}
+                        cornerThrowInEnabled={b('cornerThrowInEnabled').value as boolean}      setCornerThrowInEnabled={b('cornerThrowInEnabled').set as any}
                     />
-                    <PersonnelSubsSection 
-                        maxPlayersOnCourt={props.maxPlayersOnCourt}
-                        setMaxPlayersOnCourt={props.setMaxPlayersOnCourt}
-                        substitutionLimitEnabled={props.substitutionLimitEnabled}
-                        setSubstitutionLimitEnabled={props.setSubstitutionLimitEnabled}
-                        maxSubstitutions={props.maxSubstitutions}
-                        setMaxSubstitutions={props.setMaxSubstitutions}
-                        noDribbleRule={props.noDribbleRule}
-                        setNoDribbleRule={props.setNoDribbleRule}
-                        multiballEnabled={props.multiballEnabled}
-                        setMultiballEnabled={props.setMultiballEnabled}
-                        multiballCount={props.multiballCount}
-                        setMultiballCount={props.setMultiballCount}
+                    <PersonnelSubsSection
+                        maxPlayersOnCourt={b('maxPlayersOnCourt').value as number}              setMaxPlayersOnCourt={b('maxPlayersOnCourt').set as any}
+                        substitutionLimitEnabled={b('substitutionLimitEnabled').value as boolean} setSubstitutionLimitEnabled={b('substitutionLimitEnabled').set as any}
+                        maxSubstitutions={b('maxSubstitutions').value as number}                setMaxSubstitutions={b('maxSubstitutions').set as any}
+                        noDribbleRule={b('noDribbleRule').value as boolean}                    setNoDribbleRule={b('noDribbleRule').set as any}
+                        multiballEnabled={b('multiballEnabled').value as boolean}              setMultiballEnabled={b('multiballEnabled').set as any}
+                        multiballCount={b('multiballCount').value as number}                    setMultiballCount={b('multiballCount').set as any}
                     />
-                    <FoulsLimitsSection 
-                        foulOutLimit={props.foulOutLimit}
-                        setFoulOutLimit={props.setFoulOutLimit}
-                        teamFoulPenalty={props.teamFoulPenalty}
-                        setTeamFoulPenalty={props.setTeamFoulPenalty}
-                        flagrantFoulPenaltyEnabled={props.flagrantFoulPenaltyEnabled}
-                        setFlagrantFoulPenaltyEnabled={props.setFlagrantFoulPenaltyEnabled}
-                        clearPathFoulEnabled={props.clearPathFoulEnabled}
-                        setClearPathFoulEnabled={props.setClearPathFoulEnabled}
-                        illegalScreenEnabled={props.illegalScreenEnabled}
-                        setIllegalScreenEnabled={props.setIllegalScreenEnabled}
-                        overTheBackFoulEnabled={props.overTheBackFoulEnabled}
-                        setOverTheBackFoulEnabled={props.setOverTheBackFoulEnabled}
-                        looseBallFoulEnabled={props.looseBallFoulEnabled}
-                        setLooseBallFoulEnabled={props.setLooseBallFoulEnabled}
-                        chargingEnabled={props.chargingEnabled}
-                        setChargingEnabled={props.setChargingEnabled}
-                        handcheckingEnabled={props.handcheckingEnabled}
-                        setHandcheckingEnabled={props.setHandcheckingEnabled}
-                        techEjectionLimit={props.techEjectionLimit}
-                        setTechEjectionLimit={props.setTechEjectionLimit}
-                        flagrant1EjectionLimit={props.flagrant1EjectionLimit}
-                        setFlagrant1EjectionLimit={props.setFlagrant1EjectionLimit}
-                        flagrant2EjectionLimit={props.flagrant2EjectionLimit}
-                        setFlagrant2EjectionLimit={props.setFlagrant2EjectionLimit}
-                        fightingInstantEjection={props.fightingInstantEjection}
-                        setFightingInstantEjection={props.setFightingInstantEjection}
-                        useYellowRedCards={props.useYellowRedCards}
-                        setUseYellowRedCards={props.setUseYellowRedCards}
+                    <FoulsLimitsSection
+                        foulOutLimit={b('foulOutLimit').value as number}                        setFoulOutLimit={b('foulOutLimit').set as any}
+                        teamFoulPenalty={b('teamFoulPenalty').value as number}                  setTeamFoulPenalty={b('teamFoulPenalty').set as any}
+                        flagrantFoulPenaltyEnabled={b('flagrantFoulPenaltyEnabled').value as boolean} setFlagrantFoulPenaltyEnabled={b('flagrantFoulPenaltyEnabled').set as any}
+                        clearPathFoulEnabled={b('clearPathFoulEnabled').value as boolean}      setClearPathFoulEnabled={b('clearPathFoulEnabled').set as any}
+                        illegalScreenEnabled={b('illegalScreenEnabled').value as boolean}      setIllegalScreenEnabled={b('illegalScreenEnabled').set as any}
+                        overTheBackFoulEnabled={b('overTheBackFoulEnabled').value as boolean}  setOverTheBackFoulEnabled={b('overTheBackFoulEnabled').set as any}
+                        looseBallFoulEnabled={b('looseBallFoulEnabled').value as boolean}      setLooseBallFoulEnabled={b('looseBallFoulEnabled').set as any}
+                        chargingEnabled={b('chargingEnabled').value as boolean}                setChargingEnabled={b('chargingEnabled').set as any}
+                        handcheckingEnabled={b('handcheckingEnabled').value as boolean}        setHandcheckingEnabled={b('handcheckingEnabled').set as any}
+                        techEjectionLimit={b('techEjectionLimit').value as number}              setTechEjectionLimit={b('techEjectionLimit').set as any}
+                        flagrant1EjectionLimit={b('flagrant1EjectionLimit').value as number}    setFlagrant1EjectionLimit={b('flagrant1EjectionLimit').set as any}
+                        flagrant2EjectionLimit={b('flagrant2EjectionLimit').value as number}    setFlagrant2EjectionLimit={b('flagrant2EjectionLimit').set as any}
+                        fightingInstantEjection={b('fightingInstantEjection').value as boolean} setFightingInstantEjection={b('fightingInstantEjection').set as any}
+                        useYellowRedCards={b('useYellowRedCards').value as boolean}            setUseYellowRedCards={b('useYellowRedCards').set as any}
                     />
-                    <CoachingStrategySection 
-                        maxTimeouts={props.maxTimeouts}
-                        setMaxTimeouts={props.setMaxTimeouts}
-                        clutchTimeoutLimit={props.clutchTimeoutLimit}
-                        setClutchTimeoutLimit={props.setClutchTimeoutLimit}
-                        coachChallenges={props.coachChallenges}
-                        setCoachChallenges={props.setCoachChallenges}
-                        maxCoachChallenges={props.maxCoachChallenges}
-                        setMaxCoachChallenges={props.setMaxCoachChallenges}
-                        challengeReimbursed={props.challengeReimbursed}
-                        setChallengeReimbursed={props.setChallengeReimbursed}
+                    <CoachingStrategySection
+                        maxTimeouts={b('maxTimeouts').value as number}                          setMaxTimeouts={b('maxTimeouts').set as any}
+                        clutchTimeoutLimit={b('clutchTimeoutLimit').value as number}            setClutchTimeoutLimit={b('clutchTimeoutLimit').set as any}
+                        coachChallenges={b('coachChallenges').value as boolean}                setCoachChallenges={b('coachChallenges').set as any}
+                        maxCoachChallenges={b('maxCoachChallenges').value as number}            setMaxCoachChallenges={b('maxCoachChallenges').set as any}
+                        challengeReimbursed={b('challengeReimbursed').value as boolean}        setChallengeReimbursed={b('challengeReimbursed').set as any}
                     />
                 </div>
             </div>
         </div>
     );
 };
-

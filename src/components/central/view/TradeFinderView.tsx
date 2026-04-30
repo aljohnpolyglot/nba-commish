@@ -18,14 +18,15 @@ import {
   computeLeagueAvg, computeLeaguePerAvg, getPotColor, isSalaryLegal, isUntouchable,
   type TeamMode, type TVContext,
 } from '../../../services/trade/tradeValueEngine';
-import { getTradeOutlook, effectiveRecord, getCapThresholds, getTeamPayrollUSD, getTeamCapProfile, topNAvgK2, resolveManualOutlook, type TradeOutlook } from '../../../utils/salaryUtils';
+import { getTradeOutlook, effectiveRecord, getCapThresholds, getTeamPayrollUSD, getTeamCapProfileFromState, topNAvgK2, resolveManualOutlook, type TradeOutlook } from '../../../utils/salaryUtils';
 import { computeMoodScore } from '../../../utils/mood/moodScore';
 import type { NBAPlayer, DraftPick, NBATeam } from '../../../types';
 import { generateCounterOffers, teamPowerRanks } from '../../../services/trade/tradeFinderEngine';
 import { SettingsManager } from '../../../services/SettingsManager';
 import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks } from '../../../services/draft/DraftPickGenerator';
-import { buildClassStrengthMap, buildLotterySlotMap } from '../../../services/draft/draftClassStrength';
+import { buildClassStrengthMap, buildLotterySlotMap, buildFullDraftSlotMap, formatPickLabel } from '../../../services/draft/draftClassStrength';
 import { tradeRoleToTeamMode, resolveTeamStrategyProfile } from '../../../utils/teamStrategy';
+import { wouldStepienViolateForTid } from '../../../services/trade/stepienRule';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -153,16 +154,25 @@ const PickRow: React.FC<{
   powerRank: number;
   totalTeams: number;
   currentYear: number;
-}> = ({ pick, selected, onToggle, originalTeam, powerRank, totalTeams, currentYear }) => {
+  lotterySlotByTid?: Map<number, number>;
+  stepienBlocked?: boolean;
+}> = ({ pick, selected, onToggle, originalTeam, powerRank, totalTeams, currentYear, lotterySlotByTid, stepienBlocked }) => {
   const yearsFromNow = Math.max(1, pick.season - currentYear);
   const isNextYear = yearsFromNow <= 1;
   const isStale = yearsFromNow >= 3;
+  const resolvedSlot = pick.round === 1 && pick.season === currentYear
+    ? lotterySlotByTid?.get(pick.originalTid)
+    : undefined;
+  const labelShort = formatPickLabel(pick, currentYear, lotterySlotByTid, true);
 
   return (
     <div
-      onClick={onToggle}
-      className={`flex items-center gap-2 px-3 py-2.5 cursor-pointer border-b border-slate-800/50 transition-all duration-150
-        ${selected ? 'bg-indigo-600/20 border-l-4 border-l-indigo-500' : 'hover:bg-slate-800/50'}`}
+      onClick={stepienBlocked ? undefined : onToggle}
+      title={stepienBlocked ? 'Stepien Rule — would leave this team with no 1st in two straight future drafts.' : undefined}
+      className={`flex items-center gap-2 px-3 py-2.5 border-b border-slate-800/50 transition-all duration-150
+        ${stepienBlocked ? 'opacity-40 grayscale cursor-not-allowed pointer-events-none'
+          : selected ? 'bg-indigo-600/20 border-l-4 border-l-indigo-500 cursor-pointer'
+          : 'hover:bg-slate-800/50 cursor-pointer'}`}
     >
       <div className="w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center p-1 flex-shrink-0">
         {originalTeam?.logoUrl
@@ -171,11 +181,13 @@ const PickRow: React.FC<{
         }
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-xs font-bold text-white">{pick.season} {pick.round === 1 ? '1st' : '2nd'} Rd</div>
-        <div className="text-[10px] text-slate-500 truncate">Via {originalTeam?.abbrev ?? '?'}</div>
+        <div className="text-xs font-bold text-white">{pick.season} {labelShort}</div>
+        <div className="text-[10px] text-slate-500 truncate">
+          {stepienBlocked ? <span className="text-rose-400 font-black uppercase tracking-wider">Stepien Rule</span> : <>Via {originalTeam?.abbrev ?? '?'}</>}
+        </div>
       </div>
-      {/* Estimated slot range badge */}
-      {pick.round === 1 && (
+      {/* Slot badge — exact when lottery resolved, projection otherwise */}
+      {pick.round === 1 && resolvedSlot == null && (
         <div className="text-[9px] text-slate-500 font-mono flex-shrink-0 px-1">
           {(() => {
             const rankPct = totalTeams > 1 ? (powerRank - 1) / (totalTeams - 1) : 0.5;
@@ -263,9 +275,6 @@ const OfferItemRow: React.FC<{
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-xs font-bold text-white">{item.label}</div>
-          </div>
-          <div className="text-[10px] text-indigo-400 font-bold flex-shrink-0">
-            {item.pick.round === 1 ? '1st' : '2nd'}
           </div>
         </>
       ) : (
@@ -433,8 +442,8 @@ export const TradeFinderView: React.FC = () => {
     [players, currentYear, state.leagueStats?.tradableDraftPickSeasons],
   );
   const lotterySlotByTid = useMemo(
-    () => buildLotterySlotMap((state as any).draftLotteryResult),
-    [(state as any).draftLotteryResult],
+    () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
+    [(state as any).draftLotteryResult, state.teams],
   );
   const leagueAvg = useMemo(() => computeLeagueAvg(players, teams), [players, teams]);
   const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
@@ -454,11 +463,11 @@ export const TradeFinderView: React.FC = () => {
   const capSpaces = useMemo(() => {
     const map = new Map<number, number>();
     teams.forEach(t => {
-      const profile = getTeamCapProfile(players, t.id, (t as any).wins ?? 0, (t as any).losses ?? 0, thresholds);
+      const profile = getTeamCapProfileFromState(state, t.id, thresholds);
       map.set(t.id, profile.capSpaceUSD / 1000); // cap profile is USD; basket salary is thousands
     });
     return map;
-  }, [teams, players, thresholds]);
+  }, [teams, players, thresholds, state]);
 
   // Conference standings for getTradeOutlook — uses effectiveRecord so offseason 0-0 falls back to last season
   const confStandings = useMemo(() => {
@@ -603,7 +612,7 @@ export const TradeFinderView: React.FC = () => {
     setBasket(b => [...b, {
       id: key,
       type: 'pick',
-      label: `${pick.season} ${pick.round === 1 ? '1st' : '2nd'} Round`,
+      label: formatPickLabel(pick, currentYear, lotterySlotByTid, false),
       val: calcPickTV(pick.round, rank, teams.length, Math.max(1, pick.season - currentYear), { classStrength, actualSlot }),
       pick,
     }]);
@@ -704,6 +713,8 @@ export const TradeFinderView: React.FC = () => {
         // and young core become available in the counter-offer. Be careful what you wish for.
         bypassUntouchablesForTid: isReverseMode && myVal >= 140 ? state.userTeamId! : undefined,
         allowLifers,
+        stepienEnabled: state.leagueStats?.stepienRuleEnabled !== false,
+        tradablePickWindow: state.leagueStats?.tradableDraftPickSeasons ?? 7,
       });
 
       // Map engine results to UI format
@@ -870,16 +881,26 @@ export const TradeFinderView: React.FC = () => {
               filteredPicks.map(pk => {
                 const orig = teams.find(t => t.id === pk.originalTid);
                 const rank = powerRanks.get(pk.originalTid) ?? Math.ceil(teams.length / 2);
+                const isSelected = basketIds.has(String(pk.dpid));
+                const stepienOn = state.leagueStats?.stepienRuleEnabled !== false;
+                const basketPicks = basket.filter(i => i.type === 'pick' && i.pick).map(i => i.pick!);
+                const stepienBlocked = !isSelected && stepienOn && wouldStepienViolateForTid(
+                  draftPicks ?? [], currentYear,
+                  state.leagueStats?.tradableDraftPickSeasons ?? 7,
+                  selectedTid, [...basketPicks, pk],
+                );
                 return (
                   <PickRow
                     key={pk.dpid}
                     pick={pk}
-                    selected={basketIds.has(String(pk.dpid))}
+                    selected={isSelected}
                     onToggle={() => addPick(pk)}
                     originalTeam={orig}
                     powerRank={rank}
                     totalTeams={teams.length}
                     currentYear={currentYear}
+                    lotterySlotByTid={lotterySlotByTid}
+                    stepienBlocked={stepienBlocked}
                   />
                 );
               })

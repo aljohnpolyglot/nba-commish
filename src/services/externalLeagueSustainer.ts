@@ -65,6 +65,7 @@ function getGeneratedExternalOvrCap(league: string, age: number): number {
     'B-League': 40,
     PBA: 39,
     'G-League': 38,
+    WNBA: 44,
   };
   const youthCap: Record<string, number> = {
     Euroleague: 40,
@@ -74,8 +75,15 @@ function getGeneratedExternalOvrCap(league: string, age: number): number {
     'B-League': 36,
     PBA: 35,
     'G-League': 35,
+    WNBA: 38,
   };
   return age < 19 ? (youthCap[league] ?? 38) : (adultCap[league] ?? 40);
+}
+
+/** Leagues that use female face/name pools. */
+const WOMENS_LEAGUES = new Set(['WNBA']);
+function genderForLeague(league: string): 'male' | 'female' {
+  return WOMENS_LEAGUES.has(league) ? 'female' : 'male';
 }
 
 function getClubCountry(tid: number | undefined): string | undefined {
@@ -187,7 +195,8 @@ export function repairGeneratedExternalPlayer(player: NBAPlayer, referenceYear: 
 // Spawning 15-18yo "youth" at G-League teams produced nonsense colleges like
 // "Maine Celtics Youth" showing up in the UI. Keep it adult-direct.
 const WITH_YOUTH_LEAGUES = new Set(['Euroleague', 'Endesa', 'NBL Australia', 'B-League']);
-const ADULT_DIRECT_LEAGUES = new Set(['PBA', 'China CBA']);
+// WNBA: adult-direct (NCAA pipeline, not youth academies). Track B in repopulate.
+const ADULT_DIRECT_LEAGUES = new Set(['PBA', 'China CBA', 'WNBA']);
 
 // BBGM raw OVR ceiling per league (most players land 45–58, rare hit cap)
 // Kept in lockstep with constants.ts EXTERNAL_LEAGUE_OVR_CAP.
@@ -199,12 +208,14 @@ const LEAGUE_OVR_CAP: Record<string, number> = {
   'B-League':      48,
   PBA:             46,
   'G-League':      45,
+  WNBA:            54,
 };
 
 // Default nationality for adult-direct leagues
 const ADULT_DIRECT_NATIONALITY: Record<string, string> = {
   PBA:         'Philippines',
   'China CBA': 'China',
+  WNBA:        'USA',
 };
 
 // When nameData lacks a country, fall through to a regional proxy
@@ -455,7 +466,8 @@ function spawnExternalPlayer(opts: {
     const nameData = getNameData();
 
     // ── Generate base ratings/archetype/physical from the existing pipeline ──
-    const generated = generateDraftClassForGame(year, 1, Math.random, nameData, year);
+    const gender = genderForLeague(league);
+    const generated = generateDraftClassForGame(year, 1, Math.random, nameData, year, undefined, gender);
     const base = generated[0];
     if (!base) return null;
 
@@ -803,7 +815,7 @@ export function retireExternalLeaguePlayers(
   historyEntries: ExternalHistoryEntry[];
 } {
   const EXTERNAL_FOR_RETIRE = new Set([
-    'Euroleague', 'Endesa', 'China CBA', 'NBL Australia', 'PBA', 'B-League', 'G-League',
+    'Euroleague', 'Endesa', 'China CBA', 'NBL Australia', 'PBA', 'B-League', 'G-League', 'WNBA',
   ]);
   const retirees: ExternalRetireeRecord[] = [];
   const historyEntries: ExternalHistoryEntry[] = [];
@@ -835,6 +847,12 @@ export function retireExternalLeaguePlayers(
       if (age >= 44) prob = 1.0;
       else if (age >= 41 && ovr < 42) prob = 0.30;
       else if (age >= 38 && ovr < 38) prob = 0.15;
+    } else if (status === 'WNBA') {
+      // WNBA careers shorter than NBA — Sue Bird (40) and Diana Taurasi (40+)
+      // are the outliers. Most stars retire 35-37, role players 32-34.
+      if (age >= 41) prob = 1.0;
+      else if (age >= 37 && ovr < 44) prob = 0.30;
+      else if (age >= 34 && ovr < 38) prob = 0.18;
     } else {
       // Euroleague, Endesa, B-League — higher athletic demand, slightly earlier churn
       if (age >= 42) prob = 1.0;
@@ -888,7 +906,7 @@ export function enforceExternalMinRoster(
   year: number,
 ): { additions: NBAPlayer[] } {
   const EXTERNAL_LEAGUES = new Set([
-    'Euroleague', 'Endesa', 'China CBA', 'NBL Australia', 'PBA', 'B-League', 'G-League',
+    'Euroleague', 'Endesa', 'China CBA', 'NBL Australia', 'PBA', 'B-League', 'G-League', 'WNBA',
   ]);
   const MIN_ROSTER = 12;
   const MAX_ROSTER = 15;
@@ -961,7 +979,7 @@ export function repopulateExternalLeagues(
   nextYear: number,
 ): { additions: NBAPlayer[] } {
   const EXTERNAL_LEAGUES = new Set([
-    'Euroleague', 'Endesa', 'China CBA', 'NBL Australia', 'PBA', 'B-League', 'G-League',
+    'Euroleague', 'Endesa', 'China CBA', 'NBL Australia', 'PBA', 'B-League', 'G-League', 'WNBA',
   ]);
   const salaryCap = state.leagueStats?.salaryCap ?? 154_600_000;
   const nonNBATeams: any[] = (state as any).nonNBATeams ?? [];
@@ -1065,7 +1083,7 @@ export function returnUndraftedToHomeLeague(
 ): { players: NBAPlayer[]; historyEntries: ExternalHistoryEntry[] } {
   const EXTERNAL_LEAGUES = new Set([
     'Euroleague', 'Endesa', 'China CBA', 'NBL Australia', 'PBA', 'B-League', 'G-League',
-  ]);
+  ]);  // WNBA intentionally excluded — undrafted-NBA-prospect routing is men's-only
   const DOMESTIC = new Set(['USA', 'Canada', '']);
   const nonNBATeams: any[] = (state as any).nonNBATeams ?? [];
   const salaryCap = state.leagueStats?.salaryCap ?? 154_600_000;

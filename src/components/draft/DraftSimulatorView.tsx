@@ -891,6 +891,9 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   const commitPickToState = useCallback((pickSlot: number, player: any) => {
     const update = buildDraftedPlayerUpdate(player, pickSlot);
     if (!update) return;
+    // Snapshot in-progress picks (including this one) so autoRunDraft can honor
+    // them if user advances day before completing the draft.
+    const activeDraftPicksAfter: Record<number, any> = { ...drafted, [pickSlot]: player };
     const team = draftOrder[pickSlot - 1];
     const retired = new Set<string>(
       ((team as any)?.retiredJerseyNumbers ?? []).map((j: any) => String(j.number))
@@ -924,9 +927,10 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
           targetTeamIds: team?.id != null ? [team.id] : [],
         }),
         draftPicks: draftPicksAfter,
+        activeDraftPicks: activeDraftPicksAfter,
       },
     } as any);
-  }, [state.players, state.draftPicks, state.leagueStats?.year, buildDraftedPlayerUpdate, dispatch, draftOrder, leagueYear]);
+  }, [drafted, state.players, state.draftPicks, state.leagueStats?.year, buildDraftedPlayerUpdate, dispatch, draftOrder, leagueYear]);
 
   const draftPlayer = useCallback((player: any) => {
     setHasStarted(true);
@@ -1019,6 +1023,9 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
             targetTeamIds: freshPicks.map(p => draftOrder[p.slot - 1]?.id).filter((id): id is number => id != null),
           }),
           draftPicks: draftPicksAfter,
+          // Persist in-progress picks atomically with the player updates so
+          // autoRunDraft (fires on day-advance past draft date) can honor them.
+          activeDraftPicks: newPicks,
         },
       } as any);
     }

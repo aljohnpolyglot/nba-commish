@@ -1,4 +1,5 @@
 import { formatDistance, isValid, formatDistanceToNow } from 'date-fns';
+import type { Game } from '../types';
 
 /**
  * Compute player age from born.year and sim year.
@@ -123,6 +124,30 @@ export const getGamePhase = (dateString: string): GamePhase => {
 
   return 'Regular Season (Mid)'; // Fallback
 };
+
+export function getSeasonPhase(state: {
+  schedule: Game[];
+  date: string;
+  teams: { seasons?: any[] }[];
+}): 'preseason' | 'regular' | 'playoffs' | 'offseason' {
+  const anyPOPlayed = state.schedule.some(g => g.played && (g.isPlayoff || g.isPlayIn));
+  const anyRSPlayed = state.schedule.some(g => g.played && !g.isPlayoff && !g.isPlayIn && !g.isPreseason && !g.isAllStar && !g.isExhibition);
+
+  if (anyPOPlayed) return 'playoffs';
+  if (anyRSPlayed) return 'regular';
+
+  const d = new Date(state.date);
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+
+  // Jun through Oct 23 with 0 RS/PO games = post-rollover offseason
+  if (month >= 6 && (month < 10 || (month === 10 && day < 24))) {
+    const hasHistory = state.teams.some(t => (t.seasons?.length ?? 0) > 0);
+    return hasHistory ? 'offseason' : 'preseason';
+  }
+
+  return 'preseason';
+}
 
 export const selectRandom = <T>(array: T[], count: number): T[] => {
   const shuffled = [...array].sort(() => 0.5 - Math.random());
@@ -655,7 +680,11 @@ export function getTeamForGame(teamId: number, teams: NBATeam[] = []): any {
           teamId === -5 ? 'Team Shannon' :
           teamId === -6 ? 'Team Stephen A' :
           teamId === -7 ? 'Dunk Contest' :
-          teamId === -8 ? '3-Point Contest' : 'Exhibition Team',
+          teamId === -8 ? '3-Point Contest' :
+          teamId === -13 ? 'RS Team A' :
+          teamId === -14 ? 'RS Team B' :
+          teamId === -15 ? 'RS Team C' :
+          teamId === -16 ? 'G League' : 'Exhibition Team',
     abbrev: teamId === -1 ? 'EST' :
             teamId === -2 ? 'WST' :
             teamId === -3 ? 'USA' :
@@ -663,7 +692,11 @@ export function getTeamForGame(teamId: number, teams: NBATeam[] = []): any {
             teamId === -5 ? 'SHA' :
             teamId === -6 ? 'SAS' :
             teamId === -7 ? 'DNK' :
-            teamId === -8 ? '3PT' : 'EXH',
+            teamId === -8 ? '3PT' :
+            teamId === -13 ? 'RSA' :
+            teamId === -14 ? 'RSB' :
+            teamId === -15 ? 'RSC' :
+            teamId === -16 ? 'GGL' : 'EXH',
     conference: 'All-Star',
     wins: 0,
     losses: 0,

@@ -1,5 +1,6 @@
 import { GameState, UserAction, NBAPlayer as Player, DraftPick } from '../../../types';
 import { executeForcedTrade, executeExecutiveTrade } from '../../../services/tradeService';
+import { buildFullDraftSlotMap } from '../../../services/draft/draftClassStrength';
 import { generateTPEsFromTrade } from '../../../utils/tradeExceptionUtils';
 
 export const preProcessAction = async (state: GameState, action: UserAction): Promise<{ stateForSim: GameState, executiveTradeTransaction?: any }> => {
@@ -39,12 +40,16 @@ export const preProcessAction = async (state: GameState, action: UserAction): Pr
     } else if (action.type === 'SIGN_FREE_AGENT') {
         stateForSim = {
             ...state,
-            players: state.players.map(p => 
-                p.internalId === action.payload.playerId ? { ...p, tid: action.payload.teamId, status: 'Active' } : p
+            players: state.players.map(p =>
+                p.internalId === action.payload.playerId
+                    ? { ...p, tid: action.payload.teamId, status: 'Active', signedDate: state.date }
+                    : p
             )
         };
     } else if (action.type === 'EXECUTIVE_TRADE') {
-        const tradeResult = executeExecutiveTrade(action.payload, state.players, state.teams, state.draftPicks);
+        const _ptCurrentYear = state.leagueStats?.year ?? new Date().getFullYear();
+        const _ptLotterySlots = buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams);
+        const tradeResult = executeExecutiveTrade(action.payload, state.players, state.teams, state.draftPicks, _ptCurrentYear, _ptLotterySlots);
         executiveTradeTransaction = tradeResult.transaction;
 
         let p = [...state.players];
@@ -67,9 +72,22 @@ export const preProcessAction = async (state: GameState, action: UserAction): Pr
         // Skip when commissioner force-overrides cap rules — those are extra-legal anyway.
         const tpeEnabled = state.leagueStats?.tradeExceptionsEnabled !== false;
         const isForced = !!action.payload?.commissionerForced;
-        const teams = (tpeEnabled && !isForced)
+        let teams = (tpeEnabled && !isForced)
             ? generateTPEsFromTrade(tradeResult.transaction, state.teams, state.players, state.leagueStats, state.date)
             : state.teams;
+        // Cash considerations: increment cashUsedInTrades on senders. Resets at season rollover.
+        const cashByTid = new Map<number, number>();
+        Object.entries(tradeResult.transaction.teams).forEach(([tidStr, assets]) => {
+            const cash = (assets as any).cashSentUSD ?? 0;
+            if (cash > 0) cashByTid.set(parseInt(tidStr), cash);
+        });
+        if (cashByTid.size > 0) {
+            teams = teams.map(t => {
+                const sent = cashByTid.get(t.id);
+                if (!sent) return t;
+                return { ...t, cashUsedInTrades: (t.cashUsedInTrades ?? 0) + sent };
+            });
+        }
         stateForSim = { ...state, players: p, draftPicks: d, teams };
     } else if (action.type === 'FORCE_TRADE') {
         const tradeResult = await executeForcedTrade(action.payload, state.players, state.teams, state.draftPicks);

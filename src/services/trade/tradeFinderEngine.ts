@@ -6,14 +6,18 @@
  * untouchable protection, salary matching, ratio thresholds.
  */
 
-import type { NBAPlayer, NBATeam, DraftPick } from '../../types';
+import type { NBAPlayer, NBATeam, DraftPick, LeagueStats } from '../../types';
 import {
   calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV,
+  calcCashTV, CASH_TRADE_CAP_USD,
   isUntouchable, isYoungContenderCore, isOnTradingBlock, isSalaryLegal, type TeamMode,
   type TVContext,
 } from './tradeValueEngine';
-import { effectiveRecord } from '../../utils/salaryUtils';
+import { effectiveRecord, seasonLabelToYear, contractToUSD } from '../../utils/salaryUtils';
 import { tradeRoleToTeamMode } from '../../utils/teamStrategy';
+import { formatPickLabel } from '../draft/draftClassStrength';
+import { wouldStepienViolateForTid } from './stepienRule';
+import { validateCBATradeRules } from '../../utils/cbaTradeRules';
 
 const EXTERNAL = new Set(['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'Draft Prospect', 'Prospect']);
 
@@ -85,6 +89,13 @@ export interface FindOffersInput {
    *  present, current-year R1 picks get priced off the KNOWN slot instead of
    *  power-rank projection — critical for June draft-day trades. */
   lotterySlotByTid?: Map<number, number>;
+  /** When true, filter out 1st-round picks whose inclusion would leave the
+   *  donor team with no 1st in two consecutive future drafts. Without this,
+   *  the assembled basket gets rejected wholesale by the Stepien post-validator
+   *  in AITradeHandler instead of falling back to a 2nd or alt-year 1st. */
+  stepienEnabled?: boolean;
+  /** Trade window (years) used by the Stepien check. Mirrors leagueStats.tradableDraftPickSeasons (default 7). */
+  tradablePickWindow?: number;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -125,7 +136,17 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     currentYear, minTradableSeason, powerRanks, teamOutlooks, targetTids, tvContext, capSpaces,
     tradeDifficulty, bypassUntouchablesForTid, allowLifers,
     classStrengthByYear, lotterySlotByTid,
+    stepienEnabled = false, tradablePickWindow = 7,
   } = input;
+
+  // Stepien-aware filter: would shipping `candidate` leave `tid` without a 1st
+  // in two straight future drafts, given the picks ALREADY chosen from this team?
+  // 2nds and disabled rule short-circuit to "ok".
+  const stepienBlocks = (tid: number, candidate: DraftPick, alreadyLeaving: DraftPick[]): boolean => {
+    if (!stepienEnabled) return false;
+    if (candidate.round !== 1) return false;
+    return wouldStepienViolateForTid(draftPicks, currentYear, tradablePickWindow, tid, [...alreadyLeaving, candidate]);
+  };
 
   // Resolve a pick's classStrength + actualSlot once. Current-year R1 picks
   // get their real lottery slot if the lottery has run; everything else falls
@@ -133,7 +154,7 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
   const pickOpts = (pk: DraftPick) => ({
     classStrength: classStrengthByYear?.get(pk.season) ?? 1.0,
     actualSlot: pk.round === 1 && pk.season === currentYear
-      ? lotterySlotByTid?.get(pk.tid)
+      ? lotterySlotByTid?.get(pk.originalTid)
       : undefined,
   });
 
@@ -192,6 +213,50 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     const theirRoster = players
       .filter(p => p.tid === team.id && !EXTERNAL.has(p.status ?? '') && p.tid !== -2)
       .sort((a, b) => b.overallRating - a.overallRating);
+
+    // Picks-only basket — skip player matching entirely. Returns are pick-piles
+    // from the AI's stash plus optional cash sweetener if mode mismatch (contender
+    // pays cash to a rebuilder for absorbing late picks).
+    const basketIsPicksOnly = outgoingSalary === 0
+      && [...basketIds].every(id => !players.some(p => p.internalId === id));
+    if (basketIsPicksOnly) {
+      // Variant 1 — pick-for-pick swap from their stash.
+      const pickSwapItems: TradeOfferItem[] = [];
+      const pickSwapUsed = new Set(basketIds);
+      let pickSwapGap = expectedReturn;
+      const theirPicksOnly = draftPicks
+        .filter(pk => pk.tid === team.id && pk.season >= minTradableSeason && !pickSwapUsed.has(String(pk.dpid)))
+        .sort((a, b) => a.season - b.season);
+      let safetyP = 0;
+      const swapPicksFromTeam: DraftPick[] = [];
+      while (pickSwapGap > 2 && safetyP++ < 8 && theirPicksOnly.length > 0) {
+        const pk = theirPicksOnly.shift()!;
+        if (stepienBlocks(team.id, pk, swapPicksFromTeam)) continue;
+        const pickRank = powerRanks.get(pk.originalTid) ?? theirRank;
+        const pv = calcPickTV(pk.round, pickRank, teams.length, Math.max(1, pk.season - currentYear), pickOpts(pk));
+        if (pv > pickSwapGap + 30) break;
+        swapPicksFromTeam.push(pk);
+        pickSwapItems.push({
+          id: String(pk.dpid), type: 'pick',
+          label: formatPickLabel(pk, currentYear, lotterySlotByTid, false),
+          val: pv, pick: pk,
+        });
+        pickSwapUsed.add(String(pk.dpid));
+        pickSwapGap -= pv;
+      }
+      if (pickSwapItems.length > 0) {
+        const swapVal = pickSwapItems.reduce((s, i) => s + i.val, 0);
+        const ratio = Math.max(expectedReturn, swapVal) / Math.max(1, Math.min(expectedReturn, swapVal));
+        if (ratio <= 1.45) {
+          offers.push({ tid: team.id, items: pickSwapItems, totalVal: swapVal, variant: 'match' });
+        }
+      }
+      // Fall through to player matching: when offering picks, AI may also
+      // counter with a player (rebuilders selling for picks, contenders
+      // willing to part with a vet for future capital). Without this, every
+      // counter to a picks-only basket comes back as picks too — exactly the
+      // "no bodies" symptom users hit on draft day.
+    }
 
     // ── Player matching — fewer players on star trades, picks fill the rest ──
     // Star targets (≥130 TV) mirror real NBA deals: 1 matching vet + pick pile.
@@ -308,18 +373,21 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     // so they can still stack picks to equalize big TV shortfalls.
     const pickCap = isYoungContender && gap < 40 ? 2 : 40;
     let safety = 0;
+    const sweetenerPicksFromTeam: DraftPick[] = [];
     while (gap > 2 && safety++ < pickCap && theirPicks.length > 0) {
       const pk = theirPicks.shift()!;
+      if (stepienBlocks(team.id, pk, sweetenerPicksFromTeam)) continue;
       // Pick value follows the ORIGINAL owner's record (whose slot this pick
       // represents), not the current holder's. OKC holding LAC's 1st stays
       // valued at LAC's lottery curve even though OKC is a contender.
       const pickRank = powerRanks.get(pk.originalTid) ?? theirRank;
       const pv = calcPickTV(pk.round, pickRank, teams.length, Math.max(1, pk.season - currentYear), pickOpts(pk));
       if (pv > gap + overshootMargin) break;
+      sweetenerPicksFromTeam.push(pk);
       returnItems.push({
         id: String(pk.dpid),
         type: 'pick',
-        label: `${pk.season} ${pk.round === 1 ? '1st' : '2nd'} Round`,
+        label: formatPickLabel(pk, currentYear, lotterySlotByTid, false),
         val: pv,
         pick: pk,
       });
@@ -329,15 +397,16 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
 
     if (returnItems.length === 0) continue;
 
-    // ── Ratio threshold — reject lopsided deals ──────────────────────────
-    // Compare against expectedReturn (difficulty-adjusted target), not raw offerValue,
-    // so high difficulty doesn't create impossible rejections on small-TV trades.
+    // Post-trade trim cost: refuse offers that would force > $25M of dead money to waive throw-ins.
+    const incomingPlayers = players.filter(p => basketIds.has(p.internalId));
+    const outgoingIds = new Set(returnItems.filter(i => i.type === 'player' && i.player).map(i => i.player!.internalId));
+    const trimDeadUSD = projectTrimDeadMoneyUSD(theirRoster, incomingPlayers, outgoingIds, currentYear);
+    if (trimDeadUSD > 25_000_000) continue;
+
+    // Ratio threshold: looser for franchise-tier targets where stacking picks can't close the gap.
     const returnVal = returnItems.reduce((s, i) => s + i.val, 0);
     const ratio = Math.max(expectedReturn, returnVal) / Math.max(1, Math.min(expectedReturn, returnVal));
     const totalVal = Math.max(expectedReturn, returnVal);
-    // Franchise-tier targets (300+ TV) need looser tolerance — picks from contenders
-    // are only worth ~8-12 TV each, so stacking can't perfectly close a 150 TV gap.
-    // Real NBA hauls for 99/99-tier players are routinely "lopsided" by analytics.
     const ratioThreshold = totalVal >= 300 ? 1.30 : totalVal >= 200 ? 1.35 : totalVal >= 100 ? 1.40 : 1.45;
     if (ratio > ratioThreshold) continue;
 
@@ -398,17 +467,23 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
           .sort((a, b) => a.season - b.season);
 
         let dumpPicksAdded = 0;
+        const MAX_DUMP_PICK_COMPENSATION = 3;
         let dumpSafety = 0;
-        // No hard pick cap — keep stacking until gap closes or overshoot.
-        while (dumpGap > 3 && dumpSafety++ < 40 && dumpPicks.length > 0) {
+        const dumpPicksFromTeam: DraftPick[] = [];
+        // Salary dumps are a sweetener, not a full pick inventory transfer.
+        // Realistic dumps usually cost 1-2 picks; hard-cap at 3 so the AI
+        // never creates 10+ pick Mitchell Robinson-style dump packages.
+        while (dumpGap > 3 && dumpSafety++ < 40 && dumpPicks.length > 0 && dumpPicksAdded < MAX_DUMP_PICK_COMPENSATION) {
           const pk = dumpPicks.shift()!;
+          if (stepienBlocks(team.id, pk, dumpPicksFromTeam)) continue;
           const pickRank = powerRanks.get(pk.originalTid) ?? theirRank;
           const pv = calcPickTV(pk.round, pickRank, teams.length, Math.max(1, pk.season - currentYear), pickOpts(pk));
           if (pv > dumpGap + 35) break;
+          dumpPicksFromTeam.push(pk);
           dumpItems.push({
             id: String(pk.dpid),
             type: 'pick',
-            label: `${pk.season} ${pk.round === 1 ? '1st' : '2nd'} Round`,
+            label: formatPickLabel(pk, currentYear, lotterySlotByTid, false),
             val: pv,
             pick: pk,
           });
@@ -417,21 +492,24 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
           dumpPicksAdded++;
         }
 
+        // Dump-variant trim guard: the AI contender absorbs the user's basket.
+        // If their post-trade roster blows past 15, the trim books dead money on
+        // their cheapest multi-year guarantees. Refuse the dump variant if the
+        // projected trim cost is heavy — same gate as the match variant above.
+        const dumpIncoming = players.filter(p => basketIds.has(p.internalId));
+        const dumpOutgoingIds = new Set(dumpItems.filter(i => i.type === 'player' && i.player).map(i => i.player!.internalId));
+        const dumpTrimDeadUSD = projectTrimDeadMoneyUSD(theirRoster, dumpIncoming, dumpOutgoingIds, currentYear);
         const dumpReturnVal = dumpItems.reduce((s, i) => s + i.val, 0);
         const dumpRatio = Math.max(expectedReturn, dumpReturnVal) / Math.max(1, Math.min(expectedReturn, dumpReturnVal));
         const dumpTotalVal = Math.max(expectedReturn, dumpReturnVal);
         const dumpRatioThreshold = dumpTotalVal >= 200 ? 1.35 : dumpTotalVal >= 100 ? 1.40 : 1.45;
-        if (dumpRatio <= dumpRatioThreshold) {
+        if (dumpRatio <= dumpRatioThreshold && dumpTrimDeadUSD <= 25_000_000) {
           offers.push({ tid: team.id, items: dumpItems, totalVal: dumpReturnVal, variant: 'dump' });
         }
       }
     }
 
-    // ── Absorb variant — cap-space team takes the contract, returns nothing ──
-    // Real-NBA analog: Spurs/Pistons/Jazz absorbing bloated deals via cap space
-    // in exchange for future flexibility. One-sided legal in isSalaryLegal.
-    // Trigger: user is sending a salaried player, target team's cap space covers
-    // the full outgoing salary, and target team isn't untouchable-contending.
+    // Absorb variant: cap-space team takes the contract for nothing in return.
     const teamCapSpace = capSpaces?.get(team.id) ?? -Infinity;
     const canAbsorb = outgoingSalary > 0
       && teamCapSpace >= outgoingSalary
@@ -472,8 +550,10 @@ export function generateAITradeProposal(input: {
   tvContext?: TVContext;
   classStrengthByYear?: Map<number, number>;
   lotterySlotByTid?: Map<number, number>;
+  stepienEnabled?: boolean;
+  tradablePickWindow?: number;
 }): { buyerGives: TradeOfferItem[]; sellerGives: TradeOfferItem[] } | null {
-  const { buyerTid, sellerTid, players, teams, draftPicks, currentYear, minTradableSeason, powerRanks, teamOutlooks, tvContext, classStrengthByYear, lotterySlotByTid } = input;
+  const { buyerTid, sellerTid, players, teams, draftPicks, currentYear, minTradableSeason, powerRanks, teamOutlooks, tvContext, classStrengthByYear, lotterySlotByTid, stepienEnabled, tradablePickWindow } = input;
 
   const sellerOutlook = teamOutlooks.get(sellerTid) ?? { role: 'neutral' };
   const buyerOutlook = teamOutlooks.get(buyerTid) ?? { role: 'neutral' };
@@ -507,6 +587,8 @@ export function generateAITradeProposal(input: {
     tvContext,
     classStrengthByYear,
     lotterySlotByTid,
+    stepienEnabled,
+    tradablePickWindow,
   });
 
   if (counterOffers.length === 0) return null;
@@ -524,6 +606,133 @@ export function generateAITradeProposal(input: {
       pot: calcPot2K(target, currentYear),
     }],
   };
+}
+
+// Pick-only proposal: cash-and-pick exchanges with no players on either side.
+export function generatePickOnlyProposal(input: {
+  buyerTid: number;
+  sellerTid: number;
+  teams: NBATeam[];
+  draftPicks: DraftPick[];
+  currentYear: number;
+  minTradableSeason: number;
+  powerRanks: Map<number, number>;
+  teamOutlooks: Map<number, { role: string }>;
+  classStrengthByYear?: Map<number, number>;
+  lotterySlotByTid?: Map<number, number>;
+  buyerCashAvailableUSD?: number;
+  sellerCashAvailableUSD?: number;
+  stepienEnabled?: boolean;
+  tradablePickWindow?: number;
+}): {
+  buyerGives: TradeOfferItem[];
+  sellerGives: TradeOfferItem[];
+  cashFromBuyerUSD?: number;
+  cashFromSellerUSD?: number;
+} | null {
+  const {
+    buyerTid, sellerTid, teams, draftPicks, currentYear, minTradableSeason,
+    powerRanks, teamOutlooks, classStrengthByYear, lotterySlotByTid,
+    buyerCashAvailableUSD = 0, sellerCashAvailableUSD = 0,
+    stepienEnabled = false, tradablePickWindow = 7,
+  } = input;
+
+  // Stepien-aware: skip 1st-round picks whose departure would leave the donor
+  // with no 1st in two consecutive future drafts. Causes Variant A to fall
+  // through (returning null) so the caller can try a different proposal type
+  // instead of generating a basket the post-validator will reject.
+  const stepienBlocksOne = (tid: number, candidate: DraftPick): boolean => {
+    if (!stepienEnabled) return false;
+    if (candidate.round !== 1) return false;
+    return wouldStepienViolateForTid(draftPicks, currentYear, tradablePickWindow, tid, [candidate]);
+  };
+
+  const buyerOutlookRole = teamOutlooks.get(buyerTid)?.role ?? 'neutral';
+  const sellerOutlookRole = teamOutlooks.get(sellerTid)?.role ?? 'neutral';
+  const buyerMode = roleToMode(buyerOutlookRole);
+  const sellerMode = roleToMode(sellerOutlookRole);
+
+  const pickOpts = (pk: DraftPick) => ({
+    classStrength: classStrengthByYear?.get(pk.season) ?? 1.0,
+    actualSlot: pk.round === 1 && pk.season === currentYear
+      ? lotterySlotByTid?.get(pk.originalTid)
+      : undefined,
+  });
+  const tvOf = (pk: DraftPick): number => {
+    const rank = powerRanks.get(pk.originalTid) ?? Math.ceil(teams.length / 2);
+    return calcPickTV(pk.round, rank, teams.length, Math.max(1, pk.season - currentYear), pickOpts(pk));
+  };
+
+  const sellerPicks = draftPicks
+    .filter(p => p.tid === sellerTid && p.season >= minTradableSeason)
+    .sort((a, b) => a.season - b.season);
+  const buyerPicks = draftPicks
+    .filter(p => p.tid === buyerTid && p.season >= minTradableSeason)
+    .sort((a, b) => a.season - b.season);
+  if (sellerPicks.length === 0 || buyerPicks.length === 0) return null;
+
+  // Variant A — pick-delay swap. Contender (buyer) wants seller's earlier 1st;
+  // sends a LATER 1st + small cash sweetener. Triggers when buyer is contend-tier
+  // and seller is rebuild/develop-tier with a near-term R1 to part with.
+  const buyerIsContend = buyerMode === 'contend';
+  const sellerIsRebuild = sellerMode === 'rebuild' || sellerMode === 'presti';
+
+  if (buyerIsContend && sellerIsRebuild) {
+    const sellerR1 = sellerPicks.find(p => p.round === 1 && p.season - currentYear <= 2 && !stepienBlocksOne(sellerTid, p));
+    const buyerLaterR1 = [...buyerPicks].reverse().find(p => p.round === 1 && p.season > (sellerR1?.season ?? currentYear) && !stepienBlocksOne(buyerTid, p));
+    if (sellerR1 && buyerLaterR1) {
+      const sellerTV = tvOf(sellerR1);
+      const buyerTV = tvOf(buyerLaterR1);
+      const gap = sellerTV - buyerTV;
+      // Buyer can throw cash up to the buyer's available cap to close the gap.
+      const cashTVBudget = Math.min(buyerCashAvailableUSD, CASH_TRADE_CAP_USD);
+      const cashTVAvail = calcCashTV(cashTVBudget);
+      if (gap > 0 && gap <= cashTVAvail + 6) {
+        const cashUSD = Math.min(buyerCashAvailableUSD, Math.round(Math.max(0, gap) * 1_000_000 / 1.5));
+        return {
+          buyerGives: [{
+            id: String(buyerLaterR1.dpid), type: 'pick',
+            label: formatPickLabel(buyerLaterR1, currentYear, lotterySlotByTid, false),
+            val: buyerTV, pick: buyerLaterR1,
+          }],
+          sellerGives: [{
+            id: String(sellerR1.dpid), type: 'pick',
+            label: formatPickLabel(sellerR1, currentYear, lotterySlotByTid, false),
+            val: sellerTV, pick: sellerR1,
+          }],
+          cashFromBuyerUSD: cashUSD > 0 ? cashUSD : undefined,
+        };
+      }
+    }
+  }
+
+  // Variant B — 2nd-round dump for cash. Contender ships a 2nd to a rebuilder for absorption.
+  if (sellerIsRebuild) {
+    // Note: caller picks roles; here "buyer" is the team trying to dump.
+    const dumperPicks = buyerPicks.filter(p => p.round === 2);
+    const dumper2nd = dumperPicks[0];
+    if (dumper2nd) {
+      const dumpTV = tvOf(dumper2nd);
+      // Rebuilder demands ~$1-3M to absorb a worthless 2nd
+      const askUSD = Math.min(buyerCashAvailableUSD, Math.max(1_000_000, Math.round(dumpTV * 1_000_000 / 1.5)));
+      if (askUSD >= 500_000 && buyerCashAvailableUSD >= askUSD) {
+        return {
+          buyerGives: [{
+            id: String(dumper2nd.dpid), type: 'pick',
+            label: formatPickLabel(dumper2nd, currentYear, lotterySlotByTid, false),
+            val: dumpTV, pick: dumper2nd,
+          }],
+          sellerGives: [],
+          cashFromBuyerUSD: askUSD,
+        };
+      }
+    }
+  }
+
+  // Variant C — pick consolidation. Buyer offers 2× 2nds for one of seller's later 2nds
+  // bundled toward an earlier 1st? Skip — too case-specific. Variant A + B cover most.
+
+  return null;
 }
 
 // ── Acceptance evaluator ─────────────────────────────────────────────────────
@@ -551,6 +760,15 @@ export interface EvaluateAcceptanceInput {
   /** Optional dynamic pick-value inputs (see draftClassStrength.ts). */
   classStrengthByYear?: Map<number, number>;
   lotterySlotByTid?: Map<number, number>;
+  /** AI side's current roster — used to project post-trade trim dead money. */
+  toTeamRoster?: NBAPlayer[];
+  /** Roster cap for trim projection (default 15). */
+  maxRoster?: number;
+  leagueStats?: LeagueStats;
+  currentDate?: string;
+  allPlayers?: NBAPlayer[];
+  fromCashUSD?: number;
+  toCashUSD?: number;
 }
 
 export interface AcceptanceResult {
@@ -589,6 +807,47 @@ function contractToxicity(player: NBAPlayer, currentYear: number): number {
   return overpayPerYr * yrsLeft * 0.5;
 }
 
+/** Projects USD dead-money the team would eat after post-trade roster trim (overflow above maxRoster). */
+function projectTrimDeadMoneyUSD(
+  currentRoster: NBAPlayer[],
+  incomingPlayers: NBAPlayer[],
+  outgoingPlayerIds: Set<string>,
+  currentYear: number,
+  maxRoster = 15,
+): number {
+  // Project post-trade roster (existing minus outgoing plus incoming, std only).
+  const postTrade = [
+    ...currentRoster.filter(p => !outgoingPlayerIds.has(p.internalId) && !(p as any).twoWay),
+    ...incomingPlayers.filter(p => !(p as any).twoWay),
+  ];
+  const overflow = postTrade.length - maxRoster;
+  if (overflow <= 0) return 0;
+
+  // Project the cut order (lowest-OVR among guaranteed) and sum their remaining guaranteed USD.
+  const cutCandidates = [...postTrade]
+    .filter(p => !(p as any).twoWay && !(p as any).nonGuaranteed)
+    .sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0));
+
+  let deadUSD = 0;
+  for (let i = 0; i < overflow && i < cutCandidates.length; i++) {
+    const p = cutCandidates[i];
+    const cy = (p as any).contractYears as Array<{ season: string; guaranteed: number; option?: string }> | undefined;
+    if (Array.isArray(cy) && cy.length > 0) {
+      deadUSD += cy
+        .filter(y =>
+          seasonLabelToYear(y.season) >= currentYear && y.option !== 'team' && y.option !== 'player'
+        )
+        .reduce((s, y) => s + (y.guaranteed || 0), 0);
+    } else {
+      const exp = (p.contract?.exp ?? currentYear);
+      const amountUSD = contractToUSD(p.contract?.amount || 0);
+      const yrs = Math.max(1, exp - currentYear + 1);
+      deadUSD += amountUSD * yrs;
+    }
+  }
+  return deadUSD;
+}
+
 function tvOfItem(
   item: { type: string; player?: NBAPlayer; pick?: DraftPick },
   receiverMode: TeamMode,
@@ -621,7 +880,8 @@ export function evaluateTradeAcceptance(input: EvaluateAcceptanceInput): Accepta
   const {
     fromTid, toTid, fromItems, toItems, teams, currentYear,
     powerRanks, teamOutlooks, tvContext, tradeDifficulty,
-    classStrengthByYear, lotterySlotByTid,
+    classStrengthByYear, lotterySlotByTid, toTeamRoster, maxRoster,
+    leagueStats, currentDate, allPlayers, fromCashUSD = 0, toCashUSD = 0,
   } = input;
 
   const fromMode = roleToMode(teamOutlooks.get(fromTid)?.role ?? 'neutral');
@@ -631,6 +891,36 @@ export function evaluateTradeAcceptance(input: EvaluateAcceptanceInput): Accepta
   // a contender values their pick the way a contender would, etc.
   const offerValue = fromItems.reduce((s, i) => s + tvOfItem(i, fromMode, teams, currentYear, powerRanks, tvContext, classStrengthByYear, lotterySlotByTid), 0);
   const returnVal = toItems.reduce((s, i) => s + tvOfItem(i, toMode, teams, currentYear, powerRanks, tvContext, classStrengthByYear, lotterySlotByTid), 0);
+
+  if (leagueStats && currentDate && allPlayers) {
+    const cba = validateCBATradeRules({
+      teamAId: fromTid,
+      teamBId: toTid,
+      teamAPlayers: fromItems.filter((i): i is { type: 'player'; player: NBAPlayer } => i.type === 'player' && !!i.player).map(i => i.player),
+      teamBPlayers: toItems.filter((i): i is { type: 'player'; player: NBAPlayer } => i.type === 'player' && !!i.player).map(i => i.player),
+      teamAPicks: fromItems.filter((i): i is { type: 'pick'; pick: DraftPick } => i.type === 'pick' && !!i.pick).map(i => i.pick),
+      teamBPicks: toItems.filter((i): i is { type: 'pick'; pick: DraftPick } => i.type === 'pick' && !!i.pick).map(i => i.pick),
+      teamACashUSD: fromCashUSD,
+      teamBCashUSD: toCashUSD,
+      teams,
+      players: allPlayers,
+      leagueStats,
+      currentDate,
+      currentYear,
+    });
+    if (!cba.ok) {
+      return {
+        accepted: false,
+        offerValue,
+        returnVal,
+        expectedReturn: offerValue,
+        shortfall: Math.max(0, returnVal - offerValue),
+        ratio: 999,
+        ratioThreshold: 0,
+        reason: cba.reason ?? 'Trade violates current CBA settings.',
+      };
+    }
+  }
 
   // Same asymmetric difficulty curve as generateCounterOffers.
   const difficultyBias = (() => {
@@ -648,9 +938,25 @@ export function evaluateTradeAcceptance(input: EvaluateAcceptanceInput): Accepta
   const toAbsorb = toItems.reduce((s, i) =>
     i.type === 'player' && i.player ? s + contractToxicity(i.player, currentYear) : s, 0);
 
-  // expectedReturn can go negative when toxic contracts dominate the offer —
+  // Post-trade trim cost: if the AI absorbs more players than it sends out and
+  // would end up over the roster cap, the autoTrim guillotine books dead money
+  // on the cheapest multi-year guaranteed contracts. Real GMs price this in.
+  // Each $1M projected dead ≈ 0.6 TV (≈ contractToxicity scale for the same dollar).
+  let trimDeadTV = 0;
+  if (toTeamRoster) {
+    const incomingPlayers = fromItems
+      .filter((i): i is { type: 'player'; player: NBAPlayer } => i.type === 'player' && !!i.player)
+      .map(i => i.player);
+    const outgoingIds = new Set(
+      toItems.filter(i => i.type === 'player' && i.player).map(i => i.player!.internalId)
+    );
+    const trimDeadUSD = projectTrimDeadMoneyUSD(toTeamRoster, incomingPlayers, outgoingIds, currentYear, maxRoster ?? 15);
+    trimDeadTV = (trimDeadUSD / 1_000_000) * 0.6;
+  }
+
+  // expectedReturn can go negative when toxic contracts + trim cost dominate —
   // that's the "you need to attach more picks" demand.
-  const expectedReturn = (offerValue - difficultyBias) - fromAbsorb + toAbsorb;
+  const expectedReturn = (offerValue - difficultyBias) - fromAbsorb - trimDeadTV + toAbsorb;
   const totalVal = Math.max(Math.max(10, expectedReturn), returnVal);
   // Mirrors generateCounterOffers: relaxed for franchise-tier targets where
   // picks can't close the TV gap perfectly.
@@ -671,6 +977,9 @@ export function evaluateTradeAcceptance(input: EvaluateAcceptanceInput): Accepta
     reason = netToAI > 15
       ? 'This is a great deal for us. Done!'
       : 'Fair trade. We can work with this.';
+  } else if (trimDeadTV > 15) {
+    // Roster overflow — taking these throw-ins would force expensive waives.
+    reason = "Too many bodies coming back — we'd be eating dead money to fit them. Cut a player or send a pick to cover it.";
   } else if (fromAbsorb > 20 && returnVal === 0) {
     // Pure dump of a toxic contract — AI wants compensation, not just the body.
     reason = "That contract's a tough pill. Sweeten it with another pick or two and we'll talk.";

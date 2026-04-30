@@ -8,6 +8,7 @@
 import type { NBAPlayer, DraftPick } from '../../types';
 import { convertTo2KRating } from '../../utils/helpers';
 import { getPlayerInjuryProfile } from '../../data/playerInjuryData';
+import { formatPickLabel } from '../draft/draftClassStrength';
 
 export type TeamMode = 'contend' | 'rebuild' | 'presti';
 
@@ -130,11 +131,58 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
   else if (mode === 'contend')  val = Math.round(ovrPart * 1.4 + potPart * 0.6);
   else /* presti */              val = Math.round(ovrPart * 0.5 + potPart * 1.5);
 
-  // Age nerf — minimal. OVR already declines naturally with age in the ratings engine,
-  // so a 41yo still sitting at 94 OVR is a genuine outlier (LeBron, KJ types) and their
-  // TV should reflect that they're still elite. Start at 39, very gentle decay, 72% floor.
+  // Age nerf — minimal global decay. OVR already declines naturally with age in the
+  // ratings engine, so a 41yo still sitting at 94 OVR is a genuine outlier (LeBron, KJ
+  // types) and their TV should reflect that they're still elite. Start at 39, gentle decay, 72% floor.
   if (age >= 39) val = Math.round(val * Math.max(0.72, Math.pow(0.97, age - 38)));
-  if ((player.contract?.exp ?? currentYear + 1) <= currentYear) val = Math.round(val * 0.5);
+
+  // Mode-aware age + contract handling. Rebuilders heavily discount aging ROLE-PLAYER
+  // vets on multi-year deals (toxic salary they can't shed) but still value expirings
+  // as flip-at-deadline / cap-relief assets — mirrors real NBA rebuilder behavior.
+  // Critical: stars (ovr >= 80) are NOT treated as "aging vets" until they actually
+  // decline to role-player OVR. A 28yo 89 OVR Tatum stays a franchise piece even when
+  // his team's strategy flips to "rebuild" (e.g. season-ending injury).
+  const expYear = player.contract?.exp ?? currentYear + 1;
+  const isExpiring = expYear <= currentYear + 1;       // 1 year or less remaining
+  const isFutureMultiYear = expYear >= currentYear + 2; // 2+ years left = locked-in salary
+  if (mode === 'rebuild' || mode === 'presti') {
+    // Age penalty applies only to non-star OVR — once a player is below 80 OVR, the
+    // rebuilder sees them as either flip asset (expiring) or toxic salary (multi-year).
+    if (ovr < 80) {
+      if (age >= 33)      val = Math.round(val * (isExpiring ? 0.55 : 0.28));
+      else if (age >= 30) val = Math.round(val * (isExpiring ? 0.75 : 0.50));
+      else if (age >= 28) val = Math.round(val * (isExpiring ? 0.92 : 0.75));
+    } else if (ovr < 85) {
+      // 80-84 OVR starters: gentler curve, still discount real graybeards.
+      if (age >= 35)      val = Math.round(val * (isExpiring ? 0.70 : 0.50));
+      else if (age >= 32) val = Math.round(val * (isExpiring ? 0.85 : 0.70));
+    } else {
+      // 85+ OVR stars: only the deepest twilight (37+) gets a small haircut.
+      if (age >= 37) val = Math.round(val * 0.80);
+    }
+    // Prime-age stars are the literal foundation a rebuilder builds around — Herro
+    // (26y/87 OVR signed through 2031), SGA-tier guys, etc. The rebuilder values
+    // them MORE than a contender does because they ARE the timeline. Tiered:
+    //   * 28+ stars → no bonus (they're just "good"; build-around timeline tightening)
+    //   * 26-27 + 85+ OVR → moderate cornerstone premium (Herro tier)
+    //   * ≤25 + 85+ OVR → strong cornerstone premium (true young stars)
+    //   * ≤23 + 88+ POT → developmental-cornerstone premium
+    if (age <= 25 && ovr >= 85)      val = Math.round(val * 1.30);
+    else if (age <= 27 && ovr >= 86) val = Math.round(val * 1.20);
+    else if (age <= 23 && pot >= 88) val = Math.round(val * 1.15);
+  } else if (mode === 'contend') {
+    // Contenders fairly value their veterans but slightly under-value pure projects
+    // (need NOW production). Mild — they still see role-player upside, just not full.
+    if (age <= 21 && ovr < 70 && isFutureMultiYear) val = Math.round(val * 0.85);
+    // Toxic multi-year role-player vet contracts (34+, ovr<82, 2+yr deal) are a drag
+    // for contenders trying to stay flexible. High-OVR stars are exempt — a 35yo 88
+    // OVR is still a championship piece.
+    if (age >= 34 && ovr < 82 && isFutureMultiYear) val = Math.round(val * 0.85);
+  }
+
+  // Walk-year stub: contract already past expiry (data lag). Flat half — keeps the
+  // pre-existing safety net for malformed contract data.
+  if (expYear <= currentYear) val = Math.round(val * 0.5);
 
   // In-season PER adjustment (marginal, regular-season only). Auto-resets on rollover:
   // once currentYear increments, the stats filter returns nothing → no boost applied.
@@ -190,6 +238,15 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
 export interface PickTVOpts {
   classStrength?: number;
   actualSlot?: number;
+}
+
+/** NBA cap on cash sent in trades per team per season (USD). */
+export const CASH_TRADE_CAP_USD = 7_500_000;
+
+/** Convert cash USD into trade value units. ~1.5 TV per $1M (full $7.5M ≈ 11 TV — late 2nd-round-pick tier). */
+export function calcCashTV(usd: number): number {
+  if (!usd || usd <= 0) return 0;
+  return Math.round((usd / 1_000_000) * 1.5);
 }
 
 export function calcPickTV(
@@ -434,7 +491,7 @@ export function autoBalance(
       targetBasket.push({
         id: String(pick.dpid),
         type: 'pick',
-        label: `${pick.season} ${pick.round === 1 ? '1st' : '2nd'} Round`,
+        label: formatPickLabel(pick, currentYear, lotterySlotByTid, false),
         val,
         pick,
       });

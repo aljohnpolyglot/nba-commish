@@ -2,7 +2,7 @@ import { GameState, NBATeam, NBAPlayer as Player, Game } from '../../../types';
 import { simulateDayGames } from '../../../services/logic/simulationRunner';
 import { applyCupResult } from '../../../services/nbaCup/updateCupStandings';
 import { resolveCupGroupStage, advanceKnockoutBracket } from '../../../services/nbaCup/resolveGroupStage';
-import { buildKnockoutGames, trimAndPairReplacements } from '../../../services/nbaCup/scheduleInjector';
+import { buildKnockoutGames, trimAndPairReplacements, hasCupTBDPlaceholders, materializeTBDSlots } from '../../../services/nbaCup/scheduleInjector';
 import { computeCupAwards, applyPrizePool, applyCupAwardsToPlayers } from '../../../services/nbaCup/awards';
 import { injectCupGroupGames } from '../../../services/nbaCup/scheduleInjector';
 import { calculateTeamStrength, clearTeamStrengthCache } from '../../../utils/playerRatings';
@@ -25,6 +25,7 @@ import { markTrainingCampShuffle, resolveTrainingCampChanges } from '../../../se
 import { buildShamsTransactionPost } from '../../../services/social/templates/charania';
 import { findShamsPhoto } from '../../../services/social/charaniaphotos';
 import { normalizeTeamJerseyNumbers } from '../../../utils/jerseyUtils';
+import { buildStretchedSchedule, getTeamDeadMoneyForSeason, seasonLabelToYear } from '../../../utils/salaryUtils';
 
 const updateTeamStrengths = (teams: NBATeam[], players: Player[]): NBATeam[] => {
     return teams.map(team => ({
@@ -328,7 +329,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
         // Aug-14 generator's "regular season already exists" guard and the new
         // season never gets a real schedule.
         const hasRegularSeasonGamesSelfHeal = simPatch.schedule.some(
-          g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn && !(g as any).isNBACup
+          g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn && !(g as any).isNBACup && !(g as any).isCupTBD
         );
         if (
           hasRegularSeasonGamesSelfHeal &&
@@ -375,25 +376,51 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 const playedGroupGames = schedule.filter(g => g.isNBACup && g.nbaCupRound === 'group' && g.played).length;
                 if (playedGroupGames >= totalGroupGames) {
                     cup = resolveCupGroupStage(cup, schedule, stateWithSim.saveId ?? 'default', stateWithSim.teams);
-                    // Inject QF games into schedule
-                    const maxGid = Math.max(0, ...schedule.map(g => g.gid));
                     const prevYr = stateWithSim.leagueStats.year - 1;
-                    const newGames = buildKnockoutGames(cup.knockout, maxGid, prevYr);
-                    schedule = [...schedule, ...newGames].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                    // Sync gameIds back into knockout entries
-                    for (const ng of newGames) {
-                        const ko = cup.knockout.find(k => k.round === ng.nbaCupRound && k.gameId === undefined && ng.homeTid === k.tid1);
-                        if (ko) ko.gameId = ng.gid;
-                    }
-                    // Trim 1 RS game per QF team + add replacement games for orphaned
-                    // opponents so every team still finishes with 82 RS-counted games.
-                    const qfTeams = cup.knockout
+                    const qfMatchups = cup.knockout
                         .filter(k => k.round === 'QF' && k.tid1 >= 0 && k.tid2 >= 0)
-                        .flatMap(k => [k.tid1, k.tid2]);
-                    if (qfTeams.length > 0) {
-                        const nextGid = Math.max(0, ...schedule.map(g => g.gid)) + 1;
-                        const r = trimAndPairReplacements(schedule, qfTeams, `${prevYr}-12-09`, nextGid);
+                        .map(k => ({ tid1: k.tid1, tid2: k.tid2 }));
+                    const qfTeams = qfMatchups.flatMap(m => [m.tid1, m.tid2]);
+
+                    if (hasCupTBDPlaceholders(schedule)) {
+                        // New-saves path: convert pre-baked Dec 9-11 TBD slots
+                        // into real QF games (advancers) and paired RS games
+                        // (non-advancers). No trimming needed — every team
+                        // already has exactly 81 RS pre-baked + 1 TBD slot.
+                        // Switch SF to bonus-only (matching real NBA) so the
+                        // later buildKnockoutGames call tags SF as excludeFromRecord.
+                        for (const ko of cup.knockout) {
+                            if (ko.round === 'SF') ko.countsTowardRecord = false;
+                        }
+                        const koSet = new Set(qfTeams);
+                        const allTids = stateWithSim.teams.filter(t => t.id >= 0 && t.id < 100).map(t => t.id);
+                        const nonKOTeams = allTids.filter(t => !koSet.has(t));
+                        const startGid = Math.max(0, ...schedule.map(g => g.gid)) + 1;
+                        const r = materializeTBDSlots(
+                            schedule, qfMatchups, nonKOTeams, prevYr,
+                            stateWithSim.saveId ?? 'default', startGid,
+                        );
                         schedule = r.schedule;
+                        for (const ko of cup.knockout) {
+                            if (ko.round !== 'QF' || ko.tid1 < 0 || ko.tid2 < 0) continue;
+                            const key = `${Math.min(ko.tid1, ko.tid2)}-${Math.max(ko.tid1, ko.tid2)}`;
+                            const gid = r.qfGameIds.get(key);
+                            if (gid !== undefined) ko.gameId = gid;
+                        }
+                    } else {
+                        // Legacy saves: original post-hoc trim+swap path.
+                        const maxGid = Math.max(0, ...schedule.map(g => g.gid));
+                        const newGames = buildKnockoutGames(cup.knockout, maxGid, prevYr);
+                        schedule = [...schedule, ...newGames].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                        for (const ng of newGames) {
+                            const ko = cup.knockout.find(k => k.round === ng.nbaCupRound && k.gameId === undefined && ng.homeTid === k.tid1);
+                            if (ko) ko.gameId = ng.gid;
+                        }
+                        if (qfTeams.length > 0) {
+                            const nextGid = Math.max(0, ...schedule.map(g => g.gid)) + 1;
+                            const r = trimAndPairReplacements(schedule, qfTeams, `${prevYr}-12-09`, nextGid);
+                            schedule = r.schedule;
+                        }
                     }
                 }
             }
@@ -424,10 +451,14 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 }
                 if (newKOGames.length > 0) {
                     schedule = [...schedule, ...newKOGames].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                    // Trim 1 RS game per SF team only when SF games were the ones
-                    // just injected (Final doesn't count → no trim, no replacement).
+                    // SF/Final policy:
+                    //   New saves: SF was already flipped to countsTowardRecord:false
+                    //   at group-resolve time, so SF games came in tagged
+                    //   excludeFromRecord. No trim needed.
+                    //   Legacy saves: original "trim 1 RS + swap" for SF so
+                    //   in-flight seasons stay at 82-W/L.
                     const sfJustInjected = newKOGames
-                        .filter((g: any) => g.nbaCupRound === 'SF')
+                        .filter((g: any) => g.nbaCupRound === 'SF' && !g.excludeFromRecord)
                         .flatMap((g: any) => [g.homeTid, g.awayTid]);
                     if (sfJustInjected.length > 0) {
                         const nextGid = Math.max(0, ...schedule.map(g => g.gid)) + 1;
@@ -756,7 +787,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             // Keep current-season and earlier contractYears untouched — the
                             // extension only writes new entries for currentYear+1 onward.
                             const existingThroughCurrent = ((p as any).contractYears ?? []).filter((cy: any) => {
-                                const yr = parseInt(cy.season.split('-')[0], 10) + 1;
+                                const yr = seasonLabelToYear(cy.season);
                                 return yr < extBaseYear;
                             });
                             return {
@@ -794,6 +825,8 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         text: `${e.playerName} has re-signed with the ${e.teamName}: $${totalM}M/${e.newYears ?? 1}yr${optTag}${e.contractLabel ? ` (${e.contractLabel})` : ''}`,
                         date: dateStr,
                         type: 'Signing',
+                        playerIds: [e.playerId],
+                        tid: e.teamId,
                     };
                 });
                 // Shams posts for notable extensions (K2 ≥ 78)
@@ -862,7 +895,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                                 };
                             });
                             const existingThroughCurrent = ((p as any).contractYears ?? []).filter((cy: any) => {
-                                const yr = parseInt(cy.season.split('-')[0], 10) + 1;
+                                const yr = seasonLabelToYear(cy.season);
                                 return yr < eeBaseYear;
                             });
                             return {
@@ -878,7 +911,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 const eeHistoryEntries = endExts.filter(e => !e.declined).map(e => {
                     const totalM = Math.round(e.newAmount * (e.newYears ?? 1));
                     const optTag = e.hasPlayerOption ? ' (player option)' : '';
-                    return { text: `${e.playerName} re-signs with ${e.teamName} before free agency: $${totalM}M/${e.newYears ?? 1}yr${optTag}${e.contractLabel ? ` (${e.contractLabel})` : ''}`, date: stateWithSim.date, type: 'Signing' };
+                    return { text: `${e.playerName} re-signs with ${e.teamName} before free agency: $${totalM}M/${e.newYears ?? 1}yr${optTag}${e.contractLabel ? ` (${e.contractLabel})` : ''}`, date: stateWithSim.date, type: 'Signing', playerIds: [e.playerId], tid: e.teamId };
                 });
                 if (eeHistoryEntries.length > 0) {
                     stateWithSim = { ...stateWithSim, history: [...(stateWithSim.history ?? []), ...eeHistoryEntries] };
@@ -933,13 +966,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
             // Re-compute strengths after roster changes from contract expiry
             stateWithSim.teams = updateTeamStrengths(stateWithSim.teams, stateWithSim.players);
 
-            // ── Pass 0: Bird Rights re-sign window ────────────────────────────
-            // Real-NBA: prior team gets a Jul 1 first-look on their expiring stars
-            // BEFORE the open market. Without this, a single bad mid-season-extension
-            // roll dumps them straight into FA, where over-cap incumbents (Finals
-            // contenders) can't bid. Result: Duren leaves DET right after the Finals.
-            // This pass gives Bird Rights teams a guaranteed re-sign attempt at +10%
-            // premium with 85% acceptance (95% LOYAL, 65% MERCENARY). Mood < -2 declines.
+            // Pass 0 — Bird Rights re-sign on Jul 1 (incumbent first-look at +10% premium).
             const birdResigns = runAIBirdRightsResigns(stateWithSim);
             if (birdResigns.length > 0) {
                 const firstYear = stateWithSim.leagueStats?.year ?? 2026;
@@ -963,7 +990,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             };
                         });
                         const histYears = ((p as any).contractYears ?? []).filter((cy: any) => {
-                            const yr = parseInt(cy.season.split('-')[0], 10) + 1;
+                            const yr = seasonLabelToYear(cy.season);
                             return yr < firstYear;
                         });
                         return {
@@ -972,9 +999,11 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             status: 'Active' as const,
                             contract: newContract,
                             contractYears: [...histYears, ...newContractYears],
+                            signedDate: stateWithSim.date,          // trim recency guard
                             yearsWithTeam: 1,                       // re-sign — fresh tenure on new deal
                             hasBirdRights: false,                   // consumed by re-sign
                             midSeasonExtensionDeclined: undefined,  // clear for next season
+                            birdRightsResignedThisYear: firstYear,  // protects from trim for the season — see canCut
                         };
                     }),
                 };
@@ -988,6 +1017,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         date: stateWithSim.date,
                         type: 'Signing',
                         playerIds: [r.playerId],
+                        tid: r.teamId,
                     };
                 });
                 stateWithSim = {
@@ -1133,7 +1163,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             hasPlayerOption: false,
                         };
                         const historicalYears = ((p as any).contractYears ?? []).filter((cy: any) => {
-                            const yr = parseInt(cy.season.split('-')[0], 10) + 1;
+                            const yr = seasonLabelToYear(cy.season);
                             return yr < firstYear;
                         });
                         const newContractYears = [{
@@ -1155,6 +1185,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             date: stateWithSim.date,
                             type: 'Signing',
                             playerIds: [pr.playerId],
+                            tid: pr.teamId,
                         })),
                     ],
                 };
@@ -1179,8 +1210,28 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 // per-team dead money entries so cap math stays honest after AI cuts.
                 const lsForDeadMoney = stateWithSim.leagueStats as any;
                 const deadMoneyEnabled = lsForDeadMoney.deadMoneyEnabled ?? true;
+                // Stretch settings sourced from EconomyTab (state.leagueStats). When the
+                // commissioner toggles stretch off or tunes the multiplier / cap, AI waives
+                // honor the same rules user waives do. Without this, AI cuts always booked
+                // straight-line dead money — a single $25M/yr × 3yr waive landed as $76M
+                // dead instead of ~$11M/yr stretched.
+                const stretchEnabled: boolean = lsForDeadMoney.stretchProvisionEnabled ?? true;
+                const stretchMult: number = lsForDeadMoney.stretchProvisionMultiplier ?? 2;
+                const stretchedCapPct: number = lsForDeadMoney.stretchedDeadMoneyCapPct ?? 15;
+                const salaryCapUSD: number = lsForDeadMoney.salaryCap ?? 140_000_000;
+                // Threshold for when stretching is worthwhile: contract ≥ 6% of cap AND
+                // multi-year remaining. Pre-fix at 4% (~$6M) too many small contracts got
+                // stretched 5yrs (Ziaire Williams, Day'Ron Sharpe, Taylor Hendricks all on
+                // ~$5M/yr deals stretched to 5yrs of $2.5M dead). Real-NBA stretches are
+                // rare and reserved for $15M+ contracts the team massively regrets — bump
+                // to 6% (~$9M) so only meaningful waives drag the tail.
+                const stretchAmountFloorUSD = salaryCapUSD * 0.06;
                 const currentSeasonYear: number = lsForDeadMoney.year ?? new Date(stateWithSim.date ?? Date.now()).getUTCFullYear();
                 const teamDeadMoneyAdds = new Map<number, import('../../../types').DeadMoneyEntry[]>();
+                // Dead-money tracking floor: skip rounding-noise entries below $50K.
+                // NG/partial-guaranteed tail years often produce $40-80K residuals that
+                // display as "$0.0M" and bloat the audit table.
+                const DEAD_MONEY_FLOOR_USD = 50_000;
                 if (deadMoneyEnabled) {
                     waivers.forEach(w => {
                         if (w.wasNonGuaranteed) return;
@@ -1189,24 +1240,61 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         const cy: Array<{ season: string; guaranteed: number; option?: string }> =
                             Array.isArray(playerRecord.contractYears) ? playerRecord.contractYears : [];
                         const remaining = cy
-                            .filter(y => {
-                                const yr = parseInt(y.season.split('-')[0], 10) + 1;
-                                return yr >= currentSeasonYear && y.option !== 'team' && y.option !== 'player';
-                            })
+                            .filter(y =>
+                                seasonLabelToYear(y.season) >= currentSeasonYear && y.option !== 'team' && y.option !== 'player'
+                            )
+                            // Drop sub-floor entries — NG contracts (guaranteed:0) and partial-
+                            // guaranteed tail years shouldn't generate dead money slots.
+                            .filter(y => (y.guaranteed ?? 0) >= DEAD_MONEY_FLOOR_USD)
                             .map(y => ({ season: y.season, amountUSD: y.guaranteed }));
                         if (remaining.length === 0 && playerRecord.contract?.amount) {
                             const exp = playerRecord.contract.exp ?? currentSeasonYear;
                             const amountUSD = (playerRecord.contract.amount || 0) * 1_000;
-                            for (let yr = currentSeasonYear; yr <= exp; yr++) {
-                                remaining.push({ season: `${yr - 1}-${String(yr).slice(-2)}`, amountUSD });
+                            if (amountUSD >= DEAD_MONEY_FLOOR_USD) {
+                                for (let yr = currentSeasonYear; yr <= exp; yr++) {
+                                    remaining.push({ season: `${yr - 1}-${String(yr).slice(-2)}`, amountUSD });
+                                }
                             }
                         }
                         if (remaining.length === 0) return;
+                        const totalDeadUSD = remaining.reduce((s, y) => s + y.amountUSD, 0);
+                        if (totalDeadUSD < DEAD_MONEY_FLOOR_USD) return;
+
+                        // Decide stretch on a per-waive basis. Stretch is only useful when
+                        // there's >1 yr of guarantees AND the annual hit is meaningful;
+                        // also obey the per-team stretched-dead-money ceiling.
+                        const teamRecord = stateWithSim.teams.find(t => t.id === w.teamId);
+                        const totalRemainingUSD = remaining.reduce((s, y) => s + y.amountUSD, 0);
+                        const annualUSD = totalRemainingUSD / remaining.length;
+                        const yearsLeft = remaining.length;
+                        let useStretch = false;
+                        if (stretchEnabled && yearsLeft > 1 && annualUSD >= stretchAmountFloorUSD) {
+                            // Stretched-dead-money ceiling (NBA = 15% of cap). Project the
+                            // post-stretch annual hit against the team's existing stretched
+                            // load for the upcoming year and skip stretching if it would
+                            // breach the ceiling.
+                            const stretchYears = yearsLeft * stretchMult + 1;
+                            const stretchedAnnualUSD = totalRemainingUSD / stretchYears;
+                            const existingStretchedNextYear = (teamRecord?.deadMoney ?? [])
+                                .filter(e => e.stretched)
+                                .reduce((s, e) => {
+                                    const hit = e.remainingByYear.find(y => seasonLabelToYear(y.season) === currentSeasonYear);
+                                    return s + (hit?.amountUSD ?? 0);
+                                }, 0);
+                            const ceilingUSD = salaryCapUSD * (stretchedCapPct / 100);
+                            if (existingStretchedNextYear + stretchedAnnualUSD <= ceilingUSD) {
+                                useStretch = true;
+                            }
+                        }
+                        const finalSchedule = useStretch
+                            ? buildStretchedSchedule(remaining, stretchMult)
+                            : remaining;
+
                         const entry: import('../../../types').DeadMoneyEntry = {
                             playerId: w.playerId,
                             playerName: w.playerName,
-                            remainingByYear: remaining,
-                            stretched: false,  // AI never elects stretch (conservative default)
+                            remainingByYear: finalSchedule,
+                            stretched: useStretch,
                             waivedDate: stateWithSim.date ?? '',
                             originalExpYear: playerRecord.contract?.exp ?? currentSeasonYear,
                         };
@@ -1241,6 +1329,13 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             hasBirdRights: false,
                             superMaxEligible: false,
                             yearsWithTeam: 0,
+                            // 90-day re-sign cooldown: AI passes refuse to re-sign someone
+                            // their own team just waived (prevents Bufkin/Hall/Bassey churn).
+                            recentlyWaivedBy: w.teamId,
+                            recentlyWaivedDate: stateWithSim.date,
+                            // Clear any stale signedDate from the prior signing so the
+                            // post-signing trim guard doesn't refuse a re-sign elsewhere.
+                            signedDate: undefined,
                         };
                         return base as unknown as Player;
                     }),
@@ -1253,16 +1348,13 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             date: stateWithSim.date,
                             type: w.wasNonGuaranteed ? 'Training Camp Release' : 'Waiver',
                             playerIds: [w.playerId],
+                            // Stamp tid explicitly: by the time TX/UI reads this, the player's tid is -1.
+                            tid: w.teamId,
                         })),
                     ],
                 };
             }
-            // AI early NG → Guaranteed conversion: once per AI team during the
-            // regular season, lock in any NG keepers (BBGM OVR ≥ 50, ~K2 70+) so
-            // rotation guys aren't gambled on the Jan 10 deadline. The Pass-4
-            // trim still cuts low-OVR NGs at Oct 22; this just promotes the
-            // ones the team clearly wants. GM's own team is excluded — user
-            // controls those via the Convert action.
+            // AI early NG → guaranteed conversion: per-team once during reg-season, locks in keepers (OVR ≥ 50).
             if ((simMonth === 10 && simDayNum >= 22) || simMonth === 11 || simMonth === 12 || (simMonth === 1 && simDayNum < 10)) {
                 const userTid = stateWithSim.gameMode === 'gm' ? stateWithSim.userTeamId ?? -999 : -999;
                 const ngKeepers = stateWithSim.players.filter(p =>
@@ -1392,12 +1484,13 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             const annualAmt = Math.round(signing.salaryUSD * Math.pow(1.05, i));
                             return {
                                 season: `${yr - 1}-${String(yr).slice(-2)}`,
-                                guaranteed: annualAmt,
+                                // NG contracts have zero guaranteed money — waiving costs nothing.
+                                guaranteed: (signing as any).nonGuaranteed ? 0 : annualAmt,
                                 option: (i === signing.contractYears - 1 && signing.hasPlayerOption) ? 'Player' : '',
                             };
                         });
                         const historicalYears = ((p as any).contractYears ?? []).filter((cy: any) => {
-                            const yr = parseInt(cy.season.split('-')[0], 10) + 1;
+                            const yr = seasonLabelToYear(cy.season);
                             return yr < firstYear;
                         });
                         // Mark playoff ineligible if signed on/after March 1 (cosmetic flag)
@@ -1409,6 +1502,11 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             contract: newContract,
                             contractYears: [...historicalYears, ...newContractYears],
                             playoffEligible: isAfterMarchDeadline ? false : undefined,
+                            // Stamp signing date so autoTrimOversizedRosters can refuse to cut
+                            // recently signed guaranteed players. Without this guard the AI
+                            // signs Slawson-tier fringe FAs on Day N then waives them on Day N+1
+                            // when a trade absorbs an extra player — every cycle books dead money.
+                            signedDate: stateWithSim.date,
                             // Preserve two-way / non-guaranteed flags from AI signing passes
                             ...((signing as any).twoWay ? { twoWay: true } : {}),
                             ...((signing as any).nonGuaranteed ? { nonGuaranteed: true } : {}),
@@ -1438,6 +1536,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         date: dateStr,
                         type: 'Signing',
                         playerIds: [s.playerId],
+                        tid: s.teamId,
                     };
                 });
                 // Generate news items for all signings
@@ -1526,7 +1625,15 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
             }
 
             // MLE upgrade swaps: over-cap teams sign a better FA via MLE and waive their weakest guaranteed player (once/month per team, seeded day)
-            const mleSwaps = runAIMleUpgradeSwaps(stateWithSim, simMonth, simDayNum);
+            // Dedup by signed playerId — claimedFAIds inside the function guards within one call,
+            // but this outer dedup is a safety net if the same FA somehow appears in two swap results.
+            const rawMleSwaps = runAIMleUpgradeSwaps(stateWithSim, simMonth, simDayNum);
+            const seenMleSignIds = new Set<string>();
+            const mleSwaps = rawMleSwaps.filter(sw => {
+                if (seenMleSignIds.has(sw.sign.playerId)) return false;
+                seenMleSignIds.add(sw.sign.playerId);
+                return true;
+            });
             if (mleSwaps.length > 0) {
                 const swapDate = new Date(stateWithSim.date);
                 const swapDateStr = swapDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -1546,7 +1653,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             option: (i === s.contractYears - 1 && s.hasPlayerOption) ? 'Player' : '',
                         }));
                         const historicalYears = ((p as any).contractYears ?? []).filter((cy: any) => {
-                            const yr = parseInt(cy.season.split('-')[0], 10) + 1;
+                            const yr = seasonLabelToYear(cy.season);
                             return yr < firstYear;
                         });
                         return {
@@ -1555,6 +1662,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             status: 'Active' as const,
                             contract: { amount: Math.round(s.salaryUSD / 1_000), exp: s.contractExp, hasPlayerOption: s.hasPlayerOption },
                             contractYears: [...historicalYears, ...newContractYears],
+                            signedDate: stateWithSim.date,         // trim recency guard
                             mleSignedVia: s.mleTypeUsed,
                         };
                     });
@@ -1573,14 +1681,17 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             hasBirdRights: false,
                             superMaxEligible: false,
                             yearsWithTeam: 0,
+                            recentlyWaivedBy: w.teamId,
+                            recentlyWaivedDate: stateWithSim.date,
+                            signedDate: undefined,
                         };
                     });
                     // History entries
                     const annualM = Math.round(s.salaryUSD / 100_000) / 10;
                     const totalM = Math.round(annualM * (s.contractYears ?? 1));
                     swapHistory.push(
-                        { text: `${s.playerName} signs with the ${s.teamName}: $${totalM}M/${s.contractYears ?? 1}yr (MLE)`, date: swapDateStr, type: 'Signing', playerIds: [s.playerId] },
-                        { text: `${w.playerName} waived by the ${w.teamName}`, date: swapDateStr, type: 'Waive', playerIds: [w.playerId] },
+                        { text: `${s.playerName} signs with the ${s.teamName}: $${totalM}M/${s.contractYears ?? 1}yr (MLE)`, date: swapDateStr, type: 'Signing', playerIds: [s.playerId], tid: s.teamId },
+                        { text: `${w.playerName} waived by the ${w.teamName}`, date: swapDateStr, type: 'Waiver', playerIds: [w.playerId], tid: w.teamId },
                     );
                     // Track MLE usage
                     const prev = swapMleUsage[s.teamId];

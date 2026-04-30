@@ -1,89 +1,34 @@
 import React from 'react';
+import type { LeagueStats } from '../../../../types';
+import { ruleValue } from './rulesDefaults';
 import { AllStarGameSection } from './all-star/AllStarGameSection';
 import { RisingStarsSection } from './all-star/RisingStarsSection';
 import { CelebrityGameSection } from './all-star/CelebrityGameSection';
 import { AllStarEventsSection } from './all-star/AllStarEventsSection';
 
 interface AllStarTabProps {
-    allStarGameEnabled: boolean;
-    setAllStarGameEnabled: (val: boolean) => void;
-    allStarFormat: string;
-    setAllStarFormat: (val: string) => void;
-    allStarTeams: number;
-    setAllStarTeams: (val: number) => void;
-    allStarDunkContest: boolean;
-    setAllStarDunkContest: (val: boolean) => void;
-    allStarDunkContestPlayers: number;
-    setAllStarDunkContestPlayers: (val: number) => void;
-    allStarThreePointContest: boolean;
-    setAllStarThreePointContest: (val: boolean) => void;
-    allStarThreePointContestPlayers: number;
-    setAllStarThreePointContestPlayers: (val: number) => void;
-    allStarShootingStars: boolean;
-    setAllStarShootingStars: (val: boolean) => void;
-    allStarShootingStarsMode: 'individual' | 'team';
-    setAllStarShootingStarsMode: (val: 'individual' | 'team') => void;
-    allStarShootingStarsTeams: number;
-    setAllStarShootingStarsTeams: (val: number) => void;
-    allStarShootingStarsPlayersPerTeam: number;
-    setAllStarShootingStarsPlayersPerTeam: (val: number) => void;
-    allStarShootingStarsTotalPlayers: number;
-    setAllStarShootingStarsTotalPlayers: (val: number) => void;
-    allStarSkillsChallenge: boolean;
-    setAllStarSkillsChallenge: (val: boolean) => void;
-    allStarSkillsChallengeMode: 'individual' | 'team';
-    setAllStarSkillsChallengeMode: (val: 'individual' | 'team') => void;
-    allStarSkillsChallengeTeams: number;
-    setAllStarSkillsChallengeTeams: (val: number) => void;
-    allStarSkillsChallengePlayersPerTeam: number;
-    setAllStarSkillsChallengePlayersPerTeam: (val: number) => void;
-    allStarSkillsChallengeTotalPlayers: number;
-    setAllStarSkillsChallengeTotalPlayers: (val: number) => void;
-    allStarHorse: boolean;
-    setAllStarHorse: (val: boolean) => void;
-    allStarHorseParticipants: number;
-    setAllStarHorseParticipants: (val: number) => void;
-    allStarOneOnOneEnabled: boolean;
-    setAllStarOneOnOneEnabled: (val: boolean) => void;
-    allStarOneOnOneParticipants: number;
-    setAllStarOneOnOneParticipants: (val: number) => void;
-    allStarMirrorLeagueRules: boolean;
-    setAllStarMirrorLeagueRules: (val: boolean) => void;
-    allStarGameFormat: 'timed' | 'target_score';
-    setAllStarGameFormat: (val: 'timed' | 'target_score') => void;
-    allStarQuarterLength: number;
-    setAllStarQuarterLength: (val: number) => void;
-    allStarNumQuarters: number;
-    setAllStarNumQuarters: (val: number) => void;
-    allStarOvertimeDuration: number;
-    setAllStarOvertimeDuration: (val: number) => void;
-    allStarOvertimeTargetPoints: number;
-    setAllStarOvertimeTargetPoints: (val: number) => void;
-    allStarShootoutRounds: number;
-    setAllStarShootoutRounds: (val: number) => void;
-    allStarOvertimeType: string;
-    setAllStarOvertimeType: (val: string) => void;
-    allStarMaxOvertimesEnabled: boolean;
-    setAllStarMaxOvertimesEnabled: (val: boolean) => void;
-    allStarMaxOvertimes: number;
-    setAllStarMaxOvertimes: (val: number) => void;
-    allStarOvertimeTieBreaker: string;
-    setAllStarOvertimeTieBreaker: (val: string) => void;
-    // Rising Stars
-    risingStarsEnabled: boolean;
-    setRisingStarsEnabled: (val: boolean) => void;
-    risingStarsFormat: string;
-    setRisingStarsFormat: (val: string) => void;
-    risingStarsMirrorLeagueRules: boolean;
-    setRisingStarsMirrorLeagueRules: (val: boolean) => void;
-    // Celebrity Game
-    celebrityGameEnabled: boolean;
-    setCelebrityGameEnabled: (val: boolean) => void;
-    celebrityGameMirrorLeagueRules: boolean;
-    setCelebrityGameMirrorLeagueRules: (val: boolean) => void;
+    rules: LeagueStats;
+    setRule: <K extends keyof LeagueStats>(key: K, value: LeagueStats[K]) => void;
 }
 
-export const AllStarTab: React.FC<AllStarTabProps> = (props) => {
+/** Build a flat-prop pair `(value, set)` from a single rules key. The leaf
+ *  sub-section components (AllStarGameSection etc.) keep their existing flat
+ *  prop API; the binding lives here instead of being threaded through ~80 lines
+ *  of prop interfaces. */
+function bind<K extends keyof LeagueStats>(
+    rules: LeagueStats,
+    setRule: <Kk extends keyof LeagueStats>(k: Kk, v: LeagueStats[Kk]) => void,
+    key: K,
+) {
+    return {
+        value: ruleValue(rules, key),
+        set: (v: LeagueStats[K]) => setRule(key, v),
+    };
+}
+
+export const AllStarTab: React.FC<AllStarTabProps> = ({ rules, setRule }) => {
+    const b = <K extends keyof LeagueStats>(key: K) => bind(rules, setRule, key);
+
     return (
         <div className="space-y-12">
             <div className="flex flex-col gap-2">
@@ -95,90 +40,55 @@ export const AllStarTab: React.FC<AllStarTabProps> = (props) => {
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 <div className="space-y-8">
-                    <AllStarGameSection 
-                        allStarGameEnabled={props.allStarGameEnabled}
-                        setAllStarGameEnabled={props.setAllStarGameEnabled}
-                        allStarFormat={props.allStarFormat}
-                        setAllStarFormat={props.setAllStarFormat}
-                        allStarTeams={props.allStarTeams}
-                        setAllStarTeams={props.setAllStarTeams}
-                        allStarMirrorLeagueRules={props.allStarMirrorLeagueRules}
-                        setAllStarMirrorLeagueRules={props.setAllStarMirrorLeagueRules}
-                        allStarGameFormat={props.allStarGameFormat}
-                        setAllStarGameFormat={props.setAllStarGameFormat}
-                        allStarQuarterLength={props.allStarQuarterLength}
-                        setAllStarQuarterLength={props.setAllStarQuarterLength}
-                        allStarNumQuarters={props.allStarNumQuarters}
-                        setNumQuarters={props.setAllStarNumQuarters}
-                        allStarOvertimeDuration={props.allStarOvertimeDuration}
-                        setAllStarOvertimeDuration={props.setAllStarOvertimeDuration}
-                        allStarOvertimeTargetPoints={props.allStarOvertimeTargetPoints}
-                        setAllStarOvertimeTargetPoints={props.setAllStarOvertimeTargetPoints}
-                        allStarShootoutRounds={props.allStarShootoutRounds}
-                        setShootoutRounds={props.setAllStarShootoutRounds}
-                        allStarOvertimeType={props.allStarOvertimeType}
-                        setAllStarOvertimeType={props.setAllStarOvertimeType}
-                        allStarMaxOvertimesEnabled={props.allStarMaxOvertimesEnabled}
-                        setAllStarMaxOvertimesEnabled={props.setAllStarMaxOvertimesEnabled}
-                        allStarMaxOvertimes={props.allStarMaxOvertimes}
-                        setMaxOvertimes={props.setAllStarMaxOvertimes}
-                        allStarOvertimeTieBreaker={props.allStarOvertimeTieBreaker}
-                        setAllStarOvertimeTieBreaker={props.setAllStarOvertimeTieBreaker}
+                    <AllStarGameSection
+                        allStarGameEnabled={b('allStarGameEnabled').value as boolean}              setAllStarGameEnabled={b('allStarGameEnabled').set as any}
+                        allStarFormat={b('allStarFormat').value as string}                          setAllStarFormat={b('allStarFormat').set as any}
+                        allStarTeams={b('allStarTeams').value as number}                            setAllStarTeams={b('allStarTeams').set as any}
+                        allStarMirrorLeagueRules={b('allStarMirrorLeagueRules').value as boolean}  setAllStarMirrorLeagueRules={b('allStarMirrorLeagueRules').set as any}
+                        allStarGameFormat={b('allStarGameFormat').value as any}                    setAllStarGameFormat={b('allStarGameFormat').set as any}
+                        allStarQuarterLength={b('allStarQuarterLength').value as number}            setAllStarQuarterLength={b('allStarQuarterLength').set as any}
+                        allStarNumQuarters={b('allStarNumQuarters').value as number}                setAllStarNumQuarters={b('allStarNumQuarters').set as any}
+                        allStarOvertimeDuration={b('allStarOvertimeDuration').value as number}      setAllStarOvertimeDuration={b('allStarOvertimeDuration').set as any}
+                        allStarOvertimeTargetPoints={b('allStarOvertimeTargetPoints').value as number} setAllStarOvertimeTargetPoints={b('allStarOvertimeTargetPoints').set as any}
+                        allStarShootoutRounds={b('allStarShootoutRounds').value as number}          setAllStarShootoutRounds={b('allStarShootoutRounds').set as any}
+                        allStarOvertimeType={b('allStarOvertimeType').value as string}              setAllStarOvertimeType={b('allStarOvertimeType').set as any}
+                        allStarMaxOvertimesEnabled={b('allStarMaxOvertimesEnabled').value as boolean} setAllStarMaxOvertimesEnabled={b('allStarMaxOvertimesEnabled').set as any}
+                        allStarMaxOvertimes={b('allStarMaxOvertimes').value as number}              setAllStarMaxOvertimes={b('allStarMaxOvertimes').set as any}
+                        allStarOvertimeTieBreaker={b('allStarOvertimeTieBreaker').value as string}  setAllStarOvertimeTieBreaker={b('allStarOvertimeTieBreaker').set as any}
                     />
-                    <RisingStarsSection 
-                        risingStarsEnabled={props.risingStarsEnabled}
-                        setRisingStarsEnabled={props.setRisingStarsEnabled}
-                        risingStarsFormat={props.risingStarsFormat}
-                        setRisingStarsFormat={props.setRisingStarsFormat}
-                        risingStarsMirrorLeagueRules={props.risingStarsMirrorLeagueRules}
-                        setRisingStarsMirrorLeagueRules={props.setRisingStarsMirrorLeagueRules}
+                    <RisingStarsSection
+                        risingStarsEnabled={b('risingStarsEnabled').value as boolean}              setRisingStarsEnabled={b('risingStarsEnabled').set as any}
+                        risingStarsFormat={b('risingStarsFormat').value as string}                  setRisingStarsFormat={b('risingStarsFormat').set as any}
+                        risingStarsMirrorLeagueRules={b('risingStarsMirrorLeagueRules').value as boolean} setRisingStarsMirrorLeagueRules={b('risingStarsMirrorLeagueRules').set as any}
+                        risingStarsQuarterLength={b('risingStarsQuarterLength').value as number}    setRisingStarsQuarterLength={b('risingStarsQuarterLength').set as any}
+                        risingStarsEliminationEndings={b('risingStarsEliminationEndings').value as boolean} setRisingStarsEliminationEndings={b('risingStarsEliminationEndings').set as any}
                     />
-                    <CelebrityGameSection 
-                        celebrityGameEnabled={props.celebrityGameEnabled}
-                        setCelebrityGameEnabled={props.setCelebrityGameEnabled}
-                        celebrityGameMirrorLeagueRules={props.celebrityGameMirrorLeagueRules}
-                        setCelebrityGameMirrorLeagueRules={props.setCelebrityGameMirrorLeagueRules}
+                    <CelebrityGameSection
+                        celebrityGameEnabled={b('celebrityGameEnabled').value as boolean}          setCelebrityGameEnabled={b('celebrityGameEnabled').set as any}
+                        celebrityGameMirrorLeagueRules={b('celebrityGameMirrorLeagueRules').value as boolean} setCelebrityGameMirrorLeagueRules={b('celebrityGameMirrorLeagueRules').set as any}
                     />
                 </div>
 
                 <div className="space-y-8">
-                    <AllStarEventsSection 
-                        allStarDunkContest={props.allStarDunkContest}
-                        setAllStarDunkContest={props.setAllStarDunkContest}
-                        allStarDunkContestPlayers={props.allStarDunkContestPlayers}
-                        setAllStarDunkContestPlayers={props.setAllStarDunkContestPlayers}
-                        allStarThreePointContest={props.allStarThreePointContest}
-                        setAllStarThreePointContest={props.setAllStarThreePointContest}
-                        allStarThreePointContestPlayers={props.allStarThreePointContestPlayers}
-                        setAllStarThreePointContestPlayers={props.setAllStarThreePointContestPlayers}
-                        allStarShootingStars={props.allStarShootingStars}
-                        setAllStarShootingStars={props.setAllStarShootingStars}
-                        allStarShootingStarsMode={props.allStarShootingStarsMode}
-                        setAllStarShootingStarsMode={props.setAllStarShootingStarsMode}
-                        allStarShootingStarsTeams={props.allStarShootingStarsTeams}
-                        setAllStarShootingStarsTeams={props.setAllStarShootingStarsTeams}
-                        allStarShootingStarsPlayersPerTeam={props.allStarShootingStarsPlayersPerTeam}
-                        setAllStarShootingStarsPlayersPerTeam={props.setAllStarShootingStarsPlayersPerTeam}
-                        allStarShootingStarsTotalPlayers={props.allStarShootingStarsTotalPlayers}
-                        setAllStarShootingStarsTotalPlayers={props.setAllStarShootingStarsTotalPlayers}
-                        allStarSkillsChallenge={props.allStarSkillsChallenge}
-                        setAllStarSkillsChallenge={props.setAllStarSkillsChallenge}
-                        allStarSkillsChallengeMode={props.allStarSkillsChallengeMode}
-                        setAllStarSkillsChallengeMode={props.setAllStarSkillsChallengeMode}
-                        allStarSkillsChallengeTeams={props.allStarSkillsChallengeTeams}
-                        setAllStarSkillsChallengeTeams={props.setAllStarSkillsChallengeTeams}
-                        allStarSkillsChallengePlayersPerTeam={props.allStarSkillsChallengePlayersPerTeam}
-                        setAllStarSkillsChallengePlayersPerTeam={props.setAllStarSkillsChallengePlayersPerTeam}
-                        allStarSkillsChallengeTotalPlayers={props.allStarSkillsChallengeTotalPlayers}
-                        setAllStarSkillsChallengeTotalPlayers={props.setAllStarSkillsChallengeTotalPlayers}
-                        allStarHorse={props.allStarHorse}
-                        setAllStarHorse={props.setAllStarHorse}
-                        allStarHorseParticipants={props.allStarHorseParticipants}
-                        setAllStarHorseParticipants={props.setAllStarHorseParticipants}
-                        allStarOneOnOneEnabled={props.allStarOneOnOneEnabled}
-                        setAllStarOneOnOneEnabled={props.setAllStarOneOnOneEnabled}
-                        allStarOneOnOneParticipants={props.allStarOneOnOneParticipants}
-                        setAllStarOneOnOneParticipants={props.setAllStarOneOnOneParticipants}
+                    <AllStarEventsSection
+                        allStarDunkContest={b('allStarDunkContest').value as boolean}              setAllStarDunkContest={b('allStarDunkContest').set as any}
+                        allStarDunkContestPlayers={b('allStarDunkContestPlayers').value as number}  setAllStarDunkContestPlayers={b('allStarDunkContestPlayers').set as any}
+                        allStarThreePointContest={b('allStarThreePointContest').value as boolean}  setAllStarThreePointContest={b('allStarThreePointContest').set as any}
+                        allStarThreePointContestPlayers={b('allStarThreePointContestPlayers').value as number} setAllStarThreePointContestPlayers={b('allStarThreePointContestPlayers').set as any}
+                        allStarShootingStars={b('allStarShootingStars').value as boolean}          setAllStarShootingStars={b('allStarShootingStars').set as any}
+                        allStarShootingStarsMode={b('allStarShootingStarsMode').value as any}      setAllStarShootingStarsMode={b('allStarShootingStarsMode').set as any}
+                        allStarShootingStarsTeams={b('allStarShootingStarsTeams').value as number}  setAllStarShootingStarsTeams={b('allStarShootingStarsTeams').set as any}
+                        allStarShootingStarsPlayersPerTeam={b('allStarShootingStarsPlayersPerTeam').value as number} setAllStarShootingStarsPlayersPerTeam={b('allStarShootingStarsPlayersPerTeam').set as any}
+                        allStarShootingStarsTotalPlayers={b('allStarShootingStarsTotalPlayers').value as number} setAllStarShootingStarsTotalPlayers={b('allStarShootingStarsTotalPlayers').set as any}
+                        allStarSkillsChallenge={b('allStarSkillsChallenge').value as boolean}      setAllStarSkillsChallenge={b('allStarSkillsChallenge').set as any}
+                        allStarSkillsChallengeMode={b('allStarSkillsChallengeMode').value as any}  setAllStarSkillsChallengeMode={b('allStarSkillsChallengeMode').set as any}
+                        allStarSkillsChallengeTeams={b('allStarSkillsChallengeTeams').value as number} setAllStarSkillsChallengeTeams={b('allStarSkillsChallengeTeams').set as any}
+                        allStarSkillsChallengePlayersPerTeam={b('allStarSkillsChallengePlayersPerTeam').value as number} setAllStarSkillsChallengePlayersPerTeam={b('allStarSkillsChallengePlayersPerTeam').set as any}
+                        allStarSkillsChallengeTotalPlayers={b('allStarSkillsChallengeTotalPlayers').value as number} setAllStarSkillsChallengeTotalPlayers={b('allStarSkillsChallengeTotalPlayers').set as any}
+                        allStarHorse={b('allStarHorse').value as boolean}                          setAllStarHorse={b('allStarHorse').set as any}
+                        allStarHorseParticipants={b('allStarHorseParticipants').value as number}    setAllStarHorseParticipants={b('allStarHorseParticipants').set as any}
+                        allStarOneOnOneEnabled={b('allStarOneOnOneEnabled').value as boolean}      setAllStarOneOnOneEnabled={b('allStarOneOnOneEnabled').set as any}
+                        allStarOneOnOneParticipants={b('allStarOneOnOneParticipants').value as number} setAllStarOneOnOneParticipants={b('allStarOneOnOneParticipants').set as any}
                     />
                 </div>
             </div>

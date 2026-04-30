@@ -34,21 +34,30 @@ function openGC(): Promise<IDBDatabase> {
 
 async function gcGet<T>(key: string): Promise<CacheEntry<T> | undefined> {
   const db = await withTimeout(openGC(), IDB_TIMEOUT_MS, 'openGC(get)');
-  return withTimeout(new Promise<CacheEntry<T> | undefined>((resolve, reject) => {
-    const req = db.transaction(GC_STORE, 'readonly').objectStore(GC_STORE).get(key);
-    req.onsuccess = () => { db.close(); resolve(req.result as CacheEntry<T> | undefined); };
-    req.onerror = () => { db.close(); reject(req.error); };
-  }), IDB_TIMEOUT_MS, 'gcGet tx');
+  try {
+    return await withTimeout(new Promise<CacheEntry<T> | undefined>((resolve, reject) => {
+      const req = db.transaction(GC_STORE, 'readonly').objectStore(GC_STORE).get(key);
+      req.onsuccess = () => resolve(req.result as CacheEntry<T> | undefined);
+      req.onerror = () => reject(req.error);
+    }), IDB_TIMEOUT_MS, 'gcGet tx');
+  } finally {
+    // Always close — if withTimeout rejected, the txn handlers never fire and db would leak.
+    try { db.close(); } catch { /* already closed */ }
+  }
 }
 
 async function gcSet<T>(key: string, entry: CacheEntry<T>): Promise<void> {
   const db = await withTimeout(openGC(), IDB_TIMEOUT_MS, 'openGC(set)');
-  return withTimeout(new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(GC_STORE, 'readwrite');
-    tx.objectStore(GC_STORE).put(entry, key);
-    tx.oncomplete = () => { db.close(); resolve(); };
-    tx.onerror = () => { db.close(); reject(tx.error); };
-  }), IDB_TIMEOUT_MS, 'gcSet tx');
+  try {
+    await withTimeout(new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(GC_STORE, 'readwrite');
+      tx.objectStore(GC_STORE).put(entry, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    }), IDB_TIMEOUT_MS, 'gcSet tx');
+  } finally {
+    try { db.close(); } catch { /* already closed */ }
+  }
 }
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }

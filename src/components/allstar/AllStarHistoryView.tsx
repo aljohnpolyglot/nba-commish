@@ -129,6 +129,8 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
       mvps: Array<{ name: string; team: string }>;
       dunkWinner: { name: string; team: string } | null;
       threeWinner: { name: string; team: string } | null;
+      bracketRecap: string | null;
+      rsMvp: { name: string; team: string } | null;
     };
 
     // Resolve the team name a player was on in a given season (for the logo)
@@ -171,6 +173,8 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
         mvps: played ? (h.mvps ?? []) : [],
         dunkWinner: contest?.dunk ?? null,
         threeWinner: contest?.three ?? null,
+        bracketRecap: null,
+        rsMvp: null,
       });
     });
 
@@ -198,6 +202,27 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
       const asThree = (state.allStar as any)?.threePointContest;
       const dunkWinner = curContest?.dunk ?? contestEntryFromAllStar(asDunk?.winnerName, asDunk?.winnerId);
       const threeWinner = curContest?.three ?? contestEntryFromAllStar(asThree?.winnerName, asThree?.winnerId);
+
+      // Multi-game bracket recap (round-robin/knockout). For 2-team formats,
+      // bracket exists but only has one game — skip the recap line.
+      const bracket = (state.allStar as any)?.bracket;
+      const playedGames = (bracket?.games ?? []).filter((g: any) => g.played);
+      let bracketRecap: string | null = null;
+      if (bracket && playedGames.length > 1) {
+        const ranked = [...(bracket.teams ?? [])].sort((a: any, b: any) =>
+          (b.wins ?? 0) - (a.wins ?? 0) || ((b.pf - b.pa) - (a.pf - a.pa))
+        );
+        bracketRecap = ranked
+          .map((t: any) => `${t.abbrev} ${t.wins ?? 0}-${t.losses ?? 0}`)
+          .join(' · ');
+      }
+
+      const rsBracket = (state.allStar as any)?.risingStarsBracket;
+      const rsMvpRaw = (state.allStar as any)?.risingStarsMvp;
+      const rsMvp: { name: string; team: string } | null = rsMvpRaw
+        ? { name: rsMvpRaw.name, team: rsMvpRaw.team }
+        : null;
+
       rowMap.set(currentYear, {
         year: currentYear,
         isCurrent: true,
@@ -210,6 +235,8 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
         mvps: mvp ? [{ name: mvp.name ?? mvp, team: mvp.teamAbbrev ?? mvp.team ?? '' }] : [],
         dunkWinner,
         threeWinner,
+        bracketRecap,
+        rsMvp,
       });
     }
 
@@ -237,6 +264,8 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
         mvps: [],
         dunkWinner: contest?.dunk ?? null,
         threeWinner: contest?.three ?? null,
+        bracketRecap: null,
+        rsMvp: null,
       });
     });
 
@@ -272,6 +301,7 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
                   <th className="p-3 font-bold text-amber-400 border-b border-slate-800 whitespace-nowrap">Winner</th>
                   <th className="p-3 font-bold text-slate-400 border-b border-slate-800 whitespace-nowrap">Score</th>
                   <th className="p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap">MVP</th>
+                  <th className="p-3 font-bold text-sky-400 border-b border-slate-800 whitespace-nowrap">Rising Stars MVP 🌟</th>
                   <th className="p-3 font-bold text-orange-400 border-b border-slate-800 whitespace-nowrap">Dunk 🏀</th>
                   <th className="p-3 font-bold text-blue-400 border-b border-slate-800 whitespace-nowrap">3PT 🎯</th>
                   <th className="p-3 font-bold text-sky-400 border-b border-slate-800 whitespace-nowrap">
@@ -281,7 +311,7 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
               </thead>
               <tbody className="divide-y divide-slate-800/50">
                 {rows.length === 0 && (
-                  <tr><td colSpan={7} className="p-6 text-center text-slate-500 italic">Loading All-Star history…</td></tr>
+                  <tr><td colSpan={8} className="p-6 text-center text-slate-500 italic">Loading All-Star history…</td></tr>
                 )}
                 {rows.map(row => (
                   <tr
@@ -304,6 +334,9 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
                         {row.isSim && (
                           <span className="text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full">SIM</span>
                         )}
+                        {row.bracketRecap && (
+                          <span className="text-[9px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded-full">BRACKET</span>
+                        )}
                       </div>
                     </td>
                     <td className="p-3 whitespace-nowrap">
@@ -315,15 +348,25 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
                     </td>
                     <td className="p-3 whitespace-nowrap">
                       {row.finalScore ? (
-                        <span className="text-xs text-slate-300">
-                          {row.teams.map(t => `${t} ${row.finalScore![t] ?? '?'}`).join(' – ')}
-                        </span>
+                        <div className="flex flex-col leading-tight gap-0.5">
+                          <span className="text-xs text-slate-300">
+                            {row.teams.map(t => `${t} ${row.finalScore![t] ?? '?'}`).join(' – ')}
+                          </span>
+                          {row.bracketRecap && (
+                            <span className="text-[9px] text-purple-300/80 font-bold tracking-wide">
+                              {row.bracketRecap}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="italic text-xs text-slate-700">—</span>
                       )}
                     </td>
                     <td className="p-3 whitespace-nowrap">
                       <MvpCell mvp={row.mvps[0]} teams={state.teams} players={state.players} onOpenPlayer={quick.openFor} />
+                    </td>
+                    <td className="p-3 whitespace-nowrap">
+                      <MvpCell mvp={row.rsMvp} teams={state.teams} players={state.players} onOpenPlayer={quick.openFor} />
                     </td>
                     <td className="p-3 whitespace-nowrap">
                       <MvpCell mvp={row.dunkWinner} teams={state.teams} players={state.players} onOpenPlayer={quick.openFor} />

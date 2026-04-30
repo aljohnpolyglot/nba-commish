@@ -21,6 +21,7 @@ export type NewsCategory =
   | 'duo_performance'
   | 'all_star_winner'
   | 'all_star_mvp'
+  | 'all_star_bracket'
   | 'playoff_series_win'
   | 'playoff_advance_r2'
   | 'playoff_finals_bound'
@@ -329,6 +330,20 @@ export const NEWS_TEMPLATES: NewsTemplate[] = [
       'The {conference} outlasted the {losingConf} in the {year} NBA All-Star Game. Final: {homeScore}–{awayScore}. The crowd was electric from tip-off to the final buzzer.',
       '{year} All-Star Weekend closed on a high note as the {conference} topped the {losingConf} {homeScore}–{awayScore}. Another memorable showcase of the league\'s brightest stars.',
       'The {conference} dominated the second half to seal a {homeScore}–{awayScore} victory over the {losingConf} in the {year} NBA All-Star Game.',
+    ],
+  },
+  {
+    category: 'all_star_bracket',
+    headlines: [
+      '{winner} Survives {loser} in All-Star {roundLabel}, {homeScore}-{awayScore}',
+      'All-Star {roundLabel}: {winner} Knocks Off {loser} {homeScore}-{awayScore}',
+      '{winner} Outlasts {loser} in All-Star {roundLabel} Showdown',
+      '{winner} Tops {loser} {homeScore}-{awayScore} — {roundLabel} in the Books',
+    ],
+    contents: [
+      '{winner} held off {loser} {homeScore}-{awayScore} in the All-Star {roundLabel}. {mvpName} led all scorers with {mvpPts} points.',
+      'In the {year} All-Star {roundLabel}, {winner} edged {loser} {homeScore}-{awayScore} behind a {mvpPts}-point night from {mvpName}.',
+      '{mvpName} dropped {mvpPts} as {winner} took down {loser} {homeScore}-{awayScore} in the All-Star {roundLabel}.',
     ],
   },
   {

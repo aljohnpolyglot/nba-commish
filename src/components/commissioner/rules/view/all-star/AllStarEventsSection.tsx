@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, Info } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 
 interface AllStarEventsSectionProps {
     allStarDunkContest: boolean;
@@ -110,31 +110,9 @@ export const AllStarEventsSection: React.FC<AllStarEventsSectionProps> = (props)
                     {props.allStarShootingStars && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
                             <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest pl-2">Shooting Stars Settings</h3>
-                            <div className="flex flex-col gap-2 pl-4 border-l border-slate-800">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mode</span>
-                                <div className="flex gap-2">
-                                    <button 
-                                        onClick={() => props.setAllStarShootingStarsMode('individual')}
-                                        className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${props.allStarShootingStarsMode === 'individual' ? 'bg-indigo-500 text-white' : 'bg-slate-900 text-slate-500'}`}
-                                    >
-                                        Individual
-                                    </button>
-                                    <button 
-                                        onClick={() => props.setAllStarShootingStarsMode('team')}
-                                        className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${props.allStarShootingStarsMode === 'team' ? 'bg-indigo-500 text-white' : 'bg-slate-900 text-slate-500'}`}
-                                    >
-                                        Team
-                                    </button>
-                                </div>
-                            </div>
-                            {props.allStarShootingStarsMode === 'team' ? (
-                                <>
-                                    <EventInput label="Number of Teams" value={props.allStarShootingStarsTeams} onChange={props.setAllStarShootingStarsTeams} />
-                                    <EventInput label="Players Per Team" value={props.allStarShootingStarsPlayersPerTeam} onChange={props.setAllStarShootingStarsPlayersPerTeam} />
-                                </>
-                            ) : (
-                                <EventInput label="Total Participants" value={props.allStarShootingStarsTotalPlayers} onChange={props.setAllStarShootingStarsTotalPlayers} />
-                            )}
+                            <EventInput label="Teams" value={props.allStarShootingStarsTeams} onChange={props.setAllStarShootingStarsTeams} min={2} max={6} />
+                            <EventInput label="Players / Team" value={props.allStarShootingStarsPlayersPerTeam} onChange={props.setAllStarShootingStarsPlayersPerTeam} min={2} max={5} />
+                            <EventInput label="Total Players" value={props.allStarShootingStarsTotalPlayers} onChange={props.setAllStarShootingStarsTotalPlayers} min={4} max={30} />
                         </div>
                     )}
                 </div>
@@ -145,42 +123,18 @@ export const AllStarEventsSection: React.FC<AllStarEventsSectionProps> = (props)
                     {props.allStarSkillsChallenge && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
                             <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest pl-2">Skills Challenge Settings</h3>
-                            <div className="flex flex-col gap-2 pl-4 border-l border-slate-800">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mode</span>
-                                <div className="flex gap-2">
-                                    <button 
-                                        onClick={() => props.setAllStarSkillsChallengeMode('individual')}
-                                        className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${props.allStarSkillsChallengeMode === 'individual' ? 'bg-indigo-500 text-white' : 'bg-slate-900 text-slate-500'}`}
-                                    >
-                                        Individual
-                                    </button>
-                                    <button 
-                                        onClick={() => props.setAllStarSkillsChallengeMode('team')}
-                                        className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${props.allStarSkillsChallengeMode === 'team' ? 'bg-indigo-500 text-white' : 'bg-slate-900 text-slate-500'}`}
-                                    >
-                                        Team
-                                    </button>
-                                </div>
-                            </div>
-                            {props.allStarSkillsChallengeMode === 'team' ? (
-                                <>
-                                    <EventInput label="Number of Teams" value={props.allStarSkillsChallengeTeams} onChange={props.setAllStarSkillsChallengeTeams} />
-                                    <EventInput label="Players Per Team" value={props.allStarSkillsChallengePlayersPerTeam} onChange={props.setAllStarSkillsChallengePlayersPerTeam} />
-                                </>
-                            ) : (
-                                <EventInput label="Total Participants" value={props.allStarSkillsChallengeTotalPlayers} onChange={props.setAllStarSkillsChallengeTotalPlayers} />
-                            )}
+                            <EventInput label="Total Players" value={props.allStarSkillsChallengeTotalPlayers} onChange={props.setAllStarSkillsChallengeTotalPlayers} min={4} max={16} />
                         </div>
                     )}
                 </div>
 
-                {/* HORSE */}
+                {/* HORSE Tournament */}
                 <div className="space-y-4">
                     <EventToggle label="HORSE Tournament" value={props.allStarHorse} onChange={props.setAllStarHorse} />
                     {props.allStarHorse && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
                             <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest pl-2">HORSE Settings</h3>
-                            <EventInput label="Participants" value={props.allStarHorseParticipants} onChange={props.setAllStarHorseParticipants} />
+                            <EventInput label="Participants" value={props.allStarHorseParticipants} onChange={props.setAllStarHorseParticipants} min={2} max={16} />
                         </div>
                     )}
                 </div>
@@ -190,8 +144,8 @@ export const AllStarEventsSection: React.FC<AllStarEventsSectionProps> = (props)
                     <EventToggle label="1v1 Tournament" value={props.allStarOneOnOneEnabled} onChange={props.setAllStarOneOnOneEnabled} />
                     {props.allStarOneOnOneEnabled && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                            <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest pl-2">1v1 Tournament Settings</h3>
-                            <EventInput label="Participants" value={props.allStarOneOnOneParticipants} onChange={props.setAllStarOneOnOneParticipants} />
+                            <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest pl-2">1v1 Settings</h3>
+                            <EventInput label="Participants" value={props.allStarOneOnOneParticipants} onChange={props.setAllStarOneOnOneParticipants} min={2} max={16} />
                         </div>
                     )}
                 </div>

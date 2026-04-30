@@ -317,7 +317,7 @@ export const processTurn = async (
     const normalizedFinalDate = normalizeDate(dateString);
     // Exclude isNBACup so a Cup-only schedule (e.g. self-heal injected groups
     // after rollover before Aug 14) doesn't masquerade as a generated season.
-    const hasRegularSeasonGames = finalSchedule.some(g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn && !(g as any).isNBACup);
+    const hasRegularSeasonGames = finalSchedule.some(g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn && !(g as any).isNBACup && !(g as any).isCupTBD);
     const scheduleYear = state.leagueStats?.year ?? 2026;
     if (!hasRegularSeasonGames && normalizedFinalDate >= `${scheduleYear - 1}-08-14`) {
         console.log(`[Schedule] GENERATING on Aug14 — christmas=${(result.christmasGames || state.christmasGames)?.length ?? 0} global=${(result.globalGames || state.globalGames)?.length ?? 0}`);
@@ -399,7 +399,9 @@ export const processTurn = async (
     // All-Star Logic
     let allStarPatch = state.allStar;
     const { getAllStarWeekendDates, AllStarWeekendOrchestrator } = await import('../../services/allStar/AllStarWeekendOrchestrator');
-    const { AllStarSelectionService } = await import('../../services/allStar/AllStarSelectionService');
+    const { AllStarSelectionService, bucketRoster } = await import('../../services/allStar/AllStarSelectionService');
+    const asFormat = state.leagueStats.allStarFormat;
+    const asTeams = state.leagueStats.allStarTeams;
     const startDate = new Date(state.date);
     const endDate = new Date(dateString);
     const dates = getAllStarWeekendDates(state.leagueStats.year);
@@ -441,7 +443,8 @@ export const processTurn = async (
 
     // 2. Announce Starters
     if (wasDateReached(dates.startersAnnounced) && !allStarPatch?.startersAnnounced) {
-        const starters = AllStarSelectionService.selectStarters(allStarPatch?.votes ?? [], updatedPlayers);
+        let starters = AllStarSelectionService.selectStarters(allStarPatch?.votes ?? [], updatedPlayers);
+        starters = bucketRoster(starters, updatedPlayers, allStarPatch?.votes ?? [], asFormat, asTeams);
         allStarPatch = {
             ...(allStarPatch || {}),
             roster: starters,
@@ -466,7 +469,15 @@ export const processTurn = async (
             state.leagueStats.year,
             allStarPatch?.roster ?? []
         );
-        const fullRoster = [...(allStarPatch?.roster ?? []), ...reserves];
+        // Bucket the full 24-man pool together so captains_draft / usa_vs_world
+        // re-balance starters + reserves uniformly.
+        const fullRoster = bucketRoster(
+            [...(allStarPatch?.roster ?? []), ...reserves],
+            updatedPlayers,
+            allStarPatch?.votes ?? [],
+            asFormat,
+            asTeams
+        );
         
         // Also build Rising Stars roster now (FIX 5)
         const { rookies, sophs } = AllStarSelectionService.getRisingStarsRoster(
@@ -651,7 +662,10 @@ export const processTurn = async (
     const simFriday = endDateNormStr > risingStarsNorm && !allStarPatch?.risingStarsGameId;
     const simSaturday = endDateNormStr > saturdayNorm &&
       (!allStarPatch?.dunkContest?.complete || !allStarPatch?.threePointContest?.complete);
-    const simSunday = endDateNormStr > allStarGameNorm && !allStarPatch?.allStarGameId;
+    // Bracket-aware: complete only when state.allStar.bracket.complete (multi-game
+    // formats), or when the legacy allStarGameId is set (2-team fallback).
+    const sundayDone = !!(allStarPatch?.bracket?.complete) || !!allStarPatch?.allStarGameId;
+    const simSunday = endDateNormStr > allStarGameNorm && !sundayDone;
 
     if ((simFriday || simSaturday || simSunday) && !allStarPatch?.weekendComplete) {
         const weekendUpdate = await AllStarWeekendOrchestrator.simulateWeekend({

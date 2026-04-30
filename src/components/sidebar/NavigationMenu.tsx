@@ -5,7 +5,7 @@ import {
   User, Calendar, BarChart2, TrendingUp,
   Search, Users, Star, Building2, Settings2, ChevronDown,
   ListOrdered, Stethoscope, Tv, ThumbsUp, Eye, DollarSign,
-  Target, Ticket, Table2, Zap, UserX, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase, Crown
+  Target, Ticket, Table2, Zap, UserX, UserPlus, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase, Crown, ArrowLeftRight
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { Tab } from '../../types';
@@ -173,7 +173,8 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         ] : []),
         ...(isGM && !isPastTradeDeadline ? [{ id: 'Trade Proposals' as Tab, label: 'Trade Proposals', icon: GitPullRequest, badge: fmt(pendingTradesCount) }] : []),
         { id: 'Player Search',    label: 'Player Search',   icon: Search },
-        { id: 'Player Bios',      label: 'Player Bios',     icon: Users },
+        { id: 'Player Bios',        label: 'Player Bios',       icon: Users },
+        { id: 'Player Comparison',  label: 'Player Comparison', icon: ArrowLeftRight },
         ...(!isGM || showFATabInGM ? [{ id: 'Free Agents' as Tab, label: 'Free Agents', icon: UserX }] : []),
         { id: 'Injuries',         label: 'Injuries',        icon: Stethoscope },
       ],
@@ -207,6 +208,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         ...(isGM ? [] : [{ id: 'Team Office' as Tab, label: 'Team Office', icon: Briefcase }]),
         ...(!isGM ? [
           { id: 'League Office' as Tab,    label: 'League Office',   icon: Building2 },
+          { id: 'Player Creator' as Tab,   label: 'Player Creator',  icon: UserPlus },
           { id: 'League Settings' as Tab,  label: 'League Settings', icon: Settings2 },
           { id: 'Broadcasting' as Tab,     label: 'Broadcasting',    icon: Tv, badge: broadcastingBadge },
         ] : []),

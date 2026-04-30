@@ -17,6 +17,7 @@ import {
 } from '../../../data/realPlayerDataFetcher';
 import { getTeamMascot } from '../../../utils/helpers';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
+import { JerseyRetirementModal } from '../../modals/JerseyRetirementModal';
 import type { Tab } from '../../../types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -98,6 +99,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
   const [leaderSubTab, setLeaderSubTab] = useState<'totals' | 'averages'>('totals');
   const [expandedLeaders, setExpandedLeaders] = useState<Record<string, boolean>>({});
   const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({});
+  const [showRetireModal, setShowRetireModal] = useState(false);
 
   // External data (gists)
   const [regularRecords, setRegularRecords] = useState<any[]>([]);
@@ -409,6 +411,8 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
   }, [state.teams, searchTerm]);
 
   const quick = usePlayerQuickActions();
+  const isGM = state.gameMode === 'gm';
+  const canRetireForTeam = !isGM || selectedTeamId === (state as any).userTeamId;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Team list view
@@ -615,6 +619,21 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
                     ))}
                   </div>
                 </section>
+              )}
+
+              {!isNBAHub && canRetireForTeam && (
+                <div className="flex justify-end -mt-4">
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setShowRetireModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest"
+                    style={{ backgroundColor: accent, color: '#09090b' }}
+                  >
+                    <Star className="w-3.5 h-3.5" />
+                    Retire a Number
+                  </motion.button>
+                </div>
               )}
 
               {/* Top players by career P+A+R */}
@@ -927,6 +946,15 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
 
         </AnimatePresence>
       </div>
+      {selectedTeam && !isNBAHub && (
+        <JerseyRetirementModal
+          teamId={selectedTeam.id}
+          isOpen={showRetireModal}
+          onClose={() => setShowRetireModal(false)}
+          accent={accent}
+          findPlayerImg={findPlayerImg}
+        />
+      )}
       {quick.portals}
     </div>
   );

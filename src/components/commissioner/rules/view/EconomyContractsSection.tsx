@@ -396,7 +396,7 @@ export const EconomyContractsSection = ({
                             </div>
                             <div className="flex items-center justify-between text-[10px] text-slate-400">
                                 <span>{props.roomMlePercentage.toFixed(2)}% of cap → <span className="text-emerald-400 font-bold">${(dollars(props.roomMlePercentage) / 1_000_000).toFixed(3)}M</span></span>
-                                <span className="text-slate-600 italic">Below salary cap</span>
+                                <span className="text-slate-600 italic">Available to: under-cap teams</span>
                             </div>
                             <input
                                 type="range" min="0" max="15" step="0.01"
@@ -414,7 +414,7 @@ export const EconomyContractsSection = ({
                             </div>
                             <div className="flex items-center justify-between text-[10px] text-slate-400">
                                 <span>{props.nonTaxpayerMlePercentage.toFixed(2)}% of cap → <span className="text-blue-400 font-bold">${(dollars(props.nonTaxpayerMlePercentage) / 1_000_000).toFixed(3)}M</span></span>
-                                <span className="text-slate-600 italic">Over cap, below 1st apron</span>
+                                <span className="text-slate-600 italic">Available to: over-cap teams below 1st apron</span>
                             </div>
                             <input
                                 type="range" min="0" max="20" step="0.01"
@@ -432,7 +432,7 @@ export const EconomyContractsSection = ({
                             </div>
                             <div className="flex items-center justify-between text-[10px] text-slate-400">
                                 <span>{props.taxpayerMlePercentage.toFixed(2)}% of cap → <span className="text-yellow-400 font-bold">${(dollars(props.taxpayerMlePercentage) / 1_000_000).toFixed(3)}M</span></span>
-                                <span className="text-slate-600 italic">Crosses 1st apron, below 2nd</span>
+                                <span className="text-slate-600 italic">Available to: 1st-apron teams below 2nd</span>
                             </div>
                             <input
                                 type="range" min="0" max="10" step="0.01"
@@ -459,7 +459,7 @@ export const EconomyContractsSection = ({
                             <div className="bg-slate-900/60 rounded-2xl p-4 space-y-2 border border-slate-700/50">
                                 <div className="flex items-center justify-between text-[10px] text-slate-400">
                                     <span>{props.biannualPercentage.toFixed(2)}% of cap → <span className="text-slate-300 font-bold">${(dollars(props.biannualPercentage) / 1_000_000).toFixed(3)}M</span></span>
-                                    <span className="text-slate-600 italic">Every other season</span>
+                                    <span className="text-slate-600 italic">Available to: below 1st apron teams</span>
                                 </div>
                                 <input
                                     type="range" min="0" max="8" step="0.01"
