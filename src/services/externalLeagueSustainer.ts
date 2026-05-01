@@ -347,13 +347,65 @@ const COUNTRY_SYNONYMS: Record<string, string> = {
   'United-Kingdom': 'United Kingdom',
   'Serbia-Montenegro': 'Serbia',
   Yugoslavia: 'Serbia',
+  UAE: 'Egypt',
+  'United Arab Emirates': 'Egypt',
   'DR Congo': 'Congo',
+  DRC: 'Congo',
+  'Democratic Republic of the Congo': 'Congo',
   'Republic of Congo': 'Congo',
   'Côte d\'Ivoire': 'Ivory Coast',
-  'Czech Republic': 'Czech_Republic',
+  Czech_Republic: 'Czech Republic',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+const US_STATE_OR_CITY_LOCATIONS = new Set([
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME',
+  'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA',
+  'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC',
+  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida',
+  'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine',
+  'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska',
+  'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio',
+  'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas',
+  'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming',
+  'Tuscaloosa', 'Federal Way', 'Minnetonka',
+]);
+
+function extractCountryToken(raw?: string): string {
+  if (!raw) return '';
+  if (raw.includes(' - Country: ')) return raw.split(' - Country: ').pop()?.trim() ?? '';
+  if (raw.includes(',')) return raw.split(',').pop()?.trim() ?? '';
+  return raw.trim();
+}
+
+function normalizeCountryToken(raw?: string): string {
+  const token = extractCountryToken(raw);
+  if (!token || US_STATE_OR_CITY_LOCATIONS.has(token)) return '';
+  return COUNTRY_SYNONYMS[token] ?? token;
+}
+
+function isNameDataCountry(country: string): boolean {
+  if (!country) return false;
+  const nameData = getNameData();
+  const canonical = COUNTRY_SYNONYMS[country] ?? country;
+  return !!(
+    nameData.countries[canonical]?.first ||
+    nameData.countries[canonical.replace(/ /g, '_')]?.first ||
+    COUNTRY_NAME_FALLBACK[canonical] ||
+    COUNTRY_NAME_FALLBACK[canonical.replace(/ /g, '_')]
+  );
+}
+
+function getPlayerCountry(player: NBAPlayer): string {
+  const born = (player as any).born ?? {};
+  const candidates = [born.country, (player as any).nationality, born.loc];
+  for (const raw of candidates) {
+    const country = normalizeCountryToken(raw);
+    if (isNameDataCountry(country)) return country;
+  }
+  return '';
+}
 
 function computeCareerGP(player: NBAPlayer): number {
   return (player.stats ?? [])
@@ -584,7 +636,12 @@ function spawnExternalPlayer(opts: {
 /** Pick the least-rostered team from a list. */
 function pickUnderRosteredTeam(teams: any[], players: NBAPlayer[]): any {
   if (teams.length === 0) return null;
-  return [...teams].sort((a, b) => {
+  const HARD_CAP = 16;
+  const eligible = teams.filter(team =>
+    players.filter(p => p.tid === team.tid && (p as any).status !== 'Retired').length < HARD_CAP
+  );
+  if (eligible.length === 0) return null;
+  return [...eligible].sort((a, b) => {
     const ac = players.filter(p => p.tid === a.tid && (p as any).status !== 'Retired').length;
     const bc = players.filter(p => p.tid === b.tid && (p as any).status !== 'Retired').length;
     return ac - bc;
@@ -651,7 +708,7 @@ function sampleTeamCountry(
   const isSoftMappedClubLeague = !!clubCountry && league === 'Endesa';
   if (isMappedClubLeague) {
     const domesticCount = teamPlayers.filter(p => {
-      const country = p.born?.loc ?? (p as any).nationality ?? '';
+      const country = getPlayerCountry(p);
       return country === clubCountry;
     }).length;
     if (domesticCount === 0) return clubCountry!;
@@ -659,7 +716,7 @@ function sampleTeamCountry(
   const weights: Record<string, number> = {};
 
   for (const p of teamPlayers) {
-    const country = p.born?.loc ?? (p as any).nationality ?? '';
+    const country = getPlayerCountry(p);
     if (!country) continue;
     const isClubCountry = clubCountry && country === clubCountry;
     weights[country] = (weights[country] ?? 0) + (isClubCountry ? 1.25 : 0.15);
@@ -688,7 +745,7 @@ function pickTeamForGeneratedPlayer(
     const existingCount =
       players.filter(p => p.tid === team.tid && (p as any).status !== 'Retired').length +
       additions.filter(p => p.tid === team.tid).length;
-    const deficitWeight = Math.max(1, 13 - existingCount);
+    const deficitWeight = Math.max(0, 13 - existingCount);
     const affinityWeight = resolveClubAffinity(team.tid, country);
     return {
       team,
@@ -866,7 +923,7 @@ export function retireExternalLeaguePlayers(
     if (roll >= prob) return p;
 
     const careerGP = computeCareerGP(p);
-    const country = p.born?.loc ?? (p as any).nationality ?? '';
+    const country = getPlayerCountry(p);
     retirees.push({ player: { ...p } as NBAPlayer, league: status, country, careerGP });
 
     // Fix 2: track college outflow so replacements get league-appropriate schools
@@ -1005,7 +1062,7 @@ export function repopulateExternalLeagues(
     ((p.born?.year ?? 0) === year - 18),
   );
   for (const d of declarers) {
-    const country = d.born?.loc ?? (d as any).nationality ?? '';
+    const country = getPlayerCountry(d);
     const homeLeague = resolveNationalityLeague(country, 0.5);
     if (homeLeague && EXTERNAL_LEAGUES.has(homeLeague)) {
       outflow[homeLeague] = outflow[homeLeague] ?? {};
@@ -1094,7 +1151,7 @@ export function returnUndraftedToHomeLeague(
     const draft = (p as any).draft ?? {};
     if (draft.year !== draftYear || draft.round !== 0) return p;
 
-    const country = p.born?.loc ?? '';
+    const country = getPlayerCountry(p);
     if (DOMESTIC.has(country)) return p;
 
     const homeLeague = resolveNationalityLeague(country, seededRandom(`undrafted_${p.internalId}_rng`));

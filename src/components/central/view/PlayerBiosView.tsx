@@ -8,6 +8,28 @@ import { ensureNonNBAFetched, getNonNBAGistData } from './nonNBACache';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 
+const US_LOCATION_NAMES = new Set([
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME',
+  'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA',
+  'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC',
+  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida',
+  'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine',
+  'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska',
+  'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio',
+  'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas',
+  'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming',
+  'Tuscaloosa', 'Federal Way', 'Minnetonka',
+]);
+
+const displayCountry = (player: NBAPlayer, gistCountry?: string | null): string => {
+  const explicit = (player as any).born?.country || (player as any).nationality;
+  const derived = explicit || getCountryFromLoc(player.born?.loc);
+  if (!derived || derived === 'Unknown') return gistCountry || 'Unknown';
+  if (US_LOCATION_NAMES.has(derived)) return 'United States';
+  if (derived === player.born?.loc && !player.born?.loc?.includes(',') && !explicit) return gistCountry || 'United States';
+  return derived;
+};
+
 export const PlayerBiosView: React.FC = () => {
   const { state } = useGame();
   const { players, teams, nonNBATeams = [] } = state;
@@ -91,8 +113,7 @@ export const PlayerBiosView: React.FC = () => {
         // Weight: player object → parse from gist weight string "195lb"
         const weight: number | null = p.weight || (gist?.w ? parseInt(gist.w) : null);
 
-        // Country: born.loc → gist nationality
-        const extractedCountry = getCountryFromLoc(p.born?.loc) || gist?.c || null;
+        const extractedCountry = displayCountry(p, gist?.c);
 
         const experience = draftYear
           ? Math.max(0, simYear - draftYear)
