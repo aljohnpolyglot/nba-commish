@@ -339,6 +339,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
         const opts: PlayOption[] = [
           { label: 'One day',         action: simDay },
           { label: 'One week',        action: () => simToDate(addDays(norm, 7)) },
+          { label: 'One month',       action: () => simToDate(addDays(norm, 30)) },
           { label: 'Until preseason', action: () => simToDate(preseasonStr) },
         ];
         const nextSeasonOpening = toISODateString(getOpeningNightDate(seasonYear));
