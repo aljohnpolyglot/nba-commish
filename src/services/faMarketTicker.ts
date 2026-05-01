@@ -20,7 +20,7 @@ import { getContractLimits } from '../utils/salaryUtils';
 import { generateAIBids, resolvePlayerDecision, type FreeAgentBid, type FreeAgentMarket } from './freeAgencyBidding';
 import { buildShamsTransactionPost } from './social/templates/charania';
 import { findShamsPhoto } from './social/charaniaphotos';
-import { canSignMultiYear, isPastTradeDeadline } from '../utils/dateUtils';
+import { canSignMultiYear, getCurrentOffseasonFAMoratoriumEnd, isInMoratorium, isPastTradeDeadline } from '../utils/dateUtils';
 import { getCapThresholds, getMLEAvailability } from '../utils/salaryUtils';
 
 /** A FA is eligible for a competitive market if they're notable enough to attract bids.
@@ -178,12 +178,21 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     : postPreseasonResolve
       ? 2
       : Infinity;
+  const moratoriumActive = isInMoratorium(state.date, currentYear, state.leagueStats as any);
+  const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(state.date, state.leagueStats as any);
+  const moratoriumEndDay = (() => {
+    if (!state.date) return currentDay;
+    const today = new Date(state.date);
+    if (isNaN(today.getTime()) || isNaN(moratoriumEnd.getTime())) return currentDay;
+    return currentDay + Math.max(0, Math.ceil((moratoriumEnd.getTime() - today.getTime()) / 86_400_000));
+  })();
 
   // ── 1. Resolve any markets whose decision day has arrived ──────────────────
   for (let i = 0; i < workingMarkets.length; i++) {
     const m = workingMarkets[i];
     if (m.resolved) continue;
     if (m.decidesOnDay > currentDay) continue;
+    if (moratoriumActive) continue;
 
     const player = state.players.find(p => p.internalId === m.playerId);
     if (!player) { workingMarkets[i] = { ...m, resolved: true }; continue; }
@@ -687,6 +696,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     // Stagger: if we've already piled too many decisions onto the next 3 days,
     // push this market's decision out further so resolution day doesn't burst.
     let decidesOnDay = Math.max(...clamped.map(b => b.expiresDay));
+    decidesOnDay = Math.max(decidesOnDay, moratoriumEndDay);
     if (resolvingTodayCount + openedThisTick >= MAX_MARKETS_RESOLVING_PER_DAY) {
       const overflow = (resolvingTodayCount + openedThisTick) - MAX_MARKETS_RESOLVING_PER_DAY;
       decidesOnDay += 1 + Math.floor(overflow / MAX_MARKETS_RESOLVING_PER_DAY);
