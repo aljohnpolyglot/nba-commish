@@ -1,4 +1,9 @@
-import type { StaffData, NBAPlayer as Player, NBATeam as Team } from '../types';
+import type { StaffData, NBAPlayer as Player } from '../types';
+
+interface TeamLogoRecord {
+  logoUrl?: string;
+  imgURL?: string;
+}
 const STAFF_DATA_URL =
   'https://gist.githubusercontent.com/aljohnpolyglot/27eff0d6d9a204338987e03c7f3bf444/raw/staff_complete_2025';
 
@@ -51,7 +56,7 @@ interface EnrichedStaffMember extends RawStaffMember {
 const enrichStaffMember = (
   staffMember: RawStaffMember,
   allPlayers: Player[],
-  teamNameMap: Map<string, Team>
+  teamNameMap: Map<string, TeamLogoRecord>
 ): EnrichedStaffMember => {
   const enriched: EnrichedStaffMember = { ...staffMember };
 
@@ -91,7 +96,7 @@ const enrichStaffMember = (
   const teamName = staffMember.position || staffMember.team;
   if (!enriched.playerPortraitUrl && teamName) {
     const teamRecord = teamNameMap.get(teamName.toLowerCase());
-    if (teamRecord) enriched.teamLogoUrl = teamRecord.logoUrl;
+    if (teamRecord) enriched.teamLogoUrl = teamRecord.logoUrl ?? teamRecord.imgURL;
   }
 
   return enriched;
@@ -230,7 +235,7 @@ export const getCoachContract = (name: string): CoachContractData | undefined =>
 
 export const getStaffData = async (
   allPlayers: Player[],
-  teamNameMap: Map<string, Team>
+  teamNameMap: Map<string, TeamLogoRecord>
 ): Promise<StaffData> => {
   try {
     const response = await fetch(STAFF_DATA_URL);

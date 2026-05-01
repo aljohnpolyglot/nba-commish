@@ -1,11 +1,5 @@
-// Bridge: re-export types from main app for CoachingView compatibility
-export type { K2Result, PlayerK2 } from '../../../../../types';
 export type { CoachSliders } from '../../../../../utils/coachSliders';
 
-// Standalone Player/Team types expected by CoachingView — map to NBAPlayer/NBATeam
-export type { NBAPlayer as Player, NBATeam as Team } from '../../../../../types';
-
-// PlayerRatings type for the coaching view
 export interface PlayerRatings {
   season?: number;
   hgt: number;
@@ -25,4 +19,44 @@ export interface PlayerRatings {
   reb: number;
   ovr: number;
   [key: string]: any;
+}
+
+export interface Player {
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  internalId?: string;
+  pos?: string;
+  ratings: PlayerRatings[];
+  hgt?: number;
+  weight?: number;
+  born?: { year: number };
+  tid: number;
+  injury?: { type: string; gamesRemaining: number };
+  imgURL?: string;
+  status?: string;
+  overallRating?: number;
+}
+
+export interface Team {
+  tid: number;
+  region: string;
+  name: string;
+  imgURL?: string;
+}
+
+export interface K2Result {
+  OS: number[];
+  AT: number[];
+  IS: number[];
+  PL: number[];
+  DF: number[];
+  RB: number[];
+}
+
+export interface PlayerK2 extends Player {
+  k2: K2Result;
+  rating2K: number;
+  bbgmOvr: number;
+  currentRating: PlayerRatings;
 }

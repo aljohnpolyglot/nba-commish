@@ -11,7 +11,10 @@ interface NewChatModalProps {
   onSelect: (contact: any) => void;
 }
 
-type FilterType = 'All' | 'Players' | 'Owner' | 'GM' | 'Coach' | 'Retired' | 'Referee';
+type FilterType =
+  | 'All' | 'Players' | 'Owner' | 'GM' | 'Coach' | 'Retired' | 'Referee'
+  | 'NBA' | 'WNBA' | 'Draft Prospect' | 'Prospect' | 'Active' | 'Free Agent'
+  | 'PBA' | 'Euroleague' | 'B-League' | 'G-League' | 'Endesa' | 'China CBA' | 'NBL Australia';
 
 export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect }) => {
   const { state } = useGame();
@@ -39,7 +42,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
           return;
         }
 
-        let org = p.status || 'Free Agent';
+        let org: string = p.status || 'Free Agent';
         let league: FilterType = isGMMode ? 'Players' : 'NBA'; // Default
         let role = '';
 
@@ -50,19 +53,19 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
         } else if (p.status === 'WNBA' || p.tid === -100) {
             if (!isGMMode) league = 'WNBA' as FilterType;
             const team = state.nonNBATeams.find(t => t.league === 'WNBA' && t.tid === p.tid);
-            if (team) org = team.name;
+            if (team?.name) org = team.name;
         } else if (p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect') {
             if (!isGMMode) league = 'Draft Prospect' as FilterType;
             org = 'Draft Prospect';
         } else if (['PBA', 'Euroleague', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '')) {
             if (!isGMMode) league = p.status as FilterType;
             const team = state.nonNBATeams.find(t => t.league === p.status && t.tid === p.tid);
-            if (team) org = team.name;
+            if (team?.name) org = team.name;
         }
 
         const team = state.teams.find(t => t.id === p.tid);
         if (team) {
-            org = team.name;
+            org = team.name ?? org;
         }
 
         const rating2k = convertTo2KRating(p.overallRating || 0, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp);

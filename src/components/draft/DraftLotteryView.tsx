@@ -148,7 +148,7 @@ if (typeof document !== 'undefined' && !document.getElementById('fanspo-draft-cs
 
 // ─── Lottery runner (mirrors /lib/lottery.ts) ─────────────────────────────────
 interface LotteryTeam {
-  id: string;
+  id: number;
   name: string;
   city: string;
   logoUrl: string;
@@ -164,7 +164,7 @@ interface LotteryResult { pick: number; team: LotteryTeam; change: number; }
 
 function runLottery(teams: LotteryTeam[], chances: number[], numToPick: number): LotteryResult[] {
   const results: LotteryResult[] = [];
-  const drawnIds = new Set<string>();
+  const drawnIds = new Set<number>();
 
   const drawTeam = () => {
     const avail = teams.filter(t => !drawnIds.has(t.id));
@@ -282,7 +282,7 @@ export const DraftLotteryView = () => {
       const gp = t.wins + t.losses;
       const winPct = gp > 0 ? (t.wins / gp).toFixed(3) : '.000';
       return {
-        id: String(t.id),
+        id: t.id,
         tid: t.id,
         name: t.name,
         city: t.region ?? t.name,
