@@ -117,7 +117,7 @@ function isLoyalMarketBlocked(player: NBAPlayer, bidTeamIds: number[], currentYe
   const age = player.born?.year ? currentYear - player.born.year : (player.age ?? 0);
   if (age < 30) return false;
   const yearsOfService = ((player as any).stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
-  if (yearsOfService < 3) return false;
+  if (yearsOfService < 8) return false;
   const priorTid = getLoyalPriorTid(player);
   if (priorTid < 0) return false;
   return !bidTeamIds.includes(priorTid);
