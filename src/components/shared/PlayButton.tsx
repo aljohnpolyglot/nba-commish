@@ -49,12 +49,16 @@ function getSimPhase(state: any): SimPhase {
   const openingNight = getOpeningNightDate(seasonYear);
   const draftLotteryDate = getDraftLotteryDate(seasonYear, ls);
   const draftDate = getDraftDate(seasonYear, ls);
+  const offseasonFAStart = getCurrentOffseasonFAStart(curDate, ls);
+  const trainingCampMonth = ls?.trainingCampMonth ?? 10;
+  const trainingCampDay = ls?.trainingCampDay ?? 1;
+  const currentCalendarTrainingCamp = new Date(Date.UTC(curDate.getUTCFullYear(), trainingCampMonth - 1, trainingCampDay));
+
+  if (curDate >= offseasonFAStart && curDate < currentCalendarTrainingCamp) return 'free-agency';
 
   if (curDate < openingNight) {
     const trainingCamp = getTrainingCampDate(seasonYear, ls);
-    const offseasonFAStart = getCurrentOffseasonFAStart(curDate, ls);
     if (curDate >= trainingCamp) return 'preseason';
-    if (curDate >= offseasonFAStart) return 'free-agency';
     return 'after-draft';
   }
   if (curDate > draftDate) return 'after-draft';

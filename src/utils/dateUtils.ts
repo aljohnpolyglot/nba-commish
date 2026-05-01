@@ -138,7 +138,14 @@ export function getFreeAgencyMoratoriumEndDate(seasonYear: number, stats?: TxnCa
 }
 
 function toDate(d: Date | string): Date {
-  return typeof d === 'string' ? new Date(d) : d;
+  if (typeof d !== 'string') return d;
+  const iso = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) {
+    return new Date(Date.UTC(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3])));
+  }
+  const parsed = new Date(d);
+  if (isNaN(parsed.getTime())) return parsed;
+  return new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()));
 }
 
 export function isPastTradeDeadline(current: Date | string, seasonYear: number, stats?: TxnCalendar): boolean {
