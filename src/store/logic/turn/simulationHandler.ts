@@ -1098,6 +1098,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 tick.historyEntries.length > 0 ||
                 tick.newsItems.length > 0 ||
                 tick.socialPosts.length > 0 ||
+                tick.userBidResolutions.length > 0 ||
                 tick.updatedMarkets.length !== (stateWithSim.faBidding?.markets?.length ?? 0) ||
                 tick.updatedMarkets.some((market: any) => market.resolved && !previousResolvedMarketIds.has(market.playerId));
             if (hasMarketChanges) {
