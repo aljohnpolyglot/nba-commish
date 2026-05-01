@@ -351,7 +351,23 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       // MVP runs. WNBA already short-circuited above.
       const isMensExternal = (p as any).status !== 'WNBA' &&
         (EXTERNAL_LEAGUES.includes((p as any).status ?? '') || p.tid >= 100);
-      if (isMensExternal && typeof bumpedAge === 'number' && bumpedAge === 19) {
+      const externalLeagueStatus = (p as any).status ?? '';
+      const NBA_DECLARE_BBGM_THRESHOLD: Record<string, number> = {
+        Euroleague: 40,
+        Endesa: 42,
+        'NBL Australia': 45,
+        'China CBA': 48,
+        'B-League': 52,
+        PBA: 55,
+        'G-League': 35,
+      };
+      const declareThreshold = NBA_DECLARE_BBGM_THRESHOLD[externalLeagueStatus] ?? 50;
+      if (
+        isMensExternal &&
+        typeof bumpedAge === 'number' &&
+        bumpedAge === 19 &&
+        (p.overallRating ?? 0) >= declareThreshold
+      ) {
         // Draft eligibility year: the NBA draft fires late June, so a Jun 30
         // rollover lands AFTER the current year's draft — declare for next year.
         const declareYear = nextYear;
@@ -378,9 +394,18 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
         // WNBA. Sub-K2-70 men auto-resign with home club, then externalFreeAgency
         // gives ~10% a chance to switch teams or jump leagues.
         const ovrForFlip = p.overallRating ?? 0;
-        const NBA_MARKET_BBGM_THRESHOLD = 44; // K2 ~70 (K2 = 0.88*BBGM + 31)
+        const NBA_FLIP_THRESHOLD_BY_LEAGUE: Record<string, number> = {
+          Euroleague: 44,
+          Endesa: 46,
+          'NBL Australia': 50,
+          'China CBA': 55,
+          'B-League': 62,
+          PBA: 62,
+          'G-League': 40,
+        };
+        const nbaFlipThreshold = NBA_FLIP_THRESHOLD_BY_LEAGUE[externalLeagueStatus] ?? 50;
         const isWNBA = (p as any).status === 'WNBA';
-        if (!isWNBA && ovrForFlip >= NBA_MARKET_BBGM_THRESHOLD) {
+        if (!isWNBA && ovrForFlip >= nbaFlipThreshold) {
           expiredIds.add(p.internalId);
           return {
             ...p,
