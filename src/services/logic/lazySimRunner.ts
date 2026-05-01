@@ -626,7 +626,12 @@ export const runLazySim = async (
       console.log(`[LAZY_SIM] ✓ 620 post-perDayLoop — iter ${iterNum}, histPoints=${newHistoricalPoints.length}`);
 
       // Generate social posts for the batch — player reactions, media posts, Shams injuries
-      const nbaPlayers = updatedPlayers.filter(p => !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || ''));
+      const nbaPlayers = updatedPlayers.filter(p =>
+        p.tid >= 0 &&
+        p.tid <= 29 &&
+        (p as any).status !== 'Retired' &&
+        !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '')
+      );
       const socialEngine = new SocialEngine();
       const batchDateString = stateWithSim.date;
       console.log(`[LAZY_SIM] ✓ 625 pre-socialEngine — iter ${iterNum}, nbaPlayers=${nbaPlayers.length}`);

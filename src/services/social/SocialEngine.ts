@@ -46,6 +46,10 @@ export class SocialEngine {
   ): Promise<SocialPost[]> {
     console.log(`[SocialEngine] ENTER generateDailyPosts — games=${gameResults.length}, players=${players.length}, date=${date}`);
     const posts: SocialPost[] = [];
+    if (gameResults.length === 0) {
+      console.log('[SocialEngine] offseason/no-game early exit');
+      return posts;
+    }
     const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
     console.log(`[SocialEngine] before await fetchAvatarData`);
     const avatars = await fetchAvatarData();
