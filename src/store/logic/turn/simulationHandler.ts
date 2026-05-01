@@ -1088,12 +1088,18 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
         // for lower-tier FAs and roster-minimum fills.
         if (isFreeAgencySeason) {
             const tick = tickFAMarkets(stateWithSim);
+            const previousResolvedMarketIds = new Set(
+                (stateWithSim.faBidding?.markets ?? [])
+                    .filter((market: any) => market.resolved)
+                    .map((market: any) => market.playerId)
+            );
             const hasMarketChanges =
                 tick.playerMutations.size > 0 ||
                 tick.historyEntries.length > 0 ||
                 tick.newsItems.length > 0 ||
                 tick.socialPosts.length > 0 ||
-                tick.updatedMarkets.length !== (stateWithSim.faBidding?.markets?.length ?? 0);
+                tick.updatedMarkets.length !== (stateWithSim.faBidding?.markets?.length ?? 0) ||
+                tick.updatedMarkets.some((market: any) => market.resolved && !previousResolvedMarketIds.has(market.playerId));
             if (hasMarketChanges) {
                 stateWithSim = {
                     ...stateWithSim,
