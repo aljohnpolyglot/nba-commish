@@ -544,12 +544,15 @@ export const handleExerciseTeamOption = async (stateWithSim: GameState, action: 
     const player = stateWithSim.players.find((p: any) => p.internalId === playerId) as any;
     if (!player) return { isProcessing: false };
     const team = stateWithSim.teams.find(t => t.id === player.tid);
+    const optionSeasonExp = Number(player.contract?.teamOptionExp ?? 0);
+    const minimumExp = optionSeasonExp || ((stateWithSim.leagueStats?.year ?? 0) + 1);
+    const exercisedExp = Math.max(Number(player.contract?.exp ?? 0), minimumExp);
 
     const players = stateWithSim.players.map((p: any) =>
         p.internalId === playerId
             ? {
                 ...p,
-                contract: { ...p.contract, hasTeamOption: false, teamOptionExp: undefined },
+                contract: { ...p.contract, exp: exercisedExp, hasTeamOption: false, teamOptionExp: undefined },
                 contractYears: Array.isArray(p.contractYears)
                     ? p.contractYears.map((cy: any, i: number) =>
                         i === p.contractYears.length - 1 && (cy.option ?? '').toLowerCase().includes('team')
