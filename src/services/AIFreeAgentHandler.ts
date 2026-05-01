@@ -17,6 +17,7 @@ import { isAssistantGMActive } from './assistantGMFlag';
 import { getGMAttributes, clampSpendOffer, workEthicSignProb } from './staff/gmAttributes';
 import { hasFamilyOnRoster } from '../utils/familyTies';
 import { resolveTeamStrategyProfile, type TeamStrategyProfile } from '../utils/teamStrategy';
+import { getTrainingCampDate } from '../utils/dateUtils';
 
 const DEFAULT_MAX_ROSTER = 15;
 // Guaranteed contracts should not be waived immediately after signing. The old
@@ -182,6 +183,17 @@ function playerMoodForTeam(player: NBAPlayer, team: NBATeam, state: GameState): 
 function getK2Ovr(player: NBAPlayer): number {
   const rating = player.ratings?.[player.ratings.length - 1];
   return convertTo2KRating(player.overallRating ?? rating?.ovr ?? 50, rating?.hgt ?? 50, rating?.tp ?? 50);
+}
+
+function isTwoWayOriginEligible(player: NBAPlayer): boolean {
+  const country = String((player as any).born?.country ?? (player as any).born?.loc ?? '').trim().toLowerCase();
+  if (['united states', 'usa', 'u.s.a.', 'us', 'canada'].includes(country)) return true;
+  if ((player as any).draft?.lottery === true) return true;
+  const hasNbaStats = ((player as any).stats ?? []).some((s: any) =>
+    typeof s.tid === 'number' && s.tid >= 0 && s.tid <= 29 && (s.gp ?? 0) > 0
+  );
+  if (hasNbaStats) return true;
+  return getK2Ovr(player) >= 75;
 }
 
 function playerAge(player: NBAPlayer, currentYear: number): number {
@@ -520,12 +532,10 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   // duplicating logic. Note: ngEnabled is referenced by isCampInvite below.
   const ngEnabled = (state.leagueStats as any).nonGuaranteedContractsEnabled ?? true;
   const maxCampRoster = state.leagueStats.maxTrainingCampRoster ?? 21;
-  const simDateMonth = state.date ? new Date(state.date).getMonth() + 1 : 0;
-  const simDateDay   = state.date ? new Date(state.date).getDate() : 0;
-  const isPreseasonWindow = ngEnabled && (
-    (simDateMonth >= 7 && simDateMonth <= 9) ||
-    (simDateMonth === 10 && simDateDay <= 21)
-  );
+  const simDate = state.date ? new Date(state.date) : null;
+  const trainingCampStart = getTrainingCampDate(state.leagueStats.year, state.leagueStats as any);
+  const trainingCampEnd = new Date(trainingCampStart.getTime() + 21 * 86_400_000);
+  const isPreseasonWindow = ngEnabled && !!simDate && simDate >= trainingCampStart && simDate < trainingCampEnd;
 
   // Exhibit-10 / camp invite detector — any 1-year preseason min-tier deal lands as NG so the
   // Oct 22 trim cuts them free instead of booking $4-5M dead money per release. Real-NBA pattern:
@@ -694,6 +704,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
       // 2W pool: low-OVR FAs that are also age≤24 OR YOS≤2; age≥30 always blocked.
       const twoWayCandidates = pool
         .filter(p => (p.overallRating ?? 99) <= TWO_WAY_OVR_CAP)
+        .filter(p => isTwoWayOriginEligible(p))
         .filter(p => {
           const age = p.born?.year ? currentYear - p.born.year : (p.age ?? 99);
           if (age >= 30) return false;     // hard vet ceiling
@@ -727,7 +738,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
 
   // ── Pass 3: Non-guaranteed training camp signings (slots 16–21, preseason only).
   if (isPreseasonWindow) {
-    const NG_OVR_CAP = 60;
+    const NG_OVR_CAP = 50;
     const minSalaryUSDPreseason = ((state.leagueStats as any).minContractStaticAmount ?? 1.2) * 1_000_000;
     // NG tiers: % of cap so they inflate with cap year-to-year.
     const seasonCap = (thresholds as any).salaryCap ?? 140_000_000;
@@ -759,6 +770,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
       const ngSlots = NG_FILL_TARGET - totalCamp;
       const ngCandidates = pool
         .filter(p => (p.overallRating ?? 99) <= NG_OVR_CAP)
+        .filter(p => getK2Ovr(p) < 80)
         .filter(p => !isLoyalBlocked(p, team.id, currentYear))
         .filter(p => !isRecentWaiverByTeam(p, team.id, state.date))
         .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
