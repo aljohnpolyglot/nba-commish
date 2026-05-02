@@ -4,23 +4,6 @@
 
 ---
 
-## Team Training Phase 3.5 + Phase 4 (FIXED - S50)
-
-Phases 1–4 are now shipped. `TEAM_TRAINING_PLAN.md` has been cleared down to completion status.
-
-### Phase 3.5 — Calendar polish
-- **Reuse main calendar — drop bespoke ScheduleView grid. (FIXED - S50)** `TrainingCenterView.tsx` now uses canonical `CalendarView` + `DayView`; `TrainingDayOverlay.tsx` injects daily plan badges; non-game clicks open `DailyPlanModal`; game-day clicks open canonical `DayView` with a training prep header.
-- **Verify home/away marker correctness. (FIXED - S50)** Training Center now relies on the canonical calendar's focus-team opponent/logo/vs/@ rendering.
-
-### Phase 4 — Sim multipliers
-- **System Familiarity → simulation knobs. (FIXED - S50)** `engine.ts` now converts offense/defense familiarity into shooting efficiency, passing turnover control, defensive rotations, and a small strength boost.
-- **System Proficiency → `calculateTeamStrength`. (FIXED - S50)** `calculateTeamStrengthWithMinutes` accepts `proficiencyBoost`; the sim sources selected-system proficiency from the coach-system store values saved from `computeTeamProficiency`.
-- **Defensive Aura → defense stops. (FIXED - S50)** `NBATeam.defensiveAura` now ticks from Defensive training days and suppresses opponent efficiency while raising opponent turnovers.
-- **Player fatigue → game performance. (FIXED - S50)** `trainingFatigue` now multiplies effective ratings by `(1 - fatigue / 200)`, capped at -15%, for strength and stat generation.
-- **Player fatigue → injury risk. (FIXED - S50)** Existing mid-game injury rolls now stack the training-fatigue risk multiplier.
-
----
-
 ## Rising Stars Multi-Format Overhaul - DEFERRED items only
 
 Full session writeup in CHANGELOG Session 36. Below are the items intentionally **out of scope** of that PR.
@@ -76,19 +59,6 @@ Full P0 + P1 spec lives in CHANGELOG Session 36. Below are the deferred / long-t
 - **#10 3-of-5 second-apron pick relegation.** If a team is over the 2nd apron in 3 of any 5 consecutive seasons, their 1st-round pick that year is moved to the end of the round. **Hard** because of the persistence work + draft-order rewrite. Add `team.apronHistory: { season, over1st, over2nd }[]` updated each `seasonRollover`. Draft generator checks the rolling 5-year window; if 3+ over-2nd, append `relegatedToEndOfRound: true` on that team's R1 pick. Not urgent.
 - **#11 BAE gated by 1st apron.** Bi-annual exception cannot be used by teams over 1st apron. `biannualEnabled` / `biannualAmount` exist but are free-for-all. **Fix:** gate in MLE/BAE allocation; same eyebrow treatment as MLE tier rows.
 - **#12 Stretch-provision interaction with TPEs.** Stretching a contract over the 2nd apron has special rules (cannot create a TPE from the stretched portion). `stretchProvisionEnabled` / `stretchProvisionMultiplier` / `stretchedDeadMoneyCapPct` exist as a self-contained block - no apron interaction yet. **Fix:** when a 2nd-apron team waives-and-stretches, suppress TPE generation for that release. Small block in waive handler.
-
----
-
-## QUEUED - Apr 30 polish (Session 36+)
-
-### A. Cumulative-load injury layer (ties into upcoming fatigue system)
-**Current state:** Mid-game injury chance in `engine.ts:850-856` is inverted on minutes - low mins = 20% (interpreted as "left early hurt"), iron-man 35+ = 0.6%. So overplaying a star costs **zero** injury risk per game. The minutes-weighted strength change (Apr 30, `calculateTeamStrengthWithMinutes` in `playerRatings.ts`) makes overuse weaker but not riskier.
-
-**Fix when fatigue ships:**
-- Track rolling 7-game minutes per player (or feed off the new fatigue pool when it exists).
-- High cumulative load -> fatigue debuff; multiply each player's `rating` in `calculateTeamStrengthWithMinutes` by their fatigue mult before share-weighting (one-line hook).
-- Same fatigue feeds a per-game injury-chance multiplier - e.g. x1.5 at moderate fatigue, x2.5 at high. Keep the existing "left early" curve intact; just stack the multiplier on top.
-- Net effect: iron-man strat weakens AND breaks down by mid-March. Tank-by-overuse becomes self-punishing.
 
 ---
 

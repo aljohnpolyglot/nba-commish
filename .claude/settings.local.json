@@ -105,7 +105,8 @@
       "Bash(awk 'NR>=161 && /^    \\\\}/{print NR\": \"$0; exit}' src/store/logic/turn/simulationHandler.ts)",
       "Bash(awk '/LOAD_GAME/{found=1} found{print; if \\(/return;/\\) exit}')",
       "Bash(Get-Content TEAM_TRAINING_PLAN.md)",
-      "Bash(Select-Object -Last 80)"
+      "Bash(Select-Object -Last 80)",
+      "PowerShell(git *)"
     ]
   }
 }
