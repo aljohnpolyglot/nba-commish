@@ -61,6 +61,7 @@ interface ManageTradeState {
   teamBPlayerIds: string[];
   teamAPickDpids: number[];
   teamBPickDpids: number[];
+  preAccepted?: boolean;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -91,6 +92,21 @@ function ovrText(v: number): string {
   return 'text-red-400';
 }
 
+function getHoverCardPosition(rect: DOMRect, cardW = 256, cardH = 620): { top: number; left: number; centered: boolean } {
+  const isMobile = window.innerWidth < 768;
+  if (isMobile) {
+    return {
+      top: Math.max(8, (window.innerHeight - Math.min(cardH, window.innerHeight - 16)) / 2),
+      left: Math.max(8, (window.innerWidth - Math.min(cardW, window.innerWidth - 16)) / 2),
+      centered: true,
+    };
+  }
+  const left = rect.right + 8 + cardW > window.innerWidth ? rect.left - cardW - 8 : rect.right + 8;
+  const centeredTop = rect.top + rect.height / 2 - cardH / 2;
+  const top = Math.max(8, Math.min(centeredTop, window.innerHeight - cardH - 8));
+  return { top, left: Math.max(8, left), centered: false };
+}
+
 // ── Player row ────────────────────────────────────────────────────────────────
 
 const PlayerRow: React.FC<{
@@ -116,17 +132,12 @@ const PlayerRow: React.FC<{
         : 'Recently signed — trade moratorium in effect.')
     : 'Walking expiring — past trade deadline, this player will be a free agent before any acquirer can use them.';
   const rowRef = useRef<HTMLDivElement>(null);
-  const [cardPos, setCardPos] = useState<{ top: number; left: number } | null>(null);
+  const [cardPos, setCardPos] = useState<{ top: number; left: number; centered: boolean } | null>(null);
 
   const handleMouseEnter = () => {
     if (blocked || !rowRef.current) return;
     const rect = rowRef.current.getBoundingClientRect();
-    const cardW = 210;
-    const left = rect.right + 8 + cardW > window.innerWidth ? rect.left - cardW - 8 : rect.right + 8;
-    const cardH = 620;
-    const centeredTop = rect.top + rect.height / 2 - cardH / 2;
-    const top = Math.max(8, Math.min(centeredTop, window.innerHeight - cardH - 8));
-    setCardPos({ top, left });
+    setCardPos(getHoverCardPosition(rect));
   };
 
   return (
@@ -178,7 +189,10 @@ const PlayerRow: React.FC<{
 
       {selected && <X size={11} className="text-indigo-400 flex-shrink-0" />}
       {cardPos && (
-        <div className="fixed z-[200] pointer-events-none" style={{ top: cardPos.top, left: cardPos.left }}>
+        <div
+          className="fixed z-[200] pointer-events-none max-h-[calc(100vh-16px)] overflow-y-auto"
+          style={{ top: cardPos.top, left: cardPos.left, width: cardPos.centered ? 'min(256px, calc(100vw - 16px))' : undefined }}
+        >
           {SettingsManager.getSettings().tooltipStyle === 'simple'
             ? <PlayerHoverCard player={player} />
             : <PlayerHoverCardK2 player={player} />}
@@ -268,18 +282,13 @@ const OfferItemRow: React.FC<{
   tone?: 'normal' | 'ask';
 }> = ({ item, teams, dateStr, currentYear, tone = 'normal' }) => {
   const rowRef = useRef<HTMLDivElement>(null);
-  const [cardPos, setCardPos] = useState<{ top: number; left: number } | null>(null);
+  const [cardPos, setCardPos] = useState<{ top: number; left: number; centered: boolean } | null>(null);
   const bg = tone === 'ask' ? 'bg-rose-900/20' : 'bg-slate-800/40';
 
   const handleMouseEnter = () => {
     if (item.type !== 'player' || !item.player || !rowRef.current) return;
     const rect = rowRef.current.getBoundingClientRect();
-    const cardW = 210;
-    const left = rect.right + 8 + cardW > window.innerWidth ? rect.left - cardW - 8 : rect.right + 8;
-    const cardH = 620;
-    const centeredTop = rect.top + rect.height / 2 - cardH / 2;
-    const top = Math.max(8, Math.min(centeredTop, window.innerHeight - cardH - 8));
-    setCardPos({ top, left });
+    setCardPos(getHoverCardPosition(rect));
   };
 
   return (
@@ -351,7 +360,10 @@ const OfferItemRow: React.FC<{
         </>
       )}
       {cardPos && item.player && (
-        <div className="fixed z-[200] pointer-events-none" style={{ top: cardPos.top, left: cardPos.left }}>
+        <div
+          className="fixed z-[200] pointer-events-none max-h-[calc(100vh-16px)] overflow-y-auto"
+          style={{ top: cardPos.top, left: cardPos.left, width: cardPos.centered ? 'min(256px, calc(100vw - 16px))' : undefined }}
+        >
           {SettingsManager.getSettings().tooltipStyle === 'simple'
             ? <PlayerHoverCard player={item.player} />
             : <PlayerHoverCardK2 player={item.player} />}
@@ -846,6 +858,7 @@ export const TradeFinderView: React.FC = () => {
         teamBPlayerIds: basket.filter(i => i.type === 'player').map(i => i.id),
         teamAPickDpids: offer.items.filter(i => i.type === 'pick' && i.pick).map(i => i.pick!.dpid),
         teamBPickDpids: basket.filter(i => i.type === 'pick' && i.pick).map(i => i.pick!.dpid),
+        preAccepted: offer.variant === 'absorb',
       });
       return;
     }
@@ -856,6 +869,7 @@ export const TradeFinderView: React.FC = () => {
       teamBPlayerIds: offer.items.filter(i => i.type === 'player').map(i => i.id),
       teamAPickDpids: basket.filter(i => i.type === 'pick' && i.pick).map(i => i.pick!.dpid),
       teamBPickDpids: offer.items.filter(i => i.type === 'pick' && i.pick).map(i => i.pick!.dpid),
+      preAccepted: offer.variant === 'absorb',
     });
   };
 
@@ -1146,6 +1160,7 @@ export const TradeFinderView: React.FC = () => {
           initialTeamBPlayerIds={manageTrade.teamBPlayerIds}
           initialTeamAPickDpids={manageTrade.teamAPickDpids}
           initialTeamBPickDpids={manageTrade.teamBPickDpids}
+          initialPreAccepted={manageTrade.preAccepted}
         />
       )}
 

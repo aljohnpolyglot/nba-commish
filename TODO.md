@@ -72,6 +72,15 @@ Full P0 + P1 spec lives in CHANGELOG Session 36. Below are the deferred / long-t
 
 | Bug | Session |
 |-----|---------|
+| Mentorship program yields 0 progression — mentor EXP falls back from age/draft year when veteran stats are missing | S50 |
+| Draft-day pick trade leaves shipped pick on user board — in-progress draft order re-reads live ownership for unpicked slots | S50 |
+| Play button persists after Finals/draft — unresolved-playoff block now requires active series or unplayed playoff games | S50 |
+| Reject-extension leaves expiring player rostered/tradeable — rejection now releases expiring players to UFA immediately | S50 |
+| React #185 in rejected-extension -> trade flow — async re-sign gate guarded after unmount and rejected expiring players leave roster | S50 |
+| Watch Game Live score columns concatenate / final mismatch — final box score uses padded quarter scores plus fixed column spacing | S50 |
+| Training Center progression modal lacks potential overlay — roster rows now open canonical `PlayerRatingsModal` | S50 |
+| Salary Cap Analysis NG payroll double-count — main payroll excludes NG and full payroll adds NG once | S50 |
+| MLE can be reused in same league year — FA market tracks per-team MLE usage during a tick and persists the ledger | S50 |
 | FA gate fires Oct 2+ despite FA already open — `isBeforeFreeAgencyOpen` calendar-year short-circuit | S48 |
 | Trade from Trade Finder during draft auto-completes draft — `gameLogic` skips `autoRunDraft` for trade actions | S47 |
 | GM By Rotation ignores Gameplan starters — reads `gameplanStore` starting five | S47 |

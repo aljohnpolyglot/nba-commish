@@ -323,7 +323,7 @@ export function isDraftBlockedByUnresolvedPlayoffs(state: any): boolean {
   const unplayedPlayoffGame = (state?.schedule ?? []).some((g: any) =>
     (g.isPlayoff || g.playoffs) && !g.played
   );
-  return playoffs.bracketComplete === false || activeSeries || unplayedPlayoffGame;
+  return activeSeries || unplayedPlayoffGame;
 }
 
 /** Draft Combine window start: May 19 by default. */

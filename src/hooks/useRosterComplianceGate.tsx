@@ -27,7 +27,16 @@ export function useRosterComplianceGate() {
   const pendingRef = useRef<(() => void | Promise<void>) | null>(null);
 
   const check = useMemo(() => {
-    const empty = { mode: null as 'over' | 'under' | null, excess: [] as NBAPlayer[], slotsNeeded: 0, isPreseasonEnd: false, phase: 'offseason' as 'training-camp' | 'regular-season' | 'playoffs' | 'offseason', maxRoster: 15 };
+    const empty = {
+      mode: null as 'over' | 'under' | null,
+      excess: [] as NBAPlayer[],
+      slotsNeeded: 0,
+      isPreseasonEnd: false,
+      phase: 'offseason' as 'training-camp' | 'regular-season' | 'playoffs' | 'offseason',
+      maxRoster: 15,
+      limitLabel: undefined as string | undefined,
+      description: undefined as string | undefined,
+    };
     if (state.gameMode !== 'gm' || state.userTeamId == null || !state.date) return empty;
     const { month, day } = getGameDateParts(state.date);
     const isTrainingCamp = (month >= 7 && month <= 9) || (month === 10 && day <= 21);
@@ -41,8 +50,12 @@ export function useRosterComplianceGate() {
       p.tid === state.userTeamId && p.status === 'Active'
     );
     const standardRoster = allRoster.filter(p => !(p as any).twoWay);
+    const twoWayRoster = allRoster.filter(p => !!(p as any).twoWay);
     const minRoster = state.leagueStats?.minPlayersPerTeam ?? 14;
     const maxStd = state.leagueStats?.maxStandardPlayersPerTeam ?? 15;
+    const maxTwoWay = state.leagueStats?.twoWayContractsEnabled === false
+      ? 0
+      : (state.leagueStats?.maxTwoWayPlayersPerTeam ?? 3);
     const maxCamp = state.leagueStats?.maxTrainingCampRoster ?? 21;
 
     // Enforce minimum only when games are live and meaningful: regular season, or playoffs while still competing.
@@ -66,21 +79,36 @@ export function useRosterComplianceGate() {
     }) ?? false;
     const livePhase = isRegularSeason || (isPlayoffs && userStillInPlayoffs && hasUpcomingUserGame);
     if (livePhase && standardRoster.length < minRoster) {
-      return { mode: 'under' as const, excess: [], slotsNeeded: minRoster - standardRoster.length, isPreseasonEnd: false, phase, maxRoster: maxStd };
+      return { ...empty, mode: 'under' as const, slotsNeeded: minRoster - standardRoster.length, phase, maxRoster: maxStd };
     }
     // Training camp: 21 TOTAL (standard + NG + two-way share one pool)
     if (isTrainingCamp && allRoster.length > maxCamp) {
       const excess = [...allRoster]
         .sort((a, b) => getDisplayOverall(a) - getDisplayOverall(b))
         .slice(0, allRoster.length - maxCamp);
-      return { mode: 'over' as const, excess, slotsNeeded: 0, isPreseasonEnd: false, phase, maxRoster: maxCamp };
+      return { ...empty, mode: 'over' as const, excess, phase, maxRoster: maxCamp };
     }
-    // Regular season: standard-only limit
+    // Regular season: standard and two-way slots are separate buckets.
+    if (isRegularSeason && twoWayRoster.length > maxTwoWay) {
+      const excess = [...twoWayRoster]
+        .sort((a, b) => getDisplayOverall(a) - getDisplayOverall(b))
+        .slice(0, twoWayRoster.length - maxTwoWay);
+      return {
+        ...empty,
+        mode: 'over' as const,
+        excess,
+        phase,
+        maxRoster: maxTwoWay,
+        limitLabel: 'two-way',
+        description: `Regular season two-way limit is ${maxTwoWay}. Convert or waive excess two-way players before simulating.`,
+      };
+    }
+    // Regular season: standard roster limit
     if (isRegularSeason && standardRoster.length > maxStd) {
       const excess = [...standardRoster]
         .sort((a, b) => getDisplayOverall(a) - getDisplayOverall(b))
         .slice(0, standardRoster.length - maxStd);
-      return { mode: 'over' as const, excess, slotsNeeded: 0, isPreseasonEnd: false, phase, maxRoster: maxStd };
+      return { ...empty, mode: 'over' as const, excess, phase, maxRoster: maxStd };
     }
     return { ...empty, isPreseasonEnd: isTrainingCamp, phase, maxRoster: isTrainingCamp ? maxCamp : maxStd };
   }, [state.gameMode, state.userTeamId, state.players, state.leagueStats, state.date]);
@@ -127,6 +155,8 @@ export function useRosterComplianceGate() {
       slotsNeeded={check.slotsNeeded}
       minRoster={state.leagueStats?.minPlayersPerTeam ?? 14}
       maxRoster={check.maxRoster}
+      limitLabel={check.limitLabel}
+      description={check.description}
       phase={check.phase}
       isPreseasonEnd={check.isPreseasonEnd}
       onAutoAction={handleAuto}

@@ -146,7 +146,10 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
     : (currentPlay ? getPeriodLabel(currentPlay.q, timingConfig.numQuarters) : getPeriodLabel(1, timingConfig.numQuarters));
 
   const qScores = { away: [] as (string|number)[], home: [] as (string|number)[] };
-  if (currentIndex >= 0) {
+  if (isFinal && finalResult?.quarterScores) {
+    qScores.away = [...(finalResult.quarterScores.away ?? [])];
+    qScores.home = [...(finalResult.quarterScores.home ?? [])];
+  } else if (currentIndex >= 0) {
     const aQs: number[] = [];
     const hQs: number[] = [];
     for (let i = 0; i <= currentIndex; i++) {
@@ -170,6 +173,9 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
       }
     }
   }
+  const scoreCols = Math.max(timingConfig.numQuarters, qScores.away.length, qScores.home.length);
+  while (qScores.away.length < scoreCols) qScores.away.push('-');
+  while (qScores.home.length < scoreCols) qScores.home.push('-');
 
   const awayLogo = awayTeam.logoUrl;
   const homeLogo = homeTeam.logoUrl;
@@ -698,17 +704,17 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
               {/* QUARTERLY */}
               {activeTab === 'quarterly' && (
                 <div className="w-full overflow-x-auto custom-scrollbar">
-                  <table className="w-full text-center min-w-[300px]">
+                  <table className="w-full table-fixed text-center min-w-[420px] border-separate border-spacing-x-2">
                     <thead>
                       <tr className="text-gray-500 text-[9px] tracking-[0.15em] border-b border-gray-800">
-                        <th className="text-left pb-2 font-normal">TEAM</th>
+                        <th className="text-left pb-2 font-normal w-24">TEAM</th>
                         {Array.from({ length: timingConfig.numQuarters }, (_, i) => getPeriodLabel(i + 1, timingConfig.numQuarters)).map(label => (
-                          <th key={label} className="pb-2 font-normal">{label}</th>
+                          <th key={label} className="pb-2 font-normal w-12">{label}</th>
                         ))}
                         {qScores.away.length > timingConfig.numQuarters && qScores.away.slice(timingConfig.numQuarters).map((_, i) => (
-                          <th key={`ot-header-${i}`} className="pb-2 font-normal">OT{i + 1}</th>
+                          <th key={`ot-header-${i}`} className="pb-2 font-normal w-12">OT{i + 1}</th>
                         ))}
-                        <th className="pb-2 font-normal">FINAL</th>
+                        <th className="pb-2 font-normal w-14">FINAL</th>
                       </tr>
                     </thead>
                     <tbody className="font-mono text-sm sm:text-base">

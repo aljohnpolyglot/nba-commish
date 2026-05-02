@@ -203,9 +203,9 @@ The current "Lakers re-sign all their stars" outcome is closer to NBA 2010s than
 
 ---
 
-## Backlog idea — "Off-Books" tab (Kawhi-Aspiration cap-circumvention play)
+## Backlog idea — "Aspire" tab (Kawhi-Aspiration cap-circumvention play)
 
-Hidden tab next to **Team Offers** in `SigningModal`. GM-mode only. Surfaces a covert salary-cap-circumvention mechanic — modeled directly on the real Kawhi Leonard / Aspiration / Ballmer scandal.
+Hidden tab next to **Team Offers** in `SigningModal`. GM-mode only and can be commisoner mode as well. Surfaces a covert salary-cap-circumvention mechanic — modeled directly on the real Kawhi Leonard / Aspiration / Ballmer scandal.
 
 ```
 Real-world inspiration:
@@ -218,36 +218,21 @@ Real-world inspiration:
 ```
 
 **Mechanic:**
-- A new "Off-Books" tab appears on the SigningModal for over-cap teams that have **already maxed Bird Rights / MLE** but still want to sweeten an offer
-- Slider: **"Endorsement supplement"** $0–$30M total over the contract length
-- Funnels through a fake LLC in the player profile (`offBooksDeals[]: { llcName, totalUSD, donorEntity, signedYear }`) — visible only in commissioner dev tools and player's "Suspicious Activity" subtab in PlayerBio
+- A new "Off-Books" tab appears on the SigningModal for any teams!
+- Slider: **"Endorsement supplement"** $0–$30M/yr (percentage base on cap as well for the max) total over the contract length
+-also company name of the money laundering company user input.
 - The supplement adds **+15-30% offer strength** (slider scales) without showing on the cap sheet, but writes a hidden flag on `state.investigations[]`
 
-**Risk system:**
-- Each off-books deal has a `whistleBlowProb` (per-season seeded RNG, 8-15% based on amount + GM Trade Aggression attribute)
-- If triggered: NBA Investigation opens → news cycle ("League looks into [Team] / [Player] endorsement deal — sources say"), Shams posts, ESPN PH headlines, the works
-- Investigation outcomes (resolved over 2-3 sim months):
-  - **Clear** (40%): "Investigation finds no wrongdoing" — flavor news only
-  - **Reprimand** (30%): owner fined $5M, draft pick docked (one 2nd-rd lost)
-  - **Sanctions** (25%): $25M fine, 1st-rd pick stripped, GM suspended 30 days
-  - **Voided + suspended** (5%): contract voided, player becomes FA, team loses 1st-rd + suspended GM 50 games
 
 **UI surfaces:**
-- New "Investigations" subtab in `EventsView` (Commissioner's Diary) — shows ongoing probes with timeline
 - Shams template lib gets a "investigation" type with quote variants
-- PlayerBio gains a tiny shield icon next to portrait when an active off-books deal exists (commissioner-visible only)
 
-**Settings (EconomyTab toggle):**
-- `capCircumventionEnabled: boolean` (default OFF — opt-in for spicy commissioners)
-- `whistleBlowMultiplier: 0.5x–2.0x` for tuning risk
 
 **Why it's worth building:**
-- BBGM doesn't model owner skullduggery at all
 - Real NBA has *exactly this happening right now* (per the Kawhi case) — and we have the news/Shams/Events infrastructure to surface it dramatically
 - Creates a tradeoff for over-the-cap contender GMs: take the legal route and lose your guy to a cap-rich rival, or risk it for the bag and pray the league doesn't find out
-- Generates the kind of story arcs ("Aspiration probe enters month 4, owner Ballmer testifies before commissioner Silver") that elevate the sim from "manage roster" to "run a basketball drama"
+- Generates the kind of story arcs ("Aspiration probe enters month 4, owner Ballmer 
 
-Long-term hook: tie into the **Owner** layer (which is currently flat) — different owner archetypes have different `riskTolerance` (Ballmer = high, small-market = low). Owner pressures GM for off-books deals when the team is contending but capped out.
 
 ---
 

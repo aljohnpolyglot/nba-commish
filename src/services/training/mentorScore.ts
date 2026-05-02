@@ -51,8 +51,25 @@ function gamesIn(stats: NBAGMStat[] | undefined, isPlayoffs: boolean): number {
   }, 0);
 }
 
+function fallbackRegularSeasonGames(player: NBAPlayer): number {
+  const stats = player.stats ?? [];
+  if (stats.some(s => !s.playoffs && (s.gp ?? 0) > 0)) return 0;
+
+  const draftYear = (player as any).draft?.year;
+  if (typeof draftYear === 'number' && Number.isFinite(draftYear)) {
+    const latestSeason = stats.reduce((max, s) => Math.max(max, s.season ?? 0), 0);
+    const currentYear = latestSeason || new Date().getUTCFullYear();
+    return Math.max(0, currentYear - draftYear) * 65;
+  }
+
+  const age = player.born?.year
+    ? new Date().getUTCFullYear() - player.born.year
+    : (player.age ?? 0);
+  return Math.max(0, age - 19) * 65;
+}
+
 export function calculateMentorExp(player: NBAPlayer): MentorExpBreakdown {
-  const rsGames = gamesIn(player.stats, false);
+  const rsGames = gamesIn(player.stats, false) + fallbackRegularSeasonGames(player);
   const poGames = gamesIn(player.stats, true);
   const baseExp = rsGames + poGames * 5;
 
@@ -74,7 +91,8 @@ export function calculateMentorExp(player: NBAPlayer): MentorExpBreakdown {
 /** Eligibility — 5+ NBA seasons of meaningful playing time per docs/mentorship.md §5. */
 export function isEligibleMentor(player: NBAPlayer): boolean {
   const rsSeasons = (player.stats ?? []).filter(s => !s.playoffs && (s.gp ?? 0) > 0).length;
-  return rsSeasons >= 5;
+  if (rsSeasons >= 5) return true;
+  return fallbackRegularSeasonGames(player) >= 325;
 }
 
 /** Format an EXP integer for compact UI display (e.g. 2424 → "2.4K", 850 → "850"). */

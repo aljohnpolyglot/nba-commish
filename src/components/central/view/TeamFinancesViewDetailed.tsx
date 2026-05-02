@@ -27,7 +27,17 @@ export const TeamFinancesViewDetailed: React.FC = () => {
   const ngPlayers = useMemo(() => teamPlayers.filter(p => !!(p as any).nonGuaranteed), [teamPlayers]);
   const standardPlayers = useMemo(() => teamPlayers.filter(p => !(p as any).twoWay && !(p as any).nonGuaranteed), [teamPlayers]);
 
-  const payroll = useMemo(() => getTeamPayrollUSD(state.players, teamId, selectedTeam, currentYear), [state.players, teamId, selectedTeam, currentYear]);
+  const payroll = useMemo(() => {
+    const guaranteedPlayers = state.players.filter((p: any) =>
+      !(p.tid === teamId && p.nonGuaranteed)
+    );
+    return getTeamPayrollUSD(guaranteedPlayers, teamId, selectedTeam, currentYear);
+  }, [state.players, teamId, selectedTeam, currentYear]);
+  const ngPayroll = useMemo(
+    () => ngPlayers.reduce((s, p) => s + contractToUSD(p.contract?.amount || 0), 0),
+    [ngPlayers],
+  );
+  const fullPayrollWithNG = payroll + ngPayroll;
   const deadMoneyEntries = useMemo(() => selectedTeam?.deadMoney ?? [], [selectedTeam]);
   const deadMoneyThisSeason = useMemo(
     () => deadMoneyEntries.reduce((sum, e) => {
@@ -140,7 +150,7 @@ export const TeamFinancesViewDetailed: React.FC = () => {
                 <p className="text-3xl sm:text-5xl font-bold text-white tracking-tight">{formatSalaryM(payroll)}</p>
                 {ngPlayers.length > 0 && (
                   <p className="text-xs text-slate-500 mt-1">
-                    Full (w/ NG): <span className="text-amber-400 font-bold">{formatSalaryM(payroll + ngPlayers.reduce((s, p) => s + contractToUSD(p.contract?.amount || 0), 0))}</span>
+                    Full (w/ NG): <span className="text-amber-400 font-bold">{formatSalaryM(fullPayrollWithNG)}</span>
                   </p>
                 )}
               </div>
@@ -402,4 +412,3 @@ export const TeamFinancesViewDetailed: React.FC = () => {
     </div>
   );
 };
-

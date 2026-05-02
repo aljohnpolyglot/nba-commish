@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { ExpiringResignGateModal, ExpiringRow, ResignIntentLabel } from '../components/modals/ExpiringResignGateModal';
 import { SignFreeAgentModal } from '../components/modals/SignFreeAgentModal';
@@ -20,6 +20,12 @@ export function useExpiringResignGate(options: ExpiringResignGateOptions = {}) {
   const [rejectedIds, setRejectedIds] = useState<Set<string>>(new Set());
   const [signingPlayer, setSigningPlayer] = useState<NBAPlayer | null>(null);
   const pendingRef = useRef<(() => void | Promise<void>) | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const rows = useMemo<ExpiringRow[]>(() => {
     if (state.gameMode !== 'gm' || state.userTeamId == null) return [];
@@ -102,6 +108,7 @@ export function useExpiringResignGate(options: ExpiringResignGateOptions = {}) {
       if (offeredIds.has(r.player.internalId) || rejectedIds.has(r.player.internalId)) continue;
       await autoDispatchResign(r);
     }
+    if (!mountedRef.current) return;
     setOfferedIds(new Set());
     setRejectedIds(new Set());
     setOpen(false);
@@ -117,6 +124,27 @@ export function useExpiringResignGate(options: ExpiringResignGateOptions = {}) {
   };
 
   const handleReject = (playerId: string) => {
+    const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+    const player = state.players.find(p => p.internalId === playerId);
+    if (player && (player.contract?.exp ?? currentYear + 1) <= currentYear) {
+      dispatchAction({
+        type: 'UPDATE_STATE' as any,
+        payload: {
+          players: state.players.map((p: any) => p.internalId === playerId ? {
+            ...p,
+            tid: -1,
+            status: 'Free Agent',
+            midSeasonExtensionDeclined: true,
+            twoWay: undefined,
+            nonGuaranteed: false,
+            gLeagueAssigned: false,
+            signedDate: undefined,
+            tradeEligibleDate: undefined,
+            yearsWithTeam: 0,
+          } : p),
+        },
+      } as any);
+    }
     setRejectedIds(prev => {
       const next = new Set(prev);
       next.add(playerId);
@@ -163,6 +191,7 @@ export function useExpiringResignGate(options: ExpiringResignGateOptions = {}) {
             const playerId = signingPlayer.internalId;
             setSigningPlayer(null);
             await dispatchAction({ type: 'SIGN_FREE_AGENT' as any, payload });
+            if (!mountedRef.current) return;
             setOfferedIds(prev => {
               const next = new Set(prev);
               next.add(playerId as any);

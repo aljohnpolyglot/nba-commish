@@ -37,6 +37,24 @@ const updateTeamStrengths = (teams: NBATeam[], players: Player[]): NBATeam[] => 
     }));
 };
 
+const releaseDeclinedExtensionPlayer = (player: Player, currentYear: number): Player => {
+    if ((player.contract?.exp ?? currentYear + 1) !== currentYear) {
+        return { ...player, midSeasonExtensionDeclined: true } as any;
+    }
+    return {
+        ...player,
+        tid: -1,
+        status: 'Free Agent' as any,
+        midSeasonExtensionDeclined: true,
+        twoWay: undefined,
+        nonGuaranteed: false,
+        gLeagueAssigned: false,
+        signedDate: undefined,
+        tradeEligibleDate: undefined,
+        yearsWithTeam: 0,
+    } as any;
+};
+
 function applyBirdRightsResignsPass(stateWithSim: GameState): GameState {
     const rawBirdResigns = runAIBirdRightsResigns(stateWithSim);
     // Drop any re-sign for a player with an open user-bid market (last-line guard).
@@ -895,7 +913,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             };
                         }
                         if (declinedIds.has(p.internalId)) {
-                            return { ...p, midSeasonExtensionDeclined: true } as any;
+                            return releaseDeclinedExtensionPlayer(p, stateWithSim.leagueStats?.year ?? 2026);
                         }
                         return p;
                     }),
@@ -996,7 +1014,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                                 contractYears: [...existingThroughCurrent, ...eeContractYears],
                             };
                         }
-                        if (declinedEE.has(p.internalId)) return { ...p, midSeasonExtensionDeclined: true } as any;
+                        if (declinedEE.has(p.internalId)) return releaseDeclinedExtensionPlayer(p, stateWithSim.leagueStats?.year ?? 2026);
                         return p;
                     }),
                 };
@@ -1226,6 +1244,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 tick.historyEntries.length > 0 ||
                 tick.newsItems.length > 0 ||
                 tick.socialPosts.length > 0 ||
+                !!tick.leagueStats ||
                 tick.userBidResolutions.length > 0 ||
                 tick.updatedMarkets.length !== (stateWithSim.faBidding?.markets?.length ?? 0) ||
                 tick.updatedMarkets.some((market: any) => {
@@ -1260,6 +1279,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         ? [...tick.socialPosts, ...(stateWithSim.socialFeed ?? [])] as any
                         : stateWithSim.socialFeed,
                     faBidding: { markets: tick.updatedMarkets as any },
+                    ...(tick.leagueStats ? { leagueStats: tick.leagueStats as any } : {}),
                     ...(tick.userBidResolutions.length > 0 ? {
                         pendingFAToasts: [
                             ...(stateWithSim.pendingFAToasts ?? []),

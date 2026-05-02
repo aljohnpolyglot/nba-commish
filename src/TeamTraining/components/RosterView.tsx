@@ -6,8 +6,8 @@ import { ARCHETYPE_NAMES, getFocusWeights, ARCHETYPE_PROFILES } from '../constan
 import { ATTRIBUTE_LABELS } from '../constants/trainingSystems';
 import { TrainingFocusModal } from './TrainingFocusModal';
 import { MentorshipModal } from './MentorshipModal';
-import { PlayerProgressionModal } from './PlayerProgressionModal';
 import { PlayerNameWithHover } from '../../components/shared/PlayerNameWithHover';
+import { PlayerRatingsModal } from '../../components/modals/PlayerRatingsModal';
 import type { NBAPlayer } from '../../types';
 
 interface Props {
@@ -345,18 +345,13 @@ export function RosterView({ roster, staffing, teams, nbaPlayersById, currentYea
         onSelectMentor={(pId, mId) => updateMentor(pId, mId || undefined)}
       />
 
-      <PlayerProgressionModal
-        player={roster.find(p => p.id === progressionModalPlayerId) || null}
-        nbaPlayer={progressionModalPlayerId ? nbaPlayersById?.get(progressionModalPlayerId) : undefined}
-        currentYear={currentYear}
-        currentDate={currentDate}
-        trainingCalendar={trainingCalendar}
-        team={(() => {
-          const nbaP = progressionModalPlayerId ? nbaPlayersById?.get(progressionModalPlayerId) : undefined;
-          return nbaP ? teams.find(t => t.tid === nbaP.tid) : undefined;
-        })()}
-        onClose={() => setProgressionModalPlayerId(null)}
-      />
+      {progressionModalPlayerId && nbaPlayersById?.get(progressionModalPlayerId) && (
+        <PlayerRatingsModal
+          player={nbaPlayersById.get(progressionModalPlayerId)!}
+          season={currentYear ?? new Date().getFullYear()}
+          onClose={() => setProgressionModalPlayerId(null)}
+        />
+      )}
     </div>
   );
 }

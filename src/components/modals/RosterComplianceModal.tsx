@@ -13,6 +13,8 @@ interface RosterComplianceModalProps {
   slotsNeeded?: number;
   minRoster?: number;
   maxRoster?: number;
+  limitLabel?: string;
+  description?: string;
   phase?: 'training-camp' | 'regular-season' | 'playoffs' | 'offseason';
   isPreseasonEnd?: boolean;
   onAutoAction: () => void;
@@ -26,6 +28,8 @@ export const RosterComplianceModal: React.FC<RosterComplianceModalProps> = ({
   slotsNeeded = 0,
   minRoster = 14,
   maxRoster,
+  limitLabel: limitLabelOverride,
+  description,
   phase,
   isPreseasonEnd = false,
   onAutoAction,
@@ -35,7 +39,7 @@ export const RosterComplianceModal: React.FC<RosterComplianceModalProps> = ({
   const count = isUnder ? slotsNeeded : excessPlayers.length;
   const isCamp = phase === 'training-camp';
   const cap = maxRoster ?? (isCamp ? 21 : 15);
-  const limitLabel = isCamp ? 'training camp' : 'standard';
+  const limitLabel = limitLabelOverride ?? (isCamp ? 'training camp' : 'standard');
   const title = isUnder
     ? 'Roster Too Small'
     : isCamp
@@ -76,13 +80,13 @@ export const RosterComplianceModal: React.FC<RosterComplianceModalProps> = ({
                   : <>You have <span className="font-black text-amber-300">{count}</span> too many {limitLabel} {count === 1 ? 'player' : 'players'}.</>}
               </p>
               <p className="text-xs text-slate-500 mb-4">
-                {isUnder
+                {description ?? (isUnder
                   ? `League minimum is ${minRoster} standard players. Sign free agents before simulating.`
                   : isCamp
                     ? `Training camp limit is ${cap} (standard + non-guaranteed + two-way combined). Trim before advancing.`
                     : isPreseasonEnd
                       ? `Cut down to ${cap} standard players before regular season tips off.`
-                      : `Waive players first, then simulate. Standard limit is ${cap}.`}
+                      : `Waive players first, then simulate. Standard limit is ${cap}.`)}
               </p>
 
               {!isUnder && excessPlayers.length > 0 && (

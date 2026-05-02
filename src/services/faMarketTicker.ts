@@ -126,6 +126,7 @@ function getK2(player: NBAPlayer): number {
 
 export interface MarketTickResult {
   updatedMarkets: FreeAgentMarket[];
+  leagueStats?: GameState['leagueStats'];
   /** Player mutations for signings that resolved this tick. */
   signedPlayerIds: Set<string>;
   playerMutations: Map<string, Partial<NBAPlayer>>;
@@ -235,6 +236,38 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
   const rfaOfferSheets: MarketTickResult['rfaOfferSheets'] = [];
   const rfaMatchResolutions: MarketTickResult['rfaMatchResolutions'] = [];
   const userBidRejectedForCap = new Set<string>();
+  const localMleUsage: NonNullable<GameState['leagueStats']>['mleUsage'] = {
+    ...(((state.leagueStats as any)?.mleUsage ?? {}) as any),
+  };
+  let mleUsageChanged = false;
+
+  const newlyCommittedForTeam = (teamId: number): number =>
+    Array.from(playerMutations.values())
+      .filter(mut => mut.tid === teamId && mut.contract?.amount != null)
+      .reduce((sum, mut) => sum + ((mut.contract?.amount ?? 0) * 1_000), 0);
+
+  const getMleTypeForBid = (bid: FreeAgentBid, player: NBAPlayer, payrollUSD: number): 'room' | 'non_taxpayer' | 'taxpayer' | null => {
+    const priorTid = getRFAPriorTid(player);
+    if (bid.teamId === priorTid && hasBirdRights(player)) return null;
+    const thresholds = getCapThresholds(state.leagueStats as any);
+    const capSpace = thresholds.salaryCap - payrollUSD;
+    if (capSpace >= bid.salaryUSD) return null;
+    const mle = getMLEAvailability(bid.teamId, payrollUSD, bid.salaryUSD, thresholds, {
+      ...(state.leagueStats as any),
+      mleUsage: localMleUsage,
+    });
+    return !mle.blocked && bid.salaryUSD <= mle.available ? mle.type : null;
+  };
+
+  const consumeMleForBid = (teamId: number, type: 'room' | 'non_taxpayer' | 'taxpayer' | null, salaryUSD: number) => {
+    if (!type) return;
+    const prior = localMleUsage?.[teamId];
+    localMleUsage[teamId] = {
+      type,
+      usedUSD: (prior?.type === type ? (prior.usedUSD ?? 0) : 0) + salaryUSD,
+    };
+    mleUsageChanged = true;
+  };
 
   const dateParts = state.date ? getGameDateParts(state.date) : null;
   const inSummerFAWindow = !!dateParts && dateParts.month >= 7 && dateParts.month <= 9;
@@ -302,13 +335,9 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     if (bid.teamId === priorTid && hasBirdRights(player)) return true;
 
     const thresholds = getCapThresholds(state.leagueStats as any);
-    const newlyCommittedUSD = Array.from(playerMutations.values())
-      .filter(mut => mut.tid === bid.teamId && mut.contract?.amount != null)
-      .reduce((sum, mut) => sum + ((mut.contract?.amount ?? 0) * 1_000), 0);
-    const payroll = getTeamPayrollUSD(state.players, bid.teamId, team, currentYear) + newlyCommittedUSD;
+    const payroll = getTeamPayrollUSD(state.players, bid.teamId, team, currentYear) + newlyCommittedForTeam(bid.teamId);
     const capSpace = thresholds.salaryCap - payroll;
-    const mle = getMLEAvailability(bid.teamId, payroll, bid.salaryUSD, thresholds, state.leagueStats as any);
-    return capSpace >= bid.salaryUSD || (!mle.blocked && bid.salaryUSD <= mle.available);
+    return capSpace >= bid.salaryUSD || !!getMleTypeForBid(bid, player, payroll);
   };
 
   let userMarketCountered = false;
@@ -525,11 +554,14 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
 
     const prevSalaryUSDFirstYear = (Number((player as any).contract?.amount) || 0) * 1_000;
     const minUSD = ((state.leagueStats?.minContractStaticAmount as number | undefined) ?? 1.273) * 1_000_000;
+    const signingPayroll = getTeamPayrollUSD(state.players, winner.teamId, team, currentYear) + newlyCommittedForTeam(winner.teamId);
+    const mleTypeUsed = getMleTypeForBid(winner, player, signingPayroll);
     const mutation: Partial<NBAPlayer> = {
       tid: winner.teamId,
       status: 'Active' as any,
       contract: newContract,
       contractYears: [...historicalYears, ...newContractYears],
+      mleSignedVia: mleTypeUsed ?? undefined,
       // Stamp signing date so trim's recency guard protects this signing.
       signedDate: state.date,
       tradeEligibleDate: computeTradeEligibleDate({
@@ -546,6 +578,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
       ...(joinedNewTeam ? { yearsWithTeam: 0, hasBirdRights: false } : {}),
     } as any;
     playerMutations.set(player.internalId, mutation);
+    consumeMleForBid(winner.teamId, mleTypeUsed, winner.salaryUSD);
     signedPlayerIds.add(player.internalId);
 
     const annualM = Math.round(winner.salaryUSD / 100_000) / 10;
@@ -706,11 +739,15 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     const joinedNewTeam = winningTid !== player.tid;
     const prevSalaryUSDFirstYearRfa = (Number((player as any).contract?.amount) || 0) * 1_000;
     const minUSDRfa = ((state.leagueStats?.minContractStaticAmount as number | undefined) ?? 1.273) * 1_000_000;
+    const rfaPayroll = getTeamPayrollUSD(state.players, winningTid, winningTeam, currentYear) + newlyCommittedForTeam(winningTid);
+    const rfaBidForMle = { ...offerBid, teamId: winningTid };
+    const rfaMleTypeUsed = getMleTypeForBid(rfaBidForMle, player, rfaPayroll);
     playerMutations.set(player.internalId, {
       tid: winningTid,
       status: 'Active' as any,
       contract: newContract,
       contractYears: [...histYears, ...newContractYears],
+      mleSignedVia: rfaMleTypeUsed ?? undefined,
       signedDate: state.date,
       tradeEligibleDate: computeTradeEligibleDate({
         signingDate: state.date,
@@ -725,6 +762,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
       ...(isNonGuaranteedRFA ? { nonGuaranteed: true } : {}),
       ...(joinedNewTeam ? { yearsWithTeam: 0, hasBirdRights: false } : {}),
     } as any);
+    consumeMleForBid(winningTid, rfaMleTypeUsed, offerBid.salaryUSD);
     signedPlayerIds.add(player.internalId);
 
     workingMarkets[i] = {
@@ -817,7 +855,10 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
         const effectivePayroll = teamPayroll + extra;
         const capSpace = capUSD - effectivePayroll;
         // Real MLE check — uses commissioner-set MLE percentages instead of cap×0.085
-        const mleAvail = getMLEAvailability(bid.teamId, effectivePayroll, bid.salaryUSD, thresholds, state.leagueStats as any);
+        const mleAvail = getMLEAvailability(bid.teamId, effectivePayroll, bid.salaryUSD, thresholds, {
+          ...(state.leagueStats as any),
+          mleUsage: localMleUsage,
+        });
         const canUseMLE = !mleAvail.blocked && bid.salaryUSD <= mleAvail.available;
         if (capSpace >= bid.salaryUSD || canUseMLE) return bid;
         return { ...bid, status: 'withdrawn' as const };
@@ -977,6 +1018,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
 
   return {
     updatedMarkets: workingMarkets,
+    ...(mleUsageChanged ? { leagueStats: { ...(state.leagueStats as any), mleUsage: localMleUsage } } : {}),
     signedPlayerIds,
     playerMutations,
     historyEntries,

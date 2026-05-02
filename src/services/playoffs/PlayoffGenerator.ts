@@ -193,7 +193,8 @@ export class PlayoffGenerator {
   static injectSeriesGames(
     series: PlayoffSeries[],
     startDate: Date,
-    existingMaxGid: number
+    existingMaxGid: number,
+    latestEndDate?: Date
   ): Game[] {
     const newGames: Game[] = [];
     let gid = existingMaxGid + 1;
@@ -212,6 +213,14 @@ export class PlayoffGenerator {
 
       let gameDate = new Date(seriesStart);
       const seriesGameIds: number[] = [];
+      const isFinals = s.round === 4;
+      const latestEndMs = latestEndDate?.getTime();
+      const compressedFinalsGap = (() => {
+        if (!isFinals || !Number.isFinite(latestEndMs) || maxGames <= 1) return 2;
+        const availableDays = Math.floor(((latestEndMs as number) - seriesStart.getTime()) / 86_400_000);
+        if (availableDays <= 0) return 1;
+        return Math.max(1, Math.floor(availableDays / (maxGames - 1)));
+      })();
 
       for (let g = 0; g < maxGames; g++) {
         newGames.push({
@@ -230,8 +239,7 @@ export class PlayoffGenerator {
         seriesGameIds.push(gid);
         gid++;
         // 2 days between games, 3 days extra rest after games 2 and 4 (not for Finals — keep it tight)
-        const isFinals = s.round === 4;
-        const gap = isFinals ? 2 : ((g === 1 || g === 3) ? 3 : 2);
+        const gap = isFinals ? compressedFinalsGap : ((g === 1 || g === 3) ? 3 : 2);
         gameDate = new Date(gameDate);
         gameDate.setDate(gameDate.getDate() + gap);
       }

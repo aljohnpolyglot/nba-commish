@@ -560,10 +560,6 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   // picks display + assign to the team that actually holds them.
   const computedDraftOrder = useMemo(() => buildDraftOrderFromState(state), [state]);
   const savedDraftOrder = (state as any).activeDraftOrder as DraftOrderTeam[] | undefined;
-  const draftOrder = useMemo(
-    () => ((savedDraftOrder?.length ?? 0) > 0 ? savedDraftOrder! : computedDraftOrder),
-    [computedDraftOrder, savedDraftOrder],
-  );
 
   const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
 
@@ -769,6 +765,13 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     savedPickCount > 0 ? Math.max(...Object.keys(savedDraftPicks).map(Number)) + 1 : 1
   );
   const [drafted, setDrafted] = useState<Record<number, any>>(() => savedDraftPicks);
+  const draftOrder = useMemo(() => {
+    if ((savedDraftOrder?.length ?? 0) === 0) return computedDraftOrder;
+    return savedDraftOrder!.map((team, idx) => {
+      const pickSlot = idx + 1;
+      return pickSlot < currentPick ? team : (computedDraftOrder[idx] ?? team);
+    });
+  }, [computedDraftOrder, savedDraftOrder, currentPick]);
   const [posFilter, setPosFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState<'ovr' | 'pot' | SkillAxis>('ovr');
   const [isSimulating, setIsSimulating] = useState(false);

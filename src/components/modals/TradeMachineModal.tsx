@@ -41,6 +41,7 @@ interface TradeMachineModalProps {
   initialTeamBPlayerIds?: string[];
   initialTeamAPickDpids?: number[];
   initialTeamBPickDpids?: number[];
+  initialPreAccepted?: boolean;
 }
 
 // HELPER: The "Eyebrow" Pill for outgoing players
@@ -191,6 +192,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   initialTeamAId, initialTeamBId,
   initialTeamAPlayerIds, initialTeamBPlayerIds,
   initialTeamAPickDpids, initialTeamBPickDpids,
+  initialPreAccepted = false,
 }) => {
   const { state } = useGame();
   const isGM = state.gameMode === 'gm';
@@ -425,8 +427,9 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   const handleExecuteTrade = (force: boolean) => {
     if (teamAId === null || teamBId === null) return;
 
-    // GM Mode: evaluate whether the other team accepts
-    if (isGM && !force) {
+    // GM Mode: evaluate whether the other team accepts. Trade Finder's cap
+    // absorption offers are pre-vetted by the engine; still re-check CBA here.
+    if (isGM && !force && (!initialPreAccepted || salaryMismatchInfo)) {
       const currentYear = currentYearForEval;
       const otherTeam = state.teams.find(t => t.id === teamBId);
       const otherGMName = otherTeam ? `${otherTeam.name} GM` : 'Their GM';

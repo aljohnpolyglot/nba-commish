@@ -522,8 +522,7 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     // Absorb variant: cap-space team takes the contract for nothing in return.
     const teamCapSpace = capSpaces?.get(team.id) ?? -Infinity;
     const canAbsorb = outgoingSalary > 0
-      && teamCapSpace >= outgoingSalary
-      && theirMode !== 'contend'; // contenders don't take on dead money for nothing
+      && teamCapSpace >= outgoingSalary;
     if (canAbsorb) {
       offers.push({
         tid: team.id,

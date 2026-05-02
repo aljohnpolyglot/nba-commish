@@ -1,5 +1,6 @@
 import { PlayoffBracket, GameResult, Game, PlayInGame, PlayoffSeries } from '../../types';
 import { PlayoffGenerator } from './PlayoffGenerator';
+import { getDraftDate } from '../../utils/dateUtils';
 
 // Defines which pair of completed series creates each next-round matchup.
 // feeder1 = West/Away side, feeder2 = East/Home side (matters only for Finals home-court).
@@ -119,25 +120,30 @@ export class PlayoffAdvancer {
 
       b.series = [...b.series, newSeries];
 
-      // Start 3 days after the LATER of the two feeder series' last games
+      // Start after the LATER of the two feeder series' last games.
       const s1End = this.getLastGameDate(schedule, newGames, [s1], b.season);
       const s2End = this.getLastGameDate(schedule, newGames, [s2], b.season);
       const laterEnd = s1End.getTime() >= s2End.getTime() ? s1End : s2End;
       const nextStart = new Date(laterEnd);
-      nextStart.setDate(nextStart.getDate() + 3);
+      nextStart.setDate(nextStart.getDate() + (pair.round === 4 ? 1 : 3));
 
-      // Finals cap: start by June 10 so Game 7 lands no later than ~June 22.
-      // Only clamp backward when the cap is still ahead of the feeders' last game — otherwise
-      // we'd place Finals games on dates the lazy sim has already advanced past, stranding them.
+      // Finals cap: Game 7 must land before draft day. If conference finals run
+      // late, the Finals compress to daily games instead of drifting past the draft.
+      let latestEndDate: Date | undefined;
       if (pair.round === 4) {
-        const juneMaxStart = new Date(`${b.season}-06-10T00:00:00Z`);
+        const draftDate = getDraftDate(b.season);
+        latestEndDate = new Date(draftDate);
+        latestEndDate.setDate(latestEndDate.getDate() - 1);
+        const normalFinalsSpanDays = (numGames - 1) * 2;
+        const juneMaxStart = new Date(latestEndDate);
+        juneMaxStart.setDate(juneMaxStart.getDate() - normalFinalsSpanDays);
         if (nextStart > juneMaxStart && juneMaxStart > laterEnd) {
           nextStart.setTime(juneMaxStart.getTime());
         }
       }
 
       const curMaxGid = Math.max(maxGid, ...newGames.map(g => g.gid), 0);
-      const injected = PlayoffGenerator.injectSeriesGames([newSeries], nextStart, curMaxGid);
+      const injected = PlayoffGenerator.injectSeriesGames([newSeries], nextStart, curMaxGid, latestEndDate);
       newGames.push(...injected);
     }
 
