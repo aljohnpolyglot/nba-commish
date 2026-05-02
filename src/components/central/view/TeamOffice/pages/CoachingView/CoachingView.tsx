@@ -8,7 +8,7 @@ import type { NBA2KCoachData, CoachContractData } from '../../../../../../servic
 import type { CoachData as CoachBioData } from '../../../../../../services/staffService';
 import { StarterService } from '../lib/starterService';
 import { systemDescriptions } from '../lib/systemDescriptions';
-import { PlayerPortrait } from './PlayerPortrait';
+import { PlayerPortrait } from '../../../../../shared/PlayerPortrait';
 import { GameplanTab } from './GameplanTab';
 import { IdealRotationTab } from './IdealRotationTab';
 import { getMinutesDiff } from '../../../../../../store/gameplanStore';
@@ -592,7 +592,9 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
                         <div key={idx} className="absolute flex flex-col items-center z-10" style={getCourtPosition(idx)}>
                           <div className="relative">
                             <PlayerPortrait
-                              imgUrl={starter.imgURL || `https://ui-avatars.com/api/?name=${starter.firstName}+${starter.lastName}&background=random`}
+                              imgUrl={starter.imgURL}
+                              face={(starter as any).face}
+                              playerName={starter.name}
                               teamLogoUrl={team.imgURL}
                               overallRating={starter.overallRating}
                               ratings={starter.ratings}
@@ -769,6 +771,7 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
               {/* Note: These sliders are currently read-only in the UI. 
                   Once moved, they would affect the simulator knobs for this team. */}
               {[
+                { label: 'Bench Depth', key: 'benchDepth' },
                 { label: 'Offense / Defense', key: 'prefOffDef' },
                 { label: 'Inside / Outside', key: 'prefInOut' },
                 { label: 'Size / Speed', key: 'prefSizeSpeed' },
@@ -789,6 +792,35 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
                   </div>
                 </div>
               ))}
+
+              <h4 className="font-bold text-yellow-500 uppercase text-[10px] md:text-sm mt-6 mb-2">Play Through Injuries</h4>
+              {([
+                { label: 'Regular Season', key: 'ptiRegular', defaultVal: 0 },
+                { label: 'Playoffs', key: 'ptiPlayoffs', defaultVal: 40 },
+              ] as { label: string; key: 'ptiRegular' | 'ptiPlayoffs'; defaultVal: number }[]).map((slider, idx) => {
+                const val: number = (effectiveSliders as any)[slider.key] ?? slider.defaultVal;
+                const ptiLevel = Math.round((val / 100) * 4);
+                const ptiDesc = ['Healthy only', 'Day-to-day (1–3 games)', 'Moderate (4–7 games)', 'Significant (8–14 games)', 'Major (15+ games)'][ptiLevel];
+                return (
+                  <div key={slider.key} className={`flex flex-col gap-1 ${idx % 2 === 1 ? 'bg-[#1a1a1a] p-2 rounded' : 'p-2'}`}>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                      <span className="text-xs md:text-sm font-bold">{slider.label}</span>
+                      <div className="flex items-center gap-4 w-full sm:w-1/2">
+                        <span className="text-yellow-500 font-bold w-8 text-right text-xs md:text-sm">{val}</span>
+                        <input
+                          type="range" min="0" max="100"
+                          value={val}
+                          readOnly={!lockedStrategy}
+                          disabled={!lockedStrategy}
+                          onChange={(e) => updateLockedSlider(slider.key, Number(e.target.value))}
+                          className={`w-full accent-yellow-500 ${lockedStrategy ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
+                        />
+                      </div>
+                    </div>
+                    <div className="text-[10px] text-slate-500 px-2 sm:pl-[calc(50%+1rem)]">{ptiDesc}</div>
+                  </div>
+                );
+              })}
             </div>
           )}
           {activeTab === 'STAFF' && (

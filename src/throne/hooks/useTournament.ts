@@ -9,7 +9,7 @@ const initStats = (p: Player): PlayerTournamentStats => ({
   pf: 0, pa: 0, pd: 0, r1Pd: 0,
   roundPds: {},
   pts: 0, reb: 0, ast: 0,
-  fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0,
+  fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, stl: 0, blk: 0,
 });
 
 export function useTournament(_settings: GameSettings) {
@@ -66,12 +66,13 @@ export function useTournament(_settings: GameSettings) {
       w.gamesPlayed++; w.wins++; w.pf += wPts; w.pa += lPts; w.pd += pd; w.roundPds[round] = (w.roundPds[round] ?? 0) + pd;
       if (round === 1) w.r1Pd += pd;
       const ws = simState.winner.id === simState.player1.id ? simState.p1Stats : simState.p2Stats;
-      w.pts += ws.pts; w.reb += ws.reb; w.ast += ws.ast;
+      w.pts += ws.pts; w.reb += ws.reb; w.ast += ws.ast; w.stl += ws.stl; w.blk += ws.blk;
       w.fgm += ws.fgm; w.fga += ws.fga; w.tpm += ws.tpm; w.tpa += ws.tpa;
 
       l.gamesPlayed++; l.losses++; l.pf += lPts; l.pa += wPts; l.pd -= pd; l.roundPds[round] = (l.roundPds[round] ?? 0) - pd;
       const ls = simState.winner.id === simState.player1.id ? simState.p2Stats : simState.p1Stats;
       l.pts += ls.pts; l.reb += ls.reb; l.ast += ls.ast;
+      l.stl += ls.stl; l.blk += ls.blk;
       l.fgm += ls.fgm; l.fga += ls.fga; l.tpm += ls.tpm; l.tpa += ls.tpa;
 
       next[simState.winner!.id] = w;
@@ -126,7 +127,7 @@ export function useTournament(_settings: GameSettings) {
     currentRound, setCurrentRound,
     matches, setMatches,
     currentMatchIndex, setCurrentMatchIndex,
-    playerStats,
+    playerStats, setPlayerStats,
     champion, setChampion,
     recordMatchResult,
     initializeRound1,

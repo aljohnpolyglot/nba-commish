@@ -100,7 +100,7 @@ export const SportsbookView = () => {
   const teamRecords = useMemo(() => {
     const records: Record<number, { w: number; l: number }> = {};
     const nonRegularGids = new Set(
-      state.schedule.filter((g: any) => g.isPreseason || g.isPlayoff || g.isPlayIn).map((g: any) => g.gid)
+      state.schedule.filter((g: any) => g.isPreseason || g.isPlayoff || g.isPlayIn || g.excludeFromRecord).map((g: any) => g.gid)
     );
     (state.boxScores as any[]).filter(g =>
       !g.isAllStar && !g.isRisingStars && !g.isCelebrityGame && !nonRegularGids.has(g.gameId)

@@ -6,6 +6,9 @@ import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-
 import { evaluateFilter } from '../../../utils/filterUtils';
 import { memCache } from './bioCache';
 import { getOwnTeamId } from '../../../utils/helpers';
+import { isFourPointEnabled } from '../../../utils/ruleFlags';
+import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
+import { matchCheat, triggerCheat } from '../../../utils/debugCheats';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -15,7 +18,7 @@ type SeasonMode = number | 'career' | 'all';
 
 type SortField =
   | 'name' | 'pos' | 'age' | 'team' | 'gp' | 'gs' | 'min'
-  | 'fg' | 'fga' | 'fgPct' | 'tp' | 'tpa' | 'tpPct'
+  | 'fg' | 'fga' | 'fgPct' | 'tp' | 'tpa' | 'tpPct' | 'fp' | 'fpa' | 'fpPct'
   | 'twop' | 'twopa' | 'twopPct' | 'efgPct'
   | 'ft' | 'fta' | 'ftPct'
   | 'orb' | 'drb' | 'trb' | 'ast' | 'tov' | 'stl' | 'blk' | 'pf' | 'pts' | 'pm'
@@ -25,7 +28,7 @@ type SortField =
   | 'threePAr' | 'ftRate'
   | 'rimFgm' | 'rimFga' | 'rimFgPct' | 'lpFgm' | 'lpFga' | 'lpFgPct'
   | 'mrFgm' | 'mrFga' | 'mrFgPct' | 'slTpm' | 'slTpa' | 'slTpPct'
-  | 'ba' | 'dd' | 'td' | 'qd' | 'fiveX5';
+  | 'ba' | 'dd' | 'td' | 'qd' | 'fiveX5' | 'dunks' | 'techs' | 'pip';
 
 interface ComputedRow {
   player: NBAPlayer;
@@ -35,6 +38,7 @@ interface ComputedRow {
   gp: number; gs: number; min: number;
   fg: number; fga: number; fgPct: number;
   tp: number; tpa: number; tpPct: number;
+  fp: number; fpa: number; fpPct: number;
   twop: number; twopa: number; twopPct: number;
   efgPct: number;
   ft: number; fta: number; ftPct: number;
@@ -53,6 +57,7 @@ interface ComputedRow {
   mrFgm?: number;  mrFga?: number;  mrFgPct?: number;
   slTpm?: number;  slTpa?: number;  slTpPct?: number;
   ba?: number; dd?: number; td?: number; qd?: number; fiveX5?: number;
+  dunks?: number; techs?: number; pip?: number;
   fromBref?: boolean;
 }
 
@@ -128,6 +133,7 @@ async function fetchBrefRow(player: NBAPlayer): Promise<ComputedRow | null> {
       min: get('mp'),
       fg, fga, fgPct: fga > 0 ? fg / fga : 0,
       tp, tpa, tpPct: tpa > 0 ? tp / tpa : 0,
+      fp: 0, fpa: 0, fpPct: 0,
       twop: fg - tp, twopa: fga - tpa, twopPct: (fga - tpa) > 0 ? (fg - tp) / (fga - tpa) : 0,
       efgPct: fga > 0 ? (fg + 0.5 * tp) / fga : 0,
       ft, fta, ftPct: fta > 0 ? ft / fta : 0,
@@ -162,7 +168,7 @@ function aggregateStats(statsList: NBAGMStat[]): NBAGMStat {
   const out: NBAGMStat = {
     season: 0, tid: statsList[0]?.tid ?? 0,
     gp: 0, gs: 0, min: 0,
-    fg: 0, fga: 0, fgp: 0, tp: 0, tpa: 0, tpp: 0,
+    fg: 0, fga: 0, fgp: 0, tp: 0, tpa: 0, tpp: 0, fp: 0, fpa: 0, fpp: 0,
     ft: 0, fta: 0, ftp: 0,
     orb: 0, drb: 0, trb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0,
     per: 0, pm: 0,
@@ -171,6 +177,7 @@ function aggregateStats(statsList: NBAGMStat[]): NBAGMStat {
     out.gp += s.gp; out.gs += s.gs; out.min += s.min;
     out.fg += s.fg; out.fga += s.fga;
     out.tp += s.tp; out.tpa += s.tpa;
+    out.fp = (out.fp ?? 0) + (s.fp ?? 0); out.fpa = (out.fpa ?? 0) + (s.fpa ?? 0);
     out.ft += s.ft; out.fta += s.fta;
     out.orb += s.orb; out.drb += s.drb; out.trb += s.trb;
     out.ast += s.ast; out.stl += s.stl; out.blk += s.blk;
@@ -179,6 +186,7 @@ function aggregateStats(statsList: NBAGMStat[]): NBAGMStat {
   }
   out.fgp = safePct(out.fg, out.fga);
   out.tpp = safePct(out.tp, out.tpa);
+  out.fpp = safePct(out.fp ?? 0, out.fpa ?? 0);
   out.ftp = safePct(out.ft, out.fta);
   const totalGp = out.gp || 1;
   const wpd = (k: keyof NBAGMStat) => statsList.reduce((a, s) => a + ((s[k] as number) ?? 0) * s.gp, 0) / totalGp;
@@ -223,6 +231,8 @@ function toRow(
   const fga = s.fga / div;
   const tp  = s.tp  / div;
   const tpa = s.tpa / div;
+  const fp  = (s.fp ?? 0) / div;
+  const fpa = (s.fpa ?? 0) / div;
   const ft  = s.ft  / div;
   const fta = s.fta / div;
   const minD = statType === 'totals' ? s.min : s.min / gp;
@@ -232,9 +242,10 @@ function toRow(
     gp: s.gp, gs: s.gs, min: minD,
     fg, fga, fgPct: safePct(s.fg, s.fga),
     tp, tpa, tpPct: safePct(s.tp, s.tpa),
-    twop: fg - tp, twopa: fga - tpa,
-    twopPct: safePct(s.fg - s.tp, s.fga - s.tpa),
-    efgPct: safePct(s.fg + 0.5 * s.tp, s.fga),
+    fp, fpa, fpPct: safePct(s.fp ?? 0, s.fpa ?? 0),
+    twop: fg - tp - fp, twopa: fga - tpa - fpa,
+    twopPct: safePct(s.fg - s.tp - (s.fp ?? 0), s.fga - s.tpa - (s.fpa ?? 0)),
+    efgPct: safePct(s.fg + 0.5 * s.tp + (s.fp ?? 0), s.fga),
     ft, fta, ftPct: safePct(s.ft, s.fta),
     orb: s.orb / div, drb: s.drb / div, trb: s.trb / div,
     ast: s.ast / div, tov: s.tov / div, stl: s.stl / div,
@@ -311,6 +322,9 @@ const BASIC_COLS: { key: SortField; label: string; dim?: boolean }[] = [
   { key: 'tp',      label: '3P'   },
   { key: 'tpa',     label: '3PA',  dim: true },
   { key: 'tpPct',   label: '3P%'  },
+  { key: 'fp',      label: '4P',   dim: true },
+  { key: 'fpa',     label: '4PA',  dim: true },
+  { key: 'fpPct',   label: '4P%',  dim: true },
   { key: 'twop',    label: '2P',   dim: true },
   { key: 'twopa',   label: '2PA',  dim: true },
   { key: 'twopPct', label: '2P%',  dim: true },
@@ -366,6 +380,7 @@ interface ShotLocAgg {
   tpFgm:  number; tpFga:  number;
   ba: number;
   dd: number; td: number; qd: number; fiveX5: number;
+  dunks: number; techs: number; pip: number;
 }
 
 const SL_COLS: { key: SortField; label: string; dim?: boolean }[] = [
@@ -383,6 +398,9 @@ const SL_COLS: { key: SortField; label: string; dim?: boolean }[] = [
   { key: 'slTpm',    label: '3P' },
   { key: 'slTpa',    label: '3PA',   dim: true },
   { key: 'slTpPct',  label: '3P%' },
+  { key: 'pip',      label: 'PIP' },
+  { key: 'dunks',    label: 'DUNK' },
+  { key: 'techs',    label: 'TECH', dim: true },
   { key: 'ba',       label: 'BA',    dim: true },
   { key: 'dd',       label: 'DD' },
   { key: 'td',       label: 'TD' },
@@ -400,8 +418,9 @@ interface PlayerStatsViewProps {
 }
 
 export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFilter }) => {
-  const { state, navigateToTeam, pendingStatSort, setPendingStatSort } = useGame();
+  const { state, dispatchAction, navigateToTeam, pendingStatSort, setPendingStatSort } = useGame();
   const ownTid = getOwnTeamId(state);
+  const fourPointEnabled = isFourPointEnabled(state.leagueStats);
   // Unified player name-click stack: actions → bio / ratings / sign / waive.
   const quick = usePlayerQuickActions();
   const [statType, setStatType]             = useState<StatType>('perGame');
@@ -489,7 +508,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
       let s = out.get(pid);
       if (!s) {
         s = { season: state.leagueStats.year, tid, gp: 0, gs: 0, min: 0,
-          fg: 0, fga: 0, fgp: 0, tp: 0, tpa: 0, tpp: 0, ft: 0, fta: 0, ftp: 0,
+          fg: 0, fga: 0, fgp: 0, tp: 0, tpa: 0, tpp: 0, fp: 0, fpa: 0, fpp: 0, ft: 0, fta: 0, ftp: 0,
           orb: 0, drb: 0, trb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0,
           per: 0, pm: 0 } as NBAGMStat;
         out.set(pid, s);
@@ -511,6 +530,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
           s.min += ln.min ?? 0;
           s.fg += ln.fgm ?? 0; s.fga += ln.fga ?? 0;
           s.tp += ln.threePm ?? 0; s.tpa += ln.threePa ?? 0;
+          s.fp = (s.fp ?? 0) + (ln.fourPm ?? 0); s.fpa = (s.fpa ?? 0) + (ln.fourPa ?? 0);
           s.ft += ln.ftm ?? 0; s.fta += ln.fta ?? 0;
           s.orb += ln.orb ?? 0; s.drb += ln.drb ?? 0;
           s.trb += ln.reb ?? ((ln.orb ?? 0) + (ln.drb ?? 0));
@@ -523,6 +543,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
     for (const s of out.values()) {
       s.fgp = safePct(s.fg, s.fga);
       s.tpp = safePct(s.tp, s.tpa);
+      s.fpp = safePct(s.fp ?? 0, s.fpa ?? 0);
       s.ftp = safePct(s.ft, s.fta);
     }
     return out;
@@ -604,7 +625,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
       }
     }
     return result;
-  }, [state.players, state.teams, season, phase, statType, teamFilter, brefRows]);
+  }, [state.players, state.teams, state.leagueStats.year, season, phase, statType, teamFilter, brefRows, cupStatsByPlayer]);
 
   // ── Bref career fetch for HOF/retired players with no local stats ──────
   useEffect(() => {
@@ -637,7 +658,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
   const shotLocMap = useMemo((): Map<string, ShotLocAgg> => {
     if (statType !== 'shotLocations') return new Map();
     const map = new Map<string, ShotLocAgg>();
-    const zero = (): ShotLocAgg => ({ rimFgm:0,rimFga:0,lpFgm:0,lpFga:0,mrFgm:0,mrFga:0,tpFgm:0,tpFga:0,ba:0,dd:0,td:0,qd:0,fiveX5:0 });
+    const zero = (): ShotLocAgg => ({ rimFgm:0,rimFga:0,lpFgm:0,lpFga:0,mrFgm:0,mrFga:0,tpFgm:0,tpFga:0,ba:0,dd:0,td:0,qd:0,fiveX5:0,dunks:0,techs:0,pip:0 });
 
     (state.boxScores as any[]).forEach(game => {
       const d = new Date(game.date ?? '');
@@ -667,6 +688,9 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
           agg.tpFgm  += sp(s.threePm);
           agg.tpFga  += sp(s.threePa);
           agg.ba     += sp(s.ba);
+          agg.dunks  += sp(s.dunks);
+          agg.techs  += sp(s.techs);
+          agg.pip    += sp(s.fgAtRim) * 2 + sp(s.fgLowPost) * 2;
           const pts = sp(s.pts);
           const reb = sp(s.trb || s.reb || (s.orb||0)+(s.drb||0));
           const ast = sp(s.ast);
@@ -700,6 +724,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
         mrFgm:  sl.mrFgm,  mrFga:  sl.mrFga,  mrFgPct:  sl.mrFga  > 0 ? sl.mrFgm  / sl.mrFga  : 0,
         slTpm:  sl.tpFgm,  slTpa:  sl.tpFga,  slTpPct:  sl.tpFga  > 0 ? sl.tpFgm  / sl.tpFga  : 0,
         ba: sl.ba, dd: sl.dd, td: sl.td, qd: sl.qd, fiveX5: sl.fiveX5,
+        dunks: sl.dunks, techs: sl.techs, pip: sl.pip,
       };
     });
   }, [rows, shotLocMap, statType, season]);
@@ -747,6 +772,46 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
   const totalPages = Math.ceil(filteredRows.length / perPage);
   const pageRows   = filteredRows.slice((currentPage - 1) * perPage, currentPage * perPage);
 
+  useEffect(() => {
+    (window as any).__nbaPlayerStatsDebugRows = {
+      context: { season, phase, statType, teamFilter, searchTerm, sortField, sortOrder },
+      rows: filteredRows.map(r => {
+        const rating = r.player.ratings?.[r.player.ratings.length - 1] ?? {};
+        return {
+          name: r.player.name,
+          team: r.teamAbbrev,
+          pos: r.player.pos ?? '',
+          age: r.age,
+          ratingTp: rating.tp ?? '',
+          ratingFg: rating.fg ?? '',
+          ratingFt: rating.ft ?? '',
+          ratingIns: rating.ins ?? '',
+          ratingDnk: rating.dnk ?? '',
+          ratingHgt: rating.hgt ?? '',
+          ratingOiq: rating.oiq ?? '',
+          ratingDrb: rating.drb ?? '',
+          gp: r.gp,
+          mpg: r.min,
+          tpm: r.tp,
+          tpa: r.tpa,
+          tpPct: r.tpPct,
+          fga: r.fga,
+          threePAr: r.threePAr,
+          pts: r.pts,
+        };
+      }),
+    };
+  }, [filteredRows, season, phase, statType, teamFilter, searchTerm, sortField, sortOrder]);
+
+  const handleSearchKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return;
+    const code = matchCheat(searchTerm);
+    if (!code) return;
+    e.preventDefault();
+    setSearchTerm('');
+    await triggerCheat(code, { state, dispatchAction });
+  };
+
   const handleSort = (f: SortField) => {
     if (sortField === f) setSortOrder(o => o === 'asc' ? 'desc' : 'asc');
     else { setSortField(f); setSortOrder('desc'); }
@@ -759,7 +824,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
   const arrow = (f: SortField) => sortField === f ? (sortOrder === 'desc' ? ' ↓' : ' ↑') : '';
 
   const fmtBasicVal = (r: ComputedRow, key: SortField): React.ReactNode => {
-    const pctFields: SortField[] = ['fgPct', 'tpPct', 'twopPct', 'efgPct', 'ftPct'];
+    const pctFields: SortField[] = ['fgPct', 'tpPct', 'fpPct', 'twopPct', 'efgPct', 'ftPct'];
     const v = (r as any)[key] as number;
     if (!Number.isFinite(v)) return <span className="text-slate-600">—</span>;
     if (pctFields.includes(key)) return fmt3(v);
@@ -779,7 +844,13 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
   // PlayerBioView takeover routed through the unified quick-actions hook.
   if (quick.fullPageView) return quick.fullPageView;
 
-  const activeCols = statType === 'advanced' ? ADV_COLS : statType === 'shotLocations' ? SL_COLS : BASIC_COLS;
+  const activeCols = statType === 'advanced'
+    ? ADV_COLS
+    : statType === 'shotLocations'
+      ? SL_COLS
+      : fourPointEnabled
+        ? BASIC_COLS
+        : BASIC_COLS.filter(col => col.key !== 'fp' && col.key !== 'fpa' && col.key !== 'fpPct');
   const seasonLabel = season === 'career' ? 'Career' : season === 'all' ? 'All Time' : `${(season as number) - 1}–${String(season).slice(2)}`;
 
   return (
@@ -798,6 +869,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
               placeholder="Search..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
               className="bg-slate-900 border border-slate-800 text-white rounded pl-8 pr-2 py-1.5 text-xs focus:outline-none focus:border-indigo-500 w-32"
             />
           </div>
@@ -888,6 +960,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
               placeholder="Search..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
               className="bg-slate-900 border border-slate-800 text-white rounded pl-8 pr-8 py-1.5 text-xs focus:outline-none focus:border-indigo-500 w-44 transition-all"
             />
             {searchTerm && (
@@ -934,7 +1007,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
       >
         <table
           className="w-full text-xs text-left border-collapse"
-          style={{ minWidth: statType === 'advanced' ? 1600 : statType === 'shotLocations' ? 1050 : 1360 }}
+          style={{ minWidth: statType === 'advanced' ? 1600 : statType === 'shotLocations' ? 1050 : fourPointEnabled ? 1480 : 1360 }}
         >
           <thead className="sticky top-0 z-20 bg-slate-900 border-b-2 border-slate-700">
             <tr>
@@ -1044,7 +1117,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
                     style={{ backgroundColor: stickyBg(i, isHof, isOwn) }}
                     onClick={() => quick.openFor(r.player)}
                   >
-                    {r.player.name}
+                    <PlayerNameWithHover player={r.player}>{r.player.name}</PlayerNameWithHover>
                     {r.fromBref && <span className="ml-1 text-[9px] text-slate-600">†</span>}
                     {/* Season-specific badges */}
                     {(() => {
@@ -1115,6 +1188,13 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
                       <td className="px-2 py-1.5 text-right text-indigo-300">{statType === 'totals' ? fmt0(r.tp) : fmt1(r.tp)}</td>
                       <td className="px-2 py-1.5 text-right text-slate-500">{statType === 'totals' ? fmt0(r.tpa) : fmt1(r.tpa)}</td>
                       <td className="px-2 py-1.5 text-right text-indigo-300">{fmt3(r.tpPct)}</td>
+                      {fourPointEnabled && (
+                        <>
+                          <td className="px-2 py-1.5 text-right text-amber-300">{statType === 'totals' ? fmt0(r.fp) : fmt1(r.fp)}</td>
+                          <td className="px-2 py-1.5 text-right text-slate-500">{statType === 'totals' ? fmt0(r.fpa) : fmt1(r.fpa)}</td>
+                          <td className="px-2 py-1.5 text-right text-amber-300">{fmt3(r.fpPct)}</td>
+                        </>
+                      )}
                       <td className="px-2 py-1.5 text-right text-slate-500">{statType === 'totals' ? fmt0(r.twop) : fmt1(r.twop)}</td>
                       <td className="px-2 py-1.5 text-right text-slate-600">{statType === 'totals' ? fmt0(r.twopa) : fmt1(r.twopa)}</td>
                       <td className="px-2 py-1.5 text-right text-slate-500">{fmt3(r.twopPct)}</td>

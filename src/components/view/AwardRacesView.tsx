@@ -8,6 +8,7 @@ import { NBAPlayer } from '../../types';
 import { fetchCoachData, getCoachPhoto } from '../../data/photos/coaches';
 import { RankedPersonCard, StatPills } from '../shared/ui';
 import { getOwnTeamId } from '../../utils/helpers';
+import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 
 type AwardTab = 'mvp' | 'dpoy' | 'roty' | 'smoy' | 'mip' | 'coy' | 'allNBA';
 
@@ -98,7 +99,7 @@ export const AwardRacesView: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-white text-xs truncate group-hover:text-indigo-400 transition-colors">{spot.player.name}</p>
+                  <p className="font-bold text-white text-xs truncate group-hover:text-indigo-400 transition-colors"><PlayerNameWithHover player={spot.player}>{spot.player.name}</PlayerNameWithHover></p>
                   <p className="text-[10px] text-slate-500">{spot.pos} · {spot.team.abbrev}</p>
                   <p className="text-[10px] text-slate-600">{spot.team.wins}–{spot.team.losses}</p>
                 </div>

@@ -151,6 +151,7 @@ export class SocialEngine {
   ): SocialPost[] {
     const posts: SocialPost[] = [];
     const multiplier = daysToSimulate <= 1 ? 1.0 : Math.max(0.1, 1.0 / daysToSimulate);
+    const clinchedSeriesIds = new Set<string>();
 
     const roundName = (round: number, conf?: 'East' | 'West'): string => {
       if (round === 1) return conf ? `${conf}ern First Round` : 'First Round';
@@ -229,7 +230,15 @@ export class SocialEngine {
       const topStat = allStats[0];
       const topPlayer = topStat ? players.find(p => p.internalId === topStat.playerId) : null;
 
-      if (isComplete) {
+      // Only the actual clinching game (winner of this game === series winner) should
+      // produce the "series clinched / champions" posts. Without this, a lazy-sim batch
+      // that contains multiple games of a now-complete series fires one champion tweet
+      // per game, with the per-game winner — so the loser of the series also gets
+      // crowned. Dedupe per series for safety.
+      const isClincher = isComplete && leaderTeam != null && winner.id === leaderTeam.id && !clinchedSeriesIds.has(series.id);
+      if (isComplete && !isClincher) continue;
+      if (isClincher) {
+        clinchedSeriesIds.add(series.id);
         const isChampionship = series.round === 4;
         const year = new Date(date).getFullYear();
         const winnerScore = result.homeTeamId === winner.id ? result.homeScore : result.awayScore;

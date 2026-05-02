@@ -55,6 +55,7 @@ export interface AdvancedPlayerStats {
   fg2m: number;             // 2PM (derived)
   fg2a: number;             // 2PA (derived)
   threePPct: number;        // 3P%
+  fourPPct: number;         // 4P%
   ftPct: number;            // FT%
 
   // ── Shot-Zone Efficiency & Rates ─────────────────────────────────────────
@@ -65,6 +66,7 @@ export interface AdvancedPlayerStats {
   lowPostRate: number;      // Low-post FGA / total FGA
   midRangeRate: number;     // Mid-range FGA / total FGA
   threePointRate: number;   // 3PA / FGA
+  fourPointRate: number;    // 4PA / FGA
   freeThrowRate: number;    // FTA / FGA  (how often player gets to line)
   pointsInThePaint: number; // Estimated PIP (2×fgAtRim + 2×fgLowPost)
   secondChancePts: number;  // Estimated second-chance pts via ORB proxy
@@ -242,8 +244,8 @@ function calcTS(pts: number, fga: number, fta: number): number {
 }
 
 /** Effective Field Goal % */
-function calcEFG(fgm: number, threePm: number, fga: number): number {
-  return fga > 0 ? safe((fgm + 0.5 * threePm) / fga) : 0;
+function calcEFG(fgm: number, threePm: number, fga: number, fourPm: number = 0): number {
+  return fga > 0 ? safe((fgm + 0.5 * threePm + fourPm) / fga) : 0;
 }
 
 /** Usage % — share of team possessions used while on floor */
@@ -288,9 +290,9 @@ function calcStlPct(stl: number, min: number, teamMin: number, oppPoss: number):
 }
 
 /** BLK % (% of opponent 2PA blocked) */
-function calcBlkPct(blk: number, min: number, teamMin: number, oppFGA: number, oppTPA: number): number {
+function calcBlkPct(blk: number, min: number, teamMin: number, oppFGA: number, oppTPA: number, oppFPA: number = 0): number {
   if (min === 0) return 0;
-  const opp2pa = oppFGA - oppTPA;
+  const opp2pa = oppFGA - oppTPA - oppFPA;
   const scaledOpp2pa = opp2pa * (min / (teamMin / COURT_PLAYERS));
   return scaledOpp2pa > 0 ? safe((blk * 100) / scaledOpp2pa) : 0;
 }
@@ -317,12 +319,14 @@ function calcFloorPct(pts: number, ast: number, min: number): number {
 function calcPER(s: PlayerGameStats, teamPoss: number): number {
   const { min, fgm, fga, ftm, fta, orb, drb, ast, stl, blk, tov, pf } = s;
   const threePm = s.threePm ?? 0;
+  const fourPm = s.fourPm ?? 0;
   if (min === 0) return 0;
 
   const uProd =
     fgm   * 85.910
     + stl   * 53.897
     + threePm * 51.757
+    + fourPm * 80.000
     + ftm   * 46.845
     + blk   * 39.190
     + orb   * 39.190
@@ -490,6 +494,8 @@ export function generateAdvancedStats(
     fga:  sum(teamStats, 'fga'),
     tpm:  sum(teamStats, 'threePm'),
     tpa:  sum(teamStats, 'threePa'),
+    fpm:  sum(teamStats, 'fourPm'),
+    fpa:  sum(teamStats, 'fourPa'),
     ftm:  sum(teamStats, 'ftm'),
     fta:  sum(teamStats, 'fta'),
     orb:  sum(teamStats, 'orb'),
@@ -507,6 +513,8 @@ export function generateAdvancedStats(
     fga:  sum(oppStats, 'fga'),
     tpm:  sum(oppStats, 'threePm'),
     tpa:  sum(oppStats, 'threePa'),
+    fpm:  sum(oppStats, 'fourPm'),
+    fpa:  sum(oppStats, 'fourPa'),
     ftm:  sum(oppStats, 'ftm'),
     fta:  sum(oppStats, 'fta'),
     orb:  sum(oppStats, 'orb'),
@@ -524,21 +532,22 @@ export function generateAdvancedStats(
   // ── Per-player loop ────────────────────────────────────────────────────────
   return teamStats.map((s, i): AdvancedPlayerStats => {
     const {
-      min, pts, fgm, fga, threePm, threePa, ftm, fta,
+      min, pts, fgm, fga, threePm, threePa, fourPm = 0, fourPa = 0, ftm, fta,
       orb, drb, ast, tov, stl, blk, pf, ba,
       fgAtRim, fgaAtRim, fgLowPost, fgaLowPost, fgMidRange, fgaMidRange,
     } = s;
 
     const reb  = (orb || 0) + (drb || 0);
-    const fg2m = fgm - threePm;
-    const fg2a = fga - threePa;
+    const fg2m = fgm - threePm - fourPm;
+    const fg2a = fga - threePa - fourPa;
 
     // ── Shooting ─────────────────────────────────────────────────────────────
     const tsPct         = calcTS(pts, fga, fta);
-    const efgPct        = calcEFG(fgm, threePm, fga);
+    const efgPct        = calcEFG(fgm, threePm, fga, fourPm);
     const fgPct         = pct(fgm, fga);
     const fg2Pct        = pct(fg2m, fg2a);
     const threePPct     = pct(threePm, threePa);
+    const fourPPct      = pct(fourPm, fourPa);
     const ftPct         = pct(ftm, fta);
     const fgAtRimPct    = pct(fgAtRim || 0, fgaAtRim || 0);
     const fgLowPostPct  = pct(fgLowPost || 0, fgaLowPost || 0);
@@ -547,6 +556,7 @@ export function generateAdvancedStats(
     const lowPostRate   = fga > 0 ? safe((fgaLowPost || 0) / fga) : 0;
     const midRangeRate  = fga > 0 ? safe((fgaMidRange || 0) / fga) : 0;
     const threePointRate = fga > 0 ? safe(threePa / fga) : 0;
+    const fourPointRate  = fga > 0 ? safe(fourPa / fga) : 0;
     const freeThrowRate  = fga > 0 ? safe(fta / fga) : 0;
 
     const pointsInThePaint = safeInt(
@@ -567,7 +577,7 @@ export function generateAdvancedStats(
 
     // ── Defense ───────────────────────────────────────────────────────────────
     const stlPct      = calcStlPct(stl, min, T.min, oppPoss);
-    const blkPct      = calcBlkPct(blk, min, T.min, O.fga, O.tpa);
+    const blkPct      = calcBlkPct(blk, min, T.min, O.fga, O.tpa, O.fpa);
     const deflections = safe((stl || 0) * 2.4);
     const chargesDrawn = safe((pf || 0) * 0.08); // approximate
 
@@ -640,10 +650,10 @@ export function generateAdvancedStats(
       name:     s.name,
       min,
 
-      tsPct, efgPct, fgPct, fg2Pct, fg2m, fg2a, threePPct, ftPct,
+      tsPct, efgPct, fgPct, fg2Pct, fg2m, fg2a, threePPct, fourPPct, ftPct,
 
       fgAtRimPct, fgLowPostPct, fgMidRangePct,
-      rimRate, lowPostRate, midRangeRate, threePointRate, freeThrowRate,
+      rimRate, lowPostRate, midRangeRate, threePointRate, fourPointRate, freeThrowRate,
       pointsInThePaint, secondChancePts,
 
       orbPct, drbPct, trbPct,
@@ -708,6 +718,8 @@ export function generateTeamAdvancedStats(
   const fga = sum(teamStats, 'fga');
   const tpm = sum(teamStats, 'threePm');
   const tpa = sum(teamStats, 'threePa');
+  const fpm = sum(teamStats, 'fourPm');
+  const fpa = sum(teamStats, 'fourPa');
   const ftm = sum(teamStats, 'ftm');
   const fta = sum(teamStats, 'fta');
   const orb = sum(teamStats, 'orb');
@@ -728,6 +740,8 @@ export function generateTeamAdvancedStats(
   const oFga = sum(oppStats, 'fga');
   const oTpm = sum(oppStats, 'threePm');
   const oTpa = sum(oppStats, 'threePa');
+  const oFpm = sum(oppStats, 'fourPm');
+  const oFpa = sum(oppStats, 'fourPa');
   const oFtm = sum(oppStats, 'ftm');
   const oFta = sum(oppStats, 'fta');
   const oOrb = sum(oppStats, 'orb');
@@ -751,9 +765,9 @@ export function generateTeamAdvancedStats(
   const netRtg = safe(ortg - drtg);
 
   // Shooting
-  const efgPct      = calcEFG(fgm, tpm, fga);
+  const efgPct      = calcEFG(fgm, tpm, fga, fpm);
   const tsPct       = calcTS(pts, fga, fta);
-  const fg2Pct      = pct(fgm - tpm, fga - tpa);
+  const fg2Pct      = pct(fgm - tpm - fpm, fga - tpa - fpa);
   const threePPct   = pct(tpm, tpa);
   const ftPct       = pct(ftm, fta);
   const threePointRate = fga > 0 ? safe(tpa / fga) : 0;
@@ -771,7 +785,7 @@ export function generateTeamAdvancedStats(
   const tovPct    = calcTOVPct(tov, fga, fta);
 
   // Defense %
-  const blkPct = (oFga - oTpa) > 0 ? safe((blk / (oFga - oTpa)) * 100) : 0;
+  const blkPct = (oFga - oTpa - oFpa) > 0 ? safe((blk / (oFga - oTpa - oFpa)) * 100) : 0;
   const stlPct = oppPoss > 0 ? safe((stl / oppPoss) * 100) : 0;
 
   // Per-100
@@ -790,7 +804,7 @@ export function generateTeamAdvancedStats(
   const ftFactor       = fga > 0 ? safe(ftm / fga) : 0;
 
   // Opponent Four Factors
-  const oEFG = calcEFG(oFgm, oTpm, oFga);
+  const oEFG = calcEFG(oFgm, oTpm, oFga, oFpm);
   const oppShootingFactor = oEFG;
   const oppTovFactor = safe(calcTOVPct(oTov, oFga, oFta) / 100);
   const oppRebFactor = safe(calcRebPct(oOrb, oOrb, drb) / 100);
@@ -920,9 +934,9 @@ export function aggregateSeasonAdvancedStats(
 
     // Season-total shooting rates
     tsPct:         calcTS(rawBoxTotals.pts, rawBoxTotals.fga, rawBoxTotals.fta),
-    efgPct:        calcEFG(rawBoxTotals.fgm, rawBoxTotals.tpm, rawBoxTotals.fga),
+    efgPct:        calcEFG(rawBoxTotals.fgm, rawBoxTotals.tpm, rawBoxTotals.fga, (rawBoxTotals as any).fpm ?? 0),
     fgPct:         pct(rawBoxTotals.fgm, rawBoxTotals.fga),
-    fg2Pct:        pct(rawBoxTotals.fgm - rawBoxTotals.tpm, rawBoxTotals.fga - rawBoxTotals.tpa),
+    fg2Pct:        pct(rawBoxTotals.fgm - rawBoxTotals.tpm - ((rawBoxTotals as any).fpm ?? 0), rawBoxTotals.fga - rawBoxTotals.tpa - ((rawBoxTotals as any).fpa ?? 0)),
     threePPct:     pct(rawBoxTotals.tpm, rawBoxTotals.tpa),
     ftPct:         pct(rawBoxTotals.ftm, rawBoxTotals.fta),
     threePointRate: rawBoxTotals.fga > 0 ? safe(rawBoxTotals.tpa / rawBoxTotals.fga) : 0,

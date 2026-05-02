@@ -32,6 +32,8 @@ import { potEstimator } from '../genDraftPlayers';
 import { retireExternalLeaguePlayers, repopulateExternalLeagues, enforceExternalMinRoster } from '../externalLeagueSustainer';
 import { runExternalFreeAgency } from '../externalFreeAgency';
 import { getRolloverDate, toISODateString } from '../../utils/dateUtils';
+import { isNbaCupEnabled } from '../../utils/ruleFlags';
+import { getActiveUserBidMarketPlayerIds } from '../freeAgencyBidding';
 
 /** Fired when the sim has just crossed into a new offseason (Oct 1, new year).
  *  Returns the rolled-over GameState patch. Does NOT mutate input. */
@@ -54,6 +56,15 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   const isGM = state.gameMode === 'gm';
   const userTid = isGM ? state.userTeamId : undefined;
   const pendingOptionToasts: Array<{ playerName: string; teamName: string; pos: string; decision: 'player-in' | 'player-out' | 'team-exercised' | 'team-declined'; amountM?: number }> = [];
+  const optionSeasonStr = `${currentYear}-${String(nextYear).slice(-2)}`;
+  const optionSalaryUSD = (p: NBAPlayer): number => {
+    const cy = (p as any).contractYears as Array<{ season?: string; guaranteed?: number; option?: string }> | undefined;
+    const entry = Array.isArray(cy)
+      ? cy.find(e => e.season === optionSeasonStr && (e.option ?? '').toLowerCase().includes('player'))
+      : undefined;
+    const guaranteed = Number(entry?.guaranteed ?? 0);
+    return guaranteed > 0 ? guaranteed : (p.contract?.amount ?? 0) * 1_000;
+  };
 
   // Player options: gist labels option on the season it APPLIES TO.
   // "2025-26 Player Option" → parsed exp = 2026.
@@ -66,7 +77,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     if (p.tid < 0 || p.tid >= 100) continue; // only active NBA players
 
     const offer = computeContractOffer(p, state.leagueStats as any);
-    const currentAmountUSD = (p.contract.amount ?? 0) * 1_000; // BBGM thousands → USD
+    const currentAmountUSD = optionSalaryUSD(p);
     const team = state.teams.find(t => t.id === p.tid);
     // Opt in if current contract pays more than 90% of what market would offer
     if (currentAmountUSD >= offer.salaryUSD * 0.9) {
@@ -440,6 +451,37 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     const contractExp: number = p.contract.exp ?? 0;
     const newAge = typeof p.age === 'number' ? p.age + 1 : p.age;
 
+    // Player option accepted → consume the option marker and sync salary to
+    // the option season. Leaving hasPlayerOption on the contract made repeated
+    // rollover passes emit duplicate "accepted player option" transactions.
+    if (playerOptInIds.has(p.internalId)) {
+      const nextAmt = syncedContractAmount(p) ?? Math.round(optionSalaryUSD(p) / 1_000);
+      const yrsWithTeam = ((p as any).yearsWithTeam ?? 0) + 1;
+      const hasBirdRights =
+        (state.leagueStats.birdRightsEnabled ?? true) && yrsWithTeam >= 3
+          ? true
+          : (p as any).hasBirdRights ?? false;
+      return {
+        ...p,
+        age: newAge,
+        yearsWithTeam: yrsWithTeam,
+        hasBirdRights,
+        midSeasonExtensionDeclined: undefined,
+        contract: {
+          ...p.contract,
+          hasPlayerOption: false,
+          ...(nextAmt ? { amount: nextAmt } : {}),
+        },
+        contractYears: Array.isArray((p as any).contractYears)
+          ? (p as any).contractYears.map((cy: any) =>
+              cy.season === optionSeasonStr && (cy.option ?? '').toLowerCase().includes('player')
+                ? { ...cy, option: '' }
+                : cy,
+            )
+          : (p as any).contractYears,
+      } as any;
+    }
+
     // Team option declined → player becomes FA (restricted if rookie + restrictedFA flag)
     if (teamOptionDeclinedIds.has(p.internalId)) {
       expiredIds.add(p.internalId);
@@ -550,6 +592,26 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     } as any;
   });
 
+  const preservedUserBidMarkets = ((state as any).faBidding?.markets ?? [])
+    .filter((m: any) =>
+      !m.resolved &&
+      expiredIds.has(m.playerId) &&
+      (m.bids ?? []).some((b: any) => b.isUserBid && b.status === 'active')
+    )
+    .map((m: any) => {
+      const decisionDay = Math.max(m.decidesOnDay ?? ((state.day ?? 0) + 4), (state.day ?? 0) + 4);
+      return {
+        ...m,
+        season: nextYear,
+        decidesOnDay: decisionDay,
+        openedDay: m.openedDay ?? state.day,
+        openedDate: m.openedDate ?? state.date,
+        bids: (m.bids ?? []).map((b: any) => b.status === 'active'
+          ? { ...b, expiresDay: Math.max(b.expiresDay ?? decisionDay, decisionDay) }
+          : b),
+      };
+    });
+
   // ── 2. Cap inflation ────────────────────────────────────────────────────
   const ls = state.leagueStats;
   let newSalaryCap    = ls.salaryCap ?? 154_647_000;
@@ -608,7 +670,12 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     historyEntries: extRetireHistory,
   } = retireExternalLeaguePlayers(playersAfterExtFA, currentYear, state.date ?? `Jun 30, ${currentYear}`);
 
-  const { players: playersAfterRetire, newRetirees } = runRetirementChecks(playersAfterExtRetire, currentYear);
+  const protectedFAMarketPlayerIds = getActiveUserBidMarketPlayerIds(state);
+  const { players: playersAfterRetire, newRetirees } = runRetirementChecks(
+    playersAfterExtRetire,
+    currentYear,
+    { protectedPlayerIds: protectedFAMarketPlayerIds },
+  );
 
   // ── 3c. Farewell tour flags for the UPCOMING season ──────────────────────
   // After retirees are removed, identify players who will likely retire at the
@@ -964,7 +1031,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   // Archive the current cup (even if somehow not complete — defensive), then
   // draw new groups for next year using this season's final standings.
   let nbaCupPatch: { nbaCup?: NBACupState; nbaCupHistory?: Record<number, NBACupState> } = {};
-  if (state.leagueStats.inSeasonTournament !== false) {
+  if (isNbaCupEnabled(state.leagueStats)) {
     const prevStandings = state.teams.map(t => ({ tid: t.id, wins: t.wins, losses: t.losses }));
     const newGroups = drawCupGroups(state.teams, prevStandings, state.saveId ?? 'default', nextYear);
     const newCup: NBACupState = {
@@ -1003,6 +1070,10 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     playoffs: undefined,
     allStar: undefined,
     draftLotteryResult: undefined,
+    activeDraftPicks: undefined,   // clear any abandoned mid-draft session
+    activeDraftOrder: undefined,
+    faBidding: { markets: preservedUserBidMarkets },
+    pendingRFAMatchResolutions: [],
     leagueStats: {
       ...state.leagueStats,
       year: nextYear,

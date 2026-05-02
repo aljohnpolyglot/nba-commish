@@ -9,6 +9,8 @@ import { AllStarOneOnOneSim } from './AllStarOneOnOneSim';
 import { AllStarSelectionService, ALL_STAR_ASSETS } from './AllStarSelectionService';
 import { simulateGames } from '../simulationService';
 import { resolveSeasonDate } from '../../utils/dateUtils';
+import { resolveExhibitionRules } from './exhibitionRules';
+export { getExhibitionQL, resolveExhibitionRules } from './exhibitionRules';
 
 /**
  * All-Star Sunday — 3rd Sunday of February of the given season year.
@@ -16,22 +18,6 @@ import { resolveSeasonDate } from '../../utils/dateUtils';
  */
 export function getAllStarSunday(year: number): Date {
   return resolveSeasonDate(year, 2, 3, 'Sun', 0);
-}
-
-/**
- * Quarter length (minutes) for a given exhibition event.
- * mirror=true → inherit league's regular-season quarterLength; mirror=false → event-specific (3 min default = 12 min total, 2022+ NBA AS format).
- */
-export function getExhibitionQL(
-  ls: { quarterLength?: number; allStarMirrorLeagueRules?: boolean; allStarQuarterLength?: number; risingStarsMirrorLeagueRules?: boolean; risingStarsQuarterLength?: number; celebrityGameMirrorLeagueRules?: boolean },
-  event: 'allStar' | 'risingStars' | 'celebrity'
-): number {
-  const config = {
-    allStar:     { mirror: ls.allStarMirrorLeagueRules,     eventQL: ls.allStarQuarterLength },
-    risingStars: { mirror: ls.risingStarsMirrorLeagueRules, eventQL: ls.risingStarsQuarterLength },
-    celebrity:   { mirror: ls.celebrityGameMirrorLeagueRules, eventQL: undefined as number | undefined },
-  }[event];
-  return config.mirror ? (ls.quarterLength ?? 12) : (config.eventQL ?? 3);
 }
 
 const toNoonUTC = (d: Date): string => {
@@ -345,9 +331,10 @@ export class AllStarWeekendOrchestrator {
     const allStar = state.allStar!;
     const players = state.players;
     const newAllStarState: any = { ...allStar };
+    const markPlayed = (s: any[]) => s.map(g => g.gid === 90003 ? { ...g, played: true } : g);
 
     if (state.leagueStats.allStarDunkContest === false) return { allStar: newAllStarState };
-    if ((allStar as any).dunkContest?.complete) return { allStar: newAllStarState };
+    if ((allStar as any).dunkContest?.complete) return { allStar: newAllStarState, schedule: markPlayed(state.schedule) };
 
     let contestants: NBAPlayer[];
 
@@ -366,7 +353,7 @@ export class AllStarWeekendOrchestrator {
 
     if (contestants.length < 2) {
       console.warn('[DunkContest] Not enough contestants, skipping');
-      return { allStar: newAllStarState };
+      return { allStar: newAllStarState, schedule: markPlayed(state.schedule) };
     }
 
     const result = AllStarDunkContestSim.simulate(contestants);
@@ -396,13 +383,14 @@ export class AllStarWeekendOrchestrator {
       complete: true,
     };
 
-    return { allStar: newAllStarState };
+    return { allStar: newAllStarState, schedule: markPlayed(state.schedule) };
   }
 
   static simulateThreePointContest(state: GameState): Partial<GameState> {
     const allStar = state.allStar!;
     const players = state.players;
     const newAllStarState: any = { ...allStar };
+    const markPlayed = (s: any[]) => s.map(g => g.gid === 90004 ? { ...g, played: true } : g);
 
     if (state.leagueStats.allStarThreePointContest !== false && !(allStar as any).threePointContest?.complete) {
       let contestants: NBAPlayer[];
@@ -439,7 +427,7 @@ export class AllStarWeekendOrchestrator {
       }
     }
 
-    return { allStar: newAllStarState };
+    return { allStar: newAllStarState, schedule: markPlayed(state.schedule) };
   }
 
   static simulateShootingStars(state: GameState): Partial<GameState> {
@@ -533,7 +521,7 @@ export class AllStarWeekendOrchestrator {
     const ls = state.leagueStats;
     const { rookies, sophs } = AllStarSelectionService.getRisingStarsRoster(state.players, ls.year);
 
-    const rsQL = getExhibitionQL(ls, 'risingStars');
+    const rsRules = resolveExhibitionRules(ls, 'risingStars');
 
     const teamNames = allStar.risingStarsTeams || ['Team Rookies', 'Team Sophs'];
     const homeTeamName = teamNames[0];
@@ -583,7 +571,7 @@ export class AllStarWeekendOrchestrator {
       undefined, undefined, undefined, undefined,
       undefined, undefined, undefined, undefined,
       ls.year,
-      { quarterLength: rsQL }
+      rsRules
     );
 
     const result = results[0];
@@ -669,7 +657,7 @@ export class AllStarWeekendOrchestrator {
       playerPools = [...nbaTeams, gLeaguePlayers];
     }
 
-    const rsQL = getExhibitionQL(ls, 'risingStars');
+    const rsRules = resolveExhibitionRules(ls, 'risingStars');
 
     const fakeTeams = teamDescriptors.map(t => ({
       id: t.tid, name: t.name, abbrev: t.abbrev,
@@ -726,7 +714,7 @@ export class AllStarWeekendOrchestrator {
         undefined, undefined, undefined, undefined,
         undefined, undefined, undefined, undefined,
         season,
-        { quarterLength: rsQL }
+        rsRules
       );
       const raw = results[0];
       if (!raw) return null;
@@ -891,7 +879,7 @@ export class AllStarWeekendOrchestrator {
       // Real 2026 NBA All-Star tournament games are 12 minutes total (not 4 × 12).
       // The sim engine runs 4 fixed quarters, so quarterLength=3 → 4×3=12 min.
       const ls = state.leagueStats;
-      const allStarQL = getExhibitionQL(ls, 'allStar');
+      const allStarRules = resolveExhibitionRules(ls, 'allStar');
       const { results } = await simulateGames(
         fakeTeams as any,
         allBucketPlayers as any,
@@ -907,7 +895,7 @@ export class AllStarWeekendOrchestrator {
         undefined, // currentHeadToHead
         undefined, // otlEnabled
         ls.year,                    // season
-        { quarterLength: allStarQL } // 3-min × 4 = 12 by default
+        allStarRules
       );
       const result = results[0];
       if (!result) return null;

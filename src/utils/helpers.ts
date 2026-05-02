@@ -449,9 +449,14 @@ export const formatCurrency = (value: number, isBaseMillions: boolean = true): s
   }).format(dollars);
 };
 
-export const getRelevantHistory = (history: string[], targetNames: string[], limit: number = 5): string[] => {
+export const getRelevantHistory = (
+  history: Array<string | { text?: string }>,
+  targetNames: string[],
+  limit: number = 5,
+): string[] => {
   return history
-    .filter(event => event && typeof event === 'string' && targetNames.some(name => event.toLowerCase().includes(name.toLowerCase())))
+    .map(event => typeof event === 'string' ? event : (event?.text ?? ''))
+    .filter(event => event && targetNames.some(name => event.toLowerCase().includes(name.toLowerCase())))
     .slice(-limit);
 };
 

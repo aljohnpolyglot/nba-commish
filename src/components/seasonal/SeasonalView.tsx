@@ -18,6 +18,7 @@ import { AllStarHostPickerModal } from './AllStarHostPickerModal';
 import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
 import { SettingsManager } from '../../services/SettingsManager';
 import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
+import { parseGameDate } from '../../utils/dateUtils';
 import { NBAPlayer } from '../../types';
 
 // ─── Deadline helpers ─────────────────────────────────────────────────────────
@@ -143,7 +144,7 @@ const SeasonalView: React.FC = () => {
   const [invitePerformanceModalOpen, setInvitePerformanceModalOpen] = useState(false);
   const [hostPickerOpen, setHostPickerOpen] = useState(false);
 
-  const currentDate = new Date(state.date);
+  const currentDate = parseGameDate(state.date);
   const season = state.leagueStats.year || 2026;
   const dates = useMemo(() => getAllStarWeekendDates(season), [season]);
 

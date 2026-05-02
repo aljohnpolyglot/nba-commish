@@ -119,7 +119,7 @@ export const RULES_DEFAULTS: Partial<LeagueStats> = {
   noDribbleRule: false,
   multiballEnabled: false,
   threePointLineDistance: 23.75,
-  fourPointLineDistance: 0,
+  fourPointLineDistance: 27,
   dunkValue: 2,
   midrangeValue: 2,
   heaveRuleEnabled: false,

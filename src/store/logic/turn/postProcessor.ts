@@ -84,7 +84,7 @@ export const processSimulationResults = (
                 seasonStat = {
                     season: currentSeason,
                     tid: p.tid,
-                    gp: 0, gs: 0, min: 0, fg: 0, fga: 0, fgp: 0, tp: 0, tpa: 0, tpp: 0, ft: 0, fta: 0, ftp: 0,
+                    gp: 0, gs: 0, min: 0, fg: 0, fga: 0, fgp: 0, tp: 0, tpa: 0, tpp: 0, fp: 0, fpa: 0, fpp: 0, ft: 0, fta: 0, ftp: 0,
                     orb: 0, drb: 0, trb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, per: 0,
                     pm: 0, tsPct: 0, efgPct: 0, usgPct: 0, ortg: 0, drtg: 0, bpm: 0, ws: 0, vorp: 0,
                     ows: 0, dws: 0, obpm: 0, dbpm: 0, ewa: 0,
@@ -131,6 +131,10 @@ export const processSimulationResults = (
                 seasonStat.fga += stat.fga;
                 seasonStat.tp += stat.threePm;
                 seasonStat.tpa += stat.threePa;
+                seasonStat.fp = (seasonStat.fp || 0) + (stat.fourPm || 0);
+                seasonStat.fpa = (seasonStat.fpa || 0) + (stat.fourPa || 0);
+                seasonStat.dunks = (seasonStat.dunks || 0) + (stat.dunks || 0);
+                seasonStat.techs = (seasonStat.techs || 0) + (stat.techs || 0);
                 seasonStat.ft += stat.ftm;
                 seasonStat.fta += stat.fta;
 
@@ -162,6 +166,7 @@ export const processSimulationResults = (
             // Update percentages and averages
             seasonStat.fgp = seasonStat.fga > 0 ? (seasonStat.fg / seasonStat.fga) * 100 : 0;
             seasonStat.tpp = seasonStat.tpa > 0 ? (seasonStat.tp / seasonStat.tpa) * 100 : 0;
+            seasonStat.fpp = seasonStat.fpa > 0 ? (seasonStat.fp / seasonStat.fpa) * 100 : 0;
             seasonStat.ftp = seasonStat.fta > 0 ? (seasonStat.ft / seasonStat.fta) * 100 : 0;
 
             if (seasonStat.gp > 0) {
@@ -182,7 +187,7 @@ export const processSimulationResults = (
                 // Recalculate season-wide TS%, eFG%, and ORtg
                 const tsDenom = 2 * (seasonStat.fga + 0.44 * seasonStat.fta);
                 seasonStat.tsPct = tsDenom > 0 ? (seasonStat.pts / tsDenom) * 100 : 0;
-                seasonStat.efgPct = seasonStat.fga > 0 ? ((seasonStat.fg + 0.5 * seasonStat.tp) / seasonStat.fga) * 100 : 0;
+                seasonStat.efgPct = seasonStat.fga > 0 ? ((seasonStat.fg + 0.5 * seasonStat.tp + (seasonStat.fp || 0)) / seasonStat.fga) * 100 : 0;
 
                 const seasonPoss = seasonStat.fga + 0.44 * seasonStat.fta - seasonStat.orb + seasonStat.tov;
                 seasonStat.ortg = seasonPoss > 0 ? (seasonStat.pts * 100) / seasonPoss : 0;
@@ -210,7 +215,7 @@ export const processSimulationResults = (
                     season: currentSeason,
                     playoffs: true,
                     tid: p.tid,
-                    gp: 0, gs: 0, min: 0, fg: 0, fga: 0, fgp: 0, tp: 0, tpa: 0, tpp: 0, ft: 0, fta: 0, ftp: 0,
+                    gp: 0, gs: 0, min: 0, fg: 0, fga: 0, fgp: 0, tp: 0, tpa: 0, tpp: 0, fp: 0, fpa: 0, fpp: 0, ft: 0, fta: 0, ftp: 0,
                     orb: 0, drb: 0, trb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, per: 0,
                     pm: 0, tsPct: 0, efgPct: 0, usgPct: 0, ortg: 0, drtg: 0, bpm: 0, ws: 0, vorp: 0,
                     ows: 0, dws: 0, obpm: 0, dbpm: 0, ewa: 0,
@@ -256,6 +261,10 @@ export const processSimulationResults = (
                 seasonStat.fga += stat.fga;
                 seasonStat.tp += stat.threePm;
                 seasonStat.tpa += stat.threePa;
+                seasonStat.fp = (seasonStat.fp || 0) + (stat.fourPm || 0);
+                seasonStat.fpa = (seasonStat.fpa || 0) + (stat.fourPa || 0);
+                seasonStat.dunks = (seasonStat.dunks || 0) + (stat.dunks || 0);
+                seasonStat.techs = (seasonStat.techs || 0) + (stat.techs || 0);
                 seasonStat.ft += stat.ftm;
                 seasonStat.fta += stat.fta;
                 seasonStat.pm   = (seasonStat.pm   || 0) + (stat.pm   || 0);
@@ -282,6 +291,7 @@ export const processSimulationResults = (
 
             seasonStat.fgp = seasonStat.fga > 0 ? (seasonStat.fg / seasonStat.fga) * 100 : 0;
             seasonStat.tpp = seasonStat.tpa > 0 ? (seasonStat.tp / seasonStat.tpa) * 100 : 0;
+            seasonStat.fpp = seasonStat.fpa > 0 ? (seasonStat.fp / seasonStat.fpa) * 100 : 0;
             seasonStat.ftp = seasonStat.fta > 0 ? (seasonStat.ft / seasonStat.fta) * 100 : 0;
 
             if (seasonStat.gp > 0) {
@@ -300,7 +310,7 @@ export const processSimulationResults = (
                 seasonStat.tovPct = seasonStat._tovPctSum / seasonStat.gp;
                 const tsDenom = 2 * (seasonStat.fga + 0.44 * seasonStat.fta);
                 seasonStat.tsPct = tsDenom > 0 ? (seasonStat.pts / tsDenom) * 100 : 0;
-                seasonStat.efgPct = seasonStat.fga > 0 ? ((seasonStat.fg + 0.5 * seasonStat.tp) / seasonStat.fga) * 100 : 0;
+                seasonStat.efgPct = seasonStat.fga > 0 ? ((seasonStat.fg + 0.5 * seasonStat.tp + (seasonStat.fp || 0)) / seasonStat.fga) * 100 : 0;
                 const seasonPoss = seasonStat.fga + 0.44 * seasonStat.fta - seasonStat.orb + seasonStat.tov;
                 seasonStat.ortg = seasonPoss > 0 ? (seasonStat.pts * 100) / seasonPoss : 0;
             }

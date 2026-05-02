@@ -142,7 +142,7 @@ const [minAgeRequirement, setMinAgeRequirement] = useState<number | string>(leag
 
   // Scoring
   const [threePointLineDistance, setThreePointLineDistance] = useState(leagueStats.threePointLineDistance ?? 23.75);
-  const [fourPointLineDistance, setFourPointLineDistance] = useState(leagueStats.fourPointLineDistance ?? 0);
+  const [fourPointLineDistance, setFourPointLineDistance] = useState(leagueStats.fourPointLineDistance ?? 27);
   const [dunkValue, setDunkValue] = useState(leagueStats.dunkValue ?? 2);
   const [midrangeValue, setMidrangeValue] = useState(leagueStats.midrangeValue ?? 2);
   const [heaveRuleEnabled, setHeaveRuleEnabled] = useState(leagueStats.heaveRuleEnabled ?? false);
@@ -189,6 +189,7 @@ const [minAgeRequirement, setMinAgeRequirement] = useState<number | string>(leag
   const [restrictSignAndTradeAcquisitionOver1stApron, setRestrictSignAndTradeAcquisitionOver1stApron] = useState(leagueStats.restrictSignAndTradeAcquisitionOver1stApron ?? true);
   const [freezePickAt2ndApron, setFreezePickAt2ndApron] = useState(leagueStats.freezePickAt2ndApron ?? true);
   const [restrictTPEProvenanceOver2ndApron, setRestrictTPEProvenanceOver2ndApron] = useState(leagueStats.restrictTPEProvenanceOver2ndApron ?? true);
+  const [postSigningMoratoriumEnabled, setPostSigningMoratoriumEnabled] = useState(leagueStats.postSigningMoratoriumEnabled ?? true);
 
   // Economy - Teams
   const [twoWayContractsEnabled, setTwoWayContractsEnabled] = useState(leagueStats.twoWayContractsEnabled ?? true);
@@ -264,7 +265,7 @@ const [minAgeRequirement, setMinAgeRequirement] = useState<number | string>(leag
   const [tradeDeadlineDayOfWeek, setTradeDeadlineDayOfWeek] = useState<'Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat'>(leagueStats.tradeDeadlineDayOfWeek ?? 'Thu');
   const [faStartMonth, setFaStartMonth] = useState(leagueStats.faStartMonth ?? 7);
   const [faStartDay, setFaStartDay] = useState(leagueStats.faStartDay ?? 1);
-  const [faMoratoriumDays, setFaMoratoriumDays] = useState(leagueStats.faMoratoriumDays ?? 6);
+  const [faMoratoriumDays, setFaMoratoriumDays] = useState(leagueStats.faMoratoriumDays ?? 0);
   const [regularSeasonFAEnabled, setRegularSeasonFAEnabled] = useState(leagueStats.regularSeasonFAEnabled ?? true);
   const [postDeadlineMultiYearContracts, setPostDeadlineMultiYearContracts] = useState(leagueStats.postDeadlineMultiYearContracts ?? true);
 
@@ -393,7 +394,7 @@ const [minAgeRequirement, setMinAgeRequirement] = useState<number | string>(leag
         multiballEnabled !== (leagueStats.multiballEnabled ?? false) ||
         multiballCount !== (leagueStats.multiballCount ?? 1) ||
         threePointLineDistance !== (leagueStats.threePointLineDistance ?? 23.75) ||
-        fourPointLineDistance !== (leagueStats.fourPointLineDistance ?? 0) ||
+        fourPointLineDistance !== (leagueStats.fourPointLineDistance ?? 27) ||
         dunkValue !== (leagueStats.dunkValue ?? 2) ||
         midrangeValue !== (leagueStats.midrangeValue ?? 2) ||
         heaveRuleEnabled !== (leagueStats.heaveRuleEnabled ?? false) ||
@@ -420,6 +421,7 @@ const [minAgeRequirement, setMinAgeRequirement] = useState<number | string>(leag
         restrictSignAndTradeAcquisitionOver1stApron !== (leagueStats.restrictSignAndTradeAcquisitionOver1stApron ?? true) ||
         freezePickAt2ndApron !== (leagueStats.freezePickAt2ndApron ?? true) ||
         restrictTPEProvenanceOver2ndApron !== (leagueStats.restrictTPEProvenanceOver2ndApron ?? true) ||
+        postSigningMoratoriumEnabled !== (leagueStats.postSigningMoratoriumEnabled ?? true) ||
         twoWayContractsEnabled !== (leagueStats.twoWayContractsEnabled ?? true) ||
         nonGuaranteedContractsEnabled !== (leagueStats.nonGuaranteedContractsEnabled ?? true) ||
         minPlayersPerTeam !== (leagueStats.minPlayersPerTeam ?? 14) ||
@@ -472,7 +474,7 @@ const [minAgeRequirement, setMinAgeRequirement] = useState<number | string>(leag
         tradeDeadlineDayOfWeek !== (leagueStats.tradeDeadlineDayOfWeek ?? 'Thu') ||
         faStartMonth !== (leagueStats.faStartMonth ?? 7) ||
         faStartDay !== (leagueStats.faStartDay ?? 1) ||
-        faMoratoriumDays !== (leagueStats.faMoratoriumDays ?? 6) ||
+        faMoratoriumDays !== (leagueStats.faMoratoriumDays ?? 0) ||
         regularSeasonFAEnabled !== (leagueStats.regularSeasonFAEnabled ?? true) ||
         postDeadlineMultiYearContracts !== (leagueStats.postDeadlineMultiYearContracts ?? true) ||
         rookieScaleType !== (leagueStats.rookieScaleType ?? 'dynamic') ||
@@ -617,6 +619,7 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
         if (restrictSignAndTradeAcquisitionOver1stApron !== (leagueStats.restrictSignAndTradeAcquisitionOver1stApron ?? true)) changes.push(`1st-apron sign-and-trade gate ${restrictSignAndTradeAcquisitionOver1stApron ? 'enabled' : 'disabled'}`);
         if (freezePickAt2ndApron !== (leagueStats.freezePickAt2ndApron ?? true)) changes.push(`2nd-apron 7-year pick freeze ${freezePickAt2ndApron ? 'enabled' : 'disabled'}`);
         if (restrictTPEProvenanceOver2ndApron !== (leagueStats.restrictTPEProvenanceOver2ndApron ?? true)) changes.push(`2nd-apron TPE provenance gate ${restrictTPEProvenanceOver2ndApron ? 'enabled' : 'disabled'}`);
+        if (postSigningMoratoriumEnabled !== (leagueStats.postSigningMoratoriumEnabled ?? true)) changes.push(`Post-signing trade moratorium ${postSigningMoratoriumEnabled ? 'enabled' : 'disabled'}`);
         if (twoWayContractsEnabled !== (leagueStats.twoWayContractsEnabled ?? true)) changes.push(`Two-Way Contracts ${twoWayContractsEnabled ? 'enabled' : 'disabled'}`);
         if (nonGuaranteedContractsEnabled !== (leagueStats.nonGuaranteedContractsEnabled ?? true)) changes.push(`Non-Guaranteed Contracts ${nonGuaranteedContractsEnabled ? 'enabled' : 'disabled'}`);
         if (minPlayersPerTeam !== (leagueStats.minPlayersPerTeam ?? 14)) changes.push(`Minimum Players Per Team set to ${minPlayersPerTeam}`);
@@ -801,6 +804,7 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
             restrictSignAndTradeAcquisitionOver1stApron,
             freezePickAt2ndApron,
             restrictTPEProvenanceOver2ndApron,
+            postSigningMoratoriumEnabled,
             twoWayContractsEnabled,
             nonGuaranteedContractsEnabled,
             minPlayersPerTeam,
@@ -1009,7 +1013,7 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
     setMultiballEnabled(leagueStats.multiballEnabled ?? false);
     setMultiballCount(leagueStats.multiballCount ?? 1);
     setThreePointLineDistance(leagueStats.threePointLineDistance ?? 23.75);
-    setFourPointLineDistance(leagueStats.fourPointLineDistance ?? 0);
+    setFourPointLineDistance(leagueStats.fourPointLineDistance ?? 27);
     setDunkValue(leagueStats.dunkValue ?? 2);
     setMidrangeValue(leagueStats.midrangeValue ?? 2);
     setHeaveRuleEnabled(leagueStats.heaveRuleEnabled ?? false);
@@ -1052,6 +1056,7 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
     setRestrictSignAndTradeAcquisitionOver1stApron(leagueStats.restrictSignAndTradeAcquisitionOver1stApron ?? true);
     setFreezePickAt2ndApron(leagueStats.freezePickAt2ndApron ?? true);
     setRestrictTPEProvenanceOver2ndApron(leagueStats.restrictTPEProvenanceOver2ndApron ?? true);
+    setPostSigningMoratoriumEnabled(leagueStats.postSigningMoratoriumEnabled ?? true);
     setTwoWayContractsEnabled(leagueStats.twoWayContractsEnabled ?? true);
     setNonGuaranteedContractsEnabled(leagueStats.nonGuaranteedContractsEnabled ?? true);
     setMinPlayersPerTeam(leagueStats.minPlayersPerTeam ?? 14);
@@ -1104,7 +1109,7 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
     setTradeDeadlineDayOfWeek(leagueStats.tradeDeadlineDayOfWeek ?? 'Thu');
     setFaStartMonth(leagueStats.faStartMonth ?? 7);
     setFaStartDay(leagueStats.faStartDay ?? 1);
-    setFaMoratoriumDays(leagueStats.faMoratoriumDays ?? 6);
+    setFaMoratoriumDays(leagueStats.faMoratoriumDays ?? 0);
     setRegularSeasonFAEnabled(leagueStats.regularSeasonFAEnabled ?? true);
     setPostDeadlineMultiYearContracts(leagueStats.postDeadlineMultiYearContracts ?? true);
     setRookieScaleType(leagueStats.rookieScaleType ?? 'dynamic');
@@ -1380,6 +1385,7 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
     restrictSignAndTradeAcquisitionOver1stApron, setRestrictSignAndTradeAcquisitionOver1stApron,
     freezePickAt2ndApron, setFreezePickAt2ndApron,
     restrictTPEProvenanceOver2ndApron, setRestrictTPEProvenanceOver2ndApron,
+    postSigningMoratoriumEnabled, setPostSigningMoratoriumEnabled,
     twoWayContractsEnabled, setTwoWayContractsEnabled,
     nonGuaranteedContractsEnabled, setNonGuaranteedContractsEnabled,
     minPlayersPerTeam, setMinPlayersPerTeam,
@@ -1628,6 +1634,15 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
     numberOfAprons, setNumberOfAprons,
     firstApronPercentage, setFirstApronPercentage,
     secondApronPercentage, setSecondApronPercentage,
+    tradeMatchingRatioUnder, setTradeMatchingRatioUnder,
+    tradeMatchingRatioOver1st, setTradeMatchingRatioOver1st,
+    tradeMatchingRatioOver2nd, setTradeMatchingRatioOver2nd,
+    restrictCashSendOver2ndApron, setRestrictCashSendOver2ndApron,
+    restrictAggregationOver2ndApron, setRestrictAggregationOver2ndApron,
+    restrictSignAndTradeAcquisitionOver1stApron, setRestrictSignAndTradeAcquisitionOver1stApron,
+    freezePickAt2ndApron, setFreezePickAt2ndApron,
+    restrictTPEProvenanceOver2ndApron, setRestrictTPEProvenanceOver2ndApron,
+    postSigningMoratoriumEnabled, setPostSigningMoratoriumEnabled,
     twoWayContractsEnabled, setTwoWayContractsEnabled,
     nonGuaranteedContractsEnabled, setNonGuaranteedContractsEnabled,
     minPlayersPerTeam, setMinPlayersPerTeam,

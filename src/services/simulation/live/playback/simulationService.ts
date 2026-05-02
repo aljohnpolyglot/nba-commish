@@ -7,6 +7,14 @@ import { stampFoulContext, stampLateGameIntentional } from './foulTracker';
 import { assignClocks } from './clockAssigner';
 import { renderPossession, PlayLine } from './playRenderer';
 import { Period } from './possessionTypes';
+import {
+  GameTimingConfig,
+  getGameTimingConfig,
+  getPeriodDurationSeconds,
+  getPeriodLabel,
+  getPeriodStartClock,
+  getPeriodStartSeconds,
+} from '../../../../utils/gameClock';
 
 const pick = <T>(a: T[]): T => a[~~(Math.random() * a.length)];
 const makeId = (suffix: string) => `gen-${Math.random().toString(36).substr(2, 9)}-${suffix}`;
@@ -18,10 +26,12 @@ function initPool(stats: PlayerGameStats[], players: NBAPlayer[], tm: TeamId): P
     return {
       n: stat.name, fn: stat.name, id: stat.playerId, imgURL: player.imgURL, tm,
       min: stat.min, pos: player.pos as 'G' | 'F' | 'C',
-      fg2:    (stat.fgm || 0) - (stat.threePm || 0),
+      fg2:    (stat.fgm || 0) - (stat.threePm || 0) - (stat.fourPm || 0),
       fg3:     stat.threePm  || 0,
-      m2:      ((stat.fga || 0) - (stat.threePa || 0)) - ((stat.fgm || 0) - (stat.threePm || 0)),
+      fg4:     stat.fourPm || 0,
+      m2:      ((stat.fga || 0) - (stat.threePa || 0) - (stat.fourPa || 0)) - ((stat.fgm || 0) - (stat.threePm || 0) - (stat.fourPm || 0)),
       m3:      (stat.threePa || 0) - (stat.threePm  || 0),
+      m4:      (stat.fourPa || 0) - (stat.fourPm || 0),
       ftm:     stat.ftm || 0,
       ftmiss:  (stat.fta || 0) - (stat.ftm || 0),
       ast:     stat.ast || 0,
@@ -101,7 +111,8 @@ export async function genPlays(
   otCount: number = 0,
   gameWinner?: GameResult['gameWinner'],
   homeTeamName?: string,
-  awayTeamName?: string
+  awayTeamName?: string,
+  timingConfig: GameTimingConfig = getGameTimingConfig()
 ): Promise<PlayLine[]> {
   const homePool = initPool(homeStats, players, 'HOME');
   const awayPool = initPool(awayStats, players, 'AWAY');
@@ -109,24 +120,22 @@ export async function genPlays(
   const tipWinner: TeamId = Math.random() > 0.5 ? 'HOME' : 'AWAY';
   const tipLoser:  TeamId = tipWinner === 'HOME' ? 'AWAY' : 'HOME';
 
-  const fallbackPlayer = { n: 'Unknown', fn: 'Unknown', id: '0', imgURL: '', tm: 'HOME', min: 0, pos: 'C' as 'C', fg2: 0, fg3: 0, m2: 0, m3: 0, ft: 0, mft: 0, ftm: 0, ftmiss: 0, ast: 0, orb: 0, drb: 0, stl: 0, blk: 0, tov: 0, pf: 0 };
+  const fallbackPlayer = { n: 'Unknown', fn: 'Unknown', id: '0', imgURL: '', tm: 'HOME', min: 0, pos: 'C' as 'C', fg2: 0, fg3: 0, fg4: 0, m2: 0, m3: 0, m4: 0, ft: 0, mft: 0, ftm: 0, ftmiss: 0, ast: 0, orb: 0, drb: 0, stl: 0, blk: 0, tov: 0, pf: 0 };
   const homeCenter = homePool.find(p => p.pos === 'C') ?? homePool[0] ?? { ...fallbackPlayer, tm: 'HOME' };
   const awayCenter = awayPool.find(p => p.pos === 'C') ?? awayPool[0] ?? { ...fallbackPlayer, tm: 'AWAY' };
   const [tipW, tipL] = tipWinner === 'HOME' ? [homeCenter, awayCenter] : [awayCenter, homeCenter];
 
-  const possessions = buildPossessions(homePool, awayPool, quarterScores, tipWinner, otCount);
+  const possessions = buildPossessions(homePool, awayPool, quarterScores, tipWinner, otCount, timingConfig);
 
   stampFoulContext(possessions);
   
-  const TOTAL_PERIODS = 4 + otCount;
-  const PERIOD_LABELS: Period[] = ['1ST', '2ND', '3RD', '4TH', 'OT1', 'OT2', 'OT3'];
+  const TOTAL_PERIODS = timingConfig.numQuarters + otCount;
   
   for (let q = 1; q <= TOTAL_PERIODS; q++) {
     const qPossessions = possessions.filter(p => p.quarter === q);
-    const isOT = q > 4;
-    const quarterDuration = isOT ? 300 : 720;
-    const qStartGs = q <= 4 ? (q - 1) * 720 : 2880 + (q - 5) * 300;
-    assignClocks(qPossessions, quarterDuration, qStartGs, PERIOD_LABELS[q - 1]);
+    const quarterDuration = getPeriodDurationSeconds(q, timingConfig);
+    const qStartGs = getPeriodStartSeconds(q, timingConfig);
+    assignClocks(qPossessions, quarterDuration, qStartGs, getPeriodLabel(q, timingConfig.numQuarters) as Period, q >= timingConfig.numQuarters);
   }
 
   stampLateGameIntentional(possessions);
@@ -141,10 +150,10 @@ export async function genPlays(
   allLines.push({
     id: 'jumpball',
     tm: tipWinner,
-    period: '1ST',
+    period: getPeriodLabel(1, timingConfig.numQuarters),
     q: 1,
-    clock: '12:00',
-    time: '1ST 12:00',
+    clock: getPeriodStartClock(1, timingConfig),
+    time: `${getPeriodLabel(1, timingConfig.numQuarters)} ${getPeriodStartClock(1, timingConfig)}`,
     gs: 0,
     pts: 0,
     desc: `Jumpball! ${tipW.n} wins the tip over ${tipL.n}.`,
@@ -165,14 +174,14 @@ export async function genPlays(
       lastSubKey.clear();
       
       // Add "End of Regulation" or "End of OT" labels
-      if (prevPoss.quarter === 4 && otCount > 0) {
+      if (prevPoss.quarter === timingConfig.numQuarters && otCount > 0) {
         allLines.push({
           id: makeId('end_regulation'),
           tm: 'HOME',
-          period: '4TH',
+          period: prevPoss.period,
           clock: '0:00',
-          time: '4TH 0:00',
-          q: 4,
+          time: `${prevPoss.period} 0:00`,
+          q: timingConfig.numQuarters,
           gs: prevPoss.gs + 0.1,
           pts: 0,
           desc: pick([
@@ -185,9 +194,9 @@ export async function genPlays(
           cs, ds,
           possession: 'HOME',
         });
-      } else if (prevPoss.quarter > 4 && poss.quarter > prevPoss.quarter) {
+      } else if (prevPoss.quarter > timingConfig.numQuarters && poss.quarter > prevPoss.quarter) {
         allLines.push({
-          id: makeId(`end_ot_${prevPoss.quarter - 4}`),
+          id: makeId(`end_ot_${prevPoss.quarter - timingConfig.numQuarters}`),
           tm: 'HOME',
           period: prevPoss.period,
           clock: '0:00',
@@ -208,17 +217,18 @@ export async function genPlays(
 
       // Add period-start line for new quarters (except Q1 which is handled separately)
       if (poss.quarter > 1) {
-        const qLabel = PERIOD_LABELS[poss.quarter - 1];
-        const isOT = poss.quarter > 4;
-        const otNum = isOT ? poss.quarter - 4 : 0;
+        const qLabel = getPeriodLabel(poss.quarter, timingConfig.numQuarters);
+        const isOT = poss.quarter > timingConfig.numQuarters;
+        const otNum = isOT ? poss.quarter - timingConfig.numQuarters : 0;
+        const startClock = getPeriodStartClock(poss.quarter, timingConfig);
 
         allLines.push({
           id: makeId(`tipoff_${poss.quarter}`),
           tm: poss.team,
           period: qLabel,
           q: poss.quarter,
-          clock: isOT ? '5:00' : '12:00',
-          time: `${qLabel} ${isOT ? '5:00' : '12:00'}`,
+          clock: startClock,
+          time: `${qLabel} ${startClock}`,
           gs: poss.gs - 0.1,
           pts: 0,
           desc: isOT ? `Overtime ${otNum}! Here we go!!` : `${qLabel} quarter underway.`,
@@ -342,7 +352,7 @@ export async function genPlays(
   // Do not truncate the array, let the game finish naturally
   if (allLines.length > 0) {
     const lastLine = allLines[allLines.length - 1];
-    if (lastLine.q >= 4) {
+    if (lastLine.q >= timingConfig.numQuarters) {
       const lastPossessionTeam = lastLine.possession;
       const lastLineup = lastPossessionTeam === 'HOME' ? lastLine.lineupHOME : lastLine.lineupAWAY;
       const player = lastLineup && lastLineup.length > 0 ? lastLineup[0] : null;

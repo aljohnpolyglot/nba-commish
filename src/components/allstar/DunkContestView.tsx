@@ -1,5 +1,6 @@
 import React from 'react';
 import { Zap, Trophy, Star } from 'lucide-react';
+import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 import { format } from 'date-fns';
 import { useGame } from '../../store/GameContext';
 import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
@@ -96,7 +97,7 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
 
                   {/* Name */}
                   <p className="text-sm font-black uppercase tracking-tight text-white mb-1">
-                    {player.name}
+                    <PlayerNameWithHover player={player}>{player.name}</PlayerNameWithHover>
                   </p>
                   <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-3">
                     {player.pos} · {allStar.roster?.find((r: any) => r.playerId === player.internalId) 
@@ -176,7 +177,9 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                     CHAMPION
                   </div>
                 </div>
-                <h2 className="text-3xl font-black italic tracking-tighter mt-3 text-white">{winner.name}</h2>
+                <h2 className="text-3xl font-black italic tracking-tighter mt-3 text-white">
+                  <PlayerNameWithHover player={winner}>{winner.name}</PlayerNameWithHover>
+                </h2>
                 <p className="text-xs text-zinc-500 mt-1 mb-6">Slam Dunk Contest Champion</p>
                 
 
@@ -250,7 +253,9 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                                 )}
                                 <div className="text-left">
                                   <p className={`text-sm font-bold ${isWinner ? 'text-yellow-400' : 'text-white'}`}>
-                                    {r1.playerName}
+                                    {player
+                                      ? <PlayerNameWithHover player={player}>{r1.playerName}</PlayerNameWithHover>
+                                      : r1.playerName}
                                   </p>
                                   <p className="text-[10px] text-zinc-600">
                                     {teams.find(t => t.id === player?.tid)?.abbrev}

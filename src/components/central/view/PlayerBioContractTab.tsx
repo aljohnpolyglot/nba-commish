@@ -109,7 +109,6 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
           option: currentYearRow && isNonGuaranteed && !optionLabel ? 'Non-Guaranteed' : optionLabel,
         };
       });
-      return [...preGistRows, ...gistRows];
     }
 
     // ── Path B: BBGM salaries (past) + annualRaise escalator (future) ─────

@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { calculateK2, getSystemProficiency } from './lib/k2Engine';
 import { calculateCoachSliders } from './lib/coachSliders';
-import { Player, Team, PlayerK2 } from './types';
+import type { Player, Team, PlayerK2 } from './types';
 import CoachingView from './components/CoachingView';
 import { getStaffData, fetchCoachData, getAllCoaches, CoachData } from './lib/staffService';
 import { getDisplayOverall } from '../../../../../utils/playerRatings';
@@ -14,7 +14,7 @@ import { getDisplayOverall } from '../../../../../utils/playerRatings';
 export default function App() {
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [allCoaches, setAllCoaches] = useState<CoachData[]>([]);
   const [staffData, setStaffData] = useState<any>(null);
 
@@ -43,7 +43,15 @@ export default function App() {
       data.players.forEach((p: Player) => {
         if (p.tid < 0) return;
         const r = p.ratings[p.ratings.length - 1];
-        const k2 = calculateK2(r, { pos: p.pos, heightIn: p.hgt, weightLbs: p.weight, age: 2026 - p.born.year });
+        const rawK2 = calculateK2(r, { pos: p.pos, heightIn: p.hgt, weightLbs: p.weight, age: 2026 - p.born.year });
+        const k2 = {
+          OS: rawK2.OS.sub,
+          AT: rawK2.AT.sub,
+          IS: rawK2.IS.sub,
+          PL: rawK2.PL.sub,
+          DF: rawK2.DF.sub,
+          RB: rawK2.RB.sub,
+        };
 
         // Canonical display OVR — same source of truth as PlayerRatingsView,
         // NBA Central, and Team Office starter cards. Legacy field names
@@ -125,7 +133,7 @@ export default function App() {
 
       setTeams(processedTeams);
       if (processedTeams.length > 0) {
-        setSelectedTeamId(processedTeams[0].tid);
+        setSelectedTeamId(Number(processedTeams[0].tid));
       }
     } catch (err) {
       console.error(err);
@@ -138,7 +146,7 @@ export default function App() {
 
   const handleSaveSystem = (teamId: string, systemName: string) => {
     setTeams(prevTeams => prevTeams.map(t => {
-      if (t.tid === teamId) {
+      if (Number(t.tid) === Number(teamId)) {
         return { ...t, bestSystem: systemName };
       }
       return t;
@@ -159,7 +167,7 @@ export default function App() {
               <select 
                 className="bg-[#1a1a1a] border border-gray-700 text-white font-bold text-lg md:text-xl py-1.5 md:py-2 px-3 md:px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#58a6ff] max-w-[200px] sm:max-w-[300px] md:max-w-none"
                 value={selectedTeamId || ''}
-                onChange={(e) => setSelectedTeamId(e.target.value)}
+                onChange={(e) => setSelectedTeamId(Number(e.target.value))}
               >
                 {teams.sort((a, b) => a.teamName.localeCompare(b.teamName)).map(t => (
                   <option key={t.tid} value={t.tid}>{t.teamName}</option>
@@ -187,65 +195,3 @@ export default function App() {
     </div>
   );
 }
-//add to types 
-import { CoachSliders } from './lib/coachSliders';
-
-export interface PlayerRatings {
-  season?: number;
-  hgt: number;
-  stre: number;
-  spd: number;
-  jmp: number;
-  endu: number;
-  ins: number;
-  dnk: number;
-  ft: number;
-  fg: number;
-  tp: number;
-  oiq: number;
-  diq: number;
-  drb: number;
-  pss: number;
-  reb: number;
-  ovr: number;
-}
-
-export interface Player {
-  name?: string;
-  firstName?: string;
-  lastName?: string;
-  pos: string;
-  ratings: PlayerRatings[];
-  hgt: number;
-  weight: number;
-  born: { year: number };
-  tid: number;
-  injury?: { type: string; gamesRemaining: number };
-  imgURL?: string;
-  status?: string;
-}
-
-export interface Team {
-  tid: number;
-  region: string;
-  name: string;
-  imgURL?: string;
-}
-
-export interface K2Result {
-  OS: number[];
-  AT: number[];
-  IS: number[];
-  PL: number[];
-  DF: number[];
-  RB: number[];
-}
-
-export interface PlayerK2 extends Player {
-  k2: K2Result;
-  rating2K: number;
-  bbgmOvr: number;
-  currentRating: PlayerRatings;
-}
-
-export type { CoachSliders };

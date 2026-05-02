@@ -42,6 +42,15 @@ export interface SimulatorKnobs {
   /** Multiplies per-player 3PT make probability. Used for line-distance rules. */
   threePointEfficiencyMult?: number;
 
+  /** Enables 4-point attempts in the stat generator. */
+  fourPointAvailable?: boolean;
+
+  /** Multiplies the per-player 4PA attempt rate. */
+  fourPointRateMult?: number;
+
+  /** Multiplies per-player 4PT make probability. Used for line-distance rules. */
+  fourPointEfficiencyMult?: number;
+
   // ── Free Throws ───────────────────────────────────────────────────────────
   /** Multiplies the foul-drawing / FT rate.
    *  0.4 = All-Star (refs let them play); 2.0 = bruiser-ball rule change */
@@ -89,6 +98,9 @@ export interface SimulatorKnobs {
   /** Quarter length in minutes.  12 = NBA, 10 = FIBA.
    *  Affects the total minutes budget passed to allocateMinutes. */
   quarterLength: number;
+
+  /** Number of regulation periods. 4 = NBA default. */
+  numQuarters?: number;
 
   /** Overtime length in minutes. 5 = NBA. Affects OT score and minutes budget. */
   overtimeDuration?: number;
@@ -170,6 +182,9 @@ export const KNOBS_DEFAULT: SimulatorKnobs = {
   threePointAvailable:  true,
   threePointRateMult:   1.0,
   threePointEfficiencyMult: 1.0,
+  fourPointAvailable:   false,
+  fourPointRateMult:    0,
+  fourPointEfficiencyMult: 1.0,
   ftRateMult:           1.0,
   flatMinutes:          false,
   ratingFloor:          0,
@@ -177,6 +192,7 @@ export const KNOBS_DEFAULT: SimulatorKnobs = {
   gbFromLeader:         0,
   gamesRemaining:       41,
   quarterLength:        12,
+  numQuarters:          4,
   overtimeDuration:     5,
   overtimeEnabled:      true,
   maxOvertimesEnabled:  false,

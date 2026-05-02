@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useGame } from '../../store/GameContext';
 import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
 import { useDraftEventGate } from '../../hooks/useDraftEventGate';
+import { compareGameDates } from '../../utils/dateUtils';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -247,7 +248,7 @@ export const BroadcastingView: React.FC = () => {
   // Lock broadcasting edits on June 30 of each season year (day before FA opens July 1).
   // This lets commissioners finalize the new season's cap before free agency.
   const broadcastDeadline = `${state.leagueStats.year ?? 2026}-06-30`;
-  const isAfterDeadline = new Date(state.date) >= new Date(broadcastDeadline);
+  const isAfterDeadline = compareGameDates(state.date, broadcastDeadline) >= 0;
   const readOnly        = isLocked || isAfterDeadline;
 
   const [view,                setView]                = useState<View>('roster');

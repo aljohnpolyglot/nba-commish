@@ -23,6 +23,8 @@ export interface GameSettings {
   hofWSThreshold: number; // default 50
   /** Show the Executive Outcome panel after each simulated day. Only relevant when LLM is on. */
   showExecutiveOutcome: boolean; // default true
+  /** Player name hover card style. 'k2' = full K2 ratings + stats grid; 'simple' = compact OVR + 3 stats. */
+  tooltipStyle: 'k2' | 'simple'; // default 'k2'
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -40,6 +42,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   signingDifficulty: 50,
   hofWSThreshold: 50,
   showExecutiveOutcome: true,
+  tooltipStyle: 'k2',
 };
 
 export class SettingsManager {

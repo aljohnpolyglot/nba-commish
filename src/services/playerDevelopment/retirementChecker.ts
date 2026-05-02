@@ -353,8 +353,10 @@ export function runMortalityChecks(
 export function runRetirementChecks(
   players: NBAPlayer[],
   year: number,
+  options: { protectedPlayerIds?: Set<string> } = {},
 ): { players: NBAPlayer[]; newRetirees: RetireeRecord[] } {
   const newRetirees: RetireeRecord[] = [];
+  const protectedPlayerIds = options.protectedPlayerIds ?? new Set<string>();
 
   // 'FreeAgent' (no space) is a legacy typo that leaked from the old trim path —
   // include it as a defensive alias so stuck pre-migration vets still retire.
@@ -371,6 +373,10 @@ export function runRetirementChecks(
     if ((p as any).diedYear) return p;
     if (p.tid === -2) return p; // unborn draft prospect
     if ((p as any).status === 'WNBA') return p;
+    if (protectedPlayerIds.has(p.internalId)) {
+      console.log(`[Retirement] Skipping ${p.name} — active user FA bid market.`);
+      return p;
+    }
 
     // Prefer born.year calculation — player.age can be stale/wrong from BBGM load
     const age = p.born?.year ? (year - p.born.year) : (typeof p.age === 'number' && p.age > 0 ? p.age : 0);

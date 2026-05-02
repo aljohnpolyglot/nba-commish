@@ -1,7 +1,10 @@
 import React from 'react';
 import { Zap } from 'lucide-react';
+import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
+import { PlayerPortrait } from '../shared/PlayerPortrait';
 import { useGame } from '../../store/GameContext';
-import { normalizeDate, getPlayerHeadshot, getTeamLogo, extractTeamId, extractNbaId, convertTo2KRating } from '../../utils/helpers';
+import { normalizeDate, extractTeamId } from '../../utils/helpers';
+import { getPlayerImage } from '../central/view/bioCache';
 
 interface RisingStarsViewProps {
   allStar: any;
@@ -40,19 +43,23 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
   const rookies = roster.filter((p: any) => p.isRookie);
   const sophomores = roster.filter((p: any) => !p.isRookie);
 
-  const PlayerCard = ({ p, key }: { p: any, key?: any }) => {
-    const team = state.teams?.find(t => t.abbrev === p.teamAbbrev);
-    const teamId = p.teamNbaId || (team ? extractTeamId(team.logoUrl, p.teamAbbrev) : null) || 1610612737;
-    const teamColor = team?.colors?.[0] || '#64748b';
+  const PlayerCard = ({ p }: { p: any }) => {
     const fullPlayer = state.players?.find((pl: any) => pl.internalId === p.playerId);
-    const rating = convertTo2KRating(fullPlayer?.overallRating || p.ovr || 60, fullPlayer?.ratings?.[fullPlayer.ratings.length - 1]?.hgt ?? 50, fullPlayer?.ratings?.[fullPlayer.ratings.length - 1]?.tp);
-
-    const nbaId = p.nbaId || extractNbaId(p.imgURL || "", p.playerName);
+    // NBA team first, then non-NBA (G-League etc.) by tid + league.
+    const nbaTeam = state.teams?.find((t: any) => t.abbrev === p.teamAbbrev)
+      ?? (fullPlayer ? state.teams?.find((t: any) => t.id === fullPlayer.tid) : null);
+    const nonNbaTeam = !nbaTeam && fullPlayer
+      ? (state.nonNBATeams ?? []).find((t: any) => t.tid === fullPlayer.tid && t.league === fullPlayer.status)
+      : null;
+    const team = nbaTeam ?? nonNbaTeam;
+    const teamColor = (team as any)?.colors?.[0] || '#64748b';
+    const teamLogoUrl = (team as any)?.logoUrl || (team as any)?.imgURL;
+    const teamAbbrev = (team as any)?.abbrev || p.teamAbbrev || '—';
+    const imgUrl = (fullPlayer && getPlayerImage(fullPlayer)) || undefined;
     const isOwn = ownTid !== null && ownTid !== undefined && fullPlayer?.tid === ownTid;
 
     return (
       <div
-        key={p.playerId}
         className={`border rounded-xl p-3 flex items-center gap-3 border-l-4 shadow-lg transition-transform hover:scale-[1.02] ${
           isOwn
             ? 'bg-indigo-500/10 border-indigo-500/60'
@@ -60,39 +67,23 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
         }`}
         style={{ borderLeftColor: isOwn ? '#6366f1' : teamColor }}
       >
-        <div className="relative shrink-0">
-          <div 
-            className="w-9 h-9 rounded-full overflow-hidden bg-slate-800 border-2"
-            style={{ borderColor: `${teamColor}40` }}
-          >
-            <img 
-              src={getPlayerHeadshot(p.playerId, nbaId)}
-              className="w-full h-full object-cover"
-              alt={p.playerName}
-              referrerPolicy="no-referrer"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${p.playerId}/100/100`;
-              }}
-            />
-          </div>
-        </div>
-
+        <PlayerPortrait
+          imgUrl={imgUrl}
+          face={(fullPlayer as any)?.face}
+          playerName={p.playerName}
+          teamLogoUrl={teamLogoUrl}
+          overallRating={fullPlayer?.overallRating ?? p.ovr}
+          ratings={fullPlayer?.ratings}
+          size={40}
+        />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-sm font-bold text-white truncate">{p.playerName}</span>
-            <img 
-              src={getTeamLogo(teamId)}
-              className="w-4 h-4 object-contain shrink-0"
-              alt={p.teamAbbrev}
-              referrerPolicy="no-referrer"
-            />
+          <div className="text-sm font-bold text-white truncate">
+            {fullPlayer
+              ? <PlayerNameWithHover player={fullPlayer}>{p.playerName}</PlayerNameWithHover>
+              : p.playerName}
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{p.teamAbbrev}</span>
-            <div className="ml-auto px-1.5 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 flex items-center gap-1">
-              <span className="text-[8px] font-black text-slate-500 uppercase">{p.position || 'G'}</span>
-              <span className={`text-[10px] font-black ${rating >= 90 ? 'text-amber-400' : rating >= 80 ? 'text-emerald-400' : 'text-indigo-400'}`}>{rating}</span>
-            </div>
+          <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+            {(p.position || fullPlayer?.pos || '—')} · {teamAbbrev}
           </div>
         </div>
       </div>

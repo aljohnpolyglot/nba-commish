@@ -7,6 +7,8 @@ import { convertTo2KRating } from '../../utils/helpers';
 import { getPlayerImage } from '../central/view/bioCache';
 import { MyFace, isRealFaceConfig } from '../shared/MyFace';
 import SigningModal from './SigningModal';
+import { pushToast } from '../shared/ToastNotifier';
+import { getCurrentOffseasonFAMoratoriumEnd, parseGameDate } from '../../utils/dateUtils';
 import { classifyResignIntent } from '../central/view/PlayerBioMoraleTab';
 import { computeMoodScore, normalizeMoodTraits } from '../../utils/mood/moodScore';
 
@@ -156,6 +158,25 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
               option,
             },
           } as any);
+          // Confirmation toast — mirrors the moratorium-aware decision day in the reducer
+          // so the user sees the same window the ticker will resolve on.
+          const resolvesInDays = (() => {
+            if (!state.date) return 4;
+            const today = parseGameDate(state.date);
+            const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(today, state.leagueStats as any, state.schedule as any);
+            const moratoriumDays = isNaN(today.getTime()) || isNaN(moratoriumEnd.getTime())
+              ? 0
+              : Math.max(0, Math.ceil((moratoriumEnd.getTime() - today.getTime()) / 86_400_000));
+            return Math.max(4, moratoriumDays + 4);
+          })();
+          pushToast({
+            type: 'fa-bid-submitted',
+            playerName: selectedPlayer.name,
+            teamName: selectedTeam.name,
+            annualM: Math.round(salary / 100_000) / 10,
+            years,
+            resolvesInDays,
+          });
         }}
       />
     );

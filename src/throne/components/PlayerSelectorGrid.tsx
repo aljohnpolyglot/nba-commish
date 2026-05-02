@@ -17,11 +17,29 @@ export const PlayerSelectorGrid: React.FC<PlayerSelectorGridProps> = ({
   defaultVisible = 100
 }) => {
   const [visibleCount, setVisibleCount] = React.useState(defaultVisible);
+  const [search, setSearch] = React.useState('');
+
+  const filtered = search.trim()
+    ? items.filter(({ player }) =>
+        player.name.toLowerCase().includes(search.toLowerCase()) ||
+        player.lastName.toLowerCase().includes(search.toLowerCase()) ||
+        player.team.toLowerCase().includes(search.toLowerCase())
+      )
+    : items;
+
+  const visible = search.trim() ? filtered : filtered.slice(0, visibleCount);
 
   return (
     <div className="space-y-6">
+      <input
+        type="text"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        placeholder="Search player or team..."
+        className="w-full bg-zinc-900 border border-zinc-700 text-white text-sm px-4 py-2.5 rounded placeholder-zinc-600 focus:outline-none focus:border-yellow-500"
+      />
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {items.slice(0, visibleCount).map(({ player }) => (
+        {visible.map(({ player }) => (
           <button
             key={player.id}
             onClick={() => onToggle(player.id)}
@@ -38,7 +56,7 @@ export const PlayerSelectorGrid: React.FC<PlayerSelectorGridProps> = ({
               onError={(e) => (e.currentTarget.src = 'https://www.nba.com/assets/img/default-headshot.png')}
             />
             <div className="text-center min-w-0">
-              <div className="font-black text-xs uppercase italic truncate">{player.lastName}</div>
+              <div className="font-black text-xs uppercase italic truncate">{player.name}</div>
               <div className="text-[10px] text-zinc-500 font-bold">{player.team}</div>
               <div className="text-sm font-black text-yellow-500 mt-1">{player.ovr}</div>
             </div>
@@ -51,7 +69,7 @@ export const PlayerSelectorGrid: React.FC<PlayerSelectorGridProps> = ({
         ))}
       </div>
 
-      {visibleCount < items.length && (
+      {!search && visibleCount < items.length && (
         <div className="text-center">
           <button
             onClick={() => setVisibleCount(prev => Math.min(prev + 50, items.length))}

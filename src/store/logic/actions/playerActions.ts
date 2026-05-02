@@ -7,7 +7,17 @@ import { buildShamsSigningPost } from '../../../services/social/templates/charan
 import { NewsGenerator } from '../../../services/news/NewsGenerator';
 import { SettingsManager } from '../../../services/SettingsManager';
 import { normalizeTeamJerseyNumbers } from '../../../utils/jerseyUtils';
-import { buildStretchedSchedule, seasonLabelToYear } from '../../../utils/salaryUtils';
+import { buildStretchedSchedule, contractToUSD, getCapThresholds, getMLEAvailability, getTeamPayrollUSD, hasBirdRights, seasonLabelToYear } from '../../../utils/salaryUtils';
+import { computeTradeEligibleDate } from '../../../utils/signingMoratorium';
+import { getCurrentOffseasonEffectiveFAStart, parseGameDate } from '../../../utils/dateUtils';
+
+function getPriorNbaTid(player: any): number {
+    const stats: Array<{ season?: number; tid?: number; gp?: number; playoffs?: boolean }> = player?.stats ?? [];
+    const sorted = stats
+        .filter(s => !s.playoffs && (s.gp ?? 0) > 0 && (s.tid ?? -1) >= 0 && (s.tid ?? -1) <= 29)
+        .sort((a, b) => (b.season ?? 0) - (a.season ?? 0));
+    return sorted[0]?.tid ?? -1;
+}
 
 export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const { playerId, teamId, playerName, teamName, salary, years: negotiatedYears, option, twoWay: signedAsTwoWay, nonGuaranteed: signedAsNG, mleType: signedMleType } = action.payload;
@@ -15,6 +25,44 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
     const team = stateWithSim.teams.find(t => t.id === teamId);
     
     if (!player || !team) return { isProcessing: false };
+
+    const MIN_CONTRACT_USD = 1_300_000;
+    const leagueYear = stateWithSim.leagueStats?.year ?? 2026;
+    const baseSalaryUSD = typeof salary === 'number' && salary > 0 ? salary : MIN_CONTRACT_USD;
+    if (stateWithSim.gameMode === 'gm' && player.tid === -1 && player.status === 'Free Agent' && stateWithSim.date) {
+        const currentDate = parseGameDate(stateWithSim.date);
+        const faStart = getCurrentOffseasonEffectiveFAStart(currentDate, stateWithSim.leagueStats as any, stateWithSim.schedule as any);
+        if (currentDate < faStart) {
+            console.warn(`[SIGN_FREE_AGENT] Blocked pre-FA offer: ${player.name} to ${team.name}`);
+            return { isProcessing: false };
+        }
+    }
+    const isResignAction = player.tid === teamId;
+    const priorNbaTid = getPriorNbaTid(player as any);
+    const ownTeamBirdRights = (isResignAction || priorNbaTid === teamId) && hasBirdRights(player as any);
+    const signedAsGuaranteed = !signedAsTwoWay && !signedAsNG;
+    const thresholds = getCapThresholds(stateWithSim.leagueStats as any);
+    const teamPayroll = getTeamPayrollUSD(stateWithSim.players as any, teamId, team as any, leagueYear);
+    // Re-sign deals start NEXT season — comparing year-1 of the new contract
+    // against current-year payroll counts $$ already on expiring books, which
+    // silently blocks legitimate signings (e.g., Kennard re-sign blocked even
+    // though his old $11M and other expirings roll off before the new deal hits).
+    const newDealStartYear = isResignAction ? leagueYear + 1 : leagueYear;
+    const committedAtStartYear = stateWithSim.players
+        .filter((p: any) =>
+            p.tid === teamId &&
+            !p.twoWay &&
+            (p.contract?.exp ?? newDealStartYear) >= newDealStartYear &&
+            !(isResignAction && p.internalId === playerId)
+        )
+        .reduce((sum: number, p: any) => sum + contractToUSD(p.contract?.amount || 0), 0);
+    const projectedPayroll = committedAtStartYear + baseSalaryUSD;
+    const mle = getMLEAvailability(teamId, teamPayroll, baseSalaryUSD, thresholds, stateWithSim.leagueStats as any);
+    const hasRequestedValidMLE = !!signedMleType && !mle.blocked && signedMleType === mle.type && baseSalaryUSD <= mle.available;
+    if (signedAsGuaranteed && !ownTeamBirdRights && projectedPayroll > thresholds.salaryCap && !hasRequestedValidMLE) {
+        console.warn(`[SIGN_FREE_AGENT] Blocked illegal over-cap signing: ${player.name} to ${team.name}`);
+        return { isProcessing: false };
+    }
 
     if (player.status !== 'Active' && player.status !== 'Free Agent' && !['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) {
         return { isProcessing: false };
@@ -96,13 +144,9 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
 
         // Contract terms — honor negotiated salary/years when provided,
         // otherwise fall back to min contract.
-        const MIN_CONTRACT_USD = 1_300_000;
-        const leagueYear = stateWithSim.leagueStats?.year ?? 2026;
         const existingPlayerForMerge: any = stateWithSim.players.find(p => p.internalId === playerId);
         // Re-signs (player already on this team) start next season; fresh FA signings start current season.
-        const isResignAction = existingPlayerForMerge?.tid === teamId;
         const signYear = isResignAction ? leagueYear + 1 : leagueYear;
-        const baseSalaryUSD = typeof salary === 'number' && salary > 0 ? salary : MIN_CONTRACT_USD;
         const totalYears = typeof negotiatedYears === 'number' && negotiatedYears > 0 ? negotiatedYears : 1;
         const hasOption = option === 'PLAYER' || option === 'TEAM';
         const totalSeasons = hasOption ? totalYears + 1 : totalYears;
@@ -169,6 +213,19 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
             `Then generate 3-4 varied fan and analyst reactions. ` +
             `Do NOT write two identical Shams tweets. One detailed Shams tweet, then fan/analyst reactions only.`;
 
+        const prevSalaryUSDFirstYear = (Number(existingPlayerForMerge?.contract?.amount) || 0) * 1_000;
+        const tradeEligibleDate = computeTradeEligibleDate({
+            signingDate: stateWithSim.date,
+            contractYears: totalYears,
+            salaryUSDFirstYear: baseSalaryUSD,
+            prevSalaryUSDFirstYear,
+            usedBirdRights: isResignAction,
+            isReSign: isResignAction,
+            isMinimum: baseSalaryUSD <= MIN_CONTRACT_USD * 1.01,
+            isTwoWay: !!signedAsTwoWay,
+            leagueStats: stateWithSim.leagueStats as any,
+        });
+
         const result = await advanceDay(stateWithSim, {
             type: 'SIGN_FREE_AGENT',
             payload: {
@@ -197,6 +254,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                         // a guaranteed player soon after signing — breaks the
                         // sign→cut→stretch dead-money snowball.
                         signedDate: stateWithSim.date,
+                        tradeEligibleDate,
                         // Explicitly set/clear twoWay per the signing decision —
                         // otherwise a player who was previously on a two-way deal
                         // keeps the flag via `...p`, so even a GUARANTEED re-signing
@@ -228,6 +286,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                         // a guaranteed player soon after signing — breaks the
                         // sign→cut→stretch dead-money snowball.
                         signedDate: stateWithSim.date,
+                        tradeEligibleDate,
                         // Explicitly set/clear twoWay per the signing decision —
                         // otherwise a player who was previously on a two-way deal
                         // keeps the flag via `...p`, so even a GUARANTEED re-signing
@@ -485,6 +544,7 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
                 recentlyWaivedBy: team?.id,
                 recentlyWaivedDate: stateWithSim.date,
                 signedDate: undefined,
+                tradeEligibleDate: undefined,
             }
             : p
     );
@@ -623,9 +683,17 @@ export const handleConvertContractType = async (stateWithSim: GameState, action:
     if (to === 'GUARANTEED') {
         // Treat NG → guaranteed as a fresh signing for trim recency purposes —
         // the guaranteed-contract clock starts now, so the trim grace applies.
+        const ngTradeEligibleDate = computeTradeEligibleDate({
+            signingDate: stateWithSim.date,
+            contractYears: 1,
+            salaryUSDFirstYear: (Number((player as any).contract?.amount) || 0) * 1_000,
+            isReSign: true,
+            usedBirdRights: false,
+            leagueStats: stateWithSim.leagueStats as any,
+        });
         players = stateWithSim.players.map((p: any) =>
             p.internalId === playerId
-                ? { ...p, nonGuaranteed: undefined, signedDate: stateWithSim.date }
+                ? { ...p, nonGuaranteed: undefined, signedDate: stateWithSim.date, tradeEligibleDate: ngTradeEligibleDate }
                 : p
         );
         outcomeText = `${player.name}'s contract was guaranteed by the ${teamName}.`;

@@ -9,7 +9,9 @@ import { computeMoodScore } from '../../../../../utils/mood/moodScore';
 import { getGMAttributes, findGMForTeam } from '../../../../../services/staff/gmAttributes';
 import { StarterService } from '../../../../../services/simulation/StarterService';
 import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickActions';
+import { getGameplan } from '../../../../../store/gameplanStore';
 import type { NBAPlayer } from '../../../../../types';
+import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -74,6 +76,7 @@ interface RowData {
   potDelta: number | null;
   age: number;
   currentSalaryUSD: number;
+  effectiveExp: number;
   yearsLeft: number;
   ywt: number;
   g: number;
@@ -196,7 +199,17 @@ export function TeamOfficeRosterView({ teamId }: Props) {
       const { score: moodScore } = computeMoodScore(
         p, team, state.date, false, false, false, teamPlayers, currentYear,
       );
-      const yearsLeft = Math.max(0, (p.contract?.exp ?? currentYear) - currentYear);
+      // Effective expiration — re-signs leave contract.exp pointing at the OLD
+      // current-year deal until season rollover, with the new deal living in
+      // contractYears[]. Use the later of the two so the EXP column reflects the
+      // total commitment after a re-sign instead of flashing "expiring" for a
+      // freshly extended player.
+      const cyYears = (((p as any).contractYears ?? []) as Array<{ season?: string }>)
+        .map(cy => parseInt((cy.season ?? '').split('-')[0], 10) + 1)
+        .filter(y => Number.isFinite(y));
+      const latestCY = cyYears.length > 0 ? Math.max(...cyYears) : 0;
+      const effectiveExp = Math.max(p.contract?.exp ?? currentYear, latestCY);
+      const yearsLeft = Math.max(0, effectiveExp - currentYear);
       return {
         player: p,
         jerseyNum: (p as any).jerseyNumber ?? '—',
@@ -206,6 +219,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
         potDelta,
         age: p.born?.year ? currentYear - p.born.year : (p.age ?? 0),
         currentSalaryUSD: (p.contract?.amount ?? 0) * 1_000,
+        effectiveExp,
         yearsLeft,
         ywt: getYearsWithTeam(p, teamId),
         g: stats?.g ?? 0,
@@ -226,15 +240,33 @@ export function TeamOfficeRosterView({ teamId }: Props) {
   const rows = useMemo((): RowData[] => {
     if (sortMode === 'rotation' && team) {
       const healthy = teamPlayers.filter(p => p.status === 'Active' && !((p as any).injury?.gamesRemaining > 0));
-      const rawStarters = StarterService.getProjectedStarters(team, state.players, currentYear, healthy);
-      const startersSorted = StarterService.sortByPositionSlot(rawStarters, currentYear);
+      const savedPlan = getGameplan(teamId);
+      const healthyById = new Map(healthy.map(p => [p.internalId, p]));
+      const savedStarters = (savedPlan?.starterIds ?? [])
+        .map(id => healthyById.get(id))
+        .filter(Boolean) as NBAPlayer[];
+      const rawStarters = savedStarters.length === 5
+        ? savedStarters
+        : StarterService.getProjectedStarters(team, state.players, currentYear, healthy);
+      const startersSorted = savedStarters.length === 5
+        ? savedStarters
+        : StarterService.sortByPositionSlot(rawStarters, currentYear);
       const starterIds = new Set(startersSorted.map(p => p.internalId));
       const starterRows = startersSorted
         .map(p => allRows.find(r => r.player.internalId === p.internalId))
         .filter(Boolean) as RowData[];
+      const benchOrder = savedPlan?.benchOrder ?? [];
+      const benchRank = new Map(benchOrder.map((id, idx) => [id, idx]));
       const benchRows = allRows
         .filter(r => !starterIds.has(r.player.internalId) && !r.isInjured)
-        .sort((a, b) => b.k2 - a.k2);
+        .sort((a, b) => {
+          const ar = benchRank.get(a.player.internalId);
+          const br = benchRank.get(b.player.internalId);
+          if (ar != null && br != null) return ar - br;
+          if (ar != null) return -1;
+          if (br != null) return 1;
+          return b.k2 - a.k2;
+        });
       const injuredRows = allRows.filter(r => r.isInjured).sort((a, b) => b.k2 - a.k2);
       return [...starterRows, ...benchRows, ...injuredRows];
     }
@@ -259,7 +291,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
       else if (col === 'k2')     { av = a.k2;   bv = b.k2; }
       else if (col === 'pot')    { av = a.pot;  bv = b.pot; }
       else if (col === 'salary') { av = a.currentSalaryUSD; bv = b.currentSalaryUSD; }
-      else if (col === 'exp')    { av = a.player.contract?.exp ?? 0; bv = b.player.contract?.exp ?? 0; }
+      else if (col === 'exp')    { av = a.effectiveExp; bv = b.effectiveExp; }
       else if (col === 'ywt')    { av = a.ywt;  bv = b.ywt; }
       else if (col === 'g')      { av = a.g;    bv = b.g; }
       else if (col === 'mp')     { av = a.mp;   bv = b.mp; }
@@ -282,11 +314,16 @@ export function TeamOfficeRosterView({ teamId }: Props) {
   const starterIds = useMemo((): Set<string> => {
     if ((sortMode === 'rotation' || sortMode === 'gameplan') && team) {
       const healthy = teamPlayers.filter(p => p.status === 'Active' && !((p as any).injury?.gamesRemaining > 0));
+      const savedPlan = getGameplan(teamId);
+      const healthyIds = new Set(healthy.map(p => p.internalId));
+      if ((savedPlan?.starterIds ?? []).filter(id => healthyIds.has(id)).length === 5) {
+        return new Set(savedPlan!.starterIds);
+      }
       const starters = StarterService.getProjectedStarters(team, state.players, currentYear, healthy);
       return new Set(starters.map(p => p.internalId));
     }
     return new Set();
-  }, [sortMode, team, teamPlayers, state.players, currentYear]);
+  }, [sortMode, team, teamPlayers, state.players, currentYear, teamId]);
 
   if (quick.fullPageView) return quick.fullPageView;
 
@@ -497,7 +534,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
                         <td className="px-2 py-1.5">
                           <div className="flex items-center gap-1.5">
                             <PlayerPortrait playerName={p.name} imgUrl={p.imgURL} face={(p as any).face} size={24} />
-                            <span className="font-semibold truncate max-w-[90px] text-slate-100">{p.name}</span>
+                            <PlayerNameWithHover player={p} className="font-semibold truncate max-w-[90px] text-slate-100">{p.name}</PlayerNameWithHover>
                             {isStarter && (sortMode === 'rotation' || sortMode === 'gameplan') && (
                               <span className="text-[7px] font-black uppercase px-1 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/40 shrink-0">S</span>
                             )}
@@ -549,7 +586,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
 
                         <td className="text-center tabular-nums px-1.5">
                           <span className={cn('text-[10px] font-bold', isExpiring ? 'text-rose-300 font-black' : 'text-slate-500')}>
-                            {p.contract?.exp ?? '—'}
+                            {r.effectiveExp || '—'}
                           </span>
                         </td>
 

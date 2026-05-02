@@ -27,6 +27,9 @@ import {
 } from '../../../../../utils/salaryUtils';
 import { getTradingBlock, saveTradingBlock } from '../../../../../store/tradingBlockStore';
 import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickActions';
+import { isPlausibleActiveMarket } from '../../../../../services/freeAgencyBidding';
+import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
+import { compareGameDates, formatGameDateShort, getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd, isInMoratorium, parseGameDate } from '../../../../../utils/dateUtils';
 import type { NBAPlayer } from '../../../../../types';
 
 interface Props {
@@ -77,14 +80,22 @@ function isPlayerRFA(p: NBAPlayer): boolean {
 /** Most-recent NBA team tid for the player — same logic Bird Rights / RFA
  *  pipelines use, so the displayed "Team" abbrev matches what those flows see. */
 function getLastTeamTid(p: NBAPlayer): number {
+  // Transactions are appended chronologically — reverse to get most-recent first.
+  // Sorting by season alone breaks when a player has multiple same-season transactions
+  // (e.g. signed CHI in July, then MEM in January of same season year).
   const txns: Array<{ season: number; tid: number }> = (p as any).transactions ?? [];
   if (txns.length > 0) {
-    const t = [...txns].sort((a, b) => b.season - a.season).find(x => x.tid >= 0 && x.tid <= 29);
+    const t = [...txns].reverse().find(x => x.tid >= 0 && x.tid <= 29);
     if (t) return t.tid;
   }
+  // Stats fallback: find the max season, then use the LAST entry for that season
+  // (BBGM appends a new entry per team, so last = most recent team within season).
   const stats: Array<{ season?: number; tid?: number; gp?: number; playoffs?: boolean }> = (p as any).stats ?? [];
-  const s = stats.filter(x => !x.playoffs && (x.gp ?? 0) > 0 && (x.tid ?? -1) >= 0 && (x.tid ?? -1) <= 29)
-    .sort((a, b) => (b.season ?? 0) - (a.season ?? 0))[0];
+  const nbaStats = stats.filter(x => !x.playoffs && (x.gp ?? 0) > 0 && (x.tid ?? -1) >= 0 && (x.tid ?? -1) <= 29);
+  if (nbaStats.length === 0) return -1;
+  const maxSeason = Math.max(...nbaStats.map(x => x.season ?? 0));
+  const forMaxSeason = nbaStats.filter(x => (x.season ?? 0) === maxSeason);
+  const s = forMaxSeason[forMaxSeason.length - 1];
   return s ? (s.tid ?? -1) : -1;
 }
 
@@ -126,6 +137,27 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
   const isOwnTeam = isGM && teamId === state.userTeamId;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const quick = usePlayerQuickActions();
+  const isMoratoriumActive = state.date ? isInMoratorium(state.date, currentYear, state.leagueStats as any, state.schedule as any) : false;
+  const moratoriumEndLabel = state.date
+    ? formatGameDateShort(getCurrentOffseasonFAMoratoriumEnd(state.date, state.leagueStats as any, state.schedule as any))
+    : 'the moratorium ends';
+  const faHeadsUpKey = `team-intel-fa-moratorium-headsup-${state.saveId ?? 'default'}-${currentYear}`;
+  const [showFaHeadsUp, setShowFaHeadsUp] = useState(false);
+
+  useEffect(() => {
+    if (!isOwnTeam || !isMoratoriumActive) return;
+    try {
+      if (window.localStorage.getItem(faHeadsUpKey)) return;
+    } catch {}
+    setShowFaHeadsUp(true);
+  }, [faHeadsUpKey, isMoratoriumActive, isOwnTeam]);
+
+  const dismissFaHeadsUp = () => {
+    try {
+      window.localStorage.setItem(faHeadsUpKey, '1');
+    } catch {}
+    setShowFaHeadsUp(false);
+  };
 
   // ── Shortlist state (mutually exclusive with trade targets) ───────────
   const initial = useMemo(() => {
@@ -181,10 +213,22 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
       .reduce((s, p) => s + ((p.contract?.amount ?? 0) * 1_000), 0),
     [state.players, teamId],
   );
-  const capSpaceUSD = thresholds.salaryCap - teamPayrollUSD;
+  const isPreFA = state.date
+    ? compareGameDates(state.date, getCurrentOffseasonEffectiveFAStart(state.date, state.leagueStats as any, state.schedule as any)) < 0
+    : false;
+  const expiringSalaryUSD = useMemo(
+    () => isPreFA
+      ? state.players
+        .filter(p => p.tid === teamId && (p.contract?.exp ?? 0) === currentYear && !(p as any).twoWay && (p.contract as any)?.type !== 'TWO_WAY')
+        .reduce((s, p) => s + ((p.contract?.amount ?? 0) * 1_000), 0)
+      : 0,
+    [isPreFA, state.players, teamId, currentYear],
+  );
+  const projectedPayrollUSD = Math.max(0, teamPayrollUSD - expiringSalaryUSD);
+  const capSpaceUSD = thresholds.salaryCap - projectedPayrollUSD;
   const mleAvail = useMemo(
-    () => getMLEAvailability(teamId, teamPayrollUSD, 0, thresholds, state.leagueStats as any),
-    [teamId, teamPayrollUSD, thresholds, state.leagueStats],
+    () => getMLEAvailability(teamId, projectedPayrollUSD, 0, thresholds, state.leagueStats as any),
+    [teamId, projectedPayrollUSD, thresholds, state.leagueStats],
   );
   const shortlistCommitUSD = useMemo(
     () => shortlistedPlayers.reduce((s, p) => s + computeContractOffer(p, state.leagueStats as any).salaryUSD, 0),
@@ -203,7 +247,10 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
   const allMarkets = state.faBidding?.markets ?? [];
   const trackedMarkets = useMemo(() => {
     return allMarkets
-      .filter(m => !m.resolved)
+      .filter(m => {
+        const p = state.players.find(pp => pp.internalId === m.playerId);
+        return isPlausibleActiveMarket(m as any, state, p);
+      })
       .filter(m =>
         shortlistIds.has(m.playerId) ||
         m.bids.some(b => b.teamId === teamId),
@@ -213,10 +260,22 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
         const activeBids = m.bids.filter(b => b.status === 'active');
         const top = [...activeBids].sort((a, b) => b.salaryUSD - a.salaryUSD)[0];
         const userBid = activeBids.find(b => b.teamId === teamId);
-        const daysToDecide = Math.max(0, m.decidesOnDay - state.day);
-        return { market: m, player: p, top, userBid, daysToDecide };
+        const rawDaysToDecide = Math.max(0, m.decidesOnDay - state.day);
+        const daysToDecide = (() => {
+          if (!isMoratoriumActive || !state.date) return rawDaysToDecide;
+          const today = parseGameDate(state.date);
+          const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(state.date, state.leagueStats as any, state.schedule as any);
+          const moratoriumDays = Math.max(0, Math.ceil((moratoriumEnd.getTime() - today.getTime()) / 86_400_000));
+          return Math.max(rawDaysToDecide, moratoriumDays);
+        })();
+        const decisionLabel = isMoratoriumActive && daysToDecide > 0
+          ? `After moratorium (${moratoriumEndLabel})`
+          : daysToDecide === 0
+            ? 'Resolves today'
+            : `Resolves in ${daysToDecide}d`;
+        return { market: m, player: p, top, userBid, daysToDecide, decisionLabel };
       });
-  }, [allMarkets, shortlistIds, teamId, state.players, state.day]);
+  }, [allMarkets, shortlistIds, teamId, state.players, state.day, state.date, state.leagueStats, isMoratoriumActive, moratoriumEndLabel]);
 
   // ── Top FA scouting drawer ────────────────────────────────────────────
   const [tierFilter, setTierFilter] = useState<'all' | '90+' | '80-89' | '70-79' | 'u25'>('all');
@@ -405,11 +464,39 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
 
   return (
     <>
+    {showFaHeadsUp && createPortal(
+      <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={dismissFaHeadsUp} />
+        <div className="relative w-full max-w-md rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/10 bg-amber-500/[0.06]">
+            <h2 className="text-lg font-black uppercase tracking-tight text-white">FA Moratorium Active</h2>
+          </div>
+          <div className="p-5 space-y-4">
+            <p className="text-sm text-slate-300 leading-relaxed">
+              July 1 is when teams can start talking money with players who are already free agents. Those are the players you can bid on now.
+            </p>
+            <p className="text-sm text-slate-300 leading-relaxed">
+              Players still listed as upcoming are still attached to a team. They may re-sign, pick up an option, have a team option decided, or become free agents later.
+            </p>
+            <p className="text-sm text-slate-300 leading-relaxed">
+              During the first few days, deals are mostly being negotiated. Use the top PlayButton dropdown and click <span className="font-black text-amber-300">Through moratorium</span> to jump to {moratoriumEndLabel}, when signings and market decisions start landing.
+            </p>
+            <button
+              onClick={dismissFaHeadsUp}
+              className="w-full rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest text-xs py-3 transition-colors"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )}
     <div className="h-full flex flex-col gap-3">
       {/* Cap Ticker — combined cap + MLE budget so over-cap teams (Boston tier)
            don't show "$0 budget" when their MLE is the real working budget. */}
       <div className="rounded-lg border border-[#30363d] bg-black/40 p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Stat label="Cap Space" value={fmtUSD(capSpaceUSD)} tone={capSpaceUSD < 0 ? 'red' : 'emerald'} />
+        <Stat label={isPreFA ? 'Projected cap (post-rollover)' : 'Cap Space'} value={fmtUSD(capSpaceUSD)} tone={capSpaceUSD < 0 ? 'red' : 'emerald'} />
         <Stat label="MLE Available" value={mleAvail.blocked ? '—' : fmtUSD(mleAvail.available)} />
         <Stat label="Shortlist Commit" value={fmtUSD(shortlistCommitUSD)} tone={shortlistCommitUSD > availableRoomUSD ? 'amber' : undefined} />
         <Stat
@@ -464,14 +551,17 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
                   return (
                     <div
                       key={p.internalId}
-                      onClick={() => onPlayerClick?.(p) || quick.openFor(p)}
+                      onClick={() => {
+                        if (onPlayerClick) onPlayerClick(p);
+                        else quick.openFor(p);
+                      }}
                       className="flex items-center gap-2 px-2 py-2 bg-white/5 hover:bg-white/10 rounded cursor-pointer"
                     >
                       <PlayerPortrait playerName={p.name} imgUrl={p.imgURL} face={(p as any).face} size={32} />
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-semibold truncate">
+                        <PlayerNameWithHover player={p} className="text-xs font-semibold truncate block">
                           {p.name.charAt(0)}. {p.name.split(' ').slice(1).join(' ')}
-                        </div>
+                        </PlayerNameWithHover>
                         <div className="text-[10px] text-slate-400 flex items-center gap-1">
                           <span>{p.pos}</span>
                           <span className="text-slate-600">·</span>
@@ -551,7 +641,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
                     : 'No live markets for shortlisted players. Markets open mid-FA-window — check back tomorrow.'}
               </div>
             ) : (
-              trackedMarkets.map(({ market, player, top, userBid, daysToDecide }) => {
+              trackedMarkets.map(({ market, player, top, userBid, decisionLabel }) => {
                 if (!player || !top) return null;
                 const k2 = getK2Ovr(player);
                 // "userBid" / "userLeading" semantics depend on viewing context:
@@ -589,10 +679,10 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
                               ? <img src={priorTeam.logoUrl} alt={priorTeam.abbrev ?? priorTeam.name} referrerPolicy="no-referrer" className="w-4 h-4 object-contain shrink-0 opacity-80" title={`Last with ${priorTeam.name}`} />
                               : null;
                           })()}
-                          <span className="truncate">{player.name}</span>
+                          <PlayerNameWithHover player={player} className="truncate">{player.name}</PlayerNameWithHover>
                         </div>
                         <div className="text-[10px] text-slate-400">
-                          {player.pos} · K2 {k2} · {daysToDecide === 0 ? <span className="text-rose-300 font-bold">Resolves today</span> : `Resolves in ${daysToDecide}d`}
+                          {player.pos} · K2 {k2} · {decisionLabel === 'Resolves today' ? <span className="text-rose-300 font-bold">Resolves today</span> : decisionLabel}
                         </div>
                       </div>
                       <span className={cn(
@@ -746,7 +836,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
                         : 'hover:bg-white/5',
                     )}
                   >
-                    <td className="px-3 py-1.5 font-semibold truncate max-w-[160px]">{player.name}</td>
+                    <td className="px-3 py-1.5 font-semibold truncate max-w-[160px]"><PlayerNameWithHover player={player}>{player.name}</PlayerNameWithHover></td>
                     <td className="text-center text-slate-400 font-bold tabular-nums text-[10px]">
                       {lastTeam ? (
                         <span className="inline-flex items-center gap-1 justify-center">

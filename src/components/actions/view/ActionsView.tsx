@@ -135,7 +135,6 @@ const ActionsView: React.FC = () => {
       if (modals.modalType === 'bribe') actionType = 'BRIBE_PERSON';
       if (modals.modalType === 'leak_scandal') actionType = 'LEAK_SCANDAL';
       if (modals.modalType === 'give_money') actionType = 'GIVE_MONEY';
-      if (modals.modalType === 'hypnotize') actionType = 'HYPNOTIZE';
       if (modals.modalType === 'sabotage') actionType = 'SABOTAGE_PLAYER';
       if (modals.modalType === 'club') actionType = 'GO_TO_CLUB';
       if (modals.modalType === 'endorse_hof') actionType = 'ENDORSE_HOF';

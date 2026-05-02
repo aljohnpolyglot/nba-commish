@@ -10,6 +10,7 @@ import { computeContractOffer, hasBirdRights } from '../../../../../utils/salary
 import { computeMoodScore, normalizeMoodTraits } from '../../../../../utils/mood/moodScore';
 import { computeResignProbability } from '../../PlayerBioMoraleTab';
 import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickActions';
+import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
 import type { NBAPlayer } from '../../../../../types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -86,7 +87,7 @@ interface RowData {
   k2: number;
   age: number;
   pot: number;
-  pg: { pts: number; reb: number; ast: number; per: number } | null;
+  pg: { g: number; mp: number; pts: number; reb: number; ast: number; per: number } | null;
   rfa: boolean;
   bird: boolean;
   opt: 'player' | 'team' | 'rookie' | null;
@@ -147,7 +148,16 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
       );
       const traits = normalizeMoodTraits((p as any).moodTraits ?? []);
       const resign = computeResignProbability(p, traits as any, moodScore, currentYear, teamWinPct, team);
-      const yearsLeft = Math.max(0, (p.contract?.exp ?? currentYear) - currentYear);
+      // Effective expiration — re-signs leave contract.exp pointing at the OLD
+      // current-year deal until rollover; the new commitment lives in contractYears.
+      // Use the later of the two so a freshly re-signed player drops off the
+      // expiring list instead of staying flagged as "expires this year".
+      const cyYears = (((p as any).contractYears ?? []) as Array<{ season?: string }>)
+        .map(cy => parseInt((cy.season ?? '').split('-')[0], 10) + 1)
+        .filter(y => Number.isFinite(y));
+      const latestCY = cyYears.length > 0 ? Math.max(...cyYears) : 0;
+      const effectiveExp = Math.max(p.contract?.exp ?? currentYear, latestCY);
+      const yearsLeft = Math.max(0, effectiveExp - currentYear);
       return {
         player: p,
         k2: getK2Ovr(p),
@@ -281,7 +291,7 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
                   <td className="px-3 py-1.5">
                     <div className="flex items-center gap-2">
                       <PlayerPortrait playerName={p.name} imgUrl={p.imgURL} face={(p as any).face} size={26} />
-                      <span className="font-semibold truncate max-w-[110px]">{p.name}</span>
+                      <PlayerNameWithHover player={p} className="font-semibold truncate max-w-[110px]">{p.name}</PlayerNameWithHover>
                       {isTwoWay && (
                         <span className="text-[8px] font-black uppercase tracking-wider px-1 py-0.5 rounded bg-violet-500/30 text-violet-300 border border-violet-500/50 shrink-0">2W</span>
                       )}

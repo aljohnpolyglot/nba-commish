@@ -213,6 +213,7 @@ export class HighlightGenerator {
                   assisterId:   passer?.playerId,
                   assisterName: passer?.name,
                 });
+                p.dunks = (p.dunks ?? 0) + 1;
                 // Alley-oops CAN posterize (Vince Carter vs France)
                 const posterProb = getBadgeProb(p.name, 'Posterizer', 0.15) * 0.55;
                 if (posterProb > 0 && Math.random() < posterProb) {
@@ -240,6 +241,7 @@ export class HighlightGenerator {
                   assisterId:   selfFinish ? p.playerId  : starter?.playerId,
                   assisterName: selfFinish ? p.name      : starter?.name,
                 });
+                p.dunks = (p.dunks ?? 0) + 1;
 
               } else {
                 // ── Regular driving dunk ───────────────────────────────
@@ -249,6 +251,7 @@ export class HighlightGenerator {
                   playerName: p.name,
                   teamId,
                 });
+                p.dunks = (p.dunks ?? 0) + 1;
                 // Posterizer sub-event: driving dunks only (not alley / fastbreak)
                 const posterProb = getBadgeProb(p.name, 'Posterizer', 0.15);
                 if (posterProb > 0 && Math.random() < posterProb) {
@@ -273,6 +276,7 @@ export class HighlightGenerator {
                 playerName: p.name,
                 teamId,
               });
+              p.dunks = (p.dunks ?? 0) + 1;
 
             } else {
               // ── LAYUP zone — Layup Mixmaster (euro step, reverse, scoop) ─
@@ -381,6 +385,7 @@ export class HighlightGenerator {
             playerName: mostFouls.name,
             teamId,
           });
+          mostFouls.techs = (mostFouls.techs ?? 0) + 1;
         }
       }
 

@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { useGame } from '../store/GameContext';
 import { RosterComplianceModal } from '../components/modals/RosterComplianceModal';
 import { getDisplayOverall } from '../utils/playerRatings';
+import { getGameDateParts } from '../utils/dateUtils';
 import type { NBAPlayer } from '../types';
 
 /**
@@ -26,11 +27,9 @@ export function useRosterComplianceGate() {
   const pendingRef = useRef<(() => void | Promise<void>) | null>(null);
 
   const check = useMemo(() => {
-    const empty = { mode: null as 'over' | 'under' | null, excess: [] as NBAPlayer[], slotsNeeded: 0, isPreseasonEnd: false };
+    const empty = { mode: null as 'over' | 'under' | null, excess: [] as NBAPlayer[], slotsNeeded: 0, isPreseasonEnd: false, phase: 'offseason' as 'training-camp' | 'regular-season' | 'playoffs' | 'offseason', maxRoster: 15 };
     if (state.gameMode !== 'gm' || state.userTeamId == null || !state.date) return empty;
-    const d = new Date(state.date);
-    const month = d.getMonth() + 1;
-    const day = d.getDate();
+    const { month, day } = getGameDateParts(state.date);
     const isTrainingCamp = (month >= 7 && month <= 9) || (month === 10 && day <= 21);
     const isRegularSeason = (month === 10 && day >= 22) || (month >= 11) || (month >= 1 && month <= 3);
     const isPlayoffs = month >= 4 && month <= 6;
@@ -48,24 +47,42 @@ export function useRosterComplianceGate() {
 
     // Enforce minimum only when games are live and meaningful: regular season, or playoffs while still competing.
     // During training camp / free agency (Jul–Oct 21) and post-elimination, teams are building their roster.
-    if ((isRegularSeason || userStillInPlayoffs) && standardRoster.length < minRoster) {
-      return { mode: 'under' as const, excess: [], slotsNeeded: minRoster - standardRoster.length, isPreseasonEnd: false };
+    const phase: 'training-camp' | 'regular-season' | 'playoffs' | 'offseason' =
+      isTrainingCamp ? 'training-camp'
+      : isRegularSeason ? 'regular-season'
+      : isPlayoffs ? 'playoffs'
+      : 'offseason';
+
+    // Only block sim for under-roster when there are actual games on the
+    // schedule the team needs to suit up for. During the offseason / pre-FA
+    // window the user literally can't sign anyone yet (FA hasn't opened),
+    // so an under-gate just deadlocks them. Same goes for active-playoffs:
+    // only block if the user's team still has an upcoming playoff game.
+    const today = state.date;
+    const hasUpcomingUserGame = state.schedule?.some((g: any) => {
+      if (g.homeTid !== state.userTeamId && g.awayTid !== state.userTeamId) return false;
+      if (g.played) return false;
+      return !today || (g.date ?? '') >= today;
+    }) ?? false;
+    const livePhase = isRegularSeason || (isPlayoffs && userStillInPlayoffs && hasUpcomingUserGame);
+    if (livePhase && standardRoster.length < minRoster) {
+      return { mode: 'under' as const, excess: [], slotsNeeded: minRoster - standardRoster.length, isPreseasonEnd: false, phase, maxRoster: maxStd };
     }
     // Training camp: 21 TOTAL (standard + NG + two-way share one pool)
     if (isTrainingCamp && allRoster.length > maxCamp) {
       const excess = [...allRoster]
         .sort((a, b) => getDisplayOverall(a) - getDisplayOverall(b))
         .slice(0, allRoster.length - maxCamp);
-      return { mode: 'over' as const, excess, slotsNeeded: 0, isPreseasonEnd: false };
+      return { mode: 'over' as const, excess, slotsNeeded: 0, isPreseasonEnd: false, phase, maxRoster: maxCamp };
     }
     // Regular season: standard-only limit
     if (isRegularSeason && standardRoster.length > maxStd) {
       const excess = [...standardRoster]
         .sort((a, b) => getDisplayOverall(a) - getDisplayOverall(b))
         .slice(0, standardRoster.length - maxStd);
-      return { mode: 'over' as const, excess, slotsNeeded: 0, isPreseasonEnd: false };
+      return { mode: 'over' as const, excess, slotsNeeded: 0, isPreseasonEnd: false, phase, maxRoster: maxStd };
     }
-    return { ...empty, isPreseasonEnd: isTrainingCamp };
+    return { ...empty, isPreseasonEnd: isTrainingCamp, phase, maxRoster: isTrainingCamp ? maxCamp : maxStd };
   }, [state.gameMode, state.userTeamId, state.players, state.leagueStats, state.date]);
 
   const attempt = (fn: () => void | Promise<void>) => {
@@ -109,6 +126,8 @@ export function useRosterComplianceGate() {
       excessPlayers={check.excess}
       slotsNeeded={check.slotsNeeded}
       minRoster={state.leagueStats?.minPlayersPerTeam ?? 14}
+      maxRoster={check.maxRoster}
+      phase={check.phase}
       isPreseasonEnd={check.isPreseasonEnd}
       onAutoAction={handleAuto}
       onManual={handleManual}

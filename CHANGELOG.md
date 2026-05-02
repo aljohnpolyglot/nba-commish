@@ -2,6 +2,190 @@
 
 Historical bug fixes, session notes, and architecture discoveries.
 
+## Session 50 (May 2, 2026) - Team Training Phase 3.5/4 closeout
+
+**Training Center uses canonical schedule views** - `TrainingCenterView.tsx` now renders the shared schedule `CalendarView` and `DayView` instead of the bespoke TeamTraining calendar grid. The calendar accepts a focus-team id so Training Center inherits the canonical opponent logo and `vs`/`@` home-away rendering for the selected franchise.
+
+**Training plan overlays** - added `src/components/training/TrainingDayOverlay.tsx` so each canonical calendar tile can show the active `team.trainingCalendar[iso]` paradigm and intensity. Non-game clicks open `DailyPlanModal`; game-day clicks open the canonical day view with a Training prep header card.
+
+**System familiarity and proficiency affect games** - `GameSimulator/engine.ts` now maps `team.systemFamiliarity` into shooting efficiency, turnover control, defensive rotations, and a small strength bump. `calculateTeamStrengthWithMinutes` accepts a `proficiencyBoost`, sourced from selected coach-system proficiency saved from the shared `computeTeamProficiency` path.
+
+**Defensive aura wired** - `NBATeam.defensiveAura` is now typed, updated by `trainingTick` from Defensive/Balanced plans, decays otherwise, and feeds opponent efficiency/turnover modifiers in the game engine.
+
+**Fatigue affects performance and injury risk** - `player.trainingFatigue` now dampens effective sim ratings by `(1 - fatigue / 200)`, capped at -15%, for stat generation as well as strength. The existing mid-game injury roll continues to stack the fatigue risk multiplier.
+
+**Docs cleared** - `TEAM_TRAINING_PLAN.md` was reduced from the old brainstorm consolidation to shipped status, and the Team Training TODO queue is marked `(FIXED - S50)`.
+
+**Verification:** `npm run lint` (`tsc --noEmit`) passes. `npm run build` passes; Vite still reports the existing dynamic/static import chunking warnings and large bundle warning.
+
+## Session 49 (May 2, 2026) - Post-draft / FA bug audit and TODO cleanup
+
+**GM user-team post-draft protection** - `autoRunDraft` now skips GM user-team two-way fill and logs `[autoRunDraft] SKIPPING user team fill`. `runAIFreeAgencyRound` also has explicit user-team guards in the AI team list and final signing path, so Passes 1-5 cannot auto-fill the user's roster when GM mode is active.
+
+**Phantom save repair** - `LOAD_GAME` releases corrupted user-roster records back to FA when a player has `tid === userTeamId`, `status === 'Free Agent'`, and no committed current contract. This repairs saves polluted by earlier rogue post-draft fills.
+
+**Stale FA markets closed** - `faMarketTicker` now resolves active markets with no winner when the player already has `tid !== -1`, logging `[FA-MARKET] closed stale market — player already rostered` and rejecting any active user bid cleanly.
+
+**Consumed draft picks blocked from trade offers** - auto-draft consumption of current-year picks remains in place, and trade counteroffer / inbound proposal builders now defensively filter pick asset pools to `season >= leagueStats.year` before constructing offers.
+
+**Opening-night skips hardened** - PlayButton opening-night skips, the jumpstart path, and the `SIMULATE_TO_DATE` handoff are documented around `stopBefore: true`, preserving opening-night games as unplayed. The moratorium audit confirmed the default `faMoratoriumDays` is 6 and FA signing gates use `isInMoratorium()`.
+
+**Pre-FA cap projection** - Team Intel and Team Intel Free Agency now show `Projected cap (post-rollover)` before FA by subtracting current-year expiring non-two-way salaries from payroll, without running rollover side effects.
+
+**Signing UX and waive news** - `SigningModal` now confirms guaranteed signings at 15/15 before proceeding. Offseason AI waives of K2 80+ players now create a league-news item that cites system fit, making high-OVR cuts legible without changing waive logic.
+
+**Verification:** `npm run lint` (`tsc --noEmit`) passes. `npm run build` passes; Vite still reports the existing dynamic/static import chunking warnings and large bundle warning.
+
+## Session 48 (May 2, 2026) - Team Training full wire-in (Phases 1–3)
+
+**Training Center wired into the game shell** — `src/components/training/TrainingCenterView.tsx` is now the production view, mounted as a top-level sidebar entry in both GM and Commissioner modes. The standalone `src/TeamTraining/` harness still exists for the component library but no longer serves as the entrypoint.
+
+**Funnel Model live in `ProgressionEngine`** — per-attr daily deltas are now modulated by `player.devFocus` archetype using `rawWeights[attr]`: growth up to 1.8× faster for focus attrs, regression up to 60% slower. `Balanced` archetype bypasses funnelling entirely. Slight ~10-20% volume inflation for focused archetypes ensures non-focus attrs still grow normally.
+
+**Strength → Weight loop** — gaining Strength now adds 0.5 lbs/point, capped at +15 lbs over `player.origWeight`. Field persists per-save.
+
+**Daily System Familiarity tick** at `src/services/training/trainingTick.ts` — reads `team.trainingCalendar`, increments `team.systemFamiliarity.{offense,defense}` per paradigm × intensityFactor each sim day. Decays on unplanned days. Wired into `gameLogic.ts` after `daysToAdvance` is computed.
+
+**Roster-change familiarity penalty** — `applyRosterChangeFamiliarity`: source team loses `min(8, ywt × 1.5)` per departure; dest team takes flat 1.0 dilution offset if both teams share the same coach system. Wired into `gameLogic.ts` after transactions land.
+
+**Mentor breakage on trade** — `resolveMentorBreakage` clears dangling `mentorId` when only one half of a mentor/mentee pair is traded. Both moving together preserves the relationship.
+
+**Mentor EXP + MentorshipModal redesign** — `src/services/training/mentorScore.ts`: uncapped score from RS/PO games × personality multiplier (Ambassador 1.5 → Drama-Magnet 0.35). Modal rebuilt as purpose-built card grid with big EXP number, RS/PO breakdown, color-coded trait chips, search bar, sort by EXP desc. Click-to-deselect replaces redundant "Remove" button.
+
+**Mentor multipliers in daily progression** — mentor provides anti-regression buffer (scales with EXP, caps at 30%) and small IQ-only growth bonus on `oiq`/`diq` (caps at 25%). Physical attrs ignore mentor per Hakeem-Dwight Rule. Lookup built once per day.
+
+**Recovery edge case fixed** — High-Intensity individual + 0 minutes played now resets fatigue compounding via `tickPlayerFatigue`. No-plan / recovery days decay fatigue; game days with 0 minutes naturally avoid compounding.
+
+**Phase 4 (sim multipliers) deferred** — System Familiarity, Defensive Aura, and player fatigue are tracked but not yet wired into `engine.ts` or `calculateTeamStrengthWithMinutes`. See TODO.
+
+**Verification:** `npm run lint` (`tsc --noEmit`) passes. `npm run build` passes.
+
+---
+
+## Session 47 (May 2, 2026) - Finals/draft guard, FA and trade cleanup, training calendar repair
+
+**Finals now outrank draft and stale play-in state** - added `isDraftBlockedByUnresolvedPlayoffs()` and threaded it through PlayButton phase detection, draft-event gates, MainContent draft routing, Schedule day/card rendering, calendar draft tiles, `gameLogic`, and `autoRunDraft`. If the Finals are still 3-3 with Game 7 scheduled after the nominal draft date, the app stays in playoffs/finals flow and defers the draft instead of showing "2027 play-in" or a draft card.
+
+**Draft pool capped for performance** - the live draft board and auto-draft candidate scan now cap the current-year draftable pool to the top 100 prospects by displayed OVR/POT. Extra auto-declared fringe prospects remain in the save, but they are treated as not good enough for that draft pool, preventing 160+ prospect boards from bogging down the UI.
+
+**Trade-during-draft no longer auto-completes the draft** - `gameLogic` skips `autoRunDraft` for `EXECUTIVE_TRADE` / `FORCE_TRADE`, and draft auto-run now also defers while unresolved playoff games exist. Draft pick inventory filtering now excludes used/player-selected picks defensively.
+
+**GM roster By Rotation reads Gameplan starters** - Team Office roster rotation sort now prefers `gameplanStore` starter and bench order when a valid healthy starting five exists, so the STARTERS/BENCH divider matches the Gameplan tab instead of recalculating starters through a separate path.
+
+**CBA trade salary matching direction fixed** - `validateCBATradeRules` now uses the same cap profile helper as the UI, applies cap-room absorption before salary matching, and only enforces matching when a team receives more salary than it sends. Salary dumps by the sending team no longer fail backwards 1.25x math.
+
+**Team Intel cap-space mismatch fixed** - Team Intel overview cap space now uses `getTeamCapProfileFromState()` and `formatSalaryM()`, matching the Free Agency tab's dead-money and two-way treatment instead of a hardcoded $136M cap.
+
+**Incumbent Bird Rights offers now enter FA markets** - the post-moratorium Bird Rights pass no longer writes direct re-sign contracts ahead of open-market resolution. It injects incumbent bids into the player's FA market, preserving the same decision timer and giving user bids a fair head-to-head resolution path.
+
+**FA bid result toasts kept intact** - the FA market rejection path was verified and the ticker now consistently emits user-bid rejection records when markets close, players sign elsewhere, or bids lose to another team. The restored Team Option and Expiring Re-sign gate typings also keep their modal action IDs string-safe.
+
+**Training calendar auto-fill repaired** - `AUTOFILL_TEAM_TRAINING_CALENDAR` and all-team scheduler refreshes now preserve only user-set `auto:false` plans, then regenerate every auto plan. Old saved calendars with stale "Balanced" auto entries now pick up Recovery / post-B2B / shootaround logic after scheduler changes.
+
+**Verification:** `npm run lint` (`tsc --noEmit`) passes. `npm run build` passes; Vite still reports the existing dynamic/static import chunking warnings and large bundle warning.
+
+## Session 46 (May 2, 2026) - FA bidding handoff closeout, supermax Bird Rights, draft lottery toggle
+
+**Historical FA market repair on load** - `GameContext.tsx` now purges stale FA bidding markets on `LOAD_GAME` instead of preserving resolved entries. The repair drops resolved markets, markets opened more than 30 sim days ago, implausible active markets, and markets for players already signed to a team. It logs `[LOAD_GAME] Purged N stale FA markets (resolved=X, expired=Y, signed=Z)` so corrupted in-progress saves from the Warren-style user-bid bug repair themselves on load.
+
+**Bird Rights user-market guard completed** - `runAIBirdRightsResigns()` now uses the shared active-market lookup and adds an inner hard guard immediately before enqueueing a re-sign result. If a stale snapshot ever tries to Bird-rights re-sign a player with an open FA market, it aborts with `[AI-FA] BLOCKED` before the apply-time `[FA-LEAK-GUARD]` would be needed.
+
+**Supermax-eligible veteran AI re-sign pricing fixed** - the AI Bird Rights pass now computes offers against a Bird-rights-stamped player copy, uses `getContractLimits()` to detect live supermax eligibility, forces supermax vets to the 35%-of-cap ceiling, gives them up to 5 Bird years, and applies 8% annual raises in the Bird Rights apply path. Non-supermax vets still use the existing Bird premium/standard offer curve.
+
+**FA toast and moratorium checks verified** - `faMarketTicker` already marks no-active-bid markets resolved, and `simulationHandler` already stops the sim batch when `tick.shouldStopSim` is set so user bid result toasts can render. Moratorium-sensitive signing paths were checked: the AI FA round, auto-trim/promotion, and MLE swaps are gated by `!moratoriumActiveForDay`; Bird Rights also waits until moratorium ends; external routing runs at Oct 1; mid-season and season-end extensions do not run in the Jul 1-6 window.
+
+**Draft lottery duplicate view fixed** - `DraftLotteryView.tsx` now has a single active table mode. Before drawing, it shows only the original lottery order; once results exist, the user can toggle `Before` / `After`, but the view renders one table at a time instead of showing duplicate before/after sections together.
+
+**RFA offer-sheet modal HMR note resolved** - `RFAOfferSheetModal.tsx` was checked after the earlier cleanup; it no longer exports a separate named interface beside the component. The reported HMR provider error remains cosmetic unless it recurs outside hot reload.
+
+**Play-button FA bid resolution fixed** - normal `ADVANCE_DAY` now preserves `stateWithSim.faBidding`, `pendingFAToasts`, `pendingRFAOfferSheets`, and `pendingRFAMatchResolutions` in the shared `processTurn()` return patch. Before this, any single-day advance caller, including the global PlayButton and the Free Agents view header Sim Day button, could let `tickFAMarkets` resolve a bid and move the player, then drop the resolved market state and toast queue while composing the final UI state. This is why user bids appeared to vanish or players signed elsewhere with no accepted/rejected toast, while longer lazy-sim skips behaved correctly.
+
+**Active user-bid players protected from side-path mutations** - added `getActiveUserBidMarketPlayerIds()` and threaded it through offseason retirement, Oct 1 LOYAL retirement, and Oct 1 external routing. Players with unresolved user bids now stay in the FA market until `faMarketTicker` accepts/rejects/resolves them, instead of disappearing through retirement or overseas routing before `decidesOnDay`.
+
+**FA competing-offer badge aligned with modal filtering** - `FreeAgentCard.tsx` now uses the same `isPlausibleActiveMarket()` guard as `FAOffersModal.tsx`. Stale or implausible markets no longer show a “5 Competing Offers” button that opens to “No competing bids on record.”
+
+**User-created FA markets now get real counteroffers** - `SUBMIT_FA_BID` now seeds AI counter-bids immediately instead of creating a market with only the user's bid. `faMarketTicker` also repairs older user-only markets by adding AI counter-bids on the next FA tick, extends the decision day so the user can see the market, interrupts multi-day FA sim when those counteroffers appear, and the sim change detector now compares market bid contents so added offers actually commit to state.
+
+**Fresh market signings no longer bounce straight back to FA through trim** - `autoTrimOversizedRosters()` no longer lets the forced fallback waive a newly signed guaranteed player during the recent-signing grace window. This blocks the “player disappeared from my bid list, then came back as a FA” same-day sign-and-waive loop.
+
+**No-winner FA market close now notifies the user** - if a market containing a user bid resolves with no accepted offer, `faMarketTicker` now rejects the user bid with a visible pending FA toast instead of silently marking the market resolved and leaving the player as a plain FA.
+
+**Late-June expiring trade fleece blocked** - `isInPostDeadlinePreFAWindow()` now runs through the upcoming FA start instead of stopping on draft day, using the current calendar season so late-June/year-rollover saves still resolve the right deadline. Trade Finder, Trade Machine, AI-AI trades, and inbound Trading Block proposals now treat expiring contracts as walking until free agency opens; the Trade Machine evaluator hard-rejects any package containing those players instead of letting the AI dump contracts that expire days later. The trade summary/deadline gate remains draft-aware, so post-draft June trades still work while walking expirings stay blocked.
+
+**FA start now waits for delayed rollover** - free agency open/moratorium checks now use an effective FA start of `max(configured FA start, season rollover date)`, so custom or late playoff schedules cannot open bidding on July 1 while expiring contracts still belong to teams until a July 3 rollover. PlayButton, FA navigation, quick actions, direct signing, FA market ticking, and moratorium countdowns now all use that schedule-aware date. Rollover preserves active user-bid markets for players who become FAs at that rollover instead of clearing them silently, and market resolution re-checks cap/MLE/Bird legality on decision day so a bid that no longer fits after contracts update is rejected with a toast instead of creating negative cap space.
+
+**Verification:** `npm run build` passes. Vite still reports the existing dynamic/static import chunking warnings and large bundle warning.
+
+## Sessions 42-45 (May 1, 2026) - Year-4 sim freeze, offseason FA pipeline, and PlayButton cleanup
+
+**Year-4 compounding sim freeze fixed (Session 45)** - the external-league prospect pipeline now stops low-quality foreign teens from auto-declaring for the NBA draft, applies league-specific NBA flip thresholds, gates two-way contracts against foreign-born K2 < 75 prospects without NBA history, and prevents training-camp/non-guaranteed filler passes from catching real stars. This resolves Bugs L, M, and downstream Bug N.
+
+**External-league integrity tightened** - `externalLeagueSustainer.ts` now avoids over-rostered team targets, caps fallback placement, normalizes country lookups away from cities/states, and adds missing real-country name data. `PlayerBiosView` defensively displays USA for US city/state birth fields. This resolves Bugs Q and O.
+
+**Social/offseason perf repaired** - `SocialEngine` now exits early when an offseason day has no games, signings, or trades, and lazy sim only feeds NBA-active players into social generation. This resolves Bug P and removes the old `players=4904 -> posts=0` hotspot.
+
+**Offseason FA market pipeline fixed (Session 44)** - FA market resolution state now persists even when no player mutation occurs, user-bid resolution toasts queue independently, moratorium markets can open before resolving, LOYAL market blocking is limited to real long-service players, and player-option exercises preserve the option year instead of sending the player back to FA too early. This resolves Bugs D, E, G, H, and J.
+
+**Signing modal and salary seeding fixed** - re-sign/Bird-rights star offers now seed from market/max logic instead of the minimum-salary fallback, while salary helpers provide safer rating fallbacks. This resolves Bug I.
+
+**PlayButton and sim gates fixed (Session 43/44)** - active July-September FA is detected correctly, UTC-safe date parsing avoids one-day phase drift, free-agency "one week" and "one month" hops advance through lazy sim, and draft-event gates compare normalized dates so "Until draft" stops on the draft gate instead of auto-running the draft. This resolves Bugs B, C, and F.
+
+**TypeScript sweep status** - the stale Session 42 TODO handoff was removed from the active queue because the current tree now passes `npx tsc --noEmit`.
+
+**Verification:** `npx tsc --noEmit` was run after every bug commit and finished with zero new errors. Final `npm run build` passed. Browser-only debug-cheat acceptance (`WARPSLOW`, `STUCK`, `PHASEDUMP`, WARP console scan, manual two-way inspection) remains a live-UI verification step.
+
+## Session 41 (May 1, 2026) — FA bidding year-2 fixes, trade moratorium pipeline, stat rollup, draft nav, partial TS sweep
+
+**AI signing moratorium completed** — `AIFreeAgentHandler.ts:signPlayer` now stamps `tradeEligibleDate` via `computeTradeEligibleDate()` for every AI signing pass (1-5). Prior to this, AI deals fell back to the 30-day legacy window; they now respect the real Dec 15 / Jan 15 / 3-month CBA rule.
+
+**Year-2 FA bidding pipeline fixed** — four specific bugs in `freeAgencyBidding.ts` and `seasonRollover.ts`:
+1. `minContractStaticAmount` unit bug: was read as dollars (1.273) instead of millions — fixed to `× 1_000_000`.
+2. Hardcoded `luxuryTax = cap × 1.18` and `mleUSD = cap × 0.085` replaced with `getCapThresholds()` / `getMLEAvailability()`.
+3. `state.faBidding.markets` not cleared at rollover — unsigned year-1 FAs kept stale active-market entries that blocked year-2 market creation. `seasonRollover.ts` now writes `faBidding: { markets: [] }` and clears `pendingRFAMatchResolutions`.
+4. Surviving hardcoded cap multipliers in `faMarketTicker.ts` verified and removed.
+
+**Season stat rollup landed in `postProcessor.ts`** — `fourPm`/`fourPa` (→ `fp`/`fpa`/`fpp`), `dunks`, and `techs` are now accumulated from per-game stats into the season row. `efgPct` updated to include 4PT contribution. PlayerStatsView season tab now shows non-zero values for all three.
+
+**Trade moratorium badge in all three trade surfaces** — TradeMachineModal, TradeFinderView, and TradeDetailView now dim moratorium-locked players and show "Moratorium until YYYY-MM-DD" when `postSigningMoratoriumEnabled !== false`.
+
+**Draft-complete navigation** — `DraftSimulatorView` now routes back to draft results/history view after finalizing the draft instead of leaving the user on a blank draft board.
+
+**Action-union + All-Star prop types fixed** — core reducer action-union mismatches and `AllStarGameSection`/`AllStarTab` prop-type errors cleared.
+
+**TypeScript debt remaining (deferred to Session 42):** `PlayerBioContractTab`, `PlayerBioMoraleTab`, `RealStern`, `TeamOffice/pages/*`, `Dashboard`, `DraftLotteryView`, `NewChatModal`, `PlayerRatingsModal`, social context typings, `RotationService.ts`, test import paths. `npm run build` passes; `npx tsc --noEmit` still fails on these pre-existing files.
+
+## Session 40 (May 1, 2026) — Sim orchestration cleanup, dynamic clocks, toggle audit, exhibition rules, 4PT pipeline
+
+**Simulation orchestration refactored** — added `store/logic/simulationActionUtils.ts` so `gameLogic.ts` owns the high-level turn flow while helper functions decide sim-tick actions, transaction-only actions, calendar-event firing, and `SIMULATE_TO_DATE` day counts. The jump-to-date path preserves `stopBefore` semantics and no longer applies the old silent 30-day eager cap; long jump flows can route through lazy sim without landing on the wrong day.
+
+**Calendar-event sweep hardened** — post-sim auto-resolve firing now walks from the pre-sim season year through the post-sim season year so a long jump across rollover does not reuse one stale `seasonYear:event.key` namespace.
+
+**Dynamic clock/period display shipped** — added `utils/gameClock.ts` and wired the live watcher, live playback, hook skip controls, and box-score period grids to `leagueStats.quarterLength`, `numQuarters`, and `overtimeDuration`. Regulation headers now render dynamically via `getPeriodLabel()` instead of assuming Q1-Q4 and 12-minute quarters.
+
+**Exhibition rules consolidated** — added `services/allStar/exhibitionRules.ts` and moved All-Star, Rising Stars, and Celebrity game quarter/OT resolution through `resolveExhibitionRules()`. This keeps mirror-league-rules branching in one helper and makes future events easier to plug into the orchestrator.
+
+**4-point line end-to-end pass** — `fourPointLine` / `fourPointLineEnabled` now drives sim knobs, stat generation, live playback, box scores, player game logs, player stats, and team stats. `PlayerGameStats` carries `fourPm` / `fourPa`; season rows carry `fp` / `fpa` / `fpp`; `fgm`/`fga` include 4PTs; 2P and eFG math subtract/include 4PTs correctly. Calibration treats PBA 4PT data as a lower-skill reference floor: NBA volume stays strategic, but average and elite shooter accuracy sits above the PBA baseline when the line is enabled.
+
+**Rule aliases normalized** — added `utils/ruleFlags.ts` so old and new save fields resolve consistently for NBA Cup, 4PT, and RFA matching. Cup generation/self-heal/rollover/UI now use `isNbaCupEnabled()`, and AI/free-agency offer-sheet matching uses `isRfaMatchingEnabled()`.
+
+**TARGET 3 toggle audit**
+
+| Toggle / area | Status | Confirmed consumer |
+|---|---|---|
+| NBA Cup on/off (`nbaCupEnabled` / `inSeasonTournament`) | Fixed this pass | `utils/ruleFlags.ts:1`, `gameLogic.ts:299`, `autoResolvers.ts:68`, `simulationHandler.ts:342`, `seasonRollover.ts:943`, `NBACupView.tsx:1109` |
+| Apron master toggle (`apronsEnabled`) | Wired | `salaryUtils.ts:518`, `tradeExceptionUtils.ts:47`, `EconomyTab.tsx:234` short-circuit apron thresholds/restrictions when disabled. |
+| Bi-annual exception (`biannualEnabled` / `biannualAmount`) | Partial | UI/save fields exist (`useRulesState.ts:232`, `EconomyContractsSection.tsx:452`), but BAE is still not a distinct signing exception in the offer engine. Deferred with the existing CBA P2 item. |
+| Stretch provision | Wired for core waive/dead-money flow, partial for apron interaction | `playerActions.ts:450`, `simulationHandler.ts:1224`, `EconomyTab.tsx:517`. The 2nd-apron/TPE interaction remains deferred with the existing CBA P2 item. |
+| RFA matching | Fixed this pass | `ruleFlags.ts:14`, `AIFreeAgentHandler.ts:465`, `faMarketTicker.ts:208`; old `rfaEnabled` saves and new `rfaMatchingEnabled` saves both disable matching cleanly. |
+| All-Star format/mirror combinations | Wired, consolidated | `GameContext.tsx:506`, `AllStarWeekendOrchestrator.ts:131`, `exhibitionRules.ts:11` keep migrated settings and event rule packs aligned. |
+| Rising Stars format/elimination/custom QL | Wired, consolidated | `AllStarWeekendOrchestrator.ts:214`, `AllStarWeekendOrchestrator.ts:630`, `exhibitionRules.ts:23`; round-robin remains the intentionally deferred format path from Session 36. |
+| `isCupTBD` placeholders | Verified | Regular-season scans continue excluding TBD slots in schedule generation/sim runners; Cup materialization remains in `scheduleInjector.ts`. |
+| `gamesPerSeason` schedule semantics | Deferred | Save/UI wiring shipped in Session 39; generator semantics still need a separate scheduler pass. |
+
+**Files touched in Session 40:** `utils/gameClock.ts`; `utils/ruleFlags.ts`; `store/logic/simulationActionUtils.ts`; `store/logic/gameLogic.ts`; `store/logic/turn/simulationHandler.ts`; `services/logic/autoResolvers.ts`; `services/logic/seasonRollover.ts`; `services/AIFreeAgentHandler.ts`; `services/faMarketTicker.ts`; `services/allStar/exhibitionRules.ts`; `services/allStar/AllStarWeekendOrchestrator.ts`; `services/allStar/AllStarCelebrityGameSim.ts`; `services/simulation/**`; `hooks/useLiveGame.ts`; `components/shared/GameSimulatorScreen.tsx`; `components/modals/BoxScoreModal.tsx`; `components/central/view/PlayerStatsView.tsx`; `components/central/view/PlayerBioGameLogTab.tsx`; `components/team-stats/TeamStatsView.tsx`; commissioner rule defaults/scoring UI; `types.ts`; `TODO.md`.
+
+**Verification:** `npm run build` passes. Vite still reports the pre-existing dynamic/static import chunking warnings and large bundle warning.
+
 ## Session 39 (Apr 30, 2026) — Commissioner settings to simulator wiring audit
 
 **Commissioner game-rule settings now reach the daily simulator** — `simulationRunner.ts` now passes the full `leagueStats` object through `simulationService.ts` into `GameSimulator.simulateDay` instead of a small hand-picked subset. This unblocks existing engine reads for timing violations, court geometry, foul toggles, overtime, and scoring/court settings.

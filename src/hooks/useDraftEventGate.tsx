@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useGame } from '../store/GameContext';
-import { getDraftLotteryDate, getDraftDate, toISODateString } from '../utils/dateUtils';
+import { getDraftLotteryDate, getDraftDate, isDraftBlockedByUnresolvedPlayoffs, toISODateString } from '../utils/dateUtils';
 import { DraftEventGateModal } from '../components/modals/DraftEventGateModal';
 import { normalizeDate } from '../utils/helpers';
 
@@ -20,6 +20,7 @@ export function useDraftEventGate(options: DraftEventGateOptions = {}) {
     const ls = state.leagueStats as any;
     const seasonYear: number = ls?.year ?? 2026;
     const todayStr = normalizeDate(state.date);
+    const draftBlockedByPlayoffs = isDraftBlockedByUnresolvedPlayoffs(state);
 
     // Lottery: only block if user's team is a lottery team (no playoff clinch)
     const lotteryStr = toISODateString(getDraftLotteryDate(seasonYear, ls));
@@ -32,7 +33,7 @@ export function useDraftEventGate(options: DraftEventGateOptions = {}) {
 
     // Draft: all teams participate
     const draftStr = toISODateString(getDraftDate(seasonYear, ls));
-    if (todayStr === draftStr && !state.draftComplete) {
+    if (todayStr === draftStr && !state.draftComplete && !draftBlockedByPlayoffs) {
       return 'draft';
     }
 

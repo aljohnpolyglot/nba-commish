@@ -4,6 +4,11 @@ import { activeClubDebuffs } from '../services/simulation/StatGenerator/helpers'
 
 const STRENGTH_DEBUFF_AMOUNTS = { heavy: 5, moderate: 3, mild: 1 } as const;
 
+export function getTrainingFatigueRatingMultiplier(player: Pick<Player, 'trainingFatigue'> | any): number {
+    const fatigue = Math.max(0, Math.min(100, Number(player?.trainingFatigue ?? 0)));
+    return Math.max(0.85, 1 - fatigue / 200);
+}
+
 export const calculatePlayerOverallForYear = (player: NBAGMPlayer, year: number): number => {
     if (!player || !player.ratings || player.ratings.length === 0) return 50;
     const yearRating = player.ratings.find(r => r.season === year);
@@ -140,27 +145,65 @@ export const calculateTeamStrength = (teamId: number, players: Player[], overrid
     const injuryFingerprint = !overridePlayers
       ? players.filter(p => p.tid === teamId && p.injury && p.injury.gamesRemaining > 0).map(p => p.internalId).sort().join(',')
       : '';
-    const cacheKey = !overridePlayers ? `${teamId}-${players.length}-${players[0]?.internalId}-${injuryFingerprint}` : null;
+    const fatigueFingerprint = !overridePlayers
+      ? players.filter(p => p.tid === teamId && (p.trainingFatigue ?? 0) > 0).map(p => `${p.internalId}:${Math.round(p.trainingFatigue ?? 0)}`).sort().join(',')
+      : '';
+    const cacheKey = !overridePlayers ? `${teamId}-${players.length}-${players[0]?.internalId}-${injuryFingerprint}-${fatigueFingerprint}` : null;
     if (cacheKey && teamStrengthCache.has(cacheKey)) {
         return teamStrengthCache.get(cacheKey)!;
     }
 
     const teamPlayers = overridePlayers || players.filter(p => p.tid === teamId && (!p.injury || p.injury.gamesRemaining <= 0)).sort((a,b) => b.overallRating - a.overallRating);
     if(teamPlayers.length === 0) return 40;
-    
-    const top8Players = teamPlayers.slice(0, 8);
-    const top8_2k = top8Players.map(p => {
+
+    // Quality-aware pool: include players within 20 OVR of the best player (max 10).
+    // This means a deep team with 9 players all at 83+ gets all 9 contributing to
+    // team strength, rather than being arbitrarily cut at 8.
+    const star1Ovr = teamPlayers[0].overallRating;
+    const qualityCutoff = Math.max(50, star1Ovr - 20);
+    const qualityPool = teamPlayers.filter(p => p.overallRating >= qualityCutoff).slice(0, 10);
+
+    // Derive league-avg PER from the full player list for the PER blend below.
+    const leaguePERStats = players
+      .flatMap(p => (p.stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0))
+      .filter((s: any) => (s.per ?? 0) > 0);
+    const leaguePERAvg = leaguePERStats.length > 0
+      ? leaguePERStats.reduce((a: number, s: any) => a + (s.per as number), 0) / leaguePERStats.length
+      : 15;
+
+    const top8_2k = qualityPool.map(p => {
         const r = p.ratings?.[p.ratings.length - 1];
-        const base = convertTo2KRating(p.overallRating, r?.hgt ?? 50, r?.tp);
+        let base = convertTo2KRating(p.overallRating, r?.hgt ?? 50, r?.tp);
+
+        // Blend in current-season PER for qualified players (>10 GP, >12 MPG).
+        // Finds the most recent non-playoff season with games played.
+        const seasons = (p.stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0);
+        if (seasons.length > 0) {
+          const latest = seasons[seasons.length - 1] as any;
+          const gp = latest.gp ?? 0;
+          const mpg = gp > 0 ? (latest.min ?? 0) / gp : 0;
+          if (gp > 10 && mpg > 12 && (latest.per ?? 0) > 0) {
+            const perDelta = (latest.per as number) - leaguePERAvg;
+            // Blend up to ±3 K2 points based on PER vs league avg (perDelta/5 = 3pts at +15 PER)
+            base = Math.max(40, Math.min(99, base + Math.max(-3, Math.min(3, perDelta / 5))));
+          }
+        }
+
+        base *= getTrainingFatigueRatingMultiplier(p);
+
         const severity = activeClubDebuffs.get(String(p.internalId));
         return severity ? Math.max(40, base - STRENGTH_DEBUFF_AMOUNTS[severity]) : base;
     });
-    
-    // Weighted for Superstar impact (0.32 weight for the #1 guy)
-    const weights = [0.32, 0.22, 0.15, 0.10, 0.08, 0.06, 0.04, 0.03];
+
+    // Star-heavy weights, normalized to actual pool size.
+    const BASE_WEIGHTS = [0.32, 0.22, 0.15, 0.10, 0.08, 0.06, 0.04, 0.03, 0.02, 0.01];
+    const rawWeights = BASE_WEIGHTS.slice(0, top8_2k.length);
+    const totalWeightRaw = rawWeights.reduce((a, b) => a + b, 0);
+    const weights = rawWeights.map(w => w / totalWeightRaw);
+
     let weightedSum = 0;
     let totalWeight = 0;
-    
+
     for (let i = 0; i < top8_2k.length; i++) {
         weightedSum += top8_2k[i] * weights[i];
         totalWeight += weights[i];
@@ -198,17 +241,36 @@ export const calculateTeamStrength = (teamId: number, players: Player[], overrid
 export function calculateTeamStrengthWithMinutes(
   players: Player[],
   minutes: Record<string, number>,
+  currentSeason?: number,
+  proficiencyBoost = 0,
 ): number {
   const active = players.filter(p => (minutes[p.internalId] ?? 0) > 0);
   if (active.length === 0) return 40;
 
-  // Per-player 2K with debuffs
-  const k2: Array<{ id: string; rating: number; mins: number }> = active.map(p => {
+  // Per-player 2K with debuffs + in-season PER adjustment
+  const k2: Array<{ id: string; rating: number; mins: number; tp: number; pss: number; hgt: number; reb: number }> = active.map(p => {
     const r = p.ratings?.[p.ratings.length - 1];
     const base = convertTo2KRating(p.overallRating, r?.hgt ?? 50, r?.tp);
     const severity = activeClubDebuffs.get(String(p.internalId));
-    const rating = severity ? Math.max(40, base - STRENGTH_DEBUFF_AMOUNTS[severity]) : base;
-    return { id: p.internalId, rating, mins: minutes[p.internalId] ?? 0 };
+    let rating = severity ? Math.max(40, base - STRENGTH_DEBUFF_AMOUNTS[severity]) : base;
+
+    // Blend in current-season PER once there are 10+ games of data.
+    // perWeight ramps 0→1 from 10 to 30 games, then stays at 1.
+    const seasonStats = currentSeason != null
+      ? p.stats?.find(s => !s.playoffs && s.season === currentSeason)
+      : p.stats?.filter(s => !s.playoffs && (s.gp ?? 0) > 0).at(-1);
+    if (seasonStats && (seasonStats.gp ?? 0) >= 10) {
+      const perWeight = Math.min(1, (seasonStats.gp - 10) / 20);
+      const perDelta = Math.max(-6, Math.min(6, ((seasonStats.per ?? 15) - 15) / 10 * 6));
+      rating = Math.max(40, rating + perDelta * perWeight);
+    }
+
+    rating = Math.max(40, rating * getTrainingFatigueRatingMultiplier(p));
+
+    return {
+      id: p.internalId, rating, mins: minutes[p.internalId] ?? 0,
+      tp: r?.tp ?? 50, pss: r?.pss ?? 50, hgt: r?.hgt ?? 50, reb: r?.reb ?? 50,
+    };
   });
 
   // Pure minutes-weighted average. Cap per-player share at 20% (≈48/240) so a
@@ -239,7 +301,19 @@ export function calculateTeamStrengthWithMinutes(
     starAdjustment *= Math.min(1, byRating[0].mins / 30);
   }
 
-  let finalStrength = baseStrength + starAdjustment;
+  // Spacing synergy — 3+ shooters (tp > 60) getting real minutes
+  const spacers = k2.filter(x => x.tp > 60 && x.mins > 15).length;
+  const spacingBonus = spacers >= 4 ? 3.5 : spacers >= 3 ? 2.0 : 0;
+
+  // Playmaking synergy — elite passers (pss > 65) running the offense
+  const playmakers = k2.filter(x => x.pss > 65 && x.mins > 20).length;
+  const playmakingBonus = playmakers >= 2 ? 2.5 : playmakers >= 1 ? 1.5 : 0;
+
+  // Rebounding synergy — bigs (hgt+reb composite > 62) crashing the boards
+  const rebounders = k2.filter(x => (x.hgt * 2 + x.reb * 2) / 4 > 62 && x.mins > 12).length;
+  const reboundingBonus = rebounders >= 4 ? 2.0 : rebounders >= 3 ? 1.0 : 0;
+
+  let finalStrength = baseStrength + starAdjustment + spacingBonus + playmakingBonus + reboundingBonus + proficiencyBoost;
   finalStrength = (finalStrength - 85) * 1.6 + 85;
   return Math.max(50, Math.min(99, Math.round(finalStrength)));
 }

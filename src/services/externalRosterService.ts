@@ -92,12 +92,14 @@ function computeLeagueOvr(rawRatings: any, league: string): number {
 }
 
 export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], teams: NonNBATeam[] }> => {
-    console.log('RosterService: Fetching Euroleague roster (euroleagueratings + euroleaguebio)...');
+    console.log('RosterService: Fetching Euroleague roster (euroleagueratings + euroleaguebio + teamdata)...');
     try {
         const BASE = 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/';
-        const [ratingsRes, bioRes] = await Promise.all([
+        const EURO_TEAMS_GIST = 'https://gist.githubusercontent.com/aljohnpolyglot/7ec945dd1258cfb914cd0f5f1e420100/raw';
+        const [ratingsRes, bioRes, teamDataRes] = await Promise.all([
             fetch(BASE + 'euroleagueratings'),
             fetch(BASE + 'euroleaguebio'),
+            fetch(EURO_TEAMS_GIST),
         ]);
         if (!ratingsRes.ok) {
             console.error('Failed to fetch Euroleague ratings');
@@ -107,6 +109,17 @@ export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], t
         const data = await ratingsRes.json();
         const bioArr: any[] = bioRes.ok ? await bioRes.json() : [];
 
+        // Build a lookup map from the supplemental team gist (tid → team extras)
+        const teamExtras = new Map<number, any>();
+        if (teamDataRes.ok) {
+            try {
+                const td = await teamDataRes.json();
+                (td.teams || []).forEach((t: any) => {
+                    if (t.tid !== undefined) teamExtras.set(t.tid, t);
+                });
+            } catch { /* non-fatal */ }
+        }
+
         const bioMap = new Map<string, any>();
         bioArr.forEach((b: any) => { if (b.name) bioMap.set(b.name.toLowerCase(), b); });
 
@@ -115,6 +128,25 @@ export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], t
 
         if (data.teams && Array.isArray(data.teams)) {
             data.teams.forEach((t: any) => {
+                const extra = teamExtras.get(t.tid);
+                teams.push({
+                    tid: t.tid + 1000,
+                    cid: t.cid ?? extra?.cid,
+                    did: t.did ?? extra?.did,
+                    region: t.region || extra?.region,
+                    name: t.name || extra?.name,
+                    abbrev: t.abbrev || extra?.abbrev,
+                    pop: t.pop || extra?.pop || 1.0,
+                    stadiumCapacity: t.stadiumCapacity || extra?.stadiumCapacity,
+                    imgURL: t.imgURL || extra?.imgURL,
+                    colors: t.colors || extra?.colors,
+                    league: 'Euroleague',
+                });
+            });
+        } else if (teamExtras.size > 0) {
+            // ratings gist has no teams array — build from supplemental gist directly
+            teamExtras.forEach((t) => {
+                if (t.disabled) return;
                 teams.push({
                     tid: t.tid + 1000,
                     cid: t.cid,
@@ -153,15 +185,15 @@ export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], t
                 imgURL: resolveImgURL(item.imgURL, bio?.image),
                 pos: item.pos || 'GF',
                 hgt: item.hgt,
-                weight: item.weight,
-                born: item.born,
+                weight: item.weight || bio?.weight,
+                born: item.born || bio?.born,
                 draft: item.draft,
-                college: item.college,
+                college: item.college || bio?.college,
                 contract: item.contract,
                 injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
                 status: 'Euroleague',
                 hof: false,
-                jerseyNumber: extractJerseyNumber(item),
+                jerseyNumber: extractJerseyNumber(item) ?? (bio ? extractJerseyNumber(bio) : undefined),
             };
             players.push(player);
         });

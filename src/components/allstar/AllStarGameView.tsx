@@ -1,5 +1,6 @@
 import React from 'react';
 import { Star, Trophy, Zap } from 'lucide-react';
+import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 import { normalizeDate, getPlayerHeadshot, getTeamLogo, extractTeamId, extractNbaId } from '../../utils/helpers';
 
 interface AllStarGameViewProps {
@@ -59,16 +60,17 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
                   const team = state.teams?.find((t: any) => t.abbrev === p.teamAbbrev);
                   const teamId = p.teamNbaId || (team ? extractTeamId(team.logoUrl, p.teamAbbrev) : null) || 1610612737;
                   const teamColor = team?.colors?.[0] || '#64748b';
+                  const fullPlayer = state.players?.find((pl: any) => pl.internalId === p.playerId);
 
                   return (
                     <div key={p.playerId} className="px-6 py-3 flex items-center justify-between hover:bg-slate-800/20 transition-colors">
                       <div className="flex items-center gap-4">
                         <div className="relative shrink-0">
-                          <div 
+                          <div
                             className="w-9 h-9 rounded-full overflow-hidden bg-slate-800 border-2"
                             style={{ borderColor: `${teamColor}40` }}
                           >
-                            <img 
+                            <img
                               src={getPlayerHeadshot(p.playerId, p.nbaId)}
                               className="w-full h-full object-cover"
                               alt={p.playerName}
@@ -86,7 +88,11 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
                         </div>
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-slate-200 font-bold">{p.playerName}</span>
+                            <span className="text-sm text-slate-200 font-bold">
+                              {fullPlayer
+                                ? <PlayerNameWithHover player={fullPlayer}>{p.playerName}</PlayerNameWithHover>
+                                : p.playerName}
+                            </span>
                             <img 
                               src={getTeamLogo(teamId)}
                               className="w-4 h-4 object-contain"
@@ -117,6 +123,7 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
     .sort((a, b) => b.pts - a.pts || b.reb - a.reb || b.ast - a.ast)
     .slice(0, 10);
 
+  const mvpPlayer = topScorers[0] ? state.players?.find((pl: any) => pl.internalId === topScorers[0].playerId) : null;
   const isHomeWinner = boxScore.homeScore > boxScore.awayScore;
 
   return (
@@ -154,7 +161,9 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
             <div className="flex flex-col items-center gap-1">
               <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Game MVP</div>
               <div className="px-6 py-2 bg-white text-black rounded-full text-sm font-black uppercase tracking-tight shadow-xl shadow-white/10">
-                {topScorers[0].name}
+                {mvpPlayer
+                  ? <PlayerNameWithHover player={mvpPlayer}>{topScorers[0].name}</PlayerNameWithHover>
+                  : topScorers[0].name}
               </div>
             </div>
           )}
@@ -216,7 +225,11 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <div className="text-sm font-bold text-slate-200 truncate">{p.name}</div>
+                            <div className="text-sm font-bold text-slate-200 truncate">
+                            {player
+                              ? <PlayerNameWithHover player={player}>{p.name}</PlayerNameWithHover>
+                              : p.name}
+                          </div>
                             {teamId && (
                               <img 
                                 src={getTeamLogo(teamId)}

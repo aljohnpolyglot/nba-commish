@@ -48,6 +48,8 @@ interface EconomyTabProps {
     setFreezePickAt2ndApron: (val: boolean) => void;
     restrictTPEProvenanceOver2ndApron: boolean;
     setRestrictTPEProvenanceOver2ndApron: (val: boolean) => void;
+    postSigningMoratoriumEnabled: boolean;
+    setPostSigningMoratoriumEnabled: (val: boolean) => void;
     twoWayContractsEnabled: boolean;
     setTwoWayContractsEnabled: (val: boolean) => void;
     nonGuaranteedContractsEnabled: boolean;
@@ -443,6 +445,13 @@ export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
                             subtitle="Teams projected over the first apron cannot acquire a same-day signing."
                             checked={props.restrictSignAndTradeAcquisitionOver1stApron}
                             onChange={props.setRestrictSignAndTradeAcquisitionOver1stApron}
+                        />
+
+                        <ToggleRow
+                            title="Post-Signing Trade Moratorium"
+                            subtitle="Re-signed/extended players locked per real NBA CBA: Dec 15 (offseason signings), Jan 15 (Bird re-signs +120% raise or 1-year), 3-month rule (post-Sept 15), 6-month rule (extensions). Does NOT apply to sign-and-trade, min, two-way, or 10-day deals."
+                            checked={props.postSigningMoratoriumEnabled}
+                            onChange={props.setPostSigningMoratoriumEnabled}
                         />
 
                         <ToggleRow

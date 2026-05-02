@@ -4,6 +4,22 @@ import { Zap, ChevronRight } from 'lucide-react';
 import { NBAPlayer } from '../../types';
 import { ThreePointContest } from '../../components/allstar/allstarevents/threepoint/ThreePointContest';
 import { useThreePointPicker, TPT_MAX_PICKS, TPT_MIN_PICKS } from './useThreePointPicker';
+import { calculateK2 } from '../../services/simulation/convert2kAttributes';
+
+const getK2ThreePoint = (p: NBAPlayer): number => {
+  const r: any = Array.isArray(p.ratings) ? p.ratings[p.ratings.length - 1] : {};
+  const k2 = calculateK2({
+    hgt: r.hgt ?? 50, stre: r.stre ?? 50, spd: r.spd ?? 50, jmp: r.jmp ?? 50, endu: 70,
+    ins: r.ins ?? 50, dnk: r.dnk ?? 50,
+    ft: Math.min(99, Math.round((r.fg ?? 50) * 0.9 + 5)),
+    fg: r.fg ?? 50, tp: r.tp ?? 50,
+    oiq: Math.min(99, Math.round((r.drb ?? 50) * 0.4 + (r.fg ?? 50) * 0.3 + (r.tp ?? 50) * 0.2 + 10)),
+    diq: r.def ?? r.diq ?? 50, drb: r.drb ?? 50,
+    pss: Math.min(99, Math.round((r.drb ?? 50) * 0.7 + 15)),
+    reb: r.reb ?? 50, blk: r.blk ?? 50,
+  }, { pos: (p as any).pos ?? 'F', heightIn: (p as any).hgt ?? 78, weightLbs: (p as any).weight ?? 220, age: (p as any).age ?? 26 });
+  return Math.round(k2.OS.sub[2]);
+};
 
 const FALLBACK_HEADSHOT = 'https://www.nba.com/assets/img/default-headshot.png';
 
@@ -15,16 +31,27 @@ function PickerGrid({
   onToggle: (id: string) => void;
 }) {
   const [visible, setVisible] = useState(80);
+  const [search, setSearch] = useState('');
+  const filtered = search.trim()
+    ? players.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
+    : players;
   return (
     <div className="space-y-4">
+      <input
+        type="text"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        placeholder="Search player..."
+        className="w-full bg-zinc-900 border border-zinc-700 text-white text-sm px-4 py-2 rounded placeholder-zinc-600 focus:outline-none focus:border-indigo-500"
+      />
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        {players.slice(0, visible).map(p => {
+        {(search ? filtered : filtered.slice(0, visible)).map(p => {
           const r: any = Array.isArray(p.ratings) ? p.ratings[p.ratings.length - 1] : {};
           const sel = selectedIds.has(p.internalId);
           const stat = p.stats?.find(s => s.season === 2025 && !s.playoffs) ?? p.stats?.[p.stats.length - 1];
           const gp = stat?.gp ?? 0;
           const tpp = stat && gp > 0 ? ((stat as any).tpp ?? 0) : 0;
-          const lastName = p.name.split(' ').slice(-1)[0] ?? p.name;
+          const lastName = p.name;
           return (
             <button
               key={p.internalId}
@@ -44,7 +71,7 @@ function PickerGrid({
                 <div className="font-black text-[10px] uppercase italic truncate">{lastName}</div>
                 <div className="text-[9px] text-zinc-500">{(p as any).pos ?? ''}</div>
                 <div className="flex justify-center gap-2 mt-1">
-                  <span className="text-[9px] text-indigo-400 font-bold">3P {r?.tp ?? '--'}</span>
+                  <span className="text-[9px] text-indigo-400 font-bold">3P {getK2ThreePoint(p)}</span>
                   {tpp > 0 && <span className="text-[9px] text-zinc-500">{(tpp * 100).toFixed(1)}%</span>}
                 </div>
               </div>
@@ -57,7 +84,7 @@ function PickerGrid({
           );
         })}
       </div>
-      {visible < players.length && (
+      {!search && visible < players.length && (
         <button
           onClick={() => setVisible(v => v + 80)}
           className="w-full py-2 bg-zinc-900 border border-zinc-800 text-zinc-500 text-xs font-bold uppercase tracking-widest hover:text-white"
@@ -119,7 +146,7 @@ export default function ThreePointContestMiniGame() {
             {selectedIds.size > 0 && (
               <div className="flex gap-3 mb-6 overflow-x-auto pb-2">
                 {selectedPlayers.map(p => {
-                  const lastName = p.name.split(' ').slice(-1)[0] ?? p.name;
+                  const lastName = p.name;
                   return (
                     <div
                       key={p.internalId}

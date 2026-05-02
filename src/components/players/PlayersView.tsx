@@ -19,7 +19,7 @@ export const PlayersView: React.FC = () => {
   const [selectedPlayerContact, setSelectedPlayerContact] = useState<Contact | null>(null);
   
   const [personSelectorOpen, setPersonSelectorOpen] = useState(false);
-  const [personSelectorType, setPersonSelectorType] = useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'sabotage'>('general');
+  const [personSelectorType, setPersonSelectorType] = useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'sabotage' | 'club' | 'endorse_hof' | 'waive' | 'fire'>('general');
 
   // Sign / re-sign / waive are delegated to the shared quick-actions hook.
   const quick = usePlayerQuickActions();
@@ -79,7 +79,7 @@ export const PlayersView: React.FC = () => {
     if (actionType === 'contact') {
       setSelectedPlayerContact(contact);
     } else {
-      setPersonSelectorType(actionType);
+      setPersonSelectorType(actionType as typeof personSelectorType);
       setSelectedPlayerContact(contact); // Temporarily store to pass as preSelected
       setPersonSelectorOpen(true);
     }
@@ -102,6 +102,41 @@ export const PlayersView: React.FC = () => {
       });
       setSelectedPlayerContact(null);
     }
+  };
+
+  const handlePersonSelected = async (contacts: Contact[], reason?: string, amount?: number, location?: string, duration?: string) => {
+    setPersonSelectorOpen(false);
+    setSelectedPlayerContact(null);
+
+    let actionType = '';
+    if (personSelectorType === 'suspension') actionType = 'SUSPEND_PLAYER';
+    if (personSelectorType === 'drug_test') actionType = 'DRUG_TEST_PERSON';
+    if (personSelectorType === 'dinner') actionType = 'INVITE_DINNER';
+    if (personSelectorType === 'movie') actionType = 'INVITE_DINNER';
+    if (personSelectorType === 'fine') actionType = 'FINE_PERSON';
+    if (personSelectorType === 'bribe') actionType = 'BRIBE_PERSON';
+    if (personSelectorType === 'leak_scandal') actionType = 'LEAK_SCANDAL';
+    if (personSelectorType === 'give_money') actionType = 'GIVE_MONEY';
+    if (personSelectorType === 'sabotage') actionType = 'SABOTAGE_PLAYER';
+    if (personSelectorType === 'club') actionType = 'GO_TO_CLUB';
+    if (personSelectorType === 'endorse_hof') actionType = 'ENDORSE_HOF';
+    if (personSelectorType === 'waive') actionType = 'WAIVE_PLAYER';
+    if (personSelectorType === 'fire') actionType = 'FIRE_PERSONNEL';
+
+    await dispatchAction({
+      type: actionType as any,
+      payload: {
+        targetName: contacts.map(c => c.name).join(', '),
+        targetRole: contacts.map(c => c.title).join(', '),
+        targetId: contacts.map(c => c.id).join(','),
+        reason,
+        amount,
+        duration,
+        location,
+        count: contacts.length,
+        contacts,
+      },
+    });
   };
 
   if (viewingBioPlayer) {
@@ -155,11 +190,12 @@ export const PlayersView: React.FC = () => {
         <PersonSelectorModal
           title=""
           actionType={personSelectorType}
+          onSelect={handlePersonSelected}
           onClose={() => {
             setPersonSelectorOpen(false);
             setSelectedPlayerContact(null);
           }}
-          preSelectedPerson={selectedPlayerContact || undefined}
+          preSelectedContact={selectedPlayerContact || undefined}
         />
       )}
 

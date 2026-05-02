@@ -48,13 +48,15 @@ export function getPlayerImage(player: NBAPlayer): string | undefined {
     }
     return player.imgURL;
   }
-  // External league players: no CDN fallback — show initials instead of passport-style headshot.
-  if (EXTERNAL_STATUSES.has(player.status ?? '')) return undefined;
-  // player-photos.json by srID (Basketball-Reference slug) — covers historical / retired players.
+  // player-photos.json by srID (Basketball-Reference slug) — covers historical / retired players,
+  // and real NBA players who got demoted to external leagues (e.g. Emoni Bates → G-League).
+  // Try this BEFORE the external-status short-circuit so demoted real players keep their photo.
   if (player.srID) {
     const fromPhotos = getPhotoBySlug(player.srID);
     if (fromPhotos) return fromPhotos;
   }
+  // Fictional external-league rosters: no CDN fallback — show initials instead of passport-style headshot.
+  if (EXTERNAL_STATUSES.has(player.status ?? '')) return undefined;
   // NBA players without a BBGM portrait: try the official NBA CDN.
   const nbaId = extractNbaId('', player.name);
   if (nbaId) {

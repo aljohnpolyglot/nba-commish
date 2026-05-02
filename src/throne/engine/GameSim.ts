@@ -1,15 +1,64 @@
-import { Player, GameState, GameSettings, GameStatus, LogEntry, PlayerStats, PossessionResult } from '../types/throne';
+import { Player, GameState, GameSettings, GameStatus, LogEntry, PlayerStats } from '../types/throne';
+import {
+  dunkMake, insideMake, midMake, threeCreatorMake, threeCatchMake,
+  insideMiss, midMiss, threeMiss,
+  blockLine, turnoverLine, stealLine, selfTurnoverLine,
+  offReboundSuffix, defReboundSuffix,
+  streakSuffix,
+  gameEndDominant, gameEndClose, gameEndNailBiter,
+} from './commentary';
+import { calculateK2 } from '../../services/simulation/convert2kAttributes';
 
-const emptyStats = (): PlayerStats => ({ fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, pts: 0, reb: 0, ast: 0, streak: 0 });
+type K2 = ReturnType<typeof calculateK2>;
+
+const emptyStats = (): PlayerStats => ({ fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, streak: 0 });
 
 const clamp = (v: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
+
+function buildK2(p: Player): K2 {
+  const r = p.ratings;
+  const hgt = r.hgt ?? 50;
+  const ins = r.ins ?? 50;
+  const dnk = r.dnk ?? 50;
+  const jmp = r.jmp ?? 50;
+  const fg = r.fg ?? 50;
+  const tp = r.tp ?? 50;
+  const drb = r.drb ?? 50;
+  const spd = r.spd ?? 50;
+  const def = r.def ?? 50;
+  const blk = r.blk ?? 50;
+  const reb = r.reb ?? 50;
+  return calculateK2({
+    hgt,
+    stre: Math.min(99, Math.round(ins * 0.4 + dnk * 0.4 + jmp * 0.2)),
+    spd,
+    jmp,
+    endu: 70,
+    ins,
+    dnk,
+    ft: Math.min(99, Math.round(fg * 0.9 + 5)),
+    fg,
+    tp,
+    oiq: Math.min(99, Math.round(drb * 0.4 + fg * 0.3 + tp * 0.2 + 10)),
+    diq: def,
+    drb,
+    pss: Math.min(99, Math.round(drb * 0.7 + 15)),
+    reb,
+    blk,
+  } as any, { pos: p.pos, heightIn: 68 + Math.round(hgt * 0.22), weightLbs: 215, age: 27 });
+}
 
 export class GameSim {
   private state: GameState;
   private settings: GameSettings;
+  private p1K2: K2;
+  private p2K2: K2;
+  private playSequence: number = 0;
 
   constructor(player1: Player, player2: Player, firstPossessionId: string, settings: GameSettings) {
     this.settings = settings;
+    this.p1K2 = buildK2(player1);
+    this.p2K2 = buildK2(player2);
     this.state = {
       player1, player2,
       score1: 0, score2: 0,
@@ -28,88 +77,113 @@ export class GameSim {
     return { ...this.state, p1Stats: { ...this.state.p1Stats }, p2Stats: { ...this.state.p2Stats } };
   }
 
-  nextPossession(): LogEntry | null {
-    if (this.state.status === GameStatus.FINISHED) return null;
+  getK2(): { p1K2: K2; p2K2: K2 } {
+    return { p1K2: this.p1K2, p2K2: this.p2K2 };
+  }
+
+  nextPossession(): LogEntry[] {
+    if (this.state.status === GameStatus.FINISHED) return [];
     if (this.state.status === GameStatus.PRE_GAME) this.state.status = GameStatus.IN_PROGRESS;
 
     const { player1, player2, currentPossessionPlayerId } = this.state;
     const isP1Off = currentPossessionPlayerId === player1.id;
     const off = isP1Off ? player1 : player2;
     const def = isP1Off ? player2 : player1;
+    const offK2 = isP1Off ? this.p1K2 : this.p2K2;
+    const defK2 = isP1Off ? this.p2K2 : this.p1K2;
     const offStats = isP1Off ? this.state.p1Stats : this.state.p2Stats;
     const defStats = isP1Off ? this.state.p2Stats : this.state.p1Stats;
 
     this.state.possessionCount++;
 
-    const r = off.ratings;
-    const dr = def.ratings;
+    // K2 sub-attributes used for probabilities
+    // DF.sub[2] = steal, PL.sub[1] = ball handle, IS.sub[2] = dunk, IS.sub[0] = layup
+    // OS.sub[1] = mid-range, OS.sub[2] = three-point, DF.sub[0] = interior def, DF.sub[1] = perimeter def
+    // RB.sub[0] = off reb, RB.sub[1] = def reb, AT.sub[3] = athleticism
+    const stealK2 = defK2.DF?.sub?.[2] ?? 65;
+    const bhK2 = offK2.PL?.sub?.[1] ?? 65;
+    const dunkK2 = offK2.IS?.sub?.[2] ?? 50;
+    const layupK2 = offK2.IS?.sub?.[0] ?? 65;
+    const midK2 = offK2.OS?.sub?.[1] ?? 65;
+    const threeK2 = offK2.OS?.sub?.[2] ?? 65;
+    const blkK2 = defK2.DF?.sub?.[3] ?? 60;
+    const intDefK2 = defK2.DF?.sub?.[0] ?? 65;
+    const periDefK2 = defK2.DF?.sub?.[1] ?? 65;
+    const offRebK2 = offK2.RB?.sub?.[0] ?? 60;
+    const defRebK2 = defK2.RB?.sub?.[1] ?? 65;
+    const athleticK2 = offK2.AT?.sub?.[3] ?? 65;
 
-    // Turnover?
-    const toProb = clamp(0.12 - (r.drb - dr.def) / 600);
+    // Turnover — based on ball handle vs steal rating
+    const toProb = clamp(0.06 + (stealK2 - 70) * 0.004 - (bhK2 - 70) * 0.003, 0.02, 0.18);
     if (Math.random() < toProb) {
       this.state.currentPossessionPlayerId = def.id;
       offStats.streak = 0;
-      const log = this.makeLog(`${off.lastName} loses the handle — ${def.lastName} takes over`, off.id);
-      this.updateWinProb();
-      return log;
+      // Separate forced steal from unforced turnover
+      const isSteal = Math.random() < clamp(0.3 + (stealK2 - bhK2) / 60, 0.1, 0.85);
+      if (isSteal) {
+        defStats.stl++;
+        return [this.makeLog(stealLine(def.lastName, off.lastName), def.id, 'steal')];
+      } else {
+        return [this.makeLog(selfTurnoverLine(off.lastName), off.id, 'turnover')];
+      }
     }
 
-    // Block?
-    const blkProb = clamp((dr.blk + dr.hgt * 0.3 - r.ins * 0.2 - r.hgt * 0.2) / 300);
-    const isInsideTry = Math.random() < clamp(r.ins / (r.ins + r.fg + r.tp + 0.001));
+    // Block attempt — only inside tries
+    const blkProb = clamp((blkK2 - 60) * 0.008 + (intDefK2 - 65) * 0.003 - (layupK2 - 65) * 0.003, 0.01, 0.18);
+    const insideWeight = layupK2 + dunkK2 * 0.4;
+    const midWeight = midK2 * 0.9;
+    const threeWeight = threeK2 * 0.75;
+    const totalW = insideWeight + midWeight + threeWeight;
+    const insThresh = insideWeight / totalW;
+    const midThresh = insThresh + midWeight / totalW;
+    const shotRand = Math.random();
+    const isInsideTry = shotRand < insThresh;
 
     if (isInsideTry && Math.random() < blkProb) {
       defStats.reb++;
+      defStats.blk++;
       this.state.currentPossessionPlayerId = def.id;
       offStats.streak = 0;
-      const log = this.makeLog(`${def.lastName} rejects the layup attempt!`, off.id);
-      this.updateWinProb();
-      return log;
+      return [this.makeLog(blockLine(def.lastName, off.lastName), def.id, 'block')];
     }
-
-    // Shot selection
-    const rand = Math.random();
-    const insW = r.ins + r.dnk * 0.5;
-    const midW = r.fg * 0.8;
-    const tpW = r.tp * 0.7;
-    const total = insW + midW + tpW;
-    const insThresh = insW / total;
-    const midThresh = insThresh + midW / total;
 
     let shotType: 'inside' | 'mid' | 'three';
     let baseProb: number;
     let pts: number;
-    let makeDesc: string;
-    let missDesc: string;
+    let makeText: string;
+    let missText: string;
 
-    if (rand < insThresh) {
+    if (isInsideTry) {
       shotType = 'inside';
-      baseProb = clamp(r.ins / 100 + r.dnk / 200 - dr.def / 150 - dr.hgt / 300, 0.3, 0.72);
+      baseProb = clamp(0.35 + (layupK2 - 65) * 0.012 - (intDefK2 - 70) * 0.006, 0.28, 0.72);
       pts = this.settings.scoringSystem === '2-3' ? 2 : 1;
-      const isDunk = r.dnk > 65 && r.jmp > 60 && Math.random() > 0.45;
-      makeDesc = isDunk ? `${off.lastName} slams it home!` : `${off.lastName} scores inside`;
-      missDesc = `${off.lastName} misses inside`;
+      // Dunk only for elite dunkers (~top 15%), rate scales with rating
+      const canDunk = dunkK2 > 78 && athleticK2 > 70;
+      const dunkRate = canDunk ? clamp((dunkK2 - 78) / 120, 0, 0.18) : 0;
+      const isDunk = canDunk && Math.random() < dunkRate;
+      makeText = isDunk ? dunkMake(off.lastName) : insideMake(off.lastName);
+      missText = insideMiss(off.lastName);
       offStats.fga++;
-    } else if (rand < midThresh) {
+    } else if (shotRand < midThresh) {
       shotType = 'mid';
-      baseProb = clamp(r.fg / 100 - dr.def / 180, 0.28, 0.62);
+      baseProb = clamp(0.25 + (midK2 - 65) * 0.009 - (periDefK2 - 70) * 0.005, 0.22, 0.58);
       pts = this.settings.scoringSystem === '2-3' ? 2 : 1;
-      makeDesc = `${off.lastName} hits the mid-range jumper`;
-      missDesc = `${off.lastName} misses the mid-range`;
+      makeText = midMake(off.lastName);
+      missText = midMiss(off.lastName);
       offStats.fga++;
     } else {
       shotType = 'three';
-      baseProb = clamp(r.tp / 100 - dr.def / 220 - dr.spd / 400, 0.2, 0.55);
+      baseProb = clamp(0.16 + (threeK2 - 65) * 0.008 - (periDefK2 - 70) * 0.004, 0.14, 0.48);
       pts = this.settings.scoringSystem === '2-3' ? 3 : 2;
-      makeDesc = Math.random() > 0.5 ? `${off.lastName} splashes the triple!` : `${off.lastName} hits from downtown!`;
-      missDesc = `${off.lastName} misses from three`;
+      // Creator = high ball handle
+      const isCreator = bhK2 > 70;
+      makeText = isCreator ? threeCreatorMake(off.lastName) : threeCatchMake(off.lastName);
+      missText = threeMiss(off.lastName);
       offStats.fga++;
       offStats.tpa++;
     }
 
-    const makes = Math.random() < baseProb;
-
-    if (makes) {
+    if (Math.random() < baseProb) {
       offStats.fgm++;
       if (shotType === 'three') offStats.tpm++;
       offStats.pts += pts;
@@ -119,24 +193,50 @@ export class GameSim {
 
       if (!this.settings.makeItTakeIt) this.state.currentPossessionPlayerId = def.id;
 
+      const wasFinished = (this.state.status as GameStatus) === GameStatus.FINISHED;
       this.checkGameEnd();
       this.updateWinProb();
-      return this.makeLog(makeDesc, off.id);
+
+      const makeLog = this.makeLog(makeText + streakSuffix(off.lastName, offStats.streak), off.id, 'make');
+      if (!wasFinished && (this.state.status as GameStatus) === GameStatus.FINISHED) {
+        const endLog = this.makeGameEndLog();
+        return [makeLog, endLog];
+      }
+      return [makeLog];
     } else {
-      // Rebound
-      const offRebProb = clamp((r.reb + r.jmp * 0.5 - dr.reb * 0.8 - dr.hgt * 0.3) / 200 + 0.35, 0.2, 0.65);
+      const missLog = this.makeLog(missText, off.id, 'miss');
+      const offRebProb = clamp(0.25 + (offRebK2 - 65) * 0.008 - (defRebK2 - 65) * 0.007, 0.15, 0.55);
       if (Math.random() < offRebProb) {
         offStats.reb++;
         this.updateWinProb();
-        return this.makeLog(`${missDesc} — offensive rebound by ${off.lastName}`, off.id);
+        const rebLog = this.makeLog(offReboundSuffix(off.lastName), off.id, 'reb');
+        return [missLog, rebLog];
       } else {
         defStats.reb++;
         offStats.streak = 0;
         this.state.currentPossessionPlayerId = def.id;
         this.updateWinProb();
-        return this.makeLog(`${missDesc} — ${def.lastName} cleans it up`, off.id);
+        const rebLog = this.makeLog(defReboundSuffix(def.lastName), def.id, 'reb');
+        return [missLog, rebLog];
       }
     }
+  }
+
+  private makeGameEndLog(): LogEntry {
+    const { score1, score2, winner } = this.state;
+    const w = Math.max(score1, score2);
+    const l = Math.min(score1, score2);
+    const diff = w - l;
+    const name = winner?.lastName ?? '';
+    let text: string;
+    if (diff <= 1) {
+      text = gameEndNailBiter(name, w, l);
+    } else if (diff <= 3) {
+      text = gameEndClose(name, w, l);
+    } else {
+      text = gameEndDominant(name, w, l);
+    }
+    return this.makeLog(text, winner?.id ?? '', 'end');
   }
 
   private checkGameEnd() {
@@ -167,10 +267,11 @@ export class GameSim {
     this.state.winProb2 = 1 - this.state.winProb1;
   }
 
-  private makeLog(text: string, playerId: string): LogEntry {
+  private makeLog(text: string, playerId: string, type: LogEntry['type']): LogEntry {
+    this.playSequence++;
     const log: LogEntry = {
-      text, playerId,
-      timestamp: `POSS ${this.state.possessionCount}`,
+      text, playerId, type,
+      timestamp: `PLAY ${this.playSequence}`,
       score1: this.state.score1,
       score2: this.state.score2,
     };

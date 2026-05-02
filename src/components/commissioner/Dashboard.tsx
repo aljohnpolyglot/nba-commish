@@ -74,6 +74,7 @@ const Dashboard: React.FC<DashboardProps> = ({ initialTab = 'approvals' }) => {
       publicApproval: stats.publicApproval,
       ownerApproval: stats.ownerApproval,
       playerApproval: stats.playerApproval,
+      legacy: 0,
       viewership: leagueStats.viewership,
       revenue: leagueStats.revenue,
       seasonRevenue: seasonRevB * 1000,

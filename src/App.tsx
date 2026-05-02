@@ -8,6 +8,7 @@ import { MainContent } from './components/layout/MainContent';
 import { MainMenu } from './components/MainMenu';
 import { ClubEffect } from './components/effects/ClubEffect';
 import { ToastNotifier } from './components/shared/ToastNotifier';
+import { RFAOfferSheetModal } from './components/modals/RFAOfferSheetModal';
 import { PlayButton } from './components/shared/PlayButton';
 import { LazySimLoadingScreen } from './components/setup/LazySimLoadingScreen';
 import { Menu, X } from 'lucide-react';
@@ -208,6 +209,7 @@ function GameLayout() {
         {!state.isWatchingGame && !state.lazySimProgress && <SimDateDisplay />}
         {state.isClubbing && <ClubEffect />}
         <ToastNotifier />
+        <RFAOfferSheetModal />
         {state.lastOutcome && state.gameMode !== 'gm' && !state.isProcessing && <OutcomeView />}
       </main>
     </div>

@@ -1,6 +1,7 @@
 import { GameState, NBAPlayer as Player, NBATeam } from '../../../types';
 import { calculateSocialEngagement, formatCurrency } from '../../../utils/helpers'; // Added formatCurrency just in case
 import { SocialEngine } from '../../../services/social/SocialEngine';
+import { formatGameDateShort, parseGameDate } from '../../../utils/dateUtils';
 
 export const handleSocialAndNews = async (
     state: GameState, 
@@ -13,8 +14,8 @@ export const handleSocialAndNews = async (
 ) => {
     // Smarter Engagement Algorithm for Social Posts
     if (result.newSocialPosts) {
-        const startDate = new Date(state.date);
-        const endDate = new Date(endDateString);
+        const startDate = parseGameDate(state.date);
+        const endDate = parseGameDate(endDateString);
         const timeDiff = endDate.getTime() - startDate.getTime();
         
         result.newSocialPosts = result.newSocialPosts.map((post: any) => {
@@ -29,7 +30,7 @@ export const handleSocialAndNews = async (
             
             const hours = Math.floor(Math.random() * 24);
             const minutes = Math.floor(Math.random() * 60);
-            postDate.setHours(hours, minutes);
+            postDate.setUTCHours(hours, minutes);
             
             return {
                 ...post,
@@ -44,14 +45,14 @@ export const handleSocialAndNews = async (
     } // <--- FIX: Added missing closing brace for if block
 
     const socialEngine = new SocialEngine();
-    const socialDateString = new Date(state.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const socialDateString = formatGameDateShort(state.date);
     const nbaPlayers = updatedPlayers.filter(p => !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || ''));
     const newSocialPostsFromEngine = await socialEngine.generateDailyPosts(allSimResults, nbaPlayers, updatedTeams, socialDateString, daysToSimulate, state.playoffs, state.schedule);
 
     const newLLMPosts = (result.newSocialPosts || []).map((p: any, i: number) => ({
         ...p,
         id: p.id || `llm-social-${state.day}-${i}-${Date.now()}`,
-        date: p.date || new Date(state.date).toISOString(),
+        date: p.date || parseGameDate(state.date).toISOString(),
         isNew: true
     }));
     
@@ -65,7 +66,7 @@ export const handleSocialAndNews = async (
     const newNews = (result.newNews || []).map((n: any, i: number) => ({
         ...n,
         id: n.id || `llm-news-${state.day}-${i}-${Date.now()}`,
-        date: n.date || new Date(state.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        date: n.date || formatGameDateShort(state.date),
         isNew: true
     }));
     newNews.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());

@@ -579,8 +579,8 @@ export const runLazySim = async (
         break;
       }
 
-      const { stateWithSim, allSimResults, perDayResults } = await runSimulation(state, batchDays, undefined, options?.onGame);
-      console.log(`[LAZY_SIM] 🎮 iter ${iterNum} — after runSimulation: state.date=${stateWithSim.date}, simResults=${allSimResults.length}, perDayResults=${perDayResults.length}`);
+      const { stateWithSim, allSimResults, perDayResults, userInterrupted } = await runSimulation(state, batchDays, undefined, options?.onGame);
+      console.log(`[LAZY_SIM] 🎮 iter ${iterNum} — after runSimulation: state.date=${stateWithSim.date}, simResults=${allSimResults.length}, perDayResults=${perDayResults.length}, userInterrupted=${!!userInterrupted}`);
       lastBatchSimResults = allSimResults; // track for silent mode return
       console.log(`[LAZY_SIM] ✓ 581 post-runSim — iter ${iterNum}`);
 
@@ -1068,6 +1068,12 @@ export const runLazySim = async (
       if (currentNormAfterSim >= targetNorm) {
         // We've simmed the target day — exit the loop
         console.log(`[LAZY_SIM] 🏁 iter ${iterNum} — currentNormAfterSim >= targetNorm, breaking (target reached)`);
+        break;
+      }
+      // User-facing FA event interrupted the inner sim — surface the toast/modal
+      // before continuing. The outer loop stops; the user can resume manually.
+      if (userInterrupted) {
+        console.log(`[LAZY_SIM] 🔔 iter ${iterNum} — userInterrupted=true (FA bid resolved), breaking before target`);
         break;
       }
       state = advanceDateByOne(state);

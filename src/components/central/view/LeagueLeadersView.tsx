@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { StatCategory, getStatValue } from '../../../utils/statUtils';
 import { getOwnTeamId } from '../../../utils/helpers';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
+import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
 
 export const LeagueLeadersView: React.FC = () => {
   const { state, navigateToTeam, setCurrentView, setPendingStatSort } = useGame();
@@ -218,12 +219,13 @@ export const LeagueLeadersView: React.FC = () => {
                         size={32}
                       />
                       <div className="flex items-baseline gap-2">
-                        <span 
+                        <PlayerNameWithHover
+                          player={item.player}
                           className="font-medium text-indigo-400 cursor-pointer hover:text-indigo-300 hover:underline"
                           onClick={() => setViewingPlayer(item.player)}
                         >
                           {item.player.name}
-                        </span>
+                        </PlayerNameWithHover>
                         <span className="text-xs text-slate-500">{team?.abbrev || 'FA'}</span>
                       </div>
                     </div>

@@ -34,6 +34,7 @@ import { Judge, selectJudges } from "./judges";
 import { getBadgeProb, loadBadges } from '../simulation/live/playback/badgeService';
 import { DRIVING_DUNK } from '../../data/dunkData';
 import { NBAPlayer } from '../../types';
+export type { NBAPlayer } from '../../types';
 
 const pick = <T>(a: T[]): T => a[~~(Math.random() * a.length)];
 const clamp = (num: number, min: number, max: number) => Math.min(Math.max(num, min), max);

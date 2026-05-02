@@ -9,6 +9,7 @@ import { PlayerBioView } from '../components/central/view/PlayerBioView';
 import { FAOffersModal } from '../components/modals/FAOffersModal';
 import { WaiveConfirmModal } from '../components/modals/WaiveConfirmModal';
 import type { NBAPlayer } from '../types';
+import { formatGameDateShort, getCurrentOffseasonEffectiveFAStart, parseGameDate } from '../utils/dateUtils';
 
 /**
  * Unified "click a player name" handler — one hook that owns the entire modal stack:
@@ -51,9 +52,29 @@ export function usePlayerQuickActions() {
   /** Open the PlayerActionsModal for a given player — call this from any row onClick. */
   const openFor = (player: NBAPlayer) => setActionsPlayer(player);
 
+  const isBeforeFreeAgencyOpen = (player: NBAPlayer): string | null => {
+    if (player.tid !== -1 && player.status !== 'Free Agent') return null;
+    if (!state.date) return null;
+    const current = parseGameDate(state.date);
+    const year = current.getUTCFullYear();
+    const faMonth = (state.leagueStats?.faStartMonth ?? 7) - 1; // 0-indexed for Date.UTC
+    const faDay = state.leagueStats?.faStartDay ?? 1;
+    // FA already opened this calendar year → allow (handles Oct–Dec post-FA)
+    if (current >= new Date(Date.UTC(year, faMonth, faDay))) return null;
+    // FA opened last calendar year → allow (handles Jan–Jun regular season)
+    if (current >= new Date(Date.UTC(year - 1, faMonth, faDay))) return null;
+    const faStart = getCurrentOffseasonEffectiveFAStart(current, state.leagueStats as any, state.schedule as any);
+    return current < faStart ? formatGameDateShort(faStart) : null;
+  };
+
   /** Dispatch-only handler for the lightweight sign/resign/waive actions. Returns true if handled. */
   const handle = (player: NBAPlayer, actionType: string): boolean => {
     if (actionType === 'sign_player') {
+      const faStartLabel = isBeforeFreeAgencyOpen(player);
+      if (faStartLabel && state.gameMode === 'gm') {
+        setBlockedMessage(`Free agency has not opened yet. You can view the pool now, but offers start on ${faStartLabel}.`);
+        return true;
+      }
       setSigningPlayer(player);
       setResignTeamId(null);
       setForceContractType(undefined);

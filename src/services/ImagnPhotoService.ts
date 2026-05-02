@@ -71,7 +71,7 @@ export interface ImagnPhoto {
   width       : number;
   height      : number;
   isTopPic    : boolean;
-  isLandscape : boolean;
+  isLandscape?: boolean;
 }
 
 export interface GamePhotoResult {

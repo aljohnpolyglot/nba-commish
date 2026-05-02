@@ -41,6 +41,7 @@ export interface LogEntry {
   score1: number;
   score2: number;
   playerId: string;
+  type: 'make' | 'miss' | 'turnover' | 'block' | 'reb' | 'steal' | 'end';
 }
 
 export interface GameSettings {
@@ -67,6 +68,8 @@ export interface PlayerStats {
   pts: number;
   reb: number;
   ast: number;
+  stl: number;
+  blk: number;
   streak: number;
 }
 
@@ -117,4 +120,6 @@ export interface PlayerTournamentStats {
   tpa: number;
   ftm: number;
   fta: number;
+  stl: number;
+  blk: number;
 }

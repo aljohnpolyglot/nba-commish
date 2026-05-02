@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useGame } from '../../store/GameContext';
 import { X, ChevronUp, ChevronDown, MoreVertical } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -14,8 +14,11 @@ import { SettingsManager } from '../../services/SettingsManager';
 import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks } from '../../services/draft/DraftPickGenerator';
 import { buildClassStrengthMap, buildFullDraftSlotMap, formatPickLabel } from '../../services/draft/draftClassStrength';
 import { validateStepienRule, wouldStepienViolateForTid } from '../../services/trade/stepienRule';
-import { isInPostDeadlinePreFAWindow, getFreeAgencyStartDate } from '../../utils/dateUtils';
+import { getGameDateParts, isInPostDeadlinePreFAWindow } from '../../utils/dateUtils';
 import { isWalkingExpiring, isRecentlySignedLocked } from '../../services/trade/tradeValueEngine';
+import { isTradeEligible } from '../../utils/signingMoratorium';
+import { PlayerHoverCard } from '../shared/PlayerHoverCard';
+import { PlayerHoverCardK2 } from '../shared/PlayerHoverCardK2';
 
 // OVR text color matching TradeFinder's ovrText helper — keeps the number coloring
 // consistent between TradeMachineModal and the OfferCard stack.
@@ -81,7 +84,7 @@ const OutgoingPickPill = ({ pick, teams, onRemove, currentYear, lotterySlotByTid
 };
 
 // HELPER: PlayerRow component
-const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabled, currentSeason, isSuggested }: {
+const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabled, currentSeason, moratoriumLockedUntil, isSuggested }: {
   player: NBAPlayer & { isIncoming?: boolean };
   isSelected: boolean;
   onToggle: () => void;
@@ -89,6 +92,7 @@ const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabl
   teams: NBATeam[];
   disabled: boolean;
   currentSeason?: number;
+  moratoriumLockedUntil?: string;
   /** AI's counter-offer suggestion — renders amber highlight to nudge the user toward adding this player. */
   isSuggested?: boolean;
 }) => {
@@ -105,10 +109,26 @@ const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabl
 
   const ovr = calcOvr2K(player);
   const pot = calcPot2K(player, currentSeason ?? new Date().getFullYear());
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [cardPos, setCardPos] = useState<{ top: number; left: number } | null>(null);
+
+  const handleMouseEnter = () => {
+    if (disabled || !rowRef.current) return;
+    const rect = rowRef.current.getBoundingClientRect();
+    const cardW = 210;
+    const left = rect.right + 8 + cardW > window.innerWidth ? rect.left - cardW - 8 : rect.right + 8;
+    const cardH = 620;
+    const centeredTop = rect.top + rect.height / 2 - cardH / 2;
+    const top = Math.max(8, Math.min(centeredTop, window.innerHeight - cardH - 8));
+    setCardPos({ top, left });
+  };
 
   return (
     <div
+      ref={rowRef}
       onClick={() => !disabled && onToggle()}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={() => setCardPos(null)}
       className={`group relative flex items-center p-3 border-b border-slate-700/30 transition-all duration-200
                   ${disabled ? 'opacity-40 cursor-not-allowed grayscale-[0.5]' : 'cursor-pointer'}
                   hover:bg-slate-800/50
@@ -130,6 +150,11 @@ const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabl
       <div className="flex-1 ml-4 min-w-0">
           <div className="text-sm font-black text-white truncate group-hover:text-blue-400 transition-colors">{player.name}</div>
           <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{player.pos} • {player.contract?.exp} YRS</div>
+          {moratoriumLockedUntil && (
+            <div className="mt-1 text-[9px] font-black uppercase tracking-wider text-amber-300">
+              Moratorium until {moratoriumLockedUntil}
+            </div>
+          )}
           <div className="flex gap-3 mt-1 text-[9px] text-slate-500 font-mono">
               <span><strong className="text-slate-300">{ppg}</strong> PPG</span>
               <span><strong className="text-slate-300">{rpg}</strong> RPG</span>
@@ -149,6 +174,13 @@ const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabl
           </div>
           <MoreVertical size={16} className="text-slate-600 group-hover:text-slate-400" />
       </div>
+      {cardPos && (
+        <div className="fixed z-[200] pointer-events-none" style={{ top: cardPos.top, left: cardPos.left }}>
+          {SettingsManager.getSettings().tooltipStyle === 'simple'
+            ? <PlayerHoverCard player={player} />
+            : <PlayerHoverCardK2 player={player} />}
+        </div>
+      )}
     </div>
   );
 };
@@ -248,14 +280,10 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
     () => isInPostDeadlinePreFAWindow(state.date ?? '', state.leagueStats?.year ?? new Date().getFullYear(), state.leagueStats as any),
     [state.date, state.leagueStats],
   );
-  const rslMs = useMemo(() => {
-    const yr = state.leagueStats?.year ?? new Date().getFullYear();
-    return {
-      faStart: getFreeAgencyStartDate(yr - 1, state.leagueStats as any).getTime(),
-      nextFaStart: getFreeAgencyStartDate(yr, state.leagueStats as any).getTime(),
-      current: new Date(state.date ?? '').getTime(),
-    };
-  }, [state.date, state.leagueStats]);
+  const rslCtx = useMemo(() => ({
+    currentDate: state.date ?? '',
+    leagueStats: state.leagueStats as any,
+  }), [state.date, state.leagueStats]);
   const stepienBlockedA = useMemo(() => {
     if (!stepienOnGlobal || !teamA) return new Set<number>();
     const blocked = new Set<number>();
@@ -311,8 +339,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
     [(state as any).draftLotteryResult, state.teams],
   );
   const tvContext = useMemo(() => {
-    const d = state.date ? new Date(state.date) : new Date();
-    const month = d.getMonth() + 1;
+    const { month } = state.date ? getGameDateParts(state.date) : getGameDateParts(new Date());
     const isRegularSeason = (month >= 10 && month <= 12) || (month >= 1 && month <= 4);
     if (!isRegularSeason) return undefined;
     return { leaguePerAvg: computeLeaguePerAvg(state.players, currentYearForEval), isRegularSeason: true };
@@ -382,7 +409,8 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
         teamAPicks, teamBPicks,
       );
       if (!stepien.ok) {
-        const offendingSide: 'A' | 'B' = stepien.offendingTid === teamA.id ? 'A' : 'B';
+        const offendingTid = 'offendingTid' in stepien ? stepien.offendingTid : undefined;
+        const offendingSide: 'A' | 'B' = offendingTid === teamA.id ? 'A' : 'B';
         const offendingTeam = offendingSide === 'A' ? teamA : teamB;
         return { message: `Stepien Rule: ${offendingTeam?.abbrev || `Team ${offendingSide}`} would have no 1st in two straight future drafts.`, team: offendingSide };
       }
@@ -598,9 +626,13 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                 {activeTabA === 'roster' ? (
                     displayTeamARoster.map(player => {
                       const isSel = teamAPlayers.some(x => x.internalId === player.internalId);
+                      const moratoriumLocked = !isSel && !(player as any).isIncoming
+                        && state.leagueStats?.postSigningMoratoriumEnabled !== false
+                        && !isTradeEligible(player, rslCtx.currentDate, rslCtx.leagueStats as any);
                       const walking = !isSel && !(player as any).isIncoming
                         && (isWalkingExpiring(player, state.leagueStats?.year ?? new Date().getFullYear(), postDeadlinePreFA)
-                          || isRecentlySignedLocked(player, rslMs.faStart, rslMs.nextFaStart, rslMs.current));
+                          || isRecentlySignedLocked(player, rslCtx.currentDate, rslCtx.leagueStats)
+                          || moratoriumLocked);
                       return (
                         <PlayerRow
                             key={player.internalId}
@@ -623,6 +655,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                             teams={state.teams}
                             disabled={!canClickAssets || walking}
                             currentSeason={state.leagueStats.year}
+                            moratoriumLockedUntil={moratoriumLocked ? (player as any).tradeEligibleDate : undefined}
                         />
                       );
                     })
@@ -737,9 +770,13 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                 {activeTabB === 'roster' ? (
                     displayTeamBRoster.map(player => {
                       const isSel = teamBPlayers.some(x => x.internalId === player.internalId);
+                      const moratoriumLocked = !isSel && !(player as any).isIncoming
+                        && state.leagueStats?.postSigningMoratoriumEnabled !== false
+                        && !isTradeEligible(player, rslCtx.currentDate, rslCtx.leagueStats as any);
                       const walking = !isSel && !(player as any).isIncoming
                         && (isWalkingExpiring(player, state.leagueStats?.year ?? new Date().getFullYear(), postDeadlinePreFA)
-                          || isRecentlySignedLocked(player, rslMs.faStart, rslMs.nextFaStart, rslMs.current));
+                          || isRecentlySignedLocked(player, rslCtx.currentDate, rslCtx.leagueStats)
+                          || moratoriumLocked);
                       return (
                         <PlayerRow
                             key={player.internalId}
@@ -758,6 +795,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
                             teams={state.teams}
                             disabled={!canClickAssets || walking}
                             currentSeason={state.leagueStats.year}
+                            moratoriumLockedUntil={moratoriumLocked ? (player as any).tradeEligibleDate : undefined}
                         />
                       );
                     })

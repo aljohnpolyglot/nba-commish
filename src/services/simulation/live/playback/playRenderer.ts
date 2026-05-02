@@ -29,6 +29,7 @@ export interface PlayLine {
   isMake?: boolean;
   astPlayer?: PlayerPool;
   is3?: boolean;
+  is4?: boolean;
   isOffReb?: boolean;
   comingIn?: PlayerPool[];
   goingOut?: PlayerPool[];
@@ -64,7 +65,8 @@ export function renderPossession(
 
   switch (poss.outcome) {
     case 'MADE_2':
-    case 'MADE_3': {
+    case 'MADE_3':
+    case 'MADE_4': {
       const scorer = poss.scorer;
       if (!scorer) break;
       const oppLineup = poss.team === 'HOME' ? awayLineup : homeLineup;
@@ -77,6 +79,7 @@ export function renderPossession(
         pts: poss.pts, desc, type: 'made', player: scorer,
         cs, ds,
         is3: poss.is3,
+        is4: poss.is4,
         astPlayer: poss.assister ?? undefined
       });
       break;
@@ -85,18 +88,22 @@ export function renderPossession(
     case 'MISS_2_DRB':
     case 'MISS_2_ORB':
     case 'MISS_3_DRB':
-    case 'MISS_3_ORB': {
+    case 'MISS_3_ORB':
+    case 'MISS_4_DRB':
+    case 'MISS_4_ORB': {
       const shooter = poss.scorer;
       if (!shooter) break;
       const is3 = poss.is3 ?? false;
+      const is4 = poss.is4 ?? false;
       const oppLineup = poss.team === 'HOME' ? awayLineup : homeLineup;
-      const missDesc = generateMissNarrative(shooter, is3, oppLineup, poss.passPlayer ?? undefined);
+      const missDesc = generateMissNarrative(shooter, is3 || is4, oppLineup, poss.passPlayer ?? undefined);
       
       lines.push({
         ...base, id: makeId('miss'), tm: poss.team,
         pts: 0, desc: missDesc, type: 'miss', player: shooter,
         cs, ds,
-        is3: poss.is3
+        is3: poss.is3,
+        is4: poss.is4
       });
 
       if (poss.blocker) {

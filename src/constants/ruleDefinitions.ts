@@ -477,8 +477,8 @@ export const RULE_DEFINITIONS: Record<string, RuleDefinition> = {
         description: 'Distance for the 4-point line.',
         category: 'Scoring',
         type: 'number',
-        min: 25,
-        max: 45,
+        min: 26,
+        max: 35,
         unit: 'FT'
     },
     dunkValue: {

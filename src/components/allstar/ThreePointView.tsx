@@ -1,5 +1,6 @@
 import React from 'react';
 import { Star, Trophy } from 'lucide-react';
+import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 import { useGame } from '../../store/GameContext';
 import { getPlayerHeadshot, getTeamLogo, extractTeamId, extractNbaId } from '../../utils/helpers';
 import { NBAPlayer } from '../../types';
@@ -123,7 +124,7 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
                 </div>
 
                 <div className="text-sm font-bold text-white mb-0.5">
-                  {p.name}
+                  <PlayerNameWithHover player={p}>{p.name}</PlayerNameWithHover>
                 </div>
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <div className="px-1.5 py-0.5 rounded-full bg-slate-800 border border-slate-700">
@@ -200,7 +201,11 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
             <div className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.25em] mb-1">
               {currentYear} Three-Point Contest Champion
             </div>
-            <h2 className="text-4xl font-black italic tracking-tighter text-white mb-1">{winnerName}</h2>
+            <h2 className="text-4xl font-black italic tracking-tighter text-white mb-1">
+              {winnerPlayer
+                ? <PlayerNameWithHover player={winnerPlayer}>{winnerName}</PlayerNameWithHover>
+                : winnerName}
+            </h2>
             {winnerTeam && (
               <div className="flex items-center gap-2 justify-center sm:justify-start">
                 <img src={getTeamLogo(winnerPlayer?.teamNbaId || (winnerTeam ? extractTeamId(winnerTeam.logoUrl, winnerTeam.abbrev) : null) || 1610612737)} className="w-5 h-5 object-contain" referrerPolicy="no-referrer" alt="" />
@@ -253,7 +258,9 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
                     </div>
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
-                        <span className="text-slate-200 font-bold">{c.playerName}</span>
+                        {player
+                          ? <PlayerNameWithHover player={player} className="text-slate-200 font-bold">{c.playerName}</PlayerNameWithHover>
+                          : <span className="text-slate-200 font-bold">{c.playerName}</span>}
                         <img 
                           src={getTeamLogo(teamId)}
                           className="w-4 h-4 object-contain"

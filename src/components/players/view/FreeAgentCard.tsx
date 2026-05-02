@@ -5,6 +5,8 @@ import { convertTo2KRating, getCountryFromLoc, getCountryCode } from '../../../u
 import { getPlayerImage } from '../../central/view/bioCache';
 import { useGame } from '../../../store/GameContext';
 import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
+import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
+import { isPlausibleActiveMarket } from '../../../services/freeAgencyBidding';
 
 const LEAGUE_LOGOS: Record<string, string> = {
   PBA: 'https://upload.wikimedia.org/wikipedia/en/thumb/9/93/Philippine_Basketball_Association_logo.svg/200px-Philippine_Basketball_Association_logo.svg.png',
@@ -65,7 +67,11 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
   const isAvailable = !isInjured && !isSuspended;
 
   const activeBidCount = (() => {
-    const market = state.faBidding?.markets?.find(m => m.playerId === player.internalId && !m.resolved);
+    const market = state.faBidding?.markets?.find(m =>
+      m.playerId === player.internalId &&
+      !m.resolved &&
+      isPlausibleActiveMarket(m as any, state, player)
+    );
     return market?.bids?.filter(b => b.status === 'active' && !b.isUserBid).length ?? 0;
   })();
 
@@ -101,7 +107,7 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-1">
               <h4 className="text-sm font-bold text-white truncate group-hover:text-indigo-400 transition-colors leading-tight">
-                {player.name}
+                <PlayerNameWithHover player={player}>{player.name}</PlayerNameWithHover>
               </h4>
               {!isAvailable && (
                 <span className="text-[8px] font-black text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded uppercase tracking-tighter whitespace-nowrap flex-shrink-0">

@@ -4,7 +4,8 @@ export function assignClocks(
   possessions: Possession[],
   quarterDuration: number = 720,
   qStartGs: number = 0,
-  periodLabel: Period = '1ST'
+  periodLabel: Period = '1ST',
+  isLatePeriod: boolean = false
 ): void {
   const qLen = quarterDuration;
   const n = possessions.length;
@@ -13,9 +14,7 @@ export function assignClocks(
   possessions.forEach((poss, i) => {
     let baseGs: number;
     
-    // Check if it's a late game situation (last quarter or OT)
-    // We'll assume if qLen is 300 it's OT, or if qStartGs >= 2160 it's Q4+
-    const isLateQuarter = qLen === 300 || qStartGs >= 2160;
+    const isLateQuarter = isLatePeriod || qLen === 300;
 
     if (isLateQuarter) {
       // Compress last 2 minutes (120 seconds)

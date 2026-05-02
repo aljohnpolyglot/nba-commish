@@ -5,10 +5,13 @@
  * Used by TradeFinderView and AITradeHandler for consistent valuations.
  */
 
-import type { NBAPlayer, DraftPick } from '../../types';
+import type { NBAPlayer, DraftPick, LeagueStats } from '../../types';
 import { convertTo2KRating } from '../../utils/helpers';
 import { getPlayerInjuryProfile } from '../../data/playerInjuryData';
 import { formatPickLabel } from '../draft/draftClassStrength';
+import { isTradeEligible } from '../../utils/signingMoratorium';
+import { isFranchiseLifer } from '../../utils/playerTenure';
+import { daysBetweenGameDates } from '../../utils/dateUtils';
 
 export type TeamMode = 'contend' | 'rebuild' | 'presti';
 
@@ -21,14 +24,10 @@ export function isUntouchable(player: NBAPlayer, mode: TeamMode, currentYear: nu
   const pot = calcPot2K(player, currentYear);
   const age = player.born?.year ? currentYear - player.born.year : (player.age ?? 27);
 
-  // Loyalty rule: 10+ years with the same team = always untouchable (Curry/Dirk/Duncan/Draymond)
-  // Uses MAX(direct yearsWithTeam field, stats count) because the live counter can
-  // lag behind career history early in a game (rollover hasn't incremented yet).
-  const directYrs = (player as any).yearsWithTeam ?? 0;
-  const statYrs = player.stats
-    ? player.stats.filter((s: any) => s.tid === player.tid && !s.playoffs && (s.gp ?? 0) > 0).length
-    : 0;
-  if (Math.max(directYrs, statYrs) >= 10) return true;
+  // Loyalty rule: 10+ distinct regular seasons with the same team.
+  // Count distinct seasons so split/duplicate stat rows do not make 5-year
+  // players look like Curry/Dirk/Duncan lifers.
+  if (isFranchiseLifer(player)) return true;
 
   if (mode === 'contend') return ovr >= 82;             // core rotation pieces
   if (mode === 'rebuild' || mode === 'presti') return age < 25 && pot >= 85;  // young + high ceiling
@@ -76,22 +75,27 @@ export function isWalkingExpiring(
 }
 
 /**
- * Returns true if a player was signed this league year (on or after the current
- * season's FA start) and the lock hasn't expired yet (< next FA start).
- * Covers both offseason re-signings AND mid-season extensions/new deals.
+ * Post-signing trade moratorium per real NBA CBA rules.
+ * Reads `player.tradeEligibleDate` (stamped at signing time per Dec 15 / Jan 15 /
+ * 3-month / 6-month rules). Falls back to legacy 30-day window when the field is
+ * absent (pre-feature saves).
  */
 export function isRecentlySignedLocked(
   player: NBAPlayer,
-  faStartMs: number,     // getFreeAgencyStartDate(currentYear).getTime()
-  nextFaStartMs: number, // getFreeAgencyStartDate(currentYear + 1).getTime()
-  currentDateMs: number,
+  currentDate: string,
+  leagueStats?: LeagueStats,
 ): boolean {
-  if (currentDateMs >= nextFaStartMs) return false;
+  if (leagueStats?.postSigningMoratoriumEnabled === false) return false;
+  if (!currentDate) return false;
+  const eligible = (player as any).tradeEligibleDate as string | undefined;
+  if (eligible) return !isTradeEligible(player, currentDate, leagueStats);
   const signedDate = (player as any).signedDate as string | undefined;
   if (!signedDate) return false;
-  const signedMs = new Date(signedDate).getTime();
-  return isFinite(signedMs) && signedMs >= faStartMs;
+  const days = daysBetweenGameDates(signedDate, currentDate);
+  return Number.isFinite(days) && days >= 0 && days < 30;
 }
+
+export { isTradeEligible };
 
 /** Check if a player is on the trading block (AI is willing to trade). */
 export function isOnTradingBlock(
@@ -228,9 +232,9 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
   // pre-existing safety net for malformed contract data.
   if (expYear <= currentYear) val = Math.round(val * 0.5);
 
-  // In-season PER adjustment (marginal, regular-season only). Auto-resets on rollover:
-  // once currentYear increments, the stats filter returns nothing → no boost applied.
-  // Qualified: >10 GP AND >12 MPG this season. Capped at ±10%.
+  // In-season PER adjustment — regular season only, auto-resets on rollover.
+  // Qualified: >10 GP AND >12 MPG. Cap ±20% (up from ±10%); scaling is perDelta/60
+  // so a PER 10 above avg (~27 vs 17) swings ~+17% instead of the old +10%.
   if (ctx?.isRegularSeason) {
     const stats = player.stats?.filter((s: any) => s.season === currentYear && !s.playoffs && (s.gp ?? 0) > 0) ?? [];
     if (stats.length > 0) {
@@ -241,7 +245,7 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
           ? stats.reduce((s: number, x: any) => s + (x.per ?? 0) * (x.min ?? 0), 0) / minSum
           : ctx.leaguePerAvg;
         const perDelta = playerPer - ctx.leaguePerAvg;
-        const mult = 1 + Math.max(-0.10, Math.min(0.10, perDelta / 100));
+        const mult = 1 + Math.max(-0.20, Math.min(0.20, perDelta / 60));
         val = Math.round(val * mult);
       }
     }

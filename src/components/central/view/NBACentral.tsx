@@ -37,7 +37,7 @@ export const NBACentral: React.FC = () => {
   const [selectedPlayerContact, setSelectedPlayerContact] = useState<Contact | null>(null);
   
   const [personSelectorOpen, setPersonSelectorOpen] = useState(false);
-  const [personSelectorType, setPersonSelectorType] = useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'sabotage' | 'waive'>('general');
+  const [personSelectorType, setPersonSelectorType] = useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'sabotage' | 'waive' | 'club' | 'endorse_hof' | 'fire'>('general');
   const personSelectorTitle = '';
 
   // Sign / re-sign / waive are delegated to the shared quick-actions hook.
@@ -144,7 +144,7 @@ export const NBACentral: React.FC = () => {
     if (actionType === 'contact') {
       setSelectedPlayerContact(contact);
     } else {
-      setPersonSelectorType(actionType);
+      setPersonSelectorType(actionType as typeof personSelectorType);
       setSelectedPlayerContact(contact); // Temporarily store to pass as preSelected
       setPersonSelectorOpen(true);
     }

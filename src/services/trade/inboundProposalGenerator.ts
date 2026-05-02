@@ -10,9 +10,9 @@
  * user's Trading Block page.
  */
 
-import type { NBAPlayer, NBATeam, DraftPick, TradeProposal } from '../../types';
+import type { NBAPlayer, NBATeam, DraftPick, LeagueStats, TradeProposal } from '../../types';
 import {
-  calcOvr2K, calcPlayerTV, calcPickTV, isUntouchable, type TeamMode,
+  calcOvr2K, calcPlayerTV, calcPickTV, isRecentlySignedLocked, isUntouchable, isWalkingExpiring, type TeamMode,
 } from './tradeValueEngine';
 import { tradeRoleToTeamMode } from '../../utils/teamStrategy';
 
@@ -68,6 +68,10 @@ export interface InboundProposalInput {
   /** Optional tid → power rank (1=best). If present, pick TV projects off
    *  the original owner's rank instead of a hardcoded mid-league 15. */
   powerRanks?: Map<number, number>;
+  /** True when expiring contracts are walking before the upcoming FA rollover. */
+  isPostDeadlinePreFA?: boolean;
+  /** Optional timestamps for the recently-signed trade lock. */
+  recentlySignedLockMs?: { currentDate: string; leagueStats?: LeagueStats };
 }
 
 /** Shape of a generated proposal (before id/status are assigned by caller). */
@@ -88,10 +92,13 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
     userTid, userGMName, blockPlayerIds, blockPickIds,
     players, teams, draftPicks, currentYear, minTradableSeason,
     teamOutlooks, proposedDate, classStrengthByYear, lotterySlotByTid, powerRanks,
+    isPostDeadlinePreFA = false, recentlySignedLockMs,
   } = input;
 
   const pickRankFor = (originalTid: number) =>
     powerRanks?.get(originalTid) ?? 15;
+  const minLivePickSeason = Math.max(minTradableSeason, currentYear);
+  const liveDraftPicks = draftPicks.filter(dp => dp.season >= currentYear);
   const pickOpts = (pk: DraftPick) => ({
     classStrength: classStrengthByYear?.get(pk.season) ?? 1.0,
     actualSlot: pk.round === 1 && pk.season === currentYear
@@ -101,8 +108,14 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
 
   // ── Resolve user's block assets ────────────────────────────────────────────
   const userMode: TeamMode = roleToMode(teamOutlooks.get(userTid)?.role ?? 'neutral');
-  const userBlockPlayers = players.filter(p => p.tid === userTid && blockPlayerIds.includes(p.internalId));
-  const userBlockPicks = draftPicks.filter(dp => dp.tid === userTid && blockPickIds.includes(dp.dpid));
+  const isWalking = (p: NBAPlayer) => isWalkingExpiring(p, currentYear, isPostDeadlinePreFA);
+  const isLocked = recentlySignedLockMs
+    ? (p: NBAPlayer) => isRecentlySignedLocked(p, recentlySignedLockMs.currentDate, recentlySignedLockMs.leagueStats)
+    : (_p: NBAPlayer) => false;
+  const userBlockPlayers = players
+    .filter(p => p.tid === userTid && blockPlayerIds.includes(p.internalId))
+    .filter(p => !isWalking(p) && !isLocked(p));
+  const userBlockPicks = liveDraftPicks.filter(dp => dp.tid === userTid && dp.season >= minLivePickSeason && blockPickIds.includes(dp.dpid));
 
   if (userBlockPlayers.length === 0 && userBlockPicks.length === 0) return [];
 
@@ -124,6 +137,7 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
     // Their tradeable roster — non-external, non-untouchable from their POV.
     const theirRoster = players
       .filter(p => p.tid === team.id && !EXTERNAL.has(p.status ?? ''))
+      .filter(p => !isWalking(p) && !isLocked(p))
       .filter(p => !isUntouchable(p, theirMode, currentYear))
       .map(p => ({ player: p, tv: calcPlayerTV(p, theirMode, currentYear), salary: (p.contract?.amount ?? 0) * 1000 }))
       .filter(r => r.tv > 5) // skip dead roster weight
@@ -131,8 +145,8 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
       .slice(0, 12); // top 12 candidates — keeps combo explosion bounded
 
     // Their tradeable picks — future picks only.
-    const theirPicks = draftPicks
-      .filter(dp => dp.tid === team.id && dp.season >= minTradableSeason)
+    const theirPicks = liveDraftPicks
+      .filter(dp => dp.tid === team.id && dp.season >= minLivePickSeason)
       .map(dp => ({
         pick: dp,
         tv: calcPickTV(dp.round, pickRankFor(dp.originalTid), teams.length, Math.max(1, dp.season - currentYear), pickOpts(dp)),

@@ -14,6 +14,7 @@ import { AlertTriangle, GripVertical, Sparkles } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { useGame } from '../../../../../../store/GameContext';
 import { MinutesPlayedService } from '../../../../../../services/simulation/MinutesPlayedService';
+import { injurySeverityLevel } from '../../../../../../services/simulation/playThroughInjuriesFactor';
 import { StarterService } from '../../../../../../services/simulation/StarterService';
 import { effectiveRecord } from '../../../../../../utils/salaryUtils';
 import { getDisplayOverall } from '../../../../../../utils/playerRatings';
@@ -30,6 +31,9 @@ import {
   reconcileIdealMinutes,
 } from '../../../../../../store/idealRotationStore';
 import type { NBAPlayer } from '../../../../../../types';
+import { PlayerNameWithHover } from '../../../../../shared/PlayerNameWithHover';
+import { getLockedStrategy } from '../../../../../../store/coachStrategyLockStore';
+import { getGameDateParts } from '../../../../../../utils/dateUtils';
 
 interface GameplanTabProps {
   teamId: number;
@@ -42,8 +46,11 @@ function getK2(p: NBAPlayer): number {
   return getDisplayOverall(p);
 }
 
-function isInjured(p: NBAPlayer): boolean {
-  return !!p.injury && (p.injury.gamesRemaining ?? 0) > 0;
+/** Returns true only for players who can't play — play-through (severity ≤ ptiLevel) are playable. */
+function isInjured(p: NBAPlayer, ptiLevel: number = 0): boolean {
+  const g = p.injury?.gamesRemaining ?? 0;
+  if (g <= 0) return false;
+  return injurySeverityLevel(g) > ptiLevel;
 }
 
 /** 1 game ≈ 2.5 days (matches InjuriesView). */
@@ -72,9 +79,20 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
 
   const isPlayoffSeason = useMemo(() => {
     if (!state.date) return false;
-    const m = new Date(state.date).getMonth() + 1;
+    const { month: m } = getGameDateParts(state.date);
     return m >= 4 && m <= 6;
   }, [state.date]);
+
+  // PTI from locked strategy sliders; fall back to defaults (0 regular, 40 playoffs).
+  // Slider 0-100 → ptiLevel 0-4 via linear scale.
+  const { ptiRegular: ptiRegularSlider, ptiPlayoffs: ptiPlayoffsSlider } = useMemo(() => {
+    const locked = getLockedStrategy(teamId);
+    return {
+      ptiRegular: locked?.sliders.ptiRegular ?? 0,
+      ptiPlayoffs: locked?.sliders.ptiPlayoffs ?? 40,
+    };
+  }, [teamId]);
+  const ptiLevel = Math.round(((isPlayoffSeason ? ptiPlayoffsSlider : ptiRegularSlider) / 100) * 4);
 
   // ── Rotation computation (live, uses MinutesPlayedService) ─────────────────
   const { rotation, baseMinutes, injuredPlayers, benchPool, twoWayIneligible } = useMemo(() => {
@@ -83,7 +101,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     const roster = state.players.filter(p => p.tid === teamId && p.status === 'Active');
     const twoWayIneligible = isPlayoffSeason ? roster.filter(p => (p as any).twoWay) : [];
     const eligibleRoster = isPlayoffSeason ? roster.filter(p => !(p as any).twoWay) : roster;
-    const injured = eligibleRoster.filter(isInjured);
+    const injured = eligibleRoster.filter(p => isInjured(p, ptiLevel));
 
     const rec = effectiveRecord(team, currentYear);
     const confTeams = state.teams
@@ -109,6 +127,8 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
       confRank,
       gb,
       gamesRemaining,
+      undefined,
+      ptiLevel,
     );
 
     const { minutes } = MinutesPlayedService.allocateMinutes(
@@ -122,7 +142,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
 
     const inRotationIds = new Set(rot.players.map(p => p.internalId));
     const bench = eligibleRoster.filter(
-      p => !inRotationIds.has(p.internalId) && !isInjured(p),
+      p => !inRotationIds.has(p.internalId) && !isInjured(p, ptiLevel),
     );
 
     return {
@@ -132,7 +152,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
       benchPool: bench,
       twoWayIneligible,
     };
-  }, [team, state.players, state.teams, teamId, currentYear, isPlayoffSeason]);
+  }, [team, state.players, state.teams, teamId, currentYear, isPlayoffSeason, ptiLevel]);
 
   // ── Editable local state (seeded from saved gameplan or computed defaults) ─
   const [starterOrder, setStarterOrder] = useState<string[]>([]);
@@ -488,7 +508,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     const seen = new Set<string>();
     const out: NBAPlayer[] = [];
     for (const p of rotation) {
-      if (starterSet.has(p.internalId) || isInjured(p)) continue;
+      if (starterSet.has(p.internalId) || isInjured(p, ptiLevel)) continue;
       if (seen.has(p.internalId)) continue;
       seen.add(p.internalId);
       out.push(p);
@@ -778,7 +798,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
                     overallRating={p.overallRating}
                   />
                   <div className="text-[11px] font-bold text-white text-center line-clamp-1 w-full">
-                    {p.name}
+                    <PlayerNameWithHover player={p}>{p.name}</PlayerNameWithHover>
                   </div>
                 </div>
               </div>
@@ -805,6 +825,10 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
             const isStarter = idx < 5;
             const isSelected = selectedId === p.internalId;
             const k2Color = k2 >= 90 ? 'text-blue-300' : k2 >= 85 ? 'text-emerald-300' : k2 >= 78 ? 'text-amber-300' : 'text-slate-400';
+            const injGames = (p as any).injury?.gamesRemaining ?? 0;
+            const injType = (p as any).injury?.type as string | undefined;
+            const injSeverity = injGames > 0 ? injurySeverityLevel(injGames) : 0;
+            const injTag = injGames > 0 ? (injSeverity <= 1 ? 'Day-to-Day' : injSeverity === 2 ? 'Questionable' : 'Out') : null;
             return (
               <div
                 key={p.internalId}
@@ -833,9 +857,18 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
                     size={36}
                   />
                   <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-xs font-bold text-white truncate">{p.name}</span>
-                    <span className="text-[10px] text-slate-400">
+                    <div className="flex items-center gap-1 min-w-0">
+                      <PlayerNameWithHover player={p} className="text-xs font-bold text-white truncate">{p.name}</PlayerNameWithHover>
+                      {injGames > 0 && (
+                        <span
+                          title={injType ? `${injType} — ${injGames} game${injGames === 1 ? '' : 's'}` : `Injured — ${injGames} game${injGames === 1 ? '' : 's'}`}
+                          className="text-[8px] font-black text-red-500 flex-shrink-0"
+                        >✚</span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
                       <span className={k2Color}>{k2}</span>{` ${p.pos}`}{p.born?.year ? ` | ${currentYear - p.born.year}y` : (p.age ? ` | ${p.age}y` : '')}
+                      {injTag && <span className={`text-[9px] font-black ${injSeverity <= 1 ? 'text-amber-400' : injSeverity === 2 ? 'text-orange-400' : 'text-red-400'}`}>{injTag}</span>}
                     </span>
                   </div>
                   {/* Desktop slider — inline. Stop propagation so dragging it doesn't fire tap-to-swap.
@@ -913,7 +946,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
                     />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-bold text-slate-500 truncate">{p.name}</span>
+                    <PlayerNameWithHover player={p} className="text-xs font-bold text-slate-500 truncate">{p.name}</PlayerNameWithHover>
                     <span className="text-[10px] text-sky-500/70 font-bold">TWO WAY</span>
                   </div>
                   <span className="text-center text-xs font-black tabular-nums text-slate-600">
@@ -960,9 +993,9 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
                     />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-bold text-rose-100/80 truncate line-through decoration-rose-400/40">
+                    <PlayerNameWithHover player={p} className="text-xs font-bold text-rose-100/80 truncate line-through decoration-rose-400/40">
                       {p.name}
-                    </span>
+                    </PlayerNameWithHover>
                     <span className="text-[10px] text-rose-300/70">{p.injury?.type ?? 'Injured'}</span>
                   </div>
                   <span className="text-center text-xs font-black tabular-nums text-slate-500">

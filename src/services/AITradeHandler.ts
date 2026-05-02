@@ -19,8 +19,8 @@ import { buildClassStrengthMap, buildFullDraftSlotMap, formatPickLabel } from '.
 import { getGMAttributes, getGMName, tradeInitiateProb, pickHoardResistance } from './staff/gmAttributes';
 import { generateTPEsFromTrade } from '../utils/tradeExceptionUtils';
 import { validateStepienRule } from './trade/stepienRule';
-import { isInPostDeadlinePreFAWindow, getFreeAgencyStartDate } from '../utils/dateUtils';
 import { validateCBATradeRules } from '../utils/cbaTradeRules';
+import { daysBetweenGameDates, isInPostDeadlinePreFAWindow, parseGameDate, toISODateString } from '../utils/dateUtils';
 
 // ── §2d: Pick values ──────────────────────────────────────────────────────────
 
@@ -44,9 +44,8 @@ function sideTV(players: NBAPlayer[], picks: DraftPick[], mode: TeamMode, curren
 
 /** Players traded within the last 60 days — not eligible to be traded again. */
 function recentlyTradedPlayerIds(state: GameState): Set<string> {
-  const cutoff = new Date(state.date);
-  cutoff.setDate(cutoff.getDate() - 60);
-  const cutoffStr = cutoff.toISOString().split('T')[0];
+  const cutoff = new Date(parseGameDate(state.date).getTime() - 60 * 24 * 60 * 60 * 1000);
+  const cutoffStr = toISODateString(cutoff);
   const traded = new Set<string>();
   for (const rawEntry of (state.history ?? [])) {
     const entry = rawEntry as any;
@@ -77,9 +76,8 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
   const tradablePickWindow = state.leagueStats?.tradableDraftPickSeasons ?? 7;
   const isPostDeadlinePreFA = isInPostDeadlinePreFAWindow(state.date, currentYear, state.leagueStats as any);
   const recentlySignedLockMs = {
-    faStart: getFreeAgencyStartDate(currentYear - 1, state.leagueStats as any).getTime(),
-    nextFaStart: getFreeAgencyStartDate(currentYear, state.leagueStats as any).getTime(),
-    current: new Date(state.date ?? Date.now()).getTime(),
+    currentDate: state.date ?? '',
+    leagueStats: state.leagueStats as any,
   };
   const allDraftPicks = state.draftPicks ?? [];
   const stepienOk = (tidA: number, tidB: number, dpidsFromA: number[], dpidsFromB: number[]): boolean => {
@@ -327,7 +325,7 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
           if (recentlyTraded.has(p.internalId)) return false;
           if (isUntouchable(p, dumpSellerMode, currentYear)) return false;
           if (isPostDeadlinePreFA && (p.contract?.exp ?? currentYear + 5) <= currentYear) return false;
-          if (isRecentlySignedLocked(p, recentlySignedLockMs.faStart, recentlySignedLockMs.nextFaStart, recentlySignedLockMs.current)) return false;
+          if (isRecentlySignedLocked(p, recentlySignedLockMs.currentDate, recentlySignedLockMs.leagueStats)) return false;
           const exp = p.contract?.exp ?? (currentYear + 2);
           return exp <= currentYear + 1 && (p.contract?.amount ?? 0) > 10_000;
         })
@@ -486,7 +484,7 @@ export function processAITradeProposals(
   return existing.map(p => {
     if (p.status !== 'pending') return p;
 
-    const diffDays = (new Date(currentDate).getTime() - new Date(p.proposedDate).getTime()) / 86_400_000;
+    const diffDays = daysBetweenGameDates(p.proposedDate, currentDate);
     if (diffDays > 7) return { ...p, status: 'expired' as const };
     if (p.isAIvsAI) return { ...p, status: 'accepted' as const };
 
@@ -541,7 +539,8 @@ function validateAITradeExecution(
     const tradablePickWindow = state.leagueStats?.tradableDraftPickSeasons ?? 7;
     const stepien = validateStepienRule(state.draftPicks ?? [], currentYear, tradablePickWindow, proposingTeamId, receivingTeamId, offeredPicksState, requestedPicksState);
     if (!stepien.ok) {
-      return { ok: false, reason: `AI trade failed revalidation: ${stepien.reason}` };
+      const stepienReason = 'reason' in stepien ? stepien.reason : 'Stepien Rule failure.';
+      return { ok: false, reason: `AI trade failed revalidation: ${stepienReason}` };
     }
   }
 

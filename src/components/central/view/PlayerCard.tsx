@@ -5,6 +5,7 @@ import { convertTo2KRating } from '../../../utils/helpers';
 import { getPlayerImage } from './bioCache';
 import { useGame } from '../../../store/GameContext';
 import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
+import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
 
 interface PlayerCardProps {
   player: NBAPlayer;
@@ -83,7 +84,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionCl
           </div>
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="text-lg font-black text-white truncate tracking-tight mb-1">{player.name}</h4>
+          <h4 className="text-lg font-black text-white truncate tracking-tight mb-1"><PlayerNameWithHover player={player}>{player.name}</PlayerNameWithHover></h4>
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
             {statusLabel}
           </p>

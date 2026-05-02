@@ -6,6 +6,7 @@ import { NBAPlayer } from '../../../types';
 import { PlayerBioView } from './PlayerBioView';
 import { TradeDetailView } from './TradeDetailView';
 import { getOwnTeamId } from '../../../utils/helpers';
+import { getGameDateParts } from '../../../utils/dateUtils';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -20,12 +21,10 @@ import { getOwnTeamId } from '../../../utils/helpers';
  */
 function getSeasonYear(dateStr: string): number {
   try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return 0;
-    const month = d.getMonth() + 1; // 1-indexed
-    const calYear = d.getFullYear();
+    const { month, day, year: calYear } = getGameDateParts(dateStr);
+    if (!Number.isFinite(calYear)) return 0;
     // Jun 28+ belongs to the NEW season (draft is Jun 26-28, options Jun 29, FA Jul 1+)
-    return month >= 7 || (month === 6 && d.getDate() >= 28) ? calYear + 1 : calYear;
+    return month >= 7 || (month === 6 && day >= 28) ? calYear + 1 : calYear;
   } catch { return 0; }
 }
 

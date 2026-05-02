@@ -4,6 +4,7 @@ import { Zap, ChevronRight } from 'lucide-react';
 import { NBAPlayer } from '../../types';
 import { DunkContest } from '../../components/allstar/allstarevents/dunk/DunkContest';
 import { useDunkPicker, DUNK_MAX_PICKS, DUNK_MIN_PICKS } from './useDunkPicker';
+import { getPlayerRealK2 } from '../../data/NBA2kRatings';
 
 const FALLBACK_HEADSHOT = 'https://www.nba.com/assets/img/default-headshot.png';
 
@@ -15,13 +16,24 @@ function PickerGrid({
   onToggle: (id: string) => void;
 }) {
   const [visible, setVisible] = useState(80);
+  const [search, setSearch] = useState('');
+  const filtered = search.trim()
+    ? players.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
+    : players;
   return (
     <div className="space-y-4">
+      <input
+        type="text"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        placeholder="Search player..."
+        className="w-full bg-zinc-900 border border-zinc-700 text-white text-sm px-4 py-2 rounded placeholder-zinc-600 focus:outline-none focus:border-yellow-500"
+      />
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        {players.slice(0, visible).map(p => {
+        {(search ? filtered : filtered.slice(0, visible)).map(p => {
           const r: any = Array.isArray(p.ratings) ? p.ratings[p.ratings.length - 1] : {};
           const sel = selectedIds.has(p.internalId);
-          const lastName = p.name.split(' ').slice(-1)[0] ?? p.name;
+          const lastName = p.name;
           return (
             <button
               key={p.internalId}
@@ -41,8 +53,9 @@ function PickerGrid({
                 <div className="font-black text-[10px] uppercase italic truncate">{lastName}</div>
                 <div className="text-[9px] text-zinc-500">{(p as any).pos ?? ''}</div>
                 <div className="flex justify-center gap-2 mt-1">
-                  <span className="text-[9px] text-yellow-500 font-bold">DNK {r?.dnk ?? '--'}</span>
-                  <span className="text-[9px] text-zinc-500">JMP {r?.jmp ?? '--'}</span>
+                  <span className="text-[9px] text-yellow-500 font-bold">
+                    DNK {getPlayerRealK2(p.name)?.IS?.[2] ?? r?.dnk ?? '--'}
+                  </span>
                 </div>
               </div>
               {sel && (
@@ -54,7 +67,7 @@ function PickerGrid({
           );
         })}
       </div>
-      {visible < players.length && (
+      {!search && visible < players.length && (
         <button
           onClick={() => setVisible(v => v + 80)}
           className="w-full py-2 bg-zinc-900 border border-zinc-800 text-zinc-500 text-xs font-bold uppercase tracking-widest hover:text-white"
@@ -113,7 +126,7 @@ export default function DunkContestMiniGame() {
             {selectedIds.size > 0 && (
               <div className="flex gap-3 mb-6 overflow-x-auto pb-2">
                 {selectedPlayers.map(p => {
-                  const lastName = p.name.split(' ').slice(-1)[0] ?? p.name;
+                  const lastName = p.name;
                   return (
                     <div
                       key={p.internalId}

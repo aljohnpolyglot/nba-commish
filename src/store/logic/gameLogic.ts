@@ -21,10 +21,11 @@ import { calculateNewStats } from './turn/statUpdater';
 import { handleSocialAndNews } from './turn/socialHandler';
 import { generateLazySimNews } from '../../services/news/lazySimNewsGenerator';
 import { handleCommunication } from './turn/communicationHandler';
-import { SettingsManager } from '../../services/SettingsManager';
 import { resolveBets } from '../../services/logic/betResolver';
 import { buildAutoResolveEvents } from '../../services/logic/lazySimRunner';
-import { getDraftDate, getDraftLotteryDate } from '../../utils/dateUtils';
+import { addGameDays, getDraftDate, getDraftLotteryDate, isDraftBlockedByUnresolvedPlayoffs, parseGameDate } from '../../utils/dateUtils';
+import { getSimulationDayCount, isInstantTransactionAction, isSimulationTickAction, shouldFireCalendarEvents } from './simulationActionUtils';
+import { isNbaCupEnabled } from '../../utils/ruleFlags';
 
 export { handleStartGame, handleAnnounceChange };
 
@@ -42,7 +43,7 @@ export const processTurn = async (
         executiveTradeTransactionRef.current = executiveTradeTransaction;
     }
 
-    // §0 fix for SIMULATE_TO_DATE: if we're before Aug 14 with no regular-season schedule,
+    // SIMULATE_TO_DATE fallback: if we're before Aug 14 with no regular-season schedule,
     // eagerly fire broadcasting/global_games/intl_preseason/schedule_generation so games
     // are in state before the sim loop runs — same preflight as runLazySim.
     if (action.type === 'SIMULATE_TO_DATE') {
@@ -71,71 +72,44 @@ export const processTurn = async (
         }
     }
 
-    // 2. Determine days to simulate
-    // Sim-tick actions (ADVANCE_DAY, SIMULATE_TO_DATE) always advance.
-    // Trades are ALWAYS instant — clicking Finalize Deal must not fire a day sim or
-    // open the game ticker, regardless of advanceDayOnTransaction. Other transactions
-    // respect the setting (default off = instant).
-    const isSimTick = action.type === 'ADVANCE_DAY' || action.type === 'SIMULATE_TO_DATE';
-    const isInstantTrade = action.type === 'EXECUTIVE_TRADE' || action.type === 'FORCE_TRADE';
-    // Signings are also instant — advancing the day skips scheduled games and can blow past the trade deadline.
-    const isInstantAction = isInstantTrade || action.type === 'SIGN_FREE_AGENT' || action.type === 'EXERCISE_TEAM_OPTION' || action.type === 'DECLINE_TEAM_OPTION';
-    const advanceOnTx = SettingsManager.getSettings().advanceDayOnTransaction;
-    let daysToSimulate = 1;
-    if (isInstantAction || (!isSimTick && !advanceOnTx)) {
-        daysToSimulate = 0;
-    }
-    if (action.type === 'SIMULATE_TO_DATE') {
-        const targetDateNorm = normalizeDate(action.payload.targetDate);
-        const currentDateNorm = normalizeDate(stateForSim.date);
-        const targetDate = new Date(`${targetDateNorm}T00:00:00Z`);
-        const currentDate = new Date(`${currentDateNorm}T00:00:00Z`);
-        const diffTime = targetDate.getTime() - currentDate.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-        const stopBefore = action.payload?.stopBefore === true;
-        // Legacy fallback only; GameContext routes SIMULATE_TO_DATE through lazySim.
-        // runSimulation simulates the current date on iteration 0, so stopBefore
-        // lands on the target with that day's games unplayed.
-        daysToSimulate = stopBefore ? Math.max(0, diffDays) : Math.max(1, diffDays + 1);
-
-        const settings = SettingsManager.getSettings();
-        const maxSimDays = (!settings.enableLLM)
-            ? (settings.gameSpeed >= 8 ? 365 : 180)  // no LLM = generous cap
-            : (settings.gameSpeed >= 8 ? 90 : 30);   // LLM on = keep reasonable
-        if (daysToSimulate > maxSimDays) daysToSimulate = maxSimDays;
-    }
+    // 2. Determine days to simulate. Long jump-button flows are routed through
+    // lazySim in GameContext; this processTurn fallback must preserve the target
+    // date semantics and never silently truncate SIMULATE_TO_DATE.
+    const daysToSimulate = getSimulationDayCount(stateForSim, action);
 
     // 3. Run simulation
     const simStartNorm = normalizeDate(stateForSim.date);
-    if (action.type === 'ADVANCE_DAY' || action.type === 'SIMULATE_TO_DATE') {
+    if (isSimulationTickAction(action)) {
         console.log(`[PROCESS_TURN] ▶️ action=${action.type}, stateForSim.date=${stateForSim.date}, simStartNorm=${simStartNorm}, daysToSimulate=${daysToSimulate}`);
     }
     let { stateWithSim, allSimResults } = await runSimulation(stateForSim, daysToSimulate, action, onGame);
-    if (action.type === 'ADVANCE_DAY' || action.type === 'SIMULATE_TO_DATE') {
+    if (isSimulationTickAction(action)) {
         console.log(`[PROCESS_TURN] ✅ runSimulation returned state.date=${stateWithSim.date}, simResults=${allSimResults.length}`);
     }
 
     // 3b. Fire any auto-resolve calendar events crossed during this sim batch
     // (All-Star voting, schedule gen, award announcements, etc.)
     // Only for ADVANCE_DAY / SIMULATE_TO_DATE — not for action turns.
-    if (action.type === 'ADVANCE_DAY' || action.type === 'SIMULATE_TO_DATE') {
+    if (shouldFireCalendarEvents(action)) {
         const simEndNorm = normalizeDate(stateWithSim.date);
-        const seasonYear = stateWithSim.leagueStats.year;
-        // Accumulate fired keys per season so re-runs across rollovers stay correct
+        const startSeasonYear = stateForSim.leagueStats.year;
+        const endSeasonYear = stateWithSim.leagueStats.year;
         const firedKeys = new Set<string>();
-        for (const event of buildAutoResolveEvents(seasonYear, stateWithSim.leagueStats)) {
-            const compositeKey = `${seasonYear}:${event.key}`;
-            // Fire if the event date falls on the current day or within this sim window
-            if (event.date >= simStartNorm && event.date <= simEndNorm && !firedKeys.has(compositeKey)) {
-                try {
-                    const patch = await event.resolver(stateWithSim);
-                    if (patch && Object.keys(patch).length > 0) {
-                        stateWithSim = { ...stateWithSim, ...patch };
+        for (let seasonYear = startSeasonYear; seasonYear <= endSeasonYear; seasonYear++) {
+            for (const event of buildAutoResolveEvents(seasonYear, stateWithSim.leagueStats)) {
+                const compositeKey = `${seasonYear}:${event.key}`;
+                // Fire if the event date falls on the current day or within this sim window
+                if (event.date >= simStartNorm && event.date <= simEndNorm && !firedKeys.has(compositeKey)) {
+                    try {
+                        const patch = await event.resolver(stateWithSim);
+                        if (patch && Object.keys(patch).length > 0) {
+                            stateWithSim = { ...stateWithSim, ...patch };
+                        }
+                    } catch (err) {
+                        console.warn(`[processTurn calendar] ${event.key} failed:`, err);
                     }
-                } catch (err) {
-                    console.warn(`[processTurn calendar] ${event.key} failed:`, err);
+                    firedKeys.add(compositeKey);
                 }
-                firedKeys.add(compositeKey);
             }
         }
     }
@@ -197,6 +171,11 @@ export const processTurn = async (
         forcedTradeAnnouncements = tradeResult.announcements;
     }
 
+    // Track player moves across all transactions so we can apply nuanced familiarity
+    // penalties (docs/training.md §2 "Trade Penalty" — partial, scaled by ywt, offset
+    // when the player joins a same-system team).
+    const rosterMoves: { playerId: string; fromTid: number; toTid: number; ywt: number }[] = [];
+
     // Apply transactions to updated players/picks
     const applyTransaction = (transaction: any, players: Player[], picks: DraftPick[]) => {
         let p = [...players];
@@ -207,7 +186,12 @@ export const processTurn = async (
                 const destTidStr = Object.keys(transaction.teams).find(id => id !== sourceTidStr);
                 if (destTidStr) {
                     const destTid = parseInt(destTidStr);
+                    const sourceTid = parseInt(sourceTidStr);
                     teamAssets.playersSent.forEach(ps => {
+                        // Approximate ywt from the player's stats history on the source team.
+                        // Falls back to 0 if missing — rookies and freshly-arrived players take no toll.
+                        const ywt = (ps.stats ?? []).filter((s: any) => s.tid === sourceTid && !s.playoffs && (s.gp ?? 0) > 0).length;
+                        rosterMoves.push({ playerId: ps.internalId, fromTid: sourceTid, toTid: destTid, ywt });
                         p = p.map(player => player.internalId === ps.internalId ? { ...player, tid: destTid } : player);
                     });
                     teamAssets.picksSent.forEach(pick => {
@@ -223,6 +207,13 @@ export const processTurn = async (
     const afterExecutive = applyTransaction(executiveTradeTransactionFinal, afterForced.p, afterForced.d);
     updatedPlayers = afterExecutive.p;
     updatedDraftPicks = afterExecutive.d;
+
+    // Resolve mentor relationships after every trade in this turn — mentee keeps
+    // their mentor if both moved together, otherwise the dangling link clears.
+    if (rosterMoves.length > 0) {
+        const { resolveMentorBreakage } = await import('../../services/training/trainingTick');
+        updatedPlayers = resolveMentorBreakage(updatedPlayers);
+    }
 
     // Re-apply action-handler suspensions/injuries — processSimulationResults may have
     // decremented them on the same turn they were applied; the action version must win.
@@ -261,9 +252,12 @@ export const processTurn = async (
     console.log('[GameLogic] uniqueNewPosts:', uniqueNewPosts?.length);
 
     // 8. Handle Financials (Paychecks)
-    // Instant trades (EXECUTIVE_TRADE / FORCE_TRADE) stay on the current day — executing
-    // a trade should not silently roll the calendar forward.
-    const daysToAdvance = isInstantAction
+    const isInstantAction = isInstantTransactionAction(action);
+    // Only advance the calendar when games were actually simulated (daysToSimulate > 0)
+    // or the LLM explicitly returned a target day. Transactions with daysToSimulate=0
+    // (e.g. WAIVE_PLAYER when advanceDayOnTransaction=false) must stay on the current day
+    // so the user doesn't lose scheduled games silently.
+    const daysToAdvance = (isInstantAction || daysToSimulate === 0)
         ? 0
         : (result.day || (stateWithSim.day + 1)) - state.day;
     // Timezone-safe: normalise state.date to YYYY-MM-DD, advance via UTC methods
@@ -322,15 +316,25 @@ export const processTurn = async (
         console.log(`[Schedule] GENERATING on Aug14 — christmas=${(result.christmasGames || state.christmasGames)?.length ?? 0} global=${(result.globalGames || state.globalGames)?.length ?? 0}`);
         // Preserve any intl preseason games added before Aug 14
         const intlPreseasonGames = finalSchedule.filter(g => (g as any).isPreseason && (g.homeTid >= 100 || g.awayTid >= 100));
-        let _cupGroups = (state.leagueStats.inSeasonTournament !== false) ? (state.nbaCup?.groups ?? []) : [];
+        let _cupGroups = isNbaCupEnabled(state.leagueStats) ? (state.nbaCup?.groups ?? []) : [];
         let _inlineCupPatch: NBACupState | undefined;
-        if (state.leagueStats.inSeasonTournament !== false && _cupGroups.length === 0) {
+        if (isNbaCupEnabled(state.leagueStats) && _cupGroups.length === 0) {
             const prevStandings = state.teams.map(t => ({ tid: t.id, wins: t.wins, losses: t.losses }));
             _cupGroups = drawCupGroups(state.teams, prevStandings, state.saveId ?? 'default', scheduleYear);
             _inlineCupPatch = { year: scheduleYear, status: 'group', groups: _cupGroups, wildcards: { East: null, West: null }, knockout: [] };
         }
         finalSchedule = generateSchedule(state.teams, result.christmasGames || state.christmasGames, result.globalGames || state.globalGames, state.leagueStats.numGamesDiv ?? null, state.leagueStats.numGamesConf ?? null, state.leagueStats.mediaRights, scheduleYear, _cupGroups.length > 0 ? _cupGroups : undefined, state.saveId);
         if (_inlineCupPatch) { stateWithSim = { ...stateWithSim, nbaCup: _inlineCupPatch }; }
+        // Auto-fill training calendars for every team — runs once on Aug 14
+        // alongside the season schedule so the Training Center has a full year
+        // of plans the user can override.
+        try {
+          const { autoGenerateTrainingCalendarsForAllTeams } = await import('../../services/training/trainingScheduler');
+          stateWithSim = {
+            ...stateWithSim,
+            teams: autoGenerateTrainingCalendarsForAllTeams(stateWithSim.teams, finalSchedule, dateString, 365),
+          };
+        } catch (e) { console.warn('[Training] autoGenerate failed', e); }
         if (intlPreseasonGames.length > 0) {
             // Re-gid to avoid collisions with schedule gids (which start from 0)
             const maxGid = Math.max(0, ...finalSchedule.map(g => g.gid));
@@ -345,7 +349,7 @@ export const processTurn = async (
     // (e.g., the first NBA Cup ship had a saveId guard bug). Idempotent.
     if (
       hasRegularSeasonGames &&
-      state.leagueStats.inSeasonTournament !== false &&
+      isNbaCupEnabled(state.leagueStats) &&
       stateWithSim.nbaCup?.groups?.length &&
       !finalSchedule.some(g => (g as any).isNBACup)
     ) {
@@ -401,8 +405,8 @@ export const processTurn = async (
     const { AllStarSelectionService, bucketRoster } = await import('../../services/allStar/AllStarSelectionService');
     const asFormat = state.leagueStats.allStarFormat;
     const asTeams = state.leagueStats.allStarTeams;
-    const startDate = new Date(state.date);
-    const endDate = new Date(dateString);
+    const startDate = parseGameDate(state.date);
+    const endDate = parseGameDate(dateString);
     const dates = getAllStarWeekendDates(state.leagueStats.year);
 
     // Helper to check if a specific date was hit or passed during this turn.
@@ -466,7 +470,9 @@ export const processTurn = async (
             updatedPlayers,
             stateWithSim.teams,
             state.leagueStats.year,
-            allStarPatch?.roster ?? []
+            allStarPatch?.roster ?? [],
+            asFormat,
+            asTeams
         );
         // Bucket the full 24-man pool together so captains_draft / usa_vs_world
         // re-balance starters + reserves uniformly.
@@ -752,8 +758,7 @@ export const processTurn = async (
                 const maxGid = Math.max(0, ...finalSchedule.map(g => g.gid));
                 const playInStart = new Date(`${playoffSeasonYear}-04-15T00:00:00Z`);
                 const dayOffset = pig.conference === 'East' ? 3 : 4;
-                const gameDate = new Date(playInStart);
-                gameDate.setDate(gameDate.getDate() + dayOffset);
+                const gameDate = addGameDays(playInStart, dayOffset);
                 const newGid = maxGid + 1;
                 const loserGame: Game = {
                     gid: newGid,
@@ -858,7 +863,12 @@ export const processTurn = async (
         } catch (e) { console.warn('[GameLogic] autoInductHOFClass failed:', e); }
     }
 
-    if (wasDateReached(getDraftDate(draftYear, state.leagueStats)) && !autoDraftComplete) {
+    const actionBlocksAutoDraft =
+        action.type === 'EXECUTIVE_TRADE' ||
+        action.type === 'FORCE_TRADE' ||
+        isDraftBlockedByUnresolvedPlayoffs({ ...state, schedule: stateWithSim.schedule, playoffs: stateWithSim.playoffs });
+
+    if (wasDateReached(getDraftDate(draftYear, state.leagueStats)) && !autoDraftComplete && !actionBlocksAutoDraft) {
         try {
             const { autoRunDraft } = await import('../../services/logic/autoResolvers');
             const patch = autoRunDraft({ ...state, players: updatedPlayers, draftLotteryResult: autoDraftLotteryResult } as any);
@@ -875,6 +885,31 @@ export const processTurn = async (
         } catch (e) { console.warn('[GameLogic] autoRunDraft failed:', e); }
     }
 
+    // Training Center — daily familiarity tick + roster-change penalty.
+    // Familiarity is team-level state (never touches player ratings).
+    const teamsAfterSim = result.teams || stateWithSim.teams;
+    const trainingMod = await import('../../services/training/trainingTick');
+    const { getCoachSystem } = await import('../coachSystemStore');
+    const teamsAfterRosterMoves = rosterMoves.length > 0
+        ? trainingMod.applyRosterChangeFamiliarity(
+            teamsAfterSim,
+            rosterMoves,
+            (tid) => getCoachSystem(tid)?.selectedSystem
+        )
+        : teamsAfterSim;
+    const teamsAfterFamiliarity = trainingMod.applyDailyFamiliarityTick(
+        teamsAfterRosterMoves,
+        state.date,
+        daysToAdvance
+    );
+    // Player fatigue tick runs alongside familiarity — both share the daily-walk loop.
+    updatedPlayers = trainingMod.applyDailyFatigueTick(
+        updatedPlayers,
+        teamsAfterFamiliarity,
+        state.date,
+        daysToAdvance
+    );
+
     return {
         day: isInstantAction ? state.day : (result.day || (stateWithSim.day + 1)),
         date: dateString,
@@ -884,8 +919,8 @@ export const processTurn = async (
         inbox: [...uniqueNewEmails, ...updatedInbox],
         chats: updatedChats,
         news: [...uniqueNewNews, ...(stateWithSim.news ?? state.news)],
-        socialFeed: [...uniqueNewPosts, ...state.socialFeed].slice(0, 500),
-        teams: result.teams || stateWithSim.teams,
+        socialFeed: [...uniqueNewPosts, ...(stateWithSim.socialFeed ?? state.socialFeed)].slice(0, 500),
+        teams: teamsAfterFamiliarity,
         schedule: finalSchedule,
         players: updatedPlayers,
         draftPicks: updatedDraftPicks,
@@ -1034,6 +1069,10 @@ export const processTurn = async (
         pendingFeatToasts: stateWithSim.pendingFeatToasts,
         pendingRecoveryToasts: stateWithSim.pendingRecoveryToasts,
         pendingOptionToasts: stateWithSim.pendingOptionToasts,
+        faBidding: stateWithSim.faBidding,
+        pendingFAToasts: stateWithSim.pendingFAToasts,
+        pendingRFAOfferSheets: (stateWithSim as any).pendingRFAOfferSheets,
+        pendingRFAMatchResolutions: (stateWithSim as any).pendingRFAMatchResolutions,
         simCurrentDate: undefined,
     };
 };

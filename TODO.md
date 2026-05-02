@@ -1,118 +1,126 @@
-# NBA Commish — TODO
+# NBA Commish - TODO
 
 > Recent shipped sessions live in [CHANGELOG.md](./CHANGELOG.md). Read those before assuming an item below is still open.
 
 ---
 
-## Rising Stars Multi-Format Overhaul — DEFERRED items only
+## Team Training Phase 3.5 + Phase 4 (FIXED - S50)
+
+Phases 1–4 are now shipped. `TEAM_TRAINING_PLAN.md` has been cleared down to completion status.
+
+### Phase 3.5 — Calendar polish
+- **Reuse main calendar — drop bespoke ScheduleView grid. (FIXED - S50)** `TrainingCenterView.tsx` now uses canonical `CalendarView` + `DayView`; `TrainingDayOverlay.tsx` injects daily plan badges; non-game clicks open `DailyPlanModal`; game-day clicks open canonical `DayView` with a training prep header.
+- **Verify home/away marker correctness. (FIXED - S50)** Training Center now relies on the canonical calendar's focus-team opponent/logo/vs/@ rendering.
+
+### Phase 4 — Sim multipliers
+- **System Familiarity → simulation knobs. (FIXED - S50)** `engine.ts` now converts offense/defense familiarity into shooting efficiency, passing turnover control, defensive rotations, and a small strength boost.
+- **System Proficiency → `calculateTeamStrength`. (FIXED - S50)** `calculateTeamStrengthWithMinutes` accepts `proficiencyBoost`; the sim sources selected-system proficiency from the coach-system store values saved from `computeTeamProficiency`.
+- **Defensive Aura → defense stops. (FIXED - S50)** `NBATeam.defensiveAura` now ticks from Defensive training days and suppresses opponent efficiency while raising opponent turnovers.
+- **Player fatigue → game performance. (FIXED - S50)** `trainingFatigue` now multiplies effective ratings by `(1 - fatigue / 200)`, capped at -15%, for strength and stat generation.
+- **Player fatigue → injury risk. (FIXED - S50)** Existing mid-game injury rolls now stack the training-fatigue risk multiplier.
+
+---
+
+## Rising Stars Multi-Format Overhaul - DEFERRED items only
 
 Full session writeup in CHANGELOG Session 36. Below are the items intentionally **out of scope** of that PR.
 
-**Formats shipped:** `rookies_vs_sophomores` (classic) · `usa_vs_world` · `4team_tournament` (2022+ NBA — 3 legend-coached NBA teams + G League, SFs→40, Final→25) · `random_4team` · `random_2team`. Commissioner UI: format picker + Elimination Endings toggle + per-RS quarter-length slider (1–12 min, bypassed by Mirror League Rules).
+**Formats shipped:** `rookies_vs_sophomores` (classic) · `usa_vs_world` · `4team_tournament` (2022+ NBA - 3 legend-coached NBA teams + G League, SFs->40, Final->25) · `random_4team` · `random_2team`. Commissioner UI: format picker + Elimination Endings toggle + per-RS quarter-length slider (1-12 min, bypassed by Mirror League Rules).
 
 **GIDs reserved:** 91001/91002 (SFs, static) · 91099 (Final, dynamic). Legacy 90000 still used for non-tournament formats.
 
-### Not in scope (deferred — pick these up when needed)
-- **Round-robin format** (all 4 teams play each other, top-2 to Final) — wired via `risingStarsEliminationEndings: false` but sim logic deferred. The toggle is exposed in the UI; only the `simulateRisingStarsBracket` branch needs the round-robin path.
-- **Live coach-name customization in Commissioner UI** — currently uses legend pool rotation (Carmelo / T-Mac / Vince Carter cycle by year). User-editable names would need a settings field + form.
-- **Real Elam ending in GameSim engine** — `GameStructureSection.tsx` already notes this as TODO. The `targetScore` field on bracket games (40 for SFs, 25 for Final) is set, but GameSim ignores it; games are timed, not Elam.
+### Not in scope (deferred - pick these up when needed)
+- **Round-robin format** (all 4 teams play each other, top-2 to Final) - wired via `risingStarsEliminationEndings: false` but sim logic deferred. The toggle is exposed in the UI; only the `simulateRisingStarsBracket` branch needs the round-robin path.
+- **Live coach-name customization in Commissioner UI** - currently uses legend pool rotation (Carmelo / T-Mac / Vince Carter cycle by year). User-editable names would need a settings field + form.
+- **Real Elam ending in GameSim engine** - `GameStructureSection.tsx` already notes this as TODO. The `targetScore` field on bracket games (40 for SFs, 25 for Final) is set, but GameSim ignores it; games are timed, not Elam.
 
 ---
 
-## QUEUED — All-Star cosmetic polish (remaining only)
+## QUEUED - All-Star cosmetic polish (remaining only)
 
 Secondary polish; satellite-event UI surfaces moved to `NEW_FEATURES.md`. The shipped items (multi-game history, calendar event-count badge, bracket logos) are in CHANGELOG Session 36.
 
-- **Champion box-score MVP highlight in roster view** — currently only the final-game MVP shows; could surface RR-stage standout performances.
-- **Voting by team bucket** — currently still by conference; bucket assignment is announce-time only (no fan vote per USA Stars vs Stripes).
-- **Captain veto / live-draft UI** — captain pick order is auto-generated by snake; no commissioner-controlled live draft.
-- **Pre-existing TS errors in `AllStarGameSection` / `AllStarTab`** (`setNumQuarters`, `startOfPossessionMethod` / `possessionPattern` props mismatch) — confirmed pre-existing on master via stash; orthogonal to the All-Star overhaul, worth a quick cleanup pass.
+- **Champion box-score MVP highlight in roster view** - currently only the final-game MVP shows; could surface RR-stage standout performances.
+- **Voting by team bucket** - currently still by conference; bucket assignment is announce-time only (no fan vote per USA Stars vs Stripes).
+- **Captain veto / live-draft UI** - captain pick order is auto-generated by snake; no commissioner-controlled live draft.
 
 ---
 
-## QUEUED — Pick-only trades follow-ups (deferred from Session 29)
+## QUEUED - The Throne (standalone polish + in-game event)
+
+Full design, format v2, commissioner settings, sign-up incentive logic, and implementation hooks live in **[THRONE_PLAN.md](./THRONE_PLAN.md)**.
+
+Standalone mini-game tasks (Part 5 of that doc): Sim Round/Sim Tournament buttons · skipToEnd cap fix · richer commentary pools · seed randomizer.
+
+---
+
+## QUEUED - Pick-only trades follow-ups (deferred from Session 29)
 
 Core pick-only + cash plumbing landed in Session 29. Still open:
 
-- **"Better-of" / "worse-of" pick-swap rights** — schema field on `DraftPick` (or a new `PickSwap` join entity), evaluation at draft time.
-- **`DraftPick.protection` field** — rendering in the modal + evaluation (e.g. "top-4 protected, conveys in 2028").
-- **Trade Finder "picks only" filter chip** — UI toggle to surface only pick-for-pick / pick-for-cash counter-offers.
-- **Luxury tax integration** — currently `cashUsedInTrades` is bookkept but not yet rolled into a team's reported tax bill. NBA reality: cash sent counts AGAINST the sender's luxury tax computation.
+- **"Better-of" / "worse-of" pick-swap rights** - schema field on `DraftPick` (or a new `PickSwap` join entity), evaluation at draft time.
+- **`DraftPick.protection` field** - rendering in the modal + evaluation (e.g. "top-4 protected, conveys in 2028").
+- **Trade Finder "picks only" filter chip** - UI toggle to surface only pick-for-pick / pick-for-cash counter-offers.
+- **Luxury tax integration** - currently `cashUsedInTrades` is bookkept but not yet rolled into a team's reported tax bill. NBA reality: cash sent counts AGAINST the sender's luxury tax computation.
 
 ---
 
-## QUEUED — CBA / Apron Rules Audit — P2 polish (P0 + P1 shipped Session 36)
+## QUEUED - CBA / Apron Rules Audit - P2 polish (P0 + P1 shipped Session 36)
 
 Full P0 + P1 spec lives in CHANGELOG Session 36. Below are the deferred / long-term items from the original audit.
 
-### P2 — Polish / long-term
+### P2 - Polish / long-term
 
 - **#8 Mid-season waiver-claim block (1st apron).** 1st-apron teams cannot claim a player off waivers if that player's pre-waive salary exceeded the NT-MLE. **Blocked:** no waiver-claim flow surface yet (waivers go straight to FA pool per `simulationHandler.ts`). Implement this gate when the waiver-claim flow lands.
-- **#9 Hard-cap triggers.** Using the taxpayer MLE / receiving an S&T / aggregating salaries / using BAE all impose a hard cap at the 1st (or 2nd) apron for the season. Today, hard cap doesn't exist as a concept — teams are simply over/under aprons by raw payroll. **Fix:** add per-team `hardCapForSeason: { applied, ceiling, reason }` flag, set when any trigger fires; validator checks the ceiling on every subsequent signing/trade. UI: a "Hard Cap Triggers" section in `EconomyTab` with per-trigger toggles.
+- **#9 Hard-cap triggers.** Using the taxpayer MLE / receiving an S&T / aggregating salaries / using BAE all impose a hard cap at the 1st (or 2nd) apron for the season. Today, hard cap doesn't exist as a concept - teams are simply over/under aprons by raw payroll. **Fix:** add per-team `hardCapForSeason: { applied, ceiling, reason }` flag, set when any trigger fires; validator checks the ceiling on every subsequent signing/trade. UI: a "Hard Cap Triggers" section in `EconomyTab` with per-trigger toggles.
 - **#10 3-of-5 second-apron pick relegation.** If a team is over the 2nd apron in 3 of any 5 consecutive seasons, their 1st-round pick that year is moved to the end of the round. **Hard** because of the persistence work + draft-order rewrite. Add `team.apronHistory: { season, over1st, over2nd }[]` updated each `seasonRollover`. Draft generator checks the rolling 5-year window; if 3+ over-2nd, append `relegatedToEndOfRound: true` on that team's R1 pick. Not urgent.
 - **#11 BAE gated by 1st apron.** Bi-annual exception cannot be used by teams over 1st apron. `biannualEnabled` / `biannualAmount` exist but are free-for-all. **Fix:** gate in MLE/BAE allocation; same eyebrow treatment as MLE tier rows.
-- **#12 Stretch-provision interaction with TPEs.** Stretching a contract over the 2nd apron has special rules (cannot create a TPE from the stretched portion). `stretchProvisionEnabled` / `stretchProvisionMultiplier` / `stretchedDeadMoneyCapPct` exist as a self-contained block — no apron interaction yet. **Fix:** when a 2nd-apron team waives-and-stretches, suppress TPE generation for that release. Small block in waive handler.
+- **#12 Stretch-provision interaction with TPEs.** Stretching a contract over the 2nd apron has special rules (cannot create a TPE from the stretched portion). `stretchProvisionEnabled` / `stretchProvisionMultiplier` / `stretchedDeadMoneyCapPct` exist as a self-contained block - no apron interaction yet. **Fix:** when a 2nd-apron team waives-and-stretches, suppress TPE generation for that release. Small block in waive handler.
 
 ---
 
-## QUEUED — Apr 30 polish (Session 36+)
+## QUEUED - Apr 30 polish (Session 36+)
 
 ### A. Cumulative-load injury layer (ties into upcoming fatigue system)
-**Current state:** Mid-game injury chance in `engine.ts:850-856` is *inverted* on minutes — low mins = 20% (interpreted as "left early hurt"), iron-man 35+ = 0.6%. So overplaying a star costs **zero** injury risk per game. The minutes-weighted strength change (Apr 30, `calculateTeamStrengthWithMinutes` in `playerRatings.ts`) makes overuse weaker but not riskier.
+**Current state:** Mid-game injury chance in `engine.ts:850-856` is inverted on minutes - low mins = 20% (interpreted as "left early hurt"), iron-man 35+ = 0.6%. So overplaying a star costs **zero** injury risk per game. The minutes-weighted strength change (Apr 30, `calculateTeamStrengthWithMinutes` in `playerRatings.ts`) makes overuse weaker but not riskier.
 
 **Fix when fatigue ships:**
 - Track rolling 7-game minutes per player (or feed off the new fatigue pool when it exists).
-- High cumulative load → fatigue debuff; multiply each player's `rating` in `calculateTeamStrengthWithMinutes` by their fatigue mult before share-weighting (one-line hook).
-- Same fatigue feeds a per-game injury-chance multiplier — e.g. ×1.5 at moderate fatigue, ×2.5 at high. Keep the existing "left early" curve intact; just stack the multiplier on top.
+- High cumulative load -> fatigue debuff; multiply each player's `rating` in `calculateTeamStrengthWithMinutes` by their fatigue mult before share-weighting (one-line hook).
+- Same fatigue feeds a per-game injury-chance multiplier - e.g. x1.5 at moderate fatigue, x2.5 at high. Keep the existing "left early" curve intact; just stack the multiplier on top.
 - Net effect: iron-man strat weakens AND breaks down by mid-March. Tank-by-overuse becomes self-punishing.
 
 ---
 
-## TRANSFERRED HANDOFFS
+## BUGS - Open
+
+> All bugs logged here are open. Fixed bugs moved to History below.
 
 ---
 
-### Session 39 handoff — transferred
+## BUGS - Fixed (recent)
 
-The commissioner settings simulator-wiring pass has been completed and moved to `CHANGELOG.md` Session 39. Deferred by design: target-score/alternate scoring schema, non-4-quarter games, real custom schedule generation, substitution caps, max players on court, multiball, possession ceremony/pattern, and event-level ejection/card handling.
-
-### Session 38 handoff — transferred
-
-The Apr 30 Codex handoff has been completed and moved to `CHANGELOG.md` Session 38. The only deliberately deferred work from that pass is broad, long-term economy-pipeline simplification beyond the dead-money and toggle fixes landed there.
-
-## KNOWLEDGE GAPS — Hardcoded Jun 30 assumptions
-
-Residual coarse phase labels/comments after Session 38's dynamic rollover work:
-
-- **`constants.ts:381-383` PHASE table** — `[6, 21]` Lottery, `[6, 25]` Draft. Coarse phase-label bucketing only; breaks if playoff rounds push finals into July.
-- **`DraftPickGenerator.ts`** — "Rollover (Jun 30) resets `draftComplete`" comment carries same assumption.
-
----
-
-## FEATURES — Backlog (low priority)
-
-### Dual-affiliation academy prospects (Luka-Real-Madrid model)
-Pre-assign `draft.year` at generation for youth academy players so they're simultaneously at their youth club AND in a future draft class. Real Luka at 16 was playing Real Madrid senior AND everyone knew he was declaring 2018.
-
-Implementation:
-- At generateProspect for academy youth: `player.draft.year = currentYear + (19 - age)`
-- No Jun 30 status flip needed (currently Prompt C auto-declares at 19)
-- Rollover just checks `draft.year === currentYear` → move to draft pool that year
-- DraftScouting can surface prospects 1-4 years out with their club attached
-- Enables scouting mechanic expansion (commit scouting budget to follow a prospect's development years ahead)
-
-Preserves Prompt C's `<19` progression freeze. Replaces the status-flip mechanism with a pre-committed draft year.
-
-### Top-3 star trade override (topNAvgK2)
-From session 16 plan — not yet active. Teams with top-3 average K2 ≥ X should have trade-willingness override relaxed.
-
-### WNBA contract expiry + FA pipeline
-WNBA contracts never expire (explicitly guarded in the external-unstick fix so they don't leak into NBA pool). Needs a separate WNBA-specific FA pipeline.
-
-### DraftPicks.tsx — lottery-odds context
-`src/components/central/view/TeamOffice/pages/DraftPicks.tsx` shows pick inventory (round + season) but no awareness of active lottery system. No pick-value estimate shown.
+| Bug | Session |
+|-----|---------|
+| FA gate fires Oct 2+ despite FA already open — `isBeforeFreeAgencyOpen` calendar-year short-circuit | S48 |
+| Trade from Trade Finder during draft auto-completes draft — `gameLogic` skips `autoRunDraft` for trade actions | S47 |
+| GM By Rotation ignores Gameplan starters — reads `gameplanStore` starting five | S47 |
+| Bird Rights re-signs bypassed market timer — incumbent bids now injected into FA market | S47 |
+| FA "5 offers" badge empty modal — badge and modal both use `isPlausibleActiveMarket()` | S46 |
+| No rejection toast on lost FA bid — `faMarketTicker` emits rejection on all close paths | S46/S47 |
+| Cap space header vs Free Agency tab mismatch — both use `getTeamCapProfileFromState()` | S47 |
+| Trade validator: cap-room exception, backwards 1.25× direction, two under-cap teams blocked | S47 |
+| Year-2 ghost two-way / guaranteed players on user roster — `autoRunDraft` + FA passes skip GM user team; LOAD_GAME heals phantom records | S49 |
+| AI bidding on half-assigned user-roster players — `faMarketTicker` closes markets for already-rostered players | S49 |
+| Trade machine demands already-consumed draft picks — `autoRunDraft` purges current-year picks; trade engines filter `season >= year` | S49 |
+| Opening night overshoot (0-2 before user plays) — all skip-to-opening-night paths use `stopBefore: true` | S49 |
+| 3-day FA/opening-night offset — `faMoratoriumDays` confirmed 6; all gates use `isInMoratorium()` | S49 |
+| Pre-FA cap doesn't reflect rollover — Team Intel shows projected post-rollover cap | S49 |
+| Silent high-OVR offseason waive reads as glitch — news blurb generated for K2 80+ waives | S49 |
+| No 15/15 roster warning before guaranteed signing — `SigningModal` confirmation step added | S49 |
 
 ---
+
 
 ## SEPARATE DEVELOPMENTS
 

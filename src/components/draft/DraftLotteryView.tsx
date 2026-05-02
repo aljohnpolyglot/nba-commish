@@ -160,7 +160,13 @@ interface LotteryTeam {
   originalSeed: number;
   tid: number;
 }
-interface LotteryResult { pick: number; team: LotteryTeam; change: number; }
+interface LotteryResult { pick?: number; pickNumber?: number; team: LotteryTeam; change: number; }
+
+const getLotteryResultPick = (r: LotteryResult | any): number =>
+  Number(r?.pick ?? r?.pickNumber ?? 0);
+
+const getLotteryResultTid = (r: LotteryResult | any): number =>
+  Number(r?.team?.tid ?? r?.team?.id ?? r?.tid);
 
 function runLottery(teams: LotteryTeam[], chances: number[], numToPick: number): LotteryResult[] {
   const results: LotteryResult[] = [];
@@ -262,6 +268,7 @@ export const DraftLotteryView = () => {
   const [isSimulating, setIsSimulating] = useState(false);
   // 0 = fully revealed (restored), numTeams+1 = idle (no results yet)
   const [revealIndex, setRevealIndex] = useState<number>(() => hasSaved ? 0 : 15);
+  const [lotteryTableMode, setLotteryTableMode] = useState<'before' | 'after'>(() => hasSaved ? 'after' : 'before');
 
   // Build lottery teams — capped by preset pool size, not a hard 14
   const activeTeams: LotteryTeam[] = useMemo(() => {
@@ -298,9 +305,18 @@ export const DraftLotteryView = () => {
   }, [state.teams, activePreset]);
 
   const numTeams = activeTeams.length;
+  const canShowAfterTable = results.length > 0 || revealIndex <= numTeams;
+  const activeTableMode = canShowAfterTable ? lotteryTableMode : 'before';
 
   // Only reset to idle if there are no results — don't clobber restored saved state
   useEffect(() => { if (results.length === 0) setRevealIndex(numTeams + 1); }, [numTeams]);
+  useEffect(() => {
+    if (!canShowAfterTable) {
+      setLotteryTableMode('before');
+    } else if (revealIndex === 0) {
+      setLotteryTableMode('after');
+    }
+  }, [canShowAfterTable, revealIndex]);
 
   const getBallState = (n: number): 'unrevealed' | 'revealed' | 'past' => {
     if (revealIndex > numTeams) return 'unrevealed';
@@ -312,7 +328,7 @@ export const DraftLotteryView = () => {
 
   const getBallTeam = (n: number): LotteryTeam | undefined => {
     if (revealIndex > numTeams) return undefined;
-    if (n > revealIndex || revealIndex === 0) return results.find(r => r.pick === n)?.team;
+    if (n > revealIndex || revealIndex === 0) return results.find(r => getLotteryResultPick(r) === n)?.team;
     return undefined;
   };
 
@@ -321,6 +337,7 @@ export const DraftLotteryView = () => {
     setIsSimulating(true);
     const newResults = runLottery(activeTeams, activePreset.chances, activePreset.numToPick);
     setResults(newResults);
+    setLotteryTableMode('after');
 
     // Save to game state immediately — animation is purely visual.
     // This ensures results survive view switches mid-animation.
@@ -349,21 +366,22 @@ export const DraftLotteryView = () => {
     setResults([]);
     setRevealIndex(numTeams + 1);
     setIsSimulating(false);
+    setLotteryTableMode('before');
   };
 
   // Table rows
   const currentTable = useMemo(() => {
-    if (revealIndex > numTeams) {
+    if (activeTableMode === 'before' || revealIndex > numTeams) {
       return activeTeams.map((t, i) => ({ currentPick: i + 1, team: t, isRevealed: false, change: 0 }));
     }
-    const revealedPicks = revealIndex === 0 ? results : results.filter(r => r.pick > revealIndex);
-    const revealedIds = new Set(revealedPicks.map(r => r.team.id));
-    const unrevealed = activeTeams.filter(t => !revealedIds.has(t.id));
+    const revealedPicks = revealIndex === 0 ? results : results.filter(r => getLotteryResultPick(r) >= revealIndex);
+    const revealedTids = new Set(revealedPicks.map(getLotteryResultTid).filter(Number.isFinite));
+    const unrevealed = activeTeams.filter(t => !revealedTids.has(t.tid));
     return [
       ...unrevealed.map((t, i) => ({ currentPick: i + 1, team: t, isRevealed: false, change: 0 })),
-      ...revealedPicks.sort((a, b) => a.pick - b.pick).map(r => ({ currentPick: r.pick, team: r.team, isRevealed: true, change: r.change })),
+      ...revealedPicks.sort((a, b) => getLotteryResultPick(a) - getLotteryResultPick(b)).map(r => ({ currentPick: getLotteryResultPick(r), team: r.team, isRevealed: true, change: r.change })),
     ];
-  }, [revealIndex, results, activeTeams, numTeams]);
+  }, [activeTableMode, revealIndex, results, activeTeams, numTeams]);
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar">
@@ -493,8 +511,36 @@ export const DraftLotteryView = () => {
 
                   {/* RESULTS TABLE SECTION */}
                   <article className="bg-[#1A1A1A] rounded-sm overflow-hidden">
-                    <div className="p-4 flex items-center justify-between border-b border-white/5">
-                      <h6 className="text-sm font-bold uppercase tracking-widest">Lottery</h6>
+                    <div className="p-4 flex items-center justify-between gap-3 border-b border-white/5">
+                      <h6 className="text-sm font-bold uppercase tracking-widest">
+                        {activeTableMode === 'before' ? 'Before Lottery' : 'After Lottery'}
+                      </h6>
+                      {canShowAfterTable && (
+                        <div className="flex rounded-sm border border-white/10 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setLotteryTableMode('before')}
+                            className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${
+                              activeTableMode === 'before'
+                                ? 'bg-white text-black'
+                                : 'bg-transparent text-white/50 hover:text-white'
+                            }`}
+                          >
+                            Before
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setLotteryTableMode('after')}
+                            className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider border-l border-white/10 ${
+                              activeTableMode === 'after'
+                                ? 'bg-white text-black'
+                                : 'bg-transparent text-white/50 hover:text-white'
+                            }`}
+                          >
+                            After
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="mui-1auy16m">

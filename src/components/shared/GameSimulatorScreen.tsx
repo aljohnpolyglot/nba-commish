@@ -6,6 +6,16 @@ import { useLiveGame } from '../../hooks/useLiveGame';
 import { SettingsManager } from '../../services/SettingsManager';
 import { getTeamForGame, getPlayersForExhibitionTeam } from '../../utils/helpers';
 import { PlayerRatingsModal } from '../modals/PlayerRatingsModal';
+import { useGame } from '../../store/GameContext';
+import {
+  formatClockSeconds,
+  getFinalStatusLabel,
+  getGameTimingConfig,
+  getPeriodDurationSeconds,
+  getPeriodLabel,
+  getPeriodStartSeconds,
+} from '../../utils/gameClock';
+import { isFourPointEnabled } from '../../utils/ruleFlags';
 
 interface GameSimulatorScreenProps {
   game: Game;
@@ -38,7 +48,10 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
   riggedForTid,
   precomputedResult,
 }) => {
+  const { state } = useGame();
   const isExhibition = game.homeTid < 0;
+  const timingConfig = useMemo(() => getGameTimingConfig(state.leagueStats), [state.leagueStats]);
+  const fourPointEnabled = isFourPointEnabled(state.leagueStats);
 
   const homeTeam = useMemo(() => getTeamForGame(game.homeTid, teams), [game.homeTid, teams]);
   const awayTeam = useMemo(() => getTeamForGame(game.awayTid, teams), [game.awayTid, teams]);
@@ -79,7 +92,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
     badgesLoaded,
     currentPlay,
     finalResult
-  } = useLiveGame(game, homeTeam, awayTeam, players, onComplete, homeOverridePlayers, awayOverridePlayers, riggedForTid, precomputedResult);
+  } = useLiveGame(game, homeTeam, awayTeam, players, onComplete, homeOverridePlayers, awayOverridePlayers, riggedForTid, precomputedResult, state.leagueStats);
 
   const [activeTab, setActiveTab] = useState('boxscore');
   const [loadingMessage, setLoadingMessage] = useState("Players taking the court...");
@@ -118,40 +131,19 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
 
   const getClockDisplay = () => {
     if (isFinal) return '0:00';
-    if (!currentPlay) return '12:00';
+    if (!currentPlay) return formatClockSeconds(timingConfig.quarterLengthSeconds);
     
     const gs = currentPlay.gs;
-    const isOT = currentPlay.q > 4;
-    const qLen = isOT ? 300 : 720;
-    const qStartGs = currentPlay.q <= 4 
-      ? (currentPlay.q - 1) * 720 
-      : 2880 + (currentPlay.q - 5) * 300;
-    
+    const qLen = getPeriodDurationSeconds(currentPlay.q, timingConfig);
+    const qStartGs = getPeriodStartSeconds(currentPlay.q, timingConfig);
     const tiq = qLen - (gs - qStartGs);
-    
-    if (tiq <= 60 && tiq > 0) {
-      const seconds = Math.floor(tiq);
-      const tenths = Math.floor((tiq % 1) * 10);
-      return `${seconds}.${tenths}`;
-    } else {
-      const minutes = Math.max(0, Math.floor(tiq / 60));
-      const seconds = Math.max(0, Math.floor(tiq % 60));
-      return `${minutes}:${String(seconds).padStart(2, '0')}`;
-    }
-  };
-
-  const getPeriodLabel = (q: number) => {
-    if (q === 1) return '1ST';
-    if (q === 2) return '2ND';
-    if (q === 3) return '3RD';
-    if (q === 4) return '4TH';
-    return `OT${q - 4}`;
+    return formatClockSeconds(tiq);
   };
 
   const clockDisplay = getClockDisplay();
   const periodDisplay = isFinal 
-    ? (finalResult?.otCount ? `FINAL/${finalResult.otCount > 1 ? finalResult.otCount : ''}OT` : 'FINAL') 
-    : (currentPlay ? getPeriodLabel(currentPlay.q) : '1ST');
+    ? getFinalStatusLabel(finalResult?.otCount ?? 0)
+    : (currentPlay ? getPeriodLabel(currentPlay.q, timingConfig.numQuarters) : getPeriodLabel(1, timingConfig.numQuarters));
 
   const qScores = { away: [] as (string|number)[], home: [] as (string|number)[] };
   if (currentIndex >= 0) {
@@ -167,7 +159,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
       }
     }
     const currentQ = plays[currentIndex]?.q || 1;
-    const totalCols = Math.max(4, currentQ);
+    const totalCols = Math.max(timingConfig.numQuarters, currentQ);
     for (let i = 0; i < totalCols; i++) {
       if (i + 1 <= currentQ) {
         qScores.away[i] = aQs[i] || 0;
@@ -485,7 +477,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                   {(['AWAY','HOME'] as const).map(tm => (
                     <div key={tm} className="flex-1 min-w-0">
                       <div className={`text-[10px] sm:text-xs font-bold tracking-widest mb-1.5 md:mb-2 ${tm === 'AWAY' ? 'text-white' : 'text-blue-400'}`}>
-                        {tm === 'AWAY' ? awayTeam.abbreviation : homeTeam.abbreviation} — {teamStats[tm].pts} PTS
+                        {tm === 'AWAY' ? awayTeam.abbrev : homeTeam.abbrev} — {teamStats[tm].pts} PTS
                       </div>
                       <div className="overflow-x-auto custom-scrollbar">
                         <table className="w-full text-right text-[9px] sm:text-[10px] text-gray-400 whitespace-nowrap">
@@ -503,6 +495,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                               <th className="font-normal pb-1 px-1">+/-</th>
                               <th className="font-normal pb-1 px-1">FG</th>
                               <th className="font-normal pb-1 px-1">3P</th>
+                              {fourPointEnabled && <th className="font-normal pb-1 px-1">4P</th>}
                               <th className="font-normal pb-1 px-1">FT</th>
                             </tr>
                           </thead>
@@ -542,6 +535,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                                     <td className={`py-1 px-1 font-mono ${p.pm > 0 ? 'text-green-400' : p.pm < 0 ? 'text-red-400' : 'text-gray-400'}`}>{p.pm > 0 ? `+${p.pm}` : p.pm}</td>
                                     <td className="py-1 px-1">{p.fgm}-{p.fga}</td>
                                     <td className="py-1 px-1">{p.tp}-{p.tpa}</td>
+                                    {fourPointEnabled && <td className="py-1 px-1">{p.fp || 0}-{p.fpa || 0}</td>}
                                     <td className="py-1 px-1">{p.ftm}-{p.fta}</td>
                                   </tr>
                                 );
@@ -561,6 +555,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                               <td className="py-1 px-1 text-gray-500">—</td>
                               <td className="py-1 px-1">{teamStats[tm].fgm}-{teamStats[tm].fga}</td>
                               <td className="py-1 px-1">{teamStats[tm].tp}-{teamStats[tm].tpa}</td>
+                              {fourPointEnabled && <td className="py-1 px-1">{teamStats[tm].fp || 0}-{teamStats[tm].fpa || 0}</td>}
                               <td className="py-1 px-1">{teamStats[tm].ftm}-{teamStats[tm].fta}</td>
                             </tr>
                           </tfoot>
@@ -606,12 +601,21 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                   const opp = tm === 'HOME' ? 'AWAY' : 'HOME';
                   const ts = teamStats[tm];
                   const oppTs = teamStats[opp];
-                  const eFG = ts.fga > 0 ? ((ts.fgm + 0.5 * ts.tp) / ts.fga) * 100 : 0;
+                  const eFG = ts.fga > 0 ? ((ts.fgm + 0.5 * ts.tp + (ts.fp || 0)) / ts.fga) * 100 : 0;
                   const tovPct = (ts.fga + 0.44 * ts.fta + ts.tov) > 0 ? (ts.tov / (ts.fga + 0.44 * ts.fta + ts.tov)) * 100 : 0;
                   const orbPct = (ts.orb + oppTs.drb) > 0 ? (ts.orb / (ts.orb + oppTs.drb)) * 100 : 0;
                   const ftFga = ts.fga > 0 ? ts.fta / ts.fga : 0;
                   return { eFG, tovPct, orbPct, ftFga };
                 };
+
+                const getPip = (tm: 'HOME' | 'AWAY') => {
+                  const list = tm === 'HOME' ? finalResult?.homeStats : finalResult?.awayStats;
+                  if (!list) return 0;
+                  return list.reduce((sum: number, s: any) =>
+                    sum + (s.fgAtRim || 0) * 2 + (s.fgLowPost || 0) * 2, 0);
+                };
+                const awayPip = getPip('AWAY');
+                const homePip = getPip('HOME');
 
                 const awayAdv = getAdvancedStats('AWAY');
                 const homeAdv = getAdvancedStats('HOME');
@@ -631,14 +635,14 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                         </thead>
                         <tbody className="divide-y divide-gray-800/50">
                           <tr>
-                            <td className="py-2 text-left font-bold text-white text-[10px] sticky left-0 bg-[#0f1117] pr-2">{awayTeam.abbreviation}</td>
+                            <td className="py-2 text-left font-bold text-white text-[10px] sticky left-0 bg-[#0f1117] pr-2">{awayTeam.abbrev}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{awayAdv.eFG.toFixed(1)}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{awayAdv.tovPct.toFixed(1)}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{awayAdv.orbPct.toFixed(1)}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{awayAdv.ftFga.toFixed(3)}</td>
                           </tr>
                           <tr>
-                            <td className="py-2 text-left font-bold text-blue-400 text-[10px] sticky left-0 bg-[#0f1117] pr-2">{homeTeam.abbreviation}</td>
+                            <td className="py-2 text-left font-bold text-blue-400 text-[10px] sticky left-0 bg-[#0f1117] pr-2">{homeTeam.abbrev}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{homeAdv.eFG.toFixed(1)}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{homeAdv.tovPct.toFixed(1)}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{homeAdv.orbPct.toFixed(1)}</td>
@@ -650,9 +654,9 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
 
                     <div className="flex flex-col gap-1.5 mt-1">
                       <div className="flex justify-between text-[9px] sm:text-xs font-bold tracking-widest text-gray-500 mb-1">
-                        <span className="text-white">{awayTeam.abbreviation}</span>
+                        <span className="text-white">{awayTeam.abbrev}</span>
                         <span>TEAM STATS</span>
-                        <span className="text-blue-400">{homeTeam.abbreviation}</span>
+                        <span className="text-blue-400">{homeTeam.abbrev}</span>
                       </div>
                       {[
                         { label:'FIELD GOALS',
@@ -663,6 +667,11 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                           c:`${teamStats.AWAY.tp}-${teamStats.AWAY.tpa} (${teamStats.AWAY.tpa > 0 ? ((teamStats.AWAY.tp/teamStats.AWAY.tpa)*100).toFixed(1) : '0.0'}%)`,
                           d:`${teamStats.HOME.tp}-${teamStats.HOME.tpa} (${teamStats.HOME.tpa > 0 ? ((teamStats.HOME.tp/teamStats.HOME.tpa)*100).toFixed(1) : '0.0'}%)`
                         },
+                        ...(fourPointEnabled ? [{
+                          label:'4PT FG',
+                          c:`${teamStats.AWAY.fp || 0}-${teamStats.AWAY.fpa || 0} (${(teamStats.AWAY.fpa || 0) > 0 ? (((teamStats.AWAY.fp || 0)/(teamStats.AWAY.fpa || 1))*100).toFixed(1) : '0.0'}%)`,
+                          d:`${teamStats.HOME.fp || 0}-${teamStats.HOME.fpa || 0} (${(teamStats.HOME.fpa || 0) > 0 ? (((teamStats.HOME.fp || 0)/(teamStats.HOME.fpa || 1))*100).toFixed(1) : '0.0'}%)`
+                        }] : []),
                         { label:'FREE THROWS',
                           c:`${teamStats.AWAY.ftm}-${teamStats.AWAY.fta} (${teamStats.AWAY.fta > 0 ? ((teamStats.AWAY.ftm/teamStats.AWAY.fta)*100).toFixed(1) : '0.0'}%)`,
                           d:`${teamStats.HOME.ftm}-${teamStats.HOME.fta} (${teamStats.HOME.fta > 0 ? ((teamStats.HOME.ftm/teamStats.HOME.fta)*100).toFixed(1) : '0.0'}%)`
@@ -673,6 +682,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                         { label:'BLOCKS',    c: teamStats.AWAY.blk, d: teamStats.HOME.blk },
                         { label:'TURNOVERS', c: teamStats.AWAY.tov, d: teamStats.HOME.tov },
                         { label:'FOULS',     c: teamStats.AWAY.pf,  d: teamStats.HOME.pf  },
+                        { label:'POINTS IN THE PAINT', c: awayPip, d: homePip },
                       ].map(stat => (
                         <div key={stat.label} className="flex justify-between items-center py-1.5 border-b border-gray-800/50">
                           <div className="w-1/3 text-left font-mono text-[10px] sm:text-xs text-gray-300">{stat.c}</div>
@@ -692,10 +702,10 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                     <thead>
                       <tr className="text-gray-500 text-[9px] tracking-[0.15em] border-b border-gray-800">
                         <th className="text-left pb-2 font-normal">TEAM</th>
-                        {['1ST','2ND','3RD','4TH'].map(label => (
+                        {Array.from({ length: timingConfig.numQuarters }, (_, i) => getPeriodLabel(i + 1, timingConfig.numQuarters)).map(label => (
                           <th key={label} className="pb-2 font-normal">{label}</th>
                         ))}
-                        {qScores.away.length > 4 && qScores.away.slice(4).map((_, i) => (
+                        {qScores.away.length > timingConfig.numQuarters && qScores.away.slice(timingConfig.numQuarters).map((_, i) => (
                           <th key={`ot-header-${i}`} className="pb-2 font-normal">OT{i + 1}</th>
                         ))}
                         <th className="pb-2 font-normal">FINAL</th>
@@ -703,8 +713,8 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                     </thead>
                     <tbody className="font-mono text-sm sm:text-base">
                       {[
-                        { label: awayTeam.abbreviation, logo: awayLogo, qs: qScores.away, final: displayAwayScore, color: 'text-gray-300', finalColor: 'text-white' },
-                        { label: homeTeam.abbreviation, logo: homeLogo, qs: qScores.home, final: displayHomeScore, color: 'text-yellow-600', finalColor: 'text-yellow-500' },
+                        { label: awayTeam.abbrev, logo: awayLogo, qs: qScores.away, final: displayAwayScore, color: 'text-gray-300', finalColor: 'text-white' },
+                        { label: homeTeam.abbrev, logo: homeLogo, qs: qScores.home, final: displayHomeScore, color: 'text-yellow-600', finalColor: 'text-yellow-500' },
                       ].map(row => (
                         <tr key={row.label} className="border-b border-gray-800/30">
                           <td className="py-2">

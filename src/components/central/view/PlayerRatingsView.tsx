@@ -9,6 +9,7 @@ import { getDisplayOverall, getDisplayPotential } from '../../../utils/playerRat
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import { applyLeagueDisplayScale } from '../../../hooks/useLeagueScaledRatings';
 import { getRealDurability, applyDurabilityToK2 } from '../../../utils/durabilityUtils';
+import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
 
 // Category summary config
 const CAT_CONFIG = [
@@ -442,9 +443,9 @@ export const PlayerRatingsView: React.FC = () => {
                               />
                             )}
                             <div className="min-w-0">
-                              <span className="text-sm font-bold text-white truncate block max-w-[120px] md:max-w-none">
+                              <PlayerNameWithHover player={row.player} className="text-sm font-bold text-white truncate block max-w-[120px] md:max-w-none">
                                 {row.player.name}
-                              </span>
+                              </PlayerNameWithHover>
                               <span className="text-[10px] text-slate-500">
                                 {teamAbbr}{row.player.pos ? ` | ${row.player.pos}` : ''}{row.age ? ` | ${row.age}` : ''}
                               </span>

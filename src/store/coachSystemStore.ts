@@ -105,6 +105,17 @@ export function getSystemFitPenalty(teamId: number): {
   };
 }
 
+export function getSystemProficiencyBoost(teamId: number): number {
+  hydrate();
+  const override = cache.get(teamId);
+  if (!override) return 0;
+
+  // selectedProfScore is saved from computeTeamProficiency/computeSystemFit.
+  // Map 50→0, 100→+3 strength points so excellent fit matters without swamping OVR.
+  const score = Math.max(0, Math.min(100, override.selectedProfScore ?? 50));
+  return Math.max(0, (score - 50) / 50) * 3;
+}
+
 /**
  * Returns the system-specific knob modifiers for the team's active system.
  * Falls back to best-fit system mods when no override stored.

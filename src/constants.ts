@@ -124,6 +124,7 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   restrictSignAndTradeAcquisitionOver1stApron: true,
   freezePickAt2ndApron: true,
   restrictTPEProvenanceOver2ndApron: true,
+  postSigningMoratoriumEnabled: true,
 
   // Economy - Teams
   twoWayContractsEnabled: true,
@@ -360,7 +361,7 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   multiballEnabled: false,
   multiballCount: 1,
   threePointLineDistance: 23.75,
-  fourPointLineDistance: 0,
+  fourPointLineDistance: 27,
   dunkValue: 2,
   midrangeValue: 2,
   heaveRuleEnabled: false,

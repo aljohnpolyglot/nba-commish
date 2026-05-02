@@ -8,9 +8,9 @@ import type { NBAPlayer, NBATeam } from '../../../types';
 import {
   formatSalaryM, formatSalaryMPrecise, computeContractOffer, getCapThresholds, getTeamPayrollUSD, getContractLimits, getMLEAvailability, computeExternalBuyout, contractToUSD, hasBirdRights,
 } from '../../../utils/salaryUtils';
-import { extractNbaId, hdPortrait, normalizeDate, convertTo2KRating } from '../../../utils/helpers';
+import { normalizeDate, convertTo2KRating } from '../../../utils/helpers';
 import { getDisplayPotential } from '../../../utils/playerRatings';
-import { getCurrentOffseasonFAStart } from '../../../utils/dateUtils';
+import { getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd, getGameDateParts, isInMoratorium, parseGameDate } from '../../../utils/dateUtils';
 import { getPlayerImage } from '../../central/view/bioCache';
 import { getNonNBAGistData } from '../../central/view/nonNBACache';
 import { loadPlayerRenders, getPlayerRender } from '../../../utils/playerRenders';
@@ -18,8 +18,9 @@ import { PlayerBioMoraleTab, classifyResignIntent } from '../../central/view/Pla
 import { PlayerBioContractTab } from '../../central/view/PlayerBioContractTab';
 import { computeMoodScore, normalizeMoodTraits } from '../../../utils/mood/moodScore';
 import { useGame } from '../../../store/GameContext';
-import { computeOfferStrength } from '../../../services/freeAgencyBidding';
+import { computeOfferStrength, isPlausibleActiveMarket } from '../../../services/freeAgencyBidding';
 import { getGMAttributes, clampSpendOffer, spendingOfferMultiplier } from '../../../services/staff/gmAttributes';
+import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
 
 interface SigningModalProps {
   player: NBAPlayer;
@@ -140,7 +141,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   const [showResponse, setShowResponse] = useState(false);
   // Bid-submission confirmation: after Submit Offer, show terms + decision window
   // in a dedicated screen before the user dismisses. Better than a silent close.
-  const [bidSubmitted, setBidSubmitted] = useState<null | { salary: number; years: number; option: 'NONE' | 'PLAYER' | 'TEAM'; decisionDaysOut: number }>(null);
+  const [bidSubmitted, setBidSubmitted] = useState<null | { salary: number; years: number; option: 'NONE' | 'PLAYER' | 'TEAM' }>(null);
   // Commissioner can override the preflight ("Testing Free Agency") and enter negotiation anyway.
   const [preflightOverridden, setPreflightOverridden] = useState(false);
   // Transient toast for contractType collisions with roster caps.
@@ -154,6 +155,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   const [showCapWarning, setShowCapWarning] = useState(false);
   // Commissioner dismisses roster-full preflight.
   const [rosterFullOverridden, setRosterFullOverridden] = useState(false);
+  const [overLimitAction, setOverLimitAction] = useState<null | 'showResponse' | 'sign'>(null);
 
   const thresholds  = useMemo(() => getCapThresholds(leagueStats), [leagueStats]);
   const teamPayroll = useMemo(() => getTeamPayrollUSD(state.players, team.id, team, state.leagueStats?.year), [state.players, team, state.leagueStats?.year]);
@@ -161,9 +163,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   // Roster-slot accounting. Training camp rule: 21 TOTAL (standard + NG + two-way all share one pool).
   // Regular season: 15 standard (guaranteed + NG) + 3 two-way are separate buckets.
   const roster = useMemo(() => {
-    const d = state.date ? new Date(state.date) : new Date();
-    const mo = d.getMonth() + 1;
-    const dy = d.getDate();
+    const { month: mo, day: dy } = state.date ? getGameDateParts(state.date) : getGameDateParts(new Date());
     const isTrainingCamp = (mo >= 7 && mo <= 9) || (mo === 10 && dy <= 21);
     const onTeam = state.players.filter(p => p.tid === team.id);
     const twoWayCount   = onTeam.filter(p => (p as any).twoWay).length;
@@ -191,6 +191,15 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
       totalFull: standardFull && twoWayFull,
     };
   }, [state.players, team.id, leagueStats, state.date]);
+  const guaranteedCount = useMemo(
+    () => state.players.filter(p =>
+      p.tid === team.id &&
+      !(p as any).twoWay &&
+      !(p as any).nonGuaranteed &&
+      (((p.contract as any)?.type ?? 'GUARANTEED') === 'GUARANTEED')
+    ).length,
+    [state.players, team.id],
+  );
   // Re-sign = staying on the current team → Bird Rights unlock supermax / longer deals.
   const isResign = player.tid === team.id;
   // FA-with-Bird-Rights = the team holds Bird Rights from the player's prior tenure.
@@ -205,28 +214,34 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     return sorted[0]?.tid ?? -1;
   }, [player]);
   const teamHoldsBirdRights = !isResign && priorNbaTid === team.id && hasBirdRights(player);
+  const hasOwnTeamBirdRights = (isResign && hasBirdRights(player)) || teamHoldsBirdRights;
   const playerForLimits = useMemo(
-    () => (isResign || teamHoldsBirdRights ? { ...player, hasBirdRights: true } as NBAPlayer : player),
-    [player, isResign, teamHoldsBirdRights],
+    () => (hasOwnTeamBirdRights ? { ...player, hasBirdRights: true } as NBAPlayer : player),
+    [player, hasOwnTeamBirdRights],
   );
   const limits = useMemo(() => getContractLimits(playerForLimits, leagueStats), [playerForLimits, leagueStats]);
   const initialOffer = useMemo(() => {
     const base = computeContractOffer(playerForLimits, leagueStats);
     // Supermax or Rose Rule resign: pin to full ceiling so interest meter treats
     // anything below as a below-market offer rather than a windfall bonus.
-    if ((isResign || teamHoldsBirdRights) && (limits.isSupermaxEligible || limits.isRookieExtEligible)) {
+    if (hasOwnTeamBirdRights && (limits.isSupermaxEligible || limits.isRookieExtEligible)) {
       return { ...base, salaryUSD: limits.maxSalaryUSD };
     }
-    if ((isResign || teamHoldsBirdRights) && base.salaryUSD <= limits.minSalaryUSD * 1.05 && limits.maxSalaryUSD > limits.minSalaryUSD * 5) {
+    if (hasOwnTeamBirdRights && base.salaryUSD <= limits.minSalaryUSD * 1.05 && limits.maxSalaryUSD > limits.minSalaryUSD * 5) {
       return { ...base, salaryUSD: Math.round(limits.maxSalaryUSD * 0.85) };
     }
     return base;
-  }, [playerForLimits, leagueStats, isResign, teamHoldsBirdRights, limits.isSupermaxEligible, limits.isRookieExtEligible, limits.maxSalaryUSD, limits.minSalaryUSD]);
+  }, [playerForLimits, leagueStats, hasOwnTeamBirdRights, limits.isSupermaxEligible, limits.isRookieExtEligible, limits.maxSalaryUSD, limits.minSalaryUSD]);
   // MLE reflects the hypothetical first-year salary of this very offer so the status updates live as the user slides.
   const mle = useMemo(
     () => getMLEAvailability(team.id, teamPayroll, salary, thresholds, leagueStats),
     [team.id, teamPayroll, salary, thresholds, leagueStats],
   );
+
+  const playerK2 = useMemo(() => {
+    const lastR = (player as any).ratings?.[(player as any).ratings?.length - 1];
+    return convertTo2KRating(player.overallRating ?? lastR?.ovr ?? 60, lastR?.hgt ?? 50, lastR?.tp);
+  }, [player]);
 
   // NBA two-way = 50% of the first-year minimum. Derived from EconomyTab settings so commissioners can tune it.
   const twoWaySalaryUSD = useMemo(() => Math.round(limits.minSalaryUSD * 0.5), [limits.minSalaryUSD]);
@@ -234,10 +249,8 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   // Training camp window: Jul 1 – Oct 21. NG option only shown when standard slots ≥ 15 and in this window.
   const isTrainingCampPeriod = useMemo(() => {
     if (!(leagueStats?.nonGuaranteedContractsEnabled ?? true)) return false;
-    const d = state.date ? new Date(state.date) : null;
-    if (!d || isNaN(d.getTime())) return false;
-    const mo = d.getMonth() + 1;
-    const dy = d.getDate();
+    if (!state.date) return false;
+    const { month: mo, day: dy } = getGameDateParts(state.date);
     return (mo >= 7 && mo <= 9) || (mo === 10 && dy <= 21);
   }, [state.date, leagueStats?.nonGuaranteedContractsEnabled]);
 
@@ -249,6 +262,10 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   // 19 → 95%, 22 → 65%, 25 → 30%, 28 → 10%, 30+ → ~3%. Seeded by player ID so it's stable per-player.
   const isTwoWayCandidate = useMemo(() => {
     if (realAge <= 0) return false;
+    if (playerK2 > 76) return false;
+    const yearsOfService = ((player as any).stats ?? [])
+      .filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
+    if (yearsOfService > 4) return false;
     let prob: number;
     if (realAge <= 19) prob = 0.95;
     else if (realAge <= 22) prob = 0.65 + (22 - realAge) * 0.10;   // 20→.85, 21→.75, 22→.65
@@ -261,7 +278,14 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     for (let i = 0; i < id.length; i++) seed += id.charCodeAt(i);
     const roll = Math.abs(Math.sin(seed) * 10000) % 1;
     return roll < prob;
-  }, [realAge, player.internalId]);
+  }, [realAge, player.internalId, playerK2, player]);
+  const canOfferTwoWay = useMemo(() => {
+    if (playerK2 > 76) return false;
+    if (realAge > 25) return false;
+    const yearsOfService = ((player as any).stats ?? [])
+      .filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
+    return yearsOfService <= 4;
+  }, [player, playerK2, realAge]);
 
   const minAllowed = contractType === 'TWO_WAY' ? twoWaySalaryUSD : limits.minSalaryUSD;
   const maxAllowed = contractType === 'TWO_WAY' ? twoWaySalaryUSD : contractType === 'NON_GUARANTEED' ? limits.minSalaryUSD * 3 : limits.maxSalaryUSD;
@@ -341,13 +365,16 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   // before the ticker fires) so the tab still appears during the expected
   // bidding-war window for FAs who'll get a market shortly.
   const hasActiveMarket = useMemo(
-    () => !!state.faBidding?.markets?.some(m => m.playerId === player.internalId && !m.resolved),
+    () => !!state.faBidding?.markets?.some(m =>
+      m.playerId === player.internalId &&
+      isPlausibleActiveMarket(m as any, state, player)
+    ),
     [state.faBidding?.markets, player.internalId],
   );
   const isPeakFA = useMemo(() => {
     const dateStr = normalizeDate(state.date ?? '');
     if (!dateStr) return false;
-    const faStart = getCurrentOffseasonFAStart(`${dateStr}T00:00:00Z`, leagueStats);
+    const faStart = getCurrentOffseasonEffectiveFAStart(`${dateStr}T00:00:00Z`, leagueStats, state.schedule as any);
     const peakEnd = new Date(faStart.getTime() + PEAK_FA_DAYS * 86_400_000);
     const current = new Date(`${dateStr}T00:00:00Z`);
     return current >= faStart && current < peakEnd;
@@ -380,8 +407,8 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     initedForPlayerRef.current = player.internalId;
     // Honor roster slot availability first — if standard is full, we must default to TWO_WAY, and vice versa.
     // Bird Rights re-signs bypass roster-full forcing — they aren't taking a new slot.
-    const hasBirdBypass = isResign || teamHoldsBirdRights;
-    const forcedTwoWay = !hasBirdBypass && roster.standardFull && !roster.twoWayFull;
+    const hasBirdBypass = hasOwnTeamBirdRights;
+    const forcedTwoWay = canOfferTwoWay && !hasBirdBypass && roster.standardFull && !roster.twoWayFull;
     const forcedGuaranteed = !hasBirdBypass && roster.twoWayFull && !roster.standardFull;
     // Resolution order: roster-full forcing > caller override (initialContractType, e.g. 2W→Guaranteed promotion) > Bird Rights re-sign default to GUARANTEED > age-based candidate default.
     let chosenType: ContractType;
@@ -389,7 +416,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     else if (forcedTwoWay) chosenType = 'TWO_WAY';
     else if (initialContractType) chosenType = initialContractType;
     else if (hasBirdBypass) chosenType = 'GUARANTEED';
-    else if (isTwoWayCandidate) chosenType = 'TWO_WAY';
+    else if (canOfferTwoWay && isTwoWayCandidate) chosenType = 'TWO_WAY';
     else chosenType = 'GUARANTEED';
     setContractType(chosenType);
     if (chosenType === 'TWO_WAY') {
@@ -406,13 +433,17 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
       setYears(initialOffer.years);
       setOption(initialOffer.hasPlayerOption ? 'PLAYER' : 'NONE');
     }
-  }, [player.internalId, isTwoWayCandidate, twoWaySalaryUSD, initialOffer, limits.minSalaryUSD, limits.maxSalaryUSD, roster.standardFull, roster.twoWayFull, initialContractType, isOwnTeamGM, gmSpending]);
+  }, [player.internalId, isTwoWayCandidate, canOfferTwoWay, twoWaySalaryUSD, initialOffer, limits.minSalaryUSD, limits.maxSalaryUSD, roster.standardFull, roster.twoWayFull, initialContractType, isOwnTeamGM, gmSpending]);
 
   // User-driven contractType toggle — rebuild salary/years/option for the chosen type.
   // Skips the first run so we don't clobber the init effect above.
   const contractTypeInitedRef = React.useRef(false);
   useEffect(() => {
     if (!contractTypeInitedRef.current) { contractTypeInitedRef.current = true; return; }
+    if (contractType === 'TWO_WAY' && !canOfferTwoWay) {
+      setContractType('GUARANTEED');
+      return;
+    }
     if (contractType === 'TWO_WAY') {
       setSalary(twoWaySalaryUSD);
       setYears(y => (y > 2 ? 2 : y));
@@ -430,18 +461,12 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
       setYears(initialOffer.years);
       setOption(initialOffer.hasPlayerOption ? 'PLAYER' : 'NONE');
     }
-  }, [contractType]);
+  }, [contractType, canOfferTwoWay]);
 
-  // Full-body NBA action render (1040x760) is primary — looks sick.
-  // Portrait (ProBallers via getPlayerImage) is the fallback via <img onError>.
-  const actionRender = useMemo(() => {
-    const nbaId = extractNbaId(player.imgURL ?? '', player.name);
-    return nbaId ? hdPortrait(nbaId) : undefined;
-  }, [player.imgURL, player.name]);
+  // BBGM imgURL is the canonical photo source — same as PlayerCard/bioCache.
   const portraitFallback = useMemo(() => getPlayerImage(player), [player]);
-  const initialSrc = actionRender || portraitFallback;
 
-  // Higher-res /small full-body render from the nba-store-data repo.
+  // Higher-res full-body render from the nba-store-data repo.
   // Lazy-loaded once at module level; we re-render when the map arrives.
   const [rendersTick, setRendersTick] = useState(0);
   useEffect(() => {
@@ -453,7 +478,17 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     () => getPlayerRender(player.name),
     [player.name, rendersTick],
   );
-  const primarySrc = fullBodyRender || initialSrc;
+  const primarySrc = fullBodyRender || portraitFallback;
+
+  // Track when all real image sources are exhausted so we can fall back to MyFace.
+  const [imgAllFailed, setImgAllFailed] = useState(false);
+  useEffect(() => { setImgAllFailed(false); }, [primarySrc]);
+
+  const playerFace = (player as any).face;
+  const hasFace = isRealFaceConfig(playerFace);
+  const teamColors = team.colors?.length === 3
+    ? (team.colors as [string, string, string])
+    : undefined;
 
   const { interest, uncappedInterest } = useMemo(() => {
     const salaryDiffPct = ((salary - initialOffer.salaryUSD) / initialOffer.salaryUSD) * 100;
@@ -542,12 +577,37 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
 
   const decOptionProps = useHoldable(() => setOption(v => v === 'NONE' ? 'TEAM' : v === 'PLAYER' ? 'NONE' : 'PLAYER'), contractType === 'TWO_WAY');
   const incOptionProps = useHoldable(() => setOption(v => v === 'NONE' ? 'PLAYER' : v === 'PLAYER' ? 'TEAM' : 'NONE'), contractType === 'TWO_WAY');
+  const needsGuaranteedOverLimitConfirm =
+    contractType === 'GUARANTEED' &&
+    !isResign &&
+    !teamHoldsBirdRights &&
+    guaranteedCount >= 15;
+  const submitSigning = (skipOverLimitConfirm = false) => {
+    if (!skipOverLimitConfirm && needsGuaranteedOverLimitConfirm) {
+      setOverLimitAction('sign');
+      return;
+    }
+    onSign({
+      salary,
+      years,
+      option,
+      twoWay: contractType === 'TWO_WAY',
+      nonGuaranteed: contractType === 'NON_GUARANTEED',
+      mleType: (contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null),
+    });
+  };
+  const requestPlayerResponse = () => {
+    if (needsGuaranteedOverLimitConfirm) {
+      setOverLimitAction('showResponse');
+      return;
+    }
+    setShowResponse(true);
+  };
 
   // Roster-full preflight — during free agency, allow signing with cap space (they can trade/waive to adjust).
   // Only hard-block if BOTH rosters are full AND it's NOT free agency season (or they have no cap space at all).
   const isFreeAgencySeason = useMemo(() => {
-    const d = state.date ? new Date(state.date) : new Date();
-    const mo = d.getMonth() + 1;
+    const { month: mo } = state.date ? getGameDateParts(state.date) : getGameDateParts(new Date());
     return (mo >= 7 && mo <= 9) || mo >= 10 || mo <= 2;
   }, [state.date]);
 
@@ -558,9 +618,60 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     }
   }, [roster.totalFull, rosterFullOverridden, isFreeAgencySeason, teamPayroll, thresholds.salaryCap]);
 
+  if (overLimitAction) {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          className="relative w-full max-w-md bg-[#0a0a0a] border border-amber-500/40 shadow-2xl rounded flex flex-col items-center text-center overflow-hidden"
+        >
+          <div className="p-8 w-full flex flex-col items-center">
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-300 mb-2">Roster Limit</p>
+            <h2 className="text-2xl font-black italic uppercase tracking-wider mb-4 text-white">15/15 Guaranteed</h2>
+            <p className="text-white/80 italic mb-8 leading-relaxed text-sm">
+              You're at 15/15 guaranteed. Signing this player will require an immediate waive. Continue?
+            </p>
+            <div className="flex flex-col gap-2 w-full">
+              <button
+                onClick={() => {
+                  const action = overLimitAction;
+                  setOverLimitAction(null);
+                  if (action === 'sign') submitSigning(true);
+                  else setShowResponse(true);
+                }}
+                className="w-full py-4 bg-amber-500/20 border border-amber-500/50 hover:bg-amber-500/40 text-amber-300 font-black uppercase tracking-widest text-xs transition-colors rounded-sm"
+              >
+                Continue
+              </button>
+              <button
+                onClick={() => setOverLimitAction(null)}
+                className="w-full py-3 bg-white/5 border border-white/10 hover:bg-white/10 text-white/70 font-black uppercase tracking-widest text-[10px] transition-colors rounded-sm"
+              >
+                Go Back
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   // Cap-blown warning — final gate before player response when the signing would illegally exceed the cap.
   if (showCapWarning) {
-    const projectedPayroll = teamPayroll + salary;
+    // Re-sign deals start next season — compare year-1 of the new contract against
+    // committed payroll for THAT year (i.e. drop players whose contracts expire
+    // before then). New FA signings start this season, so use current payroll.
+    const newDealStartYear = leagueStats.year + (isResign ? 1 : 0);
+    const committedAtStartYear = state.players
+      .filter(p =>
+        p.tid === team.id &&
+        !(p as any).twoWay &&
+        (p.contract?.exp ?? newDealStartYear) >= newDealStartYear &&
+        !(isResign && p.internalId === player.internalId)
+      )
+      .reduce((sum, p) => sum + contractToUSD(p.contract?.amount || 0), 0);
+    const projectedPayroll = committedAtStartYear + salary;
     const overBy = projectedPayroll - thresholds.salaryCap;
     return (
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md">
@@ -597,7 +708,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
               </button>
               {autoAccept && (
                 <button
-                  onClick={() => { setShowCapWarning(false); onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', nonGuaranteed: contractType === 'NON_GUARANTEED', mleType: (contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) }); }}
+                  onClick={() => { setShowCapWarning(false); submitSigning(); }}
                   className="w-full py-3 bg-[#e21d37]/20 border border-[#e21d37]/50 hover:bg-[#e21d37]/40 text-[#e21d37] font-black uppercase tracking-widest text-[10px] transition-colors rounded-sm"
                   title="Cap rules don't apply — you're the Commissioner."
                 >
@@ -632,9 +743,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
             <h2 className="text-2xl font-black italic uppercase tracking-wider mb-4 text-rose-400">Roster Full</h2>
             <p className="text-white/80 italic mb-2 leading-relaxed text-sm">
               {(() => {
-                const d = state.date ? new Date(state.date) : new Date();
-                const mo = d.getMonth() + 1;
-                const dy = d.getDate();
+                const { month: mo, day: dy } = state.date ? getGameDateParts(state.date) : getGameDateParts(new Date());
                 const isCamp = (mo >= 7 && mo <= 9) || (mo === 10 && dy <= 21);
                 const total = roster.standardCount + roster.twoWayCount;
                 return isCamp
@@ -666,6 +775,19 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     );
   }
 
+  // Shared portrait for overlay screens (preflight / bid submitted / accept / reject).
+  const playerThumb = portraitFallback ? (
+    <img src={portraitFallback} className="h-full object-contain drop-shadow-2xl z-10" alt={player.name} referrerPolicy="no-referrer" />
+  ) : hasFace ? (
+    <div className="h-full aspect-[2/3] z-10 relative">
+      <MyFace face={playerFace} colors={teamColors} style={{ width: '100%', height: '100%' }} />
+    </div>
+  ) : (
+    <div className="h-full w-32 rounded-full bg-slate-800 flex items-center justify-center text-4xl font-black text-slate-600 z-10">
+      {(player.name ?? '??').split(' ').map((w: string) => w[0]).join('')}
+    </div>
+  );
+
   // Preflight message (used for re-sign refusals like "I'm testing the market first").
   // Reuses the same visual treatment as the post-Submit response screen but without accept/reject framing.
   if (preflightMessage && !preflightOverridden) {
@@ -679,13 +801,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
         >
           <div className="w-full h-48 bg-[#050505] relative flex items-end justify-center pt-8 border-b border-white/5">
             <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-20 pointer-events-none" />
-            {initialSrc ? (
-              <img src={initialSrc} className="h-full object-contain drop-shadow-2xl z-10" alt={player.name} referrerPolicy="no-referrer" />
-            ) : (
-              <div className="h-full w-32 rounded-full bg-slate-800 flex items-center justify-center text-4xl font-black text-slate-600 z-10">
-                {(player.name ?? '??').split(' ').map(w => w[0]).join('')}
-              </div>
-            )}
+            {playerThumb}
           </div>
           <div className="p-8 w-full flex flex-col items-center relative z-20">
             <h2 className={`text-2xl font-black italic uppercase tracking-wider mb-4 ${toneColor}`}>
@@ -752,13 +868,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
         >
           <div className="w-full h-48 bg-[#050505] relative flex items-end justify-center pt-8 border-b border-white/5">
             <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-20 pointer-events-none" />
-            {initialSrc ? (
-              <img src={initialSrc} className="h-full object-contain drop-shadow-2xl z-10" alt={player.name} referrerPolicy="no-referrer" />
-            ) : (
-              <div className="h-full w-32 rounded-full bg-slate-800 flex items-center justify-center text-4xl font-black text-slate-600 z-10">
-                {(player.name ?? '??').split(' ').map(w => w[0]).join('')}
-              </div>
-            )}
+            {playerThumb}
           </div>
           <div className="p-8 w-full flex flex-col items-center relative z-20">
             <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#FDB927] mb-2">Bid Submitted</p>
@@ -766,9 +876,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
               Offer on the Table
             </h2>
             <p className="text-white/80 italic mb-6 leading-relaxed text-sm">
-              You've offered {player.name} <span className="text-[#FDB927] font-bold">${totalM}M / {bidSubmitted.years}yr</span>{optTag}. {bidSubmitted.decisionDaysOut === 1
-                ? 'He decides tomorrow.'
-                : `He'll decide in ${bidSubmitted.decisionDaysOut} days after weighing competing offers.`}
+              You've offered {player.name} <span className="text-[#FDB927] font-bold">${totalM}M / {bidSubmitted.years}yr</span>{optTag}. Track the live market in Team Intel for the exact decision date.
             </p>
             <p className="text-[10px] text-white/40 mb-6 leading-relaxed">
               Resubmit anytime to adjust your terms — only your most recent bid stands.
@@ -826,7 +934,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
               </button>
               {autoAccept && (
                 <button
-                  onClick={() => onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', nonGuaranteed: contractType === 'NON_GUARANTEED', mleType: (contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) })}
+                  onClick={() => submitSigning()}
                   className="w-full py-3 bg-[#e21d37]/20 border border-[#e21d37]/50 hover:bg-[#e21d37]/40 text-[#e21d37] font-black uppercase tracking-widest text-[10px] transition-colors rounded-sm"
                   title="The overseas club's refusal doesn't matter — you're the Commissioner."
                 >
@@ -884,13 +992,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
         >
           <div className="w-full h-48 bg-[#050505] relative flex items-end justify-center pt-8 border-b border-white/5">
             <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-20 pointer-events-none" />
-            {initialSrc ? (
-              <img src={initialSrc} className="h-full object-contain drop-shadow-2xl z-10" alt={player.name} referrerPolicy="no-referrer" />
-            ) : (
-              <div className="h-full w-32 rounded-full bg-slate-800 flex items-center justify-center text-4xl font-black text-slate-600 z-10">
-                {(player.name ?? '??').split(' ').map(w => w[0]).join('')}
-              </div>
-            )}
+            {playerThumb}
           </div>
 
           <div className="p-8 w-full flex flex-col items-center relative z-20">
@@ -904,7 +1006,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
             <div className="flex flex-col gap-2 w-full">
               {isAccepted ? (
                 <button
-                  onClick={() => onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', nonGuaranteed: contractType === 'NON_GUARANTEED', mleType: (contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) })}
+                  onClick={() => submitSigning()}
                   className="w-full py-4 bg-green-600/20 border border-green-500/50 hover:bg-green-600/40 hover:border-green-500 text-green-400 font-black uppercase tracking-widest text-xs transition-colors rounded-sm"
                 >
                   Finalize Deal
@@ -919,7 +1021,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                   </button>
                   {autoAccept && (
                     <button
-                      onClick={() => onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', nonGuaranteed: contractType === 'NON_GUARANTEED', mleType: (contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) })}
+                      onClick={() => submitSigning()}
                       className="w-full py-3 bg-[#e21d37]/20 border border-[#e21d37]/50 hover:bg-[#e21d37]/40 text-[#e21d37] font-black uppercase tracking-widest text-[10px] transition-colors rounded-sm"
                       title="Their rejection doesn't matter — you're the Commissioner."
                     >
@@ -1003,32 +1105,43 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
 
             <div className="relative z-50 flex-1 flex items-end justify-center overflow-visible min-h-[220px] sm:min-h-[280px] lg:min-h-[400px]">
               <AnimatePresence mode="wait">
-                <motion.img
-                  key={primarySrc ?? 'fallback'}
-                  initial={{ opacity: 0, scale: 1.05, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{ duration: 0.5, ease: 'easeOut' }}
-                  src={primarySrc || `https://picsum.photos/seed/${encodeURIComponent(player.name ?? 'p')}/600/900`}
-                  onError={e => {
-                    const img = e.target as HTMLImageElement;
-                    if (fullBodyRender && !img.dataset.triedAction && actionRender && actionRender !== fullBodyRender) {
-                      img.dataset.triedAction = '1';
-                      img.src = actionRender;
-                    } else if (!img.dataset.triedPortrait && portraitFallback && portraitFallback !== img.src) {
-                      img.dataset.triedPortrait = '1';
-                      img.src = portraitFallback;
-                    } else {
-                      img.src = `https://picsum.photos/seed/${encodeURIComponent(player.name ?? 'p')}/600/900`;
+                {(imgAllFailed || !primarySrc) && hasFace ? (
+                  <motion.div
+                    key="face"
+                    initial={{ opacity: 0, scale: 1.05, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                    className="absolute inset-x-[15%] sm:inset-x-[10%] lg:inset-x-[5%] bottom-0 w-[70%] sm:w-[80%] lg:w-[90%] h-[88%] sm:h-full select-none pointer-events-none drop-shadow-[0_0_80px_rgba(226,29,55,0.15)]"
+                  >
+                    <MyFace face={playerFace} colors={teamColors} style={{ width: '100%', height: '100%' }} />
+                  </motion.div>
+                ) : (
+                  <motion.img
+                    key={primarySrc ?? 'fallback'}
+                    initial={{ opacity: 0, scale: 1.05, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                    src={primarySrc || `https://picsum.photos/seed/${encodeURIComponent(player.name ?? 'p')}/600/900`}
+                    onError={e => {
+                      const img = e.target as HTMLImageElement;
+                      if (fullBodyRender && !img.dataset.triedPortrait && portraitFallback && portraitFallback !== img.src) {
+                        img.dataset.triedPortrait = '1';
+                        img.src = portraitFallback;
+                      } else if (hasFace) {
+                        setImgAllFailed(true);
+                      } else {
+                        img.removeAttribute('src');
+                      }
+                    }}
+                    referrerPolicy="no-referrer"
+                    className={
+                      fullBodyRender
+                        ? "absolute inset-x-[10%] sm:inset-x-[6%] lg:inset-0 bottom-0 w-[80%] sm:w-[88%] lg:w-full h-full object-contain lg:object-cover object-top drop-shadow-[0_0_80px_rgba(226,29,55,0.15)] select-none pointer-events-none"
+                        : "absolute inset-x-[10%] sm:inset-x-[6%] lg:inset-x-0 bottom-0 w-[80%] sm:w-[88%] lg:w-full h-[88%] sm:h-full object-contain object-bottom drop-shadow-[0_0_80px_rgba(226,29,55,0.15)] select-none pointer-events-none scale-100 sm:scale-[1.02] lg:scale-[1.05]"
                     }
-                  }}
-                  referrerPolicy="no-referrer"
-                  className={
-                    fullBodyRender
-                      ? "absolute inset-x-[10%] sm:inset-x-[6%] lg:inset-0 bottom-0 w-[80%] sm:w-[88%] lg:w-full h-full object-contain lg:object-cover object-top drop-shadow-[0_0_80px_rgba(226,29,55,0.15)] select-none pointer-events-none"
-                      : "absolute inset-x-[10%] sm:inset-x-[6%] lg:inset-x-0 bottom-0 w-[80%] sm:w-[88%] lg:w-full h-[88%] sm:h-full object-contain object-bottom drop-shadow-[0_0_80px_rgba(226,29,55,0.15)] select-none pointer-events-none scale-100 sm:scale-[1.02] lg:scale-[1.05]"
-                  }
-                  style={fullBodyRender ? undefined : { transformOrigin: 'bottom center' }}
-                />
+                    style={fullBodyRender ? undefined : { transformOrigin: 'bottom center' }}
+                  />
+                )}
               </AnimatePresence>
 
               <div className="relative z-20 w-full px-6 pb-8 flex justify-center gap-2 items-end">
@@ -1236,7 +1349,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                               // Bird Rights re-signs (own player or FA with prior-tenure rights)
                               // bypass roster-full filtering — the player IS the slot.
                               type === 'GUARANTEED' ? (!roster.standardFull || isResign || teamHoldsBirdRights) :
-                              type === 'TWO_WAY' ? (!roster.twoWayFull || isResign || teamHoldsBirdRights) :
+                              type === 'TWO_WAY' ? canOfferTwoWay && !hasOwnTeamBirdRights && !roster.twoWayFull :
                               isTrainingCampPeriod && roster.standardCount >= 15
                             )
                             .map(type => (
@@ -1335,7 +1448,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                           surface what the contract limits logic derived so the user
                           knows whether max / supermax / extra years are unlocked. */}
                       {(() => {
-                        const hasBird = isResign || teamHoldsBirdRights || !!(player as any).hasBirdRights;
+                        const hasBird = hasOwnTeamBirdRights || !!(player as any).hasBirdRights;
                         const svc = ((player as any).stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
                         const recent = ((player as any).awards ?? []).filter((a: any) => a.season && a.season >= (leagueStats?.year ?? 2026) - 3);
                         const notableAwards = recent
@@ -1555,7 +1668,10 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                       Competing offers from opposing front offices
                     </p>
                     {(() => {
-                      const market = state.faBidding?.markets?.find(m => m.playerId === player.internalId && !m.resolved);
+                      const market = state.faBidding?.markets?.find(m =>
+                        m.playerId === player.internalId &&
+                        isPlausibleActiveMarket(m as any, state, player)
+                      );
                       const resolvedMarket = !market ? state.faBidding?.markets?.find(m => m.playerId === player.internalId && m.resolved) : null;
                       const activeMarket = market ?? resolvedMarket;
                       const activeBids = market?.bids?.filter(b => b.status === 'active' && !b.isUserBid) ?? [];
@@ -1628,7 +1744,18 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                         return <p className="text-[11px] text-white/40 italic">No competing bids on record.</p>;
                       }
 
-                      const decisionDaysOut = market ? Math.max(0, market.decidesOnDay - (state.day ?? 0)) : 0;
+                      const decisionDaysOut = (() => {
+                        if (!market) return 0;
+                        const rawDays = Math.max(0, market.decidesOnDay - (state.day ?? 0));
+                        if (!state.date || !isInMoratorium(state.date, leagueStats?.year ?? 2026, leagueStats as any, state.schedule as any)) return rawDays;
+                        const today = parseGameDate(state.date);
+                        const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(state.date, leagueStats as any, state.schedule as any);
+                        const moratoriumDays = Math.max(0, Math.ceil((moratoriumEnd.getTime() - today.getTime()) / 86_400_000));
+                        return Math.max(rawDays, moratoriumDays);
+                      })();
+                      const decisionLabel = decisionDaysOut === 0
+                        ? 'Decides today'
+                        : `${decisionDaysOut} day${decisionDaysOut === 1 ? '' : 's'} remaining`;
                       const sortedBids = [...activeBids].sort((a, b) => b.salaryUSD - a.salaryUSD);
 
                       return (
@@ -1637,7 +1764,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                             <div className="flex items-center justify-between pb-3 border-b border-white/5">
                               <div className="text-[9px] uppercase tracking-widest text-white/50">Decision window</div>
                               <div className="text-[11px] font-bold text-[#FDB927]">
-                                {decisionDaysOut === 0 ? 'Decides today' : `${decisionDaysOut} day${decisionDaysOut === 1 ? '' : 's'} remaining`}
+                                {decisionLabel}
                               </div>
                             </div>
                           )}
@@ -1694,13 +1821,15 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                         if (!mleCanCover) return;
                         if (shouldSubmitBid && onSubmitBid) {
                           onSubmitBid({ salary, years, option });
-                          const marketForPlayer = state.faBidding?.markets?.find(m => m.playerId === player.internalId && !m.resolved);
-                          const decisionDaysOut = Math.max(1, (marketForPlayer?.decidesOnDay ?? (state.day ?? 0) + 4) - (state.day ?? 0));
-                          setBidSubmitted({ salary, years, option, decisionDaysOut });
+                          const marketForPlayer = state.faBidding?.markets?.find(m =>
+                            m.playerId === player.internalId &&
+                            isPlausibleActiveMarket(m as any, state, player)
+                          );
+                          setBidSubmitted({ salary, years, option });
                           return;
                         }
-                        if (autoAccept) onSign({ salary, years, option } as any);
-                        else setShowResponse(true);
+                        if (autoAccept) submitSigning();
+                        else requestPlayerResponse();
                       }}
                       title={mleCanCover
                         ? `Uses ${mleLabel} — ${formatSalaryM(mle.available)} available`
@@ -1718,23 +1847,35 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                 <button
                   onClick={() => {
                     // Final cap check — only for GUARANTEED signings that aren't covered by Bird Rights or an MLE.
-                    const projectedPayroll = teamPayroll + salary;
-                    const blownCap = contractType !== 'TWO_WAY' && !isResign && !teamHoldsBirdRights && projectedPayroll > thresholds.salaryCap && (mle.blocked || salary > mle.available);
+                    // Re-signs start next season; compare against committed payroll for the year the new deal starts.
+                    const newDealStartYear = leagueStats.year + (isResign ? 1 : 0);
+                    const committedAtStartYear = state.players
+                      .filter(p =>
+                        p.tid === team.id &&
+                        !(p as any).twoWay &&
+                        (p.contract?.exp ?? newDealStartYear) >= newDealStartYear &&
+                        !(isResign && p.internalId === player.internalId)
+                      )
+                      .reduce((sum, p) => sum + contractToUSD(p.contract?.amount || 0), 0);
+                    const projectedPayroll = committedAtStartYear + salary;
+                    const blownCap = contractType !== 'TWO_WAY' && !hasOwnTeamBirdRights && projectedPayroll > thresholds.salaryCap && (mle.blocked || salary > mle.available);
                     if (blownCap) {
                       setShowCapWarning(true);
                       return;
                     }
                     if (shouldSubmitBid && onSubmitBid) {
                       onSubmitBid({ salary, years, option });
-                      const marketForPlayer = state.faBidding?.markets?.find(m => m.playerId === player.internalId && !m.resolved);
-                      const decisionDaysOut = Math.max(1, (marketForPlayer?.decidesOnDay ?? (state.day ?? 0) + 4) - (state.day ?? 0));
-                      setBidSubmitted({ salary, years, option, decisionDaysOut });
+                      const marketForPlayer = state.faBidding?.markets?.find(m =>
+                        m.playerId === player.internalId &&
+                        isPlausibleActiveMarket(m as any, state, player)
+                      );
+                      setBidSubmitted({ salary, years, option });
                       return;
                     }
                     if (autoAccept) {
-                      onSign({ salary, years, option, twoWay: contractType === 'TWO_WAY', nonGuaranteed: contractType === 'NON_GUARANTEED', mleType: (contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null) });
+                      submitSigning();
                     } else {
-                      setShowResponse(true);
+                      requestPlayerResponse();
                     }
                   }}
                   className="flex-1 sm:flex-none px-5 sm:px-10 py-2.5 sm:py-3 bg-[#e21d37] rounded-sm text-[9px] sm:text-[10px] font-black italic uppercase tracking-widest text-white hover:scale-[1.02] transition-all"

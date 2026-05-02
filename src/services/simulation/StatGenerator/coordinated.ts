@@ -17,7 +17,8 @@ export function generateCoordinatedStats(
   opp2KDef?: { passPerception: number },
   orbRateMult: number = 1.0,
   quarterLength: number = 12,
-  overtimeDuration: number = 5
+  overtimeDuration: number = 5,
+  numQuarters: number = 4
 ): PlayerGameStats[] {
   const stats    = teamStats.map(s => ({ ...s }));
   const rotation = stats.map(s =>
@@ -46,11 +47,65 @@ export function generateCoordinatedStats(
   const avgMin = stats.reduce((s, p) => s + p.min, 0) / (stats.length || 1) || 24;
   const minFrac = (p: Player) =>
     Math.sqrt((stats.find(s => s.playerId === p.internalId)?.min ?? avgMin) / avgMin);
+  const lineFor = (p: Player) => stats.find(s => s.playerId === p.internalId);
+
+  const reboundSkill = (p: Player, type: 'orb' | 'drb') => {
+    const reb = rHelper(p, 'reb');
+    const hgt = rHelper(p, 'hgt');
+    const stre = rHelper(p, 'stre');
+    if (type === 'orb') {
+      return (reb * 1.4 + hgt * 0.8 + stre * 0.5 + rHelper(p, 'jmp') * 0.4 + rHelper(p, 'oiq') * 0.2) / 3.3;
+    }
+    return (reb * 1.5 + hgt * 1.1 + stre * 0.4 + rHelper(p, 'diq') * 0.3) / 3.3;
+  };
+
+  // Elite rebounders can have quiet nights, but their box-out / positioning skill should
+  // not vanish just because they are a 9th/10th man. Keep the hustle downside gentler.
+  const reboundNightMult = (p: Player, type: 'orb' | 'drb') => {
+    const mult = type === 'orb' ? (lineFor(p)?._nightOrbMult ?? 1) : (lineFor(p)?._nightDrbMult ?? 1);
+    return reboundSkill(p, type) >= 72 ? Math.max(0.80, mult) : mult;
+  };
+
+  const applyReboundSpecialistFloor = (statKey: 'orb' | 'drb') => {
+    const floors = new Map<string, number>();
+    rotation.forEach(p => {
+      const s = lineFor(p);
+      const min = s?.min ?? 0;
+      const skill = reboundSkill(p, statKey);
+      if (min < 10 || skill < 72) {
+        floors.set(p.internalId, 0);
+        return;
+      }
+      const skillFactor = Math.max(0, Math.min(1.35, (skill - 60) / 28));
+      const rawFloor = statKey === 'drb'
+        ? (min / 36) * (2.2 + skillFactor * 3.8)
+        : (min / 36) * (1.0 + skillFactor * 2.1);
+      floors.set(p.internalId, Math.max(0, Math.min(statKey === 'drb' ? 7 : 4, Math.round(rawFloor))));
+    });
+
+    const targets = rotation
+      .map(p => ({ p, s: lineFor(p), floor: floors.get(p.internalId) ?? 0, skill: reboundSkill(p, statKey) }))
+      .filter(x => x.s && x.floor > (x.s[statKey] || 0))
+      .sort((a, b) => b.skill - a.skill);
+
+    for (const target of targets) {
+      let need = target.floor - (target.s![statKey] || 0);
+      while (need > 0) {
+        const donor = stats
+          .filter(s => s.playerId !== target.p.internalId && (s[statKey] || 0) > (floors.get(s.playerId) ?? 0))
+          .sort((a, b) => ((b[statKey] || 0) - (floors.get(b.playerId) ?? 0)) - ((a[statKey] || 0) - (floors.get(a.playerId) ?? 0)))[0];
+        if (!donor) break;
+        donor[statKey] -= 1;
+        target.s![statKey] += 1;
+        need--;
+      }
+    }
+  };
 
   // ── Defensive Rebounds (variance 0.22 for realistic game-to-game swings)
   distributePie(
     Math.round(availableRebounds),
-    (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 2.0 + rHelper(p, 'oiq') * 0.5 + rHelper(p, 'diq') * 0.5) * minFrac(p) * (getNight(p)?._nightDrbMult ?? 1),
+    (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 2.0 + rHelper(p, 'oiq') * 0.5 + rHelper(p, 'diq') * 0.5) * minFrac(p) * reboundNightMult(p, 'drb'),
     'drb', 2.2, rotation, stats, 0.22
   );
 
@@ -59,9 +114,12 @@ export function generateCoordinatedStats(
   // baseline ORB rate. High crash = more guys on the glass, bigger ORB pool.
   distributePie(
     Math.round(ownMisses * 0.20 * orbRateMult),
-    (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 1.0 + rHelper(p, 'jmp') * 0.5) * minFrac(p) * (getNight(p)?._nightOrbMult ?? 1),
+    (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 1.0 + rHelper(p, 'jmp') * 0.5) * minFrac(p) * reboundNightMult(p, 'orb'),
     'orb', 2.0, rotation, stats, 0.22
   );
+
+  applyReboundSpecialistFloor('drb');
+  applyReboundSpecialistFloor('orb');
 
   // ── Steals (pool sized by 2K aura; BBGM ratings decide who gets them)
   distributePie(
@@ -142,9 +200,9 @@ export function generateCoordinatedStats(
   });
 
   // ── Minute redistribution — foul-plagued players lose time, redistributed proportionally
-  // 5 players × 4 quarters × QL minutes (regular = 240; All-Star 3-min QL = 60).
+  // 5 players × configured regulation periods × QL minutes.
   // OT periods add the configured OT duration for each player-minute slot.
-  const regulationMinutes = quarterLength * 4 * 5;
+  const regulationMinutes = quarterLength * numQuarters * 5;
   const totalTarget = regulationMinutes + otCount * overtimeDuration * 5;
   let stolenMins = 0;
   stats.forEach(s => {
@@ -172,7 +230,7 @@ export function generateCoordinatedStats(
   }
 
   // ── Hard cap: no player can exceed total game length + sync sec field
-  const maxMins = quarterLength * 4 + otCount * overtimeDuration;
+  const maxMins = quarterLength * numQuarters + otCount * overtimeDuration;
   stats.forEach(s => {
     s.min = Math.min(maxMins, Math.max(0, s.min));
     s.sec = Math.floor((s.min % 1) * 60);

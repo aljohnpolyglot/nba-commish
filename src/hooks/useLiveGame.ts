@@ -4,6 +4,7 @@ import { GameResult } from '../services/simulation/types';
 import { GameSimulator } from '../services/simulation/GameSimulator';
 import { genPlays } from '../services/simulation/live/playback/simulationService';
 import { loadBadges } from '../services/simulation/live/playback/badgeService';
+import { getGameTimingConfig, getPeriodDurationSeconds, getPeriodStartClock, getPeriodStartSeconds } from '../utils/gameClock';
 
 declare global {
   interface Window {
@@ -20,7 +21,8 @@ export function useLiveGame(
   homeOverridePlayers?: NBAPlayer[],
   awayOverridePlayers?: NBAPlayer[],
   riggedForTid?: number,
-  precomputedResult?: GameResult
+  precomputedResult?: GameResult,
+  leagueStats?: any
 ) {
   const [badgesLoaded, setBadgesLoaded] = useState(false);
   const [plays, setPlays] = useState<any[]>([]);
@@ -37,7 +39,13 @@ export function useLiveGame(
   const awayOverrideRef = useRef(awayOverridePlayers);
 
   // Stable identity key — only regenerate when the actual game/teams change
-  const gameKey = `${game.gid}-${homeTeam?.id}-${awayTeam?.id}-${riggedForTid ?? ''}`;
+  const timingConfig = useMemo(() => getGameTimingConfig(leagueStats), [
+    leagueStats?.numQuarters,
+    leagueStats?.quarterLength,
+    leagueStats?.overtimeDuration,
+  ]);
+
+  const gameKey = `${game.gid}-${homeTeam?.id}-${awayTeam?.id}-${riggedForTid ?? ''}-${timingConfig.numQuarters}-${timingConfig.quarterLengthSeconds}-${timingConfig.overtimeLengthSeconds}`;
 
   useEffect(() => {
     console.log(`[useLiveGame] effect triggered — gameKey=${gameKey} hasPrecomputed=${!!precomputedResult} precomputedScore=${precomputedResult ? `${precomputedResult.homeScore}-${precomputedResult.awayScore}` : 'none'}`);
@@ -80,7 +88,8 @@ export function useLiveGame(
             otCount,
             result.gameWinner,
             homeTeam.abbrev,
-            awayTeam.abbrev
+            awayTeam.abbrev,
+            timingConfig
           );
           setPlays(generatedPlays);
         }
@@ -92,7 +101,7 @@ export function useLiveGame(
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameKey, precomputedResult]);
+  }, [gameKey, precomputedResult, timingConfig]);
 
   useEffect(() => {
     let timer: any;
@@ -124,12 +133,9 @@ export function useLiveGame(
   };
   const skip3Minutes = () => {
     if (currentIndex < 0) return;
-    const isOT = plays[currentIndex].q > 4;
-    const qLen = isOT ? 300 : 720;
+    const qLen = getPeriodDurationSeconds(plays[currentIndex].q, timingConfig);
     const targetGs = plays[currentIndex].gs + 180;
-    const qStartGs = plays[currentIndex].q <= 4 
-      ? (plays[currentIndex].q - 1) * 720 
-      : 2880 + (plays[currentIndex].q - 5) * 300;
+    const qStartGs = getPeriodStartSeconds(plays[currentIndex].q, timingConfig);
     
     let nextIdx = currentIndex;
     while (nextIdx < plays.length - 1 && plays[nextIdx].gs < targetGs && plays[nextIdx].gs < (qStartGs + qLen)) {
@@ -140,13 +146,10 @@ export function useLiveGame(
   };
   const skipToLast2Minutes = () => {
     if (!finalResult) return;
-    const totalQuarters = finalResult.otCount > 0 ? 4 + finalResult.otCount : 4;
+    const totalQuarters = timingConfig.numQuarters + (finalResult.otCount ?? 0);
     const lastQ = totalQuarters;
-    const isOT = lastQ > 4;
-    const qLen = isOT ? 300 : 720;
-    const qStartGs = lastQ <= 4 
-      ? (lastQ - 1) * 720 
-      : 2880 + (lastQ - 5) * 300;
+    const qLen = getPeriodDurationSeconds(lastQ, timingConfig);
+    const qStartGs = getPeriodStartSeconds(lastQ, timingConfig);
     
     const targetGs = qStartGs + qLen - 120;
     
@@ -170,7 +173,7 @@ export function useLiveGame(
   const homeScore = currentPlay ? currentPlay.cs : 0;
   const awayScore = currentPlay ? currentPlay.ds : 0;
   const quarter = currentPlay ? currentPlay.q : 1;
-  const clock = currentPlay ? currentPlay.clock : '12:00';
+  const clock = currentPlay ? currentPlay.clock : getPeriodStartClock(1, timingConfig);
   const events = plays.slice(0, currentIndex + 1);
 
   const liveStats = useMemo(() => {
@@ -191,6 +194,7 @@ export function useLiveGame(
               ...p, n: stat.name,
               fgm: stat.fgm, fga: stat.fga,
               tp: stat.threePm ?? 0, tpa: stat.threePa ?? 0,
+              fp: stat.fourPm ?? 0, fpa: stat.fourPa ?? 0,
               ftm: stat.ftm, fta: stat.fta,
               ast: stat.ast,
               orb: stat.orb ?? 0, drb: stat.drb ?? 0,
@@ -215,12 +219,12 @@ export function useLiveGame(
     finalResult.homeStats.forEach(stat => {
       const p = players.find(p => p.internalId?.toString() === stat.playerId)
         ?? homeOverridePlayers?.find(p => p.internalId?.toString() === stat.playerId);
-      if (p) stats.HOME[stat.playerId] = { ...p, n: stat.name, fgm: 0, fga: 0, tp: 0, tpa: 0, ftm: 0, fta: 0, ast: 0, orb: 0, drb: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, pm: 0, sec: 0 };
+      if (p) stats.HOME[stat.playerId] = { ...p, n: stat.name, fgm: 0, fga: 0, tp: 0, tpa: 0, fp: 0, fpa: 0, ftm: 0, fta: 0, ast: 0, orb: 0, drb: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, pm: 0, sec: 0 };
     });
     finalResult.awayStats.forEach(stat => {
       const p = players.find(p => p.internalId?.toString() === stat.playerId)
         ?? awayOverridePlayers?.find(p => p.internalId?.toString() === stat.playerId);
-      if (p) stats.AWAY[stat.playerId] = { ...p, n: stat.name, fgm: 0, fga: 0, tp: 0, tpa: 0, ftm: 0, fta: 0, ast: 0, orb: 0, drb: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, pm: 0, sec: 0 };
+      if (p) stats.AWAY[stat.playerId] = { ...p, n: stat.name, fgm: 0, fga: 0, tp: 0, tpa: 0, fp: 0, fpa: 0, ftm: 0, fta: 0, ast: 0, orb: 0, drb: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, pm: 0, sec: 0 };
     });
 
     for (let i = 0; i <= currentIndex; i++) {
@@ -263,10 +267,12 @@ export function useLiveGame(
         if (pStat) {
           if (play.type === 'made') {
             pStat.fgm++; pStat.fga++; pStat.pts += pts;
-            if (play.is3) { pStat.tp++; pStat.tpa++; }
+            if (play.is4) { pStat.fp++; pStat.fpa++; }
+            else if (play.is3) { pStat.tp++; pStat.tpa++; }
           } else if (play.type === 'miss') {
             pStat.fga++;
-            if (play.is3) pStat.tpa++;
+            if (play.is4) pStat.fpa++;
+            else if (play.is3) pStat.tpa++;
           } else if (play.type === 'ft') {
             pStat.fta++;
             if (play.isMake) { pStat.ftm++; pStat.pts++; }
@@ -295,8 +301,9 @@ export function useLiveGame(
   const teamStats = useMemo(() => {
     const ts: any = {
       HOME: { fgm:0,fga:0,tp:0,tpa:0,ftm:0,fta:0,ast:0,reb:0,orb:0,drb:0,stl:0,blk:0,tov:0,pts:0,pf:0 },
-      AWAY: { fgm:0,fga:0,tp:0,tpa:0,ftm:0,fta:0,ast:0,reb:0,orb:0,drb:0,stl:0,blk:0,tov:0,pts:0,pf:0 },
+      AWAY: { fgm:0,fga:0,tp:0,tpa:0,fp:0,fpa:0,ftm:0,fta:0,ast:0,reb:0,orb:0,drb:0,stl:0,blk:0,tov:0,pts:0,pf:0 },
     };
+    ts.HOME.fp = 0; ts.HOME.fpa = 0;
 
     // When game is complete, build teamStats from finalResult for accuracy.
     // Play-by-play accumulation can drift from the engine's reconciled stats.
@@ -305,6 +312,7 @@ export function useLiveGame(
       finalResult.homeStats.forEach((s: any) => {
         ts.HOME.fgm += s.fgm; ts.HOME.fga += s.fga;
         ts.HOME.tp  += s.threePm ?? 0; ts.HOME.tpa += s.threePa ?? 0;
+        ts.HOME.fp  += s.fourPm ?? 0; ts.HOME.fpa += s.fourPa ?? 0;
         ts.HOME.ftm += s.ftm; ts.HOME.fta += s.fta;
         ts.HOME.ast += s.ast;
         ts.HOME.reb += (s.orb ?? 0) + (s.drb ?? 0);
@@ -316,6 +324,7 @@ export function useLiveGame(
       finalResult.awayStats.forEach((s: any) => {
         ts.AWAY.fgm += s.fgm; ts.AWAY.fga += s.fga;
         ts.AWAY.tp  += s.threePm ?? 0; ts.AWAY.tpa += s.threePa ?? 0;
+        ts.AWAY.fp  += s.fourPm ?? 0; ts.AWAY.fpa += s.fourPa ?? 0;
         ts.AWAY.ftm += s.ftm; ts.AWAY.fta += s.fta;
         ts.AWAY.ast += s.ast;
         ts.AWAY.reb += (s.orb ?? 0) + (s.drb ?? 0);
@@ -332,6 +341,7 @@ export function useLiveGame(
       Object.values(liveStats[tm]).forEach((p: any) => {
         ts[tm].fgm += p.fgm; ts[tm].fga += p.fga;
         ts[tm].tp  += p.tp;  ts[tm].tpa += p.tpa;
+        ts[tm].fp  += p.fp || 0; ts[tm].fpa += p.fpa || 0;
         ts[tm].ftm += p.ftm; ts[tm].fta += p.fta;
         ts[tm].ast += p.ast;
         ts[tm].reb += p.orb + p.drb;

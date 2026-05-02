@@ -1,6 +1,6 @@
 import React from 'react';
 import { normalizeDate } from '../../utils/helpers';
-import { getDraftDate, getRolloverDate, toISODateString } from '../../utils/dateUtils';
+import { getDraftDate, getRolloverDate, isDraftBlockedByUnresolvedPlayoffs, toISODateString } from '../../utils/dateUtils';
 import { useGame } from '../../store/GameContext';
 import { Inbox } from '../Inbox';
 import { MessagesView } from '../MessagesView';
@@ -53,6 +53,7 @@ import { TeamHistoryView } from '../central/view/TeamHistoryView';
 import { PowerRankingsView } from '../central/view/PowerRankingsView';
 import { TradeFinderView } from '../central/view/TradeFinderView';
 import { TeamOfficeView } from '../central/view/TeamOffice/TeamOfficeView';
+import { TrainingCenterView } from '../training/TrainingCenterView';
 import HallofFameView from '../central/view/HallOfFame/HallofFameView';
 import { Tab } from '../../types';
 
@@ -220,7 +221,7 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       const _today = state?.date ? normalizeDate(state.date) : '';
       const _isDraftDay = _today >= _draftDate && _today <= _rolloverDate;
       const _isDraftDone = !!(state as any)?.draftComplete;
-      const showSimulator = _isDraftDay && !_isDraftDone;
+      const showSimulator = _isDraftDay && !_isDraftDone && !isDraftBlockedByUnresolvedPlayoffs(state);
       return (
         <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
           {showSimulator
@@ -268,6 +269,12 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       return (
         <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
           <TeamOfficeView />
+        </div>
+      );
+    case 'Training Center':
+      return (
+        <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          <TrainingCenterView />
         </div>
       );
     case 'Hall of Fame':

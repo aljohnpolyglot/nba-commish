@@ -167,9 +167,28 @@ export class StarterService {
     const finalStarters = this.getProjectedStarters(team, players, season, teamPlayers, modern);
     const Rb = (p: Player, k: string) => this.getScaledRating(p, k, season);
 
-    const benchPool = teamPlayers
-      .filter(p => !finalStarters.includes(p))
-      .sort((a, b) => convertTo2KRating(b.overallRating, this.getScaledRating(b, 'hgt', season), this.getScaledRating(b, 'tp', season)) - convertTo2KRating(a.overallRating, this.getScaledRating(a, 'hgt', season), this.getScaledRating(a, 'tp', season)));
+    // Bench sort: PER-adjusted K2 so high-OVR/low-PER stat-padders don't
+    // crowd out genuine contributors. Blend: up to ±2 K2 pts from PER delta.
+    const benchCandidates = teamPlayers.filter(p => !finalStarters.includes(p));
+    const perSamples = benchCandidates.flatMap(p =>
+      ((p as any).stats ?? []).filter((s: any) => s.season === season && !s.playoffs && (s.gp ?? 0) > 0)
+    );
+    const leaguePERAvg = perSamples.length > 0
+      ? perSamples.reduce((a: number, s: any) => a + ((s.per as number) ?? 0), 0) / perSamples.length
+      : 15;
+    const perAdjK2 = (p: Player): number => {
+      const base = convertTo2KRating(p.overallRating, this.getScaledRating(p, 'hgt', season), this.getScaledRating(p, 'tp', season));
+      const pStats = ((p as any).stats ?? []).filter((s: any) => s.season === season && !s.playoffs && (s.gp ?? 0) > 0);
+      if (pStats.length === 0) return base;
+      const gp = pStats.reduce((a: number, s: any) => a + ((s.gp as number) ?? 0), 0);
+      const minSum = pStats.reduce((a: number, s: any) => a + ((s.min as number) ?? 0), 0);
+      if (gp < 5 || (gp > 0 && minSum / gp < 5)) return base;
+      const per = minSum > 0
+        ? pStats.reduce((a: number, s: any) => a + ((s.per as number) ?? 0) * ((s.min as number) ?? 0), 0) / minSum
+        : leaguePERAvg;
+      return base + Math.max(-2, Math.min(2, (per - leaguePERAvg) / 7));
+    };
+    const benchPool = benchCandidates.sort((a, b) => perAdjK2(b) - perAdjK2(a));
 
     const benchLineup: Player[] = [];
     const notInBench = () => benchPool.filter(p => !benchLineup.includes(p));

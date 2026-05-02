@@ -1,13 +1,16 @@
 export type TeamId = 'HOME' | 'AWAY';
-export type Period = '1ST' | '2ND' | '3RD' | '4TH' | 'OT1' | 'OT2' | 'OT3';
+export type Period = string;
 
 export type PossessionOutcome =
   | 'MADE_2'
   | 'MADE_3'
+  | 'MADE_4'
   | 'MISS_2_DRB'
   | 'MISS_2_ORB'
   | 'MISS_3_DRB'
   | 'MISS_3_ORB'
+  | 'MISS_4_DRB'
+  | 'MISS_4_ORB'
   | 'TOV'
   | 'FOUL_TRIP';
 
@@ -28,6 +31,7 @@ export interface Possession {
   assister?: PlayerPool;
   passPlayer?: PlayerPool; // flavor only, no stats
   is3?: boolean;
+  is4?: boolean;
 
   blocker?: PlayerPool;
 
@@ -65,8 +69,10 @@ export interface PlayerPool {
   pos: 'G' | 'F' | 'C';
   fg2: number;
   fg3: number;
+  fg4?: number;
   m2: number;
   m3: number;
+  m4?: number;
   ftm: number;
   ftmiss: number;
   ast: number;

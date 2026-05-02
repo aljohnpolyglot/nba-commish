@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star, Trophy, Zap, ArrowRight, Crown } from 'lucide-react';
-import { normalizeDate, getCountryFromLoc } from '../../utils/helpers';
+import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
+import { normalizeDate, getCountryFromLoc, getCountryCode } from '../../utils/helpers';
 import { getPlayerImage } from '../central/view/bioCache';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
 import { ALL_STAR_ASSETS } from '../../services/allStar/AllStarSelectionService';
@@ -68,13 +69,15 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, ow
     const alreadyAwarded = fullPlayer?.awards?.some((a: any) => a.type === 'All-Star' && a.season === currentSeason);
     const allStarCount = alreadyAwarded ? pastAllStars : pastAllStars + 1;
     const country = getCountryFromLoc(fullPlayer?.born?.loc);
-    const flag = isUsaWorld ? (country === 'United States' ? '🇺🇸' : '🌍') : null;
-    return { team, teamColor, fullPlayer, imgUrl, allStarCount, flag };
+    const cc = country && country !== 'Unknown' ? getCountryCode(country) : '';
+    // Twemoji PNG — emoji-style flag that renders on every OS (Windows native flag emoji don't).
+    const flagUrl = isUsaWorld && cc ? `https://flagcdn.com/w40/${cc}.png` : null;
+    return { team, teamColor, fullPlayer, imgUrl, allStarCount, flagUrl, country };
   };
 
   // ── Starter hero card ────────────────────────────────────────────────────────
   const StarterCard = ({ p }: { p: any }) => {
-    const { team, teamColor, fullPlayer, imgUrl, allStarCount, flag } = buildPlayerData(p);
+    const { team, teamColor, fullPlayer, imgUrl, allStarCount, flagUrl, country } = buildPlayerData(p);
     const isOwn = ownTid !== null && ownTid !== undefined && fullPlayer?.tid === ownTid;
     return (
       <div
@@ -108,11 +111,15 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, ow
           </div>
         )}
 
-        {/* USA/World flag — top-left */}
-        {flag && (
-          <div className="absolute top-2 left-2 text-[12px] leading-none" title={flag === '🇺🇸' ? 'USA' : 'International'}>
-            {flag}
-          </div>
+        {/* Country flag — top-left */}
+        {flagUrl && (
+          <img
+            src={flagUrl}
+            className="absolute top-2 left-2 w-4 h-3 object-cover rounded-[1px] shadow-sm"
+            alt={country}
+            title={country}
+            referrerPolicy="no-referrer"
+          />
         )}
 
         {/* Portrait — team logo top-left, OVR bottom-right via PlayerPortrait */}
@@ -130,7 +137,11 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, ow
 
         {/* Name + position */}
         <div className="text-center w-full mt-0.5">
-          <div className="text-[11px] font-black text-white leading-tight truncate px-1">{p.playerName}</div>
+          <div className="text-[11px] font-black text-white leading-tight truncate px-1">
+              {fullPlayer
+                ? <PlayerNameWithHover player={fullPlayer}>{p.playerName}</PlayerNameWithHover>
+                : p.playerName}
+            </div>
           <div className="text-[9px] text-slate-500 uppercase font-bold mt-0.5">{p.position}</div>
         </div>
 
@@ -145,7 +156,7 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, ow
 
   // ── Reserve list row ─────────────────────────────────────────────────────────
   const ReserveRow = ({ p }: { p: any }) => {
-    const { team, fullPlayer, imgUrl, allStarCount, flag } = buildPlayerData(p);
+    const { team, fullPlayer, imgUrl, allStarCount, flagUrl, country } = buildPlayerData(p);
     const isOwn = ownTid !== null && ownTid !== undefined && fullPlayer?.tid === ownTid;
     return (
       <div
@@ -167,8 +178,18 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, ow
         />
         <div className="flex-1 min-w-0">
           <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
-            {flag && <span className="text-[11px] leading-none">{flag}</span>}
-            {p.playerName}
+            {flagUrl && (
+              <img
+                src={flagUrl}
+                className="w-3.5 h-2.5 object-cover rounded-[1px] flex-shrink-0"
+                alt={country}
+                title={country}
+                referrerPolicy="no-referrer"
+              />
+            )}
+            {fullPlayer
+              ? <PlayerNameWithHover player={fullPlayer}>{p.playerName}</PlayerNameWithHover>
+              : p.playerName}
           </div>
           <div className="text-[10px] text-slate-500 uppercase font-bold">{p.position} · {p.teamAbbrev}</div>
         </div>
@@ -436,7 +457,9 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, ow
                   />
                   <div className="min-w-0 flex-1">
                     <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
-                      {g.mvpName}
+                      {fullPlayer
+                        ? <PlayerNameWithHover player={fullPlayer}>{g.mvpName}</PlayerNameWithHover>
+                        : g.mvpName}
                       <span className="text-[8px] font-black text-amber-400 bg-amber-500/15 border border-amber-500/25 px-1.5 py-0.5 rounded">
                         {g.mvpPts ?? 0} PTS
                       </span>
@@ -485,7 +508,11 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, ow
                   <div className="flex items-center gap-2 flex-1 min-w-0 opacity-50">
                     <PlayerPortrait imgUrl={dnpData.imgUrl} face={(dnpData.fullPlayer as any)?.face} playerName={dnp.playerName} size={36} />
                     <div className="min-w-0">
-                      <div className="text-xs font-bold text-slate-400 line-through truncate">{dnp.playerName}</div>
+                      <div className="text-xs font-bold text-slate-400 line-through truncate">
+                        {dnpData.fullPlayer
+                          ? <PlayerNameWithHover player={dnpData.fullPlayer}>{dnp.playerName}</PlayerNameWithHover>
+                          : dnp.playerName}
+                      </div>
                       <span className="text-[8px] font-black text-rose-400 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded">DNP · INJURY</span>
                     </div>
                   </div>
@@ -502,7 +529,11 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, ow
                           size={36}
                         />
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs font-bold text-white truncate">{replacement.playerName}</div>
+                          <div className="text-xs font-bold text-white truncate">
+                            {repData.fullPlayer
+                              ? <PlayerNameWithHover player={repData.fullPlayer}>{replacement.playerName}</PlayerNameWithHover>
+                              : replacement.playerName}
+                          </div>
                           <span className="text-[8px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">REPLACEMENT</span>
                         </div>
                       </div>
@@ -528,7 +559,11 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, ow
                       size={36}
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-bold text-white truncate">{r.playerName}</div>
+                      <div className="text-xs font-bold text-white truncate">
+                        {rData.fullPlayer
+                          ? <PlayerNameWithHover player={rData.fullPlayer}>{r.playerName}</PlayerNameWithHover>
+                          : r.playerName}
+                      </div>
                       <span className="text-[8px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">REPLACEMENT</span>
                     </div>
                   </div>

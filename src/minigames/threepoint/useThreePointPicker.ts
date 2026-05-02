@@ -5,15 +5,28 @@ import {
   ThreePointContestant,
   mapPlayerToContestant,
 } from '../../components/allstar/allstarevents/threepoint/contestants';
+import { loadRatings } from '../../data/NBA2kRatings';
+import { calculateK2 } from '../../services/simulation/convert2kAttributes';
 
 export const TPT_MAX_PICKS = 8;
 export const TPT_MIN_PICKS = 3;
 
 type View = 'LOADING' | 'PICK' | 'RUN';
 
+// Sort by K2-converted Three-Point Shot (OS.sub[2]) for game accuracy
 const tpScore = (p: NBAPlayer): number => {
-  const r = Array.isArray(p.ratings) ? p.ratings[p.ratings.length - 1] : null;
-  return (r as any)?.tp ?? 0;
+  const r: any = Array.isArray(p.ratings) ? p.ratings[p.ratings.length - 1] : {};
+  const k2 = calculateK2({
+    hgt: r.hgt ?? 50, stre: r.stre ?? 50, spd: r.spd ?? 50, jmp: r.jmp ?? 50, endu: 70,
+    ins: r.ins ?? 50, dnk: r.dnk ?? 50,
+    ft: Math.min(99, Math.round((r.fg ?? 50) * 0.9 + 5)),
+    fg: r.fg ?? 50, tp: r.tp ?? 50,
+    oiq: Math.min(99, Math.round((r.drb ?? 50) * 0.4 + (r.fg ?? 50) * 0.3 + (r.tp ?? 50) * 0.2 + 10)),
+    diq: r.def ?? r.diq ?? 50, drb: r.drb ?? 50,
+    pss: Math.min(99, Math.round((r.drb ?? 50) * 0.7 + 15)),
+    reb: r.reb ?? 50, blk: r.blk ?? 50,
+  }, { pos: (p as any).pos ?? 'F', heightIn: (p as any).hgt ?? 78, weightLbs: (p as any).weight ?? 220, age: (p as any).age ?? 26 });
+  return Math.round(k2.OS.sub[2]);
 };
 
 export function useThreePointPicker() {
@@ -24,8 +37,11 @@ export function useThreePointPicker() {
 
   useEffect(() => {
     let cancelled = false;
-    getRosterData(2025, 'Opening Week')
-      .then(({ players: roster, teams }) => {
+    Promise.all([
+      getRosterData(2025, 'Opening Week'),
+      loadRatings(),
+    ])
+      .then(([{ players: roster, teams }]) => {
         if (cancelled) return;
         const abbrevMap: Record<number, string> = {};
         teams.forEach((t: any) => { abbrevMap[t.id] = t.abbrev; });

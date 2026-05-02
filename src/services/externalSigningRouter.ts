@@ -18,6 +18,7 @@
 
 import type { GameState, NBAPlayer } from '../types';
 import { convertTo2KRating, getCountryFromLoc } from '../utils/helpers';
+import { getGameDateParts } from '../utils/dateUtils';
 import { EXTERNAL_SALARY_SCALE, NATIONALITY_LEAGUE_BIAS, EXTERNAL_LEAGUE_OVR_CAP } from '../constants';
 
 export interface ExternalRoutingResult {
@@ -124,8 +125,10 @@ const MIN_NBA_FA_TIER_MID   = 30; // K2 60–69
 
 export function routeUnsignedPlayers(
   state: GameState,
+  options: { protectedPlayerIds?: Set<string> } = {},
 ): { results: ExternalRoutingResult[]; players: NBAPlayer[] } {
   const EXCLUDED_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'Draft Prospect', 'Prospect']);
+  const marketProtectedIds = options.protectedPlayerIds ?? new Set<string>();
 
   // Pre-compute K2 OVR for each eligible FA so we can decide which ones to protect
   const eligibleFAs = state.players
@@ -164,8 +167,10 @@ export function routeUnsignedPlayers(
     if (k2Ovr >= 85) return p;
     // Skip protected FAs — they must remain available as NBA signings
     if (protectedIds.has(p.internalId)) return p;
+    // Skip players with active user bids — their market must resolve before any fallback routing.
+    if (marketProtectedIds.has(p.internalId)) return p;
 
-    const playerAge = (p as any).age ?? ((p as any).born?.year ? new Date(state.date ?? '').getFullYear() - (p as any).born.year : 27);
+    const playerAge = (p as any).age ?? ((p as any).born?.year ? getGameDateParts(state.date ?? new Date()).year - (p as any).born.year : 27);
     // Skip aging vets — let them retire naturally instead of signing overseas
     if (playerAge >= 36 && k2Ovr < 72) return p;
     let playerSeed = 0;

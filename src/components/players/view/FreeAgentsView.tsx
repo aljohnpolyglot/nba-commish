@@ -12,6 +12,7 @@ import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
 import ContactModal from '../../ContactModal';
 import { getCountryFromLoc } from '../../../utils/helpers';
 import { getCapThresholds, getTeamCapProfileFromState, getMLEAvailability, getTeamPayrollUSD } from '../../../utils/salaryUtils';
+import { formatGameDateShort, getCurrentOffseasonFAMoratoriumEnd, getGameDateParts, isInMoratorium } from '../../../utils/dateUtils';
 import { calcPot2K } from '../../../services/trade/tradeValueEngine';
 import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
 import type { NBAPlayer } from '../../../types';
@@ -63,9 +64,31 @@ export const FreeAgentsView: React.FC = () => {
   const loaderRef = useRef<HTMLDivElement>(null);
   const PAGE_SIZE = 20;
 
-  const seasonYear = state.leagueStats?.year ?? new Date(state.date || Date.now()).getFullYear();
-  const simMonth = state.date ? parseInt(state.date.split('-')[1], 10) : 0;
+  const gameDateParts = state.date ? getGameDateParts(state.date) : null;
+  const seasonYear = state.leagueStats?.year ?? gameDateParts?.year ?? new Date().getFullYear();
+  const simMonth = gameDateParts?.month ?? 0;
   const isFreeAgencySeason = (simMonth >= 7 && simMonth <= 9) || simMonth >= 10 || simMonth <= 2;
+  const isMoratoriumActive = state.date ? isInMoratorium(state.date, seasonYear, state.leagueStats as any, state.schedule as any) : false;
+  const moratoriumEndLabel = state.date
+    ? formatGameDateShort(getCurrentOffseasonFAMoratoriumEnd(state.date, state.leagueStats as any, state.schedule as any))
+    : 'the moratorium ends';
+  const faHeadsUpKey = `fa-moratorium-headsup-${state.saveId ?? 'default'}-${gameDateParts?.year ?? seasonYear}`;
+  const [showFaHeadsUp, setShowFaHeadsUp] = useState(false);
+
+  useEffect(() => {
+    if (!isMoratoriumActive) return;
+    try {
+      if (window.localStorage.getItem(faHeadsUpKey)) return;
+    } catch {}
+    setShowFaHeadsUp(true);
+  }, [faHeadsUpKey, isMoratoriumActive]);
+
+  const dismissFaHeadsUp = () => {
+    try {
+      window.localStorage.setItem(faHeadsUpKey, '1');
+    } catch {}
+    setShowFaHeadsUp(false);
+  };
 
   // Roster compliance gate — shared hook enforces the check across all sim paths.
   const rosterGate = useRosterComplianceGate();
@@ -123,9 +146,7 @@ export const FreeAgentsView: React.FC = () => {
     // Training camp (Jul 1 – Oct 21): standard cap expands to 21 (shared pool).
     // Otherwise regular-season 15-man cap. Without this, mid-camp display reads
     // "18/15" and looks 3 over even though the team is fine.
-    const d = state.date ? new Date(state.date) : new Date();
-    const mo = d.getMonth() + 1;
-    const dy = d.getDate();
+    const { month: mo, day: dy } = state.date ? getGameDateParts(state.date) : getGameDateParts(new Date());
     const isTrainingCamp = (mo >= 7 && mo <= 9) || (mo === 10 && dy <= 21);
     const maxStandard = isTrainingCamp
       ? (state.leagueStats?.maxTrainingCampRoster ?? 21)
@@ -386,6 +407,46 @@ export const FreeAgentsView: React.FC = () => {
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar bg-slate-950 rounded-[2.5rem] border border-slate-800 shadow-2xl">
+      <AnimatePresence>
+        {showFaHeadsUp && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              onClick={dismissFaHeadsUp}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              className="relative w-full max-w-md rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl overflow-hidden"
+            >
+              <div className="px-5 py-4 border-b border-white/10 bg-amber-500/[0.06]">
+                <h2 className="text-lg font-black uppercase tracking-tight text-white">Free Agency Has Opened</h2>
+              </div>
+              <div className="p-5 space-y-4">
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  July 1 is when teams can start talking money with the players who are already free agents. Those players are in <span className="font-black text-white">Available</span>.
+                </p>
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  <span className="font-black text-white">Upcoming</span> is a watchlist. Those players are still attached to a team, so they are not on the open market yet. They may re-sign, pick up an option, have a team option decided, or become free agents later.
+                </p>
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  During the first few days, deals are mostly being negotiated. Use the top PlayButton dropdown and click <span className="font-black text-amber-300">Through moratorium</span> to jump to {moratoriumEndLabel}, when signings and market decisions start landing.
+                </p>
+                <button
+                  onClick={dismissFaHeadsUp}
+                  className="w-full rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest text-xs py-3 transition-colors"
+                >
+                  Got it
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
       <div className="p-4 sm:p-8 space-y-4 sm:space-y-8">
         {/* Header */}
         <div className="space-y-3 sm:space-y-4">

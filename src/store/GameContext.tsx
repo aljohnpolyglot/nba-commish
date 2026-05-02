@@ -18,6 +18,9 @@ import { setActiveSaveId as setCoachSystemSaveId } from './coachSystemStore';
 import { enforceExternalMinRoster, repairGeneratedExternalPlayer } from '../services/externalLeagueSustainer';
 import { applyCupAwardsToPlayers } from '../services/nbaCup/awards';
 import { computeRookieSalaryUSD } from '../utils/rookieContractUtils';
+import { generateAIBids, isPlausibleActiveMarket, MAX_FA_MARKET_DECISION_WINDOW_DAYS } from '../services/freeAgencyBidding';
+import { setAssistantGMActive } from '../services/assistantGMFlag';
+import { getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd, parseGameDate } from '../utils/dateUtils';
 
 interface GameContextType {
   state: GameState;
@@ -45,6 +48,11 @@ interface GameContextType {
   updatePlayerRatings: (playerId: string, season: number, ratings: Record<string, number>) => void;
   createPlayer: (player: import('../types').NBAPlayer) => void;
   healPlayer: (playerId: string) => void;
+  updateProfile: (profile: Partial<import('../types').UserProfile>) => void;
+  addPost: (post: import('../types').SocialPost) => void;
+  addReply: (postId: string, reply: import('../types').SocialPost) => void;
+  generateReplies: (postId: string) => Promise<void>;
+  isGeneratingReplies: Record<string, boolean>;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -59,6 +67,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const stateRef = useRef(state);
   useEffect(() => {
     stateRef.current = state;
+    // Expose live state for debug cheats (SPAM/WARP/STUCK need post-dispatch snapshots).
+    (window as any).__nbaGetLiveState = () => stateRef.current;
   }, [state]);
 
   useEffect(() => {
@@ -97,6 +107,81 @@ const actions = useGameActions(setState, () => stateRef.current);
 
     if (action.type === 'SAVE_SOCIAL_THREAD') {
       actions.saveSocialThread(action.payload.postId, action.payload.replies);
+      return;
+    }
+
+    if (action.type === 'SET_TRAINING_DAILY_PLAN') {
+      // ISO-date-keyed (`YYYY-MM-DD`). User-set plans are marked `auto: false`
+      // so the auto-scheduler never clobbers them.
+      const { teamId, dayKey, plan } = action.payload as { teamId: number; dayKey: string; plan: any };
+      setState(prev => ({
+        ...prev,
+        teams: prev.teams.map(t => t.id === teamId
+          ? { ...t, trainingCalendar: { ...(t.trainingCalendar || {}), [dayKey]: { ...plan, auto: false } } }
+          : t),
+      }));
+      return;
+    }
+
+    if (action.type === 'SET_PLAYER_TRAINING_INTENSITY') {
+      const { playerId, intensity } = action.payload as { playerId: string; intensity: 'Rest' | 'Half' | 'Normal' | 'Double' };
+      setState(prev => ({
+        ...prev,
+        players: prev.players.map(p => p.internalId === playerId ? { ...p, trainingIntensity: intensity } : p),
+      }));
+      return;
+    }
+
+    if (action.type === 'AUTOFILL_TEAM_TRAINING_CALENDAR') {
+      // Manual trigger from the UI — regenerate the auto-fill for the given team
+      // (preserving any user-set plans). Useful when the player wants a clean
+      // slate without losing their overrides.
+      const { teamId } = action.payload as { teamId: number };
+      const { autoGenerateTrainingCalendar } = await import('../services/training/trainingScheduler');
+      setState(prev => {
+        const team = prev.teams.find(t => t.id === teamId);
+        if (!team) return prev;
+        const preservedUserPlans = Object.fromEntries(
+          Object.entries((team.trainingCalendar as any) ?? {}).filter(([, plan]: [string, any]) => plan?.auto === false)
+        );
+        const calendar = autoGenerateTrainingCalendar(prev.schedule || [], teamId, prev.date, 365, preservedUserPlans as any);
+        return {
+          ...prev,
+          teams: prev.teams.map(t => t.id === teamId ? { ...t, trainingCalendar: calendar } : t),
+        };
+      });
+      return;
+    }
+
+    if (action.type === 'SET_PLAYER_DEV_FOCUS') {
+      const { playerId, devFocus } = action.payload as { playerId: string; devFocus: string };
+      setState(prev => ({
+        ...prev,
+        players: prev.players.map(p => p.internalId === playerId ? { ...p, devFocus } : p),
+      }));
+      return;
+    }
+
+    if (action.type === 'SET_PLAYER_MENTOR') {
+      const { playerId, mentorId } = action.payload as { playerId: string; mentorId: string | null };
+      // One mentor per player (docs/mentorship.md §1) — enforce uniqueness at the
+      // dispatch boundary so the relationship is atomic. Assigning mentor X to
+      // player A automatically clears X from any other mentee.
+      setState(prev => ({
+        ...prev,
+        players: prev.players.map(p => {
+          if (p.internalId === playerId) return { ...p, mentorId };
+          if (mentorId && p.mentorId === mentorId) return { ...p, mentorId: null };
+          return p;
+        }),
+      }));
+      return;
+    }
+
+    if (action.type === 'RESET_PLAYER_FAMILIARITY') {
+      // Reserved for trade / coach-fire "Clean Slate" hook (docs/training.md §2).
+      // Currently familiarity lives on team, not player — this is a no-op stub
+      // until Phase 3 wires per-player familiarity tracking.
       return;
     }
 
@@ -256,8 +341,10 @@ const actions = useGameActions(setState, () => stateRef.current);
       const isBadPortrait = (p: any) => {
         if (!p.imgURL) return false;
         if (p.imgURL.includes('head-par-defaut')) return true; // ProBallers default placeholder
-        // NBA CDN headshots on external players = wrong person's passport photo
-        if (EXTERNAL_STATUSES_SET.has(p.status ?? '') && p.imgURL.includes('cdn.nba.com/headshots')) return true;
+        // NBA CDN headshots on external players = wrong person's passport photo,
+        // UNLESS the player has a srID (real Basketball-Reference slug) — then it's
+        // a real NBA player demoted to G-League/Euroleague and the photo is correct.
+        if (EXTERNAL_STATUSES_SET.has(p.status ?? '') && p.imgURL.includes('cdn.nba.com/headshots') && !p.srID) return true;
         return false;
       };
       // Contract amount sync: update contract.amount from contractYears[] for the current season.
@@ -479,7 +566,29 @@ const actions = useGameActions(setState, () => stateRef.current);
         console.log(`[LOAD_GAME] Healed ${normalizedFreeAgentTypoCount} legacy 'FreeAgent' status records → 'Free Agent'.`);
       }
 
-      const loadedPlayers = migratedPlayers ?? loaded.players;
+      let healedPhantomUserRosterCount = 0;
+      const loadedPlayers = ((migratedPlayers ?? loaded.players ?? []) as any[]).map((p: any) => {
+        const userTid = loaded.gameMode === 'gm' ? Number(loaded.userTeamId) : -999;
+        if (!Number.isFinite(userTid) || p.tid !== userTid || p.status !== 'Free Agent') return p;
+        const hasCommittedContract =
+          !!p.contract &&
+          Number(p.contract.amount ?? 0) > 0 &&
+          Number(p.contract.exp ?? 0) >= currentSeasonYear;
+        if (hasCommittedContract) return p;
+        healedPhantomUserRosterCount++;
+        return {
+          ...p,
+          tid: -1,
+          twoWay: undefined,
+          nonGuaranteed: false,
+          gLeagueAssigned: false,
+          signedDate: undefined,
+          tradeEligibleDate: undefined,
+        };
+      });
+      if (healedPhantomUserRosterCount > 0) {
+        console.warn(`[LOAD_GAME] Released ${healedPhantomUserRosterCount} phantom user-roster FA(s) back to free agency.`);
+      }
       const { additions: externalRosterRepairs } = enforceExternalMinRoster({
         ...loaded,
         players: loadedPlayers,
@@ -557,12 +666,110 @@ const actions = useGameActions(setState, () => stateRef.current);
         console.log(`[LOAD_GAME] Stripped ${deadMoneyTrimmed} zero-amount dead-money entries.`);
       }
 
-      setState({
+      const loadedForMarketCheck = {
         ...initialState,
         ...loaded,
         leagueStats: migratedLeagueStats,
         players: backfilledPlayers,
         teams: teamsWithCleanDeadMoney as any,
+      } as GameState;
+      const playerById = new Map(backfilledPlayers.map((p: any) => [p.internalId, p]));
+      let purgedResolvedFAMarkets = 0;
+      let purgedExpiredFAMarkets = 0;
+      let purgedSignedFAMarkets = 0;
+      const cleanedFAMarkets = (loaded.faBidding?.markets ?? []).filter((m: any) => {
+        const player = playerById.get(m.playerId) as any;
+        if (m.resolved) {
+          purgedResolvedFAMarkets++;
+          return false;
+        }
+        if (player && player.tid >= 0) {
+          purgedSignedFAMarkets++;
+          return false;
+        }
+        if (m.openedDay != null && ((loadedForMarketCheck.day ?? 0) - m.openedDay) > MAX_FA_MARKET_DECISION_WINDOW_DAYS) {
+          purgedExpiredFAMarkets++;
+          return false;
+        }
+        if (!isPlausibleActiveMarket(m, loadedForMarketCheck, player)) {
+          purgedExpiredFAMarkets++;
+          return false;
+        }
+        return true;
+      });
+      const removedFAMarkets = purgedResolvedFAMarkets + purgedExpiredFAMarkets + purgedSignedFAMarkets;
+      if (removedFAMarkets > 0) {
+        console.log(`[LOAD_GAME] Purged ${removedFAMarkets} stale FA markets (resolved=${purgedResolvedFAMarkets}, expired=${purgedExpiredFAMarkets}, signed=${purgedSignedFAMarkets})`);
+      }
+
+      const seenOptionHistory = new Set<string>();
+      let removedOptionHistory = 0;
+      const cleanedHistory = [...(loaded.history ?? [])].reverse().filter((entry: any) => {
+        const text = String(entry?.text ?? '').toLowerCase();
+        const isOptionDecision =
+          text.includes('player option') ||
+          text.includes('team option');
+        if (!isOptionDecision) return true;
+        const playerKey = Array.isArray(entry.playerIds) && entry.playerIds.length > 0
+          ? entry.playerIds.join(',')
+          : text.replace(/\$[\d.]+m/g, '').replace(/\s+/g, ' ').trim();
+        const kind = text.includes('player option') ? 'player-option' : 'team-option';
+        const key = `${kind}|${entry.date ?? ''}|${playerKey}`;
+        if (seenOptionHistory.has(key)) {
+          removedOptionHistory++;
+          return false;
+        }
+        seenOptionHistory.add(key);
+        return true;
+      }).reverse();
+      if (removedOptionHistory > 0) {
+        console.log(`[LOAD_GAME] Removed ${removedOptionHistory} duplicate option transaction(s).`);
+      }
+
+      // Training calendar migration — purge legacy numeric-keyed entries (pre-ISO format)
+      // and re-run the auto-scheduler to clear stale July/transactions plans on old saves.
+      // User overrides marked `auto: false` are preserved by the scheduler.
+      let teamsWithFreshTraining: any[] = teamsWithCleanDeadMoney as any;
+      try {
+        const { autoGenerateTrainingCalendarsForAllTeams } = await import('../services/training/trainingScheduler');
+        let migratedCount = 0;
+        teamsWithFreshTraining = teamsWithFreshTraining.map((t: any) => {
+          const cal = t.trainingCalendar;
+          if (!cal) return t;
+          // Strip any non-ISO keys (legacy numeric format) and entries with no ISO `YYYY-MM-DD` shape.
+          const isoOnly: Record<string, any> = {};
+          for (const [k, v] of Object.entries(cal)) {
+            if (typeof k === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(k)) isoOnly[k] = v;
+            else migratedCount++;
+          }
+          return { ...t, trainingCalendar: isoOnly };
+        });
+        if (migratedCount > 0) {
+          console.log(`[LOAD_GAME] Stripped ${migratedCount} legacy training-calendar entries (numeric-keyed).`);
+        }
+        // Re-run auto-scheduler so banned-phase days (July FA, offseason, trade week)
+        // get cleared and missing days get filled. Preserves user-set plans (auto: false).
+        if (loaded.schedule && Array.isArray(loaded.schedule) && loaded.date) {
+          teamsWithFreshTraining = autoGenerateTrainingCalendarsForAllTeams(
+            teamsWithFreshTraining,
+            loaded.schedule,
+            loaded.date,
+            365
+          );
+          console.log('[LOAD_GAME] Refreshed training calendars via auto-scheduler.');
+        }
+      } catch (e) {
+        console.warn('[LOAD_GAME] training-calendar migration failed', e);
+      }
+
+      setState({
+        ...initialState,
+        ...loaded,
+        leagueStats: migratedLeagueStats,
+        players: backfilledPlayers,
+        teams: teamsWithFreshTraining as any,
+        history: cleanedHistory,
+        faBidding: { markets: cleanedFAMarkets },
         isProcessing: false
       });
 
@@ -595,7 +802,34 @@ const actions = useGameActions(setState, () => stateRef.current);
       };
       setState(prev => {
         const currentDay = prev.day ?? 0;
-        const markets = prev.faBidding?.markets ? [...prev.faBidding.markets] : [];
+        const currentPlayer = prev.players.find(p => p.internalId === playerId);
+        if (prev.gameMode === 'gm' && currentPlayer && (currentPlayer.tid === -1 || currentPlayer.status === 'Free Agent') && prev.date) {
+          const currentDate = parseGameDate(prev.date);
+          const faStart = getCurrentOffseasonEffectiveFAStart(currentDate, prev.leagueStats as any, prev.schedule as any);
+          if (currentDate < faStart) return prev;
+        }
+        const moratoriumEndDay = (() => {
+          if (!prev.date) return currentDay + 4;
+          const currentDate = parseGameDate(prev.date);
+          const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(currentDate, prev.leagueStats as any, prev.schedule as any);
+          if (isNaN(currentDate.getTime()) || isNaN(moratoriumEnd.getTime())) return currentDay + 4;
+          return currentDay + Math.max(0, Math.ceil((moratoriumEnd.getTime() - currentDate.getTime()) / 86_400_000));
+        })();
+        // Always give bids placed during moratorium at least 4 days post-moratorium
+        // before resolution — otherwise a "skip through moratorium" lands ON the
+        // boundary day, resolution fires immediately, and the user has no chance
+        // to react to AI counter-bids that opened during the lockout.
+        const decisionDay = Math.max(currentDay + 4, moratoriumEndDay + 4);
+        const playerById = new Map(prev.players.map(p => [p.internalId, p]));
+        const markets = (prev.faBidding?.markets ?? [])
+          .filter((m: any) => m.resolved || isPlausibleActiveMarket(m, prev, playerById.get(m.playerId) ?? currentPlayer))
+          // Drop stale resolved markets for THIS player — they pile up across
+          // FA cycles (player gets signed → waived → re-enters FA) and confuse
+          // the UI's "live bid tracker" which picks the first match by playerId.
+          // Without this, a fresh Warren bid lands while a months-old "resolved
+          // today" market is still on screen.
+          .filter((m: any) => !(m.resolved && m.playerId === playerId))
+          .map((m: any) => ({ ...m, bids: [...(m.bids ?? [])] }));
         const newUserBid = {
           id: `user-bid-${playerId}-${teamId}-${Date.now()}`,
           playerId,
@@ -609,26 +843,54 @@ const actions = useGameActions(setState, () => stateRef.current);
           submittedDay: currentDay,
           // Stay active until the market's decision day; if market doesn't exist
           // yet we'll seed a 4-day window.
-          expiresDay: currentDay + 4,
+          expiresDay: decisionDay,
           status: 'active' as const,
         };
+        const aiCounterBids = currentPlayer
+          ? generateAIBids(currentPlayer, prev, 5)
+          : [];
         const existingIdx = markets.findIndex(m => m.playerId === playerId && !m.resolved);
         if (existingIdx >= 0) {
           const existing = markets[existingIdx];
+          const existingDecisionDay = Math.max(
+            existing.decidesOnDay ?? decisionDay,
+            decisionDay,
+            ...aiCounterBids.map(b => b.expiresDay ?? decisionDay),
+          );
           const withoutPrior = existing.bids.filter(b => !b.isUserBid);
+          const existingAiTeamIds = new Set(withoutPrior.map(b => b.teamId));
+          const newCounterBids = aiCounterBids
+            .filter(b => !existingAiTeamIds.has(b.teamId))
+            .map(b => ({ ...b, expiresDay: Math.max(b.expiresDay ?? existingDecisionDay, existingDecisionDay) }));
           markets[existingIdx] = {
             ...existing,
-            bids: [...withoutPrior, { ...newUserBid, expiresDay: existing.decidesOnDay }],
+            bids: [...withoutPrior, ...newCounterBids, { ...newUserBid, expiresDay: existingDecisionDay }],
+            decidesOnDay: existingDecisionDay,
+            season: existing.season ?? (prev.leagueStats?.year ?? 2026),
+            openedDay: existing.openedDay ?? currentDay,
+            openedDate: existing.openedDate ?? prev.date,
           };
         } else {
+          const marketDecisionDay = Math.max(
+            decisionDay,
+            ...aiCounterBids.map(b => b.expiresDay ?? decisionDay),
+          );
           markets.push({
             playerId,
             playerName,
-            bids: [newUserBid],
-            decidesOnDay: currentDay + 4,
+            bids: [
+              ...aiCounterBids.map(b => ({ ...b, expiresDay: Math.max(b.expiresDay ?? marketDecisionDay, marketDecisionDay) })),
+              { ...newUserBid, expiresDay: marketDecisionDay },
+            ],
+            decidesOnDay: marketDecisionDay,
             resolved: false,
+            season: prev.leagueStats?.year ?? 2026,
+            openedDay: currentDay,
+            openedDate: prev.date,
           });
         }
+        const stored = markets.find(m => m.playerId === playerId && !m.resolved);
+        console.log(`[SUBMIT_FA_BID] Stored user bid for ${playerName} → ${teamName}: $${(salaryUSD / 1_000_000).toFixed(1)}M/${years}yr. Market entry: resolved=${stored?.resolved}, decidesOnDay=${stored?.decidesOnDay}, totalBids=${stored?.bids?.length ?? 0}`);
         return { ...prev, faBidding: { markets } };
       });
       return;
@@ -805,7 +1067,6 @@ const actions = useGameActions(setState, () => stateRef.current);
           headline: `${teamDisplayName} Retire #${number} for ${playerName}`,
           content: `${teamDisplayName} have retired #${number} in honor of ${playerName}, recognizing ${seasonsWithTeam} seasons and ${gamesWithTeam} games with the franchise.${accoladeStr}`,
           date: prev.date,
-          type: 'transaction' as any,
           category: 'Transaction',
           isNew: true,
           read: false,
@@ -1077,11 +1338,14 @@ const actions = useGameActions(setState, () => stateRef.current);
         // Short sims (≤30 days, e.g. playoff round) use silent mode to avoid
         // the full-screen lazy-sim overlay that looks like the jumpstart screen.
         const simMode = diffDays > 30 ? 'overlay' : 'silent';
+        // stopBefore: true — land on opening night with games unplayed.
         const stopBefore = action.payload?.stopBefore === true;
+        const assistantGM = action.payload?.assistantGM === true;
         console.log('[SIM_TO_DATE] ⚙️ runLazySim options', {
           simMode,
           batchSize: diffDays > 30 ? 7 : 1,
           stopBefore,
+          assistantGM,
         });
         // Overlay mode: pre-seed lazySimProgress BEFORE the dynamic import so the
         // full-screen progress ring renders immediately — no "Processing Executive
@@ -1118,6 +1382,7 @@ const actions = useGameActions(setState, () => stateRef.current);
             mode: simMode,
             batchSize: diffDays > 30 ? 7 : 1,
             stopBefore,
+            assistantGM,
             // Silent mode: fire per-game so simCurrentDate "dances" with games as they
             // finish. flushSync defeats React 18 batching so each game's date paints
             // before the next game's sync sim call. Normalize to YYYY-MM-DD to stay
@@ -1155,12 +1420,18 @@ const actions = useGameActions(setState, () => stateRef.current);
         });
         return;
       } else {
-        newStatePatch = await processTurn(
-          stateRef.current,
-          action,
-          undefined,
-          undefined,
-        );
+        const assistantGM = action.payload?.assistantGM === true;
+        if (assistantGM) setAssistantGMActive(true);
+        try {
+          newStatePatch = await processTurn(
+            stateRef.current,
+            action,
+            undefined,
+            undefined,
+          );
+        } finally {
+          if (assistantGM) setAssistantGMActive(false);
+        }
       }
 
       // Phase 1 (immediate — show modal)

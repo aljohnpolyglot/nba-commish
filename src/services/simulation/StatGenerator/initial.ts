@@ -60,7 +60,9 @@ export function generateStatsForTeam(
   // ── Minute allocation ──────────────────────────────────────────────────────
   let playerMinutes: number[];
   const overtimeDuration = knobs.overtimeDuration ?? 5;
-  const totalMinuteBudget = (knobs.quarterLength * 4 + otCount * overtimeDuration) * 5;
+  const numQuarters = knobs.numQuarters ?? 4;
+  const regulationLength = knobs.quarterLength * numQuarters;
+  const totalMinuteBudget = (regulationLength + otCount * overtimeDuration) * 5;
 
   if (knobs.flatMinutes) {
     // Rating-weighted flat distribution: athletes play more, personalities play less.
@@ -82,7 +84,7 @@ export function generateStatsForTeam(
   } else {
     const mpgTarget = knobs.starMpgOverride ?? rotResult.starMpgTarget;
     const { minutes } = MinutesPlayedService.allocateMinutes(
-      rotation, season, lead, otCount, mpgTarget, !!knobs.isPlayoffs, knobs.quarterLength, overtimeDuration
+      rotation, season, lead, otCount, mpgTarget, !!knobs.isPlayoffs, knobs.quarterLength, overtimeDuration, numQuarters
     );
     playerMinutes = minutes;
 
@@ -126,7 +128,7 @@ export function generateStatsForTeam(
   // when the star and 2 others draw high minutesMult. E.g. 8 players → max ~41 min each.
   const perPlayerMax = rotation.length < 9
     ? Math.min(42 + otCount * overtimeDuration, Math.floor((totalMinuteBudget / rotation.length) * 1.35))
-    : 48 + otCount * overtimeDuration;
+    : regulationLength + otCount * overtimeDuration;
   for (let iter = 0; iter < 4; iter++) {
     if (!playerMinutes.some(m => m > perPlayerMax + 0.01)) break;
     playerMinutes = playerMinutes.map(m => Math.min(perPlayerMax, m));
@@ -369,10 +371,45 @@ if (tpComposite >= 20 && tpComposite <= 60) {
     );
     // Perimeter D modifier: elite (+) tanks 3PT%, bad (-) boosts it. Clamp to sane range.
     const perimPenalty = Math.min(1.20, Math.max(0.75, 1.0 - perimDelta * 0.008));
+    const userEffBias = scoringBiases?.get(p.internalId)?.effMult ?? 1;
+
+    // 4-point line: NBA-calibrated as strategic, low-volume, high-skill shots.
+    // PBA 4PT rates are a reference floor; NBA ratings get a slightly higher
+    // skill curve while distance still suppresses efficiency.
+    let fourPa = 0;
+    let fourPm = 0;
+    if (knobs.fourPointAvailable) {
+      const fourPropensity = Math.pow(Math.max(0, (tp - 52) / 48), 1.45);
+      const fourPointRate = Math.min(0.105, (0.006 + fourPropensity * 0.085) * (knobs.fourPointRateMult ?? 1));
+      fourPa = Math.round(estimatedFga * fourPointRate * getVariance(1.0, 0.28));
+      if (tp < 58 && Math.random() < 0.65) fourPa = 0;
+
+      if (fourPa > 7) {
+        let softCapped = 7;
+        for (let a = 0; a < fourPa - 7; a++) {
+          if (Math.random() < 0.22) softCapped++;
+        }
+        fourPa = softCapped;
+      }
+
+      const naturalFourVol = tp > 90 ? 5 : tp > 82 ? 4 : tp > 72 ? 3 : 2;
+      const fourVolDecay = fourPa > naturalFourVol
+        ? Math.max(0.58, 1.0 - (fourPa - naturalFourVol) * 0.055)
+        : 1.0;
+      const fourPctBase = Math.max(0.16, Math.min(0.35,
+        0.145 + tp * 0.00165 + (tp >= 88 ? 0.015 : 0) - (tp < 60 ? (60 - tp) * 0.0015 : 0)
+      ));
+      const fourPctEffective = Math.max(0.08,
+        fourPctBase * nightProfile.efficiencyMult * gamePlan.effMult[i] * userEffBias * perimPenalty * knobs.efficiencyMultiplier * (knobs.fourPointEfficiencyMult ?? 1.0) * fourVolDecay
+      );
+      fourPm = Math.round(fourPa * fourPctEffective * getVariance(1.0, 0.34));
+      fourPm = Math.max(0, Math.min(fourPm, fourPa, Math.floor(fgPts / 4)));
+      fgPts = Math.max(0, fgPts - fourPm * 4);
+    }
 
     // 🎲 Attributes-Based Volume (calculated from rate, not makes)
     // league3PAMult applied HERE — after the cap — so it actually scales attempts instead of being swallowed
-    let threePa = Math.round((estimatedFga * threePointRate) * (weights.league3PAMult || 1.5) * getVariance(1.0, 0.22));
+    let threePa = Math.round((Math.max(0, estimatedFga - fourPa) * threePointRate) * (weights.league3PAMult || 1.5) * getVariance(1.0, 0.22));
 
     // Integer Wobble: -2 to +2 to break robot cycles (only when already taking attempts)
     if (threePa > 0) {
@@ -402,7 +439,6 @@ if (tpComposite >= 20 && tpComposite <= 60) {
     // User's Scoring Options override: demoted players shoot slightly more efficient,
     // promoted players slightly less (pushed past their comfort usage). Applied to
     // both 3PT and 2PT effective percentages so it shows up as FG% swing.
-    const userEffBias = scoringBiases?.get(p.internalId)?.effMult ?? 1;
     const threePctEffective = Math.max(0.04,
       threePctBase * nightProfile.efficiencyMult * gamePlan.effMult[i] * userEffBias * perimPenalty * knobs.efficiencyMultiplier * (knobs.threePointEfficiencyMult ?? 1.0) * volDecay
     );
@@ -439,7 +475,7 @@ if (tpComposite >= 20 && tpComposite <= 60) {
       fta = Math.max(fta, ftm);
     }
 
-    const maxTwoPa = Math.max(twoPm, Math.round(estimatedFga) - threePa);
+    const maxTwoPa = Math.max(twoPm, Math.round(estimatedFga) - threePa - fourPa);
     // Floor lowered 0.44 → 0.30 so cold-night low pct2 actually drives more 2PA volume
     // (Brunson 4/20 brickfest pattern). At pct2 ≥ 0.44 the floor never activated; below it,
     // the old 0.44 cap was throttling volume. Real cold-game FG% lives in the 0.25–0.40 range.
@@ -484,7 +520,7 @@ if (tpComposite >= 20 && tpComposite <= 60) {
 
     const ba = Math.round((fgaAtRim + fgaLowPost) * getVariance(0.06, 0.02));
 
-    const pts = twoPm * 2 + threePm * 3 + ftm;
+    const pts = twoPm * 2 + threePm * 3 + fourPm * 4 + ftm;
 
     return {
       playerId: p.internalId,
@@ -492,10 +528,12 @@ if (tpComposite >= 20 && tpComposite <= 60) {
       min: playerMinutes[i],
       sec: Math.floor((playerMinutes[i] % 1) * 60),
       pts,
-      fgm: twoPm + threePm,
-      fga: Math.max(twoPm + threePm, twoPa + threePa),
+      fgm: twoPm + threePm + fourPm,
+      fga: Math.max(twoPm + threePm + fourPm, twoPa + threePa + fourPa),
       threePm,
       threePa: Math.max(threePm, threePa),
+      fourPm,
+      fourPa: Math.max(fourPm, fourPa),
       ftm,
       fta: Math.max(ftm, fta),
       reb: 0, orb: 0, drb: 0, ast: 0, stl: 0, blk: 0,
@@ -523,7 +561,7 @@ if (tpComposite >= 20 && tpComposite <= 60) {
   // Previously: usageProxy * 4 + constants gave everyone base ~140, ratio only 1.6:1 → all capped at 2.
   // Steal/pass pressure: positive = elite (more TOV), negative = bad defense (fewer TOV)
   const stealPressure = oppDefProfile ? (oppDefProfile.steal + oppDefProfile.passPerception - 130) / 15 : 0;
-  const LEAGUE_AVG_TOV = Math.round(Math.max(10, 14 + stealPressure) * (48 + otCount * 5) / 48 * (knobs.tovMult ?? 1.0));
+  const LEAGUE_AVG_TOV = Math.round(Math.max(10, 14 + stealPressure) * (regulationLength + otCount * overtimeDuration) / 48 * (knobs.tovMult ?? 1.0));
 // was 13 — bumps team avg from 12 to 14-15
   const tovFactors = rotation.map((_, i) => {
     const usageProxy = totalScoringPotential > 0
@@ -541,6 +579,7 @@ if (tpComposite >= 20 && tpComposite <= 60) {
   // ── Cleanup ───────────────────────────────────────────────────────────
   playerStats.forEach(p => {
     p.threePa = Math.max(p.threePm, p.threePa);
+    p.fourPa  = Math.max(p.fourPm ?? 0, p.fourPa ?? 0);
     p.fga     = Math.max(p.fgm, p.fga);
     p.fta     = Math.max(p.ftm, p.fta);
     p.gameScore = p.pts + p.reb + p.ast + p.stl + p.blk

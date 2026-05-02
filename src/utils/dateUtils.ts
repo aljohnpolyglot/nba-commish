@@ -113,27 +113,52 @@ export function getFreeAgencyStartDate(seasonYear: number, stats?: TxnCalendar):
   return new Date(Date.UTC(seasonYear, month - 1, day));
 }
 
-/** Free agency start for the calendar year that contains `current`.
- *  Used during the post-rollover summer, when `leagueStats.year` already points
- *  at the upcoming season but the active FA window is still in the current
- *  calendar year. */
+/** Free agency start relative to `current` — returns the NEXT upcoming FA start.
+ *  If the current date is already past this year's FA window (i.e. past Oct 1),
+ *  returns next calendar year's FA start instead. */
 export function getCurrentOffseasonFAStart(current: Date | string, stats?: TxnCalendar): Date {
   const c = toDate(current);
   const month = stats?.faStartMonth ?? 7;
   const day = stats?.faStartDay ?? 1;
-  return new Date(Date.UTC(c.getUTCFullYear(), month - 1, day));
+  const thisYearStart = new Date(Date.UTC(c.getUTCFullYear(), month - 1, day));
+  // FA window is considered closed after Oct 1 of the same calendar year.
+  const thisYearEnd = new Date(Date.UTC(c.getUTCFullYear(), 9, 1)); // Oct 1
+  if (c >= thisYearEnd) {
+    return new Date(Date.UTC(c.getUTCFullYear() + 1, month - 1, day));
+  }
+  return thisYearStart;
 }
 
-export function getCurrentOffseasonFAMoratoriumEnd(current: Date | string, stats?: TxnCalendar): Date {
-  const start = getCurrentOffseasonFAStart(current, stats);
-  const days = stats?.faMoratoriumDays ?? 6;
+/** FA cannot truly open before season rollover has expired old contracts. */
+export function getEffectiveFreeAgencyStartDate(
+  seasonYear: number,
+  stats?: TxnCalendar,
+  schedule?: ScheduleDateLike[],
+): Date {
+  const faStart = getFreeAgencyStartDate(seasonYear, stats);
+  const rollover = getRolloverDate(seasonYear, stats, schedule);
+  return rollover > faStart ? rollover : faStart;
+}
+
+export function getCurrentOffseasonEffectiveFAStart(
+  current: Date | string,
+  stats?: TxnCalendar,
+  schedule?: ScheduleDateLike[],
+): Date {
+  const nominal = getCurrentOffseasonFAStart(current, stats);
+  return getEffectiveFreeAgencyStartDate(nominal.getUTCFullYear(), stats, schedule);
+}
+
+export function getCurrentOffseasonFAMoratoriumEnd(current: Date | string, stats?: TxnCalendar, schedule?: ScheduleDateLike[]): Date {
+  const start = getCurrentOffseasonEffectiveFAStart(current, stats, schedule);
+  const days = stats?.faMoratoriumDays ?? 0;
   return new Date(start.getTime() + days * 86_400_000);
 }
 
 /** Moratorium end = faStart + faMoratoriumDays (exclusive). */
 export function getFreeAgencyMoratoriumEndDate(seasonYear: number, stats?: TxnCalendar): Date {
   const start = getFreeAgencyStartDate(seasonYear, stats);
-  const days = stats?.faMoratoriumDays ?? 6;
+  const days = stats?.faMoratoriumDays ?? 0;
   return new Date(start.getTime() + days * 86_400_000);
 }
 
@@ -148,6 +173,49 @@ function toDate(d: Date | string): Date {
   return new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()));
 }
 
+export function parseGameDate(d: Date | string): Date {
+  return toDate(d);
+}
+
+export function addGameDays(d: Date | string, days: number): Date {
+  return new Date(toDate(d).getTime() + days * 86_400_000);
+}
+
+const shortGameDateFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+export function formatGameDateShort(d: Date | string): string {
+  return shortGameDateFormatter.format(toDate(d));
+}
+
+export function getGameDateParts(d: Date | string): { year: number; month: number; day: number; iso: string } {
+  const parsed = toDate(d);
+  return {
+    year: parsed.getUTCFullYear(),
+    month: parsed.getUTCMonth() + 1,
+    day: parsed.getUTCDate(),
+    iso: toISODateString(parsed),
+  };
+}
+
+export function compareGameDates(a: Date | string, b: Date | string): number {
+  const aTime = toDate(a).getTime();
+  const bTime = toDate(b).getTime();
+  if (!Number.isFinite(aTime) || !Number.isFinite(bTime)) return 0;
+  return Math.sign(aTime - bTime);
+}
+
+export function daysBetweenGameDates(start: Date | string, end: Date | string): number {
+  const startTime = toDate(start).getTime();
+  const endTime = toDate(end).getTime();
+  if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) return NaN;
+  return (endTime - startTime) / 86_400_000;
+}
+
 export function isPastTradeDeadline(current: Date | string, seasonYear: number, stats?: TxnCalendar): boolean {
   return toDate(current) > getTradeDeadlineDate(seasonYear, stats);
 }
@@ -157,19 +225,19 @@ export function isPastTradeDeadline(current: Date | string, seasonYear: number, 
  *  rollovers — `ls.year` advances to the upcoming season on Jun 30, but the
  *  FA we're actually in still lives in the calendar year of `current`. The
  *  `seasonYear` arg is kept for backwards compatibility but ignored. */
-export function isInFreeAgencyWindow(current: Date | string, _seasonYear: number, stats?: TxnCalendar): boolean {
+export function isInFreeAgencyWindow(current: Date | string, _seasonYear: number, stats?: TxnCalendar, schedule?: ScheduleDateLike[]): boolean {
   const c = toDate(current);
-  const start = getCurrentOffseasonFAStart(c, stats);
+  const start = getCurrentOffseasonEffectiveFAStart(c, stats, schedule);
   const end = new Date(Date.UTC(c.getUTCFullYear(), 9, 1));
   return c >= start && c < end;
 }
 
 /** Moratorium = faStart → faStart + moratoriumDays (signings locked, negotiations only).
  *  Calendar-year based — see `isInFreeAgencyWindow` for rationale. */
-export function isInMoratorium(current: Date | string, _seasonYear: number, stats?: TxnCalendar): boolean {
+export function isInMoratorium(current: Date | string, _seasonYear: number, stats?: TxnCalendar, schedule?: ScheduleDateLike[]): boolean {
   const c = toDate(current);
-  const start = getCurrentOffseasonFAStart(c, stats);
-  const end = getCurrentOffseasonFAMoratoriumEnd(c, stats);
+  const start = getCurrentOffseasonEffectiveFAStart(c, stats, schedule);
+  const end = getCurrentOffseasonFAMoratoriumEnd(c, stats, schedule);
   return c >= start && c < end;
 }
 
@@ -188,15 +256,22 @@ export function isRegularSeasonSigningOpen(current: Date | string, seasonYear: n
 }
 
 /**
- * Post-deadline pre-FA dead zone: between trade deadline (exclusive) and FA start (exclusive).
- * In real NBA this is Feb (post-deadline) → Jun 30 (FA opens Jul 1). Trades are technically
- * legal here (June draft-day deals) but expiring contracts are walking — they have zero
- * tradable value because the acquirer loses them to FA in days. Used to grey out expiring
- * chips in trade UIs and skip them in AI-AI trade construction.
+ * Post-deadline dead zone for expiring-contract trade value: between the trade
+ * deadline (exclusive) and free agency start (exclusive). Late-June trades can
+ * reopen after the draft, but expiring contracts are still walking because the
+ * acquiring team would lose them at the upcoming FA rollover.
  */
-export function isInPostDeadlinePreFAWindow(current: Date | string, seasonYear: number, stats?: TxnCalendar): boolean {
+export function isInPostDeadlinePreFAWindow(current: Date | string, seasonYear: number, stats?: TxnCalendar, schedule?: ScheduleDateLike[]): boolean {
   const c = toDate(current);
-  return c > getTradeDeadlineDate(seasonYear, stats) && c < getCurrentOffseasonFAStart(c, stats);
+  if (!Number.isFinite(c.getTime())) return false;
+  const month = c.getUTCMonth() + 1;
+  const calendarSeasonYear = month >= 10 ? c.getUTCFullYear() + 1 : c.getUTCFullYear();
+  const activeSeasonYear = Number.isFinite(seasonYear)
+    ? (Math.abs(seasonYear - calendarSeasonYear) <= 1 ? calendarSeasonYear : seasonYear)
+    : calendarSeasonYear;
+  const deadline = getTradeDeadlineDate(activeSeasonYear, stats);
+  const faStart = getCurrentOffseasonEffectiveFAStart(c, stats, schedule);
+  return c > deadline && c < faStart;
 }
 
 /**
@@ -235,6 +310,20 @@ export function getDraftDate(seasonYear: number, stats?: TxnCalendar): Date {
   const lastDayOfMonth = new Date(Date.UTC(seasonYear, monthIdx + 1, 0));
   const offsetFromThursday = (lastDayOfMonth.getUTCDay() - 4 + 7) % 7;
   return new Date(Date.UTC(seasonYear, monthIdx, lastDayOfMonth.getUTCDate() - offsetFromThursday));
+}
+
+/** Draft access is deferred until the playoff bracket is actually complete.
+ * This covers saves where Finals Game 7 gets scheduled after the nominal draft
+ * date; draft UI/auto-run should not steal the calendar before a champion exists. */
+export function isDraftBlockedByUnresolvedPlayoffs(state: any): boolean {
+  const playoffs = state?.playoffs;
+  if (!playoffs) return false;
+  if (playoffs.bracketComplete === true) return false;
+  const activeSeries = (playoffs.series ?? []).some((s: any) => s?.status !== 'complete');
+  const unplayedPlayoffGame = (state?.schedule ?? []).some((g: any) =>
+    (g.isPlayoff || g.playoffs) && !g.played
+  );
+  return playoffs.bracketComplete === false || activeSeries || unplayedPlayoffGame;
 }
 
 /** Draft Combine window start: May 19 by default. */

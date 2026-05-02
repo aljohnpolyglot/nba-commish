@@ -13,7 +13,7 @@ interface MiniCourtProps {
  */
 export const MiniCourt: React.FC<MiniCourtProps> = ({ contestants, currentPlay, liveScores }) => {
   const activePlayerId = currentPlay?.playerId;
-  const launchSpot = currentPlay?.launchSpot || 'Top of Key';
+  const launchSpot = (currentPlay as any)?.launchSpot || 'Top of Key';
 
   // Map launch spots to SVG coordinates (100x100 grid)
   const spotCoords: Record<string, { x: number; y: number }> = {
@@ -84,7 +84,7 @@ export const MiniCourt: React.FC<MiniCourtProps> = ({ contestants, currentPlay, 
       </div>
 
       {/* Visual Effects for Dunk */}
-      {currentPlay?.type === 'made' && (
+      {currentPlay?.type === 'dunk_outcome_made' && (
         <div className="absolute left-1/2 top-[92%] -translate-x-1/2 -translate-y-1/2 pointer-events-none">
           <div className="w-16 h-16 bg-orange-500/40 rounded-full animate-ping" />
         </div>

@@ -1,11 +1,11 @@
 export type TeamId = 'HOME' | 'AWAY';
-export type Period = '1ST' | '2ND' | '3RD' | '4TH' | 'OT1' | 'OT2' | 'OT3';
+export type Period = string;
 
 export interface PlayerPool {
   n: string; fn: string; id: string; imgURL?: string; tm: TeamId;
   min: number; pos: 'G' | 'F' | 'C';
-  fg2: number; fg3: number;
-  m2: number;  m3: number;
+  fg2: number; fg3: number; fg4?: number;
+  m2: number;  m3: number; m4?: number;
   ftm: number; ftmiss: number;
   ast: number;
   orb: number; drb: number;
@@ -20,6 +20,7 @@ export interface RawEvent {
   pts: number;
   p: PlayerPool;
   is3: boolean;
+  is4?: boolean;
   isMake?: boolean;
   astPlayer?: PlayerPool;
   rebounder?: PlayerPool;

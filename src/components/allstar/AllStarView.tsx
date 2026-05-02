@@ -23,6 +23,7 @@ import { AllStarHistoryView } from './AllStarHistoryView';
 import { PlayerBioView } from '../central/view/PlayerBioView';
 import { History } from 'lucide-react';
 import { fetchAllStarHistory, getCachedAllStarHistory } from '../../data/allStarHistoryFetcher';
+import { parseGameDate } from '../../utils/dateUtils';
 
 type AllStarTab = 'overview' | 'votes' | 'roster' | 'rising-stars' | 'celebrity' | 'dunk' | 'three-point';
 
@@ -71,7 +72,7 @@ export const AllStarView: React.FC = () => {
 
   // Determine current phase
   let phase: 'upcoming' | 'voting' | 'starters' | 'roster' | 'complete' = 'upcoming';
-  const currentDate = new Date(state.date);
+  const currentDate = parseGameDate(state.date);
 
   if (allStar) {
     if (allStar.weekendComplete) phase = 'complete';
@@ -306,7 +307,7 @@ export const AllStarView: React.FC = () => {
           <AllStarOverview 
             phase={phase} 
             allStar={allStar}
-            onNavigate={setActiveTab}
+            onNavigate={(tab) => setActiveTab(tab as any)}
             onWatchDunkContest={() => setWatchingDunkContest(true)}
             year={state.leagueStats.year}
           />

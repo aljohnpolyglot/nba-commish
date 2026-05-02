@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Play, MonitorPlay, FastForward, Globe, Ticket, Star, Trophy } from 'lucide-react';
 import { Game, NBATeam, NBAPlayer, NonNBATeam } from '../../../../types';
 import { normalizeDate, getTeamForGame, getOwnTeamId } from '../../../../utils/helpers';
-import { getDraftLotteryDate, getDraftDate, getAllStarGameDate, toISODateString } from '../../../../utils/dateUtils';
+import { getDraftLotteryDate, getDraftDate, getAllStarGameDate, isDraftBlockedByUnresolvedPlayoffs, toISODateString } from '../../../../utils/dateUtils';
 import { AllStarDayView } from './AllStarDayView';
 import { AllStarGameCard } from './AllStarGameCard';
 
@@ -31,6 +31,7 @@ interface DayViewProps {
   onNavigateToDraftLottery?: () => void;
   onNavigateToDraftBoard?: () => void;
   onNavigateToSeasonPreview?: () => void;
+  headerSlot?: React.ReactNode;
 }
 
 export const DayView: React.FC<DayViewProps> = ({
@@ -58,6 +59,7 @@ export const DayView: React.FC<DayViewProps> = ({
   onNavigateToDraftLottery,
   onNavigateToDraftBoard,
   onNavigateToSeasonPreview,
+  headerSlot,
 }) => {
   const stateDateNorm = normalizeDate(state.date);
   const selectedDateNorm = normalizeDate(selectedDate);
@@ -81,8 +83,9 @@ export const DayView: React.FC<DayViewProps> = ({
   // Draft calendar events — derived from leagueStats so dates update when scheduler changes
   const draftLotteryDateStr = toISODateString(getDraftLotteryDate(seasonYear, ls));
   const draftDateStr        = toISODateString(getDraftDate(seasonYear, ls));
+  const draftBlockedByPlayoffs = isDraftBlockedByUnresolvedPlayoffs(state);
   const isDraftLotteryDay   = selectedDateNorm === draftLotteryDateStr;
-  const isNBADraftDay       = selectedDateNorm === draftDateStr;
+  const isNBADraftDay       = selectedDateNorm === draftDateStr && !draftBlockedByPlayoffs;
 
   // Season Preview — shows throughout October (training camp → opening night) until dismissed
   const isPreseasonMonth = month === 10;
@@ -189,6 +192,8 @@ export const DayView: React.FC<DayViewProps> = ({
             </button>
           </div>
         </div>
+
+        {headerSlot}
 
         <div className="flex flex-wrap items-center gap-2 mb-8">
           <button

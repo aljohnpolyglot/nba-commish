@@ -21,6 +21,8 @@ export interface CoachSliders {
   prefAthleticSkill: number;
   prefOffDef: number;
   prefInOut: number;
+  ptiRegular: number;
+  ptiPlayoffs: number;
 }
 
 export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[][]): CoachSliders {
@@ -212,7 +214,9 @@ export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[
     prefSizeSpeed,
     prefAthleticSkill,
     prefOffDef,
-    prefInOut
+    prefInOut,
+    ptiRegular: 0,
+    ptiPlayoffs: 40,
   };
 }
 
@@ -298,6 +302,131 @@ export function getSystemProficiency(
     "Dribble Drive": Math.min(100, calc([spd, drive, dunk, foul], [postIQ, hgt, stre]) + dribbleDriveBonus),
     "Point-Five": Math.min(100, calc([piq, siq, pacc, ocon], [bcon, foul, drive]) - (helioActive ? 35 : 0) - (starGap > 5 ? Math.round(starGap * 1.5) : 0)),
     "Twin Towers": Math.min(100, calc([lowpost, hgt, stre, block, postIQ], [three, spd, lat]) + twinTowersBonus),
+  };
+}
+
+/**
+ * Single source of truth for team-level system proficiency.
+ * CoachingPage, SystemProficiencyView (Training Center Systems tab), and
+ * TrainingCenterView's top-5 system selector all call this so they cannot
+ * disagree on what the team's strongest systems are.
+ *
+ * Accepts both nba-commish PlayerK2 (with `currentRating`) and TeamTraining
+ * PlayerK2 (with `stats`) — picks whichever is populated.
+ */
+export function computeTeamProficiency(
+  roster: PlayerK2[],
+  allRosters?: PlayerK2[][],
+  /**
+   * Optional team-level System Familiarity (0-100 each). When provided, applies a
+   * gentle bonus to offense-leaning / defense-leaning systems so CoachingView's
+   * star count reflects familiarity gains earned via daily training paradigms.
+   * Source: docs/training.md §2 ("Familiarity becomes a multiplier in simulation").
+   */
+  systemFamiliarity?: { offense?: number; defense?: number }
+): {
+  sortedProfs: [string, number][];
+  bestSystem: string;
+  coachSliders: CoachSliders;
+  avgK2: K2Result;
+  isVersatile: boolean;
+  starGap: number;
+} {
+  if (roster.length === 0) {
+    const empty: K2Result = {
+      OS: [0, 0, 0, 0, 0, 0],
+      AT: [0, 0, 0, 0, 0],
+      IS: [0, 0, 0, 0, 0, 0, 0, 0],
+      PL: [0, 0, 0, 0, 0],
+      DF: [0, 0, 0, 0, 0, 0, 0],
+      RB: [0, 0],
+    };
+    const sliders = calculateCoachSliders([], allRosters);
+    return { sortedProfs: [], bestSystem: '', coachSliders: sliders, avgK2: empty, isVersatile: false, starGap: 0 };
+  }
+
+  const sortedByBbgm = [...roster].sort((a, b) => ((b as any).bbgmOvr || 0) - ((a as any).bbgmOvr || 0));
+  const top1Ovr = (sortedByBbgm[0] as any)?.bbgmOvr || 50;
+  const top2Ovr = (sortedByBbgm[1] as any)?.bbgmOvr || 50;
+  const starGap = top1Ovr - top2Ovr;
+
+  const sample = roster[0].k2;
+  const avgK2: K2Result = {
+    OS: new Array(sample.OS.length).fill(0),
+    AT: new Array(sample.AT.length).fill(0),
+    IS: new Array(sample.IS.length).fill(0),
+    PL: new Array(sample.PL.length).fill(0),
+    DF: new Array(sample.DF.length).fill(0),
+    RB: new Array(sample.RB.length).fill(0),
+  };
+  const div = Math.min(8, roster.length);
+  roster.slice(0, 8).forEach(p => {
+    (Object.keys(avgK2) as (keyof K2Result)[]).forEach(cat => {
+      (p.k2 as any)[cat].forEach((v: number, i: number) => {
+        if ((avgK2 as any)[cat][i] !== undefined) (avgK2 as any)[cat][i] += v / div;
+      });
+    });
+  });
+
+  // nba-commish PlayerK2 carries latest BBGM ratings on `currentRating`;
+  // TeamTraining PlayerK2 flattens them onto `stats`. Read whichever exists.
+  const ratingsOf = (p: any) => p?.currentRating ?? p?.stats ?? {};
+
+  const coachSliders = calculateCoachSliders(roster, allRosters);
+  const fiveOutBonus = coachSliders.prefInOut >= 90 ? 25 : 0;
+  const highIQCount = sortedByBbgm.slice(0, 10).filter((p: any) => (ratingsOf(p).oiq ?? 50) > 70).length;
+
+  const top7 = sortedByBbgm.slice(0, 7).map(ratingsOf);
+  const isVersatile =
+    top7.length >= 7 &&
+    top7.every((p: any) => p.oiq > 60 && p.diq > 40 && p.drb > 40 && p.spd > 40) &&
+    top7.filter((p: any) => p.spd > 55 && p.tp > 45).length >= 4;
+
+  const profs = getSystemProficiency(
+    avgK2,
+    starGap,
+    ratingsOf(sortedByBbgm[0]),
+    fiveOutBonus,
+    ratingsOf(sortedByBbgm[1]),
+    highIQCount,
+    coachSliders.tempo,
+    isVersatile,
+    coachSliders.prefOffDef
+  );
+  // Familiarity boost — caps at +6 points so familiarity bumps are subtle
+  // (≈ ⅓★ on the 50→0★ / 100→5★ renderer). Brand-new rosters (familiarity 0)
+  // get NO boost; teams that grind their paradigm for 2+ months earn the cap.
+  const offFam = Math.max(0, Math.min(100, systemFamiliarity?.offense ?? 0));
+  const defFam = Math.max(0, Math.min(100, systemFamiliarity?.defense ?? 0));
+  const offBoost = (offFam / 100) * 6;
+  const defBoost = (defFam / 100) * 6;
+
+  // Light heuristic — offense-leaning systems get the offense boost, defense-leaning
+  // systems get the defense boost, two-way systems get half of each.
+  const OFFENSE_LEANING = new Set([
+    'Pace and Space', 'Perimeter Centric', 'Post Centric', '7 Seconds', 'Run and Gun',
+    'Gravity Motion', 'Five-Out Drive', 'Five-Out Slasher', 'Post Hub', 'Heliocentric',
+    'P&R Mastery', 'Dribble Drive', 'Point-Five', 'Iso Heavy',
+  ]);
+  const DEFENSE_LEANING = new Set([
+    'Defense', 'Grit and Grind', 'Post Anchor', 'Twin Towers',
+  ]);
+
+  for (const k of Object.keys(profs)) {
+    if (OFFENSE_LEANING.has(k)) profs[k] = Math.min(100, profs[k] + offBoost);
+    else if (DEFENSE_LEANING.has(k)) profs[k] = Math.min(100, profs[k] + defBoost);
+    else profs[k] = Math.min(100, profs[k] + (offBoost + defBoost) / 2);
+  }
+
+  const sortedProfs = Object.entries(profs).sort((a, b) => b[1] - a[1]) as [string, number][];
+
+  return {
+    sortedProfs,
+    bestSystem: sortedProfs[0]?.[0] ?? '',
+    coachSliders,
+    avgK2,
+    isVersatile,
+    starGap,
   };
 }
 

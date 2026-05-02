@@ -377,6 +377,7 @@ function emptyGH(): Pick<SeasonRow, 'ghMin'|'ghFgm'|'ghFga'|'ghTpm'|'ghTpa'|'ghT
 
 interface BoxAggregate {
   gp: number;
+  teamTid: number; // team the player actually played for (last seen, used when stats.tid < 0)
   // totals for per-game averages (not season aggregates from player.stats)
   rimFgm: number; rimFga: number;
   lpFgm:  number; lpFga:  number;
@@ -398,7 +399,7 @@ function useBoxData(
     const getOrCreate = (key: string): BoxAggregate => {
       if (!map.has(key)) {
         map.set(key, {
-          gp: 0,
+          gp: 0, teamTid: -1,
           rimFgm: 0, rimFga: 0, lpFgm: 0, lpFga: 0, mrFgm: 0, mrFga: 0,
           ba: 0, dd: 0, td: 0, qd: 0, fiveBy5: 0,
           gh: emptyGH(),
@@ -408,6 +409,7 @@ function useBoxData(
     };
 
     boxScores.forEach((game: any) => {
+      const inHome = (game.homeStats ?? []).some((p: any) => p.playerId === playerId);
       const allStats = [...(game.homeStats ?? []), ...(game.awayStats ?? [])];
       const s = allStats.find((p: any) => p.playerId === playerId);
       if (!s) return;
@@ -418,6 +420,10 @@ function useBoxData(
       const isPlayoffs = !!(game.isPlayoff || game.isPlayIn);
       const key = `${seasonYear}_${isPlayoffs ? 'ply' : 'rs'}`;
       const agg = getOrCreate(key);
+
+      // Track which team the player actually played for (for FA-tid fallback)
+      const gameTid = inHome ? (game.homeTeamId ?? game.homeTid ?? -1) : (game.awayTeamId ?? game.awayTid ?? -1);
+      if (gameTid > 0) agg.teamTid = gameTid;
 
       agg.gp++;
 
@@ -510,11 +516,13 @@ function buildSeasonRows(
     bySeasTid.forEach((list, key) => {
       const [seaStr] = key.split('_');
       const season   = parseInt(seaStr, 10);
-      const team     = teams.find(t => t.id === list[0].tid);
-      const abbrev   = team?.abbrev ?? (list[0].tid < 0 ? 'FA' : 'UNK');
-      const rowAge   = (age ?? 0) - (currentYear - season);
       const bKey     = `${season}_${phaseKey}`;
       const box      = boxData.get(bKey);
+      const statTid  = list[0].tid;
+      const inferredTid = (statTid < 0 && box?.teamTid && box.teamTid > 0) ? box.teamTid : statTid;
+      const team     = teams.find(t => t.id === inferredTid);
+      const abbrev   = team?.abbrev ?? (inferredTid < 0 ? 'FA' : 'UNK');
+      const rowAge   = (age ?? 0) - (currentYear - season);
 
       const totGp  = list.reduce((a, s) => a + sp(s.gp), 0) || 1;
       const totMin = list.reduce((a, s) => a + sp(s.min), 0);

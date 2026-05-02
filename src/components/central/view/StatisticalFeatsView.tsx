@@ -6,6 +6,7 @@ import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PlayerBioView } from './PlayerBioView';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
 import { getOwnTeamId } from '../../../utils/helpers';
+import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
 
 interface StatisticalFeatsViewProps {
   onGameClick?: (game: Game) => void;
@@ -287,7 +288,7 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
   const totalPages = Math.ceil(filteredAndSorted.length / itemsPerPage);
   const paginatedData = filteredAndSorted.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const sortedTeams = useMemo(() => [...state.teams].sort((a, b) => (a.city ?? '').localeCompare(b.city ?? '')), [state.teams]);
+  const sortedTeams = useMemo(() => [...state.teams].sort((a, b) => (a.region ?? '').localeCompare(b.region ?? '')), [state.teams]);
 
   // Toggle Box Click Logic
   const toggleFilter = (feat: string) => {
@@ -474,7 +475,7 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
                     className="px-3 py-2 font-bold text-white cursor-pointer hover:text-indigo-400 transition-colors"
                     onClick={() => setSelectedPlayer(row.player)}
                   >
-                    {row.playerName}
+                    <PlayerNameWithHover player={row.player}>{row.playerName}</PlayerNameWithHover>
                   </td>
                   <td 
                     className="px-3 py-2 cursor-pointer hover:text-indigo-400 transition-colors"

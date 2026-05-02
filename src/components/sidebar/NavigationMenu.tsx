@@ -10,7 +10,7 @@ import {
 import { useGame } from '../../store/GameContext';
 import { Tab } from '../../types';
 import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
-import { getTradeDeadlineDate, getCurrentOffseasonFAStart, getOpeningNightDate, getDraftDate, toISODateString } from '../../utils/dateUtils';
+import { compareGameDates, getTradeDeadlineDate, getCurrentOffseasonEffectiveFAStart, getOpeningNightDate, getDraftDate, parseGameDate, toISODateString } from '../../utils/dateUtils';
 
 interface NavigationMenuProps {
   currentView: Tab;
@@ -39,7 +39,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
   const currentDateNorm = normalizeDate(state.date ?? '');
   const seasonYear = state.leagueStats?.year ?? 2026;
   const tradeDeadline = toISODateString(getTradeDeadlineDate(seasonYear, state.leagueStats));
-  const faStartDate = getCurrentOffseasonFAStart(`${currentDateNorm}T00:00:00Z`, state.leagueStats);
+  const faStartDate = getCurrentOffseasonEffectiveFAStart(`${currentDateNorm}T00:00:00Z`, state.leagueStats, state.schedule as any);
   const faStart = toISODateString(faStartDate);
   const faEnd = `${faStartDate.getUTCFullYear()}-10-01`; // dead period ends at training camp
   const openingNight = toISODateString(getOpeningNightDate(seasonYear));
@@ -79,12 +79,12 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
   const broadcastingBadge = (() => {
     if (state.leagueStats.mediaRights?.isLocked) return 0;
     const broadcastDeadline = `${state.leagueStats.year ?? 2026}-06-30`;
-    if (new Date(state.date) >= new Date(broadcastDeadline)) return 0;
+    if (compareGameDates(state.date, broadcastDeadline) >= 0) return 0;
     return '!';
   })();
 
   const seasonalBadge = (() => {
-    const currentDate = new Date(state.date);
+    const currentDate = parseGameDate(state.date);
     const season = state.leagueStats.year || 2026;
     const dates = getAllStarWeekendDates(season);
     const allStar = state.allStar;
@@ -125,7 +125,10 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
           { id: 'Actions' as Tab,   label: 'Actions',   icon: Sparkles },
           { id: 'Events' as Tab,    label: 'Timeline',  icon: Clock },
         ] : []),
-        ...(isGM ? [{ id: 'Team Office' as Tab, label: 'Team Office', icon: Briefcase }] : []),
+        ...(isGM ? [
+          { id: 'Team Office' as Tab, label: 'Team Office', icon: Briefcase },
+          { id: 'Training Center' as Tab, label: 'Training Center', icon: Activity },
+        ] : []),
       ],
     },
     ...(!isGM ? [{
@@ -209,7 +212,10 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
     {
       label: 'Operations',
       items: [
-        ...(isGM ? [] : [{ id: 'Team Office' as Tab, label: 'Team Office', icon: Briefcase }]),
+        ...(isGM ? [] : [
+          { id: 'Team Office' as Tab, label: 'Team Office', icon: Briefcase },
+          { id: 'Training Center' as Tab, label: 'Training Center', icon: Activity },
+        ]),
         ...(!isGM ? [
           { id: 'League Office' as Tab,    label: 'League Office',   icon: Building2 },
           { id: 'Player Creator' as Tab,   label: 'Player Creator',  icon: UserPlus },

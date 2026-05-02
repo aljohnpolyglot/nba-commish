@@ -10,7 +10,7 @@ import { X, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { NBAPlayer, DraftPick, NBATeam } from '../../types';
 import { useGame } from '../../store/GameContext';
 import { normalizeDate } from '../../utils/helpers';
-import { getTradeDeadlineDate, getCurrentOffseasonFAStart, toISODateString } from '../../utils/dateUtils';
+import { compareGameDates, getDraftDate, getTradeDeadlineDate, toISODateString } from '../../utils/dateUtils';
 import {
   calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV,
   type TeamMode,
@@ -112,12 +112,10 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
   const tradeIsValid = !salaryMismatchInfo;
   const seasonYear = currentYear;
   const tradeDeadline = toISODateString(getTradeDeadlineDate(seasonYear, state.leagueStats));
-  const finalsOver = !!(state.playoffs?.bracketComplete);
+  const draftDate = toISODateString(getDraftDate(seasonYear, state.leagueStats));
   const currentDateNorm = normalizeDate(state.date);
-  const faStart = toISODateString(getCurrentOffseasonFAStart(`${currentDateNorm}T00:00:00Z`, state.leagueStats));
-  // Deadline window only applies between Feb deadline and July FA start, and once the
-  // Finals end the league is in offseason — trades flow freely until next deadline.
-  const isPastDeadline = !finalsOver && currentDateNorm > tradeDeadline && currentDateNorm < faStart;
+  const isPastDeadline = compareGameDates(currentDateNorm, tradeDeadline) > 0
+    && compareGameDates(currentDateNorm, draftDate) < 0;
 
   const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
 

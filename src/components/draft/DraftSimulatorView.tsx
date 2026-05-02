@@ -9,7 +9,7 @@ import { motion } from 'motion/react';
 import { Clock, Play, Pause, CheckCircle, ChevronLeft, ChevronRight, Calendar, FastForward } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { convertTo2KRating, normalizeDate } from '../../utils/helpers';
-import { getDraftDate, toISODateString } from '../../utils/dateUtils';
+import { getDraftDate, isDraftBlockedByUnresolvedPlayoffs, toISODateString } from '../../utils/dateUtils';
 import { estimatePotentialBbgm } from '../../utils/playerRatings';
 import { getPlayerImage } from '../central/view/bioCache';
 import { MyFace, isRealFaceConfig } from '../shared/MyFace';
@@ -21,6 +21,7 @@ import { normalizeTeamJerseyNumbers, pickJerseyNumber } from '../../utils/jersey
 import type { NBAPlayer } from '../../types';
 import { computeRookieSalaryUSD } from '../../utils/rookieContractUtils';
 import { DraftScoutingModal } from './DraftScoutingModal';
+import { buildDraftOrderFromState, type DraftOrderTeam } from '../../services/draft/draftOrder';
 import {
   getClassPercentiles,
   getClassAverages,
@@ -31,6 +32,8 @@ import {
   type SkillAxis,
 } from '../../services/scoutingReport';
 import { getCachedDraftScouting, ensureDraftScouting, matchProspectToGist, type GistProspect } from '../../services/draftScoutingGist';
+
+const MAX_DRAFT_POOL_SIZE = 100;
 
 // Parse "2015 Round 2, Pick 5, Philadelphia Sixers" → { year, round, pick, team }
 function parseBioDraftStr(s: string | undefined): { year: number; round: number; pick: number; team: string } | null {
@@ -555,63 +558,12 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   // After determining the SOURCE order (who EARNED each slot via record/lottery),
   // each slot is re-mapped to its CURRENT owner via state.draftPicks so traded
   // picks display + assign to the team that actually holds them.
-  const draftOrder = useMemo(() => {
-    const lotteryResults: any[] = state.draftLotteryResult ?? [];
-    const lotteryTids = new Set(lotteryResults.map((r: any) => r.team?.tid ?? r.tid));
-    const draftSeason: number = state.leagueStats?.year ?? 2026;
-    const draftPicks: any[] = (state as any).draftPicks ?? [];
-
-    // Sort all 30 teams by win pct
-    const allSorted = [...state.teams]
-      .filter(t => t.id >= 0 && t.id < 100)
-      .sort((a, b) => {
-        const wa = a.wins / Math.max(1, a.wins + a.losses);
-        const wb = b.wins / Math.max(1, b.wins + b.losses);
-        return wa - wb;
-      });
-
-    let r1SourceOrder: any[];
-    if (lotteryResults.length >= 14) {
-      // Picks 1-14: use lottery result order
-      const lotteryPicks = [...lotteryResults]
-        .sort((a: any, b: any) => a.pickNumber - b.pickNumber)
-        .map((r: any) => state.teams.find(t => t.id === (r.team?.tid ?? r.tid)))
-        .filter(Boolean);
-
-      // Picks 15-30: playoff teams (not in lottery) sorted best record → worst
-      const playoffTeams = allSorted
-        .filter(t => !lotteryTids.has(t.id))
-        .reverse(); // best record gets last pick (#30)
-
-      r1SourceOrder = [...lotteryPicks, ...playoffTeams];
-    } else {
-      // No lottery result yet — fall back to standings order
-      r1SourceOrder = allSorted;
-    }
-
-    // Resolve current owner for each slot. _originalTid/_originalAbbrev/_originalName
-    // stay attached so player assignment can persist origin in draft metadata
-    // and the slot card can render a "via X" sub-label without an extra lookup.
-    const resolveOwner = (round: number, originalTeam: any) => {
-      const pick = draftPicks.find(p => p.season === draftSeason && p.round === round && p.originalTid === originalTeam.id);
-      const baseMeta = {
-        _originalTid: originalTeam.id,
-        _originalAbbrev: originalTeam.abbrev,
-        _originalName: originalTeam.name,
-      };
-      if (!pick || pick.tid === originalTeam.id) {
-        return { ...originalTeam, ...baseMeta, _traded: false };
-      }
-      const newOwner = state.teams.find(t => t.id === pick.tid);
-      if (!newOwner) return { ...originalTeam, ...baseMeta, _traded: false };
-      return { ...newOwner, ...baseMeta, _traded: true };
-    };
-
-    const r1Order = r1SourceOrder.map(t => resolveOwner(1, t));
-    const r2Order = r1SourceOrder.map(t => ({ ...resolveOwner(2, t), _r2: true }));
-
-    return [...r1Order, ...r2Order] as any[];
-  }, [state.teams, state.draftLotteryResult, (state as any).draftPicks, state.leagueStats?.year]);
+  const computedDraftOrder = useMemo(() => buildDraftOrderFromState(state), [state]);
+  const savedDraftOrder = (state as any).activeDraftOrder as DraftOrderTeam[] | undefined;
+  const draftOrder = useMemo(
+    () => ((savedDraftOrder?.length ?? 0) > 0 ? savedDraftOrder! : computedDraftOrder),
+    [computedDraftOrder, savedDraftOrder],
+  );
 
   const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
 
@@ -723,7 +675,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   const leagueYear = state.leagueStats?.year ?? 2026;
   const draftDate = toISODateString(getDraftDate(leagueYear, state.leagueStats));
   const today = normalizeDate(state.date);
-  const isDraftTime = today >= draftDate;
+  const isDraftTime = today >= draftDate && !isDraftBlockedByUnresolvedPlayoffs(state);
   // draftComplete is stored as a top-level state field via UPDATE_STATE dispatch
   const isDraftDone = !!(state as any).draftComplete;
 
@@ -765,7 +717,8 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
           pos: p.pos ?? lastRatings.pos ?? 'F',
         };
       })
-      .sort((a, b) => b.displayOvr - a.displayOvr);
+      .sort((a, b) => b.displayOvr - a.displayOvr || b.displayPot - a.displayPot)
+      .slice(0, MAX_DRAFT_POOL_SIZE);
   }, [state.players, state.leagueStats?.year]);
 
   const [viewingBioPlayer, setViewingBioPlayer] = useState<NBAPlayer | null>(null);
@@ -827,8 +780,14 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   // Persist each pick to game state immediately so view switches never lose progress
   useEffect(() => {
     if (!hasStarted || Object.keys(drafted).length === 0) return;
-    dispatch({ type: 'UPDATE_STATE', payload: { activeDraftPicks: drafted } } as any);
-  }, [drafted, hasStarted]); // eslint-disable-line react-hooks/exhaustive-deps
+    dispatch({
+      type: 'UPDATE_STATE',
+      payload: {
+        activeDraftPicks: drafted,
+        activeDraftOrder: draftOrder,
+      },
+    } as any);
+  }, [drafted, hasStarted, draftOrder, dispatch]);
 
   const draftedSet = useMemo(() => new Set(Object.values(drafted).map((p: any) => p.internalId)), [drafted]);
 
@@ -936,6 +895,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         }),
         draftPicks: draftPicksAfter,
         activeDraftPicks: activeDraftPicksAfter,
+        activeDraftOrder: draftOrder,
       },
     } as any);
   }, [drafted, state.players, state.draftPicks, state.leagueStats?.year, buildDraftedPlayerUpdate, dispatch, draftOrder, leagueYear]);
@@ -1035,6 +995,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
           // Persist in-progress picks atomically with the player updates so
           // autoRunDraft (fires on day-advance past draft date) can honor them.
           activeDraftPicks: newPicks,
+          activeDraftOrder: draftOrder,
           // Set eagerly so stateRef.current.draftComplete is true before any
           // ADVANCE_DAY fires — prevents autoRunDraft re-running when the user
           // clicks Sim Day immediately after Sim to End.
@@ -1081,6 +1042,12 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDraftComplete, hasStarted, draftFinalized]);
 
+  useEffect(() => {
+    if (isDraftDone && onViewChange) {
+      onViewChange('Draft History');
+    }
+  }, [isDraftDone, onViewChange]);
+
   const finalizeDraft = () => {
     const ls = state.leagueStats ?? {};
     const season: number = (ls as any).year ?? 2026;
@@ -1117,6 +1084,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         draftPicks: draftPicksAfter,
         draftComplete: true,
         activeDraftPicks: undefined, // clear in-progress picks — draft is done
+        activeDraftOrder: undefined,
       },
     } as any);
     setDraftFinalized(true);
@@ -1194,12 +1162,12 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
                   <FastForward size={11} /> Sim to My Pick ({nextUserPick})
                 </button>
               )}
-              {isGM && !isDraftComplete && !userHasMorePicks && (
+              {isGM && !isDraftComplete && !isUserOnClock && (
                 <button
                   onClick={() => simToPickInstant(draftOrder.length + 1)}
                   className="h-8 px-3 text-xs font-black uppercase rounded-sm bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 transition-colors"
                 >
-                  <FastForward size={11} /> Sim to End
+                  <FastForward size={11} /> {userHasMorePicks ? 'Assistant GM: Sim to End' : 'Sim to End'}
                 </button>
               )}
               <div className="flex items-center gap-1 bg-black/40 p-1 rounded-md border border-[#333]">

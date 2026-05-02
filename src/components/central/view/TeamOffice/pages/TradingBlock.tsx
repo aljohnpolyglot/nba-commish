@@ -12,6 +12,8 @@ import { teamPowerRanks } from '../../../../../services/trade/tradeFinderEngine'
 import { getTradeOutlook, effectiveRecord, getCapThresholds, getTeamPayrollUSD, topNAvgK2, resolveManualOutlook } from '../../../../../utils/salaryUtils';
 import { getTradingBlock, saveTradingBlock } from '../../../../../store/tradingBlockStore';
 import { getFamilyOnRoster } from '../../../../../utils/familyTies';
+import { getCurrentTeamRegularSeasonYears } from '../../../../../utils/playerTenure';
+import { compareGameDates, getDraftDate, getTradeDeadlineDate, isInPostDeadlinePreFAWindow, toISODateString } from '../../../../../utils/dateUtils';
 import { NBAPlayer, NBATeam } from '../../../../../types';
 import { PlayerBioView } from '../../PlayerBioView';
 
@@ -90,18 +92,13 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
   const MAX_SLOTS = 10;
 
   // ── Smart defaults based on team mode ────────────────────────────────────
-  // Helper: years with team (from stats history)
-  const yearsWithTeam = (p: NBAPlayer): number => {
-    if (!p.stats) return 1;
-    return p.stats.filter((s: any) => s.tid === teamId && !s.playoffs && s.gp > 0).length || 1;
-  };
   const playerAge = (p: NBAPlayer): number => p.born?.year ? currentYear - p.born.year : (p.age ?? 27);
 
   const defaultUntouchableIds = useMemo(() => {
     const rosterPlayers = rosterWithTV.map(r => r.player);
     const candidates = rosterWithTV.filter(r => {
       const age = playerAge(r.player);
-      const ywt = yearsWithTeam(r.player);
+      const ywt = getCurrentTeamRegularSeasonYears(r.player);
 
       // Loyalty: 10+ years with team = always untouchable (Curry rule)
       if (ywt >= 10) return true;
@@ -407,12 +404,11 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
   React.useEffect(() => {
     if (!canEdit) return;
     if (blockIds.size === 0 && blockPickIds.size === 0) return;
-    // Skip if past the trade deadline — no more inbound offers for the rest of the season.
-    try {
-      const { getTradeDeadlineDate, toISODateString } = require('../../../../../utils/dateUtils');
-      const deadline = toISODateString(getTradeDeadlineDate(currentYear, state.leagueStats));
-      if (state.date && state.date > deadline) return;
-    } catch { /* fall through if util unavailable */ }
+    // Skip only while the deadline-closed window is active; post-draft trades reopen,
+    // but expiring contracts still get filtered as walking until FA starts.
+    const deadline = toISODateString(getTradeDeadlineDate(currentYear, state.leagueStats));
+    const draftDate = toISODateString(getDraftDate(currentYear, state.leagueStats));
+    if (state.date && compareGameDates(state.date, deadline) > 0 && compareGameDates(state.date, draftDate) < 0) return;
     const outlookMap = buildOutlookMap();
     const minTradableSeason = getMinTradableSeason(state);
     const classStrengthByYear = buildClassStrengthMap(players, currentYear, currentYear, getMaxTradableSeason(state));
@@ -433,6 +429,11 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
       classStrengthByYear,
       lotterySlotByTid,
       powerRanks,
+      isPostDeadlinePreFA: isInPostDeadlinePreFAWindow(state.date ?? '', currentYear, state.leagueStats as any),
+      recentlySignedLockMs: {
+        currentDate: state.date ?? '',
+        leagueStats: state.leagueStats as any,
+      },
     });
     // Replace this team's inbound-pending slot; leave other teams / resolved proposals alone.
     const existing = (state.tradeProposals ?? []).filter(p => p.receivingTeamId !== teamId || p.status !== 'pending');
@@ -553,7 +554,7 @@ interface TVItem {
 
 function EditableColumn({
   title, items, teams, onAdd, accentColor, onPlayerClick,
-  picks, blockPickIds, onRemovePlayer, onRemovePick,
+  picks, blockPickIds, onRemovePlayer, onRemovePick, currentYear, lotterySlotByTid,
 }: {
   title: string;
   items: TVItem[];

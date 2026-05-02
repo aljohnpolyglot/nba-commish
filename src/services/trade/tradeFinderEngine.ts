@@ -18,6 +18,8 @@ import { tradeRoleToTeamMode } from '../../utils/teamStrategy';
 import { formatPickLabel } from '../draft/draftClassStrength';
 import { wouldStepienViolateForTid } from './stepienRule';
 import { validateCBATradeRules } from '../../utils/cbaTradeRules';
+import { isFranchiseLifer } from '../../utils/playerTenure';
+import { isInPostDeadlinePreFAWindow } from '../../utils/dateUtils';
 
 const EXTERNAL = new Set(['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'Draft Prospect', 'Prospect']);
 
@@ -103,7 +105,7 @@ export interface FindOffersInput {
   /** Pre-computed timestamps for the recently-signed lock check. When provided,
    *  players signed this league year are filtered from all candidate pools —
    *  same mechanic as walking expirings but for freshly inked deals. */
-  recentlySignedLockMs?: { faStart: number; nextFaStart: number; current: number };
+  recentlySignedLockMs?: { currentDate: string; leagueStats?: LeagueStats };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -148,12 +150,14 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     isPostDeadlinePreFA = false,
     recentlySignedLockMs,
   } = input;
+  const minLivePickSeason = Math.max(minTradableSeason, currentYear);
+  const liveDraftPicks = draftPicks.filter(pk => pk.season >= currentYear);
 
   // Post-deadline pre-FA: expiring contracts are walking → filter from every
   // candidate pool so they don't end up in either side's basket.
   const isWalking = (p: NBAPlayer) => isWalkingExpiring(p, currentYear, isPostDeadlinePreFA);
   const isLocked = recentlySignedLockMs
-    ? (p: NBAPlayer) => isRecentlySignedLocked(p, recentlySignedLockMs.faStart, recentlySignedLockMs.nextFaStart, recentlySignedLockMs.current)
+    ? (p: NBAPlayer) => isRecentlySignedLocked(p, recentlySignedLockMs.currentDate, recentlySignedLockMs.leagueStats)
     : (_p: NBAPlayer) => false;
 
   // Stepien-aware filter: would shipping `candidate` leave `tid` without a 1st
@@ -162,7 +166,7 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
   const stepienBlocks = (tid: number, candidate: DraftPick, alreadyLeaving: DraftPick[]): boolean => {
     if (!stepienEnabled) return false;
     if (candidate.round !== 1) return false;
-    return wouldStepienViolateForTid(draftPicks, currentYear, tradablePickWindow, tid, [...alreadyLeaving, candidate]);
+    return wouldStepienViolateForTid(liveDraftPicks, currentYear, tradablePickWindow, tid, [...alreadyLeaving, candidate]);
   };
 
   // Resolve a pick's classStrength + actualSlot once. Current-year R1 picks
@@ -187,16 +191,10 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
   // Loyalty-lifer block — ONLY applies in reverse mode (targetTids set, meaning
   // user is asking an AI team to give up one of their lifers). If the Warriors
   // GM wants to trade Curry in NORMAL mode, that's their choice — don't block. //lol
-  // Uses MAX(direct field, stats count) because the live counter can lag behind
-  // career history early in a game.
   if (targetTids !== undefined && !allowLifers) {
     for (const p of players) {
       if (!basketIds.has(p.internalId)) continue;
-      const directYrs = (p as any).yearsWithTeam ?? 0;
-      const statYrs = p.stats
-        ? p.stats.filter((s: any) => s.tid === p.tid && !s.playoffs && (s.gp ?? 0) > 0).length
-        : 0;
-      if (Math.max(directYrs, statYrs) >= 10) return [];
+      if (isFranchiseLifer(p)) return [];
     }
   }
 
@@ -242,8 +240,8 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
       const pickSwapItems: TradeOfferItem[] = [];
       const pickSwapUsed = new Set(basketIds);
       let pickSwapGap = expectedReturn;
-      const theirPicksOnly = draftPicks
-        .filter(pk => pk.tid === team.id && pk.season >= minTradableSeason && !pickSwapUsed.has(String(pk.dpid)))
+      const theirPicksOnly = liveDraftPicks
+        .filter(pk => pk.tid === team.id && pk.season >= minLivePickSeason && !pickSwapUsed.has(String(pk.dpid)))
         .sort((a, b) => a.season - b.season);
       let safetyP = 0;
       const swapPicksFromTeam: DraftPick[] = [];
@@ -298,13 +296,7 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
         const qualifying = allUntouchables
           // Loyalty floor: 10+ year lifers are ABSOLUTELY untradeable, no unlock ever.
           // Saves Curry/Draymond/Duncan-types regardless of how wild the offer gets //lol
-          .filter(p => {
-            const directYrs = (p as any).yearsWithTeam ?? 0;
-            const statYrs = p.stats
-              ? p.stats.filter((s: any) => s.tid === p.tid && !s.playoffs && (s.gp ?? 0) > 0).length
-              : 0;
-            return Math.max(directYrs, statYrs) < 10;
-          })
+          .filter(p => !isFranchiseLifer(p))
           .map(p => ({ p, tv: calcPlayerTV(p, theirMode, currentYear, tvContext), ovr: calcOvr2K(p), pot: calcPot2K(p, currentYear) }))
           .filter(x =>
                x.tv > 0
@@ -378,8 +370,8 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     }
 
     // ── Pick sweeteners — contenders spam picks to match star value ──────
-    const theirPicks = draftPicks
-      .filter(pk => pk.tid === team.id && pk.season >= minTradableSeason && !usedIds.has(String(pk.dpid)))
+    const theirPicks = liveDraftPicks
+      .filter(pk => pk.tid === team.id && pk.season >= minLivePickSeason && !usedIds.has(String(pk.dpid)))
       .sort((a, b) => a.season - b.season);
 
     // Rebuild teams have high-value lottery picks (40-50 TV) — 14 was too tight,
@@ -480,8 +472,8 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
 
       if (salaryLegal) {
         // Pile picks to close the remaining TV gap.
-        const dumpPicks = draftPicks
-          .filter(pk => pk.tid === team.id && pk.season >= minTradableSeason && !dumpUsedIds.has(String(pk.dpid)))
+        const dumpPicks = liveDraftPicks
+          .filter(pk => pk.tid === team.id && pk.season >= minLivePickSeason && !dumpUsedIds.has(String(pk.dpid)))
           .sort((a, b) => a.season - b.season);
 
         let dumpPicksAdded = 0;
@@ -571,7 +563,7 @@ export function generateAITradeProposal(input: {
   stepienEnabled?: boolean;
   tradablePickWindow?: number;
   isPostDeadlinePreFA?: boolean;
-  recentlySignedLockMs?: { faStart: number; nextFaStart: number; current: number };
+  recentlySignedLockMs?: { currentDate: string; leagueStats?: LeagueStats };
 }): { buyerGives: TradeOfferItem[]; sellerGives: TradeOfferItem[] } | null {
   const { buyerTid, sellerTid, players, teams, draftPicks, currentYear, minTradableSeason, powerRanks, teamOutlooks, tvContext, classStrengthByYear, lotterySlotByTid, stepienEnabled, tradablePickWindow, isPostDeadlinePreFA, recentlySignedLockMs } = input;
 
@@ -585,7 +577,7 @@ export function generateAITradeProposal(input: {
   const sellerRoster = players
     .filter(p => p.tid === sellerTid && !EXTERNAL.has(p.status ?? '')
               && !isWalkingExpiring(p, currentYear, isPostDeadlinePreFA ?? false)
-              && !(recentlySignedLockMs && isRecentlySignedLocked(p, recentlySignedLockMs.faStart, recentlySignedLockMs.nextFaStart, recentlySignedLockMs.current)))
+              && !(recentlySignedLockMs && isRecentlySignedLocked(p, recentlySignedLockMs.currentDate, recentlySignedLockMs.leagueStats)))
     .sort((a, b) => calcPlayerTV(b, sellerMode, currentYear, tvContext) - calcPlayerTV(a, sellerMode, currentYear, tvContext));
 
   const target = sellerRoster.find(p => !isUntouchable(p, sellerMode, currentYear));
@@ -660,6 +652,8 @@ export function generatePickOnlyProposal(input: {
     buyerCashAvailableUSD = 0, sellerCashAvailableUSD = 0,
     stepienEnabled = false, tradablePickWindow = 7,
   } = input;
+  const minLivePickSeason = Math.max(minTradableSeason, currentYear);
+  const liveDraftPicks = draftPicks.filter(pk => pk.season >= currentYear);
 
   // Stepien-aware: skip 1st-round picks whose departure would leave the donor
   // with no 1st in two consecutive future drafts. Causes Variant A to fall
@@ -668,7 +662,7 @@ export function generatePickOnlyProposal(input: {
   const stepienBlocksOne = (tid: number, candidate: DraftPick): boolean => {
     if (!stepienEnabled) return false;
     if (candidate.round !== 1) return false;
-    return wouldStepienViolateForTid(draftPicks, currentYear, tradablePickWindow, tid, [candidate]);
+    return wouldStepienViolateForTid(liveDraftPicks, currentYear, tradablePickWindow, tid, [candidate]);
   };
 
   const buyerOutlookRole = teamOutlooks.get(buyerTid)?.role ?? 'neutral';
@@ -687,11 +681,11 @@ export function generatePickOnlyProposal(input: {
     return calcPickTV(pk.round, rank, teams.length, Math.max(1, pk.season - currentYear), pickOpts(pk));
   };
 
-  const sellerPicks = draftPicks
-    .filter(p => p.tid === sellerTid && p.season >= minTradableSeason)
+  const sellerPicks = liveDraftPicks
+    .filter(p => p.tid === sellerTid && p.season >= minLivePickSeason)
     .sort((a, b) => a.season - b.season);
-  const buyerPicks = draftPicks
-    .filter(p => p.tid === buyerTid && p.season >= minTradableSeason)
+  const buyerPicks = liveDraftPicks
+    .filter(p => p.tid === buyerTid && p.season >= minLivePickSeason)
     .sort((a, b) => a.season - b.season);
   if (sellerPicks.length === 0 || buyerPicks.length === 0) return null;
 
@@ -915,6 +909,28 @@ export function evaluateTradeAcceptance(input: EvaluateAcceptanceInput): Accepta
   // a contender values their pick the way a contender would, etc.
   const offerValue = fromItems.reduce((s, i) => s + tvOfItem(i, fromMode, teams, currentYear, powerRanks, tvContext, classStrengthByYear, lotterySlotByTid), 0);
   const returnVal = toItems.reduce((s, i) => s + tvOfItem(i, toMode, teams, currentYear, powerRanks, tvContext, classStrengthByYear, lotterySlotByTid), 0);
+
+  if (currentDate && isInPostDeadlinePreFAWindow(currentDate, currentYear, leagueStats as any)) {
+    const walkingPlayers = [...fromItems, ...toItems]
+      .filter((i): i is { type: 'player'; player: NBAPlayer } => i.type === 'player' && !!i.player)
+      .map(i => i.player)
+      .filter(p => isWalkingExpiring(p, currentYear, true));
+    if (walkingPlayers.length > 0) {
+      const names = walkingPlayers.slice(0, 3).map(p => p.name).join(', ');
+      const suffix = walkingPlayers.length > 3 ? ` and ${walkingPlayers.length - 3} more` : '';
+      const subject = walkingPlayers.length === 1 ? `${names}${suffix} is` : `${names}${suffix} are`;
+      return {
+        accepted: false,
+        offerValue,
+        returnVal,
+        expectedReturn: offerValue,
+        shortfall: Math.max(0, returnVal - offerValue),
+        ratio: 999,
+        ratioThreshold: 0,
+        reason: `${subject} on an expiring contract that reaches free agency before an acquiring team can use him.`,
+      };
+    }
+  }
 
   if (leagueStats && currentDate && allPlayers) {
     const cba = validateCBATradeRules({

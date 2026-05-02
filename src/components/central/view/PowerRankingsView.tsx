@@ -12,7 +12,7 @@ export const PowerRankingsView: React.FC = () => {
     state.teams.forEach(t => teamGames.set(t.id, []));
 
     state.schedule.forEach(game => {
-      if (game.played && !game.isPreseason && !game.isAllStar && !game.isExhibition) {
+      if (game.played && !game.isPreseason && !game.isAllStar && !game.isExhibition && !(game as any).excludeFromRecord) {
         if (teamGames.has(game.homeTid)) teamGames.get(game.homeTid)!.push(game);
         if (teamGames.has(game.awayTid)) teamGames.get(game.awayTid)!.push(game);
       }

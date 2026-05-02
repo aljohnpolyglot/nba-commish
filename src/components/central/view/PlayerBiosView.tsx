@@ -7,6 +7,7 @@ import { getDisplayOverall, getDisplayPotential } from '../../../utils/playerRat
 import { ensureNonNBAFetched, getNonNBAGistData } from './nonNBACache';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
+import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
 
 const US_LOCATION_NAMES = new Set([
   'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME',
@@ -26,7 +27,7 @@ const displayCountry = (player: NBAPlayer, gistCountry?: string | null): string 
   const derived = explicit || getCountryFromLoc(player.born?.loc);
   if (!derived || derived === 'Unknown') return gistCountry || 'Unknown';
   if (US_LOCATION_NAMES.has(derived)) return 'United States';
-  if (derived === player.born?.loc && !player.born?.loc?.includes(',') && !explicit) return gistCountry || 'United States';
+  if (derived === player.born?.loc && !player.born?.loc?.includes(',') && !explicit) return gistCountry || derived;
   return derived;
 };
 
@@ -379,7 +380,7 @@ export const PlayerBiosView: React.FC = () => {
                       playerName={p.name}
                       size={28}
                     />
-                    <span className="text-sm font-bold text-indigo-400">{p.name}</span>
+                    <PlayerNameWithHover player={p as unknown as NBAPlayer} className="text-sm font-bold text-indigo-400">{p.name}</PlayerNameWithHover>
                     {(p as any).isDeceased && <span className="text-[10px] text-slate-500" title={`Died ${(p as any).diedYear}`}>†</span>}
                     {p.hof && <span className="text-[9px] font-black text-amber-400 bg-amber-400/10 px-1 rounded">HOF</span>}
                   </div>

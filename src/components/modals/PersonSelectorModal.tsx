@@ -455,7 +455,7 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
     if (step === 'club_choice') return true;
     if (step === 'people' && selectedContacts.length === 0) return false;
     if (actionType !== 'club' && selectedContacts.length === 0) return false;
-    if (actionType === 'club' && step !== 'club' && step !== 'club_choice' && selectedContacts.length === 0) return false;
+    if (actionType === 'club' && step !== 'club' && selectedContacts.length === 0) return false;
     if (actionType === 'suspension' && !reason.trim()) return false;
     if (actionType === 'sabotage' && (!reason.trim() || !duration.trim())) return false;
     if (actionType === 'drug_test' && !reason.trim()) return false;

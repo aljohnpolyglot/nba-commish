@@ -4,6 +4,54 @@ Active/upcoming work, backlog ideas, and feature planning.
 
 ---
 
+## HoopsGM — Team Training Engine (NEXT UP — May 2026)
+
+**Status:** Architecture complete (`ARCHITECTURE.md`). Standalone NBA team training sim — wire into nba-commish as a new top-level view or embedded Team Office tab.
+
+**What exists (standalone app):**
+- `Dashboard` — 30-day calendar with clickable daily training config (`DailyPlanModal`, paradigm presets, 5-system minimum)
+- `Roster` — Player table with dev focus (`TrainingFocusModal` 2-phase archetype selector), intensity, mentorship
+- `Systems` — 20 tactical systems scored via `getSystemProficiency()`, tiers (Mastery/Competence/Dissonance), `SystemModal` + `ArchetypeTrainingModal` chain
+- `simulation.ts` — monthly sim engine consuming `dailyPlans`, `archetypes`, `staffing`
+- Two separate archetype systems: `ARCHETYPE_PROFILES` (display/eligibility) + `TRAINING_WEIGHTS` (sim engine) — must never be merged
+- Rating bridge: BBGM 0–100 ↔ K2 60–99 via `convertTo2KRating` (same formula as nba-commish `ratingUtils`)
+
+**Wiring plan into nba-commish:**
+1. Mount `ScheduleView` + `DailyPlanModal` inside `TeamOffice` as a new **Training** tab — reads `state.players` for user team roster
+2. Pipe `Player[]` through `mapPlayerToK2()` → `calculateCoachSliders()` → `getSystemProficiency()` (already compatible with nba-commish K2 scale)
+3. Persist `dailyPlans` + `devFocus` per player on `state.teams[userTeamId]` — new fields `trainingCalendar` + `playerDevPaths`
+4. Hook monthly sim output into `ProgressionEngine` — `simulation.ts` produces attribute deltas; apply as `ovrAdjustment` on top of existing `calcBaseChange`
+5. `SystemProficiencyView` → surface top-3 systems in Team Intel / Coaching gameplan tab
+6. `TrainingFocusModal` archetype selection → write `player.devFocus` (already used by progression system)
+
+**Key files to touch on integration:**
+- `src/components/central/view/TeamOffice/pages/CoachingView/` — add Training tab
+- `src/services/progressionEngine.ts` — read `player.devFocus` + `team.trainingCalendar` deltas
+- `src/types/` — extend `NBATeam` with `trainingCalendar`, extend `NBAPlayer` with `devFocus`
+
+**What must NOT change during wiring:**
+- `FrontOfficePanel` commented-out code (future feature)
+- `generateStaff.ts` (Front Office dependency)
+- Normalization loop at bottom of `archetypes.ts`
+- `TRAINING_WEIGHTS` — separate from `ARCHETYPE_PROFILES`
+- `ArchetypeTrainingModal` + `initialArchetype` prop chain
+
+See `ARCHITECTURE.md` for full file map, data flow, archetype system rules, and styling conventions.
+
+---
+
+## HORSE Contest — IN ISOLATION DEV (May 2026)
+
+**Status:** Actively being built as standalone minigame + All-Star Saturday integration. Same end-to-end pattern as Dunk/3PT: picker → interactive play-by-play → result saved to `state.allStar.horseTournament`. Headless sim (`AllStarHorseSim.ts`) already exists.
+
+---
+
+## Shooting Stars Shootout — IN ISOLATION DEV (May 2026)
+
+**Status:** Actively being built as standalone minigame + All-Star Saturday integration. Team-based shooting relay. Headless sim (`AllStarShootingStarsSim.ts`) already exists, result shape on `state.allStar.shootingStars`.
+
+---
+
 ## Satellite events one-by-one buildout (QUEUED — Session 31 foundations laid)
 
 **Status:** sim services + rules-UI toggles + orchestrator wiring shipped Session 31 (Apr 29 2026). Per-event UI surfaces are intentionally deferred so each event ships end-to-end on its own iteration.
@@ -68,6 +116,48 @@ See TODO.md "QUEUED — All-Star cosmetic polish" for full context.
 **PR6 — LOAD_GAME save migration**
 - Backfill new `FreeAgentMarket` schema fields for existing save markets
 - Backfill `pendingMatch` state for any in-progress RFA markets from prior versions
+
+---
+
+## Tournament Engine Refactor — Multi-tournament architecture (QUEUED)
+
+**Status:** design-complete, not started. Full spec in [`docs/tournament-refactor.md`](./docs/tournament-refactor.md). Depends on NBA Cup shipping first as the reference implementation.
+
+**Why:** NBA Cup works, but every piece is hardcoded to NBA — 30 teams, East/West conferences, Tue/Fri Cup Nights, in-season weave, group IDs `'East-A' | ... | 'West-C'`. The moment we add Summer League, FIBA World Cup, EuroBasket, or Olympics we'd be copy-pasting `nbaCup/` six times. Refactor makes the engine **format-agnostic** with NBA Cup as the first preset.
+
+**Reuse audit:**
+- *Reusable as-is:* `drawGroups.ts`, `resolveGroupStage.ts` (W → H2H → PD → PF tiebreakers), `advanceKnockoutBracket()`, `updateCupStandings.ts`, `awards.ts` (MVP + All-Tournament Team), `seededRandom.ts`, view primitives (`GroupTable`, `BracketDisplay`, `CupBracketLayout`, year-nav).
+- *Tightly coupled (must refactor):* group ID type union, Tue/Fri date logic, in-RS schedule weave, `state.teams` as sole team source, `excludeFromRecord` flag, hardcoded 8-team KO, Vegas venue, conference-balanced QF seeding, prize money values, single `inSeasonTournament` toggle.
+
+**Target architecture:**
+- `TournamentSpec` describes any tournament's shape: `groupCount`, `teamsPerGroup`, `groupGamesPerTeam`, `groupIdScheme` (`'letter' | 'east-west-letter' | 'pool-number'`), `knockoutSize`, `knockoutAdvancePerGroup`, `wildcardCount`, `scheduleMode` (`'in-season-weave' | 'standalone-block'`), `scheduleWindow`, `countsTowardRecord`/`countsTowardStats` per phase, `teamSource` (`'nba' | 'national' | 'summer-roster'`), award-type strings, optional prize pool, rule-toggle key.
+- `TournamentInstance` replaces `NBACupState`: generic groups/knockout/wildcards/champion/runnerUp/third/MVP/AllTeam, keyed under `state.tournaments[specId]` and `state.tournamentHistory[specId][year]`.
+- One service in `src/services/tournament/` (`drawTournamentGroups`, `injectTournamentGames`, `applyTournamentResult`, `resolveGroupStage`, `computeAwards`) plus per-tournament `specs/{nbaCup,summerLeague,fibaWorldCup,olympics}.ts`.
+- One `<TournamentView specId="..." />` replaces `NBACupView`; sim hook iterates `ALL_SPECS` instead of branching on `inSeasonTournament`.
+
+**PR sequence:** (1) generic types coexist with old; (2) extract NBA Cup as a spec, generic engine wraps existing logic; (3) state migration `state.nbaCup → state.tournaments['nba-cup']` with LOAD_GAME backfill; (4) generic view; (5) Summer League (rookies + invitees, July, no record/stats); (6) FIBA infra (national-team registry, player nationality, top-N by K2 OVR); (7) Olympics (12 teams, 3 groups of 4, top 2 + best 2 thirds, gold/silver/bronze).
+
+**Effort:** ~1 day per PR for 1–4, 3–4 days for Summer League, ~1 week for FIBA national teams, 1.5 weeks for Olympics. Total ~3–4 weeks for all four. Worth-it threshold: refactor pays off if shipping any **two** of {Summer League, FIBA, Olympics}; skip and one-off if only Summer League.
+
+**Out of scope (defer):** WNBA Commissioner's Cup (drop-in spec later), G-League Showcase, HS/college brackets, commissioner-defined custom tournaments.
+
+**Open questions:** NBA-player release for FIBA/Olympics windows (likely just an `isInternationalDuty` flag, no roster impact v1); FIBA stat bucketing (probably keyed by `tournamentId` in box scores, not in `player.stats[]`); per-tournament historical gist URLs + parsers; annual national-team roster refresh by K2 OVR before each tournament; naturalized-player eligibility (FIBA = 1 per country, defer to v2).
+
+### National-team eligibility — dual-nationality gist convention
+
+Players in the ratings gist with two countries in the bio location field follow this rule: **the second country wins for FIBA/Olympics eligibility.** Examples:
+
+```
+A.J. Edu     Toledo        Cyprus / Philippines    → suits up for Philippines
+Alex Kirk    New Mexico    United States / Japan   → suits up for Japan
+```
+
+The convention encodes either a **naturalized passport** (FIBA "1 per roster" rule) or a **heritage/dual-citizen** player who's clearly committed to the second federation (parents, residency, prior Federation appearances). Either way: country #2 is where they're playing. National-team roster builder should parse `player.born.loc` on `' / '`, take the **last segment**, and assign that as the FIBA-eligible nation. The first country can be retained as `player.born.loc` for display ("Cyprus / Philippines" still shows in PlayerBio) but `nationalTeamCountry` derives from the trailing segment.
+
+Edge cases to watch:
+- Single-country players (`United States`) → eligibility = that country, no parsing needed.
+- Three-country chains (rare, e.g. heritage immigrant w/ passport) — take the **last** segment; if FIBA rules later need full lineage, store the full split as `eligibleCountries: string[]`.
+- `naturalizedFor: countryCode` (deferred to v2 per the open questions) is what enforces the FIBA "1 naturalized per roster" cap; for v1 just count anyone whose first listed country isn't the second as occupying the naturalized slot.
 
 ---
 

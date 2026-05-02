@@ -21,6 +21,8 @@ export interface CoachSliders {
   prefAthleticSkill: number;
   prefOffDef: number;
   prefInOut: number;
+  ptiRegular: number;
+  ptiPlayoffs: number;
 }
 
 export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[][]): CoachSliders {
@@ -217,5 +219,7 @@ export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[
     prefAthleticSkill,
     prefOffDef,
     prefInOut,
+    ptiRegular: 0,
+    ptiPlayoffs: 40,
   };
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Target } from 'lucide-react';
+import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 import { useGame } from '../../store/GameContext';
 import { getPlayerHeadshot, getTeamLogo, extractTeamId } from '../../utils/helpers';
 import { getPlayerImage } from '../central/view/bioCache';
@@ -82,7 +83,9 @@ export const AllStarVotes: React.FC<AllStarVotesProps> = ({ allStar, ownTid }) =
                 <div className="flex items-center justify-between mb-0.5">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="text-xs font-bold text-slate-200 truncate">
-                      {v.playerName}
+                      {fullPlayer
+                        ? <PlayerNameWithHover player={fullPlayer}>{v.playerName}</PlayerNameWithHover>
+                        : v.playerName}
                     </span>
                     <img 
                       src={getTeamLogo(teamId)}

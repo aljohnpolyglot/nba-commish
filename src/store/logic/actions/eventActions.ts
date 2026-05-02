@@ -145,7 +145,7 @@ export const handleRigLottery = async (stateWithSim: GameState, action: UserActi
         const preset = LOTTERY_PRESETS[stateWithSim.leagueStats?.draftType ?? DEFAULT_DRAFT_TYPE] ?? LOTTERY_PRESETS[DEFAULT_DRAFT_TYPE];
         const poolSize = Math.min(14, preset.chances.length);
         const sorted = [...stateWithSim.teams]
-            .filter(t => t.id > 0)
+            .filter(t => t.id >= 0 && t.id < 100)
             .sort((a, b) => (a.wins / Math.max(1, a.wins + a.losses)) - (b.wins / Math.max(1, b.wins + b.losses)))
             .slice(0, poolSize);
 

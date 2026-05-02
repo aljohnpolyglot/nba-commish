@@ -418,7 +418,7 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
                 <PlayerPortrait
                   imgUrl={player.imgURL}
                   face={(player as any).face}
-                  teamLogoUrl={team?.logoUrl}
+                  teamLogoUrl={team && 'logoUrl' in team ? team.logoUrl : undefined}
                   overallRating={player.overallRating}
                   ratings={player.ratings}
                   playerName={player.name}

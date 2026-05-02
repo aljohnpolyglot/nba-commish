@@ -16,7 +16,8 @@ import type { NBAPlayer, NBATeam, GameState } from '../types';
 import { convertTo2KRating } from '../utils/helpers';
 import { getGMAttributes, clampSpendOffer } from './staff/gmAttributes';
 import { SettingsManager } from './SettingsManager';
-import { hasBirdRights as resolveBirdRights, computeContractOffer } from '../utils/salaryUtils';
+import { hasBirdRights as resolveBirdRights, computeContractOffer, getCapThresholds, getMLEAvailability } from '../utils/salaryUtils';
+import { daysBetweenGameDates, getGameDateParts } from '../utils/dateUtils';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,10 @@ export interface FreeAgentMarket {
   bids: FreeAgentBid[];
   decidesOnDay: number;     // the day the player makes their choice
   resolved: boolean;
+  /** Season/day stamp for stale-market cleanup. Older saves may not have these. */
+  season?: number;
+  openedDay?: number;
+  openedDate?: string;
   // ── RFA matching offer-sheet support ────────────────────────────────────
   /** Set when the resolved-winning team is NOT the player's prior team AND
    *  the player is a Restricted Free Agent. Suspends final mutation until the
@@ -56,6 +61,37 @@ export interface FreeAgentMarket {
   pendingMatchOfferBidId?: string;
   /** Set true once the prior team matches; the resolved signing flips to priorTid. */
   matchedByPriorTeam?: boolean;
+}
+
+export const MAX_FA_MARKET_DECISION_WINDOW_DAYS = 30;
+
+export function isPlausibleActiveMarket(
+  market: FreeAgentMarket,
+  state: GameState,
+  player?: NBAPlayer,
+): boolean {
+  if (market.resolved) return false;
+  const currentDay = state.day ?? 0;
+  const currentYear = state.leagueStats?.year ?? 2026;
+  const marketSeason = market.season;
+
+  if (marketSeason != null && marketSeason !== currentYear) return false;
+  if ((market.decidesOnDay - currentDay) > MAX_FA_MARKET_DECISION_WINDOW_DAYS) return false;
+  if ((currentDay - market.decidesOnDay) > MAX_FA_MARKET_DECISION_WINDOW_DAYS) return false;
+  if (market.openedDay != null && (currentDay - market.openedDay) > MAX_FA_MARKET_DECISION_WINDOW_DAYS) return false;
+
+  const p = player ?? state.players.find(pp => pp.internalId === market.playerId);
+  if (p && (p.tid >= 0 || p.status !== 'Free Agent')) return false;
+
+  return true;
+}
+
+export function getActiveUserBidMarketPlayerIds(state: GameState): Set<string> {
+  return new Set(
+    (state.faBidding?.markets ?? [])
+      .filter(m => !m.resolved && m.bids?.some(b => b.isUserBid && b.status === 'active'))
+      .map(m => m.playerId),
+  );
 }
 
 export interface BidTeamHistory {
@@ -214,15 +250,16 @@ export function generateAIBids(
   // franchise out of FA. Sentinel -999 matches AITradeHandler/AIFreeAgentHandler.
   const userTeamId = state.gameMode === 'gm' ? ((state as any).userTeamId ?? -999) : -999;
   const cap = state.leagueStats?.salaryCap ?? 154_600_000;
-  const minSalary = (state.leagueStats as any)?.minContractStaticAmount ?? 1_200_000;
+  const minSalary = (state.leagueStats as any)?.minContractStaticAmount
+    ? (state.leagueStats as any).minContractStaticAmount * 1_000_000
+    : 1_200_000;
 
   // Get player K2 OVR for salary computation
   const lastRating = (player as any).ratings?.[(player as any).ratings?.length - 1];
   const k2 = convertTo2KRating(player.overallRating ?? 60, lastRating?.hgt ?? 50);
 
-  const luxuryTax = (state.leagueStats as any)?.luxuryPayroll ?? cap * 1.18;
-  // MLE value: ~8.5% of cap (matches getMLEAvailability rough ceiling)
-  const mleUSD = Math.round(cap * 0.085);
+  const thresholds = getCapThresholds(state.leagueStats as any);
+  const luxuryTax = thresholds.luxuryTax;
   // 2nd-apron derived ceiling — used as an absolute brake so teams already $80M+
   // over the apron can't fire fresh offer sheets (RFA poaching path). Defaults
   // mirror getCapThresholds() so a missing leagueStats override still gates.
@@ -252,7 +289,7 @@ export function generateAIBids(
   const recentlyWaivedDate = (player as any).recentlyWaivedDate as string | undefined;
   const isRecentlyWaivedByTeam = (tid: number): boolean => {
     if (recentlyWaivedBy !== tid || !recentlyWaivedDate || !state.date) return false;
-    const days = (new Date(state.date).getTime() - new Date(recentlyWaivedDate).getTime()) / (1000 * 60 * 60 * 24);
+    const days = daysBetweenGameDates(recentlyWaivedDate, state.date);
     return days >= 0 && days < 90;
   };
 
@@ -282,7 +319,9 @@ export function generateAIBids(
       // RFA offer sheet either (over-cap, no MLE headroom, no salary-match path).
       if (payroll >= secondApronUSD) return false;
       const capSpace = cap - payroll;
-      return capSpace >= minSalary || payroll < luxuryTax;
+      const mle = getMLEAvailability(team.id, payroll, 0, thresholds, state.leagueStats as any);
+      const mleUSD = Math.max(0, Math.round(mle.available ?? 0));
+      return capSpace >= minSalary || payroll < luxuryTax || mleUSD >= minSalary;
     })
     // Bird Rights team gets priority slot via desirability boost so they don't
     // get squeezed out when the candidate slice fills up with cap-rich rivals.
@@ -322,21 +361,19 @@ export function generateAIBids(
     // Without this, faMarketTicker hands out $100M+ deals in November.
     const dStr = state.date;
     if (dStr) {
-      const dt = new Date(dStr);
-      if (!isNaN(dt.getTime())) {
-        const m = dt.getMonth() + 1;
-        const day = dt.getDate();
-        const isFebOrLater = m === 2 || m === 3 || m === 4 || m === 5 || m === 6;
-        const isJan = m === 1;
-        const isNovDec = m === 11 || m === 12;
-        const isLateOct = m === 10 && day >= 22;
-        if (isFebOrLater) pct *= 0.20;        // trade deadline+ — fringe-only money
-        else if (isJan) pct *= 0.35;           // mid-season — heavy discount
-        else if (isNovDec || isLateOct) pct *= 0.55; // post-camp — moderate discount
-      }
+      const { month: m, day } = getGameDateParts(dStr);
+      const isFebOrLater = m === 2 || m === 3 || m === 4 || m === 5 || m === 6;
+      const isJan = m === 1;
+      const isNovDec = m === 11 || m === 12;
+      const isLateOct = m === 10 && day >= 22;
+      if (isFebOrLater) pct *= 0.20;        // trade deadline+ — fringe-only money
+      else if (isJan) pct *= 0.35;           // mid-season — heavy discount
+      else if (isNovDec || isLateOct) pct *= 0.55; // post-camp — moderate discount
     }
 
     const capSpace = cap - payroll;
+    const mle = getMLEAvailability(team.id, payroll, 0, thresholds, state.leagueStats as any);
+    const mleUSD = Math.max(0, Math.round(mle.available ?? 0));
     let salaryUSD = Math.max(minSalary, Math.round(cap * pct));
 
     // Each team's GM spending attribute (50–100) scales the bid: low spenders lowball, high spenders overpay.

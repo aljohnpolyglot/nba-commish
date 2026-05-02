@@ -52,8 +52,9 @@ export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, 
   const faMarket = state.faBidding?.markets?.find(
     m => m.playerId === player.internalId && !m.resolved
   );
-  const activeBidCount = faMarket?.bids?.filter(b => b.status === 'active').length ?? 0;
-  const hasOffers = activeBidCount > 0;
+  const activeBidCount = faMarket?.bids?.filter(b => b.status === 'active' && !b.isUserBid).length ?? 0;
+  const hasUserBid = !!faMarket?.bids?.some(b => b.status === 'active' && b.isUserBid);
+  const hasOffers = activeBidCount > 0 || hasUserBid;
 
   return (
     <AnimatePresence>
@@ -115,7 +116,11 @@ export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, 
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-amber-300 uppercase tracking-wider">View Offers</h4>
-                  <p className="text-xs text-slate-500 mt-0.5">{activeBidCount} competing bid{activeBidCount > 1 ? 's' : ''} on the market</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {activeBidCount > 0
+                      ? `${activeBidCount} competing bid${activeBidCount > 1 ? 's' : ''} on the market`
+                      : 'Your offer is on the market'}
+                  </p>
                 </div>
               </button>
             )}

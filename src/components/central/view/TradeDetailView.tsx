@@ -8,6 +8,8 @@ import { calcOvr2K, calcPot2K, getPotColor } from '../../../services/trade/trade
 import { convertTo2KRating } from '../../../utils/helpers';
 import { cn } from '../../../lib/utils';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
+import { isTradeEligible } from '../../../utils/signingMoratorium';
+import { getGameDateParts, parseGameDate } from '../../../utils/dateUtils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -298,6 +300,7 @@ interface PlayerCardProps {
 }
 
 const PlayerReceivedCard: React.FC<PlayerCardProps> = ({ player, currentYear, tradeDateMs, tradeYear, receivingTeam, teams, onClick }) => {
+  const { state } = useGame();
   const historicalOvr = getHistoricalOvr2K(player, tradeDateMs);
   const historicalPot = getHistoricalPot2K(player, tradeDateMs, tradeYear);
   const currentOvr = calcOvr2K(player);
@@ -308,6 +311,10 @@ const PlayerReceivedCard: React.FC<PlayerCardProps> = ({ player, currentYear, tr
   const salaryM = salary > 0 ? `$${(salary / 1000).toFixed(1)}M` : 'N/A';
   const expYear = player.contract?.exp;
   const injured = (player.injury?.gamesRemaining ?? 0) > 0;
+  const tradeEligibleDate = (player as any).tradeEligibleDate as string | undefined;
+  const moratoriumLocked = !!tradeEligibleDate
+    && state.leagueStats?.postSigningMoratoriumEnabled !== false
+    && !isTradeEligible(player, state.date ?? '', state.leagueStats as any);
 
   // Post-trade WS + team-list label ("all with ORL" or "with ORL, BOS")
   const { ws: postWS, tids: postTids } = getPostTradeWS(player, tradeYear);
@@ -379,6 +386,11 @@ const PlayerReceivedCard: React.FC<PlayerCardProps> = ({ player, currentYear, tr
           <span className="text-slate-500"> WS after trade</span>
           <span className="text-slate-600"> ({wsTeamLabel})</span>
         </div>
+        {moratoriumLocked && (
+          <div className="mt-1 text-[9px] font-black uppercase tracking-wider text-amber-300">
+            Moratorium until {tradeEligibleDate}
+          </div>
+        )}
       </div>
 
     </div>
@@ -499,10 +511,10 @@ export const TradeDetailView: React.FC<Props> = ({ entry, legs, onBack }) => {
   // Trade date info for historical ratings — use the original entry date
   const { tradeDateMs, tradeYear } = useMemo(() => {
     try {
-      const d = new Date(entry.date);
+      const d = parseGameDate(entry.date);
       const ms = isNaN(d.getTime()) ? Date.now() : d.getTime();
-      const month = d.getMonth() + 1;
-      const yr = isNaN(d.getTime()) ? currentYear : (month >= 7 ? d.getFullYear() + 1 : d.getFullYear());
+      const { month, year } = getGameDateParts(d);
+      const yr = isNaN(d.getTime()) ? currentYear : (month >= 7 ? year + 1 : year);
       return { tradeDateMs: ms, tradeYear: yr };
     } catch {
       return { tradeDateMs: Date.now(), tradeYear: currentYear };
@@ -653,9 +665,8 @@ export const TradeDetailView: React.FC<Props> = ({ entry, legs, onBack }) => {
 
   const seasonLabel = (() => {
     try {
-      const d = new Date(entry.date);
-      const month = d.getMonth() + 1;
-      const yr = month >= 7 ? d.getFullYear() + 1 : d.getFullYear();
+      const { month, year } = getGameDateParts(entry.date);
+      const yr = month >= 7 ? year + 1 : year;
       return `${yr - 1}–${String(yr).slice(2)} Season`;
     } catch {
       return '';

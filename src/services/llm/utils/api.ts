@@ -19,6 +19,7 @@
   } from "./workerProviders";
 
   export { ThinkingLevel };
+  export type { GenerateContentParameters };
 
   // ── Config ────────────────────────────────────────────────────────────────────
   const GEMINI_WORKER_URL = "https://geminisatellite.mogatas-princealjohn-05082003.workers.dev/";

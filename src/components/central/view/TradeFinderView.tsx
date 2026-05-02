@@ -6,7 +6,7 @@
  * "Manage Trade" opens TradeMachineModal pre-loaded.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Search, X, Loader2, ArrowLeftRight, TrendingUp, TrendingDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useGame } from '../../../store/GameContext';
@@ -27,8 +27,11 @@ import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks } from '..
 import { buildClassStrengthMap, buildLotterySlotMap, buildFullDraftSlotMap, formatPickLabel } from '../../../services/draft/draftClassStrength';
 import { tradeRoleToTeamMode, resolveTeamStrategyProfile } from '../../../utils/teamStrategy';
 import { wouldStepienViolateForTid } from '../../../services/trade/stepienRule';
-import { isInPostDeadlinePreFAWindow, getFreeAgencyStartDate } from '../../../utils/dateUtils';
+import { getGameDateParts, isInPostDeadlinePreFAWindow } from '../../../utils/dateUtils';
 import { isWalkingExpiring, isRecentlySignedLocked } from '../../../services/trade/tradeValueEngine';
+import { PlayerHoverCard } from '../../shared/PlayerHoverCard';
+import { PlayerHoverCardK2 } from '../../shared/PlayerHoverCardK2';
+import { isFranchiseLifer } from '../../../utils/playerTenure';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -99,7 +102,8 @@ const PlayerRow: React.FC<{
   currentYear: number;
   walkingExpiring?: boolean;
   recentlySigned?: boolean;
-}> = ({ player, selected, onToggle, team, dateStr, currentYear, walkingExpiring, recentlySigned }) => {
+  tradeEligibleDate?: string;
+}> = ({ player, selected, onToggle, team, dateStr, currentYear, walkingExpiring, recentlySigned, tradeEligibleDate }) => {
   const ovr = calcOvr2K(player);
   const pot = calcPot2K(player, currentYear);
   const potColor = getPotColor(pot);
@@ -107,13 +111,31 @@ const PlayerRow: React.FC<{
   const exp = player.contract?.exp ?? currentYear;
   const blocked = (!!walkingExpiring || !!recentlySigned) && !selected;
   const blockTitle = recentlySigned
-    ? 'Recently signed — untradable until next league year.'
+    ? (tradeEligibleDate
+        ? `Post-signing trade moratorium — eligible to trade ${tradeEligibleDate}.`
+        : 'Recently signed — trade moratorium in effect.')
     : 'Walking expiring — past trade deadline, this player will be a free agent before any acquirer can use them.';
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [cardPos, setCardPos] = useState<{ top: number; left: number } | null>(null);
+
+  const handleMouseEnter = () => {
+    if (blocked || !rowRef.current) return;
+    const rect = rowRef.current.getBoundingClientRect();
+    const cardW = 210;
+    const left = rect.right + 8 + cardW > window.innerWidth ? rect.left - cardW - 8 : rect.right + 8;
+    const cardH = 620;
+    const centeredTop = rect.top + rect.height / 2 - cardH / 2;
+    const top = Math.max(8, Math.min(centeredTop, window.innerHeight - cardH - 8));
+    setCardPos({ top, left });
+  };
 
   return (
     <div
+      ref={rowRef}
       onClick={blocked ? undefined : onToggle}
       title={blocked ? blockTitle : undefined}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={() => setCardPos(null)}
       className={`flex items-center gap-2 px-3 py-2 border-b border-slate-800/50 transition-all duration-150
         ${blocked ? 'opacity-40 grayscale cursor-not-allowed pointer-events-none'
           : 'cursor-pointer ' + (selected ? 'bg-indigo-600/20 border-l-4 border-l-indigo-500' : 'hover:bg-slate-800/50')}`}
@@ -135,6 +157,11 @@ const PlayerRow: React.FC<{
         <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide truncate">
           {player.pos} · {player.born?.year ? currentYear - player.born.year : player.age ?? '?'}y
         </div>
+        {recentlySigned && tradeEligibleDate && (
+          <div className="mt-1 text-[9px] font-black uppercase tracking-wider text-amber-300">
+            Moratorium until {tradeEligibleDate}
+          </div>
+        )}
       </div>
 
       {/* OVR — plain number, no pill */}
@@ -150,6 +177,13 @@ const PlayerRow: React.FC<{
       </div>
 
       {selected && <X size={11} className="text-indigo-400 flex-shrink-0" />}
+      {cardPos && (
+        <div className="fixed z-[200] pointer-events-none" style={{ top: cardPos.top, left: cardPos.left }}>
+          {SettingsManager.getSettings().tooltipStyle === 'simple'
+            ? <PlayerHoverCard player={player} />
+            : <PlayerHoverCardK2 player={player} />}
+        </div>
+      )}
     </div>
   );
 };
@@ -233,9 +267,28 @@ const OfferItemRow: React.FC<{
   /** 'ask' = render inside the rose "For your" panel (subtle color variant). */
   tone?: 'normal' | 'ask';
 }> = ({ item, teams, dateStr, currentYear, tone = 'normal' }) => {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [cardPos, setCardPos] = useState<{ top: number; left: number } | null>(null);
   const bg = tone === 'ask' ? 'bg-rose-900/20' : 'bg-slate-800/40';
+
+  const handleMouseEnter = () => {
+    if (item.type !== 'player' || !item.player || !rowRef.current) return;
+    const rect = rowRef.current.getBoundingClientRect();
+    const cardW = 210;
+    const left = rect.right + 8 + cardW > window.innerWidth ? rect.left - cardW - 8 : rect.right + 8;
+    const cardH = 620;
+    const centeredTop = rect.top + rect.height / 2 - cardH / 2;
+    const top = Math.max(8, Math.min(centeredTop, window.innerHeight - cardH - 8));
+    setCardPos({ top, left });
+  };
+
   return (
-    <div className={`flex items-center gap-2 ${bg} rounded-xl px-2.5 py-1.5`}>
+    <div
+      ref={rowRef}
+      className={`flex items-center gap-2 ${bg} rounded-xl px-2.5 py-1.5`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={() => setCardPos(null)}
+    >
       {item.type === 'absorb' ? (
         <>
           <div className="w-7 h-7 rounded-lg bg-emerald-900/50 border border-emerald-700/50 flex items-center justify-center flex-shrink-0">
@@ -297,6 +350,13 @@ const OfferItemRow: React.FC<{
           </div>
         </>
       )}
+      {cardPos && item.player && (
+        <div className="fixed z-[200] pointer-events-none" style={{ top: cardPos.top, left: cardPos.left }}>
+          {SettingsManager.getSettings().tooltipStyle === 'simple'
+            ? <PlayerHoverCard player={item.player} />
+            : <PlayerHoverCardK2 player={item.player} />}
+        </div>
+      )}
     </div>
   );
 };
@@ -323,22 +383,37 @@ export const OfferCard: React.FC<{
   const mySalary = myItems.filter(i => i.type === 'player').reduce((s, i) => s + (i.player?.contract?.amount ?? 0), 0);
   const theirSalary = offer.items.filter(i => i.type === 'player').reduce((s, i) => s + (i.player?.contract?.amount ?? 0), 0);
   const bothHavePlayers = myItems.some(i => i.type === 'player') && offer.items.some(i => i.type === 'player');
-  const salaryOk = !bothHavePlayers || isSalaryLegal(mySalary, theirSalary);
+  const ratioOk = !bothHavePlayers || isSalaryLegal(mySalary, theirSalary);
+  // Cap-space exception: room above the cap absorbs excess incoming beyond the 1.25× ratio.
+  // Real NBA rule: incoming ≤ outgoing + capSpace. Units: BBGM thousands.
+  const capRoomK = capSpaceK ?? 0;
+  const capCoversGap = !ratioOk && bothHavePlayers && capRoomK > 0
+    && theirSalary <= mySalary + capRoomK + 0.1;
+  const salaryOk = ratioOk || capCoversGap;
   const { outlook } = offer;
   const badgeLabel = offer.strategyLabel ?? outlook.label;
   const isAbsorb = offer.variant === 'absorb';
-  // When both sides have players, show the trade-matching delta (outgoing×1.25 − incoming).
-  // Positive = room under the ratio; negative = over the limit. This is trade-specific.
-  // When only one side has players, fall back to raw cap space so the absorb context is clear.
+  // Cap label:
+  // - Both sides: show 1.25× room OR, if cap space closes the gap, show remaining cap after absorption.
+  // - One side only: fall back to raw cap space.
   const matchDeltaK = bothHavePlayers ? mySalary * 1.25 - theirSalary : null;
-  const capLabel = matchDeltaK !== null
-    ? matchDeltaK >= 0
-      ? `+$${(matchDeltaK / 1000).toFixed(1)}M room`
-      : `-$${(-matchDeltaK / 1000).toFixed(1)}M over limit`
-    : capSpaceK === undefined ? null
-      : capSpaceK >= 0
-        ? `$${(capSpaceK / 1000).toFixed(1)}M avail`
-        : `-$${(-capSpaceK / 1000).toFixed(1)}M over`;
+  const capLabel = (() => {
+    if (capCoversGap) {
+      const remainingCapK = mySalary + capRoomK - theirSalary;
+      return remainingCapK >= 0
+        ? `+$${(remainingCapK / 1000).toFixed(1)}M cap left`
+        : `-$${(-remainingCapK / 1000).toFixed(1)}M over`;
+    }
+    if (matchDeltaK !== null) {
+      return matchDeltaK >= 0
+        ? `+$${(matchDeltaK / 1000).toFixed(1)}M room`
+        : `-$${(-matchDeltaK / 1000).toFixed(1)}M over limit`;
+    }
+    if (capSpaceK === undefined) return null;
+    return capSpaceK >= 0
+      ? `$${(capSpaceK / 1000).toFixed(1)}M avail`
+      : `-$${(-capSpaceK / 1000).toFixed(1)}M over`;
+  })();
 
   return (
     <motion.div
@@ -396,16 +471,20 @@ export const OfferCard: React.FC<{
             </span>
           ) : bothHavePlayers ? (
             <span className={`text-[9px] font-bold px-2 py-1 rounded-lg ${
-              salaryOk ? 'bg-emerald-900/40 text-emerald-400' : 'bg-amber-900/40 text-amber-400'
+              capCoversGap ? 'bg-sky-900/40 text-sky-300'
+              : salaryOk ? 'bg-emerald-900/40 text-emerald-400'
+              : 'bg-amber-900/40 text-amber-400'
             }`}>
-              {salaryOk ? '✓ Salary OK' : '⚠ Salary Off'}
+              {capCoversGap ? '✓ Room OK' : salaryOk ? '✓ Salary OK' : '⚠ Salary Off'}
             </span>
           ) : null}
           {capLabel && (
             <span className={`text-[9px] font-bold px-2 py-1 rounded-lg tabular-nums ${
-              matchDeltaK !== null
-                ? matchDeltaK >= 0 ? 'bg-emerald-900/40 text-emerald-400' : 'bg-rose-900/40 text-rose-300'
-                : (capSpaceK ?? 0) >= 0 ? 'bg-sky-900/40 text-sky-300' : 'bg-rose-900/40 text-rose-300'
+              capCoversGap
+                ? (capLabel.startsWith('+') ? 'bg-sky-900/40 text-sky-300' : 'bg-rose-900/40 text-rose-300')
+                : matchDeltaK !== null
+                  ? matchDeltaK >= 0 ? 'bg-emerald-900/40 text-emerald-400' : 'bg-rose-900/40 text-rose-300'
+                  : (capSpaceK ?? 0) >= 0 ? 'bg-sky-900/40 text-sky-300' : 'bg-rose-900/40 text-rose-300'
             }`}>
               {capLabel}
             </span>
@@ -470,8 +549,7 @@ export const TradeFinderView: React.FC = () => {
   // In-season PER adjustment context. Regular season = Oct-Apr. Auto-resets on
   // rollover because currentYear changes and per-season stats filter to []
   const tvContext: TVContext | undefined = useMemo(() => {
-    const d = state.date ? new Date(state.date) : null;
-    const month = d ? d.getMonth() + 1 : 0;
+    const month = state.date ? getGameDateParts(state.date).month : 0;
     const isRegularSeason = (month >= 10 && month <= 12) || (month >= 1 && month <= 4);
     if (!isRegularSeason) return undefined;
     return { leaguePerAvg: computeLeaguePerAvg(players, currentYear), isRegularSeason: true };
@@ -688,12 +766,7 @@ export const TradeFinderView: React.FC = () => {
     if (!allowLifers) {
       const lifer = basket.find(item => {
         if (item.type !== 'player' || !item.player) return false;
-        const p = item.player;
-        const directYrs = (p as any).yearsWithTeam ?? 0;
-        const statYrs = p.stats
-          ? p.stats.filter((s: any) => s.tid === p.tid && !s.playoffs && (s.gp ?? 0) > 0).length
-          : 0;
-        return Math.max(directYrs, statYrs) >= 10;
+        return isFranchiseLifer(item.player);
       });
       if (lifer && (isReverseMode || isGM)) {
         setOwnerWarningLifer(lifer.label);
@@ -736,9 +809,8 @@ export const TradeFinderView: React.FC = () => {
         tradablePickWindow: state.leagueStats?.tradableDraftPickSeasons ?? 7,
         isPostDeadlinePreFA: isInPostDeadlinePreFAWindow(state.date, currentYear, state.leagueStats as any),
         recentlySignedLockMs: {
-          faStart: getFreeAgencyStartDate(currentYear - 1, state.leagueStats as any).getTime(),
-          nextFaStart: getFreeAgencyStartDate(currentYear, state.leagueStats as any).getTime(),
-          current: new Date(state.date ?? '').getTime(),
+          currentDate: state.date ?? '',
+          leagueStats: state.leagueStats as any,
         },
       });
 
@@ -893,22 +965,24 @@ export const TradeFinderView: React.FC = () => {
             {activeTab === 'roster' ? (
               (() => {
                 const postDeadlinePreFA = isInPostDeadlinePreFAWindow(state.date ?? '', currentYear, state.leagueStats as any);
-                const rslFaStart = getFreeAgencyStartDate(currentYear - 1, state.leagueStats as any).getTime();
-                const rslNextFaStart = getFreeAgencyStartDate(currentYear, state.leagueStats as any).getTime();
-                const rslCurrent = new Date(state.date ?? '').getTime();
-                return filteredRoster.map(p => (
-                  <PlayerRow
-                    key={p.internalId}
-                    player={p}
-                    selected={basketIds.has(p.internalId)}
-                    onToggle={() => addPlayer(p)}
-                    team={selectedTeam}
-                    dateStr={state.date ?? ''}
-                    currentYear={currentYear}
-                    walkingExpiring={isWalkingExpiring(p, currentYear, postDeadlinePreFA)}
-                    recentlySigned={isRecentlySignedLocked(p, rslFaStart, rslNextFaStart, rslCurrent)}
-                  />
-                ));
+                const rslDate = state.date ?? '';
+                return filteredRoster.map(p => {
+                  const locked = isRecentlySignedLocked(p, rslDate, state.leagueStats as any);
+                  return (
+                    <PlayerRow
+                      key={p.internalId}
+                      player={p}
+                      selected={basketIds.has(p.internalId)}
+                      onToggle={() => addPlayer(p)}
+                      team={selectedTeam}
+                      dateStr={state.date ?? ''}
+                      currentYear={currentYear}
+                      walkingExpiring={isWalkingExpiring(p, currentYear, postDeadlinePreFA)}
+                      recentlySigned={locked}
+                      tradeEligibleDate={p.tradeEligibleDate}
+                    />
+                  );
+                });
               })()
             ) : (
               filteredPicks.map(pk => {

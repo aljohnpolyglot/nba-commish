@@ -4,12 +4,14 @@ import { useGame } from '../../store/GameContext';
 import { normalizeDate } from '../../utils/helpers';
 import {
   getTradeDeadlineDate, getDraftLotteryDate, getDraftDate,
-  getCurrentOffseasonFAStart, getOpeningNightDate, getTrainingCampDate,
-  getAllStarWeekendStartDate, toISODateString,
+  getCurrentOffseasonEffectiveFAStart, getOpeningNightDate, getTrainingCampDate,
+  getAllStarWeekendStartDate, getCurrentOffseasonFAMoratoriumEnd, isDraftBlockedByUnresolvedPlayoffs, toISODateString,
 } from '../../utils/dateUtils';
 import { Tab } from '../../types';
 import { useDraftEventGate } from '../../hooks/useDraftEventGate';
 import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
+import { useTeamOptionGate } from '../../hooks/useTeamOptionGate';
+import { useExpiringResignGate } from '../../hooks/useExpiringResignGate';
 
 type SimPhase =
   | 'preseason'
@@ -49,10 +51,13 @@ function getSimPhase(state: any): SimPhase {
   const openingNight = getOpeningNightDate(seasonYear);
   const draftLotteryDate = getDraftLotteryDate(seasonYear, ls);
   const draftDate = getDraftDate(seasonYear, ls);
-  const offseasonFAStart = getCurrentOffseasonFAStart(curDate, ls);
+  const offseasonFAStart = getCurrentOffseasonEffectiveFAStart(curDate, ls, state.schedule);
   const trainingCampMonth = ls?.trainingCampMonth ?? 10;
   const trainingCampDay = ls?.trainingCampDay ?? 1;
   const currentCalendarTrainingCamp = new Date(Date.UTC(curDate.getUTCFullYear(), trainingCampMonth - 1, trainingCampDay));
+  const hasPlayIn = (state.playoffs?.playInGames ?? []).some((g: any) => !g.winner);
+  const hasActivePlayoffs = (state.playoffs?.series ?? []).some((s: any) => s.status !== 'complete');
+  const draftBlockedByPlayoffs = isDraftBlockedByUnresolvedPlayoffs(state);
 
   if (curDate >= offseasonFAStart && curDate < currentCalendarTrainingCamp) return 'free-agency';
 
@@ -61,16 +66,13 @@ function getSimPhase(state: any): SimPhase {
     if (curDate >= trainingCamp) return 'preseason';
     return 'after-draft';
   }
+  if (hasActivePlayoffs || draftBlockedByPlayoffs) return 'playoffs';
+  if (hasPlayIn && !hasActivePlayoffs) return 'playin';
   if (curDate > draftDate) return 'after-draft';
   // On draft day: if the user has already run the draft via DraftSimulatorView,
   // flip immediately to 'after-draft' so they get the FA chain instead of the
   // dead-end "View draft" loop.
   if (toISODateString(draftDate) === norm) return state.draftComplete ? 'after-draft' : 'draft';
-
-  const hasPlayIn = (state.playoffs?.playInGames ?? []).some((g: any) => !g.winner);
-  const hasActivePlayoffs = (state.playoffs?.series ?? []).some((s: any) => s.status !== 'complete');
-  if (hasPlayIn && !hasActivePlayoffs) return 'playin';
-  if (hasActivePlayoffs) return 'playoffs';
 
   if (curDate >= draftLotteryDate) return 'draft-lottery';
   return 'regular-season';
@@ -167,31 +169,63 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
     onNavigateToDraft:        () => setCurrentView('Draft Board'   as Tab),
   });
   const rosterGate = useRosterComplianceGate();
+  const teamOptionGate = useTeamOptionGate({
+    onNavigateManual: () => setCurrentView('Team Office' as Tab),
+  });
+  const expiringGate = useExpiringResignGate({
+    onNavigateManual: () => setCurrentView('Team Office' as Tab),
+  });
 
-  const guardedSim = useCallback((fn: () => void | Promise<void>) => {
-    rosterGate.attempt(() => draftGate.attempt(fn));
-  }, [draftGate, rosterGate]);
+  const guardedSim = useCallback((fn: () => void | Promise<void>, targetDate?: string) => {
+    expiringGate.attempt(
+      () => {
+        teamOptionGate.attempt(
+          () => {
+            rosterGate.attempt(
+              () => { draftGate.attempt(fn); },
+            );
+          },
+          targetDate,
+        );
+      },
+      targetDate,
+    );
+  }, [draftGate, rosterGate, teamOptionGate, expiringGate]);
 
   const simDay = useCallback(() => {
     setOpen(false);
-    guardedSim(() => dispatchAction({ type: 'ADVANCE_DAY' }));
+    guardedSim(() => dispatchAction({ type: 'ADVANCE_DAY' }), addDays(norm, 1));
   }, [dispatchAction, guardedSim]);
 
   // stopBefore:true — advance TO that date, leaving its games unplayed (for "until X starts")
   const simToDate = useCallback((date: string) => {
     setOpen(false);
-    guardedSim(() =>
-      dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: date, stopBefore: true } } as any),
+    guardedSim(
+      () => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: date, stopBefore: true } } as any),
+      date,
     );
   }, [dispatchAction, guardedSim]);
 
   // no stopBefore — play through that date's games (for "until end of X")
   const simThrough = useCallback((date: string) => {
     setOpen(false);
-    guardedSim(() =>
-      dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: date } } as any),
+    guardedSim(
+      () => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: date } } as any),
+      date,
     );
   }, [dispatchAction, guardedSim]);
+
+  const simDraftToEnd = useCallback(() => {
+    setOpen(false);
+    const targetDate = addDays(norm, 1);
+    guardedSim(
+      () => dispatchAction({
+        type: 'SIMULATE_TO_DATE',
+        payload: { targetDate, stopBefore: true, assistantGM: true },
+      } as any),
+      targetDate,
+    );
+  }, [dispatchAction, guardedSim, norm]);
 
   const navigate = useCallback((view: Tab) => {
     setOpen(false);
@@ -202,7 +236,8 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
     const tdStr              = toISODateString(getTradeDeadlineDate(seasonYear, ls));
     const draftLotteryStr    = toISODateString(getDraftLotteryDate(seasonYear, ls));
     const draftStr           = toISODateString(getDraftDate(seasonYear, ls));
-    const faStartStr         = toISODateString(getCurrentOffseasonFAStart(`${norm}T00:00:00Z`, ls));
+    const faStartStr         = toISODateString(getCurrentOffseasonEffectiveFAStart(`${norm}T00:00:00Z`, ls, state.schedule));
+    const faMoratoriumEndStr = toISODateString(getCurrentOffseasonFAMoratoriumEnd(`${norm}T00:00:00Z`, ls, state.schedule));
     const openingNightStr    = toISODateString(getOpeningNightDate(seasonYear));
     // Land Thursday (1 day before Rising Stars Friday) so the user sees All-Star
     // weekend BEFORE any of its events trigger.
@@ -234,6 +269,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
         if (lastPreseason && lastPreseason >= norm) {
           opts.push({ label: 'Through preseason', action: () => simThrough(lastPreseason) });
         }
+        // stopBefore: true — land on opening night with games unplayed.
         opts.push({ label: 'To opening night', action: () => simToDate(openingNightStr) });
         return opts;
       }
@@ -325,25 +361,52 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
 
       case 'draft':
         return [
-          { label: 'One day',     action: simDay },
+          { label: 'Sim to end of draft', action: simDraftToEnd },
           { label: 'Watch draft', action: () => navigate('Draft Board' as Tab) },
         ];
 
       case 'after-draft':
         return [
           { label: 'One day',           action: simDay },
-          { label: 'Until free agency', action: () => simToDate(faStartStr) },
+          { label: 'Until FA opens', action: () => simToDate(faStartStr) },
         ];
 
       case 'free-agency': {
+        const activeMarkets = (state.faBidding?.markets ?? []).filter((m: any) => !m.resolved);
+        const marketTarget = (markets: any[]) => {
+          const nextDecisionDay = markets
+            .map((m: any) => Number(m.decidesOnDay))
+            .filter((d: number) => Number.isFinite(d))
+            .sort((a: number, b: number) => a - b)[0];
+          if (nextDecisionDay == null) return addDays(norm, 1);
+          return addDays(norm, Math.max(1, nextDecisionDay - (state.day ?? 0)));
+        };
+        const majorMarketPlayerIds = new Set(
+          state.players
+            .filter((p: any) => p.tid < 0 && p.status === 'Free Agent' && (p.overallRating ?? 0) >= 55)
+            .map((p: any) => p.internalId),
+        );
+        const majorMarkets = activeMarkets.filter((m: any) => majorMarketPlayerIds.has(m.playerId));
         const opts: PlayOption[] = [
           { label: 'One day',         action: simDay },
-          { label: 'One week',        action: () => simToDate(addDays(norm, 7)) },
-          { label: 'One month',       action: () => simToDate(addDays(norm, 30)) },
-          { label: 'Until preseason', action: () => simToDate(preseasonStr) },
+          { label: 'One FA week',     action: () => simToDate(addDays(norm, 7)) },
         ];
+        if (norm < faMoratoriumEndStr) {
+          opts.push({ label: 'Through moratorium', action: () => simToDate(faMoratoriumEndStr) });
+        }
+        if (activeMarkets.length > 0) {
+          opts.push({ label: 'Until next FA decision', action: () => simThrough(marketTarget(activeMarkets)) });
+        }
+        if (majorMarkets.length > 0) {
+          opts.push({ label: 'Until major FAs resolve', action: () => simThrough(marketTarget(majorMarkets)) });
+        }
+        opts.push(
+          { label: 'One month',       action: () => simToDate(addDays(norm, 30)) },
+          { label: 'Until training camp', action: () => simToDate(preseasonStr) },
+        );
         const nextSeasonOpening = toISODateString(getOpeningNightDate(seasonYear));
         if (nextSeasonOpening > norm) {
+          // stopBefore: true — land on opening night with games unplayed.
           opts.push({ label: 'Through preseason', action: () => simToDate(nextSeasonOpening) });
         }
         return opts;
@@ -352,7 +415,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
       default:
         return [{ label: 'One day', action: simDay }];
     }
-  }, [phase, norm, seasonYear, ls, state, simDay, simToDate, simThrough, navigate]);
+  }, [phase, norm, seasonYear, ls, state, simDay, simToDate, simThrough, simDraftToEnd, navigate]);
 
   // Close on outside click or Escape
   useEffect(() => {
@@ -432,6 +495,8 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
 
       {draftGate.modal}
       {rosterGate.modal}
+      {teamOptionGate.modal}
+      {expiringGate.modal}
     </div>
   );
 };

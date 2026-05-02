@@ -62,8 +62,9 @@ export function ThreePointContest({ contestants, onClose, onComplete }: ThreePoi
 
   useEffect(() => {
     const play = plays[currentIndex];
-    if (play?.type === 'rack_complete' && play.total >= 25) {
-      setHighScoreFlash(play.total);
+    const rackTotal = play?.scoreUpdate?.newTotal ?? 0;
+    if (play?.type === 'rack_complete' && rackTotal >= 25) {
+      setHighScoreFlash(rackTotal);
       setTimeout(() => setHighScoreFlash(null), 2000);
     }
   }, [currentIndex, plays]);

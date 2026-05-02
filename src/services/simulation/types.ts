@@ -37,6 +37,8 @@ export interface PlayerGameStats {
   fga: number;
   threePm: number;
   threePa: number;
+  fourPm?: number;
+  fourPa?: number;
   ftm: number;
   fta: number;
   pf: number;
@@ -51,6 +53,8 @@ export interface PlayerGameStats {
   fgMidRange?: number;
   fgaMidRange?: number;
   ba?: number; // blocked attempts (times this player got blocked)
+  dunks?: number; // dunk count (incremented by HighlightGenerator)
+  techs?: number; // technical fouls (incremented by HighlightGenerator)
   // Transient night profile fields — set in initial.ts, consumed in coordinated.ts, not persisted to season stats
   _nightOrbMult?: number;
   _nightDrbMult?: number;
@@ -126,6 +130,7 @@ export interface LivePlayerStat {
   pts: number;
   fgm: number; fga: number;
   tp: number; tpa: number;
+  fp?: number; fpa?: number;
   ftm: number; fta: number;
   ast: number;
   orb: number; drb: number;
@@ -138,6 +143,7 @@ export interface LivePlayerStat {
 export interface LiveTeamStat {
   fgm: number; fga: number;
   tp: number; tpa: number;
+  fp?: number; fpa?: number;
   ftm: number; fta: number;
   ast: number; reb: number;
   stl: number; blk: number;
@@ -157,6 +163,7 @@ export interface RosterPlayer {
   pm: number;
   fgm: number; fga: number;
   tp: number; tpa: number;
+  fp?: number; fpa?: number;
   ftm: number; fta: number;
   ast: number;
   orb: number; drb: number;

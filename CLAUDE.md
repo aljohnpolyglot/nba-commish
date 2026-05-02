@@ -27,11 +27,7 @@ Both auto-load the newest save from IndexedDB via `keyval-store`. To target a sp
 ## Known unfixed economy issues
 
 - **Pass 5 can't help full rosters.** Teams at 15/15 with cheap deals (e.g. Phoenix $46M / 15 players) need NBA-style **shortfall distribution** — bonus payments to existing players, not new signings. Function not yet written. Should fire from `seasonRollover.ts` at year-end.
-- **External-league contracts never expire.** `seasonRollover.ts:282-285` short-circuits for EXTERNAL_LEAGUES (returns `{...p, age+1}`), skipping contract expiry. Barcelona 1-year deals stay current forever. Also affects `tid >= 100` branch.
 - **`playerCurrentSeason` derives from `player.stats` MAX year, not `state.leagueStats.year`.** Stale for retired/revived players. In `salaryUtils.ts`.
-- **Bidding-war pipeline split.** K2 ≥ 80 FAs go through `faMarketTicker` (max 6 markets/day); everyone else through `runAIFreeAgencyRound`. Volume mismatch — ~100+ K2 70+ FAs can't all use the ticker.
-- **`faMarketTicker` hardcodes** `luxTax = cap × 1.18` and `mleUSD = cap × 0.085` instead of using `getCapThresholds()` / `getMLEAvailability()`.
-- **`newMinContract` unit fallback** in `seasonRollover.ts`: fallback `1_272_870` is treated as millions → $1.27 trillion if `minContractStaticAmount` setting absent. Should be `?? 1.273`.
 
 ## Unit gotchas
 

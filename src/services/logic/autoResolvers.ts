@@ -6,10 +6,12 @@ import { drawCupGroups } from '../nbaCup/drawGroups';
 import { injectCupGroupGames } from '../nbaCup/scheduleInjector';
 import { AwardService } from './AwardService';
 import { NewsGenerator } from '../news/NewsGenerator';
-import { LOTTERY_PRESETS } from '../../lib/lotteryPresets';
+import { LOTTERY_PRESETS, computeTopKOdds } from '../../lib/lotteryPresets';
 import { returnUndraftedToHomeLeague } from '../externalLeagueSustainer';
 import { UNDRAFTED_OVR_CAP } from '../../constants';
-import { getRolloverDate, toISODateString } from '../../utils/dateUtils';
+import { getRolloverDate, isDraftBlockedByUnresolvedPlayoffs, toISODateString } from '../../utils/dateUtils';
+import { isNbaCupEnabled } from '../../utils/ruleFlags';
+import { buildDraftOrderFromState } from '../draft/draftOrder';
 
 // ── Schedule Generation (Aug 14) ──────────────────────────────────────────
 export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
@@ -30,7 +32,7 @@ export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
     // Schedule already generated, but check if Cup games are missing — can happen
     // if the schedule was generated under an older codepath that didn't pass
     // cupGroups. Self-heal by retro-injecting Cup games into the existing schedule.
-    if (state.leagueStats.inSeasonTournament !== false && state.nbaCup?.groups?.length) {
+    if (isNbaCupEnabled(state.leagueStats) && state.nbaCup?.groups?.length) {
       const hasCupGames = state.schedule.some(g => (g as any).isNBACup);
       if (!hasCupGames) {
         console.log('[autoGenerateSchedule] Self-heal: schedule exists but no Cup games tagged → injecting now');
@@ -64,8 +66,9 @@ export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
   // new saves have no groups yet. Draw them inline here so Cup games make it
   // into the very first schedule.
   let nbaCupPatch: NBACupState | undefined;
-  let cupGroups = (state.leagueStats.inSeasonTournament !== false) ? (state.nbaCup?.groups ?? []) : [];
-  if (state.leagueStats.inSeasonTournament !== false && cupGroups.length === 0) {
+  const cupEnabled = isNbaCupEnabled(state.leagueStats);
+  let cupGroups = cupEnabled ? (state.nbaCup?.groups ?? []) : [];
+  if (cupEnabled && cupGroups.length === 0) {
     const prevStandings = state.teams.map(t => ({ tid: t.id, wins: t.wins, losses: t.losses }));
     cupGroups = drawCupGroups(state.teams, prevStandings, state.saveId ?? 'default', state.leagueStats.year);
     nbaCupPatch = {
@@ -313,7 +316,9 @@ export const autoAnnounceReserves = async (state: GameState): Promise<Partial<Ga
       state.players,
       state.teams,
       state.leagueStats.year,
-      state.allStar?.roster ?? []
+      state.allStar?.roster ?? [],
+      state.leagueStats.allStarFormat,
+      state.leagueStats.allStarTeams
     );
     // Bucket the full 24-man pool together so captains_draft / usa_vs_world
     // re-balance starters + reserves uniformly.
@@ -984,7 +989,7 @@ export const autoRunLottery = (state: GameState): Partial<GameState> => {
   const preset = LOTTERY_PRESETS[state.leagueStats?.draftType ?? 'nba2019'] ?? LOTTERY_PRESETS.nba2019;
 
   const sorted = [...state.teams]
-    .filter(t => t.id > 0)
+    .filter(t => t.id >= 0 && t.id < 100)
     .sort((a, b) => (a.wins / Math.max(1, a.wins + a.losses)) - (b.wins / Math.max(1, b.wins + b.losses)))
     .slice(0, Math.min(14, preset.chances.length));
 
@@ -993,7 +998,7 @@ export const autoRunLottery = (state: GameState): Partial<GameState> => {
     const gp = t.wins + t.losses;
     const winPct = gp > 0 ? (t.wins / gp).toFixed(3) : '.000';
     return {
-      id: String(t.id),
+      id: t.id,
       tid: t.id,
       name: t.name,
       city: (t as any).region ?? t.name,
@@ -1001,7 +1006,8 @@ export const autoRunLottery = (state: GameState): Partial<GameState> => {
       record: `${t.wins}-${t.losses}`,
       winPct,
       odds1st: parseFloat(((chance / preset.total) * 100).toFixed(1)),
-      oddsTop4: parseFloat(((chance / preset.total) * 100 * preset.numToPick).toFixed(1)),
+      oddsTopN: parseFloat((computeTopKOdds(preset.chances, i, preset.numToPick) * 100).toFixed(1)),
+      oddsTop4: parseFloat((computeTopKOdds(preset.chances, i, preset.numToPick) * 100).toFixed(1)),
       color: (t as any).colors?.[0] ?? '#333333',
       originalSeed: i + 1,
     };
@@ -1018,7 +1024,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
   if ((state as any).draftComplete) return {}; // commissioner already ran the draft
   // Finals must finish before the draft runs — if draft day lands before Game 7, defer.
   // Return the sentinel so lazySimRunner retries this event next iteration.
-  if (state.playoffs && !state.playoffs.bracketComplete) return { _deferred: true } as any;
+  if (isDraftBlockedByUnresolvedPlayoffs(state)) return { _deferred: true } as any;
 
   const season = state.leagueStats?.year ?? 2026;
   const guaranteedYrs = state.leagueStats?.rookieContractLength ?? 2;
@@ -1028,50 +1034,9 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
 
   const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
 
-  // Draft order: use lottery results for picks 1-14, playoff teams for 15-30 (mirrors DraftSimulatorView)
-  const allSortedByRecord = [...state.teams]
-    .filter(t => t.id > 0)
-    .sort((a, b) => (a.wins / Math.max(1, a.wins + a.losses)) - (b.wins / Math.max(1, b.wins + b.losses)));
-
-  const lotteryResults: any[] = state.draftLotteryResult ?? [];
-  let r1Order: typeof allSortedByRecord;
-
-  if (lotteryResults.length >= 14) {
-    const lotteryTids = new Set(lotteryResults.map((r: any) => r.team?.tid ?? r.tid));
-    const lotteryPicks = [...lotteryResults]
-      .sort((a: any, b: any) => a.pickNumber - b.pickNumber)
-      .map((r: any) => state.teams.find(t => t.id === (r.team?.tid ?? r.tid)))
-      .filter(Boolean) as typeof allSortedByRecord;
-    const playoffTeams = allSortedByRecord
-      .filter(t => !lotteryTids.has(t.id))
-      .reverse(); // best record picks last
-    r1Order = [...lotteryPicks, ...playoffTeams];
-  } else {
-    // No lottery result — fall back to standings order (worst record first)
-    r1Order = allSortedByRecord;
-  }
-
-  // Resolve traded picks: if a team traded away their pick, assign the slot to the new owner.
-  const currentSeasonPicks = ((state.draftPicks ?? []) as DraftPick[]).filter(dp => dp.season === season);
-  const r1TradedMap = new Map<number, number>(); // originalTid → currentOwnerTid (round 1)
-  const r2TradedMap = new Map<number, number>(); // originalTid → currentOwnerTid (round 2)
-  for (const dp of currentSeasonPicks) {
-    if (dp.tid !== dp.originalTid) {
-      if (dp.round === 1) r1TradedMap.set(dp.originalTid, dp.tid);
-      else if (dp.round === 2) r2TradedMap.set(dp.originalTid, dp.tid);
-    }
-  }
-  const resolvePickOwner = (team: typeof state.teams[0], round: number) => {
-    const currentOwnerTid = (round === 1 ? r1TradedMap : r2TradedMap).get(team.id);
-    if (currentOwnerTid !== undefined) {
-      return state.teams.find(t => t.id === currentOwnerTid) ?? team;
-    }
-    return team;
-  };
-  const draftOrder = [
-    ...r1Order.map(team => resolvePickOwner(team, 1)),
-    ...r1Order.map(team => resolvePickOwner(team, 2)),
-  ];
+  const draftOrder = (((state as any).activeDraftOrder?.length ?? 0) > 0
+    ? (state as any).activeDraftOrder
+    : buildDraftOrderFromState(state)) as any[];
 
   // Available prospects for THIS season's draft class only (filter out future classes)
   const prospects = state.players
@@ -1083,7 +1048,8 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
       if (draftYear != null && Number(draftYear) !== season) return false;
       return true;
     })
-    .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
+    .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0))
+    .slice(0, 100);
 
   // Assign picks (best OVR available to each slot)
   const assignedIds = new Set<string>();
@@ -1241,6 +1207,18 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
   const TWO_WAY_SALARY_THOUSANDS = 625; // $625K in BBGM thousands convention
   const maxTwoWay = state.leagueStats?.maxTwoWayPlayersPerTeam ?? 2;
   const twoWayEnabled = state.leagueStats?.twoWayContractsEnabled ?? true;
+  const gmUserTeamId = state.gameMode === 'gm' ? (state as any).userTeamId : -999;
+  const hasValidGmUserTeamId = state.gameMode !== 'gm' || (Number.isInteger(gmUserTeamId) && gmUserTeamId >= 0);
+  let warnedUserTeamFillSkip = false;
+  const shouldSkipUserTeamFill = (teamId: number): boolean => {
+    if (state.gameMode !== 'gm') return false;
+    if (hasValidGmUserTeamId && teamId !== gmUserTeamId) return false;
+    if (!warnedUserTeamFillSkip) {
+      console.warn('[autoRunDraft] SKIPPING user team fill');
+      warnedUserTeamFillSkip = true;
+    }
+    return true;
+  };
 
   const draftedTeamIds = new Set(Array.from(pickMap.values()).map(({ team }) => team.id));
   let twoWayPlayers = normalizeTeamJerseyNumbers(updatedPlayers, state.teams, season, {
@@ -1276,7 +1254,8 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     const twoWayCountByTeam = new Map<number, number>();
 
     // One pass: give each team up to maxTwoWay candidates from the pool
-    for (const team of state.teams.filter(t => t.id > 0)) {
+    for (const team of state.teams.filter(t => t.id >= 0 && t.id < 100)) {
+      if (shouldSkipUserTeamFill(team.id)) continue;
       const standardCount = twoWayPlayers.filter(p => p.tid === team.id && !(p as any).twoWay).length;
       if (standardCount < 1) continue; // only teams that received drafted players
 
@@ -1322,6 +1301,8 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
         }),
         draftComplete: true,
         draftPicks: (state.draftPicks ?? []).filter(p => p.season !== season),
+        activeDraftPicks: undefined,
+        activeDraftOrder: undefined,
         history: [...existingHistory, ...draftHistoryEntries, ...twoWayHistoryEntries],
       } as any;
     }
@@ -1340,6 +1321,8 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     }),
     draftComplete: true,
     draftPicks: (state.draftPicks ?? []).filter(p => p.season !== season),
+    activeDraftPicks: undefined,
+    activeDraftOrder: undefined,
     history: [...existingHistory, ...draftHistoryEntries, ...returnHistory],
   } as any;
 };

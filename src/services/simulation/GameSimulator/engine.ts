@@ -2,8 +2,9 @@ import { NBATeam as Team, NBAPlayer as Player, Game, LeagueStats } from '../../.
 import { StatGenerator } from '../StatGenerator';
 import { GameResult } from '../types';
 import { InjurySystem, enforceSeasonEndingMinimum } from '../InjurySystem';
-import { calculateTeamStrength, calculateTeamStrengthWithMinutes } from '../../../utils/playerRatings';
+import { calculateTeamStrength, calculateTeamStrengthWithMinutes, getTrainingFatigueRatingMultiplier } from '../../../utils/playerRatings';
 import { getGameplan } from '../../../store/gameplanStore';
+import { MinutesPlayedService } from '../MinutesPlayedService';
 import { calcTeamRatings, expectedTeamScore } from '../teamratinghelper';
 import { normalRandom } from '../utils';
 import { simulateQuarters } from './quarters';
@@ -18,8 +19,9 @@ import { HighlightGenerator } from '../HighlightGenerator';
 import { getInjuries, getRandomInjury } from '../../injuryService';
 import { getScoringOptions, getScoringOptionBiases, getCoachingPenalty } from '../../../store/scoringOptionsStore';
 import { getLockedStrategy } from '../../../store/coachStrategyLockStore';
-import { getSystemFitPenalty, getSystemKnobMods } from '../../../store/coachSystemStore';
-import { getExhibitionQL } from '../../allStar/AllStarWeekendOrchestrator';
+import { getSystemFitPenalty, getSystemKnobMods, getSystemProficiencyBoost } from '../../../store/coachSystemStore';
+import { resolveExhibitionRules } from '../../allStar/exhibitionRules';
+import { getFourPointDistance, isFourPointEnabled } from '../../../utils/ruleFlags';
 
 /**
  * Top-8 pace factor from roster traits. Mirrors the tempo/fastBreak/earlyOffense
@@ -45,6 +47,49 @@ function computePaceFactor(roster: Player[]): number {
   const combined    = tempo * 0.5 + earlyOff * 0.3 + fastBreak * 0.2;
   // Map ~35–75 → 0.93–1.07, clamped to keep extreme rosters sane.
   return Math.max(0.90, Math.min(1.10, 1.0 + (combined - 55) / 280));
+}
+
+function getFamiliarityMods(team?: Team): {
+  strengthBoost: number;
+  efficiencyMult: number;
+  tovMult: number;
+  opponentEfficiencyMult: number;
+  opponentTovMult: number;
+} {
+  const off = Math.max(0, Math.min(100, team?.systemFamiliarity?.offense ?? 0));
+  const def = Math.max(0, Math.min(100, team?.systemFamiliarity?.defense ?? 0));
+  return {
+    strengthBoost: ((off + def) / 200) * 2,
+    efficiencyMult: 1 + off * 0.00045,
+    tovMult: 1 - off * 0.00035,
+    opponentEfficiencyMult: 1 - def * 0.00045,
+    opponentTovMult: 1 + def * 0.00045,
+  };
+}
+
+function getTrainingDefensiveAuraMods(team?: Team): {
+  strengthBoost: number;
+  opponentEfficiencyMult: number;
+  opponentTovMult: number;
+} {
+  const aura = Math.max(0, Math.min(100, team?.defensiveAura ?? 50));
+  const normalized = (aura - 50) / 50;
+  return {
+    strengthBoost: normalized * 1.5,
+    opponentEfficiencyMult: 1 - normalized * 0.04,
+    opponentTovMult: 1 + normalized * 0.06,
+  };
+}
+
+function applyTrainingFatiguePerformance(roster: Player[]): Player[] {
+  return roster.map(p => {
+    const mult = getTrainingFatigueRatingMultiplier(p);
+    if (mult >= 0.999) return p;
+    return {
+      ...p,
+      overallRating: Math.max(25, (p.overallRating ?? 50) * mult),
+    };
+  });
 }
 
 /**
@@ -279,18 +324,42 @@ export class GameSimulator {
     awayKnobs: SimulatorKnobs = KNOBS_DEFAULT,
   ): GameResult {
 
-    // Use minutes-weighted strength when a Gameplan exists. Benching your star
-    // and playing bums shifts each player's contribution by their minute share
-    // → W/L impact. Tank jobs work, ironman star strats reward, flat 24/24/24/...
-    // is sub-optimal because the star's contribution drops below ideal.
+    // Derive approximate standings context from a team's own W/L record.
+    // Deliberately imprecise — auto-mode AI coaches play a "reasonable but not
+    // optimal" rotation. A human who locks in a Gameplan with minuteOverrides
+    // can squeeze out the full synergy bonuses; auto-mode won't reliably hit them.
+    const roughCtx = (t: Team) => {
+      const gp      = (t.wins ?? 0) + (t.losses ?? 0);
+      const winPct  = gp > 0 ? (t.wins ?? 0) / gp : 0.5;
+      const rank    = winPct >= 0.62 ? 2 : winPct >= 0.55 ? 4 : winPct >= 0.48 ? 7 : winPct >= 0.40 ? 10 : 13;
+      return { conferenceRank: rank, gbFromLeader: Math.max(0, (rank - 2) * 2.5), gamesRemaining: Math.max(0, 82 - gp) };
+    };
+    const currentSeason = date ? parseInt(date.split('-')[0], 10) : 2026;
+
+    // Use minutes-weighted strength so synergy bonuses apply to every team, not
+    // just those with a saved Gameplan. Priority order:
+    //   1. Gameplan.minuteOverrides (user's hand-tuned plan) → full synergy potential
+    //   2. MinutesPlayedService estimate (auto-mode / AI) → realistic but sub-optimal
+    // The gap between 1 and 2 is the FM-style skill reward: correct rotation = more wins.
     const resolveStrength = (tid: number, override?: Player[]) => {
       if (override) return calculateTeamStrength(tid, players, override);
       const plan = getGameplan(tid);
       if (plan && Object.keys(plan.minuteOverrides).length > 0) {
         const roster = players.filter(p => p.tid === tid && (!p.injury || p.injury.gamesRemaining <= 0));
-        return calculateTeamStrengthWithMinutes(roster, plan.minuteOverrides);
+        return calculateTeamStrengthWithMinutes(roster, plan.minuteOverrides, currentSeason, getSystemProficiencyBoost(tid));
       }
-      return calculateTeamStrength(tid, players);
+      const team = tid === homeTeam.id ? homeTeam : awayTeam;
+      const ctx  = roughCtx(team);
+      const rot  = MinutesPlayedService.getRotation(
+        team, players, 0, currentSeason, undefined,
+        ctx.conferenceRank, ctx.gbFromLeader, ctx.gamesRemaining,
+      );
+      const { minutes: minsArr } = MinutesPlayedService.allocateMinutes(
+        rot.players, currentSeason, 0, 0, rot.starMpgTarget,
+      );
+      const minuteMap: Record<string, number> = {};
+      rot.players.forEach((p, i) => { minuteMap[p.internalId] = minsArr[i] ?? 0; });
+      return calculateTeamStrengthWithMinutes(rot.players, minuteMap, currentSeason, getSystemProficiencyBoost(tid));
     };
     const baseHomeStrength = resolveStrength(homeTeam.id, homeOverridePlayers);
     const baseAwayStrength = resolveStrength(awayTeam.id, awayOverridePlayers);
@@ -313,9 +382,13 @@ export class GameSimulator {
     // Skip for exhibition/override rosters (same guard as coach penalty above).
     const homeSysFit = homeOverridePlayers ? null : getSystemFitPenalty(homeTeam.id);
     const awaySysFit = awayOverridePlayers ? null : getSystemFitPenalty(awayTeam.id);
+    const homeFamMods = homeOverridePlayers ? getFamiliarityMods(undefined) : getFamiliarityMods(homeTeam);
+    const awayFamMods = awayOverridePlayers ? getFamiliarityMods(undefined) : getFamiliarityMods(awayTeam);
+    const homeTrainingAura = homeOverridePlayers ? getTrainingDefensiveAuraMods(undefined) : getTrainingDefensiveAuraMods(homeTeam);
+    const awayTrainingAura = awayOverridePlayers ? getTrainingDefensiveAuraMods(undefined) : getTrainingDefensiveAuraMods(awayTeam);
 
-    const homeStrength = baseHomeStrength - homeCoachPenalty - (homeSysFit?.strengthPenalty ?? 0);
-    const awayStrength = baseAwayStrength - awayCoachPenalty - (awaySysFit?.strengthPenalty ?? 0);
+    const homeStrength = baseHomeStrength - homeCoachPenalty - (homeSysFit?.strengthPenalty ?? 0) + homeFamMods.strengthBoost + homeTrainingAura.strengthBoost;
+    const awayStrength = baseAwayStrength - awayCoachPenalty - (awaySysFit?.strengthPenalty ?? 0) + awayFamMods.strengthBoost + awayTrainingAura.strengthBoost;
 
     const HOME_COURT  = 3;
     const strengthDiff = (homeStrength - awayStrength) + HOME_COURT;
@@ -327,8 +400,9 @@ export class GameSimulator {
       absGap * 0.9 + Math.abs(normalRandom(0, 6)) + 2
     ));
 
-    const homeRatings = calcTeamRatings(homeTeam.id, players);
-    const awayRatings = calcTeamRatings(awayTeam.id, players);
+    const fatigueAdjustedPlayers = applyTrainingFatiguePerformance(players);
+    const homeRatings = calcTeamRatings(homeTeam.id, fatigueAdjustedPlayers);
+    const awayRatings = calcTeamRatings(awayTeam.id, fatigueAdjustedPlayers);
 
     const homeExpected = expectedTeamScore(homeRatings.offRating, awayRatings.defRating, homeRatings.pace);
     const awayExpected = expectedTeamScore(awayRatings.offRating, homeRatings.defRating, awayRatings.pace);
@@ -337,7 +411,9 @@ export class GameSimulator {
     // ~22-pt floors, not the 85/80 designed for full-length 48-min NBA games.
     const homeQL = homeKnobs.quarterLength ?? 12;
     const awayQL = awayKnobs.quarterLength ?? 12;
-    const lengthScale = ((homeQL + awayQL) / 2 * 4) / 48; // 1.0 for regulation, 0.25 for 3-min All-Star
+    const homeNumQ = homeKnobs.numQuarters ?? 4;
+    const awayNumQ = awayKnobs.numQuarters ?? 4;
+    const lengthScale = ((homeQL * homeNumQ + awayQL * awayNumQ) / 2) / 48; // 1.0 for regulation, 0.25 for 3-min All-Star
     const homeMinFloor = Math.max(20, Math.round(85 * lengthScale));
     const awayMinFloor = Math.max(18, Math.round(80 * lengthScale));
     const homeRegScore = Math.max(homeMinFloor, Math.round(normalRandom(homeExpected * lengthScale, 8 * lengthScale)));
@@ -567,8 +643,8 @@ export class GameSimulator {
       ...homeKnobsEff,
       ...(homeShotMults ?? {}),
       paceMultiplier:     (homeKnobsEff.paceMultiplier     ?? 1) * (homeSysMods?.paceBonus     ?? 1),
-      efficiencyMultiplier:(homeKnobsEff.efficiencyMultiplier ?? 1) * (homeSysMods?.efficiencyMod ?? 1),
-      tovMult:            (homeKnobsEff.tovMult    ?? 1) * (homeOpponentStack?.tovMult    ?? 1),
+      efficiencyMultiplier:(homeKnobsEff.efficiencyMultiplier ?? 1) * (homeSysMods?.efficiencyMod ?? 1) * homeFamMods.efficiencyMult * awayFamMods.opponentEfficiencyMult * awayTrainingAura.opponentEfficiencyMult,
+      tovMult:            (homeKnobsEff.tovMult    ?? 1) * (homeOpponentStack?.tovMult    ?? 1) * homeFamMods.tovMult * awayFamMods.opponentTovMult * awayTrainingAura.opponentTovMult,
       ftRateMult:         (homeKnobsEff.ftRateMult ?? 1) * (homeOpponentStack?.ftRateMult ?? 1),
       interiorEffMult:    homeOpponentStack?.interiorEffMult ?? 1,
       rimRateMult:        (homeKnobsEff.rimRateMult        ?? 1) * (homeShotMults?.rimRateMult        ?? 1) * (homeOpponentStack?.rimRateMult        ?? 1) * (homeSysMods?.rimMod        ?? 1),
@@ -580,8 +656,8 @@ export class GameSimulator {
       ...awayKnobsEff,
       ...(awayShotMults ?? {}),
       paceMultiplier:     (awayKnobsEff.paceMultiplier     ?? 1) * (awaySysMods?.paceBonus     ?? 1),
-      efficiencyMultiplier:(awayKnobsEff.efficiencyMultiplier ?? 1) * (awaySysMods?.efficiencyMod ?? 1),
-      tovMult:            (awayKnobsEff.tovMult    ?? 1) * (awayOpponentStack?.tovMult    ?? 1),
+      efficiencyMultiplier:(awayKnobsEff.efficiencyMultiplier ?? 1) * (awaySysMods?.efficiencyMod ?? 1) * awayFamMods.efficiencyMult * homeFamMods.opponentEfficiencyMult * homeTrainingAura.opponentEfficiencyMult,
+      tovMult:            (awayKnobsEff.tovMult    ?? 1) * (awayOpponentStack?.tovMult    ?? 1) * awayFamMods.tovMult * homeFamMods.opponentTovMult * homeTrainingAura.opponentTovMult,
       ftRateMult:         (awayKnobsEff.ftRateMult ?? 1) * (awayOpponentStack?.ftRateMult ?? 1),
       interiorEffMult:    awayOpponentStack?.interiorEffMult ?? 1,
       rimRateMult:        (awayKnobsEff.rimRateMult        ?? 1) * (awayShotMults?.rimRateMult        ?? 1) * (awayOpponentStack?.rimRateMult        ?? 1) * (awaySysMods?.rimMod        ?? 1),
@@ -590,11 +666,13 @@ export class GameSimulator {
       threePointRateMult: (awayKnobsEff.threePointRateMult ?? 1) * (awayShotMults?.threePointRateMult ?? 1) * (awayOpponentStack?.threePointRateMult ?? 1) * (awaySysMods?.threePointMod ?? 1),
     };
 
+    const homeOverrideForStats = homeOverridePlayers ? applyTrainingFatiguePerformance(homeOverridePlayers) : undefined;
+    const awayOverrideForStats = awayOverridePlayers ? applyTrainingFatiguePerformance(awayOverridePlayers) : undefined;
     const homeInitial = StatGenerator.generateStatsForTeam(
-      homeTeam, players, finalHomeScore, homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, homeOverridePlayers, otCount, away2KDef, homeKnobsFinal, homeBiases
+      homeTeam, fatigueAdjustedPlayers, finalHomeScore, homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, homeOverrideForStats, otCount, away2KDef, homeKnobsFinal, homeBiases
     );
     const awayInitial = StatGenerator.generateStatsForTeam(
-      awayTeam, players, finalAwayScore, !homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, awayOverridePlayers, otCount, home2KDef, awayKnobsFinal, awayBiases
+      awayTeam, fatigueAdjustedPlayers, finalAwayScore, !homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, awayOverrideForStats, otCount, home2KDef, awayKnobsFinal, awayBiases
     );
 
     const homeMisses = homeInitial.reduce(
@@ -607,10 +685,10 @@ export class GameSimulator {
     const awayTov = awayInitial.reduce((sum, p) => sum + p.tov, 0);
 
     const homeInteriorMisses = homeInitial.reduce(
-      (sum, p) => sum + Math.max(0, (p.fga - p.threePa) - (p.fgm - p.threePm)), 0
+      (sum, p) => sum + Math.max(0, (p.fga - p.threePa - (p.fourPa ?? 0)) - (p.fgm - p.threePm - (p.fourPm ?? 0))), 0
     );
     const awayInteriorMisses = awayInitial.reduce(
-      (sum, p) => sum + Math.max(0, (p.fga - p.threePa) - (p.fgm - p.threePm)), 0
+      (sum, p) => sum + Math.max(0, (p.fga - p.threePa - (p.fourPa ?? 0)) - (p.fgm - p.threePm - (p.fourPm ?? 0))), 0
     );
 
     const homeFTA = homeInitial.reduce((sum, p) => sum + p.fta, 0);
@@ -638,7 +716,8 @@ export class GameSimulator {
       away2KDef,  // away team's pass perception (shrinks home's assist pool)
       homeOrbMult,
       homeKnobsFinal.quarterLength ?? 12,
-      homeKnobsFinal.overtimeDuration ?? 5
+      homeKnobsFinal.overtimeDuration ?? 5,
+      homeKnobsFinal.numQuarters ?? 4
     );
     const awayStats = StatGenerator.generateCoordinatedStats(
       awayInitial,
@@ -654,7 +733,8 @@ export class GameSimulator {
       home2KDef,  // home team's pass perception
       awayOrbMult,
       awayKnobsFinal.quarterLength ?? 12,
-      awayKnobsFinal.overtimeDuration ?? 5
+      awayKnobsFinal.overtimeDuration ?? 5,
+      awayKnobsFinal.numQuarters ?? 4
     );
     // Reconcile player pts to match the final team score.
     // nightProfile boosts individuals asymmetrically (EXPLOSION 1.5× on one player) so the
@@ -707,7 +787,7 @@ export class GameSimulator {
           : [...stats].sort((a: any, b: any) => b.pts - a.pts);
         for (const s of pass2) {
           if (delta === 0) break;
-          const twoPm = Math.max(0, s.fgm - (s.threePm ?? s.tp ?? 0));
+          const twoPm = Math.max(0, s.fgm - (s.threePm ?? s.tp ?? 0) - (s.fourPm ?? s.fp ?? 0));
           if (delta > 0) {
             // Add a 2-pointer
             s.fgm += 1; s.fga = Math.max(s.fga, s.fgm); s.pts += 2; delta -= 2;
@@ -724,7 +804,6 @@ export class GameSimulator {
     reconcileToScore(homeStats, finalHomeScore);
     reconcileToScore(awayStats, finalAwayScore);
 
- // ✅ ADD HERE
     const { homePM, awayPM } = generateSyntheticPM(
       homeStats, awayStats,
       finalHomeScore, finalAwayScore,
@@ -804,7 +883,8 @@ export class GameSimulator {
       finalHomeScore,
       finalAwayScore,
       Math.abs(finalHomeScore - finalAwayScore),
-      isOT ? otCount : 0
+      isOT ? otCount : 0,
+      Math.round(((homeKnobsFinal.numQuarters ?? 4) + (awayKnobsFinal.numQuarters ?? 4)) / 2)
     );
 
     const gamePlayers = homeOverridePlayers && awayOverridePlayers 
@@ -880,7 +960,9 @@ export class GameSimulator {
         // Preseason international games: NBA stars are treated cautiously,
         // sharply reduced injury risk (coaches pull guys early if anything feels off).
         const preseasonFactor = isIntlPreseason ? 0.25 : 1.0;
-        const injuryChance = preseasonFactor * (
+        const fatigue = Math.max(0, Math.min(100, Number((player as any).trainingFatigue ?? 0)));
+        const fatigueRiskMult = 1 + Math.min(1.5, fatigue / 70);
+        const injuryChance = preseasonFactor * fatigueRiskMult * (
           min < 15  ? 0.20 :
           min < 25  ? 0.07 :
           min < 35  ? 0.02 :
@@ -1129,6 +1211,14 @@ export class GameSimulator {
     const threeDistanceEff = threeOn
       ? Math.max(0.70, Math.min(1.20, Math.pow(23.75 / Math.max(10, threePointDistance), 0.45)))
       : 1.0;
+    const fourPointOn = isFourPointEnabled(leagueStats);
+    const fourPointDistance = getFourPointDistance(leagueStats);
+    const fourDistanceRate = fourPointOn
+      ? Math.max(0.55, Math.min(1.25, Math.pow(27 / Math.max(23, fourPointDistance), 0.75)))
+      : 0;
+    const fourDistanceEff = fourPointOn
+      ? Math.max(0.68, Math.min(1.12, Math.pow(27 / Math.max(23, fourPointDistance), 0.55)))
+      : 1.0;
     const ballWeight = leagueStats?.ballWeight ?? 1.4;
     const ballWeightEff = Math.max(0.85, Math.min(1.08, Math.pow(1.4 / Math.max(0.8, ballWeight), 0.25)));
     const ballWeightTov = Math.max(0.90, Math.min(1.18, Math.pow(Math.max(0.8, ballWeight) / 1.4, 0.5)));
@@ -1163,6 +1253,7 @@ export class GameSimulator {
 
     const leagueBaseKnobs = getKnobs({
       quarterLength:       leagueStats?.quarterLength ?? 12,
+      numQuarters:         leagueStats?.numQuarters ?? 4,
       overtimeDuration:    leagueStats?.overtimeDuration ?? 5,
       overtimeEnabled:     leagueStats?.overtimeEnabled ?? true,
       maxOvertimesEnabled: leagueStats?.maxOvertimesEnabled ?? false,
@@ -1171,6 +1262,9 @@ export class GameSimulator {
       threePointAvailable: threeOn,
       threePointRateMult:  threeOn ? (1.0 * threeBumpD * noDribble3PMult * zone3PMult * threeDistanceRate) : 0,
       threePointEfficiencyMult: threeDistanceEff,
+      fourPointAvailable:  fourPointOn,
+      fourPointRateMult:   fourDistanceRate,
+      fourPointEfficiencyMult: fourDistanceEff,
       paceMultiplier:      shotClockPace * noDribblePaceMult * offRebResetPace * backcourtPace * courtLenPace * baselinePace * kickedBallPace,
       efficiencyMultiplier: goaltendEffMult * rimHeightEffMult * ballWeightEff * basketInterferenceEff,
       rimRateMult:         rimMult * rimBumpO * chargingRimBump * noDribbleRimMult * zoneRimMult * manRimBump * keyRimMult,
@@ -1307,16 +1401,16 @@ export class GameSimulator {
         let homeKnobs: SimulatorKnobs;
         let awayKnobs: SimulatorKnobs;
 
-        // Exhibition QL routes through getExhibitionQL which respects the per-event
-        // mirror flag + event-specific quarterLength field. Reading bare
+        // Exhibition rules respect the per-event mirror flag and event-specific
+        // period fields. Reading bare
         // leagueStats.quarterLength here forced 12-min All-Star quarters (192-170
         // finals) regardless of allStarQuarterLength / allStarMirrorLeagueRules.
         if (game.isCelebrityGame) {
-          homeKnobs = awayKnobs = { ...KNOBS_CELEBRITY, quarterLength: getExhibitionQL(leagueStats ?? {}, 'celebrity') };
+          homeKnobs = awayKnobs = { ...KNOBS_CELEBRITY, ...resolveExhibitionRules(leagueStats ?? {}, 'celebrity') };
         } else if (game.isRisingStars) {
-          homeKnobs = awayKnobs = { ...KNOBS_RISING_STARS, quarterLength: getExhibitionQL(leagueStats ?? {}, 'risingStars') };
+          homeKnobs = awayKnobs = { ...KNOBS_RISING_STARS, ...resolveExhibitionRules(leagueStats ?? {}, 'risingStars') };
         } else if (game.isAllStar) {
-          homeKnobs = awayKnobs = { ...KNOBS_ALL_STAR, quarterLength: getExhibitionQL(leagueStats ?? {}, 'allStar') };
+          homeKnobs = awayKnobs = { ...KNOBS_ALL_STAR, ...resolveExhibitionRules(leagueStats ?? {}, 'allStar') };
         } else if ((game as any).isPreseason && (game.homeTid >= 100 || game.awayTid >= 100)) {
           // International preseason: league-specific knobs for the intl team, NBA preseason for the NBA team.
           // Previously both teams used the same intl knobs — this meant the NBA team also played at
@@ -1344,17 +1438,18 @@ export class GameSimulator {
             // being treated as "eliminated" (82 reg-season games done → gamesRemaining=0, gb>0
             // → standingsProfile returns 12-deep exhibition-style rotation). All remaining
             // playoff teams are still competing — use tight, star-heavy playoff rotation.
-            // playThroughInjuries=4: every severity level gutting it out (playoff toughness).
-            homeKnobs = { ...leagueBaseKnobs, ...homeCtx, gbFromLeader: 0, gamesRemaining: 7, isPlayoffs: true, playThroughInjuries: 4 };
-            awayKnobs = { ...leagueBaseKnobs, ...awayCtx, gbFromLeader: 0, gamesRemaining: 7, isPlayoffs: true, playThroughInjuries: 4 };
+            const homePtiPo = Math.round(((getLockedStrategy(home.id)?.sliders.ptiPlayoffs ?? 40) / 100) * 4);
+            const awayPtiPo = Math.round(((getLockedStrategy(away.id)?.sliders.ptiPlayoffs ?? 40) / 100) * 4);
+            homeKnobs = { ...leagueBaseKnobs, ...homeCtx, gbFromLeader: 0, gamesRemaining: 7, isPlayoffs: true, playThroughInjuries: homePtiPo };
+            awayKnobs = { ...leagueBaseKnobs, ...awayCtx, gbFromLeader: 0, gamesRemaining: 7, isPlayoffs: true, playThroughInjuries: awayPtiPo };
             // Two-way contracts are ineligible for playoff/play-in games.
             homeOverride = (homeOverride ?? players.filter(p => p.tid === home.id)).filter(p => !(p as any).twoWay);
             awayOverride = (awayOverride ?? players.filter(p => p.tid === away.id)).filter(p => !(p as any).twoWay);
           } else {
-            // Regular season: level 2 — only mild/moderate injuries play through (minutes-restricted);
-            // significant/major injuries still sit. Matches "Questionable / Day-to-Day" news framing.
-            homeKnobs = { ...leagueBaseKnobs, ...homeCtx, playThroughInjuries: 2 };
-            awayKnobs = { ...leagueBaseKnobs, ...awayCtx, playThroughInjuries: 2 };
+            const homePtiReg = Math.round(((getLockedStrategy(home.id)?.sliders.ptiRegular ?? 0) / 100) * 4);
+            const awayPtiReg = Math.round(((getLockedStrategy(away.id)?.sliders.ptiRegular ?? 0) / 100) * 4);
+            homeKnobs = { ...leagueBaseKnobs, ...homeCtx, playThroughInjuries: homePtiReg };
+            awayKnobs = { ...leagueBaseKnobs, ...awayCtx, playThroughInjuries: awayPtiReg };
           }
         }
 

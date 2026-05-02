@@ -4,9 +4,9 @@ import { Game, NBATeam } from '../../../../types';
 import { normalizeDate, getOwnTeamId } from '../../../../utils/helpers';
 import { getAllStarWeekendDates } from '../../../../services/allStar/AllStarWeekendOrchestrator';
 import {
-  getTradeDeadlineDate, getCurrentOffseasonFAStart, getCurrentOffseasonFAMoratoriumEnd,
+  getTradeDeadlineDate, getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd,
   getDraftLotteryDate, getDraftDate, getDraftCombineStartDate, getDraftCombineEndDate,
-  getTrainingCampDate, toISODateString,
+  getTrainingCampDate, isDraftBlockedByUnresolvedPlayoffs, toISODateString,
 } from '../../../../utils/dateUtils';
 
 interface CalendarViewProps {
@@ -16,9 +16,13 @@ interface CalendarViewProps {
   setSelectedDate: (date: string) => void;
   setViewMode: (mode: 'calendar' | 'day' | 'watching') => void;
   state: any;
+  title?: string;
+  focusTeamId?: number | null;
   formatDateDisplay: (dateStr: string) => string;
   getDotColor: (g: Game) => string;
   getHighlightedEvent: (date: Date) => { label: string; color: string; icon: string } | null;
+  onDateClick?: (args: { date: string; dateObj: Date; games: Game[]; focusTeamGame?: Game }) => boolean | void;
+  renderDayOverlay?: (args: { date: string; dateObj: Date; games: Game[]; focusTeamGame?: Game }) => React.ReactNode;
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({
@@ -28,9 +32,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   setSelectedDate,
   setViewMode,
   state,
+  title = 'Season Schedule',
+  focusTeamId,
   formatDateDisplay,
   getDotColor,
-  getHighlightedEvent
+  getHighlightedEvent,
+  onDateClick,
+  renderDayOverlay
 }) => {
   const year = calendarMonth.getFullYear();
   const month = calendarMonth.getMonth();
@@ -44,10 +52,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const ls = state.leagueStats;
   const tradeDeadlineStr    = toISODateString(getTradeDeadlineDate(seasonYear, ls));
   const currentDateForFA    = state.date ? new Date(state.date) : new Date();
-  const faStartStr          = toISODateString(getCurrentOffseasonFAStart(currentDateForFA, ls));
-  const faMoratoriumEndStr  = toISODateString(getCurrentOffseasonFAMoratoriumEnd(currentDateForFA, ls));
+  const faStartStr          = toISODateString(getCurrentOffseasonEffectiveFAStart(currentDateForFA, ls, state.schedule));
+  const faMoratoriumEndStr  = toISODateString(getCurrentOffseasonFAMoratoriumEnd(currentDateForFA, ls, state.schedule));
   const draftLotteryStr     = toISODateString(getDraftLotteryDate(seasonYear, ls));
   const draftDayStr         = toISODateString(getDraftDate(seasonYear, ls));
+  const draftBlockedByPlayoffs = isDraftBlockedByUnresolvedPlayoffs(state);
   const combineStartStr     = toISODateString(getDraftCombineStartDate(seasonYear, ls));
   const combineEndStr       = toISODateString(getDraftCombineEndDate(seasonYear, ls));
   const trainingCampStr     = toISODateString(getTrainingCampDate(seasonYear, ls));
@@ -81,7 +90,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       <div className="w-full">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight">Season Schedule</h1>
+            <h1 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight">{title}</h1>
             <p className="text-slate-500 font-medium mt-1 text-[10px] md:text-sm">Current Date: {formatDateDisplay(state.date)}</p>
           </div>
           <div className="flex items-center gap-2 bg-[#111] p-1 rounded-xl border border-white/5">
@@ -115,7 +124,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           ))}
 
           {(() => {
-            const gmTid = getOwnTeamId(state);
+            const ownTid = getOwnTeamId(state);
+            const gmTid = focusTeamId !== undefined ? focusTeamId : ownTid;
             const teamsById = new Map<number, NBATeam>();
             for (const t of (state.teams ?? [])) teamsById.set(t.id, t);
 
@@ -168,7 +178,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               const isTradeDeadline  = dateNorm === tradeDeadlineStr;
               const isDraftLottery   = dateNorm === draftLotteryStr;
               const inCombineWindow  = dateNorm >= combineStartStr && dateNorm <= combineEndStr;
-              const isDraft          = dateNorm === draftDayStr;
+              const isDraft          = dateNorm === draftDayStr && !draftBlockedByPlayoffs;
               const isFAMoratorium   = dateNorm === faStartStr;
               const isFAOpen         = dateNorm === faMoratoriumEndStr;
               const isTrainingCamp   = dateNorm === trainingCampStr;
@@ -269,6 +279,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 <button
                   key={day}
                   onClick={() => {
+                    const handled = onDateClick?.({ date: dateNorm, dateObj, games, focusTeamGame: userGame });
+                    if (handled) return;
                     setSelectedDate(dateStr);
                     setViewMode('day');
                   }}
@@ -522,6 +534,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       ))}
                     </div>
                   )}
+
+                  {renderDayOverlay?.({ date: dateNorm, dateObj, games, focusTeamGame: userGame })}
                 </button>
               );
             });

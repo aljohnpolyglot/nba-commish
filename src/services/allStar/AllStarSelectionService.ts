@@ -88,27 +88,20 @@ const bucketUsaWorld = (
     ];
   }
 
+  // For teamCount 3 and 4 we never spill across nationality — USA teams stay pure-USA,
+  // WORLD teams stay pure-World. Team sizes can go uneven (e.g. Team World 11, USA Stars 8,
+  // USA Stripes 7) but format integrity holds. The previous spill logic put Canadians /
+  // Croatians on USA Stripes when World overflowed past 8.
+  const usaSorted = [...usa].sort((a, b) => ovrOf(b) - ovrOf(a));
+  const worldSorted = [...world].sort((a, b) => ovrOf(b) - ovrOf(a));
+
   if (teamCount === 3) {
-    // Top-up balance: WORLD needs ≥8, USA needs ≥16. If short, pull from the larger pool by lowest OVR.
-    const usaSorted = [...usa].sort((a, b) => ovrOf(b) - ovrOf(a));
-    const worldSorted = [...world].sort((a, b) => ovrOf(b) - ovrOf(a));
-    while (worldSorted.length < 8 && usaSorted.length > 16) {
-      worldSorted.push(usaSorted.pop()!);
-    }
-    while (usaSorted.length < 16 && worldSorted.length > 8) {
-      usaSorted.push(worldSorted.pop()!);
-    }
     const usaSplit = snakeDraft(usaSorted, ['USA1', 'USA2']);
     const worldTagged = worldSorted.map(r => ({ ...r, conference: 'WORLD' as string }));
     return [...usaSplit, ...worldTagged];
   }
 
   // teamCount === 4
-  const usaSorted = [...usa].sort((a, b) => ovrOf(b) - ovrOf(a));
-  const worldSorted = [...world].sort((a, b) => ovrOf(b) - ovrOf(a));
-  // Aim for 12/12 USA/World; pull from larger side if needed.
-  while (worldSorted.length < 12 && usaSorted.length > 12) worldSorted.push(usaSorted.pop()!);
-  while (usaSorted.length < 12 && worldSorted.length > 12) usaSorted.push(worldSorted.pop()!);
   return [
     ...snakeDraft(usaSorted, ['USA1', 'USA2']),
     ...snakeDraft(worldSorted, ['WORLD1', 'WORLD2']),
@@ -139,8 +132,9 @@ export const bucketRoster = (
 export const ALL_STAR_ASSETS = {
   eastLogo: 'https://static.wikia.nocookie.net/logopedia/images/8/89/Eastern_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191748',
   westLogo: 'https://static.wikia.nocookie.net/logopedia/images/0/06/Western_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191726',
-  usaLogo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Flag_of_the_United_States.svg/200px-Flag_of_the_United_States.svg.png',
-  worldLogo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Globe_icon.svg/200px-Globe_icon.svg.png',
+  // Twemoji CDN PNGs — render as 🇺🇸 / 🌐 emoji on every OS (Windows native flag emoji don't render).
+  usaLogo: 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f1fa-1f1f8.png',
+  worldLogo: 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f310.png',
   risingStarsLogo: 'https://static.wikia.nocookie.net/logopedia/images/c/c9/NBA_Rising_Stars_logo.png/revision/latest?cb=20220219191714',
   celebrityLogo: 'https://static.wikia.nocookie.net/logopedia/images/4/4e/NBA_All-Star_Celebrity_Game_logo.png/revision/latest?cb=20220219191738',
 };
@@ -315,15 +309,26 @@ export class AllStarSelectionService {
     players: NBAPlayer[],
     teams: NBATeam[],
     season: number,
-    starters: AllStarPlayer[]
+    starters: AllStarPlayer[],
+    format?: string,
+    teamCount?: number
   ): AllStarPlayer[] {
+    // Format-aware path: usa_vs_world coaches know the format ahead of time and
+    // cherry-pick reserves to balance the nationality pools (8 per team), so
+    // Team World doesn't end up at 11 with USA Stripes scrounging Canadians.
+    if (format === 'usa_vs_world') {
+      return AllStarSelectionService.selectReservesUsaWorld(
+        players, teams, season, starters, teamCount ?? 3
+      );
+    }
+
     const starterIds = new Set(
       starters.map(s => s.playerId)
     );
     const reserves: AllStarPlayer[] = [];
 
     const isFrontcourt = (pos: string) =>
-      pos === 'C' || pos === 'F' || 
+      pos === 'C' || pos === 'F' ||
       pos === 'PF' || pos === 'SF';
     const isGuard = (pos: string) =>
       pos === 'G' || pos === 'PG' || pos === 'SG';
@@ -426,6 +431,92 @@ export class AllStarSelectionService {
     }
 
     return reserves; // 14 total reserves
+  }
+
+  /**
+   * Format-aware reserve pick for usa_vs_world. Coaches know the format, so
+   * they cherry-pick to fill exactly the nationality pool sizes the bucketing
+   * step needs — 8 players per team across teamCount buckets.
+   *
+   *   teamCount=2  → 12 USA + 12 World (12 per team)
+   *   teamCount=3  → 16 USA (USA1+USA2) + 8 World (target 8 per team)
+   *   teamCount=4  → 12 USA (USA1+USA2) + 12 World (WORLD1+WORLD2) (6 per team)
+   *
+   * Conference field on the returned reserves is a placeholder ('East' for USA,
+   * 'West' for World); bucketRoster reassigns the real USA1/USA2/WORLD keys.
+   */
+  static selectReservesUsaWorld(
+    players: NBAPlayer[],
+    teams: NBATeam[],
+    season: number,
+    starters: AllStarPlayer[],
+    teamCount: number
+  ): AllStarPlayer[] {
+    const PER_TEAM = 8;
+    const usaTeams   = teamCount >= 3 ? 2 : 1;
+    const worldTeams = teamCount === 4 ? 2 : 1;
+    const usaTotalTarget   = teamCount === 2 ? 12 : usaTeams   * PER_TEAM;
+    const worldTotalTarget = teamCount === 2 ? 12 : worldTeams * PER_TEAM;
+
+    const byId = new Map(players.map(p => [p.internalId, p]));
+    const usaStarters   = starters.filter(s => isUsaPlayer(byId.get(s.playerId))).length;
+    const worldStarters = starters.length - usaStarters;
+    const usaNeeded   = Math.max(0, usaTotalTarget   - usaStarters);
+    const worldNeeded = Math.max(0, worldTotalTarget - worldStarters);
+
+    const starterIds = new Set(starters.map(s => s.playerId));
+
+    const scored = players
+      .filter(p =>
+        p.status === 'Active' &&
+        (p.tid ?? -1) >= 0 &&
+        !starterIds.has(p.internalId)
+      )
+      .map(p => {
+        const stat = p.stats?.find(s => s.season === season && !s.playoffs);
+        const team = teams.find(t => t.id === p.tid);
+        if (!stat || !team) return null;
+        const gp = stat.gp || 1;
+        const winPct = (team.wins + team.losses) > 0 ? team.wins / (team.wins + team.losses) : 0.5;
+        const score =
+          (stat.pts / gp) * 0.7 +
+          (((stat.trb || (stat.orb || 0) + (stat.drb || 0))) / gp) * 0.25 +
+          (stat.ast / gp) * 0.35 +
+          (p.overallRating ?? 50) * 0.25 +
+          Math.min(3, stat.bpm ?? 0) * 0.5 +
+          winPct * 1.5;
+        return { player: p, score, team };
+      })
+      .filter(Boolean) as Array<{ player: NBAPlayer; score: number; team: NBATeam }>;
+
+    scored.sort((a, b) => b.score - a.score);
+
+    const usaPool   = scored.filter(s => isUsaPlayer(s.player));
+    const worldPool = scored.filter(s => !isUsaPlayer(s.player));
+
+    const isGuard = (pos: string) => pos === 'G' || pos === 'PG' || pos === 'SG';
+
+    const buildEntry = ({ player, team }: { player: NBAPlayer; team: NBATeam }, conf: string): AllStarPlayer => ({
+      playerId: player.internalId,
+      nbaId: extractNbaId(player.imgURL || '', player.name),
+      playerName: player.name,
+      teamAbbrev: team.abbrev,
+      teamNbaId: extractTeamId(team.logoUrl || '', team.abbrev),
+      conference: conf as any,
+      position: player.pos ?? 'F',
+      isStarter: false,
+      category: isGuard(player.pos ?? '') ? 'Guard' : 'Frontcourt',
+      ovr: convertTo2KRating(
+        player.overallRating ?? 50,
+        player.ratings?.[player.ratings.length - 1]?.hgt ?? 50,
+        player.ratings?.[player.ratings.length - 1]?.tp
+      ),
+    });
+
+    return [
+      ...usaPool.slice(0, usaNeeded).map(s => buildEntry(s, 'East')),
+      ...worldPool.slice(0, worldNeeded).map(s => buildEntry(s, 'West')),
+    ];
   }
 
   static getRisingStarsRoster(

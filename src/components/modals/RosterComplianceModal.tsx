@@ -12,6 +12,8 @@ interface RosterComplianceModalProps {
   excessPlayers?: NBAPlayer[];
   slotsNeeded?: number;
   minRoster?: number;
+  maxRoster?: number;
+  phase?: 'training-camp' | 'regular-season' | 'playoffs' | 'offseason';
   isPreseasonEnd?: boolean;
   onAutoAction: () => void;
   onManual: () => void;
@@ -23,15 +25,22 @@ export const RosterComplianceModal: React.FC<RosterComplianceModalProps> = ({
   excessPlayers = [],
   slotsNeeded = 0,
   minRoster = 14,
+  maxRoster,
+  phase,
   isPreseasonEnd = false,
   onAutoAction,
   onManual,
 }) => {
   const isUnder = mode === 'under';
   const count = isUnder ? slotsNeeded : excessPlayers.length;
+  const isCamp = phase === 'training-camp';
+  const cap = maxRoster ?? (isCamp ? 21 : 15);
+  const limitLabel = isCamp ? 'training camp' : 'standard';
   const title = isUnder
     ? 'Roster Too Small'
-    : (isPreseasonEnd ? 'Regular Season Starts Soon' : 'Roster Too Large');
+    : isCamp
+      ? 'Training Camp Roster Too Large'
+      : (isPreseasonEnd ? 'Regular Season Starts Soon' : 'Roster Too Large');
 
   return (
     <AnimatePresence>
@@ -64,14 +73,16 @@ export const RosterComplianceModal: React.FC<RosterComplianceModalProps> = ({
               <p className="text-sm text-slate-300 mb-1">
                 {isUnder
                   ? <>Roster is short <span className="font-black text-amber-300">{count}</span> {count === 1 ? 'player' : 'players'}.</>
-                  : <>You have <span className="font-black text-amber-300">{count}</span> too many standard {count === 1 ? 'player' : 'players'}.</>}
+                  : <>You have <span className="font-black text-amber-300">{count}</span> too many {limitLabel} {count === 1 ? 'player' : 'players'}.</>}
               </p>
               <p className="text-xs text-slate-500 mb-4">
                 {isUnder
                   ? `League minimum is ${minRoster} standard players. Sign free agents before simulating.`
-                  : isPreseasonEnd
-                    ? 'Cut down to 15 standard players before regular season tips off.'
-                    : 'Waive players first, then simulate. Standard limit is 15.'}
+                  : isCamp
+                    ? `Training camp limit is ${cap} (standard + non-guaranteed + two-way combined). Trim before advancing.`
+                    : isPreseasonEnd
+                      ? `Cut down to ${cap} standard players before regular season tips off.`
+                      : `Waive players first, then simulate. Standard limit is ${cap}.`}
               </p>
 
               {!isUnder && excessPlayers.length > 0 && (

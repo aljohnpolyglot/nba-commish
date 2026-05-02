@@ -459,6 +459,7 @@ function retiredSummaryText(
   const traitsAny = traits as string[];
 
   const fmvpStr = finalsMvps > 0 ? ` (${finalsMvps}× Finals MVP)` : '';
+  const ringStr = rings === 1 ? 'a championship' : `${rings} championships`;
   // Career résumé line — reusable in multiple paths
   const resumeLine = [
     rings > 0 && `${rings}× Champion`,

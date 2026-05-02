@@ -32,6 +32,8 @@ import { applyLeagueDisplayScale, LEAGUE_DISPLAY_MULTIPLIERS } from '../../hooks
 import { calculateLeagueOverall } from '../logic/leagueOvr';
 import { convertTo2KRating, normalizeDate } from '../../utils/helpers';
 import { EXTERNAL_LEAGUE_OVR_CAP } from '../../constants';
+import { getFocusWeights, ARCHETYPE_PROFILES } from '../../TeamTraining/constants/trainingarchetypes';
+import { calculateMentorExp } from '../training/mentorScore';
 
 // External league players have pre-scaled attrs at fetch time.
 // calculatePlayerOverallForYear on scaled attrs floors at Math.max(40,...) → display 66.
@@ -245,7 +247,12 @@ function potMod(currentOvr: number, pot: number): number {
 
 // ─── Single player daily progression ──────────────────────────────────────────
 
-function progressPlayer(player: NBAPlayer, currentYear: number, date: string): NBAPlayer {
+function progressPlayer(
+  player: NBAPlayer,
+  currentYear: number,
+  date: string,
+  mentorLookup?: Map<string, NBAPlayer>
+): NBAPlayer {
   if (!player.ratings || player.ratings.length === 0) return player;
 
   const ratingIdx = (() => {
@@ -320,6 +327,48 @@ function progressPlayer(player: NBAPlayer, currentYear: number, date: string): N
     const currentOvr: number = rating.ovr ?? player.overallRating ?? 60;
     const pm = annualBase > 0 ? potMod(currentOvr, pot) : 1.0;
 
+    // Funnel Model — weight-driven per archetype's `rawWeights` (which sum to ~1.0).
+    // Each attribute's multiplier scales with its specific weight in the archetype:
+    //   - Heavily-weighted attrs (focused) grow faster + regress slower.
+    //   - Lightly-weighted attrs grow at the BASE rate (no penalty — never zeroed).
+    //
+    // Net effect is a slight volume inflation for focused archetypes (≈ +10-20%),
+    // because the funnel adds boost without subtracting from non-focused attrs.
+    // The OVR computation reads all attrs evenly, so the funneled gains land
+    // exactly where the user intended without erasing well-rounded growth.
+    //
+    // Source: docs/training.md "Funnel Model" + simulation.ts brainstorm.
+    const devFocus = (player as any).devFocus as string | undefined;
+    const useFunnel = !!devFocus && devFocus !== 'Balanced' && !!ARCHETYPE_PROFILES[devFocus];
+    const focus = useFunnel ? getFocusWeights(devFocus!) : null;
+    // funnelMult(attr) — uses raw weight directly. Weight 0.20 → 1.8× growth /
+    // 0.68× regression. Weight 0.05 → 1.2× / 0.92×. Weight 0.01 → 1.04× / 0.984×.
+    const funnelGrowthMult = (attr: string): number => {
+      if (!focus) return 1.0;
+      const w = (focus.rawWeights as any)[attr] ?? 0;
+      return 1.0 + Math.max(0, w) * 4; // boost only — never reduces non-focused
+    };
+    const funnelRegressMult = (attr: string): number => {
+      if (!focus) return 1.0;
+      const w = (focus.rawWeights as any)[attr] ?? 0;
+      // Focused attrs regress less (anti-Korver-loses-shooting). Cap at 60% reduction.
+      return 1.0 - Math.min(0.6, Math.max(0, w) * 1.6);
+    };
+
+    // Mentor multiplier per docs/mentorship.md §3 + Hakeem-Dwight Rule:
+    //   - Regression buffer: mentor mitigates NEGATIVE deltas (anti-regression).
+    //     Caps at 30% reduction; scales with mentor's EXP (heavy mentors help more).
+    //   - IQ tick: tiny upward bias on oiq/diq when mentor is elite. Mentees DON'T
+    //     suddenly become stars from mentorship — boost is a fraction of natural growth.
+    //   - Skill/physical attrs ignore mentor entirely (Hakeem-Dwight rule).
+    const mentor = mentorLookup && (player as any).mentorId ? mentorLookup.get((player as any).mentorId) : undefined;
+    const mentorExp = mentor ? calculateMentorExp(mentor).exp : 0;
+    // 0 → 0% reduction. 2000 EXP → 30% (cap). Linear in between.
+    const mentorMitigation = Math.min(0.3, mentorExp / 6666);
+    // 0 → 0% IQ bonus. 2000 EXP → 25% bonus on positive oiq/diq deltas.
+    const mentorIQBonus = Math.min(0.25, mentorExp / 8000);
+    const IQ_ATTRS = new Set(['oiq', 'diq']);
+
     for (const attr of ALL_ATTRS) {
       if (rating[attr] == null) continue;
 
@@ -347,6 +396,19 @@ function progressPlayer(player: NBAPlayer, currentYear: number, date: string): N
       const unifMult = seededUniform(pid + date + attr, 0.4, 1.4);
       let delta = effectiveDaily * unifMult;
 
+      // Funnel — weight-driven multiplier. Skipped for Balanced (default).
+      if (focus && delta !== 0) {
+        delta *= delta > 0 ? funnelGrowthMult(attr) : funnelRegressMult(attr);
+      }
+
+      // Mentor effect — anti-regression on all attrs, small IQ-only growth bonus.
+      if (mentorMitigation > 0 && delta < 0) {
+        delta *= (1 - mentorMitigation);
+      }
+      if (mentorIQBonus > 0 && delta > 0 && IQ_ATTRS.has(attr)) {
+        delta *= (1 + mentorIQBonus);
+      }
+
       // Apply changeLimits (annual, divide by 365 for daily clamp)
       const [limMin, limMax] = formula.changeLimits(age);
       const capMult = devCapMultiplier(pos, rating, attr);
@@ -357,6 +419,21 @@ function progressPlayer(player: NBAPlayer, currentYear: number, date: string): N
       rating[attr] = Math.min(99, Math.max(20, rating[attr] + delta));
     }
 
+    // Strength → Weight loop (docs/training.md + simulation.ts brainstorm).
+    // 0.5 lbs per stre point gained, capped at +15 lbs over original. Lazy-anchors
+    // origWeight on first tick where strength has changed.
+    const oldStre = (player.ratings[ratingIdx] as any)?.stre;
+    const newStre = rating.stre;
+    if (typeof oldStre === 'number' && typeof newStre === 'number' && newStre > oldStre && player.weight) {
+      const origWeight = (player as any).origWeight ?? player.weight;
+      const weightGain = (newStre - oldStre) * 0.5;
+      const proposed = (player.weight ?? origWeight) + weightGain;
+      const cap = origWeight + 15;
+      (player as any).origWeight = origWeight;
+      // Mutate via the returned `updatedPlayer` below — capture target weight here.
+      (rating as any).__projectedWeight = Math.min(cap, proposed);
+    }
+
     // Sync rating.ovr so potMod sees the real gap as attrs grow.
     // Generated prospects enter with a frozen nerfed value (e.g. 29) — without this
     // potMod is always 1.0 and they grow unconstrained past their pot ceiling.
@@ -365,9 +442,18 @@ function progressPlayer(player: NBAPlayer, currentYear: number, date: string): N
   }
 
   // Rebuild ratings array
+  const projectedWeight: number | undefined = (rating as any).__projectedWeight;
+  if (projectedWeight !== undefined) delete (rating as any).__projectedWeight;
   const newRatings = player.ratings.map((r: any, i: number) => i === ratingIdx ? rating : r);
 
-  const updatedPlayer: NBAPlayer = { ...player, ratings: newRatings };
+  const updatedPlayer: NBAPlayer = {
+    ...player,
+    ratings: newRatings,
+    ...(projectedWeight !== undefined ? {
+      weight: Math.round(projectedWeight),
+      origWeight: player.origWeight ?? player.weight,
+    } : {}),
+  };
 
   // External league players: attrs are pre-scaled at fetch (e.g. G-League ×0.75).
   // calculatePlayerOverallForYear on those scaled attrs floors at Math.max(40,...) → display 66.
@@ -430,6 +516,19 @@ export function applyDailyProgression(
     'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia',
   ]);
 
+  // Build mentor lookup once per day so each progressPlayer call can resolve
+  // its mentor in O(1). Only includes players who are SOMEONE'S mentor — most
+  // entries unused, but the map is a few hundred entries max.
+  const mentorIds = new Set<string>();
+  for (const p of players) {
+    const mid = (p as any).mentorId;
+    if (mid) mentorIds.add(mid);
+  }
+  const mentorLookup = new Map<string, NBAPlayer>();
+  for (const p of players) {
+    if (mentorIds.has(p.internalId)) mentorLookup.set(p.internalId, p);
+  }
+
   return players.map(player => {
     if (!player.ratings || player.ratings.length === 0) return player;
     if ((player as any).diedYear) return player;
@@ -440,7 +539,7 @@ export function applyDailyProgression(
       return player;
     }
     try {
-      return progressPlayer(player, currentYear, date);
+      return progressPlayer(player, currentYear, date, mentorLookup);
     } catch (_) {
       return player;
     }

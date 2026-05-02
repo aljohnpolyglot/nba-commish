@@ -141,7 +141,12 @@ export function getTradablePicks(
   if (!state?.draftPicks) return [];
   const min = getMinTradableSeason(state);
   const max = getMaxTradableSeason(state);
-  return state.draftPicks.filter(p => p.season >= min && p.season <= max);
+  return state.draftPicks.filter(p =>
+    p.season >= min &&
+    p.season <= max &&
+    !(p as any).used &&
+    !(p as any).playerSelected
+  );
 }
 
 /**

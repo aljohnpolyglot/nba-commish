@@ -12,7 +12,9 @@ import { useGame } from '../../../../../store/GameContext';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
 import { StarterService } from '../../../../../services/simulation/StarterService';
 import { getDisplayOverall } from '../../../../../utils/playerRatings';
+import { injurySeverityLevel } from '../../../../../services/simulation/playThroughInjuriesFactor';
 import type { NBAPlayer } from '../../../../../types';
+import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
 
 interface Props {
   teamId: number;
@@ -33,8 +35,13 @@ function normalizePos(p: NBAPlayer): string {
   return 'SF';
 }
 
+/** Regular-season play-through level — mirrors the game engine default (2 = day-to-day + moderate). */
+const DEPTH_PTI_LEVEL = 2;
+
 function isInjured(p: NBAPlayer): boolean {
-  return !!p.injury && (p.injury.gamesRemaining ?? 0) > 0;
+  const g = p.injury?.gamesRemaining ?? 0;
+  if (g <= 0) return false;
+  return injurySeverityLevel(g) > DEPTH_PTI_LEVEL;
 }
 
 export function TeamOfficeDepthChartTab({ teamId }: Props) {
@@ -214,7 +221,7 @@ function DepthChartCard({
         ratings={player.ratings}
       />
       <div className="text-[11px] font-bold text-white text-center line-clamp-1 w-full mt-1">
-        {player.name}
+        <PlayerNameWithHover player={player}>{player.name}</PlayerNameWithHover>
       </div>
     </div>
   );

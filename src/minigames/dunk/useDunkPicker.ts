@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NBAPlayer } from '../../types';
 import { getRosterData } from '../../services/rosterService';
-import { loadBadges } from '../../data/NBA2kBadges';
+import { loadRatings, getPlayerRealK2 } from '../../data/NBA2kRatings';
 
 export const DUNK_MAX_PICKS = 4;
 export const DUNK_MIN_PICKS = 2;
 
 type View = 'LOADING' | 'PICK' | 'RUN';
 
+// Driving Dunk = IS.sub[2], fallback to raw dnk if gist not loaded
 const dunkScore = (p: NBAPlayer): number => {
+  const k2 = getPlayerRealK2(p.name);
+  if (k2?.IS?.[2] != null) return k2.IS[2];
   const r = Array.isArray(p.ratings) ? p.ratings[p.ratings.length - 1] : null;
-  const dnk = (r as any)?.dnk ?? 40;
-  const jmp = (r as any)?.jmp ?? 50;
-  return dnk + jmp * 0.8;
+  return (r as any)?.dnk ?? 40;
 };
 
 export function useDunkPicker() {
@@ -24,7 +25,7 @@ export function useDunkPicker() {
     let cancelled = false;
     Promise.all([
       getRosterData(2025, 'Opening Week'),
-      loadBadges(),
+      loadRatings(),
     ])
       .then(([{ players: roster }]) => {
         if (cancelled) return;

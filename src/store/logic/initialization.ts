@@ -417,6 +417,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
             fullInitialState,
             payload.startDate,
             payload.onProgress,
+            // stopBefore: true — land on opening night with games unplayed.
             { assistantGM: payload.assistantGM ?? false, stopBefore: true }
         );
 

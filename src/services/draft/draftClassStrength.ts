@@ -119,7 +119,7 @@ export function buildFullDraftSlotMap(
   const lotteryTids = new Set(lotteryMap.keys());
   // Non-lottery teams sorted worst → best record → picks #15 onward
   const nonLottery = teams
-    .filter(t => t.id > 0 && !lotteryTids.has(t.id))
+    .filter(t => t.id >= 0 && t.id < 100 && !lotteryTids.has(t.id))
     .sort((a, b) => {
       const wpA = (a.wins ?? 0) / Math.max(1, (a.wins ?? 0) + (a.losses ?? 0));
       const wpB = (b.wins ?? 0) / Math.max(1, (b.wins ?? 0) + (b.losses ?? 0));

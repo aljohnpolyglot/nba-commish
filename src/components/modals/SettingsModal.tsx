@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Settings2, Zap, Cpu, Layers, Gamepad2, Bot, Database, HardDrive, Crown, User, ArrowLeftRight, Trophy, FolderOpen, PenLine } from 'lucide-react';
+import { X, Settings2, Zap, Cpu, Layers, Gamepad2, Bot, Database, HardDrive, Crown, User, ArrowLeftRight, Trophy, FolderOpen, PenLine, Palette } from 'lucide-react';
 import { clearImageCache } from '../../services/imageCache';
 import { SettingsManager, GameSettings } from '../../services/SettingsManager';
 import { SaveManager, hasFSAccess } from '../../services/SaveManager';
@@ -12,7 +12,7 @@ const GAME_MODE_OPTIONS = [
   { value: 3 as const, label: '🧠 Best',     description: 'Full narrative, max detail.' },
 ];
 
-type Tab = 'ai' | 'gameplay' | 'performance' | 'gm' | 'storage';
+type Tab = 'ai' | 'gameplay' | 'performance' | 'gm' | 'storage' | 'ui';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -46,8 +46,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   if (!isOpen) return null;
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    // Storage is always available — even before a game is loaded
+    // Storage & UI are always available — even before a game is loaded
     { id: 'storage',     label: 'Storage',      icon: <HardDrive size={14} /> },
+    { id: 'ui',          label: 'UI',           icon: <Palette size={14} /> },
     // Gameplay tabs only when a game is loaded
     ...(isGameLoaded ? [
       { id: 'ai' as const,          label: 'AI',          icon: <Bot size={14} /> },
@@ -59,10 +60,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
 
         {/* Header */}
-        <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+        <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 shrink-0">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <Settings2 className="text-indigo-500" />
             Game Settings
@@ -72,26 +73,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           </button>
         </div>
 
-        {/* Tab bar */}
-        <div className="flex border-b border-slate-800 bg-slate-900/30">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors ${
-                activeTab === tab.id
-                  ? 'text-indigo-400 border-b-2 border-indigo-500 bg-indigo-500/5'
-                  : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* Body: sidebar + content */}
+        <div className="flex flex-1 overflow-hidden">
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto custom-scrollbar flex flex-col gap-6">
+          {/* Sidebar nav */}
+          <div className="w-36 shrink-0 border-r border-slate-800 bg-slate-950/40 flex flex-col py-2 overflow-y-auto">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all text-left border-r-2 ${
+                  activeTab === tab.id
+                    ? 'text-indigo-400 bg-indigo-500/10 border-indigo-500'
+                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/40 border-transparent'
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 p-6 overflow-y-auto custom-scrollbar flex flex-col gap-6">
 
           {/* ── Storage ────────────────────────────────────────────────── */}
           {activeTab === 'storage' && (
@@ -192,6 +196,62 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </button>
               </div>
             </>
+          )}
+
+          {/* ── UI ─────────────────────────────────────────────────────── */}
+          {activeTab === 'ui' && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-bold text-white flex items-center gap-2 mb-1">
+                  <Palette size={16} className="text-indigo-400" />
+                  Player Hover Card Style
+                </label>
+                <p className="text-xs text-slate-400 mb-4">
+                  Choose what shows when you hover a player name (or tap the 📊 icon on mobile).
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {([
+                    {
+                      value: 'k2' as const,
+                      label: 'K2',
+                      desc: 'K2-converted category scores (OS, AT, IS, PL, DF, RB) + full stats.',
+                      preview: [['OS','79'],['AT','82'],['IS','71'],['PL','68'],['DF','74'],['RB','76']],
+                    },
+                    {
+                      value: 'simple' as const,
+                      label: 'BBGM',
+                      desc: 'Raw BBGM sub-ratings (Hgt, Ins, Spd, Dnk…) + full stats.',
+                      preview: [['Hgt','77'],['Ins','44'],['Spd','58'],['Dnk','86'],['3Pt','56'],['oIQ','47']],
+                    },
+                  ] as const).map(opt => {
+                    const isSelected = (settings.tooltipStyle ?? 'k2') === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => setSettings({ ...settings, tooltipStyle: opt.value })}
+                        className={`flex flex-col gap-2 p-3 rounded-xl border text-left transition-all ${
+                          isSelected
+                            ? 'border-indigo-500 bg-indigo-500/10 text-white'
+                            : 'border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-300'
+                        }`}
+                      >
+                        <span className="text-xs font-black">{opt.label}{opt.value === 'k2' && <span className="ml-1.5 text-[8px] font-black text-indigo-400 uppercase tracking-widest">Default</span>}</span>
+                        {/* Mini preview */}
+                        <div className="bg-slate-950 border border-slate-700/60 rounded-lg p-1.5 w-full">
+                          {opt.preview.map(([k, v]) => (
+                            <div key={k} className="flex justify-between text-[9px] tabular-nums">
+                              <span className="text-slate-500">{k}</span>
+                              <span className="text-slate-300 font-bold">{v}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <span className="text-[10px] text-slate-500 leading-tight">{opt.desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           )}
 
           {/* ── AI & Narrative ─────────────────────────────────────────── */}
@@ -601,10 +661,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </div>
           )}
 
-        </div>
+          </div>{/* end content */}
+        </div>{/* end body */}
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end gap-3">
+        <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end gap-3 shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors"

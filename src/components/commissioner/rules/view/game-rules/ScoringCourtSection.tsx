@@ -84,7 +84,6 @@ export const ScoringCourtSection: React.FC<ScoringCourtSectionProps> = ({
                     <RuleToggle id="threePointLineEnabled" value={threePointLineEnabled} onChange={setThreePointLineEnabled} />
                     {threePointLineEnabled && <RuleInput id="threePointLineDistance" value={threePointLineDistance} onChange={setThreePointLineDistance} />}
                 </div>
-                {/* Stored only until the stat schema supports 4PT attempts. */}
                 <div className="space-y-2">
                     <RuleToggle id="fourPointLine" value={fourPointLine} onChange={setFourPointLine} />
                     {fourPointLine && <RuleInput id="fourPointLineDistance" value={fourPointLineDistance} onChange={setFourPointLineDistance} />}

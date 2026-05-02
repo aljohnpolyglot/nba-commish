@@ -4,6 +4,7 @@ import type { NBAPlayer, Game } from '../../../types';
 import { useGame } from '../../../store/GameContext';
 import { getOpeningNightDate } from '../../../utils/dateUtils';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
+import { isFourPointEnabled } from '../../../utils/ruleFlags';
 
 interface PlayerBioGameLogTabProps {
   player: NBAPlayer;
@@ -15,6 +16,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
   player, onGameClick, onTeamClick,
 }) => {
   const { state } = useGame();
+  const fourPointEnabled = isFourPointEnabled(state.leagueStats);
   const [gameLogSort, setGameLogSort] = useState<{ field: string; dir: 'asc' | 'desc' }>({ field: 'date', dir: 'desc' });
   const [gameLogSeason, setGameLogSeason] = useState<number | null>(null);
   const [localBoxScoreGame, setLocalBoxScoreGame] = useState<Game | null>(null);
@@ -84,12 +86,14 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
 
           const fgm = stats.fgm || 0; const fga = stats.fga || 0;
           const tpm = stats.threePm || 0; const tpa = stats.threePa || 0;
+          const fpm = stats.fourPm || 0; const fpa = stats.fourPa || 0;
           const ftm = stats.ftm || 0;  const fta = stats.fta || 0;
-          const twom = fgm - tpm; const twoa = fga - tpa;
+          const twom = fgm - tpm - fpm; const twoa = fga - tpa - fpa;
           const fgp  = fga  > 0 ? (fgm  / fga ).toFixed(3).replace(/^0+/, '') : '.000';
           const tpp  = tpa  > 0 ? (tpm  / tpa ).toFixed(3).replace(/^0+/, '') : '.000';
+          const fpp  = fpa  > 0 ? (fpm  / fpa ).toFixed(3).replace(/^0+/, '') : '.000';
           const twop = twoa > 0 ? (twom / twoa).toFixed(3).replace(/^0+/, '') : '.000';
-          const efgp = fga  > 0 ? ((fgm + 0.5 * tpm) / fga).toFixed(3).replace(/^0+/, '') : '.000';
+          const efgp = fga  > 0 ? ((fgm + 0.5 * tpm + fpm) / fga).toFixed(3).replace(/^0+/, '') : '.000';
           const ftp  = fta  > 0 ? (ftm  / fta ).toFixed(3).replace(/^0+/, '') : '.000';
 
           logs.push({
@@ -103,7 +107,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
               : resultStr,
             isWin, gs: stats.gs > 0,
             mp: Math.floor(stats.min) + ':' + String(Math.floor((stats.min % 1) * 60)).padStart(2, '0'),
-            fgm, fga, fgp, tpm, tpa, tpp, twom, twoa, twop, efgp, ftm, fta, ftp,
+            fgm, fga, fgp, tpm, tpa, tpp, fpm, fpa, fpp, twom, twoa, twop, efgp, ftm, fta, ftp,
             orb: stats.orb || 0, drb: stats.drb || 0, trb: stats.reb || 0,
             ast: stats.ast || 0, stl: stats.stl || 0, blk: stats.blk || 0,
             tov: stats.tov || 0, pf: stats.pf || 0, pts: stats.pts || 0,
@@ -159,7 +163,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
           result: game.isOT
             ? `${isWin ? 'W' : 'L'}, ${score}${game.otCount && game.otCount > 1 ? ` ${game.otCount}OT` : ' OT'}`
             : `${isWin ? 'W' : 'L'}, ${score}`,
-          isWin, gs: false, mp: '—', fgm: 0, fga: 0, fgp: '—', tpm: 0, tpa: 0, tpp: '—',
+          isWin, gs: false, mp: '—', fgm: 0, fga: 0, fgp: '—', tpm: 0, tpa: 0, tpp: '—', fpm: 0, fpa: 0, fpp: '—',
           twom: 0, twoa: 0, twop: '—', efgp: '—', ftm: 0, fta: 0, ftp: '—',
           orb: 0, drb: 0, trb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0,
           gmsc: '—', plusMinus: null,
@@ -169,16 +173,17 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
 
     const reversed = logs.reverse();
     // Number RS games 1…N within each season independently (most-recent-first ordering).
+    // DNPs in the regular season count toward the team-game number so injuries don't reset numbering.
     const seasonRSTotals = new Map<number, number>();
     reversed.forEach(l => {
-      if (l.isPreseason || l.isPlayoff || l.isPlayIn || l.isDNP || l.isCupFinal) return;
+      if (l.isPreseason || l.isPlayoff || l.isPlayIn || l.isCupFinal) return;
       const d = new Date(l.date); const yr = d.getFullYear();
       const sy = d.getMonth() < 9 ? yr : yr + 1;
       seasonRSTotals.set(sy, (seasonRSTotals.get(sy) ?? 0) + 1);
     });
     const seasonRSCounters = new Map(seasonRSTotals);
     return reversed.map(l => {
-      if (l.isPreseason || l.isPlayoff || l.isPlayIn || l.isDNP || l.isCupFinal) return { ...l, rank: null };
+      if (l.isPreseason || l.isPlayoff || l.isPlayIn || l.isCupFinal) return { ...l, rank: null };
       const d = new Date(l.date); const yr = d.getFullYear();
       const sy = d.getMonth() < 9 ? yr : yr + 1;
       const rank = seasonRSCounters.get(sy)!;
@@ -213,7 +218,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
       const dir = gameLogSort.dir === 'asc' ? 1 : -1;
       if (gameLogSort.field === 'date') return (new Date(a.date).getTime() - new Date(b.date).getTime()) * dir;
       const getVal = (l: any): number => {
-        const numericFields = ['pts','trb','ast','stl','blk','tov','pf','orb','drb','fgm','fga','tpm','tpa','twom','twoa','ftm','fta','min'];
+        const numericFields = ['pts','trb','ast','stl','blk','tov','pf','orb','drb','fgm','fga','tpm','tpa','fpm','fpa','twom','twoa','ftm','fta','min'];
         if (numericFields.includes(gameLogSort.field)) return l[gameLogSort.field] ?? 0;
         return parseFloat('0' + l[gameLogSort.field]) || 0;
       };
@@ -301,8 +306,12 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
               <th className="px-3 py-2 font-semibold">Result</th>
               <th className="px-3 py-2 font-semibold">GS</th>
               {sortHdr('min', 'MP')}
-              {(['fgm','fga','fgp','tpm','tpa','tpp','twom','twoa','twop','efgp','ftm','fta','ftp','orb','drb','trb','ast','stl','blk','tov','pf','pts','gmsc'] as const).map(f => {
-                const label: Record<string, string> = { fgm:'FG',fga:'FGA',fgp:'FG%',tpm:'3P',tpa:'3PA',tpp:'3P%',twom:'2P',twoa:'2PA',twop:'2P%',efgp:'eFG%',ftm:'FT',fta:'FTA',ftp:'FT%',orb:'ORB',drb:'DRB',trb:'TRB',ast:'AST',stl:'STL',blk:'BLK',tov:'TOV',pf:'PF',pts:'PTS',gmsc:'GmSc' };
+              {([
+                'fgm','fga','fgp','tpm','tpa','tpp',
+                ...(fourPointEnabled ? ['fpm','fpa','fpp'] : []),
+                'twom','twoa','twop','efgp','ftm','fta','ftp','orb','drb','trb','ast','stl','blk','tov','pf','pts','gmsc'
+              ] as const).map(f => {
+                const label: Record<string, string> = { fgm:'FG',fga:'FGA',fgp:'FG%',tpm:'3P',tpa:'3PA',tpp:'3P%',fpm:'4P',fpa:'4PA',fpp:'4P%',twom:'2P',twoa:'2PA',twop:'2P%',efgp:'eFG%',ftm:'FT',fta:'FTA',ftp:'FT%',orb:'ORB',drb:'DRB',trb:'TRB',ast:'AST',stl:'STL',blk:'BLK',tov:'TOV',pf:'PF',pts:'PTS',gmsc:'GmSc' };
                 return (
                   <th key={f} className={`px-3 py-2 font-semibold text-right cursor-pointer hover:text-white select-none${gameLogSort.field === f ? ' text-indigo-400' : ''}`}
                     onClick={() => setGameLogSort(s => ({ field: f, dir: s.field === f && s.dir === 'desc' ? 'asc' : 'desc' }))}>
@@ -321,27 +330,32 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
                 <React.Fragment key={i}>
                   {showPlayoffDivider && (
                     <tr>
-                      <td colSpan={32} className="px-3 py-2 bg-slate-900/80 border-y border-slate-700">
+                      <td colSpan={fourPointEnabled ? 35 : 32} className="px-3 py-2 bg-slate-900/80 border-y border-slate-700">
                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400">Playoffs</span>
                       </td>
                     </tr>
                   )}
                   {showPreseasonDivider && (
                     <tr>
-                      <td colSpan={32} className="px-3 py-2 bg-slate-900/80 border-y border-slate-700">
+                      <td colSpan={fourPointEnabled ? 35 : 32} className="px-3 py-2 bg-slate-900/80 border-y border-slate-700">
                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500">Preseason</span>
                       </td>
                     </tr>
                   )}
                   {log.isDNP ? (
                     <tr className="hover:bg-slate-800/50 transition-colors whitespace-nowrap text-xs opacity-50">
-                      <td className="px-3 py-2"><span className="text-[10px] font-bold text-slate-500">DNP</span></td>
+                      <td className="px-3 py-2">
+                        {log.isPlayoff ? <span className="text-[10px] font-bold text-indigo-400/70">PLF</span>
+                          : log.isPlayIn ? <span className="text-[10px] font-bold text-sky-400/70">PI</span>
+                          : log.rank != null ? <span className="text-slate-500">{log.rank}</span>
+                          : <span className="text-[10px] font-bold text-slate-500">DNP</span>}
+                      </td>
                       <td className="px-3 py-2">{log.date}</td>
                       <td className={`px-3 py-2${onTeamClick && log.teamId ? ' cursor-pointer hover:text-indigo-400' : ''}`} onClick={() => onTeamClick && log.teamId && onTeamClick(log.teamId)}>{log.teamAbbrev}</td>
                       <td className="px-3 py-2">{log.isAway ? '@' : ''}</td>
                       <td className={`px-3 py-2${onTeamClick && log.oppTeamId ? ' cursor-pointer hover:text-indigo-400' : ''}`} onClick={() => onTeamClick && log.oppTeamId && onTeamClick(log.oppTeamId)}>{log.oppAbbrev}</td>
                       <td className={`px-3 py-2 ${log.isWin ? 'text-emerald-400' : 'text-red-400'}`}>{log.result}</td>
-                      <td colSpan={26} className="px-3 py-2 text-slate-500 italic">{log.dnpReason}</td>
+                      <td colSpan={fourPointEnabled ? 29 : 26} className="px-3 py-2 text-slate-500 italic">{log.dnpReason}</td>
                     </tr>
                   ) : (
                     <tr className={`hover:bg-slate-800/50 transition-colors whitespace-nowrap text-xs ${log.isPreseason ? 'opacity-70' : ''} ${log.isPlayoff || log.isPlayIn ? 'bg-indigo-500/5' : ''}`}>
@@ -370,6 +384,13 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
                       <td className="px-3 py-2 text-right">{log.tpm}</td>
                       <td className="px-3 py-2 text-right">{log.tpa}</td>
                       <td className="px-3 py-2 text-right">{log.tpp}</td>
+                      {fourPointEnabled && (
+                        <>
+                          <td className="px-3 py-2 text-right">{log.fpm}</td>
+                          <td className="px-3 py-2 text-right">{log.fpa}</td>
+                          <td className="px-3 py-2 text-right">{log.fpp}</td>
+                        </>
+                      )}
                       <td className="px-3 py-2 text-right">{log.twom}</td>
                       <td className="px-3 py-2 text-right">{log.twoa}</td>
                       <td className="px-3 py-2 text-right">{log.twop}</td>
@@ -400,7 +421,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
             })}
             {sortedGameLog.length === 0 && (
               <tr>
-                <td colSpan={32} className="px-3 py-8 text-center text-slate-500">No game log available for this season.</td>
+                <td colSpan={fourPointEnabled ? 35 : 32} className="px-3 py-8 text-center text-slate-500">No game log available for this season.</td>
               </tr>
             )}
           </tbody>

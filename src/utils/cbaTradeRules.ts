@@ -3,11 +3,13 @@ import {
   contractToUSD,
   getApronBucketAfterTrade,
   getCapThresholds,
-  getTeamPayrollUSD,
+  getTeamCapProfile,
   getTradeMatchingRatioForBucket,
   type ApronBucket,
 } from './salaryUtils';
 import { getActiveTPEs } from './tradeExceptionUtils';
+import { isTradeEligible } from './signingMoratorium';
+import { compareGameDates } from './dateUtils';
 
 const SALARY_BUFFER_USD = 100_000;
 
@@ -67,11 +69,7 @@ const tpeBlockReason = (tpe: TradeException, currentYear: number): string | null
 const isSameDaySigning = (player: NBAPlayer, currentDate: string): boolean => {
   const signedDate = (player as any).signedDate;
   if (!signedDate || !currentDate) return false;
-  if (signedDate === currentDate) return true;
-  const signed = new Date(signedDate);
-  const current = new Date(currentDate);
-  if (Number.isNaN(signed.getTime()) || Number.isNaN(current.getTime())) return false;
-  return signed.toDateString() === current.toDateString();
+  return compareGameDates(signedDate, currentDate) === 0;
 };
 
 const findTPECover = (
@@ -142,8 +140,10 @@ export const validateCBATradeRules = (input: CBATradeValidationInput): CBATradeV
   const thresholds = getCapThresholds(leagueStats);
   const teamAOutUSD = sumSalaryUSD(teamAPlayers);
   const teamBOutUSD = sumSalaryUSD(teamBPlayers);
-  const teamAPayrollUSD = getTeamPayrollUSD(players, teamAId, teamA, currentYear);
-  const teamBPayrollUSD = getTeamPayrollUSD(players, teamBId, teamB, currentYear);
+  const teamAProfile = getTeamCapProfile(players, teamAId, teamA.wins ?? 0, teamA.losses ?? 0, thresholds, teamA, currentYear);
+  const teamBProfile = getTeamCapProfile(players, teamBId, teamB.wins ?? 0, teamB.losses ?? 0, thresholds, teamB, currentYear);
+  const teamAPayrollUSD = teamAProfile.payrollUSD;
+  const teamBPayrollUSD = teamBProfile.payrollUSD;
   const teamAPostPayrollUSD = teamAPayrollUSD - teamAOutUSD + teamBOutUSD;
   const teamBPostPayrollUSD = teamBPayrollUSD - teamBOutUSD + teamAOutUSD;
   const teamAPostBucket = getApronBucketAfterTrade(teamAPayrollUSD, { outgoingSalaryUSD: teamAOutUSD, incomingSalaryUSD: teamBOutUSD }, leagueStats);
@@ -172,6 +172,28 @@ export const validateCBATradeRules = (input: CBATradeValidationInput): CBATradeV
 
   const teamAReceivesSnt = input.teamAReceivesSignAndTrade || teamBPlayers.some(p => isSameDaySigning(p, currentDate));
   const teamBReceivesSnt = input.teamBReceivesSignAndTrade || teamAPlayers.some(p => isSameDaySigning(p, currentDate));
+
+  // Post-signing trade moratorium per real NBA CBA (Dec 15 / Jan 15 / 3-month / 6-month).
+  // Same-day sign-and-trade outgoing players are exempt — that path is gated above.
+  if (leagueStats.postSigningMoratoriumEnabled !== false) {
+    const checkMoratorium = (p: NBAPlayer, side: 'A' | 'B', team: NBATeam): CBATradeValidationResult | null => {
+      if (isSameDaySigning(p, currentDate)) return null;
+      if (isTradeEligible(p, currentDate, leagueStats)) return null;
+      const eligible = (p as any).tradeEligibleDate as string | undefined;
+      const reason = eligible
+        ? `${p.name} cannot be traded until ${eligible} (post-signing moratorium)`
+        : `${p.name} is under post-signing trade moratorium`;
+      return { ok: false, reason, offendingSide: side, offendingTeamId: team.id, ...resultBase };
+    };
+    for (const p of teamAPlayers) {
+      const v = checkMoratorium(p, 'A', teamA);
+      if (v) return v;
+    }
+    for (const p of teamBPlayers) {
+      const v = checkMoratorium(p, 'B', teamB);
+      if (v) return v;
+    }
+  }
   if (apronsActive && leagueStats.restrictSignAndTradeAcquisitionOver1stApron !== false) {
     if (teamAReceivesSnt && isOverFirstApron(teamAPostBucket)) {
       return { ok: false, reason: 'Over 1st apron — cannot acquire via sign-and-trade', offendingSide: 'A', offendingTeamId: teamAId, ...resultBase };
@@ -204,7 +226,7 @@ export const validateCBATradeRules = (input: CBATradeValidationInput): CBATradeV
   ): CBATradeValidationResult | null => {
     if (incomingUSD <= 0) return null;
     if (outgoingUSD <= 0) {
-      const capRoomUSD = thresholds.salaryCap - (side === 'A' ? teamAPayrollUSD : teamBPayrollUSD);
+      const capRoomUSD = side === 'A' ? teamAProfile.capSpaceUSD : teamBProfile.capSpaceUSD;
       if (incomingUSD <= capRoomUSD + SALARY_BUFFER_USD) return null;
       const tpe = findTPECover(team, currentDate, incomingUSD, postPayrollUSD, bucket, leagueStats, currentYear);
       if (tpe.ok) return null;
@@ -216,6 +238,12 @@ export const validateCBATradeRules = (input: CBATradeValidationInput): CBATradeV
         ...resultBase,
       };
     }
+    // Cap-space exception: a team below the cap can absorb additional incoming salary
+    // using their available cap room on top of what their outgoing salary already covers.
+    // Real NBA rule: total incoming ≤ outgoing + cap space.
+    const capRoomUSD = side === 'A' ? teamAProfile.capSpaceUSD : teamBProfile.capSpaceUSD;
+    if (capRoomUSD > 0 && incomingUSD <= outgoingUSD + capRoomUSD + SALARY_BUFFER_USD) return null;
+    if (incomingUSD <= outgoingUSD) return null;
     if (incomingUSD <= outgoingUSD * ratio + SALARY_BUFFER_USD) return null;
 
     const tpe = findTPECover(team, currentDate, Math.max(0, incomingUSD - outgoingUSD), postPayrollUSD, bucket, leagueStats, currentYear);

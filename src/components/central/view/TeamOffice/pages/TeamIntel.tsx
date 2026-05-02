@@ -7,11 +7,12 @@ import { StarterService } from '../../../../../services/simulation/StarterServic
 import { convertTo2KRating } from '../../../../../utils/helpers';
 import { NBAPlayer, TeamStatus } from '../../../../../types';
 import { calcPlayerTV, calcOvr2K, isUntouchable, type TeamMode } from '../../../../../services/trade/tradeValueEngine';
-import { MANUAL_STATUS_LABEL } from '../../../../../utils/salaryUtils';
+import { formatSalaryM, getCapThresholds, getTeamCapProfileFromState, MANUAL_STATUS_LABEL } from '../../../../../utils/salaryUtils';
 import { getTradingBlock, saveTradingBlock } from '../../../../../store/tradingBlockStore';
 import { TeamIntelFreeAgency } from './TeamIntelFreeAgency';
 import { TeamIntelExpiring } from './TeamIntelExpiring';
 import { resolveTeamStrategyProfile } from '../../../../../utils/teamStrategy';
+import { compareGameDates, getCurrentOffseasonEffectiveFAStart } from '../../../../../utils/dateUtils';
 
 interface TeamIntelProps {
   teamId: number;
@@ -59,14 +60,20 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
     lineup.push({ player: sixthMan, lineupPos: '6TH' });
   }
 
-  // Cap space
-  const totalSalary = players.reduce((acc, p) => acc + (p.contract?.amount || 0), 0);
-  const capSpace = 136000 - totalSalary; // amounts in thousands
-  const capFormatted = capSpace < 0
-    ? `-$${Math.abs(capSpace / 1000).toFixed(1)}M`
-    : `$${(capSpace / 1000).toFixed(1)}M`;
-
+  // Cap space: use the same cap profile helper as Team Intel Free Agency,
+  // including dead money and two-way exclusions.
+  const capProfile = getTeamCapProfileFromState(state, teamId, getCapThresholds(state.leagueStats as any));
   const currentYear = state.leagueStats?.year || 2026;
+  const isPreFA = state.date
+    ? compareGameDates(state.date, getCurrentOffseasonEffectiveFAStart(state.date, state.leagueStats as any, state.schedule as any)) < 0
+    : false;
+  const expiringSalaryUSD = isPreFA
+    ? players
+      .filter(p => (p.contract?.exp ?? 0) === currentYear && !(p as any).twoWay && (p.contract as any)?.type !== 'TWO_WAY')
+      .reduce((sum, p) => sum + ((p.contract?.amount ?? 0) * 1_000), 0)
+    : 0;
+  const displayedCapSpaceUSD = capProfile.capSpaceUSD + expiringSalaryUSD;
+  const capFormatted = formatSalaryM(displayedCapSpaceUSD);
 
   const { status, strategyKey, tradingBlock, untouchables, targets } = useMemo(() => {
     const strategy = resolveTeamStrategyProfile({
@@ -321,7 +328,9 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
             </>);
           })()}
           <div>
-            <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/70 mb-2 border-b border-white/20 pb-1">Cap Space</div>
+            <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/70 mb-2 border-b border-white/20 pb-1">
+              {isPreFA ? 'Projected cap (post-rollover)' : 'Cap Space'}
+            </div>
             <div className="text-xl sm:text-3xl font-light text-white drop-shadow-md">{capFormatted}</div>
           </div>
         </div>

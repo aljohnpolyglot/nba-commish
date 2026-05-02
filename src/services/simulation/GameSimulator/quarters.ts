@@ -4,10 +4,24 @@ export function simulateQuarters(
   homeTotal: number,
   awayTotal: number,
   lead: number,
-  otCount: number = 0
+  otCount: number = 0,
+  numQuarters: number = 4
 ): { home: number[]; away: number[] } {
 
   const homeWins = homeTotal > awayTotal;
+  const regulationPeriods = Math.max(1, Math.floor(numQuarters || 4));
+  const buildWeights = (isWinner: boolean): number[] => {
+    const base = Array.from({ length: regulationPeriods }, () => 1 / regulationPeriods);
+    if (regulationPeriods >= 4) {
+      const earlyShift = isWinner ? -0.01 : 0.01;
+      const lateShift = isWinner ? 0.015 : -0.015;
+      base[0] = Math.max(0.05, base[0] + earlyShift);
+      base[regulationPeriods - 2] = Math.max(0.05, base[regulationPeriods - 2] + lateShift);
+      base[regulationPeriods - 1] = Math.max(0.05, base[regulationPeriods - 1] - lateShift);
+    }
+    const total = base.reduce((a, b) => a + b, 0) || 1;
+    return base.map(w => w / total);
+  };
 
   if (otCount > 0) {
     // OT games: both teams MUST be tied at end of regulation.
@@ -19,16 +33,16 @@ export function simulateQuarters(
 
     // Distribute the same tied regulation total for each team (slight per-quarter variance for realism)
     const distributeReg = (total: number, isWinner: boolean): number[] => {
-      const w = isWinner
-        ? [0.24, 0.26, 0.28, 0.22]
-        : [0.26, 0.24, 0.22, 0.28];
+      const w = buildWeights(isWinner);
       const raw = w.map(weight => Math.max(10, Math.round(total * weight * normalRandom(1.0, 0.06))));
-      // First drift fix into Q2
+      const driftIndex = Math.min(1, raw.length - 1);
+      const finalIndex = raw.length - 1;
+      // First drift fix into an early period
       const drift1 = total - raw.reduce((a, b) => a + b, 0);
-      raw[1] = Math.max(8, raw[1] + drift1);
-      // Second precision fix into Q4 (so sum is exact)
+      raw[driftIndex] = Math.max(8, raw[driftIndex] + drift1);
+      // Second precision fix into the final regulation period
       const drift2 = total - raw.reduce((a, b) => a + b, 0);
-      raw[3] = Math.max(8, raw[3] + drift2);
+      raw[finalIndex] = Math.max(8, raw[finalIndex] + drift2);
       return raw;
     };
 
@@ -77,16 +91,14 @@ export function simulateQuarters(
   const perQuarterFloor = Math.max(2, Math.round(Math.min(homeTotal, awayTotal) * 0.10));
   const driftFloor = Math.max(1, Math.round(perQuarterFloor * 0.8));
   const distributeScore = (total: number, isWinner: boolean): number[] => {
-    const w = isWinner
-      ? [0.24, 0.26, 0.28, 0.22]
-      : [0.26, 0.24, 0.22, 0.28];
+    const w = buildWeights(isWinner);
 
     const raw = w.map(weight =>
       Math.max(perQuarterFloor, Math.round(total * weight * normalRandom(1.0, 0.08)))
     );
 
-    const drift = total - (raw[0] + raw[1] + raw[2] + raw[3]);
-    raw[3] = Math.max(perQuarterFloor, raw[3] + drift);
+    const drift = total - raw.reduce((a, b) => a + b, 0);
+    raw[raw.length - 1] = Math.max(perQuarterFloor, raw[raw.length - 1] + drift);
 
     return raw;
   };
@@ -96,19 +108,22 @@ export function simulateQuarters(
 
   if (lead > 20) {
     const blowoutFloor = Math.max(2, Math.round(perQuarterFloor * 1.5));
-    home[3] = Math.max(blowoutFloor, Math.round(home[3] * 0.82));
-    away[3] = Math.max(blowoutFloor, Math.round(away[3] * 0.82));
+    const finalRegIndex = home.length - 1;
+    home[finalRegIndex] = Math.max(blowoutFloor, Math.round(home[finalRegIndex] * 0.82));
+    away[finalRegIndex] = Math.max(blowoutFloor, Math.round(away[finalRegIndex] * 0.82));
     const homeDrift = homeTotal - home.reduce((a, b) => a + b, 0);
     const awayDrift = awayTotal - away.reduce((a, b) => a + b, 0);
-    home[2] += homeDrift;
-    away[2] += awayDrift;
+    const absorb = Math.max(0, Math.min(home.length - 2, 2));
+    home[absorb] += homeDrift;
+    away[absorb] += awayDrift;
   }
 
   // Final drift correction into Q2
   const homeDrift = homeTotal - home.reduce((a, b) => a + b, 0);
   const awayDrift = awayTotal - away.reduce((a, b) => a + b, 0);
-  home[1] = Math.max(driftFloor, home[1] + homeDrift);
-  away[1] = Math.max(driftFloor, away[1] + awayDrift);
+  const driftIndex = Math.min(1, home.length - 1);
+  home[driftIndex] = Math.max(driftFloor, home[driftIndex] + homeDrift);
+  away[driftIndex] = Math.max(driftFloor, away[driftIndex] + awayDrift);
 
   return { home, away };
 }

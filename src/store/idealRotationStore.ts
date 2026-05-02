@@ -20,6 +20,13 @@ export interface IdealRotation {
   minutes: Record<string, number>;
   /** User-locked flag. When false, UI auto-recomputes from roster ratings. */
   locked: boolean;
+  /**
+   * Per-team bench depth (0–100). Controls how many players get meaningful
+   * minutes when auto-seeding: 0=5-man, 50=9-man (default), 100=13-man.
+   * Only affects the Ideal Rotation UI — live game sims are unaffected.
+   * When undefined, auto-computes from roster depth (AI teams use this path).
+   */
+  benchDepth?: number;
   /** Epoch ms of last edit — useful for debugging stale entries. */
   lastEdited: number;
 }

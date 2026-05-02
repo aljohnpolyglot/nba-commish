@@ -2,6 +2,10 @@ import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
 import { X } from 'lucide-react';
 import { NBATeam, Game, GameResult, PlayerGameStats, NBAPlayer, PlayoffBracket } from '../../types';
+import { useGame } from '../../store/GameContext';
+import { getGameTimingConfig, getPeriodLabel } from '../../utils/gameClock';
+import { isFourPointEnabled } from '../../utils/ruleFlags';
+import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 
 interface BoxScoreModalProps {
   game: Game;
@@ -21,6 +25,9 @@ type SortKey = keyof PlayerGameStats | 'fgp' | 'tpp' | 'ftp';
 export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
   game, result, homeTeam, awayTeam, players, onClose, onPlayerClick, onTeamClick, playoffs, schedule
 }) => {
+  const { state } = useGame();
+  const timingConfig = useMemo(() => getGameTimingConfig(state.leagueStats), [state.leagueStats]);
+  const fourPointEnabled = isFourPointEnabled(state.leagueStats);
   // For playoff/play-in games, find the series to show series score instead of W-L record
   const seriesInfo = useMemo(() => {
     if ((!game.isPlayoff && !game.isPlayIn) || !playoffs || !game.playoffSeriesId) return null;
@@ -103,29 +110,31 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
   };
 
   const calculateTeamStats = (stats: PlayerGameStats[], oppStats: PlayerGameStats[]) => {
-    let fgm = 0, fga = 0, threePm = 0, threePa = 0, ftm = 0, fta = 0, orb = 0, drb = 0, ast = 0, stl = 0, blk = 0, tov = 0, pf = 0;
+    let fgm = 0, fga = 0, threePm = 0, threePa = 0, fourPm = 0, fourPa = 0, ftm = 0, fta = 0, orb = 0, drb = 0, ast = 0, stl = 0, blk = 0, tov = 0, pf = 0;
+    let fgAtRim = 0, fgLowPost = 0;
     stats.forEach(s => {
       fgm += s.fgm; fga += s.fga;
       threePm += s.threePm; threePa += s.threePa;
+      fourPm += s.fourPm || 0; fourPa += s.fourPa || 0;
       ftm += s.ftm; fta += s.fta;
       orb += s.orb; drb += s.drb;
       ast += s.ast; stl += s.stl;
       blk += s.blk; tov += s.tov; pf += s.pf;
+      fgAtRim += s.fgAtRim || 0; fgLowPost += s.fgLowPost || 0;
     });
 
     let oppDrb = 0;
-    oppStats.forEach(s => {
-      oppDrb += s.drb;
-    });
+    oppStats.forEach(s => { oppDrb += s.drb; });
 
-    const eFG = fga > 0 ? ((fgm + 0.5 * threePm) / fga) * 100 : 0;
+    const eFG = fga > 0 ? ((fgm + 0.5 * threePm + fourPm) / fga) * 100 : 0;
     const tovPct = (fga + 0.44 * fta + tov) > 0 ? (tov / (fga + 0.44 * fta + tov)) * 100 : 0;
     const orbPct = (orb + oppDrb) > 0 ? (orb / (orb + oppDrb)) * 100 : 0;
     const ftFga = fga > 0 ? fta / fga : 0;
+    const pip = fgAtRim * 2 + fgLowPost * 2;
 
-    return { 
-      eFG, tovPct, orbPct, ftFga,
-      fgm, fga, threePm, threePa, ftm, fta, orb, drb, ast, stl, blk, tov, pf
+    return {
+      eFG, tovPct, orbPct, ftFga, pip,
+      fgm, fga, threePm, threePa, fourPm, fourPa, ftm, fta, orb, drb, ast, stl, blk, tov, pf
     };
   };
 
@@ -135,8 +144,8 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
     const { home, away } = result.quarterScores;
     const otCount = result.isOT ? result.otCount : 0;
 
-    const periodHeaders = ['Q1', 'Q2', 'Q3', 'Q4'];
-    const periodCellsFor = (scores: number[]): number[] => scores.slice(0, 4);
+    const periodHeaders = Array.from({ length: timingConfig.numQuarters }, (_, i) => getPeriodLabel(i + 1, timingConfig.numQuarters));
+    const periodCellsFor = (scores: number[]): number[] => scores.slice(0, timingConfig.numQuarters);
 
     const renderRow = (label: string, scores: number[], total: number, keyPrefix: string) => (
       <tr>
@@ -145,7 +154,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
           <td key={`${keyPrefix}-q-${i}`} className="py-2 font-mono text-slate-400">{q}</td>
         ))}
         {Array.from({ length: otCount }).map((_, i) => (
-          <td key={`${keyPrefix}-ot-${i}`} className="py-2 font-mono text-slate-400">{scores[4 + i] ?? 0}</td>
+          <td key={`${keyPrefix}-ot-${i}`} className="py-2 font-mono text-slate-400">{scores[timingConfig.numQuarters + i] ?? 0}</td>
         ))}
         <td className="py-2 font-mono font-bold text-white">{total}</td>
       </tr>
@@ -245,6 +254,12 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
             awayVal={`${awayStats.threePm}-${awayStats.threePa} (${awayStats.threePa > 0 ? ((awayStats.threePm/awayStats.threePa)*100).toFixed(1) : '0.0'}%)`}
             homeVal={`${homeStats.threePm}-${homeStats.threePa} (${homeStats.threePa > 0 ? ((homeStats.threePm/homeStats.threePa)*100).toFixed(1) : '0.0'}%)`}
           />
+          {fourPointEnabled && (
+            <StatRow label="4PT FG"
+              awayVal={`${awayStats.fourPm}-${awayStats.fourPa} (${awayStats.fourPa > 0 ? ((awayStats.fourPm/awayStats.fourPa)*100).toFixed(1) : '0.0'}%)`}
+              homeVal={`${homeStats.fourPm}-${homeStats.fourPa} (${homeStats.fourPa > 0 ? ((homeStats.fourPm/homeStats.fourPa)*100).toFixed(1) : '0.0'}%)`}
+            />
+          )}
           <StatRow label="Free Throws"
             awayVal={`${awayStats.ftm}-${awayStats.fta} (${awayStats.fta > 0 ? ((awayStats.ftm/awayStats.fta)*100).toFixed(1) : '0.0'}%)`}
             homeVal={`${homeStats.ftm}-${homeStats.fta} (${homeStats.fta > 0 ? ((homeStats.ftm/homeStats.fta)*100).toFixed(1) : '0.0'}%)`}
@@ -255,6 +270,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
           <StatRow label="Blocks" awayVal={awayStats.blk} homeVal={homeStats.blk} />
           <StatRow label="Turnovers" awayVal={awayStats.tov} homeVal={homeStats.tov} />
           <StatRow label="Fouls" awayVal={awayStats.pf} homeVal={homeStats.pf} />
+          <StatRow label="Points in the Paint" awayVal={awayStats.pip} homeVal={homeStats.pip} />
         </div>
       </div>
     );
@@ -306,6 +322,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
               <SortHeader label="MIN" sortKey="min" />
               <SortHeader label="FGM-A" sortKey="fgm" />
               <SortHeader label="3PM-A" sortKey="threePm" />
+              {fourPointEnabled && <SortHeader label="4PM-A" sortKey="fourPm" />}
               <SortHeader label="FTM-A" sortKey="ftm" />
               <SortHeader label="ORB" sortKey="orb" />
               <SortHeader label="DRB" sortKey="drb" />
@@ -321,18 +338,22 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/50">
-            {sortedStats.map((s) => (
+            {sortedStats.map((s) => {
+              const playerObj = players.find(p => p.internalId === s.playerId);
+              return (
               <tr key={s.playerId} className="hover:bg-slate-800/40 transition-colors">
                 <td className="px-4 py-3">
-                  <button 
-                    onClick={() => {
-                      const p = players.find(player => player.internalId === s.playerId);
-                      if (p && onPlayerClick) onPlayerClick(p);
-                    }}
-                    className="font-bold text-indigo-400 hover:text-indigo-300 transition-colors text-left"
-                  >
-                    {s.name}
-                  </button>
+                  {playerObj ? (
+                    <PlayerNameWithHover
+                      player={playerObj}
+                      className="font-bold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                      onClick={() => onPlayerClick && onPlayerClick(playerObj)}
+                    >
+                      {s.name}
+                    </PlayerNameWithHover>
+                  ) : (
+                    <span className="font-bold text-indigo-400">{s.name}</span>
+                  )}
                   {(() => {
                     const exit = result?.playerInGameInjuries?.[s.playerId];
                     if (exit) {
@@ -364,6 +385,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                 <td className="px-2 py-3 text-right font-mono">{Math.floor(s.min)}:{Math.floor((s.min % 1) * 60).toString().padStart(2, '0')}</td>
                 <td className="px-2 py-3 text-right font-mono">{s.fgm}-{s.fga}</td>
                 <td className="px-2 py-3 text-right font-mono">{s.threePm}-{s.threePa}</td>
+                {fourPointEnabled && <td className="px-2 py-3 text-right font-mono">{s.fourPm || 0}-{s.fourPa || 0}</td>}
                 <td className="px-2 py-3 text-right font-mono">{s.ftm}-{s.fta}</td>
                 <td className="px-2 py-3 text-right font-mono">{s.orb}</td>
                 <td className="px-2 py-3 text-right font-mono">{s.drb}</td>
@@ -379,7 +401,8 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                 </td>
                 <td className="px-2 py-3 text-right font-mono">{s.gameScore?.toFixed(1) || '0.0'}</td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       {(() => {
@@ -395,15 +418,16 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
               {dnpPlayers.map(p => (
                 <tr key={p.internalId} className="opacity-50 hover:opacity-75 transition-opacity">
                   <td className="px-4 py-2">
-                    <button
+                    <PlayerNameWithHover
+                      player={p}
+                      className="font-bold text-slate-400 hover:text-slate-300 transition-colors cursor-pointer"
                       onClick={() => onPlayerClick && onPlayerClick(p)}
-                      className="font-bold text-slate-400 hover:text-slate-300 transition-colors text-left"
                     >
                       {p.name}
-                    </button>
+                    </PlayerNameWithHover>
                   </td>
                   <td className="px-2 py-2 font-mono text-slate-500">{p.pos || 'N/A'}</td>
-                  <td colSpan={15} className="px-2 py-2 text-slate-500 italic font-mono text-[11px] uppercase tracking-widest">
+                  <td colSpan={fourPointEnabled ? 16 : 15} className="px-2 py-2 text-slate-500 italic font-mono text-[11px] uppercase tracking-widest">
                     {result?.playerDNPs?.[p.internalId] ??
                       ((p.injury?.gamesRemaining ?? 0) > 0
                         ? `DNP — Injury (${p.injury!.type})`

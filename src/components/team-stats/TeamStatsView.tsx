@@ -4,6 +4,7 @@ import { ArrowUpDown, Search, X, ChevronLeft, ChevronRight, SlidersHorizontal } 
 import { NBATeam } from '../../types';
 import { evaluateFilter } from '../../utils/filterUtils';
 import { getOwnTeamId } from '../../utils/helpers';
+import { isFourPointEnabled } from '../../utils/ruleFlags';
 
 type StatType = 'team' | 'opponent' | 'shotLocations' | 'oppShotLocations' | 'advanced';
 type Phase = 'regular' | 'playoffs' | 'cup' | 'combined';
@@ -15,6 +16,7 @@ interface TeamStatRow {
   pts: number; oppg: number; mov: number;
   fgm: number; fga: number; fgp: number;
   tpm: number; tpa: number; tpp: number;
+  fpm: number; fpa: number; fpp: number;
   twom: number; twoa: number; twop: number;
   ftm: number; fta: number; ftp: number;
   orb: number; drb: number; trb: number;
@@ -22,6 +24,7 @@ interface TeamStatRow {
   // opponent basic (per game)
   oppFgm: number; oppFga: number; oppFgp: number;
   oppTpm: number; oppTpa: number; oppTpp: number;
+  oppFpm: number; oppFpa: number; oppFpp: number;
   oppTwom: number; oppTwoa: number; oppTwop: number;
   oppFtm: number; oppFta: number; oppFtp: number;
   oppOrb: number; oppDrb: number; oppTrb: number;
@@ -32,12 +35,14 @@ interface TeamStatRow {
   mrFgm: number; mrFga: number; mrFgp: number;
   slTpm: number; slTpa: number; slTpp: number;
   dd: number; td: number; qd: number; fiveX5: number;
+  dunks: number; techs: number; pip: number;
   // shot locations opp (per game)
   oppRimFgm: number; oppRimFga: number; oppRimFgp: number;
   oppLpFgm: number; oppLpFga: number; oppLpFgp: number;
   oppMrFgm: number; oppMrFga: number; oppMrFgp: number;
   oppSlTpm: number; oppSlTpa: number; oppSlTpp: number;
   oppDd: number; oppTd: number; oppQd: number; oppFiveX5: number;
+  oppDunks: number; oppTechs: number; oppPip: number;
   // advanced
   pw: number; pl: number;
   ortg: number; drtg: number; nrtg: number; pace: number;
@@ -61,6 +66,7 @@ function countFeats(pts: number, reb: number, ast: number, stl: number, blk: num
 export const TeamStatsView: React.FC = () => {
   const { state, navigateToTeam, pendingStatSort, setPendingStatSort } = useGame();
   const ownTid = getOwnTeamId(state);
+  const fourPointEnabled = isFourPointEnabled(state.leagueStats);
 
   const [statType, setStatType]     = useState<StatType>('team');
   const [season,   setSeason]       = useState<number | 'all'>(state.leagueStats.year);
@@ -107,28 +113,32 @@ export const TeamStatsView: React.FC = () => {
   const teamStats = useMemo((): TeamStatRow[] => {
     type Acc = {
       team: NBATeam; g: number; wins: number; losses: number;
-      fgm: number; fga: number; tpm: number; tpa: number; ftm: number; fta: number;
+      fgm: number; fga: number; tpm: number; tpa: number; fpm: number; fpa: number; ftm: number; fta: number;
       orb: number; drb: number; trb: number; ast: number; stl: number; blk: number; tov: number; pf: number;
       ptsPlayer: number; ptsActual: number; oppPtsActual: number; min: number;
-      oppFgm: number; oppFga: number; oppTpm: number; oppTpa: number; oppFtm: number; oppFta: number;
+      oppFgm: number; oppFga: number; oppTpm: number; oppTpa: number; oppFpm: number; oppFpa: number; oppFtm: number; oppFta: number;
       oppOrb: number; oppDrb: number; oppTrb: number; oppAst: number; oppStl: number; oppBlk: number; oppTov: number; oppPf: number; oppPtsPlayer: number;
       rimFgm: number; rimFga: number; lpFgm: number; lpFga: number; mrFgm: number; mrFga: number;
       dd: number; td: number; qd: number; fiveX5: number;
+      dunks: number; techs: number;
       oppRimFgm: number; oppRimFga: number; oppLpFgm: number; oppLpFga: number; oppMrFgm: number; oppMrFga: number;
       oppDd: number; oppTd: number; oppQd: number; oppFiveX5: number;
+      oppDunks: number; oppTechs: number;
       ageMinSum: number; ageMinTotal: number;
     };
 
     const zero = (team: NBATeam): Acc => ({
       team, g: 0, wins: 0, losses: 0,
-      fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0,orb:0,drb:0,trb:0,ast:0,stl:0,blk:0,tov:0,pf:0,
+      fgm:0,fga:0,tpm:0,tpa:0,fpm:0,fpa:0,ftm:0,fta:0,orb:0,drb:0,trb:0,ast:0,stl:0,blk:0,tov:0,pf:0,
       ptsPlayer:0,ptsActual:0,oppPtsActual:0,min:0,
-      oppFgm:0,oppFga:0,oppTpm:0,oppTpa:0,oppFtm:0,oppFta:0,
+      oppFgm:0,oppFga:0,oppTpm:0,oppTpa:0,oppFpm:0,oppFpa:0,oppFtm:0,oppFta:0,
       oppOrb:0,oppDrb:0,oppTrb:0,oppAst:0,oppStl:0,oppBlk:0,oppTov:0,oppPf:0,oppPtsPlayer:0,
       rimFgm:0,rimFga:0,lpFgm:0,lpFga:0,mrFgm:0,mrFga:0,
       dd:0,td:0,qd:0,fiveX5:0,
+      dunks:0,techs:0,
       oppRimFgm:0,oppRimFga:0,oppLpFgm:0,oppLpFga:0,oppMrFgm:0,oppMrFga:0,
       oppDd:0,oppTd:0,oppQd:0,oppFiveX5:0,
+      oppDunks:0,oppTechs:0,
       ageMinSum:0,ageMinTotal:0,
     });
 
@@ -140,6 +150,7 @@ export const TeamStatsView: React.FC = () => {
         const reb = ps.reb ?? ps.trb ?? (ps.orb || 0) + (ps.drb || 0);
         a.fgm += ps.fgm || 0; a.fga += ps.fga || 0;
         a.tpm += ps.threePm || 0; a.tpa += ps.threePa || 0;
+        a.fpm += ps.fourPm || 0; a.fpa += ps.fourPa || 0;
         a.ftm += ps.ftm || 0;  a.fta += ps.fta || 0;
         a.orb += ps.orb || 0;  a.drb += ps.drb || 0; a.trb += reb;
         a.ast += ps.ast || 0;  a.stl += ps.stl || 0; a.blk += ps.blk || 0;
@@ -148,6 +159,7 @@ export const TeamStatsView: React.FC = () => {
         a.rimFgm += ps.fgAtRim   || 0; a.rimFga += ps.fgaAtRim   || 0;
         a.lpFgm  += ps.fgLowPost || 0; a.lpFga  += ps.fgaLowPost || 0;
         a.mrFgm  += ps.fgMidRange|| 0; a.mrFga  += ps.fgaMidRange|| 0;
+        a.dunks  += ps.dunks || 0; a.techs += ps.techs || 0;
         const f = countFeats(ps.pts || 0, reb, ps.ast || 0, ps.stl || 0, ps.blk || 0);
         a.dd += f.dd; a.td += f.td; a.qd += f.qd; a.fiveX5 += f.fiveX5;
         const pid = ps.playerId || ps.internalId;
@@ -158,6 +170,7 @@ export const TeamStatsView: React.FC = () => {
         const reb = ps.reb ?? ps.trb ?? (ps.orb || 0) + (ps.drb || 0);
         a.oppFgm += ps.fgm || 0; a.oppFga += ps.fga || 0;
         a.oppTpm += ps.threePm || 0; a.oppTpa += ps.threePa || 0;
+        a.oppFpm += ps.fourPm || 0; a.oppFpa += ps.fourPa || 0;
         a.oppFtm += ps.ftm || 0;  a.oppFta += ps.fta || 0;
         a.oppOrb += ps.orb || 0;  a.oppDrb += ps.drb || 0; a.oppTrb += reb;
         a.oppAst += ps.ast || 0;  a.oppStl += ps.stl || 0; a.oppBlk += ps.blk || 0;
@@ -166,6 +179,7 @@ export const TeamStatsView: React.FC = () => {
         a.oppRimFgm += ps.fgAtRim   || 0; a.oppRimFga += ps.fgaAtRim   || 0;
         a.oppLpFgm  += ps.fgLowPost || 0; a.oppLpFga  += ps.fgaLowPost || 0;
         a.oppMrFgm  += ps.fgMidRange|| 0; a.oppMrFga  += ps.fgaMidRange|| 0;
+        a.oppDunks += ps.dunks || 0; a.oppTechs += ps.techs || 0;
         const f = countFeats(ps.pts || 0, reb, ps.ast || 0, ps.stl || 0, ps.blk || 0);
         a.oppDd += f.dd; a.oppTd += f.td; a.oppQd += f.qd; a.oppFiveX5 += f.fiveX5;
       });
@@ -201,14 +215,16 @@ export const TeamStatsView: React.FC = () => {
 
     return Array.from(acc.values()).map(a => {
       const g = a.g || 1;
-      const twomT = a.fgm - a.tpm; const twoaT = a.fga - a.tpa;
-      const oppTwomT = a.oppFgm - a.oppTpm; const oppTwoaT = a.oppFga - a.oppTpa;
+      const twomT = a.fgm - a.tpm - a.fpm; const twoaT = a.fga - a.tpa - a.fpa;
+      const oppTwomT = a.oppFgm - a.oppTpm - a.oppFpm; const oppTwoaT = a.oppFga - a.oppTpa - a.oppFpa;
       const fgp  = a.fga > 0 ? a.fgm / a.fga : 0;
       const tpp  = a.tpa > 0 ? a.tpm / a.tpa : 0;
+      const fpp  = a.fpa > 0 ? a.fpm / a.fpa : 0;
       const ftp  = a.fta > 0 ? a.ftm / a.fta : 0;
       const twop = twoaT > 0 ? twomT / twoaT : 0;
       const oppFgp  = a.oppFga > 0 ? a.oppFgm / a.oppFga : 0;
       const oppTpp  = a.oppTpa > 0 ? a.oppTpm / a.oppTpa : 0;
+      const oppFpp  = a.oppFpa > 0 ? a.oppFpm / a.oppFpa : 0;
       const oppFtp  = a.oppFta > 0 ? a.oppFtm / a.oppFta : 0;
       const oppTwop = oppTwoaT > 0 ? oppTwomT / oppTwoaT : 0;
 
@@ -227,13 +243,13 @@ export const TeamStatsView: React.FC = () => {
         : 0;
 
       const tsPct  = (a.fga + 0.44 * a.fta) > 0 ? a.ptsPlayer / (2 * (a.fga + 0.44 * a.fta)) : 0;
-      const efgPct = a.fga > 0 ? (a.fgm + 0.5 * a.tpm) / a.fga : 0;
+      const efgPct = a.fga > 0 ? (a.fgm + 0.5 * a.tpm + a.fpm) / a.fga : 0;
       const tovPct = tmPoss > 0 ? 100 * a.tov / tmPoss : 0;
       const orbPct = (a.orb + a.oppDrb) > 0 ? 100 * a.orb / (a.orb + a.oppDrb) : 0;
       const ftFga  = a.fga > 0 ? a.ftm / a.fga : 0;
       const threePar = a.fga > 0 ? a.tpa / a.fga : 0;
       const ftr     = a.fga > 0 ? a.fta / a.fga : 0;
-      const dEfgPct = a.oppFga > 0 ? (a.oppFgm + 0.5 * a.oppTpm) / a.oppFga : 0;
+      const dEfgPct = a.oppFga > 0 ? (a.oppFgm + 0.5 * a.oppTpm + a.oppFpm) / a.oppFga : 0;
       const dTovPct = oppPoss > 0 ? 100 * a.oppTov / oppPoss : 0;
       const drbPct  = (a.drb + a.oppOrb) > 0 ? 100 * a.drb / (a.drb + a.oppOrb) : 0;
       const dFtFga  = a.oppFga > 0 ? a.oppFtm / a.oppFga : 0;
@@ -245,12 +261,14 @@ export const TeamStatsView: React.FC = () => {
         pts: a.ptsActual / g, oppg: a.oppPtsActual / g, mov: (a.ptsActual - a.oppPtsActual) / g,
         fgm: a.fgm/g, fga: a.fga/g, fgp,
         tpm: a.tpm/g, tpa: a.tpa/g, tpp,
+        fpm: a.fpm/g, fpa: a.fpa/g, fpp,
         twom: twomT/g, twoa: twoaT/g, twop,
         ftm: a.ftm/g, fta: a.fta/g, ftp,
         orb: a.orb/g, drb: a.drb/g, trb: a.trb/g,
         ast: a.ast/g, stl: a.stl/g, blk: a.blk/g, tov: a.tov/g, pf: a.pf/g,
         oppFgm: a.oppFgm/g, oppFga: a.oppFga/g, oppFgp,
         oppTpm: a.oppTpm/g, oppTpa: a.oppTpa/g, oppTpp,
+        oppFpm: a.oppFpm/g, oppFpa: a.oppFpa/g, oppFpp,
         oppTwom: oppTwomT/g, oppTwoa: oppTwoaT/g, oppTwop,
         oppFtm: a.oppFtm/g, oppFta: a.oppFta/g, oppFtp,
         oppOrb: a.oppOrb/g, oppDrb: a.oppDrb/g, oppTrb: a.oppTrb/g,
@@ -260,11 +278,13 @@ export const TeamStatsView: React.FC = () => {
         mrFgm:  a.mrFgm/g,  mrFga:  a.mrFga/g,  mrFgp:  a.mrFga  > 0 ? a.mrFgm/a.mrFga   : 0,
         slTpm: a.tpm/g, slTpa: a.tpa/g, slTpp: tpp,
         dd: a.dd, td: a.td, qd: a.qd, fiveX5: a.fiveX5,
+        dunks: a.dunks/g, techs: a.techs, pip: (a.rimFgm + a.lpFgm) * 2 / g,
         oppRimFgm: a.oppRimFgm/g, oppRimFga: a.oppRimFga/g, oppRimFgp: a.oppRimFga > 0 ? a.oppRimFgm/a.oppRimFga : 0,
         oppLpFgm:  a.oppLpFgm/g,  oppLpFga:  a.oppLpFga/g,  oppLpFgp:  a.oppLpFga  > 0 ? a.oppLpFgm/a.oppLpFga  : 0,
         oppMrFgm:  a.oppMrFgm/g,  oppMrFga:  a.oppMrFga/g,  oppMrFgp:  a.oppMrFga  > 0 ? a.oppMrFgm/a.oppMrFga  : 0,
         oppSlTpm: a.oppTpm/g, oppSlTpa: a.oppTpa/g, oppSlTpp: oppTpp,
         oppDd: a.oppDd, oppTd: a.oppTd, oppQd: a.oppQd, oppFiveX5: a.oppFiveX5,
+        oppDunks: a.oppDunks/g, oppTechs: a.oppTechs, oppPip: (a.oppRimFgm + a.oppLpFgm) * 2 / g,
         pw, pl: a.g - pw, ortg, drtg, nrtg, pace, threePar, ftr, tsPct, efgPct,
         tovPct, orbPct, ftFga, dEfgPct, dTovPct, drbPct, dFtFga,
       };
@@ -374,7 +394,7 @@ export const TeamStatsView: React.FC = () => {
             <th colSpan={3} className={TH_GRP}>Low Post</th>
             <th colSpan={3} className={TH_GRP}>Mid-Range</th>
             <th colSpan={3} className={TH_GRP}>3-Pointers</th>
-            <th colSpan={4} className={TH_GRP}>Feats</th>
+            <th colSpan={7} className={TH_GRP}>Feats</th>
           </tr>
           <tr className="border-b-2 border-slate-700">
             {commonThs}
@@ -382,6 +402,9 @@ export const TeamStatsView: React.FC = () => {
             <Th field={cap('lpFgm')}  label="M" /><Th field={cap('lpFga')}  label="A" /><Th field={cap('lpFgp')}  label="%" />
             <Th field={cap('mrFgm')}  label="M" /><Th field={cap('mrFga')}  label="A" /><Th field={cap('mrFgp')}  label="%" />
             <Th field={cap('slTpm')}  label="M" /><Th field={cap('slTpa')}  label="A" /><Th field={cap('slTpp')}  label="%" />
+            <Th field={cap('pip')}    label="PIP" />
+            <Th field={cap('dunks')}  label="DUNK" />
+            <Th field={cap('techs')}  label="TECH" />
             <Th field={cap('dd')}     label="DD"  />
             <Th field={cap('td')}     label="TD"  />
             <Th field={cap('qd')}     label="QD"  />
@@ -437,6 +460,13 @@ export const TeamStatsView: React.FC = () => {
           <Th field={isOpp ? 'oppTpm'  : 'tpm'}  label="3P"   />
           <Th field={isOpp ? 'oppTpa'  : 'tpa'}  label="3PA"  />
           <Th field={isOpp ? 'oppTpp'  : 'tpp'}  label="3P%"  />
+          {fourPointEnabled && (
+            <>
+              <Th field={isOpp ? 'oppFpm'  : 'fpm'}  label="4P"   />
+              <Th field={isOpp ? 'oppFpa'  : 'fpa'}  label="4PA"  />
+              <Th field={isOpp ? 'oppFpp'  : 'fpp'}  label="4P%"  />
+            </>
+          )}
           <Th field={isOpp ? 'oppTwom' : 'twom'} label="2P"   />
           <Th field={isOpp ? 'oppTwoa' : 'twoa'} label="2PA"  />
           <Th field={isOpp ? 'oppTwop' : 'twop'} label="2P%"  />
@@ -466,6 +496,9 @@ export const TeamStatsView: React.FC = () => {
       const lp    = isO ? [row.oppLpFgm,  row.oppLpFga,  row.oppLpFgp]  : [row.lpFgm,  row.lpFga,  row.lpFgp];
       const mr    = isO ? [row.oppMrFgm,  row.oppMrFga,  row.oppMrFgp]  : [row.mrFgm,  row.mrFga,  row.mrFgp];
       const tp    = isO ? [row.oppSlTpm,  row.oppSlTpa,  row.oppSlTpp]  : [row.slTpm,  row.slTpa,  row.slTpp];
+      const pip   = isO ? row.oppPip   : row.pip;
+      const dunks = isO ? row.oppDunks : row.dunks;
+      const techs = isO ? row.oppTechs : row.techs;
       const feats = isO ? [row.oppDd, row.oppTd, row.oppQd, row.oppFiveX5] : [row.dd, row.td, row.qd, row.fiveX5];
       return (
         <>
@@ -473,6 +506,9 @@ export const TeamStatsView: React.FC = () => {
           <td className={tc}>{fn(lp[0])}</td> <td className={tc}>{fn(lp[1])}</td> <td className={tca}>{fPc(lp[2])}</td>
           <td className={tc}>{fn(mr[0])}</td> <td className={tc}>{fn(mr[1])}</td> <td className={tca}>{fPc(mr[2])}</td>
           <td className={tc}>{fn(tp[0])}</td> <td className={tc}>{fn(tp[1])}</td> <td className={tca}>{fPc(tp[2])}</td>
+          <td className={tca}>{fn(pip)}</td>
+          <td className={tc}>{fn(dunks)}</td>
+          <td className={tc}>{fn(techs, 0)}</td>
           <td className={tc}>{fn(feats[0], 0)}</td><td className={tc}>{fn(feats[1], 0)}</td>
           <td className={tc}>{fn(feats[2], 0)}</td><td className={tc}>{fn(feats[3], 0)}</td>
         </>
@@ -509,6 +545,7 @@ export const TeamStatsView: React.FC = () => {
     const oppDisp = isOpp ? row.pts  : row.oppg;
     const fgm  = isOpp ? row.oppFgm  : row.fgm;  const fga  = isOpp ? row.oppFga  : row.fga;  const fgp  = isOpp ? row.oppFgp  : row.fgp;
     const tpm  = isOpp ? row.oppTpm  : row.tpm;  const tpa  = isOpp ? row.oppTpa  : row.tpa;  const tpp  = isOpp ? row.oppTpp  : row.tpp;
+    const fpm  = isOpp ? row.oppFpm  : row.fpm;  const fpa  = isOpp ? row.oppFpa  : row.fpa;  const fpp  = isOpp ? row.oppFpp  : row.fpp;
     const twom = isOpp ? row.oppTwom : row.twom; const twoa = isOpp ? row.oppTwoa : row.twoa; const twop = isOpp ? row.oppTwop : row.twop;
     const ftm  = isOpp ? row.oppFtm  : row.ftm;  const fta  = isOpp ? row.oppFta  : row.fta;  const ftp  = isOpp ? row.oppFtp  : row.ftp;
     const orb  = isOpp ? row.oppOrb  : row.orb;  const drb  = isOpp ? row.oppDrb  : row.drb;  const trb  = isOpp ? row.oppTrb  : row.trb;
@@ -524,6 +561,11 @@ export const TeamStatsView: React.FC = () => {
         </td>
         <td className={tc}>{fn(fgm)}</td><td className={tc}>{fn(fga)}</td><td className={tca}>{fP(fgp)}</td>
         <td className={tc}>{fn(tpm)}</td><td className={tc}>{fn(tpa)}</td><td className={tca}>{fP(tpp)}</td>
+        {fourPointEnabled && (
+          <>
+            <td className={tc}>{fn(fpm)}</td><td className={tc}>{fn(fpa)}</td><td className={tca}>{fP(fpp)}</td>
+          </>
+        )}
         <td className={tc}>{fn(twom)}</td><td className={tc}>{fn(twoa)}</td><td className={tca}>{fP(twop)}</td>
         <td className={tc}>{fn(ftm)}</td><td className={tc}>{fn(fta)}</td><td className={tca}>{fP(ftp)}</td>
         <td className={tc}>{fn(orb)}</td><td className={tc}>{fn(drb)}</td><td className={tc}>{fn(trb)}</td>

@@ -34,9 +34,10 @@ export const StandingsView: React.FC = () => {
 
     // Build exclusion set: preseason, playoff, play-in game IDs from the schedule
     // (GameResult has no isPreseason flag — must cross-reference state.schedule)
+    // Mirror simulationService W/L exclusion: preseason, playoff, playin, exhibition, excludeFromRecord.
     const nonRegularGids = new Set(
       state.schedule
-        .filter(g => g.isPreseason || g.isPlayoff || g.isPlayIn)
+        .filter(g => g.isPreseason || g.isPlayoff || g.isPlayIn || (g as any).isExhibition || (g as any).excludeFromRecord)
         .map(g => g.gid)
     );
 
@@ -123,10 +124,12 @@ export const StandingsView: React.FC = () => {
         games: [],
       };
 
-      // Use box-score-derived totals so preseason is never counted
-      const wins = s.totalWins;
-      const losses = s.totalLosses;
-      const totalGames = wins + losses;
+      // W/L: source-of-truth from team.wins/losses (simulationService already
+      // skips preseason/playoff/playin/exhibition/excludeFromRecord). Box-score
+      // derivation is only for splits (home/road/conf/div, PS/PA/MOV, L10).
+      const wins = team.wins ?? s.totalWins;
+      const losses = team.losses ?? s.totalLosses;
+      const totalGames = (s.totalWins + s.totalLosses) || (wins + losses);
       const winPct = totalGames > 0 ? wins / totalGames : 0;
 
       const roadWins = wins - s.homeWins;

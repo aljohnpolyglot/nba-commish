@@ -5,8 +5,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useGame } from '../../../../../store/GameContext';
 import { calculateK2 } from './lib/k2Engine';
-import { calculateCoachSliders } from './lib/coachSliders';
-import { getSystemProficiency } from '../../../../../utils/coachSliders';
+import { computeTeamProficiency } from '../../../../../utils/coachSliders';
 import { fetchCoachData, getAllCoaches, fetchCoachExtendedData } from './lib/staffService';
 import type { CoachData } from './lib/staffService';
 import type { NBAPlayer, K2Result, PlayerK2 } from '../../../../../types';
@@ -78,38 +77,10 @@ export function CoachingPage({ teamId }: CoachingPageProps) {
       const sortedByBbgm = [...roster].sort((a, b) => b.bbgmOvr - a.bbgmOvr);
       const top12 = sorted.slice(0, 12);
 
-      const top1Ovr = sortedByBbgm[0]?.bbgmOvr || 50;
-      const top2Ovr = sortedByBbgm[1]?.bbgmOvr || 50;
-      const starGap = top1Ovr - top2Ovr;
-
-      // Average K2 of top 8
-      const avgK2: K2Result = { OS: [0,0,0,0,0,0], AT: [0,0,0,0,0,0,0], IS: [0,0,0,0,0,0,0,0], PL: [0,0,0,0,0], DF: [0,0,0,0,0,0,0], RB: [0,0] };
-      roster.slice(0, 8).forEach(p => {
-        Object.keys(avgK2).forEach(cat => {
-          (p.k2 as any)[cat].forEach((val: number, i: number) => (avgK2 as any)[cat][i] += val / Math.min(8, roster.length));
-        });
-      });
-
-      const coachSliders = calculateCoachSliders(roster, allRosters);
-      const fiveOutBonus = (coachSliders.prefInOut >= 90) ? 25 : 0;
-      const highIQCount = sortedByBbgm.slice(0, 10).filter(p => p.currentRating.oiq > 70).length;
-
-      const top7 = sortedByBbgm.slice(0, 7).map(p => p.currentRating);
-      const isVersatile = top7.length >= 7 && top7.every((p: any) =>
-        p.oiq > 60 && p.diq > 40 && p.drb > 40 && p.spd > 40
-      ) && top7.filter((p: any) => p.spd > 55 && p.tp > 45).length >= 4;
-
-      const profs = getSystemProficiency(
-        avgK2, starGap,
-        sortedByBbgm[0]?.currentRating,
-        fiveOutBonus,
-        sortedByBbgm[1]?.currentRating,
-        highIQCount,
-        coachSliders.tempo,
-        isVersatile,
-        coachSliders.prefOffDef
-      );
-      const sortedProfs = Object.entries(profs).sort((a, b) => b[1] - a[1]);
+      // Shared util — same answer as Training Center / SystemProficiencyView.
+      // Pass through System Familiarity so the star renderer reflects the team's
+      // earned familiarity (Training Center daily paradigms feed it).
+      const { sortedProfs, bestSystem, coachSliders, avgK2 } = computeTeamProficiency(roster, allRosters, t.systemFamiliarity);
 
       const getFullName = (p: PlayerK2) => p.name || 'Unknown Player';
 
@@ -117,7 +88,7 @@ export function CoachingPage({ teamId }: CoachingPageProps) {
         tid: String(t.id),
         teamName: `${t.region} ${t.name}`,
         imgURL: t.logoUrl,
-        bestSystem: sortedProfs[0][0],
+        bestSystem,
         avgK2,
         sortedProfs,
         top12,

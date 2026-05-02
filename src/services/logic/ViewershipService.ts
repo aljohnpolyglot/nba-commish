@@ -1,5 +1,6 @@
 import { GameState, NBATeam, NBAPlayer, UserAction, GamePhase } from "../../types";
 import { getGamePhase, convertTo2KRating } from "../../utils/helpers";
+import { getGameDateParts } from "../../utils/dateUtils";
 
 export const VIEWERSHIP_MEANS: Record<GamePhase, number> = {
     'Preseason': 0.8,
@@ -77,8 +78,8 @@ export class ViewershipService {
         let baseMean = VIEWERSHIP_MEANS[phase] || 1.8;
 
         // Check for Christmas Day (Month is 0-indexed, so 11 is December)
-        const dateObj = new Date(state.date);
-        if (dateObj.getMonth() === 11 && dateObj.getDate() === 25) {
+        const dateParts = getGameDateParts(state.date);
+        if (dateParts.month === 12 && dateParts.day === 25) {
             baseMean = 5.5; // Christmas Day tentpole event
         }
 

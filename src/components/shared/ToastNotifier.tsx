@@ -6,7 +6,8 @@ import { useGame } from '../../store/GameContext';
 // ── Toast item types ────────────────────────────────────────────────────────
 type ToastItem =
   | { type: 'fa-accepted'; playerName: string; annualM: number; years: number }
-  | { type: 'fa-rejected'; playerName: string; winnerTeamName: string }
+  | { type: 'fa-rejected'; playerName: string; winnerTeamName: string; rejectionReason?: string }
+  | { type: 'fa-bid-submitted'; playerName: string; teamName: string; annualM: number; years: number; resolvesInDays: number }
   | { type: 'eliminated'; teamName: string }
   | { type: 'injury'; playerName: string; injuryType: string; gamesRemaining: number; pos?: string; teamName?: string }
   | { type: 'recovery'; playerName: string; teamName: string; pos: string }
@@ -30,6 +31,7 @@ export function pushToast(item: ToastItem) { _enqueue?.(item); }
 const TOAST_DURATION: Record<ToastItem['type'], number> = {
   'fa-accepted': 5000,
   'fa-rejected': 5000,
+  'fa-bid-submitted': 4500,
   'eliminated': 7000,
   'injury': 6000,
   'recovery': 5000,
@@ -50,6 +52,7 @@ type Accent = { bg: string; border: string; label: string; icon: string };
 const ACCENT: Record<ToastItem['type'], Accent> = {
   'fa-accepted':  { bg: 'bg-emerald-950/90', border: 'border-emerald-500/50', label: 'text-emerald-300', icon: 'text-emerald-400' },
   'fa-rejected':  { bg: 'bg-rose-950/90',    border: 'border-rose-500/50',    label: 'text-rose-300',    icon: 'text-rose-400'    },
+  'fa-bid-submitted': { bg: 'bg-indigo-950/90', border: 'border-indigo-500/50', label: 'text-indigo-300', icon: 'text-indigo-400' },
   'eliminated':   { bg: 'bg-zinc-950/90',    border: 'border-zinc-500/50',    label: 'text-zinc-300',    icon: 'text-zinc-400'    },
   'injury':       { bg: 'bg-rose-950/90',    border: 'border-rose-500/50',    label: 'text-rose-300',    icon: 'text-rose-400'    },
   'recovery':     { bg: 'bg-emerald-950/90', border: 'border-emerald-500/50', label: 'text-emerald-300', icon: 'text-emerald-400' },
@@ -82,29 +85,14 @@ export const ToastNotifier: React.FC = () => {
     const items: ToastItem[] = pending.map(p =>
       p.accepted
         ? { type: 'fa-accepted', playerName: p.playerName, annualM: p.annualM, years: p.years }
-        : { type: 'fa-rejected', playerName: p.playerName, winnerTeamName: p.winnerTeamName ?? '' }
+        : { type: 'fa-rejected', playerName: p.playerName, winnerTeamName: p.winnerTeamName ?? '', rejectionReason: p.rejectionReason }
     );
     setQueue(q => [...q, ...items]);
     dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingFAToasts: [] } });
   }, [state.pendingFAToasts]);
 
-  // Drain pendingRFAOfferSheets — Match/Decline interactive toasts.
-  // The toast itself dispatches MATCH_RFA_OFFER / DECLINE_RFA_OFFER on click.
-  useEffect(() => {
-    const pending = (state as any).pendingRFAOfferSheets as Array<{ playerId: string; playerName: string; signingTeamName: string; annualM: number; years: number; expiresInDays: number }> | undefined;
-    if (!pending || pending.length === 0) return;
-    const items: ToastItem[] = pending.map(p => ({
-      type: 'rfa-offer-received',
-      playerId: p.playerId,
-      playerName: p.playerName,
-      signingTeamName: p.signingTeamName,
-      annualM: p.annualM,
-      years: p.years,
-      expiresInDays: p.expiresInDays,
-    }));
-    setQueue(q => [...q, ...items]);
-    dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingRFAOfferSheets: [] } });
-  }, [(state as any).pendingRFAOfferSheets]);
+  // pendingRFAOfferSheets is now handled by RFAOfferSheetModal (mounted in App.tsx).
+  // The modal owns the queue and dispatches MATCH_RFA_OFFER / DECLINE_RFA_OFFER per row.
 
   // Drain pendingRFAMatchResolutions — outcome toasts (matched / not-matched).
   useEffect(() => {
@@ -308,7 +296,17 @@ const ToastContent: React.FC<{ item: ToastItem }> = ({ item }) => {
   if (item.type === 'fa-rejected') {
     return (
       <Card type={item.type} icon={XCircle} header={item.playerName} label="Rejected">
-        Chose <span className="text-white font-bold">{item.winnerTeamName}</span> over your offer.
+        {item.rejectionReason
+          ? <>{item.playerName} <span className="text-white font-bold">{item.rejectionReason}</span>.</>
+          : <>Chose <span className="text-white font-bold">{item.winnerTeamName}</span> over your offer.</>}
+      </Card>
+    );
+  }
+
+  if (item.type === 'fa-bid-submitted') {
+    return (
+      <Card type={item.type} icon={FileSignature} header={item.playerName} label="Offer Submitted">
+        <span className="text-white font-bold">{item.teamName}</span> offered <span className="text-[#FDB927] font-bold">${item.annualM}M / {item.years}yr</span> — decision in ~{item.resolvesInDays} {item.resolvesInDays === 1 ? 'day' : 'days'}.
       </Card>
     );
   }

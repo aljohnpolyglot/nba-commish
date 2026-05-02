@@ -19,6 +19,7 @@ import { NBACupYearData, Standing, BracketTeam, WikiYearData } from '../types';
 import { PlayerBioView } from './PlayerBioView';
 import { extractNbaId, hdPortrait } from '../../../utils/helpers';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
+import { isNbaCupEnabled } from '../../../utils/ruleFlags';
 
 const GIST_URL = 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/nbacupdata';
 
@@ -1105,7 +1106,7 @@ export default function NBACupView() {
     fetchData();
   }, []);
 
-  const inSeasonTournamentEnabled = state.leagueStats.inSeasonTournament !== false;
+  const inSeasonTournamentEnabled = isNbaCupEnabled(state.leagueStats);
   const viewYear = Number(selectedYear);
   const isHistorical = viewYear !== year;
 

@@ -1,7 +1,8 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
-import { computeOfferStrength } from '../../services/freeAgencyBidding';
+import { computeOfferStrength, isPlausibleActiveMarket } from '../../services/freeAgencyBidding';
+import { getCurrentOffseasonFAMoratoriumEnd, isInMoratorium, parseGameDate } from '../../utils/dateUtils';
 import type { NBAPlayer } from '../../types';
 
 interface Props {
@@ -11,7 +12,10 @@ interface Props {
 
 export const FAOffersModal: React.FC<Props> = ({ player, onClose }) => {
   const { state } = useGame();
-  const market = state.faBidding?.markets?.find(m => m.playerId === player.internalId && !m.resolved);
+  const market = state.faBidding?.markets?.find(m =>
+    m.playerId === player.internalId &&
+    isPlausibleActiveMarket(m as any, state, player)
+  );
   const resolvedMarket = !market ? state.faBidding?.markets?.find(m => m.playerId === player.internalId && m.resolved) : null;
   const activeMarket = market ?? resolvedMarket;
   const activeBids = market?.bids?.filter(b => b.status === 'active' && !b.isUserBid) ?? [];
@@ -20,7 +24,15 @@ export const FAOffersModal: React.FC<Props> = ({ player, onClose }) => {
   const userBidRejected = userBid && !userBidAccepted && userBid.status !== 'active';
   const acceptedByOther = resolvedMarket?.bids?.find(b => b.status === 'accepted' && !b.isUserBid);
   const sortedBids = [...activeBids].sort((a, b) => b.salaryUSD - a.salaryUSD);
-  const decisionDaysOut = market ? Math.max(0, market.decidesOnDay - (state.day ?? 0)) : 0;
+  const decisionDaysOut = (() => {
+    if (!market) return 0;
+    const rawDays = Math.max(0, market.decidesOnDay - (state.day ?? 0));
+    if (!state.date || !isInMoratorium(state.date, state.leagueStats?.year ?? 2026, state.leagueStats as any, state.schedule as any)) return rawDays;
+    const today = parseGameDate(state.date);
+    const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(state.date, state.leagueStats as any, state.schedule as any);
+    const moratoriumDays = Math.max(0, Math.ceil((moratoriumEnd.getTime() - today.getTime()) / 86_400_000));
+    return Math.max(rawDays, moratoriumDays);
+  })();
 
   // Normalize all bid scores so the leader = 100%
   const allBidsForStrength = [

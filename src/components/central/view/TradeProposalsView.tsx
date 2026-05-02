@@ -28,6 +28,7 @@ import {
   getTeamPayrollUSD, getTeamCapProfileFromState, topNAvgK2, resolveManualOutlook,
   type TradeOutlook,
 } from '../../../utils/salaryUtils';
+import { getGameDateParts } from '../../../utils/dateUtils';
 import { tradeRoleToTeamMode } from '../../../utils/teamStrategy';
 
 // ── Status tab pill ──────────────────────────────────────────────────────────
@@ -185,8 +186,7 @@ export const TradeProposalsView: React.FC = () => {
 
   // PER context for in-season TV adjustments inside the card helper.
   const tvContext: TVContext | undefined = useMemo(() => {
-    const d = state.date ? new Date(state.date) : null;
-    const month = d ? d.getMonth() + 1 : 0;
+    const month = state.date ? getGameDateParts(state.date).month : 0;
     const isRegularSeason = (month >= 10 && month <= 12) || (month >= 1 && month <= 4);
     if (!isRegularSeason) return undefined;
     return { leaguePerAvg: computeLeaguePerAvg(players, currentYear), isRegularSeason: true };

@@ -29,6 +29,7 @@ import { useGame } from '../../../store/GameContext';
 import { RealSternActionModal } from '../../modals/RealSternActionModal';
 import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
 import { useDraftEventGate } from '../../../hooks/useDraftEventGate';
+import type { Contact } from '../../../types';
 
 const IMAGE_FALLBACK = 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800';
 
@@ -199,7 +200,7 @@ export default function RealStern() {
     if (!contacts.length) return;
     const recipientName = contacts.map(c => c.name).join(', ');
     setInventory(prev => prev.filter(a => a.instanceId !== asset.instanceId));
-    setGiftModalAsset(null);
+    setActionModalAsset(null);
     rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({
       type: 'ADVANCE_DAY',
       payload: {
@@ -213,7 +214,7 @@ export default function RealStern() {
   const inviteToAsset = async (contacts: Contact[], asset: OwnedAsset, reason?: string) => {
     if (!contacts.length) return;
     const guestName = contacts.map(c => c.name).join(', ');
-    setInviteModalAsset(null);
+    setActionModalAsset(null);
     const reasonNote = reason?.trim() ? ` — ${reason.trim()}` : ' for an exclusive private meeting';
     rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({
       type: 'ADVANCE_DAY',
@@ -230,7 +231,7 @@ export default function RealStern() {
     if (asset) {
       setInventory(prev => prev.filter(a => a.instanceId !== instanceId));
       showNotification(`${asset.title} has been abandoned.`);
-      setAbandonConfirm(null);
+      setActionModalAsset(null);
     }
   };
 

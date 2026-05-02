@@ -234,6 +234,32 @@ export class MinutesPlayedService {
       pool = [...pool, ...callups];
     }
 
+    // ── PER-based bench filter: drop stat-padders when depth allows ──────────
+    // A player below 55% of league-avg PER (≈ PER 8 in a ~15 avg league) with
+    // qualifying minutes is benched if we won't fall below MIN_ROTATION.
+    // Guards against rookies / new arrivals with no stats: no stats → keep.
+    {
+      const perSamples = pool.flatMap(p =>
+        ((p as any).stats ?? []).filter((s: any) => s.season === season && !s.playoffs && (s.gp ?? 0) > 0)
+      );
+      const leaguePERAvg = perSamples.length > 0
+        ? perSamples.reduce((a: number, s: any) => a + ((s.per as number) ?? 0), 0) / perSamples.length
+        : 15;
+      const PER_FLOOR = leaguePERAvg * 0.55;
+      const trimmed = pool.filter(p => {
+        const pStats = ((p as any).stats ?? []).filter((s: any) => s.season === season && !s.playoffs && (s.gp ?? 0) > 0);
+        if (pStats.length === 0) return true;
+        const gp = pStats.reduce((a: number, s: any) => a + ((s.gp as number) ?? 0), 0);
+        const minSum = pStats.reduce((a: number, s: any) => a + ((s.min as number) ?? 0), 0);
+        if (gp < 5 || (gp > 0 && minSum / gp < 5)) return true;
+        const per = minSum > 0
+          ? pStats.reduce((a: number, s: any) => a + ((s.per as number) ?? 0) * ((s.min as number) ?? 0), 0) / minSum
+          : leaguePERAvg;
+        return per >= PER_FLOOR;
+      });
+      if (trimmed.length >= MIN_ROTATION) pool = trimmed;
+    }
+
     // ── Depth calculation (standings + health + context + age) ──────────────
     const { baseDepth, starMpg: baseMpg }  = standingsProfile(conferenceRank, gbFromLeader, gamesRemaining);
     const healthDepth                       = healthAdjustment(baseDepth, pool.length);
@@ -311,11 +337,13 @@ export class MinutesPlayedService {
     isPlayoffs: boolean = false,
     quarterLength: number = 12,
     overtimeDuration: number = 5,
+    numQuarters: number = 4,
   ): MinuteAllocation {
     const isBlowout    = Math.abs(lead) > 15;
     const isBigBlowout = Math.abs(lead) > 25;
-    const gameLengthMin = quarterLength * 4 + otCount * overtimeDuration;
-    const otMultiplier  = gameLengthMin / (quarterLength * 4);  // 1.0 reg → grows with each OT
+    const regulationLengthMin = quarterLength * numQuarters;
+    const gameLengthMin = regulationLengthMin + otCount * overtimeDuration;
+    const otMultiplier  = gameLengthMin / regulationLengthMin;  // 1.0 reg → grows with each OT
 
     // Youth/development mode: lottery teams (starMpgTarget ≤ 31) spread minutes
     // across the full rotation instead of piling 35+ min on every starter.
@@ -366,6 +394,17 @@ export class MinutesPlayedService {
         baseMins = base + Math.random() * spread + blowoutBonus + youthBonus;
         const fatigue = endu < 40 ? (40 - endu) * 0.10 : 0;
         baseMins -= fatigue;
+
+        // Synergy nudge: 6th–8th men who qualify as spacers/playmakers/rebounders
+        // get a small bump so they more reliably clear the minute threshold used by
+        // calculateTeamStrengthWithMinutes (+2.0/+3.5 spacing, +1.5/+2.5 playmaking,
+        // +1.0/+2.0 rebounding).
+        if (depthSlot <= 2 && !isBlowout) {
+          const lr = p.ratings?.[p.ratings.length - 1];
+          if ((lr?.tp ?? 50) > 60)                             baseMins += 1.5;  // spacer → pushes over 15-min threshold
+          if ((lr?.pss ?? 50) > 65)                            baseMins += 1.5;  // playmaker → pushes over 20-min threshold
+          if (((lr?.hgt ?? 50) + (lr?.reb ?? 50)) / 2 > 62)   baseMins += 1.0;  // rebounder → pushes over 12-min threshold
+        }
       }
 
       // Scale up for OT: a player who'd play 37 min in regulation plays ~44 min in 2OT.
