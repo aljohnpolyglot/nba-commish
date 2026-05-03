@@ -13,7 +13,8 @@ import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { CheckCircle2, Circle, ChevronRight, FastForward, Sparkles, Wrench, ListChecks, X, FileSignature, Bot, CheckCircle } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
-import { convertTo2KRating } from '../../utils/helpers';
+import { convertTo2KRating, normalizeDate } from '../../utils/helpers';
+import { getDraftDate, getDraftLotteryDate, getTrainingCampDate, toISODateString } from '../../utils/dateUtils';
 import {
   OFFSEASON_ROW_ORDER,
   OFFSEASON_ROW_LABELS,
@@ -104,6 +105,26 @@ export const OffseasonNextActionButton: React.FC<NextActionButtonProps> = ({ set
     if (currentRow === 'freeAgency' && (state.faTagCounter ?? 0) > 0) {
       dispatchAction({ type: 'OFFSEASON_ADVANCE_FA_TAG' } as any);
       return;
+    }
+    // Calendar-anchored phases: advance to event date if user is before it
+    // so they land ON the day (matching sidebar Enter behavior).
+    const ls = state.leagueStats as any;
+    const lsYear = ls?.year ?? 2026;
+    const todayNorm = state.date ? normalizeDate(state.date) : '';
+    const simIfBefore = (targetISO: string) => {
+      if (todayNorm && todayNorm < targetISO) {
+        dispatchAction({
+          type: 'SIMULATE_TO_DATE',
+          payload: { targetDate: targetISO, stopBefore: true },
+        } as any);
+      }
+    };
+    if (currentRow === 'draftLottery') {
+      simIfBefore(toISODateString(getDraftLotteryDate(lsYear, ls)));
+    } else if (currentRow === 'draft') {
+      simIfBefore(toISODateString(getDraftDate(lsYear, ls)));
+    } else if (currentRow === 'trainingCamp') {
+      simIfBefore(toISODateString(getTrainingCampDate(lsYear, ls)));
     }
     dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row: currentRow } } as any);
     // Initial FA entry also fires the moratorium-skip + counter-init.
@@ -263,6 +284,19 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     });
   }, [state.gameMode, state.userTeamId, state.players, state.leagueStats?.year]);
 
+  // Helper: simulate forward to a target date if the calendar isn't there yet.
+  // Lands ON the target date with games unplayed (stopBefore=true) so the
+  // user can watch/run the event manually after navigating.
+  const simToDateIfBefore = (targetISO: string) => {
+    if (!state.date) return;
+    const todayNorm = normalizeDate(state.date);
+    if (todayNorm >= targetISO) return;
+    dispatchAction({
+      type: 'SIMULATE_TO_DATE',
+      payload: { targetDate: targetISO, stopBefore: true },
+    } as any);
+  };
+
   const handleEnter = (row: OffseasonChecklistRow) => {
     if (row === 'options') {
       // Special-case options: open the existing TeamOptionGateModal in-place
@@ -312,6 +346,17 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
         dispatchAction({ type: 'OFFSEASON_ADVANCE_FA_TAG' } as any);
       }
       return;
+    }
+    // Calendar-anchored phases: advance to the event date if we're before it
+    // so the user lands ON the relevant day instead of staring at June 23.
+    const ls = state.leagueStats as any;
+    const lsYear = ls?.year ?? 2026;
+    if (row === 'draftLottery') {
+      simToDateIfBefore(toISODateString(getDraftLotteryDate(lsYear, ls)));
+    } else if (row === 'draft') {
+      simToDateIfBefore(toISODateString(getDraftDate(lsYear, ls)));
+    } else if (row === 'trainingCamp') {
+      simToDateIfBefore(toISODateString(getTrainingCampDate(lsYear, ls)));
     }
     dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
   };
@@ -694,6 +739,15 @@ export const OffseasonFATagFooter: React.FC = () => {
     dispatchAction({ type: 'OFFSEASON_ADVANCE_FA_TAG' } as any);
   };
 
+  // Pending RFA decisions — when other teams submit offer sheets to YOUR
+  // RFA players, those markets sit in pendingMatch state until the user
+  // dispatches MATCH_RFA_OFFER or DECLINE_RFA_OFFER. Surface a badge so
+  // the user notices instead of relying solely on toasts.
+  const userTid = state.userTeamId ?? -999;
+  const pendingMatchCount = (state.faBidding?.markets ?? []).filter((m: any) =>
+    m.pendingMatch && !m.resolved && m.pendingMatchPriorTid === userTid
+  ).length;
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[170] flex items-center justify-center pointer-events-none px-4 pb-3">
       <div className="pointer-events-auto flex items-center gap-3 px-4 py-2 rounded-2xl bg-slate-950/95 border border-amber-500/40 shadow-2xl backdrop-blur-md">
@@ -705,11 +759,21 @@ export const OffseasonFATagFooter: React.FC = () => {
             Tag {counter}/{total}
           </span>
         </div>
+        {pendingMatchCount > 0 && (
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-fuchsia-500/20 border border-fuchsia-500/40 text-fuchsia-200 font-black text-[10px] uppercase tracking-widest animate-pulse"
+            title="One or more of your RFA players has a pending offer sheet — match or decline via toast"
+          >
+            <FileSignature size={11} />
+            {pendingMatchCount} RFA to match
+          </div>
+        )}
         <button
           onClick={handleEndDay}
-          disabled={state.isProcessing}
+          disabled={state.isProcessing || pendingMatchCount > 0}
+          title={pendingMatchCount > 0 ? 'Resolve pending RFA offer sheets before advancing.' : 'Advance ~5 days, AI signings + RFA matches resolve.'}
           className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-colors ${
-            state.isProcessing
+            state.isProcessing || pendingMatchCount > 0
               ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
               : isLast
               ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
