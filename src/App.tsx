@@ -10,7 +10,7 @@ import { ClubEffect } from './components/effects/ClubEffect';
 import { ToastNotifier } from './components/shared/ToastNotifier';
 import { RFAOfferSheetModal } from './components/modals/RFAOfferSheetModal';
 import { PlayButton } from './components/shared/PlayButton';
-import { OffseasonNextActionButton, OffseasonPhaseBadge, OffseasonDebugTrigger, OffseasonAufgabenSidebar, OffseasonAufgabenMobileSheet } from './components/offseason/OffseasonAufgaben';
+import { OffseasonNextActionButton, OffseasonPhaseBadge, OffseasonDebugTrigger, OffseasonAufgabenSidebar, OffseasonAufgabenMobileSheet, OffseasonFATagFooter } from './components/offseason/OffseasonAufgaben';
 import { LazySimLoadingScreen } from './components/setup/LazySimLoadingScreen';
 import { Menu, X } from 'lucide-react';
 import { SaveManager } from './services/SaveManager';
@@ -235,6 +235,7 @@ function GameLayout() {
         <ToastNotifier />
         <RFAOfferSheetModal />
         <OffseasonAufgabenMobileSheet />
+        <OffseasonFATagFooter />
         <OffseasonDebugTrigger />
         {state.lastOutcome && state.gameMode !== 'gm' && !state.isProcessing && <OutcomeView />}
       </main>

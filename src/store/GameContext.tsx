@@ -20,7 +20,7 @@ import { applyCupAwardsToPlayers } from '../services/nbaCup/awards';
 import { computeRookieSalaryUSD } from '../utils/rookieContractUtils';
 import { generateAIBids, isPlausibleActiveMarket, MAX_FA_MARKET_DECISION_WINDOW_DAYS } from '../services/freeAgencyBidding';
 import { setAssistantGMActive } from '../services/assistantGMFlag';
-import { getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd, parseGameDate } from '../utils/dateUtils';
+import { getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd, parseGameDate, toISODateString } from '../utils/dateUtils';
 import {
   defaultOffseasonChecklist,
   setRowStatus,
@@ -918,6 +918,72 @@ const actions = useGameActions(setState, () => stateRef.current);
         faTagCounter: undefined,
         pendingOfferDecisions: [],
       }));
+      return;
+    }
+
+    // ── FA Tag system (Phase C) ──────────────────────────────────────────
+    // The 2K-style "Free Agency · Tag X/13" counter. Each Tag advance is
+    // ~5 calendar days under the hood — but the user only ever sees the
+    // counter. Reuses the existing SIMULATE_TO_DATE path so all the
+    // FA market ticker / AI signing / Bird Rights logic from the
+    // orchestrator fires correctly.
+    //
+    // Tag 1 lands on the first legal signing day (post-moratorium). On
+    // initial Enter we skip the moratorium silently so the user never has
+    // to look at a "signings disabled" wait period.
+    if (action.type === 'OFFSEASON_ADVANCE_FA_TAG') {
+      const total = stateRef.current.faTagsTotal ?? 13;
+      const counter = stateRef.current.faTagCounter ?? 0;
+      const currentDateStr = stateRef.current.date;
+      if (!currentDateStr) return;
+
+      // First Tag — skip moratorium
+      if (counter === 0) {
+        const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(
+          currentDateStr,
+          stateRef.current.leagueStats as any,
+          stateRef.current.schedule as any,
+        );
+        const targetISO = toISODateString(moratoriumEnd);
+        const currentNorm = normalizeDate(currentDateStr);
+        if (currentNorm < targetISO) {
+          // Recursive dispatch — runs through SIMULATE_TO_DATE which handles
+          // the lazy sim, AI signings, market ticks all via the orchestrator.
+          await dispatchAction({
+            type: 'SIMULATE_TO_DATE',
+            payload: { targetDate: targetISO, stopBefore: false },
+          } as any);
+        }
+        setState(prev => ({
+          ...prev,
+          faTagCounter: 1,
+          faTagsTotal: total,
+        }));
+        return;
+      }
+
+      // Subsequent Tags — advance ~62/N days (≈5 for N=13)
+      const daysPerTag = Math.max(1, Math.floor(62 / total));
+      const currentDate = new Date(`${normalizeDate(currentDateStr)}T00:00:00Z`);
+      currentDate.setUTCDate(currentDate.getUTCDate() + daysPerTag);
+      const targetISO = toISODateString(currentDate);
+      await dispatchAction({
+        type: 'SIMULATE_TO_DATE',
+        payload: { targetDate: targetISO, stopBefore: true },
+      } as any);
+
+      const newCounter = counter + 1;
+      if (newCounter >= total) {
+        // Final Tag — mark FA row done, clear counter
+        setState(prev => ({
+          ...prev,
+          offseasonChecklist: setRowStatus(prev.offseasonChecklist, 'freeAgency', 'done'),
+          faTagCounter: undefined,
+          faTagsTotal: undefined,
+        }));
+      } else {
+        setState(prev => ({ ...prev, faTagCounter: newCounter }));
+      }
       return;
     }
 

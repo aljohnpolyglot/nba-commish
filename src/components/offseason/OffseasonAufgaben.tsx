@@ -90,14 +90,24 @@ export const OffseasonNextActionButton: React.FC<NextActionButtonProps> = ({ set
     draft:            'Run NBA Draft',
     rookieContracts:  'Sign Rookies',
     freeAgency:       state.faTagCounter
-      ? `Tag ${state.faTagCounter}/${state.faTagsTotal ?? 13} — End Day`
+      ? `End Day · Tag ${state.faTagCounter}/${state.faTagsTotal ?? 13}`
       : 'Enter Free Agency',
     trainingCamp:     'Open Training Camp',
   };
   const label = labelForRow[currentRow];
 
   const handleEnter = () => {
+    // Special case: during active FA tag counter, the header CTA is "End Day"
+    // — fire the tag advance directly instead of re-entering the phase.
+    if (currentRow === 'freeAgency' && (state.faTagCounter ?? 0) > 0) {
+      dispatchAction({ type: 'OFFSEASON_ADVANCE_FA_TAG' } as any);
+      return;
+    }
     dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row: currentRow } } as any);
+    // Initial FA entry also fires the moratorium-skip + counter-init.
+    if (currentRow === 'freeAgency' && (state.faTagCounter ?? 0) === 0) {
+      dispatchAction({ type: 'OFFSEASON_ADVANCE_FA_TAG' } as any);
+    }
   };
 
   return (
@@ -236,6 +246,15 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       setTimeout(() => {
         dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row } } as any);
       }, 400);
+      return;
+    }
+    if (row === 'freeAgency') {
+      // Enter FA: navigate + auto-skip moratorium silently to Tag 1/13.
+      // ADVANCE_FA_TAG with counter=0 handles the skip + counter init.
+      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      if ((state.faTagCounter ?? 0) === 0) {
+        dispatchAction({ type: 'OFFSEASON_ADVANCE_FA_TAG' } as any);
+      }
       return;
     }
     dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
@@ -401,6 +420,56 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
         declinedIds={declinedIds}
       />
     </aside>
+  );
+};
+
+// ─── FA Tag Footer — sticky "FREE AGENCY · TAG X/13 · End Day" bar ────────
+//
+// Renders globally during the Free Agency phase. Shows the Tag counter +
+// a big "End Day" button that advances ~5 calendar days under the hood
+// via the existing SIMULATE_TO_DATE / lazy-sim path. The user never sees
+// raw calendar dates during FA — just Tag X/13.
+
+export const OffseasonFATagFooter: React.FC = () => {
+  const { state, dispatchAction } = useGame();
+  // Visible only when FA phase is active and the tag counter has been init'd.
+  if (!state.offseasonChecklist) return null;
+  const counter = state.faTagCounter ?? 0;
+  const total = state.faTagsTotal ?? 13;
+  if (counter === 0) return null;
+
+  const isLast = counter >= total;
+  const handleEndDay = () => {
+    dispatchAction({ type: 'OFFSEASON_ADVANCE_FA_TAG' } as any);
+  };
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-[170] flex items-center justify-center pointer-events-none px-4 pb-3">
+      <div className="pointer-events-auto flex items-center gap-3 px-4 py-2 rounded-2xl bg-slate-950/95 border border-amber-500/40 shadow-2xl backdrop-blur-md">
+        <div className="flex flex-col leading-none">
+          <span className="text-[8px] font-black uppercase tracking-[0.2em] text-amber-300/80">
+            Free Agency
+          </span>
+          <span className="text-sm font-black text-white tabular-nums uppercase tracking-tight">
+            Tag {counter}/{total}
+          </span>
+        </div>
+        <button
+          onClick={handleEndDay}
+          disabled={state.isProcessing}
+          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-colors ${
+            state.isProcessing
+              ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+              : isLast
+              ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+              : 'bg-amber-500 hover:bg-amber-400 text-black'
+          }`}
+        >
+          <FastForward size={12} />
+          {isLast ? 'Complete Free Agency' : 'End Day'}
+        </button>
+      </div>
+    </div>
   );
 };
 
