@@ -103,9 +103,19 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     if (!state.isDataLoaded) return;
     if (state.gameMode !== 'gm') return;
     if (!state.date) return;
+    // Pass playoffsActive signal so bracketComplete inside the offseason
+    // calendar window correctly flips us out of 'inSeason' (Finals overrun).
+    const playoffsActive = !!(state.playoffs?.series ?? []).some(
+      (s: any) => s.status !== 'complete',
+    );
     let phase: string;
     try {
-      phase = getOffseasonState(state.date, state.leagueStats as any, state.schedule as any).phase;
+      phase = getOffseasonState(
+        state.date,
+        state.leagueStats as any,
+        state.schedule as any,
+        { playoffsActive, draftComplete: !!state.draftComplete },
+      ).phase;
     } catch {
       return;
     }
@@ -121,7 +131,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         pendingOfferDecisions: [],
       }));
     }
-  }, [state.isDataLoaded, state.gameMode, state.date, state.offseasonChecklist]);
+  }, [state.isDataLoaded, state.gameMode, state.date, state.offseasonChecklist, state.playoffs, state.draftComplete]);
 
 const actions = useGameActions(setState, () => stateRef.current);
 

@@ -124,10 +124,26 @@ export function getOffseasonState(
   const openingNightStr = toISODateString(openingNight);
 
   let phase: OffseasonPhase;
-  // Order matters — most specific first. Keep this readable; the orchestrator
-  // refactor will replace it with explicit transitions, but for now the date
-  // ladder mirrors what existing code paths assume.
-  if (dateStr >= openingNightStr) {
+  // ── Offseason calendar window ────────────────────────────────────────────
+  // The offseason runs Jun 15 → Oct 20 of any calendar year (after Finals
+  // end, before the next opening night). Outside this window = always
+  // inSeason. Inside, run the phase cascade.
+  //
+  // Why a calendar window instead of the openingNight check we used before:
+  // getOpeningNightDate(seasonYear) returns Oct of (seasonYear-1) per BBGM
+  // convention (seasonYear = year season ENDS). So pre-rollover (e.g. Jun 23
+  // 2026 with lsYear=2026), openingNight = Oct 21 2025 → the "past opening
+  // night" check fires incorrectly. Calendar window sidesteps the year
+  // convention entirely.
+  const offseasonWindowStart = new Date(Date.UTC(cYear, 5, 15));   // Jun 15 cYear
+  const offseasonWindowEnd   = new Date(Date.UTC(cYear, 9, 21));   // Oct 21 cYear
+  const inOffseasonWindow = c >= offseasonWindowStart && c < offseasonWindowEnd;
+
+  if (!inOffseasonWindow) {
+    phase = 'inSeason';
+  } else if (signals?.playoffsActive) {
+    // Playoffs ran into the offseason calendar window (e.g. Finals Game 7
+    // on Jun 22) → still inSeason until the bracket completes.
     phase = 'inSeason';
   } else if (dateStr >= trainingCampStr) {
     phase = 'preCamp';
@@ -142,12 +158,8 @@ export function getOffseasonState(
   } else if (dateStr === draftDateStr) {
     phase = signals?.draftComplete ? 'postDraft' : 'draftDay';
   } else {
-    // dateStr < draftDateStr — either still in-season or post-Finals lottery window.
-    // Without a playoffs signal we conservatively call it inSeason; the orchestrator
-    // doesn't gate anything on preDraft yet so the distinction is purely diagnostic.
-    phase = signals?.playoffsActive === false && dateStr >= `${cYear}-06-15`
-      ? 'preDraft'
-      : 'inSeason';
+    // dateStr < draftDateStr — post-Finals lottery window (mid-Jun → draft day).
+    phase = 'preDraft';
   }
 
   const faSigningsLegal =
