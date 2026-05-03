@@ -127,11 +127,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const inOffseason =
       phase !== 'inSeason' ||
       !!(state.draftLotteryResult && state.draftLotteryResult.length > 0);
+    // Suppress re-creation if the user manually exited the offseason this
+    // ls.year (clicked "Enter Preseason"). Flag clears at next rollover when
+    // ls.year increments, so the NEXT offseason auto-inits normally.
+    const userManuallyExited = state.offseasonExitedYear === state.leagueStats?.year;
     // Tear-down condition: only when calendar is past opening night AND no
     // pending checklist activity (avoid wiping the user's mid-FA progress).
     const isFullyInSeason = phase === 'inSeason' && !inOffseason;
     const hasChecklist = !!state.offseasonChecklist;
-    if (inOffseason && !hasChecklist) {
+    if (inOffseason && !hasChecklist && !userManuallyExited) {
       setState(prev => ({ ...prev, offseasonChecklist: defaultOffseasonChecklist() }));
     } else if (isFullyInSeason && hasChecklist) {
       setState(prev => ({
@@ -141,7 +145,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         pendingOfferDecisions: [],
       }));
     }
-  }, [state.isDataLoaded, state.gameMode, state.date, state.offseasonChecklist, state.playoffs, state.draftComplete, state.draftLotteryResult]);
+  }, [state.isDataLoaded, state.gameMode, state.date, state.offseasonChecklist, state.playoffs, state.draftComplete, state.draftLotteryResult, state.offseasonExitedYear, state.leagueStats?.year]);
 
 const actions = useGameActions(setState, () => stateRef.current);
 
@@ -287,6 +291,18 @@ const actions = useGameActions(setState, () => stateRef.current);
       const { result } = action.payload;
       setState(prev => prev.allStar
         ? { ...prev, allStar: { ...prev.allStar, throne: result } }
+        : prev);
+      return;
+    }
+
+    // Catch-up dispatch when the toggle was enabled mid-lifecycle (after a phase
+    // start date had already passed). Merges an arbitrary partial onto state.allStar
+    // — used by ThroneContestView's catch-up effect to seed signups / lock field
+    // when the daily tick missed it.
+    if (action.type === 'MERGE_THRONE_LIFECYCLE') {
+      const patch = action.payload?.allStarPatch ?? {};
+      setState(prev => prev.allStar
+        ? { ...prev, allStar: { ...prev.allStar, ...patch } }
         : prev);
       return;
     }
@@ -971,12 +987,17 @@ const actions = useGameActions(setState, () => stateRef.current);
     }
 
     if (action.type === 'OFFSEASON_EXIT') {
-      // Tear down — calendar is back in regular season, sidebar disappears.
+      // Tear down — sidebar disappears, regular calendar UI takes over.
+      // Stamp ls.year so the auto-init useEffect doesn't immediately
+      // re-create the checklist while the calendar is still in the
+      // offseason window (Oct 1-20 preCamp, etc). Flag clears naturally
+      // at next rollover when ls.year increments.
       setState(prev => ({
         ...prev,
         offseasonChecklist: undefined,
         faTagCounter: undefined,
         pendingOfferDecisions: [],
+        offseasonExitedYear: prev.leagueStats?.year,
       }));
       return;
     }
