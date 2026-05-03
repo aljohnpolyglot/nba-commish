@@ -12,7 +12,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { CheckCircle2, Circle, ChevronRight, FastForward, Sparkles, Wrench, ListChecks, X, FileSignature, Bot, CheckCircle } from 'lucide-react';
+import { CheckCircle2, Circle, ChevronRight, FastForward, Sparkles, Wrench, ListChecks, X, FileSignature, Bot, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { convertTo2KRating, normalizeDate } from '../../utils/helpers';
 import { getDraftDate, getDraftLotteryDate, getTrainingCampDate, toISODateString } from '../../utils/dateUtils';
@@ -475,6 +475,32 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       .filter((p: any) => p.tid === state.userTeamId && (p as any).draft?.year === currentYear)
       .sort((a: any, b: any) => ((a as any).draft?.pick ?? 99) - ((b as any).draft?.pick ?? 99));
   }, [state.players, state.userTeamId, state.gameMode, state.leagueStats?.year]);
+
+  // ── Expiring contracts headsup ──────────────────────────────────────────
+  // Count user-team players whose contracts expire this year and aren't
+  // covered by team options (those have their own gate). If > 0 and we're
+  // pre-FA-open, show a banner — they'll walk as UFA if not re-signed.
+  // Mirrors the rows logic from useExpiringResignGate (kept inline to
+  // avoid coupling the sidebar to the hook's internal state machine).
+  const expiringUnsignedCount = React.useMemo(() => {
+    if (state.gameMode !== 'gm' || state.userTeamId == null) return 0;
+    const currentYear = state.leagueStats?.year ?? 2026;
+    return state.players.filter((p: any) =>
+      p.tid === state.userTeamId &&
+      p.status === 'Active' &&
+      p.contract &&
+      (p.contract.exp ?? currentYear) === currentYear &&
+      !p.contract.hasTeamOption
+    ).length;
+  }, [state.gameMode, state.userTeamId, state.players, state.leagueStats?.year]);
+  // Only show pre-FA-open (banner becomes redundant once FA tag counter is running).
+  const showExpiringBanner = expiringUnsignedCount > 0 && (state.faTagCounter ?? 0) === 0;
+  const handleExpiringBanner = () => {
+    dispatchAction({
+      type: 'UPDATE_STATE',
+      payload: { pendingTeamOfficeNav: { tab: 'intel', intelTab: 'expiring' } },
+    } as any);
+  };
   const handleAutoResolveAll = () => {
     // Phase D — real implementation. Dispatches the OFFSEASON_AUTO_RESOLVE_ALL
     // reducer case, which kicks off a SIMULATE_TO_DATE lazy sim with
@@ -501,6 +527,28 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
           Aufgaben
         </h2>
       </header>
+
+      {/* Expiring contracts headsup — clickable banner that deep-links to
+          TeamIntel/Expiring where the user can re-sign per row. Renders only
+          pre-FA-open since once FA opens those players become regular FAs. */}
+      {showExpiringBanner && (
+        <button
+          onClick={handleExpiringBanner}
+          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-rose-500/10 border border-rose-500/40 hover:bg-rose-500/20 transition-colors text-left"
+          title="These players' contracts expire this offseason. Re-sign them before FA opens or they walk as UFA."
+        >
+          <AlertTriangle size={14} className="text-rose-400 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-[11px] font-black uppercase tracking-tight text-rose-200">
+              {expiringUnsignedCount} expiring contract{expiringUnsignedCount === 1 ? '' : 's'}
+            </div>
+            <div className="text-[9px] text-rose-300/70">
+              May walk as UFA — review before FA opens
+            </div>
+          </div>
+          <ChevronRight size={12} className="text-rose-400/60 shrink-0" />
+        </button>
+      )}
 
       <ol className="space-y-1.5">
         {OFFSEASON_ROW_ORDER.map(row => {
