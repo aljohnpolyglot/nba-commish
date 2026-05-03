@@ -197,9 +197,28 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   })();
   // Training camp: marked done once the calendar reaches opening night-ish
   // (mid-October) — the user has had the camp window to set drills.
+  // ALSO marked done when the user has actively engaged with training
+  // (set a calendar plan, assigned a mentor, picked dev focus, or changed
+  // training intensity from default). This way clicking "auto-resolve all"
+  // after engaging won't overwrite the user's manual work.
   const cMonth = state.date ? new Date(state.date).getUTCMonth() + 1 : 0;
   const cDay = state.date ? new Date(state.date).getUTCDate() : 0;
-  const trainingCampDone = (cMonth === 10 && cDay >= 21) || cMonth >= 11;
+  const calendarTrainingCampDone = (cMonth === 10 && cDay >= 21) || cMonth >= 11;
+  const hasTrainingEngagement = React.useMemo(() => {
+    if (state.gameMode !== 'gm' || state.userTeamId == null) return false;
+    const userTeam = state.teams.find((t: any) => t.id === state.userTeamId) as any;
+    // Any saved per-day plan for the user's team
+    if (userTeam?.trainingCalendar && Object.keys(userTeam.trainingCalendar).length > 0) return true;
+    // Any user-team player with custom dev focus / mentor / non-default intensity
+    return state.players.some((p: any) =>
+      p.tid === state.userTeamId && (
+        !!p.devFocus ||
+        !!p.mentorId ||
+        (p.trainingIntensity && p.trainingIntensity !== 'Normal')
+      )
+    );
+  }, [state.gameMode, state.userTeamId, state.teams, state.players]);
+  const trainingCampDone = calendarTrainingCampDone || hasTrainingEngagement;
   // Qualifying offers: empty candidate list = nothing to decide → done.
   const noQOCandidates = state.gameMode === 'gm'
     && state.userTeamId != null
