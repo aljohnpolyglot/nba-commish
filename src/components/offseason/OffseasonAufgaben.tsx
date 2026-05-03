@@ -524,7 +524,7 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
           Offseason
         </span>
         <h2 className="text-base font-black text-white uppercase tracking-tight">
-          Aufgaben
+          Tasks
         </h2>
       </header>
 
