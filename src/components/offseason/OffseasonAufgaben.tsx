@@ -218,22 +218,28 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
 
   useEffect(() => {
     if (!checklist) return;
-    if (lotteryDone && checklist.draftLottery === 'pending') {
+    // Mark a row done if its engine signal fires AND status is anything
+    // other than already-resolved (done/skipped). User may have clicked
+    // Enter (→ 'in-progress') BEFORE the signal fires (e.g. clicks Run
+    // Draft, simulates to draft day, last pick commits → draftComplete=true
+    // → row should auto-flip to 'done' even though it's currently 'in-progress').
+    const isUnresolved = (s: OffseasonRowStatus) => s === 'pending' || s === 'in-progress';
+    if (lotteryDone && isUnresolved(checklist.draftLottery)) {
       dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'draftLottery' } } as any);
     }
-    if (draftDone && checklist.draft === 'pending') {
+    if (draftDone && isUnresolved(checklist.draft)) {
       dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'draft' } } as any);
     }
-    if (rookieContractsDone && checklist.rookieContracts === 'pending') {
+    if (rookieContractsDone && isUnresolved(checklist.rookieContracts)) {
       dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'rookieContracts' } } as any);
     }
-    if (noPendingTeamOptions && (checklist.options === 'pending' || checklist.options === 'in-progress')) {
+    if (noPendingTeamOptions && isUnresolved(checklist.options)) {
       dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'options' } } as any);
     }
-    if (trainingCampDone && checklist.trainingCamp === 'pending') {
+    if (trainingCampDone && isUnresolved(checklist.trainingCamp)) {
       dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'trainingCamp' } } as any);
     }
-    if (noQOCandidates && checklist.qualifyingOffers === 'pending') {
+    if (noQOCandidates && isUnresolved(checklist.qualifyingOffers)) {
       dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'qualifyingOffers' } } as any);
     }
   }, [lotteryDone, draftDone, rookieContractsDone, noPendingTeamOptions, trainingCampDone, noQOCandidates, checklist?.draftLottery, checklist?.draft, checklist?.rookieContracts, checklist?.options, checklist?.trainingCamp, checklist?.qualifyingOffers]);
