@@ -136,15 +136,37 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const checklist = state.offseasonChecklist;
 
-  // Auto-sync: when engine state proves a phase is done (lottery drawn,
-  // draft complete, etc.), flip the corresponding row to 'done' so the user
-  // doesn't see pending rows for things that have actually happened. This
-  // runs every render — cheap, only dispatches when a status actually
-  // needs to change. Hooks must run before any early-return, so the
-  // useEffect lives here even though the component bails out below when
-  // the checklist hasn't been initialized yet.
+  // Auto-sync: when engine state proves a phase is done, flip the
+  // corresponding row to 'done' so the user doesn't see pending rows for
+  // things already handled. Runs every render — cheap, only dispatches when
+  // a status actually needs to change. Hooks must run before any early-return,
+  // so the useEffect lives here even though the component bails out below.
   const lotteryDone = !!(state.draftLotteryResult && state.draftLotteryResult.length > 0);
   const draftDone = !!state.draftComplete;
+  // Rookie contracts: in real NBA, R1 picks are guaranteed per CBA (mandatory
+  // signing) and R2 defaults are handled by autoRunDraft + AI logic. Once the
+  // draft is complete, the GM has nothing to actively decide here.
+  const rookieContractsDone = draftDone;
+  // Team options: row is done when no expiring team options remain for the
+  // user team OR rollover has already advanced the year past them.
+  const noPendingTeamOptions = (() => {
+    if (state.gameMode !== 'gm' || state.userTeamId == null) return false;
+    const currentYear = state.leagueStats?.year ?? 2026;
+    const nextYear = currentYear + 1;
+    const pending = state.players.filter((p: any) => {
+      if (p.tid !== state.userTeamId || p.status !== 'Active') return false;
+      if (!p.contract?.hasTeamOption) return false;
+      const teamOptionExp = Number(p.contract?.teamOptionExp ?? p.contract?.exp ?? 0);
+      return teamOptionExp === nextYear;
+    });
+    return pending.length === 0;
+  })();
+  // Training camp: marked done once the calendar reaches opening night-ish
+  // (mid-October) — the user has had the camp window to set drills.
+  const cMonth = state.date ? new Date(state.date).getUTCMonth() + 1 : 0;
+  const cDay = state.date ? new Date(state.date).getUTCDate() : 0;
+  const trainingCampDone = (cMonth === 10 && cDay >= 21) || cMonth >= 11;
+
   useEffect(() => {
     if (!checklist) return;
     if (lotteryDone && checklist.draftLottery === 'pending') {
@@ -153,7 +175,16 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     if (draftDone && checklist.draft === 'pending') {
       dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'draft' } } as any);
     }
-  }, [lotteryDone, draftDone, checklist?.draftLottery, checklist?.draft]);
+    if (rookieContractsDone && checklist.rookieContracts === 'pending') {
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'rookieContracts' } } as any);
+    }
+    if (noPendingTeamOptions && (checklist.options === 'pending' || checklist.options === 'in-progress')) {
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'options' } } as any);
+    }
+    if (trainingCampDone && checklist.trainingCamp === 'pending') {
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'trainingCamp' } } as any);
+    }
+  }, [lotteryDone, draftDone, rookieContractsDone, noPendingTeamOptions, trainingCampDone, checklist?.draftLottery, checklist?.draft, checklist?.rookieContracts, checklist?.options, checklist?.trainingCamp]);
 
   if (!checklist) return null;
 
@@ -183,6 +214,28 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       // instead of navigating away. Mark in-progress so sidebar reflects state.
       setOptionsModalOpen(true);
       dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      return;
+    }
+    if (row === 'myFAs') {
+      // Read-only review — navigate to TeamIntel and instantly mark done.
+      // The user will see their expiring FAs in TeamIntelExpiring.
+      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      // Defer the complete dispatch one tick so the user sees the row as
+      // 'in-progress' briefly before checking off — feels intentional.
+      setTimeout(() => {
+        dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row } } as any);
+      }, 400);
+      return;
+    }
+    if (row === 'qualifyingOffers') {
+      // Phase B: full QO modal stack lands with Phase C alongside the FA
+      // dashboard. For now, navigate to TeamIntel (Expiring tab shows RFA
+      // candidates) and mark done — the existing TeamIntelExpiring view
+      // surfaces the data the user needs.
+      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      setTimeout(() => {
+        dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row } } as any);
+      }, 400);
       return;
     }
     dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
