@@ -201,3 +201,98 @@ export function logOffseasonDrift(
 export function _resetDriftThrottle(): void {
   lastWarnedAt.clear();
 }
+
+// ─── 2K-style checklist helpers (Phase A foundation) ───────────────────────
+// Pure utilities for the AUFGABEN sidebar. Co-located here so all offseason
+// metadata lives in one folder — no new files (keeps the tree uncluttered).
+
+import type { OffseasonChecklist, OffseasonChecklistRow, OffseasonRowStatus, Tab } from '../../types';
+
+/** Visual order of the checklist sidebar (matches NBA 2K MyGM "Aufgaben"). */
+export const OFFSEASON_ROW_ORDER: readonly OffseasonChecklistRow[] = [
+  'draftLottery',
+  'options',
+  'qualifyingOffers',
+  'myFAs',
+  'draft',
+  'rookieContracts',
+  'freeAgency',
+  'trainingCamp',
+] as const;
+
+export const OFFSEASON_ROW_LABELS: Record<OffseasonChecklistRow, string> = {
+  draftLottery:     'Draft Lottery',
+  options:          'Team / Player Options',
+  qualifyingOffers: 'Qualifying Offers',
+  myFAs:            'My Free Agents',
+  draft:            'NBA Draft',
+  rookieContracts:  'Rookie Contracts',
+  freeAgency:       'Free Agency',
+  trainingCamp:     'Training Camp',
+};
+
+export const OFFSEASON_ROW_DESCRIPTIONS: Record<OffseasonChecklistRow, string> = {
+  draftLottery:     'Watch the lottery draw to set this year\'s draft order.',
+  options:          'Decide which team options to exercise and review player option outcomes.',
+  qualifyingOffers: 'Submit qualifying offers to make eligible players restricted free agents.',
+  myFAs:            'Review the players whose contracts have expired and where they stand.',
+  draft:            'Run the NBA Draft and select your rookies.',
+  rookieContracts:  'Sign your drafted rookies to their first NBA contracts.',
+  freeAgency:       'Negotiate with free agents over the 13-day signing window.',
+  trainingCamp:     'Set your training camp drills and finalize your opening-night roster.',
+};
+
+/** Where each row navigates when "Enter Phase" is clicked. */
+export const OFFSEASON_ROW_TAB: Record<OffseasonChecklistRow, Tab> = {
+  draftLottery:     'Draft Lottery',
+  options:          'Team Office',
+  qualifyingOffers: 'Team Office',
+  myFAs:            'Team Office',
+  draft:            'Draft Board',
+  rookieContracts:  'Team Office',
+  freeAgency:       'Team Office',
+  trainingCamp:     'Training Center',
+};
+
+/** Default — every row 'pending'. Created when offseason begins. */
+export function defaultOffseasonChecklist(): OffseasonChecklist {
+  return {
+    draftLottery:     'pending',
+    options:          'pending',
+    qualifyingOffers: 'pending',
+    myFAs:            'pending',
+    draft:            'pending',
+    rookieContracts:  'pending',
+    freeAgency:       'pending',
+    trainingCamp:     'pending',
+  };
+}
+
+/** First non-completed row. Drives the header CTA's label. Null = all done. */
+export function firstUnfinishedRow(checklist: OffseasonChecklist | undefined): OffseasonChecklistRow | null {
+  if (!checklist) return null;
+  for (const row of OFFSEASON_ROW_ORDER) {
+    const status = checklist[row];
+    if (status === 'pending' || status === 'in-progress') return row;
+  }
+  return null;
+}
+
+/** All rows resolved (done or skipped). */
+export function isChecklistComplete(checklist: OffseasonChecklist | undefined): boolean {
+  if (!checklist) return false;
+  return OFFSEASON_ROW_ORDER.every(row => {
+    const s = checklist[row];
+    return s === 'done' || s === 'skipped';
+  });
+}
+
+/** Update one row immutably. */
+export function setRowStatus(
+  checklist: OffseasonChecklist | undefined,
+  row: OffseasonChecklistRow,
+  status: OffseasonRowStatus,
+): OffseasonChecklist {
+  const base = checklist ?? defaultOffseasonChecklist();
+  return { ...base, [row]: status };
+}

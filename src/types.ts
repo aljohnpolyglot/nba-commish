@@ -1453,6 +1453,19 @@ historicalAwards: HistoricalAward[];
   pendingAwardToasts?: { playerName: string; teamName: string; teamAbbrev: string; awardLabel: string }[];
   pendingPlayoffsToasts?: { teamName: string; body: string }[];
   pendingOptionToasts?: { playerName: string; teamName: string; pos: string; decision: 'player-in' | 'player-out' | 'team-exercised' | 'team-declined'; amountM?: number }[];
+
+  // ── Offseason 2K-style checklist (Phase A — sandboxed task flow) ──────────
+  // Drives the new AUFGABEN sidebar + per-phase navigation. Lives only when
+  // the calendar enters the offseason; cleared on next opening night.
+  offseasonChecklist?: OffseasonChecklist;
+  /** FA Tag counter (1..faTagsTotal). Set when user enters FA phase. */
+  faTagCounter?: number;
+  /** Total FA tags (default 13 — configurable later). */
+  faTagsTotal?: number;
+  /** Modal-stack queue for the GM's per-player option / QO / rookie decisions.
+   *  Populated by seasonRollover §0a/§0b (options) and autoRunDraft (rookies);
+   *  drained by the corresponding modal stacks. */
+  pendingOfferDecisions?: OffseasonPendingDecision[];
   // Single-game franchise records set during sim — merged into TeamHistoryView Records tab
   simFranchiseRecords?: Array<{
     tid: number; category: string; isPlayoff: boolean;
@@ -1490,6 +1503,39 @@ historicalAwards: HistoricalAward[];
     }>;
   };
 }
+// ── Offseason 2K-style checklist types ──────────────────────────────────────
+// The 8 phase rows the user steps through between Finals end and opening night.
+// Order matters — reflects the visual sidebar order (Bilder #2/#7/#16).
+export type OffseasonChecklistRow =
+  | 'draftLottery'
+  | 'options'
+  | 'qualifyingOffers'
+  | 'myFAs'
+  | 'draft'
+  | 'rookieContracts'
+  | 'freeAgency'
+  | 'trainingCamp';
+
+export type OffseasonRowStatus = 'pending' | 'in-progress' | 'done' | 'skipped';
+
+export type OffseasonChecklist = Record<OffseasonChecklistRow, OffseasonRowStatus>;
+
+/** Single decision the GM still has to resolve in a modal stack. The stack
+ *  drains FIFO; auto-recommendation is precomputed so the modal can suggest
+ *  Accept/Decline. */
+export interface OffseasonPendingDecision {
+  type: 'player-option' | 'team-option' | 'qualifying-offer' | 'rookie-contract';
+  playerId: string;
+  playerName: string;
+  teamId: number;
+  /** What the AI would have done if the user weren't in GM mode. */
+  recommendedAction: 'accept' | 'decline';
+  /** Human-readable explanation shown in the modal under the recommendation. */
+  reason: string;
+  /** Per-type extras (option amount, QO amount, rookie scale, etc.). */
+  extra?: Record<string, any>;
+}
+
 export interface SeasonHistoryEntry {
   year: number;
   champion: string;
@@ -1572,7 +1618,11 @@ export interface OwnedRealEstateAsset {
   instanceId: string;
 }
 
-export type ActionType = 'SET_TRAINING_DAILY_PLAN' | 'SET_PLAYER_DEV_FOCUS' | 'SET_PLAYER_MENTOR' | 'RESET_PLAYER_FAMILIARITY' | 'SET_PLAYER_TRAINING_INTENSITY' | 'AUTOFILL_TEAM_TRAINING_CALENDAR' | 'REPLY_EMAIL' | 'BRIBE' | 'HYPNOTIZE' | 'PUBLIC_STATEMENT' | 'ADVANCE_DAY' | 'DIRECT_MESSAGE' | 'SEND_MESSAGE' | 'SEND_CHAT_MESSAGE' | 'UPDATE_RULES' | 'SUSPEND_PLAYER' | 'CLEAR_OUTCOME' | 'SAVE_SOCIAL_THREAD' | 'FINE_PERSON' | 'BRIBE_PERSON' | 'GLOBAL_GAMES' | 'LEAK_SCANDAL' | 'HYPNOTIC_BROADCAST' | 'RIG_LOTTERY' | 'CELEBRITY_ROSTER' | 'OWNER_DINNER' | 'PUBLIC_ANNOUNCEMENT' | 'SUSPEND_PERSON' | 'DRUG_TEST_PERSON' | 'INVITE_DINNER' | 'EXPANSION_DRAFT' | 'ANNOUNCE_CHANGE' | 'START_GAME' | 'LOAD_GAME' | 'UPDATE_SAVE_ID' | 'SIGN_FREE_AGENT' | 'EXECUTIVE_TRADE' | 'TRAVEL' | 'GIVE_MONEY' | 'VISIT_NON_NBA_TEAM' | 'INVITE_PERFORMANCE' | 'FORCE_TRADE' | 'ADJUST_FINANCIALS' | 'FOLLOW_USER' | 'UNFOLLOW_USER' | 'ADD_PENDING_HYPNOSIS' | 'MARK_PAYSLIPS_READ' | 'TRANSFER_FUNDS' | 'SET_CHRISTMAS_GAMES' | 'SABOTAGE_PLAYER' | 'GO_TO_CLUB' | 'ENDORSE_HOF' | 'SIMULATE_TO_DATE' | 'ADD_PRESEASON_INTERNATIONAL' | 'ALL_STAR_ADVANCE_VOTES' | 'ALL_STAR_ANNOUNCE_STARTERS' | 'ALL_STAR_ANNOUNCE_RESERVES' | 'ALL_STAR_SIMULATE_WEEKEND' | 'GENERATE_PLAYOFF_BRACKET' | 'SIM_PLAYOFF_ROUND' | 'SAVE_CONTEST_RESULT' | 'SAVE_THRONE_RESULT' | 'RECORD_WATCHED_GAME' | 'WAIVE_PLAYER' | 'FIRE_PERSONNEL' | 'STORE_PURCHASE' | 'RIG_ALL_STAR_VOTING' | 'SET_ALL_STAR_REPLACEMENT' | 'SET_DUNK_CONTESTANTS' | 'SET_THREE_POINT_CONTESTANTS' | 'ADD_ALL_STAR_REPLACEMENT' | 'REAL_ESTATE_INVENTORY_UPDATE' | 'COMMISH_STORE_INVENTORY_UPDATE' | 'CACHE_PROFILE' | 'UPDATE_USER_PROFILE' | 'ADD_USER_POST' | 'ADD_REPLIES' | 'SET_FEED' | 'UPDATE_STATE' | 'SUBMIT_FA_BID' | 'RETIRE_JERSEY_NUMBER' | 'MATCH_RFA_OFFER' | 'DECLINE_RFA_OFFER' | 'TOGGLE_LIKE' | 'TOGGLE_RETWEET' | 'ADD_POST' | 'ADD_REPLY' | 'EXERCISE_TEAM_OPTION' | 'DECLINE_TEAM_OPTION' | 'CONVERT_CONTRACT_TYPE';
+export type ActionType = 'SET_TRAINING_DAILY_PLAN' | 'SET_PLAYER_DEV_FOCUS' | 'SET_PLAYER_MENTOR' | 'RESET_PLAYER_FAMILIARITY' | 'SET_PLAYER_TRAINING_INTENSITY' | 'AUTOFILL_TEAM_TRAINING_CALENDAR' | 'REPLY_EMAIL' | 'BRIBE' | 'HYPNOTIZE' | 'PUBLIC_STATEMENT' | 'ADVANCE_DAY' | 'DIRECT_MESSAGE' | 'SEND_MESSAGE' | 'SEND_CHAT_MESSAGE' | 'UPDATE_RULES' | 'SUSPEND_PLAYER' | 'CLEAR_OUTCOME' | 'SAVE_SOCIAL_THREAD' | 'FINE_PERSON' | 'BRIBE_PERSON' | 'GLOBAL_GAMES' | 'LEAK_SCANDAL' | 'HYPNOTIC_BROADCAST' | 'RIG_LOTTERY' | 'CELEBRITY_ROSTER' | 'OWNER_DINNER' | 'PUBLIC_ANNOUNCEMENT' | 'SUSPEND_PERSON' | 'DRUG_TEST_PERSON' | 'INVITE_DINNER' | 'EXPANSION_DRAFT' | 'ANNOUNCE_CHANGE' | 'START_GAME' | 'LOAD_GAME' | 'UPDATE_SAVE_ID' | 'SIGN_FREE_AGENT' | 'EXECUTIVE_TRADE' | 'TRAVEL' | 'GIVE_MONEY' | 'VISIT_NON_NBA_TEAM' | 'INVITE_PERFORMANCE' | 'FORCE_TRADE' | 'ADJUST_FINANCIALS' | 'FOLLOW_USER' | 'UNFOLLOW_USER' | 'ADD_PENDING_HYPNOSIS' | 'MARK_PAYSLIPS_READ' | 'TRANSFER_FUNDS' | 'SET_CHRISTMAS_GAMES' | 'SABOTAGE_PLAYER' | 'GO_TO_CLUB' | 'ENDORSE_HOF' | 'SIMULATE_TO_DATE' | 'ADD_PRESEASON_INTERNATIONAL' | 'ALL_STAR_ADVANCE_VOTES' | 'ALL_STAR_ANNOUNCE_STARTERS' | 'ALL_STAR_ANNOUNCE_RESERVES' | 'ALL_STAR_SIMULATE_WEEKEND' | 'GENERATE_PLAYOFF_BRACKET' | 'SIM_PLAYOFF_ROUND' | 'SAVE_CONTEST_RESULT' | 'SAVE_THRONE_RESULT' | 'RECORD_WATCHED_GAME' | 'WAIVE_PLAYER' | 'FIRE_PERSONNEL' | 'STORE_PURCHASE' | 'RIG_ALL_STAR_VOTING' | 'SET_ALL_STAR_REPLACEMENT' | 'SET_DUNK_CONTESTANTS' | 'SET_THREE_POINT_CONTESTANTS' | 'ADD_ALL_STAR_REPLACEMENT' | 'REAL_ESTATE_INVENTORY_UPDATE' | 'COMMISH_STORE_INVENTORY_UPDATE' | 'CACHE_PROFILE' | 'UPDATE_USER_PROFILE' | 'ADD_USER_POST' | 'ADD_REPLIES' | 'SET_FEED' | 'UPDATE_STATE' | 'SUBMIT_FA_BID' | 'RETIRE_JERSEY_NUMBER' | 'MATCH_RFA_OFFER' | 'DECLINE_RFA_OFFER' | 'TOGGLE_LIKE' | 'TOGGLE_RETWEET' | 'ADD_POST' | 'ADD_REPLY' | 'EXERCISE_TEAM_OPTION' | 'DECLINE_TEAM_OPTION' | 'CONVERT_CONTRACT_TYPE' |
+  // ── Offseason 2K checklist actions ─────────────────────────────────────
+  'OFFSEASON_ENTER_PHASE' | 'OFFSEASON_COMPLETE_PHASE' | 'OFFSEASON_SKIP_PHASE' |
+  'OFFSEASON_AUTO_RESOLVE_ALL' | 'OFFSEASON_ADVANCE_FA_TAG' | 'OFFSEASON_EXIT' |
+  'OFFSEASON_RESOLVE_DECISION' | 'OFFSEASON_RESET_CHECKLIST';
 
 export interface UserAction {
   type: ActionType;

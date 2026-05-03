@@ -21,6 +21,13 @@ import { computeRookieSalaryUSD } from '../utils/rookieContractUtils';
 import { generateAIBids, isPlausibleActiveMarket, MAX_FA_MARKET_DECISION_WINDOW_DAYS } from '../services/freeAgencyBidding';
 import { setAssistantGMActive } from '../services/assistantGMFlag';
 import { getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd, parseGameDate } from '../utils/dateUtils';
+import {
+  defaultOffseasonChecklist,
+  setRowStatus,
+  OFFSEASON_ROW_TAB,
+  getOffseasonState,
+} from '../services/offseason/offseasonState';
+import type { OffseasonChecklistRow } from '../types';
 
 interface GameContextType {
   state: GameState;
@@ -86,6 +93,35 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       setCurrentView('Team Office');
     }
   }, [state.isDataLoaded, state.gameMode]);
+
+  // ── Offseason 2K-style checklist auto-lifecycle ────────────────────────
+  // Lazy-init when calendar enters an offseason phase (anything besides
+  // 'inSeason'); tear down when calendar returns to 'inSeason'. GM mode only
+  // — commissioners see the regular calendar UI. Skipped if state isn't
+  // loaded yet to avoid spurious init during game-start.
+  useEffect(() => {
+    if (!state.isDataLoaded) return;
+    if (state.gameMode !== 'gm') return;
+    if (!state.date) return;
+    let phase: string;
+    try {
+      phase = getOffseasonState(state.date, state.leagueStats as any, state.schedule as any).phase;
+    } catch {
+      return;
+    }
+    const inOffseason = phase !== 'inSeason';
+    const hasChecklist = !!state.offseasonChecklist;
+    if (inOffseason && !hasChecklist) {
+      setState(prev => ({ ...prev, offseasonChecklist: defaultOffseasonChecklist() }));
+    } else if (!inOffseason && hasChecklist) {
+      setState(prev => ({
+        ...prev,
+        offseasonChecklist: undefined,
+        faTagCounter: undefined,
+        pendingOfferDecisions: [],
+      }));
+    }
+  }, [state.isDataLoaded, state.gameMode, state.date, state.offseasonChecklist]);
 
 const actions = useGameActions(setState, () => stateRef.current);
 
@@ -803,6 +839,65 @@ const actions = useGameActions(setState, () => stateRef.current);
     }
     if (action.type === 'UPDATE_STATE') {
       setState(prev => ({ ...prev, ...action.payload }));
+      return;
+    }
+
+    // ── Offseason 2K-style checklist actions (Phase A) ────────────────────
+    // Pure UI-state mutations: navigation + row-status flips. Heavy work
+    // (auto-resolve, FA tag advance) is delegated to existing services and
+    // wired in subsequent phases.
+    if (action.type === 'OFFSEASON_ENTER_PHASE') {
+      const row = (action.payload as { row: OffseasonChecklistRow }).row;
+      setState(prev => ({
+        ...prev,
+        offseasonChecklist: setRowStatus(prev.offseasonChecklist, row, 'in-progress'),
+      }));
+      // Auto-navigate to the right view so user lands where the action lives.
+      const target = OFFSEASON_ROW_TAB[row];
+      if (target) setCurrentView(target);
+      return;
+    }
+
+    if (action.type === 'OFFSEASON_COMPLETE_PHASE') {
+      const row = (action.payload as { row: OffseasonChecklistRow }).row;
+      setState(prev => ({
+        ...prev,
+        offseasonChecklist: setRowStatus(prev.offseasonChecklist, row, 'done'),
+      }));
+      return;
+    }
+
+    if (action.type === 'OFFSEASON_SKIP_PHASE') {
+      // Skip = trust the AI auto-resolve already baked into seasonRollover /
+      // autoResolvers. Phase B/C will hook actual auto-resolution per row;
+      // for now this just flips the status so the sidebar advances.
+      const row = (action.payload as { row: OffseasonChecklistRow }).row;
+      setState(prev => ({
+        ...prev,
+        offseasonChecklist: setRowStatus(prev.offseasonChecklist, row, 'skipped'),
+      }));
+      return;
+    }
+
+    if (action.type === 'OFFSEASON_RESET_CHECKLIST') {
+      // Called once when offseason starts (or by debug tools to retry a phase).
+      setState(prev => ({
+        ...prev,
+        offseasonChecklist: defaultOffseasonChecklist(),
+        faTagCounter: undefined,
+        pendingOfferDecisions: [],
+      }));
+      return;
+    }
+
+    if (action.type === 'OFFSEASON_EXIT') {
+      // Tear down — calendar is back in regular season, sidebar disappears.
+      setState(prev => ({
+        ...prev,
+        offseasonChecklist: undefined,
+        faTagCounter: undefined,
+        pendingOfferDecisions: [],
+      }));
       return;
     }
 

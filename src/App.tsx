@@ -10,6 +10,7 @@ import { ClubEffect } from './components/effects/ClubEffect';
 import { ToastNotifier } from './components/shared/ToastNotifier';
 import { RFAOfferSheetModal } from './components/modals/RFAOfferSheetModal';
 import { PlayButton } from './components/shared/PlayButton';
+import { OffseasonNextActionButton, OffseasonPhaseBadge } from './components/offseason/OffseasonAufgaben';
 import { LazySimLoadingScreen } from './components/setup/LazySimLoadingScreen';
 import { Menu, X } from 'lucide-react';
 import { SaveManager } from './services/SaveManager';
@@ -180,7 +181,7 @@ function GameLayout() {
       />
       
       <main className="flex-1 flex flex-col relative overflow-hidden">
-        {/* Mobile Header: hamburger + Play button */}
+        {/* Mobile Header: hamburger + Play button (or Offseason CTA + badge). */}
         <div className="md:hidden px-3 py-2 bg-slate-900 border-b border-slate-800 flex items-center gap-3 shrink-0">
           <button
             onClick={() => setIsSidebarOpen(true)}
@@ -188,12 +189,26 @@ function GameLayout() {
           >
             <Menu size={20} />
           </button>
-          <PlayButton setCurrentView={setCurrentView} />
+          {state.offseasonChecklist ? (
+            <>
+              <OffseasonNextActionButton setCurrentView={setCurrentView} />
+              <OffseasonPhaseBadge />
+            </>
+          ) : (
+            <PlayButton setCurrentView={setCurrentView} />
+          )}
         </div>
 
-        {/* Desktop Play bar */}
-        <div className="hidden md:flex px-4 py-2 bg-slate-900/50 border-b border-slate-800/60 items-center shrink-0">
-          <PlayButton setCurrentView={setCurrentView} />
+        {/* Desktop Play bar — same swap, calendar UI hidden when offseason. */}
+        <div className="hidden md:flex px-4 py-2 bg-slate-900/50 border-b border-slate-800/60 items-center gap-3 shrink-0">
+          {state.offseasonChecklist ? (
+            <>
+              <OffseasonNextActionButton setCurrentView={setCurrentView} />
+              <OffseasonPhaseBadge />
+            </>
+          ) : (
+            <PlayButton setCurrentView={setCurrentView} />
+          )}
         </div>
 
         <div className="flex-1 min-h-0">
