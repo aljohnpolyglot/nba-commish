@@ -87,6 +87,47 @@ Full P0 + P1 spec lives in CHANGELOG Session 36. Below are the deferred / long-t
 
 ---
 
+## QUEUED - 2K-style sandboxed offseason phases (next big refactor)
+
+### The vision
+Instead of advancing one day at a time through boring dead zones, each major offseason phase becomes a **self-contained portal** — like NBA 2K's MyGM flow. PlayButton becomes "Enter [Phase]" at each boundary. Inside a phase portal, the user sees only what's relevant to that phase. Clicking "Complete [Phase]" runs all background AI in one shot and drops them at the next portal.
+
+```
+SEASON → [DRAFT PORTAL] → [RE-SIGNING PORTAL] → [FREE AGENCY PORTAL] → PRESEASON
+```
+
+### Why this solves the "stuck" problem
+- Post-draft dead zone (June 27–June 30): today = boring, nothing fires. Portal compresses it to 1 click.
+- Moratorium (July 1–6): today = signings blocked, user confused. Portal shows "Moratorium active — markets open July 7" counter.
+- FA (July 7–Oct 1): today = 30+ days of 1-click advances. Portal shows live bid feed + AI signing news as a single session.
+
+### Phase portals (proposed)
+1. **Draft Portal** — already exists as `DraftSimulatorView`. Just auto-navigate to it.
+   - Entry trigger: date reaches `draftDateStr` AND `!draftComplete`
+   - Exit: `draftComplete = true` → auto-drops to Re-signing Portal
+2. **Re-signing Portal** — new screen. Shows:
+   - Your team's expiring contracts (player options, team options, Bird Rights)
+   - AI teams doing the same in background
+   - "Skip" (let AI handle) or "Done" (proceed)
+   - Exit: all options decided → auto-drops to FA Portal
+3. **FA Portal** — enhanced FA view. Shows:
+   - All FAs in market (replaces moratorium wait)
+   - AI bid feed (news ticker: "Shai signs with OKC — 4yr $180M")
+   - User can bid, skip, or "Fast-forward FA" (AI fills the rest)
+   - Moratorium countdown shown if before July 7
+   - Exit: "Complete FA" → routes overseas players (Oct 1) → Pre-camp
+4. **Pre-camp Portal** — simplified. Shows training camp roster + "Advance to Opening Night" one-click.
+
+### Implementation plan (Ship of Theseus, 3 sessions)
+- **Session A**: Phase boundary detection → add `enterPhase()` hook in `offseasonState.ts` that emits a `PhaseTransition` event; PlayButton subscribes and shows "Enter [Phase]" CTA when a new portal is waiting.
+- **Session B**: Build `OffseasonPhasePortal.tsx` wrapper + Re-signing Portal screen.
+- **Session C**: FA Portal — compress AI signings into a "fast-forward" mode, live news feed during FA.
+
+### Pre-requisite
+Sessions 1-5 offseason orchestrator is the foundation. `state.phase` as a stored field (Session 6, below) should land before Session A above.
+
+---
+
 ## QUEUED - Offseason orchestrator (Sessions 1-6 shipped, follow-ups deferred)
 
 Sessions 1-5 built `services/offseason/offseasonState.ts` + `offseasonPlan.ts` and routed `simulationHandler`, `lazySimRunner`, `faMarketTicker`, `AIFreeAgentHandler` (FA passes + Bird Rights), `seasonRollover`, `externalSigningRouter`, and `PlayButton` through it. Single grep tag `[OSPLAN]` covers all dispatch decisions + drift warnings. Behavior-preserving — no in-browser play-through validation yet.

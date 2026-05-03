@@ -12,6 +12,7 @@ import { UNDRAFTED_OVR_CAP } from '../../constants';
 import { getRolloverDate, isDraftBlockedByUnresolvedPlayoffs, toISODateString } from '../../utils/dateUtils';
 import { isNbaCupEnabled } from '../../utils/ruleFlags';
 import { buildDraftOrderFromState } from '../draft/draftOrder';
+import { logPlanEvent } from '../offseason/offseasonPlan';
 
 // ── Schedule Generation (Aug 14) ──────────────────────────────────────────
 export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
@@ -897,6 +898,7 @@ export const autoAnnounceAwards = (_state: GameState): Partial<GameState> => ({}
  * Uses the same gist file the HallofFameView reads so both stay in sync.
  */
 export const autoInductHOFClass = async (state: GameState): Promise<Partial<GameState>> => {
+  logPlanEvent('autoResolvers.autoInductHOFClass', 'fire', `date=${state.date}`);
   const classYear = (state.leagueStats?.year ?? 2026) - 1;
   const idPrefix = `hof-class-${classYear}-`;
   const already = (state.news ?? []).some(n => (n as any).id?.startsWith(idPrefix));
@@ -990,6 +992,7 @@ function _runWeightedLottery<T extends { originalSeed: number }>(
 /** Runs the draft lottery automatically and saves results to state.draftLotteryResult.
  *  Skips if lottery has already been run this season. */
 export const autoRunLottery = (state: GameState): Partial<GameState> => {
+  logPlanEvent('autoResolvers.autoRunLottery', 'fire', `date=${state.date}`);
   if ((state as any).draftLotteryResult) return {}; // already run
 
   const preset = LOTTERY_PRESETS[state.leagueStats?.draftType ?? 'nba2019'] ?? LOTTERY_PRESETS.nba2019;
@@ -1027,6 +1030,7 @@ export const autoRunLottery = (state: GameState): Partial<GameState> => {
 /** Auto-executes the NBA Draft: assigns top-OVR prospect to each pick slot.
  *  Commissioner-run drafts take precedence (skips if draftComplete is already true). */
 export const autoRunDraft = (state: GameState): Partial<GameState> => {
+  logPlanEvent('autoResolvers.autoRunDraft', 'fire', `date=${state.date}`);
   if ((state as any).draftComplete) return {}; // commissioner already ran the draft
   // Finals must finish before the draft runs — if draft day lands before Game 7, defer.
   // Return the sentinel so lazySimRunner retries this event next iteration.

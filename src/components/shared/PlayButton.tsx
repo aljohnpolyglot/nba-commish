@@ -77,9 +77,12 @@ function getSimPhase(state: any): SimPhase {
     playoffsActive: hasActivePlayoffs,
   });
   const fromOrchestrator = offseasonPhaseToSimPhase(os.phase, !!state.draftComplete);
-  // Active playoff series override postDraft — stale series.status can leak into
-  // postDraft phase when Finals didn't flip to 'complete' on draft night.
-  if (fromOrchestrator && !(fromOrchestrator === 'after-draft' && (hasActivePlayoffs || draftBlockedByPlayoffs))) {
+  // Playoffs/blocked states always override the orchestrator — stale series.status
+  // can leak 'postDraft' / 'draftDay' when Finals haven't flipped to 'complete'.
+  const playoffsBlockOrchestrator = hasActivePlayoffs || draftBlockedByPlayoffs;
+  if (fromOrchestrator &&
+      !(fromOrchestrator === 'after-draft' && playoffsBlockOrchestrator) &&
+      !(fromOrchestrator === 'draft'       && playoffsBlockOrchestrator)) {
     return fromOrchestrator;
   }
 
@@ -392,11 +395,26 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
           { label: 'Watch draft', action: () => navigate('Draft Board' as Tab) },
         ];
 
-      case 'after-draft':
-        return [
-          { label: 'One day',           action: simDay },
-          { label: 'Until FA opens', action: () => simToDate(faStartStr) },
-        ];
+      case 'after-draft': {
+        const opts: PlayOption[] = [{ label: 'One day', action: simDay }];
+        // Let the user navigate to the draft board even after draft day if the
+        // commissioner hasn't run the draft yet (date slid past but draftComplete=false).
+        if (!state.draftComplete) {
+          opts.push({ label: 'Watch draft', action: () => navigate('Draft Board' as Tab) });
+          opts.push({ label: 'Sim to end of draft', action: simDraftToEnd });
+        }
+        // Dead-zone skip: post-draft → moratorium is boring (no signings legal).
+        // "Until FA opens" jumps to the nominal FA start (moratorium begins);
+        // "Until signings open" jumps past moratorium to the first day trades/signings
+        // are legal so the user lands in a live market, not a silent waiting period.
+        if (norm < faStartStr) {
+          opts.push({ label: 'Until FA opens', action: () => simToDate(faStartStr) });
+        }
+        if (norm < faMoratoriumEndStr) {
+          opts.push({ label: 'Until signings open', action: () => simToDate(faMoratoriumEndStr) });
+        }
+        return opts;
+      }
 
       case 'free-agency': {
         const activeMarkets = (state.faBidding?.markets ?? []).filter((m: any) => !m.resolved);
