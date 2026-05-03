@@ -378,11 +378,13 @@ function PrizePool({ cup }: { cup?: NBACupState }) {
     );
   }
 
+  const pp = cup?.prizePool?.perPlayerByFinish;
+  const fmt = (n: number) => '$' + n.toLocaleString();
   const prizes = [
-    { label: 'Winner', amount: '$500,000', color: 'text-amber-500', border: 'border-amber-500/30', icon: <Trophy className="w-5 h-5 text-amber-500" /> },
-    { label: 'Runner-up', amount: '$200,000', color: 'text-slate-200', border: 'border-white/10', icon: <Medal className="w-5 h-5 text-slate-400" /> },
-    { label: 'Semifinalist', amount: '$100,000', color: 'text-slate-400', border: 'border-white/5', icon: <Award className="w-5 h-5 text-slate-500" /> },
-    { label: 'Quarterfinalist', amount: '$50,000', color: 'text-slate-500', border: 'border-white/5', icon: <Users className="w-5 h-5 text-slate-600" /> },
+    { label: 'Winner', amount: pp ? fmt(pp.winner) : '$500,000', color: 'text-amber-500', border: 'border-amber-500/30', icon: <Trophy className="w-5 h-5 text-amber-500" /> },
+    { label: 'Runner-up', amount: pp ? fmt(pp.runnerUp) : '$200,000', color: 'text-slate-200', border: 'border-white/10', icon: <Medal className="w-5 h-5 text-slate-400" /> },
+    { label: 'Semifinalist', amount: pp ? fmt(pp.semi) : '$100,000', color: 'text-slate-400', border: 'border-white/5', icon: <Award className="w-5 h-5 text-slate-500" /> },
+    { label: 'Quarterfinalist', amount: pp ? fmt(pp.quarter) : '$50,000', color: 'text-slate-500', border: 'border-white/5', icon: <Users className="w-5 h-5 text-slate-600" /> },
   ];
 
   return (

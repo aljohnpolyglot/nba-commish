@@ -573,6 +573,16 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     });
   };
 
+  const [headerMinutesVisible, setHeaderMinutesVisible] = useState(true);
+  const headerMinutesRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = headerMinutesRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => setHeaderMinutesVisible(e.isIntersecting), { threshold: 0 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   if (!team) {
     return <div className="text-red-400 font-bold uppercase tracking-widest">Team not found</div>;
   }
@@ -722,7 +732,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
               </button>
             </>
           )}
-          <div className={`font-mono ${remaining === 0 ? 'text-emerald-400' : Math.abs(remaining) <= 5 ? 'text-amber-300' : 'text-rose-400'}`}>
+          <div ref={headerMinutesRef} className={`font-mono ${remaining === 0 ? 'text-emerald-400' : Math.abs(remaining) <= 5 ? 'text-amber-300' : 'text-rose-400'}`}>
             {totalMinutes} / {targetMinutes} min
           </div>
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Autosaved" />
@@ -1008,6 +1018,19 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Floating minutes pill — appears when the header counter scrolls out of view */}
+      {!headerMinutesVisible && (
+        <div className={`fixed bottom-4 right-4 z-40 rounded-full px-3 py-1.5 text-xs font-mono font-bold shadow-xl border backdrop-blur-sm pointer-events-none ${
+          remaining === 0
+            ? 'bg-emerald-950/90 border-emerald-700/60 text-emerald-300'
+            : Math.abs(remaining) <= 5
+            ? 'bg-amber-950/90 border-amber-700/60 text-amber-300'
+            : 'bg-rose-950/90 border-rose-700/60 text-rose-400'
+        }`}>
+          {totalMinutes} / {targetMinutes} min
         </div>
       )}
     </div>

@@ -7,7 +7,7 @@ import { computeCupAwards, applyPrizePool, applyCupAwardsToPlayers } from '../..
 import { injectCupGroupGames } from '../../../services/nbaCup/scheduleInjector';
 import { calculateTeamStrength, clearTeamStrengthCache } from '../../../utils/playerRatings';
 import { normalizeDate, convertTo2KRating, calculateSocialEngagement } from '../../../utils/helpers';
-import { addGameDays, compareGameDates, formatGameDateShort, getCurrentOffseasonEffectiveFAStart, getTradeDeadlineDate, isInMoratorium, parseGameDate, toISODateString } from '../../../utils/dateUtils';
+import { addGameDays, formatGameDateShort, getTradeDeadlineDate, parseGameDate, toISODateString } from '../../../utils/dateUtils';
 import { PlayoffGenerator } from '../../../services/playoffs/PlayoffGenerator';
 import { PlayoffAdvancer } from '../../../services/playoffs/PlayoffAdvancer';
 import { applyDailyProgression, applySeasonalBreakouts } from '../../../services/playerDevelopment/ProgressionEngine';
@@ -19,7 +19,7 @@ import { runAIFreeAgencyRound, runAIMidSeasonExtensions, runAISeasonEndExtension
 import { tickFAMarkets } from '../../../services/faMarketTicker';
 import { routeUnsignedPlayers } from '../../../services/externalSigningRouter';
 import { formatExternalSalary } from '../../../constants';
-import { applySeasonRollover, shouldFireRollover } from '../../../services/logic/seasonRollover';
+import { applySeasonRollover } from '../../../services/logic/seasonRollover';
 import { getActiveUserBidMarketPlayerIds } from '../../../services/freeAgencyBidding';
 import { computeTradeEligibleDate } from '../../../utils/signingMoratorium';
 import { SettingsManager } from '../../../services/SettingsManager';
@@ -29,6 +29,7 @@ import { findShamsPhoto } from '../../../services/social/charaniaphotos';
 import { normalizeTeamJerseyNumbers } from '../../../utils/jerseyUtils';
 import { buildStretchedSchedule, getTeamDeadMoneyForSeason, seasonLabelToYear } from '../../../utils/salaryUtils';
 import { isNbaCupEnabled } from '../../../utils/ruleFlags';
+import { getOffseasonDayPlan } from '../../../services/offseason/offseasonPlan';
 
 const updateTeamStrengths = (teams: NBATeam[], players: Player[]): NBATeam[] => {
     return teams.map(team => ({
@@ -578,7 +579,13 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
             let cupPlayersPatch: Player[] | null = null;
             if (cup.status === 'complete' && !cup.mvpPlayerId) {
                 cup = computeCupAwards(cup, schedule, stateWithSim.boxScores ?? [], stateWithSim.players);
-                cup = applyPrizePool(cup, stateWithSim.leagueStats.cupPrizePoolEnabled !== false);
+                const prizeEnabled = stateWithSim.leagueStats.cupPrizePoolEnabled !== false;
+                cup = applyPrizePool(cup, prizeEnabled, prizeEnabled ? {
+                    winner:   stateWithSim.leagueStats.cupPrizeWinner   ?? 500_000,
+                    runnerUp: stateWithSim.leagueStats.cupPrizeRunnerUp ?? 200_000,
+                    semi:     stateWithSim.leagueStats.cupPrizeSemi     ?? 100_000,
+                    quarter:  stateWithSim.leagueStats.cupPrizeQuarter  ?? 50_000,
+                } : undefined);
                 cupPlayersPatch = applyCupAwardsToPlayers(cup, stateWithSim.players);
             }
 
@@ -649,6 +656,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
         // cuts, FA signings, and external routing are done.
         const prePreseasonDate = `${stateWithSim.leagueStats.year - 1}-10-01`;
         if (simDateForEvents === prePreseasonDate) {
+            console.log(`[OSPLAN] simulationHandler.preCampOct1 fire date=${stateWithSim.date}`);
             if (stateWithSim.seasonPreviewDismissed && (stateWithSim.seasonHistory ?? []).length > 0) {
                 stateWithSim = { ...stateWithSim, seasonPreviewDismissed: false };
             }
@@ -1065,89 +1073,29 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
             }
         }
 
-        // Season rollover — fires once when sim date crosses June 30 of the current season year
-        // (day before free agency opens July 1).
-        // e.g. season 2026: fires at 2026-06-30 → year becomes 2027, contracts expire, cap inflates.
-        // Guard: year increment inside applySeasonRollover prevents double-firing.
-        const simDateForRollover = normalizeDate(stateWithSim.date);
-        if (shouldFireRollover(stateWithSim, simDateForRollover)) {
+        // ── Offseason orchestrator (Sessions 3-4 — plan is AUTHORITATIVE) ──
+        // The plan owns all four offseason dispatch decisions: rollover,
+        // tickFAMarkets, runAIFAPass, runBirdRightsPass. Date arithmetic, the
+        // moratorium check, and the FA frequency taper all live in
+        // src/services/offseason/offseasonPlan.ts. Per-function drift warnings
+        // (Session 1) still fire if a non-orchestrator caller invokes one of
+        // these in the wrong phase.
+        const offseasonPlan = getOffseasonDayPlan(stateWithSim);
+
+        // Season rollover — fires once at the postDraft → moratorium boundary.
+        // Year increment inside applySeasonRollover acts as the idempotency guard.
+        if (offseasonPlan.actions.rollover === 'fire') {
+            console.log(`[OSPLAN] simulationHandler.rollover fire date=${stateWithSim.date}`);
             const rolloverPatch = applySeasonRollover(stateWithSim);
             stateWithSim = { ...stateWithSim, ...rolloverPatch };
             // Re-compute strengths after roster changes from contract expiry
             stateWithSim.teams = updateTeamStrengths(stateWithSim.teams, stateWithSim.players);
 
-            // Bird Rights re-signs are deferred until after the FA moratorium.
-            // Rollover is June 30, so resolving them here creates pre-FA/tampering
-            // transactions and can silently jump active user bids.
-            const birdResigns: ReturnType<typeof runAIBirdRightsResigns> = [];
-            if (birdResigns.length > 0) {
-                const firstYear = stateWithSim.leagueStats?.year ?? 2026;
-                const birdResignMap = new Map(birdResigns.map(r => [r.playerId, r] as const));
-                stateWithSim = {
-                    ...stateWithSim,
-                    players: stateWithSim.players.map(p => {
-                        const r = birdResignMap.get(p.internalId);
-                        if (!r) return p;
-                        const newContract = {
-                            amount: Math.round(r.salaryUSD / 1_000),
-                            exp: firstYear + r.years - 1,
-                            hasPlayerOption: r.hasPlayerOption,
-                        };
-                        const newContractYears = Array.from({ length: r.years }, (_, i) => {
-                            const yr = firstYear + i;
-                            return {
-                                season: `${yr - 1}-${String(yr).slice(-2)}`,
-                                guaranteed: Math.round(r.salaryUSD * Math.pow(1.05, i)),
-                                option: (i === r.years - 1 && r.hasPlayerOption) ? 'Player' : '',
-                            };
-                        });
-                        const histYears = ((p as any).contractYears ?? []).filter((cy: any) => {
-                            const yr = seasonLabelToYear(cy.season);
-                            return yr < firstYear;
-                        });
-                        const prevSalaryUSDFirstYear = (Number((p as any).contract?.amount) || 0) * 1_000;
-                        return {
-                            ...p,
-                            tid: r.teamId,
-                            status: 'Active' as const,
-                            contract: newContract,
-                            contractYears: [...histYears, ...newContractYears],
-                            signedDate: stateWithSim.date,          // trim recency guard
-                            tradeEligibleDate: computeTradeEligibleDate({
-                                signingDate: stateWithSim.date,
-                                contractYears: r.years,
-                                salaryUSDFirstYear: r.salaryUSD,
-                                prevSalaryUSDFirstYear,
-                                usedBirdRights: true,
-                                isReSign: true,
-                                leagueStats: stateWithSim.leagueStats as any,
-                            }),
-                            yearsWithTeam: 1,                       // re-sign — fresh tenure on new deal
-                            hasBirdRights: false,                   // consumed by re-sign
-                            midSeasonExtensionDeclined: undefined,  // clear for next season
-                            birdRightsResignedThisYear: firstYear,  // protects from trim for the season — see canCut
-                        };
-                    }),
-                };
-                // History entries (one per re-sign) — landing on the rollover date.
-                const birdHistory = birdResigns.map(r => {
-                    const totalM = Math.round((r.salaryUSD / 1_000_000) * r.years);
-                    const optTag = r.hasPlayerOption ? ' (player option)' : '';
-                    const supTag = r.isSupermax ? ' (Supermax)' : '';
-                    return {
-                        text: `${r.playerName} re-signs with the ${r.teamName} via Bird Rights: $${totalM}M/${r.years}yr${optTag}${supTag}`,
-                        date: stateWithSim.date,
-                        type: 'Signing',
-                        playerIds: [r.playerId],
-                        tid: r.teamId,
-                    };
-                });
-                stateWithSim = {
-                    ...stateWithSim,
-                    history: [...(stateWithSim.history ?? []), ...birdHistory] as any,
-                };
-                console.log(`[BirdRights] Pass 0 resigned ${birdResigns.length} players via Bird Rights premium.`);
-            }
+            // (Historical note: an inline Bird Rights pass used to fire here on
+            // rollover day, but it was disabled because rollover lands on Jun 30
+            // — pre-moratorium — and would create tampering signings that jump
+            // active user bids. Bird Rights now fires via the orchestrator's
+            // runBirdRightsPass action on the first post-moratorium day.)
         }
 
         // AI free agency — FA pool stays open July 1 → Feb 28 (March 1 = playoff eligibility deadline).
@@ -1157,26 +1105,16 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
         //   August:     every 4 days  (role players / vets min)
         //   September:  every 7 days  (camp invites, stragglers)
         //   Oct–Feb:    every 14 days (occasional vet-minimum / waiver wire pickups)
-        // Summer FA: July–Sep; In-season FA: Oct–Feb (month ≥10 or month ≤2); stop at March 1
-        const isSummerFAWindow = simMonth >= 7 && simMonth <= 9;
-        const effectiveFAStart = isSummerFAWindow
-            ? toISODateString(getCurrentOffseasonEffectiveFAStart(stateWithSim.date, stateWithSim.leagueStats as any, stateWithSim.schedule as any))
-            : '';
-        const summerFAOpen = isSummerFAWindow && compareGameDates(stateWithSim.date, effectiveFAStart) >= 0;
-        const isFreeAgencySeason = summerFAOpen || simMonth >= 10 || simMonth <= 2;
+        // The summer-FA window detection, moratorium check, and frequency tapering
+        // all live in offseasonPlan.ts now (Session 3). The only var still needed
+        // here is `isRegularSeason`, used for the G-League cleanup loop below.
         const isRegularSeason = (simMonth >= 10 && simMonth <= 12) || (simMonth >= 1 && simMonth <= 4);
-        const moratoriumActiveForDay = isFreeAgencySeason
-            ? isInMoratorium(stateWithSim.date, stateWithSim.leagueStats?.year ?? 2026, stateWithSim.leagueStats as any, stateWithSim.schedule as any)
-            : false;
 
         // Incumbent Bird Rights signings should not land on rollover/Jun 30 or
         // during the moratorium. They resolve once the market can actually sign.
-        if (
-            isFreeAgencySeason &&
-            simMonth === 7 &&
-            !moratoriumActiveForDay &&
-            (stateWithSim.leagueStats as any)?.birdRightsResignPassYear !== (stateWithSim.leagueStats?.year ?? 2026)
-        ) {
+        // Plan-authoritative since Session 3.
+        if (offseasonPlan.actions.runBirdRightsPass === 'fire') {
+            console.log(`[OSPLAN] simulationHandler.runBirdRightsPass fire date=${stateWithSim.date}`);
             stateWithSim = applyBirdRightsResignsPass(stateWithSim);
             stateWithSim = normalizeReservedJerseys(
                 stateWithSim,
@@ -1207,29 +1145,12 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 };
             }
         }
-        // All of July runs daily so a user's Sim Day always lands on a round
-        // day during peak FA activity. Aug-Sep ramp down (most starters signed
-        // by then), in-season is two-week cadence (vet minimums, waiver pickups).
-        const faFrequency = simMonth === 7 ? 1
-                          : simMonth === 8 && simDayNum <= 15 ? 2
-                          : simMonth === 8 ? 4
-                          : simMonth === 9 ? 7
-                          : 14; // Oct–Feb in-season
-        // Immediate refill: if any AI team fell below the league roster minimum
-        // (usually from a just-executed salary-dump trade), bypass the FA schedule
-        // and fire the round so Pass 2 signs minimum-contract FAs to fill the gap.
-        const minRosterSetting = stateWithSim.leagueStats?.minPlayersPerTeam ?? 14;
-        const anyTeamUnderMinRoster = stateWithSim.teams.some(t => {
-            const count = stateWithSim.players.filter(p => p.tid === t.id && !(p as any).twoWay).length;
-            return count < minRosterSetting;
-        });
         // ── FA bidding market tick (daily during FA season) ──────────────────
         // Resolves expired markets first, then opens new ones for notable FAs.
-        // Runs every sim day during FA so decidesOnDay hits land on the right day
-        // even when the main signing round isn't firing (e.g. a `faFrequency===2`
-        // day with no forced signings). The existing round is a distinct pipeline
-        // for lower-tier FAs and roster-minimum fills.
-        if (isFreeAgencySeason) {
+        // Plan-authoritative since Session 3 — the cadence taper, moratorium
+        // gate, and underMinRoster bypass all live in offseasonPlan.ts.
+        if (offseasonPlan.actions.tickFAMarkets === 'fire') {
+            console.log(`[OSPLAN] simulationHandler.tickFAMarkets fire date=${stateWithSim.date}`);
             const tick = tickFAMarkets(stateWithSim);
             const previousResolvedMarketIds = new Set(
                 (stateWithSim.faBidding?.markets ?? [])
@@ -1322,7 +1243,11 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
         // this gate, AI was signing players to non-prior teams on Jul 2-3 while
         // the user's bids sat unresolved, producing the "Lopez/Saric/Hauser
         // disappeared during moratorium" leak.
-        if (isFreeAgencySeason && !moratoriumActiveForDay && (stateWithSim.day % faFrequency === 0 || anyTeamUnderMinRoster)) {
+        // AI FA round — plan-authoritative since Session 3. The plan encodes
+        // both the cadence (state.day % faFrequency) and the underMinRoster
+        // bypass; no further inline gating needed.
+        if (offseasonPlan.actions.runAIFAPass === 'fire') {
+            console.log(`[OSPLAN] simulationHandler.runAIFAPass fire date=${stateWithSim.date} freq=${offseasonPlan.faFrequency} underMin=${offseasonPlan.flags.underMinRoster}`);
             // Step 1: Two-way → standard promotion (first line of defense).
             // If a team has <15 standard AND >3 two-way, promote the best excess
             // two-ways to 1-year min standard deals so they open a 2W slot and

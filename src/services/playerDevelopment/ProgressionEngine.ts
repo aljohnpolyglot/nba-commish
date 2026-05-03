@@ -367,6 +367,23 @@ function progressPlayer(
     const mentorMitigation = Math.min(0.3, mentorExp / 6666);
     // 0 → 0% IQ bonus. 2000 EXP → 25% bonus on positive oiq/diq deltas.
     const mentorIQBonus = Math.min(0.25, mentorExp / 8000);
+
+    // Per-player intensity → growth multiplier for positive deltas.
+    const intensity = (player as any).trainingIntensity ?? 'Normal';
+    const intensityMult =
+      intensity === 'Rest' ? 0.3 :
+      intensity === 'Half' ? 0.7 :
+      intensity === 'Double' ? 1.35 :
+      1.0;
+
+    // Fatigue → growth dampener. 0 fatigue → 1.0×, 100 fatigue → 0.8×.
+    // Modern sport-science calibration: even max fatigue only mildly slows
+    // development. Real elite athletes still progress through tired stretches
+    // because their recovery infrastructure cushions the loss. Future
+    // @NEW_FEATURES.md "Training Dev staff" tier should soften this further
+    // for teams that invest in performance science.
+    const fatigue = Math.max(0, Math.min(100, (player as any).trainingFatigue ?? 0));
+    const fatigueDampen = 1 - (fatigue / 100) * 0.2;
     const IQ_ATTRS = new Set(['oiq', 'diq']);
 
     for (const attr of ALL_ATTRS) {
@@ -407,6 +424,23 @@ function progressPlayer(
       }
       if (mentorIQBonus > 0 && delta > 0 && IQ_ATTRS.has(attr)) {
         delta *= (1 + mentorIQBonus);
+      }
+
+      // Individual training intensity — per-player setting from RosterView.
+      // Rest=0.3 / Half=0.7 / Normal=1.0 / Double=1.35. Only scales POSITIVE
+      // deltas — resting doesn't accelerate decline, hard training doesn't slow
+      // it (decline is age + mentor-mitigation only). Spread is intentionally
+      // wide enough that the dropdown actually matters for development pace.
+      if (delta > 0 && intensityMult !== 1.0) {
+        delta *= intensityMult;
+      }
+
+      // Fatigue dampening — at 100 fatigue, growth gets 0.6×. Forces rest
+      // cycles to maintain optimal development. Only dampens positive deltas.
+      // Bench-player fatigue is already softened in trainingTick via mpg
+      // scaling, so non-rotation guys feel less of this brake.
+      if (delta > 0 && fatigueDampen < 1.0) {
+        delta *= fatigueDampen;
       }
 
       // Apply changeLimits (annual, divide by 365 for daily clamp)

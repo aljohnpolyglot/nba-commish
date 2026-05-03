@@ -87,8 +87,12 @@ export const calculateNewStats = (state: GameState, action: UserAction, result: 
         };
     }
 
+    // Prefer result.leagueStats so action-handler updates (e.g.
+    // handleSignFreeAgent's mleUsage increment) survive — spreading the
+    // pre-action state.leagueStats instead would silently throw them away,
+    // letting the user spam MLE deals without the counter ever decrementing.
     const newLeagueStats: LeagueStats = {
-        ...state.leagueStats,
+        ...(result.leagueStats ?? state.leagueStats),
         revenue: Math.round(Math.max(0, state.leagueStats.revenue + (combinedStatChanges.revenue || 0))),
         viewership: finalViewership,
         viewershipHistory: [...(state.leagueStats.viewershipHistory || []), { date: dateString, viewers: finalViewership }].slice(-365),

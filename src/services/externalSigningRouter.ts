@@ -20,6 +20,7 @@ import type { GameState, NBAPlayer } from '../types';
 import { convertTo2KRating, getCountryFromLoc } from '../utils/helpers';
 import { getGameDateParts } from '../utils/dateUtils';
 import { EXTERNAL_SALARY_SCALE, NATIONALITY_LEAGUE_BIAS, EXTERNAL_LEAGUE_OVR_CAP } from '../constants';
+import { getOffseasonState, logOffseasonDrift } from './offseason/offseasonState';
 
 export interface ExternalRoutingResult {
   playerId: string;
@@ -127,6 +128,18 @@ export function routeUnsignedPlayers(
   state: GameState,
   options: { protectedPlayerIds?: Set<string> } = {},
 ): { results: ExternalRoutingResult[]; players: NBAPlayer[] } {
+  // [OSPLAN] drift check — overseas routing should fire only on Oct 1 (preCamp).
+  if (state.date) {
+    const os = getOffseasonState(state.date, state.leagueStats as any, state.schedule as any);
+    logOffseasonDrift(
+      'externalSigningRouter.routeUnsignedPlayers',
+      ['preCamp'],
+      os.phase,
+      `date=${os.dateStr}`,
+    );
+    console.log(`[OSPLAN] externalSigningRouter.routeUnsignedPlayers fire date=${state.date} phase=${os.phase}`);
+  }
+
   const EXCLUDED_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'Draft Prospect', 'Prospect']);
   const marketProtectedIds = options.protectedPlayerIds ?? new Set<string>();
 

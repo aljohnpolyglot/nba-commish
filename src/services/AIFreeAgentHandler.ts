@@ -20,6 +20,7 @@ import { resolveTeamStrategyProfile, type TeamStrategyProfile } from '../utils/t
 import { isRfaMatchingEnabled } from '../utils/ruleFlags';
 import { computeTradeEligibleDate } from '../utils/signingMoratorium';
 import { daysBetweenGameDates, getGameDateParts, getTrainingCampDate, parseGameDate } from '../utils/dateUtils';
+import { getOffseasonState, logOffseasonDrift } from './offseason/offseasonState';
 
 const DEFAULT_MAX_ROSTER = 15;
 // Guaranteed contracts should not be waived immediately after signing. The old
@@ -426,6 +427,20 @@ export interface SigningResult {
  */
 export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   if (!SettingsManager.getSettings().allowAIFreeAgency) return [];
+
+  // Offseason orchestrator drift check (Session 1 — instrumentation only).
+  // AI FA passes 1-5 should not run during the moratorium (verbal-only window).
+  // 'inSeason' is allowed because mid-season fill / 10-day signings legitimately
+  // call this; 'preDraft'/'draftDay'/'postDraft' should not.
+  if (state.date) {
+    const os = getOffseasonState(state.date, state.leagueStats as any, state.schedule as any);
+    logOffseasonDrift(
+      'AIFreeAgentHandler.runAIFreeAgencyRound',
+      ['birdRights', 'openFA', 'preCamp', 'inSeason'],
+      os.phase,
+      `date=${os.dateStr}`,
+    );
+  }
 
   const results: SigningResult[] = [];
   const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive()) ? ((state as any).userTeamId ?? -999) : -999;
@@ -1917,6 +1932,21 @@ export interface BirdRightsResignResult {
  */
 export function runAIBirdRightsResigns(state: GameState): BirdRightsResignResult[] {
   if (!SettingsManager.getSettings().allowAIFreeAgency) return [];
+
+  // Offseason orchestrator drift check (Session 1 — instrumentation only).
+  // Bird Rights re-signs should fire ONLY on the birdRights phase day. If we
+  // see this firing in 'openFA' or later, the post-moratorium window timer
+  // drifted; if in 'moratorium' or earlier, the gate fired too aggressively.
+  if (state.date) {
+    const os = getOffseasonState(state.date, state.leagueStats as any, state.schedule as any);
+    logOffseasonDrift(
+      'AIFreeAgentHandler.runAIBirdRightsResigns',
+      ['birdRights'],
+      os.phase,
+      `date=${os.dateStr}`,
+    );
+  }
+
   const currentYear = state.leagueStats.year;
   const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive())
     ? ((state as any).userTeamId ?? -999) : -999;

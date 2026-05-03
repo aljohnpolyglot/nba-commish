@@ -260,16 +260,25 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
           <div className="p-4 border-t border-slate-800 bg-slate-900/50 rounded-b-2xl">
             {isPastDeadline && (
               <p className="text-amber-400/70 text-xs text-center mb-2">
-                {tradeIsValid
-                  ? 'Trade deadline has passed. Proceeding requires commissioner override.'
-                  : 'Trade deadline has passed and salaries don\'t match. Force trade to override both.'}
+                {isGM
+                  ? 'Trade deadline has passed. No further trades can be made until the offseason.'
+                  : tradeIsValid
+                    ? 'Trade deadline has passed. Proceeding requires commissioner override.'
+                    : 'Trade deadline has passed and salaries don\'t match. Force trade to override both.'}
               </p>
             )}
             <div className="flex justify-end gap-2">
               <button onClick={onClose} className="px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest bg-slate-800 hover:bg-slate-700 text-white transition-colors">
                 Go Back
               </button>
-              {tradeIsValid ? (
+              {isGM && isPastDeadline ? (
+                // GM mode: no commissioner-style overrides, period. If the user
+                // reached this UI past the deadline, lock the action button so
+                // the league rule (no post-deadline trades) holds.
+                <span className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-slate-700/40 border border-slate-600/40 text-slate-300 cursor-not-allowed">
+                  Trade Deadline Has Passed
+                </span>
+              ) : tradeIsValid ? (
                 <button
                   onClick={() => { if (submitting) return; setSubmitting(true); onConfirmTrade(); }}
                   disabled={submitting}

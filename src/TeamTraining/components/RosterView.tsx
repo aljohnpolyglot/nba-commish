@@ -213,15 +213,22 @@ export function RosterView({ roster, staffing, teams, nbaPlayersById, currentYea
                     <div className="space-y-2">
                       <div className="flex flex-col gap-1">
                         <div className="flex justify-between items-center text-[9px] font-black text-slate-500 tracking-widest">
-                           <span>FATIGU</span>
-                           <span className={getInjuryRisk(player.fatigue).color}>
+                           <span className="flex items-center gap-1.5">
+                             <span>FATIGUE</span>
+                             <span className={`tabular-nums ${
+                               player.fatigue > 75 ? 'text-red-400' :
+                               player.fatigue > 40 ? 'text-yellow-400' :
+                               'text-blue-400'
+                             }`}>{Math.round(player.fatigue)}</span>
+                           </span>
+                           <span className={`px-1 py-0.5 rounded text-[8px] border ${getInjuryRisk(player.fatigue).color}`}>
                              {getInjuryRisk(player.fatigue).label}
                            </span>
                         </div>
                         <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
                            <div
                              className={`h-full transition-all duration-500 ${player.fatigue > 75 ? 'bg-red-500' : player.fatigue > 40 ? 'bg-yellow-500' : 'bg-blue-500 shadow-[0_0_8px_#3b82f6]'}`}
-                             style={{ width: `${player.fatigue}%` }}
+                             style={{ width: `${Math.max(2, player.fatigue)}%` }}
                            />
                         </div>
                       </div>

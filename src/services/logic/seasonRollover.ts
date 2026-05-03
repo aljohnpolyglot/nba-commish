@@ -34,10 +34,26 @@ import { runExternalFreeAgency } from '../externalFreeAgency';
 import { getRolloverDate, toISODateString } from '../../utils/dateUtils';
 import { isNbaCupEnabled } from '../../utils/ruleFlags';
 import { getActiveUserBidMarketPlayerIds } from '../freeAgencyBidding';
+import { getOffseasonState, logOffseasonDrift } from '../offseason/offseasonState';
 
 /** Fired when the sim has just crossed into a new offseason (Oct 1, new year).
  *  Returns the rolled-over GameState patch. Does NOT mutate input. */
 export function applySeasonRollover(state: GameState): Partial<GameState> {
+  // Offseason orchestrator drift check (Session 1 — instrumentation only).
+  // Rollover should fire at the postDraft → moratorium boundary. If we see
+  // it firing in 'inSeason' / 'preDraft' / 'draftDay', either the gate is
+  // racing the date or an upstream caller is calling this idempotently
+  // outside of its window.
+  if (state.date) {
+    const os = getOffseasonState(state.date, state.leagueStats as any, state.schedule as any);
+    logOffseasonDrift(
+      'seasonRollover.applySeasonRollover',
+      ['postDraft', 'moratorium'],
+      os.phase,
+      `date=${os.dateStr}`,
+    );
+  }
+
   const currentYear = state.leagueStats.year;
   const nextYear    = currentYear + 1;
   const leagueStartYear = deriveLeagueStartYearFromHistory(state.history, currentYear);
@@ -1068,7 +1084,22 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     } as any),
     ...nbaCupPatch,
     playoffs: undefined,
-    allStar: undefined,
+    allStar: (() => {
+      const beltHolderInternalId = (state.allStar as any)?.throne?.champion?.playerId
+        ?? (state.allStar as any)?.beltHolderInternalId
+        ?? null;
+      return beltHolderInternalId
+        ? ({
+            season: nextYear,
+            votes: [],
+            startersAnnounced: false,
+            reservesAnnounced: false,
+            roster: [],
+            weekendComplete: false,
+            beltHolderInternalId,
+          } as any)
+        : undefined;
+    })(),
     draftLotteryResult: undefined,
     activeDraftPicks: undefined,   // clear any abandoned mid-draft session
     activeDraftOrder: undefined,
@@ -1082,6 +1113,13 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       ...(newFirstApron  != null ? { firstApronAmount:  newFirstApron  } : {}),
       ...(newSecondApron != null ? { secondApronAmount: newSecondApron } : {}),
       minContractStaticAmount: newMinContract,
+      // Auto-inflate cup prizes alongside the salary cap when the setting is on.
+      ...(ls.inSeasonTournament && (ls.cupPrizePoolEnabled ?? true) && (ls.cupPrizePoolAutoInflate ?? true) && inflationPctApplied > 0 ? {
+        cupPrizeWinner:   Math.round((ls.cupPrizeWinner   ?? 500_000) * (1 + inflationPctApplied / 100)),
+        cupPrizeRunnerUp: Math.round((ls.cupPrizeRunnerUp ?? 200_000) * (1 + inflationPctApplied / 100)),
+        cupPrizeSemi:     Math.round((ls.cupPrizeSemi     ?? 100_000) * (1 + inflationPctApplied / 100)),
+        cupPrizeQuarter:  Math.round((ls.cupPrizeQuarter  ??  50_000) * (1 + inflationPctApplied / 100)),
+      } : {}),
       mleUsage: {},  // reset MLE usage each season
       // Inflate league revenue floor alongside the cap so sponsorship/merch/tickets
       // scale with the economy rather than sitting flat forever.

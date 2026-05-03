@@ -364,6 +364,90 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
 
   const radarValues = getRadarValues(displayK2, k2Overall);
 
+  const simYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const playerAge = (player as any).born?.year ? simYear - (player as any).born.year : (player.age ?? 25);
+
+  // ── Progression-tab snapshots: K2 at a comparison year, blended the same way
+  // as `displayK2` so the bars/radar show what the player WAS, not raw ratings.
+  // Pivot year derives from `progressPeriod` (Career=rookie, 3Y=now-3, 1Y=now-1).
+  const snapshotInfo = useMemo(() => {
+    const ratings = (player.ratings ?? []) as any[];
+    if (ratings.length === 0) return { displayK2: displayK2, year: simYear, label: 'Now' };
+    const sorted = [...ratings].filter(r => r.season != null).sort((a, b) => a.season - b.season);
+    let target: any | undefined;
+    let label = 'Rookie';
+    if (progressPeriod === 'Career') {
+      target = sorted[0];
+      label = `Rookie '${String(target?.season ?? '').slice(-2)}`;
+    } else if (progressPeriod === '3Y') {
+      const yr = simYear - 3;
+      target = sorted.find(r => r.season === yr) ?? [...sorted].reverse().find(r => r.season <= yr) ?? sorted[0];
+      label = `'${String(yr).slice(-2)}`;
+    } else {
+      const yr = simYear - 1;
+      target = sorted.find(r => r.season === yr) ?? [...sorted].reverse().find(r => r.season <= yr) ?? sorted[0];
+      label = `'${String(yr).slice(-2)}`;
+    }
+    if (!target) return { displayK2: displayK2, year: simYear, label: 'Now' };
+    const defaults: Record<string, number> = {
+      hgt: 50, stre: 50, spd: 50, jmp: 50, endu: 50,
+      ins: 50, dnk: 50, ft: 50, fg: 50, tp: 50,
+      oiq: 50, diq: 50, drb: 50, pss: 50, reb: 50,
+    };
+    const base = { ...defaults, ...target };
+    const scaled = applyLeagueDisplayScale(player.status, base);
+    const rawK2 = calculateK2(scaled as any, {
+      pos: player.pos,
+      heightIn: player.hgt,
+      weightLbs: player.weight,
+      age: player.age,
+    });
+    const computedK2 = applyDurabilityToK2(rawK2, realDur);
+    // Apply the same "real 2K + delta from base" blend used for displayK2 so the
+    // numbers are comparable. Without this, the snapshot K2 would use raw scale
+    // while displayK2 uses blended scale.
+    if (!real2KSubs) {
+      return { displayK2: computedK2, year: target.season ?? simYear, label };
+    }
+    const blended: K2Data = JSON.parse(JSON.stringify(computedK2));
+    for (const catKey of Object.keys(computedK2) as (keyof K2Data)[]) {
+      const computedSubs = computedK2[catKey].sub;
+      const baseSubs = baseK2[catKey].sub;
+      const realSubs = (real2KSubs as any)[catKey]?.sub ?? null;
+      blended[catKey].sub = computedSubs.map((c, i) => {
+        const r = realSubs?.[i];
+        const b = baseSubs[i] ?? c;
+        if (r == null) return c;
+        return Math.max(25, Math.min(99, Math.round(r + (c - b))));
+      });
+      blended[catKey].ovr = Math.round(blended[catKey].sub.reduce((s, v) => s + v, 0) / blended[catKey].sub.length);
+    }
+    return {
+      displayK2: applyDurabilityToK2(blended, realDur),
+      year: target.season ?? simYear,
+      label,
+    };
+  }, [player, progressPeriod, simYear, realDur, baseK2, real2KSubs, displayK2]);
+
+  // Mentors with portrait + EXP — drawn from the player's mentor history.
+  const mentorEntries = useMemo(() => {
+    const history = player.mentorHistory ?? [];
+    if (history.length === 0 && !player.mentorId) return [];
+    const playerById = new Map<string, any>();
+    for (const p of state.players) playerById.set((p as any).internalId, p);
+    // Synthesize an entry for the current mentorId if no open history entry exists yet
+    // (saves created before the history field was added).
+    const open = history.find(h => !h.endDate);
+    let entries = history;
+    if (player.mentorId && !open) {
+      entries = [...history, { mentorId: player.mentorId, startDate: 'unknown' }];
+    }
+    return entries.map(h => ({
+      ...h,
+      mentor: playerById.get(h.mentorId) ?? null,
+    }));
+  }, [player.mentorHistory, player.mentorId, state.players]);
+
   const handleSliderChange = (key: string, val: number) => {
     setLocalRatings(prev => ({ ...prev, [key]: val }));
   };
@@ -390,8 +474,6 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
     setCollapsedCats(prev => ({ ...prev, [k]: !prev[k] }));
   };
 
-  const simYear = state.leagueStats?.year ?? new Date().getFullYear();
-  const playerAge = (player as any).born?.year ? simYear - (player as any).born.year : (player.age ?? 25);
   // Canonical POT — single source of truth across all views.
   const potK2 = getDisplayPotential(player, simYear);
   const ovrColor = getRatingColor(overall2k);
@@ -741,6 +823,7 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
                     const delta = overall2k - prevSeasonOvr;
                     const deltaColor = delta > 0 ? '#22c55e' : delta < 0 ? '#f43f5e' : '#64748b';
                     return (
+                      <>
                       <div className="bg-slate-800/30 border border-slate-800 rounded-xl p-4 space-y-3">
                         {/* Header: period toggle + delta */}
                         <div className="flex items-center justify-between">
@@ -792,6 +875,175 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
+
+                      {/* ── K2 SUB-ATTRIBUTE DELTAS ─────────────────────────────── */}
+                      {/* Same K2 bar layout as the K2 tab, but each bar shows the
+                          comparison-year value plus the +/- delta to current.
+                          Lets the user verify training is actually moving sub-
+                          attributes vs masking regressions inside category averages. */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between px-1">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                            K2 Deltas · vs {snapshotInfo.label}
+                          </span>
+                          <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                            Now − Then
+                          </span>
+                        </div>
+                        {K2_CATS.map(cat => {
+                          const catData = displayK2[cat.k as keyof typeof displayK2];
+                          const snapData = snapshotInfo.displayK2[cat.k as keyof typeof snapshotInfo.displayK2];
+                          const isCollapsed = collapsedCats[`prog_${cat.k}`] ?? false;
+                          const catDelta = catData.ovr - snapData.ovr;
+                          const catColor = getRatingColor(catData.ovr);
+                          return (
+                            <div key={cat.k} className="bg-slate-800/40 rounded-xl overflow-hidden border border-slate-800">
+                              <button
+                                onClick={() => setCollapsedCats(prev => ({ ...prev, [`prog_${cat.k}`]: !isCollapsed }))}
+                                className="w-full flex items-center justify-between px-3 py-2 hover:bg-slate-800 transition-colors"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] font-black uppercase tracking-widest w-6 text-center" style={{ color: catColor }}>{cat.k}</span>
+                                  <span className="text-xs font-bold text-white">{cat.n}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-black tabular-nums" style={{ color: catColor }}>{catData.ovr}</span>
+                                  <span className={`text-[10px] font-black tabular-nums px-1.5 rounded ${
+                                    catDelta > 0 ? 'bg-emerald-500/15 text-emerald-400' :
+                                    catDelta < 0 ? 'bg-rose-500/15 text-rose-400' :
+                                    'bg-slate-700/50 text-slate-500'
+                                  }`}>
+                                    {catDelta > 0 ? '+' : ''}{catDelta}
+                                  </span>
+                                  {isCollapsed ? <ChevronDown size={12} className="text-slate-500" /> : <ChevronUp size={12} className="text-slate-500" />}
+                                </div>
+                              </button>
+                              {!isCollapsed && (
+                                <div className="px-3 pb-2 pt-1 border-t border-slate-700/50 space-y-1">
+                                  {cat.sub.map((subName, idx) => {
+                                    const cur = catData.sub[idx] ?? 50;
+                                    const prev = snapData.sub[idx] ?? cur;
+                                    const diff = cur - prev;
+                                    const color = getRatingColor(cur);
+                                    return (
+                                      <div key={subName} className="flex items-center gap-2 py-0.5">
+                                        <span className="text-[10px] text-slate-400 w-28 flex-shrink-0 truncate">{subName}</span>
+                                        <div className="flex-1 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                                          <div className="h-full rounded-full transition-all duration-300" style={{ width: `${cur}%`, backgroundColor: color }} />
+                                        </div>
+                                        <span className="text-[10px] font-black w-8 text-right tabular-nums" style={{ color }}>{cur}</span>
+                                        <span className={`text-[10px] font-black w-10 text-right tabular-nums px-1.5 rounded ${
+                                          diff > 0 ? 'bg-emerald-500/10 text-emerald-400' :
+                                          diff < 0 ? 'bg-rose-500/10 text-rose-400' :
+                                          'text-slate-600'
+                                        }`}>
+                                          {diff > 0 ? '+' : ''}{diff || 0}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* ── COMPARISON RADAR ─────────────────────────────────────── */}
+                      {/* Current 7-axis polygon overlaid with the snapshot polygon
+                          for the selected period. Snapshot is gray dashed so the
+                          eye reads "before vs after" at a glance. */}
+                      {(() => {
+                        const k2OverallSnap = Math.round(
+                          (Object.values(snapshotInfo.displayK2) as { ovr: number }[]).reduce((s, c) => s + c.ovr, 0) /
+                          Object.keys(snapshotInfo.displayK2).length,
+                        );
+                        const snapValues = getRadarValues(snapshotInfo.displayK2, k2OverallSnap);
+                        return (
+                          <div className="bg-slate-800/30 border border-slate-800 rounded-xl p-3">
+                            <div className="flex items-center justify-between mb-2 px-1">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">
+                                Skill Radar · Now vs {snapshotInfo.label}
+                              </span>
+                              <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest">
+                                <span className="flex items-center gap-1 text-blue-400">
+                                  <span className="w-2 h-2 rounded-full bg-blue-500" />Now
+                                </span>
+                                <span className="flex items-center gap-1 text-slate-500">
+                                  <span className="w-2 h-0.5 bg-slate-500" />{snapshotInfo.label}
+                                </span>
+                              </div>
+                            </div>
+                            <RadarCompareChart current={radarValues} previous={snapValues} />
+                          </div>
+                        );
+                      })()}
+
+                      {/* ── MENTOR HISTORY ───────────────────────────────────────── */}
+                      {mentorEntries.length > 0 && (
+                        <div className="bg-slate-800/30 border border-slate-800 rounded-xl p-3 space-y-2">
+                          <div className="flex items-center justify-between px-1">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">
+                              Mentors
+                            </span>
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500 tabular-nums">
+                              {mentorEntries.length} {mentorEntries.length === 1 ? 'entry' : 'entries'}
+                            </span>
+                          </div>
+                          <div className="space-y-2">
+                            {mentorEntries
+                              .slice()
+                              .sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''))
+                              .map((entry, idx) => {
+                                const mentor = entry.mentor;
+                                const isActive = !entry.endDate;
+                                const startStr = formatMentorDate(entry.startDate);
+                                const endStr = isActive ? 'PRESENT' : formatMentorDate(entry.endDate!);
+                                return (
+                                  <div
+                                    key={`${entry.mentorId}-${idx}`}
+                                    className={`relative p-3 rounded-xl border ${
+                                      isActive
+                                        ? 'bg-indigo-500/10 border-indigo-500/40'
+                                        : 'bg-slate-950/40 border-slate-800'
+                                    }`}
+                                  >
+                                    {isActive && (
+                                      <div className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-full bg-indigo-500 text-[8px] font-black uppercase tracking-widest text-white">
+                                        Active
+                                      </div>
+                                    )}
+                                    <div className="flex items-start gap-3">
+                                      <PlayerPortrait
+                                        imgUrl={mentor?.imgURL}
+                                        playerName={mentor?.name ?? 'Unknown'}
+                                        size={40}
+                                      />
+                                      <div className="min-w-0 flex-1">
+                                        <div className="text-xs font-black text-white truncate">
+                                          {mentor?.name ?? 'Unknown mentor'}
+                                        </div>
+                                        <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">
+                                          {mentor?.pos ?? '—'}
+                                        </div>
+                                        <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1 tabular-nums">
+                                          {startStr} <span className="text-slate-700 mx-1">→</span> {endStr}
+                                        </div>
+                                      </div>
+                                      <div className="flex flex-col items-end gap-0.5 shrink-0">
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">EXP</span>
+                                        <span className={`text-xl font-black tabular-nums ${isActive ? 'text-indigo-300' : 'text-slate-300'}`}>
+                                          {mentor?.mentorExp != null ? Math.round(mentor.mentorExp) : '—'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      )}
+                    </>
                     );
                   })()}
                 </div>
@@ -803,3 +1055,69 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
     </AnimatePresence>
   );
 };
+
+// Format YYYY-MM-DD as "M/D/YYYY". Returns "—" for unknown.
+function formatMentorDate(iso: string | undefined): string {
+  if (!iso || iso === 'unknown') return '—';
+  const norm = iso.slice(0, 10);
+  const [y, m, d] = norm.split('-').map(s => parseInt(s, 10));
+  if (!y || !m || !d) return iso;
+  return `${m}/${d}/${y}`;
+}
+
+// Two-polygon radar: current (blue solid) vs previous (slate dashed).
+// Same heptagon shape as the existing RadarChart so the visual language matches.
+function RadarCompareChart({ current, previous }: { current: number[]; previous: number[] }) {
+  const cx = 250;
+  const cy = 250;
+  const maxR = 180;
+  const n = 7;
+  const angle = (i: number) => (Math.PI * 2 * i) / n - Math.PI / 2;
+  const pt = (i: number, r: number) => ({ x: cx + r * Math.cos(angle(i)), y: cy + r * Math.sin(angle(i)) });
+  const polyPoints = (r: number) => Array.from({ length: n }, (_, i) => pt(i, r)).map(p => `${p.x},${p.y}`).join(' ');
+  const scale = (v: number) => ((Math.max(25, Math.min(99, v)) - 25) / 74) * maxR;
+
+  const curPts = current.map((v, i) => pt(i, scale(v)));
+  const prevPts = previous.map((v, i) => pt(i, scale(v)));
+
+  return (
+    <svg viewBox="0 0 500 500" width="100%" className="max-w-xs mx-auto">
+      {[0.33, 0.66, 1].map(frac => (
+        <polygon key={frac} points={polyPoints(maxR * frac)} fill="none" stroke="#334155" strokeWidth="1" />
+      ))}
+      {Array.from({ length: n }, (_, i) => {
+        const tip = pt(i, maxR);
+        return <line key={i} x1={cx} y1={cy} x2={tip.x} y2={tip.y} stroke="#334155" strokeWidth="1" />;
+      })}
+
+      {/* Previous (snapshot) polygon — slate dashed underlay */}
+      <polygon
+        points={prevPts.map(p => `${p.x},${p.y}`).join(' ')}
+        fill="rgba(100,116,139,0.12)"
+        stroke="#64748b"
+        strokeWidth="1.5"
+        strokeDasharray="6 4"
+      />
+
+      {/* Current polygon — blue overlay */}
+      <polygon
+        points={curPts.map(p => `${p.x},${p.y}`).join(' ')}
+        fill="rgba(59,130,246,0.25)"
+        stroke="#3b82f6"
+        strokeWidth="2"
+      />
+      {curPts.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="3.5" fill="#3b82f6" />
+      ))}
+
+      {Array.from({ length: n }, (_, i) => {
+        const lp = pt(i, maxR + 28);
+        return (
+          <text key={i} x={lp.x} y={lp.y} textAnchor="middle" fontSize="11" fontWeight="600" fill="#94a3b8">
+            {RADAR_AXES[i]}
+          </text>
+        );
+      })}
+    </svg>
+  );
+}

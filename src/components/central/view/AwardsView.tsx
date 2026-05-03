@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, Star, Shield, TrendingUp, Award } from 'lucide-react';
+import { Trophy, Star, Shield, TrendingUp, Award, Crown } from 'lucide-react';
 
 interface AwardData {
   type: string;
@@ -13,7 +13,16 @@ interface AwardsViewProps {
 
 const getAwardIcon = (type: string) => {
   const lowerType = type.toLowerCase();
-  
+
+  if (lowerType.includes('the throne')) {
+    return (
+      <div className="relative">
+        <Crown size={22} className="text-yellow-400 fill-yellow-400/30 drop-shadow-[0_0_10px_rgba(250,204,21,0.6)]" />
+        <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-300 rounded-full animate-pulse"></div>
+      </div>
+    );
+  }
+
   if (lowerType.includes('mvp') || lowerType.includes('championship') || lowerType.includes('champion')) {
     return (
       <div className="relative">

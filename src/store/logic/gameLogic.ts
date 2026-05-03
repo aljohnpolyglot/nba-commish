@@ -606,6 +606,114 @@ export const processTurn = async (
         } as any);
     }
 
+    // 3.2.5 The Throne — full lifecycle (sign-ups → voting → reveal)
+    if (state.leagueStats.allStarThroneEnabled === true) {
+      const throneOrch = await import('../../services/allStar/throneOrchestrator');
+      const dThrone = dates as any;
+      const stateForThrone = () => ({
+        ...state,
+        players: updatedPlayers,
+        allStar: {
+          season: state.leagueStats.year,
+          startersAnnounced: false,
+          reservesAnnounced: false,
+          roster: [],
+          weekendComplete: false,
+          ...(state.allStar ?? {}),
+          ...(allStarPatch ?? {}),
+        },
+      }) as any;
+      const merge = (patch: any) => {
+        const as = patch?.allStar;
+        if (as) allStarPatch = { ...(allStarPatch || {}), ...as } as any;
+      };
+      // We use endDate >= phaseStart guards (not wasDateReached) so the lifecycle
+      // also fires correctly when the toggle is enabled mid-window.
+      const isPast = (d: Date) => endDate >= d;
+
+      // PHASE 1 — Sign-ups open (Dec 1 onward, until close)
+      if (
+        isPast(dThrone.throneSignupOpens)
+        && !isPast(dThrone.throneVotingOpens) // before voting opens
+        && !(allStarPatch as any)?.throneSignupSchedule
+        && !(state.allStar as any)?.throneSignupSchedule
+      ) {
+        merge(throneOrch.initThroneSignups(stateForThrone(), dThrone.throneSignupOpens, dThrone.throneSignupCloses));
+        const beltId = (allStarPatch as any)?.beltHolderInternalId ?? (state.allStar as any)?.beltHolderInternalId;
+        const kingName = beltId ? updatedPlayers.find(p => p.internalId === beltId)?.name : null;
+        uniqueNewNews.push({
+          id: `throne-signups-${Date.now()}`,
+          headline: 'THE THRONE — Sign-ups Open',
+          content: kingName
+            ? `Sign-ups are live for the 1v1 tournament. ${kingName} returns as defending king and the field opens for everyone else.`
+            : `The 1v1 tournament throne is up for grabs. Sign-ups are live through January 15.`,
+          date: dateString,
+          type: 'league',
+          read: false,
+        } as any);
+      }
+
+      // PHASE 1b — Sign-ups close (Jan 15+)
+      if (
+        isPast(dThrone.throneSignupCloses)
+        && !(allStarPatch as any)?.throneSignupComplete
+        && !(state.allStar as any)?.throneSignupComplete
+      ) {
+        merge(throneOrch.closeThroneSignups(stateForThrone()));
+        const totalSignups = ((allStarPatch as any)?.throneSignupSchedule
+          ?? (state.allStar as any)?.throneSignupSchedule
+          ?? []).length;
+        if (totalSignups > 0) {
+          uniqueNewNews.push({
+            id: `throne-signups-closed-${Date.now()}`,
+            headline: 'THE THRONE — Sign-ups Closed',
+            content: `${totalSignups} players signed up. The composite vote opens January 16 and closes January 30.`,
+            date: dateString,
+            type: 'league',
+            read: false,
+          } as any);
+        }
+      }
+
+      // PHASE 2 — Voting tick (Jan 16 → Jan 30) — fires every day in the window
+      if (
+        isPast(dThrone.throneVotingOpens)
+        && !isPast(dThrone.throneFieldReveal)
+        && !(allStarPatch as any)?.throneAnnounced
+        && !(state.allStar as any)?.throneAnnounced
+      ) {
+        merge(throneOrch.tickThroneVoting(stateForThrone(), endDate, dThrone.throneVotingOpens, dThrone.throneFieldReveal));
+      }
+
+      // PHASE 3 — Field reveal (Jan 30+)
+      if (
+        isPast(dThrone.throneFieldReveal)
+        && !(allStarPatch as any)?.throneAnnounced
+        && !(state.allStar as any)?.throneAnnounced
+      ) {
+        merge(throneOrch.lockThroneField(stateForThrone()));
+        const annAS = allStarPatch as any;
+        const fieldIds: string[] = annAS?.throne?.fieldPlayerIds ?? [];
+        const headlinePlayers = fieldIds.slice(0, 4)
+          .map(id => updatedPlayers.find(p => p.internalId === id)?.name)
+          .filter(Boolean)
+          .join(', ');
+        const beltDefenseLine = annAS?.throne?.titleDefenderId
+          ? ` 👑 ${updatedPlayers.find(p => p.internalId === annAS.throne.titleDefenderId)?.name ?? 'The defending king'} will defend the throne.`
+          : annAS?.throneVacated
+            ? ' The throne is VACATED — last year\'s king cannot defend.'
+            : '';
+        uniqueNewNews.push({
+          id: `throne-revealed-${Date.now()}`,
+          headline: 'THE THRONE — Field of 16 Revealed',
+          content: `Composite vote results are in. ${headlinePlayers} headline this year's tournament.${beltDefenseLine}`,
+          date: dateString,
+          type: 'league',
+          read: false,
+        } as any);
+      }
+    }
+
     // 3.3 Announce 3-Point Contest
     if (wasDateReached((dates as any).threePointAnnounced) && !allStarPatch?.threePointAnnounced) {
         const { AllStarThreePointContestSim } = await import('../../services/allStar/AllStarThreePointContestSim');

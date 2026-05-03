@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useGame } from '../../store/GameContext';
-import { Star, Zap, Target, Trophy, Users } from 'lucide-react';
+import { Star, Zap, Target, Trophy, Users, Crown } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { getOwnTeamId } from '../../utils/helpers';
 
@@ -13,6 +13,7 @@ import { RisingStarsView } from './RisingStarsView';
 import { CelebrityGameView } from './CelebrityGameView';
 import { DunkContestView } from './DunkContestView';
 import { ThreePointView } from './ThreePointView';
+import { ThroneContestView } from './ThroneContestView';
 import { AllStarGameView } from './AllStarGameView';
 import { GameSimulatorScreen } from '../shared/GameSimulatorScreen';
 import { WatchGamePreviewModal } from '../modals/WatchGamePreviewModal';
@@ -25,7 +26,7 @@ import { History } from 'lucide-react';
 import { fetchAllStarHistory, getCachedAllStarHistory } from '../../data/allStarHistoryFetcher';
 import { parseGameDate } from '../../utils/dateUtils';
 
-type AllStarTab = 'overview' | 'votes' | 'roster' | 'rising-stars' | 'celebrity' | 'dunk' | 'three-point';
+type AllStarTab = 'overview' | 'votes' | 'roster' | 'rising-stars' | 'celebrity' | 'dunk' | 'three-point' | 'throne';
 
 export const AllStarView: React.FC = () => {
   const { state, dispatchAction } = useGame();
@@ -128,11 +129,18 @@ export const AllStarView: React.FC = () => {
       icon: Zap,
       locked: !allStar?.dunkContestAnnounced && currentDate < dates.saturday
     },
-    { 
-      id: 'three-point', 
-      label: '3-Point Contest', 
+    {
+      id: 'three-point',
+      label: '3-Point Contest',
       icon: Target,
       locked: !allStar?.threePointAnnounced && currentDate < dates.saturday
+    },
+    {
+      id: 'throne',
+      label: 'The Throne',
+      icon: Crown,
+      hidden: !state.leagueStats.allStarThroneEnabled,
+      locked: currentDate < (dates as any).throneSignupOpens,
     },
   ];
 
@@ -351,6 +359,9 @@ export const AllStarView: React.FC = () => {
         )}
         {activeTab === 'three-point' && (
           <ThreePointView allStar={allStar} players={state.players} ownTid={ownTid} />
+        )}
+        {activeTab === 'throne' && (
+          <ThroneContestView allStar={allStar} players={state.players} ownTid={ownTid} />
         )}
       </div>
 

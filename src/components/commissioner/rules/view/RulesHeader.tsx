@@ -20,6 +20,7 @@ export const RulesHeader: React.FC<RulesHeaderProps> = ({
 }) => {
     const tabs = [
         { id: 'Format', icon: Calendar, label: 'Format' },
+        { id: 'NBA Cup', icon: Trophy, label: 'NBA Cup' },
         { id: 'Economy', icon: DollarSign, label: 'Economy' },
         { id: 'Draft', icon: UserPlus, label: 'Draft' },
         { id: 'Honors', icon: Award, label: 'Honors' },

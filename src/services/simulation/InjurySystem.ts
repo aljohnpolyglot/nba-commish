@@ -359,6 +359,17 @@ export class InjurySystem {
       // ── Historical durability from career injury data ──────────────────
       injuryRate *= durabilityMultiplier(player);
 
+      // ── Training fatigue → injury risk ─────────────────────────────────
+      // 0 fatigue → 1.0×, 100 fatigue → 1.2×. Modern NBA sport-science teams
+      // are very good at preventing fatigue-related injuries — pure load
+      // monitoring + individualized recovery means a tired player isn't 50%
+      // more likely to tear something. Mild bump only; the closed-loop pressure
+      // comes from progression dampening, not catastrophic injury risk.
+      // Future @NEW_FEATURES.md "Training Dev staff" tier should soften this
+      // further for teams investing in performance science budget.
+      const fatigue = Math.max(0, Math.min(100, (player as any).trainingFatigue ?? 0));
+      injuryRate *= 1 + (fatigue / 100) * 0.2;
+
       // ── Load management for stars vs weak opponents ────────────────────
       const opponentTeam = player.tid === homeTeam.id ? awayTeam : homeTeam;
       if (opponentTeam.strength < 85 && player.overallRating > 70) { // BBGM 70+ = All-Star tier (load management realistic at this level)

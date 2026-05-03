@@ -378,7 +378,11 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
       reseedPreview.starterIds.map(id => state.players.find(p => p.internalId === id)).filter((p): p is NBAPlayer => !!p),
       season,
     ).map(p => p.internalId);
-    saveIdealRotation(teamId, { starterIds: ordered, minutes: reseedPreview.minutes, locked: true });
+    const reseedBenchOrder = Object.entries(reseedPreview.minutes)
+      .filter(([id]) => !reseedPreview.starterIds.includes(id) && reseedPreview.minutes[id] > 0)
+      .sort(([, a], [, b]) => b - a)
+      .map(([id]) => id);
+    saveIdealRotation(teamId, { starterIds: ordered, minutes: reseedPreview.minutes, locked: true, benchOrder: reseedBenchOrder });
 
     // Sync bench depth into coaching preferences so the slider reflects the chosen outlook.
     const rosterForSliders = state.players.filter(p => p.tid === teamId && p.status === 'Active');
@@ -418,7 +422,7 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
       Object.keys(reconciledMinutes).length !== Object.keys(saved.minutes).length ||
       Object.entries(reconciledMinutes).some(([k, v]) => saved.minutes[k] !== v);
     if (changed && canEdit) {
-      saveIdealRotation(teamId, { starterIds: reconciledStarters, minutes: reconciledMinutes, locked: true });
+      saveIdealRotation(teamId, { starterIds: reconciledStarters, minutes: reconciledMinutes, locked: true, benchOrder: saved?.benchOrder });
     }
     return { starters: reconciledStarters, minutes: reconciledMinutes };
   }, [team, state.players, roster, rosterIds, rosterIdKey, season, standingsCtx, locked, saved, projectedStarters, teamId, canEdit]);
@@ -430,8 +434,27 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
   }, [state.players]);
 
   const starterSet = new Set(starters);
-  const benchPlayers = roster.filter(p => !starterSet.has(p.internalId))
-    .sort((a, b) => (minutes[b.internalId] ?? 0) - (minutes[a.internalId] ?? 0));
+  const benchPlayers = (() => {
+    const nonStarters = roster.filter(p => !starterSet.has(p.internalId));
+    if (locked && saved?.benchOrder && saved.benchOrder.length > 0) {
+      const byId = new Map(nonStarters.map(p => [p.internalId, p]));
+      const ordered: NBAPlayer[] = [];
+      for (const id of saved.benchOrder) {
+        const p = byId.get(id);
+        if (p) { ordered.push(p); byId.delete(id); }
+      }
+      for (const p of nonStarters) {
+        if (byId.has(p.internalId)) ordered.push(p);
+      }
+      return ordered;
+    }
+    // When locked with no explicit bench order, fall back to a stable OVR sort —
+    // NOT a minutes sort, so moving sliders never causes players to jump positions.
+    if (locked) {
+      return nonStarters.sort((a, b) => getDisplayOverall(b) - getDisplayOverall(a));
+    }
+    return nonStarters.sort((a, b) => (minutes[b.internalId] ?? 0) - (minutes[a.internalId] ?? 0));
+  })();
   // Render starters in PG→SG→SF→PF→C slot order. Unlocked (Auto) or partially
   // reconciled lineups get resorted; locked-and-intact saves are untouched so
   // a user's explicit drag order survives remount.
@@ -450,7 +473,8 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
 
   const persistEdit = (nextStarters: string[], nextMinutes: Record<string, number>) => {
     if (!canEdit) return;
-    saveIdealRotation(teamId, { starterIds: nextStarters, minutes: nextMinutes, locked: true });
+    const existing = getIdealRotation(teamId);
+    saveIdealRotation(teamId, { starterIds: nextStarters, minutes: nextMinutes, locked: true, benchOrder: existing?.benchOrder });
     setTick(t => t + 1);
   };
 
@@ -466,7 +490,7 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
         starters.map(id => playersById.get(id)).filter((p): p is NBAPlayer => !!p),
         season,
       ).map(p => p.internalId);
-      saveIdealRotation(teamId, { starterIds: ordered, minutes, locked: true });
+      saveIdealRotation(teamId, { starterIds: ordered, minutes, locked: true, benchOrder: benchPlayers.map(p => p.internalId) });
     }
     setTick(t => t + 1);
   };
@@ -634,6 +658,16 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
     });
   };
 
+  const [headerMinutesVisible, setHeaderMinutesVisible] = useState(true);
+  const headerMinutesRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = headerMinutesRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => setHeaderMinutesVisible(e.isIntersecting), { threshold: 0 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   // ── Render ──────────────────────────────────────────────────────────────
   if (!team) return <div className="text-slate-400 text-sm">Team not found.</div>;
 
@@ -676,7 +710,7 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
               </button>
             </>
           )}
-          <div className={`font-mono ${remaining === 0 ? 'text-emerald-400' : Math.abs(remaining) <= 5 ? 'text-amber-300' : 'text-rose-400'}`}>
+          <div ref={headerMinutesRef} className={`font-mono ${remaining === 0 ? 'text-emerald-400' : Math.abs(remaining) <= 5 ? 'text-amber-300' : 'text-rose-400'}`}>
             {totalMinutes} / {TARGET_MINUTES} min
           </div>
         </div>
@@ -876,6 +910,19 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Floating minutes pill — appears when the header counter scrolls out of view */}
+      {!headerMinutesVisible && (
+        <div className={`fixed bottom-4 right-4 z-40 rounded-full px-3 py-1.5 text-xs font-mono font-bold shadow-xl border backdrop-blur-sm pointer-events-none ${
+          remaining === 0
+            ? 'bg-emerald-950/90 border-emerald-700/60 text-emerald-300'
+            : Math.abs(remaining) <= 5
+            ? 'bg-amber-950/90 border-amber-700/60 text-amber-300'
+            : 'bg-rose-950/90 border-rose-700/60 text-rose-400'
+        }`}>
+          {totalMinutes} / {TARGET_MINUTES} min
         </div>
       )}
 

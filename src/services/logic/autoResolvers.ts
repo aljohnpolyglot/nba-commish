@@ -612,6 +612,12 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
       awardEntries.push({ internalId: allStarData.threePointContest.winnerId, name: allStarData.threePointContest.winnerName, awardType: 'Three-Point Contest Winner' });
     if (allStarData?.gameMvp?.name)
       awardEntries.push({ name: allStarData.gameMvp.name, awardType: 'All-Star Game MVP' });
+    if (allStarData?.throne?.champion?.playerId)
+      awardEntries.push({
+        internalId: allStarData.throne.champion.playerId,
+        name: allStarData.throne.champion.playerName,
+        awardType: 'The Throne',
+      });
 
     if (awardEntries.length > 0) {
       patch.players = state.players.map(p => {

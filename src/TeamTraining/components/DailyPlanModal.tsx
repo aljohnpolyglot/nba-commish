@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Zap, Swords, Shield, HeartPulse, Users, Calendar, Activity, ChevronRight, Check, Target, Info } from 'lucide-react';
+import { X, Zap, Swords, Shield, HeartPulse, Users, Calendar, Activity, ChevronRight, Check, Target, Info, BarChart3 } from 'lucide-react';
 import { Allocations, TrainingParadigm } from '../types';
 import { systemDescriptions } from '../lib/coachSliders';
 
@@ -39,7 +39,7 @@ const PARADIGM_TEMPLATES: Record<TrainingParadigm, { label: string; intensity: n
     intensity: 50,
     allocations: { offense: 30, defense: 30, conditioning: 20, recovery: 20 },
     icon: <Zap size={20} />,
-    color: 'blue',
+    color: 'sky',
     tooltip: 'Balanced: Linearly builds Offensive & Defensive System Familiarity.'
   },
   'Offensive': {
@@ -74,6 +74,34 @@ const PARADIGM_TEMPLATES: Record<TrainingParadigm, { label: string; intensity: n
     color: 'violet',
     tooltip: 'Load Management: Minimizes physical strain while focusing on IQ film study.'
   }
+};
+
+// Concrete-class lookups so Tailwind JIT picks them up. These match the
+// PlayerProgressionModal panel/icon-pill language (slate-950/40 panels,
+// bg-{accent}-600/20 icon pill, text-{accent}-400 icon, paradigm-tinted
+// active states with no bright bg-blue-600 anywhere).
+const ACCENT_CLASSES = {
+  sky:     { iconBg: 'bg-sky-600/20',     iconText: 'text-sky-400' },
+  orange:  { iconBg: 'bg-orange-600/20',  iconText: 'text-orange-400' },
+  emerald: { iconBg: 'bg-emerald-600/20', iconText: 'text-emerald-400' },
+  indigo:  { iconBg: 'bg-indigo-600/20',  iconText: 'text-indigo-400' },
+  rose:    { iconBg: 'bg-rose-600/20',    iconText: 'text-rose-400' },
+} as const;
+
+const PARADIGM_ACTIVE_CLASSES: Record<TrainingParadigm, string> = {
+  Balanced:   'bg-sky-500/15 border-sky-400/60 ring-1 ring-sky-400/30 shadow-lg shadow-sky-900/20',
+  Offensive:  'bg-orange-500/15 border-orange-400/60 ring-1 ring-orange-400/30 shadow-lg shadow-orange-900/20',
+  Defensive:  'bg-red-500/15 border-red-400/60 ring-1 ring-red-400/30 shadow-lg shadow-red-900/20',
+  Biometrics: 'bg-emerald-500/15 border-emerald-400/60 ring-1 ring-emerald-400/30 shadow-lg shadow-emerald-900/20',
+  Recovery:   'bg-violet-500/15 border-violet-400/60 ring-1 ring-violet-400/30 shadow-lg shadow-violet-900/20',
+};
+
+const PARADIGM_CHECK_TEXT: Record<TrainingParadigm, string> = {
+  Balanced:   'text-sky-200',
+  Offensive:  'text-orange-200',
+  Defensive:  'text-red-200',
+  Biometrics: 'text-emerald-200',
+  Recovery:   'text-violet-200',
 };
 
 const getIntensityDescription = (paradigm: TrainingParadigm, intensity: number) => {
@@ -167,8 +195,8 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
             <div className="p-6 md:p-10 border-b border-slate-800 bg-slate-900/50">
                <div className="flex justify-between items-start mb-4 md:mb-6">
                   <div className="flex items-center gap-4 md:gap-6">
-                     <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-3xl bg-blue-600/20 flex items-center justify-center border border-blue-500/30">
-                        <Calendar size={24} className="text-blue-400 md:w-8 md:h-8" />
+                     <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-3xl bg-indigo-600/20 flex items-center justify-center border border-indigo-500/30">
+                        <Calendar size={24} className="text-indigo-400 md:w-8 md:h-8" />
                      </div>
                      <div>
                         <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tighter leading-none mb-1 md:mb-2 lg:text-3xl">Configure Day {day}</h2>
@@ -191,30 +219,33 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar space-y-8 md:space-y-12">
                {/* Workload Section */}
-               <section>
+               <section className="bg-slate-950/40 border border-slate-800/50 rounded-3xl p-6">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 md:mb-6 relative group/header gap-4">
                      <div className="flex items-center gap-3">
+                        <div className={`${ACCENT_CLASSES.sky.iconBg} p-2 rounded-lg`}>
+                           <Activity size={16} className={ACCENT_CLASSES.sky.iconText} />
+                        </div>
                         <div>
                            <div className="flex items-center gap-2">
-                              <h3 className="text-base md:text-lg font-black text-white uppercase tracking-tight">Workload Intensity</h3>
+                              <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">Workload Intensity</h4>
                               <div className="bg-slate-800 p-0.5 md:p-1 rounded-full cursor-help">
                                  <Info size={10} className="text-slate-400 md:w-3 md:h-3" />
                               </div>
                            </div>
-                           <p className="text-[8px] md:text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-none mt-1">Sets global physical demand</p>
+                           <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Sets global physical demand</p>
                         </div>
                      </div>
-                     <span className={`text-2xl md:text-3xl font-black tabular-nums ${localIntensity > 85 ? 'text-red-500' : 'text-blue-400'}`}>
+                     <span className={`text-2xl md:text-3xl font-black tabular-nums ${localIntensity > 85 ? 'text-red-500' : 'text-sky-300'}`}>
                         {localIntensity}%
                      </span>
                   </div>
-                  
-                  <div className={`p-4 md:p-8 bg-slate-950/40 rounded-2xl md:rounded-[2rem] border border-slate-800/50 ${localParadigm === 'Recovery' ? 'opacity-50 grayscale' : ''}`}>
+
+                  <div className={`p-4 md:p-6 bg-slate-900/40 rounded-2xl border border-slate-800/40 ${localParadigm === 'Recovery' ? 'opacity-50 grayscale' : ''}`}>
                     {/* Slider Bar area */}
                     <div className="relative group/range mb-4">
                       <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 bg-slate-900 rounded-full overflow-hidden">
-                         <div 
-                           className="h-full bg-blue-600 transition-all duration-300" 
+                         <div
+                           className="h-full bg-gradient-to-r from-slate-700 via-sky-500/70 to-rose-500/70 transition-all duration-300"
                            style={{ width: `${localIntensity}%` }}
                          />
                       </div>
@@ -262,13 +293,13 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                     {/* Risk Labels area */}
                     <div className="flex justify-between px-1 md:px-2 text-[8px] md:text-[10px] font-black text-slate-600 uppercase tracking-widest">
                        <span>Low Load</span>
-                       <span className="text-blue-500/50">Optimal Dev</span>
-                       <span className="text-red-500/50 text-right">High Risk</span>
+                       <span className="text-sky-400/60">Optimal Dev</span>
+                       <span className="text-rose-400/60 text-right">High Risk</span>
                     </div>
 
                     {/* Description area */}
                     <div className="mt-8 pt-6 border-t border-slate-800/30 flex justify-center">
-                       <p className="text-[10px] md:text-xs text-blue-400 font-bold uppercase tracking-widest text-center">
+                       <p className="text-[10px] md:text-xs text-sky-300 font-bold uppercase tracking-widest text-center">
                          {getIntensityDescription(localParadigm, localIntensity)}
                        </p>
                     </div>
@@ -276,8 +307,16 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                </section>
 
                {/* Focus Selector */}
-               <section>
-                  <h3 className="text-base md:text-lg font-black text-white uppercase tracking-tight mb-4 md:mb-6">Training Focus</h3>
+               <section className="bg-slate-950/40 border border-slate-800/50 rounded-3xl p-6">
+                  <div className="flex items-center gap-3 mb-4 md:mb-6">
+                     <div className={`${ACCENT_CLASSES.orange.iconBg} p-2 rounded-lg`}>
+                        <Target size={16} className={ACCENT_CLASSES.orange.iconText} />
+                     </div>
+                     <div>
+                        <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">Training Focus</h4>
+                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Pick a paradigm template</p>
+                     </div>
+                  </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3">
                      {(Object.keys(PARADIGM_TEMPLATES) as TrainingParadigm[]).map(p => {
                         const template = PARADIGM_TEMPLATES[p];
@@ -287,12 +326,12 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                             key={p}
                             onClick={() => handleParadigmSelect(p)}
                             className={`p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all text-left flex flex-col gap-2 md:gap-3 relative overflow-hidden h-full group/paradigm ${
-                              isActive 
-                              ? 'bg-blue-600 border-blue-400 shadow-xl shadow-blue-900/20' 
+                              isActive
+                              ? PARADIGM_ACTIVE_CLASSES[p]
                               : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'
                             }`}
                           >
-                             <div className={`${isActive ? 'text-white' : `text-${template.color}-400 md:text-${template.color}-400 shadow-none md:shadow-none`} bg-slate-950/20 p-1 md:p-1.5 rounded-lg w-fit`}>
+                             <div className={`text-${template.color}-400 bg-slate-950/40 p-1 md:p-1.5 rounded-lg w-fit`}>
                                 {React.cloneElement(template.icon as React.ReactElement<any>, { size: 14 })}
                              </div>
                              <div>
@@ -300,10 +339,10 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                                    {template.label}
                                 </div>
                              </div>
-                             
+
                              {isActive && (
                                <div className="absolute top-3 right-3 md:top-4 md:right-4">
-                                  <Check size={14} className="text-white md:w-4 md:h-4" />
+                                  <Check size={14} className={`${PARADIGM_CHECK_TEXT[p]} md:w-4 md:h-4`} />
                                </div>
                              )}
                           </button>
@@ -313,10 +352,15 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                </section>
 
                {/* Allocation Preview Slots */}
-               <section className="bg-slate-950/60 p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-slate-800/40">
-                  <div className="flex items-center gap-2 mb-4 md:mb-6">
-                     <span className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest">Focus Distribution</span>
-                     <div className="h-[1px] flex-1 bg-slate-800/50" />
+               <section className="bg-slate-950/40 border border-slate-800/50 rounded-3xl p-6">
+                  <div className="flex items-center gap-3 mb-4 md:mb-6">
+                     <div className={`${ACCENT_CLASSES.emerald.iconBg} p-2 rounded-lg`}>
+                        <BarChart3 size={16} className={ACCENT_CLASSES.emerald.iconText} />
+                     </div>
+                     <div>
+                        <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">Focus Distribution</h4>
+                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">How the day's minutes split</p>
+                     </div>
                   </div>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                      <AllocationDisplay label="Offense" value={localAllocations.offense} icon={<Swords size={14} />} color="orange" />
@@ -327,19 +371,22 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                </section>
 
                {/* System Practice Section */}
-               <section>
+               <section className="bg-slate-950/40 border border-slate-800/50 rounded-3xl p-6">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-2">
-                  <div className="flex items-center gap-3 md:gap-4 text-left">
-                     <Target size={20} className="text-blue-400 md:w-6 md:h-6" />
-                     <div>
-                        <div className="flex items-center gap-2 group relative">
-                           <h3 className="text-base md:text-lg font-black text-white uppercase tracking-tight">System Practice</h3>
-                           <div className="bg-slate-800 p-0.5 md:p-1 rounded-full cursor-help">
-                              <Info size={10} className="text-slate-400 md:w-3 md:h-3" />
+                     <div className="flex items-center gap-3">
+                        <div className={`${ACCENT_CLASSES.indigo.iconBg} p-2 rounded-lg`}>
+                           <Target size={16} className={ACCENT_CLASSES.indigo.iconText} />
+                        </div>
+                        <div>
+                           <div className="flex items-center gap-2">
+                              <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">System Practice</h4>
+                              <div className="bg-slate-800 p-0.5 md:p-1 rounded-full cursor-help">
+                                 <Info size={10} className="text-slate-400 md:w-3 md:h-3" />
+                              </div>
                            </div>
+                           <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Up to five sets to drill</p>
                         </div>
                      </div>
-                  </div>
                      <span className="text-[9px] md:text-xs font-black uppercase tracking-widest text-slate-500">
                         {localSystems.length} / 5 Selected
                      </span>
@@ -353,8 +400,8 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                             key={systemName}
                             onClick={() => toggleSystem(systemName)}
                             className={`p-2.5 md:p-3 rounded-lg md:rounded-xl border text-[8px] md:text-[10px] font-black uppercase tracking-tight transition-all text-center ${
-                               isSelected 
-                               ? 'bg-blue-600 border-blue-400 text-white' 
+                               isSelected
+                               ? 'bg-indigo-500/20 border-indigo-400/60 text-indigo-100'
                                : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700'
                             }`}
                           >
@@ -379,7 +426,7 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                    onSave(localIntensity, { ...localAllocations, systemFocus: localSystems }, localParadigm);
                    onClose();
                  }}
-                 className="px-6 md:px-8 py-2 md:py-3 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] shadow-xl transition-all flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20"
+                 className="px-6 md:px-8 py-2 md:py-3 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] shadow-xl transition-all flex items-center justify-center gap-2 bg-indigo-500/90 hover:bg-indigo-400 text-white shadow-indigo-500/20"
                >
                  Save Plan <ChevronRight size={12} className="md:w-3.5 md:h-3.5" />
                </button>

@@ -223,6 +223,7 @@ export const validateCBATradeRules = (input: CBATradeValidationInput): CBATradeV
     ratio: number,
     bucket: ApronBucket,
     postPayrollUSD: number,
+    otherSideCapRoomUSD: number,
   ): CBATradeValidationResult | null => {
     if (incomingUSD <= 0) return null;
     if (outgoingUSD <= 0) {
@@ -248,6 +249,16 @@ export const validateCBATradeRules = (input: CBATradeValidationInput): CBATradeV
 
     const tpe = findTPECover(team, currentDate, Math.max(0, incomingUSD - outgoingUSD), postPayrollUSD, bucket, leagueStats, currentYear);
     if (tpe.ok) return null;
+
+    // House rule (not strict NBA): when the OTHER side is a cap-space team
+    // whose room covers the salary imbalance, treat the trade as facilitable.
+    // Real NBA would route this through a 3-team / S&T construction; the game
+    // collapses that into a 2-team body-for-pick deal so users can build it
+    // directly. Without this, an over-cap contender can never "buy back" a
+    // star from a rebuilder for a small filler, which is the core complaint.
+    const imbalance = incomingUSD - outgoingUSD;
+    if (otherSideCapRoomUSD > 0 && imbalance <= otherSideCapRoomUSD + SALARY_BUFFER_USD) return null;
+
     return {
       ok: false,
       reason: tpe.blockedReason ?? salaryRatioReason(bucket, ratio),
@@ -257,9 +268,9 @@ export const validateCBATradeRules = (input: CBATradeValidationInput): CBATradeV
     };
   };
 
-  const aSalaryViolation = checkIncoming('A', teamA, teamBOutUSD, teamAOutUSD, ratioA, teamAPostBucket, teamAPostPayrollUSD);
+  const aSalaryViolation = checkIncoming('A', teamA, teamBOutUSD, teamAOutUSD, ratioA, teamAPostBucket, teamAPostPayrollUSD, teamBProfile.capSpaceUSD);
   if (aSalaryViolation) return aSalaryViolation;
-  const bSalaryViolation = checkIncoming('B', teamB, teamAOutUSD, teamBOutUSD, ratioB, teamBPostBucket, teamBPostPayrollUSD);
+  const bSalaryViolation = checkIncoming('B', teamB, teamAOutUSD, teamBOutUSD, ratioB, teamBPostBucket, teamBPostPayrollUSD, teamAProfile.capSpaceUSD);
   if (bSalaryViolation) return bSalaryViolation;
 
   return { ok: true, ...resultBase };

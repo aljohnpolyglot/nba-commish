@@ -29,11 +29,30 @@ Secondary polish; satellite-event UI surfaces moved to `NEW_FEATURES.md`. The sh
 
 ---
 
-## QUEUED - The Throne (standalone polish + in-game event)
+## SHIPPED - The Throne (in-game All-Star event integration)
 
-Full design, format v2, commissioner settings, sign-up incentive logic, and implementation hooks live in **[THRONE_PLAN.md](./THRONE_PLAN.md)**.
+**Shipped this session.** Full plan: [THRONE_PLAN.md](./THRONE_PLAN.md). Toggle defaults to **OFF** — zero behavior change for existing saves.
 
-Standalone mini-game tasks (Part 5 of that doc): Sim Round/Sim Tournament buttons · skipToEnd cap fix · richer commentary pools · seed randomizer.
+Standalone mini-game tasks (Part 5 of THRONE_PLAN.md) — Sim Round/Sim Tournament buttons · skipToEnd cap fix · richer commentary pools · seed randomizer — remain deferred polish for the standalone code path (`src/throne/`); they don't gate the in-game event.
+
+### CHANGELOG entry (paste into your rewrite)
+
+**The Throne — All-Star Saturday 1v1 tournament (opt-in, default OFF)**
+
+Folds the standalone `src/throne/` 1v1 mini-game into All-Star Saturday as a premium event. When `allStarThroneEnabled` is on, replaces the standard 1v1 Tournament; when off, nothing changes. Ships with diverse composite voting + mandatory title defense storyline.
+
+- **Commissioner UI** — gold-bordered "The Throne · 1v1 Tournament" section in All-Star Tab with master toggle + sub-settings (field size, first possession, scoring system, shot clock, target score, hard cap, prize pool, mandatory-title-defense toggle).
+- **Composite vote — actually diverse, not OVR-sorted.** Two-stage selection in `throneOrchestrator.ts`:
+  1. **Sign-up filter** — guaranteed-contract players, not injured. Cash-motivated when annual salary < prizePool × 5; glory-motivated via `competitive` mood trait or `fame > 70`. Most $40M+ superstars opt out structurally.
+  2. **Composite score** — 40% fan (`convertTo2KRating`) / 30% player (career All-Star + accolade weight) / 20% media (fame + storyline bonus) / 10% coach (1v1 skill: 0.30·tp + 0.25·fg + 0.20·drb + 0.15·spd + 0.10·ins). Each bloc gets independent ±10/15/20/5% jitter per player so the field shuffles year-over-year. Plodding bigs lose to shifty guards via the coach weight.
+- **Mandatory title defense** (`allStarThroneMandatoryDefense`, default ON) — `state.allStar.beltHolderInternalId` survives season rollover. Defending king is auto-included at seed #1, skipping the vote entirely. If injured/retired/inactive, throne is **VACATED** — UI shows red skull callout, anyone can claim it.
+- **Voting UI (`ThroneContestView.tsx`)** — neon yellow hero header, gold pulsing crown over the defender's portrait, 16 contender cards with seed badge + portrait + composite score + animated per-bloc bars (rose/Fan, purple/Player, cyan/Media, yellow/Coach growing from 0 on mount). Post-event swap: champion hero with gold halo + "King of 1v1 · Defends Next Year" + bracket tree of all 15 matches.
+- **Headless tournament loop** — `simulateThroneTournament` runs 16-player single-elimination via the existing `GameSim`. After each round, survivors reseeded by cumulative point differential; greedy AI picks weakest remaining opponent (lowest cumulative PD, OVR tiebreak). Final picks the same way. 2000-possession safety cap.
+- **Saturday integration** — `AllStarWeekendOrchestrator.simulateWeekend` Saturday block: if Throne is enabled → `simulateThroneTournament`; else → unchanged `simulateOneOnOneTournament`. Field-of-16 announcement piggybacks on `dunkContestAnnounced` date so the voting tab unlocks the same day, with a generated news headline that calls out the title defender (or vacated throne).
+- **Award + history wiring** — winner gets `'The Throne'` award via existing `awardEntries` loop in `autoSimAllStarWeekend` (dedup by season). New `Crown` icon in `AwardsView`. New `Throne 👑` column in `AllStarHistoryView` (only renders when toggle is on, mirrors the celebrity-game conditional pattern). Belt persists across `seasonRollover.ts` via `beltHolderInternalId` carried into the new season's `allStar` shell.
+- **Reducer** — new `SAVE_THRONE_RESULT` action alongside `SAVE_CONTEST_RESULT` for any future watch-live overlay.
+
+**Files touched:** `types.ts`, `constants.ts`, `rulesDefaults.ts`, `AllStarTab.tsx`, `AllStarView.tsx`, `AllStarHistoryView.tsx`, `AwardsView.tsx`, `AllStarWeekendOrchestrator.ts`, `gameLogic.ts`, `GameContext.tsx`, `seasonRollover.ts`, `autoResolvers.ts`. New: `services/allStar/throneOrchestrator.ts`, `components/allstar/ThroneContestView.tsx`, `components/commissioner/rules/view/all-star/ThroneSection.tsx`. Type-clean (`tsc --noEmit` zero errors).
 
 ---
 
@@ -65,6 +84,22 @@ Full P0 + P1 spec lives in CHANGELOG Session 36. Below are the deferred / long-t
 ## BUGS - Open
 
 > All bugs logged here are open. Fixed bugs moved to History below.
+
+---
+
+## QUEUED - Offseason orchestrator (Sessions 1-6 shipped, follow-ups deferred)
+
+Sessions 1-5 built `services/offseason/offseasonState.ts` + `offseasonPlan.ts` and routed `simulationHandler`, `lazySimRunner`, `faMarketTicker`, `AIFreeAgentHandler` (FA passes + Bird Rights), `seasonRollover`, `externalSigningRouter`, and `PlayButton` through it. Single grep tag `[OSPLAN]` covers all dispatch decisions + drift warnings. Behavior-preserving — no in-browser play-through validation yet.
+
+### Open follow-ups
+- **`[OSPLAN]` coverage for `autoResolvers`** — `autoRunLottery`, `autoRunDraft`, `autoInductHOFClass` fire from `gameLogic` but don't log to the unified timeline. Add `logPlanEvent('autoResolvers.X', 'fire', extra)` at the top of each.
+- **Session 6 (deferred):** Promote `state.phase` to a stored field with explicit `enterPhase()` transitions that atomically clear stale state (e.g., wipe leftover playoff `series.status` when entering postDraft). First behavior-changing step.
+- **Session 7 (deferred, depends on 6):** Delete `isInFreeAgencyWindow`, `isInPostDeadlinePreFAWindow`, `isDraftBlockedByUnresolvedPlayoffs` once rest of codebase reads `state.phase`.
+- **Validation gap:** No play-through has run since Sessions 3-5 swapped authority from inline gates to plan-derived dispatch. Browser sim through July → Oct should produce zero `[OSPLAN] DRIFT` or `[OSPLAN] SHADOW-DRIFT` warnings.
+
+### Pre-existing economy issues (unchanged by orchestrator work)
+- **Pass 5 can't help full rosters** — teams at 15/15 with cheap deals need NBA-style shortfall distribution (bonus payments to existing players). Function not yet written. Should fire from `seasonRollover.ts` at year-end.
+- **`playerCurrentSeason` derives from `player.stats` MAX year, not `state.leagueStats.year`** — stale for retired/revived players. In `salaryUtils.ts`.
 
 ---
 

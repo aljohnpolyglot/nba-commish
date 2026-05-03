@@ -117,10 +117,16 @@ const PlayerRow = ({ player, isSelected, onToggle, formatContract, teams, disabl
     if (disabled || !rowRef.current) return;
     const rect = rowRef.current.getBoundingClientRect();
     const cardW = 210;
-    const left = rect.right + 8 + cardW > window.innerWidth ? rect.left - cardW - 8 : rect.right + 8;
     const cardH = 620;
+    // Mobile: anchoring to row edges pushes the card off-screen (negative left
+    // when rect.left < cardW). Center it horizontally and clamp vertically to
+    // the viewport instead, so the card is actually visible on touch/long-press.
+    const isMobile = window.innerWidth < 640;
+    const left = isMobile
+      ? Math.max(8, Math.round((window.innerWidth - cardW) / 2))
+      : (rect.right + 8 + cardW > window.innerWidth ? rect.left - cardW - 8 : rect.right + 8);
     const centeredTop = rect.top + rect.height / 2 - cardH / 2;
-    const top = Math.max(8, Math.min(centeredTop, window.innerHeight - cardH - 8));
+    const top = Math.max(8, Math.min(centeredTop, Math.max(8, window.innerHeight - cardH - 8)));
     setCardPos({ top, left });
   };
 
@@ -555,10 +561,14 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
         </div>
 
         {/* MAIN 2-COLUMN WRAPPER */}
-        <div className="w-full max-w-6xl h-[calc(100vh-9rem)] lg:h-[80vh] flex flex-col lg:flex-row gap-3 sm:gap-6 pb-4 lg:pb-0">
+        {/* Mobile: let the wrapper grow with content (each column is min-h-[85vh])
+            so the outer overflow-y-auto scrolls smoothly between the two columns.
+            A fixed wrapper height fought those mins and produced the unscrollable
+            "compacted" layout the user reported. */}
+        <div className="w-full max-w-6xl lg:h-[80vh] flex flex-col lg:flex-row gap-3 sm:gap-6 pb-4 lg:pb-0">
           
           {/* ======================= TEAM 1 COLUMN ======================= */}
-          <div className="flex-1 flex flex-col bg-[#1e1e1e] border border-slate-700/50 rounded-2xl overflow-hidden relative shadow-2xl min-h-[50vh] lg:min-h-0">
+          <div className="flex-1 flex flex-col bg-[#1e1e1e] border border-slate-700/50 rounded-2xl overflow-hidden relative shadow-2xl min-h-[85vh] lg:min-h-0">
             
             <div className="p-5 border-b border-slate-700/50 bg-[#161616]">
                 <TeamDropdown 
@@ -702,7 +712,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
           </div>
 
           {/* ======================= TEAM 2 COLUMN ======================= */}
-          <div className="flex-1 flex flex-col bg-[#1e1e1e] border border-slate-700/50 rounded-2xl overflow-hidden relative shadow-2xl min-h-[50vh] lg:min-h-0">
+          <div className="flex-1 flex flex-col bg-[#1e1e1e] border border-slate-700/50 rounded-2xl overflow-hidden relative shadow-2xl min-h-[85vh] lg:min-h-0">
             
             <div className="p-5 border-b border-slate-700/50 bg-[#161616]">
                 <TeamDropdown 

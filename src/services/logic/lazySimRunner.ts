@@ -35,7 +35,8 @@ import {
 } from './autoResolvers';
 import { getHOFCeremonyDateString } from '../playerDevelopment/hofChecker';
 import { NewsGenerator } from '../news/NewsGenerator';
-import { applySeasonRollover, shouldFireRollover } from './seasonRollover';
+import { applySeasonRollover } from './seasonRollover';
+import { getOffseasonDayPlan, logPlanEvent } from '../offseason/offseasonPlan';
 import { autoResolveAllStarHosts } from '../allStar/hostAutoResolver';
 import { PlayoffSeries, HistoricalAward, SeasonHistoryEntry } from '../../types';
 import { DEFAULT_MEDIA_RIGHTS, attachBroadcastersToGames } from '../../utils/broadcastingUtils';
@@ -537,7 +538,12 @@ export const runLazySim = async (
       // Season rollover — fires once when date crosses the computed rollover date.
       // Must run in the lazy sim loop (not just simulationHandler) so that contracts expire,
       // the year advances, and schedule_generation fires for the new season.
-      if (shouldFireRollover(state, currentNorm)) {
+      // Routes through the orchestrator so this parallel dispatch path agrees
+      // with the per-day handler (Session 5 — both call sites now share the
+      // same rollover decision via getOffseasonDayPlan).
+      const lazyPlan = getOffseasonDayPlan(state);
+      if (lazyPlan.actions.rollover === 'fire') {
+        logPlanEvent('lazySimRunner.rollover', 'fire', `date=${currentNorm}`);
         const rolloverPatch = applySeasonRollover(state);
         state = { ...state, ...rolloverPatch };
         // Ensure All-Star host always has the current + next season locked in

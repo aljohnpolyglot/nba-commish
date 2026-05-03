@@ -22,7 +22,8 @@ type ToastItem =
   // sheet from another team — has Match/Decline action buttons + 12s duration.
   | { type: 'rfa-offer-received'; playerId: string; playerName: string; signingTeamName: string; annualM: number; years: number; expiresInDays: number }
   | { type: 'rfa-matched'; playerName: string; priorTeamName: string; signingTeamName: string }
-  | { type: 'rfa-not-matched'; playerName: string; signingTeamName: string };
+  | { type: 'rfa-not-matched'; playerName: string; signingTeamName: string }
+  | { type: 'gameplan-copied' };
 
 // ── Imperative push API (usable outside React tree) ─────────────────────────
 let _enqueue: ((item: ToastItem) => void) | null = null;
@@ -45,6 +46,7 @@ const TOAST_DURATION: Record<ToastItem['type'], number> = {
   'rfa-offer-received': 12000,
   'rfa-matched': 6000,
   'rfa-not-matched': 6000,
+  'gameplan-copied': 3500,
 };
 
 // ── Color theme per toast type (accent = border/icon/label tint) ────────────
@@ -65,6 +67,7 @@ const ACCENT: Record<ToastItem['type'], Accent> = {
   'rfa-offer-received': { bg: 'bg-fuchsia-950/95', border: 'border-fuchsia-500/60', label: 'text-fuchsia-300', icon: 'text-fuchsia-400' },
   'rfa-matched':     { bg: 'bg-emerald-950/90', border: 'border-emerald-500/50', label: 'text-emerald-300', icon: 'text-emerald-400' },
   'rfa-not-matched': { bg: 'bg-rose-950/90',    border: 'border-rose-500/50',    label: 'text-rose-300',    icon: 'text-rose-400'    },
+  'gameplan-copied': { bg: 'bg-sky-950/90',     border: 'border-sky-500/50',     label: 'text-sky-300',     icon: 'text-sky-400'     },
 };
 
 export const ToastNotifier: React.FC = () => {
@@ -412,6 +415,14 @@ const ToastContent: React.FC<{ item: ToastItem }> = ({ item }) => {
     return (
       <Card type={item.type} icon={CheckCircle} header={item.playerName} label="Signed">
         Offer sheet not matched — {item.playerName} signs with the <span className="text-rose-300 font-bold">{item.signingTeamName}</span>.
+      </Card>
+    );
+  }
+
+  if (item.type === 'gameplan-copied') {
+    return (
+      <Card type={item.type} icon={CheckCircle} header="Ideal Rotation" label="Updated">
+        Gameplan copied — order and minutes saved to <span className="text-sky-300 font-bold">Ideal Rotation</span>.
       </Card>
     );
   }

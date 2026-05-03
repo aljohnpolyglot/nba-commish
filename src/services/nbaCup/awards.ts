@@ -188,12 +188,16 @@ export function applyCupAwardsToPlayers(cup: NBACupState, players: NBAPlayer[]):
 }
 
 /** Populate prize pool amounts on the cup state if commissioner enabled it. */
-export function applyPrizePool(cup: NBACupState, enabled: boolean): NBACupState {
+export function applyPrizePool(
+  cup: NBACupState,
+  enabled: boolean,
+  amounts?: { winner: number; runnerUp: number; semi: number; quarter: number },
+): NBACupState {
   if (!enabled) return { ...cup, prizePool: undefined };
   return {
     ...cup,
     prizePool: {
-      perPlayerByFinish: {
+      perPlayerByFinish: amounts ?? {
         winner:    500_000,
         runnerUp:  200_000,
         semi:      100_000,

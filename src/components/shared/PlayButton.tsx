@@ -12,6 +12,7 @@ import { useDraftEventGate } from '../../hooks/useDraftEventGate';
 import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
 import { useTeamOptionGate } from '../../hooks/useTeamOptionGate';
 import { useExpiringResignGate } from '../../hooks/useExpiringResignGate';
+import { getOffseasonState, type OffseasonPhase } from '../../services/offseason/offseasonState';
 
 type SimPhase =
   | 'preseason'
@@ -42,38 +43,52 @@ function addDaysToDate(d: Date, days: number): Date {
   return new Date(d.getTime() + days * 86_400_000);
 }
 
+// Map offseason orchestrator phases → PlayButton SimPhase. The orchestrator is
+// authoritative for postDraft/moratorium/birdRights/openFA/preCamp/draftDay.
+// 'inSeason' / 'preDraft' fall through to schedule-derived sub-phases below.
+function offseasonPhaseToSimPhase(p: OffseasonPhase, draftComplete: boolean): SimPhase | null {
+  switch (p) {
+    case 'draftDay':   return draftComplete ? 'after-draft' : 'draft';
+    case 'postDraft':  return 'after-draft';
+    case 'moratorium': return 'free-agency';
+    case 'birdRights': return 'free-agency';
+    case 'openFA':     return 'free-agency';
+    case 'preCamp':    return 'preseason';
+    default:           return null; // inSeason | preDraft → schedule logic
+  }
+}
+
 function getSimPhase(state: any): SimPhase {
   const norm = normalizeDate(state.date);
   const curDate = new Date(`${norm}T00:00:00Z`);
   const ls = state.leagueStats;
   const seasonYear: number = ls?.year ?? curDate.getUTCFullYear();
 
-  const openingNight = getOpeningNightDate(seasonYear);
   const draftLotteryDate = getDraftLotteryDate(seasonYear, ls);
   const draftDate = getDraftDate(seasonYear, ls);
-  const offseasonFAStart = getCurrentOffseasonEffectiveFAStart(curDate, ls, state.schedule);
-  const trainingCampMonth = ls?.trainingCampMonth ?? 10;
-  const trainingCampDay = ls?.trainingCampDay ?? 1;
-  const currentCalendarTrainingCamp = new Date(Date.UTC(curDate.getUTCFullYear(), trainingCampMonth - 1, trainingCampDay));
   const hasPlayIn = (state.playoffs?.playInGames ?? []).some((g: any) => !g.winner);
   const hasActivePlayoffs = (state.playoffs?.series ?? []).some((s: any) => s.status !== 'complete');
   const draftBlockedByPlayoffs = isDraftBlockedByUnresolvedPlayoffs(state);
 
-  if (curDate >= offseasonFAStart && curDate < currentCalendarTrainingCamp) return 'free-agency';
-
-  if (curDate < openingNight) {
-    const trainingCamp = getTrainingCampDate(seasonYear, ls);
-    if (curDate >= trainingCamp) return 'preseason';
-    return 'after-draft';
+  // [OSPLAN] PlayButton consumes the offseason orchestrator for all post-draft/
+  // FA/preCamp phases so dropdown options match what the dispatcher will fire.
+  const os = getOffseasonState(state.date, ls, state.schedule, {
+    draftComplete: !!state.draftComplete,
+    playoffsActive: hasActivePlayoffs,
+  });
+  const fromOrchestrator = offseasonPhaseToSimPhase(os.phase, !!state.draftComplete);
+  // Active playoff series override postDraft — stale series.status can leak into
+  // postDraft phase when Finals didn't flip to 'complete' on draft night.
+  if (fromOrchestrator && !(fromOrchestrator === 'after-draft' && (hasActivePlayoffs || draftBlockedByPlayoffs))) {
+    return fromOrchestrator;
   }
+
+  // ── inSeason / preDraft sub-classification (schedule-derived) ──
+  if (state.draftComplete) return 'after-draft';
   if (hasActivePlayoffs || draftBlockedByPlayoffs) return 'playoffs';
   if (hasPlayIn && !hasActivePlayoffs) return 'playin';
   if (curDate > draftDate) return 'after-draft';
-  // On draft day: if the user has already run the draft via DraftSimulatorView,
-  // flip immediately to 'after-draft' so they get the FA chain instead of the
-  // dead-end "View draft" loop.
   if (toISODateString(draftDate) === norm) return state.draftComplete ? 'after-draft' : 'draft';
-
   if (curDate >= draftLotteryDate) return 'draft-lottery';
   return 'regular-season';
 }
@@ -297,10 +312,16 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
         }
         // Play-in: prefer scheduled play-in games; otherwise fall back to the day
         // AFTER the last regular-season game (real schedule rolls straight from
-        // regular season into play-in). Always shown in regular season so the user
-        // can skip to it before the bracket has been generated.
+        // regular season into play-in). Calendar fallback (~Apr 14) covers the
+        // dead window where RS is fully played but the bracket hasn't generated
+        // yet — without it the user gets stranded with only "One day".
         const playInScheduled  = ls?.playIn !== false ? findFirstPlayInDate(state) : null;
-        const playInTarget     = ls?.playIn !== false ? (playInScheduled ?? (lastRegSeasonStr ? addDays(lastRegSeasonStr, 1) : null)) : null;
+        const playInCalFallback = `${calYear}-04-14`;
+        const playInTarget     = ls?.playIn !== false
+          ? (playInScheduled
+              ?? (lastRegSeasonStr ? addDays(lastRegSeasonStr, 1) : null)
+              ?? (norm < playInCalFallback ? playInCalFallback : null))
+          : null;
         if (playInTarget && playInTarget > norm) {
           opts.push({ label: 'Until play-in', action: () => simToDate(playInTarget) });
         }
@@ -327,6 +348,8 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
         }
         if (norm < draftLotteryStr) {
           opts.push({ label: 'Until draft lottery', action: () => simToDate(draftLotteryStr) });
+        } else if (norm === draftLotteryStr) {
+          opts.push({ label: 'Watch lottery', action: () => navigate('Draft Lottery' as Tab) });
         }
         opts.push({ label: 'Through playoffs', action: () => simThrough(lastPlayoffStr) });
         return opts;
@@ -341,6 +364,10 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
         // Lottery falls during the playoffs in the real calendar (mid-May).
         if (norm < draftLotteryStr) {
           opts.push({ label: 'Until draft lottery', action: () => simToDate(draftLotteryStr) });
+        } else if (norm === draftLotteryStr) {
+          // On lottery day during playoffs — let the user actually watch it
+          // instead of forcing "Through playoffs" first.
+          opts.push({ label: 'Watch lottery', action: () => navigate('Draft Lottery' as Tab) });
         }
         // Stop ON the last scheduled playoff game so the user lands at the
         // championship and can immediately step into the post-finals flow.

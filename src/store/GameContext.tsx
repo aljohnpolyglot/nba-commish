@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useRef, useEffect, useCallback } from 'react';
 import { flushSync } from 'react-dom';
-import { GameState, UserAction, Tab, Bet, BetLeg } from '../types';
+import { GameState, UserAction, Tab, Bet, BetLeg, NBAPlayer } from '../types';
 import { processTurn, handleStartGame, handleAnnounceChange } from './logic/gameLogic';
 import { useGameActions } from './useGameActions';
 import { initialState } from './initialState';
@@ -167,14 +167,28 @@ const actions = useGameActions(setState, () => stateRef.current);
       // One mentor per player (docs/mentorship.md §1) — enforce uniqueness at the
       // dispatch boundary so the relationship is atomic. Assigning mentor X to
       // player A automatically clears X from any other mentee.
-      setState(prev => ({
-        ...prev,
-        players: prev.players.map(p => {
-          if (p.internalId === playerId) return { ...p, mentorId };
-          if (mentorId && p.mentorId === mentorId) return { ...p, mentorId: null };
-          return p;
-        }),
-      }));
+      setState(prev => {
+        const today = (prev.date ?? '').slice(0, 10) || new Date().toISOString().slice(0, 10);
+        const closeOpenEntry = (history: NBAPlayer['mentorHistory']) =>
+          (history ?? []).map(h => (h.endDate ? h : { ...h, endDate: today }));
+        return {
+          ...prev,
+          players: prev.players.map(p => {
+            if (p.internalId === playerId) {
+              const closed = closeOpenEntry(p.mentorHistory);
+              const next = mentorId
+                ? [...closed, { mentorId, startDate: today }]
+                : closed;
+              return { ...p, mentorId, mentorHistory: next };
+            }
+            // Mentor reassigned away from a previous mentee — close their open entry too.
+            if (mentorId && p.mentorId === mentorId) {
+              return { ...p, mentorId: null, mentorHistory: closeOpenEntry(p.mentorHistory) };
+            }
+            return p;
+          }),
+        };
+      });
       return;
     }
 
@@ -210,6 +224,14 @@ const actions = useGameActions(setState, () => stateRef.current);
           }
         };
       });
+      return;
+    }
+
+    if (action.type === 'SAVE_THRONE_RESULT') {
+      const { result } = action.payload;
+      setState(prev => prev.allStar
+        ? { ...prev, allStar: { ...prev.allStar, throne: result } }
+        : prev);
       return;
     }
 

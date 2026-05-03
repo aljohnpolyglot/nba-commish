@@ -4,14 +4,13 @@ import { useGame } from '../../store/GameContext';
 import { RosterView } from '../../TeamTraining/components/RosterView';
 import { SystemProficiencyView } from '../../TeamTraining/components/SystemProficiencyView';
 import { DailyPlanModal } from '../../TeamTraining/components/DailyPlanModal';
-import { CalendarView as ScheduleCalendarView } from '../schedule/view/components/CalendarView';
-import { DayView as ScheduleDayView } from '../schedule/view/components/DayView';
-import { TrainingDayOverlay } from './TrainingDayOverlay';
+import { TrainingCalendarView } from './TrainingCalendarView';
+import { TrainingDayView } from './TrainingDayView';
+import { TrainingFranchisePicker } from './TrainingFranchisePicker';
 import { mapPlayerToK2 } from '../../TeamTraining/lib/playerMapping';
 import { computeTeamProficiency } from '../../utils/coachSliders';
 import { nbaPlayerToTrainingPlayer, nbaTeamToTrainingTeam } from '../../TeamTraining/adapters/fromGameState';
 import type { Allocations, TrainingParadigm, Staffing, ScheduleDay, DayType } from '../../TeamTraining/types';
-import { Home as TeamOfficeHome } from '../central/view/TeamOffice/pages/Home';
 import type { Game } from '../../types';
 
 /**
@@ -69,9 +68,11 @@ function buildCalendar(
 
   // g.date is full ISO (`2025-10-07T20:00:00Z`); slice to `YYYY-MM-DD` so the
   // map lookup matches the day-keys used by every consumer.
+  // Note: include played games too — past months (and freshly-switched teams
+  // whose game history is mostly already-played) need to render the historical
+  // matchups, not collapse to all-Off-Day.
   const teamGamesByISO = new Map<string, Game>();
   for (const g of schedule) {
-    if (g.played) continue;
     if (g.homeTid !== teamId && g.awayTid !== teamId) continue;
     if (g.isAllStar || g.isRisingStars || g.isCelebrityGame || g.isDunkContest || g.isThreePointContest) continue;
     const dateKey = (g.date ?? '').slice(0, 10);
@@ -166,7 +167,7 @@ function buildCalendar(
 }
 
 export const TrainingCenterView: React.FC = () => {
-  const { state, dispatchAction, setCurrentView } = useGame();
+  const { state, dispatchAction } = useGame();
   const isGM = state.gameMode === 'gm';
 
   // GM mode default: user's team. GM can still navigate to other teams,
@@ -219,6 +220,19 @@ export const TrainingCenterView: React.FC = () => {
     lastScheduleLenRef.current = len;
   }, [state.schedule?.length, team?.id, dispatchAction]);
 
+  // Lazy-init: when the user picks a team via the dropdown that has never had
+  // its training calendar autofilled, fire the autofill so the calendar isn't
+  // empty on first view. Without this, switching from a generated team to a
+  // never-touched one shows every cell as Off Day.
+  useEffect(() => {
+    if (!team) return;
+    const cal = (team as any).trainingCalendar ?? {};
+    const isEmpty = Object.keys(cal).length === 0;
+    if (isEmpty) {
+      dispatchAction({ type: 'AUTOFILL_TEAM_TRAINING_CALENDAR', payload: { teamId: team.id } });
+    }
+  }, [team?.id, dispatchAction]);
+
   useEffect(() => {
     setSelectedDate(state.date);
     setCalendarMonth(new Date(state.date));
@@ -240,6 +254,13 @@ export const TrainingCenterView: React.FC = () => {
     for (const t of state.teams) lookup.set(t.id, { abbrev: t.abbrev, logoUrl: t.logoUrl });
     return buildCalendar(state.schedule || [], team.id, windowStartISO, lookup);
   }, [team, windowStartISO, state.schedule, state.teams]);
+
+  // Map for O(1) ScheduleDay lookups by ISO date — feeds TrainingDayOverlay
+  // so it can render auto-scheduled rest/recovery/practice badges.
+  const scheduleByIso = useMemo(
+    () => new Map(schedule.map(d => [d.isoDate, d])),
+    [schedule]
+  );
 
   // Hide-calendar logic — when there's literally no point training (offseason / FA
   // / playoff-eliminated mid-April), show a placeholder card instead of a screen
@@ -293,27 +314,9 @@ export const TrainingCenterView: React.FC = () => {
   }, [state.schedule, selectedDate]);
 
   const selectedDateNorm = (selectedDate ?? '').slice(0, 10);
-  const selectedTeamGame = team
-    ? gamesForSelectedDate.find(g => g.homeTid === team.id || g.awayTid === team.id)
-    : undefined;
   const selectedDayForHeader = selectedDateNorm
     ? schedule.find(d => d.isoDate === selectedDateNorm)
     : undefined;
-
-  const formatDateDisplay = (dateStr: string) => {
-    const norm = (dateStr ?? '').slice(0, 10);
-    const d = norm ? new Date(`${norm}T00:00:00Z`) : new Date(dateStr);
-    return d.toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-  };
-
-  const getDotColor = (g: Game) => {
-    if (g.played) return 'bg-slate-600';
-    if (g.isAllStar || g.isRisingStars || (g as any).isCelebrityGame) return 'bg-amber-400';
-    if ((g as any).isPreseason) return 'bg-slate-400';
-    return 'bg-emerald-500';
-  };
-
-  const getHighlightedEvent = () => null;
 
   const simulateDay = async () => {
     dispatchAction({ type: 'ADVANCE_DAY' } as any);
@@ -322,38 +325,6 @@ export const TrainingCenterView: React.FC = () => {
   const simulateToDate = async (targetDateStr: string) => {
     dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: targetDateStr, stopBefore: true } } as any);
   };
-
-  const maxSimulatableDate = useMemo(() => {
-    const d = new Date(`${(state.date ?? '').slice(0, 10)}T00:00:00Z`);
-    d.setUTCDate(d.getUTCDate() + 365);
-    return d;
-  }, [state.date]);
-
-  const trainingHeaderCard = (
-    <div className="mb-6 border border-[#FDB927]/20 bg-[#111] rounded-2xl p-4 md:p-5">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div>
-          <div className="text-[10px] font-black uppercase tracking-widest text-[#FDB927]">
-            Training prep
-          </div>
-          <h3 className="text-lg md:text-xl font-black uppercase tracking-tight text-white mt-1">
-            {team.abbrev} {selectedTeamGame ? (selectedDayForHeader?.description ?? 'Game day') : 'Team plan'}
-          </h3>
-          <p className="text-xs text-slate-500 mt-1">
-            {(selectedDayForHeader?.activity ?? 'Balanced Practice')} · {dailyPlansISO[selectedDateNorm]?.paradigm ?? 'Balanced'} · {dailyPlansISO[selectedDateNorm]?.intensity ?? 25}% intensity
-          </p>
-        </div>
-        {!isReadOnly && (
-          <button
-            onClick={() => setSelectedPlanDateISO(selectedDateNorm)}
-            className="px-4 py-2 rounded-lg bg-[#FDB927] text-black text-[10px] font-black uppercase tracking-widest hover:bg-amber-300 transition-colors"
-          >
-            Edit Plan
-          </button>
-        )}
-      </div>
-    </div>
-  );
 
   // League-wide K2 rosters for `calculateCoachSliders` normalization. CoachingPage
   // builds the same array — passing it ensures Training Center stars match
@@ -398,7 +369,7 @@ export const TrainingCenterView: React.FC = () => {
     dispatchAction({ type: 'SET_PLAYER_TRAINING_INTENSITY', payload: { playerId, intensity: ii } });
   };
 
-  // Franchise picker — reuse Team Office Home for selection consistency.
+  // Franchise picker — Training Center variant with slate panels and #FDB927 brand accent.
   // Commissioner: no default team. GM: defaults to user team but can browse others (read-only).
   if (!team) {
     return (
@@ -411,7 +382,10 @@ export const TrainingCenterView: React.FC = () => {
             Pick a franchise
           </div>
         </header>
-        <TeamOfficeHome onSelectTeam={(teamId: number) => setSelectedTeamId(teamId)} />
+        {/* Yellow accent strip — visual separation between header and picker body */}
+        <div className="h-[3px] bg-gradient-to-r from-transparent via-[#FDB927]/60 to-transparent" />
+        <div className="h-px bg-[#30363d]" />
+        <TrainingFranchisePicker onSelectTeam={(teamId: number) => setSelectedTeamId(teamId)} />
       </div>
     );
   }
@@ -502,63 +476,37 @@ export const TrainingCenterView: React.FC = () => {
             </div>
           ) : activeView === 'training' && (
             viewMode === 'day' ? (
-              <ScheduleDayView
-                selectedDate={selectedDate}
-                setSelectedDate={setSelectedDate}
-                setViewMode={setViewMode}
+              <TrainingDayView
+                team={team}
+                date={selectedDate}
+                scheduleDay={selectedDayForHeader}
+                userPlan={dailyPlansISO[selectedDateNorm]}
+                gamesForDate={gamesForSelectedDate}
                 state={state}
-                formatDateDisplay={formatDateDisplay}
-                gamesForSelectedDate={gamesForSelectedDate}
-                simulateDay={simulateDay}
-                simulateToDate={simulateToDate}
-                handleWatchGame={() => {}}
-                setSelectedBoxScoreGame={() => {}}
-                onNavigateToAllStar={() => setCurrentView('All-Star' as any)}
-                onViewRosters={() => {}}
-                onWatchDunkContest={() => {}}
-                onWatchThreePoint={() => {}}
-                onViewContestDetails={() => {}}
-                onViewBoxScore={() => {}}
-                maxSimulatableDate={maxSimulatableDate}
-                openConfirmModal={(_title, message, onConfirm) => {
-                  if (window.confirm(message)) onConfirm();
-                }}
-                boxScores={state.boxScores}
-                players={state.players}
-                nonNBATeams={state.nonNBATeams}
-                onNavigateToDraftLottery={() => setCurrentView('Draft Lottery' as any)}
-                onNavigateToDraftBoard={() => setCurrentView('Draft Board' as any)}
-                onNavigateToSeasonPreview={() => setCurrentView('Season Preview' as any)}
-                headerSlot={trainingHeaderCard}
+                isReadOnly={isReadOnly}
+                onBack={() => setViewMode('calendar')}
+                onSimulateDay={simulateDay}
+                onSimulateToDate={simulateToDate}
+                onEditPlan={() => setSelectedPlanDateISO(selectedDateNorm)}
               />
             ) : (
-              <ScheduleCalendarView
+              <TrainingCalendarView
+                team={team}
+                scheduleByIso={scheduleByIso}
+                dailyPlansISO={dailyPlansISO}
                 calendarMonth={calendarMonth}
                 setCalendarMonth={setCalendarMonth}
                 selectedDate={selectedDate}
-                setSelectedDate={setSelectedDate}
-                setViewMode={setViewMode}
-                state={state}
-                title="Training Calendar"
-                focusTeamId={team.id}
-                formatDateDisplay={formatDateDisplay}
-                getDotColor={getDotColor}
-                getHighlightedEvent={getHighlightedEvent}
-                onDateClick={({ date, focusTeamGame }) => {
-                  setSelectedDate(`${date}T00:00:00.000Z`);
-                  if (focusTeamGame) {
+                currentDateISO={(state.date ?? '').slice(0, 10)}
+                isReadOnly={isReadOnly}
+                onCellClick={(iso, scheduleDay) => {
+                  setSelectedDate(`${iso}T00:00:00.000Z`);
+                  if (scheduleDay?.activity === 'Game') {
                     setViewMode('day');
                   } else if (!isReadOnly) {
-                    setSelectedPlanDateISO(date);
+                    setSelectedPlanDateISO(iso);
                   }
-                  return true;
                 }}
-                renderDayOverlay={({ date, focusTeamGame }) => (
-                  <TrainingDayOverlay
-                    plan={dailyPlansISO[date]}
-                    isGameDay={!!focusTeamGame}
-                  />
-                )}
               />
             )
           )}

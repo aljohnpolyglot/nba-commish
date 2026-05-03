@@ -6,6 +6,7 @@ import { AllStarShootingStarsSim } from './AllStarShootingStarsSim';
 import { AllStarSkillsChallengeSim } from './AllStarSkillsChallengeSim';
 import { AllStarHorseSim } from './AllStarHorseSim';
 import { AllStarOneOnOneSim } from './AllStarOneOnOneSim';
+import { simulateThroneTournament as simulateThroneTournamentImpl, announceThroneField } from './throneOrchestrator';
 import { AllStarSelectionService, ALL_STAR_ASSETS } from './AllStarSelectionService';
 import { simulateGames } from '../simulationService';
 import { resolveSeasonDate } from '../../utils/dateUtils';
@@ -38,6 +39,10 @@ export function getAllStarWeekendDates(year: number): {
   celebrityAnnounced: Date;
   dunkContestAnnounced: Date;
   threePointAnnounced: Date;
+  throneSignupOpens: Date;     // Dec 1 of prior calendar year
+  throneSignupCloses: Date;    // Jan 15
+  throneVotingOpens: Date;     // Jan 16
+  throneFieldReveal: Date;     // Jan 30 — top 16 locked
   breakStart: Date;
   risingStars: Date;
   celebrityGame: Date;
@@ -70,7 +75,17 @@ export function getAllStarWeekendDates(year: number): {
   // Voting window — starts mid-December (prior year), ends Thu 4+ weeks before weekend.
   const votingStart = resolveSeasonDate(year, 12, 3, 'Mon', -1); // 3rd Mon of Dec prior yr
   const votingEnd = shift(startersAnnounced, -7); // Thu 1 wk before starters reveal
-  
+
+  // The Throne lifecycle (THRONE_PLAN.md format v2):
+  //   Dec 1 (prior yr) — sign-ups open
+  //   Jan 15           — sign-ups close
+  //   Jan 16           — composite voting opens
+  //   Jan 30           — voting closes + field of 16 revealed
+  const throneSignupOpens = new Date(Date.UTC(year - 1, 11, 1));   // Dec 1 prior yr
+  const throneSignupCloses = new Date(Date.UTC(year, 0, 15));      // Jan 15
+  const throneVotingOpens = new Date(Date.UTC(year, 0, 16));       // Jan 16
+  const throneFieldReveal = new Date(Date.UTC(year, 0, 30));       // Jan 30
+
   return {
     votingStart,
     votingEnd,
@@ -80,6 +95,10 @@ export function getAllStarWeekendDates(year: number): {
     celebrityAnnounced,
     dunkContestAnnounced,
     threePointAnnounced,
+    throneSignupOpens,
+    throneSignupCloses,
+    throneVotingOpens,
+    throneFieldReveal,
     breakStart,
     risingStars: friday,
     celebrityGame: friday,
@@ -493,6 +512,19 @@ export class AllStarWeekendOrchestrator {
       complete: true,
     };
     return { allStar: newAllStarState };
+  }
+
+  static announceThrone(state: GameState): Partial<GameState> {
+    if (state.leagueStats.allStarThroneEnabled !== true) return {};
+    if (!state.allStar) return {};
+    if ((state.allStar as any).throneAnnounced) return {};
+    return announceThroneField(state);
+  }
+
+  static simulateThroneTournament(state: GameState): Partial<GameState> {
+    if (state.leagueStats.allStarThroneEnabled !== true) return {};
+    if (!state.allStar) return {};
+    return simulateThroneTournamentImpl(state);
   }
 
   static simulateOneOnOneTournament(state: GameState): Partial<GameState> {
@@ -1117,8 +1149,13 @@ export class AllStarWeekendOrchestrator {
       const horseUpdate = this.simulateHorseTournament(currentState);
       currentState = { ...currentState, ...horseUpdate };
 
-      const oneOnOneUpdate = this.simulateOneOnOneTournament(currentState);
-      currentState = { ...currentState, ...oneOnOneUpdate };
+      if (currentState.leagueStats.allStarThroneEnabled === true) {
+        const throneUpdate = this.simulateThroneTournament(currentState);
+        currentState = { ...currentState, ...throneUpdate };
+      } else {
+        const oneOnOneUpdate = this.simulateOneOnOneTournament(currentState);
+        currentState = { ...currentState, ...oneOnOneUpdate };
+      }
     }
     
     // Sunday: All-Star Game

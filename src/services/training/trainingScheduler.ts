@@ -84,7 +84,14 @@ function phaseFromDate(d: Date): Phase {
 }
 
 /**
- * Build a one-year training calendar starting from `startISO` for the given team.
+ * Build a training calendar centered on `startISO` for the given team.
+ *
+ * Walks `lookbackDays` BEFORE startISO and `daysAhead` AFTER, so past months
+ * the user navigates to still have persisted plans. Without lookback, AUTOFILL
+ * only writes future plans — past months would lose their auto-paradigm tints
+ * the moment AUTOFILL re-fires from a later sim date (e.g. when playoff games
+ * get injected and the schedule grows).
+ *
  * Pulls game days from the schedule and populates surrounding days with proximity-aware plans.
  * Phases without team training (offseason, FA, trade deadline week) are intentionally LEFT EMPTY —
  * the daily familiarity tick treats missing plans as "no work done" (slow decay).
@@ -98,14 +105,23 @@ export function autoGenerateTrainingCalendar(
   startISO: string,
   daysAhead: number = 365,
   /** Existing calendar — auto-fill skips any entry where `auto` is falsy (user-set). */
-  existing?: Record<string, DailyPlan>
+  existing?: Record<string, DailyPlan>,
+  /** Days to walk BEFORE startISO so past months persist. Default 8 months. */
+  lookbackDays: number = 240,
 ): Record<string, DailyPlan> {
   const start = new Date(`${startISO}T00:00:00Z`);
   if (isNaN(start.getTime())) return existing ?? {};
 
+  // Window start is `lookbackDays` before the anchor; total walk is lookback + ahead.
+  const windowStart = new Date(start);
+  windowStart.setUTCDate(start.getUTCDate() - lookbackDays);
+  const totalDays = lookbackDays + daysAhead;
+
+  // Include played games — past months need their game days marked too. Without
+  // this past-game cells lose their game-day paradigm and look like generic
+  // practice days, which doesn't match what actually happened.
   const teamGameDays = new Set<string>();
   for (const g of schedule) {
-    if (g.played) continue;
     if (g.homeTid !== teamId && g.awayTid !== teamId) continue;
     if (g.isAllStar || g.isRisingStars || g.isCelebrityGame || g.isDunkContest || g.isThreePointContest) continue;
     teamGameDays.add(g.date.slice(0, 10));
@@ -113,9 +129,9 @@ export function autoGenerateTrainingCalendar(
 
   const result: Record<string, DailyPlan> = { ...(existing ?? {}) };
 
-  for (let i = 0; i < daysAhead; i++) {
-    const d = new Date(start);
-    d.setUTCDate(start.getUTCDate() + i);
+  for (let i = 0; i < totalDays; i++) {
+    const d = new Date(windowStart);
+    d.setUTCDate(windowStart.getUTCDate() + i);
     const iso = isoDate(d);
 
     // Skip if user has already set a plan for this day.

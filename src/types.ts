@@ -272,6 +272,11 @@ export interface LeagueStats {
   playIn: boolean;
   inSeasonTournament: boolean;
   cupPrizePoolEnabled?: boolean;
+  cupPrizePoolAutoInflate?: boolean;
+  cupPrizeWinner?: number;
+  cupPrizeRunnerUp?: number;
+  cupPrizeSemi?: number;
+  cupPrizeQuarter?: number;
   minAgeRequirement: number;
   rules: Rule[];
   morale: Morale;
@@ -538,6 +543,18 @@ export interface LeagueStats {
   allStarHorseParticipants?: number;
   allStarOneOnOneEnabled?: boolean;
   allStarOneOnOneParticipants?: number;
+  // The Throne — premium 1v1 tournament. Replaces simulateOneOnOneTournament when enabled.
+  allStarThroneEnabled?: boolean;
+  allStarThroneFieldSize?: 8 | 16;
+  allStarThroneFormat?: 'mini8' | 'full16';
+  allStarThroneFirstPossession?: 'shootout' | 'higher_seed_choice';
+  allStarThroneScoring?: '2s_and_3s' | '1s_and_2s';
+  allStarThroneShotClock?: number;
+  allStarThroneTargetScore?: number;
+  allStarThroneHardCap?: number;
+  allStarThronePrizePool?: number;
+  /** Mandatory title defense — defending king auto-seeded #1 next season. */
+  allStarThroneMandatoryDefense?: boolean;
   allStarMirrorLeagueRules?: boolean;
   allStarGameFormat?: 'timed' | 'target_score';
   allStarQuarterLength?: number;
@@ -912,6 +929,9 @@ export interface NBAPlayer {
   devFocus?: string;
   /** Internal player id of mentor — Training Center mentorship system. */
   mentorId?: string | null;
+  /** Past + current mentor assignments. Each entry's `endDate` is unset while active.
+   *  Maintained by SET_PLAYER_MENTOR — pushed on assign, closed on unassign/replace. */
+  mentorHistory?: Array<{ mentorId: string; startDate: string; endDate?: string }>;
   /** Anchor weight (lbs) at first strength-driven progression tick.
    *  Caps total weight gain at +15 lbs from this value (Strength→Weight loop, docs/training.md).
    *  Stored on the player so it persists per-save and never leaks across saves. */
@@ -1248,6 +1268,38 @@ export interface AllStarState {
     winnerName?: string;
     complete: boolean;
   };
+  throneAnnounced?: boolean;
+  /** Belt holder from the prior season — survives season rollover. Auto-included as #1 seed when set + active + healthy. */
+  beltHolderInternalId?: string | null;
+  /** Set when the defending king cannot defend (retired, FA, injured) — UI shows "throne vacated" callout. */
+  throneVacated?: boolean;
+  /** Sign-up era state. Pre-rolled on Dec 1: every "yes" player gets a sign-up date assigned in [Dec 1, Jan 15]. */
+  throneSignupSchedule?: Array<{ playerId: string; date: string }>;
+  /** Set true on Jan 15 when sign-ups close — UI flips from rolling counter to "sign-ups closed". */
+  throneSignupComplete?: boolean;
+  /** Voting era state. Daily blend of final composite by progress fraction (0..1) — feeds the live tally UI. */
+  throneVoteTally?: Record<string, { fan: number; player: number; media: number; coach: number; composite: number; rank: number }>;
+  /** 0..1 progress through the Jan 16–Jan 30 voting window. */
+  throneVotingProgress?: number;
+  throne?: {
+    complete: boolean;
+    fieldPlayerIds: string[];
+    /** Title-defender ID (the seeded-#1 belt holder) — null when throne was vacated. */
+    titleDefenderId?: string | null;
+    /** Per-player vote breakdown so the voting UI can render the real composite. */
+    voteBreakdown?: Record<string, { fan: number; player: number; media: number; coach: number; composite: number; rank: number }>;
+    bracket: Array<{
+      round: number;
+      player1Id: string;
+      player2Id: string;
+      winnerId: string | null;
+      score1: number;
+      score2: number;
+      pd: number;
+    }>;
+    cumulativePDs: Record<string, number>;
+    champion: { playerId: string; playerName: string } | null;
+  };
   allStarGameId?: number;
   risingStarsGameId?: number;
   risingStarsBracket?: {
@@ -1520,7 +1572,7 @@ export interface OwnedRealEstateAsset {
   instanceId: string;
 }
 
-export type ActionType = 'SET_TRAINING_DAILY_PLAN' | 'SET_PLAYER_DEV_FOCUS' | 'SET_PLAYER_MENTOR' | 'RESET_PLAYER_FAMILIARITY' | 'SET_PLAYER_TRAINING_INTENSITY' | 'AUTOFILL_TEAM_TRAINING_CALENDAR' | 'REPLY_EMAIL' | 'BRIBE' | 'HYPNOTIZE' | 'PUBLIC_STATEMENT' | 'ADVANCE_DAY' | 'DIRECT_MESSAGE' | 'SEND_MESSAGE' | 'SEND_CHAT_MESSAGE' | 'UPDATE_RULES' | 'SUSPEND_PLAYER' | 'CLEAR_OUTCOME' | 'SAVE_SOCIAL_THREAD' | 'FINE_PERSON' | 'BRIBE_PERSON' | 'GLOBAL_GAMES' | 'LEAK_SCANDAL' | 'HYPNOTIC_BROADCAST' | 'RIG_LOTTERY' | 'CELEBRITY_ROSTER' | 'OWNER_DINNER' | 'PUBLIC_ANNOUNCEMENT' | 'SUSPEND_PERSON' | 'DRUG_TEST_PERSON' | 'INVITE_DINNER' | 'EXPANSION_DRAFT' | 'ANNOUNCE_CHANGE' | 'START_GAME' | 'LOAD_GAME' | 'UPDATE_SAVE_ID' | 'SIGN_FREE_AGENT' | 'EXECUTIVE_TRADE' | 'TRAVEL' | 'GIVE_MONEY' | 'VISIT_NON_NBA_TEAM' | 'INVITE_PERFORMANCE' | 'FORCE_TRADE' | 'ADJUST_FINANCIALS' | 'FOLLOW_USER' | 'UNFOLLOW_USER' | 'ADD_PENDING_HYPNOSIS' | 'MARK_PAYSLIPS_READ' | 'TRANSFER_FUNDS' | 'SET_CHRISTMAS_GAMES' | 'SABOTAGE_PLAYER' | 'GO_TO_CLUB' | 'ENDORSE_HOF' | 'SIMULATE_TO_DATE' | 'ADD_PRESEASON_INTERNATIONAL' | 'ALL_STAR_ADVANCE_VOTES' | 'ALL_STAR_ANNOUNCE_STARTERS' | 'ALL_STAR_ANNOUNCE_RESERVES' | 'ALL_STAR_SIMULATE_WEEKEND' | 'GENERATE_PLAYOFF_BRACKET' | 'SIM_PLAYOFF_ROUND' | 'SAVE_CONTEST_RESULT' | 'RECORD_WATCHED_GAME' | 'WAIVE_PLAYER' | 'FIRE_PERSONNEL' | 'STORE_PURCHASE' | 'RIG_ALL_STAR_VOTING' | 'SET_ALL_STAR_REPLACEMENT' | 'SET_DUNK_CONTESTANTS' | 'SET_THREE_POINT_CONTESTANTS' | 'ADD_ALL_STAR_REPLACEMENT' | 'REAL_ESTATE_INVENTORY_UPDATE' | 'COMMISH_STORE_INVENTORY_UPDATE' | 'CACHE_PROFILE' | 'UPDATE_USER_PROFILE' | 'ADD_USER_POST' | 'ADD_REPLIES' | 'SET_FEED' | 'UPDATE_STATE' | 'SUBMIT_FA_BID' | 'RETIRE_JERSEY_NUMBER' | 'MATCH_RFA_OFFER' | 'DECLINE_RFA_OFFER' | 'TOGGLE_LIKE' | 'TOGGLE_RETWEET' | 'ADD_POST' | 'ADD_REPLY' | 'EXERCISE_TEAM_OPTION' | 'DECLINE_TEAM_OPTION' | 'CONVERT_CONTRACT_TYPE';
+export type ActionType = 'SET_TRAINING_DAILY_PLAN' | 'SET_PLAYER_DEV_FOCUS' | 'SET_PLAYER_MENTOR' | 'RESET_PLAYER_FAMILIARITY' | 'SET_PLAYER_TRAINING_INTENSITY' | 'AUTOFILL_TEAM_TRAINING_CALENDAR' | 'REPLY_EMAIL' | 'BRIBE' | 'HYPNOTIZE' | 'PUBLIC_STATEMENT' | 'ADVANCE_DAY' | 'DIRECT_MESSAGE' | 'SEND_MESSAGE' | 'SEND_CHAT_MESSAGE' | 'UPDATE_RULES' | 'SUSPEND_PLAYER' | 'CLEAR_OUTCOME' | 'SAVE_SOCIAL_THREAD' | 'FINE_PERSON' | 'BRIBE_PERSON' | 'GLOBAL_GAMES' | 'LEAK_SCANDAL' | 'HYPNOTIC_BROADCAST' | 'RIG_LOTTERY' | 'CELEBRITY_ROSTER' | 'OWNER_DINNER' | 'PUBLIC_ANNOUNCEMENT' | 'SUSPEND_PERSON' | 'DRUG_TEST_PERSON' | 'INVITE_DINNER' | 'EXPANSION_DRAFT' | 'ANNOUNCE_CHANGE' | 'START_GAME' | 'LOAD_GAME' | 'UPDATE_SAVE_ID' | 'SIGN_FREE_AGENT' | 'EXECUTIVE_TRADE' | 'TRAVEL' | 'GIVE_MONEY' | 'VISIT_NON_NBA_TEAM' | 'INVITE_PERFORMANCE' | 'FORCE_TRADE' | 'ADJUST_FINANCIALS' | 'FOLLOW_USER' | 'UNFOLLOW_USER' | 'ADD_PENDING_HYPNOSIS' | 'MARK_PAYSLIPS_READ' | 'TRANSFER_FUNDS' | 'SET_CHRISTMAS_GAMES' | 'SABOTAGE_PLAYER' | 'GO_TO_CLUB' | 'ENDORSE_HOF' | 'SIMULATE_TO_DATE' | 'ADD_PRESEASON_INTERNATIONAL' | 'ALL_STAR_ADVANCE_VOTES' | 'ALL_STAR_ANNOUNCE_STARTERS' | 'ALL_STAR_ANNOUNCE_RESERVES' | 'ALL_STAR_SIMULATE_WEEKEND' | 'GENERATE_PLAYOFF_BRACKET' | 'SIM_PLAYOFF_ROUND' | 'SAVE_CONTEST_RESULT' | 'SAVE_THRONE_RESULT' | 'RECORD_WATCHED_GAME' | 'WAIVE_PLAYER' | 'FIRE_PERSONNEL' | 'STORE_PURCHASE' | 'RIG_ALL_STAR_VOTING' | 'SET_ALL_STAR_REPLACEMENT' | 'SET_DUNK_CONTESTANTS' | 'SET_THREE_POINT_CONTESTANTS' | 'ADD_ALL_STAR_REPLACEMENT' | 'REAL_ESTATE_INVENTORY_UPDATE' | 'COMMISH_STORE_INVENTORY_UPDATE' | 'CACHE_PROFILE' | 'UPDATE_USER_PROFILE' | 'ADD_USER_POST' | 'ADD_REPLIES' | 'SET_FEED' | 'UPDATE_STATE' | 'SUBMIT_FA_BID' | 'RETIRE_JERSEY_NUMBER' | 'MATCH_RFA_OFFER' | 'DECLINE_RFA_OFFER' | 'TOGGLE_LIKE' | 'TOGGLE_RETWEET' | 'ADD_POST' | 'ADD_REPLY' | 'EXERCISE_TEAM_OPTION' | 'DECLINE_TEAM_OPTION' | 'CONVERT_CONTRACT_TYPE';
 
 export interface UserAction {
   type: ActionType;

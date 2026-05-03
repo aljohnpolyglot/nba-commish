@@ -5,6 +5,7 @@ import { AllStarGameSection } from './all-star/AllStarGameSection';
 import { RisingStarsSection } from './all-star/RisingStarsSection';
 import { CelebrityGameSection } from './all-star/CelebrityGameSection';
 import { AllStarEventsSection } from './all-star/AllStarEventsSection';
+import { ThroneSection } from './all-star/ThroneSection';
 
 interface AllStarTabProps {
     rules: LeagueStats;
@@ -87,8 +88,17 @@ export const AllStarTab: React.FC<AllStarTabProps> = ({ rules, setRule }) => {
                         allStarSkillsChallengeTotalPlayers={b('allStarSkillsChallengeTotalPlayers').value as number} setAllStarSkillsChallengeTotalPlayers={b('allStarSkillsChallengeTotalPlayers').set as any}
                         allStarHorse={b('allStarHorse').value as boolean}                          setAllStarHorse={b('allStarHorse').set as any}
                         allStarHorseParticipants={b('allStarHorseParticipants').value as number}    setAllStarHorseParticipants={b('allStarHorseParticipants').set as any}
-                        allStarOneOnOneEnabled={b('allStarOneOnOneEnabled').value as boolean}      setAllStarOneOnOneEnabled={b('allStarOneOnOneEnabled').set as any}
-                        allStarOneOnOneParticipants={b('allStarOneOnOneParticipants').value as number} setAllStarOneOnOneParticipants={b('allStarOneOnOneParticipants').set as any}
+                    />
+                    <ThroneSection
+                        enabled={b('allStarThroneEnabled').value as boolean}                       setEnabled={b('allStarThroneEnabled').set as any}
+                        fieldSize={b('allStarThroneFieldSize').value as number}                    setFieldSize={b('allStarThroneFieldSize').set as any}
+                        firstPossession={b('allStarThroneFirstPossession').value as any}           setFirstPossession={b('allStarThroneFirstPossession').set as any}
+                        scoring={b('allStarThroneScoring').value as any}                           setScoring={b('allStarThroneScoring').set as any}
+                        shotClock={b('allStarThroneShotClock').value as number}                    setShotClock={b('allStarThroneShotClock').set as any}
+                        targetScore={b('allStarThroneTargetScore').value as number}                setTargetScore={b('allStarThroneTargetScore').set as any}
+                        hardCap={b('allStarThroneHardCap').value as number}                        setHardCap={b('allStarThroneHardCap').set as any}
+                        prizePool={b('allStarThronePrizePool').value as number}                    setPrizePool={b('allStarThronePrizePool').set as any}
+                        mandatoryDefense={b('allStarThroneMandatoryDefense').value as boolean}     setMandatoryDefense={b('allStarThroneMandatoryDefense').set as any}
                     />
                 </div>
             </div>

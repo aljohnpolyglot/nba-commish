@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { FormatTab } from './FormatTab';
 import { DraftTab } from './DraftTab';
 import { AllStarTab } from './AllStarTab';
+import { NBACupTab } from './NBACupTab';
 import { GameRulesSettings } from './GameRulesSettings';
 import { LeagueHonorsSection } from '../LeagueHonorsSection';
 import { AwardModal } from '../../AwardModal';
@@ -34,11 +35,9 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
                 transition={{ duration: 0.2 }}
             >
                 {activeTab === 'Format' && (
-                    <FormatTab 
+                    <FormatTab
                         playIn={rulesState.playIn}
                         setPlayIn={rulesState.setPlayIn}
-                        inSeasonTournament={rulesState.inSeasonTournament}
-                        setInSeasonTournament={rulesState.setInSeasonTournament}
                         playoffFormat={rulesState.playoffFormat}
                         updatePlayoffFormat={updatePlayoffFormat}
                         minGamesRequirement={rulesState.minGamesRequirement}
@@ -52,6 +51,10 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
                         conferenceGames={rulesState.conferenceGames}
                         setConferenceGames={rulesState.setConferenceGames}
                     />
+                )}
+
+                {activeTab === 'NBA Cup' && (
+                    <NBACupTab rules={rulesState.rules} setRule={rulesState.setRule} />
                 )}
 
                 {activeTab === 'Draft' && (

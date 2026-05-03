@@ -558,7 +558,13 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   // After determining the SOURCE order (who EARNED each slot via record/lottery),
   // each slot is re-mapped to its CURRENT owner via state.draftPicks so traded
   // picks display + assign to the team that actually holds them.
-  const computedDraftOrder = useMemo(() => buildDraftOrderFromState(state), [state]);
+  // Narrow deps to the bits buildDraftOrderFromState actually reads. A `[state]`
+  // dep refires on every dispatch and combines with the persist effect below to
+  // produce React #185 (infinite update loop) once the user starts drafting.
+  const computedDraftOrder = useMemo(
+    () => buildDraftOrderFromState(state),
+    [state.leagueStats?.year, state.draftPicks, state.draftLotteryResult, state.teams],
+  );
   const savedDraftOrder = (state as any).activeDraftOrder as DraftOrderTeam[] | undefined;
 
   const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
@@ -780,17 +786,10 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   const [scoutingPlayer, setScoutingPlayer] = useState<any>(null);
   const [gistByYear, setGistByYear] = useState<GistProspect[] | null>(getCachedDraftScouting(leagueYear) ?? null);
 
-  // Persist each pick to game state immediately so view switches never lose progress
-  useEffect(() => {
-    if (!hasStarted || Object.keys(drafted).length === 0) return;
-    dispatch({
-      type: 'UPDATE_STATE',
-      payload: {
-        activeDraftPicks: drafted,
-        activeDraftOrder: draftOrder,
-      },
-    } as any);
-  }, [drafted, hasStarted, draftOrder, dispatch]);
+  // (Persist-on-pick is handled atomically inside commitPickToState and
+  // simToPickInstant. A redundant useEffect here that watched `draftOrder` would
+  // re-dispatch every time computedDraftOrder rebuilt, feeding back into itself
+  // via state.draftPicks updates → React #185 infinite loop.)
 
   const draftedSet = useMemo(() => new Set(Object.values(drafted).map((p: any) => p.internalId)), [drafted]);
 

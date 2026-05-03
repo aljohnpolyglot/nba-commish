@@ -27,6 +27,13 @@ export interface IdealRotation {
    * When undefined, auto-computes from roster depth (AI teams use this path).
    */
   benchDepth?: number;
+  /**
+   * Explicit bench ordering (internalIds). When present and locked, the Ideal
+   * tab renders bench players in this order instead of sorting by minutes.
+   * Populated when the user copies a Gameplan to Ideal so the gameplan's
+   * drag-arranged order is preserved.
+   */
+  benchOrder?: string[];
   /** Epoch ms of last edit — useful for debugging stale entries. */
   lastEdited: number;
 }

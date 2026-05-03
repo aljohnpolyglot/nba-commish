@@ -19,6 +19,12 @@ export const useRulesState = (leagueStats: LeagueStats, dispatchAction: (action:
   // Configuration State
   const [playIn, setPlayIn] = useState(leagueStats.playIn);
   const [inSeasonTournament, setInSeasonTournament] = useState(leagueStats.inSeasonTournament ?? true);
+  const [cupPrizePoolEnabled, setCupPrizePoolEnabled] = useState(leagueStats.cupPrizePoolEnabled ?? true);
+  const [cupPrizePoolAutoInflate, setCupPrizePoolAutoInflate] = useState(leagueStats.cupPrizePoolAutoInflate ?? true);
+  const [cupPrizeWinner, setCupPrizeWinner] = useState(leagueStats.cupPrizeWinner ?? 500_000);
+  const [cupPrizeRunnerUp, setCupPrizeRunnerUp] = useState(leagueStats.cupPrizeRunnerUp ?? 200_000);
+  const [cupPrizeSemi, setCupPrizeSemi] = useState(leagueStats.cupPrizeSemi ?? 100_000);
+  const [cupPrizeQuarter, setCupPrizeQuarter] = useState(leagueStats.cupPrizeQuarter ?? 50_000);
   const [playoffFormat, setPlayoffFormat] = useState<(number | string)[]>([...leagueStats.numGamesPlayoffSeries]);
   const [draftType, setDraftType] = useState(leagueStats.draftType);
   const [eligibilityRule, setEligibilityRule] = useState(leagueStats.draftEligibilityRule ?? 'one_and_done');
@@ -54,6 +60,17 @@ const [minAgeRequirement, setMinAgeRequirement] = useState<number | string>(leag
   const [allStarHorseParticipants, setAllStarHorseParticipants] = useState(leagueStats.allStarHorseParticipants ?? 8);
   const [allStarOneOnOneEnabled, setAllStarOneOnOneEnabled] = useState(leagueStats.allStarOneOnOneEnabled ?? false);
   const [allStarOneOnOneParticipants, setAllStarOneOnOneParticipants] = useState(leagueStats.allStarOneOnOneParticipants ?? 8);
+  // The Throne — premium 1v1 tournament
+  const [allStarThroneEnabled, setAllStarThroneEnabled] = useState(leagueStats.allStarThroneEnabled ?? false);
+  const [allStarThroneFieldSize, setAllStarThroneFieldSize] = useState<8 | 16>((leagueStats.allStarThroneFieldSize ?? 16) as 8 | 16);
+  const [allStarThroneFormat, setAllStarThroneFormat] = useState<'mini8' | 'full16'>(leagueStats.allStarThroneFormat ?? 'full16');
+  const [allStarThroneFirstPossession, setAllStarThroneFirstPossession] = useState<'shootout' | 'higher_seed_choice'>(leagueStats.allStarThroneFirstPossession ?? 'shootout');
+  const [allStarThroneScoring, setAllStarThroneScoring] = useState<'2s_and_3s' | '1s_and_2s'>(leagueStats.allStarThroneScoring ?? '2s_and_3s');
+  const [allStarThroneShotClock, setAllStarThroneShotClock] = useState(leagueStats.allStarThroneShotClock ?? 7);
+  const [allStarThroneTargetScore, setAllStarThroneTargetScore] = useState(leagueStats.allStarThroneTargetScore ?? 12);
+  const [allStarThroneHardCap, setAllStarThroneHardCap] = useState(leagueStats.allStarThroneHardCap ?? 16);
+  const [allStarThronePrizePool, setAllStarThronePrizePool] = useState(leagueStats.allStarThronePrizePool ?? 5_000_000);
+  const [allStarThroneMandatoryDefense, setAllStarThroneMandatoryDefense] = useState(leagueStats.allStarThroneMandatoryDefense ?? true);
 
   // Rising Stars & Celebrity Game
   const [risingStarsEnabled, setRisingStarsEnabled] = useState(leagueStats.risingStarsEnabled ?? true);
@@ -296,6 +313,12 @@ const [minAgeRequirement, setMinAgeRequirement] = useState<number | string>(leag
     const isDifferent = 
         playIn !== leagueStats.playIn ||
         inSeasonTournament !== (leagueStats.inSeasonTournament ?? true) ||
+        cupPrizePoolEnabled !== (leagueStats.cupPrizePoolEnabled ?? true) ||
+        cupPrizePoolAutoInflate !== (leagueStats.cupPrizePoolAutoInflate ?? true) ||
+        cupPrizeWinner !== (leagueStats.cupPrizeWinner ?? 500_000) ||
+        cupPrizeRunnerUp !== (leagueStats.cupPrizeRunnerUp ?? 200_000) ||
+        cupPrizeSemi !== (leagueStats.cupPrizeSemi ?? 100_000) ||
+        cupPrizeQuarter !== (leagueStats.cupPrizeQuarter ?? 50_000) ||
         JSON.stringify(playoffFormat) !== JSON.stringify(leagueStats.numGamesPlayoffSeries) ||
         draftType !== leagueStats.draftType ||
         eligibilityRule !== (leagueStats.draftEligibilityRule ?? 'one_and_done') ||
@@ -513,27 +536,62 @@ const [minAgeRequirement, setMinAgeRequirement] = useState<number | string>(leag
         shotClockResetOffensiveRebound !== (leagueStats.shotClockResetOffensiveRebound ?? 14);
     
     setHasConfigChanges(isDifferent);
-  }, [playIn, inSeasonTournament, playoffFormat, draftType, eligibilityRule, minAgeRequirement, minGamesRequirement, customScheduleEnabled, gamesPerSeason, divisionGames, conferenceGames, allStarGameEnabled, allStarFormat, allStarTeams, allStarMirrorLeagueRules, allStarDunkContest, allStarDunkContestPlayers, allStarThreePointContest, allStarThreePointContestPlayers, allStarShootingStars, allStarShootingStarsMode, allStarShootingStarsTeams, allStarShootingStarsPlayersPerTeam, allStarShootingStarsTotalPlayers, allStarSkillsChallenge, allStarSkillsChallengeMode, allStarSkillsChallengeTeams, allStarSkillsChallengePlayersPerTeam, allStarSkillsChallengeTotalPlayers, allStarHorse, allStarHorseParticipants, allStarOneOnOneEnabled, allStarOneOnOneParticipants, risingStarsEnabled, risingStarsFormat, risingStarsMirrorLeagueRules, celebrityGameEnabled, celebrityGameMirrorLeagueRules, allStarGameFormat, allStarQuarterLength, allStarNumQuarters, allStarOvertimeDuration, allStarOvertimeTargetPoints, allStarShootoutRounds, allStarOvertimeType, allStarMaxOvertimesEnabled, allStarMaxOvertimes, allStarOvertimeTieBreaker, gameFormat, gameTargetScore, fourPointLine, foulOutLimit, teamFoulPenalty, quarterLength, numQuarters, overtimeDuration, overtimeTargetPoints, shootoutRounds, overtimeType, maxTimeouts, coachChallenges, maxCoachChallenges, challengeReimbursed, shotClockEnabled, shotClockValue, backcourtTimerEnabled, backcourtTimerValue, offensiveThreeSecondEnabled, offensiveThreeSecondValue, defensiveThreeSecondEnabled, defensiveThreeSecondValue, inboundTimerEnabled, inboundTimerValue, backToBasketTimerEnabled, backToBasketTimerValue, backcourtViolationEnabled, travelingEnabled, doubleDribbleEnabled, goaltendingEnabled, basketInterferenceEnabled, kickedBallEnabled, flagrantFoulPenaltyEnabled, clearPathFoulEnabled, illegalScreenEnabled, overTheBackFoulEnabled, looseBallFoulEnabled, chargingEnabled, overtimeEnabled, maxOvertimesEnabled, maxOvertimes, overtimeTieBreaker, maxPlayersOnCourt, substitutionLimitEnabled, maxSubstitutions, noDribbleRule, multiballEnabled, multiballCount, threePointLineDistance, fourPointLineDistance, dunkValue, midrangeValue, heaveRuleEnabled, halfCourtShotValue, clutchTimeoutLimit, salaryCap, salaryCapEnabled, salaryCapType, minimumPayrollEnabled, minimumPayrollPercentage, luxuryTaxEnabled, luxuryTaxThresholdPercentage, apronsEnabled, numberOfAprons, firstApronPercentage, secondApronPercentage, tradeMatchingRatioUnder, tradeMatchingRatioOver1st, tradeMatchingRatioOver2nd, restrictCashSendOver2ndApron, restrictAggregationOver2ndApron, restrictSignAndTradeAcquisitionOver1stApron, freezePickAt2ndApron, restrictTPEProvenanceOver2ndApron, twoWayContractsEnabled, minPlayersPerTeam, maxPlayersPerTeam, maxStandardPlayersPerTeam, maxTwoWayPlayersPerTeam, minContractType, minContractStaticAmount, maxContractType, maxContractStaticPercentage, supermaxEnabled, supermaxPercentage, birdRightsEnabled, minContractLength, maxContractLengthStandard, maxContractLengthBird, playerOptionsEnabled, tenDayContractsEnabled, inflationEnabled, inflationMin, inflationMax, inflationAverage, inflationStdDev, mleEnabled, roomMleAmount, nonTaxpayerMleAmount, taxpayerMleAmount, biannualEnabled, biannualAmount, tradableDraftPickSeasons, stepienRuleEnabled, tradeDeadlineMonth, tradeDeadlineOrdinal, tradeDeadlineDayOfWeek, faStartMonth, faStartDay, faMoratoriumDays, regularSeasonFAEnabled, postDeadlineMultiYearContracts, rookieScaleType, rookieStaticAmount, rookieMaxContractPercentage, rookieScaleAppliesTo, rookieContractLength, rookieTeamOptionsEnabled, rookieTeamOptionYears, rookieRestrictedFreeAgentEligibility, rookieContractCapException, allNbaTeams, allNbaPlayersPerTeam, allDefenseTeams, allDefensePlayersPerTeam, allRookieTeams, allRookiePlayersPerTeam, positionlessAwards, leagueStats, handcheckingEnabled, illegalZoneDefenseEnabled, outOfBoundsEnabled, freeThrowDistance, rimHeight, ballWeight, startOfPossessionMethod, possessionPattern, courtLength, baselineLength, keyWidth, cornerThrowInEnabled, techEjectionLimit, flagrant1EjectionLimit, flagrant2EjectionLimit, fightingInstantEjection, useYellowRedCards, shotClockResetOffensiveRebound]);
+  }, [playIn, inSeasonTournament, playoffFormat, draftType, eligibilityRule, minAgeRequirement, minGamesRequirement, customScheduleEnabled, gamesPerSeason, divisionGames, conferenceGames, allStarGameEnabled, allStarFormat, allStarTeams, allStarMirrorLeagueRules, allStarDunkContest, allStarDunkContestPlayers, allStarThreePointContest, allStarThreePointContestPlayers, allStarShootingStars, allStarShootingStarsMode, allStarShootingStarsTeams, allStarShootingStarsPlayersPerTeam, allStarShootingStarsTotalPlayers, allStarSkillsChallenge, allStarSkillsChallengeMode, allStarSkillsChallengeTeams, allStarSkillsChallengePlayersPerTeam, allStarSkillsChallengeTotalPlayers, allStarHorse, allStarHorseParticipants, allStarOneOnOneEnabled, allStarOneOnOneParticipants, risingStarsEnabled, risingStarsFormat, risingStarsMirrorLeagueRules, celebrityGameEnabled, celebrityGameMirrorLeagueRules, allStarGameFormat, allStarQuarterLength, allStarNumQuarters, allStarOvertimeDuration, allStarOvertimeTargetPoints, allStarShootoutRounds, allStarOvertimeType, allStarMaxOvertimesEnabled, allStarMaxOvertimes, allStarOvertimeTieBreaker, gameFormat, gameTargetScore, fourPointLine, foulOutLimit, teamFoulPenalty, quarterLength, numQuarters, overtimeDuration, overtimeTargetPoints, shootoutRounds, overtimeType, maxTimeouts, coachChallenges, maxCoachChallenges, challengeReimbursed, shotClockEnabled, shotClockValue, backcourtTimerEnabled, backcourtTimerValue, offensiveThreeSecondEnabled, offensiveThreeSecondValue, defensiveThreeSecondEnabled, defensiveThreeSecondValue, inboundTimerEnabled, inboundTimerValue, backToBasketTimerEnabled, backToBasketTimerValue, backcourtViolationEnabled, travelingEnabled, doubleDribbleEnabled, goaltendingEnabled, basketInterferenceEnabled, kickedBallEnabled, flagrantFoulPenaltyEnabled, clearPathFoulEnabled, illegalScreenEnabled, overTheBackFoulEnabled, looseBallFoulEnabled, chargingEnabled, overtimeEnabled, maxOvertimesEnabled, maxOvertimes, overtimeTieBreaker, maxPlayersOnCourt, substitutionLimitEnabled, maxSubstitutions, noDribbleRule, multiballEnabled, multiballCount, threePointLineDistance, fourPointLineDistance, dunkValue, midrangeValue, heaveRuleEnabled, halfCourtShotValue, clutchTimeoutLimit, salaryCap, salaryCapEnabled, salaryCapType, minimumPayrollEnabled, minimumPayrollPercentage, luxuryTaxEnabled, luxuryTaxThresholdPercentage, apronsEnabled, numberOfAprons, firstApronPercentage, secondApronPercentage, tradeMatchingRatioUnder, tradeMatchingRatioOver1st, tradeMatchingRatioOver2nd, restrictCashSendOver2ndApron, restrictAggregationOver2ndApron, restrictSignAndTradeAcquisitionOver1stApron, freezePickAt2ndApron, restrictTPEProvenanceOver2ndApron, twoWayContractsEnabled, minPlayersPerTeam, maxPlayersPerTeam, maxStandardPlayersPerTeam, maxTwoWayPlayersPerTeam, minContractType, minContractStaticAmount, maxContractType, maxContractStaticPercentage, supermaxEnabled, supermaxPercentage, birdRightsEnabled, minContractLength, maxContractLengthStandard, maxContractLengthBird, playerOptionsEnabled, tenDayContractsEnabled, inflationEnabled, inflationMin, inflationMax, inflationAverage, inflationStdDev, mleEnabled, roomMleAmount, nonTaxpayerMleAmount, taxpayerMleAmount, biannualEnabled, biannualAmount, tradableDraftPickSeasons, stepienRuleEnabled, tradeDeadlineMonth, tradeDeadlineOrdinal, tradeDeadlineDayOfWeek, faStartMonth, faStartDay, faMoratoriumDays, regularSeasonFAEnabled, postDeadlineMultiYearContracts, rookieScaleType, rookieStaticAmount, rookieMaxContractPercentage, rookieScaleAppliesTo, rookieContractLength, rookieTeamOptionsEnabled, rookieTeamOptionYears, rookieRestrictedFreeAgentEligibility, rookieContractCapException, allNbaTeams, allNbaPlayersPerTeam, allDefenseTeams, allDefensePlayersPerTeam, allRookieTeams, allRookiePlayersPerTeam, positionlessAwards, leagueStats, handcheckingEnabled, illegalZoneDefenseEnabled, outOfBoundsEnabled, freeThrowDistance, rimHeight, ballWeight, startOfPossessionMethod, possessionPattern, courtLength, baselineLength, keyWidth, cornerThrowInEnabled, techEjectionLimit, flagrant1EjectionLimit, flagrant2EjectionLimit, fightingInstantEjection, useYellowRedCards, shotClockResetOffensiveRebound, cupPrizePoolEnabled, cupPrizePoolAutoInflate, cupPrizeWinner, cupPrizeRunnerUp, cupPrizeSemi, cupPrizeQuarter]);
 
   const handleSaveConfig = async () => {
     setIsSaving(true);
     try {
+        // NBA-standard upper bounds — capping max values prevents calendar overflow
+        // (draft into July, FA collision with playoffs). Single source of truth lives
+        // in FormatTab.tsx; mirror values here so the save handler also clamps.
+        const NBA_MAX_PLAYOFF_SERIES = 7;
+        const NBA_MAX_GAMES_PER_SEASON = 82;
+        const NBA_MAX_DIVISION_GAMES = 16;
+        const NBA_MAX_CONFERENCE_GAMES = 36;
+
         const cleanedFormat = playoffFormat.map(val => {
             let num = typeof val === 'string' ? parseInt(val, 10) : val;
             if (isNaN(num) || num < 1) num = 1;
+            if (num > NBA_MAX_PLAYOFF_SERIES) num = NBA_MAX_PLAYOFF_SERIES;
             if (num % 2 === 0) num += 1;
+            // After odd-bump, re-clamp in case 7 → 8 → would overshoot (impossible
+            // mathematically since 7 stays 7, but explicit for future tweaks).
+            if (num > NBA_MAX_PLAYOFF_SERIES) num = NBA_MAX_PLAYOFF_SERIES;
             return num;
         });
 
         const cleanedMinGames = typeof minGamesRequirement === 'string' ? parseInt(minGamesRequirement, 10) : minGamesRequirement;
         const cleanedMinAge = typeof minAgeRequirement === 'string' ? parseInt(minAgeRequirement, 10) : minAgeRequirement;
-        const cleanedGamesPerSeason = Number.isFinite(gamesPerSeason) ? Math.max(1, Math.round(gamesPerSeason)) : 82;
-        const cleanedDivisionGames = Number.isFinite(divisionGames) ? Math.max(0, Math.round(divisionGames)) : 16;
-        const cleanedConferenceGames = Number.isFinite(conferenceGames) ? Math.max(0, Math.round(conferenceGames)) : 36;
+        const cleanedGamesPerSeason = Number.isFinite(gamesPerSeason)
+            ? Math.min(NBA_MAX_GAMES_PER_SEASON, Math.max(1, Math.round(gamesPerSeason)))
+            : 82;
+        let cleanedDivisionGames = Number.isFinite(divisionGames)
+            ? Math.min(NBA_MAX_DIVISION_GAMES, Math.max(0, Math.round(divisionGames)))
+            : 16;
+        let cleanedConferenceGames = Number.isFinite(conferenceGames)
+            ? Math.min(NBA_MAX_CONFERENCE_GAMES, Math.max(0, Math.round(conferenceGames)))
+            : 36;
+        // Ratio enforcement: division + conference cannot exceed total games.
+        // Trim conference first (rebuilders care more about division rivalry exposure)
+        // so a user who sets too many of both gets a graceful clamp instead of a
+        // negative inter-conference count.
+        if (cleanedDivisionGames + cleanedConferenceGames > cleanedGamesPerSeason) {
+            cleanedConferenceGames = Math.max(0, cleanedGamesPerSeason - cleanedDivisionGames);
+            if (cleanedDivisionGames > cleanedGamesPerSeason) {
+                cleanedDivisionGames = cleanedGamesPerSeason;
+                cleanedConferenceGames = 0;
+            }
+        }
 
         const changes: string[] = [];
         if (playIn !== leagueStats.playIn) changes.push(`Play-In Tournament ${playIn ? 'enabled' : 'disabled'}`);
         if (inSeasonTournament !== (leagueStats.inSeasonTournament ?? true)) changes.push(`In-Season Tournament ${inSeasonTournament ? 'enabled' : 'disabled'}`);
+        if (cupPrizePoolEnabled !== (leagueStats.cupPrizePoolEnabled ?? true)) changes.push(`NBA Cup Prize Pool ${cupPrizePoolEnabled ? 'enabled' : 'disabled'}`);
+        if (cupPrizePoolAutoInflate !== (leagueStats.cupPrizePoolAutoInflate ?? true)) changes.push(`NBA Cup Prize Auto-Inflate ${cupPrizePoolAutoInflate ? 'enabled' : 'disabled'}`);
+        if (cupPrizeWinner !== (leagueStats.cupPrizeWinner ?? 500_000)) changes.push(`NBA Cup Winner Prize set to $${cupPrizeWinner.toLocaleString()}`);
+        if (cupPrizeRunnerUp !== (leagueStats.cupPrizeRunnerUp ?? 200_000)) changes.push(`NBA Cup Runner-Up Prize set to $${cupPrizeRunnerUp.toLocaleString()}`);
+        if (cupPrizeSemi !== (leagueStats.cupPrizeSemi ?? 100_000)) changes.push(`NBA Cup Semifinalist Prize set to $${cupPrizeSemi.toLocaleString()}`);
+        if (cupPrizeQuarter !== (leagueStats.cupPrizeQuarter ?? 50_000)) changes.push(`NBA Cup Quarterfinalist Prize set to $${cupPrizeQuarter.toLocaleString()}`);
         if (JSON.stringify(cleanedFormat) !== JSON.stringify(leagueStats.numGamesPlayoffSeries)) changes.push(`Playoff series format changed to ${cleanedFormat.join('-')}`);
         if (draftType !== leagueStats.draftType) changes.push(`Draft format changed to ${draftType}`);
         if (eligibilityRule !== (leagueStats.draftEligibilityRule ?? 'one_and_done')) changes.push(`Draft eligibility rule changed to ${eligibilityRule}`);
@@ -663,6 +721,12 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
         const newStats = {
             playIn,
             inSeasonTournament,
+            cupPrizePoolEnabled,
+            cupPrizePoolAutoInflate,
+            cupPrizeWinner,
+            cupPrizeRunnerUp,
+            cupPrizeSemi,
+            cupPrizeQuarter,
             numGamesPlayoffSeries: cleanedFormat,
             draftType,
             draftEligibilityRule: eligibilityRule,
@@ -915,6 +979,12 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
   const handleResetConfig = () => {
     setPlayIn(leagueStats.playIn);
     setInSeasonTournament(leagueStats.inSeasonTournament ?? true);
+    setCupPrizePoolEnabled(leagueStats.cupPrizePoolEnabled ?? true);
+    setCupPrizePoolAutoInflate(leagueStats.cupPrizePoolAutoInflate ?? true);
+    setCupPrizeWinner(leagueStats.cupPrizeWinner ?? 500_000);
+    setCupPrizeRunnerUp(leagueStats.cupPrizeRunnerUp ?? 200_000);
+    setCupPrizeSemi(leagueStats.cupPrizeSemi ?? 100_000);
+    setCupPrizeQuarter(leagueStats.cupPrizeQuarter ?? 50_000);
     setPlayoffFormat([...leagueStats.numGamesPlayoffSeries]);
     setDraftType(leagueStats.draftType);
     setEligibilityRule(leagueStats.draftEligibilityRule ?? 'one_and_done');
@@ -946,6 +1016,16 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
     setAllStarHorseParticipants(leagueStats.allStarHorseParticipants ?? 8);
     setAllStarOneOnOneEnabled(leagueStats.allStarOneOnOneEnabled ?? false);
     setAllStarOneOnOneParticipants(leagueStats.allStarOneOnOneParticipants ?? 8);
+    setAllStarThroneEnabled(leagueStats.allStarThroneEnabled ?? false);
+    setAllStarThroneFieldSize((leagueStats.allStarThroneFieldSize ?? 16) as 8 | 16);
+    setAllStarThroneFormat(leagueStats.allStarThroneFormat ?? 'full16');
+    setAllStarThroneFirstPossession(leagueStats.allStarThroneFirstPossession ?? 'shootout');
+    setAllStarThroneScoring(leagueStats.allStarThroneScoring ?? '2s_and_3s');
+    setAllStarThroneShotClock(leagueStats.allStarThroneShotClock ?? 7);
+    setAllStarThroneTargetScore(leagueStats.allStarThroneTargetScore ?? 12);
+    setAllStarThroneHardCap(leagueStats.allStarThroneHardCap ?? 16);
+    setAllStarThronePrizePool(leagueStats.allStarThronePrizePool ?? 5_000_000);
+    setAllStarThroneMandatoryDefense(leagueStats.allStarThroneMandatoryDefense ?? true);
     setRisingStarsEnabled(leagueStats.risingStarsEnabled ?? true);
     setRisingStarsFormat(leagueStats.risingStarsFormat ?? '4team_tournament');
     setRisingStarsMirrorLeagueRules(leagueStats.risingStarsMirrorLeagueRules ?? false);
@@ -1243,6 +1323,12 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
   const flatState = {
     playIn, setPlayIn,
     inSeasonTournament, setInSeasonTournament,
+    cupPrizePoolEnabled, setCupPrizePoolEnabled,
+    cupPrizePoolAutoInflate, setCupPrizePoolAutoInflate,
+    cupPrizeWinner, setCupPrizeWinner,
+    cupPrizeRunnerUp, setCupPrizeRunnerUp,
+    cupPrizeSemi, setCupPrizeSemi,
+    cupPrizeQuarter, setCupPrizeQuarter,
     playoffFormat, setPlayoffFormat,
     draftType, setDraftType,
     minAgeRequirement, setMinAgeRequirement,
@@ -1274,6 +1360,16 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
     allStarHorseParticipants, setAllStarHorseParticipants,
     allStarOneOnOneEnabled, setAllStarOneOnOneEnabled,
     allStarOneOnOneParticipants, setAllStarOneOnOneParticipants,
+    allStarThroneEnabled, setAllStarThroneEnabled,
+    allStarThroneFieldSize, setAllStarThroneFieldSize,
+    allStarThroneFormat, setAllStarThroneFormat,
+    allStarThroneFirstPossession, setAllStarThroneFirstPossession,
+    allStarThroneScoring, setAllStarThroneScoring,
+    allStarThroneShotClock, setAllStarThroneShotClock,
+    allStarThroneTargetScore, setAllStarThroneTargetScore,
+    allStarThroneHardCap, setAllStarThroneHardCap,
+    allStarThronePrizePool, setAllStarThronePrizePool,
+    allStarThroneMandatoryDefense, setAllStarThroneMandatoryDefense,
     risingStarsEnabled, setRisingStarsEnabled,
     risingStarsFormat, setRisingStarsFormat,
     risingStarsMirrorLeagueRules, setRisingStarsMirrorLeagueRules,
@@ -1500,6 +1596,12 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
     expandedAward, setExpandedAward,
     playIn, setPlayIn,
     inSeasonTournament, setInSeasonTournament,
+    cupPrizePoolEnabled, setCupPrizePoolEnabled,
+    cupPrizePoolAutoInflate, setCupPrizePoolAutoInflate,
+    cupPrizeWinner, setCupPrizeWinner,
+    cupPrizeRunnerUp, setCupPrizeRunnerUp,
+    cupPrizeSemi, setCupPrizeSemi,
+    cupPrizeQuarter, setCupPrizeQuarter,
     playoffFormat, setPlayoffFormat,
     draftType, setDraftType,
     minAgeRequirement, setMinAgeRequirement,
@@ -1531,6 +1633,16 @@ if (cleanedMinAge !== (leagueStats.minAgeRequirement ?? 19)) changes.push(`Minim
     allStarHorseParticipants, setAllStarHorseParticipants,
     allStarOneOnOneEnabled, setAllStarOneOnOneEnabled,
     allStarOneOnOneParticipants, setAllStarOneOnOneParticipants,
+    allStarThroneEnabled, setAllStarThroneEnabled,
+    allStarThroneFieldSize, setAllStarThroneFieldSize,
+    allStarThroneFormat, setAllStarThroneFormat,
+    allStarThroneFirstPossession, setAllStarThroneFirstPossession,
+    allStarThroneScoring, setAllStarThroneScoring,
+    allStarThroneShotClock, setAllStarThroneShotClock,
+    allStarThroneTargetScore, setAllStarThroneTargetScore,
+    allStarThroneHardCap, setAllStarThroneHardCap,
+    allStarThronePrizePool, setAllStarThronePrizePool,
+    allStarThroneMandatoryDefense, setAllStarThroneMandatoryDefense,
     risingStarsEnabled, setRisingStarsEnabled,
     risingStarsFormat, setRisingStarsFormat,
     risingStarsMirrorLeagueRules, setRisingStarsMirrorLeagueRules,

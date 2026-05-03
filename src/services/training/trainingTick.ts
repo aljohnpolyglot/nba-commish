@@ -246,6 +246,25 @@ const INDIVIDUAL_INTENSITY_MULT: Record<string, number> = {
   Double: 1.6,
 };
 
+// Reads the player's most recent regular-season MPG from their stats array.
+// 0 if no games this season (rookies pre-debut, G-League shuttlers, IL guys).
+function getRecentMpg(player: NBAPlayer): number {
+  const stats = ((player as any).stats ?? []).filter((s: any) => !s.playoffs);
+  if (stats.length === 0) return 0;
+  const latest = stats[stats.length - 1];
+  const gp = Number(latest?.gp ?? 0);
+  if (gp <= 0) return 0;
+  return Number(latest?.min ?? 0) / gp;
+}
+
+// Bench-player exemption: real NBA pattern — non-rotation guys can train hard
+// because they aren't grinding game minutes. 0 mpg → 0.4× fatigue accumulation,
+// 25+ mpg → 1.0×. Scaling only applies to fatigue GAIN (delta > 0); rest-day
+// decay isn't reduced — bench guys still recover normally.
+function recentMinutesFatigueScale(mpg: number): number {
+  return 0.4 + Math.min(1, Math.max(0, mpg) / 25) * 0.6;
+}
+
 export function tickPlayerFatigue(
   player: NBAPlayer,
   team: NBATeam | undefined,
@@ -255,17 +274,30 @@ export function tickPlayerFatigue(
   const plan = calendar?.[iso];
   const indMult = INDIVIDUAL_INTENSITY_MULT[player.trainingIntensity ?? 'Normal'] ?? 1.0;
 
+  // Modern NBA sport-science calibration: pro recovery teams (cryo, hyperbaric,
+  // film/load monitoring, individualized nutrition) keep elite athletes fresh
+  // far better than the 90s grind era. Fatigue accumulates slowly under normal
+  // load; rest decays fast. Goal: a starter on Normal + Balanced sits in the
+  // 20–40 fatigue band most of the season unless GM consistently overrides to
+  // Double. Future @NEW_FEATURES.md "Coaching / Training Dev staff" tier should
+  // add team-level recovery multipliers on top of these baselines.
   let delta: number;
   if (!plan) {
-    // No training scheduled (offseason / FA / trade deadline / Sunday). Players rest.
-    delta = -3.5;
+    // No training scheduled (offseason / FA / trade deadline / Sunday). Strong recovery.
+    delta = -5.0;
   } else if (plan.paradigm === 'Recovery') {
-    delta = -2.5;
+    delta = -4.0;
   } else {
     // Training day. Fatigue gain ∝ intensity × paradigm load × individual setting.
+    // Base lowered from 2.5 → 1.5 — modern teams don't burn out from drills.
     const base = (plan.intensity ?? 50) / 50; // 0 → 0, 50 → 1, 100 → 2
-    const paradigmLoad = plan.paradigm === 'Biometrics' ? 1.4 : 1.0;
-    delta = 2.5 * base * paradigmLoad * indMult;
+    const paradigmLoad = plan.paradigm === 'Biometrics' ? 1.3 : 1.0;
+    delta = 1.5 * base * paradigmLoad * indMult;
+  }
+
+  // Bench-player exemption — only scales positive deltas (fatigue gain).
+  if (delta > 0) {
+    delta *= recentMinutesFatigueScale(getRecentMpg(player));
   }
 
   const current = player.trainingFatigue ?? 0;

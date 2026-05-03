@@ -15,6 +15,12 @@ import type { LeagueStats } from '../../../../types';
 export const RULES_DEFAULTS: Partial<LeagueStats> = {
   // ── Schedule / playoffs ────────────────────────────────────────────────
   inSeasonTournament: true,
+  cupPrizePoolEnabled: true,
+  cupPrizePoolAutoInflate: true,
+  cupPrizeWinner: 500_000,
+  cupPrizeRunnerUp: 200_000,
+  cupPrizeSemi: 100_000,
+  cupPrizeQuarter: 50_000,
   draftEligibilityRule: 'one_and_done' as any,
   minAgeRequirement: 19,
   minGamesRequirement: 65,
@@ -45,6 +51,18 @@ export const RULES_DEFAULTS: Partial<LeagueStats> = {
   allStarHorseParticipants: 8,
   allStarOneOnOneEnabled: false,
   allStarOneOnOneParticipants: 8,
+
+  // The Throne — premium 1v1 tournament (replaces simulateOneOnOneTournament when on).
+  allStarThroneEnabled: false,
+  allStarThroneFieldSize: 16,
+  allStarThroneFormat: 'full16' as any,
+  allStarThroneFirstPossession: 'shootout' as any,
+  allStarThroneScoring: '2s_and_3s' as any,
+  allStarThroneShotClock: 7,
+  allStarThroneTargetScore: 12,
+  allStarThroneHardCap: 16,
+  allStarThronePrizePool: 5_000_000,
+  allStarThroneMandatoryDefense: true,
 
   // ── Rising Stars / Celebrity ───────────────────────────────────────────
   risingStarsEnabled: true,

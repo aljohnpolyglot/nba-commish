@@ -24,6 +24,7 @@ import { canSignMultiYear, compareGameDates, getCurrentOffseasonEffectiveFAStart
 import { getCapThresholds, getMLEAvailability } from '../utils/salaryUtils';
 import { isRfaMatchingEnabled } from '../utils/ruleFlags';
 import { computeTradeEligibleDate } from '../utils/signingMoratorium';
+import { getOffseasonState, logOffseasonDrift } from './offseason/offseasonState';
 
 /** A FA is eligible for a competitive market if they're notable enough to attract bids.
  *  PR1: dropped from 80 → 70 so K2 70-79 mid-tier rotation FAs also see multi-team
@@ -158,6 +159,20 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
   const currentDay = state.day;
   const currentYear = state.leagueStats?.year ?? 2026;
   const playerById = new Map(state.players.map(p => [p.internalId, p]));
+
+  // Offseason orchestrator drift check (Session 1 — instrumentation only).
+  // FA markets should be ticking only during the offseason FA window.
+  // If we fire in 'inSeason' or 'preDraft' / 'draftDay' / 'postDraft', that's
+  // a calendar leak the orchestrator refactor will close.
+  if (state.date) {
+    const os = getOffseasonState(state.date, state.leagueStats as any, state.schedule as any);
+    logOffseasonDrift(
+      'faMarketTicker.tickFAMarkets',
+      ['moratorium', 'birdRights', 'openFA', 'preCamp'],
+      os.phase,
+      `date=${os.dateStr}`,
+    );
+  }
 
   const signedPlayerIds = new Set<string>();
   const playerMutations = new Map<string, Partial<NBAPlayer>>();

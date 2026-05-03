@@ -63,6 +63,15 @@ export const TeamDropdown: React.FC<TeamDropdownProps> = ({
                     </div>
                     {teams
                       .filter(t => t.conference === conf && t.id !== otherTeamId)
+                      // Sort by current-season standings (win% desc, wins as tiebreaker)
+                      // so the dropdown mirrors StandingsView ordering everywhere it's used.
+                      .sort((a, b) => {
+                        const ga = (a.wins ?? 0) + (a.losses ?? 0);
+                        const gb = (b.wins ?? 0) + (b.losses ?? 0);
+                        const pa = ga > 0 ? (a.wins ?? 0) / ga : 0;
+                        const pb = gb > 0 ? (b.wins ?? 0) / gb : 0;
+                        return pb - pa || (b.wins ?? 0) - (a.wins ?? 0);
+                      })
                       .map(t => (
                         <button
                           key={t.id}
