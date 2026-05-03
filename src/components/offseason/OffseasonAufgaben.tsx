@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { CheckCircle2, Circle, ChevronRight, FastForward, Sparkles, Wrench, ListChecks, X, FileSignature, Bot, CheckCircle } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
@@ -257,6 +258,10 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   const [qoModalOpen, setQoModalOpen] = useState(false);
   const [qoSubmittedIds, setQoSubmittedIds] = useState<Set<string>>(new Set());
   const [qoSkippedIds, setQoSkippedIds] = useState<Set<string>>(new Set());
+  // Rookie contracts disclaimer — auto-pops once after draft completes,
+  // explains the R1-mandatory / R2-non-guaranteed CBA defaults.
+  const [rookieDisclaimerOpen, setRookieDisclaimerOpen] = useState(false);
+  const rookieDisclaimerKey = `rookie-disclaimer-${state.saveId ?? 'default'}-${state.leagueStats?.year ?? 0}`;
 
   // RFA-eligible expiring rookies on user team. Real NBA rule: only R1
   // picks coming off rookie scale are RFA-eligible (max 4 yrs of service).
@@ -443,6 +448,33 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     setQoSkippedIds(new Set());
     setQoModalOpen(false);
   };
+
+  // ── Rookie Contracts disclaimer — auto-pops once after draft completes ─
+  // Mirrors the FA Moratorium heads-up modal pattern in TeamIntelFreeAgency:
+  // localStorage flag keyed by save+season so it shows only once per draft.
+  useEffect(() => {
+    if (!draftDone || state.gameMode !== 'gm') return;
+    try {
+      if (window.localStorage.getItem(rookieDisclaimerKey)) return;
+    } catch {}
+    setRookieDisclaimerOpen(true);
+  }, [draftDone, state.gameMode, rookieDisclaimerKey]);
+
+  const dismissRookieDisclaimer = () => {
+    try {
+      window.localStorage.setItem(rookieDisclaimerKey, '1');
+    } catch {}
+    setRookieDisclaimerOpen(false);
+  };
+
+  // List of rookies the user just drafted — for the disclaimer body.
+  const userTeamRookies = React.useMemo<NBAPlayer[]>(() => {
+    if (state.gameMode !== 'gm' || state.userTeamId == null) return [];
+    const currentYear = state.leagueStats?.year ?? 2026;
+    return state.players
+      .filter((p: any) => p.tid === state.userTeamId && (p as any).draft?.year === currentYear)
+      .sort((a: any, b: any) => ((a as any).draft?.pick ?? 99) - ((b as any).draft?.pick ?? 99));
+  }, [state.players, state.userTeamId, state.gameMode, state.leagueStats?.year]);
   const handleAutoResolveAll = () => {
     // Phase D — real implementation. Dispatches the OFFSEASON_AUTO_RESOLVE_ALL
     // reducer case, which kicks off a SIMULATE_TO_DATE lazy sim with
@@ -580,6 +612,56 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
         onAssistant={handleQoAssistantAll}
         onDismiss={handleQoDismiss}
       />
+
+      {/* Rookie Contracts auto-disclaimer — fires once after draft completes.
+          Mirrors the FA Moratorium heads-up modal styling. */}
+      {rookieDisclaimerOpen && createPortal(
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={dismissRookieDisclaimer} />
+          <div className="relative w-full max-w-md rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-white/10 bg-amber-500/[0.06]">
+              <h2 className="text-lg font-black uppercase tracking-tight text-white">Rookie Contracts Signed</h2>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-slate-300 leading-relaxed">
+                Per the NBA CBA, your <span className="font-black text-amber-300">first-round picks</span> are signed automatically to the standard rookie scale — guaranteed contracts, 2 years + 2 team option years. There's no decline option.
+              </p>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                Your <span className="font-black text-amber-300">second-round picks</span> are signed to non-guaranteed deals by default. They count against the roster but you can waive them before the <span className="font-black text-amber-300">January 10 NG guarantee deadline</span> for a free release — no dead money.
+              </p>
+              {userTeamRookies.length > 0 && (
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] divide-y divide-white/10 max-h-40 overflow-y-auto">
+                  {userTeamRookies.map((p: any) => {
+                    const round = p.draft?.round;
+                    const pick = p.draft?.pick;
+                    const isR1 = round === 1;
+                    return (
+                      <div key={p.internalId} className="px-3 py-2 flex items-center justify-between gap-3 text-sm">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-white truncate">{p.name}</div>
+                          <div className="text-[10px] text-slate-500">
+                            R{round} #{pick} · {isR1 ? 'Guaranteed (rookie scale)' : 'Non-guaranteed'}
+                          </div>
+                        </div>
+                        <span className={`shrink-0 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded ${isR1 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'}`}>
+                          {isR1 ? 'GUARANTEED' : 'NG'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <button
+                onClick={dismissRookieDisclaimer}
+                className="w-full rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest text-xs py-3 transition-colors"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </aside>
   );
 };
