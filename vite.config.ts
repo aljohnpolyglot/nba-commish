@@ -3,9 +3,11 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 export default defineConfig(({mode: _mode}) => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), cloudflare()],
     define: {
       'import.meta.env.VITE_APP_VERSION': JSON.stringify(
         new Date().toISOString().slice(0, 16).replace('T', ' ')
