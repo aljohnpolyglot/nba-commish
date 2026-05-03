@@ -161,6 +161,61 @@ Edge cases to watch:
 
 ---
 
+## Backlog idea — Offseason task: International Duty Release (FIBA / Olympics)
+
+**Status:** suggestion. Depends on [`docs/tournament-refactor.md`](./docs/tournament-refactor.md) shipping FIBA + Olympics tournaments. Naturally extends the 2K-style AUFGABEN sidebar (Session 53).
+
+**The hook:** when international tournaments exist in the sim (FIBA World Cup every 4 years, Olympics every 4 years offset, EuroBasket, etc.), each tournament window collides with the NBA offseason. Real NBA: the team has the FINAL say on whether a player can join their national team — they can deny on injury risk grounds, conditioning concerns, or pure self-interest (looking at you Adam Silver / Joel Embiid 2024 saga). This is a real and dramatic GM decision the sim should surface.
+
+**As an offseason checklist row:**
+- New row in `OffseasonAufgaben` sidebar between **Free Agency** and **Training Camp**
+- Only renders when at least one of the user's players is **eligible** for an active national-team tournament (per the dual-nationality gist convention from tournament-refactor.md §6 — last segment of `player.born.loc` wins)
+- Modal stack pattern (mirror Team Options modal): one row per eligible player
+
+**Per-player decision UI:**
+```
+┌──────────────────────────────────────────────────┐
+│ INTERNATIONAL DUTY RELEASE                        │
+│                                                    │
+│ Your eligible players for FIBA World Cup 2027:    │
+│                                                    │
+│ ┌─────────────────────────────────────────────┐  │
+│ │ Luka Dončić    SLO  K2 97  29y  $59M         │  │
+│ │ Risk: knee tendinopathy, injury chance +8%    │  │
+│ │   [ ALLOW ] [ DENY ]                          │  │
+│ │                                                │  │
+│ │ Domantas Sabonis  LTU  K2 88  31y  $30M       │  │
+│ │ Risk: low                                      │  │
+│ │   [ ALLOW ] [ DENY ]                          │  │
+│ └─────────────────────────────────────────────┘  │
+│                                                    │
+│  [ ASSISTANT GM: ALLOW ALL ]    [ DENY ALL ]      │
+└──────────────────────────────────────────────────┘
+```
+
+**Mechanics + drama hooks:**
+- **ALLOW** → player flagged `isInternationalDuty: true` for the tournament window. Off NBA preseason / camp during that period. Small chance (~5-10%) of fatigue carryover or minor injury heading into NBA preseason. Mood +5 trait-dependent (LOYAL +0, FAME +10, COMPETITOR +8 for those who want the gold).
+- **DENY** → player flagged out of national team selection. Real NBA precedent: 76ers blocked Embiid from EuroBasket 2022. Player mood −10 if `nationalPride` trait, otherwise neutral. National team selects next-best at position. Possible trade demand trigger if mood ≤ −7 already.
+- **Drama beats:** Shams template: "Sources: [GM] has informed [Federation] that [Player] will not be participating this summer." News headline triggers a `nationalPride` mood penalty if denied. If a denied star's national team loses early ("could have used Luka"), generates a follow-up story arc.
+
+**Why this is a perfect AUFGABEN row:**
+- Cleanly bounded decision (allow/deny per player)
+- Real NBA reality (every 4 years this conversation happens for every star)
+- Fully self-contained in offseason — no in-season ramifications other than the duty window itself
+- Zero-impact path exists (Assistant GM defaults: ALLOW for healthy players, DENY for fragile / 35+ vets)
+- Surfaces a system that exists silently (national-team rosters) into a moment of GM choice
+
+**Implementation notes:**
+- New `pendingInternationalDuty` GameState field (parallel to `pendingOptionDecisions`)
+- New `SUBMIT_INTERNATIONAL_RELEASE` reducer case (sets `player.internationalDutyAllowed: boolean`)
+- Auto-mark row done when no eligible players exist (mirrors QO row's empty-list auto-done behavior)
+- Tournament tick consults `internationalDutyAllowed` when building national-team rosters
+- Visible only when at least one tournament with `enabledFlag` true falls in the upcoming year — no row clutter during pure-NBA offseasons
+
+**Defer until:** tournament-refactor.md PR 6 (FIBA national teams) is shipping. The offseason hook is the natural surface but the underlying tournament engine has to exist first.
+
+---
+
 ## Backlog idea — Apron-tier cap mechanics (Football Manager-tier depth)
 
 **Status:** intentionally NOT shipped. Sim is currently fast and approachable; full apron rules would push it toward Football Manager territory (deep but slower, more gates, more "you can't do that" friction). File for a hypothetical future "Hardcore Mode" toggle.
