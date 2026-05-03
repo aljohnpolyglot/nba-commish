@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { cn } from '../../../../lib/utils';
 import { useGame } from '../../../../store/GameContext';
@@ -28,12 +28,28 @@ const TABS: { id: OfficeTab; label: string }[] = [
 ];
 
 export function TeamOfficeView() {
-  const { state } = useGame();
+  const { state, dispatchAction } = useGame();
   const isGM = state.gameMode === 'gm';
   // GM mode: default to user's team but can still browse other teams
   const [currentTeamId, setCurrentTeamId] = useState<number | null>(isGM && state.userTeamId != null ? state.userTeamId : null);
   const [activeTab, setActiveTab] = useState<OfficeTab>(isGM && state.userTeamId != null ? 'gm' : 'home');
   const [selectedPlayer, setSelectedPlayer] = useState<NBAPlayer | null>(null);
+
+  // ── Deep-link from offseason AUFGABEN sidebar ────────────────────────
+  // Reads the transient pendingTeamOfficeNav slot, applies the requested
+  // tab + (for intel) propagates intelTab to TeamIntel via state slot,
+  // then clears tab from the slot. (intelTab gets cleared by TeamIntel
+  // itself once it consumes it.)
+  useEffect(() => {
+    const nav = state.pendingTeamOfficeNav;
+    if (!nav?.tab) return;
+    setActiveTab(nav.tab as OfficeTab);
+    // Drop just the tab; keep intelTab for TeamIntel to consume next tick.
+    dispatchAction({
+      type: 'UPDATE_STATE',
+      payload: { pendingTeamOfficeNav: nav.intelTab ? { intelTab: nav.intelTab } : undefined },
+    } as any);
+  }, [state.pendingTeamOfficeNav?.tab]);
 
   const currentTeam = currentTeamId != null ? state.teams.find(t => t.id === currentTeamId) : null;
   const teamColor = currentTeam?.colors?.[0] || '#150d1a';

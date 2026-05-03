@@ -1467,6 +1467,14 @@ historicalAwards: HistoricalAward[];
    *  Populated by seasonRollover §0a/§0b (options) and autoRunDraft (rookies);
    *  drained by the corresponding modal stacks. */
   pendingOfferDecisions?: OffseasonPendingDecision[];
+  /** Transient deep-link target for TeamOffice + its sub-views. Read by
+   *  TeamOfficeView (sets activeTab) and TeamIntel (sets intelTab) on mount,
+   *  then cleared. Used by the offseason AUFGABEN sidebar to deep-link rows
+   *  like "My Free Agents" → Team Intel → Expiring. */
+  pendingTeamOfficeNav?: {
+    tab?: 'home' | 'gm' | 'coaching' | 'depth' | 'intel' | 'needs' | 'trading' | 'picks' | 'scouting';
+    intelTab?: 'trades' | 'fa' | 'expiring';
+  };
   // Single-game franchise records set during sim — merged into TeamHistoryView Records tab
   simFranchiseRecords?: Array<{
     tid: number; category: string; isPlayoff: boolean;

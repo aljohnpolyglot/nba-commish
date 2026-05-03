@@ -272,11 +272,17 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       return;
     }
     if (row === 'myFAs') {
-      // Read-only review — navigate to TeamIntel and instantly mark done.
-      // The user will see their expiring FAs in TeamIntelExpiring.
+      // Read-only review — deep-link to TeamIntel → Expiring sub-tab where
+      // expiring contracts + RFA/UFA status are surfaced. Set the deep-link
+      // slot BEFORE navigating so TeamOfficeView + TeamIntel pick it up on
+      // mount and route the user straight to the right place.
+      dispatchAction({
+        type: 'UPDATE_STATE',
+        payload: { pendingTeamOfficeNav: { tab: 'intel', intelTab: 'expiring' } },
+      } as any);
       dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
-      // Defer the complete dispatch one tick so the user sees the row as
-      // 'in-progress' briefly before checking off — feels intentional.
+      // Defer the complete dispatch so the user sees the row as
+      // 'in-progress' briefly before checking off.
       setTimeout(() => {
         dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row } } as any);
       }, 400);
@@ -294,8 +300,13 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       return;
     }
     if (row === 'freeAgency') {
-      // Enter FA: navigate + auto-skip moratorium silently to Tag 1/13.
-      // ADVANCE_FA_TAG with counter=0 handles the skip + counter init.
+      // Enter FA: deep-link to TeamIntel → Free Agency dashboard, then
+      // auto-skip moratorium silently to Tag 1/13. ADVANCE_FA_TAG with
+      // counter=0 handles the skip + counter init.
+      dispatchAction({
+        type: 'UPDATE_STATE',
+        payload: { pendingTeamOfficeNav: { tab: 'intel', intelTab: 'fa' } },
+      } as any);
       dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
       if ((state.faTagCounter ?? 0) === 0) {
         dispatchAction({ type: 'OFFSEASON_ADVANCE_FA_TAG' } as any);

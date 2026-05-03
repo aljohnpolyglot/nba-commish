@@ -593,15 +593,23 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     return Array.from(years).sort((a, b) => b - a); // newest first
   }, [state.players, nbaTids, nonNBACacheVer]);
 
-  const defaultViewYear = availableDraftYears[0] ?? (state.leagueStats?.year ?? 2026) - 1;
+  // Default to the UPCOMING draft year (ls.year) so the Draft Board lands
+  // on the about-to-run draft, not stale results from the previous year.
+  // availableDraftYears (sorted newest-first) only includes years where
+  // players have draft.year set — so it's always 1 year BEHIND the current
+  // ls.year until the draft actually runs.
+  const upcomingDraftYear = state.leagueStats?.year ?? 2026;
+  const defaultViewYear = upcomingDraftYear;
   const [viewDraftYear, setViewDraftYear] = useState<number>(defaultViewYear);
 
   // Sync viewDraftYear when availableDraftYears changes (new save loaded)
+  // OR when ls.year increments (post-rollover) so the picker re-anchors
+  // to the new upcoming draft.
   useEffect(() => {
-    if (availableDraftYears.length > 0 && !availableDraftYears.includes(viewDraftYear)) {
-      setViewDraftYear(availableDraftYears[0]);
+    if (availableDraftYears.length > 0 && !availableDraftYears.includes(viewDraftYear) && viewDraftYear !== upcomingDraftYear) {
+      setViewDraftYear(upcomingDraftYear);
     }
-  }, [availableDraftYears]);
+  }, [availableDraftYears, upcomingDraftYear]);
 
   const latestDraftClass = useMemo(() => {
     // Collect candidates, attaching resolved _draftRound/_draftPick for slot mapping

@@ -162,6 +162,15 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   // Both views share the team banner; only the body switches. Persists per-mount.
   const [intelTab, setIntelTab] = useState<'trades' | 'fa' | 'expiring'>('trades');
 
+  // Deep-link from offseason AUFGABEN sidebar — reads pendingTeamOfficeNav
+  // .intelTab and applies it once, then clears the slot.
+  useEffect(() => {
+    const want = state.pendingTeamOfficeNav?.intelTab;
+    if (!want) return;
+    setIntelTab(want);
+    dispatchAction({ type: 'UPDATE_STATE', payload: { pendingTeamOfficeNav: undefined } } as any);
+  }, [state.pendingTeamOfficeNav?.intelTab]);
+
   // Hydrate from tradingBlockStore so the narrative reflects what the user
   // actually marked in the Trading Block UI (and stays in sync with AI/trade
   // engines that read the same store). Falls back to the heuristic defaults
