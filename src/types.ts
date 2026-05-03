@@ -15,6 +15,7 @@ export interface Game {
   isExhibition?: boolean;
   isDunkContest?: boolean;
   isThreePointContest?: boolean;
+  isThroneEvent?: boolean;
   isPlayoff?: boolean;
   isPlayIn?: boolean;
   playoffSeriesId?: string;
@@ -1622,7 +1623,8 @@ export type ActionType = 'SET_TRAINING_DAILY_PLAN' | 'SET_PLAYER_DEV_FOCUS' | 'S
   // ── Offseason 2K checklist actions ─────────────────────────────────────
   'OFFSEASON_ENTER_PHASE' | 'OFFSEASON_COMPLETE_PHASE' | 'OFFSEASON_SKIP_PHASE' |
   'OFFSEASON_AUTO_RESOLVE_ALL' | 'OFFSEASON_ADVANCE_FA_TAG' | 'OFFSEASON_EXIT' |
-  'OFFSEASON_RESOLVE_DECISION' | 'OFFSEASON_RESET_CHECKLIST';
+  'OFFSEASON_RESOLVE_DECISION' | 'OFFSEASON_RESET_CHECKLIST' |
+  'SUBMIT_QUALIFYING_OFFER' | 'SKIP_QUALIFYING_OFFER';
 
 export interface UserAction {
   type: ActionType;

@@ -10,8 +10,10 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Circle, ChevronRight, FastForward, Sparkles, Wrench, ListChecks, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { CheckCircle2, Circle, ChevronRight, FastForward, Sparkles, Wrench, ListChecks, X, FileSignature, Bot, CheckCircle } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
+import { convertTo2KRating } from '../../utils/helpers';
 import {
   OFFSEASON_ROW_ORDER,
   OFFSEASON_ROW_LABELS,
@@ -176,6 +178,22 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   const cMonth = state.date ? new Date(state.date).getUTCMonth() + 1 : 0;
   const cDay = state.date ? new Date(state.date).getUTCDate() : 0;
   const trainingCampDone = (cMonth === 10 && cDay >= 21) || cMonth >= 11;
+  // Qualifying offers: empty candidate list = nothing to decide → done.
+  const noQOCandidates = state.gameMode === 'gm'
+    && state.userTeamId != null
+    && (() => {
+      const currentYear = state.leagueStats?.year ?? 2026;
+      return !state.players.some((p: any) =>
+        p.tid === state.userTeamId &&
+        p.status === 'Active' &&
+        p.contract &&
+        (p.contract.exp ?? 0) === currentYear &&
+        p.contract.rookie &&
+        p.draft?.round === 1 &&
+        !p.contract.qualifyingOfferSkipped &&
+        !p.contract.qualifyingOfferSubmitted
+      );
+    })();
 
   useEffect(() => {
     if (!checklist) return;
@@ -194,7 +212,10 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     if (trainingCampDone && checklist.trainingCamp === 'pending') {
       dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'trainingCamp' } } as any);
     }
-  }, [lotteryDone, draftDone, rookieContractsDone, noPendingTeamOptions, trainingCampDone, checklist?.draftLottery, checklist?.draft, checklist?.rookieContracts, checklist?.options, checklist?.trainingCamp]);
+    if (noQOCandidates && checklist.qualifyingOffers === 'pending') {
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'qualifyingOffers' } } as any);
+    }
+  }, [lotteryDone, draftDone, rookieContractsDone, noPendingTeamOptions, trainingCampDone, noQOCandidates, checklist?.draftLottery, checklist?.draft, checklist?.rookieContracts, checklist?.options, checklist?.trainingCamp, checklist?.qualifyingOffers]);
 
   if (!checklist) return null;
 
@@ -205,6 +226,30 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   const [optionsModalOpen, setOptionsModalOpen] = useState(false);
   const [exercisedIds, setExercisedIds] = useState<Set<string>>(new Set());
   const [declinedIds, setDeclinedIds] = useState<Set<string>>(new Set());
+  // Qualifying Offer modal — opens when user clicks "Enter" on the QO row.
+  const [qoModalOpen, setQoModalOpen] = useState(false);
+  const [qoSubmittedIds, setQoSubmittedIds] = useState<Set<string>>(new Set());
+  const [qoSkippedIds, setQoSkippedIds] = useState<Set<string>>(new Set());
+
+  // RFA-eligible expiring rookies on user team. Real NBA rule: only R1
+  // picks coming off rookie scale are RFA-eligible (max 4 yrs of service).
+  // R2 picks default to UFA — no QO available.
+  const rfaCandidates = React.useMemo<NBAPlayer[]>(() => {
+    if (state.gameMode !== 'gm' || state.userTeamId == null) return [];
+    const currentYear = state.leagueStats?.year ?? 2026;
+    return state.players.filter((p: any) => {
+      if (p.tid !== state.userTeamId || p.status !== 'Active') return false;
+      if (!p.contract) return false;
+      // Expiring this offseason
+      if ((p.contract.exp ?? 0) !== currentYear) return false;
+      // R1 rookie scale (R2 picks not RFA-eligible)
+      const isR1Rookie = !!(p.contract.rookie && p.draft?.round === 1);
+      if (!isR1Rookie) return false;
+      // Already opted out via skip — hide
+      if (p.contract.qualifyingOfferSkipped) return false;
+      return true;
+    });
+  }, [state.gameMode, state.userTeamId, state.players, state.leagueStats?.year]);
 
   const pendingTeamOptions = React.useMemo<NBAPlayer[]>(() => {
     if (state.gameMode !== 'gm' || state.userTeamId == null) return [];
@@ -238,14 +283,14 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       return;
     }
     if (row === 'qualifyingOffers') {
-      // Phase B: full QO modal stack lands with Phase C alongside the FA
-      // dashboard. For now, navigate to TeamIntel (Expiring tab shows RFA
-      // candidates) and mark done — the existing TeamIntelExpiring view
-      // surfaces the data the user needs.
-      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
-      setTimeout(() => {
+      // Open the QO modal in-place. If no eligible R1 rookies expire this
+      // year, instantly mark done — there's nothing for the GM to decide.
+      if (rfaCandidates.length === 0) {
         dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row } } as any);
-      }, 400);
+        return;
+      }
+      setQoModalOpen(true);
+      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
       return;
     }
     if (row === 'freeAgency') {
@@ -299,6 +344,42 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       type: 'UPDATE_STATE',
       payload: {},  // no-op; navigation happens via setCurrentView caller
     } as any);
+  };
+
+  // ── QO modal handlers ──────────────────────────────────────────────────
+  const handleQoSubmitOne = (playerId: string) => {
+    dispatchAction({ type: 'SUBMIT_QUALIFYING_OFFER', payload: { playerId } } as any);
+    setQoSubmittedIds(prev => { const n = new Set(prev); n.add(playerId); return n; });
+  };
+  const handleQoSkipOne = (playerId: string) => {
+    dispatchAction({ type: 'SKIP_QUALIFYING_OFFER', payload: { playerId } } as any);
+    setQoSkippedIds(prev => { const n = new Set(prev); n.add(playerId); return n; });
+  };
+  const handleQoAssistantAll = () => {
+    // AI default: submit QO for K2 ≥ 70 (worth retaining), skip below.
+    rfaCandidates.forEach(p => {
+      const k2 = convertTo2KRating(
+        p.overallRating ?? 0,
+        (p as any).ratings?.[(p as any).ratings?.length - 1]?.hgt ?? 50,
+        (p as any).ratings?.[(p as any).ratings?.length - 1]?.tp ?? 50,
+      );
+      if (k2 >= 70) {
+        handleQoSubmitOne(p.internalId);
+      } else {
+        handleQoSkipOne(p.internalId);
+      }
+    });
+    setQoModalOpen(false);
+    dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'qualifyingOffers' } } as any);
+  };
+  const handleQoDismiss = () => {
+    const totalDecided = qoSubmittedIds.size + qoSkippedIds.size;
+    if (totalDecided >= rfaCandidates.length && rfaCandidates.length > 0) {
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'qualifyingOffers' } } as any);
+    }
+    setQoSubmittedIds(new Set());
+    setQoSkippedIds(new Set());
+    setQoModalOpen(false);
   };
   const handleAutoResolveAll = () => {
     // Phase D — real implementation. Dispatches the OFFSEASON_AUTO_RESOLVE_ALL
@@ -422,7 +503,163 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
         exercisedIds={exercisedIds}
         declinedIds={declinedIds}
       />
+
+      {/* Qualifying Offer modal — RFA decision per expiring R1 rookie.
+          Submit = retain match rights via Bird for next season's market;
+          Skip = let player walk as UFA (no match rights). */}
+      <QualifyingOfferModal
+        isOpen={qoModalOpen}
+        players={rfaCandidates}
+        leagueStats={state.leagueStats}
+        submittedIds={qoSubmittedIds}
+        skippedIds={qoSkippedIds}
+        onSubmitOne={handleQoSubmitOne}
+        onSkipOne={handleQoSkipOne}
+        onAssistant={handleQoAssistantAll}
+        onDismiss={handleQoDismiss}
+      />
     </aside>
+  );
+};
+
+// ─── Qualifying Offer modal ────────────────────────────────────────────────
+// Mirrors TeamOptionGateModal layout for visual consistency. Each row shows
+// the player's last salary + projected QO amount (≈ max(lastSalary × 1.3,
+// leagueMin × 1.5) — the NBA QO formula is more complex but this captures
+// the right magnitude). Default recommendation: Submit for K2 ≥ 70.
+
+interface QualifyingOfferModalProps {
+  isOpen: boolean;
+  players: NBAPlayer[];
+  leagueStats: any;
+  submittedIds: Set<string>;
+  skippedIds: Set<string>;
+  onSubmitOne: (playerId: string) => void;
+  onSkipOne: (playerId: string) => void;
+  onAssistant: () => void;
+  onDismiss: () => void;
+}
+
+const QualifyingOfferModal: React.FC<QualifyingOfferModalProps> = ({
+  isOpen, players, leagueStats, submittedIds, skippedIds,
+  onSubmitOne, onSkipOne, onAssistant, onDismiss,
+}) => {
+  const computeQOAmount = (p: NBAPlayer): number => {
+    const lastSalaryUSD = (p.contract?.amount ?? 0) * 1_000;
+    const rawMin = leagueStats?.minContract ?? 1.273;
+    const minSalaryUSD = rawMin > 1000 ? rawMin : rawMin * 1_000_000;
+    return Math.max(Math.round(lastSalaryUSD * 1.3), Math.round(minSalaryUSD * 1.5));
+  };
+  const fmtUSD = (n: number) => n >= 1_000_000
+    ? `$${(n / 1_000_000).toFixed(1)}M`
+    : `$${(n / 1_000).toFixed(0)}K`;
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[115] flex items-center justify-center p-4 md:p-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/90 backdrop-blur-md"
+            onClick={onDismiss}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="relative bg-[#0f0f0f] border border-fuchsia-500/30 rounded-[24px] w-full max-w-md shadow-2xl overflow-hidden"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-fuchsia-500/[0.05]">
+              <div className="flex items-center gap-3">
+                <FileSignature className="w-5 h-5 text-fuchsia-400" />
+                <h3 className="text-lg font-black text-white uppercase tracking-tight">Qualifying Offers</h3>
+              </div>
+              <button onClick={onDismiss} className="text-slate-500 hover:text-white transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-slate-300 mb-4">
+                Submit a qualifying offer to make this expiring R1 rookie a <span className="font-black text-fuchsia-300">restricted free agent</span> — you keep match rights when other teams come calling. Skip = he walks as UFA.
+              </p>
+              {players.length === 0 ? (
+                <div className="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center text-sm text-emerald-200 font-bold">
+                  No expiring R1 rookies on your roster — nothing to submit.
+                </div>
+              ) : (
+                <div className="mb-6 rounded-xl border border-white/10 bg-white/[0.03] divide-y divide-white/10 max-h-60 overflow-y-auto">
+                  {players.map(p => {
+                    const submitted = submittedIds.has(p.internalId);
+                    const skipped = skippedIds.has(p.internalId);
+                    const decided = submitted || skipped;
+                    const qoUSD = computeQOAmount(p);
+                    const r = (p as any).ratings?.[(p as any).ratings?.length - 1];
+                    const k2 = convertTo2KRating(p.overallRating ?? 0, r?.hgt ?? 50, r?.tp ?? 50);
+                    return (
+                      <div key={p.internalId} className="px-3 py-2 flex items-center justify-between gap-3 text-sm">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-white truncate">{p.name}</div>
+                          <div className="text-[10px] text-slate-500">K2 {k2} · QO {fmtUSD(qoUSD)} / 1yr</div>
+                        </div>
+                        {decided ? (
+                          <span className={`shrink-0 text-[10px] font-black uppercase tracking-widest px-2 py-1 ${submitted ? 'text-fuchsia-300' : 'text-rose-400'}`}>
+                            {submitted ? 'Submitted' : 'Skipped'}
+                          </span>
+                        ) : (
+                          <div className="shrink-0 flex items-center gap-1.5">
+                            <button
+                              onClick={() => onSubmitOne(p.internalId)}
+                              className="px-2 py-1 bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-fuchsia-300 rounded-md text-[10px] font-black uppercase tracking-widest transition-colors border border-fuchsia-500/30"
+                            >
+                              Submit
+                            </button>
+                            <button
+                              onClick={() => onSkipOne(p.internalId)}
+                              className="px-2 py-1 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 rounded-md text-[10px] font-black uppercase tracking-widest transition-colors border border-rose-500/30"
+                            >
+                              Skip
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="flex flex-col gap-2">
+                {(() => {
+                  const total = players.length;
+                  const decidedCount = players.filter(p => submittedIds.has(p.internalId) || skippedIds.has(p.internalId)).length;
+                  const allDone = total === 0 || decidedCount === total;
+                  if (allDone) {
+                    return (
+                      <button
+                        onClick={onDismiss}
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl font-black uppercase tracking-widest text-xs transition-colors"
+                      >
+                        <CheckCircle size={14} />
+                        Done
+                      </button>
+                    );
+                  }
+                  return (
+                    <button
+                      onClick={onAssistant}
+                      className="flex items-center justify-center gap-2 px-4 py-3 bg-fuchsia-500 hover:bg-fuchsia-400 text-black rounded-xl font-black uppercase tracking-widest text-xs transition-colors"
+                    >
+                      <Bot size={14} />
+                      Assistant GM: Submit Worth Keeping (K2 ≥ 70)
+                    </button>
+                  );
+                })()}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 };
 

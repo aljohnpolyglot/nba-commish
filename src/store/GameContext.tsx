@@ -937,6 +937,39 @@ const actions = useGameActions(setState, () => stateRef.current);
       return;
     }
 
+    // ── Qualifying Offer submission (Phase D — RFA decision) ─────────────
+    // Submit: stamps contract.restrictedFA so the FA market gives the prior
+    // team match rights when offers come in (faMarketTicker pendingMatch
+    // flow already handles this).
+    // Skip: clears the flag so the player walks as UFA — no match rights.
+    // The default for R1 rookies is RFA via isPlayerRFA fallback; this lets
+    // the GM explicitly opt out for a player they don't want to retain.
+    if (action.type === 'SUBMIT_QUALIFYING_OFFER') {
+      const { playerId } = (action as any).payload as { playerId: string };
+      setState(prev => ({
+        ...prev,
+        players: prev.players.map(p =>
+          p.internalId === playerId
+            ? { ...p, contract: { ...(p.contract as any), restrictedFA: true, isRestrictedFA: true, qualifyingOfferSubmitted: true } } as any
+            : p,
+        ),
+      }));
+      return;
+    }
+
+    if (action.type === 'SKIP_QUALIFYING_OFFER') {
+      const { playerId } = (action as any).payload as { playerId: string };
+      setState(prev => ({
+        ...prev,
+        players: prev.players.map(p =>
+          p.internalId === playerId
+            ? { ...p, contract: { ...(p.contract as any), restrictedFA: false, isRestrictedFA: false, qualifyingOfferSkipped: true, qualifyingOfferSubmitted: false } } as any
+            : p,
+        ),
+      }));
+      return;
+    }
+
     if (action.type === 'OFFSEASON_EXIT') {
       // Tear down — calendar is back in regular season, sidebar disappears.
       setState(prev => ({
