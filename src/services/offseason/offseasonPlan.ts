@@ -98,20 +98,29 @@ export function getOffseasonDayPlan(state: GameState): OffseasonDayPlan {
   const birdRightsAlreadyRanThisYear =
     ls?.birdRightsResignPassYear === lsYear;
 
-  // Rollover-already-happened detection: post-rollover, leagueStats.year has
-  // already been incremented. We replicate `shouldFireRollover` here directly
-  // (date >= rolloverDate) because the rolloverDate may slide into July when
-  // playoffs overrun, and a phase-only proxy can disagree on those days.
+  // Rollover-already-happened detection — uses ls.year increment as the
+  // SOLE signal, NOT phase. Phase is derived from calendar date alone, so
+  // once the calendar crosses Jul 7 (moratorium end), phase becomes 'openFA'
+  // regardless of whether ls.year was actually incremented. The previous
+  // phase-based check returned true here even for orphan saves where
+  // rollover never fired — blocking the trigger forever.
+  //
+  // Correct semantics: rollover should fire iff
+  //   (a) calendar date is at/past rolloverDate, AND
+  //   (b) ls.year has not yet been bumped to the post-rollover value.
+  // The post-rollover ls.year for THIS calendar offseason is cYear+1
+  // (since BBGM convention: ls.year = year season ENDS, and rollover at
+  // Jun 30 cYear ends the cYear-season, advancing ls.year to cYear+1).
   const rolloverDateStr = toISODateString(
     getRolloverDate(lsYear, ls, state.schedule as any),
   );
+  // Calendar year from os.dateStr (YYYY-MM-DD) — the year the calendar
+  // currently sits in. After rollover for THIS calendar's summer, ls.year
+  // should have advanced to (cYear + 1).
+  const cYear = parseInt(os.dateStr.slice(0, 4), 10);
   const rolloverAlreadyHappened = os.dateStr < rolloverDateStr
     ? false
-    : os.phase === 'moratorium' ||
-      os.phase === 'birdRights' ||
-      os.phase === 'openFA' ||
-      os.phase === 'preCamp' ||
-      os.phase === 'inSeason';
+    : (lsYear >= (cYear + 1));
 
   // FA-season detection: matches `simulationHandler`'s `isFreeAgencySeason`
   // exactly. Summer = Jul-Sep (after effective FA start), in-season = Oct-Feb.
