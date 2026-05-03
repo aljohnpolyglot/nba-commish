@@ -47,8 +47,10 @@ The original v1 spec assumed we'd build ~7 new screens. After auditing, **95% of
 8. New header phase badge `OffseasonPhaseBadge.tsx` — replaces date when `state.offseasonPhase !== 'inSeason'` (~80 lines)
 9. **Modify** `TeamOfficeView.tsx` — add `offseason` tab (only visible when `offseasonPhase !== 'inSeason'`) (~10 line patch)
 10. New `state.faTagCounter` + `OFFSEASON_ADVANCE_FA_TAG` reducer (~60 lines)
+11. New `OffseasonNextActionButton.tsx` — context-aware header CTA (~120 lines)
+12. **Modify** `App.tsx`, `ScheduleView.tsx`, `FreeAgentsView.tsx`, `NBACentral.tsx`, `RealStern.tsx` — gate day-advance UI behind `offseasonPhase === 'inSeason'` (~30 line patch total)
 
-**Total new code: ~870 lines. Total modified: ~140 lines.** That's a 5-session sprint, not a 3-month rewrite.
+**Total new code: ~990 lines. Total modified: ~170 lines.** That's a 5-session sprint, not a 3-month rewrite.
 
 ---
 
@@ -362,6 +364,80 @@ Right now in Surface 2 (`TeamIntelFreeAgency`), to actually open SigningModal yo
 2. Click "Sign Free Agent" → opens SigningModal
 
 User correctly identified this is too deep. **Phase C adds a prominent `Negotiate` button next to ★ Shortlist** — direct path to SigningModal. Available in BOTH Surface 2 and Surface 3 (same component, same fix benefits both).
+
+---
+
+## During offseason: hide ALL day-advance UI + auto-navigate to current task
+
+> User confirmed both ideas. Critical UX rule: **calendar-day controls disappear, the only "next" action is "advance current offseason task" or "auto-resolve & skip phase".**
+
+### Hide list (during offseason — `state.offseasonPhase !== 'inSeason'`)
+
+| Component | Where | What to hide |
+|---|---|---|
+| **PlayButton** | `App.tsx:191, 196` (header, twice) | Replace with `OffseasonNextActionButton` (text varies by current phase) |
+| **ScheduleView "Sim Day"** | `ScheduleView.tsx:93, 262, 486, 508` | Hide entire button + grey out the calendar grid (no games to schedule in offseason anyway) |
+| **FreeAgentsView "Sim Day"** | `FreeAgentsView.tsx:494, 530` | Hide — Tag advance happens via offseason wrapper instead |
+| **NBACentral "Sim & Watch" button** | `NBACentral.tsx:418, 435` | Hide — no games to watch in offseason (only preseason exhibition during preCamp) |
+| **RealStern ADVANCE_DAY buttons** | `RealStern.tsx:205, 220` | Hide — RealStern is mostly in-season interactive content |
+
+The pattern is `state.offseasonPhase !== 'inSeason'` → hide. One conditional in each component.
+
+### What replaces PlayButton: `OffseasonNextActionButton`
+
+A single context-aware CTA in the header. Text + icon change based on `currentRow` of the checklist:
+
+| Current phase row | Button label | Action |
+|---|---|---|
+| Draft Lottery (pending) | `▶ Watch Draft Lottery` | Navigate to DraftLotteryView |
+| Draft Lottery (in-progress) | `View Lottery Result` | Navigate to DraftLotteryView |
+| Options (pending) | `▶ Decide Team/Player Options` | Open OffseasonOptionsModalStack |
+| Options (in-progress) | `Resume Options (3 left)` | Re-open at next pending decision |
+| Qualifying Offers (pending) | `▶ Submit Qualifying Offers` | Open QO modal stack |
+| My Free Agents (pending) | `▶ Review Departing FAs` | Navigate to MyFreeAgentsView, then auto-check |
+| Draft (pending) | `▶ Run NBA Draft` | Navigate to DraftSimulatorView |
+| Rookie Contracts (pending) | `▶ Sign N Rookies` | Open Rookie Contracts modal stack |
+| Free Agency (pending) | `▶ Enter Free Agency` | Navigate to OffseasonAufgabenView FA tab |
+| Free Agency (in-progress) | `▶ Tag X/13 — End Day` | Dispatch `OFFSEASON_ADVANCE_FA_TAG` |
+| Training Camp (pending) | `▶ Open Training Camp` | Navigate to TrainingCenterView |
+| All done | `▶ Advance to Next Season` | Dispatch `OFFSEASON_EXIT` → opening night |
+
+**Crucial:** clicking the CTA also auto-navigates to the right view if the user is elsewhere. So even if user is on TradeFinderView, clicking the header CTA jumps them to the FA dashboard at Tag X/13. **The CTA is the only "what's next" the user needs.**
+
+### Auto-navigation on phase entry
+
+When user enters a phase row (from sidebar or CTA click), auto-navigate:
+
+```ts
+case 'OFFSEASON_ENTER_PHASE': {
+  const phaseToView: Record<OffseasonChecklistRow, Tab> = {
+    draftLottery: 'Draft Lottery',
+    options: 'Team Office',     // modal stack opens on top
+    qualifyingOffers: 'Team Office',
+    myFAs: 'Team Office',
+    draft: 'Draft Board',
+    rookieContracts: 'Team Office',
+    freeAgency: 'Team Office',  // routes to TeamIntel → Free Agency tab
+    trainingCamp: 'Training Center',
+  };
+  setCurrentView(phaseToView[action.payload.phase]);
+  return { ...state, offseasonChecklist: { ...state.offseasonChecklist, [action.payload.phase]: 'in-progress' } };
+}
+```
+
+This solves the user's question: **"wirdst du in offseaosntask gefuhrt?"** (will you be guided into the offseason task?) — **Yes, automatically.** Click the header CTA or sidebar row → land on the right view → modal stack opens if applicable.
+
+### What if the user navigates AWAY mid-phase?
+
+Free navigation stays intact. They can still go to TradeFinderView, browse other teams, check stats, etc. The header CTA persists everywhere with phase-appropriate text — one click brings them back.
+
+### What about the AUFGABEN sidebar — is it always shown?
+
+Two configurations:
+- **Default (mobile + desktop):** sidebar collapses to a single header pill `📋 Offseason Tasks (3/8)`. Click → opens sheet/sidebar with full list.
+- **Wide-desktop in TeamOffice:** full sidebar visible permanently as left rail (matching the screenshot).
+
+Either way the **CTA in the header is the primary action.** Sidebar is the "show me all phases" overflow menu.
 
 ---
 
