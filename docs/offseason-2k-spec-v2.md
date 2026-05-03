@@ -164,6 +164,36 @@ Internally this just runs the existing `lazySimRunner` with target = `openingNig
 
 ## 5. Codebase reuse map (what we already have)
 
+### 5.0  `TeamIntelFreeAgency.tsx` (980 lines) — IS the FA dashboard ✅
+
+**Found during audit.** This component already implements ~95% of what v1's spec called "FreeAgencyView (new, ~400 lines)." It lives at `TeamOffice → Team Intel → Free Agency` and ships:
+
+- **Cap Ticker row** — Cap Space / MLE Available / Shortlist Commit / Room After Shortlist (color-coded red/amber/emerald)
+- **My Shortlist** panel — up to 15 user-curated FAs, persisted on `tradingBlockStore.faShortlistIds`, survives mode-switch GM ↔ Commissioner
+- **Auto-bid All** button — submits competitive bids on every shortlisted FA in one click (handles "beat top by 5%" logic)
+- **Per-row Pursue / Bump** buttons — one-click bid submission from shortlist
+- **Live Bid Tracker** — every market involving a shortlisted FA OR a market where user has bid; shows top bid + your bid + decision label + moratorium-aware "Resolves after moratorium ({date})" text
+- **Top Free Agents drawer** — full sortable table: Name · Team · Pos · Age · K2 · POT · MPG · PTS · REB · AST · PER · **Type (RFA/UFA)** · **Bird** · **Offers count** · Asking · ★ shortlist toggle
+- **Tier filters** — All / 90+ / 80-89 / 70-79 / Under 25
+- **"Your prior player" highlight** — amber background + left-border for FAs who last played for you (the ones you have Bird Rights on)
+- **Moratorium heads-up modal** — first-time FA-window education with "Through moratorium" guidance
+- **Click any row** → `quick.openFor(p)` → opens quick-action menu → "Sign FA" → opens `SigningModal` for full negotiation
+
+#### Why the user feels "FA view is buggy / can't sign"
+The Sign path exists but is **3 clicks deep**:
+1. Click row → opens transient quick-action menu
+2. Click "Sign Free Agent" in menu → opens SigningModal
+3. Negotiate + Submit
+
+The prominent buttons (Pursue / Bump / Auto-bid All) bypass negotiation by submitting at computed market value. Users wanting custom years/option/salary either don't realize they need to go through quick-actions, or hit the auto-bid path and wonder where the negotiation went.
+
+#### Plan revision: don't build, ELEVATE
+- Drop "build new FreeAgencyView" from the build list.
+- Promote `TeamIntelFreeAgency` to its own AUFGABEN row.
+- Add a prominent **`Negotiate`** button on each table row that opens SigningModal directly, bypassing the quick-action menu.
+- Add the **`FREE AGENCY · TAG X/13`** sticky footer to this view during the FA phase.
+- The "buggy" feeling disappears once the Negotiate button is right next to ★ Shortlist.
+
 ### 5.1  `SigningModal.tsx` (1894 lines) — REUSE 100%
 
 The modal we already use for individual signings. **Already supports the FA negotiation flow** the spec needs.
@@ -198,7 +228,60 @@ Lines 440-485: the `RFAOfferToast` subcomponent has Match/Decline buttons that d
 
 `pendingOptionToasts` (lines 184-193) — option decisions already emit GM-facing toasts via `season-rollover`. We change the GM-mode branch to **emit the toast BEFORE auto-deciding**, then wait for user input.
 
-### 5.6  Mid-season extensions — SEPARATE SYSTEM
+### 5.6  EconomyTab settings — read these instead of hardcoding
+
+`commissioner/rules/view/EconomyTab.tsx` exposes 50+ economy toggles, all wired into `state.leagueStats`. The 2K UI MUST read from these instead of hardcoding NBA defaults so commissioner-mode customizations work:
+
+| Phase | Settings to read | Why |
+|---|---|---|
+| Header / Tag counter | `faStartMonth`, `faStartDay`, `faMoratoriumDays` | FA start date is configurable (could be Jul 6 in a custom save) |
+| FA dashboard "ROSTER N/M" | `maxStandardPlayersPerTeam` | Default 15, but commissioner can set 12 or 20 |
+| Training Camp roster cap | `maxTrainingCampRoster` (default 21) | Already wired in `AIFreeAgentHandler:595, 1191` |
+| RFA Match window | `rfaMatchWindowDays` (default 2) | Already wired in `faMarketTicker:485` |
+| RFA auto-decline | `rfaAutoDeclineOver2ndApron` (default true) | Already wired in `faMarketTicker:680` |
+| MLE remaining display | `roomMleAmount`, `nonTaxpayerMleAmount`, `taxpayerMleAmount`, `biannualAmount` | Used in cap math + finance dashboard |
+| Two-way slots | `maxTwoWayPlayersPerTeam`, `twoWayContractsEnabled` | Toggle + cap on UI |
+| 10-day deals (in-season) | `tenDayContractsEnabled` | Hide button in offseason |
+| Trade deadline date | `tradeDeadlineMonth/Ordinal/DayOfWeek` | Used by `getTradeDeadlineDate` |
+| Stretch provision | `stretchProvisionEnabled`, `stretchProvisionMultiplier` | For waive flow during offseason |
+| Dead money guarantee deadline | `ngGuaranteeDeadlineMonth/Day` | NG players' guarantee date |
+| Post-signing moratorium | `postSigningMoratoriumEnabled` | Already wired in `tradeValueEngine`, `cbaTradeRules`, `signingMoratorium` |
+
+**Practical rule:** never write `??` defaults for these in 2K UI components. Always go through `state.leagueStats.X` so commissioner saves with custom rules just work.
+
+### 5.7  `AIFreeAgentHandler.ts` (2228 lines) — the 5-pass AI engine
+
+`runAIFreeAgencyRound` runs **once per Tag** in our new model. It already executes a deterministic 5-pass sequence (documented critically in `CLAUDE.md`):
+
+| Pass | What | Order matters because |
+|---|---|---|
+| 1 | Best-fit signings (cap space + MLE for top FAs) | Allocates premium FAs first |
+| 2 | Two-way contracts (≤60 BBGM OVR fringe FAs) | Must run BEFORE Pass 4's salary-ASC sort vacuums them |
+| 3 | Non-guaranteed training camp (preseason only Jul 1 – Oct 21) | Slots 16-21 only available in summer |
+| 4 | Minimum-roster enforcement (fill to 15-man) | Last-resort min-deal sweep |
+| 5 | Minimum-payroll floor (only helps teams with open roster slots) | Final cleanup |
+
+**Tag advance implementation:**
+```ts
+function advanceFATag(state: GameState): Partial<GameState> {
+  // 1. Advance internal calendar by floor(faWindowDays / faTagsTotal)
+  const daysPerTag = Math.floor(62 / state.faTagsTotal);  // ~5 days
+  // ... advance state.date by daysPerTag, looping per-day so daily ticks fire
+  for (let d = 0; d < daysPerTag; d++) {
+    state = tickFAMarkets(state);          // resolves due bids
+    state = runAIFreeAgencyRound(state);   // 5-pass AI signings (only on legal days)
+    if (isFirstPostMoratoriumDay(state)) {
+      state = applyBirdRightsResignsPass(state);
+    }
+  }
+  // 2. Increment FA tag counter
+  return { ...state, faTagCounter: state.faTagCounter + 1 };
+}
+```
+
+**No changes to AIFreeAgentHandler internals required.** The 5-pass logic stays identical — we only change WHEN it fires (Tag-driven instead of day-driven).
+
+### 5.8  Mid-season extensions — SEPARATE SYSTEM
 
 > User: "btw die andere.. mathc other extend..."
 
@@ -382,48 +465,47 @@ Final row. Confirms all phases done → exits offseason mode → back to regular
 
 ---
 
-## 7. Salary-matching gate for RFA Match (NEW logic)
+## 7. Salary-matching gate for RFA Match — ALREADY IMPLEMENTED ✅
 
-> User: "und eben mit salary mathcing wenn einem rfa ist bei einme team genommen.. macht mir alles detailleirt"
+> Original v2 plan: "build `canMatchOfferSheet()` from scratch."
+> **Reality after reading EconomyTab + faMarketTicker.ts: it already exists.**
 
-CBA reality:
-- Bird Rights bypass cap → prior team can ALWAYS match if they hold Bird.
-- BUT: hard-cap-triggered teams cannot exceed their hard cap, even with Bird.
-- Non-Bird matches require cap room.
+The `EconomyTab.tsx` exposes three RFA-related toggles, and they're all wired:
 
-### Implementation
+| Setting | EconomyTab line | Wiring location | Default |
+|---|---|---|---|
+| `rfaMatchingEnabled` | 173 | `utils/ruleFlags.ts:15` | true |
+| `rfaMatchWindowDays` | 175 | `faMarketTicker.ts:485` | 2 |
+| `rfaAutoDeclineOver2ndApron` | 177 | `faMarketTicker.ts:680, 714` | true |
+
+The 2nd-apron auto-decline gate is fully implemented (`faMarketTicker.ts:710-726`):
+
 ```ts
-// New file: src/utils/cbaRFAMatchRules.ts
-export function canMatchOfferSheet(
-  team: NBATeam,
-  player: NBAPlayer,
-  offer: { firstYearSalaryUSD: number; years: number },
-  allPlayers: NBAPlayer[],
-): { canMatch: boolean; reason?: string } {
-  // 1. Bird Rights → Yes, unless hard-capped
-  if ((player as any).hasBirdRights) {
-    const hardCap = (team as any).hardCapForSeason;
-    if (hardCap?.applied) {
-      const projectedPayroll = computePayrollWithMatch(team, player, offer, allPlayers);
-      if (projectedPayroll > hardCap.ceiling) {
-        return { canMatch: false, reason: 'Match would exceed hard cap' };
-      }
-    }
-    return { canMatch: true };
-  }
-  // 2. No Bird → must have cap room for the first-year salary
-  const capRoom = computeCapRoom(team, allPlayers);
-  if (offer.firstYearSalaryUSD <= capRoom) return { canMatch: true };
-  return { canMatch: false, reason: 'Insufficient cap room (no Bird Rights)' };
+// AI match decision
+const overSecondApron = rfaThresholds.secondApron != null
+  && priorPayroll >= rfaThresholds.secondApron;
+if (autoDeclineOver2nd && overSecondApron) {
+  willMatch = false;        // can't match — would breach 2nd apron
+} else {
+  // Seeded RNG — same player + season → same outcome on replay
+  const matchPct = k2 >= 85 ? 0.85 : k2 >= 80 ? 0.70 : 0.55;
+  willMatch = roll < matchPct;
 }
 ```
 
-Wire into `runAIBirdRightsResigns` in the RFA path. When AI evaluates whether to Match a user offer:
-1. Check `canMatchOfferSheet()` first.
-2. If `false` → emit `rfa-not-matched` toast immediately, don't try to AI-decide.
-3. If `true` → proceed with AI mood/value decision.
+**User-team RFA flow is also wired** (`faMarketTicker.ts:698`):
+```ts
+// User prior team — wait for explicit action
+// (handled in GameContext reducer via MATCH_RFA_OFFER / DECLINE_RFA_OFFER)
+if (priorTid === userTeamIdRFA) continue;
+```
 
-**Effort:** 1-2 hours, mostly in the helper + 1 callsite.
+This means when the user is the prior team, the market just sits in `pendingMatch` state until the `RFAOfferToast` (already in `ToastNotifier:440-485`) dispatches one of the actions. The whole interactive Match flow is **already end-to-end functional** — we just have to make sure the FA dashboard surfaces these pending markets visibly.
+
+### What this actually means for the spec
+- **No new files.** Drop `cbaRFAMatchRules.ts` from the build list.
+- **Surface, don't build.** The FA dashboard's "PENDING DECISIONS" panel just reads `state.faBidding.markets.filter(m => m.pendingMatch && m.pendingMatchPriorTid === userTeamId)`.
+- **The hard-cap edge case (Bird + hard cap)** is the only thing missing — but `team.hardCapForSeason` doesn't exist in our schema yet, so this is a separate refactor (TODO P2 #9 from CBA audit). Defer.
 
 ---
 
