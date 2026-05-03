@@ -119,11 +119,21 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     } catch {
       return;
     }
-    const inOffseason = phase !== 'inSeason';
+    // Offseason mode triggers when:
+    //   - phase derivation says we're past inSeason (post-Finals → opening night)
+    //   - OR the draft lottery has been resolved (lottery happens DURING playoffs
+    //     in real life, mid-May; sidebar should appear so user can mark it done
+    //     and see what comes next without waiting for Finals to wrap)
+    const inOffseason =
+      phase !== 'inSeason' ||
+      !!(state.draftLotteryResult && state.draftLotteryResult.length > 0);
+    // Tear-down condition: only when calendar is past opening night AND no
+    // pending checklist activity (avoid wiping the user's mid-FA progress).
+    const isFullyInSeason = phase === 'inSeason' && !inOffseason;
     const hasChecklist = !!state.offseasonChecklist;
     if (inOffseason && !hasChecklist) {
       setState(prev => ({ ...prev, offseasonChecklist: defaultOffseasonChecklist() }));
-    } else if (!inOffseason && hasChecklist) {
+    } else if (isFullyInSeason && hasChecklist) {
       setState(prev => ({
         ...prev,
         offseasonChecklist: undefined,
@@ -131,7 +141,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         pendingOfferDecisions: [],
       }));
     }
-  }, [state.isDataLoaded, state.gameMode, state.date, state.offseasonChecklist, state.playoffs, state.draftComplete]);
+  }, [state.isDataLoaded, state.gameMode, state.date, state.offseasonChecklist, state.playoffs, state.draftComplete, state.draftLotteryResult]);
 
 const actions = useGameActions(setState, () => stateRef.current);
 

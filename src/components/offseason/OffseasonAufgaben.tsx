@@ -9,7 +9,7 @@
  * Driven by getOffseasonState (Sessions 1-5 orchestrator) — no calendar math.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle2, Circle, ChevronRight, FastForward, Sparkles, Wrench, ListChecks, X } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import {
@@ -135,6 +135,26 @@ const STATUS_LABEL: Record<OffseasonRowStatus, string> = {
 export const OffseasonAufgabenSidebar: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const checklist = state.offseasonChecklist;
+
+  // Auto-sync: when engine state proves a phase is done (lottery drawn,
+  // draft complete, etc.), flip the corresponding row to 'done' so the user
+  // doesn't see pending rows for things that have actually happened. This
+  // runs every render — cheap, only dispatches when a status actually
+  // needs to change. Hooks must run before any early-return, so the
+  // useEffect lives here even though the component bails out below when
+  // the checklist hasn't been initialized yet.
+  const lotteryDone = !!(state.draftLotteryResult && state.draftLotteryResult.length > 0);
+  const draftDone = !!state.draftComplete;
+  useEffect(() => {
+    if (!checklist) return;
+    if (lotteryDone && checklist.draftLottery === 'pending') {
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'draftLottery' } } as any);
+    }
+    if (draftDone && checklist.draft === 'pending') {
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'draft' } } as any);
+    }
+  }, [lotteryDone, draftDone, checklist?.draftLottery, checklist?.draft]);
+
   if (!checklist) return null;
 
   const currentRow = firstUnfinishedRow(checklist);
@@ -223,23 +243,13 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
 
   return (
     <aside className="w-full lg:w-[320px] shrink-0 bg-slate-950/60 border border-slate-800 rounded-2xl p-4 space-y-3">
-      <header className="flex items-center justify-between mb-2">
-        <div className="flex flex-col">
-          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-300/80">
-            Offseason
-          </span>
-          <h2 className="text-base font-black text-white uppercase tracking-tight">
-            Aufgaben
-          </h2>
-        </div>
-        <button
-          onClick={handleAutoResolveAll}
-          title="Auto-resolve every remaining phase via the AI assistant GM."
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-amber-600 hover:bg-amber-500 text-white font-bold text-[10px] uppercase tracking-widest transition-colors"
-        >
-          <FastForward size={11} />
-          Auto-resolve all
-        </button>
+      <header className="mb-2">
+        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-300/80 block">
+          Offseason
+        </span>
+        <h2 className="text-base font-black text-white uppercase tracking-tight">
+          Aufgaben
+        </h2>
       </header>
 
       <ol className="space-y-1.5">
@@ -300,6 +310,20 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
           );
         })}
       </ol>
+
+      {/* Auto-resolve all — placed BELOW the row list (away from the mobile
+          sheet's X close button up top) to prevent misclicks. Hidden once
+          everything is already resolved. */}
+      {!isChecklistComplete(checklist) && (
+        <button
+          onClick={handleAutoResolveAll}
+          title="Auto-resolve every remaining phase via the AI assistant GM."
+          className="w-full mt-4 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-amber-600/80 hover:bg-amber-500 text-white font-black text-[10px] uppercase tracking-widest transition-colors"
+        >
+          <FastForward size={12} />
+          Auto-resolve all remaining
+        </button>
+      )}
 
       {isChecklistComplete(checklist) && (
         <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center">
