@@ -9,17 +9,19 @@
  * Driven by getOffseasonState (Sessions 1-5 orchestrator) — no calendar math.
  */
 
-import React from 'react';
-import { CheckCircle2, Circle, ChevronRight, FastForward, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle2, Circle, ChevronRight, FastForward, Sparkles, Wrench } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import {
   OFFSEASON_ROW_ORDER,
   OFFSEASON_ROW_LABELS,
   OFFSEASON_ROW_DESCRIPTIONS,
+  defaultOffseasonChecklist,
   firstUnfinishedRow,
   isChecklistComplete,
 } from '../../services/offseason/offseasonState';
-import type { OffseasonChecklistRow, OffseasonRowStatus, Tab } from '../../types';
+import type { OffseasonChecklistRow, OffseasonRowStatus, NBAPlayer, Tab } from '../../types';
+import { TeamOptionGateModal } from '../modals/TeamOptionGateModal';
 
 // ─── Header Phase Badge — replaces date during offseason ────────────────────
 //
@@ -136,12 +138,75 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   if (!checklist) return null;
 
   const currentRow = firstUnfinishedRow(checklist);
+  // Options modal — opens when user clicks "Enter" on the options row.
+  // Reuses the existing TeamOptionGateModal which is already wired into
+  // PlayButton's guards; this is a second mount-point for offseason flow.
+  const [optionsModalOpen, setOptionsModalOpen] = useState(false);
+  const [exercisedIds, setExercisedIds] = useState<Set<string>>(new Set());
+  const [declinedIds, setDeclinedIds] = useState<Set<string>>(new Set());
+
+  const pendingTeamOptions = React.useMemo<NBAPlayer[]>(() => {
+    if (state.gameMode !== 'gm' || state.userTeamId == null) return [];
+    const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+    const nextYear = currentYear + 1;
+    return state.players.filter((p: any) => {
+      if (p.tid !== state.userTeamId || p.status !== 'Active') return false;
+      if (!p.contract?.hasTeamOption) return false;
+      const teamOptionExp = Number(p.contract?.teamOptionExp ?? p.contract?.exp ?? 0);
+      return teamOptionExp === nextYear;
+    });
+  }, [state.gameMode, state.userTeamId, state.players, state.leagueStats?.year]);
 
   const handleEnter = (row: OffseasonChecklistRow) => {
+    if (row === 'options') {
+      // Special-case options: open the existing TeamOptionGateModal in-place
+      // instead of navigating away. Mark in-progress so sidebar reflects state.
+      setOptionsModalOpen(true);
+      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      return;
+    }
     dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
   };
   const handleSkip = (row: OffseasonChecklistRow) => {
     dispatchAction({ type: 'OFFSEASON_SKIP_PHASE', payload: { row } } as any);
+  };
+
+  // Options modal handlers — exercise/decline dispatch existing reducer cases,
+  // then mark the options row as done when user clicks Save & Close.
+  const handleOptionsAssistant = async () => {
+    for (const p of pendingTeamOptions) {
+      await dispatchAction({ type: 'EXERCISE_TEAM_OPTION', payload: { playerId: p.internalId } } as any);
+    }
+    setExercisedIds(new Set());
+    setDeclinedIds(new Set());
+    setOptionsModalOpen(false);
+    dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'options' } } as any);
+  };
+  const handleOptionsExerciseOne = async (playerId: string) => {
+    await dispatchAction({ type: 'EXERCISE_TEAM_OPTION', payload: { playerId } } as any);
+    setExercisedIds(prev => { const n = new Set(prev); n.add(playerId); return n; });
+  };
+  const handleOptionsDeclineOne = async (playerId: string) => {
+    await dispatchAction({ type: 'DECLINE_TEAM_OPTION', payload: { playerId } } as any);
+    setDeclinedIds(prev => { const n = new Set(prev); n.add(playerId); return n; });
+  };
+  const handleOptionsDismiss = () => {
+    // If everything got resolved, mark done; otherwise leave as in-progress.
+    const totalResolved = exercisedIds.size + declinedIds.size;
+    if (totalResolved >= pendingTeamOptions.length && pendingTeamOptions.length > 0) {
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'options' } } as any);
+    }
+    setExercisedIds(new Set());
+    setDeclinedIds(new Set());
+    setOptionsModalOpen(false);
+  };
+  const handleOptionsManual = () => {
+    // "Review Manually" → close modal, navigate to TeamIntel Expiring tab
+    setOptionsModalOpen(false);
+    dispatchAction({
+      type: 'UPDATE_STATE',
+      payload: {},  // no-op; navigation happens via setCurrentView caller
+    } as any);
   };
   const handleAutoResolveAll = () => {
     // Phase A stub — Phase D wires this to runLazySim with assistantGM=true.
@@ -243,6 +308,51 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
           </p>
         </div>
       )}
+
+      {/* Existing TeamOptionGateModal — second mount-point for offseason flow.
+          Same modal PlayButton uses for date-blocking guard, here surfaced as
+          a phase entry. */}
+      <TeamOptionGateModal
+        isOpen={optionsModalOpen}
+        players={pendingTeamOptions}
+        onAssistant={handleOptionsAssistant}
+        onManual={handleOptionsManual}
+        onDismiss={handleOptionsDismiss}
+        onExerciseOne={handleOptionsExerciseOne}
+        onDeclineOne={handleOptionsDeclineOne}
+        exercisedIds={exercisedIds}
+        declinedIds={declinedIds}
+      />
     </aside>
+  );
+};
+
+// ─── Debug — force-init checklist outside of offseason for testing ──────────
+//
+// The auto-init useEffect (GameContext) only fires when the calendar enters
+// an offseason phase. During development you often want to test the AUFGABEN
+// UI from a regular-season save without simming. This component renders a
+// small dev-tools button in the bottom corner; clicking it sets the checklist
+// even though the calendar is mid-season. Safe to leave shipped — does
+// nothing once a real offseason auto-init has run.
+
+export const OffseasonDebugTrigger: React.FC = () => {
+  const { state, dispatchAction } = useGame();
+  if (state.gameMode !== 'gm') return null;
+  if (state.offseasonChecklist) return null;  // already initialized
+
+  const handleForceInit = () => {
+    dispatchAction({ type: 'OFFSEASON_RESET_CHECKLIST' } as any);
+  };
+
+  return (
+    <button
+      onClick={handleForceInit}
+      title="Dev — initialize the offseason AUFGABEN sidebar without simming to Finals end."
+      className="fixed bottom-4 right-4 z-[200] flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-600/80 hover:bg-amber-500 text-white font-bold text-[10px] uppercase tracking-widest shadow-2xl backdrop-blur-md transition-colors"
+    >
+      <Wrench size={12} />
+      Test Offseason UI
+    </button>
   );
 };
