@@ -41,7 +41,7 @@ export const OffseasonPhaseBadge: React.FC = () => {
   const phaseLabel = currentRow ? OFFSEASON_ROW_LABELS[currentRow] : 'Ready for next season';
   const isFA = currentRow === 'freeAgency';
   const tagSuffix = isFA && state.faTagCounter
-    ? ` · TAG ${state.faTagCounter}/${state.faTagsTotal ?? 13}`
+    ? ` · DAY ${state.faTagCounter}/${state.faTagsTotal ?? 13}`
     : '';
   return (
     <div className="flex flex-col leading-none min-w-0">
@@ -94,7 +94,7 @@ export const OffseasonNextActionButton: React.FC<NextActionButtonProps> = ({ set
     draft:            'Run NBA Draft',
     rookieContracts:  'Sign Rookies',
     freeAgency:       state.faTagCounter
-      ? `End Day · Tag ${state.faTagCounter}/${state.faTagsTotal ?? 13}`
+      ? `End Day · ${state.faTagCounter}/${state.faTagsTotal ?? 13}`
       : 'Enter Free Agency',
     trainingCamp:     'Open Training Camp',
   };
@@ -493,8 +493,15 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       !p.contract.hasTeamOption
     ).length;
   }, [state.gameMode, state.userTeamId, state.players, state.leagueStats?.year]);
-  // Only show pre-FA-open (banner becomes redundant once FA tag counter is running).
-  const showExpiringBanner = expiringUnsignedCount > 0 && (state.faTagCounter ?? 0) === 0;
+  // Only show pre-FA-entry (banner is redundant once FA opens, and stale
+  // post-FA where the count would refer to NEXT year's expiring class).
+  // FA row 'pending' = haven't entered FA yet → banner is timely.
+  // FA row anything else = banner is for a future cycle, hide it.
+  const faRowStatus = state.offseasonChecklist?.freeAgency;
+  const showExpiringBanner =
+    expiringUnsignedCount > 0 &&
+    (state.faTagCounter ?? 0) === 0 &&
+    faRowStatus === 'pending';
   const handleExpiringBanner = () => {
     dispatchAction({
       type: 'UPDATE_STATE',
@@ -623,11 +630,26 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
         </button>
       )}
 
+      {/* All-done banner + prominent advance CTA. Replaces the auto-resolve
+          button once everything is checked off — at that point the only
+          thing left is to drop into the new season. */}
       {isChecklistComplete(checklist) && (
-        <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center">
-          <p className="text-[11px] font-bold text-emerald-300">
-            All offseason tasks complete — ready for opening night.
+        <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-2">
+          <p className="text-[11px] font-black uppercase tracking-widest text-emerald-300">
+            Offseason Complete
           </p>
+          <p className="text-[10px] text-emerald-200/80 leading-snug">
+            All tasks resolved. Drop into preseason and start the new season.
+          </p>
+          <button
+            onClick={() => {
+              dispatchAction({ type: 'OFFSEASON_EXIT' } as any);
+            }}
+            className="w-full mt-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[10px] uppercase tracking-widest transition-colors"
+          >
+            <Sparkles size={12} />
+            Enter Preseason
+          </button>
         </div>
       )}
 
@@ -892,7 +914,7 @@ export const OffseasonFATagFooter: React.FC = () => {
             Free Agency
           </span>
           <span className="text-sm font-black text-white tabular-nums uppercase tracking-tight">
-            Tag {counter}/{total}
+            Day {counter}/{total}
           </span>
         </div>
         {pendingMatchCount > 0 && (
