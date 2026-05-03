@@ -301,16 +301,19 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     } as any);
   };
   const handleAutoResolveAll = () => {
-    // Phase A stub — Phase D wires this to runLazySim with assistantGM=true.
-    // For now mark every pending row as skipped so the sidebar advances and
-    // the user can see the end-state. The actual lazy-sim dispatch happens
-    // in Phase D.
-    OFFSEASON_ROW_ORDER.forEach(row => {
-      const status = checklist[row];
-      if (status === 'pending' || status === 'in-progress') {
-        dispatchAction({ type: 'OFFSEASON_SKIP_PHASE', payload: { row } } as any);
-      }
-    });
+    // Phase D — real implementation. Dispatches the OFFSEASON_AUTO_RESOLVE_ALL
+    // reducer case, which kicks off a SIMULATE_TO_DATE lazy sim with
+    // assistantGM=true targeting opening night. The orchestrator handles
+    // every offseason event under the hood: rollover, FA market ticks, AI
+    // signing waves, Bird Rights pass, external routing, training camp.
+    // Auto-tear-down useEffect in GameContext clears the checklist when
+    // calendar phase returns to 'inSeason'.
+    if (window.confirm(
+      'Auto-resolve every remaining offseason phase via the AI assistant GM? ' +
+      'This will skip directly to opening night.'
+    )) {
+      dispatchAction({ type: 'OFFSEASON_AUTO_RESOLVE_ALL' } as any);
+    }
   };
 
   return (

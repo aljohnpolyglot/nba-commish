@@ -93,6 +93,12 @@ export const FreeAgentsView: React.FC = () => {
   // Roster compliance gate — shared hook enforces the check across all sim paths.
   const rosterGate = useRosterComplianceGate();
   const handleSimDayClick = () => {
+    // Calendar advance is paused during offseason — Tag advances happen
+    // via the AUFGABEN sidebar's "End Day" button instead.
+    if (state.offseasonChecklist) {
+      window.alert('Calendar sim is paused during the offseason. Use the Free Agency Tag bar at the bottom to advance days.');
+      return;
+    }
     rosterGate.attempt(() => dispatchAction({ type: 'ADVANCE_DAY' as any, payload: {} }));
   };
 

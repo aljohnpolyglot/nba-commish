@@ -2,6 +2,39 @@
 
 Historical bug fixes, session notes, and architecture discoveries.
 
+## Session 53 (May 3, 2026) - Offseason 2K-style sandboxed task flow (Phases A-D)
+
+**The 2K MyGM offseason refactor lands.** Replaces the buggy day-by-day calendar advance through July (the highest-bug-density window — see Sessions 41-52 patch trail) with an 8-row checklist sidebar + dedicated phase UIs. Engine layer (Sessions 1-5 orchestrator) was the foundation; this session adds the user-facing layer on top. GM mode only — commissioners keep the calendar UI unchanged.
+
+**The 8 AUFGABEN rows** (translated from German 2K screenshots): Draft Lottery → Team / Player Options → Qualifying Offers → My Free Agents → NBA Draft → Rookie Contracts → Free Agency → Training Camp. Each row has Enter / Skip buttons; sidebar advances through them in order. Top-level "Auto-resolve all" button skips straight to opening night via `runLazySim` with `assistantGM=true`.
+
+**Phase A — Foundation + sidebar.** New types (`OffseasonChecklist`, `OffseasonChecklistRow`, `OffseasonRowStatus`, `OffseasonPendingDecision`), 5 reducer cases (`OFFSEASON_ENTER_PHASE`, `OFFSEASON_COMPLETE_PHASE`, `OFFSEASON_SKIP_PHASE`, `OFFSEASON_RESET_CHECKLIST`, `OFFSEASON_EXIT`). Auto-lifecycle useEffect lazy-inits when calendar enters offseason (`getOffseasonState().phase !== 'inSeason'` OR `state.draftLotteryResult` exists, since lottery happens during playoffs in real life), tears down on opening night. Three new exports in `OffseasonAufgaben.tsx` (single colocated file): `OffseasonAufgabenSidebar` (the AUFGABEN list), `OffseasonPhaseBadge` (header pill replacing the date), `OffseasonNextActionButton` (context-aware CTA replacing PlayButton). Header swap in App.tsx. Sidebar mounted globally as right rail (320px, lg+) inside `<main>` next to `MainContent` so it persists across every view, plus `OffseasonAufgabenMobileSheet` floating amber pill bottom-right that opens slide-over on mobile.
+
+**Phase A bugfix — phase derivation year convention.** User reported sidebar appearing for milliseconds then disappearing on a Jun 23 2026 save. Root cause: `getOpeningNightDate(seasonYear)` returns Oct of `seasonYear-1` per BBGM convention (seasonYear = year season ENDS). So pre-rollover (Jun 23 2026 with lsYear=2026), openingNight = Oct 21 2025 → the `dateStr >= openingNightStr` check fired → `phase='inSeason'` WRONG → auto-tear-down useEffect fired immediately after debug-init → sidebar flashed for one render then disappeared. Fix: replaced openingNight check in `offseasonState.ts` with calendar window (offseason runs Jun 15 → Oct 20 of any cYear; outside window = always inSeason). Added `playoffsActive` bypass (Finals Game 7 on Jun 22 etc keeps inSeason until bracket completes). Pass `playoffsActive` + `draftComplete` signals from GameContext's auto-init useEffect.
+
+**Phase B — Modal stacks + auto-flow soft rows.** Reuses the EXISTING `TeamOptionGateModal.tsx` (which user discovered already exists at `src/components/modals/`) by mounting a second instance inside `OffseasonAufgabenSidebar`. Click "Enter" on Options row → modal opens with same Exercise/Decline/Assistant buttons PlayButton's date-blocking gate uses. Insight from user: in real NBA, R1 picks are guaranteed per CBA — no GM "decline" decision. R2 defaults handled by `autoRunDraft` + AI logic (already auto-non-guaranteed in our engine). So rookieContracts row auto-marks done at `draftComplete`, not modal stack. Auto-sync useEffect inside sidebar dispatches `OFFSEASON_COMPLETE_PHASE` when engine signals fire: lottery (`draftLotteryResult`), draft (`draftComplete`), rookieContracts (`draftComplete`), options (no pending team options for user team), trainingCamp (calendar reaches Oct 21+). Read-only nav for `myFAs` and `qualifyingOffers` (full QO modal deferred — engine defaults work today).
+
+**Phase C — Free Agency Tag system.** The 2K-style "FREE AGENCY · TAG X/13" counter that lets the user step through the FA window one ~5-day chunk at a time. New `OFFSEASON_ADVANCE_FA_TAG` reducer case: Tag 0→1 silently skips moratorium via `SIMULATE_TO_DATE` to `moratoriumEnd` so user never sees "signings disabled" period; Tag N→N+1 advances ~62/N days (≈5 for N=13) via `SIMULATE_TO_DATE` with `stopBefore=true`; Tag = total marks freeAgency row done, clears counter. New `OffseasonFATagFooter` component: sticky bottom bar visible across every view during FA, shows "Free Agency · Tag X/13" with "End Day" button (turns "Complete Free Agency" emerald on the last tag). Header NextActionButton special-cases active FA tag — clicking the CTA fires End Day directly. Zero new sim logic — reuses entire orchestrator path (FA market tick / AI signing / Bird Rights / external routing) via existing `SIMULATE_TO_DATE`.
+
+**Phase D — Hide day-advance UI + real auto-resolve.** PlayButton, ScheduleView "Sim Day", FreeAgentsView "Sim Day" all gated behind `!state.offseasonChecklist`. ADVANCE_DAY paths in those views now show an alert directing user to the AUFGABEN sidebar — prevents dual-driver bugs where calendar sim skips past Tag-counter ticks or option deadlines. New `OFFSEASON_AUTO_RESOLVE_ALL` reducer case: dispatches `SIMULATE_TO_DATE` to next opening night with `assistantGM=true` (existing `lazySimRunner` path with `setAssistantGMActive(true)`) — orchestrator handles every offseason event including rollover, FA passes, Bird Rights, external routing, HOF induction, training camp. Auto-tear-down useEffect wipes the checklist when calendar phase returns to `inSeason`. Sidebar's "Auto-resolve all remaining" button now wraps the dispatch in a `confirm()` prompt before firing.
+
+**Files touched:** `types.ts`, `services/offseason/offseasonState.ts` (fixed phase derivation + checklist helpers colocated), `store/GameContext.tsx` (5+ reducer cases + auto-init useEffect), `components/central/view/TeamOffice/TeamOfficeView.tsx`, `components/schedule/view/ScheduleView.tsx`, `components/players/view/FreeAgentsView.tsx`, `App.tsx`. New: `components/offseason/OffseasonAufgaben.tsx` (single file, all UI exports). Type-clean.
+
+**What this kills:**
+- "Stuck until free agency, nothing moving" (no more dead calendar days — user steps through phases instead)
+- "Not all FAs are there on July 1" (FA pool snapshot taken at FA phase entry, after rollover + options + QOs all complete via the orchestrator)
+- "Watch Draft missing" (draft phase row is always clickable; can't be missed)
+- "Date mismatch between PlayButton and dispatcher" (PlayButton hidden in offseason; phase advance drives time)
+- Year-2 buggy because `ls.year` and calendar diverge (header shows phase, not date — `ls.year` is the only year that matters during offseason)
+
+**What's still deferred:**
+- Full QO modal stack (current implementation auto-marks done; engine defaults work)
+- TransactionsView FA-only filter chips
+- Composite "promise" system (no-trade clauses, role promises) in negotiation
+- Hard-cap-aware RFA Match gate (`team.hardCapForSeason` schema not added yet)
+
+---
+
 ## Session 52 (May 3, 2026) - Commissioner format caps + offseason orchestrator (instrumentation phase)
 
 **Format settings now capped to NBA-standard maximums** — `FormatTab.tsx` exports `NBA_MAX_GAMES_PER_SEASON=82`, `NBA_MAX_DIVISION_GAMES=16`, `NBA_MAX_CONFERENCE_GAMES=36`, `NBA_MAX_PLAYOFF_SERIES=7`. Every input now respects an upper cap (was unbounded for playoff series, max=162 for games per season). Inter-conference games render as a derived callout below the inputs (green/amber/red) so the user sees ratio violations live. `useRulesState.handleSaveConfig` mirrors the same caps on save and ratio-enforces `division + conference ≤ gamesPerSeason` (trims conference first, then division). Eliminates the "best of 9 series" / "162-game season" calendar overflows that were the root cause of draft-into-July and FA-collides-with-playoffs cascades.

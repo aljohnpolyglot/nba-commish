@@ -90,10 +90,21 @@ export const ScheduleView: React.FC = () => {
   });
 
   const simulateDay = async () => {
+    // Calendar advance is paused during offseason — user steps through
+    // phases via the AUFGABEN sidebar instead. Avoids dual-driver bugs
+    // where ADVANCE_DAY skips past Tag-counter ticks or option deadlines.
+    if (state.offseasonChecklist) {
+      window.alert('Calendar sim is paused during the offseason. Use the Offseason sidebar to advance phases.');
+      return;
+    }
     rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({ type: 'ADVANCE_DAY' })));
   };
 
   const simulateToDate = async (targetDateStr: string) => {
+    if (state.offseasonChecklist) {
+      window.alert('Calendar sim is paused during the offseason. Use the Offseason sidebar to advance phases.');
+      return;
+    }
     // stopBefore: land ON the selected date with that day's games still unplayed,
     // so the user can choose to watch or sim them manually.
     rosterGate.attempt(() =>

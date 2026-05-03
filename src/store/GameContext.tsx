@@ -910,6 +910,33 @@ const actions = useGameActions(setState, () => stateRef.current);
       return;
     }
 
+    // ── Auto-resolve every remaining phase via assistantGM lazy sim ─────
+    // Single button at the top of AUFGABEN. Skips straight to opening
+    // night using the existing lazy-sim path with assistantGM=true so
+    // every user-team transaction (re-signs, FA bids, options) is
+    // handled by the AI assistant. Auto-tear-down useEffect wipes the
+    // checklist when calendar phase returns to 'inSeason'.
+    if (action.type === 'OFFSEASON_AUTO_RESOLVE_ALL') {
+      const ls = stateRef.current.leagueStats as any;
+      const lsYear: number = ls?.year ?? 2026;
+      // Next opening night = Oct 21 of cYear (calendar year). Pass
+      // lsYear+1 so getOpeningNightDate returns the upcoming Oct (it
+      // computes Oct of seasonYear-1 per BBGM convention).
+      const cMonth = stateRef.current.date ? new Date(stateRef.current.date).getUTCMonth() + 1 : 0;
+      const cYear = stateRef.current.date ? new Date(stateRef.current.date).getUTCFullYear() : lsYear;
+      // Pre-rollover (lsYear === cYear, summer of same calendar year)
+      // means we want next season's opening; post-rollover lsYear was
+      // already bumped so use lsYear directly.
+      const openingSeasonYear = (cMonth <= 6 && cYear === lsYear) ? lsYear + 1 : lsYear;
+      const { getOpeningNightDate } = await import('../utils/dateUtils');
+      const target = toISODateString(getOpeningNightDate(openingSeasonYear));
+      await dispatchAction({
+        type: 'SIMULATE_TO_DATE',
+        payload: { targetDate: target, stopBefore: true, assistantGM: true },
+      } as any);
+      return;
+    }
+
     if (action.type === 'OFFSEASON_EXIT') {
       // Tear down — calendar is back in regular season, sidebar disappears.
       setState(prev => ({
