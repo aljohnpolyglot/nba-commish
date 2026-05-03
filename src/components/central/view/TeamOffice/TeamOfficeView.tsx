@@ -13,7 +13,6 @@ import { DraftPicks } from './pages/DraftPicks';
 import { CoachingPage } from './pages/CoachingPage';
 import { DraftScouting } from './pages/DraftScouting';
 import { TeamOfficeDepthChartTab } from './pages/TeamOfficeDepthChartTab';
-import { OffseasonAufgabenSidebar } from '../../../offseason/OffseasonAufgaben';
 
 type OfficeTab = 'home' | 'gm' | 'coaching' | 'depth' | 'intel' | 'needs' | 'trading' | 'picks' | 'scouting';
 
@@ -101,15 +100,6 @@ export function TeamOfficeView() {
           />
         )}
 
-        {/* Offseason Aufgaben sidebar — only when in offseason mode AND
-            looking at the user's own team. Lives left of the main content
-            on desktop, collapses above on mobile. */}
-        {state.offseasonChecklist && currentTeam && currentTeamId === state.userTeamId && (
-          <div className="hidden lg:block px-4 pt-8 relative z-10 shrink-0">
-            <OffseasonAufgabenSidebar />
-          </div>
-        )}
-
         {/* Main Content */}
         <main className="flex-1 flex flex-col p-4 sm:p-8 overflow-auto relative z-10 w-full">
           {/* Top Tabs — only when a team is selected */}
@@ -142,13 +132,6 @@ export function TeamOfficeView() {
                   </button>
                 ))}
               </nav>
-            </div>
-          )}
-
-          {/* Mobile-only AUFGABEN — collapses above main content. */}
-          {state.offseasonChecklist && currentTeam && currentTeamId === state.userTeamId && (
-            <div className="lg:hidden mb-4">
-              <OffseasonAufgabenSidebar />
             </div>
           )}
 

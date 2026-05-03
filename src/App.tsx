@@ -10,7 +10,7 @@ import { ClubEffect } from './components/effects/ClubEffect';
 import { ToastNotifier } from './components/shared/ToastNotifier';
 import { RFAOfferSheetModal } from './components/modals/RFAOfferSheetModal';
 import { PlayButton } from './components/shared/PlayButton';
-import { OffseasonNextActionButton, OffseasonPhaseBadge, OffseasonDebugTrigger } from './components/offseason/OffseasonAufgaben';
+import { OffseasonNextActionButton, OffseasonPhaseBadge, OffseasonDebugTrigger, OffseasonAufgabenSidebar, OffseasonAufgabenMobileSheet } from './components/offseason/OffseasonAufgaben';
 import { LazySimLoadingScreen } from './components/setup/LazySimLoadingScreen';
 import { Menu, X } from 'lucide-react';
 import { SaveManager } from './services/SaveManager';
@@ -211,8 +211,17 @@ function GameLayout() {
           )}
         </div>
 
-        <div className="flex-1 min-h-0">
-          <MainContent currentView={currentView} onViewChange={setCurrentView} />
+        <div className="flex-1 min-h-0 flex">
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <MainContent currentView={currentView} onViewChange={setCurrentView} />
+          </div>
+          {/* Global Offseason AUFGABEN rail — desktop only, always visible
+              during offseason regardless of which view the user is on. */}
+          {state.offseasonChecklist && (
+            <div className="hidden lg:block w-[320px] shrink-0 border-l border-slate-800 overflow-y-auto scrollbar-hide p-3 bg-slate-950/40">
+              <OffseasonAufgabenSidebar />
+            </div>
+          )}
         </div>
 
         {/* Long-sim progress overlay (>30 days) */}
@@ -225,6 +234,7 @@ function GameLayout() {
         {state.isClubbing && <ClubEffect />}
         <ToastNotifier />
         <RFAOfferSheetModal />
+        <OffseasonAufgabenMobileSheet />
         <OffseasonDebugTrigger />
         {state.lastOutcome && state.gameMode !== 'gm' && !state.isProcessing && <OutcomeView />}
       </main>
