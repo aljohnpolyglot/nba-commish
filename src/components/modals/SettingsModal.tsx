@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Settings2, Zap, Cpu, Layers, Gamepad2, Bot, Database, HardDrive, Crown, User, ArrowLeftRight, Trophy, FolderOpen, PenLine, Palette } from 'lucide-react';
+import { X, Settings2, Zap, Cpu, Layers, Gamepad2, Bot, Database, HardDrive, Crown, User, ArrowLeftRight, Trophy, FolderOpen, PenLine, Palette, Activity, AlertTriangle } from 'lucide-react';
 import { clearImageCache } from '../../services/imageCache';
 import { SettingsManager, GameSettings } from '../../services/SettingsManager';
 import { SaveManager, hasFSAccess } from '../../services/SaveManager';
@@ -28,6 +28,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [cacheClearing, setCacheClearing] = useState(false);
   const [folderName, setFolderName] = useState<string | null>(null);
   const [persistentStorage, setPersistentStorage] = useState<boolean | null>(null);
+  const [showFastSimWarning, setShowFastSimWarning] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -370,6 +371,45 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           {/* ── Gameplay ───────────────────────────────────────────────── */}
           {activeTab === 'gameplay' && (
             <>
+              {/* Game Simulator Engine */}
+              <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700/50 space-y-3">
+                <div className="space-y-1">
+                  <label className="text-sm font-bold text-white flex items-center gap-2">
+                    <Activity size={16} className="text-indigo-400" />
+                    Game Simulator
+                  </label>
+                  <p className="text-xs text-slate-400">
+                    Determines how every league game is simulated — watched games, day sims, and background lazy sims.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setSettings({ ...settings, simulatorMode: 'realistic' })}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      settings.simulatorMode === 'realistic'
+                        ? 'bg-indigo-500/20 border-indigo-500 text-white'
+                        : 'bg-slate-900/40 border-slate-700 text-slate-400 hover:border-slate-500'
+                    }`}
+                  >
+                    <div className="text-xs font-black uppercase tracking-wider mb-1">Realistic <span className="text-[10px] font-bold text-indigo-300">· Default</span></div>
+                    <div className="text-[11px] leading-snug opacity-80">Possession-by-possession. Accurate PER, USG%, ORtg/DRtg. Defensive aura, club debuffs and play-through-injury hooks apply.</div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (settings.simulatorMode !== 'fast') setShowFastSimWarning(true);
+                    }}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      settings.simulatorMode === 'fast'
+                        ? 'bg-amber-500/20 border-amber-500 text-white'
+                        : 'bg-slate-900/40 border-slate-700 text-slate-400 hover:border-slate-500'
+                    }`}
+                  >
+                    <div className="text-xs font-black uppercase tracking-wider mb-1">Fast</div>
+                    <div className="text-[11px] leading-snug opacity-80">Heuristic box-score generator. Sub-second per game. Trade-off: less realistic advanced stats, weakened buff/debuff effects.</div>
+                  </button>
+                </div>
+              </div>
+
               {/* Game Mode Toggle */}
               <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
                 <div className="space-y-1">
@@ -680,6 +720,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           </button>
         </div>
       </div>
+
+      {showFastSimWarning && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-amber-500/40 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div className="p-5 border-b border-slate-800 flex items-center gap-3">
+              <AlertTriangle size={22} className="text-amber-400 shrink-0" />
+              <h3 className="text-base font-bold text-white">Switch to Fast Simulator?</h3>
+            </div>
+            <div className="p-5 space-y-3 text-sm text-slate-300">
+              <p>You're about to disable the realistic possession engine. This affects every game from the next sim onward:</p>
+              <ul className="list-disc list-inside space-y-1.5 text-xs text-slate-400">
+                <li>Advanced stats (PER, TS%, USG%, ORtg/DRtg) become less reliable</li>
+                <li>Defensive aura, club-debuff and mood hooks apply with weakened impact</li>
+                <li>Play-through-injury and fatigue effects are approximated, not simulated</li>
+                <li>Watched games still render play-by-play, but the underlying box score is heuristic</li>
+              </ul>
+              <p className="text-xs text-slate-500">You can switch back to Realistic at any time.</p>
+            </div>
+            <div className="p-4 border-t border-slate-800 flex justify-end gap-2">
+              <button
+                onClick={() => setShowFastSimWarning(false)}
+                className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors"
+              >
+                Keep Realistic
+              </button>
+              <button
+                onClick={() => {
+                  setSettings({ ...settings, simulatorMode: 'fast' });
+                  setShowFastSimWarning(false);
+                }}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm font-bold rounded-lg transition-colors"
+              >
+                Switch to Fast
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

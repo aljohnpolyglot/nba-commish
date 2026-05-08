@@ -25,6 +25,9 @@ export interface GameSettings {
   showExecutiveOutcome: boolean; // default true
   /** Player name hover card style. 'k2' = full K2 ratings + stats grid; 'simple' = compact OVR + 3 stats. */
   tooltipStyle: 'k2' | 'simple'; // default 'k2'
+  /** Game simulation engine. 'realistic' = possession-by-possession (default, better advanced stats).
+   *  'fast' = heuristic box-score generator (sub-second per game, used for season-long sim). */
+  simulatorMode: 'realistic' | 'fast'; // default 'realistic'
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -43,6 +46,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   hofWSThreshold: 50,
   showExecutiveOutcome: true,
   tooltipStyle: 'k2',
+  simulatorMode: 'realistic',
 };
 
 export class SettingsManager {

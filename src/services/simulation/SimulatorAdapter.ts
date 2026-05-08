@@ -1,0 +1,42 @@
+import { NBATeam as Team, NBAPlayer as Player } from '../../types';
+import { GameResult } from './StatGenerator';
+import { SimulatorKnobs, KNOBS_DEFAULT } from './SimulatorKnobs';
+import { SettingsManager } from '../SettingsManager';
+
+export type SimulatorMode = 'realistic' | 'fast';
+
+export const getSimulatorMode = (): SimulatorMode => {
+  return SettingsManager.getSettings().simulatorMode ?? 'realistic';
+};
+
+export interface SimulateGameArgs {
+  homeTeam: Team;
+  awayTeam: Team;
+  players: Player[];
+  gameId: number;
+  date: string;
+  playerApproval?: number;
+  homeOverridePlayers?: Player[];
+  awayOverridePlayers?: Player[];
+  isAllStar?: boolean;
+  isRisingStars?: boolean;
+  riggedForTid?: number;
+  homeKnobs?: SimulatorKnobs;
+  awayKnobs?: SimulatorKnobs;
+}
+
+export type FastSimRunner = (args: SimulateGameArgs) => GameResult;
+
+let realisticRunner: FastSimRunner | null = null;
+
+export const registerRealisticRunner = (runner: FastSimRunner) => {
+  realisticRunner = runner;
+};
+
+export const simulateGameViaAdapter = (args: SimulateGameArgs, fastRunner: FastSimRunner): GameResult => {
+  const mode = getSimulatorMode();
+  if (mode === 'realistic' && realisticRunner) {
+    return realisticRunner(args);
+  }
+  return fastRunner(args);
+};

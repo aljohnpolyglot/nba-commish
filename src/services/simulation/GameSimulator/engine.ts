@@ -23,6 +23,7 @@ import { getSystemFitPenalty, getSystemKnobMods, getSystemProficiencyBoost } fro
 import { getDefenseGameplan, TEMPLATE_TO_SYSTEM } from '../../../store/defenseGameplanStore';
 import { resolveExhibitionRules } from '../../allStar/exhibitionRules';
 import { getFourPointDistance, isFourPointEnabled } from '../../../utils/ruleFlags';
+import { simulateGameViaAdapter } from '../SimulatorAdapter';
 
 /**
  * Top-8 pace factor from roster traits. Mirrors the tempo/fastBreak/earlyOffense
@@ -1494,7 +1495,24 @@ export class GameSimulator {
         const gameRig = riggedForTid !== undefined &&
           (home.id === riggedForTid || away.id === riggedForTid)
           ? riggedForTid : undefined;
-        const gameResult = this.simulateGame(home, away, players, game.gid, date, playerApproval, homeOverride, awayOverride, game.isAllStar, game.isRisingStars, gameRig, homeKnobs, awayKnobs);
+        const gameResult = simulateGameViaAdapter(
+          {
+            homeTeam: home,
+            awayTeam: away,
+            players,
+            gameId: game.gid,
+            date,
+            playerApproval,
+            homeOverridePlayers: homeOverride,
+            awayOverridePlayers: awayOverride,
+            isAllStar: game.isAllStar,
+            isRisingStars: game.isRisingStars,
+            riggedForTid: gameRig,
+            homeKnobs,
+            awayKnobs,
+          },
+          (a) => this.simulateGame(a.homeTeam, a.awayTeam, a.players, a.gameId, a.date, a.playerApproval, a.homeOverridePlayers, a.awayOverridePlayers, a.isAllStar, a.isRisingStars, a.riggedForTid, a.homeKnobs ?? KNOBS_DEFAULT, a.awayKnobs ?? KNOBS_DEFAULT),
+        );
         results.push(gameResult);
         if (clubDebuffs && clubDebuffs.size > 0) clearClubDebuffs();
 
