@@ -88,6 +88,10 @@ export class BoxAccumulator {
         const b = this.byId.get(end.blockerId);
         if (b) b.blk += 1;
       }
+      if (end.fouled && end.foulerId) {
+        const f = this.byId.get(end.foulerId);
+        if (f) f.pf += 1;
+      }
       // Plus/Minus
       const ptsScored = (end.made ? (end.zone === 'three' ? 3 : 2) : 0) + end.ftMade;
       if (ptsScored > 0) {

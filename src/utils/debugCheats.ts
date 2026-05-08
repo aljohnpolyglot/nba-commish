@@ -4235,11 +4235,15 @@ async function runPlayerBench(state: GameState): Promise<CheatResult> {
     ingest(g.homeStats); ingest(g.awayStats);
   }
 
-  // Filter: ≥ 20 GP for qualifying-player tables (matches benchmark filter)
-  const qualifying = Array.from(byId.values()).filter(a => a.gp >= 20);
+  // Adaptive GP threshold — early in the season we don't have ≥20 GP per
+  // player yet, so back off proportionally to the league progress. Floor at 5
+  // so individual blowouts don't dominate the percentile bands.
+  const maxGp = Math.max(...Array.from(byId.values(), a => a.gp), 0);
+  const gpThreshold = Math.max(5, Math.min(20, Math.floor(maxGp * 0.5)));
+  const qualifying = Array.from(byId.values()).filter(a => a.gp >= gpThreshold);
 
   if (qualifying.length === 0) {
-    return { title: 'PLAYERBENCH', body: `No players with ≥20 GP yet — keep simming.`, ok: false };
+    return { title: 'PLAYERBENCH', body: `No players with ≥${gpThreshold} GP yet — keep simming.`, ok: false };
   }
 
   const perGame = (a: Agg, k: keyof Agg) => a.gp > 0 ? (a[k] as number) / a.gp : 0;
@@ -4318,7 +4322,7 @@ async function runPlayerBench(state: GameState): Promise<CheatResult> {
     ...posRows.map(r => [r.pos, r.n, r.ppg, r.rpg, r.apg, r.bpg, r.spg, r.fga, r.threePa, r.ftPct].join('\t')),
   ].join('\n');
 
-  console.group(`👤 PLAYERBENCH — ${boxes.length} games, ${qualifying.length} qualifying players`);
+  console.group(`👤 PLAYERBENCH — ${boxes.length} games, ${qualifying.length} qualifying players (≥${gpThreshold} GP)`);
   console.log('Distribution shape (sim vs benchmark):');
   console.table(distRows);
   console.log('Positional averages (sim (bench) flag):');

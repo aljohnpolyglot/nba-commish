@@ -2,7 +2,7 @@ import { NBAPlayer as Player, NBATeam as Team } from '../../../types';
 
 export type ShotZone = 'rim' | 'midRange' | 'three' | 'lowPost';
 export type PossessionEnd =
-  | { kind: 'shot'; zone: ShotZone; made: boolean; pts: number; shooterId: string; assisterId?: string; blockerId?: string; fouled: boolean; ftAttempts: number; ftMade: number }
+  | { kind: 'shot'; zone: ShotZone; made: boolean; pts: number; shooterId: string; assisterId?: string; blockerId?: string; fouled: boolean; foulerId?: string; ftAttempts: number; ftMade: number }
   | { kind: 'turnover'; offenderId: string; stealerId?: string }
   | { kind: 'foul'; offenderId: string; victimId: string; ftAttempts: number; ftMade: number };
 

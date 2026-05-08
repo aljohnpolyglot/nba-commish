@@ -1,10 +1,10 @@
 import { OnCourt, PlayerComposite, ShotZone } from './types';
 
 const ZONE_DISTRIBUTION: Record<ShotZone, number> = {
-  rim: 0.34,
-  midRange: 0.18,
-  three: 0.40,
-  lowPost: 0.08,
+  rim: 0.32,
+  midRange: 0.16,
+  three: 0.45,
+  lowPost: 0.07,
 };
 
 const ZONE_BASE_MAKE: Record<ShotZone, number> = {
@@ -42,6 +42,7 @@ interface ShotResolution {
   pts: number;
   blockerId?: string;
   fouled: boolean;
+  foulerId?: string;
   ftAttempts: number;
   ftMade: number;
 }
@@ -68,8 +69,10 @@ export function resolveShot(
     return { made: false, pts: 0, blockerId: defender.id, fouled: false, ftAttempts: 0, ftMade: 0 };
   }
 
-  // Foul check (more likely on rim/post)
-  const foulBase = zone === 'rim' ? 0.16 : zone === 'lowPost' ? 0.12 : zone === 'midRange' ? 0.05 : 0.03;
+  // Foul check (more likely on rim/post). Calibrated against NBA 2025-26
+  // shooting-foul rate: ~10 shooting fouls / team-game on ~80 shots → ~12.5%
+  // overall, weighted toward interior contact.
+  const foulBase = zone === 'rim' ? 0.22 : zone === 'lowPost' ? 0.18 : zone === 'midRange' ? 0.07 : 0.04;
   const foulChance = foulBase * (0.6 + 0.9 * shooter.drawingFouls);
   const fouled = Math.random() < foulChance;
 
@@ -88,6 +91,7 @@ export function resolveShot(
         made: true,
         pts: baseShotPts,
         fouled: true,
+        foulerId: defender.id,
         ftAttempts: 1,
         ftMade: rollFt(shooter, 1),
       };
@@ -98,6 +102,7 @@ export function resolveShot(
       made: false,
       pts: 0,
       fouled: true,
+      foulerId: defender.id,
       ftAttempts: fta,
       ftMade: rollFt(shooter, fta),
     };

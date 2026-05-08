@@ -1,8 +1,8 @@
 import { OnCourt, PlayerComposite, PossessionEnd } from './types';
 import { pickShotZone, resolveShot } from './shotResolver';
 
-const TOV_BASE = 0.13;       // ~13% of possessions end in turnover
-const NON_SHOOTING_FOUL_BASE = 0.04; // ~4% off-ball / loose-ball fouls
+const TOV_BASE = 0.14;       // NBA 2025-26: ~14.5 TOV / ~99 poss = 14.6%
+const NON_SHOOTING_FOUL_BASE = 0.10; // off-ball + loose-ball + offensive fouls; calibrated against ~10 non-shooting PF / team-game
 
 export function runPossession(offense: OnCourt, defense: OnCourt): PossessionEnd {
   // 1. Pick possession outcome category
@@ -64,6 +64,7 @@ function resolveShotAttempt(offense: OnCourt, defense: OnCourt): PossessionEnd {
     assisterId,
     blockerId: result.blockerId,
     fouled: result.fouled,
+    foulerId: result.foulerId,
     ftAttempts: result.ftAttempts,
     ftMade: result.ftMade,
   };
