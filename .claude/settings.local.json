@@ -124,7 +124,8 @@
       "Bash(gh repo *)",
       "Bash(npx --no-install tsc --noEmit)",
       "WebFetch(domain:zengm.com)",
-      "WebFetch(domain:deepwiki.com)"
+      "WebFetch(domain:deepwiki.com)",
+      "Bash(gh search *)"
     ]
   }
 }
