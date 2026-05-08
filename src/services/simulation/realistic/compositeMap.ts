@@ -56,7 +56,10 @@ export function buildComposite(p: Player, season: number): PlayerComposite {
     defPerimeter:  Math.pow(norm(0.55 * diq + 0.30 * spd + 0.15 * stealRaw), 1.2),
     steal:         Math.pow(norm(stealRaw), 1.5),
     block:         Math.pow(norm(blockRaw), 1.5),
-    rebound:       norm(0.50 * reb + 0.30 * hgt + 0.10 * stre + 0.10 * jmp),
+    // Power-scaled rebound: compresses the floor so elite boards-grabbers (Jokic,
+    // Wemby, Duren) clearly rise above rotation guards. Without this Jokic at
+    // raw 0.80 was only 1.6× a guard at 0.55, vs the real-NBA 2.5× edge.
+    rebound:       Math.pow(norm(0.50 * reb + 0.30 * hgt + 0.10 * stre + 0.10 * jmp), 1.4),
     // Other
     usage:         norm(0.5 * (p.overallRating ?? 50) + 0.25 * fg + 0.15 * drb + 0.10 * oiq),
     endurance:     norm(endu),

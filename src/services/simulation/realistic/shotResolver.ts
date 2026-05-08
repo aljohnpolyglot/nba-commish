@@ -129,8 +129,13 @@ function pickDefender(defense: OnCourt, zone: ShotZone): PlayerComposite {
   const sorted = [...defense.composites].sort((a, b) =>
     interior ? b.defRim - a.defRim : b.defPerimeter - a.defPerimeter,
   );
-  // 70% chance assigned defender, 30% mismatch
-  return Math.random() < 0.7 ? sorted[0] : sorted[1 + Math.floor(Math.random() * 4)];
+  // 78% top defender / 15% #2 / 7% rest. Stronger primary lock so secondary rim
+  // protectors (Holmgren, Clingan) actually accrue blocks instead of getting
+  // diluted across a uniform [#2..#5] mismatch pool.
+  const roll = Math.random();
+  if (roll < 0.78) return sorted[0];
+  if (roll < 0.93) return sorted[1] ?? sorted[0];
+  return sorted[2 + Math.floor(Math.random() * 3)] ?? sorted[1] ?? sorted[0];
 }
 
 function rollFt(shooter: PlayerComposite, attempts: number): number {
