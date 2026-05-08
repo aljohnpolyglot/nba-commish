@@ -28,7 +28,7 @@ export function pickShotZone(shooter: PlayerComposite): ShotZone {
   const w: Record<ShotZone, number> = {
     rim:      ZONE_DISTRIBUTION.rim      * (0.4 + 0.8 * shooter.rim + 0.4 * shooter.driving),
     midRange: ZONE_DISTRIBUTION.midRange * (0.4 + 0.9 * shooter.midRange),
-    three:    ZONE_DISTRIBUTION.three    * Math.pow(shooter.three + 0.25, 1.3),
+    three:    ZONE_DISTRIBUTION.three    * Math.pow(shooter.three + 0.20, 1.4),
     lowPost:  ZONE_DISTRIBUTION.lowPost  * Math.pow(shooter.lowPost + 0.15, 1.3),
   };
   const total = w.rim + w.midRange + w.three + w.lowPost;
@@ -66,9 +66,11 @@ export function resolveShot(
     zone === 'rim' || zone === 'lowPost' ? defender.defRim : defender.defPerimeter;
 
   // Block check (interior shots more likely; perimeter contests rarely turn into blocks).
-  // NBA target: 4.8 BLK / team-game ≈ 6% of shots blocked.
+  // Power-law on defender.block so elite shot-blockers (Wembanyama 4.0 BPG,
+  // Holmgren 2.8) actually dominate their tier — linear scaling only gave them
+  // ~1.7x the average defender's block rate, far short of their real ~4x edge.
   const blockChance = (zone === 'rim' ? 0.082 : zone === 'lowPost' ? 0.052 : 0.024)
-    * (0.5 + 1.5 * defender.block);
+    * (0.4 + 1.8 * Math.pow(defender.block, 1.7));
   if (Math.random() < blockChance) {
     return { made: false, pts: 0, blockerId: defender.id, fouled: false, ftAttempts: 0, ftMade: 0 };
   }

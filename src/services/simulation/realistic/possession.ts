@@ -18,10 +18,8 @@ export function runPossession(offense: OnCourt, defense: OnCourt): PossessionEnd
 }
 
 function pickShooter(offense: OnCourt): { player: PlayerComposite; index: number } {
-  // Power-law on usage so stars (Doncic 38% USG) dominate touches the way
-  // they actually do — linear weighting only gave a 99-OVR star ~1.5x the
-  // touches of a 70-OVR role player, instead of the real 3x.
-  const weights = offense.composites.map(c => Math.pow(c.usage, 2.4));
+  // Power-law on usage so stars (Doncic 38% USG, 33.5 PPG) dominate touches.
+  const weights = offense.composites.map(c => Math.pow(c.usage, 2.7));
   const total = weights.reduce((s, w) => s + w, 0);
   let roll = Math.random() * total;
   for (let i = 0; i < offense.composites.length; i++) {
@@ -33,10 +31,9 @@ function pickShooter(offense: OnCourt): { player: PlayerComposite; index: number
 
 function pickAssister(offense: OnCourt, shooterIndex: number): PlayerComposite | undefined {
   const candidates = offense.composites.filter((_, i) => i !== shooterIndex);
-  // Power-law on passing — combined with the elite-skewed composite (^1.4 in
-  // compositeMap), a Jokic/Doncic lands ~6x the assist weight of an average
-  // rotation player. Hits 10+ APG for top playmakers without over-feeding wings.
-  const weights = candidates.map(c => Math.pow(c.passing, 2.5));
+  // Strong power-law so Jokic / Doncic actually hit 10+ APG. Combined with the
+  // elite-skewed composite (^1.4 in compositeMap) the top playmaker dominates.
+  const weights = candidates.map(c => Math.pow(c.passing, 3.0));
   const total = weights.reduce((s, w) => s + w, 0);
   if (total <= 0) return undefined;
   let roll = Math.random() * total;
