@@ -32,7 +32,11 @@ export function buildComposite(p: Player, season: number): PlayerComposite {
     three:      norm(0.85 * tp  + 0.15 * oiq),
     lowPost:    norm(0.65 * ins + 0.20 * stre + 0.15 * hgt),
     driving:    norm(0.40 * drb + 0.30 * spd + 0.30 * dnk),
-    passing:    norm(0.70 * pss + 0.30 * oiq),
+    // Elite-skewed: a 95-rated passer (Jokic, Doncic) lands near 1.0 while
+    // mid-tier 60-rated passers stay around 0.45 — so pickAssister's power-law
+    // can actually concentrate APG on the lead playmaker instead of spreading
+    // 25 ASTs evenly across all 5 on-court.
+    passing:    Math.max(0, Math.min(1, Math.pow((0.70 * pss + 0.30 * oiq) / 100, 1.4))),
     drawingFouls: norm(0.50 * dnk + 0.30 * stre + 0.20 * spd),
     ft:         norm(ft),
     // Defense

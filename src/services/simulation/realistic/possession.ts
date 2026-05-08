@@ -2,7 +2,7 @@ import { OnCourt, PlayerComposite, PossessionEnd } from './types';
 import { pickShotZone, resolveShot } from './shotResolver';
 
 const TOV_BASE = 0.14;       // NBA 2025-26: ~14.5 TOV / ~99 poss = 14.6%
-const NON_SHOOTING_FOUL_BASE = 0.07; // off-ball + loose-ball; calibrated so total PF ≈ 19.9/g (shooting fouls already cover ~12)
+const NON_SHOOTING_FOUL_BASE = 0.085; // off-ball + loose-ball; targets total PF ≈ 19.9/team-game
 
 export function runPossession(offense: OnCourt, defense: OnCourt): PossessionEnd {
   // 1. Pick possession outcome category
@@ -33,9 +33,10 @@ function pickShooter(offense: OnCourt): { player: PlayerComposite; index: number
 
 function pickAssister(offense: OnCourt, shooterIndex: number): PlayerComposite | undefined {
   const candidates = offense.composites.filter((_, i) => i !== shooterIndex);
-  // Power-law on passing so the lead playmaker (PG / point center) collects
-  // the lion's share of assists. NBA: top PG averages 8-10 APG, role players 1-2.
-  const weights = candidates.map(c => Math.pow(c.passing, 2.0));
+  // Power-law on passing — combined with the elite-skewed composite (^1.4 in
+  // compositeMap), a Jokic/Doncic lands ~6x the assist weight of an average
+  // rotation player. Hits 10+ APG for top playmakers without over-feeding wings.
+  const weights = candidates.map(c => Math.pow(c.passing, 2.5));
   const total = weights.reduce((s, w) => s + w, 0);
   if (total <= 0) return undefined;
   let roll = Math.random() * total;

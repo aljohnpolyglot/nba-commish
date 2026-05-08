@@ -67,7 +67,7 @@ export function resolveShot(
 
   // Block check (interior shots more likely; perimeter contests rarely turn into blocks).
   // NBA target: 4.8 BLK / team-game ≈ 6% of shots blocked.
-  const blockChance = (zone === 'rim' ? 0.072 : zone === 'lowPost' ? 0.045 : 0.020)
+  const blockChance = (zone === 'rim' ? 0.082 : zone === 'lowPost' ? 0.052 : 0.024)
     * (0.5 + 1.5 * defender.block);
   if (Math.random() < blockChance) {
     return { made: false, pts: 0, blockerId: defender.id, fouled: false, ftAttempts: 0, ftMade: 0 };

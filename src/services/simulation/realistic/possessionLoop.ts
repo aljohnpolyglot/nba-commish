@@ -2,8 +2,10 @@ import { OnCourt, PossessionEnd } from './types';
 import { runPossession } from './possession';
 import { BoxAccumulator } from './boxScoreAccumulator';
 
-const AVG_POSSESSION_SEC = 14.5; // average seconds of game-clock per possession
-const POSSESSION_VARIANCE_SEC = 6;
+const AVG_POSSESSION_SEC = 13.0; // NBA 2025-26: 98.2 poss/team/48 → ~14.65s/poss league-wide,
+                                 // but ORB-extended possessions inflate the budget here, so a
+                                 // slightly faster base lands FGA at ~89/team-game.
+const POSSESSION_VARIANCE_SEC = 5.5;
 
 export interface QuarterResult {
   homeScore: number;
