@@ -51,24 +51,25 @@ function prepareUnit(
 }
 
 /**
- * Engine-share calibration multiplier on per-minute advanced stats.
+ * Three-driver calibration multiplier on per-minute advanced stats.
  *
  * The realistic engine has no foul-out, fatigue, or minute-pressure subs yet
- * (Phase 3), so per-minute advanced metrics (PER, BPM, OBPM, DBPM) compress
- * 15-20% on the high-engagement tier vs real NBA (Jokic PER 25.8 sim vs 32.3,
- * Tyler Herro / 6th-man tier ~14 sim vs ~17 real).
+ * (Phase 3), so per-minute advanced metrics compress 15-25% on engaged
+ * players. We need to capture three archetypes:
  *
- * Boost scales with both USG% (captures high-usage 6th men like Herro who
- * play limited minutes but drive offense) and MPG (captures stars carrying
- * full-game loads). Bench fillers and low-usage role players are untouched.
+ *   - Volume scorers (Doncic): high USG + high MPG → driven by usgB
+ *   - 6th-man spark plugs (Herro): high USG + low MPG → driven by usgB alone
+ *   - Efficient rim runners (M. Robinson, Gobert): low USG, high TS% → driven by effB
  *
- * Formula: 1 + max(0, usg - 18) × 0.012 + max(0, mpg - 22) × 0.008, cap 1.22.
- *   Bench filler (14 mpg, 16 usg) : 1.000
- *   Role player  (22 mpg, 20 usg) : 1.024
- *   6th man      (22 mpg, 28 usg) : 1.120
- *   Starter      (30 mpg, 24 usg) : 1.136
- *   Star         (35 mpg, 30 usg) : 1.220 (cap)
- *   Mega-star    (38 mpg, 38 usg) : 1.220 (cap)
+ * Bench fillers (low on all three) get no boost. Boost is capped at +25% so
+ * elite engines don't compound across all three drivers.
+ *
+ *   Bench filler (14 mpg, 16 usg, .50 ts) : 1.00
+ *   Role player  (22 mpg, 22 usg, .55 ts) : 1.04
+ *   M. Robinson  (18 mpg, 12 usg, .75 ts) : 1.16  ← efficiency-driven
+ *   Tyler Herro  (22 mpg, 28 usg, .58 ts) : 1.13
+ *   Gobert       (28 mpg, 17 usg, .65 ts) : 1.12  ← efficiency-driven
+ *   Jokic        (38 mpg, 30 usg, .66 ts) : 1.25 (cap)
  */
 function applyAdvanced(stats: PlayerGameStats[], adv: any[]): void {
   stats.forEach((s, i) => {
@@ -76,9 +77,11 @@ function applyAdvanced(stats: PlayerGameStats[], adv: any[]): void {
     const sa = s as any;
     const mpg = s.min ?? 0;
     const usg = sa.usgPct ?? 18;
-    const usgBoost = Math.max(0, usg - 18) * 0.012;
-    const mpgBoost = Math.max(0, mpg - 22) * 0.008;
-    const boost = 1 + Math.min(0.22, usgBoost + mpgBoost);
+    const ts  = sa.tsPct  ?? 0.55;
+    const usgB = Math.max(0, usg - 18)   * 0.010;
+    const mpgB = Math.max(0, mpg - 22)   * 0.006;
+    const effB = Math.max(0, ts  - 0.55) * 0.80;   // TS% .65 → +8%, TS% .75 → +16%
+    const boost = 1 + Math.min(0.25, usgB + mpgB + effB);
     if (boost > 1) {
       if (typeof sa.per  === 'number') sa.per  *= boost;
       if (typeof sa.bpm  === 'number') sa.bpm  *= boost;
