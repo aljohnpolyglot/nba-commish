@@ -372,40 +372,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           {activeTab === 'gameplay' && (
             <>
               {/* Game Simulator Engine */}
-              <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700/50 space-y-3">
-                <div className="space-y-1">
-                  <label className="text-sm font-bold text-white flex items-center gap-2">
-                    <Activity size={16} className="text-indigo-400" />
-                    Game Simulator
-                  </label>
-                  <p className="text-xs text-slate-400">
-                    Determines how every league game is simulated — watched games, day sims, and background lazy sims.
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                <label className="text-sm font-bold text-white flex items-center gap-2">
+                  <Activity size={16} className="text-indigo-400" />
+                  Game Simulator
+                </label>
+                <div className="flex gap-1 bg-slate-900/60 rounded-lg p-1">
                   <button
                     onClick={() => setSettings({ ...settings, simulatorMode: 'realistic' })}
-                    className={`p-3 rounded-lg border text-left transition-all ${
+                    className={`px-3 py-1 rounded text-xs font-black uppercase tracking-wider transition-all ${
                       settings.simulatorMode === 'realistic'
-                        ? 'bg-indigo-500/20 border-indigo-500 text-white'
-                        : 'bg-slate-900/40 border-slate-700 text-slate-400 hover:border-slate-500'
+                        ? 'bg-indigo-500 text-white'
+                        : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    <div className="text-xs font-black uppercase tracking-wider mb-1">Realistic <span className="text-[10px] font-bold text-indigo-300">· Default</span></div>
-                    <div className="text-[11px] leading-snug opacity-80">Possession-by-possession. Accurate PER, USG%, ORtg/DRtg. Defensive aura, club debuffs and play-through-injury hooks apply.</div>
+                    Realistic
                   </button>
                   <button
                     onClick={() => {
                       if (settings.simulatorMode !== 'fast') setShowFastSimWarning(true);
                     }}
-                    className={`p-3 rounded-lg border text-left transition-all ${
+                    className={`px-3 py-1 rounded text-xs font-black uppercase tracking-wider transition-all ${
                       settings.simulatorMode === 'fast'
-                        ? 'bg-amber-500/20 border-amber-500 text-white'
-                        : 'bg-slate-900/40 border-slate-700 text-slate-400 hover:border-slate-500'
+                        ? 'bg-amber-500 text-white'
+                        : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    <div className="text-xs font-black uppercase tracking-wider mb-1">Fast</div>
-                    <div className="text-[11px] leading-snug opacity-80">Heuristic box-score generator. Sub-second per game. Trade-off: less realistic advanced stats, weakened buff/debuff effects.</div>
+                    Fast
                   </button>
                 </div>
               </div>

@@ -1,10 +1,10 @@
 import { OnCourt, PlayerComposite, ShotZone } from './types';
 
 const ZONE_DISTRIBUTION: Record<ShotZone, number> = {
-  rim: 0.32,
-  midRange: 0.16,
-  three: 0.45,
-  lowPost: 0.07,
+  rim: 0.30,
+  midRange: 0.15,
+  three: 0.50,
+  lowPost: 0.05,
 };
 
 const ZONE_BASE_MAKE: Record<ShotZone, number> = {
@@ -28,8 +28,8 @@ export function pickShotZone(shooter: PlayerComposite): ShotZone {
   const w: Record<ShotZone, number> = {
     rim:      ZONE_DISTRIBUTION.rim      * (0.4 + 0.8 * shooter.rim + 0.4 * shooter.driving),
     midRange: ZONE_DISTRIBUTION.midRange * (0.4 + 0.9 * shooter.midRange),
-    three:    ZONE_DISTRIBUTION.three    * Math.pow(shooter.three + 0.1, 1.8),
-    lowPost:  ZONE_DISTRIBUTION.lowPost  * Math.pow(shooter.lowPost + 0.1, 1.4),
+    three:    ZONE_DISTRIBUTION.three    * Math.pow(shooter.three + 0.25, 1.3),
+    lowPost:  ZONE_DISTRIBUTION.lowPost  * Math.pow(shooter.lowPost + 0.15, 1.3),
   };
   const total = w.rim + w.midRange + w.three + w.lowPost;
   let roll = Math.random() * total;
@@ -67,7 +67,7 @@ export function resolveShot(
 
   // Block check (interior shots more likely; perimeter contests rarely turn into blocks).
   // NBA target: 4.8 BLK / team-game ≈ 6% of shots blocked.
-  const blockChance = (zone === 'rim' ? 0.085 : zone === 'lowPost' ? 0.055 : 0.025)
+  const blockChance = (zone === 'rim' ? 0.072 : zone === 'lowPost' ? 0.045 : 0.020)
     * (0.5 + 1.5 * defender.block);
   if (Math.random() < blockChance) {
     return { made: false, pts: 0, blockerId: defender.id, fouled: false, ftAttempts: 0, ftMade: 0 };
