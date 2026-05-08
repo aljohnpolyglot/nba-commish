@@ -2,6 +2,7 @@ import { NBAPlayer as Player, NBATeam as Team } from '../../../types';
 import { GameResult, PlayerGameStats } from '../types';
 import { MinutesPlayedService } from '../MinutesPlayedService';
 import { SimulatorKnobs, KNOBS_DEFAULT } from '../SimulatorKnobs';
+import { StatGenerator } from '../StatGenerator';
 import { OnCourt, PlayerComposite } from './types';
 import { buildComposite } from './compositeMap';
 import { BoxAccumulator } from './boxScoreAccumulator';
@@ -144,6 +145,16 @@ export function simulateGameRealistic(args: SimulateGameArgs): GameResult {
 
   const homeStats: PlayerGameStats[] = acc.toArray(home.rotation);
   const awayStats: PlayerGameStats[] = acc.toArray(away.rotation);
+
+  // Advanced stats (PER, USG%, ORtg, DRtg, BPM, OBPM, DBPM, WS, VORP, eFG%,
+  // TS%, AST%, ORB%, DRB%, TRB%, STL%, BLK%, TOV%) — same per-game wiring
+  // the fast engine does. PM is already tracked in the boxScoreAccumulator.
+  const homePm = homeStats.map(s => s.pm ?? 0);
+  const awayPm = awayStats.map(s => s.pm ?? 0);
+  const homeAdv = StatGenerator.generateAdvancedStats(homeStats, awayStats, homePm);
+  const awayAdv = StatGenerator.generateAdvancedStats(awayStats, homeStats, awayPm);
+  homeStats.forEach((s, i) => Object.assign(s, homeAdv[i]));
+  awayStats.forEach((s, i) => Object.assign(s, awayAdv[i]));
 
   const winnerId = homeScore > awayScore ? args.homeTeam.id : args.awayTeam.id;
   const lead = Math.abs(homeScore - awayScore);
