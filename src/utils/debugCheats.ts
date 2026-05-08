@@ -4450,7 +4450,12 @@ async function runSimLeaders(state: GameState): Promise<CheatResult> {
     return { title: 'SIMLEADERS', body: `Only ${boxes.length} games — need ≥30. Sim more.`, ok: false };
   }
 
-  // Player aggregation (same shape as PLAYERBENCH but tracks more)
+  // Player aggregation (same shape as PLAYERBENCH but tracks more).
+  // PlayerGameStats lines don't carry tid — look up the team via state.players once.
+  const tidById = new Map<string, number>();
+  (state.players ?? []).forEach((p: any) => {
+    if (p.internalId != null) tidById.set(p.internalId, p.tid);
+  });
   type Agg = {
     name: string; tid: number;
     gp: number; min: number;
@@ -4466,7 +4471,7 @@ async function runSimLeaders(state: GameState): Promise<CheatResult> {
       let a = byId.get(id);
       if (!a) {
         a = {
-          name: ps.name ?? id, tid: ps.tid ?? -1,
+          name: ps.name ?? id, tid: tidById.get(id) ?? -1,
           gp: 0, min: 0, pts: 0, fga: 0, fgm: 0, threePa: 0, threePm: 0,
           fta: 0, ftm: 0, ast: 0, reb: 0, orb: 0, drb: 0,
           stl: 0, blk: 0, tov: 0,
