@@ -133,4 +133,10 @@ export class BoxAccumulator {
   toArray(rosterOrder: Player[]): PlayerGameStats[] {
     return rosterOrder.map(p => this.byId.get(p.internalId) ?? BLANK(p));
   }
+
+  /** Current personal foul count for a player — used by RotationManager
+   *  to decide foul-out / foul-trouble swaps mid-game. */
+  getPf(playerId: string): number {
+    return this.byId.get(playerId)?.pf ?? 0;
+  }
 }

@@ -6,13 +6,13 @@ import { StatGenerator } from '../StatGenerator';
 import { activeClubDebuffs } from '../StatGenerator/helpers';
 import { Defense2KService } from '../../Defense2KService';
 import { injurySeverityLevel, playThroughInjuriesFactor } from '../playThroughInjuriesFactor';
-import { OnCourt, PlayerComposite } from './types';
+import { PlayerComposite } from './types';
 import { buildComposite } from './compositeMap';
 import { BoxAccumulator } from './boxScoreAccumulator';
-import { simulateQuarter } from './possessionLoop';
+import { simulatePeriod } from './possessionLoop';
+import { RotationManager } from './rotationManager';
 import { SimulateGameArgs } from '../SimulatorAdapter';
 
-const CHUNKS_PER_QUARTER = 2;        // 12-min quarter → 2 chunks of 6 min
 const OT_LENGTH_MIN = 5;
 
 interface PrepResult {
@@ -141,20 +141,6 @@ function applyAdvanced(stats: PlayerGameStats[], adv: any[]): void {
   });
 }
 
-function pickTopFive(remaining: number[]): number[] {
-  // Indices of 5 highest remaining (tie-break by lower index = starter preference).
-  const indexed = remaining.map((m, i) => ({ m, i }));
-  indexed.sort((a, b) => b.m !== a.m ? b.m - a.m : a.i - b.i);
-  return indexed.slice(0, 5).map(x => x.i);
-}
-
-function buildOnCourt(rotation: Player[], composites: PlayerComposite[], indices: number[]): OnCourt {
-  return {
-    players: indices.map(i => rotation[i]),
-    composites: indices.map(i => composites[i]),
-  };
-}
-
 export function simulateGameRealistic(args: SimulateGameArgs): GameResult {
   const homeKnobs = args.homeKnobs ?? KNOBS_DEFAULT;
   const awayKnobs = args.awayKnobs ?? KNOBS_DEFAULT;
@@ -182,65 +168,47 @@ export function simulateGameRealistic(args: SimulateGameArgs): GameResult {
   acc.registerRoster(home.rotation, 5);
   acc.registerRoster(away.rotation, 5);
 
-  const homeRemaining = [...home.minuteTargets];
-  const awayRemaining = [...away.minuteTargets];
+  // Possession-by-possession rotation managers — handle foul-out, foul-trouble
+  // pulls, fatigue stretches, and minute-target burn-down. The starting 5 are
+  // the top-rotation players seeded by getRotation order.
+  const homeMgr = new RotationManager(home.rotation, home.composites, home.minuteTargets);
+  const awayMgr = new RotationManager(away.rotation, away.composites, away.minuteTargets);
 
-  const chunkLen = quarterLen / CHUNKS_PER_QUARTER;
-  const totalChunks = numQuarters * CHUNKS_PER_QUARTER;
   let homeScore = 0;
   let awayScore = 0;
   const quarterScoresHome: number[] = [];
   const quarterScoresAway: number[] = [];
-  let qHomeAccum = 0;
-  let qAwayAccum = 0;
-  let possessionsTotal = 0;
 
-  for (let c = 0; c < totalChunks; c++) {
-    const homeIdx = pickTopFive(homeRemaining);
-    const awayIdx = pickTopFive(awayRemaining);
-    const onCourtHome = buildOnCourt(home.rotation, home.composites, homeIdx);
-    const onCourtAway = buildOnCourt(away.rotation, away.composites, awayIdx);
-
-    const startPoss: 'home' | 'away' = c === 0
+  for (let p = 1; p <= numQuarters; p++) {
+    const startPoss: 'home' | 'away' = p === 1
       ? (Math.random() < 0.5 ? 'home' : 'away')
-      : (possessionsTotal % 2 === 0 ? 'home' : 'away');
-
-    const qr = simulateQuarter(onCourtHome, onCourtAway, acc, startPoss, chunkLen);
-    homeScore += qr.homeScore;
-    awayScore += qr.awayScore;
-    qHomeAccum += qr.homeScore;
-    qAwayAccum += qr.awayScore;
-    possessionsTotal += qr.possessions;
-
-    homeIdx.forEach(i => { homeRemaining[i] = Math.max(0, homeRemaining[i] - chunkLen); });
-    awayIdx.forEach(i => { awayRemaining[i] = Math.max(0, awayRemaining[i] - chunkLen); });
-
-    if ((c + 1) % CHUNKS_PER_QUARTER === 0) {
-      quarterScoresHome.push(qHomeAccum);
-      quarterScoresAway.push(qAwayAccum);
-      qHomeAccum = 0;
-      qAwayAccum = 0;
-    }
+      : (p % 2 === 0 ? 'away' : 'home');
+    const r = simulatePeriod(homeMgr, awayMgr, acc, startPoss, quarterLen, p);
+    homeScore += r.homeScore;
+    awayScore += r.awayScore;
+    quarterScoresHome.push(r.homeScore);
+    quarterScoresAway.push(r.awayScore);
   }
 
   // Overtime
   let otCount = 0;
   while (homeScore === awayScore && otCount < 6) {
     otCount += 1;
-    const homeIdx = pickTopFive(homeRemaining.length ? homeRemaining : home.minuteTargets);
-    const awayIdx = pickTopFive(awayRemaining.length ? awayRemaining : away.minuteTargets);
-    const onCourtHome = buildOnCourt(home.rotation, home.composites, homeIdx);
-    const onCourtAway = buildOnCourt(away.rotation, away.composites, awayIdx);
-    const qr = simulateQuarter(onCourtHome, onCourtAway, acc, Math.random() < 0.5 ? 'home' : 'away', OT_LENGTH_MIN);
-    homeScore += qr.homeScore;
-    awayScore += qr.awayScore;
-    quarterScoresHome.push(qr.homeScore);
-    quarterScoresAway.push(qr.awayScore);
+    const r = simulatePeriod(
+      homeMgr, awayMgr, acc,
+      Math.random() < 0.5 ? 'home' : 'away',
+      OT_LENGTH_MIN,
+      numQuarters + otCount,
+    );
+    homeScore += r.homeScore;
+    awayScore += r.awayScore;
+    quarterScoresHome.push(r.homeScore);
+    quarterScoresAway.push(r.awayScore);
   }
 
-  // Distribute minutes
-  acc.setMinutes(home.rotation, home.minuteTargets);
-  acc.setMinutes(away.rotation, away.minuteTargets);
+  // Distribute actual minutes from the rotation manager (replaces the static target).
+  acc.setMinutes(home.rotation, homeMgr.getMinutesPlayed());
+  acc.setMinutes(away.rotation, awayMgr.getMinutesPlayed());
 
   const homeStats: PlayerGameStats[] = acc.toArray(home.rotation);
   const awayStats: PlayerGameStats[] = acc.toArray(away.rotation);

@@ -1,90 +1,94 @@
 import { OnCourt, PossessionEnd } from './types';
 import { runPossession } from './possession';
 import { BoxAccumulator } from './boxScoreAccumulator';
+import { RotationManager } from './rotationManager';
 
 const AVG_POSSESSION_SEC = 13.4; // calibrated to land PACE ≈ 98 poss/team/48
 const POSSESSION_VARIANCE_SEC = 5.5;
 
-export interface QuarterResult {
+export interface PeriodResult {
   homeScore: number;
   awayScore: number;
   possessions: number;
 }
 
-/** Simulates a single quarter (or overtime) of game time.
- *  Alternates possessions, applies stats, returns scoring delta. */
-export function simulateQuarter(
-  home: OnCourt,
-  away: OnCourt,
+/**
+ * Simulate one period (regulation quarter or OT).
+ *
+ * On-court 5 for each team is owned by a RotationManager — after every
+ * possession we advance both teams' clocks and let each manager swap in
+ * fresh bodies for fouled-out / fatigued / over-target players.
+ */
+export function simulatePeriod(
+  homeMgr: RotationManager,
+  awayMgr: RotationManager,
   acc: BoxAccumulator,
   startingPossession: 'home' | 'away',
-  quarterMinutes: number,
-): QuarterResult {
-  let clock = quarterMinutes * 60;
+  periodMinutes: number,
+  period: number,
+): PeriodResult {
+  let clock = periodMinutes * 60;
   let homeScore = 0;
   let awayScore = 0;
   let possessions = 0;
   let next: 'home' | 'away' = startingPossession;
+  const getPf = (id: string) => acc.getPf(id);
 
   while (clock > 0) {
-    const offense = next === 'home' ? home : away;
-    const defense = next === 'home' ? away : home;
+    const offenseSide = next;
+    const offense = offenseSide === 'home' ? homeMgr.getOnCourt() : awayMgr.getOnCourt();
+    const defense = offenseSide === 'home' ? awayMgr.getOnCourt() : homeMgr.getOnCourt();
     const offenseIds = offense.composites.map(c => c.id);
     const defenseIds = defense.composites.map(c => c.id);
 
     const end = runPossession(offense, defense);
-    // Optional debug trace hook — set window.__realisticTrace to a fn before running a sim.
-    const trace = (typeof globalThis !== 'undefined' ? (globalThis as any).__realisticTrace : undefined) as undefined | ((e: PossessionEnd, side: 'home' | 'away') => void);
+    const trace = (typeof globalThis !== 'undefined' ? (globalThis as any).__realisticTrace : undefined) as
+      undefined | ((e: PossessionEnd, side: 'home' | 'away') => void);
     if (trace) trace(end, next);
     const scoreBefore = { off: 0 };
     acc.applyPossession(end, offenseIds, defenseIds, scoreBefore);
 
-    // Rebound bookkeeping for missed shots that weren't fouled
+    // Rebound + possession-flip bookkeeping (unchanged from chunk impl)
     if (end.kind === 'shot' && !end.made && !end.fouled && !end.blockerId) {
-      // Defensive vs offensive rebound — defense favored
       if (Math.random() < 0.74) {
-        // DRB → defense gets ball
-        const reb = pickRebounder(defense, 'drb');
+        const reb = pickRebounder(defense);
         acc.applyRebound(reb.id, 'drb');
         next = next === 'home' ? 'away' : 'home';
       } else {
-        const reb = pickRebounder(offense, 'orb');
+        const reb = pickRebounder(offense);
         acc.applyRebound(reb.id, 'orb');
-        // Same team retains possession — no flip
       }
     } else if (end.kind === 'shot' && end.blockerId) {
-      // Blocked shot — defense recovers ~80%
       if (Math.random() < 0.8) {
-        const reb = pickRebounder(defense, 'drb');
+        const reb = pickRebounder(defense);
         acc.applyRebound(reb.id, 'drb');
         next = next === 'home' ? 'away' : 'home';
       } else {
-        const reb = pickRebounder(offense, 'orb');
+        const reb = pickRebounder(offense);
         acc.applyRebound(reb.id, 'orb');
       }
     } else {
-      // Made shot, made FT, turnover, or foul → possession flips
       next = next === 'home' ? 'away' : 'home';
     }
 
-    if (next === 'home') {
-      // we just scored on away basket from home offense earlier; capture below via score deltas
-    }
-
-    if (offense === home) homeScore += scoreBefore.off; else awayScore += scoreBefore.off;
+    if (offenseSide === 'home') homeScore += scoreBefore.off;
+    else awayScore += scoreBefore.off;
     possessions += 1;
 
     const elapsed = AVG_POSSESSION_SEC + (Math.random() - 0.5) * POSSESSION_VARIANCE_SEC;
     clock -= elapsed;
+    homeMgr.advanceTime(elapsed);
+    awayMgr.advanceTime(elapsed);
+
+    // Sub check after every possession.
+    homeMgr.maybeSub(period, clock, getPf);
+    awayMgr.maybeSub(period, clock, getPf);
   }
 
   return { homeScore, awayScore, possessions };
 }
 
-function pickRebounder(unit: OnCourt, _kind: 'orb' | 'drb') {
-  // Power-law on rebound composite so big men dominate the glass — linear
-  // weighting was distributing rebounds too evenly across all 5 on-court,
-  // letting guards collect ~3.5/g while bigs hit only 5/g (NBA C avg 6.3).
+function pickRebounder(unit: OnCourt) {
   const weights = unit.composites.map(c => Math.pow(c.rebound, 1.7));
   const total = weights.reduce((s, w) => s + w, 0);
   if (total <= 0) return unit.composites[0];
