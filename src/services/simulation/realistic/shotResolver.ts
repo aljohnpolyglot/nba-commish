@@ -22,12 +22,14 @@ const ZONE_PTS: Record<ShotZone, number> = {
 };
 
 export function pickShotZone(shooter: PlayerComposite): ShotZone {
-  // Reweight base distribution by shooter strengths.
+  // Reweight base distribution by shooter strengths. Power-law on three so
+  // a center with three=0.30 fires 3s far less often than a guard at 0.65 —
+  // linear reweighting was letting bigs camp behind the line ~3PA/game.
   const w: Record<ShotZone, number> = {
     rim:      ZONE_DISTRIBUTION.rim      * (0.4 + 0.8 * shooter.rim + 0.4 * shooter.driving),
     midRange: ZONE_DISTRIBUTION.midRange * (0.4 + 0.9 * shooter.midRange),
-    three:    ZONE_DISTRIBUTION.three    * (0.3 + 1.0 * shooter.three),
-    lowPost:  ZONE_DISTRIBUTION.lowPost  * (0.3 + 1.2 * shooter.lowPost),
+    three:    ZONE_DISTRIBUTION.three    * Math.pow(shooter.three + 0.1, 1.8),
+    lowPost:  ZONE_DISTRIBUTION.lowPost  * Math.pow(shooter.lowPost + 0.1, 1.4),
   };
   const total = w.rim + w.midRange + w.three + w.lowPost;
   let roll = Math.random() * total;
@@ -63,8 +65,10 @@ export function resolveShot(
   const defenseSkill =
     zone === 'rim' || zone === 'lowPost' ? defender.defRim : defender.defPerimeter;
 
-  // Block check (only on interior or rim drives)
-  const blockChance = (zone === 'rim' ? 0.07 : zone === 'lowPost' ? 0.04 : 0.02) * (0.4 + 1.4 * defender.block);
+  // Block check (interior shots more likely; perimeter contests rarely turn into blocks).
+  // NBA target: 4.8 BLK / team-game ≈ 6% of shots blocked.
+  const blockChance = (zone === 'rim' ? 0.085 : zone === 'lowPost' ? 0.055 : 0.025)
+    * (0.5 + 1.5 * defender.block);
   if (Math.random() < blockChance) {
     return { made: false, pts: 0, blockerId: defender.id, fouled: false, ftAttempts: 0, ftMade: 0 };
   }

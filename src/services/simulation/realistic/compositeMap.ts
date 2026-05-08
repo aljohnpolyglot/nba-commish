@@ -40,7 +40,7 @@ export function buildComposite(p: Player, season: number): PlayerComposite {
     defPerimeter:  norm(0.50 * diq + 0.30 * spd  + 0.20 * stl),
     steal:         norm(0.80 * stl + 0.20 * diq),
     block:         norm(0.75 * blk + 0.25 * hgt),
-    rebound:       norm(0.70 * reb + 0.20 * hgt + 0.10 * stre),
+    rebound:       norm(0.55 * reb + 0.35 * hgt + 0.10 * stre),
     // Other
     usage:         norm(0.5 * (p.overallRating ?? 50) + 0.25 * fg + 0.15 * drb + 0.10 * oiq),
     endurance:     norm(endu),

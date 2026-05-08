@@ -12,6 +12,7 @@ import { RFAOfferSheetModal } from './components/modals/RFAOfferSheetModal';
 import { PlayButton } from './components/shared/PlayButton';
 import { OffseasonNextActionButton, OffseasonPhaseBadge, OffseasonAufgabenSidebar, OffseasonAufgabenMobileSheet, OffseasonFATagFooter } from './components/offseason/OffseasonAufgaben';
 import { LazySimLoadingScreen } from './components/setup/LazySimLoadingScreen';
+import { LeagueTypeSelector, type LeagueType } from './components/setup/LeagueTypeSelector';
 import { Menu, X } from 'lucide-react';
 import { SaveManager } from './services/SaveManager';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
@@ -30,7 +31,8 @@ import { prewarmRoster } from './services/rosterService';
 
 function GameLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [showSetup, setShowSetup] = useState(false);
+  const [setupPhase, setSetupPhase] = useState<null | 'leagueType' | 'commish'>(null);
+  const [leagueType, setLeagueType] = useState<LeagueType | null>(null);
   const [activeMiniGame, setActiveMiniGame] = useState<'throne' | 'dunk' | '3point' | null>(null);
   const { state, dispatchAction, currentView, setCurrentView } = useGame();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -125,13 +127,25 @@ function GameLayout() {
       );
     }
     
-    if (showSetup) {
-      return <CommissionerSetup 
+    if (setupPhase === 'leagueType') {
+      return <LeagueTypeSelector
+        onSelect={(type) => {
+          setLeagueType(type);
+          if (type === 'modded') prewarmRoster();
+          setSetupPhase('commish');
+        }}
+        onBack={() => { setSetupPhase(null); setLeagueType(null); }}
+      />;
+    }
+
+    if (setupPhase === 'commish' && leagueType) {
+      return <CommissionerSetup
+        leagueType={leagueType}
         onStart={(payload) => {
-          setShowSetup(false);
+          setSetupPhase(null);
           dispatchAction({ type: 'START_GAME', payload });
-        }} 
-        onBack={() => setShowSetup(false)}
+        }}
+        onBack={() => setSetupPhase('leagueType')}
       />;
     }
 
@@ -162,7 +176,7 @@ function GameLayout() {
         )}
         {!activeMiniGame && (
           <MainMenu
-            onStartNew={() => { prewarmRoster(); setShowSetup(true); }}
+            onStartNew={() => setSetupPhase('leagueType')}
             onLoadSave={(loadedState) => dispatchAction({ type: 'LOAD_GAME', payload: loadedState })}
             onPlayMiniGame={(game) => setActiveMiniGame(game)}
           />

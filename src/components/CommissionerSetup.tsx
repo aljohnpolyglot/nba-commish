@@ -5,6 +5,8 @@ import { SettingsManager } from '../services/SettingsManager';
 import { INITIAL_LEAGUE_STATS } from '../constants';
 import { getSeasonSimStartDate, toISODateString } from '../utils/dateUtils';
 import { prewarmRoster } from '../services/rosterService';
+import { generateFictionalLeague } from '../services/fictionalLeagueGenerator';
+import type { LeagueType } from './setup/LeagueTypeSelector';
 import { Home as FranchisePicker } from './central/view/TeamOffice/pages/Home';
 import type { NBAPlayer, NBATeam } from '../types';
 
@@ -13,6 +15,7 @@ import { StartDateTimeline } from './setup/StartDateTimeline';
 import { JumpReviewScreen } from './setup/JumpReviewScreen';
 
 interface CommissionerSetupProps {
+  leagueType: LeagueType;
   onStart: (payload: {
     name: string;
     startScenario: string;
@@ -22,13 +25,14 @@ interface CommissionerSetupProps {
     gameMode?: 'commissioner' | 'gm';
     userTeamId?: number;
     assistantGM?: boolean;
+    leagueType?: LeagueType;
   }) => void;
   onBack: () => void;
 }
 
 type Step = 'mode' | 'name' | 'franchise' | 'timeline' | 'review';
 
-export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, onBack }) => {
+export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType, onStart, onBack }) => {
   const [step, setStep] = useState<Step>('mode');
   const [gameMode, setGameMode] = useState<'commissioner' | 'gm'>('commissioner');
   // Keep undefined for GM mode — the user picks a team post-init via TeamOffice. No more "everyone is Atlanta".
@@ -38,13 +42,20 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, o
   const [showSettings, setShowSettings] = useState(true);
   const [settings, setSettings] = useState(() => SettingsManager.getSettings());
 
-  // Roster was prewarmed when the user clicked "New Game" from the main menu.
-  // Await it here so the franchise picker renders with real team data (logos, records, colors).
+  // Roster source depends on leagueType: modded fetches the community gist (real NBA),
+  // fictional builds the 30 generated teams locally without any network call.
   const [rosterTeams, setRosterTeams] = useState<NBATeam[]>([]);
   const [rosterPlayers, setRosterPlayers] = useState<NBAPlayer[]>([]);
   const [rosterLoading, setRosterLoading] = useState(true);
   useEffect(() => {
     let cancelled = false;
+    if (leagueType === 'fictional') {
+      const { teams, players } = generateFictionalLeague(INITIAL_LEAGUE_STATS.year);
+      setRosterTeams(teams);
+      setRosterPlayers(players);
+      setRosterLoading(false);
+      return;
+    }
     prewarmRoster().then(data => {
       if (cancelled) return;
       setRosterTeams(data.teams);
@@ -52,7 +63,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, o
       setRosterLoading(false);
     }).catch(() => { if (!cancelled) setRosterLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [leagueType]);
 
   const updateSetting = <K extends keyof typeof settings>(key: K, value: typeof settings[K]) => {
     const updated = { ...settings, [key]: value };
@@ -83,6 +94,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ onStart, o
       gameMode,
       userTeamId: gameMode === 'gm' ? userTeamId : undefined,
       assistantGM: gameMode === 'gm' ? (assistantGM ?? false) : false,
+      leagueType,
     });
   };
 

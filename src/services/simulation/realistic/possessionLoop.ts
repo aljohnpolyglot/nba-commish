@@ -82,12 +82,16 @@ export function simulateQuarter(
 }
 
 function pickRebounder(unit: OnCourt, _kind: 'orb' | 'drb') {
-  const total = unit.composites.reduce((s, c) => s + c.rebound, 0);
+  // Power-law on rebound composite so big men dominate the glass — linear
+  // weighting was distributing rebounds too evenly across all 5 on-court,
+  // letting guards collect ~3.5/g while bigs hit only 5/g (NBA C avg 6.3).
+  const weights = unit.composites.map(c => Math.pow(c.rebound, 2.2));
+  const total = weights.reduce((s, w) => s + w, 0);
   if (total <= 0) return unit.composites[0];
   let roll = Math.random() * total;
-  for (const c of unit.composites) {
-    roll -= c.rebound;
-    if (roll < 0) return c;
+  for (let i = 0; i < unit.composites.length; i++) {
+    roll -= weights[i];
+    if (roll < 0) return unit.composites[i];
   }
   return unit.composites[0];
 }

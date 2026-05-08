@@ -18,10 +18,14 @@ export function runPossession(offense: OnCourt, defense: OnCourt): PossessionEnd
 }
 
 function pickShooter(offense: OnCourt): { player: PlayerComposite; index: number } {
-  const totalUsage = offense.composites.reduce((s, c) => s + c.usage, 0);
-  let roll = Math.random() * totalUsage;
+  // Power-law on usage so stars (Doncic 38% USG) dominate touches the way
+  // they actually do — linear weighting only gave a 99-OVR star ~1.5x the
+  // touches of a 70-OVR role player, instead of the real 3x.
+  const weights = offense.composites.map(c => Math.pow(c.usage, 2.4));
+  const total = weights.reduce((s, w) => s + w, 0);
+  let roll = Math.random() * total;
   for (let i = 0; i < offense.composites.length; i++) {
-    roll -= offense.composites[i].usage;
+    roll -= weights[i];
     if (roll < 0) return { player: offense.composites[i], index: i };
   }
   return { player: offense.composites[0], index: 0 };
@@ -29,12 +33,15 @@ function pickShooter(offense: OnCourt): { player: PlayerComposite; index: number
 
 function pickAssister(offense: OnCourt, shooterIndex: number): PlayerComposite | undefined {
   const candidates = offense.composites.filter((_, i) => i !== shooterIndex);
-  const totalPass = candidates.reduce((s, c) => s + c.passing, 0);
-  if (totalPass <= 0) return undefined;
-  let roll = Math.random() * totalPass;
-  for (const c of candidates) {
-    roll -= c.passing;
-    if (roll < 0) return c;
+  // Power-law on passing so the lead playmaker (PG / point center) collects
+  // the lion's share of assists. NBA: top PG averages 8-10 APG, role players 1-2.
+  const weights = candidates.map(c => Math.pow(c.passing, 2.0));
+  const total = weights.reduce((s, w) => s + w, 0);
+  if (total <= 0) return undefined;
+  let roll = Math.random() * total;
+  for (let i = 0; i < candidates.length; i++) {
+    roll -= weights[i];
+    if (roll < 0) return candidates[i];
   }
   return candidates[0];
 }
@@ -44,11 +51,11 @@ function resolveShotAttempt(offense: OnCourt, defense: OnCourt): PossessionEnd {
   const zone = pickShotZone(shooter);
   const result = resolveShot(zone, shooter, defense);
 
-  // Assist rate ~58% on makes — gated by team passing.
+  // Assist rate target ~63.5% (NBA 2025-26: 26.7 AST / 42 FGM).
   let assisterId: string | undefined;
   if (result.made) {
     const teamPass = offense.composites.reduce((s, c) => s + c.passing, 0) / offense.composites.length;
-    const pAssist = 0.45 + 0.30 * teamPass;
+    const pAssist = 0.50 + 0.35 * teamPass; // 0.50–0.85 → ~0.65 league average
     if (Math.random() < pAssist) {
       const assister = pickAssister(offense, index);
       if (assister) assisterId = assister.id;
@@ -75,10 +82,10 @@ function resolveTurnover(offense: OnCourt, defense: OnCourt): PossessionEnd {
   const weights = offense.composites.map(c => 1 - 0.6 * c.passing);
   const offender = weightedPick(offense.composites, weights);
 
-  // ~50% of turnovers are steals
+  // NBA 2025-26: 8.4 STL / 14.5 TOV = 58% of turnovers are steals.
   let stealerId: string | undefined;
-  if (Math.random() < 0.5) {
-    const stealWeights = defense.composites.map(c => c.steal);
+  if (Math.random() < 0.58) {
+    const stealWeights = defense.composites.map(c => Math.pow(c.steal + 0.05, 1.8));
     stealerId = weightedPick(defense.composites, stealWeights).id;
   }
   return { kind: 'turnover', offenderId: offender.id, stealerId };
