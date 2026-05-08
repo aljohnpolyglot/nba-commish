@@ -51,25 +51,35 @@ function prepareUnit(
 }
 
 /**
- * Star-MPG calibration multiplier on per-minute advanced stats.
+ * Engine-share calibration multiplier on per-minute advanced stats.
  *
- * The realistic engine currently has no foul-out, fatigue, or minute-pressure
- * subs, so star-tier MPG runs ~2-3 minutes higher than real NBA. PER, BPM,
- * OBPM and DBPM are per-minute metrics, so those minutes spread the same
- * raw stats across more time → top-tier values land ~15-20% under benchmark
- * (Jokic PER 25.8 sim vs 32.3 real, BPM 11.8 vs 14.2).
+ * The realistic engine has no foul-out, fatigue, or minute-pressure subs yet
+ * (Phase 3), so per-minute advanced metrics (PER, BPM, OBPM, DBPM) compress
+ * 15-20% on the high-engagement tier vs real NBA (Jokic PER 25.8 sim vs 32.3,
+ * Tyler Herro / 6th-man tier ~14 sim vs ~17 real).
  *
- * Until Phase 3 lands, multiply per/bpm/obpm/dbpm by a mpg-scaled boost so
- * stars hit NBA-leader range without inflating role-player advanced stats.
- * Scaling: 0% boost at 25 MPG, capped at +22% for 35+ MPG players.
+ * Boost scales with both USG% (captures high-usage 6th men like Herro who
+ * play limited minutes but drive offense) and MPG (captures stars carrying
+ * full-game loads). Bench fillers and low-usage role players are untouched.
+ *
+ * Formula: 1 + max(0, usg - 18) × 0.012 + max(0, mpg - 22) × 0.008, cap 1.22.
+ *   Bench filler (14 mpg, 16 usg) : 1.000
+ *   Role player  (22 mpg, 20 usg) : 1.024
+ *   6th man      (22 mpg, 28 usg) : 1.120
+ *   Starter      (30 mpg, 24 usg) : 1.136
+ *   Star         (35 mpg, 30 usg) : 1.220 (cap)
+ *   Mega-star    (38 mpg, 38 usg) : 1.220 (cap)
  */
 function applyAdvanced(stats: PlayerGameStats[], adv: any[]): void {
   stats.forEach((s, i) => {
     Object.assign(s, adv[i]);
+    const sa = s as any;
     const mpg = s.min ?? 0;
-    if (mpg > 25) {
-      const boost = 1 + Math.min(0.22, (mpg - 25) * 0.022);
-      const sa = s as any;
+    const usg = sa.usgPct ?? 18;
+    const usgBoost = Math.max(0, usg - 18) * 0.012;
+    const mpgBoost = Math.max(0, mpg - 22) * 0.008;
+    const boost = 1 + Math.min(0.22, usgBoost + mpgBoost);
+    if (boost > 1) {
       if (typeof sa.per  === 'number') sa.per  *= boost;
       if (typeof sa.bpm  === 'number') sa.bpm  *= boost;
       if (typeof sa.obpm === 'number') sa.obpm *= boost;
