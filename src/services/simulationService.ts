@@ -1,6 +1,8 @@
 import { NBATeam, NBAPlayer, Game, HeadToHead, LeagueStats } from '../types';
 import { GameSimulator } from './simulation/GameSimulator';
 import { GameResult } from './simulation/StatGenerator';
+// Side-effect import: registers the realistic runner with SimulatorAdapter.
+import './simulation/realistic';
 
 const updateHeadToHead = (
     current: HeadToHead | undefined,

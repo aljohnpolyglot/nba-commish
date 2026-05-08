@@ -36,7 +36,14 @@ export const registerRealisticRunner = (runner: FastSimRunner) => {
 export const simulateGameViaAdapter = (args: SimulateGameArgs, fastRunner: FastSimRunner): GameResult => {
   const mode = getSimulatorMode();
   if (mode === 'realistic' && realisticRunner) {
-    return realisticRunner(args);
+    try {
+      return realisticRunner(args);
+    } catch (err) {
+      if (typeof console !== 'undefined') {
+        console.warn('[SimulatorAdapter] realistic engine failed, falling back to fast:', err);
+      }
+      return fastRunner(args);
+    }
   }
   return fastRunner(args);
 };
