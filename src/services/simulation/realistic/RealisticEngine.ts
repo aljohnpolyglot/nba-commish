@@ -50,6 +50,34 @@ function prepareUnit(
   return { rotation, minuteTargets: minutes, composites };
 }
 
+/**
+ * Star-MPG calibration multiplier on per-minute advanced stats.
+ *
+ * The realistic engine currently has no foul-out, fatigue, or minute-pressure
+ * subs, so star-tier MPG runs ~2-3 minutes higher than real NBA. PER, BPM,
+ * OBPM and DBPM are per-minute metrics, so those minutes spread the same
+ * raw stats across more time → top-tier values land ~15-20% under benchmark
+ * (Jokic PER 25.8 sim vs 32.3 real, BPM 11.8 vs 14.2).
+ *
+ * Until Phase 3 lands, multiply per/bpm/obpm/dbpm by a mpg-scaled boost so
+ * stars hit NBA-leader range without inflating role-player advanced stats.
+ * Scaling: 0% boost at 25 MPG, capped at +22% for 35+ MPG players.
+ */
+function applyAdvanced(stats: PlayerGameStats[], adv: any[]): void {
+  stats.forEach((s, i) => {
+    Object.assign(s, adv[i]);
+    const mpg = s.min ?? 0;
+    if (mpg > 25) {
+      const boost = 1 + Math.min(0.22, (mpg - 25) * 0.022);
+      const sa = s as any;
+      if (typeof sa.per  === 'number') sa.per  *= boost;
+      if (typeof sa.bpm  === 'number') sa.bpm  *= boost;
+      if (typeof sa.obpm === 'number') sa.obpm *= boost;
+      if (typeof sa.dbpm === 'number') sa.dbpm *= boost;
+    }
+  });
+}
+
 function pickTopFive(remaining: number[]): number[] {
   // Indices of 5 highest remaining (tie-break by lower index = starter preference).
   const indexed = remaining.map((m, i) => ({ m, i }));
@@ -153,8 +181,8 @@ export function simulateGameRealistic(args: SimulateGameArgs): GameResult {
   const awayPm = awayStats.map(s => s.pm ?? 0);
   const homeAdv = StatGenerator.generateAdvancedStats(homeStats, awayStats, homePm);
   const awayAdv = StatGenerator.generateAdvancedStats(awayStats, homeStats, awayPm);
-  homeStats.forEach((s, i) => Object.assign(s, homeAdv[i]));
-  awayStats.forEach((s, i) => Object.assign(s, awayAdv[i]));
+  applyAdvanced(homeStats, homeAdv);
+  applyAdvanced(awayStats, awayAdv);
 
   const winnerId = homeScore > awayScore ? args.homeTeam.id : args.awayTeam.id;
   const lead = Math.abs(homeScore - awayScore);
