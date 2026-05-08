@@ -299,25 +299,55 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
         for (const s of (box.homeStats ?? [])) {
           const k = statKey(s.playerId, box.homeTeamId, isPlayoff);
           if (!boxMap.has(k)) boxMap.set(k, []);
-          boxMap.get(k)!.push(s);
+          boxMap.get(k)!.push({ ...s, __gameId: box.gameId });
         }
         for (const s of (box.awayStats ?? [])) {
           const k = statKey(s.playerId, box.awayTeamId, isPlayoff);
           if (!boxMap.has(k)) boxMap.set(k, []);
-          boxMap.get(k)!.push(s);
+          boxMap.get(k)!.push({ ...s, __gameId: box.gameId });
         }
       }
 
       let rebuiltRows = 0;
+      let dedupedRows = 0;
       const updatedPlayers = state.players.map(p => {
         if (!(p as any).stats?.length) return p;
         let changed = false;
-        const stats = ((p as any).stats as any[]).map((row: any) => {
-          if (row.season !== currentYear) return row;
+        const existingStats = (p as any).stats as any[];
+        const preserved = existingStats.filter((row: any) => row.season !== currentYear);
+        const currentRows = existingStats.filter((row: any) => row.season === currentYear);
+        const grouped = new Map<string, any[]>();
+        for (const row of currentRows) {
+          const k = `${row.tid}|${row.playoffs ? 1 : 0}`;
+          if (!grouped.has(k)) grouped.set(k, []);
+          grouped.get(k)!.push(row);
+        }
+        const rebuiltCurrent: any[] = [];
+
+        for (const rows of grouped.values()) {
+          const row = rows[0];
+          if (rows.length > 1) {
+            dedupedRows += rows.length - 1;
+            changed = true;
+          }
+
           const playoffs = !!row.playoffs;
           const k = statKey((p as any).internalId, row.tid, playoffs);
-          const lines = boxMap.get(k);
-          if (!lines?.length) return row;
+          const rawLines = boxMap.get(k);
+          const lines = rawLines
+            ? (() => {
+                const byGameId = new Map<any, any>();
+                rawLines.forEach((line: any, idx: number) => {
+                  const gid = line.__gameId ?? `no-gid-${idx}`;
+                  if (!byGameId.has(gid)) byGameId.set(gid, line);
+                });
+                return Array.from(byGameId.values());
+              })()
+            : undefined;
+          if (!lines?.length) {
+            rebuiltCurrent.push(row);
+            continue;
+          }
 
           const next = { ...row };
           next.gp = 0; next.gs = 0; next.min = 0;
@@ -396,8 +426,10 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
 
           rebuiltRows++;
           changed = true;
-          return next;
-        });
+          rebuiltCurrent.push(next);
+        }
+
+        const stats = [...preserved, ...rebuiltCurrent];
         return changed ? { ...p, stats } : p;
       });
 
@@ -407,8 +439,8 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
 
       const patched = { ...state, players: updatedPlayers } as any;
       await dispatchAction({ type: 'LOAD_GAME', payload: patched } as any);
-      console.log(`✅ RESTOREPER: rebuilt ${rebuiltRows} player season rows from boxScores (${currentYear})`);
-      return { title: 'RESTOREPER', body: `Rebuilt ${rebuiltRows} current-season rows from boxScores. Save to persist.`, ok: true };
+      console.log(`✅ RESTOREPER: rebuilt ${rebuiltRows} player season rows from boxScores (${currentYear}), removed ${dedupedRows} duplicate rows`);
+      return { title: 'RESTOREPER', body: `Rebuilt ${rebuiltRows} current-season rows and removed ${dedupedRows} duplicate rows. Save to persist.`, ok: true };
     }
 
     case 'HELP':

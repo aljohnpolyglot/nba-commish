@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { ArrowRightLeft, Calendar, Info, Search, Filter, UserCheck, UserX, AlertTriangle, Users, ChevronLeft, ChevronRight, Sunset, TrendingDown, TrendingUp, Trophy, CheckCircle } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -100,16 +100,15 @@ export const TransactionsView: React.FC = () => {
   const [filterTeam, setFilterTeam] = React.useState('');
   const [filterMonth, setFilterMonth] = React.useState('');
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [selectedYear, setSelectedYear] = React.useState<number>(() => state.leagueStats?.year ?? 2026);
+  const [selectedYear, setSelectedYear] = React.useState<number>(() => state.leagueStats?.year ?? new Date().getFullYear());
   // Sync to league year when it advances (e.g. after season rollover) so offseason signings stay visible
   React.useEffect(() => {
-    setSelectedYear(state.leagueStats?.year ?? 2026);
+    setSelectedYear(state.leagueStats?.year ?? new Date().getFullYear());
   }, [state.leagueStats?.year]);
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
   const [selectedTrade, setSelectedTrade] = useState<{ text: string; date: string; legs?: { text: string; date: string }[] } | null>(null);
   const [page, setPage] = useState(1);
-  const loaderRef = useRef<HTMLDivElement>(null);
-  const PAGE_SIZE = 30;
+  const [itemsPerPage, setItemsPerPage] = useState(30);
 
   // Collect all unique season years that have transaction-type entries
   const availableYears = useMemo(() => {
@@ -277,22 +276,11 @@ export const TransactionsView: React.FC = () => {
     return result;
   }, [filteredHistory]);
 
-  const visibleItems = displayItems.slice(0, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(displayItems.length / itemsPerPage));
+  const visibleItems = displayItems.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   // Reset page on filter changes
-  useEffect(() => { setPage(1); }, [filterLeague, filterType, filterTeam, filterMonth, searchQuery, selectedYear]);
-
-  // Infinite scroll sentinel
-  useEffect(() => {
-    const el = loaderRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      entries => { if (entries[0].isIntersecting) setPage(p => p + 1); },
-      { threshold: 0, rootMargin: '0px 0px 400px 0px' },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [visibleItems.length, displayItems.length]);
+  useEffect(() => { setPage(1); }, [filterLeague, filterType, filterTeam, filterMonth, searchQuery, selectedYear, itemsPerPage]);
 
   if (selectedTrade) {
     return <TradeDetailView entry={selectedTrade} legs={selectedTrade.legs} onBack={() => setSelectedTrade(null)} />;
@@ -603,11 +591,46 @@ export const TransactionsView: React.FC = () => {
               <p className="text-sm">Try adjusting your search or filter criteria.</p>
             </div>
           )}
-          {visibleItems.length < displayItems.length && (
-            <div ref={loaderRef} className="h-16" />
-          )}
         </div>
       </div>
+
+      {/* Pagination */}
+      {displayItems.length > 0 && (
+        <div className="flex-shrink-0 bg-slate-900/50 border-t border-slate-800 p-3 sm:p-4 flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold hidden sm:inline-block">Show</span>
+            <select
+              className="bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-md px-2 py-1 outline-none appearance-none text-center"
+              value={itemsPerPage}
+              onChange={e => { setItemsPerPage(Number(e.target.value)); setPage(1); }}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center flex-1">
+            Page {page} <span className="text-slate-600">of</span> {totalPages}
+            <span className="hidden sm:inline"> • {displayItems.length} Results</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              className="px-3 sm:px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-slate-800 border border-slate-700 text-white rounded-full hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              Prev
+            </button>
+            <button
+              className="px-3 sm:px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-slate-800 border border-slate-700 text-white rounded-full hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -622,14 +645,13 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
   const { state } = useGame();
   const [searchQuery, setSearchQuery]   = useState('');
   const [filterType,  setFilterType]    = useState('');
-  const [selectedYear, setSelectedYear] = useState<number>(() => state.leagueStats?.year ?? 2026);
+  const [selectedYear, setSelectedYear] = useState<number>(() => state.leagueStats?.year ?? new Date().getFullYear());
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
   const [selectedTrade, setSelectedTrade] = useState<{ text: string; date: string; legs?: { text: string; date: string }[] } | null>(null);
   const [page, setPage] = useState(1);
-  const loaderRef = useRef<HTMLDivElement>(null);
-  const PAGE_SIZE = 30;
+  const [itemsPerPage, setItemsPerPage] = useState(30);
   // Sync year when season advances
-  React.useEffect(() => { setSelectedYear(state.leagueStats?.year ?? 2026); }, [state.leagueStats?.year]);
+  React.useEffect(() => { setSelectedYear(state.leagueStats?.year ?? new Date().getFullYear()); }, [state.leagueStats?.year]);
 
   const playerByName = useMemo(() => {
     const map = new Map<string, typeof state.players[0]>();
@@ -724,20 +746,10 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
     return result;
   }, [filteredHistory]);
 
-  const visibleItems = displayItems.slice(0, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(displayItems.length / itemsPerPage));
+  const visibleItems = displayItems.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
-  useEffect(() => { setPage(1); }, [searchQuery, filterType, selectedYear, team.id]);
-
-  useEffect(() => {
-    const el = loaderRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      entries => { if (entries[0].isIntersecting) setPage(p => p + 1); },
-      { threshold: 0, rootMargin: '0px 0px 400px 0px' },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [visibleItems.length, displayItems.length]);
+  useEffect(() => { setPage(1); }, [searchQuery, filterType, selectedYear, team.id, itemsPerPage]);
 
   if (selectedTrade) return <TradeDetailView entry={selectedTrade} legs={selectedTrade.legs} onBack={() => setSelectedTrade(null)} />;
   if (viewingPlayer)  return <PlayerBioView  player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
@@ -881,10 +893,44 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
             <p className="text-sm font-medium">No transactions found for {team.name}</p>
           </div>
         )}
-        {visibleItems.length < displayItems.length && (
-          <div ref={loaderRef} className="h-16" />
-        )}
       </div>
+
+      {/* Pagination */}
+      {displayItems.length > 0 && (
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-800/50">
+          <div className="flex items-center gap-2">
+            <select
+              className="bg-slate-900 border border-slate-800 text-white text-[10px] font-bold rounded px-2 py-1 outline-none appearance-none text-center"
+              value={itemsPerPage}
+              onChange={e => { setItemsPerPage(Number(e.target.value)); setPage(1); }}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center flex-1">
+            Page {page} <span className="text-slate-600">of</span> {totalPages}
+            <span className="hidden sm:inline"> • {displayItems.length}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest bg-slate-900 border border-slate-800 text-white rounded hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              Prev
+            </button>
+            <button
+              className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest bg-slate-900 border border-slate-800 text-white rounded hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

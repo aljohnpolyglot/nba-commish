@@ -1,10 +1,3 @@
-/**
- * tradeValueEngine.ts
- *
- * Pure trade-value calculation functions — no React, no game state.
- * Used by TradeFinderView and AITradeHandler for consistent valuations.
- */
-
 import type { NBAPlayer, DraftPick, LeagueStats } from '../../types';
 import { convertTo2KRating } from '../../utils/helpers';
 import { getPlayerInjuryProfile } from '../../data/playerInjuryData';
@@ -18,8 +11,17 @@ export type TeamMode = 'contend' | 'rebuild' | 'presti';
 // ── Untouchable / Trading Block classification ──────────────────────────────
 // Used by AI trades, TradeFinder, and TradingBlock UI for consistent behavior.
 
-/** Check if a player is untouchable (should NOT be included in trade offers). */
-export function isUntouchable(player: NBAPlayer, mode: TeamMode, currentYear: number): boolean {
+/** Check if a player is untouchable (should NOT be included in trade offers).
+ *  `mvpRank` (player.internalId → 1-based MVP-race rank) flags top-30 MVP
+ *  candidates as franchise pieces — top-10 are off-limits in any mode, top-30
+ *  are off-limits for contenders. Rebuilders may still consider trading a
+ *  top-30 vet if they're pivoting timelines. */
+export function isUntouchable(
+  player: NBAPlayer,
+  mode: TeamMode,
+  currentYear: number,
+  mvpRank?: Map<string, number>,
+): boolean {
   const ovr = calcOvr2K(player);
   const pot = calcPot2K(player, currentYear);
   const age = player.born?.year ? currentYear - player.born.year : (player.age ?? 27);
@@ -28,6 +30,14 @@ export function isUntouchable(player: NBAPlayer, mode: TeamMode, currentYear: nu
   // Count distinct seasons so split/duplicate stat rows do not make 5-year
   // players look like Curry/Dirk/Duncan lifers.
   if (isFranchiseLifer(player)) return true;
+
+  // MVP-race protection: real GMs do not part with a top-MVP candidate at fair
+  // value. Top-10 untouchable globally, top-30 untouchable for contenders.
+  const rank = mvpRank?.get(player.internalId);
+  if (rank !== undefined) {
+    if (rank <= 10) return true;
+    if (mode === 'contend' && rank <= 30) return true;
+  }
 
   if (mode === 'contend') return ovr >= 82;             // core rotation pieces
   if (mode === 'rebuild' || mode === 'presti') return age < 25 && pot >= 85;  // young + high ceiling
@@ -103,8 +113,9 @@ export function isOnTradingBlock(
   mode: TeamMode,
   currentYear: number,
   isPostDeadlinePreFA: boolean = false,
+  mvpRank?: Map<string, number>,
 ): boolean {
-  if (isUntouchable(player, mode, currentYear)) return false;
+  if (isUntouchable(player, mode, currentYear, mvpRank)) return false;
   // Walking expirings come off the block — nobody's acquiring a player who'll
   // be a free agent in days. Caller decides if we're in the dead window.
   if (isWalkingExpiring(player, currentYear, isPostDeadlinePreFA)) return false;
@@ -140,6 +151,11 @@ export function calcPot2K(player: NBAPlayer, currentYear: number): number {
 export interface TVContext {
   leaguePerAvg: number;
   isRegularSeason: boolean;
+  /** Optional: player.internalId → 1-based MVP-race rank (lower = better).
+   *  When present, calcPlayerTV applies a tiered premium and isUntouchable
+   *  treats top-30 MVP candidates as franchise pieces. Built once per turn
+   *  via AwardService.calculateMVPRankings. */
+  mvpRank?: Map<string, number>;
 }
 
 /** League-average PER across qualified regular-season players this season.
@@ -268,6 +284,20 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
     else if (durability < 75)  val = Math.round(val * 0.93);
   }
 
+  // MVP-race premium — Luka/Joker/SGA-tier guys do not move at fair OVR/POT
+  // value in real life. Tiered so the top three command a true franchise tax,
+  // top-10 still get a heavy premium, and the back of the top-30 gets a nudge.
+  // Only applied when caller passes mvpRank (built from AwardService.calculateMVPRankings).
+  const rank = ctx?.mvpRank?.get(player.internalId);
+  if (rank !== undefined) {
+    const mvpMult =
+      rank <= 3  ? 1.50 :  // Luka / Jokić / SGA tier
+      rank <= 10 ? 1.32 :  // MVP fringe / All-NBA 1st team
+      rank <= 20 ? 1.18 :  // All-NBA 2nd-3rd team anchors
+                   1.10;   // 21-30: high-end All-Stars
+    val = Math.round(val * mvpMult);
+  }
+
   return Math.max(0, val);
 }
 
@@ -359,15 +389,16 @@ export interface PickValueContext {
 }
 
 export function getPickTV(
-  pick: { round: number; season: number; tid: number },
+  pick: { round: number; season: number; originalTid: number },
   ctx: PickValueContext,
 ): number {
   const yearsFromNow = Math.max(1, pick.season - ctx.currentYear);
-  const rank = ctx.powerRanks.get(pick.tid) ?? Math.ceil(ctx.totalTeams / 2);
+  // Pick value follows ORIGINAL owner's record, not the current holder's.
+  const rank = ctx.powerRanks.get(pick.originalTid) ?? Math.ceil(ctx.totalTeams / 2);
   const classStrength = ctx.classStrengthByYear?.get(pick.season) ?? 1.0;
   // Lottery slot applies ONLY for current-year round-1 picks whose owner is in the lottery.
   const actualSlot = pick.round === 1 && pick.season === ctx.currentYear
-    ? ctx.lotterySlotByTid?.get(pick.tid)
+    ? ctx.lotterySlotByTid?.get(pick.originalTid)
     : undefined;
   return calcPickTV(pick.round, rank, ctx.totalTeams, yearsFromNow, { classStrength, actualSlot });
 }
@@ -470,6 +501,7 @@ export function autoBalance(
     classStrengthByYear?: Map<number, number>;
     lotterySlotByTid?: Map<number, number>;
   },
+  tvCtx?: TVContext,
 ): AutoBalanceResult {
   const valA = basketA.reduce((s, i) => s + i.val, 0);
   const valB = basketB.reduce((s, i) => s + i.val, 0);
@@ -489,8 +521,8 @@ export function autoBalance(
 
   // 1. Find a player to fill the gap (exclude untouchables — they're off-limits)
   const available = players
-    .filter(p => p.tid === targetTid && !usedIds.has(p.internalId) && !isUntouchable(p, modeWeak, currentYear))
-    .map(p => ({ ...p, tv: calcPlayerTV(p, modeWeak, currentYear) }))
+    .filter(p => p.tid === targetTid && !usedIds.has(p.internalId) && !isUntouchable(p, modeWeak, currentYear, tvCtx?.mvpRank))
+    .map(p => ({ ...p, tv: calcPlayerTV(p, modeWeak, currentYear, tvCtx) }))
     .filter(p => p.tv > 0 && p.tv <= gap * 1.8)
     .sort((a, b) => Math.abs(a.tv - gap) - Math.abs(b.tv - gap));
 
@@ -507,35 +539,28 @@ export function autoBalance(
 
   const classStrengthByYear = pickValueInputs?.classStrengthByYear;
   const lotterySlotByTid = pickValueInputs?.lotterySlotByTid;
-  const pickOpts = (pk: DraftPick) => ({
-    classStrength: classStrengthByYear?.get(pk.season) ?? 1.0,
-    actualSlot: pk.round === 1 && pk.season === currentYear
-      ? lotterySlotByTid?.get(pk.originalTid)
-      : undefined,
-  });
-
-  // Pick value follows ORIGINAL owner's record, not the current holder's.
-  const fallbackRank = teamPowerRanks.get(targetTid) ?? Math.ceil(totalTeams / 2);
-  const rankForPick = (originalTid: number) =>
-    teamPowerRanks.get(originalTid) ?? fallbackRank;
+  const pickCtx: PickValueContext = {
+    currentYear,
+    totalTeams,
+    powerRanks: teamPowerRanks,
+    classStrengthByYear,
+    lotterySlotByTid,
+  };
 
   let picksAdded = 0;
   let safety = 0;
   while (gap > 2 && safety++ < 10 && picksAdded < 4) {
     const nextPick = availPicks[0];
-    const yearsFromNow = Math.max(1, (nextPick?.season ?? currentYear + 1) - currentYear);
-    const peekRank = nextPick ? rankForPick(nextPick.originalTid) : fallbackRank;
-    const peekOpts = nextPick ? pickOpts(nextPick) : undefined;
-    const pickVal = calcPickTV(1, peekRank, totalTeams, yearsFromNow, peekOpts);
+    const peekR1 = { round: 1, season: nextPick?.season ?? currentYear + 1, originalTid: nextPick?.originalTid ?? targetTid };
+    const pickVal = getPickTV(peekR1, pickCtx);
     if (pickVal > gap + 12) break;
 
     const pick = availPicks.shift();
     if (!pick) {
-      // Use generic future pick if no real pick available
       targetBasket.push({ id: `genpick-${safety}`, type: 'pick', label: `${currentYear + 1} 1st Round`, val: Math.min(gap, 11) });
       gap -= Math.min(gap, 11);
     } else {
-      const val = calcPickTV(pick.round, rankForPick(pick.originalTid), totalTeams, pick.season - currentYear, pickOpts(pick));
+      const val = getPickTV(pick, pickCtx);
       targetBasket.push({
         id: String(pick.dpid),
         type: 'pick',

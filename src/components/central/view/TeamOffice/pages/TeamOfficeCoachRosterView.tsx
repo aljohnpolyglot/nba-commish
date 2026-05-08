@@ -86,7 +86,7 @@ interface Props {
 export function TeamOfficeCoachRosterView({ teamId }: Props) {
   const { state } = useGame();
   const quick = usePlayerQuickActions();
-  const currentYear = state.leagueStats?.year ?? 2026;
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
 
   const team = state.teams.find(t => t.id === teamId);
   const teamColor = team?.colors?.[0] ?? '#1a1a2e';

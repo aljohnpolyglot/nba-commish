@@ -203,5 +203,17 @@ export function useExpiringResignGate(options: ExpiringResignGateOptions = {}) {
     </>
   );
 
-  return { attempt, modal, isBlocked: rows.length > 0 };
+  // Manual open path — for callers that want to surface the resign modal as a
+  // standalone task entry (e.g. the offseason AUFGABEN sidebar's My FAs row),
+  // not as a pre-sim gate. Doesn't set pendingRef → no callback fires on close.
+  const forceOpen = () => setOpen(true);
+
+  return {
+    attempt,
+    modal,
+    isBlocked: rows.length > 0,
+    forceOpen,
+    isOpen: open,
+    hasRows: rows.length > 0,
+  };
 }

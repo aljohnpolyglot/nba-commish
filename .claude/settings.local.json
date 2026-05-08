@@ -106,7 +106,23 @@
       "Bash(awk '/LOAD_GAME/{found=1} found{print; if \\(/return;/\\) exit}')",
       "Bash(Get-Content TEAM_TRAINING_PLAN.md)",
       "Bash(Select-Object -Last 80)",
-      "PowerShell(git *)"
+      "PowerShell(git *)",
+      "Bash(Find C:\\\\Users\\\\user-MSI\\\\Downloads\\\\nba-commish\\\\src\\\\services\\\\simulation *)",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(awk 'NR>=950 && NR<=1010' src/store/GameContext.tsx)",
+      "Bash(npx --no-install tsc --noEmit -p .)",
+      "Bash(tee /tmp/tsc.log)",
+      "Bash(node_modules/.bin/tsc --noEmit -p .)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(dir /b *.md)",
+      "Bash(cmd /c \"dir /b *.md\")",
+      "Bash(cmd /c \"type CHANGELOG.md | find /c /v \"\"\")",
+      "Bash(echo.)",
+      "Bash(cmd /c \"type README.md | find /c /v \"\"\"\")",
+      "Bash(gh repo *)",
+      "Bash(npx --no-install tsc --noEmit)"
     ]
   }
 }

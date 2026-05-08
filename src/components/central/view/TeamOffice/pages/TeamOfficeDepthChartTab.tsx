@@ -47,7 +47,7 @@ function isInjured(p: NBAPlayer): boolean {
 export function TeamOfficeDepthChartTab({ teamId }: Props) {
   const { state } = useGame();
   const team = state.teams.find(t => t.id === teamId);
-  const season = state.leagueStats?.year ?? 2026;
+  const season = state.leagueStats?.year ?? new Date().getFullYear();
 
   const { starters, bench, thirdUnit, reserves, injured } = useMemo(() => {
     if (!team) return { starters: [] as NBAPlayer[], bench: [] as NBAPlayer[], thirdUnit: [] as NBAPlayer[], reserves: [] as NBAPlayer[], injured: [] as NBAPlayer[] };

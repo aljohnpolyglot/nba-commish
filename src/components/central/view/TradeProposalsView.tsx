@@ -30,6 +30,7 @@ import {
 } from '../../../utils/salaryUtils';
 import { getGameDateParts } from '../../../utils/dateUtils';
 import { tradeRoleToTeamMode } from '../../../utils/teamStrategy';
+import { AwardService } from '../../../services/logic/AwardService';
 
 // ── Status tab pill ──────────────────────────────────────────────────────────
 
@@ -145,6 +146,7 @@ export const TradeProposalsView: React.FC = () => {
 
   const userTid = (state as any).userTeamId;
   const [statusFilter, setStatusFilter] = React.useState<TradeProposal['status'] | ''>('');
+  const [legalOnly, setLegalOnly] = React.useState<boolean>(false);
   const [manageProposal, setManageProposal] = React.useState<TradeProposal | null>(null);
 
   const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
@@ -184,13 +186,23 @@ export const TradeProposalsView: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [players]);
 
+  // Top-30 MVP-race rank for the franchise-tier TV premium.
+  const mvpRank = useMemo(() => {
+    const top30 = AwardService.calculateMVPRankings(players, teams, currentYear, 30);
+    const map = new Map<string, number>();
+    top30.forEach((c, i) => map.set(c.player.internalId, i + 1));
+    return map;
+  }, [players, teams, currentYear]);
   // PER context for in-season TV adjustments inside the card helper.
-  const tvContext: TVContext | undefined = useMemo(() => {
+  const tvContext: TVContext = useMemo(() => {
     const month = state.date ? getGameDateParts(state.date).month : 0;
     const isRegularSeason = (month >= 10 && month <= 12) || (month >= 1 && month <= 4);
-    if (!isRegularSeason) return undefined;
-    return { leaguePerAvg: computeLeaguePerAvg(players, currentYear), isRegularSeason: true };
-  }, [players, currentYear, state.date]);
+    return {
+      leaguePerAvg: isRegularSeason ? computeLeaguePerAvg(players, currentYear) : 15,
+      isRegularSeason,
+      mvpRank,
+    };
+  }, [players, currentYear, state.date, mvpRank]);
 
   // Dynamic pick valuation inputs.
   const classStrengthByYear = useMemo(
@@ -253,12 +265,14 @@ export const TradeProposalsView: React.FC = () => {
     (state.tradeProposals ?? []).filter(p => p.receivingTeamId === userTid && !p.isAIvsAI && p.status !== 'expired'),
   [state.tradeProposals, userTid]);
 
-  const filtered = statusFilter ? proposals.filter(p => p.status === statusFilter) : proposals;
+  const statusFiltered = statusFilter ? proposals.filter(p => p.status === statusFilter) : proposals;
+  const filtered = legalOnly ? statusFiltered.filter(p => p.cbaValid !== false) : statusFiltered;
 
   const counts = {
     pending:  proposals.filter(p => p.status === 'pending').length,
     accepted: proposals.filter(p => p.status === 'accepted').length,
     rejected: proposals.filter(p => p.status === 'rejected').length,
+    illegal:  proposals.filter(p => p.cbaValid === false).length,
   };
 
   const handleReject = (proposal: TradeProposal) => {
@@ -300,7 +314,7 @@ export const TradeProposalsView: React.FC = () => {
         </div>
 
         {/* Status filter tabs */}
-        <div className="flex gap-2 mt-4 flex-wrap">
+        <div className="flex gap-2 mt-4 flex-wrap items-center">
           {[
             ['',        'All',       proposals.length],
             ['pending', 'Pending',   counts.pending],
@@ -319,6 +333,18 @@ export const TradeProposalsView: React.FC = () => {
               {label as string} <span className="opacity-60 ml-1">{count as number}</span>
             </button>
           ))}
+          <div className="w-px h-4 bg-slate-700 mx-1" />
+          <button
+            onClick={() => setLegalOnly(v => !v)}
+            title={legalOnly ? 'Showing only CBA-legal trades' : 'Showing all trades incl. those needing minor cap adjustments'}
+            className={`px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest transition-all ${
+              legalOnly
+                ? 'bg-emerald-600 border-emerald-500 text-white'
+                : 'bg-white/3 border-white/10 text-slate-400 hover:border-white/20 hover:text-white'
+            }`}
+          >
+            Legal only <span className="opacity-60 ml-1">{counts.illegal > 0 ? `−${counts.illegal}` : '·'}</span>
+          </button>
         </div>
       </div>
 
@@ -353,6 +379,16 @@ export const TradeProposalsView: React.FC = () => {
                     <div className={`absolute top-2 right-2 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-widest ${STATUS_META[proposal.status as keyof typeof STATUS_META]?.cls ?? ''}`}>
                       {STATUS_META[proposal.status as keyof typeof STATUS_META]?.icon}
                       {STATUS_META[proposal.status as keyof typeof STATUS_META]?.label}
+                    </div>
+                  )}
+                  {/* CBA-illegal badge — keeps proposal visible (player IS available),
+                      but flags the cap/Stepien/moratorium adjustment needed. */}
+                  {proposal.cbaValid === false && (
+                    <div
+                      className="absolute top-2 left-2 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-widest bg-amber-500/15 text-amber-400 border-amber-500/40"
+                      title={proposal.cbaReason ?? 'CBA rule violation'}
+                    >
+                      Needs Adjust
                     </div>
                   )}
                   <OfferCard

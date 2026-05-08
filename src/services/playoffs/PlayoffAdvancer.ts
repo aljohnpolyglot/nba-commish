@@ -268,7 +268,7 @@ export class PlayoffAdvancer {
   private static getLastGameDate(schedule: Game[], newGames: Game[], series: PlayoffSeries[], seasonYear?: number): Date {
     const allGameIds = new Set(series.flatMap(s => s.gameIds));
     const allGames = [...schedule, ...newGames].filter(g => allGameIds.has(g.gid));
-    if (allGames.length === 0) return new Date(`${seasonYear ?? 2026}-04-18T00:00:00Z`);
+    if (allGames.length === 0) return new Date(`${seasonYear ?? new Date().getFullYear()}-04-18T00:00:00Z`);
     const dates = allGames.map(g => new Date(g.date).getTime());
     return new Date(Math.max(...dates));
   }

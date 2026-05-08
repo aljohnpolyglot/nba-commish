@@ -86,6 +86,24 @@ type LeagueStatsLike = {
   numGamesPlayoffSeries?: number[];
 };
 
+/** Pick the right "draft season" — Jan-Jun is the upcoming draft (ls.year),
+ *  Jul-Dec is the previous draft (ls.year was already rolled, so the last
+ *  draft happened in the calendar year of `current`). */
+export function computeDraftSeasonYear(cMonth: number, cYear: number, lsYear: number): number {
+  return cMonth >= 7 ? cYear : lsYear;
+}
+
+/** Training camp + opening night anchor on the NEXT upcoming season, not the
+ *  camp/opener that's already past. BBGM convention: seasonYear = season-end
+ *  year, helpers return Oct/Sept of seasonYear-1.
+ *  Pre-rollover (Jan-Jun, lsYear=cYear): next camp = fall cYear = season ending lsYear+1.
+ *  Post-rollover (Jul-Dec, lsYear=cYear+1): next camp = fall cYear = season ending lsYear.
+ *  Without this guard, on Jun 26 2026 (lsYear=2026), getTrainingCampDate(2026)
+ *  returned Sept 29 2025 → cascade fell through to 'preCamp' on draft day. */
+export function computeUpcomingSeasonYear(cMonth: number, lsYear: number): number {
+  return cMonth >= 7 ? lsYear : lsYear + 1;
+}
+
 /** Derive the current offseason phase. Behavior-preserving — no side effects.
  *
  *  All boundary dates come from existing `dateUtils` helpers so this matches
@@ -104,17 +122,15 @@ export function getOffseasonState(
   const cMonth = c.getUTCMonth() + 1;
   const cYear = c.getUTCFullYear();
 
-  // Pick the right "draft season" — Jan-Jun is the upcoming draft (ls.year),
-  // Jul-Dec is the previous draft (ls.year was already rolled, so the last
-  // draft happened in the calendar year of `current`).
   const lsYear = ls.year ?? cYear;
-  const draftSeasonYear = cMonth >= 7 ? cYear : lsYear;
+  const draftSeasonYear = computeDraftSeasonYear(cMonth, cYear, lsYear);
 
   const draftDate = getDraftDate(draftSeasonYear, ls);
   const effectiveFAStart = getCurrentOffseasonEffectiveFAStart(c, ls, schedule);
   const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(c, ls, schedule);
-  const trainingCamp = getTrainingCampDate(lsYear, ls);
-  const openingNight = getOpeningNightDate(lsYear);
+  const upcomingSeasonYear = computeUpcomingSeasonYear(cMonth, lsYear);
+  const trainingCamp = getTrainingCampDate(upcomingSeasonYear, ls);
+  const openingNight = getOpeningNightDate(upcomingSeasonYear);
 
   const dateStr = toISODateString(c);
   const draftDateStr = toISODateString(draftDate);
@@ -209,25 +225,27 @@ export function logOffseasonDrift(
   return true;
 }
 
-/** Reset throttle state — exposed for tests, not used in production paths. */
-export function _resetDriftThrottle(): void {
-  lastWarnedAt.clear();
-}
-
 // ─── 2K-style checklist helpers (Phase A foundation) ───────────────────────
 // Pure utilities for the AUFGABEN sidebar. Co-located here so all offseason
 // metadata lives in one folder — no new files (keeps the tree uncluttered).
 
 import type { OffseasonChecklist, OffseasonChecklistRow, OffseasonRowStatus, Tab } from '../../types';
 
-/** Visual order of the checklist sidebar (matches NBA 2K MyGM "Aufgaben"). */
+/** Visual order of the checklist sidebar — strict real-NBA chronology so
+ *  the user reads tasks in the order they actually fire on the calendar:
+ *  Lottery (May 14) → Draft (Jun 26) → Rookie Contracts (Jun 27+) →
+ *  Options (Jun 29 deadline) → QO (Jun 29 deadline) → My FAs (~Jun 30 review)
+ *  → FA (Jul 1) → Training Camp (Sept 29).
+ *
+ *  Note: real NBA team/player option deadlines are JUN 29 — three days AFTER
+ *  the draft, not before. Putting options before draft was incorrect. */
 export const OFFSEASON_ROW_ORDER: readonly OffseasonChecklistRow[] = [
   'draftLottery',
+  'draft',
+  'rookieContracts',
   'options',
   'qualifyingOffers',
   'myFAs',
-  'draft',
-  'rookieContracts',
   'freeAgency',
   'trainingCamp',
 ] as const;
@@ -280,12 +298,50 @@ export function defaultOffseasonChecklist(): OffseasonChecklist {
   };
 }
 
-/** First non-completed row. Drives the header CTA's label. Null = all done. */
-export function firstUnfinishedRow(checklist: OffseasonChecklist | undefined): OffseasonChecklistRow | null {
+/** Initial-start checklist — only Training Camp is actionable. The lottery,
+ *  draft, FA, options, QO, my-FAs, and rookie contracts already happened in
+ *  real life before the BBGM roster snapshot, so they're marked skipped on
+ *  first preseason load. After the first in-sim Finals + rollover, the next
+ *  offseason auto-inits with the full default checklist. */
+export function initialPreseasonChecklist(): OffseasonChecklist {
+  return {
+    draftLottery:     'skipped',
+    options:          'skipped',
+    qualifyingOffers: 'skipped',
+    myFAs:            'skipped',
+    draft:            'skipped',
+    rookieContracts:  'skipped',
+    freeAgency:       'skipped',
+    trainingCamp:     'pending',
+  };
+}
+
+/** First non-completed row. Drives the header CTA's label. Null = all done.
+ *
+ *  Calendar-aware override: if today matches a calendar-anchored event AND
+ *  that event's row is still unfinished, return it directly — even if earlier
+ *  rows in the order list are also pending. Rationale: on draft day the user
+ *  came here to RUN THE DRAFT, not to back-fill team options first. Same for
+ *  lottery day, FA-open day, training-camp open. */
+export function firstUnfinishedRow(
+  checklist: OffseasonChecklist | undefined,
+  signals?: {
+    onDraftDay?: boolean;
+    onLotteryDay?: boolean;
+    onFAOpenDay?: boolean;
+    onCampOpenDay?: boolean;
+  },
+): OffseasonChecklistRow | null {
   if (!checklist) return null;
+  const isUnfinished = (s: OffseasonRowStatus) => s === 'pending' || s === 'in-progress';
+  // Calendar-anchored priority — these win over strict order when today is
+  // the actual day of that event.
+  if (signals?.onDraftDay     && isUnfinished(checklist.draft))         return 'draft';
+  if (signals?.onLotteryDay   && isUnfinished(checklist.draftLottery))  return 'draftLottery';
+  if (signals?.onFAOpenDay    && isUnfinished(checklist.freeAgency))    return 'freeAgency';
+  if (signals?.onCampOpenDay  && isUnfinished(checklist.trainingCamp))  return 'trainingCamp';
   for (const row of OFFSEASON_ROW_ORDER) {
-    const status = checklist[row];
-    if (status === 'pending' || status === 'in-progress') return row;
+    if (isUnfinished(checklist[row])) return row;
   }
   return null;
 }

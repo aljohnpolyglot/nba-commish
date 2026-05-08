@@ -21,6 +21,10 @@ import {
   autoAnnounceReserves,
   autoSelectDunkContestants,
   autoSelectThreePointContestants,
+  autoOpenThroneSignups,
+  autoCloseThroneSignups,
+  autoOpenThroneVoting,
+  autoLockThroneField,
   autoSimAllStarWeekend,
   autoAnnounceCOY,
   autoAnnounceSMOY,
@@ -41,6 +45,72 @@ import { autoResolveAllStarHosts } from '../allStar/hostAutoResolver';
 import { PlayoffSeries, HistoricalAward, SeasonHistoryEntry } from '../../types';
 import { DEFAULT_MEDIA_RIGHTS, attachBroadcastersToGames } from '../../utils/broadcastingUtils';
 import { setAssistantGMActive } from '../assistantGMFlag';
+
+// Playoff-MVP Bag-Aggregation. Both Finals MVP and Semifinals MVP need the same
+// per-player stat-bag → score → tiebreak pipeline; deduplicating here closed
+// ~80 LOC of identical logic across two branches.
+type PlayoffMvpBag = {
+  pid: string; gp: number; pts: number; reb: number; ast: number;
+  stl: number; blk: number; tov: number; fgm: number; fga: number;
+  ftm: number; fta: number; fg3m: number; fg3a: number; mins: number;
+};
+const PLAYOFF_MVP_LEAGUE_TS = 0.57;
+function computePlayoffMvpFromResults(
+  results: Array<{ homeTeamId: number; awayTeamId: number; homeStats: any[]; awayStats: any[] }>,
+  winnerTid: number,
+  minGames = 3,
+): { pid: string; score: number; avgPts: number } | null {
+  const bags = new Map<string, PlayoffMvpBag>();
+  for (const r of results) {
+    const stats = r.homeTeamId === winnerTid ? r.homeStats
+                : r.awayTeamId === winnerTid ? r.awayStats
+                : null;
+    if (!stats) continue;
+    for (const s of stats) {
+      if (!s.playerId) continue;
+      const b = bags.get(s.playerId) ?? {
+        pid: s.playerId, gp: 0, pts: 0, reb: 0, ast: 0,
+        stl: 0, blk: 0, tov: 0, fgm: 0, fga: 0,
+        ftm: 0, fta: 0, fg3m: 0, fg3a: 0, mins: 0,
+      };
+      b.gp += 1;
+      b.pts  += s.pts     ?? 0;
+      b.reb  += s.reb     ?? ((s.orb ?? 0) + (s.drb ?? 0));
+      b.ast  += s.ast     ?? 0;
+      b.stl  += s.stl     ?? 0;
+      b.blk  += s.blk     ?? 0;
+      b.tov  += s.tov     ?? 0;
+      b.fgm  += s.fgm     ?? 0;
+      b.fga  += s.fga     ?? 0;
+      b.ftm  += s.ftm     ?? 0;
+      b.fta  += s.fta     ?? 0;
+      b.fg3m += s.threePm ?? 0;
+      b.fg3a += s.threePa ?? 0;
+      b.mins += s.min     ?? 0;
+      bags.set(s.playerId, b);
+    }
+  }
+  const candidates = [...bags.values()].filter(b => b.gp >= minGames);
+  if (candidates.length === 0) return null;
+  const scored = candidates.map(b => {
+    const avgPts = b.pts / b.gp;
+    const tsDenom = 2 * (b.fga + 0.44 * b.fta);
+    const ts = tsDenom > 0 ? b.pts / tsDenom : 0;
+    const score =
+        avgPts * 1.0
+      + (b.reb / b.gp) * 0.5
+      + (b.ast / b.gp) * 0.7
+      + (b.stl / b.gp) * 1.0
+      + (b.blk / b.gp) * 1.0
+      - (b.tov / b.gp) * 0.7
+      + (ts - PLAYOFF_MVP_LEAGUE_TS) * 8
+      + Math.min(b.mins / b.gp, 40) / 40 * 3;
+    return { pid: b.pid, score, avgPts };
+  });
+  // Tiebreaker: higher avgPts wins.
+  scored.sort((a, b) => (b.score - a.score) || (b.avgPts - a.avgPts));
+  return scored[0];
+}
 
 interface AutoResolveEvent {
   date: string;
@@ -79,9 +149,13 @@ export const buildAutoResolveEvents = (y: number, leagueStats?: any): AutoResolv
     { date: `${y1}-08-13`, key: 'intl_preseason',         resolver: autoScheduleIntlPreseason,       phase: 'Scheduling International Preseason...' },
     { date: `${y1}-08-14`, key: 'schedule_generation',    resolver: autoGenerateSchedule,            phase: 'Generating Schedule...' },
     { date: hofCeremony,   key: 'hof_induction',          resolver: autoInductHOFClass,              phase: 'Inducting Hall of Fame Class...' },
+    { date: `${y1}-12-01`, key: 'throne_signups_open',    resolver: autoOpenThroneSignups,           phase: 'Opening Throne Sign-Ups...' },
     { date: `${y}-01-14`,  key: 'allstar_votes',          resolver: autoSimVotes,                    phase: 'Simulating All-Star Voting...' },
+    { date: `${y}-01-15`,  key: 'throne_signups_close',   resolver: autoCloseThroneSignups,          phase: 'Closing Throne Sign-Ups...' },
+    { date: `${y}-01-16`,  key: 'throne_voting_open',     resolver: autoOpenThroneVoting,            phase: 'Opening Throne Voting...' },
     { date: `${y}-01-22`,  key: 'allstar_starters',       resolver: autoAnnounceStarters,            phase: 'Announcing All-Star Starters...' },
     { date: `${y}-01-29`,  key: 'allstar_reserves',       resolver: autoAnnounceReserves,            phase: 'Announcing Reserves + Rising Stars...' },
+    { date: `${y}-01-30`,  key: 'throne_field_reveal',    resolver: autoLockThroneField,             phase: 'Revealing The Throne — Field of 16...' },
     { date: `${y}-02-05`,  key: 'dunk_contestants',       resolver: autoSelectDunkContestants,       phase: 'Selecting Dunk Contest Field...' },
     { date: `${y}-02-08`,  key: 'threepoint_contestants', resolver: autoSelectThreePointContestants, phase: 'Selecting 3-Point Contest Field...' },
     { date: `${y}-02-13`,  key: 'allstar_weekend',        resolver: autoSimAllStarWeekend,           phase: 'Simulating All-Star Weekend...' },
@@ -103,6 +177,9 @@ const buildAutoNews = (eventKey: string, state: GameState) => {
   const date = state.date;
   const map: Record<string, any> = {
     christmas_games:     { id: `auto-xmas-${Date.now()}`,    headline: 'Christmas Day Games Set',       content: 'The NBA has finalized its Christmas Day slate.',                               date },
+    throne_signups_open: { id: `auto-throne-open-${Date.now()}`,    headline: 'THE THRONE — Sign-Ups Open',         content: 'The 1v1 tournament throne is up for grabs. Sign-ups are live through January 15.', date },
+    throne_signups_close:{ id: `auto-throne-close-${Date.now()}`,   headline: 'THE THRONE — Sign-Ups Closed',       content: 'Sign-ups have closed. Composite vote opens January 16.',                       date },
+    throne_field_reveal: { id: `auto-throne-reveal-${Date.now()}`,  headline: 'THE THRONE — Field of 16 Revealed',  content: 'The composite vote has spoken. The 16 players who will fight for the crown have been chosen.', date },
     allstar_starters:    { id: `auto-starters-${Date.now()}`, headline: 'All-Star Starters Announced', content: 'Fan voting has concluded. The All-Star starters have been revealed.',           date },
     allstar_reserves:    { id: `auto-reserves-${Date.now()}`, headline: 'Full All-Star Rosters Set',   content: 'Coaches have made their picks. The complete All-Star rosters are finalized.',   date },
     allstar_weekend:     { id: `auto-asw-${Date.now()}`,      headline: 'All-Star Weekend Complete',   content: 'The NBA All-Star Weekend has concluded. Check the All-Star tab for results.',   date },
@@ -686,7 +763,7 @@ export const runLazySim = async (
         state.teams,
         stateWithSim.playoffs,
         stateWithSim.schedule,
-        stateWithSim.leagueStats?.year ?? 2026
+        stateWithSim.leagueStats?.year ?? new Date().getFullYear()
       );
       console.log(`[LAZY_SIM] ✓ 676 post-lazySimNews — iter ${iterNum}, news=${batchNews?.length ?? 0}`);
 
@@ -775,73 +852,8 @@ export const runLazySim = async (
         const priorFinalsResults = ((state.boxScores ?? []) as GameResult[]).filter(r => finalsGameIds.has(r.gameId));
         const finalsResults = [...priorFinalsResults, ...allSimResults.filter(r => finalsGameIds.has(r.gameId))];
         if (finalsResults.length > 0 && finalsSeries) {
-          // Collect per-player Finals stat bags for the champ team
-          type Bag = {
-            pid: string; gp: number; pts: number; reb: number; ast: number;
-            stl: number; blk: number; tov: number; fgm: number; fga: number;
-            ftm: number; fta: number; fg3m: number; fg3a: number; mins: number;
-          };
-          const bags = new Map<string, Bag>();
-          for (const r of finalsResults) {
-            const stats = r.homeTeamId === champTid ? r.homeStats
-                        : r.awayTeamId === champTid ? r.awayStats
-                        : null;
-            if (!stats) continue;
-            for (const s of stats) {
-              if (!s.playerId) continue;
-              const b = bags.get(s.playerId) ?? {
-                pid: s.playerId, gp: 0, pts: 0, reb: 0, ast: 0,
-                stl: 0, blk: 0, tov: 0, fgm: 0, fga: 0,
-                ftm: 0, fta: 0, fg3m: 0, fg3a: 0, mins: 0,
-              };
-              b.gp += 1;
-              b.pts  += s.pts     ?? 0;
-              b.reb  += s.reb     ?? ((s.orb ?? 0) + (s.drb ?? 0));
-              b.ast  += s.ast     ?? 0;
-              b.stl  += s.stl     ?? 0;
-              b.blk  += s.blk     ?? 0;
-              b.tov  += s.tov     ?? 0;
-              b.fgm  += s.fgm     ?? 0;
-              b.fga  += s.fga     ?? 0;
-              b.ftm  += s.ftm     ?? 0;
-              b.fta  += s.fta     ?? 0;
-              b.fg3m += s.threePm ?? 0;
-              b.fg3a += s.threePa ?? 0;
-              b.mins += s.min     ?? 0;
-              bags.set(s.playerId, b);
-            }
-          }
-
-          const candidates = [...bags.values()].filter(b => b.gp >= 3);
-          if (candidates.length > 0) {
-            // League-avg TS% reference (≈0.57 in modern NBA). Used as efficiency baseline.
-            const LEAGUE_TS = 0.57;
-            const scored = candidates.map(b => {
-              const avgPts = b.pts / b.gp;
-              const avgReb = b.reb / b.gp;
-              const avgAst = b.ast / b.gp;
-              const avgStl = b.stl / b.gp;
-              const avgBlk = b.blk / b.gp;
-              const avgTov = b.tov / b.gp;
-              const tsDenom = 2 * (b.fga + 0.44 * b.fta);
-              const ts = tsDenom > 0 ? b.pts / tsDenom : 0;
-              const score =
-                avgPts * 1.0
-                + avgReb * 0.5
-                + avgAst * 0.7
-                + avgStl * 1.0
-                + avgBlk * 1.0
-                - avgTov * 0.7
-                + (ts - LEAGUE_TS) * 8
-                // small minutes-load bonus (fatigue/usage proxy)
-                + Math.min(b.mins / b.gp, 40) / 40 * 3;
-              return { pid: b.pid, score, avgPts };
-            });
-            // Tiebreaker: higher avgPts wins.
-            scored.sort((a, b) =>
-              (b.score - a.score) || (b.avgPts - a.avgPts)
-            );
-            const mvpStat = scored[0];
+          const mvpStat = computePlayoffMvpFromResults(finalsResults, champTid);
+          if (mvpStat) {
             const mvpPlayer = updatedPlayers.find(p => p.internalId === mvpStat.pid);
             if (mvpPlayer) {
               champHistoricalAwards.push({ season, type: 'Finals MVP', name: mvpPlayer.name, pid: mvpPlayer.internalId, tid: champTid });
@@ -894,67 +906,8 @@ export const runLazySim = async (
           ];
           if (seriesResults.length === 0) continue;
 
-          type Bag = {
-            pid: string; gp: number; pts: number; reb: number; ast: number;
-            stl: number; blk: number; tov: number; fgm: number; fga: number;
-            ftm: number; fta: number; fg3m: number; fg3a: number; mins: number;
-          };
-          const bags = new Map<string, Bag>();
-          for (const r of seriesResults) {
-            const stats = r.homeTeamId === winnerTid ? r.homeStats
-                        : r.awayTeamId === winnerTid ? r.awayStats
-                        : null;
-            if (!stats) continue;
-            for (const s of stats) {
-              if (!s.playerId) continue;
-              const b = bags.get(s.playerId) ?? {
-                pid: s.playerId, gp: 0, pts: 0, reb: 0, ast: 0,
-                stl: 0, blk: 0, tov: 0, fgm: 0, fga: 0,
-                ftm: 0, fta: 0, fg3m: 0, fg3a: 0, mins: 0,
-              };
-              b.gp += 1;
-              b.pts  += s.pts     ?? 0;
-              b.reb  += s.reb     ?? ((s.orb ?? 0) + (s.drb ?? 0));
-              b.ast  += s.ast     ?? 0;
-              b.stl  += s.stl     ?? 0;
-              b.blk  += s.blk     ?? 0;
-              b.tov  += s.tov     ?? 0;
-              b.fgm  += s.fgm     ?? 0;
-              b.fga  += s.fga     ?? 0;
-              b.ftm  += s.ftm     ?? 0;
-              b.fta  += s.fta     ?? 0;
-              b.fg3m += s.threePm ?? 0;
-              b.fg3a += s.threePa ?? 0;
-              b.mins += s.min     ?? 0;
-              bags.set(s.playerId, b);
-            }
-          }
-          const candidates = [...bags.values()].filter(b => b.gp >= 3);
-          if (candidates.length === 0) continue;
-
-          const LEAGUE_TS = 0.57;
-          const scored = candidates.map(b => {
-            const avgPts = b.pts / b.gp;
-            const avgReb = b.reb / b.gp;
-            const avgAst = b.ast / b.gp;
-            const avgStl = b.stl / b.gp;
-            const avgBlk = b.blk / b.gp;
-            const avgTov = b.tov / b.gp;
-            const tsDenom = 2 * (b.fga + 0.44 * b.fta);
-            const ts = tsDenom > 0 ? b.pts / tsDenom : 0;
-            const score =
-              avgPts * 1.0
-              + avgReb * 0.5
-              + avgAst * 0.7
-              + avgStl * 1.0
-              + avgBlk * 1.0
-              - avgTov * 0.7
-              + (ts - LEAGUE_TS) * 8
-              + Math.min(b.mins / b.gp, 40) / 40 * 3;
-            return { pid: b.pid, score, avgPts };
-          });
-          scored.sort((a, b) => (b.score - a.score) || (b.avgPts - a.avgPts));
-          const mvpStat = scored[0];
+          const mvpStat = computePlayoffMvpFromResults(seriesResults, winnerTid);
+          if (!mvpStat) continue;
           const season = state.leagueStats.year;
           const mvpPlayer = updatedPlayers.find(p => p.internalId === mvpStat.pid);
           if (!mvpPlayer) continue;

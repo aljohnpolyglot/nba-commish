@@ -107,7 +107,7 @@ export const PlayerRatingsView: React.FC = () => {
 
   const PAGE_SIZE = 50;
 
-  const season = state.leagueStats?.year ?? 2026;
+  const season = state.leagueStats?.year ?? new Date().getFullYear();
 
   const currentYear = season;
 

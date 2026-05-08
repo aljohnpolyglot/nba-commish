@@ -18,7 +18,7 @@ export function useDraftEventGate(options: DraftEventGateOptions = {}) {
   const eventType: 'lottery' | 'draft' | null = (() => {
     if (state.gameMode !== 'gm' || !state.date) return null;
     const ls = state.leagueStats as any;
-    const seasonYear: number = ls?.year ?? 2026;
+    const seasonYear: number = ls?.year ?? new Date().getFullYear();
     const todayStr = normalizeDate(state.date);
     const draftBlockedByPlayoffs = isDraftBlockedByUnresolvedPlayoffs(state);
 

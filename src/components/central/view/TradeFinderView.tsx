@@ -23,8 +23,8 @@ import { computeMoodScore } from '../../../utils/mood/moodScore';
 import type { NBAPlayer, DraftPick, NBATeam } from '../../../types';
 import { generateCounterOffers, teamPowerRanks } from '../../../services/trade/tradeFinderEngine';
 import { SettingsManager } from '../../../services/SettingsManager';
-import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks } from '../../../services/draft/DraftPickGenerator';
-import { buildClassStrengthMap, buildLotterySlotMap, buildFullDraftSlotMap, formatPickLabel } from '../../../services/draft/draftClassStrength';
+import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks, DEFAULT_TRADABLE_PICK_SEASONS } from '../../../services/draft/DraftPickGenerator';
+import { buildClassStrengthMap, buildLotterySlotMap, buildFullDraftSlotMap, comparePicks, formatPickLabel } from '../../../services/draft/draftClassStrength';
 import { tradeRoleToTeamMode, resolveTeamStrategyProfile } from '../../../utils/teamStrategy';
 import { wouldStepienViolateForTid } from '../../../services/trade/stepienRule';
 import { getGameDateParts, isInPostDeadlinePreFAWindow } from '../../../utils/dateUtils';
@@ -32,6 +32,7 @@ import { isWalkingExpiring, isRecentlySignedLocked } from '../../../services/tra
 import { PlayerHoverCard } from '../../shared/PlayerHoverCard';
 import { PlayerHoverCardK2 } from '../../shared/PlayerHoverCardK2';
 import { isFranchiseLifer } from '../../../utils/playerTenure';
+import { AwardService } from '../../../services/logic/AwardService';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -413,8 +414,8 @@ export const OfferCard: React.FC<{
     if (capCoversGap) {
       const remainingCapK = mySalary + capRoomK - theirSalary;
       return remainingCapK >= 0
-        ? `+$${(remainingCapK / 1000).toFixed(1)}M cap left`
-        : `-$${(-remainingCapK / 1000).toFixed(1)}M over`;
+        ? `+$${(remainingCapK / 1000).toFixed(1)}M post-trade room`
+        : `-$${(-remainingCapK / 1000).toFixed(1)}M post-trade over`;
     }
     if (matchDeltaK !== null) {
       return matchDeltaK >= 0
@@ -560,12 +561,23 @@ export const TradeFinderView: React.FC = () => {
 
   // In-season PER adjustment context. Regular season = Oct-Apr. Auto-resets on
   // rollover because currentYear changes and per-season stats filter to []
-  const tvContext: TVContext | undefined = useMemo(() => {
+  // Top-30 MVP-race rank — flags franchise-altering players for the TV premium
+  // and untouchable lockdown in the trade engine.
+  const mvpRank = useMemo(() => {
+    const top30 = AwardService.calculateMVPRankings(players, state.teams, currentYear, 30);
+    const map = new Map<string, number>();
+    top30.forEach((c, i) => map.set(c.player.internalId, i + 1));
+    return map;
+  }, [players, state.teams, currentYear]);
+  const tvContext: TVContext = useMemo(() => {
     const month = state.date ? getGameDateParts(state.date).month : 0;
     const isRegularSeason = (month >= 10 && month <= 12) || (month >= 1 && month <= 4);
-    if (!isRegularSeason) return undefined;
-    return { leaguePerAvg: computeLeaguePerAvg(players, currentYear), isRegularSeason: true };
-  }, [players, currentYear, state.date]);
+    return {
+      leaguePerAvg: isRegularSeason ? computeLeaguePerAvg(players, currentYear) : 15,
+      isRegularSeason,
+      mvpRank,
+    };
+  }, [players, currentYear, state.date, mvpRank]);
 
   // Per-team cap space in thousands (matches salary units). Feeds the absorb
   // variant in the engine and the cap badge in OfferCard.
@@ -666,8 +678,8 @@ export const TradeFinderView: React.FC = () => {
   const minTradableSeason = getMinTradableSeason(state);
   const tradablePicks = useMemo(() => getTradablePicks(state), [draftPicks, state.leagueStats?.year, state.leagueStats?.tradableDraftPickSeasons, (state as any).draftComplete]);
   const teamPicksList = useMemo(() =>
-    tradablePicks.filter(pk => pk.tid === selectedTid).sort((a, b) => a.season - b.season || a.round - b.round),
-  [tradablePicks, selectedTid]);
+    tradablePicks.filter(pk => pk.tid === selectedTid).sort((a, b) => comparePicks(a, b, currentYear, lotterySlotByTid)),
+  [tradablePicks, selectedTid, currentYear, lotterySlotByTid]);
 
   const filteredPicks = useMemo(() =>
     teamPicksList.filter(pk => {
@@ -691,7 +703,7 @@ export const TradeFinderView: React.FC = () => {
     // lands on genuine superstars. Ordinary untouchables (loyalty vets, rotation guys)
     // just cost a bit more; Giannis/Jokić tier becomes very hard to pry loose.
     let val = calcPlayerTV(player, myMode, currentYear, tvContext);
-    if (isReverseMode && isUntouchable(player, myMode, currentYear)) {
+    if (isReverseMode && isUntouchable(player, myMode, currentYear, tvContext.mvpRank)) {
       const tier = val >= 200 ? 0.60
                  : val >= 150 ? 0.30
                  : val >= 100 ? 0.15
@@ -818,7 +830,7 @@ export const TradeFinderView: React.FC = () => {
         bypassUntouchablesForTid: isReverseMode && myVal >= 140 ? state.userTeamId! : undefined,
         allowLifers,
         stepienEnabled: state.leagueStats?.stepienRuleEnabled !== false,
-        tradablePickWindow: state.leagueStats?.tradableDraftPickSeasons ?? 7,
+        tradablePickWindow: state.leagueStats?.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS,
         isPostDeadlinePreFA: isInPostDeadlinePreFAWindow(state.date, currentYear, state.leagueStats as any),
         recentlySignedLockMs: {
           currentDate: state.date ?? '',
@@ -1007,7 +1019,7 @@ export const TradeFinderView: React.FC = () => {
                 const basketPicks = basket.filter(i => i.type === 'pick' && i.pick).map(i => i.pick!);
                 const stepienBlocked = !isSelected && stepienOn && wouldStepienViolateForTid(
                   draftPicks ?? [], currentYear,
-                  state.leagueStats?.tradableDraftPickSeasons ?? 7,
+                  state.leagueStats?.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS,
                   selectedTid, [...basketPicks, pk],
                 );
                 return (

@@ -24,17 +24,26 @@
 
 import type { GameState, NBATeam, NBAPlayer } from '../../types';
 import type { TrainingParadigm, Allocations, DailyPlan } from '../../TeamTraining/types';
+import { systemDescriptions } from '../../utils/systemDescriptions';
+import { defensiveSystemDescriptions } from '../../utils/defensiveSystemDescriptions';
+import { getAICoachPlanForDay } from './aiCoachParadigm';
+import type { Game } from '../../types';
 
-// Familiarity deltas per paradigm (per day). Values are tuned so a team that
-// trains "Offensive" hard for ~2 weeks reaches mastery (+10 points = ½★) on
-// offense systems; a team that ignores training sees gradual decay.
-const PARADIGM_DELTA: Record<TrainingParadigm, { off: number; def: number }> = {
-  Balanced:   { off: 0.5,  def: 0.5  },
-  Offensive:  { off: 1.5,  def: -0.2 },  // sharpens offense, defense rusts slightly
-  Defensive:  { off: -0.2, def: 1.5  },
-  Biometrics: { off: -0.1, def: -0.1 },  // physical day, no system work
-  Recovery:   { off: 0.0,  def: 0.0  },  // film study only, no familiarity gain
-};
+// Allocation reps → familiarity gain. Each daily session contributes a small
+// rep count proportional to the offense/defense allocation in the user's plan.
+// Reps are MARGINAL on purpose — running the same system 1–3 seasons compounds
+// to mastery, mirroring real NBA continuity. A roster turnover under the same
+// system nerfs familiarity via `applyRosterChangeFamiliarity` (partial Clean
+// Slate per docs/training.md §2). A plan with 0% on a side rusts that meter.
+//
+// Sizing: 0.4 base × allocation_share × intensity factor.
+//   30% offense / 50% intensity (factor 1.0) → +0.12/day
+//   ≈ +10/season game days, +30 over 3 seasons → mastery (½★ proficiency boost).
+// Paradigm label is now cosmetic — the math is purely allocation-driven, which
+// matches the user's Plan Modal model where "Offensive" is just a preset that
+// sets allocations to {60/10/10/20}.
+const REP_BASE = 0.4;          // points per day at 100% allocation, factor 1.0
+const NO_REPS_DECAY = -0.15;   // a side with 0% allocation rusts gently
 
 // Default decay when no plan is logged for the day.
 const NO_PLAN_DECAY = -0.3;
@@ -66,24 +75,35 @@ function clamp(v: number, lo = 0, hi = 100): number {
   return Math.max(lo, Math.min(hi, v));
 }
 
+// Defensive aura is purely a function of the defense allocation reps —
+// same compound model as system familiarity. 0% → rust, 100% + max intensity
+// → ~0.56/day toward 100 over a season+.
 function defensiveAuraDelta(plan: PlanLike | null): number {
   if (!plan) return -0.25;
-
   const factor = intensityFactor(plan.intensity ?? 50);
-  const defenseShare = Math.max(0, Math.min(100, plan.allocations?.defense ?? 30)) / 100;
-
-  if (plan.paradigm === 'Defensive') return 0.45 * factor + defenseShare * 0.35;
-  if (plan.paradigm === 'Balanced') return 0.08 * factor + defenseShare * 0.10;
-  if (plan.paradigm === 'Recovery') return -0.10;
-  return -0.20;
+  const defShare = Math.max(0, Math.min(100, plan.allocations?.defense ?? 0)) / 100;
+  if (defShare === 0) return -0.10;
+  return REP_BASE * defShare * factor;
 }
 
 /**
  * Apply ONE day's familiarity tick to a single team.
  * Pure — returns updated team or the original if no change.
+ *
+ * Per-system tracking: when a plan's `systemFocus` lists specific systems, those
+ * systems get the full daily tick; un-drilled systems on the same side decay
+ * gently. The flat offense/defense scalars stay in lock-step (max of per-system
+ * values) so legacy consumers (defensive aura roll-up, CoachingView star bonus)
+ * keep working unchanged.
  */
-export function tickTeamFamiliarity(team: NBATeam, iso: string): NBATeam {
-  const plan = pickPlanForDay(team.trainingCalendar as any, iso);
+export function tickTeamFamiliarity(
+  team: NBATeam,
+  iso: string,
+  /** Optional AI-coach plan override — used by AI teams when ctx is provided
+   *  to applyDailyFamiliarityTick. Bypasses the team's calendar for this day. */
+  planOverride?: PlanLike | null,
+): NBATeam {
+  const plan = planOverride ?? pickPlanForDay(team.trainingCalendar as any, iso);
 
   let offDelta: number;
   let defDelta: number;
@@ -92,27 +112,77 @@ export function tickTeamFamiliarity(team: NBATeam, iso: string): NBATeam {
     offDelta = NO_PLAN_DECAY;
     defDelta = NO_PLAN_DECAY;
   } else {
-    const { off, def } = PARADIGM_DELTA[plan.paradigm] ?? PARADIGM_DELTA.Balanced;
     const factor = intensityFactor(plan.intensity ?? 50);
-    offDelta = off * factor;
-    defDelta = def * factor;
+    const offShare = Math.max(0, Math.min(100, plan.allocations?.offense ?? 0)) / 100;
+    const defShare = Math.max(0, Math.min(100, plan.allocations?.defense ?? 0)) / 100;
+    offDelta = offShare > 0 ? REP_BASE * offShare * factor : NO_REPS_DECAY;
+    defDelta = defShare > 0 ? REP_BASE * defShare * factor : NO_REPS_DECAY;
   }
 
-  // Default 0 — familiarity is EARNED via training, not innate. A team that
-  // never trains stays at 0 (and gets no proficiency boost).
   const current = team.systemFamiliarity ?? { offense: 0, defense: 0 };
   const currentAura = team.defensiveAura ?? 50;
-  const next = {
+  const nextFlat = {
     offense: clamp(current.offense + offDelta),
     defense: clamp(current.defense + defDelta),
   };
   const nextAura = clamp(currentAura + defensiveAuraDelta(plan));
 
-  // Skip allocation if values didn't actually change (rounding noise within 0.01).
+  // Per-system reps. Each drilled system gets the side's full delta; un-drilled
+  // systems on the same side decay at NO_REPS_DECAY. Imports stay lazy via require
+  // to keep this file type-safe without pulling the whole utils tree.
+  const focused: string[] = Array.isArray(plan?.allocations?.systemFocus)
+    ? (plan!.allocations!.systemFocus as string[])
+    : [];
+  const offFocused = focused.filter(n => systemDescriptions[n]);
+  const defFocused = focused.filter(n => defensiveSystemDescriptions[n]);
+
+  const tickPerSystem = (
+    sideDelta: number,
+    focusedNames: string[],
+    allNames: string[],
+    prevMap: Record<string, number> | undefined
+  ): Record<string, number> => {
+    const next: Record<string, number> = { ...(prevMap ?? {}) };
+    if (focusedNames.length > 0) {
+      // Drilled systems: full side delta (gain when allocation > 0).
+      for (const n of focusedNames) next[n] = clamp((next[n] ?? 0) + sideDelta);
+      // Other (known) systems on the same side: gentle decay so specialization wins.
+      for (const n of allNames) {
+        if (focusedNames.includes(n)) continue;
+        if (next[n] === undefined) continue; // never trained → still undefined
+        next[n] = clamp(next[n] + NO_REPS_DECAY);
+      }
+    } else if (sideDelta < 0) {
+      // No drills today — every entry erodes.
+      for (const n of Object.keys(next)) next[n] = clamp(next[n] + NO_REPS_DECAY);
+    }
+    return next;
+  };
+
+  const offSystems = Object.keys(systemDescriptions);
+  const defSystems = Object.keys(defensiveSystemDescriptions);
+  const nextByOff = tickPerSystem(offDelta, offFocused, offSystems, current.byOffense);
+  const nextByDef = tickPerSystem(defDelta, defFocused, defSystems, current.byDefense);
+  // Roll-up: the flat scalar floors to max(byX) so the aura/star-bonus reflects
+  // peak proficiency. Falls back to scalar tick if per-system map is empty.
+  const offMax = Math.max(0, ...Object.values(nextByOff));
+  const defMax = Math.max(0, ...Object.values(nextByDef));
+  const nextOffense = Object.keys(nextByOff).length ? Math.max(nextFlat.offense, offMax) : nextFlat.offense;
+  const nextDefense = Object.keys(nextByDef).length ? Math.max(nextFlat.defense, defMax) : nextFlat.defense;
+
+  const next = {
+    offense: nextOffense,
+    defense: nextDefense,
+    byOffense: nextByOff,
+    byDefense: nextByDef,
+  };
+
   if (
     Math.abs(next.offense - current.offense) < 0.01 &&
     Math.abs(next.defense - current.defense) < 0.01 &&
-    Math.abs(nextAura - currentAura) < 0.01
+    Math.abs(nextAura - currentAura) < 0.01 &&
+    JSON.stringify(next.byOffense) === JSON.stringify(current.byOffense) &&
+    JSON.stringify(next.byDefense) === JSON.stringify(current.byDefense)
   ) {
     return team;
   }
@@ -120,14 +190,31 @@ export function tickTeamFamiliarity(team: NBATeam, iso: string): NBATeam {
   return { ...team, systemFamiliarity: next, defensiveAura: nextAura };
 }
 
+export interface FamiliarityTickContext {
+  /** Full league schedule — needed to detect B2B / pre-game / post-game windows for AI paradigm. */
+  schedule: Game[];
+  /** Current season year for AI-paradigm record lookup. */
+  currentYear: number;
+  /** GM-mode user's team. AI override is suppressed for this team — their calendar is sacred. */
+  userTeamId?: number | null;
+  /** GM vs Commissioner mode. In Commissioner mode userTeamId is -999 (sentinel) — every team is AI. */
+  gameMode?: 'gm' | 'commissioner' | string;
+}
+
 /**
  * Apply N days of familiarity ticks across all teams. Idempotent — safe to call
  * after gameLogic computes daysToAdvance.
+ *
+ * When `ctx` is provided, AI teams (every team in commissioner mode; every
+ * team except `userTeamId` in GM mode) get a context-aware paradigm override
+ * per Phase 2 of COACHING_DEPTH_ROADMAP.md. Without ctx the function preserves
+ * its old behavior (read calendar, tick).
  */
 export function applyDailyFamiliarityTick(
   teams: NBATeam[],
   startDate: string,
-  daysToAdvance: number
+  daysToAdvance: number,
+  ctx?: FamiliarityTickContext,
 ): NBATeam[] {
   if (daysToAdvance <= 0) return teams;
 
@@ -139,7 +226,17 @@ export function applyDailyFamiliarityTick(
     const d = new Date(start);
     d.setDate(start.getDate() + i + 1);
     const iso = d.toISOString().slice(0, 10);
-    working = working.map(t => tickTeamFamiliarity(t, iso));
+    working = working.map(t => {
+      let override: PlanLike | null = null;
+      if (ctx) {
+        const isUserTeam = ctx.gameMode === 'gm' && ctx.userTeamId != null && t.id === ctx.userTeamId;
+        if (!isUserTeam) {
+          // AI team — compute today's paradigm. Null falls through to calendar plan.
+          override = getAICoachPlanForDay(t, iso, ctx.schedule, ctx.currentYear) as any;
+        }
+      }
+      return tickTeamFamiliarity(t, iso, override);
+    });
   }
 
   return working;
@@ -218,11 +315,22 @@ export function applyRosterChangeFamiliarity(
     const def = defByTid.get(t.id) ?? 0;
     if (off === 0 && def === 0) return t;
     const current = t.systemFamiliarity ?? { offense: 0, defense: 0 };
+    // Per-system maps dilute by the same flat amount as the side scalar.
+    // A team running one system at 90 loses to ~82 on a vet trade; a team
+    // spreading across five at 60 loses each to 52. Specialization still wins.
+    const scaleMap = (m: Record<string, number> | undefined, delta: number): Record<string, number> | undefined => {
+      if (!m || delta === 0) return m;
+      const next: Record<string, number> = {};
+      for (const [k, v] of Object.entries(m)) next[k] = clamp(v + delta);
+      return next;
+    };
     return {
       ...t,
       systemFamiliarity: {
         offense: clamp(current.offense + off),
         defense: clamp(current.defense + def),
+        byOffense: scaleMap(current.byOffense, off),
+        byDefense: scaleMap(current.byDefense, def),
       },
     };
   });

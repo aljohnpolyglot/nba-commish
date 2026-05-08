@@ -11,6 +11,7 @@ import { systemDescriptions } from '../lib/systemDescriptions';
 import { PlayerPortrait } from '../../../../../shared/PlayerPortrait';
 import { GameplanTab } from './GameplanTab';
 import { IdealRotationTab } from './IdealRotationTab';
+import { DefenseTab } from './DefenseTab';
 import { getMinutesDiff } from '../../../../../../store/gameplanStore';
 import { getScoringOptions, saveScoringOptions } from '../../../../../../store/scoringOptionsStore';
 import { getLockedStrategy, lockStrategy, unlockStrategy } from '../../../../../../store/coachStrategyLockStore';
@@ -112,7 +113,7 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
   // it increases their shot diet or pts target, but reduces efficiency.
   // Note that these options still don't change overall team strength, 
   // just the tendencies and shot distribution.
-  const [activeTab, setActiveTab] = useState<'GAMEPLAN' | 'IDEAL' | 'SYSTEM' | 'COACHING' | 'PREFERENCES' | 'STAFF'>('GAMEPLAN');
+  const [activeTab, setActiveTab] = useState<'GAMEPLAN' | 'DEFENSE' | 'IDEAL' | 'SYSTEM' | 'COACHING' | 'PREFERENCES' | 'STAFF'>('GAMEPLAN');
   const [starters, setStarters] = useState<any[]>([]);
   const [isMobile, setIsMobile] = useState(false);
   const [selectedSystem, setSelectedSystem] = useState(
@@ -522,6 +523,13 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
             Ideal
           </button>
           <button
+            className={`px-4 md:px-6 py-2 font-bold uppercase text-xs md:text-sm flex-shrink-0 ${activeTab === 'DEFENSE' ? 'text-white border-b-2 border-white' : 'text-gray-500 hover:text-gray-300'}`}
+            onClick={() => requestTabChange('DEFENSE')}
+            title="Team-wide defensive scheme template — base coverage rules."
+          >
+            Defense
+          </button>
+          <button
             className={`px-4 md:px-6 py-2 font-bold uppercase text-xs md:text-sm flex-shrink-0 ${activeTab === 'SYSTEM' ? 'text-white border-b-2 border-white' : 'text-gray-500 hover:text-gray-300'}`}
             onClick={() => requestTabChange('SYSTEM')}
           >
@@ -554,6 +562,9 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
           )}
           {activeTab === 'GAMEPLAN' && (
             <GameplanTab teamId={Number(team.tid)} />
+          )}
+          {activeTab === 'DEFENSE' && (
+            <DefenseTab teamId={Number(team.tid)} />
           )}
           {activeTab === 'SYSTEM' && (
             <div className="flex flex-col h-full">

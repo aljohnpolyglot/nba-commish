@@ -10,8 +10,8 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, GripVertical, Sparkles } from 'lucide-react';
-import { format, addDays } from 'date-fns';
+import { AlertTriangle, GripVertical, Sparkles, Calendar, Trophy, Swords } from 'lucide-react';
+import { format, addDays, parseISO } from 'date-fns';
 import { useGame } from '../../../../../../store/GameContext';
 import { MinutesPlayedService } from '../../../../../../services/simulation/MinutesPlayedService';
 import { injurySeverityLevel } from '../../../../../../services/simulation/playThroughInjuriesFactor';
@@ -82,6 +82,36 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     const { month: m } = getGameDateParts(state.date);
     return m >= 4 && m <= 6;
   }, [state.date]);
+
+  // Next matchup — looks past preseason scrimmages, all-star events, and TBD slots.
+  // Returns null in offseason / no-game windows so the header can render an empty state.
+  const nextMatchup = useMemo(() => {
+    if (!state.schedule || !state.date) return null;
+    const today = state.date;
+    const upcoming = state.schedule
+      .filter(g => !g.played)
+      .filter(g => g.homeTid === teamId || g.awayTid === teamId)
+      .filter(g => !g.isPreseason && !g.isExhibition && !g.isAllStar
+        && !g.isRisingStars && !g.isCelebrityGame
+        && !g.isDunkContest && !g.isThreePointContest
+        && !g.isThroneEvent && !g.isCupTBD)
+      .filter(g => g.date >= today)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    return upcoming[0] ?? null;
+  }, [state.schedule, state.date, teamId]);
+
+  const matchupSeries = useMemo(() => {
+    if (!nextMatchup?.isPlayoff || !nextMatchup.playoffSeriesId) return null;
+    const series = (state as any).playoffs?.series?.find((s: any) => s.id === nextMatchup.playoffSeriesId);
+    if (!series) return null;
+    const myWins = series.higherSeedTid === teamId ? series.higherSeedWins : series.lowerSeedWins;
+    const oppWins = series.higherSeedTid === teamId ? series.lowerSeedWins : series.higherSeedWins;
+    const round = series.round === 1 ? 'Round 1'
+      : series.round === 2 ? 'Round 2'
+      : series.round === 3 ? 'Conference Finals'
+      : 'NBA Finals';
+    return { round, myWins, oppWins, gameNum: nextMatchup.playoffGameNumber };
+  }, [nextMatchup, state, teamId]);
 
   // PTI from locked strategy sliders; fall back to defaults (0 regular, 40 playoffs).
   // Slider 0-100 → ptiLevel 0-4 via linear scale.
@@ -697,8 +727,86 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     setMinuteOverrides(next);
   };
 
+  // Format the matchup line. Three flavors: regseason (default), NBA Cup, playoff.
+  const opponentTid = nextMatchup
+    ? (nextMatchup.homeTid === teamId ? nextMatchup.awayTid : nextMatchup.homeTid)
+    : null;
+  const opponent = opponentTid != null ? state.teams.find(t => t.id === opponentTid) : null;
+  const isHome = nextMatchup ? nextMatchup.homeTid === teamId : false;
+  const matchupDateLabel = nextMatchup
+    ? (() => { try { return format(parseISO(nextMatchup.date), 'EEE MMM d'); } catch { return nextMatchup.date; } })()
+    : '';
+  const matchupKind: 'reg' | 'cup' | 'playoff' | 'playin' | null = nextMatchup
+    ? (nextMatchup.isPlayoff ? 'playoff'
+      : nextMatchup.isPlayIn ? 'playin'
+      : nextMatchup.isNBACup ? 'cup'
+      : 'reg')
+    : null;
+
   return (
     <div className="flex flex-col gap-4">
+      {/* Next Matchup */}
+      {nextMatchup && opponent && (
+        <div className={`rounded-lg border px-3 py-2 flex flex-col sm:flex-row sm:items-center gap-2 ${
+          matchupKind === 'playoff' ? 'bg-violet-950/40 border-violet-700/50'
+          : matchupKind === 'playin' ? 'bg-fuchsia-950/40 border-fuchsia-700/50'
+          : matchupKind === 'cup' ? 'bg-orange-950/40 border-orange-700/50'
+          : 'bg-slate-900/60 border-slate-700/50'
+        }`}>
+          <div className="flex items-center gap-2 shrink-0">
+            {matchupKind === 'playoff' || matchupKind === 'playin' ? (
+              <Swords className="w-4 h-4 text-violet-300" />
+            ) : matchupKind === 'cup' ? (
+              <Trophy className="w-4 h-4 text-orange-300" />
+            ) : (
+              <Calendar className="w-4 h-4 text-slate-300" />
+            )}
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              {matchupKind === 'playoff' && matchupSeries
+                ? `${matchupSeries.round}${matchupSeries.gameNum ? ` · Game ${matchupSeries.gameNum}` : ''}`
+                : matchupKind === 'playin' ? 'Play-In'
+                : matchupKind === 'cup' ? `NBA Cup${nextMatchup.nbaCupRound ? ` · ${nextMatchup.nbaCupRound === 'group' ? 'Group' : nextMatchup.nbaCupRound}` : ''}`
+                : 'Up Next'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {opponent.logoUrl && (
+              <img src={opponent.logoUrl} alt="" className="w-6 h-6 object-contain shrink-0" />
+            )}
+            <div className="flex flex-col min-w-0">
+              <div className="text-sm font-bold text-white truncate">
+                {isHome ? 'vs.' : '@'} {opponent.region ? `${opponent.region} ${opponent.name}` : opponent.name}
+              </div>
+              <div className="text-[10px] text-slate-400 flex items-center gap-2">
+                <span>{matchupDateLabel}</span>
+                {matchupKind === 'playoff' && matchupSeries && (
+                  <span className="text-violet-300 font-bold">
+                    {matchupSeries.myWins === matchupSeries.oppWins
+                      ? `Series tied ${matchupSeries.myWins}-${matchupSeries.oppWins}`
+                      : matchupSeries.myWins > matchupSeries.oppWins
+                      ? `Lead ${matchupSeries.myWins}-${matchupSeries.oppWins}`
+                      : `Trail ${matchupSeries.myWins}-${matchupSeries.oppWins}`}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {!nextMatchup && (
+        <div className="rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-slate-500" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+              No Upcoming Game
+            </span>
+          </div>
+          <div className="text-[11px] text-slate-500 mt-0.5">
+            Offseason or schedule break — gameplan is still saved for next season.
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

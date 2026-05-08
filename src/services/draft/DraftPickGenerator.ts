@@ -16,6 +16,7 @@
  */
 
 import type { DraftPick, NBATeam } from '../../types';
+import { getLsYear } from '../../utils/leagueYear';
 
 let _dpidCounter = 900_000; // high base to avoid collisions with BBGM pick IDs
 
@@ -94,7 +95,7 @@ export function generateFuturePicks(
 export function getMinTradableSeason(
   state: { leagueStats?: { year?: number }; draftComplete?: boolean } | null | undefined,
 ): number {
-  const year = state?.leagueStats?.year ?? new Date().getFullYear();
+  const year = state ? getLsYear(state) : new Date().getFullYear();
   return state?.draftComplete ? year + 1 : year;
 }
 
@@ -112,7 +113,7 @@ export const DEFAULT_TRADABLE_PICK_SEASONS = 7;
 export function getMaxTradableSeason(
   state: { leagueStats?: { year?: number; tradableDraftPickSeasons?: number } } | null | undefined,
 ): number {
-  const year   = state?.leagueStats?.year ?? new Date().getFullYear();
+  const year   = state ? getLsYear(state) : new Date().getFullYear();
   const window = state?.leagueStats?.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS;
   return year + window;
 }

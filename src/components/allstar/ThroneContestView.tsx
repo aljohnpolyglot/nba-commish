@@ -1,9 +1,13 @@
 import React, { useMemo } from 'react';
-import { Crown, Sparkles, Skull, ChevronRight, Trophy, Megaphone, Vote } from 'lucide-react';
+import { Crown, Sparkles, Skull, ChevronRight, Trophy, Megaphone, Vote, Play, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useGame } from '../../store/GameContext';
 import { getPlayerImage } from '../central/view/bioCache';
 import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
+import { PlayerPortrait } from '../shared/PlayerPortrait';
+import { TournamentBracket } from '../../throne/components/TheThroneGame/Bracket';
+import { toThronePlayer } from '../../services/allStar/throneOrchestrator';
+import type { Match as ThroneMatch } from '../../throne/types/throne';
 import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
 import { parseGameDate } from '../../utils/dateUtils';
 
@@ -11,34 +15,9 @@ interface ThroneContestViewProps {
   allStar: any;
   players: any[];
   ownTid?: number | null;
+  onWatch?: () => void;
+  isSimulating?: boolean;
 }
-
-const BLOC_COLORS = {
-  fan:    { stop1: '#f43f5e', stop2: '#fb7185', label: 'FAN',    pct: 40, glow: 'shadow-rose-500/50' },
-  player: { stop1: '#a855f7', stop2: '#c084fc', label: 'PLAYER', pct: 30, glow: 'shadow-purple-500/50' },
-  media:  { stop1: '#06b6d4', stop2: '#22d3ee', label: 'MEDIA',  pct: 20, glow: 'shadow-cyan-500/50' },
-  coach:  { stop1: '#facc15', stop2: '#fde047', label: 'COACH',  pct: 10, glow: 'shadow-yellow-500/50' },
-};
-
-const BlocBar: React.FC<{ value: number; color: keyof typeof BLOC_COLORS; max?: number }> = ({ value, color, max = 100 }) => {
-  const c = BLOC_COLORS[color];
-  const pct = Math.max(0, Math.min(100, (value / max) * 100));
-  return (
-    <div className="flex items-center gap-2">
-      <span className="w-12 text-[8px] font-black tracking-widest text-zinc-500">{c.label}</span>
-      <div className="flex-1 h-2 rounded-full bg-zinc-900 overflow-hidden">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${pct}%` }}
-          transition={{ duration: 1.0, ease: 'easeOut' }}
-          className="h-full rounded-full"
-          style={{ background: `linear-gradient(90deg, ${c.stop1}, ${c.stop2})` }}
-        />
-      </div>
-      <span className="w-8 text-right font-mono text-[10px] font-bold text-white">{value}</span>
-    </div>
-  );
-};
 
 const VoterPie: React.FC = () => (
   <div className="flex items-center justify-center flex-wrap gap-2 mb-6 text-[9px] font-black uppercase tracking-widest">
@@ -108,7 +87,113 @@ const KingCallout: React.FC<{ king: any; vacated: boolean }> = ({ king, vacated 
   );
 };
 
-export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, players, ownTid }) => {
+// MVP-style composite vote table — used by both the live voting era (Phase 3)
+// and the field-locked era (Phase 4). Rows already pre-sorted/sliced by caller.
+const fmtVotes = (n: number): string => {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+};
+
+const VoteCell: React.FC<{ votes: number; rank: number; tone: string }> = ({ votes, rank, tone }) => (
+  <div className="text-right tabular-nums leading-tight">
+    <p className={`text-[15px] font-mono font-black ${tone}`}>#{rank}</p>
+    <p className="text-[9px] text-zinc-500 font-mono">{fmtVotes(votes)} votes</p>
+  </div>
+);
+
+interface VoteRowData {
+  playerId: string;
+  rank: number;
+  composite: number;
+  fanVotes: number; fanRank: number;
+  playerVotes: number; playerRank: number;
+  mediaVotes: number; mediaRank: number;
+  coachVotes: number; coachRank: number;
+}
+
+/** Compute weighted rank average from per-bloc ranks. Lower = better.
+ *  Always recomputed at render so stale legacy `composite` values (which were
+ *  weighted scores, not rank averages) heal automatically. */
+const compositeRankAvg = (r: { fanRank: number; playerRank: number; mediaRank: number; coachRank: number }) =>
+  Math.round((0.4 * r.fanRank + 0.3 * r.playerRank + 0.2 * r.mediaRank + 0.1 * r.coachRank) * 10) / 10;
+
+const VoteTable: React.FC<{
+  rows: VoteRowData[];
+  players: any[];
+  teams: any[];
+  titleDefenderId: string | null;
+  ownTid: number | null | undefined;
+}> = ({ rows, players, teams, titleDefenderId, ownTid }) => (
+  <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 overflow-hidden">
+    <div className="overflow-x-auto">
+      <table className="w-full text-left">
+        <thead>
+          <tr className="text-[9px] font-black uppercase tracking-widest text-zinc-500 border-b border-zinc-800">
+            <th className="px-3 py-3 w-10 text-center">#</th>
+            <th className="px-3 py-3">Player</th>
+            <th className="px-2 py-3 text-right text-rose-300">Fan</th>
+            <th className="px-2 py-3 text-right text-purple-300">Player</th>
+            <th className="px-2 py-3 text-right text-cyan-300">Media</th>
+            <th className="px-2 py-3 text-right text-yellow-300">Coach</th>
+            <th className="px-3 py-3 text-right text-yellow-400" title="Weighted rank average — 40% Fan + 30% Player + 20% Media + 10% Coach. Lower = better.">Avg Rank</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(r => {
+            const player = players.find(p => p.internalId === r.playerId);
+            if (!player) return null;
+            const team = teams.find((t: any) => t.id === player.tid);
+            const isDefender = r.playerId === titleDefenderId;
+            const isOwn = ownTid !== null && ownTid !== undefined && player.tid === ownTid;
+            const portrait = getPlayerImage(player);
+            return (
+              <tr
+                key={r.playerId}
+                className={`border-b border-zinc-800/60 last:border-b-0 transition-colors hover:bg-zinc-800/30 ${
+                  isDefender ? 'bg-yellow-500/5' : isOwn ? 'bg-indigo-500/5' : ''
+                }`}
+              >
+                <td className="px-3 py-2.5 text-center">
+                  <span className={`font-mono font-black text-[12px] ${isDefender ? 'text-yellow-300' : 'text-zinc-400'}`}>{r.rank}</span>
+                </td>
+                <td className="px-3 py-2.5">
+                  <div className="flex items-center gap-2.5 min-w-[180px]">
+                    <PlayerPortrait
+                      imgUrl={portrait || undefined}
+                      teamLogoUrl={(team as any)?.logoUrl}
+                      overallRating={player.overallRating}
+                      ratings={player.ratings}
+                      playerName={player.name}
+                      face={(player as any).face}
+                      size={36}
+                    />
+                    <div className="min-w-0">
+                      <p className={`text-[12px] font-black truncate ${isDefender ? 'text-yellow-200' : 'text-white'}`}>
+                        {isDefender && <Crown size={10} className="inline mr-1 text-yellow-400" />}
+                        <PlayerNameWithHover player={player}>{player.name}</PlayerNameWithHover>
+                      </p>
+                      <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-bold">{player.pos} · {team?.abbrev ?? ''}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-2 py-2.5"><VoteCell votes={r.fanVotes ?? 0}    rank={r.fanRank ?? 0}    tone="text-rose-200" /></td>
+                <td className="px-2 py-2.5"><VoteCell votes={r.playerVotes ?? 0} rank={r.playerRank ?? 0} tone="text-purple-200" /></td>
+                <td className="px-2 py-2.5"><VoteCell votes={r.mediaVotes ?? 0}  rank={r.mediaRank ?? 0}  tone="text-cyan-200" /></td>
+                <td className="px-2 py-2.5"><VoteCell votes={r.coachVotes ?? 0}  rank={r.coachRank ?? 0}  tone="text-yellow-200" /></td>
+                <td className="px-3 py-2.5 text-right">
+                  <p className="text-[15px] font-mono font-black text-white tabular-nums">{compositeRankAvg(r)}</p>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
+
+export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, players, ownTid, onWatch, isSimulating }) => {
   const { state } = useGame();
   const teams = state.teams;
   const dates = getAllStarWeekendDates(state.leagueStats.year);
@@ -136,13 +221,28 @@ export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, p
     const champPortrait = champPlayer ? getPlayerImage(champPlayer) : null;
     const totalPD = throne.cumulativePDs?.[throne.champion.playerId] ?? 0;
 
-    const matchesByRound: Record<number, any[]> = {};
-    (throne.bracket ?? []).forEach((m: any) => {
-      matchesByRound[m.round] = matchesByRound[m.round] ?? [];
-      matchesByRound[m.round].push(m);
+    // Adapt persisted BracketMatch → ThroneMatch (the shape TournamentBracket expects).
+    // Each persisted match has player1Id/player2Id/winnerId; resolve to Player objects.
+    const findThronePlayer = (id: string, seed: number) => {
+      const np = players.find(p => p.internalId === id);
+      return np ? toThronePlayer(np, seed) : null;
+    };
+    const throneMatches: ThroneMatch[] = (throne.bracket ?? []).map((m: any, idx: number) => {
+      const p1 = findThronePlayer(m.player1Id, idx * 2 + 1);
+      const p2 = findThronePlayer(m.player2Id, idx * 2 + 2);
+      const winner = m.winnerId
+        ? (m.winnerId === m.player1Id ? p1 : m.winnerId === m.player2Id ? p2 : null)
+        : null;
+      return {
+        id: `${m.round}-${idx}`,
+        round: m.round,
+        player1: p1,
+        player2: p2,
+        winner,
+        score1: m.score1 ?? 0,
+        score2: m.score2 ?? 0,
+      };
     });
-    const rounds = Object.keys(matchesByRound).map(Number).sort((a, b) => a - b);
-    const roundLabels: Record<number, string> = { 1: 'Round of 16', 2: 'Quarterfinals', 3: 'Semifinals', 4: 'The Final' };
 
     return (
       <div className="space-y-10">
@@ -189,30 +289,7 @@ export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, p
           <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
             <Trophy size={14} className="text-yellow-400" /> Bracket Recap
           </h3>
-          <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${rounds.length}, minmax(0, 1fr))` }}>
-            {rounds.map(r => (
-              <div key={r} className="space-y-2">
-                <p className="text-[9px] font-black tracking-widest text-zinc-500 uppercase mb-2">{roundLabels[r] ?? `Round ${r}`}</p>
-                {matchesByRound[r].map((m: any, idx: number) => {
-                  const p1 = players.find(p => p.internalId === m.player1Id);
-                  const p2 = players.find(p => p.internalId === m.player2Id);
-                  const p1Win = m.winnerId === m.player1Id;
-                  return (
-                    <div key={idx} className="rounded-xl border border-zinc-800 bg-zinc-900/50 overflow-hidden">
-                      <div className={`flex items-center justify-between px-3 py-2 ${p1Win ? 'bg-yellow-500/5' : ''}`}>
-                        <span className={`text-[11px] font-bold truncate ${p1Win ? 'text-yellow-300' : 'text-zinc-500 line-through'}`}>{p1?.name ?? m.player1Id}</span>
-                        <span className={`text-[11px] font-mono font-black ${p1Win ? 'text-yellow-300' : 'text-zinc-600'}`}>{m.score1}</span>
-                      </div>
-                      <div className={`flex items-center justify-between px-3 py-2 border-t border-zinc-800 ${!p1Win ? 'bg-yellow-500/5' : ''}`}>
-                        <span className={`text-[11px] font-bold truncate ${!p1Win ? 'text-yellow-300' : 'text-zinc-500 line-through'}`}>{p2?.name ?? m.player2Id}</span>
-                        <span className={`text-[11px] font-mono font-black ${!p1Win ? 'text-yellow-300' : 'text-zinc-600'}`}>{m.score2}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
+          <TournamentBracket matches={throneMatches} currentMatchIndex={-1} />
         </div>
       </div>
     );
@@ -222,16 +299,20 @@ export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, p
   // PHASE 4 — FIELD LOCKED (Jan 30 → Saturday)
   // ─────────────────────────────────────
   if (isFieldLocked && throne) {
-    const voteRows = fieldIds
-      .map(id => ({
-        playerId: id,
-        rank: throne.voteBreakdown?.[id]?.rank ?? 0,
-        fan: throne.voteBreakdown?.[id]?.fan ?? 0,
-        player: throne.voteBreakdown?.[id]?.player ?? 0,
-        media: throne.voteBreakdown?.[id]?.media ?? 0,
-        coach: throne.voteBreakdown?.[id]?.coach ?? 0,
-        composite: throne.voteBreakdown?.[id]?.composite ?? 0,
-      }))
+    const isSaturdayOrLater = currentDate >= dates.saturday;
+    const voteRows: VoteRowData[] = fieldIds
+      .map(id => {
+        const b = throne.voteBreakdown?.[id] ?? {};
+        return {
+          playerId: id,
+          rank: b.rank ?? 0,
+          composite: b.composite ?? 0,
+          fanVotes:    b.fanVotes    ?? 0, fanRank:    b.fanRank    ?? 0,
+          playerVotes: b.playerVotes ?? 0, playerRank: b.playerRank ?? 0,
+          mediaVotes:  b.mediaVotes  ?? 0, mediaRank:  b.mediaRank  ?? 0,
+          coachVotes:  b.coachVotes  ?? 0, coachRank:  b.coachRank  ?? 0,
+        };
+      })
       .sort((a, b) => a.rank - b.rank);
 
     return (
@@ -240,6 +321,27 @@ export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, p
           phaseLabel="FIELD LOCKED · TIPS OFF SATURDAY"
           sub="16 players · Single-elimination · First to 12 (win-by-2) · 7-second shot clock"
         />
+        {isSaturdayOrLater && onWatch && (
+          <div className="flex justify-center">
+            <button
+              onClick={onWatch}
+              disabled={isSimulating}
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-400 text-black font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-yellow-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isSimulating ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  Simulating Tournament…
+                </>
+              ) : (
+                <>
+                  <Play size={14} fill="currentColor" />
+                  Watch The Throne
+                </>
+              )}
+            </button>
+          </div>
+        )}
         {beltHolderPlayer && <KingCallout king={beltHolderPlayer} vacated={isVacated} />}
         <div>
           <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400 mb-3 flex items-center gap-2">
@@ -247,57 +349,13 @@ export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, p
           </h3>
           <VoterPie />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          {voteRows.map((row, idx) => {
-            const player = players.find(p => p.internalId === row.playerId);
-            if (!player) return null;
-            const isOwn = ownTid !== null && ownTid !== undefined && player.tid === ownTid;
-            const isDefender = row.playerId === titleDefenderId;
-            const portrait = getPlayerImage(player);
-            const team = teams.find(t => t.id === player.tid);
-            return (
-              <motion.div
-                key={row.playerId}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.04, duration: 0.4 }}
-                className={`relative rounded-2xl border p-4 ${
-                  isDefender
-                    ? 'bg-gradient-to-br from-yellow-500/10 via-amber-500/5 to-zinc-950 border-yellow-500/40 shadow-[0_0_30px_rgba(250,204,21,0.15)]'
-                    : isOwn
-                      ? 'bg-indigo-500/5 border-indigo-500/40'
-                      : 'bg-zinc-900/60 border-zinc-800'
-                }`}
-              >
-                <div className="absolute -top-2 -left-2 w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center font-mono font-black text-[10px] text-white">{row.rank}</div>
-                {isDefender && (
-                  <div className="absolute -top-2 right-3 bg-gradient-to-r from-yellow-500 to-amber-400 text-black text-[8px] font-black tracking-widest px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <Crown size={9} /> DEFENDER
-                  </div>
-                )}
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={`w-12 h-12 rounded-full overflow-hidden bg-zinc-800 shrink-0 ${isDefender ? 'border-2 border-yellow-400' : 'border border-white/10'}`}>
-                    {portrait ? <img src={portrait} alt={player.name} className="w-full h-full object-cover object-top" /> : <div className="w-full h-full flex items-center justify-center text-zinc-500 font-black text-sm">{player.name.split(' ').map((n: string) => n[0]).join('')}</div>}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-black truncate ${isDefender ? 'text-yellow-200' : 'text-white'}`}><PlayerNameWithHover player={player}>{player.name}</PlayerNameWithHover></p>
-                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{player.pos} · {team?.abbrev ?? ''}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-[8px] font-black tracking-widest text-zinc-500">VOTE</p>
-                    <p className="text-2xl font-mono font-black text-white tabular-nums">{row.composite}</p>
-                  </div>
-                </div>
-                <div className="space-y-1.5 pt-3 border-t border-zinc-800/60">
-                  <BlocBar value={row.fan} color="fan" />
-                  <BlocBar value={row.player} color="player" />
-                  <BlocBar value={row.media} color="media" />
-                  <BlocBar value={row.coach} color="coach" />
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
+        <VoteTable
+          rows={voteRows}
+          players={players}
+          teams={teams}
+          titleDefenderId={titleDefenderId}
+          ownTid={ownTid}
+        />
       </div>
     );
   }
@@ -311,7 +369,12 @@ export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, p
     const pctDone = Math.round(progress * 100);
 
     const tallyEntries = Object.entries(tally) as Array<[string, any]>;
-    tallyEntries.sort((a, b) => b[1].composite - a[1].composite);
+    // Composite is weighted-RANK-average — lower is better. Recompute on the fly
+    // from per-bloc ranks so stale legacy data (which stored weighted scores) heals.
+    const liveComposite = (t: any) =>
+      0.4 * (t.fanRank ?? 999) + 0.3 * (t.playerRank ?? 999)
+      + 0.2 * (t.mediaRank ?? 999) + 0.1 * (t.coachRank ?? 999);
+    tallyEntries.sort((a, b) => liveComposite(a[1]) - liveComposite(b[1]));
     const top16 = tallyEntries.slice(0, 16);
     const onTheBubble = tallyEntries.slice(16, 22);
 
@@ -345,52 +408,26 @@ export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, p
         {beltHolderPlayer && <KingCallout king={beltHolderPlayer} vacated={isVacated} />}
         <VoterPie />
 
-        {/* Live leaderboard — top 16 */}
+        {/* Live leaderboard — top 16 (MVP-style table) */}
         <div>
           <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400 mb-3 flex items-center gap-2">
             <ChevronRight size={12} /> Currently In · Top 16
           </h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-            <AnimatePresence>
-              {top16.map(([pid, t], idx) => {
-                const player = players.find(p => p.internalId === pid);
-                if (!player) return null;
-                const team = teams.find(tt => tt.id === player.tid);
-                const isDefender = pid === titleDefenderId;
-                const portrait = getPlayerImage(player);
-                return (
-                  <motion.div
-                    key={pid}
-                    layout
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.02 }}
-                    className={`rounded-xl border p-3 flex items-center gap-3 ${
-                      isDefender
-                        ? 'bg-yellow-500/10 border-yellow-500/40'
-                        : 'bg-emerald-500/5 border-emerald-500/20'
-                    }`}
-                  >
-                    <span className="w-6 text-center font-mono font-black text-[11px] text-zinc-400 shrink-0">{idx + 1}</span>
-                    <div className="w-9 h-9 rounded-full overflow-hidden bg-zinc-800 shrink-0">
-                      {portrait ? <img src={portrait} alt={player.name} className="w-full h-full object-cover object-top" /> : <div className="w-full h-full flex items-center justify-center text-zinc-500 font-black text-[10px]">{player.name.split(' ').map((n: string) => n[0]).join('')}</div>}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-bold truncate ${isDefender ? 'text-yellow-200' : 'text-white'}`}>
-                        {isDefender && <Crown size={10} className="inline mr-1 text-yellow-400" />}
-                        <PlayerNameWithHover player={player}>{player.name}</PlayerNameWithHover>
-                      </p>
-                      <p className="text-[9px] text-zinc-500 uppercase tracking-widest">{player.pos} · {team?.abbrev ?? ''}</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-base font-mono font-black text-white tabular-nums">{t.composite}</p>
-                      <p className="text-[8px] text-zinc-500 tracking-wider">VOTES</p>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
+          <VoteTable
+            rows={top16.map(([pid, t], idx) => ({
+              playerId: pid,
+              rank: idx + 1,
+              composite: t.composite ?? 0,
+              fanVotes: t.fanVotes ?? 0, fanRank: t.fanRank ?? 0,
+              playerVotes: t.playerVotes ?? 0, playerRank: t.playerRank ?? 0,
+              mediaVotes: t.mediaVotes ?? 0, mediaRank: t.mediaRank ?? 0,
+              coachVotes: t.coachVotes ?? 0, coachRank: t.coachRank ?? 0,
+            }))}
+            players={players}
+            teams={teams}
+            titleDefenderId={titleDefenderId}
+            ownTid={ownTid}
+          />
         </div>
 
         {/* On the bubble */}
@@ -538,16 +575,61 @@ export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, p
   // PHASE 1 — PRE-SIGNUP (before Dec 1)
   // ─────────────────────────────────────
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
+    <div className="flex flex-col items-center justify-center py-20 text-center">
       <div className="w-16 h-16 rounded-full bg-yellow-400/10 flex items-center justify-center mb-6 border border-yellow-400/30">
         <Crown className="w-8 h-8 text-yellow-400" />
       </div>
-      <h3 className="text-3xl font-black italic tracking-tighter text-white mb-2">THE THRONE</h3>
-      <p className="text-sm text-zinc-500 max-w-md mb-6">
-        A 16-player single-elimination 1v1 tournament. Sign-ups open December 1. Composite vote (40% fan / 30% player / 20% media / 10% coach) selects the field of 16 on January 30. Tournament tips off All-Star Saturday.
+      <h3 className="text-3xl font-black italic tracking-tighter text-white mb-3">THE THRONE</h3>
+      <p className="text-sm text-zinc-400 max-w-md mb-6 leading-relaxed">
+        A 16-player single-elimination 1v1 tournament held on All-Star Saturday.
       </p>
+
+      <div className="w-full max-w-md text-left mb-8">
+        <p className="text-[10px] font-black tracking-[0.3em] text-yellow-400/80 mb-3 text-center">SCHEDULE</p>
+        <ul className="space-y-2.5">
+          <li className="flex items-start gap-3 rounded-xl bg-zinc-900/40 border border-zinc-800 px-4 py-3">
+            <span className="text-[10px] font-mono font-black text-yellow-400 shrink-0 mt-0.5 tracking-wider">DEC 1</span>
+            <span className="text-xs text-zinc-300">Sign-ups open</span>
+          </li>
+          <li className="flex items-start gap-3 rounded-xl bg-zinc-900/40 border border-zinc-800 px-4 py-3">
+            <span className="text-[10px] font-mono font-black text-yellow-400 shrink-0 mt-0.5 tracking-wider">JAN 16</span>
+            <span className="text-xs text-zinc-300">Composite voting opens</span>
+          </li>
+          <li className="flex items-start gap-3 rounded-xl bg-zinc-900/40 border border-zinc-800 px-4 py-3">
+            <span className="text-[10px] font-mono font-black text-yellow-400 shrink-0 mt-0.5 tracking-wider">JAN 30</span>
+            <span className="text-xs text-zinc-300">Field of 16 revealed</span>
+          </li>
+          <li className="flex items-start gap-3 rounded-xl bg-yellow-500/5 border border-yellow-500/30 px-4 py-3">
+            <span className="text-[10px] font-mono font-black text-yellow-300 shrink-0 mt-0.5 tracking-wider">SAT</span>
+            <span className="text-xs text-yellow-100 font-bold">Tournament tips off</span>
+          </li>
+        </ul>
+      </div>
+
+      <div className="w-full max-w-md mb-8">
+        <p className="text-[10px] font-black tracking-[0.3em] text-yellow-400/80 mb-3 text-center">COMPOSITE VOTE</p>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-xl bg-rose-500/10 border border-rose-500/30 px-3 py-3 text-center">
+            <p className="text-2xl font-black font-mono text-rose-300 leading-none mb-1">40%</p>
+            <p className="text-[9px] font-black tracking-widest text-rose-400/80">FAN</p>
+          </div>
+          <div className="rounded-xl bg-purple-500/10 border border-purple-500/30 px-3 py-3 text-center">
+            <p className="text-2xl font-black font-mono text-purple-300 leading-none mb-1">30%</p>
+            <p className="text-[9px] font-black tracking-widest text-purple-400/80">PLAYER</p>
+          </div>
+          <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/30 px-3 py-3 text-center">
+            <p className="text-2xl font-black font-mono text-cyan-300 leading-none mb-1">20%</p>
+            <p className="text-[9px] font-black tracking-widest text-cyan-400/80">MEDIA</p>
+          </div>
+          <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/30 px-3 py-3 text-center">
+            <p className="text-2xl font-black font-mono text-yellow-300 leading-none mb-1">10%</p>
+            <p className="text-[9px] font-black tracking-widest text-yellow-400/80">COACH</p>
+          </div>
+        </div>
+      </div>
+
       {beltHolderPlayer && (
-        <div className="mt-2">
+        <div className="w-full max-w-md">
           <KingCallout king={beltHolderPlayer} vacated={false} />
         </div>
       )}

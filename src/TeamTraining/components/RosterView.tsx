@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { DevArchetype, Player, IndividualIntensity, Staffing, Team, TrainingParadigm, Allocations } from '../types';
 import { AlertCircle, Info, ChevronRight, GraduationCap } from 'lucide-react';
 import { Tooltip } from './ToolTip';
@@ -8,6 +8,7 @@ import { TrainingFocusModal } from './TrainingFocusModal';
 import { MentorshipModal } from './MentorshipModal';
 import { PlayerNameWithHover } from '../../components/shared/PlayerNameWithHover';
 import { PlayerRatingsModal } from '../../components/modals/PlayerRatingsModal';
+import { MyFace, isRealFaceConfig } from '../../components/shared/MyFace';
 import type { NBAPlayer } from '../../types';
 
 interface Props {
@@ -30,6 +31,8 @@ export function RosterView({ roster, staffing, teams, nbaPlayersById, currentYea
   const [focusModalPlayerId, setFocusModalPlayerId] = useState<string | null>(null);
   const [mentorshipModalPlayerId, setMentorshipModalPlayerId] = useState<string | null>(null);
   const [progressionModalPlayerId, setProgressionModalPlayerId] = useState<string | null>(null);
+  const [sortCol, setSortCol] = useState<'ovr' | 'pot' | 'ywt'>('ovr');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   const baseFuzz = 20;
   const scoutPA = staffing.chiefScout?.attributes.judgingPlayerPotential || 0;
@@ -100,6 +103,22 @@ export function RosterView({ roster, staffing, teams, nbaPlayersById, currentYea
     return { label: 'LOW', color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30' };
   };
 
+  const sortedRoster = useMemo(() => {
+    const copy = [...roster];
+    const dir = sortDir === 'desc' ? -1 : 1;
+    copy.sort((a, b) => {
+      if (sortCol === 'ovr') return dir * (getEffectiveOvr(a) - getEffectiveOvr(b));
+      if (sortCol === 'pot') return dir * (a.pot - b.pot);
+      return dir * (Number(a.ywt) - Number(b.ywt));
+    });
+    return copy;
+  }, [roster, sortCol, sortDir]);
+
+  const handleSort = (col: 'ovr' | 'pot' | 'ywt') => {
+    if (sortCol === col) setSortDir(d => d === 'desc' ? 'asc' : 'desc');
+    else { setSortCol(col); setSortDir('desc'); }
+  };
+
   const veterans = roster.filter(p => p.age >= 28);
 
   const activeFocusPlayer = roster.find(p => p.id === focusModalPlayerId);
@@ -118,9 +137,19 @@ export function RosterView({ roster, staffing, teams, nbaPlayersById, currentYea
             <thead className="text-[10px] uppercase bg-slate-950/40 text-slate-500 font-black tracking-widest border-b border-slate-800/40 sticky top-0 z-20">
               <tr>
                 <th className="px-3 py-2 md:px-6 md:py-4 sticky left-0 bg-slate-950 z-30 min-w-[140px] md:min-w-[200px]">Player</th>
-                <th className="px-3 py-2 md:px-6 md:py-4 text-center">OVR</th>
-                <th className="px-3 py-2 md:px-6 md:py-4 text-center">POT</th>
-                <th className="px-3 py-2 md:px-6 md:py-4 text-center">YWT</th>
+                {(['ovr', 'pot', 'ywt'] as const).map(col => (
+                  <th key={col} className="px-3 py-2 md:px-6 md:py-4 text-center">
+                    <button
+                      onClick={() => handleSort(col)}
+                      className="inline-flex items-center gap-1 uppercase tracking-widest hover:text-white transition-colors"
+                    >
+                      {col.toUpperCase()}
+                      <span className={sortCol === col ? 'text-[#FDB927]' : 'text-slate-700'}>
+                        {sortCol === col ? (sortDir === 'desc' ? '↓' : '↑') : '↕'}
+                      </span>
+                    </button>
+                  </th>
+                ))}
                 <th className="px-3 py-2 md:px-6 md:py-4 min-w-[120px]">Conditioning</th>
                 <th className="px-3 py-2 md:px-6 md:py-4 text-center">Morale</th>
                 <th className="px-3 py-2 md:px-6 md:py-4 w-[140px] md:w-[180px]">Dev Focus</th>
@@ -129,7 +158,7 @@ export function RosterView({ roster, staffing, teams, nbaPlayersById, currentYea
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/30">
-              {roster.map((player) => {
+              {sortedRoster.map((player) => {
                 const effOvr = getEffectiveOvr(player);
                 const diff = (effOvr - player.ovr).toFixed(1);
                 const diffStr = Number(diff) > 0 ? `+${diff}` : diff;
@@ -141,6 +170,12 @@ export function RosterView({ roster, staffing, teams, nbaPlayersById, currentYea
                       <div className="relative group/avatar">
                         {player.imgURL ? (
                           <img src={player.imgURL} alt="" className="w-8 h-8 md:w-12 md:h-12 aspect-square rounded-full object-cover bg-slate-800 border border-slate-700 shadow-lg" />
+                        ) : isRealFaceConfig(player.face) ? (
+                          <div className="w-8 h-8 md:w-12 md:h-12 rounded-full bg-slate-700 border border-slate-600 overflow-hidden relative shrink-0">
+                            <div className="absolute left-1/2 top-1/2" style={{ width: '85%', height: '127.5%', transform: 'translate(-50%, -50%)' }}>
+                              <MyFace face={player.face} style={{ width: '100%', height: '100%' }} />
+                            </div>
+                          </div>
                         ) : (
                           <div className="w-8 h-8 md:w-12 md:h-12 aspect-square rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-500 font-black text-sm md:text-xl shrink-0 group-hover/avatar:text-blue-400 transition-colors">
                             {player.name.charAt(0)}
@@ -341,6 +376,7 @@ export function RosterView({ roster, staffing, teams, nbaPlayersById, currentYea
         playerStats={activeFocusPlayer?.stats}
         onSelect={(focus) => focusModalPlayerId && updateDevFocus(focusModalPlayerId, focus as DevArchetype)}
         imgURL={activeFocusPlayer?.imgURL}
+        face={activeFocusPlayer?.face}
       />
 
       <MentorshipModal

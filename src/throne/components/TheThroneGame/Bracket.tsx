@@ -67,46 +67,40 @@ export const TournamentBracket: React.FC<BracketProps> = ({ matches, currentMatc
   const r3 = matches.filter(m => m.round === 3);
   const r4 = matches.filter(m => m.round === 4);
 
+  // Layout follows the PlayoffView BracketLayout pattern:
+  //   - Each round = column with label header at top + matches in their own flex container
+  //   - Matches container has `flex-1` to fill remaining height
+  //   - `justifyContent` controls match distribution per round so matches in later
+  //     rounds align with the midpoint of the matches they descend from
+  const Column: React.FC<{ label: string; labelColor: string; matches: Match[]; justify: 'space-between' | 'space-around' | 'center' }> = ({ label, labelColor, matches: roundMatches, justify }) => (
+    <div className="flex flex-col shrink-0">
+      <h4 className={`text-center text-[10px] font-black uppercase tracking-widest mb-3 ${labelColor}`}>{label}</h4>
+      <div className="flex flex-col gap-4 flex-1" style={{ justifyContent: justify }}>
+        {roundMatches.map(m => (
+          <MatchNode key={m.id} match={m} isCurrent={matches.indexOf(m) === currentMatchIndex} />
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="overflow-x-auto scrollbar-hide">
-      <div className="flex gap-4 md:gap-12 pb-8 pr-12">
-        {r1.length > 0 && (
-          <div className="flex flex-col justify-around gap-4">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-700">Round 1</h4>
-            {r1.map(m => (
-              <MatchNode key={m.id} match={m} isCurrent={matches.indexOf(m) === currentMatchIndex} />
-            ))}
-          </div>
-        )}
-
-        {r2.length > 0 && (
-          <div className="flex flex-col justify-around gap-8">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-700">Quarterfinals</h4>
-            {r2.map(m => (
-              <MatchNode key={m.id} match={m} isCurrent={matches.indexOf(m) === currentMatchIndex} />
-            ))}
-          </div>
-        )}
-
-        {r3.length > 0 && (
-          <div className="flex flex-col justify-around gap-16">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-700">Semifinals</h4>
-            {r3.map(m => (
-              <MatchNode key={m.id} match={m} isCurrent={matches.indexOf(m) === currentMatchIndex} />
-            ))}
-          </div>
-        )}
-
+      <div className="flex items-stretch gap-4 md:gap-12 pb-8 pr-12">
+        {r1.length > 0 && <Column label="Round 1"      labelColor="text-zinc-700"          matches={r1} justify="space-between" />}
+        {r2.length > 0 && <Column label="Quarterfinals" labelColor="text-zinc-700"          matches={r2} justify="space-around"  />}
+        {r3.length > 0 && <Column label="Semifinals"    labelColor="text-zinc-700"          matches={r3} justify="space-around"  />}
         {r4.length > 0 && (
-          <div className="flex flex-col justify-center self-center">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-yellow-500 italic">The Throne</h4>
-            <div className="relative">
-              {r4[0] && <MatchNode match={r4[0]} isCurrent={matches.indexOf(r4[0]) === currentMatchIndex} />}
-              {r4[0]?.winner && (
-                <div className="absolute -right-12 top-1/2 -translate-y-1/2 flex flex-col items-center">
-                  <Trophy className="text-yellow-500 w-8 h-8 animate-bounce" />
-                </div>
-              )}
+          <div className="flex flex-col shrink-0 relative">
+            <h4 className="text-center text-[10px] font-black uppercase tracking-widest mb-3 text-yellow-500 italic">The Throne</h4>
+            <div className="flex flex-col flex-1 justify-center">
+              <div className="relative">
+                <MatchNode match={r4[0]} isCurrent={matches.indexOf(r4[0]) === currentMatchIndex} />
+                {r4[0]?.winner && (
+                  <div className="absolute -right-12 top-1/2 -translate-y-1/2 flex flex-col items-center">
+                    <Trophy className="text-yellow-500 w-8 h-8 animate-bounce" />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

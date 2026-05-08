@@ -10,6 +10,7 @@ import { Clock, Play, Pause, CheckCircle, ChevronLeft, ChevronRight, Calendar, F
 import { useGame } from '../../store/GameContext';
 import { convertTo2KRating, normalizeDate } from '../../utils/helpers';
 import { getDraftDate, isDraftBlockedByUnresolvedPlayoffs, toISODateString } from '../../utils/dateUtils';
+import { getLsYear } from '../../utils/leagueYear';
 import { estimatePotentialBbgm } from '../../utils/playerRatings';
 import { getPlayerImage } from '../central/view/bioCache';
 import { MyFace, isRealFaceConfig } from '../shared/MyFace';
@@ -56,7 +57,7 @@ const BIO_LEAGUE_MAP: Record<string, string> = {
 // Used by both immediate per-pick commits and finalizeDraft.
 function computeDraftPickFields(pickSlot: number, team: any, ls: any) {
   if (!team) return null;
-  const season: number = (ls as any).year ?? 2026;
+  const season: number = getLsYear({ leagueStats: ls } as any);
   const round = pickSlot <= 30 ? 1 : 2;
   const pickInRound = pickSlot <= 30 ? pickSlot : pickSlot - 30;
   const guaranteedYrs: number = (ls as any).rookieContractLength ?? 2;
@@ -125,7 +126,7 @@ interface FullDraftTableProps {
 
 const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, draftOrder, onReview, currentPick, userTeamId, isGM }) => {
   const { state: _ftState } = useGame();
-  const leagueYear = _ftState.leagueStats?.year ?? 2026;
+  const leagueYear = getLsYear(_ftState);
   const [teamFilter, setTeamFilter] = useState<string>('ALL');
 
   // Build sorted alphabetical team list from draft order (deduplicated)
@@ -419,7 +420,7 @@ interface CompactAdvisorBoardProps {
 const CompactAdvisorBoardPanel: React.FC<CompactAdvisorBoardProps> = ({ teamId, draftedIds }) => {
   const { state } = useGame();
   const team = state.teams.find(t => t.id === teamId);
-  const currentYear = state.leagueStats?.year ?? 2026;
+  const currentYear = getLsYear(state);
   const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
 
   const teamMode: TeamMode = useMemo(() => {
@@ -598,7 +599,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   // availableDraftYears (sorted newest-first) only includes years where
   // players have draft.year set — so it's always 1 year BEHIND the current
   // ls.year until the draft actually runs.
-  const upcomingDraftYear = state.leagueStats?.year ?? 2026;
+  const upcomingDraftYear = getLsYear(state);
   const defaultViewYear = upcomingDraftYear;
   const [viewDraftYear, setViewDraftYear] = useState<number>(defaultViewYear);
 
@@ -682,7 +683,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   const mostRecentDraftYear = viewDraftYear;
 
   // ─── Date gating ──────────────────────────────────────────────────────────
-  const leagueYear = state.leagueStats?.year ?? 2026;
+  const leagueYear = getLsYear(state);
   const draftDate = toISODateString(getDraftDate(leagueYear, state.leagueStats));
   const today = normalizeDate(state.date);
   const isDraftTime = today >= draftDate && !isDraftBlockedByUnresolvedPlayoffs(state);
@@ -1060,7 +1061,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
 
   const finalizeDraft = () => {
     const ls = state.leagueStats ?? {};
-    const season: number = (ls as any).year ?? 2026;
+    const season: number = getLsYear({ leagueStats: ls } as any);
 
     const updatedPlayers = state.players.map(p => {
       const pickEntry = Object.entries(drafted).find(([, pl]: [string, any]) => pl.internalId === p.internalId);

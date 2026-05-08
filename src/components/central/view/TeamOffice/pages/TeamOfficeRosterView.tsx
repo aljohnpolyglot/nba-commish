@@ -132,7 +132,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
   const quick = usePlayerQuickActions();
   const isGM = state.gameMode === 'gm';
   const isOwnTeam = isGM && teamId === state.userTeamId;
-  const currentYear = state.leagueStats?.year ?? 2026;
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
 
   const team = state.teams.find(t => t.id === teamId);
   const teamColor = team?.colors?.[0] ?? '#552583';

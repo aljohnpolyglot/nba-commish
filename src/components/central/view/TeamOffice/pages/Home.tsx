@@ -13,9 +13,13 @@ interface HomeProps {
   pickerMode?: boolean;
   /** Override for userTid highlighting in prop-driven mode. */
   selectedTid?: number | null;
+  /** Header title override — defaults to "Select Franchise" / "Pick Your Franchise". */
+  title?: string;
+  /** Header subtitle override — defaults to the front-office copy. */
+  subtitle?: string;
 }
 
-export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pickerMode, selectedTid }: HomeProps) {
+export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pickerMode, selectedTid, title, subtitle }: HomeProps) {
   const { state, dispatchAction } = useGame();
   const teams = teamsProp ?? state.teams ?? [];
   const players = playersProp ?? state.players ?? [];
@@ -47,12 +51,12 @@ export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pic
       <div className="flex justify-between items-end border-b border-[#30363d] pb-4">
         <div>
           <h1 className="text-4xl font-black italic uppercase tracking-tighter text-[#e6edf3]">
-            {needsTeamPick ? 'Pick Your Franchise' : 'Select Franchise'}
+            {title ?? (needsTeamPick ? 'Pick Your Franchise' : 'Select Franchise')}
           </h1>
           <p className="text-[#8b949e] font-medium mt-1">
-            {needsTeamPick
+            {subtitle ?? (needsTeamPick
               ? 'Welcome, GM. Choose the team you want to build. This locks in who signs you to that five-year contract.'
-              : 'Choose a team to manage their front office operations.'}
+              : 'Choose a team to manage their front office operations.')}
           </p>
         </div>
       </div>

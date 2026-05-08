@@ -7,7 +7,7 @@ const f1 = (v: number) => Number.isFinite(v) && v !== 0 ? v.toFixed(1) : '—';
 
 export const PlayerHoverCardSimple: React.FC<{ player: NBAPlayer }> = ({ player }) => {
   const { state } = useGame();
-  const season = state.leagueStats?.year ?? 2026;
+  const season = state.leagueStats?.year ?? new Date().getFullYear();
   const team = state.teams.find(t => t.id === player.tid);
 
   const ratings = player.ratings?.find((r: any) => r.season === season) ?? player.ratings?.[player.ratings.length - 1];

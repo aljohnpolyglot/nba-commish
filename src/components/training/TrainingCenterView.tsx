@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { Activity } from 'lucide-react';
+import { Activity, RotateCcw } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { RosterView } from '../../TeamTraining/components/RosterView';
 import { SystemProficiencyView } from '../../TeamTraining/components/SystemProficiencyView';
@@ -7,9 +7,11 @@ import { DailyPlanModal } from '../../TeamTraining/components/DailyPlanModal';
 import { TrainingCalendarView } from './TrainingCalendarView';
 import { TrainingDayView } from './TrainingDayView';
 import { TrainingFranchisePicker } from './TrainingFranchisePicker';
+import { DashboardStatusBar } from './DashboardStatusBar';
 import { mapPlayerToK2 } from '../../TeamTraining/lib/playerMapping';
 import { computeTeamProficiency } from '../../utils/coachSliders';
 import { nbaPlayerToTrainingPlayer, nbaTeamToTrainingTeam } from '../../TeamTraining/adapters/fromGameState';
+import { TRAINING_CALENDAR_VERSION } from '../../services/training/trainingScheduler';
 import type { Allocations, TrainingParadigm, Staffing, ScheduleDay, DayType } from '../../TeamTraining/types';
 import type { Game } from '../../types';
 
@@ -31,6 +33,41 @@ import type { Game } from '../../types';
  * - Day after a single game (not B2B): Recovery Practice (active recovery, walkthrough).
  * - Otherwise (2+ days clear): Full Training (regular) / Off Day (Sunday rest).
  */
+/** Parse a sim-date string permissively.
+ *
+ *  state.date in this codebase is *not* ISO — it's a locale-formatted string
+ *  like "Nov 7, 2025" (see initialState.ts + the per-day toLocaleDateString
+ *  setters). Naive `slice(0, 10)` gives "Nov 7, 202" which parses to Invalid
+ *  Date and silently breaks every date comparison downstream.
+ *
+ *  Strategy: try `new Date(raw)` first — JS handles both ISO and "Mon D, YYYY"
+ *  natively. Use local getters (getFullYear/Month/Date) so "Nov 7, 2025" lands
+ *  on Nov 7 regardless of the user's timezone, then re-anchor at UTC midnight.
+ */
+function parseSimDate(dateStr: string | undefined | null): Date {
+  if (dateStr) {
+    const direct = new Date(dateStr);
+    if (!isNaN(direct.getTime())) {
+      return new Date(Date.UTC(direct.getFullYear(), direct.getMonth(), direct.getDate()));
+    }
+  }
+  const now = new Date();
+  return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+}
+
+/** Sunday (UTC midnight) of the week containing the parsed sim date. */
+function sundayOf(dateStr: string | undefined | null): Date {
+  const out = parseSimDate(dateStr);
+  out.setUTCDate(out.getUTCDate() - out.getUTCDay());
+  return out;
+}
+
+/** Sim-date as canonical "YYYY-MM-DD" — what every downstream calendar
+ *  consumer wants. Null-safe. */
+function toIsoDay(dateStr: string | undefined | null): string {
+  return parseSimDate(dateStr).toISOString().slice(0, 10);
+}
+
 // Derives season phase from a date via month-day windows (mirrors SEASON_DATES in src/constants.ts).
 function phaseFromDate(d: Date): 'preseason' | 'regular' | 'playoffs' | 'offseason' {
   const m = d.getMonth() + 1; // 1-12
@@ -52,23 +89,18 @@ function phaseFromDate(d: Date): 'preseason' | 'regular' | 'playoffs' | 'offseas
 function buildCalendar(
   schedule: Game[],
   teamId: number,
-  /** ISO `YYYY-MM-DD` for any day inside the target month — buildCalendar walks
-   *  the entire calendar month containing this date. */
+  /** ISO `YYYY-MM-DD` of the FIRST visible day (Sunday). buildCalendar walks
+   *  exactly `days` cells from this anchor. */
   anchorISO: string,
-  teamLookup: Map<number, { abbrev: string; logoUrl?: string }>
+  teamLookup: Map<number, { abbrev: string; logoUrl?: string }>,
+  days: number = 28,
 ): ScheduleDay[] {
   const anchor = new Date(`${anchorISO}T00:00:00Z`);
   if (isNaN(anchor.getTime())) return [];
 
-  // Month bounds.
-  const year = anchor.getUTCFullYear();
-  const month = anchor.getUTCMonth(); // 0..11
-  const monthStart = new Date(Date.UTC(year, month, 1));
-  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-
   // g.date is full ISO (`2025-10-07T20:00:00Z`); slice to `YYYY-MM-DD` so the
   // map lookup matches the day-keys used by every consumer.
-  // Note: include played games too — past months (and freshly-switched teams
+  // Note: include played games too — past weeks (and freshly-switched teams
   // whose game history is mostly already-played) need to render the historical
   // matchups, not collapse to all-Off-Day.
   const teamGamesByISO = new Map<string, Game>();
@@ -79,14 +111,20 @@ function buildCalendar(
     if (dateKey) teamGamesByISO.set(dateKey, g);
   }
 
-  const days: ScheduleDay[] = [];
-  let lastWasGame = false;
-  let lastWasB2BGame2 = false; // night-2 of a back-to-back finished yesterday → mandatory pure recovery today
+  // Look one day BEHIND the anchor so the lastWasGame / B2B flags are seeded
+  // correctly for cells right at the start of the visible window.
+  const seedDay = new Date(anchor); seedDay.setUTCDate(anchor.getUTCDate() - 1);
+  const seedSeed = new Date(anchor); seedSeed.setUTCDate(anchor.getUTCDate() - 2);
+  const seedISO = seedDay.toISOString().slice(0, 10);
+  const seedSeedISO = seedSeed.toISOString().slice(0, 10);
+  let lastWasGame = teamGamesByISO.has(seedISO);
+  let lastWasB2BGame2 = teamGamesByISO.has(seedISO) && teamGamesByISO.has(seedSeedISO);
 
-  // Walk every day of the calendar month so cells align to real weekdays.
-  for (let i = 0; i < daysInMonth; i++) {
-    const d = new Date(monthStart);
-    d.setUTCDate(monthStart.getUTCDate() + i);
+  const result: ScheduleDay[] = [];
+
+  for (let i = 0; i < days; i++) {
+    const d = new Date(anchor);
+    d.setUTCDate(anchor.getUTCDate() + i);
     const iso = d.toISOString().slice(0, 10);
     const game = teamGamesByISO.get(iso);
 
@@ -104,66 +142,54 @@ function buildCalendar(
       activity = 'Game';
       isB2B = lastWasGame;
       description = isB2B ? 'Back-to-back — night two' : 'Game day';
-    } else if (lastWasB2BGame2) {
-      // Day after a B2B → mandatory pure recovery, no team practice.
-      activity = 'Recovery';
-      description = 'Mandatory recovery — post B2B';
-    } else if (lastWasGame) {
-      // Day after a single game.
-      activity = 'Recovery Practice';
-      description = 'Active recovery + walkthrough';
-    } else if (hasGameTomorrow) {
-      activity = 'Shootaround';
-      description = "Light shootaround — game tomorrow";
-    } else if (phase === 'offseason') {
-      activity = 'Off Day';
-      description = 'Offseason — individual development only';
-    } else if (phase === 'playoffs') {
-      activity = 'Light Practice';
-      description = 'Film + walkthrough for next opponent';
-    } else if (phase === 'preseason') {
-      activity = 'Full Training';
-      description = 'Training camp scrimmage';
     } else {
-      // Regular season — 4 train / 1 off rhythm.
-      const dow = d.getUTCDay();
-      if (dow === 0) {
-        activity = 'Off Day';
-        description = 'Sunday rest';
-      } else {
-        activity = 'Balanced Practice';
-        description = 'Balanced offensive / defensive sets';
-      }
+      // All non-game cells render as Balanced Practice. Intensity in the saved
+      // plan carries the load story (15% post-B2B, 25% pre/post-game, 50%
+      // regular, 75% training camp). The cell visual reads identical whether
+      // the plan was auto-set or user-set.
+      activity = 'Balanced Practice';
+      if (lastWasB2BGame2)         description = 'Light load — post B2B';
+      else if (lastWasGame)        description = 'Light load — post-game';
+      else if (hasGameTomorrow)    description = 'Light load — pre-game';
+      else if (phase === 'offseason')  { activity = 'Off Day'; description = 'Offseason — individual development only'; }
+      else if (phase === 'playoffs')   description = 'Film + walkthrough for next opponent';
+      else if (phase === 'preseason')  description = 'Preseason training';
+      else if (d.getUTCDay() === 0)    { activity = 'Off Day'; description = 'Sunday rest'; }
+      else                              description = 'Balanced offensive / defensive sets';
     }
 
     let opponent: ScheduleDay['opponent'];
     if (game) {
       const isHome = game.homeTid === teamId;
       const oppTid = isHome ? game.awayTid : game.homeTid;
-      const oppMeta = teamLookup.get(oppTid);
+      // Playoff anticipation — when the opponent slot isn't locked yet (e.g. a
+      // 7–10 seed waiting on play-in results), flag as TBD and let the cell
+      // render the generic NBA logo instead of an unknown abbrev.
+      const oppMeta = oppTid >= 0 ? teamLookup.get(oppTid) : undefined;
+      const isTBD = oppTid < 0 || !oppMeta;
       opponent = {
         tid: oppTid,
-        abbrev: oppMeta?.abbrev ?? '',
-        logoUrl: oppMeta?.logoUrl,
+        abbrev: isTBD ? 'TBD' : (oppMeta?.abbrev ?? ''),
+        logoUrl: isTBD ? undefined : oppMeta?.logoUrl,
         isHome,
       };
     }
 
-    days.push({
-      day: d.getUTCDate(), // actual day-of-month (1-31), not loop offset
+    result.push({
+      day: d.getUTCDate(),
       hasGame: !!game,
       isB2B,
       activity,
       description,
       opponent,
       isoDate: iso,
-      weekday: d.getUTCDay(), // 0=Sun..6=Sat — ScheduleView anchors cells with this
+      weekday: d.getUTCDay(),
     });
     lastWasB2BGame2 = isB2B;
     lastWasGame = !!game;
   }
 
-  return days;
+  return result;
 }
 
 export const TrainingCenterView: React.FC = () => {
@@ -178,7 +204,7 @@ export const TrainingCenterView: React.FC = () => {
 
   const team = selectedTeamId != null ? state.teams.find(t => t.id === selectedTeamId) : null;
   const isReadOnly = isGM && selectedTeamId != null && selectedTeamId !== state.userTeamId;
-  const leagueYear = state.leagueStats?.year ?? 2026;
+  const leagueYear = state.leagueStats?.year ?? new Date().getFullYear();
 
   const trainingTeams = useMemo(() => state.teams.map(nbaTeamToTrainingTeam), [state.teams]);
   const roster = useMemo(() => {
@@ -203,7 +229,11 @@ export const TrainingCenterView: React.FC = () => {
   const [selectedPlanDateISO, setSelectedPlanDateISO] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(state.date);
   const [viewMode, setViewMode] = useState<'calendar' | 'day' | 'watching'>('calendar');
-  const [calendarMonth, setCalendarMonth] = useState(new Date(state.date));
+  // Calendar anchor is the SUNDAY of the visible 4-week window. Initialized to
+  // the Sunday of the current sim week. Falls back to *real now* if state.date
+  // is missing/malformed — without this guard the calendar renders Invalid Date
+  // and chevrons silently break (`Date < Date` is false when either side is NaN).
+  const [weekAnchor, setWeekAnchor] = useState<Date>(() => sundayOf(state.date));
 
   // Conditional schedule regen — when play-in / playoffs / NBA Cup games get
   // injected into state.schedule (post-Aug 14), the team's `trainingCalendar`
@@ -220,39 +250,48 @@ export const TrainingCenterView: React.FC = () => {
     lastScheduleLenRef.current = len;
   }, [state.schedule?.length, team?.id, dispatchAction]);
 
-  // Lazy-init: when the user picks a team via the dropdown that has never had
-  // its training calendar autofilled, fire the autofill so the calendar isn't
-  // empty on first view. Without this, switching from a generated team to a
-  // never-touched one shows every cell as Off Day.
+  // Lazy-init + version migration: fires AUTOFILL when the calendar is empty
+  // OR contains any auto-plan written by an older scheduler version (e.g. the
+  // legacy "BAL · 15%" post-game cells from v1/v2). User-set plans (auto: false)
+  // are preserved by autoGenerateTrainingCalendar regardless.
   useEffect(() => {
     if (!team) return;
     const cal = (team as any).trainingCalendar ?? {};
-    const isEmpty = Object.keys(cal).length === 0;
-    if (isEmpty) {
+    const entries = Object.values(cal) as Array<{ auto?: boolean; version?: number }>;
+    if (entries.length === 0) {
+      dispatchAction({ type: 'AUTOFILL_TEAM_TRAINING_CALENDAR', payload: { teamId: team.id } });
+      return;
+    }
+    const hasStale = entries.some(p => p && p.auto !== false && (p.version ?? 0) < TRAINING_CALENDAR_VERSION);
+    if (hasStale) {
       dispatchAction({ type: 'AUTOFILL_TEAM_TRAINING_CALENDAR', payload: { teamId: team.id } });
     }
   }, [team?.id, dispatchAction]);
 
+  // Snap visible window back to the current sim week ONLY on a genuine date
+  // advance. Naive deps `[state.date, state.day]` re-fire on unrelated re-renders
+  // and rip the user back when they're navigating history.
+  const lastSimDateRef = useRef<string>(state.date);
   useEffect(() => {
+    if (lastSimDateRef.current === state.date) return;
+    lastSimDateRef.current = state.date;
     setSelectedDate(state.date);
-    setCalendarMonth(new Date(state.date));
+    setWeekAnchor(sundayOf(state.date));
     setViewMode('calendar');
-  }, [state.date, state.day]);
+  }, [state.date]);
 
-  // Anchor for the visible canonical calendar month.
-  const windowStartISO = useMemo(() => {
-    if (!calendarMonth) return undefined;
-    const d = new Date(calendarMonth);
-    d.setUTCDate(1); // anchor first day of month so display always starts on real day-1
-    return d.toISOString().slice(0, 10);
-  }, [calendarMonth]);
+  // ISO of the first day of the visible 4-week window.
+  const windowStartISO = useMemo(
+    () => weekAnchor.toISOString().slice(0, 10),
+    [weekAnchor]
+  );
 
-  // 30-day calendar derived from real state.schedule.
+  // 28-day window derived from real state.schedule.
   const schedule = useMemo(() => {
     if (!team || !windowStartISO) return [];
     const lookup = new Map<number, { abbrev: string; logoUrl?: string }>();
     for (const t of state.teams) lookup.set(t.id, { abbrev: t.abbrev, logoUrl: t.logoUrl });
-    return buildCalendar(state.schedule || [], team.id, windowStartISO, lookup);
+    return buildCalendar(state.schedule || [], team.id, windowStartISO, lookup, 28);
   }, [team, windowStartISO, state.schedule, state.teams]);
 
   // Map for O(1) ScheduleDay lookups by ISO date — feeds TrainingDayOverlay
@@ -318,40 +357,193 @@ export const TrainingCenterView: React.FC = () => {
     ? schedule.find(d => d.isoDate === selectedDateNorm)
     : undefined;
 
-  const simulateDay = async () => {
-    dispatchAction({ type: 'ADVANCE_DAY' } as any);
-  };
-
-  const simulateToDate = async (targetDateStr: string) => {
-    dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: targetDateStr, stopBefore: true } } as any);
-  };
-
-  // League-wide K2 rosters for `calculateCoachSliders` normalization. CoachingPage
-  // builds the same array — passing it ensures Training Center stars match
-  // CoachingView stars exactly. Without it the sliders fall back to raw values
-  // and proficiency scores diverge.
+  // League-wide K2 rosters for `calculateCoachSliders` normalization. Heavy:
+  // 30 teams × ~600 players × full K2 conversion. Two gates keep this off the
+  // hot path:
+  //   1. Lazy — only build when a consumer needs it (Systems tab open, or the
+  //      DailyPlanModal is about to open). Otherwise return [] and bail.
+  //   2. Stable deps — `state.date` is OUT. K2 ratings don't change daily, and
+  //      mood-score (the only date-sensitive field) isn't read here. With date
+  //      in deps the memo re-ran every sim day and made cell taps feel dead.
+  const needAllRosters = activeView === 'proficiency' || selectedPlanDateISO !== null;
   const allK2Rosters = useMemo(() => {
+    if (!needAllRosters) return [] as any[];
     return state.teams.map(t => {
       const tp = state.players.filter(p => p.tid === t.id && (p.status === 'Active' || !p.status))
-        .map(p => nbaPlayerToTrainingPlayer(p, leagueYear, { team: t, dateStr: state.date }));
+        .map(p => nbaPlayerToTrainingPlayer(p, leagueYear, { team: t }));
       return tp.map(mapPlayerToK2) as any;
     });
-  }, [state.teams, state.players, leagueYear, state.date]);
+  }, [needAllRosters, state.teams, state.players, leagueYear]);
 
   const top5Systems = useMemo(() => {
-    if (roster.length === 0) return [];
+    // Same gate — top5Systems only feeds the modal, no point computing while closed.
+    if (!needAllRosters || roster.length === 0) return [];
     const k2 = roster.map(mapPlayerToK2);
-    // Shared util — same answer as CoachingView and SystemProficiencyView.
     const { sortedProfs } = computeTeamProficiency(k2 as any, allK2Rosters, team?.systemFamiliarity);
     return sortedProfs.slice(0, 5).map(([n]) => n);
-  }, [roster, team?.systemFamiliarity, allK2Rosters]);
+  }, [needAllRosters, roster, team?.systemFamiliarity, allK2Rosters]);
+
+  // Tracks the just-edited day so we can offer "Save as Default" propagation.
+  // Captures the BEFORE-save plan so we know which auto-cells match for replacement.
+  const [savedDefault, setSavedDefault] = useState<null | {
+    oldPlan: { intensity: number; paradigm: TrainingParadigm; auto?: boolean } | undefined;
+    newPlan: { intensity: number; paradigm: TrainingParadigm; allocations: Allocations };
+    matchCount: number;
+  }>(null);
+
+  // Normal-Default editor — opens a DailyPlanModal-style sheet that lets the
+  // user define what "every regular practice day" should look like. Save then
+  // walks forward and stamps all upcoming auto-Balanced-50 cells (the
+  // scheduler's regular-season default) with the user's preferences.
+  const [normalDefaultOpen, setNormalDefaultOpen] = useState(false);
+  const [normalDefaultDraft, setNormalDefaultDraft] = useState<{
+    intensity: number;
+    allocations: Allocations;
+    paradigm: TrainingParadigm;
+  }>(() => team?.normalDayDefault
+    ? {
+        intensity: team.normalDayDefault.intensity,
+        allocations: team.normalDayDefault.allocations as Allocations,
+        paradigm: team.normalDayDefault.paradigm as TrainingParadigm,
+      }
+    : {
+        intensity: 50,
+        paradigm: 'Balanced',
+        allocations: { offense: 30, defense: 30, conditioning: 20, recovery: 20 },
+      });
+
+  // Re-hydrate when the picked team changes (commish browsing other rosters).
+  useEffect(() => {
+    if (team?.normalDayDefault) {
+      setNormalDefaultDraft({
+        intensity: team.normalDayDefault.intensity,
+        allocations: team.normalDayDefault.allocations as Allocations,
+        paradigm: team.normalDayDefault.paradigm as TrainingParadigm,
+      });
+    } else {
+      setNormalDefaultDraft({
+        intensity: 50,
+        paradigm: 'Balanced',
+        allocations: { offense: 30, defense: 30, conditioning: 20, recovery: 20 },
+      });
+    }
+  }, [team?.id, team?.normalDayDefault]);
 
   const handleSavePlan = (i: number, a: Allocations, p: TrainingParadigm) => {
     if (!team || !selectedDayISO || isReadOnly) return;
+    const oldPlan = (team.trainingCalendar as any)?.[selectedDayISO];
     dispatchAction({
       type: 'SET_TRAINING_DAILY_PLAN',
       payload: { teamId: team.id, dayKey: selectedDayISO, plan: { intensity: i, allocations: a, paradigm: p } },
     });
+
+    // Offer "Save as Default" only when the user replaced an auto-cell. The old
+    // plan being auto means it was a generic phase default (e.g. Balanced 50%
+    // regular-season), and the user may want every future matching auto-cell to
+    // adopt their new pick. A user-set day (auto: false) was a one-off — no prompt.
+    if (oldPlan && oldPlan.auto !== false) {
+      const cal = (team.trainingCalendar ?? {}) as Record<string, any>;
+      const todayIso = toIsoDay(state.date);
+      let matches = 0;
+      for (const [iso, plan] of Object.entries(cal)) {
+        if (iso < todayIso) continue;
+        if (iso === selectedDayISO) continue;
+        if (plan?.auto === false) continue;
+        if (plan?.paradigm === oldPlan.paradigm && plan?.intensity === oldPlan.intensity) {
+          matches++;
+        }
+      }
+      if (matches > 0) {
+        setSavedDefault({
+          oldPlan: { intensity: oldPlan.intensity, paradigm: oldPlan.paradigm, auto: oldPlan.auto },
+          newPlan: { intensity: i, allocations: a, paradigm: p },
+          matchCount: matches,
+        });
+      }
+    }
+  };
+
+  // Save the Normal-Default template. Walks every upcoming auto-cell that
+  // currently holds a Balanced 50% (= scheduler's regular-season default) and
+  // replaces it with the user's preferences. Pre-game, post-game, training
+  // camp 75%, B2B-recovery 15%, etc. cells are NOT touched — only the regular
+  // practice day pattern is. User-set days (auto: false) are also skipped.
+  // Pending Normal-Default propagation prompt — fires after the user saves
+  // the template. Persisting the template is unconditional; rewriting the
+  // calendar only happens after explicit confirmation.
+  const [normalDefaultPending, setNormalDefaultPending] = useState<null | {
+    matchCount: number;
+    template: { intensity: number; allocations: Allocations; paradigm: TrainingParadigm };
+  }>(null);
+
+  const handleSaveNormalDefault = (i: number, a: Allocations, p: TrainingParadigm) => {
+    if (!team || isReadOnly) return;
+    setNormalDefaultDraft({ intensity: i, allocations: a, paradigm: p });
+    // Persist the template on the team so it survives reload + tab-switch.
+    dispatchAction({
+      type: 'SET_TRAINING_NORMAL_DEFAULT',
+      payload: { teamId: team.id, template: { intensity: i, allocations: a, paradigm: p } },
+    });
+    // Count future auto-cells that match the scheduler's Balanced 50% default —
+    // those are the candidates the user might want overwritten with their template.
+    const cal = (team.trainingCalendar ?? {}) as Record<string, any>;
+    const todayIso = toIsoDay(state.date);
+    let matches = 0;
+    for (const [iso, plan] of Object.entries(cal)) {
+      if (iso < todayIso) continue;
+      if (plan?.auto === false) continue;
+      if (plan?.paradigm !== 'Balanced' || plan?.intensity !== 50) continue;
+      matches++;
+    }
+    setNormalDefaultOpen(false);
+    if (matches > 0) {
+      setNormalDefaultPending({
+        matchCount: matches,
+        template: { intensity: i, allocations: a, paradigm: p },
+      });
+    }
+  };
+
+  // User confirmed — stamp every future auto Balanced 50% cell with the saved template.
+  const applyNormalDefaultToFuture = () => {
+    if (!normalDefaultPending || !team) return;
+    const { template } = normalDefaultPending;
+    const cal = (team.trainingCalendar ?? {}) as Record<string, any>;
+    const todayIso = toIsoDay(state.date);
+    for (const [iso, plan] of Object.entries(cal)) {
+      if (iso < todayIso) continue;
+      if (plan?.auto === false) continue;
+      if (plan?.paradigm !== 'Balanced' || plan?.intensity !== 50) continue;
+      dispatchAction({
+        type: 'SET_TRAINING_DAILY_PLAN',
+        payload: { teamId: team.id, dayKey: iso, plan: template },
+      });
+    }
+    setNormalDefaultPending(null);
+  };
+
+  // Apply the just-saved plan to every future auto-cell that matches the old
+  // plan's paradigm + intensity. Skips user-set days and game/empty days.
+  const applyAsDefault = () => {
+    if (!savedDefault || !team) return;
+    const cal = (team.trainingCalendar ?? {}) as Record<string, any>;
+    const todayIso = toIsoDay(state.date);
+    for (const [iso, plan] of Object.entries(cal)) {
+      if (iso < todayIso) continue;
+      if (iso === selectedDayISO) continue;
+      if (plan?.auto === false) continue;
+      if (plan?.paradigm !== savedDefault.oldPlan?.paradigm) continue;
+      if (plan?.intensity !== savedDefault.oldPlan?.intensity) continue;
+      dispatchAction({
+        type: 'SET_TRAINING_DAILY_PLAN',
+        payload: {
+          teamId: team.id,
+          dayKey: iso,
+          plan: { ...savedDefault.newPlan },
+        },
+      });
+    }
+    setSavedDefault(null);
   };
 
   const updateDevFocus = (playerId: string, focus: string) => {
@@ -475,7 +667,15 @@ export const TrainingCenterView: React.FC = () => {
               </p>
             </div>
           ) : activeView === 'training' && (
-            viewMode === 'day' ? (
+            <>
+              {/* Quick-Status + Preset Bar */}
+              <DashboardStatusBar
+                team={team}
+                today={toIsoDay(state.date)}
+                isReadOnly={isReadOnly}
+                onApplyNormalDefault={() => setNormalDefaultOpen(true)}
+              />
+              {viewMode === 'day' ? (
               <TrainingDayView
                 team={team}
                 date={selectedDate}
@@ -485,8 +685,6 @@ export const TrainingCenterView: React.FC = () => {
                 state={state}
                 isReadOnly={isReadOnly}
                 onBack={() => setViewMode('calendar')}
-                onSimulateDay={simulateDay}
-                onSimulateToDate={simulateToDate}
                 onEditPlan={() => setSelectedPlanDateISO(selectedDateNorm)}
               />
             ) : (
@@ -494,10 +692,10 @@ export const TrainingCenterView: React.FC = () => {
                 team={team}
                 scheduleByIso={scheduleByIso}
                 dailyPlansISO={dailyPlansISO}
-                calendarMonth={calendarMonth}
-                setCalendarMonth={setCalendarMonth}
+                weekAnchor={weekAnchor}
+                setWeekAnchor={setWeekAnchor}
                 selectedDate={selectedDate}
-                currentDateISO={(state.date ?? '').slice(0, 10)}
+                currentDateISO={toIsoDay(state.date)}
                 isReadOnly={isReadOnly}
                 onCellClick={(iso, scheduleDay) => {
                   setSelectedDate(`${iso}T00:00:00.000Z`);
@@ -508,7 +706,8 @@ export const TrainingCenterView: React.FC = () => {
                   }
                 }}
               />
-            )
+              )}
+            </>
           )}
 
           {activeView === 'roster' && (
@@ -535,17 +734,147 @@ export const TrainingCenterView: React.FC = () => {
             <SystemProficiencyView roster={roster} systemFamiliarity={team.systemFamiliarity} allRosters={allK2Rosters} />
           )}
 
+          {(() => {
+            // When opening an auto-filled regular practice day (Balanced 50%, no
+            // user override), hydrate the modal from the user's Normal Default
+            // template so their preference shows up everywhere — without needing
+            // to mass-stamp the calendar up front.
+            const cell = selectedDayISO ? dailyPlansISO[selectedDayISO] : null;
+            const isAutoBalanced50 =
+              !!cell && cell.auto !== false && cell.paradigm === 'Balanced' && cell.intensity === 50;
+            const tmpl = team.normalDayDefault;
+            const useTmpl = isAutoBalanced50 && !!tmpl;
+            const modalIntensity = selectedDayISO
+              ? (useTmpl ? tmpl!.intensity : (cell?.intensity ?? (selectedDayData?.activity === 'Recovery Practice' ? 15 : intensity)))
+              : intensity;
+            const modalAllocations = selectedDayISO
+              ? (useTmpl ? (tmpl!.allocations as Allocations) : (cell?.allocations ?? allocations))
+              : allocations;
+            const modalParadigm = selectedDayISO
+              ? (useTmpl ? (tmpl!.paradigm as TrainingParadigm) : (cell?.paradigm ?? 'Balanced'))
+              : 'Balanced';
+            return (
+              <DailyPlanModal
+                isOpen={selectedPlanDateISO !== null}
+                onClose={() => setSelectedPlanDateISO(null)}
+                day={selectedPlanDateISO ? Number(selectedPlanDateISO.slice(8, 10)) : 0}
+                activity={selectedDayData?.activity || ''}
+                intensity={modalIntensity}
+                allocations={modalAllocations}
+                paradigm={modalParadigm}
+                top5Systems={top5Systems}
+                onSave={handleSavePlan}
+              />
+            );
+          })()}
+
+          {/* Normal-Default editor — same modal UI but paints all upcoming
+              regular-season practice days (Balanced 50%) with the saved values. */}
           <DailyPlanModal
-            isOpen={selectedPlanDateISO !== null}
-            onClose={() => setSelectedPlanDateISO(null)}
-            day={selectedPlanDateISO ? Number(selectedPlanDateISO.slice(8, 10)) : 0}
-            activity={selectedDayData?.activity || ''}
-            intensity={selectedDayISO ? (dailyPlansISO[selectedDayISO]?.intensity ?? (selectedDayData?.activity === 'Recovery Practice' ? 15 : intensity)) : intensity}
-            allocations={selectedDayISO ? (dailyPlansISO[selectedDayISO]?.allocations ?? allocations) : allocations}
-            paradigm={selectedDayISO ? (dailyPlansISO[selectedDayISO]?.paradigm ?? 'Balanced') : 'Balanced'}
+            isOpen={normalDefaultOpen}
+            onClose={() => setNormalDefaultOpen(false)}
+            day={0}
+            activity="NORMAL DAY DEFAULT"
+            intensity={normalDefaultDraft.intensity}
+            allocations={normalDefaultDraft.allocations}
+            paradigm={normalDefaultDraft.paradigm}
             top5Systems={top5Systems}
-            onSave={handleSavePlan}
+            onSave={handleSaveNormalDefault}
           />
+
+          {/* Normal-Default propagation prompt — fires after handleSaveNormalDefault.
+              Confirms whether the saved template should also overwrite every future
+              auto Balanced 50% cell. Cancelling keeps the template; only future days
+              stay untouched. */}
+          {normalDefaultPending && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-[#1a1a1a] border border-amber-500/40 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                    <RotateCcw className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <div className="font-black uppercase tracking-widest text-amber-300 text-sm">
+                      Auf Zukunft anwenden?
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      Normal Default gespeichert
+                    </div>
+                  </div>
+                </div>
+                <div className="text-sm text-slate-300 mb-5 leading-relaxed">
+                  Dein Template ist gespeichert. Sollen{' '}
+                  <span className="font-bold text-rose-300">{normalDefaultPending.matchCount}</span>{' '}
+                  kommende Standard-Tage (Auto Balanced 50%) mit{' '}
+                  <span className="font-bold text-amber-300">{normalDefaultPending.template.paradigm} {normalDefaultPending.template.intensity}%</span>{' '}
+                  überschrieben werden?
+                  <div className="text-[11px] text-slate-500 mt-2">
+                    Manuell gesetzte Tage und nicht-Standard-Auto-Tage (Pre-Game, Recovery, B2B) bleiben unverändert.
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 justify-end">
+                  <button
+                    onClick={() => setNormalDefaultPending(null)}
+                    className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-black uppercase text-xs tracking-widest"
+                  >
+                    Nur Template speichern
+                  </button>
+                  <button
+                    onClick={applyNormalDefaultToFuture}
+                    className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-xs tracking-widest"
+                  >
+                    Auf alle anwenden ({normalDefaultPending.matchCount})
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Save-as-Default propagation prompt — fires after handleSavePlan
+              when an auto-cell was replaced. Apply All overwrites every future
+              matching auto-day with the user's new plan. */}
+          {savedDefault && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-[#1a1a1a] border border-amber-500/40 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                    <Activity className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <div className="font-black uppercase tracking-widest text-amber-300 text-sm">
+                      Save as Default?
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      Apply to upcoming matching days
+                    </div>
+                  </div>
+                </div>
+                <div className="text-sm text-slate-300 mb-5 leading-relaxed">
+                  Replace <span className="font-bold text-rose-300">{savedDefault.matchCount}</span> upcoming auto-day{savedDefault.matchCount === 1 ? '' : 's'} of{' '}
+                  <span className="font-bold text-slate-200">{savedDefault.oldPlan?.paradigm} {savedDefault.oldPlan?.intensity}%</span>{' '}
+                  with{' '}
+                  <span className="font-bold text-amber-300">{savedDefault.newPlan.paradigm} {savedDefault.newPlan.intensity}%</span>?
+                  <div className="text-[11px] text-slate-500 mt-2">
+                    Only auto-cells are touched — your manually-edited days stay as-is.
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 justify-end">
+                  <button
+                    onClick={() => setSavedDefault(null)}
+                    className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-black uppercase text-xs tracking-widest"
+                  >
+                    Just This Day
+                  </button>
+                  <button
+                    onClick={applyAsDefault}
+                    className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-xs tracking-widest"
+                  >
+                    Apply to All ({savedDefault.matchCount})
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -84,14 +84,65 @@ function careerAccolades(p: NBAPlayer): number {
   return allStar * 5 + otherTrophies * 4;
 }
 
+// Bloc populations — drive realistic-looking vote totals on the leaderboard.
+// Each voter ranks 16 candidates, so a single candidate can appear on at most
+// `ballotCount` ballots (cap). Fan ballotCount is the # of fans who voted.
+//   Fan:    5M ballots (top candidate ~5M votes — appears on nearly every ballot)
+//   Player: 18 players × 30 teams = 540 ballots (top ~540, role players ~150)
+//   Media:  100 voters (top ~100)
+//   Coach:  30 head coaches (top ~30)
+const BLOC_BALLOTS = {
+  fan: 5_000_000,
+  player: 18 * 30,  // 540
+  media: 100,
+  coach: 30,
+};
+
+/** Per-candidate vote count: fraction of ballots that include this candidate
+ *  in their 16 picks. Bounded above at ballotCount. Score² ramp gives a
+ *  realistic falloff — leader near 100% inclusion, mid-pack ~30-50%, fringe <10%. */
+function distributeBlocVotes(scores: number[], ballotCount: number, progress = 1): number[] {
+  let max = 0;
+  for (const s of scores) if (s > max) max = s;
+  if (max <= 0) return scores.map(() => 0);
+  return scores.map(s => {
+    const ratio = Math.max(0, Math.min(1, s / max));
+    const inclusionRate = ratio ** 1.5; // softer-than-linear falloff
+    return Math.round(ballotCount * progress * inclusionRate);
+  });
+}
+
+/** Per-bloc rank: 1 = highest score in that bloc. Stable for ties via index. */
+function rankByScore(scores: number[]): number[] {
+  const indexed = scores.map((s, i) => ({ s, i }));
+  indexed.sort((a, b) => b.s - a.s || a.i - b.i);
+  const ranks = new Array(scores.length).fill(0);
+  indexed.forEach((entry, rank) => { ranks[entry.i] = rank + 1; });
+  return ranks;
+}
+
 function compositeVote(p: NBAPlayer, beltHolderId: string | null): VoteEntry {
   const r = currentRatings(p);
-  const fan = convertTo2KRating(p.overallRating, r.hgt ?? 50);
-  const player_ = clamp(40 + careerAccolades(p), 0, 100);
-  const fame = (p as any).fame ?? 50;
+  const k2 = convertTo2KRating(p.overallRating, r.hgt ?? 50);   // 0-100 K2 OVR
+
+  // Fan: pure popularity tracks current OVR.
+  const fan = k2;
+
+  // Player (peer respect): 60% current production + 40% career accolades.
+  // Pure-accolade weighting was burying current stars (Wemby) under late-career
+  // guards with thicker résumés.
+  const player_ = clamp(0.6 * k2 + 0.4 * (40 + careerAccolades(p)), 0, 100);
+
+  // Media (storyline value): 50% K2 + 50% fame, with K2 fallback when fame is
+  // unset on a player. Defending king gets a +15 storyline bump.
+  const fameRaw = (p as any).fame;
+  const fame = typeof fameRaw === 'number' ? fameRaw : k2;
   const storylineBonus = p.internalId === beltHolderId ? 15 : 0;
-  const media = clamp(fame + storylineBonus, 0, 100);
-  const coach = clamp(oneOnOneSkill(p), 0, 100);
+  const media = clamp(0.5 * k2 + 0.5 * fame + storylineBonus, 0, 100);
+
+  // Coach (1v1 effectiveness): 60% scoring/iso skill + 40% K2 OVR floor.
+  // Pure skill weighting overvalued high-tp/drb guards and ignored elite bigs.
+  const coach = clamp(0.6 * oneOnOneSkill(p) + 0.4 * k2, 0, 100);
 
   const fanW = fan * (1 + jitter(0.10));
   const playerW = player_ * (1 + jitter(0.15));
@@ -106,7 +157,7 @@ export interface SelectionResult {
   fieldPlayerIds: string[];
   titleDefenderId: string | null;
   vacated: boolean;
-  voteBreakdown: Record<string, { fan: number; player: number; media: number; coach: number; composite: number; rank: number }>;
+  voteBreakdown: Record<string, any>;
 }
 
 export function selectThroneField(state: GameState): SelectionResult {
@@ -142,19 +193,45 @@ export function selectThroneField(state: GameState): SelectionResult {
   if (titleDefender) fieldPlayerIds.push(titleDefender.internalId);
   fieldPlayerIds.push(...elected.map(e => e.player.internalId));
 
-  const voteBreakdown: SelectionResult['voteBreakdown'] = {};
+  // Build the FINAL composite vote breakdown for the locked field — same enrichment
+  // shape as tickThroneVoting (real vote counts + per-bloc ranks) so the Phase 4
+  // table view reads from the same data shape.
+  const finalEntries: { id: string; v: VoteEntry; rank: number }[] = [];
   if (titleDefender) {
     const td = compositeVote(titleDefender, beltHolderId);
-    voteBreakdown[titleDefender.internalId] = {
-      fan: td.fan, player: td.player_, media: td.media, coach: td.coach,
-      composite: Math.round(td.composite), rank: 1,
-    };
+    finalEntries.push({ id: titleDefender.internalId, v: td, rank: 1 });
   }
   elected.forEach((v, idx) => {
-    voteBreakdown[v.player.internalId] = {
-      fan: v.fan, player: v.player_, media: v.media, coach: v.coach,
-      composite: Math.round(v.composite),
-      rank: (titleDefender ? 2 : 1) + idx,
+    finalEntries.push({ id: v.player.internalId, v, rank: (titleDefender ? 2 : 1) + idx });
+  });
+
+  const fanScores    = finalEntries.map(e => e.v.fan);
+  const playerScores = finalEntries.map(e => e.v.player_);
+  const mediaScores  = finalEntries.map(e => e.v.media);
+  const coachScores  = finalEntries.map(e => e.v.coach);
+  const fanVotes     = distributeBlocVotes(fanScores,    BLOC_BALLOTS.fan);
+  const playerVotes  = distributeBlocVotes(playerScores, BLOC_BALLOTS.player);
+  const mediaVotes   = distributeBlocVotes(mediaScores,  BLOC_BALLOTS.media);
+  const coachVotes   = distributeBlocVotes(coachScores,  BLOC_BALLOTS.coach);
+  const fanRanks     = rankByScore(fanScores);
+  const playerRanks  = rankByScore(playerScores);
+  const mediaRanks   = rankByScore(mediaScores);
+  const coachRanks   = rankByScore(coachScores);
+
+  const compositeRanks = finalEntries.map((_, i) =>
+    0.40 * fanRanks[i] + 0.30 * playerRanks[i] + 0.20 * mediaRanks[i] + 0.10 * coachRanks[i]
+  );
+
+  const voteBreakdown: SelectionResult['voteBreakdown'] = {};
+  finalEntries.forEach((e, idx) => {
+    voteBreakdown[e.id] = {
+      fan: e.v.fan, player: e.v.player_, media: e.v.media, coach: e.v.coach,
+      composite: Math.round(compositeRanks[idx] * 10) / 10,
+      rank: e.rank,
+      fanVotes:    fanVotes[idx],    fanRank:    fanRanks[idx],
+      playerVotes: playerVotes[idx], playerRank: playerRanks[idx],
+      mediaVotes:  mediaVotes[idx],  mediaRank:  mediaRanks[idx],
+      coachVotes:  coachVotes[idx],  coachRank:  coachRanks[idx],
     };
   });
 
@@ -427,18 +504,51 @@ export function tickThroneVoting(
   const elapsed = Math.max(0, dayDiff(votingOpens, currentDate));
   const progress = Math.min(1, elapsed / totalDays);
 
-  const tally: Record<string, { fan: number; player: number; media: number; coach: number; composite: number; rank: number }> = {};
+  // Per-bloc score arrays (jittered, scaled by progress) — driven into vote counts + ranks.
+  const dailyJitter = (1 - progress) * 0.06;
+  const jit = () => 1 + (Math.random() * 2 - 1) * dailyJitter;
+  const fanScores    = allVotes.map(v => v.fan     * progress * jit());
+  const playerScores = allVotes.map(v => v.player_ * progress * jit());
+  const mediaScores  = allVotes.map(v => v.media   * progress * jit());
+  const coachScores  = allVotes.map(v => v.coach   * progress * jit());
+
+  const fanVotes    = distributeBlocVotes(fanScores,    BLOC_BALLOTS.fan,    progress);
+  const playerVotes = distributeBlocVotes(playerScores, BLOC_BALLOTS.player, progress);
+  const mediaVotes  = distributeBlocVotes(mediaScores,  BLOC_BALLOTS.media,  progress);
+  const coachVotes  = distributeBlocVotes(coachScores,  BLOC_BALLOTS.coach,  progress);
+
+  const fanRanks    = rankByScore(fanScores);
+  const playerRanks = rankByScore(playerScores);
+  const mediaRanks  = rankByScore(mediaScores);
+  const coachRanks  = rankByScore(coachScores);
+
+  // Composite = weighted average of per-bloc RANKS (40/30/20/10). Lower = better.
+  // Mirrors NBA All-Star format where the four blocs each rank candidates and
+  // the composite is the rank-average, not a raw score.
+  const compositeRanks = allVotes.map((_, i) =>
+    0.40 * fanRanks[i] + 0.30 * playerRanks[i] + 0.20 * mediaRanks[i] + 0.10 * coachRanks[i]
+  );
+  const orderByComposite = allVotes.map((_, i) => i)
+    .sort((a, b) => compositeRanks[a] - compositeRanks[b]);
+  const overallRanks = new Array(allVotes.length).fill(0);
+  orderByComposite.forEach((origIdx, sortedIdx) => { overallRanks[origIdx] = sortedIdx + 1; });
+
+  const tally: Record<string, any> = {};
   allVotes.forEach((v, idx) => {
-    // Daily jitter so the live tally has movement. Smaller as we approach the close.
-    const dailyJitter = (1 - progress) * 0.06;
-    const jit = 1 + (Math.random() * 2 - 1) * dailyJitter;
     tally[v.player.internalId] = {
-      fan: Math.round(v.fan * progress * jit),
-      player: Math.round(v.player_ * progress * jit),
-      media: Math.round(v.media * progress * jit),
-      coach: Math.round(v.coach * progress * jit),
-      composite: Math.round(v.composite * progress * jit),
-      rank: idx + 1,
+      // Legacy 0-100 score fields (kept for back-compat with field-locked Phase 4 view)
+      fan:    Math.round(fanScores[idx]),
+      player: Math.round(playerScores[idx]),
+      media:  Math.round(mediaScores[idx]),
+      coach:  Math.round(coachScores[idx]),
+      // Composite = weighted rank average (lower = better). Rounded to 1 decimal.
+      composite: Math.round(compositeRanks[idx] * 10) / 10,
+      rank: overallRanks[idx],
+      // Realistic vote counts + per-bloc ranks (used by the table view)
+      fanVotes:    fanVotes[idx],    fanRank:    fanRanks[idx],
+      playerVotes: playerVotes[idx], playerRank: playerRanks[idx],
+      mediaVotes:  mediaVotes[idx],  mediaRank:  mediaRanks[idx],
+      coachVotes:  coachVotes[idx],  coachRank:  coachRanks[idx],
     };
   });
 

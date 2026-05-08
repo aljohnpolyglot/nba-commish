@@ -202,7 +202,7 @@ export const PlayersView: React.FC = () => {
       {viewingRatingsPlayer && (
         <PlayerRatingsModal
           player={viewingRatingsPlayer}
-          season={state.leagueStats?.year ?? 2026}
+          season={state.leagueStats?.year ?? new Date().getFullYear()}
           onClose={() => setViewingRatingsPlayer(null)}
         />
       )}

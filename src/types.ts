@@ -780,8 +780,24 @@ export interface NBATeam {
     /** True when this entry was auto-filled by the scheduler (not user-edited). */
     auto?: boolean;
   }>;
-  /** System Familiarity 0-100. Drives the star-system bonus in CoachingView. Reset to 0 on coach change. */
-  systemFamiliarity?: { offense: number; defense: number };
+  /** User's "Normal Day" template — what every regular practice day should look like.
+   *  Edited via the Normal Default modal on Training Center; on save, walks the
+   *  calendar and stamps every upcoming auto Balanced 50% cell with these values. */
+  normalDayDefault?: {
+    intensity: number;
+    paradigm: 'Balanced' | 'Offensive' | 'Defensive' | 'Biometrics' | 'Recovery';
+    allocations: { offense: number; defense: number; conditioning: number; recovery: number; systemFocus?: string[] };
+  };
+  /** System Familiarity 0-100. Drives the star-system bonus in CoachingView. Reset to 0 on coach change.
+   *  byOffense / byDefense are per-system breakdowns (key = system name). The flat
+   *  offense/defense scalars are kept as a roll-up for legacy consumers (defensive aura,
+   *  CoachingView star bonus) — they typically equal max(byX.values). */
+  systemFamiliarity?: {
+    offense: number;
+    defense: number;
+    byOffense?: Record<string, number>;
+    byDefense?: Record<string, number>;
+  };
   /** Team-defense sharpness from Defensive training days. 50 is neutral; high values suppress opponent efficiency and create more turnovers. */
   defensiveAura?: number;
 }
@@ -944,6 +960,8 @@ export interface NBAPlayer {
   trainingFatigue?: number;
   /** ISO date when this player most recently signed/re-signed/extended. Used by autoTrim recency guard + legacy 30-day fallback for old saves. */
   signedDate?: string;
+  /** facesjs face descriptor — only generated draft prospects carry this field. */
+  face?: any;
 }
 
 export interface K2Result {
@@ -1630,7 +1648,7 @@ export interface OwnedRealEstateAsset {
   instanceId: string;
 }
 
-export type ActionType = 'SET_TRAINING_DAILY_PLAN' | 'SET_PLAYER_DEV_FOCUS' | 'SET_PLAYER_MENTOR' | 'RESET_PLAYER_FAMILIARITY' | 'SET_PLAYER_TRAINING_INTENSITY' | 'AUTOFILL_TEAM_TRAINING_CALENDAR' | 'REPLY_EMAIL' | 'BRIBE' | 'HYPNOTIZE' | 'PUBLIC_STATEMENT' | 'ADVANCE_DAY' | 'DIRECT_MESSAGE' | 'SEND_MESSAGE' | 'SEND_CHAT_MESSAGE' | 'UPDATE_RULES' | 'SUSPEND_PLAYER' | 'CLEAR_OUTCOME' | 'SAVE_SOCIAL_THREAD' | 'FINE_PERSON' | 'BRIBE_PERSON' | 'GLOBAL_GAMES' | 'LEAK_SCANDAL' | 'HYPNOTIC_BROADCAST' | 'RIG_LOTTERY' | 'CELEBRITY_ROSTER' | 'OWNER_DINNER' | 'PUBLIC_ANNOUNCEMENT' | 'SUSPEND_PERSON' | 'DRUG_TEST_PERSON' | 'INVITE_DINNER' | 'EXPANSION_DRAFT' | 'ANNOUNCE_CHANGE' | 'START_GAME' | 'LOAD_GAME' | 'UPDATE_SAVE_ID' | 'SIGN_FREE_AGENT' | 'EXECUTIVE_TRADE' | 'TRAVEL' | 'GIVE_MONEY' | 'VISIT_NON_NBA_TEAM' | 'INVITE_PERFORMANCE' | 'FORCE_TRADE' | 'ADJUST_FINANCIALS' | 'FOLLOW_USER' | 'UNFOLLOW_USER' | 'ADD_PENDING_HYPNOSIS' | 'MARK_PAYSLIPS_READ' | 'TRANSFER_FUNDS' | 'SET_CHRISTMAS_GAMES' | 'SABOTAGE_PLAYER' | 'GO_TO_CLUB' | 'ENDORSE_HOF' | 'SIMULATE_TO_DATE' | 'ADD_PRESEASON_INTERNATIONAL' | 'ALL_STAR_ADVANCE_VOTES' | 'ALL_STAR_ANNOUNCE_STARTERS' | 'ALL_STAR_ANNOUNCE_RESERVES' | 'ALL_STAR_SIMULATE_WEEKEND' | 'GENERATE_PLAYOFF_BRACKET' | 'SIM_PLAYOFF_ROUND' | 'SAVE_CONTEST_RESULT' | 'SAVE_THRONE_RESULT' | 'MERGE_THRONE_LIFECYCLE' | 'RECORD_WATCHED_GAME' | 'WAIVE_PLAYER' | 'FIRE_PERSONNEL' | 'STORE_PURCHASE' | 'RIG_ALL_STAR_VOTING' | 'SET_ALL_STAR_REPLACEMENT' | 'SET_DUNK_CONTESTANTS' | 'SET_THREE_POINT_CONTESTANTS' | 'ADD_ALL_STAR_REPLACEMENT' | 'REAL_ESTATE_INVENTORY_UPDATE' | 'COMMISH_STORE_INVENTORY_UPDATE' | 'CACHE_PROFILE' | 'UPDATE_USER_PROFILE' | 'ADD_USER_POST' | 'ADD_REPLIES' | 'SET_FEED' | 'UPDATE_STATE' | 'SUBMIT_FA_BID' | 'RETIRE_JERSEY_NUMBER' | 'MATCH_RFA_OFFER' | 'DECLINE_RFA_OFFER' | 'TOGGLE_LIKE' | 'TOGGLE_RETWEET' | 'ADD_POST' | 'ADD_REPLY' | 'EXERCISE_TEAM_OPTION' | 'DECLINE_TEAM_OPTION' | 'CONVERT_CONTRACT_TYPE' |
+export type ActionType = 'SET_TRAINING_DAILY_PLAN' | 'SET_TRAINING_NORMAL_DEFAULT' | 'SET_PLAYER_DEV_FOCUS' | 'SET_PLAYER_MENTOR' | 'RESET_PLAYER_FAMILIARITY' | 'SET_PLAYER_TRAINING_INTENSITY' | 'AUTOFILL_TEAM_TRAINING_CALENDAR' | 'REPLY_EMAIL' | 'BRIBE' | 'HYPNOTIZE' | 'PUBLIC_STATEMENT' | 'ADVANCE_DAY' | 'DIRECT_MESSAGE' | 'SEND_MESSAGE' | 'SEND_CHAT_MESSAGE' | 'UPDATE_RULES' | 'SUSPEND_PLAYER' | 'CLEAR_OUTCOME' | 'SAVE_SOCIAL_THREAD' | 'FINE_PERSON' | 'BRIBE_PERSON' | 'GLOBAL_GAMES' | 'LEAK_SCANDAL' | 'HYPNOTIC_BROADCAST' | 'RIG_LOTTERY' | 'CELEBRITY_ROSTER' | 'OWNER_DINNER' | 'PUBLIC_ANNOUNCEMENT' | 'SUSPEND_PERSON' | 'DRUG_TEST_PERSON' | 'INVITE_DINNER' | 'EXPANSION_DRAFT' | 'ANNOUNCE_CHANGE' | 'START_GAME' | 'LOAD_GAME' | 'UPDATE_SAVE_ID' | 'SIGN_FREE_AGENT' | 'EXECUTIVE_TRADE' | 'TRAVEL' | 'GIVE_MONEY' | 'VISIT_NON_NBA_TEAM' | 'INVITE_PERFORMANCE' | 'FORCE_TRADE' | 'ADJUST_FINANCIALS' | 'FOLLOW_USER' | 'UNFOLLOW_USER' | 'ADD_PENDING_HYPNOSIS' | 'MARK_PAYSLIPS_READ' | 'TRANSFER_FUNDS' | 'SET_CHRISTMAS_GAMES' | 'SABOTAGE_PLAYER' | 'GO_TO_CLUB' | 'ENDORSE_HOF' | 'SIMULATE_TO_DATE' | 'ADD_PRESEASON_INTERNATIONAL' | 'ALL_STAR_ADVANCE_VOTES' | 'ALL_STAR_ANNOUNCE_STARTERS' | 'ALL_STAR_ANNOUNCE_RESERVES' | 'ALL_STAR_SIMULATE_WEEKEND' | 'GENERATE_PLAYOFF_BRACKET' | 'SIM_PLAYOFF_ROUND' | 'SAVE_CONTEST_RESULT' | 'SAVE_THRONE_RESULT' | 'MERGE_THRONE_LIFECYCLE' | 'RECORD_WATCHED_GAME' | 'WAIVE_PLAYER' | 'FIRE_PERSONNEL' | 'STORE_PURCHASE' | 'RIG_ALL_STAR_VOTING' | 'SET_ALL_STAR_REPLACEMENT' | 'SET_DUNK_CONTESTANTS' | 'SET_THREE_POINT_CONTESTANTS' | 'ADD_ALL_STAR_REPLACEMENT' | 'REAL_ESTATE_INVENTORY_UPDATE' | 'COMMISH_STORE_INVENTORY_UPDATE' | 'CACHE_PROFILE' | 'UPDATE_USER_PROFILE' | 'ADD_USER_POST' | 'ADD_REPLIES' | 'SET_FEED' | 'UPDATE_STATE' | 'SUBMIT_FA_BID' | 'RETIRE_JERSEY_NUMBER' | 'MATCH_RFA_OFFER' | 'DECLINE_RFA_OFFER' | 'TOGGLE_LIKE' | 'TOGGLE_RETWEET' | 'ADD_POST' | 'ADD_REPLY' | 'EXERCISE_TEAM_OPTION' | 'DECLINE_TEAM_OPTION' | 'CONVERT_CONTRACT_TYPE' |
   // ── Offseason 2K checklist actions ─────────────────────────────────────
   'OFFSEASON_ENTER_PHASE' | 'OFFSEASON_COMPLETE_PHASE' | 'OFFSEASON_SKIP_PHASE' |
   'OFFSEASON_AUTO_RESOLVE_ALL' | 'OFFSEASON_ADVANCE_FA_TAG' | 'OFFSEASON_EXIT' |
@@ -1644,7 +1662,7 @@ export interface UserAction {
 
 export type Conference = 'East' | 'West';
 export type GamePhase = 'Preseason' | 'Opening Week' | 'Regular Season (Early)' | 'Regular Season (Mid)' | 'All-Star Break' | 'Trade Deadline' | 'Regular Season (Late)' | 'Play-In Tournament' | 'Playoffs (Round 1)' | 'Playoffs (Round 2)' | 'Conference Finals' | 'NBA Finals' | 'Offseason' | 'Draft' | 'Draft Lottery' | 'Free Agency' | 'Schedule Planning' | 'Schedule Release' | 'Training Camp';
-export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'NBA Cup' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'Player Creator' | 'League History' | 'Player Bios' | 'Player Comparison' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History' | 'Team Office' | 'Training Center' | 'Hall of Fame';
+export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'NBA Cup' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'Player Creator' | 'League History' | 'Player Bios' | 'Player Comparison' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History' | 'Team Office' | 'Coaching' | 'Training Center' | 'Hall of Fame';
 
 // ─── AI Trade / Free Agency ───────────────────────────────────────────────────
 export interface TradeProposal {
@@ -1665,6 +1683,12 @@ export interface TradeProposal {
   isAIvsAI: boolean;
   tradeText?: string;
   isSignAndTrade?: boolean;
+  /** False when the proposal violates CBA rules (apron / Stepien / moratorium / S&T).
+   *  Kept visible in the inbox as a "available with minor adjustments" signal —
+   *  the user can filter to legal-only via the UI toggle. */
+  cbaValid?: boolean;
+  /** Human-readable reason why CBA blocks this proposal (only set when cbaValid=false). */
+  cbaReason?: string;
 }
 export type CommissionerTab = 'Approvals' | 'Viewership' | 'Finances';
 // ─── Imagn Photo Types ────────────────────────────────────────────────────────

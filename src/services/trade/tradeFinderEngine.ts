@@ -8,11 +8,12 @@
 
 import type { NBAPlayer, NBATeam, DraftPick, LeagueStats } from '../../types';
 import {
-  calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV,
+  calcOvr2K, calcPot2K, calcPlayerTV, getPickTV, type PickValueContext,
   calcCashTV, CASH_TRADE_CAP_USD,
   isUntouchable, isYoungContenderCore, isOnTradingBlock, isSalaryLegal, isWalkingExpiring, isRecentlySignedLocked, type TeamMode,
   type TVContext,
 } from './tradeValueEngine';
+import { DEFAULT_TRADABLE_PICK_SEASONS } from '../draft/DraftPickGenerator';
 import { effectiveRecord, seasonLabelToYear, contractToUSD } from '../../utils/salaryUtils';
 import { tradeRoleToTeamMode } from '../../utils/teamStrategy';
 import { formatPickLabel } from '../draft/draftClassStrength';
@@ -146,7 +147,7 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     currentYear, minTradableSeason, powerRanks, teamOutlooks, targetTids, tvContext, capSpaces,
     tradeDifficulty, bypassUntouchablesForTid, allowLifers,
     classStrengthByYear, lotterySlotByTid,
-    stepienEnabled = false, tradablePickWindow = 7,
+    stepienEnabled = false, tradablePickWindow = DEFAULT_TRADABLE_PICK_SEASONS,
     isPostDeadlinePreFA = false,
     recentlySignedLockMs,
   } = input;
@@ -169,15 +170,13 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     return wouldStepienViolateForTid(liveDraftPicks, currentYear, tradablePickWindow, tid, [...alreadyLeaving, candidate]);
   };
 
-  // Resolve a pick's classStrength + actualSlot once. Current-year R1 picks
-  // get their real lottery slot if the lottery has run; everything else falls
-  // back to power-rank projection inside calcPickTV.
-  const pickOpts = (pk: DraftPick) => ({
-    classStrength: classStrengthByYear?.get(pk.season) ?? 1.0,
-    actualSlot: pk.round === 1 && pk.season === currentYear
-      ? lotterySlotByTid?.get(pk.originalTid)
-      : undefined,
-  });
+  const pickCtx: PickValueContext = {
+    currentYear,
+    totalTeams: teams.length,
+    powerRanks,
+    classStrengthByYear,
+    lotterySlotByTid,
+  };
 
   // Difficulty → TV bias on the gap target. Asymmetric so 50 maps to the
   // current "+10 fleece" default the user is already tuned to.
@@ -248,8 +247,7 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
       while (pickSwapGap > 2 && safetyP++ < 8 && theirPicksOnly.length > 0) {
         const pk = theirPicksOnly.shift()!;
         if (stepienBlocks(team.id, pk, swapPicksFromTeam)) continue;
-        const pickRank = powerRanks.get(pk.originalTid) ?? theirRank;
-        const pv = calcPickTV(pk.round, pickRank, teams.length, Math.max(1, pk.season - currentYear), pickOpts(pk));
+        const pv = getPickTV(pk, pickCtx);
         if (pv > pickSwapGap + 30) break;
         swapPicksFromTeam.push(pk);
         pickSwapItems.push({
@@ -279,7 +277,10 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     // With the flatter TV curve, 87/87 Bam-tier players land ~140 TV and get the
     // star package. Mid (100-129) allows 3 players; small (<100) up to 5.
     const isStarTarget = offerValue >= 130;
-    const MAX_PLAYERS = isStarTarget ? 2 : offerValue >= 100 ? 3 : 5;
+    let MAX_PLAYERS: number;
+    if (isStarTarget) MAX_PLAYERS = 2;
+    else if (offerValue >= 100) MAX_PLAYERS = 3;
+    else MAX_PLAYERS = 5;
 
     // Star-offer exception: when the basket is ≥140 TV, the opposing team will
     // part with their LOWEST-TV untouchable (one per offer). Hard guards so a
@@ -290,7 +291,7 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     // is their face — never unlock even if they squeak past the ovr/pot guards.
     const unlockedUntouchableIds = new Set<string>();
     if (offerValue >= 140) {
-      const allUntouchables = theirRoster.filter(p => isUntouchable(p, theirMode, currentYear));
+      const allUntouchables = theirRoster.filter(p => isUntouchable(p, theirMode, currentYear, tvContext?.mvpRank));
       const franchiseFaceProtected = allUntouchables.length <= 1;
       if (!franchiseFaceProtected) {
         const qualifying = allUntouchables
@@ -342,7 +343,7 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
       const bypassUT = bypassUntouchablesForTid === team.id;
       const candidate = theirRoster
         .filter(p => !usedIds.has(p.internalId)
-                  && (bypassUT || unlockedUntouchableIds.has(p.internalId) || !isUntouchable(p, theirMode, currentYear))
+                  && (bypassUT || unlockedUntouchableIds.has(p.internalId) || !isUntouchable(p, theirMode, currentYear, tvContext?.mvpRank))
                   && (bypassUT || !isYoungContenderCore(p, theirRoster, theirMode, currentYear)))
         .map(p => ({ ...p, tv: calcPlayerTV(p, theirMode, currentYear, tvContext) }))
         .filter(p => p.tv > 0 && p.tv <= gap * maxGapMult)
@@ -388,10 +389,8 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
       const pk = theirPicks.shift()!;
       if (stepienBlocks(team.id, pk, sweetenerPicksFromTeam)) continue;
       // Pick value follows the ORIGINAL owner's record (whose slot this pick
-      // represents), not the current holder's. OKC holding LAC's 1st stays
-      // valued at LAC's lottery curve even though OKC is a contender.
-      const pickRank = powerRanks.get(pk.originalTid) ?? theirRank;
-      const pv = calcPickTV(pk.round, pickRank, teams.length, Math.max(1, pk.season - currentYear), pickOpts(pk));
+      // represents), not the current holder's — getPickTV handles that lookup.
+      const pv = getPickTV(pk, pickCtx);
       if (pv > gap + overshootMargin) break;
       sweetenerPicksFromTeam.push(pk);
       returnItems.push({
@@ -436,9 +435,9 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
       const dumpBypassUT = bypassUntouchablesForTid === team.id;
       const blockCandidates = theirRoster
         .filter(p => !dumpUsedIds.has(p.internalId)
-                  && (dumpBypassUT || !isUntouchable(p, theirMode, currentYear))
+                  && (dumpBypassUT || !isUntouchable(p, theirMode, currentYear, tvContext?.mvpRank))
                   && (dumpBypassUT || !isYoungContenderCore(p, theirRoster, theirMode, currentYear))
-                  && (dumpBypassUT || isOnTradingBlock(p, theirMode, currentYear)))
+                  && (dumpBypassUT || isOnTradingBlock(p, theirMode, currentYear, false, tvContext?.mvpRank)))
         .map(p => ({ ...p, tv: calcPlayerTV(p, theirMode, currentYear, tvContext), sal: p.contract?.amount ?? 0 }))
         .filter(p => p.tv > 0 && p.sal > 0)
         // Higher-salary players first — match outgoing salary faster with fewer bodies.
@@ -486,8 +485,7 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
         while (dumpGap > 3 && dumpSafety++ < 40 && dumpPicks.length > 0 && dumpPicksAdded < MAX_DUMP_PICK_COMPENSATION) {
           const pk = dumpPicks.shift()!;
           if (stepienBlocks(team.id, pk, dumpPicksFromTeam)) continue;
-          const pickRank = powerRanks.get(pk.originalTid) ?? theirRank;
-          const pv = calcPickTV(pk.round, pickRank, teams.length, Math.max(1, pk.season - currentYear), pickOpts(pk));
+          const pv = getPickTV(pk, pickCtx);
           if (pv > dumpGap + 35) break;
           dumpPicksFromTeam.push(pk);
           dumpItems.push({
@@ -579,7 +577,7 @@ export function generateAITradeProposal(input: {
               && !(recentlySignedLockMs && isRecentlySignedLocked(p, recentlySignedLockMs.currentDate, recentlySignedLockMs.leagueStats)))
     .sort((a, b) => calcPlayerTV(b, sellerMode, currentYear, tvContext) - calcPlayerTV(a, sellerMode, currentYear, tvContext));
 
-  const target = sellerRoster.find(p => !isUntouchable(p, sellerMode, currentYear));
+  const target = sellerRoster.find(p => !isUntouchable(p, sellerMode, currentYear, tvContext?.mvpRank));
   if (!target) return null;
 
   const targetTV = calcPlayerTV(target, sellerMode, currentYear, tvContext);
@@ -649,7 +647,7 @@ export function generatePickOnlyProposal(input: {
     buyerTid, sellerTid, teams, draftPicks, currentYear, minTradableSeason,
     powerRanks, teamOutlooks, classStrengthByYear, lotterySlotByTid,
     buyerCashAvailableUSD = 0, sellerCashAvailableUSD = 0,
-    stepienEnabled = false, tradablePickWindow = 7,
+    stepienEnabled = false, tradablePickWindow = DEFAULT_TRADABLE_PICK_SEASONS,
   } = input;
   const minLivePickSeason = Math.max(minTradableSeason, currentYear);
   const liveDraftPicks = draftPicks.filter(pk => pk.season >= currentYear);
@@ -669,16 +667,14 @@ export function generatePickOnlyProposal(input: {
   const buyerMode = roleToMode(buyerOutlookRole);
   const sellerMode = roleToMode(sellerOutlookRole);
 
-  const pickOpts = (pk: DraftPick) => ({
-    classStrength: classStrengthByYear?.get(pk.season) ?? 1.0,
-    actualSlot: pk.round === 1 && pk.season === currentYear
-      ? lotterySlotByTid?.get(pk.originalTid)
-      : undefined,
-  });
-  const tvOf = (pk: DraftPick): number => {
-    const rank = powerRanks.get(pk.originalTid) ?? Math.ceil(teams.length / 2);
-    return calcPickTV(pk.round, rank, teams.length, Math.max(1, pk.season - currentYear), pickOpts(pk));
+  const swapPickCtx: PickValueContext = {
+    currentYear,
+    totalTeams: teams.length,
+    powerRanks,
+    classStrengthByYear,
+    lotterySlotByTid,
   };
+  const tvOf = (pk: DraftPick): number => getPickTV(pk, swapPickCtx);
 
   const sellerPicks = liveDraftPicks
     .filter(p => p.tid === sellerTid && p.season >= minLivePickSeason)
@@ -819,7 +815,15 @@ function contractToxicity(player: NBAPlayer, currentYear: number): number {
   const annualM = c.amount / 1000;
   const yrsLeft = Math.max(1, c.exp - currentYear + 1);
   const k2 = calcOvr2K(player);
-  const fairM = k2 >= 90 ? 50 : k2 >= 85 ? 40 : k2 >= 80 ? 30 : k2 >= 75 ? 22 : k2 >= 70 ? 12 : k2 >= 65 ? 6 : k2 >= 60 ? 3 : 1.5;
+  let fairM: number;
+  if (k2 >= 90) fairM = 50;
+  else if (k2 >= 85) fairM = 40;
+  else if (k2 >= 80) fairM = 30;
+  else if (k2 >= 75) fairM = 22;
+  else if (k2 >= 70) fairM = 12;
+  else if (k2 >= 65) fairM = 6;
+  else if (k2 >= 60) fairM = 3;
+  else fairM = 1.5;
   const overpayPerYr = Math.max(0, annualM - fairM);
   return overpayPerYr * yrsLeft * 0.5;
 }
@@ -879,16 +883,9 @@ function tvOfItem(
     return calcPlayerTV(item.player, receiverMode, currentYear, tvContext);
   }
   if (item.type === 'pick' && item.pick) {
-    // Use originatingTid rank — pick value reflects where the pick will land,
-    // which tracks the original team's record, not the current holder.
-    const pickRank = powerRanks.get(item.pick.originalTid) ?? Math.ceil(teams.length / 2);
-    const classStrength = classStrengthByYear?.get(item.pick.season) ?? 1.0;
-    // Actual lottery slot keys off the ORIGINAL owner (the team whose record
-    // determined the slot), not the current holder.
-    const actualSlot = item.pick.round === 1 && item.pick.season === currentYear
-      ? lotterySlotByTid?.get(item.pick.originalTid)
-      : undefined;
-    return calcPickTV(item.pick.round, pickRank, teams.length, Math.max(1, item.pick.season - currentYear), { classStrength, actualSlot });
+    return getPickTV(item.pick, {
+      currentYear, totalTeams: teams.length, powerRanks, classStrengthByYear, lotterySlotByTid,
+    });
   }
   return 0;
 }

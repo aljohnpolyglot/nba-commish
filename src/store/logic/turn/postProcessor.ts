@@ -1,6 +1,32 @@
 import { NBAPlayer as Player, DraftPick, Game } from '../../../types';
 import { applyMajorInjuryStatChanges } from '../../../services/simulation/InjurySystem';
 
+const dedupeSeasonStats = (stats: any[]) => {
+    const grouped = new Map<string, any[]>();
+    for (const row of stats) {
+        const key = `${row.season}|${row.tid}|${row.playoffs ? 1 : 0}`;
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key)!.push(row);
+    }
+    return Array.from(grouped.values()).map(rows =>
+        rows.reduce((best, row) => ((row?.gp ?? 0) > (best?.gp ?? 0) ? row : best), rows[0])
+    );
+};
+
+const dedupeGameLines = (gameStats: any[]) => {
+    const byGameId = new Map<any, any>();
+    for (const stat of gameStats) {
+        const gid = stat.__gameId;
+        if (gid === undefined || gid === null) {
+            const fallbackKey = `no-gid-${byGameId.size}`;
+            if (!byGameId.has(fallbackKey)) byGameId.set(fallbackKey, stat);
+            continue;
+        }
+        if (!byGameId.has(gid)) byGameId.set(gid, stat);
+    }
+    return Array.from(byGameId.values());
+};
+
 export const processSimulationResults = (
     allSimResults: any[],
     players: Player[],
@@ -57,24 +83,25 @@ export const processSimulationResults = (
                 if (!playerStatsMap.has(stat.playerId)) {
                     playerStatsMap.set(stat.playerId, []);
                 }
-                playerStatsMap.get(stat.playerId).push(stat);
+                playerStatsMap.get(stat.playerId).push({ ...stat, __gameId: res.gameId });
             });
         } else if (isPlayoffGame) {
             [...res.homeStats, ...res.awayStats].forEach(stat => {
                 if (!playoffStatsMap.has(stat.playerId)) {
                     playoffStatsMap.set(stat.playerId, []);
                 }
-                playoffStatsMap.get(stat.playerId).push(stat);
+                playoffStatsMap.get(stat.playerId).push({ ...stat, __gameId: res.gameId });
             });
         }
     });
 
     if (playerStatsMap.size > 0) {
         updatedPlayers = updatedPlayers.map(p => {
-            const gameStats = playerStatsMap.get(p.internalId);
+            const rawGameStats = playerStatsMap.get(p.internalId);
+            const gameStats = rawGameStats ? dedupeGameLines(rawGameStats) : undefined;
             if (!gameStats) return p;
 
-            const stats = [...(p.stats || [])];
+            const stats = dedupeSeasonStats([...(p.stats || [])]);
             const currentSeason = currentSeasonYear;
             // Match tid too so traded players get separate rows per team (BBRef-style split)
             let seasonStatIndex = stats.findIndex(s => s.season === currentSeason && !s.playoffs && s.tid === p.tid);
@@ -199,10 +226,11 @@ export const processSimulationResults = (
     // ── Playoff stats accumulation ──────────────────────────────────────────
     if (playoffStatsMap.size > 0) {
         updatedPlayers = updatedPlayers.map(p => {
-            const gameStats = playoffStatsMap.get(p.internalId);
+            const rawGameStats = playoffStatsMap.get(p.internalId);
+            const gameStats = rawGameStats ? dedupeGameLines(rawGameStats) : undefined;
             if (!gameStats) return p;
 
-            const stats = [...(p.stats || [])];
+            const stats = dedupeSeasonStats([...(p.stats || [])]);
             const currentSeason = currentSeasonYear;
             // Match tid too so traded players get separate playoff rows per team
             let statIndex = stats.findIndex(s => s.season === currentSeason && s.playoffs === true && s.tid === p.tid);

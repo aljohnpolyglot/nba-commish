@@ -36,7 +36,7 @@ const ModalShell = ({ children, wide }: { children: React.ReactNode; wide?: bool
  */
 export const AllStarHostPickerModal: React.FC<AllStarHostPickerModalProps> = ({ onClose, onConfirm }) => {
   const { state } = useGame();
-  const currentYear = state.leagueStats?.year ?? 2026;
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const teams = state.teams ?? [];
   const existing = (state.leagueStats?.allStarHosts ?? []) as HostDraft[];
 

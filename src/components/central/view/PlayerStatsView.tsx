@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-
 import { evaluateFilter } from '../../../utils/filterUtils';
 import { memCache } from './bioCache';
 import { getOwnTeamId } from '../../../utils/helpers';
+import { getOpeningNightDate } from '../../../utils/dateUtils';
 import { isFourPointEnabled } from '../../../utils/ruleFlags';
 import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
 import { matchCheat, triggerCheat } from '../../../utils/debugCheats';
@@ -212,6 +213,28 @@ function aggregateStats(statsList: NBAGMStat[]): NBAGMStat {
   out.vorp    = statsList.reduce((a, s) => a + (s.vorp ?? 0), 0);
   out.ewa     = statsList.reduce((a, s) => a + (s.ewa  ?? 0), 0);
   return out;
+}
+
+function dedupeStatsRows(statsList: NBAGMStat[]): NBAGMStat[] {
+  const grouped = new Map<string, NBAGMStat[]>();
+  for (const row of statsList) {
+    const key = `${row.season}|${row.tid}|${row.playoffs ? 1 : 0}`;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key)!.push(row);
+  }
+  return Array.from(grouped.values()).map(rows =>
+    rows.reduce((best, row) => ((row.gp ?? 0) > (best.gp ?? 0) ? row : best), rows[0])
+  );
+}
+
+function zeroStatRow(season: number, tid: number): NBAGMStat {
+  return {
+    season, tid, gp: 0, gs: 0, min: 0,
+    fg: 0, fga: 0, fgp: 0, tp: 0, tpa: 0, tpp: 0, fp: 0, fpa: 0, fpp: 0,
+    ft: 0, fta: 0, ftp: 0, orb: 0, drb: 0, trb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0,
+    per: 0, pm: 0, tsPct: 0, efgPct: 0, usgPct: 0, ortg: 0, drtg: 0, bpm: 0, obpm: 0, dbpm: 0,
+    ws: 0, ows: 0, dws: 0, vorp: 0, ewa: 0, orbPct: 0, drbPct: 0, rebPct: 0, astPct: 0, stlPct: 0, blkPct: 0, tovPct: 0,
+  };
 }
 
 function toRow(
@@ -458,21 +481,31 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
   useEffect(() => { setCurrentPage(1); }, [season, phase, statType, teamFilter, searchTerm, sortField, sortOrder]);
 
   const sortedTeams = useMemo(() =>
-    [...state.teams].filter(t => t.id > 0 && t.id < 100).sort((a, b) => a.abbrev.localeCompare(b.abbrev)),
+    [...state.teams]
+      .filter(t => t.conference === 'East' || t.conference === 'West')
+      .sort((a, b) => a.abbrev.localeCompare(b.abbrev)),
     [state.teams]
   );
+
+  const openingNightCache = useMemo(() => {
+    const cache = new Map<number, number>();
+    return (seasonYear: number) => {
+      if (!cache.has(seasonYear)) cache.set(seasonYear, getOpeningNightDate(seasonYear).getTime());
+      return cache.get(seasonYear)!;
+    };
+  }, []);
 
   // Season navigation
   const prevSeason = useCallback(() => {
     if (season === 'all') { setSeason('career'); return; }
-    if (season === 'career') { setSeason(availableSeasons[0] ?? 2026); return; }
+    if (season === 'career') { setSeason(availableSeasons[0] ?? new Date().getFullYear()); return; }
     const idx = availableSeasons.indexOf(season as number);
     setSeason(idx < availableSeasons.length - 1 ? availableSeasons[idx + 1] : 'all');
   }, [season, availableSeasons]);
 
   const nextSeason = useCallback(() => {
     if (season === 'career') { setSeason('all'); return; }
-    if (season === 'all') { setSeason(availableSeasons[0] ?? 2026); return; }
+    if (season === 'all') { setSeason(availableSeasons[0] ?? new Date().getFullYear()); return; }
     const idx = availableSeasons.indexOf(season as number);
     setSeason(idx > 0 ? availableSeasons[idx - 1] : 'career');
   }, [season, availableSeasons]);
@@ -549,12 +582,108 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
     return out;
   }, [state.schedule, state.boxScores, state.leagueStats.year]);
 
+  const currentSeasonStatsByPhase = useMemo(() => {
+    const regular = new Map<string, NBAGMStat>();
+    const playoffs = new Map<string, NBAGMStat>();
+    const combined = new Map<string, NBAGMStat>();
+    const schedByGid = new Map(state.schedule.map(g => [g.gid, g]));
+
+    const ensure = (map: Map<string, NBAGMStat>, pid: string, tid: number) => {
+      let row = map.get(pid);
+      if (!row) {
+        row = zeroStatRow(state.leagueStats.year, tid);
+        map.set(pid, row);
+      }
+      return row;
+    };
+
+    const applyLine = (row: NBAGMStat, ln: any) => {
+      row.gp += 1;
+      row.gs += (ln.gs ?? 0) > 0 ? 1 : 0;
+      row.min += ln.min ?? 0;
+      row.fg += ln.fgm ?? 0; row.fga += ln.fga ?? 0;
+      row.tp += ln.threePm ?? 0; row.tpa += ln.threePa ?? 0;
+      row.fp = (row.fp ?? 0) + (ln.fourPm ?? 0); row.fpa = (row.fpa ?? 0) + (ln.fourPa ?? 0);
+      row.ft += ln.ftm ?? 0; row.fta += ln.fta ?? 0;
+      row.orb += ln.orb ?? 0; row.drb += ln.drb ?? 0;
+      row.trb += ln.reb ?? ((ln.orb ?? 0) + (ln.drb ?? 0));
+      row.ast += ln.ast ?? 0; row.stl += ln.stl ?? 0; row.blk += ln.blk ?? 0;
+      row.tov += ln.tov ?? 0; row.pf += ln.pf ?? 0; row.pts += ln.pts ?? 0;
+      row.pm = (row.pm ?? 0) + (ln.pm ?? 0);
+      row.ws = (row.ws ?? 0) + (ln.ws ?? 0);
+      row.ows = (row.ows ?? 0) + (ln.ows ?? 0);
+      row.dws = (row.dws ?? 0) + (ln.dws ?? 0);
+      row.vorp = (row.vorp ?? 0) + (ln.vorp ?? 0);
+      row.ewa = (row.ewa ?? 0) + (ln.ewa ?? 0);
+      row.per = ((row.per ?? 0) * (row.gp - 1) + (ln.per ?? 0)) / row.gp;
+      row.tsPct = ((row.tsPct ?? 0) * (row.gp - 1) + (ln.tsPct ?? 0)) / row.gp;
+      row.efgPct = ((row.efgPct ?? 0) * (row.gp - 1) + (ln.efgPct ?? 0)) / row.gp;
+      row.usgPct = ((row.usgPct ?? 0) * (row.gp - 1) + (ln.usgPct ?? 0)) / row.gp;
+      row.ortg = ((row.ortg ?? 0) * (row.gp - 1) + (ln.ortg ?? 0)) / row.gp;
+      row.drtg = ((row.drtg ?? 0) * (row.gp - 1) + (ln.drtg ?? 0)) / row.gp;
+      row.bpm = ((row.bpm ?? 0) * (row.gp - 1) + (ln.bpm ?? 0)) / row.gp;
+      row.obpm = ((row.obpm ?? 0) * (row.gp - 1) + (ln.obpm ?? 0)) / row.gp;
+      row.dbpm = ((row.dbpm ?? 0) * (row.gp - 1) + (ln.dbpm ?? 0)) / row.gp;
+      row.orbPct = ((row.orbPct ?? 0) * (row.gp - 1) + (ln.orbPct ?? 0)) / row.gp;
+      row.drbPct = ((row.drbPct ?? 0) * (row.gp - 1) + (ln.drbPct ?? 0)) / row.gp;
+      row.rebPct = ((row.rebPct ?? 0) * (row.gp - 1) + (ln.trbPct ?? 0)) / row.gp;
+      row.astPct = ((row.astPct ?? 0) * (row.gp - 1) + (ln.astPct ?? 0)) / row.gp;
+      row.stlPct = ((row.stlPct ?? 0) * (row.gp - 1) + (ln.stlPct ?? 0)) / row.gp;
+      row.blkPct = ((row.blkPct ?? 0) * (row.gp - 1) + (ln.blkPct ?? 0)) / row.gp;
+      row.tovPct = ((row.tovPct ?? 0) * (row.gp - 1) + (ln.tovPct ?? 0)) / row.gp;
+      row.fgp = safePct(row.fg, row.fga);
+      row.tpp = safePct(row.tp, row.tpa);
+      row.fpp = safePct(row.fp ?? 0, row.fpa ?? 0);
+      row.ftp = safePct(row.ft, row.fta);
+    };
+
+    for (const box of state.boxScores as any[]) {
+      const sched = schedByGid.get(box.gameId);
+      const isPlayoff = !!(sched?.isPlayoff || box.isPlayoff);
+      const isPlayIn = !!(sched?.isPlayIn || box.isPlayIn);
+      const isNBACup = !!(sched as any)?.isNBACup;
+      const cupRound = (sched as any)?.nbaCupRound;
+      const isCupFinal = isNBACup && cupRound === 'Final';
+      const boxSeason = box.season ?? state.leagueStats.year;
+      const gameDate = new Date(box.date ?? '');
+      const gameTimeMs = isNaN(gameDate.getTime()) ? 0 : gameDate.getTime();
+      const gameYear = gameDate.getFullYear();
+      const gameSeasonYear = gameDate.getMonth() < 9 ? gameYear : gameYear + 1;
+      const gameOpeningNightMs = openingNightCache(gameSeasonYear);
+      const isIntlPreseason = (box.homeTeamId ?? 0) >= 100 || (box.awayTeamId ?? 0) >= 100;
+      const isPreseason = !isPlayoff && !isPlayIn &&
+        (
+          sched?.isPreseason === true ||
+          (gameTimeMs > 0 && gameTimeMs < gameOpeningNightMs && (!sched || isIntlPreseason))
+        );
+      if (boxSeason !== state.leagueStats.year) continue;
+      if (isPreseason || isPlayIn || isCupFinal) continue;
+
+      const bucket = isPlayoff ? playoffs : regular;
+      const sides = [
+        { tid: box.homeTeamId, lines: box.homeStats ?? [] },
+        { tid: box.awayTeamId, lines: box.awayStats ?? [] },
+      ];
+      for (const side of sides) {
+        const seen = new Set<string>();
+        for (const ln of side.lines) {
+          if (!ln?.playerId || seen.has(ln.playerId)) continue;
+          seen.add(ln.playerId);
+          applyLine(ensure(bucket, ln.playerId, side.tid), ln);
+          applyLine(ensure(combined, ln.playerId, side.tid), ln);
+        }
+      }
+    }
+
+    return { regular, playoffs, combined };
+  }, [state.boxScores, state.schedule, state.leagueStats.year, openingNightCache]);
+
   // ── Core row computation ───────────────────────────────────────────────
   const rows = useMemo((): ComputedRow[] => {
     const result: ComputedRow[] = [];
 
     const getPhaseStats = (player: NBAPlayer, targetSeason: number | null): NBAGMStat[] => {
-      const allStats = player.stats ?? [];
+      const allStats = dedupeStatsRows(player.stats ?? []);
       const filtered = targetSeason !== null
         ? allStats.filter(s => s.season === targetSeason)
         : [...allStats];
@@ -563,6 +692,14 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
         if (targetSeason !== null && targetSeason !== state.leagueStats.year) return [];
         const cup = cupStatsByPlayer.get(player.internalId);
         return cup ? [cup] : [];
+      }
+      if (targetSeason === state.leagueStats.year) {
+        const currentMap =
+          phase === 'regular' ? currentSeasonStatsByPhase.regular :
+          phase === 'playoffs' ? currentSeasonStatsByPhase.playoffs :
+          currentSeasonStatsByPhase.combined;
+        const current = currentMap.get(player.internalId);
+        return current ? [current] : [];
       }
       if (phase === 'regular')  return filtered.filter(s => !s.playoffs);
       if (phase === 'playoffs') return filtered.filter(s =>  s.playoffs);
@@ -584,7 +721,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
       if (teamFilter !== 'all' && player.tid > 0 && currentTeamAbbrev !== teamFilter && (season === 'career' || season === state.leagueStats.year)) continue;
 
       const age = (player as any).born?.year
-        ? (state.leagueStats.year ?? 2026) - (player as any).born.year
+        ? (state.leagueStats.year ?? new Date().getFullYear()) - (player as any).born.year
         : (player.age ?? 0);
 
       if (season === 'career') {
@@ -625,7 +762,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
       }
     }
     return result;
-  }, [state.players, state.teams, state.leagueStats.year, season, phase, statType, teamFilter, brefRows, cupStatsByPlayer]);
+  }, [state.players, state.teams, state.leagueStats.year, season, phase, statType, teamFilter, brefRows, cupStatsByPlayer, currentSeasonStatsByPhase]);
 
   // ── Bref career fetch for HOF/retired players with no local stats ──────
   useEffect(() => {
@@ -994,6 +1131,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
         <span className="text-[10px] text-slate-600">
           <span className="text-rose-400">■</span> Hall of Fame
           {typeof season === 'number' && <><span className="ml-3">💍</span> Champion</>}
+          {typeof season === 'number' && <><span className="ml-3">🏆</span> Cup Champion</>}
           {typeof season === 'number' && <><span className="ml-3">⭐</span> All-Star</>}
           {brefRows.size > 0 && <span className="ml-3 text-slate-600">† bref career</span>}
         </span>
@@ -1124,11 +1262,17 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
                       const awards = r.player.awards ?? [];
                       const targetSeason = typeof r.season === 'number' ? r.season : null;
                       if (!targetSeason) return null;
-                      const isChamp = awards.some(a => a.season === targetSeason && a.type?.toLowerCase().includes('champion'));
+                      const isChamp = awards.some(a => {
+                        if (a.season !== targetSeason || !a.type) return false;
+                        const t = a.type.toLowerCase();
+                        return t.includes('champion') && !t.includes('cup');
+                      });
+                      const isCupChamp = awards.some(a => a.season === targetSeason && a.type?.toLowerCase() === 'nba cup champion');
                       const isAllStar = awards.some(a => a.season === targetSeason && (a.type?.toLowerCase().includes('all-star') || a.type?.toLowerCase() === 'allstar'));
                       return (
                         <>
                           {isChamp && <span className="ml-1 text-[9px]" title={`${targetSeason} Champion`}>💍</span>}
+                          {isCupChamp && <span className="ml-1 text-[9px]" title={`${targetSeason} NBA Cup Champion`}>🏆</span>}
                           {isAllStar && <span className="ml-1 text-[9px]" title={`${targetSeason} All-Star`}>⭐</span>}
                         </>
                       );

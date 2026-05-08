@@ -53,6 +53,7 @@ import { TeamHistoryView } from '../central/view/TeamHistoryView';
 import { PowerRankingsView } from '../central/view/PowerRankingsView';
 import { TradeFinderView } from '../central/view/TradeFinderView';
 import { TeamOfficeView } from '../central/view/TeamOffice/TeamOfficeView';
+import { CoachingHubView } from '../central/view/Coaching/CoachingHubView';
 import { TrainingCenterView } from '../training/TrainingCenterView';
 import HallofFameView from '../central/view/HallOfFame/HallofFameView';
 import { Tab } from '../../types';
@@ -215,7 +216,7 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       // On draft day (and draft not yet complete) → show the live simulator
       // Otherwise → show draft history (past draft classes)
       const _ls = state?.leagueStats ?? {} as any;
-      const _yr = (_ls as any).year ?? 2026;
+      const _yr = (_ls as any).year ?? new Date().getFullYear();
       const _draftDate = toISODateString(getDraftDate(_yr, _ls));
       const _rolloverDate = toISODateString(getRolloverDate(_yr, _ls, state?.schedule as any));
       const _today = state?.date ? normalizeDate(state.date) : '';
@@ -269,6 +270,12 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       return (
         <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
           <TeamOfficeView />
+        </div>
+      );
+    case 'Coaching':
+      return (
+        <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          <CoachingHubView />
         </div>
       );
     case 'Training Center':

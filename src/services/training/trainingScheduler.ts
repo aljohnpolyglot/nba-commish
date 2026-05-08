@@ -36,7 +36,12 @@ interface DailyPlan {
   version?: number;
 }
 
-export const TRAINING_CALENDAR_VERSION = 2;
+// v4: auto-schedule emits ONLY the Balanced paradigm now, with intensity alone
+// distinguishing pre-game / regular / post-game / post-B2B. Recovery, Biometrics,
+// Offensive, Defensive paradigms are user-only — auto cells always render
+// identically to a user-set Balanced day so the schedule reads as one uniform
+// surface. Bumping the version triggers re-autofill of any older auto-plans.
+export const TRAINING_CALENDAR_VERSION = 4;
 
 // Allocation presets per paradigm — match DailyPlanModal PARADIGM_TEMPLATES.
 const PRESETS: Record<Paradigm, { intensity: number; allocations: Allocations }> = {
@@ -163,49 +168,46 @@ export function autoGenerateTrainingCalendar(
       continue;
     }
 
-    // Day after a B2B → mandatory pure Recovery (overrides phase default).
+    // Day after a B2B → minimal load. Same Balanced paradigm, very low intensity.
     if (wasB2BYesterday) {
-      result[iso] = planFor('Recovery');
+      result[iso] = planFor('Balanced', 15);
       continue;
     }
 
-    // Day after a single game → light recovery practice.
+    // Day after a single game → light recovery via low-intensity Balanced.
     if (wasYesterdayGame) {
-      result[iso] = planFor('Recovery', 25);
+      result[iso] = planFor('Balanced', 25);
       continue;
     }
 
-    // Day before a game → light shootaround load (bias toward Balanced low intensity).
+    // Day before a game → light pre-game Balanced.
     if (isTomorrowGame) {
-      result[iso] = { ...planFor('Balanced', 25), auto: true };
+      result[iso] = planFor('Balanced', 25);
       continue;
     }
 
-    // Phase-default plans.
+    // Phase-default plans. All auto-fills are Balanced — intensity carries the
+    // load story, not the paradigm. Specialties (Recovery/Biometrics/Offensive/
+    // Defensive) are user-only.
     if (phase === 'training_camp') {
-      // High-intensity scrimmages, alternating Off/Def emphasis Mon-Fri, lighter weekend.
       const dow = d.getUTCDay();
       if (dow === 0) { delete result[iso]; continue; } // Sunday off
-      if (dow === 6) { result[iso] = planFor('Recovery'); continue; }
-      result[iso] = planFor(dow % 2 === 0 ? 'Offensive' : 'Defensive', 75);
+      if (dow === 6) { result[iso] = planFor('Balanced', 25); continue; } // Saturday light
+      result[iso] = planFor('Balanced', 75);
       continue;
     }
 
     if (phase === 'preseason') {
-      // Balanced + a couple of Biometrics days mid-week.
       const dow = d.getUTCDay();
       if (dow === 0) { delete result[iso]; continue; }
-      if (dow === 3) { result[iso] = planFor('Biometrics', 60); continue; }
       result[iso] = planFor('Balanced', 60);
       continue;
     }
 
     if (phase === 'playoffs') {
       // Eliminated check — if the team has no upcoming games from this date onward
-      // within the playoffs window, treat as offseason (empty). Otherwise minimal
-      // physical / opponent prep.
+      // within the playoffs window, treat as offseason (empty).
       const hasUpcomingPlayoffGame = (() => {
-        // Walk forward up to 14 days looking for a scheduled game for this team.
         for (let look = 0; look <= 14; look++) {
           const d2 = new Date(d); d2.setUTCDate(d.getUTCDate() + look);
           if (teamGameDays.has(isoDate(d2))) return true;
@@ -213,11 +215,11 @@ export function autoGenerateTrainingCalendar(
         return false;
       })();
       if (!hasUpcomingPlayoffGame) { delete result[iso]; continue; }
-      result[iso] = planFor('Recovery', 25);
+      result[iso] = planFor('Balanced', 25);
       continue;
     }
 
-    // Regular season default — Balanced 4-day-on / Sunday off.
+    // Regular season — Balanced @ 50%, Sunday off.
     const dow = d.getUTCDay();
     if (dow === 0) { delete result[iso]; continue; }
     result[iso] = planFor('Balanced', 50);

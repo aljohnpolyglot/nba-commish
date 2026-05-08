@@ -81,6 +81,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
     setSpeed,
     liveStats,
     teamStats,
+    quarterScores,
     isSimulating,
     isFinished,
     startSimulation,
@@ -145,37 +146,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
     ? getFinalStatusLabel(finalResult?.otCount ?? 0)
     : (currentPlay ? getPeriodLabel(currentPlay.q, timingConfig.numQuarters) : getPeriodLabel(1, timingConfig.numQuarters));
 
-  const qScores = { away: [] as (string|number)[], home: [] as (string|number)[] };
-  if (isFinal && finalResult?.quarterScores) {
-    qScores.away = [...(finalResult.quarterScores.away ?? [])];
-    qScores.home = [...(finalResult.quarterScores.home ?? [])];
-  } else if (currentIndex >= 0) {
-    const aQs: number[] = [];
-    const hQs: number[] = [];
-    for (let i = 0; i <= currentIndex; i++) {
-      const p = plays[i];
-      if (p && p.pts > 0) {
-        if (!aQs[p.q - 1]) aQs[p.q - 1] = 0;
-        if (!hQs[p.q - 1]) hQs[p.q - 1] = 0;
-        if (p.tm === 'AWAY') aQs[p.q - 1] += p.pts;
-        else                 hQs[p.q - 1] += p.pts;
-      }
-    }
-    const currentQ = plays[currentIndex]?.q || 1;
-    const totalCols = Math.max(timingConfig.numQuarters, currentQ);
-    for (let i = 0; i < totalCols; i++) {
-      if (i + 1 <= currentQ) {
-        qScores.away[i] = aQs[i] || 0;
-        qScores.home[i] = hQs[i] || 0;
-      } else {
-        qScores.away[i] = '-';
-        qScores.home[i] = '-';
-      }
-    }
-  }
-  const scoreCols = Math.max(timingConfig.numQuarters, qScores.away.length, qScores.home.length);
-  while (qScores.away.length < scoreCols) qScores.away.push('-');
-  while (qScores.home.length < scoreCols) qScores.home.push('-');
+  const qScores = quarterScores;
 
   const awayLogo = awayTeam.logoUrl;
   const homeLogo = homeTeam.logoUrl;

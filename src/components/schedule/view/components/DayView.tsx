@@ -397,7 +397,7 @@ export const DayView: React.FC<DayViewProps> = ({
               </div>
             ) : gamesForSelectedDate.length > 0 ? (
               gamesForSelectedDate.map(game => {
-                if ((game as any).isDunkContest || (game as any).isThreePointContest) {
+                if ((game as any).isDunkContest || (game as any).isThreePointContest || (game as any).isThroneEvent) {
                   return null;
                 }
 

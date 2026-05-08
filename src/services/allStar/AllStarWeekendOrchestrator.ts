@@ -293,6 +293,18 @@ export class AllStarWeekendOrchestrator {
       isExhibition: true
     };
 
+    const throneEvent = {
+      gid: 90005,
+      homeTid: -9,
+      awayTid: -9,
+      homeScore: 0,
+      awayScore: 0,
+      played: false,
+      date: toNoonUTC(dates.saturday),
+      isThroneEvent: true,
+      isExhibition: true
+    };
+
     // No filtering needed — generateSchedule
     // already avoided these dates.
     // Just add the All-Star special games.
@@ -304,6 +316,7 @@ export class AllStarWeekendOrchestrator {
     if (leagueStats.celebrityGameEnabled) newGames.push(celebrityGame);
     if (leagueStats.allStarDunkContest !== false) newGames.push(dunkContest);
     if (leagueStats.allStarThreePointContest !== false) newGames.push(threePointContest);
+    if (leagueStats.allStarThroneEnabled === true) newGames.push(throneEvent);
 
     return [
       ...filtered,
@@ -524,7 +537,10 @@ export class AllStarWeekendOrchestrator {
   static simulateThroneTournament(state: GameState): Partial<GameState> {
     if (state.leagueStats.allStarThroneEnabled !== true) return {};
     if (!state.allStar) return {};
-    return simulateThroneTournamentImpl(state);
+    const patch = simulateThroneTournamentImpl(state);
+    // Mark the Saturday throne event game played so it stops appearing as unplayed.
+    const markPlayed = (s: any[]) => s.map(g => g.gid === 90005 ? { ...g, played: true } : g);
+    return { ...patch, schedule: markPlayed(state.schedule) };
   }
 
   static simulateOneOnOneTournament(state: GameState): Partial<GameState> {

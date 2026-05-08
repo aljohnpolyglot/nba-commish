@@ -7,9 +7,10 @@ import { buildShamsSigningPost } from '../../../services/social/templates/charan
 import { NewsGenerator } from '../../../services/news/NewsGenerator';
 import { SettingsManager } from '../../../services/SettingsManager';
 import { normalizeTeamJerseyNumbers } from '../../../utils/jerseyUtils';
-import { buildStretchedSchedule, contractToUSD, getCapThresholds, getMLEAvailability, getTeamPayrollUSD, hasBirdRights, seasonLabelToYear } from '../../../utils/salaryUtils';
+import { buildStretchedSchedule, contractToUSD, getCapThresholds, getContractLimits, getMLEAvailability, getTeamPayrollUSD, hasBirdRights, seasonLabelToYear } from '../../../utils/salaryUtils';
 import { computeTradeEligibleDate } from '../../../utils/signingMoratorium';
 import { getCurrentOffseasonEffectiveFAStart, parseGameDate } from '../../../utils/dateUtils';
+import { clearWaiverMarkers, stripLiveContractAfterWaive } from '../../../utils/contractCleanup';
 
 function getPriorNbaTid(player: any): number {
     const stats: Array<{ season?: number; tid?: number; gp?: number; playoffs?: boolean }> = player?.stats ?? [];
@@ -27,7 +28,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
     if (!player || !team) return { isProcessing: false };
 
     const MIN_CONTRACT_USD = 1_300_000;
-    const leagueYear = stateWithSim.leagueStats?.year ?? 2026;
+    const leagueYear = stateWithSim.leagueStats?.year ?? new Date().getFullYear();
     const baseSalaryUSD = typeof salary === 'number' && salary > 0 ? salary : MIN_CONTRACT_USD;
     if (stateWithSim.gameMode === 'gm' && player.tid === -1 && player.status === 'Free Agent' && stateWithSim.date) {
         const currentDate = parseGameDate(stateWithSim.date);
@@ -59,7 +60,21 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
     const projectedPayroll = committedAtStartYear + baseSalaryUSD;
     const mle = getMLEAvailability(teamId, teamPayroll, baseSalaryUSD, thresholds, stateWithSim.leagueStats as any);
     const hasRequestedValidMLE = !!signedMleType && !mle.blocked && signedMleType === mle.type && baseSalaryUSD <= mle.available;
-    if (signedAsGuaranteed && !ownTeamBirdRights && projectedPayroll > thresholds.salaryCap && !hasRequestedValidMLE) {
+    // Defense-in-depth: client claimed an MLE tier but salary exceeds that tier.
+    // The Khris Middleton case — modal auto-stamped non_taxpayer MLE on a $33.3M
+    // signing because contract was guaranteed; this gate refuses the signing
+    // server-side regardless of the client claim.
+    if (signedMleType && (mle.blocked || baseSalaryUSD > mle.available)) {
+        console.warn(`[SIGN_FREE_AGENT] Blocked: claimed ${signedMleType} MLE but salary $${(baseSalaryUSD/1e6).toFixed(1)}M exceeds available $${(mle.available/1e6).toFixed(1)}M`);
+        return { isProcessing: false };
+    }
+    // NBA Minimum Player Salary Exception (CBA Article VII §6): any team can
+    // sign a player at the league min regardless of cap status. Without this
+    // gate, an over-cap team with a depleted roster couldn't even sign a min
+    // body to fill an open slot — physically impossible in real NBA.
+    const minSalaryUSD = getContractLimits(player as any, stateWithSim.leagueStats as any).minSalaryUSD;
+    const isMinContract = baseSalaryUSD <= minSalaryUSD * 1.05;
+    if (signedAsGuaranteed && !ownTeamBirdRights && projectedPayroll > thresholds.salaryCap && !hasRequestedValidMLE && !isMinContract) {
         console.warn(`[SIGN_FREE_AGENT] Blocked illegal over-cap signing: ${player.name} to ${team.name}`);
         return { isProcessing: false };
     }
@@ -204,7 +219,8 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
             ? (signedMleType === 'taxpayer' ? ' (taxpayer MLE)' : signedMleType === 'room' ? ' (room MLE)' : ' (MLE)')
             : '';
         const contractDetails = `: $${totalStr}M/${totalYears}yr${optTag}${twoWayTag}${ngTag}${mleTag}`;
-        const signingOutcomeText = isResignAction
+        const treatAsResignText = isResignAction && !signedMleType;
+        const signingOutcomeText = treatAsResignText
             ? `${playerName} re-signs with ${teamName}${contractDetails}`
             : `${playerName} signs with the ${teamName}${contractDetails}${returnContext}`;
 
@@ -240,7 +256,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
         if (result.players) {
             result.players = result.players.map((p: any) =>
                 p.internalId === playerId
-                    ? {
+                    ? clearWaiverMarkers({
                         ...p,
                         tid: teamId,
                         status: 'Active',
@@ -265,14 +281,14 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                         // contract cell and leagueStats.mleUsage below accounts
                         // for the draw.
                         ...(signedMleType ? { mleSignedVia: signedMleType } : {}),
-                    }
+                    })
                     : p
             );
         } else {
             // Patch directly onto stateWithSim players via result
             result.players = stateWithSim.players.map((p: any) =>
                 p.internalId === playerId
-                    ? {
+                    ? clearWaiverMarkers({
                         ...p,
                         tid: teamId,
                         status: 'Active',
@@ -297,7 +313,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                         // contract cell and leagueStats.mleUsage below accounts
                         // for the draw.
                         ...(signedMleType ? { mleSignedVia: signedMleType } : {}),
-                    }
+                    })
                     : p
             );
         }
@@ -329,7 +345,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
             teamName: team.name,
         }, team.logoUrl);
         if (signingNewsItem) {
-            const verbHeadline = isResignAction ? 'Re-Signs With' : 'Signs With';
+            const verbHeadline = treatAsResignText ? 'Re-Signs With' : 'Signs With';
             (signingNewsItem as any).headline = `${player.name} ${verbHeadline} ${team.name} — $${totalStr}M/${totalYears}yr${optTag}${twoWayTag}${ngTag}${mleTag}`;
             (signingNewsItem as any).content = `${signingOutcomeText}. The ${totalYears}-year deal carries an annual value of $${annualM.toFixed(1)}M${optTag ? `, with a${optTag.startsWith(' (player') ? ' player' : ' team'} option in the final year` : ''}.`;
             newNews.unshift(signingNewsItem);
@@ -342,7 +358,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
         result.consequence.statChanges = result.consequence.statChanges || {};
         result.consequence.statChanges.revenue = (result.consequence.statChanges.revenue || 0) + (outcome.revenue || 0);
         result.consequence.statChanges.viewership = (result.consequence.statChanges.viewership || 0) + (outcome.viewership || 0);
-        result.players = normalizeTeamJerseyNumbers((result.players || stateWithSim.players) as any, stateWithSim.teams as any, stateWithSim.leagueStats?.year ?? 2026, {
+        result.players = normalizeTeamJerseyNumbers((result.players || stateWithSim.players) as any, stateWithSim.teams as any, stateWithSim.leagueStats?.year ?? new Date().getFullYear(), {
             history: stateWithSim.history,
             targetTeamIds: [teamId],
         }) as any;
@@ -450,12 +466,27 @@ export const handleDrugTestPerson = async (stateWithSim: GameState, action: User
 
 export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAction, _simResults: any[], _recentDMs: any[]) => {
     const { contacts, stretch } = action.payload as { contacts: any[]; stretch?: boolean };
-    if (!contacts || contacts.length === 0) return { isProcessing: false };
+    console.log('[handleWaivePlayer] entry', { contacts, stretch });
+    if (!contacts || contacts.length === 0) {
+        console.warn('[handleWaivePlayer] BAILING — no contacts');
+        return { isProcessing: false };
+    }
 
     const player = contacts[0];
     const playerRecord = stateWithSim.players.find((p: any) => p.internalId === (player.id || player.internalId)) as any;
     const team = playerRecord ? stateWithSim.teams.find(t => t.id === playerRecord.tid) : undefined;
     const teamName = team?.name || player.organization || 'their team';
+    console.log('[handleWaivePlayer] resolved', {
+        lookupId: player.id || player.internalId,
+        playerFound: !!playerRecord,
+        playerName: playerRecord?.name,
+        playerTid: playerRecord?.tid,
+        playerStatus: playerRecord?.status,
+        ng: !!playerRecord?.nonGuaranteed,
+        tw: !!playerRecord?.twoWay,
+        teamFound: !!team,
+        teamName,
+    });
 
     // ─── Dead money calculation ───────────────────────────────────────────
     // Compute remaining guaranteed obligation from contractYears. NG contracts
@@ -529,10 +560,16 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
     }
 
     // ─── Player record update ─────────────────────────────────────────────
+    // Clear ALL future contract obligations from the player's record. The dead
+    // money lives on team.deadMoney now — leaving p.contract / p.contractYears
+    // pointed at the OLD team's deal causes the next signing team to inherit
+    // ghost player-options and inflated salaries (Khris Middleton case: Mavs
+    // $33.3M player option survived through waive, then re-stamped under the
+    // new team in PlayerBio renders).
     const players = stateWithSim.players.map((p: any) =>
         p.internalId === (player.id || player.internalId)
             ? {
-                ...p,
+                ...stripLiveContractAfterWaive(p, currentSeasonYear),
                 tid: -1,
                 status: 'Free Agent',
                 twoWay: undefined,
@@ -589,6 +626,15 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
     // those belong on the team finances page.
     const outcomeText = `${player.name} ${releaseVerb} by the ${teamName}${releaseSuffix}.`;
 
+    const updatedPlayer = players.find((p: any) => p.internalId === (player.id || player.internalId));
+    console.log('[handleWaivePlayer] returning', {
+        playerName: playerRecord?.name,
+        updatedTid: updatedPlayer?.tid,
+        updatedStatus: updatedPlayer?.status,
+        deadMoneyAdded: !!deadMoneyAdded,
+        outcomeText,
+    });
+
     return {
         players,
         teams: updatedTeams,
@@ -639,7 +685,7 @@ export const handleDeclineTeamOption = async (stateWithSim: GameState, action: U
 
     const priorContractYears = Array.isArray(player.contractYears) ? player.contractYears : [];
     const trimmedContractYears = priorContractYears.slice(0, -1);
-    const newExp = Math.max((player.contract?.exp ?? 0) - 1, (stateWithSim.leagueStats?.year ?? 2026) - 1);
+    const newExp = Math.max((player.contract?.exp ?? 0) - 1, (stateWithSim.leagueStats?.year ?? new Date().getFullYear()) - 1);
 
     const players = stateWithSim.players.map((p: any) =>
         p.internalId === playerId

@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, Filter, X, ChevronDown, User, Globe, GraduationCap, Trophy, ArrowUpDown, LayoutGrid, ListFilter, Loader2 } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Search, Filter, X, ChevronDown, User, Globe, GraduationCap, Trophy, ArrowUpDown, LayoutGrid, ListFilter } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { NBAPlayer, NBATeam, NonNBATeam } from '../../../types';
 import { getCountryFromLoc, getCountryCode } from '../../../utils/helpers';
@@ -45,8 +45,7 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
   const [injuryFilter, setInjuryFilter] = useState<'all' | 'injured' | 'healthy'>('all');
   const [page, setPage] = useState(1);
   const [hasTouched, setHasTouched] = useState(true);
-  const loaderRef = useRef<HTMLDivElement>(null);
-  const itemsPerPage = 24;
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   const [countriesList, setCountriesList] = useState<string[]>([]);
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
@@ -201,24 +200,11 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
     return filtered;
   }, [playersWithParsedData, searchTerm, selectedLeagues, ageRange, selectedCountry, selectedGender, selectedPosition, selectedCollege, sortBy, sortOrder, hasTouched, injuryFilter]);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setPage(prev => prev + 1);
-        }
-      },
-      { threshold: 1.0 }
-    );
+  // Reset page on filter changes
+  useEffect(() => { setPage(1); }, [searchTerm, selectedLeagues, ageRange, selectedCountry, selectedGender, selectedPosition, selectedCollege, sortBy, sortOrder, injuryFilter, itemsPerPage]);
 
-    if (loaderRef.current) {
-      observer.observe(loaderRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, [filteredPlayers.length]); // Re-observe when list changes
-
-  const paginatedPlayers = filteredPlayers.slice(0, page * itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filteredPlayers.length / itemsPerPage));
+  const paginatedPlayers = filteredPlayers.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   const handleTouch = () => {
     if (!hasTouched) setHasTouched(true);
@@ -276,7 +262,8 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-full gap-8">
+    <div className="flex flex-col h-full gap-4">
+    <div className="flex flex-col lg:flex-row gap-8">
       {/* Sidebar Filters */}
       <div className="w-full lg:w-80 flex-shrink-0 space-y-8 bg-slate-900/30 border border-slate-800/50 p-6 rounded-[2rem] h-fit sticky top-0">
         <div className="flex items-center justify-between">
@@ -513,7 +500,7 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
         </div>
 
         {/* Results Grid */}
-        <div className="flex-1 min-h-[400px]">
+        <div className="min-h-[400px]">
           {!hasTouched && !searchTerm ? (
             <div className="flex flex-col items-center justify-center h-full py-20 text-slate-600 bg-slate-900/10 rounded-[3rem] border border-dashed border-slate-800">
               <LayoutGrid size={64} className="mb-6 opacity-10" />
@@ -543,17 +530,46 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
             </div>
           )}
         </div>
-
-        {/* Infinite Scroll Sentinel */}
-        {filteredPlayers.length > paginatedPlayers.length && (
-          <div ref={loaderRef} className="flex justify-center py-12">
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
-              <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">Scouting More Talent...</span>
-            </div>
-          </div>
-        )}
       </div>
+    </div>
+
+    {/* Pagination — spans full width below sidebar + main */}
+    {filteredPlayers.length > 0 && (
+      <div className="flex items-center justify-between gap-2 sm:gap-4 pt-4 mt-2 border-t border-slate-800">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold hidden sm:inline-block">Show</span>
+          <select
+            className="bg-slate-900 border border-slate-800 text-white text-xs font-bold rounded-md px-2 py-1 outline-none appearance-none text-center"
+            value={itemsPerPage}
+            onChange={e => { setItemsPerPage(Number(e.target.value)); setPage(1); }}
+          >
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+        </div>
+        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center flex-1">
+          Page {page} <span className="text-slate-600">of</span> {totalPages}
+          <span className="hidden sm:inline"> • {filteredPlayers.length} Players</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            className="px-3 sm:px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-slate-900 border border-slate-800 text-white rounded-full hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            Prev
+          </button>
+          <button
+            className="px-3 sm:px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-slate-900 border border-slate-800 text-white rounded-full hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    )}
     </div>
   );
 };

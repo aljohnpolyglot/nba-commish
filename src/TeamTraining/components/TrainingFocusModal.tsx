@@ -4,6 +4,7 @@ import { X, Target, Zap, Waves, Shield, Swords, Info, ChevronRight, Lock, CheckC
 import { ArchetypeProfile, ARCHETYPE_PROFILES, ARCHETYPE_NAMES, getFocusWeights } from '../constants/archetypes';
 import { ATTRIBUTE_LABELS, getK2SubAttributes } from '../constants/trainingSystems';
 import { PlayerStats } from '../types';
+import { MyFace, isRealFaceConfig } from '../../components/shared/MyFace';
 
 /**
  * Game Mechanics: Player Development (Progression & Regression)
@@ -54,6 +55,7 @@ interface Props {
   initialArchetype?: string | null;
   readOnly?: boolean;
   imgURL?: string;
+  face?: any;
 }
 
 export function TrainingFocusModal({
@@ -67,7 +69,8 @@ export function TrainingFocusModal({
   playerStats,
   initialArchetype = null,
   readOnly = false,
-  imgURL
+  imgURL,
+  face,
 }: Props) {
   const [selectedArchetype, setSelectedArchetype] = React.useState<string | null>(initialArchetype);
   const [activeTab, setActiveTab] = React.useState<string>('Any');
@@ -99,12 +102,15 @@ export function TrainingFocusModal({
     }
   }, [isOpen, playerPos, initialArchetype]);
 
+  // Split compound positions like PF/C, SG/SF into their parts and check each.
+  const posQualifies = (allowed: string[], pos: string) =>
+    allowed.includes(pos) || pos.split('/').some(part => allowed.includes(part.trim()));
+
   const getGroup = (pos: string) => {
-    // Hybrid positions (GF, G/F, FC, F/C) default to the larger half — the
-    // archetype list is filtered, but hybrids unlock both halves via posGroups below.
-    if (['PG', 'SG', 'G', 'GF', 'G/F'].includes(pos)) return 'G';
-    if (['SF', 'PF', 'F', 'FC', 'F/C'].includes(pos)) return 'F';
-    if (['C'].includes(pos)) return 'C';
+    // Hybrid positions (GF, G/F, FC, F/C, PF/C, SG/SF …) default to the primary half.
+    if (posQualifies(['PG', 'SG', 'G', 'GF', 'G/F'], pos) && !posQualifies(['SF', 'PF', 'F', 'FC', 'F/C', 'C'], pos)) return 'G';
+    if (posQualifies(['SF', 'PF', 'F', 'GF', 'G/F', 'FC', 'F/C'], pos)) return 'F';
+    if (posQualifies(['C'], pos)) return 'C';
     return 'Any';
   };
 
@@ -183,21 +189,21 @@ export function TrainingFocusModal({
                            name.toLowerCase().includes('slasher');
 
     // Position restriction check.
-    // Hybrid positions (GF, G/F, FC, F/C) qualify for BOTH halves of their
-    // composite — a Guard-Forward is a valid Guard archetype AND a valid Forward.
-    const posGroups = {
+    // Hybrid positions (GF, G/F, FC, F/C, PF/C, SG/SF …) qualify for BOTH halves —
+    // posQualifies splits on '/' and checks each part individually.
+    const posGroupLists = {
       'G': ['PG', 'SG', 'G', 'GF', 'G/F'],
       'F': ['SF', 'PF', 'F', 'GF', 'G/F', 'FC', 'F/C'],
       'C': ['C', 'FC', 'F/C'],
     };
 
     if (profile.pos !== 'Any') {
-      const allowed = posGroups[profile.pos as keyof typeof posGroups];
+      const allowed = posGroupLists[profile.pos as keyof typeof posGroupLists];
 
       // Override for tall guards (Luka/LaMelo) to train as Wings/Forwards
       const isWingOverride = profile.pos === 'F' && ['PG', 'SG', 'G'].includes(playerPos) && (playerStats?.hgt || 0) > 45;
 
-      if (!allowed.includes(playerPos) && !isWingOverride) {
+      if (!posQualifies(allowed, playerPos) && !isWingOverride) {
         return {
           met: false,
           reason: playerPos === 'G' ? 'Requires Height > 45 for Wing training' : `Locked for ${playerPos} (Requires ${profile.pos})`
@@ -278,6 +284,12 @@ export function TrainingFocusModal({
                     <div className="w-12 h-12 md:w-16 md:h-16 rounded-[1rem] md:rounded-[1.5rem] bg-indigo-600/20 border border-indigo-500/30 overflow-hidden shrink-0">
                       <img src={imgURL} alt={playerName} className="w-full h-full object-cover scale-110 translate-y-1" referrerPolicy="no-referrer" />
                     </div>
+                  ) : isRealFaceConfig(face) ? (
+                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-[1rem] md:rounded-[1.5rem] bg-slate-700 border border-indigo-500/30 overflow-hidden relative shrink-0">
+                      <div className="absolute left-1/2 top-1/2" style={{ width: '85%', height: '127.5%', transform: 'translate(-50%, -50%)' }}>
+                        <MyFace face={face} style={{ width: '100%', height: '100%' }} />
+                      </div>
+                    </div>
                   ) : (
                     <div className="w-12 h-12 md:w-16 md:h-16 rounded-[1rem] md:rounded-[1.5rem] bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
                        <span className="text-indigo-400 font-black text-xl">{playerPos[0]}</span>
@@ -338,9 +350,9 @@ export function TrainingFocusModal({
                       const { met, reason } = checkRequirements(name);
                       const isActive = currentFocus === name;
                       const isCompatible = profile.pos === 'Any' || (
-                         profile.pos === 'G' && ['PG', 'SG', 'G', 'GF', 'G/F'].includes(playerPos) ||
-                         profile.pos === 'F' && ['SF', 'PF', 'F', 'GF', 'G/F', 'FC', 'F/C'].includes(playerPos) ||
-                         profile.pos === 'C' && ['C', 'FC', 'F/C'].includes(playerPos)
+                         profile.pos === 'G' && posQualifies(['PG', 'SG', 'G', 'GF', 'G/F'], playerPos) ||
+                         profile.pos === 'F' && posQualifies(['SF', 'PF', 'F', 'GF', 'G/F', 'FC', 'F/C'], playerPos) ||
+                         profile.pos === 'C' && posQualifies(['C', 'FC', 'F/C'], playerPos)
                       );
 
                       return (

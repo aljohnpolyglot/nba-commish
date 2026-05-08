@@ -14,6 +14,7 @@ import { CelebrityGameView } from './CelebrityGameView';
 import { DunkContestView } from './DunkContestView';
 import { ThreePointView } from './ThreePointView';
 import { ThroneContestView } from './ThroneContestView';
+import { ThroneWatchOverlay } from './ThroneWatchOverlay';
 import { AllStarGameView } from './AllStarGameView';
 import { GameSimulatorScreen } from '../shared/GameSimulatorScreen';
 import { WatchGamePreviewModal } from '../modals/WatchGamePreviewModal';
@@ -39,6 +40,8 @@ export const AllStarView: React.FC = () => {
   
   const [watchingDunkContest, setWatchingDunkContest] = useState(false);
   const [watchingThreePoint, setWatchingThreePoint] = useState(false);
+  const [simulatingThrone, setSimulatingThrone] = useState(false);
+  const [watchingThrone, setWatchingThrone] = useState(false);
   const [showingHistory, setShowingHistory] = useState(false);
   const [viewingPlayer, setViewingPlayer] = useState<any | null>(null);
   const [historyVersion, setHistoryVersion] = useState(0);
@@ -46,6 +49,74 @@ export const AllStarView: React.FC = () => {
   
   const dates = getAllStarWeekendDates(state.leagueStats.year);
   const dateStr = dates.allStarGame.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  // Throne lifecycle catch-up: if the toggle was enabled AFTER a phase boundary
+  // already passed, the daily tick in gameLogic missed it. Run the catch-up
+  // headlessly here so the user sees the correct phase view immediately.
+  useEffect(() => {
+    if (state.leagueStats.allStarThroneEnabled !== true) return;
+    if (!state.allStar) return;
+    const now = parseGameDate(state.date);
+    const as = state.allStar as any;
+
+    (async () => {
+      const orch = await import('../../services/allStar/throneOrchestrator');
+      let patch: any = {};
+      const stateWithPatch = () => ({ ...state, allStar: { ...state.allStar, ...patch } as any });
+
+      // Seed signups if we're past Dec 1 and they were never created.
+      if (now >= dates.throneSignupOpens && !as.throneSignupSchedule) {
+        const p = orch.initThroneSignups(state, dates.throneSignupOpens, dates.throneSignupCloses);
+        if (p?.allStar) patch = { ...patch, ...p.allStar };
+      }
+      // Tick voting tally if we're in the voting window — runs every render so the
+      // leaderboard reflects today's progress (lazy sim doesn't have a daily tick).
+      if (now >= dates.throneVotingOpens && now < dates.throneFieldReveal && !as.throneAnnounced) {
+        const p = orch.tickThroneVoting(stateWithPatch(), now, dates.throneVotingOpens, dates.throneFieldReveal);
+        if (p?.allStar) patch = { ...patch, ...p.allStar };
+      }
+      // Lock field if past Jan 30 and not yet announced.
+      if (now >= dates.throneFieldReveal && !as.throneAnnounced) {
+        const p = orch.lockThroneField(stateWithPatch());
+        if (p?.allStar) patch = { ...patch, ...p.allStar };
+      }
+      // Auto-resolve: if weekend is over but the Throne never simulated
+      // (toggle was enabled mid-window or an older save predates the wiring),
+      // run the headless tournament now so the user sees the champion.
+      if (
+        now >= dates.saturday
+        && (state.allStar as any).weekendComplete === true
+        && !(as.throne?.complete)
+      ) {
+        const p = orch.simulateThroneTournament(stateWithPatch());
+        if (p?.allStar) patch = { ...patch, ...p.allStar };
+      }
+      // Whitelist: only ever touch throne-related allStar fields. The orchestrator
+      // helpers spread `...allStar` into their return, but dispatching the whole
+      // thing risks clobbering dunkContest / threePointContest / shootingStars / etc
+      // if any of them differ even slightly (key order, undefined fields). Surgical
+      // merge keeps the other events' results untouched.
+      const THRONE_KEYS = [
+        'throne',
+        'throneAnnounced',
+        'throneVacated',
+        'throneVotingProgress',
+        'throneVoteTally',
+        'throneSignupSchedule',
+        'throneSignupComplete',
+      ];
+      const merged: any = {};
+      for (const k of THRONE_KEYS) {
+        if (k in patch && patch[k] !== undefined
+            && JSON.stringify((state.allStar as any)[k]) !== JSON.stringify(patch[k])) {
+          merged[k] = patch[k];
+        }
+      }
+      if (Object.keys(merged).length > 0) {
+        dispatchAction({ type: 'MERGE_THRONE_LIFECYCLE', payload: { allStarPatch: merged } });
+      }
+    })();
+  }, [state.leagueStats.allStarThroneEnabled, state.date, (state.allStar as any)?.throneAnnounced, (state.allStar as any)?.throneSignupSchedule, (state.allStar as any)?.weekendComplete, (state.allStar as any)?.throne?.complete]);
 
   const handleWatchGame = (game: any) => {
     const isToday = normalizeDate(game.date) === normalizeDate(state.date);
@@ -67,7 +138,7 @@ export const AllStarView: React.FC = () => {
       normalizeDate(g.date) === norm &&
       !g.played &&
       g.gid !== watchingGame.gid &&
-      (g.isAllStar || g.isRisingStars || (g as any).isCelebrity || (g as any).isCelebrityGame)
+      (g.isAllStar || g.isRisingStars || (g as any).isCelebrity || (g as any).isCelebrityGame || (g as any).isThroneEvent)
     ).length;
   }, [watchingGame, state.schedule, state.date]);
 
@@ -140,7 +211,14 @@ export const AllStarView: React.FC = () => {
       label: 'The Throne',
       icon: Crown,
       hidden: !state.leagueStats.allStarThroneEnabled,
-      locked: currentDate < (dates as any).throneSignupOpens,
+      // Locked until lifecycle starts (sign-ups Dec 1) — same pattern as 3PT
+      // (locked until announce). Unlocks as soon as sign-ups seed, the field
+      // is announced, the tournament completes, or sign-up window opens.
+      locked:
+        !(allStar as any)?.throneSignupSchedule
+        && !(allStar as any)?.throneAnnounced
+        && !(allStar as any)?.throne?.complete
+        && currentDate < (dates as any).throneSignupOpens,
     },
   ];
 
@@ -183,6 +261,29 @@ export const AllStarView: React.FC = () => {
       complete: true,
     };
     dispatchAction({ type: 'SAVE_CONTEST_RESULT', payload: { contest: 'dunk', result } });
+  };
+
+  const handleWatchThrone = async () => {
+    if (simulatingThrone) return;
+    // Sim once first if needed, then open the replay overlay. The watcher reads
+    // from persisted state.allStar.throne — no fresh sim during watch.
+    const existing = (state.allStar as any)?.throne;
+    if (existing?.complete && existing?.bracket?.length) {
+      setWatchingThrone(true);
+      return;
+    }
+    setSimulatingThrone(true);
+    try {
+      const { simulateThroneTournament } = await import('../../services/allStar/throneOrchestrator');
+      const patch = simulateThroneTournament(state);
+      const result = (patch as any)?.allStar?.throne;
+      if (result) {
+        dispatchAction({ type: 'SAVE_THRONE_RESULT', payload: { result } });
+      }
+    } finally {
+      setSimulatingThrone(false);
+      setWatchingThrone(true);
+    }
   };
 
   const handleThreeComplete = (simResult: any) => {
@@ -361,7 +462,13 @@ export const AllStarView: React.FC = () => {
           <ThreePointView allStar={allStar} players={state.players} ownTid={ownTid} />
         )}
         {activeTab === 'throne' && (
-          <ThroneContestView allStar={allStar} players={state.players} ownTid={ownTid} />
+          <ThroneContestView
+            allStar={allStar}
+            players={state.players}
+            ownTid={ownTid}
+            onWatch={handleWatchThrone}
+            isSimulating={simulatingThrone}
+          />
         )}
       </div>
 
@@ -422,6 +529,16 @@ export const AllStarView: React.FC = () => {
             })()}
             players={state.players}
             onClose={() => setSelectedBoxScoreGame(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {watchingThrone && allStar?.throne?.complete && (
+          <ThroneWatchOverlay
+            throne={allStar.throne}
+            players={state.players}
+            onClose={() => setWatchingThrone(false)}
           />
         )}
       </AnimatePresence>

@@ -272,7 +272,7 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
         />
       )}
       {viewingRatingsPlayer && (
-        <PlayerRatingsModal player={viewingRatingsPlayer} season={state.leagueStats?.year ?? 2026} onClose={() => setViewingRatingsPlayer(null)} />
+        <PlayerRatingsModal player={viewingRatingsPlayer} season={state.leagueStats?.year ?? new Date().getFullYear()} onClose={() => setViewingRatingsPlayer(null)} />
       )}
       {selectedPlayerContact && !personSelectorOpen && (
         <ContactModal

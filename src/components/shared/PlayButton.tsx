@@ -131,6 +131,21 @@ function findFirstPreseasonDate(state: any): string | null {
 function findLastPreseasonDate(state: any): string | null {
   return maxScheduledDate((state.schedule ?? []).filter((g: any) => g.isPreseason && !g.played));
 }
+function findFirstRegularSeasonDate(state: any): string | null {
+  return minScheduledDate(
+    (state.schedule ?? []).filter((g: any) =>
+      !g.isPreseason &&
+      !g.isPlayoff &&
+      !g.isPlayIn &&
+      !g.isAllStar &&
+      !g.isRisingStars &&
+      !g.isCelebrity &&
+      !g.isExhibition &&
+      !g.isNBACup &&
+      !g.isCupTBD
+    )
+  );
+}
 function findLastRegSeasonDate(state: any): string | null {
   return maxScheduledDate(
     (state.schedule ?? []).filter((g: any) => !g.isPreseason && !g.isPlayoff && !g.isPlayIn && !g.played)
@@ -146,7 +161,15 @@ function findFirstTruePlayoffDate(state: any): string | null {
   return minScheduledDate((state.schedule ?? []).filter((g: any) => g.isPlayoff && !g.isPlayIn && !g.played));
 }
 function findLastTruePlayoffDate(state: any): string | null {
-  return maxScheduledDate((state.schedule ?? []).filter((g: any) => g.isPlayoff && !g.isPlayIn && !g.played));
+  const playoffGames = (state.schedule ?? []).filter((g: any) => g.isPlayoff && !g.isPlayIn);
+  // Once the bracket is complete (Finals decided), the latest meaningful day
+  // is the last PLAYED playoff game. Sweeps and 4-1/4-2 series leave Game
+  // 5/6/7 slots in the schedule unplayed — without this, "Through playoffs"
+  // would push the calendar past the championship into ghost-game days.
+  if (state.playoffs?.bracketComplete) {
+    return maxScheduledDate(playoffGames.filter((g: any) => g.played));
+  }
+  return maxScheduledDate(playoffGames.filter((g: any) => !g.played));
 }
 function findPlayoffRoundEndDate(state: any): string | null {
   const activeSeries = (state.playoffs?.series ?? []).filter((s: any) => s.status !== 'complete');
@@ -178,6 +201,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
 
   const phase = getSimPhase(state);
   const phaseLabel = getPhaseLabel(phase, seasonYear, calYear);
+  const isCommissioner = state.gameMode !== 'gm';
 
   // Lottery / draft gate — pops the Watch/Auto-sim modal when advancing INTO
   // either event from anywhere in the app (PlayButton is global, so this is the
@@ -256,7 +280,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
     const draftStr           = toISODateString(getDraftDate(seasonYear, ls));
     const faStartStr         = toISODateString(getCurrentOffseasonEffectiveFAStart(`${norm}T00:00:00Z`, ls, state.schedule));
     const faMoratoriumEndStr = toISODateString(getCurrentOffseasonFAMoratoriumEnd(`${norm}T00:00:00Z`, ls, state.schedule));
-    const openingNightStr    = toISODateString(getOpeningNightDate(seasonYear));
+    const openingNightStr    = findFirstRegularSeasonDate(state) ?? toISODateString(getOpeningNightDate(seasonYear));
     // Land Thursday (1 day before Rising Stars Friday) so the user sees All-Star
     // weekend BEFORE any of its events trigger.
     const allStarStr         = toISODateString(addDaysToDate(getAllStarWeekendStartDate(seasonYear, ls), -1));
@@ -328,10 +352,16 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
         if (playInTarget && playInTarget > norm) {
           opts.push({ label: 'Until play-in', action: () => simToDate(playInTarget) });
         }
-        // True playoffs only appear once Round 1 has been bracketed and scheduled.
+        // Round 1 may not be injected yet even though the calendar is close.
+        // Fallback to the day after play-in (or a calendar anchor) so the
+        // user can still jump to the playoff boundary cleanly.
         const playoffScheduled = findFirstTruePlayoffDate(state);
-        if (playoffScheduled && playoffScheduled > norm) {
-          opts.push({ label: 'Until playoffs', action: () => simToDate(playoffScheduled) });
+        const playoffCalFallback = ls?.playIn !== false ? `${calYear}-04-19` : `${calYear}-04-16`;
+        const playoffTarget = playoffScheduled
+          ?? (playInTarget ? addDays(playInTarget, 1) : null)
+          ?? (norm < playoffCalFallback ? playoffCalFallback : null);
+        if (playoffTarget && playoffTarget > norm) {
+          opts.push({ label: 'Until playoffs', action: () => simToDate(playoffTarget) });
         }
         if (norm < draftLotteryStr) {
           opts.push({ label: 'Until draft lottery', action: () => simToDate(draftLotteryStr) });
@@ -341,7 +371,8 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
 
       case 'playin': {
         const playInEnd    = findPlayInEndDate(state);
-        const playoffStart = findFirstTruePlayoffDate(state);
+        const playoffStart = findFirstTruePlayoffDate(state)
+          ?? (playInEnd ? addDays(playInEnd, 1) : (norm < `${calYear}-04-19` ? `${calYear}-04-19` : null));
         const opts: PlayOption[] = [{ label: 'One day', action: simDay }];
         if (playInEnd && playInEnd >= norm) {
           opts.push({ label: 'Until end of play-in', action: () => simThrough(playInEnd) });
@@ -375,19 +406,40 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
         // Stop ON the last scheduled playoff game so the user lands at the
         // championship and can immediately step into the post-finals flow.
         opts.push({ label: 'Through playoffs', action: () => simThrough(lastPlayoffStr) });
-        // Direct skip to draft — for users who don't care about post-finals days.
-        if (norm < draftStr) {
-          opts.push({ label: 'Until draft', action: () => simToDate(draftStr) });
+        // Direct skip to the offseason gate. Two-tier target so a single click
+        // works regardless of bracket-scheduling state:
+        //   • If bracket is complete → land day after the actual last played game.
+        //   • If still active → target draft day. The sim handler will play
+        //     through Finals (rounds inject as previous round completes), and
+        //     stopBefore:true lands on draft-day-1, inside the post-Finals gap
+        //     where the offseason orchestrator opens the AUFGABEN sidebar.
+        // Without the draft-day target, lastPlayoffStr only sees pre-injected
+        // games (often just current-round Game 1) → first click stops mid-series.
+        const offseasonStart = state.playoffs?.bracketComplete
+          ? addDays(lastPlayoffStr, 1)
+          : draftStr;
+        if (norm < offseasonStart) {
+          opts.push({ label: 'To offseason', action: () => simToDate(offseasonStart) });
         }
         return opts;
       }
 
-      case 'draft-lottery':
-        return [
+      case 'draft-lottery': {
+        const opts: PlayOption[] = [
           { label: 'One day',       action: simDay },
           { label: 'Watch lottery', action: () => navigate('Draft Lottery' as Tab) },
           { label: 'Until draft',   action: () => simToDate(draftStr) },
         ];
+        if (isCommissioner) {
+          // League-watcher fast-forwards: lottery is a one-click broadcast in
+          // commissioner mode; everything past it is AI-only.
+          opts.push(
+            { label: 'Skip to training camp', action: () => simToDate(preseasonStr) },
+            { label: 'Skip to opening night', action: () => simToDate(openingNightStr) },
+          );
+        }
+        return opts;
+      }
 
       case 'draft':
         return [
@@ -396,7 +448,14 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
         ];
 
       case 'after-draft': {
-        const opts: PlayOption[] = [{ label: 'One day', action: simDay }];
+        const opts: PlayOption[] = [];
+        // Commissioner mode: nothing to decide — primary action is skip-forward
+        // to the next league-event headline (camp open, then opening night).
+        if (isCommissioner) {
+          opts.push({ label: 'Skip to training camp', action: () => simToDate(preseasonStr) });
+          opts.push({ label: 'Skip to opening night', action: () => simToDate(openingNightStr) });
+        }
+        opts.push({ label: 'One day', action: simDay });
         // Let the user navigate to the draft board even after draft day if the
         // commissioner hasn't run the draft yet (date slid past but draftComplete=false).
         if (!state.draftComplete) {
@@ -432,10 +491,17 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
             .map((p: any) => p.internalId),
         );
         const majorMarkets = activeMarkets.filter((m: any) => majorMarketPlayerIds.has(m.playerId));
-        const opts: PlayOption[] = [
+        const opts: PlayOption[] = [];
+        // Commissioner mode: lead with cinematic skips — no team-level bidding
+        // happens here. Day-by-day stays available below for newshound users.
+        if (isCommissioner) {
+          opts.push({ label: 'Skip to training camp', action: () => simToDate(preseasonStr) });
+          opts.push({ label: 'Skip to opening night', action: () => simToDate(openingNightStr) });
+        }
+        opts.push(
           { label: 'One day',         action: simDay },
           { label: 'One FA week',     action: () => simToDate(addDays(norm, 7)) },
-        ];
+        );
         if (norm < faMoratoriumEndStr) {
           opts.push({ label: 'Through moratorium', action: () => simToDate(faMoratoriumEndStr) });
         }

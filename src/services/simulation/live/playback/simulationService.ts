@@ -73,6 +73,11 @@ function buildSubLine(
   poss: any,
   cs: number,
   ds: number,
+  // Lineups AT THE MOMENT OF THE SUB — i.e. who was on the floor up to this
+  // tick. Empty arrays here would zero out MIN attribution during live
+  // playback (useLiveGame iterates lineupHOME/AWAY to accumulate sec).
+  lineupHOME: PlayerPool[],
+  lineupAWAY: PlayerPool[],
 ): PlayLine {
   const inNames = comingIn.map(p => p.n).join(', ');
   const outNames = goingOut.map(p => p.n).join(', ');
@@ -98,8 +103,8 @@ function buildSubLine(
     possession: poss.team,
     comingIn,
     goingOut,
-    lineupHOME: [],
-    lineupAWAY: [],
+    lineupHOME,
+    lineupAWAY,
   };
 }
 
@@ -251,7 +256,8 @@ export async function genPlays(
         const subKey = `HOME-${homeSubs.comingIn.map(p => p.id).sort().join('-')}`;
         if (!lastSubKey.has(subKey)) {
           lastSubKey.add(subKey);
-          allLines.push(buildSubLine('HOME', homeSubs.comingIn, homeSubs.goingOut, poss, cs, ds));
+          // Use prev lineups so the outgoing player gets credit up to the sub.
+          allLines.push(buildSubLine('HOME', homeSubs.comingIn, homeSubs.goingOut, poss, cs, ds, prevHomeLineup, prevAwayLineup));
         }
       }
     }
@@ -262,7 +268,7 @@ export async function genPlays(
         const subKey = `AWAY-${awaySubs.comingIn.map(p => p.id).sort().join('-')}`;
         if (!lastSubKey.has(subKey)) {
           lastSubKey.add(subKey);
-          allLines.push(buildSubLine('AWAY', awaySubs.comingIn, awaySubs.goingOut, poss, cs, ds));
+          allLines.push(buildSubLine('AWAY', awaySubs.comingIn, awaySubs.goingOut, poss, cs, ds, prevHomeLineup, prevAwayLineup));
         }
       }
     }

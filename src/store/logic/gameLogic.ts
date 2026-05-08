@@ -243,7 +243,7 @@ export const processTurn = async (
     // Supplement with template-based news (always fires, LLM-agnostic) — same engine as lazy sim batches
     if (allSimResults.length > 0) {
         const reportedInjuries = new Set<string>(state.news.map((n: any) => n.injuryPlayerId).filter(Boolean));
-        const templateNews = generateLazySimNews(stateWithSim.teams, updatedPlayers, allSimResults, stateWithSim.date, reportedInjuries, false, state.teams, stateWithSim.playoffs, stateWithSim.schedule, stateWithSim.leagueStats?.year ?? 2026);
+        const templateNews = generateLazySimNews(stateWithSim.teams, updatedPlayers, allSimResults, stateWithSim.date, reportedInjuries, false, state.teams, stateWithSim.playoffs, stateWithSim.schedule, stateWithSim.leagueStats?.year ?? new Date().getFullYear());
         const existingIds = new Set([...state.news.map((n: any) => n.id), ...uniqueNewNews.map((n: any) => n.id)]);
         templateNews.filter(n => !existingIds.has(n.id)).forEach(n => uniqueNewNews.push(n));
     }
@@ -311,7 +311,7 @@ export const processTurn = async (
     // Exclude isNBACup so a Cup-only schedule (e.g. self-heal injected groups
     // after rollover before Aug 14) doesn't masquerade as a generated season.
     const hasRegularSeasonGames = finalSchedule.some(g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn && !(g as any).isNBACup && !(g as any).isCupTBD);
-    const scheduleYear = state.leagueStats?.year ?? 2026;
+    const scheduleYear = state.leagueStats?.year ?? new Date().getFullYear();
     if (!hasRegularSeasonGames && normalizedFinalDate >= `${scheduleYear - 1}-08-14`) {
         console.log(`[Schedule] GENERATING on Aug14 — christmas=${(result.christmasGames || state.christmasGames)?.length ?? 0} global=${(result.globalGames || state.globalGames)?.length ?? 0}`);
         // Preserve any intl preseason games added before Aug 14
@@ -330,9 +330,12 @@ export const processTurn = async (
         // of plans the user can override.
         try {
           const { autoGenerateTrainingCalendarsForAllTeams } = await import('../../services/training/trainingScheduler');
+          // Pass ISO — `dateString` is locale-formatted ("Oct 27, 2026"), and
+          // the scheduler's `new Date(`${startISO}T00:00:00Z`)` parse silently
+          // fails on locale strings, wiping every auto-plan to {}.
           stateWithSim = {
             ...stateWithSim,
-            teams: autoGenerateTrainingCalendarsForAllTeams(stateWithSim.teams, finalSchedule, dateString, 365),
+            teams: autoGenerateTrainingCalendarsForAllTeams(stateWithSim.teams, finalSchedule, normalizedFinalDate, 365),
           };
         } catch (e) { console.warn('[Training] autoGenerate failed', e); }
         if (intlPreseasonGames.length > 0) {
@@ -808,7 +811,7 @@ export const processTurn = async (
     const currentDateNorm2 = normalizeDate(dateString);
 
     // 1. Generate bracket when regular season ends (around Apr 14)
-    const playoffSeasonYear = state.leagueStats?.year ?? 2026;
+    const playoffSeasonYear = state.leagueStats?.year ?? new Date().getFullYear();
     if (!playoffsPatch && currentDateNorm2 >= `${playoffSeasonYear}-04-13`) {
         const numGamesPerRound = state.leagueStats.numGamesPlayoffSeries ?? [7, 7, 7, 7];
         playoffsPatch = PlayoffGenerator.generateBracket(
@@ -930,7 +933,7 @@ export const processTurn = async (
     // autoRunLottery / autoRunDraft only fire inside lazySimRunner's event loop.
     // For ADVANCE_DAY / SIMULATE_TO_DATE (PlayoffView, Schedule "To Date", daily sim)
     // we must replicate them here using the same wasDateReached() helper.
-    const draftYear = state.leagueStats?.year ?? 2026;
+    const draftYear = state.leagueStats?.year ?? new Date().getFullYear();
     let autoDraftLotteryResult = state.draftLotteryResult;
     let autoDraftComplete = state.draftComplete;
 
@@ -1008,7 +1011,13 @@ export const processTurn = async (
     const teamsAfterFamiliarity = trainingMod.applyDailyFamiliarityTick(
         teamsAfterRosterMoves,
         state.date,
-        daysToAdvance
+        daysToAdvance,
+        {
+            schedule: state.schedule,
+            currentYear: state.leagueStats?.year ?? new Date().getFullYear(),
+            userTeamId: state.userTeamId,
+            gameMode: state.gameMode,
+        },
     );
     // Player fatigue tick runs alongside familiarity — both share the daily-walk loop.
     updatedPlayers = trainingMod.applyDailyFatigueTick(
@@ -1017,6 +1026,37 @@ export const processTurn = async (
         state.date,
         daysToAdvance
     );
+
+    // AI Training Camp annual auto-setup — refresh dev-focus + mentor pairings
+    // when we cross Aug 15 (start of training camp). Overwrites prior assignments
+    // so rookies who aged out of mentorship and retired vets get cleaned up.
+    try {
+        const oldD = new Date(state.date);
+        const newD = new Date(dateString);
+        if (!isNaN(oldD.getTime()) && !isNaN(newD.getTime())) {
+            const crossedCampStart = (() => {
+                // Build the Aug-15 boundary in the same year as `oldD`. If newD is past
+                // it and oldD is before, we crossed.
+                const year = oldD.getUTCFullYear();
+                const camp = new Date(Date.UTC(year, 7, 15)); // month is 0-indexed
+                return oldD < camp && newD >= camp;
+            })();
+            if (crossedCampStart) {
+                const { applyAIAutoSetup } = await import('../../services/training/aiAutoSetup');
+                updatedPlayers = applyAIAutoSetup(
+                    updatedPlayers,
+                    teamsAfterFamiliarity,
+                    state.leagueStats?.year ?? new Date().getFullYear(),
+                    state.userTeamId,
+                    state.gameMode,
+                    { overwrite: true },
+                );
+                console.log('[GameLogic] AI Training Camp auto-setup applied (overwrite).');
+            }
+        }
+    } catch (e) {
+        console.warn('[GameLogic] AI training-camp auto-setup failed', e);
+    }
 
     return {
         day: isInstantAction ? state.day : (result.day || (stateWithSim.day + 1)),
@@ -1039,7 +1079,7 @@ export const processTurn = async (
             const deduped = boxScoresWithDate.filter(b => !existingKeys.has(`${b.season ?? 0}-${b.gameId}`));
             return [...(state.boxScores || []), ...deduped];
         })(),
-        history: [...(stateWithSim.history ?? state.history), { text: result.outcomeText || '', date: dateString, commissioner: true, type: (() => {
+        history: [...(stateWithSim.history ?? state.history), { text: ((action as any)?.payload?.outcomeText || result.outcomeText || ''), date: dateString, commissioner: state.gameMode !== 'gm', type: (() => {
             switch (action.type) {
                 case 'EXECUTIVE_TRADE':
                 case 'FORCE_TRADE': return 'Trade';

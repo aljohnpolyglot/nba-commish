@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Zap, Swords, Shield, HeartPulse, Users, Calendar, Activity, ChevronRight, Check, Target, Info, BarChart3 } from 'lucide-react';
 import { Allocations, TrainingParadigm } from '../types';
-import { systemDescriptions } from '../lib/coachSliders';
+import { systemDescriptions, defensiveSystemDescriptions } from '../lib/coachSliders';
+import { Tooltip } from './ToolTip';
 
 interface Props {
   isOpen: boolean;
@@ -33,6 +34,18 @@ interface Props {
 //     game as a rest day, resetting fatigue compounding.
 //   - Game minutes provide both experience points and natural development.
 
+// Default systems to seed when the user picks a paradigm but never opens the
+// system picker. Without this, byOffense / byDefense stay empty forever and
+// the "Top Systems Drilled" widget never populates — so reps land only in the
+// flat scalar familiarity, leaving per-system specialization unused.
+const PARADIGM_DEFAULT_SYSTEMS: Record<TrainingParadigm, string[]> = {
+  Balanced:   ['Pace and Space', 'Man-to-Man'],
+  Offensive:  ['Pace and Space', 'Five-Out Drive', 'Man-to-Man'],
+  Defensive:  ['Pace and Space', 'Drop Coverage', 'Man-to-Man'],
+  Biometrics: [],
+  Recovery:   [],
+};
+
 const PARADIGM_TEMPLATES: Record<TrainingParadigm, { label: string; intensity: number; allocations: Allocations; icon: React.ReactNode; color: string; tooltip: string }> = {
   'Balanced': {
     label: 'Balanced',
@@ -47,7 +60,7 @@ const PARADIGM_TEMPLATES: Record<TrainingParadigm, { label: string; intensity: n
     intensity: 50,
     allocations: { offense: 60, defense: 10, conditioning: 10, recovery: 20 },
     icon: <Swords size={20} />,
-    color: 'orange',
+    color: 'rose',
     tooltip: 'Offensive Heavy: Rapidly builds Offensive System Familiarity.'
   },
   'Defensive': {
@@ -55,7 +68,7 @@ const PARADIGM_TEMPLATES: Record<TrainingParadigm, { label: string; intensity: n
     intensity: 50,
     allocations: { offense: 10, defense: 60, conditioning: 10, recovery: 20 },
     icon: <Shield size={20} />,
-    color: 'red',
+    color: 'indigo',
     tooltip: 'Defensive Grind: Rapidly builds Defensive System Familiarity.'
   },
   'Biometrics': {
@@ -63,7 +76,7 @@ const PARADIGM_TEMPLATES: Record<TrainingParadigm, { label: string; intensity: n
     intensity: 50,
     allocations: { offense: 10, defense: 10, conditioning: 60, recovery: 20 },
     icon: <Users size={20} />,
-    color: 'emerald',
+    color: 'purple',
     tooltip: 'Biometrics Focus: Prevents age-related regression in physical stats, but stunts skill growth.'
   },
   'Recovery': {
@@ -90,17 +103,17 @@ const ACCENT_CLASSES = {
 
 const PARADIGM_ACTIVE_CLASSES: Record<TrainingParadigm, string> = {
   Balanced:   'bg-sky-500/15 border-sky-400/60 ring-1 ring-sky-400/30 shadow-lg shadow-sky-900/20',
-  Offensive:  'bg-orange-500/15 border-orange-400/60 ring-1 ring-orange-400/30 shadow-lg shadow-orange-900/20',
-  Defensive:  'bg-red-500/15 border-red-400/60 ring-1 ring-red-400/30 shadow-lg shadow-red-900/20',
-  Biometrics: 'bg-emerald-500/15 border-emerald-400/60 ring-1 ring-emerald-400/30 shadow-lg shadow-emerald-900/20',
+  Offensive:  'bg-rose-500/15 border-rose-400/60 ring-1 ring-rose-400/30 shadow-lg shadow-rose-900/20',
+  Defensive:  'bg-indigo-500/15 border-indigo-400/60 ring-1 ring-indigo-400/30 shadow-lg shadow-indigo-900/20',
+  Biometrics: 'bg-purple-500/15 border-purple-400/60 ring-1 ring-purple-400/30 shadow-lg shadow-purple-900/20',
   Recovery:   'bg-violet-500/15 border-violet-400/60 ring-1 ring-violet-400/30 shadow-lg shadow-violet-900/20',
 };
 
 const PARADIGM_CHECK_TEXT: Record<TrainingParadigm, string> = {
   Balanced:   'text-sky-200',
-  Offensive:  'text-orange-200',
-  Defensive:  'text-red-200',
-  Biometrics: 'text-emerald-200',
+  Offensive:  'text-rose-200',
+  Defensive:  'text-indigo-200',
+  Biometrics: 'text-purple-200',
   Recovery:   'text-violet-200',
 };
 
@@ -142,30 +155,65 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
   const [localAllocations, setLocalAllocations] = useState<Allocations>(initAllocations);
   const [localParadigm, setLocalParadigm] = useState<TrainingParadigm>(initParadigm);
   const [localSystems, setLocalSystems] = useState<string[]>([]);
+  const [systemTab, setSystemTab] = useState<'offense' | 'defense'>('offense');
 
+  // Hydrate local state ONLY on the false→true transition. Re-running on every
+  // prop change clobbered user clicks (paradigm picker, slider, system toggles)
+  // because parent re-renders produce new top5Systems / initAllocations refs.
+  //
+  // Robust default: a saved plan that lost its allocations (legacy / migration /
+  // user wiped to 0) hydrates from PARADIGM_TEMPLATES so the modal always opens
+  // with sane sliders — Balanced 50% with 30/30/20/20 is the floor.
+  const wasOpenRef = useRef(false);
   useEffect(() => {
-    if (isOpen) {
-      setLocalIntensity(initIntensity);
-      setLocalAllocations(initAllocations);
-      setLocalParadigm(initParadigm);
-      
-      const systems = initAllocations.systemFocus && initAllocations.systemFocus.length > 0
-        ? initAllocations.systemFocus 
-        : top5Systems;
+    if (isOpen && !wasOpenRef.current) {
+      const paradigm: TrainingParadigm = initParadigm ?? 'Balanced';
+      const preset = PARADIGM_TEMPLATES[paradigm];
+      const allocSum = (initAllocations?.offense ?? 0) + (initAllocations?.defense ?? 0)
+        + (initAllocations?.conditioning ?? 0) + (initAllocations?.recovery ?? 0);
+      const allocations: Allocations = allocSum > 0
+        ? initAllocations
+        : { ...preset.allocations };
+      const intensity = (typeof initIntensity === 'number' && initIntensity > 0)
+        ? initIntensity
+        : preset.intensity;
+      setLocalIntensity(intensity);
+      setLocalAllocations(allocations);
+      setLocalParadigm(paradigm);
+      const systems = allocations.systemFocus && allocations.systemFocus.length > 0
+        ? allocations.systemFocus
+        : (top5Systems && top5Systems.length > 0)
+          ? top5Systems
+          : PARADIGM_DEFAULT_SYSTEMS[paradigm];
       setLocalSystems(systems);
     }
-  }, [isOpen, initIntensity, initAllocations, initParadigm, activity, top5Systems]);
+    wasOpenRef.current = isOpen;
+  }, [isOpen, initIntensity, initAllocations, initParadigm, top5Systems]);
 
   const handleParadigmSelect = (p: TrainingParadigm) => {
     setLocalParadigm(p);
     setLocalAllocations(PARADIGM_TEMPLATES[p].allocations);
     setLocalIntensity(PARADIGM_TEMPLATES[p].intensity);
+    // Seed paradigm defaults when the user hasn't touched the system picker —
+    // otherwise switching to e.g. Defensive without picking a scheme leaves
+    // localSystems holding the previous paradigm's offense list.
+    if (localSystems.length === 0) {
+      setLocalSystems(PARADIGM_DEFAULT_SYSTEMS[p]);
+    }
   };
+
+  // Defensive save fallback — three call sites invoke onSave with
+  // `systemFocus: localSystems`. If the user closed without touching anything
+  // and localSystems is empty, fill from paradigm defaults so reps land in
+  // byOffense/byDefense.
+  const resolvedSystems = (): string[] =>
+    localSystems.length > 0 ? localSystems : PARADIGM_DEFAULT_SYSTEMS[localParadigm];
 
   const toggleSystem = (system: string) => {
     setLocalSystems(prev => {
       if (prev.includes(system)) return prev.filter(s => s !== system);
-      if (prev.length >= 5) return prev; // Limit to 5
+      // At cap — evict the oldest pick so the newest click always wins.
+      if (prev.length >= 5) return [...prev.slice(1), system];
       return [...prev, system];
     });
   };
@@ -179,7 +227,7 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => {
-              onSave(localIntensity, { ...localAllocations, systemFocus: localSystems }, localParadigm);
+              onSave(localIntensity, { ...localAllocations, systemFocus: resolvedSystems() }, localParadigm);
               onClose();
             }}
             className="absolute inset-0 bg-slate-950/80 backdrop-blur-xl"
@@ -199,16 +247,20 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                         <Calendar size={24} className="text-indigo-400 md:w-8 md:h-8" />
                      </div>
                      <div>
-                        <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tighter leading-none mb-1 md:mb-2 lg:text-3xl">Configure Day {day}</h2>
+                        <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tighter leading-none mb-1 md:mb-2 lg:text-3xl">
+                          {day === 0 ? (activity || 'Configure Default') : `Configure Day ${day}`}
+                        </h2>
                         <div className="flex flex-wrap items-center gap-2 md:gap-3">
-                           <span className="text-[8px] md:text-[10px] font-black bg-slate-800 text-slate-400 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-slate-700 uppercase tracking-widest">{activity}</span>
+                           {day !== 0 && (
+                             <span className="text-[8px] md:text-[10px] font-black bg-slate-800 text-slate-400 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-slate-700 uppercase tracking-widest">{activity}</span>
+                           )}
                            <Activity size={10} className="text-slate-600 md:w-3 md:h-3" />
                            <span className="text-[8px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Training Plan</span>
                         </div>
                      </div>
                   </div>
                   <button onClick={() => {
-                      onSave(localIntensity, { ...localAllocations, systemFocus: localSystems }, localParadigm);
+                      onSave(localIntensity, { ...localAllocations, systemFocus: resolvedSystems() }, localParadigm);
                       onClose();
                   }} className="p-2 hover:bg-slate-800 rounded-full text-slate-500 hover:text-white transition-all">
                     <X size={20} className="md:w-6 md:h-6" />
@@ -228,9 +280,11 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                         <div>
                            <div className="flex items-center gap-2">
                               <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">Workload Intensity</h4>
-                              <div className="bg-slate-800 p-0.5 md:p-1 rounded-full cursor-help">
-                                 <Info size={10} className="text-slate-400 md:w-3 md:h-3" />
-                              </div>
+                              <Tooltip text="Game-speed vs walk-through. Low = film & walk-throughs. High (70%+) raises dev cap and injury risk. Recovery days locked at 15%.">
+                                 <div className="bg-slate-800 p-0.5 md:p-1 rounded-full cursor-help">
+                                    <Info size={10} className="text-slate-400 md:w-3 md:h-3" />
+                                 </div>
+                              </Tooltip>
                            </div>
                            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Sets global physical demand</p>
                         </div>
@@ -363,11 +417,14 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                      </div>
                   </div>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                     <AllocationDisplay label="Offense" value={localAllocations.offense} icon={<Swords size={14} />} color="orange" />
-                     <AllocationDisplay label="Defense" value={localAllocations.defense} icon={<Shield size={14} />} color="red" />
-                     <AllocationDisplay label="Biometrics" value={localAllocations.conditioning} icon={<Users size={14} />} color="emerald" />
-                     <AllocationDisplay label="Recovery" value={localAllocations.recovery} icon={<HeartPulse size={14} />} color="violet" />
+                     <AllocationSlider label="Offense" bucket="offense" alloc={localAllocations} setAlloc={setLocalAllocations} icon={<Swords size={14} />} color="rose" />
+                     <AllocationSlider label="Defense" bucket="defense" alloc={localAllocations} setAlloc={setLocalAllocations} icon={<Shield size={14} />} color="indigo" />
+                     <AllocationSlider label="Biometrics" bucket="conditioning" alloc={localAllocations} setAlloc={setLocalAllocations} icon={<Users size={14} />} color="purple" />
+                     <AllocationSlider label="Recovery" bucket="recovery" alloc={localAllocations} setAlloc={setLocalAllocations} icon={<HeartPulse size={14} />} color="violet" />
                   </div>
+                  <p className="mt-4 text-[9px] text-slate-600 font-bold uppercase tracking-widest text-center">
+                    Total {localAllocations.offense + localAllocations.defense + localAllocations.conditioning + localAllocations.recovery}% · Drag to redistribute
+                  </p>
                </section>
 
                {/* System Practice Section */}
@@ -380,9 +437,11 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                         <div>
                            <div className="flex items-center gap-2">
                               <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">System Practice</h4>
-                              <div className="bg-slate-800 p-0.5 md:p-1 rounded-full cursor-help">
-                                 <Info size={10} className="text-slate-400 md:w-3 md:h-3" />
-                              </div>
+                              <Tooltip text="Up to 5 sets the team drills today. Each rep raises System Familiarity — the higher the meter, the better the team executes that set in-game. Mix offense and defense.">
+                                 <div className="bg-slate-800 p-0.5 md:p-1 rounded-full cursor-help">
+                                    <Info size={10} className="text-slate-400 md:w-3 md:h-3" />
+                                 </div>
+                              </Tooltip>
                            </div>
                            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Up to five sets to drill</p>
                         </div>
@@ -392,16 +451,51 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                      </span>
                   </div>
 
+                  {/* Offense / Defense toggle */}
+                  <div className="flex gap-1 mb-3 bg-slate-900/60 border border-slate-800 rounded-lg p-1">
+                    <button
+                      onClick={() => setSystemTab('offense')}
+                      className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-colors ${
+                        systemTab === 'offense'
+                          ? 'bg-amber-500/20 text-amber-200 border border-amber-500/40'
+                          : 'text-slate-500 hover:text-slate-300 border border-transparent'
+                      }`}
+                    >
+                      <Swords size={10} />
+                      Offense
+                      <span className="text-[8px] opacity-60">
+                        {localSystems.filter(s => systemDescriptions[s]).length}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setSystemTab('defense')}
+                      className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-colors ${
+                        systemTab === 'defense'
+                          ? 'bg-cyan-500/20 text-cyan-200 border border-cyan-500/40'
+                          : 'text-slate-500 hover:text-slate-300 border border-transparent'
+                      }`}
+                    >
+                      <Shield size={10} />
+                      Defense
+                      <span className="text-[8px] opacity-60">
+                        {localSystems.filter(s => defensiveSystemDescriptions[s]).length}
+                      </span>
+                    </button>
+                  </div>
+
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 md:gap-2">
-                     {Object.keys(systemDescriptions).map(systemName => {
+                     {Object.keys(systemTab === 'offense' ? systemDescriptions : defensiveSystemDescriptions).map(systemName => {
                         const isSelected = localSystems.includes(systemName);
+                        const accent = systemTab === 'offense'
+                          ? 'bg-amber-500/20 border-amber-400/60 text-amber-100'
+                          : 'bg-cyan-500/20 border-cyan-400/60 text-cyan-100';
                         return (
                           <button
                             key={systemName}
                             onClick={() => toggleSystem(systemName)}
                             className={`p-2.5 md:p-3 rounded-lg md:rounded-xl border text-[8px] md:text-[10px] font-black uppercase tracking-tight transition-all text-center ${
                                isSelected
-                               ? 'bg-indigo-500/20 border-indigo-400/60 text-indigo-100'
+                               ? accent
                                : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700'
                             }`}
                           >
@@ -423,7 +517,7 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                </button>
                <button 
                  onClick={() => {
-                   onSave(localIntensity, { ...localAllocations, systemFocus: localSystems }, localParadigm);
+                   onSave(localIntensity, { ...localAllocations, systemFocus: resolvedSystems() }, localParadigm);
                    onClose();
                  }}
                  className="px-6 md:px-8 py-2 md:py-3 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] shadow-xl transition-all flex items-center justify-center gap-2 bg-indigo-500/90 hover:bg-indigo-400 text-white shadow-indigo-500/20"
@@ -438,19 +532,72 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
   );
 }
 
-function AllocationDisplay({ label, value, icon, color }: any) {
-   return (
-      <div className="space-y-3">
-         <div className="flex justify-between items-center pr-1">
-            <div className="flex items-center gap-2">
-               <span className={`text-${color}-500`}>{icon}</span>
-               <span className="text-[10px] font-black text-slate-400 tracking-tight uppercase">{label}</span>
-            </div>
-            <span className="text-xs font-black text-white tabular-nums">{value}%</span>
-         </div>
-         <div className="h-1 bg-slate-900 rounded-full overflow-hidden">
-            <div className={`h-full bg-${color}-500 transition-all duration-700`} style={{ width: `${value}%` }} />
-         </div>
+type AllocBucket = 'offense' | 'defense' | 'conditioning' | 'recovery';
+
+interface AllocationSliderProps {
+  label: string;
+  bucket: AllocBucket;
+  alloc: Allocations;
+  setAlloc: React.Dispatch<React.SetStateAction<Allocations>>;
+  icon: React.ReactNode;
+  color: string;
+}
+
+/** Drags the chosen bucket to a new value and proportionally redistributes
+ *  the delta across the other three so the sum stays at 100. If the others
+ *  are all zero, the leftover dumps into recovery as a safe sink. */
+function rebalance(prev: Allocations, bucket: AllocBucket, next: number): Allocations {
+  const clamped = Math.max(0, Math.min(100, Math.round(next)));
+  const others: AllocBucket[] = (['offense', 'defense', 'conditioning', 'recovery'] as AllocBucket[]).filter(b => b !== bucket);
+  const otherSum = others.reduce((s, b) => s + (prev[b] ?? 0), 0);
+  const remaining = 100 - clamped;
+  const out: Allocations = { ...prev, [bucket]: clamped };
+  if (otherSum === 0) {
+    // No room to scale — give the leftover to recovery (rest is the safe default).
+    const sink: AllocBucket = bucket === 'recovery' ? 'conditioning' : 'recovery';
+    out[sink] = remaining;
+    for (const b of others) if (b !== sink) out[b] = 0;
+    return out;
+  }
+  // Scale others proportionally; round + correct rounding drift on the last bucket.
+  let assigned = 0;
+  others.forEach((b, i) => {
+    if (i === others.length - 1) {
+      out[b] = Math.max(0, remaining - assigned);
+    } else {
+      const v = Math.round(((prev[b] ?? 0) / otherSum) * remaining);
+      out[b] = v;
+      assigned += v;
+    }
+  });
+  return out;
+}
+
+function AllocationSlider({ label, bucket, alloc, setAlloc, icon, color }: AllocationSliderProps) {
+  const value = alloc[bucket] ?? 0;
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-between items-center pr-1">
+        <div className="flex items-center gap-2">
+          <span className={`text-${color}-500`}>{icon}</span>
+          <span className="text-[10px] font-black text-slate-400 tracking-tight uppercase">{label}</span>
+        </div>
+        <span className="text-xs font-black text-white tabular-nums">{value}%</span>
       </div>
-   );
+      <div className="relative">
+        <div className="h-1 bg-slate-900 rounded-full overflow-hidden">
+          <div className={`h-full bg-${color}-500 transition-all duration-300`} style={{ width: `${value}%` }} />
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={value}
+          onChange={(e) => setAlloc(prev => rebalance(prev, bucket, Number(e.target.value)))}
+          className="absolute inset-0 w-full h-3 -mt-1 opacity-0 cursor-pointer"
+          aria-label={`${label} allocation`}
+        />
+      </div>
+    </div>
+  );
 }

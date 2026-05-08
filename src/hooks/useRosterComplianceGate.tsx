@@ -28,7 +28,7 @@ export function useRosterComplianceGate() {
 
   const check = useMemo(() => {
     const empty = {
-      mode: null as 'over' | 'under' | null,
+      mode: null as 'over' | 'under' | 'ng-deadline' | null,
       excess: [] as NBAPlayer[],
       slotsNeeded: 0,
       isPreseasonEnd: false,
@@ -86,6 +86,10 @@ export function useRosterComplianceGate() {
       const excess = [...allRoster]
         .sort((a, b) => getDisplayOverall(a) - getDisplayOverall(b))
         .slice(0, allRoster.length - maxCamp);
+      console.log('[RosterGate] OVER training-camp', {
+        allRoster: allRoster.length, maxCamp,
+        excess: excess.map(p => ({ id: p.internalId, name: p.name, ovr: getDisplayOverall(p), ng: !!(p as any).nonGuaranteed, tw: !!(p as any).twoWay })),
+      });
       return { ...empty, mode: 'over' as const, excess, phase, maxRoster: maxCamp };
     }
     // Regular season: standard and two-way slots are separate buckets.
@@ -108,7 +112,26 @@ export function useRosterComplianceGate() {
       const excess = [...standardRoster]
         .sort((a, b) => getDisplayOverall(a) - getDisplayOverall(b))
         .slice(0, standardRoster.length - maxStd);
+      console.log('[RosterGate] OVER regular-season standard', {
+        standardRoster: standardRoster.length, maxStd,
+        excess: excess.map(p => ({ id: p.internalId, name: p.name, ovr: getDisplayOverall(p), ng: !!(p as any).nonGuaranteed, tw: !!(p as any).twoWay })),
+      });
       return { ...empty, mode: 'over' as const, excess, phase, maxRoster: maxStd };
+    }
+    // NG guarantee deadline countdown — fires Jan 1–9 (9-day window before
+    // the configured Jan 10 deadline) when user-team still carries any NG
+    // players. After Jan 10 the auto-guarantee in simulationHandler kicks
+    // in unconditionally as a safety net, so the gate is only here to give
+    // the user one last chance to waive (free release) or convert to 2W.
+    const ngDeadlineMonth = (state.leagueStats as any)?.ngGuaranteeDeadlineMonth ?? 1;
+    const ngDeadlineDay = (state.leagueStats as any)?.ngGuaranteeDeadlineDay ?? 10;
+    const inNgDeadlineWindow = month === ngDeadlineMonth && day < ngDeadlineDay;
+    if (inNgDeadlineWindow) {
+      const userNGs = standardRoster.filter(p => !!(p as any).nonGuaranteed);
+      if (userNGs.length > 0) {
+        const sortedNGs = [...userNGs].sort((a, b) => getDisplayOverall(b) - getDisplayOverall(a));
+        return { ...empty, mode: 'ng-deadline' as const, excess: sortedNGs, phase, maxRoster: maxStd };
+      }
     }
     return { ...empty, isPreseasonEnd: isTrainingCamp, phase, maxRoster: isTrainingCamp ? maxCamp : maxStd };
   }, [state.gameMode, state.userTeamId, state.players, state.leagueStats, state.date]);
@@ -124,16 +147,41 @@ export function useRosterComplianceGate() {
   };
 
   const handleAuto = async () => {
+    console.log('[RosterGate] handleAuto fired', {
+      mode: check.mode,
+      excessCount: check.excess.length,
+      excess: check.excess.map(p => ({ id: p.internalId, name: p.name, ng: !!(p as any).nonGuaranteed, tw: !!(p as any).twoWay, tid: p.tid, status: p.status })),
+    });
     if (check.mode === 'over') {
       for (const p of check.excess) {
-        await dispatchAction({
-          type: 'WAIVE_PLAYER' as any,
-          payload: {
-            targetId: p.internalId,
-            targetName: p.name,
-            contacts: [{ id: p.internalId, name: p.name, type: 'player' }],
-          },
-        });
+        console.log('[RosterGate] dispatching WAIVE_PLAYER for', p.name, p.internalId);
+        try {
+          await dispatchAction({
+            type: 'WAIVE_PLAYER' as any,
+            payload: {
+              targetId: p.internalId,
+              targetName: p.name,
+              contacts: [{ id: p.internalId, name: p.name, type: 'player' }],
+            },
+          });
+          console.log('[RosterGate] WAIVE_PLAYER returned for', p.name);
+        } catch (e) {
+          console.error('[RosterGate] WAIVE_PLAYER threw for', p.name, e);
+        }
+      }
+    } else if (check.mode === 'ng-deadline') {
+      // "Guarantee All" — flip every NG to guaranteed via CONVERT_CONTRACT_TYPE.
+      // Mirrors what the Jan 10 auto-guarantee will do anyway, just earlier
+      // and acknowledged by the user.
+      for (const p of check.excess) {
+        try {
+          await dispatchAction({
+            type: 'CONVERT_CONTRACT_TYPE' as any,
+            payload: { playerId: p.internalId, to: 'GUARANTEED' },
+          });
+        } catch (e) {
+          console.error('[RosterGate] CONVERT_CONTRACT_TYPE threw for', p.name, e);
+        }
       }
     }
     setOpen(false);

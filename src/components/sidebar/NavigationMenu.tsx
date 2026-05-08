@@ -37,7 +37,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
   // Trade deadline + FA period detection for GM mode gating
   // Dates resolved dynamically via dateUtils.resolveSeasonDate (day-of-week aware).
   const currentDateNorm = normalizeDate(state.date ?? '');
-  const seasonYear = state.leagueStats?.year ?? 2026;
+  const seasonYear = state.leagueStats?.year ?? new Date().getFullYear();
   const tradeDeadline = toISODateString(getTradeDeadlineDate(seasonYear, state.leagueStats));
   const faStartDate = getCurrentOffseasonEffectiveFAStart(`${currentDateNorm}T00:00:00Z`, state.leagueStats, state.schedule as any);
   const faStart = toISODateString(faStartDate);
@@ -78,7 +78,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
 
   const broadcastingBadge = (() => {
     if (state.leagueStats.mediaRights?.isLocked) return 0;
-    const broadcastDeadline = `${state.leagueStats.year ?? 2026}-06-30`;
+    const broadcastDeadline = `${state.leagueStats.year ?? new Date().getFullYear()}-06-30`;
     if (compareGameDates(state.date, broadcastDeadline) >= 0) return 0;
     return '!';
   })();
@@ -127,6 +127,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         ] : []),
         ...(isGM ? [
           { id: 'Team Office' as Tab, label: 'Team Office', icon: Briefcase },
+          { id: 'Coaching' as Tab, label: 'Coaching', icon: ClipboardList },
           { id: 'Training Center' as Tab, label: 'Training Center', icon: Activity },
         ] : []),
       ],
@@ -136,7 +137,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
       items: [
         { id: 'Seasonal' as Tab,       label: 'Seasonal Actions', icon: Clock,  badge: seasonalBadge || undefined },
         ...(() => {
-          const yr = state.leagueStats?.year ?? 2026;
+          const yr = state.leagueStats?.year ?? new Date().getFullYear();
           const currentNorm = normalizeDate(state.date ?? '');
           const oct1 = `${yr - 1}-10-01`;
           const oct25 = `${yr - 1}-10-25`; // opening night — preview badge expires after games start
@@ -214,6 +215,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
       items: [
         ...(isGM ? [] : [
           { id: 'Team Office' as Tab, label: 'Team Office', icon: Briefcase },
+          { id: 'Coaching' as Tab, label: 'Coaching', icon: ClipboardList },
           { id: 'Training Center' as Tab, label: 'Training Center', icon: Activity },
         ]),
         ...(!isGM ? [

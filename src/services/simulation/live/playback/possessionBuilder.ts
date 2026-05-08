@@ -32,8 +32,12 @@ export function buildPossessions(
     const qStartGs = getPeriodStartSeconds(q, timingConfig);
     
     let attempts = 0;
-    const MAX_ATTEMPTS = 100;
-    
+    // Per-quarter natural cap. NBA quarters average ~22-26 possessions; with
+    // ORB-extensions the realistic max is ~32. The old MAX=100 let Q4 grind
+    // 60+ brick attempts under the late-game multipliers, so Q4 felt twice as
+    // dense as Q1-Q3.
+    const MAX_ATTEMPTS = 36;
+
     while ((homeScored < homeTarget || awayScored < awayTarget) && attempts < MAX_ATTEMPTS) {
       attempts++;
 
@@ -62,7 +66,7 @@ export function buildPossessions(
       const oppLineup = RotationService.getLineupAtTime(oppPool, estimatedGs, oppDiff);
       
       const ptsNeeded = target - scored;
-      const outcome = pickOutcome(budgets, oppBudgets, ptsNeeded, activeLineup, oppLineup, q, estimatedGs, activeDiff, timingConfig);
+      const outcome = pickOutcome(budgets, oppBudgets, ptsNeeded, activeLineup, oppLineup, q, estimatedGs, activeDiff, timingConfig, attempts);
       
       if (!outcome) {
         currentTeam = currentTeam === 'HOME' ? 'AWAY' : 'HOME';
@@ -98,7 +102,8 @@ function pickOutcome(
   quarter: number,
   estimatedGs: number,
   activeDiff: number,
-  timingConfig: GameTimingConfig
+  timingConfig: GameTimingConfig,
+  attempts: number = 0
 ): PossessionOutcome | null {
   const active = activeLineup.map(p => budgets.get(p.id) ?? p);
   
@@ -135,11 +140,19 @@ function pickOutcome(
   
   const finalRegStart = getPeriodStartSeconds(timingConfig.numQuarters, timingConfig);
   const finalRegLen = getPeriodDurationSeconds(timingConfig.numQuarters, timingConfig);
-  const isLateGame = estimatedGs > finalRegStart + finalRegLen - 240 && Math.abs(activeDiff) <= 6;
-  const multFoul = isLateGame ? 3.0 : 1.0;
-  const multMiss = isLateGame ? 1.5 : 1.0;
-  const multTov = isLateGame ? 1.2 : 1.0;
-  const multMade = isLateGame ? 0.8 : 1.0;
+  // Late-game tilt: only the last 2:00 of the FINAL regulation quarter, when
+  // the game is still close. Multipliers are mild — they nudge texture, not
+  // brick-fest the closing minutes. Auto-disable once attempts exceed the
+  // natural quarter cap so the budget can clear cleanly without grinding.
+  const isLateGame =
+    quarter === timingConfig.numQuarters &&
+    estimatedGs > finalRegStart + finalRegLen - 120 &&
+    Math.abs(activeDiff) <= 6 &&
+    attempts < 28;
+  const multFoul = isLateGame ? 1.6 : 1.0;
+  const multMiss = isLateGame ? 1.15 : 1.0;
+  const multTov  = 1.0;
+  const multMade = isLateGame ? 0.93 : 1.0;
   
   if (totalFg2 > 0 && teamFg2 > 0)    options.push({ outcome: 'MADE_2',     weight: totalFg2 * 2 * multMade });
   if (totalFg3 > 0 && teamFg3 > 0)    options.push({ outcome: 'MADE_3',     weight: totalFg3 * 2 * multMade });

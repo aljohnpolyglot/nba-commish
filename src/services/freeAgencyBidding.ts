@@ -1,16 +1,4 @@
-/**
- * freeAgencyBidding.ts — FA Bidding Engine for GM Mode
- *
- * Manages competitive free agent offers during the FA period.
- * AI teams generate bids, user submits offers, player decides based on value + desirability.
- *
- * Flow:
- *   1. FA period opens (Jul 1) → generateMarketBids() creates AI team offers for top FAs
- *   2. User views FA, sees competitor bids on "Team Offers" tab
- *   3. User submits their own offer via SigningModal
- *   4. Each sim day during FA → resolveExpiredBids() + generateNewBids()
- *   5. Player decides after ~2-5 days based on best overall offer
- */
+/** FA bidding engine: AI bids, user offers, daily decision resolution. */
 
 import type { NBAPlayer, NBATeam, GameState } from '../types';
 import { convertTo2KRating } from '../utils/helpers';
@@ -18,8 +6,6 @@ import { getGMAttributes, clampSpendOffer } from './staff/gmAttributes';
 import { SettingsManager } from './SettingsManager';
 import { hasBirdRights as resolveBirdRights, computeContractOffer, getCapThresholds, getMLEAvailability } from '../utils/salaryUtils';
 import { daysBetweenGameDates, getGameDateParts } from '../utils/dateUtils';
-
-// ── Types ────────────────────────────────────────────────────────────────────
 
 export interface FreeAgentBid {
   id: string;
@@ -31,8 +17,8 @@ export interface FreeAgentBid {
   years: number;
   option: 'NONE' | 'PLAYER' | 'TEAM';
   isUserBid: boolean;
-  submittedDay: number;     // state.day when bid was placed
-  expiresDay: number;       // bid expires after this day (player decides)
+  submittedDay: number;
+  expiresDay: number;
   status: 'active' | 'accepted' | 'rejected' | 'withdrawn' | 'outbid';
   /** AI camp-invite bid: one-year, zero-guarantee deal that can be released free. */
   nonGuaranteed?: boolean;
@@ -42,7 +28,7 @@ export interface FreeAgentMarket {
   playerId: string;
   playerName: string;
   bids: FreeAgentBid[];
-  decidesOnDay: number;     // the day the player makes their choice
+  decidesOnDay: number;
   resolved: boolean;
   /** Season/day stamp for stale-market cleanup. Older saves may not have these. */
   season?: number;
@@ -72,7 +58,7 @@ export function isPlausibleActiveMarket(
 ): boolean {
   if (market.resolved) return false;
   const currentDay = state.day ?? 0;
-  const currentYear = state.leagueStats?.year ?? 2026;
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const marketSeason = market.season;
 
   if (marketSeason != null && marketSeason !== currentYear) return false;
@@ -195,55 +181,27 @@ export function getBidTeamHistory(
   };
 }
 
-/**
- * Calculate how likely a player accepts an offer (0-100%).
- * Based on: salary vs market value, years, team desirability, competitor bids.
- */
-export function calculateAcceptanceProbability(
-  bid: FreeAgentBid,
-  player: NBAPlayer,
-  marketValue: number,
-  desirability: number,
-  competitorBids: FreeAgentBid[],
-): number {
-  // Salary ratio: how much are they offering vs market value?
-  const salaryRatio = marketValue > 0 ? bid.salaryUSD / marketValue : 1;
-  let prob = salaryRatio * 50; // base from salary
-
-  // Desirability bonus (0-100 → 0-25 bonus)
-  prob += desirability * 0.25;
-
-  // Years stability bonus
-  prob += Math.min(10, bid.years * 2.5);
-
-  // Player option bonus
-  if (bid.option === 'PLAYER') prob += 5;
-  if (bid.option === 'TEAM') prob -= 3;
-
-  // Competitor pressure: if best competing offer is higher, less likely to accept yours
-  const bestCompetitor = competitorBids
-    .filter(b => b.id !== bid.id && b.status === 'active')
-    .sort((a, b) => b.salaryUSD - a.salaryUSD)[0];
-
-  if (bestCompetitor && bestCompetitor.salaryUSD > bid.salaryUSD) {
-    const deficit = (bestCompetitor.salaryUSD - bid.salaryUSD) / marketValue;
-    prob -= deficit * 30;
+/** Helper: NBA tid (0–29) the player last played for, or -1. Shared with faMarketTicker. */
+export function getRFAPriorTid(player: NBAPlayer): number {
+  const txns: Array<{ season: number; tid: number }> = (player as any).transactions ?? [];
+  if (txns.length > 0) {
+    const t = [...txns].sort((a, b) => b.season - a.season).find(x => x.tid >= 0 && x.tid <= 29);
+    if (t) return t.tid;
   }
-
-  return Math.max(5, Math.min(99, Math.round(prob)));
+  const stats: Array<{ season?: number; tid?: number; gp?: number; playoffs?: boolean }> = (player as any).stats ?? [];
+  const s = stats.filter(x => !x.playoffs && (x.gp ?? 0) > 0 && (x.tid ?? -1) >= 0 && (x.tid ?? -1) <= 29)
+    .sort((a, b) => (b.season ?? 0) - (a.season ?? 0))[0];
+  return s ? (s.tid ?? -1) : -1;
 }
 
-/**
- * Generate AI team bids for a free agent.
- * Called when the FA market opens or when user views a player.
- */
+
 export function generateAIBids(
   player: NBAPlayer,
   state: GameState,
   maxBids = 3,
 ): FreeAgentBid[] {
   const bids: FreeAgentBid[] = [];
-  const currentYear = state.leagueStats?.year ?? 2026;
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   // Only exclude the user's team from AI bidding in GM mode. In commissioner
   // mode there's no "user team" — userTeamId may still be set as the last-managed
   // franchise from a mode switch, but excluding it would silently freeze that
@@ -266,20 +224,8 @@ export function generateAIBids(
   const secondApronUSD = cap * (((state.leagueStats as any)?.secondApronPercentage ?? 134.4) / 100);
   const apronHardCeilingUSD = secondApronUSD * 1.5;
 
-  // Bird Rights — prior NBA team can re-sign over the cap regardless of payroll.
-  // Without this, Finals contenders (over-tax) can't bid on their own expiring
-  // stars (Jalen Duren on DET case). Real NBA: Bird Rights is the override.
-  const priorTid = (() => {
-    const txns: Array<{ season: number; tid: number }> = (player as any).transactions ?? [];
-    if (txns.length > 0) {
-      const t = [...txns].sort((a, b) => b.season - a.season).find(x => x.tid >= 0 && x.tid <= 29);
-      if (t) return t.tid;
-    }
-    const stats: Array<{ season?: number; tid?: number; gp?: number; playoffs?: boolean }> = (player as any).stats ?? [];
-    const s = stats.filter(x => !x.playoffs && (x.gp ?? 0) > 0 && (x.tid ?? -1) >= 0 && (x.tid ?? -1) <= 29)
-      .sort((a, b) => (b.season ?? 0) - (a.season ?? 0))[0];
-    return s ? (s.tid ?? -1) : -1;
-  })();
+  // Bird Rights override: prior team can re-sign over cap regardless of payroll.
+  const priorTid = getRFAPriorTid(player);
   const playerHasBirdRights = resolveBirdRights(player) && priorTid >= 0;
 
   // Eligibility: cap space OR MLE-eligible OR Bird Rights with prior team.
@@ -340,7 +286,6 @@ export function generateAIBids(
   for (const { team, desirability, payroll, isBirdHolder } of bidders) {
     if (bids.length >= maxBids) break;
 
-    // Salary based on K2 tier + some randomness
     let pct: number;
     if (k2 >= 95) pct = 0.28 + Math.random() * 0.05;
     else if (k2 >= 90) pct = 0.20 + Math.random() * 0.04;
@@ -362,13 +307,9 @@ export function generateAIBids(
     const dStr = state.date;
     if (dStr) {
       const { month: m, day } = getGameDateParts(dStr);
-      const isFebOrLater = m === 2 || m === 3 || m === 4 || m === 5 || m === 6;
-      const isJan = m === 1;
-      const isNovDec = m === 11 || m === 12;
-      const isLateOct = m === 10 && day >= 22;
-      if (isFebOrLater) pct *= 0.20;        // trade deadline+ — fringe-only money
-      else if (isJan) pct *= 0.35;           // mid-season — heavy discount
-      else if (isNovDec || isLateOct) pct *= 0.55; // post-camp — moderate discount
+      if (m >= 2 && m <= 6) pct *= 0.20;
+      else if (m === 1) pct *= 0.35;
+      else if (m === 11 || m === 12 || (m === 10 && day >= 22)) pct *= 0.55;
     }
 
     const capSpace = cap - payroll;
@@ -409,7 +350,10 @@ export function generateAIBids(
       // Can't afford even the minimum — skip this team
       continue;
     }
-    const years = k2 >= 85 ? (2 + Math.floor(Math.random() * 3)) : k2 >= 75 ? (1 + Math.floor(Math.random() * 3)) : (1 + Math.floor(Math.random() * 2));
+    let years: number;
+    if (k2 >= 85) years = 2 + Math.floor(Math.random() * 3);
+    else if (k2 >= 75) years = 1 + Math.floor(Math.random() * 3);
+    else years = 1 + Math.floor(Math.random() * 2);
     const option: FreeAgentBid['option'] = k2 >= 88 && years >= 3 ? 'PLAYER' : 'NONE';
 
     bids.push({
@@ -431,10 +375,16 @@ export function generateAIBids(
   return bids;
 }
 
-/**
- * Resolve a player's decision. Called when decidesOnDay is reached.
- * Returns the winning bid (accepted) and marks others as rejected.
- */
+function getMarketValuePct(k2: number): number {
+  if (k2 >= 95) return 0.30;
+  if (k2 >= 90) return 0.22;
+  if (k2 >= 85) return 0.15;
+  if (k2 >= 80) return 0.10;
+  if (k2 >= 75) return 0.06;
+  return 0.02;
+}
+
+/** Resolve a player's decision when decidesOnDay is reached. */
 export function resolvePlayerDecision(
   market: FreeAgentMarket,
   player: NBAPlayer,
@@ -443,16 +393,11 @@ export function resolvePlayerDecision(
   const activeBids = market.bids.filter(b => b.status === 'active');
   if (activeBids.length === 0) return { ...market, resolved: true };
 
-  const currentYear = state.leagueStats?.year ?? 2026;
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const cap = state.leagueStats?.salaryCap ?? 154_600_000;
   const lastRating = (player as any).ratings?.[(player as any).ratings?.length - 1];
   const k2 = convertTo2KRating(player.overallRating ?? 60, lastRating?.hgt ?? 50);
-
-  // Market value baseline
-  let pct: number;
-  if (k2 >= 95) pct = 0.30; else if (k2 >= 90) pct = 0.22; else if (k2 >= 85) pct = 0.15;
-  else if (k2 >= 80) pct = 0.10; else if (k2 >= 75) pct = 0.06; else pct = 0.02;
-  const marketValue = Math.round(cap * pct);
+  const marketValue = Math.round(cap * getMarketValuePct(k2));
 
   // Score each bid
   const scored = activeBids.map(bid => {
@@ -481,25 +426,17 @@ export function resolvePlayerDecision(
   return { ...market, bids: updatedBids, resolved: true };
 }
 
-/**
- * Compute how competitive a bid is (0-130+%).
- * Uses the same weighted formula as resolvePlayerDecision.
- * baseline = market-rate offer from an average team (des=50, 2yr, NONE) = 76.5
- */
+/** Bid competitiveness 0–130+%, mirrors resolvePlayerDecision weighting. */
 export function computeOfferStrength(
   bid: FreeAgentBid,
   player: NBAPlayer,
   state: GameState,
 ): number {
   const cap = state.leagueStats?.salaryCap ?? 154_600_000;
-  const currentYear = state.leagueStats?.year ?? 2026;
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const lastRating = (player as any).ratings?.[(player as any).ratings?.length - 1];
   const k2 = convertTo2KRating(player.overallRating ?? 60, lastRating?.hgt ?? 50);
-
-  let pct: number;
-  if (k2 >= 95) pct = 0.30; else if (k2 >= 90) pct = 0.22; else if (k2 >= 85) pct = 0.15;
-  else if (k2 >= 80) pct = 0.10; else if (k2 >= 75) pct = 0.06; else pct = 0.02;
-  const marketValue = Math.round(cap * pct);
+  const marketValue = Math.round(cap * getMarketValuePct(k2));
 
   const team = state.teams.find(t => t.id === bid.teamId);
   const des = team ? teamDesirability(team, player, state.players, currentYear) : 50;

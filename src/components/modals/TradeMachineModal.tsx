@@ -6,13 +6,14 @@ import { NBAPlayer, NBATeam, DraftPick } from '../../types';
 import { TradeSummaryModal } from './TradeSummaryModal';
 import { TeamDropdown } from '../shared/TeamDropdown';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
-import { calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV, getPotColor, computeLeaguePerAvg, type TeamMode } from '../../services/trade/tradeValueEngine';
+import { calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV, getPotColor, computeLeaguePerAvg, type TeamMode, type TVContext } from '../../services/trade/tradeValueEngine';
+import { AwardService } from '../../services/logic/AwardService';
 import { getCapThresholds, getTeamPayrollUSD, getTradeOutlook, effectiveRecord, topNAvgK2, resolveManualOutlook, type TradeOutlook } from '../../utils/salaryUtils';
 import { validateCBATradeRules } from '../../utils/cbaTradeRules';
 import { evaluateTradeAcceptance, teamPowerRanks, roleToMode } from '../../services/trade/tradeFinderEngine';
 import { SettingsManager } from '../../services/SettingsManager';
-import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks } from '../../services/draft/DraftPickGenerator';
-import { buildClassStrengthMap, buildFullDraftSlotMap, formatPickLabel } from '../../services/draft/draftClassStrength';
+import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks, DEFAULT_TRADABLE_PICK_SEASONS } from '../../services/draft/DraftPickGenerator';
+import { buildClassStrengthMap, buildFullDraftSlotMap, comparePicks, formatPickLabel } from '../../services/draft/draftClassStrength';
 import { validateStepienRule, wouldStepienViolateForTid } from '../../services/trade/stepienRule';
 import { getGameDateParts, isInPostDeadlinePreFAWindow } from '../../utils/dateUtils';
 import { isWalkingExpiring, isRecentlySignedLocked } from '../../services/trade/tradeValueEngine';
@@ -238,29 +239,12 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
 
   const formatContract = (amount: number) => `$${(amount / 1000).toFixed(1)}M`;
 
-  // Calculate team standings (wins/losses for sorting)
-  const teamsWithRecords = useMemo(() => {
-    const nonRegularGids = new Set(
-      state.schedule
-        .filter(g => g.isPreseason || g.isPlayoff || g.isPlayIn)
-        .map(g => g.gid)
-    );
-
-    const records: Record<number, { wins: number; losses: number }> = {};
-    state.teams.forEach(t => { records[t.id] = { wins: 0, losses: 0 }; });
-
-    state.boxScores
-      .filter(g => !g.isAllStar && !g.isRisingStars && !g.isCelebrityGame && !nonRegularGids.has(g.gameId))
-      .forEach(g => {
-        const homeWon = g.homeScore > g.awayScore;
-        if (records[g.homeTeamId]) homeWon ? records[g.homeTeamId].wins++ : records[g.homeTeamId].losses++;
-        if (records[g.awayTeamId]) !homeWon ? records[g.awayTeamId].wins++ : records[g.awayTeamId].losses++;
-      });
-
-    return state.teams
-      .map(t => ({ ...t, wins: records[t.id]?.wins || 0, losses: records[t.id]?.losses || 0 }))
-      .sort((a, b) => b.wins - a.wins);
-  }, [state.teams, state.boxScores, state.schedule]);
+  // Use the W-L already stored on each team (updated live by the game engine).
+  // TeamDropdown sorts within each conference itself, so no sort needed here.
+  const teamsWithRecords = useMemo(() =>
+    state.teams.map(t => ({ ...t, wins: t.wins ?? 0, losses: t.losses ?? 0 })),
+    [state.teams]
+  );
 
   const teamA = state.teams.find(t => t.id === teamAId);
   const teamB = state.teams.find(t => t.id === teamBId);
@@ -279,11 +263,22 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   const tradablePickCutoff = getMaxTradableSeason(state);
   const minTradableSeason = getMinTradableSeason(state);
   const tradablePicks = useMemo(() => getTradablePicks(state), [state.draftPicks, state.leagueStats?.year, state.leagueStats?.tradableDraftPickSeasons, (state as any).draftComplete]);
-  const teamAPicksAvailable = useMemo(() => tradablePicks.filter(p => p.tid === teamAId), [tradablePicks, teamAId]);
-  const teamBPicksAvailable = useMemo(() => tradablePicks.filter(p => p.tid === teamBId), [tradablePicks, teamBId]);
+  const lotterySlotByTid = useMemo(
+    () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
+    [(state as any).draftLotteryResult, state.teams],
+  );
+  const _currentYearForPicks = state.leagueStats?.year ?? new Date().getFullYear();
+  const teamAPicksAvailable = useMemo(
+    () => tradablePicks.filter(p => p.tid === teamAId).sort((a, b) => comparePicks(a, b, _currentYearForPicks, lotterySlotByTid)),
+    [tradablePicks, teamAId, _currentYearForPicks, lotterySlotByTid],
+  );
+  const teamBPicksAvailable = useMemo(
+    () => tradablePicks.filter(p => p.tid === teamBId).sort((a, b) => comparePicks(a, b, _currentYearForPicks, lotterySlotByTid)),
+    [tradablePicks, teamBId, _currentYearForPicks, lotterySlotByTid],
+  );
 
   const stepienOnGlobal = state.leagueStats?.stepienRuleEnabled !== false;
-  const tradablePickSeasons = state.leagueStats?.tradableDraftPickSeasons ?? 7;
+  const tradablePickSeasons = state.leagueStats?.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS;
   const postDeadlinePreFA = useMemo(
     () => isInPostDeadlinePreFAWindow(state.date ?? '', state.leagueStats?.year ?? new Date().getFullYear(), state.leagueStats as any),
     [state.date, state.leagueStats],
@@ -342,16 +337,25 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
     () => buildClassStrengthMap(state.players, currentYearForEval, currentYearForEval, tradablePickCutoff),
     [state.players, currentYearForEval, tradablePickCutoff],
   );
-  const lotterySlotByTid = useMemo(
-    () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
-    [(state as any).draftLotteryResult, state.teams],
-  );
-  const tvContext = useMemo(() => {
+  // Top-30 MVP-race rank — flags franchise-altering players so calcPlayerTV adds
+  // the "MVP candidate" premium and isUntouchable locks them down. Built off the
+  // same scoring AwardService uses on the awards screen, so what the user sees
+  // in the MVP race lines up with what the trade engine treats as untouchable.
+  const mvpRank = useMemo(() => {
+    const top30 = AwardService.calculateMVPRankings(state.players, state.teams, currentYearForEval, 30);
+    const map = new Map<string, number>();
+    top30.forEach((c, i) => map.set(c.player.internalId, i + 1));
+    return map;
+  }, [state.players, state.teams, currentYearForEval]);
+  const tvContext = useMemo<TVContext>(() => {
     const { month } = state.date ? getGameDateParts(state.date) : getGameDateParts(new Date());
     const isRegularSeason = (month >= 10 && month <= 12) || (month >= 1 && month <= 4);
-    if (!isRegularSeason) return undefined;
-    return { leaguePerAvg: computeLeaguePerAvg(state.players, currentYearForEval), isRegularSeason: true };
-  }, [state.players, currentYearForEval, state.date]);
+    return {
+      leaguePerAvg: isRegularSeason ? computeLeaguePerAvg(state.players, currentYearForEval) : 15,
+      isRegularSeason,
+      mvpRank,
+    };
+  }, [state.players, currentYearForEval, state.date, mvpRank]);
   const confStandings = useMemo(() => {
     const map = new Map<number, { confRank: number; gbFromLeader: number }>();
     for (const conf of ['East', 'West']) {
@@ -412,7 +416,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
       const stepien = validateStepienRule(
         state.draftPicks ?? [],
         currentYearForEval,
-        state.leagueStats?.tradableDraftPickSeasons ?? 7,
+        state.leagueStats?.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS,
         teamA.id, teamB.id,
         teamAPicks, teamBPicks,
       );

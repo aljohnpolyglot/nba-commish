@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { TrendingUp, TrendingDown } from 'lucide-react';
-import { buildFullDraftSlotMap, formatPickLabel } from '../../../../../services/draft/draftClassStrength';
+import { buildFullDraftSlotMap, comparePicks, formatPickLabel } from '../../../../../services/draft/draftClassStrength';
 
 interface DraftPicksProps {
   teamId: number;
@@ -58,7 +58,7 @@ export function DraftPicks({ teamId }: DraftPicksProps) {
       ) : (
         <div className="flex flex-col gap-8">
           {seasons.map(season => {
-            const seasonPicks = picksBySeason[season].sort((a, b) => a.round - b.round);
+            const seasonPicks = picksBySeason[season].sort((a, b) => comparePicks(a, b, currentYear, lotterySlotByTid));
             const yearsFromNow = Math.max(0, season - currentYear);
             const isNextYear = yearsFromNow <= 1;
             const isStale = yearsFromNow >= 3;

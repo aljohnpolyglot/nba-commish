@@ -13,6 +13,7 @@ import { getRolloverDate, isDraftBlockedByUnresolvedPlayoffs, toISODateString } 
 import { isNbaCupEnabled } from '../../utils/ruleFlags';
 import { buildDraftOrderFromState } from '../draft/draftOrder';
 import { logPlanEvent } from '../offseason/offseasonPlan';
+import { getLsYear } from '../../utils/leagueYear';
 
 // ── Schedule Generation (Aug 14) ──────────────────────────────────────────
 export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
@@ -485,8 +486,73 @@ function backfillAllStarAwards(state: GameState): Partial<GameState> {
   return { players: updatedPlayers };
 }
 
+// ── The Throne — sign-up window opens (Dec 1) ──────────────────────────────
+export const autoOpenThroneSignups = async (state: GameState): Promise<Partial<GameState>> => {
+  logPlanEvent('autoResolvers.autoOpenThroneSignups', 'fire', `date=${state.date}`);
+  if (state.leagueStats.allStarThroneEnabled !== true) return {};
+  if (!state.allStar) return {};
+  if ((state.allStar as any).throneSignupSchedule) return {}; // already seeded
+  try {
+    const { getAllStarWeekendDates } = await import('../allStar/AllStarWeekendOrchestrator');
+    const { initThroneSignups } = await import('../allStar/throneOrchestrator');
+    const dates = getAllStarWeekendDates(state.leagueStats.year);
+    return initThroneSignups(state, dates.throneSignupOpens, dates.throneSignupCloses);
+  } catch (err) {
+    console.warn('autoOpenThroneSignups failed:', err);
+    return {};
+  }
+};
+
+// ── The Throne — sign-up window closes (Jan 15) ────────────────────────────
+export const autoCloseThroneSignups = async (state: GameState): Promise<Partial<GameState>> => {
+  logPlanEvent('autoResolvers.autoCloseThroneSignups', 'fire', `date=${state.date}`);
+  if (state.leagueStats.allStarThroneEnabled !== true) return {};
+  if (!state.allStar) return {};
+  if ((state.allStar as any).throneSignupComplete) return {};
+  try {
+    const { closeThroneSignups } = await import('../allStar/throneOrchestrator');
+    return closeThroneSignups(state);
+  } catch (err) {
+    console.warn('autoCloseThroneSignups failed:', err);
+    return {};
+  }
+};
+
+// ── The Throne — voting opens (Jan 16): seeds initial tally ───────────────
+export const autoOpenThroneVoting = async (state: GameState): Promise<Partial<GameState>> => {
+  logPlanEvent('autoResolvers.autoOpenThroneVoting', 'fire', `date=${state.date}`);
+  if (state.leagueStats.allStarThroneEnabled !== true) return {};
+  if (!state.allStar) return {};
+  if ((state.allStar as any).throneAnnounced) return {};
+  try {
+    const { getAllStarWeekendDates } = await import('../allStar/AllStarWeekendOrchestrator');
+    const { tickThroneVoting } = await import('../allStar/throneOrchestrator');
+    const dates = getAllStarWeekendDates(state.leagueStats.year);
+    return tickThroneVoting(state, dates.throneVotingOpens, dates.throneVotingOpens, dates.throneFieldReveal);
+  } catch (err) {
+    console.warn('autoOpenThroneVoting failed:', err);
+    return {};
+  }
+};
+
+// ── The Throne — field of 16 revealed (Jan 30) ─────────────────────────────
+export const autoLockThroneField = async (state: GameState): Promise<Partial<GameState>> => {
+  logPlanEvent('autoResolvers.autoLockThroneField', 'fire', `date=${state.date}`);
+  if (state.leagueStats.allStarThroneEnabled !== true) return {};
+  if (!state.allStar) return {};
+  if ((state.allStar as any).throneAnnounced) return {};
+  try {
+    const { lockThroneField } = await import('../allStar/throneOrchestrator');
+    return lockThroneField(state);
+  } catch (err) {
+    console.warn('autoLockThroneField failed:', err);
+    return {};
+  }
+};
+
 // ── All-Star Weekend (full sim) ────────────────────────────────────────────
 export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<GameState>> => {
+  logPlanEvent('autoResolvers.autoSimAllStarWeekend', 'fire', `date=${state.date}`);
   // If already simmed, skip re-simulation but still backfill any missing awards
   // (e.g. saves from before the award-writing code was added).
   if ((state.allStar as any)?.weekendComplete) {
@@ -899,7 +965,7 @@ export const autoAnnounceAwards = (_state: GameState): Partial<GameState> => ({}
  */
 export const autoInductHOFClass = async (state: GameState): Promise<Partial<GameState>> => {
   logPlanEvent('autoResolvers.autoInductHOFClass', 'fire', `date=${state.date}`);
-  const classYear = (state.leagueStats?.year ?? 2026) - 1;
+  const classYear = getLsYear(state) - 1;
   const idPrefix = `hof-class-${classYear}-`;
   const already = (state.news ?? []).some(n => (n as any).id?.startsWith(idPrefix));
   if (already) return {};
@@ -1036,7 +1102,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
   // Return the sentinel so lazySimRunner retries this event next iteration.
   if (isDraftBlockedByUnresolvedPlayoffs(state)) return { _deferred: true } as any;
 
-  const season = state.leagueStats?.year ?? 2026;
+  const season = getLsYear(state);
   const guaranteedYrs = state.leagueStats?.rookieContractLength ?? 2;
   const teamOptEnabled: boolean = (state.leagueStats as any)?.rookieTeamOptionsEnabled ?? true;
   const teamOptYears: number = (state.leagueStats as any)?.rookieTeamOptionYears ?? 2;

@@ -1,5 +1,8 @@
 # CLAUDE.md
 
+## Communication
+**Language: German (Deutsch).** All responses from Claude should be in German.
+
 ## Project
 NBA Commissioner / GM simulator. React + TypeScript + Vite. Save persistence via `idb-keyval` in IndexedDB.
 
@@ -35,6 +38,68 @@ Both auto-load the newest save from IndexedDB via `keyval-store`. To target a sp
 - `minContractStaticAmount` — **millions** (e.g. 1.273). Multiply ×1,000,000 for USD.
 - `overallRating` — **BBGM scale** (40–85). Use `convertTo2KRating` to compare against K2 (60–99).
 - `yearsOfService` — `player.stats.filter(s => !s.playoffs && (s.gp ?? 0) > 0).length`. Not `age - 22`.
+
+## Debugging save-state bugs — STOP and ask first
+
+For every data-corruption / contract / FA-pool / roster / Bird-Rights / mood / trade bug, **STOP after stating the suspected mechanism. Ask the user to paste the DevTools snippet below and wait for the output before reading more code.** Code reads without the actual save state are guesswork — the `releaseDeclinedExtensionPlayer` fix only landed because the user pulled `{tid: -1, contract.exp: 2028, contractYears[14] valid}` straight out of the save, which contradicted the player-option theory I'd been chasing. Don't repeat that — ask up-front.
+
+### Save format (critical — saves are GZIPPED)
+
+- IndexedDB database: `keyval-store`, object store: `keyval`
+- Save IDs follow pattern `nba_commish_<timestamp>_<id>` (e.g. `nba_commish_1778078108571_mvnxqj`)
+- Metadata index key: `nba_commish_metadata` → array of `{ id, name, dateSaved, gameDate, commissionerName, day }`
+- **Save value is `{ __gz: true, data: ArrayBuffer }` — gzipped JSON.** Reading it raw shows `{__gz, data}` with no `players` field. You must `DecompressionStream('gzip')` it first.
+- `state` is **NOT** a global. Reading from IDB + decompressing is the only console path.
+
+See `src/services/SaveManager.ts` for the canonical compress/decompress helpers, and `scripts/audit-economy.js` for the audit-script pattern (older audit scripts predate the gzip wrapper — check before reusing).
+
+### Standard snippet — load newest save and inspect a player
+
+```js
+// F12 → Console → paste, edit the LASTNAME:
+(async () => {
+  const db = await new Promise((res, rej) => {
+    const r = indexedDB.open('keyval-store');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+  const get = k => new Promise((res, rej) => {
+    const r = db.transaction('keyval','readonly').objectStore('keyval').get(k);
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+  const meta = await get('nba_commish_metadata');
+  const newest = [...meta].sort((a,b) => b.dateSaved - a.dateSaved)[0];
+  const raw = await get(newest.id);
+  // ── Gunzip ─────────────────────────────────────
+  const ds = new DecompressionStream('gzip');
+  const w = ds.writable.getWriter();
+  w.write(raw.data); w.close();
+  const state = JSON.parse(await new Response(ds.readable).text());
+  // ── Inspect ────────────────────────────────────
+  const p = state.players.find(p => p.name.includes('LASTNAME'));
+  console.log({
+    tid: p.tid, status: p.status,
+    contract: p.contract, contractYears: p.contractYears,
+    yearsWithTeam: p.yearsWithTeam, hasBirdRights: p.hasBirdRights,
+    draftYear: p.draft?.year,
+  });
+  window.__lastSaveState = state; // keep around for follow-ups
+})();
+```
+
+After running once, `window.__lastSaveState` is hot — follow-ups can skip the IDB+gunzip dance and just read `__lastSaveState.players.find(...)` directly.
+
+**Console usage note:** paste the JavaScript block only. Do not paste surrounding prose like "Then run:" or quoted assistant text, or DevTools will throw a syntax error before the snippet executes.
+
+### Adjust the destructure to the bug
+
+- **Stats / Bird Rights / yearsOfService**: dump `p.stats` (full array — check for missing seasons or `playoffs:true` rows without matching regular row)
+- **Trades**: `p.transactions`, plus `state.history.filter(h => h.text?.includes('PLAYER NAME'))`
+- **Moods**: `p.moodTraits`, `p.morale`, `p.roleStability`
+- **Cap / payroll**: dump the team's full roster (`state.players.filter(p => p.tid === TEAM_ID)` then map salaries)
+- **FA pool**: `state.players.filter(p => p.tid === -1 && p.status === 'Free Agent')` — count + top-OVR sample
+- **Schedule (mid-season trade verification)**: `state.schedule.filter(g => g.played && g.season === Y && (g.homeTeamId === T || g.awayTeamId === T))`
+
+**Inspect the actual save state, don't infer it from UI screenshots.** UI components have their own filters that can hide or transform fields; only the raw state is authoritative.
 
 ## TODO.md is the working backlog
 

@@ -11,7 +11,7 @@ import { loadNameData } from '../../data/nameDataFetcher';
 import { enforceExternalMinRoster } from '../../services/externalLeagueSustainer';
 
 import { calculateSocialEngagement } from '../../utils/helpers';
-import { generateFuturePicks } from '../../services/draft/DraftPickGenerator';
+import { generateFuturePicks, DEFAULT_TRADABLE_PICK_SEASONS } from '../../services/draft/DraftPickGenerator';
 
 interface StartGamePayload {
     name: string;
@@ -349,7 +349,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     // BBGM data only includes current + next year; generateFuturePicks adds the rest.
     const nbaNBATeams = teams.filter((t: any) => t.id >= 0 && t.id < 100);
     const initYear = INITIAL_LEAGUE_STATS.year;
-    const initWindowSize = INITIAL_LEAGUE_STATS.tradableDraftPickSeasons ?? 7;
+    const initWindowSize = INITIAL_LEAGUE_STATS.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS;
     const initialDraftPicks = generateFuturePicks(draftPicks, nbaNBATeams as any, initYear, initWindowSize);
 
     const statePatch: Partial<GameState> = {

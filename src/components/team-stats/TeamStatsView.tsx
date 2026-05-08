@@ -106,9 +106,14 @@ export const TeamStatsView: React.FC = () => {
 
   const playerAgeMap = useMemo(() => {
     const m = new Map<string, number>();
-    state.players.forEach(p => { if (p.internalId) m.set(p.internalId, p.age ?? 25); });
+    state.players.forEach(p => {
+      if (p.internalId) {
+        const age = p.born?.year ? (state.leagueStats.year - p.born.year) : (p.age || 0);
+        m.set(p.internalId, age);
+      }
+    });
     return m;
-  }, [state.players]);
+  }, [state.players, state.leagueStats.year]);
 
   const teamStats = useMemo((): TeamStatRow[] => {
     type Acc = {

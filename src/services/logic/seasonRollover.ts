@@ -31,10 +31,23 @@ import { ensureDraftClasses } from '../draftClassFiller';
 import { potEstimator } from '../genDraftPlayers';
 import { retireExternalLeaguePlayers, repopulateExternalLeagues, enforceExternalMinRoster } from '../externalLeagueSustainer';
 import { runExternalFreeAgency } from '../externalFreeAgency';
-import { getRolloverDate, toISODateString } from '../../utils/dateUtils';
+import { getRolloverDate, toISODateString, getFreeAgencyStartDate, formatGameDateShort } from '../../utils/dateUtils';
 import { isNbaCupEnabled } from '../../utils/ruleFlags';
 import { getActiveUserBidMarketPlayerIds } from '../freeAgencyBidding';
 import { getOffseasonState, logOffseasonDrift } from '../offseason/offseasonState';
+
+// Bird-Rights computation. Repeated 5× across rollover branches (option-in,
+// option-decline, option-exercise, contract-expired, still-under-contract).
+// Rule: enabled by toggle AND >=3 completed years with team → granted; else
+// preserve existing flag (lazy false).
+function computeBirdRightsForRollover(
+  player: NBAPlayer,
+  ls: GameState['leagueStats'],
+  yrsCompleted: number,
+): boolean {
+  if ((ls.birdRightsEnabled ?? true) && yrsCompleted >= 3) return true;
+  return (player as any).hasBirdRights ?? false;
+}
 
 /** Fired when the sim has just crossed into a new offseason (Oct 1, new year).
  *  Returns the rolled-over GameState patch. Does NOT mutate input. */
@@ -57,6 +70,15 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   const currentYear = state.leagueStats.year;
   const nextYear    = currentYear + 1;
   const leagueStartYear = deriveLeagueStartYearFromHistory(state.history, currentYear);
+
+  // Option-decision date = the day BEFORE FA opens (FA-start - 1). Real NBA
+  // calendar puts options on Jun 29 because FA opens Jul 1 — but a commissioner
+  // can move the FA window, so derive from leagueStats instead of hardcoding.
+  // Use currentYear (rollover-time leagueStats.year, e.g. 2025) so the date
+  // lands in the same calendar year as the rollover (Jun 30, 2025).
+  const faStartDate = getFreeAgencyStartDate(currentYear, state.leagueStats as any);
+  const optionDecisionDate = new Date(faStartDate.getTime() - 86_400_000);
+  const optionDateStr = formatGameDateShort(optionDecisionDate);
 
   // ── 0. Player options ───────────────────────────────────────────────────
   // Players with a player option on their expiring contract decide before rollover:
@@ -101,9 +123,6 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       // Player opts in — contract stays (handled above; we leave exp as-is)
       const text = `${p.name} has accepted his player option with the ${team?.name ?? 'team'}: $${(currentAmountUSD / 1_000_000).toFixed(1)}M`;
       playerOptionNews.push(text);
-      // Jun 29 — options happen BEFORE free agency (Jul 1+). getSeasonYear boundary at Jun 28+
-      // ensures these still appear in the new season's transaction view.
-      const optionDateStr = `Jun 29, ${currentYear}`;
       playerOptionHistory.push({ text, date: optionDateStr, type: 'Signing', playerIds: [p.internalId], tid: p.tid });
       if (isGM && p.tid === userTid) {
         pendingOptionToasts.push({
@@ -115,7 +134,6 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       playerOptOutIds.add(p.internalId);
       const text = `${p.name} has declined his player option${team ? ` with the ${team.name}` : ''}, becoming a free agent.`;
       playerOptionNews.push(text);
-      const optionDateStr = `Jun 29, ${currentYear}`;
       playerOptionHistory.push({ text, date: optionDateStr, type: 'Signing', playerIds: [p.internalId], tid: p.tid });
       if (isGM && p.tid === userTid) {
         pendingOptionToasts.push({
@@ -473,10 +491,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     if (playerOptInIds.has(p.internalId)) {
       const nextAmt = syncedContractAmount(p) ?? Math.round(optionSalaryUSD(p) / 1_000);
       const yrsWithTeam = ((p as any).yearsWithTeam ?? 0) + 1;
-      const hasBirdRights =
-        (state.leagueStats.birdRightsEnabled ?? true) && yrsWithTeam >= 3
-          ? true
-          : (p as any).hasBirdRights ?? false;
+      const hasBirdRights = computeBirdRightsForRollover(p, state.leagueStats, yrsWithTeam);
       return {
         ...p,
         age: newAge,
@@ -502,12 +517,15 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     if (teamOptionDeclinedIds.has(p.internalId)) {
       expiredIds.add(p.internalId);
       const isRFA = !!(p as any).contract?.restrictedFA;
+      const yrsCompleted = ((p as any).yearsWithTeam ?? 0) + 1;
+      const hasBirdRightsDecline = computeBirdRightsForRollover(p, state.leagueStats, yrsCompleted);
       return {
         ...p,
         age: newAge,
         tid: -1,
         status: 'Free Agent' as const,
         yearsWithTeam: 0,
+        hasBirdRights: hasBirdRightsDecline,
         midSeasonExtensionDeclined: undefined,
         contract: { ...p.contract, hasTeamOption: false, restrictedFA: isRFA, isRestrictedFA: isRFA },
       } as any;
@@ -521,10 +539,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     if (teamOptionExercisedIds.has(p.internalId)) {
       const nextAmt = syncedContractAmount(p);
       const yrsWithTeam = ((p as any).yearsWithTeam ?? 0) + 1;
-      const hasBirdRights =
-        (state.leagueStats.birdRightsEnabled ?? true) && yrsWithTeam >= 3
-          ? true
-          : (p as any).hasBirdRights ?? false;
+      const hasBirdRights = computeBirdRightsForRollover(p, state.leagueStats, yrsWithTeam);
       const supermaxEnabled = state.leagueStats.supermaxEnabled ?? true;
       const supermaxMinYrs = (state.leagueStats as any).supermaxMinYears ?? 8;
       const yearsOfService = ((p as any).stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
@@ -573,12 +588,17 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     // Contract expired OR player opted out of their player option
     if (contractExp <= currentYear || playerOptOutIds.has(p.internalId)) {
       expiredIds.add(p.internalId);
+      // Count the expiring season — a player finishing their 3rd year earns Bird Rights
+      // even though yearsWithTeam resets to 0 when they hit the FA pool.
+      const yrsCompletedExpiry = ((p as any).yearsWithTeam ?? 0) + 1;
+      const hasBirdRightsExpiry = computeBirdRightsForRollover(p, state.leagueStats, yrsCompletedExpiry);
       return {
         ...p,
         age: newAge,
         tid: -1,
         status: 'Free Agent' as const,
         yearsWithTeam: 0,
+        hasBirdRights: hasBirdRightsExpiry,
         midSeasonExtensionDeclined: undefined, // reset for next season
         twoWay: undefined,                     // two-way status cleared — becomes standard FA
         playoffEligible: undefined,            // reset — new season, everyone starts eligible
@@ -588,10 +608,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
 
     // Still under contract — increment yearsWithTeam, compute superMaxEligible
     const yrsWithTeam = ((p as any).yearsWithTeam ?? 0) + 1;
-    const hasBirdRights =
-      (state.leagueStats.birdRightsEnabled ?? true) && yrsWithTeam >= 3
-        ? true
-        : (p as any).hasBirdRights ?? false;
+    const hasBirdRights = computeBirdRightsForRollover(p, state.leagueStats, yrsWithTeam);
 
     // Super-max eligibility: Bird Rights + award/service criteria
     const supermaxEnabled = state.leagueStats.supermaxEnabled ?? true;
@@ -817,7 +834,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   // ── Team option history entries ──────────────────────────────────────────
   const teamOptionHistoryEntries = teamOptionNews.map(text => ({
     text,
-    date: `Jun 29, ${currentYear}`,
+    date: optionDateStr,
     type: 'Signing' as const,
   }));
 

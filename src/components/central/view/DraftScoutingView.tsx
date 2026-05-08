@@ -56,7 +56,7 @@ const matchesPosFilter = (p: NBAPlayer, f: PosFilter): boolean => {
 export const DraftScoutingView: React.FC = () => {
   const { state } = useGame();
 
-  const baseYear = state.leagueStats?.year ?? 2026;
+  const baseYear = state.leagueStats?.year ?? new Date().getFullYear();
   const defaultDraftYear = state.draftComplete ? baseYear + 1 : baseYear;
   const [selectedYear, setSelectedYear] = useState(defaultDraftYear);
   const [posFilter, setPosFilter] = useState<PosFilter>('All');

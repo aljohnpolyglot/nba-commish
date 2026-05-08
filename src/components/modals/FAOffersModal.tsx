@@ -27,7 +27,7 @@ export const FAOffersModal: React.FC<Props> = ({ player, onClose }) => {
   const decisionDaysOut = (() => {
     if (!market) return 0;
     const rawDays = Math.max(0, market.decidesOnDay - (state.day ?? 0));
-    if (!state.date || !isInMoratorium(state.date, state.leagueStats?.year ?? 2026, state.leagueStats as any, state.schedule as any)) return rawDays;
+    if (!state.date || !isInMoratorium(state.date, state.leagueStats?.year ?? new Date().getFullYear(), state.leagueStats as any, state.schedule as any)) return rawDays;
     const today = parseGameDate(state.date);
     const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(state.date, state.leagueStats as any, state.schedule as any);
     const moratoriumDays = Math.max(0, Math.ceil((moratoriumEnd.getTime() - today.getTime()) / 86_400_000));

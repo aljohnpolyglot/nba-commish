@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertTriangle, Scissors, UserPlus, X } from 'lucide-react';
+import { AlertTriangle, Scissors, UserPlus, X, ShieldCheck } from 'lucide-react';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
 import { getDisplayOverall } from '../../utils/playerRatings';
 import { contractToUSD, formatSalaryM } from '../../utils/salaryUtils';
@@ -8,7 +8,7 @@ import type { NBAPlayer } from '../../types';
 
 interface RosterComplianceModalProps {
   isOpen: boolean;
-  mode?: 'over' | 'under';
+  mode?: 'over' | 'under' | 'ng-deadline';
   excessPlayers?: NBAPlayer[];
   slotsNeeded?: number;
   minRoster?: number;
@@ -36,15 +36,18 @@ export const RosterComplianceModal: React.FC<RosterComplianceModalProps> = ({
   onManual,
 }) => {
   const isUnder = mode === 'under';
+  const isNgDeadline = mode === 'ng-deadline';
   const count = isUnder ? slotsNeeded : excessPlayers.length;
   const isCamp = phase === 'training-camp';
   const cap = maxRoster ?? (isCamp ? 21 : 15);
   const limitLabel = limitLabelOverride ?? (isCamp ? 'training camp' : 'standard');
-  const title = isUnder
-    ? 'Roster Too Small'
-    : isCamp
-      ? 'Training Camp Roster Too Large'
-      : (isPreseasonEnd ? 'Regular Season Starts Soon' : 'Roster Too Large');
+  const title = isNgDeadline
+    ? 'Jan 10 Guarantee Deadline'
+    : isUnder
+      ? 'Roster Too Small'
+      : isCamp
+        ? 'Training Camp Roster Too Large'
+        : (isPreseasonEnd ? 'Regular Season Starts Soon' : 'Roster Too Large');
 
   return (
     <AnimatePresence>
@@ -75,24 +78,28 @@ export const RosterComplianceModal: React.FC<RosterComplianceModalProps> = ({
 
             <div className="p-6">
               <p className="text-sm text-slate-300 mb-1">
-                {isUnder
-                  ? <>Roster is short <span className="font-black text-amber-300">{count}</span> {count === 1 ? 'player' : 'players'}.</>
-                  : <>You have <span className="font-black text-amber-300">{count}</span> too many {limitLabel} {count === 1 ? 'player' : 'players'}.</>}
+                {isNgDeadline
+                  ? <>You have <span className="font-black text-amber-300">{count}</span> non-guaranteed {count === 1 ? 'contract' : 'contracts'} on your roster.</>
+                  : isUnder
+                    ? <>Roster is short <span className="font-black text-amber-300">{count}</span> {count === 1 ? 'player' : 'players'}.</>
+                    : <>You have <span className="font-black text-amber-300">{count}</span> too many {limitLabel} {count === 1 ? 'player' : 'players'}.</>}
               </p>
               <p className="text-xs text-slate-500 mb-4">
-                {description ?? (isUnder
-                  ? `League minimum is ${minRoster} standard players. Sign free agents before simulating.`
-                  : isCamp
-                    ? `Training camp limit is ${cap} (standard + non-guaranteed + two-way combined). Trim before advancing.`
-                    : isPreseasonEnd
-                      ? `Cut down to ${cap} standard players before regular season tips off.`
-                      : `Waive players first, then simulate. Standard limit is ${cap}.`)}
+                {description ?? (isNgDeadline
+                  ? `On Jan 10 every NG contract still on a roster auto-guarantees for the rest of the season. Cut now (free release) or guarantee them yourself before the deadline.`
+                  : isUnder
+                    ? `League minimum is ${minRoster} standard players. Sign free agents before simulating.`
+                    : isCamp
+                      ? `Training camp limit is ${cap} (standard + non-guaranteed + two-way combined). Trim before advancing.`
+                      : isPreseasonEnd
+                        ? `Cut down to ${cap} standard players before regular season tips off.`
+                        : `Waive players first, then simulate. Standard limit is ${cap}.`)}
               </p>
 
               {!isUnder && excessPlayers.length > 0 && (
                 <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden mb-5">
                   <div className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 bg-white/[0.02] border-b border-white/5">
-                    Lowest OVR — Suggested Cuts
+                    {isNgDeadline ? 'Non-Guaranteed Players' : 'Lowest OVR — Suggested Cuts'}
                   </div>
                   <div className="flex flex-col divide-y divide-white/5 max-h-64 overflow-y-auto custom-scrollbar">
                     {excessPlayers.map(p => {
@@ -137,14 +144,18 @@ export const RosterComplianceModal: React.FC<RosterComplianceModalProps> = ({
                   onClick={onAutoAction}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-amber-500 hover:bg-amber-400 text-black rounded-xl font-black uppercase tracking-widest text-xs transition-colors shadow-lg shadow-amber-500/20"
                 >
-                  {isUnder ? <UserPlus size={14} /> : <Scissors size={14} />}
-                  {isUnder ? `Auto Sign (${count}) FAs` : `Auto Waive Lowest (${count})`}
+                  {isNgDeadline ? <ShieldCheck size={14} /> : isUnder ? <UserPlus size={14} /> : <Scissors size={14} />}
+                  {isNgDeadline
+                    ? `Guarantee All (${count})`
+                    : isUnder
+                      ? `Auto Sign (${count}) FAs`
+                      : `Auto Waive Lowest (${count})`}
                 </button>
                 <button
                   onClick={onManual}
                   className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold uppercase tracking-widest text-xs transition-colors"
                 >
-                  Fix Manually
+                  {isNgDeadline ? 'Decide Manually' : 'Fix Manually'}
                 </button>
               </div>
             </div>

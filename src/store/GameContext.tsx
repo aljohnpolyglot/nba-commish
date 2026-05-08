@@ -15,19 +15,25 @@ import { setActiveSaveId as setScoringOptionsSaveId } from './scoringOptionsStor
 import { setActiveSaveId as setCoachStrategySaveId } from './coachStrategyLockStore';
 import { setActiveSaveId as setIdealRotationSaveId } from './idealRotationStore';
 import { setActiveSaveId as setCoachSystemSaveId } from './coachSystemStore';
+import { setActiveSaveId as setDefenseGameplanSaveId } from './defenseGameplanStore';
+import { setActiveSaveId as setMatchupAssignmentsSaveId } from './matchupAssignmentsStore';
+import { setActiveSaveId as setDefenderDetailSaveId } from './defenderDetailStore';
+import { setActiveSaveId as setRivalGameplanSaveId } from './rivalGameplanStore';
 import { enforceExternalMinRoster, repairGeneratedExternalPlayer } from '../services/externalLeagueSustainer';
 import { applyCupAwardsToPlayers } from '../services/nbaCup/awards';
 import { computeRookieSalaryUSD } from '../utils/rookieContractUtils';
 import { generateAIBids, isPlausibleActiveMarket, MAX_FA_MARKET_DECISION_WINDOW_DAYS } from '../services/freeAgencyBidding';
 import { setAssistantGMActive } from '../services/assistantGMFlag';
-import { getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd, parseGameDate, toISODateString } from '../utils/dateUtils';
+import { getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd, getDraftDate, getTrainingCampDate, parseGameDate, toISODateString } from '../utils/dateUtils';
+import { clearWaiverMarkers, hasLiveContractAfterWaive, stripLiveContractAfterWaive } from '../utils/contractCleanup';
 import {
   defaultOffseasonChecklist,
+  initialPreseasonChecklist,
   setRowStatus,
   OFFSEASON_ROW_TAB,
   getOffseasonState,
 } from '../services/offseason/offseasonState';
-import type { OffseasonChecklistRow } from '../types';
+import type { OffseasonChecklist, OffseasonChecklistRow } from '../types';
 
 interface GameContextType {
   state: GameState;
@@ -85,6 +91,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     setCoachStrategySaveId(state.saveId);
     setIdealRotationSaveId(state.saveId);
     setCoachSystemSaveId(state.saveId);
+    setDefenseGameplanSaveId(state.saveId);
+    setMatchupAssignmentsSaveId(state.saveId);
+    setDefenderDetailSaveId(state.saveId);
+    setRivalGameplanSaveId(state.saveId);
   }, [state.saveId]);
 
   // Set default view for GM mode when game first loads
@@ -119,24 +129,137 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     } catch {
       return;
     }
-    // Offseason mode triggers when:
-    //   - phase derivation says we're past inSeason (post-Finals → opening night)
-    //   - OR the draft lottery has been resolved (lottery happens DURING playoffs
-    //     in real life, mid-May; sidebar should appear so user can mark it done
-    //     and see what comes next without waiting for Finals to wrap)
-    const inOffseason =
-      phase !== 'inSeason' ||
-      !!(state.draftLotteryResult && state.draftLotteryResult.length > 0);
+    // Offseason mode triggers ONLY post-Finals (phase != inSeason). Lottery
+    // happens mid-May during playoffs, but the sidebar should not appear until
+    // the bracket completes — otherwise the user is staring at offseason tasks
+    // while still managing playoff rotations.
+    const inOffseason = phase !== 'inSeason';
     // Suppress re-creation if the user manually exited the offseason this
-    // ls.year (clicked "Enter Preseason"). Flag clears at next rollover when
-    // ls.year increments, so the NEXT offseason auto-inits normally.
-    const userManuallyExited = state.offseasonExitedYear === state.leagueStats?.year;
+    // calendar year (clicked "Enter Preseason"). We compare against cYear,
+    // not lsYear: the initial Aug preseason and the post-Finals Jun-Oct
+    // offseason of the FOLLOWING calendar year both share the same lsYear
+    // pre-rollover — using lsYear would let an Aug exit suppress the next
+    // year's Finals→draft offseason gate too.
+    const cYearForExit = state.date ? new Date(state.date).getUTCFullYear() : 0;
+    const userManuallyExited = state.offseasonExitedYear === cYearForExit;
+    // Initial-start mode: stale BBGM imports load straight into the calendar
+    // offseason window (Aug preseason) of their starting season. That season's
+    // offseason already happened in real life — show the gate but with only
+    // Training Camp actionable; everything else is marked skipped. Detected
+    // via empty seasonHistory (populated on bracketComplete, so empty = no
+    // completed in-sim season yet).
+    const isInitialFirstSeason = !state.seasonHistory || state.seasonHistory.length === 0;
     // Tear-down condition: only when calendar is past opening night AND no
     // pending checklist activity (avoid wiping the user's mid-FA progress).
     const isFullyInSeason = phase === 'inSeason' && !inOffseason;
     const hasChecklist = !!state.offseasonChecklist;
-    if (inOffseason && !hasChecklist && !userManuallyExited) {
-      setState(prev => ({ ...prev, offseasonChecklist: defaultOffseasonChecklist() }));
+    // Real-offseason signal: lottery resolved + draft not yet executed = the
+    // post-Finals window is live (lottery fires May 14 via lazy sim during
+    // playoffs, draft fires ~Jun 26). When this is true, the gate must show
+    // the FULL checklist regardless of what mode it's currently in — and
+    // the userManuallyExited flag is ignored, because exiting the initial
+    // Aug preseason should not suppress the post-Finals offseason that
+    // arrives months later in the same calendar year.
+    const lotteryResolved = !!(state.draftLotteryResult && state.draftLotteryResult.length > 0);
+    const draftNotDone = !state.draftComplete;
+    const isRealOffseasonNow = lotteryResolved && draftNotDone;
+    // Hard guarantee: if calendar is on/past dynamic draft date AND draft
+    // not done → force the gate. Catches edge cases where lottery state is
+    // missing/stale (e.g. user simulated past lottery without lazy sim
+    // firing it, or draftLotteryResult got cleared somewhere).
+    //
+    // Upper-bound guard: forceGate must NOT fire once the calendar has
+    // entered the training-camp window. Post-rollover (Jul–Dec) the computed
+    // draftSeasonYear=cYear references the *past* June draft whose
+    // draftComplete flag was wiped by seasonRollover — without this guard,
+    // every Oct preseason save would re-create the offseason checklist
+    // forever (lottery+draft can never auto-flip → stuck pending).
+    let forceGate = false;
+    let pastTrainingCampOpen = false;
+    try {
+      const lsAny = state.leagueStats as any;
+      const lsYear: number = lsAny?.year ?? new Date().getFullYear();
+      const cMonth = new Date(state.date).getUTCMonth() + 1;
+      const cYear = new Date(state.date).getUTCFullYear();
+      const draftSeasonYear = cMonth >= 7 ? cYear : lsYear;
+      const draftStr = toISODateString(getDraftDate(draftSeasonYear, lsAny));
+      const todayStr = normalizeDate(state.date);
+      const upcomingSeasonYear = cMonth >= 7 ? lsYear : lsYear + 1;
+      const campStr = toISODateString(getTrainingCampDate(upcomingSeasonYear, lsAny));
+      pastTrainingCampOpen = !!todayStr && !!campStr && todayStr >= campStr;
+      forceGate = !!todayStr && !!draftStr && todayStr >= draftStr && !state.draftComplete && !pastTrainingCampOpen;
+    } catch {}
+    if (inOffseason && !hasChecklist && (!userManuallyExited || isRealOffseasonNow || forceGate)) {
+      const checklist = isInitialFirstSeason && !isRealOffseasonNow
+        ? initialPreseasonChecklist()
+        : defaultOffseasonChecklist();
+      setState(prev => ({ ...prev, offseasonChecklist: checklist }));
+    } else if (inOffseason && hasChecklist && pastTrainingCampOpen && !isRealOffseasonNow) {
+      // Stale-save recovery: checklist exists in the camp window with
+      // pre-camp rows still pending/in-progress, and engine state has no
+      // live offseason signal (lottery+draft cleared by rollover months
+      // ago). Force-skip every pre-camp row so the checklist completes
+      // and the user can click "Enter Preseason" without being stuck.
+      const c = state.offseasonChecklist!;
+      const isUnresolved = (s: any) => s === 'pending' || s === 'in-progress';
+      const preCampRows: OffseasonChecklistRow[] = [
+        'draftLottery', 'options', 'qualifyingOffers', 'myFAs',
+        'draft', 'rookieContracts', 'freeAgency',
+      ];
+      const hasStalePreCamp = preCampRows.some(r => isUnresolved(c[r]));
+      if (hasStalePreCamp) {
+        const next: OffseasonChecklist = { ...c };
+        for (const r of preCampRows) {
+          if (isUnresolved((next as any)[r])) (next as any)[r] = 'skipped';
+        }
+        setState(prev => ({ ...prev, offseasonChecklist: next }));
+      }
+    } else if (inOffseason && hasChecklist && isRealOffseasonNow) {
+      // Upgrade-path: stale initial-preseason checklist (rows skipped from
+      // a prior initial cycle) must promote to the full default checklist
+      // now that lottery is done + draft is pending. Otherwise the user
+      // sees stale 'skipped' rows that should be 'pending' for this cycle.
+      const c = state.offseasonChecklist!;
+      // ANY non-camp row marked 'skipped' = leftover from initial mode.
+      // Default checklist never has these as skipped (auto-sync only marks
+      // 'done', never 'skipped').
+      const hasInitialModeArtifacts =
+        c.myFAs === 'skipped' || c.freeAgency === 'skipped' ||
+        c.qualifyingOffers === 'skipped' || c.options === 'skipped';
+      // Camp wrongly marked done outside the camp window (Sept 29 - Oct 20).
+      // Pre-camp June saves can have this from a hasTrainingEngagement flip
+      // that fired before the window-gate fix.
+      const cMonthNow = new Date(state.date).getUTCMonth() + 1;
+      const cDayNow = new Date(state.date).getUTCDate();
+      const isInCampWindowNow = (cMonthNow === 9 && cDayNow >= 29) || (cMonthNow === 10 && cDayNow <= 20);
+      const campWronglyDone = c.trainingCamp === 'done' && !isInCampWindowNow && cMonthNow < 10;
+      if (hasInitialModeArtifacts || campWronglyDone) {
+        // Preserve genuine progress (draftLottery=done from auto-sync,
+        // user-completed rows in this cycle) but reset stale flags.
+        const fresh = defaultOffseasonChecklist();
+        setState(prev => ({
+          ...prev,
+          offseasonChecklist: {
+            ...fresh,
+            draftLottery: c.draftLottery === 'done' ? 'done' : fresh.draftLottery,
+            draft: c.draft === 'done' ? 'done' : fresh.draft,
+          },
+        }));
+      }
+    } else if (inOffseason && hasChecklist && isInitialFirstSeason && !isRealOffseasonNow) {
+      // Migrate stale saves: pre-existing checklist created by older code
+      // (everything pending) needs to flip to initial-preseason mode where
+      // only Training Camp is actionable. Detect by: any non-trainingCamp row
+      // still 'pending' (initial mode marks them all 'skipped').
+      const c = state.offseasonChecklist!;
+      const needsMigration =
+        c.draftLottery === 'pending' || c.options === 'pending' ||
+        c.qualifyingOffers === 'pending' || c.myFAs === 'pending' ||
+        c.draft === 'pending' || c.rookieContracts === 'pending' ||
+        c.freeAgency === 'pending';
+      if (needsMigration) {
+        setState(prev => ({ ...prev, offseasonChecklist: initialPreseasonChecklist() }));
+      }
     } else if (isFullyInSeason && hasChecklist) {
       setState(prev => ({
         ...prev,
@@ -145,7 +268,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         pendingOfferDecisions: [],
       }));
     }
-  }, [state.isDataLoaded, state.gameMode, state.date, state.offseasonChecklist, state.playoffs, state.draftComplete, state.draftLotteryResult, state.offseasonExitedYear, state.leagueStats?.year]);
+  }, [state.isDataLoaded, state.gameMode, state.date, state.offseasonChecklist, state.playoffs, state.draftComplete, state.draftLotteryResult, state.offseasonExitedYear, state.leagueStats?.year, state.seasonHistory]);
 
 const actions = useGameActions(setState, () => stateRef.current);
 
@@ -183,6 +306,15 @@ const actions = useGameActions(setState, () => stateRef.current);
       return;
     }
 
+    if (action.type === 'SET_TRAINING_NORMAL_DEFAULT') {
+      const { teamId, template } = action.payload as { teamId: number; template: any };
+      setState(prev => ({
+        ...prev,
+        teams: prev.teams.map(t => t.id === teamId ? { ...t, normalDayDefault: template } : t),
+      }));
+      return;
+    }
+
     if (action.type === 'SET_PLAYER_TRAINING_INTENSITY') {
       const { playerId, intensity } = action.payload as { playerId: string; intensity: 'Rest' | 'Half' | 'Normal' | 'Double' };
       setState(prev => ({
@@ -194,17 +326,24 @@ const actions = useGameActions(setState, () => stateRef.current);
 
     if (action.type === 'AUTOFILL_TEAM_TRAINING_CALENDAR') {
       // Manual trigger from the UI — regenerate the auto-fill for the given team
-      // (preserving any user-set plans). Useful when the player wants a clean
-      // slate without losing their overrides.
+      // (preserving any user-set plans).
+      //
+      // Date-format gotcha: `prev.date` is locale-formatted ("Oct 27, 2026"),
+      // but autoGenerateTrainingCalendar expects ISO. Without normalizeDate,
+      // `new Date("Oct 27, 2026T00:00:00Z")` returns Invalid Date and the
+      // scheduler bails, wiping every auto-plan from the calendar — which is
+      // why stale saves looked empty / fell back to ACTIVITY_TINT renderings.
       const { teamId } = action.payload as { teamId: number };
       const { autoGenerateTrainingCalendar } = await import('../services/training/trainingScheduler');
+      const { normalizeDate } = await import('../utils/helpers');
       setState(prev => {
         const team = prev.teams.find(t => t.id === teamId);
         if (!team) return prev;
         const preservedUserPlans = Object.fromEntries(
           Object.entries((team.trainingCalendar as any) ?? {}).filter(([, plan]: [string, any]) => plan?.auto === false)
         );
-        const calendar = autoGenerateTrainingCalendar(prev.schedule || [], teamId, prev.date, 365, preservedUserPlans as any);
+        const startISO = normalizeDate(prev.date);
+        const calendar = autoGenerateTrainingCalendar(prev.schedule || [], teamId, startISO, 365, preservedUserPlans as any);
         return {
           ...prev,
           teams: prev.teams.map(t => t.id === teamId ? { ...t, trainingCalendar: calendar } : t),
@@ -479,6 +618,7 @@ const actions = useGameActions(setState, () => stateRef.current);
       };
 
       let normalizedFreeAgentTypoCount = 0;
+      let healedWaivedGhostContractCount = 0;
       const migratedPlayers = (loaded.players as any[] | undefined)?.map(p => {
         let updated = isBadPortrait(p) ? { ...p, imgURL: undefined } : p;
         updated = repairGeneratedExternalPlayer(updated as any, currentSeasonYear) as any;
@@ -557,6 +697,22 @@ const actions = useGameActions(setState, () => stateRef.current);
         if ((updated as any).status === 'FreeAgent') {
           updated = { ...updated, status: 'Free Agent' };
           normalizedFreeAgentTypoCount++;
+        }
+        if (updated.tid === -1 && updated.status === 'Free Agent' && updated.recentlyWaivedDate) {
+          if (hasLiveContractAfterWaive(updated, currentSeasonYear)) {
+            healedWaivedGhostContractCount++;
+            updated = {
+              ...stripLiveContractAfterWaive(updated, currentSeasonYear),
+              twoWay: undefined,
+              nonGuaranteed: false,
+              gLeagueAssigned: false,
+              mleSignedVia: undefined,
+              hasBirdRights: false,
+              yearsWithTeam: 0,
+              signedDate: undefined,
+              tradeEligibleDate: undefined,
+            };
+          }
         }
         // Repair off-by-one teamOptionExp for sim-generated draft picks.
         // Old formula: teamOptionExp = draftYear + guaranteedYrs  → fires 1 yr too early.
@@ -659,19 +815,39 @@ const actions = useGameActions(setState, () => stateRef.current);
       if (normalizedFreeAgentTypoCount > 0) {
         console.log(`[LOAD_GAME] Healed ${normalizedFreeAgentTypoCount} legacy 'FreeAgent' status records → 'Free Agent'.`);
       }
+      if (healedWaivedGhostContractCount > 0) {
+        console.log(`[LOAD_GAME] Healed ${healedWaivedGhostContractCount} waived FA ghost contract(s).`);
+      }
 
       let healedPhantomUserRosterCount = 0;
+      const dedupePlayerStats = (stats: any[] | undefined) => {
+        if (!stats?.length) return stats ?? [];
+        const grouped = new Map<string, any[]>();
+        for (const row of stats) {
+          const key = `${row.season}|${row.tid}|${row.playoffs ? 1 : 0}`;
+          if (!grouped.has(key)) grouped.set(key, []);
+          grouped.get(key)!.push(row);
+        }
+        return Array.from(grouped.values()).map(rows =>
+          rows.reduce((best, row) => ((row?.gp ?? 0) > (best?.gp ?? 0) ? row : best), rows[0])
+        );
+      };
+
       const loadedPlayers = ((migratedPlayers ?? loaded.players ?? []) as any[]).map((p: any) => {
         const userTid = loaded.gameMode === 'gm' ? Number(loaded.userTeamId) : -999;
-        if (!Number.isFinite(userTid) || p.tid !== userTid || p.status !== 'Free Agent') return p;
+        const normalizedStats = dedupePlayerStats(p.stats);
+        if (!Number.isFinite(userTid) || p.tid !== userTid || p.status !== 'Free Agent') {
+          return normalizedStats === p.stats ? p : { ...p, stats: normalizedStats };
+        }
         const hasCommittedContract =
           !!p.contract &&
           Number(p.contract.amount ?? 0) > 0 &&
           Number(p.contract.exp ?? 0) >= currentSeasonYear;
-        if (hasCommittedContract) return p;
+        if (hasCommittedContract) return normalizedStats === p.stats ? p : { ...p, stats: normalizedStats };
         healedPhantomUserRosterCount++;
         return {
           ...p,
+          stats: normalizedStats,
           tid: -1,
           twoWay: undefined,
           nonGuaranteed: false,
@@ -843,24 +1019,49 @@ const actions = useGameActions(setState, () => stateRef.current);
         }
         // Re-run auto-scheduler so banned-phase days (July FA, offseason, trade week)
         // get cleared and missing days get filled. Preserves user-set plans (auto: false).
+        // Critical: state.date is locale-formatted ("Oct 27, 2026") — must
+        // normalize to ISO or the scheduler bails on its first parse and wipes
+        // every auto-plan to {}, leaving the calendar visually empty.
         if (loaded.schedule && Array.isArray(loaded.schedule) && loaded.date) {
+          const { normalizeDate } = await import('../utils/helpers');
+          const startISO = normalizeDate(loaded.date);
           teamsWithFreshTraining = autoGenerateTrainingCalendarsForAllTeams(
             teamsWithFreshTraining,
             loaded.schedule,
-            loaded.date,
+            startISO,
             365
           );
-          console.log('[LOAD_GAME] Refreshed training calendars via auto-scheduler.');
+          console.log(`[LOAD_GAME] Refreshed training calendars via auto-scheduler (startISO=${startISO}).`);
         }
       } catch (e) {
         console.warn('[LOAD_GAME] training-calendar migration failed', e);
+      }
+
+      // AI auto-setup: backfill devFocus + mentor pairings on AI teams when
+      // saves don't have them yet (new save / pre-feature load). Skips user
+      // team in GM mode. Phase 2 will rerun this annually at training camp.
+      let playersWithAISetup = backfilledPlayers;
+      try {
+        const { applyAIAutoSetup, shouldRunAIAutoSetup } = await import('../services/training/aiAutoSetup');
+        if (shouldRunAIAutoSetup(playersWithAISetup, loaded.userTeamId, loaded.gameMode)) {
+          playersWithAISetup = applyAIAutoSetup(
+            playersWithAISetup,
+            teamsWithFreshTraining as any,
+            loaded.leagueStats?.year ?? new Date().getFullYear(),
+            loaded.userTeamId,
+            loaded.gameMode,
+          );
+          console.log('[LOAD_GAME] AI auto-setup applied: dev-focus + mentor pairings for AI teams.');
+        }
+      } catch (e) {
+        console.warn('[LOAD_GAME] AI auto-setup failed', e);
       }
 
       setState({
         ...initialState,
         ...loaded,
         leagueStats: migratedLeagueStats,
-        players: backfilledPlayers,
+        players: playersWithAISetup,
         teams: teamsWithFreshTraining as any,
         history: cleanedHistory,
         faBidding: { markets: cleanedFAMarkets },
@@ -911,6 +1112,11 @@ const actions = useGameActions(setState, () => stateRef.current);
       setState(prev => ({
         ...prev,
         offseasonChecklist: setRowStatus(prev.offseasonChecklist, row, 'skipped'),
+        // Clear FA counter when FA is skipped — without this the bottom-bar
+        // pill keeps reading "FREE AGENCY · DAY X/13" even after the user is
+        // already in training camp. faTagsTotal also reset so a re-entry
+        // starts fresh from the default (13).
+        ...(row === 'freeAgency' ? { faTagCounter: undefined, faTagsTotal: undefined } : {}),
       }));
       return;
     }
@@ -933,23 +1139,13 @@ const actions = useGameActions(setState, () => stateRef.current);
     // handled by the AI assistant. Auto-tear-down useEffect wipes the
     // checklist when calendar phase returns to 'inSeason'.
     if (action.type === 'OFFSEASON_AUTO_RESOLVE_ALL') {
-      const ls = stateRef.current.leagueStats as any;
-      const lsYear: number = ls?.year ?? 2026;
-      // Next opening night = Oct 21 of cYear (calendar year). Pass
-      // lsYear+1 so getOpeningNightDate returns the upcoming Oct (it
-      // computes Oct of seasonYear-1 per BBGM convention).
-      const cMonth = stateRef.current.date ? new Date(stateRef.current.date).getUTCMonth() + 1 : 0;
-      const cYear = stateRef.current.date ? new Date(stateRef.current.date).getUTCFullYear() : lsYear;
-      // Pre-rollover (lsYear === cYear, summer of same calendar year)
-      // means we want next season's opening; post-rollover lsYear was
-      // already bumped so use lsYear directly.
-      const openingSeasonYear = (cMonth <= 6 && cYear === lsYear) ? lsYear + 1 : lsYear;
-      const { getOpeningNightDate } = await import('../utils/dateUtils');
-      const target = toISODateString(getOpeningNightDate(openingSeasonYear));
-      await dispatchAction({
-        type: 'SIMULATE_TO_DATE',
-        payload: { targetDate: target, stopBefore: true, assistantGM: true },
-      } as any);
+      // Same outcome as Enter Preseason BUT with assistantGM=true so the AI
+      // handles every user-team transaction (re-signs, FA bids, options,
+      // even trades) under the hood. OFFSEASON_EXIT does the actual sim +
+      // gate teardown; the explicit flag distinguishes this path from a
+      // user-driven manual Enter Preseason (which should NOT let the AI
+      // trade for the user's roster).
+      await dispatchAction({ type: 'OFFSEASON_EXIT', payload: { assistantGM: true } } as any);
       return;
     }
 
@@ -987,17 +1183,47 @@ const actions = useGameActions(setState, () => stateRef.current);
     }
 
     if (action.type === 'OFFSEASON_EXIT') {
-      // Tear down — sidebar disappears, regular calendar UI takes over.
-      // Stamp ls.year so the auto-init useEffect doesn't immediately
-      // re-create the checklist while the calendar is still in the
-      // offseason window (Oct 1-20 preCamp, etc). Flag clears naturally
-      // at next rollover when ls.year increments.
+      // Advance to the first scheduled preseason game — same logic as the
+      // PlayButton's "Until preseason games" option. Falls back to Oct 1
+      // when no preseason games are in state.schedule yet (pre-schedule-
+      // generation dead window, Jul–Sep).
+      //
+      // assistantGM is OFF by default: a manual "Enter Preseason" click
+      // from a GM who finished their offseason work must not let the AI
+      // trade their roster behind their back during the Sep→Oct sim
+      // window. OFFSEASON_AUTO_RESOLVE_ALL passes assistantGM=true to opt
+      // in — that's the path where the user explicitly delegated.
+      const useAssistantGM = !!(action.payload as any)?.assistantGM;
+      const ls = stateRef.current.leagueStats as any;
+      const lsYear: number = ls?.year ?? new Date().getFullYear();
+      const cMonth = stateRef.current.date ? new Date(stateRef.current.date).getUTCMonth() + 1 : 0;
+      const cYear = stateRef.current.date ? new Date(stateRef.current.date).getUTCFullYear() : lsYear;
+      const preseasonYear = (cMonth <= 6 && cYear === lsYear) ? lsYear : cYear;
+      const todayStr = stateRef.current.date ? normalizeDate(stateRef.current.date) : '';
+      const scheduledPreseason = (stateRef.current.schedule ?? [])
+        .filter((g: any) => g.isPreseason && !g.played)
+        .map((g: any) => normalizeDate(g.date))
+        .filter((d: string) => !!d && (!todayStr || d > todayStr))
+        .sort()[0];
+      const target = scheduledPreseason ?? `${preseasonYear}-10-01`;
+      if (todayStr && todayStr < target) {
+        await dispatchAction({
+          type: 'SIMULATE_TO_DATE',
+          payload: { targetDate: target, stopBefore: true, assistantGM: useAssistantGM },
+        } as any);
+      }
+      // Stamp the CALENDAR year (not lsYear) so the auto-init useEffect
+      // doesn't immediately re-create the checklist within this offseason
+      // cycle, but DOES re-trigger when the next post-Finals offseason
+      // begins in the following calendar year (different cYear).
+      const exitCYear = stateRef.current.date ? new Date(stateRef.current.date).getUTCFullYear() : 0;
       setState(prev => ({
         ...prev,
         offseasonChecklist: undefined,
         faTagCounter: undefined,
+        faTagsTotal: undefined,
         pendingOfferDecisions: [],
-        offseasonExitedYear: prev.leagueStats?.year,
+        offseasonExitedYear: exitCYear,
       }));
       return;
     }
@@ -1018,7 +1244,12 @@ const actions = useGameActions(setState, () => stateRef.current);
       const currentDateStr = stateRef.current.date;
       if (!currentDateStr) return;
 
-      // First Tag — skip moratorium
+      // First Tag — skip moratorium. Land ON the first legal signing day
+      // with that day's faMarketTicker NOT YET FIRED (stopBefore:true) so
+      // the user gets a chance to submit bids on stars BEFORE AI signings
+      // resolve. Without this, the sim runs through Day 1 in the same tick
+      // and AI auto-signs LeBron / Harden / etc. before the user sees the
+      // FA dashboard.
       if (counter === 0) {
         const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(
           currentDateStr,
@@ -1028,11 +1259,9 @@ const actions = useGameActions(setState, () => stateRef.current);
         const targetISO = toISODateString(moratoriumEnd);
         const currentNorm = normalizeDate(currentDateStr);
         if (currentNorm < targetISO) {
-          // Recursive dispatch — runs through SIMULATE_TO_DATE which handles
-          // the lazy sim, AI signings, market ticks all via the orchestrator.
           await dispatchAction({
             type: 'SIMULATE_TO_DATE',
-            payload: { targetDate: targetISO, stopBefore: false },
+            payload: { targetDate: targetISO, stopBefore: true },
           } as any);
         }
         setState(prev => ({
@@ -1150,7 +1379,7 @@ const actions = useGameActions(setState, () => stateRef.current);
             ...existing,
             bids: [...withoutPrior, ...newCounterBids, { ...newUserBid, expiresDay: existingDecisionDay }],
             decidesOnDay: existingDecisionDay,
-            season: existing.season ?? (prev.leagueStats?.year ?? 2026),
+            season: existing.season ?? (prev.leagueStats?.year ?? new Date().getFullYear()),
             openedDay: existing.openedDay ?? currentDay,
             openedDate: existing.openedDate ?? prev.date,
           };
@@ -1168,7 +1397,7 @@ const actions = useGameActions(setState, () => stateRef.current);
             ],
             decidesOnDay: marketDecisionDay,
             resolved: false,
-            season: prev.leagueStats?.year ?? 2026,
+            season: prev.leagueStats?.year ?? new Date().getFullYear(),
             openedDay: currentDay,
             openedDate: prev.date,
           });
@@ -1228,13 +1457,13 @@ const actions = useGameActions(setState, () => stateRef.current);
           });
           const updatedPlayers = prev.players.map(p =>
             p.internalId === playerId
-              ? {
+              ? clearWaiverMarkers({
                   ...p,
                   tid: userTid,
                   status: 'Active' as const,
                   contract: newContract,
                   contractYears: [...histYears, ...newContractYears],
-                } as any
+                } as any)
               : p,
           );
           markets[idx] = { ...m, resolved: true, pendingMatch: false, matchedByPriorTeam: true };
@@ -1718,22 +1947,46 @@ const actions = useGameActions(setState, () => stateRef.current);
         }
       }
 
+      if (action?.type === 'WAIVE_PLAYER') {
+        const targetId = (action as any).payload?.targetId ?? (action as any).payload?.contacts?.[0]?.id;
+        const before = stateRef.current.players.find((p: any) => p.internalId === targetId);
+        const after = newStatePatch.players?.find((p: any) => p.internalId === targetId);
+        console.log('[GameContext] WAIVE_PLAYER result merge', {
+          targetId,
+          patchHasPlayers: !!newStatePatch.players,
+          patchPlayersCount: newStatePatch.players?.length,
+          beforeTid: before?.tid,
+          beforeStatus: before?.status,
+          afterTid: after?.tid,
+          afterStatus: after?.status,
+        });
+      }
+
       // Phase 1 (immediate — show modal)
-      setState(prev => ({
-        ...prev,
-        ...newStatePatch,
-        stats: newStatePatch.stats || prev.stats,
-        leagueStats: newStatePatch.leagueStats || prev.leagueStats,
-        lastOutcome: newStatePatch.lastOutcome !== undefined ? newStatePatch.lastOutcome : prev.lastOutcome,
-        lastConsequence: newStatePatch.lastConsequence || prev.lastConsequence,
-        date: newStatePatch.date || prev.date,
-        day: newStatePatch.day || prev.day,
-        teams: newStatePatch.teams || prev.teams,
-        players: newStatePatch.players || prev.players,
-        schedule: newStatePatch.schedule || prev.schedule,
-        lastSimResults: newStatePatch.lastSimResults || [],
-        isProcessing: false,
-      }));
+      // Sync stateRef inside the updater so back-to-back awaited dispatches
+      // (e.g. WAIVE_PLAYER followed by the gate's pending ADVANCE_DAY) see
+      // the post-merge state instead of the stale pre-dispatch ref. Without
+      // this, the second processTurn runs against the unwaived roster and
+      // overwrites the waive when its newStatePatch lands.
+      setState(prev => {
+        const merged = {
+          ...prev,
+          ...newStatePatch,
+          stats: newStatePatch.stats || prev.stats,
+          leagueStats: newStatePatch.leagueStats || prev.leagueStats,
+          lastOutcome: newStatePatch.lastOutcome !== undefined ? newStatePatch.lastOutcome : prev.lastOutcome,
+          lastConsequence: newStatePatch.lastConsequence || prev.lastConsequence,
+          date: newStatePatch.date || prev.date,
+          day: newStatePatch.day || prev.day,
+          teams: newStatePatch.teams || prev.teams,
+          players: newStatePatch.players || prev.players,
+          schedule: newStatePatch.schedule || prev.schedule,
+          lastSimResults: newStatePatch.lastSimResults || [],
+          isProcessing: false,
+        };
+        stateRef.current = merged as any;
+        return merged;
+      });
 
         // Phase 2 (background — silent patch inbox/news/social)
         setTimeout(() => {

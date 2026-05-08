@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, ArrowUpDown, User, Globe, Trophy, Briefcase, UserX, ChevronDown, Hourglass, Users, PlayCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useGame } from '../../../store/GameContext';
@@ -61,8 +61,8 @@ export const FreeAgentsView: React.FC = () => {
   const [preSelectedContact, setPreSelectedContact] = useState<any>(null);
   const [contactModalPerson, setContactModalPerson] = useState<any>(null);
   const [page, setPage] = useState(1);
-  const loaderRef = useRef<HTMLDivElement>(null);
-  const PAGE_SIZE = 20;
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [offseasonBlockOpen, setOffseasonBlockOpen] = useState(false);
 
   const gameDateParts = state.date ? getGameDateParts(state.date) : null;
   const seasonYear = state.leagueStats?.year ?? gameDateParts?.year ?? new Date().getFullYear();
@@ -96,7 +96,7 @@ export const FreeAgentsView: React.FC = () => {
     // Calendar advance is paused during offseason — Tag advances happen
     // via the AUFGABEN sidebar's "End Day" button instead.
     if (state.offseasonChecklist) {
-      window.alert('Calendar sim is paused during the offseason. Use the Free Agency Tag bar at the bottom to advance days.');
+      setOffseasonBlockOpen(true);
       return;
     }
     rosterGate.attempt(() => dispatchAction({ type: 'ADVANCE_DAY' as any, payload: {} }));
@@ -282,21 +282,10 @@ export const FreeAgentsView: React.FC = () => {
   }, [sourcePool, viewMode, searchTerm, selectedPool, selectedPosition, sortBy, sortOrder, selectedCountry, selectedTeamId, upcomingTeamFilter, state.leagueStats?.year]);
 
   // Reset page when any filter changes
-  useEffect(() => { setPage(1); }, [searchTerm, selectedPool, selectedPosition, sortBy, sortOrder, selectedCountry, selectedTeamId, upcomingTeamFilter, viewMode]);
+  useEffect(() => { setPage(1); }, [searchTerm, selectedPool, selectedPosition, sortBy, sortOrder, selectedCountry, selectedTeamId, upcomingTeamFilter, viewMode, itemsPerPage]);
 
-  const visiblePlayers = filteredPlayers.slice(0, page * PAGE_SIZE);
-
-  // Infinite scroll — fire when sentinel enters viewport (pre-trigger 200px early)
-  useEffect(() => {
-    const el = loaderRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      entries => { if (entries[0].isIntersecting) setPage(p => p + 1); },
-      { threshold: 0, rootMargin: '0px 0px 200px 0px' },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [visiblePlayers.length, filteredPlayers.length]);
+  const totalPages = Math.max(1, Math.ceil(filteredPlayers.length / itemsPerPage));
+  const visiblePlayers = filteredPlayers.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   const getContactFromPlayer = (player: NBAPlayer) => {
     const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '');
@@ -414,6 +403,41 @@ export const FreeAgentsView: React.FC = () => {
   return (
     <div className="h-full overflow-y-auto custom-scrollbar bg-slate-950 rounded-[2.5rem] border border-slate-800 shadow-2xl">
       <AnimatePresence>
+        {offseasonBlockOpen && (
+          <div className="fixed inset-0 z-[121] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              onClick={() => setOffseasonBlockOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 16 }}
+              className="relative w-full max-w-md rounded-2xl border border-white/10 bg-slate-950 shadow-2xl overflow-hidden"
+            >
+              <div className="px-5 py-4 border-b border-white/10 bg-amber-500/[0.06]">
+                <h2 className="text-lg font-black uppercase tracking-tight text-white">Free Agency Flow</h2>
+              </div>
+              <div className="p-5 space-y-4">
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  Calendar sim is paused during offseason free agency so bid markets, RFA decisions, and phase changes resolve in order.
+                </p>
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  Use the <span className="font-black text-amber-300">Free Agency Day bar</span> at the bottom to advance the market.
+                </p>
+                <button
+                  onClick={() => setOffseasonBlockOpen(false)}
+                  className="w-full rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest text-xs py-3 transition-colors"
+                >
+                  Got it
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
         {showFaHeadsUp && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
             <motion.div
@@ -794,8 +818,41 @@ export const FreeAgentsView: React.FC = () => {
                 />
               ))}
             </div>
-            {visiblePlayers.length < filteredPlayers.length && (
-              <div ref={loaderRef} className="h-16" />
+            {filteredPlayers.length > 0 && (
+              <div className="flex items-center justify-between gap-2 sm:gap-4 pt-4 mt-2 border-t border-slate-800">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold hidden sm:inline-block">Show</span>
+                  <select
+                    className="bg-slate-900 border border-slate-800 text-white text-xs font-bold rounded-md px-2 py-1 outline-none appearance-none text-center"
+                    value={itemsPerPage}
+                    onChange={e => { setItemsPerPage(Number(e.target.value)); setPage(1); }}
+                  >
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center flex-1">
+                  Page {page} <span className="text-slate-600">of</span> {totalPages}
+                  <span className="hidden sm:inline"> • {filteredPlayers.length} Players</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    className="px-3 sm:px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-slate-900 border border-slate-800 text-white rounded-full hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >
+                    Prev
+                  </button>
+                  <button
+                    className="px-3 sm:px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-slate-900 border border-slate-800 text-white rounded-full hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
             )}
           </>
         )}
@@ -842,7 +899,7 @@ export const FreeAgentsView: React.FC = () => {
       {viewingRatingsPlayer && (
         <PlayerRatingsModal
           player={viewingRatingsPlayer}
-          season={state.leagueStats?.year ?? 2026}
+          season={state.leagueStats?.year ?? new Date().getFullYear()}
           onClose={() => setViewingRatingsPlayer(null)}
         />
       )}

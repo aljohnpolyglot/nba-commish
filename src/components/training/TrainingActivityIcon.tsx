@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Coffee, HeartPulse, Target, Trophy, Zap } from 'lucide-react';
+import { Coffee, Footprints, HeartPulse, Trophy } from 'lucide-react';
 import type { DayType, TrainingParadigm } from '../../TeamTraining/types';
 
 interface Props {
@@ -47,15 +47,10 @@ const JerseyBatteryIcon: React.FC<{ size?: number; className?: string }> = ({ si
   </svg>
 );
 
-// Custom jersey-with-heal SVG — for recovery / recovery practice tiles.
-const JerseyHealIcon: React.FC<{ size?: number; className?: string }> = ({ size = 32, className }) => (
-  <svg viewBox="0 0 32 32" width={size} height={size} className={className} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 8 L13 5 L19 5 L23 8 L26 11 L24 14 L22 13 L22 27 L10 27 L10 13 L8 14 L6 11 Z" />
-    <path d="M13 5 L16 9 L19 5" />
-    {/* Pulse line through chest */}
-    <path d="M11 19 L14 19 L15 16 L17 22 L18 19 L21 19" strokeWidth={1.5} />
-  </svg>
-);
+// Recovery / Load Management uses the standalone HeartPulse icon (violet) to
+// keep it visually distinct from the jersey-with-battery Biometrics icon.
+// JerseyHealIcon retired — its jersey silhouette read identically to Biometrics
+// and confused which surface the cell was about.
 
 // Custom jersey-with-light SVG — for light practice tiles.
 const JerseyLightIcon: React.FC<{ size?: number; className?: string }> = ({ size = 32, className }) => (
@@ -72,25 +67,29 @@ const ACTIVITY_META: Record<DayType, { color: string; render: (size: number) => 
     color: 'text-rose-300',
     render: (s) => <Trophy size={s} />,
   },
+  // Shootaround is reserved for the future pregame-routine feature (real NBA
+  // shootarounds happen morning-of, not day-before). Auto-scheduler no longer
+  // produces it; falls back to Light Practice. Kept in the lookup so any
+  // legacy persisted plans render with the same indigo light-jersey treatment.
   'Shootaround': {
-    color: 'text-amber-300',
-    render: (s) => <Target size={s} />,
+    color: 'text-indigo-300',
+    render: (s) => <Footprints size={s} />,
   },
   'Off Day': {
     color: 'text-slate-500',
     render: (s) => <Coffee size={s} />,
   },
   'Recovery': {
-    color: 'text-emerald-300',
-    render: (s) => <JerseyHealIcon size={s} />,
+    color: 'text-violet-300',
+    render: (s) => <HeartPulse size={s} />,
   },
   'Recovery Practice': {
-    color: 'text-emerald-300',
-    render: (s) => <JerseyHealIcon size={s} />,
+    color: 'text-violet-300',
+    render: (s) => <HeartPulse size={s} />,
   },
   'Light Practice': {
     color: 'text-indigo-300',
-    render: (s) => <JerseyLightIcon size={s} />,
+    render: (s) => <Footprints size={s} />,
   },
   'Balanced Practice': {
     color: 'text-sky-300',
@@ -111,7 +110,7 @@ const PARADIGM_OVERRIDE_COLOR: Record<TrainingParadigm, string> = {
   Offensive: 'text-rose-300',
   Defensive: 'text-indigo-300',
   Biometrics: 'text-purple-300',
-  Recovery: 'text-emerald-300',
+  Recovery: 'text-violet-300',
 };
 
 const PARADIGM_OVERRIDE_RENDER: Record<TrainingParadigm, (size: number) => React.ReactNode> = {
@@ -119,7 +118,7 @@ const PARADIGM_OVERRIDE_RENDER: Record<TrainingParadigm, (size: number) => React
   Offensive:  (s) => <PlaybookIcon size={s} />,
   Defensive:  (s) => <PlaybookIcon size={s} />,
   Biometrics: (s) => <JerseyBatteryIcon size={s} />,
-  Recovery:   (s) => <JerseyHealIcon size={s} />,
+  Recovery:   (s) => <HeartPulse size={s} />,
 };
 
 export const TrainingActivityIcon: React.FC<Props> = ({ activity, paradigm, size = 32, hasUserPlan }) => {
@@ -134,4 +133,4 @@ export const TrainingActivityIcon: React.FC<Props> = ({ activity, paradigm, size
 };
 
 // Re-exported so other components (e.g. day view) can compose richer scenes.
-export { PlaybookIcon, JerseyBatteryIcon, JerseyHealIcon, JerseyLightIcon };
+export { PlaybookIcon, JerseyBatteryIcon, JerseyLightIcon };

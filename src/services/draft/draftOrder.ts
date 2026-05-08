@@ -37,7 +37,7 @@ function resolveSourceRoundOneOrder(state: GameState): NBATeam[] {
 }
 
 export function buildDraftOrderFromState(state: GameState): DraftOrderTeam[] {
-  const draftSeason: number = state.leagueStats?.year ?? 2026;
+  const draftSeason: number = state.leagueStats?.year ?? new Date().getFullYear();
   const currentSeasonPicks = ((state.draftPicks ?? []) as DraftPick[]).filter(dp => dp.season === draftSeason);
   const r1TradedMap = new Map<number, number>();
   const r2TradedMap = new Map<number, number>();

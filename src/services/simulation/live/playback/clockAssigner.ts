@@ -1,4 +1,24 @@
-import { Possession, Period } from './possessionTypes';
+import { Possession, Period, PossessionOutcome } from './possessionTypes';
+
+// Per-outcome possession duration estimate (seconds). Numbers loosely follow
+// ZenGM/BBGM ranges: shot release + decision + (inbound if make) + rebound.
+// Real-time accumulation replaces the old linear `i / (n-1)` distribution
+// that produced time-jumps and clustered events at the buzzer.
+function durationFor(o: PossessionOutcome): number {
+  switch (o) {
+    case 'TOV':         return 8;
+    case 'MADE_2':      return 14;
+    case 'MADE_3':      return 15;
+    case 'MADE_4':      return 16;
+    case 'MISS_2_DRB':  return 11;
+    case 'MISS_3_DRB':  return 12;
+    case 'MISS_4_DRB':  return 13;
+    case 'MISS_2_ORB':  return 11;
+    case 'MISS_3_ORB':  return 12;
+    case 'MISS_4_ORB':  return 13;
+    case 'FOUL_TRIP':   return 22;
+  }
+}
 
 export function assignClocks(
   possessions: Possession[],
@@ -11,43 +31,52 @@ export function assignClocks(
   const n = possessions.length;
   if (n === 0) return;
 
-  possessions.forEach((poss, i) => {
-    let baseGs: number;
-    
-    const isLateQuarter = isLatePeriod || qLen === 300;
+  // Pre-tip + late-clamp budget. Possessions live in [qStartGs+10, qStartGs+qLen-5].
+  const usableLen = Math.max(qLen - 25, 60);
+  const startGs = qStartGs + 10;
+  const endClamp = qStartGs + qLen - 5;
 
-    if (isLateQuarter) {
-      // Compress last 2 minutes (120 seconds)
-      const earlyLen = qLen - 130; 
-      const lateLen = 105;         
-      
-      const earlyIntegral = earlyLen / 14;
-      const lateIntegral = lateLen / 8;
-      const totalIntegral = earlyIntegral + lateIntegral;
-      
-      const y = (i / Math.max(n - 1, 1)) * totalIntegral;
-      
-      if (y <= earlyIntegral) {
-        baseGs = qStartGs + 10 + y * 14;
-      } else {
-        baseGs = qStartGs + (qLen - 120) + (y - earlyIntegral) * 8;
-      }
-    } else {
-      const usableLen = qLen - 25; 
-      baseGs = qStartGs + 10 + (i / Math.max(n - 1, 1)) * usableLen;
-    }
-    
-    const isLateGame = isLateQuarter && (baseGs - qStartGs) > (qLen - 120);
-    const jitter = (Math.random() - 0.5) * (isLateGame ? 4 : 8);
-    let gs = baseGs + jitter;
-    
-    gs = Math.max(qStartGs + 5, Math.min(qStartGs + qLen - 5, gs));
-    
-    const tiq = qLen - (gs - qStartGs);
+  // 1) Raw durations per possession outcome.
+  const rawDurations = possessions.map(p => {
+    if (p.isJumpball) return 4;
+    return durationFor(p.outcome);
+  });
+
+  // Late-period (Q4/OT) extends decision time on the closing third.
+  if (isLatePeriod) {
+    const lateStart = Math.floor(n * 0.66);
+    for (let i = lateStart; i < n; i++) rawDurations[i] *= 1.15;
+  }
+
+  // 2) Scale to fit the quarter exactly. Real possessions average ~24s (shot
+  // clock + dead time); the raw durations average ~13s. Scaling stretches the
+  // visible pacing without distorting the relative gap between outcome types.
+  const totalRaw = rawDurations.reduce((s, d) => s + d, 0);
+  const scale = totalRaw > 0 ? usableLen / totalRaw : 1;
+
+  // 3) Walk the clock, apply small jitter, enforce monotonic gs.
+  let cursor = startGs;
+  let prevGs = startGs - 1; // ensures first stamp is > startGs - 0.5
+
+  possessions.forEach((poss, i) => {
+    const dur = rawDurations[i] * scale;
+    cursor += dur;
+
+    // Jitter capped at 15% of duration (so consecutive plays cannot invert).
+    const jitterMax = Math.min(dur * 0.15, 1.5);
+    const jitter = (Math.random() - 0.5) * 2 * jitterMax;
+
+    let gs = cursor + jitter;
+
+    // Hard monotonicity + boundary clamp.
+    gs = Math.max(prevGs + 0.5, Math.min(endClamp, gs));
+    prevGs = gs;
+
+    const tiq = Math.max(0, qLen - (gs - qStartGs));
     const mins = Math.floor(tiq / 60);
     const secs = Math.floor(tiq % 60);
     const clock = mins + ':' + secs.toString().padStart(2, '0');
-    
+
     poss.gs = gs;
     poss.clock = clock;
     poss.period = periodLabel;

@@ -120,6 +120,50 @@ export class AwardService {
     return stat.gp >= threshold;
   }
 
+  /**
+   * Top-N MVP candidates for trade-value use. Mirrors calculateMVP scoring but
+   * skips the 65-game eligibility gate (we want a stable star ranking from day 1)
+   * and returns a configurable number of candidates (default 30).
+   * Used by the trade engine to flag franchise-altering MVP-tier players so they
+   * get the "this guy doesn't move for fair value" premium.
+   */
+  static calculateMVPRankings(
+    players: NBAPlayer[],
+    teams: NBATeam[],
+    season?: number,
+    limit: number = 30,
+  ): AwardCandidate[] {
+    const baseSeason = season ?? new Date().getFullYear();
+    const maxSeason = players.reduce((max, p) => {
+      const playerMax = p.stats?.reduce((m, s) => Math.max(m, s.season), 0) || 0;
+      return Math.max(max, playerMax);
+    }, baseSeason);
+
+    return players
+      .map(p => {
+        const stat = getBestStat(p.stats, maxSeason);
+        const team = teams.find(t => t.id === p.tid);
+        if (!stat || !team || (stat.gp ?? 0) < 1) return null;
+        const gp = stat.gp;
+        const ppg = stat.pts / gp;
+        const rpg = getTrb(stat) / gp;
+        const apg = stat.ast / gp;
+        if (ppg < 14) return null; // bench warmers can't be in the MVP top-30
+
+        const winPct = team.wins / (team.wins + team.losses || 1);
+        const winFloor = 0.7;
+        let score = (ppg * 1.2 + rpg * 0.5 + apg * 0.6) * (winFloor + winPct * 0.8);
+
+        const pastMVPs = p.awards?.filter(a => a.type === 'Most Valuable Player').length || 0;
+        score *= Math.max(0.925, 1 - (pastMVPs * 0.025));
+
+        return { player: p, team, score, odds: '', stats: stat };
+      })
+      .filter((c): c is AwardCandidate => c !== null)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+  }
+
   private static calculateMVP(players: NBAPlayer[], teams: NBATeam[], season: number): AwardCandidate[] {
     return players
       .map(p => {

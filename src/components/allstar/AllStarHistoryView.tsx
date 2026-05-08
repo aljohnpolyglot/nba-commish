@@ -96,7 +96,7 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
   }, []);
 
   const rows = useMemo(() => {
-    const currentYear = state.leagueStats?.year ?? 2026;
+    const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
     const currentDate = state.date ? new Date(state.date) : new Date();
 
     // Sim ASG result (only exists after the in-game All-Star game has been simulated)

@@ -1,5 +1,4 @@
-import React, { useMemo, useState } from 'react';
-import { CalendarOff, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useMemo } from 'react';
 import type { Allocations, DayType, ScheduleDay, TrainingParadigm } from '../../TeamTraining/types';
 import type { NBATeam } from '../../types';
 import { TrainingActivityIcon } from './TrainingActivityIcon';
@@ -10,12 +9,60 @@ interface Props {
   team: NBATeam;
   scheduleByIso: Map<string | undefined, ScheduleDay>;
   dailyPlansISO: Record<string, DailyPlan>;
-  calendarMonth: Date;
-  setCalendarMonth: (d: Date) => void;
+  /** Sunday of the week anchoring the visible 4-week (28-day) window. */
+  weekAnchor: Date;
+  setWeekAnchor: (d: Date) => void;
   selectedDate: string;
   currentDateISO: string;
   isReadOnly: boolean;
   onCellClick: (iso: string, scheduleDay: ScheduleDay | undefined) => void;
+}
+
+const VISIBLE_WEEKS = 4;
+const VISIBLE_DAYS = VISIBLE_WEEKS * 7;
+
+// Any plan ≤ this intensity reads as a Load Management day, regardless of the
+// nominal paradigm. Mirrors real NBA load-management: a 15% Offensive plan is
+// just an excuse-name for a recovery day. Threshold inclusive.
+const LOAD_MGMT_INTENSITY_MAX = 20;
+function isLoadManagement(plan?: { intensity?: number }): boolean {
+  return !!plan && typeof plan.intensity === 'number' && plan.intensity <= LOAD_MGMT_INTENSITY_MAX;
+}
+
+function isValidDate(d: Date): boolean {
+  return !isNaN(d.getTime());
+}
+
+/** Parse a YYYY-MM-DD string to a UTC Date, or fall back to *now* when the
+ *  input is blank/invalid. Without this guard a single bad sim date cascades
+ *  into Invalid Date everywhere — chevron comparisons return false, range
+ *  formatter throws "Invalid time value", and the grid renders blank cells. */
+function parseISOOrToday(iso: string): Date {
+  const cleaned = (iso ?? '').slice(0, 10);
+  if (cleaned) {
+    const d = new Date(cleaned + 'T00:00:00Z');
+    if (isValidDate(d)) return d;
+  }
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+}
+
+function startOfWeek(d: Date): Date {
+  if (!isValidDate(d)) return parseISOOrToday('');
+  const out = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  out.setUTCDate(out.getUTCDate() - out.getUTCDay()); // back up to Sunday
+  return out;
+}
+
+function addDays(d: Date, n: number): Date {
+  const out = new Date(d);
+  out.setUTCDate(out.getUTCDate() + n);
+  return out;
+}
+
+function toISO(d: Date): string {
+  if (!isValidDate(d)) return '';
+  return d.toISOString().slice(0, 10);
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -23,10 +70,12 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 // Activity → cell background + accent strip color. Auto-scheduled (no user plan).
 const ACTIVITY_TINT: Record<DayType, { bg: string; strip: string; label: string }> = {
   'Game':                { bg: 'bg-rose-950/40 hover:bg-rose-900/60',           strip: 'bg-rose-500',     label: 'GAME' },
-  'Shootaround':         { bg: 'bg-amber-950/30 hover:bg-amber-900/50',         strip: 'bg-amber-500',    label: 'SHOOT' },
+  // Shootaround retired from auto-schedule — kept for legacy persisted plans
+  // and future pregame-routine feature. Renders like Light Practice (indigo).
+  'Shootaround':         { bg: 'bg-indigo-950/30 hover:bg-indigo-900/50',       strip: 'bg-indigo-500',   label: 'LIGHT' },
   'Off Day':             { bg: 'bg-slate-900/40 hover:bg-slate-800/60',         strip: 'bg-slate-600',    label: 'REST' },
-  'Recovery':            { bg: 'bg-emerald-950/30 hover:bg-emerald-900/50',     strip: 'bg-emerald-500',  label: 'REC' },
-  'Recovery Practice':   { bg: 'bg-emerald-950/30 hover:bg-emerald-900/50',     strip: 'bg-emerald-500',  label: 'REC' },
+  'Recovery':            { bg: 'bg-violet-950/40 hover:bg-violet-900/50',       strip: 'bg-violet-500',   label: 'REC' },
+  'Recovery Practice':   { bg: 'bg-violet-950/40 hover:bg-violet-900/50',       strip: 'bg-violet-500',   label: 'REC' },
   'Light Practice':      { bg: 'bg-indigo-950/30 hover:bg-indigo-900/50',       strip: 'bg-indigo-500',   label: 'LIGHT' },
   'Balanced Practice':   { bg: 'bg-sky-950/30 hover:bg-sky-900/50',             strip: 'bg-sky-500',      label: 'BAL' },
   'Structured Practice': { bg: 'bg-purple-950/30 hover:bg-purple-900/50',       strip: 'bg-purple-500',   label: 'STR' },
@@ -40,78 +89,47 @@ const PARADIGM_TINT: Record<TrainingParadigm, { bg: string; strip: string; label
   Offensive:  { bg: 'bg-rose-900/50 hover:bg-rose-800/70',       strip: 'bg-rose-400',    label: 'OFF' },
   Defensive:  { bg: 'bg-indigo-900/50 hover:bg-indigo-800/70',   strip: 'bg-indigo-400',  label: 'DEF' },
   Biometrics: { bg: 'bg-purple-900/50 hover:bg-purple-800/70',   strip: 'bg-purple-400',  label: 'BIO' },
-  Recovery:   { bg: 'bg-emerald-900/50 hover:bg-emerald-800/70', strip: 'bg-emerald-400', label: 'REC' },
+  Recovery:   { bg: 'bg-violet-900/50 hover:bg-violet-800/70',   strip: 'bg-violet-400',  label: 'REC' },
 };
 
-function formatMonthLabel(d: Date): string {
-  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
+function formatRangeLabel(anchor: Date): string {
+  const last = addDays(anchor, VISIBLE_DAYS - 1);
+  const aMonth = anchor.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+  const lMonth = last.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+  if (aMonth === lMonth) {
+    return `${aMonth} ${anchor.getUTCDate()}–${last.getUTCDate()} ${last.getUTCFullYear()}`.toUpperCase();
+  }
+  return `${aMonth} ${anchor.getUTCDate()} – ${lMonth} ${last.getUTCDate()} ${last.getUTCFullYear()}`.toUpperCase();
 }
 
 export const TrainingCalendarView: React.FC<Props> = ({
   team,
   scheduleByIso,
   dailyPlansISO,
-  calendarMonth,
-  setCalendarMonth,
+  weekAnchor,
+  setWeekAnchor,
   selectedDate,
   currentDateISO,
   isReadOnly,
   onCellClick,
 }) => {
-  const { year, month, daysInMonth, leadingBlanks } = useMemo(() => {
-    const d = new Date(calendarMonth);
-    const y = d.getFullYear();
-    const m = d.getMonth();
-    const days = new Date(y, m + 1, 0).getDate();
-    const firstWeekday = new Date(y, m, 1).getDay();
-    return { year: y, month: m, daysInMonth: days, leadingBlanks: firstWeekday };
-  }, [calendarMonth]);
-
   const selectedISO = (selectedDate ?? '').slice(0, 10);
 
-  // Schedule release window — real NBA training schedules are typically only
-  // released ~1 month ahead. Anything beyond that we render as "not yet released"
-  // unless the user explicitly opts in to project. Prevents the "every cell is
-  // off-day" wall when navigating Dec → June etc.
-  const isFarFuture = useMemo(() => {
-    const today = new Date(currentDateISO + 'T00:00:00Z');
-    const todayKey = today.getUTCFullYear() * 12 + today.getUTCMonth();
-    const calKey = year * 12 + month;
-    return calKey - todayKey > 1;
-  }, [currentDateISO, year, month]);
-  const [forceShow, setForceShow] = useState(false);
-  const showGrid = !isFarFuture || forceShow;
-
-  const goPrev = () => { setForceShow(false); setCalendarMonth(new Date(year, month - 1, 1)); };
-  const goNext = () => { setForceShow(false); setCalendarMonth(new Date(year, month + 1, 1)); };
-  const goToday = () => {
-    setForceShow(false);
-    const today = new Date(currentDateISO + 'T00:00:00Z');
-    setCalendarMonth(new Date(today.getUTCFullYear(), today.getUTCMonth(), 1));
-  };
+  const todayWeekStart = useMemo(
+    () => startOfWeek(parseISOOrToday(currentDateISO)),
+    [currentDateISO]
+  );
+  const safeAnchor = isValidDate(weekAnchor) ? weekAnchor : todayWeekStart;
+  const goToday = () => { setWeekAnchor(todayWeekStart); };
 
   return (
     <div className="bg-black border border-slate-800 rounded-2xl overflow-hidden">
-      {/* Month header */}
+      {/* Range header */}
       <div className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-slate-800 bg-[#0a0a0a]">
         <div className="flex items-center gap-3">
           <button
-            onClick={goPrev}
-            className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white transition-colors"
-            aria-label="Previous month"
-          >
-            <ChevronLeft size={14} />
-          </button>
-          <button
-            onClick={goNext}
-            className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white transition-colors"
-            aria-label="Next month"
-          >
-            <ChevronRight size={14} />
-          </button>
-          <button
             onClick={goToday}
-            className="ml-1 px-3 py-1.5 rounded-lg bg-[#FDB927]/10 border border-[#FDB927]/30 text-[#FDB927] hover:bg-[#FDB927]/20 transition-colors text-[10px] font-black uppercase tracking-widest"
+            className="px-3 py-1.5 rounded-lg bg-[#FDB927]/10 border border-[#FDB927]/30 text-[#FDB927] hover:bg-[#FDB927]/20 transition-colors text-[10px] font-black uppercase tracking-widest"
           >
             Today
           </button>
@@ -119,58 +137,31 @@ export const TrainingCalendarView: React.FC<Props> = ({
 
         <div className="text-right">
           <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
-            Training Calendar
+            Training Schedule · 4 Weeks
           </div>
           <div className="text-base md:text-xl font-black uppercase tracking-tight text-white">
-            {formatMonthLabel(calendarMonth)}
+            {formatRangeLabel(safeAnchor)}
           </div>
         </div>
       </div>
 
-      {/* Far-future empty state — schedule not yet released. */}
-      {!showGrid && (
-        <div className="px-6 md:px-10 py-12 md:py-16 text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-slate-900/60 border border-slate-800 mb-4">
-            <CalendarOff size={24} className="text-slate-500" />
-          </div>
-          <h3 className="text-base md:text-lg font-black uppercase tracking-tight text-white mb-2">
-            Schedule Not Yet Released
-          </h3>
-          <p className="text-xs text-slate-500 font-bold uppercase tracking-widest max-w-md mx-auto leading-relaxed">
-            {formatMonthLabel(calendarMonth)} is more than a month out. Real schedules drop ~30 days ahead — opponents and game days aren't locked.
-          </p>
-          <button
-            onClick={() => setForceShow(true)}
-            className="mt-6 px-4 py-2 rounded-lg bg-[#FDB927]/10 border border-[#FDB927]/30 text-[#FDB927] hover:bg-[#FDB927]/20 transition-colors text-[10px] font-black uppercase tracking-widest"
-          >
-            Project Anyway
-          </button>
-        </div>
-      )}
-
-      {showGrid && (
-        <>
-      {/* Weekday header */}
-      <div className="grid grid-cols-7 gap-1 md:gap-2 px-2 md:px-4 pt-3 pb-2">
+      {/* Weekday header — desktop grid only */}
+      <div className="hidden md:grid grid-cols-7 gap-2 px-4 pt-3 pb-2">
         {WEEKDAYS.map(d => (
           <div
             key={d}
-            className="text-center text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 py-1"
+            className="text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 py-1"
           >
             {d}
           </div>
         ))}
       </div>
 
-      {/* Day grid */}
-      <div className="grid grid-cols-7 gap-1 md:gap-2 px-2 md:px-4 pb-4">
-        {Array.from({ length: leadingBlanks }).map((_, i) => (
-          <div key={`blank-${i}`} className="aspect-square" />
-        ))}
-
-        {Array.from({ length: daysInMonth }).map((_, i) => {
-          const day = i + 1;
-          const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      {/* Mobile list — vertical day-by-day, big touch targets, TransactionsView pattern */}
+      <div className="md:hidden divide-y divide-slate-800/60">
+        {Array.from({ length: VISIBLE_DAYS }).map((_, i) => {
+          const cellDate = addDays(safeAnchor, i);
+          const iso = toISO(cellDate);
           const scheduleDay = scheduleByIso.get(iso);
           const userPlan = dailyPlansISO[iso];
           const activity: DayType = scheduleDay?.activity ?? 'Off Day';
@@ -179,11 +170,115 @@ export const TrainingCalendarView: React.FC<Props> = ({
           const isSelected = iso === selectedISO;
           const isPast = iso < currentDateISO;
 
-          const tint = userPlan
-            ? PARADIGM_TINT[userPlan.paradigm]
-            : ACTIVITY_TINT[activity];
+          const isGame = activity === 'Game';
+          const loadMgmt = !isGame && isLoadManagement(userPlan);
+          const tint = loadMgmt
+            ? PARADIGM_TINT.Recovery
+            : userPlan ? PARADIGM_TINT[userPlan.paradigm] : ACTIVITY_TINT[activity];
+          const opponent = scheduleDay?.opponent;
+          const lockEdit = (isReadOnly || isPast) && !isGame;
+
+          const weekday = cellDate.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
+          const monthDay = cellDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+
+          return (
+            <button
+              key={iso}
+              onClick={() => onCellClick(iso, scheduleDay)}
+              disabled={lockEdit}
+              title={isPast && !isGame ? 'Past day — historical record' : undefined}
+              className={`relative w-full flex items-center gap-3 px-3 py-3 text-left transition-colors ${tint.bg} ${
+                isSelected ? 'ring-1 ring-inset ring-white' : ''
+              } ${isToday ? 'ring-1 ring-inset ring-[#FDB927]' : ''} ${
+                isPast && !userPlan ? 'opacity-60' : ''
+              } ${lockEdit ? 'cursor-default' : 'cursor-pointer active:brightness-125'}`}
+            >
+              {/* Left accent strip */}
+              <div className={`absolute left-0 top-0 bottom-0 w-1 ${isToday ? 'bg-[#FDB927]' : tint.strip}`} />
+
+              {/* Date column */}
+              <div className="pl-2 w-14 shrink-0">
+                <div className={`text-[9px] font-black uppercase tracking-widest ${isToday ? 'text-[#FDB927]' : 'text-slate-500'}`}>
+                  {weekday}
+                </div>
+                <div className={`text-base font-black uppercase tracking-tight leading-tight ${isToday ? 'text-[#FDB927]' : 'text-white'}`}>
+                  {monthDay}
+                </div>
+              </div>
+
+              {/* Activity body */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${tint.strip} bg-opacity-30 text-white/90`}>
+                    {tint.label}
+                  </span>
+                  {isToday && (
+                    <span className="text-[8px] font-black uppercase tracking-widest text-[#FDB927]">Today</span>
+                  )}
+                  {userPlan && !isGame && (
+                    <span className="text-[8px] font-black uppercase tracking-widest text-white/70">
+                      {Math.round(userPlan.intensity)}%
+                    </span>
+                  )}
+                </div>
+                <div className="text-[11px] text-slate-300 font-medium truncate mt-0.5">
+                  {isGame
+                    ? (opponent?.abbrev === 'TBD'
+                        ? 'vs TBD'
+                        : `${opponent?.isHome ? 'vs' : '@'} ${opponent?.abbrev ?? ''}`)
+                    : loadMgmt ? 'Load management — minimal load' : scheduleDay?.description ?? activity}
+                </div>
+              </div>
+
+              {/* Right side — opponent logo or activity icon */}
+              <div className="shrink-0 flex items-center justify-center w-10 h-10">
+                {isGame ? (
+                  opponent?.logoUrl ? (
+                    <img
+                      src={opponent.logoUrl}
+                      alt={opponent.abbrev}
+                      className="w-9 h-9 object-contain"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-slate-800/80 border border-slate-600 flex items-center justify-center text-rose-300 font-black text-sm">
+                      ?
+                    </div>
+                  )
+                ) : (
+                  <TrainingActivityIcon
+                    activity={activity}
+                    paradigm={loadMgmt ? 'Recovery' : userPlan?.paradigm}
+                    hasUserPlan={!!userPlan}
+                    size={22}
+                  />
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Day grid — desktop only — 4 weeks × 7 days, anchor-based, no leading blanks */}
+      <div className="hidden md:grid grid-cols-7 gap-2 px-4 pb-4">
+        {Array.from({ length: VISIBLE_DAYS }).map((_, i) => {
+          const cellDate = addDays(safeAnchor, i);
+          const iso = toISO(cellDate);
+          const day = cellDate.getUTCDate();
+          const scheduleDay = scheduleByIso.get(iso);
+          const userPlan = dailyPlansISO[iso];
+          const activity: DayType = scheduleDay?.activity ?? 'Off Day';
+
+          const isToday = iso === currentDateISO;
+          const isSelected = iso === selectedISO;
+          const isPast = iso < currentDateISO;
 
           const isGame = activity === 'Game';
+          const loadMgmt = !isGame && isLoadManagement(userPlan);
+          const tint = loadMgmt
+            ? PARADIGM_TINT.Recovery
+            : userPlan ? PARADIGM_TINT[userPlan.paradigm] : ACTIVITY_TINT[activity];
+
           const opponent = scheduleDay?.opponent;
 
           const ringClasses = isToday
@@ -192,14 +287,19 @@ export const TrainingCalendarView: React.FC<Props> = ({
             ? 'ring-2 ring-white'
             : '';
 
+          // Past days are historical record only — viewable but not editable.
+          // Game cells stay clickable so the user can pop the day-view boxscore.
+          const lockEdit = (isReadOnly || isPast) && !isGame;
+
           return (
             <button
               key={iso}
               onClick={() => onCellClick(iso, scheduleDay)}
-              disabled={isReadOnly && !isGame}
+              disabled={lockEdit}
+              title={isPast && !isGame ? 'Past day — historical record' : undefined}
               className={`relative aspect-square min-h-[64px] md:min-h-[88px] p-1.5 md:p-2 rounded-lg border border-slate-800/60 ${tint.bg} ${ringClasses} transition-all duration-200 text-left flex flex-col overflow-hidden ${
                 isPast && !userPlan ? 'opacity-60' : ''
-              } ${isReadOnly && !isGame ? 'cursor-default' : 'cursor-pointer'}`}
+              } ${lockEdit ? 'cursor-default' : 'cursor-pointer'}`}
             >
               {/* Left accent strip — yellow on today for stronger anchoring */}
               <div className={`absolute left-0 top-0 bottom-0 w-1 ${isToday ? 'bg-[#FDB927]' : tint.strip} ${isToday ? '' : 'opacity-80'}`} />
@@ -233,7 +333,7 @@ export const TrainingCalendarView: React.FC<Props> = ({
                 {isGame ? (
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-[7px] md:text-[9px] font-black uppercase tracking-widest text-rose-300/80">
-                      {opponent?.isHome ? 'vs' : '@'}
+                      {opponent?.abbrev === 'TBD' ? 'vs' : (opponent?.isHome ? 'vs' : '@')}
                     </span>
                     {opponent?.logoUrl ? (
                       <img
@@ -242,6 +342,17 @@ export const TrainingCalendarView: React.FC<Props> = ({
                         className="w-7 h-7 md:w-9 md:h-9 object-contain drop-shadow-lg"
                         referrerPolicy="no-referrer"
                       />
+                    ) : opponent?.abbrev === 'TBD' ? (
+                      // Playoff anticipation — opponent not locked yet (e.g.
+                      // 7–10 seed waiting on play-in result). Generic disc with
+                      // "?" stands in for the NBA logo placeholder pattern from
+                      // the 2K14 reference.
+                      <div
+                        className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-slate-800/80 border border-slate-600 flex items-center justify-center text-rose-300 font-black text-sm md:text-base"
+                        title="Opponent not locked yet — pending play-in / lower-seed result"
+                      >
+                        ?
+                      </div>
                     ) : (
                       <span className="text-[10px] md:text-sm font-black text-white tracking-tight">
                         {opponent?.abbrev ?? 'TBD'}
@@ -251,7 +362,7 @@ export const TrainingCalendarView: React.FC<Props> = ({
                 ) : (
                   <TrainingActivityIcon
                     activity={activity}
-                    paradigm={userPlan?.paradigm}
+                    paradigm={loadMgmt ? 'Recovery' : userPlan?.paradigm}
                     hasUserPlan={!!userPlan}
                     size={28}
                   />
@@ -270,8 +381,6 @@ export const TrainingCalendarView: React.FC<Props> = ({
           );
         })}
       </div>
-        </>
-      )}
 
       {/* Legend strip */}
       <div className="border-t border-slate-800 bg-[#0a0a0a] px-4 md:px-6 py-3 flex flex-wrap gap-x-4 gap-y-2 items-center">
@@ -279,7 +388,7 @@ export const TrainingCalendarView: React.FC<Props> = ({
         {[
           { label: 'Game',     color: 'bg-rose-500' },
           { label: 'Practice', color: 'bg-sky-500' },
-          { label: 'Recovery', color: 'bg-emerald-500' },
+          { label: 'Recovery', color: 'bg-violet-500' },
           { label: 'Off Day',  color: 'bg-slate-600' },
           { label: 'Set Plan', color: 'bg-orange-500' },
         ].map(item => (

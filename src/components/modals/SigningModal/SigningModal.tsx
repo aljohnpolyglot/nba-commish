@@ -142,6 +142,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   // Bid-submission confirmation: after Submit Offer, show terms + decision window
   // in a dedicated screen before the user dismisses. Better than a silent close.
   const [bidSubmitted, setBidSubmitted] = useState<null | { salary: number; years: number; option: 'NONE' | 'PLAYER' | 'TEAM' }>(null);
+  const [selectedMleType, setSelectedMleType] = useState<'room' | 'non_taxpayer' | 'taxpayer' | null>(null);
   // Commissioner can override the preflight ("Testing Free Agency") and enter negotiation anyway.
   const [preflightOverridden, setPreflightOverridden] = useState(false);
   // Transient toast for contractType collisions with roster caps.
@@ -355,7 +356,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     );
     const gp = (team.wins ?? 0) + (team.losses ?? 0);
     const winPct = gp > 0 ? (team.wins ?? 0) / gp : 0.5;
-    return classifyResignIntent(player, traitsNorm, score, leagueStats?.year ?? 2026, winPct);
+    return classifyResignIntent(player, traitsNorm, score, leagueStats?.year ?? new Date().getFullYear(), winPct);
   }, [player, team, state.date, state.players, leagueStats?.year]);
 
   // Offers tab surfaces whenever a live market exists for this player. Drops
@@ -582,21 +583,29 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     !isResign &&
     !teamHoldsBirdRights &&
     guaranteedCount >= 15;
-  const submitSigning = (skipOverLimitConfirm = false) => {
+  const submitSigning = (
+    skipOverLimitConfirm = false,
+    mleTypeOverride: 'room' | 'non_taxpayer' | 'taxpayer' | null = selectedMleType,
+  ) => {
     if (!skipOverLimitConfirm && needsGuaranteedOverLimitConfirm) {
       setOverLimitAction('sign');
       return;
     }
+    // Only stamp mleType when salary actually fits the MLE cap. Without this
+    // gate the modal would auto-flag every guaranteed signing as "via MLE",
+    // letting users bypass cap checks with $30M+ salaries on a $13M MLE tier.
+    const fitsMLE = !!mle && !mle.blocked && salary > 0 && salary <= mle.available;
     onSign({
       salary,
       years,
       option,
       twoWay: contractType === 'TWO_WAY',
       nonGuaranteed: contractType === 'NON_GUARANTEED',
-      mleType: (contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || (mle?.blocked ?? true)) ? null : (mle?.type ?? null),
+      mleType: (contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || !fitsMLE) ? null : mleTypeOverride,
     });
   };
-  const requestPlayerResponse = () => {
+  const requestPlayerResponse = (useMle = false) => {
+    setSelectedMleType(useMle ? (mle?.type ?? null) : null);
     if (needsGuaranteedOverLimitConfirm) {
       setOverLimitAction('showResponse');
       return;
@@ -1450,7 +1459,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                       {(() => {
                         const hasBird = hasOwnTeamBirdRights || !!(player as any).hasBirdRights;
                         const svc = ((player as any).stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
-                        const recent = ((player as any).awards ?? []).filter((a: any) => a.season && a.season >= (leagueStats?.year ?? 2026) - 3);
+                        const recent = ((player as any).awards ?? []).filter((a: any) => a.season && a.season >= (leagueStats?.year ?? new Date().getFullYear()) - 3);
                         const notableAwards = recent
                           .filter((a: any) => /all.nba|mvp|defensive player|dpoy/i.test(a.type ?? ''))
                           .map((a: any) => a.type);
@@ -1747,7 +1756,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                       const decisionDaysOut = (() => {
                         if (!market) return 0;
                         const rawDays = Math.max(0, market.decidesOnDay - (state.day ?? 0));
-                        if (!state.date || !isInMoratorium(state.date, leagueStats?.year ?? 2026, leagueStats as any, state.schedule as any)) return rawDays;
+                        if (!state.date || !isInMoratorium(state.date, leagueStats?.year ?? new Date().getFullYear(), leagueStats as any, state.schedule as any)) return rawDays;
                         const today = parseGameDate(state.date);
                         const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(state.date, leagueStats as any, state.schedule as any);
                         const moratoriumDays = Math.max(0, Math.ceil((moratoriumEnd.getTime() - today.getTime()) / 86_400_000));
@@ -1819,6 +1828,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                       disabled={!mleCanCover}
                       onClick={() => {
                         if (!mleCanCover) return;
+                        setSelectedMleType(mle?.type ?? null);
                         if (shouldSubmitBid && onSubmitBid) {
                           onSubmitBid({ salary, years, option });
                           const marketForPlayer = state.faBidding?.markets?.find(m =>
@@ -1828,8 +1838,8 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                           setBidSubmitted({ salary, years, option });
                           return;
                         }
-                        if (autoAccept) submitSigning();
-                        else requestPlayerResponse();
+                        if (autoAccept) submitSigning(false, mle?.type ?? null);
+                        else requestPlayerResponse(true);
                       }}
                       title={mleCanCover
                         ? `Uses ${mleLabel} — ${formatSalaryM(mle.available)} available`
@@ -1846,7 +1856,8 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                 })()}
                 <button
                   onClick={() => {
-                    // Final cap check — only for GUARANTEED signings that aren't covered by Bird Rights or an MLE.
+                    setSelectedMleType(null);
+                    // Final cap check — only for GUARANTEED signings that aren't covered by Bird Rights.
                     // Re-signs start next season; compare against committed payroll for the year the new deal starts.
                     const newDealStartYear = leagueStats.year + (isResign ? 1 : 0);
                     const committedAtStartYear = state.players
@@ -1858,7 +1869,12 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                       )
                       .reduce((sum, p) => sum + contractToUSD(p.contract?.amount || 0), 0);
                     const projectedPayroll = committedAtStartYear + salary;
-                    const blownCap = contractType !== 'TWO_WAY' && !hasOwnTeamBirdRights && projectedPayroll > thresholds.salaryCap && (mle.blocked || salary > mle.available);
+                    // NBA Minimum Player Salary Exception — min contracts are
+                    // always legal regardless of cap. Without this guard an
+                    // over-cap team can't even sign a min body to fill a slot.
+                    const minSalaryUSD = limits.minSalaryUSD;
+                    const isMinContract = salary <= minSalaryUSD * 1.05;
+                    const blownCap = contractType !== 'TWO_WAY' && !hasOwnTeamBirdRights && projectedPayroll > thresholds.salaryCap && !isMinContract;
                     if (blownCap) {
                       setShowCapWarning(true);
                       return;
@@ -1875,7 +1891,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                     if (autoAccept) {
                       submitSigning();
                     } else {
-                      requestPlayerResponse();
+                      requestPlayerResponse(false);
                     }
                   }}
                   className="flex-1 sm:flex-none px-5 sm:px-10 py-2.5 sm:py-3 bg-[#e21d37] rounded-sm text-[9px] sm:text-[10px] font-black italic uppercase tracking-widest text-white hover:scale-[1.02] transition-all"

@@ -11,6 +11,10 @@ export interface TeamDropdownProps {
   otherTeamId?: number | null;
   isOpen: boolean;
   onToggle: () => void;
+  /** Compact mode: matches h-7 height of adjacent filter chips */
+  compact?: boolean;
+  /** Placeholder shown when no team is selected */
+  placeholder?: string;
 }
 
 export const TeamDropdown: React.FC<TeamDropdownProps> = ({
@@ -21,27 +25,34 @@ export const TeamDropdown: React.FC<TeamDropdownProps> = ({
   otherTeamId,
   isOpen,
   onToggle,
+  compact = false,
+  placeholder = 'Select team...',
 }) => {
   const selectedTeam = teams.find(t => t.id === selectedTeamId);
 
   return (
     <div className="relative flex-1 min-w-0">
-      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1.5 ml-1">{label}</div>
+      {label && <div className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1.5 ml-1">{label}</div>}
       <button
         onClick={onToggle}
-        className="w-full bg-[#161616] border border-slate-700/50 rounded-lg text-sm text-white p-2.5 outline-none flex items-center justify-between hover:border-slate-500 hover:bg-[#222] transition-all"
+        className={compact
+          ? 'w-full h-7 bg-slate-900 border-y border-slate-700 text-white text-xs px-1.5 outline-none flex items-center justify-between hover:border-slate-500 transition-colors'
+          : 'w-full bg-[#161616] border border-slate-700/50 rounded-lg text-sm text-white p-2.5 outline-none flex items-center justify-between hover:border-slate-500 hover:bg-[#222] transition-all'
+        }
       >
-        <div className="flex items-center gap-3 truncate">
+        <div className={`flex items-center truncate ${compact ? 'gap-1.5' : 'gap-3'}`}>
           {selectedTeam ? (
             <>
-              <img src={selectedTeam.logoUrl} alt="" className="w-6 h-6 object-contain" />
-              <span className="font-black uppercase tracking-tight truncate">{selectedTeam.name}</span>
+              <img src={selectedTeam.logoUrl} alt="" className={compact ? 'w-4 h-4 object-contain' : 'w-6 h-6 object-contain'} />
+              <span className={`font-black uppercase tracking-tight truncate ${compact ? 'text-xs' : ''}`}>
+                {compact ? selectedTeam.abbrev : selectedTeam.name}
+              </span>
             </>
           ) : (
-            <span className="text-slate-600 font-bold italic">Select team...</span>
+            <span className={`font-bold italic ${compact ? 'text-slate-400 text-xs' : 'text-slate-600'}`}>{placeholder}</span>
           )}
         </div>
-        <ChevronDown size={18} className={`text-slate-500 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown size={compact ? 12 : 18} className={`text-slate-500 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       <AnimatePresence>
@@ -52,7 +63,7 @@ export const TeamDropdown: React.FC<TeamDropdownProps> = ({
               initial={{ opacity: 0, scale: 0.95, y: -10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -10 }}
-              className="absolute top-full left-0 right-0 mt-2 bg-[#1a1a1a] border border-slate-700 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[80] max-h-[60vh] overflow-hidden flex flex-col"
+              className={`absolute top-full left-0 mt-2 bg-[#1a1a1a] border border-slate-700 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[80] max-h-[60vh] overflow-hidden flex flex-col ${compact ? 'w-72' : 'right-0'}`}
             >
               <div className="overflow-y-auto custom-scrollbar flex-1">
                 {['East', 'West'].map(conf => (

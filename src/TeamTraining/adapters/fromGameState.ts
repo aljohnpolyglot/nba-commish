@@ -94,6 +94,7 @@ export function nbaPlayerToTrainingPlayer(p: NBAPlayer, leagueYear: number, ctx?
     id: p.internalId,
     name: p.name,
     imgURL: p.imgURL,
+    face: p.face,
     age,
     ovr: displayOvr,
     pot: displayPot,

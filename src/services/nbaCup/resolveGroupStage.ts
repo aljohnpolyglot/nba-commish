@@ -165,20 +165,21 @@ export function advanceKnockoutBracket(cup: NBACupState): NBACupState {
   const sf = knockout.filter(k => k.round === 'SF');
   const final = knockout.find(k => k.round === 'Final');
 
-  const qfDone = qf.filter(k => k.winnerTid !== undefined);
-
-  // Fill SFs from QF winners (East: qf[0] winner vs qf[1] winner, West: qf[2] vs qf[3])
-  if (qfDone.length >= 2 && sf[0] && sf[0].tid1 < 0) {
-    sf[0] = { ...sf[0], tid1: qfDone[0].winnerTid!, tid2: qfDone[1].winnerTid! };
+  // Fill SFs from QF winners using fixed bracket positions, NOT resolution order.
+  // East SF = qf[0] winner vs qf[1] winner; West SF = qf[2] vs qf[3]. Using a
+  // qfDone[] filter here would mix conferences if QFs finish out of order — the
+  // 2nd West QF could land in the East SF slot before the East QFs resolve,
+  // stealing the slot and producing a duplicate-team Final.
+  if (sf[0] && sf[0].tid1 < 0 && qf[0]?.winnerTid !== undefined && qf[1]?.winnerTid !== undefined) {
+    sf[0] = { ...sf[0], tid1: qf[0].winnerTid, tid2: qf[1].winnerTid };
   }
-  if (qfDone.length >= 4 && sf[1] && sf[1].tid1 < 0) {
-    sf[1] = { ...sf[1], tid1: qfDone[2].winnerTid!, tid2: qfDone[3].winnerTid! };
+  if (sf[1] && sf[1].tid1 < 0 && qf[2]?.winnerTid !== undefined && qf[3]?.winnerTid !== undefined) {
+    sf[1] = { ...sf[1], tid1: qf[2].winnerTid, tid2: qf[3].winnerTid };
   }
 
-  const sfDone = sf.filter(k => k.winnerTid !== undefined);
-  if (sfDone.length >= 2 && final && final.tid1 < 0) {
+  if (final && final.tid1 < 0 && sf[0]?.winnerTid !== undefined && sf[1]?.winnerTid !== undefined) {
     const fi = knockout.findIndex(k => k.round === 'Final');
-    knockout[fi] = { ...final, tid1: sfDone[0].winnerTid!, tid2: sfDone[1].winnerTid! };
+    knockout[fi] = { ...final, tid1: sf[0].winnerTid, tid2: sf[1].winnerTid };
   }
 
   // Rebuild knockout with updated sf entries

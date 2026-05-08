@@ -32,11 +32,14 @@ export function useLiveGame(
   const [speed, setSpeed] = useState(160);
   const simulatedRef = useRef(false);
 
-  // Freeze players/overrides at init time so ADVANCE_DAY state updates don't
-  // restart the live game mid-playback. Only game identity triggers a reset.
+  // Freeze players/overrides/precomputedResult at init time so ADVANCE_DAY
+  // state updates don't restart the live game mid-playback. Only game
+  // identity (gameKey) triggers a reset.
   const playersRef = useRef(players);
   const homeOverrideRef = useRef(homeOverridePlayers);
   const awayOverrideRef = useRef(awayOverridePlayers);
+  const precomputedRef = useRef(precomputedResult);
+  precomputedRef.current = precomputedResult;
 
   // Stable identity key — only regenerate when the actual game/teams change
   const timingConfig = useMemo(() => getGameTimingConfig(leagueStats), [
@@ -70,8 +73,11 @@ export function useLiveGame(
       simulatedRef.current = true;
 
       try {
-        const usedPrecomputed = !!precomputedResult;
-        const result = precomputedResult ?? GameSimulator.simulateGame(homeTeam, awayTeam, frozenPlayers, game.gid, game.date, 50, frozenHome, frozenAway, undefined, undefined, riggedForTid);
+        // Read via ref so a parent re-render with a fresh precomputedResult
+        // identity doesn't reset playback mid-game (gameKey is the only reset).
+        const snapshotPrecomputed = precomputedRef.current;
+        const usedPrecomputed = !!snapshotPrecomputed;
+        const result = snapshotPrecomputed ?? GameSimulator.simulateGame(homeTeam, awayTeam, frozenPlayers, game.gid, game.date, 50, frozenHome, frozenAway, undefined, undefined, riggedForTid);
         console.log(`[useLiveGame] ${usedPrecomputed ? '✅ using precomputed' : '🔄 fresh sim'} — home=${result.homeScore} away=${result.awayScore} gid=${result.gameId}`);
         setFinalResult(result);
         window.__finalResult = result;
@@ -100,8 +106,10 @@ export function useLiveGame(
         setBadgesLoaded(true);
       }
     });
+  // precomputedResult intentionally excluded — read via precomputedRef so
+  // parent re-renders with new identity don't restart playback.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameKey, precomputedResult, timingConfig]);
+  }, [gameKey, timingConfig]);
 
   useEffect(() => {
     let timer: any;
@@ -298,6 +306,50 @@ export function useLiveGame(
     return stats;
   }, [currentIndex, plays, players, homeTeam.id, finalResult, homeOverridePlayers, awayOverridePlayers]);
 
+  const quarterScores = useMemo(() => {
+    const totalCols = timingConfig.numQuarters + (finalResult?.otCount ?? 0);
+    const isComplete = plays.length > 0 && currentIndex >= plays.length - 1;
+    const out = {
+      away: new Array<string | number>(totalCols).fill('-'),
+      home: new Array<string | number>(totalCols).fill('-'),
+    };
+
+    if (isComplete && finalResult?.quarterScores) {
+      for (let i = 0; i < totalCols; i++) {
+        out.away[i] = finalResult.quarterScores.away[i] ?? '-';
+        out.home[i] = finalResult.quarterScores.home[i] ?? '-';
+      }
+      return out;
+    }
+
+    if (currentIndex < 0) return out;
+
+    const aQs: number[] = [];
+    const hQs: number[] = [];
+    for (let i = 0; i <= currentIndex; i++) {
+      const p = plays[i];
+      if (!p || !p.pts) continue;
+      const idx = p.q - 1;
+      aQs[idx] = aQs[idx] ?? 0;
+      hQs[idx] = hQs[idx] ?? 0;
+      if (p.tm === 'AWAY') aQs[idx] += p.pts;
+      else                  hQs[idx] += p.pts;
+    }
+
+    const currentQ = plays[currentIndex]?.q ?? 1;
+    const visibleCols = Math.max(totalCols, currentQ);
+    for (let i = 0; i < visibleCols; i++) {
+      if (i + 1 <= currentQ) {
+        out.away[i] = aQs[i] || 0;
+        out.home[i] = hQs[i] || 0;
+      } else if (i >= out.away.length) {
+        out.away.push('-');
+        out.home.push('-');
+      }
+    }
+    return out;
+  }, [currentIndex, plays, finalResult, timingConfig.numQuarters]);
+
   const teamStats = useMemo(() => {
     const ts: any = {
       HOME: { fgm:0,fga:0,tp:0,tpa:0,ftm:0,fta:0,ast:0,reb:0,orb:0,drb:0,stl:0,blk:0,tov:0,pts:0,pf:0 },
@@ -368,6 +420,7 @@ export function useLiveGame(
     setSpeed,
     liveStats,
     teamStats,
+    quarterScores,
     startSimulation,
     pauseSimulation,
     skipToEndOfQuarter,

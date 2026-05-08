@@ -431,6 +431,10 @@ export function buildKnockoutGames(
   for (const ko of knockout) {
     const dateStr = dateMap[ko.round];
     if (!dateStr || ko.tid1 < 0 || ko.tid2 < 0) continue;
+    if (ko.tid1 === ko.tid2) {
+      console.warn(`[buildKnockoutGames] skipping ${ko.round}: duplicate tid ${ko.tid1} — bracket bug upstream`);
+      continue;
+    }
     newGames.push({
       gid: gid++,
       homeTid: ko.tid1,

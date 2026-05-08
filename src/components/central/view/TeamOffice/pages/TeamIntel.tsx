@@ -7,12 +7,14 @@ import { StarterService } from '../../../../../services/simulation/StarterServic
 import { convertTo2KRating } from '../../../../../utils/helpers';
 import { NBAPlayer, TeamStatus } from '../../../../../types';
 import { calcPlayerTV, calcOvr2K, isUntouchable, type TeamMode } from '../../../../../services/trade/tradeValueEngine';
+import { AwardService } from '../../../../../services/logic/AwardService';
 import { formatSalaryM, getCapThresholds, getTeamCapProfileFromState, MANUAL_STATUS_LABEL } from '../../../../../utils/salaryUtils';
 import { getTradingBlock, saveTradingBlock } from '../../../../../store/tradingBlockStore';
 import { TeamIntelFreeAgency } from './TeamIntelFreeAgency';
 import { TeamIntelExpiring } from './TeamIntelExpiring';
 import { resolveTeamStrategyProfile } from '../../../../../utils/teamStrategy';
 import { compareGameDates, getCurrentOffseasonEffectiveFAStart } from '../../../../../utils/dateUtils';
+import { getOffseasonState } from '../../../../../services/offseason/offseasonState';
 
 interface TeamIntelProps {
   teamId: number;
@@ -41,7 +43,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   // sortByPositionSlot does the depth-aware ordering; the player's own `pos`
   // carries the auto-rename (e.g., a Wagner-style swingman tagged 'GF' shows
   // as GF, not SF) so the lineup labels match GamePlan exactly.
-  const currentSeason = state.leagueStats?.year ?? 2026;
+  const currentSeason = state.leagueStats?.year ?? new Date().getFullYear();
   const projected = StarterService.getProjectedStarters(team, state.players, currentSeason);
   const sortedStarters = StarterService.sortByPositionSlot(projected.slice(0, 5), currentSeason);
 
@@ -64,9 +66,13 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   // including dead money and two-way exclusions.
   const capProfile = getTeamCapProfileFromState(state, teamId, getCapThresholds(state.leagueStats as any));
   const currentYear = state.leagueStats?.year || 2026;
-  const isPreFA = state.date
-    ? compareGameDates(state.date, getCurrentOffseasonEffectiveFAStart(state.date, state.leagueStats as any, state.schedule as any)) < 0
-    : false;
+  // isPreFA only applies inside the offseason window (between rollover and FA-open).
+  // In-season (Nov–May) the "Projected cap (post-rollover)" label was lying — current
+  // payroll is already locked, no rollover is imminent.
+  const offseasonPhase = state.date
+    ? getOffseasonState(state.date, state.leagueStats as any, state.schedule as any).phase
+    : 'inSeason';
+  const isPreFA = offseasonPhase === 'preDraft' || offseasonPhase === 'draftDay' || offseasonPhase === 'postDraft' || offseasonPhase === 'moratorium';
   const expiringSalaryUSD = isPreFA
     ? players
       .filter(p => (p.contract?.exp ?? 0) === currentYear && !(p as any).twoWay && (p.contract as any)?.type !== 'TWO_WAY')
@@ -88,16 +94,23 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
     const mode: TeamMode = strategy.teamMode;
     const statusLabel = strategy.label.toUpperCase();
 
+    // MVP-race rank — top-30 candidates are franchise pieces (top-10 globally,
+    // top-30 for contenders) and get the same TV premium the trade engine uses.
+    const mvpTop = AwardService.calculateMVPRankings(state.players, state.teams, currentYear, 30);
+    const mvpRank = new Map<string, number>();
+    mvpTop.forEach((c, i) => mvpRank.set(c.player.internalId, i + 1));
+    const tvCtx = { leaguePerAvg: 15, isRegularSeason: false, mvpRank };
+
     // Trade value for each player
     const rosterTV = players.map(p => ({
       player: p,
-      tv: calcPlayerTV(p, mode, currentYear),
+      tv: calcPlayerTV(p, mode, currentYear, tvCtx),
       k2: calcOvr2K(p),
     })).sort((a, b) => b.tv - a.tv);
 
     // Untouchables: shared rule w/ AI/TradingBlock — contend K2≥82, rebuild/presti age<25 & POT≥85,
-    // plus 10-yr loyalty and young-contender core. Cap at 3 to match UI limit.
-    const untouchList = rosterTV.filter(r => isUntouchable(r.player, mode, currentYear)).slice(0, 3);
+    // plus 10-yr loyalty, young-contender core, and top-30 MVP candidates. Cap at 3 to match UI limit.
+    const untouchList = rosterTV.filter(r => isUntouchable(r.player, mode, currentYear, mvpRank)).slice(0, 3);
 
     // Trading block: players the team would be willing to move
     // Keep this aligned with the shared strategy profile so the narrative

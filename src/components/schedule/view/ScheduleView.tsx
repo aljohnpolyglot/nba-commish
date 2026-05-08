@@ -69,6 +69,7 @@ export const ScheduleView: React.FC = () => {
     message: string;
     onConfirm: () => void;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  const [offseasonBlockOpen, setOffseasonBlockOpen] = useState(false);
 
   // Update selected date when state.date changes (e.g. after simulation).
   // Key off both date and day — day is a monotonic counter, so even if the
@@ -94,7 +95,7 @@ export const ScheduleView: React.FC = () => {
     // phases via the AUFGABEN sidebar instead. Avoids dual-driver bugs
     // where ADVANCE_DAY skips past Tag-counter ticks or option deadlines.
     if (state.offseasonChecklist) {
-      window.alert('Calendar sim is paused during the offseason. Use the Offseason sidebar to advance phases.');
+      setOffseasonBlockOpen(true);
       return;
     }
     rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({ type: 'ADVANCE_DAY' })));
@@ -102,7 +103,7 @@ export const ScheduleView: React.FC = () => {
 
   const simulateToDate = async (targetDateStr: string) => {
     if (state.offseasonChecklist) {
-      window.alert('Calendar sim is paused during the offseason. Use the Offseason sidebar to advance phases.');
+      setOffseasonBlockOpen(true);
       return;
     }
     // stopBefore: land ON the selected date with that day's games still unplayed,
@@ -576,7 +577,7 @@ export const ScheduleView: React.FC = () => {
         {boxScoreClickedPlayer && (
           <PlayerRatingsModal
             player={boxScoreClickedPlayer}
-            season={state.leagueStats?.year ?? 2026}
+            season={state.leagueStats?.year ?? new Date().getFullYear()}
             onClose={() => setBoxScoreClickedPlayer(null)}
           />
         )}
@@ -634,6 +635,40 @@ export const ScheduleView: React.FC = () => {
 
       {rosterGate.modal}
       {draftGate.modal}
+      <AnimatePresence>
+        {offseasonBlockOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setOffseasonBlockOpen(false)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-[#111] border border-white/10 rounded-[32px] p-10 max-w-lg w-full shadow-2xl"
+            >
+              <p className="text-[10px] font-black uppercase tracking-[0.35em] text-amber-300 mb-3">Offseason Flow</p>
+              <h3 className="text-3xl font-black text-white uppercase tracking-tight mb-4">Calendar Sim Paused</h3>
+              <p className="text-slate-300 text-sm mb-4 leading-relaxed">
+                During the offseason, the calendar is phase-driven so draft, free agency, training camp, and other checkpoints do not get skipped out of order.
+              </p>
+              <p className="text-slate-500 text-sm mb-8 leading-relaxed">
+                Use the <span className="font-bold text-white">Offseason Tasks</span> panel or the <span className="font-bold text-white">Free Agency Day bar</span> to advance.
+              </p>
+              <button
+                onClick={() => setOffseasonBlockOpen(false)}
+                className="w-full px-6 py-3 bg-amber-500 hover:bg-amber-400 text-black rounded-2xl font-black uppercase tracking-widest text-xs transition-colors"
+              >
+                Got It
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* --- Confirmation Modal --- */}
       <AnimatePresence>

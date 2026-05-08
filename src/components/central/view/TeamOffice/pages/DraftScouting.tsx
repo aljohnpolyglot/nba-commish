@@ -58,7 +58,7 @@ const PROJECTION_LABELS: Record<PickProjection, { label: string; color: string; 
 export function DraftScouting({ teamId }: DraftScoutingProps) {
   const { state } = useGame();
   const team = state.teams.find(t => t.id === teamId);
-  const currentYear = state.leagueStats?.year ?? 2026;
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const nextDraftYear = currentYear; // draft happens in the current leagueStats.year
   const lotterySlotByTid = useMemo(
     () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),

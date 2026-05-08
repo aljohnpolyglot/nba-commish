@@ -105,7 +105,7 @@ function PhaseTabs({ phase, onChange }: { phase: Phase; onChange: (p: Phase) => 
 
 // ─── Season label cell with All-Star star ─────────────────────────────────────
 
-function SeasonCell({ row, allStarSeasons, ringSeasons }: { row: SeasonRow; allStarSeasons: Set<number>; ringSeasons: Set<number> }) {
+function SeasonCell({ row, allStarSeasons, ringSeasons, cupSeasons }: { row: SeasonRow; allStarSeasons: Set<number>; ringSeasons: Set<number>; cupSeasons: Set<number> }) {
   if (row.isCareer) return <span>Career</span>;
   if (row.isSubRow) return <span className="text-slate-500">{getSeasonLabel(row.season)}</span>;
   return (
@@ -113,6 +113,9 @@ function SeasonCell({ row, allStarSeasons, ringSeasons }: { row: SeasonRow; allS
       {getSeasonLabel(row.season)}
       {ringSeasons.has(row.season) && !row.isTot && (
         <span className="text-yellow-400 text-[9px]" title="NBA Champion">💍</span>
+      )}
+      {cupSeasons.has(row.season) && !row.isTot && (
+        <span className="text-amber-400 text-[9px]" title="NBA Cup Champion">🏆</span>
       )}
       {allStarSeasons.has(row.season) && !row.isTot && (
         <span className="text-amber-400 text-[9px]" title="All-Star">★</span>
@@ -136,12 +139,13 @@ interface ColDef {
 }
 
 function StatsTable({
-  rows, cols, allStarSeasons, ringSeasons, groupHeaders,
+  rows, cols, allStarSeasons, ringSeasons, cupSeasons, groupHeaders,
 }: {
   rows: SeasonRow[];
   cols: ColDef[];
   allStarSeasons: Set<number>;
   ringSeasons: Set<number>;
+  cupSeasons: Set<number>;
   groupHeaders?: { label: string; span: number }[];
 }) {
   const bodyRows  = rows.filter(r => !r.isCareer);
@@ -214,7 +218,7 @@ function StatsTable({
                     ${col.key === 'season' ? 'font-semibold text-slate-200' : ''}
                   `}
                 >
-                  {col.key === 'season' ? <SeasonCell row={row} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} /> : col.fmt(row)}
+                  {col.key === 'season' ? <SeasonCell row={row} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} cupSeasons={cupSeasons} /> : col.fmt(row)}
                 </td>
               ))}
             </tr>
@@ -826,13 +830,19 @@ export const PlayerBioStatsHistory: React.FC<Props> = ({ player }) => {
   const ringSeasons = useMemo<Set<number>>(() => {
     const set = new Set<number>();
     (player.awards ?? []).forEach(a => {
-      if (a.type && (
-        a.type.toLowerCase().includes('champion') ||
-        a.type.toLowerCase() === 'nba champion' ||
-        a.type.toLowerCase() === 'nba championship'
-      )) {
+      if (!a.type) return;
+      const t = a.type.toLowerCase();
+      if ((t.includes('champion') || t === 'nba champion' || t === 'nba championship') && !t.includes('cup')) {
         set.add(a.season);
       }
+    });
+    return set;
+  }, [player.awards]);
+
+  const cupSeasons = useMemo<Set<number>>(() => {
+    const set = new Set<number>();
+    (player.awards ?? []).forEach(a => {
+      if (a.type?.toLowerCase() === 'nba cup champion') set.add(a.season);
     });
     return set;
   }, [player.awards]);
@@ -862,9 +872,10 @@ export const PlayerBioStatsHistory: React.FC<Props> = ({ player }) => {
         <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
           <div>
             <h3 className="text-xs font-black text-slate-400 uppercase tracking-[3px]">Per Game</h3>
-            {(allStarSeasons.size > 0 || ringSeasons.size > 0) && (
+            {(allStarSeasons.size > 0 || ringSeasons.size > 0 || cupSeasons.size > 0) && (
               <p className="text-[10px] text-slate-600 mt-0.5">
                 {ringSeasons.size > 0 && '💍 Champion  '}
+                {cupSeasons.size > 0 && '🏆 Cup Champion  '}
                 {allStarSeasons.size > 0 && '★ All-Star'}
               </p>
             )}
@@ -872,7 +883,7 @@ export const PlayerBioStatsHistory: React.FC<Props> = ({ player }) => {
           <PhaseTabs phase={pgPhase} onChange={setPgPhase} />
         </div>
         <div className="rounded-xl border border-slate-800 overflow-hidden">
-          <StatsTable rows={toRows(pgData)} cols={PG_COLS} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} />
+          <StatsTable rows={toRows(pgData)} cols={PG_COLS} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} cupSeasons={cupSeasons} />
         </div>
       </section>
 
@@ -883,7 +894,7 @@ export const PlayerBioStatsHistory: React.FC<Props> = ({ player }) => {
           <PhaseTabs phase={slPhase} onChange={setSlPhase} />
         </div>
         <div className="rounded-xl border border-slate-800 overflow-hidden">
-          <StatsTable rows={toRows(slData)} cols={SL_COLS} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} groupHeaders={SL_GROUPS} />
+          <StatsTable rows={toRows(slData)} cols={SL_COLS} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} cupSeasons={cupSeasons} groupHeaders={SL_GROUPS} />
         </div>
       </section>
 
@@ -894,7 +905,7 @@ export const PlayerBioStatsHistory: React.FC<Props> = ({ player }) => {
           <PhaseTabs phase={advPhase} onChange={setAdvPhase} />
         </div>
         <div className="rounded-xl border border-slate-800 overflow-hidden">
-          <StatsTable rows={toRows(advData)} cols={ADV_COLS} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} />
+          <StatsTable rows={toRows(advData)} cols={ADV_COLS} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} cupSeasons={cupSeasons} />
         </div>
       </section>
 
@@ -905,7 +916,7 @@ export const PlayerBioStatsHistory: React.FC<Props> = ({ player }) => {
           <PhaseTabs phase={ghPhase} onChange={setGhPhase} />
         </div>
         <div className="rounded-xl border border-slate-800 overflow-hidden">
-          <StatsTable rows={toRows(ghData)} cols={GH_COLS} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} />
+          <StatsTable rows={toRows(ghData)} cols={GH_COLS} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} cupSeasons={cupSeasons} />
         </div>
       </section>
 

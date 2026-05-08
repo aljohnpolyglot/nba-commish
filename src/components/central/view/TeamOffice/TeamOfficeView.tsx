@@ -10,15 +10,13 @@ import { TeamNeeds } from './pages/TeamNeeds';
 import { TeamIntel } from './pages/TeamIntel';
 import { TeamOfficeRosterView } from './pages/TeamOfficeRosterView';
 import { DraftPicks } from './pages/DraftPicks';
-import { CoachingPage } from './pages/CoachingPage';
 import { DraftScouting } from './pages/DraftScouting';
 import { TeamOfficeDepthChartTab } from './pages/TeamOfficeDepthChartTab';
 
-type OfficeTab = 'home' | 'gm' | 'coaching' | 'depth' | 'intel' | 'needs' | 'trading' | 'picks' | 'scouting';
+type OfficeTab = 'home' | 'gm' | 'depth' | 'intel' | 'needs' | 'trading' | 'picks' | 'scouting';
 
 const TABS: { id: OfficeTab; label: string }[] = [
   { id: 'gm', label: 'General Manager' },
-  { id: 'coaching', label: 'Coaching' },
   { id: 'depth', label: 'Depth Chart' },
   { id: 'intel', label: 'Team Intel' },
   { id: 'needs', label: 'Team Needs' },
@@ -73,7 +71,6 @@ export function TeamOfficeView() {
     }
     switch (activeTab) {
       case 'gm': return <TeamOfficeRosterView teamId={currentTeam.id} />;
-      case 'coaching': return <CoachingPage teamId={currentTeam.id} />;
       case 'depth': return <TeamOfficeDepthChartTab teamId={currentTeam.id} />;
       case 'intel': return <TeamIntel teamId={currentTeam.id} onPlayerClick={setSelectedPlayer} />;
       case 'needs': return <TeamNeeds teamId={currentTeam.id} />;
@@ -128,11 +125,7 @@ export function TeamOfficeView() {
                 <ChevronLeft size={20} />
               </button>
               <nav className="flex gap-6 sm:gap-10 overflow-x-auto whitespace-nowrap pb-1 scrollbar-hide w-full">
-                {TABS.filter(tab => {
-                  // GM mode: hide coaching tab for other teams (can't edit their coaching)
-                  if (isGM && tab.id === 'coaching' && currentTeamId !== state.userTeamId) return false;
-                  return true;
-                }).map(tab => (
+                {TABS.map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}

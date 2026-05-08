@@ -9,6 +9,7 @@ import type { K2Result } from '../types';
 
 export type { CoachSliders } from '../../utils/coachSliders';
 export { systemDescriptions } from '../../utils/systemDescriptions';
+export { defensiveSystemDescriptions } from '../../utils/defensiveSystemDescriptions';
 export type { SystemRequirement } from '../../utils/systemDescriptions';
 
 export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[][]) {

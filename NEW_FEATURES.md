@@ -4,39 +4,16 @@ Active/upcoming work, backlog ideas, and feature planning.
 
 ---
 
-## HoopsGM — Team Training Engine (NEXT UP — May 2026)
+## HoopsGM — Team Training Engine (✓ SHIPPED Sessions 48–50 + 54)
 
-**Status:** Architecture complete (`ARCHITECTURE.md`). Standalone NBA team training sim — wire into nba-commish as a new top-level view or embedded Team Office tab.
+**Status:** SHIPPED. Wire-in fertig, AI Coach Paradigm + Defensive Aura + Dashboard Status Bar laufen. Verweis auf:
+- CHANGELOG Sessions 48 (Phasen 1–3), 50 (Phase 3.5/4), 54 (AI Coach Paradigm + Coaching Phase 3 Stores).
+- `TEAM_TRAINING_PLAN.md` für Guiding Principle + zukünftige Erweiterungen (Defensive System Library, Team Chemistry, Conditioning as Decay Fighter).
+- `COACHING_DEPTH_ROADMAP.md` für die 4-Phasen-Roadmap (Phase 1+2 done, Phase 3 als UI/Persist done, Sim-Wiring deferred).
 
-**What exists (standalone app):**
-- `Dashboard` — 30-day calendar with clickable daily training config (`DailyPlanModal`, paradigm presets, 5-system minimum)
-- `Roster` — Player table with dev focus (`TrainingFocusModal` 2-phase archetype selector), intensity, mentorship
-- `Systems` — 20 tactical systems scored via `getSystemProficiency()`, tiers (Mastery/Competence/Dissonance), `SystemModal` + `ArchetypeTrainingModal` chain
-- `simulation.ts` — monthly sim engine consuming `dailyPlans`, `archetypes`, `staffing`
-- Two separate archetype systems: `ARCHETYPE_PROFILES` (display/eligibility) + `TRAINING_WEIGHTS` (sim engine) — must never be merged
-- Rating bridge: BBGM 0–100 ↔ K2 60–99 via `convertTo2KRating` (same formula as nba-commish `ratingUtils`)
-
-**Wiring plan into nba-commish:**
-1. Mount `ScheduleView` + `DailyPlanModal` inside `TeamOffice` as a new **Training** tab — reads `state.players` for user team roster
-2. Pipe `Player[]` through `mapPlayerToK2()` → `calculateCoachSliders()` → `getSystemProficiency()` (already compatible with nba-commish K2 scale)
-3. Persist `dailyPlans` + `devFocus` per player on `state.teams[userTeamId]` — new fields `trainingCalendar` + `playerDevPaths`
-4. Hook monthly sim output into `ProgressionEngine` — `simulation.ts` produces attribute deltas; apply as `ovrAdjustment` on top of existing `calcBaseChange`
-5. `SystemProficiencyView` → surface top-3 systems in Team Intel / Coaching gameplan tab
-6. `TrainingFocusModal` archetype selection → write `player.devFocus` (already used by progression system)
-
-**Key files to touch on integration:**
-- `src/components/central/view/TeamOffice/pages/CoachingView/` — add Training tab
-- `src/services/progressionEngine.ts` — read `player.devFocus` + `team.trainingCalendar` deltas
-- `src/types/` — extend `NBATeam` with `trainingCalendar`, extend `NBAPlayer` with `devFocus`
-
-**What must NOT change during wiring:**
-- `FrontOfficePanel` commented-out code (future feature)
-- `generateStaff.ts` (Front Office dependency)
-- Normalization loop at bottom of `archetypes.ts`
-- `TRAINING_WEIGHTS` — separate from `ARCHETYPE_PROFILES`
-- `ArchetypeTrainingModal` + `initialArchetype` prop chain
-
-See `ARCHITECTURE.md` for full file map, data flow, archetype system rules, and styling conventions.
+**Was noch fehlt:**
+- Coaching Phase 3 **Sim-Wiring** — `defenseGameplanStore` / `defenderDetailStore` / `rivalGameplanStore` / `matchupAssignmentsStore` werden vom GameSim noch nicht gelesen. StatGenerator-Knob-Pass ist die nächste Iteration.
+- Team Chemistry als trainbarer Meter (siehe TEAM_TRAINING_PLAN.md "Future Updates").
 
 ---
 
@@ -443,4 +420,4 @@ For detailed session-by-session work, see CHANGELOG.md.
 - **fgaFloor over-volumes ultra-quiet blowout games.** Reaves Nov 11 `1/2, 22 min, +17` — current floor (~9 FGA) prevents this. Could add blowout-aware floor reduction (`lead > 15 && winning → halve floor`).
 - **Reduce floor coefficient 0.40 → 0.30?** Would allow 6-7 FGA bench cameos while still floor=10.5 at 35 min. Pending user call.
 
-*Last updated: 2026-04-18 (session 25)*
+*Last updated: 2026-05-07 (Session 54)*

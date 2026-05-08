@@ -112,7 +112,7 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
   const quick = usePlayerQuickActions();
   const isGM = state.gameMode === 'gm';
   const isOwnTeam = isGM && teamId === state.userTeamId;
-  const currentYear = state.leagueStats?.year ?? 2026;
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
 
   const team = state.teams.find(t => t.id === teamId);
   const gamesPlayed = (team?.wins ?? 0) + (team?.losses ?? 0);

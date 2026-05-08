@@ -266,11 +266,11 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
     // Derive from team outlook.
     const t = state.teams.find(tm => tm.id === teamId);
     if (t) {
-      const rec = effectiveRecord(t, state.leagueStats?.year ?? 2026);
+      const rec = effectiveRecord(t, state.leagueStats?.year ?? new Date().getFullYear());
       const thresholds = getCapThresholds(state.leagueStats as any);
       const teamPlayers = state.players.filter(p => p.tid === teamId);
       const payroll = teamPlayers.reduce((s, p) => s + (p.contract?.amount ?? 0) * 1000, 0);
-      const expiringCount = teamPlayers.filter(p => (p.contract?.exp ?? 0) <= (state.leagueStats?.year ?? 2026)).length;
+      const expiringCount = teamPlayers.filter(p => (p.contract?.exp ?? 0) <= (state.leagueStats?.year ?? new Date().getFullYear())).length;
       const confTeams = state.teams.filter(tm2 => tm2.conference === t.conference);
       const confRank = [...confTeams]
         .sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses))

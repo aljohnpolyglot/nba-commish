@@ -65,7 +65,7 @@ export const DraftHistoryView: React.FC = () => {
     return Array.from(years).sort((a, b) => b - a);
   }, [state.players, nonNBACacheVer]);
 
-  const defaultViewYear = availableDraftYears[0] ?? (state.leagueStats?.year ?? 2026);
+  const defaultViewYear = availableDraftYears[0] ?? (state.leagueStats?.year ?? new Date().getFullYear());
   const [viewDraftYear, setViewDraftYear] = useState<number>(defaultViewYear);
 
   useEffect(() => {
@@ -116,7 +116,7 @@ export const DraftHistoryView: React.FC = () => {
         const tp = lastRatings.tp;
         // Must match PlayerBiosView: prefer overallRating (updated by progression), fall back to ratings array
         const rawOvr = p.overallRating || lastRatings.ovr || 0;
-        const simYear = state.leagueStats?.year ?? 2026;
+        const simYear = state.leagueStats?.year ?? new Date().getFullYear();
         const age = p.born?.year ? simYear - p.born.year : (typeof p.age === 'number' ? p.age : 25);
         return { ...p, _slot: slot, displayOvr: convertTo2KRating(rawOvr, hgt, tp), displayPot: estimatePot(rawOvr, hgt, tp, age) };
       });

@@ -20,6 +20,7 @@ import { getInjuries, getRandomInjury } from '../../injuryService';
 import { getScoringOptions, getScoringOptionBiases, getCoachingPenalty } from '../../../store/scoringOptionsStore';
 import { getLockedStrategy } from '../../../store/coachStrategyLockStore';
 import { getSystemFitPenalty, getSystemKnobMods, getSystemProficiencyBoost } from '../../../store/coachSystemStore';
+import { getDefenseGameplan, TEMPLATE_TO_SYSTEM } from '../../../store/defenseGameplanStore';
 import { resolveExhibitionRules } from '../../allStar/exhibitionRules';
 import { getFourPointDistance, isFourPointEnabled } from '../../../utils/ruleFlags';
 
@@ -57,7 +58,28 @@ function getFamiliarityMods(team?: Team): {
   opponentTovMult: number;
 } {
   const off = Math.max(0, Math.min(100, team?.systemFamiliarity?.offense ?? 0));
-  const def = Math.max(0, Math.min(100, team?.systemFamiliarity?.defense ?? 0));
+  const flatDef = Math.max(0, Math.min(100, team?.systemFamiliarity?.defense ?? 0));
+
+  // Per-scheme proficiency override (Roadmap §4.4): if the team has chosen
+  // a non-Custom defensive template AND has trained that specific scheme,
+  // the chosen-scheme familiarity overrides the flat scalar — specialization
+  // wins. Cold call (< 25 prof) dampens the effect to 40% to model rotation
+  // breakdowns: the scheme is "running" but players stumble on assignments.
+  let effectiveDef = flatDef;
+  if (team?.id != null) {
+    const plan = getDefenseGameplan(team.id);
+    if (plan.template !== 'Custom') {
+      const sysName = TEMPLATE_TO_SYSTEM[plan.template];
+      const schemeProf = team?.systemFamiliarity?.byDefense?.[sysName];
+      if (typeof schemeProf === 'number') {
+        effectiveDef = schemeProf < 25
+          ? schemeProf * 0.4
+          : Math.max(flatDef, schemeProf);
+      }
+    }
+  }
+
+  const def = effectiveDef;
   return {
     strengthBoost: ((off + def) / 200) * 2,
     efficiencyMult: 1 + off * 0.00045,
@@ -669,10 +691,10 @@ export class GameSimulator {
     const homeOverrideForStats = homeOverridePlayers ? applyTrainingFatiguePerformance(homeOverridePlayers) : undefined;
     const awayOverrideForStats = awayOverridePlayers ? applyTrainingFatiguePerformance(awayOverridePlayers) : undefined;
     const homeInitial = StatGenerator.generateStatsForTeam(
-      homeTeam, fatigueAdjustedPlayers, finalHomeScore, homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, homeOverrideForStats, otCount, away2KDef, homeKnobsFinal, homeBiases
+      homeTeam, fatigueAdjustedPlayers, finalHomeScore, homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, currentSeason, homeOverrideForStats, otCount, away2KDef, homeKnobsFinal, homeBiases
     );
     const awayInitial = StatGenerator.generateStatsForTeam(
-      awayTeam, fatigueAdjustedPlayers, finalAwayScore, !homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, 2026, awayOverrideForStats, otCount, home2KDef, awayKnobsFinal, awayBiases
+      awayTeam, fatigueAdjustedPlayers, finalAwayScore, !homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, currentSeason, awayOverrideForStats, otCount, home2KDef, awayKnobsFinal, awayBiases
     );
 
     const homeMisses = homeInitial.reduce(
@@ -702,15 +724,29 @@ export class GameSimulator {
     const homeOrbMult = 1 + ((homeCrashPre - 50) / 50) * 0.35;
     const awayOrbMult = 1 + ((awayCrashPre - 50) / 50) * 0.35;
 
+    // DRB pool keeps the existing 0.70 base (league-wide REB mean is already on target).
+    // Layer a small winner-edge with per-team variance: winning team's defense forces
+    // a slight extra miss, but with ±5% wobble so the asymmetry isn't deterministic.
+    // Real NBA: NYK 140-89 ATL blowout (51-pt diff) has only +11 REB for winner — the
+    // natural FG%-divergence mechanism already produces most of that asymmetry. Edge
+    // is kept tiny (2%) to nudge symmetric-profile games (e.g. DET-SAC 144-103 with
+    // equal misses) toward winner without overshooting brick-fest games. Mean-preserving
+    // because winner/loser are roughly 50/50 across the season.
+    const WINNER_EDGE = 0.02;  // +2% DRB to winner, -2% to loser
+    const homeDrbWobble = 1 + (Math.random() - 0.5) * 0.10;  // ±5% per team
+    const awayDrbWobble = 1 + (Math.random() - 0.5) * 0.10;
+    const homeDrbMult   = (homeWinsFinal ? (1 + WINNER_EDGE) : (1 - WINNER_EDGE)) * homeDrbWobble;
+    const awayDrbMult   = (homeWinsFinal ? (1 - WINNER_EDGE) : (1 + WINNER_EDGE)) * awayDrbWobble;
+
     const homeStats = StatGenerator.generateCoordinatedStats(
       homeInitial,
       homeTeam,
       availablePlayers,
-      awayMisses         * 0.70,
+      awayMisses         * 0.70 * homeDrbMult,
       awayTov            * 0.60,
       awayInteriorMisses * 0.33 * awayBlkMult,  // blockRateMult scales away team's blockable interior misses
       awayFTA,
-      2026,
+      currentSeason,
       otCount,
       home2KDef,  // home team's defensive ratings (sizes their steal/block pools)
       away2KDef,  // away team's pass perception (shrinks home's assist pool)
@@ -723,11 +759,11 @@ export class GameSimulator {
       awayInitial,
       awayTeam,
       availablePlayers,
-      homeMisses         * 0.70,
+      homeMisses         * 0.70 * awayDrbMult,
       homeTov            * 0.60,
       homeInteriorMisses * 0.33 * homeBlkMult,  // blockRateMult scales home team's blockable interior misses
       homeFTA,
-      2026,
+      currentSeason,
       otCount,
       away2KDef,  // away team's defensive ratings
       home2KDef,  // home team's pass perception

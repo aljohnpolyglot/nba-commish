@@ -200,7 +200,8 @@ export function routeUnsignedPlayers(
       ? Math.round(salaryCap * (scale.minPct + ovrNorm * (scale.maxPct - scale.minPct)))
       : 500_000;
     const years = k2Ovr >= 70 ? 2 : 1;
-    const contractExp = (state.leagueStats?.year ?? 2026) + years - 1;
+    const leagueYear = state.leagueStats?.year ?? getGameDateParts(state.date ?? new Date()).year;
+    const contractExp = leagueYear + years - 1;
 
     results.push({
       playerId: p.internalId,
@@ -231,8 +232,7 @@ export function routeUnsignedPlayers(
     // Fix 17: build a clean single-year contractYears entry at the destination
     // league's salary — strips old NBA contractYears that would show inflated
     // values in the player bio contract tab (e.g. Yuto Imanishi ¥622M B-League).
-    const currentYear = state.leagueStats?.year ?? 2026;
-    const seasonLabel = `${currentYear - 1}-${String(currentYear).slice(-2)}`;
+    const seasonLabel = `${leagueYear - 1}-${String(leagueYear).slice(-2)}`;
 
     return {
       ...p,

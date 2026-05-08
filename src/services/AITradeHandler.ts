@@ -1,46 +1,18 @@
-/**
- * AITradeHandler.ts
- *
- * Autonomous AI-vs-AI trade logic.
- * Spec: multiseason_todo.md §2
- */
-
 import type { GameState, NBAPlayer, NBATeam, DraftPick, TradeProposal } from '../types';
 import { getCapThresholds, effectiveRecord } from '../utils/salaryUtils';
-import { calcOvr2K, calcPlayerTV, isUntouchable, isRecentlySignedLocked } from './trade/tradeValueEngine';
-import { isAssistantGMActive } from './assistantGMFlag';
+import { isUntouchable, isRecentlySignedLocked, computeLeaguePerAvg, type TVContext } from './trade/tradeValueEngine';
+import { AwardService } from './logic/AwardService';
 import type { TeamMode } from './trade/tradeValueEngine';
 import { generateAITradeProposal, generatePickOnlyProposal } from './trade/tradeFinderEngine';
-import { CASH_TRADE_CAP_USD } from './trade/tradeValueEngine';
 import { resolveTeamStrategyProfile, tradeRoleToTeamMode } from '../utils/teamStrategy';
 import { SettingsManager } from './SettingsManager';
-import { getMinTradableSeason, getTradablePicks, getMaxTradableSeason } from './draft/DraftPickGenerator';
+import { getMinTradableSeason, getTradablePicks, getMaxTradableSeason, DEFAULT_TRADABLE_PICK_SEASONS } from './draft/DraftPickGenerator';
 import { buildClassStrengthMap, buildFullDraftSlotMap, formatPickLabel } from './draft/draftClassStrength';
 import { getGMAttributes, getGMName, tradeInitiateProb, pickHoardResistance } from './staff/gmAttributes';
 import { generateTPEsFromTrade } from '../utils/tradeExceptionUtils';
 import { validateStepienRule } from './trade/stepienRule';
 import { validateCBATradeRules } from '../utils/cbaTradeRules';
 import { daysBetweenGameDates, isInPostDeadlinePreFAWindow, parseGameDate, toISODateString } from '../utils/dateUtils';
-
-// ── §2d: Pick values ──────────────────────────────────────────────────────────
-
-function pickValue(_pick: DraftPick): number {
-  return 45; // default mid first round; future: derive from lottery odds
-}
-
-/** Sweetener value for gap-filling: conservative estimates so we don't over-value picks. */
-function sweetenerPickValue(pk: DraftPick): number {
-  return pk.round === 1 ? 30 : 14;
-}
-
-/** TV for a side (players + picks) from a team's perspective. */
-function sideTV(players: NBAPlayer[], picks: DraftPick[], mode: TeamMode, currentYear: number): number {
-  return players.reduce((s, p) => s + calcPlayerTV(p, mode, currentYear), 0)
-    + picks.reduce((s, pk) => s + pickValue(pk), 0);
-}
-
-// ── §2e: Proposal loop ────────────────────────────────────────────────────────
-
 
 /** Players traded within the last 60 days — not eligible to be traded again. */
 function recentlyTradedPlayerIds(state: GameState): Set<string> {
@@ -70,10 +42,13 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   // In GM mode, exclude the user's team from AI trade proposals. In commissioner mode every team is AI,
   // and userTeamId may still be the remembered "last managed" franchise across mode switches.
-  const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive()) ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
+  // assistantGMActive does NOT bypass the user-team guard. Auto-Resolve was
+  // grinding the user's rebuild — auto-trading future picks + auto-signing bums.
+  // The flag means "sim through phases without prompting", not "delegate the team".
+  const userTeamId = (state.gameMode === 'gm') ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
   const thresholds = getCapThresholds(state.leagueStats as any);
   const stepienOn = state.leagueStats?.stepienRuleEnabled !== false;
-  const tradablePickWindow = state.leagueStats?.tradableDraftPickSeasons ?? 7;
+  const tradablePickWindow = state.leagueStats?.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS;
   const isPostDeadlinePreFA = isInPostDeadlinePreFAWindow(state.date, currentYear, state.leagueStats as any);
   const recentlySignedLockMs = {
     currentDate: state.date ?? '',
@@ -153,7 +128,6 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
   const recentlyTraded = recentlyTradedPlayerIds(state);
   const reservedTeams = new Set<number>();
   const reservedAssetIds = new Set<string>();
-  const getRawK2 = (p: NBAPlayer) => calcOvr2K(p);
 
   // ── Main proposal loop: delegate to tradeFinderEngine ─────────────────────
   // Share the exact matching logic TradeFinderView uses so AI-AI proposals get
@@ -178,6 +152,20 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
   const tradablePicks = getTradablePicks(state);
   const classStrengthByYear = buildClassStrengthMap(state.players, currentYear, currentYear, getMaxTradableSeason(state));
   const lotterySlotByTid = buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams);
+
+  // MVP-race rank — flag franchise-altering candidates so the engine treats top-30
+  // MVP players as untouchable (top-10 globally, top-30 for contenders) and gives
+  // a TV premium so the buyer must actually pay franchise-tier compensation.
+  const mvpTop = AwardService.calculateMVPRankings(state.players, state.teams, currentYear, 30);
+  const mvpRank = new Map<string, number>();
+  mvpTop.forEach((c, i) => mvpRank.set(c.player.internalId, i + 1));
+  const month = state.date ? new Date(state.date).getMonth() + 1 : 0;
+  const isRegularSeason = (month >= 10 && month <= 12) || (month >= 1 && month <= 4);
+  const tvContext: TVContext = {
+    leaguePerAvg: isRegularSeason ? computeLeaguePerAvg(state.players, currentYear) : 15,
+    isRegularSeason,
+    mvpRank,
+  };
 
   // Sort buyers by GM trade_aggression (desc) so aggressive GMs get first crack
   // at today's proposal slots; passive GMs rarely initiate.
@@ -206,6 +194,7 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
         minTradableSeason,
         powerRanks,
         teamOutlooks: teamOutlooksMap,
+        tvContext,
         classStrengthByYear,
         lotterySlotByTid,
         stepienEnabled: stepienOn,
@@ -243,13 +232,7 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
       // pick rolls against the buyer's hoard resistance; if any rolls fail, the GM
       // walks away from a deal that bleeds draft capital.
       const buyerHoard = pickHoardResistance(getGMAttributes(state, buyerTeam.id).scouting_focus);
-      if (buyerHoard > 0 && picksOffered.length > 0) {
-        let vetoed = false;
-        for (let i = 0; i < picksOffered.length; i++) {
-          if (Math.random() < buyerHoard) { vetoed = true; break; }
-        }
-        if (vetoed) continue;
-      }
+      if (buyerHoard > 0 && picksOffered.some(() => Math.random() < buyerHoard)) continue;
 
       const cba = validateCBATradeRules({
         teamAId: buyerTeam.id,
@@ -292,13 +275,19 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
   // Rebuilding team dumps an expiring/overpaid player + pick to a cap-space team.
   // Only fires if we haven't already generated 2 proposals above.
   if (count < 2) {
-    const capSpaceTeams = state.teams.filter(t => {
-      if (t.id === userTeamId) return false;
-      const payroll = state.players
-        .filter(p => p.tid === t.id)
-        .reduce((s, p) => s + (p.contract?.amount ?? 0), 0);
-      return payroll * 1000 < (thresholds.salaryCap ?? 136_000_000) * 0.85; // >15% below cap
-    });
+    // Sorted DESC by cap room — biggest cap-space teams absorb dumps first instead
+    // of the iteration-order team always winning the find().
+    const capUSD = thresholds.salaryCap ?? 136_000_000;
+    const capSpaceTeams = state.teams
+      .map(t => {
+        const payrollUSD = state.players
+          .filter(p => p.tid === t.id)
+          .reduce((s, p) => s + (p.contract?.amount ?? 0), 0) * 1000;
+        return { team: t, capRoom: capUSD - payrollUSD };
+      })
+      .filter(({ team, capRoom }) => team.id !== userTeamId && capRoom > capUSD * 0.15)
+      .sort((a, b) => b.capRoom - a.capRoom)
+      .map(({ team }) => team);
 
     // Same aggression-sort as the main loop so the most active GMs dump first.
     const sellerTeamsByAgg = [...sellerTeams]
@@ -323,7 +312,7 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
       const dumpCandidate = sellerRoster
         .filter(p => {
           if (recentlyTraded.has(p.internalId)) return false;
-          if (isUntouchable(p, dumpSellerMode, currentYear)) return false;
+          if (isUntouchable(p, dumpSellerMode, currentYear, mvpRank)) return false;
           if (isPostDeadlinePreFA && (p.contract?.exp ?? currentYear + 5) <= currentYear) return false;
           if (isRecentlySignedLocked(p, recentlySignedLockMs.currentDate, recentlySignedLockMs.leagueStats)) return false;
           const exp = p.contract?.exp ?? (currentYear + 2);
@@ -355,8 +344,9 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
         .filter(p => p.tid === absorber.id)
         .reduce((s, p) => s + (p.contract?.amount ?? 0), 0);
 
-      // Absorber gets the player's salary — make sure it fits under the cap
-      if (absorberPayroll + dumpSalary > (thresholds.salaryCap ?? 136_000) * 1.1) continue;
+      // Absorber gets the player's salary — make sure it fits under the cap.
+      // Both payroll and dumpSalary are BBGM thousands; salaryCap is USD.
+      if ((absorberPayroll + dumpSalary) * 1000 > (thresholds.salaryCap ?? 136_000_000) * 1.1) continue;
 
       if (!stepienOk(sellerTeam.id, absorber.id, [dumpPick.dpid], [])) continue;
       const cbaDump = validateCBATradeRules({
@@ -536,7 +526,7 @@ function validateAITradeExecution(
 
   if (state.leagueStats?.stepienRuleEnabled !== false && (offeredPicksState.length > 0 || requestedPicksState.length > 0)) {
     const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
-    const tradablePickWindow = state.leagueStats?.tradableDraftPickSeasons ?? 7;
+    const tradablePickWindow = state.leagueStats?.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS;
     const stepien = validateStepienRule(state.draftPicks ?? [], currentYear, tradablePickWindow, proposingTeamId, receivingTeamId, offeredPicksState, requestedPicksState);
     if (!stepien.ok) {
       const stepienReason = 'reason' in stepien ? stepien.reason : 'Stepien Rule failure.';
@@ -659,13 +649,19 @@ export function executeAITrade(proposal: TradeProposal, state: GameState): Parti
   const sentWithCash = cashOut > 0 ? (sentAssets ? `${sentAssets} + ${fmtCash(cashOut)} cash` : `${fmtCash(cashOut)} cash`) : sentAssets;
   const recvWithCash = cashIn > 0 ? (recvAssets ? `${recvAssets} + ${fmtCash(cashIn)} cash` : `${fmtCash(cashIn)} cash`) : recvAssets;
 
-  const historyText = sentWithCash && recvWithCash
-    ? `TRADE: ${proposingTeam.name} sends ${sentWithCash} to ${receivingTeam.name} for ${recvWithCash}.`
-    : sentWithCash
-      ? `TRADE: ${proposingTeam.name} sends ${sentWithCash} to ${receivingTeam.name}.`
-      : recvWithCash
-        ? `TRADE: ${proposingTeam.name} receives ${recvWithCash} from ${receivingTeam.name}.`
-        : `TRADE: ${proposingTeam.name} and ${receivingTeam.name} exchange picks.`;
+  const buildHistoryText = (): string => {
+    if (sentWithCash && recvWithCash) {
+      return `TRADE: ${proposingTeam.name} sends ${sentWithCash} to ${receivingTeam.name} for ${recvWithCash}.`;
+    }
+    if (sentWithCash) {
+      return `TRADE: ${proposingTeam.name} sends ${sentWithCash} to ${receivingTeam.name}.`;
+    }
+    if (recvWithCash) {
+      return `TRADE: ${proposingTeam.name} receives ${recvWithCash} from ${receivingTeam.name}.`;
+    }
+    return `TRADE: ${proposingTeam.name} and ${receivingTeam.name} exchange picks.`;
+  };
+  const historyText = buildHistoryText();
 
   const historyEntry = {
     text: historyText,

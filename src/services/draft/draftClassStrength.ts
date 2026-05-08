@@ -158,3 +158,28 @@ export function formatPickLabel(
     : (short ? '2nd Rd' : '2nd Round');
   return `${yearPart}${roundPart}`;
 }
+
+/**
+ * Stable comparator for draft picks: season ASC → round ASC → resolved slot ASC
+ * (current year only, when the lottery has fired) → originalTid ASC fallback.
+ * Use everywhere a list of picks is shown to the user (TradeMachine, TradeFinder,
+ * TradingBlock, DraftPicks inventory) — random insertion order is confusing
+ * because resolved current-year picks read like a shuffled #N list otherwise.
+ */
+export function comparePicks(
+  a: { season: number; round: number; originalTid: number },
+  b: { season: number; round: number; originalTid: number },
+  currentYear: number,
+  lotterySlotByTid?: Map<number, number>,
+): number {
+  if (a.season !== b.season) return a.season - b.season;
+  if (a.round !== b.round) return a.round - b.round;
+  if (a.season === currentYear && lotterySlotByTid) {
+    const sa = lotterySlotByTid.get(a.originalTid);
+    const sb = lotterySlotByTid.get(b.originalTid);
+    if (sa != null && sb != null && sa !== sb) return sa - sb;
+    if (sa != null && sb == null) return -1;
+    if (sa == null && sb != null) return 1;
+  }
+  return a.originalTid - b.originalTid;
+}

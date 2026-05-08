@@ -247,7 +247,7 @@ export const BroadcastingView: React.FC = () => {
   const isLocked        = state.leagueStats.mediaRights?.isLocked === true;
   // Lock broadcasting edits on June 30 of each season year (day before FA opens July 1).
   // This lets commissioners finalize the new season's cap before free agency.
-  const broadcastDeadline = `${state.leagueStats.year ?? 2026}-06-30`;
+  const broadcastDeadline = `${state.leagueStats.year ?? new Date().getFullYear()}-06-30`;
   const isAfterDeadline = compareGameDates(state.date, broadcastDeadline) >= 0;
   const readOnly        = isLocked || isAfterDeadline;
 
@@ -486,7 +486,7 @@ export const BroadcastingView: React.FC = () => {
         .filter(Boolean)
         .join(', ');
       const dealOutcome = [
-        `Commissioner ${state.commissionerName || 'of the NBA'} has officially finalized the league's media rights deal for the ${(state.leagueStats.year ?? 2026) - 1}-${String(state.leagueStats.year ?? 2026).slice(2)} season.`,
+        `Commissioner ${state.commissionerName || 'of the NBA'} has officially finalized the league's media rights deal for the ${(state.leagueStats.year ?? new Date().getFullYear()) - 1}-${String(state.leagueStats.year ?? new Date().getFullYear()).slice(2)} season.`,
         `Broadcasting partners: ${partnerNames}.`,
         `Total media revenue: $${metrics.mediaRev.toFixed(2)}B. League Pass priced at $${lpPrice.toFixed(2)}/month (${metrics.subs.toFixed(1)}M projected subscribers).`,
         `Combined annual broadcast revenue: $${metrics.totalRev.toFixed(2)}B. New salary cap set at $${metrics.salaryCap.toFixed(1)}M.`,

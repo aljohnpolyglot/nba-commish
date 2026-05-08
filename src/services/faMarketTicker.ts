@@ -1,23 +1,11 @@
-/**
- * faMarketTicker.ts — Drives the FA bidding lifecycle during the FA period.
- *
- * Per sim day, this module:
- *   1. Opens markets for notable unsigned FAs (K2 >= 80) that don't have one yet.
- *      AI team bids are generated via `generateAIBids`, with each bid's
- *      decision window (3-5 days) driving when the player picks.
- *   2. Resolves any markets whose decision window has closed — the best bid wins
- *      via `resolvePlayerDecision`, the player moves, history gets a signing entry,
- *      and the market is marked resolved.
- *
- * The pre-existing `runAIFreeAgencyRound` still handles low-tier FAs and
- * roster-minimum enforcement — this ticker runs first and filters top FAs
- * (and any with an active market) out of the pool so we never double-sign.
- */
+/** Daily FA market lifecycle: opens markets for K2 ≥ threshold FAs, resolves
+ *  decisions, runs RFA match flow. Filters its own markets out of the legacy
+ *  runAIFreeAgencyRound pool to prevent double-sign. */
 
 import type { GameState, NBAPlayer, HistoryEntry } from '../types';
 import { convertTo2KRating, calculateSocialEngagement } from '../utils/helpers';
 import { getContractLimits, getTeamPayrollUSD, hasBirdRights } from '../utils/salaryUtils';
-import { generateAIBids, isPlausibleActiveMarket, resolvePlayerDecision, type FreeAgentBid, type FreeAgentMarket } from './freeAgencyBidding';
+import { generateAIBids, getRFAPriorTid, isPlausibleActiveMarket, resolvePlayerDecision, type FreeAgentBid, type FreeAgentMarket } from './freeAgencyBidding';
 import { buildShamsTransactionPost } from './social/templates/charania';
 import { findShamsPhoto } from './social/charaniaphotos';
 import { canSignMultiYear, compareGameDates, getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd, getGameDateParts, isInMoratorium, isPastTradeDeadline, parseGameDate, toISODateString } from '../utils/dateUtils';
@@ -25,24 +13,28 @@ import { getCapThresholds, getMLEAvailability } from '../utils/salaryUtils';
 import { isRfaMatchingEnabled } from '../utils/ruleFlags';
 import { computeTradeEligibleDate } from '../utils/signingMoratorium';
 import { getOffseasonState, logOffseasonDrift } from './offseason/offseasonState';
+import { clearWaiverMarkers } from '../utils/contractCleanup';
 
-/** A FA is eligible for a competitive market if they're notable enough to attract bids.
- *  PR1: dropped from 80 → 70 so K2 70-79 mid-tier rotation FAs also see multi-team
- *  bidding. The previous threshold meant ~150+ rotation players went silently through
- *  runAIFreeAgencyRound with zero competition — rebuilders never got a crack at them. */
+function optionTag(option: FreeAgentBid['option']): string {
+  if (option === 'PLAYER') return ' (player option)';
+  if (option === 'TEAM') return ' (team option)';
+  return '';
+}
+
+function lastYearOptionLabel(option: FreeAgentBid['option']): 'Player' | 'Team' | '' {
+  if (option === 'PLAYER') return 'Player';
+  if (option === 'TEAM') return 'Team';
+  return '';
+}
+
+/** Threshold for a competitive multi-team market (K2). */
 const MARKET_K2_THRESHOLD = 70;
-/** Normal cadence — 8 new markets/day during in-season + offseason tail. */
 const MAX_NEW_MARKETS_PER_DAY = 8;
-/** Burst cadence — Jul 1-3 opens up to 30/day to clear the offseason FA flood without
- *  dragging into mid-July. After day 3 the offseason settles back to NORMAL. */
+/** Burst cadence Jul 1-3 to clear offseason FA flood. */
 const MAX_NEW_MARKETS_BURST = 30;
-/** After Oct 21 (preseason ends), only true superstars open new markets — the
- *  rest sit until next offseason or sign min/NG. K2 ≥ 92 ≈ All-NBA tier. */
+/** Post-Oct 21 only true superstars open new markets. */
 const LATE_SEASON_K2_THRESHOLD = 92;
-/** Spread market resolution so the offseason tail doesn't dump 80+ signings into
- *  a single sim day. When this many already resolve today, push extras to +1 day.
- *  Bumped 10 → 20 with PR1's K2 70 threshold drop — more open markets need more
- *  resolution headroom so the burst doesn't queue a week of pent-up signings. */
+/** Stagger resolution to avoid a single-day signing dump. */
 const MAX_MARKETS_RESOLVING_PER_DAY = 20;
 
 /** True when current sim date is past Oct 21 — preseason has ended, regular
@@ -78,35 +70,7 @@ function isCampInviteBid(
   return false;
 }
 
-/** RFA-specific prior team lookup — same logic as getLoyalPriorTid but
- *  exported via a stable name for the matching-offer-sheet flow. */
-function getRFAPriorTid(player: NBAPlayer): number {
-  const txns: Array<{ season: number; tid: number }> = (player as any).transactions ?? [];
-  if (txns.length > 0) {
-    const t = [...txns].sort((a, b) => b.season - a.season).find(x => x.tid >= 0 && x.tid <= 29);
-    if (t) return t.tid;
-  }
-  const stats: Array<{ season?: number; tid?: number; gp?: number; playoffs?: boolean }> = (player as any).stats ?? [];
-  const s = stats.filter(x => !x.playoffs && (x.gp ?? 0) > 0 && (x.tid ?? -1) >= 0 && (x.tid ?? -1) <= 29)
-    .sort((a, b) => (b.season ?? 0) - (a.season ?? 0))[0];
-  return s ? (s.tid ?? -1) : -1;
-}
-
-/** Returns the NBA tid (0–29) the player last played for, or -1 if unknown. */
-function getLoyalPriorTid(player: NBAPlayer): number {
-  const txns: Array<{ season: number; tid: number }> = (player as any).transactions ?? [];
-  if (txns.length > 0) {
-    const nbaT = [...txns].sort((a, b) => b.season - a.season).find(t => t.tid >= 0 && t.tid <= 29);
-    if (nbaT) return nbaT.tid;
-  }
-  const stats: Array<{ season?: number; tid?: number; gp?: number; playoffs?: boolean }> = (player as any).stats ?? [];
-  const nbaStats = stats
-    .filter(s => !s.playoffs && (s.gp ?? 0) > 0 && (s.tid ?? -1) >= 0 && (s.tid ?? -1) <= 29)
-    .sort((a, b) => (b.season ?? 0) - (a.season ?? 0));
-  return nbaStats.length > 0 ? (nbaStats[0].tid ?? -1) : -1;
-}
-
-/** True when a LOYAL 30+ veteran should not enter a market where their prior team has no bid. */
+/** True when a LOYAL 30+ veteran should not enter a market without their prior team. */
 function isLoyalMarketBlocked(player: NBAPlayer, bidTeamIds: number[], currentYear: number): boolean {
   const traits: string[] = (player as any).moodTraits ?? [];
   if (!traits.includes('LOYAL')) return false;
@@ -115,7 +79,7 @@ function isLoyalMarketBlocked(player: NBAPlayer, bidTeamIds: number[], currentYe
   if (age < 30) return false;
   const yearsOfService = ((player as any).stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
   if (yearsOfService < 8) return false;
-  const priorTid = getLoyalPriorTid(player);
+  const priorTid = getRFAPriorTid(player);
   if (priorTid < 0) return false;
   return !bidTeamIds.includes(priorTid);
 }
@@ -157,7 +121,7 @@ export interface MarketTickResult {
  */
 export function tickFAMarkets(state: GameState): MarketTickResult {
   const currentDay = state.day;
-  const currentYear = state.leagueStats?.year ?? 2026;
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const playerById = new Map(state.players.map(p => [p.internalId, p]));
 
   // Offseason orchestrator drift check (Session 1 — instrumentation only).
@@ -261,6 +225,28 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
       .filter(mut => mut.tid === teamId && mut.contract?.amount != null)
       .reduce((sum, mut) => sum + ((mut.contract?.amount ?? 0) * 1_000), 0);
 
+  // Roster-Slot-Validation. Without this, a 15/15 team could accept a bid and
+  // end up with 16 standard players. Training-camp window (preseason) allows
+  // 21 standard slots — same effectiveLimit pattern as AIFreeAgentHandler.
+  const maxStandardRoster: number = ((state.leagueStats as any)?.maxStandardPlayersPerTeam
+    ?? (state.leagueStats as any)?.maxPlayersPerTeam
+    ?? 15) as number;
+  const maxTrainingCampRoster: number = ((state.leagueStats as any)?.maxTrainingCampRoster ?? 21) as number;
+  const effectiveMaxRoster: number = isPreseasonCampWindow(state.date, state.leagueStats as any)
+    ? maxTrainingCampRoster
+    : maxStandardRoster;
+
+  const getProjectedStandardRosterCount = (teamId: number): number => {
+    let count = 0;
+    for (const p of state.players) {
+      if (p.tid === teamId && !(p as any).twoWay) count++;
+    }
+    for (const mut of playerMutations.values()) {
+      if (mut.tid === teamId && !(mut as any).twoWay) count++;
+    }
+    return count;
+  };
+
   const getMleTypeForBid = (bid: FreeAgentBid, player: NBAPlayer, payrollUSD: number): 'room' | 'non_taxpayer' | 'taxpayer' | null => {
     const priorTid = getRFAPriorTid(player);
     if (bid.teamId === priorTid && hasBirdRights(player)) return null;
@@ -311,11 +297,10 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
   const postPreseasonResolve = isPostPreseason(state.date);
   const allowMultiYearResolve = canSignMultiYear(state.date, currentYear, state.leagueStats as any);
   const postDeadlineResolve = isPastTradeDeadline(state.date, currentYear, state.leagueStats as any);
-  const resolutionMaxYears = (postDeadlineResolve && !allowMultiYearResolve)
-    ? 1
-    : postPreseasonResolve
-      ? 2
-      : Infinity;
+  let resolutionMaxYears: number;
+  if (postDeadlineResolve && !allowMultiYearResolve) resolutionMaxYears = 1;
+  else if (postPreseasonResolve) resolutionMaxYears = 2;
+  else resolutionMaxYears = Infinity;
   const moratoriumActive = isInMoratorium(state.date, currentYear, state.leagueStats as any, state.schedule as any);
   const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(state.date, state.leagueStats as any, state.schedule as any);
   const moratoriumEndDay = (() => {
@@ -346,6 +331,9 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
   const bidStillLegalAtResolution = (bid: FreeAgentBid, player: NBAPlayer): boolean => {
     const team = state.teams.find(t => t.id === bid.teamId);
     if (!team) return false;
+    if (!(bid as any).twoWay && getProjectedStandardRosterCount(bid.teamId) >= effectiveMaxRoster) {
+      return false;
+    }
     const priorTid = getRFAPriorTid(player);
     if (bid.teamId === priorTid && hasBirdRights(player)) return true;
 
@@ -516,7 +504,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
       // offer sheet shows up, then the match override comes later).
       const annualMOS = Math.round(winner.salaryUSD / 100_000) / 10;
       const totalMOS = Math.round(annualMOS * winner.years);
-      const optTagOS = winner.option === 'PLAYER' ? ' (player option)' : winner.option === 'TEAM' ? ' (team option)' : '';
+      const optTagOS = optionTag(winner.option);
       const priorTeamForHist = state.teams.find(t => t.id === priorTid);
       historyEntries.push({
         text: `${player.name} signs offer sheet with the ${team.name}: $${totalMOS}M/${winner.years}yr${optTagOS} — ${priorTeamForHist?.name ?? 'prior team'} has ${matchWindowDays} days to match.`,
@@ -545,8 +533,12 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     // Apply the winning bid to the player. Bird Rights reset when signing with a
     // different franchise — yearsWithTeam goes to 0, and season rollover will
     // recompute hasBirdRights fresh against the new team next cycle.
-    const previousTid = player.tid;
-    const joinedNewTeam = previousTid !== winner.teamId;
+    // Use priorTid (already computed above via getRFAPriorTid) — FAs have tid=-1
+    // so checking player.tid directly would always flag own-team re-signs as new.
+    // priorTid = -1 means we don't know the prior NBA team (G-League / CBA / B-League
+     // call-up, or stats-derived lookup failed). Treat as "first NBA stop" — keep
+     // yearsWithTeam intact rather than spuriously resetting to 0.
+    const joinedNewTeam = priorTid >= 0 && priorTid !== winner.teamId;
     const newContract = {
       amount: Math.round(winner.salaryUSD / 1_000),
       exp: currentYear + finalYears - 1,
@@ -555,12 +547,12 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     const newContractYears = Array.from({ length: finalYears }, (_, idx) => {
       const yr = currentYear + idx;
       const annual = Math.round(winner.salaryUSD * Math.pow(1.05, idx));
-        return {
-          season: `${yr - 1}-${String(yr).slice(-2)}`,
-          guaranteed: isNonGuaranteed ? 0 : annual,
-          option: idx === finalYears - 1 && winner.option === 'PLAYER' ? 'Player'
-                : idx === finalYears - 1 && winner.option === 'TEAM' ? 'Team' : '',
-        };
+      const isLast = idx === finalYears - 1;
+      return {
+        season: `${yr - 1}-${String(yr).slice(-2)}`,
+        guaranteed: isNonGuaranteed ? 0 : annual,
+        option: isLast ? lastYearOptionLabel(winner.option) : '',
+      };
     });
     const historicalYears = ((player as any).contractYears ?? []).filter((cy: any) => {
       const yr = parseInt(cy.season.split('-')[0], 10) + 1;
@@ -571,7 +563,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     const minUSD = ((state.leagueStats?.minContractStaticAmount as number | undefined) ?? 1.273) * 1_000_000;
     const signingPayroll = getTeamPayrollUSD(state.players, winner.teamId, team, currentYear) + newlyCommittedForTeam(winner.teamId);
     const mleTypeUsed = getMleTypeForBid(winner, player, signingPayroll);
-    const mutation: Partial<NBAPlayer> = {
+    const mutation: Partial<NBAPlayer> = clearWaiverMarkers({
       tid: winner.teamId,
       status: 'Active' as any,
       contract: newContract,
@@ -591,14 +583,14 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
       }),
       ...(isNonGuaranteed ? { nonGuaranteed: true } : {}),
       ...(joinedNewTeam ? { yearsWithTeam: 0, hasBirdRights: false } : {}),
-    } as any;
+    } as any);
     playerMutations.set(player.internalId, mutation);
     consumeMleForBid(winner.teamId, mleTypeUsed, winner.salaryUSD);
     signedPlayerIds.add(player.internalId);
 
     const annualM = Math.round(winner.salaryUSD / 100_000) / 10;
     const totalM = Math.round(annualM * finalYears);
-    const optTag = winner.option === 'PLAYER' ? ' (player option)' : winner.option === 'TEAM' ? ' (team option)' : '';
+    const optTag = optionTag(winner.option);
     const ngTag = isNonGuaranteed ? ' (non-guaranteed)' : '';
     const userWon = !!winner.isUserBid;
     // Check if the resolved market had a user bid — generate a GM toast.
@@ -726,6 +718,29 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
       }
     }
 
+    // Roster-Slot reality check: prior team can only match if they have a
+    // standard slot open. If full, force willMatch=false (signing team wins by
+    // forfeit). If signing team is also full, close the market unsigned.
+    if (willMatch && getProjectedStandardRosterCount(priorTid) >= effectiveMaxRoster) {
+      willMatch = false;
+    }
+    if (!willMatch && getProjectedStandardRosterCount(offerBid.teamId) >= effectiveMaxRoster) {
+      workingMarkets[i] = {
+        ...m,
+        resolved: true,
+        pendingMatch: false,
+        bids: m.bids.map(b => b.status === 'active' ? { ...b, status: 'rejected' as const } : b),
+      };
+      historyEntries.push({
+        text: `${player.name}'s offer sheet voided — both ${priorTeam.name} and ${signingTeam.name} have no open roster slot.`,
+        date: state.date,
+        type: 'Signing',
+        playerIds: [player.internalId],
+        tid: signingTeam.id,
+      } as any);
+      continue;
+    }
+
     // Apply outcome — either prior team matches (player goes there at offer terms)
     // or signing team gets the player. Same contract math for both branches.
     const winningTid = willMatch ? priorTid : offerBid.teamId;
@@ -740,24 +755,27 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     const newContractYears = Array.from({ length: finalYearsRFA }, (_, idx) => {
       const yr = currentYear + idx;
       const annual = Math.round(offerBid.salaryUSD * Math.pow(1.05, idx));
+      const isLast = idx === finalYearsRFA - 1;
       return {
         season: `${yr - 1}-${String(yr).slice(-2)}`,
         guaranteed: isNonGuaranteedRFA ? 0 : annual,
-        option: idx === finalYearsRFA - 1 && offerBid.option === 'PLAYER' ? 'Player'
-              : idx === finalYearsRFA - 1 && offerBid.option === 'TEAM' ? 'Team' : '',
+        option: isLast ? lastYearOptionLabel(offerBid.option) : '',
       };
     });
     const histYears = ((player as any).contractYears ?? []).filter((cy: any) => {
       const yr = parseInt(cy.season.split('-')[0], 10) + 1;
       return yr < currentYear;
     });
-    const joinedNewTeam = winningTid !== player.tid;
+    const priorTidRfa = (player.tid >= 0 && player.tid <= 29) ? player.tid : getRFAPriorTid(player);
+    // Same -1 guard as the regular sign branch — unknown prior team should not
+    // trigger a yearsWithTeam reset on the new franchise.
+    const joinedNewTeam = priorTidRfa >= 0 && winningTid !== priorTidRfa;
     const prevSalaryUSDFirstYearRfa = (Number((player as any).contract?.amount) || 0) * 1_000;
     const minUSDRfa = ((state.leagueStats?.minContractStaticAmount as number | undefined) ?? 1.273) * 1_000_000;
     const rfaPayroll = getTeamPayrollUSD(state.players, winningTid, winningTeam, currentYear) + newlyCommittedForTeam(winningTid);
     const rfaBidForMle = { ...offerBid, teamId: winningTid };
     const rfaMleTypeUsed = getMleTypeForBid(rfaBidForMle, player, rfaPayroll);
-    playerMutations.set(player.internalId, {
+    playerMutations.set(player.internalId, clearWaiverMarkers({
       tid: winningTid,
       status: 'Active' as any,
       contract: newContract,
@@ -776,7 +794,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
       }),
       ...(isNonGuaranteedRFA ? { nonGuaranteed: true } : {}),
       ...(joinedNewTeam ? { yearsWithTeam: 0, hasBirdRights: false } : {}),
-    } as any);
+    } as any));
     consumeMleForBid(winningTid, rfaMleTypeUsed, offerBid.salaryUSD);
     signedPlayerIds.add(player.internalId);
 
@@ -838,16 +856,10 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
   }
 
   // ── 1b. Withdraw bids from teams that exhausted cap this tick ────────────────
-  // When a team signs a max contract, their remaining offers on other players
-  // must be killed so they can't phantom-commit beyond their cap.
-  // PR1: replaced hardcoded `cap × 1.18 / cap × 0.085` with getCapThresholds() so
-  // commissioner-tuned cap settings (lux pct, MLE pct) are honored.
   if (playerMutations.size > 0) {
     const thresholds = getCapThresholds(state.leagueStats as any);
     const capUSD = thresholds.salaryCap;
-    const luxTax = thresholds.luxuryTax;
 
-    // Sum up salary newly committed this tick per team (amount stored in thousands)
     const newlyCommitted = new Map<number, number>();
     for (const mutation of playerMutations.values()) {
       const tid = mutation.tid;

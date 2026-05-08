@@ -2,6 +2,126 @@
 
 Historical bug fixes, session notes, and architecture discoveries.
 
+## Session 56 (May 7, 2026) — Waive→Sign ghost-contract cleanup
+
+- `src/store/logic/turn/simulationHandler.ts` — AI roster-trim waives now strip live `contract` and current/future `contractYears` from the waived player, matching manual waives. Dead money remains on the team record.
+- `src/utils/contractCleanup.ts` — shared Waive/Sign cleanup helpers for stripping live contracts after waives and clearing stale waiver markers after signings.
+- `src/store/GameContext.tsx` — `LOAD_GAME` heals existing waived free agents that still carry ghost contracts after older auto-trim saves.
+- `src/store/logic/actions/playerActions.ts`, `src/services/faMarketTicker.ts`, `src/store/logic/turn/simulationHandler.ts` — real signings clear stale `recentlyWaivedBy` / `recentlyWaivedDate`.
+- `src/utils/cbaTradeRules.ts` — trade salary validation now honors the same post-trade cap-room absorption shown by TradeSummary's "Room OK" badge.
+
+## Session 54 (May 4–7, 2026) — Coaching Depth Phase 2/3, Offseason 2K hardening, save-state debug protocol
+
+This session bundles the post-S53 commit trail (offseason 2K bug-fixes) **plus** the in-flight Coaching-Depth wave (Phase 2 AI coach paradigm + Phase 3 Defender Detail / Defense Gameplan / Rival Gameplan / Matchup Assignments). Most of the new code is uncommitted at the time of this entry — see `git status` for the working tree. CHANGELOG documents intent so the next session has a starting point.
+
+### Coaching Depth Roadmap — Phase 2 + Phase 3 landed
+
+**Phase 2: AI Coach Paradigm (`src/services/training/aiCoachParadigm.ts`).** Replaces the flat "Balanced 50%" daily plan AI teams used before. Now context-aware per-day per-AI-team based on calendar phase + W-L:
+
+| Phase | Plan |
+|-------|------|
+| Game-day | no plan (sim handles) |
+| Pre-game / post-game | Recovery 15 |
+| Training Camp | Balanced 85 |
+| Preseason | Balanced 60 |
+| Playoffs day-after-game | Recovery 30 |
+| Playoffs between | Offensive 70 |
+| Regular season `winPct < 0.40` | Defensive 75 |
+| Regular season `winPct > 0.65` | Balanced 50 (load mgmt) |
+| Regular season default | Balanced 65 |
+
+User team is never touched — `applyDailyFamiliarityTick` skips this helper for `state.userTeamId` so user calendar/paradigm choices remain authoritative.
+
+**Phase 2.5: AI auto-setup (`src/services/training/aiAutoSetup.ts`).** One-shot dev-focus + mentorship backfill at save-load (when AI players have empty devFocus) + Aug 15 each year. Picks dev-focus by position × strongest attribute (PG with `pss≥60 + oiq≥55` → "Primary Creator"; SG with `tp≥65` → "Limitless Sniper"; etc.). Pairs each ≤23-yo with the highest-OVR ≥28-yo at the same position on the same team. Skips user team. Fills only EMPTY slots — manually-set focus/mentor preserved.
+
+**Phase 3 stores (Coaching → Defense + per-rival + per-defender layers).** All four stores follow the saveId-scoped localStorage pattern from `gameplanStore.ts` (rehydrate on `setActiveSaveId` swap). Phase 1 = presentation + persistence; sim-wiring deferred to a separate StatGenerator-knob pass.
+
+- **`src/store/defenseGameplanStore.ts`** — team-level defensive base. 5 templates (Drop & Recover / Switch Everything / Blitz the Stars / Wall Up / No Middle Death) + Custom. Each template seeds 8 fields: `pnrBallHandler` / `pnrRollMan` / `offBallScreens` / `iso` / `doubleOnPost` / `doubleOnDrive` / `pickup` / `zoneVsMan`. `TEMPLATE_TO_SYSTEM` maps each template to its primary trainable system in `defensiveSystemDescriptions` so the Defense tab can read the team's familiarity for that template.
+- **`src/store/defenderDetailStore.ts`** — per-defender baseline (NOT per-opponent). Each entry keyed by defender `internalId`: `bodyPressure` (Tight/Standard/Sag/Bump-and-Recover) · `denyLevel` (Full/Standard/Allow Catch) · `closeout` (Hard/Controlled/Stunt&Recover) · `help` (Always/Stunt-Only/Stay-Attached) · `rebound` (Crash/Standard/Stay-Home) · optional `scheme` override (per-defender PnR + doubling override of team scheme). Roadmap §3.2 vs-Luka / vs-Steph use case.
+- **`src/store/rivalGameplanStore.ts`** — per-opponent targeting. Each rival team gets up to two priority targets with a specific `RivalAction` (`Always Double` · `Blitz on PnR` · `Force Weak Hand` · `Top Lock Off-Ball` · `Switch & Hunt` · `Pack & Sag`). Set once per season (NOT per-game — day-to-day variation comes from Defender Detail / Lockdown-Hide). Auto-reconciles: `reconcileRivalPlan(plan, opponentRosterIds)` blanks out target IDs for traded/cut/retired players; UI re-prompts on next open.
+- **`src/store/matchupAssignmentsStore.ts`** — Hunt/Avoid layer per team. Three "Lockdown" picks (defenders ranked for toughest assignments) + three "Hide" picks (defenders kept AWAY from elite scorers). Same FIRST/SECOND/THIRD chevron pattern as `scoringOptionsStore`.
+
+**Defensive system library + fit utilities** — `src/utils/defensiveSystemDescriptions.ts` + `defensiveSystemFit.ts`. Catalog of defensive systems (Man / 2-3 Zone / 3-2 Zone / 1-3-1 / Box-and-One / Triangle-and-Two / Switch Everything / Drop Coverage / Hedge / Ice-Down / Blitz / Trap / Full-Court Press / Half-Court Trap) with descriptions + a roster-fit scorer the Defense tab uses to surface "this scheme suits your personnel" hints.
+
+**`DefenseTab.tsx`** — new tab inside `CoachingView/` rendering all four Phase-3 stores (template picker → 8-field grid → defender table with override chevrons → rival list → lockdown/hide pickers). Phase 1 = read/write the stores; sim-wiring deferred.
+
+**`CoachingHubView.tsx` (`src/components/central/view/Coaching/`)** — new top-level Coaching surface (mounted via NavigationMenu). Mirrors the TeamOffice "pick a team" pattern: GM mode opens directly on user-team's CoachingPage; commissioner mode shows team picker first. Replaces the buried-in-TeamOffice Coaching access for direct workflow.
+
+### Throne — watch-live overlay
+
+**`src/components/allstar/ThroneWatchOverlay.tsx`** — full-screen overlay for the user to watch the Throne tournament play out live (mirrors the GameSimulatorScreen pattern but for the 1v1 bracket). Round-by-round replay of the headless `simulateThroneTournament` results, with per-match commentary and scoring. Wires onto the AllStarDayView "Open Throne" CTA on Saturday.
+
+### Training Center — Dashboard Status Bar
+
+**`src/components/training/DashboardStatusBar.tsx`** — top-of-Dashboard summary in TrainingCenterView. Three things at-a-glance: today's plan + top-3 system familiarities (offense and defense interleaved by score) + two quick-preset buttons:
+- **B2B Default** — marks the next 14 non-game days as Recovery 25 (heavy-rest stretch for an upcoming back-to-back string).
+- **Normal Default** — clears user overrides on the next 14 days and refires the scheduler's autofill.
+
+Read-only when calendar is in offseason.
+
+### Training engine — Defensive Aura + System Familiarity (Tier A from `TEAM_TRAINING_PLAN.md`)
+
+`trainingTick.ts` and `trainingScheduler.ts` extended to feed the per-system familiarity meters (offensive AND defensive sides), with the Defensive Aura multiplier scaling off the team's MOST-PRACTICED defensive system (rewards specialization). Trade / coach-fire Clean Slate (`docs/training.md` §2) drops familiarity to 0. Conditioning still cannot raise physical K2s — only flattens the age-decay curve (per the TEAM_TRAINING_PLAN.md "Conditioning as Regression Fighter" addition this session).
+
+### Offseason 2K — post-S53 hardening (committed in 25 commits since `e771dd8`)
+
+Direct-from-`git log` audit:
+
+- **`adb10d0` 'Enter Preseason' actually exits offseason mode** — the CTA flipped the row but never tore down `state.offseasonChecklist`. Now dispatches `OFFSEASON_EXIT` so calendar UI returns.
+- **`c294130` Training Camp auto-checkmark** — once the user touches the training calendar (or the Tasks sidebar detects training engagement signal), `trainingCamp` row marks done without needing the "Enter Preseason" click.
+- **`53e830d` FA Tag — English copy + post-FA banner hide + Enter-Preseason CTA polish.** "Tag" → "Day" in the footer counter (was confusing since "Tag" reads as the German word in EN locale).
+- **`7c36c8c` Rollover gate uses `ls.year`, not phase** — critical: the rollover-fired check was reading `getOffseasonState().phase` which can lag by a frame, mis-firing rollover twice in the same calendar day. Now uses `state.leagueStats.year` as the year-key.
+- **`bb9cb2a` Revert Bird-Rights test-market gate (misdiagnosis); AUFGABEN→Tasks rename.** Removed a Bird-Rights gate that was added in error; renamed UI label "AUFGABEN" → "Tasks" so non-German players see English copy throughout.
+- **`692516f` Expiring-contracts headsup banner in Tasks sidebar** — surfaces the count of player options + team options + Bird Rights expiring before the user touches the Options row.
+- **`2662f92` Rookie contracts auto-disclaimer modal** (FA moratorium style) — informs user R1 picks are auto-guaranteed per CBA, no decision needed; dismissable.
+- **`a598c44` Auto-checkmark when row is in-progress** — previously the auto-mark useEffect only fired on `pending` rows; in-progress rows that engine-completed (e.g. lottery row that fires while user is on a different page) stayed visually un-marked.
+- **`a5a336c` Calendar advances to event dates + RFA pending badge** — entering the lottery row jumps `state.date` directly to lottery day; entering FA jumps to FA start. RFA-pending badge surfaces on the QO row when the user has expiring restricted FAs not yet decided.
+- **`8634324` Deep-link nav to TeamIntel sub-tabs + draft year fix** — sidebar rows can route directly to specific TeamIntel sub-tabs (Free Agency / Roster Compliance) instead of dumping the user on the top of the page.
+- **`9bf6ad1` Full Qualifying Offer modal** — replaced the auto-resolve placeholder with a real RFA-decision modal. Per-player Tender / Match Eligibility / Decline buttons matching the Team Option modal pattern.
+
+### CLAUDE.md — Save-state debug protocol added
+
+New section: **"Debugging save-state bugs — STOP and ask first."** For every data-corruption / contract / FA-pool / roster / Bird-Rights / mood / trade bug, the agent must STOP after stating the suspected mechanism and ask the user to paste the standard DevTools snippet before reading more code. Includes:
+
+- The canonical IndexedDB+gunzip snippet (saves are gzipped — `{__gz, data}` wrapper).
+- Per-bug-class destructure adjustments (Stats / Trades / Moods / Cap / FA pool / Schedule).
+- "Inspect actual save state, don't infer from UI" rule.
+
+Motivated by the `releaseDeclinedExtensionPlayer` fix that landed only because the user pulled `{tid: -1, contract.exp: 2028, contractYears[14] valid}` straight out of the save, contradicting the player-option theory the agent was chasing in the code.
+
+### TEAM_TRAINING_PLAN.md — Schedule-redesign guiding principle + future updates
+
+Added two sections:
+
+- **Guiding principle:** Team training builds Team System Proficiency. It does NOT touch individual K2 ratings (those are owned by Personal Training / Individual Focus per `docs/training.md` §1). Schedule UI session-types map their effects onto **team-level meters** — System / Fitness / Chemistry / Offense / Defense — not per-player attribute boosts. Drill descriptors like "+3 Ball Security, +3 Passing" frame as team-system descriptors.
+- **Future updates:** Defensive system library (parallel to offensive — Man / Zones / Junk / PnR variants / Press), Team Chemistry as a first-class trainable meter (Bonding / Film / Light Practice raise it; Hi-intensity Conditioning / Strength H lower it), Conditioning as Regression Fighter (NEVER raises physicals; only flattens age-decay multiplier — same OP-proof philosophy as mentorship).
+
+### Verification
+
+`npm run lint` (`tsc --noEmit`) passes. Browser sim-through-offseason needed before commit — `[OSPLAN]` drift sweep is the canonical signal.
+
+### Files touched (largest by diffsize, diff summary only — see `git diff` for content)
+
+```
+src/store/GameContext.tsx                          +334
+src/components/training/TrainingCenterView.tsx     +412
+src/components/allstar/ThroneContestView.tsx       +418
+src/components/training/TrainingCalendarView.tsx   +317
+src/components/offseason/OffseasonAufgaben.tsx     +234
+src/TeamTraining/components/DailyPlanModal.tsx     +208
+src/TeamTraining/components/SystemProficiencyView.tsx  +169
+src/services/training/trainingTick.ts              +168
+src/services/allStar/throneOrchestrator.ts         +160
+src/components/central/view/TransactionsView.tsx   +122
++ many more — 67 files total, +3577/-1377
++ new: CoachingHubView.tsx, DefenseTab.tsx, ThroneWatchOverlay.tsx, DashboardStatusBar.tsx
++ new stores: defenderDetailStore, defenseGameplanStore, matchupAssignmentsStore, rivalGameplanStore
++ new services: aiCoachParadigm, aiAutoSetup
++ new utils: defensiveSystemDescriptions, defensiveSystemFit
+```
+
+---
+
 ## Session 53 (May 3, 2026) - Offseason 2K-style sandboxed task flow (Phases A-D)
 
 **The 2K MyGM offseason refactor lands.** Replaces the buggy day-by-day calendar advance through July (the highest-bug-density window — see Sessions 41-52 patch trail) with an 8-row checklist sidebar + dedicated phase UIs. Engine layer (Sessions 1-5 orchestrator) was the foundation; this session adds the user-facing layer on top. GM mode only — commissioners keep the calendar UI unchanged.

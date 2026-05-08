@@ -13,7 +13,6 @@ import { SettingsManager } from './SettingsManager';
 import { computeMoodScore } from '../utils/mood/moodScore';
 import type { MoodTrait } from '../utils/mood/moodTypes';
 import { calcPot2K } from './trade/tradeValueEngine';
-import { isAssistantGMActive } from './assistantGMFlag';
 import { getGMAttributes, clampSpendOffer, workEthicSignProb } from './staff/gmAttributes';
 import { hasFamilyOnRoster } from '../utils/familyTies';
 import { resolveTeamStrategyProfile, type TeamStrategyProfile } from '../utils/teamStrategy';
@@ -69,7 +68,7 @@ function clampOfferForDate(
   else if (m === 1) decay = 0.35;
   else if (m === 11 || m === 12 || (m === 10 && day >= 22)) decay = 0.55;
   // Floor at min salary so decay can't push offer below the league min.
-  const minSalaryUSD = ((leagueStats?.minContractStaticAmount ?? 1.273) as number) * 1_000_000;
+  const minSalaryUSD = getMinSalaryUSD(leagueStats);
   const finalSalary = Math.max(minSalaryUSD, Math.round(offer.salaryUSD * decay));
 
   return { salaryUSD: finalSalary, years: finalYears, hasPlayerOption: offer.hasPlayerOption };
@@ -443,13 +442,13 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   }
 
   const results: SigningResult[] = [];
-  const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive()) ? ((state as any).userTeamId ?? -999) : -999;
-  if (state.gameMode === 'gm' && !isAssistantGMActive() && userTeamId === -999) {
+  const userTeamId = resolveUserTeamId(state);
+  if (state.gameMode === 'gm' && userTeamId === -999) {
     console.warn('[AI-FA] GM mode userTeamId missing; cannot exclude user team from AI free agency.');
     return [];
   }
   const isUserTeam = (teamId: number) =>
-    state.gameMode === 'gm' && !isAssistantGMActive() && teamId === userTeamId;
+    state.gameMode === 'gm' && teamId === userTeamId;
 
   // Players with an active FA bidding market are reserved by `faMarketTicker` —
   // the round must not poach them on a non-resolution day.
@@ -479,7 +478,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   const sortedAITeams = [...state.teams]
     .filter(t => {
       if (!isUserTeam(t.id)) return true;
-      console.warn('[autoRunDraft] SKIPPING user team fill');
+      console.warn('[AI-FA] SKIPPING user team fill');
       return false;
     })
     .sort((a, b) =>
@@ -510,7 +509,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
     nonGuaranteed = false,
   ) => {
     if (isUserTeam(team.id)) {
-      console.warn('[autoRunDraft] SKIPPING user team fill');
+      console.warn('[AI-FA] SKIPPING user team fill');
       return;
     }
     // Belt-and-suspenders: pool filter at line 438 already excludes
@@ -535,7 +534,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
     const joinedNewTeam = player.tid !== team.id;
     const totalYears = offer.years;
     const offerAmountUSD = offer.salaryUSD;
-    const minContractUSD = (((state.leagueStats?.minContractStaticAmount as number | undefined) ?? 1.273) * 1_000_000);
+    const minContractUSD = getMinSalaryUSD(state.leagueStats);
     const signedAsTwoWay = twoWay;
     if (rfaEnabled && !twoWay && isPlayerRFA(player)) {
       const priorTid = getLoyalPriorTid(player);
@@ -555,7 +554,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
       }
     }
     if (isUserTeam(finalTeam.id)) {
-      console.warn('[autoRunDraft] SKIPPING user team fill');
+      console.warn('[AI-FA] SKIPPING user team fill');
       return;
     }
 
@@ -679,7 +678,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
       {
         const playerAgeNow = best.born?.year ? currentYear - best.born.year : (best.age ?? 27);
         const k2Now = getK2Ovr(best);
-        const minSalaryUSDStrategy = ((state.leagueStats as any).minContractStaticAmount ?? 1.2) * 1_000_000;
+        const minSalaryUSDStrategy = getMinSalaryUSD(state.leagueStats);
         const isCheapEnough = offer.salaryUSD <= minSalaryUSDStrategy * 2;
         if (!isCheapEnough && (strategy.key === 'rebuilding' || strategy.key === 'development' || strategy.key === 'cap_clearing')
             && (playerAgeNow > 25 || k2Now < 78)) break;
@@ -736,8 +735,6 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
       signedThisIteration = true;
     }
   }
-
-  // (ngEnabled / isPreseasonWindow / maxCampRoster declared above isCampInvite.)
 
   // ── Pass 2: Two-way signings (runs before Pass 4 so fringe FAs aren't vacuumed by salary-ASC sort).
   const maxTwoWay = state.leagueStats.maxTwoWayPlayersPerTeam ?? 3;
@@ -800,7 +797,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   // ── Pass 3: Non-guaranteed training camp signings (slots 16–21, preseason only).
   if (isPreseasonWindow) {
     const NG_OVR_CAP = 50;
-    const minSalaryUSDPreseason = ((state.leagueStats as any).minContractStaticAmount ?? 1.2) * 1_000_000;
+    const minSalaryUSDPreseason = getMinSalaryUSD(state.leagueStats);
     // NG tiers: % of cap so they inflate with cap year-to-year.
     const seasonCap = (thresholds as any).salaryCap ?? 140_000_000;
     const NG_CAP_PCT_BY_OVR: Array<{ maxOvr: number; pct: number }> = [
@@ -929,7 +926,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
       // Without this gate Pass 4 fills 14→15 with the best-available K2-78 player
       // for $12M, inflating every team's payroll past the tax line.
       const nearFullBias = rosterSize >= 13;
-      const minSalaryUSDForBias = ((state.leagueStats as any).minContractStaticAmount ?? 1.2) * 1_000_000;
+      const minSalaryUSDForBias = getMinSalaryUSD(state.leagueStats);
 
       // Sort: best OVR first, tiebreak by lowest salary.
       const candidates = pool
@@ -983,7 +980,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
 
       // Min-exception fallback: cap+MLE both blocked → sign the lowest-OVR FA at min.
       if (!signedThisIteration && pool.length > 0 && rosterSize < fillTarget) {
-        const minSalaryUSD = ((state.leagueStats as any).minContractStaticAmount ?? 1.2) * 1_000_000;
+        const minSalaryUSD = getMinSalaryUSD(state.leagueStats);
         const minDealCandidate = pool
           .filter(p => !isLoyalBlocked(p, team.id, currentYear))
           .filter(p => !isRecentWaiverByTeam(p, team.id, state.date))
@@ -1004,17 +1001,12 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
           rosterSize = computeRosterSize();
         }
       }
-      // Note: signedAtMin tracking is per-iteration only; counts via signedThisPass below.
     }
 
     // Decide stop reason for diagnostics
     if (rosterSize >= fillTarget) stopReason = 'reached fill target';
     else if (pool.length === 0) stopReason = 'pool exhausted';
     else if (!signedThisIteration) stopReason = 'no affordable candidate (all cap+MLE+min blocked — pool empty?)';
-
-    // Old "last resort 1× min-deal" block removed — the inner-loop minimum-exception
-    // fallback above now handles this case for every iteration, not just once.
-    const forcedMinDeal = false;
 
     if (pass4Debug) {
       pass4Diag.push({
@@ -1028,7 +1020,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
         poolSizeEnd: pool.length,
         capRejects,
         mleRejects,
-        forcedMinDeal,
+        forcedMinDeal: false,
         stopReason,
       });
     }
@@ -1054,7 +1046,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   // the gap proportionally rather than forcing a dozen minimum deals.  The per-player
   // ceiling is getContractLimits().maxSalaryUSD so we never manufacture a supermax.
   if ((state.leagueStats as any).minimumPayrollEnabled !== false) {
-    const minSalaryUSD = ((state.leagueStats as any).minContractStaticAmount ?? 1.2) * 1_000_000;
+    const minSalaryUSD = getMinSalaryUSD(state.leagueStats);
 
     for (const team of sortedAITeams) {
       // Re-compute current roster + what we've signed this round
@@ -1178,6 +1170,31 @@ function getRemainingGuaranteedUSD(p: NBAPlayer, currentYear: number): number {
   return amountUSD * yrs;
 }
 
+// minContractStaticAmount is in MILLIONS; ×1M to get USD. 1.273 = canonical NBA CBA min.
+const MIN_SALARY_FALLBACK_M = 1.273;
+function getMinSalaryUSD(leagueStats: any): number {
+  return ((leagueStats?.minContractStaticAmount as number | undefined) ?? MIN_SALARY_FALLBACK_M) * 1_000_000;
+}
+
+// Resolves the GM-mode user team ID; returns -999 sentinel in commissioner mode so no real team matches.
+// IMPORTANT: assistantGMActive is NOT a kill-switch for the user-team guard. The flag means
+// "auto-resolve through phases without prompting" — it does NOT mean "delegate the user's
+// rebuild to the AI". User clicked Auto-Resolve to skip ahead, not to hand the keys over.
+// Without this, AI-FA/Trade handlers signed/traded the user's roster during OFFSEASON_AUTO_RESOLVE_ALL.
+function resolveUserTeamId(state: GameState, fallback: number = -999): number {
+  if (state.gameMode === 'gm') {
+    return (state as any).userTeamId ?? fallback;
+  }
+  return -999;
+}
+
+function pickContractLabel(limits: { isSupermaxEligible?: boolean; isRookieExtEligible?: boolean; rookieRoseQualified?: boolean }): string | undefined {
+  if (limits.isSupermaxEligible) return 'Supermax';
+  if (limits.isRookieExtEligible && limits.rookieRoseQualified) return 'Rose Rule';
+  if (limits.isRookieExtEligible) return 'Rookie Ext';
+  return undefined;
+}
+
 function isRecentlySignedWithinGrace(player: NBAPlayer, currentDate: string | undefined): boolean {
   const signed = (player as any).signedDate;
   if (!signed || !currentDate) return false;
@@ -1186,7 +1203,7 @@ function isRecentlySignedWithinGrace(player: NBAPlayer, currentDate: string | un
 }
 
 export function autoTrimOversizedRosters(state: GameState, month?: number, day?: number): WaiverResult[] {
-  const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive()) ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
+  const userTeamId = (state.gameMode === 'gm') ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
   const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
   const maxTrainingCamp = state.leagueStats.maxTrainingCampRoster ?? 21;
   const maxTwoWay = state.leagueStats.maxTwoWayPlayersPerTeam ?? 3;
@@ -1201,6 +1218,40 @@ export function autoTrimOversizedRosters(state: GameState, month?: number, day?:
   const isRecentlySigned = (p: NBAPlayer): boolean => isRecentlySignedWithinGrace(p, state.date);
   const hasRegularSeasonAppearance = (p: NBAPlayer): boolean =>
     (p.stats ?? []).some((s: any) => s.season === currentYear && !s.playoffs && (s.gp ?? 0) > 0);
+
+  // Tier-2 forced trim pool: tier1 keeps the most protections (rookies + Bird
+  // Rights + recent-signing); tier2 drops the rookie guard; tier3 last-resort
+  // ignores all but recent-signing. Regular-season trim adds an extra appearance
+  // guard so anyone who already played a counted game can't be silently camp-cut.
+  const buildForcedTrimPool = (
+    pool: NBAPlayer[],
+    selectedIds: Set<string>,
+    sortFn: (a: NBAPlayer, b: NBAPlayer) => number,
+    includeAppearanceGuard: boolean,
+  ): NBAPlayer[] => {
+    const isProtectedTier1 = (p: NBAPlayer) => {
+      if (includeAppearanceGuard && hasRegularSeasonAppearance(p)) return true;
+      if ((p as any).birdRightsResignedThisYear === currentYear) return true;
+      if (isRecentlySigned(p) && !(p as any).nonGuaranteed) return true;
+      const draftYr = (p as any).draft?.year;
+      if (typeof draftYr === 'number' && currentYear - draftYr <= 2) return true;
+      return false;
+    };
+    const isProtectedTier2 = (p: NBAPlayer) => {
+      if (includeAppearanceGuard && hasRegularSeasonAppearance(p)) return true;
+      if ((p as any).birdRightsResignedThisYear === currentYear) return true;
+      if (isRecentlySigned(p) && !(p as any).nonGuaranteed) return true;
+      return false;
+    };
+    const tier1 = pool.filter(p => !selectedIds.has(p.internalId) && !isProtectedTier1(p)).sort(sortFn);
+    const tier2 = pool.filter(p => !selectedIds.has(p.internalId) && !isProtectedTier2(p)).sort(sortFn);
+    const tier3 = pool.filter(p => !selectedIds.has(p.internalId) && !(isRecentlySigned(p) && !(p as any).nonGuaranteed)).sort(sortFn);
+    const out: NBAPlayer[] = [...tier1];
+    const seen = new Set(out.map(p => p.internalId));
+    for (const p of tier2) if (!seen.has(p.internalId)) { out.push(p); seen.add(p.internalId); }
+    for (const p of tier3) if (!seen.has(p.internalId)) { out.push(p); seen.add(p.internalId); }
+    return out;
+  };
 
   // Training camp roster (21) is in effect Jul 1 – Oct 21 (day before opening night).
   // Oct 22+ regular season enforces the standard 15-man cap.
@@ -1310,38 +1361,9 @@ export function autoTrimOversizedRosters(state: GameState, month?: number, day?:
           pushWaiver(trimPool[i]);
         }
         if (teamWaivers.length < excess) {
-          // Tiered forced fallback. canCut returned a too-small pool (everyone
-          // protected), but the LAC-2026 bug showed Bird-Rights re-signs and
-          // rookies still got force-cut because the original fallback used
-          // `allPlayers` filtered only by selection. Three tiers in priority:
-          //   1. relax buyout/star-protection but KEEP rookie + Bird Rights + recent-signing
-          //   2. relax everything except Bird Rights + recent-signing (so $13M
-          //      Bogdanovic re-sign survives even when trim is desperate)
-          //   3. last resort — fully unfiltered (matches old behavior)
-          const isProtectedTier1 = (p: NBAPlayer) => {
-            if ((p as any).birdRightsResignedThisYear === currentYear) return true;
-            if (isRecentlySigned(p) && !(p as any).nonGuaranteed) return true;
-            const draftYr = (p as any).draft?.year;
-            if (typeof draftYr === 'number' && currentYear - draftYr <= 2) return true;
-            return false;
-          };
-          const isProtectedTier2 = (p: NBAPlayer) => {
-            if ((p as any).birdRightsResignedThisYear === currentYear) return true;
-            if (isRecentlySigned(p) && !(p as any).nonGuaranteed) return true;
-            return false;
-          };
-          const tier1 = allPlayers
-            .filter(p => !selectedIds.has(p.internalId) && !isProtectedTier1(p))
-            .sort(sortFn);
-          const tier2 = allPlayers
-            .filter(p => !selectedIds.has(p.internalId) && !isProtectedTier2(p))
-            .sort(sortFn);
-          const tier3 = allPlayers
-            .filter(p => !selectedIds.has(p.internalId) && !(isRecentlySigned(p) && !(p as any).nonGuaranteed))
-            .sort(sortFn);
-          const forcedPool = [...tier1];
-          for (const p of tier2) if (!forcedPool.find(q => q.internalId === p.internalId)) forcedPool.push(p);
-          for (const p of tier3) if (!forcedPool.find(q => q.internalId === p.internalId)) forcedPool.push(p);
+          // Tiered forced fallback — see buildForcedTrimPool comment for tier rules.
+          // Preseason: no appearance-guard (camp bodies haven't played yet).
+          const forcedPool = buildForcedTrimPool(allPlayers, selectedIds, sortFn, false);
           for (let i = 0; teamWaivers.length < excess && i < forcedPool.length; i++) {
             pushWaiver(forcedPool[i], true);
           }
@@ -1425,34 +1447,9 @@ export function autoTrimOversizedRosters(state: GameState, month?: number, day?:
           pushWaiver(trimPool[i]);
         }
         if (teamWaivers.length < excess) {
-          // Tiered forced fallback (see preseason branch comment) — preserves
-          // Bird-Rights re-signs through the trim's last-resort cut order.
-          const isProtectedTier1 = (p: NBAPlayer) => {
-            if (hasRegularSeasonAppearance(p)) return true;
-            if ((p as any).birdRightsResignedThisYear === currentYear) return true;
-            if (isRecentlySigned(p) && !(p as any).nonGuaranteed) return true;
-            const draftYr = (p as any).draft?.year;
-            if (typeof draftYr === 'number' && currentYear - draftYr <= 2) return true;
-            return false;
-          };
-          const isProtectedTier2 = (p: NBAPlayer) => {
-            if (hasRegularSeasonAppearance(p)) return true;
-            if ((p as any).birdRightsResignedThisYear === currentYear) return true;
-            if (isRecentlySigned(p) && !(p as any).nonGuaranteed) return true;
-            return false;
-          };
-          const tier1 = roster
-            .filter(p => !selectedIds.has(p.internalId) && !isProtectedTier1(p))
-            .sort(sortFn);
-          const tier2 = roster
-            .filter(p => !selectedIds.has(p.internalId) && !isProtectedTier2(p))
-            .sort(sortFn);
-          const tier3 = roster
-            .filter(p => !selectedIds.has(p.internalId) && !(isRecentlySigned(p) && !(p as any).nonGuaranteed))
-            .sort(sortFn);
-          const forcedPool = [...tier1];
-          for (const p of tier2) if (!forcedPool.find(q => q.internalId === p.internalId)) forcedPool.push(p);
-          for (const p of tier3) if (!forcedPool.find(q => q.internalId === p.internalId)) forcedPool.push(p);
+          // Regular-season forced fallback: includeAppearanceGuard so anyone who
+          // already played a counted game can't be retroactively camp-cut.
+          const forcedPool = buildForcedTrimPool(roster, selectedIds, sortFn, true);
           for (let i = 0; teamWaivers.length < excess && i < forcedPool.length; i++) {
             pushWaiver(forcedPool[i], true);
           }
@@ -1506,7 +1503,7 @@ export interface PromotionResult {
 }
 
 export function autoPromoteTwoWayExcess(state: GameState, month?: number): PromotionResult[] {
-  const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive()) ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
+  const userTeamId = (state.gameMode === 'gm') ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
   const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
   const maxTwoWay = (state.leagueStats as any).twoWayContractsEnabled === false
     ? 0
@@ -1549,7 +1546,7 @@ export function autoPromoteTwoWayExcess(state: GameState, month?: number): Promo
 
       // 1yr promotion deal capped at 2× league min so role-player promotions stay realistic.
       const offer = computeContractOffer(p, state.leagueStats, [], 0);
-      const minSalaryUSD = ((state.leagueStats as any).minContractStaticAmount ?? 1.273) * 1_000_000;
+      const minSalaryUSD = getMinSalaryUSD(state.leagueStats);
       const promotionCapUSD = minSalaryUSD * 2;
       const newSalaryUSD = Math.min(offer.salaryUSD, promotionCapUSD);
       const currentSalaryUSD = contractToUSD((p.contract?.amount as number) || 0);
@@ -1627,7 +1624,7 @@ export function runAIMidSeasonExtensions(state: GameState): ExtensionResult[] {
 
   // Only AI teams — in GM mode skip the user's managed team. In commissioner mode every team is AI,
   // so use a sentinel id that can't match any real franchise.
-  const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive()) ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
+  const userTeamId = (state.gameMode === 'gm') ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
 
   // Players expiring at end of this season, on AI teams, not already extended.
   // yearsWithTeam ≥ 1 gates out players who just signed mid-season — extending
@@ -1750,10 +1747,7 @@ export function runAIMidSeasonExtensions(state: GameState): ExtensionResult[] {
       newYears: extensionYears,
       hasPlayerOption: extensionOffer.hasPlayerOption,
       declined: !accepted,
-      contractLabel: extLimits.isSupermaxEligible ? 'Supermax'
-        : (extLimits.isRookieExtEligible && extLimits.rookieRoseQualified) ? 'Rose Rule'
-        : extLimits.isRookieExtEligible ? 'Rookie Ext'
-        : undefined,
+      contractLabel: pickContractLabel(extLimits),
     });
   }
 
@@ -1777,7 +1771,7 @@ export function runAISeasonEndExtensions(state: GameState): ExtensionResult[] {
 
   const currentYear = state.leagueStats.year;
   const results: ExtensionResult[] = [];
-  const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive()) ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
+  const userTeamId = (state.gameMode === 'gm') ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
 
   const expiringPlayers = state.players.filter(p => {
     if (!p.contract) return false;
@@ -1877,10 +1871,7 @@ export function runAISeasonEndExtensions(state: GameState): ExtensionResult[] {
       newYears: extensionOffer.years,
       hasPlayerOption: extensionOffer.hasPlayerOption,
       declined: !accepted,
-      contractLabel: seLimits.isSupermaxEligible ? 'Supermax'
-        : (seLimits.isRookieExtEligible && seLimits.rookieRoseQualified) ? 'Rose Rule'
-        : seLimits.isRookieExtEligible ? 'Rookie Ext'
-        : undefined,
+      contractLabel: pickContractLabel(seLimits),
     });
   }
 
@@ -1948,8 +1939,7 @@ export function runAIBirdRightsResigns(state: GameState): BirdRightsResignResult
   }
 
   const currentYear = state.leagueStats.year;
-  const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive())
-    ? ((state as any).userTeamId ?? -999) : -999;
+  const userTeamId = resolveUserTeamId(state);
   const thresholds = getCapThresholds(state.leagueStats as any);
   const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
   const marketPendingIds = getActiveFAMarketPlayerIds(state);
@@ -2044,9 +2034,9 @@ export function runAIBirdRightsResigns(state: GameState): BirdRightsResignResult
     if (moodScore < -2 && !traits.includes('LOYAL')) continue;
 
     // Acceptance: LOYAL → 0.95, MERCENARY → 0.65 (chases money), default → 0.85.
-    const basePct = traits.includes('LOYAL') ? 0.95
-                  : traits.includes('MERCENARY') ? 0.65
-                  : 0.85;
+    let basePct = 0.85;
+    if (traits.includes('LOYAL')) basePct = 0.95;
+    else if (traits.includes('MERCENARY')) basePct = 0.65;
     const roll = birdRightsSeed(player.internalId, currentYear);
     if (roll >= basePct) continue;
 
@@ -2091,13 +2081,12 @@ export function runAIMleUpgradeSwaps(
 ): MleSwapResult[] {
   if (!SettingsManager.getSettings().allowAIFreeAgency) return [];
 
-  const userTeamId = (state.gameMode === 'gm' && !isAssistantGMActive())
-    ? ((state as any).userTeamId ?? -999) : -999;
+  const userTeamId = resolveUserTeamId(state);
 
   const thresholds   = getCapThresholds(state.leagueStats as any);
   const currentYear  = state.leagueStats.year;
   const maxStandard  = state.leagueStats.maxStandardPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
-  const minSalaryUSD = ((state.leagueStats as any).minContractStaticAmount ?? 1.2) * 1_000_000;
+  const minSalaryUSD = getMinSalaryUSD(state.leagueStats);
   const marketPendingIds = getActiveFAMarketPlayerIds(state);
 
   const freeAgents = state.players.filter(p =>

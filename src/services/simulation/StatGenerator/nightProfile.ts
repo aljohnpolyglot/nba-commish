@@ -301,7 +301,7 @@ function computeNightProfile(
     return {
       ptsTargetMult:  pts,
       efficiencyMult: eff,
-      fgaMult:        1.15,                        // was 1.40 — too many FGA for a role player
+      fgaMult:        1.05,                        // was 1.15 (was 1.40) — even role-player heat check stays close to baseline FGA volume
       shotDietShift:  0.10,                        // still chucking from deep, but not insane
       assistMult:     0.7 + Math.random() * 0.3,   // Tunnel vision, heat check mode
       ballControlMult:1.0 + Math.random() * 0.4,
@@ -389,9 +389,12 @@ function computeNightProfile(
     }
 
     // TIER 4: DESPERATE CHUCKER (7%) — hunting shots to break slump, 7-for-26
+    // fgaMult tightened 1.20 → 1.05: 1.20 produced 110+ FGA team totals when paired with
+    // cold efficiency (the "131 pts on 39% FG" pathology). Real NBA brickfests stay at
+    // ~85-95 FGA — they don't compensate volume for cold shooting at full team scale.
     if (shooterLuck < 0.45) {
       return {
-        ptsTargetMult:  0.80, efficiencyMult: 0.58, fgaMult: 1.20, shotDietShift: 0.15,
+        ptsTargetMult:  0.80, efficiencyMult: 0.58, fgaMult: 1.05, shotDietShift: 0.15,
         assistMult:      0.7 + rollV * 0.2,
         ballControlMult: 0.6 + rollV * 0.2,
         orbMult:         0.9 + rollH * 0.3,

@@ -16,7 +16,7 @@ export const generateSchedule = (
 ): Game[] => {
   const games: Game[] = [];
   // Derive season dates from seasonYear (e.g. 2026 → Oct 24 2025 – Apr 13 2026)
-  const yr = seasonYear ?? 2026;
+  const yr = seasonYear ?? new Date().getFullYear();
   const prevYr = yr - 1;
   // Season-stamped base so gids are unique across years in state.boxScores.
   // yr=2026 → 100000, yr=2027 → 200000, …  (All-Star specials live at 90000-90004, no collision)

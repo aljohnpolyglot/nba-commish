@@ -122,16 +122,21 @@ export function generateCoordinatedStats(
   applyReboundSpecialistFloor('orb');
 
   // ── Steals (pool sized by 2K aura; BBGM ratings decide who gets them)
+  // minFrac couples STL share to actual minutes — without it, a 4-min bench player and
+  // a 36-min starter at the same DIQ rating got near-equal STL shares (the "Justin
+  // Edwards 7:51 with 1 STL" garbage-time pathology).
   distributePie(
     finalSteals,
-    (p) => (rHelper(p, 'diq') * 2.0 + rHelper(p, 'spd') * 1.0) * (getNight(p)?._nightStlMult ?? 1),
+    (p) => (rHelper(p, 'diq') * 2.0 + rHelper(p, 'spd') * 1.0) * minFrac(p) * (getNight(p)?._nightStlMult ?? 1),
     'stl', 3.4, rotation, stats
   );
 
   // ── Blocks (pool sized by 2K aura; BBGM ratings decide who gets them)
+  // minFrac applied for the same reason as STL — keeps low-minute bigs from picking up
+  // free swats they had no time to attempt.
   distributePie(
     finalBlocks,
-    (p) => (rHelper(p, 'hgt') * 2.5 + rHelper(p, 'jmp') * 1.5 + rHelper(p, 'diq') * 0.5) * (getNight(p)?._nightBlkMult ?? 1),
+    (p) => (rHelper(p, 'hgt') * 2.5 + rHelper(p, 'jmp') * 1.5 + rHelper(p, 'diq') * 0.5) * minFrac(p) * (getNight(p)?._nightBlkMult ?? 1),
     'blk', 4.0, rotation, stats
   );
 
@@ -175,28 +180,61 @@ export function generateCoordinatedStats(
 
 
   // ── PF — Coordinated with Opponent FTA
-  // Macro: Changed multiplier from 0.85 to 1.05. This adds the missing ~3 team fouls.
+  // Calibrated against 2025-26 NBA team stats: PF mean ~19.5 vs FTA mean ~25 → ratio ~0.78.
+  // (Earlier 0.96 produced league-wide PF mean ~24, ~20% over real NBA.) The pool already
+  // covers all non-shooting fouls plus shooting fouls, so the ratio sits below 1.0.
   // NaN guard: opponent FTA is summed upstream from per-player ftas; if any leg of that
   // chain produced NaN/Infinity the team Fouls field rendered as "NaN". Fall back to
   // league-avg 18 instead of letting the NaN propagate through pfPool → share → s.pf.
   const safeOppFTA = Number.isFinite(oppFTA) ? Math.max(0, oppFTA) : 18;
-  const pfPool = Math.round(safeOppFTA * 0.96);
-  const pfFactors = rotation.map(p =>
-    Math.pow(
+  const pfPool = Math.round(safeOppFTA * 0.78);
+  // PF uses LINEAR min-weighting (not sqrt like other stats). Reason: NBA fouls scale
+  // ~linearly with court time per player profile (PF/48 ~stable). sqrt-minFrac dampened
+  // the minutes-correction so a 18-min role-player big still got 95% of a starter's share
+  // → DeAndre Jordan-style 4.0 PF in 18.8 MPG (10.2 PF/48, NBA real ~5.5 PF/48).
+  // Linear weighting keeps the share proportional to actual time played.
+  const pfFactors = rotation.map(p => {
+    const lineMin = stats.find(s => s.playerId === p.internalId)?.min ?? avgMin;
+    const minWeightLinear = lineMin / avgMin;
+    return Math.pow(
       Math.max(0.1,
         rHelper(p, 'hgt')         * 1.2 + // Bigs foul more in the paint
         (100 - rHelper(p, 'spd')) * 0.8 + // Slow defenders get beat and hack
         (100 - rHelper(p, 'diq')) * 1.2 + // Low Def IQ defenders don't know where to stand
         rHelper(p, 'stre')        * 0.4
       ),
-      2.2 // Concentrates fouls on weak defenders/bigs to hit ~3.7 leader mark
-    )
-  );
+      1.8 // Tuned 2.2 → 1.8: 2.2 concentrated 6.9× more PF on top bigs vs bench, causing
+          // Gobert-style 46% foul-out rate in playoffs (NBA real ~5%). 1.8 gives 2.4×
+          // ratio — bigs still foul more than guards but no longer dominant. Top PF
+          // leader ~4.0/g instead of 5.0+/g (NBA real Theis/Wood top: 4.4).
+    ) * minWeightLinear;
+  });
   const pfSum = pfFactors.reduce((a, b) => a + b, 0) || 1;
   stats.forEach((s, i) => {
     const share = pfFactors[i] / pfSum;
-    const raw = Math.round(pfPool * share * getVariance(1.0, 0.12));
-    s.pf = Math.min(6, Math.max(0, Number.isFinite(raw) ? raw : 0));
+    const raw = pfPool * share * getVariance(1.0, 0.12);
+    // Stochastic rounding: raw=0.3 has 30% chance of 1, 70% of 0. Math.round always
+    // rounded 0.5+ to 1, creating a "floor of 1 PF every player" pattern (the IND-UTA
+    // box-score where every bench player at 10-12 min had 1 PF). Real NBA: ~40% of
+    // sub-15-min lines have 0 PF. Stochastic rounding restores that distribution
+    // while keeping team-pool math identical (rounded mean equals raw mean).
+    const intPart = Math.floor(raw);
+    const frac = raw - intPart;
+    const rounded = Math.random() < frac ? intPart + 1 : intPart;
+    s.pf = Math.min(6, Math.max(0, Number.isFinite(rounded) ? rounded : 0));
+  });
+
+  // Garbage-time cutoff: defensive stats rounding noise hands a sub-3-min sub
+  // 1 STL/BLK/PF that they couldn't realistically earn. Zero those out — pool size
+  // doesn't change in practice (1-stat slivers redistribute to longer-played peers
+  // when the next box is generated; here we just clean the displayed line).
+  stats.forEach(s => {
+    if (s.min < 3) {
+      s.stl = 0;
+      s.blk = 0;
+      s.pf  = Math.min(s.pf, 1);
+      s.tov = Math.min(s.tov, 1);
+    }
   });
 
   // ── Minute redistribution — foul-plagued players lose time, redistributed proportionally
@@ -253,7 +291,10 @@ export function generateCoordinatedStats(
 
   // ── Cleanup & GameScore
   stats.forEach(s => {
+    // Set both reb (BBGM legacy) and trb (canonical) so consumers using the
+    // `s.trb ?? s.reb ?? (orb+drb)` helper read consistent values.
     s.reb = s.orb + s.drb;
+    (s as any).trb = s.reb;
     s.gameScore = s.pts * 1.0
       + s.fgm  * 0.4
       - s.fga  * 0.7

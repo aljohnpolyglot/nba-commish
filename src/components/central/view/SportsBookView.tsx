@@ -116,7 +116,7 @@ export const SportsbookView = () => {
 
   /* ─── Player Props ────────────────────────────────────────── */
   const playerProps = useMemo(() => {
-    const season = state.leagueStats?.year ?? 2026;
+    const season = state.leagueStats?.year ?? new Date().getFullYear();
     const todayTids = new Set<number>();
     gameCards.forEach((card: any) => {
       if (!card) return;

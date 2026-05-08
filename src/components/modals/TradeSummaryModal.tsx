@@ -107,7 +107,7 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
   const { state } = useGame();
   const { teamA, teamB, teamAPlayers, teamBPlayers, teamAPicks, teamBPicks } = tradeDetails;
 
-  const currentYear = state.leagueStats?.year ?? 2026;
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const isGM = state.gameMode === 'gm';
   const tradeIsValid = !salaryMismatchInfo;
   const seasonYear = currentYear;

@@ -484,7 +484,11 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                   <div className="font-black text-xs md:text-2xl text-white tracking-tight group-hover:text-indigo-400 transition-colors">{awayDisplayName}</div>
                   {awayTeam.id >= 0 && (
                     <div className="text-[11px] font-bold text-slate-500 tracking-widest mt-0.5">
-                      {seriesInfo ? seriesInfo.awayLabel : `${result?.awayWins ?? awayTeam.wins ?? 0}–${result?.awayLosses ?? awayTeam.losses ?? 0}`}
+                      {seriesInfo
+                        ? seriesInfo.awayLabel
+                        : (typeof result?.awayWins === 'number' && typeof result?.awayLosses === 'number')
+                          ? `${result.awayWins}–${result.awayLosses}`
+                          : '—'}
                     </div>
                   )}
                 </div>
@@ -512,7 +516,11 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                   <div className="font-black text-xs md:text-2xl text-white tracking-tight group-hover:text-indigo-400 transition-colors">{homeDisplayName}</div>
                   {homeTeam.id >= 0 && (
                     <div className="text-[11px] font-bold text-slate-500 tracking-widest mt-0.5">
-                      {seriesInfo ? seriesInfo.homeLabel : `${result?.homeWins ?? homeTeam.wins ?? 0}–${result?.homeLosses ?? homeTeam.losses ?? 0}`}
+                      {seriesInfo
+                        ? seriesInfo.homeLabel
+                        : (typeof result?.homeWins === 'number' && typeof result?.homeLosses === 'number')
+                          ? `${result.homeWins}–${result.homeLosses}`
+                          : '—'}
                     </div>
                   )}
                 </div>

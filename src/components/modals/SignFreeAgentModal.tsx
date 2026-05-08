@@ -102,7 +102,7 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
       );
       const gp = (selectedTeam.wins ?? 0) + (selectedTeam.losses ?? 0);
       const winPct = gp > 0 ? (selectedTeam.wins ?? 0) / gp : 0.5;
-      const intent = classifyResignIntent(selectedPlayer, traits, score, state.leagueStats?.year ?? 2026, winPct);
+      const intent = classifyResignIntent(selectedPlayer, traits, score, state.leagueStats?.year ?? new Date().getFullYear(), winPct);
       if (intent === 'testing_market') {
         preflightMessage = {
           title: 'Testing Free Agency',

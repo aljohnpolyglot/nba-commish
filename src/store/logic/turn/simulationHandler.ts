@@ -30,6 +30,7 @@ import { normalizeTeamJerseyNumbers } from '../../../utils/jerseyUtils';
 import { buildStretchedSchedule, getTeamDeadMoneyForSeason, seasonLabelToYear } from '../../../utils/salaryUtils';
 import { isNbaCupEnabled } from '../../../utils/ruleFlags';
 import { getOffseasonDayPlan } from '../../../services/offseason/offseasonPlan';
+import { clearWaiverMarkers, stripLiveContractAfterWaive } from '../../../utils/contractCleanup';
 
 const updateTeamStrengths = (teams: NBATeam[], players: Player[]): NBATeam[] => {
     return teams.map(team => ({
@@ -38,22 +39,19 @@ const updateTeamStrengths = (teams: NBATeam[], players: Player[]): NBATeam[] => 
     }));
 };
 
-const releaseDeclinedExtensionPlayer = (player: Player, currentYear: number): Player => {
-    if ((player.contract?.exp ?? currentYear + 1) !== currentYear) {
-        return { ...player, midSeasonExtensionDeclined: true } as any;
-    }
-    return {
-        ...player,
-        tid: -1,
-        status: 'Free Agent' as any,
-        midSeasonExtensionDeclined: true,
-        twoWay: undefined,
-        nonGuaranteed: false,
-        gLeagueAssigned: false,
-        signedDate: undefined,
-        tradeEligibleDate: undefined,
-        yearsWithTeam: 0,
-    } as any;
+const releaseDeclinedExtensionPlayer = (player: Player, _currentYear: number): Player => {
+    // Declining a mid-season extension is NOT a release. The player still has a
+    // valid guaranteed contract for the current year — they just don't want to
+    // sign an extension on top of it. They play out the season normally and
+    // become a UFA at the next rollover (Jun 30) when the contract expires.
+    //
+    // Old behavior set tid=-1 + status='Free Agent' mid-season when
+    // contract.exp === currentYear, which yanked stars off their team in
+    // December despite a fully-paid 2027-28 deal (observed: Giannis, Siakam,
+    // Ingram, Kessler, Avdija, Zubac all dumped to FA pool with intact
+    // contractYears entries showing UFA Apr-Jun). The flag-only path is
+    // correct for both expiring and non-expiring contracts.
+    return { ...player, midSeasonExtensionDeclined: true } as any;
 };
 
 function applyBirdRightsResignsPass(stateWithSim: GameState): GameState {
@@ -71,7 +69,7 @@ function applyBirdRightsResignsPass(stateWithSim: GameState): GameState {
         }
         return true;
     });
-    const firstYear = stateWithSim.leagueStats?.year ?? 2026;
+    const firstYear = stateWithSim.leagueStats?.year ?? new Date().getFullYear();
     if (birdResigns.length === 0) {
         return {
             ...stateWithSim,
@@ -138,7 +136,7 @@ const normalizeReservedJerseys = (state: GameState, teamIds: Iterable<number>): 
     if (ids.length === 0) return state;
     return {
         ...state,
-        players: normalizeTeamJerseyNumbers(state.players as any, state.teams as any, state.leagueStats?.year ?? 2026, {
+        players: normalizeTeamJerseyNumbers(state.players as any, state.teams as any, state.leagueStats?.year ?? new Date().getFullYear(), {
             history: state.history,
             targetTeamIds: ids,
         }) as any,
@@ -151,7 +149,7 @@ function applyPlayoffLogic(stateWithSim: GameState, dayResults: any[], numGamesP
     let schedule = stateWithSim.schedule;
     const dateNorm = normalizeDate(stateWithSim.date);
 
-    const seasonYear = stateWithSim.leagueStats?.year ?? 2026;
+    const seasonYear = stateWithSim.leagueStats?.year ?? new Date().getFullYear();
     const playoffStartDateStr = `${seasonYear}-04-13`;
     const playInStartDateStr  = `${seasonYear}-04-15`;
 
@@ -870,6 +868,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 isPlayoffDay,
                 stateWithSim.date,
                 stateWithSim.leagueStats.year,
+                stateWithSim.teams,
             ),
         };
 
@@ -894,7 +893,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             // leagueStats.year (= current season) would overwrite THIS year's
                             // salary with the new annual amount, which is what caused re-signings
                             // to retroactively inflate the current-season payroll.
-                            const extBaseYear = (stateWithSim.leagueStats?.year ?? 2026) + 1;
+                            const extBaseYear = (stateWithSim.leagueStats?.year ?? new Date().getFullYear()) + 1;
                             const extContractYears = Array.from({ length: ext.newYears ?? 1 }, (_, i) => {
                                 const yr = extBaseYear + i;
                                 return {
@@ -921,7 +920,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             };
                         }
                         if (declinedIds.has(p.internalId)) {
-                            return releaseDeclinedExtensionPlayer(p, stateWithSim.leagueStats?.year ?? 2026);
+                            return releaseDeclinedExtensionPlayer(p, stateWithSim.leagueStats?.year ?? new Date().getFullYear());
                         }
                         return p;
                     }),
@@ -1003,7 +1002,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             // May/Jun window — player's current deal expires at end of this
                             // season. Extension starts NEXT season so current-year salary and
                             // the corresponding contractYears entry stay put.
-                            const eeBaseYear = (stateWithSim.leagueStats?.year ?? 2026) + 1;
+                            const eeBaseYear = (stateWithSim.leagueStats?.year ?? new Date().getFullYear()) + 1;
                             const eeContractYears = Array.from({ length: ext.newYears ?? 1 }, (_, i) => {
                                 const yr = eeBaseYear + i;
                                 return {
@@ -1022,7 +1021,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                                 contractYears: [...existingThroughCurrent, ...eeContractYears],
                             };
                         }
-                        if (declinedEE.has(p.internalId)) return releaseDeclinedExtensionPlayer(p, stateWithSim.leagueStats?.year ?? 2026);
+                        if (declinedEE.has(p.internalId)) return releaseDeclinedExtensionPlayer(p, stateWithSim.leagueStats?.year ?? new Date().getFullYear());
                         return p;
                     }),
                 };
@@ -1039,7 +1038,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
 
         // AI trade proposals — frequency increases as trade deadline approaches
         const simDateForTrades = normalizeDate(stateWithSim.date);
-        const tradeDeadline = toISODateString(getTradeDeadlineDate(stateWithSim.leagueStats?.year ?? 2026, stateWithSim.leagueStats));
+        const tradeDeadline = toISODateString(getTradeDeadlineDate(stateWithSim.leagueStats?.year ?? new Date().getFullYear(), stateWithSim.leagueStats));
         const beforeTradeDeadline = simDateForTrades <= tradeDeadline;
         if (!isPlayoffDay && beforeTradeDeadline) {
             const daysToDeadline = (new Date(tradeDeadline).getTime() - new Date(simDateForTrades).getTime()) / 86_400_000;
@@ -1118,7 +1117,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
             stateWithSim = applyBirdRightsResignsPass(stateWithSim);
             stateWithSim = normalizeReservedJerseys(
                 stateWithSim,
-                stateWithSim.players.filter(p => (p as any).birdRightsResignedThisYear === (stateWithSim.leagueStats?.year ?? 2026)).map(p => p.tid),
+                stateWithSim.players.filter(p => (p as any).birdRightsResignedThisYear === (stateWithSim.leagueStats?.year ?? new Date().getFullYear())).map(p => p.tid),
             );
         }
 
@@ -1243,6 +1242,41 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
         // this gate, AI was signing players to non-prior teams on Jul 2-3 while
         // the user's bids sat unresolved, producing the "Lopez/Saric/Hauser
         // disappeared during moratorium" leak.
+        // Jan 10: auto-guarantee all NG contracts still on a roster.
+        // Lives OUTSIDE the runAIFAPass gate because that plan only fires every
+        // ~14 days during the regular season — Jan 10 was almost always skipped,
+        // leaving NG flags through the rest of the season + into playoffs.
+        if (simMonth === 1 && simDayNum === 10) {
+            const ngToGuarantee = stateWithSim.players.filter(
+                p => !!(p as any).nonGuaranteed && p.tid != null && p.tid >= 0
+            );
+            if (ngToGuarantee.length > 0) {
+                stateWithSim = {
+                    ...stateWithSim,
+                    players: stateWithSim.players.map(p =>
+                        (p as any).nonGuaranteed && p.tid != null && p.tid >= 0
+                            ? { ...p, nonGuaranteed: undefined }
+                            : p
+                    ),
+                    history: [
+                        ...(stateWithSim.history ?? []),
+                        ...ngToGuarantee.map(p => ({
+                            text: `${p.name}'s contract guaranteed by the ${stateWithSim.teams.find(t => t.id === p.tid)?.name ?? 'team'} (January 10 deadline)`,
+                            date: stateWithSim.date,
+                            type: 'NG Guaranteed',
+                            playerIds: [p.internalId],
+                        })),
+                    ],
+                };
+                const userTeamNGs = ngToGuarantee.filter(p => p.tid === stateWithSim.userTeamId);
+                if (userTeamNGs.length > 0) {
+                    const playerList = userTeamNGs.map(p => p.name).join(', ');
+                    const coachMsg = `Boss, just a heads up—${playerList} just became guaranteed on the Jan 10 deadline. Now locked in for the rest of the season.`;
+                    stateWithSim = pushCoachMessage(stateWithSim, coachMsg);
+                }
+            }
+        }
+
         // AI FA round — plan-authoritative since Session 3. The plan encodes
         // both the cadence (state.day % faFrequency) and the underMinRoster
         // bypass; no further inline gating needed.
@@ -1255,7 +1289,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
             const promotions = autoPromoteTwoWayExcess(stateWithSim, simMonth);
             if (promotions.length > 0) {
                 const promotionMap = new Map(promotions.map(pr => [pr.playerId, pr] as const));
-                const firstYear = stateWithSim.leagueStats?.year ?? 2026;
+                const firstYear = stateWithSim.leagueStats?.year ?? new Date().getFullYear();
                 stateWithSim = {
                     ...stateWithSim,
                     players: stateWithSim.players.map(p => {
@@ -1452,11 +1486,12 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                     players: stateWithSim.players.map(p => {
                         const w = waiverInfo.get(p.internalId);
                         if (!w) return p;
+                        const cleanPlayer = stripLiveContractAfterWaive(p, currentSeasonYear);
                         // Canonical FA status is 'Free Agent' (with space) — the signing
                         // filters in AIFreeAgentHandler / faMarketTicker compare against it.
                         // Writing 'FreeAgent' here made trimmed players invisible to the FA pool.
                         const base = {
-                            ...p,
+                            ...cleanPlayer,
                             tid: -1,
                             status: 'Free Agent' as const,
                             twoWay: undefined,
@@ -1528,40 +1563,6 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             })),
                         ],
                     };
-                }
-            }
-
-            // Jan 10: auto-guarantee all non-guaranteed contracts still on a roster
-            if (simMonth === 1 && simDayNum === 10) {
-                const ngToGuarantee = stateWithSim.players.filter(
-                    p => !!(p as any).nonGuaranteed && p.tid != null && p.tid >= 0
-                );
-                if (ngToGuarantee.length > 0) {
-                    stateWithSim = {
-                        ...stateWithSim,
-                        players: stateWithSim.players.map(p =>
-                            (p as any).nonGuaranteed && p.tid != null && p.tid >= 0
-                                ? { ...p, nonGuaranteed: undefined }
-                                : p
-                        ),
-                        history: [
-                            ...(stateWithSim.history ?? []),
-                            ...ngToGuarantee.map(p => ({
-                                text: `${p.name}'s contract guaranteed by the ${stateWithSim.teams.find(t => t.id === p.tid)?.name ?? 'team'} (January 10 deadline)`,
-                                date: stateWithSim.date,
-                                type: 'NG Guaranteed',
-                                playerIds: [p.internalId],
-                            })),
-                        ],
-                    };
-
-                    // GM mode: push coach message confirming guarantees
-                    const userTeamNGs = ngToGuarantee.filter(p => p.tid === stateWithSim.userTeamId);
-                    if (userTeamNGs.length > 0) {
-                        const playerList = userTeamNGs.map(p => p.name).join(', ');
-                        const coachMsg = `Boss, just a heads up—${playerList} just became guaranteed on the Jan 10 deadline. Now locked in for the rest of the season.`;
-                        stateWithSim = pushCoachMessage(stateWithSim, coachMsg);
-                    }
                 }
             }
 
@@ -1658,7 +1659,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         // Build contractYears[] so PlayerBioContractTab shows the new deal correctly.
                         // Preserve past seasons from existing contractYears[] (gist historical data)
                         // and replace only current + future years with the new deal.
-                        const firstYear = stateWithSim.leagueStats?.year ?? 2026;
+                        const firstYear = stateWithSim.leagueStats?.year ?? new Date().getFullYear();
                         const newContractYears = Array.from({ length: signing.contractYears }, (_, i) => {
                             const yr = firstYear + i;
                             const annualAmt = Math.round(signing.salaryUSD * Math.pow(1.05, i));
@@ -1679,7 +1680,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         const prevSalaryUSDFirstYear = (Number((p as any).contract?.amount) || 0) * 1_000;
                         const minUSD = ((stateWithSim.leagueStats?.minContractStaticAmount as number | undefined) ?? 1.273) * 1_000_000;
                         const isMin = signing.salaryUSD <= minUSD * 1.01;
-                        return {
+                        return clearWaiverMarkers({
                             ...p,
                             tid: signing.teamId,
                             status: 'Active' as const,
@@ -1707,7 +1708,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             ...((signing as any).nonGuaranteed ? { nonGuaranteed: true } : {}),
                             // Track MLE signing type so TeamFinancesView can color MLE contract cells
                             ...(signing.mleTypeUsed ? { mleSignedVia: signing.mleTypeUsed } : {}),
-                        };
+                        });
                     }),
                 };
                 // Log FA signings on the actual sim date. Backdating these made
@@ -1842,7 +1843,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                     // Apply signing
                     updatedPlayers = updatedPlayers.map(p => {
                         if (p.internalId !== s.playerId) return p;
-                        const firstYear = stateWithSim.leagueStats?.year ?? 2026;
+                        const firstYear = stateWithSim.leagueStats?.year ?? new Date().getFullYear();
                         const newContractYears = Array.from({ length: s.contractYears }, (_, i) => ({
                             season: `${firstYear + i - 1}-${String(firstYear + i).slice(-2)}`,
                             guaranteed: Math.round(s.salaryUSD * Math.pow(1.05, i)),
@@ -1852,7 +1853,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                             const yr = seasonLabelToYear(cy.season);
                             return yr < firstYear;
                         });
-                        return {
+                        return clearWaiverMarkers({
                             ...p,
                             tid: s.teamId,
                             status: 'Active' as const,
@@ -1867,14 +1868,16 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                                 leagueStats: stateWithSim.leagueStats as any,
                             }),
                             mleSignedVia: s.mleTypeUsed,
-                        };
+                        });
                     });
-                    // Apply waiver (release to FA). Keep contract.amount for salary-history
-                    // display; clear team-tied flags so FA pipeline treats them as clean.
+                    // Apply waiver (release to FA). Dead money tracks the old deal; the
+                    // player record must not carry it into the next signing.
                     updatedPlayers = updatedPlayers.map(p => {
                         if (p.internalId !== w.playerId) return p;
+                        const currentSeasonYear = stateWithSim.leagueStats?.year ?? new Date().getFullYear();
+                        const cleanPlayer = stripLiveContractAfterWaive(p, currentSeasonYear);
                         return {
-                            ...p,
+                            ...cleanPlayer,
                             tid: -1,
                             status: 'Free Agent' as const,
                             twoWay: undefined,

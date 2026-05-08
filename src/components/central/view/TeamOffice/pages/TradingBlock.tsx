@@ -6,8 +6,9 @@ import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
 import { PlayerSelectorGrid, type PlayerSelectorItem } from '../../../../shared/PlayerSelectorGrid';
 import { calcOvr2K, calcPot2K, calcPlayerTV, computeLeagueAvg, getPotColor, isYoungContenderCore, type TeamMode } from '../../../../../services/trade/tradeValueEngine';
 import { generateInboundProposalsForUser } from '../../../../../services/trade/inboundProposalGenerator';
+import { AwardService } from '../../../../../services/logic/AwardService';
 import { getMinTradableSeason, getTradablePicks, getMaxTradableSeason } from '../../../../../services/draft/DraftPickGenerator';
-import { buildClassStrengthMap, buildFullDraftSlotMap, formatPickLabel } from '../../../../../services/draft/draftClassStrength';
+import { buildClassStrengthMap, buildFullDraftSlotMap, comparePicks, formatPickLabel } from '../../../../../services/draft/draftClassStrength';
 import { teamPowerRanks } from '../../../../../services/trade/tradeFinderEngine';
 import { getTradeOutlook, effectiveRecord, getCapThresholds, getTeamPayrollUSD, topNAvgK2, resolveManualOutlook } from '../../../../../utils/salaryUtils';
 import { getTradingBlock, saveTradingBlock } from '../../../../../store/tradingBlockStore';
@@ -35,7 +36,7 @@ function ovrText(v: number): string {
 export function TradingBlock({ teamId }: TradingBlockProps) {
   const { state, dispatchAction } = useGame();
   const { players, teams, draftPicks } = state;
-  const currentYear = state.leagueStats?.year ?? 2026;
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const lotterySlotByTid = useMemo(
     () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
     [(state as any).draftLotteryResult, state.teams],
@@ -352,8 +353,8 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
 
   // Contending teams can float future picks for win-now help.
   const teamPicks = useMemo(
-    () => (draftPicks ?? []).filter(p => p.tid === teamId).sort((a, b) => a.season - b.season || a.round - b.round),
-    [draftPicks, teamId],
+    () => (draftPicks ?? []).filter(p => p.tid === teamId).sort((a, b) => comparePicks(a, b, currentYear, lotterySlotByTid)),
+    [draftPicks, teamId, currentYear, lotterySlotByTid],
   );
   const blockPicks = useMemo(
     () => teamPicks.filter(p => blockPickIds.has(p.dpid)),
@@ -414,6 +415,9 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
     const classStrengthByYear = buildClassStrengthMap(players, currentYear, currentYear, getMaxTradableSeason(state));
     const lotterySlotByTid = buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams);
     const powerRanks = teamPowerRanks(teams, currentYear);
+    const mvpTop = AwardService.calculateMVPRankings(players, teams, currentYear, 30);
+    const mvpRank = new Map<string, number>();
+    mvpTop.forEach((c, i) => mvpRank.set(c.player.internalId, i + 1));
     const proposals = generateInboundProposalsForUser({
       userTid: teamId,
       userGMName: `${team?.name ?? 'Team'} GM`,
@@ -434,6 +438,8 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
         currentDate: state.date ?? '',
         leagueStats: state.leagueStats as any,
       },
+      mvpRank,
+      leagueStats: state.leagueStats,
     });
     // Replace this team's inbound-pending slot; leave other teams / resolved proposals alone.
     const existing = (state.tradeProposals ?? []).filter(p => p.receivingTeamId !== teamId || p.status !== 'pending');

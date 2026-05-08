@@ -61,7 +61,7 @@ export const calculateNewStats = (state: GameState, action: UserAction, result: 
     // Fallback: auto-lock the default deal at Opening Night if the player
     // never finalized one.  Initialization now seeds DEFAULT_MEDIA_RIGHTS so
     // this branch only fires on very old save files that pre-date that change.
-    const openingYear = (state.leagueStats?.year ?? 2026) - 1;
+    const openingYear = (state.leagueStats?.year ?? new Date().getFullYear()) - 1;
     const OPENING_NIGHT = `${openingYear}-10-24`;
     if (!state.leagueStats.mediaRights && dateString >= OPENING_NIGHT) {
         state = {

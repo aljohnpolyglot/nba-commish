@@ -2,9 +2,10 @@ import React, { useMemo, useState } from 'react';
 import { Player, PlayerK2 } from '../types';
 import { mapPlayerToK2 } from '../lib/playerMapping';
 import { computeTeamProficiency } from '../../utils/coachSliders';
-import { systemDescriptions } from '../lib/coachSliders';
+import { computeDefensiveSystemFit, blendDefensiveProficiency } from '../../utils/defensiveSystemFit';
+import { systemDescriptions, defensiveSystemDescriptions } from '../lib/coachSliders';
 import { getSystemProficiency } from '../lib/coachSliders';
-import { Star, Zap, Info, TrendingUp, Activity, X, Target, Users, BookOpen, ChevronRight, GraduationCap } from 'lucide-react';
+import { Star, Zap, Info, TrendingUp, Activity, X, Target, Users, BookOpen, ChevronRight, GraduationCap, Swords, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ARCHETYPE_PROFILES } from '../constants/archetypes';
 import { TrainingFocusModal } from './TrainingFocusModal';
@@ -13,13 +14,19 @@ import { ATTRIBUTE_LABELS, getK2SubAttributes } from '../constants/trainingSyste
 interface Props {
   roster: Player[];
   /** Optional team-level familiarity to boost system scores — passed from TrainingCenterView. */
-  systemFamiliarity?: { offense?: number; defense?: number };
+  systemFamiliarity?: {
+    offense?: number;
+    defense?: number;
+    byOffense?: Record<string, number>;
+    byDefense?: Record<string, number>;
+  };
   /** League-wide K2 rosters for slider normalization — must match what CoachingPage passes. */
   allRosters?: PlayerK2[][];
 }
 
 export function SystemProficiencyView({ roster, systemFamiliarity, allRosters }: Props) {
   const [selectedSystem, setSelectedSystem] = useState<string | null>(null);
+  const [side, setSide] = useState<'offense' | 'defense'>('offense');
 
   const { sortedProfs, coachSliders, k2Roster } = useMemo(() => {
     if (roster.length === 0) return { sortedProfs: [] as [string, number][], coachSliders: null, k2Roster: [] as PlayerK2[] };
@@ -51,27 +58,92 @@ export function SystemProficiencyView({ roster, systemFamiliarity, allRosters }:
     return categories;
   }, [sortedProfs]);
 
+  // Defense side: blend roster fit (60%) + per-system Familiarity (40%).
+  // Roster fit comes from defensiveSystemFit — attribute baskets per scheme
+  // (Switch = versatility, Drop = big interior defense, Press = guard speed
+  // + endurance, etc.). Familiarity comes from training reps. A team with
+  // great roster but no reps still scores OK; reps alone can't overcome
+  // mismatched personnel.
+  const defenseTiers = useMemo(() => {
+    const fitMap = computeDefensiveSystemFit(k2Roster);
+    const famMap = systemFamiliarity?.byDefense ?? {};
+    const all = Object.keys(defensiveSystemDescriptions).map(name => {
+      const score = blendDefensiveProficiency(fitMap[name] ?? 50, famMap[name] ?? 0);
+      return [name, score] as [string, number];
+    }).sort((a, b) => b[1] - a[1]);
+    return {
+      mastery: all.filter(([, s]) => s >= 75),
+      competence: all.filter(([, s]) => s >= 50 && s < 75),
+      learning: all.filter(([, s]) => s < 50),
+    };
+  }, [systemFamiliarity, k2Roster]);
+
+  const activeTiers = side === 'offense' ? tiers : defenseTiers;
+  const activeMap = side === 'offense' ? systemDescriptions : defensiveSystemDescriptions;
+
   if (roster.length === 0) return null;
+
+  // Tier color: defense uses cyan to match the DailyPlanModal toggle accent.
+  const accent = side === 'offense' ? 'blue' : 'cyan';
+  const learningLabel = side === 'offense' ? 'Incompatible Schemes' : 'Personnel Mismatch';
 
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+      {/* Offense / Defense toggle */}
+      <div className="flex gap-1 bg-slate-900/60 border border-slate-800 rounded-lg p-1 max-w-xs">
+        <button
+          onClick={() => { setSide('offense'); setSelectedSystem(null); }}
+          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-widest transition-colors ${
+            side === 'offense'
+              ? 'bg-amber-500/20 text-amber-200 border border-amber-500/40'
+              : 'text-slate-500 hover:text-slate-300 border border-transparent'
+          }`}
+        >
+          <Swords size={12} />
+          Offense
+        </button>
+        <button
+          onClick={() => { setSide('defense'); setSelectedSystem(null); }}
+          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-widest transition-colors ${
+            side === 'defense'
+              ? 'bg-cyan-500/20 text-cyan-200 border border-cyan-500/40'
+              : 'text-slate-500 hover:text-slate-300 border border-transparent'
+          }`}
+        >
+          <Shield size={12} />
+          Defense
+        </button>
+      </div>
+
+      {side === 'defense' && activeTiers.mastery.length === 0 && activeTiers.competence.length === 0 && activeTiers.learning.length === 0 && (
+        <div className="border border-slate-800 bg-slate-950/40 rounded-2xl p-6 text-center">
+          <Shield size={20} className="mx-auto text-slate-600 mb-2" />
+          <p className="text-sm font-bold text-slate-400">No personnel data</p>
+          <p className="text-[11px] text-slate-500 mt-1 max-w-md mx-auto">
+            Roster is empty. Defensive scheme fit is computed from active rotation attributes.
+          </p>
+        </div>
+      )}
+
       {/* Tier 1: Mastery */}
-      {tiers.mastery.length > 0 && (
+      {activeTiers.mastery.length > 0 && (
         <section className="space-y-6">
           <div className="flex items-center gap-4">
-            <h3 className="text-sm font-black text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2">
+            <h3 className={`text-sm font-black uppercase tracking-[0.2em] flex items-center gap-2 ${accent === 'blue' ? 'text-blue-400' : 'text-cyan-400'}`}>
               <Zap size={16} />
               Scheme Mastery
             </h3>
-            <div className="h-px flex-1 bg-gradient-to-r from-blue-400/20 to-transparent" />
+            <div className={`h-px flex-1 bg-gradient-to-r ${accent === 'blue' ? 'from-blue-400/20' : 'from-cyan-400/20'} to-transparent`} />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {tiers.mastery.map(([name, score]) => (
-              <SystemCard 
-                key={name} 
-                name={name} 
-                score={score} 
-                tier="mastery" 
+            {activeTiers.mastery.map(([name, score]) => (
+              <SystemCard
+                key={name}
+                name={name}
+                score={score}
+                tier="mastery"
+                accent={accent}
+                systemMap={activeMap}
                 onClick={() => setSelectedSystem(name)}
               />
             ))}
@@ -80,7 +152,7 @@ export function SystemProficiencyView({ roster, systemFamiliarity, allRosters }:
       )}
 
       {/* Tier 2: Competence */}
-      {tiers.competence.length > 0 && (
+      {activeTiers.competence.length > 0 && (
         <section className="space-y-6">
           <div className="flex items-center gap-4">
             <h3 className="text-sm font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -90,12 +162,14 @@ export function SystemProficiencyView({ roster, systemFamiliarity, allRosters }:
             <div className="h-px flex-1 bg-gradient-to-r from-slate-400/10 to-transparent" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {tiers.competence.map(([name, score]) => (
-              <SystemCard 
-                key={name} 
-                name={name} 
-                score={score} 
-                tier="competence" 
+            {activeTiers.competence.map(([name, score]) => (
+              <SystemCard
+                key={name}
+                name={name}
+                score={score}
+                tier="competence"
+                accent={accent}
+                systemMap={activeMap}
                 onClick={() => setSelectedSystem(name)}
               />
             ))}
@@ -103,23 +177,25 @@ export function SystemProficiencyView({ roster, systemFamiliarity, allRosters }:
         </section>
       )}
 
-      {/* Tier 3: Learning */}
-      {tiers.learning.length > 0 && (
+      {/* Tier 3: Learning / Untrained */}
+      {activeTiers.learning.length > 0 && (
         <section className="space-y-6">
           <div className="flex items-center gap-4">
             <h3 className="text-sm font-black text-slate-700 uppercase tracking-[0.2em] flex items-center gap-2">
               <Activity size={16} />
-              Incompatible Schemes
+              {learningLabel}
             </h3>
             <div className="h-px flex-1 bg-gradient-to-r from-slate-800/20 to-transparent" />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 opacity-70">
-            {tiers.learning.map(([name, score]) => (
-              <SystemCard 
-                key={name} 
-                name={name} 
-                score={score} 
-                tier="learning" 
+            {activeTiers.learning.map(([name, score]) => (
+              <SystemCard
+                key={name}
+                name={name}
+                score={score}
+                tier="learning"
+                accent={accent}
+                systemMap={activeMap}
                 onClick={() => setSelectedSystem(name)}
               />
             ))}
@@ -128,11 +204,11 @@ export function SystemProficiencyView({ roster, systemFamiliarity, allRosters }:
       )}
 
       <AnimatePresence>
-        {selectedSystem && (
-          <SystemModal 
-            name={selectedSystem} 
+        {selectedSystem && side === 'offense' && (
+          <SystemModal
+            name={selectedSystem}
             roster={k2Roster}
-            onClose={() => setSelectedSystem(null)} 
+            onClose={() => setSelectedSystem(null)}
           />
         )}
       </AnimatePresence>
@@ -144,13 +220,20 @@ interface SystemCardProps {
   name: string;
   score: number;
   tier: 'mastery' | 'competence' | 'learning';
+  accent?: 'blue' | 'cyan';
+  /** Pass either the offensive or defensive map so the card can pull desc from the right side. */
+  systemMap?: Record<string, { desc: string }>;
   onClick: () => void;
   key?: string | number;
 }
 
-function SystemCard({ name, score, tier, onClick }: SystemCardProps) {
-  const details = systemDescriptions[name];
+function SystemCard({ name, score, tier, accent = 'blue', systemMap, onClick }: SystemCardProps) {
+  const details = (systemMap ?? systemDescriptions)[name];
   const stars = Math.round(Math.max(0, (score - 50) / 10) * 2) / 2;
+
+  const masteryStarCls = accent === 'cyan' ? 'text-cyan-400 fill-cyan-400' : 'text-blue-400 fill-blue-400';
+  const masteryBorder = accent === 'cyan' ? 'border-cyan-500/30 hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(34,211,238,0.1)]' : 'border-blue-500/30 hover:border-blue-400 hover:shadow-[0_0_30px_rgba(59,130,246,0.1)]';
+  const masteryBar = accent === 'cyan' ? 'bg-cyan-500' : 'bg-blue-500';
 
   const renderStars = (rating: number) => {
     const s = [];
@@ -159,11 +242,11 @@ function SystemCard({ name, score, tier, onClick }: SystemCardProps) {
         s.push(
             <div key={i} className="relative">
                 <Star size={12} className="text-slate-800 fill-slate-800" />
-                <div 
-                    className="absolute inset-0 overflow-hidden" 
+                <div
+                    className="absolute inset-0 overflow-hidden"
                     style={{ width: `${fill * 100}%` }}
                 >
-                    <Star size={12} className={`${tier === 'mastery' ? 'text-blue-400 fill-blue-400' : 'text-slate-400 fill-slate-400'}`} />
+                    <Star size={12} className={`${tier === 'mastery' ? masteryStarCls : 'text-slate-400 fill-slate-400'}`} />
                 </div>
             </div>
         );
@@ -172,11 +255,11 @@ function SystemCard({ name, score, tier, onClick }: SystemCardProps) {
   };
 
   return (
-    <button 
+    <button
       onClick={onClick}
       className={`p-6 rounded-3xl border flex flex-col gap-4 transition-all duration-300 group text-left w-full ${
-      tier === 'mastery' 
-      ? 'bg-slate-900 border-blue-500/30 hover:border-blue-400 hover:shadow-[0_0_30px_rgba(59,130,246,0.1)] cursor-pointer' 
+      tier === 'mastery'
+      ? `bg-slate-900 ${masteryBorder} cursor-pointer`
       : 'bg-slate-950 border-slate-800 hover:border-slate-700 cursor-pointer'
     }`}>
       <div className="flex justify-between items-start">
@@ -188,9 +271,9 @@ function SystemCard({ name, score, tier, onClick }: SystemCardProps) {
       </p>
       <div className="mt-auto pt-2 flex items-center justify-between">
         <div className="h-1 flex-1 bg-slate-900 rounded-full overflow-hidden">
-          <div 
-            className={`h-full transition-all duration-1000 ${tier === 'mastery' ? 'bg-blue-500' : 'bg-slate-700'}`}
-            style={{ width: `${score}%` }} 
+          <div
+            className={`h-full transition-all duration-1000 ${tier === 'mastery' ? masteryBar : 'bg-slate-700'}`}
+            style={{ width: `${score}%` }}
           />
         </div>
         <span className="ml-3 text-[10px] font-black text-slate-500 uppercase tracking-widest">{score}</span>

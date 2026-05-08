@@ -40,7 +40,7 @@ export default function HallofFameView() {
   const [externalLoading, setExternalLoading] = useState(true);
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
 
-  const currentYear = state.leagueStats?.year ?? 2026;
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const hofThreshold = SettingsManager.getSettings().hofWSThreshold ?? 50;
   // Ceremony cutoff (Sept 6 of each induction year). External classes only
   // appear once their ceremony date has been reached in-game.

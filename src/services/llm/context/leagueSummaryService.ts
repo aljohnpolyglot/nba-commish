@@ -44,7 +44,7 @@ export const generateLeagueSummaryContext = (
     }
 
     // 3. League Leaders (Top 10 Points, Rebounds, Assists)
-    const currentSeason = seasonYear ?? 2026;
+    const currentSeason = seasonYear ?? new Date().getFullYear();
     const playerStats = players.map(p => {
         const stat = p.stats?.find(s => s.season === currentSeason && !s.playoffs);
         if (!stat || stat.gp === 0) return null;

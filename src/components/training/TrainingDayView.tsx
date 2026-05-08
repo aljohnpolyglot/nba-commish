@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ArrowLeft, Calendar as CalendarIcon, ChevronRight, Clock, Edit3, FastForward, Play } from 'lucide-react';
+import { ArrowLeft, Calendar as CalendarIcon, ChevronRight, Edit3 } from 'lucide-react';
 import type { Allocations, ScheduleDay, TrainingParadigm } from '../../TeamTraining/types';
 import type { Game, NBATeam, GameState } from '../../types';
 import { TrainingActivityIcon } from './TrainingActivityIcon';
@@ -15,8 +15,6 @@ interface Props {
   state: GameState;
   isReadOnly: boolean;
   onBack: () => void;
-  onSimulateDay: () => void;
-  onSimulateToDate: (date: string) => void;
   onEditPlan: () => void;
 }
 
@@ -44,8 +42,6 @@ export const TrainingDayView: React.FC<Props> = ({
   state,
   isReadOnly,
   onBack,
-  onSimulateDay,
-  onSimulateToDate,
   onEditPlan,
 }) => {
   const norm = (date ?? '').slice(0, 10);
@@ -67,13 +63,6 @@ export const TrainingDayView: React.FC<Props> = ({
   const isGameDay = !!teamGame;
   const isHome = teamGame ? teamGame.homeTid === team.id : false;
   const opponent = teamGame ? teamLookup.get(isHome ? teamGame.awayTid : teamGame.homeTid) : null;
-
-  const tomorrowISO = useMemo(() => {
-    if (!norm) return '';
-    const d = new Date(`${norm}T00:00:00Z`);
-    d.setUTCDate(d.getUTCDate() + 1);
-    return d.toISOString().slice(0, 10);
-  }, [norm]);
 
   return (
     <div className="space-y-5">
@@ -132,7 +121,7 @@ export const TrainingDayView: React.FC<Props> = ({
               </div>
             </div>
           </div>
-          {!isReadOnly && (
+          {!isReadOnly && !isGameDay && (
             <button
               onClick={onEditPlan}
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#FDB927] text-black text-[10px] font-black uppercase tracking-widest hover:bg-amber-300 transition-colors shrink-0"
@@ -151,11 +140,6 @@ export const TrainingDayView: React.FC<Props> = ({
             <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500 rounded-full blur-3xl" />
           </div>
           <div className="relative p-6 md:p-8">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-rose-300 mb-4">
-              <Clock size={12} />
-              {isHome ? 'HOME' : 'AWAY'} · TIPOFF {teamGame.played ? 'COMPLETE' : 'TONIGHT'}
-            </div>
-
             <div className="flex items-center justify-between gap-4 md:gap-6">
               {/* Home team */}
               <div className="flex flex-col items-center gap-2 flex-1">
@@ -271,26 +255,6 @@ export const TrainingDayView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Sim controls */}
-      <div className="flex flex-col md:flex-row gap-2">
-        <button
-          onClick={onSimulateDay}
-          className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#FDB927] text-black text-[11px] font-black uppercase tracking-widest hover:bg-amber-300 transition-colors flex-1"
-        >
-          <Play size={14} />
-          Simulate Day
-        </button>
-        {tomorrowISO && (
-          <button
-            onClick={() => onSimulateToDate(tomorrowISO)}
-            className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-[11px] font-black uppercase tracking-widest transition-colors flex-1"
-          >
-            <FastForward size={14} />
-            Skip to Tomorrow
-            <ChevronRight size={12} />
-          </button>
-        )}
-      </div>
     </div>
   );
 };

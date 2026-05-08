@@ -30,11 +30,17 @@ import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickAction
 import { isPlausibleActiveMarket } from '../../../../../services/freeAgencyBidding';
 import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
 import { compareGameDates, formatGameDateShort, getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd, isInMoratorium, parseGameDate } from '../../../../../utils/dateUtils';
+import { getOffseasonState } from '../../../../../services/offseason/offseasonState';
 import type { NBAPlayer } from '../../../../../types';
 
 interface Props {
   teamId: number;
   onPlayerClick?: (player: NBAPlayer) => void;
+}
+
+interface AutoBidSummary {
+  submitted: number;
+  skipped: number;
 }
 
 const SHORTLIST_CAP = 15;
@@ -143,6 +149,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
     : 'the moratorium ends';
   const faHeadsUpKey = `team-intel-fa-moratorium-headsup-${state.saveId ?? 'default'}-${currentYear}`;
   const [showFaHeadsUp, setShowFaHeadsUp] = useState(false);
+  const [autoBidSummary, setAutoBidSummary] = useState<AutoBidSummary | null>(null);
 
   useEffect(() => {
     if (!isOwnTeam || !isMoratoriumActive) return;
@@ -213,9 +220,13 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
       .reduce((s, p) => s + ((p.contract?.amount ?? 0) * 1_000), 0),
     [state.players, teamId],
   );
-  const isPreFA = state.date
-    ? compareGameDates(state.date, getCurrentOffseasonEffectiveFAStart(state.date, state.leagueStats as any, state.schedule as any)) < 0
-    : false;
+  // Shortlist + "Projected cap (post-rollover)" only make sense in offseason FA prep.
+  // In-season (Nov–May) we use current cap and hide the offseason-only widgets.
+  const offseasonPhase = state.date
+    ? getOffseasonState(state.date, state.leagueStats as any, state.schedule as any).phase
+    : 'inSeason';
+  const isPreFA = offseasonPhase === 'preDraft' || offseasonPhase === 'draftDay' || offseasonPhase === 'postDraft' || offseasonPhase === 'moratorium';
+  const isOffseasonView = offseasonPhase !== 'inSeason';
   const expiringSalaryUSD = useMemo(
     () => isPreFA
       ? state.players
@@ -376,8 +387,16 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
       return sortConfig.dir === 'asc' ? diff : -diff;
     });
 
-    return sorted.slice(0, 30);
+    return sorted;
   }, [allFAs, currentYear, tierFilter, sortConfig, state.leagueStats]);
+
+  // Pagination for the Top FA drawer — show every available NBA FA, paged
+  const [faPage, setFaPage] = useState(1);
+  const [faPerPage, setFaPerPage] = useState(25);
+  const faTotalPages = Math.max(1, Math.ceil(topFAsForDrawer.length / faPerPage));
+  const visibleTopFAs = topFAsForDrawer.slice((faPage - 1) * faPerPage, faPage * faPerPage);
+  // Reset page when filters/sort change
+  useEffect(() => { setFaPage(1); }, [tierFilter, sortConfig.col, sortConfig.dir, faPerPage]);
 
   const handleSort = (col: string) => {
     setSortConfig(prev => ({
@@ -444,8 +463,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
       if (res.ok) submitted++; else skipped++;
     }
     if (submitted > 0 || skipped > 0) {
-      // eslint-disable-next-line no-alert
-      alert(`Auto-bids: ${submitted} submitted${skipped > 0 ? `, ${skipped} skipped (cap)` : ''}.`);
+      setAutoBidSummary({ submitted, skipped });
     }
   };
 
@@ -464,6 +482,38 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
 
   return (
     <>
+    {autoBidSummary && createPortal(
+      <div className="fixed inset-0 z-[121] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setAutoBidSummary(null)} />
+        <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-slate-950 shadow-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/10 bg-blue-500/[0.06]">
+            <h2 className="text-lg font-black uppercase tracking-tight text-white">Auto-Bids Submitted</h2>
+          </div>
+          <div className="p-5 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                <div className="text-[10px] font-black uppercase tracking-widest text-emerald-300">Submitted</div>
+                <div className="mt-1 text-2xl font-black text-white tabular-nums">{autoBidSummary.submitted}</div>
+              </div>
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+                <div className="text-[10px] font-black uppercase tracking-widest text-amber-300">Skipped</div>
+                <div className="mt-1 text-2xl font-black text-white tabular-nums">{autoBidSummary.skipped}</div>
+              </div>
+            </div>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              Skipped players did not fit within your current cap room plus remaining MLE space.
+            </p>
+            <button
+              onClick={() => setAutoBidSummary(null)}
+              className="w-full rounded-xl bg-blue-500 hover:bg-blue-400 text-black font-black uppercase tracking-widest text-xs py-3 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )}
     {showFaHeadsUp && createPortal(
       <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={dismissFaHeadsUp} />
@@ -495,20 +545,26 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
     <div className="h-full flex flex-col gap-3">
       {/* Cap Ticker — combined cap + MLE budget so over-cap teams (Boston tier)
            don't show "$0 budget" when their MLE is the real working budget. */}
-      <div className="rounded-lg border border-[#30363d] bg-black/40 p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className={`rounded-lg border border-[#30363d] bg-black/40 p-4 grid gap-4 ${isOffseasonView ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'}`}>
         <Stat label={isPreFA ? 'Projected cap (post-rollover)' : 'Cap Space'} value={fmtUSD(capSpaceUSD)} tone={capSpaceUSD < 0 ? 'red' : 'emerald'} />
         <Stat label="MLE Available" value={mleAvail.blocked ? '—' : fmtUSD(mleAvail.available)} />
-        <Stat label="Shortlist Commit" value={fmtUSD(shortlistCommitUSD)} tone={shortlistCommitUSD > availableRoomUSD ? 'amber' : undefined} />
-        <Stat
-          label="Room After Shortlist"
-          value={fmtUSD(projectedRoomAfterShortlist)}
-          tone={projectedRoomAfterShortlist < 0 ? 'red' : projectedRoomAfterShortlist === 0 ? 'amber' : 'emerald'}
-        />
+        {isOffseasonView && (
+          <>
+            <Stat label="Shortlist Commit" value={fmtUSD(shortlistCommitUSD)} tone={shortlistCommitUSD > availableRoomUSD ? 'amber' : undefined} />
+            <Stat
+              label="Room After Shortlist"
+              value={fmtUSD(projectedRoomAfterShortlist)}
+              tone={projectedRoomAfterShortlist < 0 ? 'red' : projectedRoomAfterShortlist === 0 ? 'amber' : 'emerald'}
+            />
+          </>
+        )}
       </div>
 
-      {/* Two-column layout: Shortlist (left) + Bid Tracker (right) */}
+      {/* Two-column layout: Shortlist (left) + Bid Tracker (right) — Shortlist
+           is offseason-only since it tracks FAs you intend to chase next FA window. */}
       <div className="flex-1 flex flex-col lg:flex-row gap-3 min-h-0">
         {/* Shortlist */}
+        {isOffseasonView && (
         <div className="lg:w-[360px] flex flex-col rounded-lg border border-[#30363d] bg-black/40 overflow-hidden shrink-0">
           <div className="p-3 border-b border-[#30363d] flex items-center justify-between gap-2 flex-wrap">
             <h3 className="font-bold uppercase tracking-wider text-sm">My Shortlist</h3>
@@ -622,6 +678,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
             )}
           </div>
         </div>
+        )}
 
         {/* Live Bid Tracker */}
         <div className="flex-1 flex flex-col rounded-lg border border-[#30363d] bg-black/40 overflow-hidden min-w-0">
@@ -802,7 +859,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
               </tr>
             </thead>
             <tbody>
-              {topFAsForDrawer.map(({ player, k2, age }) => {
+              {visibleTopFAs.map(({ player, k2, age }) => {
                 const offer = computeContractOffer(player, state.leagueStats as any);
                 const isShortlisted = shortlistIds.has(player.internalId);
                 const pot = getDisplayPotential(player, currentYear);
@@ -928,6 +985,43 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
             </tbody>
           </table>
         </div>
+        {/* Pagination */}
+        {topFAsForDrawer.length > 0 && (
+          <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-[#30363d] bg-black/30">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold hidden sm:inline-block">Show</span>
+              <select
+                className="bg-slate-900 border border-slate-700 text-white text-[11px] font-bold rounded px-2 py-1 outline-none appearance-none text-center"
+                value={faPerPage}
+                onChange={e => { setFaPerPage(Number(e.target.value)); setFaPage(1); }}
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center flex-1">
+              Page {faPage} <span className="text-slate-600">of</span> {faTotalPages}
+              <span className="hidden sm:inline"> • {topFAsForDrawer.length} FAs</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest bg-slate-900 border border-slate-700 text-white rounded hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                onClick={() => setFaPage(p => Math.max(1, p - 1))}
+                disabled={faPage === 1}
+              >
+                Prev
+              </button>
+              <button
+                className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest bg-slate-900 border border-slate-700 text-white rounded hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                onClick={() => setFaPage(p => Math.min(faTotalPages, p + 1))}
+                disabled={faPage >= faTotalPages}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Shortlist editor modal */}

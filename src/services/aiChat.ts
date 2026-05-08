@@ -136,7 +136,7 @@ export function buildGMChatContext(
 
   const dateNorm = normalizeDate(state.date);
   const [year, month, day] = dateNorm.split('-').map(Number);
-  const seasonYear = state.leagueStats?.year ?? 2026;
+  const seasonYear = state.leagueStats?.year ?? new Date().getFullYear();
 
   // Determine season phase
   let seasonPhase: 'preseason' | 'regular' | 'playoffs' | 'offseason' = 'offseason';

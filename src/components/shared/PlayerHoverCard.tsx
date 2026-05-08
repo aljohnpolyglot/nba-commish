@@ -22,7 +22,7 @@ const StatRow: React.FC<{ label: string; val: string }> = ({ label, val }) => (
 
 export const PlayerHoverCard: React.FC<{ player: NBAPlayer }> = ({ player }) => {
   const { state } = useGame();
-  const season = state.leagueStats?.year ?? 2026;
+  const season = state.leagueStats?.year ?? new Date().getFullYear();
   const team = state.teams.find(t => t.id === player.tid);
   const age = (player as any).born?.year ? season - (player as any).born.year : (player.age ?? 0);
 

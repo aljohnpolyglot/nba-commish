@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, Play, Star } from 'lucide-react';
+import { Trophy, Play, Star, Crown } from 'lucide-react';
 import { Game } from '../../../../types';
 import { normalizeDate } from '../../../../utils/helpers';
 
@@ -410,6 +410,56 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
                   )}
                 </div>
               </div>
+            )}
+
+            {/* The Throne — only when toggle enabled */}
+            {state?.leagueStats?.allStarThroneEnabled === true && (
+              allStar?.throne?.complete ? (
+                <div className="bg-gradient-to-br from-yellow-900/40 to-amber-900/40 border border-yellow-500/30 rounded-2xl p-6 md:col-span-2">
+                  <div className="text-[10px] font-black text-yellow-400 uppercase tracking-[0.2em] mb-3">King of 1v1 · Final</div>
+                  <div className="flex items-center gap-4 mb-5">
+                    <div className="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center">
+                      <Crown size={22} className="text-yellow-400" />
+                    </div>
+                    <div className="text-2xl font-black text-white uppercase tracking-tight leading-tight">
+                      {allStar.throne.champion?.playerName ?? 'TBD'}
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => onNavigateToAllStar()}
+                      className="flex-1 px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <Trophy size={12} />
+                      View Bracket
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gradient-to-br from-yellow-900/40 to-amber-900/40 border border-yellow-500/20 rounded-2xl p-6 md:col-span-2">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center">
+                      <Crown size={22} className="text-yellow-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black text-white uppercase tracking-tight">The Throne</h3>
+                      <p className="text-yellow-400 text-xs font-bold uppercase tracking-widest">
+                        {allStar?.throneAnnounced
+                          ? 'Field of 16 · Single-Elimination · Saturday Night'
+                          : 'Awaiting Field Reveal'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => onNavigateToAllStar()}
+                      className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold text-xs transition-all"
+                    >
+                      Open Throne
+                    </button>
+                  </div>
+                </div>
+              )
             )}
           </div>
         )}

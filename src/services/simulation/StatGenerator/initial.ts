@@ -242,6 +242,15 @@ export function generateStatsForTeam(
     const hgt  = rHelper(p, 'hgt'),  stre = rHelper(p, 'stre'), spd  = rHelper(p, 'spd');
     const drb  = rHelper(p, 'drb');
     const isStandAndDunkBig = tp < 20 && fg < 45 && dnk > 65 && hgt > 65;
+    const usageProxy = totalScoringPotential > 0
+      ? (scoringPotentials[i] / totalScoringPotential) * 100
+      : 5;
+    const benchSkill = Math.max(
+      fg,
+      tp,
+      oiq,
+      ins * 0.9 + dnk * 0.1,
+    );
 
     // 🏀 FREE THROWS (The Aggressive Whistle)
     // Ins/Dnk/Stre drive the factor — no TP penalty.
@@ -286,6 +295,21 @@ export function generateStatsForTeam(
     // star usage (Mitchell/Brunson 0.62, hot nights 0.65-0.70).
     const fgaCap = playerMinutes[i] * 0.72;
     const estimatedFga = Math.min(fgaCap, Math.max(fgaFloor, blendedEstimate));
+    const isBenchWarmerScoringProfile =
+      playerMinutes[i] < 10 &&
+      ptsTarget <= 4 &&
+      usageProxy < 11 &&
+      estimatedFga < 4.5 &&
+      benchSkill < 60 &&
+      (p.overallRating ?? 50) < 72;
+    const isSkilledLimitedMinutesProfile =
+      playerMinutes[i] < 14 &&
+      (
+        usageProxy >= 14 ||
+        estimatedFga >= 6 ||
+        benchSkill >= 68 ||
+        (p.overallRating ?? 50) >= 76
+      );
     // Anchor fta to estimatedFga (shot volume), NOT ptsTarget. Real NBA: FT trips are
     // per-attempt — every shot has some ~baseFtRate chance of drawing a foul. Anchoring
     // to ptsTarget let star-night pts inflation multiply through baseFtRate × ftaMult ×
@@ -300,7 +324,14 @@ export function generateStatsForTeam(
     // "0-X FG / 1-1 FT" consolation pattern (3 players w/ 1-1 FT in same game = 3 fake
     // technicals, NBA real has at most 1 technical FT per game shot by team's best
     // FT shooter, not the bench player).
-    if (playerMinutes[i] < 12 && ptsTarget < 6 && Math.random() < 0.55) {
+    if (
+      playerMinutes[i] < 12 &&
+      ptsTarget < 6 &&
+      usageProxy < 12 &&
+      estimatedFga < 5 &&
+      !isSkilledLimitedMinutesProfile &&
+      Math.random() < 0.45
+    ) {
       fta = 0;
     }
 
@@ -497,7 +528,7 @@ if (tpComposite >= 20 && tpComposite <= 60) {
     // Their offense is mostly lobs, dump-offs and putbacks, so keep team-level
     // variance but narrow the individual FG noise. This preserves the better
     // team-wide variance update without tanking efficient rim finishers to 43% FG.
-    const playerLuckWidth = isStandAndDunkBig ? 0.12 : 0.30;
+    const playerLuckWidth = isStandAndDunkBig ? 0.12 : isSkilledLimitedMinutesProfile ? 0.18 : 0.30;
     const playerLuck = 1 + (Math.random() - 0.5) * playerLuckWidth;
 
     // User's Scoring Options override: demoted players shoot slightly more efficient,
@@ -517,7 +548,7 @@ if (tpComposite >= 20 && tpComposite <= 60) {
     // a "team uniform efficiency" pattern where every player tracked the team-eff signal.
     // Wider sigma + playerLuck mult give real per-player swings (cold-shooting big in
     // a hot team night = NBA-realistic).
-    const pct2Sigma = isStandAndDunkBig ? 0.08 : isIn ? 0.18 : 0.32;
+    const pct2Sigma = isStandAndDunkBig ? 0.08 : isSkilledLimitedMinutesProfile ? (isIn ? 0.12 : 0.22) : isIn ? 0.18 : 0.32;
     const pct2Floor = isStandAndDunkBig ? 0.46 : 0.28;
     const pct2Ceil = isStandAndDunkBig ? 0.78 : 0.72;
     const pct2 = Math.max(
@@ -555,7 +586,7 @@ if (tpComposite >= 20 && tpComposite <= 60) {
     // 1-2 consolation pts → the "Khris Middleton 0-5 FG / 1-1 FT = 1 pt" pattern. Random
     // brick-out for bench: 22% chance to zero everything, keeping attempts. Reconcile-
     // to-score absorbs the shortfall on top scorers (NBA-realistic).
-    if (playerMinutes[i] < 14 && ptsTarget <= 5 && Math.random() < 0.22) {
+    if (isBenchWarmerScoringProfile && Math.random() < 0.16) {
       twoPm = 0;
       threePm = 0;
       fourPm = 0;
@@ -580,13 +611,25 @@ if (tpComposite >= 20 && tpComposite <= 60) {
 
     // Hot-team FGA-collapse mitigation: when a player shoots well, twoPa = twoPm/pct2 produces
     // fewer attempts than estimatedFga implied (SAC/DEN-style game with 62 FGA team-total).
-    // Soft-fill: if final FGA falls below 80% of estimatedFga, add half the deficit as misses.
-    // Preserves hot FG% somewhat while pulling team-total back toward NBA pace range.
+    // Low-score modern NBA games usually come from ugly shooting, not from everyone simply
+    // taking 67 shots in regulation. So in low-team-score environments we enforce a higher
+    // attempt floor and fill more of the gap with misses, pushing 84-point box scores toward
+    // 30s FG% instead of 45% on tiny volume.
     const finalPlayerFga = twoPa + threePa + fourPa;
-    const softFloor = Math.round(estimatedFga * 0.80);
+    const lowScoreFloorRatio =
+      adjustedScore <= 90 ? 0.94 :
+      adjustedScore <= 98 ? 0.90 :
+      adjustedScore <= 108 ? 0.86 :
+      0.80;
+    const softFloor = Math.round(estimatedFga * lowScoreFloorRatio);
     if (finalPlayerFga < softFloor) {
       const deficit = softFloor - finalPlayerFga;
-      twoPa += Math.round(deficit * 0.5);  // partial fill — tradeoff between pace + FG%
+      const fillRate =
+        adjustedScore <= 90 ? 1.0 :
+        adjustedScore <= 98 ? 0.85 :
+        adjustedScore <= 108 ? 0.65 :
+        0.5;
+      twoPa += Math.round(deficit * fillRate);
     }
 
     // Shot Locations

@@ -26,7 +26,7 @@
  *  - getFuzzedOvr() — ±1–4 OVR noise for non-owned players in scouting views
  */
 
-import { NBAPlayer } from '../../types';
+import { NBAPlayer, NBATeam } from '../../types';
 import { calculatePlayerOverallForYear } from '../../utils/playerRatings';
 import { applyLeagueDisplayScale, LEAGUE_DISPLAY_MULTIPLIERS } from '../../hooks/useLeagueScaledRatings';
 import { calculateLeagueOverall } from '../logic/leagueOvr';
@@ -34,6 +34,36 @@ import { convertTo2KRating, normalizeDate } from '../../utils/helpers';
 import { EXTERNAL_LEAGUE_OVR_CAP } from '../../constants';
 import { getFocusWeights, ARCHETYPE_PROFILES } from '../../TeamTraining/constants/trainingarchetypes';
 import { calculateMentorExp } from '../training/mentorScore';
+import type { TrainingParadigm, Allocations } from '../../TeamTraining/types';
+
+// ─── Conditioning maintenance modifier (the ONLY thing in team training that
+// touches K2 ratings). Per docs/training.md §3 — biometric team training is
+// PURE MAINTENANCE: it never raises Speed / Vertical / Strength / Endurance.
+// Those gains come exclusively from individual devFocus (per-player surface),
+// so team-bio cannot double-dip on growth. What it does is slow the age-decay
+// curve on physicals, proportional to the `conditioning` allocation share:
+//   - Any age: caps a fraction of the decline (up to 50% at 100% conditioning).
+//   - Genetic Ceiling already enforced by per-attr changeLimits().
+//   - Wear-and-Tear (fatigue+injury) handled in trainingTick, not here.
+// Offense/Defense/Recovery allocations do NOT touch K2 ratings — they are pure
+// team-meter reps (system familiarity / defensive aura / fatigue clearance).
+const PHYSICAL_ATTRS_SET = new Set(['spd', 'jmp', 'stre', 'endu', 'dnk']);
+function conditioningAttrMod(
+  attr: string,
+  delta: number,
+  alloc: Allocations,
+): number {
+  if (!PHYSICAL_ATTRS_SET.has(attr)) return 1.0;
+  if (delta >= 0) return 1.0; // growth is devFocus territory — never touched here
+  const condShare = Math.max(0, Math.min(1, (alloc.conditioning ?? 0) / 100));
+  if (condShare === 0) return 1.0;
+  return 1.0 - 0.50 * condShare;
+}
+
+interface TeamPlanForDay {
+  paradigm: TrainingParadigm;
+  allocations: Allocations;
+}
 
 // External league players have pre-scaled attrs at fetch time.
 // calculatePlayerOverallForYear on scaled attrs floors at Math.max(40,...) → display 66.
@@ -251,7 +281,8 @@ function progressPlayer(
   player: NBAPlayer,
   currentYear: number,
   date: string,
-  mentorLookup?: Map<string, NBAPlayer>
+  mentorLookup?: Map<string, NBAPlayer>,
+  teamPlan?: TeamPlanForDay,
 ): NBAPlayer {
   if (!player.ratings || player.ratings.length === 0) return player;
 
@@ -356,17 +387,23 @@ function progressPlayer(
     };
 
     // Mentor multiplier per docs/mentorship.md §3 + Hakeem-Dwight Rule:
-    //   - Regression buffer: mentor mitigates NEGATIVE deltas (anti-regression).
-    //     Caps at 30% reduction; scales with mentor's EXP (heavy mentors help more).
-    //   - IQ tick: tiny upward bias on oiq/diq when mentor is elite. Mentees DON'T
-    //     suddenly become stars from mentorship — boost is a fraction of natural growth.
+    //   - Mentee age gate: ONLY U-26 players absorb mentor effects. Older mentees
+    //     can still be assigned (UI doesn't lock), but the engine ignores it —
+    //     matches reality (you don't "mentor" a 28-year-old vet).
+    //   - Regression buffer: low-EXP mentors are Regression Fighters only.
+    //     Caps at 30% reduction at ~2000 EXP.
+    //   - IQ acceleration: GATED by 1000 EXP minimum. Only real vets (CP3-tier,
+    //     LeBron-tier) actively push young player IQ growth. The CP3↔SGA /
+    //     LeBron↔Reaves model — marginal at the threshold, real at the top end.
     //   - Skill/physical attrs ignore mentor entirely (Hakeem-Dwight rule).
     const mentor = mentorLookup && (player as any).mentorId ? mentorLookup.get((player as any).mentorId) : undefined;
     const mentorExp = mentor ? calculateMentorExp(mentor).exp : 0;
-    // 0 → 0% reduction. 2000 EXP → 30% (cap). Linear in between.
-    const mentorMitigation = Math.min(0.3, mentorExp / 6666);
-    // 0 → 0% IQ bonus. 2000 EXP → 25% bonus on positive oiq/diq deltas.
-    const mentorIQBonus = Math.min(0.25, mentorExp / 8000);
+    const menteeAgeOk = age <= 25;
+    const mentorMitigation = menteeAgeOk ? Math.min(0.3, mentorExp / 6666) : 0;
+    // 1000 EXP → 3%. 6000 EXP → 13%. 11000+ EXP → 20% cap.
+    const mentorIQBonus = (menteeAgeOk && mentorExp >= 1000)
+      ? Math.min(0.20, ((mentorExp - 1000) / 10000) * 0.20 + 0.03)
+      : 0;
 
     // Per-player intensity → growth multiplier for positive deltas.
     const intensity = (player as any).trainingIntensity ?? 'Normal';
@@ -441,6 +478,13 @@ function progressPlayer(
       // scaling, so non-rotation guys feel less of this brake.
       if (delta > 0 && fatigueDampen < 1.0) {
         delta *= fatigueDampen;
+      }
+
+      // Team conditioning — pure decay-resistance on physicals. Growth comes
+      // from devFocus (individual surface); team-bio just flattens the curve.
+      if (teamPlan && delta < 0) {
+        const cmod = conditioningAttrMod(attr, delta, teamPlan.allocations);
+        if (cmod !== 1.0) delta *= cmod;
       }
 
       // Apply changeLimits (annual, divide by 365 for daily clamp)
@@ -538,8 +582,27 @@ export function applyDailyProgression(
   isPlayoffs: boolean,
   date: string,
   currentYear: number,
+  teams?: NBATeam[],
 ): NBAPlayer[] {
   if (isPlayoffs) return players;
+
+  // Build per-team plan lookup once per day. Empty when teams aren't passed
+  // (legacy call site / external simulators) — paradigm modifier silently
+  // no-ops, so behavior is identical to before for unwired callers.
+  const planByTid = new Map<number, TeamPlanForDay>();
+  if (teams && teams.length) {
+    let iso = '';
+    try { iso = normalizeDate(date); } catch { iso = ''; }
+    if (iso) {
+      for (const t of teams) {
+        const cal = (t as any).trainingCalendar as Record<string, TeamPlanForDay> | undefined;
+        const plan = cal?.[iso];
+        if (plan?.paradigm && plan.allocations) {
+          planByTid.set(t.id, { paradigm: plan.paradigm, allocations: plan.allocations });
+        }
+      }
+    }
+  }
 
   // Young international prospects (age < 19 in foreign men's leagues) freeze
   // their ratings — they haven't entered the NBA draft yet. Without this gate
@@ -573,7 +636,8 @@ export function applyDailyProgression(
       return player;
     }
     try {
-      return progressPlayer(player, currentYear, date, mentorLookup);
+      const teamPlan = planByTid.get(player.tid);
+      return progressPlayer(player, currentYear, date, mentorLookup, teamPlan);
     } catch (_) {
       return player;
     }

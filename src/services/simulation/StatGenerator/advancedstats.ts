@@ -338,7 +338,11 @@ function calcPER(s: PlayerGameStats, teamPoss: number): number {
     - tov   * 53.897;
 
   const paceFactor = teamPoss > 0 ? MINUTES_PER_GAME / teamPoss : 1;
-  const PER_NORMALIZATION_FACTOR = 1.65; // Scale to make elite players ~30-35 and average ~15
+  // PER_NORMALIZATION_FACTOR tuned 1.65 → 1.40: ADVCHECK showed Jokic 38.2 vs NBA 32.3
+  // (+18% inflation across elite tier — Giannis 34.2, Doncic 33.6, Wemby 33.5). Box-score
+  // stats are correct (PPG/RPG/APG/BPG match NBA), only the PER formula was over-scaling.
+  // Lowering brings elite to NBA-aligned (Jokic ~32), mean stays near league-target 15.
+  const PER_NORMALIZATION_FACTOR = 1.40;
   return safe((uProd / min) * paceFactor * PER_NORMALIZATION_FACTOR);
 }
 
@@ -442,7 +446,11 @@ function calcBPM(
     - 1.92                    // replacement-level baseline
   );
 
-  const BPM_SCALE = 0.40;
+  // BPM_SCALE tuned 0.40 → 0.58: ADVCHECK showed Jokic BPM 9.8 vs NBA 14.2 (-31% deflation).
+  // Box-score stats are correct, only the BPM formula was under-scaling. Raising the scale
+  // brings elite BPM to NBA-aligned (Jokic ~14.2). VORP follows automatically since it's
+  // computed from BPM × minutes. WS is independent (uses ORtg/DRtg, not BPM).
+  const BPM_SCALE = 0.58;
   return { obpm: safe(obpm * BPM_SCALE), dbpm: safe(dbpm * BPM_SCALE), bpm: safe((obpm + dbpm) * BPM_SCALE) };
 }
 
@@ -451,9 +459,14 @@ function calcVORP(bpm: number, min: number): number {
   return safe((bpm - REPLACEMENT_BPM) * (min / MINUTES_PER_GAME) * (1 / 82));
 }
 
-/** EWA — Estimated Wins Added (PER-based). */
+/** EWA — Estimated Wins Added (PER-based, Hollinger formula).
+ *  Original: EWA = mp × (PER - PRL) / 2010, where PRL ≈ 11 (position replacement level).
+ *  Tuned to match NBA real: Jokic 22, SGA 18, Doncic 15. Prior version used LG_PER=15
+ *  and divisor 67 which yielded ~half (Jokic 10.1 vs NBA ~22). PRL=11 + divisor 42
+ *  corresponds to (min/48) × (PER-PRL) / 42 = Hollinger's published formula. */
 function calcEWA(per: number, min: number): number {
-  return safe((per - LG_PER) * (min / MINUTES_PER_GAME) / 67);
+  const PRL = 11;
+  return safe((per - PRL) * (min / MINUTES_PER_GAME) / 42);
 }
 
 // ── Milestone helpers ────────────────────────────────────────────────────────

@@ -1,21 +1,7 @@
-/**
- * Offseason orchestrator — Session 2 (shadow plan, no behavior change).
- *
- * Builds on Session 1 (offseasonState.ts). Where `getOffseasonState` says
- * "what phase are we in", `getOffseasonDayPlan` says "what each subsystem
- * SHOULD do today".
- *
- * Used by simulationHandler.ts as a SHADOW reference: existing inline date
- * logic still drives behavior, but we compute the plan alongside and log
- * disagreements. After a play-through with no disagreements, Session 3
- * can swap authority to the plan and delete the inline gates.
- *
- * Why this matters: today the dispatch decisions are spread across ~5 files
- * (simulationHandler, lazySimRunner, autoResolvers, gameLogic, faMarketTicker
- * itself). Each has its own date math. Bugs happen at the seams. The plan
- * struct is the single source of truth for "what runs today" — once it owns
- * dispatch, the seams disappear.
- */
+// Single source of truth for "what should each offseason subsystem do today".
+// Where getOffseasonState answers the phase, getOffseasonDayPlan answers the
+// per-subsystem fire/skip decision so dispatch logic stays in one place
+// instead of being re-derived across simulationHandler / lazySimRunner / etc.
 
 import type { GameState } from '../../types';
 import { getOffseasonState, type OffseasonState } from './offseasonState';
@@ -71,20 +57,20 @@ export function getOffseasonDayPlan(state: GameState): OffseasonDayPlan {
   );
 
   const ls = state.leagueStats as any;
-  const lsYear: number = ls?.year ?? 2026;
+  const lsYear: number = ls?.year ?? new Date().getFullYear();
   const { month: simMonth, day: simDayNum } = state.date
     ? getGameDateParts(state.date)
     : { month: 1, day: 1 };
 
-  // ── Frequency throttle (matches existing simulationHandler tapering) ──
   // July daily → August biweekly → September weekly → off-season biweekly.
-  // Kept identical to the inline logic so the shadow comparison stays clean.
-  const faFrequency =
-    simMonth === 7 ? 1
-    : simMonth === 8 && simDayNum <= 15 ? 2
-    : simMonth === 8 ? 4
-    : simMonth === 9 ? 7
-    : 14;
+  // Kept identical to the inline simulationHandler tapering.
+  const faFrequency = (() => {
+    if (simMonth === 7) return 1;
+    if (simMonth === 8 && simDayNum <= 15) return 2;
+    if (simMonth === 8) return 4;
+    if (simMonth === 9) return 7;
+    return 14;
+  })();
 
   // ── State-derived flags ──────────────────────────────────────────────
   const minRosterSetting: number = ls?.minPlayersPerTeam ?? 14;
@@ -230,45 +216,4 @@ export function logPlanEvent(caller: string, action: 'fire' | 'skip', extra?: st
   console.log(`[OSPLAN] ${caller} ${action}${extra ? ' ' + extra : ''}`);
 }
 
-/** Reset trace dedupe — exposed for tests. */
-export function _resetPlanTrace(): void {
-  planTraceLastEmittedKey.clear();
-}
 
-// ─── Shadow-compare helper ─────────────────────────────────────────────────
-// Used by simulationHandler.ts to log when an existing inline gate disagrees
-// with the plan. Throttled by the same mechanism as logOffseasonDrift.
-
-const SHADOW_WARN_THROTTLE_MS = 5_000;
-const lastShadowWarnAt = new Map<string, number>();
-
-/** Log when actual subsystem dispatch disagrees with the plan.
- *  `subsystem` identifies which action (e.g., 'tickFAMarkets').
- *  Throttled by `${subsystem}:${planned}:${actual}` so a daily disagreement
- *  doesn't spam the console. */
-export function shadowCompare(
-  subsystem: keyof OffseasonDayPlan['actions'],
-  planned: PlanAction,
-  actuallyFired: boolean,
-  plan: OffseasonDayPlan,
-): boolean {
-  const actual: PlanAction = actuallyFired ? 'fire' : 'skip';
-  if (planned === actual) return false;
-
-  const key = `${subsystem}:${planned}:${actual}`;
-  const now = Date.now();
-  const last = lastShadowWarnAt.get(key) ?? 0;
-  if (now - last < SHADOW_WARN_THROTTLE_MS) return false;
-  lastShadowWarnAt.set(key, now);
-
-  console.warn(
-    `[OSPLAN] SHADOW-DRIFT ${subsystem}: planned=${planned} actual=${actual} ` +
-      `(phase=${plan.state.phase}, ${plan.reason})`,
-  );
-  return true;
-}
-
-/** Reset throttle — exposed for tests. */
-export function _resetShadowThrottle(): void {
-  lastShadowWarnAt.clear();
-}
