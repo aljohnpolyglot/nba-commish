@@ -3,6 +3,9 @@ import { GameResult, PlayerGameStats } from '../types';
 import { MinutesPlayedService } from '../MinutesPlayedService';
 import { SimulatorKnobs, KNOBS_DEFAULT } from '../SimulatorKnobs';
 import { StatGenerator } from '../StatGenerator';
+import { activeClubDebuffs } from '../StatGenerator/helpers';
+import { Defense2KService } from '../../Defense2KService';
+import { injurySeverityLevel, playThroughInjuriesFactor } from '../playThroughInjuriesFactor';
 import { OnCourt, PlayerComposite } from './types';
 import { buildComposite } from './compositeMap';
 import { BoxAccumulator } from './boxScoreAccumulator';
@@ -48,6 +51,53 @@ function prepareUnit(
   );
   const composites = rotation.map(p => buildComposite(p, season));
   return { rotation, minuteTargets: minutes, composites };
+}
+
+/**
+ * Apply per-game hooks to the offensive composites of a single unit:
+ *  - clubDebuff   : per-player from `activeClubDebuffs` global (set by simulateDay)
+ *  - playThrough  : per-player from injury severity vs the team's PTI tolerance
+ *  - defensive aura: scalar from opponent's overall 2K defense rating
+ *
+ * Mutates composites in place. Defensive composites (defRim/defPerimeter/steal/
+ * block/rebound) are unaffected — only the offensive side gets dampened, since
+ * these hooks model "how well does this player produce against this opponent".
+ *
+ * Multipliers are conservative (≤22% range total) so the calibration the rest
+ * of Phase 5 nailed down isn't overridden by hook stacking.
+ */
+function applyHooks(unit: PrepResult, oppOverallDef: number): void {
+  // Defensive aura: opponent's 2K overallDef centered at 70.
+  // 82 (elite) → -0.06 on opponent offense, 60 (bad) → +0.05.
+  const auraMult = 1 - (oppOverallDef - 70) * 0.005;
+
+  unit.rotation.forEach((p, i) => {
+    const c = unit.composites[i];
+    let mult = auraMult;
+
+    // clubDebuff — global Map populated by simulateDay before each game.
+    const debuffSeverity = activeClubDebuffs.get(p.internalId);
+    if (debuffSeverity === 'heavy')         mult *= 0.84;
+    else if (debuffSeverity === 'moderate') mult *= 0.91;
+    else if (debuffSeverity === 'mild')     mult *= 0.96;
+
+    // playThroughInjuries — injured players who are suiting up get an output
+    // reduction proportional to severity (matches BBGM 2.5%/level).
+    const injurySev = injurySeverityLevel(p.injury?.gamesRemaining ?? 0);
+    if (injurySev > 0) mult *= playThroughInjuriesFactor(injurySev);
+
+    if (mult !== 1) {
+      c.rim        *= mult;
+      c.midRange   *= mult;
+      c.three      *= mult;
+      c.lowPost    *= mult;
+      c.driving    *= mult;
+      c.passing    *= mult;
+      c.drawingFouls *= mult;
+      // Usage is the player's "touches" weight — hook also dampens engagement.
+      c.usage      *= mult;
+    }
+  });
 }
 
 /**
@@ -119,6 +169,14 @@ export function simulateGameRealistic(args: SimulateGameArgs): GameResult {
     // Insufficient roster — caller should fall back. We surface a synthetic score-tied throwaway.
     throw new Error('Realistic engine: insufficient rotation');
   }
+
+  // Apply game-state hooks (clubDebuff / playThrough / defensive aura). Defensive
+  // aura needs the opponent's 2K rating computed from the same player set the fast
+  // engine uses, so each side passes the OTHER side's rotation to Defense2KService.
+  const home2KDef = Defense2KService.getTeamDefense(home.rotation);
+  const away2KDef = Defense2KService.getTeamDefense(away.rotation);
+  applyHooks(home, away2KDef.overallDef);
+  applyHooks(away, home2KDef.overallDef);
 
   const acc = new BoxAccumulator();
   acc.registerRoster(home.rotation, 5);
