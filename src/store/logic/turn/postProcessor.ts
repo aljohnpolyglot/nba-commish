@@ -8,7 +8,7 @@ export const processSimulationResults = (
     schedule?: Game[],
     seasonYear?: number
 ) => {
-    const currentSeasonYear = seasonYear ?? 2026;
+    const currentSeasonYear = seasonYear ?? new Date().getFullYear();
     let updatedPlayers = [...players];
     let updatedDraftPicks = [...draftPicks];
 
@@ -97,7 +97,6 @@ export const processSimulationResults = (
                 seasonStatIndex = stats.length - 1;
             } else {
                 seasonStat = { ...stats[seasonStatIndex] };
-                // Initialize sums if they don't exist
                 if (seasonStat._perSum === undefined) seasonStat._perSum = (seasonStat.per || 0) * seasonStat.gp;
                 if (seasonStat._usgPctSum === undefined) seasonStat._usgPctSum = (seasonStat.usgPct || 0) * seasonStat.gp;
                 if (seasonStat._ortgSum === undefined) seasonStat._ortgSum = (seasonStat.ortg || 0) * seasonStat.gp;
@@ -146,7 +145,6 @@ export const processSimulationResults = (
                 seasonStat.vorp = (seasonStat.vorp || 0) + (stat.vorp || 0);
                 seasonStat.ewa  = (seasonStat.ewa  || 0) + (stat.ewa  || 0);
 
-                // Advanced stats — weighted-average sums
                 seasonStat._perSum    += (stat.per    || 0);
                 seasonStat._usgPctSum += (stat.usgPct || 0);
                 seasonStat._ortgSum   += (stat.ortg   || 0);

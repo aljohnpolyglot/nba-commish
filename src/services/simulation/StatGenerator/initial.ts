@@ -107,11 +107,11 @@ export function generateStatsForTeam(
 
   // Apply minutes multiplier now, re-normalize to keep team total exact.
   // Also apply injury minutes restriction: day-to-day players lose ~12%, significant injuries ~40%.
-  const _ptiLevel = knobs.playThroughInjuries ?? 0;
+  const ptiLevel = knobs.playThroughInjuries ?? 0;
   playerMinutes = playerMinutes.map((m, i) => {
     const injGames = rotation[i]?.injury?.gamesRemaining ?? 0;
-    const minRestriction = injGames > 0 && _ptiLevel > 0
-      ? minutesRestrictionFactor(Math.min(injurySeverityLevel(injGames), _ptiLevel))
+    const minRestriction = injGames > 0 && ptiLevel > 0
+      ? minutesRestrictionFactor(Math.min(injurySeverityLevel(injGames), ptiLevel))
       : 1.0;
     // Skip minutesMult for flat-minute games (All-Star, Celebrity, Rising Stars) —
     // the point is even distribution; variance would skew KAT to 40 min.
@@ -141,7 +141,6 @@ export function generateStatsForTeam(
   const rHelper = (p: Player, k: string) => Math.max(rFloor, R(p, k, season));
 
   // ── Scoring Potential ──────────────────────────────────────────────────
-  const ptiLevel = knobs.playThroughInjuries ?? 0;
   const scoringPotentials = rotation.map((p, i) => {
     const oiq = rHelper(p, 'oiq'), drb = rHelper(p, 'drb'), ins = rHelper(p, 'ins');
     const fg  = rHelper(p, 'fg'),  tp  = rHelper(p, 'tp'),  dnk = rHelper(p, 'dnk');
@@ -201,11 +200,11 @@ export function generateStatsForTeam(
       pts += teamBonusBucket * bonusShare;
     }
     const np = getNightProfile(p, season, lead, isWinner, share, oppDefProfile);
-    const _gpElev = gamePlan.ptsMult[i];
-    const _dampF  = _gpElev > 1.55 ? Math.max(0.50, 1.55 / _gpElev) : 1.0;
-    const _nightM = 1.0 + (np.ptsTargetMult - 1.0) * _dampF;
+    const gpElev = gamePlan.ptsMult[i];
+    const dampF  = gpElev > 1.55 ? Math.max(0.50, 1.55 / gpElev) : 1.0;
+    const nightM = 1.0 + (np.ptsTargetMult - 1.0) * dampF;
     const ptsCap  = np.ptsTargetMult >= 1.45 ? 78 : 65;
-    return { rawPts: Math.min(ptsCap, Math.max(0, Math.round(pts * _nightM))), np, share };
+    return { rawPts: Math.min(ptsCap, Math.max(0, Math.round(pts * nightM))), np, share };
   });
   const rawPtsSum   = pass1.reduce((s, r) => s + r.rawPts, 0) || 1;
   const normScale   = adjustedScore / rawPtsSum;
@@ -242,6 +241,7 @@ export function generateStatsForTeam(
     const fg   = rHelper(p, 'fg'),   ins  = rHelper(p, 'ins'),  dnk  = rHelper(p, 'dnk');
     const hgt  = rHelper(p, 'hgt'),  stre = rHelper(p, 'stre'), spd  = rHelper(p, 'spd');
     const drb  = rHelper(p, 'drb');
+    const isStandAndDunkBig = tp < 20 && fg < 45 && dnk > 65 && hgt > 65;
 
     // 🏀 FREE THROWS (The Aggressive Whistle)
     // Ins/Dnk/Stre drive the factor — no TP penalty.
@@ -265,10 +265,27 @@ export function generateStatsForTeam(
     const baselinePts = ptsTarget / ptm;
     // Minutes-scaled FGA floor — kills the "Brunson 2-of-6 brickfest" pathology.
     // Even a star's worst real cold game is ~4-of-20 over 35 mins (~0.57 FGA/min).
-    // Floor at 0.40 FGA/min: starter 35 mins → 14 FGA min, bench 15 mins → 6 FGA.
-    // Defer/passive archetypes still allowed (fgaMult < 0.85 partially overrides).
-    const fgaFloor = Math.floor(playerMinutes[i] * 0.40 * Math.max(0.65, nightProfile.fgaMult));
-    const estimatedFga = Math.max(fgaFloor, (baselinePts / 1.1) * nightProfile.fgaMult);
+    // Floor at 0.36 FGA/min: starter 35 mins → 12.6 FGA min, bench 15 mins → 5.4 FGA.
+    const fgaFloor = Math.floor(playerMinutes[i] * 0.36);
+
+    // Volume-anchored FGA estimation: NBA-real volume tracks MINUTES/USAGE more than
+    // pts target. Old formula (estimatedFga = baselinePts/1.1 * fgaMult) pumped FGA
+    // proportionally to pts → pts↔FGA corr 0.61 (NBA expects ~0.30) and Curry-style
+    // "30 FGA in 29 min" = 1.03 FGA/min outliers.
+    //
+    // Initial 50/50 was too reductive (FGA 87→84, FG% 46→51). Tuned 70/30 brought it
+    // back partially. Surgical 80/20 bumps FGA league-mean toward NBA 89.1 — pts-anchored
+    // dominance preserves star usage signal, min-anchor still prevents pure-pts pump.
+    // Stars at 35min/30pts get ~25 FGA (NBA Doncic 22.8 — slightly above, then capped).
+    const minBased = playerMinutes[i] * 0.40 * nightProfile.fgaMult;
+    const ptsBased = (baselinePts / 1.1) * nightProfile.fgaMult;
+    const blendedEstimate = ptsBased * 0.80 + minBased * 0.20;
+
+    // Hard cap: no player exceeds 0.72 FGA/min (Westbrook all-time peak ~0.71). Caps
+    // the "Curry 30 FGA in 29 min" pathology (1.03 FGA/min) without choking realistic
+    // star usage (Mitchell/Brunson 0.62, hot nights 0.65-0.70).
+    const fgaCap = playerMinutes[i] * 0.72;
+    const estimatedFga = Math.min(fgaCap, Math.max(fgaFloor, blendedEstimate));
     // Anchor fta to estimatedFga (shot volume), NOT ptsTarget. Real NBA: FT trips are
     // per-attempt — every shot has some ~baseFtRate chance of drawing a foul. Anchoring
     // to ptsTarget let star-night pts inflation multiply through baseFtRate × ftaMult ×
@@ -277,6 +294,15 @@ export function generateStatsForTeam(
     const ftaMultRaw = Number.isFinite(gamePlan.ftaMult[i]) ? gamePlan.ftaMult[i] : 1.0;
     const ftAgg = Number.isFinite(nightProfile.ftAggression) ? nightProfile.ftAggression : 1.0;
     let fta = Math.round(estimatedFga * baseFtRate * ftAgg * ftaMultRaw * getVariance(1.0, 0.18));
+
+    // Bench players with low pts target often don't draw fouls (no shooting attempts =
+    // no fouls). 50% chance of zero FTA for sub-12-min + low-pts lines kills the
+    // "0-X FG / 1-1 FT" consolation pattern (3 players w/ 1-1 FT in same game = 3 fake
+    // technicals, NBA real has at most 1 technical FT per game shot by team's best
+    // FT shooter, not the bench player).
+    if (playerMinutes[i] < 12 && ptsTarget < 6 && Math.random() < 0.55) {
+      fta = 0;
+    }
 
     // Floor: every active scorer draws at least some contact
     fta = Math.max(Math.round(ptsTarget * 0.04), fta);
@@ -293,7 +319,10 @@ export function generateStatsForTeam(
 
     // TRUE BELL CURVE FT%: An 80% shooter should occasionally shoot 60% or 100% in a single game.
     // ftSkill nudges % up on hot nights (Torch: +12%) and down on cold nights (Brickfest: -18%).
-    const ftpBase = (ft / 100) * 0.50 + 0.42;
+    // Constant tuned 0.42 → 0.38 → 0.35: first cut brought league FT% 82.5 → 81.0 (still 3pp
+    // over NBA 78.3). Second surgical cut targets exactly that gap. Top1 should land at ~93%
+    // (NBA Curry .921) instead of 99% outliers.
+    const ftpBase = (ft / 100) * 0.50 + 0.35;
     let gameFtp = ftpBase * nightProfile.ftSkill * getVariance(1.0, 0.15) * (1.0 + (nightProfile.efficiencyMult - 1.0) * 0.2) * (knobs.ftEfficiencyMult ?? 1.0);
 
     // Bell curve cap — naturally creates authentic 6-for-6 or 8-for-8 nights
@@ -301,6 +330,24 @@ export function generateStatsForTeam(
 
     let ftm = Math.round(fta * gameFtp);
     ftm = Math.max(0, Math.min(ftm, fta));
+    // Single-FTA lines are real, but mostly concentrated on and-1 / tech contexts.
+    // Keep a small slice for credible rotation scorers; otherwise snap the trip to
+    // 0 or 2 so bench box scores don't fill with fake 1-1 FT consolation lines.
+    if (fta === 1) {
+      const keepSingleTrip =
+        playerMinutes[i] >= 22 &&
+        ptsTarget >= 12 &&
+        estimatedFga >= 8 &&
+        Math.random() < 0.18;
+      if (!keepSingleTrip) {
+        const shouldPromoteToTwo =
+          playerMinutes[i] >= 18 &&
+          (ptsTarget >= 10 || estimatedFga >= 7) &&
+          Math.random() < 0.45;
+        fta = shouldPromoteToTwo ? 2 : 0;
+        ftm = fta > 0 ? Math.max(0, Math.min(fta, Math.round(fta * gameFtp))) : 0;
+      }
+    }
 
     // Defensive deltas vs baseline: positive = elite (debuffs offense), negative = bad (buffs offense)
     const perimDelta = oppDefProfile ? (oppDefProfile.perimeterDef - 70) : 0;
@@ -366,8 +413,11 @@ if (tpComposite >= 20 && tpComposite <= 60) {
     // Mid-elite shooter bump: tp 60-80 (Klay/MPJ/Duncan Robinson tier) gets a small efficiency lift.
     // Not Curry's tier (tp>80), not the whole league.
     const tierEfficiencyBonus = (tp >= 60 && tp < 80) ? 0.025 : 0;
+    // Base bumped 0.31 → 0.34: TEAMCHECK showed league 3P% 33.6 vs NBA 36.5 (-3pp deflation,
+    // 17 of 30 teams below NBA range). +3pp on the base lifts the league mean toward NBA-real
+    // without changing the volume distribution (3PA stays where it was).
     const threePctBase = Math.max(0.05,
-      (weights.threePmBase ?? 0.31) + (tp / 100) * (weights.threePmScale ?? 0.13) - tpFloorPenalty + tierEfficiencyBonus
+      (weights.threePmBase ?? 0.34) + (tp / 100) * (weights.threePmScale ?? 0.13) - tpFloorPenalty + tierEfficiencyBonus
     );
     // Perimeter D modifier: elite (+) tanks 3PT%, bad (-) boosts it. Clamp to sane range.
     const perimPenalty = Math.min(1.20, Math.max(0.75, 1.0 - perimDelta * 0.008));
@@ -436,11 +486,25 @@ if (tpComposite >= 20 && tpComposite <= 60) {
       ? Math.max(0.55, 1.0 - (threePa - naturalVol) * 0.018)
       : 1.0;
 
+    // Per-player independent luck multiplier (±15%). Without this, the team-wide
+    // efficiencyMultiplier dominates and every player shoots near the same % when team
+    // is hot/cold ("alle effizient oder alle nicht"). Real NBA: even on a hot 50% team,
+    // individual players can be cold (Mitchell 7-23 in 145-pt teamline). PlayerLuck
+    // adds INDEPENDENT per-player variance so within-team shooting spread matches NBA.
+    // Mean-preserving — random ±15% averages to 1.0 across players.
+    // Stand-and-dunk bigs (Gobert / Capela / Poeltl archetype) are not classic
+    // "shot creators" and shouldn't absorb the full scorer-style ±15% luck swing.
+    // Their offense is mostly lobs, dump-offs and putbacks, so keep team-level
+    // variance but narrow the individual FG noise. This preserves the better
+    // team-wide variance update without tanking efficient rim finishers to 43% FG.
+    const playerLuckWidth = isStandAndDunkBig ? 0.12 : 0.30;
+    const playerLuck = 1 + (Math.random() - 0.5) * playerLuckWidth;
+
     // User's Scoring Options override: demoted players shoot slightly more efficient,
     // promoted players slightly less (pushed past their comfort usage). Applied to
     // both 3PT and 2PT effective percentages so it shows up as FG% swing.
     const threePctEffective = Math.max(0.04,
-      threePctBase * nightProfile.efficiencyMult * gamePlan.effMult[i] * userEffBias * perimPenalty * knobs.efficiencyMultiplier * (knobs.threePointEfficiencyMult ?? 1.0) * volDecay
+      threePctBase * nightProfile.efficiencyMult * gamePlan.effMult[i] * userEffBias * perimPenalty * knobs.efficiencyMultiplier * (knobs.threePointEfficiencyMult ?? 1.0) * volDecay * playerLuck
     );
 
     // Calculate 2PT efficiency
@@ -449,15 +513,32 @@ if (tpComposite >= 20 && tpComposite <= 60) {
       ? ins * 0.45 + dnk * 0.50 + fg * 0.05
       : ins * 0.10 + dnk * 0.05 + fg * 0.85;
     const pct2Raw = 0.34 + (eff2 / 100) * 0.28;
-    // Rim runners (isIn) are mechanically consistent — lower variance.
-    // Perimeter players' midrange is shot-creation dependent — wider swings.
-    const pct2Sigma = isIn ? 0.10 : 0.20;
-    const pct2 = Math.max(0.28, Math.min(0.72, pct2Raw * nightProfile.efficiencyMult * gamePlan.effMult[i] * userEffBias * knobs.efficiencyMultiplier * (knobs.interiorEffMult ?? 1.0) * getVariance(1.0, pct2Sigma)));
+    // Sigma widened 0.10/0.20 → 0.18/0.32: original sigmas were too tight, producing
+    // a "team uniform efficiency" pattern where every player tracked the team-eff signal.
+    // Wider sigma + playerLuck mult give real per-player swings (cold-shooting big in
+    // a hot team night = NBA-realistic).
+    const pct2Sigma = isStandAndDunkBig ? 0.08 : isIn ? 0.18 : 0.32;
+    const pct2Floor = isStandAndDunkBig ? 0.46 : 0.28;
+    const pct2Ceil = isStandAndDunkBig ? 0.78 : 0.72;
+    const pct2 = Math.max(
+      pct2Floor,
+      Math.min(
+        pct2Ceil,
+        pct2Raw
+          * nightProfile.efficiencyMult
+          * gamePlan.effMult[i]
+          * userEffBias
+          * knobs.efficiencyMultiplier
+          * (knobs.interiorEffMult ?? 1.0)
+          * getVariance(1.0, pct2Sigma)
+          * playerLuck
+      )
+    );
 
-    // Calculate makes — wider variance (0.28 σ) allows real cold/hot nights:
-    // Giannis 3/3 at 21% base: round(0.63 × N(1,0.28)) → 0 or 1 depending on roll.
-    // Good shooters 10/10 at 38%: round(3.8 × N(1,0.28)) → 2–6 range realistically.
-    let threePm = Math.round(threePa * threePctEffective * getVariance(1.0, 0.32));
+    // Calculate makes — wider variance (0.40 σ) allows real cold/hot nights:
+    // Giannis 3/3 at 21% base: round(0.63 × N(1,0.40)) → 0 or 1 depending on roll.
+    // Good shooters 10/10 at 38%: round(3.8 × N(1,0.40)) → 1–7 range realistically.
+    let threePm = Math.round(threePa * threePctEffective * getVariance(1.0, 0.40));
     threePm = Math.max(0, Math.min(threePm, threePa, Math.floor(fgPts / 3)));
 
     // Loose shaver: allow record-breaking nights (13+ makes) but taper slightly
@@ -467,10 +548,26 @@ if (tpComposite >= 20 && tpComposite <= 60) {
 
     // Two Pointers
     const twoPts = Math.max(0, fgPts - (threePm * 3));
-    const twoPm = Math.floor(twoPts / 2);
+    let twoPm = Math.floor(twoPts / 2);
 
-    // Add any odd leftover point to Free Throws to keep the math/team score perfectly balanced
-    if (twoPts % 2 !== 0) {
+    // Bench-line 0-pt allowance: NBA real ~15-25% of sub-14-min lines score 0 pts.
+    // Our auto-balance paths (odd-pts FT pump, FTA floor) always gave marginal lines
+    // 1-2 consolation pts → the "Khris Middleton 0-5 FG / 1-1 FT = 1 pt" pattern. Random
+    // brick-out for bench: 22% chance to zero everything, keeping attempts. Reconcile-
+    // to-score absorbs the shortfall on top scorers (NBA-realistic).
+    if (playerMinutes[i] < 14 && ptsTarget <= 5 && Math.random() < 0.22) {
+      twoPm = 0;
+      threePm = 0;
+      fourPm = 0;
+      ftm = 0;
+      fta = Math.max(fta, ftm);
+    } else if (twoPts % 2 !== 0 && ptsTarget >= 14) {
+      // Odd-pts FT pump: ONLY apply for genuine scorers (ptsTarget ≥ 14). For
+      // bench/role players the missing point gets donated to the team's top scorer
+      // via reconcileToScore (NBA real: technicals go to the best FT shooter, not
+      // the random low-min rotation guy). Top scorers already have substantial FTA
+      // volume → reconcile just nudges their FT% up by 1 make, no fake "1-1 FT"
+      // consolation lines.
       ftm += 1;
       fta = Math.max(fta, ftm);
     }
@@ -479,7 +576,18 @@ if (tpComposite >= 20 && tpComposite <= 60) {
     // Floor lowered 0.44 → 0.30 so cold-night low pct2 actually drives more 2PA volume
     // (Brunson 4/20 brickfest pattern). At pct2 ≥ 0.44 the floor never activated; below it,
     // the old 0.44 cap was throttling volume. Real cold-game FG% lives in the 0.25–0.40 range.
-    const twoPa = Math.max(twoPm, Math.min(maxTwoPa, Math.round(twoPm / Math.max(0.30, pct2))));
+    let twoPa = Math.max(twoPm, Math.min(maxTwoPa, Math.round(twoPm / Math.max(0.30, pct2))));
+
+    // Hot-team FGA-collapse mitigation: when a player shoots well, twoPa = twoPm/pct2 produces
+    // fewer attempts than estimatedFga implied (SAC/DEN-style game with 62 FGA team-total).
+    // Soft-fill: if final FGA falls below 80% of estimatedFga, add half the deficit as misses.
+    // Preserves hot FG% somewhat while pulling team-total back toward NBA pace range.
+    const finalPlayerFga = twoPa + threePa + fourPa;
+    const softFloor = Math.round(estimatedFga * 0.80);
+    if (finalPlayerFga < softFloor) {
+      const deficit = softFloor - finalPlayerFga;
+      twoPa += Math.round(deficit * 0.5);  // partial fill — tradeoff between pace + FG%
+    }
 
     // Shot Locations
     let wAtRim    = Math.max(0.1, hgt * 2.0 + stre * 0.3 + dnk * 0.3 + oiq * 0.2);

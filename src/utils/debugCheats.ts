@@ -14,6 +14,7 @@ import { estimatePotentialBbgm } from './playerRatings';
 import { deriveLeagueStartYearFromHistory, explainJerseyRetirementCandidates } from '../services/playerDevelopment/jerseyRetirementChecker';
 import { resolveTeamStrategyProfile } from './teamStrategy';
 import { calcPlayerTV, calcPickTV, calcOvr2K } from '../services/trade/tradeValueEngine';
+import { DEFAULT_TRADABLE_PICK_SEASONS } from '../services/draft/DraftPickGenerator';
 import { effectiveRecord, getCapThresholds, getTeamPayrollUSD, getTeamDeadMoneyForSeason } from './salaryUtils';
 
 export interface CheatContext {
@@ -78,6 +79,18 @@ export const CHEAT_CODES = {
   PHASEDUMP: 'Dump current SimPhase, all key calendar dates (training camp, opening, deadline, All-Star, lottery, draft, FA start, moratorium end), and what PlayButton would offer right now. Cross-references getSimPhase() vs raw date.',
   GATESCAN: 'Inspect roster/draft gate state — pending action, last attempt, why each gate did/didn\'t fire. Useful when "Until X" silently does nothing.',
   WARPSLOW: 'Crawl forward in 7-day SIMULATE_TO_DATE hops with a 30s per-hop timeout. On stall, prints the exact start date, last advanced date, and a state snapshot — pinpoints which day the lazy sim hangs on.',
+  SAMPLE12: 'Stratified 24-game box-score sample (6 low / 10 mid / 6 high / 1 blowout / 1 OT) for sim-realism audit. Per team-game: pts/FGA/eFG%/AST/AR/FTA-rate; computes pts↔eFG% and AR↔FG% correlations. Plain-text TSV in console (Ctrl+A, Ctrl+C) AND clipboard.',
+  SCOREPROF: 'Score↔eFG% binned audit using ALL available NBA team-games (not just 24). Bins by score: <95 / 95-105 / 105-115 / 115-125 / 125+. Per bin: count, avg pts/FGA/eFG%/AR/FTrate, σ eFG%. Plus 10 worst pts↔eFG% inversions. Diagnoses score-profile decoupling architecturally.',
+  PLAYERDIST: 'Per-player FGA/min and pts/min distribution audit on last 100 NBA games (~2400 player-rows). Bins by MIN: <5 / 5-15 / 15-25 / 25-35 / 35+. Per bucket: count, avg FGA/min, pts/min, eFG%, σ values. Flags hot/cold outliers + role-player vs star pacing pathologies.',
+  TEAMCHECK: 'Per-team season averages vs NBA 2025-26 reference ranges. Outputs all 30 NBA teams: GP, W-L, PPG, OPP, FG%, 3P%, FT%, eFG%, FGA, AST, REB, TOV, PF. Sorted by PPG. Flags teams outside NBA real ranges. Pure NBA games only.',
+  LEADERS: 'Top 10 league leaders in 8 categories (PPG, RPG, APG, SPG, BPG, FGA, 3PM, FT%) compared to NBA 2025-26 reference values (Jokic 27.7 PPG, Curry 5+ 3PM/g, etc.). Flags categories where sim leader exceeds NBA top or falls short. Min 10 GP filter.',
+  DISTSHAPE: 'Distribution shape audit (qualifying players, ≥20 GP) vs NBA 2025-26 P10/P25/P50/P75/P90 percentiles. Categories: PPG, FGA/G, TS%, USG%. Flags percentile bands outside NBA reference (Gemini benchmark: PPG median 10.8, P90 26.4; TS% median .578, P90 .660; USG% median 18.5, P90 31.0).',
+  TIERS: 'PPG tier counts vs NBA 2025-26: how many players at 30+, 28+, 26+, 24+, 22+, 20+, 18+, 15+, 12+, 10+ PPG (≥20 GP). Reveals talent distribution at each scoring tier — direct check against NBA reference (e.g. NBA has ~2 players at 30+, ~37 at 20+). Flags tiers under or over NBA count.',
+  ADVCHECK: 'Consolidated advanced-stats audit: player top-5 in 8 metrics (PER, USG%, ORtg, DRtg, BPM, VORP, WS, WS/48) and team ORtg/DRtg/NetRtg/PACE — all vs NBA 2025-26 reference (Jokic PER 32.3, Wemby DRtg 101.0, etc.). Flags leaders outside NBA range. Single TSV dump.',
+  BENCHEFF: 'Sixth-man / limited-min efficiency audit (14-26 mpg, ≥20 GP). Top 15 by PER with TS%/USG%/PPG/FGA-per-min/eFG%. Reveals mid-tier PER compression vs NBA real Tyler Herro/Norman Powell/Jordan Clarkson tier (PER 14-17, TS% .55-.62). NBA sixth-men maintain higher per-min efficiency despite limited touches.',
+  PERSAMPLE: 'Random 30-player PER audit. For each player: stored season PER, minute-weighted recomputed PER from current season game samples, GP/MPG, and three recent game-PER entries. Shows whether season PER is stale/aggregated wrong or the underlying game PER is wrong.',
+  RESTOREPER: 'Rebuild current-season PER and advanced season fields from saved boxScores. Repairs stale/bugged season advanced rows in older saves without resimming games.',
+  HEALSTUCK: 'Heal stuck offseason — strips offseasonChecklist, faTagCounter, faTagsTotal, offseasonExitedYear from the newest save in IndexedDB and reloads. Use when the FA Tasks sidebar refuses to dismiss.',
 } as const;
 
 export type CheatCode = keyof typeof CHEAT_CODES;
@@ -173,6 +186,67 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
   const { state, dispatchAction, healPlayer } = ctx;
 
   switch (code) {
+    case 'HEALSTUCK': {
+      // Strip offseason-checklist + FA-tag fields from the newest save's gzipped
+      // blob in IndexedDB, then reload. Used when the Tasks sidebar refuses to
+      // dismiss (e.g. user clicked "To Preseason" mid-FA and got stuck in a
+      // re-mount loop, or saved mid-offseason in a buggy build).
+      try {
+        const db = await new Promise<IDBDatabase>((res, rej) => {
+          const req = indexedDB.open('keyval-store');
+          req.onsuccess = () => res(req.result);
+          req.onerror = () => rej(req.error);
+        });
+        const get = (k: string) => new Promise<any>((res, rej) => {
+          const req = db.transaction('keyval', 'readonly').objectStore('keyval').get(k);
+          req.onsuccess = () => res(req.result);
+          req.onerror = () => rej(req.error);
+        });
+        const meta = await get('nba_commish_metadata');
+        if (!Array.isArray(meta) || meta.length === 0) {
+          return { title: 'HEALSTUCK', body: 'No saves found.', ok: false };
+        }
+        const newest = [...meta].sort((a: any, b: any) => b.dateSaved - a.dateSaved)[0];
+        const raw = await get(newest.id);
+        if (!raw?.data) {
+          return { title: 'HEALSTUCK', body: 'Save format unrecognized.', ok: false };
+        }
+        const ds = new DecompressionStream('gzip');
+        const dw = ds.writable.getWriter();
+        dw.write(raw.data);
+        dw.close();
+        const decoded = await new Response(ds.readable).text();
+        const s: any = JSON.parse(decoded);
+        const had = !!(s.offseasonChecklist || s.faTagCounter != null || s.faTagsTotal != null || s.offseasonExitedYear != null);
+        s.offseasonChecklist = undefined;
+        s.faTagCounter = undefined;
+        s.faTagsTotal = undefined;
+        s.offseasonExitedYear = undefined;
+        const cs = new CompressionStream('gzip');
+        const cw = cs.writable.getWriter();
+        cw.write(new TextEncoder().encode(JSON.stringify(s)));
+        cw.close();
+        const buf = await new Response(cs.readable).arrayBuffer();
+        await new Promise<void>((res, rej) => {
+          const req = db.transaction('keyval', 'readwrite').objectStore('keyval').put({ __gz: true, data: buf }, newest.id);
+          req.onsuccess = () => res();
+          req.onerror = () => rej(req.error);
+        });
+        console.log(`[HEALSTUCK] cleared ${had ? 'offseason fields from' : 'no fields needed clearing in'} save ${newest.id}. Reloading…`);
+        setTimeout(() => location.reload(), 200);
+        return {
+          title: 'HEALSTUCK',
+          body: had
+            ? 'Cleared offseasonChecklist + faTagCounter from newest save. Reloading…'
+            : 'Save had no stuck offseason state. Reloading anyway.',
+          ok: true,
+        };
+      } catch (err) {
+        console.error('[HEALSTUCK] failed:', err);
+        return { title: 'HEALSTUCK', body: `Failed: ${(err as Error).message ?? err}`, ok: false };
+      }
+    }
+
     case 'FIXROOKIES': {
       // Repair contracts created by the pre-rollover draft bug where minSalaryUSD
       // was multiplied by 1_000_000 a second time (minContract=950000 USD treated
@@ -205,6 +279,136 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
         body: `${bugged.length} contracts fixed. Save to persist.`,
         ok: true,
       };
+    }
+
+    case 'RESTOREPER': {
+      const currentYear = (state.leagueStats as any)?.year ?? new Date().getFullYear();
+      const schedByGid = new Map((state.schedule ?? []).map((g: any) => [g.gid, g]));
+      const statKey = (playerId: string, tid: number, playoffs: boolean) => `${playerId}|${tid}|${playoffs ? 1 : 0}`;
+      const boxMap = new Map<string, any[]>();
+
+      for (const box of (state.boxScores ?? []) as any[]) {
+        if ((box.season ?? currentYear) !== currentYear) continue;
+        if (box.homeTeamId < 0 || box.awayTeamId < 0) continue;
+        const sched = schedByGid.get(box.gameId);
+        const isPlayoff = sched?.isPlayoff === true;
+        const isPlayIn = sched?.isPlayIn === true;
+        const isPreseason = sched?.isPreseason === true;
+        if (isPlayIn || isPreseason) continue;
+
+        for (const s of (box.homeStats ?? [])) {
+          const k = statKey(s.playerId, box.homeTeamId, isPlayoff);
+          if (!boxMap.has(k)) boxMap.set(k, []);
+          boxMap.get(k)!.push(s);
+        }
+        for (const s of (box.awayStats ?? [])) {
+          const k = statKey(s.playerId, box.awayTeamId, isPlayoff);
+          if (!boxMap.has(k)) boxMap.set(k, []);
+          boxMap.get(k)!.push(s);
+        }
+      }
+
+      let rebuiltRows = 0;
+      const updatedPlayers = state.players.map(p => {
+        if (!(p as any).stats?.length) return p;
+        let changed = false;
+        const stats = ((p as any).stats as any[]).map((row: any) => {
+          if (row.season !== currentYear) return row;
+          const playoffs = !!row.playoffs;
+          const k = statKey((p as any).internalId, row.tid, playoffs);
+          const lines = boxMap.get(k);
+          if (!lines?.length) return row;
+
+          const next = { ...row };
+          next.gp = 0; next.gs = 0; next.min = 0;
+          next.fg = 0; next.fga = 0; next.tp = 0; next.tpa = 0; next.fp = 0; next.fpa = 0; next.ft = 0; next.fta = 0;
+          next.orb = 0; next.drb = 0; next.trb = 0; next.ast = 0; next.stl = 0; next.blk = 0; next.tov = 0; next.pf = 0; next.pts = 0;
+          next.pm = 0; next.ws = 0; next.ows = 0; next.dws = 0; next.vorp = 0; next.ewa = 0;
+          next._perSum = 0; next._usgPctSum = 0; next._ortgSum = 0; next._drtgSum = 0; next._bpmSum = 0;
+          next._obpmSum = 0; next._dbpmSum = 0; next._orbPctSum = 0; next._drbPctSum = 0; next._trbPctSum = 0;
+          next._astPctSum = 0; next._stlPctSum = 0; next._blkPctSum = 0; next._tovPctSum = 0;
+
+          for (const stat of lines) {
+            next.gp += 1;
+            next.gs += (stat.gs || 0);
+            next.min += stat.min || 0;
+            next.pts += stat.pts || 0;
+            next.orb += stat.orb || 0;
+            next.drb += stat.drb || 0;
+            next.trb += stat.reb || ((stat.orb || 0) + (stat.drb || 0));
+            next.ast += stat.ast || 0;
+            next.stl += stat.stl || 0;
+            next.blk += stat.blk || 0;
+            next.tov += stat.tov || 0;
+            next.pf += stat.pf || 0;
+            next.fg += stat.fgm || 0;
+            next.fga += stat.fga || 0;
+            next.tp += stat.threePm || 0;
+            next.tpa += stat.threePa || 0;
+            next.fp += stat.fourPm || 0;
+            next.fpa += stat.fourPa || 0;
+            next.ft += stat.ftm || 0;
+            next.fta += stat.fta || 0;
+            next.pm += stat.pm || 0;
+            next.ws += stat.ws || 0;
+            next.ows += stat.ows || 0;
+            next.dws += stat.dws || 0;
+            next.vorp += stat.vorp || 0;
+            next.ewa += stat.ewa || 0;
+            next._perSum += stat.per || 0;
+            next._usgPctSum += stat.usgPct || 0;
+            next._ortgSum += stat.ortg || 0;
+            next._drtgSum += stat.drtg || 0;
+            next._bpmSum += stat.bpm || 0;
+            next._obpmSum += stat.obpm || 0;
+            next._dbpmSum += stat.dbpm || 0;
+            next._orbPctSum += stat.orbPct || 0;
+            next._drbPctSum += stat.drbPct || 0;
+            next._trbPctSum += stat.trbPct || 0;
+            next._astPctSum += stat.astPct || 0;
+            next._stlPctSum += stat.stlPct || 0;
+            next._blkPctSum += stat.blkPct || 0;
+            next._tovPctSum += stat.tovPct || 0;
+          }
+
+          next.fgp = next.fga > 0 ? (next.fg / next.fga) * 100 : 0;
+          next.tpp = next.tpa > 0 ? (next.tp / next.tpa) * 100 : 0;
+          next.fpp = next.fpa > 0 ? (next.fp / next.fpa) * 100 : 0;
+          next.ftp = next.fta > 0 ? (next.ft / next.fta) * 100 : 0;
+          next.per = next.gp > 0 ? next._perSum / next.gp : 0;
+          next.usgPct = next.gp > 0 ? next._usgPctSum / next.gp : 0;
+          next.drtg = next.gp > 0 ? next._drtgSum / next.gp : 0;
+          next.bpm = next.gp > 0 ? next._bpmSum / next.gp : 0;
+          next.obpm = next.gp > 0 ? next._obpmSum / next.gp : 0;
+          next.dbpm = next.gp > 0 ? next._dbpmSum / next.gp : 0;
+          next.orbPct = next.gp > 0 ? next._orbPctSum / next.gp : 0;
+          next.drbPct = next.gp > 0 ? next._drbPctSum / next.gp : 0;
+          next.rebPct = next.gp > 0 ? next._trbPctSum / next.gp : 0;
+          next.astPct = next.gp > 0 ? next._astPctSum / next.gp : 0;
+          next.stlPct = next.gp > 0 ? next._stlPctSum / next.gp : 0;
+          next.blkPct = next.gp > 0 ? next._blkPctSum / next.gp : 0;
+          next.tovPct = next.gp > 0 ? next._tovPctSum / next.gp : 0;
+          const tsDenom = 2 * (next.fga + 0.44 * next.fta);
+          next.tsPct = tsDenom > 0 ? (next.pts / tsDenom) * 100 : 0;
+          next.efgPct = next.fga > 0 ? ((next.fg + 0.5 * next.tp + (next.fp || 0)) / next.fga) * 100 : 0;
+          const seasonPoss = next.fga + 0.44 * next.fta - next.orb + next.tov;
+          next.ortg = seasonPoss > 0 ? (next.pts * 100) / seasonPoss : 0;
+
+          rebuiltRows++;
+          changed = true;
+          return next;
+        });
+        return changed ? { ...p, stats } : p;
+      });
+
+      if (rebuiltRows === 0) {
+        return { title: 'RESTOREPER', body: `No current-season rows could be rebuilt from ${currentYear} boxScores.`, ok: false };
+      }
+
+      const patched = { ...state, players: updatedPlayers } as any;
+      await dispatchAction({ type: 'LOAD_GAME', payload: patched } as any);
+      console.log(`✅ RESTOREPER: rebuilt ${rebuiltRows} player season rows from boxScores (${currentYear})`);
+      return { title: 'RESTOREPER', body: `Rebuilt ${rebuiltRows} current-season rows from boxScores. Save to persist.`, ok: true };
     }
 
     case 'HELP':
@@ -369,7 +573,7 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
     }
 
     case 'RETIRECHECK': {
-      const currentYear = state.leagueStats?.year ?? 2026;
+      const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
       const zombies = state.players.filter(p => {
         if ((p as any).status !== 'Retired') return false;
         if ((p as any).diedYear) return false;
@@ -798,7 +1002,7 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
     case 'PICKS': {
       const picks = (state as any).draftPicks ?? [];
       const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
-      const windowSize = (state.leagueStats as any)?.tradableDraftPickSeasons ?? 7;
+      const windowSize = (state.leagueStats as any)?.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS;
       const draftComplete = !!(state as any).draftComplete;
       const minSeason = draftComplete ? currentYear + 1 : currentYear;
       const maxSeason = currentYear + windowSize;
@@ -928,7 +1132,7 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
 
     case 'JERSEYAUDIT':
     case 'JERSEYRETIREMENT': {
-      const currentYear = state.leagueStats?.year ?? 2026;
+      const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
       const leagueStartYear = deriveLeagueStartYearFromHistory(state.history, currentYear);
       const rows = explainJerseyRetirementCandidates(state.players, state.teams, currentYear, { leagueStartYear });
 
@@ -1280,7 +1484,7 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
       if (existing.length > 0) {
         return { title: 'Already injected', body: `${existing.length} Cup games already in schedule. No-op.`, ok: false };
       }
-      const seasonYr = state.leagueStats?.year ?? 2026;
+      const seasonYr = state.leagueStats?.year ?? new Date().getFullYear();
       const prevYr = seasonYr - 1;
 
       // Build scheduledDates map from current schedule so we don't double-book
@@ -1336,7 +1540,7 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
       // ONE dispatch won't reach the target — re-run CUPSIM until it does.
       const cup = (state as any).nbaCup;
       if (!cup) return { title: 'No Cup', body: 'state.nbaCup is undefined — sim past Aug 14 first so groups draw', ok: false };
-      const seasonYr = state.leagueStats?.year ?? 2026;
+      const seasonYr = state.leagueStats?.year ?? new Date().getFullYear();
       const targetDate = `${seasonYr - 1}-12-17`;
       const startDate = state.date.split('T')[0];
       if (startDate >= targetDate) return { title: 'Already past', body: `Today is ${startDate}, Cup window already closed`, ok: false };
@@ -1719,6 +1923,16 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
     case 'PHASEDUMP':  return runPhaseDump(getLive(ctx));
     case 'GATESCAN':   return runGateScan(getLive(ctx));
     case 'WARPSLOW':   return await runWarpSlow(ctx);
+    case 'SAMPLE12':   return await runSample12(getLive(ctx));
+    case 'SCOREPROF':  return await runScoreProf(getLive(ctx));
+    case 'PLAYERDIST': return await runPlayerDist(getLive(ctx));
+    case 'TEAMCHECK':  return await runTeamCheck(getLive(ctx));
+    case 'LEADERS':    return await runLeaders(getLive(ctx));
+    case 'DISTSHAPE':  return await runDistShape(getLive(ctx));
+    case 'TIERS':      return await runTiers(getLive(ctx));
+    case 'ADVCHECK':   return await runAdvCheck(getLive(ctx));
+    case 'BENCHEFF':   return await runBenchEff(getLive(ctx));
+    case 'PERSAMPLE':  return await runPerSample(getLive(ctx));
 
     default:
       return { title: 'Unknown cheat', body: `"${code}" not recognized — try HELP`, ok: false };
@@ -2184,6 +2398,1542 @@ function runGateScan(state: GameState): CheatResult {
   console.log('TIP: Open the "Watch/Auto-sim" modal manually to verify the draft gate fires when you click "Until draft" from PlayButton.');
   console.groupEnd();
   return { title: 'GATESCAN', body: 'Gate state dumped to console.', ok: true };
+}
+
+// SAMPLE12 ────────────────────────────────────────────────────────────────────
+// Stratified 24-game audit for sim-realism: 6 low / 10 mid / 6 high / 1 blowout / 1 OT.
+// 48 team-game datapoints → correlations between Score, eFG%, FGA, AST/FGM.
+// Pathologies surface as: pts↔eFG% correlation < 0.6, FGA spread > 30, AR > 0.65 in brick-fests.
+// Output is plain TSV in the console (no nested arrays/objects) — Ctrl+A inside the
+// SAMPLE12 group, Ctrl+C copies the entire dump as flat text.
+async function runSample12(state: GameState): Promise<CheatResult> {
+  const TARGET_GAMES = 24;
+  const STRATA = { low: 6, mid: 10, high: 6, blowout: 1, ot: 1 };
+
+  // Filter to PURE NBA REGULAR-SEASON games. Preseason / international / intra-squad
+  // games run on alternate Knobs (KNOBS_BLEAGUE/EUROLEAGUE/PBA, paceMultiplier 0.82–1.05)
+  // which legitimately produce 60–105 FGA — they're NOT pathologies but they inflate σ
+  // and mask real NBA-side bugs.
+  const boxes = (state.boxScores ?? []).filter((g: any) => {
+    if (g.isAllStar || g.isRisingStars || g.isCelebrity) return false;
+    if (g.isPreseason) return false;
+    if (!Array.isArray(g.homeStats) || !Array.isArray(g.awayStats)) return false;
+    if (g.homeStats.length === 0 || g.awayStats.length === 0) return false;
+    // Non-NBA team IDs: tid >= 100 → G-League, Euroleague (tid+1000), ChinaCBA/NBL (tid+7000/+8000)
+    if (g.homeTeamId >= 100 || g.awayTeamId >= 100) return false;
+    // Intra-squad scrimmages — same team on both sides
+    if (g.homeTeamId === g.awayTeamId) return false;
+    return true;
+  });
+
+  if (boxes.length < TARGET_GAMES) {
+    return { title: 'SAMPLE12', body: `Only ${boxes.length} regular box scores available — need ≥${TARGET_GAMES}. Sim more games first.`, ok: false };
+  }
+
+  // Tag each game by total score + flags
+  const tagged = boxes.map((g: any) => {
+    const total = (g.homeScore ?? 0) + (g.awayScore ?? 0);
+    const margin = Math.abs((g.homeScore ?? 0) - (g.awayScore ?? 0));
+    return {
+      game: g,
+      total,
+      margin,
+      isOT: !!g.isOT,
+      bucket:
+        total < 205 ? 'LOW'  :
+        total < 235 ? 'MID'  :
+                      'HIGH',
+    };
+  });
+
+  // Pick by stratum, newest first within each stratum
+  const sortRecent = (a: any, b: any) => String(b.game.date).localeCompare(String(a.game.date));
+  const lows  = tagged.filter(t => t.bucket === 'LOW').sort(sortRecent);
+  const mids  = tagged.filter(t => t.bucket === 'MID').sort(sortRecent);
+  const highs = tagged.filter(t => t.bucket === 'HIGH').sort(sortRecent);
+  const blow  = tagged.filter(t => t.margin >= 25).sort(sortRecent);
+  const ots   = tagged.filter(t => t.isOT).sort(sortRecent);
+
+  const picked = new Set<number>();
+  const take = (pool: any[], n: number) => {
+    const out: any[] = [];
+    for (const t of pool) {
+      if (out.length >= n) break;
+      if (picked.has(t.game.gameId)) continue;
+      picked.add(t.game.gameId);
+      out.push(t);
+    }
+    return out;
+  };
+
+  const sample = [
+    ...take(lows,  STRATA.low),
+    ...take(mids,  STRATA.mid),
+    ...take(highs, STRATA.high),
+    ...take(blow,  STRATA.blowout),
+    ...take(ots,   STRATA.ot),
+  ];
+
+  // Backfill if any stratum was empty (e.g. no OT in season)
+  if (sample.length < TARGET_GAMES) {
+    const remaining = tagged.filter(t => !picked.has(t.game.gameId)).sort(sortRecent);
+    for (const t of remaining) {
+      if (sample.length >= TARGET_GAMES) break;
+      picked.add(t.game.gameId);
+      sample.push(t);
+    }
+  }
+
+  const teams = state.teams ?? [];
+  const abbrev = (tid: number) => (teams.find((t: any) => t.id === tid) as any)?.abbrev ?? `T${tid}`;
+
+  // Per team-game row
+  type Row = {
+    date: string; matchup: string; team: string; bucket: string; ot: string;
+    pts: number; fga: number; fgm: number; fgPct: number;
+    threePm: number; threePa: number;
+    ftm: number; fta: number;
+    ast: number; orb: number; tov: number;
+    eFG: number; AR: number; FTrate: number;
+  };
+
+  const rowsRaw: Row[] = [];
+  const buildRow = (g: any, lines: any[], teamTid: number, oppTid: number, score: number, bucket: string): Row => {
+    const sum = (k: string) => lines.reduce((s, p) => s + (p[k] ?? 0), 0);
+    const fga = sum('fga'), fgm = sum('fgm');
+    const t3a = sum('threePa'), t3m = sum('threePm');
+    const fta = sum('fta'), ftm = sum('ftm');
+    const ast = sum('ast'), orb = sum('orb'), tov = sum('tov');
+    return {
+      date: String(g.date).slice(0, 10),
+      matchup: `${abbrev(teamTid)} vs ${abbrev(oppTid)}`,
+      team: abbrev(teamTid),
+      bucket,
+      ot: g.isOT ? `OT${g.otCount ?? 1}` : '—',
+      pts: score, fga, fgm, fgPct: fga > 0 ? +(fgm / fga * 100).toFixed(1) : 0,
+      threePm: t3m, threePa: t3a,
+      ftm, fta,
+      ast, orb, tov,
+      eFG: fga > 0 ? +(((fgm + 0.5 * t3m) / fga) * 100).toFixed(1) : 0,
+      AR:  fgm > 0 ? +(ast / fgm).toFixed(3) : 0,
+      FTrate: fga > 0 ? +(fta / fga).toFixed(3) : 0,
+    };
+  };
+
+  for (const t of sample) {
+    const g = t.game;
+    rowsRaw.push(buildRow(g, g.homeStats, g.homeTeamId, g.awayTeamId, g.homeScore, t.bucket));
+    rowsRaw.push(buildRow(g, g.awayStats, g.awayTeamId, g.homeTeamId, g.awayScore, t.bucket));
+  }
+
+  // ── Correlations + sanity stats ────────────────────────────────────────────
+  const pearson = (xs: number[], ys: number[]) => {
+    const n = xs.length;
+    if (n < 2) return 0;
+    const mx = xs.reduce((a, b) => a + b, 0) / n;
+    const my = ys.reduce((a, b) => a + b, 0) / n;
+    let num = 0, dx = 0, dy = 0;
+    for (let i = 0; i < n; i++) {
+      const a = xs[i] - mx, b = ys[i] - my;
+      num += a * b; dx += a * a; dy += b * b;
+    }
+    return dx > 0 && dy > 0 ? +(num / Math.sqrt(dx * dy)).toFixed(3) : 0;
+  };
+  const mean   = (xs: number[]) => xs.length ? +(xs.reduce((a, b) => a + b, 0) / xs.length).toFixed(2) : 0;
+  const stdev  = (xs: number[]) => {
+    if (xs.length < 2) return 0;
+    const m = xs.reduce((a, b) => a + b, 0) / xs.length;
+    const v = xs.reduce((s, x) => s + (x - m) ** 2, 0) / xs.length;
+    return +Math.sqrt(v).toFixed(2);
+  };
+  const minMax = (xs: number[]) => xs.length ? `${Math.min(...xs).toFixed(0)}–${Math.max(...xs).toFixed(0)}` : '—';
+
+  const ptsArr = rowsRaw.map(r => r.pts);
+  const fgaArr = rowsRaw.map(r => r.fga);
+  const efgArr = rowsRaw.map(r => r.eFG);
+  const fgpArr = rowsRaw.map(r => r.fgPct);
+  const arArr  = rowsRaw.map(r => r.AR);
+  const astArr = rowsRaw.map(r => r.ast);
+  const ftrArr = rowsRaw.map(r => r.FTrate);
+
+  const corrPtsEFG = pearson(ptsArr, efgArr);
+  const corrPtsFGA = pearson(ptsArr, fgaArr);
+  const corrARFGP  = pearson(arArr, fgpArr);
+  const corrEFGFGA = pearson(efgArr, fgaArr);
+
+  const summary = {
+    'Pearson(pts, eFG%)':    `${corrPtsEFG}  (NBA expect ≥0.70 → high score should track high efficiency)`,
+    'Pearson(pts, FGA)':     `${corrPtsFGA}  (NBA expect ~0.30 — pts driven by efficiency, not volume)`,
+    'Pearson(AR, FG%)':      `${corrARFGP}  (NBA expect mildly +; brick-fests should have lower AR)`,
+    'Pearson(eFG%, FGA)':    `${corrEFGFGA}  (NBA expect ~0 or slightly negative)`,
+    'pts mean / σ / range':  `${mean(ptsArr)} / ${stdev(ptsArr)} / ${minMax(ptsArr)}  (NBA: ~114 / ~12 / 90–135)`,
+    'FGA mean / σ / range':  `${mean(fgaArr)} / ${stdev(fgaArr)} / ${minMax(fgaArr)}  (NBA: ~89 / ~5 / 78–100)`,
+    'eFG% mean / σ':         `${mean(efgArr)} / ${stdev(efgArr)}  (NBA: ~53.5 / ~4)`,
+    'AR mean / range':       `${mean(arArr)} / ${minMax(arArr.map(x => x * 100))}  (NBA: ~0.58 / 50–65)`,
+    'AST mean / σ':          `${mean(astArr)} / ${stdev(astArr)}  (NBA: ~26 / ~4)`,
+    'FTrate mean / σ':       `${mean(ftrArr)} / ${stdev(ftrArr)}  (NBA: ~0.24 / ~0.05)`,
+  };
+
+  // Pathology flags
+  const flags: string[] = [];
+  if (corrPtsEFG < 0.55) flags.push(`🔴 pts↔eFG% corr ${corrPtsEFG} < 0.55 → score-roll & profile-roll decoupled (the "131 on 39%" / "99 on 56%" bug)`);
+  if (corrPtsFGA > 0.60) flags.push(`🟡 pts↔FGA corr ${corrPtsFGA} > 0.60 → pts driven by volume not efficiency (real NBA: ~0.30)`);
+  if (corrARFGP < 0.05)  flags.push(`🟡 AR↔FG% corr ${corrARFGP} ≈ 0 → assists not coupled to makes (brick-fest still gets full assists)`);
+  const fgaSpread = Math.max(...fgaArr) - Math.min(...fgaArr);
+  if (fgaSpread > 30)    flags.push(`🟡 FGA spread ${fgaSpread} > 30 → volume too volatile (real NBA: ~22)`);
+  const arMean = arArr.reduce((a, b) => a + b, 0) / arArr.length;
+  if (arMean > 0.64)     flags.push(`🟡 AR mean ${arMean.toFixed(3)} > 0.64 → league-wide assist inflation (real NBA: ~0.58)`);
+
+  // Single flat TSV block — no nested arrays/objects in console.
+  // Ctrl+A inside the console window then Ctrl+C copies everything as plain text.
+  const cols: (keyof Row)[] = ['date', 'matchup', 'team', 'bucket', 'ot', 'pts', 'fga', 'fgm', 'fgPct', 'eFG', 'threePm', 'threePa', 'ftm', 'fta', 'FTrate', 'ast', 'AR', 'orb', 'tov'];
+  const lines: string[] = [];
+  lines.push(`SAMPLE12 — sim realism audit`);
+  lines.push(`Sampled ${sample.length} games / ${rowsRaw.length} team-rows from ${boxes.length} available box scores.`);
+  lines.push(`Strata: ${STRATA.low} low / ${STRATA.mid} mid / ${STRATA.high} high / ${STRATA.blowout} blowout / ${STRATA.ot} OT (backfill if empty).`);
+  lines.push('');
+  lines.push('=== ROWS ===');
+  lines.push(cols.join('\t'));
+  rowsRaw.forEach(r => lines.push(cols.map(c => r[c]).join('\t')));
+  lines.push('');
+  lines.push('=== SUMMARY ===');
+  lines.push('METRIC\tVALUE\tNBA_EXPECT');
+  lines.push(`Pearson(pts,eFG%)\t${corrPtsEFG}\t>=0.70`);
+  lines.push(`Pearson(pts,FGA)\t${corrPtsFGA}\t~0.30`);
+  lines.push(`Pearson(AR,FG%)\t${corrARFGP}\tmildly +`);
+  lines.push(`Pearson(eFG%,FGA)\t${corrEFGFGA}\t~0`);
+  lines.push(`pts mean / sigma / range\t${mean(ptsArr)} / ${stdev(ptsArr)} / ${minMax(ptsArr)}\t~114 / ~12 / 90-135`);
+  lines.push(`FGA mean / sigma / range\t${mean(fgaArr)} / ${stdev(fgaArr)} / ${minMax(fgaArr)}\t~89 / ~5 / 78-100`);
+  lines.push(`eFG% mean / sigma\t${mean(efgArr)} / ${stdev(efgArr)}\t~53.5 / ~4`);
+  lines.push(`AR mean\t${mean(arArr)}\t~0.58`);
+  lines.push(`AST mean / sigma\t${mean(astArr)} / ${stdev(astArr)}\t~26 / ~4`);
+  lines.push(`FTrate mean / sigma\t${mean(ftrArr)} / ${stdev(ftrArr)}\t~0.30 (2025-26 NBA) / ~0.05`);
+  lines.push('');
+  lines.push('=== FLAGS ===');
+  if (flags.length === 0) {
+    lines.push('No pathology flags raised — sim looks calibrated.');
+  } else {
+    flags.forEach(f => lines.push(f));
+  }
+
+  const tsv = lines.join('\n');
+  console.log(tsv);
+  await copyTextToClipboard(tsv);
+
+  const headline = flags.length === 0
+    ? `Sample healthy. ${rowsRaw.length} rows + summary in console (also clipboard).`
+    : `${flags.length} pathology flag${flags.length === 1 ? '' : 's'}. ${rowsRaw.length} rows in console (also clipboard).`;
+  return { title: 'SAMPLE12', body: headline, ok: flags.length === 0 };
+}
+
+// SCOREPROF ───────────────────────────────────────────────────────────────────
+// Score↔eFG% binned audit on the FULL NBA box score corpus (not just 24 games).
+// Goal: pinpoint architectural decoupling — does score increase as efficiency
+// increases the way NBA games do? In real NBA, the higher pts buckets should
+// have monotonically higher eFG%. If 95-105 bucket has eFG% ~50 and 125+ bucket
+// has eFG% ~52 (~2pp gap), that's NBA-realistic. If 115-125 bucket has eFG% LOWER
+// than 95-105 bucket, the score↔profile decoupling bug is structural, not noise.
+async function runScoreProf(state: GameState): Promise<CheatResult> {
+  const boxes = (state.boxScores ?? []).filter((g: any) => {
+    if (g.isAllStar || g.isRisingStars || g.isCelebrity || g.isPreseason) return false;
+    if (g.homeTeamId >= 100 || g.awayTeamId >= 100) return false;
+    if (g.homeTeamId === g.awayTeamId) return false;
+    return Array.isArray(g.homeStats) && Array.isArray(g.awayStats) &&
+           g.homeStats.length > 0 && g.awayStats.length > 0;
+  });
+
+  if (boxes.length < 30) {
+    return { title: 'SCOREPROF', body: `Only ${boxes.length} NBA boxes — need ≥30. Sim more.`, ok: false };
+  }
+
+  type R = { pts: number; fga: number; fgm: number; t3m: number; ast: number; fta: number };
+  const buildRow = (lines: any[], score: number): R => {
+    const sum = (k: string) => lines.reduce((s, p) => s + (p[k] ?? 0), 0);
+    return { pts: score, fga: sum('fga'), fgm: sum('fgm'), t3m: sum('threePm'), ast: sum('ast'), fta: sum('fta') };
+  };
+  const rows: R[] = [];
+  for (const g of boxes) {
+    rows.push(buildRow((g as any).homeStats, (g as any).homeScore));
+    rows.push(buildRow((g as any).awayStats, (g as any).awayScore));
+  }
+
+  const efg = (r: R) => r.fga > 0 ? ((r.fgm + 0.5 * r.t3m) / r.fga) * 100 : 0;
+  const fgPct = (r: R) => r.fga > 0 ? (r.fgm / r.fga) * 100 : 0;
+  const ar = (r: R) => r.fgm > 0 ? r.ast / r.fgm : 0;
+  const ftRate = (r: R) => r.fga > 0 ? r.fta / r.fga : 0;
+
+  const bins = [
+    { name: '<95',     lo: 0,   hi: 95,  rows: [] as R[] },
+    { name: '95-105',  lo: 95,  hi: 105, rows: [] as R[] },
+    { name: '105-115', lo: 105, hi: 115, rows: [] as R[] },
+    { name: '115-125', lo: 115, hi: 125, rows: [] as R[] },
+    { name: '125+',    lo: 125, hi: 999, rows: [] as R[] },
+  ];
+  rows.forEach(r => {
+    const b = bins.find(b => r.pts >= b.lo && r.pts < b.hi);
+    if (b) b.rows.push(r);
+  });
+
+  const mean = (xs: number[]) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
+  const stdev = (xs: number[]) => {
+    if (xs.length < 2) return 0;
+    const m = mean(xs);
+    return Math.sqrt(xs.reduce((s, x) => s + (x - m) ** 2, 0) / xs.length);
+  };
+
+  // Pearson on full corpus
+  const ptsArr = rows.map(r => r.pts);
+  const efgArr = rows.map(r => efg(r));
+  const fgaArr = rows.map(r => r.fga);
+  const arArr = rows.map(r => ar(r));
+  const fgPctArr = rows.map(r => fgPct(r));
+  const pearson = (xs: number[], ys: number[]) => {
+    const n = xs.length;
+    if (n < 2) return 0;
+    const mx = mean(xs), my = mean(ys);
+    let num = 0, dx = 0, dy = 0;
+    for (let i = 0; i < n; i++) {
+      const a = xs[i] - mx, b = ys[i] - my;
+      num += a * b; dx += a * a; dy += b * b;
+    }
+    return dx > 0 && dy > 0 ? num / Math.sqrt(dx * dy) : 0;
+  };
+
+  const corrPtsEfg = pearson(ptsArr, efgArr);
+  const corrPtsFga = pearson(ptsArr, fgaArr);
+  const corrArFgp = pearson(arArr, fgPctArr);
+
+  // Worst inversions: high pts + low eFG% (or vice versa)
+  const inversions = rows
+    .map((r, i) => ({ r, i, score: r.pts - efg(r) * 1.8 }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8);
+
+  const lines: string[] = [];
+  lines.push(`SCOREPROF — score↔efficiency architectural audit`);
+  lines.push(`Corpus: ${rows.length} team-games from ${boxes.length} NBA box scores.`);
+  lines.push('');
+  lines.push('=== BINS ===');
+  lines.push('bucket\tcount\tpts_avg\tFGA_avg\teFG%_avg\teFG%_sigma\tFG%_avg\tAR_avg\tFTrate_avg');
+  bins.forEach(b => {
+    if (b.rows.length === 0) {
+      lines.push(`${b.name}\t0\t-\t-\t-\t-\t-\t-\t-`);
+      return;
+    }
+    const efgs = b.rows.map(efg);
+    lines.push([
+      b.name,
+      b.rows.length,
+      mean(b.rows.map(r => r.pts)).toFixed(1),
+      mean(b.rows.map(r => r.fga)).toFixed(1),
+      mean(efgs).toFixed(2),
+      stdev(efgs).toFixed(2),
+      mean(b.rows.map(fgPct)).toFixed(2),
+      mean(b.rows.map(ar)).toFixed(3),
+      mean(b.rows.map(ftRate)).toFixed(3),
+    ].join('\t'));
+  });
+  lines.push('');
+  lines.push('=== CORRELATIONS (full corpus) ===');
+  lines.push(`Pearson(pts,eFG%)\t${corrPtsEfg.toFixed(3)}\tNBA expect ~0.65-0.75 (efficiency drives score)`);
+  lines.push(`Pearson(pts,FGA)\t${corrPtsFga.toFixed(3)}\tNBA expect ~0.20-0.30 (volume secondary)`);
+  lines.push(`Pearson(AR,FG%)\t${corrArFgp.toFixed(3)}\tNBA expect ~0.10-0.30 (mild positive)`);
+  lines.push('');
+  lines.push('=== WORST 8 INVERSIONS (high pts on low eFG%) ===');
+  lines.push('pts\tFGA\tFGM\teFG%\tFG%\tAR\tFTrate');
+  inversions.forEach(({ r }) => {
+    lines.push([r.pts, r.fga, r.fgm, efg(r).toFixed(1), fgPct(r).toFixed(1), ar(r).toFixed(2), ftRate(r).toFixed(2)].join('\t'));
+  });
+  lines.push('');
+  lines.push('=== DIAGNOSTIC ===');
+  // Monotonicity check — eFG% should rise with score
+  const meanEfgs = bins.filter(b => b.rows.length > 0).map(b => ({ name: b.name, m: mean(b.rows.map(efg)), n: b.rows.length }));
+  let monotonic = true;
+  for (let i = 1; i < meanEfgs.length; i++) {
+    if (meanEfgs[i].m < meanEfgs[i - 1].m - 0.5) {
+      monotonic = false;
+      lines.push(`🔴 NON-MONOTONIC: ${meanEfgs[i - 1].name} eFG% ${meanEfgs[i - 1].m.toFixed(2)} > ${meanEfgs[i].name} eFG% ${meanEfgs[i].m.toFixed(2)} → score-profile decoupled`);
+    }
+  }
+  if (monotonic) lines.push(`✅ MONOTONIC: eFG% rises with score across all populated bins.`);
+  if (corrPtsEfg < 0.50) lines.push(`🔴 pts↔eFG% corr ${corrPtsEfg.toFixed(3)} < 0.50 → strong decoupling (large-N evidence)`);
+  else if (corrPtsEfg < 0.60) lines.push(`🟡 pts↔eFG% corr ${corrPtsEfg.toFixed(3)} < 0.60 → mild decoupling`);
+  else lines.push(`✅ pts↔eFG% corr ${corrPtsEfg.toFixed(3)} → NBA-aligned`);
+
+  const tsv = lines.join('\n');
+  console.log(tsv);
+  await copyTextToClipboard(tsv);
+  return { title: 'SCOREPROF', body: `Audited ${rows.length} team-games. Console + clipboard.`, ok: corrPtsEfg >= 0.55 };
+}
+
+// PLAYERDIST ──────────────────────────────────────────────────────────────────
+// Per-player FGA/min and pts/min distribution on last 100 NBA games. Reveals
+// the FGA-volatility architecture bug: hot teams collapse to 62 FGA because
+// twoPa = twoPm/pct2 reverse-engineers attempts from makes. Per-minute volume
+// rates should be ~0.40 FGA/min and ~0.55 pts/min across all min buckets.
+// If high-min starters show FGA/min < 0.30, hot-team-collapse is structural.
+async function runPlayerDist(state: GameState): Promise<CheatResult> {
+  const NUM_GAMES = 100;
+  const boxes = (state.boxScores ?? []).filter((g: any) => {
+    if (g.isAllStar || g.isRisingStars || g.isCelebrity || g.isPreseason) return false;
+    if (g.homeTeamId >= 100 || g.awayTeamId >= 100) return false;
+    if (g.homeTeamId === g.awayTeamId) return false;
+    return Array.isArray(g.homeStats) && Array.isArray(g.awayStats);
+  });
+  if (boxes.length < 20) {
+    return { title: 'PLAYERDIST', body: `Only ${boxes.length} NBA boxes — need ≥20.`, ok: false };
+  }
+  const recent = [...boxes].sort((a: any, b: any) => String(b.date).localeCompare(String(a.date))).slice(0, NUM_GAMES);
+
+  // Pull all player-game lines
+  type PR = { name: string; min: number; pts: number; fga: number; fgm: number; t3m: number; t3a: number; fta: number; ftm: number; ast: number; eFG: number; fgaPerMin: number; ptsPerMin: number };
+  const playerRows: PR[] = [];
+  for (const g of recent) {
+    const lines = [...((g as any).homeStats ?? []), ...((g as any).awayStats ?? [])];
+    for (const p of lines) {
+      const min = Number(p.min ?? 0);
+      if (min < 0.5) continue; // skip DNPs / 0-min lines
+      playerRows.push({
+        name: String(p.name ?? '?'),
+        min,
+        pts: p.pts ?? 0,
+        fga: p.fga ?? 0,
+        fgm: p.fgm ?? 0,
+        t3m: p.threePm ?? 0,
+        t3a: p.threePa ?? 0,
+        fta: p.fta ?? 0,
+        ftm: p.ftm ?? 0,
+        ast: p.ast ?? 0,
+        eFG: p.fga > 0 ? ((p.fgm + 0.5 * p.threePm) / p.fga) * 100 : 0,
+        fgaPerMin: min > 0 ? p.fga / min : 0,
+        ptsPerMin: min > 0 ? p.pts / min : 0,
+      });
+    }
+  }
+
+  const minBuckets = [
+    { name: '<5',     lo: 0,  hi: 5,  rows: [] as PR[] },
+    { name: '5-15',   lo: 5,  hi: 15, rows: [] as PR[] },
+    { name: '15-25',  lo: 15, hi: 25, rows: [] as PR[] },
+    { name: '25-35',  lo: 25, hi: 35, rows: [] as PR[] },
+    { name: '35+',    lo: 35, hi: 99, rows: [] as PR[] },
+  ];
+  playerRows.forEach(r => {
+    const b = minBuckets.find(b => r.min >= b.lo && r.min < b.hi);
+    if (b) b.rows.push(r);
+  });
+
+  const mean = (xs: number[]) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
+  const stdev = (xs: number[]) => {
+    if (xs.length < 2) return 0;
+    const m = mean(xs);
+    return Math.sqrt(xs.reduce((s, x) => s + (x - m) ** 2, 0) / xs.length);
+  };
+
+  const lines: string[] = [];
+  lines.push(`PLAYERDIST — per-player game distribution audit`);
+  lines.push(`Sample: ${playerRows.length} player-game-rows from ${recent.length} most recent NBA games.`);
+  lines.push('');
+  lines.push('=== MIN BUCKETS ===');
+  lines.push('bucket\tcount\tFGA/min_avg\tFGA/min_sigma\tpts/min_avg\tpts/min_sigma\teFG%_avg\teFG%_sigma\tFGA_avg\tpts_avg');
+  minBuckets.forEach(b => {
+    if (b.rows.length === 0) { lines.push(`${b.name}\t0\t-\t-\t-\t-\t-\t-\t-\t-`); return; }
+    const fgaPm = b.rows.map(r => r.fgaPerMin);
+    const ptsPm = b.rows.map(r => r.ptsPerMin);
+    const efgs = b.rows.filter(r => r.fga > 0).map(r => r.eFG);
+    lines.push([
+      b.name, b.rows.length,
+      mean(fgaPm).toFixed(3), stdev(fgaPm).toFixed(3),
+      mean(ptsPm).toFixed(3), stdev(ptsPm).toFixed(3),
+      efgs.length > 0 ? mean(efgs).toFixed(2) : '-',
+      efgs.length > 0 ? stdev(efgs).toFixed(2) : '-',
+      mean(b.rows.map(r => r.fga)).toFixed(1),
+      mean(b.rows.map(r => r.pts)).toFixed(1),
+    ].join('\t'));
+  });
+  lines.push('');
+  lines.push('NBA expect: FGA/min ~0.40 across all buckets. pts/min ~0.55. eFG% ~53.5 ±5.');
+  lines.push('');
+
+  // Outliers: starters (25+ min) with weird FGA/min
+  const starters = playerRows.filter(r => r.min >= 25);
+  const hotChuck = starters.filter(r => r.fgaPerMin > 0.65).sort((a, b) => b.fgaPerMin - a.fgaPerMin).slice(0, 5);
+  const coldDef = starters.filter(r => r.fgaPerMin < 0.25 && r.min >= 25).sort((a, b) => a.fgaPerMin - b.fgaPerMin).slice(0, 5);
+  const explosionGames = playerRows.filter(r => r.pts >= 40).sort((a, b) => b.pts - a.pts).slice(0, 8);
+  const brickGames = playerRows.filter(r => r.fga >= 15 && r.eFG < 35 && r.min >= 20).sort((a, b) => a.eFG - b.eFG).slice(0, 5);
+
+  lines.push('=== HOT CHUCKERS (25+ min, FGA/min > 0.65) — NBA cap ~0.55 ===');
+  lines.push('name\tmin\tFGA\tFGM\teFG%\tpts\tFGA/min');
+  hotChuck.forEach(r => lines.push([r.name, r.min.toFixed(1), r.fga, r.fgm, r.eFG.toFixed(1), r.pts, r.fgaPerMin.toFixed(2)].join('\t')));
+  lines.push('');
+  lines.push('=== DEFER OUTLIERS (25+ min, FGA/min < 0.25) — NBA floor ~0.20 ===');
+  lines.push('name\tmin\tFGA\tFGM\teFG%\tpts\tFGA/min');
+  coldDef.forEach(r => lines.push([r.name, r.min.toFixed(1), r.fga, r.fgm, r.eFG.toFixed(1), r.pts, r.fgaPerMin.toFixed(2)].join('\t')));
+  lines.push('');
+  lines.push('=== TOP EXPLOSION GAMES (≥40 pts) ===');
+  lines.push('name\tmin\tpts\tFGA\tFGM\teFG%');
+  explosionGames.forEach(r => lines.push([r.name, r.min.toFixed(1), r.pts, r.fga, r.fgm, r.eFG.toFixed(1)].join('\t')));
+  lines.push('');
+  lines.push('=== BRICK GAMES (15+ FGA, eFG<35%) ===');
+  lines.push('name\tmin\tFGA\tFGM\teFG%\tpts');
+  brickGames.forEach(r => lines.push([r.name, r.min.toFixed(1), r.fga, r.fgm, r.eFG.toFixed(1), r.pts].join('\t')));
+  lines.push('');
+  lines.push('=== DIAGNOSTIC ===');
+  // Hot-team-collapse check: 35+ min bucket should have FGA/min in [0.35, 0.50]
+  const top = minBuckets.find(b => b.name === '35+');
+  if (top && top.rows.length > 5) {
+    const fgaPm = mean(top.rows.map(r => r.fgaPerMin));
+    if (fgaPm < 0.30) lines.push(`🔴 35+ min FGA/min ${fgaPm.toFixed(3)} < 0.30 → starter volume collapsing (hot-team architectural bug)`);
+    else if (fgaPm > 0.50) lines.push(`🟡 35+ min FGA/min ${fgaPm.toFixed(3)} > 0.50 → starters chuck too much`);
+    else lines.push(`✅ 35+ min FGA/min ${fgaPm.toFixed(3)} in NBA range [0.35-0.50]`);
+  }
+  if (hotChuck.length > 5) lines.push(`🟡 ${hotChuck.length} starter-games with FGA/min > 0.65 — chucker pathology`);
+  if (coldDef.length > 5) lines.push(`🟡 ${coldDef.length} starter-games with FGA/min < 0.25 — DEFER pathology`);
+
+  const tsv = lines.join('\n');
+  console.log(tsv);
+  await copyTextToClipboard(tsv);
+  return { title: 'PLAYERDIST', body: `${playerRows.length} player-rows audited. Console + clipboard.`, ok: true };
+}
+
+// TEAMCHECK ───────────────────────────────────────────────────────────────────
+// Per-team season averages compared to NBA 2025-26 reference ranges. Iterates
+// all NBA-only box scores per team, computes per-game averages, sorts by PPG,
+// flags outliers. NBA real 2025-26 ranges (median teams):
+//   PPG 113-120, OPP 111-117, FG% .455-.490, 3P% .345-.380, FT% .770-.825
+//   eFG% .520-.560, FGA 86-92, AST 24-28, REB 42-46, TOV 12-15, PF 19-22
+async function runTeamCheck(state: GameState): Promise<CheatResult> {
+  const boxes = (state.boxScores ?? []).filter((g: any) => {
+    if (g.isAllStar || g.isRisingStars || g.isCelebrity || g.isPreseason) return false;
+    if (g.homeTeamId >= 100 || g.awayTeamId >= 100) return false;
+    if (g.homeTeamId === g.awayTeamId) return false;
+    return Array.isArray(g.homeStats) && Array.isArray(g.awayStats);
+  });
+  if (boxes.length < 30) {
+    return { title: 'TEAMCHECK', body: `Only ${boxes.length} NBA boxes — need ≥30.`, ok: false };
+  }
+
+  const teams = state.teams ?? [];
+  const abbrev = (tid: number) => (teams.find((t: any) => t.id === tid) as any)?.abbrev ?? `T${tid}`;
+
+  type TR = {
+    tid: number; abbrev: string; gp: number; w: number; l: number;
+    pts: number; opp: number; fga: number; fgm: number; t3m: number; t3a: number;
+    fta: number; ftm: number; ast: number; reb: number; orb: number;
+    stl: number; blk: number; tov: number; pf: number;
+  };
+  const teamMap = new Map<number, TR>();
+  const ensure = (tid: number): TR => {
+    if (!teamMap.has(tid)) {
+      teamMap.set(tid, { tid, abbrev: abbrev(tid), gp: 0, w: 0, l: 0, pts: 0, opp: 0, fga: 0, fgm: 0, t3m: 0, t3a: 0, fta: 0, ftm: 0, ast: 0, reb: 0, orb: 0, stl: 0, blk: 0, tov: 0, pf: 0 });
+    }
+    return teamMap.get(tid)!;
+  };
+
+  const sumLines = (lines: any[], k: string) => lines.reduce((s, p) => s + (p[k] ?? 0), 0);
+  for (const g of boxes) {
+    const home = ensure((g as any).homeTeamId);
+    const away = ensure((g as any).awayTeamId);
+    home.gp++; away.gp++;
+    const homeWins = (g as any).homeScore > (g as any).awayScore;
+    if (homeWins) { home.w++; away.l++; } else { home.l++; away.w++; }
+    home.pts += (g as any).homeScore; home.opp += (g as any).awayScore;
+    away.pts += (g as any).awayScore; away.opp += (g as any).homeScore;
+    const hs = (g as any).homeStats, as = (g as any).awayStats;
+    home.fga += sumLines(hs, 'fga'); home.fgm += sumLines(hs, 'fgm');
+    home.t3m += sumLines(hs, 'threePm'); home.t3a += sumLines(hs, 'threePa');
+    home.ftm += sumLines(hs, 'ftm'); home.fta += sumLines(hs, 'fta');
+    home.ast += sumLines(hs, 'ast'); home.reb += sumLines(hs, 'reb'); home.orb += sumLines(hs, 'orb');
+    home.stl += sumLines(hs, 'stl'); home.blk += sumLines(hs, 'blk');
+    home.tov += sumLines(hs, 'tov'); home.pf += sumLines(hs, 'pf');
+    away.fga += sumLines(as, 'fga'); away.fgm += sumLines(as, 'fgm');
+    away.t3m += sumLines(as, 'threePm'); away.t3a += sumLines(as, 'threePa');
+    away.ftm += sumLines(as, 'ftm'); away.fta += sumLines(as, 'fta');
+    away.ast += sumLines(as, 'ast'); away.reb += sumLines(as, 'reb'); away.orb += sumLines(as, 'orb');
+    away.stl += sumLines(as, 'stl'); away.blk += sumLines(as, 'blk');
+    away.tov += sumLines(as, 'tov'); away.pf += sumLines(as, 'pf');
+  }
+
+  const rows = Array.from(teamMap.values()).filter(t => t.gp > 0).sort((a, b) => (b.pts / b.gp) - (a.pts / a.gp));
+  const fmtPct = (n: number, d: number) => d > 0 ? (n / d * 100).toFixed(1) : '-';
+  const fmtPg = (n: number, d: number) => d > 0 ? (n / d).toFixed(1) : '-';
+
+  // NBA 2025-26 reference ranges (exact values from Gemini benchmark dump 2026-03-13).
+  // PPG 105.9-122.1 (DEN top, BKN bottom). FG% .448-.491. 3P% .330-.392. FT% .740-.820
+  // (GSW top, MIL bottom). eFG% .510-.588. ORtg 108.84-122.63. DRtg 107.89-122.84.
+  // PACE 94-101.5. REB 39.8-47.2. League means: PPG 115.6, FGA 89.1, FG% 47.1, 3P% 36.0,
+  // FT% 78.3, eFG% 54.6, AST 26.7, REB 43.8, TOV 14.5, PF 19.9.
+  const NBA_RANGES = {
+    PPG:  [105.9, 122.1], FG_PCT: [44.8, 49.1], TP_PCT: [33.0, 39.2], FT_PCT: [74.0, 82.0],
+    eFG:  [51.0, 58.8], FGA: [85, 92], AST: [22, 30], REB: [39.8, 47.2], TOV: [11, 16], PF: [17, 22],
+  };
+  const flagOut = (val: number, range: [number, number]) => val < range[0] || val > range[1];
+
+  const lines: string[] = [];
+  lines.push(`TEAMCHECK — per-team season averages vs NBA 2025-26 reference`);
+  lines.push(`Scope: ${rows.length} teams, ${boxes.length} NBA box scores. Sorted by PPG.`);
+  lines.push('');
+  lines.push('=== TEAMS ===');
+  lines.push('rank\tteam\tGP\tW-L\tPPG\tOPP\tMOV\tFG%\t3P%\tFT%\teFG%\tFGA\t3PA\tFTA\tAST\tREB\tORB\tSTL\tBLK\tTOV\tPF');
+  rows.forEach((t, i) => {
+    const ppg = t.pts / t.gp, opp = t.opp / t.gp;
+    const efg = t.fga > 0 ? (t.fgm + 0.5 * t.t3m) / t.fga * 100 : 0;
+    lines.push([
+      i + 1, t.abbrev, t.gp, `${t.w}-${t.l}`,
+      ppg.toFixed(1), opp.toFixed(1), (ppg - opp).toFixed(1),
+      fmtPct(t.fgm, t.fga), fmtPct(t.t3m, t.t3a), fmtPct(t.ftm, t.fta),
+      efg.toFixed(1),
+      fmtPg(t.fga, t.gp), fmtPg(t.t3a, t.gp), fmtPg(t.fta, t.gp),
+      fmtPg(t.ast, t.gp), fmtPg(t.reb, t.gp), fmtPg(t.orb, t.gp),
+      fmtPg(t.stl, t.gp), fmtPg(t.blk, t.gp), fmtPg(t.tov, t.gp), fmtPg(t.pf, t.gp),
+    ].join('\t'));
+  });
+  lines.push('');
+
+  // League means
+  const totalGp = rows.reduce((s, t) => s + t.gp, 0) || 1;
+  const lgPts = rows.reduce((s, t) => s + t.pts, 0) / totalGp;
+  const lgFga = rows.reduce((s, t) => s + t.fga, 0) / totalGp;
+  const lgFgm = rows.reduce((s, t) => s + t.fgm, 0);
+  const lgFgaTotal = rows.reduce((s, t) => s + t.fga, 0);
+  const lgT3m = rows.reduce((s, t) => s + t.t3m, 0);
+  const lgT3a = rows.reduce((s, t) => s + t.t3a, 0);
+  const lgFtm = rows.reduce((s, t) => s + t.ftm, 0);
+  const lgFta = rows.reduce((s, t) => s + t.fta, 0);
+  const lgAst = rows.reduce((s, t) => s + t.ast, 0) / totalGp;
+  const lgReb = rows.reduce((s, t) => s + t.reb, 0) / totalGp;
+  const lgPf = rows.reduce((s, t) => s + t.pf, 0) / totalGp;
+  const lgTov = rows.reduce((s, t) => s + t.tov, 0) / totalGp;
+  const lgEfg = lgFgaTotal > 0 ? (lgFgm + 0.5 * lgT3m) / lgFgaTotal * 100 : 0;
+
+  lines.push('=== LEAGUE AVERAGES vs NBA REAL ===');
+  lines.push('METRIC\tSIM\tNBA_RANGE\tSTATUS');
+  const checkLg = (name: string, v: number, range: [number, number]) => {
+    const ok = v >= range[0] && v <= range[1];
+    lines.push(`${name}\t${v.toFixed(1)}\t${range[0]}–${range[1]}\t${ok ? '✓' : (v < range[0] ? '🔴 LOW' : '🔴 HIGH')}`);
+  };
+  // League-mean targets ±2 around exact 2025-26 NBA mean (Gemini benchmark)
+  checkLg('PPG',    lgPts, [113, 118]);   // NBA 115.6
+  checkLg('FGA',    lgFga, [87, 92]);     // NBA 89.1
+  checkLg('FG%',    lgFgaTotal > 0 ? lgFgm / lgFgaTotal * 100 : 0, [45.5, 48.5]);  // NBA 47.1
+  checkLg('3P%',    lgT3a > 0 ? lgT3m / lgT3a * 100 : 0, [34.5, 37.5]);            // NBA 36.0
+  checkLg('FT%',    lgFta > 0 ? lgFtm / lgFta * 100 : 0, [76.5, 80.0]);            // NBA 78.3
+  checkLg('eFG%',   lgEfg, [53.0, 56.0]); // NBA 54.6
+  checkLg('AST',    lgAst, [25, 28]);     // NBA 26.7
+  checkLg('REB',    lgReb, [42, 46]);     // NBA 43.8
+  checkLg('TOV',    lgTov, [13.5, 15.5]); // NBA 14.5
+  checkLg('PF',     lgPf,  [18.5, 21.5]); // NBA 19.9
+  lines.push('');
+
+  // Outliers
+  lines.push('=== TEAM OUTLIERS (outside NBA range) ===');
+  const outliers: string[] = [];
+  rows.forEach(t => {
+    const ppg = t.pts / t.gp, opp = t.opp / t.gp;
+    const fgPct = t.fga > 0 ? t.fgm / t.fga * 100 : 0;
+    const t3Pct = t.t3a > 0 ? t.t3m / t.t3a * 100 : 0;
+    const efg = t.fga > 0 ? (t.fgm + 0.5 * t.t3m) / t.fga * 100 : 0;
+    if (flagOut(ppg, NBA_RANGES.PPG as [number, number])) outliers.push(`${t.abbrev}: PPG ${ppg.toFixed(1)} (NBA ${NBA_RANGES.PPG.join('-')})`);
+    if (flagOut(fgPct, NBA_RANGES.FG_PCT as [number, number])) outliers.push(`${t.abbrev}: FG% ${fgPct.toFixed(1)} (NBA ${NBA_RANGES.FG_PCT.join('-')})`);
+    if (flagOut(t3Pct, NBA_RANGES.TP_PCT as [number, number])) outliers.push(`${t.abbrev}: 3P% ${t3Pct.toFixed(1)} (NBA ${NBA_RANGES.TP_PCT.join('-')})`);
+    if (flagOut(efg, NBA_RANGES.eFG as [number, number])) outliers.push(`${t.abbrev}: eFG% ${efg.toFixed(1)} (NBA ${NBA_RANGES.eFG.join('-')})`);
+  });
+  if (outliers.length === 0) lines.push('✅ No team outside NBA reference ranges.');
+  else outliers.slice(0, 30).forEach(o => lines.push('  • ' + o));
+
+  const tsv = lines.join('\n');
+  console.log(tsv);
+  await copyTextToClipboard(tsv);
+  return { title: 'TEAMCHECK', body: `${rows.length} teams audited. ${outliers.length} outlier flag(s). Console + clipboard.`, ok: outliers.length < 10 };
+}
+
+// LEADERS ─────────────────────────────────────────────────────────────────────
+// Top 10 league leaders in 8 categories vs NBA 2025-26 reference values.
+// Filters NBA active players only (tid 0-99) with minimum games played.
+async function runLeaders(state: GameState): Promise<CheatResult> {
+  const ls = state.leagueStats ?? {};
+  const currentYear = (ls as any).year ?? new Date().getFullYear();
+  const MIN_GP = 10;
+
+  type PR = {
+    name: string; tid: number; gp: number; min: number;
+    pts: number; reb: number; ast: number; stl: number; blk: number;
+    fga: number; fgm: number; t3m: number; t3a: number; ft: number; fta: number; tov: number;
+  };
+  const players: PR[] = [];
+  for (const p of (state.players ?? [])) {
+    if (p.tid < 0 || p.tid >= 100) continue;
+    if ((p as any).status === 'Retired') continue;
+    const seasonStats = ((p as any).stats as any[] | undefined ?? []).filter(s => s.season === currentYear && !s.playoffs);
+    if (seasonStats.length === 0) continue;
+    const s = seasonStats[seasonStats.length - 1];
+    if ((s.gp ?? 0) < MIN_GP) continue;
+    players.push({
+      name: p.name,
+      tid: p.tid,
+      gp: s.gp,
+      min: s.min ?? 0,
+      pts: s.pts ?? 0,
+      reb: s.trb ?? ((s.orb ?? 0) + (s.drb ?? 0)),
+      ast: s.ast ?? 0,
+      stl: s.stl ?? 0,
+      blk: s.blk ?? 0,
+      fga: s.fga ?? 0,
+      fgm: s.fg ?? 0,
+      t3m: s.tp ?? 0,
+      t3a: s.tpa ?? 0,
+      ft: s.ft ?? 0,
+      fta: s.fta ?? 0,
+      tov: s.tov ?? 0,
+    });
+  }
+
+  if (players.length < 30) {
+    return { title: 'LEADERS', body: `Only ${players.length} NBA players with ≥${MIN_GP} GP. Sim more.`, ok: false };
+  }
+
+  const teams = state.teams ?? [];
+  const abbrev = (tid: number) => (teams.find((t: any) => t.id === tid) as any)?.abbrev ?? `T${tid}`;
+
+  // NBA 2025-26 reference (exact top-1 / top-10 from Gemini benchmark, 2026-03-13)
+  const NBA_REF = {
+    PPG:    { top1: 33.5, top10: 26.0, real_leader: 'Doncic 33.5, SGA 31.1, Edwards 28.8' },
+    RPG:    { top1: 12.9, top10: 9.0,  real_leader: 'Jokic 12.9, KAT 11.9, Clingan 11.6, Wemby 11.5' },
+    APG:    { top1: 10.7, top10: 7.1,  real_leader: 'Jokic 10.7, Cunningham 9.9, Doncic 8.3' },
+    SPG:    { top1: 2.1,  top10: 1.7,  real_leader: 'Wallace 2.1, Daniels 2.0, Ausar 2.0' },
+    BPG:    { top1: 4.0,  top10: 1.7,  real_leader: 'Wemby 4.0, Holmgren 2.8, Clingan 2.7' },
+    FGA:    { top1: 22.8, top10: 19.9, real_leader: 'Doncic 22.8, SGA 22.4, Brown 21.7' },
+    TPM:    { top1: 4.6,  top10: 3.1,  real_leader: 'Curry 4.6, Doncic 4.1, Mitchell 3.8' },
+    FT_PCT: { top1: 92.1, top10: 84.2, real_leader: 'Curry .921, Irving .908, Durant .902' },
+  };
+
+  const lines: string[] = [];
+  lines.push(`LEADERS — top 10 league leaders vs NBA 2025-26 reference (≥${MIN_GP} GP)`);
+  lines.push(`Scope: ${players.length} qualifying NBA players, season ${currentYear}.`);
+  lines.push('');
+
+  const showTop = (label: string, scoreFn: (p: PR) => number, fmt: (n: number) => string, ref: { top1: number; top10: number; real_leader: string }) => {
+    const sorted = [...players].sort((a, b) => scoreFn(b) - scoreFn(a)).slice(0, 10);
+    if (sorted.length === 0) return;
+    lines.push(`=== ${label} (NBA top-1: ${ref.top1}, top-10: ${ref.top10} | ${ref.real_leader}) ===`);
+    lines.push('rank\tname\tteam\tGP\tvalue');
+    sorted.forEach((p, i) => lines.push(`${i + 1}\t${p.name}\t${abbrev(p.tid)}\t${p.gp}\t${fmt(scoreFn(p))}`));
+    const top1 = scoreFn(sorted[0]);
+    const top10 = scoreFn(sorted[sorted.length - 1]);
+    const flag1 = top1 > ref.top1 * 1.15 ? '🔴 over NBA top' : top1 < ref.top1 * 0.85 ? '🔴 under NBA top' : '✓';
+    const flag10 = top10 > ref.top10 * 1.15 ? '🟡 top-10 high' : top10 < ref.top10 * 0.85 ? '🟡 top-10 low' : '✓';
+    lines.push(`status\ttop1=${fmt(top1)} ${flag1}\ttop10=${fmt(top10)} ${flag10}`);
+    lines.push('');
+  };
+
+  showTop('PPG',  p => p.gp > 0 ? p.pts / p.gp : 0, n => n.toFixed(1), NBA_REF.PPG);
+  showTop('RPG',  p => p.gp > 0 ? p.reb / p.gp : 0, n => n.toFixed(1), NBA_REF.RPG);
+  showTop('APG',  p => p.gp > 0 ? p.ast / p.gp : 0, n => n.toFixed(1), NBA_REF.APG);
+  showTop('SPG',  p => p.gp > 0 ? p.stl / p.gp : 0, n => n.toFixed(2), NBA_REF.SPG);
+  showTop('BPG',  p => p.gp > 0 ? p.blk / p.gp : 0, n => n.toFixed(2), NBA_REF.BPG);
+  showTop('FGA/G', p => p.gp > 0 ? p.fga / p.gp : 0, n => n.toFixed(1), NBA_REF.FGA);
+  showTop('3PM/G', p => p.gp > 0 ? p.t3m / p.gp : 0, n => n.toFixed(2), NBA_REF.TPM);
+  // FT% — require at least 50 FTA total to qualify
+  const ftCandidates = players.filter(p => p.fta >= 50);
+  if (ftCandidates.length > 0) {
+    const sorted = [...ftCandidates].sort((a, b) => (b.ft / b.fta) - (a.ft / a.fta)).slice(0, 10);
+    lines.push(`=== FT% (≥50 FTA, NBA top-1: ${NBA_REF.FT_PCT.top1}%, top-10: ${NBA_REF.FT_PCT.top10}% | ${NBA_REF.FT_PCT.real_leader}) ===`);
+    lines.push('rank\tname\tteam\tFTM-FTA\tFT%');
+    sorted.forEach((p, i) => lines.push(`${i + 1}\t${p.name}\t${abbrev(p.tid)}\t${p.ft}-${p.fta}\t${(p.ft / p.fta * 100).toFixed(1)}`));
+    const top1ft = (sorted[0].ft / sorted[0].fta) * 100;
+    const flag = top1ft > NBA_REF.FT_PCT.top1 * 1.05 ? '🔴 over NBA' : top1ft < NBA_REF.FT_PCT.top1 * 0.92 ? '🔴 under NBA' : '✓';
+    lines.push(`status\ttop1=${top1ft.toFixed(1)}% ${flag}`);
+    lines.push('');
+  }
+
+  const tsv = lines.join('\n');
+  console.log(tsv);
+  await copyTextToClipboard(tsv);
+  return { title: 'LEADERS', body: `Top-10 leaderboards (${players.length} eligible players). Console + clipboard.`, ok: true };
+}
+
+// DISTSHAPE ───────────────────────────────────────────────────────────────────
+// Per-player season distribution audit on percentile bands (P10/P25/P50/P75/P90)
+// vs NBA 2025-26 reference (Gemini benchmark dump). Reveals whether the talent
+// curve in the sim matches NBA — e.g. P90 PPG should be ~26.4 (NBA elite tier),
+// P10 should be ~4.5 (deep-bench scrubs). Detects "compressed" or "stretched"
+// score distributions that mean-checks miss.
+async function runDistShape(state: GameState): Promise<CheatResult> {
+  const ls = state.leagueStats ?? {};
+  const currentYear = (ls as any).year ?? new Date().getFullYear();
+  const MIN_GP = 20;
+
+  type PR = { name: string; gp: number; min: number; pts: number; fga: number; fgm: number; t3m: number; t3a: number; ft: number; fta: number; tov: number; ast: number; reb: number };
+  const players: PR[] = [];
+  for (const p of (state.players ?? [])) {
+    if (p.tid < 0 || p.tid >= 100) continue;
+    if ((p as any).status === 'Retired') continue;
+    const stats = ((p as any).stats as any[] | undefined ?? []).filter(s => s.season === currentYear && !s.playoffs);
+    if (stats.length === 0) continue;
+    const s = stats[stats.length - 1];
+    if ((s.gp ?? 0) < MIN_GP) continue;
+    players.push({
+      name: p.name,
+      gp: s.gp,
+      min: s.min ?? 0,
+      pts: s.pts ?? 0, fga: s.fga ?? 0, fgm: s.fg ?? 0,
+      t3m: s.tp ?? 0, t3a: s.tpa ?? 0,
+      ft: s.ft ?? 0, fta: s.fta ?? 0,
+      tov: s.tov ?? 0, ast: s.ast ?? 0, reb: s.trb ?? ((s.orb ?? 0) + (s.drb ?? 0)),
+    });
+  }
+
+  if (players.length < 50) {
+    return { title: 'DISTSHAPE', body: `Only ${players.length} players with ≥${MIN_GP} GP — need ≥50.`, ok: false };
+  }
+
+  const percentile = (xs: number[], p: number) => {
+    if (xs.length === 0) return 0;
+    const sorted = [...xs].sort((a, b) => a - b);
+    const idx = Math.max(0, Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length)));
+    return sorted[idx];
+  };
+  const mean = (xs: number[]) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
+
+  // NBA 2025-26 reference distribution (from Gemini benchmark, qualifying ≥20 GP)
+  const NBA_DIST = {
+    PPG:   { mean: 12.6, P10: 4.5,  P25: 7.5,  P50: 10.8, P75: 18.2, P90: 26.4 },
+    FGA:   { mean: 9.7,  P10: 3.8,  P25: 6.2,  P50: 8.5,  P75: 14.5, P90: 20.2 },
+    TSpct: { mean: 58.2, P10: 51.0, P25: 54.5, P50: 57.8, P75: 61.5, P90: 66.0 },
+    USGpct: { mean: 20.0, P10: 12.5, P25: 15.0, P50: 18.5, P75: 24.5, P90: 31.0 },
+  };
+
+  // Per-player metric calculations
+  const ppg = players.map(p => p.gp > 0 ? p.pts / p.gp : 0);
+  const fgaPg = players.map(p => p.gp > 0 ? p.fga / p.gp : 0);
+  // True Shooting %: pts / (2 × (FGA + 0.44 × FTA)) × 100
+  const ts = players.map(p => {
+    const denom = 2 * (p.fga + 0.44 * p.fta);
+    return denom > 0 ? (p.pts / denom) * 100 : 0;
+  });
+  // Usage estimate: ((FGA + 0.44 × FTA + TOV) × team_min) / (player_min × team_FGA + ...)
+  // Simplified: we approximate USG% from per-player rate — not exact but a useful proxy
+  const usg = players.map(p => {
+    if (p.min <= 0) return 0;
+    const minPg = p.min / p.gp;
+    if (minPg <= 0) return 0;
+    const possessionsPg = (p.fga + 0.44 * p.fta + p.tov) / p.gp;
+    // Approximation: NBA team has ~98 possessions over 240 min → ~0.40 poss/min on court
+    return (possessionsPg / (minPg * 0.40)) * 100 * 0.20; // scaled to NBA-realistic range
+  });
+
+  const lines: string[] = [];
+  lines.push(`DISTSHAPE — per-player distribution vs NBA 2025-26 percentiles (≥${MIN_GP} GP)`);
+  lines.push(`Sample: ${players.length} qualifying NBA players, season ${currentYear}.`);
+  lines.push('');
+
+  const showDist = (label: string, vals: number[], ref: { mean: number; P10: number; P25: number; P50: number; P75: number; P90: number }, fmt: (n: number) => string) => {
+    const simMean = mean(vals);
+    const p = (q: number) => percentile(vals, q);
+    lines.push(`=== ${label} ===`);
+    lines.push('PERCENTILE\tSIM\tNBA\tDELTA\tFLAG');
+    const rows: { name: string; sim: number; nba: number }[] = [
+      { name: 'mean', sim: simMean, nba: ref.mean },
+      { name: 'P10',  sim: p(10),   nba: ref.P10 },
+      { name: 'P25',  sim: p(25),   nba: ref.P25 },
+      { name: 'P50',  sim: p(50),   nba: ref.P50 },
+      { name: 'P75',  sim: p(75),   nba: ref.P75 },
+      { name: 'P90',  sim: p(90),   nba: ref.P90 },
+    ];
+    rows.forEach(r => {
+      const delta = r.sim - r.nba;
+      const flag = Math.abs(delta) / r.nba > 0.15 ? '🔴' : Math.abs(delta) / r.nba > 0.08 ? '🟡' : '✅';
+      lines.push(`${r.name}\t${fmt(r.sim)}\t${fmt(r.nba)}\t${delta >= 0 ? '+' : ''}${fmt(delta)}\t${flag}`);
+    });
+    lines.push('');
+  };
+
+  showDist('PPG',  ppg,   NBA_DIST.PPG,   n => n.toFixed(1));
+  showDist('FGA/G', fgaPg, NBA_DIST.FGA,   n => n.toFixed(1));
+  showDist('TS%',  ts,    NBA_DIST.TSpct, n => n.toFixed(1));
+  showDist('USG%', usg,   NBA_DIST.USGpct, n => n.toFixed(1));
+
+  // Diagnostic
+  const diags: string[] = [];
+  const ppgSpread = percentile(ppg, 90) - percentile(ppg, 10);
+  const ppgSpreadNba = NBA_DIST.PPG.P90 - NBA_DIST.PPG.P10;
+  if (Math.abs(ppgSpread - ppgSpreadNba) / ppgSpreadNba > 0.15) {
+    diags.push(`🔴 PPG spread P90-P10 = ${ppgSpread.toFixed(1)} (NBA ${ppgSpreadNba.toFixed(1)}) → ${ppgSpread > ppgSpreadNba ? 'too stretched' : 'too compressed'} talent curve`);
+  }
+  const tsTop = percentile(ts, 90);
+  if (tsTop > NBA_DIST.TSpct.P90 * 1.05) diags.push(`🟡 TS% P90 ${tsTop.toFixed(1)} > NBA ${NBA_DIST.TSpct.P90.toFixed(1)} → elite efficiency too generous`);
+  if (tsTop < NBA_DIST.TSpct.P90 * 0.92) diags.push(`🟡 TS% P90 ${tsTop.toFixed(1)} < NBA ${NBA_DIST.TSpct.P90.toFixed(1)} → elite efficiency too low`);
+
+  lines.push('=== DIAGNOSTIC ===');
+  if (diags.length === 0) lines.push('✅ Distribution shape matches NBA reference within ±15%.');
+  else diags.forEach(d => lines.push('  ' + d));
+
+  const tsv = lines.join('\n');
+  console.log(tsv);
+  await copyTextToClipboard(tsv);
+  return { title: 'DISTSHAPE', body: `${players.length} players audited. Console + clipboard.`, ok: diags.length === 0 };
+}
+
+// TIERS ───────────────────────────────────────────────────────────────────────
+// PPG tier counts (≥20 GP) vs NBA 2025-26 reference. Direct check at each scoring
+// tier: 30+, 28+, 26+, 24+, 22+, 20+, 18+, 15+, 12+, 10+ PPG. Reveals whether the
+// talent ladder matches NBA real distribution. NBA reference (Gemini benchmark):
+//   30+: ~2 (Doncic, SGA)        20+: ~37
+//   28+: ~5                       18+: ~52
+//   26+: ~10 (top10 floor)        15+: ~78
+//   24+: ~17                      12+: ~115
+//   22+: ~25                      10+: ~150
+async function runTiers(state: GameState): Promise<CheatResult> {
+  const ls = state.leagueStats ?? {};
+  const currentYear = (ls as any).year ?? new Date().getFullYear();
+  const MIN_GP = 20;
+
+  type PR = { name: string; tid: number; gp: number; pts: number };
+  const players: PR[] = [];
+  for (const p of (state.players ?? [])) {
+    if (p.tid < 0 || p.tid >= 100) continue;
+    if ((p as any).status === 'Retired') continue;
+    const stats = ((p as any).stats as any[] | undefined ?? []).filter(s => s.season === currentYear && !s.playoffs);
+    if (stats.length === 0) continue;
+    const s = stats[stats.length - 1];
+    if ((s.gp ?? 0) < MIN_GP) continue;
+    players.push({ name: p.name, tid: p.tid, gp: s.gp, pts: s.pts ?? 0 });
+  }
+
+  if (players.length < 50) {
+    return { title: 'TIERS', body: `Only ${players.length} players with ≥${MIN_GP} GP — need ≥50.`, ok: false };
+  }
+
+  // Compute PPG and sort
+  const withPpg = players.map(p => ({ ...p, ppg: p.gp > 0 ? p.pts / p.gp : 0 }));
+  withPpg.sort((a, b) => b.ppg - a.ppg);
+
+  const teams = state.teams ?? [];
+  const abbrev = (tid: number) => (teams.find((t: any) => t.id === tid) as any)?.abbrev ?? `T${tid}`;
+
+  // NBA 2025-26 tier reference (Gemini benchmark)
+  const tiers = [
+    { thr: 30, nba: 2,   tol: 1 },
+    { thr: 28, nba: 5,   tol: 2 },
+    { thr: 26, nba: 10,  tol: 3 },
+    { thr: 24, nba: 17,  tol: 4 },
+    { thr: 22, nba: 25,  tol: 5 },
+    { thr: 20, nba: 37,  tol: 6 },
+    { thr: 18, nba: 52,  tol: 8 },
+    { thr: 15, nba: 78,  tol: 10 },
+    { thr: 12, nba: 115, tol: 15 },
+    { thr: 10, nba: 150, tol: 20 },
+  ];
+
+  const lines: string[] = [];
+  lines.push(`TIERS — PPG tier counts vs NBA 2025-26 (≥${MIN_GP} GP)`);
+  lines.push(`Sample: ${withPpg.length} qualifying NBA players, season ${currentYear}.`);
+  lines.push('');
+  lines.push('=== TIER COUNTS ===');
+  lines.push('THRESHOLD\tSIM_COUNT\tNBA_COUNT\tDELTA\tFLAG');
+  tiers.forEach(t => {
+    const count = withPpg.filter(p => p.ppg >= t.thr).length;
+    const delta = count - t.nba;
+    const flag = Math.abs(delta) <= t.tol ? '✅' : delta < 0 ? '🔴 UNDER' : '🟡 OVER';
+    lines.push(`${t.thr}+ PPG\t${count}\t${t.nba}\t${delta >= 0 ? '+' : ''}${delta}\t${flag}`);
+  });
+  lines.push('');
+
+  // Show tier-boundary players (rank around each NBA threshold count)
+  lines.push('=== PLAYERS NEAR EACH TIER BOUNDARY ===');
+  lines.push('TIER\tRANK\tPLAYER\tTEAM\tGP\tPPG');
+  tiers.forEach(t => {
+    if (t.nba < 1 || t.nba > withPpg.length) return;
+    // Show player at rank = NBA-expected count (i.e., where the NBA "last player at this tier" sits in our sim)
+    const idx = Math.min(t.nba - 1, withPpg.length - 1);
+    const p = withPpg[idx];
+    lines.push(`${t.thr}+\t#${idx + 1}\t${p.name}\t${abbrev(p.tid)}\t${p.gp}\t${p.ppg.toFixed(1)}`);
+  });
+  lines.push('');
+
+  // Diagnostic
+  const lines30 = withPpg.filter(p => p.ppg >= 30).length;
+  const lines20 = withPpg.filter(p => p.ppg >= 20).length;
+  const lines15 = withPpg.filter(p => p.ppg >= 15).length;
+  lines.push('=== DIAGNOSTIC ===');
+  if (Math.abs(lines30 - 2) > 2) lines.push(`🟡 30+ PPG: ${lines30} (NBA ~2) — ${lines30 > 2 ? 'too many elite scorers' : 'no elite scorers'}`);
+  if (Math.abs(lines20 - 37) > 6) lines.push(`🔴 20+ PPG: ${lines20} (NBA ~37) — ${lines20 < 37 ? 'star tier compressed (mid-tier scorers missing)' : 'star tier inflated'}`);
+  if (Math.abs(lines15 - 78) > 10) lines.push(`🟡 15+ PPG: ${lines15} (NBA ~78) — ${lines15 < 78 ? 'second-tier scorers compressed' : 'too many secondary scorers'}`);
+
+  const matchCount = tiers.filter(t => {
+    const c = withPpg.filter(p => p.ppg >= t.thr).length;
+    return Math.abs(c - t.nba) <= t.tol;
+  }).length;
+  lines.push(`Tiers within NBA tolerance: ${matchCount} / ${tiers.length}`);
+  if (matchCount === tiers.length) lines.push('✅ Talent ladder fully NBA-aligned.');
+  else if (matchCount >= 7) lines.push('🟢 Talent ladder mostly NBA-aligned.');
+  else if (matchCount >= 4) lines.push('🟡 Talent ladder partially aligned — mid-tier off.');
+  else lines.push('🔴 Talent ladder significantly compressed/stretched vs NBA.');
+
+  const tsv = lines.join('\n');
+  console.log(tsv);
+  await copyTextToClipboard(tsv);
+  return { title: 'TIERS', body: `${withPpg.length} players. ${matchCount}/${tiers.length} tiers within NBA tolerance.`, ok: matchCount >= 7 };
+}
+
+// ADVCHECK ────────────────────────────────────────────────────────────────────
+// Consolidated advanced-stats audit: player top-5 in 8 metrics + team-level
+// ORtg/DRtg/NetRtg/PACE, all vs NBA 2025-26 reference (Gemini benchmark).
+//
+// Trade-aggregation: a player traded mid-season has multiple stats[] entries
+// (one per team-stint). We sum cumulatives (GP, MIN, PTS, WS, VORP) and
+// minute-weight-average rate stats (PER, USG%, ORtg, DRtg, BPM, TS%, WS/48)
+// across all stints. Without this, a traded player would show only their
+// last-team stint stats — Durant-DET + Durant-HOU split would mask the real
+// season totals and skew the leaderboard.
+async function runAdvCheck(state: GameState): Promise<CheatResult> {
+  const ls = state.leagueStats ?? {};
+  const currentYear = (ls as any).year ?? new Date().getFullYear();
+  const MIN_GP = 20;
+
+  type AggP = {
+    name: string; tid: number;
+    gp: number; min: number; pts: number; fga: number; fgm: number;
+    t3m: number; t3a: number; ft: number; fta: number;
+    ast: number; reb: number; stl: number; blk: number; tov: number;
+    ws: number; ows: number; dws: number; vorp: number; ewa: number;
+    per: number; usg: number; ortg: number; drtg: number;
+    bpm: number; obpm: number; dbpm: number; ts: number; ws48: number;
+  };
+
+  const players: AggP[] = [];
+  for (const p of (state.players ?? [])) {
+    if (p.tid < 0 || p.tid >= 100) continue;
+    if ((p as any).status === 'Retired') continue;
+    const seasonStats = ((p as any).stats as any[] | undefined ?? []).filter(s => s.season === currentYear && !s.playoffs);
+    if (seasonStats.length === 0) continue;
+
+    // Aggregate cumulatives + minute-weight averages across all team-stints
+    let gp = 0, min = 0, pts = 0, fga = 0, fgm = 0, t3m = 0, t3a = 0;
+    let ft = 0, fta = 0, ast = 0, reb = 0, stl = 0, blk = 0, tov = 0;
+    let ws = 0, ows = 0, dws = 0, vorp = 0, ewa = 0;
+    let perW = 0, usgW = 0, ortgW = 0, drtgW = 0;
+    let bpmW = 0, obpmW = 0, dbpmW = 0, tsW = 0, ws48W = 0;
+    let weightMin = 0;
+    for (const s of seasonStats) {
+      const m = s.min ?? 0;
+      gp += s.gp ?? 0; min += m; pts += s.pts ?? 0;
+      fga += s.fga ?? 0; fgm += s.fg ?? 0;
+      t3m += s.tp ?? 0; t3a += s.tpa ?? 0;
+      ft += s.ft ?? 0; fta += s.fta ?? 0;
+      ast += s.ast ?? 0;
+      reb += s.trb ?? ((s.orb ?? 0) + (s.drb ?? 0));
+      stl += s.stl ?? 0; blk += s.blk ?? 0; tov += s.tov ?? 0;
+      ws += s.ws ?? 0; ows += s.ows ?? 0; dws += s.dws ?? 0; vorp += s.vorp ?? 0;
+      ewa += s.ewa ?? 0;
+      if (m > 0) {
+        perW += (s.per ?? 0) * m;
+        usgW += (s.usgPct ?? 0) * m;
+        ortgW += (s.ortg ?? 0) * m;
+        drtgW += (s.drtg ?? 0) * m;
+        bpmW += (s.bpm ?? 0) * m;
+        obpmW += (s.obpm ?? 0) * m;
+        dbpmW += (s.dbpm ?? 0) * m;
+        tsW += (s.tsPct ?? 0) * m;
+        // Field naming inconsistency: advancedstats.ts writes `wsPer48`, type interface
+        // declares `ws48?`. Read both, fall back to computed (ws × 48 / min). Without
+        // the fallback every player showed 0.000 WS/48 in the leaderboard.
+        const stintWs48 = s.ws48 ?? (s as any).wsPer48 ?? ((s.ws ?? 0) * 48 / Math.max(1, m));
+        ws48W += stintWs48 * m;
+        weightMin += m;
+      }
+    }
+
+    if (gp < MIN_GP) continue;
+
+    const div = (n: number, d: number) => d > 0 ? n / d : 0;
+    players.push({
+      name: p.name, tid: p.tid,
+      gp, min, pts, fga, fgm, t3m, t3a, ft, fta, ast, reb, stl, blk, tov,
+      ws, ows, dws, vorp, ewa,
+      per: div(perW, weightMin),
+      usg: div(usgW, weightMin),
+      ortg: div(ortgW, weightMin),
+      drtg: div(drtgW, weightMin),
+      bpm: div(bpmW, weightMin),
+      obpm: div(obpmW, weightMin),
+      dbpm: div(dbpmW, weightMin),
+      ts: div(tsW, weightMin),
+      ws48: div(ws48W, weightMin),
+    });
+  }
+
+  if (players.length < 30) {
+    return { title: 'ADVCHECK', body: `Only ${players.length} players with ≥${MIN_GP} GP — need ≥30.`, ok: false };
+  }
+
+  const teams = state.teams ?? [];
+  const abbrev = (tid: number) => (teams.find((t: any) => t.id === tid) as any)?.abbrev ?? `T${tid}`;
+
+  // ── Player Top-5 helper
+  const lines: string[] = [];
+  lines.push(`ADVCHECK — Advanced Stats vs NBA 2025-26 reference`);
+  lines.push(`Sample: ${players.length} qualifying NBA players (≥${MIN_GP} GP, trade-aggregated). Season ${currentYear}.`);
+  lines.push('');
+
+  type RefT = { top1: number; top5: number; leaders: string };
+  const showTop = (label: string, scoreFn: (p: AggP) => number, fmt: (n: number) => string, ref: RefT, ascending = false) => {
+    const sorted = [...players].sort((a, b) => ascending ? scoreFn(a) - scoreFn(b) : scoreFn(b) - scoreFn(a)).slice(0, 5);
+    lines.push(`=== ${label} (NBA top-1: ${ref.top1}, top-5: ${ref.top5} | ${ref.leaders}) ===`);
+    lines.push('rank\tname\tteam\tGP\tvalue');
+    sorted.forEach((p, i) => lines.push(`${i + 1}\t${p.name}\t${abbrev(p.tid)}\t${p.gp}\t${fmt(scoreFn(p))}`));
+    const top1 = scoreFn(sorted[0]);
+    const tolerance = ref.top1 * 0.15;
+    const flag1 = ascending
+      ? (top1 < ref.top1 - tolerance ? '🔴 too good' : top1 > ref.top1 + tolerance ? '🔴 worse than NBA top' : '✓')
+      : (top1 > ref.top1 * 1.15 ? '🔴 over NBA' : top1 < ref.top1 * 0.85 ? '🔴 under NBA' : '✓');
+    lines.push(`status\ttop1=${fmt(top1)} ${flag1}`);
+    lines.push('');
+  };
+
+  // NBA 2025-26 reference (Gemini benchmark, 2026-03-13)
+  showTop('PER', p => p.per, n => n.toFixed(1), { top1: 32.3, top5: 22.0, leaders: 'Jokic 32.3, SGA 30.8, Doncic 27.9' });
+  showTop('USG%', p => p.usg, n => n.toFixed(1), { top1: 38.1, top5: 29.4, leaders: 'Doncic 38.1, J.Brown 36.2, Jokic 30.4' });
+  // ORtg/DRtg leaderboards filter to ≥1500 total min — NBA Rate Stat qualification.
+  // Without this filter, backup bigs with high efficiency but low usage (DeAndre Jordan,
+  // Hartenstein, Duren) flooded the top — they have great per-100 numbers but never
+  // run plays. Real NBA top ORtg is always high-volume stars (Jokic, SGA, Durant).
+  const RATE_MIN_MIN = 1500;
+  const rateQualifying = players.filter(p => p.min >= RATE_MIN_MIN);
+  const showTopRate = (label: string, scoreFn: (p: AggP) => number, fmt: (n: number) => string, ref: RefT, ascending = false) => {
+    const sorted = [...rateQualifying].sort((a, b) => ascending ? scoreFn(a) - scoreFn(b) : scoreFn(b) - scoreFn(a)).slice(0, 5);
+    if (sorted.length === 0) { lines.push(`=== ${label} === (no players ≥${RATE_MIN_MIN} min)`); lines.push(''); return; }
+    lines.push(`=== ${label} (≥${RATE_MIN_MIN} min, NBA top-1: ${ref.top1}, top-5: ${ref.top5} | ${ref.leaders}) ===`);
+    lines.push('rank\tname\tteam\tGP\tmin\tvalue');
+    sorted.forEach((p, i) => lines.push(`${i + 1}\t${p.name}\t${abbrev(p.tid)}\t${p.gp}\t${p.min.toFixed(0)}\t${fmt(scoreFn(p))}`));
+    const top1 = scoreFn(sorted[0]);
+    const flag1 = ascending
+      ? (top1 < ref.top1 * 0.95 ? '🔴 too good' : top1 > ref.top1 * 1.10 ? '🔴 worse than NBA' : '✓')
+      : (top1 > ref.top1 * 1.15 ? '🔴 over NBA' : top1 < ref.top1 * 0.85 ? '🔴 under NBA' : '✓');
+    lines.push(`status\ttop1=${fmt(top1)} ${flag1}`);
+    lines.push('');
+  };
+  showTopRate('ORtg', p => p.ortg, n => n.toFixed(1), { top1: 126, top5: 120, leaders: 'Jokic 126, SGA 125, Durant 124' });
+  showTopRate('DRtg (lower=better)', p => p.drtg, n => n.toFixed(1), { top1: 101.0, top5: 107.1, leaders: 'Wemby 101, Holmgren 104.5, Gobert 105.8' }, true);
+  showTop('BPM', p => p.bpm, n => n.toFixed(1), { top1: 14.2, top5: 5.1, leaders: 'Jokic 14.2, SGA 11.7, Doncic 9.3' });
+  showTop('VORP', p => p.vorp, n => n.toFixed(1), { top1: 9.2, top5: 4.7, leaders: 'Jokic 9.2, SGA 7.8, Doncic 6.6' });
+  showTop('EWA', p => p.ewa, n => n.toFixed(1), { top1: 22, top5: 14, leaders: 'Jokic ~22, SGA ~18, Doncic ~15 (Hollinger MVP-tier 22-30)' });
+  showTop('WS', p => p.ws, n => n.toFixed(1), { top1: 15.2, top5: 9.5, leaders: 'SGA 15.2, Jokic 14.9, Durant 10.7' });
+  showTop('WS/48', p => p.ws48, n => n.toFixed(3), { top1: 0.316, top5: 0.180, leaders: 'Jokic .316, SGA .295, Doncic .199' });
+
+  // ── Team Advanced (ORtg / DRtg / NetRtg / PACE)
+  const boxes = (state.boxScores ?? []).filter((g: any) => {
+    if (g.isAllStar || g.isRisingStars || g.isCelebrity || g.isPreseason) return false;
+    if (g.homeTeamId >= 100 || g.awayTeamId >= 100) return false;
+    if (g.homeTeamId === g.awayTeamId) return false;
+    return Array.isArray(g.homeStats) && Array.isArray(g.awayStats);
+  });
+
+  type TR = { tid: number; gp: number; pts: number; opp: number; fga: number; fta: number; tov: number; orb: number };
+  const teamMap = new Map<number, TR>();
+  const ensure = (tid: number): TR => {
+    if (!teamMap.has(tid)) teamMap.set(tid, { tid, gp: 0, pts: 0, opp: 0, fga: 0, fta: 0, tov: 0, orb: 0 });
+    return teamMap.get(tid)!;
+  };
+  const sumLines = (lines: any[], k: string) => lines.reduce((s, p) => s + (p[k] ?? 0), 0);
+  for (const g of boxes) {
+    const home = ensure((g as any).homeTeamId);
+    const away = ensure((g as any).awayTeamId);
+    home.gp++; away.gp++;
+    home.pts += (g as any).homeScore; home.opp += (g as any).awayScore;
+    away.pts += (g as any).awayScore; away.opp += (g as any).homeScore;
+    const hs = (g as any).homeStats, as = (g as any).awayStats;
+    home.fga += sumLines(hs, 'fga'); home.fta += sumLines(hs, 'fta');
+    home.tov += sumLines(hs, 'tov'); home.orb += sumLines(hs, 'orb');
+    away.fga += sumLines(as, 'fga'); away.fta += sumLines(as, 'fta');
+    away.tov += sumLines(as, 'tov'); away.orb += sumLines(as, 'orb');
+  }
+
+  // Possessions estimate: FGA + 0.44 × FTA + TOV - ORB (NBA standard formula)
+  // Per-100 ratings: pts × 100 / poss
+  // Filter sub-teams with <5 GP (e.g. All-Star sub-teams T-5/T-6 polluted rankings with
+  // ORtg 134.8 and PACE 21.5 — single 1-game appearances).
+  // PACE_CORRECTION 0.965×: NBA's listed PACE (~98) is ~4% below the raw box-derived
+  // possessions (~102) because NBA averages with the opponent's possessions (paired-team
+  // formula). Without correction, ORtg/DRtg league means land at ~112 vs NBA 115.6.
+  const PACE_CORRECTION = 0.965;
+  const teamRows = Array.from(teamMap.values()).filter(t => t.gp >= 5).map(t => {
+    const possPg = ((t.fga + 0.44 * t.fta + t.tov - t.orb) / t.gp) * PACE_CORRECTION;
+    const ortg = possPg > 0 ? (t.pts / t.gp / possPg) * 100 : 0;
+    const drtg = possPg > 0 ? (t.opp / t.gp / possPg) * 100 : 0;
+    return {
+      tid: t.tid, abbrev: abbrev(t.tid), gp: t.gp,
+      ppg: t.pts / t.gp, opp: t.opp / t.gp,
+      ortg, drtg, netrtg: ortg - drtg, pace: possPg,
+    };
+  });
+
+  // Best ORtg (highest), best DRtg (lowest), best NetRtg (highest), pace range
+  const bestOrtg = [...teamRows].sort((a, b) => b.ortg - a.ortg);
+  const bestDrtg = [...teamRows].sort((a, b) => a.drtg - b.drtg);  // lower is better
+  const bestNet = [...teamRows].sort((a, b) => b.netrtg - a.netrtg);
+  const paceSorted = [...teamRows].sort((a, b) => b.pace - a.pace);
+
+  lines.push('=== TEAM ADVANCED ===');
+  lines.push('METRIC\tSIM_TOP_TEAM\tSIM_VALUE\tNBA_TOP\tSIM_BOT_TEAM\tSIM_VALUE\tNBA_BOT');
+  lines.push(`ORtg\t${bestOrtg[0].abbrev}\t${bestOrtg[0].ortg.toFixed(1)}\t122.63 (DEN)\t${bestOrtg[bestOrtg.length-1].abbrev}\t${bestOrtg[bestOrtg.length-1].ortg.toFixed(1)}\t108.84 (BKN)`);
+  lines.push(`DRtg\t${bestDrtg[0].abbrev}\t${bestDrtg[0].drtg.toFixed(1)}\t107.89 (OKC)\t${bestDrtg[bestDrtg.length-1].abbrev}\t${bestDrtg[bestDrtg.length-1].drtg.toFixed(1)}\t122.84 (WAS)`);
+  lines.push(`NetRtg\t${bestNet[0].abbrev}\t${bestNet[0].netrtg >= 0 ? '+' : ''}${bestNet[0].netrtg.toFixed(1)}\t-\t${bestNet[bestNet.length-1].abbrev}\t${bestNet[bestNet.length-1].netrtg >= 0 ? '+' : ''}${bestNet[bestNet.length-1].netrtg.toFixed(1)}\t-`);
+  lines.push(`PACE\t${paceSorted[0].abbrev}\t${paceSorted[0].pace.toFixed(1)}\t101.5 (IND)\t${paceSorted[paceSorted.length-1].abbrev}\t${paceSorted[paceSorted.length-1].pace.toFixed(1)}\t94.0 (PHI)`);
+
+  // League means
+  const lgOrtg = teamRows.reduce((s, t) => s + t.ortg, 0) / teamRows.length;
+  const lgDrtg = teamRows.reduce((s, t) => s + t.drtg, 0) / teamRows.length;
+  const lgPace = teamRows.reduce((s, t) => s + t.pace, 0) / teamRows.length;
+  lines.push('');
+  lines.push('=== LEAGUE MEAN ADVANCED ===');
+  lines.push('METRIC\tSIM\tNBA\tSTATUS');
+  const checkLg = (name: string, v: number, nba: number, tol: number) => {
+    const ok = Math.abs(v - nba) <= tol;
+    lines.push(`${name}\t${v.toFixed(1)}\t${nba}\t${ok ? '✓' : v > nba ? '🟡 HIGH' : '🟡 LOW'}`);
+  };
+  checkLg('ORtg', lgOrtg, 115.6, 2);
+  checkLg('DRtg', lgDrtg, 115.6, 2);
+  checkLg('PACE', lgPace, 98.2, 2);
+
+  // Diagnostic
+  lines.push('');
+  lines.push('=== DIAGNOSTIC ===');
+  const diags: string[] = [];
+  // DRtg architectural sanity check
+  const simDrtgTop = bestDrtg[0].drtg;
+  if (simDrtgTop < 95) diags.push(`🔴 Top DRtg ${simDrtgTop.toFixed(1)} < 95 — DRtg too low (defense over-buffed)`);
+  if (simDrtgTop > 110) diags.push(`🔴 Top DRtg ${simDrtgTop.toFixed(1)} > 110 — no elite defense (DRtg compressed)`);
+  // ORtg sanity
+  const simOrtgTop = bestOrtg[0].ortg;
+  if (simOrtgTop < 115) diags.push(`🟡 Top ORtg ${simOrtgTop.toFixed(1)} < 115 — top offense weak`);
+  if (simOrtgTop > 130) diags.push(`🟡 Top ORtg ${simOrtgTop.toFixed(1)} > 130 — top offense over-buffed`);
+  // PACE sanity
+  if (lgPace < 95) diags.push(`🟡 League PACE ${lgPace.toFixed(1)} < 95 — too slow`);
+  if (lgPace > 102) diags.push(`🟡 League PACE ${lgPace.toFixed(1)} > 102 — too fast`);
+
+  if (diags.length === 0) lines.push('✅ Team advanced metrics in NBA range.');
+  else diags.forEach(d => lines.push('  ' + d));
+
+  const tsv = lines.join('\n');
+  console.log(tsv);
+  await copyTextToClipboard(tsv);
+  return { title: 'ADVCHECK', body: `${players.length} players + ${teamRows.length} teams audited. Console + clipboard.`, ok: diags.length === 0 };
+}
+
+// BENCHEFF ────────────────────────────────────────────────────────────────────
+// Sixth-man / limited-min efficiency audit. Surfaces "unrecognized gems" — bench
+// players with high PER per minute. NBA real has ~30-50 league-wide sixth-men
+// (14-26 mpg) with PER ≥13. Our sim's pattern: PER strongly correlates with MPG
+// (low-min → low PER, high-min → high PER), so few bench gems are visible.
+async function runBenchEff(state: GameState): Promise<CheatResult> {
+  const ls = state.leagueStats ?? {};
+  const currentYear = (ls as any).year ?? new Date().getFullYear();
+  const MIN_GP = 20;
+  const MIN_MPG_LO = 14;
+  const MIN_MPG_HI = 26;
+
+  type AggP = {
+    name: string; tid: number; gp: number; gs: number; min: number; mpg: number;
+    pts: number; fga: number; fgm: number; t3m: number;
+    ft: number; fta: number; tov: number; ast: number;
+    per: number; ts: number; usg: number; bpm: number; ws48: number;
+    fgaPerMin: number; ppg: number; eFG: number;
+  };
+
+  const players: AggP[] = [];
+  for (const p of (state.players ?? [])) {
+    if (p.tid < 0 || p.tid >= 100) continue;
+    if ((p as any).status === 'Retired') continue;
+    const seasonStats = ((p as any).stats as any[] | undefined ?? []).filter(s => s.season === currentYear && !s.playoffs);
+    if (seasonStats.length === 0) continue;
+
+    let gp = 0, gs = 0, min = 0, pts = 0, fga = 0, fgm = 0, t3m = 0;
+    let ft = 0, fta = 0, ast = 0, tov = 0;
+    let perW = 0, tsW = 0, usgW = 0, bpmW = 0, ws48W = 0;
+    let weightMin = 0;
+    for (const s of seasonStats) {
+      const m = s.min ?? 0;
+      gp += s.gp ?? 0; min += m;
+      gs += s.gs ?? 0;
+      pts += s.pts ?? 0; fga += s.fga ?? 0; fgm += s.fg ?? 0;
+      t3m += s.tp ?? 0; ft += s.ft ?? 0; fta += s.fta ?? 0;
+      ast += s.ast ?? 0; tov += s.tov ?? 0;
+      if (m > 0) {
+        perW += (s.per ?? 0) * m;
+        tsW += (s.tsPct ?? 0) * m;
+        usgW += (s.usgPct ?? 0) * m;
+        bpmW += (s.bpm ?? 0) * m;
+        ws48W += (s.ws48 ?? (s as any).wsPer48 ?? ((s.ws ?? 0) * 48 / Math.max(1, m))) * m;
+        weightMin += m;
+      }
+    }
+    if (gp < MIN_GP) continue;
+    const mpg = min / gp;
+    if (mpg < MIN_MPG_LO || mpg > MIN_MPG_HI) continue;
+
+    const div = (n: number, d: number) => d > 0 ? n / d : 0;
+    players.push({
+      name: p.name, tid: p.tid, gp, gs, min, mpg,
+      pts, fga, fgm, t3m, ft, fta, tov, ast,
+      per: div(perW, weightMin),
+      ts: div(tsW, weightMin),
+      usg: div(usgW, weightMin),
+      bpm: div(bpmW, weightMin),
+      ws48: div(ws48W, weightMin),
+      fgaPerMin: div(fga, min),
+      ppg: div(pts, gp),
+      eFG: fga > 0 ? ((fgm + 0.5 * t3m) / fga) * 100 : 0,
+    });
+  }
+
+  if (players.length < 30) {
+    return { title: 'BENCHEFF', body: `Only ${players.length} sixth-men found (${MIN_MPG_LO}-${MIN_MPG_HI} mpg, ≥${MIN_GP} GP) — need ≥30.`, ok: false };
+  }
+
+  const teams = state.teams ?? [];
+  const abbrev = (tid: number) => (teams.find((t: any) => t.id === tid) as any)?.abbrev ?? `T${tid}`;
+  const isBench = (p: AggP) => p.gs < Math.max(10, p.gp * 0.4);
+
+  // Top 15 sixth-men by PER
+  const sorted = [...players].sort((a, b) => b.per - a.per);
+  const top15 = sorted.slice(0, 15);
+
+  const lines: string[] = [];
+  lines.push(`BENCHEFF — Sixth-man efficiency audit (${MIN_MPG_LO}-${MIN_MPG_HI} mpg, ≥${MIN_GP} GP, trade-aggregated)`);
+  lines.push(`Sample: ${players.length} sixth-men in season ${currentYear}.`);
+  lines.push(`NBA real reference (2025-26): Herro 16 PER, Powell 17, Clarkson 15, Carrington 14 (PER 13-17 typical for top sixth-men).`);
+  lines.push('');
+  lines.push('=== TOP 15 BY PER ===');
+  lines.push('rank\tname\tteam\tGP\tGS\tmpg\tPPG\tPER\tTS%\tUSG%\teFG%\tFGA/min\tBPM\tWS/48\trole');
+  top15.forEach((p, i) => lines.push([
+    i + 1, p.name, abbrev(p.tid), p.gp,
+    p.gs,
+    p.mpg.toFixed(1), p.ppg.toFixed(1),
+    p.per.toFixed(1), p.ts.toFixed(3), p.usg.toFixed(1),
+    p.eFG.toFixed(1), p.fgaPerMin.toFixed(2),
+    p.bpm.toFixed(1), p.ws48.toFixed(3),
+    isBench(p) ? 'BENCH' : 'STARTERISH',
+  ].join('\t')));
+  lines.push('');
+
+  // Diagnostic: PER tier distribution among sixth-men
+  const tier17 = players.filter(p => p.per >= 17).length;
+  const tier15 = players.filter(p => p.per >= 15 && p.per < 17).length;
+  const tier13 = players.filter(p => p.per >= 13 && p.per < 15).length;
+  const tier10 = players.filter(p => p.per >= 10 && p.per < 13).length;
+  const tier05 = players.filter(p => p.per >= 5 && p.per < 10).length;
+  const tierNeg = players.filter(p => p.per < 5).length;
+
+  lines.push('=== PER TIER DISTRIBUTION ===');
+  lines.push('TIER\tSIM_COUNT\tNBA_EXPECT\tFLAG');
+  const checkTier = (label: string, c: number, expect: number, tol: number) => {
+    const flag = Math.abs(c - expect) <= tol ? '✓' : c > expect ? '🟡 OVER' : '🔴 UNDER';
+    lines.push(`${label}\t${c}\t${expect}\t${flag}`);
+  };
+  checkTier('PER ≥17 (elite gems)', tier17, 8, 4);
+  checkTier('PER 15-17 (strong sixth-man)', tier15, 18, 6);
+  checkTier('PER 13-15 (solid rotation)', tier13, 30, 8);
+  checkTier('PER 10-13 (regular role)', tier10, 40, 10);
+  checkTier('PER 5-10 (marginal)', tier05, 25, 8);
+  checkTier('PER <5 (truly bad / negative)', tierNeg, 8, 5);
+  lines.push('');
+
+  // Diagnostic findings
+  const diags: string[] = [];
+  if (tier17 < 4) diags.push(`🔴 Only ${tier17} sixth-men with PER ≥17 (NBA: ~8) — elite gems suppressed`);
+  if (tier15 + tier17 < 18) diags.push(`🔴 Only ${tier15 + tier17} sixth-men with PER ≥15 (NBA: ~26) — high-tier compression`);
+  if (tierNeg > 18) diags.push(`🟡 ${tierNeg} sixth-men with PER <5 (NBA: ~8) — too many negative-PER role players`);
+
+  // Per-min PER check — gems can have high PER/min despite low MPG
+  const gemCandidates = players.filter(p => p.mpg < 22 && p.per >= 13 && isBench(p));
+  lines.push(`=== POTENTIAL GEMS (bench, mpg <22, PER ≥13) — ${gemCandidates.length} found (NBA real: ~15-25) ===`);
+  if (gemCandidates.length === 0) {
+    lines.push('🔴 NO bench gems found — every high-PER player is high-mpg starter (PER tied to minutes)');
+  } else {
+    lines.push('name\tteam\tGP\tGS\tmpg\tPPG\tPER\tTS%\tUSG%');
+    gemCandidates
+      .sort((a, b) => b.per - a.per)
+      .slice(0, 10)
+      .forEach(p => lines.push(`${p.name}\t${abbrev(p.tid)}\t${p.gp}\t${p.gs}\t${p.mpg.toFixed(1)}\t${p.ppg.toFixed(1)}\t${p.per.toFixed(1)}\t${p.ts.toFixed(3)}\t${p.usg.toFixed(1)}`));
+  }
+  lines.push('');
+
+  const teamRows = teams
+    .filter((t: any) => typeof t.id === 'number' && t.id >= 0 && t.id < 100)
+    .map((t: any) => {
+      const teamPlayers = players.filter(p => p.tid === t.id);
+      const benchPlayers = teamPlayers.filter(isBench);
+      const bench10 = benchPlayers.filter(p => p.per >= 10).length;
+      const bench13 = benchPlayers.filter(p => p.per >= 13).length;
+      const starter10 = teamPlayers.filter(p => !isBench(p) && p.per >= 10).length;
+      const topBench = [...benchPlayers].sort((a, b) => b.per - a.per)[0];
+      return {
+        tid: t.id,
+        team: abbrev(t.id),
+        benchCount: benchPlayers.length,
+        bench10,
+        bench13,
+        starter10,
+        topBenchName: topBench?.name ?? '-',
+        topBenchPer: topBench ? topBench.per : -99,
+        topBenchMpg: topBench?.mpg ?? 0,
+      };
+    })
+    .filter(r => r.benchCount > 0)
+    .sort((a, b) => b.bench13 - a.bench13 || b.bench10 - a.bench10 || b.topBenchPer - a.topBenchPer);
+
+  lines.push('=== TEAM BENCH GEM SCAN ===');
+  lines.push('team\tbenchPlayers\tbenchPER10+\tbenchPER13+\tstarterPER10+\ttopBench\ttopBenchPER\ttopBenchMPG');
+  teamRows.forEach(r => lines.push([
+    r.team,
+    r.benchCount,
+    r.bench10,
+    r.bench13,
+    r.starter10,
+    r.topBenchName,
+    r.topBenchPer >= 0 ? r.topBenchPer.toFixed(1) : '-',
+    r.topBenchMpg.toFixed(1),
+  ].join('\t')));
+  lines.push('');
+
+  const deadBenchTeams = teamRows.filter(r => r.bench13 === 0);
+  const richBenchTeams = teamRows.filter(r => r.bench13 >= 2);
+  if (deadBenchTeams.length > Math.round(teamRows.length * 0.65)) {
+    diags.push(`🔴 ${deadBenchTeams.length}/${teamRows.length} teams have zero bench PER ≥13 players — no hidden gems`);
+  }
+  if (richBenchTeams.length < 4) {
+    diags.push(`🟡 Only ${richBenchTeams.length} teams have 2+ bench PER ≥13 players — bench quality too top-heavy`);
+  }
+
+  lines.push('=== DIAGNOSTIC ===');
+  if (diags.length === 0) lines.push('✅ Sixth-man PER distribution NBA-aligned.');
+  else diags.forEach(d => lines.push('  ' + d));
+
+  const tsv = lines.join('\n');
+  console.log(tsv);
+  await copyTextToClipboard(tsv);
+  return { title: 'BENCHEFF', body: `${players.length} sixth-men, ${gemCandidates.length} bench gems, ${deadBenchTeams.length} teams with zero bench PER 13+. Console + clipboard.`, ok: diags.length === 0 };
+}
+
+// PERSAMPLE ───────────────────────────────────────────────────────────────────
+// Random 30-player audit for stored season PER vs minute-weighted recompute
+// from the underlying per-game samples in the current season.
+async function runPerSample(state: GameState): Promise<CheatResult> {
+  const ls = state.leagueStats ?? {};
+  const currentYear = (ls as any).year ?? new Date().getFullYear();
+  const teams = state.teams ?? [];
+  const abbrev = (tid: number) => (teams.find((t: any) => t.id === tid) as any)?.abbrev ?? `T${tid}`;
+
+  type Row = {
+    name: string;
+    team: string;
+    gp: number;
+    gs: number;
+    mpg: number;
+    seasonPer: number;
+    recomputedPer: number;
+    diff: number;
+    minTotal: number;
+    sampleGames: string;
+  };
+
+  const rows: Row[] = [];
+  for (const p of (state.players ?? [])) {
+    if (p.tid < 0 || p.tid >= 100) continue;
+    if ((p as any).status === 'Retired') continue;
+    const stats = ((p as any).stats as any[] | undefined ?? [])
+      .filter(s => s.season === currentYear && !s.playoffs && s.tid === p.tid);
+    if (stats.length === 0) continue;
+
+    let gp = 0;
+    let gs = 0;
+    let minTotal = 0;
+    let weightedPerSum = 0;
+    const gameSamples: Array<{ min: number; per: number }> = [];
+
+    for (const s of stats) {
+      const statGp = s.gp ?? 0;
+      const statGs = s.gs ?? 0;
+      const statMin = s.min ?? 0;
+      const statPer = s.per ?? 0;
+      gp += statGp;
+      gs += statGs;
+      minTotal += statMin;
+      weightedPerSum += statPer * statMin;
+
+      const minPerGame = statGp > 0 ? statMin / statGp : 0;
+      for (let i = 0; i < statGp; i++) {
+        gameSamples.push({ min: minPerGame, per: statPer });
+      }
+    }
+
+    if (gp <= 0 || minTotal <= 0) continue;
+    const seasonStat = stats[0];
+    const seasonPer = seasonStat.per ?? 0;
+    const recomputedPer = weightedPerSum / minTotal;
+    const shuffledSamples = [...gameSamples].slice(-3).map(g => `${g.per.toFixed(1)}@${g.min.toFixed(1)}m`).join(' | ');
+
+    rows.push({
+      name: p.name,
+      team: abbrev(p.tid),
+      gp,
+      gs,
+      mpg: minTotal / gp,
+      seasonPer,
+      recomputedPer,
+      diff: seasonPer - recomputedPer,
+      minTotal,
+      sampleGames: shuffledSamples || '-',
+    });
+  }
+
+  if (rows.length < 30) {
+    return { title: 'PERSAMPLE', body: `Only ${rows.length} eligible players found in ${currentYear}.`, ok: false };
+  }
+
+  const shuffled = [...rows];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  const sample = shuffled.slice(0, 30).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+  const bad = sample.filter(r => Math.abs(r.diff) >= 1.5).length;
+
+  const lines: string[] = [];
+  lines.push(`PERSAMPLE — random 30-player PER audit for season ${currentYear}`);
+  lines.push('season PER = currently stored value on player.stats row');
+  lines.push('recomputed PER = minute-weighted recompute from the current season stat rows');
+  lines.push('');
+  lines.push('name\tteam\tGP\tGS\tMPG\tstoredPER\trecomputedPER\tdiff\tminTotal\trecentGameSamples');
+  sample.forEach(r => lines.push([
+    r.name,
+    r.team,
+    r.gp,
+    r.gs,
+    r.mpg.toFixed(1),
+    r.seasonPer.toFixed(2),
+    r.recomputedPer.toFixed(2),
+    r.diff >= 0 ? `+${r.diff.toFixed(2)}` : r.diff.toFixed(2),
+    r.minTotal.toFixed(1),
+    r.sampleGames,
+  ].join('\t')));
+  lines.push('');
+  lines.push('=== DIAGNOSTIC ===');
+  if (bad === 0) {
+    lines.push('✅ Sample shows stored PER closely matches minute-weighted recompute.');
+  } else {
+    lines.push(`⚠️ ${bad}/30 sampled players differ by at least 1.5 PER — stale save or bad season aggregation likely.`);
+  }
+
+  const tsv = lines.join('\n');
+  console.log(tsv);
+  await copyTextToClipboard(tsv);
+  return {
+    title: 'PERSAMPLE',
+    body: `30 random players dumped. ${bad} with |diff| >= 1.5. Console + clipboard.`,
+    ok: bad === 0,
+  };
 }
 
 // ─── Entry: detect + trigger ─────────────────────────────────────────────────
