@@ -33,6 +33,9 @@ export function simulateQuarter(
     const defenseIds = defense.composites.map(c => c.id);
 
     const end = runPossession(offense, defense);
+    // Optional debug trace hook — set window.__realisticTrace to a fn before running a sim.
+    const trace = (typeof globalThis !== 'undefined' ? (globalThis as any).__realisticTrace : undefined) as undefined | ((e: PossessionEnd, side: 'home' | 'away') => void);
+    if (trace) trace(end, next);
     const scoreBefore = { off: 0 };
     acc.applyPossession(end, offenseIds, defenseIds, scoreBefore);
 

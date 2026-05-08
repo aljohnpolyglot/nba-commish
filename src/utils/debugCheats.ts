@@ -91,6 +91,8 @@ export const CHEAT_CODES = {
   PERSAMPLE: 'Random 30-player PER audit. For each player: stored season PER, minute-weighted recomputed PER from current season game samples, GP/MPG, and three recent game-PER entries. Shows whether season PER is stale/aggregated wrong or the underlying game PER is wrong.',
   RESTOREPER: 'Rebuild current-season PER and advanced season fields from saved boxScores. Repairs stale/bugged season advanced rows in older saves without resimming games.',
   HEALSTUCK: 'Heal stuck offseason — strips offseasonChecklist, faTagCounter, faTagsTotal, offseasonExitedYear from the newest save in IndexedDB and reloads. Use when the FA Tasks sidebar refuses to dismiss.',
+  SIMBENCH: 'Run the realistic simulator on 30 random NBA matchups (15 home/away pairs) and compare aggregated per-team-game stats against 2026SimBenchmark.md targets. Logs delta table for PPG, FGA, FG%, 3PA, 3P%, eFG%, TS%, AST, REB, ORB, TOV, PF, PACE.',
+  SIMTRACE: 'Toggle realistic-engine possession trace. When ON, every possession of the next sim logs to console (zone, made/miss, shooter, assister, fouled, FT). Run again to turn OFF.',
 } as const;
 
 export type CheatCode = keyof typeof CHEAT_CODES;
@@ -1965,6 +1967,8 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
     case 'ADVCHECK':   return await runAdvCheck(getLive(ctx));
     case 'BENCHEFF':   return await runBenchEff(getLive(ctx));
     case 'PERSAMPLE':  return await runPerSample(getLive(ctx));
+    case 'SIMBENCH':   return await runSimBench(getLive(ctx));
+    case 'SIMTRACE':   return runSimTrace();
 
     default:
       return { title: 'Unknown cheat', body: `"${code}" not recognized — try HELP`, ok: false };
@@ -4025,6 +4029,175 @@ async function runFaAudit(state: GameState) {
     console.table(buckets);
   }
   console.groupEnd();
+}
+
+// ─── Realistic-engine debug cheats ──────────────────────────────────────────
+
+const BENCHMARK_2026 = {
+  ppg: 115.6, fga: 89.1, fgm: 42.0, fgPct: 0.471,
+  threePa: 37.0, threePm: 13.3, threePct: 0.360,
+  fta: 23.5, ftm: 18.4, ftPct: 0.783,
+  eFG: 0.546, ts: 0.582,
+  ast: 26.7, reb: 43.8, orb: 11.4, drb: 32.4,
+  stl: 8.4, blk: 4.8, tov: 14.5, pf: 19.9,
+  pace: 98.2,
+};
+
+async function runSimBench(state: GameState): Promise<CheatResult> {
+  // Lazy-import the realistic engine + adapter types so the cheat module stays
+  // decoupled from sim internals at module-load time.
+  const { simulateGameRealistic } = await import('../services/simulation/realistic/RealisticEngine');
+  const { KNOBS_DEFAULT } = await import('../services/simulation/SimulatorKnobs');
+
+  const nbaTeams = (state.teams ?? []).filter((t: any) => t.id >= 0 && t.id < 100);
+  if (nbaTeams.length < 4) {
+    return { title: 'SIMBENCH', body: `Only ${nbaTeams.length} NBA teams in state — need ≥4.`, ok: false };
+  }
+
+  const NUM_GAMES = 30;
+  const date = state.date ?? `${state.leagueStats?.year ?? new Date().getFullYear()}-12-15`;
+  const players = state.players ?? [];
+
+  const teamRows: any[] = [];
+  let played = 0;
+  let failed = 0;
+
+  console.group(`🏀 SIMBENCH — ${NUM_GAMES} realistic-engine games`);
+
+  for (let i = 0; i < NUM_GAMES; i++) {
+    // Pick two distinct random teams
+    const a = nbaTeams[Math.floor(Math.random() * nbaTeams.length)];
+    let b = nbaTeams[Math.floor(Math.random() * nbaTeams.length)];
+    let safety = 0;
+    while (b.id === a.id && safety++ < 20) {
+      b = nbaTeams[Math.floor(Math.random() * nbaTeams.length)];
+    }
+    if (b.id === a.id) continue;
+
+    try {
+      const result = simulateGameRealistic({
+        homeTeam: a as any,
+        awayTeam: b as any,
+        players: players as any,
+        gameId: -10000 - i,
+        date,
+        playerApproval: 50,
+        homeKnobs: KNOBS_DEFAULT,
+        awayKnobs: KNOBS_DEFAULT,
+      });
+      teamRows.push(toTeamRow(result.homeStats, result.homeScore));
+      teamRows.push(toTeamRow(result.awayStats, result.awayScore));
+      played++;
+    } catch (err) {
+      failed++;
+    }
+  }
+
+  if (teamRows.length === 0) {
+    console.groupEnd();
+    return { title: 'SIMBENCH', body: `All ${NUM_GAMES} sim attempts failed (rotation/roster issues). Played=${played} Failed=${failed}.`, ok: false };
+  }
+
+  const sum = teamRows.reduce((s, r) => {
+    Object.keys(r).forEach(k => { s[k] = (s[k] ?? 0) + r[k]; });
+    return s;
+  }, {} as any);
+  const n = teamRows.length;
+  const avg = (k: string) => sum[k] / n;
+
+  const fgPct   = sum.fga > 0 ? sum.fgm / sum.fga : 0;
+  const threePct = sum.threePa > 0 ? sum.threePm / sum.threePa : 0;
+  const ftPct   = sum.fta > 0 ? sum.ftm / sum.fta : 0;
+  const eFG     = sum.fga > 0 ? (sum.fgm + 0.5 * sum.threePm) / sum.fga : 0;
+  const ts      = (sum.fga + 0.44 * sum.fta) > 0
+    ? sum.pts / (2 * (sum.fga + 0.44 * sum.fta)) : 0;
+  // Pace estimator: poss = FGA - ORB + TOV + 0.44*FTA  (per team-game; matches NBA convention)
+  const possPerGame = avg('fga') - avg('orb') + avg('tov') + 0.44 * avg('fta');
+  const pace = possPerGame * (48 / 48); // already per-48 since games are 48 min
+
+  const rows = [
+    row('PPG',     avg('pts'),     BENCHMARK_2026.ppg,     'count'),
+    row('FGA',     avg('fga'),     BENCHMARK_2026.fga,     'count'),
+    row('FGM',     avg('fgm'),     BENCHMARK_2026.fgm,     'count'),
+    row('FG%',     fgPct,          BENCHMARK_2026.fgPct,   'pct'),
+    row('3PA',     avg('threePa'), BENCHMARK_2026.threePa, 'count'),
+    row('3PM',     avg('threePm'), BENCHMARK_2026.threePm, 'count'),
+    row('3P%',     threePct,       BENCHMARK_2026.threePct,'pct'),
+    row('FTA',     avg('fta'),     BENCHMARK_2026.fta,     'count'),
+    row('FTM',     avg('ftm'),     BENCHMARK_2026.ftm,     'count'),
+    row('FT%',     ftPct,          BENCHMARK_2026.ftPct,   'pct'),
+    row('eFG%',    eFG,            BENCHMARK_2026.eFG,     'pct'),
+    row('TS%',     ts,             BENCHMARK_2026.ts,      'pct'),
+    row('AST',     avg('ast'),     BENCHMARK_2026.ast,     'count'),
+    row('REB',     avg('reb'),     BENCHMARK_2026.reb,     'count'),
+    row('ORB',     avg('orb'),     BENCHMARK_2026.orb,     'count'),
+    row('DRB',     avg('drb'),     BENCHMARK_2026.drb,     'count'),
+    row('STL',     avg('stl'),     BENCHMARK_2026.stl,     'count'),
+    row('BLK',     avg('blk'),     BENCHMARK_2026.blk,     'count'),
+    row('TOV',     avg('tov'),     BENCHMARK_2026.tov,     'count'),
+    row('PF',      avg('pf'),      BENCHMARK_2026.pf,      'count'),
+    row('PACE',    pace,           BENCHMARK_2026.pace,    'count'),
+  ];
+
+  console.log(`Played=${played} | Failed=${failed} | Team-game samples=${n}`);
+  console.table(rows);
+  console.groupEnd();
+
+  const offTargets = rows.filter(r => Math.abs(parseFloat(r.deltaPct)) > 5);
+  return {
+    title: 'SIMBENCH done',
+    body: `Played ${played} games, ${n} team-rows. ${offTargets.length} metrics off by >5%. Console has full table.`,
+    ok: true,
+  };
+}
+
+function toTeamRow(lines: any[], score: number) {
+  const sum = (k: string) => lines.reduce((s, p) => s + (p[k] ?? 0), 0);
+  return {
+    pts: score,
+    fga: sum('fga'), fgm: sum('fgm'),
+    threePa: sum('threePa'), threePm: sum('threePm'),
+    fta: sum('fta'), ftm: sum('ftm'),
+    ast: sum('ast'),
+    reb: sum('reb'), orb: sum('orb'), drb: sum('drb'),
+    stl: sum('stl'), blk: sum('blk'),
+    tov: sum('tov'), pf: sum('pf'),
+  };
+}
+
+function row(metric: string, sim: number, target: number, kind: 'count' | 'pct') {
+  const delta = sim - target;
+  const deltaPct = target !== 0 ? (delta / target) * 100 : 0;
+  return {
+    metric,
+    sim:        kind === 'pct' ? (sim * 100).toFixed(1) + '%'        : sim.toFixed(2),
+    target:     kind === 'pct' ? (target * 100).toFixed(1) + '%'      : target.toFixed(2),
+    delta:      kind === 'pct' ? ((delta * 100)).toFixed(1) + 'pp'   : delta.toFixed(2),
+    deltaPct:   deltaPct.toFixed(1) + '%',
+    flag:       Math.abs(deltaPct) > 10 ? '⚠️' : Math.abs(deltaPct) > 5 ? '·' : '✓',
+  };
+}
+
+function runSimTrace(): CheatResult {
+  const g = globalThis as any;
+  if (g.__realisticTrace) {
+    g.__realisticTrace = undefined;
+    console.log('🔇 Realistic possession trace OFF');
+    return { title: 'SIMTRACE OFF', body: 'Possession trace disabled.', ok: true };
+  }
+  let n = 0;
+  g.__realisticTrace = (end: any, side: 'home' | 'away') => {
+    n++;
+    if (end.kind === 'shot') {
+      console.log(`#${n} [${side}] ${end.zone.padEnd(8)} ${end.made ? '✓' : '✗'} pts=${end.pts}${end.fouled ? ' FOULED' : ''}${end.assisterId ? ' ast' : ''}${end.blockerId ? ' BLK' : ''}`);
+    } else if (end.kind === 'turnover') {
+      console.log(`#${n} [${side}] TOV${end.stealerId ? ' STL' : ''}`);
+    } else {
+      console.log(`#${n} [${side}] FOUL fta=${end.ftAttempts} ftm=${end.ftMade}`);
+    }
+  };
+  console.log('🎙️ Realistic possession trace ON — every possession of the next sim will log here. Run SIMTRACE again to disable.');
+  return { title: 'SIMTRACE ON', body: 'Trace enabled. Watch a game or run SIMBENCH; every possession will log to console.', ok: true };
 }
 
 async function runEconAudit(state: GameState) {

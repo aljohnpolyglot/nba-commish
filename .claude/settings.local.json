@@ -122,7 +122,9 @@
       "Bash(echo.)",
       "Bash(cmd /c \"type README.md | find /c /v \"\"\"\")",
       "Bash(gh repo *)",
-      "Bash(npx --no-install tsc --noEmit)"
+      "Bash(npx --no-install tsc --noEmit)",
+      "WebFetch(domain:zengm.com)",
+      "WebFetch(domain:deepwiki.com)"
     ]
   }
 }
