@@ -2,7 +2,7 @@
 
 ## 1. Product Vision
 
-Eine Endgame-würdige NBA-Management-Simulation, die jahrzehntelange Liga-Evolution simuliert ohne Ökonomie-Drift, Roster-Korruption oder Cap-Bugs. Tiefer als 2K MyGM in CBA-Detail, leichter als BBGM in Bedienung, mit LLM-Narrative-Layer der jede Saison eine eigene Geschichte erzählt. Beide Modi (Commissioner + GM) gleichwertig polished, ohne dass einer den anderen als Stiefkind behandelt.
+Eine Endgame-würdige Basketball-Management-Simulation, die jahrzehntelange Liga-Evolution simuliert ohne Ökonomie-Drift, Roster-Korruption oder Cap-Bugs. Tiefer als 2K MyGM in CBA-Detail, leichter als BBGM in Bedienung, mit LLM-Narrative-Layer der jede Saison eine eigene Geschichte erzählt. Beide Modi (Commissioner + GM) gleichwertig polished, ohne dass einer den anderen als Stiefkind behandelt. Gleichzeitig sollen beide Liga-Typen tragfähig sein: `modded` als Realwelt-Pfad und `fictional` als offline-fähige Originalwelt.
 
 ## 2. Intended Users and End State
 
@@ -21,9 +21,9 @@ Eine Endgame-würdige NBA-Management-Simulation, die jahrzehntelange Liga-Evolut
 
 ## 4. Current Phase
 
-**Phase: Coaching-Depth Phase 3 Sim-Wiring + Offseason-2K Hardening.**
+**Phase: Coaching-Depth Phase 3 Sim-Wiring + Offseason-2K Hardening + Fictional-League-Polish.**
 
-Mai 2026: Offseason-Orchestrator (Sessions 52/53) ist gelandet, Phase A–D Tasks-Checklist plus 25 Polish-Commits (Session 54 Hardening). Parallel die Coaching-Welle: Phase 1 (Tooltips, Recovery-Lock) + Phase 2 (AI Coach Paradigm) + Phase 3 (Defense Gameplan, Defender Detail, Rival Gameplan, Matchup Assignments) sind als UI + Persistenz shipped — fehlen nur die Sim-Knobs in `GameSim`. Nächste Schritte: Sim-Wiring der Coaching-Stores, Throne-Watch-Overlay-Polish, weiteres Offseason-Stabilisieren via `[OSPLAN]`-Drift-Sweep.
+Mai 2026: Offseason-Orchestrator (Sessions 52/53) ist gelandet, Phase A–D Tasks-Checklist plus 25 Polish-Commits (Session 54 Hardening). Parallel die Coaching-Welle: Phase 1 (Tooltips, Recovery-Lock) + Phase 2 (AI Coach Paradigm) + Phase 3 (Defense Gameplan, Defender Detail, Rival Gameplan, Matchup Assignments) sind als UI + Persistenz shipped — fehlen nur die Sim-Knobs in `GameSim`. Zusätzlich läuft ein Fictional-League-Polish-Block: lokaler Generator, lokaler Staff/Ref-Seed, neutralisierte Labels, Doku-/Handoff-Cleanup. Nächste Schritte: Sim-Wiring der Coaching-Stores, Throne-Watch-Overlay-Polish, weiteres Offseason-Stabilisieren via `[OSPLAN]`-Drift-Sweep und ein kompletter Fictional-Branding-Sweep.
 
 ## 5. Near-Term Priorities
 
@@ -37,10 +37,13 @@ Mai 2026: Offseason-Orchestrator (Sessions 52/53) ist gelandet, Phase A–D Task
 6. **Round-Robin Rising-Stars-Format.** `simulateRisingStarsBracket` Round-Robin-Branch implementieren — Toggle ist schon im UI.
 7. **Throne Watch-Live Overlay Polish.** ThroneWatchOverlay shipped Session 54 — Commentary-Pools erweitern, Skip-to-End Cap, Seed-Randomizer für Replays.
 8. **Team Chemistry als trainbarer Meter.** `TEAM_TRAINING_PLAN.md` "Future Updates" definiert Sessions die Chemistry treiben (Bonding/Film/Light) vs erodieren (Hi-Intensity/Strength H). Hook in mood/role-stability als Team-Multiplier.
+9. **Fictional League Branding + Surface Consistency.** Harte `NBA`-Texte aus Schedule/Playoffs/Rules/All-Star/DayView auf `leagueType`-aware Labels umstellen. Produktziel: Fictional-Save soll sich nicht wie ein umbenannter Modded-Save anfühlen.
+10. **Fictional League Scope Decision.** Festlegen, ob Fictional langfristig NBA-only bleibt oder eigene fiktive Feeder-Leagues / externes Ökosystem erhält. Diese Entscheidung beeinflusst Generator, Routing, Cap-Design und UI.
 
 ## 6. Later Opportunities
 
 - **Team Training Engine deeper integration** (Foundation Session 50 + AI Coach Session 54 shipped) — Drill-Picker, Opponent-Comparison-Sim-Bias, Coach-System-Library-Expansion.
+- **Fictional external ecosystem** — falls überhaupt gebaut, erst nach Branding-/Foundation-Cleanup. Keine halb-integren Placeholder-Leagues.
 - **Re-Signing-Pfad Refactor** — keine neue Surface (SigningModal kann schon re-signen), nur Aufräumen / Vereinheitlichung der bestehenden Pfade. Kein neuer Portal-Screen.
 - **FA Portal mit Live-Bid-Feed** — News-Ticker während FA ("Shai signs with OKC — 4yr $180M"). Aktuell sieht User nur Day-Counter.
 - **`state.phase` als gespeichertes Field** — Nächster Step im Offseason-Orchestrator-Refactor (Session 6+ deferred). Erlaubt das Löschen von `isInFreeAgencyWindow` & Co.
@@ -68,6 +71,7 @@ Mai 2026: Offseason-Orchestrator (Sessions 52/53) ist gelandet, Phase A–D Task
 
 ## 9. Open Questions
 
+- Soll `fictional` dauerhaft NBA-only bleiben oder ein eigenes Weltökosystem bekommen?
 - Wann sollte `state.phase` zum gespeicherten Field promoted werden? (Bricht Save-Forwards-Compat — wann lohnt sich der Cut?)
 - Lohnt sich ein In-App-Debug-Panel für `[OSPLAN]`-Drift-Warnings, oder reicht DevTools?
 - Sollen Auslandsligen langfristig eigene Sim-Engines bekommen (heute alle BBGM-Adapter), oder bleibt es ein Adapter-Layer?

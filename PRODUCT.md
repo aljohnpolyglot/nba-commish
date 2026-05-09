@@ -2,7 +2,7 @@
 
 ## 1. Product Summary
 
-NBA Commish Sim ist eine browser-basierte Tiefen-Management-Simulation der NBA-Saison. Zwei vollwertige Spielmodi: **Commissioner** (gesamte Liga steuern — Regeln, Suspensionen, Trades, Ökonomie, Narrative) und **GM** (ein Team — Roster, Trades, Free Agency, Draft, Extensions). Zielgruppe: Strategie-/Sport-Sim-Spieler, die NBA-CBA-Realismus + langfristige Liga-Evolution + LLM-erzeugtes Storytelling wollen. Erfolgskriterium: Mehrere Saisons ohne Ökonomie-Drift, ohne Roster-Korruption, ohne FA-Pool-Hunger durchspielbar mit kohärenter Narrative.
+NBA Commish Sim ist eine browser-basierte Tiefen-Management-Simulation der NBA-Saison. Zwei vollwertige Spielmodi: **Commissioner** (gesamte Liga steuern — Regeln, Suspensionen, Trades, Ökonomie, Narrative) und **GM** (ein Team — Roster, Trades, Free Agency, Draft, Extensions). Dazu kommen zwei Liga-Quellen: **Fictional** (vollständig lokal generiert, offline) und **Modded** (Community-Realwelt-Daten via externe Quellen). Zielgruppe: Strategie-/Sport-Sim-Spieler, die NBA-CBA-Realismus + langfristige Liga-Evolution + LLM-erzeugtes Storytelling wollen. Erfolgskriterium: Mehrere Saisons ohne Ökonomie-Drift, ohne Roster-Korruption, ohne FA-Pool-Hunger durchspielbar mit kohärenter Narrative.
 
 Produktreife: **Beta**. Kern-Loops (Sim, Trades, Draft, FA, All-Star, Playoffs, Rollover) laufen. Offseason-Orchestrierung wurde Mai 2026 (Sessions 52/53) auf einen Single-Source-of-Truth-Plan umgestellt. Bekannte Drift-Quellen werden über `[OSPLAN]`-Drift-Warnings im DevTools-Log getrackt.
 
@@ -14,6 +14,7 @@ Produktreife: **Beta**. Kern-Loops (Sim, Trades, Draft, FA, All-Star, Playoffs, 
 | **Liga-Architekt** | Eigene Regelsets ausprobieren (4PT-Linie, Apron-Tweaks, Format-Mods, Custom All-Star-Events) |
 | **Story-Spieler** | LLM-generierte News, Tweets, Player-Quotes als Narrative-Layer über klassischen Box-Scores |
 | **GM-Spieler** | Eine Franchise über mehrere Saisons aufbauen, Cap-Management, Trade-Hunt, Draft-Picks rebuilden |
+| **Sandbox-Spieler** | Eine komplett fiktive Liga ohne externe Downloads oder Realwelt-Abhängigkeiten starten |
 
 ## 3. Current Capabilities
 
@@ -21,14 +22,20 @@ Produktreife: **Beta**. Kern-Loops (Sim, Trades, Draft, FA, All-Star, Playoffs, 
 - **Commissioner Mode** (Core) — Vollzugriff auf alle 30 Teams, alle Trades genehmigen/forcen, alle Regeln editieren, AI-Aktionen überschreiben.
 - **GM Mode** (Core) — Ein Team unter den Augen einer KI-Liga; AI verwaltet die anderen 29; User-Aktionen werden gegen CBA-Regeln und Cap-Limits validiert.
 
+### Liga-Typen
+- **Fictional League** (Core, in-flight polish) — 30 lokal generierte Teams, generierte Spieler, generierte Staff- und Referee-Daten, keine externen Fetches beim Start, offline-fähig. Aktuell NBA-only, also ohne `nonNBATeams`.
+- **Modded League** (Core) — Community-gepflegte Realwelt-Roster, Bilder, Verträge, Awards und Auslandsligen via externe Datenquellen.
+
 ### Ökonomie & CBA
 - **CBA Apron P0+P1** (Core) — 1st-Apron-Trade-Aggregation-Block, taxpayer MLE Gating, S&T-Restrictions, Hard-Cap-Triggers Section 36.
 - **Multi-Season-Pipeline** (Core) — 5-Pass-Signing-System (Best-Fit → Two-Way → NG-Camp → Min-Roster-Fill → Floor) in `AIFreeAgentHandler.runAIFreeAgencyRound`.
 - **Bird Rights / Supermax** (Core) — `superMaxEligible` und `hasBirdRights` automatisch computed bei Rollover und Team-Option-Exercise.
 - **External-League-Ökonomie** (Core) — 8 Auslandsligen (Euroleague/PBA/B-League/Endesa/G-League/CBA/NBL/WNBA) mit eigenem Salary-Scale, Mother-Team-Interest, Buyout-Slider.
+- **Fictional-League-Ausnahme** (Core) — Fictional-Saves skippen die gesamte External-League-Init; alle Auslandsliga-Systeme bleiben dort leer/inaktiv statt mit Mock-Daten gefüllt zu werden.
 
 ### Sim-Engine
 - **Game Sim** (Core) — Quartersweise Possession-basiert, mit Coach-Decisions, DNPs, Injury-Roll, Fatigue-Multiplier.
+- **Dual Simulator Modes** (Core) — `Realistic` für possession-by-possession Rotation/Minutes-Flow, `Fast` für schnelle StatGenerator-Sims. Spieler-Guide: `docs/simulator-guide.md`.
 - **Lazy Sim** (Core) — `runLazySim` für >30-Tage-Skips, mit `[OSPLAN]`-Plan-derived-Dispatch.
 - **Calendar Events** (Core) — Lottery, Draft, Trade Deadline, All-Star Weekend, Playoffs, Rollover, External Routing — alle automatisch via `buildAutoResolveEvents` orchestriert.
 
@@ -97,6 +104,8 @@ DraftLottery (May 14) auto-fired → DraftSimulatorView (June 26) → Pick-für-
 ## 5. Product Constraints and Known Limits
 
 - **Coaching Phase 3 Sim-Wiring noch deferred** — Defense Gameplan / Defender Detail / Rival Gameplan / Matchup Assignments persistieren und renderen, aber `GameSim` liest sie noch nicht. StatGenerator-Knob-Pass folgt.
+- **Fictional Branding noch nicht vollständig durchgezogen** — mehrere Unterflächen verwenden noch harte `NBA`-Texte (Schedule / Playoffs / Rules / All-Star / DayView). Funktional ok, aber inkonsistent.
+- **Fictional League ist aktuell NBA-only** — keine eigenen fiktiven Auslandsligen, keine Fictional-External-Economy, keine alternativen Feeder-Leagues.
 - **Save-Format ist gzipped** — Roh-IndexedDB-Reads zeigen `{__gz, data}`, nicht das State-Objekt. `DecompressionStream('gzip')` ist Pflicht.
 - **Per-Save-Persistenz** — Alle Side-Stores (Gameplan, Rotation-Presets, Image-Cache) MÜSSEN auf `state.saveId` skopt sein, sonst leakt zwischen Saves.
 - **Pass 5 cannot help full rosters** — Teams 15/15 mit Cheap-Deals brauchen NBA-Style Shortfall-Distribution. Funktion noch nicht geschrieben.
@@ -124,6 +133,7 @@ DraftLottery (May 14) auto-fired → DraftSimulatorView (June 26) → Pick-für-
 
 ## 8. Open Questions
 
+- Soll Fictional langfristig eigene Feeder-Leagues / internationale Ökosysteme bekommen oder bewusst ein cleanes NBA-only-Sandbox-Setup bleiben?
 - Wann landet GM-Mode-Mehrteam-Switch (z.B. Trade-Force-Approval als ehemaliger Commissioner)?
 - Soll der `[OSPLAN]`-Drift-Tracker zu einem In-App-Debug-Panel ausgebaut werden?
 - Welche Auslandsliga sollte als nächstes integriert werden? (BSL Türkei? VTB Russia?)

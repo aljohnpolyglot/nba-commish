@@ -5,6 +5,7 @@ import { normalizeDate, getTeamForGame, getOwnTeamId } from '../../../../utils/h
 import { getDraftLotteryDate, getDraftDate, getAllStarGameDate, isDraftBlockedByUnresolvedPlayoffs, toISODateString } from '../../../../utils/dateUtils';
 import { AllStarDayView } from './AllStarDayView';
 import { AllStarGameCard } from './AllStarGameCard';
+import { useLeagueLabels } from '../../../../utils/leagueLabels';
 
 interface DayViewProps {
   selectedDate: string;
@@ -61,6 +62,7 @@ export const DayView: React.FC<DayViewProps> = ({
   onNavigateToSeasonPreview,
   headerSlot,
 }) => {
+  const labels = useLeagueLabels();
   const stateDateNorm = normalizeDate(state.date);
   const selectedDateNorm = normalizeDate(selectedDate);
   const isActuallyToday = selectedDateNorm === stateDateNorm;
@@ -266,7 +268,7 @@ export const DayView: React.FC<DayViewProps> = ({
                   )}
                 </div>
                 <p className="text-slate-400 text-xs mb-5">
-                  The {year} NBA Draft Lottery determines the pick order for the {year} Draft. The 14 non-playoff teams compete for the top picks.
+                  The {year} {labels.draftLottery} determines the pick order for {labels.draft.toLowerCase()}. The 14 non-playoff teams compete for the top picks.
                 </p>
                 {lotteryTeams.length > 0 && (
                   <div className="space-y-2">
@@ -306,7 +308,7 @@ export const DayView: React.FC<DayViewProps> = ({
                     </div>
                     <div>
                       <div className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Tonight</div>
-                      <h3 className="text-xl font-black text-white uppercase tracking-tight">{year} NBA Draft</h3>
+                      <h3 className="text-xl font-black text-white uppercase tracking-tight">{year} {labels.draft}</h3>
                     </div>
                   </div>
                   {onNavigateToDraftBoard && (
@@ -319,7 +321,7 @@ export const DayView: React.FC<DayViewProps> = ({
                   )}
                 </div>
                 <p className="text-slate-400 text-xs mb-5">
-                  The {year} NBA Draft. 30 teams, 60 picks, 2 rounds. Teams select the next generation of NBA talent.
+                  The {year} {labels.draft}. 30 teams, 60 picks, 2 rounds. Teams select the next generation of league talent.
                 </p>
                 {topProspects.length > 0 && (
                   <div>
@@ -393,7 +395,7 @@ export const DayView: React.FC<DayViewProps> = ({
               <div className="col-span-full text-center py-20 bg-white/[0.02] border border-dashed border-white/10 rounded-2xl">
                 <div className="text-4xl mb-4">🌙</div>
                 <h3 className="text-xl font-black text-white uppercase tracking-tight">No Games Scheduled</h3>
-                <p className="text-slate-500 text-xs">There are no NBA games on this date.</p>
+                <p className="text-slate-500 text-xs">There are no league games on this date.</p>
               </div>
             ) : gamesForSelectedDate.length > 0 ? (
               gamesForSelectedDate.map(game => {
@@ -437,7 +439,7 @@ export const DayView: React.FC<DayViewProps> = ({
                           </div>
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
                             <Trophy size={10} className="text-amber-400/70" />
-                            <span className="text-[8px] font-black uppercase tracking-widest text-amber-300/80">NBA Cup</span>
+                            <span className="text-[8px] font-black uppercase tracking-widest text-amber-300/80">{labels.cupShort}</span>
                           </span>
                         </div>
                       </div>
@@ -538,7 +540,7 @@ export const DayView: React.FC<DayViewProps> = ({
                         {(game as any).isNBACup && (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30">
                             <Trophy size={10} className="text-amber-400" />
-                            <span className="text-[8px] font-black uppercase tracking-widest text-amber-300">NBA Cup</span>
+                            <span className="text-[8px] font-black uppercase tracking-widest text-amber-300">{labels.cupShort}</span>
                           </span>
                         )}
                       </div>

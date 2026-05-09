@@ -8,6 +8,7 @@ import {
   Target, Ticket, Table2, Zap, UserX, UserPlus, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase, Crown, ArrowLeftRight
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
+import { useLeagueLabels } from '../../utils/leagueLabels';
 import { Tab } from '../../types';
 import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
 import { compareGameDates, getTradeDeadlineDate, getCurrentOffseasonEffectiveFAStart, getOpeningNightDate, getDraftDate, parseGameDate, toISODateString } from '../../utils/dateUtils';
@@ -32,6 +33,7 @@ interface NavGroup {
 
 export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onViewChange, onClose }) => {
   const { state, markSocialRead, markNewsRead, markPayslipsRead } = useGame();
+  const labels = useLeagueLabels();
   const isGM = state.gameMode === 'gm';
 
   // Trade deadline + FA period detection for GM mode gating
@@ -147,14 +149,14 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
             : [];
         })(),
         { id: 'All-Star' as Tab,       label: 'All-Star',          icon: Star },
-        { id: 'NBA Cup' as Tab,        label: 'NBA Cup',            icon: Trophy },
+        { id: 'NBA Cup' as Tab,        label: labels.cupShort,      icon: Trophy },
         { id: 'Playoffs' as Tab,       label: 'Playoffs',           icon: Trophy, badge: playoffBadge },
       ],
     }] : [{
       label: 'Season',
       items: [
         { id: 'All-Star' as Tab,  label: 'All-Star',  icon: Star },
-        { id: 'NBA Cup' as Tab,   label: 'NBA Cup',   icon: Trophy },
+        { id: 'NBA Cup' as Tab,   label: labels.cupShort,  icon: Trophy },
         { id: 'Playoffs' as Tab,  label: 'Playoffs',  icon: Trophy, badge: playoffBadge },
       ],
     }]),
@@ -172,7 +174,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
     {
       label: 'League',
       items: [
-        { id: 'NBA Central',      label: 'NBA Central',     icon: Trophy },
+        { id: 'NBA Central',      label: labels.central,    icon: Trophy },
         { id: 'Standings',        label: 'Standings',       icon: Table2 },
         { id: 'Transactions',     label: 'Transactions',    icon: ArrowRightLeft },
         ...(!isPastTradeDeadline ? [

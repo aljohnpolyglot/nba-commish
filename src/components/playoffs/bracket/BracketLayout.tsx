@@ -5,6 +5,7 @@ import { Game, PlayoffBracket, NBATeam } from '../../../types';
 import { BracketColumn } from './BracketColumn';
 import { PlayInColumn } from './PlayInColumn';
 import { SeriesCard } from './SeriesCard';
+import { useLeagueLabels } from '../../../utils/leagueLabels';
 
 interface BracketLayoutProps {
   playoffs: PlayoffBracket;
@@ -35,6 +36,7 @@ export const BracketLayout: React.FC<BracketLayoutProps> = ({
   onSeriesClick,
   selectedSeriesId,
 }) => {
+  const labels = useLeagueLabels();
   const scrollRef = useRef<HTMLDivElement>(null);
   const playInComplete = playoffs.playInComplete;
 
@@ -142,10 +144,10 @@ export const BracketLayout: React.FC<BracketLayoutProps> = ({
             <TBDColumn label="West Finals" color="text-blue-400" />
           )}
 
-          {/* NBA Finals — center column with Trophy */}
+          {/* Finals — center column with Trophy */}
           <div className="flex flex-col justify-center px-4 relative shrink-0">
             <h3 className="text-center text-[10px] font-bold tracking-[0.2em] uppercase text-amber-400/80 mb-3">
-              NBA Finals
+              {labels.finals}
             </h3>
             <motion.div
               initial={{ scale: 0, opacity: 0 }}

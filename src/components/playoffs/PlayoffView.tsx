@@ -11,9 +11,11 @@ import { getRolloverDate, toISODateString } from '../../utils/dateUtils';
 import { BracketLayout } from './bracket/BracketLayout';
 import { SeriesDetailPanel } from './detail/SeriesDetailPanel';
 import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
+import { useLeagueLabels } from '../../utils/leagueLabels';
 
 export const PlayoffView: React.FC = () => {
   const { state, dispatchAction } = useGame();
+  const labels = useLeagueLabels();
   const rosterGate = useRosterComplianceGate();
   const playoffs = state.playoffs;
   const year = state.leagueStats.year;
@@ -31,7 +33,7 @@ export const PlayoffView: React.FC = () => {
   const navYear = (dir: 1 | -1) => setViewYear(y => Math.max(1984, Math.min(year, y + dir)));
 
   // ─── Derived ──────────────────────────────────────────────────────────────
-  const roundLabel = ['', 'First Round', 'Second Round', 'Conf. Finals', 'NBA Finals'];
+  const roundLabel = ['', 'First Round', 'Second Round', 'Conf. Finals', labels.finals];
 
   const isGMMode = state.gameMode === 'gm';
   const userTeamId = (state as any).userTeamId as number | undefined;
@@ -218,7 +220,7 @@ export const PlayoffView: React.FC = () => {
           <Trophy size={22} className="text-yellow-400" />
           <div>
             <h2 className="text-lg sm:text-2xl font-black uppercase tracking-tight">
-              NBA Playoffs {viewYear - 1}–{String(viewYear).slice(-2)}
+              {labels.finals} Playoffs {viewYear - 1}–{String(viewYear).slice(-2)}
             </h2>
             <p className="text-slate-500 text-xs">
               {isHistorical ? 'Historical Season' :
@@ -412,7 +414,7 @@ export const PlayoffView: React.FC = () => {
               </div>
               <div className="px-8 pb-8 w-full flex flex-col items-center">
                 <p className="text-white/80 italic mb-4 leading-relaxed text-sm">
-                  This simulation will pass through the NBA Draft Lottery (May 14). It will run automatically in the background — you won't get a chance to trade picks before positions are locked in.
+                  This simulation will pass through the {labels.draftLottery} (May 14). It will run automatically in the background — you won't get a chance to trade picks before positions are locked in.
                 </p>
                 <p className="text-[10px] text-white/40 mb-6 leading-relaxed">
                   Stop before the lottery if you want to review pick values and make moves first. Otherwise, the results will auto-resolve and show up in the Draft tab.

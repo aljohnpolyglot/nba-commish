@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Loader2, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { useLeagueLabels } from '../../utils/leagueLabels';
 
 type HistoricalSeason = {
   season: string;
@@ -144,6 +145,7 @@ interface Props {
 }
 
 export const HistoricalPlayoffBracket: React.FC<Props> = ({ viewYear }) => {
+  const labels = useLeagueLabels();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<HistoricalSeason[]>(_cachedData ?? []);
   const [loading, setLoading] = useState(!_cachedData);
@@ -211,7 +213,7 @@ export const HistoricalPlayoffBracket: React.FC<Props> = ({ viewYear }) => {
             >
               <Trophy className="w-6 h-6 text-amber-400 drop-shadow-[0_0_12px_rgba(251,191,36,0.5)]" />
             </motion.div>
-            <h3 className="text-center text-[9px] font-black tracking-[0.2em] text-amber-400/80">NBA FINALS</h3>
+            <h3 className="text-center text-[9px] font-black tracking-[0.2em] text-amber-400/80">{labels.finals.toUpperCase()}</h3>
           </div>
           <div className="flex flex-col justify-center flex-1">
             <Matchup top={m[14]} bottom={m[15]} winner={win(14,15)} delay={0.35} />

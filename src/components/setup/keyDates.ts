@@ -11,49 +11,45 @@ export interface KeyDate {
   placeholderLabel?: string;
 }
 
-export const KEY_DATES: KeyDate[] = [
-  // OFFSEASON
-  { date: '2025-08-06', label: 'Day 1',             sublabel: 'Earliest start — planning window',        icon: '🏀', zone: 'offseason' },
-  { date: '2025-08-06', label: 'Broadcasting',      sublabel: 'TV Deal Window',                          icon: '📺', zone: 'offseason', placeholder: true, placeholderLabel: 'Broadcasting Negotiations — Future Feature' },
-  { date: '2025-08-06', label: 'Arena Naming',      sublabel: 'Sponsorship Rights',                      icon: '🏟️', zone: 'offseason', placeholder: true, placeholderLabel: 'Arena Naming Rights — Future Feature' },
-  { date: '2025-08-14', label: 'Schedule Release',  sublabel: 'Full 82-game schedule generated',         icon: '📅', zone: 'offseason' },
-  { date: '2025-10-01', label: 'Training Camp',     sublabel: 'Preseason begins',                        icon: '💪', zone: 'offseason' },
-  { date: '2025-10-24', label: 'Opening Night',     sublabel: 'Regular season tips off',                 icon: '🎉', zone: 'early' },
+import { getLeagueLabels } from '../../utils/leagueLabels';
 
-  // EARLY SEASON
-  { date: '2025-11-28', label: 'NBA Cup',           sublabel: 'In-Season Tournament',                   icon: '🏆', zone: 'early' },
-  { date: '2025-12-01', label: 'Cup Finals Host',   sublabel: 'Neutral site selection',                  icon: '📍', zone: 'early', placeholder: true, placeholderLabel: 'In-Season Tournament Host City — Future Feature' },
-  { date: '2025-12-17', label: 'Voting Opens',      sublabel: 'All-Star fan voting starts',              icon: '🗳️', zone: 'early' },
-  { date: '2025-12-25', label: 'Christmas',         sublabel: 'Christmas Day Games',                     icon: '🎄', zone: 'early' },
-  { date: '2025-12-25', label: 'Xmas Halftime',     sublabel: 'Halftime performer',                      icon: '🎤', zone: 'early', placeholder: true, placeholderLabel: 'Christmas Halftime Show Booking — Future Feature' },
+export function getKeyDates(leagueType?: 'fictional' | 'modded'): KeyDate[] {
+  const labels = getLeagueLabels(leagueType);
+  return [
+    { date: '2025-08-06', label: 'Day 1',             sublabel: 'Earliest start — planning window',        icon: '🏀', zone: 'offseason' },
+    { date: '2025-08-06', label: 'Broadcasting',      sublabel: 'TV Deal Window',                          icon: '📺', zone: 'offseason', placeholder: true, placeholderLabel: 'Broadcasting Negotiations — Future Feature' },
+    { date: '2025-08-06', label: 'Arena Naming',      sublabel: 'Sponsorship Rights',                      icon: '🏟️', zone: 'offseason', placeholder: true, placeholderLabel: 'Arena Naming Rights — Future Feature' },
+    { date: '2025-08-14', label: 'Schedule Release',  sublabel: 'Full 82-game schedule generated',         icon: '📅', zone: 'offseason' },
+    { date: '2025-10-01', label: 'Training Camp',     sublabel: 'Preseason begins',                        icon: '💪', zone: 'offseason' },
+    { date: '2025-10-24', label: 'Opening Night',     sublabel: 'Regular season tips off',                 icon: '🎉', zone: 'early' },
+    { date: '2025-11-28', label: labels.cupShort,     sublabel: 'Mid-season tournament',                   icon: '🏆', zone: 'early' },
+    { date: '2025-12-01', label: 'Cup Finals Host',   sublabel: 'Neutral site selection',                  icon: '📍', zone: 'early', placeholder: true, placeholderLabel: 'In-Season Tournament Host City — Future Feature' },
+    { date: '2025-12-17', label: 'Voting Opens',      sublabel: 'All-Star fan voting starts',              icon: '🗳️', zone: 'early' },
+    { date: '2025-12-25', label: 'Christmas',         sublabel: 'Christmas Day Games',                     icon: '🎄', zone: 'early' },
+    { date: '2025-12-25', label: 'Xmas Halftime',     sublabel: 'Halftime performer',                      icon: '🎤', zone: 'early', placeholder: true, placeholderLabel: 'Christmas Halftime Show Booking — Future Feature' },
+    { date: '2026-01-14', label: 'Voting Closes',     sublabel: 'All-Star starters incoming',              icon: '⭐', zone: 'mid' },
+    { date: '2026-01-22', label: 'Starters Drop',     sublabel: 'All-Star Starters announced',             icon: '⭐', zone: 'mid' },
+    { date: '2026-01-29', label: 'Full Roster Set',   sublabel: 'Reserves + Rising Stars',                 icon: '📋', zone: 'mid' },
+    { date: '2026-01-29', label: 'Replacements',      sublabel: 'All-Star injury subs',                    icon: '🩺', zone: 'mid', placeholder: true, placeholderLabel: 'All-Star Replacement Selection — Future Feature' },
+    { date: '2026-01-29', label: 'Shooting Stars',    sublabel: 'Select 3-person teams',                   icon: '🌟', zone: 'mid', placeholder: true, placeholderLabel: 'Shooting Stars Teams — Future Feature' },
+    { date: '2026-01-29', label: 'Skills Challenge',  sublabel: 'Select participants',                     icon: '🎯', zone: 'mid', placeholder: true, placeholderLabel: 'Skills Challenge — Future Feature' },
+    { date: '2026-02-05', label: 'Dunk Contest',      sublabel: 'Select field + approve props',            icon: '🏅', zone: 'mid' },
+    { date: '2026-02-08', label: '3-Point Contest',   sublabel: 'Select field',                            icon: '🎯', zone: 'mid' },
+    { date: '2026-02-10', label: 'AS Performer',      sublabel: 'Book All-Star concert',                   icon: '🎤', zone: 'mid' },
+    { date: '2026-02-13', label: 'All-Star Weekend',  sublabel: 'Rising Stars Friday',                     icon: '✨', zone: 'allstar' },
+    { date: '2026-02-15', label: 'Trade Deadline',    sublabel: 'Last day for moves',                      icon: '🔄', zone: 'late' },
+    { date: '2026-02-17', label: 'Season Resumes',    sublabel: 'Post All-Star stretch',                   icon: '🏀', zone: 'late' },
+    { date: '2026-04-10', label: 'Play-In Format',    sublabel: 'Confirm bracket rules',                   icon: '📐', zone: 'late', placeholder: true, placeholderLabel: 'Play-In Format Confirmation — Future Feature' },
+    { date: '2026-04-15', label: 'Season Ends',       sublabel: 'Latest possible start date',              icon: '🏁', zone: 'late' },
+    { date: '2026-04-16', label: 'Play-In',           sublabel: 'Play-In Tournament',                      icon: '⚡', zone: 'late' },
+    { date: '2026-04-19', label: 'Playoffs',          sublabel: 'First Round begins',                      icon: '🏆', zone: 'late' },
+    { date: '2026-06-01', label: 'Finals',            sublabel: `${labels.finals} begin`,                  icon: '🏆', zone: 'late' },
+    { date: '2026-06-21', label: labels.draftLottery, sublabel: 'Draft order determined',                  icon: '🎰', zone: 'late' },
+    { date: '2026-06-25', label: labels.draft,        sublabel: 'Rookie selection',                        icon: '📋', zone: 'late' },
+  ];
+}
 
-  // MID SEASON
-  { date: '2026-01-14', label: 'Voting Closes',     sublabel: 'All-Star starters incoming',              icon: '⭐', zone: 'mid' },
-  { date: '2026-01-22', label: 'Starters Drop',     sublabel: 'All-Star Starters announced',             icon: '⭐', zone: 'mid' },
-  { date: '2026-01-29', label: 'Full Roster Set',   sublabel: 'Reserves + Rising Stars',                 icon: '📋', zone: 'mid' },
-  { date: '2026-01-29', label: 'Replacements',      sublabel: 'All-Star injury subs',                    icon: '🩺', zone: 'mid', placeholder: true, placeholderLabel: 'All-Star Replacement Selection — Future Feature' },
-  { date: '2026-01-29', label: 'Shooting Stars',    sublabel: 'Select 3-person teams',                   icon: '🌟', zone: 'mid', placeholder: true, placeholderLabel: 'Shooting Stars Teams — Future Feature' },
-  { date: '2026-01-29', label: 'Skills Challenge',  sublabel: 'Select participants',                     icon: '🎯', zone: 'mid', placeholder: true, placeholderLabel: 'Skills Challenge — Future Feature' },
-  { date: '2026-02-05', label: 'Dunk Contest',      sublabel: 'Select field + approve props',            icon: '🏅', zone: 'mid' },
-  { date: '2026-02-08', label: '3-Point Contest',   sublabel: 'Select field',                            icon: '🎯', zone: 'mid' },
-  { date: '2026-02-10', label: 'AS Performer',      sublabel: 'Book All-Star concert',                   icon: '🎤', zone: 'mid' },
-
-  // ALL-STAR WEEKEND
-  { date: '2026-02-13', label: 'All-Star Weekend',  sublabel: 'Rising Stars Friday',                     icon: '✨', zone: 'allstar' },
-
-  // LATE SEASON
-  { date: '2026-02-15', label: 'Trade Deadline',    sublabel: 'Last day for moves',                      icon: '🔄', zone: 'late' },
-  { date: '2026-02-17', label: 'Season Resumes',    sublabel: 'Post All-Star stretch',                   icon: '🏀', zone: 'late' },
-  { date: '2026-04-10', label: 'Play-In Format',    sublabel: 'Confirm bracket rules',                   icon: '📐', zone: 'late', placeholder: true, placeholderLabel: 'Play-In Format Confirmation — Future Feature' },
-  { date: '2026-04-15', label: 'Season Ends',       sublabel: 'Latest possible start date',              icon: '🏁', zone: 'late' },
-
-  // POST-SEASON
-  { date: '2026-04-16', label: 'Play-In',           sublabel: 'Play-In Tournament',                      icon: '⚡', zone: 'late' },
-  { date: '2026-04-19', label: 'Playoffs',          sublabel: 'First Round begins',                      icon: '🏆', zone: 'late' },
-  { date: '2026-06-01', label: 'Finals',            sublabel: 'NBA Finals begin',                        icon: '🏆', zone: 'late' },
-  { date: '2026-06-21', label: 'Draft Lottery',     sublabel: 'Draft order determined',                  icon: '🎰', zone: 'late' },
-  { date: '2026-06-25', label: 'NBA Draft',         sublabel: 'Rookie selection',                        icon: '📋', zone: 'late' },
-];
+export const KEY_DATES: KeyDate[] = getKeyDates('modded');
 
 export const TIMELINE_MIN = '2025-08-06';
 export const TIMELINE_MAX = '2026-06-29';  // Timeline slider shows season 1 only

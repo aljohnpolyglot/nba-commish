@@ -1,6 +1,13 @@
 # NBA Commish Sim
 
-Tiefgehende NBA-Management-Simulation mit zwei Modi: **Commissioner** (gesamte Liga) und **GM** (ein Team). React + TypeScript + Vite + Tailwind. Persistenz über `idb-keyval` in IndexedDB. LLM-Narrative über Gemini.
+Tiefgehende Basketball-Management-Simulation mit zwei Rollen und zwei Liga-Quellen:
+
+- **Commissioner**: gesamte Liga kontrollieren
+- **GM**: ein Team managen
+- **Fictional League**: vollständig generierte Liga, offline, keine externen Downloads
+- **Modded League**: Community-gepflegte Realwelt-Daten via externe Quellen
+
+Tech-Stack: React + TypeScript + Vite + Tailwind. Persistenz über `idb-keyval` in IndexedDB. LLM-Narrative über Gemini.
 
 ## Quickstart
 
@@ -18,6 +25,15 @@ npm run dev
 |-------|-----------|------|
 | **Commissioner** | Gesamte Liga — Regeln, Trades, Sperren, Ökonomie, Narrative | [`COMMISSIONER_MODE_README.md`](./COMMISSIONER_MODE_README.md) |
 | **GM** | Ein Team — Roster, Trades, FA, Draft, Extensions | [`GM_MODE_README.md`](./GM_MODE_README.md) |
+
+## League Types
+
+| Liga-Typ | Quelle | Eigenschaften |
+|----------|--------|---------------|
+| **Fictional** | lokal generiert | 30 fiktive Teams, generierte Spieler/Staff/Refs, offline, keine Auslandsligen |
+| **Modded** | externe Community-Daten | reale Teams, reale Spieler, reale Verträge, externe Bilder/Bios/Leagues |
+
+**Wichtiger Unterschied:** Fictional-Setup erzeugt seine Liga vollständig lokal. Modded-Setup lädt Roster, Historie und Zusatzdaten aus externen Quellen.
 
 ## Architektur in einer Minute
 
@@ -47,6 +63,15 @@ state.news[]         News-Feed
 | 30+ Tage | `runLazySim` (iterativ, Tag für Tag) | Progress-Overlay |
 
 Beide Pfade nutzen `runLazySim` als gemeinsame Engine. **Kalenderevent hinzufügen:** Eintrag in `buildAutoResolveEvents()` in `lazySimRunner.ts`.
+
+### Simulator-Modi
+
+Seit den jüngsten Simulator-Commits existieren zwei Sim-Pfade:
+
+- **Fast** — schneller Season-/Bulk-Sim über StatGenerator
+- **Realistic** — possession-by-possession mit Rotation Manager, Live-Minutes-Flow und erweitertem Box-Score-Aufbau
+
+Guide: [`docs/simulator-guide.md`](./docs/simulator-guide.md)
 
 ### Offseason-Orchestrator
 
@@ -92,6 +117,7 @@ Konvertierung: `K2 = 0.88 * BBGM + 31` (`convertTo2KRating(ovr, hgt, tp)`).
 ### Auslandsligen
 - TID-Offsets: Euroleague +1000 · PBA +2000 · WNBA +3000 · B-League +4000 · Endesa +5000 · G-League +6000 · CBA +7000 · NBL +8000.
 - Voller Integrationspfad in [`EXTERNAL_ROSTERS.md`](./EXTERNAL_ROSTERS.md).
+- **Fictional-League-Ausnahme:** Fictional-Saves sind derzeit NBA-only. `state.nonNBATeams[]` bleibt dort leer.
 
 ### UI
 - All-Star-Teams nutzen negative IDs (-1/-2 East/West, -3/-4 Rising Stars, -5/-6 Celebrity).
@@ -158,10 +184,17 @@ src/
 | [`GM_MODE_README.md`](./GM_MODE_README.md) | GM-Mode-Implementation — Phasen, File-Changes, Pitfalls |
 | [`EXTERNAL_ROSTERS.md`](./EXTERNAL_ROSTERS.md) | Auslandsliga-Integration — TID-Offsets, Scaling, Checkliste |
 | [`LEAGUE_RULES_README.md`](./LEAGUE_RULES_README.md) | Commissioner-Regeln in die Sim-Engine wiren |
+| [`docs/simulator-guide.md`](./docs/simulator-guide.md) | `Realistic` vs `Fast` erklärt: Verhalten, Tradeoffs, Empfehlungen |
 | [`AI_AND_ECONOMY_PLAN.md`](./AI_AND_ECONOMY_PLAN.md) | AI-Trade-Engine + Wirtschafts-Design |
 | [`TODO.md`](./TODO.md) | Aktive Bugs, verify-on-new-save, Feature-Backlog |
 | [`NEW_FEATURES.md`](./NEW_FEATURES.md) | Feature-Ideen und Wunschliste |
 | [`CHANGELOG.md`](./CHANGELOG.md) | Sessionweise Bugfixes und Architecture-Discoveries |
+
+## Aktueller Übergabestand
+
+- Die letzten **committeten** Änderungen vom `2026-05-08` betreffen fast nur den Simulator (`Realistic`-Pfad, Rotation, Kalibrierung).
+- Der aktuelle Worktree enthält zusätzlich größere **uncommittete** Änderungen für Fictional League, Bird Rights, Doku und mehrere UI-Flächen.
+- Offene Follow-ups und Cleanup-Punkte stehen gesammelt in [`TODO.md`](./TODO.md).
 
 ## Investigation Findings (nicht offensichtlich)
 

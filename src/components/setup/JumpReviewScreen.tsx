@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { getLeagueLabels } from '../../utils/leagueLabels';
 
 interface JumpReviewScreenProps {
   chosenDate: string;
   gameMode?: 'commissioner' | 'gm';
+  leagueType?: 'fictional' | 'modded';
   onContinue: (assistantGM: boolean) => void;
   onBack: () => void;
 }
@@ -67,8 +69,9 @@ const formatDate = (iso: string) => {
   return `${months[m - 1]} ${d}, ${y}`;
 };
 
-export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, gameMode, onContinue, onBack }) => {
+export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, gameMode, leagueType, onContinue, onBack }) => {
   const [assistantGM, setAssistantGM] = useState(true);
+  const labels = getLeagueLabels(leagueType);
   const daysSkipped = daysBetween('2025-08-06', chosenDate);
   const estSeconds = Math.max(1, Math.ceil(daysSkipped / 25));
   const estGames = Math.round(daysSkipped * 1.2);
@@ -82,6 +85,10 @@ export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, 
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 6)
     .map(item => ({ ...item, daysAway: daysBetween(chosenDate, item.date) }));
+  const normalizedUpcoming = upcoming.map(item => ({
+    ...item,
+    label: item.label.replace('NBA Cup', labels.cupShort),
+  }));
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden">
@@ -134,10 +141,10 @@ export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, 
               Awaiting You
             </h3>
             <div className="space-y-2">
-              {upcoming.length === 0 ? (
+              {normalizedUpcoming.length === 0 ? (
                 <p className="text-slate-600 text-sm italic">Nothing scheduled in the near future.</p>
               ) : (
-                upcoming.map((item, i) => (
+                normalizedUpcoming.map((item, i) => (
                   <div key={i} className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
                     <div className="shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 whitespace-nowrap">
                       {item.daysAway === 0 ? 'Today' : `${item.daysAway}d`}

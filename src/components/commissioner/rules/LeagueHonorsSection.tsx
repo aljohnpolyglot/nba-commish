@@ -1,6 +1,7 @@
 import React from 'react';
 import { Trophy, Plus, ChevronUp, ChevronDown, Trash2 } from 'lucide-react';
 import { Rule } from '../../../types';
+import { useLeagueLabels } from '../../../utils/leagueLabels';
 
 interface LeagueHonorsSectionProps {
   localAwards: Rule[];
@@ -45,6 +46,8 @@ export const LeagueHonorsSection: React.FC<LeagueHonorsSectionProps> = ({
   positionlessAwards,
   setPositionlessAwards
 }) => {
+  const labels = useLeagueLabels();
+  const isFictional = labels.finals === 'League Finals';
   return (
     <div className="space-y-8">
       <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-sm">
@@ -55,7 +58,7 @@ export const LeagueHonorsSection: React.FC<LeagueHonorsSectionProps> = ({
             </div>
             <div className="flex flex-col">
               <h3 className="text-xl font-bold text-white tracking-tight">League Honors & MVP</h3>
-              <p className="text-sm text-slate-500 font-medium">Customize the trophies and honors of the NBA</p>
+              <p className="text-sm text-slate-500 font-medium">Customize the trophies and honors of the league</p>
             </div>
           </div>
           <button 
@@ -109,7 +112,7 @@ export const LeagueHonorsSection: React.FC<LeagueHonorsSectionProps> = ({
             </div>
             <div className="flex flex-col">
               <h3 className="text-xl font-bold text-white tracking-tight">All-League Teams</h3>
-              <p className="text-sm text-slate-500 font-medium">Configure All-NBA, All-Defense, and All-Rookie teams</p>
+              <p className="text-sm text-slate-500 font-medium">Configure All-League, All-Defense, and All-Rookie teams</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -125,7 +128,7 @@ export const LeagueHonorsSection: React.FC<LeagueHonorsSectionProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-4 p-4 bg-slate-800/40 rounded-2xl border border-slate-800/50">
-            <h4 className="text-sm font-bold text-white uppercase tracking-wider">All-NBA</h4>
+            <h4 className="text-sm font-bold text-white uppercase tracking-wider">{isFictional ? 'All-League' : 'All-NBA'}</h4>
             <div className="space-y-4">
               <div className="flex flex-col gap-2">
                 <span className="text-xs text-slate-400">Number of Teams</span>

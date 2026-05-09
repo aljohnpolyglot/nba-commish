@@ -61,6 +61,27 @@ Theorie zur Khris-Middleton-Restkorruption: der `Force correct contract amount �
 
 ---
 
+## HANDOFF — Fictional League / Doku Cleanup (May 10, 2026)
+
+### Bereits erledigt im Worktree
+- Fictional League hat jetzt lokalen Generator für Teams, aktive Spieler, FAs, Rookie-Class, Staff und Referees.
+- Fictional Setup skippt die externen Roster-Fetches.
+- Fictional Preview und tatsächlich gestarteter Save sind jetzt per Seed synchronisiert. Vorher wurde im Setup und in `handleStartGame()` doppelt neu generiert.
+- Fictional Branding ist auf die zentralen sichtbaren Flächen erweitert: Setup-Timeline, Jump-Review, Schedule-DayView, All-Star-DayView, Playoffs, Historical Finals, Rules/Honors/Awards, Draft-Eligibility und Cup-Change-Messages sind jetzt `leagueType`-aware statt hart NBA-gebrandet.
+- High-Level-Doku (`README.md`, `PRODUCT.md`, `ROADMAP.md`, `ARCHITECTURE.md`, `AGENTS.md`) ist auf denselben Sprachstand zu `Fictional` vs `Modded` sowie `Fast` vs `Realistic` gebracht.
+- `docs/simulator-guide.md` ist als Guide für `Fast` vs `Realistic` vorhanden.
+
+### Noch offen
+- **Residual Fictional String Sweep:** Es gibt noch vereinzelte harte `NBA`-Strings in Randflächen wie Dashboard-/Calendar-/Modal-Texten und teils in bewusst historischen/modded Spezialfällen. Die großen sichtbaren Fictional-Brecher sind aber abgearbeitet.
+- **Browser-Check für Fictional-Flow fehlt noch:** kein visueller Durchlauf der Fictional-League-Startstrecke nach Seed-Fix plus Branding-Sweep in dieser Session.
+- **Commit-/Push-Split sauber halten:** Worktree enthält parallel viel Simulator-/UI-Arbeit. Beim Committen dieser Session darauf achten, Fictional/Doku-Handoff nicht mit fremden in-flight Änderungen zu vermischen.
+
+### Wichtige Einordnung
+- Die letzten **committeten** Änderungen vom `2026-05-08` sind Simulator-Arbeit, nicht Fictional-League-Arbeit.
+- Ein großer Teil der Fictional-League-Verbesserungen ist aktuell **Worktree-Stand**, also noch nicht durch die jüngsten Commits repräsentiert.
+
+---
+
 ## QUEUED — Coaching Phase 3 Sim-Wiring (Session 54 Follow-up)
 
 UI + Persistenz für `defenseGameplanStore`, `defenderDetailStore`, `rivalGameplanStore`, `matchupAssignmentsStore` ist shipped (Session 54). Sim-Wiring ist die nächste Iteration:

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLeagueLabels } from '../../../../utils/leagueLabels';
 
 interface DraftEligibilitySettingsProps {
     eligibilityRule: string;
@@ -6,6 +7,7 @@ interface DraftEligibilitySettingsProps {
 }
 
 export const DraftEligibilitySettings: React.FC<DraftEligibilitySettingsProps> = ({ eligibilityRule, setEligibilityRule }) => {
+    const labels = useLeagueLabels();
     return (
         <div className="flex flex-col gap-3 p-6 bg-slate-800/40 rounded-2xl border border-slate-800/50">
             <span className="text-xs font-bold text-slate-200 uppercase tracking-widest">Draft Eligibility Rule</span>
@@ -20,7 +22,7 @@ export const DraftEligibilitySettings: React.FC<DraftEligibilitySettingsProps> =
                 <option value="pre_1970s">Pre-1970s: Four Years of College Eligibility Required</option>
             </select>
             <p className="text-[10px] text-slate-500 font-medium mt-1">
-                Determine the criteria for players to enter the NBA Draft.
+                Determine the criteria for players to enter {labels.draft.toLowerCase()}.
             </p>
         </div>
     );

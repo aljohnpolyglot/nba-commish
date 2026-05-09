@@ -17,7 +17,7 @@ import { calcPot2K } from '../../../services/trade/tradeValueEngine';
 import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
 import type { NBAPlayer } from '../../../types';
 
-const MARKET_POOLS = [
+const MARKET_POOLS_FULL = [
   { id: 'all', label: 'All Available', icon: Globe },
   { id: 'nba', label: 'NBA Free Agents', icon: Briefcase },
   { id: 'euroleague', label: 'Euroleague', icon: Trophy },
@@ -29,11 +29,19 @@ const MARKET_POOLS = [
   { id: 'nblaustralia', label: 'NBL Australia', icon: Trophy },
 ];
 
+// Fictional leagues have no external feeder leagues — hide those tabs entirely.
+const MARKET_POOLS_FICTIONAL = [
+  { id: 'all', label: 'All Available', icon: Globe },
+  { id: 'nba', label: 'Free Agents', icon: Briefcase },
+];
+
 const POSITIONS = ['All', 'PG', 'SG', 'SF', 'PF', 'C'];
 
 export const FreeAgentsView: React.FC = () => {
   const { state, dispatchAction, healPlayer } = useGame();
   const isGM = state.gameMode === 'gm';
+  const isFictional = state.leagueType === 'fictional';
+  const MARKET_POOLS = state.leagueType === 'fictional' ? MARKET_POOLS_FICTIONAL : MARKET_POOLS_FULL;
   const [viewMode, setViewMode] = useState<'available' | 'upcoming'>('available');
   const [searchTerm, setSearchTerm] = useState('');
   // GM defaults to NBA pool (they mostly care about NBA FAs); commissioner sees the whole market.
@@ -569,7 +577,7 @@ export const FreeAgentsView: React.FC = () => {
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:gap-6 text-[11px] sm:text-sm">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-              <span className="text-slate-400 font-medium">{nbaFreeAgents} NBA Free Agents</span>
+              <span className="text-slate-400 font-medium">{nbaFreeAgents} {isFictional ? 'Free Agents' : 'NBA Free Agents'}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-amber-500 rounded-full"></div>

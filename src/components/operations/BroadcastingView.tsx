@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useGame } from '../../store/GameContext';
+import { useLeagueLabels } from '../../utils/leagueLabels';
 import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
 import { useDraftEventGate } from '../../hooks/useDraftEventGate';
 import { compareGameDates } from '../../utils/dateUtils';
@@ -46,16 +47,16 @@ const PHASE_DATA: { id: string; name: string; baseViewers: number; days: number 
   { id: 'preseason',        name: 'Preseason',             baseViewers: 0.5, days: 21  },
   { id: 'openingweek',      name: 'Opening Week',          baseViewers: 1.5, days: 7   },
   { id: 'regularseason',    name: 'Regular Season',        baseViewers: 1.0, days: 140 },
-  { id: 'nbacupinseason',   name: 'NBA Cup (In-Season)',   baseViewers: 1.8, days: 14  },
+  { id: 'nbacupinseason',   name: 'In-Season Cup',         baseViewers: 1.8, days: 14  },
   { id: 'christmasdaygames',name: 'Christmas Day Games',   baseViewers: 2.5, days: 1   },
   { id: 'allstarweekend',   name: 'All-Star Weekend',      baseViewers: 2.0, days: 3   },
   { id: 'playintournament',  name: 'Play-In Tournament',   baseViewers: 1.5, days: 4   },
   { id: 'playoffsround1',   name: 'Playoffs (Round 1)',    baseViewers: 2.0, days: 16  },
   { id: 'playoffsround2',   name: 'Playoffs (Round 2)',    baseViewers: 2.5, days: 14  },
   { id: 'conferencefinals', name: 'Conference Finals',     baseViewers: 3.5, days: 10  },
-  { id: 'nbafinals',        name: 'NBA Finals',            baseViewers: 5.0, days: 14  },
-  { id: 'nbadraftlottery',  name: 'NBA Draft Lottery',     baseViewers: 1.2, days: 1   },
-  { id: 'nbadraft',         name: 'NBA Draft',             baseViewers: 1.5, days: 2   },
+  { id: 'nbafinals',        name: 'League Finals',         baseViewers: 5.0, days: 14  },
+  { id: 'nbadraftlottery',  name: 'Draft Lottery',         baseViewers: 1.2, days: 1   },
+  { id: 'nbadraft',         name: 'Draft Night',           baseViewers: 1.5, days: 2   },
 ];
 
 const SCHEDULE_DAYS = [
@@ -190,6 +191,7 @@ const ValidationModal = ({ isOpen, onClose, items }: { isOpen: boolean; onClose:
 };
 
 const WarningModal = ({ isOpen, onClose, onConfirm, warnings }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; warnings: string[] }) => {
+  const labels = useLeagueLabels();
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -209,7 +211,7 @@ const WarningModal = ({ isOpen, onClose, onConfirm, warnings }: { isOpen: boolea
         </div>
         <div className="space-y-4 mb-8">
           <p className="text-zinc-400 text-sm leading-relaxed">
-            Our analysts at <span className="text-white font-bold italic">NBA HQ</span> flagged some concerns:
+            Our analysts at <span className="text-white font-bold italic">{labels.leagueHQ}</span> flagged some concerns:
           </p>
           <ul className="space-y-3">
             {warnings.map((w, i) => (
@@ -241,6 +243,7 @@ type View = 'roster' | 'phases' | 'weekly' | 'leaguepass' | 'dashboard';
 
 export const BroadcastingView: React.FC = () => {
   const { state, dispatchAction } = useGame();
+  const labels = useLeagueLabels();
   const rosterGate = useRosterComplianceGate();
   const draftGate = useDraftEventGate();
 
@@ -539,7 +542,7 @@ export const BroadcastingView: React.FC = () => {
               <Tv size={18} className="text-indigo-400" />
             </div>
             <div>
-              <h1 className="text-lg font-black text-white tracking-tighter uppercase italic leading-none">NBA Media Rights</h1>
+              <h1 className="text-lg font-black text-white tracking-tighter uppercase italic leading-none">{labels.mediaRights}</h1>
               <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-widest">Season 2025-26</p>
             </div>
           </div>

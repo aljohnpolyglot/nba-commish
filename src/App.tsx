@@ -13,6 +13,7 @@ import { PlayButton } from './components/shared/PlayButton';
 import { OffseasonNextActionButton, OffseasonPhaseBadge, OffseasonAufgabenSidebar, OffseasonAufgabenMobileSheet, OffseasonFATagFooter } from './components/offseason/OffseasonAufgaben';
 import { LazySimLoadingScreen } from './components/setup/LazySimLoadingScreen';
 import { LeagueTypeSelector, type LeagueType } from './components/setup/LeagueTypeSelector';
+import { useLeagueLabels } from './utils/leagueLabels';
 import { Menu, X } from 'lucide-react';
 import { SaveManager } from './services/SaveManager';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
@@ -35,6 +36,7 @@ function GameLayout() {
   const [leagueType, setLeagueType] = useState<LeagueType | null>(null);
   const [activeMiniGame, setActiveMiniGame] = useState<'throne' | 'dunk' | '3point' | null>(null);
   const { state, dispatchAction, currentView, setCurrentView } = useGame();
+  const labels = useLeagueLabels();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -114,7 +116,7 @@ function GameLayout() {
           </div>
           
           <h1 className="text-3xl font-black tracking-tight mb-2 text-center bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-slate-400">
-            Initializing NBA Commissioner Simulator
+            Initializing {labels.appTitle}
           </h1>
           
           <div className="h-6 flex items-center justify-center">

@@ -2,6 +2,22 @@
 
 Historical bug fixes, session notes, and architecture discoveries.
 
+## Session 58 (May 10, 2026) — Fictional league hardening + docs cleanup / handoff
+
+- `src/services/fictionalLeagueGenerator.ts` — fictional league generation now accepts a seed and uses deterministic RNG, so setup preview and the actually started save produce the same teams/players/contracts instead of regenerating a different league on `START_GAME`.
+- `src/components/CommissionerSetup.tsx`, `src/store/logic/initialization.ts` — the fictional-league seed now flows through setup into game initialization. Setup copy also distinguishes fictional vs modded starts more clearly.
+- `src/components/players/view/FreeAgentsView.tsx` — fictional saves now use neutral free-agent wording instead of hardcoded NBA phrasing in the summary strip.
+- `src/components/schedule/view/components/DayView.tsx`, `src/components/playoffs/PlayoffView.tsx`, `src/components/playoffs/bracket/BracketLayout.tsx`, `src/components/playoffs/detail/SeriesDetailPanel.tsx`, `src/components/commissioner/rules/view/RulesHeader.tsx`, `src/components/commissioner/rules/LeagueHonorsSection.tsx`, `src/components/commissioner/rules/LeagueAwardsList.tsx` — core schedule, playoffs, and rules surfaces now use league-aware labels so fictional saves stop mixing neutral league setup with hardcoded NBA event copy.
+- `src/components/setup/keyDates.ts`, `src/components/setup/StartDateTimeline.tsx`, `src/components/setup/JumpReviewScreen.tsx`, `src/components/schedule/view/components/AllStarDayView.tsx`, `src/components/playoffs/HistoricalPlayoffBracket.tsx`, `src/components/commissioner/rules/view/DraftEligibilitySettings.tsx`, `src/components/commissioner/rules/view/useRulesState.ts` — key dates, setup timeline/review, all-star, historical finals copy, and rules change messages now branch on `leagueType` instead of assuming every save is NBA-branded.
+- `README.md`, `PRODUCT.md`, `ROADMAP.md`, `ARCHITECTURE.md`, `AGENTS.md`, `TODO.md` — repo docs cleaned up to reflect the current split between committed simulator work and in-flight fictional-league/doc work. Added explicit handoff notes so the next session can see what is shipped, what is only in the worktree, and which cleanup remains open.
+
+## Session 57 (May 8, 2026) — Trade Bird Rights transfer + stale-save heal
+
+- `src/utils/playerBirdRights.ts` — new shared Bird-Rights helper: resolves rights from stats + transaction resets, appends missing trade transactions, and repairs stale `yearsWithTeam` / `hasBirdRights` on load.
+- `src/store/logic/turn/preProcessor.ts`, `src/store/logic/gameLogic.ts` — live trades now move the full player state, not just `tid`: they preserve transferred Bird Rights, reset current-team tenure, and stamp a `trade` transaction on the destination team.
+- `src/store/GameContext.tsx` — `LOAD_GAME` now heals older saves where traded players kept stale tenure or never received a destination-side trade transaction, which previously broke Bird Rights after trades.
+- `src/utils/salaryUtils.ts` — `hasBirdRights()` now uses the shared resolver instead of assuming the player must have 3 consecutive seasons with the current team, so already-earned rights survive trades as intended.
+
 ## Session 56 (May 7, 2026) — Waive→Sign ghost-contract cleanup
 
 - `src/store/logic/turn/simulationHandler.ts` — AI roster-trim waives now strip live `contract` and current/future `contractYears` from the waived player, matching manual waives. Dead money remains on the team record.

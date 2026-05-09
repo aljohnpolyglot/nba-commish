@@ -28,7 +28,7 @@ export const LeagueAwardsList: React.FC<LeagueAwardsListProps> = ({
           </div>
           <div className="flex flex-col">
             <h3 className="text-xl font-bold text-white tracking-tight">League Honors & MVP</h3>
-            <p className="text-sm text-slate-500 font-medium">Customize the trophies and honors of the NBA</p>
+            <p className="text-sm text-slate-500 font-medium">Customize the trophies and honors of the league</p>
           </div>
         </div>
         <button 

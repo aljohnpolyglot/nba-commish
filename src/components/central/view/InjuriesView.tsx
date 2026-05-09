@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
+import { useLeagueLabels } from '../../../utils/leagueLabels';
 import { NBAPlayer, Contact, Game } from '../../../types';
 import { PlayerActionsModal } from './PlayerActionsModal';
 import { PlayerBioView } from './PlayerBioView';
@@ -17,6 +18,7 @@ interface InjuriesViewProps {
 
 export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embedded }) => {
   const { state, navigateToTeam, healPlayer, dispatchAction } = useGame();
+  const labels = useLeagueLabels();
   const ownTid = getOwnTeamId(state);
   const [actionsPlayer, setActionsPlayer] = React.useState<NBAPlayer | null>(null);
   const [selectedTeamId, setSelectedTeamId] = React.useState<number | 'all'>(filteredTeamId ?? 'all');
@@ -312,7 +314,7 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
         {!embedded && (
           <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <h2 className="text-3xl font-black text-white uppercase tracking-tight">NBA Injuries</h2>
+              <h2 className="text-3xl font-black text-white uppercase tracking-tight">{labels.injuriesTitle}</h2>
               <p className="text-slate-500 font-medium">Current injury report across the league</p>
             </div>
 

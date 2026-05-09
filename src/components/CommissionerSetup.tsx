@@ -6,6 +6,7 @@ import { INITIAL_LEAGUE_STATS } from '../constants';
 import { getSeasonSimStartDate, toISODateString } from '../utils/dateUtils';
 import { prewarmRoster } from '../services/rosterService';
 import { generateFictionalLeague } from '../services/fictionalLeagueGenerator';
+import { getLeagueLabels } from '../utils/leagueLabels';
 import type { LeagueType } from './setup/LeagueTypeSelector';
 import { Home as FranchisePicker } from './central/view/TeamOffice/pages/Home';
 import type { NBAPlayer, NBATeam } from '../types';
@@ -26,6 +27,7 @@ interface CommissionerSetupProps {
     userTeamId?: number;
     assistantGM?: boolean;
     leagueType?: LeagueType;
+    fictionalLeagueSeed?: number;
   }) => void;
   onBack: () => void;
 }
@@ -41,6 +43,9 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
   const [chosenDate, setChosenDate] = useState<string>(SIM_START_DATE);
   const [showSettings, setShowSettings] = useState(true);
   const [settings, setSettings] = useState(() => SettingsManager.getSettings());
+  const [fictionalLeagueSeed] = useState(() => Math.floor(Math.random() * 2_147_483_647));
+  const labels = getLeagueLabels(leagueType);
+  const isFictional = leagueType === 'fictional';
 
   // Roster source depends on leagueType: modded fetches the community gist (real NBA),
   // fictional builds the 30 generated teams locally without any network call.
@@ -50,7 +55,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
   useEffect(() => {
     let cancelled = false;
     if (leagueType === 'fictional') {
-      const { teams, players } = generateFictionalLeague(INITIAL_LEAGUE_STATS.year);
+      const { teams, players } = generateFictionalLeague(INITIAL_LEAGUE_STATS.year, fictionalLeagueSeed);
       setRosterTeams(teams);
       setRosterPlayers(players);
       setRosterLoading(false);
@@ -63,7 +68,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
       setRosterLoading(false);
     }).catch(() => { if (!cancelled) setRosterLoading(false); });
     return () => { cancelled = true; };
-  }, [leagueType]);
+  }, [fictionalLeagueSeed, leagueType]);
 
   const updateSetting = <K extends keyof typeof settings>(key: K, value: typeof settings[K]) => {
     const updated = { ...settings, [key]: value };
@@ -95,6 +100,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
       userTeamId: gameMode === 'gm' ? userTeamId : undefined,
       assistantGM: gameMode === 'gm' ? (assistantGM ?? false) : false,
       leagueType,
+      fictionalLeagueSeed: isFictional ? fictionalLeagueSeed : undefined,
     });
   };
 
@@ -135,7 +141,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 w-full max-w-2xl">
           <div className="text-center mb-10">
             <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white mb-3">Choose Your Role</h1>
-            <p className="text-slate-400 text-sm">How do you want to experience the NBA?</p>
+            <p className="text-slate-400 text-sm">How do you want to experience the {isFictional ? 'league' : 'NBA'}?</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Commissioner Card */}
@@ -228,6 +234,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
       <StartDateTimeline
         onSelect={handleDateSelected}
         onBack={() => setStep(gameMode === 'gm' ? 'franchise' : 'name')}
+        leagueType={leagueType}
       />
     );
   }
@@ -237,6 +244,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
       <JumpReviewScreen
         chosenDate={chosenDate}
         gameMode={gameMode}
+        leagueType={leagueType}
         onContinue={(assistantGM) => handleStart(undefined, assistantGM)}
         onBack={() => setStep('timeline')}
       />
@@ -279,7 +287,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
             <p className="text-slate-400 text-lg">
               {gameMode === 'gm'
                 ? 'A franchise is about to bet five years on you.'
-                : 'The league is waiting for your leadership.'}
+                : isFictional ? 'A new league is waiting for your blueprint.' : 'The league is waiting for your leadership.'}
             </p>
           </div>
 
@@ -299,7 +307,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
                   onChange={e => setName(e.target.value)}
                   maxLength={20}
                   className="block w-full pl-12 pr-4 py-4 bg-slate-900/50 border border-slate-800 rounded-2xl text-white placeholder-slate-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 focus:bg-slate-900 transition-all outline-none font-medium text-lg"
-                  placeholder="e.g. Adam Silver"
+                  placeholder={isFictional ? 'e.g. Avery Stone' : 'e.g. Adam Silver'}
                   autoFocus
                   autoComplete="off"
                 />
@@ -361,7 +369,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
         <p className="mt-10 text-center text-xs text-slate-600 font-medium max-w-md mx-auto">
           {gameMode === 'gm'
             ? 'By signing the contract, you agree to deliver wins, stay under the cap, and absorb every loss as if it were "growth".'
-            : 'By taking office, you agree to handle all league crises, scandals, and draft lotteries with "integrity".'}
+            : `By taking office, you agree to handle all ${labels.central.toLowerCase()} crises, scandals, and draft lotteries with "integrity".`}
         </p>
       </motion.div>
     </div>

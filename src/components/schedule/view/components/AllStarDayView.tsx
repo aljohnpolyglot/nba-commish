@@ -2,6 +2,7 @@ import React from 'react';
 import { Trophy, Play, Star, Crown } from 'lucide-react';
 import { Game } from '../../../../types';
 import { normalizeDate } from '../../../../utils/helpers';
+import { useLeagueLabels } from '../../../../utils/leagueLabels';
 
 const EAST_LOGO_URL = 'https://static.wikia.nocookie.net/logopedia/images/8/89/Eastern_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191748';
 const WEST_LOGO_URL = 'https://static.wikia.nocookie.net/logopedia/images/0/06/Western_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191726';
@@ -39,6 +40,8 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
   onViewBoxScore,
   state
 }) => {
+  const labels = useLeagueLabels();
+  const allStarGameTitle = labels.finals === 'League Finals' ? 'All-Star Game' : 'NBA All-Star Game';
   const allStarGames = state.schedule.filter((g: Game) => g.isAllStar);
   const allStarGame = allStarGames[0];
   const bracket = allStar?.bracket;
@@ -521,7 +524,7 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
             // POST-GAME: final score with box score
             <div className="bg-gradient-to-br from-slate-900 to-black border border-white/10 rounded-2xl p-8">
               <div className="flex flex-col items-center text-center mb-6">
-                <div className="text-[10px] font-black text-amber-400 uppercase tracking-[0.2em] mb-4">NBA All-Star Game · Final</div>
+                <div className="text-[10px] font-black text-amber-400 uppercase tracking-[0.2em] mb-4">{allStarGameTitle} · Final</div>
                 <div className="flex items-center justify-center gap-12 mb-6">
                   <div className="text-center">
                     <img src={EAST_LOGO_URL} className="w-12 h-12 mx-auto mb-3 object-contain" alt="East" referrerPolicy="no-referrer" />
@@ -577,7 +580,7 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
             <div className="bg-gradient-to-br from-slate-900 to-black border border-white/10 rounded-2xl p-8">
               <div className="flex flex-col items-center text-center mb-8">
                 <div className="w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center text-4xl mb-4">⭐</div>
-                <h3 className="text-3xl font-black text-white uppercase tracking-tight">75th NBA All-Star Game</h3>
+                <h3 className="text-3xl font-black text-white uppercase tracking-tight">75th {allStarGameTitle}</h3>
                 <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">East vs West · Sunday Night</p>
               </div>
 

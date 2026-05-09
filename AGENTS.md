@@ -6,14 +6,25 @@
 
 | Datei | Rolle |
 |-------|-------|
-| `README.md` | Projekt-Überblick, Quickstart, Validierung |
+| `README.md` | Projekt-Überblick, Quickstart, aktueller Betriebsstand |
 | `PRODUCT.md` | Aktuelle, nutzer-sichtbare Features und Grenzen |
 | `ROADMAP.md` | Vision, Phasen, Prioritäten und Non-Priorities |
 | `ARCHITECTURE.md` | Systemstruktur, Codemap, Invariants, Erweiterungs-Playbook |
 | `CLAUDE.md` | Agent-Anweisungen (Pipeline, Save-Format, Debug-Snippet) |
-| `TODO.md` | Offener Backlog, Bug-Audit, Deferred-Items |
+| `TODO.md` | Offener Backlog, Bug-Audit, Deferred-Items, Handoff-Notizen |
 | `NEW_FEATURES.md` | Backlog-Ideen und aspirational Features |
 | `CHANGELOG.md` | Sessionweise Bugfixes und Architecture-Discoveries |
+
+## Current State Notes
+
+- Das Repo hat inzwischen **zwei Liga-Typen**: `fictional` und `modded`.
+- `fictional` ist lokal generiert und skippt externe Roster-Fetches; `modded` lädt Community-Realwelt-Daten.
+- Simulator-seitig existieren **zwei Pfade**: `Fast` und `Realistic` (siehe `docs/simulator-guide.md` und `PRODUCT.md`).
+- Vor Annahmen über "latest commits" unterscheiden zwischen:
+  - **committetem Stand** (`git log`)
+  - **in-flight Worktree-Stand** (`git status`, `git diff`)
+
+Wenn Doku aktualisiert wird, sollten mindestens `README.md`, `CHANGELOG.md` und `TODO.md` auf denselben Stand gebracht werden.
 
 ## Project Structure & Module Organization
 
@@ -33,6 +44,11 @@ Save-State-Audit aus DevTools-Konsole: Snippet in `CLAUDE.md` → "Standard snip
 ## Planning and Change Intake
 
 Komplexe Features werden in `CHANGELOG.md` als Session-Eintrag dokumentiert (Format: Session N (Datum) — Titel, Bullet-Liste der Änderungen mit File-Pfaden). Vor größeren Refactors prüfen, ob ein TODO-Item dazu existiert; ist keines da, eines anlegen, dann implementieren.
+
+Wenn Worktree-Änderungen bewusst noch nicht committed sind, in `TODO.md` oder `CHANGELOG.md` klar markieren, ob etwas:
+- **shipped/committed**
+- **worktree-only / in-flight**
+- **deferred / follow-up**
 
 ExecPlan-Format (light): Bei mehrtägigen Refactors einen `MULTI_SESSION_*.md` oder `*_PLAN.md` File anlegen (Beispiele: `THRONE_PLAN.md`, `COACHING_DEPTH_ROADMAP.md`, `TEAM_TRAINING_PLAN.md`).
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Save, RotateCcw, Info, Settings2, ShieldCheck, Zap, Trophy, Globe, Star, Calendar, UserPlus, Award, DollarSign } from 'lucide-react';
+import { useLeagueLabels } from '../../../../utils/leagueLabels';
 
 interface RulesHeaderProps {
     activeTab: string;
@@ -18,9 +19,10 @@ export const RulesHeader: React.FC<RulesHeaderProps> = ({
     handleSaveConfig,
     handleResetConfig
 }) => {
+    const labels = useLeagueLabels();
     const tabs = [
         { id: 'Format', icon: Calendar, label: 'Format' },
-        { id: 'NBA Cup', icon: Trophy, label: 'NBA Cup' },
+        { id: 'NBA Cup', icon: Trophy, label: labels.cupShort },
         { id: 'Economy', icon: DollarSign, label: 'Economy' },
         { id: 'Draft', icon: UserPlus, label: 'Draft' },
         { id: 'Honors', icon: Award, label: 'Honors' },
@@ -36,7 +38,7 @@ export const RulesHeader: React.FC<RulesHeaderProps> = ({
                 </div>
                 <div>
                     <h2 className="text-xl font-bold text-white">League Governance</h2>
-                    <p className="text-sm text-slate-400">Configure the structural rules and formats of the NBA</p>
+                    <p className="text-sm text-slate-400">Configure the structural rules and formats of the league</p>
                 </div>
             </div>
 

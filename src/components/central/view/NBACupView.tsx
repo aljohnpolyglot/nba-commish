@@ -13,6 +13,7 @@ import {
   Search,
 } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
+import { useLeagueLabels } from '../../../utils/leagueLabels';
 import { NBACupState } from '../../../types';
 import type { NBAPlayer } from '../../../types';
 import { NBACupYearData, Standing, BracketTeam, WikiYearData } from '../types';
@@ -583,6 +584,7 @@ function MatchCard({ teams: matchTeams, highlighted, size = 'default', delay = 0
 }
 
 function BracketDisplay({ bracket, liveTeams, onGameClick }: { bracket: BracketTeam[]; liveTeams?: { id: number; name: string; logoURL?: string }[]; onGameClick?: (gameId: number) => void }) {
+  const labels = useLeagueLabels();
   if (!bracket || bracket.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-20 text-center">
@@ -627,7 +629,7 @@ function BracketDisplay({ bracket, liveTeams, onGameClick }: { bracket: BracketT
             <div className="absolute -top-32 left-1/2 -translate-x-1/2 flex flex-col items-center">
               <Trophy className="text-amber-500 w-16 h-16 drop-shadow-[0_0_40px_rgba(245,158,11,0.6)]" />
               <div className="bg-amber-500/10 border border-amber-500/20 px-4 py-1.5 rounded-full mt-3 backdrop-blur-xl">
-                <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.3em] whitespace-nowrap italic">NBA Cup Champion</span>
+                <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.3em] whitespace-nowrap italic">{labels.cupChampion}</span>
               </div>
             </div>
             {final.map((game, i) => <MatchCard key={i} teams={game} highlighted size="large" delay={0.7} liveTeams={liveTeams} onGameClick={game[0].gameId != null ? () => onGameClick?.(game[0].gameId!) : undefined} />)}
@@ -1050,6 +1052,7 @@ function CupContent({
 // ─── Main view ────────────────────────────────────────────────────────────────
 export default function NBACupView() {
   const { state } = useGame();
+  const labels = useLeagueLabels();
   const year = state.leagueStats.year;
   const [gistData, setGistData] = useState<NBACupYearData[]>([]);
   const [selectedYear, setSelectedYear] = useState<string>(String(year));
@@ -1189,7 +1192,7 @@ export default function NBACupView() {
               <Trophy className="text-black w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-white uppercase italic">NBA Cup</h1>
+              <h1 className="text-xl font-bold tracking-tight text-white uppercase italic">{labels.cupShort}</h1>
               <p className="text-[10px] font-medium text-slate-500 uppercase tracking-[0.2em]">
                 {`${viewYear - 1}–${String(viewYear).slice(-2)}`}
                 {!isHistorical && currentCup && (

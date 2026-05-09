@@ -601,12 +601,12 @@ const [minAgeRequirement, setMinAgeRequirement] = useState<number | string>(leag
         const changes: string[] = [];
         if (playIn !== leagueStats.playIn) changes.push(`Play-In Tournament ${playIn ? 'enabled' : 'disabled'}`);
         if (inSeasonTournament !== (leagueStats.inSeasonTournament ?? true)) changes.push(`In-Season Tournament ${inSeasonTournament ? 'enabled' : 'disabled'}`);
-        if (cupPrizePoolEnabled !== (leagueStats.cupPrizePoolEnabled ?? true)) changes.push(`NBA Cup Prize Pool ${cupPrizePoolEnabled ? 'enabled' : 'disabled'}`);
-        if (cupPrizePoolAutoInflate !== (leagueStats.cupPrizePoolAutoInflate ?? true)) changes.push(`NBA Cup Prize Auto-Inflate ${cupPrizePoolAutoInflate ? 'enabled' : 'disabled'}`);
-        if (cupPrizeWinner !== (leagueStats.cupPrizeWinner ?? 500_000)) changes.push(`NBA Cup Winner Prize set to $${cupPrizeWinner.toLocaleString()}`);
-        if (cupPrizeRunnerUp !== (leagueStats.cupPrizeRunnerUp ?? 200_000)) changes.push(`NBA Cup Runner-Up Prize set to $${cupPrizeRunnerUp.toLocaleString()}`);
-        if (cupPrizeSemi !== (leagueStats.cupPrizeSemi ?? 100_000)) changes.push(`NBA Cup Semifinalist Prize set to $${cupPrizeSemi.toLocaleString()}`);
-        if (cupPrizeQuarter !== (leagueStats.cupPrizeQuarter ?? 50_000)) changes.push(`NBA Cup Quarterfinalist Prize set to $${cupPrizeQuarter.toLocaleString()}`);
+        if (cupPrizePoolEnabled !== (leagueStats.cupPrizePoolEnabled ?? true)) changes.push(`In-Season Cup Prize Pool ${cupPrizePoolEnabled ? 'enabled' : 'disabled'}`);
+        if (cupPrizePoolAutoInflate !== (leagueStats.cupPrizePoolAutoInflate ?? true)) changes.push(`In-Season Cup Prize Auto-Inflate ${cupPrizePoolAutoInflate ? 'enabled' : 'disabled'}`);
+        if (cupPrizeWinner !== (leagueStats.cupPrizeWinner ?? 500_000)) changes.push(`Cup Winner Prize set to $${cupPrizeWinner.toLocaleString()}`);
+        if (cupPrizeRunnerUp !== (leagueStats.cupPrizeRunnerUp ?? 200_000)) changes.push(`Cup Runner-Up Prize set to $${cupPrizeRunnerUp.toLocaleString()}`);
+        if (cupPrizeSemi !== (leagueStats.cupPrizeSemi ?? 100_000)) changes.push(`Cup Semifinalist Prize set to $${cupPrizeSemi.toLocaleString()}`);
+        if (cupPrizeQuarter !== (leagueStats.cupPrizeQuarter ?? 50_000)) changes.push(`Cup Quarterfinalist Prize set to $${cupPrizeQuarter.toLocaleString()}`);
         if (JSON.stringify(cleanedFormat) !== JSON.stringify(leagueStats.numGamesPlayoffSeries)) changes.push(`Playoff series format changed to ${cleanedFormat.join('-')}`);
         if (draftType !== leagueStats.draftType) changes.push(`Draft format changed to ${draftType}`);
         if (eligibilityRule !== (leagueStats.draftEligibilityRule ?? 'one_and_done')) changes.push(`Draft eligibility rule changed to ${eligibilityRule}`);

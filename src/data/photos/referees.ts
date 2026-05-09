@@ -113,6 +113,12 @@ export const fetchRefereeData = async (): Promise<void> => {
 export const getAllReferees = (): RefereeData[] =>
   _refs.length > 0 ? _refs : REFS.map(r => ({ ...r }));
 
+/** Used by fictional-league init to seed _refs without hitting the gist. */
+export const setRefereeData = (refs: RefereeData[]): void => {
+  _refs = refs;
+  _fetched = true;
+};
+
 export const getRefereePhoto = (name: string): string | undefined =>
   _refs.find(r => r.name === name)?.photo_url;
 

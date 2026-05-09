@@ -2,7 +2,7 @@
 
 ## System Overview
 
-Browser-only React + TypeScript + Vite SPA. Single in-memory `GameState` (`src/types.ts`); kein Server, kein Backend. Persistenz läuft gzipped durch `SaveManager.ts` in IndexedDB unter `keyval-store`. Zwei Spielmodi (Commissioner / GM) teilen sich denselben State + Sim-Engine — der Modus ist ein Flag (`gameMode`) plus eine `userTeamId` (`-999` für Commissioner-Sentinel). LLM-Narrative über Gemini ist optional und im Code als Side-Effect-Layer modelliert (Sim läuft auch ohne API-Key).
+Browser-only React + TypeScript + Vite SPA. Single in-memory `GameState` (`src/types.ts`); kein Server, kein Backend. Persistenz läuft gzipped durch `SaveManager.ts` in IndexedDB unter `keyval-store`. Zwei Spielmodi (Commissioner / GM) teilen sich denselben State + Sim-Engine — der Modus ist ein Flag (`gameMode`) plus eine `userTeamId` (`-999` für Commissioner-Sentinel). Zusätzlich gibt es zwei Liga-Typen: `leagueType: 'modded' | 'fictional'`. LLM-Narrative über Gemini ist optional und im Code als Side-Effect-Layer modelliert (Sim läuft auch ohne API-Key).
 
 ## Codemap
 
@@ -38,6 +38,8 @@ src/
     AIFreeAgentHandler.ts  5-Pass-Signing-System
     AITradeHandler.ts      AI-AI trade evaluation + execution
     SaveManager.ts         gzip + IndexedDB I/O
+    fictionalLeagueGenerator.ts  lokale Fictional-League-Generierung
+    fictionalStaffGenerator.ts   lokale Fictional-Staff/Ref-Generierung
     externalSigningRouter.ts  Auslandsligen-Routing am 1. Oktober
     faMarketTicker.ts      Daily FA-Bid-Markt
     rosterService.ts       Roster + external-team Sync
@@ -81,6 +83,13 @@ Subsystem-Ownership:
 3. `buildAutoResolveEvents` setzt Hooks für Calendar-Boundaries (Lottery, Rollover, Throne-Phasen, etc.).
 4. Progress-Overlay zeigt Day-Counter; bei Critical-Event (Trade auf User-Team, Injury auf Star) `stopBefore: true` Pause.
 
+### Start-Flow nach Liga-Typ
+1. Setup schreibt `leagueType` in `pendingStartPayload`.
+2. `handleStartGame()` brancht:
+3. `modded` → `getRosterData()` + Historical Awards + External-Roster-Fetches.
+4. `fictional` → `generateFictionalLeague()` + `generateFictionalStaff()` + `generateFictionalReferees()`, keine External-Roster-Fetches.
+5. Der Fictional-Pfad nutzt einen Seed, damit Setup-Preview und gestarteter Save dieselbe generierte Liga verwenden.
+
 ### Free Agency (Multi-Pass)
 `AIFreeAgentHandler.runAIFreeAgencyRound` läuft tagsgenau:
 1. **Pass 1** Best-Fit-Signings (Cap + MLE).
@@ -116,6 +125,7 @@ Reihenfolge ist nicht verhandelbar (siehe `CLAUDE.md`).
 7. **Family-Ties-Protection in jedem Trim/Cut.** `hasFamilyOnRoster` Check bevor `canCut` true wird.
 8. **Offseason-Dispatch läuft durch `getOffseasonDayPlan`.** Inline-Date-Checks für Rollover/FA-Pass/Bird-Rights sind seit Session 5 verboten.
 9. **Rating-Skalen nicht verwechseln.** BBGM raw (35–82) vs K2 (66–99); jede Schwelle ≥85 BBGM ist tot.
+10. **Fictional ist derzeit NBA-only.** Wenn `leagueType === 'fictional'`, bleiben `nonNBATeams` und alle externen League-Fetches leer; Code darf dort keine Auslandsliga-Daten voraussetzen.
 
 ## Boundaries & External Dependencies
 
@@ -126,6 +136,8 @@ Reihenfolge ist nicht verhandelbar (siehe `CLAUDE.md`).
 | **NBA-CDN (`cdn.nba.com`)** | Player-Photos. Fallback nach `player.imgURL` (BBGM gist), dann faces.js, dann Initialen. |
 | **Public Gists (ZenGM, custom)** | Real-Player-Data, Bios, Awards, External-League-Rosters, Names, Country-Pools, College-Pools, Contracts. Alle gefetcht zur Init oder per Demand. |
 | **localStorage** | Save-scoped Side-Stores nur (Gameplan, Settings). Niemals globaler Key für editierbare Per-Save-Settings. |
+
+Fictional-League-Start ist die Ausnahme: dort wird die External-Data-Boundary beim Init bewusst vollständig umgangen.
 
 Alle Daten-Boundaries validieren Schema vor Cache-Write — siehe `nameDataFetcher.ts` für das Pattern.
 
@@ -179,6 +191,7 @@ Voller Pfad in `EXTERNAL_ROSTERS.md`. Stichpunkte: TID-Offset in `constants.ts`,
 
 ## Open Questions
 
+- Soll `leagueType === 'fictional'` langfristig ein eigenes External-/Feeder-League-Subsystem bekommen oder architektonisch bewusst leer bleiben?
 - Soll `state.phase` zum gespeicherten Field promoted werden, jetzt wo der Plan Single-SoT ist? (Bricht Save-Forward-Compat — worth?)
 - Wie viel `[OSPLAN]`-Coverage braucht `autoResolvers` (Lottery/Draft/HOF)? Aktuell loggen sie nicht in die Unified Timeline.
 - Pass-5-Shortfall-Distribution: NBA-genau (Bonus-Pools je Player nach FA-Tier) oder simpler Spread?

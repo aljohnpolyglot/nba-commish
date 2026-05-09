@@ -234,8 +234,8 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
     },
     { 
         id: 'award-post-4', 
-        title: 'NBA Cup MVP', 
-        description: 'Awarded to the standout player of the In-Season Tournament (NBA Cup).' 
+        title: 'In-Season Tournament MVP',
+        description: 'Awarded to the standout player of the mid-season tournament.'
     },
 
     // REGULAR SEASON PERFORMANCE

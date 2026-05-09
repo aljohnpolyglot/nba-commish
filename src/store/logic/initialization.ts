@@ -1,6 +1,10 @@
 import { GameState, HistoricalStatPoint, NBAPlayer as Player, DraftPick, LazySimProgress } from '../../types';
 import { generateInitialContent } from '../../services/llm/llm';
 import { getRosterData, getHistoricalAwards } from '../../services/rosterService';
+import { generateFictionalLeague } from '../../services/fictionalLeagueGenerator';
+import { generateFictionalStaff, generateFictionalReferees } from '../../services/fictionalStaffGenerator';
+import { setRefereeData } from '../../data/photos/referees';
+import type { LeagueType } from '../../components/setup/LeagueTypeSelector';
 import { INITIAL_LEAGUE_STATS } from '../../constants';
 import { getSeasonSimStartDate } from '../../utils/dateUtils';
 import { DEFAULT_MEDIA_RIGHTS } from '../../utils/broadcastingUtils';
@@ -23,19 +27,38 @@ interface StartGamePayload {
     gameMode?: 'commissioner' | 'gm';
     userTeamId?: number;
     assistantGM?: boolean;
+    leagueType?: LeagueType;
+    fictionalLeagueSeed?: number;
 }
+
+const EMPTY_ROSTER = { players: [], teams: [] };
 
 export const handleStartGame = async (payload: StartGamePayload): Promise<Partial<GameState>> => {
     const { name: commissionerName } = payload;
+    const isFictional = payload.leagueType === 'fictional';
     const SHADOWED_ENDESA_TEAM_TIDS = new Set([5006, 5012]); // FC Barcelona, Real Madrid — use Euroleague club only
     // Kick off name-data fetch early — it runs in parallel with roster loads and
     // is done by the time we need to synthesize the first draft-class top-up.
     const nameDataPromise = loadNameData();
-    const { teams, players: rawNbaPlayers, draftPicks } = await getRosterData(2025, 'Opening Week');
-    
-    const historicalAwardsData = await getHistoricalAwards(); 
 
-    // Fetch external rosters (all in parallel for speed)
+    // Fictional path: generate locally, skip every network roster call. External
+    // leagues stay empty — fictional mode is NBA-only.
+    let teams: any[], rawNbaPlayers: any[], draftPicks: DraftPick[];
+    if (isFictional) {
+        const fic = generateFictionalLeague(2025, payload.fictionalLeagueSeed);
+        teams = fic.teams;
+        rawNbaPlayers = fic.players;
+        draftPicks = [];
+    } else {
+        const data = await getRosterData(2025, 'Opening Week');
+        teams = data.teams;
+        rawNbaPlayers = data.players;
+        draftPicks = data.draftPicks;
+    }
+
+    const historicalAwardsData = isFictional ? [] : await getHistoricalAwards();
+
+    // External rosters — fictional mode skips all 8 fetches and uses empties
     const [
         { players: euroPlayers,    teams: euroTeams },
         { players: wnbaPlayers,    teams: wnbaTeams },
@@ -45,16 +68,18 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         { players: gleaguePlayers, teams: gleagueTeams },
         { players: chinaPlayers,   teams: chinaTeams },
         { players: nblAusPlayers,  teams: nblAusTeams },
-    ] = await Promise.all([
-        fetchEuroleagueRoster(),
-        fetchWNBARoster(),
-        fetchPBARoster(),
-        fetchBLeagueRoster(),
-        fetchEndesaRoster(),
-        fetchGLeagueRoster(),
-        fetchChinaCBARoster(),
-        fetchNBLAustraliaRoster(),
-    ]);
+    ] = isFictional
+        ? Array.from({ length: 8 }, () => EMPTY_ROSTER) as any
+        : await Promise.all([
+            fetchEuroleagueRoster(),
+            fetchWNBARoster(),
+            fetchPBARoster(),
+            fetchBLeagueRoster(),
+            fetchEndesaRoster(),
+            fetchGLeagueRoster(),
+            fetchChinaCBARoster(),
+            fetchNBLAustraliaRoster(),
+        ]);
 
     // Normalize name for dedup: lowercase + strip dots (handles "L.J." vs "LJ", "Jr." vs "Jr")
     // Also strip generational suffixes so "Nick Smith Jr." matches "Nick Smith"
@@ -352,13 +377,21 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     const initWindowSize = INITIAL_LEAGUE_STATS.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS;
     const initialDraftPicks = generateFuturePicks(draftPicks, nbaNBATeams as any, initYear, initWindowSize);
 
+    // Fictional leagues seed staff + refs locally (skips the modded gist fetch).
+    let initialStaff: any = null;
+    if (isFictional) {
+        const nameDataResolved = await nameDataPromise;
+        initialStaff = generateFictionalStaff(teams, nameDataResolved);
+        setRefereeData(generateFictionalReferees(nameDataResolved, 36));
+    }
+
     const statePatch: Partial<GameState> = {
         commissionerName,
         teams,
         nonNBATeams: [...euroTeams, ...pbaTeams, ...wnbaTeams, ...bleagueTeams, ...filteredEndesaTeams, ...gleagueTeams, ...chinaTeams, ...nblAusTeams],
         players: allPlayers,
         draftPicks: initialDraftPicks,
-        staff: null,
+        staff: initialStaff,
         schedule,
         inbox: initialInbox,
         news: initialNews,
@@ -395,6 +428,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         saveId: `nba_commish_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         gameMode: payload.gameMode ?? 'commissioner',
         userTeamId: payload.userTeamId,
+        leagueType: payload.leagueType ?? 'modded',
         allStar: initialAllStar as any,
         leagueStats: {
             ...INITIAL_LEAGUE_STATS,

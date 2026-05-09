@@ -1,5 +1,5 @@
-import React, { useRef, useState, useCallback } from 'react';
-import { KEY_DATES, TIMELINE_MIN, TIMELINE_MAX, TIMELINE_DISPLAY_END, ZONE_COLORS, ZONE_LABELS, DateZone, KeyDate } from './keyDates';
+import React, { useRef, useState, useCallback, useMemo } from 'react';
+import { getKeyDates, TIMELINE_MIN, TIMELINE_MAX, TIMELINE_DISPLAY_END, ZONE_COLORS, ZONE_LABELS, DateZone, KeyDate } from './keyDates';
 
 // Calendar date-input allows jumping up to 10 seasons ahead; the horizontal track stays 1-season only.
 const INPUT_MAX = '2035-09-30';
@@ -7,6 +7,7 @@ const INPUT_MAX = '2035-09-30';
 interface StartDateTimelineProps {
   onSelect: (date: string) => void;
   onBack: () => void;
+  leagueType?: 'fictional' | 'modded';
 }
 
 // ─── Date math helpers ────────────────────────────────────────────────────
@@ -70,11 +71,11 @@ const MONTH_TICKS: { date: string; label: string }[] = [
 ];
 
 // De-duplicate key dates by label+zone so we don't stack identical markers
-const DISPLAY_MARKERS = KEY_DATES.filter((kd, i, arr) =>
-  arr.findIndex(k => k.date === kd.date && k.label === kd.label) === i
-);
-
-export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, onBack }) => {
+export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, onBack, leagueType }) => {
+  const keyDates = useMemo(() => getKeyDates(leagueType), [leagueType]);
+  const displayMarkers = useMemo(() => keyDates.filter((kd, i, arr) =>
+    arr.findIndex(k => k.date === kd.date && k.label === kd.label) === i
+  ), [keyDates]);
   const [selectedDate, setSelectedDate] = useState<string>(TIMELINE_MIN);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -212,7 +213,7 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
             })}
 
             {/* Key date markers */}
-            {DISPLAY_MARKERS.map((kd, i) => {
+            {displayMarkers.map((kd, i) => {
               const x = dateToX(kd.date);
               const isLocked = !!kd.locked;
               const isPlaceholder = !!kd.placeholder;

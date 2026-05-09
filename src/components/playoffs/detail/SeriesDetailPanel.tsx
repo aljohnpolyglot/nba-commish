@@ -5,6 +5,7 @@ import { normalizeDate } from '../../../utils/helpers';
 import { SeriesGameSlots } from './SeriesGameSlots';
 import { SeriesActionMenu } from './SeriesActionMenu';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
+import { useLeagueLabels } from '../../../utils/leagueLabels';
 
 interface SeriesDetailPanelProps {
   seriesId: string;
@@ -25,13 +26,6 @@ interface SeriesDetailPanelProps {
   isProcessing: boolean;
 }
 
-const roundLabels: Record<number, string> = {
-  1: 'First Round',
-  2: 'Second Round',
-  3: 'Conference Finals',
-  4: 'NBA Finals',
-};
-
 export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
   seriesId,
   playoffs,
@@ -50,7 +44,14 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
   onClose,
   isProcessing,
 }) => {
+  const labels = useLeagueLabels();
   const [boxScoreTarget, setBoxScoreTarget] = useState<{ game: Game; result: GameResult } | null>(null);
+  const roundLabels: Record<number, string> = {
+    1: 'First Round',
+    2: 'Second Round',
+    3: 'Conference Finals',
+    4: labels.finals,
+  };
 
   const findBoxScore = (gid: number) =>
     boxScores.find(b => b.gameId === gid && (!b.season || b.season === currentSeason));
@@ -76,7 +77,7 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
     team2 = teams.find(t => t.id === series.lowerSeedTid);
     team1Wins = series.higherSeedWins;
     team2Wins = series.lowerSeedWins;
-    confLabel = series.conference === 'Finals' ? 'NBA' : `${series.conference}ern Conference`;
+    confLabel = series.conference === 'Finals' ? labels.finals : `${series.conference}ern Conference`;
     roundLabel = roundLabels[series.round] ?? `Round ${series.round}`;
     isComplete = series.status === 'complete';
     winnerId = series.winnerId;
