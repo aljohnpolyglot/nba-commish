@@ -2,6 +2,16 @@
 
 Historical bug fixes, session notes, and architecture discoveries.
 
+## Session 59 (May 10, 2026) — Commissioner Elam/target-score rules wired into saves, sim, and live UI
+
+- `src/types.ts`, `src/services/simulation/types.ts`, `src/services/simulation/SimulatorKnobs.ts` — added explicit `gameFormat` / `targetScore` support for schedule games and sim results, plus Elam-capable sim knobs so non-timed formats are first-class state instead of UI-only values.
+- `src/constants.ts`, `src/components/commissioner/rules/view/rulesDefaults.ts`, `src/constants/ruleDefinitions.ts`, `src/services/RuleChangeService.ts`, `src/components/commissioner/rules/view/useRulesState.ts` — commissioner rules now expose three league/all-star modes (`Timed`, `Elam Ending`, `Target Score`), persist a dedicated all-star fixed target score, migrate sane defaults (`gameTargetScore: 100`, `allStarGameTargetScore: 40`), and report rule changes correctly.
+- `src/components/commissioner/rules/view/game-rules/GameStructureSection.tsx`, `src/components/commissioner/rules/view/all-star/AllStarGameSection.tsx`, `src/components/commissioner/rules/view/AllStarTab.tsx` — the rules UI now branches by mode: timed games keep quarter/OT controls, target-score games expose a fixed target, and Elam uses the untimed finishing-target increment.
+- `src/store/GameContext.tsx` — `LOAD_GAME` heals older saves by backfilling missing league/all-star target-score fields and stamping exhibition schedule entries with the correct `gameFormat` / `targetScore`, so old saves pick up the new behavior without manual edits.
+- `src/services/allStar/exhibitionRules.ts`, `src/services/allStar/AllStarWeekendOrchestrator.ts` — All-Star, Rising Stars, and injected championship games now carry their resolved format into the actual scheduled game objects. Rising Stars semis/final always run as target-score games again; All-Star can now follow timed, fixed target-score, or Elam commissioner settings.
+- `src/services/simulation/GameSimulator/engine.ts`, `src/services/simulation/SimulatorAdapter.ts` — the fast sim now actually resolves fixed target-score games and Elam finishes, including schedule-level overrides and target-score overtime. The realistic adapter explicitly falls back to the fast path for unsupported non-timed formats instead of silently simming them as normal timed games.
+- `src/hooks/useLiveGame.ts`, `src/components/shared/GameSimulatorScreen.tsx`, `src/components/allstar/AllStarGameView.tsx`, `src/components/allstar/AllStarRoster.tsx` — watch-game/live UI now labels non-timed formats correctly (`FIRST TO X`, `ELAM`, etc.) and keeps replay timing stable for target-score exhibition games.
+
 ## Session 58 (May 10, 2026) — Fictional league hardening + docs cleanup / handoff
 
 - `src/services/fictionalLeagueGenerator.ts` — fictional league generation now accepts a seed and uses deterministic RNG, so setup preview and the actually started save produce the same teams/players/contracts instead of regenerating a different league on `START_GAME`.

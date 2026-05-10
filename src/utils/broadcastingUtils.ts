@@ -61,6 +61,70 @@ export const BROADCASTER_NAMES: Record<string, string> = {
   leaguepass: 'NBA League Pass',
 };
 
+export const FICTIONAL_BROADCASTER_NAMES: Record<string, string> = {
+  espn:       'GSN / GBC',
+  abc:        'GBC',
+  nbc:        'NBS / BlueBird',
+  tnt:        'Thunder Network',
+  cbs:        'OBS Sports',
+  fox:        'NOVA Sports',
+  netflix:    'Netstream',
+  amazon:     'Apex Prime',
+  apple:      'Cherry TV+',
+  disney:     'Fantasia+',
+  hbo:        'Pinnacle',
+  paramount:  'Summit+',
+  hulu:       'Flux Live',
+  youtube:    'ViewTube',
+  meta:       'Nexus',
+  tencent:    'DragonStream',
+  pif:        'Gulf Crown',
+  fanduel:    'BetZone',
+  fubo:       'GoStream',
+  sling:      'RingTV',
+  streameast: 'StreamNow',
+  leaguepass: 'League Pass',
+};
+
+/** Gibt den passenden Broadcaster-Namen zurück — fiktiv oder real. */
+export const getBroadcasterDisplayName = (id: string, isFictional: boolean): string => {
+  if (isFictional) return FICTIONAL_BROADCASTER_NAMES[id] ?? BROADCASTER_NAMES[id] ?? id;
+  return BROADCASTER_NAMES[id] ?? id;
+};
+
+export interface BroadcasterBadge {
+  initials: string;
+  bg: string;
+  text: string;
+  shape: string;
+  font: string;
+}
+
+export const FICTIONAL_BROADCASTER_BADGE: Record<string, BroadcasterBadge> = {
+  espn:       { initials: 'GSN',  bg: 'bg-indigo-700',  text: 'text-white',      shape: 'rounded-full',  font: 'font-black italic tracking-tighter' },
+  abc:        { initials: 'GBC',  bg: 'bg-blue-700',    text: 'text-white',      shape: 'rounded-lg',    font: 'font-black tracking-[0.15em]' },
+  nbc:        { initials: 'NBS',  bg: 'bg-sky-600',     text: 'text-white',      shape: 'rounded-2xl',   font: 'font-mono font-bold' },
+  tnt:        { initials: 'TN',   bg: 'bg-orange-600',  text: 'text-white',      shape: 'rounded-full',  font: 'font-black italic' },
+  cbs:        { initials: 'OBS',  bg: 'bg-slate-700',   text: 'text-white',      shape: 'rounded-xl',    font: 'font-black tracking-tight' },
+  fox:        { initials: 'NVA',  bg: 'bg-red-600',     text: 'text-white',      shape: 'rounded-none',  font: 'font-black italic' },
+  netflix:    { initials: 'NET',  bg: 'bg-rose-700',    text: 'text-white',      shape: 'rounded-full',  font: 'font-black tracking-tight' },
+  amazon:     { initials: 'AP',   bg: 'bg-cyan-600',    text: 'text-white',      shape: 'rounded-2xl',   font: 'font-mono font-bold tracking-widest' },
+  apple:      { initials: 'C+',   bg: 'bg-pink-600',    text: 'text-white',      shape: 'rounded-xl',    font: 'font-black italic' },
+  disney:     { initials: 'F+',   bg: 'bg-purple-700',  text: 'text-white',      shape: 'rounded-full',  font: 'font-black italic' },
+  hbo:        { initials: 'PIN',  bg: 'bg-violet-700',  text: 'text-white',      shape: 'rounded-lg',    font: 'font-black tracking-[0.1em]' },
+  paramount:  { initials: 'S+',   bg: 'bg-amber-500',   text: 'text-zinc-900',   shape: 'rounded-xl',    font: 'font-black italic' },
+  hulu:       { initials: 'FL',   bg: 'bg-teal-600',    text: 'text-white',      shape: 'rounded-2xl',   font: 'font-mono font-bold' },
+  youtube:    { initials: 'VT',   bg: 'bg-green-600',   text: 'text-white',      shape: 'rounded-full',  font: 'font-black italic' },
+  meta:       { initials: 'NXS',  bg: 'bg-blue-500',    text: 'text-white',      shape: 'rounded-lg',    font: 'font-black tracking-tight' },
+  tencent:    { initials: 'DRG',  bg: 'bg-emerald-700', text: 'text-white',      shape: 'rounded-full',  font: 'font-black italic tracking-tighter' },
+  pif:        { initials: 'GCF',  bg: 'bg-yellow-500',  text: 'text-zinc-900',   shape: 'rounded-xl',    font: 'font-black' },
+  fanduel:    { initials: 'BZ',   bg: 'bg-lime-600',    text: 'text-white',      shape: 'rounded-lg',    font: 'font-mono font-bold tracking-widest' },
+  fubo:       { initials: 'GS',   bg: 'bg-orange-700',  text: 'text-white',      shape: 'rounded-2xl',   font: 'font-black italic' },
+  sling:      { initials: 'RTV',  bg: 'bg-fuchsia-600', text: 'text-white',      shape: 'rounded-full',  font: 'font-black tracking-tight' },
+  streameast: { initials: 'SNW',  bg: 'bg-zinc-600',    text: 'text-white',      shape: 'rounded-lg',    font: 'font-mono font-bold' },
+  leaguepass: { initials: 'LP',   bg: 'bg-gray-700',    text: 'text-white',      shape: 'rounded-xl',    font: 'font-black italic' },
+};
+
 /** IDs that count as "national TV" (high-prestige, broad reach). */
 const NATIONAL_TV_IDS = new Set(['espn', 'nbc', 'abc', 'tnt', 'cbs', 'fox', 'pif', 'fanduel']);
 

@@ -3,6 +3,7 @@ import { Trophy, DollarSign, TrendingUp, Clock, AlertTriangle } from 'lucide-rea
 import type { LeagueStats } from '../../../../types';
 import { ruleValue } from './rulesDefaults';
 import { useGame } from '../../../../store/GameContext';
+import { useLeagueLabels } from '../../../../utils/leagueLabels';
 import { normalizeDate } from '../../../../utils/helpers';
 
 interface NBACupTabProps {
@@ -70,6 +71,7 @@ function PrizeInput({ label, value, onChange, color }: {
 
 export const NBACupTab: React.FC<NBACupTabProps> = ({ rules, setRule }) => {
     const { state } = useGame();
+    const labels = useLeagueLabels();
     const seasonYear = state.leagueStats.year ?? new Date().getFullYear() + 1;
     const inGrace = useGracePeriod(seasonYear, state.date ?? '');
 
@@ -84,7 +86,7 @@ export const NBACupTab: React.FC<NBACupTabProps> = ({ rules, setRule }) => {
     return (
         <div className="space-y-12">
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-black text-white uppercase tracking-tighter">NBA Cup</h1>
+                <h1 className="text-3xl font-black text-white uppercase tracking-tighter">{labels.cupLong}</h1>
                 <p className="text-xs text-slate-500 font-medium max-w-2xl">
                     Configure the in-season tournament — mid-season group play, knockout bracket, and player prize pool.
                 </p>
@@ -125,7 +127,7 @@ export const NBACupTab: React.FC<NBACupTabProps> = ({ rules, setRule }) => {
                 <div className="space-y-2">
                     <ToggleRow
                         label="In-Season Tournament"
-                        description="The NBA Cup — mid-season group play and knockout bracket"
+                        description="Mid-season group play and knockout bracket"
                         value={inSeasonTournament}
                         onChange={v => setRule('inSeasonTournament', v)}
                     />

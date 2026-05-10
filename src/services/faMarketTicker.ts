@@ -8,6 +8,7 @@ import { getContractLimits, getTeamPayrollUSD, hasBirdRights } from '../utils/sa
 import { generateAIBids, getRFAPriorTid, isPlausibleActiveMarket, resolvePlayerDecision, type FreeAgentBid, type FreeAgentMarket } from './freeAgencyBidding';
 import { buildShamsTransactionPost } from './social/templates/charania';
 import { findShamsPhoto } from './social/charaniaphotos';
+import { getInsiderHandle, getInsiderWoj } from '../data/social/handles';
 import { canSignMultiYear, compareGameDates, getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd, getGameDateParts, isInMoratorium, isPastTradeDeadline, parseGameDate, toISODateString } from '../utils/dateUtils';
 import { getCapThresholds, getMLEAvailability } from '../utils/salaryUtils';
 import { isRfaMatchingEnabled } from '../utils/ruleFlags';
@@ -621,7 +622,9 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
       : isMax
         ? `${player.name} Lands Max Deal with ${team.name}`
         : `${player.name} Signs with ${team.name}`;
-    const content = `${player.name} has agreed to a ${finalYears}-year, $${totalM}M deal with the ${team.name}${optTag}${ngTag}. ${isMax ? 'Sources: Shams Charania.' : 'Sources: Adrian Wojnarowski.'}`;
+    const faInsiderName = getInsiderHandle(state.leagueType).name;
+    const faWojName = getInsiderWoj(state.leagueType).name;
+    const content = `${player.name} has agreed to a ${finalYears}-year, $${totalM}M deal with the ${team.name}${optTag}${ngTag}. ${isMax ? `Sources: ${faInsiderName}.` : `Sources: ${faWojName}.`}`;
     newsItems.push({
       id: `fa-market-signing-${player.internalId}-${state.date}`,
       headline,
@@ -644,12 +647,13 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
         hasPlayerOption: winner.option === 'PLAYER',
       });
       if (shamsContent) {
-        const engagement = calculateSocialEngagement('@ShamsCharania', shamsContent, player.overallRating);
+        const faPostInsider = getInsiderHandle(state.leagueType);
+        const engagement = calculateSocialEngagement(faPostInsider.atHandle, shamsContent, player.overallRating);
         const shamsPhoto = findShamsPhoto(player.name, team.name);
         socialPosts.push({
           id: `shams-market-sign-${player.internalId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          author: 'Shams Charania',
-          handle: '@ShamsCharania',
+          author: faPostInsider.name,
+          handle: faPostInsider.atHandle,
           content: shamsContent,
           date: parseGameDate(state.date).toISOString(),
           likes: engagement.likes,

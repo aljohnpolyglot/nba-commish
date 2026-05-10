@@ -75,6 +75,7 @@ export const RULES_DEFAULTS: Partial<LeagueStats> = {
 
   // ── All-Star Game custom rules (when mirror=false) ─────────────────────
   allStarGameFormat: 'timed' as any,
+  allStarGameTargetScore: 40,
   allStarQuarterLength: 3,
   allStarNumQuarters: 4,
   allStarOvertimeDuration: 5,
@@ -87,7 +88,7 @@ export const RULES_DEFAULTS: Partial<LeagueStats> = {
 
   // ── Game rules (regular season) ────────────────────────────────────────
   gameFormat: 'timed' as any,
-  gameTargetScore: 0,
+  gameTargetScore: 100,
   fourPointLine: false,
   threePointLineEnabled: true,
   multiballCount: 1,

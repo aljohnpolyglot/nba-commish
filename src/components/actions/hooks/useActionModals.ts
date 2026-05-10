@@ -29,6 +29,11 @@ export const useActionModals = () => {
   const [preseasonInternationalModalOpen, setPreseasonInternationalModalOpen] = useState(false);
   const [rigLotteryModalOpen, setRigLotteryModalOpen] = useState(false);
 
+  // Expansion Draft (ZenGM-style, Phase 2 Modals — Phase 1 nur State-Plumbing)
+  const [expansionSetupModalOpen, setExpansionSetupModalOpen] = useState(false);
+  const [expansionProtectModalOpen, setExpansionProtectModalOpen] = useState(false);
+  const [expansionDraftViewOpen, setExpansionDraftViewOpen] = useState(false);
+
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [confirmActionType, setConfirmActionType] = useState<string | null>(null);
   const [confirmActionDetails, setConfirmActionDetails] = useState<{title: string, desc: string} | null>(null);
@@ -76,6 +81,9 @@ export const useActionModals = () => {
     globalGamesModalOpen, setGlobalGamesModalOpen,
     preseasonInternationalModalOpen, setPreseasonInternationalModalOpen,
     rigLotteryModalOpen, setRigLotteryModalOpen,
+    expansionSetupModalOpen, setExpansionSetupModalOpen,
+    expansionProtectModalOpen, setExpansionProtectModalOpen,
+    expansionDraftViewOpen, setExpansionDraftViewOpen,
     confirmModalOpen, setConfirmModalOpen,
     confirmActionType, setConfirmActionType,
     confirmActionDetails, setConfirmActionDetails,

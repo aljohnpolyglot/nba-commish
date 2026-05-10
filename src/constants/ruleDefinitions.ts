@@ -97,11 +97,12 @@ export const RULE_DEFINITIONS: Record<string, RuleDefinition> = {
     gameFormat: {
         id: 'gameFormat',
         label: 'Game Format',
-        description: 'The fundamental format of the game: Timed (standard quarters) or Target Score (Elam Ending).',
+        description: 'The fundamental format of the game: Timed, Elam Ending, or fixed Target Score.',
         category: 'Structure',
         type: 'select',
         options: [
             { label: 'Timed', value: 'timed' },
+            { label: 'Elam Ending', value: 'elam_ending' },
             { label: 'Target Score', value: 'target_score' }
         ]
     },

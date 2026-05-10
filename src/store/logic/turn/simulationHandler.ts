@@ -26,6 +26,7 @@ import { SettingsManager } from '../../../services/SettingsManager';
 import { markTrainingCampShuffle, resolveTrainingCampChanges } from '../../../services/playerDevelopment/trainingCampShuffle';
 import { buildShamsTransactionPost } from '../../../services/social/templates/charania';
 import { findShamsPhoto } from '../../../services/social/charaniaphotos';
+import { getInsiderHandle, getInsiderWoj } from '../../../data/social/handles';
 import { normalizeTeamJerseyNumbers } from '../../../utils/jerseyUtils';
 import { buildStretchedSchedule, getTeamDeadMoneyForSeason, seasonLabelToYear } from '../../../utils/salaryUtils';
 import { isNbaCupEnabled } from '../../../utils/ruleFlags';
@@ -946,8 +947,9 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         tid: e.teamId,
                     };
                 });
-                // Shams posts for notable extensions (K2 ≥ 78)
+                // Insider posts for notable extensions (K2 ≥ 78)
                 const shamsExtPosts: any[] = [];
+                const extInsider = getInsiderHandle(stateWithSim.leagueType);
                 for (const e of extensions.filter(ex => !ex.declined)) {
                     const player = stateWithSim.players.find(p => p.internalId === e.playerId);
                     if (!player) continue;
@@ -963,10 +965,10 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         hasPlayerOption: e.hasPlayerOption,
                     });
                     if (!content) continue;
-                    const engagement = calculateSocialEngagement('@ShamsCharania', content, player.overallRating);
+                    const engagement = calculateSocialEngagement(extInsider.atHandle, content, player.overallRating);
                     shamsExtPosts.push({
                         id: `shams-ext-${e.playerId}-${Date.now()}-${Math.random()}`,
-                        author: 'Shams Charania', handle: '@ShamsCharania', content,
+                        author: extInsider.name, handle: extInsider.atHandle, content,
                         date: new Date(stateWithSim.date).toISOString(),
                         likes: engagement.likes, retweets: engagement.retweets,
                         source: 'TwitterX' as const, isNew: true,
@@ -1742,7 +1744,9 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         const headline = isMax
                             ? `${s.playerName} Lands Max Deal with ${s.teamName}`
                             : `${s.playerName} Signs with ${s.teamName}`;
-                        const content = `${s.playerName} has agreed to a ${s.contractYears ?? 1}-year, $${totalM}M deal with the ${s.teamName}${optTag}. ${isMax ? 'Sources: Shams Charania.' : 'Sources: Adrian Wojnarowski.'}`;
+                        const _newsInsider = getInsiderHandle(stateWithSim.leagueType);
+                        const _newsWoj = getInsiderWoj(stateWithSim.leagueType);
+                        const content = `${s.playerName} has agreed to a ${s.contractYears ?? 1}-year, $${totalM}M deal with the ${s.teamName}${optTag}. ${isMax ? `Sources: ${_newsInsider.name}.` : `Sources: ${_newsWoj.name}.`}`;
                         return {
                             id: `fa-signing-${s.playerId}-${faIsoDate}`,
                             headline,
@@ -1764,8 +1768,9 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         usedUSD: (prev?.usedUSD ?? 0) + (s.mleAmountUSD ?? s.salaryUSD),
                     };
                 }
-                // Generate Shams social posts for notable signings (K2 ≥ 78)
+                // Generate insider social posts for notable signings (K2 ≥ 78)
                 const shamsFATransactions: any[] = [];
+                const faInsider = getInsiderHandle(stateWithSim.leagueType);
                 for (const s of signings) {
                     const player = stateWithSim.players.find(p => p.internalId === s.playerId);
                     if (!player) continue;
@@ -1782,12 +1787,12 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                         hasPlayerOption: s.hasPlayerOption,
                     });
                     if (!content) continue;
-                    const engagement = calculateSocialEngagement('@ShamsCharania', content, player.overallRating);
+                    const engagement = calculateSocialEngagement(faInsider.atHandle, content, player.overallRating);
                     const shamsPhoto = findShamsPhoto(player.name, s.teamName);
                     shamsFATransactions.push({
                         id: `shams-fa-${s.playerId}-${Date.now()}-${Math.random()}`,
-                        author: 'Shams Charania',
-                        handle: '@ShamsCharania',
+                        author: faInsider.name,
+                        handle: faInsider.atHandle,
                         content,
                         date: new Date(stateWithSim.date).toISOString(),
                         likes: engagement.likes,

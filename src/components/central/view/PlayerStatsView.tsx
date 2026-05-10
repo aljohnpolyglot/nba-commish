@@ -1076,7 +1076,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
             <option value="regular">Reg Season</option>
             <option value="playoffs">Playoffs</option>
             <option value="combined">Combined</option>
-            <option value="cup">NBA Cup</option>
+            <option value="cup">In-Season Cup</option>
           </select>
 
           {/* Per page */}
@@ -1135,7 +1135,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
           {typeof season === 'number' && <><span className="ml-3">⭐</span> All-Star</>}
           {brefRows.size > 0 && <span className="ml-3 text-slate-600">† bref career</span>}
         </span>
-        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{seasonLabel} · {statType === 'perGame' ? 'Per Game' : statType === 'per36' ? 'Per 36 Min' : statType === 'totals' ? 'Totals' : statType === 'shotLocations' ? 'Shot Locations & Feats' : 'Advanced'} · {phase === 'regular' ? 'Reg Season' : phase === 'playoffs' ? 'Playoffs' : phase === 'cup' ? 'NBA Cup' : 'Combined'}</span>
+        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{seasonLabel} · {statType === 'perGame' ? 'Per Game' : statType === 'per36' ? 'Per 36 Min' : statType === 'totals' ? 'Totals' : statType === 'shotLocations' ? 'Shot Locations & Feats' : 'Advanced'} · {phase === 'regular' ? 'Reg Season' : phase === 'playoffs' ? 'Playoffs' : phase === 'cup' ? 'In-Season Cup' : 'Combined'}</span>
       </div>
 
       {/* ── Table ────────────────────────────────────────────────────── */}

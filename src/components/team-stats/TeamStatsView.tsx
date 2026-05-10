@@ -647,7 +647,7 @@ export const TeamStatsView: React.FC = () => {
           >
             <option value="regular">Reg Season</option>
             <option value="playoffs">Playoffs</option>
-            <option value="cup">NBA Cup</option>
+            <option value="cup">In-Season Cup</option>
             <option value="combined">Combined</option>
           </select>
 
@@ -677,7 +677,7 @@ export const TeamStatsView: React.FC = () => {
       {/* ── Season label ── */}
       <div className="shrink-0 px-3 sm:px-4 py-1 border-b border-slate-800/40 flex items-center justify-end">
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-          {seasonLabel} · {statType === 'team' ? 'Team' : statType === 'opponent' ? 'Opponent' : statType === 'shotLocations' ? 'Shot Locations & Feats' : statType === 'oppShotLocations' ? 'Opp. Shot Locations' : 'Advanced'} · {phase === 'regular' ? 'Reg Season' : phase === 'playoffs' ? 'Playoffs' : phase === 'cup' ? 'NBA Cup' : 'Combined'}
+          {seasonLabel} · {statType === 'team' ? 'Team' : statType === 'opponent' ? 'Opponent' : statType === 'shotLocations' ? 'Shot Locations & Feats' : statType === 'oppShotLocations' ? 'Opp. Shot Locations' : 'Advanced'} · {phase === 'regular' ? 'Reg Season' : phase === 'playoffs' ? 'Playoffs' : phase === 'cup' ? 'In-Season Cup' : 'Combined'}
         </span>
       </div>
 

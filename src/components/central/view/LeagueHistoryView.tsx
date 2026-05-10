@@ -63,6 +63,7 @@ interface LeagueHistoryViewProps {
 
 export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChange }) => {
   const { state, dispatchAction } = useGame();
+  const isFictional = state.leagueType === 'fictional';
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [coachPhotosReady, setCoachPhotosReady] = useState(false);
   useEffect(() => { fetchCoachData().then(() => setCoachPhotosReady(true)); }, []);
@@ -76,6 +77,7 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
 
   // ── Safety Net: Inject historical awards for saved games ──────────────────
   useEffect(() => {
+    if (isFictional) return;
     if (!state.historicalAwards || state.historicalAwards.length === 0) {
       import('../../../services/rosterService').then(service => {
         service.getHistoricalAwards().then(data => {
@@ -85,7 +87,7 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
         });
       });
     }
-  }, [state.historicalAwards]);
+  }, [state.historicalAwards, isFictional]);
 
   const currentSeason = state.leagueStats.year;
 
@@ -100,7 +102,7 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
   }, [state.teams, state.players, state.historicalAwards, currentSeason]);
 
   // ── Progressively fetch B-Ref summaries via the batch hook ───────────────
-  const brefMap = useBRefSeasonsBatch(historicalYears);
+  const brefMap = useBRefSeasonsBatch(isFictional ? [] : historicalYears);
 
   const historyData = useMemo(() => {
     const awardsToUse = state.historicalAwards || [];
@@ -176,12 +178,14 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
     // Source 2: Wikipedia full cache (all 79 seasons — populated after first fetch)
     // We use getAllCachedSeasons() instead of brefMap because brefMap only holds
     // the batch window (12 years). The full cache is available after any season loads.
-    for (const [yr, brefData] of getAllCachedSeasons().entries()) {
-      if (!brefData.champion?.name) continue;
-      const matched = matchTeamByWikiName(brefData.champion.name, state.teams as any[]) as any;
-      if (!matched) continue;
-      if (!champYearsByTeamId.has(matched.id)) champYearsByTeamId.set(matched.id, new Set());
-      champYearsByTeamId.get(matched.id)!.add(yr);
+    if (!isFictional) {
+      for (const [yr, brefData] of getAllCachedSeasons().entries()) {
+        if (!brefData.champion?.name) continue;
+        const matched = matchTeamByWikiName(brefData.champion.name, state.teams as any[]) as any;
+        if (!matched) continue;
+        if (!champYearsByTeamId.has(matched.id)) champYearsByTeamId.set(matched.id, new Set());
+        champYearsByTeamId.get(matched.id)!.add(yr);
+      }
     }
 
     // ── Runner-up appearances map: teamId → Set<year> ────────────────────────
@@ -192,12 +196,14 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
       if (!ruYearsByTeamId.has(tid)) ruYearsByTeamId.set(tid, new Set());
       ruYearsByTeamId.get(tid)!.add(Number(a.season));
     }
-    for (const [yr, brefData] of getAllCachedSeasons().entries()) {
-      if (!brefData.runnerUp?.name) continue;
-      const matched = matchTeamByWikiName(brefData.runnerUp.name, state.teams as any[]) as any;
-      if (!matched) continue;
-      if (!ruYearsByTeamId.has(matched.id)) ruYearsByTeamId.set(matched.id, new Set());
-      ruYearsByTeamId.get(matched.id)!.add(yr);
+    if (!isFictional) {
+      for (const [yr, brefData] of getAllCachedSeasons().entries()) {
+        if (!brefData.runnerUp?.name) continue;
+        const matched = matchTeamByWikiName(brefData.runnerUp.name, state.teams as any[]) as any;
+        if (!matched) continue;
+        if (!ruYearsByTeamId.has(matched.id)) ruYearsByTeamId.set(matched.id, new Set());
+        ruYearsByTeamId.get(matched.id)!.add(yr);
+      }
     }
 
     // ── Cumulative win count helpers ──────────────────────────────────────────
@@ -299,7 +305,7 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
       }
 
       // Wikipedia fallback — use full cache for all 79 seasons, not just 12-year brefMap
-      const wikiSeason = getAllCachedSeasons().get(season) ?? bref;
+      const wikiSeason = isFictional ? undefined : (getAllCachedSeasons().get(season) ?? bref);
       if (!champ && wikiSeason?.champion) {
         const matched = matchTeamByWikiName(wikiSeason.champion.name, state.teams as any[]) as any;
         if (matched) {
@@ -357,7 +363,7 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
 
       return { season, isCurrent, champ, runnerUp, awards };
     });
-  }, [state.teams, state.players, state.historicalAwards, currentSeason, brefMap, coachPhotosReady]);
+  }, [state.teams, state.players, state.historicalAwards, currentSeason, brefMap, coachPhotosReady, isFictional]);
 
   if (quick.fullPageView) return quick.fullPageView;
 

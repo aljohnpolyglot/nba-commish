@@ -83,6 +83,7 @@ interface TeamHistoryViewProps {
 
 export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }) => {
   const { state } = useGame();
+  const isFictional = state.leagueType === 'fictional';
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(() => {
     const t = _pendingTeamHistoryTid;
     _pendingTeamHistoryTid = null;
@@ -112,9 +113,13 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
   const [portraitMap, setPortraitMap] = useState<Map<string, string>>(new Map());
 
   const NBA_HUB_TEAM: any = {
-    id: NBA_HUB_ID, name: 'Association', region: 'National Basketball', abbrev: 'NBA',
-    colors: ['#1D428A', '#C8102E'], conference: 'League',
-    logoUrl: 'https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg',
+    id: NBA_HUB_ID,
+    name: isFictional ? 'Association' : 'Association',
+    region: isFictional ? 'Fictional Basketball' : 'National Basketball',
+    abbrev: isFictional ? 'LGE' : 'NBA',
+    colors: ['#1D428A', '#C8102E'],
+    conference: 'League',
+    logoUrl: isFictional ? undefined : 'https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg',
   };
   const selectedTeam = selectedTeamId === NBA_HUB_ID
     ? NBA_HUB_TEAM
@@ -173,6 +178,15 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
   // ── Load external data when team changes ──────────────────────────────────
   useEffect(() => {
     if (!selectedTeam) return;
+    if (isFictional) {
+      setRegularRecords([]);
+      setPlayoffRecords([]);
+      setCareerLeaders([]);
+      setAverageLeaders([]);
+      setExternalError(null);
+      setExternalLoading(false);
+      return;
+    }
     let cancelled = false;
     setExternalLoading(true);
     setExternalError(null);
@@ -194,7 +208,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
       .catch(e => { if (!cancelled) setExternalError(String(e)); })
       .finally(() => { if (!cancelled) setExternalLoading(false); });
     return () => { cancelled = true; };
-  }, [selectedTeamId]);
+  }, [selectedTeamId, selectedTeam, isFictional]);
 
   // ── Top players scoring ───────────────────────────────────────────────────
   const topPlayers = useMemo(() => {
@@ -288,14 +302,15 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
     const champSeasons = new Set(champAwards.map((a: any) => Number(a.season)));
     const ruSeasons = new Set(ruAwards.map((a: any) => Number(a.season)));
 
-    // Wikipedia supplement
-    for (const [yr, brefData] of getAllCachedSeasons().entries()) {
-      const cl = (brefData.champion?.name ?? '').toLowerCase();
-      const rl = (brefData.runnerUp?.name ?? '').toLowerCase();
-      const tl = (selectedTeam.name ?? '').toLowerCase();
-      const fl = `${(selectedTeam as any).region ?? ''} ${selectedTeam.name ?? ''}`.toLowerCase().trim();
-      if (cl && (cl.includes(tl) || fl.includes(cl))) { champSeasons.add(yr); seasonsSet.add(yr); }
-      if (rl && (rl.includes(tl) || fl.includes(rl))) { ruSeasons.add(yr); seasonsSet.add(yr); }
+    if (!isFictional) {
+      for (const [yr, brefData] of getAllCachedSeasons().entries()) {
+        const cl = (brefData.champion?.name ?? '').toLowerCase();
+        const rl = (brefData.runnerUp?.name ?? '').toLowerCase();
+        const tl = (selectedTeam.name ?? '').toLowerCase();
+        const fl = `${(selectedTeam as any).region ?? ''} ${selectedTeam.name ?? ''}`.toLowerCase().trim();
+        if (cl && (cl.includes(tl) || fl.includes(cl))) { champSeasons.add(yr); seasonsSet.add(yr); }
+        if (rl && (rl.includes(tl) || fl.includes(rl))) { ruSeasons.add(yr); seasonsSet.add(yr); }
+      }
     }
 
     const currentSeason = state.leagueStats?.year ?? new Date(state.date).getFullYear();
@@ -320,7 +335,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
           isChamp, isRU, isCurrent,
         };
       });
-  }, [selectedTeamId, state.historicalAwards, state.players, state.leagueStats, state.date]);
+  }, [selectedTeamId, state.historicalAwards, state.players, state.leagueStats, state.date, isFictional]);
 
   // ── Season summary stats ──────────────────────────────────────────────────
   const summaryStats = useMemo(() => {
@@ -441,7 +456,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
               />
             </div>
           </div>
-          {/* NBA Hub featured card */}
+          {/* League hub featured card */}
           <motion.button
             whileHover={{ y: -3, scale: 1.005 }}
             whileTap={{ scale: 0.98 }}
@@ -449,10 +464,16 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
             className="w-full mb-6 bg-gradient-to-r from-[#1D428A]/20 to-[#C8102E]/20 border border-[#1D428A]/40 rounded-2xl p-5 text-left overflow-hidden relative group"
           >
             <div className="flex items-center gap-4">
-              <img src="https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg" alt="NBA" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
+              {isFictional ? (
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#1D428A]/30 to-[#C8102E]/30 border border-zinc-700 flex items-center justify-center">
+                  <Trophy className="w-6 h-6 text-zinc-200" />
+                </div>
+              ) : (
+                <img src="https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg" alt="NBA" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
+              )}
               <div>
                 <div className="text-xs font-black uppercase tracking-tight">
-                  <span className="text-zinc-400">National Basketball </span>
+                  <span className="text-zinc-400">{isFictional ? 'Fictional Basketball ' : 'National Basketball '}</span>
                   <span className="text-[#C8102E]">Association</span>
                 </div>
                 <div className="text-[10px] text-zinc-500 font-mono uppercase mt-0.5">League-Wide Records & All-Time Leaders</div>
@@ -917,7 +938,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
                               <span className="text-xs text-zinc-600 italic">Season ongoing</span>
                             ) : row.isChamp ? (
                               <span className="flex items-center gap-1.5 text-xs font-black" style={{ color: accent }}>
-                                <Trophy className="w-3 h-3" /> NBA Champions
+                                <Trophy className="w-3 h-3" /> {isFictional ? 'League Champions' : 'NBA Champions'}
                               </span>
                             ) : row.isRU ? (
                               <span className="text-xs font-semibold text-zinc-400 flex items-center gap-1">

@@ -77,6 +77,7 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   // Default OFF — 2026 NBA tournament format uses 4×3=12 min total games, not 4×12 league-mirror.
   allStarMirrorLeagueRules: false,
   allStarGameFormat: 'timed',
+  allStarGameTargetScore: 40,
   allStarQuarterLength: 3,
   allStarNumQuarters: 4,
   allStarDunkContest: true,
@@ -378,7 +379,7 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   heaveRuleEnabled: false,
   halfCourtShotValue: 3,
   gameFormat: 'timed',
-  gameTargetScore: 0,
+  gameTargetScore: 100,
   clutchTimeoutLimit: 2,
   gamesPerSeason: 82,
   divisionGames: 16,

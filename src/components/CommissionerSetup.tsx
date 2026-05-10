@@ -6,10 +6,11 @@ import { INITIAL_LEAGUE_STATS } from '../constants';
 import { getSeasonSimStartDate, toISODateString } from '../utils/dateUtils';
 import { prewarmRoster } from '../services/rosterService';
 import { generateFictionalLeague } from '../services/fictionalLeagueGenerator';
+import { fetchEndesaRoster } from '../services/externalRosterService';
 import { getLeagueLabels } from '../utils/leagueLabels';
-import type { LeagueType } from './setup/LeagueTypeSelector';
+import type { LeagueType, ModdedLeagueBase, EuropeMarket } from './setup/LeagueTypeSelector';
 import { Home as FranchisePicker } from './central/view/TeamOffice/pages/Home';
-import type { NBAPlayer, NBATeam } from '../types';
+import type { NBAPlayer, NBATeam, NonNBATeam } from '../types';
 
 const SIM_START_DATE = toISODateString(getSeasonSimStartDate(INITIAL_LEAGUE_STATS.year)); // e.g. '2025-08-06'
 import { StartDateTimeline } from './setup/StartDateTimeline';
@@ -17,6 +18,8 @@ import { JumpReviewScreen } from './setup/JumpReviewScreen';
 
 interface CommissionerSetupProps {
   leagueType: LeagueType;
+  moddedLeagueBase?: ModdedLeagueBase;
+  europeMarket?: EuropeMarket;
   onStart: (payload: {
     name: string;
     startScenario: string;
@@ -27,6 +30,8 @@ interface CommissionerSetupProps {
     userTeamId?: number;
     assistantGM?: boolean;
     leagueType?: LeagueType;
+    moddedLeagueBase?: ModdedLeagueBase;
+    europeMarket?: EuropeMarket;
     fictionalLeagueSeed?: number;
   }) => void;
   onBack: () => void;
@@ -34,7 +39,7 @@ interface CommissionerSetupProps {
 
 type Step = 'mode' | 'name' | 'franchise' | 'timeline' | 'review';
 
-export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType, onStart, onBack }) => {
+export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType, moddedLeagueBase, europeMarket, onStart, onBack }) => {
   const [step, setStep] = useState<Step>('mode');
   const [gameMode, setGameMode] = useState<'commissioner' | 'gm'>('commissioner');
   // Keep undefined for GM mode — the user picks a team post-init via TeamOffice. No more "everyone is Atlanta".
@@ -46,12 +51,23 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
   const [fictionalLeagueSeed] = useState(() => Math.floor(Math.random() * 2_147_483_647));
   const labels = getLeagueLabels(leagueType);
   const isFictional = leagueType === 'fictional';
+  const isSpainEuropeSetup = leagueType === 'modded' && moddedLeagueBase === 'europe' && europeMarket === 'spain';
 
   // Roster source depends on leagueType: modded fetches the community gist (real NBA),
   // fictional builds the 30 generated teams locally without any network call.
   const [rosterTeams, setRosterTeams] = useState<NBATeam[]>([]);
   const [rosterPlayers, setRosterPlayers] = useState<NBAPlayer[]>([]);
   const [rosterLoading, setRosterLoading] = useState(true);
+  const highlightedSpainTeamIds = React.useMemo(() => {
+    if (!isSpainEuropeSetup) return [];
+    const euroleagueClubHints = ['real madrid', 'barcelona', 'baskonia', 'valencia', 'gran canaria'];
+    return rosterTeams
+      .filter((team: any) => {
+        const full = `${team.region ?? ''} ${team.name ?? ''}`.toLowerCase();
+        return euroleagueClubHints.some(hint => full.includes(hint));
+      })
+      .map((team: any) => team.id);
+  }, [isSpainEuropeSetup, rosterTeams]);
   useEffect(() => {
     let cancelled = false;
     if (leagueType === 'fictional') {
@@ -61,6 +77,26 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
       setRosterLoading(false);
       return;
     }
+    if (isSpainEuropeSetup) {
+      fetchEndesaRoster().then(({ teams, players }) => {
+        if (cancelled) return;
+        const mappedTeams = teams.map((team: NonNBATeam) => ({
+          id: team.tid,
+          tid: team.tid,
+          region: team.region,
+          name: team.name,
+          abbrev: team.abbrev,
+          colors: team.colors,
+          logoUrl: team.imgURL,
+          wins: 0,
+          losses: 0,
+        })) as unknown as NBATeam[];
+        setRosterTeams(mappedTeams);
+        setRosterPlayers(players);
+        setRosterLoading(false);
+      }).catch(() => { if (!cancelled) setRosterLoading(false); });
+      return;
+    }
     prewarmRoster().then(data => {
       if (cancelled) return;
       setRosterTeams(data.teams);
@@ -68,7 +104,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
       setRosterLoading(false);
     }).catch(() => { if (!cancelled) setRosterLoading(false); });
     return () => { cancelled = true; };
-  }, [fictionalLeagueSeed, leagueType]);
+  }, [fictionalLeagueSeed, isSpainEuropeSetup, leagueType]);
 
   const updateSetting = <K extends keyof typeof settings>(key: K, value: typeof settings[K]) => {
     const updated = { ...settings, [key]: value };
@@ -100,6 +136,8 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
       userTeamId: gameMode === 'gm' ? userTeamId : undefined,
       assistantGM: gameMode === 'gm' ? (assistantGM ?? false) : false,
       leagueType,
+      moddedLeagueBase: leagueType === 'modded' ? moddedLeagueBase : undefined,
+      europeMarket: leagueType === 'modded' ? europeMarket : undefined,
       fictionalLeagueSeed: isFictional ? fictionalLeagueSeed : undefined,
     });
   };
@@ -141,7 +179,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 w-full max-w-2xl">
           <div className="text-center mb-10">
             <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white mb-3">Choose Your Role</h1>
-            <p className="text-slate-400 text-sm">How do you want to experience the {isFictional ? 'league' : 'NBA'}?</p>
+            <p className="text-slate-400 text-sm">How do you want to experience the {isFictional ? 'league' : moddedLeagueBase === 'europe' ? 'European game' : 'NBA'}?</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Commissioner Card */}
@@ -181,10 +219,13 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
                 <h3 className="text-xl font-black text-white uppercase tracking-tight">General Manager</h3>
               </div>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Manage <span className="text-white font-bold">one team</span>. Build your roster through trades, free agency, and the draft. Compete for a championship.
+                Manage <span className="text-white font-bold">one team</span>. Build your roster through trades and free agency{moddedLeagueBase === 'europe' ? '' : ', and the draft'}. Compete for a championship.
               </p>
               <div className="mt-4 flex flex-wrap gap-1.5">
-                {['Trades', 'Free Agency', 'Draft', 'Roster', 'Your Team'].map(tag => (
+                {(moddedLeagueBase === 'europe'
+                  ? ['Trades', 'Free Agency', 'No Draft', 'Roster', 'Your Team']
+                  : ['Trades', 'Free Agency', 'Draft', 'Roster', 'Your Team']
+                ).map(tag => (
                   <span key={tag} className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded">{tag}</span>
                 ))}
               </div>
@@ -217,6 +258,10 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
               selectedTid={userTeamId ?? null}
               teams={rosterTeams}
               players={rosterPlayers}
+              title={isSpainEuropeSetup ? 'Pick Your Endesa Club' : undefined}
+              subtitle={isSpainEuropeSetup ? 'Spain setup path. Real Madrid and Barcelona remain selectable here, with Euroleague sister-league support reserved for later phases.' : undefined}
+              highlightedTeamIds={isSpainEuropeSetup ? highlightedSpainTeamIds : undefined}
+              highlightedLabel={isSpainEuropeSetup ? 'Euroleague' : undefined}
               onSelectTeam={(teamId) => {
                 setUserTeamId(teamId);
                 setStep('timeline');
@@ -286,7 +331,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
             </h1>
             <p className="text-slate-400 text-lg">
               {gameMode === 'gm'
-                ? 'A franchise is about to bet five years on you.'
+                ? isSpainEuropeSetup ? 'A Spanish club is about to bet five years on you.' : 'A franchise is about to bet five years on you.'
                 : isFictional ? 'A new league is waiting for your blueprint.' : 'The league is waiting for your leadership.'}
             </p>
           </div>
@@ -307,7 +352,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
                   onChange={e => setName(e.target.value)}
                   maxLength={20}
                   className="block w-full pl-12 pr-4 py-4 bg-slate-900/50 border border-slate-800 rounded-2xl text-white placeholder-slate-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 focus:bg-slate-900 transition-all outline-none font-medium text-lg"
-                  placeholder={isFictional ? 'e.g. Avery Stone' : 'e.g. Adam Silver'}
+                  placeholder={isFictional ? 'e.g. Avery Stone' : isSpainEuropeSetup ? 'e.g. Juan Navarro' : 'e.g. Adam Silver'}
                   autoFocus
                   autoComplete="off"
                 />

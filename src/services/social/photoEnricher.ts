@@ -271,11 +271,14 @@ function isSubjectOfCaption(playerName: string, caption: string): boolean {
  *
  * @param post        The social post to enrich
  * @param gameLookup  Map from gameId → GamePhotoInfo (built from boxScores + teams)
+ * @param leagueType  Skip enrichment for fictional leagues (no real Imagn photos exist)
  */
 export async function enrichPostWithPhoto(
     post: SocialPost,
-    gameLookup: Map<number, GamePhotoInfo>
+    gameLookup: Map<number, GamePhotoInfo>,
+    leagueType?: string
 ): Promise<string | null> {
+    if (leagueType === 'fictional') return null;
     // Already resolved (including null = "tried and found nothing")
     if (resolvedPosts.has(post.id)) return resolvedPosts.get(post.id)!;
 
@@ -443,8 +446,10 @@ export async function enrichPostWithPhoto(
 
 export async function enrichNewsWithPhoto(
     item: { id: string; headline: string; content: string; image?: string; playerPortraitUrl?: string },
-    gameLookup: Map<number, GamePhotoInfo>
+    gameLookup: Map<number, GamePhotoInfo>,
+    leagueType?: string
 ): Promise<string | null> {
+    if (leagueType === 'fictional') return item.playerPortraitUrl || null;
     // Already resolved (including null = "tried and found nothing")
     if (resolvedPosts.has(item.id)) return resolvedPosts.get(item.id)!;
     // Static image (team logo) with no portrait override → use immediately, no Imagn needed

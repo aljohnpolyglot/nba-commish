@@ -7,8 +7,6 @@ interface DraftLotterySettingsProps {
 }
 
 // Build grouped options from the single source of truth in lotteryPresets.ts.
-// Removed options (no backing preset yet) are commented out below for reference:
-// strict, goldPlan, bracket, ladder, tankBowl, wheel, auction, flat, lateSurge, combine, social, marble, no_draft
 
 const GROUPED = Object.entries(LOTTERY_PRESETS).reduce<Record<string, { key: string; label: string }[]>>(
     (acc, [key, preset]) => {
@@ -18,6 +16,10 @@ const GROUPED = Object.entries(LOTTERY_PRESETS).reduce<Record<string, { key: str
     },
     {},
 );
+
+const SPECIAL_OPTIONS = [
+    { key: 'no_draft', label: 'No Draft - transfer/signing league' },
+] as const;
 
 export const DraftLotterySettings: React.FC<DraftLotterySettingsProps> = ({ draftType, setDraftType }) => {
     return (
@@ -35,9 +37,14 @@ export const DraftLotterySettings: React.FC<DraftLotterySettingsProps> = ({ draf
                         ))}
                     </optgroup>
                 ))}
+                <optgroup label="Special">
+                    {SPECIAL_OPTIONS.map(({ key, label }) => (
+                        <option key={key} value={key}>{label}</option>
+                    ))}
+                </optgroup>
             </select>
             <p className="text-[10px] text-slate-500 font-medium mt-1">
-                Select the mechanism used to determine the draft order for non-playoff teams.
+                Select the mechanism used to determine the draft order for non-playoff teams, or disable the draft entirely for transfer-based leagues.
             </p>
         </div>
     );

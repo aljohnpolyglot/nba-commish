@@ -11,7 +11,7 @@ import { REFS } from '../central/view/LeagueOfficeSearcher';
 import { RefereePickerModal } from './RefereePickerModal';
 import { RigConfirmModal } from './RigConfirmModal';
 import { fetchRefereeData, getRefereePhoto } from '../../data/photos';
-import { pickBroadcasterForGame, BROADCASTER_NAMES, BROADCASTER_LOGOS } from '../../utils/broadcastingUtils';
+import { pickBroadcasterForGame, BROADCASTER_NAMES, BROADCASTER_LOGOS, getBroadcasterDisplayName, FICTIONAL_BROADCASTER_BADGE } from '../../utils/broadcastingUtils';
 import { getGameplan } from '../../store/gameplanStore';
 
 interface SelectedRef {
@@ -106,9 +106,14 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
   const awayOvr = awayTeam.id < 0 ? 85 : calculateTeamStrength(awayTeam.id, players);
 
   // Broadcaster + tipoff time — prefer pre-attached data on game, compute as fallback
+  const isFictional = state.leagueType === 'fictional';
   const gameBroadcastInfo = (() => {
+    const bcId = game.broadcaster || '';
     if (game.broadcasterName && game.tipoffTime) {
-      return { broadcasterName: game.broadcasterName, tipoffTime: game.tipoffTime };
+      return {
+        broadcasterName: getBroadcasterDisplayName(bcId || game.broadcasterName, isFictional) || game.broadcasterName,
+        tipoffTime: game.tipoffTime,
+      };
     }
     const mediaRights = state.leagueStats?.mediaRights;
     if (mediaRights) {
@@ -119,9 +124,9 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
         allTeams.find((t: NBATeam) => t.id === game.awayTid),
         allTeams,
       );
-      return { broadcasterName, tipoffTime };
+      return { broadcasterName: getBroadcasterDisplayName(bcId, isFictional) || broadcasterName, tipoffTime };
     }
-    return { broadcasterName: 'NBA League Pass', tipoffTime: '7:30 PM ET' };
+    return { broadcasterName: isFictional ? 'League Pass' : 'League Pass', tipoffTime: '7:30 PM ET' };
   })();
 
   // Rig state
@@ -278,7 +283,14 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
                   const logoUrl = BROADCASTER_LOGOS[bcId];
                   return (
                     <div className="mt-2 flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                      {logoUrl ? (
+                      {isFictional ? (() => {
+                        const badge = FICTIONAL_BROADCASTER_BADGE[bcId];
+                        return badge ? (
+                          <div className={`w-7 h-7 ${badge.bg} ${badge.shape} flex items-center justify-center overflow-hidden shrink-0`}>
+                            <span className={`${badge.font} ${badge.text} leading-none select-none ${badge.initials.length <= 2 ? 'text-[9px]' : 'text-[7px]'}`}>{badge.initials}</span>
+                          </div>
+                        ) : <Tv size={13} className="text-slate-400 shrink-0" />;
+                      })() : logoUrl ? (
                         <div className="w-7 h-7 bg-white rounded-md p-1 flex items-center justify-center overflow-hidden shrink-0">
                           <img
                             src={logoUrl}

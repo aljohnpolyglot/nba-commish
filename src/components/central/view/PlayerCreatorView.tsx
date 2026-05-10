@@ -598,7 +598,7 @@ export const PlayerCreatorView: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <Field label="Destination">
                       <select className={selectClass} value={form.assignment} onChange={e => handleAssignmentChange(e.target.value as any)}>
-                        <option value="nba">NBA Team</option>
+                        <option value="nba">League Team</option>
                         <option value="external">External Team</option>
                         <option value="freeAgent">Free Agent</option>
                         <option value="draftProspect">Draft Prospect</option>
@@ -606,7 +606,7 @@ export const PlayerCreatorView: React.FC = () => {
                       </select>
                     </Field>
                     {form.assignment === 'nba' && (
-                      <Field label="NBA Team">
+                      <Field label="League Team">
                         <select className={selectClass} value={form.tid} onChange={e => set('tid', Number(e.target.value))}>
                           {state.teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>

@@ -18,6 +18,7 @@ import { setActiveSaveId as setCoachSystemSaveId } from './coachSystemStore';
 import { setActiveSaveId as setDefenseGameplanSaveId } from './defenseGameplanStore';
 import { setActiveSaveId as setMatchupAssignmentsSaveId } from './matchupAssignmentsStore';
 import { setActiveSaveId as setDefenderDetailSaveId } from './defenderDetailStore';
+import { setRefereeData } from '../data/photos/referees';
 import { setActiveSaveId as setRivalGameplanSaveId } from './rivalGameplanStore';
 import { enforceExternalMinRoster, repairGeneratedExternalPlayer } from '../services/externalLeagueSustainer';
 import { applyCupAwardsToPlayers } from '../services/nbaCup/awards';
@@ -26,12 +27,15 @@ import { generateAIBids, isPlausibleActiveMarket, MAX_FA_MARKET_DECISION_WINDOW_
 import { setAssistantGMActive } from '../services/assistantGMFlag';
 import { getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd, getDraftDate, getTrainingCampDate, parseGameDate, toISODateString } from '../utils/dateUtils';
 import { clearWaiverMarkers, hasLiveContractAfterWaive, stripLiveContractAfterWaive } from '../utils/contractCleanup';
+import { repairBirdRightsForLoadedPlayer } from '../utils/playerBirdRights';
 import {
   defaultOffseasonChecklist,
   initialPreseasonChecklist,
   setRowStatus,
   OFFSEASON_ROW_TAB,
   getOffseasonState,
+  computeUpcomingSeasonYear,
+  isNoDraftLeague,
 } from '../services/offseason/offseasonState';
 import type { OffseasonChecklist, OffseasonChecklistRow } from '../types';
 
@@ -160,8 +164,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     // the userManuallyExited flag is ignored, because exiting the initial
     // Aug preseason should not suppress the post-Finals offseason that
     // arrives months later in the same calendar year.
-    const lotteryResolved = !!(state.draftLotteryResult && state.draftLotteryResult.length > 0);
-    const draftNotDone = !state.draftComplete;
+    const noDraftLeague = isNoDraftLeague(state.leagueStats);
+    const lotteryResolved = noDraftLeague || !!(state.draftLotteryResult && state.draftLotteryResult.length > 0);
+    const draftNotDone = !noDraftLeague && !state.draftComplete;
     const isRealOffseasonNow = lotteryResolved && draftNotDone;
     // Hard guarantee: if calendar is on/past dynamic draft date AND draft
     // not done → force the gate. Catches edge cases where lottery state is
@@ -184,15 +189,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       const draftSeasonYear = cMonth >= 7 ? cYear : lsYear;
       const draftStr = toISODateString(getDraftDate(draftSeasonYear, lsAny));
       const todayStr = normalizeDate(state.date);
-      const upcomingSeasonYear = cMonth >= 7 ? lsYear : lsYear + 1;
+      const upcomingSeasonYear = computeUpcomingSeasonYear(cMonth, cYear, lsYear);
       const campStr = toISODateString(getTrainingCampDate(upcomingSeasonYear, lsAny));
       pastTrainingCampOpen = !!todayStr && !!campStr && todayStr >= campStr;
-      forceGate = !!todayStr && !!draftStr && todayStr >= draftStr && !state.draftComplete && !pastTrainingCampOpen;
+      forceGate = !noDraftLeague && !!todayStr && !!draftStr && todayStr >= draftStr && !state.draftComplete && !pastTrainingCampOpen;
     } catch {}
     if (inOffseason && !hasChecklist && (!userManuallyExited || isRealOffseasonNow || forceGate)) {
       const checklist = isInitialFirstSeason && !isRealOffseasonNow
         ? initialPreseasonChecklist()
-        : defaultOffseasonChecklist();
+        : defaultOffseasonChecklist(state.leagueStats);
       setState(prev => ({ ...prev, offseasonChecklist: checklist }));
     } else if (inOffseason && hasChecklist && pastTrainingCampOpen && !isRealOffseasonNow) {
       // Stale-save recovery: checklist exists in the camp window with
@@ -212,6 +217,19 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         for (const r of preCampRows) {
           if (isUnresolved((next as any)[r])) (next as any)[r] = 'skipped';
         }
+        setState(prev => ({ ...prev, offseasonChecklist: next }));
+      }
+    } else if (inOffseason && hasChecklist && noDraftLeague) {
+      const c = state.offseasonChecklist!;
+      const next: OffseasonChecklist = { ...c };
+      let changed = false;
+      for (const row of ['draftLottery', 'draft', 'rookieContracts'] as OffseasonChecklistRow[]) {
+        if (next[row] !== 'skipped') {
+          next[row] = 'skipped';
+          changed = true;
+        }
+      }
+      if (changed) {
         setState(prev => ({ ...prev, offseasonChecklist: next }));
       }
     } else if (inOffseason && hasChecklist && isRealOffseasonNow) {
@@ -236,7 +254,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       if (hasInitialModeArtifacts || campWronglyDone) {
         // Preserve genuine progress (draftLottery=done from auto-sync,
         // user-completed rows in this cycle) but reset stale flags.
-        const fresh = defaultOffseasonChecklist();
+        const fresh = defaultOffseasonChecklist(state.leagueStats);
         setState(prev => ({
           ...prev,
           offseasonChecklist: {
@@ -268,7 +286,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         pendingOfferDecisions: [],
       }));
     }
-  }, [state.isDataLoaded, state.gameMode, state.date, state.offseasonChecklist, state.playoffs, state.draftComplete, state.draftLotteryResult, state.offseasonExitedYear, state.leagueStats?.year, state.seasonHistory]);
+  }, [state.isDataLoaded, state.gameMode, state.date, state.offseasonChecklist, state.playoffs, state.draftComplete, state.draftLotteryResult, state.offseasonExitedYear, state.leagueStats?.year, state.leagueStats?.draftType, state.seasonHistory]);
 
 const actions = useGameActions(setState, () => stateRef.current);
 
@@ -863,9 +881,10 @@ const actions = useGameActions(setState, () => stateRef.current);
         ...loaded,
         players: loadedPlayers,
       } as any, currentSeasonYear);
-      const finalPlayers = externalRosterRepairs.length > 0
+      const finalPlayers = (externalRosterRepairs.length > 0
         ? [...loadedPlayers, ...externalRosterRepairs]
-        : loadedPlayers;
+        : loadedPlayers
+      ).map((p: any) => repairBirdRightsForLoadedPlayer(p));
 
       // Backfill Cup awards from all historical cups + current cup.
       // Needed because the ID-mismatch bug (numeric internalId) meant real players
@@ -890,6 +909,16 @@ const actions = useGameActions(setState, () => stateRef.current);
       const ls: any = loaded.leagueStats ?? {};
       const migratedLeagueStats = { ...ls };
       let staleRulesMigrated = false;
+      if (migratedLeagueStats.allStarGameTargetScore == null) {
+        migratedLeagueStats.allStarGameTargetScore =
+          ls.allStarGameFormat === 'target_score'
+            ? Math.max(40, ls.allStarOvertimeTargetPoints ?? 40)
+            : 40;
+        staleRulesMigrated = true;
+      }
+      if (migratedLeagueStats.gameTargetScore == null || migratedLeagueStats.gameTargetScore <= 0) {
+        migratedLeagueStats.gameTargetScore = 100;
+      }
       if (ls.allStarMirrorLeagueRules === true && ls.allStarQuarterLength === 12) {
         migratedLeagueStats.allStarMirrorLeagueRules = false;
         migratedLeagueStats.allStarQuarterLength = 3;
@@ -910,6 +939,22 @@ const actions = useGameActions(setState, () => stateRef.current);
       if (staleRulesMigrated) {
         console.log('[LOAD_GAME] Migrated stale exhibition rules to tournament defaults.');
       }
+
+      const healedSchedule = (loaded.schedule ?? []).map((g: any) => {
+        if (g?.isRisingStars && g.gid === 91001) return { ...g, gameFormat: 'target_score', targetScore: g.targetScore ?? 40 };
+        if (g?.isRisingStars && g.gid === 91002) return { ...g, gameFormat: 'target_score', targetScore: g.targetScore ?? 40 };
+        if (g?.isRisingStars && g.gid === 91099) return { ...g, gameFormat: 'target_score', targetScore: g.targetScore ?? 25 };
+        if (g?.isAllStar && migratedLeagueStats.allStarGameFormat && migratedLeagueStats.allStarGameFormat !== 'timed') {
+          return {
+            ...g,
+            gameFormat: migratedLeagueStats.allStarGameFormat,
+            targetScore: migratedLeagueStats.allStarGameFormat === 'target_score'
+              ? (g.targetScore ?? migratedLeagueStats.allStarGameTargetScore ?? 40)
+              : g.targetScore,
+          };
+        }
+        return g;
+      });
 
       // Strip rounding-noise dead-money entries from existing saves: any year-row
       // below $50K, plus any entry whose total drops below $50K after the cleanup.
@@ -940,6 +985,7 @@ const actions = useGameActions(setState, () => stateRef.current);
         ...initialState,
         ...loaded,
         leagueStats: migratedLeagueStats,
+        schedule: healedSchedule,
         players: backfilledPlayers,
         teams: teamsWithCleanDeadMoney as any,
       } as GameState;
@@ -1057,14 +1103,60 @@ const actions = useGameActions(setState, () => stateRef.current);
         console.warn('[LOAD_GAME] AI auto-setup failed', e);
       }
 
+      // Restore fictional refs into the module-level cache so getAllReferees()
+      // returns them without hitting the gist (which holds real NBA names).
+      if (loaded.leagueType === 'fictional' && loaded.staff?.referees?.length) {
+        setRefereeData(loaded.staff.referees);
+        console.log(`[LOAD_GAME] Restored ${loaded.staff.referees.length} fictional referees.`);
+      }
+
+      // Heal fictional-league saves that still carry real NBA handles.
+      const NBA_TO_FICTIONAL_HANDLES: Record<string, string> = {
+        'nba':            'TheLeagueOfficial',
+        'NBA':            'TheLeagueOfficial',
+        'wojespn':        'KowalskiESPN',
+        'ShamsCharania':  'TariqHassan',
+        'shamscharania':  'TariqHassan',
+      };
+      const healedFollowedHandles =
+        loaded.leagueType === 'fictional' && Array.isArray(loaded.followedHandles)
+          ? loaded.followedHandles.map((h: string) => NBA_TO_FICTIONAL_HANDLES[h] ?? h)
+          : loaded.followedHandles;
+
+      // Self-heal legacy saves toggled to no_draft mid-cycle: the persisted
+      // checklist may still hold pending/in-progress draft rows from before
+      // the toggle. Flip them to 'skipped' so the offseason completion gate
+      // can close — otherwise the GM is permanently stuck on phantom tasks.
+      const persistedChecklist = loaded.offseasonChecklist as OffseasonChecklist | undefined;
+      let healedOffseasonChecklist = persistedChecklist;
+      if (persistedChecklist && isNoDraftLeague(loaded.leagueStats)) {
+        const isUnfinished = (s: string | undefined) => s === 'pending' || s === 'in-progress';
+        const needsHeal =
+          isUnfinished(persistedChecklist.draftLottery) ||
+          isUnfinished(persistedChecklist.draft) ||
+          isUnfinished(persistedChecklist.rookieContracts);
+        if (needsHeal) {
+          healedOffseasonChecklist = {
+            ...persistedChecklist,
+            draftLottery: 'skipped',
+            draft: 'skipped',
+            rookieContracts: 'skipped',
+          };
+          console.log('[LOAD_GAME] Healed legacy draft rows → skipped (no_draft active).');
+        }
+      }
+
       setState({
         ...initialState,
         ...loaded,
         leagueStats: migratedLeagueStats,
+        schedule: healedSchedule,
         players: playersWithAISetup,
         teams: teamsWithFreshTraining as any,
         history: cleanedHistory,
         faBidding: { markets: cleanedFAMarkets },
+        followedHandles: healedFollowedHandles ?? initialState.followedHandles,
+        offseasonChecklist: healedOffseasonChecklist,
         isProcessing: false
       });
 
@@ -1125,9 +1217,173 @@ const actions = useGameActions(setState, () => stateRef.current);
       // Called once when offseason starts (or by debug tools to retry a phase).
       setState(prev => ({
         ...prev,
-        offseasonChecklist: defaultOffseasonChecklist(),
+        offseasonChecklist: defaultOffseasonChecklist(prev.leagueStats),
         faTagCounter: undefined,
         pendingOfferDecisions: [],
+      }));
+      return;
+    }
+
+    // ── Expansion Draft (ZenGM-style, Phase 2 plumbing) ───────────────────
+    // SCHEDULE_EXPANSION speichert das Setup. Wenn year === current ls.year,
+    // wird offseasonChecklist.expansionDraft sofort auf 'pending' gesetzt;
+    // sonst bleibt der Row 'skipped' bis das Jahr eintrifft (geprüft beim
+    // Offseason-Init in einem späteren Phase-4-Hook).
+    if (action.type === 'SCHEDULE_EXPANSION') {
+      const payload = action.payload as {
+        teams: any[];
+        realignment: Record<number, { conference: 'East' | 'West'; cid: 0 | 1; did: number }>;
+        settings: { perTeamLimit: number; maxDraftedPerTeam: number; picksPerExpansionTeam: number };
+        scheduleYear: number;
+      };
+      setState(prev => {
+        const currentYear = prev.leagueStats?.year ?? new Date().getFullYear();
+        const isThisYear = payload.scheduleYear === currentYear;
+        return {
+          ...prev,
+          expansionSchedule: {
+            year: payload.scheduleYear,
+            teams: payload.teams,
+            realignment: payload.realignment,
+          },
+          expansionProtectionSettings: payload.settings,
+          // Aktiviere Row sofort, wenn schedule = aktuelles Jahr
+          offseasonChecklist: isThisYear && prev.offseasonChecklist
+            ? { ...prev.offseasonChecklist, expansionDraft: 'pending' }
+            : prev.offseasonChecklist,
+        };
+      });
+      return;
+    }
+
+    if (action.type === 'CLEAR_EXPANSION_SCHEDULE') {
+      setState(prev => ({
+        ...prev,
+        expansionSchedule: undefined,
+        expansionProtectionSettings: undefined,
+        offseasonChecklist: prev.offseasonChecklist
+          ? { ...prev.offseasonChecklist, expansionDraft: 'skipped' }
+          : prev.offseasonChecklist,
+      }));
+      return;
+    }
+
+    if (action.type === 'SET_EXPANSION_PROTECTIONS') {
+      const payload = action.payload as { protections: Record<number, string[]> };
+      setState(prev => {
+        // Eligible-Pool = alle Roster-Spieler MINUS protected (vereinigt über alle Teams)
+        const protectedAll = new Set(Object.values(payload.protections).flat());
+        const eligible = (prev.players ?? [])
+          .filter((p: any) => p.tid >= 0 && !protectedAll.has(p.internalId))
+          .map((p: any) => p.internalId);
+        return {
+          ...prev,
+          expansionDraftProtections: payload.protections,
+          expansionEligiblePlayers: eligible,
+        };
+      });
+      return;
+    }
+
+    // ── Expansion Draft — apply realignment + add new franchises ──────────
+    // Wendet das Realignment-Mapping auf state.teams an UND pusht die neuen
+    // Expansion-Teams (aus expansionSchedule.teams) mit auto-incrementierten
+    // tids. Setzt state.expansionTeamIds für die folgende Draft-Phase.
+    if (action.type === 'APPLY_EXPANSION_REALIGNMENT') {
+      setState(prev => {
+        const schedule = prev.expansionSchedule;
+        if (!schedule) return prev;
+
+        const nextTid = (prev.teams ?? []).reduce((max: number, t: any) => Math.max(max, t.id ?? 0), -1) + 1;
+
+        // Realign bestehende Teams
+        const realignedTeams = (prev.teams ?? []).map((t: any) => {
+          const move = schedule.realignment?.[t.id];
+          if (!move) return t;
+          return { ...t, conference: move.conference, cid: move.cid, did: move.did };
+        });
+
+        // Append Expansion-Teams als full NBATeam
+        const newTeams: any[] = [];
+        const newTids: number[] = [];
+        schedule.teams.forEach((spec, i) => {
+          const tid = nextTid + i;
+          newTids.push(tid);
+          newTeams.push({
+            id: tid,
+            tid,
+            name: spec.name,
+            abbrev: spec.abbrev,
+            region: spec.region,
+            conference: spec.conference,
+            cid: spec.cid,
+            did: spec.did,
+            wins: 0,
+            losses: 0,
+            strength: 50,
+            pop: spec.pop,
+            colors: spec.colors,
+            logoUrl: spec.imgURL,
+          });
+        });
+
+        return {
+          ...prev,
+          teams: [...realignedTeams, ...newTeams],
+          expansionTeamIds: newTids,
+        };
+      });
+      return;
+    }
+
+    // ── Expansion Draft — single pick (Vertrag wandert mit) ───────────────
+    // Im Gegensatz zum Rookie-Draft wird KEIN neuer Vertrag gesetzt — der
+    // Spieler behält contract/contractYears. Nur tid wechselt + Roster-Move-
+    // Transaction wird angehängt. Drop aus expansionEligiblePlayers.
+    if (action.type === 'EXPANSION_DRAFT_PICK') {
+      const { tid, playerId } = action.payload as { tid: number; playerId: string };
+      setState(prev => {
+        const season: number = (prev.leagueStats as any)?.year ?? new Date().getFullYear();
+        const updatedPlayers = (prev.players ?? []).map((p: any) => {
+          if (p.internalId !== playerId) return p;
+          const transactions = [...(p.transactions ?? []), { season, tid, type: 'expansion-draft', phase: 0 }];
+          return { ...p, tid, transactions };
+        });
+        const eligible = (prev.expansionEligiblePlayers ?? []).filter((id: string) => id !== playerId);
+        return {
+          ...prev,
+          players: updatedPlayers,
+          expansionEligiblePlayers: eligible,
+        };
+      });
+      return;
+    }
+
+    // ── Per-Team Population edit (Commissioner Rules → Team Population) ───
+    if (action.type === 'UPDATE_TEAM_POP') {
+      const { tid, pop } = action.payload as { tid: number; pop: number };
+      setState(prev => ({
+        ...prev,
+        teams: (prev.teams ?? []).map((t: any) => (t.id === tid ? { ...t, pop } : t)),
+      }));
+      return;
+    }
+
+    // ── Expansion Draft — completion bookkeeping ──────────────────────────
+    if (action.type === 'EXPANSION_DRAFT_COMPLETE') {
+      setState(prev => ({
+        ...prev,
+        expansionSchedule: undefined,
+        expansionProtectionSettings: undefined,
+        expansionDraftProtections: undefined,
+        expansionEligiblePlayers: undefined,
+        expansionTeamIds: undefined,
+        leagueStats: prev.leagueStats
+          ? { ...prev.leagueStats, hasExpanded: true }
+          : prev.leagueStats,
+        offseasonChecklist: prev.offseasonChecklist
+          ? { ...prev.offseasonChecklist, expansionDraft: 'done' }
+          : prev.offseasonChecklist,
       }));
       return;
     }

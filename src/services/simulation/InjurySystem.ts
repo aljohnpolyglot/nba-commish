@@ -6,6 +6,7 @@ import {
   get2KExplosiveness,
   BODY_PART_TO_INJURIES,
 } from '../../data/playerInjuryData';
+import { getRealDurability } from '../../utils/durabilityUtils';
 
 export interface PlayerInjuryEvent {
   playerId: string;
@@ -168,7 +169,7 @@ function clamp(v: number, lo: number, hi: number) {
  */
 function durationMult(healthLevel = 0): number {
   const base = clamp(normalRandom(1.0, 0.15), 0.75, 1.30);
-  return base + healthLevel * 0.10;
+  return clamp(base + healthLevel * 0.10, 0.65, 1.45);
 }
 
 /** Weighted random pick from an array of [item, weight] pairs. */
@@ -318,11 +319,28 @@ const NBA_AVG_FREQ = 10;
 
 function durabilityMultiplier(player: NBAPlayer): number {
   const profile = getPlayerInjuryProfile(player.name);
-  if (!profile) return 1.0; // no data → use base rate unchanged
+  const profileMult = (() => {
+    if (!profile) return null;
+    const yearsPro = Math.max(1, (player.age ?? 26) - 19);
+    const freqPerSeason = profile.careerCount / yearsPro;
+    return clamp(freqPerSeason / NBA_AVG_FREQ, 0.20, 3.0);
+  })();
 
-  const yearsPro = Math.max(1, (player.age ?? 26) - 19);
-  const freqPerSeason = profile.careerCount / yearsPro;
-  return clamp(freqPerSeason / NBA_AVG_FREQ, 0.20, 3.0);
+  const realDurability = getRealDurability(player);
+  const durabilityMult = realDurability == null
+    ? null
+    : clamp(1 + ((70 - realDurability) / 100), 0.60, 1.50);
+
+  if (profileMult != null && durabilityMult != null) {
+    return clamp(profileMult * 0.7 + durabilityMult * 0.3, 0.20, 3.0);
+  }
+  return profileMult ?? durabilityMult ?? 1.0;
+}
+
+function durabilityHealthLevel(player: NBAPlayer): number {
+  const realDurability = getRealDurability(player);
+  if (realDurability == null) return 0;
+  return clamp((70 - realDurability) / 100, -0.20, 0.35);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -389,10 +407,11 @@ export class InjurySystem {
       if (Math.random() < injuryRate) {
         const profile       = getPlayerInjuryProfile(player.name);
         const bmiLowerBoost = computeBMIWear(player);
+        const healthLevel   = durabilityHealthLevel(player);
 
         const result = profile && Object.keys(profile.bodyParts).length > 0
-          ? profiledInjury(profile.bodyParts, bmiLowerBoost)
-          : genericInjury();
+          ? profiledInjury(profile.bodyParts, bmiLowerBoost, healthLevel)
+          : genericInjury(healthLevel);
 
         const isMajor = result.gamesRemaining >= MAJOR_INJURY_GAMES_THRESHOLD;
         let statChanges = isMajor ? MAJOR_INJURY_STAT_CHANGES[result.type] : undefined;

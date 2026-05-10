@@ -40,7 +40,7 @@ const loadState = (): SocialGameState => {
   return {
     date: '2026-04-02',
     socialFeed: [],
-    followedHandles: ['ShamsCharania', 'wojespn', 'NBA'],
+    followedHandles: ['ShamsCharania', 'wojespn', 'nba'],
     teams: [],
     boxScores: [],
     userProfile: {

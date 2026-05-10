@@ -52,7 +52,11 @@ export class BoxAccumulator {
   setMinutes(roster: Player[], minutes: number[]) {
     roster.forEach((p, i) => {
       const s = this.byId.get(p.internalId);
-      if (s) s.min = Math.round(minutes[i] ?? 0);
+      if (s) {
+        const totalSeconds = Math.max(0, Math.round((minutes[i] ?? 0) * 60));
+        s.sec = totalSeconds;
+        s.min = totalSeconds / 60;
+      }
     });
   }
 

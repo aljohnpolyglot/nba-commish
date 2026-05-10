@@ -29,9 +29,12 @@ export const getArenaCapacity = (team: NBATeam): number => {
   for (const [kw, cap] of Object.entries(CAPACITY_MAP)) {
     if (team.name.includes(kw)) return cap;
   }
-  // Custom/expansion teams: scale with metro population
-  const popM = (team.pop || 3_000_000) / 1_000_000;
-  return Math.min(Math.round(17_500 + popM * 350), ARENA_HARD_CAP);
+  // Custom/expansion teams: scale with metro population. `pop` is in MILLIONS
+  // per BBGM convention (e.g. NYC ≈ 8.6, Memphis ≈ 1.3) — broader codebase
+  // (mood/freeAgencyBidding/externalRoster) all use millions.
+  const popM = team.pop ?? 3.0;
+  // Spread: 1M-pop city → ~17,800; 13M city → ~24,000 (tightly capped at 25k).
+  return Math.min(Math.round(17_500 + popM * 500), ARENA_HARD_CAP);
 };
 
 /**
@@ -50,13 +53,15 @@ export const estimateAttendance = (team: NBATeam): TeamAttendanceProfile => {
   const winPct = team.wins / gp;
   const homeGames = Math.round(gp / 2);
 
-  const popM = (team.pop || 3_000_000) / 1_000_000;
-  const marketBonus = Math.min(popM / 55, 0.15);
+  const popM = team.pop ?? 3.0;
+  // Larger metros draw more reliably — up to +0.15 fillRate for top markets.
+  const marketBonus = Math.min(popM / 80, 0.15);
   const fillRate = Math.min(0.57 + winPct * 0.28 + marketBonus, 1.0);
   const avgAttendance = Math.min(Math.round(capacity * fillRate), ARENA_HARD_CAP);
 
-  // Ticket price: bigger market + winning team = higher prices
-  const avgTicketPrice = Math.round(85 + popM * 4 + winPct * 50);
+  // Ticket price: bigger market + winning team = higher prices.
+  // NYC/LA ≈ $135, Memphis ≈ $90, scales linearly with pop.
+  const avgTicketPrice = Math.round(85 + popM * 5 + winPct * 50);
   const seasonRevenue = avgAttendance * homeGames * avgTicketPrice;
 
   return {

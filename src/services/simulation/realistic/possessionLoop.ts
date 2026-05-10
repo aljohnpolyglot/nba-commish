@@ -26,6 +26,7 @@ export function simulatePeriod(
   startingPossession: 'home' | 'away',
   periodMinutes: number,
   period: number,
+  futureSecondsAfterPeriod: number = 0,
 ): PeriodResult {
   let clock = periodMinutes * 60;
   let homeScore = 0;
@@ -81,8 +82,9 @@ export function simulatePeriod(
     awayMgr.advanceTime(elapsed);
 
     // Sub check after every possession.
-    homeMgr.maybeSub(period, clock, getPf);
-    awayMgr.maybeSub(period, clock, getPf);
+    const totalRemaining = Math.max(0, clock + futureSecondsAfterPeriod);
+    homeMgr.maybeSub(period, totalRemaining, getPf);
+    awayMgr.maybeSub(period, totalRemaining, getPf);
   }
 
   return { homeScore, awayScore, possessions };

@@ -1,6 +1,7 @@
 import { NBAPlayer, NBATeam, TeamStatus, DeadMoneyEntry, GameState } from '../types';
 import { convertTo2KRating } from './helpers';
 import { EXTERNAL_SALARY_SCALE } from '../constants';
+import { resolveBirdRights } from './playerBirdRights';
 
 /** BBGM contract.amount is in thousands of dollars.
  *  Multiply by 1000 to get actual USD. */
@@ -285,19 +286,7 @@ export function topNAvgK2(players: NBAPlayer[], teamId: number, n = 3): number {
  *  expiring-FA branch which doesn't compute Bird). Derive from stats:
  *  ≥ 3 consecutive recent seasons with the same NBA tid. */
 export function hasBirdRights(player: NBAPlayer): boolean {
-  if ((player as any).hasBirdRights === true) return true;
-  const stats: Array<{ season?: number; tid?: number; gp?: number; playoffs?: boolean }> = (player as any).stats ?? [];
-  const sorted = stats
-    .filter(s => !s.playoffs && (s.gp ?? 0) > 0 && (s.tid ?? -1) >= 0 && (s.tid ?? -1) <= 29)
-    .sort((a, b) => (b.season ?? 0) - (a.season ?? 0));
-  if (sorted.length < 3) return false;
-  const lastTid = sorted[0].tid;
-  let consecutive = 0;
-  for (const s of sorted) {
-    if (s.tid === lastTid) consecutive++;
-    else break;
-  }
-  return consecutive >= 3;
+  return resolveBirdRights(player);
 }
 
 /** League-average of each team's top-N avg K2 — relative benchmark for strategy labels. */

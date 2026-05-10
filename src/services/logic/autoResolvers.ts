@@ -13,6 +13,7 @@ import { getRolloverDate, isDraftBlockedByUnresolvedPlayoffs, toISODateString } 
 import { isNbaCupEnabled } from '../../utils/ruleFlags';
 import { buildDraftOrderFromState } from '../draft/draftOrder';
 import { logPlanEvent } from '../offseason/offseasonPlan';
+import { isNoDraftLeague } from '../offseason/offseasonState';
 import { getLsYear } from '../../utils/leagueYear';
 
 // ── Schedule Generation (Aug 14) ──────────────────────────────────────────
@@ -967,14 +968,25 @@ export const autoInductHOFClass = async (state: GameState): Promise<Partial<Game
   logPlanEvent('autoResolvers.autoInductHOFClass', 'fire', `date=${state.date}`);
   const classYear = getLsYear(state) - 1;
   const idPrefix = `hof-class-${classYear}-`;
-  const already = (state.news ?? []).some(n => (n as any).id?.startsWith(idPrefix));
-  if (already) return {};
+  const inductedClasses = state.leagueStats?.hofClassesInducted ?? [];
+  const alreadyPersisted = inductedClasses.includes(classYear);
+  const alreadyInNews = (state.news ?? []).some(n => (n as any).id?.startsWith(idPrefix));
+  if (alreadyPersisted || alreadyInNews) return {};
 
   try {
     const { fetchHOFData } = await import('../../data/HOFData');
     const all = await fetchHOFData();
     const classInductees = all.filter(p => p.inductionYear === classYear);
-    if (classInductees.length === 0) return {};
+    // Even an empty class needs to be persisted, otherwise the resolver re-fetches
+    // the gist every ADVANCE_DAY for the rest of that season.
+    if (classInductees.length === 0) {
+      return {
+        leagueStats: {
+          ...state.leagueStats,
+          hofClassesInducted: [...inductedClasses, classYear],
+        },
+      };
+    }
 
     // Flip hof=true + hofInductionYear=<classYear> on matching in-game players.
     // This makes the gist authoritative for real-world HOFers (Howard, Melo,
@@ -1013,7 +1025,11 @@ export const autoInductHOFClass = async (state: GameState): Promise<Partial<Game
     } as any as NewsItem));
 
     const news = [classItem, ...perInducteeItems, ...(state.news ?? [])].slice(0, 200);
-    return { players: updatedPlayers, news };
+    const updatedLeagueStats = {
+      ...state.leagueStats,
+      hofClassesInducted: [...inductedClasses, classYear],
+    };
+    return { players: updatedPlayers, news, leagueStats: updatedLeagueStats };
   } catch (err) {
     console.warn('[autoInductHOFClass] failed:', err);
     return {};
@@ -1059,6 +1075,7 @@ function _runWeightedLottery<T extends { originalSeed: number }>(
  *  Skips if lottery has already been run this season. */
 export const autoRunLottery = (state: GameState): Partial<GameState> => {
   logPlanEvent('autoResolvers.autoRunLottery', 'fire', `date=${state.date}`);
+  if (isNoDraftLeague(state.leagueStats)) return {};
   if ((state as any).draftLotteryResult) return {}; // already run
 
   const preset = LOTTERY_PRESETS[state.leagueStats?.draftType ?? 'nba2019'] ?? LOTTERY_PRESETS.nba2019;
@@ -1097,6 +1114,7 @@ export const autoRunLottery = (state: GameState): Partial<GameState> => {
  *  Commissioner-run drafts take precedence (skips if draftComplete is already true). */
 export const autoRunDraft = (state: GameState): Partial<GameState> => {
   logPlanEvent('autoResolvers.autoRunDraft', 'fire', `date=${state.date}`);
+  if (isNoDraftLeague(state.leagueStats)) return {};
   if ((state as any).draftComplete) return {}; // commissioner already ran the draft
   // Finals must finish before the draft runs — if draft day lands before Game 7, defer.
   // Return the sentinel so lazySimRunner retries this event next iteration.

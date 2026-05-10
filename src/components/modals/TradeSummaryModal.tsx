@@ -165,6 +165,16 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
 
   const teamAOffer: FoundOffer = { tid: teamA.id, items: teamAItems, outlook: teamAOutlook, variant: 'match' };
   const teamBOffer: FoundOffer = { tid: teamB.id, items: teamBItems, outlook: teamBOutlook, variant: 'match' };
+  const teamASalaryBadge = salaryMismatchInfo
+    ? salaryMismatchInfo.team === 'A'
+      ? { label: '✗ CBA Blocked', tone: 'bad' as const }
+      : { label: '✓ Salary OK', tone: 'ok' as const }
+    : null;
+  const teamBSalaryBadge = salaryMismatchInfo
+    ? salaryMismatchInfo.team === 'B'
+      ? { label: '✗ CBA Blocked', tone: 'bad' as const }
+      : { label: '✓ Salary OK', tone: 'ok' as const }
+    : null;
 
   return (
     <AnimatePresence>
@@ -239,6 +249,7 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
                 currentYear={currentYear}
                 dateStr={state.date ?? ''}
                 capSpaceK={teamACapK}
+                salaryBadgeOverride={teamASalaryBadge}
                 hideActions
                 onManage={() => {}}
               />
@@ -250,6 +261,7 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
                 currentYear={currentYear}
                 dateStr={state.date ?? ''}
                 capSpaceK={teamBCapK}
+                salaryBadgeOverride={teamBSalaryBadge}
                 hideActions
                 onManage={() => {}}
               />

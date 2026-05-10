@@ -14,8 +14,10 @@ interface AllStarGameSectionProps {
     allStarMirrorLeagueRules: boolean;
     setAllStarMirrorLeagueRules: (val: boolean) => void;
     // Game Rules Props (for when mirror is false)
-    allStarGameFormat: 'timed' | 'target_score';
-    setAllStarGameFormat: (val: 'timed' | 'target_score') => void;
+    allStarGameFormat: 'timed' | 'target_score' | 'elam_ending';
+    setAllStarGameFormat: (val: 'timed' | 'target_score' | 'elam_ending') => void;
+    allStarGameTargetScore: number;
+    setAllStarGameTargetScore: (val: number) => void;
     allStarQuarterLength: number;
     setAllStarQuarterLength: (val: number) => void;
     allStarNumQuarters: number;
@@ -157,8 +159,8 @@ export const AllStarGameSection: React.FC<AllStarGameSectionProps> = (props) => 
                                 <GameStructureSection 
                                     gameFormat={props.allStarGameFormat}
                                     setGameFormat={props.setAllStarGameFormat}
-                                    gameTargetScore={props.allStarOvertimeTargetPoints} // Reusing target points for game target score in this context
-                                    setGameTargetScore={props.setAllStarOvertimeTargetPoints}
+                                    gameTargetScore={props.allStarGameTargetScore}
+                                    setGameTargetScore={props.setAllStarGameTargetScore}
                                     quarterLength={props.allStarQuarterLength}
                                     setQuarterLength={props.setAllStarQuarterLength}
                                     numQuarters={props.allStarNumQuarters}

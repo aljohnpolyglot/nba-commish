@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search } from 'lucide-react';
+import { useGame } from '../../store/GameContext';
 
 interface NavbarProps {
   searchQuery: string;
@@ -8,18 +9,28 @@ interface NavbarProps {
 
 export default function Navbar({ searchQuery, onSearchChange }: NavbarProps) {
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+  const { state } = useGame();
+  const brandLabel = state.leagueType === 'modded' ? 'NBA News' : 'League News';
+  const brandSubLabel = state.leagueType === 'modded' ? 'Official Wire' : 'League Wire';
 
   return (
     <nav className="sticky top-0 z-50 bg-[#051c2d] text-white border-b border-white/10">
       <div className="max-w-[1400px] mx-auto px-4">
         <div className="flex items-center h-[60px] md:h-[70px]">
-          {/* Logo */}
-          <div className="flex-shrink-0 mr-8">
-            <img
-              src="https://cdn.nba.com/logos/leagues/logo-nba.svg"
-              alt="NBA Logo"
-              className="h-10 w-auto"
-            />
+          <div className="flex-shrink-0 mr-8 min-w-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl border border-white/15 bg-white/5 flex items-center justify-center">
+                <span className="text-[11px] font-black tracking-[0.2em] text-white">LN</span>
+              </div>
+              <div className="leading-none min-w-0">
+                <div className="text-[9px] font-black uppercase tracking-[0.28em] text-cyan-200/70">
+                  {brandSubLabel}
+                </div>
+                <div className="text-xl font-black uppercase tracking-tight text-white truncate">
+                  {brandLabel}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="flex-grow flex items-center justify-center max-w-xl mx-auto">

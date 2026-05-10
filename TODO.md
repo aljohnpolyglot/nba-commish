@@ -121,7 +121,7 @@ Voller Writeup CHANGELOG Session 36. Hier nur out-of-scope:
 
 - **Round-robin-Format** (alle 4 Teams gegeneinander, Top-2 ins Final) — Toggle `risingStarsEliminationEndings: false` ist im UI exposed, nur der `simulateRisingStarsBracket`-Branch braucht den Round-Robin-Path.
 - **Live-Coach-Name-Customization im Commissioner-UI** — aktuell Legend-Pool-Rotation (Carmelo / T-Mac / Vince Carter Cycle by Year). User-editable Names brauchen Settings-Field + Form.
-- **Echtes Elam-Ending in der GameSim-Engine** — `targetScore` auf Bracket-Games ist gesetzt (40 SF, 25 Final), GameSim ignoriert es; Spiele sind getimed, nicht Elam.
+- Elam/Target-Score sim-wiring is shipped in Session 59. Follow-up only if the live-watch presentation needs a richer dedicated Elam phase UI than the current appended closing segment.
 
 ---
 

@@ -83,13 +83,14 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'EXPANSION_DRAFT',
         title: "League Expansion",
-        description: "Authorize new NBA franchises and permanently reshape the competitive landscape. Dilutes star power, but grows league-wide revenue.",
+        description: "Authorize new NBA franchises and permanently reshape the competitive landscape. ZenGM-style: setup teams, realignment, schedule for any future year.",
         cost: "-$500M League Funds (Per Franchise)",
         benefit: "+++Revenue / ++Legacy",
         icon: Map,
         color: "indigo",
-        disabled: state.leagueStats.hasExpanded,
-        onClick: () => callbacks.confirmAction('EXPANSION_DRAFT', 'League Expansion', 'Are you sure you want to expand the league? This is a monumental decision.')
+        // disabled: state.leagueStats.hasExpanded — entfernt, mehrere Expansionen erlaubt
+        disabled: !!state.expansionSchedule,
+        onClick: () => callbacks.confirmAction('EXPANSION_DRAFT', 'League Expansion', 'Plan a new expansion draft. You\'ll set up the new franchises, realignment, and protection rules in the next step.')
       },
       {
         id: 'ENDORSE_HOF',

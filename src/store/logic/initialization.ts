@@ -4,11 +4,12 @@ import { getRosterData, getHistoricalAwards } from '../../services/rosterService
 import { generateFictionalLeague } from '../../services/fictionalLeagueGenerator';
 import { generateFictionalStaff, generateFictionalReferees } from '../../services/fictionalStaffGenerator';
 import { setRefereeData } from '../../data/photos/referees';
-import type { LeagueType } from '../../components/setup/LeagueTypeSelector';
+import type { LeagueType, ModdedLeagueBase, EuropeMarket } from '../../components/setup/LeagueTypeSelector';
 import { INITIAL_LEAGUE_STATS } from '../../constants';
 import { getSeasonSimStartDate } from '../../utils/dateUtils';
 import { DEFAULT_MEDIA_RIGHTS } from '../../utils/broadcastingUtils';
 import { fetchEuroleagueRoster, fetchWNBARoster, fetchPBARoster, fetchBLeagueRoster, fetchGLeagueRoster, fetchEndesaRoster, fetchChinaCBARoster, fetchNBLAustraliaRoster } from '../../services/externalRosterService';
+import { generateFictionalExternalLeagues } from '../../services/fictionalExternalLeagues';
 import { EXTERNAL_SALARY_SCALE } from '../../constants';
 import { convertTo2KRating } from '../../utils/helpers';
 import { loadNameData } from '../../data/nameDataFetcher';
@@ -28,6 +29,8 @@ interface StartGamePayload {
     userTeamId?: number;
     assistantGM?: boolean;
     leagueType?: LeagueType;
+    moddedLeagueBase?: ModdedLeagueBase;
+    europeMarket?: EuropeMarket;
     fictionalLeagueSeed?: number;
 }
 
@@ -36,6 +39,8 @@ const EMPTY_ROSTER = { players: [], teams: [] };
 export const handleStartGame = async (payload: StartGamePayload): Promise<Partial<GameState>> => {
     const { name: commissionerName } = payload;
     const isFictional = payload.leagueType === 'fictional';
+    const isEuropeModded = payload.leagueType === 'modded' && payload.moddedLeagueBase === 'europe';
+    const isSpainEurope = isEuropeModded && payload.europeMarket === 'spain';
     const SHADOWED_ENDESA_TEAM_TIDS = new Set([5006, 5012]); // FC Barcelona, Real Madrid — use Euroleague club only
     // Kick off name-data fetch early — it runs in parallel with roster loads and
     // is done by the time we need to synthesize the first draft-class top-up.
@@ -44,11 +49,13 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     // Fictional path: generate locally, skip every network roster call. External
     // leagues stay empty — fictional mode is NBA-only.
     let teams: any[], rawNbaPlayers: any[], draftPicks: DraftPick[];
+    let fictionalHistoricalAwards: any[] = [];
     if (isFictional) {
-        const fic = generateFictionalLeague(2025, payload.fictionalLeagueSeed);
+        const fic = generateFictionalLeague(INITIAL_LEAGUE_STATS.year, payload.fictionalLeagueSeed);
         teams = fic.teams;
         rawNbaPlayers = fic.players;
         draftPicks = [];
+        fictionalHistoricalAwards = fic.historicalAwards;
     } else {
         const data = await getRosterData(2025, 'Opening Week');
         teams = data.teams;
@@ -56,9 +63,9 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         draftPicks = data.draftPicks;
     }
 
-    const historicalAwardsData = isFictional ? [] : await getHistoricalAwards();
+    const historicalAwardsData = isFictional ? fictionalHistoricalAwards : await getHistoricalAwards();
 
-    // External rosters — fictional mode skips all 8 fetches and uses empties
+    // External rosters — fictional mode generates 8 fake leagues locally; otherwise fetch.
     const [
         { players: euroPlayers,    teams: euroTeams },
         { players: wnbaPlayers,    teams: wnbaTeams },
@@ -69,7 +76,18 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         { players: chinaPlayers,   teams: chinaTeams },
         { players: nblAusPlayers,  teams: nblAusTeams },
     ] = isFictional
-        ? Array.from({ length: 8 }, () => EMPTY_ROSTER) as any
+        ? (() => {
+            // Seeded RNG so the same fictionalLeagueSeed yields the same external rosters.
+            let t = (payload.fictionalLeagueSeed ?? Date.now()) >>> 0;
+            const rng = () => {
+                t += 0x6D2B79F5;
+                let r = Math.imul(t ^ (t >>> 15), 1 | t);
+                r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+                return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+            };
+            const ex = generateFictionalExternalLeagues(INITIAL_LEAGUE_STATS.year, rng);
+            return [ex.euroleague, ex.wnba, ex.pba, ex.bleague, ex.endesa, ex.gleague, ex.chinaCBA, ex.nblAus];
+          })()
         : await Promise.all([
             fetchEuroleagueRoster(),
             fetchWNBARoster(),
@@ -120,14 +138,15 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         .filter(p => !existingNbaNames.has(normName(p.name)))
         .map(p => ({ ...p, status: 'G-League' as const }));
 
-    const filteredEndesaTeams = endesaTeams
-        .filter(t => !SHADOWED_ENDESA_TEAM_TIDS.has(t.tid));
+    const filteredEndesaTeams = isSpainEurope
+        ? endesaTeams
+        : endesaTeams.filter(t => !SHADOWED_ENDESA_TEAM_TIDS.has(t.tid));
 
     const uniqueEndesaPlayers = endesaPlayers
         .filter(p =>
-            !SHADOWED_ENDESA_TEAM_TIDS.has(p.tid) &&
+            (isSpainEurope || !SHADOWED_ENDESA_TEAM_TIDS.has(p.tid)) &&
             !existingNbaNames.has(normName(p.name)) &&
-            !euroNames.has(normName(p.name))
+            (isSpainEurope || !euroNames.has(normName(p.name)))
         )
         .map(p => ({ ...p, status: 'Endesa' as const }));
 
@@ -274,6 +293,9 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
             ? teams.find(t => t.id === payload.userTeamId)
             : undefined;
         const teamLabel = userTeam ? userTeam.name : 'the league';
+        const leagueName = isFictional ? 'The League' : 'NBA';
+        const officialHandle = isFictional ? 'TheLeagueOfficial' : 'nba';
+        const officialAuthor = isFictional ? 'The League' : 'NBA';
 
         initialContent = {
             newEmails: [{
@@ -287,7 +309,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
             }],
             newNews: [{
                 headline: isGM
-                    ? `${userTeam?.name ?? 'NBA Team'} Hires ${commissionerName} as General Manager`
+                    ? `${userTeam?.name ?? `${leagueName} Team`} Hires ${commissionerName} as General Manager`
                     : 'League Awaits Schedule Release',
                 content: isGM
                     ? `The ${teamLabel} have named ${commissionerName} their new General Manager on a five-year contract. The front office cited his vision for roster construction and player development.`
@@ -295,11 +317,11 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
                 type: 'league',
             }],
             newSocialPosts: [{
-                author: 'NBA',
-                handle: 'nba',
+                author: officialAuthor,
+                handle: officialHandle,
                 content: isGM
                     ? `BREAKING: The ${teamLabel} have hired ${commissionerName} as their new General Manager. Five-year contract. 📝`
-                    : `Welcome to the new era of the NBA. Commissioner ${commissionerName} is officially on the job! 🏀`,
+                    : `Welcome to the new era of ${leagueName}. Commissioner ${commissionerName} is officially on the job! 🏀`,
                 source: 'TwitterX',
             }],
         };
@@ -375,14 +397,17 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     const nbaNBATeams = teams.filter((t: any) => t.id >= 0 && t.id < 100);
     const initYear = INITIAL_LEAGUE_STATS.year;
     const initWindowSize = INITIAL_LEAGUE_STATS.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS;
-    const initialDraftPicks = generateFuturePicks(draftPicks, nbaNBATeams as any, initYear, initWindowSize);
+    const initialDraftPicks = isEuropeModded
+        ? []
+        : generateFuturePicks(draftPicks, nbaNBATeams as any, initYear, initWindowSize);
 
     // Fictional leagues seed staff + refs locally (skips the modded gist fetch).
     let initialStaff: any = null;
     if (isFictional) {
         const nameDataResolved = await nameDataPromise;
-        initialStaff = generateFictionalStaff(teams, nameDataResolved);
-        setRefereeData(generateFictionalReferees(nameDataResolved, 36));
+        const fictionalRefs = generateFictionalReferees(nameDataResolved, 36);
+        setRefereeData(fictionalRefs);
+        initialStaff = { ...generateFictionalStaff(teams, nameDataResolved), referees: fictionalRefs };
     }
 
     const statePatch: Partial<GameState> = {
@@ -418,8 +443,10 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
             }
             return merged;
         })(),
-        followedHandles: ['nba', 'wojespn', 'ShamsCharania', 'statmuse'],
-        history: [{ text: `${commissionerName} took office as the new NBA Commissioner.`, date: startDateFormatted || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), type: 'League Event' } as any],
+        followedHandles: isFictional
+            ? ['TheLeagueOfficial', 'KowalskiESPN', 'TariqHassan', 'statmuse']
+            : ['nba', 'wojespn', 'ShamsCharania', 'statmuse'],
+        history: [{ text: `${commissionerName} took office as the new ${isFictional ? 'League' : 'NBA'} Commissioner.`, date: startDateFormatted || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), type: 'League Event' } as any],
         
         isDataLoaded: true,
         isProcessing: false,
@@ -429,10 +456,16 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         gameMode: payload.gameMode ?? 'commissioner',
         userTeamId: payload.userTeamId,
         leagueType: payload.leagueType ?? 'modded',
+        moddedLeagueBase: payload.leagueType === 'modded' ? (payload.moddedLeagueBase ?? 'nba') : undefined,
+        europeMarket: payload.leagueType === 'modded' ? payload.europeMarket : undefined,
         allStar: initialAllStar as any,
         leagueStats: {
             ...INITIAL_LEAGUE_STATS,
             mediaRights: DEFAULT_MEDIA_RIGHTS,
+            draftType: isEuropeModded ? 'no_draft' : INITIAL_LEAGUE_STATS.draftType,
+            tradableDraftPickSeasons: isEuropeModded ? 0 : INITIAL_LEAGUE_STATS.tradableDraftPickSeasons,
+            stepienRuleEnabled: isEuropeModded ? false : INITIAL_LEAGUE_STATS.stepienRuleEnabled,
+            rookieScaleType: isEuropeModded ? 'none' : INITIAL_LEAGUE_STATS.rookieScaleType,
         },
     };
 

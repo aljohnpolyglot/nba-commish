@@ -34,6 +34,18 @@ export const registerRealisticRunner = (runner: FastSimRunner) => {
 };
 
 export const simulateGameViaAdapter = (args: SimulateGameArgs, fastRunner: FastSimRunner): GameResult => {
+  const homeFormat = args.homeKnobs?.gameFormat;
+  const awayFormat = args.awayKnobs?.gameFormat;
+  if (
+    homeFormat === 'target_score' ||
+    awayFormat === 'target_score' ||
+    homeFormat === 'elam_ending' ||
+    awayFormat === 'elam_ending' ||
+    args.homeKnobs?.overtimeType === 'target_score' ||
+    args.awayKnobs?.overtimeType === 'target_score'
+  ) {
+    return fastRunner(args);
+  }
   const mode = getSimulatorMode();
   if (mode === 'realistic' && realisticRunner) {
     try {

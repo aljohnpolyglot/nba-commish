@@ -45,16 +45,18 @@ export default function HallofFameView() {
   // Ceremony cutoff (Sept 6 of each induction year). External classes only
   // appear once their ceremony date has been reached in-game.
   const currentDate = (state.date ?? `${currentYear - 1}-08-06`).slice(0, 10);
+  const isFictional = state.leagueType === 'fictional';
 
-  // Load real-world HOF data on mount (merges roster + missing + heavy gists)
+  // Load real-world HOF data on mount — skipped for fictional leagues
   useEffect(() => {
+    if (isFictional) { setExternalLoading(false); return; }
     let cancelled = false;
     fetchHOFData()
       .then(data => { if (!cancelled) setExternalInductees(data); })
       .catch(err => console.error('[HOF] External fetch failed:', err))
       .finally(() => { if (!cancelled) setExternalLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [isFictional]);
 
   // Merge external + in-game inductees, dedupe by normalized name (in-game wins)
   const inductees: HOFInductee[] = useMemo(() => {
@@ -243,8 +245,15 @@ export default function HallofFameView() {
               >
                 <Trophy className="mx-auto mb-6 text-zinc-700" size={48} />
                 <p className="mb-2 font-serif text-xl italic text-zinc-500">
-                  No legends found matching your search.
+                  {isFictional && !searchQuery.trim()
+                    ? 'No Hall of Fame yet for this league.'
+                    : 'No legends found matching your search.'}
                 </p>
+                {isFictional && !searchQuery.trim() && (
+                  <p className="font-serif text-sm text-zinc-700 italic">
+                    The first class will be inducted once players have retired and served their waiting period.
+                  </p>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

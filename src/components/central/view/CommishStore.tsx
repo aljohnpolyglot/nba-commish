@@ -16,6 +16,7 @@ const WORKER_URL = 'https://amazonfetcher.mogatas-princealjohn-05082003.workers.
 export default function CommishStore() {
   const { state, dispatchAction } = useGame();
   const personalWealth = state.stats.personalWealth; // in millions
+  const isFictional = state.leagueType === 'fictional';
 
   const [view, setView] = useState<'home' | 'search' | 'inventory'>('home');
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,7 +51,7 @@ export default function CommishStore() {
   const [maxPrice, setMaxPrice] = useState('');
 
   // Game teams split by conference
-  const nbaTeams = state.teams.filter(t => t.id > 0);
+  const nbaTeams = state.teams.filter(t => t.id >= 0);
   const westTeams = nbaTeams.filter(t => t.conference === 'West');
   const eastTeams = nbaTeams.filter(t => t.conference === 'East');
 
@@ -523,25 +524,41 @@ export default function CommishStore() {
               className="space-y-12"
             >
               {/* Hero Banner */}
-              <div
-                className="relative h-64 md:h-96 rounded-2xl overflow-hidden shadow-2xl cursor-pointer group"
-                onClick={() => executeSearch('Golden State Warriors')}
-              >
-                <img
-                  src="https://nbastore.com.ph/cdn/shop/files/GSW-FH_web_banner_1944x.png"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  alt="Hero Banner"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-8">
-                  <div className="text-white">
-                    <h2 className="text-3xl md:text-5xl font-black italic tracking-tighter">
-                      CHAMPIONSHIP GEAR
-                    </h2>
-                    <p className="text-lg opacity-90">Procure the latest Warriors collection</p>
+              {isFictional ? (
+                <div
+                  className="relative h-64 md:h-96 rounded-2xl overflow-hidden shadow-2xl cursor-pointer group bg-gradient-to-br from-nba-dark via-gray-900 to-nba-blue"
+                  onClick={() => executeSearch('basketball jersey')}
+                >
+                  <div className="absolute inset-0 flex flex-col items-end justify-end p-8">
+                    <div className="text-white">
+                      <h2 className="text-3xl md:text-5xl font-black italic tracking-tighter">
+                        CHAMPIONSHIP GEAR
+                      </h2>
+                      <p className="text-lg opacity-90">Browse official basketball merchandise</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div
+                  className="relative h-64 md:h-96 rounded-2xl overflow-hidden shadow-2xl cursor-pointer group"
+                  onClick={() => executeSearch('Golden State Warriors')}
+                >
+                  <img
+                    src="https://nbastore.com.ph/cdn/shop/files/GSW-FH_web_banner_1944x.png"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    alt="Hero Banner"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-8">
+                    <div className="text-white">
+                      <h2 className="text-3xl md:text-5xl font-black italic tracking-tighter">
+                        CHAMPIONSHIP GEAR
+                      </h2>
+                      <p className="text-lg opacity-90">Procure the latest Warriors collection</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Top Picks */}
               <section>
@@ -588,33 +605,35 @@ export default function CommishStore() {
                 </div>
               </section>
 
-              {/* Players */}
-              <section>
-                <h2 className="text-3xl font-black uppercase text-center mb-8 tracking-tight">
-                  Player Collections
-                </h2>
-                <div className="flex overflow-x-auto gap-6 pb-6 custom-scrollbar pl-4 md:pl-0">
-                  {PLAYERS.map((player, idx) => (
-                    <CategoryCard
-                      key={idx}
-                      item={player}
-                      onClick={() => {
-                        setProductType('');
-                        setTeamFilter('');
-                        setMinPrice('');
-                        setMaxPrice('');
-                        setCurrentFilters({});
-                        executeSearch(player.query, {}, 1, false, {
-                          productType: '',
-                          teamFilter: '',
-                          minPrice: '',
-                          maxPrice: '',
-                        });
-                      }}
-                    />
-                  ))}
-                </div>
-              </section>
+              {/* Players — nur in echter NBA-Liga */}
+              {!isFictional && (
+                <section>
+                  <h2 className="text-3xl font-black uppercase text-center mb-8 tracking-tight">
+                    Player Collections
+                  </h2>
+                  <div className="flex overflow-x-auto gap-6 pb-6 custom-scrollbar pl-4 md:pl-0">
+                    {PLAYERS.map((player, idx) => (
+                      <CategoryCard
+                        key={idx}
+                        item={player}
+                        onClick={() => {
+                          setProductType('');
+                          setTeamFilter('');
+                          setMinPrice('');
+                          setMaxPrice('');
+                          setCurrentFilters({});
+                          executeSearch(player.query, {}, 1, false, {
+                            productType: '',
+                            teamFilter: '',
+                            minPrice: '',
+                            maxPrice: '',
+                          });
+                        }}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
 
               {/* Teams — using game roster */}
               <section className="space-y-12 mb-12">
@@ -635,18 +654,21 @@ export default function CommishStore() {
                         <button
                           key={team.id}
                           onClick={() => {
-                            const searchName = team.name;
                             setProductType('');
-                            setTeamFilter(searchName);
                             setMinPrice('');
                             setMaxPrice('');
                             setCurrentFilters({});
-                            executeSearch(searchName, {}, 1, true, {
-                              productType: '',
-                              teamFilter: searchName,
-                              minPrice: '',
-                              maxPrice: '',
-                            });
+                            if (isFictional) {
+                              setTeamFilter('');
+                              executeSearch(`${team.name} basketball`, {}, 1, false, {
+                                productType: '', teamFilter: '', minPrice: '', maxPrice: '',
+                              });
+                            } else {
+                              setTeamFilter(team.name);
+                              executeSearch(team.name, {}, 1, true, {
+                                productType: '', teamFilter: team.name, minPrice: '', maxPrice: '',
+                              });
+                            }
                           }}
                           className="flex flex-col items-center group"
                         >
@@ -676,18 +698,21 @@ export default function CommishStore() {
                         <button
                           key={team.id}
                           onClick={() => {
-                            const searchName = team.name;
                             setProductType('');
-                            setTeamFilter(searchName);
                             setMinPrice('');
                             setMaxPrice('');
                             setCurrentFilters({});
-                            executeSearch(searchName, {}, 1, true, {
-                              productType: '',
-                              teamFilter: searchName,
-                              minPrice: '',
-                              maxPrice: '',
-                            });
+                            if (isFictional) {
+                              setTeamFilter('');
+                              executeSearch(`${team.name} basketball`, {}, 1, false, {
+                                productType: '', teamFilter: '', minPrice: '', maxPrice: '',
+                              });
+                            } else {
+                              setTeamFilter(team.name);
+                              executeSearch(team.name, {}, 1, true, {
+                                productType: '', teamFilter: team.name, minPrice: '', maxPrice: '',
+                              });
+                            }
                           }}
                           className="flex flex-col items-center group"
                         >
@@ -1063,6 +1088,11 @@ export default function CommishStore() {
       <footer className="bg-nba-dark text-white/50 py-8 px-6 text-center text-xs font-mono uppercase tracking-widest mt-auto flex flex-col items-center gap-2">
         <div>COMMISH STORE</div>
         {isDbLoaded && <div className="text-[8px] opacity-30">MASTER DB CONNECTED</div>}
+        {isFictional && (
+          <div className="text-[8px] opacity-40 tracking-widest">
+            FICTIONAL LEAGUE — SHOWING OFFICIAL BASKETBALL MERCHANDISE
+          </div>
+        )}
       </footer>
 
       {/* Purchase Modal */}

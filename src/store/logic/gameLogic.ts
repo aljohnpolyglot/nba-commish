@@ -26,6 +26,7 @@ import { buildAutoResolveEvents } from '../../services/logic/lazySimRunner';
 import { addGameDays, getDraftDate, getDraftLotteryDate, isDraftBlockedByUnresolvedPlayoffs, parseGameDate } from '../../utils/dateUtils';
 import { getSimulationDayCount, isInstantTransactionAction, isSimulationTickAction, shouldFireCalendarEvents } from './simulationActionUtils';
 import { isNbaCupEnabled } from '../../utils/ruleFlags';
+import { applyTradeToPlayer } from '../../utils/playerBirdRights';
 
 export { handleStartGame, handleAnnounceChange };
 
@@ -165,7 +166,8 @@ export const processTurn = async (
             result.forcedTrade,
             state.players,
             state.teams,
-            state.draftPicks
+            state.draftPicks,
+            state.leagueType
         );
         forcedTradeTransaction = tradeResult.transaction;
         forcedTradeAnnouncements = tradeResult.announcements;
@@ -192,7 +194,9 @@ export const processTurn = async (
                         // Falls back to 0 if missing — rookies and freshly-arrived players take no toll.
                         const ywt = (ps.stats ?? []).filter((s: any) => s.tid === sourceTid && !s.playoffs && (s.gp ?? 0) > 0).length;
                         rosterMoves.push({ playerId: ps.internalId, fromTid: sourceTid, toTid: destTid, ywt });
-                        p = p.map(player => player.internalId === ps.internalId ? { ...player, tid: destTid } : player);
+                        p = p.map(player => player.internalId === ps.internalId
+                          ? applyTradeToPlayer(player, destTid, stateWithSim.leagueStats?.year ?? state.leagueStats?.year ?? new Date().getFullYear(), 0)
+                          : player);
                     });
                     teamAssets.picksSent.forEach(pick => {
                         d = d.map(dp => dp.dpid === pick.dpid ? { ...dp, tid: destTid } : dp);
@@ -954,17 +958,24 @@ export const processTurn = async (
     }
 
     // ── Hall of Fame Induction (first Saturday of September, prior year) ───
-    // Fires once per season for the Class of (seasonYear - 1). Guarded by news-id.
+    // Fires once per season for the Class of (seasonYear - 1). Guarded by a
+    // persistent leagueStats.hofClassesInducted list — news-id alone gets
+    // pruned past 200 entries on long sims and re-fired the resolver yearly.
     const hofClassYear = draftYear - 1;
-    const hofAlready = (state.news ?? []).some(n => (n as any).id?.startsWith(`hof-class-${hofClassYear}-`));
+    const hofPersistGuard = (newLeagueStats.hofClassesInducted ?? []).includes(hofClassYear);
+    const hofNewsGuard = (state.news ?? []).some(n => (n as any).id?.startsWith(`hof-class-${hofClassYear}-`));
+    const hofAlready = hofPersistGuard || hofNewsGuard;
     const { getHOFCeremonyDate } = await import('../../services/playerDevelopment/hofChecker');
     const hofCeremonyDate = getHOFCeremonyDate(hofClassYear);
     if (wasDateReached(hofCeremonyDate) && !hofAlready) {
         try {
             const { autoInductHOFClass } = await import('../../services/logic/autoResolvers');
-            const patch = await autoInductHOFClass({ ...state, players: updatedPlayers } as any);
+            const patch = await autoInductHOFClass({ ...state, players: updatedPlayers, leagueStats: newLeagueStats } as any);
             // Carry over the hof=true / hofInductionYear flags set on in-game players
             if ((patch as any).players) updatedPlayers = (patch as any).players;
+            if ((patch as any).leagueStats) {
+                newLeagueStats = { ...newLeagueStats, hofClassesInducted: (patch as any).leagueStats.hofClassesInducted };
+            }
             if ((patch as any).news) {
                 // Splice in only the newly-added HOF items (everything in the patch before the existing news)
                 const existingIds = new Set((state.news ?? []).map((n: any) => n.id));

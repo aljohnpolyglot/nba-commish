@@ -5,7 +5,7 @@ import {
   User, Calendar, BarChart2, TrendingUp,
   Search, Users, Star, Building2, Settings2, ChevronDown,
   ListOrdered, Stethoscope, Tv, ThumbsUp, Eye, DollarSign,
-  Target, Ticket, Table2, Zap, UserX, UserPlus, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase, Crown, ArrowLeftRight
+  Target, Ticket, Table2, Zap, UserX, UserPlus, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase, Crown, ArrowLeftRight, Globe2
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { useLeagueLabels } from '../../utils/leagueLabels';
@@ -212,6 +212,19 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         { id: 'Draft Board',    label: 'Draft Board',   icon: ClipboardList },
       ],
     },
+    ...(state.leagueType !== 'fictional' ? [{
+      label: 'International',
+      items: [
+        { id: 'Euroleague Hub' as Tab,    label: 'Euroleague',    icon: Globe2 },
+        { id: 'Endesa Hub' as Tab,        label: 'Liga ACB',      icon: Globe2 },
+        { id: 'G-League Hub' as Tab,      label: 'G-League',      icon: Globe2 },
+        { id: 'WNBA Hub' as Tab,          label: 'WNBA',          icon: Globe2 },
+        { id: 'B-League Hub' as Tab,      label: 'B-League',      icon: Globe2 },
+        { id: 'China CBA Hub' as Tab,     label: 'China CBA',     icon: Globe2 },
+        { id: 'NBL Australia Hub' as Tab, label: 'NBL Australia', icon: Globe2 },
+        { id: 'PBA Hub' as Tab,           label: 'PBA',           icon: Globe2 },
+      ],
+    }] : []),
     {
       label: 'Operations',
       items: [

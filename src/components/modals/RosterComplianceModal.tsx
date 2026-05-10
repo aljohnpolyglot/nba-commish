@@ -19,6 +19,8 @@ interface RosterComplianceModalProps {
   isPreseasonEnd?: boolean;
   onAutoAction: () => void;
   onManual: () => void;
+  canConvertExcess?: boolean;
+  onConvertOne?: (player: NBAPlayer) => void;
 }
 
 export const RosterComplianceModal: React.FC<RosterComplianceModalProps> = ({
@@ -34,6 +36,8 @@ export const RosterComplianceModal: React.FC<RosterComplianceModalProps> = ({
   isPreseasonEnd = false,
   onAutoAction,
   onManual,
+  canConvertExcess = false,
+  onConvertOne,
 }) => {
   const isUnder = mode === 'under';
   const isNgDeadline = mode === 'ng-deadline';
@@ -120,6 +124,14 @@ export const RosterComplianceModal: React.FC<RosterComplianceModalProps> = ({
                               )}
                             </div>
                           </div>
+                          {canConvertExcess && onConvertOne && !!(p as any).twoWay && (
+                            <button
+                              onClick={() => onConvertOne(p)}
+                              className="shrink-0 px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 rounded-md text-[10px] font-black uppercase tracking-widest transition-colors border border-emerald-500/30"
+                            >
+                              Convert
+                            </button>
+                          )}
                           <span className={`text-sm font-black tabular-nums ${
                             ovr >= 80 ? 'text-emerald-400' : ovr >= 70 ? 'text-amber-300' : 'text-slate-400'
                           }`}>{ovr}</span>

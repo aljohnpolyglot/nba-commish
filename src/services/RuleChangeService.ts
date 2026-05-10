@@ -108,7 +108,8 @@ class RuleChangeService {
         checkChange('allStarFormat', '[All-Star] Game Format');
         checkChange('allStarTeams', '[All-Star] Number of Teams');
         checkChange('allStarMirrorLeagueRules', '[All-Star] Mirror League Rules', v => v ? 'Yes' : 'No');
-        checkChange('allStarGameFormat', '[All-Star] Game Mode', v => v === 'timed' ? 'Timed' : 'Target Score');
+        checkChange('allStarGameFormat', '[All-Star] Game Mode', v => v === 'timed' ? 'Timed' : v === 'elam_ending' ? 'Elam Ending' : 'Target Score');
+        checkChange('allStarGameTargetScore', '[All-Star] Target Score', v => `${v}pts`);
         checkChange('allStarDunkContest', '[All-Star] Dunk Contest', v => v ? 'Enabled' : 'Disabled');
         checkChange('allStarThreePointContest', '[All-Star] 3PT Contest', v => v ? 'Enabled' : 'Disabled');
         checkChange('allStarShootingStars', '[All-Star] Shooting Stars', v => v ? 'Enabled' : 'Disabled');
@@ -124,6 +125,8 @@ class RuleChangeService {
         checkChange('celebrityGameMirrorLeagueRules', '[Celebrity Game] Mirror Rules', v => v ? 'Yes' : 'No');
 
         checkChange('allStarEnding', 'All-Star Ending');
+        checkChange('gameFormat', '[Structure] Game Mode', v => v === 'timed' ? 'Timed' : v === 'elam_ending' ? 'Elam Ending' : 'Target Score');
+        checkChange('gameTargetScore', '[Structure] Target Score', v => `${v}pts`);
 
         if (changes.length === 0) return "";
 

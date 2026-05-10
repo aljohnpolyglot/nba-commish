@@ -96,12 +96,11 @@ export function computeDraftSeasonYear(cMonth: number, cYear: number, lsYear: nu
 /** Training camp + opening night anchor on the NEXT upcoming season, not the
  *  camp/opener that's already past. BBGM convention: seasonYear = season-end
  *  year, helpers return Oct/Sept of seasonYear-1.
- *  Pre-rollover (Jan-Jun, lsYear=cYear): next camp = fall cYear = season ending lsYear+1.
- *  Post-rollover (Jul-Dec, lsYear=cYear+1): next camp = fall cYear = season ending lsYear.
- *  Without this guard, on Jun 26 2026 (lsYear=2026), getTrainingCampDate(2026)
- *  returned Sept 29 2025 → cascade fell through to 'preCamp' on draft day. */
-export function computeUpcomingSeasonYear(cMonth: number, lsYear: number): number {
-  return cMonth >= 7 ? lsYear : lsYear + 1;
+ *  If `ls.year` is stale in Jul-Sep (rollover lag / legacy save), clamp to the
+ *  calendar-implied upcoming season so July 2029 never points at Sept 2028. */
+export function computeUpcomingSeasonYear(cMonth: number, cYear: number, lsYear: number): number {
+  const derivedFromLeagueYear = cMonth >= 7 ? lsYear : lsYear + 1;
+  return Math.max(derivedFromLeagueYear, cYear + 1);
 }
 
 /** Derive the current offseason phase. Behavior-preserving — no side effects.
@@ -128,7 +127,7 @@ export function getOffseasonState(
   const draftDate = getDraftDate(draftSeasonYear, ls);
   const effectiveFAStart = getCurrentOffseasonEffectiveFAStart(c, ls, schedule);
   const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(c, ls, schedule);
-  const upcomingSeasonYear = computeUpcomingSeasonYear(cMonth, lsYear);
+  const upcomingSeasonYear = computeUpcomingSeasonYear(cMonth, cYear, lsYear);
   const trainingCamp = getTrainingCampDate(upcomingSeasonYear, ls);
   const openingNight = getOpeningNightDate(upcomingSeasonYear);
 
@@ -231,6 +230,26 @@ export function logOffseasonDrift(
 
 import type { OffseasonChecklist, OffseasonChecklistRow, OffseasonRowStatus, Tab } from '../../types';
 
+const NO_DRAFT_ROWS: readonly OffseasonChecklistRow[] = [
+  'draftLottery',
+  'draft',
+  'rookieContracts',
+] as const;
+
+export function isNoDraftLeague(
+  leagueStats?: { draftType?: string } | null,
+): boolean {
+  return leagueStats?.draftType === 'no_draft';
+}
+
+export function getVisibleOffseasonRows(
+  leagueStats?: { draftType?: string } | null,
+): readonly OffseasonChecklistRow[] {
+  return isNoDraftLeague(leagueStats)
+    ? OFFSEASON_ROW_ORDER.filter(row => !NO_DRAFT_ROWS.includes(row))
+    : OFFSEASON_ROW_ORDER;
+}
+
 /** Visual order of the checklist sidebar — strict real-NBA chronology so
  *  the user reads tasks in the order they actually fire on the calendar:
  *  Lottery (May 14) → Draft (Jun 26) → Rookie Contracts (Jun 27+) →
@@ -241,6 +260,7 @@ import type { OffseasonChecklist, OffseasonChecklistRow, OffseasonRowStatus, Tab
  *  the draft, not before. Putting options before draft was incorrect. */
 export const OFFSEASON_ROW_ORDER: readonly OffseasonChecklistRow[] = [
   'draftLottery',
+  'expansionDraft',
   'draft',
   'rookieContracts',
   'options',
@@ -252,6 +272,7 @@ export const OFFSEASON_ROW_ORDER: readonly OffseasonChecklistRow[] = [
 
 export const OFFSEASON_ROW_LABELS: Record<OffseasonChecklistRow, string> = {
   draftLottery:     'Draft Lottery',
+  expansionDraft:   'Expansion Draft',
   options:          'Team / Player Options',
   qualifyingOffers: 'Qualifying Offers',
   myFAs:            'My Free Agents',
@@ -263,6 +284,7 @@ export const OFFSEASON_ROW_LABELS: Record<OffseasonChecklistRow, string> = {
 
 export const OFFSEASON_ROW_DESCRIPTIONS: Record<OffseasonChecklistRow, string> = {
   draftLottery:     'Watch the lottery draw to set this year\'s draft order.',
+  expansionDraft:   'Welcome new franchises into the league and stock their rosters.',
   options:          'Decide which team options to exercise and review player option outcomes.',
   qualifyingOffers: 'Submit qualifying offers to make eligible players restricted free agents.',
   myFAs:            'Review the players whose contracts have expired and where they stand.',
@@ -275,6 +297,7 @@ export const OFFSEASON_ROW_DESCRIPTIONS: Record<OffseasonChecklistRow, string> =
 /** Where each row navigates when "Enter Phase" is clicked. */
 export const OFFSEASON_ROW_TAB: Record<OffseasonChecklistRow, Tab> = {
   draftLottery:     'Draft Lottery',
+  expansionDraft:   'Actions',
   options:          'Team Office',
   qualifyingOffers: 'Team Office',
   myFAs:            'Team Office',
@@ -284,10 +307,10 @@ export const OFFSEASON_ROW_TAB: Record<OffseasonChecklistRow, Tab> = {
   trainingCamp:     'Training Center',
 };
 
-/** Default — every row 'pending'. Created when offseason begins. */
-export function defaultOffseasonChecklist(): OffseasonChecklist {
+function baseOffseasonChecklist(): OffseasonChecklist {
   return {
     draftLottery:     'pending',
+    expansionDraft:   'skipped', // nur 'pending' wenn expansionSchedule für aktuelle Saison gesetzt
     options:          'pending',
     qualifyingOffers: 'pending',
     myFAs:            'pending',
@@ -295,6 +318,20 @@ export function defaultOffseasonChecklist(): OffseasonChecklist {
     rookieContracts:  'pending',
     freeAgency:       'pending',
     trainingCamp:     'pending',
+  };
+}
+
+/** Default — every row 'pending'. Created when offseason begins. */
+export function defaultOffseasonChecklist(
+  leagueStats?: { draftType?: string } | null,
+): OffseasonChecklist {
+  const checklist = baseOffseasonChecklist();
+  if (!isNoDraftLeague(leagueStats)) return checklist;
+  return {
+    ...checklist,
+    draftLottery: 'skipped',
+    draft: 'skipped',
+    rookieContracts: 'skipped',
   };
 }
 
@@ -306,6 +343,7 @@ export function defaultOffseasonChecklist(): OffseasonChecklist {
 export function initialPreseasonChecklist(): OffseasonChecklist {
   return {
     draftLottery:     'skipped',
+    expansionDraft:   'skipped',
     options:          'skipped',
     qualifyingOffers: 'skipped',
     myFAs:            'skipped',

@@ -392,7 +392,8 @@ export const OfferCard: React.FC<{
   /** When true, the Manage / Reject buttons in the footer are suppressed.
    *  Used by TradeSummaryModal which has its own Confirm Trade action. */
   hideActions?: boolean;
-}> = ({ offer, myItems, team, teams, currentYear, dateStr, capSpaceK, onManage, onReject, showAsk, hideActions }) => {
+  salaryBadgeOverride?: { label: string; tone: 'ok' | 'warn' | 'bad' } | null;
+}> = ({ offer, myItems, team, teams, currentYear, dateStr, capSpaceK, onManage, onReject, showAsk, hideActions, salaryBadgeOverride }) => {
   const mySalary = myItems.filter(i => i.type === 'player').reduce((s, i) => s + (i.player?.contract?.amount ?? 0), 0);
   const theirSalary = offer.items.filter(i => i.type === 'player').reduce((s, i) => s + (i.player?.contract?.amount ?? 0), 0);
   const bothHavePlayers = myItems.some(i => i.type === 'player') && offer.items.some(i => i.type === 'player');
@@ -403,6 +404,13 @@ export const OfferCard: React.FC<{
   const capCoversGap = !ratioOk && bothHavePlayers && capRoomK > 0
     && theirSalary <= mySalary + capRoomK + 0.1;
   const salaryOk = ratioOk || capCoversGap;
+  const salaryBadge = salaryBadgeOverride ?? (
+    capCoversGap
+      ? { label: '✓ Room OK', tone: 'warn' as const }
+      : salaryOk
+        ? { label: '✓ Salary OK', tone: 'ok' as const }
+        : { label: '⚠ Salary Off', tone: 'bad' as const }
+  );
   const { outlook } = offer;
   const badgeLabel = offer.strategyLabel ?? outlook.label;
   const isAbsorb = offer.variant === 'absorb';
@@ -484,11 +492,11 @@ export const OfferCard: React.FC<{
             </span>
           ) : bothHavePlayers ? (
             <span className={`text-[9px] font-bold px-2 py-1 rounded-lg ${
-              capCoversGap ? 'bg-sky-900/40 text-sky-300'
-              : salaryOk ? 'bg-emerald-900/40 text-emerald-400'
-              : 'bg-amber-900/40 text-amber-400'
+              salaryBadge.tone === 'warn' ? 'bg-sky-900/40 text-sky-300'
+              : salaryBadge.tone === 'ok' ? 'bg-emerald-900/40 text-emerald-400'
+              : 'bg-rose-900/40 text-rose-300'
             }`}>
-              {capCoversGap ? '✓ Room OK' : salaryOk ? '✓ Salary OK' : '⚠ Salary Off'}
+              {salaryBadge.label}
             </span>
           ) : null}
           {capLabel && (

@@ -42,13 +42,19 @@ export function useLiveGame(
   precomputedRef.current = precomputedResult;
 
   // Stable identity key — only regenerate when the actual game/teams change
-  const timingConfig = useMemo(() => getGameTimingConfig(leagueStats), [
+  const timingConfig = useMemo(() => {
+    if (game.gameFormat === 'target_score') {
+      return { numQuarters: 1, quarterLengthSeconds: 60, overtimeLengthSeconds: 60 };
+    }
+    return getGameTimingConfig(leagueStats);
+  }, [
+    game.gameFormat,
     leagueStats?.numQuarters,
     leagueStats?.quarterLength,
     leagueStats?.overtimeDuration,
   ]);
 
-  const gameKey = `${game.gid}-${homeTeam?.id}-${awayTeam?.id}-${riggedForTid ?? ''}-${timingConfig.numQuarters}-${timingConfig.quarterLengthSeconds}-${timingConfig.overtimeLengthSeconds}`;
+  const gameKey = `${game.gid}-${homeTeam?.id}-${awayTeam?.id}-${riggedForTid ?? ''}-${game.gameFormat ?? 'timed'}-${game.targetScore ?? ''}-${timingConfig.numQuarters}-${timingConfig.quarterLengthSeconds}-${timingConfig.overtimeLengthSeconds}`;
 
   useEffect(() => {
     console.log(`[useLiveGame] effect triggered — gameKey=${gameKey} hasPrecomputed=${!!precomputedResult} precomputedScore=${precomputedResult ? `${precomputedResult.homeScore}-${precomputedResult.awayScore}` : 'none'}`);

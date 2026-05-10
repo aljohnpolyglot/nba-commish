@@ -3,6 +3,7 @@ import { selectRandom, calculateSocialEngagement } from '../utils/helpers';
 import { PlayerService } from './data/PlayerService';
 import { TeamService } from './data/TeamService';
 import { formatPickLabel } from './draft/draftClassStrength';
+import { getInsiderHandle, getInsiderWoj } from '../data/social/handles';
 
 export const isTradeAllowed = (phase: GamePhase): boolean => {
   const isPlayoffs = phase.includes('Playoffs') || phase === 'NBA Finals' || phase === 'Conference Finals' || phase === 'Play-In Tournament';
@@ -61,7 +62,8 @@ export const executeForcedTrade = async (
   details: { playerName: string; destinationTeam: string },
   players: Player[],
   teams: Team[],
-  draftPicks: DraftPick[]
+  draftPicks: DraftPick[],
+  leagueType?: string
 ): Promise<{ transaction: TransactionDto | null; announcements: SocialPost[] }> => {
   const playerService = new PlayerService(players);
   const teamService = new TeamService(teams);
@@ -83,16 +85,18 @@ export const executeForcedTrade = async (
     }
   };
 
-  const wojEngagement = calculateSocialEngagement('@wojespn', 'trade', player.overallRating);
-  const shamsEngagement = calculateSocialEngagement('@ShamsCharania', 'trade', player.overallRating);
+  const woj = getInsiderWoj(leagueType);
+  const insider = getInsiderHandle(leagueType);
+  const wojEngagement = calculateSocialEngagement(woj.atHandle, 'trade', player.overallRating);
+  const shamsEngagement = calculateSocialEngagement(insider.atHandle, 'trade', player.overallRating);
 
   const announcements: SocialPost[] = [
     {
       id: crypto.randomUUID(),
       source: 'TwitterX',
-      author: 'Woj',
-      handle: '@wojespn',
-      content: `Reporting with @ShamsCharania: The ${sourceTeam.name} and ${destTeam.name} have finalized a trade sending ${player.name} to the ${destTeam.abbrev}. League sources indicate the deal is official and has been processed by the league office.`,
+      author: woj.name,
+      handle: woj.atHandle,
+      content: `Reporting with ${insider.atHandle}: The ${sourceTeam.name} and ${destTeam.name} have finalized a trade sending ${player.name} to the ${destTeam.abbrev}. League sources indicate the deal is official and has been processed by the league office.`,
       date: new Date().toISOString(),
       likes: wojEngagement.likes,
       retweets: wojEngagement.retweets,
@@ -101,8 +105,8 @@ export const executeForcedTrade = async (
     {
       id: crypto.randomUUID(),
       source: 'TwitterX',
-      author: 'Shams Charania',
-      handle: '@ShamsCharania',
+      author: insider.name,
+      handle: insider.atHandle,
       content: `Official: The ${destTeam.name} have acquired ${player.name} from the ${sourceTeam.name}. Transaction is finalized per league sources.`,
       date: new Date().toISOString(),
       likes: shamsEngagement.likes,
@@ -130,6 +134,7 @@ export const executeExecutiveTrade = (
   draftPicks: DraftPick[],
   currentYear?: number,
   lotterySlotByTid?: Map<number, number>,
+  leagueType?: string,
 ): { transaction: TransactionDto, announcements: SocialPost[] } => {
   const teamService = new TeamService(teams);
   const playerService = new PlayerService(players);
@@ -162,16 +167,18 @@ export const executeExecutiveTrade = (
       0
   );
 
-  const wojEngagement = calculateSocialEngagement('@wojespn', 'trade', maxRating);
-  const shamsEngagement = calculateSocialEngagement('@ShamsCharania', 'trade', maxRating);
+  const woj = getInsiderWoj(leagueType);
+  const insider = getInsiderHandle(leagueType);
+  const wojEngagement = calculateSocialEngagement(woj.atHandle, 'trade', maxRating);
+  const shamsEngagement = calculateSocialEngagement(insider.atHandle, 'trade', maxRating);
 
   const announcements: SocialPost[] = [
     {
       id: crypto.randomUUID(),
       source: 'TwitterX',
-      author: 'Woj',
-      handle: '@wojespn',
-      content: `Reporting with @ShamsCharania: A significant trade has been finalized between the ${teamA.name} and ${teamB.name}. ${assetsA} are headed to ${teamB.abbrev}, while ${assetsB} return to ${teamA.abbrev}. League sources describe the deal as a 'strategic realignment' for both franchises.`,
+      author: woj.name,
+      handle: woj.atHandle,
+      content: `Reporting with ${insider.atHandle}: A significant trade has been finalized between the ${teamA.name} and ${teamB.name}. ${assetsA} are headed to ${teamB.abbrev}, while ${assetsB} return to ${teamA.abbrev}. League sources describe the deal as a 'strategic realignment' for both franchises.`,
       date: new Date().toISOString(),
       likes: wojEngagement.likes,
       retweets: wojEngagement.retweets,
@@ -180,8 +187,8 @@ export const executeExecutiveTrade = (
     {
       id: crypto.randomUUID(),
       source: 'TwitterX',
-      author: 'Shams Charania',
-      handle: '@ShamsCharania',
+      author: insider.name,
+      handle: insider.atHandle,
       content: `Official: The ${teamA.name} and ${teamB.name} have completed a multi-asset trade. ${assetsA} to ${teamB.abbrev}, ${assetsB} to ${teamA.abbrev}. Transaction is official.`,
       date: new Date().toISOString(),
       likes: shamsEngagement.likes,

@@ -220,8 +220,8 @@ export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSele
             contactsMap.set(id, {
                 id,
                 name: ref.name,
-                title: 'NBA Referee',
-                organization: 'NBA Officials',
+                title: 'League Referee',
+                organization: 'League Officials',
                 type: 'coach' as const,
                 playerPortraitUrl: photo,
                 league: 'Referee',

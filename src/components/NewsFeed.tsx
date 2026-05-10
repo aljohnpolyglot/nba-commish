@@ -271,7 +271,8 @@ export const NewsFeed: React.FC = () => {
       enrichingRef.current.add(id);
       enrichNewsWithPhoto(
         { id, headline: rawItem.headline || '', content: rawItem.content || '', image: rawItem.image, playerPortraitUrl: rawItem.playerPortraitUrl },
-        gameLookup
+        gameLookup,
+        state.leagueType
       ).then(url => {
         setImagnImages(prev => ({ ...prev, [id]: url }));
       }).catch(() => {

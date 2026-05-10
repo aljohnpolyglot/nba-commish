@@ -110,6 +110,8 @@ export interface GameResult {
   homeLosses?: number;
   awayWins?: number;
   awayLosses?: number;
+  gameFormat?: 'timed' | 'target_score' | 'elam_ending';
+  targetScore?: number;
   injuries?: {
     playerId: string;
     playerName: string;

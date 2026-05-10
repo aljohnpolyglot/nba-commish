@@ -47,7 +47,7 @@ const ActionsView: React.FC = () => {
                 isSpecificEvent: true
             }
         })));
-    } else if (['EXECUTIVE_TRADE', 'SIGN_FREE_AGENT', 'TRAVEL', 'EXPANSION_DRAFT', 'CELEBRITY_ROSTER', 'GLOBAL_GAMES', 'GIVE_MONEY', 'BRIBE_PERSON', 'FINE_PERSON', 'VISIT_NON_NBA_TEAM', 'TRANSFER_FUNDS', 'SET_CHRISTMAS_GAMES', 'SABOTAGE_PLAYER', 'SUSPEND_PLAYER', 'GO_TO_CLUB', 'ENDORSE_HOF', 'ADD_PRESEASON_INTERNATIONAL', 'INVITE_DINNER', 'DRUG_TEST_PERSON', 'LEAK_SCANDAL', 'WAIVE_PLAYER', 'FIRE_PERSONNEL'].includes(actionType)) {
+    } else if (['EXECUTIVE_TRADE', 'SIGN_FREE_AGENT', 'TRAVEL', 'EXPANSION_DRAFT', 'SCHEDULE_EXPANSION', 'CLEAR_EXPANSION_SCHEDULE', 'SET_EXPANSION_PROTECTIONS', 'APPLY_EXPANSION_REALIGNMENT', 'CELEBRITY_ROSTER', 'GLOBAL_GAMES', 'GIVE_MONEY', 'BRIBE_PERSON', 'FINE_PERSON', 'VISIT_NON_NBA_TEAM', 'TRANSFER_FUNDS', 'SET_CHRISTMAS_GAMES', 'SABOTAGE_PLAYER', 'SUSPEND_PLAYER', 'GO_TO_CLUB', 'ENDORSE_HOF', 'ADD_PRESEASON_INTERNATIONAL', 'INVITE_DINNER', 'DRUG_TEST_PERSON', 'LEAK_SCANDAL', 'WAIVE_PLAYER', 'FIRE_PERSONNEL'].includes(actionType)) {
         await dispatchAction({
             type: actionType as any,
             payload
@@ -205,8 +205,8 @@ const ActionsView: React.FC = () => {
       if (modals.confirmActionType) {
           modals.setConfirmModalOpen(false);
           if (modals.confirmActionType === 'EXPANSION_DRAFT') {
-              modals.setCitySelectorType('expansion');
-              modals.setCitySelectorOpen(true);
+              // Phase 2: ZenGM-style Setup-Modal statt simplem City-Selector
+              modals.setExpansionSetupModalOpen(true);
           } else if (modals.confirmActionType === 'CELEBRITY_ROSTER') {
               modals.setCelebrityModalOpen(true);
           } else {

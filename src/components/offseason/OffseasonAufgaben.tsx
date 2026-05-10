@@ -17,10 +17,9 @@ import { useGame } from '../../store/GameContext';
 import { convertTo2KRating, normalizeDate } from '../../utils/helpers';
 import { getDraftDate, getDraftLotteryDate, getTrainingCampDate, getCurrentOffseasonFAMoratoriumEnd, parseGameDate, toISODateString } from '../../utils/dateUtils';
 import {
-  OFFSEASON_ROW_ORDER,
   OFFSEASON_ROW_LABELS,
   OFFSEASON_ROW_DESCRIPTIONS,
-  defaultOffseasonChecklist,
+  getVisibleOffseasonRows,
   firstUnfinishedRow,
   isChecklistComplete,
 } from '../../services/offseason/offseasonState';
@@ -40,6 +39,27 @@ type OffseasonConfirmSpec = {
 // import diff while the helper is still being adopted across the codebase.
 function lsYearOf(state: { leagueStats?: { year?: number } | null }): number {
   return state.leagueStats?.year ?? new Date().getFullYear();
+}
+
+function getUpcomingTrainingCampISO(state: {
+  date?: string;
+  leagueStats?: any;
+}) {
+  const ls = state.leagueStats as any;
+  const lsYear = lsYearOf(state);
+  const todayNorm = state.date ? normalizeDate(state.date) : '';
+  const currentMonth = state.date ? parseGameDate(state.date).getUTCMonth() + 1 : 7;
+  const currentYear = state.date ? parseGameDate(state.date).getUTCFullYear() : lsYear;
+  let seasonYear = computeUpcomingSeasonYear(currentMonth, currentYear, lsYear);
+  let campISO = toISODateString(getTrainingCampDate(seasonYear, ls));
+  // Some saves are still pre-rollover in July/Sep, so ls.year still points to
+  // the season that just ended. If the derived camp date is already behind us,
+  // bump to the next season's camp anchor.
+  if (todayNorm && campISO < todayNorm) {
+    seasonYear = Math.max(seasonYear + 1, currentYear + 1);
+    campISO = toISODateString(getTrainingCampDate(seasonYear, ls));
+  }
+  return campISO;
 }
 
 // ─── Header Phase Badge — replaces date during offseason ────────────────────
@@ -63,7 +83,7 @@ function useCalendarRowSignals() {
     const cMonth = cParsed.getUTCMonth() + 1;
     const cYear = cParsed.getUTCFullYear();
     const draftSeasonYear = computeDraftSeasonYear(cMonth, cYear, lsYear);
-    const upcomingSeasonYear = computeUpcomingSeasonYear(cMonth, lsYear);
+    const upcomingSeasonYear = computeUpcomingSeasonYear(cMonth, cYear, lsYear);
     const draftStr = toISODateString(getDraftDate(draftSeasonYear, ls));
     const lotteryStr = toISODateString(getDraftLotteryDate(draftSeasonYear, ls));
     const campStr = toISODateString(getTrainingCampDate(upcomingSeasonYear, ls));
@@ -134,6 +154,7 @@ export const OffseasonNextActionButton: React.FC<NextActionButtonProps> = ({ set
   const lotteryAlreadyRan = !!(state.draftLotteryResult && state.draftLotteryResult.length > 0);
   const labelForRow: Record<OffseasonChecklistRow, string> = {
     draftLottery:     lotteryAlreadyRan ? 'Review Lottery Results' : 'Watch Draft Lottery',
+    expansionDraft:   'Run Expansion Draft',
     options:          'Decide Options',
     qualifyingOffers: 'Submit Qualifying Offers',
     myFAs:            'Review Departing FAs',
@@ -171,7 +192,7 @@ export const OffseasonNextActionButton: React.FC<NextActionButtonProps> = ({ set
     } else if (currentRow === 'draft') {
       simIfBefore(toISODateString(getDraftDate(lsYear, ls)));
     } else if (currentRow === 'trainingCamp') {
-      simIfBefore(toISODateString(getTrainingCampDate(lsYear, ls)));
+      simIfBefore(getUpcomingTrainingCampISO(state));
     }
     dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row: currentRow } } as any);
     // Initial FA entry also fires the moratorium-skip + counter-init.
@@ -212,9 +233,52 @@ const STATUS_LABEL: Record<OffseasonRowStatus, string> = {
   'skipped':     'Skipped',
 };
 
+/** Sidebar-Pin: zeigt eine geplante Expansion oben in der Aufgaben-Sidebar.
+ *  - year === current ls.year: "this offseason" (emerald)
+ *  - year > current: "scheduled for YYYY" (zinc, mit Cancel-Button)
+ *  Kein Render wenn kein Schedule oder year < current (stale). */
+const ExpansionSchedulePin: React.FC = () => {
+  const { state, dispatchAction } = useGame();
+  const schedule = (state as any).expansionSchedule;
+  const lsYear = state.leagueStats?.year;
+  if (!schedule || lsYear == null || schedule.year < lsYear) return null;
+
+  const isThisYear = schedule.year === lsYear;
+  const teamCount = schedule.teams?.length ?? 0;
+
+  return (
+    <div className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border ${
+      isThisYear
+        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-200'
+        : 'bg-zinc-800/40 border-zinc-700 text-zinc-300'
+    }`}>
+      <Sparkles size={14} className={isThisYear ? 'text-emerald-400' : 'text-amber-400'} />
+      <div className="flex-1 min-w-0">
+        <div className="text-[11px] font-black uppercase tracking-tight">
+          Expansion {isThisYear ? 'this offseason' : `scheduled for ${schedule.year}`}
+        </div>
+        <div className="text-[9px] opacity-70">
+          {teamCount} new franchise{teamCount === 1 ? '' : 's'}
+        </div>
+      </div>
+      <button
+        onClick={() => dispatchAction({ type: 'CLEAR_EXPANSION_SCHEDULE' } as any)}
+        title="Cancel scheduled expansion"
+        className="text-zinc-500 hover:text-rose-400 shrink-0"
+      >
+        <X size={12} />
+      </button>
+    </div>
+  );
+};
+
 export const OffseasonAufgabenSidebar: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const checklist = state.offseasonChecklist;
+  const visibleRows = React.useMemo(
+    () => getVisibleOffseasonRows(state.leagueStats),
+    [state.leagueStats],
+  );
   const confirmActionRef = useRef<(() => void) | null>(null);
   const sidebarSignals = useCalendarRowSignals();
   // My FAs row reuses the existing expiring-contracts modal (same one
@@ -233,15 +297,14 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   useEffect(() => {
     if (myFAsModalShown.current && !expiringGate.isOpen) {
       myFAsModalShown.current = false;
-      // Compliance gate: only mark done when EVERY expiring FA has been
-      // offered or rejected. hasRows recomputes from state.players, so once
-      // all decisions are dispatched the rows list empties. Early-dismiss
-      // (X / Esc) leaves rows populated → row stays pending, user revisits.
-      if (!expiringGate.hasRows) {
+      // Mark done once every row is resolved, including unavailable players
+      // who are testing FA / retiring and therefore need no user action.
+      // Early-dismiss before review still leaves actionable rows unresolved.
+      if (expiringGate.allResolved) {
         dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'myFAs' } } as any);
       }
     }
-  }, [expiringGate.isOpen, expiringGate.hasRows, dispatchAction]);
+  }, [expiringGate.isOpen, expiringGate.allResolved, dispatchAction]);
 
   // FA counter auto-clear: if PlayButton skips the calendar past training camp
   // while the FA day counter is still running, mark the FA row skipped so the
@@ -254,7 +317,8 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     const ls = state.leagueStats as any;
     const lsYear: number = lsYearOf(state);
     const cMonth = parseGameDate(state.date).getUTCMonth() + 1;
-    const upcomingSeasonYear = computeUpcomingSeasonYear(cMonth, lsYear);
+    const currentYear = parseGameDate(state.date).getUTCFullYear();
+    const upcomingSeasonYear = computeUpcomingSeasonYear(cMonth, currentYear, lsYear);
     const campStr = toISODateString(getTrainingCampDate(upcomingSeasonYear, ls));
     if (state.date >= campStr) {
       dispatchAction({ type: 'OFFSEASON_SKIP_PHASE', payload: { row: 'freeAgency' } } as any);
@@ -372,6 +436,30 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'qualifyingOffers' } } as any);
     }
   }, [lotteryDone, draftDone, rookieContractsDone, noPendingTeamOptions, trainingCampDone, noQOCandidates, checklist?.draftLottery, checklist?.draft, checklist?.rookieContracts, checklist?.options, checklist?.trainingCamp, checklist?.qualifyingOffers]);
+
+  // Expansion-Draft Future-Year-Trigger: ein Schedule mit `year === ls.year`
+  // aktiviert die Row beim Erreichen des Jahres (auch wenn das Schedule schon
+  // letzte Saison gesetzt wurde). Beidseitig idempotent — kein dispatch wenn
+  // Row bereits 'pending' ist.
+  useEffect(() => {
+    if (!checklist) return;
+    const schedule = (state as any).expansionSchedule;
+    const lsYear = state.leagueStats?.year;
+    if (!schedule || lsYear == null) return;
+    if (schedule.year === lsYear && checklist.expansionDraft === 'skipped') {
+      // OFFSEASON_RESET_CHECKLIST oder direct setRowStatus — wir nutzen den
+      // ENTER-Pattern via SCHEDULE_EXPANSION-Replay, der die Row korrekt setzt.
+      dispatchAction({
+        type: 'SCHEDULE_EXPANSION',
+        payload: {
+          teams: schedule.teams,
+          realignment: schedule.realignment ?? {},
+          settings: state.expansionProtectionSettings ?? { perTeamLimit: 8, maxDraftedPerTeam: 2, picksPerExpansionTeam: 14 },
+          scheduleYear: schedule.year,
+        },
+      } as any);
+    }
+  }, [(state as any).expansionSchedule, state.leagueStats?.year, checklist?.expansionDraft]);
 
   if (!checklist) return null;
 
@@ -568,7 +656,7 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     } else if (row === 'draft') {
       simToDateIfBefore(toISODateString(getDraftDate(lsYear, ls)));
     } else if (row === 'trainingCamp') {
-      simToDateIfBefore(toISODateString(getTrainingCampDate(lsYear, ls)));
+      simToDateIfBefore(getUpcomingTrainingCampISO(state));
     }
     dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
   };
@@ -742,8 +830,10 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
         </button>
       )}
 
+      <ExpansionSchedulePin />
+
       <ol className="space-y-1.5">
-        {OFFSEASON_ROW_ORDER.map(row => {
+        {visibleRows.map(row => {
           const status = checklist[row];
           const isCurrent = row === currentRow;
           const isResolved = status === 'done' || status === 'skipped';
@@ -1192,11 +1282,7 @@ export const OffseasonFATagFooter: React.FC = () => {
   // offseason flow.
   const handleToTrainingCamp = () => {
     dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'freeAgency' } } as any);
-    const ls = state.leagueStats as any;
-    const cMonth = state.date ? parseGameDate(state.date).getUTCMonth() + 1 : 7;
-    const lsYear = ls?.year ?? new Date().getFullYear();
-    const upcomingSeasonYear = computeUpcomingSeasonYear(cMonth, lsYear);
-    const campStartISO = toISODateString(getTrainingCampDate(upcomingSeasonYear, ls));
+    const campStartISO = getUpcomingTrainingCampISO(state);
     const todayNorm = state.date ? normalizeDate(state.date) : '';
     if (todayNorm && todayNorm < campStartISO) {
       dispatchAction({

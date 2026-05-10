@@ -12,7 +12,7 @@ import { RFAOfferSheetModal } from './components/modals/RFAOfferSheetModal';
 import { PlayButton } from './components/shared/PlayButton';
 import { OffseasonNextActionButton, OffseasonPhaseBadge, OffseasonAufgabenSidebar, OffseasonAufgabenMobileSheet, OffseasonFATagFooter } from './components/offseason/OffseasonAufgaben';
 import { LazySimLoadingScreen } from './components/setup/LazySimLoadingScreen';
-import { LeagueTypeSelector, type LeagueType } from './components/setup/LeagueTypeSelector';
+import { LeagueTypeSelector, type LeagueType, type ModdedLeagueBase, type EuropeMarket } from './components/setup/LeagueTypeSelector';
 import { useLeagueLabels } from './utils/leagueLabels';
 import { Menu, X } from 'lucide-react';
 import { SaveManager } from './services/SaveManager';
@@ -34,6 +34,8 @@ function GameLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [setupPhase, setSetupPhase] = useState<null | 'leagueType' | 'commish'>(null);
   const [leagueType, setLeagueType] = useState<LeagueType | null>(null);
+  const [moddedLeagueBase, setModdedLeagueBase] = useState<ModdedLeagueBase>('nba');
+  const [europeMarket, setEuropeMarket] = useState<EuropeMarket | undefined>(undefined);
   const [activeMiniGame, setActiveMiniGame] = useState<'throne' | 'dunk' | '3point' | null>(null);
   const { state, dispatchAction, currentView, setCurrentView } = useGame();
   const labels = useLeagueLabels();
@@ -42,11 +44,16 @@ function GameLayout() {
   useEffect(() => {
     fetchStatmuseData();
     fetchAvatarData();
-    fetchCharaniaPhotos();
     fetchNBAMemes();
     fetchInjuryData();
     fetchPlayerInjuryData();
   }, []);
+
+  useEffect(() => {
+    if (state.isDataLoaded && state.leagueType !== 'fictional') {
+      fetchCharaniaPhotos();
+    }
+  }, [state.isDataLoaded, state.leagueType]);
 
   // Auto-save effect (Debounced)
   useEffect(() => {
@@ -131,12 +138,14 @@ function GameLayout() {
     
     if (setupPhase === 'leagueType') {
       return <LeagueTypeSelector
-        onSelect={(type) => {
+        onSelect={({ leagueType: type, moddedLeagueBase: base, europeMarket: market }) => {
           setLeagueType(type);
+          setModdedLeagueBase(base ?? 'nba');
+          setEuropeMarket(market);
           if (type === 'modded') prewarmRoster();
           setSetupPhase('commish');
         }}
-        onBack={() => { setSetupPhase(null); setLeagueType(null); }}
+        onBack={() => { setSetupPhase(null); setLeagueType(null); setModdedLeagueBase('nba'); setEuropeMarket(undefined); }}
       />;
     }
 
@@ -148,6 +157,8 @@ function GameLayout() {
           dispatchAction({ type: 'START_GAME', payload });
         }}
         onBack={() => setSetupPhase('leagueType')}
+        moddedLeagueBase={moddedLeagueBase}
+        europeMarket={europeMarket}
       />;
     }
 

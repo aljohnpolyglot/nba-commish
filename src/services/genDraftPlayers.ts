@@ -365,10 +365,12 @@ function generateProspect(year: number, rng: () => number, nameData: NameData, p
     ratings[attr] = Math.max(0, Math.min(99, Math.round(val)));
   });
 
-  // Calculate OVR for ratings object
+  // Calculate OVR for ratings object.
+  // Averaging 14 attrs damps variance hard (std ≈1.5), so prospects in the same band
+  // collapse to identical OVRs. Add a final tie-breaking noise term to spread them.
   const nonHgtAttrs = attrs.filter(a => a !== 'hgt');
   const ovrSum = nonHgtAttrs.reduce((sum, a) => sum + (ratings[a] || 0), 0);
-  ratings.ovr = Math.round(ovrSum / nonHgtAttrs.length);
+  ratings.ovr = Math.round(ovrSum / nonHgtAttrs.length + randomNormal(0, 2.5)());
 
   // ── Fix 3: Per-league OVR cap (non-College paths) ───────────────────────────
   const pathOvrCap = PATH_OVR_CAP[path];
@@ -379,9 +381,15 @@ function generateProspect(year: number, rng: () => number, nameData: NameData, p
     ratings.ovr = Math.min(ratings.ovr, effectiveOvrCap);
   }
 
-  // Fix 16: Clamp to forced OVR band if provided (stratified sampling)
+  // Fix 16: Soft-clamp to forced OVR band (stratified sampling).
+  // Hard clamp pinned every overshoot to the band edge → ties at band boundaries.
+  // Soft-clamp keeps 35% of the spillover, creating natural gaps between tiers.
   if (forcedOvrBand) {
-    ratings.ovr = Math.max(forcedOvrBand.min, Math.min(forcedOvrBand.max, ratings.ovr));
+    if (ratings.ovr > forcedOvrBand.max) {
+      ratings.ovr = forcedOvrBand.max + Math.round((ratings.ovr - forcedOvrBand.max) * 0.35);
+    } else if (ratings.ovr < forcedOvrBand.min) {
+      ratings.ovr = forcedOvrBand.min - Math.round((forcedOvrBand.min - ratings.ovr) * 0.35);
+    }
   }
 
   // Fix 9: Youth hard cap — fires AFTER band clamp so elite bands can't bypass it.

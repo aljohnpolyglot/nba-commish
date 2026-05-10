@@ -4,6 +4,7 @@ import { advanceDay } from '../../../services/llm/llm';
 import { generateFreeAgentSigningReactions } from '../../../services/llm/services/freeAgentService';
 import { calculateSocialEngagement } from '../../../utils/helpers';
 import { buildShamsSigningPost } from '../../../services/social/templates/charania';
+import { getInsiderHandle } from '../../../data/social/handles';
 import { NewsGenerator } from '../../../services/news/NewsGenerator';
 import { SettingsManager } from '../../../services/SettingsManager';
 import { normalizeTeamJerseyNumbers } from '../../../utils/jerseyUtils';
@@ -142,11 +143,12 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
             previousLeague
         ) : null;
         if (shamsContent) {
-            const shamsEngagement = calculateSocialEngagement('@ShamsCharania', shamsContent, player?.overallRating);
+            const insider = getInsiderHandle(stateWithSim.leagueType);
+            const shamsEngagement = calculateSocialEngagement(insider.atHandle, shamsContent, player?.overallRating);
             newSocial.unshift({
                 id: `shams-sign-${Date.now()}`,
-                author: 'Shams Charania',
-                handle: '@ShamsCharania',
+                author: insider.name,
+                handle: insider.atHandle,
                 content: shamsContent,
                 date: stateWithSim.date,
                 likes: shamsEngagement.likes,

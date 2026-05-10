@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { MinContractModal, MaxContractModal, RookieContractModal } from './EconomyComputationsModals';
 import { EconomyFinancesSection } from './EconomyFinancesSection';
 import { EconomyTeamsSection } from './EconomyTeamsSection';
+import { TeamPopulationSection } from './TeamPopulationSection';
 import { EconomyContractsSection } from './EconomyContractsSection';
 import { EconomyRookieContractsSection } from './EconomyRookieContractsSection';
 import { Ticket, Calendar, Lock, Coins, HeartPulse, ShieldCheck, Skull } from 'lucide-react';
@@ -356,6 +357,8 @@ export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
                     <ApronRulesCard props={props} />
 
                     <EconomyTeamsSection props={props} />
+
+                    <TeamPopulationSection />
                 </div>
 
                 <div className="space-y-8">

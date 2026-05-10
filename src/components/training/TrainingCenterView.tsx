@@ -12,6 +12,7 @@ import { mapPlayerToK2 } from '../../TeamTraining/lib/playerMapping';
 import { computeTeamProficiency } from '../../utils/coachSliders';
 import { nbaPlayerToTrainingPlayer, nbaTeamToTrainingTeam } from '../../TeamTraining/adapters/fromGameState';
 import { TRAINING_CALENDAR_VERSION } from '../../services/training/trainingScheduler';
+import { resolveEffectiveTrainingCalendar, resolveEffectiveTrainingPlan } from '../../services/training/trainingPlanResolver';
 import type { Allocations, TrainingParadigm, Staffing, ScheduleDay, DayType } from '../../TeamTraining/types';
 import type { Game } from '../../types';
 
@@ -221,6 +222,10 @@ export const TrainingCenterView: React.FC = () => {
 
   // Persistent daily plans live on NBATeam.trainingCalendar keyed by ISO date `YYYY-MM-DD`.
   const dailyPlansISO = (team?.trainingCalendar ?? {}) as Record<string, { intensity: number; paradigm: TrainingParadigm; allocations: Allocations; auto?: boolean }>;
+  const effectiveDailyPlansISO = useMemo(
+    () => team ? resolveEffectiveTrainingCalendar(team) : {},
+    [team],
+  );
 
   const [intensity] = useState(50);
   const [allocations] = useState<Allocations>({ offense: 30, defense: 30, conditioning: 20, recovery: 20 });
@@ -463,51 +468,18 @@ export const TrainingCenterView: React.FC = () => {
     }
   };
 
-  // Save the Normal-Default template. Walks every upcoming auto-cell that
-  // currently holds a Balanced 50% (= scheduler's regular-season default) and
-  // replaces it with the user's preferences. Pre-game, post-game, training
-  // camp 75%, B2B-recovery 15%, etc. cells are NOT touched — only the regular
-  // practice day pattern is. User-set days (auto: false) are also skipped.
-  // Pending Normal-Default propagation prompt — fires after the user saves
-  // the template. Persisting the template is unconditional; rewriting the
-  // calendar only happens after explicit confirmation.
-  const [normalDefaultPending, setNormalDefaultPending] = useState<null | {
-    matchCount: number;
-    template: { intensity: number; allocations: Allocations; paradigm: TrainingParadigm };
-  }>(null);
-
   const handleSaveNormalDefault = (i: number, a: Allocations, p: TrainingParadigm) => {
     if (!team || isReadOnly) return;
+    const template = { intensity: i, allocations: a, paradigm: p };
     setNormalDefaultDraft({ intensity: i, allocations: a, paradigm: p });
-    // Persist the template on the team so it survives reload + tab-switch.
     dispatchAction({
       type: 'SET_TRAINING_NORMAL_DEFAULT',
-      payload: { teamId: team.id, template: { intensity: i, allocations: a, paradigm: p } },
+      payload: { teamId: team.id, template },
     });
-    // Count future auto-cells that match the scheduler's Balanced 50% default —
-    // those are the candidates the user might want overwritten with their template.
-    const cal = (team.trainingCalendar ?? {}) as Record<string, any>;
-    const todayIso = toIsoDay(state.date);
-    let matches = 0;
-    for (const [iso, plan] of Object.entries(cal)) {
-      if (iso < todayIso) continue;
-      if (plan?.auto === false) continue;
-      if (plan?.paradigm !== 'Balanced' || plan?.intensity !== 50) continue;
-      matches++;
-    }
-    setNormalDefaultOpen(false);
-    if (matches > 0) {
-      setNormalDefaultPending({
-        matchCount: matches,
-        template: { intensity: i, allocations: a, paradigm: p },
-      });
-    }
-  };
 
-  // User confirmed — stamp every future auto Balanced 50% cell with the saved template.
-  const applyNormalDefaultToFuture = () => {
-    if (!normalDefaultPending || !team) return;
-    const { template } = normalDefaultPending;
+    // Normal Default is durable: saving it immediately rewrites every current
+    // and future regular auto-day, while newly generated auto Balanced-50 days
+    // still resolve through this template until the user changes it again.
     const cal = (team.trainingCalendar ?? {}) as Record<string, any>;
     const todayIso = toIsoDay(state.date);
     for (const [iso, plan] of Object.entries(cal)) {
@@ -519,7 +491,7 @@ export const TrainingCenterView: React.FC = () => {
         payload: { teamId: team.id, dayKey: iso, plan: template },
       });
     }
-    setNormalDefaultPending(null);
+    setNormalDefaultOpen(false);
   };
 
   // Apply the just-saved plan to every future auto-cell that matches the old
@@ -680,7 +652,7 @@ export const TrainingCenterView: React.FC = () => {
                 team={team}
                 date={selectedDate}
                 scheduleDay={selectedDayForHeader}
-                userPlan={dailyPlansISO[selectedDateNorm]}
+                userPlan={team ? resolveEffectiveTrainingPlan(team, selectedDateNorm) ?? undefined : undefined}
                 gamesForDate={gamesForSelectedDate}
                 state={state}
                 isReadOnly={isReadOnly}
@@ -691,7 +663,7 @@ export const TrainingCenterView: React.FC = () => {
               <TrainingCalendarView
                 team={team}
                 scheduleByIso={scheduleByIso}
-                dailyPlansISO={dailyPlansISO}
+                dailyPlansISO={effectiveDailyPlansISO}
                 weekAnchor={weekAnchor}
                 setWeekAnchor={setWeekAnchor}
                 selectedDate={selectedDate}
@@ -722,7 +694,7 @@ export const TrainingCenterView: React.FC = () => {
               })()}
               currentYear={leagueYear}
               currentDate={state.date}
-              trainingCalendar={dailyPlansISO as any}
+              trainingCalendar={effectiveDailyPlansISO as any}
               updateDevFocus={updateDevFocus}
               updateIndividualIntensity={updateIndividualIntensity}
               updateMentor={updateMentor}
@@ -735,23 +707,15 @@ export const TrainingCenterView: React.FC = () => {
           )}
 
           {(() => {
-            // When opening an auto-filled regular practice day (Balanced 50%, no
-            // user override), hydrate the modal from the user's Normal Default
-            // template so their preference shows up everywhere — without needing
-            // to mass-stamp the calendar up front.
-            const cell = selectedDayISO ? dailyPlansISO[selectedDayISO] : null;
-            const isAutoBalanced50 =
-              !!cell && cell.auto !== false && cell.paradigm === 'Balanced' && cell.intensity === 50;
-            const tmpl = team.normalDayDefault;
-            const useTmpl = isAutoBalanced50 && !!tmpl;
+            const cell = selectedDayISO && team ? resolveEffectiveTrainingPlan(team, selectedDayISO) : null;
             const modalIntensity = selectedDayISO
-              ? (useTmpl ? tmpl!.intensity : (cell?.intensity ?? (selectedDayData?.activity === 'Recovery Practice' ? 15 : intensity)))
+              ? (cell?.intensity ?? (selectedDayData?.activity === 'Recovery Practice' ? 15 : intensity))
               : intensity;
             const modalAllocations = selectedDayISO
-              ? (useTmpl ? (tmpl!.allocations as Allocations) : (cell?.allocations ?? allocations))
+              ? (cell?.allocations ?? allocations)
               : allocations;
             const modalParadigm = selectedDayISO
-              ? (useTmpl ? (tmpl!.paradigm as TrainingParadigm) : (cell?.paradigm ?? 'Balanced'))
+              ? (cell?.paradigm ?? 'Balanced')
               : 'Balanced';
             return (
               <DailyPlanModal
@@ -768,8 +732,8 @@ export const TrainingCenterView: React.FC = () => {
             );
           })()}
 
-          {/* Normal-Default editor — same modal UI but paints all upcoming
-              regular-season practice days (Balanced 50%) with the saved values. */}
+          {/* Normal-Default editor — saving updates the durable template and
+              immediately rewrites current future regular auto-days. */}
           <DailyPlanModal
             isOpen={normalDefaultOpen}
             onClose={() => setNormalDefaultOpen(false)}
@@ -781,54 +745,6 @@ export const TrainingCenterView: React.FC = () => {
             top5Systems={top5Systems}
             onSave={handleSaveNormalDefault}
           />
-
-          {/* Normal-Default propagation prompt — fires after handleSaveNormalDefault.
-              Confirms whether the saved template should also overwrite every future
-              auto Balanced 50% cell. Cancelling keeps the template; only future days
-              stay untouched. */}
-          {normalDefaultPending && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-              <div className="bg-[#1a1a1a] border border-amber-500/40 rounded-2xl max-w-md w-full p-6 shadow-2xl">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
-                    <RotateCcw className="w-5 h-5 text-amber-400" />
-                  </div>
-                  <div>
-                    <div className="font-black uppercase tracking-widest text-amber-300 text-sm">
-                      Auf Zukunft anwenden?
-                    </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">
-                      Normal Default gespeichert
-                    </div>
-                  </div>
-                </div>
-                <div className="text-sm text-slate-300 mb-5 leading-relaxed">
-                  Dein Template ist gespeichert. Sollen{' '}
-                  <span className="font-bold text-rose-300">{normalDefaultPending.matchCount}</span>{' '}
-                  kommende Standard-Tage (Auto Balanced 50%) mit{' '}
-                  <span className="font-bold text-amber-300">{normalDefaultPending.template.paradigm} {normalDefaultPending.template.intensity}%</span>{' '}
-                  überschrieben werden?
-                  <div className="text-[11px] text-slate-500 mt-2">
-                    Manuell gesetzte Tage und nicht-Standard-Auto-Tage (Pre-Game, Recovery, B2B) bleiben unverändert.
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-2 justify-end">
-                  <button
-                    onClick={() => setNormalDefaultPending(null)}
-                    className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-black uppercase text-xs tracking-widest"
-                  >
-                    Nur Template speichern
-                  </button>
-                  <button
-                    onClick={applyNormalDefaultToFuture}
-                    className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-xs tracking-widest"
-                  >
-                    Auf alle anwenden ({normalDefaultPending.matchCount})
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Save-as-Default propagation prompt — fires after handleSavePlan
               when an auto-cell was replaced. Apply All overwrites every future

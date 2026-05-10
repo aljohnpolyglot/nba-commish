@@ -48,7 +48,7 @@ export const LeagueOfficeView: React.FC = () => {
         id: `personnel-${selectedPersonnel.id}`,
         name: selectedPersonnel.name,
         title: selectedPersonnel.jobTitle || selectedPersonnel.type,
-        organization: selectedPersonnel.team || 'NBA League Office',
+        organization: selectedPersonnel.team || 'League Office',
         type: selectedPersonnel.type,
         playerPortraitUrl: selectedPersonnel.playerPortraitUrl,
       });
@@ -142,7 +142,7 @@ export const LeagueOfficeView: React.FC = () => {
             id:               `personnel-${directAction.person.id}`,
             name:             directAction.person.name,
             title:            directAction.person.jobTitle || directAction.person.type,
-            organization:     directAction.person.team || 'NBA League Office',
+            organization:     directAction.person.team || 'League Office',
             type:             directAction.person.type as any,
             playerPortraitUrl: directAction.person.playerPortraitUrl,
           }}
@@ -194,7 +194,7 @@ export const LeagueOfficeView: React.FC = () => {
                 targetId: contactModalPerson.id,
                 targetName: contactModalPerson.name,
                 targetRole: contactModalPerson.title,
-                targetOrg: contactModalPerson.organization || 'NBA League Office',
+                targetOrg: contactModalPerson.organization || 'League Office',
                 avatarUrl: contactModalPerson.playerPortraitUrl,
               }
             });

@@ -8,6 +8,7 @@
 import React from 'react';
 import { Activity, Zap, Shield, Swords, RotateCcw } from 'lucide-react';
 import type { NBATeam } from '../../types';
+import { resolveEffectiveTrainingPlan } from '../../services/training/trainingPlanResolver';
 
 interface Props {
   team: NBATeam;
@@ -17,8 +18,7 @@ interface Props {
 }
 
 export function DashboardStatusBar({ team, today, isReadOnly, onApplyNormalDefault }: Props) {
-  const cal = (team.trainingCalendar ?? {}) as Record<string, any>;
-  const todayPlan = cal[today];
+  const todayPlan = resolveEffectiveTrainingPlan(team, today);
 
   const fam = team.systemFamiliarity ?? { offense: 0, defense: 0 };
   // Top 3 across both sides of the ball — gives the user one look at where

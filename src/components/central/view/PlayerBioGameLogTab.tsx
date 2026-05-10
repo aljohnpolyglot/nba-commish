@@ -363,8 +363,8 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
                         {log.isAllStar ? <span title="All-Star Game">⭐</span>
                           : log.isPlayoff ? <span className="text-[10px] font-bold text-indigo-400">PLF</span>
                           : log.isPlayIn ? <span className="text-[10px] font-bold text-sky-400">PI</span>
-                          : log.isCupFinal ? <span className="text-[10px] font-bold text-amber-400" title="NBA Cup Final — does not count toward regular-season record">CUP F</span>
-                          : log.isNBACup ? <span className="text-[10px] font-bold text-amber-300/80" title={`NBA Cup ${log.cupRound}`}>{log.cupRound === 'QF' ? 'CUP QF' : log.cupRound === 'SF' ? 'CUP SF' : log.rank}</span>
+                          : log.isCupFinal ? <span className="text-[10px] font-bold text-amber-400" title="In-Season Cup Final — does not count toward regular-season record">CUP F</span>
+                          : log.isNBACup ? <span className="text-[10px] font-bold text-amber-300/80" title={`In-Season Cup ${log.cupRound}`}>{log.cupRound === 'QF' ? 'CUP QF' : log.cupRound === 'SF' ? 'CUP SF' : log.rank}</span>
                           : log.rank !== null ? log.rank
                           : <span className="text-[10px] font-bold text-amber-500/70">PRE</span>}
                       </td>

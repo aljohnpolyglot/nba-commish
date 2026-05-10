@@ -88,12 +88,17 @@ interface AllStarHistoryViewProps {
 
 export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose }) => {
   const { state } = useGame();
+  const isFictional = state.leagueType === 'fictional';
   const [history, setHistory] = useState<AllStarHistoryEntry[] | null>(null);
   const quick = usePlayerQuickActions();
 
   useEffect(() => {
+    if (isFictional) {
+      setHistory([]);
+      return;
+    }
     fetchAllStarHistory().then(setHistory);
-  }, []);
+  }, [isFictional]);
 
   const rows = useMemo(() => {
     const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
@@ -159,28 +164,28 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
 
     const rowMap = new Map<number, Row>();
 
-    // Source 1: gist — for played years ONLY (keeps real winners/MVPs/scores).
-    // For unplayed years, we still use the gist's host info but suppress results.
-    (history ?? []).forEach(h => {
-      const played = hasPlayed(h.year);
-      const contest = contestByYear.get(h.year);
-      rowMap.set(h.year, {
-        year: h.year,
-        isCurrent: h.year === currentYear,
-        isFuture: h.year > currentYear || !played,
-        isSim: false,
-        teams: played ? h.teams : [],
-        winner: played ? h.winner : null,
-        finalScore: played ? h.final_score : null,
-        host: { city: h.host_city, arena: h.host_arena, teamNames: h.host_teams },
-        mvps: played ? (h.mvps ?? []) : [],
-        dunkWinner: contest?.dunk ?? null,
-        threeWinner: contest?.three ?? null,
-        throneWinner: contest?.throne ?? null,
-        bracketRecap: null,
-        rsMvp: null,
+    if (!isFictional) {
+      (history ?? []).forEach(h => {
+        const played = hasPlayed(h.year);
+        const contest = contestByYear.get(h.year);
+        rowMap.set(h.year, {
+          year: h.year,
+          isCurrent: h.year === currentYear,
+          isFuture: h.year > currentYear || !played,
+          isSim: false,
+          teams: played ? h.teams : [],
+          winner: played ? h.winner : null,
+          finalScore: played ? h.final_score : null,
+          host: { city: h.host_city, arena: h.host_arena, teamNames: h.host_teams },
+          mvps: played ? (h.mvps ?? []) : [],
+          dunkWinner: contest?.dunk ?? null,
+          threeWinner: contest?.three ?? null,
+          throneWinner: contest?.throne ?? null,
+          bracketRecap: null,
+          rsMvp: null,
+        });
       });
-    });
+    }
 
     // Helper: build { name, team } from allStar contest result (fallback for current season
     // before autoSimAllStarWeekend has written awards to player records)
@@ -278,7 +283,7 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
     });
 
     return Array.from(rowMap.values()).sort((a, b) => b.year - a.year);
-  }, [history, state.teams, state.players, state.boxScores, state.allStar, state.leagueStats, state.date]);
+  }, [history, state.teams, state.players, state.boxScores, state.allStar, state.leagueStats, state.date, isFictional]);
 
   if (quick.fullPageView) return quick.fullPageView;
 

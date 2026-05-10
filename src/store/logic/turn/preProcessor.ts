@@ -2,10 +2,12 @@ import { GameState, UserAction, NBAPlayer as Player, DraftPick } from '../../../
 import { executeForcedTrade, executeExecutiveTrade } from '../../../services/tradeService';
 import { buildFullDraftSlotMap } from '../../../services/draft/draftClassStrength';
 import { generateTPEsFromTrade } from '../../../utils/tradeExceptionUtils';
+import { applyTradeToPlayer } from '../../../utils/playerBirdRights';
 
 export const preProcessAction = async (state: GameState, action: UserAction): Promise<{ stateForSim: GameState, executiveTradeTransaction?: any }> => {
     let stateForSim = state;
     let executiveTradeTransaction = null;
+    const currentSeason = state.leagueStats?.year ?? new Date().getFullYear();
 
     if (action.type === 'SABOTAGE_PLAYER') {
         const { contacts, reason, duration } = action.payload;
@@ -37,19 +39,10 @@ export const preProcessAction = async (state: GameState, action: UserAction): Pr
                     : p
             )
         };
-    } else if (action.type === 'SIGN_FREE_AGENT') {
-        stateForSim = {
-            ...state,
-            players: state.players.map(p =>
-                p.internalId === action.payload.playerId
-                    ? { ...p, tid: action.payload.teamId, status: 'Active', signedDate: state.date }
-                    : p
-            )
-        };
     } else if (action.type === 'EXECUTIVE_TRADE') {
         const _ptCurrentYear = state.leagueStats?.year ?? new Date().getFullYear();
         const _ptLotterySlots = buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams);
-        const tradeResult = executeExecutiveTrade(action.payload, state.players, state.teams, state.draftPicks, _ptCurrentYear, _ptLotterySlots);
+        const tradeResult = executeExecutiveTrade(action.payload, state.players, state.teams, state.draftPicks, _ptCurrentYear, _ptLotterySlots, state.leagueType);
         executiveTradeTransaction = tradeResult.transaction;
 
         let p = [...state.players];
@@ -61,7 +54,9 @@ export const preProcessAction = async (state: GameState, action: UserAction): Pr
             if (destTidStr) {
                 const destTid = parseInt(destTidStr);
                 teamAssets.playersSent.forEach(ps => {
-                    p = p.map(player => player.internalId === ps.internalId ? { ...player, tid: destTid } : player);
+                    p = p.map(player => player.internalId === ps.internalId
+                        ? applyTradeToPlayer(player, destTid, currentSeason, 0)
+                        : player);
                 });
                 teamAssets.picksSent.forEach(pick => {
                     d = d.map(dp => dp.dpid === pick.dpid ? { ...dp, tid: destTid } : dp);
@@ -90,7 +85,7 @@ export const preProcessAction = async (state: GameState, action: UserAction): Pr
         }
         stateForSim = { ...state, players: p, draftPicks: d, teams };
     } else if (action.type === 'FORCE_TRADE') {
-        const tradeResult = await executeForcedTrade(action.payload, state.players, state.teams, state.draftPicks);
+        const tradeResult = await executeForcedTrade(action.payload, state.players, state.teams, state.draftPicks, state.leagueType);
         if (tradeResult.transaction) {
             let p = [...state.players];
             let d = [...state.draftPicks];
@@ -101,7 +96,9 @@ export const preProcessAction = async (state: GameState, action: UserAction): Pr
                 if (destTidStr) {
                     const destTid = parseInt(destTidStr);
                     teamAssets.playersSent.forEach(ps => {
-                        p = p.map(player => player.internalId === ps.internalId ? { ...player, tid: destTid } : player);
+                        p = p.map(player => player.internalId === ps.internalId
+                            ? applyTradeToPlayer(player, destTid, currentSeason, 0)
+                            : player);
                     });
                     teamAssets.picksSent.forEach(pick => {
                         d = d.map(dp => dp.dpid === pick.dpid ? { ...dp, tid: destTid } : dp);

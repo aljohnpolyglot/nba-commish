@@ -136,8 +136,12 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
   const [photosReady, setPhotosReady] = useState(false);
 
   useEffect(() => {
+    if (state.leagueType === 'fictional') {
+      setPhotosReady(true); // staff already in state — no gist fetch needed
+      return;
+    }
     Promise.all([fetchCoachData(), fetchRefereeData()]).then(() => setPhotosReady(true));
-  }, []);
+  }, [state.leagueType]);
   const [typeFilter, setTypeFilter] = useState<FilterType>('all');
   const [confFilter, setConfFilter] = useState<'ALL' | 'EAST' | 'WEST'>('ALL');
   const [sortBy, setSortBy] = useState<'last' | 'first'>('last');
@@ -145,28 +149,47 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
 
   // ── Build master list from gist data + state.staff ──────────
   const allPersonnel = useMemo<Personnel[]>(() => {
-    const refs: Personnel[] = getAllReferees().map(r => ({
-      id:               `ref-${r.id}`,
-      name:             r.name,
-      type:             'referee',
-      jobTitle:         'NBA Official',
-      number:           r.id,
-      slug:             r.slug,
-      playerPortraitUrl: r.photo_url,
-    }));
+    const isFictional = state.leagueType === 'fictional';
 
-    const coaches: Personnel[] = getAllCoaches().map((c, i) => ({
-      id:               `coach-${i}`,
-      name:             c.name,
-      type:             'coach',
-      jobTitle:         'Head Coach',
-      team:             c.team,
-      conf:             c.conf,
-      div:              c.div,
-      slug:             c.slug,
-      playerPortraitUrl: c.img,
-      teamLogoUrl:      state.teams.find(t => t.name === c.team)?.logoUrl,
-    }));
+    const refs: Personnel[] = isFictional
+      ? (state.staff?.referees || []).map((r, i) => ({
+          id:      `ref-${r.id ?? i}`,
+          name:    r.name,
+          type:    'referee' as const,
+          jobTitle: 'League Official',
+          number:  r.id,
+        }))
+      : getAllReferees().map(r => ({
+          id:               `ref-${r.id}`,
+          name:             r.name,
+          type:             'referee' as const,
+          jobTitle:         'League Official',
+          number:           r.id,
+          slug:             r.slug,
+          playerPortraitUrl: r.photo_url,
+        }));
+
+    const coaches: Personnel[] = isFictional
+      ? (state.staff?.coaches || []).map((m, i) => ({
+          id:       `coach-${i}`,
+          name:     m.name,
+          type:     'coach' as const,
+          jobTitle: 'Head Coach',
+          team:     m.team,
+          teamLogoUrl: m.teamLogoUrl || state.teams.find(t => t.name === m.team)?.logoUrl,
+        }))
+      : getAllCoaches().map((c, i) => ({
+          id:               `coach-${i}`,
+          name:             c.name,
+          type:             'coach' as const,
+          jobTitle:         'Head Coach',
+          team:             c.team,
+          conf:             c.conf,
+          div:              c.div,
+          slug:             c.slug,
+          playerPortraitUrl: c.img,
+          teamLogoUrl:      state.teams.find(t => t.name === c.team)?.logoUrl,
+        }));
 
  const gms: Personnel[] = (state.staff?.gms || []).map((m: StaffMember, i: number) => ({
       id:               `gm-${i}`,
@@ -197,7 +220,7 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
     }));
 
     return [...refs, ...coaches, ...gms, ...owners, ...lo];
-  }, [state.staff, state.teams, photosReady]);
+  }, [state.staff, state.teams, state.leagueType, photosReady]);
 
   // ── Filter & Sort ───────────────────────────────────────────
   const filtered = useMemo(() => {

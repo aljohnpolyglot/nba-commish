@@ -58,6 +58,14 @@ export function useExpiringResignGate(options: ExpiringResignGateOptions = {}) {
       });
   }, [state.gameMode, state.userTeamId, state.players, state.teams, state.leagueStats, state.date]);
 
+  const allResolved = useMemo(() => (
+    rows.every(r =>
+      offeredIds.has(r.player.internalId) ||
+      rejectedIds.has(r.player.internalId) ||
+      !(r.intent === 'ready_to_extend' || r.intent === 'open')
+    )
+  ), [rows, offeredIds, rejectedIds]);
+
   const wouldCrossFAOpenDeadline = (targetDate?: string) => {
     if (!state.date || rows.length === 0) return false;
     const today = normalizeDate(state.date);
@@ -215,5 +223,6 @@ export function useExpiringResignGate(options: ExpiringResignGateOptions = {}) {
     forceOpen,
     isOpen: open,
     hasRows: rows.length > 0,
+    allResolved,
   };
 }

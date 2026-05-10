@@ -56,6 +56,7 @@ import { TeamOfficeView } from '../central/view/TeamOffice/TeamOfficeView';
 import { CoachingHubView } from '../central/view/Coaching/CoachingHubView';
 import { TrainingCenterView } from '../training/TrainingCenterView';
 import HallofFameView from '../central/view/HallOfFame/HallofFameView';
+import { InternationalLeagueHub, HUB_TAB_TO_LEAGUE } from '../international/InternationalLeagueHub';
 import { Tab } from '../../types';
 
 interface MainContentProps {
@@ -286,6 +287,21 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       );
     case 'Hall of Fame':
       return <HallofFameView />;
+    case 'Euroleague Hub':
+    case 'Endesa Hub':
+    case 'G-League Hub':
+    case 'WNBA Hub':
+    case 'B-League Hub':
+    case 'China CBA Hub':
+    case 'NBL Australia Hub':
+    case 'PBA Hub': {
+      const league = HUB_TAB_TO_LEAGUE[currentView];
+      return league ? (
+        <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          <InternationalLeagueHub league={league} />
+        </div>
+      ) : null;
+    }
     default:
       return null;
   }

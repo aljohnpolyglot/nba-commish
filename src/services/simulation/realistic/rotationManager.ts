@@ -15,6 +15,7 @@ export class RotationManager {
   private playedSec: number[];      // total sec played per rotation player
   private stretchSec: number[];     // sec since last rest per rotation player
   private targetSec: number[];      // minute target × 60
+  private closingCore: Set<number>;
 
   constructor(
     public readonly rotation: Player[],
@@ -26,6 +27,13 @@ export class RotationManager {
     this.playedSec = new Array(n).fill(0);
     this.stretchSec = new Array(n).fill(0);
     this.targetSec = minuteTargets.map(m => Math.max(60, m * 60));
+    this.closingCore = new Set(
+      this.targetSec
+        .map((seconds, index) => ({ seconds, index }))
+        .sort((a, b) => b.seconds - a.seconds)
+        .slice(0, Math.min(5, n))
+        .map(entry => entry.index),
+    );
   }
 
   getOnCourt(): OnCourt {
@@ -77,12 +85,19 @@ export class RotationManager {
         if (Math.random() < 0.60) shouldSub = true;
       }
 
-      if (shouldSub) this.swapOut(courtIdx, getPf);
+      if (shouldSub) this.swapOut(courtIdx, period, secRemainingInGame, getPf);
     }
   }
 
-  private swapOut(outIdx: number, getPf: (id: string) => number): void {
+  private swapOut(
+    outIdx: number,
+    period: number,
+    secRemainingInGame: number,
+    getPf: (id: string) => number,
+  ): void {
     const onSet = new Set(this.onCourt);
+    const lateGame = period >= 5 || (period >= 4 && secRemainingInGame <= 6 * 60);
+    const outgoingBucket = this.getBucket(this.rotation[outIdx].pos);
     const candidates = this.rotation
       .map((_, i) => i)
       .filter(i => !onSet.has(i))
@@ -94,7 +109,11 @@ export class RotationManager {
         const remainingFraction =
           (this.targetSec[bi] - this.playedSec[bi]) / Math.max(60, this.targetSec[bi]);
         const restBonus = this.stretchSec[bi] === 0 ? 5 : 0;
-        return { i: bi, score: remainingFraction * 100 + restBonus };
+        const roleBonus = this.getCompatibilityBonus(outgoingBucket, this.getBucket(this.rotation[bi].pos));
+        const closingBonus = lateGame
+          ? (this.closingCore.has(bi) ? 10 : -8)
+          : 0;
+        return { i: bi, score: remainingFraction * 100 + restBonus + roleBonus + closingBonus };
       })
       .sort((a, b) => b.score - a.score);
 
@@ -111,6 +130,25 @@ export class RotationManager {
     this.onCourt[slot] = replacementIdx;
     this.stretchSec[outIdx] = 0;          // outgoing player resets stretch (now resting)
     this.stretchSec[replacementIdx] = 0;  // incoming player starts fresh stretch
+  }
+
+  private getBucket(pos?: string): 'guard' | 'wing' | 'big' {
+    const normalized = (pos ?? '').toUpperCase();
+    if (normalized.includes('C')) return 'big';
+    if (normalized.includes('PF') || normalized === 'F' || normalized.includes('FC')) return 'big';
+    if (normalized.includes('PG') || normalized === 'G') return 'guard';
+    if (normalized.includes('SG')) return 'guard';
+    return 'wing';
+  }
+
+  private getCompatibilityBonus(
+    outgoing: 'guard' | 'wing' | 'big',
+    incoming: 'guard' | 'wing' | 'big',
+  ): number {
+    if (outgoing === incoming) return 18;
+    if ((outgoing === 'guard' && incoming === 'wing') || (outgoing === 'wing' && incoming === 'guard')) return 6;
+    if ((outgoing === 'wing' && incoming === 'big') || (outgoing === 'big' && incoming === 'wing')) return 4;
+    return -10;
   }
 
   /** Final actual-minutes-played per rotation player. */

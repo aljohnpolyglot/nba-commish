@@ -182,6 +182,7 @@ interface Props { season: number; onBack: () => void }
 
 export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => {
   const { state } = useGame();
+  const isFictional = state.leagueType === 'fictional';
   const currentSeason = state.leagueStats.year;
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
   const [coachPhotosReady, setCoachPhotosReady] = useState(false);
@@ -203,7 +204,7 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
   const flat = (type: string) => flatAwards.find(a => a.type === type) ?? null;
 
   // ── Wikipedia data hook — always fetch for historical seasons ────────────────
-  const { data: bref, loading: brefLoading } = useBRefSeason(!isCurrent ? season : null);
+  const { data: bref, loading: brefLoading } = useBRefSeason(!isCurrent && !isFictional ? season : null);
 
   // Player lookup: string pid = internalId (autoResolver), then name fallback
   const stripAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -515,16 +516,16 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
     const countChamp = (teamId: number | undefined): number => {
       if (teamId == null) return 1;
       const champSeasons = new Set<number>();
-      // Flat autoResolver 'Champion' awards (current sim seasons)
       for (const a of prior) {
         if (a.type === 'Champion' && a.tid === teamId) champSeasons.add(Number(a.season));
       }
-      // Wikipedia cache — all 79 historical seasons (populated after first fetch)
-      for (const [yr, brefData] of getAllCachedSeasons().entries()) {
-        if (yr > Number(season)) continue;
-        if (!brefData.champion?.name) continue;
-        const matched = matchTeamByWikiName(brefData.champion.name, state.teams as any[]);
-        if (matched && (matched as any).id === teamId) champSeasons.add(yr);
+      if (!isFictional) {
+        for (const [yr, brefData] of getAllCachedSeasons().entries()) {
+          if (yr > Number(season)) continue;
+          if (!brefData.champion?.name) continue;
+          const matched = matchTeamByWikiName(brefData.champion.name, state.teams as any[]);
+          if (matched && (matched as any).id === teamId) champSeasons.add(yr);
+        }
       }
       return Math.max(champSeasons.size, 1);
     };
@@ -574,18 +575,18 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
     const countRunnerUp = (teamId: number | undefined): number => {
       if (teamId == null) return 1;
       const ruSeasons = new Set<number>();
-      // Flat autoResolver 'Runner Up' awards
       for (const a of prior) {
         if (a.type === 'Runner Up' && a.tid === teamId) ruSeasons.add(Number(a.season));
       }
-      // Wikipedia cache — match by franchise-merge-aware lookup
-      const team = state.teams.find((t: any) => t.id === teamId);
-      if (team) {
-        for (const [yr, brefData] of getAllCachedSeasons().entries()) {
-          if (yr > Number(season)) continue;
-          if (!brefData.runnerUp?.name) continue;
-          const matched = matchTeamByWikiName(brefData.runnerUp.name, state.teams as any[]);
-          if (matched && (matched as any).id === teamId) ruSeasons.add(yr);
+      if (!isFictional) {
+        const team = state.teams.find((t: any) => t.id === teamId);
+        if (team) {
+          for (const [yr, brefData] of getAllCachedSeasons().entries()) {
+            if (yr > Number(season)) continue;
+            if (!brefData.runnerUp?.name) continue;
+            const matched = matchTeamByWikiName(brefData.runnerUp.name, state.teams as any[]);
+            if (matched && (matched as any).id === teamId) ruSeasons.add(yr);
+          }
         }
       }
       return Math.max(ruSeasons.size, 1);

@@ -104,6 +104,15 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
     }));
   };
 
+  const formatPlayerMinutes = (stat: PlayerGameStats) => {
+    const totalSeconds = typeof stat.sec === 'number'
+      ? stat.sec
+      : Math.max(0, Math.round((stat.min ?? 0) * 60));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  };
+
   const getPlayerPos = (playerId: string) => {
     const p = players.find(p => p.internalId === playerId);
     return p?.pos || 'N/A';
@@ -382,7 +391,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                   })()}
                 </td>
                 <td className="px-2 py-3 font-mono text-slate-400">{getPlayerPos(s.playerId)}</td>
-                <td className="px-2 py-3 text-right font-mono">{Math.floor(s.min)}:{Math.floor((s.min % 1) * 60).toString().padStart(2, '0')}</td>
+                <td className="px-2 py-3 text-right font-mono">{formatPlayerMinutes(s)}</td>
                 <td className="px-2 py-3 text-right font-mono">{s.fgm}-{s.fga}</td>
                 <td className="px-2 py-3 text-right font-mono">{s.threePm}-{s.threePa}</td>
                 {fourPointEnabled && <td className="px-2 py-3 text-right font-mono">{s.fourPm || 0}-{s.fourPa || 0}</td>}

@@ -40,7 +40,7 @@ function useGameLookup(): Map<number, GamePhotoInfo> {
 }
 
 // ─── Lazy-photo wrapper (only enriches when post scrolls into view) ───────────
-const LazyPhotoCard: React.FC<{ post: SocialPost; gameLookup: Map<number, GamePhotoInfo>; onClick: () => void; onProfileClick: (h?: string) => void }> = ({ post, gameLookup, onClick, onProfileClick }) => {
+const LazyPhotoCard: React.FC<{ post: SocialPost; gameLookup: Map<number, GamePhotoInfo>; leagueType?: string; onClick: () => void; onProfileClick: (h?: string) => void }> = ({ post, gameLookup, leagueType, onClick, onProfileClick }) => {
   const { ref, inView } = useInView(0.05);
   const [resolvedMediaUrl, setResolvedMediaUrl] = useState<string | undefined>(() => {
     const cached = getResolvedUrl(post.id);
@@ -49,7 +49,7 @@ const LazyPhotoCard: React.FC<{ post: SocialPost; gameLookup: Map<number, GamePh
   useEffect(() => {
     if (!inView || resolvedMediaUrl) return;
     let cancelled = false;
-    enrichPostWithPhoto(post, gameLookup).then(url => {
+    enrichPostWithPhoto(post, gameLookup, leagueType).then(url => {
       if (!cancelled && url) setResolvedMediaUrl(url);
     });
     return () => { cancelled = true; };
@@ -373,6 +373,7 @@ export const TwitterLayout = () => {
                           <LazyPhotoCard
                             post={post}
                             gameLookup={gameLookup}
+                            leagueType={state.leagueType}
                             onClick={() => handlePostClick(post.id)}
                             onProfileClick={(handle) => handleProfileClick(handle || post.handle)}
                           />
@@ -522,6 +523,7 @@ export const TwitterLayout = () => {
                             key={post.id}
                             post={post}
                             gameLookup={gameLookup}
+                            leagueType={state.leagueType}
                             onClick={() => handlePostClick(post.id)}
                             onProfileClick={(handle) => handleProfileClick(handle || post.handle)}
                           />

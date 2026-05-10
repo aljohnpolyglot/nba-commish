@@ -1,4 +1,4 @@
-import { NBAPlayer, NBATeam, GameState, GameResult } from '../../types';
+import { NBAPlayer, NBATeam, GameState, GameResult, Game } from '../../types';
 import { AllStarCelebrityGameSim } from './AllStarCelebrityGameSim';
 import { AllStarDunkContestSim } from './AllStarDunkContestSim';
 import { AllStarThreePointContestSim } from './AllStarThreePointContestSim';
@@ -232,13 +232,14 @@ export class AllStarWeekendOrchestrator {
     const dates = getAllStarWeekendDates(year);
     const rsFormat = leagueStats.risingStarsFormat ?? '4team_tournament';
     const rsIsTournament = rsFormat === '4team_tournament' || rsFormat === 'random_4team';
+    const allStarRules = resolveExhibitionRules(leagueStats, 'allStar');
 
     // For 4-team tournament formats inject two SF games upfront; the final (91099) is dynamic.
     // For all other formats inject the single classic game (90000).
     const risingStarsGames: any[] = rsIsTournament
       ? [
-          { gid: 91001, homeTid: -13, awayTid: -16, homeScore: 0, awayScore: 0, played: false, date: toNoonUTC(dates.risingStars), isRisingStars: true, isExhibition: true },
-          { gid: 91002, homeTid: -14, awayTid: -15, homeScore: 0, awayScore: 0, played: false, date: toNoonUTC(dates.risingStars), isRisingStars: true, isExhibition: true },
+          { gid: 91001, homeTid: -13, awayTid: -16, homeScore: 0, awayScore: 0, played: false, date: toNoonUTC(dates.risingStars), isRisingStars: true, isExhibition: true, gameFormat: 'target_score', targetScore: 40 },
+          { gid: 91002, homeTid: -14, awayTid: -15, homeScore: 0, awayScore: 0, played: false, date: toNoonUTC(dates.risingStars), isRisingStars: true, isExhibition: true, gameFormat: 'target_score', targetScore: 40 },
         ]
       : [
           { gid: 90000, homeTid: -3, awayTid: -4, homeScore: 0, awayScore: 0, played: false, date: toNoonUTC(dates.risingStars), isRisingStars: true, isExhibition: true },
@@ -255,6 +256,10 @@ export class AllStarWeekendOrchestrator {
       played: false,
       homeScore: 0,
       awayScore: 0,
+      ...(allStarRules.gameFormat !== 'timed' ? {
+        gameFormat: allStarRules.gameFormat,
+        targetScore: allStarRules.gameFormat === 'target_score' ? allStarRules.targetScore : undefined,
+      } : {}),
     }));
 
     const celebrityGame = {
@@ -747,11 +752,11 @@ export class AllStarWeekendOrchestrator {
     const newBoxScores: any[] = [];
 
     const simOne = async (gid: number, homeTid: number, awayTid: number, targetScore: number) => {
-      const game = {
+      const game: Game = {
         gid, homeTid, awayTid,
         homeScore: 0, awayScore: 0, played: false,
         date: toNoonUTC(new Date(state.date)),
-        isRisingStars: true, isExhibition: true,
+        isRisingStars: true, isExhibition: true, gameFormat: 'target_score', targetScore,
       };
       const { results } = await simulateGames(
         fakeTeams as any,
@@ -832,11 +837,11 @@ export class AllStarWeekendOrchestrator {
       const winners = sfs.map((g: any) => g.homeScore > g.awayScore ? g.homeTid : g.awayTid);
       if (winners.length >= 2) {
         const [homeTid, awayTid] = winners;
-        const finalGame = {
+        const finalGame: Game = {
           gid: 91099, homeTid, awayTid,
           homeScore: 0, awayScore: 0, played: false,
           date: toNoonUTC(new Date(state.date)),
-          isRisingStars: true, isRisingStarsChampionship: true, isExhibition: true,
+          isRisingStars: true, isRisingStarsChampionship: true, isExhibition: true, gameFormat: 'target_score', targetScore: 25,
         };
         updatedSchedule = [...updatedSchedule, finalGame].sort(
           (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
@@ -916,18 +921,22 @@ export class AllStarWeekendOrchestrator {
     let updatedSchedule = [...state.schedule];
     const newBoxScores: GameResult[] = [];
     const allStarStatsAccum: any[] = [];
+    const ls = state.leagueStats;
+    const allStarRules = resolveExhibitionRules(ls, 'allStar');
 
     const simOne = async (gid: number, homeTid: number, awayTid: number) => {
-      const game = {
+      const game: Game = {
         gid, homeTid, awayTid,
         homeScore: 0, awayScore: 0, played: false,
         date: toNoonUTC(new Date(state.date)),
         isAllStar: true, isExhibition: true,
+        ...(allStarRules.gameFormat !== 'timed' ? {
+          gameFormat: allStarRules.gameFormat,
+          targetScore: allStarRules.gameFormat === 'target_score' ? allStarRules.targetScore : undefined,
+        } : {}),
       };
       // Real 2026 NBA All-Star tournament games are 12 minutes total (not 4 × 12).
       // The sim engine runs 4 fixed quarters, so quarterLength=3 → 4×3=12 min.
-      const ls = state.leagueStats;
-      const allStarRules = resolveExhibitionRules(ls, 'allStar');
       const { results } = await simulateGames(
         fakeTeams as any,
         allBucketPlayers as any,
@@ -1013,11 +1022,15 @@ export class AllStarWeekendOrchestrator {
       if (game1 && !hasGame2) {
         const winnerTid = game1.homeScore > game1.awayScore ? game1.homeTid : game1.awayTid;
         const loserTid  = game1.homeScore > game1.awayScore ? game1.awayTid : game1.homeTid;
-        const buildGame = (gid: number, oppTid: number) => ({
+        const buildGame = (gid: number, oppTid: number): Game => ({
           gid, homeTid: stripesTid, awayTid: oppTid, round: 'rr' as const,
           played: false, homeScore: 0, awayScore: 0,
           date: toNoonUTC(new Date(state.date)),
           isAllStar: true, isExhibition: true,
+          ...(allStarRules.gameFormat !== 'timed' ? {
+            gameFormat: allStarRules.gameFormat,
+            targetScore: allStarRules.gameFormat === 'target_score' ? allStarRules.targetScore : undefined,
+          } : {}),
         });
         const game2 = buildGame(90095, winnerTid); // Stripes vs Winner
         const game3 = buildGame(90096, loserTid);  // Stripes vs Loser
@@ -1061,11 +1074,15 @@ export class AllStarWeekendOrchestrator {
 
       if (homeTid != null && awayTid != null) {
         const finalGid = 90099;
-        const finalGame = {
+        const finalGame: Game = {
           gid: finalGid, homeTid, awayTid,
           homeScore: 0, awayScore: 0, played: false,
           date: toNoonUTC(new Date(state.date)),
           isAllStar: true, isAllStarChampionship: true, isExhibition: true,
+          ...(allStarRules.gameFormat !== 'timed' ? {
+            gameFormat: allStarRules.gameFormat,
+            targetScore: allStarRules.gameFormat === 'target_score' ? allStarRules.targetScore : undefined,
+          } : {}),
         };
         // Insert into schedule so daily card renders it.
         updatedSchedule = [...updatedSchedule, finalGame].sort(

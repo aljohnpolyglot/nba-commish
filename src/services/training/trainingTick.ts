@@ -27,6 +27,7 @@ import type { TrainingParadigm, Allocations, DailyPlan } from '../../TeamTrainin
 import { systemDescriptions } from '../../utils/systemDescriptions';
 import { defensiveSystemDescriptions } from '../../utils/defensiveSystemDescriptions';
 import { getAICoachPlanForDay } from './aiCoachParadigm';
+import { resolveEffectiveTrainingPlan } from './trainingPlanResolver';
 import type { Game } from '../../types';
 
 // Allocation reps → familiarity gain. Each daily session contributes a small
@@ -64,11 +65,10 @@ interface PlanLike {
 
 /** Look up today's plan by ISO date `YYYY-MM-DD`. */
 function pickPlanForDay(
-  calendar: Record<string, PlanLike> | undefined,
+  team: Pick<NBATeam, 'trainingCalendar' | 'normalDayDefault'>,
   iso: string
 ): PlanLike | null {
-  if (!calendar) return null;
-  return calendar[iso] ?? null;
+  return resolveEffectiveTrainingPlan(team, iso);
 }
 
 function clamp(v: number, lo = 0, hi = 100): number {
@@ -103,7 +103,7 @@ export function tickTeamFamiliarity(
    *  to applyDailyFamiliarityTick. Bypasses the team's calendar for this day. */
   planOverride?: PlanLike | null,
 ): NBATeam {
-  const plan = planOverride ?? pickPlanForDay(team.trainingCalendar as any, iso);
+  const plan = planOverride ?? pickPlanForDay(team, iso);
 
   let offDelta: number;
   let defDelta: number;
@@ -378,8 +378,7 @@ export function tickPlayerFatigue(
   team: NBATeam | undefined,
   iso: string
 ): NBAPlayer {
-  const calendar = team?.trainingCalendar as Record<string, PlanLike> | undefined;
-  const plan = calendar?.[iso];
+  const plan = team ? resolveEffectiveTrainingPlan(team, iso) : null;
   const indMult = INDIVIDUAL_INTENSITY_MULT[player.trainingIntensity ?? 'Normal'] ?? 1.0;
 
   // Modern NBA sport-science calibration: pro recovery teams (cryo, hyperbaric,

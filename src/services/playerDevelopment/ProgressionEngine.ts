@@ -122,7 +122,7 @@ function seededUniform(seed: string, lo: number, hi: number): number {
 //   pot >= 85 at age 32+: decline × 0.78
 // Below pot 85: normal BBGM decline curve.
 
-function calcBaseChange(age: number, seed: string, pot: number = 70): number {
+export function calcBaseChange(age: number, seed: string, pot: number = 70): number {
   let val: number;
 
   // Reduced ~40% from prior values — old rates produced K2 +17/5yr for avg players,
@@ -202,7 +202,7 @@ const iqFormula: AttrFormula = {
   },
 };
 
-const ATTR_FORMULAS: Record<string, AttrFormula> = {
+export const ATTR_FORMULAS: Record<string, AttrFormula> = {
   stre: {
     ageModifier: () => 0,
     changeLimits: () => [-Infinity, Infinity],

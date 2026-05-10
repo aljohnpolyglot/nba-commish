@@ -510,7 +510,7 @@ export const PersonnelBioView: React.FC<PersonnelBioViewProps> = ({ person, onBa
       {/* ── Footer ──────────────────────────────────────────── */}
       <div className="p-3 bg-slate-950/60 border-t border-slate-800 flex items-center justify-between">
         <span className="text-[9px] font-bold text-slate-700 uppercase tracking-widest">
-          NBA Official Personnel Record
+          League Official Personnel Record
         </span>
         <span className="text-[9px] font-mono text-slate-700 uppercase">
           {person.type.toUpperCase()} · {person.id.slice(0, 10)}

@@ -16,6 +16,9 @@ import { GlobalGamesModal } from '../../modals/GlobalGamesModal';
 import { PreseasonInternationalModal } from '../../modals/PreseasonInternationalModal';
 import { RigLotteryModal } from '../../modals/RigLotteryModal';
 import ContactModal from '../../ContactModal';
+import { ExpansionDraftSetupModal } from '../../expansion/ExpansionDraftSetupModal';
+import { PlayerProtectionModal } from '../../expansion/PlayerProtectionModal';
+import { ExpansionDraftView } from '../../expansion/ExpansionDraftView';
 
 interface ActionModalsRendererProps {
   modals: any;
@@ -85,6 +88,40 @@ export const ActionModalsRenderer: React.FC<ActionModalsRendererProps> = ({
           type={modals.citySelectorType}
           title="League Expansion"
           description="Select cities for new NBA franchises."
+        />
+      )}
+
+      {modals.expansionSetupModalOpen && (
+        <ExpansionDraftSetupModal
+          onClose={() => modals.setExpansionSetupModalOpen(false)}
+          onConfirm={async (payload) => {
+            modals.setExpansionSetupModalOpen(false);
+            await handleAction('SCHEDULE_EXPANSION', payload);
+            // Auto-Chain: bei "this offseason" sofort zum Player-Protection-Modal
+            const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+            if (payload.scheduleYear === currentYear) {
+              modals.setExpansionProtectModalOpen(true);
+            }
+          }}
+        />
+      )}
+
+      {modals.expansionProtectModalOpen && (
+        <PlayerProtectionModal
+          onClose={() => modals.setExpansionProtectModalOpen(false)}
+          onConfirm={async (protections) => {
+            modals.setExpansionProtectModalOpen(false);
+            await handleAction('SET_EXPANSION_PROTECTIONS', { protections });
+            // Apply realignment + add expansion teams BEFORE opening draft view
+            await handleAction('APPLY_EXPANSION_REALIGNMENT', {});
+            modals.setExpansionDraftViewOpen(true);
+          }}
+        />
+      )}
+
+      {modals.expansionDraftViewOpen && (
+        <ExpansionDraftView
+          onClose={() => modals.setExpansionDraftViewOpen(false)}
         />
       )}
 

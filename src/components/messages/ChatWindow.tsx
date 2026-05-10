@@ -179,10 +179,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
               participant = {
                   id: `ref-${ref.id}`,
                   name: ref.name,
-                  role: 'NBA Referee',
+                  role: 'League Referee',
                   avatarUrl: getRefereePhoto(ref.name) || undefined
               };
-              org = 'NBA Officials';
+              org = 'League Officials';
           }
       }
 

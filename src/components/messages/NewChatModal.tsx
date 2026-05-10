@@ -16,10 +16,24 @@ type FilterType =
   | 'NBA' | 'WNBA' | 'Draft Prospect' | 'Prospect' | 'Active' | 'Free Agent'
   | 'PBA' | 'Euroleague' | 'B-League' | 'G-League' | 'Endesa' | 'China CBA' | 'NBL Australia';
 
+const FilterPill: React.FC<{ filter: FilterType; activeFilter: FilterType; onClick: (f: FilterType) => void }> = ({ filter, activeFilter, onClick }) => (
+  <button
+    onClick={() => onClick(filter)}
+    className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+      activeFilter === filter
+        ? 'bg-indigo-600 text-white'
+        : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+    }`}
+  >
+    {filter}
+  </button>
+);
+
 export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect }) => {
   const { state } = useGame();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
+  const isFictional = state.leagueType === 'fictional';
 
   React.useEffect(() => {
     fetchRefereeData();
@@ -43,7 +57,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
         }
 
         let org: string = p.status || 'Free Agent';
-        let league: FilterType = isGMMode ? 'Players' : 'NBA'; // Default
+        let league: FilterType = isGMMode ? 'Players' : (isFictional ? 'Active' : 'NBA');
         let role = '';
 
         if (p.status === 'Retired' || p.tid === -3) {
@@ -66,6 +80,9 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
         const team = state.teams.find(t => t.id === p.tid);
         if (team) {
             org = team.name ?? org;
+        } else if (isFictional && !isGMMode && (p.tid === -1 || p.status === 'Free Agent')) {
+            league = 'Free Agent';
+            org = 'Free Agent';
         }
 
         const rating2k = convertTo2KRating(p.overallRating || 0, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp);
@@ -117,8 +134,8 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
         allContacts.push({
           id: `ref-${ref.id}`,
           name: ref.name,
-          role: `NBA Official • #${ref.id}`,
-          org: 'NBA Officials',
+          role: `League Official • #${ref.id}`,
+          org: 'League Officials',
           league: 'Referee',
           avatarUrl: getRefereePhoto(ref.name),
           ovr: 0,
@@ -183,24 +200,38 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
             />
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-            {(state.gameMode === 'gm'
-              ? (['All', 'Players', 'Owner', 'Coach'] as FilterType[])
-              : (['All', 'NBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'WNBA', 'China CBA', 'NBL Australia', 'Draft Prospect', 'Owner', 'GM', 'Coach', 'Retired', 'Referee'] as FilterType[])
-            ).map((filter) => (
-                <button
-                    key={filter}
-                    onClick={() => setActiveFilter(filter)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                        activeFilter === filter
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
-                    }`}
-                >
-                    {filter}
-                </button>
-            ))}
-          </div>
+          {state.gameMode === 'gm' ? (
+            <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+              {(['All', 'Players', 'Owner', 'Coach'] as FilterType[]).map(f => (
+                <FilterPill key={f} filter={f} activeFilter={activeFilter} onClick={setActiveFilter} />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+              <FilterPill filter="All" activeFilter={activeFilter} onClick={setActiveFilter} />
+              {(isFictional
+                ? [
+                    { label: 'Players', items: ['Active', 'Free Agent', 'G-League', 'Draft Prospect', 'Retired'] as FilterType[] },
+                    { label: 'Staff',   items: ['Owner', 'GM', 'Coach', 'Referee'] as FilterType[] },
+                  ]
+                : [
+                    { label: 'Domestic',      items: ['NBA', 'G-League', 'WNBA'] as FilterType[] },
+                    { label: 'International', items: ['Euroleague', 'PBA', 'B-League', 'Endesa', 'China CBA', 'NBL Australia'] as FilterType[] },
+                    { label: 'Other',         items: ['Draft Prospect', 'Retired'] as FilterType[] },
+                    { label: 'Staff',         items: ['Owner', 'GM', 'Coach', 'Referee'] as FilterType[] },
+                  ]
+              ).map(group => (
+                <div key={group.label}>
+                  <div className="text-[9px] font-black uppercase tracking-widest text-slate-600 px-1 mb-1">{group.label}</div>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {group.items.map(f => (
+                      <FilterPill key={f} filter={f} activeFilter={activeFilter} onClick={setActiveFilter} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-2">

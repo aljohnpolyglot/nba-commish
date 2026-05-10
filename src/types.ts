@@ -10,7 +10,9 @@ export interface Game {
   city?: string;
   country?: string;
   isAllStar?: boolean;
+  isAllStarChampionship?: boolean;
   isRisingStars?: boolean;
+  isRisingStarsChampionship?: boolean;
   isCelebrityGame?: boolean;
   isExhibition?: boolean;
   isDunkContest?: boolean;
@@ -32,6 +34,9 @@ export interface Game {
   // a real QF (advancers) or a regular-season game (non-advancers).
   isCupTBD?: boolean;
   cupTBDForTid?: number;
+  gameFormat?: 'timed' | 'target_score' | 'elam_ending';
+  targetScore?: number;
+  round?: 'rr' | 'sf' | 'final';
 }
 
 export interface NBACupGroup {
@@ -117,6 +122,7 @@ export interface PlayerGameStats {
   playerId: string;
   name: string;
   min: number;
+  sec?: number;
   pts: number;
   reb: number;
   orb: number;
@@ -209,6 +215,8 @@ export interface GameResult {
   homeLosses?: number;
   awayWins?: number;
   awayLosses?: number;
+  gameFormat?: 'timed' | 'target_score' | 'elam_ending';
+  targetScore?: number;
   injuries?: {
     playerId: string;
     playerName: string;
@@ -282,6 +290,7 @@ export interface LeagueStats {
   rules: Rule[];
   morale: Morale;
   year: number;
+  hofClassesInducted?: number[];
   draftType: string;
   allStarEnding?: string;
   allStarBreakStart?: string; // YYYY-MM-DD — first day of regular-season blackout
@@ -557,7 +566,8 @@ export interface LeagueStats {
   /** Mandatory title defense — defending king auto-seeded #1 next season. */
   allStarThroneMandatoryDefense?: boolean;
   allStarMirrorLeagueRules?: boolean;
-  allStarGameFormat?: 'timed' | 'target_score';
+  allStarGameFormat?: 'timed' | 'target_score' | 'elam_ending';
+  allStarGameTargetScore?: number;
   allStarQuarterLength?: number;
   allStarNumQuarters?: number;
   allStarOvertimeDuration?: number;
@@ -581,7 +591,7 @@ export interface LeagueStats {
   celebrityGameMirrorLeagueRules?: boolean;
 
   // Game Format
-  gameFormat?: 'timed' | 'target_score';
+  gameFormat?: 'timed' | 'target_score' | 'elam_ending';
   gameTargetScore?: number;
 
   // Coaching
@@ -780,9 +790,8 @@ export interface NBATeam {
     /** True when this entry was auto-filled by the scheduler (not user-edited). */
     auto?: boolean;
   }>;
-  /** User's "Normal Day" template — what every regular practice day should look like.
-   *  Edited via the Normal Default modal on Training Center; on save, walks the
-   *  calendar and stamps every upcoming auto Balanced 50% cell with these values. */
+  /** User's "Normal Day" template — canonical fallback for auto regular-practice
+   *  days (Balanced 50%) across UI + sim tick. Future-day propagation is optional. */
   normalDayDefault?: {
     intensity: number;
     paradigm: 'Balanced' | 'Offensive' | 'Defensive' | 'Biometrics' | 'Recovery';
@@ -1058,6 +1067,8 @@ export interface StaffData {
   gms: StaffMember[];
   coaches: StaffMember[];
   leagueOffice: StaffMember[];
+  /** Fictional leagues only — persisted so LOAD_GAME can restore without hitting the gist. */
+  referees?: { id: string; name: string; slug?: string }[];
 }
 
 export interface HistoricalStatPoint {
@@ -1463,6 +1474,9 @@ historicalAwards: HistoricalAward[];
   // ── Game Mode ─────────────────────────────────────────────────────────────
   gameMode?: 'commissioner' | 'gm';  // default: 'commissioner'
   userTeamId?: number;                // set in GM mode — the team the user manages
+  leagueType?: 'fictional' | 'modded'; // 'fictional' = generated, 'modded' = real-NBA via community gists
+  moddedLeagueBase?: 'nba' | 'europe';
+  europeMarket?: 'spain';
 
   pendingFAToasts?: { playerName: string; accepted: boolean; winnerTeamName?: string; annualM: number; years: number; rejectionReason?: string }[];
   pendingElimToast?: boolean;
@@ -1477,6 +1491,30 @@ historicalAwards: HistoricalAward[];
   // Drives the new AUFGABEN sidebar + per-phase navigation. Lives only when
   // the calendar enters the offseason; cleared on next opening night.
   offseasonChecklist?: OffseasonChecklist;
+
+  // ── Expansion Draft (ZenGM-style, Phase 1 plumbing) ───────────────────────
+  /** Tids of expansion teams in the *current* expansion-draft cycle. Cleared
+   *  once the expansion draft completes. */
+  expansionTeamIds?: number[];
+  /** Player IDs eligible to be drafted (i.e. unprotected by their current team). */
+  expansionEligiblePlayers?: string[];
+  /** Per-team protection lists, keyed by tid. */
+  expansionDraftProtections?: Record<number, string[]>;
+  /** Expansion-draft user-tunable settings. Auto-skaliert bei Setup. */
+  expansionProtectionSettings?: {
+    perTeamLimit: number;       // wieviele Spieler darf jedes Bestandsteam schützen
+    maxDraftedPerTeam: number;  // wie viele kann Expansion-Draft pro Bestandsteam ziehen
+    picksPerExpansionTeam: number; // wieviele Picks bekommt jedes Expansion-Team
+  };
+  /** Scheduled future expansion. If set, the offseason planner triggers the
+   *  expansion-draft phase when ls.year === year. */
+  expansionSchedule?: {
+    year: number;
+    teams: ExpansionTeamSpec[];
+    /** Optional realignment to apply when the expansion fires. Maps tid → new
+     *  conference/division. */
+    realignment?: Record<number, { conference: 'East' | 'West'; cid: 0 | 1; did: number }>;
+  };
   /** FA Tag counter (1..faTagsTotal). Set when user enters FA phase. */
   faTagCounter?: number;
   /** Year (ls.year) when user manually exited the offseason checklist. Suppresses
@@ -1536,8 +1574,33 @@ historicalAwards: HistoricalAward[];
 // ── Offseason 2K-style checklist types ──────────────────────────────────────
 // The 8 phase rows the user steps through between Finals end and opening night.
 // Order matters — reflects the visual sidebar order (Bilder #2/#7/#16).
+/** ZenGM-style expansion-team spec. Mirrors BBGM's teamInfos.ts shape so we
+ *  can ingest their canonical pool (Seattle SuperSonics, Las Vegas, Vancouver,
+ *  etc.) directly without a transform step. `pop` is in millions. */
+export interface ExpansionTeamSpec {
+  region: string;
+  name: string;
+  abbrev: string;
+  pop: number;
+  colors: [string, string, string];
+  imgURL?: string;
+  imgURLSmall?: string;
+  jersey?: string;
+  /** Conference-Zuordnung beim Aktivieren des Expansion-Drafts. */
+  conference: 'East' | 'West';
+  cid: 0 | 1;
+  did: number;
+  /** Optional: vorgeschlagene Stadt-Koordinaten für Map-Anzeige. */
+  lat?: number;
+  lng?: number;
+  /** Optional: historisches Franchise, dessen Geschichte beansprucht wird
+   *  (BBGM-Pattern, vgl. SEA reclaimt OKC-Vor-2008). Phase-6-Backlog. */
+  reclaimsHistoryFromTid?: number;
+}
+
 export type OffseasonChecklistRow =
   | 'draftLottery'
+  | 'expansionDraft'
   | 'options'
   | 'qualifyingOffers'
   | 'myFAs'
@@ -1662,7 +1725,7 @@ export interface UserAction {
 
 export type Conference = 'East' | 'West';
 export type GamePhase = 'Preseason' | 'Opening Week' | 'Regular Season (Early)' | 'Regular Season (Mid)' | 'All-Star Break' | 'Trade Deadline' | 'Regular Season (Late)' | 'Play-In Tournament' | 'Playoffs (Round 1)' | 'Playoffs (Round 2)' | 'Conference Finals' | 'NBA Finals' | 'Offseason' | 'Draft' | 'Draft Lottery' | 'Free Agency' | 'Schedule Planning' | 'Schedule Release' | 'Training Camp';
-export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'NBA Cup' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'Player Creator' | 'League History' | 'Player Bios' | 'Player Comparison' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History' | 'Team Office' | 'Coaching' | 'Training Center' | 'Hall of Fame';
+export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'NBA Cup' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'Player Creator' | 'League History' | 'Player Bios' | 'Player Comparison' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History' | 'Team Office' | 'Coaching' | 'Training Center' | 'Hall of Fame' | 'Euroleague Hub' | 'Endesa Hub' | 'G-League Hub' | 'WNBA Hub' | 'B-League Hub' | 'China CBA Hub' | 'NBL Australia Hub' | 'PBA Hub';
 
 // ─── AI Trade / Free Agency ───────────────────────────────────────────────────
 export interface TradeProposal {

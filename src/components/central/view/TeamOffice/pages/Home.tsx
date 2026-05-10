@@ -17,15 +17,20 @@ interface HomeProps {
   title?: string;
   /** Header subtitle override — defaults to the front-office copy. */
   subtitle?: string;
+  /** Optional team ids to visually call out in picker mode. */
+  highlightedTeamIds?: number[];
+  /** Label for highlighted teams. */
+  highlightedLabel?: string;
 }
 
-export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pickerMode, selectedTid, title, subtitle }: HomeProps) {
+export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pickerMode, selectedTid, title, subtitle, highlightedTeamIds, highlightedLabel }: HomeProps) {
   const { state, dispatchAction } = useGame();
   const teams = teamsProp ?? state.teams ?? [];
   const players = playersProp ?? state.players ?? [];
   const isGM = state.gameMode === 'gm';
   const userTid = pickerMode ? (selectedTid ?? null) : (isGM ? state.userTeamId ?? null : null);
   const needsTeamPick = pickerMode || (isGM && state.userTeamId == null);
+  const highlightedSet = new Set(highlightedTeamIds ?? []);
 
   // Wrap the select handler — when the GM is picking their franchise for the first time,
   // commit the choice to state.userTeamId so every other system (TradeFinder, AI gating,
@@ -67,6 +72,7 @@ export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pic
           const teamOverall = calculateTeamStrength(team.id, players);
           const teamColor = team.colors?.[0] || '#552583';
           const isUserTeam = team.id === userTid;
+          const isHighlighted = highlightedSet.has(team.id);
 
           return (
             <button
@@ -76,9 +82,15 @@ export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pic
                 "group relative flex flex-col items-center p-4 rounded-xl border transition-all duration-300 overflow-hidden text-left",
                 isUserTeam
                   ? "bg-[#1a1a2e]/80 border-2"
+                  : isHighlighted
+                    ? "bg-[#161b22]/70 border-[#c0841a] hover:border-[#fbbf24] hover:bg-[#1b2130]"
                   : "bg-[#161b22]/40 border-[#30363d] hover:border-[#8b949e] hover:bg-[#161b22]/80"
               )}
-              style={isUserTeam ? { borderColor: teamColor, boxShadow: `0 0 24px ${teamColor}80` } : undefined}
+              style={isUserTeam
+                ? { borderColor: teamColor, boxShadow: `0 0 24px ${teamColor}80` }
+                : isHighlighted
+                  ? { boxShadow: '0 0 20px rgba(251, 191, 36, 0.16)' }
+                  : undefined}
             >
               {/* Background Glow — always on for user team, hover-only for others */}
               <div
@@ -91,6 +103,11 @@ export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pic
               {isUserTeam && (
                 <span className="absolute top-1.5 right-1.5 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ backgroundColor: teamColor, color: '#fff' }}>
                   Your Team
+                </span>
+              )}
+              {!isUserTeam && isHighlighted && (
+                <span className="absolute top-1.5 right-1.5 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-400 text-slate-950">
+                  {highlightedLabel ?? 'Featured'}
                 </span>
               )}
 
@@ -116,6 +133,11 @@ export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pic
                 <div className="text-[10px] font-bold text-[#8b949e] uppercase tracking-wider">
                   {team.wins}-{team.losses} | {roster.length} Players
                 </div>
+                {isHighlighted && (
+                  <div className="mt-1 text-[9px] font-bold text-amber-300 uppercase tracking-wider">
+                    Euroleague sister club
+                  </div>
+                )}
 
                 <div className="mt-3 pt-3 border-t border-[#30363d]/50 flex justify-between items-center w-full">
                   <span className="text-[9px] text-[#8b949e] uppercase truncate mr-2">Team OVR</span>

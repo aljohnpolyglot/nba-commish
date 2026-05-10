@@ -102,7 +102,7 @@ export const InvitePerformanceModal: React.FC<InvitePerformanceModalProps> = ({ 
   }, [state.schedule]);
 
   const events = [
-    { id: 'halftime_finals', name: 'NBA Finals Halftime Show', icon: Trophy, disabled: state.leagueStats.hasFinalsHalftime },
+    { id: 'halftime_finals', name: 'Finals Halftime Show', icon: Trophy, disabled: state.leagueStats.hasFinalsHalftime },
     { id: 'ring_ceremony', name: 'Championship Ring Ceremony', icon: Trophy, disabled: state.leagueStats.hasRingCeremony || !hasPastChamp || isPastSeasonOpener },
     { id: 'all_star', name: 'All-Star Game Halftime', icon: Star, disabled: state.leagueStats.hasAllStarHalftime },
     { id: 'random_halftime', name: 'Regular Season Halftime', icon: Music, disabled: false },

@@ -36,7 +36,17 @@ export default function SubNav({
   onToggleBookmarks,
   gameTeams = [],
 }: SubNavProps) {
-  const teamColor = selectedTeam ? TEAM_COLORS[selectedTeam] : null;
+  const selectedTeamData = selectedTeam ? gameTeams.find(team => team.name === selectedTeam) : null;
+  const teamColor = selectedTeam
+    ? TEAM_COLORS[selectedTeam] ?? (selectedTeamData?.colors?.[0]
+      ? {
+          primary: selectedTeamData.colors[0],
+          secondary: selectedTeamData.colors[1] ?? selectedTeamData.colors[0],
+          text: '#FFFFFF',
+          logo: selectedTeamData.logoUrl ?? '',
+        }
+      : null)
+    : null;
   const currentTabs = selectedTeam ? TEAM_TABS : GLOBAL_TABS;
 
   return (

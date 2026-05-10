@@ -1092,14 +1092,13 @@ export default function NBACupView() {
   };
 
   useEffect(() => {
+    if (state.leagueType === 'fictional') { setLoading(false); return; }
     const fetchData = async () => {
       try {
         const response = await fetch(GIST_URL);
         const json = await response.json();
-        console.log('NBA Cup raw gist:', json);
         if (Array.isArray(json)) {
           const transformed = transformWikiData(json);
-          console.log('NBA Cup transformed:', transformed.length, 'items');
           setGistData(transformed);
         }
       } catch (error) {
@@ -1109,7 +1108,7 @@ export default function NBACupView() {
       }
     };
     fetchData();
-  }, []);
+  }, [state.leagueType]);
 
   const inSeasonTournamentEnabled = isNbaCupEnabled(state.leagueStats);
   const viewYear = Number(selectedYear);
@@ -1264,28 +1263,35 @@ export default function NBACupView() {
           <CupContent data={pastData} liveCup={pastSimCup ?? undefined} teams={state.teams} players={state.players} boxScores={state.boxScores as any} schedule={state.schedule as any} view={view} onPlayerClick={handlePlayerClick} onGameClick={handleGameClick} />
         )}
 
-        {/* Mode C: pre-sim historical (gist) */}
+        {/* Mode C: pre-sim historical (gist) — blocked for fictional leagues */}
         {isHistorical && !pastSimCup && (
-          <>
-            {loading && (
-              <div className="flex items-center justify-center py-20">
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                  className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full"
-                />
-              </div>
-            )}
-            {!loading && gistYearData && (
-              <CupContent data={gistYearData} teams={state.teams} players={state.players} view={view} onPlayerClick={handlePlayerClick} />
-            )}
-            {!loading && !gistYearData && (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <Trophy size={48} className="text-slate-700 mb-4" />
-                <p className="text-slate-500">No data available for {viewYear - 1}–{String(viewYear).slice(-2)}.</p>
-              </div>
-            )}
-          </>
+          state.leagueType === 'fictional' ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <Trophy size={48} className="text-slate-700 mb-4" />
+              <p className="text-slate-500">No historical {labels.cupShort} data for seasons before your league started.</p>
+            </div>
+          ) : (
+            <>
+              {loading && (
+                <div className="flex items-center justify-center py-20">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full"
+                  />
+                </div>
+              )}
+              {!loading && gistYearData && (
+                <CupContent data={gistYearData} teams={state.teams} players={state.players} view={view} onPlayerClick={handlePlayerClick} />
+              )}
+              {!loading && !gistYearData && (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <Trophy size={48} className="text-slate-700 mb-4" />
+                  <p className="text-slate-500">No data available for {viewYear - 1}–{String(viewYear).slice(-2)}.</p>
+                </div>
+              )}
+            </>
+          )
         )}
       </main>
 

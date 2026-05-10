@@ -10,6 +10,7 @@ import { useLeagueLabels } from '../../utils/leagueLabels';
 import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
 import { useDraftEventGate } from '../../hooks/useDraftEventGate';
 import { compareGameDates } from '../../utils/dateUtils';
+import { getBroadcasterDisplayName, FICTIONAL_BROADCASTER_BADGE } from '../../utils/broadcastingUtils';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -107,10 +108,27 @@ const StatCard = ({ icon: Icon, label, value, subValue, color, trend = null }: a
   </div>
 );
 
-const BroadcasterCard = ({ broadcaster, isActive, onToggle, readOnly }: any) => {
+const FictionalBadge = ({ id, size = 'lg' }: { id: string; size?: 'lg' | 'md' | 'sm' }) => {
+  const b = FICTIONAL_BROADCASTER_BADGE[id];
+  if (!b) return null;
+  const sizeClass = size === 'lg' ? 'w-12 h-12' : size === 'md' ? 'w-8 h-8' : 'w-4 h-4';
+  const textClass = size === 'lg'
+    ? b.initials.length <= 2 ? 'text-sm' : 'text-[10px]'
+    : size === 'md'
+    ? b.initials.length <= 2 ? 'text-xs' : 'text-[8px]'
+    : 'text-[5px]';
+  return (
+    <div className={`${sizeClass} ${b.bg} ${b.shape} flex items-center justify-center overflow-hidden shrink-0`}>
+      <span className={`${b.font} ${b.text} ${textClass} leading-none select-none`}>{b.initials}</span>
+    </div>
+  );
+};
+
+const BroadcasterCard = ({ broadcaster, displayName, isActive, onToggle, readOnly, isFictional }: any) => {
   const reachGrade    = getGrade(broadcaster.reach,    { S: 0.9, A: 0.8, B: 0.6, C: 0.4 });
   const approvalGrade = getGrade(broadcaster.approval, { S: 0.9, A: 0.8, B: 0.7, C: 0.5 });
   const isSpecial = broadcaster.type === 'special';
+  const name = displayName ?? broadcaster.name;
 
   return (
     <motion.div
@@ -127,18 +145,22 @@ const BroadcasterCard = ({ broadcaster, isActive, onToggle, readOnly }: any) => 
       }`}
     >
       <div className="flex items-start justify-between gap-4">
-        <div className="w-12 h-12 bg-white rounded-xl p-2 flex items-center justify-center overflow-hidden shrink-0 border border-zinc-700">
-          <img
-            src={broadcaster.logo}
-            alt={broadcaster.name}
-            className="max-w-full max-h-full object-contain"
-            referrerPolicy="no-referrer"
-            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
-        </div>
+        {isFictional ? (
+          <FictionalBadge id={broadcaster.id} size="lg" />
+        ) : (
+          <div className="w-12 h-12 bg-white rounded-xl p-2 flex items-center justify-center overflow-hidden shrink-0 border border-zinc-700">
+            <img
+              src={broadcaster.logo}
+              alt={name}
+              className="max-w-full max-h-full object-contain"
+              referrerPolicy="no-referrer"
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold text-white truncate">{broadcaster.name}</h3>
+            <h3 className="text-sm font-bold text-white truncate">{name}</h3>
             {isSpecial && <Zap size={12} className="text-indigo-400 fill-indigo-400" />}
           </div>
           <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-tighter">{broadcaster.category}</p>
@@ -243,6 +265,8 @@ type View = 'roster' | 'phases' | 'weekly' | 'leaguepass' | 'dashboard';
 
 export const BroadcastingView: React.FC = () => {
   const { state, dispatchAction } = useGame();
+  const isFictional = state.leagueType === 'fictional';
+  const bcName = (id: string) => getBroadcasterDisplayName(id, isFictional);
   const labels = useLeagueLabels();
   const rosterGate = useRosterComplianceGate();
   const draftGate = useDraftEventGate();
@@ -443,7 +467,7 @@ export const BroadcastingView: React.FC = () => {
       const regIds = phaseAssignments['regularseason'] || [];
       const ghosted = activeBroadcasters.filter(id => !regIds.includes(id));
       if (ghosted.length) {
-        const names = ghosted.map(id => BROADCASTERS.find(b => b.id === id)?.name).join(', ');
+        const names = ghosted.map(id => bcName(id) || BROADCASTERS.find(b => b.id === id)?.name).join(', ');
         warnings.push(`Ghost Partners: ${names} ${ghosted.length > 1 ? 'are' : 'is'} on payroll but skipped the Regular Season!`);
       }
       const emptyDays = SCHEDULE_DAYS.filter(s => !scheduleAssignments[s.day]?.length).map(s => s.day);
@@ -485,7 +509,7 @@ export const BroadcastingView: React.FC = () => {
 
       // Build a rich summary of the deal for the LLM
       const partnerNames = activeBroadcasters
-        .map(id => BROADCASTERS.find(b => b.id === id)?.name)
+        .map(id => bcName(id) || BROADCASTERS.find(b => b.id === id)?.name)
         .filter(Boolean)
         .join(', ');
       const dealOutcome = [
@@ -667,7 +691,7 @@ export const BroadcastingView: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {filteredBroadcasters.map(b => (
-                  <BroadcasterCard key={b.id} broadcaster={b} isActive={activeBroadcasters.includes(b.id)} onToggle={toggleBroadcaster} readOnly={readOnly} />
+                  <BroadcasterCard key={b.id} broadcaster={b} displayName={bcName(b.id)} isActive={activeBroadcasters.includes(b.id)} onToggle={toggleBroadcaster} readOnly={readOnly} isFictional={isFictional} />
                 ))}
               </div>
             </motion.div>
@@ -702,10 +726,14 @@ export const BroadcastingView: React.FC = () => {
                               : 'bg-zinc-900/50 border-zinc-800 text-zinc-500 hover:border-zinc-700'
                           }`}
                         >
-                          <div className="w-8 h-8 bg-white rounded-lg p-1 flex items-center justify-center overflow-hidden shrink-0">
-                            <img src={b.logo} alt={b.name} className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
-                          </div>
-                          <span className="text-sm font-black uppercase italic">{b.name}</span>
+                          {isFictional ? (
+                            <FictionalBadge id={b.id} size="md" />
+                          ) : (
+                            <div className="w-8 h-8 bg-white rounded-lg p-1 flex items-center justify-center overflow-hidden shrink-0">
+                              <img src={b.logo} alt={b.name} className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
+                            </div>
+                          )}
+                          <span className="text-sm font-black uppercase italic">{bcName(b.id)}</span>
                         </button>
                       );
                     })}
@@ -721,7 +749,7 @@ export const BroadcastingView: React.FC = () => {
                       </div>
                       <div>
                         <h3 className="text-lg font-bold text-white uppercase italic">
-                          Assigning {BROADCASTERS.find(b => b.id === currentBroadcaster)?.name} to Phases
+                          Assigning {bcName(currentBroadcaster) || BROADCASTERS.find(b => b.id === currentBroadcaster)?.name} to Phases
                         </h3>
                         <p className="text-xs text-zinc-500">Select which phases this broadcaster covers.</p>
                       </div>
@@ -810,10 +838,14 @@ export const BroadcastingView: React.FC = () => {
                                         assigned ? 'bg-indigo-500/20 border-indigo-500/50 text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'
                                       }`}
                                     >
-                                      <div className="w-4 h-4 bg-white rounded-sm p-0.5 flex items-center justify-center overflow-hidden shrink-0">
-                                        <img src={b.logo} alt={b.name} className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
-                                      </div>
-                                      <span className="text-xs font-bold uppercase">{b.name}</span>
+                                      {isFictional ? (
+                                        <FictionalBadge id={b.id} size="sm" />
+                                      ) : (
+                                        <div className="w-4 h-4 bg-white rounded-sm p-0.5 flex items-center justify-center overflow-hidden shrink-0">
+                                          <img src={b.logo} alt={b.name} className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
+                                        </div>
+                                      )}
+                                      <span className="text-xs font-bold uppercase">{bcName(b.id)}</span>
                                     </button>
                                   );
                                 })}

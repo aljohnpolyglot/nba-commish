@@ -32,6 +32,11 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, ow
   const boxScore = state.boxScores?.find((r: any) => r.gameId === gameId || (r.homeTeamId === -1 && r.awayTeamId === -2));
   const isToday = game && normalizeDate(game.date) === normalizeDate(state.date);
   const canWatch = isToday && !game?.played;
+  const gameModeLabel = game?.gameFormat === 'target_score'
+    ? `First to ${game.targetScore ?? state.leagueStats?.allStarGameTargetScore ?? 40}`
+    : game?.gameFormat === 'elam_ending'
+      ? `Elam Ending · +${state.leagueStats?.allStarOvertimeTargetPoints ?? 24}`
+      : 'Timed Game';
 
   const bracket = allStar?.bracket;
   const homeBracket = bracket?.teams?.find((t: any) => t.tid === game?.homeTid);
@@ -404,7 +409,7 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, ow
       ) : canWatch && game ? (
         <div className="bg-slate-900 rounded-2xl border border-slate-800 p-8 text-center">
           <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-2">All-Star Game</h3>
-          <p className="text-slate-400 text-sm mb-6">The main event · East vs West</p>
+          <p className="text-slate-400 text-sm mb-6">The main event · {gameModeLabel}</p>
           <button
             onClick={() => onWatchGame?.(game)}
             className="px-8 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-2xl font-bold transition-all flex items-center gap-2 mx-auto"

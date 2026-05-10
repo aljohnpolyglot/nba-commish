@@ -3,6 +3,7 @@ import { calculateOutcome } from '../../../services/logic/outcomeDecider';
 import { advanceDay } from '../../../services/llm/llm';
 import { executeExecutiveTrade } from '../../../services/tradeService';
 import { buildShamsTradePost } from '../../../services/social/templates/charania';
+import { getInsiderHandle } from '../../../data/social/handles';
 import { calculateSocialEngagement } from '../../../utils/helpers';
 import { NewsGenerator } from '../../../services/news/NewsGenerator';
 import { buildFullDraftSlotMap, formatPickLabel } from '../../../services/draft/draftClassStrength';
@@ -10,7 +11,7 @@ import { buildFullDraftSlotMap, formatPickLabel } from '../../../services/draft/
 export const handleExecutiveTrade = async (stateWithSim: GameState, action: UserAction, executiveTradeTransactionRef: { current: any }, simResults: any[], recentDMs: any[]) => {
     const currentYear = stateWithSim.leagueStats?.year ?? new Date().getFullYear();
     const lotterySlotByTid = buildFullDraftSlotMap((stateWithSim as any).draftLotteryResult, stateWithSim.teams);
-    const tradeResult = executeExecutiveTrade(action.payload, stateWithSim.players, stateWithSim.teams, stateWithSim.draftPicks, currentYear, lotterySlotByTid);
+    const tradeResult = executeExecutiveTrade(action.payload, stateWithSim.players, stateWithSim.teams, stateWithSim.draftPicks, currentYear, lotterySlotByTid, stateWithSim.leagueType);
     executiveTradeTransactionRef.current = tradeResult.transaction;
     const teamA = stateWithSim.teams.find(t => t.id === action.payload.teamAId);
     const teamB = stateWithSim.teams.find(t => t.id === action.payload.teamBId);
@@ -102,11 +103,12 @@ export const handleExecutiveTrade = async (stateWithSim: GameState, action: User
         [...playersB, ...picksB]
     );
     if (shamsContent) {
-        const shamsEngagement = calculateSocialEngagement('@ShamsCharania', shamsContent, 82);
+        const insider = getInsiderHandle(stateWithSim.leagueType);
+        const shamsEngagement = calculateSocialEngagement(insider.atHandle, shamsContent, 82);
         const shamsPost = {
             id: `shams-trade-${Date.now()}`,
-            author: 'Shams Charania',
-            handle: '@ShamsCharania',
+            author: insider.name,
+            handle: insider.atHandle,
             content: shamsContent,
             date: stateWithSim.date,
             likes: shamsEngagement.likes,

@@ -47,6 +47,7 @@ export const AllStarTab: React.FC<AllStarTabProps> = ({ rules, setRule }) => {
                         allStarTeams={b('allStarTeams').value as number}                            setAllStarTeams={b('allStarTeams').set as any}
                         allStarMirrorLeagueRules={b('allStarMirrorLeagueRules').value as boolean}  setAllStarMirrorLeagueRules={b('allStarMirrorLeagueRules').set as any}
                         allStarGameFormat={b('allStarGameFormat').value as any}                    setAllStarGameFormat={b('allStarGameFormat').set as any}
+                        allStarGameTargetScore={b('allStarGameTargetScore').value as number}      setAllStarGameTargetScore={b('allStarGameTargetScore').set as any}
                         allStarQuarterLength={b('allStarQuarterLength').value as number}            setAllStarQuarterLength={b('allStarQuarterLength').set as any}
                         allStarNumQuarters={b('allStarNumQuarters').value as number}                setAllStarNumQuarters={b('allStarNumQuarters').set as any}
                         allStarOvertimeDuration={b('allStarOvertimeDuration').value as number}      setAllStarOvertimeDuration={b('allStarOvertimeDuration').set as any}

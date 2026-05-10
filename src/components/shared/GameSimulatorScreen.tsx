@@ -50,6 +50,8 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
 }) => {
   const { state } = useGame();
   const isExhibition = game.homeTid < 0;
+  const isTargetScoreGame = game.gameFormat === 'target_score';
+  const isElamGame = game.gameFormat === 'elam_ending';
   const timingConfig = useMemo(() => getGameTimingConfig(state.leagueStats), [state.leagueStats]);
   const fourPointEnabled = isFourPointEnabled(state.leagueStats);
 
@@ -131,6 +133,8 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
   const displayAwayScore = isFinal && finalResult ? finalResult.awayScore : awayScore;
 
   const getClockDisplay = () => {
+    if (isTargetScoreGame) return `FIRST TO ${game.targetScore ?? finalResult?.targetScore ?? 100}`;
+    if (isElamGame) return isFinal ? '0:00' : `TARGET ${finalResult?.targetScore ?? game.targetScore ?? 'TBD'}`;
     if (isFinal) return '0:00';
     if (!currentPlay) return formatClockSeconds(timingConfig.quarterLengthSeconds);
     
@@ -143,8 +147,12 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
 
   const clockDisplay = getClockDisplay();
   const periodDisplay = isFinal 
-    ? getFinalStatusLabel(finalResult?.otCount ?? 0)
-    : (currentPlay ? getPeriodLabel(currentPlay.q, timingConfig.numQuarters) : getPeriodLabel(1, timingConfig.numQuarters));
+    ? (isElamGame ? 'FINAL/ELAM' : getFinalStatusLabel(finalResult?.otCount ?? 0))
+    : isTargetScoreGame
+      ? 'TARGET SCORE'
+      : isElamGame
+        ? ((currentPlay?.q ?? 1) > timingConfig.numQuarters ? 'ELAM' : getPeriodLabel(currentPlay?.q ?? 1, timingConfig.numQuarters))
+        : (currentPlay ? getPeriodLabel(currentPlay.q, timingConfig.numQuarters) : getPeriodLabel(1, timingConfig.numQuarters));
 
   const qScores = quarterScores;
 

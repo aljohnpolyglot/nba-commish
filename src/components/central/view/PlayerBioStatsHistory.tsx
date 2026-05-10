@@ -115,7 +115,7 @@ function SeasonCell({ row, allStarSeasons, ringSeasons, cupSeasons }: { row: Sea
         <span className="text-yellow-400 text-[9px]" title="NBA Champion">💍</span>
       )}
       {cupSeasons.has(row.season) && !row.isTot && (
-        <span className="text-amber-400 text-[9px]" title="NBA Cup Champion">🏆</span>
+        <span className="text-amber-400 text-[9px]" title="In-Season Cup Champion">🏆</span>
       )}
       {allStarSeasons.has(row.season) && !row.isTot && (
         <span className="text-amber-400 text-[9px]" title="All-Star">★</span>

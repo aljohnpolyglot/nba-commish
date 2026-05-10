@@ -9,6 +9,7 @@ import { normalizeDate, calculateSocialEngagement } from '../../utils/helpers';
 import { getDraftDate, getDraftLotteryDate, getRolloverDate, toISODateString } from '../../utils/dateUtils';
 import { buildShamsPost } from '../social/templates/charania';
 import { findShamsPhoto } from '../social/charaniaphotos';
+import { getInsiderHandle } from '../../data/social/handles';
 import { generateLazySimNews } from '../news/lazySimNewsGenerator';
 import { convertTo2KRating } from '../../utils/helpers';
 import {
@@ -718,11 +719,12 @@ export const runLazySim = async (
       const socialEngine = new SocialEngine();
       const batchDateString = stateWithSim.date;
       console.log(`[LAZY_SIM] ✓ 625 pre-socialEngine — iter ${iterNum}, nbaPlayers=${nbaPlayers.length}`);
-      const enginePosts = await socialEngine.generateDailyPosts(allSimResults, nbaPlayers, stateWithSim.teams, batchDateString, batchDays, stateWithSim.playoffs, stateWithSim.schedule);
+      const enginePosts = await socialEngine.generateDailyPosts(allSimResults, nbaPlayers, stateWithSim.teams, batchDateString, batchDays, stateWithSim.playoffs, stateWithSim.schedule, stateWithSim.leagueType);
       console.log(`[LAZY_SIM] ✓ 626 post-socialEngine — iter ${iterNum}, posts=${enginePosts.length}`);
 
-      // Shams injury posts — supplement engine with explicit injury coverage
+      // Insider injury posts — supplement engine with explicit injury coverage
       const shamsInjuryPosts: any[] = [];
+      const injuryInsider = getInsiderHandle(stateWithSim.leagueType);
       for (const simResult of allSimResults) {
         if (!simResult.injuries?.length) continue;
         for (const injury of simResult.injuries) {
@@ -732,12 +734,12 @@ export const runLazySim = async (
           if (!team) continue;
           const content = buildShamsPost({ player, team, injury: { injuryType: injury.injuryType, gamesRemaining: injury.gamesRemaining }, opponent: null } as any);
           if (!content) continue;
-          const engagement = calculateSocialEngagement('@ShamsCharania', content, player.overallRating);
+          const engagement = calculateSocialEngagement(injuryInsider.atHandle, content, player.overallRating);
           const shamsPhoto = findShamsPhoto(player.name, team?.name);
           shamsInjuryPosts.push({
             id: `shams-injury-${injury.playerId}-${Date.now()}-${Math.random()}`,
-            author: 'Shams Charania',
-            handle: '@ShamsCharania',
+            author: injuryInsider.name,
+            handle: injuryInsider.atHandle,
             content,
             date: new Date(simResult.date).toISOString(),
             likes: engagement.likes,

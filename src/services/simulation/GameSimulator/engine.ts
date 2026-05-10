@@ -24,6 +24,7 @@ import { getDefenseGameplan, TEMPLATE_TO_SYSTEM } from '../../../store/defenseGa
 import { resolveExhibitionRules } from '../../allStar/exhibitionRules';
 import { getFourPointDistance, isFourPointEnabled } from '../../../utils/ruleFlags';
 import { simulateGameViaAdapter } from '../SimulatorAdapter';
+import { getRealDurability } from '../../../utils/durabilityUtils';
 
 /**
  * Top-8 pace factor from roster traits. Mirrors the tempo/fastBreak/earlyOffense
@@ -278,6 +279,19 @@ function getEfficiencyMultFromScore(teamPts: number, avgPts = 114): number {
 
 export class GameSimulator {
 
+  private static scaleWinnerToTarget(home: number, away: number, target: number): { home: number; away: number } {
+    const saneTarget = Math.max(1, Math.round(target));
+    const winner = Math.max(home, away);
+    const loser = Math.min(home, away);
+    if (winner <= 0) {
+      return { home: saneTarget, away: Math.max(0, saneTarget - 1) };
+    }
+    const scaledLoser = Math.min(Math.round(loser * saneTarget / winner), saneTarget - 1);
+    return home >= away
+      ? { home: saneTarget, away: scaledLoser }
+      : { home: scaledLoser, away: saneTarget };
+  }
+
   private static calcWinProb(strengthDiff: number): number {
     return 1 / (1 + Math.exp(-strengthDiff * 0.09));
   }
@@ -455,6 +469,10 @@ export class GameSimulator {
     let otCount = 0;
     let finalHomeScore: number;
     let finalAwayScore: number;
+    const baseGameFormat = (homeKnobs.gameFormat ?? awayKnobs.gameFormat ?? 'timed') as 'timed' | 'target_score' | 'elam_ending';
+    const configuredTargetScore = Math.max(1, Math.round(((homeKnobs.targetScore ?? 0) + (awayKnobs.targetScore ?? 0)) / 2 || 0));
+    const overtimeType = homeKnobs.overtimeType ?? awayKnobs.overtimeType ?? 'standard';
+    const overtimeTargetPoints = Math.max(1, Math.round(((homeKnobs.overtimeTargetPoints ?? 0) + (awayKnobs.overtimeTargetPoints ?? 0)) / 2 || 0));
 
     const overtimeDuration = Math.max(1, ((homeKnobs.overtimeDuration ?? 5) + (awayKnobs.overtimeDuration ?? 5)) / 2);
     const overtimeEnabled = (homeKnobs.overtimeEnabled ?? true) && (awayKnobs.overtimeEnabled ?? true);
@@ -468,28 +486,66 @@ export class GameSimulator {
       ? baseLead <= 4 ? 0.38 : baseLead <= 8 ? 0.06 : 0
       : 0;
 
-    if (otChance > 0 && Math.random() < otChance) {
-      isOT    = true;
-      const rolledOtCount = Math.random() < 0.07 ? 3 : Math.random() < 0.22 ? 2 : 1;
-      otCount = Math.min(rolledOtCount, maxOvertimes);
-
-      const regTie  = loserScore;
-      let homeOtPts = 0;
-      let awayOtPts = 0;
-
-      for (let ot = 1; ot <= otCount; ot++) {
-        const isDecisive = ot === otCount;
-        const { homePts, awayPts } = this.simulateOTPeriod(isDecisive, strengthDiff, overtimeDuration);
-        homeOtPts += homePts;
-        awayOtPts += awayPts;
-      }
-
-      finalHomeScore = regTie + homeOtPts;
-      finalAwayScore = regTie + awayOtPts;
-
+    if (baseGameFormat === 'target_score') {
+      const scaled = this.scaleWinnerToTarget(homeRegScore, awayRegScore, configuredTargetScore > 0 ? configuredTargetScore : 100);
+      finalHomeScore = scaled.home;
+      finalAwayScore = scaled.away;
+    } else if (baseGameFormat === 'elam_ending') {
+      const baseTargetAdd = overtimeTargetPoints > 0 ? overtimeTargetPoints : 24;
+      const targetScore = Math.max(homeRegScore, awayRegScore) + baseTargetAdd;
+      const race = this.simulateOTPeriod(true, strengthDiff, overtimeDuration);
+      const homeGain = Math.round(race.homePts * baseTargetAdd / Math.max(1, Math.max(race.homePts, race.awayPts)));
+      const awayGain = Math.round(race.awayPts * baseTargetAdd / Math.max(1, Math.max(race.homePts, race.awayPts)));
+      finalHomeScore = Math.min(targetScore, homeRegScore + homeGain);
+      finalAwayScore = Math.min(targetScore, awayRegScore + awayGain);
       if (finalHomeScore === finalAwayScore) {
-        if (Math.random() < (0.50 + strengthDiff * 0.005)) finalHomeScore += 1;
-        else finalAwayScore += 1;
+        if (homeRegScore >= awayRegScore) finalHomeScore = targetScore;
+        else finalAwayScore = targetScore;
+      } else if (finalHomeScore < targetScore && finalAwayScore < targetScore) {
+        if (finalHomeScore > finalAwayScore) finalHomeScore = targetScore;
+        else finalAwayScore = targetScore;
+      } else if (finalHomeScore >= targetScore && finalAwayScore >= targetScore) {
+        if (homeRegScore >= awayRegScore) finalAwayScore = targetScore - 1;
+        else finalHomeScore = targetScore - 1;
+      }
+      isOT = true;
+      otCount = 1;
+    } else if (otChance > 0 && Math.random() < otChance) {
+      isOT    = true;
+      const regTie  = loserScore;
+      if (overtimeType === 'target_score') {
+        otCount = 1;
+        const race = this.simulateOTPeriod(true, strengthDiff, overtimeDuration);
+        const scaled = this.scaleWinnerToTarget(race.homePts, race.awayPts, overtimeTargetPoints > 0 ? overtimeTargetPoints : 7);
+        finalHomeScore = regTie + scaled.home;
+        finalAwayScore = regTie + scaled.away;
+      } else if (overtimeType === 'sudden_death') {
+        otCount = 1;
+        const homeWinsSd = Math.random() < (0.50 + strengthDiff * 0.008);
+        const suddenDeathPts = Math.random() < 0.25 ? 1 : Math.random() < 0.55 ? 2 : 3;
+        finalHomeScore = regTie + (homeWinsSd ? suddenDeathPts : 0);
+        finalAwayScore = regTie + (homeWinsSd ? 0 : suddenDeathPts);
+      } else {
+        const rolledOtCount = Math.random() < 0.07 ? 3 : Math.random() < 0.22 ? 2 : 1;
+        otCount = Math.min(rolledOtCount, maxOvertimes);
+
+        let homeOtPts = 0;
+        let awayOtPts = 0;
+
+        for (let ot = 1; ot <= otCount; ot++) {
+          const isDecisive = ot === otCount;
+          const { homePts, awayPts } = this.simulateOTPeriod(isDecisive, strengthDiff, overtimeDuration);
+          homeOtPts += homePts;
+          awayOtPts += awayPts;
+        }
+
+        finalHomeScore = regTie + homeOtPts;
+        finalAwayScore = regTie + awayOtPts;
+
+        if (finalHomeScore === finalAwayScore) {
+          if (Math.random() < (0.50 + strengthDiff * 0.005)) finalHomeScore += 1;
+          else finalAwayScore += 1;
+        }
       }
 
     } else {
@@ -916,13 +972,30 @@ export class GameSimulator {
       players,
     );
 
-    const quarterScores = simulateQuarters(
+    const averageNumQuarters = Math.round(((homeKnobsFinal.numQuarters ?? 4) + (awayKnobsFinal.numQuarters ?? 4)) / 2);
+    let quarterScores = simulateQuarters(
       finalHomeScore,
       finalAwayScore,
       Math.abs(finalHomeScore - finalAwayScore),
       isOT ? otCount : 0,
-      Math.round(((homeKnobsFinal.numQuarters ?? 4) + (awayKnobsFinal.numQuarters ?? 4)) / 2)
+      averageNumQuarters
     );
+    if (baseGameFormat === 'target_score') {
+      quarterScores = { home: [finalHomeScore], away: [finalAwayScore] };
+      isOT = false;
+      otCount = 0;
+    } else if (baseGameFormat === 'elam_ending') {
+      const regulationQuarterScores = simulateQuarters(
+        homeRegScore,
+        awayRegScore,
+        Math.abs(homeRegScore - awayRegScore),
+        0,
+        averageNumQuarters
+      );
+      regulationQuarterScores.home.push(Math.max(0, finalHomeScore - homeRegScore));
+      regulationQuarterScores.away.push(Math.max(0, finalAwayScore - awayRegScore));
+      quarterScores = regulationQuarterScores;
+    }
 
     const gamePlayers = homeOverridePlayers && awayOverridePlayers 
       ? [...homeOverridePlayers, ...awayOverridePlayers]
@@ -999,11 +1072,17 @@ export class GameSimulator {
         const preseasonFactor = isIntlPreseason ? 0.25 : 1.0;
         const fatigue = Math.max(0, Math.min(100, Number((player as any).trainingFatigue ?? 0)));
         const fatigueRiskMult = 1 + Math.min(1.5, fatigue / 70);
-        const injuryChance = preseasonFactor * fatigueRiskMult * (
-          min < 15  ? 0.20 :
-          min < 25  ? 0.07 :
-          min < 35  ? 0.02 :
-                      0.006);
+        const durability = getRealDurability(player);
+        const durabilityRiskMult = durability == null
+          ? 1.0
+          : Math.max(0.75, Math.min(1.50, 1 + ((60 - durability) / 90)));
+        const minuteExposureMult =
+          min < 8   ? 0.25 :
+          min < 15  ? 0.50 :
+          min < 25  ? 0.85 :
+          min < 35  ? 1.15 :
+                      1.45;
+        const injuryChance = preseasonFactor * fatigueRiskMult * 0.012 * minuteExposureMult * durabilityRiskMult;
 
         if (Math.random() >= injuryChance) continue;
 
@@ -1013,7 +1092,12 @@ export class GameSimulator {
         const u1 = 1 - Math.random(), u2 = 1 - Math.random();
         const z  = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
         const baseMult = Math.max(0.75, Math.min(1.30, 1.0 + z * 0.15));
-        const severityAdj = min < 15 ? -0.10 : min < 25 ? -0.05 : 0;
+        const severityAdj =
+          min >= 36 ? 0.08 :
+          min >= 28 ? 0.04 :
+          min < 10  ? -0.08 :
+          min < 18  ? -0.04 :
+                      0;
         const gameMult = Math.max(0.70, baseMult + severityAdj);
         const gamesRemaining = enforceSeasonEndingMinimum(drawn.name, Math.max(1, Math.round(drawn.games * gameMult)));
 
@@ -1087,6 +1171,12 @@ export class GameSimulator {
       homeLosses: homeTeam.losses ?? 0,
       awayWins:   awayTeam.wins   ?? 0,
       awayLosses: awayTeam.losses ?? 0,
+      gameFormat: baseGameFormat,
+      targetScore: baseGameFormat === 'target_score'
+        ? (configuredTargetScore > 0 ? configuredTargetScore : 100)
+        : baseGameFormat === 'elam_ending'
+          ? Math.max(finalHomeScore, finalAwayScore)
+          : undefined,
     };
   }
 
@@ -1289,10 +1379,14 @@ export class GameSimulator {
     tovMult *= inboundTovMult * outOfBoundsTov * kickedBallTov * screenTovMult * ballWeightTov;
 
     const leagueBaseKnobs = getKnobs({
+      gameFormat:          (leagueStats?.gameFormat ?? 'timed') as any,
+      targetScore:         leagueStats?.gameTargetScore ?? 100,
       quarterLength:       leagueStats?.quarterLength ?? 12,
       numQuarters:         leagueStats?.numQuarters ?? 4,
       overtimeDuration:    leagueStats?.overtimeDuration ?? 5,
       overtimeEnabled:     leagueStats?.overtimeEnabled ?? true,
+      overtimeType:        leagueStats?.overtimeType ?? 'standard',
+      overtimeTargetPoints: leagueStats?.overtimeTargetPoints ?? 7,
       maxOvertimesEnabled: leagueStats?.maxOvertimesEnabled ?? false,
       maxOvertimes:        leagueStats?.maxOvertimes ?? 0,
       shotClockSeconds:    shotClock,
@@ -1488,6 +1582,14 @@ export class GameSimulator {
             homeKnobs = { ...leagueBaseKnobs, ...homeCtx, playThroughInjuries: homePtiReg };
             awayKnobs = { ...leagueBaseKnobs, ...awayCtx, playThroughInjuries: awayPtiReg };
           }
+        }
+
+        const gameLevelOverrides: Partial<SimulatorKnobs> = {};
+        if ((game as any).gameFormat) gameLevelOverrides.gameFormat = (game as any).gameFormat;
+        if (typeof (game as any).targetScore === 'number') gameLevelOverrides.targetScore = (game as any).targetScore;
+        if (Object.keys(gameLevelOverrides).length > 0) {
+          homeKnobs = { ...homeKnobs, ...gameLevelOverrides };
+          awayKnobs = { ...awayKnobs, ...gameLevelOverrides };
         }
 
         // Apply club debuffs around this game

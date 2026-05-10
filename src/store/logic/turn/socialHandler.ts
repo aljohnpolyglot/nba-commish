@@ -47,7 +47,7 @@ export const handleSocialAndNews = async (
     const socialEngine = new SocialEngine();
     const socialDateString = formatGameDateShort(state.date);
     const nbaPlayers = updatedPlayers.filter(p => !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || ''));
-    const newSocialPostsFromEngine = await socialEngine.generateDailyPosts(allSimResults, nbaPlayers, updatedTeams, socialDateString, daysToSimulate, state.playoffs, state.schedule);
+    const newSocialPostsFromEngine = await socialEngine.generateDailyPosts(allSimResults, nbaPlayers, updatedTeams, socialDateString, daysToSimulate, state.playoffs, state.schedule, state.leagueType);
 
     const newLLMPosts = (result.newSocialPosts || []).map((p: any, i: number) => ({
         ...p,

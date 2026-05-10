@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useGame } from '../store/GameContext';
 import { RosterComplianceModal } from '../components/modals/RosterComplianceModal';
+import { SignFreeAgentModal } from '../components/modals/SignFreeAgentModal';
 import { getDisplayOverall } from '../utils/playerRatings';
 import { getGameDateParts } from '../utils/dateUtils';
+import { getContractLimits } from '../utils/salaryUtils';
 import type { NBAPlayer } from '../types';
 
 /**
@@ -24,6 +26,7 @@ import type { NBAPlayer } from '../types';
 export function useRosterComplianceGate() {
   const { state, dispatchAction } = useGame();
   const [open, setOpen] = useState(false);
+  const [signingPlayer, setSigningPlayer] = useState<NBAPlayer | null>(null);
   const pendingRef = useRef<(() => void | Promise<void>) | null>(null);
 
   const check = useMemo(() => {
@@ -183,6 +186,38 @@ export function useRosterComplianceGate() {
           console.error('[RosterGate] CONVERT_CONTRACT_TYPE threw for', p.name, e);
         }
       }
+    } else if (check.mode === 'under') {
+      const candidates = state.players
+        .filter(p => {
+          if (p.status === 'Retired' || p.status === 'WNBA' || p.tid === -100) return false;
+          if (p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect') return false;
+          return p.tid === -1 && p.status === 'Free Agent';
+        })
+        .sort((a, b) => getDisplayOverall(b) - getDisplayOverall(a))
+        .slice(0, check.slotsNeeded);
+
+      for (const p of candidates) {
+        const minSalaryUSD = getContractLimits(p as any, state.leagueStats as any).minSalaryUSD;
+        try {
+          await dispatchAction({
+            type: 'SIGN_FREE_AGENT' as any,
+            payload: {
+              playerId: p.internalId,
+              teamId: state.userTeamId,
+              playerName: p.name,
+              teamName: userTeam?.name ?? 'User Team',
+              salary: minSalaryUSD,
+              years: 1,
+              option: 'NONE',
+              twoWay: false,
+              nonGuaranteed: false,
+              mleType: null,
+            },
+          });
+        } catch (e) {
+          console.error('[RosterGate] SIGN_FREE_AGENT threw for', p.name, e);
+        }
+      }
     }
     setOpen(false);
     const pending = pendingRef.current;
@@ -195,21 +230,49 @@ export function useRosterComplianceGate() {
     setOpen(false);
   };
 
+  const canConvertExcess = check.mode === 'over'
+    && check.limitLabel === 'two-way'
+    && check.phase === 'regular-season'
+    && (() => {
+      const standardCount = state.players.filter(p =>
+        p.tid === state.userTeamId && p.status === 'Active' && !(p as any).twoWay
+      ).length;
+      return standardCount < (state.leagueStats?.maxStandardPlayersPerTeam ?? 15);
+    })();
+
+  const userTeam = state.teams.find(t => t.id === state.userTeamId);
+
   const modal = (
-    <RosterComplianceModal
-      isOpen={open}
-      mode={check.mode ?? 'over'}
-      excessPlayers={check.excess}
-      slotsNeeded={check.slotsNeeded}
-      minRoster={state.leagueStats?.minPlayersPerTeam ?? 14}
-      maxRoster={check.maxRoster}
-      limitLabel={check.limitLabel}
-      description={check.description}
-      phase={check.phase}
-      isPreseasonEnd={check.isPreseasonEnd}
-      onAutoAction={handleAuto}
-      onManual={handleManual}
-    />
+    <>
+      <RosterComplianceModal
+        isOpen={open && !signingPlayer}
+        mode={check.mode ?? 'over'}
+        excessPlayers={check.excess}
+        slotsNeeded={check.slotsNeeded}
+        minRoster={state.leagueStats?.minPlayersPerTeam ?? 14}
+        maxRoster={check.maxRoster}
+        limitLabel={check.limitLabel}
+        description={check.description}
+        phase={check.phase}
+        isPreseasonEnd={check.isPreseasonEnd}
+        onAutoAction={handleAuto}
+        onManual={handleManual}
+        canConvertExcess={canConvertExcess}
+        onConvertOne={canConvertExcess ? (player) => setSigningPlayer(player) : undefined}
+      />
+      {signingPlayer && userTeam && (
+        <SignFreeAgentModal
+          initialPlayer={signingPlayer}
+          initialTeam={userTeam as any}
+          forceContractType="GUARANTEED"
+          onClose={() => setSigningPlayer(null)}
+          onConfirm={async (payload) => {
+            setSigningPlayer(null);
+            await dispatchAction({ type: 'SIGN_FREE_AGENT' as any, payload });
+          }}
+        />
+      )}
+    </>
   );
 
   return { attempt, modal, isBlocked: !!check.mode, check };

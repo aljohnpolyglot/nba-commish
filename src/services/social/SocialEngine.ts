@@ -1,6 +1,6 @@
 import { GameResult, PlayerGameStats } from '../simulation/StatGenerator';
 import { NBAPlayer, NBATeam, SocialPost, PlayoffBracket, Game } from '../../types';
-import { SOCIAL_HANDLES } from '../../data/social/handles';
+import { getSocialHandles } from '../../data/social/handles';
 import { SOCIAL_TEMPLATES } from './SocialRegistry';
 import { SocialContext } from './types';
 import { TEAM_ARENAS } from '../../data/arenas';
@@ -33,6 +33,8 @@ const DEFAULT_CAP = 2;
 
 export class SocialEngine {
 
+  private _leagueType?: string;
+
   constructor() {}
 
   async generateDailyPosts(
@@ -42,8 +44,10 @@ export class SocialEngine {
     date: string,
     daysToSimulate: number = 1,
     playoffs?: PlayoffBracket | null,
-    schedule?: Game[]
+    schedule?: Game[],
+    leagueType?: string
   ): Promise<SocialPost[]> {
+    this._leagueType = leagueType;
     console.log(`[SocialEngine] ENTER generateDailyPosts — games=${gameResults.length}, players=${players.length}, date=${date}`);
     const posts: SocialPost[] = [];
     if (gameResults.length === 0) {
@@ -168,7 +172,7 @@ export class SocialEngine {
     };
 
     const makePost = (handle: string, content: string, teamLogoUrl?: string, playerPortraitUrl?: string, gameData?: any): SocialPost | null => {
-      const handleObj = Object.values(SOCIAL_HANDLES).find(h => h.id === handle);
+      const handleObj = Object.values(getSocialHandles(this._leagueType)).find(h => h.id === handle);
       if (!handleObj) return null;
       const avatarUrl = getAvatarByHandle(handleObj.handle, avatars) || handleObj.avatarUrl;
       const postDate = new Date(date);
@@ -505,7 +509,7 @@ export class SocialEngine {
               if (Math.random() * 100 > priority) continue;
 
               // ── Handle lookup ──────────────────────────────────────────────
-              const handle = Object.values(SOCIAL_HANDLES).find(h => h.id === handleId);
+              const handle = Object.values(getSocialHandles(this._leagueType)).find(h => h.id === handleId);
               if (!handle) continue;
 
               // ── Content generation ─────────────────────────────────────────

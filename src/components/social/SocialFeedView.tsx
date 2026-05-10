@@ -51,11 +51,12 @@ function useGameLookup(): Map<number, GamePhotoInfo> {
 interface LazyPostProps {
     post: SocialPost;
     gameLookup: Map<number, GamePhotoInfo>;
+    leagueType?: string;
     onClick: () => void;
     onImageClick: (url: string) => void;
 }
 
-const LazyPhotoPost: React.FC<LazyPostProps> = ({ post, gameLookup, onClick, onImageClick }) => {
+const LazyPhotoPost: React.FC<LazyPostProps> = ({ post, gameLookup, leagueType, onClick, onImageClick }) => {
     const { ref, inView } = useInView(0.05);
     const [resolvedMediaUrl, setResolvedMediaUrl] = useState<string | undefined>(() => {
         // Initialize from cache so image shows instantly on re-mount (navigation back)
@@ -69,7 +70,7 @@ const LazyPhotoPost: React.FC<LazyPostProps> = ({ post, gameLookup, onClick, onI
         if (resolvedMediaUrl) return; // already have one
 
         let cancelled = false;
-        enrichPostWithPhoto(post, gameLookup).then(url => {
+        enrichPostWithPhoto(post, gameLookup, leagueType).then(url => {
             if (!cancelled && url) setResolvedMediaUrl(url);
         });
         return () => { cancelled = true; };
@@ -235,6 +236,7 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ posts }) => {
                     key={post.id || `post-${index}`}
                     post={post}
                     gameLookup={gameLookup}
+                    leagueType={gameState.leagueType}
                     onClick={() => handlePostClick(post)}
                     onImageClick={(url) => setModalImageUrl(url)}
                 />

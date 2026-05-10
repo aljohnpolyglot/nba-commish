@@ -15,6 +15,11 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
   const game = state.schedule?.find((g: any) => g.gid === allStar?.allStarGameId);
   const isToday = game && normalizeDate(game.date) === normalizeDate(state.date);
   const canWatch = isToday && !game.played;
+  const formatLabel = game?.gameFormat === 'target_score'
+    ? `First to ${game.targetScore ?? state.leagueStats?.allStarGameTargetScore ?? 40}`
+    : game?.gameFormat === 'elam_ending'
+      ? `Elam Ending · +${state.leagueStats?.allStarOvertimeTargetPoints ?? 24}`
+      : 'Timed Game';
 
   if (!boxScore) {
     const east = allStar?.roster?.filter((p: any) => p.conference === 'East') ?? [];
@@ -27,7 +32,7 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
             The 75th All-Star Game
           </h3>
           <p className="text-slate-400 text-sm">
-            Sunday, Feb 15 · Crypto.com Arena · Los Angeles
+            Sunday, Feb 15 · {formatLabel}
           </p>
           
           {canWatch && (

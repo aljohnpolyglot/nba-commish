@@ -318,6 +318,15 @@ export const PlayoffView: React.FC = () => {
               </div>
             );
           }
+          // Fictional leagues have no pre-sim historical data — block gist fetch
+          if (state.leagueType === 'fictional') {
+            return (
+              <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center px-8">
+                <Trophy size={48} className="text-slate-700 mb-4" />
+                <p className="text-slate-500 text-sm">No historical {labels.finals} playoff data before your league started.</p>
+              </div>
+            );
+          }
           // Fall back to gist-based historical bracket (real NBA data)
           return <HistoricalPlayoffBracket viewYear={viewYear} />;
         })()}

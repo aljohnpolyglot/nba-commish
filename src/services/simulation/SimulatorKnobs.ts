@@ -102,11 +102,23 @@ export interface SimulatorKnobs {
   /** Number of regulation periods. 4 = NBA default. */
   numQuarters?: number;
 
+  /** Timed = normal clock, Elam = timed regulation + untimed target finish, Target Score = first to a fixed score. */
+  gameFormat?: 'timed' | 'target_score' | 'elam_ending';
+
+  /** Fixed target when gameFormat === 'target_score'. */
+  targetScore?: number;
+
   /** Overtime length in minutes. 5 = NBA. Affects OT score and minutes budget. */
   overtimeDuration?: number;
 
   /** Whether games can enter overtime. */
   overtimeEnabled?: boolean;
+
+  /** Timed-game tie-break mode. */
+  overtimeType?: 'standard' | 'target_score' | 'shootout' | 'sudden_death' | string;
+
+  /** Target points for target-score overtime or Elam-ending add-on points. */
+  overtimeTargetPoints?: number;
 
   /** Optional hard cap on overtime periods. */
   maxOvertimesEnabled?: boolean;
@@ -193,8 +205,12 @@ export const KNOBS_DEFAULT: SimulatorKnobs = {
   gamesRemaining:       41,
   quarterLength:        12,
   numQuarters:          4,
+  gameFormat:           'timed',
+  targetScore:          100,
   overtimeDuration:     5,
   overtimeEnabled:      true,
+  overtimeType:         'standard',
+  overtimeTargetPoints: 7,
   maxOvertimesEnabled:  false,
   maxOvertimes:         0,
   shotClockSeconds:     24,
