@@ -11,6 +11,7 @@
 
 import type { NBAPlayer } from '../../types';
 import { convertTo2KRating } from '../../utils/helpers';
+import { hasFamilyOnRoster } from '../../utils/familyTies';
 
 export type TeamPhase = 'rebuilding' | 'contending' | 'middle';
 
@@ -123,11 +124,10 @@ export function autoSelectProtections(
   const phase = getTeamPhase(roster);
   const ctx: ScoreContext = { phase, currentYear };
 
-  // 1. Family-Lock: Spieler mit relatives auf demselben Team sind unkündbar.
-  //    Wir nehmen nur Verwandte, deren `pid` matcht. Ohne pid-Cross-Lookup
-  //    sind alle relatives-Träger geschützt — strikter als nötig, aber sicher.
+  // 1. Family-Lock: Spieler mit Verwandten AUF DEMSELBEN ROSTER sind unkündbar.
+  //    Match per Name (BBGM pid != internalId), siehe utils/familyTies.ts.
   const familyProtected = roster
-    .filter(p => (p.relatives?.length ?? 0) > 0)
+    .filter(p => hasFamilyOnRoster(p, roster))
     .map(p => p.internalId);
 
   // 2. Score-sortierte verbleibende Slots

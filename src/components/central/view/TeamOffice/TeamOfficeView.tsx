@@ -12,6 +12,8 @@ import { TeamOfficeRosterView } from './pages/TeamOfficeRosterView';
 import { DraftPicks } from './pages/DraftPicks';
 import { DraftScouting } from './pages/DraftScouting';
 import { TeamOfficeDepthChartTab } from './pages/TeamOfficeDepthChartTab';
+import { resolveAnyTeam } from '../../../../utils/teamLookup';
+import { isNoDraftLeague } from '../../../../services/offseason/offseasonState';
 
 type OfficeTab = 'home' | 'gm' | 'depth' | 'intel' | 'needs' | 'trading' | 'picks' | 'scouting';
 
@@ -28,10 +30,12 @@ const TABS: { id: OfficeTab; label: string }[] = [
 export function TeamOfficeView() {
   const { state, dispatchAction } = useGame();
   const isGM = state.gameMode === 'gm';
+  const noDraft = isNoDraftLeague(state.leagueStats as any);
   // GM mode: default to user's team but can still browse other teams
   const [currentTeamId, setCurrentTeamId] = useState<number | null>(isGM && state.userTeamId != null ? state.userTeamId : null);
   const [activeTab, setActiveTab] = useState<OfficeTab>(isGM && state.userTeamId != null ? 'gm' : 'home');
   const [selectedPlayer, setSelectedPlayer] = useState<NBAPlayer | null>(null);
+  const visibleTabs = noDraft ? TABS.filter(tab => tab.id !== 'picks' && tab.id !== 'scouting') : TABS;
 
   // ── Deep-link from offseason AUFGABEN sidebar ────────────────────────
   // Reads the transient pendingTeamOfficeNav slot, applies the requested
@@ -49,7 +53,11 @@ export function TeamOfficeView() {
     } as any);
   }, [state.pendingTeamOfficeNav?.tab]);
 
-  const currentTeam = currentTeamId != null ? state.teams.find(t => t.id === currentTeamId) : null;
+  // resolveAnyTeam handles NBA + non-NBA (tid >= 100) so a EuroLeague/Endesa
+  // GM save lands in the correct team header instead of falling back to Home.
+  const currentTeam = currentTeamId != null
+    ? resolveAnyTeam(currentTeamId, state.teams, state.nonNBATeams ?? [])
+    : null;
   const teamColor = currentTeam?.colors?.[0] || '#150d1a';
 
   const handleSelectTeam = (teamId: number) => {
@@ -125,7 +133,7 @@ export function TeamOfficeView() {
                 <ChevronLeft size={20} />
               </button>
               <nav className="flex gap-6 sm:gap-10 overflow-x-auto whitespace-nowrap pb-1 scrollbar-hide w-full">
-                {TABS.map(tab => (
+                {visibleTabs.map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}

@@ -11,6 +11,7 @@ import { PersonSelectorModal } from '../../modals/PersonSelectorModal';
 import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
 import ContactModal from '../../ContactModal';
 import { getCountryFromLoc } from '../../../utils/helpers';
+import { formatCurrencyWithCode, getLeagueCurrencyCode } from '../../../utils/helpers';
 import { getCapThresholds, getTeamCapProfileFromState, getMLEAvailability, getTeamPayrollUSD } from '../../../utils/salaryUtils';
 import { formatGameDateShort, getCurrentOffseasonFAMoratoriumEnd, getGameDateParts, isInMoratorium } from '../../../utils/dateUtils';
 import { calcPot2K } from '../../../services/trade/tradeValueEngine';
@@ -39,6 +40,7 @@ const POSITIONS = ['All', 'PG', 'SG', 'SF', 'PF', 'C'];
 
 export const FreeAgentsView: React.FC = () => {
   const { state, dispatchAction, healPlayer } = useGame();
+  const currencyCode = getLeagueCurrencyCode(state.leagueStats);
   const isGM = state.gameMode === 'gm';
   const isFictional = state.leagueType === 'fictional';
   const MARKET_POOLS = state.leagueType === 'fictional' ? MARKET_POOLS_FICTIONAL : MARKET_POOLS_FULL;
@@ -632,8 +634,8 @@ export const FreeAgentsView: React.FC = () => {
                       : 'bg-slate-700/30 border-slate-600/40 text-slate-400'
                   }`}>
                     {userRosterSlots.capSpaceUSD >= 0
-                      ? `Cap Space $${(userRosterSlots.capSpaceUSD / 1_000_000).toFixed(1)}M`
-                      : `Over Cap -$${(Math.abs(userRosterSlots.capSpaceUSD) / 1_000_000).toFixed(1)}M`}
+                      ? `Cap Space ${formatCurrencyWithCode(userRosterSlots.capSpaceUSD, currencyCode, false)}`
+                      : `Over Cap ${formatCurrencyWithCode(-Math.abs(userRosterSlots.capSpaceUSD), currencyCode, false)}`}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -643,7 +645,7 @@ export const FreeAgentsView: React.FC = () => {
                       : 'bg-slate-700/30 border-slate-600/40 text-slate-500'
                   }`}>
                     MLE {userRosterSlots.mleAvailable > 0
-                      ? `$${(userRosterSlots.mleAvailable / 1_000_000).toFixed(1)}M`
+                      ? formatCurrencyWithCode(userRosterSlots.mleAvailable, currencyCode, false)
                       : 'N/A'}
                   </span>
                 </div>

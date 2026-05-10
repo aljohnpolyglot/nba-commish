@@ -12,6 +12,8 @@ import { useLeagueLabels } from '../../utils/leagueLabels';
 import { Tab } from '../../types';
 import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
 import { compareGameDates, getTradeDeadlineDate, getCurrentOffseasonEffectiveFAStart, getOpeningNightDate, getDraftDate, parseGameDate, toISODateString } from '../../utils/dateUtils';
+import { isNoDraftLeague } from '../../services/offseason/offseasonState';
+import { isEuroIsolatedMode } from '../../utils/uiMode';
 
 interface NavigationMenuProps {
   currentView: Tab;
@@ -35,6 +37,9 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
   const { state, markSocialRead, markNewsRead, markPayslipsRead } = useGame();
   const labels = useLeagueLabels();
   const isGM = state.gameMode === 'gm';
+  const noDraft = isNoDraftLeague(state.leagueStats as any);
+  const tradesDisabled = state.leagueStats?.tradesAllowed === false;
+  const euroIsolated = isEuroIsolatedMode(state);
 
   // Trade deadline + FA period detection for GM mode gating
   // Dates resolved dynamically via dateUtils.resolveSeasonDate (day-of-week aware).
@@ -148,15 +153,15 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
             ? [{ id: 'Season Preview' as Tab, label: 'Season Preview', icon: Sparkles, badge: '!' as string }]
             : [];
         })(),
-        { id: 'All-Star' as Tab,       label: 'All-Star',          icon: Star },
-        { id: 'NBA Cup' as Tab,        label: labels.cupShort,      icon: Trophy },
+        ...(!euroIsolated ? [{ id: 'All-Star' as Tab, label: 'All-Star', icon: Star }] : []),
+        ...(!euroIsolated ? [{ id: 'NBA Cup' as Tab, label: labels.cupShort, icon: Trophy }] : []),
         { id: 'Playoffs' as Tab,       label: 'Playoffs',           icon: Trophy, badge: playoffBadge },
       ],
     }] : [{
       label: 'Season',
       items: [
-        { id: 'All-Star' as Tab,  label: 'All-Star',  icon: Star },
-        { id: 'NBA Cup' as Tab,   label: labels.cupShort,  icon: Trophy },
+        ...(!euroIsolated ? [{ id: 'All-Star' as Tab, label: 'All-Star', icon: Star }] : []),
+        ...(!euroIsolated ? [{ id: 'NBA Cup' as Tab, label: labels.cupShort, icon: Trophy }] : []),
         { id: 'Playoffs' as Tab,  label: 'Playoffs',  icon: Trophy, badge: playoffBadge },
       ],
     }]),
@@ -177,11 +182,11 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         { id: 'NBA Central',      label: labels.central,    icon: Trophy },
         { id: 'Standings',        label: 'Standings',       icon: Table2 },
         { id: 'Transactions',     label: 'Transactions',    icon: ArrowRightLeft },
-        ...(!isPastTradeDeadline ? [
+        ...(!tradesDisabled && !isPastTradeDeadline ? [
           { id: 'Trade Machine' as Tab,    label: isPastTradeDeadline ? 'Trade Machine (Locked)' : 'Trade Machine',   icon: Cpu },
           { id: 'Trade Finder' as Tab,     label: 'Trade Finder',    icon: Search },
         ] : []),
-        ...(isGM && !isPastTradeDeadline ? [{ id: 'Trade Proposals' as Tab, label: 'Trade Proposals', icon: GitPullRequest, badge: fmt(pendingTradesCount) }] : []),
+        ...(isGM && !tradesDisabled && !isPastTradeDeadline ? [{ id: 'Trade Proposals' as Tab, label: 'Trade Proposals', icon: GitPullRequest, badge: fmt(pendingTradesCount) }] : []),
         { id: 'Player Search',    label: 'Player Search',   icon: Search },
         { id: 'Player Bios',        label: 'Player Bios',       icon: Users },
         { id: 'Player Comparison',  label: 'Player Comparison', icon: ArrowLeftRight },
@@ -204,27 +209,28 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         { id: 'Power Rankings',  label: 'Power Rankings',  icon: TrendingUp },
       ],
     },
-    {
+    ...(!noDraft ? [{
       label: 'Draft',
       items: [
         { id: 'Draft Scouting', label: 'Scouting',      icon: Target },
         { id: 'Draft Lottery',  label: 'Draft Lottery', icon: Ticket },
         { id: 'Draft Board',    label: 'Draft Board',   icon: ClipboardList },
       ],
-    },
-    ...(state.leagueType !== 'fictional' ? [{
-      label: 'International',
-      items: [
-        { id: 'Euroleague Hub' as Tab,    label: 'Euroleague',    icon: Globe2 },
-        { id: 'Endesa Hub' as Tab,        label: 'Liga ACB',      icon: Globe2 },
-        { id: 'G-League Hub' as Tab,      label: 'G-League',      icon: Globe2 },
-        { id: 'WNBA Hub' as Tab,          label: 'WNBA',          icon: Globe2 },
-        { id: 'B-League Hub' as Tab,      label: 'B-League',      icon: Globe2 },
-        { id: 'China CBA Hub' as Tab,     label: 'China CBA',     icon: Globe2 },
-        { id: 'NBL Australia Hub' as Tab, label: 'NBL Australia', icon: Globe2 },
-        { id: 'PBA Hub' as Tab,           label: 'PBA',           icon: Globe2 },
-      ],
     }] : []),
+    // ── International league hubs (commented out — user has a better design in mind) ──
+    // ...(state.leagueType !== 'fictional' ? [{
+    //   label: 'International',
+    //   items: [
+    //     { id: 'Euroleague Hub' as Tab,    label: 'Euroleague',    icon: Globe2 },
+    //     { id: 'Endesa Hub' as Tab,        label: 'Liga ACB',      icon: Globe2 },
+    //     { id: 'G-League Hub' as Tab,      label: 'G-League',      icon: Globe2 },
+    //     { id: 'WNBA Hub' as Tab,          label: 'WNBA',          icon: Globe2 },
+    //     { id: 'B-League Hub' as Tab,      label: 'B-League',      icon: Globe2 },
+    //     { id: 'China CBA Hub' as Tab,     label: 'China CBA',     icon: Globe2 },
+    //     { id: 'NBL Australia Hub' as Tab, label: 'NBL Australia', icon: Globe2 },
+    //     { id: 'PBA Hub' as Tab,           label: 'PBA',           icon: Globe2 },
+    //   ],
+    // }] : []),
     {
       label: 'Operations',
       items: [

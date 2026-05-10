@@ -205,8 +205,17 @@ const ActionsView: React.FC = () => {
       if (modals.confirmActionType) {
           modals.setConfirmModalOpen(false);
           if (modals.confirmActionType === 'EXPANSION_DRAFT') {
-              // Phase 2: ZenGM-style Setup-Modal statt simplem City-Selector
-              modals.setExpansionSetupModalOpen(true);
+              // Wenn ein Schedule für die aktuelle Saison existiert, öffne direkt
+              // das Protect-Modal (skip Setup). Sonst Setup-Modal.
+              const sched = state.expansionSchedule;
+              const lsYear = state.leagueStats?.year;
+              const isDueNow = !!sched && lsYear != null && sched.year === lsYear;
+              if (isDueNow) {
+                  await dispatchAction({ type: 'APPLY_EXPANSION_REALIGNMENT' } as any);
+                  modals.setExpansionProtectModalOpen(true);
+              } else {
+                  modals.setExpansionSetupModalOpen(true);
+              }
           } else if (modals.confirmActionType === 'CELEBRITY_ROSTER') {
               modals.setCelebrityModalOpen(true);
           } else {

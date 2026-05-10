@@ -3,6 +3,63 @@
 ## Communication
 **Language: German (Deutsch).** All responses from Claude should be in German.
 
+## Critical mistakes I keep making (READ FIRST EVERY SESSION)
+
+These bugs have shipped multiple times across sessions. Before writing code, scan this list and check whether your change is about to repeat one of them.
+
+1. **Team name rendering — ALWAYS use the canonical helper.**
+
+   `NBATeam.name` is **inconsistent**:
+   - Real NBA teams: `name = "Houston Rockets"` (already contains region)
+   - Expansion/legacy/some-imports: `name = "Blue Chips"` (nickname only)
+
+   **Naive options both fail:**
+   - `team.name` alone → "Blue Chips" with no city in expansion case
+   - `${team.region} ${team.name}` → "Houston Houston Rockets" / "Miami Miami Heat" / "Golden State Golden State Warriors" in normal case
+
+   **Always use** `getTeamFullName(team)` from `src/utils/teamNames.ts`. It checks `name.startsWith(region + ' ')` — returns name as-is when prefix already there, otherwise prefixes. Same module exposes `getTeamNickname(team)` for the inverse.
+
+   ```ts
+   import { getTeamFullName } from '../utils/teamNames';
+   <h2>{getTeamFullName(team)}</h2>          // "Houston Rockets" or "Las Vegas Blue Chips"
+   ```
+
+   **Defense at write-side too:** when constructing a new team object (e.g. in `APPLY_EXPANSION_REALIGNMENT` reducer), set `name: \`${spec.region} ${spec.name}\`` so downstream code that uses `team.name` directly still gets a sane string.
+
+   **Never** write `${team.region} ${team.name}` inline. Cite this rule in any PR review where you see the pattern.
+
+2. **`p.tid >= 0` is NOT the NBA-only filter.**
+   External leagues use offsets: Euroleague +1000, PBA +2000, **WNBA +3000**, B-League +4000, Endesa +5000, G-League +6000, CBA +7000, NBL +8000. Correct filter is `p.tid >= 0 && p.tid < 100`. Add a `status`-not-in-(WNBA/Euroleague/…) check as defense-in-depth. Symptom: A'ja Wilson appears in NBA pools.
+
+3. **`player.age` is unreliable; use `leagueYear - player.born.year`.**
+   BBGM rosters set `born.year` consistently but not `age`. UI shows `?y` if you bind to `age`.
+
+4. **Family-Lock: `relatives.length > 0` ≠ "has family on this roster".**
+   `player.relatives` lists ALL known kin league-wide (BBGM-pid based, doesn't match our `internalId`). Use `hasFamilyOnRoster(player, roster)` from `utils/familyTies.ts` — it matches by name within the given roster. Symptom: Aaron Holiday locked on Houston because Justin Holiday is in the league elsewhere.
+
+5. **BBGM logo URLs (don't guess, use the verified paths).**
+   - **Primary:** `https://play.basketball-gm.com/img/logos-primary/{ABBREV}.svg` (200 direct)
+   - **Secondary/alt:** `https://play.basketball-gm.com/img/logos-secondary/{ABBREV}.svg` (200 direct)
+   - Convenience redirect: `/img/logos/{ABBREV}.png` → 302 → primary.svg
+   - All abbrevs incl. SEA, LV, VAN, BUF, KC, SD, PIT, BAL, STL, MXC, HAR, ANA work.
+   - When probing URLs always use `curl -I -L` (follow redirects). A bare HEAD on the redirect path returned 302 with no body and I incorrectly read that as "doesn't exist". When the user says "BBGM has it", they're right — keep probing patterns.
+
+6. **`p.born.year` migration drift.** Old saves have `age` set but not `born.year`. Always `??`-chain: `born?.year ? leagueYear - born.year : (player.age ?? null)`.
+
+7. **Don't assume Action-Tab is reachable in GM-Mode.**
+   `Actions` is commissioner-only. Navigation via `OFFSEASON_ROW_TAB[row] = 'Actions'` lands the GM in nothing. Open the relevant Modal directly from the GM context (e.g. inside `OffseasonAufgabenSidebar`) instead.
+
+8. **`OffseasonChecklistRow` exhaustive switches.**
+   Every new Row in `OFFSEASON_ROW_ORDER` (e.g. `expansionDraft`) needs a `case` in `getStepConfirmSpec()` and any other exhaustive `switch (row)`. Missing case = `undefined` returned = silent click that does nothing.
+
+9. **Don't cap searchable lists with `slice(0, 60)` for "perf".**
+   205 logos × 1 lazy `<img>` = trivial. Cap killed UX (user couldn't find Hartford/Vancouver). Use `loading="lazy"` instead.
+
+10. **Auto-Seed effects need a persistent seed-flag, not just an existence-check.**
+    If you seed `state.expansionSchedule` and the user cancels, your existence-check (`!schedule`) re-fires and seeds again. Persist `auto<feature>Seeded: true` in `leagueStats` and check that flag.
+
+## Project
+
 ## Project
 NBA Commissioner / GM simulator. React + TypeScript + Vite. Save persistence via `idb-keyval` in IndexedDB.
 

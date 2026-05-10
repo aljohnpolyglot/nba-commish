@@ -9,6 +9,7 @@ import { fetchCoachData, getCoachPhoto } from '../../data/photos/coaches';
 import { RankedPersonCard, StatPills } from '../shared/ui';
 import { getOwnTeamId } from '../../utils/helpers';
 import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
+import { PlayerPortrait } from '../shared/PlayerPortrait';
 
 type AwardTab = 'mvp' | 'dpoy' | 'roty' | 'smoy' | 'mip' | 'coy' | 'allNBA';
 
@@ -87,17 +88,13 @@ export const AwardRacesView: React.FC = () => {
                     : 'bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-indigo-500/40'
                 }`}
               >
-                <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-slate-800 border border-slate-700 shrink-0">
-                  <img
-                    src={spot.player.imgURL || `https://picsum.photos/seed/${spot.player.name}/80/80`}
-                    alt={spot.player.name}
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute bottom-0 right-0 w-4 h-4 bg-white rounded-tl-md p-0.5">
-                    <img src={spot.team.logoUrl} alt="" className="w-full h-full object-contain" />
-                  </div>
-                </div>
+                <PlayerPortrait
+                  imgUrl={spot.player.imgURL}
+                  face={(spot.player as any).face}
+                  playerName={spot.player.name}
+                  teamLogoUrl={spot.team.logoUrl}
+                  size={40}
+                />
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-white text-xs truncate group-hover:text-indigo-400 transition-colors"><PlayerNameWithHover player={spot.player}>{spot.player.name}</PlayerNameWithHover></p>
                   <p className="text-[10px] text-slate-500">{spot.pos} · {spot.team.abbrev}</p>
@@ -268,7 +265,8 @@ export const AwardRacesView: React.FC = () => {
                   >
                     <RankedPersonCard
                       rank={index + 1}
-                      portraitUrl={candidate.player.imgURL || `https://picsum.photos/seed/${candidate.player.name}/200/200`}
+                      portraitUrl={candidate.player.imgURL}
+                      face={(candidate.player as any).face}
                       name={candidate.player.name}
                       badge={candidate.player.pos}
                       subtitle={`${candidate.team.name} · ${candidate.team.wins}-${candidate.team.losses}`}

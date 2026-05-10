@@ -40,6 +40,9 @@ export const DEFAULT_TIEBREAKERS = [
 export const INITIAL_LEAGUE_STATS: LeagueStats = {
   revenue: 6900, // $6.9B base (sponsorship/merch/tickets — media rights negotiated separately)
   viewership: 1.8, // 1.8M average
+  uiMode: 'nba',
+  currency: 'USD',
+  tradesAllowed: true,
   salaryCap: 154647000, 
   luxuryPayroll: 171000000, // Luxury tax threshold, in thousands
   luxuryTax: 1.5, // 150% tax rate
@@ -494,6 +497,39 @@ export function formatExternalSalary(usd: number, league: string): string {
   if (local >= 1_000) return `${cur.symbol}${(local / 1_000).toFixed(0)}K`;
   return `${cur.symbol}${Math.round(local)}`;
 }
+
+export const EURO_ISOLATED_DEFAULTS: Partial<LeagueStats> = {
+  uiMode: 'euro_isolated',
+  currency: 'EUR',
+  tradesAllowed: false,
+  draftType: 'no_draft',
+  draftEligibilityRule: 'none',
+  minAgeRequirement: 18,
+  tradableDraftPickSeasons: 0,
+  stepienRuleEnabled: false,
+  salaryCapEnabled: false,
+  salaryCapType: 'none',
+  salaryCap: 45_000_000,
+  luxuryTaxEnabled: false,
+  luxuryTaxThresholdPercentage: 0,
+  luxuryPayroll: 0,
+  apronsEnabled: false,
+  numberOfAprons: 0,
+  firstApronPercentage: 0,
+  secondApronPercentage: 0,
+  minimumPayrollEnabled: false,
+  minimumPayrollPercentage: 0,
+  twoWayContractsEnabled: false,
+  maxTwoWayPlayersPerTeam: 0,
+  rookieScaleType: 'none',
+  rookieMaxContractPercentage: 0,
+  rookieContractLength: 0,
+  rookieTeamOptionsEnabled: false,
+  rookieTeamOptionYears: 0,
+  rookieRestrictedFreeAgentEligibility: false,
+  rookieContractCapException: false,
+  r2ContractsNonGuaranteed: false,
+};
 
 /** Re-signing probability: chance player stays in same league at contract expiry */
 export const EXTERNAL_RESIGN_PROBABILITY = 0.90; // 90% re-sign same league, 10% explore

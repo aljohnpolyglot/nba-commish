@@ -4,6 +4,7 @@ import {
   calculateLeagueOverall,
 } from './logic/leagueOvr';
 import { estimatePotentialBbgm } from '../utils/playerRatings';
+import { getSpainTeamPopulationOverride } from '../data/templates/spain/teamPopulations';
 
 /** Returns true if the URL is ProBallers' "no photo" placeholder. Treat as missing. */
 function isDefaultProballers(url: string | undefined): boolean {
@@ -129,6 +130,7 @@ export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], t
         if (data.teams && Array.isArray(data.teams)) {
             data.teams.forEach((t: any) => {
                 const extra = teamExtras.get(t.tid);
+                const overridePop = getSpainTeamPopulationOverride(t.region || extra?.region, t.name || extra?.name);
                 teams.push({
                     tid: t.tid + 1000,
                     cid: t.cid ?? extra?.cid,
@@ -136,7 +138,7 @@ export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], t
                     region: t.region || extra?.region,
                     name: t.name || extra?.name,
                     abbrev: t.abbrev || extra?.abbrev,
-                    pop: t.pop || extra?.pop || 1.0,
+                    pop: (t.pop && t.pop !== 1.0 ? t.pop : null) ?? (extra?.pop && extra.pop !== 1.0 ? extra.pop : null) ?? overridePop ?? t.pop ?? extra?.pop ?? 1.0,
                     stadiumCapacity: t.stadiumCapacity || extra?.stadiumCapacity,
                     imgURL: t.imgURL || extra?.imgURL,
                     colors: t.colors || extra?.colors,
@@ -147,6 +149,7 @@ export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], t
             // ratings gist has no teams array — build from supplemental gist directly
             teamExtras.forEach((t) => {
                 if (t.disabled) return;
+                const overridePop = getSpainTeamPopulationOverride(t.region, t.name);
                 teams.push({
                     tid: t.tid + 1000,
                     cid: t.cid,
@@ -154,7 +157,7 @@ export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], t
                     region: t.region,
                     name: t.name,
                     abbrev: t.abbrev,
-                    pop: t.pop || 1.0,
+                    pop: (t.pop && t.pop !== 1.0 ? t.pop : null) ?? overridePop ?? t.pop ?? 1.0,
                     stadiumCapacity: t.stadiumCapacity,
                     imgURL: t.imgURL,
                     colors: t.colors,
@@ -634,6 +637,7 @@ export const fetchEndesaRoster = async (): Promise<{ players: NBAPlayer[], teams
 
         if (ratingsData.teams && Array.isArray(ratingsData.teams)) {
             ratingsData.teams.forEach((t: any) => {
+                const overridePop = getSpainTeamPopulationOverride(t.region, t.name);
                 teams.push({
                     tid: t.tid + 5000,
                     cid: t.cid,
@@ -641,7 +645,7 @@ export const fetchEndesaRoster = async (): Promise<{ players: NBAPlayer[], teams
                     region: t.region,
                     name: t.name,
                     abbrev: t.abbrev,
-                    pop: t.pop || 1.0,
+                    pop: (t.pop && t.pop !== 1.0 ? t.pop : null) ?? overridePop ?? t.pop ?? 1.0,
                     stadiumCapacity: t.stadiumCapacity,
                     imgURL: t.imgURL,
                     colors: t.colors,

@@ -36,6 +36,7 @@ import {
   getTeamDefenderDetails,
   saveDefenderDetail,
 } from '../../../../../../store/defenderDetailStore';
+import { resolveAnyTeam, isOnRoster } from '../../../../../../utils/teamLookup';
 import {
   RivalPlan,
   RivalAction,
@@ -46,31 +47,50 @@ import {
   reconcileRivalPlan,
 } from '../../../../../../store/rivalGameplanStore';
 import { StarterService } from '../../../../../../services/simulation/StarterService';
+import { defensiveSystemDescriptions } from '../../../../../../utils/defensiveSystemDescriptions';
 
 interface DefenseTabProps {
   teamId: number;
 }
 
-const TEMPLATE_DESCRIPTIONS: Record<Exclude<DefenseTemplate, 'Custom'>, { tagline: string; bestFor: string }> = {
+const TEMPLATE_DESCRIPTIONS: Record<
+  Exclude<DefenseTemplate, 'Custom'>,
+  { tagline: string; bestFor: string; risk: string; strengths: string[]; systemKey: string }
+> = {
   'Drop & Recover': {
-    tagline: 'Keep the rim protected. Live with mid-range jumpers.',
+    tagline: 'Protects the cup, concedes pull-ups, lowers rotation chaos.',
     bestFor: 'Rim-protecting big, average wing speed.',
+    risk: 'Pull-up guards and pick-and-pop fives can drag your big into space.',
+    strengths: ['Rim insulation', 'Cleaner defensive rebounding'],
+    systemKey: 'Drop Coverage',
   },
   'Switch Everything': {
-    tagline: 'Modern small-ball — switch 1–4 (or 1–5).',
+    tagline: 'Kills easy actions, flattens screening advantage, leans on versatility.',
     bestFor: 'Like-sized, switchable wings.',
+    risk: 'Post mismatches pile up if your weakest switch gets hunted.',
+    strengths: ['PnR denial', 'Shooter attachment'],
+    systemKey: 'Switch Everything',
   },
   'Blitz the Stars': {
-    tagline: 'Trap the ball-handler at every screen, rotate behind.',
+    tagline: 'Sends two to the ball, speeds stars up, dares the weak side to solve it.',
     bestFor: 'Active guards, hyper-mobile bigs.',
+    risk: 'One broken backline rotation becomes a 4-on-3 layup or corner three.',
+    strengths: ['Turnover pressure', 'Star disruption'],
+    systemKey: 'Blitz / Trap',
   },
   'Wall Up': {
-    tagline: 'Pack the paint, force the catch outside.',
+    tagline: 'Shrinks the lane, strips out straight-line drives, makes teams win from deep.',
     bestFor: 'Anti-drive identity, physical wings.',
+    risk: 'Hot shooting teams will get clean catch-and-shoot volume if rotations lag.',
+    strengths: ['Drive deterrence', 'Paint crowding'],
+    systemKey: 'Pack Line',
   },
   'No Middle Death': {
-    tagline: 'Force baseline / sideline. Aggressive doubles on drives.',
+    tagline: 'Forces bad angles, pushes drives wide, weaponizes your help side.',
     bestFor: 'Foul-tolerant rotation, athletic helpers.',
+    risk: 'Corner threes and foul rate spike when helpers arrive late.',
+    strengths: ['Drive steering', 'Help-side predictability'],
+    systemKey: 'No Middle',
   },
 };
 
@@ -82,21 +102,21 @@ const DOUBLE_OPTIONS: DoublePolicy[] = ['Never', 'Stars Only', 'Always'];
 const PICKUP_OPTIONS: Pickup[] = ['Full Court', '3/4 Court', 'Half Court', 'Pack Line'];
 const ZONE_OPTIONS: ZoneVsMan[] = ['Man', '2-3 Zone', '3-2 Zone', 'Match-Up Zone', 'Box-and-1', 'Triangle-and-2'];
 
+const getFamiliarityTone = (value: number) => {
+  if (value >= 75) return { label: 'Elite', text: 'text-emerald-400', bar: 'bg-emerald-500', pill: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' };
+  if (value >= 50) return { label: 'Sharp', text: 'text-amber-400', bar: 'bg-amber-500', pill: 'bg-amber-500/15 text-amber-200 border-amber-500/30' };
+  if (value >= 25) return { label: 'Learning', text: 'text-orange-400', bar: 'bg-orange-500', pill: 'bg-orange-500/15 text-orange-200 border-orange-500/30' };
+  return { label: 'Cold', text: 'text-rose-400', bar: 'bg-rose-500', pill: 'bg-rose-500/15 text-rose-200 border-rose-500/30' };
+};
+
 export function DefenseTab({ teamId }: DefenseTabProps) {
   const { state } = useGame();
   const [plan, setPlan] = useState<DefenseGameplan>(() => getDefenseGameplan(teamId));
   const [savedFlash, setSavedFlash] = useState(false);
 
-  const team = state.teams.find(t => t.id === teamId);
+  const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const defFamiliarity = Math.round(team?.systemFamiliarity?.defense ?? 0);
-  const famColor = defFamiliarity >= 75 ? 'text-emerald-400'
-    : defFamiliarity >= 50 ? 'text-amber-400'
-    : defFamiliarity >= 25 ? 'text-orange-400'
-    : 'text-rose-400';
-  const famBarColor = defFamiliarity >= 75 ? 'bg-emerald-500'
-    : defFamiliarity >= 50 ? 'bg-amber-500'
-    : defFamiliarity >= 25 ? 'bg-orange-500'
-    : 'bg-rose-500';
+  const famTone = getFamiliarityTone(defFamiliarity);
 
   useEffect(() => {
     setPlan(getDefenseGameplan(teamId));
@@ -108,7 +128,7 @@ export function DefenseTab({ teamId }: DefenseTabProps) {
   const defendersSorted = useMemo(() => {
     if (!team) return [];
     return state.players
-      .filter(p => p.tid === teamId && p.status === 'Active')
+      .filter(p => p.tid === teamId && isOnRoster(p))
       .sort((a, b) => {
         const dA = a.ratings?.[a.ratings.length - 1];
         const dB = b.ratings?.[b.ratings.length - 1];
@@ -253,7 +273,7 @@ export function DefenseTab({ teamId }: DefenseTabProps) {
       const oppTid = Number(tidStr);
       const oppRoster = new Set(
         state.players
-          .filter(p => p.tid === oppTid && p.status === 'Active')
+          .filter(p => p.tid === oppTid && isOnRoster(p))
           .map(p => p.internalId)
       );
       reconciled[oppTid] = reconcileRivalPlan(plan, oppRoster);
@@ -263,7 +283,7 @@ export function DefenseTab({ teamId }: DefenseTabProps) {
 
   /** Top scorers on an opponent team — used as the chevron-picker source. */
   const opponentScorers = (oppTid: number) => state.players
-    .filter(p => p.tid === oppTid && p.status === 'Active')
+    .filter(p => p.tid === oppTid && isOnRoster(p))
     .sort((a, b) => getDisplayOverall(b) - getDisplayOverall(a));
 
   const opponentName = (oppTid: number) => {
@@ -385,6 +405,32 @@ export function DefenseTab({ teamId }: DefenseTabProps) {
   const dropdownClass =
     'bg-[#1a1a1a] border border-gray-700 text-white text-xs md:text-sm py-1 px-2 rounded focus:outline-none focus:ring-2 focus:ring-yellow-500';
 
+  const templateCards = (Object.keys(DEFENSE_TEMPLATES) as Array<Exclude<DefenseTemplate, 'Custom'>>).map(name => {
+    const meta = TEMPLATE_DESCRIPTIONS[name];
+    const systemName = TEMPLATE_TO_SYSTEM[name];
+    const familiarity = Math.round(team?.systemFamiliarity?.byDefense?.[systemName] ?? 0);
+    const tone = getFamiliarityTone(familiarity);
+    const systemDetails = defensiveSystemDescriptions[meta.systemKey];
+    return {
+      name,
+      active: plan.template === name,
+      familiarity,
+      tone,
+      meta,
+      systemDetails,
+      delta: familiarity - defFamiliarity,
+    };
+  });
+
+  const activeTemplateCard = templateCards.find(card => card.name === plan.template);
+  const recommendedTemplateCard = [...templateCards].sort((a, b) => b.familiarity - a.familiarity)[0] ?? null;
+  const identityCard = activeTemplateCard ?? recommendedTemplateCard;
+  const currentSummary = [
+    `PnR: ${plan.pnrBallHandler}`,
+    `Base look: ${plan.zoneVsMan}`,
+    `Drive doubles: ${plan.doubleOnDrive}`,
+  ];
+
   return (
     <div className="space-y-5 max-h-[500px] overflow-y-auto pr-2 scrollbar-hide">
       <div className="flex items-center justify-between">
@@ -406,11 +452,14 @@ export function DefenseTab({ teamId }: DefenseTabProps) {
       <div className="bg-[#1a1a1a] border border-gray-800 rounded p-3">
         <div className="flex items-center justify-between mb-1">
           <span className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider">Defensive System Familiarity</span>
-          <span className={`text-sm md:text-base font-black tabular-nums ${famColor}`}>{defFamiliarity}<span className="text-[10px] text-gray-500"> / 100</span></span>
+          <div className="flex items-center gap-2">
+            <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-2 py-1 rounded-full border ${famTone.pill}`}>{famTone.label}</span>
+            <span className={`text-sm md:text-base font-black tabular-nums ${famTone.text}`}>{defFamiliarity}<span className="text-[10px] text-gray-500"> / 100</span></span>
+          </div>
         </div>
         <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
           <div
-            className={`h-full ${famBarColor} transition-all`}
+            className={`h-full ${famTone.bar} transition-all`}
             style={{ width: `${Math.max(0, Math.min(100, defFamiliarity))}%` }}
           />
         </div>
@@ -419,53 +468,128 @@ export function DefenseTab({ teamId }: DefenseTabProps) {
         </p>
       </div>
 
-      {/* Template picker */}
-      <div>
-        <h5 className="text-[10px] md:text-xs font-bold text-gray-400 uppercase mb-2">Scheme Template</h5>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {(Object.keys(DEFENSE_TEMPLATES) as Array<Exclude<DefenseTemplate, 'Custom'>>).map(name => {
-            const active = plan.template === name;
-            const meta = TEMPLATE_DESCRIPTIONS[name];
-            const systemName = TEMPLATE_TO_SYSTEM[name];
-            const prof = Math.round(team?.systemFamiliarity?.byDefense?.[systemName] ?? 0);
-            const profColor = prof >= 75 ? 'bg-emerald-500'
-              : prof >= 50 ? 'bg-amber-500'
-              : prof >= 25 ? 'bg-orange-500'
-              : 'bg-rose-500';
-            const profWarn = prof < 25;
-            return (
-              <button
-                key={name}
-                onClick={() => handleTemplate(name)}
-                className={`text-left p-3 rounded border transition-all ${
-                  active
-                    ? 'border-yellow-500 bg-yellow-500/10'
-                    : 'border-gray-700 bg-[#1a1a1a] hover:border-gray-500'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className={`font-bold text-xs md:text-sm uppercase ${active ? 'text-yellow-400' : 'text-white'}`}>
-                    {name}
-                  </div>
-                  <span className="text-[10px] font-mono tabular-nums text-slate-300 shrink-0">{prof}%</span>
+      <div className="space-y-3">
+        <h5 className="text-[10px] md:text-xs font-bold text-gray-400 uppercase">Defensive Identity</h5>
+        <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-3">
+          <div className="bg-[#1a1a1a] border border-cyan-900/30 rounded p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-[9px] font-black uppercase tracking-[0.24em] text-cyan-400">
+                  {plan.template === 'Custom' ? 'Custom Shell' : 'Active Identity'}
                 </div>
-                <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden mt-1.5">
-                  <div className={`h-full ${profColor} transition-all`} style={{ width: `${prof}%` }} />
+                <h6 className="text-lg font-black text-white uppercase tracking-tight mt-1">
+                  {plan.template === 'Custom' ? 'Hand-Tuned Coverage Matrix' : identityCard?.name}
+                </h6>
+                <p className="text-[11px] text-slate-400 mt-1 max-w-xl">
+                  {plan.template === 'Custom'
+                    ? 'This team is no longer living inside a stock template. The matrix below is your actual system.'
+                    : identityCard?.meta.tagline}
+                </p>
+              </div>
+              <div className={`text-[9px] font-black uppercase tracking-[0.2em] px-2 py-1 rounded-full border ${famTone.pill}`}>
+                Team {famTone.label}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div className="rounded border border-gray-800 bg-[#111] p-3">
+                <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Roster Fit</div>
+                <div className="text-[11px] text-slate-300 mt-1">
+                  {plan.template === 'Custom' ? 'User-defined shell.' : identityCard?.meta.bestFor}
                 </div>
-                <div className="text-[10px] md:text-xs text-gray-400 mt-2">{meta.tagline}</div>
-                <div className="text-[9px] md:text-[10px] text-gray-500 mt-1 italic">Best for: {meta.bestFor}</div>
-                {profWarn && (
-                  <div className="text-[9px] text-rose-400 mt-1 font-bold uppercase tracking-widest">
-                    Cold call — drill in Training Center
+              </div>
+              <div className="rounded border border-gray-800 bg-[#111] p-3">
+                <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">What You Get</div>
+                <div className="text-[11px] text-slate-300 mt-1">
+                  {plan.template === 'Custom'
+                    ? currentSummary.join(' • ')
+                    : identityCard?.meta.strengths.join(' • ')}
+                </div>
+              </div>
+              <div className="rounded border border-gray-800 bg-[#111] p-3">
+                <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">What You Give Up</div>
+                <div className="text-[11px] text-slate-300 mt-1">
+                  {plan.template === 'Custom'
+                    ? 'Custom looks need manual upkeep in defender detail and matchup assignments.'
+                    : identityCard?.meta.risk}
+                </div>
+              </div>
+            </div>
+
+            {plan.template !== 'Custom' && identityCard?.systemDetails && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="rounded border border-emerald-900/30 bg-emerald-950/20 p-3">
+                  <div className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-400 mb-1.5">Why It Fits</div>
+                  <div className="space-y-1">
+                    {identityCard.systemDetails.pos.slice(0, 2).map(item => (
+                      <div key={item} className="text-[11px] text-slate-300">• {item}</div>
+                    ))}
                   </div>
-                )}
-              </button>
-            );
-          })}
+                </div>
+                <div className="rounded border border-rose-900/30 bg-rose-950/20 p-3">
+                  <div className="text-[9px] font-black uppercase tracking-[0.2em] text-rose-400 mb-1.5">Primary Risks</div>
+                  <div className="space-y-1">
+                    {identityCard.systemDetails.neg.slice(0, 2).map(item => (
+                      <div key={item} className="text-[11px] text-slate-300">• {item}</div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-[#1a1a1a] border border-gray-800 rounded p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-[9px] font-black uppercase tracking-[0.24em] text-gray-400">Scheme Library</div>
+              {plan.template === 'Custom' && (
+                <div className="text-[9px] text-amber-400 italic">Custom from template baseline</div>
+              )}
+            </div>
+            <div className="space-y-2">
+              {templateCards.map(card => (
+                <button
+                  key={card.name}
+                  onClick={() => handleTemplate(card.name)}
+                  className={`w-full text-left rounded border p-3 transition-all ${
+                    card.active
+                      ? 'border-yellow-500 bg-yellow-500/10'
+                      : 'border-gray-800 bg-[#111] hover:border-gray-600'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className={`text-xs font-black uppercase ${card.active ? 'text-yellow-400' : 'text-white'}`}>{card.name}</div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">{card.meta.tagline}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className={`text-[9px] font-black uppercase tracking-[0.2em] px-2 py-1 rounded-full border ${card.tone.pill}`}>{card.tone.label}</div>
+                      <div className="text-[10px] text-slate-400 mt-1 tabular-nums">{card.familiarity}%</div>
+                    </div>
+                  </div>
+                  <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden mt-2">
+                    <div className={`h-full ${card.tone.bar}`} style={{ width: `${card.familiarity}%` }} />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 mt-2 items-start">
+                    <div className="text-[10px] text-slate-400">
+                      {card.meta.strengths[0]} • {card.meta.strengths[1]}
+                    </div>
+                    <div className={`text-[9px] font-bold uppercase tracking-[0.16em] ${
+                      card.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                    }`}>
+                      {card.delta >= 0 ? `+${card.delta}` : card.delta} vs team
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-1">Risk: {card.meta.risk}</div>
+                  {card.familiarity < 25 && (
+                    <div className="text-[9px] text-rose-400 mt-1 font-bold uppercase tracking-widest">
+                      Cold call — drill in Training Center
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-        {plan.template === 'Custom' && (
-          <div className="mt-2 text-[10px] text-amber-400 italic">Custom — edited from a template baseline.</div>
-        )}
       </div>
 
       {/* Matchup Assignments */}

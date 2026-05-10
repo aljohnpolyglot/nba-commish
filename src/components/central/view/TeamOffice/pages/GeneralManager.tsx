@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
+import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
 
 interface GeneralManagerProps {
   teamId: number;
@@ -25,12 +26,12 @@ async function fetchGMRatings(): Promise<any[]> {
 
 export function GeneralManager({ teamId }: GeneralManagerProps) {
   const { state } = useGame();
-  const team = state.teams.find(t => t.id === teamId);
+  const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const staff = state.staff;
   const teamColor = team?.colors?.[0] || '#552583';
   const teamName = team ? `${team.region} ${team.name}` : '';
   const teamPlayers = useMemo(
-    () => (state.players ?? []).filter(p => p.tid === teamId && p.status === 'Active'),
+    () => (state.players ?? []).filter(p => p.tid === teamId && isOnRoster(p)),
     [state.players, teamId],
   );
   const rosterCounts = useMemo(() => {

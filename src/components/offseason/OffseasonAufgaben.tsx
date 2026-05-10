@@ -27,6 +27,8 @@ import type { OffseasonChecklistRow, OffseasonRowStatus, NBAPlayer, Tab } from '
 import { TeamOptionGateModal } from '../modals/TeamOptionGateModal';
 import { useExpiringResignGate } from '../../hooks/useExpiringResignGate';
 import { getOffseasonState, computeDraftSeasonYear, computeUpcomingSeasonYear } from '../../services/offseason/offseasonState';
+import { PlayerProtectionModal } from '../expansion/PlayerProtectionModal';
+import { ExpansionDraftView } from '../expansion/ExpansionDraftView';
 
 type OffseasonConfirmSpec = {
   eyebrow: string;
@@ -235,7 +237,7 @@ const STATUS_LABEL: Record<OffseasonRowStatus, string> = {
 
 /** Sidebar-Pin: zeigt eine geplante Expansion oben in der Aufgaben-Sidebar.
  *  - year === current ls.year: "this offseason" (emerald)
- *  - year > current: "scheduled for YYYY" (zinc, mit Cancel-Button)
+ *  - year > current: "scheduled for YYYY" (zinc, mit Test-Now + Cancel-Button)
  *  Kein Render wenn kein Schedule oder year < current (stale). */
 const ExpansionSchedulePin: React.FC = () => {
   const { state, dispatchAction } = useGame();
@@ -261,6 +263,24 @@ const ExpansionSchedulePin: React.FC = () => {
           {teamCount} new franchise{teamCount === 1 ? '' : 's'}
         </div>
       </div>
+      {/*
+       * DEV-only Test-Now-Button — schiebt schedule.year auf ls.year, damit man
+       * den Expansion-Flow ohne Wartezeit testen kann. Auskommentiert für
+       * Default-Build: echtes 2029-Schedule (auto-seed) läuft via Future-Year-
+       * Trigger automatisch wenn ls.year === 2029.
+       *
+       * Re-aktivieren: einfach den Block unten unkommentieren.
+       *
+      {!isThisYear && (
+        <button
+          onClick={() => dispatchAction({ type: 'ACTIVATE_EXPANSION_NOW' } as any)}
+          title="DEV: Trigger now (skip wait)"
+          className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 rounded shrink-0"
+        >
+          Test Now
+        </button>
+      )}
+      */}
       <button
         onClick={() => dispatchAction({ type: 'CLEAR_EXPANSION_SCHEDULE' } as any)}
         title="Cancel scheduled expansion"
@@ -280,6 +300,10 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     [state.leagueStats],
   );
   const confirmActionRef = useRef<(() => void) | null>(null);
+  // GM-Mode Expansion-Modals — mountable direkt aus der Sidebar, weil im GM
+  // die Actions-Tab nicht existiert und Navigation dorthin ins Leere führt.
+  const [expansionProtectOpen, setExpansionProtectOpen] = useState(false);
+  const [expansionDraftViewOpen, setExpansionDraftViewOpen] = useState(false);
   const sidebarSignals = useCalendarRowSignals();
   // My FAs row reuses the existing expiring-contracts modal (same one
   // PlayButton fires before crossing FA-open). forceOpen triggers it as a
@@ -546,6 +570,13 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
           body: 'This moves you into the draft lottery step. Continue only if you want to handle the lottery flow now.',
           confirmLabel: resume ? 'Resume Lottery' : 'Open Lottery',
         };
+      case 'expansionDraft':
+        return {
+          eyebrow: 'Offseason Flow',
+          title: resume ? 'Resume Expansion Draft' : 'Run Expansion Draft',
+          body: 'This opens the player protection modal for the scheduled expansion. AI teams are pre-filled — review and confirm to advance to the actual draft.',
+          confirmLabel: resume ? 'Resume Expansion' : 'Run Expansion',
+        };
       case 'options':
         return {
           eyebrow: 'Offseason Flow',
@@ -599,6 +630,15 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   };
 
   const handleEnter = (row: OffseasonChecklistRow) => {
+    // Expansion-Draft im GM-Mode: direkt das Protect-Modal öffnen, weil die
+    // Actions-Tab im GM nicht existiert (commissioner-only). Realignment +
+    // Add-Team läuft hier statt im ActionsView Confirm-Path.
+    if (row === 'expansionDraft' && state.gameMode === 'gm') {
+      dispatchAction({ type: 'APPLY_EXPANSION_REALIGNMENT' } as any);
+      setExpansionProtectOpen(true);
+      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      return;
+    }
     if (row === 'options') {
       // Special-case options: open the existing TeamOptionGateModal in-place
       // instead of navigating away. Mark in-progress so sidebar reflects state.
@@ -1094,6 +1134,30 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
           </div>
         </div>,
         document.body,
+      )}
+
+      {/* GM-Mode Expansion-Modals — gemountet aus der Sidebar, weil im GM-Mode
+          die Actions-Tab nicht existiert. fixed-positioning sorgt dafür, dass
+          sie unabhängig vom <aside> über dem ganzen Viewport rendern. */}
+      {expansionProtectOpen && (
+        <PlayerProtectionModal
+          onClose={() => setExpansionProtectOpen(false)}
+          onConfirm={async (protections) => {
+            setExpansionProtectOpen(false);
+            await dispatchAction({ type: 'SET_EXPANSION_PROTECTIONS', payload: { protections } } as any);
+            setExpansionDraftViewOpen(true);
+          }}
+        />
+      )}
+      {expansionDraftViewOpen && (
+        <ExpansionDraftView
+          onClose={() => {
+            setExpansionDraftViewOpen(false);
+            // Bei vollständigem Draft markiert ExpansionDraftView selbst die
+            // Row als done (via EXPANSION_DRAFT_COMPLETE). Hier nur das Modal
+            // schließen.
+          }}
+        />
       )}
     </aside>
   );

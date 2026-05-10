@@ -8,6 +8,7 @@ import { calculatePlayerOverallForYear, getDisplayPotential } from '../../../../
 import { computeMoodScore } from '../../../../../utils/mood/moodScore';
 import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickActions';
 import type { NBAPlayer } from '../../../../../types';
+import { isOnRoster, resolveAnyTeam } from '../../../../../utils/teamLookup';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -88,7 +89,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
   const quick = usePlayerQuickActions();
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
 
-  const team = state.teams.find(t => t.id === teamId);
+  const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const teamColor = team?.colors?.[0] ?? '#1a1a2e';
 
   const teamPlayers = useMemo(
@@ -114,7 +115,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
   );
 
   const allRows = useMemo((): RowData[] => {
-    const active = teamPlayers.filter(p => p.status === 'Active' && p.contract);
+    const active = teamPlayers.filter(p => isOnRoster(p) && p.contract);
 
     // Identify starters: top K2 player per position group
     const byPosGroup = new Map<number, NBAPlayer>();

@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Trophy, ChevronLeft, Play, FastForward, Zap } from 'lucide-react';
+import { ChevronLeft, Play, FastForward, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useGame } from '../../../store/GameContext';
 import { NBATeam, Game, Tab, NBAPlayer } from '../../../types';
 import { DunkContest } from '../../../services/allStar/DunkContest';
 import { ThreePointContest, mapPlayerToContestant } from '../../allstar/allstarevents';
 import { normalizeDate, getTeamForGame, getPlayersForExhibitionTeam } from '../../../utils/helpers';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
 import { GameSimulator } from '../../../services/simulation/GameSimulator';
 import { SettingsManager } from '../../../services/SettingsManager';
 import { GameSimulatorScreen } from '../../shared/GameSimulatorScreen';
@@ -23,7 +24,7 @@ import { DayView } from './components/DayView';
 import { AllStarRosterModal } from './components/AllStarRosterModal';
 
 export const ScheduleView: React.FC = () => {
-  const { state, dispatchAction, navigateToTeam, setCurrentView } = useGame();
+  const { state, dispatchAction, setCurrentView } = useGame();
   
   const [selectedDate, setSelectedDate] = useState(state.date);
   const [viewMode, setViewMode] = useState<'calendar' | 'day' | 'watching'>('calendar');
@@ -35,7 +36,6 @@ export const ScheduleView: React.FC = () => {
   const [precomputedWatchResult, setPrecomputedWatchResult] = useState<any>(null);
   const [selectedBoxScoreGame, setSelectedBoxScoreGame] = useState<Game | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date(state.date));
-  const [standingsConference, setStandingsConference] = useState<'East' | 'West'>('East');
   const [allStarModalTab, setAllStarModalTab] = useState<string | null>(null);
   const [contestModalType, setContestModalType] = useState<'dunk' | 'three' | null>(null);
   const [boxScoreClickedPlayer, setBoxScoreClickedPlayer] = useState<NBAPlayer | null>(null);
@@ -230,27 +230,13 @@ export const ScheduleView: React.FC = () => {
     }
   };
 
-  // Resolve a team by tid — handles NBA teams, non-NBA teams (tid ≥ 100), and exhibition mocks
+  // Resolve a team by tid — NBA, non-NBA (tid ≥ 100), or exhibition mocks.
+  // Wrapper around the shared `resolveAnyTeam` helper that falls back to a
+  // mock object when nothing matches (older sim paths expected non-null).
   const resolveTeam = (tid: number): NBATeam => {
-    if (tid >= 100) {
-      const nonNBA = (state.nonNBATeams ?? []).find((t: any) => t.tid === tid);
-      if (nonNBA) {
-        return {
-          id: tid,
-          name: nonNBA.name,
-          abbrev: nonNBA.abbrev || nonNBA.name.substring(0, 3).toUpperCase(),
-          logoUrl: nonNBA.imgURL || '',
-          wins: 0, losses: 0, city: '', state: '', pop: 0, region: '',
-          conference: nonNBA.league, division: '',
-          primaryColor: '', secondaryColor: '',
-          arena: '', capacity: 0, championships: 0, playoffAppearances: 0,
-          history: [], retiredNumbers: [], rivals: [],
-          fanBase: 0, marketSize: 0, prestige: 0, facilities: 0, budget: 0,
-          expenses: { scouting: 0, coaching: 0, health: 0, facilities: 0 },
-        } as unknown as NBATeam;
-      }
-    }
-    return getTeamForGame(tid, state.teams);
+    return resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? []) ?? ({
+      id: tid, name: 'Unknown', abbrev: '?', logoUrl: '',
+    } as unknown as NBATeam);
   };
 
   const executeWatchGame = async (result: any) => {
@@ -584,54 +570,6 @@ export const ScheduleView: React.FC = () => {
       </AnimatePresence>
 
       </div>
-
-      {/* --- Standings Sidebar (Visible in Calendar/Day modes) --- */}
-      {viewMode !== 'watching' && (
-        <div className="hidden md:flex w-96 border-l border-white/10 bg-[#0a0a0a] p-10 flex-col z-20 shadow-2xl">
-          <div className="flex items-center justify-between mb-10">
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-3">
-              <Trophy size={24} className="text-indigo-500" />
-              Standings
-            </h2>
-            <div className="flex bg-[#111] rounded-lg p-1 border border-white/5">
-              <button
-                onClick={() => setStandingsConference('East')}
-                className={`px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider transition-colors ${standingsConference === 'East' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-white'}`}
-              >
-                East
-              </button>
-              <button
-                onClick={() => setStandingsConference('West')}
-                className={`px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider transition-colors ${standingsConference === 'West' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-white'}`}
-              >
-                West
-              </button>
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
-            {[...state.teams]
-              .filter(t => t.conference === standingsConference)
-              .sort((a, b) => b.wins - a.wins || a.losses - b.losses)
-              .map((team, idx) => (
-              <motion.div 
-                layout
-                key={team.id} 
-                onClick={() => navigateToTeam(team.id)}
-                className="flex items-center justify-between p-5 rounded-3xl bg-[#111] border border-white/5 hover:border-white/10 hover:bg-white/5 transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-4">
-                  <span className="text-xs font-black text-slate-700 w-4">{idx + 1}</span>
-                  <img src={team.logoUrl} alt="" className="w-10 h-10 object-contain group-hover:scale-110 transition-transform" referrerPolicy="no-referrer" />
-                  <span className="font-bold text-white text-base group-hover:text-indigo-400 transition-colors">{team.abbrev}</span>
-                </div>
-                <div className="text-sm font-mono font-black text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-lg">
-                  {team.wins}-{team.losses}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {rosterGate.modal}
       {draftGate.modal}

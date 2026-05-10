@@ -11,6 +11,10 @@ import { useGame } from '../../../../store/GameContext';
 
 interface EconomyTabProps {
     draftType: string;
+    currency: string;
+    setCurrency: (val: string) => void;
+    tradesAllowed: boolean;
+    setTradesAllowed: (val: boolean) => void;
     salaryCap: number;
     setSalaryCap: (val: number) => void;
     salaryCapEnabled: boolean;
@@ -348,6 +352,41 @@ export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
                 <p className="text-xs text-slate-500 font-medium max-w-2xl">
                     Manage the financial structure of the league, from salary caps and luxury taxes to contract rules and team sizes.
                 </p>
+            </div>
+
+            <div className="bg-slate-800/40 p-6 rounded-3xl border border-slate-800/50">
+                <div className="flex items-center gap-2 mb-4">
+                    <Coins size={16} className="text-amber-400" />
+                    <h2 className="text-lg font-black text-white uppercase tracking-tight">Market Defaults</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-slate-900/60 rounded-2xl p-4 border border-slate-700/50 space-y-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Currency</span>
+                        <select
+                            value={props.currency}
+                            onChange={e => props.setCurrency(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-700 rounded-xl text-white text-sm py-2 px-3 focus:outline-none focus:border-amber-500 font-semibold"
+                        >
+                            {['USD', 'EUR', 'GBP', 'JPY', 'CNY', 'AUD', 'PHP'].map(code => (
+                                <option key={code} value={code}>{code}</option>
+                            ))}
+                        </select>
+                        <p className="text-[10px] text-slate-500">Salary, contract, cap, and prize-pool displays use this code.</p>
+                    </div>
+
+                    <div className="bg-slate-900/60 rounded-2xl p-4 border border-slate-700/50">
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="space-y-1">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Trades Allowed</span>
+                                <p className="text-[10px] text-slate-500">Independent commissioner gate. Disabling trades removes trade UI and AI trade generation.</p>
+                            </div>
+                            <div className={`relative w-10 h-5 rounded-full transition-colors ${props.tradesAllowed ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+                                <input type="checkbox" checked={props.tradesAllowed} onChange={e => props.setTradesAllowed(e.target.checked)} className="sr-only" />
+                                <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${props.tradesAllowed ? 'translate-x-5' : ''}`} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">

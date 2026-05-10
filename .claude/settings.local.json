@@ -125,7 +125,8 @@
       "Bash(npx --no-install tsc --noEmit)",
       "WebFetch(domain:zengm.com)",
       "WebFetch(domain:deepwiki.com)",
-      "Bash(gh search *)"
+      "Bash(gh search *)",
+      "WebFetch(domain:play.basketball-gm.com)"
     ]
   }
 }

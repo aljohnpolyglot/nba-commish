@@ -18,6 +18,7 @@ const RulesView: React.FC = () => {
         setActiveTab={setActiveTab}
         hasConfigChanges={rulesState.hasConfigChanges}
         isSaving={rulesState.isSaving}
+        handleApplyEuroDefaults={rulesState.handleApplyEuroDefaults}
         handleSaveConfig={rulesState.handleSaveConfig}
         handleResetConfig={rulesState.handleResetConfig}
       />

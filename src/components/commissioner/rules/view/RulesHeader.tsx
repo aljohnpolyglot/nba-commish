@@ -7,6 +7,7 @@ interface RulesHeaderProps {
     setActiveTab: (tab: any) => void;
     hasConfigChanges: boolean;
     isSaving: boolean;
+    handleApplyEuroDefaults: () => void;
     handleSaveConfig: () => void;
     handleResetConfig: () => void;
 }
@@ -16,6 +17,7 @@ export const RulesHeader: React.FC<RulesHeaderProps> = ({
     setActiveTab,
     hasConfigChanges,
     isSaving,
+    handleApplyEuroDefaults,
     handleSaveConfig,
     handleResetConfig
 }) => {
@@ -43,6 +45,13 @@ export const RulesHeader: React.FC<RulesHeaderProps> = ({
             </div>
 
             <div className="flex items-center gap-2 self-end">
+                <button
+                    onClick={handleApplyEuroDefaults}
+                    className="px-3 py-2 text-xs font-semibold text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg hover:bg-amber-500/20 transition-colors"
+                    title="Apply Euro Defaults"
+                >
+                    Apply Euro Defaults
+                </button>
                 {hasConfigChanges && (
                     <div className="flex items-center gap-2 mr-2">
                         <button

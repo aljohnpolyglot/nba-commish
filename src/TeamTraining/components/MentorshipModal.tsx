@@ -154,6 +154,7 @@ export const MentorshipModal: React.FC<MentorshipModalProps> = ({
                         <div className="flex items-start gap-3 mb-3">
                           <PlayerPortrait
                             imgUrl={m.imgURL}
+                            face={(m as any).face}
                             playerName={m.name}
                             size={44}
                           />

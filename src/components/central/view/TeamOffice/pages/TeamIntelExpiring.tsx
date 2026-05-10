@@ -12,6 +12,7 @@ import { computeResignProbability } from '../../PlayerBioMoraleTab';
 import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickActions';
 import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
 import type { NBAPlayer } from '../../../../../types';
+import { isOnRoster, resolveAnyTeam } from '../../../../../utils/teamLookup';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -114,7 +115,7 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
   const isOwnTeam = isGM && teamId === state.userTeamId;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
 
-  const team = state.teams.find(t => t.id === teamId);
+  const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const gamesPlayed = (team?.wins ?? 0) + (team?.losses ?? 0);
   const teamWinPct = gamesPlayed > 0 ? (team?.wins ?? 0) / gamesPlayed : 0.5;
 
@@ -141,7 +142,7 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
 
   // Pre-compute all row data including real moodScore → resignProbability
   const allRows = useMemo((): RowData[] => {
-    const active = teamPlayers.filter(p => p.status === 'Active' && p.contract);
+    const active = teamPlayers.filter(p => isOnRoster(p) && p.contract);
     return active.map(p => {
       const { score: moodScore } = computeMoodScore(
         p, team, state.date, false, false, false, teamPlayers, currentYear,

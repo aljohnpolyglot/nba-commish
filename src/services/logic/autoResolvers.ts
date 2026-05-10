@@ -1075,6 +1075,8 @@ function _runWeightedLottery<T extends { originalSeed: number }>(
  *  Skips if lottery has already been run this season. */
 export const autoRunLottery = (state: GameState): Partial<GameState> => {
   logPlanEvent('autoResolvers.autoRunLottery', 'fire', `date=${state.date}`);
+  // Phase 1 invariant: transfer/signing leagues never run the lottery.
+  // Removing this guard regresses the no_draft offseason gate. See plans/no-draft-euroleague-phase1.md.
   if (isNoDraftLeague(state.leagueStats)) return {};
   if ((state as any).draftLotteryResult) return {}; // already run
 
@@ -1114,6 +1116,8 @@ export const autoRunLottery = (state: GameState): Partial<GameState> => {
  *  Commissioner-run drafts take precedence (skips if draftComplete is already true). */
 export const autoRunDraft = (state: GameState): Partial<GameState> => {
   logPlanEvent('autoResolvers.autoRunDraft', 'fire', `date=${state.date}`);
+  // Phase 1 invariant: transfer/signing leagues never run the draft.
+  // Removing this guard regresses the no_draft offseason gate. See plans/no-draft-euroleague-phase1.md.
   if (isNoDraftLeague(state.leagueStats)) return {};
   if ((state as any).draftComplete) return {}; // commissioner already ran the draft
   // Finals must finish before the draft runs — if draft day lands before Game 7, defer.

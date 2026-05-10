@@ -97,11 +97,9 @@ export const ActionModalsRenderer: React.FC<ActionModalsRendererProps> = ({
           onConfirm={async (payload) => {
             modals.setExpansionSetupModalOpen(false);
             await handleAction('SCHEDULE_EXPANSION', payload);
-            // Auto-Chain: bei "this offseason" sofort zum Player-Protection-Modal
-            const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
-            if (payload.scheduleYear === currentYear) {
-              modals.setExpansionProtectModalOpen(true);
-            }
+            // Mit Grace-Period (>= currentYear+1) wird das Protect-Modal nicht
+            // sofort aufgemacht — der User landet erst in der Saison X auf
+            // dem Protect-Modal via Action-Card-Klick (skip Setup).
           }}
         />
       )}

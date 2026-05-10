@@ -32,6 +32,7 @@ import type { NBAPlayer } from '../../../../../../types';
 import { PlayerNameWithHover } from '../../../../../shared/PlayerNameWithHover';
 import { getLockedStrategy, lockStrategy } from '../../../../../../store/coachStrategyLockStore';
 import { calculateCoachSliders } from '../lib/coachSliders';
+import { resolveAnyTeam, isOnRoster } from '../../../../../../utils/teamLookup';
 import { getGameDateParts } from '../../../../../../utils/dateUtils';
 
 interface IdealRotationTabProps {
@@ -289,10 +290,10 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
     }
 
     // AI fallback: derive from roster depth.
-    const rosterForSliders = state.players.filter(p => p.tid === teamId && p.status === 'Active');
+    const rosterForSliders = state.players.filter(p => p.tid === teamId && isOnRoster(p));
     return calculateCoachSliders(rosterForSliders as any).benchDepth;
   }, [teamId, state.players, state.teams, state.leagueStats]);
-  const team = state.teams.find(t => t.id === teamId);
+  const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const isGM = state.gameMode === 'gm';
   const isCommissioner = state.gameMode !== 'gm';
   const canEdit = isCommissioner || teamId === state.userTeamId;
@@ -304,7 +305,7 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
   }, [state.date]);
 
   const allRoster = useMemo(
-    () => state.players.filter(p => p.tid === teamId && p.status === 'Active'),
+    () => state.players.filter(p => p.tid === teamId && isOnRoster(p)),
     [state.players, teamId],
   );
   const twoWayIneligible = useMemo(
@@ -385,7 +386,7 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
     saveIdealRotation(teamId, { starterIds: ordered, minutes: reseedPreview.minutes, locked: true, benchOrder: reseedBenchOrder });
 
     // Sync bench depth into coaching preferences so the slider reflects the chosen outlook.
-    const rosterForSliders = state.players.filter(p => p.tid === teamId && p.status === 'Active');
+    const rosterForSliders = state.players.filter(p => p.tid === teamId && isOnRoster(p));
     const baseSliders = getLockedStrategy(teamId)?.sliders ?? calculateCoachSliders(rosterForSliders as any);
     lockStrategy(teamId, { ...baseSliders, benchDepth: reseedDepth });
 

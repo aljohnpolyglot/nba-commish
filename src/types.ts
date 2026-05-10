@@ -1,3 +1,5 @@
+import type { CompetitionSpec } from './services/competition/types';
+
 export interface Game {
   gid: number;
   homeTid: number;
@@ -37,6 +39,8 @@ export interface Game {
   gameFormat?: 'timed' | 'target_score' | 'elam_ending';
   targetScore?: number;
   round?: 'rr' | 'sf' | 'final';
+  competitionId?: string;
+  competitionPhase?: string;
 }
 
 export interface NBACupGroup {
@@ -227,6 +231,8 @@ export interface GameResult {
   fight?: FightResult;
   highlights?: import('./services/simulation/types').GameHighlight[];
   season?: number;
+  competitionId?: string;
+  competitionPhase?: string;
 }
 
 export interface TransactionDto {
@@ -290,6 +296,9 @@ export interface LeagueStats {
   rules: Rule[];
   morale: Morale;
   year: number;
+  uiMode?: 'nba' | 'euro_isolated';
+  currency?: 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CNY' | 'AUD' | 'PHP';
+  tradesAllowed?: boolean;
   hofClassesInducted?: number[];
   draftType: string;
   allStarEnding?: string;
@@ -305,6 +314,9 @@ export interface LeagueStats {
   celebrityRosterAutoSelected?: boolean;
   celebrityRoster?: string[];
   hasExpanded?: boolean;
+  /** Set once when the auto-2029-expansion-seed effect runs (or the user
+   *  cancels it). Persists with the save so reopening doesn't re-seed. */
+  auto2029ExpansionSeeded?: boolean;
   hasFinalsHalftime?: boolean;
   hasAllStarHalftime?: boolean;
   hasRingCeremony?: boolean;
@@ -373,7 +385,7 @@ export interface LeagueStats {
 
   // Economy - Finances
   salaryCapEnabled?: boolean;
-  salaryCapType?: 'soft' | 'hard';
+  salaryCapType?: 'soft' | 'hard' | 'none';
   minimumPayrollEnabled?: boolean;
   minimumPayrollPercentage?: number;
   luxuryTaxEnabled?: boolean;
@@ -422,7 +434,7 @@ export interface LeagueStats {
   tenDayContractsEnabled?: boolean;
 
   // Economy - Rookie Contracts
-  rookieScaleType?: 'static' | 'dynamic';
+  rookieScaleType?: 'static' | 'dynamic' | 'none';
   rookieStaticAmount?: number;
   rookieMaxContractPercentage?: number;
   rookieScaleAppliesTo?: 'first_round' | 'both_rounds';
@@ -1420,7 +1432,9 @@ export interface GameState {
   lastActionPayload?: any;
   teams: NBATeam[];
   nonNBATeams: NonNBATeam[];
+  clubAliasMap?: Record<number, number>;
   schedule: Game[];
+  activeCompetitions?: CompetitionSpec[];
   players: NBAPlayer[];
   draftPicks: DraftPick[];
   staff: StaffData | null;

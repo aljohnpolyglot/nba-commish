@@ -106,3 +106,7 @@ export function saveDefenseGameplan(teamId: number, plan: Omit<DefenseGameplan, 
 export function applyDefenseTemplate(teamId: number, template: Exclude<DefenseTemplate, 'Custom'>) {
   saveDefenseGameplan(teamId, { template, ...DEFENSE_TEMPLATES[template] });
 }
+
+export function resetDefenseGameplan(teamId: number) {
+  store.delete(teamId);
+}

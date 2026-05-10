@@ -1,4 +1,5 @@
 import type { GameState } from '../../types';
+import { resolveAnyTeam } from '../../utils/teamLookup';
 
 export type GMAttributes = {
   trade_aggression: number;
@@ -15,7 +16,9 @@ export const DEFAULT_GM_ATTRIBUTES: GMAttributes = {
 };
 
 export function findGMForTeam(state: GameState, teamId: number): any | null {
-  const team = state.teams.find(t => t.id === teamId);
+  // resolveAnyTeam covers non-NBA tids (Endesa/Euroleague). NBA-only staff
+  // gist won't match those teams — caller falls through to defaults.
+  const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   if (!team) return null;
   const teamName = team.name.toLowerCase();
   const teamCity = (team.region ?? team.name).toLowerCase();
@@ -31,7 +34,7 @@ export function getGMAttributes(state: GameState, teamId: number): GMAttributes 
 }
 
 export function getGMName(state: GameState, teamId: number): string {
-  const team = state.teams.find(t => t.id === teamId);
+  const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   return findGMForTeam(state, teamId)?.name ?? `${team?.name ?? 'AI'} GM`;
 }
 

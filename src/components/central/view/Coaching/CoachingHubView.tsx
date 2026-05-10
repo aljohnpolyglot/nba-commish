@@ -3,6 +3,7 @@ import { ChevronLeft } from 'lucide-react';
 import { useGame } from '../../../../store/GameContext';
 import { Home } from '../TeamOffice/pages/Home';
 import { CoachingPage } from '../TeamOffice/pages/CoachingPage';
+import { resolveAnyTeam } from '../../../../utils/teamLookup';
 
 export function CoachingHubView() {
   const { state } = useGame();
@@ -11,7 +12,9 @@ export function CoachingHubView() {
     isGM && state.userTeamId != null ? state.userTeamId : null
   );
 
-  const currentTeam = currentTeamId != null ? state.teams.find(t => t.id === currentTeamId) : null;
+  const currentTeam = currentTeamId != null
+    ? resolveAnyTeam(currentTeamId, state.teams, state.nonNBATeams ?? [])
+    : null;
   const teamColor = currentTeam?.colors?.[0] || '#150d1a';
 
   const handleBack = () => setCurrentTeamId(null);

@@ -112,6 +112,10 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
                 {activeTab === 'Economy' && (
                     <EconomyTab 
                         draftType={rulesState.draftType}
+                        currency={rulesState.currency}
+                        setCurrency={rulesState.setCurrency}
+                        tradesAllowed={rulesState.tradesAllowed}
+                        setTradesAllowed={rulesState.setTradesAllowed}
                         salaryCap={rulesState.salaryCap}
                         setSalaryCap={rulesState.setSalaryCap}
                         salaryCapEnabled={rulesState.salaryCapEnabled}

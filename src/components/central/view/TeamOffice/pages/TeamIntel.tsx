@@ -15,6 +15,7 @@ import { TeamIntelExpiring } from './TeamIntelExpiring';
 import { resolveTeamStrategyProfile } from '../../../../../utils/teamStrategy';
 import { compareGameDates, getCurrentOffseasonEffectiveFAStart } from '../../../../../utils/dateUtils';
 import { getOffseasonState } from '../../../../../services/offseason/offseasonState';
+import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
 
 interface TeamIntelProps {
   teamId: number;
@@ -30,8 +31,17 @@ function getK2Ovr(p: NBAPlayer): number {
 
 export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   const { state, dispatchAction } = useGame();
-  const team = state.teams.find(t => t.id === teamId);
-  const players = (state.players || []).filter(p => p.tid === teamId && p.status === 'Active');
+  const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
+  const players = (state.players || []).filter(p => p.tid === teamId && isOnRoster(p));
+  const allTeamsForPickers = useMemo(
+    () => [
+      ...(state.teams ?? []),
+      ...((state.nonNBATeams ?? [])
+        .map(nonNBA => resolveAnyTeam(nonNBA.tid, state.teams, state.nonNBATeams ?? []))
+        .filter((resolved): resolved is NonNullable<typeof team> => resolved !== null)),
+    ],
+    [state.nonNBATeams, state.teams, team],
+  );
   const teamColor = team?.colors?.[0] || '#552583';
   const teamName = team ? `${team.region} ${team.name}` : '';
 
@@ -190,7 +200,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   // computed above when the team has no saved entry yet.
   const rosterIdSet = useMemo(() => new Set(players.map(p => p.internalId)), [players]);
   const otherIdSet = useMemo(
-    () => new Set(state.players.filter(p => p.tid >= 0 && p.tid !== teamId && p.status === 'Active').map(p => p.internalId)),
+    () => new Set(state.players.filter(p => p.tid >= 0 && p.tid !== teamId && isOnRoster(p)).map(p => p.internalId)),
     [state.players, teamId],
   );
   const initialFromStore = useMemo(() => {
@@ -255,7 +265,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
 
   const leagueTargetItems: PlayerSelectorItem[] = useMemo(() =>
     state.players
-      .filter(p => p.tid >= 0 && p.tid !== teamId && p.status === 'Active')
+      .filter(p => p.tid >= 0 && p.tid !== teamId && isOnRoster(p))
       .map(p => ({
         player: p,
         score: getK2Ovr(p),
@@ -606,7 +616,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
             <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               <PlayerSelectorGrid
                 items={editingList === 'targets' ? leagueTargetItems : ownRosterItems}
-                teams={state.teams as any}
+                teams={allTeamsForPickers as any}
                 selectedIds={editingList === 'untouchable' ? untouchableIds : editingList === 'block' ? blockIds : targetIds}
                 onToggle={editingList === 'untouchable' ? toggleUntouchable : editingList === 'block' ? toggleBlock : toggleTarget}
                 maxSelections={editingList === 'untouchable' ? 3 : 5}

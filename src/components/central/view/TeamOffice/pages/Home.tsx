@@ -3,6 +3,7 @@ import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { calculateTeamStrength } from '../../../../../utils/playerRatings';
 import { NBATeam, NBAPlayer } from '../../../../../types';
+import { getActiveLeagueTeams, isOnRoster } from '../../../../../utils/teamLookup';
 
 interface HomeProps {
   onSelectTeam: (teamId: number) => void;
@@ -25,7 +26,9 @@ interface HomeProps {
 
 export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pickerMode, selectedTid, title, subtitle, highlightedTeamIds, highlightedLabel }: HomeProps) {
   const { state, dispatchAction } = useGame();
-  const teams = teamsProp ?? state.teams ?? [];
+  // Non-NBA GMs (Endesa/Euroleague) see their own league's teams here, not NBA.
+  // teamsProp override (setup-flow franchise picker) wins over the auto-resolution.
+  const teams = teamsProp ?? getActiveLeagueTeams(state);
   const players = playersProp ?? state.players ?? [];
   const isGM = state.gameMode === 'gm';
   const userTid = pickerMode ? (selectedTid ?? null) : (isGM ? state.userTeamId ?? null : null);
@@ -68,7 +71,7 @@ export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pic
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         {sortedTeams.map((team) => {
-          const roster = players.filter(p => p.tid === team.id && p.status === 'Active');
+          const roster = players.filter(p => p.tid === team.id && isOnRoster(p));
           const teamOverall = calculateTeamStrength(team.id, players);
           const teamColor = team.colors?.[0] || '#552583';
           const isUserTeam = team.id === userTid;

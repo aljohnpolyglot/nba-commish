@@ -21,6 +21,7 @@ import { useGame } from '../../store/GameContext';
 import type { ExpansionTeamSpec } from '../../types';
 import { ZENGM_EXPANSION_POOL } from '../../data/expansionTeamPool';
 import { getExpansionLogoPool, type ParsedLogoTeam } from '../../data/expansionLogoPool';
+import { ZENGM_2029_REALIGNMENT } from '../../data/expansion2029';
 
 interface Props {
   onClose: () => void;
@@ -95,47 +96,7 @@ function blankTeam(): ExpansionTeamSpec {
   };
 }
 
-// ZenGM-2029-Realignment-Vorlage (Blog 2026-04-09 + BBGM-Save-Layout).
-// 8 Divisionen à 4 Teams (statt klassisch 6 à 5). Maps NBA-tid (staticNbaTeams)
-// → neue conference/cid/did. MIN bewegt sich West→East — alle anderen bleiben
-// in ihrer Conference, bekommen aber neue Division-Zuordnungen.
-//
-//   East/cid=0:  Northeast(0), Midwest(1), Mid-Atlantic(2), Southeast(3)
-//   West/cid=1:  Northwest(4), Pacific(5),  Southwest(6),    Central(7)
-const ZENGM_2029_REALIGNMENT: Record<number, RealignmentMove> = {
-  // East
-  0:  { conference: 'East', cid: 0, did: 3 }, // ATL → Southeast
-  1:  { conference: 'East', cid: 0, did: 0 }, // BOS → Northeast
-  2:  { conference: 'East', cid: 0, did: 0 }, // BKN → Northeast
-  3:  { conference: 'East', cid: 0, did: 3 }, // CHA → Southeast
-  4:  { conference: 'East', cid: 0, did: 1 }, // CHI → Midwest
-  5:  { conference: 'East', cid: 0, did: 2 }, // CLE → Mid-Atlantic
-  8:  { conference: 'East', cid: 0, did: 1 }, // DET → Midwest
-  11: { conference: 'East', cid: 0, did: 2 }, // IND → Mid-Atlantic
-  15: { conference: 'East', cid: 0, did: 3 }, // MIA → Southeast
-  16: { conference: 'East', cid: 0, did: 1 }, // MIL → Midwest
-  17: { conference: 'East', cid: 0, did: 1 }, // MIN → East/Midwest (West→East move)
-  19: { conference: 'East', cid: 0, did: 0 }, // NYK → Northeast
-  21: { conference: 'East', cid: 0, did: 3 }, // ORL → Southeast
-  22: { conference: 'East', cid: 0, did: 0 }, // PHI → Northeast
-  27: { conference: 'East', cid: 0, did: 2 }, // TOR → Mid-Atlantic
-  29: { conference: 'East', cid: 0, did: 2 }, // WAS → Mid-Atlantic
-  // West
-  6:  { conference: 'West', cid: 1, did: 6 }, // DAL → Southwest
-  7:  { conference: 'West', cid: 1, did: 7 }, // DEN → Central
-  9:  { conference: 'West', cid: 1, did: 4 }, // GSW → Northwest
-  10: { conference: 'West', cid: 1, did: 6 }, // HOU → Southwest
-  12: { conference: 'West', cid: 1, did: 5 }, // LAC → Pacific
-  13: { conference: 'West', cid: 1, did: 5 }, // LAL → Pacific
-  14: { conference: 'West', cid: 1, did: 7 }, // MEM → Central
-  18: { conference: 'West', cid: 1, did: 6 }, // NOP → Southwest
-  20: { conference: 'West', cid: 1, did: 7 }, // OKC → Central
-  23: { conference: 'West', cid: 1, did: 5 }, // PHX → Pacific
-  24: { conference: 'West', cid: 1, did: 4 }, // POR → Northwest
-  25: { conference: 'West', cid: 1, did: 4 }, // SAC → Northwest
-  26: { conference: 'West', cid: 1, did: 6 }, // SAS → Southwest
-  28: { conference: 'West', cid: 1, did: 7 }, // UTA → Central
-};
+// ZenGM-2029-Realignment-Vorlage: jetzt zentral in src/data/expansion2029.ts.
 
 // Division-Labels für Dropdown + Display. Reihenfolge identisch zu cid/did:
 //   East cid=0: did 0..3
@@ -153,11 +114,18 @@ const DIVISION_LABELS: Record<number, string> = {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+/** Auto-Abbrev aus Region (erste 3 Buchstaben des ersten Region-Worts).
+ *  "Anaheim" → "ANA", "Kansas City" → "KAN", "Ann Arbor" → "ANN". */
+function deriveAbbrevFromRegion(region: string): string {
+  const firstWord = region.trim().split(/\s+/)[0] ?? '';
+  return firstWord.slice(0, 3).toUpperCase();
+}
+
 function logoToSpec(logo: ParsedLogoTeam): ExpansionTeamSpec {
   return {
     region: logo.region,
     name: logo.name,
-    abbrev: '',
+    abbrev: deriveAbbrevFromRegion(logo.region),
     pop: 2.0,
     colors: [logo.primary, logo.secondary, '#ffffff'],
     imgURL: logo.logoUrl,
@@ -213,7 +181,10 @@ export const ExpansionDraftSetupModal: React.FC<Props> = ({ onClose, onConfirm }
   const [perTeamLimit, setPerTeamLimit] = useState(8);
   const [maxDraftedPerTeam, setMaxDraftedPerTeam] = useState(2);
   const [picksPerExpansionTeam, setPicksPerExpansionTeam] = useState(14);
-  const [scheduleYear, setScheduleYear] = useState(currentYear);
+  // Grace-Period: Expansion-Draft erfordert min. 1 Saison Vorlauf — Zeit für
+  // Bestandsteams, Roster-Anpassungen + Player-Protection-Strategy zu planen.
+  const minScheduleYear = currentYear + 1;
+  const [scheduleYear, setScheduleYear] = useState(minScheduleYear);
 
   // Auto-skalierung: minProtect = roster - (#expTeams × picks / #existingTeams + maxPerTeam-buffer)
   const existingTeamCount = state.teams?.length ?? 30;
@@ -224,7 +195,9 @@ export const ExpansionDraftSetupModal: React.FC<Props> = ({ onClose, onConfirm }
     return Math.max(0, 15 - minPerTeam);
   }, [teams.length, picksPerExpansionTeam, existingTeamCount]);
 
-  const canSubmit = teams.length > 0 && teams.every(t => t.region && t.name && t.abbrev);
+  const canSubmit = teams.length > 0
+    && teams.every(t => t.region && t.name && t.abbrev)
+    && scheduleYear >= minScheduleYear;
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -335,11 +308,7 @@ export const ExpansionDraftSetupModal: React.FC<Props> = ({ onClose, onConfirm }
               ) : (
                 <span>
                   {teams.length} team{teams.length !== 1 ? 's' : ''} ·{' '}
-                  {scheduleYear === currentYear ? (
-                    <span className="text-emerald-400">runs this offseason</span>
-                  ) : (
-                    <span className="text-zinc-300">scheduled for {scheduleYear}</span>
-                  )}
+                  <span className="text-zinc-300">scheduled for {scheduleYear}</span>
                 </span>
               )}
             </div>
@@ -355,7 +324,7 @@ export const ExpansionDraftSetupModal: React.FC<Props> = ({ onClose, onConfirm }
                 disabled={!canSubmit}
                 className="px-5 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 disabled:text-zinc-500 rounded font-semibold"
               >
-                {scheduleYear === currentYear ? 'Advance to Player Protection' : `Schedule for ${scheduleYear}`}
+                Schedule for {scheduleYear}
               </button>
             </div>
           </div>
@@ -520,10 +489,10 @@ const AddTeamPicker: React.FC<{
   const logoPool = useMemo(() => getExpansionLogoPool(), []);
   const filteredLogos = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return logoPool.slice(0, 60); // perf cap
+    if (!q) return logoPool;
     return logoPool.filter(l =>
       l.region.toLowerCase().includes(q) || l.name.toLowerCase().includes(q)
-    ).slice(0, 60);
+    );
   }, [logoPool, search]);
 
   return (
@@ -561,8 +530,19 @@ const AddTeamPicker: React.FC<{
                   onClick={() => onPick({ ...t })}
                   className="flex items-center gap-3 p-2 border border-zinc-700 hover:border-emerald-500 rounded text-left"
                 >
-                  <div className="w-8 h-8 rounded flex items-center justify-center text-xs font-bold" style={{ background: t.colors[0], color: '#fff' }}>
-                    {t.abbrev}
+                  <div className="w-8 h-8 rounded relative overflow-hidden" style={{ background: t.colors[0], color: '#fff' }}>
+                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold pointer-events-none">
+                      {t.abbrev}
+                    </span>
+                    {t.imgURL && (
+                      <img
+                        src={t.imgURL}
+                        alt=""
+                        loading="lazy"
+                        className="absolute inset-0 w-full h-full object-contain"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    )}
                   </div>
                   <div className="flex-1">
                     <div className="text-sm font-semibold">{t.region} {t.name}</div>
@@ -589,7 +569,7 @@ const AddTeamPicker: React.FC<{
                     onClick={() => onPick(logoToSpec(logo))}
                     className="flex items-center gap-2 p-2 border border-zinc-700 hover:border-emerald-500 rounded text-left"
                   >
-                    <img src={logo.logoUrl} alt="" className="w-8 h-8 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.2'; }} />
+                    <img src={logo.logoUrl} alt="" loading="lazy" className="w-8 h-8 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.2'; }} />
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-semibold truncate">{logo.region}</div>
                       <div className="text-xs text-zinc-500 truncate">{logo.name}</div>
@@ -803,10 +783,10 @@ const SettingsTab: React.FC<{
           <Calendar className="w-4 h-4 text-indigo-400" /> Schedule Year
         </label>
         <p className="text-xs text-zinc-400 mb-3">
-          Run this expansion now or schedule it for a future year. ZenGM-style scheduled events.
+          Expansion drafts need at least one season of lead time so existing teams can plan their protection lists. Earliest start: {currentYear + 1}.
         </p>
-        <div className="flex gap-2">
-          {[currentYear, currentYear + 1, currentYear + 2, currentYear + 3, currentYear + 5].map(y => (
+        <div className="flex gap-2 flex-wrap">
+          {[currentYear + 1, currentYear + 2, currentYear + 3, currentYear + 5].map(y => (
             <button
               key={y}
               onClick={() => setScheduleYear(y)}
@@ -816,18 +796,23 @@ const SettingsTab: React.FC<{
                   : 'bg-zinc-800 text-zinc-400 hover:text-white'
               }`}
             >
-              {y === currentYear ? `${y} (now)` : y}
+              {y}{y === currentYear + 1 ? ' (next)' : ''}
             </button>
           ))}
           <input
             type="number"
-            min={currentYear}
+            min={currentYear + 1}
             max={currentYear + 20}
             value={scheduleYear}
-            onChange={(e) => setScheduleYear(parseInt(e.target.value, 10) || currentYear)}
+            onChange={(e) => setScheduleYear(parseInt(e.target.value, 10) || (currentYear + 1))}
             className="bg-zinc-800 px-3 py-2 rounded text-sm w-24"
           />
         </div>
+        {scheduleYear < currentYear + 1 && (
+          <p className="text-xs text-amber-400 mt-2">
+            Year must be at least {currentYear + 1} (one-season grace period).
+          </p>
+        )}
       </div>
 
       {expansionTeamCount > 0 && (
@@ -836,7 +821,7 @@ const SettingsTab: React.FC<{
           <div>· {expansionTeamCount} expansion team{expansionTeamCount !== 1 ? 's' : ''}</div>
           <div>· {expansionTeamCount * picksPerExpansionTeam} total picks ({maxDraftedPerTeam} max per existing team)</div>
           <div>· {perTeamLimit} protected per team — {15 - perTeamLimit} unprotected available</div>
-          <div>· Year {scheduleYear} {scheduleYear === currentYear && '(this offseason)'}</div>
+          <div>· Year {scheduleYear} {scheduleYear === currentYear + 1 ? '(next offseason)' : ''}</div>
         </div>
       )}
     </div>

@@ -5,7 +5,7 @@ import { generateFictionalLeague } from '../../services/fictionalLeagueGenerator
 import { generateFictionalStaff, generateFictionalReferees } from '../../services/fictionalStaffGenerator';
 import { setRefereeData } from '../../data/photos/referees';
 import type { LeagueType, ModdedLeagueBase, EuropeMarket } from '../../components/setup/LeagueTypeSelector';
-import { INITIAL_LEAGUE_STATS } from '../../constants';
+import { EURO_ISOLATED_DEFAULTS, INITIAL_LEAGUE_STATS } from '../../constants';
 import { getSeasonSimStartDate } from '../../utils/dateUtils';
 import { DEFAULT_MEDIA_RIGHTS } from '../../utils/broadcastingUtils';
 import { fetchEuroleagueRoster, fetchWNBARoster, fetchPBARoster, fetchBLeagueRoster, fetchGLeagueRoster, fetchEndesaRoster, fetchChinaCBARoster, fetchNBLAustraliaRoster } from '../../services/externalRosterService';
@@ -14,6 +14,7 @@ import { EXTERNAL_SALARY_SCALE } from '../../constants';
 import { convertTo2KRating } from '../../utils/helpers';
 import { loadNameData } from '../../data/nameDataFetcher';
 import { enforceExternalMinRoster } from '../../services/externalLeagueSustainer';
+import { SPAIN_COMPETITIONS } from '../../data/templates/spain/competitions';
 
 import { calculateSocialEngagement } from '../../utils/helpers';
 import { generateFuturePicks, DEFAULT_TRADABLE_PICK_SEASONS } from '../../services/draft/DraftPickGenerator';
@@ -36,12 +37,19 @@ interface StartGamePayload {
 
 const EMPTY_ROSTER = { players: [], teams: [] };
 
+const normalizeClubKey = (region?: string | null, name?: string | null) =>
+    `${region ?? ''} ${name ?? ''}`
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+
 export const handleStartGame = async (payload: StartGamePayload): Promise<Partial<GameState>> => {
     const { name: commissionerName } = payload;
     const isFictional = payload.leagueType === 'fictional';
     const isEuropeModded = payload.leagueType === 'modded' && payload.moddedLeagueBase === 'europe';
     const isSpainEurope = isEuropeModded && payload.europeMarket === 'spain';
-    const SHADOWED_ENDESA_TEAM_TIDS = new Set([5006, 5012]); // FC Barcelona, Real Madrid — use Euroleague club only
     // Kick off name-data fetch early — it runs in parallel with roster loads and
     // is done by the time we need to synthesize the first draft-class top-up.
     const nameDataPromise = loadNameData();
@@ -132,21 +140,36 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
 
     const existingNbaNames = new Set(nbaPlayers.map(p => normName(p.name)));
 
+    const endesaTeamsByClub = new Map(endesaTeams.map(team => [normalizeClubKey(team.region, team.name), team] as const));
+    const clubAliasMap: Record<number, number> = {};
+    const mergedEuroTeamTids = new Set<number>();
+
+    if (isSpainEurope) {
+        euroTeams.forEach(team => {
+            const canonicalTeam = endesaTeamsByClub.get(normalizeClubKey(team.region, team.name));
+            if (!canonicalTeam) return;
+            clubAliasMap[team.tid] = canonicalTeam.tid;
+            mergedEuroTeamTids.add(team.tid);
+        });
+    }
+
     // G-League: NBA takes priority — drop any G-League player whose name is already in NBA
     // Uses normName so "L.J. Cryer" matches "LJ Cryer" etc.
     const uniqueGLeaguePlayers = gleaguePlayers
         .filter(p => !existingNbaNames.has(normName(p.name)))
         .map(p => ({ ...p, status: 'G-League' as const }));
 
-    const filteredEndesaTeams = isSpainEurope
-        ? endesaTeams
-        : endesaTeams.filter(t => !SHADOWED_ENDESA_TEAM_TIDS.has(t.tid));
+    const filteredEuroTeams = isSpainEurope
+        ? euroTeams.filter(team => !mergedEuroTeamTids.has(team.tid))
+        : euroTeams;
+
+    const shadowedEndesaClubTids = new Set(Object.values(clubAliasMap));
 
     const uniqueEndesaPlayers = endesaPlayers
         .filter(p =>
-            (isSpainEurope || !SHADOWED_ENDESA_TEAM_TIDS.has(p.tid)) &&
+            (!isSpainEurope || !shadowedEndesaClubTids.has(p.tid)) &&
             !existingNbaNames.has(normName(p.name)) &&
-            (isSpainEurope || !euroNames.has(normName(p.name)))
+            (!isSpainEurope || !euroNames.has(normName(p.name)))
         )
         .map(p => ({ ...p, status: 'Endesa' as const }));
 
@@ -168,7 +191,10 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
 
     const players = [
         ...nbaPlayers,
-        ...uniqueEuroPlayers,
+        ...uniqueEuroPlayers.map(p => ({
+            ...p,
+            tid: clubAliasMap[p.tid] ?? p.tid,
+        })),
         ...uniquePBAPlayers,
         ...uniqueBLeaguePlayers,
         ...uniqueEndesaPlayers,
@@ -245,7 +271,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         players[i] = { ...p, contract: { ...p.contract, amount: synced } };
     }
 
-    const initialNonNBATeams = [...euroTeams, ...pbaTeams, ...wnbaTeams, ...bleagueTeams, ...filteredEndesaTeams, ...gleagueTeams, ...chinaTeams, ...nblAusTeams];
+    const initialNonNBATeams = [...filteredEuroTeams, ...pbaTeams, ...wnbaTeams, ...bleagueTeams, ...endesaTeams, ...gleagueTeams, ...chinaTeams, ...nblAusTeams];
     const { additions: initialExternalFillers } = enforceExternalMinRoster({
         players,
         nonNBATeams: initialNonNBATeams,
@@ -378,11 +404,11 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     console.log("=== ROSTER INITIALIZATION DEBUG ===");
     console.log(`NBA: ${nbaPlayers.length} players, ${teams.length} teams`);
     console.log(`WNBA: ${wnbaPlayers.length} players, ${wnbaTeams.length} teams`);
-    console.log(`Euroleague: ${euroPlayers.length} players, ${euroTeams.length} teams`);
+    console.log(`Euroleague: ${euroPlayers.length} players, ${filteredEuroTeams.length} teams`);
     console.log(`PBA: ${pbaPlayers.length} players, ${pbaTeams.length} teams`);
     console.log(`B-League: ${bleaguePlayers.length} players, ${bleagueTeams.length} teams`);
     console.log(`G-League: ${gleaguePlayers.length} players, ${gleagueTeams.length} teams`);
-    console.log(`Endesa: ${uniqueEndesaPlayers.length} players, ${filteredEndesaTeams.length} teams`);
+    console.log(`Endesa: ${uniqueEndesaPlayers.length} players, ${endesaTeams.length} teams`);
     console.log(`China CBA: ${chinaPlayers.length} players, ${chinaTeams.length} teams`);
     console.log(`NBL Australia: ${nblAusPlayers.length} players, ${nblAusTeams.length} teams`);
     console.log(`Generated External Fillers: ${initialExternalFillers.length}`);
@@ -413,7 +439,9 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     const statePatch: Partial<GameState> = {
         commissionerName,
         teams,
-        nonNBATeams: [...euroTeams, ...pbaTeams, ...wnbaTeams, ...bleagueTeams, ...filteredEndesaTeams, ...gleagueTeams, ...chinaTeams, ...nblAusTeams],
+        nonNBATeams: initialNonNBATeams,
+        clubAliasMap,
+        activeCompetitions: isSpainEurope ? SPAIN_COMPETITIONS : [],
         players: allPlayers,
         draftPicks: initialDraftPicks,
         staff: initialStaff,
@@ -461,6 +489,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         allStar: initialAllStar as any,
         leagueStats: {
             ...INITIAL_LEAGUE_STATS,
+            ...(isSpainEurope ? EURO_ISOLATED_DEFAULTS : {}),
             mediaRights: DEFAULT_MEDIA_RIGHTS,
             draftType: isEuropeModded ? 'no_draft' : INITIAL_LEAGUE_STATS.draftType,
             tradableDraftPickSeasons: isEuropeModded ? 0 : INITIAL_LEAGUE_STATS.tradableDraftPickSeasons,

@@ -3,6 +3,7 @@ import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { buildFullDraftSlotMap, comparePicks, formatPickLabel } from '../../../../../services/draft/draftClassStrength';
+import { isNoDraftLeague } from '../../../../../services/offseason/offseasonState';
 
 interface DraftPicksProps {
   teamId: number;
@@ -10,6 +11,7 @@ interface DraftPicksProps {
 
 export function DraftPicks({ teamId }: DraftPicksProps) {
   const { state } = useGame();
+  const noDraft = isNoDraftLeague(state.leagueStats as any);
   const team = state.teams.find(t => t.id === teamId);
   const currentYear = state.leagueStats?.year || 2026;
   const draftComplete = Boolean((state as any).draftComplete);
@@ -24,6 +26,14 @@ export function DraftPicks({ teamId }: DraftPicksProps) {
     if (draftComplete && p.season === currentYear) return false;
     return true;
   });
+
+  if (noDraft) {
+    return (
+      <div className="text-slate-500 font-bold uppercase tracking-widest">
+        Draft picks are disabled in no-draft leagues.
+      </div>
+    );
+  }
 
   if (!team) {
     return <div className="text-red-400 font-bold uppercase tracking-widest">Team not found</div>;

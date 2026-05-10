@@ -1,10 +1,12 @@
 import { GameState, UserAction } from '../../../types';
 import { calculateOutcome } from '../../../services/logic/outcomeDecider';
 import { advanceDay } from '../../../services/llm/llm';
+import { getLeagueCurrencyCode } from '../../../utils/helpers';
 
 export const handleTransferFunds = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const { from, amount } = action.payload;
-    const formattedAmount = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount);
+    const currencyCode = getLeagueCurrencyCode(stateWithSim.leagueStats);
+    const formattedAmount = new Intl.NumberFormat('en-US', { style: 'currency', currency: currencyCode, maximumFractionDigits: 0 }).format(amount);
     const sourceText = from === 'league' ? "from League Funds to Personal Wealth" : "from Personal Wealth to League Funds";
     
     const outcomeText = `The Commissioner has transferred ${formattedAmount} ${sourceText}. While technically within their authority, such movements of capital often draw scrutiny from league auditors and the media.`;
@@ -28,8 +30,9 @@ export const handleTransferFunds = async (stateWithSim: GameState, action: UserA
 export const handleGiveMoney = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const { contacts, reason, amount } = action.payload;
     const names = contacts?.length > 0 ? contacts.map((c: any) => c.name).join(', ') : (action.payload.targetName || 'the recipient');
+    const currencyCode = getLeagueCurrencyCode(stateWithSim.leagueStats);
     const formattedAmount = amount
-        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount)
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: currencyCode, maximumFractionDigits: 0 }).format(amount)
         : 'an undisclosed amount';
     const outcomeText = `Commissioner ${stateWithSim.commissionerName} disbursed ${formattedAmount} to ${names}. Reason: ${reason || 'undisclosed'}.`;
     const outcome = calculateOutcome('GIVE_MONEY', action.payload, stateWithSim);
@@ -52,8 +55,9 @@ export const handleGiveMoney = async (stateWithSim: GameState, action: UserActio
 export const handleFinePerson = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const { contacts, reason, amount } = action.payload;
     const names = contacts?.length > 0 ? contacts.map((c: any) => c.name).join(', ') : (action.payload.targetName || 'the subject');
+    const currencyCode = getLeagueCurrencyCode(stateWithSim.leagueStats);
     const formattedAmount = amount
-        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount)
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: currencyCode, maximumFractionDigits: 0 }).format(amount)
         : 'an undisclosed amount';
     const outcomeText = `Commissioner ${stateWithSim.commissionerName} has issued a fine of ${formattedAmount} to ${names}. Reason: ${reason || 'conduct detrimental to the league'}.`;
     const fineSeed = `BREAKING: The NBA Commissioner just dropped a ${formattedAmount} fine on ${names}. Reason: ${reason || 'conduct detrimental to the league'}. ` +
@@ -74,8 +78,9 @@ export const handleFinePerson = async (stateWithSim: GameState, action: UserActi
 
 export const handleAdjustFinancials = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const { type: adjustType, teamName, amount, reason } = action.payload || {};
+    const currencyCode = getLeagueCurrencyCode(stateWithSim.leagueStats);
     const formattedAmount = amount
-        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Math.abs(amount))
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: currencyCode, maximumFractionDigits: 0 }).format(Math.abs(amount))
         : 'funds';
     const adjustTarget = teamName || 'a team';
     const direction = amount > 0 ? 'injected' : 'deducted';
@@ -103,8 +108,9 @@ export const handleAdjustFinancials = async (stateWithSim: GameState, action: Us
 export const handleBribePerson = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const { contacts, reason, amount } = action.payload;
     const names = contacts?.length > 0 ? contacts.map((c: any) => c.name).join(', ') : (action.payload.targetName || 'the target');
+    const currencyCode = getLeagueCurrencyCode(stateWithSim.leagueStats);
     const formattedAmount = amount
-        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount)
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: currencyCode, maximumFractionDigits: 0 }).format(amount)
         : 'an undisclosed sum';
     const outcomeText = `Commissioner ${stateWithSim.commissionerName} covertly offered ${formattedAmount} to ${names}. Purpose: ${reason || 'undisclosed'}.`;
     // Bribe is covert — generate rumors/suspicion without exposing the Commissioner

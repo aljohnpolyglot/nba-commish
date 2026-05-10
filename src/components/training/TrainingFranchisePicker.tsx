@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { calculateTeamStrength } from '../../utils/playerRatings';
+import { getActiveLeagueTeams, isOnRoster, resolveAnyTeam } from '../../utils/teamLookup';
 
 interface Props {
   onSelectTeam: (teamId: number) => void;
@@ -9,15 +10,17 @@ interface Props {
 
 export const TrainingFranchisePicker: React.FC<Props> = ({ onSelectTeam }) => {
   const { state } = useGame();
-  const teams = state.teams ?? [];
+  const teams = useMemo(() => getActiveLeagueTeams(state), [state]);
   const players = state.players ?? [];
   const isGM = state.gameMode === 'gm';
   const userTid = isGM ? state.userTeamId ?? null : null;
-  const userTeam = userTid != null ? teams.find(t => t.id === userTid) : null;
+  const userTeam = userTid != null
+    ? resolveAnyTeam(userTid, teams, state.nonNBATeams ?? [])
+    : null;
 
   const teamData = useMemo(() => {
     return teams.map(team => {
-      const roster = players.filter(p => p.tid === team.id && p.status === 'Active');
+      const roster = players.filter(p => p.tid === team.id && isOnRoster(p));
       const ovr = calculateTeamStrength(team.id, players);
       const planCount = Object.keys((team as any).trainingCalendar ?? {}).length;
       return { team, roster, ovr, planCount };

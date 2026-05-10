@@ -299,9 +299,18 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
   let coachContract: CoachContractData | undefined;
 
   if (staffData && staffData.coaches) {
+    const teamLabel = team.teamName.toLowerCase().trim();
+    const teamShortName = team.teamName.toLowerCase().split(' ').pop() || '';
     const teamCoach = staffData.coaches.find((c: any) => {
-      const pos = (c.position || c.team || '').toLowerCase();
-      return pos.includes(team.teamName.toLowerCase().split(' ').pop() || '');
+      const coachTeam = String(c.team || '').toLowerCase().trim();
+      const coachPosition = String(c.position || '').toLowerCase().trim();
+      return (
+        coachTeam === teamLabel ||
+        coachTeam === teamShortName ||
+        teamLabel.endsWith(coachTeam) ||
+        coachTeam.endsWith(teamShortName) ||
+        (coachPosition.includes('head coach') && !coachTeam && staffData.coaches.length === 1)
+      );
     });
     if (teamCoach) {
       coachName = teamCoach.name;

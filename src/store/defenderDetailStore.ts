@@ -75,3 +75,7 @@ export function resetDefenderDetail(teamId: number, defenderId: string) {
   delete next[defenderId];
   store.set(teamId, next);
 }
+
+export function resetAllDefenderDetails(teamId: number) {
+  store.delete(teamId);
+}

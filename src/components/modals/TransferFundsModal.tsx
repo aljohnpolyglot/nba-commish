@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useGame } from '../../store/GameContext';
 import { X, DollarSign, ArrowRightLeft } from 'lucide-react';
+import { getLeagueCurrencyCode } from '../../utils/helpers';
 
 interface TransferFundsModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface TransferFundsModalProps {
 
 export const TransferFundsModal: React.FC<TransferFundsModalProps> = ({ isOpen, onClose, onConfirm }) => {
   const { state } = useGame();
+  const currencyCode = getLeagueCurrencyCode(state.leagueStats);
   const [transferAmount, setTransferAmount] = useState<number>(0);
   const [transferDirection, setTransferDirection] = useState<'league_to_personal' | 'personal_to_league'>('league_to_personal');
 
@@ -33,7 +35,7 @@ export const TransferFundsModal: React.FC<TransferFundsModalProps> = ({ isOpen, 
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: currencyCode }).format(amount);
   };
 
   return (

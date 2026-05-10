@@ -12,6 +12,7 @@ import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickAction
 import { getGameplan } from '../../../../../store/gameplanStore';
 import type { NBAPlayer } from '../../../../../types';
 import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
+import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -134,7 +135,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
   const isOwnTeam = isGM && teamId === state.userTeamId;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
 
-  const team = state.teams.find(t => t.id === teamId);
+  const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const teamColor = team?.colors?.[0] ?? '#552583';
 
   const teamPlayers = useMemo(
@@ -143,7 +144,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
   );
 
   const rosterCounts = useMemo(() => {
-    const activePlayers = teamPlayers.filter(p => p.status === 'Active' && p.contract);
+    const activePlayers = teamPlayers.filter(p => isOnRoster(p) && p.contract);
     const twoWayCount = activePlayers.filter(p => !!(p as any).twoWay).length;
     const nonGuaranteedCount = activePlayers.filter(p => !!(p as any).nonGuaranteed).length;
     const guaranteedCount = Math.max(0, activePlayers.length - twoWayCount - nonGuaranteedCount);
@@ -191,7 +192,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
   }
 
   const allRows = useMemo((): RowData[] => {
-    const active = teamPlayers.filter(p => p.status === 'Active' && p.contract);
+    const active = teamPlayers.filter(p => isOnRoster(p) && p.contract);
     return active.map(p => {
       const { k2, delta: k2Delta } = getK2WithDelta(p, currentYear);
       const { pot, delta: potDelta } = getPotWithDelta(p, currentYear);
@@ -239,7 +240,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
 
   const rows = useMemo((): RowData[] => {
     if (sortMode === 'rotation' && team) {
-      const healthy = teamPlayers.filter(p => p.status === 'Active' && !((p as any).injury?.gamesRemaining > 0));
+      const healthy = teamPlayers.filter(p => isOnRoster(p) && !((p as any).injury?.gamesRemaining > 0));
       const savedPlan = getGameplan(teamId);
       const healthyById = new Map(healthy.map(p => [p.internalId, p]));
       const savedStarters = (savedPlan?.starterIds ?? [])
@@ -313,7 +314,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
   // Starter IDs for rotation + gameplan highlight
   const starterIds = useMemo((): Set<string> => {
     if ((sortMode === 'rotation' || sortMode === 'gameplan') && team) {
-      const healthy = teamPlayers.filter(p => p.status === 'Active' && !((p as any).injury?.gamesRemaining > 0));
+      const healthy = teamPlayers.filter(p => isOnRoster(p) && !((p as any).injury?.gamesRemaining > 0));
       const savedPlan = getGameplan(teamId);
       const healthyIds = new Set(healthy.map(p => p.internalId));
       if ((savedPlan?.starterIds ?? []).filter(id => healthyIds.has(id)).length === 5) {

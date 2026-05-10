@@ -15,6 +15,7 @@ import { getDisplayOverall } from '../../../../../utils/playerRatings';
 import { injurySeverityLevel } from '../../../../../services/simulation/playThroughInjuriesFactor';
 import type { NBAPlayer } from '../../../../../types';
 import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
+import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
 
 interface Props {
   teamId: number;
@@ -46,13 +47,13 @@ function isInjured(p: NBAPlayer): boolean {
 
 export function TeamOfficeDepthChartTab({ teamId }: Props) {
   const { state } = useGame();
-  const team = state.teams.find(t => t.id === teamId);
+  const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const season = state.leagueStats?.year ?? new Date().getFullYear();
 
   const { starters, bench, thirdUnit, reserves, injured } = useMemo(() => {
     if (!team) return { starters: [] as NBAPlayer[], bench: [] as NBAPlayer[], thirdUnit: [] as NBAPlayer[], reserves: [] as NBAPlayer[], injured: [] as NBAPlayer[] };
 
-    const roster = state.players.filter(p => p.tid === teamId && p.status === 'Active');
+    const roster = state.players.filter(p => p.tid === teamId && isOnRoster(p));
     const healthy = roster.filter(p => !isInjured(p));
     const injuredList = roster.filter(isInjured).sort((a, b) => getDisplayOverall(b) - getDisplayOverall(a));
 

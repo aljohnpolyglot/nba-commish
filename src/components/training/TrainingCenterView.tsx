@@ -7,6 +7,7 @@ import { DailyPlanModal } from '../../TeamTraining/components/DailyPlanModal';
 import { TrainingCalendarView } from './TrainingCalendarView';
 import { TrainingDayView } from './TrainingDayView';
 import { TrainingFranchisePicker } from './TrainingFranchisePicker';
+import { getActiveLeagueTeams, isOnRoster, resolveAnyTeam } from '../../utils/teamLookup';
 import { DashboardStatusBar } from './DashboardStatusBar';
 import { mapPlayerToK2 } from '../../TeamTraining/lib/playerMapping';
 import { computeTeamProficiency } from '../../utils/coachSliders';
@@ -203,14 +204,20 @@ export const TrainingCenterView: React.FC = () => {
     isGM && state.userTeamId != null ? state.userTeamId : null
   );
 
-  const team = selectedTeamId != null ? state.teams.find(t => t.id === selectedTeamId) : null;
+  // resolveAnyTeam handles non-NBA tids (Euroleague/Endesa) so a EuroLeague
+  // GM lands on a populated training view instead of the NBA-only picker.
+  // NOTE: NonNBATeam stubs have no trainingCalendar slot today, so saving
+  // a plan won't persist — that's a known Phase 2 follow-up.
+  const team = selectedTeamId != null
+    ? resolveAnyTeam(selectedTeamId, state.teams, state.nonNBATeams ?? [])
+    : null;
   const isReadOnly = isGM && selectedTeamId != null && selectedTeamId !== state.userTeamId;
   const leagueYear = state.leagueStats?.year ?? new Date().getFullYear();
-
-  const trainingTeams = useMemo(() => state.teams.map(nbaTeamToTrainingTeam), [state.teams]);
+  const activeLeagueTeams = useMemo(() => getActiveLeagueTeams(state), [state]);
+  const trainingTeams = useMemo(() => activeLeagueTeams.map(nbaTeamToTrainingTeam), [activeLeagueTeams]);
   const roster = useMemo(() => {
     if (!team) return [];
-    const teamPlayers = state.players.filter(p => p.tid === team.id && (p.status === 'Active' || !p.status));
+    const teamPlayers = state.players.filter(p => p.tid === team.id && isOnRoster(p));
     return teamPlayers.map(p =>
       nbaPlayerToTrainingPlayer(p, leagueYear, {
         team,
@@ -296,8 +303,14 @@ export const TrainingCenterView: React.FC = () => {
     if (!team || !windowStartISO) return [];
     const lookup = new Map<number, { abbrev: string; logoUrl?: string }>();
     for (const t of state.teams) lookup.set(t.id, { abbrev: t.abbrev, logoUrl: t.logoUrl });
+    for (const nonNBA of state.nonNBATeams ?? []) {
+      lookup.set(nonNBA.tid, {
+        abbrev: nonNBA.abbrev || nonNBA.name.substring(0, 3).toUpperCase(),
+        logoUrl: nonNBA.imgURL,
+      });
+    }
     return buildCalendar(state.schedule || [], team.id, windowStartISO, lookup, 28);
-  }, [team, windowStartISO, state.schedule, state.teams]);
+  }, [team, windowStartISO, state.schedule, state.teams, state.nonNBATeams]);
 
   // Map for O(1) ScheduleDay lookups by ISO date — feeds TrainingDayOverlay
   // so it can render auto-scheduled rest/recovery/practice badges.
@@ -373,12 +386,12 @@ export const TrainingCenterView: React.FC = () => {
   const needAllRosters = activeView === 'proficiency' || selectedPlanDateISO !== null;
   const allK2Rosters = useMemo(() => {
     if (!needAllRosters) return [] as any[];
-    return state.teams.map(t => {
-      const tp = state.players.filter(p => p.tid === t.id && (p.status === 'Active' || !p.status))
+    return activeLeagueTeams.map(t => {
+      const tp = state.players.filter(p => p.tid === t.id && isOnRoster(p))
         .map(p => nbaPlayerToTrainingPlayer(p, leagueYear, { team: t }));
       return tp.map(mapPlayerToK2) as any;
     });
-  }, [needAllRosters, state.teams, state.players, leagueYear]);
+  }, [needAllRosters, activeLeagueTeams, state.players, leagueYear]);
 
   const top5Systems = useMemo(() => {
     // Same gate — top5Systems only feeds the modal, no point computing while closed.
@@ -585,15 +598,17 @@ export const TrainingCenterView: React.FC = () => {
           )}
         </div>
 
-        <select
-          className="bg-[#1a1a1a] border border-[#30363d] text-white rounded-md px-3 py-1.5 text-xs uppercase tracking-wide outline-none focus:border-[#FDB927]"
-          value={team.id}
-          onChange={e => setSelectedTeamId(Number(e.target.value))}
-        >
-          {state.teams.map(t => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </select>
+        {!isGM && (
+          <select
+            className="bg-[#1a1a1a] border border-[#30363d] text-white rounded-md px-3 py-1.5 text-xs uppercase tracking-wide outline-none focus:border-[#FDB927]"
+            value={team.id}
+            onChange={e => setSelectedTeamId(Number(e.target.value))}
+          >
+            {activeLeagueTeams.map(t => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        )}
       </header>
 
       <div className="border-b border-[#30363d] bg-[#0a0a0a] px-4 sm:px-10">

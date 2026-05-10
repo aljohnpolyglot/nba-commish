@@ -34,6 +34,7 @@ import type { NBAPlayer } from '../../../../../../types';
 import { PlayerNameWithHover } from '../../../../../shared/PlayerNameWithHover';
 import { getLockedStrategy } from '../../../../../../store/coachStrategyLockStore';
 import { getGameDateParts } from '../../../../../../utils/dateUtils';
+import { resolveAnyTeam, isOnRoster } from '../../../../../../utils/teamLookup';
 
 interface GameplanTabProps {
   teamId: number;
@@ -66,7 +67,7 @@ function injuryReturnLabel(gamesRemaining: number, today: string | Date): string
 
 export function GameplanTab({ teamId }: GameplanTabProps) {
   const { state } = useGame();
-  const team = state.teams.find(t => t.id === teamId);
+  const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const currentYear = state.leagueStats?.year || 2026;
 
   const isGM = state.gameMode === 'gm';
@@ -128,7 +129,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
   const { rotation, baseMinutes, injuredPlayers, benchPool, twoWayIneligible } = useMemo(() => {
     if (!team) return { rotation: [], baseMinutes: [], injuredPlayers: [], benchPool: [], twoWayIneligible: [] };
 
-    const roster = state.players.filter(p => p.tid === teamId && p.status === 'Active');
+    const roster = state.players.filter(p => p.tid === teamId && isOnRoster(p));
     const twoWayIneligible = isPlayoffSeason ? roster.filter(p => (p as any).twoWay) : [];
     const eligibleRoster = isPlayoffSeason ? roster.filter(p => !(p as any).twoWay) : roster;
     const injured = eligibleRoster.filter(p => isInjured(p, ptiLevel));
@@ -198,7 +199,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     // Only players still on this team are eligible starters — a saved
     // starterId pointing at someone who's been traded/cut is invalid.
     const onTeamIds = new Set(
-      state.players.filter(p => p.tid === teamId && p.status === 'Active').map(p => p.internalId),
+      state.players.filter(p => p.tid === teamId && isOnRoster(p)).map(p => p.internalId),
     );
 
     const saved = getGameplan(teamId);
@@ -213,7 +214,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     const ideal = !saved ? getIdealRotation(teamId) : null;
     const idealActive = !!ideal?.locked;
     const healthyIds = new Set(
-      state.players.filter(p => p.tid === teamId && p.status === 'Active' && (!p.injury || (p.injury.gamesRemaining ?? 0) <= 0))
+      state.players.filter(p => p.tid === teamId && isOnRoster(p) && (!p.injury || (p.injury.gamesRemaining ?? 0) <= 0))
         .map(p => p.internalId),
     );
 
@@ -630,7 +631,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     const ideal = getIdealRotation(teamId);
     const idealActive = !!ideal?.locked;
     const healthyIds = new Set(
-      state.players.filter(p => p.tid === teamId && p.status === 'Active' && (!p.injury || (p.injury.gamesRemaining ?? 0) <= 0))
+      state.players.filter(p => p.tid === teamId && isOnRoster(p) && (!p.injury || (p.injury.gamesRemaining ?? 0) <= 0))
         .map(p => p.internalId),
     );
     const projected = team

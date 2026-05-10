@@ -75,6 +75,10 @@ export function clearRivalPlan(ourTeamId: number, opponentTid: number) {
   store.set(ourTeamId, next);
 }
 
+export function clearAllRivalPlans(ourTeamId: number) {
+  store.delete(ourTeamId);
+}
+
 /**
  * Returns the plan with traded/missing target IDs blanked out. Caller should
  * decide whether to delete a fully-empty plan or keep it for the user to fill in.

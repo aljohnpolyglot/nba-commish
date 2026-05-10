@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useGame } from '../../store/GameContext';
 import { FileText, Download, DollarSign, ArrowRightLeft, User, TrendingUp, Calendar } from 'lucide-react';
 import { Payslip } from '../../types';
-import { formatCurrency as globalFormatCurrency } from '../../utils/helpers';
+import { formatCurrencyWithCode, getLeagueCurrencyCode } from '../../utils/helpers';
 
 export const PersonalView: React.FC = () => {
   const { state, markPayslipsRead } = useGame();
@@ -15,7 +15,7 @@ export const PersonalView: React.FC = () => {
   }, [state.hasUnreadPayslip, markPayslipsRead]);
 
   const formatCurrency = (amount: number, isBaseMillions: boolean = true) => {
-    return globalFormatCurrency(amount, isBaseMillions);
+    return formatCurrencyWithCode(amount, getLeagueCurrencyCode(state.leagueStats), isBaseMillions);
   };
 
   const totalEarnings = (state.payslips || []).reduce((acc, p) => acc + p.netPay, 0);

@@ -449,6 +449,35 @@ export const formatCurrency = (value: number, isBaseMillions: boolean = true): s
   }).format(dollars);
 };
 
+export const formatCurrencyWithCode = (
+  value: number,
+  currencyCode: string = 'USD',
+  isBaseMillions: boolean = true,
+): string => {
+  const amount = isBaseMillions ? value * 1000000 : value;
+  const absAmount = Math.abs(amount);
+  const sign = amount < 0 ? '-' : '';
+  const symbol = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currencyCode,
+    maximumFractionDigits: 0,
+  }).formatToParts(0).find(part => part.type === 'currency')?.value ?? '$';
+
+  if (absAmount >= 1e12) return `${sign}${symbol}${(absAmount / 1e12).toFixed(2)}T`;
+  if (absAmount >= 1e9) return `${sign}${symbol}${(absAmount / 1e9).toFixed(2)}B`;
+  if (absAmount >= 1e6) return `${sign}${symbol}${(absAmount / 1e6).toFixed(2)}M`;
+  if (absAmount >= 1e3) return `${sign}${symbol}${(absAmount / 1e3).toFixed(2)}K`;
+
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currencyCode,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
+export const getLeagueCurrencyCode = (leagueStats?: { currency?: string | null }): string =>
+  leagueStats?.currency || 'USD';
+
 export const getRelevantHistory = (
   history: Array<string | { text?: string }>,
   targetNames: string[],

@@ -37,6 +37,11 @@ So Phase 1 is ~80% shipped. Remaining work is small and verification-heavy.
 
 Each slice is a single one-sentence behavior, mergeable on its own, leaving the codebase green.
 
+## Additional hardening landed after plan draft
+
+- `TeamOfficeView.tsx` now strips the `Draft Picks` and `Draft Scouting` tabs entirely when `isNoDraftLeague(state.leagueStats)` is true, so the page-level navigation matches the offseason/sidebar gates.
+- `pages/DraftPicks.tsx` and `pages/DraftScouting.tsx` now both short-circuit with a no-draft message as defence-in-depth if a stale route/tab somehow still tries to render them.
+
 ### ✓ Slice 1 — `LOAD_GAME` self-heals legacy `pending` draft rows when `no_draft` is active
 
 - **Status:** SHIPPED in worktree, awaiting review/commit.
@@ -50,19 +55,19 @@ Each slice is a single one-sentence behavior, mergeable on its own, leaving the 
 - **Why dropped:** `isChecklistComplete()` in `offseasonState.ts:388-394` already treats `'done'` AND `'skipped'` as resolved. With Slice 1 ensuring draft rows are always `'skipped'` for no_draft saves (both fresh and legacy), the gate already closes correctly.
 - **Defensive variant** (optional, not blocking): replace `OFFSEASON_ROW_ORDER.every(...)` with `getVisibleOffseasonRows(leagueStats).every(...)` for clarity. Punt to Phase 2 cleanup if desired.
 
-### Slice 3 — Lock in auto-resolver guards with a regression check
+### ✓ Slice 3 — Lock in auto-resolver guards with defensive comments
 
-- **Value:** Future refactors of `autoRunDraft` / `autoRunLottery` cannot silently reintroduce draft simulation for transfer leagues.
-- **Path:** Either a Vitest unit test that calls `autoRunDraft` with `leagueStats.draftType === 'no_draft'` and asserts empty return, OR a documented DevTools snippet in `CLAUDE.md` for manual verification.
-- **Acceptance:** Test exists and passes; OR snippet documented and confirmed once.
-- **Workflow:** RED (failing test if guard removed), GREEN (test passes against current guard), REFACTOR.
+- **Status:** SHIPPED in worktree.
+- **Why downgraded from test → comment:** Project has no Vitest setup (`package.json` has no `"test"` script). Adding test infra for a single regression isn't worth the cost.
+- **What landed:** Inline comments in `src/services/logic/autoResolvers.ts` at both `autoRunLottery` (line 1078) and `autoRunDraft` (line 1117) early-returns, citing this plan file. Future refactors that remove those branches will see the warning.
+- **Acceptance:** Comments visible in code review; reference back to this plan is unambiguous.
 
-### Slice 4 — End-to-end browser walkthrough
+### ⏳ Slice 4 — End-to-end browser walkthrough (deferred to user)
 
 - **Value:** Confirms AC-1, AC-2, AC-4, AC-5 in a real session — the only way to catch a missed coupling.
 - **Path:** `npm run dev`, start fresh modded-Europe save, sim May → October, observe sidebar / state / phase transitions.
 - **Acceptance:** All five AC items checked off here.
-- **Workflow:** Manual; documented as a checklist note appended to this plan and removed when the plan is deleted.
+- **Owner:** User runs this when convenient ("muss ich speilen das spater"). After confirming, delete this plan file.
 
 ## Out of Scope (Defer to Phase 2 plan)
 

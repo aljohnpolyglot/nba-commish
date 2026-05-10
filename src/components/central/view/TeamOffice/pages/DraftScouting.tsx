@@ -31,6 +31,7 @@ import {
   type GistProspect,
 } from '../../../../../services/draftScoutingGist';
 import type { NBAPlayer } from '../../../../../types';
+import { isNoDraftLeague } from '../../../../../services/offseason/offseasonState';
 
 interface DraftScoutingProps {
   teamId: number;
@@ -57,6 +58,7 @@ const PROJECTION_LABELS: Record<PickProjection, { label: string; color: string; 
 
 export function DraftScouting({ teamId }: DraftScoutingProps) {
   const { state } = useGame();
+  const noDraft = isNoDraftLeague(state.leagueStats as any);
   const team = state.teams.find(t => t.id === teamId);
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const nextDraftYear = currentYear; // draft happens in the current leagueStats.year
@@ -195,6 +197,14 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
   // Comp-card click navigates to player bio
   if (viewingBioPlayer) {
     return <PlayerBioView player={viewingBioPlayer} onBack={() => setViewingBioPlayer(null)} />;
+  }
+
+  if (noDraft) {
+    return (
+      <div className="text-slate-500 font-bold uppercase tracking-widest">
+        Draft scouting is disabled in no-draft leagues.
+      </div>
+    );
   }
 
   if (!team) return <div className="text-red-400 font-bold">Team not found</div>;

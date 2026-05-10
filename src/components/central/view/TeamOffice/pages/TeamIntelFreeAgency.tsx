@@ -32,6 +32,7 @@ import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
 import { compareGameDates, formatGameDateShort, getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd, isInMoratorium, parseGameDate } from '../../../../../utils/dateUtils';
 import { getOffseasonState } from '../../../../../services/offseason/offseasonState';
 import type { NBAPlayer } from '../../../../../types';
+import { resolveAnyTeam } from '../../../../../utils/teamLookup';
 
 interface Props {
   teamId: number;
@@ -138,11 +139,20 @@ function fmtUSD(n: number): string {
 
 export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
   const { state, dispatchAction } = useGame();
-  const team = state.teams.find(t => t.id === teamId);
+  const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const isGM = state.gameMode === 'gm';
   const isOwnTeam = isGM && teamId === state.userTeamId;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const quick = usePlayerQuickActions();
+  const allTeams = useMemo(
+    () => [
+      ...(state.teams ?? []),
+      ...((state.nonNBATeams ?? [])
+        .map(nonNBA => resolveAnyTeam(nonNBA.tid, state.teams, state.nonNBATeams ?? []))
+        .filter((resolved): resolved is NonNullable<typeof team> => resolved !== null)),
+    ],
+    [state.nonNBATeams, state.teams],
+  );
   const isMoratoriumActive = state.date ? isInMoratorium(state.date, currentYear, state.leagueStats as any, state.schedule as any) : false;
   const moratoriumEndLabel = state.date
     ? formatGameDateShort(getCurrentOffseasonFAMoratoriumEnd(state.date, state.leagueStats as any, state.schedule as any))
@@ -1038,7 +1048,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
             <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               <PlayerSelectorGrid
                 items={shortlistItems}
-                teams={state.teams as any}
+                teams={allTeams as any}
                 selectedIds={shortlistIds}
                 onToggle={toggleShortlist}
                 maxSelections={SHORTLIST_CAP}

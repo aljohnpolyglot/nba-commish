@@ -15,10 +15,34 @@
 //
 // User kann im ExpansionDraftSetupModal alles überschreiben (Region, Name,
 // Abbrev, Pop, Conference, Division, Colors).
+//
+// Logo-Convention:
+//   - Default: BBGM-CDN über das `abbrev` (z. B. LV → BBGM "Blue Chips" SVG).
+//   - Pro Team kann `customLogoURL` gesetzt werden, wenn die BBGM-Default-
+//     Marke nicht zur echten/historischen Team-Identität passt. Beispiel:
+//     SEA in BBGM = "Symphony" — wir wollen aber den echten SuperSonics-
+//     Schriftzug (Wikipedia-SVG).
+//   - Fehlt eine Quelle, fängt der UI-onError-Handler ab und zeigt das
+//     Color-Bubble-Fallback mit Abbrev.
 
 import type { ExpansionTeamSpec } from '../types';
 
-export const ZENGM_EXPANSION_POOL: ExpansionTeamSpec[] = [
+// BBGM CDN serviert SVG-Logos für ALLE bekannten Team-Abbrevs (inkl. SEA/LV/
+// VAN/historisch). Zwei Pfade direkt erreichbar (verifiziert via curl 2026-05-10):
+//   /img/logos-primary/{ABBREV}.svg   → main logo
+//   /img/logos-secondary/{ABBREV}.svg → alt/wordmark
+// Es gibt zusätzlich einen 302-redirect von /img/logos/{ABBREV}.png zur primary
+// SVG — direkter Pfad spart einen Hop. Public asset, CF-Cached, free hotlink.
+const BBGM_LOGO_PRIMARY = 'https://play.basketball-gm.com/img/logos-primary';
+const BBGM_LOGO_SECONDARY = 'https://play.basketball-gm.com/img/logos-secondary';
+
+interface RawTeam extends Omit<ExpansionTeamSpec, 'imgURL' | 'imgURLSmall'> {
+  /** Override-URL falls BBGM-Default-Marke nicht passt. Wenn gesetzt, wird
+   *  imgURL+imgURLSmall darauf gemappt statt auf den BBGM-CDN-Pfad. */
+  customLogoURL?: string;
+}
+
+const RAW_POOL: RawTeam[] = [
   {
     region: 'Seattle',
     name: 'SuperSonics',
@@ -28,10 +52,12 @@ export const ZENGM_EXPANSION_POOL: ExpansionTeamSpec[] = [
     conference: 'West',
     cid: 1,
     did: 4, // Northwest
+    // BBGM "Symphony" passt nicht zur historischen Sonics-Marke
+    customLogoURL: 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/Seattle_SuperSonics_logo.svg/1280px-Seattle_SuperSonics_logo.svg.png',
   },
   {
     region: 'Las Vegas',
-    name: 'Knights',
+    name: 'Blue Chips', // BBGM-Default — Logo passt zu diesem Namen
     abbrev: 'LV',
     pop: 2.1,
     colors: ['#1c73bb', '#ffd600', '#0c5983'],
@@ -142,6 +168,13 @@ export const ZENGM_EXPANSION_POOL: ExpansionTeamSpec[] = [
     did: 5, // Pacific
   },
 ];
+
+// Logo-Resolver: customLogoURL gewinnt; sonst BBGM-CDN-Default-Pfad.
+export const ZENGM_EXPANSION_POOL: ExpansionTeamSpec[] = RAW_POOL.map(({ customLogoURL, ...team }) => ({
+  ...team,
+  imgURL:      customLogoURL ?? `${BBGM_LOGO_PRIMARY}/${team.abbrev}.svg`,
+  imgURLSmall: customLogoURL ?? `${BBGM_LOGO_SECONDARY}/${team.abbrev}.svg`,
+}));
 
 /** Lookup per Abbrev — z. B. wenn der User im Modal "SEA" anklickt und wir die
  *  Default-Werte einsetzen müssen. */

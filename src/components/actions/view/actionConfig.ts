@@ -80,18 +80,36 @@ export const getActionsConfig = (state: GameState, callbacks: {
         color: "emerald",
         onClick: () => callbacks.openPersonSelector('drug_test')
       },
-      {
-        id: 'EXPANSION_DRAFT',
-        title: "League Expansion",
-        description: "Authorize new NBA franchises and permanently reshape the competitive landscape. ZenGM-style: setup teams, realignment, schedule for any future year.",
-        cost: "-$500M League Funds (Per Franchise)",
-        benefit: "+++Revenue / ++Legacy",
-        icon: Map,
-        color: "indigo",
-        // disabled: state.leagueStats.hasExpanded — entfernt, mehrere Expansionen erlaubt
-        disabled: !!state.expansionSchedule,
-        onClick: () => callbacks.confirmAction('EXPANSION_DRAFT', 'League Expansion', 'Plan a new expansion draft. You\'ll set up the new franchises, realignment, and protection rules in the next step.')
-      },
+      (() => {
+        const sched = state.expansionSchedule;
+        const lsYear = state.leagueStats?.year;
+        const isDueNow = !!sched && lsYear != null && sched.year === lsYear;
+        const isScheduledFuture = !!sched && lsYear != null && sched.year > lsYear;
+        const titleText = isDueNow
+          ? `League Expansion — ${sched!.year} (due now)`
+          : isScheduledFuture
+            ? `League Expansion (scheduled for ${sched!.year})`
+            : 'League Expansion';
+        const descText = isDueNow
+          ? `Run the expansion draft for the ${sched!.teams.length} scheduled franchise${sched!.teams.length === 1 ? '' : 's'} this offseason.`
+          : 'Authorize new NBA franchises and permanently reshape the competitive landscape. ZenGM-style: setup teams, realignment, schedule for any future year.';
+        const confirmDesc = isDueNow
+          ? 'Open player protection for the scheduled expansion. AI teams are pre-filled.'
+          : 'Plan a new expansion draft. You\'ll set up the new franchises, realignment, and protection rules in the next step.';
+        return {
+          id: 'EXPANSION_DRAFT',
+          title: titleText,
+          description: descText,
+          cost: "-$500M League Funds (Per Franchise)",
+          benefit: "+++Revenue / ++Legacy",
+          icon: Map,
+          color: "indigo",
+          // Disabled nur bei Future-Schedule (Grace-Period läuft). Now-Due erlaubt
+          // Klick → öffnet direkt das Protect-Modal (Setup wird übersprungen).
+          disabled: isScheduledFuture,
+          onClick: () => callbacks.confirmAction('EXPANSION_DRAFT', titleText, confirmDesc),
+        };
+      })(),
       {
         id: 'ENDORSE_HOF',
         title: "Endorse for Hall of Fame",

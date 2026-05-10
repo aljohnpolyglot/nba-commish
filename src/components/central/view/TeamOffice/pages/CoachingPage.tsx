@@ -12,6 +12,7 @@ import type { NBAPlayer, K2Result, PlayerK2 } from '../../../../../types';
 import CoachingView from './CoachingView/CoachingView';
 import { getDisplayOverall } from '../../../../../utils/playerRatings';
 import { saveCoachSystem, getCoachSystem } from '../../../../../store/coachSystemStore';
+import { resolveAnyTeam, isOnRoster, getActiveLeagueTeams } from '../../../../../utils/teamLookup';
 import { computeSystemFit } from '../../../../../utils/coachSliders';
 
 interface CoachingPageProps {
@@ -23,7 +24,7 @@ export function CoachingPage({ teamId }: CoachingPageProps) {
   const [allCoaches, setAllCoaches] = useState<CoachData[]>([]);
   const [coachDataLoaded, setCoachDataLoaded] = useState(false);
 
-  const team = state.teams.find(t => t.id === teamId);
+  const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const currentYear = state.leagueStats?.year || 2026;
 
   // Fetch coach data on mount
@@ -40,9 +41,12 @@ export function CoachingPage({ teamId }: CoachingPageProps) {
 
     const allRosters: PlayerK2[][] = [];
 
-    const teams = state.teams.map(t => {
+    // For non-NBA GMs, iterate their league's teams so e.g. an Endesa user
+    // sees Real Madrid in `processedTeams`. NBA users + commissioner mode
+    // still get the 30-team NBA list via getActiveLeagueTeams' fallback.
+    const teams = getActiveLeagueTeams(state).map(t => {
       const roster = state.players
-        .filter(p => p.tid === t.id && p.status === 'Active')
+        .filter(p => p.tid === t.id && isOnRoster(p))
         .map(p => {
           const r = p.ratings?.[p.ratings.length - 1];
           if (!r) return null;

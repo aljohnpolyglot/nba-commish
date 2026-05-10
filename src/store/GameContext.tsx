@@ -38,6 +38,7 @@ import {
   isNoDraftLeague,
 } from '../services/offseason/offseasonState';
 import type { OffseasonChecklist, OffseasonChecklistRow } from '../types';
+import { SEED_2029_TEAMS, SEED_2029_YEAR, SEED_2029_SETTINGS, ZENGM_2029_REALIGNMENT } from '../data/expansion2029';
 
 interface GameContextType {
   state: GameState;
@@ -287,6 +288,39 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       }));
     }
   }, [state.isDataLoaded, state.gameMode, state.date, state.offseasonChecklist, state.playoffs, state.draftComplete, state.draftLotteryResult, state.offseasonExitedYear, state.leagueStats?.year, state.leagueStats?.draftType, state.seasonHistory]);
+
+  // ── Auto-2029-Expansion-Seed (BBGM Real-Player-Mode Default) ─────────────
+  // Setzt einmalig pro Save ein Seattle-+Vegas-Schedule für Saison 2029, sobald
+  // ein Game läuft. Cancel via X-Button im Sidebar-Pin setzt das Seed-Flag,
+  // damit der Effect nicht erneut feuert. Skipped wenn Save bereits ≥2029 ist.
+  useEffect(() => {
+    if (!state.isDataLoaded) return;
+    if (state.leagueStats?.auto2029ExpansionSeeded) return;
+    if (state.expansionSchedule) return;
+    const lsYear = state.leagueStats?.year;
+    if (lsYear == null || lsYear >= SEED_2029_YEAR) {
+      // Save ist schon ≥2029 — Flag setzen ohne Schedule
+      setState(prev => ({
+        ...prev,
+        leagueStats: prev.leagueStats
+          ? { ...prev.leagueStats, auto2029ExpansionSeeded: true }
+          : prev.leagueStats,
+      }));
+      return;
+    }
+    setState(prev => ({
+      ...prev,
+      expansionSchedule: {
+        year: SEED_2029_YEAR,
+        teams: SEED_2029_TEAMS,
+        realignment: ZENGM_2029_REALIGNMENT,
+      },
+      expansionProtectionSettings: SEED_2029_SETTINGS,
+      leagueStats: prev.leagueStats
+        ? { ...prev.leagueStats, auto2029ExpansionSeeded: true }
+        : prev.leagueStats,
+    }));
+  }, [state.isDataLoaded, state.leagueStats?.year, state.expansionSchedule, state.leagueStats?.auto2029ExpansionSeeded]);
 
 const actions = useGameActions(setState, () => stateRef.current);
 
@@ -1256,25 +1290,83 @@ const actions = useGameActions(setState, () => stateRef.current);
       return;
     }
 
+    // ── Dev-Test: schedule.year sofort auf aktuelles ls.year ziehen ─────────
+    // Triggert Future-Year-Trigger ohne Wartezeit. Genutzt vom Sidebar-Pin
+    // Test-Now-Button für Quick-Tests des Expansion-Draft-Flows.
+    if (action.type === 'ACTIVATE_EXPANSION_NOW') {
+      setState(prev => {
+        if (!prev.expansionSchedule) return prev;
+        const lsYear = prev.leagueStats?.year;
+        if (lsYear == null) return prev;
+        return {
+          ...prev,
+          expansionSchedule: { ...prev.expansionSchedule, year: lsYear },
+        };
+      });
+      return;
+    }
+
     if (action.type === 'CLEAR_EXPANSION_SCHEDULE') {
-      setState(prev => ({
-        ...prev,
-        expansionSchedule: undefined,
-        expansionProtectionSettings: undefined,
-        offseasonChecklist: prev.offseasonChecklist
-          ? { ...prev.offseasonChecklist, expansionDraft: 'skipped' }
-          : prev.offseasonChecklist,
-      }));
+      setState(prev => {
+        // Cleanup stale Expansion-Teams: wenn APPLY schon Teams angelegt hat
+        // (expansionTeamIds gesetzt) UND hasExpanded false ist (Draft nicht
+        // komplett), entferne diese Teams + ihre Spieler. Sicher gegen Duplikate
+        // aus mehrfachen APPLY-Calls (frühere Bug-Class).
+        const draftDone = !!prev.leagueStats?.hasExpanded;
+        const staleTids = new Set(prev.expansionTeamIds ?? []);
+        const shouldCleanup = staleTids.size > 0 && !draftDone;
+
+        const teams = shouldCleanup
+          ? (prev.teams ?? []).filter((t: any) => !staleTids.has(t.id ?? t.tid))
+          : prev.teams;
+        const players = shouldCleanup
+          ? (prev.players ?? []).map((p: any) =>
+              staleTids.has(p.tid)
+                ? { ...p, tid: -1, status: 'Free Agent' }
+                : p
+            )
+          : prev.players;
+
+        return {
+          ...prev,
+          teams,
+          players,
+          expansionTeamIds: undefined,
+          expansionSchedule: undefined,
+          expansionProtectionSettings: undefined,
+          expansionDraftProtections: undefined,
+          expansionEligiblePlayers: undefined,
+          // Auto-Seed-Flag setzen, damit der Auto-2029-Effect nicht direkt
+          // wieder dasselbe Schedule rein-pusht. User-Cancel ist persistent.
+          leagueStats: prev.leagueStats
+            ? { ...prev.leagueStats, auto2029ExpansionSeeded: true }
+            : prev.leagueStats,
+          offseasonChecklist: prev.offseasonChecklist
+            ? { ...prev.offseasonChecklist, expansionDraft: 'skipped' }
+            : prev.offseasonChecklist,
+        };
+      });
       return;
     }
 
     if (action.type === 'SET_EXPANSION_PROTECTIONS') {
       const payload = action.payload as { protections: Record<number, string[]> };
       setState(prev => {
-        // Eligible-Pool = alle Roster-Spieler MINUS protected (vereinigt über alle Teams)
+        // Eligible-Pool = NBA-Roster-Spieler MINUS protected (alle Teams).
+        // tid < 100 sperrt externe Ligen aus (Euroleague +1000, PBA +2000,
+        // WNBA +3000, B-League +4000, Endesa +5000, G-League +6000, CBA +7000,
+        // NBL +8000). Status-Filter als Defense-in-Depth gegen Save-Drift.
         const protectedAll = new Set(Object.values(payload.protections).flat());
+        const EXTERNAL_STATUSES = new Set([
+          'Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League',
+          'Endesa', 'China CBA', 'NBL Australia', 'Free Agent', 'Draft Prospect', 'Prospect',
+        ]);
         const eligible = (prev.players ?? [])
-          .filter((p: any) => p.tid >= 0 && !protectedAll.has(p.internalId))
+          .filter((p: any) => {
+            if (typeof p.tid !== 'number' || p.tid < 0 || p.tid >= 100) return false;
+            if (EXTERNAL_STATUSES.has(p.status)) return false;
+            return !protectedAll.has(p.internalId);
+          })
           .map((p: any) => p.internalId);
         return {
           ...prev,
@@ -1294,6 +1386,45 @@ const actions = useGameActions(setState, () => stateRef.current);
         const schedule = prev.expansionSchedule;
         if (!schedule) return prev;
 
+        // Idempotenz: wenn JEDE Expansion-Spec bereits per abbrev in state.teams
+        // existiert, ist APPLY schon einmal gelaufen. Nur Realignment auf
+        // Bestandsteams (nicht-expansion) erneut anwenden — Teams nicht erneut
+        // appenden. Verhindert die Duplicate-Teams-Bug-Class (s. CLAUDE.md).
+        const teamsByAbbrev = new Map<string, any>();
+        (prev.teams ?? []).forEach((t: any) => {
+          if (t.abbrev) teamsByAbbrev.set(t.abbrev, t);
+        });
+        const allExpansionAlreadyExists = schedule.teams.every(spec =>
+          teamsByAbbrev.has(spec.abbrev)
+        );
+
+        if (allExpansionAlreadyExists) {
+          // Re-resolve expansionTeamIds aus den bereits existierenden Teams
+          const reresolvedIds = schedule.teams
+            .map(spec => teamsByAbbrev.get(spec.abbrev))
+            .filter(Boolean)
+            .map((t: any) => t.id ?? t.tid);
+          // Heal: alte Saves mit `name: spec.name` (ohne Region-Prefix) auf
+          // die NBATeam-Convention "Region Name" umstellen, damit Standings
+          // "Las Vegas Blue Chips" statt "Blue Chips" zeigen. Plus Realignment.
+          const realignedTeams = (prev.teams ?? []).map((t: any) => {
+            const matchingSpec = schedule.teams.find(s => s.abbrev === t.abbrev);
+            if (matchingSpec) {
+              const expectedName = `${matchingSpec.region} ${matchingSpec.name}`;
+              const needsHeal = t.name !== expectedName;
+              return needsHeal ? { ...t, name: expectedName, region: matchingSpec.region } : t;
+            }
+            const move = schedule.realignment?.[t.id];
+            if (!move) return t;
+            return { ...t, conference: move.conference, cid: move.cid, did: move.did };
+          });
+          return {
+            ...prev,
+            teams: realignedTeams,
+            expansionTeamIds: reresolvedIds,
+          };
+        }
+
         const nextTid = (prev.teams ?? []).reduce((max: number, t: any) => Math.max(max, t.id ?? 0), -1) + 1;
 
         // Realign bestehende Teams
@@ -1303,16 +1434,25 @@ const actions = useGameActions(setState, () => stateRef.current);
           return { ...t, conference: move.conference, cid: move.cid, did: move.did };
         });
 
-        // Append Expansion-Teams als full NBATeam
+        // Append Expansion-Teams — überspringt Specs deren abbrev schon existiert
         const newTeams: any[] = [];
         const newTids: number[] = [];
-        schedule.teams.forEach((spec, i) => {
-          const tid = nextTid + i;
+        let nextTidCursor = nextTid;
+        schedule.teams.forEach(spec => {
+          const existing = teamsByAbbrev.get(spec.abbrev);
+          if (existing) {
+            newTids.push(existing.id ?? existing.tid);
+            return;
+          }
+          const tid = nextTidCursor++;
           newTids.push(tid);
+          // NBA-Convention: name enthält Region-Prefix ("Houston Rockets",
+          // "Las Vegas Blue Chips"). spec.name ist nur Nickname → prefix mit
+          // region damit Standings + alle UI korrekt rendern.
           newTeams.push({
             id: tid,
             tid,
-            name: spec.name,
+            name: `${spec.region} ${spec.name}`,
             abbrev: spec.abbrev,
             region: spec.region,
             conference: spec.conference,

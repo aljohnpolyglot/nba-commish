@@ -37,3 +37,7 @@ export function saveMatchupAssignments(teamId: number, lockdownIds: string[], hi
     lastEdited: Date.now(),
   });
 }
+
+export function resetMatchupAssignments(teamId: number) {
+  store.delete(teamId);
+}
