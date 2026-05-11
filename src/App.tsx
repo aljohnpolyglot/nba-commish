@@ -11,6 +11,7 @@ import { ToastNotifier } from './components/shared/ToastNotifier';
 import { RFAOfferSheetModal } from './components/modals/RFAOfferSheetModal';
 import { PlayButton } from './components/shared/PlayButton';
 import { TycoonWelcomeModal, hasSeenTycoonWelcome } from './components/tycoon/TycoonWelcomeModal';
+import { TycoonEventToast } from './components/tycoon/TycoonEventToast';
 import { isEuroIsolatedMode } from './utils/uiMode';
 import { OffseasonNextActionButton, OffseasonPhaseBadge, OffseasonAufgabenSidebar, OffseasonAufgabenMobileSheet, OffseasonFATagFooter } from './components/offseason/OffseasonAufgaben';
 import { LazySimLoadingScreen } from './components/setup/LazySimLoadingScreen';
@@ -273,6 +274,7 @@ function GameLayout() {
         <ToastNotifier />
         <RFAOfferSheetModal />
         <TycoonWelcomeModal open={tycoonWelcomeOpen} onClose={() => setTycoonWelcomeOpen(false)} />
+        {isEuroIsolatedMode(state) && <TycoonEventToast />}
         <OffseasonAufgabenMobileSheet />
         <OffseasonFATagFooter />
         {state.lastOutcome && state.gameMode !== 'gm' && !state.isProcessing && <OutcomeView />}

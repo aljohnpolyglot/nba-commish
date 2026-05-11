@@ -581,10 +581,26 @@ export const runLazySim = async (
       // Tycoon daily tick (Euro-Isolated only). Fires sparse, non-spammy in-season
       // events (sponsor warnings, bank alarms, crisis meetings). Idempotent: keyed
       // on currentNorm so a single ISO date never fires the same checks twice.
+      // High-priority events for the USER team break the lazy-sim loop so the
+      // user lands on the event date instead of blasting through 30 days unaware.
       if (state.leagueStats?.uiMode === 'euro_isolated') {
         try {
+          const eventsBefore = ((state as any).tycoonEvents ?? []).length;
           const tycoonTick = (await import('../tycoon/eventChecker')).tick;
           tycoonTick({ state, gameDate: currentNorm });
+          const eventsAfter = ((state as any).tycoonEvents ?? []).length;
+          if (eventsAfter > eventsBefore) {
+            const HIGH_PRIORITY_KINDS = new Set(['bankAlarm', 'crisisMeeting', 'sponsorMidTermBonus', 'sponsorPoachingOffer']);
+            const newEvents = ((state as any).tycoonEvents as any[]).slice(eventsBefore);
+            const userTeamId = (state as any).userTeamId;
+            const hasUserHighPrio = newEvents.some(e => e.teamId === userTeamId && HIGH_PRIORITY_KINDS.has(e.kind));
+            if (hasUserHighPrio) {
+              console.log(`[LAZY_SIM] 🛑 tycoon event break — ${newEvents.filter(e => e.teamId === userTeamId).map(e => e.kind).join(', ')}`);
+              currentPhase = 'Front Office Alert';
+              report();
+              break;
+            }
+          }
         } catch (e) {
           console.warn('[tycoon] daily tick failed', e);
         }
