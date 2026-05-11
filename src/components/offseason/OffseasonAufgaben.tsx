@@ -25,6 +25,7 @@ import {
 } from '../../services/offseason/offseasonState';
 import type { OffseasonChecklistRow, OffseasonRowStatus, NBAPlayer, Tab } from '../../types';
 import { TeamOptionGateModal } from '../modals/TeamOptionGateModal';
+import { SponsorshipNegotiationModal } from '../tycoon/SponsorshipNegotiationModal';
 import { useExpiringResignGate } from '../../hooks/useExpiringResignGate';
 import { getOffseasonState, computeDraftSeasonYear, computeUpcomingSeasonYear } from '../../services/offseason/offseasonState';
 import { PlayerProtectionModal } from '../expansion/PlayerProtectionModal';
@@ -499,6 +500,8 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   // Reuses the existing TeamOptionGateModal which is already wired into
   // PlayButton's guards; this is a second mount-point for offseason flow.
   const [optionsModalOpen, setOptionsModalOpen] = useState(false);
+  // Tycoon: sponsor-renewal modal — opened from the sponsorRenewals offseason row.
+  const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
   const [exercisedIds, setExercisedIds] = useState<Set<string>>(new Set());
   const [declinedIds, setDeclinedIds] = useState<Set<string>>(new Set());
   // Qualifying Offer modal — opens when user clicks "Enter" on the QO row.
@@ -633,6 +636,27 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
           body: 'This moves you into training camp. Continue only if you want to work on camp decisions now.',
           confirmLabel: resume ? 'Resume Camp' : 'Open Camp',
         };
+      case 'sponsorRenewals':
+        return {
+          eyebrow: 'Tycoon',
+          title: 'Sponsorship Renewals',
+          body: 'One or more sponsorship slots have expired. Open negotiations to accept market offers or decline and fall back to default sponsors.',
+          confirmLabel: 'Open Negotiations',
+        };
+      case 'facilityUpgrades':
+        return {
+          eyebrow: 'Tycoon',
+          title: 'Facility Review',
+          body: 'Facility upgrades unlock in a future slice. For now you can review your current setup and skip.',
+          confirmLabel: 'Skip For Now',
+        };
+      case 'preseasonFriendlies':
+        return {
+          eyebrow: 'Offseason Flow',
+          title: 'Preseason Friendlies',
+          body: 'Review and skip preseason friendly slots.',
+          confirmLabel: 'Skip',
+        };
     }
   };
 
@@ -678,6 +702,16 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       }
       setQoModalOpen(true);
       dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      return;
+    }
+    if (row === 'sponsorRenewals') {
+      setSponsorModalOpen(true);
+      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      return;
+    }
+    if (row === 'facilityUpgrades' || row === 'preseasonFriendlies') {
+      // MVP: no dedicated UI yet — auto-complete so user can advance through the phase.
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row } } as any);
       return;
     }
     if (row === 'freeAgency') {
@@ -982,6 +1016,15 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
           </button>
         </div>
       )}
+
+      {/* Tycoon: SponsorshipNegotiationModal — opened from sponsorRenewals row. */}
+      <SponsorshipNegotiationModal
+        open={sponsorModalOpen}
+        onClose={() => {
+          setSponsorModalOpen(false);
+          dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'sponsorRenewals' } } as any);
+        }}
+      />
 
       {/* Existing TeamOptionGateModal — second mount-point for offseason flow.
           Same modal PlayButton uses for date-blocking guard, here surfaced as
