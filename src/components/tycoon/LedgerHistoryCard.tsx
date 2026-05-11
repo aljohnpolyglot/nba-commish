@@ -2,6 +2,7 @@ import React from 'react';
 import { History, AlertTriangle } from 'lucide-react';
 import type { TycoonState } from '../../types/tycoon';
 import { formatCurrencyWithCode } from '../../utils/helpers';
+import { HelpIconPopover } from './HelpIconPopover';
 
 interface Props {
   tycoon: TycoonState;
@@ -16,6 +17,16 @@ export const LedgerHistoryCard: React.FC<Props> = ({ tycoon, currency }) => {
     <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
       <h2 className="font-black uppercase tracking-widest mb-4 text-sm flex items-center gap-2">
         <History size={14} className="text-blue-400" /> Ledger History
+        <HelpIconPopover
+          title="Cash & Financial Fair Play"
+          body={
+            <>
+              <p><strong>Cash on Hand</strong> carries year-to-year. Profit adds to it, losses drain it. Negative cash incurs 5% interest as a finance cost.</p>
+              <p><strong>FFP 3-Year Deficit</strong> sums your losses across the last 3 seasons. Over €20M warns; in a future update, over €30M triggers a transfer ban, over €50M brings point deductions.</p>
+              <p>The history table shows the last 5 completed seasons. Run sustainable books and the deficit stays at 0.</p>
+            </>
+          }
+        />
       </h2>
       <div className="flex justify-between items-baseline mb-3">
         <span className="text-[10px] uppercase text-slate-500 font-black">Cash on Hand</span>

@@ -2,6 +2,7 @@ import React from 'react';
 import { Handshake } from 'lucide-react';
 import type { TycoonState, SponsorshipSlot } from '../../types/tycoon';
 import { formatCurrencyWithCode } from '../../utils/helpers';
+import { HelpIconPopover } from './HelpIconPopover';
 
 interface Props {
   tycoon: TycoonState;
@@ -21,6 +22,16 @@ export const SponsorshipCard: React.FC<Props> = ({ tycoon, currency, onNegotiate
     <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
       <h2 className="font-black uppercase tracking-widest mb-4 text-sm flex items-center gap-2">
         <Handshake size={14} className="text-amber-400" /> Sponsorship Deals
+        <HelpIconPopover
+          title="Sponsorship Slots"
+          body={
+            <>
+              <p>Three independent slots: <strong>Kit</strong> (trikotbrust), <strong>Sleeve</strong>, and <strong>Stadium</strong> (naming rights). Each has its own multi-year deal.</p>
+              <p>When a deal runs out (Years left = 0), the row opens in the offseason. Accept the market offer or decline — declining drops you to a default fallback worth ~50% of your tier floor.</p>
+              <p>Sponsors pay more after sporting success: Endesa top-4 finishes and EuroLeague Final Four runs boost your next renewal by up to +45%.</p>
+            </>
+          }
+        />
       </h2>
       <div className="space-y-3">
         {(['kit', 'sleeve', 'stadium'] as SponsorshipSlot[]).map((slot) => {

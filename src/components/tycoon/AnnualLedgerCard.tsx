@@ -1,6 +1,7 @@
 import React from 'react';
 import type { AnnualLedger } from '../../types/tycoon';
 import { formatCurrencyWithCode } from '../../utils/helpers';
+import { HelpIconPopover } from './HelpIconPopover';
 
 interface Props {
   ledger: AnnualLedger;
@@ -19,7 +20,19 @@ export const AnnualLedgerCard: React.FC<Props> = ({ ledger, currency }) => {
   const expensesTotal = ledger.expenses.wages + ledger.expenses.staff + ledger.expenses.facility + ledger.expenses.scouting + ledger.expenses.travel + ledger.expenses.financeCosts;
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-      <h2 className="font-black uppercase tracking-widest mb-4 text-sm">Annual Ledger ({ledger.year})</h2>
+      <h2 className="font-black uppercase tracking-widest mb-4 text-sm flex items-center gap-1.5">
+        Annual Ledger ({ledger.year})
+        <HelpIconPopover
+          title="How the Ledger Works"
+          body={
+            <>
+              <p><strong className="text-emerald-300">Revenue</strong> comes from four sources: matchday (stadium capacity × attendance × ticket price × 30 games), sponsorship deals, end-of-season prize pool, and TV money.</p>
+              <p><strong className="text-rose-300">Expenses</strong> are player wages, staff wages (10% of player wages), facility operations, travel (higher when in EuroLeague), and scouting.</p>
+              <p>Strong sporting results boost matchday attendance and unlock prize pool. Losing seasons drag both down.</p>
+            </>
+          }
+        />
+      </h2>
       <p className="text-[10px] uppercase text-emerald-400 font-black mb-1">Revenue</p>
       {row('Matchday', ledger.revenue.matchday, 'text-emerald-300')}
       {row('Sponsorship', ledger.revenue.sponsorship, 'text-emerald-300')}
