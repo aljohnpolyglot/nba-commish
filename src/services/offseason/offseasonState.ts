@@ -248,7 +248,10 @@ export function getVisibleOffseasonRows(
   userTeam?: { tycoon?: { sponsorships: { kit: unknown; sleeve: unknown; stadium: unknown } } } | null,
 ): readonly OffseasonChecklistRow[] {
   if (isEuroIsolatedMode({ leagueStats })) {
-    const rows: OffseasonChecklistRow[] = ['options', 'qualifyingOffers', 'myFAs', 'freeAgency'];
+    // NBA-only rows EXCLUDED from Euro offseason: 'options' (team-option exercise
+    // is NBA-CBA-only) and 'qualifyingOffers' (RFA system NBA-only). Euro contracts
+    // use straight multi-year deals + buyout clauses instead.
+    const rows: OffseasonChecklistRow[] = ['myFAs', 'freeAgency'];
     const hasExpiredSlot = userTeam?.tycoon
       ? (userTeam.tycoon.sponsorships.kit === null
           || userTeam.tycoon.sponsorships.sleeve === null

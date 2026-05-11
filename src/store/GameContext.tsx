@@ -300,6 +300,17 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     if (!state.isDataLoaded) return;
     if (state.leagueStats?.auto2029ExpansionSeeded) return;
     if (state.expansionSchedule) return;
+    // Expansion drafts are NBA-only. Don't seed phantom Seattle/Vegas expansion
+    // in Euro-Isolated saves — those clubs aren't part of the Endesa league at all.
+    if (state.leagueStats?.uiMode === 'euro_isolated') {
+      setState(prev => ({
+        ...prev,
+        leagueStats: prev.leagueStats
+          ? { ...prev.leagueStats, auto2029ExpansionSeeded: true }
+          : prev.leagueStats,
+      }));
+      return;
+    }
     const lsYear = state.leagueStats?.year;
     if (lsYear == null || lsYear >= SEED_2029_YEAR) {
       // Save ist schon ≥2029 — Flag setzen ohne Schedule

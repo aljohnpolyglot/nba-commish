@@ -248,6 +248,11 @@ const ExpansionSchedulePin: React.FC = () => {
   const schedule = (state as any).expansionSchedule;
   const lsYear = state.leagueStats?.year;
   if (!schedule || lsYear == null || schedule.year < lsYear) return null;
+  // Expansion is NBA-only — the 2029 auto-seed creates a phantom banner in
+  // Euro-Isolated saves because the GameContext auto-seeds an NBA expansion
+  // schedule unconditionally. Suppress the pin entirely for Euro saves until
+  // the upstream auto-seed is gated.
+  if (state.leagueStats?.uiMode === 'euro_isolated') return null;
 
   const isThisYear = schedule.year === lsYear;
   const teamCount = schedule.teams?.length ?? 0;
@@ -527,6 +532,9 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   // R2 picks default to UFA — no QO available.
   const rfaCandidates = React.useMemo<NBAPlayer[]>(() => {
     if (state.gameMode !== 'gm' || state.userTeamId == null) return [];
+    // RFA system + qualifying offers are NBA-CBA constructs. Euro contracts use
+    // buyout clauses and direct multi-year deals instead. Suppress in Euro-Isolated.
+    if (state.leagueStats?.uiMode === 'euro_isolated') return [];
     const currentYear = lsYearOf(state);
     return state.players.filter((p: any) => {
       if (p.tid !== state.userTeamId || p.status !== 'Active') return false;
@@ -540,10 +548,12 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       if (p.contract.qualifyingOfferSkipped) return false;
       return true;
     });
-  }, [state.gameMode, state.userTeamId, state.players, state.leagueStats?.year]);
+  }, [state.gameMode, state.userTeamId, state.players, state.leagueStats?.year, state.leagueStats?.uiMode]);
 
   const pendingTeamOptions = React.useMemo<NBAPlayer[]>(() => {
     if (state.gameMode !== 'gm' || state.userTeamId == null) return [];
+    // Team options also NBA-only (see useTeamOptionGate for the same reasoning).
+    if (state.leagueStats?.uiMode === 'euro_isolated') return [];
     const currentYear = lsYearOf(state);
     const nextYear = currentYear + 1;
     return state.players.filter((p: any) => {
