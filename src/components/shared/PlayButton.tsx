@@ -12,7 +12,9 @@ import { useDraftEventGate } from '../../hooks/useDraftEventGate';
 import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
 import { useTeamOptionGate } from '../../hooks/useTeamOptionGate';
 import { useExpiringResignGate } from '../../hooks/useExpiringResignGate';
-import { getOffseasonState, type OffseasonPhase } from '../../services/offseason/offseasonState';
+import { useTycoonYearEndGate } from '../../hooks/useTycoonYearEndGate';
+import { getOffseasonState, isNoDraftLeague, type OffseasonPhase } from '../../services/offseason/offseasonState';
+import { isEuroIsolatedMode } from '../../utils/uiMode';
 
 type SimPhase =
   | 'preseason'
@@ -109,6 +111,14 @@ function getPhaseLabel(phase: SimPhase, seasonYear: number, calYear: number): st
   }
 }
 
+function getEuroPhaseLabel(state: any, seasonYear: number): string {
+  const unplayedCompetitionGames = (state.schedule ?? []).filter((g: any) => g.competitionId && !g.played);
+  if (unplayedCompetitionGames.some((g: any) => g.competitionPhase === 'play-in')) return `${seasonYear} EuroLeague play-in`;
+  if (unplayedCompetitionGames.some((g: any) => ['qf', 'sf', 'final'].includes(g.competitionPhase))) return `${seasonYear} European playoffs`;
+  if (unplayedCompetitionGames.some((g: any) => g.competitionPhase === 'group' || g.competitionPhase?.startsWith('r'))) return `${seasonYear} European season`;
+  return `${seasonYear} European offseason`;
+}
+
 // All schedule-derived helpers operate on `state.schedule`. They return YYYY-MM-DD
 // strings (matching `normalizeDate`) or null when no matching game is scheduled.
 
@@ -185,6 +195,42 @@ function findPlayoffRoundEndDate(state: any): string | null {
   );
 }
 
+function isCompetitionRegularPhase(game: any): boolean {
+  return game.competitionId && (game.competitionPhase === 'group' || game.competitionPhase?.startsWith('r'));
+}
+
+function findFirstCompetitionDate(state: any, competitionId?: string, phases?: string[]): string | null {
+  return minScheduledDate((state.schedule ?? []).filter((g: any) =>
+    g.competitionId &&
+    !g.played &&
+    (!competitionId || g.competitionId === competitionId) &&
+    (!phases || phases.includes(g.competitionPhase))
+  ));
+}
+
+function findLastCompetitionDate(state: any, competitionId?: string, phases?: string[]): string | null {
+  return maxScheduledDate((state.schedule ?? []).filter((g: any) =>
+    g.competitionId &&
+    !g.played &&
+    (!competitionId || g.competitionId === competitionId) &&
+    (!phases || phases.includes(g.competitionPhase))
+  ));
+}
+
+function findLastCompetitionRegularDate(state: any, competitionId?: string): string | null {
+  return maxScheduledDate((state.schedule ?? []).filter((g: any) =>
+    !g.played &&
+    isCompetitionRegularPhase(g) &&
+    (!competitionId || g.competitionId === competitionId)
+  ));
+}
+
+function pushFutureOption(options: PlayOption[], norm: string, label: string, date: string | null, action: (date: string) => void) {
+  if (date && date > norm && !options.some(opt => opt.label === label)) {
+    options.push({ label, action: () => action(date) });
+  }
+}
+
 interface PlayButtonProps {
   setCurrentView: (v: Tab) => void;
 }
@@ -198,9 +244,11 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
   const ls = state.leagueStats;
   const seasonYear: number = ls?.year ?? new Date(state.date).getUTCFullYear();
   const calYear = new Date(`${norm}T00:00:00Z`).getUTCFullYear();
+  const isEuro = isEuroIsolatedMode(state);
+  const noDraft = isNoDraftLeague(ls);
 
   const phase = getSimPhase(state);
-  const phaseLabel = getPhaseLabel(phase, seasonYear, calYear);
+  const phaseLabel = isEuro ? getEuroPhaseLabel(state, seasonYear) : getPhaseLabel(phase, seasonYear, calYear);
   const isCommissioner = state.gameMode !== 'gm';
 
   // Lottery / draft gate — pops the Watch/Auto-sim modal when advancing INTO
@@ -217,6 +265,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
   const expiringGate = useExpiringResignGate({
     onNavigateManual: () => setCurrentView('Team Office' as Tab),
   });
+  const tycoonYearEndGate = useTycoonYearEndGate();
 
   const guardedSim = useCallback((fn: () => void | Promise<void>, targetDate?: string) => {
     expiringGate.attempt(
@@ -224,7 +273,11 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
         teamOptionGate.attempt(
           () => {
             rosterGate.attempt(
-              () => { draftGate.attempt(fn); },
+              () => {
+                draftGate.attempt(() => {
+                  tycoonYearEndGate.attempt(fn, targetDate);
+                });
+              },
             );
           },
           targetDate,
@@ -232,7 +285,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
       },
       targetDate,
     );
-  }, [draftGate, rosterGate, teamOptionGate, expiringGate]);
+  }, [draftGate, rosterGate, teamOptionGate, expiringGate, tycoonYearEndGate]);
 
   const simDay = useCallback(() => {
     setOpen(false);
@@ -275,6 +328,47 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
   }, [setCurrentView]);
 
   const options: PlayOption[] = useMemo(() => {
+    if (isEuro) {
+      const firstFixture = findFirstCompetitionDate(state);
+      const nextFixture = minScheduledDate((state.schedule ?? []).filter((g: any) =>
+        g.competitionId && !g.played && normalizeDate(g.date) > norm
+      ));
+      const currentOrNextFixture = minScheduledDate((state.schedule ?? []).filter((g: any) =>
+        g.competitionId && !g.played && normalizeDate(g.date) >= norm
+      ));
+      const endesaRegularEnd = findLastCompetitionRegularDate(state, 'endesa');
+      const euroleagueRegularEnd = findLastCompetitionRegularDate(state, 'euroleague');
+      const euroleaguePlayInStart = findFirstCompetitionDate(state, 'euroleague', ['play-in']);
+      const euroleagueQfStart = findFirstCompetitionDate(state, 'euroleague', ['qf']);
+      const euroleagueFinalFourStart = findFirstCompetitionDate(state, 'euroleague', ['sf', 'final']);
+      const euroleagueSeasonEnd = findLastCompetitionDate(state, 'euroleague');
+      const endesaSeasonEnd = findLastCompetitionDate(state, 'endesa');
+      const allCompetitionEnd = findLastCompetitionDate(state);
+      const trainingCampStr = toISODateString(getTrainingCampDate(seasonYear, ls));
+
+      const opts: PlayOption[] = [
+        { label: 'One day', action: simDay },
+        { label: 'One week', action: () => simToDate(addDays(norm, 7)) },
+        { label: 'One month', action: () => simToDate(addDays(norm, 30)) },
+      ];
+
+      pushFutureOption(opts, norm, 'Until next fixture', nextFixture ?? firstFixture, simToDate);
+      if (currentOrNextFixture && currentOrNextFixture >= norm) {
+        opts.push({ label: 'Through next fixture', action: () => simThrough(currentOrNextFixture) });
+      }
+      pushFutureOption(opts, norm, 'Through EuroLeague regular season', euroleagueRegularEnd, simThrough);
+      pushFutureOption(opts, norm, 'Through Liga Endesa regular season', endesaRegularEnd, simThrough);
+      pushFutureOption(opts, norm, 'Until EuroLeague play-in', euroleaguePlayInStart, simToDate);
+      pushFutureOption(opts, norm, 'Until EuroLeague playoffs', euroleagueQfStart, simToDate);
+      pushFutureOption(opts, norm, 'Until EuroLeague Final Four', euroleagueFinalFourStart, simToDate);
+      pushFutureOption(opts, norm, 'Through EuroLeague season', euroleagueSeasonEnd, simThrough);
+      pushFutureOption(opts, norm, 'Through Liga Endesa season', endesaSeasonEnd, simThrough);
+      pushFutureOption(opts, norm, 'Through all competitions', allCompetitionEnd, simThrough);
+      pushFutureOption(opts, norm, 'Until training camp', trainingCampStr, simToDate);
+
+      return opts;
+    }
+
     const tdStr              = toISODateString(getTradeDeadlineDate(seasonYear, ls));
     const draftLotteryStr    = toISODateString(getDraftLotteryDate(seasonYear, ls));
     const draftStr           = toISODateString(getDraftDate(seasonYear, ls));
@@ -363,7 +457,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
         if (playoffTarget && playoffTarget > norm) {
           opts.push({ label: 'Until playoffs', action: () => simToDate(playoffTarget) });
         }
-        if (norm < draftLotteryStr) {
+        if (!noDraft && norm < draftLotteryStr) {
           opts.push({ label: 'Until draft lottery', action: () => simToDate(draftLotteryStr) });
         }
         return opts;
@@ -380,9 +474,9 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
         if (playoffStart && playoffStart > norm) {
           opts.push({ label: 'Until playoffs', action: () => simToDate(playoffStart) });
         }
-        if (norm < draftLotteryStr) {
+        if (!noDraft && norm < draftLotteryStr) {
           opts.push({ label: 'Until draft lottery', action: () => simToDate(draftLotteryStr) });
-        } else if (norm === draftLotteryStr) {
+        } else if (!noDraft && norm === draftLotteryStr) {
           opts.push({ label: 'Watch lottery', action: () => navigate('Draft Lottery' as Tab) });
         }
         opts.push({ label: 'Through playoffs', action: () => simThrough(lastPlayoffStr) });
@@ -396,9 +490,9 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
           opts.push({ label: 'Until end of round', action: () => simThrough(roundEnd) });
         }
         // Lottery falls during the playoffs in the real calendar (mid-May).
-        if (norm < draftLotteryStr) {
+        if (!noDraft && norm < draftLotteryStr) {
           opts.push({ label: 'Until draft lottery', action: () => simToDate(draftLotteryStr) });
-        } else if (norm === draftLotteryStr) {
+        } else if (!noDraft && norm === draftLotteryStr) {
           // On lottery day during playoffs — let the user actually watch it
           // instead of forcing "Through playoffs" first.
           opts.push({ label: 'Watch lottery', action: () => navigate('Draft Lottery' as Tab) });
@@ -427,8 +521,8 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
       case 'draft-lottery': {
         const opts: PlayOption[] = [
           { label: 'One day',       action: simDay },
-          { label: 'Watch lottery', action: () => navigate('Draft Lottery' as Tab) },
-          { label: 'Until draft',   action: () => simToDate(draftStr) },
+          ...(!noDraft ? [{ label: 'Watch lottery', action: () => navigate('Draft Lottery' as Tab) }] : []),
+          ...(!noDraft ? [{ label: 'Until draft', action: () => simToDate(draftStr) }] : []),
         ];
         if (isCommissioner) {
           // League-watcher fast-forwards: lottery is a one-click broadcast in
@@ -458,7 +552,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
         opts.push({ label: 'One day', action: simDay });
         // Let the user navigate to the draft board even after draft day if the
         // commissioner hasn't run the draft yet (date slid past but draftComplete=false).
-        if (!state.draftComplete) {
+        if (!noDraft && !state.draftComplete) {
           opts.push({ label: 'Watch draft', action: () => navigate('Draft Board' as Tab) });
           opts.push({ label: 'Sim to end of draft', action: simDraftToEnd });
         }
@@ -526,7 +620,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
       default:
         return [{ label: 'One day', action: simDay }];
     }
-  }, [phase, norm, seasonYear, ls, state, simDay, simToDate, simThrough, simDraftToEnd, navigate]);
+  }, [isEuro, noDraft, phase, norm, seasonYear, ls, state, simDay, simToDate, simThrough, simDraftToEnd, navigate]);
 
   // Close on outside click or Escape
   useEffect(() => {
@@ -608,6 +702,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
       {rosterGate.modal}
       {teamOptionGate.modal}
       {expiringGate.modal}
+      {tycoonYearEndGate.modal}
     </div>
   );
 };
