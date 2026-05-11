@@ -24,6 +24,7 @@ Ein Spanish-Endesa-GM-Save mit `tycoonEnabled === true` zeigt im TeamFinancesVie
 - [ ] **AC-9** `team.tycoon.ffpRollingDeficit` summiert `min(profit, 0)` der letzten 3 Saisons. Wird im UI als kleines Banner in der Ledger-History-Card angezeigt (Vorbereitung für Slice T16; keine Strafen in dieser MVP-Slice).
 - [ ] **AC-10** NBA-Saves zeigen keine Verhaltensänderung: TeamFinancesView NBA-Branch unverändert, kein `team.tycoon`-Zugriff auf NBA-Teams, kein Performance-Hit beim Year-End-Rollover für NBA-Pfad.
 - [ ] **AC-11** Bestehende Euro-Saves ohne `team.tycoon`-Feld werden beim `LOAD_GAME` migriert: Defaults seedet + 3 Sponsoring-Slots mit `yearsRemaining` zufällig 1–4 Jahre, damit Renewals nicht alle gleichzeitig kommen. Migration ist verpflichtend (kein "Opt-in"-Pfad für Alt-Saves).
+- [ ] **AC-12** `FinancesWidget.tsx` Sidebar-Box (League Funds + Personal Wealth) rendert in Euro-Mode mit `€`-Symbol, nicht `$`. Konkret: `state.stats.personalWealth = 3_080_000` zeigt `€3.08M` statt `$3.08M`. Realisiert durch `formatCurrencyWithCode(value, state.leagueStats?.currency ?? 'USD')` statt `formatCurrency(value)`. Gilt für beide Zeilen (League und Personal).
 
 ## Architektur
 
@@ -127,6 +128,7 @@ src/components/tycoon/
 | `src/services/offseason/offseasonState.ts` | ~10 LOC | Neue Rows `sponsorRenewalKit/Sleeve/Stadium` in `OFFSEASON_ROW_ORDER`, gated auf Euro-mode + `yearsRemaining === 0` |
 | `src/services/offseason/getStepConfirmSpec.ts` | ~15 LOC | `case`-Einträge für die 3 neuen Rows (öffnet `SponsorshipNegotiationModal`) — siehe CLAUDE.md Bug #8 |
 | `src/services/simulation/simulationHandler.ts` | ~8 LOC | Daily-Tick: `if (isEuroIsolatedMode(state)) eventChecker.tick(team, gameDate)` |
+| `src/components/sidebar/FinancesWidget.tsx` | ~6 LOC | League/Personal Wealth via `formatCurrencyWithCode(v, state.leagueStats?.currency ?? 'USD')` statt `formatCurrency(v)` — schließt die Currency-Rollout-Lücke (Plan §1b) für die Sidebar |
 
 ## Budget-Engine (T1) — Formel
 
