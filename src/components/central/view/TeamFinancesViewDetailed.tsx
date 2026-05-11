@@ -1,10 +1,19 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { formatCurrency } from '../../../utils/helpers';
+import { formatCurrency, formatCurrencyWithCode } from '../../../utils/helpers';
 import { contractToUSD, formatSalaryM, getCapThresholds, getTeamPayrollUSD, getMLEAvailability } from '../../../utils/salaryUtils';
 import { ArrowLeft, AlertTriangle, TrendingDown, TrendingUp } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { ContractTimeline } from '../../shared/ContractTimeline';
+import { isEuroIsolatedMode } from '../../../utils/uiMode';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { AnnualLedgerCard } from '../../tycoon/AnnualLedgerCard';
+import { SponsorshipCard } from '../../tycoon/SponsorshipCard';
+import { LedgerHistoryCard } from '../../tycoon/LedgerHistoryCard';
+import { SponsorshipNegotiationModal } from '../../tycoon/SponsorshipNegotiationModal';
+import { computeAnnualBudget } from '../../../services/tycoon/budgetEngine';
+import type { SponsorshipSlot } from '../../../types/tycoon';
 
 const COLORS = ['#38bdf8', '#facc15', '#4ade80', '#f87171', '#c084fc', '#fb923c', '#94a3b8'];
 
@@ -13,12 +22,13 @@ export const TeamFinancesViewDetailed: React.FC = () => {
 
   const teamId = selectedTeamId ?? state.teams[0]?.id ?? 0;
   const currentYear = state.leagueStats.year;
+  const [sponsorModal, setSponsorModal] = useState<{ open: boolean; slot: SponsorshipSlot }>({ open: false, slot: 'kit' });
 
   const { salaryCap, luxuryPayroll } = state.leagueStats;
   const capThresholds = getCapThresholds(state.leagueStats);
   const { firstApron, secondApron } = capThresholds;
 
-  const selectedTeam = state.teams.find(t => t.id === teamId);
+  const selectedTeam = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const teamPlayers = useMemo(
     () => state.players.filter(p => p.tid === teamId && !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '')),
     [state.players, teamId]
@@ -77,6 +87,71 @@ export const TeamFinancesViewDetailed: React.FC = () => {
   const highEarners = useMemo(() => playerPieData.filter(p => p.value >= 8_000_000), [playerPieData]);
 
   if (!selectedTeam) return null;
+  if (isEuroIsolatedMode(state)) {
+    const currency = state.leagueStats?.currency ?? 'EUR';
+    const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
+    const tycoon = (selectedTeam as any).tycoon;
+
+    if (!tycoon) {
+      return (
+        <div className="h-full overflow-y-auto p-8 bg-slate-950 text-white">
+          <button onClick={() => setCurrentView('Team Office')} className="flex items-center gap-2 text-slate-400 hover:text-white text-sm mb-6"><ArrowLeft size={16} /> Back</button>
+          <p className="text-slate-400">No tycoon data for this club yet — load a fresh Euro-Isolated save and the LOAD_GAME migration will seed it.</p>
+        </div>
+      );
+    }
+
+    const liveLedger = computeAnnualBudget(selectedTeam as any, {
+      year: currentYear,
+      endesaFinishPosition: (selectedTeam as any).lastEndesaFinish ?? 9,
+      euroleagueStage: (selectedTeam as any).lastEuroleagueStage ?? 'none',
+      euroleagueAwayGames: (selectedTeam as any).lastEuroAwayGames ?? 0,
+      endesaPrizeEUR: 0,
+      euroleaguePrizeEUR: 0,
+    });
+
+    const revenueTotal = liveLedger.revenue.matchday + liveLedger.revenue.sponsorship + liveLedger.revenue.prize + liveLedger.revenue.tv + liveLedger.revenue.transfer;
+    const utilizationPct = Math.round((liveLedger.expenses.wages / Math.max(revenueTotal, 1)) * 100);
+
+    return (
+      <div className="h-full overflow-y-auto p-4 md:p-8 bg-slate-950 text-white">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <button onClick={() => setCurrentView('Team Office')} className="flex items-center gap-2 text-slate-400 hover:text-white text-sm"><ArrowLeft size={16} /> Back</button>
+          <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6">
+            <div className="text-[10px] font-black uppercase tracking-[0.35em] text-amber-300">Euro Finance · Tier {tycoon.tier}</div>
+            <h1 className="text-3xl font-black uppercase tracking-tight mt-2">{getTeamFullName(selectedTeam)}</h1>
+            <div className="grid md:grid-cols-3 gap-4 mt-6">
+              <div className="rounded-2xl bg-slate-950 border border-slate-800 p-4">
+                <p className="text-xs text-slate-500 uppercase font-black">Annual Wage Bill</p>
+                <p className="text-3xl font-black">{fmt(liveLedger.expenses.wages)}</p>
+              </div>
+              <div className="rounded-2xl bg-slate-950 border border-slate-800 p-4">
+                <p className="text-xs text-slate-500 uppercase font-black">Budget Utilization</p>
+                <p className="text-3xl font-black">{utilizationPct}%</p>
+              </div>
+              <div className="rounded-2xl bg-slate-950 border border-slate-800 p-4">
+                <p className="text-xs text-slate-500 uppercase font-black">Projected Profit</p>
+                <p className={liveLedger.profit >= 0 ? 'text-3xl font-black text-emerald-400' : 'text-3xl font-black text-rose-400'}>{fmt(liveLedger.profit)}</p>
+              </div>
+            </div>
+          </div>
+          <div className="grid lg:grid-cols-2 gap-6">
+            <AnnualLedgerCard ledger={liveLedger} currency={currency} />
+            <div className="space-y-6">
+              <SponsorshipCard tycoon={tycoon} currency={currency} onNegotiate={(slot) => setSponsorModal({ open: true, slot })} />
+              <LedgerHistoryCard tycoon={tycoon} currency={currency} />
+            </div>
+          </div>
+          <ContractTimeline teamId={teamId} currentYear={currentYear} />
+        </div>
+        <SponsorshipNegotiationModal
+          open={sponsorModal.open}
+          onClose={() => setSponsorModal({ open: false, slot: 'kit' })}
+          initialSlot={sponsorModal.slot}
+        />
+      </div>
+    );
+  }
 
   // MLE availability (signingUSD=0 → what's available RIGHT NOW)
   const mleAvail = (state.leagueStats.mleEnabled ?? true)
