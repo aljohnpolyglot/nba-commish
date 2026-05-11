@@ -1,4 +1,5 @@
 import type { CompetitionSpec } from './services/competition/types';
+import type { TycoonState } from './types/tycoon';
 
 export interface Game {
   gid: number;
@@ -307,6 +308,8 @@ export interface LeagueStats {
   minGamesRequirement?: number;
   awards?: Rule[];
   trophies?: Rule[];
+  /** Commissioner-managed per-award settings (enable, custom names, dates). */
+  awardSettings?: import('./services/awards/types').AwardSettings;
   celebrityGame?: boolean;
   globalGames?: boolean;
   hasScheduledGlobalGames?: boolean;
@@ -821,6 +824,22 @@ export interface NBATeam {
   };
   /** Team-defense sharpness from Defensive training days. 50 is neutral; high values suppress opponent efficiency and create more turnovers. */
   defensiveAura?: number;
+  /** Tycoon-Layer state, only populated in euro_isolated mode after LOAD_GAME migration. */
+  tycoon?: TycoonState;
+  /** Recent Endesa finish positions (last 3 seasons), used by sponsor market-value formula. */
+  recentEndesaPositions?: number[];
+  /** Recent Euroleague stages reached (last 3 seasons). */
+  recentEuroleagueStages?: Array<'final-four' | 'qf' | 'group' | 'none'>;
+  /** Last season's Endesa finish position (for live-preview ledger between year-ends). */
+  lastEndesaFinish?: number;
+  /** Last season's Euroleague stage reached (for live-preview ledger). */
+  lastEuroleagueStage?: 'final-four' | 'qf' | 'group' | 'none';
+  /** Last season's Euroleague away-game count (for travel-cost calc). */
+  lastEuroAwayGames?: number;
+  /** Set by competition resolver when team just won Endesa title; consumed by tycoon eventChecker. */
+  justWonEndesa?: boolean;
+  /** Set by competition resolver when team just reached EL Final Four; consumed by tycoon eventChecker. */
+  justReachedEuroFinalFour?: boolean;
 }
 
 /** A waived guaranteed contract — team still owes the money against the cap. */
@@ -1072,6 +1091,14 @@ export interface StaffMember {
   jobTitle?: string;
   playerPortraitUrl?: string;
   teamLogoUrl?: string;
+  // Optional fields populated by synthetic non-NBA placeholders so the
+  // CoachingView / TeamIntel can render Age / Born / Nationality / Tenure
+  // without separate bio data.
+  nationality?: string;
+  bornYear?: number;
+  careerStartYear?: number;
+  yearsWithTeam?: number;
+  isPlaceholder?: boolean;
 }
 
 export interface StaffData {
@@ -1435,6 +1462,8 @@ export interface GameState {
   clubAliasMap?: Record<number, number>;
   schedule: Game[];
   activeCompetitions?: CompetitionSpec[];
+  competitionHistory?: Record<string, unknown[]>;
+  portalTarget?: 'nba' | string | null;
   players: NBAPlayer[];
   draftPicks: DraftPick[];
   staff: StaffData | null;
@@ -1621,6 +1650,9 @@ export type OffseasonChecklistRow =
   | 'draft'
   | 'rookieContracts'
   | 'freeAgency'
+  | 'sponsorRenewals'
+  | 'facilityUpgrades'
+  | 'preseasonFriendlies'
   | 'trainingCamp';
 
 export type OffseasonRowStatus = 'pending' | 'in-progress' | 'done' | 'skipped';
@@ -1739,7 +1771,7 @@ export interface UserAction {
 
 export type Conference = 'East' | 'West';
 export type GamePhase = 'Preseason' | 'Opening Week' | 'Regular Season (Early)' | 'Regular Season (Mid)' | 'All-Star Break' | 'Trade Deadline' | 'Regular Season (Late)' | 'Play-In Tournament' | 'Playoffs (Round 1)' | 'Playoffs (Round 2)' | 'Conference Finals' | 'NBA Finals' | 'Offseason' | 'Draft' | 'Draft Lottery' | 'Free Agency' | 'Schedule Planning' | 'Schedule Release' | 'Training Camp';
-export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'NBA Cup' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'Player Creator' | 'League History' | 'Player Bios' | 'Player Comparison' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History' | 'Team Office' | 'Coaching' | 'Training Center' | 'Hall of Fame' | 'Euroleague Hub' | 'Endesa Hub' | 'G-League Hub' | 'WNBA Hub' | 'B-League Hub' | 'China CBA Hub' | 'NBL Australia Hub' | 'PBA Hub';
+export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'NBA Cup' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'Player Creator' | 'League History' | 'Player Bios' | 'Player Comparison' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History' | 'Team Office' | 'Coaching' | 'Training Center' | 'Hall of Fame' | 'Euroleague' | 'Liga Endesa' | 'Euroleague Hub' | 'Endesa Hub' | 'G-League Hub' | 'WNBA Hub' | 'B-League Hub' | 'China CBA Hub' | 'NBL Australia Hub' | 'PBA Hub';
 
 // ─── AI Trade / Free Agency ───────────────────────────────────────────────────
 export interface TradeProposal {
