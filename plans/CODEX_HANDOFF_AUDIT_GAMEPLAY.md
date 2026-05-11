@@ -170,6 +170,58 @@ Or more semantically: keep `tradesAllowed` as user-visible toggle but **make the
 
 ---
 
+### P0-H: Playoff bracket awards a champion without any game being played
+
+**Verbatim from user:**
+> "aber wir haben kein champions als lol EL"
+>
+> ```
+> Turkish Airlines EuroLeague · Bracket
+> Champion · Emporio Armani Milan
+>
+> Play-In:
+>   MAC 7 | MAC 0    FC 8 | FC 0     NOT STARTED
+>   VIR 9 | VIR 0    ZAL 10 | ZAL 0  NOT STARTED
+> Quarterfinals:
+>   EA7 1 | EA7 0    FC 8 | FC 0     NOT STARTED
+>   …all matchups show "NOT STARTED" with 0-0 scores
+> Final:
+>   EA7 1 | EA7 0   ANA 3 | ANA 0    NOT STARTED
+> ```
+
+But simultaneously the rollover fired — retirements happened (Aaron Doornekamp, Marcelinho Huertas), FA signings logged (Aranitovic to Joventut, etc.). So the season-end pipeline ran, **but the playoff games themselves never simmed**, yet the resolver still picked a champion (Milan).
+
+**Root cause hypothesis:** `competitionResolver.resolveCompetitionSeason()` is picking the champion from **standings** (top-seeded team wins by default if knockout games are unsimmed) instead of from the actual `boxScores`. Or the lazy-sim is hitting `seasonEnd` and triggering rollover before `injectCompetitionPostseasonGames` has fired QF/SF/Final fixtures into the schedule.
+
+**Audit checklist:**
+
+1. **When is the bracket supposed to play?** Read `playoffFormat.rounds[].start` in the EuroLeague CompetitionSpec. Verify those dates fall BEFORE the season-rollover date (`leagueStats.year + 6/30`). If `rounds.start = 2026-06-15` and rollover is `2026-06-30`, there are only 15 days for QF Bo5 + SF + Final Four. If lazy-sim runs from January→August in one click, the bracket-injection event may fire AFTER the rollover trigger fires, so QFs never happen.
+
+2. **Is `injectCompetitionPostseasonGames` actually being called?** Set a `console.log` at the call site in `simulationHandler.ts` / `lazySimRunner.ts` and verify it fires at the right date.
+
+3. **What does `competitionResolver` do when standings exist but knockout boxScores don't?** Trace `resolveKnockoutBracket` in `competitionResolver.ts:87` — if `standings.length >= 2` but the bracket games are unsimmed, it currently falls back to "top seed wins". Decide whether that's intended (Codex: probably not — should NOT name a champion until actual games sim).
+
+4. **Lazy-sim ordering of `applySeasonRollover` vs `injectCompetitionPostseasonGames`:** the rollover fires when `dateNorm >= rolloverDate`. The bracket injection has its own date. If both fall in the same lazy-sim batch, ordering matters. Likely fix: rollover should NOT fire while `state.activeCompetitions.some(spec => spec.playoffFormat.rounds.some(r => r.lastGameNotPlayed))`. Add a guard.
+
+**Required fix path:**
+
+- a) Block `applySeasonRollover` from firing when any active competition's bracket still has unsimmed games. Guard in `shouldFireRollover()` (`seasonRollover.ts:1338`).
+- b) Make `resolveCompetitionSeason()` return `championTid = null` when knockout games are unsimmed. The bracket UI should show "Not yet decided" instead of a fake champion.
+- c) Make the bracket-injection event fire reliably during lazy-sim — track via `state.seasonalEvents` or similar idempotent gate.
+- d) Document the bracket-render: "NOT STARTED" badges are confusing when a champion is shown. Either show all games as in-progress OR don't render a champion. Pick one.
+
+**Verification:**
+- Spain save mid-April (regular season ending). Lazy-sim to August. EuroLeague bracket should show actual game scores for QF/SF/Final, with one team labeled as Champion via the boxScores, not from standings.
+- If lazy-sim is misordering, single-step day-by-day from June 1 onward and watch when bracket games actually inject.
+
+**Files likely to touch:**
+- `src/services/logic/seasonRollover.ts` — `shouldFireRollover` guard
+- `src/services/competition/competitionResolver.ts` — fallback behavior when knockouts unsimmed
+- `src/services/simulation/simulationHandler.ts` AND `lazySimRunner.ts` — bracket-injection ordering vs rollover
+- `src/components/competition/CompetitionBracketView.tsx` — only show champion label when boxScores prove it
+
+---
+
 ### P0-G: Non-EuroLeague clubs as the test path (domestic-only mode)
 
 **Verbatim from user:**
