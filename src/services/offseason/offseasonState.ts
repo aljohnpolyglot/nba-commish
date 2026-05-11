@@ -229,6 +229,7 @@ export function logOffseasonDrift(
 // metadata lives in one folder — no new files (keeps the tree uncluttered).
 
 import type { OffseasonChecklist, OffseasonChecklistRow, OffseasonRowStatus, Tab } from '../../types';
+import { isEuroIsolatedMode } from '../../utils/uiMode';
 
 const NO_DRAFT_ROWS: readonly OffseasonChecklistRow[] = [
   'draftLottery',
@@ -243,8 +244,20 @@ export function isNoDraftLeague(
 }
 
 export function getVisibleOffseasonRows(
-  leagueStats?: { draftType?: string } | null,
+  leagueStats?: { draftType?: string; uiMode?: string } | null,
+  userTeam?: { tycoon?: { sponsorships: { kit: unknown; sleeve: unknown; stadium: unknown } } } | null,
 ): readonly OffseasonChecklistRow[] {
+  if (isEuroIsolatedMode({ leagueStats })) {
+    const rows: OffseasonChecklistRow[] = ['options', 'qualifyingOffers', 'myFAs', 'freeAgency'];
+    const hasExpiredSlot = userTeam?.tycoon
+      ? (userTeam.tycoon.sponsorships.kit === null
+          || userTeam.tycoon.sponsorships.sleeve === null
+          || userTeam.tycoon.sponsorships.stadium === null)
+      : false;
+    if (hasExpiredSlot) rows.push('sponsorRenewals');
+    rows.push('facilityUpgrades', 'preseasonFriendlies', 'trainingCamp');
+    return rows;
+  }
   return isNoDraftLeague(leagueStats)
     ? OFFSEASON_ROW_ORDER.filter(row => !NO_DRAFT_ROWS.includes(row))
     : OFFSEASON_ROW_ORDER;
@@ -279,6 +292,9 @@ export const OFFSEASON_ROW_LABELS: Record<OffseasonChecklistRow, string> = {
   draft:            'NBA Draft',
   rookieContracts:  'Rookie Contracts',
   freeAgency:       'Free Agency',
+  sponsorRenewals:  'Sponsor Renewals',
+  facilityUpgrades: 'Facility Upgrades',
+  preseasonFriendlies: 'Preseason Friendlies',
   trainingCamp:     'Training Camp',
 };
 
@@ -291,6 +307,9 @@ export const OFFSEASON_ROW_DESCRIPTIONS: Record<OffseasonChecklistRow, string> =
   draft:            'Run the NBA Draft and select your rookies.',
   rookieContracts:  'Sign your drafted rookies to their first NBA contracts.',
   freeAgency:       'Negotiate with free agents over the 13-day signing window.',
+  sponsorRenewals:  'Review sponsorship placeholders for the next operating year.',
+  facilityUpgrades: 'Plan facility work before players report.',
+  preseasonFriendlies: 'Review Supercopa and preseason friendly slots.',
   trainingCamp:     'Set your training camp drills and finalize your opening-night roster.',
 };
 
@@ -304,6 +323,9 @@ export const OFFSEASON_ROW_TAB: Record<OffseasonChecklistRow, Tab> = {
   draft:            'Draft Board',
   rookieContracts:  'Team Office',
   freeAgency:       'Team Office',
+  sponsorRenewals:  'Team Finances',
+  facilityUpgrades: 'Team Office',
+  preseasonFriendlies: 'Schedule',
   trainingCamp:     'Training Center',
 };
 
@@ -317,6 +339,9 @@ function baseOffseasonChecklist(): OffseasonChecklist {
     draft:            'pending',
     rookieContracts:  'pending',
     freeAgency:       'pending',
+    sponsorRenewals:  'pending',
+    facilityUpgrades: 'pending',
+    preseasonFriendlies: 'pending',
     trainingCamp:     'pending',
   };
 }
@@ -350,6 +375,9 @@ export function initialPreseasonChecklist(): OffseasonChecklist {
     draft:            'skipped',
     rookieContracts:  'skipped',
     freeAgency:       'skipped',
+    sponsorRenewals:  'skipped',
+    facilityUpgrades: 'skipped',
+    preseasonFriendlies: 'skipped',
     trainingCamp:     'pending',
   };
 }

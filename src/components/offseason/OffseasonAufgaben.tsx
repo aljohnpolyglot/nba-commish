@@ -136,7 +136,7 @@ export const OffseasonNextActionButton: React.FC<NextActionButtonProps> = ({ set
 
   const handleAdvanceSeason = () => {
     dispatchAction({ type: 'OFFSEASON_EXIT' } as any);
-    setCurrentView('NBA Central' as Tab);
+    setCurrentView((state.leagueStats?.uiMode === 'euro_isolated' ? 'Schedule' : 'NBA Central') as Tab);
   };
 
   if (allDone || !currentRow) {
@@ -165,6 +165,9 @@ export const OffseasonNextActionButton: React.FC<NextActionButtonProps> = ({ set
     freeAgency:       state.faTagCounter
       ? `End Day · ${state.faTagCounter}/${state.faTagsTotal ?? 13}`
       : 'Enter Free Agency',
+    sponsorRenewals:  'Review Sponsors',
+    facilityUpgrades: 'Review Facilities',
+    preseasonFriendlies: 'Review Friendlies',
     trainingCamp:     'Open Training Camp',
   };
   const label = labelForRow[currentRow];
@@ -295,9 +298,13 @@ const ExpansionSchedulePin: React.FC = () => {
 export const OffseasonAufgabenSidebar: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const checklist = state.offseasonChecklist;
+  const userTeam = React.useMemo(
+    () => state.teams.find((t: any) => (t.id ?? t.tid) === state.userTeamId),
+    [state.teams, state.userTeamId],
+  );
   const visibleRows = React.useMemo(
-    () => getVisibleOffseasonRows(state.leagueStats),
-    [state.leagueStats],
+    () => getVisibleOffseasonRows(state.leagueStats, userTeam as any),
+    [state.leagueStats, userTeam],
   );
   const confirmActionRef = useRef<(() => void) | null>(null);
   // GM-Mode Expansion-Modals — mountable direkt aus der Sidebar, weil im GM
