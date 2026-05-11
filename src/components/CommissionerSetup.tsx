@@ -13,6 +13,13 @@ import { Home as FranchisePicker } from './central/view/TeamOffice/pages/Home';
 import type { NBAPlayer, NBATeam, NonNBATeam } from '../types';
 
 const SIM_START_DATE = toISODateString(getSeasonSimStartDate(INITIAL_LEAGUE_STATS.year)); // e.g. '2025-08-06'
+// Euro-Isolated leagues (Spain Endesa, etc.) start the season in September.
+// Endesa tips off late Sept, EuroLeague early Oct. Sept 15 leaves ~2 weeks of
+// pre-season for friendlies, training camp, last-minute FA signings — and
+// avoids the empty Aug 6 → late-Sept stretch that has zero NBA events but is
+// totally dead in Euro mode (no Christmas Games, no NBA Cup, no preseason
+// fixtures until mid-September).
+const EURO_SIM_START_DATE = `${INITIAL_LEAGUE_STATS.year - 1}-09-15`;
 import { StartDateTimeline } from './setup/StartDateTimeline';
 import { JumpReviewScreen } from './setup/JumpReviewScreen';
 
@@ -41,11 +48,16 @@ type Step = 'mode' | 'name' | 'franchise' | 'timeline' | 'review';
 
 export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType, moddedLeagueBase, europeMarket, onStart, onBack }) => {
   const [step, setStep] = useState<Step>('mode');
-  const [gameMode, setGameMode] = useState<'commissioner' | 'gm'>('commissioner');
+  // Europe modded saves default to GM (commissioner tooling not built yet).
+  const [gameMode, setGameMode] = useState<'commissioner' | 'gm'>(
+    moddedLeagueBase === 'europe' ? 'gm' : 'commissioner'
+  );
   // Keep undefined for GM mode — the user picks a team post-init via TeamOffice. No more "everyone is Atlanta".
   const [userTeamId, setUserTeamId] = useState<number | undefined>(undefined);
   const [name, setName] = useState('');
-  const [chosenDate, setChosenDate] = useState<string>(SIM_START_DATE);
+  const isEuroSetup = leagueType === 'modded' && moddedLeagueBase === 'europe';
+  const defaultStartDate = isEuroSetup ? EURO_SIM_START_DATE : SIM_START_DATE;
+  const [chosenDate, setChosenDate] = useState<string>(defaultStartDate);
   const [showSettings, setShowSettings] = useState(true);
   const [settings, setSettings] = useState(() => SettingsManager.getSettings());
   const [fictionalLeagueSeed] = useState(() => Math.floor(Math.random() * 2_147_483_647));
@@ -115,7 +127,18 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
   const handleNameSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    setStep(gameMode === 'gm' ? 'franchise' : 'timeline');
+    if (gameMode === 'gm') {
+      setStep('franchise');
+      return;
+    }
+    // Commissioner path. Euro-Isolated leagues bypass the NBA-centric Timeline +
+    // JumpReview screens (no Aug 6 preseason / NBA Cup / Christmas games to skip)
+    // and start the save at the Euro pre-season default (Sept 15).
+    if (isEuroSetup) {
+      handleStart(defaultStartDate);
+      return;
+    }
+    setStep('timeline');
   };
 
   const handleStart = (overrideDate?: string, assistantGM?: boolean) => {
@@ -182,21 +205,35 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
             <p className="text-slate-400 text-sm">How do you want to experience the {isFictional ? 'league' : moddedLeagueBase === 'europe' ? 'European game' : 'NBA'}?</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Commissioner Card */}
+            {/* Commissioner Card — disabled for Europe modded saves (commissioner tooling not built yet for that mode) */}
             <button
-              onClick={() => { setGameMode('commissioner'); setStep('name'); }}
+              onClick={() => {
+                if (moddedLeagueBase === 'europe') return;
+                setGameMode('commissioner'); setStep('name');
+              }}
+              disabled={moddedLeagueBase === 'europe'}
               className={`group relative p-6 rounded-2xl border-2 transition-all text-left ${
-                gameMode === 'commissioner'
-                  ? 'border-indigo-500 bg-indigo-500/10'
-                  : 'border-slate-800 bg-slate-900/50 hover:border-slate-700'
+                moddedLeagueBase === 'europe'
+                  ? 'border-slate-900 bg-slate-900/30 opacity-50 cursor-not-allowed'
+                  : gameMode === 'commissioner'
+                    ? 'border-indigo-500 bg-indigo-500/10'
+                    : 'border-slate-800 bg-slate-900/50 hover:border-slate-700'
               }`}
             >
               <div className="flex items-center gap-3 mb-3">
                 <Crown size={24} className="text-indigo-400" />
                 <h3 className="text-xl font-black text-white uppercase tracking-tight">Commissioner</h3>
+                {moddedLeagueBase === 'europe' && (
+                  <span className="ml-auto text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded">
+                    Coming Soon
+                  </span>
+                )}
               </div>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Control the <span className="text-white font-bold">entire league</span>. Set rules, suspend players, force trades, manage finances, and shape the narrative.
+                {moddedLeagueBase === 'europe'
+                  ? <>European commissioner mode (custom All-Star, league rules, multi-competition tournaments) is in development. For now, European saves are <span className="text-white font-bold">GM-only</span>.</>
+                  : <>Control the <span className="text-white font-bold">entire league</span>. Set rules, suspend players, force trades, manage finances, and shape the narrative.</>
+                }
               </p>
               <div className="mt-4 flex flex-wrap gap-1.5">
                 {['Rules', 'Suspensions', 'Economy', 'LLM Narrative', 'All Teams'].map(tag => (
@@ -264,6 +301,16 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
               highlightedLabel={isSpainEuropeSetup ? 'Euroleague' : undefined}
               onSelectTeam={(teamId) => {
                 setUserTeamId(teamId);
+                // Euro-Isolated GM bypasses Timeline + JumpReview (NBA-centric)
+                // and starts at the Euro pre-season default (Sept 15).
+                if (isEuroSetup) {
+                  // Pass userTeamId via closure — handleStart reads it from state,
+                  // so we need to delay one tick. Easiest: setUserTeamId already
+                  // above triggered re-render, but handleStart in this closure sees
+                  // stale userTeamId. Call setTimeout to land after state flush.
+                  setTimeout(() => handleStart(defaultStartDate), 0);
+                  return;
+                }
                 setStep('timeline');
               }}
             />
