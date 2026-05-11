@@ -170,6 +170,48 @@ Or more semantically: keep `tradesAllowed` as user-visible toggle but **make the
 
 ---
 
+### P0-F: User-friendliness — expand tutorial coverage + Tycoon integration
+
+**Verbatim from user:**
+> "musst user friendly sein mit tutorial modals und so viele und tycoon integration und so weiter"
+
+Existing tutorial scaffold (already shipped, do NOT redo):
+- `src/components/tycoon/TycoonWelcomeModal.tsx` — 3-slide intro on first Euro-Isolated save load (localStorage gate, `tycoon_welcome_seen_v1`)
+- `src/components/tycoon/HelpIconPopover.tsx` — (?) icons in AnnualLedgerCard / SponsorshipCard / LedgerHistoryCard
+
+**User wants more.** Build out a per-concept walkthrough system. Reuse the existing `HelpIconPopover` for static help; add **first-time tour modals** for the bigger surfaces.
+
+**Surfaces that need their own onboarding tour or help-icon (priority order):**
+
+1. **Calendar / DayView** — first time user lands on calendar in a Euro save, show a 2-slide tour: "This is the Endesa + EuroLeague calendar. Endesa games on weekends, EL midweek. Click a day to see fixtures." localStorage flag `euro_calendar_tour_seen_v1`.
+2. **TeamOffice → Home** — first-time tour explains the "Next Big Game" card, GM attributes, etc. Add a help-icon for the Wage Headroom widget.
+3. **Standings (Liga Endesa)** — short help: "Top 8 make playoffs. Top 4 get bye to QF. Bottom 2 relegate at season end." (assuming relegation is in scope — if not, drop that line).
+4. **Euroleague Hub** — help-icon for Group Stage / Play-In / Play-Off / Final Four structure.
+5. **SponsorshipNegotiationModal** — first-time tour: "This is your sponsorship deal. Accept the market offer, or decline and fall back to default. New deal sets fresh yearsRemaining."
+6. **Year-End-Gate modal** (already shipped) — verify the copy is clear; user feedback if it's confusing.
+7. **OffseasonAufgaben sidebar** — when a Euro save reaches its first offseason, surface a "Welcome to Offseason" panel explaining what each row means (Options, QO, MyFAs, FA, Sponsor Renewals, etc.).
+
+**Tutorial-system architecture:**
+
+Don't proliferate copy-pasted modals. Build a small reusable system:
+
+- `src/components/tutorial/Tour.tsx` — generic tour component, takes `{ id, slides: Slide[], onClose }`, manages the localStorage gate internally
+- `src/utils/tutorialFlags.ts` — `hasSeen(id)` + `markSeen(id)` helpers (a single map in localStorage, easier to reset all tours at once)
+- Use it like: `<Tour id="euro_calendar_tour_v1" slides={CALENDAR_SLIDES} />` mounted in App.tsx with `<Tour>` only rendering when in the right view + not-yet-seen
+
+**Tycoon-integration polish:**
+
+The Tycoon layer (T1+T2+T8) is wired but its UI presence is shallow. Expand:
+
+- **TeamOffice → Home** should surface the latest year's profit/loss as a top KPI card, with click-through to TeamFinances.
+- **Calendar phase banner (P0-B)** should also surface FFP-deficit warning when relevant ("FFP 3y Deficit: €25M — approaching transfer-ban threshold").
+- **In-Season Toast (already shipped) — verify Discord-style stacking** if multiple events fire on the same day. Currently the toast shows one at a time; if 3 events queue up, the user must dismiss each individually.
+- **TeamFinancesView** — the help-icon explanation should reference real numbers from the user's save ("Real Madrid Tier S → €X.XM matchday").
+
+**This is a UX investment slice. Don't shortcut.** Pair with the existing `superpowers:brainstorming` workflow (user-preferred per memory): AskUserQuestion for axes that aren't pre-decided, write spec + plan, ship in 4–6 small commits, each browser-testable.
+
+---
+
 ## Critical secondary issues (P1)
 
 ### P1-A: NBA playoff scheduling fires in Euro saves
@@ -215,6 +257,32 @@ So the **PPG-Leader / Rebounds / Assists / PIR / Top-Scorer** awards correctly f
 - Maybe `src/components/central/view/awardsView` or wherever MVP Ladder is rendered (if the filtering happens client-side too)
 
 **Verification:** in a Spain save with mid-season simmed, open EL hub → MVP Race. Top 5 should all be EL players (Tornike Shengelia, Mike James, etc.), zero NBA names.
+
+### P1-H: Award race player rows show "Unknown · 0-0" for Euro players
+
+**Verbatim from user (Rebound Leader screen):**
+```
+1   Giorgi Shermadini      C      Unknown · 0-0       PTS 25.2  REB 12.2  AST 1.5  70% Odds
+2   Walker Kessler         C      Utah Jazz · 27-55   PTS 11.1  REB 12.2  AST 1.7  26% Odds
+3   Chris Boucher          FC     Unknown · 0-0       PTS 19.3  REB 11.8  AST 3.1  15% Odds
+4   Juancho Hernangomez    PF,C   Unknown · 0-0       PTS 13.6  REB 11.8  AST 1.2  +860 Odds
+…
+```
+
+Walker Kessler (NBA tid 0–29) resolves to "Utah Jazz · 27-55" correctly. Every Euro player (Endesa/EL tid 5000+ offset) resolves to "Unknown · 0-0". That's a **team-name + record lookup bug** in the award-race row renderer — it uses `state.teams.find(t => t.id === player.tid)` instead of the alias-aware `resolveAnyTeam(player.tid, state.teams, state.nonNBATeams)`.
+
+(Also: when the user is in the EL/Endesa hub, this row shouldn't even SHOW Walker Kessler — that's the same P1-F pool-filter issue. Two bugs in one screen.)
+
+**Required:**
+- Find the award-race row component (likely in `src/components/central/view/awardsView` or wherever the award-race renders) and switch the team lookup from `state.teams.find` → `resolveAnyTeam` (already imported elsewhere in the codebase).
+- Add the W-L record from the resolved team (Endesa clubs have W-L too once games are simmed).
+- Combine with P1-F pool-filter fix so the row list itself is pool-correct first.
+
+**Files likely to touch:**
+- `src/components/central/view/awardsView` (or the file rendering "Rebound Leader" etc.)
+- Possibly `src/services/awards/poolResolver.ts` if there's a team-resolver helper
+
+**Verification:** Rebound Leader in EL hub shows only EL players (zero NBA names), and every row shows "Real Madrid · 22-12" / "Olympiacos · 18-16" instead of "Unknown · 0-0".
 
 ---
 
@@ -336,6 +404,26 @@ Read in this order:
 6. This file.
 
 Then go.
+
+---
+
+## Catch-all — scope is bigger than what's listed
+
+User noted (verbatim): *"immer noch fehlt viele Dinge"* — there are more bugs than fit in this file. After you fix P0-A through P0-F (the explicit blockers), do a deep self-audit by playing the save end-to-end yourself:
+
+1. Fresh Spain GM save, Real Madrid.
+2. Click into every visible UI surface (every sidebar item, every tab, every card, every modal, every button). Take notes.
+3. Lazy-sim 30 days at a time. After each batch:
+   - Did anything happen the user wouldn't know about?
+   - Are stats updating? Standings? Player ages?
+   - Are there ghost references to "NBA" / "$" / "cap space" / "two-way" anywhere?
+4. Simulate to season end. Did the playoff bracket trigger? Did the right team win? Was the user kept informed?
+5. Roll over to next season. Did rosters age, contracts roll, sponsors renew?
+6. Simulate a second full season. Compare to first season — should feel different.
+
+**Add every issue you find as a new `### P?-X` block in this file before fixing.** If the issue is fast-fix, do it. If it's an architecture decision (`PlayoffSpec` vs `CompetitionSpec` knockout), surface as `## Open Question` block and pick the conservative path.
+
+The user has been browser-testing for days. Their tolerance for "I think it works" is zero. Get to a state where YOU as the agent have personally walked through 2 simulated seasons end-to-end in DevTools state-inspection mode (via the gunzip snippet) and verified no NBA leak, no broken state transition, no silent sim run.
 
 ---
 
