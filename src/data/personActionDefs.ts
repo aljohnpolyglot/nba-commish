@@ -158,7 +158,15 @@ export function isPlayerEligible(
     const freeOrInt: Array<NonNullable<NBAPlayer['status']>> = [
       'Free Agent', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia',
     ];
-    return (player.tid === -1) || freeOrInt.includes(player.status as any);
+    // Genuine free agent: tid === -1
+    if (player.tid === -1) return true;
+    // External-league player whose tid lies in the offset range (>= 100), i.e.
+    // not on an active team in the current save (NBA save with Endesa player at
+    // tid +5000, etc.). Required for cross-league signings.
+    if (player.tid >= 100 && freeOrInt.includes(player.status as any)) return true;
+    // Player on an active team in the current save (incl. Euro-isolated where
+    // status === 'Endesa' but tid is a real team tid 0–99) — NOT signable as FA.
+    return false;
   }
 
   if (eligibility.playerStatuses) {

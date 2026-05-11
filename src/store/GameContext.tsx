@@ -771,7 +771,11 @@ const actions = useGameActions(setState, () => stateRef.current);
         }
         // First-season two-way detection: BBGM data doesn't set twoWay:true, but two-way players
         // have ~$625K salary (< $800K threshold for grace). Mark them so roster-trim excludes them.
-        if (!updated.twoWay && updated.tid >= 0 && (updated.contract?.amount ?? 0) > 0 && (updated.contract?.amount ?? 9999) < 800) {
+        // Skipped in Euro-Isolated mode — no two-way contracts in FIBA/Endesa/EuroLeague, and the
+        // salary-threshold heuristic would false-positive a lot of legitimate Euro deals.
+        if (loaded.leagueStats?.uiMode !== 'euro_isolated'
+            && !updated.twoWay && updated.tid >= 0
+            && (updated.contract?.amount ?? 0) > 0 && (updated.contract?.amount ?? 9999) < 800) {
           updated = { ...updated, twoWay: true };
         }
         // FA purgatory repair: `simulationHandler.autoTrimOversizedRosters` used to
@@ -1221,6 +1225,21 @@ const actions = useGameActions(setState, () => stateRef.current);
           };
           console.log('[LOAD_GAME] Healed legacy draft rows → skipped (no_draft active).');
         }
+      }
+
+      // Euro-Isolated cleanup pass: strip NBA-specific contract flags from players
+      // whose status is Endesa/EuroLeague/etc. and who sit on the active roster.
+      // Two-way + non-guaranteed are NBA constructs and the auto-detection above
+      // can leave stale flags on Euro-mode players loaded from earlier sessions.
+      if (migratedLeagueStats?.uiMode === 'euro_isolated') {
+        let strippedTwoWay = 0;
+        for (const p of (loaded.players ?? [])) {
+          if ((p.twoWay || (p as any).nonGuaranteed) && p.tid >= 0 && p.tid < 100) {
+            if (p.twoWay) { p.twoWay = false; strippedTwoWay++; }
+            if ((p as any).nonGuaranteed) (p as any).nonGuaranteed = false;
+          }
+        }
+        if (strippedTwoWay > 0) console.log(`[LOAD_GAME] [euro] stripped twoWay flag from ${strippedTwoWay} roster players`);
       }
 
       // Tycoon: seed team.tycoon for all Euro-Isolated saves (default-on, no toggle).

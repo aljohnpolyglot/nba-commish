@@ -3,6 +3,8 @@ import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
 import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
+import { getTeamFullName } from '../../../../../utils/teamNames';
+import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
 
 interface GeneralManagerProps {
   teamId: number;
@@ -29,7 +31,7 @@ export function GeneralManager({ teamId }: GeneralManagerProps) {
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const staff = state.staff;
   const teamColor = team?.colors?.[0] || '#552583';
-  const teamName = team ? `${team.region} ${team.name}` : '';
+  const teamName = team ? getTeamFullName(team) : '';
   const teamPlayers = useMemo(
     () => (state.players ?? []).filter(p => p.tid === teamId && isOnRoster(p)),
     [state.players, teamId],
@@ -197,28 +199,32 @@ export function GeneralManager({ teamId }: GeneralManagerProps) {
                 <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Roster Snapshot</div>
                 <div className="text-sm font-bold text-slate-200">{rosterCounts.total} players active</div>
               </div>
-              <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Contract Mix</div>
+              {!isEuroIsolatedMode(state) && (
+                <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Contract Mix</div>
+              )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <RosterCount
-                label="Guaranteed"
-                value={rosterCounts.guaranteedCount}
-                max={15}
-                tone={rosterCounts.guaranteedCount >= 15 ? 'emerald' : rosterCounts.guaranteedCount < 13 ? 'amber' : 'slate'}
-              />
-              <RosterCount
-                label="Two-Way"
-                value={rosterCounts.twoWayCount}
-                max={3}
-                tone={rosterCounts.twoWayCount >= 3 ? 'cyan' : 'slate'}
-              />
-              <RosterCount
-                label="Non-Guaranteed"
-                value={rosterCounts.nonGuaranteedCount}
-                max={Math.max(rosterCounts.nonGuaranteedCount, 1)}
-                tone={rosterCounts.nonGuaranteedCount > 0 ? 'amber' : 'slate'}
-              />
-            </div>
+            {!isEuroIsolatedMode(state) && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <RosterCount
+                  label="Guaranteed"
+                  value={rosterCounts.guaranteedCount}
+                  max={15}
+                  tone={rosterCounts.guaranteedCount >= 15 ? 'emerald' : rosterCounts.guaranteedCount < 13 ? 'amber' : 'slate'}
+                />
+                <RosterCount
+                  label="Two-Way"
+                  value={rosterCounts.twoWayCount}
+                  max={3}
+                  tone={rosterCounts.twoWayCount >= 3 ? 'cyan' : 'slate'}
+                />
+                <RosterCount
+                  label="Non-Guaranteed"
+                  value={rosterCounts.nonGuaranteedCount}
+                  max={Math.max(rosterCounts.nonGuaranteedCount, 1)}
+                  tone={rosterCounts.nonGuaranteedCount > 0 ? 'amber' : 'slate'}
+                />
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

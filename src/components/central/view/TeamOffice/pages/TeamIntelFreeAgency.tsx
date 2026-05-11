@@ -18,7 +18,7 @@ import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
 import { PlayerSelectorGrid, type PlayerSelectorItem } from '../../../../shared/PlayerSelectorGrid';
-import { convertTo2KRating } from '../../../../../utils/helpers';
+import { convertTo2KRating, formatCurrencyWithCode } from '../../../../../utils/helpers';
 import { getDisplayPotential } from '../../../../../utils/playerRatings';
 import {
   computeContractOffer,
@@ -33,6 +33,7 @@ import { compareGameDates, formatGameDateShort, getCurrentOffseasonEffectiveFASt
 import { getOffseasonState } from '../../../../../services/offseason/offseasonState';
 import type { NBAPlayer } from '../../../../../types';
 import { resolveAnyTeam } from '../../../../../utils/teamLookup';
+import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
 
 interface Props {
   teamId: number;
@@ -140,6 +141,7 @@ function fmtUSD(n: number): string {
 export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
   const { state, dispatchAction } = useGame();
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
+  const euroIsolated = isEuroIsolatedMode(state);
   const isGM = state.gameMode === 'gm';
   const isOwnTeam = isGM && teamId === state.userTeamId;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
@@ -160,6 +162,8 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
   const faHeadsUpKey = `team-intel-fa-moratorium-headsup-${state.saveId ?? 'default'}-${currentYear}`;
   const [showFaHeadsUp, setShowFaHeadsUp] = useState(false);
   const [autoBidSummary, setAutoBidSummary] = useState<AutoBidSummary | null>(null);
+  const fmtMoney = (value: number) =>
+    euroIsolated ? formatCurrencyWithCode(value, state.leagueStats?.currency ?? 'EUR', false) : fmtUSD(value);
 
   useEffect(() => {
     if (!isOwnTeam || !isMoratoriumActive) return;
@@ -554,21 +558,26 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
     )}
     <div className="h-full flex flex-col gap-3">
       {/* Cap Ticker — combined cap + MLE budget so over-cap teams (Boston tier)
-           don't show "$0 budget" when their MLE is the real working budget. */}
-      <div className={`rounded-lg border border-[#30363d] bg-black/40 p-4 grid gap-4 ${isOffseasonView ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'}`}>
-        <Stat label={isPreFA ? 'Projected cap (post-rollover)' : 'Cap Space'} value={fmtUSD(capSpaceUSD)} tone={capSpaceUSD < 0 ? 'red' : 'emerald'} />
-        <Stat label="MLE Available" value={mleAvail.blocked ? '—' : fmtUSD(mleAvail.available)} />
-        {isOffseasonView && (
-          <>
-            <Stat label="Shortlist Commit" value={fmtUSD(shortlistCommitUSD)} tone={shortlistCommitUSD > availableRoomUSD ? 'amber' : undefined} />
-            <Stat
-              label="Room After Shortlist"
-              value={fmtUSD(projectedRoomAfterShortlist)}
-              tone={projectedRoomAfterShortlist < 0 ? 'red' : projectedRoomAfterShortlist === 0 ? 'amber' : 'emerald'}
-            />
-          </>
-        )}
-      </div>
+           don't show "$0 budget" when their MLE is the real working budget.
+           Euro-Isolated mode: no NBA cap / MLE / Room concept; the banner above
+           already shows Wage Headroom from the Tycoon layer, so the entire
+           ticker is suppressed here. */}
+      {!euroIsolated && (
+        <div className={`rounded-lg border border-[#30363d] bg-black/40 p-4 grid gap-4 ${isOffseasonView ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'}`}>
+          <Stat label={isPreFA ? 'Projected cap (post-rollover)' : 'Cap Space'} value={fmtUSD(capSpaceUSD)} tone={capSpaceUSD < 0 ? 'red' : 'emerald'} />
+          <Stat label="MLE Available" value={mleAvail.blocked ? '—' : fmtUSD(mleAvail.available)} />
+          {isOffseasonView && (
+            <>
+              <Stat label="Shortlist Commit" value={fmtUSD(shortlistCommitUSD)} tone={shortlistCommitUSD > availableRoomUSD ? 'amber' : undefined} />
+              <Stat
+                label="Room After Shortlist"
+                value={fmtUSD(projectedRoomAfterShortlist)}
+                tone={projectedRoomAfterShortlist < 0 ? 'red' : projectedRoomAfterShortlist === 0 ? 'amber' : 'emerald'}
+              />
+            </>
+          )}
+        </div>
+      )}
 
       {/* Two-column layout: Shortlist (left) + Bid Tracker (right) — Shortlist
            is offseason-only since it tracks FAs you intend to chase next FA window. */}
@@ -831,7 +840,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
                 <th className="text-left px-3 py-2 cursor-pointer hover:text-slate-300" onClick={() => handleSort('name')}>
                   Player {sortConfig.col === 'name' && <span className="text-amber-400">{sortConfig.dir === 'desc' ? '▼' : '▲'}</span>}
                 </th>
-                <th className="text-center px-1.5 py-2" title="Most recent NBA team">Team</th>
+                <th className="text-center px-1.5 py-2" title={euroIsolated ? 'Most recent club' : 'Most recent team'}>Team</th>
                 <th className="text-center px-2 py-2 cursor-pointer hover:text-slate-300" onClick={() => handleSort('pos')}>
                   Pos {sortConfig.col === 'pos' && <span className="text-amber-400">{sortConfig.dir === 'desc' ? '▼' : '▲'}</span>}
                 </th>
@@ -860,7 +869,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
                   PER {sortConfig.col === 'per' && <span className="text-amber-400">{sortConfig.dir === 'desc' ? '▼' : '▲'}</span>}
                 </th>
                 <th className="text-center px-1.5 py-2" title="Restricted (prior team can match offer sheet) vs Unrestricted">Type</th>
-                <th className="text-center px-1.5 py-2" title="Bird Rights — prior team can sign over the cap">Bird</th>
+                {!euroIsolated && <th className="text-center px-1.5 py-2" title="Bird Rights — prior team can sign over the cap">Bird</th>}
                 <th className="text-center px-1.5 py-2" title="Number of active competing bids in the market">Offers</th>
                 <th className="text-right px-2 py-2 cursor-pointer hover:text-slate-300" onClick={() => handleSort('asking')}>
                   Asking {sortConfig.col === 'asking' && <span className="text-amber-400">{sortConfig.dir === 'desc' ? '▼' : '▲'}</span>}
@@ -948,7 +957,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
                         {rfa ? 'RFA' : 'UFA'}
                       </span>
                     </td>
-                    <td className="text-center">
+                    {!euroIsolated && <td className="text-center">
                       <span className={cn(
                         'inline-block px-1.5 py-0.5 rounded text-[9px] font-black tracking-wider',
                         hasBird
@@ -957,7 +966,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
                       )}>
                         {hasBird ? 'YES' : 'NO'}
                       </span>
-                    </td>
+                    </td>}
                     <td className="text-center">
                       {activeOfferCount > 0 ? (
                         <span className={cn(
@@ -973,7 +982,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
                       )}
                     </td>
                     <td className="text-right text-slate-300 tabular-nums whitespace-nowrap">
-                      {fmtUSD(askingTotalUSD)}/{offer.years}yr
+                      {fmtMoney(askingTotalUSD)}/{offer.years}yr
                     </td>
                     {isOwnTeam && (
                       <td className="text-center">

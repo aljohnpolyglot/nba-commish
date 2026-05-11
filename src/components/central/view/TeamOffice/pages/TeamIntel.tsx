@@ -4,7 +4,7 @@ import { useGame } from '../../../../../store/GameContext';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
 import { PlayerSelectorGrid, type PlayerSelectorItem } from '../../../../shared/PlayerSelectorGrid';
 import { StarterService } from '../../../../../services/simulation/StarterService';
-import { convertTo2KRating } from '../../../../../utils/helpers';
+import { convertTo2KRating, formatCurrencyWithCode } from '../../../../../utils/helpers';
 import { NBAPlayer, TeamStatus } from '../../../../../types';
 import { calcPlayerTV, calcOvr2K, isUntouchable, type TeamMode } from '../../../../../services/trade/tradeValueEngine';
 import { AwardService } from '../../../../../services/logic/AwardService';
@@ -16,6 +16,8 @@ import { resolveTeamStrategyProfile } from '../../../../../utils/teamStrategy';
 import { compareGameDates, getCurrentOffseasonEffectiveFAStart } from '../../../../../utils/dateUtils';
 import { getOffseasonState } from '../../../../../services/offseason/offseasonState';
 import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
+import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
+import { getTeamFullName } from '../../../../../utils/teamNames';
 
 interface TeamIntelProps {
   teamId: number;
@@ -43,7 +45,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
     [state.nonNBATeams, state.teams, team],
   );
   const teamColor = team?.colors?.[0] || '#552583';
-  const teamName = team ? `${team.region} ${team.name}` : '';
+  const teamName = team ? getTeamFullName(team) : '';
 
   if (!team) {
     return <div className="text-red-400 font-bold uppercase tracking-widest">Team not found</div>;
@@ -89,7 +91,10 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
       .reduce((sum, p) => sum + ((p.contract?.amount ?? 0) * 1_000), 0)
     : 0;
   const displayedCapSpaceUSD = capProfile.capSpaceUSD + expiringSalaryUSD;
-  const capFormatted = formatSalaryM(displayedCapSpaceUSD);
+  const euroIsolated = isEuroIsolatedMode(state);
+  const capFormatted = euroIsolated
+    ? formatCurrencyWithCode(displayedCapSpaceUSD, state.leagueStats?.currency ?? 'EUR', false)
+    : formatSalaryM(displayedCapSpaceUSD);
 
   const { status, strategyKey, tradingBlock, untouchables, targets } = useMemo(() => {
     const strategy = resolveTeamStrategyProfile({
@@ -183,7 +188,12 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   const [editingList, setEditingList] = useState<'untouchable' | 'block' | 'targets' | null>(null);
   // ── Sub-tab pill: Trades (existing) | Free Agency (new) ─────────────────
   // Both views share the team banner; only the body switches. Persists per-mount.
-  const [intelTab, setIntelTab] = useState<'trades' | 'fa' | 'expiring'>('trades');
+  const [intelTab, setIntelTab] = useState<'trades' | 'fa' | 'expiring'>(state.leagueStats?.tradesAllowed === false ? 'fa' : 'trades');
+  const tradesDisabled = state.leagueStats?.tradesAllowed === false;
+
+  useEffect(() => {
+    if (tradesDisabled && intelTab === 'trades') setIntelTab('fa');
+  }, [tradesDisabled, intelTab]);
 
   // Deep-link from offseason AUFGABEN sidebar — reads pendingTeamOfficeNav
   // .intelTab and applies it once, then clears the slot.
@@ -337,14 +347,13 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
             <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/70 mb-2 border-b border-white/20 pb-1">Record</div>
             <div className="text-xl sm:text-3xl font-light text-white drop-shadow-md">{team.wins}-{team.losses}</div>
           </div>
-          {(() => {
+          {!euroIsolated && (() => {
+            // NBA-only: Conf + Div ranks. Endesa/EuroLeague don't have conferences
+            // or divisions — a single 18-team table. Hidden in Euro mode.
             const hasGames = (team.wins + team.losses) > 0;
             const confTeams = state.teams.filter(t => t.conference === team.conference)
               .sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses));
             const confRank = confTeams.findIndex(t => t.id === teamId) + 1;
-            // Divisions live on `did` (numeric), not a `division` string — so the
-            // old team.division equality was `undefined === undefined` for every
-            // team, making divRank identical to a league-wide rank.
             const divTeams = state.teams.filter(t => (t as any).did === (team as any).did)
               .sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses));
             const divRank = divTeams.findIndex(t => t.id === teamId) + 1;
@@ -361,7 +370,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
           })()}
           <div>
             <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/70 mb-2 border-b border-white/20 pb-1">
-              {isPreFA ? 'Projected cap (post-rollover)' : 'Cap Space'}
+              {euroIsolated ? 'Wage Headroom' : isPreFA ? 'Projected cap (post-rollover)' : 'Cap Space'}
             </div>
             <div className="text-xl sm:text-3xl font-light text-white drop-shadow-md">{capFormatted}</div>
           </div>
@@ -371,7 +380,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
       {/* Sub-tab pill — Trades (existing intel) vs Free Agency (new scouting tab) */}
       <div className="flex border-x border-[#30363d] bg-[#0d1117]">
         {([
-          { key: 'trades'   as const, label: 'Trades' },
+          ...(tradesDisabled ? [] : [{ key: 'trades' as const, label: 'Trades' }]),
           { key: 'fa'       as const, label: 'Free Agency' },
           { key: 'expiring' as const, label: 'Expiring' },
         ]).map(t => (

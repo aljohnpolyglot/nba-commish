@@ -13,6 +13,7 @@ import { getGameplan } from '../../../../../store/gameplanStore';
 import type { NBAPlayer } from '../../../../../types';
 import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
 import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
+import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -423,18 +424,22 @@ export function TeamOfficeRosterView({ teamId }: Props) {
         <div className="flex-1 min-w-0 flex flex-col gap-2">
           <div className="flex items-center gap-3 shrink-0 text-[10px] text-slate-500">
             <span>{rosterCounts.total} players</span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-sm bg-emerald-500/50 border border-emerald-500/60 inline-block" />
-              {rosterCounts.guaranteedCount}/15 guaranteed
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-sm bg-violet-500/50 border border-violet-500/60 inline-block" />
-              {rosterCounts.twoWayCount}/3 two-way
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-sm bg-amber-500/30 border border-amber-500/50 inline-block" />
-              {rosterCounts.nonGuaranteedCount} non-guaranteed
-            </span>
+            {!isEuroIsolatedMode(state) && (
+              <>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-sm bg-emerald-500/50 border border-emerald-500/60 inline-block" />
+                  {rosterCounts.guaranteedCount}/15 guaranteed
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-sm bg-violet-500/50 border border-violet-500/60 inline-block" />
+                  {rosterCounts.twoWayCount}/3 two-way
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-sm bg-amber-500/30 border border-amber-500/50 inline-block" />
+                  {rosterCounts.nonGuaranteedCount} non-guaranteed
+                </span>
+              </>
+            )}
             {sortMode !== 'rating' && (
               <span className="ml-auto text-slate-600 italic">
                 {sortMode === 'rotation' ? 'Rotation locked · click By Rating to sort columns' : 'Game Plan (PER) · click By Rating to sort columns'}
