@@ -170,6 +170,41 @@ Or more semantically: keep `tradesAllowed` as user-visible toggle but **make the
 
 ---
 
+### P0-I: Offseason auto-completes opaquely — user doesn't know what happened
+
+**Verbatim from user (screenshot):**
+```
+OFFSEASON TASKS
+
+✨ EXPANSION SCHEDULED FOR 2029   2 new franchises   ×
+✓ TEAM / PLAYER OPTIONS    COMPLETE
+✓ QUALIFYING OFFERS        COMPLETE
+✓ MY FREE AGENTS           COMPLETE
+○ FREE AGENCY              SKIPPED
+○ FACILITY UPGRADES
+○ PRESEASON FRIENDLIES
+○ TRAINING CAMP            [ENTER]
+```
+
+> "wtf… ich weiss nicht was ist passiert. zu viel geskipt mit kein season resolved und champion als"
+
+The user landed on the offseason sidebar to find half the rows already auto-COMPLETED and "FREE AGENCY" marked as SKIPPED — without ever seeing what happened during the relevant phases. This is partly fixed in commit `1f7f427` (Team Options + QO + Expansion banner now hidden in Euro mode), but the deeper UX problem remains:
+
+**The auto-complete logic is silent and opaque.** When a row auto-completes because there are no eligible players to action (no team-option deadlines, no RFAs, no expiring contracts on user roster), the user has no idea WHY. The row just flips to COMPLETE.
+
+**Required:**
+
+- When a row auto-completes, show a one-line reason on the row itself: "No team options expiring" / "No restricted FAs to offer QOs to" / "No My-FAs because no contracts expired".
+- When the user opens the sidebar in offseason, show a brief "Offseason Recap" panel at the top: "Your season ended on [date]. Final standing: Endesa 4th, EuroLeague QF eliminated. Champion: Real Madrid (Endesa) / Olympiacos (EL). FA window opens [date]."
+- For Free Agency SKIPPED: the row should explain WHY it skipped — was there no Euro-mode FA pool? Was the user not eligible to sign anyone? Was the window closed?
+- Verify that in Euro mode after commit `1f7f427`, the offseason sidebar only shows: My Free Agents, Free Agency, [Sponsor Renewals?], Facility Upgrades, Preseason Friendlies, Training Camp — NO Team Options / QO / Expansion banner.
+
+**Files likely to touch:**
+- `src/components/offseason/OffseasonAufgaben.tsx` — add reason-text per auto-completed row + recap panel at top
+- `src/services/offseason/offseasonState.ts` — possibly extend the checklist schema with a `reason` field per row
+
+---
+
 ### P0-H: Playoff bracket awards a champion without any game being played
 
 **Verbatim from user:**
