@@ -2,7 +2,7 @@ import React from 'react';
 import { DollarSign, User } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { Tab } from '../../types';
-import { formatCurrency } from '../../utils/helpers';
+import { formatCurrencyWithCode } from '../../utils/helpers';
 
 interface FinancesWidgetProps {
   onViewChange?: (view: Tab) => void;
@@ -11,6 +11,7 @@ interface FinancesWidgetProps {
 export const FinancesWidget: React.FC<FinancesWidgetProps> = ({ onViewChange }) => {
   const { state } = useGame();
   const isGM = state.gameMode === 'gm';
+  const currency = state.leagueStats?.currency ?? 'USD';
 
   return (
     <div>
@@ -23,7 +24,7 @@ export const FinancesWidget: React.FC<FinancesWidgetProps> = ({ onViewChange }) 
               <DollarSign size={14} className="text-emerald-500" />
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">League</span>
             </div>
-            <span className="font-mono text-xs font-bold text-emerald-400">{formatCurrency(state.stats.leagueFunds)}</span>
+            <span className="font-mono text-xs font-bold text-emerald-400">{formatCurrencyWithCode(state.stats.leagueFunds, currency)}</span>
           </div>
         )}
 
@@ -42,7 +43,7 @@ export const FinancesWidget: React.FC<FinancesWidgetProps> = ({ onViewChange }) 
               <span className="absolute -top-1 -right-2 w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
             )}
           </div>
-          <span className={`font-mono text-xs font-bold ${state.hasUnreadPayslip ? 'text-amber-300' : 'text-amber-400'}`}>{formatCurrency(state.stats.personalWealth)}</span>
+          <span className={`font-mono text-xs font-bold ${state.hasUnreadPayslip ? 'text-amber-300' : 'text-amber-400'}`}>{formatCurrencyWithCode(state.stats.personalWealth, currency)}</span>
         </button>
       </div>
     </div>
