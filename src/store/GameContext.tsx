@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import { GameState, UserAction, Tab, Bet, BetLeg, NBAPlayer } from '../types';
 import { processTurn, handleStartGame, handleAnnounceChange } from './logic/gameLogic';
 import { useGameActions } from './useGameActions';
+import { migrateAllEuroTeams } from '../services/tycoon/migrate';
 import { initialState } from './initialState';
 import { sendChatMessage } from '../services/llm/llm';
 import { prefetchPlayerBio } from '../components/central/view/bioCache';
@@ -22,12 +23,14 @@ import { setRefereeData } from '../data/photos/referees';
 import { setActiveSaveId as setRivalGameplanSaveId } from './rivalGameplanStore';
 import { enforceExternalMinRoster, repairGeneratedExternalPlayer } from '../services/externalLeagueSustainer';
 import { applyCupAwardsToPlayers } from '../services/nbaCup/awards';
+import { defaultAwardSettings } from '../services/awards/AwardEngine';
 import { computeRookieSalaryUSD } from '../utils/rookieContractUtils';
 import { generateAIBids, isPlausibleActiveMarket, MAX_FA_MARKET_DECISION_WINDOW_DAYS } from '../services/freeAgencyBidding';
 import { setAssistantGMActive } from '../services/assistantGMFlag';
 import { getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd, getDraftDate, getTrainingCampDate, parseGameDate, toISODateString } from '../utils/dateUtils';
 import { clearWaiverMarkers, hasLiveContractAfterWaive, stripLiveContractAfterWaive } from '../utils/contractCleanup';
 import { repairBirdRightsForLoadedPlayer } from '../utils/playerBirdRights';
+import { resolveAnyTeam } from '../utils/teamLookup';
 import {
   defaultOffseasonChecklist,
   initialPreseasonChecklist,
@@ -335,6 +338,29 @@ const actions = useGameActions(setState, () => stateRef.current);
   };
 
   const dispatchAction = async (action: UserAction) => {
+    const portalBlockedActions = new Set<string>([
+      'SIGN_FREE_AGENT',
+      'SUBMIT_FA_BID',
+      'MATCH_RFA_OFFER',
+      'DECLINE_RFA_OFFER',
+      'WAIVE_PLAYER',
+      'EXECUTIVE_TRADE',
+      'FORCE_TRADE',
+      'SET_TRAINING_DAILY_PLAN',
+      'SET_TRAINING_NORMAL_DEFAULT',
+      'SET_PLAYER_DEV_FOCUS',
+      'SET_PLAYER_MENTOR',
+      'SET_PLAYER_TRAINING_INTENSITY',
+      'AUTOFILL_TEAM_TRAINING_CALENDAR',
+    ]);
+    const portalAllowsUpdateState = action.type === 'UPDATE_STATE'
+      && action.payload
+      && Object.keys(action.payload as Record<string, unknown>).every(key => key === 'portalTarget');
+    if (stateRef.current.portalTarget != null && !portalAllowsUpdateState && portalBlockedActions.has(action.type)) {
+      setState(prev => ({ ...prev, lastOutcome: 'Close the Portal to make changes.' }));
+      return;
+    }
+
     if (action.type === 'CLEAR_OUTCOME') {
       actions.clearOutcome();
       return;
@@ -501,10 +527,17 @@ const actions = useGameActions(setState, () => stateRef.current);
     if (action.type === 'RECORD_WATCHED_GAME') {
       const { gameId, result } = action.payload;
       setState(prev => {
+        const watchedGame = prev.schedule.find((g: any) => g.gid === gameId);
         const newSchedule = prev.schedule.map((g: any) =>
           g.gid === gameId ? { ...g, played: true, homeScore: result.homeScore, awayScore: result.awayScore } : g
         );
-        const boxScoreEntry = { ...result, gameId, date: prev.date };
+        const boxScoreEntry = {
+          ...result,
+          gameId,
+          date: prev.date,
+          competitionId: watchedGame?.competitionId ?? result.competitionId,
+          competitionPhase: watchedGame?.competitionPhase ?? result.competitionPhase,
+        };
         const existing = (prev.boxScores || []).findIndex((b: any) => b.gameId === gameId);
         const newBoxScores = existing >= 0
           ? (prev.boxScores || []).map((b: any, i: number) => i === existing ? boxScoreEntry : b)
@@ -515,8 +548,8 @@ const actions = useGameActions(setState, () => stateRef.current);
       });
 
       // Fire photo fetch for watched game — non-blocking
-      const watchedHome = state.teams.find(t => t.id === result.homeTeamId);
-      const watchedAway = state.teams.find(t => t.id === result.awayTeamId);
+      const watchedHome = resolveAnyTeam(result.homeTeamId, state.teams, state.nonNBATeams ?? []);
+      const watchedAway = resolveAnyTeam(result.awayTeamId, state.teams, state.nonNBATeams ?? []);
       if (watchedHome && watchedAway) {
         import('../services/ImagnPhotoService').then(({ fetchGamePhotos }) => {
           fetchGamePhotos({ homeTeam: watchedHome, awayTeam: watchedAway }).catch(() => {});
@@ -943,6 +976,16 @@ const actions = useGameActions(setState, () => stateRef.current);
       const ls: any = loaded.leagueStats ?? {};
       const migratedLeagueStats = { ...ls };
       let staleRulesMigrated = false;
+
+      // Award settings self-heal — derive defaults from uiMode when missing.
+      if (!migratedLeagueStats.awardSettings) {
+        const uiMode = migratedLeagueStats.uiMode ?? 'nba';
+        migratedLeagueStats.awardSettings = defaultAwardSettings(
+          uiMode === 'euro_isolated' || uiMode === 'fictional' ? uiMode : 'nba'
+        );
+        console.log(`[LOAD_GAME] Seeded default awardSettings for uiMode=${uiMode}`);
+      }
+
       if (migratedLeagueStats.allStarGameTargetScore == null) {
         migratedLeagueStats.allStarGameTargetScore =
           ls.allStarGameFormat === 'target_score'
@@ -1178,6 +1221,15 @@ const actions = useGameActions(setState, () => stateRef.current);
           };
           console.log('[LOAD_GAME] Healed legacy draft rows → skipped (no_draft active).');
         }
+      }
+
+      // Tycoon: seed team.tycoon for all Euro-Isolated saves (default-on, no toggle).
+      if (migratedLeagueStats?.uiMode === 'euro_isolated') {
+        const migrated = migrateAllEuroTeams({
+          teams: teamsWithFreshTraining as any,
+          leagueStats: migratedLeagueStats as any,
+        });
+        if (migrated > 0) console.log(`[LOAD_GAME] [tycoon] migrated ${migrated} teams to tycoon state`);
       }
 
       setState({
@@ -2468,8 +2520,18 @@ const actions = useGameActions(setState, () => stateRef.current);
         Promise.all([
           staffMod.getStaffData(state.players, teamNameMap),
           coachesMod.fetchCoachData(),
-        ]).then(([staff]) => {
-          setState(prev => ({ ...prev, staff }));
+          import('../services/staff/staffFallback'),
+        ]).then(([staff, _, fallbackMod]) => {
+          // Append synthetic staff for non-NBA clubs (Endesa, Euroleague, …)
+          // so CoachingView / TeamIntel / etc. don't show "Unknown Coach".
+          const nonNba = fallbackMod.generatePlaceholderNonNBAStaff(state);
+          const merged = {
+            ...staff,
+            coaches: [...(staff.coaches ?? []), ...nonNba.coaches],
+            gms: [...(staff.gms ?? []), ...nonNba.gms],
+            owners: [...(staff.owners ?? []), ...nonNba.owners],
+          };
+          setState(prev => ({ ...prev, staff: merged }));
         });
       });
     };
