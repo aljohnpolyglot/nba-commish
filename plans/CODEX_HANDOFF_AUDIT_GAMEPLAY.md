@@ -170,6 +170,58 @@ Or more semantically: keep `tradesAllowed` as user-visible toggle but **make the
 
 ---
 
+### P0-G: Non-EuroLeague clubs as the test path (domestic-only mode)
+
+**Verbatim from user:**
+> "macht non-eligible. vielleicht ich teste zu erst mit non-eligible Euroleague Spain Teams, nur domestic um das zu testen. kein EuroLeague im UI und danach in der Zukunft ein EuroCup-Qualifikation um EuroLeague zu erreichen"
+
+**The insight:** Real Madrid / FC Barcelona play BOTH Endesa AND EuroLeague — that's the most complex case (dual competition, alias-map between tids, roster sync between leagues, two parallel brackets). The user wants to test the simpler case FIRST: a mid-tier Endesa club that is **NOT in EuroLeague**, so the entire EL hub / EL schedule / EL-related UI is suppressed for that save. Get domestic-only working clean, then layer EL on top.
+
+**Required (MVP test path):**
+
+When the user picks a club that has no EuroLeague entry for the current season (e.g. Burgos, Granada, Manresa, Andorra in most years), the save should:
+
+1. **Hide the Euroleague tab entirely** in NavigationMenu / sidebar. Only Liga Endesa shows.
+2. **Suppress EuroLeague schedule generation** for this save (`competitionScheduler` should skip the EL spec if the user's club isn't an active EL team AND no other Endesa club is — but for solo testing, even with Real Madrid + Barça's EL games, the USER's hub UI just shouldn't surface EL).
+3. **Configurable per-save:** the user could pick Real Madrid and still want "domestic-only test mode" — so this should be a setup-time toggle OR a club-eligibility lookup driven from the Spain template.
+4. **Schedule cadence stays the same:** Endesa games weekly, no midweek EL game for the user's club. Roster doesn't need EL-side sync.
+
+**Two implementation paths — pick the simpler one for MVP:**
+
+- **Path A (eligibility-driven):** Spain template lists each club's `competitions: ['endesa', 'euroleague']` or `competitions: ['endesa']`. The user's selected team's `competitions` list determines what UI / schedule surfaces. Real Madrid → both. Burgos → only Endesa. Cleanest semantically.
+- **Path B (setup toggle):** Setup adds an "include EuroLeague?" checkbox in the Spain franchise picker. Defaults to YES for EL-eligible clubs, allows the user to opt-out for any club. Easier to ship, but requires a per-save flag.
+
+**Recommendation: Path A.** It mirrors real life (Burgos genuinely isn't in EL) and avoids a "fake test mode" feel. Path B can be added later as a debug-only override.
+
+**Files likely to touch:**
+- `src/services/competition/specs/spain.ts` — add `eligibleClubs: ['Real Madrid', 'Barcelona', 'Valencia', …]` to the EL spec
+- `src/utils/uiMode.ts` — add `userClubInCompetition(state, competitionId)` helper
+- `src/components/sidebar/NavigationMenu.tsx` — hide EL tab when user-club isn't EL-eligible
+- `src/services/competition/competitionScheduler.ts` — skip EL fixture-generation for clubs not in `eligibleClubs`
+- `src/components/setup/FranchisePicker.tsx` (Spain branch) — show a small "EuroLeague" badge or omit for non-EL clubs
+- (Future P2:) `src/services/competition/specs/eurocup.ts` — new EuroCup spec for the qualification path
+
+---
+
+### Future P2: EuroCup as the qualification path
+
+**Verbatim from user:**
+> "in der Zukunft ein EuroCup-Qualifikation um EuroLeague zu erreichen"
+
+Real European basketball has three continental tiers: EuroLeague (top 16) → EuroCup (~20 mid-tier) → FIBA Champions League (lower). The user wants the **EuroCup**: mid-tier Endesa clubs (e.g. Bilbao, Burgos, Gran Canaria) play in EuroCup, and the EuroCup winner gets a wild-card slot to next-season's EuroLeague.
+
+**Scope for future slice (NOT for this MVP):**
+
+- New `CompetitionSpec` for EuroCup: 24 teams, group stage → eighthfinals → bracket → final, ~30-game season
+- Promotion mechanic at season rollover: EuroCup champion auto-included in next season's EL `eligibleClubs`, while one EL bottom-table club gets relegated TO EuroCup
+- UI: new "EuroCup" tab/hub, parallel to Liga Endesa + Euroleague
+- Schedule cadence: EuroCup midweek games on Wednesdays (different from EL Tue/Thu) to avoid calendar collision
+- News: "Burgos qualifies for next season's EuroLeague!" headline at season end
+
+**Codex: don't ship this in the current pass.** Document it in `plans/euro-isolated-spain-mvp.md` as a future slice (Phase 5+) and move on.
+
+---
+
 ### P0-F: User-friendliness — expand tutorial coverage + Tycoon integration
 
 **Verbatim from user:**
