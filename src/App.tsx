@@ -10,6 +10,8 @@ import { ClubEffect } from './components/effects/ClubEffect';
 import { ToastNotifier } from './components/shared/ToastNotifier';
 import { RFAOfferSheetModal } from './components/modals/RFAOfferSheetModal';
 import { PlayButton } from './components/shared/PlayButton';
+import { TycoonWelcomeModal, hasSeenTycoonWelcome } from './components/tycoon/TycoonWelcomeModal';
+import { isEuroIsolatedMode } from './utils/uiMode';
 import { OffseasonNextActionButton, OffseasonPhaseBadge, OffseasonAufgabenSidebar, OffseasonAufgabenMobileSheet, OffseasonFATagFooter } from './components/offseason/OffseasonAufgaben';
 import { LazySimLoadingScreen } from './components/setup/LazySimLoadingScreen';
 import { LeagueTypeSelector, type LeagueType, type ModdedLeagueBase, type EuropeMarket } from './components/setup/LeagueTypeSelector';
@@ -37,6 +39,7 @@ function GameLayout() {
   const [moddedLeagueBase, setModdedLeagueBase] = useState<ModdedLeagueBase>('nba');
   const [europeMarket, setEuropeMarket] = useState<EuropeMarket | undefined>(undefined);
   const [activeMiniGame, setActiveMiniGame] = useState<'throne' | 'dunk' | '3point' | null>(null);
+  const [tycoonWelcomeOpen, setTycoonWelcomeOpen] = useState(false);
   const { state, dispatchAction, currentView, setCurrentView } = useGame();
   const labels = useLeagueLabels();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -54,6 +57,14 @@ function GameLayout() {
       fetchCharaniaPhotos();
     }
   }, [state.isDataLoaded, state.leagueType]);
+
+  // Tycoon Welcome: fire 3-slide intro on first Euro-Isolated save load (per-browser, once).
+  useEffect(() => {
+    if (!state.isDataLoaded) return;
+    if (!isEuroIsolatedMode(state)) return;
+    if (hasSeenTycoonWelcome()) return;
+    setTycoonWelcomeOpen(true);
+  }, [state.isDataLoaded, state.leagueStats?.uiMode]);
 
   // Auto-save effect (Debounced)
   useEffect(() => {
@@ -261,6 +272,7 @@ function GameLayout() {
         {state.isClubbing && <ClubEffect />}
         <ToastNotifier />
         <RFAOfferSheetModal />
+        <TycoonWelcomeModal open={tycoonWelcomeOpen} onClose={() => setTycoonWelcomeOpen(false)} />
         <OffseasonAufgabenMobileSheet />
         <OffseasonFATagFooter />
         {state.lastOutcome && state.gameMode !== 'gm' && !state.isProcessing && <OutcomeView />}

@@ -638,14 +638,14 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
         };
       case 'sponsorRenewals':
         return {
-          eyebrow: 'Tycoon',
+          eyebrow: 'Front Office',
           title: 'Sponsorship Renewals',
           body: 'One or more sponsorship slots have expired. Open negotiations to accept market offers or decline and fall back to default sponsors.',
           confirmLabel: 'Open Negotiations',
         };
       case 'facilityUpgrades':
         return {
-          eyebrow: 'Tycoon',
+          eyebrow: 'Front Office',
           title: 'Facility Review',
           body: 'Facility upgrades unlock in a future slice. For now you can review your current setup and skip.',
           confirmLabel: 'Skip For Now',

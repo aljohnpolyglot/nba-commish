@@ -96,7 +96,7 @@ export const TeamFinancesViewDetailed: React.FC = () => {
       return (
         <div className="h-full overflow-y-auto p-8 bg-slate-950 text-white">
           <button onClick={() => setCurrentView('Team Office')} className="flex items-center gap-2 text-slate-400 hover:text-white text-sm mb-6"><ArrowLeft size={16} /> Back</button>
-          <p className="text-slate-400">No tycoon data for this club yet — load a fresh Euro-Isolated save and the LOAD_GAME migration will seed it.</p>
+          <p className="text-slate-400">Club finance data is still loading — try reloading the save.</p>
         </div>
       );
     }
