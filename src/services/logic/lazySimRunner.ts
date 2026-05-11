@@ -27,17 +27,11 @@ import {
   autoOpenThroneVoting,
   autoLockThroneField,
   autoSimAllStarWeekend,
-  autoAnnounceCOY,
-  autoAnnounceSMOY,
-  autoAnnounceMIP,
-  autoAnnounceDPOY,
-  autoAnnounceROY,
-  autoAnnounceAllNBA,
-  autoAnnounceMVP,
   autoRunLottery,
   autoRunDraft,
   autoInductHOFClass,
 } from './autoResolvers';
+import { announce as announceAwardViaEngine, getAnnouncementEvents } from '../awards/AwardEngine';
 import { getHOFCeremonyDateString } from '../playerDevelopment/hofChecker';
 import { NewsGenerator } from '../news/NewsGenerator';
 import { applySeasonRollover } from './seasonRollover';
@@ -143,6 +137,22 @@ export const buildAutoResolveEvents = (y: number, leagueStats?: any): AutoResolv
   const draftDateStr        = toISODateString(getDraftDate(y, leagueStats));
   // HOF ceremony falls on the first Saturday of September (real-life Naismith)
   const hofCeremony = getHOFCeremonyDateString(y1);
+
+  // Award schedule — data-driven from AwardRegistry. Each enabled award
+  // contributes one event with its commissioner-configured date. NBA vs
+  // Euro mode shows different awards because their default `enabled` map
+  // differs, not because we hardcode different schedules here.
+  const stubState = {
+    leagueStats: leagueStats ?? { uiMode: 'nba' },
+    players: [], teams: [], nonNBATeams: [], staff: null, historicalAwards: [],
+  } as any;
+  const awardEvents: AutoResolveEvent[] = getAnnouncementEvents(stubState, y).map(ev => ({
+    date: ev.date,
+    key: `award_${ev.awardId}`,
+    resolver: (state: GameState) => announceAwardViaEngine(state, ev.awardId),
+    phase: ev.phase,
+  }));
+
   return [
     { date: `${y1}-08-06`, key: 'broadcasting_default',   resolver: autoBroadcastingDefault,         phase: 'Setting Broadcasting Deal...' },
     { date: `${y1}-08-12`, key: 'christmas_games',        resolver: autoPickChristmasGames,          phase: 'Setting Christmas Games...' },
@@ -160,14 +170,9 @@ export const buildAutoResolveEvents = (y: number, leagueStats?: any): AutoResolv
     { date: `${y}-02-05`,  key: 'dunk_contestants',       resolver: autoSelectDunkContestants,       phase: 'Selecting Dunk Contest Field...' },
     { date: `${y}-02-08`,  key: 'threepoint_contestants', resolver: autoSelectThreePointContestants, phase: 'Selecting 3-Point Contest Field...' },
     { date: `${y}-02-13`,  key: 'allstar_weekend',        resolver: autoSimAllStarWeekend,           phase: 'Simulating All-Star Weekend...' },
-    // Award announcements — staggered to match real NBA calendar
-    { date: `${y}-04-19`,  key: 'award_coy',              resolver: autoAnnounceCOY,                 phase: 'Announcing Coach of the Year...' },
-    { date: `${y}-04-22`,  key: 'award_smoy',             resolver: autoAnnounceSMOY,                phase: 'Announcing Sixth Man of the Year...' },
-    { date: `${y}-04-25`,  key: 'award_mip',              resolver: autoAnnounceMIP,                 phase: 'Announcing Most Improved Player...' },
-    { date: `${y}-04-28`,  key: 'award_dpoy',             resolver: autoAnnounceDPOY,                phase: 'Announcing Defensive Player of the Year...' },
-    { date: `${y}-05-02`,  key: 'award_roy',              resolver: autoAnnounceROY,                 phase: 'Announcing Rookie of the Year...' },
-    { date: `${y}-05-07`,  key: 'award_allnba',           resolver: autoAnnounceAllNBA,              phase: 'Announcing All-NBA Teams...' },
-    { date: `${y}-05-21`,  key: 'award_mvp',              resolver: autoAnnounceMVP,                 phase: 'Announcing MVP...' },
+    // Award announcements — generated from the AwardRegistry, gated per save's
+    // commissioner-configured `awardSettings.enabled` map.
+    ...awardEvents,
     // Draft events
     { date: draftLotteryDateStr, key: 'draft_lottery', resolver: autoRunLottery, phase: 'Running Draft Lottery...' },
     { date: draftDateStr,        key: 'draft_execute', resolver: autoRunDraft,   phase: 'Executing NBA Draft...' },
@@ -572,6 +577,18 @@ export const runLazySim = async (
       // Phase defaults to the date-stage label each iteration so event-specific
       // strings (e.g. "Inducting HOF Class...") don't persist across later batches.
       currentPhase = getPhaseLabel(currentNorm, state.leagueStats.year);
+
+      // Tycoon daily tick (Euro-Isolated only). Fires sparse, non-spammy in-season
+      // events (sponsor warnings, bank alarms, crisis meetings). Idempotent: keyed
+      // on currentNorm so a single ISO date never fires the same checks twice.
+      if (state.leagueStats?.uiMode === 'euro_isolated') {
+        try {
+          const tycoonTick = (await import('../tycoon/eventChecker')).tick;
+          tycoonTick({ state, gameDate: currentNorm });
+        } catch (e) {
+          console.warn('[tycoon] daily tick failed', e);
+        }
+      }
       console.log(`[LAZY_SIM] 🔁 iter ${iterNum} — currentNorm=${currentNorm}, targetNorm=${targetNorm}, state.day=${state.day}, stopBefore=${stopBefore}`);
       // stopBefore=true: break AT target (don't sim target day's games — land on target with games unplayed).
       // stopBefore=false: break only when past target (sim target day's games — default, needed for Sim Round / Sim Playoffs).
