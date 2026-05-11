@@ -15,7 +15,7 @@
  * that on Aug 14 when it detects no regular-season games exist.
  */
 
-import { GameState, NBAPlayer, NBACupState } from '../../types';
+import { GameState, NBAPlayer, NBACupState, HistoricalAward } from '../../types';
 import { applyCapInflation } from '../../utils/finance/inflationUtils';
 import { drawCupGroups } from '../nbaCup/drawGroups';
 import { sweepExpiredTPEs } from '../../utils/tradeExceptionUtils';
@@ -35,6 +35,15 @@ import { getRolloverDate, toISODateString, getFreeAgencyStartDate, formatGameDat
 import { isNbaCupEnabled } from '../../utils/ruleFlags';
 import { getActiveUserBidMarketPlayerIds } from '../freeAgencyBidding';
 import { getOffseasonState, logOffseasonDrift } from '../offseason/offseasonState';
+import { isEuroIsolatedMode } from '../../utils/uiMode';
+import { getTeamFullName } from '../../utils/teamNames';
+import { resolveAnyTeam } from '../../utils/teamLookup';
+import { resolveCompetitionSeason, type CompetitionSeasonResolution } from '../competition/competitionResolver';
+import { selectCompetitionTeamTids } from '../competition/competitionScheduler';
+import * as tycoonBudget from '../tycoon/budgetEngine';
+import * as tycoonLedger from '../tycoon/ledgerEngine';
+import * as tycoonSponsor from '../tycoon/sponsorshipEngine';
+import * as tycoonFacility from '../tycoon/facilityEngine';
 
 // Bird-Rights computation. Repeated 5× across rollover branches (option-in,
 // option-decline, option-exercise, contract-expired, still-under-contract).
@@ -1083,6 +1092,139 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     };
   }
 
+  const euroCompetitionResolutions: CompetitionSeasonResolution[] = isEuroIsolatedMode(state)
+    ? (state.activeCompetitions ?? [])
+        .filter(spec => spec.id === 'endesa' || spec.id === 'euroleague')
+        .map(spec => {
+          const seedTids = selectCompetitionTeamTids(spec, state);
+          return resolveCompetitionSeason(spec, state.boxScores, currentYear, seedTids);
+        })
+        .filter((result): result is CompetitionSeasonResolution => result !== null)
+    : [];
+
+  const euroChampionHistory = euroCompetitionResolutions.flatMap(result => {
+    const spec = state.activeCompetitions?.find(c => c.id === result.competitionId);
+    const champion = result.championTid != null ? resolveAnyTeam(result.championTid, state.teams, state.nonNBATeams ?? []) : null;
+    const runnerUp = result.runnerUpTid != null ? resolveAnyTeam(result.runnerUpTid, state.teams, state.nonNBATeams ?? []) : null;
+    if (!champion || !spec) return [];
+    return [
+      {
+        text: `${getTeamFullName(champion)} won the ${spec.displayName} ${currentYear} title${runnerUp ? ` over ${getTeamFullName(runnerUp)}` : ''}.`,
+        date: state.date,
+        type: 'Champion' as const,
+        tid: result.championTid,
+        competitionId: result.competitionId,
+      },
+      ...(runnerUp ? [{
+        text: `${getTeamFullName(runnerUp)} finished runner-up in the ${spec.displayName} ${currentYear}.`,
+        date: state.date,
+        type: 'Runner Up' as const,
+        tid: result.runnerUpTid,
+        competitionId: result.competitionId,
+      }] : []),
+    ];
+  });
+  // ── Tycoon: Year-End Ledger Snapshot ───────────────────────────────────
+  // Compute the annual ledger for each Euro club, push into ledgerHistory,
+  // update cashOnHand, dekrement sponsor years, complete pending facility
+  // upgrades. Stash recent results on team for next-season UI preview +
+  // sponsor offers. All mutations happen in-place on the team objects, which
+  // are then re-exported via the existing `teams: teamsWithSweptTPEs` return.
+  if (isEuroIsolatedMode(state)) {
+    const endesaResolution = euroCompetitionResolutions.find(r => r.competitionId === 'endesa');
+    const euroleagueResolution = euroCompetitionResolutions.find(r => r.competitionId === 'euroleague');
+
+    const getEndesaFinish = (tid: number): number => {
+      if (!endesaResolution) return 9;
+      const idx = endesaResolution.standings.findIndex(s => s.tid === tid);
+      return idx === -1 ? 9 : idx + 1;
+    };
+    const getEuroleagueStage = (tid: number): 'final-four' | 'qf' | 'group' | 'none' => {
+      if (!euroleagueResolution) return 'none';
+      if (euroleagueResolution.championTid === tid || euroleagueResolution.runnerUpTid === tid
+          || euroleagueResolution.semifinalistTids.includes(tid)) return 'final-four';
+      if (euroleagueResolution.quarterfinalistTids.includes(tid)) return 'qf';
+      const seedRow = euroleagueResolution.standings.find(s => s.tid === tid);
+      return seedRow ? 'group' : 'none';
+    };
+    const countEuroleagueAwayGames = (tid: number): number =>
+      (state.boxScores ?? []).filter((g: any) =>
+        g.competitionId === 'euroleague' && g.awayTeamId === tid && g.season === currentYear
+      ).length;
+    const getEndesaPrize = (tid: number): number => {
+      const spec = state.activeCompetitions?.find(c => c.id === 'endesa') as any;
+      const finish = getEndesaFinish(tid);
+      const pool: any[] = spec?.prizePool ?? [];
+      return pool[finish - 1] ?? 0;
+    };
+    const getEuroleaguePrize = (tid: number): number => {
+      const spec = state.activeCompetitions?.find(c => c.id === 'euroleague') as any;
+      const stage = getEuroleagueStage(tid);
+      const pool = spec?.prizePool ?? {};
+      if (stage === 'final-four') {
+        if (euroleagueResolution?.championTid === tid) return pool.champion ?? 0;
+        if (euroleagueResolution?.runnerUpTid === tid) return pool.runnerUp ?? 0;
+        return pool.semifinal ?? 0;
+      }
+      if (stage === 'qf') return pool.quarterfinal ?? 0;
+      if (stage === 'group') return pool.group ?? 0;
+      return 0;
+    };
+
+    for (const team of teamsWithSweptTPEs as any[]) {
+      if (!team.tycoon) continue;
+      try {
+        const tid = team.id ?? team.tid;
+        const endesaFinish = getEndesaFinish(tid);
+        const elStage = getEuroleagueStage(tid);
+        const elAway = countEuroleagueAwayGames(tid);
+
+        const ledger = tycoonBudget.computeAnnualBudget(team, {
+          year: currentYear,
+          endesaFinishPosition: endesaFinish,
+          euroleagueStage: elStage,
+          euroleagueAwayGames: elAway,
+          endesaPrizeEUR: getEndesaPrize(tid),
+          euroleaguePrizeEUR: getEuroleaguePrize(tid),
+        });
+        tycoonLedger.snapshot(team, ledger);
+        tycoonSponsor.dekrementSponsorshipYears(team.tycoon);
+        tycoonFacility.completeFinishedUpgrades(team, nextYear);
+
+        team.recentEndesaPositions = [...(team.recentEndesaPositions ?? []), endesaFinish].slice(-3);
+        team.recentEuroleagueStages = [...(team.recentEuroleagueStages ?? []), elStage].slice(-3);
+        team.lastEndesaFinish = endesaFinish;
+        team.lastEuroleagueStage = elStage;
+        team.lastEuroAwayGames = elAway;
+        if (endesaResolution?.championTid === tid) team.justWonEndesa = true;
+        if (elStage === 'final-four') team.justReachedEuroFinalFour = true;
+      } catch (e) {
+        console.warn(`[tycoon] year-end snapshot failed for team ${team.id ?? team.tid}`, e);
+      }
+    }
+  }
+
+  const euroHistoricalAwards: HistoricalAward[] = euroCompetitionResolutions.flatMap(result => {
+    const champion = result.championTid != null ? resolveAnyTeam(result.championTid, state.teams, state.nonNBATeams ?? []) : null;
+    const runnerUp = result.runnerUpTid != null ? resolveAnyTeam(result.runnerUpTid, state.teams, state.nonNBATeams ?? []) : null;
+    return [
+      ...(champion ? [{
+        season: currentYear,
+        type: 'Champion',
+        name: getTeamFullName(champion),
+        tid: result.championTid ?? undefined,
+        competitionId: result.competitionId,
+      } as HistoricalAward & { competitionId: string }] : []),
+      ...(runnerUp ? [{
+        season: currentYear,
+        type: 'Runner Up',
+        name: getTeamFullName(runnerUp),
+        tid: result.runnerUpTid ?? undefined,
+        competitionId: result.competitionId,
+      } as HistoricalAward & { competitionId: string }] : []),
+    ];
+  });
+
   return {
     players: playersFinalized,
     teams: teamsWithSweptTPEs,
@@ -1098,6 +1240,18 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
         ...((state as any).historicalPlayoffs ?? {}),
         ...(state.playoffs ? { [currentYear]: state.playoffs } : {}),
       },
+      competitionHistory: euroCompetitionResolutions.length > 0
+        ? {
+            ...((state as any).competitionHistory ?? {}),
+            ...Object.fromEntries(euroCompetitionResolutions.map(result => [
+              result.competitionId,
+              [
+                ...(((state as any).competitionHistory?.[result.competitionId] ?? []) as CompetitionSeasonResolution[]).filter(entry => entry.season !== currentYear),
+                result,
+              ],
+            ])),
+          }
+        : (state as any).competitionHistory,
     } as any),
     ...nbaCupPatch,
     playoffs: undefined,
@@ -1120,6 +1274,14 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     draftLotteryResult: undefined,
     activeDraftPicks: undefined,   // clear any abandoned mid-draft session
     activeDraftOrder: undefined,
+    historicalAwards: euroHistoricalAwards.length > 0
+      ? [
+          ...(state.historicalAwards ?? []).filter((award: any) =>
+            !(award.competitionId && award.season === currentYear && (award.type === 'Champion' || award.type === 'Runner Up')),
+          ),
+          ...euroHistoricalAwards,
+        ]
+      : state.historicalAwards,
     faBidding: { markets: preservedUserBidMarkets },
     pendingRFAMatchResolutions: [],
     leagueStats: {
@@ -1159,7 +1321,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     seasonPreviewDismissed: true,  // stays hidden through FA; shown when preseason starts (Oct 1)
     draftComplete: undefined,      // reset so draft can run for new year
     news: [...jerseyRetirementNewsItems, ...hofNewsItems, ...mortalityNewsItems, ...farewellNewsItems, ...teamOptionNewsItems, ...playerOptionNewsItems, ...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
-    history: [...(state.history ?? []), ...playerOptionHistory, ...teamOptionHistoryEntries, ...optionExtHistory, ...retirementHistoryEntries, ...farewellHistoryEntries, ...hofHistoryEntries, ...jerseyRetirementHistoryEntries, ...mortalityHistoryEntries, ...extRetireHistory, ...extFAHistory],
+    history: [...(state.history ?? []), ...playerOptionHistory, ...teamOptionHistoryEntries, ...optionExtHistory, ...euroChampionHistory, ...retirementHistoryEntries, ...farewellHistoryEntries, ...hofHistoryEntries, ...jerseyRetirementHistoryEntries, ...mortalityHistoryEntries, ...extRetireHistory, ...extFAHistory],
     ...(pendingOptionToasts.length > 0
       ? { pendingOptionToasts: [...(state.pendingOptionToasts ?? []), ...pendingOptionToasts] }
       : {}),
