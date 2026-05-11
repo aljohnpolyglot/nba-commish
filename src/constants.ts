@@ -502,6 +502,11 @@ export const EURO_ISOLATED_DEFAULTS: Partial<LeagueStats> = {
   uiMode: 'euro_isolated',
   currency: 'EUR',
   tradesAllowed: false,
+  // FIBA / Euroleague / Endesa cadence: 4 × 10-minute quarters = 40-min game,
+  // 200-min team budget. Without this, GameSimulator falls back to NBA defaults
+  // (12 × 4 = 48-min game, 240-min team budget).
+  quarterLength: 10,
+  numQuarters: 4,
   draftType: 'no_draft',
   draftEligibilityRule: 'none',
   minAgeRequirement: 18,

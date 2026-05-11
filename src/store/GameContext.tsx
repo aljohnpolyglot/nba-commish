@@ -1230,6 +1230,16 @@ const actions = useGameActions(setState, () => stateRef.current);
           leagueStats: migratedLeagueStats as any,
         });
         if (migrated > 0) console.log(`[LOAD_GAME] [tycoon] migrated ${migrated} teams to tycoon state`);
+
+        // FIBA cadence: 10-min quarters. Heal saves created before the cadence
+        // was seeded into EURO_ISOLATED_DEFAULTS, so the simulator stops running
+        // 48-min NBA games on Endesa/EuroLeague fixtures. Existing player stats
+        // logged with NBA cadence keep their values; only new games shift.
+        if ((migratedLeagueStats as any).quarterLength !== 10 || (migratedLeagueStats as any).numQuarters !== 4) {
+          console.log(`[LOAD_GAME] [euro] healed quarterLength ${(migratedLeagueStats as any).quarterLength} → 10, numQuarters ${(migratedLeagueStats as any).numQuarters} → 4`);
+          (migratedLeagueStats as any).quarterLength = 10;
+          (migratedLeagueStats as any).numQuarters = 4;
+        }
       }
 
       setState({
