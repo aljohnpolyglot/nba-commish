@@ -307,6 +307,13 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     () => getVisibleOffseasonRows(state.leagueStats, userTeam as any),
     [state.leagueStats, userTeam],
   );
+
+  // Sponsor-renewal status: how many of the 3 slots are expired right now?
+  const expiredSponsorCount = React.useMemo(() => {
+    const s = (userTeam as any)?.tycoon?.sponsorships;
+    if (!s) return 0;
+    return (['kit', 'sleeve', 'stadium'] as const).reduce((n, k) => n + (s[k] === null ? 1 : 0), 0);
+  }, [userTeam]);
   const confirmActionRef = useRef<(() => void) | null>(null);
   // GM-Mode Expansion-Modals — mountable direkt aus der Sidebar, weil im GM
   // die Actions-Tab nicht existiert und Navigation dorthin ins Leere führt.
@@ -636,13 +643,22 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
           body: 'This moves you into training camp. Continue only if you want to work on camp decisions now.',
           confirmLabel: resume ? 'Resume Camp' : 'Open Camp',
         };
-      case 'sponsorRenewals':
+      case 'sponsorRenewals': {
+        const expiredSlots = (() => {
+          const s = (userTeam as any)?.tycoon?.sponsorships;
+          if (!s) return [] as string[];
+          return (['kit', 'sleeve', 'stadium'] as const).filter(k => s[k] === null);
+        })();
+        const slotList = expiredSlots.length === 0
+          ? 'no slots'
+          : expiredSlots.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ');
         return {
           eyebrow: 'Front Office',
           title: 'Sponsorship Renewals',
-          body: 'One or more sponsorship slots have expired. Open negotiations to accept market offers or decline and fall back to default sponsors.',
+          body: `${expiredSlots.length} of 3 sponsorship slot${expiredSlots.length === 1 ? '' : 's'} expired: ${slotList}. Open negotiations to accept market offers — or decline and fall back to default sponsors at ~50% of your tier floor.`,
           confirmLabel: 'Open Negotiations',
         };
+      }
       case 'facilityUpgrades':
         return {
           eyebrow: 'Front Office',
@@ -947,6 +963,14 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
                       Engaged
                     </span>
                   )}
+                  {row === 'sponsorRenewals' && expiredSponsorCount > 0 && !isResolved && (
+                    <span
+                      title={`${expiredSponsorCount} sponsorship slot${expiredSponsorCount === 1 ? '' : 's'} expired and waiting for negotiation`}
+                      className="text-[8px] uppercase tracking-widest font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded"
+                    >
+                      {expiredSponsorCount}/3
+                    </span>
+                  )}
                   {STATUS_LABEL[status] && (
                     <span className="text-[8px] uppercase tracking-widest font-bold text-slate-500 shrink-0">
                       {STATUS_LABEL[status]}
@@ -1017,12 +1041,25 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
         </div>
       )}
 
-      {/* Tycoon: SponsorshipNegotiationModal — opened from sponsorRenewals row. */}
+      {/* SponsorshipNegotiationModal — opened from sponsorRenewals offseason row.
+          Row only marks COMPLETE when every slot has been resolved (renewed or
+          declined to default). Leaving expired slots keeps the row in-progress
+          so the user has to come back. */}
       <SponsorshipNegotiationModal
         open={sponsorModalOpen}
         onClose={() => {
           setSponsorModalOpen(false);
-          dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'sponsorRenewals' } } as any);
+          // Re-read latest team state via stateRef equivalent — userTeam is closed-over;
+          // re-derive count from current state.teams.
+          const latestUser = state.teams.find((t: any) => (t.id ?? t.tid) === state.userTeamId);
+          const s = (latestUser as any)?.tycoon?.sponsorships;
+          const remainingExpired = s
+            ? (['kit', 'sleeve', 'stadium'] as const).reduce((n, k) => n + (s[k] === null ? 1 : 0), 0)
+            : 0;
+          if (remainingExpired === 0) {
+            dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'sponsorRenewals' } } as any);
+          }
+          // If slots remain expired, leave the row 'in-progress' — user must reopen.
         }}
       />
 
