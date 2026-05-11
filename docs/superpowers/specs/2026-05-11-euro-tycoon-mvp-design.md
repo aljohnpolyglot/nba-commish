@@ -2,6 +2,8 @@
 
 > **Scope:** Erste Tycoon-Slice für `uiMode === 'euro_isolated'`. Ersetzt den kosmetischen Fake-Ledger in `TeamFinancesViewDetailed.tsx` durch eine echte Budget-Engine (T1), ein 3-Slot-Sponsoring-System mit Renewals (T2) und year-over-year persistierten Annual Ledger (T8). NBA-Mode bleibt unangetastet.
 >
+> **Tycoon ist Default in Europe-Mode, kein Toggle.** Jeder `uiMode === 'euro_isolated'`-Save bekommt automatisch den Tycoon-Layer; es gibt kein `tycoonEnabled`-Flag und keinen Easy-Mode. Europe = hard mode by design.
+>
 > **Follow-up Slices (eigene Specs):** T5 Facilities mit Sim-Hooks · T17 Board Confidence · T16 FFP · T7 Bankruptcy-Ladder.
 
 ## Goal
@@ -10,6 +12,7 @@ Ein Spanish-Endesa-GM-Save mit `tycoonEnabled === true` zeigt im TeamFinancesVie
 
 ## Acceptance Criteria
 
+- [ ] **AC-0** Jeder neue Save mit `uiMode === 'euro_isolated'` hat ab dem ersten Tick `team.tycoon` für alle Klubs befüllt. Kein User-Setting, kein `tycoonEnabled`-Toggle, kein Opt-out.
 - [ ] **AC-1** Real Madrid Saison 2026: TeamFinancesView Euro-Branch zeigt `Revenue ~€56M`, `Wages ~€35M`, `Profit ~+€14M`. Alle Werte aus echten Quellen (Matchday + Sponsorship-Verträge + Prize Pool + TV + Erfolg-Multiplikator), nicht aus `payroll × Faktor`.
 - [ ] **AC-2** Burgos in derselben Saison: `Revenue ~€4.5M`, `Profit ~−€700K`. Der Spread Real Madrid ↔ Burgos kommt nicht aus Payroll-Größe, sondern aus Tier × Matchday × Sponsorship × Erfolg.
 - [ ] **AC-3** Sponsorship-Card zeigt 3 echte Slots (Kit / Sleeve / Stadium) mit `valuePerYear`, `yearsRemaining`, Sponsor-Name. Keine "Tycoon placeholder"-Strings mehr.
@@ -20,7 +23,7 @@ Ein Spanish-Endesa-GM-Save mit `tycoonEnabled === true` zeigt im TeamFinancesVie
 - [ ] **AC-8** `team.tycoon.cashOnHand` wird nach jedem Year-End um `ledger.profit` angepasst und über Saves hinweg persistiert.
 - [ ] **AC-9** `team.tycoon.ffpRollingDeficit` summiert `min(profit, 0)` der letzten 3 Saisons. Wird im UI als kleines Banner in der Ledger-History-Card angezeigt (Vorbereitung für Slice T16; keine Strafen in dieser MVP-Slice).
 - [ ] **AC-10** NBA-Saves zeigen keine Verhaltensänderung: TeamFinancesView NBA-Branch unverändert, kein `team.tycoon`-Zugriff auf NBA-Teams, kein Performance-Hit beim Year-End-Rollover für NBA-Pfad.
-- [ ] **AC-11** Bestehende Euro-Saves ohne `team.tycoon`-Feld werden beim `LOAD_GAME` migriert: Defaults seedet + 3 Sponsoring-Slots mit `yearsRemaining` zufällig 1–4 Jahre, damit Renewals nicht alle gleichzeitig kommen.
+- [ ] **AC-11** Bestehende Euro-Saves ohne `team.tycoon`-Feld werden beim `LOAD_GAME` migriert: Defaults seedet + 3 Sponsoring-Slots mit `yearsRemaining` zufällig 1–4 Jahre, damit Renewals nicht alle gleichzeitig kommen. Migration ist verpflichtend (kein "Opt-in"-Pfad für Alt-Saves).
 
 ## Architektur
 
@@ -119,11 +122,11 @@ src/components/tycoon/
 | File | LOC | Was |
 |------|-----|-----|
 | `src/components/central/view/TeamFinancesViewDetailed.tsx` Z. 83–125 | ~50 LOC | Fake-Ledger raus, drei neue Cards rein (AnnualLedger / Sponsorship / History) |
-| `src/services/seasonRollover.ts` | ~15 LOC | `if (tycoonEnabled) { ledger = budgetEngine.compute(...); ledgerEngine.snapshot(team, ledger); }` |
+| `src/services/seasonRollover.ts` | ~15 LOC | `if (isEuroIsolatedMode(state)) { ledger = budgetEngine.compute(...); ledgerEngine.snapshot(team, ledger); }` |
 | `src/store/reducers/LOAD_GAME` | ~25 LOC | Migration: Euro-Saves ohne `team.tycoon` → seed Defaults aus `specs/spain.ts` |
 | `src/services/offseason/offseasonState.ts` | ~10 LOC | Neue Rows `sponsorRenewalKit/Sleeve/Stadium` in `OFFSEASON_ROW_ORDER`, gated auf Euro-mode + `yearsRemaining === 0` |
 | `src/services/offseason/getStepConfirmSpec.ts` | ~15 LOC | `case`-Einträge für die 3 neuen Rows (öffnet `SponsorshipNegotiationModal`) — siehe CLAUDE.md Bug #8 |
-| `src/services/simulation/simulationHandler.ts` | ~8 LOC | Daily-Tick: `if (tycoonEnabled) eventChecker.tick(team, gameDate)` |
+| `src/services/simulation/simulationHandler.ts` | ~8 LOC | Daily-Tick: `if (isEuroIsolatedMode(state)) eventChecker.tick(team, gameDate)` |
 
 ## Budget-Engine (T1) — Formel
 
@@ -200,9 +203,9 @@ marketValue(team, slot) =
 In `seasonRollover.ts`, hinzugefügt nach CompetitionResults-Resolution und vor Offseason-Start:
 
 ```ts
-if (state.leagueStats.tycoonEnabled) {
+if (isEuroIsolatedMode(state)) {
   for (const team of state.teams) {
-    if (!team.tycoon) continue;  // NBA-Teams oder un-migrierte Teams
+    if (!team.tycoon) continue;  // NBA-Teams oder noch-nicht-migrierte Klubs (sollte nach LOAD_GAME-Migration nie greifen)
 
     // 1. Berechne aktuellen Ledger
     const ledger = budgetEngine.computeAnnualBudget(team, state.leagueStats, competitionResults);
@@ -271,7 +274,8 @@ if (state.leagueStats.tycoonEnabled) {
    - `cashOnHand`: Tier-spezifischer Start-Cash (S: €40M, A: €15M, B: €5M, C: €2M, D: €500K)
    - `boardConfidence: 60`
    - `ffpRollingDeficit: 0`
-4. `state.leagueStats.tycoonEnabled = true` setzen, falls noch nicht gesetzt
+
+Kein `tycoonEnabled`-Flag — der `uiMode === 'euro_isolated'`-Check ist die einzige Quelle der Wahrheit.
 
 ## Was diese Slice NICHT macht
 
@@ -280,7 +284,8 @@ if (state.leagueStats.tycoonEnabled) {
 - Keine FFP-Strafen — `ffpRollingDeficit` wird nur gepflegt, nicht ausgewertet (Slice T16)
 - Keine Bankruptcy-Ladder — `financeCosts` bleibt 0 in MVP (Slice T7)
 - Keine FM-Sponsor-Bidding-Wars (Backlog "New Features")
-- Kein NBA-Tycoon-Import (User-Mandate: erst Euro fertig, dann NBA-Port)
+- Kein NBA-Tycoon-Import (User-Mandate: erst Euro fertig, dann NBA-Port; NBA-Owner-Modell mit Milliardärs-Owner macht Tycoon dort ohnehin entwertet)
+- Kein Easy-Mode / kein `tycoonEnabled`-Toggle. Europe-Mode ist per Design hard.
 
 ## Folgespecs (eigene Docs)
 
