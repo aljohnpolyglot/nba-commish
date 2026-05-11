@@ -270,7 +270,22 @@ export const useGameActions = (setState: React.Dispatch<React.SetStateAction<Gam
     });
   };
 
+  /**
+   * Apply an in-place mutation to a team's tycoon state and trigger a re-render.
+   * The callback is given direct access to the team; mutate fields in place,
+   * and this wrapper handles the immutable shell around the teams array.
+   */
+  const applyTycoonMutation = (teamId: number, mutator: (team: any) => void) => {
+    setState(prev => {
+      const team = prev.teams.find((t: any) => (t.id ?? t.tid) === teamId);
+      if (!team) return prev;
+      mutator(team);
+      return { ...prev, teams: [...prev.teams] };
+    });
+  };
+
   return {
+    applyTycoonMutation,
     markEmailRead,
     clearOutcome,
     saveSocialThread,
