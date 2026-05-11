@@ -8,7 +8,7 @@ import type { NBAPlayer, NBATeam } from '../../../types';
 import {
   formatSalaryM, formatSalaryMPrecise, computeContractOffer, getCapThresholds, getTeamPayrollUSD, getContractLimits, getMLEAvailability, computeExternalBuyout, contractToUSD, hasBirdRights,
 } from '../../../utils/salaryUtils';
-import { normalizeDate, convertTo2KRating } from '../../../utils/helpers';
+import { normalizeDate, convertTo2KRating, formatCurrencyWithCode, getLeagueCurrencyCode } from '../../../utils/helpers';
 import { getDisplayPotential } from '../../../utils/playerRatings';
 import { getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd, getGameDateParts, isInMoratorium, parseGameDate } from '../../../utils/dateUtils';
 import { getPlayerImage } from '../../central/view/bioCache';
@@ -64,6 +64,9 @@ const ALL_TABS: { id: TabType; label: string; icon: React.ElementType }[] = [
   { id: 'FINANCES',    label: 'Finances',    icon: Wallet     },
   { id: 'OFFERS',      label: 'Team Offers', icon: History    },
 ];
+
+// Tabs hidden in Euro-Isolated mode — no cap/MLE/Bird-Rights system to display.
+const EURO_HIDDEN_TABS = new Set<TabType>(['FINANCES']);
 
 // Peak FA = first 2 weeks after free agency opens. Competing bids are noisy after that.
 const PEAK_FA_DAYS = 14;
@@ -160,6 +163,13 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
 
   const thresholds  = useMemo(() => getCapThresholds(leagueStats), [leagueStats]);
   const teamPayroll = useMemo(() => getTeamPayrollUSD(state.players, team.id, team, state.leagueStats?.year), [state.players, team, state.leagueStats?.year]);
+  const currencyCode = getLeagueCurrencyCode(leagueStats);
+  const money = (value: number) => currencyCode === 'USD'
+    ? formatSalaryM(value)
+    : formatCurrencyWithCode(value, currencyCode, false);
+  const moneyPrecise = (value: number, decimals = 2) => currencyCode === 'USD'
+    ? formatSalaryMPrecise(value, decimals)
+    : formatCurrencyWithCode(value, currencyCode, false);
 
   // Roster-slot accounting. Training camp rule: 21 TOTAL (standard + NG + two-way all share one pool).
   // Regular season: 15 standard (guaranteed + NG) + 3 two-way are separate buckets.
@@ -389,15 +399,18 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   const isBiddingMode = !!onSubmitBid && !autoAccept && !isResignFromOwnTeam && player.tid < 0 && state.gameMode === 'gm';
   const shouldSubmitBid = isBiddingMode && (hasActiveMarket || isPeakFA);
   const showOffersTab = hasActiveMarket || isPeakFA;
+  const euroIsolated = state.leagueStats?.uiMode === 'euro_isolated';
 
-  const tabs = useMemo(
-    () => (showOffersTab ? ALL_TABS : ALL_TABS.filter(t => t.id !== 'OFFERS')),
-    [showOffersTab],
-  );
+  const tabs = useMemo(() => {
+    let result = showOffersTab ? ALL_TABS : ALL_TABS.filter(t => t.id !== 'OFFERS');
+    if (euroIsolated) result = result.filter(t => !EURO_HIDDEN_TABS.has(t.id));
+    return result;
+  }, [showOffersTab, euroIsolated]);
 
   useEffect(() => {
     if (!showOffersTab && activeTab === 'OFFERS') setActiveTab('NEGOTIATION');
-  }, [showOffersTab, activeTab]);
+    if (euroIsolated && EURO_HIDDEN_TABS.has(activeTab)) setActiveTab('NEGOTIATION');
+  }, [showOffersTab, activeTab, euroIsolated]);
 
   // One-shot initializer per player — otherwise isTwoWayCandidate keeps forcing TWO_WAY
   // back on after the user picks GUARANTEED (minAllowed / maxAllowed depend on contractType,
@@ -697,7 +710,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
           </div>
           <div className="px-8 pb-8 w-full flex flex-col items-center">
             <p className="text-white/80 italic mb-4 leading-relaxed text-sm">
-              Signing {player.name} at {formatSalaryMPrecise(salary, 2)} takes the {team.name} to {formatSalaryM(projectedPayroll)} — {formatSalaryM(overBy)} over the cap, with no MLE or Bird Rights to cover it.
+              Signing {player.name} at {moneyPrecise(salary, 2)} takes the {team.name} to {money(projectedPayroll)} — {money(overBy)} over the cap, with no MLE or Bird Rights to cover it.
             </p>
             <p className="text-[10px] text-white/40 mb-6 leading-relaxed">
               Options: drop the salary so an MLE fits, restructure around Bird Rights by re-signing a different player, or walk away.
@@ -932,7 +945,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
               Buyout Refused
             </h2>
             <p className="text-white/80 italic mb-8 leading-relaxed text-sm">
-              "Nah. We're not giving you {player.name} for {formatSalaryM(totalBuyoutPaidUSD)}. We're asking {formatSalaryM(buyout.estimatedBuyoutUSD)} and we mean it. Come back when you're serious."
+              Nah. We're not giving you {player.name} for {money(totalBuyoutPaidUSD)}. We're asking {money(buyout.estimatedBuyoutUSD)} and we mean it. Come back when you're serious.
             </p>
             <div className="flex flex-col gap-2 w-full">
               <button
@@ -1219,7 +1232,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                 { label: 'Last', value: (() => {
                     const lastUSD = (player as any).lastSalaryUSD
                       ?? (player.contract?.amount ? player.contract.amount * 1_000 : 0);
-                    return lastUSD > 0 ? formatSalaryM(lastUSD) : 'N/A';
+                    return lastUSD > 0 ? money(lastUSD) : 'N/A';
                   })() },
               ].map(({ label, value }) => (
                 <div key={label} className="min-w-[72px] shrink-0 md:min-w-0">
@@ -1383,8 +1396,8 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                         <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex justify-between items-center mb-2">
                           Year 1 Salary
                           <div className="flex gap-3 text-[10px]">
-                            <span className="text-[#e21d37]">MIN {formatSalaryM(minAllowed)}</span>
-                            <span className="text-white/50">MAX {formatSalaryM(maxAllowed)}</span>
+                            <span className="text-[#e21d37]">MIN {money(minAllowed)}</span>
+                            <span className="text-white/50">MAX {money(maxAllowed)}</span>
                           </div>
                         </label>
                         <div className={`flex items-center justify-between h-16 bg-white/[0.04] border border-white/10 rounded-sm px-4 transition-all ${
@@ -1398,7 +1411,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                             <ChevronLeft size={18} />
                           </button>
                           <div className="text-center">
-                            <span className="text-2xl font-black italic text-white">{formatSalaryMPrecise(salary, 2)}</span>
+                            <span className="text-2xl font-black italic text-white">{moneyPrecise(salary, 2)}</span>
                             <p className="text-[8px] font-bold uppercase text-white/30 tracking-widest mt-0.5">Starting Amount</p>
                           </div>
                           <button
@@ -1456,7 +1469,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                       {/* Bird Rights + Supermax eligibility read-outs — non-editable,
                           surface what the contract limits logic derived so the user
                           knows whether max / supermax / extra years are unlocked. */}
-                      {(() => {
+                      {!euroIsolated && (() => {
                         const hasBird = hasOwnTeamBirdRights || !!(player as any).hasBirdRights;
                         const svc = ((player as any).stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
                         const recent = ((player as any).awards ?? []).filter((a: any) => a.season && a.season >= (leagueStats?.year ?? new Date().getFullYear()) - 3);
@@ -1513,13 +1526,13 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                           <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex justify-between items-center mb-2">
                             Buyout — {buyout.league}
                             <span className="text-[10px] text-orange-400">
-                              Asking {formatSalaryM(buyout.estimatedBuyoutUSD)}
+                              Asking {money(buyout.estimatedBuyoutUSD)}
                             </span>
                           </label>
                           <div className="bg-white/[0.04] border border-white/10 rounded-sm p-4 space-y-3">
                             <div className="flex items-baseline justify-between">
                               <span className="text-[9px] font-bold uppercase text-white/40 tracking-widest">Your Contribution</span>
-                              <span className="text-lg font-black italic text-white">{formatSalaryMPrecise(teamBuyoutContribUSD, 2)}</span>
+                              <span className="text-lg font-black italic text-white">{moneyPrecise(teamBuyoutContribUSD, 2)}</span>
                             </div>
                             <input
                               type="range"
@@ -1531,18 +1544,18 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                               className="w-full accent-orange-500"
                             />
                             <div className="flex justify-between text-[9px] font-bold uppercase text-white/30 tracking-widest">
-                              <span>Min $0</span>
-                              <span>FIBA Cap {formatSalaryM(buyout.teamMaxContributionUSD)}</span>
+                              <span>Min {money(0)}</span>
+                              <span>FIBA Cap {money(buyout.teamMaxContributionUSD)}</span>
                             </div>
                             <div className="pt-2 border-t border-white/5">
                               <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest">
                                 <span className="text-white/40">Player Pays (out of pocket)</span>
                                 <span className="text-amber-300">
-                                  {formatSalaryM(Math.max(0, buyout.estimatedBuyoutUSD - teamBuyoutContribUSD))}
+                                  {money(Math.max(0, buyout.estimatedBuyoutUSD - teamBuyoutContribUSD))}
                                 </span>
                               </div>
                               <p className="text-[8px] text-white/30 italic mt-1 leading-relaxed normal-case tracking-normal">
-                                FIBA cap limits your team's contribution to {formatSalaryM(buyout.teamMaxContributionUSD)}. Any remainder is paid by the player — usually from their NBA signing bonus.
+                                FIBA cap limits your team's contribution to {money(buyout.teamMaxContributionUSD)}. Any remainder is paid by the player — usually from their signing bonus.
                               </p>
                             </div>
                           </div>
@@ -1568,12 +1581,12 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                             </div>
                             <div className="text-center">
                               <p className="text-[8px] font-bold text-white/20 uppercase">Salary</p>
-                              <p className="text-xs font-black italic text-white">{formatSalaryM(row.salary)}</p>
+                              <p className="text-xs font-black italic text-white">{money(row.salary)}</p>
                             </div>
                             <div className="text-right">
                               <p className="text-[8px] font-bold text-white/20 uppercase">Cap Rm</p>
                               <p className={`text-xs font-black italic ${row.capRoom < 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                {row.capRoom < 0 ? '-' : ''}{formatSalaryM(Math.abs(row.capRoom))}
+                                {row.capRoom < 0 ? '-' : ''}{money(Math.abs(row.capRoom))}
                               </p>
                             </div>
                           </div>
@@ -1604,15 +1617,15 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                               ? 'Taxpayer MLE Remaining'
                               : 'MLE';
                         const mleValue = mle.type
-                          ? `${formatSalaryM(mle.available)} / ${formatSalaryM(mle.limit)}`
+                          ? `${money(mle.available)} / ${money(mle.limit)}`
                           : 'Unavailable';
                         const mleAccent = mle.blocked ? 'text-rose-400' : 'text-emerald-400';
                         const capSpace = thresholds.salaryCap - teamPayroll;
                         return [
-                          { label: 'Total Active Payroll', value: formatSalaryM(teamPayroll),                                    accent: 'text-white' },
-                          { label: 'Cap Space Remaining',  value: formatSalaryM(capSpace),                                      accent: capSpace >= 0 ? 'text-emerald-400' : 'text-rose-400' },
-                          { label: 'Luxury Tax Line',      value: formatSalaryM(thresholds.luxuryTax),                           accent: 'text-white' },
-                          { label: 'First Apron',          value: formatSalaryM(thresholds.firstApron),                          accent: 'text-amber-400' },
+                          { label: 'Total Active Payroll', value: money(teamPayroll),                                    accent: 'text-white' },
+                          { label: 'Cap Space Remaining',  value: money(capSpace),                                      accent: capSpace >= 0 ? 'text-emerald-400' : 'text-rose-400' },
+                          { label: 'Luxury Tax Line',      value: money(thresholds.luxuryTax),                           accent: 'text-white' },
+                          { label: 'First Apron',          value: money(thresholds.firstApron),                          accent: 'text-amber-400' },
                           { label: mleLabel,               value: mleValue,                                                       accent: mleAccent },
                         ];
                       })().map(({ label, value, accent }) => (
@@ -1629,7 +1642,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                         <div className="w-1.5 h-14 bg-emerald-500 rounded-full" />
                         <div>
                           <span className="text-2xl font-black italic text-white">
-                            {formatSalaryM(initialOffer.salaryUSD)}
+                            {money(initialOffer.salaryUSD)}
                             <span className="text-xs text-white/30 not-italic ml-2">/ {initialOffer.years} Yrs</span>
                           </span>
                           <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1">
@@ -1652,7 +1665,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                         <div key={t.label}>
                           <div className="flex justify-between text-[9px] font-bold text-white/30 uppercase mb-1.5">
                             <span>{t.label}</span>
-                            <span>{formatSalaryM(t.val)}</span>
+                            <span>{money(t.val)}</span>
                           </div>
                           <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                             <div
@@ -1842,8 +1855,8 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                         else requestPlayerResponse(true);
                       }}
                       title={mleCanCover
-                        ? `Uses ${mleLabel} — ${formatSalaryM(mle.available)} available`
-                        : `Salary exceeds ${mleLabel} limit (${formatSalaryM(mle.available)} available)`}
+                        ? `Uses ${mleLabel} — ${money(mle.available)} available`
+                        : `Salary exceeds ${mleLabel} limit (${money(mle.available)} available)`}
                       className={`flex-1 sm:flex-none px-3 sm:px-6 py-2.5 sm:py-3 rounded-sm text-[9px] sm:text-[10px] font-black italic uppercase tracking-widest transition-all ${
                         mleCanCover
                           ? 'bg-blue-600 text-white hover:scale-[1.02]'
@@ -1874,7 +1887,8 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                     // over-cap team can't even sign a min body to fill a slot.
                     const minSalaryUSD = limits.minSalaryUSD;
                     const isMinContract = salary <= minSalaryUSD * 1.05;
-                    const blownCap = contractType !== 'TWO_WAY' && !hasOwnTeamBirdRights && projectedPayroll > thresholds.salaryCap && !isMinContract;
+                    // Cap-violation gate is NBA-only — Euro-Isolated has no hard cap.
+                    const blownCap = !euroIsolated && contractType !== 'TWO_WAY' && !hasOwnTeamBirdRights && projectedPayroll > thresholds.salaryCap && !isMinContract;
                     if (blownCap) {
                       setShowCapWarning(true);
                       return;

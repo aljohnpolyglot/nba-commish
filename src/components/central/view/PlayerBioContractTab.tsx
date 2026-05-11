@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { contractToUSD, formatSalaryM, getContractLimits } from '../../../utils/salaryUtils';
 import { formatExternalSalary } from '../../../constants';
+import { isEuroIsolatedMode } from '../../../utils/uiMode';
 import type { NBAPlayer } from '../../../types';
 
 interface PlayerBioContractTabProps {
@@ -182,8 +183,10 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
 
   return (
     <div className="p-4 md:p-8 space-y-4">
-      {/* Contract status badges */}
-      {(isTwoWay || isNonGuaranteed || hasBirdRights || superMaxEligible || isRookieExtEligible) && (
+      {/* Contract status badges (NBA-only — none of these constructs exist in
+          Euro-Isolated mode: no two-way contracts, no NG, no Bird Rights, no
+          supermax, no rookie-scale extensions). */}
+      {!isEuroIsolatedMode(state) && (isTwoWay || isNonGuaranteed || hasBirdRights || superMaxEligible || isRookieExtEligible) && (
         <div className="flex flex-wrap gap-2 mb-2">
           {isTwoWay && (
             <span className="text-[10px] font-black uppercase tracking-widest text-purple-300 bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full">
@@ -254,10 +257,10 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
                   {row.option === 'Rookie' && (
                     <span className="text-[9px] font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">Rookie</span>
                   )}
-                  {row.option === 'Two-Way' && (
+                  {row.option === 'Two-Way' && !isEuroIsolatedMode(state) && (
                     <span className="text-[9px] font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full">Two-Way</span>
                   )}
-                  {row.option === 'Non-Guaranteed' && (
+                  {row.option === 'Non-Guaranteed' && !isEuroIsolatedMode(state) && (
                     <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">Non-Guar.</span>
                   )}
                 </td>
