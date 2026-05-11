@@ -75,4 +75,20 @@ assert(burgosLedger.profit < 4_000_000, `Burgos profit modest (got ${burgosLedge
 assert(realLedger.profit > burgosLedger.profit + 5_000_000, 'Spread Real ≫ Burgos profit');
 
 console.log('\n✓ All budget assertions passed');
-// Note: Ledger snapshot integration tests are appended after Task 4 (ledgerEngine).
+
+// ----- Ledger snapshot integration test -----
+import { snapshot } from '../src/services/tycoon/ledgerEngine';
+
+const startCash = real.tycoon!.cashOnHand;
+snapshot(real, realLedger);
+assert(real.tycoon!.ledgerHistory.length === 1, 'ledgerHistory has 1 entry after snapshot');
+assert(real.tycoon!.cashOnHand === startCash + realLedger.profit, 'cashOnHand += profit');
+assert(real.tycoon!.ffpRollingDeficit === Math.min(0, realLedger.profit), 'FFP recomputed');
+
+for (let y = 0; y < 3; y++) {
+  snapshot(burgos, { ...burgosLedger, year: 2025 + y, profit: -500_000, ffpDeficitContribution: -500_000 });
+}
+assert(burgos.tycoon!.ffpRollingDeficit === -1_500_000, `FFP 3y deficit = -€1.5M (got ${burgos.tycoon!.ffpRollingDeficit})`);
+assert(burgos.tycoon!.ledgerHistory.length === 3, 'history grew to 3');
+
+console.log('✓ Ledger snapshot assertions passed');
