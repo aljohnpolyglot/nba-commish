@@ -220,18 +220,23 @@ git commit -m "feat(utils): add tier mapping helper for setup-label <-> tycoon-t
 
 ---
 
-### Task 4: Create sponsor-catalog stub
+### Task 4: Adapter to existing sponsorCatalogFetcher (stub no longer needed)
+
+**Context:** The parallel sponsor-portfolio agent has already committed `src/data/sponsorCatalogFetcher.ts` with an async API:
+- `loadSponsorCatalog(): Promise<SponsorCatalog>` — fetches from gist, caches
+- `pickSponsorName(league: LeagueKey, tier: TycoonTier, slot: SponsorshipSlot, existing?): string` — sync after load
+- `LeagueKey = 'spain' | 'france' | 'italy' | 'greece' | 'germany' | 'turkey' | 'israel'`
+
+My setup-review needs a sync `SponsorSlot[]` shape for the 3 slots (main / jersey / arena). Build a thin adapter that calls `pickSponsorName` three times.
 
 **Files:**
-- Create: `src/data/sponsorCatalogFetcher.stub.ts`
+- Create: `src/services/euro/sponsorSeedTypes.ts`
 
-- [ ] **Step 1: Write the stub**
+- [ ] **Step 1: Define the local SponsorSlot shape and league mapping**
 
 ```typescript
-// src/data/sponsorCatalogFetcher.stub.ts
-// TEMPORARY STUB — parallel agent's PR replaces this with a real implementation.
-// When their PR lands, the import in sponsorSeed.ts switches from
-// `./sponsorCatalogFetcher.stub` to `./sponsorCatalogFetcher`.
+// src/services/euro/sponsorSeedTypes.ts
+import type { LeagueKey } from '../../data/sponsorCatalogFetcher';
 
 export type SponsorSlot = {
   slotId: 'main' | 'jersey' | 'arena';
@@ -240,21 +245,25 @@ export type SponsorSlot = {
   years: number;
 };
 
-export function getDefaultSponsorsForTeam(
-  _teamId: number,
-  _leagueId: string,
-  _rngSeed: number,
-): SponsorSlot[] {
-  return [];
+// Map our internal leagueId to the catalog's LeagueKey.
+const LEAGUE_ID_TO_KEY: Record<string, LeagueKey> = {
+  endesa: 'spain',
+  euroleague: 'spain',  // catalog has no separate Euroleague — use Spain pool until expanded
+};
+
+export function leagueIdToKey(leagueId: string): LeagueKey | undefined {
+  return LEAGUE_ID_TO_KEY[leagueId];
 }
 ```
 
 - [ ] **Step 2: Commit**
 
 ```bash
-git add src/data/sponsorCatalogFetcher.stub.ts
-git commit -m "feat(data): add sponsor-catalog fetcher stub (replaced by parallel PR)"
+git add src/services/euro/sponsorSeedTypes.ts
+git commit -m "feat(euro): SponsorSlot type + leagueId-to-LeagueKey adapter"
 ```
+
+**Note:** Task 10's `sponsorSeed.ts` (later) imports from this file. It also calls `pickSponsorName(catalog-league-key, tier, slot)` to fill the 3 slots — see updated Task 10 for details.
 
 ---
 
@@ -948,54 +957,117 @@ git commit -m "feat(euro): tier-biased owner profile seeder"
 
 ---
 
-### Task 10: Sponsor seeder (calls stub)
+### Task 10: Sponsor seeder (adapts existing sponsorCatalogFetcher)
 
 **Files:**
 - Create: `src/services/euro/sponsorSeed.ts`
 - Create: `src/services/euro/__tests__/sponsorSeed.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+**Context:** This calls `pickSponsorName()` for each of the 3 slots (main / jersey / arena → maps to the catalog's `SponsorshipSlot` union from `src/types/tycoon.ts`). `getSponsorCatalogSync()` returns `null` if `loadSponsorCatalog()` hasn't been awaited yet — in that case we return `[]` so the review screen shows "Sponsors pending".
+
+- [ ] **Step 1: Inspect the SponsorshipSlot type**
+
+Run `grep -n 'export type SponsorshipSlot' src/types/tycoon.ts` to see the canonical slot names (likely `'jersey' | 'sleeve' | 'shorts' | 'stadium' | ...`). Our review screen uses 3 logical slots — pick the catalog's closest names for the 3 we surface:
+
+- `main` → catalog `'jersey'` (front-of-shirt)
+- `jersey` → catalog `'sleeve'`
+- `arena` → catalog `'stadium'`
+
+(If those names differ, adjust the constant below.)
+
+- [ ] **Step 2: Write the failing test**
 
 ```typescript
 // src/services/euro/__tests__/sponsorSeed.test.ts
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { seedSponsors } from '../sponsorSeed';
 
+vi.mock('../../../data/sponsorCatalogFetcher', () => ({
+  getSponsorCatalogSync: () => null,  // simulate "not loaded yet"
+  pickSponsorName: () => 'Mock Brand',
+}));
+
 describe('seedSponsors', () => {
-  it('returns empty array when stub returns empty (parallel PR not yet landed)', () => {
-    const slots = seedSponsors(5001, 'endesa', 1);
+  it('returns empty array when catalog is not loaded yet', () => {
+    const slots = seedSponsors('endesa', 'S', 1);
     expect(slots).toEqual([]);
+  });
+});
+
+describe('seedSponsors (catalog loaded)', () => {
+  it('returns 3 slots when catalog is loaded', () => {
+    vi.resetModules();
+    vi.doMock('../../../data/sponsorCatalogFetcher', () => ({
+      getSponsorCatalogSync: () => ({ version: 1, leagues: { spain: { tiers: {}, brands: {} } } }),
+      pickSponsorName: () => 'Mock Brand',
+    }));
+    // re-import after mock change
+    return import('../sponsorSeed').then(({ seedSponsors: fresh }) => {
+      const slots = fresh('endesa', 'S', 1);
+      expect(slots).toHaveLength(3);
+      expect(slots.map(s => s.slotId)).toEqual(['main', 'jersey', 'arena']);
+    });
   });
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 3: Run test to verify it fails**
 
 Run: `npx vitest run src/services/euro/__tests__/sponsorSeed.test.ts`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Write the implementation**
+- [ ] **Step 4: Write the implementation**
 
 ```typescript
 // src/services/euro/sponsorSeed.ts
-import { getDefaultSponsorsForTeam, type SponsorSlot } from '../../data/sponsorCatalogFetcher.stub';
+import { getSponsorCatalogSync, pickSponsorName } from '../../data/sponsorCatalogFetcher';
+import type { SponsorshipSlot } from '../../types/tycoon';
+import type { TycoonTier } from '../../utils/tierMapping';
+import { leagueIdToKey, type SponsorSlot } from './sponsorSeedTypes';
 
-export function seedSponsors(teamId: number, leagueId: string, subSeed: number): SponsorSlot[] {
-  return getDefaultSponsorsForTeam(teamId, leagueId, subSeed);
+const SLOT_MAP: Array<{ slotId: SponsorSlot['slotId']; catalog: SponsorshipSlot }> = [
+  { slotId: 'main',   catalog: 'jersey' as SponsorshipSlot },
+  { slotId: 'jersey', catalog: 'sleeve' as SponsorshipSlot },
+  { slotId: 'arena',  catalog: 'stadium' as SponsorshipSlot },
+];
+
+// Tier-coupled annual amounts (EUR/year). Mirrors TIER_BASE.sponsorshipFloor magnitudes.
+const TIER_AMOUNTS: Record<TycoonTier, { main: number; jersey: number; arena: number }> = {
+  S: { main: 8_000_000, jersey: 4_000_000, arena: 2_000_000 },
+  A: { main: 3_000_000, jersey: 1_500_000, arena: 800_000 },
+  B: { main: 1_200_000, jersey: 500_000,   arena: 300_000 },
+  C: { main: 400_000,   jersey: 150_000,   arena: 100_000 },
+  D: { main: 150_000,   jersey: 60_000,    arena: 40_000 },
+};
+
+export function seedSponsors(leagueId: string, tier: TycoonTier, _subSeed: number): SponsorSlot[] {
+  const catalog = getSponsorCatalogSync();
+  if (!catalog) return [];
+  const leagueKey = leagueIdToKey(leagueId);
+  if (!leagueKey) return [];
+  const amounts = TIER_AMOUNTS[tier];
+  return SLOT_MAP.map(({ slotId, catalog: catSlot }) => ({
+    slotId,
+    brand: pickSponsorName(leagueKey, tier, catSlot),
+    amountEUR: amounts[slotId],
+    years: 3,
+  }));
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [ ] **Step 5: Run tests**
 
 Run: `npx vitest run src/services/euro/__tests__/sponsorSeed.test.ts`
-Expected: PASS — 1 test.
+Expected: PASS — 2 tests.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add src/services/euro/sponsorSeed.ts src/services/euro/__tests__/sponsorSeed.test.ts
-git commit -m "feat(euro): sponsor seeder wrapper (stub-backed until parallel PR)"
+git commit -m "feat(euro): sponsor seeder using sponsorCatalogFetcher.pickSponsorName"
 ```
+
+**Note on signature change:** `seedSponsors` now takes `(leagueId, tier, subSeed)` instead of `(teamId, leagueId, subSeed)`. Callers in Task 11 (`careerSeed.ts`) must pass `tier` instead of `teamId`. Updated below.
 
 ---
 
@@ -1066,7 +1138,8 @@ Expected: FAIL — module not found.
 ```typescript
 // src/services/euro/careerSeed.ts
 import type { NBATeam, GameState, OwnerProfile, StaffMember, SetupTierLabel } from '../../types';
-import type { SponsorSlot } from '../../data/sponsorCatalogFetcher.stub';
+import type { SponsorSlot } from './sponsorSeedTypes';
+import { mapSetupTierToTycoonTier } from '../../utils/tierMapping';
 import { seedTierAndBudget } from './tierBudgetSeed';
 import { seedStaffSix } from './staffSeed';
 import { seedOwner } from './ownerSeed';
@@ -1129,7 +1202,8 @@ export function seedEuroCareer(
   });
   const staff = seedStaffSix(team, state, leagueId, tb.tier, subSeed(masterSeed, 'staff'));
   const owner = seedOwner(team, state, leagueId, tb.tier, subSeed(masterSeed, 'owner'));
-  const sponsors = seedSponsors((team as any).tid ?? team.id, leagueId, subSeed(masterSeed, 'sponsors'));
+  const tycoonTier = mapSetupTierToTycoonTier(tb.tier);
+  const sponsors = seedSponsors(leagueId, tycoonTier, subSeed(masterSeed, 'sponsors'));
 
   return {
     masterSeed,
@@ -1169,10 +1243,12 @@ export function rerollCard(
       next.owner = seedOwner(team, state, leagueId, next.tier, newSubSeed);
       delete next.manualOverrides.owner;
       break;
-    case 'sponsors':
-      next.sponsors = seedSponsors((team as any).tid ?? team.id, leagueId, newSubSeed);
+    case 'sponsors': {
+      const tycoonTier = mapSetupTierToTycoonTier(next.tier);
+      next.sponsors = seedSponsors(leagueId, tycoonTier, newSubSeed);
       delete next.manualOverrides.sponsors;
       break;
+    }
   }
 
   return applyOverridesToSeed(next);
@@ -1713,7 +1789,7 @@ git commit -m "feat(setup): OwnerCard with Wealth/Patience/Vision display + edit
 // src/components/setup/cards/SponsorsCard.tsx
 import React from 'react';
 import { Dice5, Pencil, Lock } from 'lucide-react';
-import type { SponsorSlot } from '../../../data/sponsorCatalogFetcher.stub';
+import type { SponsorSlot } from '../../../services/euro/sponsorSeedTypes';
 
 interface SponsorsCardProps {
   sponsors: SponsorSlot[];
@@ -2222,7 +2298,7 @@ git commit -m "feat(setup): EditOwnerModal with name + wealth/patience/vision dr
 // src/components/setup/edits/EditSponsorSlotModal.tsx
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import type { SponsorSlot } from '../../../data/sponsorCatalogFetcher.stub';
+import type { SponsorSlot } from '../../../services/euro/sponsorSeedTypes';
 
 interface Props {
   slot: SponsorSlot;
