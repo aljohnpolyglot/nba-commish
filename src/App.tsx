@@ -12,14 +12,37 @@ import { RFAOfferSheetModal } from './components/modals/RFAOfferSheetModal';
 import { PlayButton } from './components/shared/PlayButton';
 import { TycoonWelcomeModal, hasSeenTycoonWelcome } from './components/tycoon/TycoonWelcomeModal';
 import { TycoonEventToast } from './components/tycoon/TycoonEventToast';
+import { EuroBankruptcyModal } from './components/tycoon/EuroBankruptcyModal';
+import { FinanceRecapModal } from './components/tycoon/FinanceRecapModal';
+import { PressConferenceModal } from './components/tycoon/PressConferenceModal';
 import { isEuroIsolatedMode } from './utils/uiMode';
-import { OffseasonNextActionButton, OffseasonPhaseBadge, OffseasonAufgabenSidebar, OffseasonAufgabenMobileSheet, OffseasonFATagFooter } from './components/offseason/OffseasonAufgaben';
+import { OffseasonNextActionButton, OffseasonPhaseBadge, OffseasonAufgabenSidebar, OffseasonAufgabenMobileSheet, OffseasonFATagFooter, OffseasonTrainingCampFooter } from './components/offseason/OffseasonAufgaben';
 import { LazySimLoadingScreen } from './components/setup/LazySimLoadingScreen';
 import { LeagueTypeSelector, type LeagueType, type ModdedLeagueBase, type EuropeMarket } from './components/setup/LeagueTypeSelector';
 import { useLeagueLabels } from './utils/leagueLabels';
 import { Menu, X } from 'lucide-react';
 import { SaveManager } from './services/SaveManager';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+
+const EuroCashChip: React.FC<{ onClick: () => void }> = ({ onClick }) => {
+  const { state } = useGame();
+  if (!isEuroIsolatedMode(state) || state.gameMode !== 'gm') return null;
+  const team = state.teams.find(t => t.id === state.userTeamId);
+  const cash = team?.tycoon?.cashOnHand;
+  if (cash == null) return null;
+  const tone = cash < 0 ? 'border-rose-500/50 bg-rose-500/10 text-rose-200'
+    : cash < 2_000_000 ? 'border-amber-500/50 bg-amber-500/10 text-amber-200'
+    : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200';
+  return (
+    <button
+      onClick={onClick}
+      className={`h-9 px-3 rounded-xl border ${tone} text-xs font-black uppercase tracking-widest tabular-nums hover:bg-white/10 transition-colors`}
+      title="Open Front Office"
+    >
+      Cash €{(cash / 1_000_000).toFixed(1)}M
+    </button>
+  );
+};
 
 // Lazy load mini-games
 const TheThroneView = React.lazy(() => import('./throne/components/TheThroneGame'));
@@ -32,6 +55,7 @@ import { fetchNBAMemes } from './services/social/nbaMemesFetcher';
 import { fetchInjuryData } from './services/injuryService';
 import { fetchPlayerInjuryData } from './data/playerInjuryData';
 import { prewarmRoster } from './services/rosterService';
+import { loadSponsorCatalog } from './data/sponsorCatalogFetcher';
 
 function GameLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -51,6 +75,7 @@ function GameLayout() {
     fetchNBAMemes();
     fetchInjuryData();
     fetchPlayerInjuryData();
+    loadSponsorCatalog();
   }, []);
 
   useEffect(() => {
@@ -234,8 +259,9 @@ function GameLayout() {
               <OffseasonPhaseBadge />
             </>
           ) : (
-            <PlayButton setCurrentView={setCurrentView} />
+              <PlayButton setCurrentView={setCurrentView} />
           )}
+          <EuroCashChip onClick={() => setCurrentView('Front Office')} />
         </div>
 
         {/* Desktop Play bar — same swap, calendar UI hidden when offseason. */}
@@ -246,8 +272,9 @@ function GameLayout() {
               <OffseasonPhaseBadge />
             </>
           ) : (
-            <PlayButton setCurrentView={setCurrentView} />
+              <PlayButton setCurrentView={setCurrentView} />
           )}
+          <EuroCashChip onClick={() => setCurrentView('Front Office')} />
         </div>
 
         <div className="flex-1 min-h-0 flex">
@@ -274,9 +301,13 @@ function GameLayout() {
         <ToastNotifier />
         <RFAOfferSheetModal />
         <TycoonWelcomeModal open={tycoonWelcomeOpen} onClose={() => setTycoonWelcomeOpen(false)} />
+        <EuroBankruptcyModal />
+        <FinanceRecapModal />
+        <PressConferenceModal />
         {isEuroIsolatedMode(state) && <TycoonEventToast />}
         <OffseasonAufgabenMobileSheet />
         <OffseasonFATagFooter />
+        <OffseasonTrainingCampFooter />
         {state.lastOutcome && state.gameMode !== 'gm' && !state.isProcessing && <OutcomeView />}
       </main>
     </div>
