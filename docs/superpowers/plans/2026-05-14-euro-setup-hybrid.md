@@ -1261,10 +1261,20 @@ case 'INIT_EURO_CAREER': {
     .concat(seed.staff.filter(s => s.position === 'Head Coach' || s.position === 'Assistant Coach'));
   const newGMs = (state.staff?.gms ?? []).filter(c => c.team !== state.teams.find(t => t.tid === teamId)?.name);
 
+  // Euro-Mode game start: real ACB summer transfer window opens 1 July.
+  // Setup-Review hands the player a fresh save at exactly that date so the
+  // Offseason / Transfer-Market sidebar both light up immediately.
+  const euroStartYear = state.year ?? new Date().getFullYear();
+  const euroStartDate = `${euroStartYear}-07-01`;
+
   return {
     ...state,
     teams,
     staff: { ...state.staff, coaches: newStaff, gms: newGMs },
+    gameDate: euroStartDate,
+    currentDate: euroStartDate,  // legacy alias if reducer expects both
+    month: 6,                    // July (0-indexed) — adjust if the store uses 1-indexed months
+    day: 1,
     euroSetupSeed: {
       teamId,
       leagueId,
@@ -1279,6 +1289,8 @@ case 'INIT_EURO_CAREER': {
   };
 }
 ```
+
+**Note on date fields:** Inspect the existing reducer's `state` shape before applying — the project may use `currentDate`, `gameDate`, or a combined `(year, month, day)` triple. Set whichever keys the store actually reads. The intent: when the user clicks "Start Career", the save's logical clock is **1 July of the season-start year**, matching the real ACB summer window. Keep the calendar 0-indexed if the project does (check `state.month` in any existing rollover).
 
 - [ ] **Step 4: Add a smoke test**
 
