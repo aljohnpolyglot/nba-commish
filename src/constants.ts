@@ -498,10 +498,37 @@ export function formatExternalSalary(usd: number, league: string): string {
   return `${cur.symbol}${Math.round(local)}`;
 }
 
+/** NBA-mode default for the Euro transfer-market settings — the feature is
+ *  disabled in NBA leagues. Kept here so callers in `transferWindow.ts` /
+ *  `transferMarketTicker.ts` can fall back to a typed object instead of
+ *  hand-rolling defaults at every call-site. */
+export const TRANSFER_MARKET_NBA_DEFAULTS: NonNullable<LeagueStats['transferMarket']> = {
+  enabled: false,
+  summerStart: '07-01',
+  summerEnd: '08-31',
+  winterStart: '01-01',
+  winterEnd: '01-31',
+  auctionDays: 7,
+  tierGating: false,
+  bidderPool: 'all',
+  releaseClauseDefaultMult: 1.5,
+};
+
 export const EURO_ISOLATED_DEFAULTS: Partial<LeagueStats> = {
   uiMode: 'euro_isolated',
   currency: 'EUR',
   tradesAllowed: false,
+  transferMarket: {
+    enabled: true,
+    summerStart: '07-01',
+    summerEnd: '08-31',
+    winterStart: '12-15',
+    winterEnd: '01-31',
+    auctionDays: 7,
+    tierGating: true,
+    bidderPool: 'euro',
+    releaseClauseDefaultMult: 1.5,
+  },
   // FIBA / Euroleague / Endesa cadence: 4 × 10-minute quarters = 40-min game,
   // 200-min team budget. Without this, GameSimulator falls back to NBA defaults
   // (12 × 4 = 48-min game, 240-min team budget).

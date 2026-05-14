@@ -230,6 +230,7 @@ export function logOffseasonDrift(
 
 import type { OffseasonChecklist, OffseasonChecklistRow, OffseasonRowStatus, Tab } from '../../types';
 import { isEuroIsolatedMode } from '../../utils/uiMode';
+import { getHOFCeremonyDateString } from '../playerDevelopment/hofChecker';
 
 const NO_DRAFT_ROWS: readonly OffseasonChecklistRow[] = [
   'draftLottery',
@@ -244,13 +245,15 @@ export function isNoDraftLeague(
 }
 
 export function getVisibleOffseasonRows(
-  leagueStats?: { draftType?: string; uiMode?: string } | null,
+  leagueStats?: { draftType?: string; uiMode?: string; year?: number } | null,
   userTeam?: { tycoon?: { sponsorships: { kit: unknown; sleeve: unknown; stadium: unknown } } } | null,
+  currentDate?: string | Date | null,
 ): readonly OffseasonChecklistRow[] {
   if (isEuroIsolatedMode({ leagueStats })) {
     // NBA-only rows EXCLUDED from Euro offseason: 'options' (team-option exercise
     // is NBA-CBA-only) and 'qualifyingOffers' (RFA system NBA-only). Euro contracts
-    // use straight multi-year deals + buyout clauses instead.
+    // use straight multi-year deals + buyout clauses instead. HOF / retiree
+    // rituals also NBA-only for the moment.
     const rows: OffseasonChecklistRow[] = ['myFAs', 'freeAgency'];
     const hasExpiredSlot = userTeam?.tycoon
       ? (userTeam.tycoon.sponsorships.kit === null
@@ -261,9 +264,28 @@ export function getVisibleOffseasonRows(
     rows.push('facilityUpgrades', 'preseasonFriendlies', 'trainingCamp');
     return rows;
   }
-  return isNoDraftLeague(leagueStats)
+  const base = isNoDraftLeague(leagueStats)
     ? OFFSEASON_ROW_ORDER.filter(row => !NO_DRAFT_ROWS.includes(row))
     : OFFSEASON_ROW_ORDER;
+
+  // Calendar-gated legacy rows — only surface in the sidebar once the in-game
+  // date has reached their real-world window. retiredPlayersReview → July 1 of
+  // the class year (post-Finals announce window). hofCeremony → first Saturday
+  // of September (enshrinement weekend).
+  const classYear = leagueStats?.year != null ? leagueStats.year - 1 : null;
+  if (classYear == null || !currentDate) {
+    return base.filter(r => r !== 'hofCeremony' && r !== 'retiredPlayersReview');
+  }
+  const dateStr = typeof currentDate === 'string'
+    ? currentDate.slice(0, 10)
+    : currentDate.toISOString().slice(0, 10);
+  const retireeOpenDate = `${classYear}-07-01`;
+  const ceremonyDate = getHOFCeremonyDateString(classYear);
+  return base.filter(r => {
+    if (r === 'retiredPlayersReview') return dateStr >= retireeOpenDate;
+    if (r === 'hofCeremony')          return dateStr >= ceremonyDate;
+    return true;
+  });
 }
 
 /** Visual order of the checklist sidebar — strict real-NBA chronology so
@@ -276,6 +298,7 @@ export function getVisibleOffseasonRows(
  *  the draft, not before. Putting options before draft was incorrect. */
 export const OFFSEASON_ROW_ORDER: readonly OffseasonChecklistRow[] = [
   'draftLottery',
+  'retiredPlayersReview',
   'expansionDraft',
   'draft',
   'rookieContracts',
@@ -283,11 +306,14 @@ export const OFFSEASON_ROW_ORDER: readonly OffseasonChecklistRow[] = [
   'qualifyingOffers',
   'myFAs',
   'freeAgency',
+  'transferMarket',
+  'hofCeremony',
   'trainingCamp',
 ] as const;
 
 export const OFFSEASON_ROW_LABELS: Record<OffseasonChecklistRow, string> = {
   draftLottery:     'Draft Lottery',
+  retiredPlayersReview: 'Retired Players',
   expansionDraft:   'Expansion Draft',
   options:          'Team / Player Options',
   qualifyingOffers: 'Qualifying Offers',
@@ -295,14 +321,17 @@ export const OFFSEASON_ROW_LABELS: Record<OffseasonChecklistRow, string> = {
   draft:            'NBA Draft',
   rookieContracts:  'Rookie Contracts',
   freeAgency:       'Free Agency',
+  transferMarket:   'Transfer Market',
   sponsorRenewals:  'Sponsor Renewals',
   facilityUpgrades: 'Facility Upgrades',
   preseasonFriendlies: 'Preseason Friendlies',
+  hofCeremony:      'Hall of Fame Ceremony',
   trainingCamp:     'Training Camp',
 };
 
 export const OFFSEASON_ROW_DESCRIPTIONS: Record<OffseasonChecklistRow, string> = {
   draftLottery:     'Watch the lottery draw to set this year\'s draft order.',
+  retiredPlayersReview: 'Honor this season\'s retirees, see jerseys raised to the rafters, and check who\'s next for the Hall.',
   expansionDraft:   'Welcome new franchises into the league and stock their rosters.',
   options:          'Decide which team options to exercise and review player option outcomes.',
   qualifyingOffers: 'Submit qualifying offers to make eligible players restricted free agents.',
@@ -310,15 +339,20 @@ export const OFFSEASON_ROW_DESCRIPTIONS: Record<OffseasonChecklistRow, string> =
   draft:            'Run the NBA Draft and select your rookies.',
   rookieContracts:  'Sign your drafted rookies to their first NBA contracts.',
   freeAgency:       'Negotiate with free agents over the 13-day signing window.',
+  transferMarket:   'Review transfer listings, bids, and release-clause activity before preseason.',
   sponsorRenewals:  'Review sponsorship placeholders for the next operating year.',
   facilityUpgrades: 'Plan facility work before players report.',
   preseasonFriendlies: 'Review Supercopa and preseason friendly slots.',
+  hofCeremony:      'Welcome the new Hall of Fame class on enshrinement weekend.',
   trainingCamp:     'Set your training camp drills and finalize your opening-night roster.',
 };
 
-/** Where each row navigates when "Enter Phase" is clicked. */
-export const OFFSEASON_ROW_TAB: Record<OffseasonChecklistRow, Tab> = {
+/** Where each row navigates when "Enter Phase" is clicked. `null` = opens as a
+ *  modal in-place, no view change (GameContext OFFSEASON_ENTER_PHASE skips
+ *  setCurrentView on null). */
+export const OFFSEASON_ROW_TAB: Record<OffseasonChecklistRow, Tab | null> = {
   draftLottery:     'Draft Lottery',
+  retiredPlayersReview: null,
   expansionDraft:   'Actions',
   options:          'Team Office',
   qualifyingOffers: 'Team Office',
@@ -326,15 +360,18 @@ export const OFFSEASON_ROW_TAB: Record<OffseasonChecklistRow, Tab> = {
   draft:            'Draft Board',
   rookieContracts:  'Team Office',
   freeAgency:       'Team Office',
+  transferMarket:   'Front Office Transfer Market',
   sponsorRenewals:  'Team Finances',
   facilityUpgrades: 'Team Office',
   preseasonFriendlies: 'Schedule',
+  hofCeremony:      null,
   trainingCamp:     'Training Center',
 };
 
 function baseOffseasonChecklist(): OffseasonChecklist {
   return {
     draftLottery:     'pending',
+    retiredPlayersReview: 'pending',
     expansionDraft:   'skipped', // nur 'pending' wenn expansionSchedule für aktuelle Saison gesetzt
     options:          'pending',
     qualifyingOffers: 'pending',
@@ -342,9 +379,11 @@ function baseOffseasonChecklist(): OffseasonChecklist {
     draft:            'pending',
     rookieContracts:  'pending',
     freeAgency:       'pending',
+    transferMarket:   'pending',
     sponsorRenewals:  'pending',
     facilityUpgrades: 'pending',
     preseasonFriendlies: 'pending',
+    hofCeremony:      'pending',
     trainingCamp:     'pending',
   };
 }
@@ -371,6 +410,7 @@ export function defaultOffseasonChecklist(
 export function initialPreseasonChecklist(): OffseasonChecklist {
   return {
     draftLottery:     'skipped',
+    retiredPlayersReview: 'skipped',
     expansionDraft:   'skipped',
     options:          'skipped',
     qualifyingOffers: 'skipped',
@@ -378,9 +418,11 @@ export function initialPreseasonChecklist(): OffseasonChecklist {
     draft:            'skipped',
     rookieContracts:  'skipped',
     freeAgency:       'skipped',
+    transferMarket:   'pending',
     sponsorRenewals:  'skipped',
     facilityUpgrades: 'skipped',
     preseasonFriendlies: 'skipped',
+    hofCeremony:      'skipped',
     trainingCamp:     'pending',
   };
 }

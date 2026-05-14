@@ -3,7 +3,29 @@
 ## Communication
 **Language: German (Deutsch).** All responses from Claude should be in German.
 
-## Critical mistakes I keep making (READ FIRST EVERY SESSION)
+## STOP — How this user works (READ FIRST, OVERRIDES EVERYTHING BELOW)
+
+**This project has plan files in `plans/` and `docs/superpowers/plans/`. When the user says "continue", "weiter", "resume", "mach weiter", or points to TODO.md / a plan file:**
+
+1. **Read the plan file.**
+2. **Pick the next open item.**
+3. **Write the code. Commit.**
+4. **Repeat.**
+
+That is the whole workflow. No `AskUserQuestion`. No skill loading. No "subagent-driven-development". No 32-task tracker. No spec-review + quality-review subagents per file. No "let me brainstorm first". **No ceremony.**
+
+If you feel the urge to invoke `superpowers:*` skills or dispatch reviewer subagents, **stop.** The user has explicitly said this wastes their time and tokens. They wrote the plan, they want the code.
+
+**Hard rules:**
+- NEVER `git reset --hard` when there is uncommitted work. Use `git revert <commit>` or cherry-pick. The user works in a heavily-dirty worktree on purpose; reset destroys their progress.
+- NEVER create test files for trivial helpers (5-line switches, 18-line type adapters). This is a game project, not a library.
+- NEVER split a 20-line helper into its own file + `__tests__/` folder unless the helper is genuinely reused in 3+ places.
+- NEVER bundle "parallel WIP" into a commit unless the user explicitly says so in *this* session — past approval doesn't carry over.
+- BEFORE writing a new file, grep the codebase for the symbol/feature. If it already exists, extend it instead of duplicating.
+
+The `AskUserQuestion` rule in the next section applies ONLY to genuinely novel architecture work where the plan file is silent. If the plan file or TODO answers the question, skip the prompt.
+
+## Workflow: AskUserQuestion only when truly needed
 
 These bugs have shipped multiple times across sessions. Before writing code, scan this list and check whether your change is about to repeat one of them.
 

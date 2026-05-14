@@ -121,6 +121,9 @@ export interface GameResult {
   }[];
   fight?: FightResult;
   highlights?: GameHighlight[];
+  /** Calendar year the game was played — written by the simulator so the
+   *  boxScoreLookup helper can disambiguate recycled gameIds across seasons. */
+  season?: number;
 }
 
 /** Live per-player box-score accumulated by useGameStats */

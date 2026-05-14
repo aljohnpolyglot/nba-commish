@@ -9,6 +9,7 @@ export interface BudgetContext {
   euroleagueAwayGames: number;
   endesaPrizeEUR: number;
   euroleaguePrizeEUR: number;
+  avgOpponentPrestige?: number;
 }
 
 function successMultiplier(ctx: BudgetContext): number {
@@ -30,9 +31,9 @@ function averageAttendancePct(tier: TycoonState['tier'], success: number): numbe
   return Math.min(0.99, floor[tier] * success);
 }
 
-function wagesEUR(team: NBATeam): number {
+function wagesEUR(team: NBATeam, allPlayers?: any[]): number {
   // contract.amount in BBGM-thousands; × 1000 = USD; treated as EUR 1:1 in Euro mode
-  const players = (team as any).players ?? [];
+  const players = allPlayers ?? (team as any).players ?? [];
   const tid = (team as any).tid ?? team.id;
   const total = players
     .filter((p: any) => p.tid === tid)
@@ -40,7 +41,7 @@ function wagesEUR(team: NBATeam): number {
   return Math.round(total);
 }
 
-export function computeAnnualBudget(team: NBATeam, ctx: BudgetContext): AnnualLedger {
+export function computeAnnualBudget(team: NBATeam, ctx: BudgetContext, allPlayers?: any[]): AnnualLedger {
   const t = team.tycoon;
   if (!t) throw new Error(`Team ${team.name} has no tycoon state`);
   const tb = TIER_BASE[t.tier];
@@ -60,7 +61,7 @@ export function computeAnnualBudget(team: NBATeam, ctx: BudgetContext): AnnualLe
   const tv = tb.tvRevenue;
   const transfer = 0;
 
-  const wages = wagesEUR(team);
+  const wages = wagesEUR(team, allPlayers);
   const staff = Math.round(wages * 0.10);
   const facilityLevelSum = t.facilities.stadium.level + t.facilities.trainingCenter.level + t.facilities.academy.level;
   const facility = facilityLevelSum * tb.facilityOpsPerLevel;

@@ -1,0 +1,147 @@
+<h2>Endesa / Euroleague Hub — wie soll Standings + Bracket auf einer Seite koexistieren?</h2>
+<p class="subtitle">In jedem Mockup ist Real Madrid (Beispiel-User-Team) gelb hervorgehoben. Wähle die Variante, die du für die Spain-Save am besten findest.</p>
+
+<style>
+  .mock-table { width:100%; border-collapse:collapse; font-size:11px; font-family:ui-monospace,monospace; }
+  .mock-table th { background:#1f2937; color:#94a3b8; text-align:left; padding:4px 6px; font-weight:600; }
+  .mock-table td { padding:3px 6px; border-top:1px solid #1f2937; color:#cbd5e1; }
+  .mock-table .own { background:#fbbf2415; color:#fef3c7; }
+  .mock-bracket-card { display:inline-block; background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:6px 8px; min-width:140px; margin:2px; font-size:11px; font-family:ui-monospace,monospace; }
+  .mock-bracket-card .team { color:#cbd5e1; display:flex; justify-content:space-between; }
+  .mock-bracket-card .team.win { color:#fff; font-weight:700; }
+  .mock-bracket-card .team.tbd { color:#475569; font-style:italic; }
+  .mock-bracket-row { display:flex; gap:6px; margin:6px 0; flex-wrap:wrap; align-items:center; }
+  .mock-bracket-label { font-size:9px; color:#64748b; text-transform:uppercase; letter-spacing:1px; min-width:70px; }
+  .mock-hub { background:#020617; border:1px solid #1e293b; border-radius:8px; padding:12px; min-height:380px; }
+  .mock-hub-header { background:linear-gradient(90deg,#dc262620,#0000); padding:6px 10px; border-left:3px solid #dc2626; margin-bottom:10px; border-radius:4px; }
+  .mock-hub-header h4 { color:#fff; margin:0; font-size:13px; }
+  .mock-hub-header .meta { color:#94a3b8; font-size:9px; text-transform:uppercase; letter-spacing:1px; }
+  .mock-section-label { font-size:9px; color:#64748b; text-transform:uppercase; letter-spacing:2px; margin:8px 0 4px; font-weight:700; }
+  .toggle-pills { display:flex; gap:4px; margin-bottom:8px; }
+  .toggle-pill { background:#1f2937; color:#94a3b8; padding:3px 10px; border-radius:12px; font-size:10px; font-weight:600; }
+  .toggle-pill.active { background:#dc2626; color:#fff; }
+  .collapsed-bar { background:#0f172a; border:1px dashed #334155; padding:6px 10px; border-radius:4px; color:#64748b; font-size:10px; font-style:italic; margin-bottom:8px; }
+</style>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mock-hub">
+        <div class="mock-hub-header">
+          <h4>Liga ACB · Endesa</h4>
+          <div class="meta">Regular League · 18 teams · Apr 22, 2026</div>
+        </div>
+        <div class="mock-section-label">Standings</div>
+        <table class="mock-table">
+          <tr><th>#</th><th>Team</th><th>W</th><th>L</th></tr>
+          <tr class="own"><td>1</td><td>Real Madrid</td><td>22</td><td>4</td></tr>
+          <tr><td>2</td><td>Barcelona</td><td>20</td><td>6</td></tr>
+          <tr><td>3</td><td>Unicaja</td><td>18</td><td>8</td></tr>
+          <tr><td>4</td><td>Valencia</td><td>16</td><td>10</td></tr>
+          <tr><td>…</td><td colspan="3">14 weitere</td></tr>
+        </table>
+        <div class="mock-section-label">Playoffs Bracket</div>
+        <div class="mock-bracket-row">
+          <span class="mock-bracket-label">QF · Bo3</span>
+          <span class="mock-bracket-card"><div class="team win">Real Madrid · 2</div><div class="team">Joventut · 0</div></span>
+          <span class="mock-bracket-card"><div class="team tbd">2 Barcelona</div><div class="team tbd">7 Gran Canaria</div></span>
+          <span class="mock-bracket-card"><div class="team tbd">3 Unicaja</div><div class="team tbd">6 Valencia</div></span>
+          <span class="mock-bracket-card"><div class="team tbd">4 Tenerife</div><div class="team tbd">5 Baskonia</div></span>
+        </div>
+        <div class="mock-bracket-row">
+          <span class="mock-bracket-label">SF · Bo5</span>
+          <span class="mock-bracket-card"><div class="team tbd">Winner QF1</div><div class="team tbd">Winner QF4</div></span>
+          <span class="mock-bracket-card"><div class="team tbd">Winner QF2</div><div class="team tbd">Winner QF3</div></span>
+        </div>
+        <div class="mock-bracket-row">
+          <span class="mock-bracket-label">Final · Bo5</span>
+          <span class="mock-bracket-card"><div class="team tbd">SF1</div><div class="team tbd">SF2</div></span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A · Always-On Stack (Standings oben + Bracket darunter)</h3>
+      <p>Beide immer sichtbar. Während Group Stage zeigt der Bracket "TBD"-Karten, füllt sich automatisch wenn KO startet. Pattern wie NBACupView heute. Scrollbar auf Mobile, einfache Implementation.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mock-hub">
+        <div class="mock-hub-header">
+          <h4>Liga ACB · Endesa</h4>
+          <div class="meta">Playoffs Stage · Quarterfinals · May 18, 2026</div>
+        </div>
+        <div class="toggle-pills">
+          <span class="toggle-pill">Group Standings</span>
+          <span class="toggle-pill active">Bracket</span>
+        </div>
+        <div class="collapsed-bar">▾ Final standings (collapsed) · Real Madrid #1 · Barcelona #2 · Unicaja #3 …</div>
+        <div class="mock-section-label">Playoffs Bracket</div>
+        <div class="mock-bracket-row">
+          <span class="mock-bracket-label">QF · Bo3</span>
+          <span class="mock-bracket-card"><div class="team win">Real Madrid · 2</div><div class="team">Joventut · 0</div></span>
+          <span class="mock-bracket-card"><div class="team">Barcelona · 1</div><div class="team">Gran Canaria · 1</div></span>
+          <span class="mock-bracket-card"><div class="team">Unicaja · 0</div><div class="team win">Valencia · 1</div></span>
+          <span class="mock-bracket-card"><div class="team">Tenerife · 1</div><div class="team">Baskonia · 1</div></span>
+        </div>
+        <div class="mock-bracket-row">
+          <span class="mock-bracket-label">SF · Bo5</span>
+          <span class="mock-bracket-card"><div class="team tbd">Winner QF1</div><div class="team tbd">Winner QF4</div></span>
+          <span class="mock-bracket-card"><div class="team tbd">Winner QF2</div><div class="team tbd">Winner QF3</div></span>
+        </div>
+        <div class="mock-bracket-row">
+          <span class="mock-bracket-label">Final · Bo5</span>
+          <span class="mock-bracket-card"><div class="team tbd">SF1</div><div class="team tbd">SF2</div></span>
+        </div>
+        <div class="mock-section-label" style="margin-top:14px;">Recent Results · Round 26</div>
+        <div style="font-size:10px; color:#94a3b8;">Real Madrid 89 · Joventut 72 · QF1 Game 2 (May 17)<br>Barcelona 78 · Gran Canaria 80 · QF2 Game 1 (May 17)</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B · Stage-Aware Toggle (Group ODER Bracket, mit Pills)</h3>
+      <p>Vor KO-Start: Standings dominant, Bracket-Pill greyed. Nach KO-Start: Bracket dominant, Final Standings als 1-Zeilen-Collapse oben. Saubere Information-Hierarchy, weniger Scroll. Aber User klickt 1× wenn er Group-Standings im KO sehen will.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mock-hub">
+        <div class="mock-hub-header">
+          <h4>Liga ACB · Endesa</h4>
+          <div class="meta">Playoffs Stage · Quarterfinals · May 18, 2026</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <div style="flex:1;">
+            <div class="mock-section-label">Final Standings</div>
+            <table class="mock-table">
+              <tr><th>#</th><th>Team</th><th>W</th><th>L</th></tr>
+              <tr class="own"><td>1</td><td>Real Madrid</td><td>26</td><td>8</td></tr>
+              <tr><td>2</td><td>Barcelona</td><td>24</td><td>10</td></tr>
+              <tr><td>3</td><td>Unicaja</td><td>22</td><td>12</td></tr>
+              <tr><td>4</td><td>Valencia</td><td>20</td><td>14</td></tr>
+              <tr><td>5</td><td>Baskonia</td><td>19</td><td>15</td></tr>
+              <tr><td>6</td><td>Tenerife</td><td>18</td><td>16</td></tr>
+              <tr><td>7</td><td>Gran Canaria</td><td>17</td><td>17</td></tr>
+              <tr><td>8</td><td>Joventut</td><td>16</td><td>18</td></tr>
+            </table>
+          </div>
+          <div style="flex:1.4;">
+            <div class="mock-section-label">Bracket</div>
+            <div class="mock-bracket-row" style="flex-direction:column; align-items:flex-start;">
+              <div><span class="mock-bracket-label">QF Bo3</span></div>
+              <span class="mock-bracket-card"><div class="team win">Real Madrid · 2</div><div class="team">Joventut · 0</div></span>
+              <span class="mock-bracket-card"><div class="team">Barcelona · 1</div><div class="team">G.Canaria · 1</div></span>
+              <span class="mock-bracket-card"><div class="team">Unicaja · 0</div><div class="team win">Valencia · 1</div></span>
+              <span class="mock-bracket-card"><div class="team">Tenerife · 1</div><div class="team">Baskonia · 1</div></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C · Side-by-Side (Standings links, Bracket rechts)</h3>
+      <p>Klassisches FM-Pattern für Wettbewerb-Hubs. Beides gleichzeitig sichtbar ohne Scroll. Auf Desktop schön übersichtlich. Aber: Bracket-Karten brauchen Breite — auf 13"-Laptop wird's eng. Mobile = stacked (also wieder wie Variante A).</p>
+    </div>
+  </div>
+</div>

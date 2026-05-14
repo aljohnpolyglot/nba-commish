@@ -30,6 +30,7 @@
     "vite.config.ts"
   ],
   "exclude": [
-    "test"
+    "test",
+    "src/**/__tests__/**"
   ]
 }

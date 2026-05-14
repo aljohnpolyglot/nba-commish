@@ -126,7 +126,8 @@
       "WebFetch(domain:zengm.com)",
       "WebFetch(domain:deepwiki.com)",
       "Bash(gh search *)",
-      "WebFetch(domain:play.basketball-gm.com)"
+      "WebFetch(domain:play.basketball-gm.com)",
+      "Bash(xargs -I {} powershell -Command \"Get-Item '{}' | Select-Object LastWriteTime, FullName\")"
     ]
   }
 }

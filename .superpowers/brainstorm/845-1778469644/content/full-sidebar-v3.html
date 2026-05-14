@@ -1,0 +1,168 @@
+<h2>Full Sidebar-Restructure + Liga-Hub mit Aside</h2>
+<p class="subtitle">Linke Sidebar bleibt immer gleich strukturiert (6 Sections). Wenn Euroleague oder Liga Endesa aktiv → rechte Aside erscheint mit Standings + Liga-Analytics. Andere Tabs = kein Aside.</p>
+
+<style>
+  .frame { display:grid; grid-template-columns:200px 1fr 220px; gap:0; background:#020617; border:1px solid #1e293b; border-radius:8px; min-height:560px; overflow:hidden; font-family:ui-monospace,monospace; font-size:11px; }
+  .frame.no-aside { grid-template-columns:200px 1fr; }
+  .leftnav { background:#0a0f1c; border-right:1px solid #1e293b; padding:8px 0; overflow-y:auto; }
+  .nav-section { font-size:8px; color:#475569; text-transform:uppercase; letter-spacing:1.5px; padding:8px 12px 3px; font-weight:700; }
+  .nav-item { padding:5px 12px; color:#94a3b8; cursor:pointer; border-left:3px solid transparent; font-size:10px; }
+  .nav-item.active { background:#1e293b40; color:#fff; border-left-color:#dc2626; font-weight:700; }
+  .nav-item.active.eu { border-left-color:#fb923c; }
+  .nav-item.active.endesa { border-left-color:#dc2626; }
+  .nav-item .meta { font-size:8px; color:#64748b; margin-top:1px; }
+
+  .main { padding:12px; overflow:hidden; }
+  .main-header { background:linear-gradient(90deg,#fb923c25,#0000); padding:8px 12px; border-left:3px solid #fb923c; margin-bottom:10px; border-radius:4px; }
+  .main-header.endesa { background:linear-gradient(90deg,#dc262625,#0000); border-left-color:#dc2626; }
+  .main-header h4 { color:#fff; margin:0; font-size:13px; font-weight:700; }
+  .main-header .meta { color:#94a3b8; font-size:9px; text-transform:uppercase; letter-spacing:1px; margin-top:2px; }
+
+  .aside { background:#0a0f1c; border-left:1px solid #1e293b; padding:8px 0; overflow-y:auto; }
+  .aside-label { font-size:8px; color:#475569; text-transform:uppercase; letter-spacing:1.5px; padding:8px 12px 3px; font-weight:700; }
+  .aside-item { padding:5px 12px; color:#94a3b8; cursor:pointer; border-left:3px solid transparent; display:flex; justify-content:space-between; align-items:center; font-size:10px; }
+  .aside-item.active { background:#1e293b40; color:#fff; border-left-color:#3b82f6; font-weight:700; }
+  .aside-item .badge { background:#1e293b; color:#94a3b8; font-size:8px; padding:1px 5px; border-radius:8px; }
+
+  .bracket-card { display:inline-block; background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:5px 7px; min-width:120px; margin:2px 0; font-size:10px; }
+  .bracket-card .team { color:#cbd5e1; display:flex; justify-content:space-between; gap:8px; }
+  .bracket-card .team.win { color:#fff; font-weight:700; }
+  .bracket-card .team.tbd { color:#475569; font-style:italic; }
+  .bracket-row { display:flex; align-items:flex-start; gap:8px; }
+  .bracket-col { display:flex; flex-direction:column; gap:4px; }
+  .bracket-col-label { font-size:8px; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; }
+</style>
+
+<h3 style="margin-top:18px;">Mockup 1 · Liga-Hub aktiv (Euroleague gewählt) — Aside sichtbar</h3>
+<div class="frame">
+  <div class="leftnav">
+    <div class="nav-section">My Team</div>
+    <div class="nav-item">Schedule</div>
+    <div class="nav-item">Team Office</div>
+    <div class="nav-item">Schedule (Manager)</div>
+    <div class="nav-item">Training Center</div>
+
+    <div class="nav-section">My Leagues</div>
+    <div class="nav-item active eu">Euroleague<div class="meta">Group · 27 days left</div></div>
+    <div class="nav-item">Liga Endesa<div class="meta">Reg · 14 days left</div></div>
+
+    <div class="nav-section">Communications</div>
+    <div class="nav-item">Inbox</div>
+    <div class="nav-item">News</div>
+
+    <div class="nav-section">Players</div>
+    <div class="nav-item">Transactions</div>
+    <div class="nav-item">Player Search</div>
+    <div class="nav-item">Player Comparison</div>
+    <div class="nav-item">Free Agents</div>
+
+    <div class="nav-section">Operations</div>
+    <div class="nav-item">Team Finances</div>
+
+    <div class="nav-section">Sportsbook</div>
+    <div class="nav-item">Bets</div>
+  </div>
+
+  <div class="main">
+    <div class="main-header">
+      <h4>Turkish Airlines Euroleague · Bracket</h4>
+      <div class="meta">Quarterfinals · Bo5 · Apr 22, 2026</div>
+    </div>
+    <div class="bracket-row">
+      <div class="bracket-col">
+        <div class="bracket-col-label">Quarterfinals</div>
+        <div class="bracket-card"><div class="team win">1 Real Madrid · 3</div><div class="team">8 Maccabi · 1</div></div>
+        <div class="bracket-card"><div class="team">4 Olympiacos · 2</div><div class="team">5 ASVEL · 2</div></div>
+        <div class="bracket-card"><div class="team">2 Barcelona · 3</div><div class="team">7 Bayern · 0</div></div>
+        <div class="bracket-card"><div class="team">3 Panathinaikos · 1</div><div class="team">6 Fenerbahçe · 2</div></div>
+      </div>
+      <div class="bracket-col">
+        <div class="bracket-col-label">Final Four · SF</div>
+        <div class="bracket-card"><div class="team tbd">Winner QF1</div><div class="team tbd">Winner QF2</div></div>
+        <div class="bracket-card"><div class="team tbd">Winner QF3</div><div class="team tbd">Winner QF4</div></div>
+      </div>
+      <div class="bracket-col">
+        <div class="bracket-col-label">Final Four · Final</div>
+        <div class="bracket-card" style="border-color:#fbbf2440;"><div class="team tbd">SF1</div><div class="team tbd">SF2</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="aside">
+    <div class="aside-label">League</div>
+    <div class="aside-item active">Bracket</div>
+    <div class="aside-item">Standings<span class="badge">18</span></div>
+
+    <div class="aside-label">Analytics</div>
+    <div class="aside-item">Player Stats</div>
+    <div class="aside-item">Team Stats</div>
+    <div class="aside-item">Player Comparison</div>
+    <div class="aside-item">Top Scorers</div>
+    <div class="aside-item">MVP Race</div>
+    <div class="aside-item">All-EuroLeague Team</div>
+
+    <div class="aside-label">Drama</div>
+    <div class="aside-item">News</div>
+    <div class="aside-item">Recent Results</div>
+    <div class="aside-item">Awards</div>
+  </div>
+</div>
+
+<h3 style="margin-top:24px;">Mockup 2 · Andere Tabs (Team Office aktiv) — KEIN Aside, gewohntes Layout</h3>
+<div class="frame no-aside">
+  <div class="leftnav">
+    <div class="nav-section">My Team</div>
+    <div class="nav-item">Schedule</div>
+    <div class="nav-item active">Team Office</div>
+    <div class="nav-item">Schedule (Manager)</div>
+    <div class="nav-item">Training Center</div>
+
+    <div class="nav-section">My Leagues</div>
+    <div class="nav-item">Euroleague</div>
+    <div class="nav-item">Liga Endesa</div>
+
+    <div class="nav-section">Communications</div>
+    <div class="nav-item">Inbox</div>
+    <div class="nav-item">News</div>
+
+    <div class="nav-section">Players</div>
+    <div class="nav-item">Transactions</div>
+    <div class="nav-item">Player Search</div>
+    <div class="nav-item">Player Comparison</div>
+    <div class="nav-item">Free Agents</div>
+
+    <div class="nav-section">Operations</div>
+    <div class="nav-item">Team Finances</div>
+
+    <div class="nav-section">Sportsbook</div>
+    <div class="nav-item">Bets</div>
+  </div>
+
+  <div class="main">
+    <div class="main-header" style="border-left-color:#3b82f6; background:linear-gradient(90deg,#3b82f625,#0000);">
+      <h4>Real Madrid · Team Office</h4>
+      <div class="meta">Roster · Coaching · Strategy · Salary</div>
+    </div>
+    <div style="background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:10px; color:#94a3b8; font-size:11px;">
+      Volle Main-Area, kein Aside. Standard-Layout für alle nicht-Liga-Tabs (Team Office, Player Search, Trade Machine, Finances …).
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:24px;">Sind diese zwei Layouts richtig so?</h3>
+<div class="options">
+  <div class="option" data-choice="yes" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>Ja, los — schreib Plan und implementier</h3>
+      <p>Sidebar-Refactor (6 Sections), Aside nur auf Liga-Hubs, Bracket als Default-View, Aside-Items wechseln Main-Area.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="adjust" onclick="toggleSelect(this)">
+    <div class="letter">~</div>
+    <div class="content">
+      <h3>Fast — kleine Anpassungen nötig</h3>
+      <p>Sag mir per Chat was. (Z.B.: Aside-Items entfernen/hinzufügen, Sections umsortieren, Standings rauswerfen aus Aside, …)</p>
+    </div>
+  </div>
+</div>

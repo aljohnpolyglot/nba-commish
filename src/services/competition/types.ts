@@ -23,9 +23,12 @@ export interface CompetitionBlackoutPeriod {
 export interface CompetitionPrizePool {
   currency?: 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CNY' | 'AUD' | 'PHP';
   participation?: number;
+  groupParticipation?: number;
   winner?: number;
   runnerUp?: number;
+  semi?: number;
   semiFinalist?: number;
+  qf?: number;
   quarterFinalist?: number;
 }
 
@@ -40,6 +43,12 @@ export interface CompetitionPlayoffRoundSpec {
 export interface CompetitionPlayoffFormat {
   rounds: CompetitionPlayoffRoundSpec[];
   finalFormat?: 'best-of' | 'final-four' | 'single-game';
+  /** Best-of-N overrides per round, used by competitionResolver when a
+   *  competition declares a non-uniform series length (e.g. Endesa QF best-of-3,
+   *  SF best-of-5, Final best-of-7). */
+  qfBest?: number;
+  sfBest?: number;
+  finalBest?: number;
 }
 
 export interface CompetitionSpec {
@@ -50,6 +59,9 @@ export interface CompetitionSpec {
   seasonStart: CompetitionDate;
   seasonEnd: CompetitionDate;
   teamSelector: string;
+  /** Optional explicit cap on participating teams — used by
+   *  competitionScheduler when the team pool needs to be trimmed/sized. */
+  teamCount?: number;
   gamesPerTeam?: number;
   daysOfWeek?: CompetitionDayOfWeek[];
   blackoutPeriods?: CompetitionBlackoutPeriod[];

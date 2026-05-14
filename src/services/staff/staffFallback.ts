@@ -83,3 +83,33 @@ export function makePlaceholderCoach(team: NBATeam): PlaceholderCoach {
     isPlaceholder: true,
   };
 }
+
+/** Synthesize coach / GM / owner placeholders for every non-NBA club in the
+ *  current save so CoachingView / TeamIntel don't show "Unknown Coach" for
+ *  Euroleague, Endesa, PBA, etc. Called once at init from GameContext after
+ *  the curated NBA staff gist resolves. Lightweight + deterministic per team. */
+export function generatePlaceholderNonNBAStaff(state: { nonNBATeams?: any[] }): {
+  coaches: PlaceholderCoach[];
+  gms: PlaceholderGM[];
+  owners: Array<{ name: string; team: string; isPlaceholder: true }>;
+} {
+  const coaches: PlaceholderCoach[] = [];
+  const gms: PlaceholderGM[] = [];
+  const owners: Array<{ name: string; team: string; isPlaceholder: true }> = [];
+  for (const t of state.nonNBATeams ?? []) {
+    const teamLike = {
+      id: t.tid,
+      name: t.name,
+      region: t.region,
+      logoUrl: t.imgURL,
+    } as NBATeam;
+    coaches.push(makePlaceholderCoach(teamLike));
+    gms.push(makePlaceholderGM(teamLike));
+    owners.push({
+      name: `${fmtTeamLabel(teamLike)} Ownership Group`,
+      team: fmtTeamLabel(teamLike),
+      isPlaceholder: true,
+    });
+  }
+  return { coaches, gms, owners };
+}

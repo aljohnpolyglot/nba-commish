@@ -28,6 +28,8 @@ import {
   type SkillAxis,
 } from '../../services/scoutingReport';
 import { getCachedDraftScouting, ensureDraftScouting, matchProspectToGist, type GistProspect } from '../../services/draftScoutingGist';
+import { getPlayerImage } from '../central/view/bioCache';
+import { MyFace, isRealFaceConfig } from '../shared/MyFace';
 import {
   MAX_DRAFT_POOL_SIZE,
   POSITIONS,

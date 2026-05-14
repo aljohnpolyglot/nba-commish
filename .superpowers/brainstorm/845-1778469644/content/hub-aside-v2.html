@@ -1,0 +1,131 @@
+<h2>Liga-Hub mit rechter Aside-Sidebar (Analytics)</h2>
+<p class="subtitle">Linke Nav = Liga-Wahl, Main = Bracket (Variante C-Style), rechte Aside = Analytics-Sub-Tabs. Kein horizontaler Eyebrow.</p>
+
+<style>
+  .hub-frame { display:grid; grid-template-columns:160px 1fr 220px; gap:0; background:#020617; border:1px solid #1e293b; border-radius:8px; min-height:480px; overflow:hidden; font-family:ui-monospace,monospace; font-size:11px; }
+  .hub-leftnav { background:#0a0f1c; border-right:1px solid #1e293b; padding:10px 0; }
+  .hub-leftnav-section { font-size:8px; color:#475569; text-transform:uppercase; letter-spacing:1.5px; padding:6px 12px 4px; font-weight:700; }
+  .hub-leftnav-item { padding:7px 12px; color:#94a3b8; cursor:pointer; border-left:3px solid transparent; }
+  .hub-leftnav-item.active { background:#1e293b40; color:#fff; border-left-color:#dc2626; font-weight:700; }
+  .hub-leftnav-item .meta { font-size:8px; color:#64748b; }
+
+  .hub-main { padding:14px; overflow:hidden; }
+  .hub-main-header { background:linear-gradient(90deg,#dc262625,#0000); padding:8px 12px; border-left:3px solid #dc2626; margin-bottom:10px; border-radius:4px; }
+  .hub-main-header h4 { color:#fff; margin:0; font-size:13px; font-weight:700; }
+  .hub-main-header .meta { color:#94a3b8; font-size:9px; text-transform:uppercase; letter-spacing:1px; margin-top:2px; }
+
+  .hub-aside { background:#0a0f1c; border-left:1px solid #1e293b; padding:10px 0; }
+  .hub-aside-label { font-size:8px; color:#475569; text-transform:uppercase; letter-spacing:1.5px; padding:6px 12px 4px; font-weight:700; }
+  .hub-aside-item { padding:7px 12px; color:#94a3b8; cursor:pointer; border-left:3px solid transparent; display:flex; justify-content:space-between; align-items:center; }
+  .hub-aside-item.active { background:#1e293b40; color:#fff; border-left-color:#3b82f6; font-weight:700; }
+  .hub-aside-item .badge { background:#1e293b; color:#94a3b8; font-size:8px; padding:1px 5px; border-radius:8px; font-weight:600; }
+
+  .bracket-card { display:inline-block; background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:5px 7px; min-width:120px; margin:2px 0; font-size:10px; }
+  .bracket-card .team { color:#cbd5e1; display:flex; justify-content:space-between; gap:8px; }
+  .bracket-card .team.win { color:#fff; font-weight:700; }
+  .bracket-card .team.tbd { color:#475569; font-style:italic; }
+  .bracket-row { display:flex; align-items:flex-start; gap:8px; margin:4px 0; }
+  .bracket-col { display:flex; flex-direction:column; gap:4px; }
+  .bracket-col-label { font-size:8px; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; }
+</style>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="hub-frame">
+        <div class="hub-leftnav">
+          <div class="hub-leftnav-section">Competitions</div>
+          <div class="hub-leftnav-item active">Euroleague<div class="meta">Group · 27 days left</div></div>
+          <div class="hub-leftnav-item">Liga Endesa<div class="meta">Reg · 14 days left</div></div>
+          <div class="hub-leftnav-section" style="margin-top:8px;">Season</div>
+          <div class="hub-leftnav-item">Schedule</div>
+          <div class="hub-leftnav-item">Standings</div>
+          <div class="hub-leftnav-item">Awards</div>
+        </div>
+
+        <div class="hub-main">
+          <div class="hub-main-header">
+            <h4>Turkish Airlines Euroleague · Bracket</h4>
+            <div class="meta">Quarterfinals · Bo5 · Apr 22, 2026</div>
+          </div>
+          <div class="bracket-row">
+            <div class="bracket-col">
+              <div class="bracket-col-label">Quarterfinals</div>
+              <div class="bracket-card"><div class="team win">1 Real Madrid · 3</div><div class="team">8 Maccabi · 1</div></div>
+              <div class="bracket-card"><div class="team">4 Olympiacos · 2</div><div class="team">5 ASVEL · 2</div></div>
+              <div class="bracket-card"><div class="team">2 Barcelona · 3</div><div class="team">7 Bayern · 0</div></div>
+              <div class="bracket-card"><div class="team">3 Panathinaikos · 1</div><div class="team">6 Fenerbahçe · 2</div></div>
+            </div>
+            <div class="bracket-col">
+              <div class="bracket-col-label">Final Four · SF</div>
+              <div class="bracket-card"><div class="team tbd">Winner QF1</div><div class="team tbd">Winner QF2</div></div>
+              <div class="bracket-card"><div class="team tbd">Winner QF3</div><div class="team tbd">Winner QF4</div></div>
+            </div>
+            <div class="bracket-col">
+              <div class="bracket-col-label">Final Four · Final</div>
+              <div class="bracket-card" style="border-color:#fbbf2440;"><div class="team tbd">SF1</div><div class="team tbd">SF2</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hub-aside">
+          <div class="hub-aside-label">Analytics</div>
+          <div class="hub-aside-item active">Player Stats<span class="badge">120</span></div>
+          <div class="hub-aside-item">Team Stats<span class="badge">18</span></div>
+          <div class="hub-aside-item">MVP Race<span class="badge">5</span></div>
+          <div class="hub-aside-item">Top Scorers</div>
+          <div class="hub-aside-item">Top Reb · Ast · etc</div>
+          <div class="hub-aside-label" style="margin-top:6px;">Drama</div>
+          <div class="hub-aside-item">News</div>
+          <div class="hub-aside-item">Recent Results</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A · Aside ist Teil des Liga-Hub-Templates</h3>
+      <p>Aside erscheint NUR auf den Liga-Hub-Tabs (Euroleague, Endesa). Andere Tabs (Trade, Schedule, etc.) haben kein Aside, gewohntes Layout. Aside ist comp-scoped: Player-Stats zeigt nur EL-Spieler, MVP-Race nur EL-Race. Klick auf Aside-Item ersetzt die Main-Area.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="hub-frame">
+        <div class="hub-leftnav">
+          <div class="hub-leftnav-section">Competitions</div>
+          <div class="hub-leftnav-item active">Euroleague<div class="meta">Group · 27 days left</div></div>
+          <div class="hub-leftnav-item">Liga Endesa</div>
+          <div class="hub-leftnav-section" style="margin-top:8px;">Season</div>
+          <div class="hub-leftnav-item">Schedule</div>
+          <div class="hub-leftnav-item">Standings</div>
+        </div>
+
+        <div class="hub-main">
+          <div class="hub-main-header">
+            <h4>Top Scorers · Euroleague</h4>
+            <div class="meta">Apr 22, 2026 · Min. 15 GP</div>
+          </div>
+          <div style="background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:8px;">
+            <div style="display:flex; justify-content:space-between; padding:4px 6px; border-bottom:1px solid #1e293b;"><span>1. Sasha Vezenkov · OLY</span><span style="color:#fbbf24;">22.4 PPG</span></div>
+            <div style="display:flex; justify-content:space-between; padding:4px 6px; border-bottom:1px solid #1e293b;"><span>2. Mike James · MON</span><span>21.8 PPG</span></div>
+            <div style="display:flex; justify-content:space-between; padding:4px 6px;"><span>3. Shane Larkin · ANA</span><span>20.3 PPG</span></div>
+          </div>
+        </div>
+
+        <div class="hub-aside">
+          <div class="hub-aside-label">Euroleague</div>
+          <div class="hub-aside-item">Bracket</div>
+          <div class="hub-aside-item">Player Stats</div>
+          <div class="hub-aside-item active">Top Scorers</div>
+          <div class="hub-aside-item">Top Reb · Ast</div>
+          <div class="hub-aside-item">MVP Race</div>
+          <div class="hub-aside-item">Team Stats</div>
+          <div class="hub-aside-item">News</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B · Liga-Tab als Container, Aside ist primärer Switcher</h3>
+      <p>Klick auf "Euroleague" → öffnet Container, Aside ist die EINZIGE Navigation innerhalb. Default-View ist "Bracket", aber User wechselt sofort zu Top Scorers etc. Bracket ist dann nur EINER von vielen Sub-Views. Kein Hub-Header braucht "Bracket"-Label, weil Aside zeigt was aktiv ist.</p>
+    </div>
+  </div>
+</div>

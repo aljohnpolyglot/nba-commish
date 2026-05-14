@@ -5,7 +5,8 @@ import {
   User, Calendar, BarChart2, TrendingUp,
   Search, Users, Star, Building2, Settings2, ChevronDown,
   ListOrdered, Stethoscope, Tv, ThumbsUp, Eye, DollarSign,
-  Target, Ticket, Table2, Zap, UserX, UserPlus, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase, Crown, ArrowLeftRight, Globe2
+  Target, Ticket, Table2, Zap, UserX, UserPlus, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase, Crown, ArrowLeftRight, Globe2,
+  Landmark, Megaphone, Plane, HeartPulse, Hammer, IdCard, Telescope, Repeat
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { useLeagueLabels } from '../../utils/leagueLabels';
@@ -127,18 +128,36 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
     {
       label: isGM ? 'My Team' : 'Command Center',
       items: [
-        { id: 'Schedule',  label: 'Schedule',  icon: Calendar },
+        { id: 'Schedule' as Tab,  label: 'Schedule',  icon: Calendar },
         ...(!isGM ? [
           { id: 'Actions' as Tab,   label: 'Actions',   icon: Sparkles },
           { id: 'Events' as Tab,    label: 'Timeline',  icon: Clock },
         ] : []),
-        ...(isGM ? [
+        ...(isGM && !euroIsolated ? [
           { id: 'Team Office' as Tab, label: 'Team Office', icon: Briefcase },
           { id: 'Coaching' as Tab, label: 'Coaching', icon: ClipboardList },
           { id: 'Training Center' as Tab, label: 'Training Center', icon: Activity },
         ] : []),
+        ...(isGM && euroIsolated ? [
+          { id: 'Front Office' as Tab, label: 'Front Office', icon: Briefcase },
+          { id: 'Coaching' as Tab, label: 'Coaching', icon: ClipboardList },
+          { id: 'Training Center' as Tab, label: 'Training', icon: Activity },
+        ] : []),
       ],
     },
+    ...(isGM && euroIsolated ? [{
+      label: 'Front Office',
+      items: [
+        { id: 'Front Office Finances' as Tab,        label: 'Finances',          icon: Landmark },
+        { id: 'Front Office Sponsorships' as Tab,    label: 'Sponsorships',      icon: Megaphone },
+        { id: 'Front Office Transfer Market' as Tab, label: 'Transfer Market',   icon: Repeat },
+        { id: 'Front Office Staff' as Tab,           label: 'Staff',             icon: IdCard },
+        { id: 'Front Office Medical' as Tab,         label: 'Medical',           icon: HeartPulse },
+        { id: 'Front Office Facilities' as Tab,      label: 'Facilities',        icon: Hammer },
+        { id: 'Front Office Travel' as Tab,          label: 'Travel',            icon: Plane },
+        { id: 'Front Office Scouting' as Tab,        label: 'Scouting',          icon: Telescope },
+      ],
+    }] : []),
     ...(!isGM ? [{
       label: 'Seasonal',
       items: [
@@ -179,42 +198,42 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
     {
       label: 'League',
       items: [
-        { id: 'NBA Central',      label: labels.central,    icon: Trophy },
-        { id: 'Standings',        label: 'Standings',       icon: Table2 },
-        { id: 'Transactions',     label: 'Transactions',    icon: ArrowRightLeft },
+        { id: 'NBA Central' as Tab,      label: labels.central,    icon: Trophy },
+        { id: 'Standings' as Tab,        label: 'Standings',       icon: Table2 },
+        { id: 'Transactions' as Tab,     label: 'Transactions',    icon: ArrowRightLeft },
         ...(!tradesDisabled && !isPastTradeDeadline ? [
           { id: 'Trade Machine' as Tab,    label: isPastTradeDeadline ? 'Trade Machine (Locked)' : 'Trade Machine',   icon: Cpu },
           { id: 'Trade Finder' as Tab,     label: 'Trade Finder',    icon: Search },
         ] : []),
         ...(isGM && !tradesDisabled && !isPastTradeDeadline ? [{ id: 'Trade Proposals' as Tab, label: 'Trade Proposals', icon: GitPullRequest, badge: fmt(pendingTradesCount) }] : []),
-        { id: 'Player Search',    label: 'Player Search',   icon: Search },
-        { id: 'Player Bios',        label: 'Player Bios',       icon: Users },
-        { id: 'Player Comparison',  label: 'Player Comparison', icon: ArrowLeftRight },
+        { id: 'Player Search' as Tab,    label: 'Player Search',   icon: Search },
+        { id: 'Player Bios' as Tab,        label: 'Player Bios',       icon: Users },
+        { id: 'Player Comparison' as Tab,  label: 'Player Comparison', icon: ArrowLeftRight },
         ...(!isGM || showFATabInGM ? [{ id: 'Free Agents' as Tab, label: 'Free Agents', icon: UserX }] : []),
-        { id: 'Injuries',         label: 'Injuries',        icon: Stethoscope },
+        { id: 'Injuries' as Tab,         label: 'Injuries',        icon: Stethoscope },
       ],
     },
     {
       label: 'Analytics',
       items: [
-        { id: 'Player Stats',    label: 'Player Stats',    icon: BarChart2 },
-        { id: 'Player Ratings',  label: 'Player Ratings',  icon: BarChart2 },
-        { id: 'Team Stats',      label: 'Team Stats',      icon: Users },
-        { id: 'Award Races',     label: 'Award Races',     icon: TrendingUp },
-        { id: 'Statistical Feats', label: 'Statistical Feats', icon: Zap },
-        { id: 'League Leaders',  label: 'League Leaders',  icon: ListOrdered },
-        { id: 'League History',  label: 'League History',  icon: Trophy },
-        { id: 'Team History',    label: 'Team History',    icon: BookOpen },
-        { id: 'Hall of Fame',    label: 'Hall of Fame',    icon: Crown },
-        { id: 'Power Rankings',  label: 'Power Rankings',  icon: TrendingUp },
+        { id: 'Player Stats' as Tab,    label: 'Player Stats',    icon: BarChart2 },
+        { id: 'Player Ratings' as Tab,  label: 'Player Ratings',  icon: BarChart2 },
+        { id: 'Team Stats' as Tab,      label: 'Team Stats',      icon: Users },
+        { id: 'Award Races' as Tab,     label: 'Award Races',     icon: TrendingUp },
+        { id: 'Statistical Feats' as Tab, label: 'Statistical Feats', icon: Zap },
+        { id: 'League Leaders' as Tab,  label: 'League Leaders',  icon: ListOrdered },
+        { id: 'League History' as Tab,  label: 'League History',  icon: Trophy },
+        { id: 'Team History' as Tab,    label: 'Team History',    icon: BookOpen },
+        { id: 'Hall of Fame' as Tab,    label: 'Hall of Fame',    icon: Crown },
+        { id: 'Power Rankings' as Tab,  label: 'Power Rankings',  icon: TrendingUp },
       ],
     },
     ...(!noDraft ? [{
       label: 'Draft',
       items: [
-        { id: 'Draft Scouting', label: 'Scouting',      icon: Target },
-        { id: 'Draft Lottery',  label: 'Draft Lottery', icon: Ticket },
-        { id: 'Draft Board',    label: 'Draft Board',   icon: ClipboardList },
+        { id: 'Draft Scouting' as Tab, label: 'Scouting',      icon: Target },
+        { id: 'Draft Lottery' as Tab,  label: 'Draft Lottery', icon: Ticket },
+        { id: 'Draft Board' as Tab,    label: 'Draft Board',   icon: ClipboardList },
       ],
     }] : []),
     // ── International league hubs (commented out — user has a better design in mind) ──

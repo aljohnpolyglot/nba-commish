@@ -434,7 +434,7 @@ export function generateFictionalLeague(startYear: number, seed?: number): Ficti
     // before it in chronological order so player.ratings = [...past, current].
     const currentRatingsEntry = ratings[ratings.length - 1] ?? {};
     const ratingsHistory = buildRatingsHistory(
-      currentRatingsEntry, age, startYear, careerYears, `act_${rank}_${p.id ?? p.firstName}`,
+      currentRatingsEntry, age, startYear, careerYears, `act_${rank}_${(p as any).id ?? (p as any).firstName ?? p.name}`,
     );
     const fullRatings = [...ratingsHistory, { ...currentRatingsEntry, season: startYear }];
 
@@ -568,7 +568,7 @@ export function generateFictionalLeague(startYear: number, seed?: number): Ficti
 
     const currentRatingsEntry = ratings[ratings.length - 1] ?? {};
     const ratingsHistory = buildRatingsHistory(
-      currentRatingsEntry, age, startYear, careerYears, `fa_${p.id ?? p.firstName}`,
+      currentRatingsEntry, age, startYear, careerYears, `fa_${(p as any).id ?? (p as any).firstName ?? p.name}`,
     );
     const fullRatings = [...ratingsHistory, { ...currentRatingsEntry, season: startYear }];
 

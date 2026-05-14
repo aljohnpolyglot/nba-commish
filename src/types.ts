@@ -665,6 +665,7 @@ export interface LeagueStats {
   useYellowRedCards?: boolean;
   // Shot Clock
   shotClockResetOffensiveRebound?: number;
+
 }
 
 export interface GameStats {
@@ -1243,16 +1244,18 @@ export interface NBAGMRosterData {
 
 export interface NonNBATeam {
   tid: number;
-  cid: number;
-  did: number;
-  region: string;
+  /** Conference id — not all leagues use one (Euro/PBA/etc.) so it's optional. */
+  cid?: number;
+  /** Division id — same caveat as cid; many international leagues are flat. */
+  did?: number;
+  region?: string;
   name: string;
-  abbrev: string;
-  pop: number;
-  stadiumCapacity: number;
+  abbrev?: string;
+  pop?: number;
+  stadiumCapacity?: number;
   imgURL?: string;
   colors?: string[];
-  league: 'Euroleague' | 'PBA' | 'WNBA' | 'B-League' | 'G-League' | 'Endesa' | 'China CBA' | 'NBL Australia';
+  league: 'Euroleague' | 'PBA' | 'WNBA' | 'B-League' | 'G-League' | 'Endesa' | 'China CBA' | 'NBL Australia' | string;
   nbaAffiliate?: string; // G-League sister city NBA team name
 }
 
@@ -1767,6 +1770,7 @@ export interface ExpansionTeamSpec {
 
 export type OffseasonChecklistRow =
   | 'draftLottery'
+  | 'retiredPlayersReview'
   | 'expansionDraft'
   | 'options'
   | 'qualifyingOffers'
@@ -1778,6 +1782,7 @@ export type OffseasonChecklistRow =
   | 'sponsorRenewals'
   | 'facilityUpgrades'
   | 'preseasonFriendlies'
+  | 'hofCeremony'
   | 'trainingCamp';
 
 export type OffseasonRowStatus = 'pending' | 'in-progress' | 'done' | 'skipped';
@@ -1893,7 +1898,7 @@ export type ActionType = 'SET_TRAINING_DAILY_PLAN' | 'SET_TRAINING_NORMAL_DEFAUL
   'EXPANSION_DRAFT_PICK' | 'UPDATE_TEAM_POP' | 'EXPANSION_DRAFT_COMPLETE' |
   'LIST_PLAYER_FOR_TRANSFER' | 'CANCEL_TRANSFER_LISTING' |
   'SUBMIT_TRANSFER_BID' | 'ACCEPT_TRANSFER_BID' | 'REJECT_TRANSFER_BID' |
-  'TICK_TRANSFER_MARKET';
+  'TICK_TRANSFER_MARKET' | 'LIST_PLAYER_TRANSFER';
 
 export interface UserAction {
   type: ActionType;

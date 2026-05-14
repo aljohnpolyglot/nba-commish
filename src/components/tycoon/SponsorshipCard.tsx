@@ -8,12 +8,20 @@ interface Props {
   tycoon: TycoonState;
   currency: string;
   onNegotiate: (slot: SponsorshipSlot) => void;
+  onTicketMultChange?: (mult: number) => void;
+  avgOpponentPrestige?: number;
+  marqueeOpponents?: string[];
 }
 
-const SLOT_LABELS: Record<SponsorshipSlot, string> = {
+const SLOT_LABELS: Partial<Record<SponsorshipSlot, string>> = {
   kit: 'Kit',
   sleeve: 'Sleeve',
+  back: 'Back',
+  shorts: 'Shorts',
+  training: 'Training',
+  court: 'Court',
   stadium: 'Stadium',
+  practice: 'Practice',
 };
 
 export const SponsorshipCard: React.FC<Props> = ({ tycoon, currency, onNegotiate }) => {

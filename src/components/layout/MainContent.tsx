@@ -57,6 +57,8 @@ import { CoachingHubView } from '../central/view/Coaching/CoachingHubView';
 import { TrainingCenterView } from '../training/TrainingCenterView';
 import HallofFameView from '../central/view/HallOfFame/HallofFameView';
 import { InternationalLeagueHub, HUB_TAB_TO_LEAGUE } from '../international/InternationalLeagueHub';
+import { FrontOfficeView } from '../central/view/FrontOfficeView';
+import { EuroTransferMarketView } from '../transferMarket/EuroTransferMarketView';
 import { Tab } from '../../types';
 
 interface MainContentProps {
@@ -287,6 +289,24 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       );
     case 'Hall of Fame':
       return <HallofFameView />;
+    case 'Front Office':
+      return <FrontOfficeView />;
+    case 'Front Office Finances':
+      return <FrontOfficeView initialSection="finances" />;
+    case 'Front Office Sponsorships':
+      return <FrontOfficeView initialSection="sponsorships" />;
+    case 'Front Office Travel':
+      return <FrontOfficeView initialSection="travel" />;
+    case 'Front Office Medical':
+      return <FrontOfficeView initialSection="medical" />;
+    case 'Front Office Facilities':
+      return <FrontOfficeView initialSection="facilities" />;
+    case 'Front Office Staff':
+      return <FrontOfficeView initialSection="staff" />;
+    case 'Front Office Scouting':
+      return <FrontOfficeView initialSection="scouting" />;
+    case 'Front Office Transfer Market':
+      return <EuroTransferMarketView />;
     case 'Euroleague Hub':
     case 'Endesa Hub':
     case 'G-League Hub':

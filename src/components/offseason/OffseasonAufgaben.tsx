@@ -26,6 +26,8 @@ import {
 import type { OffseasonChecklistRow, OffseasonRowStatus, NBAPlayer, Tab } from '../../types';
 import { TeamOptionGateModal } from '../modals/TeamOptionGateModal';
 import { SponsorshipNegotiationModal } from '../tycoon/SponsorshipNegotiationModal';
+import RetiredPlayersReviewModal from './views/RetiredPlayersReviewView';
+import HOFCeremonyModal from './views/HOFCeremonyView';
 import { useExpiringResignGate } from '../../hooks/useExpiringResignGate';
 import { getOffseasonState, computeDraftSeasonYear, computeUpcomingSeasonYear } from '../../services/offseason/offseasonState';
 import { PlayerProtectionModal } from '../expansion/PlayerProtectionModal';
@@ -157,6 +159,7 @@ export const OffseasonNextActionButton: React.FC<NextActionButtonProps> = ({ set
   const lotteryAlreadyRan = !!(state.draftLotteryResult && state.draftLotteryResult.length > 0);
   const labelForRow: Record<OffseasonChecklistRow, string> = {
     draftLottery:     lotteryAlreadyRan ? 'Review Lottery Results' : 'Watch Draft Lottery',
+    retiredPlayersReview: 'Honor Retirees',
     expansionDraft:   'Run Expansion Draft',
     options:          'Decide Options',
     qualifyingOffers: 'Submit Qualifying Offers',
@@ -166,9 +169,11 @@ export const OffseasonNextActionButton: React.FC<NextActionButtonProps> = ({ set
     freeAgency:       state.faTagCounter
       ? `End Day · ${state.faTagCounter}/${state.faTagsTotal ?? 13}`
       : 'Enter Free Agency',
+    transferMarket:   'Open Transfer Market',
     sponsorRenewals:  'Review Sponsors',
     facilityUpgrades: 'Review Facilities',
     preseasonFriendlies: 'Review Friendlies',
+    hofCeremony:      'Attend Ceremony',
     trainingCamp:     'Open Training Camp',
   };
   const label = labelForRow[currentRow];
@@ -309,7 +314,7 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     [state.teams, state.userTeamId],
   );
   const visibleRows = React.useMemo(
-    () => getVisibleOffseasonRows(state.leagueStats, userTeam as any),
+    () => getVisibleOffseasonRows(state.leagueStats, userTeam as any, state.date),
     [state.leagueStats, userTeam],
   );
 
@@ -514,6 +519,8 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   const [optionsModalOpen, setOptionsModalOpen] = useState(false);
   // Tycoon: sponsor-renewal modal — opened from the sponsorRenewals offseason row.
   const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
+  const [retiredReviewOpen, setRetiredReviewOpen] = useState(false);
+  const [hofCeremonyOpen, setHofCeremonyOpen] = useState(false);
   const [exercisedIds, setExercisedIds] = useState<Set<string>>(new Set());
   const [declinedIds, setDeclinedIds] = useState<Set<string>>(new Set());
   // Qualifying Offer modal — opens when user clicks "Enter" on the QO row.
@@ -590,6 +597,20 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   const getStepConfirmSpec = (row: OffseasonChecklistRow, status: OffseasonRowStatus): OffseasonConfirmSpec => {
     const resume = status === 'in-progress';
     switch (row) {
+      case 'retiredPlayersReview':
+        return {
+          eyebrow: 'Offseason Flow',
+          title: resume ? 'Resume Legacy Review' : 'Open Legacy Review',
+          body: 'Honor this season\'s retirees, see which jerseys go up to the rafters, and check who\'s next in line for the Hall.',
+          confirmLabel: resume ? 'Resume Review' : 'Open Review',
+        };
+      case 'hofCeremony':
+        return {
+          eyebrow: 'Hall of Fame Weekend',
+          title: resume ? 'Resume Enshrinement' : 'Attend the Ceremony',
+          body: 'Welcome this year\'s Hall of Fame class on enshrinement weekend. Once concluded, the step is cleared from your checklist.',
+          confirmLabel: resume ? 'Resume Ceremony' : 'Enter Ceremony',
+        };
       case 'draftLottery':
         return {
           eyebrow: 'Offseason Flow',
@@ -732,6 +753,16 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     }
     if (row === 'sponsorRenewals') {
       setSponsorModalOpen(true);
+      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      return;
+    }
+    if (row === 'retiredPlayersReview') {
+      setRetiredReviewOpen(true);
+      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      return;
+    }
+    if (row === 'hofCeremony') {
+      setHofCeremonyOpen(true);
       dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
       return;
     }
@@ -1050,6 +1081,23 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
           </button>
         </div>
       )}
+
+      {/* Retired Players Review — 2K-style master/detail list of this season's
+          retirees with inline HOF + jersey-retirement badges. Pure review:
+          Done button dispatches COMPLETE_PHASE; closing via X / backdrop
+          leaves the row in-progress. */}
+      <RetiredPlayersReviewModal
+        isOpen={retiredReviewOpen}
+        onClose={() => setRetiredReviewOpen(false)}
+      />
+
+      {/* Hall of Fame Ceremony — gold Enshrinement-Weekend modal showing the
+          Class of YYYY with career highlights. Calendar-gated so it only
+          surfaces in the sidebar from the first Saturday of September. */}
+      <HOFCeremonyModal
+        isOpen={hofCeremonyOpen}
+        onClose={() => setHofCeremonyOpen(false)}
+      />
 
       {/* SponsorshipNegotiationModal — opened from sponsorRenewals offseason row.
           Row only marks COMPLETE when every slot has been resolved (renewed or
@@ -1566,6 +1614,56 @@ export const OffseasonFATagFooter: React.FC = () => {
         </div>,
         document.body,
       )}
+    </div>
+  );
+};
+
+// ─── Training Camp footer ──────────────────────────────────────────────────
+// Shows while trainingCamp row is pending/in-progress. Auto-hides once the
+// calendar advances past camp start (the sidebar effect fires OFFSEASON_COMPLETE_PHASE).
+
+export const OffseasonTrainingCampFooter: React.FC = () => {
+  const { state, dispatchAction } = useGame();
+  if (!state.offseasonChecklist) return null;
+  const status = state.offseasonChecklist.trainingCamp;
+  if (status !== 'pending' && status !== 'in-progress') return null;
+
+  const userTid = state.userTeamId ?? -999;
+  const rosterSize = (state.players ?? []).filter((p: any) => p.tid === userTid && !p.gLeagueAssigned).length;
+  const target = state.leagueStats?.maxStandardPlayersPerTeam ?? 15;
+  const needsTrim = rosterSize > target;
+
+  const handleComplete = () => {
+    dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'trainingCamp' } } as any);
+  };
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-[170] flex items-center justify-center pointer-events-none px-4 pb-3">
+      <div className="pointer-events-auto flex items-center gap-3 px-4 py-2 rounded-2xl bg-slate-950/95 border border-sky-500/40 shadow-2xl backdrop-blur-md">
+        <div className="flex flex-col leading-none">
+          <span className="text-[8px] font-black uppercase tracking-[0.2em] text-sky-300/80">Training Camp</span>
+          <span className="text-sm font-black text-white tabular-nums uppercase tracking-tight">
+            {rosterSize}/{target} roster
+          </span>
+        </div>
+        {needsTrim && (
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-200 font-black text-[10px] uppercase tracking-widest">
+            Trim to {target}
+          </div>
+        )}
+        <button
+          onClick={handleComplete}
+          disabled={needsTrim || state.isProcessing}
+          title={needsTrim ? `Cut roster to ${target} before completing training camp.` : 'Complete training camp and open the regular season.'}
+          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-colors ${
+            needsTrim || state.isProcessing
+              ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+              : 'bg-sky-600 hover:bg-sky-500 text-white'
+          }`}
+        >
+          Complete Training Camp
+        </button>
+      </div>
     </div>
   );
 };
