@@ -345,6 +345,10 @@ export interface LeagueStats {
   /** Set once when the auto-2029-expansion-seed effect runs (or the user
    *  cancels it). Persists with the save so reopening doesn't re-seed. */
   auto2029ExpansionSeeded?: boolean;
+  /** Set once when the Euro-Mode owner profile has been auto-seeded for a save. */
+  autoOwnerSeeded?: boolean;
+  /** Set once when the Euro-Mode staff free-agent pool has been seeded. */
+  staffPoolSeeded?: boolean;
   hasFinalsHalftime?: boolean;
   hasAllStarHalftime?: boolean;
   hasRingCeremony?: boolean;
@@ -1625,6 +1629,15 @@ historicalAwards: HistoricalAward[];
     teamName: string;
     cashOnHand: number;
     year: number;
+  };
+  /** Euro-mode staff free-agent pool — seeded at INIT_EURO_CAREER, refilled monthly. */
+  staffFreeAgents?: StaffMember[];
+  /** Snapshot of the Euro-Mode hybrid setup wizard inputs (for save replay / debugging). */
+  euroSetupSeed?: {
+    teamId: number;
+    leagueId: string;
+    masterSeed: number;
+    manualOverrides: Record<string, unknown>;
   };
   /** Transient deep-link target for TeamOffice + its sub-views. Read by
    *  TeamOfficeView (sets activeTab) and TeamIntel (sets intelTab) on mount,
