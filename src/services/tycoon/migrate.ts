@@ -117,6 +117,14 @@ export function upgradeExistingTycoon(
   if (!Array.isArray(t.boardPromises)) t.boardPromises = seedBoardPromises(currentYear, t);
   if (!Array.isArray(t.staffMembers)) t.staffMembers = [];
 
+  // Heal incomplete facilities (older saves may have only stadium set)
+  const f = t.facilities ?? ({} as any);
+  if (!f.stadium) f.stadium = { level: 1, capacity: TIER_BASE[t.tier]?.stadiumCapacity ?? 7500 };
+  if (!(f.stadium as any).capacity) (f.stadium as any).capacity = TIER_BASE[t.tier]?.stadiumCapacity ?? 7500;
+  if (!f.trainingCenter) f.trainingCenter = { level: 1 };
+  if (!f.academy) f.academy = { level: 1 };
+  t.facilities = f;
+
   // Fill missing sponsorship slots and classify existing ones
   const existing = t.sponsorships ?? ({} as any);
   const upgraded: any = {};

@@ -12,6 +12,32 @@ export interface BudgetContext {
   avgOpponentPrestige?: number;
 }
 
+function estimateTravelCost(
+  prefs: { hotel: number; flight: number; bus: number },
+  domesticAwayGames: number,
+  euroleagueAwayGames: number,
+): number {
+  const key = (v: number) => v.toFixed(1);
+  const hotelPrice: Record<string, number> = {
+    '0.5': 1_500, '1.0': 2_500, '1.5': 4_000, '2.0': 6_000, '2.5': 8_000,
+    '3.0': 10_000, '3.5': 13_000, '4.0': 16_000, '4.5': 22_000, '5.0': 30_000,
+  };
+  const flightPrice: Record<string, number> = {
+    '0.5': 4_000, '1.0': 7_000, '1.5': 12_000, '2.0': 18_000, '2.5': 28_000,
+    '3.0': 40_000, '3.5': 70_000, '4.0': 110_000, '4.5': 160_000, '5.0': 220_000,
+  };
+  const busPrice: Record<string, number> = {
+    '0.5': 400, '1.0': 700, '1.5': 1_100, '2.0': 1_700, '2.5': 2_400,
+    '3.0': 3_500, '3.5': 5_000, '4.0': 7_500, '4.5': 11_000, '5.0': 16_000,
+  };
+  const totalAway = domesticAwayGames + euroleagueAwayGames;
+  return Math.round(
+    (hotelPrice[key(prefs.hotel)] ?? 0) * totalAway
+    + (flightPrice[key(prefs.flight)] ?? 0) * euroleagueAwayGames
+    + (busPrice[key(prefs.bus)] ?? 0) * domesticAwayGames,
+  );
+}
+
 function successMultiplier(ctx: BudgetContext): number {
   let m = 1.0;
   const pos = ctx.endesaFinishPosition;
@@ -48,7 +74,8 @@ export function computeAnnualBudget(team: NBATeam, ctx: BudgetContext, allPlayer
   const success = successMultiplier(ctx);
 
   const attendancePct = averageAttendancePct(t.tier, success);
-  const matchday = Math.round(t.facilities.stadium.capacity * attendancePct * tb.ticketPrice * 30);
+  const capacity = (t.facilities?.stadium as any)?.capacity ?? tb.stadiumCapacity;
+  const matchday = Math.round(capacity * attendancePct * tb.ticketPrice * 30);
 
   const slotRev = (slot: 'kit' | 'sleeve' | 'stadium'): number => {
     const s = t.sponsorships[slot];
@@ -63,11 +90,17 @@ export function computeAnnualBudget(team: NBATeam, ctx: BudgetContext, allPlayer
 
   const wages = wagesEUR(team, allPlayers);
   const staff = Math.round(wages * 0.10);
-  const facilityLevelSum = t.facilities.stadium.level + t.facilities.trainingCenter.level + t.facilities.academy.level;
+  const facilityLevelSum = (t.facilities?.stadium?.level ?? 1)
+    + (t.facilities?.trainingCenter?.level ?? 1)
+    + (t.facilities?.academy?.level ?? 1);
   const facility = facilityLevelSum * tb.facilityOpsPerLevel;
   const scouting = tb.scoutingBudget;
-  const travel = tb.travelBase + (ctx.euroleagueAwayGames * 40_000);
-  const financeCosts = t.cashOnHand < 0 ? Math.round(Math.abs(t.cashOnHand) * 0.05) : 0;
+  const travelPrefs = t.travelPreferences;
+  const travel = travelPrefs
+    ? estimateTravelCost(travelPrefs, 17, ctx.euroleagueAwayGames)
+    : tb.travelBase + (ctx.euroleagueAwayGames * 40_000);
+  const cash = t.cashOnHand ?? 0;
+  const financeCosts = cash < 0 ? Math.round(Math.abs(cash) * 0.05) : 0;
 
   const profit = Math.round(matchday + sponsorship + prize + tv + transfer
                - wages - staff - facility - scouting - travel - financeCosts);
@@ -77,7 +110,14 @@ export function computeAnnualBudget(team: NBATeam, ctx: BudgetContext, allPlayer
     revenue: { matchday, sponsorship, prize, tv, transfer },
     expenses: { wages, staff, facility, scouting, travel, financeCosts },
     profit,
-    cashOnHandEnd: t.cashOnHand + profit,
+    cashOnHandEnd: cash + profit,
     ffpDeficitContribution: Math.min(profit, 0),
   };
+}
+
+export function projectYearEndCash(team: NBATeam, ctx: BudgetContext, plannedSpendEUR = 0, players?: any[]): number {
+  const tycoon = team.tycoon;
+  if (!tycoon) return 0;
+  const ledger = computeAnnualBudget(team, ctx, players);
+  return Math.round((tycoon.cashOnHand ?? 0) + ledger.profit - plannedSpendEUR);
 }
