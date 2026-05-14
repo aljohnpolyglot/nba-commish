@@ -300,6 +300,31 @@ export interface LeagueStats {
   uiMode?: 'nba' | 'euro_isolated';
   currency?: 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CNY' | 'AUD' | 'PHP';
   tradesAllowed?: boolean;
+  /** Euro-mode salary overrides — when uiMode === 'euro_isolated' these replace
+   *  minContractStaticAmount / max-pct lookups. Stored as USD (display in EUR via currency rate).
+   *  Defaults seeded from EXTERNAL_SALARY_SCALE.Endesa at currency rate. */
+  euroMinSalaryUSD?: number;
+  euroMaxSalaryUSD?: number;
+  /** Euroleague Base Remuneration Level — team minimum spend floor (€10M IRL 2026-27). USD-stored. */
+  euroleagueBRL?: number;
+  /** Euro-mode Transfer Market gate rules. Window-Dates locked once save starts; rest stays editable. */
+  transferMarket?: {
+    enabled: boolean;
+    /** Summer window — listings + bids open inside [start, end] inclusive (MM-DD calendar). */
+    summerStart: string;   // 'MM-DD' e.g. '07-01'
+    summerEnd: string;     // 'MM-DD' e.g. '09-30'
+    /** Winter window. */
+    winterStart: string;   // 'MM-DD' e.g. '01-01'
+    winterEnd: string;     // 'MM-DD' e.g. '01-31'
+    /** Days a listing stays open before auto-resolve. 3–14. */
+    auctionDays: number;
+    /** Tier-Gating: when true, bidders must have cash + wage-headroom for the player. */
+    tierGating: boolean;
+    /** Which leagues may bid on listings: 'euro' = Euroleague+Endesa only, 'plus_nba' = +NBA, 'all' = +WNBA/CBA/PBA/NBL. */
+    bidderPool: 'euro' | 'plus_nba' | 'all';
+    /** Default release-clause multiplier — start-value for the SigningModal slider (1–10× total wage). */
+    releaseClauseDefaultMult: number;
+  };
   hofClassesInducted?: number[];
   draftType: string;
   allStarEnding?: string;
@@ -506,6 +531,10 @@ export interface LeagueStats {
   faStartMonth?: number;
   /** Free agency start day of month (1-31). NBA default: 1 */
   faStartDay?: number;
+  /** Training camp open month (1-12). NBA default: 9. Euromode default: 9 (Sep 14). */
+  trainingCampMonth?: number;
+  /** Training camp open day (1-31). NBA default: 29. Euromode default: 14. */
+  trainingCampDay?: number;
   /** Moratorium length in days from FA start (signings locked). NBA default: 6 */
   faMoratoriumDays?: number;
   /** Allow year-round regular-season FA signings (buyouts, 10-days, open-roster). NBA default: true */
@@ -764,6 +793,24 @@ export interface TradeException {
   source: 'plain' | 'aggregation' | 'sign-and-trade';
 }
 
+export type OwnerWealthTier = 'LocalWealthy' | 'NationalMagnate' | 'Billionaire';
+export type OwnerPatience = 'TriggerHappy' | 'Steady' | 'LongTerm';
+export type OwnerVision = 'WinNow' | 'Develop' | 'Frugal';
+
+export interface OwnerProfile {
+  name: string;
+  nationality: string;
+  face: any;  // facesjs config — kept loose to match StaffMember.face
+  wealthTier: OwnerWealthTier;
+  patience: OwnerPatience;
+  vision: OwnerVision;
+  cashInjectionUsedThisSeason: boolean;     // resets at season rollover
+  seasonsSinceLastInjection: number;        // NationalMagnate cooldown
+  consecutiveBadSeasons: number;
+}
+
+export type SetupTierLabel = 'Powerhouse' | 'Established' | 'MidTier' | 'Underdog';
+
 export interface NBATeam {
   id: number;
   name: string;
@@ -840,6 +887,9 @@ export interface NBATeam {
   justWonEndesa?: boolean;
   /** Set by competition resolver when team just reached EL Final Four; consumed by tycoon eventChecker. */
   justReachedEuroFinalFour?: boolean;
+  ownerProfile?: OwnerProfile;
+  startingTier?: SetupTierLabel;
+  startingBudget?: number;
 }
 
 /** A waived guaranteed contract — team still owes the money against the cap. */
@@ -1099,6 +1149,7 @@ export interface StaffMember {
   careerStartYear?: number;
   yearsWithTeam?: number;
   isPlaceholder?: boolean;
+  face?: any;
 }
 
 export interface StaffData {
@@ -1569,6 +1620,12 @@ historicalAwards: HistoricalAward[];
    *  Populated by seasonRollover §0a/§0b (options) and autoRunDraft (rookies);
    *  drained by the corresponding modal stacks. */
   pendingOfferDecisions?: OffseasonPendingDecision[];
+  pendingEuroBankruptcy?: {
+    teamId: number;
+    teamName: string;
+    cashOnHand: number;
+    year: number;
+  };
   /** Transient deep-link target for TeamOffice + its sub-views. Read by
    *  TeamOfficeView (sets activeTab) and TeamIntel (sets intelTab) on mount,
    *  then cleared. Used by the offseason AUFGABEN sidebar to deep-link rows
@@ -1613,7 +1670,61 @@ historicalAwards: HistoricalAward[];
       matchedByPriorTeam?: boolean;
     }>;
   };
+
+  // ── Euro Transfer Market ──────────────────────────────────────────────────
+  /** Active player listings (Euro-mode only). Created via "List Player" action,
+   *  cleared when accepted / cancelled / expired. */
+  transferListings?: TransferListing[];
+  /** Bids on listings + unsolicited bids on rostered players. AI tick + user
+   *  actions append to this. Resolved entries stay (for inbox history) until
+   *  a configurable purge. */
+  transferBids?: TransferBid[];
+  /** Day-stamped feed of completed transfers (for the Market Activity rail). */
+  transferActivity?: Array<{
+    id: string;
+    date: string;        // YYYY-MM-DD
+    fromTid: number;
+    toTid: number;
+    playerId: string;
+    playerName: string;
+    feeEUR: number;
+    bidType: TransferBidType;
+  }>;
 }
+
+export type TransferBidType = 'transfer' | 'buyout' | 'loan' | 'release-clause';
+export type TransferBidStatus = 'active' | 'highest' | 'outbid' | 'accepted' | 'rejected' | 'withdrawn' | 'expired';
+export type TransferListingStatus = 'active' | 'sold' | 'cancelled' | 'expired';
+
+export interface TransferListing {
+  id: string;
+  playerId: string;
+  sellerTid: number;
+  askingEUR: number;
+  bidsCount: number;
+  highestBidEUR?: number;
+  topBidderTid?: number;
+  totalDays: number;
+  daysLeft: number;
+  createdDate: string;   // YYYY-MM-DD
+  status: TransferListingStatus;
+}
+
+export interface TransferBid {
+  id: string;
+  listingId?: string;     // optional — clause-triggers / unsolicited can be null
+  playerId: string;
+  bidderTid: number;
+  sellerTid: number;
+  bidType: TransferBidType;
+  amountEUR: number;
+  /** Optional pct vs. asking price — recomputed by selectors when missing. */
+  pctVsAsking?: number;
+  expiresDate: string;    // YYYY-MM-DD
+  receivedDate: string;   // YYYY-MM-DD
+  status: TransferBidStatus;
+}
+
 // ── Offseason 2K-style checklist types ──────────────────────────────────────
 // The 8 phase rows the user steps through between Finals end and opening night.
 // Order matters — reflects the visual sidebar order (Bilder #2/#7/#16).
@@ -1650,6 +1761,7 @@ export type OffseasonChecklistRow =
   | 'draft'
   | 'rookieContracts'
   | 'freeAgency'
+  | 'transferMarket'
   | 'sponsorRenewals'
   | 'facilityUpgrades'
   | 'preseasonFriendlies'
@@ -1762,7 +1874,13 @@ export type ActionType = 'SET_TRAINING_DAILY_PLAN' | 'SET_TRAINING_NORMAL_DEFAUL
   'OFFSEASON_ENTER_PHASE' | 'OFFSEASON_COMPLETE_PHASE' | 'OFFSEASON_SKIP_PHASE' |
   'OFFSEASON_AUTO_RESOLVE_ALL' | 'OFFSEASON_ADVANCE_FA_TAG' | 'OFFSEASON_EXIT' |
   'OFFSEASON_RESOLVE_DECISION' | 'OFFSEASON_RESET_CHECKLIST' |
-  'SUBMIT_QUALIFYING_OFFER' | 'SKIP_QUALIFYING_OFFER';
+  'SUBMIT_QUALIFYING_OFFER' | 'SKIP_QUALIFYING_OFFER' |
+  'SCHEDULE_EXPANSION' | 'ACTIVATE_EXPANSION_NOW' | 'CLEAR_EXPANSION_SCHEDULE' |
+  'SET_EXPANSION_PROTECTIONS' | 'APPLY_EXPANSION_REALIGNMENT' |
+  'EXPANSION_DRAFT_PICK' | 'UPDATE_TEAM_POP' | 'EXPANSION_DRAFT_COMPLETE' |
+  'LIST_PLAYER_FOR_TRANSFER' | 'CANCEL_TRANSFER_LISTING' |
+  'SUBMIT_TRANSFER_BID' | 'ACCEPT_TRANSFER_BID' | 'REJECT_TRANSFER_BID' |
+  'TICK_TRANSFER_MARKET';
 
 export interface UserAction {
   type: ActionType;
@@ -1771,7 +1889,7 @@ export interface UserAction {
 
 export type Conference = 'East' | 'West';
 export type GamePhase = 'Preseason' | 'Opening Week' | 'Regular Season (Early)' | 'Regular Season (Mid)' | 'All-Star Break' | 'Trade Deadline' | 'Regular Season (Late)' | 'Play-In Tournament' | 'Playoffs (Round 1)' | 'Playoffs (Round 2)' | 'Conference Finals' | 'NBA Finals' | 'Offseason' | 'Draft' | 'Draft Lottery' | 'Free Agency' | 'Schedule Planning' | 'Schedule Release' | 'Training Camp';
-export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'NBA Cup' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'Player Creator' | 'League History' | 'Player Bios' | 'Player Comparison' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History' | 'Team Office' | 'Coaching' | 'Training Center' | 'Hall of Fame' | 'Euroleague' | 'Liga Endesa' | 'Euroleague Hub' | 'Endesa Hub' | 'G-League Hub' | 'WNBA Hub' | 'B-League Hub' | 'China CBA Hub' | 'NBL Australia Hub' | 'PBA Hub';
+export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'NBA Cup' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Front Office' | 'Front Office Finances' | 'Front Office Sponsorships' | 'Front Office Travel' | 'Front Office Medical' | 'Front Office Facilities' | 'Front Office Staff' | 'Front Office Scouting' | 'Front Office Transfer Market' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'Player Creator' | 'League History' | 'Player Bios' | 'Player Comparison' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History' | 'Team Office' | 'Coaching' | 'Training Center' | 'Hall of Fame' | 'Euroleague' | 'Liga Endesa' | 'Euroleague Hub' | 'Endesa Hub' | 'G-League Hub' | 'WNBA Hub' | 'B-League Hub' | 'China CBA Hub' | 'NBL Australia Hub' | 'PBA Hub';
 
 // ─── AI Trade / Free Agency ───────────────────────────────────────────────────
 export interface TradeProposal {
