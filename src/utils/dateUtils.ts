@@ -42,11 +42,32 @@ export function getSeasonSimStartDate(seasonYear: number): Date {
 }
 
 /**
- * NBA Opening Night: 4th Tuesday of October in the pre-season calendar year.
- * e.g. seasonYear=2026 → 4th Tuesday of Oct 2025
+ * League-aware regular-season start. NBA keeps the dynamic October opener;
+ * Euro isolated uses the first scheduled regular competition game, with Sep 28
+ * as the fallback for Spain.
  */
-export function getOpeningNightDate(seasonYear: number): Date {
+export function getRegularSeasonStartDate(
+  seasonYear: number,
+  stats?: TxnCalendar,
+  schedule?: ScheduleDateLike[],
+): Date {
+  if (stats?.uiMode === 'euro_isolated') {
+    const lowerBound = `${seasonYear - 1}-08-01`;
+    const first = (schedule ?? [])
+      .filter(g => g.date && !g.isPlayoff && !g.isPlayIn && (!g.season || g.season === seasonYear))
+      .map(g => String(g.date).slice(0, 10))
+      .filter(d => d >= lowerBound)
+      .sort()[0];
+    return first ? toDate(first) : new Date(Date.UTC(seasonYear - 1, 8, 28));
+  }
   return resolveSeasonDate(seasonYear, 10, 4, 'Tue', -1);
+}
+
+/**
+ * NBA Opening Night by default; league-aware when stats/schedule are supplied.
+ */
+export function getOpeningNightDate(seasonYear: number, stats?: TxnCalendar, schedule?: ScheduleDateLike[]): Date {
+  return getRegularSeasonStartDate(seasonYear, stats, schedule);
 }
 
 /**
@@ -60,6 +81,7 @@ export function toISODateString(date: Date): string {
 // Use leagueStats fields with defaults when absent so legacy saves keep working.
 
 type TxnCalendar = {
+  uiMode?: string | null;
   tradeDeadlineMonth?: number;
   tradeDeadlineOrdinal?: number;
   tradeDeadlineDayOfWeek?: DayAbbr;
@@ -88,6 +110,9 @@ type ScheduleDateLike = {
   date?: string;
   isPlayoff?: boolean;
   isPlayIn?: boolean;
+  played?: boolean;
+  season?: number;
+  competitionId?: string;
 };
 
 /**
@@ -250,7 +275,7 @@ export function isRegularSeasonSigningOpen(current: Date | string, seasonYear: n
   if (stats?.regularSeasonFAEnabled === false) return false;
   const c = toDate(current);
   // Regular season window: after opening night (Oct) → before next FA start (Jul 1)
-  const openingNight = getOpeningNightDate(seasonYear);
+  const openingNight = getOpeningNightDate(seasonYear, stats);
   const nextFAStart = getFreeAgencyStartDate(seasonYear, stats);
   return c >= openingNight && c < nextFAStart;
 }
