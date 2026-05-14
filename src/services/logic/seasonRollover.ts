@@ -1130,6 +1130,9 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   // upgrades. Stash recent results on team for next-season UI preview +
   // sponsor offers. All mutations happen in-place on the team objects, which
   // are then re-exported via the existing `teams: teamsWithSweptTPEs` return.
+  let pendingEuroBankruptcy: GameState['pendingEuroBankruptcy'] | undefined;
+  const euroBankruptcyNews: GameState['news'] = [];
+  const euroBankruptcyHistory: GameState['history'] = [];
   if (isEuroIsolatedMode(state)) {
     const endesaResolution = euroCompetitionResolutions.find(r => r.competitionId === 'endesa');
     const euroleagueResolution = euroCompetitionResolutions.find(r => r.competitionId === 'euroleague');
@@ -1190,6 +1193,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
         tycoonLedger.snapshot(team, ledger);
         tycoonSponsor.dekrementSponsorshipYears(team.tycoon);
         tycoonFacility.completeFinishedUpgrades(team, nextYear);
+        team.tycoon.cashGateOverridesThisSeason = 0;
 
         team.recentEndesaPositions = [...(team.recentEndesaPositions ?? []), endesaFinish].slice(-3);
         team.recentEuroleagueStages = [...(team.recentEuroleagueStages ?? []), elStage].slice(-3);
@@ -1198,6 +1202,23 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
         team.lastEuroAwayGames = elAway;
         if (endesaResolution?.championTid === tid) team.justWonEndesa = true;
         if (elStage === 'final-four') team.justReachedEuroFinalFour = true;
+        if (state.gameMode === 'gm' && state.userTeamId === tid && team.tycoon.cashOnHand < 0) {
+          pendingEuroBankruptcy = {
+            teamId: tid,
+            teamName: getTeamFullName(team),
+            cashOnHand: team.tycoon.cashOnHand,
+            year: nextYear,
+          };
+          const text = `${getTeamFullName(team)} is insolvent. The board ends the project and you must take over a new Euro club.`;
+          euroBankruptcyNews.push({
+            id: `euro-bankruptcy-${tid}-${currentYear}`,
+            text,
+            date: state.date,
+            type: 'Business',
+            tid,
+          } as any);
+          euroBankruptcyHistory.push({ text, date: state.date, type: 'Business', tid } as any);
+        }
       } catch (e) {
         console.warn(`[tycoon] year-end snapshot failed for team ${team.id ?? team.tid}`, e);
       }
@@ -1320,8 +1341,9 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     retirementAnnouncements: newRetirees,
     seasonPreviewDismissed: true,  // stays hidden through FA; shown when preseason starts (Oct 1)
     draftComplete: undefined,      // reset so draft can run for new year
-    news: [...jerseyRetirementNewsItems, ...hofNewsItems, ...mortalityNewsItems, ...farewellNewsItems, ...teamOptionNewsItems, ...playerOptionNewsItems, ...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
-    history: [...(state.history ?? []), ...playerOptionHistory, ...teamOptionHistoryEntries, ...optionExtHistory, ...euroChampionHistory, ...retirementHistoryEntries, ...farewellHistoryEntries, ...hofHistoryEntries, ...jerseyRetirementHistoryEntries, ...mortalityHistoryEntries, ...extRetireHistory, ...extFAHistory],
+    ...(pendingEuroBankruptcy ? { pendingEuroBankruptcy } : {}),
+    news: [...euroBankruptcyNews, ...jerseyRetirementNewsItems, ...hofNewsItems, ...mortalityNewsItems, ...farewellNewsItems, ...teamOptionNewsItems, ...playerOptionNewsItems, ...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
+    history: [...(state.history ?? []), ...playerOptionHistory, ...teamOptionHistoryEntries, ...optionExtHistory, ...euroChampionHistory, ...euroBankruptcyHistory, ...retirementHistoryEntries, ...farewellHistoryEntries, ...hofHistoryEntries, ...jerseyRetirementHistoryEntries, ...mortalityHistoryEntries, ...extRetireHistory, ...extFAHistory],
     ...(pendingOptionToasts.length > 0
       ? { pendingOptionToasts: [...(state.pendingOptionToasts ?? []), ...pendingOptionToasts] }
       : {}),

@@ -1,14 +1,82 @@
-import type { NBATeam } from '../../types';
+import type { NBATeam, NonNBATeam } from '../../types';
 import type { TycoonState } from '../../types/tycoon';
-import { TIER_BASE, getTierForClub } from './specs/spain';
-import { seedInitialSponsorships } from './sponsorshipEngine';
+import { TIER_BASE, getTierForClub, getCityPrestige, SPAIN_INITIAL_SPONSORS } from './specs/spain';
+import { classifySponsor, seedInitialSponsorships } from './sponsorshipEngine';
+import { ALL_SLOTS } from '../../types/tycoon';
 
-export function migrateTeamTycoon(team: NBATeam, currentYear: number): void {
-  if (team.tycoon) return;
-  const tier = getTierForClub(team.name ?? team.region ?? '');
+type TycoonHost = NBATeam | NonNBATeam;
+
+function defaultScoutingInvestmentForTier(tier: TycoonState['tier']): number {
+  switch (tier) {
+    case 'S': return 1_200_000;
+    case 'A': return 850_000;
+    case 'B': return 550_000;
+    case 'C': return 320_000;
+    case 'D': return 180_000;
+  }
+}
+
+function defaultMedicalBudgetForTier(tier: TycoonState['tier']): number {
+  switch (tier) {
+    case 'S': return 900_000;
+    case 'A': return 650_000;
+    case 'B': return 450_000;
+    case 'C': return 300_000;
+    case 'D': return 180_000;
+  }
+}
+
+function defaultTravelPreferencesForTier(tier: TycoonState['tier']): TycoonState['travelPreferences'] {
+  switch (tier) {
+    case 'S': return { hotel: 5.0, flight: 5.0, bus: 5.0 };
+    case 'A': return { hotel: 4.5, flight: 4.5, bus: 4.0 };
+    case 'B': return { hotel: 4.0, flight: 4.0, bus: 3.5 };
+    case 'C': return { hotel: 3.5, flight: 3.0, bus: 3.0 };
+    case 'D': return { hotel: 3.0, flight: 2.5, bus: 2.5 };
+  }
+}
+
+function seedBoardPromises(currentYear: number, t: TycoonState): TycoonState['boardPromises'] {
+  return [
+    {
+      id: `cash-${currentYear}`,
+      year: currentYear,
+      type: 'cash',
+      label: 'Keep club cash positive',
+      target: 1,
+      progress: (t.cashOnHand ?? 0) >= 0 ? 1 : 0,
+      status: 'active',
+      confidenceDelta: 8,
+    },
+    {
+      id: `medical-${currentYear}`,
+      year: currentYear,
+      type: 'medical',
+      label: 'Maintain a credible recovery program',
+      target: 450_000,
+      progress: Math.min(1, (t.medicalBudget ?? 0) / 450_000),
+      status: 'active',
+      confidenceDelta: 5,
+    },
+    {
+      id: `scouting-${currentYear}`,
+      year: currentYear,
+      type: 'scouting',
+      label: 'Fund a real scouting department',
+      target: 250_000,
+      progress: Math.min(1, (t.scoutingInvestment ?? 0) / 250_000),
+      status: 'active',
+      confidenceDelta: 5,
+    },
+  ];
+}
+
+export function migrateTeamTycoon(team: TycoonHost, currentYear: number): void {
+  if ((team as any).tycoon) return;
+  const tier = getTierForClub((team as any).name ?? (team as any).region ?? '');
   const tb = TIER_BASE[tier];
 
-  team.tycoon = {
+  (team as any).tycoon = {
     tier,
     sponsorships: seedInitialSponsorships(tier, currentYear),
     facilities: {
@@ -20,17 +88,83 @@ export function migrateTeamTycoon(team: NBATeam, currentYear: number): void {
     cashOnHand: tb.startingCash,
     boardConfidence: 60,
     ffpRollingDeficit: 0,
+    ticketPriceMultiplier: 1.0,
+    medicalBudget: defaultMedicalBudgetForTier(tier),
+    travelPreferences: defaultTravelPreferencesForTier(tier),
+    scoutingInvestment: defaultScoutingInvestmentForTier(tier),
+    boardPromises: [],
+    staffMembers: [],
   } as TycoonState;
+  // Seed board promises after creation (needs t.cashOnHand etc)
+  (team as any).tycoon.boardPromises = seedBoardPromises(currentYear, (team as any).tycoon);
+}
+
+/** In-place migration for existing saves that are missing new fields. */
+export function upgradeExistingTycoon(
+  team: TycoonHost,
+  currentYear: number,
+): void {
+  const t: TycoonState = (team as any).tycoon;
+  if (!t) return;
+
+  const name = (team as any).name ?? '';
+  const region = (team as any).region ?? '';
+  if (t.cityPrestige === undefined) t.cityPrestige = getCityPrestige(name || region, t.tier);
+  if (t.ticketPriceMultiplier === undefined) t.ticketPriceMultiplier = 1.0;
+  if (t.medicalBudget === undefined) t.medicalBudget = defaultMedicalBudgetForTier(t.tier);
+  if (t.scoutingInvestment === undefined) t.scoutingInvestment = defaultScoutingInvestmentForTier(t.tier);
+  if (t.travelPreferences === undefined) t.travelPreferences = defaultTravelPreferencesForTier(t.tier);
+  if (!Array.isArray(t.boardPromises)) t.boardPromises = seedBoardPromises(currentYear, t);
+  if (!Array.isArray(t.staffMembers)) t.staffMembers = [];
+
+  // Fill missing sponsorship slots and classify existing ones
+  const existing = t.sponsorships ?? ({} as any);
+  const upgraded: any = {};
+  for (const slot of ALL_SLOTS) {
+    if (slot in existing) {
+      upgraded[slot] = existing[slot];
+    } else {
+      upgraded[slot] = makeFallback(t.tier, slot, t.cityPrestige ?? 0.5, currentYear);
+    }
+    if (upgraded[slot] && !upgraded[slot]?.industry) {
+      upgraded[slot] = { ...upgraded[slot]!, ...classifySponsor(upgraded[slot]!.sponsor) };
+    }
+  }
+  t.sponsorships = upgraded;
+}
+
+function makeFallback(tier: TycoonState['tier'], slot: string, cityPrestige: number, currentYear: number) {
+  const floorMap: Record<string, number> = {
+    kit: 2_500_000, naming: 1_800_000, sleeve: 600_000, shorts: 300_000,
+    training: 400_000, court: 350_000, arena: 800_000, digital: 250_000,
+  };
+  const floor = floorMap[slot] ?? 200_000;
+  const tierMult: Record<TycoonState['tier'], number> = { S: 2.5, A: 1.8, B: 1.2, C: 0.8, D: 0.5 };
+  const scale = (tierMult[tier] ?? 1) * (0.5 + cityPrestige * 0.9);
+  const pool = (SPAIN_INITIAL_SPONSORS as any)[tier]?.[slot] ?? ['Default Sponsor'];
+  const sponsor = pool[Math.floor(Math.random() * pool.length)];
+  const value = Math.round(floor * scale * 0.6);
+  return {
+    sponsor,
+    ...classifySponsor(sponsor),
+    valuePerYear: value,
+    yearsLeft: 2,
+    expiresAfterYear: currentYear + 1,
+  };
 }
 
 export function migrateAllEuroTeams(state: {
   teams: NBATeam[];
+  nonNBATeams?: NonNBATeam[];
   leagueStats: { year: number; uiMode?: string | null };
 }): number {
   if (state.leagueStats?.uiMode !== 'euro_isolated') return 0;
   let migrated = 0;
-  for (const team of state.teams) {
-    if (team.tycoon) continue;
+  for (const team of [...state.teams, ...(state.nonNBATeams ?? [])]) {
+    if ((team as any).tycoon) {
+      upgradeExistingTycoon(team, state.leagueStats.year);
+      continue;
+    }
     migrateTeamTycoon(team, state.leagueStats.year);
     migrated++;
   }

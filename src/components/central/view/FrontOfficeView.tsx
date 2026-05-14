@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, HeartPulse, Plane, Building2, Users, Target, Landmark, Shield, Timer, Dumbbell, Smile, AlertTriangle, Bed, Droplets, Snowflake, Moon, ScanLine, Search, SlidersHorizontal, Star, X, Award } from 'lucide-react';
-import { generate } from 'facesjs';
 import { useGame } from '../../../store/GameContext';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
 import { getTeamFullName } from '../../../utils/teamNames';
@@ -56,13 +55,6 @@ export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection
       t.tycoon.ticketPriceMultiplier = Math.max(0.5, Math.min(2.0, mult));
     });
   };
-
-  const handleMedicalBudgetChange = (budget: number) => {
-    applyTycoonMutation(userTeamId, (t: any) => {
-      if (!t.tycoon) return;
-      t.tycoon.medicalBudget = Math.max(MEDICAL_BUDGET_MIN_EUR, Math.min(MEDICAL_BUDGET_MAX_EUR, budget));
-    });
-  };
   const handleScoutingInvestmentChange = (budget: number) => {
     applyTycoonMutation(userTeamId, (t: any) => {
       if (!t.tycoon) return;
@@ -89,6 +81,13 @@ export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection
         },
       ];
       t.tycoon.cashOnHand = Math.round((t.tycoon.cashOnHand ?? 0) - (hire.bonus ?? 0));
+    });
+  };
+
+  const handleMedicalBudgetChange = (budget: number) => {
+    applyTycoonMutation(userTeamId, (t: any) => {
+      if (!t.tycoon) return;
+      t.tycoon.medicalBudget = Math.max(MEDICAL_BUDGET_MIN_EUR, Math.min(MEDICAL_BUDGET_MAX_EUR, budget));
     });
   };
   const handleTravelSave = (prefs: { hotel: number; flight: number; bus: number }) => {
@@ -263,4 +262,3 @@ export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection
     </div>
   );
 };
-
