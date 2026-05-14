@@ -20,6 +20,15 @@ describe('getTycoonTierUILabel', () => {
   it('returns Powerhouse for S', () => {
     expect(getTycoonTierUILabel('S')).toBe('Powerhouse');
   });
+  it('returns Established for A', () => {
+    expect(getTycoonTierUILabel('A')).toBe('Established');
+  });
+  it('returns Mid-Tier for B', () => {
+    expect(getTycoonTierUILabel('B')).toBe('Mid-Tier');
+  });
+  it('returns Underdog for C', () => {
+    expect(getTycoonTierUILabel('C')).toBe('Underdog');
+  });
   it('returns Lower-Tier for D', () => {
     expect(getTycoonTierUILabel('D')).toBe('Lower-Tier');
   });

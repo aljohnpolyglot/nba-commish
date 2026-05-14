@@ -19,3 +19,4 @@ export function getTycoonTierUILabel(tier: TycoonTier): string {
     case 'D': return 'Lower-Tier';
   }
 }
+
