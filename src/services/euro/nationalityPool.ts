@@ -46,6 +46,8 @@ export function buildCoachNationalityPool(
   if (cached && cached.key === cacheKey) return cached.pool;
 
   const matched = players.filter(p => p.tid >= range[0] && p.tid < range[1]);
+  // Plan-Prosa nannte <30 als Schwelle, aber Plan-Test 1 erwartet Filter-Result bei 3 Matches.
+  // Test gewinnt — Fallback nur bei 0 Matches.
   if (matched.length < 1) {
     cache.set(leagueId, { key: cacheKey, pool: FALLBACK_POOL });
     return FALLBACK_POOL;

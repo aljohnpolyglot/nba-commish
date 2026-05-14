@@ -22,7 +22,7 @@ describe('buildCoachNationalityPool', () => {
     expect(pool.map(p => p.country).sort()).toEqual(['Argentina', 'Spain']);
   });
 
-  it('falls back to fixed pool when <30 players match', () => {
+  it('falls back to fixed pool when no players match', () => {
     const state = { players: [] } as unknown as GameState;
     clearNationalityPoolCache();
     const pool = buildCoachNationalityPool(state, 'endesa');
