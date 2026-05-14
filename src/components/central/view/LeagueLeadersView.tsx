@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
+import { useHubScope } from '../../../hooks/useHubScope';
 import { NBAPlayer, NBATeam } from '../../../types';
 import { PlayerBioView } from './PlayerBioView';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -11,20 +12,21 @@ import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
 export const LeagueLeadersView: React.FC = () => {
   const { state, navigateToTeam, setCurrentView, setPendingStatSort } = useGame();
   const ownTid = getOwnTeamId(state);
+  const { players: scopedPlayers } = useHubScope();
   const [activeTab, setActiveTab] = useState<'Player' | 'Team'>('Player');
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
 
   // Available seasons from player stats
   const availableSeasons = useMemo(() => {
     const years = new Set<number>();
-    for (const p of state.players) {
+    for (const p of scopedPlayers) {
       if (!p.stats) continue;
       for (const s of p.stats) {
         if (!s.playoffs && s.gp > 0) years.add(s.season);
       }
     }
     return Array.from(years).sort((a, b) => b - a);
-  }, [state.players]);
+  }, [scopedPlayers]);
 
   const defaultSeason = availableSeasons[0] || state.leagueStats.year;
   const [selectedSeason, setSelectedSeason] = useState(defaultSeason);
@@ -37,7 +39,7 @@ export const LeagueLeadersView: React.FC = () => {
 
   // Player Leaders
   const playerLeaders = useMemo(() => {
-    const playersWithStats = state.players.map(player => {
+    const playersWithStats = scopedPlayers.map(player => {
       const stat = player.stats?.find(s => s.season === season && !s.playoffs);
       return { player, stat };
     }).filter(p => p.stat && p.stat.gp > 0);
@@ -103,7 +105,7 @@ export const LeagueLeadersView: React.FC = () => {
       'WS/48':getTop5('WS/48', false, qAdvanced),
       VORP:   getTop5('VORP',  false, qAdvanced),
     };
-  }, [state.players, season]);
+  }, [scopedPlayers, season]);
 
   // Team Leaders
   const teamLeaders = useMemo(() => {

@@ -1,15 +1,22 @@
-import React, { useMemo } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { NBATeam, Game } from '../../../types';
 import { getOwnTeamId, getSeasonPhase } from '../../../utils/helpers';
+import { CompetitionHubLeagueTabContext } from '../../competition/hubContext';
+import { getTeamsForLeagueTab } from '../../../utils/euroLeagueDefaults';
 
 export const PowerRankingsView: React.FC = () => {
   const { state, navigateToTeam } = useGame();
   const ownTid = getOwnTeamId(state);
+  const hubTab = useContext(CompetitionHubLeagueTabContext);
+  const scopedTeams = useMemo(
+    () => hubTab ? getTeamsForLeagueTab(state as any, hubTab) : state.teams,
+    [hubTab, state.teams, (state as any).nonNBATeams, (state as any).activeCompetitions],
+  );
 
   const rankings = useMemo(() => {
     const teamGames = new Map<number, Game[]>();
-    state.teams.forEach(t => teamGames.set(t.id, []));
+    scopedTeams.forEach(t => teamGames.set(t.id, []));
 
     state.schedule.forEach(game => {
       if (game.played && !game.isPreseason && !game.isAllStar && !game.isExhibition && !(game as any).excludeFromRecord) {
@@ -57,7 +64,7 @@ export const PowerRankingsView: React.FC = () => {
       return score;
     };
 
-    const currentRankings = state.teams.map(team => {
+    const currentRankings = scopedTeams.map(team => {
       const games = teamGames.get(team.id) || [];
       const score = calculateScore(team, games);
       
@@ -113,7 +120,7 @@ export const PowerRankingsView: React.FC = () => {
     }).sort((a, b) => b.score - a.score);
 
     // Preseason rankings — always calculated with 0 games (pure strength/last-season formula)
-    const preseasonRankings = state.teams.map(team => {
+    const preseasonRankings = scopedTeams.map(team => {
       const score = calculateScore(team, []);
       return { team, score };
     }).sort((a, b) => b.score - a.score);
@@ -126,7 +133,7 @@ export const PowerRankingsView: React.FC = () => {
     lastSunday.setDate(currentDate.getDate() - daysSinceSunday);
     lastSunday.setHours(23, 59, 59, 999);
 
-    const lastWeekRankings = state.teams.map(team => {
+    const lastWeekRankings = scopedTeams.map(team => {
       const games = teamGames.get(team.id) || [];
       const lastWeekGames = games.filter(g => new Date(g.date) <= lastSunday);
       const score = calculateScore(team, lastWeekGames);
@@ -151,7 +158,7 @@ export const PowerRankingsView: React.FC = () => {
         jumpVsPreseason,
       };
     });
-  }, [state.teams, state.players, state.schedule, state.leagueStats.year, state.date]);
+  }, [scopedTeams, state.players, state.schedule, state.leagueStats.year, state.date]);
 
   const seasonPhase = getSeasonPhase(state);
   const seasonNotStarted = seasonPhase === 'preseason';

@@ -1,6 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { useLeagueLabels } from '../../../utils/leagueLabels';
+import { CompetitionHubLeagueTabContext } from '../../competition/hubContext';
+import { getTeamsForLeagueTab } from '../../../utils/euroLeagueDefaults';
 import { NBAPlayer, Contact, Game } from '../../../types';
 import { PlayerActionsModal } from './PlayerActionsModal';
 import { PlayerBioView } from './PlayerBioView';
@@ -20,6 +22,12 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
   const { state, navigateToTeam, healPlayer, dispatchAction } = useGame();
   const labels = useLeagueLabels();
   const ownTid = getOwnTeamId(state);
+  const hubTab = useContext(CompetitionHubLeagueTabContext);
+  const scopedTeams = useMemo(
+    () => hubTab ? getTeamsForLeagueTab(state as any, hubTab) : state.teams,
+    [hubTab, state.teams, (state as any).nonNBATeams, (state as any).activeCompetitions],
+  );
+  const scopedTids = useMemo(() => new Set(scopedTeams.map(t => t.id)), [scopedTeams]);
   const [actionsPlayer, setActionsPlayer] = React.useState<NBAPlayer | null>(null);
   const [selectedTeamId, setSelectedTeamId] = React.useState<number | 'all'>(filteredTeamId ?? 'all');
   const [viewingBioPlayer, setViewingBioPlayer] = React.useState<NBAPlayer | null>(null);
@@ -147,7 +155,8 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
     const grouped: Record<number, NBAPlayer[]> = {};
 
     state.players.forEach(player => {
-      if (player.injury && player.injury.gamesRemaining > 0 && player.tid >= 0) {
+      if (player.injury && player.injury.gamesRemaining > 0 && player.tid >= 0
+        && (!hubTab || scopedTids.has(player.tid))) {
         if (!grouped[player.tid]) {
           grouped[player.tid] = [];
         }
@@ -156,9 +165,9 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
     });
 
     return grouped;
-  }, [state.players]);
+  }, [state.players, hubTab, scopedTids]);
 
-  const teamsWithInjuries = state.teams
+  const teamsWithInjuries = scopedTeams
     .filter(t => injuredPlayersByTeam[t.id] && injuredPlayersByTeam[t.id].length > 0)
     .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -192,7 +201,7 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
     const reporters = ['Shams Charania of ESPN', 'Adrian Wojnarowski of ESPN', 'Chris Haynes of NBA TV', 'Marc Stein', 'local beat writers'];
 
     Object.values(injuredPlayersByTeam).flat().forEach((player: NBAPlayer) => {
-      const team = state.teams.find(t => t.id === player.tid);
+      const team = scopedTeams.find(t => t.id === player.tid);
       if (!team) return;
 
       const gamesOut = player.injury?.gamesRemaining || 0;
@@ -252,7 +261,7 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
     return comments;
   // Note: state.date and state.schedule intentionally excluded
   // Comments only regenerate when injury status changes (out → day-to-day)
-  }, [injuredPlayersByTeam, state.teams]);
+  }, [injuredPlayersByTeam, scopedTeams]);
 
   if (viewingBioPlayer) {
     return (
@@ -314,7 +323,7 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
         {!embedded && (
           <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <h2 className="text-3xl font-black text-white uppercase tracking-tight">{labels.injuriesTitle}</h2>
+              <h2 className="text-3xl font-black text-white uppercase tracking-tight">{hubTab ? 'Injuries' : labels.injuriesTitle}</h2>
               <p className="text-slate-500 font-medium">Current injury report across the league</p>
             </div>
 

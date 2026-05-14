@@ -5,6 +5,7 @@ import { NBATeam } from '../../types';
 import { evaluateFilter } from '../../utils/filterUtils';
 import { getOwnTeamId } from '../../utils/helpers';
 import { isFourPointEnabled } from '../../utils/ruleFlags';
+import { useHubScope } from '../../hooks/useHubScope';
 
 type StatType = 'team' | 'opponent' | 'shotLocations' | 'oppShotLocations' | 'advanced';
 type Phase = 'regular' | 'playoffs' | 'cup' | 'combined';
@@ -65,6 +66,7 @@ function countFeats(pts: number, reb: number, ast: number, stl: number, blk: num
 
 export const TeamStatsView: React.FC = () => {
   const { state, navigateToTeam, pendingStatSort, setPendingStatSort } = useGame();
+  const { teams: scopedTeams } = useHubScope();
   const ownTid = getOwnTeamId(state);
   const fourPointEnabled = isFourPointEnabled(state.leagueStats);
 
@@ -148,7 +150,7 @@ export const TeamStatsView: React.FC = () => {
     });
 
     const acc = new Map<number, Acc>();
-    state.teams.forEach(t => acc.set(t.id, zero(t)));
+    scopedTeams.forEach(t => acc.set(t.id, zero(t)));
 
     const addPlayers = (a: Acc, ownStats: any[], oppStats: any[]) => {
       ownStats.forEach(ps => {
@@ -294,7 +296,7 @@ export const TeamStatsView: React.FC = () => {
         tovPct, orbPct, ftFga, dEfgPct, dTovPct, drbPct, dFtFga,
       };
     });
-  }, [state.teams, state.boxScores, season, phase, playerAgeMap, scheduleGidFlags]);
+  }, [scopedTeams, state.boxScores, season, phase, playerAgeMap, scheduleGidFlags]);
 
   const sortedStats = useMemo(() => {
     const filtered = teamStats.filter(row => {

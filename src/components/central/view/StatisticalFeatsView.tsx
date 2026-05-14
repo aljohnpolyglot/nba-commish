@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
+import { useHubScope } from '../../../hooks/useHubScope';
 import { NBAPlayer, NBATeam, Game } from '../../../types';
 import { getOpeningNightDate } from '../../../utils/dateUtils';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -75,6 +76,7 @@ interface FeatEntry {
 export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGameClick }) => {
   const { state, navigateToTeam } = useGame();
   const ownTid = getOwnTeamId(state);
+  const { teams: scopedTeams, players: scopedPlayers, tids: scopedTids } = useHubScope();
   const [selectedBoxScoreGame, setSelectedBoxScoreGame] = useState<Game | null>(null);
   
   // State
@@ -139,15 +141,15 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
         (() => { try { return new Date(game.date).getTime() < OPENING_NIGHT_MS; } catch { return false; } })();
       if (isPreseason) return;
 
-      const homeTeam = state.teams.find(t => t.id === game.homeTeamId);
-      const awayTeam = state.teams.find(t => t.id === game.awayTeamId);
+      const homeTeam = scopedTeams.find(t => t.id === game.homeTeamId);
+      const awayTeam = scopedTeams.find(t => t.id === game.awayTeamId);
       if (!homeTeam || !awayTeam) return;
 
       const isHomeWin = game.homeScore > game.awayScore;
 
       const processStats = (stats: any[], team: NBATeam, opp: NBATeam, isHome: boolean) => {
         stats.forEach(stat => {
-          const player = state.players.find(p => p.internalId === stat.playerId);
+          const player = scopedPlayers.find(p => p.internalId === stat.playerId);
           if (!player) return;
 
           const pts = stat.pts || 0;
@@ -237,7 +239,7 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
     });
 
     return { feats: extracted, summaryCounts: counts };
-  }, [state.boxScores, state.players, state.teams, state.schedule, selectedSeason]);
+  }, [state.boxScores, scopedPlayers, scopedTeams, state.schedule, selectedSeason]);
 
   // ─── 2. FILTER ───────────────────────────────────────────────────────────────
   const filteredFeats = useMemo(() => {

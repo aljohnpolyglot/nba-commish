@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useGame } from '../../store/GameContext';
+import { useHubScope } from '../../hooks/useHubScope';
 import { AwardService, AwardCandidate, CoachCandidate, AllNBASpot } from '../../services/logic/AwardService';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, TrendingUp, Target, Zap, Star, Info, Users, UserCheck } from 'lucide-react';
@@ -16,6 +17,7 @@ type AwardTab = 'mvp' | 'dpoy' | 'roty' | 'smoy' | 'mip' | 'coy' | 'allNBA';
 export const AwardRacesView: React.FC = () => {
   const { state } = useGame();
   const ownTid = getOwnTeamId(state);
+  const { teams: scopedTeams, players: scopedPlayers } = useHubScope();
   const [selectedAward, setSelectedAward] = useState<AwardTab>('mvp');
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
   const [coachPhotosLoaded, setCoachPhotosLoaded] = useState(false);
@@ -39,10 +41,10 @@ export const AwardRacesView: React.FC = () => {
 
   const races = useMemo(() => {
     return AwardService.calculateAwardRaces(
-      state.players, state.teams, state.leagueStats.year, state.staff,
+      scopedPlayers, scopedTeams, state.leagueStats.year, state.staff,
       state.leagueStats.minGamesRequirement
     );
-  }, [state.players, state.teams, state.leagueStats.year, state.staff, state.leagueStats.minGamesRequirement]);
+  }, [scopedPlayers, scopedTeams, state.leagueStats.year, state.staff, state.leagueStats.minGamesRequirement]);
 
   const awardLabels: Record<AwardTab, { title: string; icon: React.ReactElement; desc: string }> = {
     mvp:    { title: 'Most Valuable Player',         icon: <Star className="text-yellow-400" />,   desc: 'The best player in the league' },
@@ -55,7 +57,7 @@ export const AwardRacesView: React.FC = () => {
   };
 
   // Don't show award projections before the season starts (0 games played)
-  const totalGP = state.teams.reduce((sum, t) => sum + (t.wins ?? 0) + (t.losses ?? 0), 0);
+  const totalGP = scopedTeams.reduce((sum, t) => sum + (t.wins ?? 0) + (t.losses ?? 0), 0);
   const seasonNotStarted = totalGP === 0;
 
   if (viewingPlayer) {
