@@ -1253,10 +1253,29 @@ const actions = useGameActions(setState, () => stateRef.current);
         if (strippedTwoWay > 0) console.log(`[LOAD_GAME] [euro] stripped twoWay flag from ${strippedTwoWay} roster players`);
       }
 
+      let healedUserTeamId = loaded.userTeamId;
+      if (migratedLeagueStats?.uiMode === 'euro_isolated' && loaded.gameMode === 'gm') {
+        const nonNBATeams = loaded.nonNBATeams ?? [];
+        const pointsAtEuroClub = nonNBATeams.some((t: any) => t.tid === healedUserTeamId);
+        if (!pointsAtEuroClub) {
+          const seededTeamId = (loaded as any).euroSetupSeed?.teamId;
+          const seededTeam = nonNBATeams.find((t: any) => t.tid === seededTeamId);
+          const fallbackTeam = seededTeam
+            ?? nonNBATeams.find((t: any) => t.league === 'Endesa')
+            ?? nonNBATeams.find((t: any) => t.league === 'Euroleague')
+            ?? nonNBATeams[0];
+          if (fallbackTeam) {
+            console.log(`[LOAD_GAME] [euro] healed userTeamId ${healedUserTeamId} → ${fallbackTeam.tid} (${fallbackTeam.name})`);
+            healedUserTeamId = fallbackTeam.tid;
+          }
+        }
+      }
+
       // Tycoon: seed team.tycoon for all Euro-Isolated saves (default-on, no toggle).
       if (migratedLeagueStats?.uiMode === 'euro_isolated') {
         const migrated = migrateAllEuroTeams({
           teams: teamsWithFreshTraining as any,
+          nonNBATeams: loaded.nonNBATeams ?? [],
           leagueStats: migratedLeagueStats as any,
         });
         if (migrated > 0) console.log(`[LOAD_GAME] [tycoon] migrated ${migrated} teams to tycoon state`);
@@ -1276,6 +1295,7 @@ const actions = useGameActions(setState, () => stateRef.current);
         ...initialState,
         ...loaded,
         leagueStats: migratedLeagueStats,
+        userTeamId: healedUserTeamId,
         schedule: healedSchedule,
         players: playersWithAISetup,
         teams: teamsWithFreshTraining as any,

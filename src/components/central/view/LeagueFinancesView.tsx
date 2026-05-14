@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useGame } from '../../../store/GameContext';
 import {
   DollarSign, ChevronDown, ChevronUp, ExternalLink,
@@ -12,9 +12,13 @@ import {
 import {
   estimateAttendance, formatAttendance, formatRevM, ARENA_HARD_CAP,
 } from '../../../utils/attendanceUtils';
-import { getOwnTeamId } from '../../../utils/helpers';
+import { formatCurrencyWithCode, getOwnTeamId } from '../../../utils/helpers';
 import { resolveTeamStrategyProfile, type TeamStrategyProfile } from '../../../utils/teamStrategy';
 import { getActiveTPEs, getTotalActiveTPE } from '../../../utils/tradeExceptionUtils';
+import { isEuroIsolatedMode } from '../../../utils/uiMode';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { selectCompetitionTeamTids } from '../../../services/competition/competitionScheduler';
 
 // ─── types ────────────────────────────────────────────────────────────────
 interface TeamEnriched {
@@ -329,6 +333,11 @@ export const LeagueFinancesView: React.FC = () => {
   const [capDir, setCapDir]   = useState<'desc' | 'asc'>('desc');
   const [attSort, setAttSort] = useState<AttSortKey>('attendance');
   const [attDir, setAttDir]   = useState<'desc' | 'asc'>('desc');
+  const tradesDisabled = state.leagueStats?.tradesAllowed === false;
+
+  useEffect(() => {
+    if (tradesDisabled && tab === 'trade') setTab('cap');
+  }, [tradesDisabled, tab]);
 
   const thresholds = useMemo(() => getCapThresholds(state.leagueStats), [state.leagueStats]);
   const seasonYear = state.leagueStats.year;
@@ -469,6 +478,73 @@ export const LeagueFinancesView: React.FC = () => {
     return { totalRev, avgFill, avgAtt: Math.round(avgAtt), soldOut };
   }, [teamData]);
 
+  if (isEuroIsolatedMode(state)) {
+    const fmt = (value: number) => formatCurrencyWithCode(value, state.leagueStats?.currency ?? 'EUR', false);
+    const domesticSpec = state.activeCompetitions?.find(spec => spec.id === 'endesa');
+    const activeTeams = (domesticSpec ? selectCompetitionTeamTids(domesticSpec, state as any) : [])
+      .map(tid => resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? []))
+      .filter((team): team is NonNullable<ReturnType<typeof resolveAnyTeam>> => team !== null);
+    const rows: Array<{
+      team: any;
+      payroll: number;
+      sponsorship: number;
+      profit: number;
+      budgetTier: string;
+      elAppearances: number;
+    }> = activeTeams.map(team => {
+      const raw = (state.nonNBATeams ?? []).find(nonNBA => nonNBA.tid === team.id) as any;
+      const tycoon = raw?.tycoon ?? (team as any).tycoon;
+      const payroll = state.players
+        .filter(player => player.tid === team.id && (player as any).status !== 'Retired')
+        .reduce((sum, player) => sum + (Number(player.contract?.amount ?? 0) * 1000), 0);
+      const sponsorship = tycoon
+        ? (Object.values(tycoon.sponsorships ?? {}) as any[]).reduce((sum: number, sponsorshipSlot: any) => sum + Number(sponsorshipSlot?.valuePerYear ?? 0), 0)
+        : 0;
+      const latestLedger = tycoon?.ledgerHistory?.[tycoon.ledgerHistory.length - 1];
+      const profit = Number(latestLedger?.profit ?? Math.round(sponsorship - payroll));
+      const budgetTier = tycoon?.tier ?? '—';
+      const elAppearances = (((state as any).competitionHistory?.euroleague ?? []) as any[])
+        .slice(-3)
+        .filter(entry => [
+          ...(entry?.standings ?? []).map((row: any) => row.tid),
+          ...(entry?.quarterfinalistTids ?? []),
+          ...(entry?.semifinalistTids ?? []),
+          entry?.runnerUpTid,
+          entry?.championTid,
+        ].includes(team.id))
+        .length;
+      return { team, payroll, sponsorship, profit, budgetTier, elAppearances };
+    }).sort((a, b) => b.sponsorship - a.sponsorship || b.payroll - a.payroll);
+    return (
+      <div className="h-full overflow-y-auto p-4 md:p-8 bg-slate-950 text-white">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-3xl font-black uppercase tracking-tight">League Finances</h1>
+          <p className="text-sm text-slate-500 mb-6">Euro budget overview for active domestic clubs.</p>
+          <div className="rounded-2xl border border-slate-800 overflow-hidden bg-slate-950/70">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-900/70 text-[10px] uppercase tracking-widest text-slate-500">
+                <tr><th className="px-4 py-3 text-left">#</th><th className="px-4 py-3 text-left">Club</th><th>Budget Tier</th><th>Wage Bill</th><th>Sponsorship</th><th>EL 3yr</th><th>Profit Projection</th></tr>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => (
+                  <tr key={row.team.id} onClick={() => navigateToTeamFinances(row.team.id)} className={row.team.id === ownTid ? 'border-t border-amber-500/30 bg-amber-500/10 cursor-pointer' : 'border-t border-slate-900 hover:bg-slate-900 cursor-pointer'}>
+                    <td className="px-4 py-3 text-slate-500 font-black">{index + 1}</td>
+                    <td className="px-4 py-3 font-bold">{getTeamFullName(row.team)}</td>
+                    <td className="text-center">{row.budgetTier}</td>
+                    <td className="text-center">{fmt(row.payroll)}</td>
+                    <td className="text-center">{fmt(row.sponsorship)}</td>
+                    <td className="text-center">{row.elAppearances}</td>
+                    <td className="text-center text-emerald-300 font-bold">{fmt(row.profit)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const toggleCap = (col: CapSortKey) => {
     if (capSort === col) setCapDir(d => d === 'desc' ? 'asc' : 'desc');
     else { setCapSort(col); setCapDir('desc'); }
@@ -554,7 +630,7 @@ export const LeagueFinancesView: React.FC = () => {
       <div className="flex-shrink-0 flex items-center gap-1 border-b border-slate-800/50 bg-[#161616] px-4">
         {([
           { key: 'cap',        label: 'Cap Overview', icon: DollarSign },
-          { key: 'trade',      label: 'Trade Board',  icon: TrendingUp },
+          ...(tradesDisabled ? [] : [{ key: 'trade' as const, label: 'Trade Board', icon: TrendingUp }]),
           { key: 'attendance', label: 'Attendance',   icon: Ticket },
         ] as const).map(t => (
           <button

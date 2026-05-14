@@ -32,6 +32,9 @@ import { buildStretchedSchedule, getTeamDeadMoneyForSeason, seasonLabelToYear } 
 import { isNbaCupEnabled } from '../../../utils/ruleFlags';
 import { getOffseasonDayPlan } from '../../../services/offseason/offseasonPlan';
 import { clearWaiverMarkers, stripLiveContractAfterWaive } from '../../../utils/contractCleanup';
+import { injectCompetitionPostseasonGames, injectSingleEliminationProgression } from '../../../services/competition/competitionResolver';
+import { repairCompetitionSchedules } from '../../../services/competition/competitionScheduler';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
 
 const updateTeamStrengths = (teams: NBATeam[], players: Player[]): NBATeam[] => {
     return teams.map(team => ({
@@ -146,6 +149,7 @@ const normalizeReservedJerseys = (state: GameState, teamIds: Iterable<number>): 
 
 /** Bracket generation + play-in/round injection, mirroring gameLogic.ts playoff block. */
 function applyPlayoffLogic(stateWithSim: GameState, dayResults: any[], numGamesPerRound: number[]): GameState {
+    if (stateWithSim.leagueStats?.uiMode === 'euro_isolated') return stateWithSim;
     let playoffs = stateWithSim.playoffs;
     let schedule = stateWithSim.schedule;
     const dateNorm = normalizeDate(stateWithSim.date);
@@ -257,6 +261,10 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
 
     const effectiveRiggedForTid: number | undefined = action?.payload?.riggedForTid ?? undefined;
     const numGamesPerRound: number[] = state.leagueStats.numGamesPlayoffSeries ?? [7, 7, 7, 7];
+    const stateWithBatchCompetitionResults = () => ({
+        ...stateWithSim,
+        boxScores: [...(stateWithSim.boxScores ?? []), ...allSimResults],
+    });
 
     for (let i = 0; i < daysToSimulate; i++) {
         // Advance date FIRST (except on iteration 0 — start from current date)
@@ -274,6 +282,22 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
         // Apply playoff/play-in bracket logic before simulating this day's games
         // so that injected play-in/playoff games are in the schedule when simulateDayGames runs.
         stateWithSim = applyPlayoffLogic(stateWithSim, [], numGamesPerRound);
+        stateWithSim = {
+            ...stateWithSim,
+            schedule: repairCompetitionSchedules(
+                stateWithSim,
+                stateWithSim.activeCompetitions ?? [],
+                stateWithSim.leagueStats?.year ?? new Date().getFullYear(),
+            ),
+        };
+        stateWithSim = {
+            ...stateWithSim,
+            schedule: injectCompetitionPostseasonGames(
+                stateWithSim,
+                stateWithSim.activeCompetitions ?? [],
+                stateWithSim.leagueStats?.year ?? new Date().getFullYear(),
+            ),
+        };
 
         const simDateNorm = normalizeDate(stateWithSim.date);
         const [, simMonth, simDayNum] = simDateNorm.split('-').map(Number);
@@ -602,16 +626,38 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
             ...(newFeatToasts.length > 0 ? { pendingFeatToasts: [...(stateWithSim.pendingFeatToasts ?? []), ...newFeatToasts] } : {}),
         };
 
-        allSimResults.push(...simPatch.results);
-        perDayResults.push({ date: stateWithSim.date, results: simPatch.results });
+        const datedSimResults = simPatch.results.map((result: any) => ({
+            ...result,
+            date: result.date ?? stateWithSim.date,
+            season: result.season ?? stateWithSim.leagueStats?.year,
+        }));
+
+        allSimResults.push(...datedSimResults);
+        perDayResults.push({ date: stateWithSim.date, results: datedSimResults });
 
         if (i === daysToSimulate - 1) {
-            lastDaySimResults = simPatch.results;
+            lastDaySimResults = datedSimResults;
         }
 
         // Advance playoff bracket after today's results (handles play-in advancement + round injection)
-        if (simPatch.results.length > 0) {
-            stateWithSim = applyPlayoffLogic(stateWithSim, simPatch.results, numGamesPerRound);
+        if (datedSimResults.length > 0) {
+            stateWithSim = applyPlayoffLogic(stateWithSim, datedSimResults, numGamesPerRound);
+            stateWithSim = {
+                ...stateWithSim,
+                schedule: injectCompetitionPostseasonGames(
+                    stateWithBatchCompetitionResults(),
+                    stateWithSim.activeCompetitions ?? [],
+                    stateWithSim.leagueStats?.year ?? new Date().getFullYear(),
+                ),
+            };
+            stateWithSim = {
+                ...stateWithSim,
+                schedule: injectSingleEliminationProgression(
+                    stateWithBatchCompetitionResults(),
+                    stateWithSim.activeCompetitions ?? [],
+                    stateWithSim.leagueStats?.year ?? new Date().getFullYear(),
+                ),
+            };
         }
 
         // Seasonal events — fire once on Oct 1 (preseason) each year

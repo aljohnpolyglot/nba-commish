@@ -9,6 +9,9 @@ import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import { requestTeamHistoryFor } from './TeamHistoryView';
 import type { Tab } from '../../../types';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
+import { getEffectiveUiMode } from '../../../utils/useEffectiveUiMode';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { getTeamFullName } from '../../../utils/teamNames';
 
 const resolvePortraitUrl = (player: any, name: string) =>
   player?.imgURL || ((player as any)?.face ? undefined : `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e293b&color=94a3b8`);
@@ -64,6 +67,8 @@ interface LeagueHistoryViewProps {
 export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChange }) => {
   const { state, dispatchAction } = useGame();
   const isFictional = state.leagueType === 'fictional';
+  const euroIsolated = getEffectiveUiMode(state as any) === 'euro_isolated';
+  const disableNbaHistoricalData = isFictional || euroIsolated;
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [coachPhotosReady, setCoachPhotosReady] = useState(false);
   useEffect(() => { fetchCoachData().then(() => setCoachPhotosReady(true)); }, []);
@@ -77,7 +82,7 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
 
   // ── Safety Net: Inject historical awards for saved games ──────────────────
   useEffect(() => {
-    if (isFictional) return;
+    if (disableNbaHistoricalData) return;
     if (!state.historicalAwards || state.historicalAwards.length === 0) {
       import('../../../services/rosterService').then(service => {
         service.getHistoricalAwards().then(data => {
@@ -87,7 +92,7 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
         });
       });
     }
-  }, [state.historicalAwards, isFictional]);
+  }, [state.historicalAwards, disableNbaHistoricalData]);
 
   const currentSeason = state.leagueStats.year;
 
@@ -363,9 +368,75 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
 
       return { season, isCurrent, champ, runnerUp, awards };
     });
-  }, [state.teams, state.players, state.historicalAwards, currentSeason, brefMap, coachPhotosReady, isFictional]);
+  }, [state.teams, state.players, state.historicalAwards, currentSeason, brefMap, coachPhotosReady, disableNbaHistoricalData]);
+
+  const euroHistoryRows = useMemo(() => {
+    if (!euroIsolated) return [];
+    return (state.history ?? [])
+      .filter((entry: any) => entry?.type === 'Champion' && entry.competitionId)
+      .map((entry: any) => {
+        const spec = state.activeCompetitions?.find(c => c.id === entry.competitionId);
+        const year = entry.date ? new Date(entry.date).getFullYear() : currentSeason;
+        const team = typeof entry.tid === 'number' ? resolveAnyTeam(entry.tid, state.teams, state.nonNBATeams ?? []) : null;
+        return {
+          id: `${entry.competitionId}-${entry.date}-${entry.tid}`,
+          season: year,
+          competition: spec?.displayName ?? entry.competitionId,
+          champion: getTeamFullName(team),
+          logoUrl: team?.logoUrl,
+        };
+      })
+      .sort((a, b) => b.season - a.season || a.competition.localeCompare(b.competition));
+  }, [euroIsolated, state.history, state.activeCompetitions, state.teams, state.nonNBATeams, currentSeason]);
 
   if (quick.fullPageView) return quick.fullPageView;
+
+  if (euroIsolated) {
+    return (
+      <div className="h-full overflow-hidden p-4 md:p-8 flex flex-col">
+        <div className="max-w-5xl mx-auto w-full h-full flex flex-col">
+          <div className="mb-6 shrink-0">
+            <h2 className="text-3xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+              <Trophy className="text-amber-400" size={32} />
+              Competition History
+            </h2>
+            <p className="text-slate-400 font-medium mt-1">
+              Your European trophy archive will fill as Endesa, Euroleague and cup seasons finish.
+            </p>
+          </div>
+          <div className="flex-1 overflow-auto bg-slate-900/50 border border-slate-800 rounded-2xl">
+            {euroHistoryRows.length === 0 ? (
+              <div className="h-full min-h-[280px] flex items-center justify-center text-slate-500 text-sm">
+                No European trophies have been decided yet.
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-slate-900/80 sticky top-0 z-10">
+                  <tr>
+                    <th className="p-3 font-bold text-slate-300 border-b border-slate-800">Season</th>
+                    <th className="p-3 font-bold text-slate-300 border-b border-slate-800">Competition</th>
+                    <th className="p-3 font-bold text-amber-400 border-b border-slate-800">Champion</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/50">
+                  {euroHistoryRows.map(row => (
+                    <tr key={row.id} className="hover:bg-slate-800/30">
+                      <td className="p-3 font-black text-white">{row.season - 1}–{String(row.season).slice(-2)}</td>
+                      <td className="p-3 text-slate-300 font-bold">{row.competition}</td>
+                      <td className="p-3 text-amber-400 font-bold flex items-center gap-2">
+                        {row.logoUrl && <img src={row.logoUrl} alt="" className="w-5 h-5 object-contain" referrerPolicy="no-referrer" />}
+                        {row.champion}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (selectedSeason !== null) {
     return <LeagueHistoryDetailView season={selectedSeason} onBack={() => setSelectedSeason(null)} />;

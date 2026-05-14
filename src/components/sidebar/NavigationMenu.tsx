@@ -124,7 +124,69 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
     return count > 0 ? count : 0;
   })();
 
-  const groups: NavGroup[] = [
+  const euroGmGroups: NavGroup[] = [
+    {
+      label: 'My Team',
+      items: [
+        { id: 'Schedule' as Tab, label: 'Schedule', icon: Calendar },
+        { id: 'Front Office' as Tab, label: 'Front Office', icon: Briefcase },
+        { id: 'Coaching' as Tab, label: 'Coaching', icon: ClipboardList },
+        { id: 'Training Center' as Tab, label: 'Training', icon: Activity },
+      ],
+    },
+    {
+      label: 'Front Office',
+      items: [
+        { id: 'Front Office Finances' as Tab,        label: 'Finances',        icon: Landmark },
+        { id: 'Front Office Sponsorships' as Tab,    label: 'Sponsorships',    icon: Megaphone },
+        { id: 'Front Office Transfer Market' as Tab, label: 'Transfer Market', icon: Repeat },
+        { id: 'Front Office Staff' as Tab,           label: 'Staff',           icon: IdCard },
+        { id: 'Front Office Medical' as Tab,         label: 'Medical',         icon: HeartPulse },
+        { id: 'Front Office Facilities' as Tab,      label: 'Facilities',      icon: Hammer },
+        { id: 'Front Office Travel' as Tab,          label: 'Travel',          icon: Plane },
+        { id: 'Front Office Scouting' as Tab,        label: 'Scouting',        icon: Telescope },
+      ],
+    },
+    {
+      label: 'Competitions',
+      items: [
+        { id: 'Endesa Hub' as Tab,     label: 'Liga Endesa', icon: Trophy },
+        { id: 'Euroleague Hub' as Tab, label: 'EuroLeague',  icon: Globe2 },
+        { id: 'Standings' as Tab,      label: 'Standings',   icon: Table2 },
+      ],
+    },
+    {
+      label: 'Squad',
+      items: [
+        { id: 'Player Search' as Tab,     label: 'Player Search',     icon: Search },
+        { id: 'Player Bios' as Tab,       label: 'Player Bios',       icon: Users },
+        { id: 'Player Comparison' as Tab, label: 'Player Comparison', icon: ArrowLeftRight },
+        { id: 'Free Agents' as Tab,       label: 'Free Agents',       icon: UserX },
+        { id: 'Injuries' as Tab,          label: 'Injuries',          icon: Stethoscope },
+      ],
+    },
+    {
+      label: 'Analytics',
+      items: [
+        { id: 'Player Stats' as Tab,       label: 'Player Stats',       icon: BarChart2 },
+        { id: 'Player Ratings' as Tab,     label: 'Player Ratings',     icon: BarChart2 },
+        { id: 'Team Stats' as Tab,         label: 'Team Stats',         icon: Users },
+        { id: 'League Leaders' as Tab,     label: 'League Leaders',     icon: ListOrdered },
+        { id: 'Statistical Feats' as Tab,  label: 'Statistical Feats',  icon: Zap },
+        { id: 'Power Rankings' as Tab,     label: 'Power Rankings',     icon: TrendingUp },
+      ],
+    },
+    {
+      label: 'Communications',
+      items: [
+        { id: 'Messages' as Tab,    label: 'Messages',    icon: MessageSquare, badge: fmt(unreadMessagesCount) },
+        { id: 'Social Feed' as Tab, label: 'Social Feed', icon: Activity,      badge: fmt(socialCount) },
+        { id: 'League News' as Tab, label: 'League News', icon: Newspaper,     badge: fmt(newsCount) },
+      ],
+    },
+  ];
+
+  const groups: NavGroup[] = isGM && euroIsolated ? euroGmGroups : [
     {
       label: isGM ? 'My Team' : 'Command Center',
       items: [

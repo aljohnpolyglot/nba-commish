@@ -7,6 +7,7 @@ import { useGame } from '../../../store/GameContext';
 import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
 import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
 import { isPlausibleActiveMarket } from '../../../services/freeAgencyBidding';
+import { formatFuzzedRating } from '../../../utils/scoutingFuzz';
 
 const LEAGUE_LOGOS: Record<string, string> = {
   PBA: 'https://upload.wikimedia.org/wikipedia/en/thumb/9/93/Philippine_Basketball_Association_logo.svg/200px-Philippine_Basketball_Association_logo.svg.png',
@@ -28,6 +29,7 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
   const simYear = state.leagueStats?.year ?? new Date().getFullYear();
   const age = player.born?.year ? simYear - player.born.year : player.age || 0;
   const ovr = convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp);
+  const displayOvr = formatFuzzedRating(ovr, state, player);
   const country = getCountryFromLoc(player.born?.loc);
   const countryCode = getCountryCode(country);
 
@@ -100,7 +102,7 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
             </div>
             {/* OVR Badge — matches PlayerCard.tsx style */}
             <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-slate-950 rounded-full flex items-center justify-center border-2 border-slate-800">
-              <span className="text-[10px] font-black text-white">{ovr}</span>
+              <span className="text-[10px] font-black text-white">{displayOvr}</span>
             </div>
           </div>
 

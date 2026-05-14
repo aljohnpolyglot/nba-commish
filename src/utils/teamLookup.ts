@@ -34,6 +34,7 @@ export function resolveAnyTeam(
         history: [], retiredNumbers: [], rivals: [],
         fanBase: 0, marketSize: 0, prestige: 0, facilities: 0, budget: 0,
         expenses: { scouting: 0, coaching: 0, health: 0, facilities: 0 },
+        tycoon: (nonNBA as any).tycoon,
       } as unknown as NBATeam;
     }
     return null;

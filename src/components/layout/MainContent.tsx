@@ -59,6 +59,9 @@ import HallofFameView from '../central/view/HallOfFame/HallofFameView';
 import { InternationalLeagueHub, HUB_TAB_TO_LEAGUE } from '../international/InternationalLeagueHub';
 import { FrontOfficeView } from '../central/view/FrontOfficeView';
 import { EuroTransferMarketView } from '../transferMarket/EuroTransferMarketView';
+import { CompetitionCentralView } from '../competition/CompetitionCentralView';
+import { CompetitionHubLayout } from '../competition/CompetitionHubLayout';
+import { isEuroIsolatedMode } from '../../utils/uiMode';
 import { Tab } from '../../types';
 
 interface MainContentProps {
@@ -102,9 +105,13 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
         </div>
       );
     case 'Playoffs':
-      return <PlayoffView />;
+      return isEuroIsolatedMode(state)
+        ? <CompetitionHubLayout specId="endesa" />
+        : <PlayoffView />;
     case 'NBA Central':
-      return <NBACentral />;
+      return isEuroIsolatedMode(state)
+        ? <CompetitionHubLayout specId="endesa" />
+        : <NBACentral />;
     case 'Player Search':
       return <PlayersView />;
     case 'Transactions':
@@ -308,7 +315,27 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
     case 'Front Office Transfer Market':
       return <EuroTransferMarketView />;
     case 'Euroleague Hub':
+      return isEuroIsolatedMode(state)
+        ? <CompetitionHubLayout specId="euroleague" />
+        : (() => {
+            const league = HUB_TAB_TO_LEAGUE[currentView];
+            return league ? (
+              <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+                <InternationalLeagueHub league={league} />
+              </div>
+            ) : null;
+          })();
     case 'Endesa Hub':
+      return isEuroIsolatedMode(state)
+        ? <CompetitionHubLayout specId="endesa" />
+        : (() => {
+            const league = HUB_TAB_TO_LEAGUE[currentView];
+            return league ? (
+              <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+                <InternationalLeagueHub league={league} />
+              </div>
+            ) : null;
+          })();
     case 'G-League Hub':
     case 'WNBA Hub':
     case 'B-League Hub':

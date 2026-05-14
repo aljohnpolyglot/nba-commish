@@ -24,6 +24,7 @@ export interface PlaceholderGM {
   attributes: GMAttributes;
   playerPortraitUrl: string;
   isPlaceholder: true;
+  face?: any;
 }
 
 export interface PlaceholderCoach {

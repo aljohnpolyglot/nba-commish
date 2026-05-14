@@ -40,6 +40,8 @@ import { autoResolveAllStarHosts } from '../allStar/hostAutoResolver';
 import { PlayoffSeries, HistoricalAward, SeasonHistoryEntry } from '../../types';
 import { DEFAULT_MEDIA_RIGHTS, attachBroadcastersToGames } from '../../utils/broadcastingUtils';
 import { setAssistantGMActive } from '../assistantGMFlag';
+import { injectCompetitionPostseasonGames } from '../competition/competitionResolver';
+import { repairCompetitionSchedules } from '../competition/competitionScheduler';
 
 // Playoff-MVP Bag-Aggregation. Both Finals MVP and Semifinals MVP need the same
 // per-player stat-bag → score → tiebreak pipeline; deduplicating here closed
@@ -49,6 +51,28 @@ type PlayoffMvpBag = {
   stl: number; blk: number; tov: number; fgm: number; fga: number;
   ftm: number; fta: number; fg3m: number; fg3a: number; mins: number;
 };
+
+function repairEuroCompetitionScheduleForToday(state: GameState): GameState {
+  if (state.leagueStats?.uiMode !== 'euro_isolated') return state;
+  const activeCompetitions = state.activeCompetitions ?? [];
+  if (activeCompetitions.length === 0) return state;
+  const repairedRegularSeason = repairCompetitionSchedules(state as any, activeCompetitions as any, state.leagueStats.year);
+  const repairedPostseason = injectCompetitionPostseasonGames(
+    { ...(state as any), schedule: repairedRegularSeason },
+    activeCompetitions as any,
+    state.leagueStats.year,
+  );
+  return repairedPostseason === state.schedule ? state : { ...state, schedule: repairedPostseason };
+}
+
+function hasDueUnplayedEuroCompetitionGames(state: GameState, currentNorm: string): boolean {
+  if (state.leagueStats?.uiMode !== 'euro_isolated') return false;
+  return (state.schedule ?? []).some(game =>
+    !!game.competitionId &&
+    !game.played &&
+    normalizeDate(game.date) <= currentNorm,
+  );
+}
 const PLAYOFF_MVP_LEAGUE_TS = 0.57;
 function computePlayoffMvpFromResults(
   results: Array<{ homeTeamId: number; awayTeamId: number; homeStats: any[]; awayStats: any[] }>,
@@ -133,6 +157,7 @@ const autoBroadcastingDefault = (state: GameState): Partial<GameState> => {
  *  y1 = previous calendar year (e.g. 2025) — preseason / early-season events */
 export const buildAutoResolveEvents = (y: number, leagueStats?: any): AutoResolveEvent[] => {
   const y1 = y - 1;
+  const euroIsolated = leagueStats?.uiMode === 'euro_isolated';
   const draftLotteryDateStr = toISODateString(getDraftLotteryDate(y, leagueStats));
   const draftDateStr        = toISODateString(getDraftDate(y, leagueStats));
   // HOF ceremony falls on the first Saturday of September (real-life Naismith)
@@ -152,6 +177,13 @@ export const buildAutoResolveEvents = (y: number, leagueStats?: any): AutoResolv
     resolver: (state: GameState) => announceAwardViaEngine(state, ev.awardId),
     phase: ev.phase,
   }));
+
+  if (euroIsolated) {
+    return [
+      { date: `${y1}-08-14`, key: 'schedule_generation', resolver: autoGenerateSchedule, phase: 'Generating Schedule...' },
+      ...awardEvents,
+    ];
+  }
 
   return [
     { date: `${y1}-08-06`, key: 'broadcasting_default',   resolver: autoBroadcastingDefault,         phase: 'Setting Broadcasting Deal...' },
@@ -652,8 +684,13 @@ export const runLazySim = async (
       // Routes through the orchestrator so this parallel dispatch path agrees
       // with the per-day handler (Session 5 — both call sites now share the
       // same rollover decision via getOffseasonDayPlan).
+      state = repairEuroCompetitionScheduleForToday(state);
       const lazyPlan = getOffseasonDayPlan(state);
-      if (lazyPlan.actions.rollover === 'fire') {
+      const pendingEuroCompetitionGames = hasDueUnplayedEuroCompetitionGames(state, currentNorm);
+      if (lazyPlan.actions.rollover === 'fire' && pendingEuroCompetitionGames) {
+        currentPhase = 'Finishing European competition games...';
+        report();
+      } else if (lazyPlan.actions.rollover === 'fire') {
         logPlanEvent('lazySimRunner.rollover', 'fire', `date=${currentNorm}`);
         const rolloverPatch = applySeasonRollover(state);
         state = { ...state, ...rolloverPatch };
@@ -870,17 +907,6 @@ export const runLazySim = async (
         }
 
         // Finals MVP: per-player series score across the Finals ONLY (round 4), not all playoffs.
-        // Formula blends scoring, efficiency, rebounds, assists, defense and team result so
-        // stat-stuffers in losing roles don't outrank the series' primary driver.
-        //
-        // MVP score per player =
-        //   (avgPts * 1.0)
-        // + (avgReb * 0.5) + (avgAst * 0.7)
-        // + (avgStl * 1.0) + (avgBlk * 1.0)
-        // - (avgTov * 0.7)
-        // + (trueShootingPct above league avg) * 8
-        // + (usage bonus: games started / total games) * 3
-        // Min 3 games played to qualify (NBA-style eligibility).
         const finalsGameIds = new Set<number>(finalsSeries?.gameIds ?? []);
         // Combine current-batch results with prior box scores so every Finals game is captured,
         // even when earlier games were processed in a different lazy-sim batch.
