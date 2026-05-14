@@ -1,8 +1,7 @@
-import React, { useContext, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { useLeagueLabels } from '../../../utils/leagueLabels';
-import { CompetitionHubLeagueTabContext } from '../../competition/hubContext';
-import { getTeamsForLeagueTab } from '../../../utils/euroLeagueDefaults';
+import { useHubScope } from '../../../hooks/useHubScope';
 import { NBAPlayer, Contact, Game } from '../../../types';
 import { PlayerActionsModal } from './PlayerActionsModal';
 import { PlayerBioView } from './PlayerBioView';
@@ -22,12 +21,7 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
   const { state, navigateToTeam, healPlayer, dispatchAction } = useGame();
   const labels = useLeagueLabels();
   const ownTid = getOwnTeamId(state);
-  const hubTab = useContext(CompetitionHubLeagueTabContext);
-  const scopedTeams = useMemo(
-    () => hubTab ? getTeamsForLeagueTab(state as any, hubTab) : state.teams,
-    [hubTab, state.teams, (state as any).nonNBATeams, (state as any).activeCompetitions],
-  );
-  const scopedTids = useMemo(() => new Set(scopedTeams.map(t => t.id)), [scopedTeams]);
+  const { hubTab, teams: scopedTeams, tids: scopedTids, isScoped } = useHubScope();
   const [actionsPlayer, setActionsPlayer] = React.useState<NBAPlayer | null>(null);
   const [selectedTeamId, setSelectedTeamId] = React.useState<number | 'all'>(filteredTeamId ?? 'all');
   const [viewingBioPlayer, setViewingBioPlayer] = React.useState<NBAPlayer | null>(null);
@@ -156,7 +150,7 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
 
     state.players.forEach(player => {
       if (player.injury && player.injury.gamesRemaining > 0 && player.tid >= 0
-        && (!hubTab || scopedTids.has(player.tid))) {
+        && (!isScoped || scopedTids.has(player.tid))) {
         if (!grouped[player.tid]) {
           grouped[player.tid] = [];
         }
@@ -165,7 +159,7 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
     });
 
     return grouped;
-  }, [state.players, hubTab, scopedTids]);
+  }, [state.players, isScoped, scopedTids]);
 
   const teamsWithInjuries = scopedTeams
     .filter(t => injuredPlayersByTeam[t.id] && injuredPlayersByTeam[t.id].length > 0)

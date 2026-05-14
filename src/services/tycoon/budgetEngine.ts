@@ -95,6 +95,7 @@ export function computeAnnualBudget(team: NBATeam, ctx: BudgetContext, allPlayer
     + (t.facilities?.academy?.level ?? 1);
   const facility = facilityLevelSum * tb.facilityOpsPerLevel;
   const scouting = tb.scoutingBudget;
+  const medical = t.medicalBudget ?? 0;
   const travelPrefs = t.travelPreferences;
   const travel = travelPrefs
     ? estimateTravelCost(travelPrefs, 17, ctx.euroleagueAwayGames)
@@ -103,12 +104,12 @@ export function computeAnnualBudget(team: NBATeam, ctx: BudgetContext, allPlayer
   const financeCosts = cash < 0 ? Math.round(Math.abs(cash) * 0.05) : 0;
 
   const profit = Math.round(matchday + sponsorship + prize + tv + transfer
-               - wages - staff - facility - scouting - travel - financeCosts);
+               - wages - staff - facility - scouting - travel - medical - financeCosts);
 
   return {
     year: ctx.year,
     revenue: { matchday, sponsorship, prize, tv, transfer },
-    expenses: { wages, staff, facility, scouting, travel, financeCosts },
+    expenses: { wages, staff, facility, scouting, travel, medical, financeCosts },
     profit,
     cashOnHandEnd: cash + profit,
     ffpDeficitContribution: Math.min(profit, 0),

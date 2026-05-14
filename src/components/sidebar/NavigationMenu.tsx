@@ -15,6 +15,7 @@ import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrc
 import { compareGameDates, getTradeDeadlineDate, getCurrentOffseasonEffectiveFAStart, getOpeningNightDate, getDraftDate, parseGameDate, toISODateString } from '../../utils/dateUtils';
 import { isNoDraftLeague } from '../../services/offseason/offseasonState';
 import { isEuroIsolatedMode } from '../../utils/uiMode';
+import { userQualifiesForContinental } from '../../utils/euroLeagueDefaults';
 
 interface NavigationMenuProps {
   currentView: Tab;
@@ -124,6 +125,8 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
     return count > 0 ? count : 0;
   })();
 
+  const qualifiesForEL = userQualifiesForContinental(state as any);
+
   const euroGmGroups: NavGroup[] = [
     {
       label: 'My Team',
@@ -150,30 +153,8 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
     {
       label: 'Competitions',
       items: [
-        { id: 'Endesa Hub' as Tab,     label: 'Liga Endesa', icon: Trophy },
-        { id: 'Euroleague Hub' as Tab, label: 'EuroLeague',  icon: Globe2 },
-        { id: 'Standings' as Tab,      label: 'Standings',   icon: Table2 },
-      ],
-    },
-    {
-      label: 'Squad',
-      items: [
-        { id: 'Player Search' as Tab,     label: 'Player Search',     icon: Search },
-        { id: 'Player Bios' as Tab,       label: 'Player Bios',       icon: Users },
-        { id: 'Player Comparison' as Tab, label: 'Player Comparison', icon: ArrowLeftRight },
-        { id: 'Free Agents' as Tab,       label: 'Free Agents',       icon: UserX },
-        { id: 'Injuries' as Tab,          label: 'Injuries',          icon: Stethoscope },
-      ],
-    },
-    {
-      label: 'Analytics',
-      items: [
-        { id: 'Player Stats' as Tab,       label: 'Player Stats',       icon: BarChart2 },
-        { id: 'Player Ratings' as Tab,     label: 'Player Ratings',     icon: BarChart2 },
-        { id: 'Team Stats' as Tab,         label: 'Team Stats',         icon: Users },
-        { id: 'League Leaders' as Tab,     label: 'League Leaders',     icon: ListOrdered },
-        { id: 'Statistical Feats' as Tab,  label: 'Statistical Feats',  icon: Zap },
-        { id: 'Power Rankings' as Tab,     label: 'Power Rankings',     icon: TrendingUp },
+        { id: 'Endesa Hub' as Tab, label: 'Liga Endesa', icon: Trophy },
+        ...(qualifiesForEL ? [{ id: 'Euroleague Hub' as Tab, label: 'EuroLeague', icon: Globe2 }] : []),
       ],
     },
     {

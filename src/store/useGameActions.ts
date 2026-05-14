@@ -277,10 +277,18 @@ export const useGameActions = (setState: React.Dispatch<React.SetStateAction<Gam
    */
   const applyTycoonMutation = (teamId: number, mutator: (team: any) => void) => {
     setState(prev => {
-      const team = prev.teams.find((t: any) => (t.id ?? t.tid) === teamId);
-      if (!team) return prev;
-      mutator(team);
-      return { ...prev, teams: [...prev.teams] };
+      const nbaTeam = prev.teams.find((t: any) => (t.id ?? t.tid) === teamId);
+      if (nbaTeam) {
+        mutator(nbaTeam);
+        return { ...prev, teams: [...prev.teams] };
+      }
+      const nonNBATeams: any[] = (prev as any).nonNBATeams ?? [];
+      const euroTeam = nonNBATeams.find((t: any) => (t.id ?? t.tid) === teamId);
+      if (euroTeam) {
+        mutator(euroTeam);
+        return { ...prev, nonNBATeams: [...nonNBATeams] };
+      }
+      return prev;
     });
   };
 
