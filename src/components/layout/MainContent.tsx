@@ -61,7 +61,9 @@ import { FrontOfficeView } from '../central/view/FrontOfficeView';
 import { EuroTransferMarketView } from '../transferMarket/EuroTransferMarketView';
 import { CompetitionCentralView } from '../competition/CompetitionCentralView';
 import { CompetitionHubLayout } from '../competition/CompetitionHubLayout';
-import { isEuroIsolatedMode } from '../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
+import { PBAHubView } from '../pba/PBAHubView';
+import { PBAConferenceHubLayout } from '../pba/PBAConferenceHubLayout';
 import { Tab } from '../../types';
 
 interface MainContentProps {
@@ -297,21 +299,19 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
     case 'Hall of Fame':
       return <HallofFameView />;
     case 'Front Office':
-      return <FrontOfficeView />;
+      return <FrontOfficeView initialSection="finances" />;
     case 'Front Office Finances':
       return <FrontOfficeView initialSection="finances" />;
     case 'Front Office Sponsorships':
       return <FrontOfficeView initialSection="sponsorships" />;
-    case 'Front Office Travel':
-      return <FrontOfficeView initialSection="travel" />;
     case 'Front Office Medical':
       return <FrontOfficeView initialSection="medical" />;
     case 'Front Office Facilities':
       return <FrontOfficeView initialSection="facilities" />;
     case 'Front Office Staff':
       return <FrontOfficeView initialSection="staff" />;
-    case 'Front Office Scouting':
-      return <FrontOfficeView initialSection="scouting" />;
+    case 'Front Office Analytics':
+      return <FrontOfficeView initialSection="analytics" />;
     case 'Front Office Transfer Market':
       return <EuroTransferMarketView />;
     case 'Euroleague Hub':
@@ -337,11 +337,18 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
             ) : null;
           })();
     case 'G-League Hub':
+    case 'PBA Philippine Hub':
+      return <PBAConferenceHubLayout conference="philippine" />;
+    case 'PBA Commissioners Hub':
+      return <PBAConferenceHubLayout conference="commissioners" />;
+    case 'PBA Governors Hub':
+      return <PBAConferenceHubLayout conference="governors" />;
     case 'WNBA Hub':
     case 'B-League Hub':
     case 'China CBA Hub':
     case 'NBL Australia Hub':
     case 'PBA Hub': {
+      if (isPbaIsolatedMode(state)) return <PBAConferenceHubLayout conference="philippine" />;
       const league = HUB_TAB_TO_LEAGUE[currentView];
       return league ? (
         <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>

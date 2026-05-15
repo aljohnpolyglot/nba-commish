@@ -5,7 +5,7 @@ import {
   User, Calendar, BarChart2, TrendingUp,
   Search, Users, Star, Building2, Settings2, ChevronDown,
   ListOrdered, Stethoscope, Tv, ThumbsUp, Eye, DollarSign,
-  Target, Ticket, Table2, Zap, UserX, UserPlus, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase, Crown, ArrowLeftRight, Globe2,
+  Target, Ticket, Table2, Zap, UserX, UserPlus, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase, Crown, ArrowLeftRight, Globe2, Shield,
   Landmark, Megaphone, Plane, HeartPulse, Hammer, IdCard, Telescope, Repeat
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
@@ -14,7 +14,7 @@ import { Tab } from '../../types';
 import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
 import { compareGameDates, getTradeDeadlineDate, getCurrentOffseasonEffectiveFAStart, getOpeningNightDate, getDraftDate, parseGameDate, toISODateString } from '../../utils/dateUtils';
 import { isNoDraftLeague } from '../../services/offseason/offseasonState';
-import { isEuroIsolatedMode } from '../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
 import { userQualifiesForContinental } from '../../utils/euroLeagueDefaults';
 
 interface NavigationMenuProps {
@@ -42,6 +42,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
   const noDraft = isNoDraftLeague(state.leagueStats as any);
   const tradesDisabled = state.leagueStats?.tradesAllowed === false;
   const euroIsolated = isEuroIsolatedMode(state);
+  const pbaIsolated = isPbaIsolatedMode(state);
 
   // Trade deadline + FA period detection for GM mode gating
   // Dates resolved dynamically via dateUtils.resolveSeasonDate (day-of-week aware).
@@ -132,7 +133,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
       label: 'My Team',
       items: [
         { id: 'Schedule' as Tab, label: 'Schedule', icon: Calendar },
-        { id: 'Front Office' as Tab, label: 'Front Office', icon: Briefcase },
+        { id: 'Team Office' as Tab, label: 'Team Office', icon: Briefcase },
         { id: 'Coaching' as Tab, label: 'Coaching', icon: ClipboardList },
         { id: 'Training Center' as Tab, label: 'Training', icon: Activity },
       ],
@@ -144,10 +145,8 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         { id: 'Front Office Sponsorships' as Tab,    label: 'Sponsorships',    icon: Megaphone },
         { id: 'Front Office Transfer Market' as Tab, label: 'Transfer Market', icon: Repeat },
         { id: 'Front Office Staff' as Tab,           label: 'Staff',           icon: IdCard },
-        { id: 'Front Office Medical' as Tab,         label: 'Medical',         icon: HeartPulse },
         { id: 'Front Office Facilities' as Tab,      label: 'Facilities',      icon: Hammer },
-        { id: 'Front Office Travel' as Tab,          label: 'Travel',          icon: Plane },
-        { id: 'Front Office Scouting' as Tab,        label: 'Scouting',        icon: Telescope },
+        { id: 'Front Office Analytics' as Tab,        label: 'Analytics',       icon: Telescope },
       ],
     },
     {
@@ -158,16 +157,79 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
       ],
     },
     {
+      label: 'Squad',
+      items: [
+        { id: 'Player Search' as Tab,     label: 'Player Search',     icon: Search },
+        { id: 'Player Bios' as Tab,       label: 'Player Bios',       icon: Users },
+        { id: 'Player Comparison' as Tab, label: 'Player Comparison', icon: ArrowLeftRight },
+        { id: 'Free Agents' as Tab,       label: 'Free Agents',       icon: UserX },
+      ],
+    },
+    {
       label: 'Communications',
       items: [
         { id: 'Messages' as Tab,    label: 'Messages',    icon: MessageSquare, badge: fmt(unreadMessagesCount) },
         { id: 'Social Feed' as Tab, label: 'Social Feed', icon: Activity,      badge: fmt(socialCount) },
         { id: 'League News' as Tab, label: 'League News', icon: Newspaper,     badge: fmt(newsCount) },
+        { id: 'Transactions' as Tab, label: 'Transactions', icon: ArrowRightLeft },
       ],
     },
   ];
 
-  const groups: NavGroup[] = isGM && euroIsolated ? euroGmGroups : [
+  const pbaGmGroups: NavGroup[] = [
+    {
+      label: 'My Team',
+      items: [
+        { id: 'Schedule' as Tab, label: 'Schedule', icon: Calendar },
+        { id: 'Team Office' as Tab, label: 'Team Office', icon: Briefcase },
+        { id: 'Coaching' as Tab, label: 'Coaching', icon: ClipboardList },
+        { id: 'Training Center' as Tab, label: 'Training', icon: Activity },
+      ],
+    },
+    {
+      label: 'Conferences',
+      items: [
+        { id: 'PBA Philippine Hub' as Tab, label: 'Philippine Cup', icon: Shield },
+        { id: 'PBA Commissioners Hub' as Tab, label: "Commissioner's Cup", icon: Trophy },
+        { id: 'PBA Governors Hub' as Tab, label: "Governors' Cup", icon: Crown },
+      ],
+    },
+    {
+      label: 'Squad',
+      items: [
+        { id: 'Player Search' as Tab, label: 'Player Search', icon: Search },
+        { id: 'Player Bios' as Tab, label: 'Player Bios', icon: Users },
+        { id: 'Player Comparison' as Tab, label: 'Player Comparison', icon: ArrowLeftRight },
+        ...(showFATabInGM ? [{ id: 'Free Agents' as Tab, label: 'Free Agents', icon: UserX }] : []),
+      ],
+    },
+    ...(!tradesDisabled ? [{
+      label: 'Trades',
+      items: [
+        { id: 'Trade Machine' as Tab, label: 'Trade Machine', icon: Cpu },
+        { id: 'Trade Finder' as Tab, label: 'Trade Finder', icon: Search },
+        { id: 'Trade Proposals' as Tab, label: 'Trade Proposals', icon: GitPullRequest, badge: fmt(pendingTradesCount) },
+      ],
+    }] : []),
+    ...(!noDraft ? [{
+      label: 'Draft',
+      items: [
+        { id: 'Draft Scouting' as Tab, label: 'Scouting', icon: Target },
+        { id: 'Draft Board' as Tab, label: 'Draft Board', icon: ClipboardList },
+      ],
+    }] : []),
+    {
+      label: 'Communications',
+      items: [
+        { id: 'Messages' as Tab, label: 'Messages', icon: MessageSquare, badge: fmt(unreadMessagesCount) },
+        { id: 'Social Feed' as Tab, label: 'Social Feed', icon: Activity, badge: fmt(socialCount) },
+        { id: 'League News' as Tab, label: 'League News', icon: Newspaper, badge: fmt(newsCount) },
+        { id: 'Transactions' as Tab, label: 'Transactions', icon: ArrowRightLeft },
+      ],
+    },
+  ];
+
+  const groups: NavGroup[] = isGM && pbaIsolated ? pbaGmGroups : isGM && euroIsolated ? euroGmGroups : [
     {
       label: isGM ? 'My Team' : 'Command Center',
       items: [
@@ -182,7 +244,6 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
           { id: 'Training Center' as Tab, label: 'Training Center', icon: Activity },
         ] : []),
         ...(isGM && euroIsolated ? [
-          { id: 'Front Office' as Tab, label: 'Front Office', icon: Briefcase },
           { id: 'Coaching' as Tab, label: 'Coaching', icon: ClipboardList },
           { id: 'Training Center' as Tab, label: 'Training', icon: Activity },
         ] : []),
@@ -195,10 +256,8 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         { id: 'Front Office Sponsorships' as Tab,    label: 'Sponsorships',      icon: Megaphone },
         { id: 'Front Office Transfer Market' as Tab, label: 'Transfer Market',   icon: Repeat },
         { id: 'Front Office Staff' as Tab,           label: 'Staff',             icon: IdCard },
-        { id: 'Front Office Medical' as Tab,         label: 'Medical',           icon: HeartPulse },
         { id: 'Front Office Facilities' as Tab,      label: 'Facilities',        icon: Hammer },
-        { id: 'Front Office Travel' as Tab,          label: 'Travel',            icon: Plane },
-        { id: 'Front Office Scouting' as Tab,        label: 'Scouting',          icon: Telescope },
+        { id: 'Front Office Analytics' as Tab,        label: 'Analytics',         icon: Telescope },
       ],
     }] : []),
     ...(!isGM ? [{

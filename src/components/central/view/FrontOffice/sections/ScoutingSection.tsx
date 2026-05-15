@@ -20,11 +20,11 @@ export const ScoutingSection: React.FC<{ tycoon: TycoonState; currency: string; 
   return (
     <div className="space-y-6">
       <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-4">
-        <SectionTitle icon={<Target size={22} />} title="Scouting" subtitle="Tune scouting investment and review uncertainty before making roster decisions." />
+        <SectionTitle icon={<Target size={22} />} title="Analytics" subtitle="Tune analytics investment and review data coverage before making roster decisions." />
         <div className="grid sm:grid-cols-3 gap-3 xl:min-w-[620px]">
           <FacilityKpi icon={<Search size={22} />} label="Report Coverage" value={`${coverage}%`} sub="Tracked market" />
           <FacilityKpi icon={<Target size={22} />} label="Rating Band" value={`±${band}`} sub="Unknown players" />
-          <FacilityKpi icon={<Briefcase size={22} />} label="Annual Spend" value={fmt(investment)} sub="Scouting budget" />
+          <FacilityKpi icon={<Briefcase size={22} />} label="Annual Spend" value={fmt(investment)} sub="Analytics budget" />
         </div>
       </div>
 
@@ -33,7 +33,7 @@ export const ScoutingSection: React.FC<{ tycoon: TycoonState; currency: string; 
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="text-xs font-black uppercase tracking-widest text-slate-400">Scouting Investment</div>
+                <div className="text-xs font-black uppercase tracking-widest text-slate-400">Analytics Investment</div>
                 <div className="text-3xl font-black text-white mt-2">{fmt(investment)}</div>
                 <p className="text-sm text-slate-400 mt-1">Higher investment narrows uncertainty bands and improves foreign-market reports.</p>
               </div>
@@ -74,7 +74,7 @@ export const ScoutingSection: React.FC<{ tycoon: TycoonState; currency: string; 
 
         <aside className="space-y-5">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Scouting Notes</div>
+            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Analytics Notes</div>
             <div className="space-y-3 text-sm text-slate-300">
               <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">Known players stay exact. Unknown non-own ratings should be read as a range, not a promise.</div>
               <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">Domestic coverage improves faster than EuroLeague coverage because reports are cheaper to refresh.</div>

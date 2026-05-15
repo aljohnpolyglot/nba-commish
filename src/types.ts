@@ -297,7 +297,7 @@ export interface LeagueStats {
   rules: Rule[];
   morale: Morale;
   year: number;
-  uiMode?: 'nba' | 'euro_isolated';
+  uiMode?: 'nba' | 'euro_isolated' | 'pba_isolated';
   currency?: 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CNY' | 'AUD' | 'PHP';
   tradesAllowed?: boolean;
   /** Euro-mode salary overrides — when uiMode === 'euro_isolated' these replace
@@ -349,6 +349,36 @@ export interface LeagueStats {
   autoOwnerSeeded?: boolean;
   /** Set once when the Euro-Mode staff free-agent pool has been seeded. */
   staffPoolSeeded?: boolean;
+  // ── PBA Isolated Mode ──
+  pbaConference?: 'philippine' | 'commissioners' | 'governors';
+  pbaConferencePhase?: 'setup' | 'regularSeason' | 'playoffs' | 'complete' | 'offseason';
+  pbaDraftComplete?: boolean;
+  pbaOpeningWatched?: boolean;
+  pbaMuseSelected?: boolean;
+  pbaConferenceChampions?: Array<{
+    season: number;
+    conference: 'philippine' | 'commissioners' | 'governors';
+    teamId: number;
+    teamName: string;
+    finalsMvpId?: string;
+    bestPlayerId?: string;
+    bestImportId?: string;
+  }>;
+  pbaGrandSlam?: Array<{
+    season: number;
+    teamId: number;
+    teamName: string;
+  }>;
+  pbaAllStarResults?: {
+    season: number;
+    captainA: { playerId: string; playerName: string };
+    captainB: { playerId: string; playerName: string };
+    teamAScore: number;
+    teamBScore: number;
+    mvpIds: string[];
+    threePointWinnerId?: string;
+    venue?: string;
+  };
   hasFinalsHalftime?: boolean;
   hasAllStarHalftime?: boolean;
   hasRingCeremony?: boolean;
@@ -805,7 +835,8 @@ export type OwnerVision = 'WinNow' | 'Develop' | 'Frugal';
 export interface OwnerProfile {
   name: string;
   nationality: string;
-  face: any;  // facesjs config — kept loose to match StaffMember.face
+  face: any;
+  staffImageId?: number;
   wealthTier: OwnerWealthTier;
   patience: OwnerPatience;
   vision: OwnerVision;
@@ -1033,6 +1064,11 @@ export interface NBAPlayer {
   farewellTour?: boolean;
   /** False when the player was signed after the March 1 playoff eligibility deadline. Cleared at rollover. Cosmetic — AI stops signing before this date automatically. */
   playoffEligible?: boolean;
+  // ── PBA Import fields ──
+  isImport?: boolean;
+  importConference?: 'commissioners' | 'governors';
+  importTeamId?: number;
+  importSeason?: number;
   /** Family ties (from BBGM roster). Used for trading-block protection + mood bonus when a relative is on the same team. */
   relatives?: Array<{ type: 'brother' | 'father' | 'son' | string; pid: number; name: string }>;
   /** ISO YYYY-MM-DD on/after which this player can be traded. Stamped at signing/extension per real-NBA CBA rules (Dec 15 / Jan 15 / 3-month / 6-month). Undefined = no moratorium. */
@@ -1155,6 +1191,7 @@ export interface StaffMember {
   yearsWithTeam?: number;
   isPlaceholder?: boolean;
   face?: any;
+  staffImageId?: number;
 }
 
 export interface StaffData {
@@ -1576,7 +1613,7 @@ historicalAwards: HistoricalAward[];
   gameMode?: 'commissioner' | 'gm';  // default: 'commissioner'
   userTeamId?: number;                // set in GM mode — the team the user manages
   leagueType?: 'fictional' | 'modded'; // 'fictional' = generated, 'modded' = real-NBA via community gists
-  moddedLeagueBase?: 'nba' | 'europe';
+  moddedLeagueBase?: 'nba' | 'europe' | 'philippines';
   europeMarket?: 'spain';
 
   pendingFAToasts?: { playerName: string; accepted: boolean; winnerTeamName?: string; annualM: number; years: number; rejectionReason?: string }[];
@@ -1783,7 +1820,16 @@ export type OffseasonChecklistRow =
   | 'facilityUpgrades'
   | 'preseasonFriendlies'
   | 'hofCeremony'
-  | 'trainingCamp';
+  | 'trainingCamp'
+  // PBA Isolated Mode
+  | 'pbaDraft'
+  | 'pbaLocalFreeAgency'
+  | 'pbaImportSearch'
+  | 'pbaImportDecision'
+  | 'pbaMuseSelection'
+  | 'pbaOpeningCeremony'
+  | 'pbaAllStarWeekend'
+  | 'pbaConferenceAwards';
 
 export type OffseasonRowStatus = 'pending' | 'in-progress' | 'done' | 'skipped';
 
@@ -1887,7 +1933,7 @@ export interface OwnedRealEstateAsset {
   instanceId: string;
 }
 
-export type ActionType = 'SET_TRAINING_DAILY_PLAN' | 'SET_TRAINING_NORMAL_DEFAULT' | 'SET_PLAYER_DEV_FOCUS' | 'SET_PLAYER_MENTOR' | 'RESET_PLAYER_FAMILIARITY' | 'SET_PLAYER_TRAINING_INTENSITY' | 'AUTOFILL_TEAM_TRAINING_CALENDAR' | 'REPLY_EMAIL' | 'BRIBE' | 'HYPNOTIZE' | 'PUBLIC_STATEMENT' | 'ADVANCE_DAY' | 'DIRECT_MESSAGE' | 'SEND_MESSAGE' | 'SEND_CHAT_MESSAGE' | 'UPDATE_RULES' | 'SUSPEND_PLAYER' | 'CLEAR_OUTCOME' | 'SAVE_SOCIAL_THREAD' | 'FINE_PERSON' | 'BRIBE_PERSON' | 'GLOBAL_GAMES' | 'LEAK_SCANDAL' | 'HYPNOTIC_BROADCAST' | 'RIG_LOTTERY' | 'CELEBRITY_ROSTER' | 'OWNER_DINNER' | 'PUBLIC_ANNOUNCEMENT' | 'SUSPEND_PERSON' | 'DRUG_TEST_PERSON' | 'INVITE_DINNER' | 'EXPANSION_DRAFT' | 'ANNOUNCE_CHANGE' | 'START_GAME' | 'LOAD_GAME' | 'UPDATE_SAVE_ID' | 'SIGN_FREE_AGENT' | 'EXECUTIVE_TRADE' | 'TRAVEL' | 'GIVE_MONEY' | 'VISIT_NON_NBA_TEAM' | 'INVITE_PERFORMANCE' | 'FORCE_TRADE' | 'ADJUST_FINANCIALS' | 'FOLLOW_USER' | 'UNFOLLOW_USER' | 'ADD_PENDING_HYPNOSIS' | 'MARK_PAYSLIPS_READ' | 'TRANSFER_FUNDS' | 'SET_CHRISTMAS_GAMES' | 'SABOTAGE_PLAYER' | 'GO_TO_CLUB' | 'ENDORSE_HOF' | 'SIMULATE_TO_DATE' | 'ADD_PRESEASON_INTERNATIONAL' | 'ALL_STAR_ADVANCE_VOTES' | 'ALL_STAR_ANNOUNCE_STARTERS' | 'ALL_STAR_ANNOUNCE_RESERVES' | 'ALL_STAR_SIMULATE_WEEKEND' | 'GENERATE_PLAYOFF_BRACKET' | 'SIM_PLAYOFF_ROUND' | 'SAVE_CONTEST_RESULT' | 'SAVE_THRONE_RESULT' | 'MERGE_THRONE_LIFECYCLE' | 'RECORD_WATCHED_GAME' | 'WAIVE_PLAYER' | 'FIRE_PERSONNEL' | 'STORE_PURCHASE' | 'RIG_ALL_STAR_VOTING' | 'SET_ALL_STAR_REPLACEMENT' | 'SET_DUNK_CONTESTANTS' | 'SET_THREE_POINT_CONTESTANTS' | 'ADD_ALL_STAR_REPLACEMENT' | 'REAL_ESTATE_INVENTORY_UPDATE' | 'COMMISH_STORE_INVENTORY_UPDATE' | 'CACHE_PROFILE' | 'UPDATE_USER_PROFILE' | 'ADD_USER_POST' | 'ADD_REPLIES' | 'SET_FEED' | 'UPDATE_STATE' | 'SUBMIT_FA_BID' | 'RETIRE_JERSEY_NUMBER' | 'MATCH_RFA_OFFER' | 'DECLINE_RFA_OFFER' | 'TOGGLE_LIKE' | 'TOGGLE_RETWEET' | 'ADD_POST' | 'ADD_REPLY' | 'EXERCISE_TEAM_OPTION' | 'DECLINE_TEAM_OPTION' | 'CONVERT_CONTRACT_TYPE' |
+export type ActionType = 'SET_TRAINING_DAILY_PLAN' | 'SET_TRAINING_NORMAL_DEFAULT' | 'SET_PLAYER_DEV_FOCUS' | 'SET_PLAYER_MENTOR' | 'RESET_PLAYER_FAMILIARITY' | 'SET_PLAYER_TRAINING_INTENSITY' | 'AUTOFILL_TEAM_TRAINING_CALENDAR' | 'REPLY_EMAIL' | 'BRIBE' | 'HYPNOTIZE' | 'PUBLIC_STATEMENT' | 'ADVANCE_DAY' | 'DIRECT_MESSAGE' | 'SEND_MESSAGE' | 'SEND_CHAT_MESSAGE' | 'UPDATE_RULES' | 'SUSPEND_PLAYER' | 'CLEAR_OUTCOME' | 'SAVE_SOCIAL_THREAD' | 'FINE_PERSON' | 'BRIBE_PERSON' | 'GLOBAL_GAMES' | 'LEAK_SCANDAL' | 'HYPNOTIC_BROADCAST' | 'RIG_LOTTERY' | 'CELEBRITY_ROSTER' | 'OWNER_DINNER' | 'PUBLIC_ANNOUNCEMENT' | 'SUSPEND_PERSON' | 'DRUG_TEST_PERSON' | 'INVITE_DINNER' | 'EXPANSION_DRAFT' | 'ANNOUNCE_CHANGE' | 'START_GAME' | 'INIT_EURO_CAREER' | 'INIT_PBA_CAREER' | 'LOAD_GAME' | 'UPDATE_SAVE_ID' | 'SIGN_FREE_AGENT' | 'EXECUTIVE_TRADE' | 'TRAVEL' | 'GIVE_MONEY' | 'VISIT_NON_NBA_TEAM' | 'INVITE_PERFORMANCE' | 'FORCE_TRADE' | 'ADJUST_FINANCIALS' | 'FOLLOW_USER' | 'UNFOLLOW_USER' | 'ADD_PENDING_HYPNOSIS' | 'MARK_PAYSLIPS_READ' | 'TRANSFER_FUNDS' | 'SET_CHRISTMAS_GAMES' | 'SABOTAGE_PLAYER' | 'GO_TO_CLUB' | 'ENDORSE_HOF' | 'SIMULATE_TO_DATE' | 'ADD_PRESEASON_INTERNATIONAL' | 'ALL_STAR_ADVANCE_VOTES' | 'ALL_STAR_ANNOUNCE_STARTERS' | 'ALL_STAR_ANNOUNCE_RESERVES' | 'ALL_STAR_SIMULATE_WEEKEND' | 'GENERATE_PLAYOFF_BRACKET' | 'SIM_PLAYOFF_ROUND' | 'SAVE_CONTEST_RESULT' | 'SAVE_THRONE_RESULT' | 'MERGE_THRONE_LIFECYCLE' | 'RECORD_WATCHED_GAME' | 'WAIVE_PLAYER' | 'FIRE_PERSONNEL' | 'STORE_PURCHASE' | 'RIG_ALL_STAR_VOTING' | 'SET_ALL_STAR_REPLACEMENT' | 'SET_DUNK_CONTESTANTS' | 'SET_THREE_POINT_CONTESTANTS' | 'ADD_ALL_STAR_REPLACEMENT' | 'REAL_ESTATE_INVENTORY_UPDATE' | 'COMMISH_STORE_INVENTORY_UPDATE' | 'CACHE_PROFILE' | 'UPDATE_USER_PROFILE' | 'ADD_USER_POST' | 'ADD_REPLIES' | 'SET_FEED' | 'UPDATE_STATE' | 'SUBMIT_FA_BID' | 'RETIRE_JERSEY_NUMBER' | 'MATCH_RFA_OFFER' | 'DECLINE_RFA_OFFER' | 'TOGGLE_LIKE' | 'TOGGLE_RETWEET' | 'ADD_POST' | 'ADD_REPLY' | 'EXERCISE_TEAM_OPTION' | 'DECLINE_TEAM_OPTION' | 'CONVERT_CONTRACT_TYPE' | 'ADVANCE_PBA_CONFERENCE' | 'RECORD_PBA_CHAMPION' |
   // ── Offseason 2K checklist actions ─────────────────────────────────────
   'OFFSEASON_ENTER_PHASE' | 'OFFSEASON_COMPLETE_PHASE' | 'OFFSEASON_SKIP_PHASE' |
   'OFFSEASON_AUTO_RESOLVE_ALL' | 'OFFSEASON_ADVANCE_FA_TAG' | 'OFFSEASON_EXIT' |
@@ -1907,7 +1953,7 @@ export interface UserAction {
 
 export type Conference = 'East' | 'West';
 export type GamePhase = 'Preseason' | 'Opening Week' | 'Regular Season (Early)' | 'Regular Season (Mid)' | 'All-Star Break' | 'Trade Deadline' | 'Regular Season (Late)' | 'Play-In Tournament' | 'Playoffs (Round 1)' | 'Playoffs (Round 2)' | 'Conference Finals' | 'NBA Finals' | 'Offseason' | 'Draft' | 'Draft Lottery' | 'Free Agency' | 'Schedule Planning' | 'Schedule Release' | 'Training Camp';
-export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'NBA Cup' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Front Office' | 'Front Office Finances' | 'Front Office Sponsorships' | 'Front Office Travel' | 'Front Office Medical' | 'Front Office Facilities' | 'Front Office Staff' | 'Front Office Scouting' | 'Front Office Transfer Market' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'Player Creator' | 'League History' | 'Player Bios' | 'Player Comparison' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History' | 'Team Office' | 'Coaching' | 'Training Center' | 'Hall of Fame' | 'Euroleague' | 'Liga Endesa' | 'Euroleague Hub' | 'Endesa Hub' | 'G-League Hub' | 'WNBA Hub' | 'B-League Hub' | 'China CBA Hub' | 'NBL Australia Hub' | 'PBA Hub';
+export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'NBA Cup' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Front Office' | 'Front Office Finances' | 'Front Office Sponsorships' | 'Front Office Travel' | 'Front Office Medical' | 'Front Office Facilities' | 'Front Office Staff' | 'Front Office Analytics' | 'Front Office Transfer Market' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'Player Creator' | 'League History' | 'Player Bios' | 'Player Comparison' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History' | 'Team Office' | 'Coaching' | 'Training Center' | 'Hall of Fame' | 'Euroleague' | 'Liga Endesa' | 'Euroleague Hub' | 'Endesa Hub' | 'G-League Hub' | 'WNBA Hub' | 'B-League Hub' | 'China CBA Hub' | 'NBL Australia Hub' | 'PBA Hub' | 'PBA Philippine Hub' | 'PBA Commissioners Hub' | 'PBA Governors Hub';
 
 // ─── AI Trade / Free Agency ───────────────────────────────────────────────────
 export interface TradeProposal {

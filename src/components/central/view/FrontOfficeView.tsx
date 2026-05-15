@@ -32,7 +32,7 @@ import { StaffSection } from './FrontOffice/sections/StaffSection';
 import { ScoutingSection } from './FrontOffice/sections/ScoutingSection';
 import { BoardPromisesCard } from './FrontOffice/sections/BoardPromisesCard';
 
-type FrontOfficeSection = 'finances' | 'sponsorships' | 'medical' | 'facilities' | 'staff' | 'scouting';
+type FrontOfficeSection = 'finances' | 'sponsorships' | 'medical' | 'facilities' | 'staff' | 'analytics';
 
 interface FrontOfficeViewProps {
   initialSection?: FrontOfficeSection;
@@ -206,7 +206,7 @@ export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection
         {initialSection === 'staff' && (
           <StaffSection state={state} team={selectedTeam as any} onHireStaff={handleHireStaff} />
         )}
-        {initialSection === 'scouting' && (
+        {initialSection === 'analytics' && (
           <ScoutingSection tycoon={tycoon} currency={currency} onChange={handleScoutingInvestmentChange} />
         )}
       </div>
