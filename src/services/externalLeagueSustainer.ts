@@ -26,6 +26,7 @@ import type { LeagueWeightEntry } from '../constants';
 import { getNameData } from '../data/nameDataFetcher';
 import { generateDraftClassForGame, pickWeighted } from './genDraftPlayers';
 import { EUROLEAGUE_TEAMS, getRaceFrequencies } from '../genplayersconstants';
+import { getNewgenPortraitUrl } from '../utils/newgenPortrait';
 
 // ── Seeded RNG — same convention as retirementChecker.ts ─────────────────────
 const GENERATED_EXTERNAL_OVR_NERF = 8;
@@ -85,6 +86,10 @@ const WOMENS_LEAGUES = new Set(['WNBA']);
 function genderForLeague(league: string): 'male' | 'female' {
   return WOMENS_LEAGUES.has(league) ? 'female' : 'male';
 }
+
+// Newgen face pack is Euro-feature-leaning. Skip Asian-population leagues —
+// those facial features aren't represented in the pack.
+const NEWGEN_SKIP_LEAGUES = new Set(['B-League', 'China CBA', 'PBA']);
 
 function getClubCountry(tid: number | undefined): string | undefined {
   if (tid == null) return undefined;
@@ -596,6 +601,7 @@ function spawnExternalPlayer(opts: {
     return {
       ...base,
       internalId: uniqueId,
+      imgURL: NEWGEN_SKIP_LEAGUES.has(league) ? (base as any).imgURL : getNewgenPortraitUrl(uniqueId, gender),
       name: `${firstName} ${lastName}`,
       firstName,
       lastName,

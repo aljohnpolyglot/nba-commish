@@ -24,6 +24,7 @@ import {
   PATH_OVR_CAP, LEAGUE_HEIGHT_CEILING, PATH_TO_LEAGUE,
   COUNTRY_HEIGHT_MULT, YOUTH_EXTERNAL_OVR_CAP,
 } from '../constants';
+import { getNewgenPortraitUrl, newgenRoll } from '../utils/newgenPortrait';
 
 // Deterministic seeded RNG for stratified draft sampling (Fix 16).
 function seededRng(seed: string): number {
@@ -594,6 +595,12 @@ export function sandboxToNBAPlayer(p: Player): NBAPlayer {
   const finalRatings = rawRatings.map((r, i) =>
     i === rawRatings.length - 1 ? { ...r, pot: derivedPot } : r,
   );
+  // Newgen portraits: Euro-leaning pack — Europe/Endesa/NBL paths always get one;
+  // B-League (Japan) skipped because Asian features aren't represented in the pack.
+  // Domestic paths get a 50% sprinkle so the draft class isn't visually monolithic.
+  const overseasNewgenPath = p.path === 'Europe' || p.path === 'Endesa' || p.path === 'NBL';
+  const useNewgen = p.path !== 'B-League' && (overseasNewgenPath || newgenRoll(p.id, 0.5));
+  const imgURL = useNewgen ? getNewgenPortraitUrl(p.id, 'male') : p.imgURL;
   return {
     internalId: p.id,
     name: `${p.firstName} ${p.lastName}`,
@@ -608,7 +615,7 @@ export function sandboxToNBAPlayer(p: Player): NBAPlayer {
     hgt: p.hgt,
     weight: p.weight,
     college: p.college,
-    imgURL: p.imgURL,
+    imgURL,
     draft: {
       year: p.draft.year,
       round: p.draft.round ?? 0,
