@@ -65,7 +65,13 @@ const FacilityCard: React.FC<{
   );
 };
 
-export const FacilitiesSection: React.FC<{ tycoon: TycoonState; fmt: (v: number) => string }> = ({ tycoon, fmt }) => {
+export const FacilitiesSection: React.FC<{
+  tycoon: TycoonState;
+  fmt: (v: number) => string;
+  onTravelDetails?: () => void;
+  onMedicalDetails?: () => void;
+  onAnalyticsDetails?: () => void;
+}> = ({ tycoon, fmt, onTravelDetails, onMedicalDetails, onAnalyticsDetails }) => {
   const [facilityModal, setFacilityModal] = useState<{ title: string; body: string; tone: 'amber' | 'slate' } | null>(null);
   const medicalRating = 50 + Math.round(medicalQuality(tycoon.medicalBudget) * 45);
   const travelAverage = tycoon.travelPreferences
@@ -207,11 +213,19 @@ export const FacilitiesSection: React.FC<{ tycoon: TycoonState; fmt: (v: number)
               <FacilityCard
                 key={card.title}
                 {...card}
-                onDetails={() => setFacilityModal({
-                  title: card.title,
-                  body: `${card.title} is rated ${Math.min(99, card.rating)}. The strongest traits are ${card.attributes.slice(0, 2).map(([label]) => label).join(' and ')}. Upgrades here raise the club's operational ceiling without changing NBA-mode behavior.`,
-                  tone: card.tone === 'amber' ? 'amber' : 'slate',
-                })}
+                onDetails={
+                  card.title === 'Travel & Logistics Hub' && onTravelDetails
+                    ? onTravelDetails
+                    : card.title === 'Medical & Recovery Center' && onMedicalDetails
+                    ? onMedicalDetails
+                    : card.title === 'Analytics Lab' && onAnalyticsDetails
+                    ? onAnalyticsDetails
+                    : () => setFacilityModal({
+                        title: card.title,
+                        body: `${card.title} is rated ${Math.min(99, card.rating)}. The strongest traits are ${card.attributes.slice(0, 2).map(([label]) => label).join(' and ')}. Upgrades here raise the club's operational ceiling without changing NBA-mode behavior.`,
+                        tone: card.tone === 'amber' ? 'amber' : 'slate',
+                      })
+                }
               />
             ))}
           </div>

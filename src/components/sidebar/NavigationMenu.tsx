@@ -146,7 +146,6 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         { id: 'Front Office Transfer Market' as Tab, label: 'Transfer Market', icon: Repeat },
         { id: 'Front Office Staff' as Tab,           label: 'Staff',           icon: IdCard },
         { id: 'Front Office Facilities' as Tab,      label: 'Facilities',      icon: Hammer },
-        { id: 'Front Office Analytics' as Tab,        label: 'Analytics',       icon: Telescope },
       ],
     },
     {
@@ -257,7 +256,6 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         { id: 'Front Office Transfer Market' as Tab, label: 'Transfer Market',   icon: Repeat },
         { id: 'Front Office Staff' as Tab,           label: 'Staff',             icon: IdCard },
         { id: 'Front Office Facilities' as Tab,      label: 'Facilities',        icon: Hammer },
-        { id: 'Front Office Analytics' as Tab,        label: 'Analytics',         icon: Telescope },
       ],
     }] : []),
     ...(!isGM ? [{

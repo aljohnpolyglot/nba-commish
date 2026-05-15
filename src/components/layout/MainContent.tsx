@@ -310,8 +310,6 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       return <FrontOfficeView initialSection="facilities" />;
     case 'Front Office Staff':
       return <FrontOfficeView initialSection="staff" />;
-    case 'Front Office Analytics':
-      return <FrontOfficeView initialSection="analytics" />;
     case 'Front Office Transfer Market':
       return <EuroTransferMarketView />;
     case 'Euroleague Hub':

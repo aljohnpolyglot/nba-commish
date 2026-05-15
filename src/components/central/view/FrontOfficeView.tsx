@@ -32,7 +32,7 @@ import { StaffSection } from './FrontOffice/sections/StaffSection';
 import { ScoutingSection } from './FrontOffice/sections/ScoutingSection';
 import { BoardPromisesCard } from './FrontOffice/sections/BoardPromisesCard';
 
-type FrontOfficeSection = 'finances' | 'sponsorships' | 'medical' | 'facilities' | 'staff' | 'analytics';
+type FrontOfficeSection = 'finances' | 'sponsorships' | 'medical' | 'facilities' | 'staff';
 
 interface FrontOfficeViewProps {
   initialSection?: FrontOfficeSection;
@@ -49,6 +49,7 @@ export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection
   const [sponsorModal, setSponsorModal] = useState<{ open: boolean; slot: SponsorshipSlot; mode: NegotiationMode }>({ open: false, slot: 'kit', mode: 'renegotiate' });
   const [travelModalOpen, setTravelModalOpen] = useState(false);
   const [medicalModalOpen, setMedicalModalOpen] = useState(false);
+  const [analyticsModalOpen, setAnalyticsModalOpen] = useState(false);
 
   const handleTicketMultChange = (mult: number) => {
     applyTycoonMutation(userTeamId, (t: any) => {
@@ -201,13 +202,11 @@ export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection
             fmt={fmt}
             onTravelDetails={() => setTravelModalOpen(true)}
             onMedicalDetails={() => setMedicalModalOpen(true)}
+            onAnalyticsDetails={() => setAnalyticsModalOpen(true)}
           />
         )}
         {initialSection === 'staff' && (
           <StaffSection state={state} team={selectedTeam as any} onHireStaff={handleHireStaff} />
-        )}
-        {initialSection === 'analytics' && (
-          <ScoutingSection tycoon={tycoon} currency={currency} onChange={handleScoutingInvestmentChange} />
         )}
       </div>
 
@@ -279,6 +278,36 @@ export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection
                 internationalAwayGames={internationalAway}
                 onSave={(prefs) => { handleTravelSave(prefs); setTravelModalOpen(false); }}
               />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {analyticsModalOpen && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setAnalyticsModalOpen(false)} />
+            <motion.div
+              className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-hide bg-slate-900 rounded-2xl border border-slate-700 p-6"
+              initial={{ opacity: 0, y: 24, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-bold text-lg flex items-center gap-2 text-white">
+                  <TrendingUp size={18} className="text-cyan-400" /> Analytics Lab
+                </h2>
+                <button onClick={() => setAnalyticsModalOpen(false)} className="text-slate-400 hover:text-white">
+                  <X size={20} />
+                </button>
+              </div>
+              <ScoutingSection tycoon={tycoon} currency={currency} onChange={handleScoutingInvestmentChange} />
             </motion.div>
           </motion.div>
         )}
