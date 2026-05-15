@@ -6,6 +6,7 @@ import { Line, SectionTitle } from '../shared/helpers';
 import { SponsorLogo } from '../../../../tycoon/SponsorLogo';
 import { getIndustryLabel } from '../../../../../utils/sponsorLogos';
 import { getBrandMeta } from '../../../../../data/sponsorCatalogFetcher';
+import type { NegotiationMode } from '../../../../tycoon/SponsorshipNegotiationModal';
 
 const SPONSOR_SLOT_LABELS: Record<SponsorshipSlot, string> = {
   kit: 'Kit Sponsor',
@@ -34,9 +35,9 @@ export const SponsorshipSection: React.FC<{
   currency: string;
   avgOpponentPrestige: number;
   marqueeOpponents: string[];
-  onNegotiate: (slot: SponsorshipSlot) => void;
+  onAction: (slot: SponsorshipSlot, mode: NegotiationMode) => void;
   onTicketMultChange: (mult: number) => void;
-}> = ({ tycoon, currency, avgOpponentPrestige, marqueeOpponents, onNegotiate, onTicketMultChange }) => {
+}> = ({ tycoon, currency, avgOpponentPrestige, marqueeOpponents, onAction, onTicketMultChange }) => {
   const [selectedSlot, setSelectedSlot] = useState<SponsorshipSlot>('kit');
   const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
   const deals = ALL_SLOTS.map((slot) => ({ slot, deal: tycoon.sponsorships[slot] }));
@@ -99,7 +100,7 @@ export const SponsorshipSection: React.FC<{
           <div className="text-2xl font-black text-white tabular-nums">{starLike.toFixed(2)}x</div>
           <div className="text-xs text-slate-400">Marquee Power</div>
         </div>
-        <button onClick={() => onNegotiate(selectedSlot)} className="h-14 rounded-xl border border-violet-300/50 text-white font-black hover:bg-violet-400/10">
+        <button onClick={() => onAction(selectedSlot, 'renegotiate')} className="h-14 rounded-xl border border-violet-300/50 text-white font-black hover:bg-violet-400/10">
           View Brand Profile →
         </button>
       </div>
@@ -186,7 +187,7 @@ export const SponsorshipSection: React.FC<{
 
           <div className="grid lg:grid-cols-[1fr_1.5fr] gap-4">
             <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 p-5 flex items-center gap-4">
-              <button onClick={() => onNegotiate(selectedSlot)} className="w-14 h-14 rounded-full border border-slate-600 text-3xl text-slate-300 hover:border-amber-300 hover:text-amber-200">+</button>
+              <button onClick={() => onAction(selectedSlot, 'find-new')} className="w-14 h-14 rounded-full border border-slate-600 text-3xl text-slate-300 hover:border-amber-300 hover:text-amber-200">+</button>
               <div>
                 <div className="text-sm font-black text-white">Available Slot</div>
                 <div className="text-xs text-slate-400">Open market for new opportunities.</div>
@@ -248,14 +249,37 @@ export const SponsorshipSection: React.FC<{
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Next Actions</div>
-            {['Renegotiate Deal', 'View Contract Details', 'Find Replacement'].map((action) => (
-              <button key={action} onClick={() => onNegotiate(selectedSlot)} className="w-full h-12 mb-2 rounded-xl border border-slate-800 bg-slate-950/70 px-4 flex items-center justify-between text-sm text-slate-200 hover:border-amber-400/60">
-                {action}<span>→</span>
+            {(
+              [
+                { label: 'Renegotiate Deal',      mode: 'renegotiate' as NegotiationMode, disabled: !selected, tooltip: !selected ? 'Slot is open — use Find New Sponsors' : undefined },
+                { label: 'View Contract Details', mode: 'details'     as NegotiationMode, disabled: !selected, tooltip: !selected ? 'No active contract' : undefined },
+                { label: 'Find Replacement',      mode: 'replacement' as NegotiationMode, disabled: !selected, tooltip: !selected ? 'No active contract to replace' : undefined },
+              ] as const
+            ).map((item) => (
+              <button
+                key={item.label}
+                onClick={() => !item.disabled && onAction(selectedSlot, item.mode)}
+                disabled={item.disabled}
+                title={item.tooltip}
+                className={`w-full h-12 mb-2 rounded-xl border border-slate-800 bg-slate-950/70 px-4 flex items-center justify-between text-sm text-slate-200 hover:border-amber-400/60 ${item.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {item.label}<span>→</span>
               </button>
             ))}
-            <button onClick={() => onNegotiate(selectedSlot)} className="mt-3 w-full h-14 rounded-xl border border-amber-400/50 bg-amber-400/15 text-amber-200 font-black">
-              Find New Sponsors →
-            </button>
+            {(() => {
+              const firstOpen = ALL_SLOTS.find((s) => !tycoon.sponsorships[s]);
+              const allFull = !firstOpen;
+              return (
+                <button
+                  onClick={() => !allFull && onAction(firstOpen ?? selectedSlot, 'find-new')}
+                  disabled={allFull}
+                  title={allFull ? 'All slots full' : undefined}
+                  className={`mt-3 w-full h-14 rounded-xl border border-amber-400/50 bg-amber-400/15 text-amber-200 font-black ${allFull ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  Find New Sponsors →
+                </button>
+              );
+            })()}
           </div>
         </aside>
       </div>
