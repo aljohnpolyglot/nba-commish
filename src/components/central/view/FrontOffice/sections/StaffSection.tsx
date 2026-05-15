@@ -14,8 +14,14 @@ export const StaffSection: React.FC<{ state: any; team: any; onHireStaff: (hire:
   const [signingOpen, setSigningOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState('Head Coach');
   const teamName = getTeamFullName(team);
-  const coach = (state.staff?.coaches ?? []).find((s: any) => s.team === team.name || s.team === teamName)
+  const isGMOwnTeam = state.gameMode === 'gm' && (team.id ?? team.tid) === state.userTeamId;
+  const commName: string | undefined = state.commissionerName;
+  let coach: any = (state.staff?.coaches ?? []).find((s: any) => s.team === team.name || s.team === teamName)
     ?? makePlaceholderCoach(team);
+  // In GM mode on the user's own team, show the user's identity as GM — replace placeholder name only when no real coach is hired yet.
+  if (isGMOwnTeam && commName && coach?.isPlaceholder) {
+    coach = { ...coach, name: commName, playerPortraitUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(commName)}&background=1e293b&color=FDB927&size=256&bold=true` };
+  }
   const gm = (state.staff?.gms ?? []).find((s: any) => s.team === team.name || s.team === teamName)
     ?? makePlaceholderGM(team);
   const owner = (state.staff?.owners ?? []).find((s: any) => s.team === team.name || s.team === teamName);
@@ -133,9 +139,9 @@ export const StaffSection: React.FC<{ state: any; team: any; onHireStaff: (hire:
     }
     return map;
   }, [state.staffFreeAgents, selectedRole, teamName]);
-  const renderPortrait = (face: any, initials: string, size = 'w-16 h-20', staffImageId?: number, name?: string) => {
+  const renderPortrait = (face: any, initials: string, size = 'w-16 h-20', staffImageId?: number, name?: string, portraitUrl?: string) => {
     const resolvedId = staffImageId ?? (name ? deterministicStaffImageId(name) : undefined);
-    const staffImg = getStaffImageUrl(resolvedId);
+    const staffImg = getStaffImageUrl(resolvedId) ?? portraitUrl ?? null;
     return (
       <div className={`${size} rounded-xl overflow-hidden bg-slate-800 border border-slate-700 shrink-0 relative`}>
         {staffImg ? (
@@ -202,7 +208,7 @@ export const StaffSection: React.FC<{ state: any; team: any; onHireStaff: (hire:
                       className="text-left rounded-xl border border-slate-800 bg-slate-950/70 p-4 transition-all hover:border-slate-600"
                     >
                       <div className="flex items-start gap-3">
-                        {renderPortrait(face, initials, 'w-16 h-20', item.person?.staffImageId, item.person?.name)}
+                        {renderPortrait(face, initials, 'w-16 h-20', item.person?.staffImageId, item.person?.name, item.person?.playerPortraitUrl)}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">

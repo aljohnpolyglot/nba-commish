@@ -16,6 +16,8 @@
  */
 import type { NBATeam } from '../../types';
 import { DEFAULT_GM_ATTRIBUTES, type GMAttributes } from './gmAttributes';
+import { buildCoachNationalityPool, type NationalityPoolEntry } from '../euro/nationalityPool';
+import { getNameData } from '../../data/nameDataFetcher';
 
 export interface PlaceholderGM {
   name: string;
@@ -35,6 +37,8 @@ export interface PlaceholderCoach {
   nationality?: string;
   yearsWithTeam?: number;
   born?: { year: number; loc?: string };
+  contractExp?: number;
+  startSeason?: string;
   // Coach attribute shape mirrors the gist data — minimal subset here so
   // CoachingView can render. Consumers needing specific fields should add
   // them with sensible defaults rather than reading raw from the gist.
@@ -42,50 +46,6 @@ export interface PlaceholderCoach {
   reputation?: number;
   isPlaceholder: true;
 }
-
-const EUROPEAN_COACH_POOL: Array<{ name: string; nat: string }> = [
-  { name: 'Xavi Pascual',           nat: 'Spain' },
-  { name: 'Sito Alonso',            nat: 'Spain' },
-  { name: 'Diego Ocampo',           nat: 'Spain' },
-  { name: 'Pedro Martínez',         nat: 'Spain' },
-  { name: 'Iván Cardenas',          nat: 'Spain' },
-  { name: 'Jaume Ponsarnau',        nat: 'Spain' },
-  { name: 'Ergin Ataman',           nat: 'Turkey' },
-  { name: 'Andrea Trinchieri',      nat: 'Italy' },
-  { name: 'Sergio Scariolo',        nat: 'Italy' },
-  { name: 'Ettore Messina',         nat: 'Italy' },
-  { name: 'Dejan Radonjić',         nat: 'Montenegro' },
-  { name: 'Saša Obradović',         nat: 'Serbia' },
-  { name: 'Vincent Collet',         nat: 'France' },
-  { name: 'Athanasios Skourtopoulos', nat: 'Greece' },
-];
-
-const EUROPEAN_GM_POOL: Array<{ name: string; nat: string }> = [
-  { name: 'Juan Carlos Sánchez',    nat: 'Spain' },
-  { name: 'Alberto Miralles',       nat: 'Spain' },
-  { name: 'Rafa Jofresa',           nat: 'Spain' },
-  { name: 'Pablo Laso',             nat: 'Spain' },
-  { name: 'Mirsad Türkcan',         nat: 'Turkey' },
-  { name: 'Davide Bonora',          nat: 'Italy' },
-  { name: 'Dimitrios Diamantidis',  nat: 'Greece' },
-  { name: 'Vassilis Spanoulis',     nat: 'Greece' },
-  { name: 'Nikola Dragović',        nat: 'Serbia' },
-  { name: 'Marko Tušek',            nat: 'Slovenia' },
-  { name: 'Loïc Schwartz',          nat: 'France' },
-  { name: 'Tomislav Ercegović',     nat: 'Croatia' },
-];
-
-const EUROPEAN_OWNER_POOL: Array<{ name: string; nat: string }> = [
-  { name: 'Familia Reyes',          nat: 'Spain' },
-  { name: 'Grupo Hidalgo',          nat: 'Spain' },
-  { name: 'Salazar Holdings',       nat: 'Spain' },
-  { name: 'Galante Investments',    nat: 'Italy' },
-  { name: 'Diamantidis Group',      nat: 'Greece' },
-  { name: 'Karageorgis Holdings',   nat: 'Greece' },
-  { name: 'Petrović Family',        nat: 'Serbia' },
-  { name: 'Lefèvre & Fils',         nat: 'France' },
-  { name: 'Yıldız Group',           nat: 'Turkey' },
-];
 
 /** Deterministic numeric "hash" of a string — used to vary attributes per team
  *  without committing actual records to state. Same input → same output. */
@@ -102,50 +62,101 @@ function fmtTeamLabel(team: NBATeam): string {
     : team.name;
 }
 
-function isEuroLikeTeam(team: NBATeam): boolean {
-  const tid = (team as any).id ?? (team as any).tid ?? 0;
-  return tid >= 1000;
+function pickWeighted(pool: NationalityPoolEntry[], seed: number): string {
+  if (pool.length === 0) return 'Spain';
+  const total = pool.reduce((sum, entry) => sum + entry.weight, 0);
+  let roll = (seed % 10_000) / 10_000 * total;
+  for (const entry of pool) {
+    roll -= entry.weight;
+    if (roll <= 0) return entry.country;
+  }
+  return pool[0].country;
 }
 
-export function makePlaceholderGM(team: NBATeam): PlaceholderGM {
+function leagueIdForTeam(team: NBATeam): string {
+  const league = String((team as any).league ?? team.conference ?? '').toLowerCase();
+  if (league.includes('endesa')) return 'endesa';
+  if (league.includes('euroleague')) return 'euroleague';
+  const tid = (team as any).id ?? 0;
+  if (tid >= 5000 && tid < 5100) return 'endesa';
+  if (tid >= 1000 && tid < 1100) return 'euroleague';
+  return league || 'endesa';
+}
+
+function fallbackNationality(team: NBATeam, seed: number): string {
+  const leagueId = leagueIdForTeam(team);
+  if (leagueId === 'endesa') return seed % 5 === 0 ? 'Argentina' : 'Spain';
+  return ['Serbia', 'Lithuania', 'Greece', 'Italy', 'Spain', 'France', 'Turkey', 'Croatia'][seed % 8];
+}
+
+function resolveNationality(
+  team: NBATeam,
+  seed: number,
+  opts: { country?: string; nationality?: string; nationalityPool?: NationalityPoolEntry[] } = {},
+): string {
+  return opts.nationality
+    ?? opts.country
+    ?? (opts.nationalityPool ? pickWeighted(opts.nationalityPool, seed) : fallbackNationality(team, seed));
+}
+
+/** Picks a first+last name from the bundled nameData for the given nationality and seed. */
+function pickNameFromSeed(nationality: string, seed: number): string {
+  const nameData = getNameData() as any;
+  const country = nameData.countries?.[nationality] ?? nameData.countries?.['Spain'];
+  const firsts = Object.keys(country?.first ?? {});
+  const lasts = Object.keys(country?.last ?? {});
+  if (!firsts.length || !lasts.length) return 'Staff Member';
+  const first = firsts[Math.abs(seed) % firsts.length];
+  const last = lasts[Math.abs(seed >> 3) % lasts.length];
+  return `${first} ${last}`;
+}
+
+export function makePlaceholderGM(
+  team: NBATeam,
+  opts: { country?: string; nationality?: string; nationalityPool?: NationalityPoolEntry[] } = {},
+): PlaceholderGM {
   const seed = seedFromTeam(team);
+  // Spread attributes +/-10 around defaults so each placeholder feels distinct.
   const jitter = (base: number, offset: number) =>
     Math.max(40, Math.min(95, base + ((offset % 21) - 10)));
-  const useEuro = isEuroLikeTeam(team);
-  const pick = useEuro ? EUROPEAN_GM_POOL[seed % EUROPEAN_GM_POOL.length] : null;
-  const name = pick?.name ?? `${fmtTeamLabel(team)} GM`;
+  const nationality = resolveNationality(team, seed, opts);
+  const name = pickNameFromSeed(nationality, seed ^ 0xf00d);
   return {
     name,
-    position: 'General Manager',
+    position: `${fmtTeamLabel(team)} General Manager`,
     team: fmtTeamLabel(team),
-    nationality: pick?.nat,
+    nationality,
     attributes: {
       trade_aggression: jitter(DEFAULT_GM_ATTRIBUTES.trade_aggression, seed),
       scouting_focus:   jitter(DEFAULT_GM_ATTRIBUTES.scouting_focus,   seed >> 3),
       work_ethic:       jitter(DEFAULT_GM_ATTRIBUTES.work_ethic,       seed >> 6),
       spending:         jitter(DEFAULT_GM_ATTRIBUTES.spending,         seed >> 9),
     },
-    playerPortraitUrl: team.logoUrl
-      || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=552583&color=fff&size=256&bold=true`,
+    playerPortraitUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e293b&color=FDB927&size=256&bold=true`,
     isPlaceholder: true,
   };
 }
 
-export function makePlaceholderCoach(team: NBATeam): PlaceholderCoach {
+export function makePlaceholderCoach(
+  team: NBATeam,
+  opts: { country?: string; nationality?: string; nationalityPool?: NationalityPoolEntry[]; currentYear?: number } = {},
+): PlaceholderCoach {
   const seed = seedFromTeam(team);
-  const useEuro = isEuroLikeTeam(team);
-  const pick = useEuro ? EUROPEAN_COACH_POOL[(seed >> 2) % EUROPEAN_COACH_POOL.length] : null;
-  const name = pick?.name ?? `${fmtTeamLabel(team)} Head Coach`;
-  const yearsWithTeam = 1 + (seed % 5);
-  const bornYear = 1965 + ((seed >> 4) % 25);
+  const currentYear = opts.currentYear ?? new Date().getFullYear();
+  const yearsWithTeam = 1 + (seed % 6);
+  const bornYear = 1963 + ((seed >> 4) % 28);
+  const nationality = resolveNationality(team, seed, opts);
+  const startYear = currentYear - yearsWithTeam;
   return {
-    name,
+    name: pickNameFromSeed(nationality, seed),
     position: 'Head Coach',
     team: fmtTeamLabel(team),
-    nationality: pick?.nat,
+    nationality,
     yearsWithTeam,
-    born: { year: bornYear, loc: pick?.nat },
-    reputation: 55 + (seed % 25),
+    born: { year: bornYear, loc: nationality },
+    contractExp: currentYear + Math.max(1, 4 - Math.min(3, yearsWithTeam)),
+    startSeason: `${startYear}-${String(startYear + 1).slice(2)}`,
+    reputation: 60,
     isPlaceholder: true,
   };
 }
@@ -154,7 +165,7 @@ export function makePlaceholderCoach(team: NBATeam): PlaceholderCoach {
  *  current save so CoachingView / TeamIntel don't show "Unknown Coach" for
  *  Euroleague, Endesa, PBA, etc. Called once at init from GameContext after
  *  the curated NBA staff gist resolves. Lightweight + deterministic per team. */
-export function generatePlaceholderNonNBAStaff(state: { nonNBATeams?: any[] }): {
+export function generatePlaceholderNonNBAStaff(state: { nonNBATeams?: any[]; players?: any[]; leagueStats?: { year?: number } }): {
   coaches: PlaceholderCoach[];
   gms: PlaceholderGM[];
   owners: Array<{ name: string; team: string; isPlaceholder: true }>;
@@ -168,13 +179,15 @@ export function generatePlaceholderNonNBAStaff(state: { nonNBATeams?: any[] }): 
       name: t.name,
       region: t.region,
       logoUrl: t.imgURL,
-    } as NBATeam;
-    coaches.push(makePlaceholderCoach(teamLike));
-    gms.push(makePlaceholderGM(teamLike));
-    const seed = seedFromTeam(teamLike);
-    const ownerPick = EUROPEAN_OWNER_POOL[(seed >> 5) % EUROPEAN_OWNER_POOL.length];
+      conference: t.league,
+      league: t.league,
+    } as unknown as NBATeam;
+    const leagueId = leagueIdForTeam(teamLike);
+    const pool = buildCoachNationalityPool({ players: state.players ?? [] } as any, leagueId);
+    coaches.push(makePlaceholderCoach(teamLike, { nationalityPool: pool, currentYear: state.leagueStats?.year }));
+    gms.push(makePlaceholderGM(teamLike, { nationalityPool: pool }));
     owners.push({
-      name: ownerPick.name,
+      name: `${fmtTeamLabel(teamLike)} Ownership Group`,
       team: fmtTeamLabel(teamLike),
       isPlaceholder: true,
     });
