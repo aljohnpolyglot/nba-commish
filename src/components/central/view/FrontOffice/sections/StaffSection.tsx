@@ -245,17 +245,6 @@ export const StaffSection: React.FC<{ state: any; team: any; onHireStaff: (hire:
               </div>
             </section>
           ))}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 flex flex-col md:flex-row md:items-center justify-between gap-5">
-            <div className="flex-1">
-              <div className="text-xs font-black uppercase tracking-widest text-slate-500">Staff Chemistry</div>
-              <div className="mt-2 h-3 rounded-full bg-slate-800 overflow-hidden"><div className="h-full bg-gradient-to-r from-emerald-400 to-amber-300" style={{ width: `${Math.min(96, avgSkill + 7)}%` }} /></div>
-              <div className="mt-2 text-sm text-slate-400">The current group is stable, but open performance roles limit the recovery and scouting ceiling.</div>
-            </div>
-            <div className="flex gap-3">
-              <button className="h-12 rounded-xl border border-slate-700 px-5 text-sm font-black text-slate-300 hover:text-white">Staff Directory</button>
-              <button onClick={() => setSigningOpen(true)} className="h-12 rounded-xl border border-amber-400/50 bg-amber-400/15 px-5 text-sm font-black text-amber-200">Hire Staff</button>
-            </div>
-          </div>
         </div>
         <aside className="space-y-5">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
@@ -263,26 +252,29 @@ export const StaffSection: React.FC<{ state: any; team: any; onHireStaff: (hire:
 
             {/* GM card */}
             {(() => {
-              const gmImg = getStaffImageUrl(gm.staffImageId) ?? getStaffImageUrl(deterministicStaffImageId(gm.name)) ?? null;
-              const gmAttrs = gm.attributes ?? {};
+              const gmName = isGMOwnTeam && commName ? commName : gm.name;
+              const gmImg = isGMOwnTeam && commName
+                ? `https://ui-avatars.com/api/?name=${encodeURIComponent(commName)}&background=1e293b&color=FDB927&size=256&bold=true`
+                : getStaffImageUrl(gm.staffImageId) ?? getStaffImageUrl(deterministicStaffImageId(gm.name)) ?? null;
+              const gmAttrs = (!isGMOwnTeam || !commName) ? (gm.attributes ?? {}) : null;
               return (
                 <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-4 mb-3">
                   <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">General Manager</div>
                   <div className="flex items-start gap-3">
                     <div className="w-14 h-16 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 shrink-0">
-                      {gmImg
-                        ? <img src={gmImg} alt={gm.name} className="w-full h-full object-cover" loading="lazy" />
-                        : <div className="w-full h-full flex items-center justify-center text-xs font-black text-amber-200">{gm.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</div>
-                      }
+                      <img src={gmImg ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(gmName)}&background=1e293b&color=FDB927&size=256&bold=true`} alt={gmName} className="w-full h-full object-cover" loading="lazy" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="font-black text-white leading-tight truncate">{gm.name}</div>
-                      {gm.nationality && <div className="text-xs text-slate-400 mt-0.5">{getCountryFlag(gm.nationality)} {gm.nationality}</div>}
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {gmAttrs.trade_aggression != null && <span className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[10px] font-black text-slate-300">Trade {gmAttrs.trade_aggression}</span>}
-                        {gmAttrs.scouting_focus != null && <span className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[10px] font-black text-slate-300">Scouting {gmAttrs.scouting_focus}</span>}
-                        {gmAttrs.spending != null && <span className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[10px] font-black text-slate-300">Spending {gmAttrs.spending}</span>}
-                      </div>
+                      <div className="font-black text-white leading-tight truncate">{gmName}</div>
+                      {!isGMOwnTeam && gm.nationality && <div className="text-xs text-slate-400 mt-0.5">{getCountryFlag(gm.nationality)} {gm.nationality}</div>}
+                      {isGMOwnTeam && <div className="text-xs text-amber-300 mt-0.5 font-black">You</div>}
+                      {gmAttrs && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {gmAttrs.trade_aggression != null && <span className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[10px] font-black text-slate-300">Trade {gmAttrs.trade_aggression}</span>}
+                          {gmAttrs.scouting_focus != null && <span className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[10px] font-black text-slate-300">Scouting {gmAttrs.scouting_focus}</span>}
+                          {gmAttrs.spending != null && <span className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[10px] font-black text-slate-300">Spending {gmAttrs.spending}</span>}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -298,7 +290,7 @@ export const StaffSection: React.FC<{ state: any; team: any; onHireStaff: (hire:
                   <div className="font-black text-white">Ownership group</div>
                 </div>
               );
-              const ownerImg = getStaffImageUrl(op.staffImageId) ?? null;
+              const ownerImg = getStaffImageUrl(op.staffImageId) ?? getStaffImageUrl(deterministicStaffImageId(op.name)) ?? null;
               const WEALTH_LABEL: Record<string, string> = { Billionaire: 'Billionaire', NationalMagnate: 'National Magnate', LocalWealthy: 'Local Wealthy' };
               const PATIENCE_COLOR: Record<string, string> = { LongTerm: 'text-emerald-300', Steady: 'text-amber-300', TriggerHappy: 'text-rose-300' };
               const VISION_LABEL: Record<string, string> = { WinNow: 'Win Now', Develop: 'Develop', Frugal: 'Frugal' };
