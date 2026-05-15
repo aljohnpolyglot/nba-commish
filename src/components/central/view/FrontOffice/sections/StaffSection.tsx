@@ -22,8 +22,11 @@ export const StaffSection: React.FC<{ state: any; team: any; onHireStaff: (hire:
   if (isGMOwnTeam && commName && coach?.isPlaceholder) {
     coach = { ...coach, name: commName, playerPortraitUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(commName)}&background=1e293b&color=FDB927&size=256&bold=true` };
   }
-  const gm = (state.staff?.gms ?? []).find((s: any) => s.team === team.name || s.team === teamName)
-    ?? makePlaceholderGM(team);
+  const gmFromState = (state.staff?.gms ?? []).find((s: any) => s.team === team.name || s.team === teamName);
+  // Regenerate on-demand if the saved entry still has the old "Team Name GM" format or is a plain placeholder.
+  const gm = (gmFromState && !gmFromState.isPlaceholder && !gmFromState.name.endsWith(' GM'))
+    ? gmFromState
+    : makePlaceholderGM(team);
   const owner = (state.staff?.owners ?? []).find((s: any) => s.team === team.name || s.team === teamName);
   const persistentStaff = new Map<string, any>((team.tycoon?.staffMembers ?? []).map((s: any) => [s.role, s]));
   const getStaffFace = (person: any) => isRealFaceConfig(person?.face) ? person.face : undefined;
