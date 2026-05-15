@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { Briefcase, Search, SlidersHorizontal, Star, Users } from 'lucide-react';
-import { generate } from 'facesjs';
+import { Briefcase, Search, Star, Users } from 'lucide-react';
 import { formatCurrencyWithCode } from '../../../../../utils/helpers';
+import { getCountryFlag } from '../../../../../utils/countryFlags';
 import { getTeamFullName } from '../../../../../utils/teamNames';
 import { makePlaceholderCoach, makePlaceholderGM } from '../../../../../services/staff/staffFallback';
 import { MyFace, isRealFaceConfig } from '../../../../shared/MyFace';
-import { StaffSigningModal } from '../StaffSigning/StaffSigningModal';
+import { getStaffImageUrl, randomStaffImageId, deterministicStaffImageId } from '../../../../../utils/staffPortrait';
+import { StaffSigningModal, type StaffCandidate } from '../StaffSigning/StaffSigningModal';
 import { SectionTitle } from '../shared/helpers';
 import { FacilityKpi } from '../shared/FacilityKpi';
 
@@ -19,17 +20,7 @@ export const StaffSection: React.FC<{ state: any; team: any; onHireStaff: (hire:
     ?? makePlaceholderGM(team);
   const owner = (state.staff?.owners ?? []).find((s: any) => s.team === team.name || s.team === teamName);
   const persistentStaff = new Map<string, any>((team.tycoon?.staffMembers ?? []).map((s: any) => [s.role, s]));
-  const staffFaces = useMemo(() => new Map<string, any>(), [teamName]);
-  const getStaffFace = (person: any, role: string) => {
-    const key = `${role}-${person?.name ?? 'open'}-${teamName}`;
-    if (staffFaces.has(key)) return staffFaces.get(key);
-    if (isRealFaceConfig(person?.face)) {
-      staffFaces.set(key, person.face);
-      return person.face;
-    }
-    if (!staffFaces.has(key)) staffFaces.set(key, generate(undefined, { gender: 'male' }));
-    return staffFaces.get(key);
-  };
+  const getStaffFace = (person: any) => isRealFaceConfig(person?.face) ? person.face : undefined;
   const buildAttributes = (role: string, seed: number) => {
     const roleBoost: Record<string, Array<[string, number]>> = {
       'Head Coach': [['Tactics', 84], ['Offense', 80], ['Defense', 78], ['Development', 76], ['Motivation', 82]],
@@ -52,16 +43,6 @@ export const StaffSection: React.FC<{ state: any; team: any; onHireStaff: (hire:
   const filledRoles = roles.filter((r) => r.person).length;
   const totalCost = roles.reduce((sum, r) => sum + (r.person ? r.salary : 0), 0);
   const avgSkill = Math.round(roles.reduce((sum, r, index) => sum + (r.person ? buildAttributes(r.role, index * 11)[0][1] : 58), 0) / roles.length);
-  const candidates = roles.map((r, index) => ({
-    role: r.role,
-    name: r.person?.name ?? ['Luca Marinelli', 'Pablo Herrera', 'Dimitris Karras', 'Sergio Abad', 'Jonas Petrovic', 'Marco Bennett'][index],
-    nationality: r.person?.nationality ?? ['Italy', 'Spain', 'Greece', 'Spain', 'Serbia', 'United States'][index],
-    salary: r.person?.salary ?? r.salary,
-    rating: r.person?.rating ?? (r.person ? buildAttributes(r.role, index * 13)[0][1] : 68 + index * 3),
-    face: getStaffFace(r.person, r.role),
-  }));
-  const selectedCandidate = candidates.find((c) => c.role === selectedRole) ?? candidates[0];
-
   const CANDIDATE_POOL_NAMES: Array<{ name: string; nat: string; flag: string }> = [
     { name: 'Xavi Pascual',      nat: 'ESP', flag: '🇪🇸' },
     { name: 'Marco Calvani',     nat: 'ITA', flag: '🇮🇹' },
@@ -116,27 +97,59 @@ export const StaffSection: React.FC<{ state: any; team: any; onHireStaff: (hire:
         salary,
         rating,
         years,
-        face: getStaffFace({ name: p.name }, `${role}-pool-${i}`),
+        face: undefined,
+        staffImageId: randomStaffImageId(),
         attributes: buildAttributes(role, seed),
       };
     });
   };
   const candidatePool = useMemo(() => {
-    const map = new Map<string, ReturnType<typeof buildPool>>();
-    for (const r of roles) map.set(r.role, buildPool(r.role));
+    const map = new Map<string, StaffCandidate[]>();
+    for (const r of roles) {
+      const roleIdx = roles.findIndex((roleDef) => roleDef.role === r.role);
+      const generated = (state.staffFreeAgents ?? [])
+        .filter((member: any) => (member.position ?? member.jobTitle) === r.role)
+        .map((member: any, index: number): StaffCandidate => {
+          const rating = Math.max(50, Math.min(96, Math.round(member.reputation ?? 62)));
+          const baseSalary = roles[Math.max(0, roleIdx)].salary;
+          const salaryMult = 0.55 + (rating - 60) / 60;
+          return {
+            id: member.id ?? `staff-fa-${r.role}-${member.name}-${index}`,
+            role: r.role,
+            name: member.name,
+            nationality: member.nationality ?? 'Unknown',
+            flag: getCountryFlag(member.nationality),
+            salary: Math.round((baseSalary * salaryMult) / 10_000) * 10_000,
+            rating,
+            years: Math.max(1, (member.yearsWithTeam ?? 1) + 2),
+            face: member.face,
+            staffImageId: member.staffImageId ?? randomStaffImageId(),
+            attributes: buildAttributes(r.role, rating + index * 7),
+          };
+        })
+        .sort((a: StaffCandidate, b: StaffCandidate) => b.rating - a.rating)
+        .slice(0, 12);
+      map.set(r.role, generated.length > 0 ? generated : buildPool(r.role));
+    }
     return map;
-  }, [selectedRole, teamName]);
-  const renderPortrait = (face: any, initials: string, size = 'w-16 h-20') => (
-    <div className={`${size} rounded-xl overflow-hidden bg-slate-800 border border-slate-700 shrink-0 relative`}>
-      {isRealFaceConfig(face) ? (
-        <div className="absolute left-1/2 top-1/2" style={{ width: '92%', height: '138%', transform: 'translate(-50%, -45%)' }}>
-          <MyFace face={face} lazy style={{ width: '100%', height: '100%' }} />
-        </div>
-      ) : (
-        <div className="w-full h-full flex items-center justify-center text-sm font-black text-amber-200">{initials}</div>
-      )}
-    </div>
-  );
+  }, [state.staffFreeAgents, selectedRole, teamName]);
+  const renderPortrait = (face: any, initials: string, size = 'w-16 h-20', staffImageId?: number, name?: string) => {
+    const resolvedId = staffImageId ?? (name ? deterministicStaffImageId(name) : undefined);
+    const staffImg = getStaffImageUrl(resolvedId);
+    return (
+      <div className={`${size} rounded-xl overflow-hidden bg-slate-800 border border-slate-700 shrink-0 relative`}>
+        {staffImg ? (
+          <img src={staffImg} alt="" className="w-full h-full object-cover" loading="lazy" />
+        ) : isRealFaceConfig(face) ? (
+          <div className="absolute left-1/2 top-1/2" style={{ width: '92%', height: '138%', transform: 'translate(-50%, -45%)' }}>
+            <MyFace face={face} lazy style={{ width: '100%', height: '100%' }} />
+          </div>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-sm font-black text-amber-200">{initials}</div>
+        )}
+      </div>
+    );
+  };
   return (
     <div className="space-y-6">
       <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-4">
@@ -161,7 +174,7 @@ export const StaffSection: React.FC<{ state: any; team: any; onHireStaff: (hire:
                   const attrs = buildAttributes(item.role, index * 17);
                   const initials = item.person?.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) ?? '+';
                   const rating = item.person ? Math.round(attrs.reduce((sum, a) => sum + a[1], 0) / attrs.length) : 0;
-                  const face = getStaffFace(item.person, item.role);
+                  const face = getStaffFace(item.person);
                   const open = !item.person;
                   if (open) {
                     const ctaLabel = item.role.includes('Coach') ? 'Hire Coach'
@@ -189,7 +202,7 @@ export const StaffSection: React.FC<{ state: any; team: any; onHireStaff: (hire:
                       className="text-left rounded-xl border border-slate-800 bg-slate-950/70 p-4 transition-all hover:border-slate-600"
                     >
                       <div className="flex items-start gap-3">
-                        {renderPortrait(face, initials)}
+                        {renderPortrait(face, initials, 'w-16 h-20', item.person?.staffImageId, item.person?.name)}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
@@ -236,44 +249,6 @@ export const StaffSection: React.FC<{ state: any; team: any; onHireStaff: (hire:
           </div>
         </div>
         <aside className="space-y-5">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs font-black uppercase tracking-widest text-amber-300">Hire Staff Member</div>
-                <div className="text-sm text-slate-400 mt-1">Build out the technical team by role.</div>
-              </div>
-              <SlidersHorizontal size={20} className="text-slate-500" />
-            </div>
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              {roles.map((item) => (
-                <button
-                  key={item.role}
-                  onClick={() => setSelectedRole(item.role)}
-                  className={`rounded-lg border px-3 py-2 text-left text-[10px] font-black uppercase tracking-widest ${selectedRole === item.role ? 'border-amber-400/60 bg-amber-400/15 text-amber-200' : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:text-white'}`}
-                >
-                  {item.role}
-                </button>
-              ))}
-            </div>
-            <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
-              <div className="text-xs font-black uppercase tracking-widest text-slate-500">Role Focus</div>
-              <p className="text-sm text-slate-300 mt-2 leading-6">{roles.find((r) => r.role === selectedRole)?.focus}</p>
-            </div>
-            <div className="mt-5 rounded-xl border border-amber-400/30 bg-amber-400/10 p-4 flex gap-3">
-              {renderPortrait(selectedCandidate.face, selectedCandidate.name.split(' ').map((n) => n[0]).join('').slice(0, 2), 'w-20 h-24')}
-              <div className="min-w-0">
-                <div className="text-sm font-black text-white">{selectedCandidate.name}</div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-amber-300">{selectedCandidate.role}</div>
-                <div className="mt-2 text-xs text-slate-400">{selectedCandidate.nationality} · {selectedCandidate.rating}/100 fit</div>
-                <div className="mt-3 flex items-center gap-1 text-amber-300">
-                  {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={13} fill={i < Math.round(selectedCandidate.rating / 20) ? 'currentColor' : 'none'} />)}
-                </div>
-              </div>
-            </div>
-            <button onClick={() => setSigningOpen(true)} className="mt-5 w-full h-12 rounded-xl border border-amber-400/50 bg-amber-400/15 text-amber-200 font-black uppercase tracking-widest text-xs hover:bg-amber-400/20">
-              Open Signing Detail
-            </button>
-          </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="text-xs font-black uppercase tracking-widest text-amber-300">Front Office Chain</div>
             <div className="mt-4 space-y-3">
