@@ -259,17 +259,74 @@ export const StaffSection: React.FC<{ state: any; team: any; onHireStaff: (hire:
         </div>
         <aside className="space-y-5">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <div className="text-xs font-black uppercase tracking-widest text-amber-300">Front Office Chain</div>
-            <div className="mt-4 space-y-3">
-              <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3">
-                <div className="text-xs text-slate-500">General Manager</div>
-                <div className="font-black text-white">{gm.name}</div>
-              </div>
-              <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3">
-                <div className="text-xs text-slate-500">Owner</div>
-                <div className="font-black text-white">{owner?.name ?? 'Ownership group'}</div>
-              </div>
-            </div>
+            <div className="text-xs font-black uppercase tracking-widest text-amber-300 mb-4">Front Office Chain</div>
+
+            {/* GM card */}
+            {(() => {
+              const gmImg = getStaffImageUrl(gm.staffImageId) ?? getStaffImageUrl(deterministicStaffImageId(gm.name)) ?? null;
+              const gmAttrs = gm.attributes ?? {};
+              return (
+                <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-4 mb-3">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">General Manager</div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-14 h-16 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 shrink-0">
+                      {gmImg
+                        ? <img src={gmImg} alt={gm.name} className="w-full h-full object-cover" loading="lazy" />
+                        : <div className="w-full h-full flex items-center justify-center text-xs font-black text-amber-200">{gm.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</div>
+                      }
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-black text-white leading-tight truncate">{gm.name}</div>
+                      {gm.nationality && <div className="text-xs text-slate-400 mt-0.5">{getCountryFlag(gm.nationality)} {gm.nationality}</div>}
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {gmAttrs.trade_aggression != null && <span className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[10px] font-black text-slate-300">Trade {gmAttrs.trade_aggression}</span>}
+                        {gmAttrs.scouting_focus != null && <span className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[10px] font-black text-slate-300">Scouting {gmAttrs.scouting_focus}</span>}
+                        {gmAttrs.spending != null && <span className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[10px] font-black text-slate-300">Spending {gmAttrs.spending}</span>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Owner card */}
+            {(() => {
+              const op = (team as any).ownerProfile ?? owner;
+              if (!op) return (
+                <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-4">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Owner</div>
+                  <div className="font-black text-white">Ownership group</div>
+                </div>
+              );
+              const ownerImg = getStaffImageUrl(op.staffImageId) ?? null;
+              const WEALTH_LABEL: Record<string, string> = { Billionaire: 'Billionaire', NationalMagnate: 'National Magnate', LocalWealthy: 'Local Wealthy' };
+              const PATIENCE_COLOR: Record<string, string> = { LongTerm: 'text-emerald-300', Steady: 'text-amber-300', TriggerHappy: 'text-rose-300' };
+              const VISION_LABEL: Record<string, string> = { WinNow: 'Win Now', Develop: 'Develop', Frugal: 'Frugal' };
+              return (
+                <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-4">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Owner</div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-14 h-16 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 shrink-0">
+                      {ownerImg
+                        ? <img src={ownerImg} alt={op.name} className="w-full h-full object-cover" loading="lazy" />
+                        : isRealFaceConfig(op.face)
+                        ? <div className="relative w-full h-full"><div className="absolute left-1/2 top-1/2" style={{ width: '92%', height: '138%', transform: 'translate(-50%, -45%)' }}><MyFace face={op.face} lazy style={{ width: '100%', height: '100%' }} /></div></div>
+                        : <div className="w-full h-full flex items-center justify-center text-xs font-black text-amber-200">{op.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</div>
+                      }
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-black text-white leading-tight truncate">{op.name}</div>
+                      {op.nationality && <div className="text-xs text-slate-400 mt-0.5">{getCountryFlag(op.nationality)} {op.nationality}</div>}
+                      <div className="mt-2 space-y-1 text-[11px]">
+                        {op.wealthTier && <div className="flex justify-between"><span className="text-slate-500">Wealth</span><span className="font-black text-violet-300">{WEALTH_LABEL[op.wealthTier] ?? op.wealthTier}</span></div>}
+                        {op.patience && <div className="flex justify-between"><span className="text-slate-500">Patience</span><span className={`font-black ${PATIENCE_COLOR[op.patience] ?? 'text-white'}`}>{op.patience}</span></div>}
+                        {op.vision && <div className="flex justify-between"><span className="text-slate-500">Vision</span><span className="font-black text-sky-300">{VISION_LABEL[op.vision] ?? op.vision}</span></div>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </aside>
       </div>
