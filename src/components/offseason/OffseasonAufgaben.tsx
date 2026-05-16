@@ -16,6 +16,7 @@ import { CheckCircle2, Circle, ChevronRight, FastForward, Sparkles, ListChecks, 
 import { useGame } from '../../store/GameContext';
 import { convertTo2KRating, normalizeDate, computeAge } from '../../utils/helpers';
 import { getDraftDate, getDraftLotteryDate, getTrainingCampDate, getCurrentOffseasonFAMoratoriumEnd, parseGameDate, toISODateString } from '../../utils/dateUtils';
+import { getTeamFullName } from '../../utils/teamNames';
 import {
   OFFSEASON_ROW_LABELS,
   OFFSEASON_ROW_DESCRIPTIONS,
@@ -36,6 +37,7 @@ import { PlayerProtectionModal } from '../expansion/PlayerProtectionModal';
 import { ExpansionDraftView } from '../expansion/ExpansionDraftView';
 import { YouthPromotionPanel } from '../central/view/FrontOffice/sections/AcademySection';
 import { AnnualBudgetReviewModal, type AnnualBudgetReviewValues } from '../tycoon/AnnualBudgetReviewModal';
+import { getTeamStaff } from '../../services/staffService';
 
 type OffseasonConfirmSpec = {
   eyebrow: string;
@@ -365,12 +367,26 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     const members: any[] = (userTeam as any)?.tycoon?.staffMembers ?? [];
     const fired: string[] = (userTeam as any)?.tycoon?.firedStaffRoles ?? [];
     const teamName: string | undefined = (userTeam as any)?.name;
+    const teamFullName = userTeam ? getTeamFullName(userTeam as any) : teamName;
+    const persistedRoles = new Set(members.map(m => m.role).filter(Boolean));
     const hcCoachExists = (state.staff?.coaches ?? []).some(
-      (s: any) => s.team === teamName,
+      (s: any) => (s.team === teamName || s.team === teamFullName) && ((s.position ?? s.jobTitle ?? s.role) === 'Head Coach'),
     );
+    const realTeamCoaches = getTeamStaff(teamName ?? '').concat(teamFullName && teamFullName !== teamName ? getTeamStaff(teamFullName) : []);
+    const realAssistantSlots = realTeamCoaches
+      .filter((s: any) => {
+        const pos = String(s.position ?? s.jobTitle ?? s.role ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+        return pos === 'assistant coach' || pos === 'lead assistant coach' || pos === 'assistant  coach';
+      })
+      .filter((s: any) => !members.some(m => m.name === s.name));
+    const missingAssistantRoles = COACHING_ROLES
+      .filter(role => role.startsWith('Assistant Coach'))
+      .filter(role => !fired.includes(role) && !persistedRoles.has(role));
+    const realAssistantFilled = new Set(missingAssistantRoles.slice(0, realAssistantSlots.length));
     const isOpen = (role: string) => {
       if (fired.includes(role)) return true;
-      if (members.some(m => m.role === role)) return false;
+      if (persistedRoles.has(role)) return false;
+      if (realAssistantFilled.has(role)) return false;
       // Head Coach can also be sourced from state.staff.coaches (Euro saves
       // seed the HC there without a tycoon.staffMembers entry).
       if (role === 'Head Coach' && hcCoachExists) return false;
