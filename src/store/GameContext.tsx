@@ -1349,6 +1349,20 @@ const actions = useGameActions(setState, () => stateRef.current);
           ...((migratedLeagueStats as any).transferMarket ?? {}),
           enabled: true,
         };
+        const dedupeOneTimePayouts = (team: any) => {
+          const payouts = team.tycoon?.oneTimePayouts;
+          if (!Array.isArray(payouts) || payouts.length <= 1) return team;
+          const seen = new Set<string>();
+          const unique = payouts.filter((p: any) => {
+            const key = `${p.year}-${p.brand}-${p.amount}-${p.kind}-${p.offerLabel ?? ''}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+          return unique.length === payouts.length ? team : { ...team, tycoon: { ...team.tycoon, oneTimePayouts: unique } };
+        };
+        teamsWithFreshTraining = teamsWithFreshTraining.map(dedupeOneTimePayouts);
+        healedNonNBATeams = healedNonNBATeams.map(dedupeOneTimePayouts);
         if (healedOffseasonChecklist && loaded.gameMode === 'gm' && !(loaded.seasonHistory?.length > 0)) {
           const c = healedOffseasonChecklist;
           if (c.freeAgency === 'pending' || c.trainingCamp === 'in-progress' || c.transferMarket !== 'done') {

@@ -576,6 +576,15 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
         !p.contract.qualifyingOfferSubmitted
       );
     })();
+  const youthPromotionCandidateCount = React.useMemo(() => {
+    if (state.gameMode !== 'gm' || state.userTeamId == null) return 0;
+    const simYear = lsYearOf(state);
+    return (state.players ?? []).filter((p: any) => {
+      if (p.tid !== state.userTeamId) return false;
+      const age = computeAge(p, simYear);
+      return age >= 15 && age <= 19;
+    }).length;
+  }, [state.gameMode, state.userTeamId, state.players, state.leagueStats?.year]);
 
   useEffect(() => {
     if (!checklist) return;
@@ -603,10 +612,13 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     if (noQOCandidates && isUnresolved(checklist.qualifyingOffers)) {
       dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'qualifyingOffers' } } as any);
     }
+    if (youthPromotionCandidateCount === 0 && isUnresolved(checklist.youthPromotion)) {
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'youthPromotion' } } as any);
+    }
     if (draftDone && isUnresolved(checklist.pbaDraft)) {
       dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'pbaDraft' } } as any);
     }
-  }, [lotteryDone, draftDone, rookieContractsDone, noPendingTeamOptions, trainingCampDone, noQOCandidates, checklist?.draftLottery, checklist?.draft, checklist?.rookieContracts, checklist?.options, checklist?.trainingCamp, checklist?.qualifyingOffers, checklist?.pbaDraft]);
+  }, [lotteryDone, draftDone, rookieContractsDone, noPendingTeamOptions, trainingCampDone, noQOCandidates, youthPromotionCandidateCount, checklist?.draftLottery, checklist?.draft, checklist?.rookieContracts, checklist?.options, checklist?.trainingCamp, checklist?.qualifyingOffers, checklist?.youthPromotion, checklist?.pbaDraft]);
 
   // Expansion-Draft Future-Year-Trigger: ein Schedule mit `year === ls.year`
   // aktiviert die Row beim Erreichen des Jahres (auch wenn das Schedule schon
@@ -635,6 +647,11 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   if (!checklist) return null;
 
   const currentRow = firstUnfinishedRow(checklist, sidebarSignals, visibleRows);
+  const transferMarketCanComplete = React.useMemo(() => {
+    if (!isEuroMode || !checklist) return true;
+    const required: OffseasonChecklistRow[] = ['coachingSignings', 'sponsorRenewals', 'facilityUpgrades', 'staffSignings', 'budgetLock', 'youthPromotion', 'preseasonFriendlies'];
+    return required.every(row => checklist[row] === 'done' || checklist[row] === 'skipped');
+  }, [isEuroMode, checklist?.coachingSignings, checklist?.sponsorRenewals, checklist?.facilityUpgrades, checklist?.staffSignings, checklist?.budgetLock, checklist?.youthPromotion, checklist?.preseasonFriendlies]);
   // Options modal — opens when user clicks "Enter" on the options row.
   // Reuses the existing TeamOptionGateModal which is already wired into
   // PlayButton's guards; this is a second mount-point for offseason flow.
@@ -648,6 +665,7 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   // Qualifying Offer modal — opens when user clicks "Enter" on the QO row.
   const [qoModalOpen, setQoModalOpen] = useState(false);
   const [youthPromotionOpen, setYouthPromotionOpen] = useState(false);
+  const [preseasonFriendliesOpen, setPreseasonFriendliesOpen] = useState(false);
   const [budgetReviewOpen, setBudgetReviewOpen] = useState(false);
   const [qoSubmittedIds, setQoSubmittedIds] = useState<Set<string>>(new Set());
   const [qoSkippedIds, setQoSkippedIds] = useState<Set<string>>(new Set());
@@ -728,6 +746,7 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   };
 
   const handleMarkTransferMarketDone = () => {
+    if (!transferMarketCanComplete) return;
     const engaged = hasTransferMarketEngagement();
     openStepConfirm({
       eyebrow: 'Transfer Window',
@@ -868,8 +887,8 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
         return {
           eyebrow: 'Offseason Flow',
           title: 'Preseason Friendlies',
-          body: 'Open the schedule desk to review preseason and friendly slots before camp.',
-          confirmLabel: 'Open Schedule',
+          body: 'Review the preseason and friendly slate in a modal, then mark the step complete.',
+          confirmLabel: 'Review Games',
         };
       case 'youthPromotion':
         return {
@@ -1059,6 +1078,11 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
       return;
     }
+    if (row === 'preseasonFriendlies') {
+      setPreseasonFriendliesOpen(true);
+      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      return;
+    }
     if (row === 'sponsorRenewals') {
       // Only auto-complete when (a) no expiring sponsors AND (b) every typed slot
       // (kit/sleeve/back/shorts/training/court/stadium/practice) is filled. Endorsement
@@ -1068,7 +1092,11 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       const TYPED_SLOTS: SponsorshipSlot[] = ['kit', 'sleeve', 'back', 'shorts', 'training', 'court', 'stadium', 'practice'];
       const emptySlotCount = TYPED_SLOTS.filter((s) => !sponsorships[s]).length;
       if (expiredSponsorCount === 0 && emptySlotCount === 0) {
-        const activeEndorsements = ((userTeam as any)?.tycoon?.oneTimePayouts ?? []).filter((p: any) => p.kind === 'endorsement').length;
+        const activeEndorsements = new Set(
+          ((userTeam as any)?.tycoon?.oneTimePayouts ?? [])
+            .filter((p: any) => p.kind === 'endorsement')
+            .map((p: any) => `${p.year}-${p.brand}-${p.amount}-${p.offerLabel ?? ''}`),
+        ).size;
         const endorsementSlotsLeft = Math.max(0, 4 - activeEndorsements);
         openStepConfirm(
           {
@@ -1398,9 +1426,9 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
                         {status === 'in-progress' ? 'Resume' : 'Enter'}
                       </button>
                     )}
-                    {(row === 'transferMarket' || row === 'sponsorRenewals' || row === 'facilityUpgrades') && !isResolved && (
+                    {(row === 'transferMarket' || row === 'sponsorRenewals' || row === 'facilityUpgrades') && !isResolved && (row !== 'transferMarket' || transferMarketCanComplete) && (
                       <button
-                        onClick={() => dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row } } as any)}
+                        onClick={() => row === 'transferMarket' ? handleMarkTransferMarketDone() : dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row } } as any)}
                         title="Mark complete without making changes."
                         className="flex-1 px-2 py-1 rounded-md bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 font-bold text-[10px] uppercase tracking-widest transition-colors"
                       >
@@ -1418,7 +1446,7 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       {/* Auto-resolve all — placed BELOW the row list (away from the mobile
           sheet's X close button up top) to prevent misclicks. Hidden once
           everything is already resolved. */}
-      {!isChecklistComplete(checklist, visibleRows) && (
+      {!isEuroMode && !isChecklistComplete(checklist, visibleRows) && (
         <button
           onClick={handleAutoResolveAll}
           title="Advance through the remaining offseason phases and land on opening night."
@@ -1485,7 +1513,8 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
           setSponsorModalOpen(false);
           // Re-read latest team state via stateRef equivalent — userTeam is closed-over;
           // re-derive count from current state.teams.
-          const latestUser = state.teams.find((t: any) => (t.id ?? t.tid) === state.userTeamId);
+          const latestUser = state.teams.find((t: any) => (t.id ?? t.tid) === state.userTeamId)
+            ?? (state.nonNBATeams ?? []).find((t: any) => (t.id ?? t.tid) === state.userTeamId);
           const s = (latestUser as any)?.tycoon?.sponsorships;
           const remainingExpired = s
             ? (['kit', 'sleeve', 'stadium'] as const).reduce((n, k) => n + (s[k] === null ? 1 : 0), 0)
@@ -1651,6 +1680,70 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
                   close();
                 }}
               />
+            </div>
+          </div>,
+          document.body,
+        );
+      })()}
+      {preseasonFriendliesOpen && (() => {
+        const allTeams = [...(state.teams ?? []), ...((state.nonNBATeams ?? []) as any[])];
+        const nameForTid = (tid: number | undefined) => {
+          const team = allTeams.find((t: any) => (t.id ?? t.tid) === tid);
+          return team ? getTeamFullName(team as any) : 'TBD';
+        };
+        const userTid = state.userTeamId;
+        const games = (state.schedule ?? [])
+          .filter((g: any) => {
+            if (!g.isPreseason && !String(g.type ?? '').toLowerCase().includes('friendly')) return false;
+            const home = g.homeTeamId ?? g.homeTid ?? g.home?.tid ?? g.home?.id;
+            const away = g.awayTeamId ?? g.awayTid ?? g.away?.tid ?? g.away?.id;
+            return userTid == null || home === userTid || away === userTid;
+          })
+          .sort((a: any, b: any) => normalizeDate(a.date).localeCompare(normalizeDate(b.date)))
+          .slice(0, 12);
+        const close = () => {
+          setPreseasonFriendliesOpen(false);
+          dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'preseasonFriendlies' } } as any);
+        };
+        return createPortal(
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={() => setPreseasonFriendliesOpen(false)} />
+            <div className="relative w-full max-w-2xl rounded-2xl border border-sky-500/30 bg-slate-950 shadow-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-white/10 bg-sky-500/[0.06] flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.35em] text-sky-300">Offseason Flow</p>
+                  <h2 className="mt-1 text-xl font-black uppercase tracking-tight text-white">Preseason Friendlies</h2>
+                </div>
+                <button onClick={() => setPreseasonFriendliesOpen(false)} className="text-slate-400 hover:text-white p-1">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-5 space-y-4">
+                {games.length > 0 ? (
+                  <div className="divide-y divide-slate-800 rounded-xl border border-slate-800 overflow-hidden">
+                    {games.map((g: any, index: number) => {
+                      const home = g.homeTeamId ?? g.homeTid ?? g.home?.tid ?? g.home?.id;
+                      const away = g.awayTeamId ?? g.awayTid ?? g.away?.tid ?? g.away?.id;
+                      return (
+                        <div key={g.id ?? `${g.date}-${home}-${away}-${index}`} className="grid grid-cols-[110px_1fr] gap-3 px-4 py-3 bg-slate-900/60">
+                          <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">{normalizeDate(g.date) || 'TBD'}</div>
+                          <div className="text-sm font-bold text-slate-100">{nameForTid(away)} at {nameForTid(home)}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5 text-sm text-slate-400">
+                    No preseason friendlies are scheduled for your club yet. This review is clear for now.
+                  </div>
+                )}
+                <button
+                  onClick={close}
+                  className="w-full rounded-xl bg-sky-500 hover:bg-sky-400 text-black font-black uppercase tracking-widest text-xs py-3 transition-colors"
+                >
+                  Done
+                </button>
+              </div>
             </div>
           </div>,
           document.body,
@@ -2146,6 +2239,8 @@ export const OffseasonTransferMarketFooter: React.FC = () => {
   const status = state.offseasonChecklist.transferMarket;
   if (status !== 'pending' && status !== 'in-progress') return null;
   if (!state.date) return null;
+  const transferMarketCanComplete = (['coachingSignings', 'sponsorRenewals', 'facilityUpgrades', 'staffSignings', 'budgetLock', 'youthPromotion', 'preseasonFriendlies'] as OffseasonChecklistRow[])
+    .every(row => state.offseasonChecklist?.[row] === 'done' || state.offseasonChecklist?.[row] === 'skipped');
 
   const ws = isInTransferWindow(state.date, state.leagueStats);
   if (!ws.open || !ws.currentClose) return null;
@@ -2190,19 +2285,21 @@ export const OffseasonTransferMarketFooter: React.FC = () => {
           <FastForward size={12} />
           Sim Day
         </button>
-        <button
-          onClick={handleComplete}
-          disabled={state.isProcessing}
-          title="Mark transfer market complete and continue with the offseason."
-          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-colors border ${
-            state.isProcessing
-              ? 'bg-slate-800 text-slate-600 border-slate-700 cursor-not-allowed'
-              : 'bg-emerald-600/20 hover:bg-emerald-500/30 text-emerald-200 border-emerald-500/40'
-          }`}
-        >
-          <CheckCircle size={12} />
-          Mark Done
-        </button>
+        {transferMarketCanComplete && (
+          <button
+            onClick={handleComplete}
+            disabled={state.isProcessing}
+            title="Mark transfer market complete and continue with the offseason."
+            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-colors border ${
+              state.isProcessing
+                ? 'bg-slate-800 text-slate-600 border-slate-700 cursor-not-allowed'
+                : 'bg-emerald-600/20 hover:bg-emerald-500/30 text-emerald-200 border-emerald-500/40'
+            }`}
+          >
+            <CheckCircle size={12} />
+            Mark Done
+          </button>
+        )}
       </div>
     </div>
   );

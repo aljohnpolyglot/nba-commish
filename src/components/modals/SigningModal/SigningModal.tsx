@@ -131,7 +131,7 @@ function useHoldable(callback: () => void, disabled: boolean) {
 }
 
 const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, autoAccept = false, preflightMessage, initialContractType, onClose, onSign, onSubmitBid }) => {
-  const { state, applyTycoonMutation } = useGame() as any;
+  const { state } = useGame() as any;
 
   // GM mode: user IS the GM for their own team — spending attribute shapes the opening offer.
   const isOwnTeamGM = state.gameMode === 'gm' && team.id === (state as any).userTeamId;
@@ -158,7 +158,6 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   }, [toast]);
   // Final cap warning gate — shown on Submit when the deal would blow past cap with no Bird / MLE cover.
   const [showCapWarning, setShowCapWarning] = useState(false);
-  const [cashGateOverride, setCashGateOverride] = useState(false);
   // Commissioner dismisses roster-full preflight.
   const [rosterFullOverridden, setRosterFullOverridden] = useState(false);
   const [overLimitAction, setOverLimitAction] = useState<null | 'showResponse' | 'sign'>(null);
@@ -470,7 +469,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
         : initialOffer.salaryUSD;
       setSalary(Math.min(limits.maxSalaryUSD, Math.max(limits.minSalaryUSD, seeded)));
       setYears(initialOffer.years);
-      setOption(initialOffer.hasPlayerOption ? 'PLAYER' : 'NONE');
+      setOption(euroIsolated ? 'NONE' : initialOffer.hasPlayerOption ? 'PLAYER' : 'NONE');
     }
   }, [player.internalId, isTwoWayCandidate, canOfferTwoWay, twoWaySalaryUSD, initialOffer, limits.minSalaryUSD, limits.maxSalaryUSD, roster.standardFull, roster.twoWayFull, initialContractType, isOwnTeamGM, gmSpending, euroIsolated]);
 
@@ -502,7 +501,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
         : initialOffer.salaryUSD;
       setSalary(Math.min(limits.maxSalaryUSD, Math.max(limits.minSalaryUSD, seeded)));
       setYears(initialOffer.years);
-      setOption(initialOffer.hasPlayerOption ? 'PLAYER' : 'NONE');
+      setOption(euroIsolated ? 'NONE' : initialOffer.hasPlayerOption ? 'PLAYER' : 'NONE');
     }
   }, [contractType, canOfferTwoWay, euroIsolated]);
 
@@ -535,7 +534,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
 
   const { interest, uncappedInterest } = useMemo(() => {
     const salaryDiffPct = ((salary - initialOffer.salaryUSD) / initialOffer.salaryUSD) * 100;
-    let base = 65 + salaryDiffPct * 0.5 + Math.abs(years - initialOffer.years) * -8 + (option === 'PLAYER' ? 15 : option === 'TEAM' ? -15 : 0);
+    let base = 65 + salaryDiffPct * 0.5 + Math.abs(years - initialOffer.years) * -8 + (!euroIsolated ? (option === 'PLAYER' ? 15 : option === 'TEAM' ? -15 : 0) : 0);
 
     const traits = player.moodTraits || [];
 
@@ -638,18 +637,10 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     // gate the modal would auto-flag every guaranteed signing as "via MLE",
     // letting users bypass cap checks with $30M+ salaries on a $13M MLE tier.
     const fitsMLE = !euroIsolated && !!mle && !mle.blocked && salary > 0 && salary <= mle.available;
-    if (cashGateDeficit && cashGateOverride && applyTycoonMutation) {
-      applyTycoonMutation(team.id, (t: any) => {
-        if (!t.tycoon) return;
-        t.tycoon.boardConfidence = Math.max(0, (t.tycoon.boardConfidence ?? 60) - 10);
-        t.tycoon.cashGateOverridesThisSeason = (t.tycoon.cashGateOverridesThisSeason ?? 0) + 1;
-        if (t.tycoon.cashGateOverridesThisSeason >= 2) t.tycoon.ownerFiringRisk = true;
-      });
-    }
     onSign({
       salary,
       years,
-      option,
+      option: euroIsolated ? 'NONE' : option,
       twoWay: contractType === 'TWO_WAY',
       nonGuaranteed: contractType === 'NON_GUARANTEED',
       mleType: (euroIsolated || contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || !fitsMLE) ? null : mleTypeOverride,
@@ -1470,7 +1461,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className={`grid gap-4 ${euroIsolated ? 'grid-cols-1' : 'grid-cols-2'}`}>
                         {[
                           {
                             label: 'Years',
@@ -1479,13 +1470,13 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                             incProps: incYearsProps,
                             disabled: false,
                           },
-                          {
+                          ...(!euroIsolated ? [{
                             label: 'Incentive',
                             display: option === 'NONE' ? 'None' : `${option === 'PLAYER' ? 'Player' : 'Team'} Opt.`,
                             decProps: decOptionProps,
                             incProps: incOptionProps,
                             disabled: contractType === 'TWO_WAY',
-                          },
+                          }] : []),
                         ].map(({ label, display, decProps, incProps, disabled }) => (
                           <div key={label}>
                             <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 mb-2">{label}</p>
@@ -1863,9 +1854,9 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
             </div>
 
             <div className="sticky bottom-0 z-40 px-3 sm:px-8 xl:px-10 py-3 sm:py-6 bg-black/80 backdrop-blur-xl border-t border-white/10 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-end shrink-0 shadow-[0_-18px_40px_rgba(0,0,0,0.45)]">
-              {cashGateDeficit && cashGateOverride && (
+              {cashGateDeficit && (
                 <div className="w-full sm:max-w-xl rounded-sm border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-amber-200">
-                  {`Cash warning - this deal projects year-end cash ${moneyPrecise(Math.abs(projectedCashAfterDeal ?? 0), 2)} below zero. Submit again to override with an owner-confidence hit.`}
+                  {`Owner notice: this deal projects year-end cash ${moneyPrecise(Math.abs(projectedCashAfterDeal ?? 0), 2)} below zero. European clubs can run a deficit; ownership will cover it if the sporting case is worth it.`}
                 </div>
               )}
               <div className="flex w-full sm:w-auto gap-2 sm:gap-3 flex-nowrap justify-end">
@@ -1934,10 +1925,6 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                     const blownCap = !euroIsolated && contractType !== 'TWO_WAY' && !hasOwnTeamBirdRights && projectedPayroll > thresholds.salaryCap && !isMinContract;
                     if (blownCap) {
                       setShowCapWarning(true);
-                      return;
-                    }
-                    if (cashGateDeficit && !cashGateOverride) {
-                      setCashGateOverride(true);
                       return;
                     }
                     if (shouldSubmitBid && onSubmitBid) {

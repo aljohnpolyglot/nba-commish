@@ -436,6 +436,10 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
   // actually competes instead of sitting underwater. Caps at the player's max contract.
   const submitAutoBid = (player: NBAPlayer): { ok: boolean; reason?: string } => {
     if (!isOwnTeam || !team) return { ok: false, reason: 'GM mode + own team only' };
+    if (euroIsolated) {
+      quick.handle(player, 'sign_player');
+      return { ok: true };
+    }
     const offer = computeContractOffer(player, state.leagueStats as any);
     const market = allMarkets.find(m => m.playerId === player.internalId && !m.resolved);
     const topActive = market?.bids
@@ -589,7 +593,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
             <h3 className="font-bold uppercase tracking-wider text-sm">My Shortlist</h3>
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400">{shortlistIds.size}/{SHORTLIST_CAP}</span>
-              {isOwnTeam && shortlistedPlayers.length > 0 && (
+              {isOwnTeam && shortlistedPlayers.length > 0 && !euroIsolated && (
                 <button
                   onClick={submitAutoBidsAll}
                   className="px-2 py-1 bg-amber-600 hover:bg-amber-500 text-white font-bold uppercase text-[10px] rounded"
@@ -661,7 +665,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
                           k2 >= 85 ? 'text-emerald-300' :
                           k2 >= 78 ? 'text-amber-300' : 'text-slate-400',
                         )}>{k2}</div>
-                        <div className="text-[9px] text-slate-500 tabular-nums">{fmtUSD(offer.salaryUSD)}/yr</div>
+                        <div className="text-[9px] text-slate-500 tabular-nums">{fmtMoney(offer.salaryUSD)}/yr</div>
                       </div>
                       {isOwnTeam && (() => {
                         const hasMarket = allMarkets.some(m => m.playerId === p.internalId && !m.resolved);
@@ -670,16 +674,22 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
                         return (
                           <div className="flex flex-col items-end gap-1">
                             <button
-                              onClick={(e) => { e.stopPropagation(); submitAutoBid(p); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (euroIsolated) quick.handle(p, 'sign_player');
+                                else submitAutoBid(p);
+                              }}
                               className={cn(
                                 'px-2 py-0.5 text-[9px] font-bold uppercase rounded',
-                                hasUserBid
+                                euroIsolated
+                                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                                  : hasUserBid
                                   ? 'bg-amber-600/30 text-amber-300 hover:bg-amber-600/50'
                                   : 'bg-amber-600 hover:bg-amber-500 text-white',
                               )}
-                              title={hasUserBid ? 'Bump your bid (beat top by 5%)' : 'Submit competitive market bid'}
+                              title={euroIsolated ? 'Open direct signing offer' : hasUserBid ? 'Bump your bid (beat top by 5%)' : 'Submit competitive market bid'}
                             >
-                              {hasUserBid ? 'Bump' : 'Pursue'}
+                              {euroIsolated ? 'Sign' : hasUserBid ? 'Bump' : 'Pursue'}
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); toggleShortlist(p.internalId); }}
@@ -700,7 +710,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
         )}
 
         {/* Live Bid Tracker */}
-        <div className="flex-1 flex flex-col rounded-lg border border-[#30363d] bg-black/40 overflow-hidden min-w-0">
+        {!euroIsolated && <div className="flex-1 flex flex-col rounded-lg border border-[#30363d] bg-black/40 overflow-hidden min-w-0">
           <div className="p-3 border-b border-[#30363d] flex items-center justify-between">
             <h3 className="font-bold uppercase tracking-wider text-sm">
               {isOwnTeam ? 'Live Bid Tracker' : `${team?.name ?? 'Team'} — Active Bids`}
@@ -813,7 +823,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
               })
             )}
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* Top FAs scouting drawer */}
@@ -870,7 +880,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
                 </th>
                 <th className="text-center px-1.5 py-2" title="Restricted (prior team can match offer sheet) vs Unrestricted">Type</th>
                 {!euroIsolated && <th className="text-center px-1.5 py-2" title="Bird Rights — prior team can sign over the cap">Bird</th>}
-                <th className="text-center px-1.5 py-2" title="Number of active competing bids in the market">Offers</th>
+                {!euroIsolated && <th className="text-center px-1.5 py-2" title="Number of active competing bids in the market">Offers</th>}
                 <th className="text-right px-2 py-2 cursor-pointer hover:text-slate-300" onClick={() => handleSort('asking')}>
                   Asking {sortConfig.col === 'asking' && <span className="text-amber-400">{sortConfig.dir === 'desc' ? '▼' : '▲'}</span>}
                 </th>
@@ -967,7 +977,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
                         {hasBird ? 'YES' : 'NO'}
                       </span>
                     </td>}
-                    <td className="text-center">
+                    {!euroIsolated && <td className="text-center">
                       {activeOfferCount > 0 ? (
                         <span className={cn(
                           'inline-block px-1.5 py-0.5 rounded text-[9px] font-black tabular-nums tracking-wider',
@@ -980,7 +990,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
                       ) : (
                         <span className="text-[9px] text-slate-600 tracking-wider">—</span>
                       )}
-                    </td>
+                    </td>}
                     <td className="text-right text-slate-300 tabular-nums whitespace-nowrap">
                       {fmtMoney(askingTotalUSD)}/{offer.years}yr
                     </td>

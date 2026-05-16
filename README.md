@@ -35,7 +35,7 @@ npm run dev
 
 **Wichtiger Unterschied:** Fictional-Setup erzeugt seine Liga vollständig lokal. Modded-Setup lädt Roster, Historie und Zusatzdaten aus externen Quellen.
 
-**Euro-Isolated worktree recovery (May 15, 2026):** Euro mode is being repaired directly in the main worktree. Current in-flight wiring seeds setup tier/budget, owner, six-role staff, sponsor slots, `INIT_EURO_CAREER` save state, LOAD_GAME healing for older Euro GM saves, a minimal Endesa setup review before game start, generated staff free-agent pools for Front Office hiring, year-end owner patience/cash-injection mechanics, Euro Tasks transfer-market gating, generated coach bio display, and FIBA 200-minute gameplan budgets. See `TODO.md` and `docs/superpowers/plans/2026-05-14-euro-setup-hybrid.md` before continuing Euro setup work.
+**Euro-Isolated worktree recovery (May 15–16, 2026):** Euro mode is being repaired directly in the main worktree. Current in-flight wiring seeds setup tier/budget, owner, six-role staff, sponsor slots, `INIT_EURO_CAREER` save state, LOAD_GAME healing for older Euro GM saves, generated staff free-agent pools for Front Office hiring, year-end owner patience/cash-injection mechanics, Euro Tasks transfer-market gating, sponsor/endorsement duplicate protection, direct Euro FA signings without NBA cap/MLE blocks, generated coach bio display, and FIBA 200-minute gameplan budgets. See `TODO.md` and `docs/superpowers/plans/2026-05-14-euro-setup-hybrid.md` before continuing Euro setup work.
 
 ## Architektur in einer Minute
 

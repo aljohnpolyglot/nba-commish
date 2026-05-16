@@ -1,5 +1,256 @@
 # NBA Commish — TODO
 
+# QUICK FIXXES- MAY 15, 2026
+
+**Status 2026-05-16:** Main quick-fix sweep shipped in worktree. See `CHANGELOG.md` Session 62.
+- Endorsement duplicate signing guarded and legacy duplicate display/load cleanup added.
+- Euro signing path no longer applies NBA cap/MLE hard blocks or player/team-option incentives; cash deficit is a notice.
+- Euro Team Intel FA shortlist uses direct signing instead of NBA bid-market auto-bids.
+- Transfer Market `Mark Done` is gated behind the other Euro offseason tasks; premature `Sim to Opening Night` auto-resolve is hidden in Euro mode.
+- Empty Youth Promotion auto-completes; Preseason Friendlies opens an in-place game list modal.
+- Finance overview now states Euro deficits are normal owner-supported operating risk.
+
+Endorsement singing duplication:
+
+Extra Endorsement
+Local City Bank
+Financial Partnership Campaign
+Value
+€119.66K
+Contract
+One Year
+Signed
+
+Extra Endorsement
+Local City Bank
+Financial Partnership Campaign
+Value
+€119.66K
+Contract
+One Year
+Signed
+
+Extra Endorsement
+Supermercado del Centro
+Retail Promotion
+Value
+€25.66K
+Contract
+One Year
+Signed
+
+Extra Endorsement
+Supermercado del Centro
+Retail Promotion
+Value
+€25.66K
+Contract
+One Year
+Signed
+
+Coaching Signings not being
+Complete after i signed the 3rd assistant coach, needs to reaload the game for it to update.
+
+This modal starts at Transfer Window
+Day 31/92
+Sim Day
+Mark Done but sidebar shows Transfer Market
+In progress
+Review transfer listings, bids, and release-clause activity before preseason.
+
+Transfer Window Day
+1/62
+Resume
+Mark Done
+
+
+
+Remove thsi button if checklist is not complete yet Sim to Opening Night..
+
+TEAMS STILL NOT MAKING PROFIT BY DEFAULT
+
+#	Team	The Money Comes From	Projected Profit	The Money Goes To	Wage / Rev	Health
+Matchday	Sponsors	TV Rights	Total Rev	Wages	Staff	Facility	Scouting	Travel	Medical	Academy	Total Exp
+1	
+
+Joventut Badalona
+€8.03M	€6.00M	€4.50M	€18.53M	-€1.51M	€12.11M	€3.83M	€600K	€850K	€500K	€650K	€1.50M	€20.04M	65.3%	
+Critical
+2	
+
+Dreamland Gran Canaria
+€4.06M	€3.20M	€2.70M	€9.95M	-€1.72M	€6.61M	€2.61M	€360K	€550K	€350K	€450K	€750K	€11.68M	66.4%	
+Critical
+3	
+
+UCAM Murcia
+€4.06M	€3.11M	€2.70M	€9.87M	-€1.82M	€6.52M	€2.71M	€360K	€550K	€350K	€450K	€750K	€11.69M	66.1%	
+Critical
+4	
+
+Movistar Estudiantes
+€2.35M	€2.33M	€2.00M	€6.68M	-€2.36M	€5.88M	€1.80M	€240K	€320K	€250K	€300K	€250K	€9.04M	88.0%	
+Critical
+5	
+
+Casademont Zaragoza
+€4.06M	€3.22M	€2.70M	€9.97M	-€3.63M	€8.35M	€2.79M	€360K	€550K	€350K	€450K	€750K	€13.60M	83.7%	
+Critical
+6	
+
+MoraBanc Andorra
+€2.35M	€2.33M	€2.00M	€6.69M	-€5.37M	€8.90M	€1.79M	€240K	€320K	€250K	€300K	€250K	€12.05M	133.1%	
+Critical
+7	
+
+Unicaja Malaga
+€8.03M	€6.42M	€4.50M	€18.95M	-€5.57M	€16.40M	€4.03M	€600K	€850K	€500K	€650K	€1.50M	€24.52M	86.5%	
+Critical
+8	
+
+Hiopos Lleida
+€2.35M	€2.34M	€2.00M	€6.70M	-€5.70M	€9.34M	€1.70M	€240K	€320K	€250K	€300K	€250K	€12.40M	139.5%	
+Critical
+9	
+
+Basquet Girona
+€2.35M	€2.46M	€2.00M	€6.81M	-€6.00M	€9.72M	€1.73M	€240K	€320K	€250K	€300K	€250K	€12.81M	142.7%	
+Critical
+10	
+
+La Laguna Tenerife
+€4.06M	€2.99M	€2.70M	€9.74M	-€6.33M	€11.16M	€2.44M	€360K	€550K	€350K	€450K	€750K	€16.07M	114.6%	
+Critical
+11	
+
+Surne Bilbao
+€4.06M	€2.95M	€2.70M	€9.70M	-€6.49M	€11.08M	€2.65M	€360K	€550K	€350K	€450K	€750K	€16.19M	114.2%	
+Critical
+12	
+
+Coviran Granada
+€2.35M	€2.37M	€2.00M	€6.72M	-€6.59M	€10.08M	€1.88M	€240K	€320K	€250K	€300K	€250K	€13.31M	149.9%	
+Critical
+13	
+
+BAXI Manresa
+€2.35M	€2.44M	€2.00M	€6.80M	-€6.66M	€10.23M	€1.88M	€240K	€320K	€250K	€300K	€250K	€13.46M	150.5%	
+Critical
+14	
+
+FC Barcelona
+€17.21M	€12.89M	€8.00M	€38.10M	-€7.02M	€31.50M	€6.51M	€1.20M	€1.20M	€800K	€900K	€3.00M	€45.12M	82.7%	
+Critical
+15	
+
+Rio Breogan
+€2.35M	€2.57M	€2.00M	€6.92M	-€8.94M	€13.02M	€1.48M	€240K	€320K	€250K	€300K	€250K	€15.86M	188.2%	
+Critical
+16	
+
+San Pablo Burgos
+€4.06M	€3.02M	€2.70M	€9.78M	-€9.50M	€14.14M	€2.68M	€360K	€550K	€350K	€450K	€750K	€19.28M	144.6%	
+Critical
+17	
+
+Real Madrid
+€17.21M	€13.96M	€8.00M	€39.17M	-€11.35M	€37.04M	€6.39M	€1.20M	€1.20M	€800K	€900K	€3.00M	€50.53M	94.5%	
+Critical
+18	
+
+Baskonia Vitoria-Gasteiz
+€8.03M	€6.24M	€4.50M	€18.78M	-€16.49M	€27.16M	€4.00M	€600K	€850K	€500K	€650K	€1.50M	€35.27M	144.7%	
+
+
+
+here is real data.
+but turns out it wa srealistic! No, EuroLeague and Liga Endesa (ACB) teams generally do not make an annual profit. Most professional basketball clubs in Europe operate at a deficit. While exact figures fluctuate, annual losses per team commonly range from €1 million to over €9 million.These financial shortfalls are primarily due to high player salaries, international travel, and operating costs that heavily outpace standard matchday and broadcasting revenues. The ecosystem relies on a different financial model compared to leagues like the NBA:Shareholder Coverage: Most top-tier teams rely on wealthy owners, corporate sponsors, or parent sports clubs (like FC Barcelona and Real Madrid in soccer) to inject money and cover these annual losses.Budget Limits: Because of systemic unprofitability, EuroLeague regulations currently limit direct shareholder investments to a maximum of 50% of a team's total budget.Self-Sustainable Exceptions: Only a few clubs, such as Lithuania's Zalgiris Kaunas, operate with a highly self-sustainable model where revenues from sold-out arenas and sponsorships closely align with their budgets.For a deeper dive into the financial health and valuations of European basketball, you can review the full BasketNews EuroLeague Valuations Report.
+
+
+
+CIRICTAL:??
+
+no free agents bidding in team intel where we can bid against even nba teams on free agency  season simultanous with nba?? of course they most likely will ignore my offer, but yeah...
+
+
+also freeagency tab there is misisng? this is useful when we are nba free agent big names are gones, and left overs are in fa pool that we can ick up to go to ourleague, remove now free agency bidding logic for euromode. just mkae them autosign. add auto resign as well.
+
+
+ALSO IN PLAYER SIGNING MDOAL?? why is incentive still there.. like palyer option when we are in euroomde?? also in
+
+
+CRICITAL! i am in gm mode! and my ai asistnag tgm were maing bids for my end?? wtf..!
+
+Makt his am modal after submit offer"Cash warning - this deal projects year-end cash €10.60M below zero. Submit again to override with an owner-confidence hit."" make this more like hmmm.....  just a notice but just sign them anyways we dont care.
+
+
+
+
+ALSO IDK IF THIS SI A BUG FOR YEAR1: Offseason · Youth Promotion
+
+Breogan Promotion Window
+
+Eligible Players
+0
+Youth roster
+Recommended
+0
+Selected
+0
+To promote
+Slots
+15/15
+0 available
+Offseason Promotion
+Select players to promote to the main roster.
+
+No youth players in the academy.
+
+Youth prospects are generated each season based on your academy level.
+
+Youth Development Tip
+Promoting players at the right time is key. Keep an eye on their potential and playing time opportunities.
+
+
+
+no youth academy players graduation..
+also remove mark as doen for transfer market, if you are not yet finsihed in others like staff nad budget renewal and others.. i mean facilites. czu that will auto transfer you to a new date. which si pre preseason  or training camp, but still offseason mode, you can t sim or anything.... also weh nno promotion eligible detected, auto makr as done.. or if no more rows of players eligible.
+
+
+make this a modal. with list of games then click done, this is atutomatic. cuz this is a bottleneck lmao no more transport to calendar view Offseason Flow
+
+Preseason Friendlies
+Open the schedule desk to review preseason and friendly slots before camp.
+
+Cancel
+Open Schedule  also wtf ?? 
+Jaden Ivey no logner fits your cap room as if we are the NBA after that lmaoo.... we are in europe we dont have cap space!!
+
+
+
+ASLO Preseason bug.. sim to preseason , of finish offseason tasks transfered me to thi sBasketCommissionerSim
+Jul 11, 2025 • Season 2026
+and 2026 european playoffs lmaoo. wtf.
+
+GAME STILL BUGGY AF LMAo
+
+
+
+
+ALSO CRITICAL>>maybe add first in heads up or yearly ledger or finance review... dont worry, ebasketball is not football. it is okay to lose money, here in Europe.. bla bla bla... this is our pride.. bla bla..
+
+
+
+youtha cademy spawns, auto generates from the budget you will set in the phase before which is budget review. to make it simpler..
+
+also, hmm. maybe for jaden ivey signing or every fa , since we odnt amke profit anyway.. just have owner modal messagege.. if you pay player and offered for market value. so there are two blockers that could happen..
+
+player  accept/reject first] not yet fully accepted
+[owner modal first, you slightly overpaid for that can you make it lower, or lets go! sign this nba player welcome to europe something since we dont have cap logic, the owner knows if you overpay or underpay in market value... owner knows if offer strenght maybe like preference a player interset or offer strenght at 80-85 not at 100% if the ownr personality is thrifty. but if crazy rich asians, then he might let you go 100%]
+
+[player accetps// oay thanks for offer so excited t oplay, ]
+
+
 > Geshippte Sessions liegen in [CHANGELOG.md](./CHANGELOG.md). Dort prüfen, bevor ein Item unten als offen angenommen wird.
 
 ---

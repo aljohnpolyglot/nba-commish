@@ -44,7 +44,13 @@ export const SponsorshipSection: React.FC<{
   const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
   const deals = ALL_SLOTS.map((slot) => ({ slot, deal: tycoon.sponsorships[slot] }));
   const activeDeals = deals.filter((item) => item.deal);
-  const activeEndorsements = ((tycoon.oneTimePayouts ?? []) as OneTimePayout[]).filter((p) => p.kind === 'endorsement').slice(0, ENDORSEMENT_SLOT_CAP);
+  const activeEndorsements = ((tycoon.oneTimePayouts ?? []) as OneTimePayout[])
+    .filter((p) => p.kind === 'endorsement')
+    .filter((p, index, arr) => {
+      const key = `${p.year}-${p.brand}-${p.amount}-${p.offerLabel ?? ''}`;
+      return arr.findIndex((other) => `${other.year}-${other.brand}-${other.amount}-${other.offerLabel ?? ''}` === key) === index;
+    })
+    .slice(0, ENDORSEMENT_SLOT_CAP);
   const endorsementTotal = activeEndorsements.reduce((sum, item) => sum + (item.amount ?? 0), 0);
   const totalAnnual = activeDeals.reduce((sum, item) => sum + (item.deal?.valuePerYear ?? 0), 0);
   const totalValue = activeDeals.reduce((sum, item) => sum + (item.deal?.valuePerYear ?? 0) * Math.max(1, item.deal?.yearsRemaining ?? 1), 0) + endorsementTotal;

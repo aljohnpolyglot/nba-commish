@@ -813,8 +813,14 @@ export const OpenMarketModal: React.FC<Props> = ({ open, onClose }) => {
             const payout = sub.valuePerYear;
             const brand = negotiationOffer.brand;
             applyTycoonMutation(userTeamId, (t: any) => {
-              t.tycoon.cashOnHand = (t.tycoon.cashOnHand ?? 0) + payout;
               const ledger: any[] = t.tycoon.oneTimePayouts ?? (t.tycoon.oneTimePayouts = []);
+              const alreadySigned = ledger.some((p: any) =>
+                p.year === year &&
+                p.brand === brand &&
+                p.kind === (negotiationOffer.dealType === 'endorsement' ? 'endorsement' : 'sponsorship')
+              );
+              if (alreadySigned) return;
+              t.tycoon.cashOnHand = (t.tycoon.cashOnHand ?? 0) + payout;
               ledger.push({
                 id: `one-time-${year}-${brand.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
                 year,

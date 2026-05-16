@@ -2,6 +2,13 @@
 
 Historical bug fixes, session notes, and architecture discoveries.
 
+## Session 62 (May 16, 2026) — May 15 Euro quick-fixes cleanup
+
+- `src/components/tycoon/OpenMarketModal.tsx`, `SponsorshipSection.tsx`, `src/store/GameContext.tsx` — one-time endorsement signings are now idempotent by year/brand/kind/value, duplicate legacy endorsement rows are deduped on Euro save load, and the sponsorship dashboard renders unique endorsements only.
+- `src/components/offseason/OffseasonAufgaben.tsx`, `src/services/offseason/offseasonState.ts` — Euro Offseason Tasks no longer show the premature `Sim to Opening Night` auto-resolve button, Transfer Market `Mark Done` is hidden until staff/sponsors/facilities/budget/youth/friendlies are resolved, empty Youth Promotion auto-completes, and Preseason Friendlies opens an in-place review modal instead of sending the user to Calendar.
+- `src/components/modals/SigningModal/SigningModal.tsx`, `src/store/logic/actions/playerActions.ts`, `src/components/central/view/TeamOffice/pages/TeamIntelFreeAgency.tsx` — Euro signings no longer use NBA cap/MLE hard-blocks or player/team-option incentives; projected cash deficit is a notice, not a second-submit blocker; Euro Team Intel free agency opens direct signing instead of NBA bid-market auto-bids.
+- `src/components/central/view/FrontOffice/sections/FinanceSection.tsx` — finance overview now explains that Euro basketball deficits are normal owner-supported operating risk rather than an NBA-style profitability failure.
+
 ## Session 61 (May 15, 2026) — PBA Isolated Mode Phase 2 completion
 
 - `src/utils/playerRatings.ts` — fixed NaN team OVR for PBA teams: `qualityCutoff` floor of 50 excluded all PBA players (BBGM OVR ~33 after 0.510 multiplier). Changed to `Math.max(star1Ovr - 20, 0)` with empty-pool fallback to top 10 players.

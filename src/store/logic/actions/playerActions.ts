@@ -24,13 +24,15 @@ function getPriorNbaTid(player: any): number {
 export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const { playerId, teamId, playerName, teamName, salary, years: negotiatedYears, option, twoWay: signedAsTwoWay, nonGuaranteed: signedAsNG, mleType: signedMleType } = action.payload;
     const player = stateWithSim.players.find(p => p.internalId === playerId);
-    const team = stateWithSim.teams.find(t => t.id === teamId);
+    const team = stateWithSim.teams.find(t => t.id === teamId)
+        ?? ((stateWithSim as any).nonNBATeams ?? []).find((t: any) => (t.id ?? t.tid) === teamId);
     
     if (!player || !team) return { isProcessing: false };
 
     const MIN_CONTRACT_USD = 1_300_000;
     const leagueYear = stateWithSim.leagueStats?.year ?? new Date().getFullYear();
     const baseSalaryUSD = typeof salary === 'number' && salary > 0 ? salary : MIN_CONTRACT_USD;
+    const isEuroMode = stateWithSim.leagueStats?.uiMode === 'euro_isolated';
     if (stateWithSim.gameMode === 'gm' && player.tid === -1 && player.status === 'Free Agent' && stateWithSim.date) {
         const currentDate = parseGameDate(stateWithSim.date);
         const faStart = getCurrentOffseasonEffectiveFAStart(currentDate, stateWithSim.leagueStats as any, stateWithSim.schedule as any);
@@ -65,7 +67,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
     // The Khris Middleton case — modal auto-stamped non_taxpayer MLE on a $33.3M
     // signing because contract was guaranteed; this gate refuses the signing
     // server-side regardless of the client claim.
-    if (signedMleType && (mle.blocked || baseSalaryUSD > mle.available)) {
+    if (!isEuroMode && signedMleType && (mle.blocked || baseSalaryUSD > mle.available)) {
         console.warn(`[SIGN_FREE_AGENT] Blocked: claimed ${signedMleType} MLE but salary $${(baseSalaryUSD/1e6).toFixed(1)}M exceeds available $${(mle.available/1e6).toFixed(1)}M`);
         return { isProcessing: false };
     }
@@ -75,7 +77,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
     // body to fill an open slot — physically impossible in real NBA.
     const minSalaryUSD = getContractLimits(player as any, stateWithSim.leagueStats as any).minSalaryUSD;
     const isMinContract = baseSalaryUSD <= minSalaryUSD * 1.05;
-    if (signedAsGuaranteed && !ownTeamBirdRights && projectedPayroll > thresholds.salaryCap && !hasRequestedValidMLE && !isMinContract) {
+    if (!isEuroMode && signedAsGuaranteed && !ownTeamBirdRights && projectedPayroll > thresholds.salaryCap && !hasRequestedValidMLE && !isMinContract) {
         console.warn(`[SIGN_FREE_AGENT] Blocked illegal over-cap signing: ${player.name} to ${team.name}`);
         return { isProcessing: false };
     }

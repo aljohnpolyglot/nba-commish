@@ -258,6 +258,12 @@ export const FinanceSection: React.FC<{
 
       {financeTab === 'overview' && (
         <>
+          <div className="rounded-2xl border border-sky-400/30 bg-sky-400/10 p-5 text-sm text-sky-50">
+            <div className="text-xs font-black uppercase tracking-widest text-sky-300 mb-2">European Basketball Finance</div>
+            <p className="leading-relaxed">
+              Year-end losses are normal in this ecosystem. Ownership, parent clubs, and sponsor support often cover competitive deficits, so the key risk is cash runway and board confidence, not forcing every club to show NBA-style profit.
+            </p>
+          </div>
           <BoardPromisesCard tycoon={tycoon} />
           <AnnualProjectionCard ledger={ledger} fmt={fmt} cashOnHand={cashOnHand} currentYear={currentYear} starPower={starPower} ledgerHistory={tycoon.ledgerHistory} />
           <div className="grid md:grid-cols-4 gap-3">

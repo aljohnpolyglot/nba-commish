@@ -414,7 +414,7 @@ export const OFFSEASON_ROW_TAB: Record<OffseasonChecklistRow, Tab | null> = {
   coachingSignings: 'Front Office Staff',
   staffSignings: 'Front Office Staff',
   youthPromotion: null,
-  preseasonFriendlies: 'Schedule',
+  preseasonFriendlies: null,
   hofCeremony:      null,
   trainingCamp:     'Training Center',
   pbaDraft:         'Draft Board',
